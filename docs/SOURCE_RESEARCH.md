@@ -91,3 +91,9 @@ The gzip response was streamed only until its first Italian `casa` record. The c
 - Review policy for conflicting source claims, including `studente`.
 - Full Italian article rules and exceptions.
 - Exact publication attribution and derivative-data licence obligations.
+
+## Follow-up
+
+The licence and attribution questions above are answered in [LICENSING.md](LICENSING.md): the exact
+release identity and re-fetch plan, the GFDL question, draft attribution text, how our own data is
+licensed, retention duties, media and quotation review, and the remaining publication blockers.
