@@ -1,0 +1,438 @@
+// Exact lookup: one Italian surface in, every reading the source supports out.
+//
+// The two things this must not do, both of which the data invites:
+//
+//   - Turn repeated evidence into repeated results. `studenti` appears on five
+//     lookup rows across four records. That is four readings with five pieces of
+//     evidence, not five readings.
+//   - Assert a lemma the source did not. A record listing a form in its table is
+//     not thereby the lemma of that form, and an edge naming a word that has
+//     three records has not chosen one.
+//
+// Ranking is deliberately absent. Context-based ordering is a later, advisory
+// thing; here every reading comes back in source order.
+
+import type { DatabaseSync } from "node:sqlite";
+import { IT_NORMALIZER_VERSION, normalizeItalianExact } from "../italian/normalize.js";
+import type {
+  Evidence,
+  Grammar,
+  GrammarClaim,
+  InflectionOf,
+  LemmaLink,
+  LookupResult,
+  Reading,
+  ReleaseInfo,
+  Review,
+  Sense,
+  SourceRef,
+} from "./types.js";
+
+/**
+ * Longest surface we will look up. The longest Italian headword in this release
+ * is well under this; the bound exists so a pathological query cannot become a
+ * pathological index probe.
+ */
+export const MAX_QUERY_LENGTH = 128;
+
+export interface LookupOptions {
+  db: DatabaseSync;
+  releaseId: string;
+  query: string;
+}
+
+// node:sqlite types every column as SQLOutputValue, so a row shape has to be
+// asserted somewhere. Two helpers keep that assertion in one place instead of
+// scattering `as unknown as X[]` through every query.
+function queryAll<T>(db: DatabaseSync, sql: string, ...params: (string | number)[]): T[] {
+  return db.prepare(sql).all(...params) as unknown as T[];
+}
+
+function queryOne<T>(db: DatabaseSync, sql: string, ...params: (string | number)[]): T | undefined {
+  return db.prepare(sql).get(...params) as unknown as T | undefined;
+}
+
+export function lookup({ db, releaseId, query }: LookupOptions): LookupResult {
+  const trimmed = query.trim();
+  if (trimmed.length === 0) {
+    return { outcome: "rejected", query: { raw: query }, rejection: { reason: "empty" } };
+  }
+  if (trimmed.length > MAX_QUERY_LENGTH) {
+    return {
+      outcome: "rejected",
+      query: { raw: query },
+      rejection: { reason: "too-long", length: trimmed.length, limit: MAX_QUERY_LENGTH },
+    };
+  }
+
+  const release = readRelease(db, releaseId);
+  if (release === undefined) {
+    // A release that is absent, still importing, failed or superseded is not
+    // servable, and saying "no results" would be a different, false claim.
+    throw new Error(`no complete release '${releaseId}'`);
+  }
+
+  // The stored keys were produced by the release's own normalizer, so the query
+  // has to go through the same one. A release built by a different normalizer
+  // would silently mis-probe the index.
+  if (release.normalizer !== IT_NORMALIZER_VERSION) {
+    throw new Error(
+      `release '${releaseId}' was built with normalizer '${release.normalizer}', this build has '${IT_NORMALIZER_VERSION}'`,
+    );
+  }
+  const key = normalizeItalianExact(trimmed);
+  const queryInfo = { raw: query, key, normalizer: release.normalizer };
+
+  const hits = queryAll<HitRow>(
+    db,
+    `SELECT record_id, line_no, record_word, record_pos, origin, json_pointer,
+            form_source, surface, is_headword_hit
+       FROM surface_hit
+      WHERE release_id = ? AND surface_key = ?
+      ORDER BY is_headword_hit DESC, line_no, json_pointer`,
+    releaseId,
+    key,
+  );
+
+  if (hits.length === 0) {
+    return { outcome: "not-found", query: queryInfo, release, readings: [] };
+  }
+
+  // Group evidence by record. This is the step that keeps five lookup rows from
+  // becoming five readings.
+  const byRecord = new Map<number, HitRow[]>();
+  for (const hit of hits) {
+    const existing = byRecord.get(hit.record_id);
+    if (existing) existing.push(hit);
+    else byRecord.set(hit.record_id, [hit]);
+  }
+
+  const readings = [...byRecord.values()]
+    // Source order, so the result does not imply a ranking it has not earned.
+    .sort((a, b) => a[0].line_no - b[0].line_no)
+    .map((group) => buildReading(db, group));
+
+  return { outcome: "found", query: queryInfo, release, readings };
+}
+
+// --- rows as they come back from SQLite -------------------------------------
+
+interface HitRow {
+  record_id: number;
+  line_no: number;
+  record_word: string;
+  record_pos: string;
+  origin: "headword" | "embedded-form";
+  json_pointer: string;
+  form_source: string | null;
+  surface: string;
+  is_headword_hit: number;
+}
+
+function readRelease(db: DatabaseSync, releaseId: string): ReleaseInfo | undefined {
+  const row = queryOne<{
+    release_id: string;
+    normalizer: string;
+    source_url: string | null;
+    retrieved_at: string | null;
+    license: string | null;
+    attribution: string | null;
+  }>(
+    db,
+    `SELECT release_id, normalizer, source_url, retrieved_at, license, attribution
+       FROM source_release
+      WHERE release_id = ? AND status = 'complete'`,
+    releaseId,
+  );
+
+  return row === undefined
+    ? undefined
+    : {
+        releaseId: row.release_id,
+        normalizer: row.normalizer,
+        sourceUrl: row.source_url,
+        retrievedAt: row.retrieved_at,
+        license: row.license,
+        attribution: row.attribution,
+      };
+}
+
+function buildReading(db: DatabaseSync, group: HitRow[]): Reading {
+  const first = group[0];
+  const recordId = first.record_id;
+  const ref = (pointer: string): SourceRef => ({ lineNo: first.line_no, pointer });
+
+  const evidence: Evidence[] = group.map((hit) => ({
+    origin: hit.origin,
+    surface: hit.surface,
+    pointer: hit.json_pointer,
+    formSource: hit.form_source,
+  }));
+
+  return {
+    recordId,
+    lineNo: first.line_no,
+    word: first.record_word,
+    pos: first.record_pos,
+    posTitle: readPosTitle(db, recordId),
+    isAboutQuery: group.some((hit) => hit.origin === "headword"),
+    evidence,
+    senses: readSenses(db, recordId, ref),
+    grammar: readGrammar(db, recordId, ref),
+    lemmaLinks: readLemmaLinks(db, recordId, ref),
+    inflections: readInflections(db, recordId),
+    reviews: readReviews(db, recordId),
+  };
+}
+
+function readPosTitle(db: DatabaseSync, recordId: number): string {
+  const row = queryOne<{ pos_title: string }>(
+    db,
+    `SELECT pos_title FROM source_record WHERE record_id = ?`,
+    recordId,
+  );
+  if (row === undefined) throw new Error(`record ${recordId} vanished mid-lookup`);
+  return row.pos_title;
+}
+
+function readSenses(
+  db: DatabaseSync,
+  recordId: number,
+  ref: (pointer: string) => SourceRef,
+): Sense[] {
+  const senses = new Map<number, Sense>();
+  const ensure = (index: number): Sense => {
+    let sense = senses.get(index);
+    if (!sense) {
+      sense = { index, glosses: [], labels: [] };
+      senses.set(index, sense);
+    }
+    return sense;
+  };
+
+  // A sense with no gloss still gets a row, because "this sense exists and says
+  // nothing" is a fact worth showing rather than a sense to drop.
+  const glossRows = db.prepare(
+    `SELECT s.sense_index, g.text, g.json_pointer
+       FROM sense s
+       LEFT JOIN sense_gloss g ON g.sense_id = s.sense_id
+      WHERE s.record_id = ?
+      ORDER BY s.sense_index, g.gloss_index`,
+  ).all(recordId) as { sense_index: number; text: string | null; json_pointer: string | null }[];
+
+  for (const row of glossRows) {
+    const sense = ensure(row.sense_index);
+    if (row.text !== null && row.json_pointer !== null) {
+      sense.glosses.push({ text: row.text, ref: ref(row.json_pointer) });
+    }
+  }
+
+  const labelRows = db.prepare(
+    `SELECT s.sense_index, l.kind, l.label, l.json_pointer
+       FROM sense s
+       JOIN sense_label l ON l.sense_id = s.sense_id
+      WHERE s.record_id = ?
+      ORDER BY s.sense_index, l.kind, l.label_index`,
+  ).all(recordId) as { sense_index: number; kind: "tag" | "raw_tag"; label: string; json_pointer: string }[];
+
+  for (const row of labelRows) {
+    ensure(row.sense_index).labels.push({
+      kind: row.kind,
+      label: row.label,
+      ref: ref(row.json_pointer),
+    });
+  }
+
+  return [...senses.values()].sort((a, b) => a.index - b.index);
+}
+
+function readGrammar(
+  db: DatabaseSync,
+  recordId: number,
+  ref: (pointer: string) => SourceRef,
+): Grammar {
+  const rows = db.prepare(
+    `SELECT scope, scope_index, status, dimension, value, source_text, json_pointer
+       FROM grammar_claim
+      WHERE record_id = ?
+      ORDER BY scope, scope_index, json_pointer`,
+  ).all(recordId) as {
+    scope: "record" | "sense" | "form";
+    scope_index: number | null;
+    status: "stated" | "unclassified" | "missing";
+    dimension: string | null;
+    value: string | null;
+    source_text: string | null;
+    json_pointer: string;
+  }[];
+
+  const grammar: Grammar = { record: [], byForm: new Map(), bySense: new Map() };
+
+  for (const row of rows) {
+    // The schema's CHECK constraints already guarantee which columns are set for
+    // which status, so this narrows without inventing defaults.
+    let claim: GrammarClaim;
+    if (row.status === "stated") {
+      claim = {
+        status: "stated",
+        dimension: row.dimension as string,
+        value: row.value as string,
+        sourceText: row.source_text as string,
+        ref: ref(row.json_pointer),
+      };
+    } else if (row.status === "unclassified") {
+      claim = {
+        status: "unclassified",
+        sourceText: row.source_text as string,
+        ref: ref(row.json_pointer),
+      };
+    } else {
+      claim = {
+        status: "missing",
+        dimension: row.dimension as string,
+        ref: ref(row.json_pointer),
+      };
+    }
+
+    if (row.scope === "record") {
+      grammar.record.push(claim);
+    } else {
+      const target = row.scope === "form" ? grammar.byForm : grammar.bySense;
+      const index = row.scope_index as number;
+      const list = target.get(index);
+      if (list) list.push(claim);
+      else target.set(index, [claim]);
+    }
+  }
+
+  return grammar;
+}
+
+/**
+ * Exported so a test can assert the plan, not just the rows. Reintroducing the
+ * view here costs three orders of magnitude and nothing else changes, which is
+ * exactly the kind of regression a rows-only test sails past.
+ */
+export const LEMMA_LINK_SQL = `SELECT e.edge_id, e.json_pointer, e.target_word,
+            t.record_id AS candidate_record_id,
+            t.line_no   AS candidate_line_no,
+            t.pos       AS candidate_pos,
+            t.word      AS candidate_word
+       FROM form_of_edge e
+       JOIN source_release rel
+         ON rel.release_id = e.release_id AND rel.status = 'complete'
+       LEFT JOIN lookup_form lf
+         ON lf.release_id = e.release_id
+        AND lf.surface_key = e.target_word_key
+        AND lf.origin = 'headword'
+       LEFT JOIN source_record t ON t.record_id = lf.record_id
+      WHERE e.record_id = ?
+      ORDER BY e.edge_id, t.line_no`;
+
+function readLemmaLinks(
+  db: DatabaseSync,
+  recordId: number,
+  ref: (pointer: string) => SourceRef,
+): LemmaLink[] {
+  // LEFT JOIN on purpose: an edge whose target word matches no headword record
+  // must still appear. Dropping it would turn "the source points somewhere we
+  // cannot follow" into "the source points nowhere".
+  //
+  // The `form_of_candidate` view's join is inlined rather than LEFT JOINed.
+  // SQLite cannot push `e.record_id = ?` through a LEFT JOIN onto a view, so it
+  // materialises the whole view first — all 608,726 edges against 1,273,490
+  // lookup rows — then throws nearly all of it away. Measured on the real
+  // release for `bella`: 2,686 ms via the view, 0.1 ms inlined, same four rows.
+  const rows = db.prepare(LEMMA_LINK_SQL).all(recordId) as {    edge_id: number;
+    json_pointer: string;
+    target_word: string;
+    candidate_record_id: number | null;
+    candidate_line_no: number | null;
+    candidate_pos: string | null;
+    candidate_word: string | null;
+  }[];
+
+  const byEdge = new Map<number, LemmaLink>();
+  for (const row of rows) {
+    if (row.candidate_record_id === null) {
+      byEdge.set(row.edge_id, {
+        kind: "dangling",
+        targetWord: row.target_word,
+        ref: ref(row.json_pointer),
+      });
+      continue;
+    }
+    const existing = byEdge.get(row.edge_id);
+    const candidate = {
+      recordId: row.candidate_record_id,
+      lineNo: row.candidate_line_no as number,
+      word: row.candidate_word as string,
+      pos: row.candidate_pos as string,
+    };
+    if (existing !== undefined && existing.kind === "candidates") {
+      existing.candidates.push(candidate);
+    } else {
+      byEdge.set(row.edge_id, {
+        kind: "candidates",
+        targetWord: row.target_word,
+        candidates: [candidate],
+        ref: ref(row.json_pointer),
+      });
+    }
+  }
+
+  return [...byEdge.values()];
+}
+
+function readInflections(db: DatabaseSync, recordId: number): InflectionOf[] {
+  const rows = db.prepare(
+    `SELECT f.record_id, f.line_no, f.word, f.pos, e.json_pointer
+       FROM lookup_form lf
+       JOIN source_release rel
+         ON rel.release_id = lf.release_id AND rel.status = 'complete'
+       JOIN form_of_edge e
+         ON e.release_id = lf.release_id AND e.target_word_key = lf.surface_key
+       JOIN source_record f ON f.record_id = e.record_id
+      WHERE lf.record_id = ? AND lf.origin = 'headword'
+      ORDER BY f.line_no, e.json_pointer`,
+  ).all(recordId) as {
+    record_id: number;
+    line_no: number;
+    word: string;
+    pos: string;
+    json_pointer: string;
+  }[];
+
+  return rows.map((row) => ({
+    recordId: row.record_id,
+    lineNo: row.line_no,
+    word: row.word,
+    pos: row.pos,
+    pointer: row.json_pointer,
+  }));
+}
+
+function readReviews(db: DatabaseSync, recordId: number): Review[] {
+  const rows = db.prepare(
+    `SELECT json_pointer, status, note, evidence_url, reviewed_at, reviewed_by
+       FROM claim_review
+      WHERE record_id = ?
+      ORDER BY json_pointer, reviewed_at`,
+  ).all(recordId) as {
+    json_pointer: string;
+    status: "disputed" | "corroborated";
+    note: string;
+    evidence_url: string;
+    reviewed_at: string;
+    reviewed_by: string;
+  }[];
+
+  return rows.map((row) => ({
+    pointer: row.json_pointer,
+    status: row.status,
+    note: row.note,
+    evidenceUrl: row.evidence_url,
+    reviewedAt: row.reviewed_at,
+    reviewedBy: row.reviewed_by,
+  }));
+}
