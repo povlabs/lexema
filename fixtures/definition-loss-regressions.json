@@ -262,27 +262,30 @@
           {
             "text": "elettrica, dotata di pick-up come sulle chitarre elettriche",
             "marker": "#**",
-            "reachable_by_extractor": false
-          }
-        ],
-        "examples": [
+            "reachable_by_extractor": false,
+            "extractor_destination": "examples[].translation"
+          },
           {
             "text": "tipo di steel guitar che si suona da seduti, appoggiata sulle gambe ( lap , in , vuol dire effettivamente \"grembo\"), sprovvista quindi di meccanismi a pedale; ve ne sono due tipi fondamentali",
             "marker": "#*",
-            "reachable_by_extractor": true
+            "reachable_by_extractor": false,
+            "extractor_destination": "examples[].text"
           },
           {
             "text": "acustica, con una cassa del tutto simile a quella di una chitarra classica, dreadnought o \"resofonica\" (dobro) o ancora di tipo Weissenborn",
             "marker": "#**",
-            "reachable_by_extractor": false
+            "reachable_by_extractor": false,
+            "extractor_destination": "absent"
           }
-        ]
+        ],
+        "examples": []
       }
     ],
     "extract": [
       {
         "line": 605574,
         "pos": "noun",
+        "translations": ["elettrica, dotata di pick-up come sulle chitarre elettriche"],
         "glosses": [
           "lap steel guitar ( approfondimento) f sing"
         ],

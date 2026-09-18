@@ -1,43 +1,29 @@
 {
   "stratum": "lemma",
   "seed": 11,
-  "population": 74098,
+  "record_sampling_population": 74098,
+  "measurement_unit": "distinct pages from a record-weighted sample; descriptive, not a population estimate",
+  "review": "All five heuristic positives hand-labelled; negatives not exhaustively reviewed.",
   "pages_cached": 400,
   "pages_classified": 396,
   "pages_missing_upstream": 0,
   "pages_without_italian_section": 4,
-  "definition_loss": 5,
-  "example_loss_only": 0,
+  "definition_loss": 4,
+  "example_loss_only": 1,
   "clean": 391,
   "pages_with_wrapped_prose": 5,
-  "definition_loss_rate": 0.0126,
-  "definition_loss_ci95": [
-    0.0054,
-    0.0292
-  ],
-  "definition_loss_projected": [
-    400,
-    935,
-    2164
-  ],
-  "example_loss_only_rate": 0.0,
-  "example_loss_only_ci95": [
-    0.0,
-    0.0096
-  ],
-  "example_loss_only_projected": [
-    0,
-    0,
-    711
-  ],
+  "definition_loss_rate": 0.0101,
+  "example_loss_only_rate": 0.0025,
   "affected_pages": [
     {
       "word": "ammartaggio",
       "revid": 3907730,
-      "lost_definitions": [
+      "human_label": "example",
+      "reason": "Reports one dated InSight landing, not the meaning of ammartaggio.",
+      "lost_definitions": [],
+      "lost_examples": [
         "L' della sonda della [https://it.wikipedia.org/wiki/NASA NASA] [https://www.focus.it/scienza/spazio/atterraggio-della-sonda-insight-in-diretta InSight] è avvenuto il 26 novembre 2018"
       ],
-      "lost_examples": [],
       "wrapped_prose": [],
       "extract_glosses": [
         "movimento di discesa e atterraggio sul pianeta Marte"
@@ -45,6 +31,8 @@
     },
     {
       "word": "canzone",
+      "human_label": "definition",
+      "reason": "Defines canzone d'amore by its addressee, not a particular use.",
       "revid": 4049880,
       "lost_definitions": [
         "canzone d'amore : dedicata all'amata"
@@ -59,6 +47,8 @@
     },
     {
       "word": "classico",
+      "human_label": "definition",
+      "reason": "Explains liceo classico as a school course and its subjects.",
       "revid": 4050810,
       "lost_definitions": [
         "liceo classico , indirizzo della scuola secondaria superiore italiana, incentrato sullo studio del e del"
@@ -79,6 +69,8 @@
     },
     {
       "word": "cruento",
+      "human_label": "definition",
+      "reason": "Explains the compound sacrificio cruento as an animal offering.",
       "revid": 3959787,
       "lost_definitions": [
         "sacrificio cruento : nella Bibbia riguarda un'offerta di determinati animali appunto macellati"
@@ -95,6 +87,8 @@
     },
     {
       "word": "partita",
+      "human_label": "definition",
+      "reason": "Defines two accounting methods by their recording rules.",
       "revid": 4004491,
       "lost_definitions": [
         "partita semplice , dove i fatti di gestione sono registrati in una sola serie",

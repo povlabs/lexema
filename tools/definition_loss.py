@@ -298,7 +298,7 @@ def records_for(words: set[str]) -> dict[str, list[dict]]:
 
 
 def cmd_sample(args) -> None:
-    """Reservoir-sample Italian words so the draw is uniform and reproducible."""
+    """Sample records, then deduplicate words: page rates are descriptive only."""
     rng = random.Random(args.seed)
     reservoir: list[str] = []
     seen = 0
@@ -428,7 +428,9 @@ def cmd_classify(args) -> None:
     n = len(affected) + len(examples_only) + len(clean)
     report = {
         "stratum": meta["stratum"], "seed": meta["seed"],
-        "population": meta["population"],
+        "record_sampling_population": meta["population"],
+        "measurement_unit": "distinct pages from a record-weighted sample; not a uniform page sample",
+        "classification": "heuristic flags, not hand-verified definition losses",
         "pages_cached": len(cached), "pages_classified": n,
         "pages_missing_upstream": len(missing),
         "pages_without_italian_section": len(no_italian),
@@ -439,12 +441,8 @@ def cmd_classify(args) -> None:
     }
     for label, k in (("definition_loss", len(affected)),
                      ("example_loss_only", len(examples_only))):
-        p, lo, hi = wilson(k, n)
-        report[label + "_rate"] = round(p, 4)
-        report[label + "_ci95"] = [round(lo, 4), round(hi, 4)]
-        report[label + "_projected"] = [
-            int(lo * meta["population"]), int(p * meta["population"]),
-            int(hi * meta["population"])]
+        report[label + "_rate"] = round(k / n, 4) if n else 0.0
+        # No record projection: classification covers every POS on each page.
     report["affected_pages"] = affected
     Path(args.out).write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
     for key, value in report.items():
@@ -454,7 +452,7 @@ def cmd_classify(args) -> None:
 
 
 def cmd_regressions(args) -> None:
-    """Emit verified regression cases: controls, definitions and examples, apart."""
+    """Emit draft cases. Human semantic labels must be reviewed before committing."""
     cases = []
     all_records = records_for(set(args.words))
     for word in args.words:
@@ -522,9 +520,27 @@ def cmd_verify(args) -> None:
 
         expected_lost = sorted(d["text"] for s in case["sections"]
                                for d in s["definitions"] if not d["reachable_by_extractor"])
-        actual_lost = sorted(l.text for s in sections for l in s.lost_definitions)
-        if expected_lost != actual_lost:
-            failures.append(f"{word}: unreachable definitions changed")
+        # Human labels are independent of the italic-based classifier. Check
+        # every saved line, including controls and retained definitions/examples.
+        actual_lines = [sorted(l.text for l in s.lines) for s in sections]
+        expected_lines = [sorted(s['page_controls'] +
+                          [d['text'] for d in s['definitions'] + s['examples']])
+                          for s in case['sections']]
+        if actual_lines != expected_lines:
+            failures.append(f"{word}: saved page content changed")
+        if [s.pos_template for s in sections] != [s['pos_template'] for s in case['sections']]:
+            failures.append(f"{word}: page POS sections changed")
+
+        actual_records = [
+            {'line': r['_line'], 'pos': r['pos'],
+             'glosses': [g for s in r.get('senses', []) for g in s.get('glosses', [])],
+             'examples': [e.get('text', '') for s in r.get('senses', []) for e in s.get('examples', [])],
+             'translations': [e['translation'] for s in r.get('senses', [])
+                              for e in s.get('examples', []) if 'translation' in e]}
+            for r in records.get(word, [])]
+        expected_records = [dict(r, translations=r.get('translations', [])) for r in case['extract']]
+        if not actual_records or actual_records != expected_records:
+            failures.append(f"{word}: required records or retained fields changed")
 
         # Every definition the page states must be absent from the extract when
         # we call it unreachable, and present when we call it reachable.

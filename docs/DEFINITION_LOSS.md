@@ -2,7 +2,7 @@
 
 Investigation for [issue #11](https://github.com/hueypov/lexema/issues/11), run 2026-09-18.
 
-Everything below is reproducible from this repo:
+Saved regression cases replay offline. Sampling/fetching reruns the heuristic study against current pages, not the historical hand review:
 
 ```bash
 python3 tools/definition_loss.py verify          # replays the regression cases, no network
@@ -170,25 +170,30 @@ upstream and re-parsing confirms **4 real severe losses**: `casa`, `manuale`,
 This method has unknown recall: it can only see a control `#` line that renders to
 non-empty text.
 
-**Method B — random upstream sample.** 400 words drawn uniformly (seed 11) from the
-74,098 lemma records, their pages fetched and classified against the extract; plus 200
-from the 486,259 inflected-form records. Wilson 95% intervals.
+**Method B — record-weighted page sample.** Seed 11 sampled 400 of the 74,098 lemma records, then retained only distinct words. Classification inspected every Italian POS on each page. This is neither a record-level measurement nor a uniform page sample. Of 400 pages, 396 had classifiable Italian sections. A separate inflected-record draw yielded 200 pages.
 
-| Tier | Lemma sample | Rate | Projected over 74,098 lemma records |
-| --- | ---: | --- | --- |
-| Severe — whole section's definitions lost (`casa` shape) | 0 / 396 | 0% [0, 0.96%] | 0 – 711 |
-| Partial — one sub-sense lost at `#*` under a real `#` | 5 / 396 | 1.26% [0.54%, 2.92%] | 400 – **935** – 2,164 |
-| Wrapped prose (separate route, section 2) | 5 / 396 | 1.26% [0.54%, 2.92%] | 400 – **935** – 2,164 |
-| Inflected forms | 0 / 200 | 0% [0, 1.88%] | mechanism does not apply |
+All five partial-loss flags were hand-reviewed against the cited revisions:
 
-**Read it this way.** The severe `casa` shape is **rare — order of tens of pages**, not
-thousands. Method A found 4 by name; Method B says it cannot be commoner than ~1% of
-lemmas. The partial tier is roughly **1,000 lemma records (400–2,200)**, and hurts much
-less: those entries keep most of their meanings and lose one sub-sense. Inflected forms
-are untouched, which is most of the file.
+| Page / revision | Human label | Reason |
+| --- | --- | --- |
+| ammartaggio / 3907730 | usage example; exclude | Reports the particular InSight landing on 26 November 2018. |
+| canzone / 4049880 | definition | Explains `canzone d'amore` by its addressee. |
+| classico / 4050810 | definition | Explains `liceo classico` and its subjects. |
+| cruento / 3959787 | definition | Explains `sacrificio cruento` as an animal offering. |
+| partita / 4004491 | two definitions | Distinguishes accounting methods by their recording rules. |
 
-**Error bars and what would move them.** The intervals are binomial only. Three further
-sources of error are not in them:
+**Corrected result: 4/396 inspected pages (1.01%) have confirmed partial definition loss.** These are page counts, not a projected record count. The previous 5/396 and projected 935 are withdrawn. Labels and reasons are in `fixtures/definition-loss-samples/report-lemma.json`; negatives were not exhaustively hand-reviewed.
+
+| Tier | Observed pages | Interpretation |
+| --- | ---: | --- |
+| Severe | 0 / 396 | No discoveries in this sample; Method A separately found four. |
+| Partial, reviewed positives | 4 / 396 | Descriptive page rate 1.01%; no population projection. |
+| Wrapped prose | 5 / 396 | Heuristic flags, not five verified losses. |
+| Inflected draw | 0 / 200 | No flags, not proof all inflected forms are unaffected. |
+
+The total affected population remains unknown. Four severe discoveries with unknown recall do not justify “order of tens” or a bound of 711 records. Both claims and the binomial intervals are withdrawn: the measurement unit did not match the sampling unit. `classify` now emits descriptive page rates only, explicitly labelled heuristic.
+
+**Remaining uncertainty:**
 
 1. **Version skew.** The local snapshot is older than the pages I fetched. A page fixed
    or broken upstream since then shows up on the wrong side. This is the largest
@@ -196,7 +201,7 @@ sources of error are not in them:
 2. **Classifier precision.** It decides "definition vs example" by whether the line
    carries italic markup — a proxy for how the real extractor behaves, not a reading of
    the Italian. It agreed with hand-checking on `casa`, `manuale`, `verde`, `informatica`
-   and `scarlatto`, and misread 2 of roughly 45 pages I checked by hand: it called
+   and `scarlatto`, but misread at least three inspected pages: `ammartaggio`'s dated usage sentence was counted as a definition; it also called
    `lap steel guitar`'s definition an example (it contains an incidental italic) and
    `malanga`'s citation a definition (it contains none). Both misreads are inherent to
    the proxy. Not measured on a larger blind set.
@@ -223,8 +228,7 @@ and always wins when both agree; the enrichment only ever fills gaps.
 | Upstream the fix to wiktextract | Small patch, but release timing is not ours and we would still need a local path until it lands. | Worth doing **as well**, not instead. |
 
 Why this route wins: the content is already ours under CC BY-SA 4.0, the loss rule is
-mechanical and now tested, and the fix is bounded because the flagged set is small
-(tens of severe pages, ~1,000 partial). The trade-off is that we take on a second parser
+visible in the saved cases. The flagged set is a starting point, not a bound on total repair effort. The trade-off is that we take on a second parser
 to maintain, and it will drift from upstream page conventions over time — so the detector
 must run on every data refresh, not once. **Confidence: high** on the cause and on the
 route; **medium** on the effort, because the partial tier has not been repaired end to end
@@ -241,8 +245,10 @@ hidden, since an entry with two "glosses" looks populated:
 
 - `page_controls` — headword repeats, gender/number stamps, plural links,
   `approfondimento`/`citazioni` pointers. Must never be shown as a meaning.
-- `definitions` — prose that states a meaning, each flagged `reachable_by_extractor`.
-- `examples` — usage sentences and quotations, same flag.
+- `definitions` — human-labelled meanings; `reachable_by_extractor` means reachable **as a gloss**, not retained somewhere else.
+- `examples` — usage sentences and quotations; the flag describes example retention.
+
+For `lap steel guitar`, all three lines are definitions. `extractor_destination` separately records `examples[].text`, `examples[].translation`, or `absent`. The generator emits drafts, not trusted human labels. `verify` checks all saved page lines and exact record/POS, gloss, example and translation expectations, including controls. `python3 test/definition-loss.py` proves missing records and deleted retained fields fail. This tests the stored snapshot, not a replay of wiktextract or a future repair adapter.
 
 | Case | Expectation |
 | --- | --- |
@@ -263,7 +269,7 @@ The three clean controls matter as much as the failures: they are what stops a f
 ## 6. What I could not establish
 
 - **The exact severe-case count.** Method A's recall is unknown and Method B found zero
-  in 396. I can bound it (≲700 lemma records, likely tens) but not count it. Detecting
+  in 396 inspected pages. No defensible population bound follows from this design. Detecting
   the shape reliably needs the upstream page, not the extract.
 - **Whether version skew flips any of the 34 Method-A non-losses.** The local snapshot's
   upstream revision ids are not recorded anywhere, so I cannot fetch the matching
