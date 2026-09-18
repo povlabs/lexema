@@ -16,19 +16,15 @@ The downloaded dictionary and generated reports are not included. Source identit
 
 ## Run the existing checks
 
-Use Node.js 24 or newer. npm is the supported package manager; commit `package-lock.json` alongside dependency changes.
-
-With nvm installed:
+pnpm is the package manager; commit `pnpm-lock.yaml` alongside dependency changes.
 
 ```sh
-nvm install
-nvm use
-npm ci
-npm run typecheck
-npm test
+pnpm install --frozen-lockfile
+pnpm run typecheck
+pnpm test
 ```
 
-Any version manager works. The baseline was checked with Node 24.21.0 / npm 11.19.1 and Node 26.2.0 / npm 12.0.2.
+Any Node version manager works. `.nvmrc` pins Node 24 for CI; the checks also pass on Node 26.
 
 The commands above do not need dictionary data. GitHub Actions runs the typecheck and unit tests on pushes and pull requests.
 
@@ -37,8 +33,8 @@ The commands above do not need dictionary data. GitHub Actions runs the typechec
 Dataset checks additionally require the original `it-extract.jsonl.gz` in the repository root. That file is intentionally ignored by Git and is not downloaded by CI. Do not substitute a newer download and assume it is the same snapshot.
 
 ```sh
-npm run test:integration
-npm run validate
+pnpm run test:integration
+pnpm run validate
 ```
 
 The validation command writes reports under ignored `artifacts/it-adapter-validation/`. A missing dataset causes these commands to fail; it does not affect the unit tests. See [the dataset inspection](docs/DATASET_SPOT_CHECK.md) for the checked file's checksum and [source research](docs/SOURCE_RESEARCH.md) for known limitations.
