@@ -4,6 +4,7 @@
   "compatibility_date": "2026-09-18",
   "compatibility_flags": ["nodejs_compat"],
   "main": "vinext/server/fetch-handler",
+  "vars": { "SPIKE_PROOF_RUN": "manual" },
   "assets": {
     "directory": "dist/client",
     "not_found_handling": "none",

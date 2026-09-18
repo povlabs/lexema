@@ -12,7 +12,7 @@ The real Lexema schema is designed elsewhere (#3).
 ## Prove it
 
 ```bash
-pnpm install
+pnpm install --frozen-lockfile
 pnpm run proof
 ```
 

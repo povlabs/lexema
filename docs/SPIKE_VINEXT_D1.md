@@ -15,8 +15,12 @@ Cloudflare account touched**):
 - A React server component reads `?q=` from the URL, runs a real parameterised
   D1 query through the `DB` binding, and renders the rows as HTML.
 - A route handler (`/api/hello?q=`) does the same and returns JSON.
-- A `"use client"` island hydrates with no console errors and no hydration
-  mismatch. A search box will need this, so it mattered.
+- A `"use client"` island hydrates. A search box will need this, so it
+  mattered. What the script checks is narrower than that sentence sounds: it
+  asserts `data-hydrated` flips from `no` to `yes`, which proves the effect
+  ran. It does not read the browser console, and React can recover from a
+  mismatch and still run the effect. "No console errors" below is a manual
+  observation, not something the proof enforces.
 - `generateMetadata` sees the query string; `<title>` reflects the search term.
 - Accents round-trip: `perché` survives URL → Worker → D1 → HTML.
 - `.bind()` really parameterises: `casa' OR '1'='1` returns zero rows.
@@ -30,7 +34,7 @@ Cloudflare account touched**):
 
 ```bash
 cd spike/vinext
-pnpm install
+pnpm install --frozen-lockfile
 pnpm run proof
 ```
 
@@ -54,8 +58,16 @@ PASS — vinext served real D1 rows from the Workers runtime.
 
 ## Exact versions that worked together
 
-Everything is pinned with no `^`, deliberately. A beta that moves under us is
-the risk we are guarding against.
+Every direct dependency is pinned exact, with no `^`, and the committed
+lockfile locks the transitive resolutions. A beta that moves under us is the
+risk we are guarding against.
+
+Two honest limits on that claim. The lockfile still carries upstream peer
+ranges such as `vite: ^6.1.0 || ^7.0.0 || ^8.0.0` — those are compatibility
+metadata, not floating resolved versions, and stripping them would be wrong.
+And `.nvmrc` pins Node's major only (`24`), not an exact release. So the
+accurate phrasing is *exact direct versions plus a committed lockfile*,
+installed with `--frozen-lockfile`.
 
 | Package | Version |
 | --- | --- |
