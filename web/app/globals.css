@@ -1,0 +1,165 @@
+/* Deliberately plain. The point of this first page is that the data is honest
+   and readable on a phone, not that it is styled. */
+
+:root {
+  --ink: #1a1a1a;
+  --muted: #5c5c5c;
+  --line: #d9d9d9;
+  --bg: #fdfdfc;
+  --accent: #1a4d8f;
+  --warn: #8a5a00;
+  --warn-bg: #fdf6e3;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --ink: #ececec;
+    --muted: #a5a5a5;
+    --line: #3a3a3a;
+    --bg: #161616;
+    --accent: #8ab4f8;
+    --warn: #e0b34d;
+    --warn-bg: #2e2612;
+  }
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font: 16px/1.6 ui-serif, Georgia, "Times New Roman", serif;
+}
+
+main {
+  max-width: 44rem;
+  margin: 0 auto;
+  padding: 1.5rem 1.1rem 4rem;
+}
+
+h1 { font-size: 1.6rem; margin: 0; letter-spacing: -0.01em; }
+.tagline { color: var(--muted); margin: 0.2rem 0 1.5rem; font-size: 0.95rem; }
+
+/* Search ------------------------------------------------------------------ */
+
+form[role="search"] { display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center; }
+form[role="search"] label {
+  flex: 1 0 100%;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+}
+
+input[type="search"] {
+  flex: 1 1 12rem;
+  min-width: 0;
+  padding: 0.6rem 0.7rem;
+  font: inherit;
+  color: inherit;
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+}
+
+button {
+  padding: 0.6rem 1.1rem;
+  font: inherit;
+  color: var(--bg);
+  background: var(--ink);
+  border: 1px solid var(--ink);
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+/* A visible focus ring is the difference between usable and unusable by
+   keyboard, so it is never removed. */
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* Messages ---------------------------------------------------------------- */
+
+.hint, .empty, .error, .count { margin: 1.4rem 0; }
+.hint, .empty { color: var(--muted); }
+.error { color: #a4262c; }
+.count { font-size: 0.9rem; color: var(--muted); }
+a { color: var(--accent); }
+
+/* Readings ---------------------------------------------------------------- */
+
+.reading {
+  border-top: 1px solid var(--line);
+  padding: 1.4rem 0;
+}
+
+.reading h2 { font-size: 1.25rem; margin: 0; font-weight: 600; }
+.pos {
+  font-size: 0.8rem;
+  font-weight: 400;
+  color: var(--muted);
+  font-style: italic;
+}
+
+.mention {
+  margin: 0.4rem 0 0;
+  font-size: 0.9rem;
+  color: var(--warn);
+  background: var(--warn-bg);
+  padding: 0.5rem 0.7rem;
+  border-radius: 6px;
+}
+
+.disputed {
+  margin: 0.7rem 0;
+  font-size: 0.9rem;
+  color: var(--warn);
+  background: var(--warn-bg);
+  padding: 0.5rem 0.7rem;
+  border-radius: 6px;
+}
+
+.definitions { margin: 0.7rem 0; padding-left: 1.3rem; }
+.definitions li { margin: 0.35rem 0; }
+
+/* Grammar ----------------------------------------------------------------- */
+
+.grammar { display: flex; flex-wrap: wrap; gap: 0.4rem; margin: 0.8rem 0; }
+.claim {
+  display: flex;
+  gap: 0.35rem;
+  font-size: 0.82rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 0.15rem 0.7rem;
+}
+.claim dt { color: var(--muted); }
+.claim dd { margin: 0; }
+/* Absence and uncertainty read differently from fact, at a glance. */
+.claim-missing, .claim-unclassified { border-style: dashed; color: var(--muted); }
+
+/* Links ------------------------------------------------------------------- */
+
+.links { margin: 0.9rem 0 0; }
+.links h3 {
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  margin: 0 0 0.3rem;
+  font-weight: 600;
+}
+.links ul { margin: 0; padding-left: 1.2rem; }
+.links ul.inline { display: flex; flex-wrap: wrap; gap: 0.5rem; padding: 0; list-style: none; }
+.ambiguous { color: var(--warn); font-size: 0.9rem; }
+
+.source { margin-top: 0.8rem; font-size: 0.75rem; color: var(--muted); }
+.source code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+
+.attribution {
+  margin-top: 2.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--line);
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+.attribution p { margin: 0.4rem 0; }
