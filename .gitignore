@@ -1,0 +1,16 @@
+.claude/crew.config.jsonc
+
+# Local dependencies and generated output
+node_modules/
+dist/
+coverage/
+artifacts/
+
+# Source downloads stay local until redistribution is reviewed
+it-extract.jsonl.gz
+
+# Local settings and credentials
+.DS_Store
+.env
+.env.*
+!.env.example
