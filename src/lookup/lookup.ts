@@ -12,8 +12,8 @@
 // Ranking is deliberately absent. Context-based ordering is a later, advisory
 // thing; here every reading comes back in source order.
 
-import type { DatabaseSync } from "node:sqlite";
 import { IT_NORMALIZER_VERSION, normalizeItalianExact } from "../italian/normalize.js";
+import type { LookupDatabase } from "./database.js";
 import type {
   Evidence,
   Grammar,
@@ -36,23 +36,24 @@ import type {
 export const MAX_QUERY_LENGTH = 128;
 
 export interface LookupOptions {
-  db: DatabaseSync;
+  db: LookupDatabase;
   releaseId: string;
   query: string;
 }
 
-// node:sqlite types every column as SQLOutputValue, so a row shape has to be
-// asserted somewhere. Two helpers keep that assertion in one place instead of
-// scattering `as unknown as X[]` through every query.
-function queryAll<T>(db: DatabaseSync, sql: string, ...params: (string | number)[]): T[] {
-  return db.prepare(sql).all(...params) as unknown as T[];
+// Both drivers type columns loosely, so a row shape is asserted in one place
+// here rather than at every call site.
+function queryAll<T>(db: LookupDatabase, sql: string, ...params: (string | number)[]): Promise<T[]> {
+  return db.all<T>(sql, params);
 }
 
-function queryOne<T>(db: DatabaseSync, sql: string, ...params: (string | number)[]): T | undefined {
-  return db.prepare(sql).get(...params) as unknown as T | undefined;
+// D1 has no `get`, so "one row" is "the first of all rows". The queries that use
+// this are all primary-key reads, so there is never more than one.
+async function queryOne<T>(db: LookupDatabase, sql: string, ...params: (string | number)[]): Promise<T | undefined> {
+  return (await db.all<T>(sql, params))[0];
 }
 
-export function lookup({ db, releaseId, query }: LookupOptions): LookupResult {
+export async function lookup({ db, releaseId, query }: LookupOptions): Promise<LookupResult> {
   const trimmed = query.trim();
   if (trimmed.length === 0) {
     return { outcome: "rejected", query: { raw: query }, rejection: { reason: "empty" } };
@@ -65,7 +66,7 @@ export function lookup({ db, releaseId, query }: LookupOptions): LookupResult {
     };
   }
 
-  const release = readRelease(db, releaseId);
+  const release = await readRelease(db, releaseId);
   if (release === undefined) {
     // A release that is absent, still importing, failed or superseded is not
     // servable, and saying "no results" would be a different, false claim.
@@ -83,7 +84,7 @@ export function lookup({ db, releaseId, query }: LookupOptions): LookupResult {
   const key = normalizeItalianExact(trimmed);
   const queryInfo = { raw: query, key, normalizer: release.normalizer };
 
-  const hits = queryAll<HitRow>(
+  const hits = await queryAll<HitRow>(
     db,
     `SELECT record_id, line_no, record_word, record_pos, origin, json_pointer,
             form_source, surface, is_headword_hit
@@ -107,10 +108,12 @@ export function lookup({ db, releaseId, query }: LookupOptions): LookupResult {
     else byRecord.set(hit.record_id, [hit]);
   }
 
-  const readings = [...byRecord.values()]
-    // Source order, so the result does not imply a ranking it has not earned.
-    .sort((a, b) => a[0].line_no - b[0].line_no)
-    .map((group) => buildReading(db, group));
+  const readings = await Promise.all(
+    [...byRecord.values()]
+      // Source order, so the result does not imply a ranking it has not earned.
+      .sort((a, b) => a[0].line_no - b[0].line_no)
+      .map((group) => buildReading(db, group)),
+  );
 
   return { outcome: "found", query: queryInfo, release, readings };
 }
@@ -129,8 +132,8 @@ interface HitRow {
   is_headword_hit: number;
 }
 
-function readRelease(db: DatabaseSync, releaseId: string): ReleaseInfo | undefined {
-  const row = queryOne<{
+async function readRelease(db: LookupDatabase, releaseId: string): Promise<ReleaseInfo | undefined> {
+  const row = await queryOne<{
     release_id: string;
     normalizer: string;
     source_url: string | null;
@@ -157,7 +160,7 @@ function readRelease(db: DatabaseSync, releaseId: string): ReleaseInfo | undefin
       };
 }
 
-function buildReading(db: DatabaseSync, group: HitRow[]): Reading {
+async function buildReading(db: LookupDatabase, group: HitRow[]): Promise<Reading> {
   const first = group[0];
   const recordId = first.record_id;
   const ref = (pointer: string): SourceRef => ({ lineNo: first.line_no, pointer });
@@ -174,19 +177,19 @@ function buildReading(db: DatabaseSync, group: HitRow[]): Reading {
     lineNo: first.line_no,
     word: first.record_word,
     pos: first.record_pos,
-    posTitle: readPosTitle(db, recordId),
+    posTitle: await readPosTitle(db, recordId),
     isAboutQuery: group.some((hit) => hit.origin === "headword"),
     evidence,
-    senses: readSenses(db, recordId, ref),
-    grammar: readGrammar(db, recordId, ref),
-    lemmaLinks: readLemmaLinks(db, recordId, ref),
-    inflections: readInflections(db, recordId),
-    reviews: readReviews(db, recordId),
+    senses: await readSenses(db, recordId, ref),
+    grammar: await readGrammar(db, recordId, ref),
+    lemmaLinks: await readLemmaLinks(db, recordId, ref),
+    inflections: await readInflections(db, recordId),
+    reviews: await readReviews(db, recordId),
   };
 }
 
-function readPosTitle(db: DatabaseSync, recordId: number): string {
-  const row = queryOne<{ pos_title: string }>(
+async function readPosTitle(db: LookupDatabase, recordId: number): Promise<string> {
+  const row = await queryOne<{ pos_title: string }>(
     db,
     `SELECT pos_title FROM source_record WHERE record_id = ?`,
     recordId,
@@ -195,11 +198,11 @@ function readPosTitle(db: DatabaseSync, recordId: number): string {
   return row.pos_title;
 }
 
-function readSenses(
-  db: DatabaseSync,
+async function readSenses(
+  db: LookupDatabase,
   recordId: number,
   ref: (pointer: string) => SourceRef,
-): Sense[] {
+): Promise<Sense[]> {
   const senses = new Map<number, Sense>();
   const ensure = (index: number): Sense => {
     let sense = senses.get(index);
@@ -212,13 +215,14 @@ function readSenses(
 
   // A sense with no gloss still gets a row, because "this sense exists and says
   // nothing" is a fact worth showing rather than a sense to drop.
-  const glossRows = db.prepare(
+  const glossRows = await queryAll<{ sense_index: number; text: string | null; json_pointer: string | null }>(
+    db,
     `SELECT s.sense_index, g.text, g.json_pointer
        FROM sense s
        LEFT JOIN sense_gloss g ON g.sense_id = s.sense_id
       WHERE s.record_id = ?
-      ORDER BY s.sense_index, g.gloss_index`,
-  ).all(recordId) as { sense_index: number; text: string | null; json_pointer: string | null }[];
+      ORDER BY s.sense_index, g.gloss_index`, recordId,
+  );
 
   for (const row of glossRows) {
     const sense = ensure(row.sense_index);
@@ -227,13 +231,14 @@ function readSenses(
     }
   }
 
-  const labelRows = db.prepare(
+  const labelRows = await queryAll<{ sense_index: number; kind: "tag" | "raw_tag"; label: string; json_pointer: string }>(
+    db,
     `SELECT s.sense_index, l.kind, l.label, l.json_pointer
        FROM sense s
        JOIN sense_label l ON l.sense_id = s.sense_id
       WHERE s.record_id = ?
-      ORDER BY s.sense_index, l.kind, l.label_index`,
-  ).all(recordId) as { sense_index: number; kind: "tag" | "raw_tag"; label: string; json_pointer: string }[];
+      ORDER BY s.sense_index, l.kind, l.label_index`, recordId,
+  );
 
   for (const row of labelRows) {
     ensure(row.sense_index).labels.push({
@@ -246,17 +251,12 @@ function readSenses(
   return [...senses.values()].sort((a, b) => a.index - b.index);
 }
 
-function readGrammar(
-  db: DatabaseSync,
+async function readGrammar(
+  db: LookupDatabase,
   recordId: number,
   ref: (pointer: string) => SourceRef,
-): Grammar {
-  const rows = db.prepare(
-    `SELECT scope, scope_index, status, dimension, value, source_text, json_pointer
-       FROM grammar_claim
-      WHERE record_id = ?
-      ORDER BY scope, scope_index, json_pointer`,
-  ).all(recordId) as {
+): Promise<Grammar> {
+  const rows = await queryAll<{
     scope: "record" | "sense" | "form";
     scope_index: number | null;
     status: "stated" | "unclassified" | "missing";
@@ -264,7 +264,13 @@ function readGrammar(
     value: string | null;
     source_text: string | null;
     json_pointer: string;
-  }[];
+  }>(
+    db,
+    `SELECT scope, scope_index, status, dimension, value, source_text, json_pointer
+       FROM grammar_claim
+      WHERE record_id = ?
+      ORDER BY scope, scope_index, json_pointer`, recordId,
+  );
 
   const grammar: Grammar = { record: [], byForm: new Map(), bySense: new Map() };
 
@@ -329,11 +335,11 @@ export const LEMMA_LINK_SQL = `SELECT e.edge_id, e.json_pointer, e.target_word,
       WHERE e.record_id = ?
       ORDER BY e.edge_id, t.line_no`;
 
-function readLemmaLinks(
-  db: DatabaseSync,
+async function readLemmaLinks(
+  db: LookupDatabase,
   recordId: number,
   ref: (pointer: string) => SourceRef,
-): LemmaLink[] {
+): Promise<LemmaLink[]> {
   // LEFT JOIN on purpose: an edge whose target word matches no headword record
   // must still appear. Dropping it would turn "the source points somewhere we
   // cannot follow" into "the source points nowhere".
@@ -343,14 +349,17 @@ function readLemmaLinks(
   // materialises the whole view first — all 608,726 edges against 1,273,490
   // lookup rows — then throws nearly all of it away. Measured on the real
   // release for `bella`: 2,686 ms via the view, 0.1 ms inlined, same four rows.
-  const rows = db.prepare(LEMMA_LINK_SQL).all(recordId) as {    edge_id: number;
+  const rows = await queryAll<{    edge_id: number;
     json_pointer: string;
     target_word: string;
     candidate_record_id: number | null;
     candidate_line_no: number | null;
     candidate_pos: string | null;
     candidate_word: string | null;
-  }[];
+  }>(
+    db,
+    LEMMA_LINK_SQL, recordId,
+  );
 
   const byEdge = new Map<number, LemmaLink>();
   for (const row of rows) {
@@ -384,8 +393,15 @@ function readLemmaLinks(
   return [...byEdge.values()];
 }
 
-function readInflections(db: DatabaseSync, recordId: number): InflectionOf[] {
-  const rows = db.prepare(
+async function readInflections(db: LookupDatabase, recordId: number): Promise<InflectionOf[]> {
+  const rows = await queryAll<{
+    record_id: number;
+    line_no: number;
+    word: string;
+    pos: string;
+    json_pointer: string;
+  }>(
+    db,
     `SELECT f.record_id, f.line_no, f.word, f.pos, e.json_pointer
        FROM lookup_form lf
        JOIN source_release rel
@@ -394,14 +410,8 @@ function readInflections(db: DatabaseSync, recordId: number): InflectionOf[] {
          ON e.release_id = lf.release_id AND e.target_word_key = lf.surface_key
        JOIN source_record f ON f.record_id = e.record_id
       WHERE lf.record_id = ? AND lf.origin = 'headword'
-      ORDER BY f.line_no, e.json_pointer`,
-  ).all(recordId) as {
-    record_id: number;
-    line_no: number;
-    word: string;
-    pos: string;
-    json_pointer: string;
-  }[];
+      ORDER BY f.line_no, e.json_pointer`, recordId,
+  );
 
   return rows.map((row) => ({
     recordId: row.record_id,
@@ -412,20 +422,21 @@ function readInflections(db: DatabaseSync, recordId: number): InflectionOf[] {
   }));
 }
 
-function readReviews(db: DatabaseSync, recordId: number): Review[] {
-  const rows = db.prepare(
-    `SELECT json_pointer, status, note, evidence_url, reviewed_at, reviewed_by
-       FROM claim_review
-      WHERE record_id = ?
-      ORDER BY json_pointer, reviewed_at`,
-  ).all(recordId) as {
+async function readReviews(db: LookupDatabase, recordId: number): Promise<Review[]> {
+  const rows = await queryAll<{
     json_pointer: string;
     status: "disputed" | "corroborated";
     note: string;
     evidence_url: string;
     reviewed_at: string;
     reviewed_by: string;
-  }[];
+  }>(
+    db,
+    `SELECT json_pointer, status, note, evidence_url, reviewed_at, reviewed_by
+       FROM claim_review
+      WHERE record_id = ?
+      ORDER BY json_pointer, reviewed_at`, recordId,
+  );
 
   return rows.map((row) => ({
     pointer: row.json_pointer,

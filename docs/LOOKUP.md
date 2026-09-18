@@ -6,9 +6,31 @@ source did not.
 
 ```ts
 import { lookup } from "./src/lookup/lookup.js";
+import { fromD1, fromNodeSqlite } from "./src/lookup/database.js";
 
-const result = lookup({ db, releaseId: "it-2026-07-20", query: "sale" });
+// In a Worker:
+const result = await lookup({ db: fromD1(env.DB), releaseId, query: "sale" });
+
+// In a Node process, against the importer's output:
+const local = await lookup({ db: fromNodeSqlite(sqlite), releaseId, query: "sale" });
 ```
+
+## One query layer, two drivers
+
+Lookup runs in a Worker against D1 and in Node against a local SQLite file. The
+two APIs are incompatible — D1 is async and binds parameters separately;
+`node:sqlite` is synchronous and takes them inline — so both go through one
+tiny interface in [`src/lookup/database.ts`](../src/lookup/database.ts):
+
+```ts
+interface LookupDatabase {
+  all<T>(sql: string, params: readonly (string | number)[]): Promise<T[]>;
+}
+```
+
+It is async because D1 is. A synchronous interface would have forced the Worker
+side to fake it, and faking it is how you end up with two query layers that
+drift apart.
 
 ## The two mistakes it is built to avoid
 

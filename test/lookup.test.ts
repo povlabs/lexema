@@ -7,6 +7,7 @@ import { DatabaseSync } from "node:sqlite";
 import { gzipSync } from "node:zlib";
 import { importRelease } from "../src/import/importRelease.js";
 import { LEMMA_LINK_SQL, MAX_QUERY_LENGTH, lookup } from "../src/lookup/lookup.js";
+import { fromNodeSqlite } from "../src/lookup/database.js";
 import type { LookupResult, Reading, RejectedResult, SearchResult } from "../src/lookup/types.js";
 
 // A fixture built to carry the shapes the real file forces on a lookup: one
@@ -112,18 +113,18 @@ async function fixture() {
   return { dir, db };
 }
 
-const ask = (db: DatabaseSync, query: string): LookupResult =>
-  lookup({ db, releaseId: RELEASE, query });
+const ask = (db: DatabaseSync, query: string): Promise<LookupResult> =>
+  lookup({ db: fromNodeSqlite(db), releaseId: RELEASE, query });
 
 function found(result: LookupResult): Reading[] {
   assert.equal(result.outcome, "found");
   return (result as SearchResult).readings;
 }
 
-async function withFixture(run: (db: DatabaseSync) => void): Promise<void> {
+async function withFixture(run: (db: DatabaseSync) => Promise<void>): Promise<void> {
   const { dir, db } = await fixture();
   try {
-    run(db);
+    await run(db);
   } finally {
     db.close();
     await rm(dir, { recursive: true, force: true });
@@ -131,9 +132,9 @@ async function withFixture(run: (db: DatabaseSync) => void): Promise<void> {
 }
 
 test("rejects an empty query rather than searching for nothing", async () => {
-  await withFixture((db) => {
+  await withFixture(async (db) => {
     for (const blank of ["", "   ", "\t\n"]) {
-      const result = ask(db, blank);
+      const result = await ask(db, blank);
       assert.equal(result.outcome, "rejected");
       assert.deepEqual(
         (result as RejectedResult).rejection,
@@ -144,21 +145,21 @@ test("rejects an empty query rather than searching for nothing", async () => {
 });
 
 test("rejects an over-long query and says what the limit was", async () => {
-  await withFixture((db) => {
-    const result = ask(db, "a".repeat(MAX_QUERY_LENGTH + 1));
+  await withFixture(async (db) => {
+    const result = await ask(db, "a".repeat(MAX_QUERY_LENGTH + 1));
     assert.equal(result.outcome, "rejected");
     assert.deepEqual(
       (result as RejectedResult).rejection,
       { reason: "too-long", length: MAX_QUERY_LENGTH + 1, limit: MAX_QUERY_LENGTH },
     );
     // The boundary itself is allowed.
-    assert.equal(ask(db, "a".repeat(MAX_QUERY_LENGTH)).outcome, "not-found");
+    assert.equal((await ask(db, "a".repeat(MAX_QUERY_LENGTH))).outcome, "not-found");
   });
 });
 
 test("an unknown word is not-found, not an error and not empty-handed", async () => {
-  await withFixture((db) => {
-    const result = ask(db, "qwertyuiop");
+  await withFixture(async (db) => {
+    const result = await ask(db, "qwertyuiop");
     assert.equal(result.outcome, "not-found");
     const body = result as SearchResult;
     assert.deepEqual(body.readings, []);
@@ -170,26 +171,26 @@ test("an unknown word is not-found, not an error and not empty-handed", async ()
 });
 
 test("normalizes case, whitespace and apostrophes while keeping accents", async () => {
-  await withFixture((db) => {
+  await withFixture(async (db) => {
     // Accents are meaning, not decoration: stripping them would merge distinct words.
-    assert.equal(found(ask(db, "città")).length, 1);
-    assert.equal(ask(db, "citta").outcome, "not-found");
+    assert.equal(found(await ask(db, "città")).length, 1);
+    assert.equal((await ask(db, "citta")).outcome, "not-found");
 
     // Case and surrounding whitespace do not change which word was asked for.
     for (const variant of ["CITTÀ", "  Città  ", "cIttÀ"]) {
-      assert.equal(found(ask(db, variant))[0].word, "città");
+      assert.equal(found(await ask(db, variant))[0].word, "città");
     }
 
     // A typed straight quote finds a source spelling with a typographic one.
-    const apostrophe = found(ask(db, "un'amica"));
+    const apostrophe = found(await ask(db, "un'amica"));
     assert.equal(apostrophe.length, 1);
     assert.equal(apostrophe[0].word, "un’amica");
   });
 });
 
 test("keeps the typed spelling and the source spelling both available", async () => {
-  await withFixture((db) => {
-    const result = ask(db, "  CITTÀ ");
+  await withFixture(async (db) => {
+    const result = await ask(db, "  CITTÀ ");
     const body = result as SearchResult;
     // What the user typed, verbatim — a page has to be able to echo it back.
     assert.equal(body.query.raw, "  CITTÀ ");
@@ -200,10 +201,10 @@ test("keeps the typed spelling and the source spelling both available", async ()
 });
 
 test("returns every reading of an ambiguous surface, unranked", async () => {
-  await withFixture((db) => {
+  await withFixture(async (db) => {
     // `sale` is salt, the plural of `sala`, and a form of `salire`. All three,
     // in source order, with nothing chosen for the reader.
-    const readings = found(ask(db, "sale"));
+    const readings = found(await ask(db, "sale"));
     assert.equal(readings.length, 3);
     assert.deepEqual(
       readings.map((r) => `${r.word}/${r.pos}`),
@@ -218,10 +219,10 @@ test("returns every reading of an ambiguous surface, unranked", async () => {
 });
 
 test("repeated evidence does not become repeated readings", async () => {
-  await withFixture((db) => {
+  await withFixture(async (db) => {
     // `studenti` sits on four records across five lookup rows: twice inside
     // `studente`, once inside `studentessa`, and once as its own headword.
-    const readings = found(ask(db, "studenti"));
+    const readings = found(await ask(db, "studenti"));
     assert.equal(readings.length, 3);
 
     const byWord = new Map(readings.map((r) => [`${r.word}/${r.pos}`, r]));
@@ -238,8 +239,8 @@ test("repeated evidence does not become repeated readings", async () => {
 });
 
 test("a record that merely mentions a form is not called its lemma", async () => {
-  await withFixture((db) => {
-    const readings = found(ask(db, "studenti"));
+  await withFixture(async (db) => {
+    const readings = found(await ask(db, "studenti"));
     const mentions = readings.filter((r) => !r.isAboutQuery);
     const about = readings.filter((r) => r.isAboutQuery);
 
@@ -259,10 +260,10 @@ test("a record that merely mentions a form is not called its lemma", async () =>
 });
 
 test("an ambiguous lemma link keeps every candidate", async () => {
-  await withFixture((db) => {
+  await withFixture(async (db) => {
     // Noun `bella` says "femminile di bello". `bello` is three records — one
     // adjective and two nouns — and the source does not say which.
-    const [bella] = found(ask(db, "bella"));
+    const [bella] = found(await ask(db, "bella"));
     assert.equal(bella.lemmaLinks.length, 1);
     const link = bella.lemmaLinks[0];
     assert.equal(link.kind, "candidates");
@@ -275,10 +276,10 @@ test("an ambiguous lemma link keeps every candidate", async () => {
 });
 
 test("a lemma link that resolves to nothing stays visible", async () => {
-  await withFixture((db) => {
+  await withFixture(async (db) => {
     // `andavano` points at `andare`, which is in no record here. Dropping the
     // edge would turn "points somewhere we cannot follow" into "points nowhere".
-    const [andavano] = found(ask(db, "andavano"));
+    const [andavano] = found(await ask(db, "andavano"));
     assert.equal(andavano.lemmaLinks.length, 1);
     assert.equal(andavano.lemmaLinks[0].kind, "dangling");
     assert.equal(andavano.lemmaLinks[0].targetWord, "andare");
@@ -286,8 +287,8 @@ test("a lemma link that resolves to nothing stays visible", async () => {
 });
 
 test("lists the inflections that declare themselves forms of a reading", async () => {
-  await withFixture((db) => {
-    const [studente] = found(ask(db, "studente")).filter((r) => r.pos === "noun");
+  await withFixture(async (db) => {
+    const [studente] = found(await ask(db, "studente")).filter((r) => r.pos === "noun");
     assert.deepEqual(
       studente.inflections.map((i) => i.word).sort(),
       ["studentessa", "studenti"],
@@ -296,8 +297,8 @@ test("lists the inflections that declare themselves forms of a reading", async (
 });
 
 test("keeps stated, unclassified and missing grammar apart in the result", async () => {
-  await withFixture((db) => {
-    const [casa] = found(ask(db, "casa"));
+  await withFixture(async (db) => {
+    const [casa] = found(await ask(db, "casa"));
     const record = casa.grammar.record;
     // The source states nothing about `casa`'s gender or number, and we looked.
     assert.deepEqual(
@@ -315,7 +316,7 @@ test("keeps stated, unclassified and missing grammar apart in the result", async
     );
 
     // A word that does state them has no 'missing' rows at all.
-    const [citta] = found(ask(db, "città"));
+    const [citta] = found(await ask(db, "città"));
     assert.deepEqual(
       citta.grammar.record.filter((c) => c.status === "stated").map((c) => c.status === "stated" && c.value).sort(),
       ["feminine", "invariable"],
@@ -324,8 +325,8 @@ test("keeps stated, unclassified and missing grammar apart in the result", async
 });
 
 test("carries definitions, labels and a source reference for each", async () => {
-  await withFixture((db) => {
-    const [citta] = found(ask(db, "città"));
+  await withFixture(async (db) => {
+    const [citta] = found(await ask(db, "città"));
     assert.equal(citta.senses.length, 1);
     assert.equal(citta.senses[0].glosses[0].text, "centro abitato di grandi dimensioni");
     // Every value points at the exact line and field it was read from, so a
@@ -333,7 +334,7 @@ test("carries definitions, labels and a source reference for each", async () => 
     assert.equal(citta.senses[0].glosses[0].ref.pointer, "/senses/0/glosses/0");
     assert.equal(citta.senses[0].glosses[0].ref.lineNo, citta.lineNo);
 
-    const [studente] = found(ask(db, "studente")).filter((r) => r.pos === "noun");
+    const [studente] = found(await ask(db, "studente")).filter((r) => r.pos === "noun");
     assert.deepEqual(
       studente.senses[0].labels.map((l) => `${l.kind}:${l.label}`),
       ["raw_tag:scuola"],
@@ -342,7 +343,7 @@ test("carries definitions, labels and a source reference for each", async () => 
 });
 
 test("surfaces a disputed claim instead of hiding or correcting it", async () => {
-  await withFixture((db) => {
+  await withFixture(async (db) => {
     // The verb reading of `studente` is contradicted by Wiktionary's own
     // `studiare` table and by Treccani, which both give `studiante`.
     const verbId = (
@@ -357,7 +358,7 @@ test("surfaces a disputed claim instead of hiding or correcting it", async () =>
                'https://www.treccani.it/vocabolario/studiare/', '2026-09-19', 'test')`,
     ).run(verbId);
 
-    const verb = found(ask(db, "studente")).find((r) => r.pos === "verb");
+    const verb = found(await ask(db, "studente")).find((r) => r.pos === "verb");
     assert.ok(verb);
     assert.equal(verb.reviews.length, 1);
     assert.equal(verb.reviews[0].status, "disputed");
@@ -372,16 +373,16 @@ test("surfaces a disputed claim instead of hiding or correcting it", async () =>
 });
 
 test("refuses to serve a release that is not complete", async () => {
-  await withFixture((db) => {
+  await withFixture(async (db) => {
     db.exec("UPDATE source_release SET status = 'importing'");
     // Answering "no results" would be a different, false claim from "this
     // release is not servable".
-    assert.throws(() => ask(db, "sale"), /no complete release/);
+    await assert.rejects(() => ask(db, "sale"), /no complete release/);
   });
 });
 
 test("resolving lemma links never materialises the candidate view", async () => {
-  await withFixture((db) => {
+  await withFixture(async (db) => {
     // Rows-only tests cannot see this. LEFT JOINing `form_of_candidate` returns
     // exactly the same answer and, on the real release, takes 2,686 ms instead
     // of 0.1 ms: SQLite cannot push `record_id = ?` through a LEFT JOIN onto a
