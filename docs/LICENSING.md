@@ -6,6 +6,8 @@ Research done on 2026-09-18 for [issue #6](https://github.com/hueypov/lexema/iss
 them so a human — or a real lawyer — can check the reasoning. Items that need Huey's call are marked
 **[HUEY]**. Items that are still unproven are marked **[UNPROVEN]**.
 
+**Status: research, not publication clearance or an accepted licence policy.** Issue #6's criterion that adapted-data and review-record licensing be settled remains open pending B2. The final notices also remain unfinished (B8). Merging this research would not settle either.
+
 **Rule this document assumes:** local development continues freely. Nothing leaves this machine —
 no website, no API, no data download, no screenshot of definitions in a public deck — until the
 blockers in [Blockers to publishing](#blockers-to-publishing) are cleared.
@@ -261,8 +263,7 @@ one notice; the cost of getting the split wrong is a licence breach. Confidence:
 
 ## 3. Draft attribution text
 
-These are paste-ready. Italian first where the user-facing surface is Italian; English versions follow
-for the docs/API surfaces.
+These are draft templates, not paste-ready public notices. The English interface uses the English result notice. The full public page still needs an English translation, the B2 licence decision, any audio terms, verified metadata and any extra source notices from §6 before publication.
 
 ### 3.1 On a word-result page
 
@@ -419,7 +420,7 @@ files does not attribute anything.
 
 ## 4. How our own outputs are licensed
 
-Three layers, three answers. `LEXEMA_SPEC.md` already separates these; this section settles the terms.
+Three layers, with legal conditions separated from proposed policy. `LEXEMA_SPEC.md` separates these layers; this research does not settle the open licensing choices.
 
 ### 4.1 Application code — not affected
 
@@ -430,17 +431,23 @@ processes it. Our code contains no Wiktionary text (the checked-in fixtures do; 
 **[HUEY]** Pick the code licence — proprietary, MIT, AGPL, whatever fits the business. It is a free
 choice, unconstrained by the source. Recommendation: decide it when the repo goes public, not now.
 
-### 4.2 The adapted dictionary data — CC BY-SA 4.0, no way around it
+### 4.2 Dictionary data — conditional duties and proposed CC BY-SA policy
 
-Our serving projection is Adapted Material: it is built from the licensed text, restructured, and
-re-indexed. Section 4(b) of the legal code removes any doubt for the database case:
+Section 4 begins with a condition:
+
+> Where the Licensed Rights include Sui Generis Database Rights that apply to Your use of the Licensed Material:
+
+Section 4(b) adds another condition:
 
 > if You include all or a substantial portion of the database contents in a database in which You have
 > Sui Generis Database Rights, then the database in which You have Sui Generis Database Rights (but
 > not its individual contents) is Adapted Material, including for purposes of Section 3(b)
 
-So **the published dictionary data must be offered under CC BY-SA 4.0** (or a later BY-SA version, or
-a BY-SA Compatible License — there is no reason to use anything else).
+**[UNPROVEN]** This research establishes neither applicable source database rights nor database rights held by Lexema in the new database. Section 4(b) therefore does not, by itself, prove that our projection is Adapted Material.
+
+Section 1(a) separately defines Adapted Material as modification “in a manner requiring permission under the Copyright and Similar Rights held by the Licensor.” Restructuring alone does not establish that condition. When we share qualifying Adapted Material, §3(b)'s ShareAlike duties apply; copied licensed text still carries its applicable licence duties even without an adaptation.
+
+**[HUEY] Proposed conservative policy:** offer the published data bundle under CC BY-SA 4.0 to the extent we can license our contributions, while retaining upstream terms. This avoids field-by-field legal judgments, at the cost of granting reuse rights on original contributions too. Confidence: high that the cited conditions must be considered; no legal conclusion here that each output meets them. B2 remains open.
 
 What this does **not** mean:
 
@@ -469,13 +476,12 @@ Issue [#12](https://github.com/hueypov/lexema/issues/12) will produce records li
 
 | Kind of record | Example | Licence | Why |
 | --- | --- | --- | --- |
-| A correction or annotation **attached to** source text | "this gloss is wrong", a corrected gender tag, a disputed-claim flag on a specific sense | **CC BY-SA 4.0** | It is an edit to the licensed material, i.e. Adapted Material. Publishing it alongside the entry Shares an adaptation. |
+| A correction or annotation **attached to** source text | "this gloss is wrong", a corrected gender tag, a disputed-claim flag on a specific sense | **Depends on content and applicable rights; proposed bundle policy: CC BY-SA 4.0** | Attachment alone does not prove modification requiring permission under §1(a). A factual flag may be independent; a rewritten protected gloss may be an adaptation. This research has not decided each case. |
 | Independent, freshly authored content | our own usage examples, our own grammar explanations, the deterministic article outputs | **[HUEY] — free choice** | Not derived from the licensed text. The article rules are ours; `il` in front of `cane` is a fact plus our rule, not Wiktionary's expression. |
 | Process metadata | who reviewed, when, confidence score | **[HUEY] — free choice** | No lexical claim, no derivation. |
 
 **Recommendation:** license the whole published data bundle under CC BY-SA 4.0 anyway, including the
-independent parts. One licence on one bundle is simpler to state, simpler to honour, and impossible to
-get wrong at the boundary. Trade-off: we give away reuse rights on our own original content that we
+independent parts to the extent we hold the necessary rights. One licence on our contributions is simpler to state and honour, but does not replace upstream notices or resolve third-party rights. Trade-off: we give away reuse rights on our own original content that we
 did not strictly have to. That matters only if original content later becomes the product's moat —
 and if that day comes, we split the bundle then. Confidence: medium-high. This is genuinely a business
 call, so it is marked **[HUEY]**.
@@ -600,16 +606,9 @@ From §2.2: ToU 7(g) requires reusers to preserve visible notations marking text
 elsewhere under extra attribution terms. The wiktextract output drops all page-level banners, talk
 pages, and edit history, so we cannot detect them.
 
-**Mitigation, and why it is probably enough:** our per-result notice links to the live source page and
-its history for every entry we show. A reader who follows it lands on the page carrying any such
-banner. That is the same route ToU 7(g) itself prescribes for determining the applicable licence
-("review the page footer, page history, and discussion page"). Combined with the fact that Italian
-Wiktionary is a dictionary — short definitions written in-project, not long imported prose — the
-exposure looks small.
+**[UNPROVEN] Unresolved publication clearance (B14).** A source/history link credits contributors; preserving external-source notices is a separate question. The cited ToU does not establish that a generic live-page link satisfies every additional attribution term. Notices were not inspected, and dictionary length is not evidence of low exposure.
 
-**[UNPROVEN]** Nobody has counted how many it.wiktionary entries actually carry such a banner. If a
-cheap check is wanted, the dump includes templates and categories; someone could count pages
-transcluding attribution templates. Low priority in my view. **[HUEY]** to overrule if you disagree.
+Before publication, inspect the relevant source pages, histories and discussion pages for the material to be served, retain any applicable extra notices, and record how the release satisfies them. A dump/template scan can help find notices but has unproven coverage. If inspection cannot establish clearance, informed legal review must determine a defensible scope and treatment; unresolved material must not be published. Record the inspected revision/source, notice, and clearance basis. Merely accepting the uncertainty or adding a history link does not complete B14.
 
 ---
 
@@ -662,11 +661,13 @@ N" citations become a product requirement.
 
 ## 8. Redistribution duties for a download or an API
 
-| We offer | Duties |
+The table combines applicable source-licence duties with our proposed notice design and conservative bundle policy. Exact placement and packaging are implementation proposals, not verbatim licence requirements. B2, B8 and B14 must be resolved before these can become final release instructions.
+
+| We offer | Duties and proposed implementation |
 | --- | --- |
 | **Website only** | §3.1 notice on every result page; §3.2 attribution page linked from the footer; ShareAlike terms stated on that page; no ToS clause restricting reuse of displayed content. No duty to publish a bulk download. |
 | **Public API** | Everything above, plus §3.3's `attribution` object in every response carrying source-derived text, plus a machine-readable licence declaration at a stable path (`/v1/attribution`, as `LEXEMA_SPEC.md` already proposes). Rate limits and keys are fine; terms forbidding redistribution of returned content are not. |
-| **Bulk download** | Everything above, plus `LICENSE.txt` and `ATTRIBUTION.md` inside the archive, plus release metadata (§7.1) shipped with it, plus per-record provenance (§7.2) in the data. This is the strongest ShareAlike case: the recipient is getting the adapted database itself and must receive it under CC BY-SA 4.0 with no extra conditions. |
+| **Bulk download** | Everything above, plus `LICENSE.txt` and `ATTRIBUTION.md` inside the archive, plus release metadata (§7.1) shipped with it, plus per-record provenance (§7.2) in the data. If the database qualifies as Adapted Material, §3(b) applies. The proposed bundle policy is CC BY-SA 4.0; §4.2 explains the unproven database-rights conditions. |
 | **Audio of any kind** | §5.1 — per-file licence and author, fetched and stored first. |
 
 Two things are true in every row: **no DRM or technical measure that restricts reuse** (2(a)(5)(C)),
@@ -692,23 +693,28 @@ keep building.
 | B5 | Ship audio at launch? If yes, budget the per-file Commons licence pipeline. | §5.1 | **Not at launch.** Or CC0/PD clips only. Affects issue #20. |
 | B6 | Is a professional legal review wanted before the first public release? | all | Above my pay grade, and yours. My read: the CC BY-SA path here is well-trodden and the analysis is grounded in quoted primary sources — but "well-trodden" is not "cleared", and B2/B4 have commercial consequences a lawyer should see. |
 
-### Needs implementation (decided, just not built)
+### Implementation still needed (subject to the open decisions and clearance)
 
 | # | Work | Where | Related issue |
 | --- | --- | --- | --- |
 | B7 | Result-page attribution notice, per word, with history link and change notice. | §3.1 | #14, #19 |
-| B8 | `/attribuzione` and `/attribution` pages. | §3.2 | #19 |
+| B8 | Finalise and implement `/attribuzione` and `/attribution`: fill licence/audio choices, translate the full English page, verify metadata and include cleared extra notices. Drafts are not publication-ready. | §3.2 | #19 |
 | B9 | Fix form→lemma attribution so the notice cites the record the text actually came from. | §3.1, §7.2 | **#16 — now a compliance blocker, not just a bug** |
 | B10 | Add the missing `ReleaseMetadata` fields, including `identityConfidence`; set `license` to `["CC-BY-SA-4.0"]` only. | §7.1 | #2, #10 |
 | B11 | Capture the kaikki log and edition-page footer at fetch time. | §1.4 | #10 |
 | B12 | Display `examples[].ref` wherever an example with a ref is shown. | §5.3 | #20 |
 | B13 | If the repo goes public, add `fixtures/ATTRIBUTION.md`. | §4.4 | — |
 
-### Open questions, low priority
+### Unresolved publication clearance
+
+| # | Required clearance | Where |
+| --- | --- | --- |
+| B14 | Inspect and preserve applicable extra-attribution notices for served content, or obtain informed legal review defining a defensible clearance process. Record evidence; unresolved content stays unpublished. | §6 |
+
+### Open question, low priority
 
 | # | Question | Where |
 | --- | --- | --- |
-| B14 | How many it.wiktionary entries carry an extra-attribution banner we cannot see? | §6 |
 | B15 | Should we store per-entry revision IDs for revision-exact citation? | §7.2 |
 
 ### Settled by this document — no longer blockers
@@ -730,7 +736,7 @@ All checked 2026-09-18.
 - Italian Wiktionary rights API — <https://it.wiktionary.org/w/api.php?action=query&meta=siteinfo&siprop=rightsinfo&format=json>
 - Wikimedia Terms of Use (in force since 2023-06-07) — <https://foundation.wikimedia.org/wiki/Policy:Terms_of_Use>
 - CC BY-SA 4.0 deed — <https://creativecommons.org/licenses/by-sa/4.0/> · Italian deed — <https://creativecommons.org/licenses/by-sa/4.0/deed.it>
-- CC BY-SA 4.0 legal code — <https://creativecommons.org/licenses/by-sa/4.0/legalcode.en>
+- CC BY-SA 4.0 legal code — <https://creativecommons.org/licenses/by-sa/4.0/legalcode.en>; §1(a) and §4 conditions independently checked in [Creative Commons' legal-text repository](https://github.com/creativecommons/cc-legal-tools-data/blob/main/legacy/legalcode/by-sa_4.0_en.html) during PR repair.
 - kaikki.org Italian edition, incl. copyright section and release footer — <https://kaikki.org/itwiktionary/>
 - kaikki.org raw data downloads — <https://kaikki.org/dictionary/rawdata.html>
 - kaikki.org Italian build log — <https://kaikki.org/dictionary/downloads/it/it-extract.log>
