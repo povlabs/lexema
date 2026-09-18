@@ -1,0 +1,5 @@
+{
+  "source": "Kaikki/Wiktextract",
+  "license": ["CC-BY-SA-4.0", "GFDL"],
+  "attribution": "Wiktionary data via Kaikki/Wiktextract; local validation metadata requires source URL and retrieval time before production use."
+}

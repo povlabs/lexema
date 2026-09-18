@@ -1,0 +1,21 @@
+{
+  "language": "it",
+  "fixtures": [
+    "studente",
+    "studenti",
+    "casa",
+    "case",
+    "zaino",
+    "amica",
+    "bello",
+    "belle",
+    "andare",
+    "andavano",
+    "parlare",
+    "parlerò",
+    "credere",
+    "finire",
+    "sale",
+    "camera"
+  ]
+}
