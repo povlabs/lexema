@@ -1,0 +1,109 @@
+<!-- it.wiktionary.org/wiki/manuale revision 3974272 (2024-03-04T22:03:20Z), CC BY-SA 4.0. Saved verbatim. -->
+== {{-it-}} ==
+{{-agg-|it}}
+{{Pn}} {{Tabs|manuale|manuali|manuale|manuale}}
+# fatto a [[mano]], relativo all'uso delle mani
+#* [[procedimento]] ''{{Pn}}''
+[[File:Manuale bodoni.jpg|thumb|{{Pn}} [[tipografico]] del [[cavaliere]] [[w:Giambattista Bodoni|Giambattista Bodoni]]]]
+[[File:HolyNameJesusCon2.jpg|thumb|[[manuali]] di un [[organo]]]]
+{{-sost-|it}}
+# {{Pn|w}} ''m sing'' {{Linkp|manuali}}
+#* {{Term|antico|it}} [[manovale]]
+#* [[testo]] di [[istruzioni]] o [[trattato]] [[introduttivo]] e [[tecnico]] su una determinata materia
+#** ''{{Pn}} di giardinaggio''
+#* {{Est}} libro, testo scolastico
+#** ''{{Pn}} di diritto, di filosofia''
+# {{Pn|w=manuale (organo)}} ''m sing'' {{Linkp|manuali}}
+#* {{Term|musica|it|strumenti musicali}} la [[tastiera]] dell'[[organo]]
+
+{{-sill-}}
+; ma | nuà | le
+
+{{-pron-}}
+{{IPA|/maˈnuaːle/}}
+
+{{-etim-}}
+''(aggettivo)'' derivato dal {{la}} ''[[manualis]]'', derivato a sua volta da ''[[manus]]'', ossia  [[mano]];
+''(sostantivo)'' dal [[latino]] tardo ''[[manuale]]'', neutro sostantivato dell’aggettivo ''[[manualis]]'' , con cui si è voluto rendere il [[greco]] ''[[ ἐγχειρίδιον]]''
+
+{{-sin-}}
+* a mano, fatto a mano, eseguito amano,  prodotto artigianalmente, [[artigianale]]
+* ''(di comandi, congegni e simili)'' a mano, funzionante a mano, non automatico
+* ''(di occupazione, lavoro e simili)'' [[fisico]], [[materiale]] [[artigianale]]
+* {{Term|musica|it}} ''(di organo)'' [[tastiera]]
+* ''(libro)'' [[guida]], guida pratica, [[compendio]], [[vademecum]], [[prontuario]], [[trattato]]; libro di testo, testo scolastico
+
+{{-ant-}}
+* a macchina, prodotto in serie, [[industriale]]
+* [[automatico]], [[automatizzato]]
+* ''(di occupazione, lavoro e sim.)'' [[intellettuale]]
+* ''(di comandi, congegni e sim.)'' [[automatico]]
+ 
+{{-der-}}
+*[[manualistico]], [[manualmente]], [[manualità]]
+
+{{-rel-}}
+* ''(parte anatomica)'' [[mano]]
+* ''( carta)''[[libro]], [[testo]]
+
+{{-alter-}}
+* {{Dim}} [[manualetto]], [[manualino]]
+* {{Accr}} [[manualone]]
+* {{Spreg}} [[manualuccio]] 
+
+{{-prov-}}
+* ''lavoro {{Pn}}'': impiego lavorativo che richiede un maggior dispendio di energie fisiche
+* ''da manuale'': qualcosa che è fatto perfettamente, allo stato dell'arte
+** ''ha realizzato un gol da {{Pn}}''
+
+{{-trad-}}
+{{Trad1|fatto con le mani}}
+:* {{eo}}:  [[mana]]
+:* {{fr}}:  [[manuel]]
+:* {{en}}:  [[manual]], [[hand]], [[physical]]
+:* {{la}}: [[manufactus]] 
+:* {{es}}:  [[manual]] ''m''
+:* {{de}}:  Hand-, [[handgemacht]]
+{{Trad2}}
+
+{{Trad1|testo di istruzioni o trattato introduttivo}}
+:*{{eo}}: [[manlibro]], [[lernolibro]]
+:*{{fr}}: [[manuel]] ''m''
+:*{{en}}: [[manual]], [[handbook]], [[textbook]]
+:* {{la}}: [[manuale]], [[enchiridion]] 
+:* {{es}}:  [[manual]] ''m''
+:*{{de}}: [[Handbuch]] ''n''
+{{Trad2}}
+
+{{Trad1|testo scolastico}}
+:* {{de}}:  [[Lehrbuch]] ''n''
+{{Trad2}}
+
+{{Trad1|tastiera}}
+:*{{eo}}: [[klavaro]]
+:*{{en}}: [[manual]]
+:*{{fi}}: [[käsikirja]]
+:* {{de}}: [[Manual]] ''n''
+{{Trad2}}
+
+== {{-la-}} ==
+{{-sost-|la}}
+{{Pn}}
+# [[astuccio]], [[contenitore]], [[fodera]], astuccio per libri
+# [[manuale]]
+
+{{-ref-}}
+*italiano
+** {{Fonte|trec}}
+** {{Fonte|dizit}}
+** {{Fonte|hoep|1}}
+** {{Fonte|gar}}
+** {{Fonte|sabco|1}}
+** {{Fonte|sabco|2}}
+** {{Fonte|sin-co|1}}
+** {{Fonte|sin-co|2}}
+*latino
+** {{Fonte|dizla}}
+
+== Altri progetti ==
+{{Interprogetto|q1|q1_preposizione=sul|w1|w1_preposizione=riguardante il|commons1=Category:Manual|commons1_preposizione=sul|w2=Manuale (organo)|w2_preposizione=riguardante il |commons2=Category:Organ manuals|commons2_preposizione=sul|etichetta1=manuale (o "guida utente")|etichetta2=manuale dell'organo}}

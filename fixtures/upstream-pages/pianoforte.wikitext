@@ -1,0 +1,68 @@
+<!-- it.wiktionary.org/wiki/pianoforte revision 3987678 (2024-07-02T08:40:10Z), CC BY-SA 4.0. Saved verbatim. -->
+=={{-it-}}==
+[[File:Two pianos - grand piano and upright piano.jpg|thumb|350px|[1] Un '''pianoforte a coda''' (a sinistra) e un '''pianoforte verticale''' (a destra)]]
+[[File:Fortepian - mechanizm angielski.svg|thumb|350px|[2] Meccanica di un '''pianoforte a coda''' (''[[w:File:Fortepian - mechanizm angielski.svg#Italiano|didascalia]]'')]]
+[[File:Pianino - mechanizm angielski.svg#Italiano|thumb|220px|[3] Meccanica di un '''pianoforte verticale''' (''[[w:File:Pianino - mechanizm angielski.svg#Italiano|didascalia]]'')]]
+{{-sost-|it}}
+# {{Pn|w}} ''m sing'' {{Linkp|pianoforti}}
+#* {{Term|musica|it|strumenti musicali}} [[strumento musicale]] a [[corde]] e [[tastiera]], [[nato]] a [[Firenze]] alla [[fine]] del [[diciassettesimo]] [[secolo]], [[dove]] il [[suono]] è [[prodotto]] percuotendo le corde con [[martelletti]] [[messi]] in [[funzione]] dalla [[pressione]] dei [[tasti]]. L'origine del termine è italiana e si riferisce alla possibilità di suonare [[note]] a [[volumi]] diversi in base al tocco, effetto non ottenibile nel suo antenato, il [[clavicembalo]]. Il suono può essere modificato anche mediante [[pedali]] (solitamente tre), che azionano particolari meccanismi. Il {{Pn}} è costituito in due tipi diversi:
+#** '''a coda''', con le corde tese orizzontalmente
+#** '''verticale''', con le corde tese verticalmente
+# {{Pn|q}}
+{{Quote|''Ebano e avorio / convivono in perfetta armonia / fianco a fianco sulla [[tastiera]] del mio {{Pn}}, / oh Signore, perché non noi?''|[[q:Paul McCartney|Paul McCartney]], Ebony and Ivory|Ebony and ivory / live together in perfect harmony / side by side on my piano keyboard, / oh Lord, why don’t we?|lingua=en}}
+{{Quote|Ora tu pensa: un {{Pn}}. I [[tasti]] iniziano. I tasti finiscono. Tu sai che sono 88, su questo nessuno può fregarti. Non sono infiniti, loro. ''Tu'' sei infinito e, dentro quei tasti, infinita è la musica che puoi suonare. Loro sono 88. ''Tu'' sei infinito.|[[q:Alessandro Baricco|Alessandro Baricco]], Novecento}}
+{{Quote|Ricordo quello che mi diceva la mia vecchia insegnante di {{Pn}}: per avere un buon tocco occorrono dita di acciaio in guanti di velluto...|[[q:Piero Angela|Piero Angela]], Quark}}
+
+{{-sill-}}
+; pia | no | fòr | te
+
+{{-pron-}}
+{{IPA|/pjanoˈfɔrte/}}
+
+{{-etim-}}
+formato da [[piano]] e [[forte]]
+
+{{-rel-}}
+* [[fortepiano]]
+
+{{-der-}}
+* [[pianista]]
+
+{{-trad-}}
+{{Trad1|strumento musicale}}
+:*{{eo}}: [[piano]]
+:*{{fi}}: [[piano]] 
+:*{{fr}}: [[piano]] ''m''
+:*{{en}}: [[piano]]
+:*{{no}}: [[piano]] ''m''
+:*{{nl}}: [[piano]]
+{{mid}}
+:*{{pt}}: [[piano]] ''m''
+:*{{ru}}: [[фортепиано]] ''n''
+:*{{es}}: [[piano]] ''m''
+:*{{de}}: [[Klavier]] ''n'', [[Piano]] ''n''
+:*{{hu}}: [[zongora]]
+{{Trad2}}
+
+=={{-en-}}==
+{{-sost-|en}}
+{{pn}}
+#{{Term|formale|en}} pianoforte
+
+{{-sill-}}
+;pi | ano | for | te 
+{{-pron-}}
+* {{en-uk}} {{IPA|/pɪˌanəʊˈfɔːteɪ|pɪˌanəʊˈfɔːti/}}
+* {{en-us}} {{IPA|/piˌænoʊˈfɔrteɪ/}}
+{{-etim-}}
+dall'{{it}} ''pianoforte''
+
+{{-ref-}}
+Italiano
+* {{Fonte|trec}}
+* {{Fonte|hoep}}
+Inglese
+* {{Fonte|dictionary}}
+
+== Altri progetti ==
+{{Interprogetto|w|w_preposizione=riguardante il|q|commons=Category:Pianos|preposizione=sul}}

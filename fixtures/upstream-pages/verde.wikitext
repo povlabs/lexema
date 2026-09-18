@@ -1,0 +1,229 @@
+<!-- it.wiktionary.org/wiki/verde revision 4067992 (2026-03-18T14:04:45Z), CC BY-SA 4.0. Saved verbatim. -->
+== {{-it-}} ==
+{{-agg-|it}}
+[[file:Color icon green.svg|thumb|200px|'''verde''']]
+[[file:Linde_von_linn.jpg|thumb|250px|Un albero '''verde''']]
+[[File:VW I.D. Buggy Genf 2019 1Y7A5934.jpg|thumb|un'automobile parzialmente colorata di verde]]
+{{Pn|w}} ''inv sing'' {{Term|[[colore]]}} {{Linkp|verdi}}
+# {{Term|colori|it}} {{Term|fisica|it}} di [[colore]] intermedio tra l'azzurro ed  il giallo  caratteristico dell'erba e delle foglie nel periodo vegetativo dell'[[erba]] e della maggior parte delle foglie
+#*''la certificazione verde attesta l'avvenuta somministrazione di almeno una dose di vaccino''
+#:{{ColoreN|#C2F732|#00FF00|#10E010|#208000|#095228}}
+# {{Fig}} riferito a emozioni o sentimenti, intenso, forte
+#di [[cibo]], che per effetto di verdure o di aromi, spec. prezzemolo o basilico, assume una colorazione verde
+# {{Term|ecologia|it}} [[inerente]] al partito ed alla dottrina che si propone di salvaguardare l'ambiente
+#* ''il "fondo regionale Aree '''verdi'''" riguarda anche i parchi nazionali''
+ 
+{{-sost-|it}}
+{{Pn}} ''inv'' ''sing'' {{Linkp|verdi}}
+# colore dell’erba
+#:{{ColoreN|#C2F732|#00FF00|#10E010|#208000|#095228}}
+#: ''il dipinto traboccava di bellissimi [[verdi]]''
+# sinonimo per [[ambientalista]], [[ecologista]]
+
+{{-sost-|it}}
+{{Pn}} ''m sing''
+# la parte verde di taluni vegetali
+#: ''taglia via un po' di {{Pn}} da quegli alberi!''
+# zona coperta di vegetazione
+#: ''abbiamo passato il pomeriggio nel {{Pn}}
+# il segnale cromatico dei semafori per procedere
+#: ''attraversiamo, che c'è il {{Pn}}''
+# {{Term|colore|it}} {{Term|araldica|it}} {{Pn|w=Verde (araldica)}} 
+[[smalto|smalto araldico]] di colore verde intenso. Nella rappresentazione monocromatica è simbolizzato da linee parallele inclinate di 45° gradi che vanno dall'angolo in alto a sinistra a quello in basso a destra
+
+{{-sill-}}
+'''vér | de'''
+
+{{-pron-}}
+{{IPA|/ˈverde/}}
+
+{{-etim-}}
+dal latino volgare [[virdis]], dal [[latino]] ''[[viridis]]'', derivazione  del tema di ''[[virere]]'' ossia ''esser verde (detto delle piante), esser vigoroso'' di etimo oscuro 
+
+{{-sin-}}
+*color erba, color prato
+* {{Fig}}  [[giovane]], [[immaturo]], [[tenero]], [[vegeto]] 
+#{{Term|letterario|it}} [[giovanile]], [[fresco]], [[vigoroso]]
+* {{Fig}}  ''(di persona)'' [[livido]], [[pallido]], [[smorto]], [[terreo]], [[cereo]], [[esangue]]
+*''(di frutto)'' [[acerbo]], [[immaturo]]
+* ''(di piante, vegetali)''  appena colto, appena tagliato
+* {{Fig}}   [[vivace]], [[florido]]
+* {{Est}} [[fiorito]]
+* ''(di territorio, regione)'' [[verdeggiante]], coperto di vegetazione, [[lussureggiante]], [[rigoglioso]]
+* {{Fig}}  [[agricolo]], [[agrario]]
+*[[ecologico]] non inquinante
+* [[vegetazione]]
+*{{Term|letterario|it}} [[verzura]]
+* {{Fig}} [[vigore]], [[rigoglio]], [[freschezza]], [[floridezza]]
+* ''(di semaforo)'' luce verde, [[via]], [[avanti]]
+*[[erba]], [[prati]], [[alberi]], [[fiori]], [[flora]], [[natura]], [[piante]], [[vegetazione]]
+* {{Est}} [[giardino]]
+* [[ecologista]], [[ambientalista]]
+* ''(di persona)'' [[livido]]
+*''(degli anni)'' [[rigoglio]], [[vigore]], [[fiore]]
+
+{{-ant-}}
+*''(di frutto)'' [[maturo]], [[sfatto]]
+* ''(di piante, vegetali)'' [[marcio]], [[stagionato]], [[avvizzito]], [[appassito]], [[maturo]], [[secco]], [[vecchio]]
+* {{Fig}} ''(di persona)'' [[colorito]], [[rubicondo]], [[roseo]]
+* {{Fig}} [[invecchiato]], [[spento]]
+* ''(di territorio, regione)'' [[arido]], [[brullo]], [[desertico]], [[ingiallito]], [[riarso]]
+* {{Fig}} [[decadenza]], [[declino]], [[vecchiaia]], [[senilità]]
+*[[inquinante]]
+
+{{-der-}}
+*[[inverdire]], [[rosso-verde]],  [[sempreverde]], [[verdeggiare]], [[verderame]], [[verdolino]], [[verziere]]
+
+
+
+
+
+
+{{-iperon-}}
+* [[colore]]
+
+{{-prov-}}
+*''[[al verde]]'': senza [[soldi]], [[in bolletta]]
+* ''l'erba del vicino è sempre più {{Pn}}'': quello che hanno gli [[altri]] sembra sempre [[meglio]] di ciò che abbiamo noi
+*''[[numero verde]]''
+*'' [[zona verde]]''
+* ''{{Pn}} d'[[invidia]]'': molto [[invidioso]]
+* ''{{Pn}} di [[rabbia]]'': molto [[arrabbiato]]
+* ''{{Pn}} speranza'': a questo colore è associata la [[speranza]]
+*''[[benzina verde]]'': [[benzina]] senza [[piombo]]
+
+{{ -trad- }}
+{{Trad1|di colore}}
+:*{{nds}}: [[gröön]]
+:*{{bg}}: [[зелен]] (zelen)
+:*{{br}}: [[glas]], [[gwer]]
+:*{{ca}}: [[verd]]
+:*{{cs}}:  [[zelený]]
+:*{{zh}}:  [[绿]]
+:*{{da}}:  [[grøn]]
+:*{{et}}:  [[roheline]]
+:*{{fi}}:  [[vihreä]]
+:*{{fr}}:  [[vert]]
+:*{{fur}}:  [[vert]]
+:*{{ja}}:  [[緑]] ([[みどり]], midori), [[緑色]] (みどりいろ, midori-iro)
+:*{{el}}:  [[πράσινος]] (prásinos)
+:*{{en}}:  [[green]]
+:*{{lv}}:   [[zaļš]]
+:*{{lt}}:   [[žalias]]
+:*{{lb}}:   [[gréng]]
+:*{{lmo}}:  [[verd]]
+:*{{no}}:  [[grønn]]
+:*{{nl}}:  [[groen]]
+{{mid}}
+:*{{fa}}:  [[سبز]]
+:*{{pl}}:  [[zielony]]
+:*{{pt}}:  [[verde]]
+:*{{ro}}:  [[verde]]
+:*{{ru}}:  [[зелёный]] (zeljonyj)
+:*{{sc}}:
+:**{{sro}}: [[birdi]]
+:**{{sdn}}: [[veldi]]   
+:**{{src}}: [[birde]], [[virde]]   
+:**{{sdc}}: [[verdhi]]  
+:*{{sk}}:  [[zelený]]
+:*{{sl}}:  [[zelena]]
+:*{{es}}:  [[verde]]
+:*{{sv}}:  [[grön]]
+:*{{de}}:  [[grün]]
+:*{{tr}}:  [[yeşil]]
+:*{{hu}}:  [[zöld]]
+{{Trad2}}
+
+{{Trad1|colore}}
+:*{{br}}: [[glas]], [[gwer]]
+:*{{fr}}: [[vert]]
+:*{{en}}: [[green]]
+:*{{pt}}: [[verde]]
+:*{{sc}}:
+:**{{sro}}: [[birdi]]
+:**{{sdn}}: [[veldi]]   
+:**{{src}}: [[birde]], [[virde]]   
+:**{{sdc}}: [[verdhi]]
+{{mid}}
+:* {{es}}: [[verde]]
+:* {{de}}: [[Grün]] ''n''
+:* {{tr}}: [[yeşil]]
+{{Trad2}}
+
+{{Trad1|colore araldico}}
+:*{{ast}}:  [[sinople]] o [[verde]]
+:*{{ca}}:  [[sinople]]
+:*{{he}}:  [[ור]]
+:*{{eo}}:  [[sinoplo]]
+:*{{fr}}:  [[sinople]]
+:*{{ga}}:  [[uaine]]
+:*{{gl}}:  [[sinople]]
+:*{{ja}}:  [[ヴァート]]
+:*{{en}}:  [[vert]] (se usato per i cittadini comuni),  [[emerald]] (se usato per i nobili), [[venus]] (se usato per i principi e i sovrani)
+{{mid}}
+:*{{la}}:  [[viridis]]
+:*{{oc}}:  [[sinòple]]
+:*{{nl}}:  [[sinopel]] o [[groen]]
+:*{{pt}}:  [[vert]]
+:*{{ru}}:  [[изумруд]]
+:*{{es}}:  [[sinople]]
+:*{{de}}:  [[grün]]
+:*{{th}}:  [[สีเขียว]]
+:*{{hu}}:  [[zöld]]
+{{Trad2}}
+
+== {{-pt-}} ==
+{{-agg-|pt}}
+{{Pn}} {{Tabs|verde|verdes|verde|verdes}}
+# [[#italiano|verde]]
+#{{Glossa|non matura}} [[acerbo]]
+#{{Term|senso figurato|pt}} [[verde]], [[inesperto]] 
+
+{{-sost-|pt}}
+{{Pn}} {{Linkp|verdes}}
+#{{Term|colore|pt}} il [[#italiano|verde]]
+#{{Term|agricoltura|pt}} [[pasto]]
+
+{{-sill-}}
+;ver | de
+
+{{-pron-}}
+{{IPA|/ˈverdɨ/}}
+
+== {{-es-}} ==
+{{-agg-|es}}
+#[[#italiano|verde]]
+#{{Glossa|non matura}} [[acerbo]]
+#{{Pop}} {{Glossa|sconcio}} [[#italiano|verde]]
+
+{{-sost-|es}}
+{{Pn}}
+#{{Term|colore|es}} [[#italiano|verde]]
+#{{Term|politica|es}} {{Term|familiarmente|es}} il [[#italiano|verde]]
+
+{{-sill-}}
+;ver | de
+
+{{-pron-}}
+{{IPA|/ˈbɛrðe/}}
+{{Audio|LL-Q1321 (spa)-Rodelar-verde.wav}}
+
+{{-ref-}}
+*italiano
+** {{Fonte|sabco}}
+** {{Fonte|sin-co}}
+** {{Fonte|trec}}
+** {{Fonte|dizit}}
+**AA.VV.,''Dizionario sinonimi e contrari Mariotti'', 2006, pagina 606
+**AA.VV.,''Sinonimi e contrari'', Garzanti linguistica, 2009, pagina 828
+** {{Term|araldica|it}} ''Dizionario araldico, di Piero Guelfi Camajani - edito a Milano nel 1940''
+** {{Term|araldica|it}} ''[http://www.heraldica.org/shell/translatf.pl Traduttore di Heraldica.org]''
+*asturiano
+** {{Noref|ast}}
+*portoghese
+**{{Fonte/michaelis}}
+*spagnolo
+** {{Fonte|hoes}}
+
+== Altri progetti ==
+{{Interprogetto|q|w|commons=Category:Green|etichetta1=Verde (araldica)|w1=Verde (araldica)|commons1=Category:Vert (heraldry)}}

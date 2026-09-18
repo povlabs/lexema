@@ -1,0 +1,115 @@
+{
+  "stratum": "lemma",
+  "seed": 11,
+  "population": 74098,
+  "pages_cached": 400,
+  "pages_classified": 396,
+  "pages_missing_upstream": 0,
+  "pages_without_italian_section": 4,
+  "definition_loss": 5,
+  "example_loss_only": 0,
+  "clean": 391,
+  "pages_with_wrapped_prose": 5,
+  "definition_loss_rate": 0.0126,
+  "definition_loss_ci95": [
+    0.0054,
+    0.0292
+  ],
+  "definition_loss_projected": [
+    400,
+    935,
+    2164
+  ],
+  "example_loss_only_rate": 0.0,
+  "example_loss_only_ci95": [
+    0.0,
+    0.0096
+  ],
+  "example_loss_only_projected": [
+    0,
+    0,
+    711
+  ],
+  "affected_pages": [
+    {
+      "word": "ammartaggio",
+      "revid": 3907730,
+      "lost_definitions": [
+        "L' della sonda della [https://it.wikipedia.org/wiki/NASA NASA] [https://www.focus.it/scienza/spazio/atterraggio-della-sonda-insight-in-diretta InSight] è avvenuto il 26 novembre 2018"
+      ],
+      "lost_examples": [],
+      "wrapped_prose": [],
+      "extract_glosses": [
+        "movimento di discesa e atterraggio sul pianeta Marte"
+      ]
+    },
+    {
+      "word": "canzone",
+      "revid": 4049880,
+      "lost_definitions": [
+        "canzone d'amore : dedicata all'amata"
+      ],
+      "lost_examples": [],
+      "wrapped_prose": [],
+      "extract_glosses": [
+        "brano musicale che comprende un accompagnamento vocale",
+        "componimento poetico",
+        "situazione ripetuta fino alla noia"
+      ]
+    },
+    {
+      "word": "classico",
+      "revid": 4050810,
+      "lost_definitions": [
+        "liceo classico , indirizzo della scuola secondaria superiore italiana, incentrato sullo studio del e del"
+      ],
+      "lost_examples": [],
+      "wrapped_prose": [],
+      "extract_glosses": [
+        "che riguarda la storia dell'antica Grecia e dell'antica Roma, ritenute le patrie della civiltà occidentale",
+        "che descrive qualcosa di caratteristico o tipico",
+        "in riferimento alla musica classica, ovvero quella composta da autori dei secoli immediatamente successivi alla fine del medioevo",
+        "in riferimento alla danza classica",
+        "riferimento a qualcosa di tradizionale, in contrapposizione a qualcosa di moderno",
+        "una denominazione di vini",
+        "qualsiasi opera di riferimento o di particolare importanza",
+        "qualcosa che viene considerato caratteristico o tipico",
+        "liceo classico"
+      ]
+    },
+    {
+      "word": "cruento",
+      "revid": 3959787,
+      "lost_definitions": [
+        "sacrificio cruento : nella Bibbia riguarda un'offerta di determinati animali appunto macellati"
+      ],
+      "lost_examples": [],
+      "wrapped_prose": [
+        "Es: Era uno scenario cruento"
+      ],
+      "extract_glosses": [
+        "Aggettivo che significa Sanguinoso, che crea spargimenti di sangue.",
+        "che provoca spargimento di sangue",
+        "estremamente crudele"
+      ]
+    },
+    {
+      "word": "partita",
+      "revid": 4004491,
+      "lost_definitions": [
+        "partita semplice , dove i fatti di gestione sono registrati in una sola serie",
+        "partita doppia , dove i fatti di gestione sono registrati nelle due serie contrapposte del dare e dell’avere"
+      ],
+      "lost_examples": [],
+      "wrapped_prose": [],
+      "extract_glosses": [
+        "femminile di partito",
+        "gara sportiva tra due squadre",
+        "una singola sessione di gioco",
+        "scrittura di un conto",
+        "quantitativo ragguardevole di beni che si negozia commercialmente",
+        "participio passato femminile singolare di partire"
+      ]
+    }
+  ]
+}

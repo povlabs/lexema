@@ -14,3 +14,9 @@ it-extract.jsonl.gz
 .env
 .env.*
 !.env.example
+
+# Rebuildable analysis output (tools/definition_loss.py)
+build/
+fixtures/upstream-wikitext/
+__pycache__/
+*.pyc

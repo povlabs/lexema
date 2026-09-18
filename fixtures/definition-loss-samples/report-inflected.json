@@ -1,0 +1,34 @@
+{
+  "stratum": "inflected",
+  "seed": 11,
+  "population": 486259,
+  "pages_cached": 200,
+  "pages_classified": 200,
+  "pages_missing_upstream": 0,
+  "pages_without_italian_section": 0,
+  "definition_loss": 0,
+  "example_loss_only": 0,
+  "clean": 200,
+  "pages_with_wrapped_prose": 0,
+  "definition_loss_rate": 0.0,
+  "definition_loss_ci95": [
+    0.0,
+    0.0188
+  ],
+  "definition_loss_projected": [
+    0,
+    0,
+    9164
+  ],
+  "example_loss_only_rate": 0.0,
+  "example_loss_only_ci95": [
+    0.0,
+    0.0188
+  ],
+  "example_loss_only_projected": [
+    0,
+    0,
+    9164
+  ],
+  "affected_pages": []
+}

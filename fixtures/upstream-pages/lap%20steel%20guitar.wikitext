@@ -1,0 +1,42 @@
+<!-- it.wiktionary.org/wiki/lap steel guitar revision 3960902 (2023-10-31T17:49:58Z), CC BY-SA 4.0. Saved verbatim. -->
+== {{-it-}} ==
+[[File:Fender Champion lap steel @ 2010 TSGA Jamboree.jpg|thumb|250px|{{pn}} [[elettrica]]]]
+[[File:Lapstyle.jpg|thumb|250px|{{pn}} [[acustica]]]]
+{{-sost-|it}}
+#{{pn|w}} ''f sing''
+#* {{Term|musica|it|strumenti musicali}} tipo di ''[[steel guitar]]'' che si suona da seduti, appoggiata sulle [[gambe]] (''[[lap]]'', in {{en}}, vuol dire effettivamente "[[grembo]]"), sprovvista quindi di meccanismi a [[pedale]]; ve ne sono due tipi fondamentali:
+#**[[acustica]], con una cassa del tutto simile a quella di una [[chitarra]] [[classica]], ''dreadnought'' o "resofonica" ([[dobro]]) o ancora di tipo Weissenborn;
+#**[[elettrica]], dotata di [[pick-up]] come sulle chitarre elettriche
+
+{{-sill-}}
+;lap-steel-gui | tar
+
+{{-pron-}}
+{{IPA|/'læp stiːl gɪˈtɑː/}}
+
+{{-etim-}}
+termine inglese che unisce le parole [[lap]], [[steel]] e [[guitar]]
+
+{{-sin-}}
+[[chitarra]] [[hawaiana]]
+
+{{-trad-}}
+{{Trad1|musica}}
+:*{{fr}} lap steel guitar
+:*{{en}} lap steel guitar
+{{Trad2}}
+
+== {{-en-}} ==
+{{-sost-|en}}
+{{pn}}
+#{{Term|musica|en}} [[lap steel guitar#italiano|lap steel guitar]]
+
+{{-sill-}}
+;lap-steel-gui | tar
+
+{{-pron-}}
+*{{en-uk}} {{IPA|/læp stiːl gɪˈtɑː/}}
+*{{en-uk}} {{IPA|/læp stil gəˈtɑr/}}
+
+== Altri progetti ==
+{{Ip|w|w_preposizione=riguardante la|commons=Category:Lap steel guitars|preposizione=sulla}}
