@@ -1,0 +1,21 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "lexema-vinext-spike",
+  "compatibility_date": "2026-09-18",
+  "compatibility_flags": ["nodejs_compat"],
+  "main": "vinext/server/fetch-handler",
+  "assets": {
+    "directory": "dist/client",
+    "not_found_handling": "none",
+    "binding": "ASSETS"
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "lexema_spike",
+      // Local-only placeholder. No real Cloudflare account is touched: `--local`
+      // keys the miniflare sqlite file off database_id, which can be any uuid.
+      "database_id": "00000000-0000-4000-8000-000000000001"
+    }
+  ]
+}
