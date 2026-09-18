@@ -53,7 +53,7 @@ CREATE TABLE source_release (
   attribution      TEXT,
 
   -- A half-imported release must never be served. Lookup queries filter on
-  -- status = 'complete'; nothing else is allowed to be read.
+  -- status = 'complete'. Direct table reads are import diagnostics only.
   status           TEXT NOT NULL DEFAULT 'importing'
                    CHECK (status IN ('importing', 'complete', 'failed', 'superseded'))
 ) STRICT;
@@ -172,8 +172,8 @@ CREATE INDEX lookup_form_by_record
 -- There is deliberately no target_record_id column. The source names a word, and
 -- a word can have several records; noun `bella` points at `bello`, which is one
 -- adjective record and two separate noun records. With no column to hold a
--- winner, no importer and no query can quietly pick one. Callers expand the edge
--- through form_of_candidate below and handle 0, 1, or many answers.
+-- winner, storage preserves the unresolved declaration. Consumers must retain
+-- all candidates; query 2a also preserves edges with no candidate.
 CREATE TABLE form_of_edge (
   edge_id    INTEGER PRIMARY KEY,
   record_id  INTEGER NOT NULL REFERENCES source_record(record_id) ON DELETE CASCADE,
@@ -395,8 +395,8 @@ CREATE INDEX claim_review_by_record ON claim_review (record_id);
 
 -- Every candidate record a form_of edge could mean, one row per candidate. An
 -- ambiguous edge produces several rows; a dangling edge produces none. Callers
--- get the ambiguity handed to them and cannot accidentally read past it, which
--- a target_record_id column would not have done.
+-- must retain every candidate rather than selecting a winner. Only complete
+-- releases are visible; query 2a also retains dangling edges.
 CREATE VIEW form_of_candidate AS
 SELECT
   e.edge_id,
@@ -407,6 +407,8 @@ SELECT
   t.line_no          AS candidate_line_no,
   t.pos              AS candidate_pos
 FROM form_of_edge e
+JOIN source_release rel
+  ON rel.release_id = e.release_id AND rel.status = 'complete'
 JOIN lookup_form lf
   ON lf.release_id = e.release_id
  AND lf.surface_key = e.target_word_key

@@ -3,7 +3,8 @@
 -- These exist so the importer (#10) and lookup (#13) build against one shape.
 -- They are reference SQL, not a migration: nothing here runs at deploy time.
 -- Bind parameters are :release and :key, where :key is the query text with the
--- release's normalizer already applied.
+-- release's normalizer already applied. All reads require a complete release.
+-- Direct base-table reads are for import diagnostics, not serving.
 
 
 -- 1. Exact-surface search.
@@ -22,7 +23,7 @@ WHERE release_id = :release
 ORDER BY is_headword_hit DESC, line_no, json_pointer;
 
 
--- 2. Which lemma does a record say it is a form of?
+-- 2. Candidate-only expansion (omits dangling edges; use 2a for public results).
 --
 -- One row per (edge, candidate). An edge with several candidates produces
 -- several rows and the caller must show all of them. Noun `bella` returns three
@@ -36,13 +37,14 @@ WHERE from_record_id = :record_id
 ORDER BY edge_id, candidate_line_no;
 
 
--- 2a. A left join variant, for the caller that must distinguish "points
--- nowhere" from "points at one thing". A dangling edge yields one row with
+-- 2a. Recommended public result contract: distinguish "points nowhere"
+-- from "points at one thing". A dangling edge yields one row with
 -- candidate_record_id NULL instead of vanishing.
 SELECT
   e.edge_id, e.json_pointer AS edge_pointer, e.target_word,
   c.candidate_record_id, c.candidate_line_no, c.candidate_pos
 FROM form_of_edge e
+JOIN source_release rel ON rel.release_id = e.release_id AND rel.status = 'complete'
 LEFT JOIN form_of_candidate c ON c.edge_id = e.edge_id
 WHERE e.record_id = :record_id
 ORDER BY e.edge_id, c.candidate_line_no;
@@ -60,6 +62,7 @@ SELECT
   f.pos       AS from_pos,
   e.json_pointer AS edge_pointer
 FROM lookup_form lf
+JOIN source_release rel ON rel.release_id = lf.release_id AND rel.status = 'complete'
 JOIN form_of_edge e
   ON e.release_id = lf.release_id
  AND e.target_word_key = lf.surface_key
@@ -77,6 +80,8 @@ SELECT
   g.text         AS gloss,
   g.json_pointer AS gloss_pointer
 FROM sense s
+JOIN source_record r ON r.record_id = s.record_id
+JOIN source_release rel ON rel.release_id = r.release_id AND rel.status = 'complete'
 LEFT JOIN sense_gloss g ON g.sense_id = s.sense_id
 WHERE s.record_id = :record_id
 ORDER BY s.sense_index, g.gloss_index;
@@ -84,6 +89,8 @@ ORDER BY s.sense_index, g.gloss_index;
 SELECT
   s.sense_index, l.kind, l.label, l.json_pointer
 FROM sense s
+JOIN source_record r ON r.record_id = s.record_id
+JOIN source_release rel ON rel.release_id = r.release_id AND rel.status = 'complete'
 JOIN sense_label l ON l.sense_id = s.sense_id
 WHERE s.record_id = :record_id
 ORDER BY s.sense_index, l.kind, l.label_index;
@@ -97,6 +104,9 @@ SELECT
   scope, scope_index, status, dimension, value, source_text, json_pointer
 FROM grammar_claim
 WHERE record_id = :record_id
+  AND record_id IN (SELECT r.record_id FROM source_record r
+    JOIN source_release rel ON rel.release_id = r.release_id
+    WHERE rel.status = 'complete')
 ORDER BY scope, scope_index, json_pointer;
 
 
@@ -105,10 +115,16 @@ ORDER BY scope, scope_index, json_pointer;
 SELECT json_pointer, status, note, evidence_url, reviewed_at, reviewed_by
 FROM claim_review
 WHERE record_id = :record_id
+  AND record_id IN (SELECT r.record_id FROM source_record r
+    JOIN source_release rel ON rel.release_id = r.release_id
+    WHERE rel.status = 'complete')
 ORDER BY json_pointer, reviewed_at;
 
 
 -- 7. The verbatim record, for auditing a pointer against its real source.
 SELECT j.raw_json
 FROM source_record_json j
-WHERE j.record_id = :record_id;
+WHERE j.record_id = :record_id
+  AND j.record_id IN (SELECT r.record_id FROM source_record r
+    JOIN source_release rel ON rel.release_id = r.release_id
+    WHERE rel.status = 'complete');

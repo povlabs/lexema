@@ -56,11 +56,19 @@ Surfaces are stored verbatim and never split or cleaned. `studente` `/forms/1/fo
 
 ## Ambiguity
 
-`form_of_edge` stores the edge exactly as declared, on the inflected side, and there is **no `target_record_id` column**. That is the whole mechanism: with no place to record a winner, no importer and no query can quietly pick one.
+`form_of_edge` stores the edge exactly as declared, on the inflected side, and there is **no `target_record_id` column**. Storage preserves the unresolved declaration. This does not prevent a consumer from selecting one result incorrectly; consumers must return all candidates.
 
-Callers read `form_of_candidate`, a view that expands an edge into every headword record it could mean. A dangling edge gives zero rows, an ambiguous one gives several. The `2a` query in `queries.sql` is the left-join variant, for a caller that must tell "points nowhere" apart from "points at one thing".
+Callers read `form_of_candidate`, a view that expands an edge into every headword record it could mean. A dangling edge gives zero rows, an ambiguous one gives several. The `2a` query in `queries.sql` is the recommended public contract: its left join distinguishes "points nowhere" from "points at one thing". Query 2 is only a candidate list and drops dangling edges.
 
 The ambiguity is symmetric. Because the three edges naming `studente` match *any* headword record spelled `studente`, both the noun (37883) and the verb (37884) list `studenti`, `studentessa` and `studentesse` as their inflected entries.
+
+## Serving boundary and import validation
+
+Both serving views and every query in `queries.sql` return rows only for `complete` releases. Direct base-table reads are import diagnostics, not serving reads. `python3 test/record-identity.py` exercises every reference query with synthetic SQLite rows: importing, failed and superseded releases stay hidden; complete releases retain multiple candidates and dangling edges.
+
+Foreign keys alone do not prove a release is ready. Before promotion, the importer must validate one verbatim raw JSON row per source record, every stored pointer against that JSON (including the value it cites), and exactly one headword row per record matching `/word`. It must also check full input consumption and expected embedded-form coverage. The schema does not enforce these coverage checks; promotion without them is invalid importer behavior.
+
+The original 27-record loader was not retained. The worked tables below are historical observations, not outputs reproduced by the synthetic regression test.
 
 ## Senses stay separate
 
@@ -215,7 +223,7 @@ Its `pl.: case` sits in `sense_label` as a raw tag, unparsed. Meanwhile line 886
 
 ## Still open
 
-- **Normalization.** `it-normalize/v1` does not touch accents. Whether a search for `citta` should find `città` is undecided, and it changes `surface_key` for every row, so it is a re-import.
+- **Normalization.** `it-normalize/v1` does not touch accents. Whether a search for `citta` should also find `città` is undecided. Any accent-folded discovery must use a separately versioned approximate key; the accent-preserving exact key and form-of matching remain unchanged.
 - **Composite surfaces.** `studente/studentessa` and `avere o essere` are stored whole and will not match a search for their parts. Splitting them needs a rule nobody has validated.
 - **Expected-dimension policy.** Which dimensions get a `missing` row for which part of speech is [#10](https://github.com/hueypov/lexema/issues/10)'s call.
 - **Review workflow.** `claim_review` is a shape with one example row. [#12](https://github.com/hueypov/lexema/issues/12) owns the rest.
