@@ -1,6 +1,13 @@
 # Lexema
 
-Before working on Lexema, read these documents in order:
+Read every file in [`.decisions/`](.decisions) before you start. Those are settled
+rulings and they bind you. Three that catch agents out:
+
+- [0001](.decisions/0001-human-merges-every-pull-request.md) — you never merge a pull request. Open it, report the URL, stop.
+- [0002](.decisions/0002-pnpm-is-the-package-manager.md) — pnpm only. Never add `package-lock.json`.
+- [0003](.decisions/0003-tool-replacement-is-its-own-decision.md) — never swap a tool as a side-effect of other work.
+
+Then read these documents in order:
 
 1. [`docs/LEXEMA_SPEC.md`](docs/LEXEMA_SPEC.md) — product, architecture, API, provenance, and MVP boundaries.
 2. [`docs/DATASET_FINDINGS.md`](docs/DATASET_FINDINGS.md) — verified facts about the Italian Kaikki/Wiktextract dataset.
