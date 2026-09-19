@@ -132,8 +132,9 @@ JSON in its own table so either answer is a small change.
 
 ## What this does not do
 
-No upload to D1 or R2. The importer writes a local SQLite file; getting a
-release onto Cloudflare, activating it and rolling it back is #18.
+No upload to D1 or R2. The importer writes a local SQLite file. Checking a
+staged release, activating it and rolling it back are in
+[docs/RELEASES.md](RELEASES.md); getting the bytes onto Cloudflare is still #19.
 
 No repair of upstream extraction defects. `casa` still arrives with no usable
 definition, because that is what the archive contains. The cause is measured in

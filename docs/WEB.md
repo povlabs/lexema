@@ -41,7 +41,8 @@ const db = fromD1(env.DB);
 ```
 
 The spike (#27) established that. `env.LEXEMA_RELEASE` picks which imported
-release to serve; flipping it safely is #18.
+release to serve. Flipping it is how a new release goes live and how a bad one
+is rolled back — [docs/RELEASES.md](RELEASES.md) has the checks that come first.
 
 ## The page is a server component
 

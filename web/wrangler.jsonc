@@ -20,8 +20,9 @@
     }
   ],
   "vars": {
-    // Which imported release to serve. A deployment flips this to activate a
-    // new one; doing that safely is #18.
+    // Which imported release to serve. Activating a new release is this one
+    // variable, and rolling back is setting it again; docs/RELEASES.md has the
+    // checks that come first.
     "LEXEMA_RELEASE": "it-dev"
   }
 }
