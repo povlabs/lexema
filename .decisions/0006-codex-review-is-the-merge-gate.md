@@ -1,0 +1,41 @@
+---
+id: 0006
+title: A passing Codex review is the merge gate; the shipper merges
+status: accepted
+date: 2026-09-19
+supersedes: 0001
+tags: [process, agents]
+---
+
+# 0006 — A passing Codex review is the merge gate; the shipper merges
+
+**What this decides:** A pull request merges when every required review verdict is PASS at its current head. The fabrika `ship` skill does the merge. Huey no longer has to.
+
+## Context
+
+[0001](0001-human-merges-every-pull-request.md) made Huey the merge gate after an agent merged an unreviewed pull request on a green build. The problem it fixed was a missing review, and the fix was the only reviewer available: a human.
+
+Since then [0005](0005-codex-reviews-claude-builds.md) put a second model on review, under a second GitHub account. Every pull request now gets a written verdict from a reviewer that is not its author. On 2026-09-19 that reviewer failed nine of ten open pull requests on real findings. The review 0001 was protecting exists, and it is not Huey's time anymore.
+
+Keeping the human gate on top of it means every pull request waits for Huey twice: once for a verdict he did not write, once to click merge.
+
+## Decision
+
+**A pull request merges when its Codex review passes. The shipper merges it.**
+
+- The gate is `fabrika ship scope <n>`: every required verdict namespace shows PASS at the current head, and CI is green. Nothing else opens it.
+- Only the `ship` skill merges. A builder, reviewer, or driver still stops at the PR URL.
+- A FAIL goes back to a builder for repair. The shipper never overrides a verdict.
+- Huey can still merge by hand, and can still say "hold" on any PR.
+
+**Still binding from 0001.** A green CI run alone is not approval. A push straight to `main` is not a route. An agent that merged says so plainly.
+
+## Consequences
+
+Throughput no longer waits on Huey. It waits on the Codex budget, which the driver watches.
+
+The reviewer is now the last look before `main`. A weak review lands a weak change, so review findings are the thing to keep sharp.
+
+## Records
+
+No vocabulary impact.
