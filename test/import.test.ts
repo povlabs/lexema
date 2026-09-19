@@ -70,9 +70,13 @@ const LINES: string[] = [
   JSON.stringify({ word: "maison", pos: "noun", pos_title: "Nom", lang_code: "fr", senses: [{ glosses: ["casa"] }] }),
   // Must be counted and located, not silently dropped.
   "{ this is not json",
+  // Neither of these carries a record, and neither may vanish under a reported
+  // zero. Line 13 is empty, line 14 is whitespace.
+  "",
+  "   ",
 ];
 
-async function importFixture() {
+async function importFixture(options: { limit?: number } = {}) {
   const dir = await mkdtemp(join(tmpdir(), "lexema-import-"));
   const archive = join(dir, "fixture.jsonl.gz");
   const database = join(dir, "fixture.sqlite");
@@ -83,8 +87,30 @@ async function importFixture() {
     schema: "src/db/schema.sql",
     releaseId: "it-test",
     archiveR2Key: "releases/it-test.jsonl.gz",
+    limit: options.limit,
   });
   return { dir, database, report };
+}
+
+/**
+ * Every row of every table, in the order the importer wrote it. This is the
+ * whole database, not a chosen subset: a comparison that looked at a few columns
+ * would pass while lookup rows, claims or preserved JSON drifted.
+ */
+function dumpAllTables(path: string): string {
+  const db = new DatabaseSync(path, { readOnly: true });
+  try {
+    const tables = (
+      db.prepare(
+        "SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' ORDER BY name",
+      ).all() as { name: string }[]
+    ).map((t) => t.name);
+    // A table appearing or disappearing has to change the dump too.
+    assert.ok(tables.includes("source_record_json"), "expected the schema's tables");
+    return JSON.stringify(tables.map((name) => [name, db.prepare(`SELECT * FROM ${name}`).all()]));
+  } finally {
+    db.close();
+  }
 }
 
 const hits = (db: DatabaseSync, key: string) =>
@@ -97,10 +123,15 @@ test("imports only Italian records and locates every malformed line", async () =
   try {
     assert.equal(report.linesRead, LINES.length);
     assert.equal(report.admitted, 9);
+    assert.equal(report.status, "complete");
     assert.equal(report.skippedOtherLanguage, 2);
-    assert.equal(report.malformed, 1);
-    // A count alone would not tell anyone which line to go and look at.
-    assert.deepEqual(report.malformedLineNumbers, [12]);
+    // A count alone would not tell anyone which line to go and look at, and a
+    // rejected record is as auditable as a malformed one.
+    assert.deepEqual(report.skippedLineNumbers, [10, 11]);
+    // Line 12 is not JSON; lines 13 and 14 are empty and whitespace. All three
+    // are input that produced no record, so none may be dropped in silence.
+    assert.equal(report.malformed, 3);
+    assert.deepEqual(report.malformedLineNumbers, [12, 13, 14]);
     assert.equal(report.rows.source_record, 9);
   } finally {
     await rm(dir, { recursive: true, force: true });
@@ -114,18 +145,10 @@ test("the same archive imports to the same database twice", async () => {
     assert.equal(first.report.archiveSha256, second.report.archiveSha256);
     assert.deepEqual(first.report.rows, second.report.rows);
 
-    const read = (path: string) => {
-      const db = new DatabaseSync(path, { readOnly: true });
-      try {
-        return JSON.stringify(
-          db.prepare("SELECT record_id, line_no, word, pos FROM source_record ORDER BY record_id").all(),
-        );
-      } finally {
-        db.close();
-      }
-    };
-    // record_id follows line order, so two runs agree row for row.
-    assert.equal(read(first.database), read(second.database));
+    // record_id follows line order and sense_id derives from it, so two runs
+    // agree row for row across every table — records, preserved JSON, lookup
+    // rows, edges, senses, glosses, labels and grammar claims alike.
+    assert.equal(dumpAllTables(first.database), dumpAllTables(second.database));
   } finally {
     await rm(first.dir, { recursive: true, force: true });
     await rm(second.dir, { recursive: true, force: true });
@@ -271,6 +294,34 @@ test("a verb form inflected without a mood records the gap", async () => {
     // /forms/0 is the auxiliary `essere`, not an inflected form, so it is owed
     // no mood and must not get a 'missing' row.
     assert.equal(formClaims(0).filter((c) => c.status === "missing").length, 0);
+  } finally {
+    db.close();
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test("a run stopped by --limit is never marked complete", async () => {
+  const { dir, database, report } = await importFixture({ limit: 3 });
+  const db = new DatabaseSync(database, { readOnly: true });
+  try {
+    assert.equal(report.admitted, 3);
+    // The checksum and byte count describe the whole archive while only three
+    // of its records landed, so this release must never be servable.
+    assert.equal(report.status, "partial");
+    assert.equal(
+      (db.prepare("SELECT status FROM source_release").get() as { status: string }).status,
+      "partial",
+    );
+    assert.equal(hits(db, "studenti").length, 0);
+    assert.equal(
+      (db.prepare("SELECT count(*) n FROM form_of_candidate").get() as { n: number }).n,
+      0,
+    );
+    // The rows are on disk for diagnosis; it is the canonical reads that hide them.
+    assert.equal(
+      (db.prepare("SELECT count(*) n FROM source_record").get() as { n: number }).n,
+      3,
+    );
   } finally {
     db.close();
     await rm(dir, { recursive: true, force: true });
