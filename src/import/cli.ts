@@ -94,6 +94,7 @@ async function main(): Promise<void> {
     "",
     `release          ${report.releaseId}  (${IMPORTER_VERSION})`,
     `archive sha256   ${report.archiveSha256}`,
+    `derived sha256   ${report.projectionSha256}`,
     `archive bytes    ${n(report.archiveBytes)}`,
     `lines read       ${n(report.linesRead)}`,
     `admitted (it)    ${n(report.admitted)}`,

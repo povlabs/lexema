@@ -68,9 +68,18 @@ not Italian-only despite its name: 239,243 of its lines are other languages.
 `source_record` carries a `CHECK (lang_code = 'it')` so the filter stays visible
 in the data itself.
 
-The release row is written as `importing` and flipped to `complete` only after
-the last line lands. Every canonical read filters on `complete`, so a crashed
-import leaves something invisible rather than something half-served.
+The release row is committed as `importing` before the first record, records
+land in batches of 25,000, and the flip to `complete` is the last transaction of
+the run. Every canonical read filters on `complete`, so a crashed import leaves
+something invisible rather than something half-served — and it does leave
+something: a release stuck at `importing`, cleared with `pnpm run release --
+discard`. See [RELEASES.md](RELEASES.md).
+
+That last transaction also pins what the import *derived*. `archive_sha256`
+covers the bytes that came in; `projection_sha256` and `projection_counts` cover
+the tables built out of them, computed by reading those rows back rather than
+from the importer's counters. A projection that lost a whole table would still
+match its archive checksum, and this is what notices.
 
 ## Grammar: what gets mapped, and what deliberately does not
 

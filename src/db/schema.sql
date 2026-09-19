@@ -49,13 +49,31 @@ CREATE TABLE source_release (
   importer_version TEXT NOT NULL,
   schema_version   INTEGER NOT NULL,
 
+  -- The identity of what the import *derived*, as against what it downloaded.
+  -- archive_sha256 above covers the bytes that went in; these two cover the
+  -- tables built out of them, so a projection that lost a table is detectable
+  -- without re-reading the archive. Both are written by the same pass that
+  -- flips status to 'complete', by reading the rows back — never from the
+  -- importer's own counters. src/release/projection.ts defines the stream.
+  -- NULL until that flip: an interrupted import has no derivation to pin.
+  projection_sha256 TEXT,
+  projection_counts TEXT,   -- JSON object, one row count per derived table
+
   license          TEXT,                    -- SPDX-ish string as found upstream
   attribution      TEXT,
 
   -- A half-imported release must never be served. Lookup queries filter on
   -- status = 'complete'. Direct table reads are import diagnostics only.
   status           TEXT NOT NULL DEFAULT 'importing'
-                   CHECK (status IN ('importing', 'complete', 'failed', 'superseded'))
+                   CHECK (status IN ('importing', 'complete', 'failed', 'superseded')),
+
+  -- A release readers can reach, or could reach before it was retired, has to
+  -- carry the identity of its own derived data. Only a release that never
+  -- finished ('importing') or was written off ('failed') may lack it.
+  CHECK (
+    status IN ('importing', 'failed')
+    OR (projection_sha256 IS NOT NULL AND projection_counts IS NOT NULL)
+  )
 ) STRICT;
 
 

@@ -10,8 +10,13 @@
 //   3. Honest. A record is admitted on `lang_code === 'it'` and nothing else.
 //      Malformed lines are counted and located, never skipped in silence.
 //
-// The release is written as 'importing' and only flipped to 'complete' after the
-// last line lands, so a crash leaves a release that every canonical read hides.
+// The release row is committed as 'importing' before the first record, the
+// records land in batches, and the flip to 'complete' is its own last
+// transaction. So a crash leaves exactly what docs/RELEASES.md says it leaves:
+// a release stuck at 'importing', with however many records had landed, hidden
+// from every canonical read. Wrapping the whole import in one transaction would
+// have been simpler and would have made that documented state unreachable —
+// a crash would roll the release row back and leave no trace to clean up.
 
 import { createHash } from "node:crypto";
 import { createReadStream } from "node:fs";
@@ -20,6 +25,8 @@ import { createInterface } from "node:readline";
 import { DatabaseSync } from "node:sqlite";
 import { createGunzip } from "node:zlib";
 import { IT_NORMALIZER_VERSION, normalizeItalianExact } from "../italian/normalize.js";
+import { fromNodeSqlite } from "../lookup/database.js";
+import { computeProjection, encodeCounts } from "../release/projection.js";
 import {
   expectedFormDimensions,
   expectedRecordDimensions,
@@ -27,11 +34,19 @@ import {
   mapStructuralTag,
 } from "./grammarPolicy.js";
 
-export const IMPORTER_VERSION = "it-import/v1" as const;
-export const SCHEMA_VERSION = 1;
+export const IMPORTER_VERSION = "it-import/v2" as const;
+
+/** v2 added source_release.projection_sha256 / projection_counts. */
+export const SCHEMA_VERSION = 2;
 
 /** How many malformed line numbers to keep. The count is always exact. */
 const MALFORMED_SAMPLE_LIMIT = 50;
+
+/**
+ * Records per committed batch. Small enough that a crash loses little work,
+ * large enough that the commit cost disappears against 800k inserts.
+ */
+const DEFAULT_BATCH_SIZE = 25_000;
 
 export interface ImportOptions {
   /** Path to the .jsonl.gz source file. */
@@ -53,6 +68,9 @@ export interface ImportOptions {
   attribution?: string;
   /** Stop after this many admitted records. For tests only. */
   limit?: number;
+  /** Records per committed batch. Defaults to {@link DEFAULT_BATCH_SIZE}. */
+  batchSize?: number;
+  /** Called after each batch commits, with the total admitted so far. */
   onProgress?: (admitted: number) => void;
 }
 
@@ -66,6 +84,8 @@ export interface ImportReport {
   malformed: number;
   malformedLineNumbers: number[];
   rows: Record<string, number>;
+  /** Digest of the derived tables, read back after they landed. */
+  projectionSha256: string;
   elapsedMs: number;
 }
 
@@ -204,6 +224,8 @@ export async function importRelease(options: ImportOptions): Promise<ImportRepor
     let malformed = 0;
     const malformedLineNumbers: number[] = [];
 
+    // Committed on its own, before any record: this row is what makes an
+    // interrupted import visible afterwards instead of vanishing.
     db.exec("BEGIN");
     statements.insertRelease.run(
       options.releaseId,
@@ -220,7 +242,10 @@ export async function importRelease(options: ImportOptions): Promise<ImportRepor
       options.license ?? null,
       options.attribution ?? null,
     );
+    db.exec("COMMIT");
 
+    const batchSize = options.batchSize ?? DEFAULT_BATCH_SIZE;
+    db.exec("BEGIN");
     for await (const line of lines) {
       linesRead += 1;
       if (!line) continue;
@@ -276,15 +301,32 @@ export async function importRelease(options: ImportOptions): Promise<ImportRepor
         posTitle: record.pos_title,
       });
 
-      if (admitted % 25_000 === 0) options.onProgress?.(admitted);
+      if (admitted % batchSize === 0) {
+        db.exec("COMMIT");
+        options.onProgress?.(admitted);
+        db.exec("BEGIN");
+      }
       if (options.limit !== undefined && admitted >= options.limit) break;
     }
 
     // `--limit` leaves the reader mid-file; close it so the process can exit.
     lines.close();
     source.destroy();
+    db.exec("COMMIT");
 
-    statements.finishRelease.run(options.releaseId);
+    // The derivation is pinned by reading the rows back, not from the counters
+    // above: a digest taken from what this process believes it wrote would
+    // agree with a projection that never landed.
+    const projection = await computeProjection(fromNodeSqlite(db), options.releaseId);
+
+    // The status flip and the projection identity land together, last. Until
+    // this commit every canonical read hides the release.
+    db.exec("BEGIN");
+    statements.finishRelease.run(
+      projection.digest,
+      encodeCounts(projection.counts),
+      options.releaseId,
+    );
     db.exec("COMMIT");
 
     return {
@@ -297,8 +339,19 @@ export async function importRelease(options: ImportOptions): Promise<ImportRepor
       malformed,
       malformedLineNumbers,
       rows,
+      projectionSha256: projection.digest,
       elapsedMs: Date.now() - startedAt,
     };
+  } catch (error: unknown) {
+    // Drop the batch in flight and keep every batch that committed. What is
+    // left is the documented recoverable state: a release stuck at 'importing',
+    // hidden from every read, cleared with `pnpm run release -- discard`.
+    try {
+      db.exec("ROLLBACK");
+    } catch {
+      // No transaction was open. Nothing to undo.
+    }
+    throw error;
   } finally {
     db.close();
   }
@@ -313,10 +366,12 @@ function prepareStatements(db: DatabaseSync) {
           importer_version, schema_version, license, attribution, status)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'importing')`,
     ),
-    // The status flip is the last write of the transaction: until it lands,
-    // every canonical read hides this release.
+    // The flip to 'complete' carries the derived data's identity with it, so a
+    // readable release always has one. Both land in the same last transaction.
     finishRelease: db.prepare(
-      `UPDATE source_release SET status = 'complete' WHERE release_id = ?`,
+      `UPDATE source_release
+          SET status = 'complete', projection_sha256 = ?, projection_counts = ?
+        WHERE release_id = ?`,
     ),
     insertRecord: db.prepare(
       `INSERT INTO source_record

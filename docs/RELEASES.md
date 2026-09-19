@@ -11,7 +11,8 @@ anywhere that spans two.
 
 One imported source file. `source_release` pins which bytes it was
 (`archive_sha256`, `archive_r2_key`), which normalizer produced its search keys,
-and which importer and schema wrote it. Its `status` is the whole lifecycle:
+which importer and schema wrote it, and what those derived from it
+(`projection_sha256`, `projection_counts`). Its `status` is the whole lifecycle:
 
 | status | meaning | visible to readers |
 | --- | --- | --- |
@@ -21,8 +22,30 @@ and which importer and schema wrote it. Its `status` is the whole lifecycle:
 | `failed` | written off | no |
 
 Every canonical read filters on `status = 'complete'`, so a half-imported
-release is unreachable rather than half-served. The status flip to `complete` is
-the last write of the import transaction — that is what makes a crash safe.
+release is unreachable rather than half-served.
+
+The importer commits the release row as `importing` **before** the first record,
+writes records in batches, and flips to `complete` in its own last transaction.
+So a crash leaves a visible wreck — a release stuck at `importing`, holding
+whatever batches landed, hidden from every read — and `discard` is how you clear
+it. One giant transaction would have been simpler and would have left nothing
+behind at all, including nothing to notice.
+
+## Two checksums, two questions
+
+| column | answers |
+| --- | --- |
+| `archive_sha256` | were these the bytes we downloaded? |
+| `source_record.line_sha256` | is this record the line it claims to be? |
+| `projection_sha256` | are the derived tables the ones this import built? |
+| `projection_counts` | is any derived table gone or short? |
+
+The first two cover what came in. The last two cover what was built out of it —
+lookup rows, form_of edges, senses, glosses, labels, grammar claims — because a
+projection that lost a whole table still matches its archive checksum perfectly.
+Both are written by reading the rows back at the end of the import, never from
+the importer's own counters, and `src/release/projection.ts` defines the stream
+that is hashed.
 
 Two releases live in the same database at once. `record_id` is one key space
 across the whole file, so a second import counts up from where the first
@@ -45,8 +68,19 @@ different schema version. Both are how you lose a release you meant to keep.
 ## Checking it before it goes live
 
 ```sh
-pnpm run release -- check --release-id it-2026-09 --against it-2026-07
+# the file you just imported
+pnpm run release -- check --release-id it-2026-09 --against it-2026-07 --verify-projection
+
+# the database the Worker actually reads
+export CLOUDFLARE_API_TOKEN=...      # D1 edit permission
+pnpm run release -- check --release-id it-2026-09 --against it-2026-07 --d1 \
+  --account-id <account> --database-id <d1-database-id>
 ```
+
+`--d1` runs the same gate over D1's HTTP query API, so the thing being judged is
+the thing about to be activated. Check locally before you upload, and check on
+D1 before you flip `LEXEMA_RELEASE`. `list`, `retire`, `restore` and `discard`
+take `--d1` too.
 
 The gate is `src/release/validate.ts`. It runs every check even after one fails,
 so the output is the full list of what is wrong:
@@ -55,12 +89,26 @@ so the output is the full list of what is wrong:
 - **normalizer** — its search keys were built by the normalizer this build
   reads. A mismatch means every query misses, so `lookup()` refuses it outright.
 - **schema** — its schema version matches this build.
-- **not-empty** — it has records and lookup forms.
-- **size** — it has at least 90% of the records the live release has. Releases
-  drift between upstream dumps; losing a tenth of them is a broken import.
-- **probe:…** — `sale`, `studenti`, `bella` and `casa` all still answer, through
-  the real lookup path rather than a row count. Each is a known shape in the
-  data, and a dropped table costs you one of these before it costs row count.
+- **not-empty** — it has records, lookup forms and form_of edges.
+- **projection** — every derived table holds the number of rows the import
+  recorded. This is the cheap check that catches a missing table.
+- **projection-digest** — with `--verify-projection`, every derived row is
+  re-hashed and compared with `projection_sha256`. This is the expensive check
+  that catches a single edited row. It is a full scan of the release.
+- **size** — it has at least 90% of the records in the release named by
+  `--against`. Releases drift between upstream dumps; losing a tenth of them is
+  a broken import. There is no way to leave this out: either name a baseline, or
+  pass `--first-release`, which only passes when the database really does hold
+  no other release. A mistyped `--against` is a failure, not a skip.
+- **probe:…** — `sale`, `studenti`, `bella`, `casa` and `studente` answered
+  through the real lookup path, and each one must come back with the
+  *relationships* it is known to have: a resolving form_of edge, an embedded
+  form, a gloss, grammar, an inflection pointing back. Asserting only "something
+  was found" would let a release that lost every `form_of_edge` row pass, since
+  the headword rows alone answer all five words.
+
+`--probes a,b,c` overrides the list, but an overridden probe only requires one
+reading — it is a weaker gate, for a partial release such as the dev seed.
 
 The checks run through `LookupDatabase`, so the same code judges a local SQLite
 file and the real D1. Check the database you are about to activate, not a copy.
@@ -89,14 +137,26 @@ pnpm run release -- restore --release-id it-2026-07   # undo that
 `retire` sets `superseded`, which hides the release from every read without
 deleting a row. It does **not** check whether `LEXEMA_RELEASE` still points at
 it — retiring the live release takes the site down, and `restore` is the way
-back. Deleting a release for real is `DELETE FROM source_release WHERE
-release_id = ?`; the foreign keys cascade the rest.
+back.
+
+`discard` is the only command that deletes, and it only reaches a release stuck
+at `importing`:
+
+```sh
+pnpm run release -- discard --release-id it-2026-09
+```
+
+A `complete` release still has readers and a `superseded` one is somebody's
+rollback target, so neither is discardable. Deleting one of those is
+`DELETE FROM source_release WHERE release_id = ?` typed out by hand, on purpose;
+the foreign keys cascade the rest.
 
 ## Recovering from a bad import
 
 | what happened | what you see | what to do |
 | --- | --- | --- |
-| import crashed partway | release stuck at `importing` | nothing is served from it. Delete the row and re-import; the cascade clears its children. |
+| import crashed partway | release stuck at `importing`, some records landed | nothing is served from it. `pnpm run release -- discard --release-id <id>`, then re-import. The cascade clears its children. |
+| `check` reports a `projection` mismatch | a derived table is short or gone | do not activate. The database was written to after the import; discard the release and re-import. |
 | import finished but `check` fails | `FAIL` lines naming the check | leave `LEXEMA_RELEASE` alone. The live release is untouched. |
 | activated and it is wrong | bad answers on the page | set `LEXEMA_RELEASE` back, deploy. |
 | retired one you still needed | every query errors with `no complete release` | `restore` it, then set `LEXEMA_RELEASE` back. |
