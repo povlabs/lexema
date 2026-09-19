@@ -2,7 +2,7 @@
 
 An Italian word-search website for meanings, conjugations, articles, and related forms.
 
-The website is not built yet. The first goal is a working search flow that shows available data honestly, including missing or disputed information. Dictionary quality can improve separately from the website.
+A search page now runs locally; it is not deployed anywhere. The first goal is a working search flow that shows available data honestly, including missing or disputed information. Dictionary quality can improve separately from the website.
 
 ## Work tracking
 
@@ -10,7 +10,7 @@ The website is not built yet. The first goal is a working search flow that shows
 
 ## Repository status
 
-The repository includes experimental code, tests, and research notes. Passing the existing tests does not establish dictionary accuracy or completeness. The website is not implemented yet.
+The repository includes experimental code, tests, and research notes. Passing the existing tests does not establish dictionary accuracy or completeness. The search page runs on a local Worker only and is not deployed.
 
 The downloaded dictionary and generated reports are not included. Source identity, licensing, and attribution need review before dictionary content is redistributed.
 
@@ -35,6 +35,17 @@ pnpm run bench:lookup
 ```
 
 See [exact lookup](docs/LOOKUP.md) for what it measures and the captured output.
+
+## Run the search page
+
+The page needs the dictionary archive, because it answers from imported data.
+
+```sh
+pnpm run seed:dev
+pnpm --filter @lexema/web build
+```
+
+See [how to run the search page](docs/RUN_THE_SITE.md) for the full recipe, [why the search page works this way](docs/WEB.md) for the design, and [the development seed](docs/DEV_SEED.md) for what the seed covers.
 
 ### Check the local dataset
 
