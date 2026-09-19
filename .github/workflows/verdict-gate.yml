@@ -1,8 +1,11 @@
 name: verdict-gate
 
 # ADR 0006: a PR merges when every required review verdict is PASS at its current
-# head. `ship scope` says which namespaces the diff requires; `ship gate` checks
-# them. Make this check required in branch protection.
+# head. `review scope` says which classes the diff carries; `ship gate` checks the
+# matching namespaces. Make this check required in branch protection.
+#
+# `review scope`, not `ship scope`: ship scope refuses to run in a main working
+# tree (exit 33), and a CI checkout is one.
 #
 # Runs on pull_request only: a verdict belongs to a PR head, so there is nothing to
 # gate on a push to main. `ship gate` exits 0 whether the gate is satisfied or
@@ -47,14 +50,18 @@ jobs:
           sha="$(gh pr view "$PR" --json headRefOid -q .headRefOid)"
           fabrika() { pnpm dlx @kampus/fabrika-cli@0.7.1 "$@"; }
 
-          scope="$(fabrika ship scope "$PR")"
+          scope="$(fabrika review scope "$PR")"
           echo "$scope"
           require=()
-          while IFS=$'\t' read -r key ns; do
-            [ "$key" = "namespace" ] && require+=(--require "$ns")
+          while IFS=$'\t' read -r key val _; do
+            case "$key:$val" in
+              class:code)          require+=(--require review-code) ;;
+              class:doc)           require+=(--require review-doc) ;;
+              governance:required) require+=(--require governance) ;;
+            esac
           done <<< "$scope"
           if [ "${#require[@]}" -eq 0 ]; then
-            echo "::error::ship scope printed no required namespace — refusing to pass an empty gate."
+            echo "::error::review scope printed no class — refusing to pass an empty gate."
             exit 1
           fi
 
