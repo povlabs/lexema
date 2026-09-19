@@ -354,11 +354,21 @@ test("two imports of one archive derive the same projection", async () => {
 
     // record_id counts on from the live release, so the ids differ — but the
     // digest is taken over the derived content, and the same archive derives
-    // the same content twice.
+    // the same content twice. This is the assertion that pins it: the two
+    // digests are compared with each other, not each with itself.
     const live = await computeProjection(fromNodeSqlite(db), "it-live");
     const staged = await computeProjection(fromNodeSqlite(db), "it-staged");
+    assert.equal(staged.digest, live.digest);
     assert.equal(staged.digest, second.projectionSha256);
     assert.deepEqual(staged.counts, live.counts);
+
+    // And the ids really do differ, so the equality above is not two reads of
+    // one release agreeing with itself.
+    const ids = db
+      .prepare("SELECT release_id, min(record_id) AS lo FROM source_record GROUP BY release_id")
+      .all() as { release_id: string; lo: number }[];
+    assert.equal(ids.length, 2);
+    assert.notEqual(ids[0].lo, ids[1].lo);
   });
 });
 

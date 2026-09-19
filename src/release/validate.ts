@@ -421,7 +421,6 @@ async function sizeCheck(
   };
 }
 
-/** Convenience for the CLI and tests: validate a local SQLite file. */
 export function validateLocalRelease(
   db: Parameters<typeof fromNodeSqlite>[0],
   options: Omit<ValidateOptions, "db">,

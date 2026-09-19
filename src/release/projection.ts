@@ -25,7 +25,7 @@ import type { LookupDatabase } from "../lookup/database.js";
  * comparable to another digest of the same version, and the version is hashed
  * in, so a digest from an older definition cannot be mistaken for tampering.
  */
-export const PROJECTION_DIGEST_VERSION = "it-projection/v1";
+export const PROJECTION_DIGEST_VERSION = "it-projection/v2";
 
 /** How many records' worth of rows to pull at a time. Keeps memory flat. */
 const WINDOW = 500;
@@ -38,6 +38,13 @@ const WINDOW = 500;
  * the window bound live. `release_id` itself is never hashed: it is the same
  * value for every row by construction, and hashing it would make a digest
  * change when a release is renamed.
+ *
+ * `record_id` is never hashed either, for a sharper reason: it is a surrogate
+ * key over the whole database, so a second import of the same archive beside a
+ * first one starts counting where the first stopped. Hashing it would make two
+ * identical projections digest differently and tell you nothing about their
+ * content. Each row identifies its record by `r.line_no` instead — the line's
+ * position in the archive, which the same archive reproduces every time.
  */
 interface ProjectionTable {
   name: string;
@@ -52,33 +59,33 @@ interface ProjectionTable {
 const TABLES: readonly ProjectionTable[] = [
   {
     name: "source_record",
-    columns: "r.record_id, r.line_no, r.line_sha256, r.word, r.pos, r.pos_title",
+    columns: "r.line_no, r.line_sha256, r.word, r.pos, r.pos_title",
     from: "source_record r",
     orderBy: "r.record_id",
   },
   {
     name: "lookup_form",
     columns:
-      "f.record_id, f.origin, f.surface, f.surface_key, f.json_pointer, f.form_index, f.form_source",
+      "r.line_no, f.origin, f.surface, f.surface_key, f.json_pointer, f.form_index, f.form_source",
     from: "lookup_form f JOIN source_record r ON r.record_id = f.record_id",
     orderBy: "f.record_id, f.json_pointer",
   },
   {
     name: "form_of_edge",
     columns:
-      "e.record_id, e.sense_index, e.form_of_index, e.json_pointer, e.target_word, e.target_word_key",
+      "r.line_no, e.sense_index, e.form_of_index, e.json_pointer, e.target_word, e.target_word_key",
     from: "form_of_edge e JOIN source_record r ON r.record_id = e.record_id",
     orderBy: "e.record_id, e.sense_index, e.form_of_index",
   },
   {
     name: "sense",
-    columns: "s.record_id, s.sense_index, s.json_pointer",
+    columns: "r.line_no, s.sense_index, s.json_pointer",
     from: "sense s JOIN source_record r ON r.record_id = s.record_id",
     orderBy: "s.record_id, s.sense_index",
   },
   {
     name: "sense_gloss",
-    columns: "s.record_id, s.sense_index, g.gloss_index, g.text, g.json_pointer",
+    columns: "r.line_no, s.sense_index, g.gloss_index, g.text, g.json_pointer",
     from:
       "sense_gloss g JOIN sense s ON s.sense_id = g.sense_id " +
       "JOIN source_record r ON r.record_id = s.record_id",
@@ -86,7 +93,7 @@ const TABLES: readonly ProjectionTable[] = [
   },
   {
     name: "sense_label",
-    columns: "s.record_id, s.sense_index, l.kind, l.label_index, l.label, l.json_pointer",
+    columns: "r.line_no, s.sense_index, l.kind, l.label_index, l.label, l.json_pointer",
     from:
       "sense_label l JOIN sense s ON s.sense_id = l.sense_id " +
       "JOIN source_record r ON r.record_id = s.record_id",
@@ -95,7 +102,7 @@ const TABLES: readonly ProjectionTable[] = [
   {
     name: "grammar_claim",
     columns:
-      "c.record_id, c.scope, c.scope_index, c.json_pointer, c.status, c.dimension, c.value, c.source_text",
+      "r.line_no, c.scope, c.scope_index, c.json_pointer, c.status, c.dimension, c.value, c.source_text",
     from: "grammar_claim c JOIN source_record r ON r.record_id = c.record_id",
     orderBy: "c.record_id, c.json_pointer, ifnull(c.dimension, '*')",
   },
@@ -123,7 +130,6 @@ export interface Projection {
   counts: ProjectionCounts;
 }
 
-/** One table's count, named so a mismatch reads as a sentence. */
 export interface CountDifference {
   table: string;
   recorded: number;
@@ -192,7 +198,6 @@ export async function countProjection(
   return counts;
 }
 
-/** Counts as stored in `source_release.projection_counts`. */
 export function encodeCounts(counts: ProjectionCounts): string {
   return JSON.stringify(
     Object.fromEntries(PROJECTION_TABLES.map((name) => [name, counts[name] ?? 0])),
@@ -222,7 +227,6 @@ export function decodeCounts(recorded: string | null): ProjectionCounts | undefi
   return counts;
 }
 
-/** Every table whose live count is not the one recorded at import. */
 export function diffCounts(
   recorded: ProjectionCounts,
   found: ProjectionCounts,
