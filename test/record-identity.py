@@ -24,7 +24,7 @@ db.execute("INSERT INTO claim_review VALUES (1, 1, '/word', 'disputed', 'test', 
 sql = '\n'.join(line for line in (root / 'src/db/queries.sql').read_text().splitlines() if not line.lstrip().startswith('--'))
 queries = [q for q in sql.split(';') if 'SELECT' in q]
 # Every serving read must hide incomplete data, even when called by record id.
-for status in ['importing', 'failed', 'superseded']:
+for status in ['importing', 'partial', 'failed', 'superseded']:
     db.execute('UPDATE source_release SET status = ?', (status,))
     assert db.execute('SELECT * FROM surface_hit').fetchall() == []
     assert db.execute('SELECT * FROM form_of_candidate').fetchall() == [], status

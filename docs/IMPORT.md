@@ -16,7 +16,8 @@ half minutes.
 
 `--force` deletes an existing database first. Without it a second run fails,
 which is deliberate — silently overwriting an imported release is how you lose
-one you meant to keep. `--limit n` stops early, for smoke runs.
+one you meant to keep. `--limit n` stops early, for smoke runs; the release it
+writes ends as `partial` and no canonical read will serve it.
 
 Per ADR 0004 (`.decisions/0004-cloudflare-workers-d1-vinext.md`) this never runs
 inside a request. It is a plain Node program; the Worker only reads what it
@@ -27,6 +28,7 @@ produced.
 From the current archive, unchanged across runs:
 
 ```
+status           complete
 lines read       799,600
 admitted (it)    560,357
 skipped (other)  239,243
@@ -47,9 +49,16 @@ match the independent inspection in [DATASET_SPOT_CHECK.md](DATASET_SPOT_CHECK.m
 which was measured by a different program. Two counts agreeing is not proof, but
 they were arrived at separately.
 
-Malformed lines are counted exactly and the first fifty line numbers are
-printed. A line that parses but lacks `word`, `pos` or `pos_title` counts as
-malformed too, rather than being admitted with an invented empty string.
+Every line that does not become a record is counted exactly, and the first fifty
+line numbers of each kind are printed — rejected non-Italian lines as well as
+malformed ones, so a run can be audited either way. Keeping all 239,243 skipped
+line numbers would break the bounded-memory property, so the counts are exact and
+the locations are a sample.
+
+A line that parses but lacks `word`, `pos` or `pos_title` counts as malformed,
+rather than being admitted with an invented empty string. So does an empty or
+whitespace-only line: it carries no record and must not vanish under a reported
+zero.
 
 ## Three properties the importer has to keep
 
@@ -60,7 +69,8 @@ the importer needing to change.
 **Repeatable.** The same archive produces the same database. `record_id` follows
 line order rather than insertion order, and `sense_id` is derived from it, so
 two runs agree row for row. A test asserts this by importing one fixture twice
-and comparing.
+and comparing every row of every table — records, preserved JSON, lookup rows,
+edges, senses, glosses, labels and grammar claims — not a chosen few columns.
 
 **Honest about the filter.** A record is admitted on `lang_code === "it"` and
 nothing else — never the filename, the spelling, or the categories. The file is
@@ -69,8 +79,14 @@ not Italian-only despite its name: 239,243 of its lines are other languages.
 in the data itself.
 
 The release row is written as `importing` and flipped to `complete` only after
-the last line lands. Every canonical read filters on `complete`, so a crashed
-import leaves something invisible rather than something half-served.
+the last line of the archive lands. Every canonical read filters on `complete`,
+so a crashed import leaves something invisible rather than something
+half-served.
+
+A run stopped early by `--limit` ends as `partial` instead. It holds the
+checksum and byte count of the whole archive but only a prefix of its records,
+and the canonical reads hide it for the same reason they hide a crash. The rows
+stay on disk for diagnosis; it is serving that is refused.
 
 ## Grammar: what gets mapped, and what deliberately does not
 

@@ -54,8 +54,11 @@ CREATE TABLE source_release (
 
   -- A half-imported release must never be served. Lookup queries filter on
   -- status = 'complete'. Direct table reads are import diagnostics only.
+  -- 'partial' is a run that finished cleanly but stopped before the end of the
+  -- archive (a --limit smoke run): the checksum above describes the whole file
+  -- while only a prefix of it landed, so it is never 'complete'.
   status           TEXT NOT NULL DEFAULT 'importing'
-                   CHECK (status IN ('importing', 'complete', 'failed', 'superseded'))
+                   CHECK (status IN ('importing', 'partial', 'complete', 'failed', 'superseded'))
 ) STRICT;
 
 
