@@ -14,7 +14,6 @@
     "validate": "tsx src/cli.ts validate",
     "import": "tsx src/import/cli.ts",
     "release": "tsx src/release/cli.ts",
-    "bench:lookup": "tsx bench/lookup.ts",
     "seed:dev": "tsx src/import/seedDev.ts"
   },
   "devDependencies": {
