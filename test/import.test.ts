@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { createHash } from "node:crypto";
+import { utimesSync } from "node:fs";
+import { mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
@@ -76,20 +78,27 @@ const LINES: string[] = [
   "   ",
 ];
 
-async function importFixture(options: { limit?: number } = {}) {
+async function writeFixture() {
   const dir = await mkdtemp(join(tmpdir(), "lexema-import-"));
   const archive = join(dir, "fixture.jsonl.gz");
   const database = join(dir, "fixture.sqlite");
   await writeFile(archive, gzipSync(Buffer.from(LINES.join("\n") + "\n", "utf8")));
+  return { dir, archive, database };
+}
+
+async function importFixture(
+  options: { limit?: number; onProgress?: (admitted: number) => void; progressEvery?: number } = {},
+) {
+  const { dir, archive, database } = await writeFixture();
   const report = await importRelease({
     input: archive,
     database,
     schema: "src/db/schema.sql",
     releaseId: "it-test",
     archiveR2Key: "releases/it-test.jsonl.gz",
-    limit: options.limit,
+    ...options,
   });
-  return { dir, database, report };
+  return { dir, archive, database, report };
 }
 
 /**
@@ -133,6 +142,53 @@ test("imports only Italian records and locates every malformed line", async () =
     assert.equal(report.malformed, 3);
     assert.deepEqual(report.malformedLineNumbers, [12, 13, 14]);
     assert.equal(report.rows.source_record, 9);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test("the recorded checksum and byte count describe the whole imported file", async () => {
+  const { dir, archive, report } = await importFixture();
+  try {
+    const bytes = await readFile(archive);
+    // Both passes now read one open handle, so the digest still has to cover
+    // the entire file rather than whatever the import stream happened to reach.
+    assert.equal(report.archiveSha256, createHash("sha256").update(bytes).digest("hex"));
+    assert.equal(report.archiveBytes, (await stat(archive)).size);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test("an archive that changes mid-import commits nothing", async () => {
+  const { dir, archive, database } = await writeFixture();
+  try {
+    // Stand in for the file being replaced between the hashing pass and the
+    // import pass: while the loop is running, the file underneath it moves. The
+    // checksum on the release would then describe bytes this run never read.
+    await assert.rejects(
+      importRelease({
+        input: archive,
+        database,
+        schema: "src/db/schema.sql",
+        releaseId: "it-test",
+        archiveR2Key: "releases/it-test.jsonl.gz",
+        progressEvery: 1,
+        onProgress: () => utimesSync(archive, new Date(0), new Date(0)),
+      }),
+      /changed while it was being imported/,
+    );
+
+    // Not a release hidden by its status — no release row at all, because the
+    // guard runs before the transaction commits.
+    const db = new DatabaseSync(database, { readOnly: true });
+    try {
+      const releases = db.prepare("SELECT release_id, status FROM source_release").all();
+      assert.deepEqual(releases, []);
+      assert.deepEqual(db.prepare("SELECT record_id FROM source_record").all(), []);
+    } finally {
+      db.close();
+    }
   } finally {
     await rm(dir, { recursive: true, force: true });
   }

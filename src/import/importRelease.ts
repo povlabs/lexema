@@ -17,8 +17,8 @@
 // those reads hide too.
 
 import { createHash } from "node:crypto";
-import { createReadStream } from "node:fs";
-import { readFile, stat } from "node:fs/promises";
+import type { ReadStream, Stats } from "node:fs";
+import { open, readFile, type FileHandle } from "node:fs/promises";
 import { createInterface } from "node:readline";
 import { DatabaseSync } from "node:sqlite";
 import { createGunzip } from "node:zlib";
@@ -74,6 +74,8 @@ export interface ImportOptions {
   /** Stop after this many admitted records. For tests only. */
   limit?: number;
   onProgress?: (admitted: number) => void;
+  /** Admitted records between onProgress calls. */
+  progressEvery?: number;
 }
 
 export interface ImportReport {
@@ -125,28 +127,78 @@ const asArray = (value: unknown): unknown[] => (Array.isArray(value) ? value : [
 const asStrings = (value: unknown): string[] =>
   asArray(value).filter((item): item is string => typeof item === "string");
 
+/** What an open file would have to keep for two reads of it to be the same bytes. */
+const identityOf = (stats: Stats): string =>
+  `${stats.dev}:${stats.ino}:${stats.size}:${stats.mtimeMs}`;
+
 /**
- * sha256 of the compressed archive, in its own pass over the file.
+ * The archive, opened once and read twice.
  *
- * Folding this into the import stream looked cheaper and was wrong: `--limit`
- * stops the reader mid-file, and the digest would then cover a prefix while
- * claiming to describe the archive. A separate pass over 38 MB costs well under
- * a second and always describes the whole file.
+ * The digest recorded on the release has to describe the bytes that were
+ * actually imported. Hashing a path and then re-opening that path for the
+ * import reads the *name* twice, so a file swapped in between would be imported
+ * under another file's checksum. Both passes therefore read from one open
+ * handle, and `assertUnchanged` re-checks that handle after the import — an
+ * in-place rewrite moves size or mtime even though the handle stays valid.
+ *
+ * Two passes rather than one because `--limit` stops the import reader
+ * mid-file; a digest folded into that stream would cover a prefix while
+ * claiming to describe the archive. A pass over 38 MB costs well under a second.
  */
-async function hashArchive(path: string): Promise<string> {
-  const hash = createHash("sha256");
-  const stream = createReadStream(path);
-  for await (const chunk of stream) hash.update(chunk as Buffer);
-  return hash.digest("hex");
+class Archive {
+  private constructor(
+    private readonly handle: FileHandle,
+    private readonly identity: string,
+    readonly bytes: number,
+  ) {}
+
+  static async open(path: string): Promise<Archive> {
+    const handle = await open(path, "r");
+    try {
+      const stats = await handle.stat();
+      return new Archive(handle, identityOf(stats), stats.size);
+    } catch (error) {
+      await handle.close();
+      throw error;
+    }
+  }
+
+  /** A fresh stream over the whole file. `start` makes it positioned reads, so
+   *  the handle's own offset is never shared between passes. */
+  read(): ReadStream {
+    return this.handle.createReadStream({ start: 0, autoClose: false });
+  }
+
+  async sha256(): Promise<string> {
+    const hash = createHash("sha256");
+    for await (const chunk of this.read()) hash.update(chunk as Buffer);
+    return hash.digest("hex");
+  }
+
+  async assertUnchanged(path: string): Promise<void> {
+    const stats = await this.handle.stat();
+    if (identityOf(stats) === this.identity) return;
+    throw new Error(
+      `${path} changed while it was being imported; the recorded checksum would ` +
+        `describe bytes this run did not read. Nothing was committed — re-run it.`,
+    );
+  }
+
+  async close(): Promise<void> {
+    // Destroying a stream this handed out already closes the handle, so by here
+    // the file is often shut. Cleanup either way.
+    await this.handle.close().catch(() => {});
+  }
 }
 
 export async function importRelease(options: ImportOptions): Promise<ImportReport> {
   const startedAt = Date.now();
-  const [{ size: archiveBytes }, schemaSql, archiveSha256] = await Promise.all([
-    stat(options.input),
+  const archive = await Archive.open(options.input);
+  const [schemaSql, archiveSha256] = await Promise.all([
     readFile(options.schema, "utf8"),
-    hashArchive(options.input),
+    archive.sha256(),
   ]);
+  const archiveBytes = archive.bytes;
 
   const db = new DatabaseSync(options.database);
   try {
@@ -166,7 +218,7 @@ export async function importRelease(options: ImportOptions): Promise<ImportRepor
       grammar_claim: 0,
     };
 
-    const source = createReadStream(options.input);
+    const source = archive.read();
     const lines = createInterface({
       input: source.pipe(createGunzip()),
       crlfDelay: Infinity,
@@ -247,15 +299,21 @@ export async function importRelease(options: ImportOptions): Promise<ImportRepor
         posTitle: record.pos_title,
       });
 
-      if (admitted % 25_000 === 0) options.onProgress?.(admitted);
+      if (admitted % (options.progressEvery ?? 25_000) === 0) options.onProgress?.(admitted);
       if (options.limit !== undefined && admitted >= options.limit) {
         truncated = true;
         break;
       }
     }
 
-    // `--limit` leaves the reader mid-file; close it so the process can exit.
     lines.close();
+
+    // Before destroying the reader, which releases the handle this asks about,
+    // and before the status flip, so a release naming bytes this run did not
+    // read is never committed at all.
+    await archive.assertUnchanged(options.input);
+
+    // `--limit` leaves the reader mid-file; close it so the process can exit.
     source.destroy();
 
     // Only a run that reached the end of the archive is complete. A truncated
@@ -281,6 +339,7 @@ export async function importRelease(options: ImportOptions): Promise<ImportRepor
     };
   } finally {
     db.close();
+    await archive.close();
   }
 }
 
@@ -370,7 +429,6 @@ function writeRecord(
   statements.insertJson.run(recordId, ctx.line);
   rows.source_record_json += 1;
 
-  // --- lookup rows: the record's own word, then every embedded form ---------
   statements.insertLookup.run(
     recordId,
     releaseId,
@@ -400,7 +458,6 @@ function writeRecord(
     rows.lookup_form += 1;
   });
 
-  // --- grammar on the record itself ----------------------------------------
   writeClaims(statements, rows, {
     recordId,
     scope: "record",
@@ -413,7 +470,6 @@ function writeRecord(
     expected: expectedRecordDimensions(ctx.pos),
   });
 
-  // --- grammar on each embedded form ---------------------------------------
   forms.forEach((entry, formIndex) => {
     const form = entry as KaikkiForm;
     if (typeof form.form !== "string") return;
@@ -436,7 +492,6 @@ function writeRecord(
     });
   });
 
-  // --- senses, glosses, labels, form_of edges -------------------------------
   asArray(record.senses).forEach((entry, senseIndex) => {
     const sense = entry as KaikkiSense;
     // sense_id is derived, not auto-assigned, so it is stable across runs.

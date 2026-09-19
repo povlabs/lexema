@@ -1,27 +1,8 @@
-# Importing a release
+# Why the importer works this way
 
 How the Italian archive becomes a database the site can query, and what the
-importer will and will not claim about the data on the way through.
-
-## Run it
-
-```sh
-pnpm run import -- --release-id it-2026-07-20 --force
-```
-
-Defaults read `it-extract.jsonl.gz` from the repository root and write
-`.data/lexema.sqlite`. Both are gitignored: the archive because redistributing
-it is unsettled (#6), the database because it is regenerated in about two and a
-half minutes.
-
-`--force` deletes an existing database first. Without it a second run fails,
-which is deliberate — silently overwriting an imported release is how you lose
-one you meant to keep. `--limit n` stops early, for smoke runs; the release it
-writes ends as `partial` and no canonical read will serve it.
-
-Per ADR 0004 (`.decisions/0004-cloudflare-workers-d1-vinext.md`) this never runs
-inside a request. It is a plain Node program; the Worker only reads what it
-produced.
+importer will and will not claim about the data on the way through. To actually
+run one, see [RUN_AN_IMPORT.md](RUN_AN_IMPORT.md).
 
 ## What a run reports
 
@@ -88,6 +69,18 @@ checksum and byte count of the whole archive but only a prefix of its records,
 and the canonical reads hide it for the same reason they hide a crash. The rows
 stay on disk for diagnosis; it is serving that is refused.
 
+The checksum describes the bytes that were imported, not a path. The archive is
+opened once; the hashing pass and the import pass both read that one open file,
+and the file is re-checked before anything commits. Hashing a name and then
+re-opening that name is two reads of a *name*, and a file swapped in between
+would be stored under another file's digest — which would quietly break the
+`(release_id, line_no)` identity that the rest of the system rests on. A run
+whose archive moves under it fails and commits nothing.
+
+The digest still covers the whole file rather than the part that was read: a
+`partial` run is honest because its status says so, not because its checksum
+lies about the prefix.
+
 ## Grammar: what gets mapped, and what deliberately does not
 
 [`src/import/grammarPolicy.ts`](../src/import/grammarPolicy.ts) holds this. The
@@ -137,8 +130,9 @@ The database is **1.3 GB**. Measured with `dbstat`:
 | `sense_gloss` | 64.8 MB |
 | everything else | ~250 MB |
 
-D1 allows 10 GB per database on the paid plan and 500 MB on free. So this fits
-paid comfortably and does not fit free at all.
+D1's maximum database size is 10 GB on Workers Paid and 500 MB on Free
+([D1 limits](https://developers.cloudflare.com/d1/platform/limits/), checked
+2026-09-19). So this fits paid comfortably and does not fit free at all.
 
 The single biggest object is the verbatim JSON, at 417 MB — about a third of the
 total. Moving it to R2 and keeping D1 as the index is the original proposal in
