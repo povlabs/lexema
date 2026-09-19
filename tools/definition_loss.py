@@ -25,7 +25,6 @@ from __future__ import annotations
 import argparse
 import gzip
 import json
-import math
 import os
 import random
 import re
@@ -41,6 +40,11 @@ EXTRACT = REPO / "it-extract.jsonl.gz"
 CACHE = REPO / "fixtures" / "upstream-wikitext"     # rebuildable, not committed
 PAGES = REPO / "fixtures" / "upstream-pages"        # saved regression pages
 API = "https://it.wiktionary.org/w/api.php"
+
+# Sampling draws records; classification reads whole pages. The two units do not
+# match, so every report states the unit and claims nothing about the population.
+MEASUREMENT_UNIT = (
+    "distinct pages from a record-weighted sample; descriptive, not a population estimate")
 USER_AGENT = "lexema-definition-loss-study/1.0 (github.com/hueypov/lexema; issue 11)"
 
 # it.wiktionary marks a language section with {{-xx-}} and a part of speech with
@@ -268,6 +272,13 @@ def parse_italian_sections(wikitext: str, word: str) -> list[PosSection]:
 
 
 def iter_italian(path: Path = EXTRACT):
+    # The archive is deliberately not committed, so say which file is missing
+    # rather than surfacing a bare gzip traceback from several frames down.
+    if not path.exists():
+        raise SystemExit(
+            f"missing {path}\n"
+            "This command reads the local Italian archive, which is gitignored "
+            "and absent from CI. Download it to the repo root and re-run.")
     with gzip.open(path, "rt", encoding="utf-8") as fh:
         for lineno, line in enumerate(fh, 1):
             if '"lang_code": "it"' not in line and '"lang_code":"it"' not in line:
@@ -373,16 +384,6 @@ def cmd_fetch(args) -> None:
         time.sleep(2.0)
 
 
-def wilson(k: int, n: int, z: float = 1.96) -> tuple[float, float, float]:
-    if n == 0:
-        return (0.0, 0.0, 0.0)
-    p = k / n
-    d = 1 + z * z / n
-    centre = (p + z * z / (2 * n)) / d
-    half = z * math.sqrt(p * (1 - p) / n + z * z / (4 * n * n)) / d
-    return p, max(0.0, centre - half), min(1.0, centre + half)
-
-
 def cmd_classify(args) -> None:
     meta = json.loads(Path(args.sample).read_text(encoding="utf-8"))
     words = meta["words"]
@@ -429,7 +430,7 @@ def cmd_classify(args) -> None:
     report = {
         "stratum": meta["stratum"], "seed": meta["seed"],
         "record_sampling_population": meta["population"],
-        "measurement_unit": "distinct pages from a record-weighted sample; not a uniform page sample",
+        "measurement_unit": MEASUREMENT_UNIT,
         "classification": "heuristic flags, not hand-verified definition losses",
         "pages_cached": len(cached), "pages_classified": n,
         "pages_missing_upstream": len(missing),

@@ -2,7 +2,8 @@
   "stratum": "inflected",
   "seed": 11,
   "record_sampling_population": 486259,
-  "measurement_unit": "distinct pages from a record-weighted sample; descriptive only",
+  "measurement_unit": "distinct pages from a record-weighted sample; descriptive, not a population estimate",
+  "classification": "heuristic flags, not hand-verified definition losses",
   "pages_cached": 200,
   "pages_classified": 200,
   "pages_missing_upstream": 0,
@@ -12,8 +13,6 @@
   "clean": 200,
   "pages_with_wrapped_prose": 0,
   "definition_loss_rate": 0.0,
-
   "example_loss_only_rate": 0.0,
-
   "affected_pages": []
 }

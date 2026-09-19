@@ -40,6 +40,17 @@ assert len(lap['definitions']) == 3 and lap['examples'] == []
 assert {d['extractor_destination'] for d in lap['definitions']} == {'absent', 'examples[].text', 'examples[].translation'}
 report = json.loads((root / 'fixtures/definition-loss-samples/report-lemma.json').read_text())
 assert sum(p['human_label'] == 'definition' for p in report['affected_pages']) == report['definition_loss'] == 4
+assert sum(p['human_label'] == 'example' for p in report['affected_pages']) == report['example_loss_only'] == 1
 assert report['definition_loss_rate'] == round(4 / 396, 4)
-assert not any('projected' in k for k in report)
+assert report['example_loss_only_rate'] == round(1 / 396, 4)
+# Every counted page carries a written human label, so no heuristic flag can be
+# folded back into the numerator without someone reading the page first.
+assert all(p.get('human_label') and p.get('reason') for p in report['affected_pages'])
+
+# The withdrawn population projection must not come back in any report.
+inflected = json.loads((root / 'fixtures/definition-loss-samples/report-inflected.json').read_text())
+for name, data in [('lemma', report), ('inflected', inflected)]:
+    assert not any('projected' in k or 'interval' in k or 'ci_' in k for k in data), name
+    assert data['measurement_unit'] == m['MEASUREMENT_UNIT'], name
+
 print('Verified baseline and failures for missing records, glosses, examples, controls and translations; labels and count checked.')
