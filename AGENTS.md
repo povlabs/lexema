@@ -35,9 +35,10 @@ Decide this first. It changes what the rest of this file asks of you.
 
 - **Worker** — you were started in a herdr pane with one job in your prompt
   (`review PR #33`, `build #14`). Do that job in this pane, in this session, and
-  finish it. Skip the "Driver" section entirely: a worker that opens another pane
-  hands its job to a session nobody is watching, and the job is lost. That has
-  happened.
+  finish it. Your tools are the skill you were given, `git`, `gh` and `fabrika`.
+  Skip the "Driver" section and every `herdr` command in it: a worker that opens
+  another pane hands its job to a session nobody is watching, and a worker that
+  lists panes sees itself and stops as a "duplicate". Both have happened.
 - **Driver** — you are talking to Huey and handing work out. Anything that takes
   minutes runs in its own labelled tab, never in the shell you are holding.
 
