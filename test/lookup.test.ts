@@ -6,7 +6,13 @@ import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { gzipSync } from "node:zlib";
 import { importRelease } from "../src/import/importRelease.js";
-import { LEMMA_LINK_SQL, MAX_QUERY_LENGTH, lookup } from "../src/lookup/lookup.js";
+import {
+  INFLECTION_CANDIDATE_SQL,
+  INFLECTION_SQL,
+  LEMMA_LINK_SQL,
+  MAX_QUERY_LENGTH,
+  lookup,
+} from "../src/lookup/lookup.js";
 import { fromNodeSqlite } from "../src/lookup/database.js";
 import type { LookupResult, Reading, RejectedResult, SearchResult } from "../src/lookup/types.js";
 
@@ -293,6 +299,55 @@ test("lists the inflections that declare themselves forms of a reading", async (
       studente.inflections.map((i) => i.word).sort(),
       ["studentessa", "studenti"],
     );
+    // Each link says which word the edge actually named, verbatim.
+    assert.ok(studente.inflections.every((i) => i.targetWord === "studente"));
+  });
+});
+
+test("an incoming inflection edge stays as ambiguous as the source left it", async () => {
+  await withFixture(async (db) => {
+    // `bella` says "femminile di bello". `bello` is three records here and the
+    // source picked none, so the edge lands on all three at once. Handing it to
+    // each of them as an established relationship would invent three facts out
+    // of one unresolved edge — the same mistake the forward direction refuses.
+    const bello = found(await ask(db, "bello"));
+    assert.equal(bello.length, 3);
+
+    for (const reading of bello) {
+      assert.deepEqual(reading.inflections.map((i) => i.word), ["bella"]);
+      const [link] = reading.inflections;
+      assert.equal(link.targetWord, "bello");
+      // Every record the named word resolves to travels with the link, this
+      // reading included, so no caller can read it as "bella is a form of me".
+      assert.deepEqual(
+        link.targetCandidates.map((c) => `${c.word}/${c.pos}`),
+        ["bello/adj", "bello/noun", "bello/noun"],
+      );
+      assert.ok(link.targetCandidates.some((c) => c.recordId === reading.recordId));
+    }
+
+    // The same edge, seen from the other end, is already ambiguous there. The
+    // two directions now agree about how many records `bello` could be.
+    const [bella] = found(await ask(db, "bella"));
+    const forward = bella.lemmaLinks[0];
+    assert.equal(forward.kind, "candidates");
+    assert.deepEqual(
+      forward.kind === "candidates" ? forward.candidates.map((c) => c.recordId).sort() : [],
+      bello[0].inflections[0].targetCandidates.map((c) => c.recordId).sort(),
+    );
+  });
+});
+
+test("a single-candidate inflection edge carries its one candidate too", async () => {
+  await withFixture(async (db) => {
+    // `sala` is one record, so `sale`'s edge to it is unambiguous — and says so
+    // by carrying exactly one candidate rather than by omitting the set.
+    const [sala] = found(await ask(db, "sala"));
+    assert.deepEqual(sala.inflections.map((i) => i.word), ["sale"]);
+    assert.deepEqual(
+      sala.inflections[0].targetCandidates.map((c) => c.recordId),
+      [sala.recordId],
+    );
   });
 });
 
@@ -384,9 +439,10 @@ test("refuses to serve a release that is not complete", async () => {
 test("resolving lemma links never materialises the candidate view", async () => {
   await withFixture(async (db) => {
     // Rows-only tests cannot see this. LEFT JOINing `form_of_candidate` returns
-    // exactly the same answer and, on the real release, takes 2,686 ms instead
-    // of 0.1 ms: SQLite cannot push `record_id = ?` through a LEFT JOIN onto a
-    // view, so it builds all 608,726 edges against 1,273,490 lookup rows first.
+    // exactly the same answer and, at release scale, takes 6,722 ms instead of
+    // 0.03 ms: SQLite cannot push `record_id = ?` through a LEFT JOIN onto a
+    // view, so it builds every edge against every lookup row first. Both forms
+    // are timed side by side by `pnpm run bench:lookup`.
     const plan = (
       db.prepare(`EXPLAIN QUERY PLAN ${LEMMA_LINK_SQL}`).all(1) as { detail: string }[]
     ).map((row) => row.detail);
@@ -400,5 +456,26 @@ test("resolving lemma links never materialises the candidate view", async () => 
       plan.some((step) => step.includes("form_of_edge_by_record")),
       `lemma-link query stopped using form_of_edge_by_record:\n${plan.join("\n")}`,
     );
+  });
+});
+
+test("both inflection queries stay on indexes rather than scanning", async () => {
+  await withFixture(async (db) => {
+    // Resolving the candidate set costs one extra read per reading, so that read
+    // has to stay an index probe. A scan here would reintroduce the same
+    // whole-table cost the lemma-link query was rewritten to avoid.
+    for (const [name, sql] of [
+      ["inflection", INFLECTION_SQL],
+      ["inflection candidate", INFLECTION_CANDIDATE_SQL],
+    ] as const) {
+      const plan = (
+        db.prepare(`EXPLAIN QUERY PLAN ${sql}`).all(1) as { detail: string }[]
+      ).map((row) => row.detail);
+
+      assert.ok(
+        !plan.some((step) => /MATERIALIZE|SCAN lookup_form|SCAN form_of_edge/.test(step)),
+        `${name} query degraded to a scan:\n${plan.join("\n")}`,
+      );
+    }
   });
 });
