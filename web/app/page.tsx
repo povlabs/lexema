@@ -36,9 +36,9 @@ export default async function Page({ searchParams }: { searchParams: { q?: strin
         <button type="submit">Search</button>
       </form>
 
-      {/* Four outcomes, each said plainly rather than collapsed into one blank
-          page: nothing asked, asked badly, asked and not found, asked and
-          found. */}
+      {/* Five outcomes, each said plainly rather than collapsed into one blank
+          page: nothing asked, asked badly, the lookup itself failed, asked and
+          not found, asked and found. */}
       {result === null && (
         <p className="hint">
           Try <a href="/?q=sale">sale</a>, <a href="/?q=studenti">studenti</a> or{" "}
@@ -51,6 +51,17 @@ export default async function Page({ searchParams }: { searchParams: { q?: strin
           {result.rejection.reason === "empty"
             ? "Type a word to search for."
             : `That is ${result.rejection.length} characters. The limit is ${result.rejection.limit}.`}
+        </p>
+      )}
+
+      {/* The database did not answer. Saying so is the point: a reader must be
+          able to tell "we could not look" from "we looked and found nothing". */}
+      {result?.outcome === "failed" && (
+        <p className="error" role="alert">
+          The lookup failed, so this page cannot say whether <q>{raw.trim()}</q> is in the
+          dictionary. Try again in a moment.
+          <br />
+          <small>{result.reason}</small>
         </p>
       )}
 
@@ -73,7 +84,7 @@ export default async function Page({ searchParams }: { searchParams: { q?: strin
         </>
       )}
 
-      {result !== null && result.outcome !== "rejected" && (
+      {result !== null && result.outcome !== "rejected" && result.outcome !== "failed" && (
         <footer className="attribution">
           <p>
             Entries come from a dictionary release derived from Wiktionary and are shown as the

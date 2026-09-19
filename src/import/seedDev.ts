@@ -12,13 +12,26 @@ import { resolve } from "node:path";
 import { exportSql } from "./exportSql.js";
 import { importRelease } from "./importRelease.js";
 
-const RECORDS = Number(process.env.SEED_RECORDS ?? 8000);
+// 25,000 records reaches source line 60,501, which is where the words this
+// page is built against stop being absent: `sale`, `sala`, `salire`, `casa`,
+// `studenti`, `bella`, `città`. A smaller default makes the page's own
+// suggested searches find nothing.
+const RECORDS = Number(process.env.SEED_RECORDS ?? 25000);
 const RELEASE = process.env.SEED_RELEASE ?? "it-dev";
 const DB = resolve(".data/dev.sqlite");
 const SQL = resolve(".data/dev.sql");
+const STATE = resolve("web/.wrangler/state");
 
 await mkdir(".data", { recursive: true });
 for (const path of [DB, `${DB}-wal`, `${DB}-shm`, SQL]) await rm(path, { force: true });
+
+// The generated SQL creates the schema and inserts the release, so loading it
+// into a database that already holds a seed collides on duplicate rows. Local
+// D1 is a miniflare SQLite file under the persist directory, and it holds
+// nothing this script cannot rebuild, so the seed drops it and starts clean.
+// That is what makes `pnpm run seed:dev` repeatable.
+process.stderr.write(`clearing local D1 under ${STATE}\n`);
+await rm(resolve(STATE, "v3/d1"), { recursive: true, force: true });
 
 process.stderr.write(`importing ${RECORDS} records as ${RELEASE}\n`);
 const report = await importRelease({

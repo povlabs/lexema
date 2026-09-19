@@ -7,7 +7,7 @@ the server, D1 underneath, no client-side fetching.
 
 ```sh
 pnpm install --frozen-lockfile
-pnpm run seed:dev                       # ~3 min, builds a dev release and loads local D1
+pnpm run seed:dev                       # ~90 s, builds a dev release and loads local D1
 pnpm --filter @lexema/web build
 cd web && pnpm exec wrangler dev --config dist/server/wrangler.json \
   --persist-to "$PWD/.wrangler/state" --port 8790
@@ -52,7 +52,7 @@ and there is no loading state to get wrong.
 
 ## Being visibly silent
 
-The point of this page is that it does not pretend. Four things it says out loud
+The point of this page is that it does not pretend. Five things it says out loud
 rather than hiding:
 
 **A record that only mentions the word.** Searching `sale` returns five entries,
@@ -75,13 +75,28 @@ differently from a word whose gender simply was not expected.
 Filtering them would hide how incomplete this data is, which is the one thing
 this page must not do.
 
+**A lookup that did not happen.** If the D1 read throws — no release, a D1
+error, a release built by a different normalizer — the page says the lookup
+failed and shows the reason. That is deliberately not the same message as "found
+nothing": a reader must be able to tell *we could not look* from *we looked and
+the word is not here*.
+
 A disputed claim renders with a warning and a link to the evidence, and the
 claim itself is left untouched. Nothing writes those rows yet — that is #12.
+
+## Following a reading back to the source
+
+Each reading ends with a link to the Italian Wiktionary page for that record's
+headword, next to the release line number and the JSON pointers the reading was
+built from. The release stores no per-record URL, so the link is built from the
+headword and is labelled *"Wiktionary page for X"* rather than presented as a
+citation of the reading itself. The line number and pointers are the exact
+provenance; the link is the part a reader can click.
 
 ## The development seed
 
 `pnpm run seed:dev` imports the first `SEED_RECORDS` records (default 25,000,
-about three minutes, 142 MB of SQL) and loads them into local D1.
+about ninety seconds, 142 MB of SQL) and loads them into local D1.
 
 It is a **prefix of the archive, not a sample**, so coverage stops at a source
 line number. 25,000 records reaches line 60,501, which covers `casa`, `case`,
@@ -96,6 +111,12 @@ importer already built. Two things that cost time and are now handled:
 statements are batched to **64 KiB** (wrangler refuses around 119 KB with a bare
 `SQLITE_TOOBIG` and no hint which table caused it), and `--persist-to` must be an
 absolute path because wrangler resolves it relative to the config file.
+
+The seed is **repeatable**: the generated SQL creates the schema and inserts the
+release, so loading it into a database that already has a seed would collide on
+duplicate rows. The script therefore deletes the persisted local D1 database
+(`web/.wrangler/state/v3/d1`) before loading. It holds nothing the seed cannot
+rebuild, so re-running `pnpm run seed:dev` needs no manual cleanup.
 
 ## Known rough edges
 
