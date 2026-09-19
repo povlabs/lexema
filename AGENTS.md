@@ -5,11 +5,12 @@
 ## Read first
 
 Read every file in [`.decisions/`](.decisions) before you start. Those are settled
-rulings and they bind you. Three that catch agents out:
+rulings and they bind you. Four that catch agents out:
 
 - [0001](.decisions/0001-human-merges-every-pull-request.md) — you never merge a pull request. Open it, report the URL, stop. Green CI is not approval.
 - [0002](.decisions/0002-pnpm-is-the-package-manager.md) — pnpm only. Never add `package-lock.json`.
 - [0003](.decisions/0003-tool-replacement-is-its-own-decision.md) — never swap a tool as a side-effect of other work.
+- [0005](.decisions/0005-codex-reviews-claude-builds.md) — Codex reviews, Claude builds and repairs. Roles never swap.
 
 Then these, in order:
 
@@ -50,8 +51,6 @@ way round:
 `--provider anthropic` fails with `400 … Third-party apps now draw from your extra
 usage`. Use `pi-claude`.
 
-Codex reviews, Claude builds and repairs, and the roles never swap. That is
-[`.decisions/0005`](.decisions/0005-codex-reviews-claude-builds.md).
 
 ## Package manager
 
