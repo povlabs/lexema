@@ -72,8 +72,9 @@ const LINES: string[] = [
   "{ this is not json",
 ];
 
-async function importFixture() {
-  const dir = await mkdtemp(join(tmpdir(), "lexema-import-"));
+async function importFixture(into?: { dir: string; releaseId: string }) {
+  const dir = into?.dir ?? (await mkdtemp(join(tmpdir(), "lexema-import-")));
+  const releaseId = into?.releaseId ?? "it-test";
   const archive = join(dir, "fixture.jsonl.gz");
   const database = join(dir, "fixture.sqlite");
   await writeFile(archive, gzipSync(Buffer.from(LINES.join("\n") + "\n", "utf8")));
@@ -81,8 +82,8 @@ async function importFixture() {
     input: archive,
     database,
     schema: "src/db/schema.sql",
-    releaseId: "it-test",
-    archiveR2Key: "releases/it-test.jsonl.gz",
+    releaseId,
+    archiveR2Key: `releases/${releaseId}.jsonl.gz`,
   });
   return { dir, database, report };
 }
@@ -129,6 +130,47 @@ test("the same archive imports to the same database twice", async () => {
   } finally {
     await rm(first.dir, { recursive: true, force: true });
     await rm(second.dir, { recursive: true, force: true });
+  }
+});
+
+test("a second release lands beside the first in one database", async () => {
+  const first = await importFixture();
+  try {
+    const second = await importFixture({ dir: first.dir, releaseId: "it-test-staged" });
+    assert.deepEqual(second.report.rows, first.report.rows);
+
+    const db = new DatabaseSync(first.database, { readOnly: true });
+    try {
+      const releases = db
+        .prepare("SELECT release_id, status FROM source_release ORDER BY release_id")
+        .all() as { release_id: string; status: string }[];
+      assert.deepEqual(
+        releases.map((row) => `${row.release_id}:${row.status}`),
+        ["it-test:complete", "it-test-staged:complete"],
+      );
+      // Every lookup row names its own release, so the two never mix.
+      const perRelease = db
+        .prepare("SELECT release_id, count(*) AS n FROM lookup_form GROUP BY release_id ORDER BY release_id")
+        .all() as { release_id: string; n: number }[];
+      assert.equal(perRelease.length, 2);
+      assert.equal(perRelease[0].n, perRelease[1].n);
+    } finally {
+      db.close();
+    }
+  } finally {
+    await rm(first.dir, { recursive: true, force: true });
+  }
+});
+
+test("re-importing the same release id is refused", async () => {
+  const first = await importFixture();
+  try {
+    await assert.rejects(
+      importFixture({ dir: first.dir, releaseId: "it-test" }),
+      /already in this database/,
+    );
+  } finally {
+    await rm(first.dir, { recursive: true, force: true });
   }
 });
 

@@ -113,6 +113,58 @@ async function hashArchive(path: string): Promise<string> {
   return hash.digest("hex");
 }
 
+/**
+ * Put the schema in place, or check the one already there.
+ *
+ * A staged release lands next to the active one in the same database, so the
+ * second import finds the tables already built. schema.sql is CREATE TABLE
+ * without IF NOT EXISTS on purpose — sprinkling IF NOT EXISTS everywhere would
+ * also swallow a real mismatch — so an existing database is verified instead of
+ * rebuilt: same schema_version, and a release_id nobody has used yet.
+ */
+function applySchema(db: DatabaseSync, schemaSql: string, releaseId: string): void {
+  const built = db
+    .prepare("SELECT name FROM sqlite_schema WHERE type = 'table' AND name = 'source_release'")
+    .all();
+
+  if (built.length === 0) {
+    db.exec(schemaSql);
+    return;
+  }
+
+
+  const existing = db
+    .prepare("SELECT release_id, schema_version FROM source_release")
+    .all() as { release_id: string; schema_version: number }[];
+
+  const stale = existing.find((row) => row.schema_version !== SCHEMA_VERSION);
+  if (stale) {
+    throw new Error(
+      `database holds release '${stale.release_id}' at schema_version ${stale.schema_version}, ` +
+        `this importer writes ${SCHEMA_VERSION}`,
+    );
+  }
+
+  if (existing.some((row) => row.release_id === releaseId)) {
+    throw new Error(`release '${releaseId}' is already in this database`);
+  }
+}
+
+/**
+ * The record_id the next release starts counting from.
+ *
+ * record_id is one key space for the whole database, so a second release cannot
+ * start at 1 again. It starts above every id already there and still counts up
+ * in line order, which is what keeps one release's ids identical run to run.
+ * sense_id is derived from record_id, so it moves with the base.
+ */
+function recordIdBase(db: DatabaseSync): number {
+  const [row] = db
+    .prepare("SELECT ifnull(max(record_id), 0) AS top FROM source_record")
+    .all() as { top: number }[];
+  return row.top;
+}
+
 export async function importRelease(options: ImportOptions): Promise<ImportReport> {
   const startedAt = Date.now();
   const [{ size: archiveBytes }, schemaSql, archiveSha256] = await Promise.all([
@@ -125,8 +177,9 @@ export async function importRelease(options: ImportOptions): Promise<ImportRepor
   try {
     db.exec("PRAGMA journal_mode = WAL");
     db.exec("PRAGMA foreign_keys = ON");
-    db.exec(schemaSql);
+    applySchema(db, schemaSql, options.releaseId);
 
+    const idBase = recordIdBase(db);
     const statements = prepareStatements(db);
     const rows: Record<string, number> = {
       source_record: 0,
@@ -211,7 +264,7 @@ export async function importRelease(options: ImportOptions): Promise<ImportRepor
       admitted += 1;
       // record_id follows line order, which is what makes two runs over one file
       // produce identical databases.
-      const recordId = admitted;
+      const recordId = idBase + admitted;
       writeRecord(statements, rows, {
         recordId,
         releaseId: options.releaseId,
