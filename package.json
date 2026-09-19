@@ -13,7 +13,6 @@
     "test:integration": "node --import tsx --test test/adapter-fixtures.test.ts",
     "validate": "tsx src/cli.ts validate",
     "import": "tsx src/import/cli.ts",
-    "bench:lookup": "tsx bench/lookup.ts",
     "seed:dev": "tsx src/import/seedDev.ts"
   },
   "devDependencies": {

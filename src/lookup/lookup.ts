@@ -1,16 +1,6 @@
 // Exact lookup: one Italian surface in, every reading the source supports out.
-//
-// The two things this must not do, both of which the data invites:
-//
-//   - Turn repeated evidence into repeated results. `studenti` appears on five
-//     lookup rows across four records. That is four readings with five pieces of
-//     evidence, not five readings.
-//   - Assert a lemma the source did not. A record listing a form in its table is
-//     not thereby the lemma of that form, and an edge naming a word that has
-//     three records has not chosen one.
-//
-// Ranking is deliberately absent. Context-based ordering is a later, advisory
-// thing; here every reading comes back in source order.
+// What it returns is in docs/LOOKUP.md; why it is shaped this way, including the
+// two mistakes the data invites, is in docs/LOOKUP_DESIGN.md.
 
 import { IT_NORMALIZER_VERSION, normalizeItalianExact } from "../italian/normalize.js";
 import type { LookupDatabase } from "./database.js";
@@ -28,11 +18,8 @@ import type {
   SourceRef,
 } from "./types.js";
 
-/**
- * Longest surface we will look up. The longest Italian headword in this release
- * is well under this; the bound exists so a pathological query cannot become a
- * pathological index probe.
- */
+/** Longest surface we will look up, so a pathological query cannot become a
+ * pathological index probe. Well past the longest headword in this release. */
 export const MAX_QUERY_LENGTH = 128;
 
 export interface LookupOptions {
@@ -41,8 +28,8 @@ export interface LookupOptions {
   query: string;
 }
 
-// Both drivers type columns loosely, so a row shape is asserted in one place
-// here rather than at every call site.
+// Both drivers type columns loosely, so a row shape is asserted here rather
+// than at every call site.
 function queryAll<T>(db: LookupDatabase, sql: string, ...params: (string | number)[]): Promise<T[]> {
   return db.all<T>(sql, params);
 }
@@ -316,9 +303,9 @@ async function readGrammar(
 
 /**
  * Exported so a test can assert the plan, not just the rows. Reintroducing the
- * view here costs four orders of magnitude and nothing else changes, which is
- * exactly the kind of regression a rows-only test sails past. `pnpm run
- * bench:lookup` times both forms side by side.
+ * view here costs four orders of magnitude and nothing else changes — exactly
+ * the regression a rows-only test sails past. See
+ * docs/LOOKUP_DESIGN.md#the-view-that-costs-four-orders-of-magnitude.
  */
 export const LEMMA_LINK_SQL = `SELECT e.edge_id, e.json_pointer, e.target_word,
             t.record_id AS candidate_record_id,
@@ -344,14 +331,8 @@ async function readLemmaLinks(
   // LEFT JOIN on purpose: an edge whose target word matches no headword record
   // must still appear. Dropping it would turn "the source points somewhere we
   // cannot follow" into "the source points nowhere".
-  //
-  // The `form_of_candidate` view's join is inlined rather than LEFT JOINed.
-  // SQLite cannot push `e.record_id = ?` through a LEFT JOIN onto a view, so it
-  // materialises the whole view first — every edge against every lookup row —
-  // then throws nearly all of it away. At release scale that is 6,722 ms via
-  // the view against 0.03 ms inlined, for the same rows, and the gap widens as
-  // the release grows. Reproduce with `pnpm run bench:lookup`.
-  const rows = await queryAll<{    edge_id: number;
+  const rows = await queryAll<{
+    edge_id: number;
     json_pointer: string;
     target_word: string;
     candidate_record_id: number | null;
@@ -412,12 +393,9 @@ export const INFLECTION_SQL = `SELECT f.record_id, f.line_no, f.word, f.pos,
       ORDER BY f.line_no, e.json_pointer`;
 
 /**
- * Every headword record spelling what this one spells — itself included.
- *
- * An incoming edge is matched on the target *word key*, so it lands on every
- * record carrying that key at once. This is the set the source left unresolved,
- * and it is what stops the reverse direction from inventing a chosen
- * relationship the forward direction is careful never to assert.
+ * Every headword record spelling what this one spells — itself included. An
+ * incoming edge matches on the target word key, so it lands on all of them at
+ * once; this is the set the source left unresolved.
  */
 export const INFLECTION_CANDIDATE_SQL = `SELECT t.record_id, t.line_no, t.word, t.pos
        FROM lookup_form self

@@ -28,14 +28,6 @@ Any Node version manager works. `.nvmrc` pins Node 24 for CI; the checks also pa
 
 The commands above do not need dictionary data. GitHub Actions runs the typecheck and unit tests on pushes and pull requests.
 
-The lookup benchmark needs no dictionary data either — it generates its own release at two scales, so its numbers can be re-derived anywhere:
-
-```sh
-pnpm run bench:lookup
-```
-
-See [exact lookup](docs/LOOKUP.md) for what it measures and the captured output.
-
 ## Run the search page
 
 The page needs the dictionary archive, because it answers from imported data.
