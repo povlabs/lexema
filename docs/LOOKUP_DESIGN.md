@@ -106,7 +106,7 @@ release grows.
 Identical rows is why a rows-only test sails straight past this. So there is a
 test asserting the query plan contains no `MATERIALIZE` and still uses
 `form_of_edge_by_record`, and the same assertion on both inflection queries.
-The harness that measures the cost is #37.
+[The benchmark](LOOKUP_BENCHMARK.md) measures what the mistake costs.
 
 Query 2a in `src/db/queries.sql` has the same shape and the same problem.
 

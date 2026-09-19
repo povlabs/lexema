@@ -438,7 +438,7 @@ test("resolving lemma links never materialises the candidate view", async () => 
   await withFixture(async (db) => {
     // Rows-only tests cannot see this: LEFT JOINing `form_of_candidate` returns
     // exactly the same answer, four orders of magnitude slower at release
-    // scale. docs/LOOKUP_DESIGN.md explains why; #37 measures it.
+    // scale. docs/LOOKUP_DESIGN.md explains why; `pnpm run bench:lookup` measures it.
     const plan = (
       db.prepare(`EXPLAIN QUERY PLAN ${LEMMA_LINK_SQL}`).all(1) as { detail: string }[]
     ).map((row) => row.detail);
