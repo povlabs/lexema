@@ -6,6 +6,7 @@ Saved regression cases replay offline. Sampling/fetching reruns the heuristic st
 
 ```bash
 python3 tools/definition_loss.py verify          # replays the regression cases, no network
+python3 test/definition-loss.py                  # proves verify fails when content is removed
 python3 tools/definition_loss.py sample   --stratum lemma --size 400 --seed 11 --out build/sample-lemma.json
 python3 tools/definition_loss.py fetch    --sample build/sample-lemma.json
 python3 tools/definition_loss.py classify --sample build/sample-lemma.json --out build/report-lemma.json
