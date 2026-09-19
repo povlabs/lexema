@@ -26,15 +26,26 @@ implementation work unless explicitly requested.
 
 ---
 
-The rest of this file is how to operate: which model does what, and how to run it.
-Every command below was run in this repository before being written down. If one
-stops working, fix it here rather than inventing a replacement somewhere else.
+The rest of this file is how to operate. Every command below was run in this
+repository before being written down. If one stops working, fix it here.
+
+## Which role are you in?
+
+Decide this first. It changes what the rest of this file asks of you.
+
+- **Worker** — you were started in a herdr pane with one job in your prompt
+  (`review PR #33`, `build #14`). Do that job in this pane, in this session, and
+  finish it. Skip the "Driver" section entirely: a worker that opens another pane
+  hands its job to a session nobody is watching, and the job is lost. That has
+  happened.
+- **Driver** — you are talking to Huey and handing work out. Anything that takes
+  minutes runs in its own labelled tab, never in the shell you are holding.
 
 ## Models
 
-pi is the agent runner. What works here was checked by running it, and
-`pi auth check` is **not** a reliable answer — it reports `pi-claude` as
-`not_ready` and `anthropic` as `ready`, and the truth is the other way round:
+pi is the agent runner. `pi auth check` is **not** a reliable answer — it reports
+`pi-claude` as `not_ready` and `anthropic` as `ready`, and the truth is the other
+way round:
 
 | Provider | Model | Works? | Use it for |
 | --- | --- | --- | --- |
@@ -45,21 +56,21 @@ pi is the agent runner. What works here was checked by running it, and
 `--provider anthropic` fails with `400 … Third-party apps now draw from your extra
 usage`. Use `pi-claude`.
 
-Reviewing runs on Codex, building and repairing run on Claude, and the roles never
-swap. That is [`.decisions/0005`](.decisions/0005-codex-reviews-claude-builds.md);
-this file only records how to run it.
+Codex reviews, Claude builds and repairs, and the roles never swap. That is
+[`.decisions/0005`](.decisions/0005-codex-reviews-claude-builds.md); this file only
+records how to run it.
 
 **Watch the Codex budget.** The pi status line shows it (`Codex #2 · 55% · 5h`).
 Reviews are the only thing spending it, and it has run out mid-run before.
 
-## Long-running work goes in its own herdr tab
+## Driver: one tab per unit of work
 
-Anything that takes minutes — a review, a dev server, an import, a benchmark —
-runs in its own labelled tab, never in the shell you are holding. A blocked shell
-stops you answering Huey, and he cannot see what you started.
+A tab is how you delegate. pi's `subagent` tool is not installed here, so a tab
+running `pi` is the mechanism, and it is enough: start one per unit of work, read
+them, start more.
 
 ```bash
-herdr tab create --workspace "$HERDR_WORKSPACE_ID" --cwd "$PWD" --label <label>
+herdr tab create --workspace "$HERDR_WORKSPACE_ID" --cwd "$PWD" --label <label> --no-focus
 herdr pane rename <pane_id> <label>
 herdr pane run <pane_id> "unsetopt correct correct_all"
 herdr pane run <pane_id> "<the long command>"
@@ -67,45 +78,33 @@ herdr pane run <pane_id> "<the long command>"
 
 `tab create` prints the new `pane_id` at `.result.root_pane.pane_id`.
 
-**Label the pane as well as the tab.** `--label` on `tab create` names the tab
-only; `herdr pane list` still shows the pane unlabelled until you rename it, and
-an unlabelled pane is one Huey cannot identify.
+- **Label the pane as well as the tab.** `--label` names the tab only; the pane
+  stays unlabelled until you rename it, and an unlabelled pane is one Huey cannot
+  identify. Use `pr-<n>` for reviews.
+- **`unsetopt correct correct_all` goes first, as its own command.** Once a
+  `.wrangler` directory exists, zsh offers to "correct" `wrangler` to `.wrangler`
+  and silently swallows the line. `setopt | grep -c correct` prints `0` when it
+  worked.
+- **Run pi interactively.** Pass the prompt as a plain argument and `-n` to name
+  the session, so the pane shows thinking and tool calls as they happen. `-p` is
+  the trap: it buffers everything until the run ends, so a review pane sits blank
+  for minutes and looks hung.
+- **Fire it and move on.** Never `sleep` on a tab. Do the next piece of work and
+  read the pane when you have a reason to:
 
-**Fire it and move on.** The tab keeps running whether or not you are watching.
-Never `sleep` waiting on it — start it, go do the next piece of work, and read it
-when you have a reason to:
+  ```bash
+  herdr pane read <pane_id> --source recent-unwrapped --lines 40
+  herdr pane list --workspace "$HERDR_WORKSPACE_ID"
+  ```
 
-```bash
-herdr pane read <pane_id> --source recent-unwrapped --lines 40
-herdr pane list --workspace "$HERDR_WORKSPACE_ID"
-```
+- **Check it posted.** A review is done when `fabrika review verdicts <n>` lists a
+  `review-code` and a `review-doc` verdict for the PR's current head, not when the
+  pane goes quiet. Close the tab after that.
 
-Close the tab when the work in it is finished.
-
-**A tab is how you delegate.** pi's `subagent` tool is not installed here
-(`~/.pi/agent/extensions/` holds only `herdr-agent-state.ts`), so there is no
-in-process way to spawn a named agent. A tab running `pi` is the mechanism, and it
-is enough: start one per unit of work, read them, start more.
-
-**zsh autocorrect eats commands.** Once a `.wrangler` directory exists, zsh offers
-to "correct" `wrangler` to `.wrangler` and silently swallows the line. Send
-`unsetopt correct correct_all` as its own pane command first, and confirm with
-`setopt | grep -c correct` returning `0`.
-
-## Run pi interactively in a pane — never with `-p`
-
-This is the trap worth knowing. `pi -p` is non-interactive print mode: it buffers
-everything and emits it only when the run ends. A review takes minutes, so the pane
-sits blank the whole time and looks hung.
-
-Drop `-p` and pi draws its normal TUI in the pane — thinking, tool calls and output
-appear as they happen. Pass the prompt as a plain argument, and `-n` to name the
-session so the pane footer says what it is doing.
-
-## Reviewing a pull request
+## Driver: starting a review
 
 The reviewer is a Codex model, running the fabrika `review` skill, posting as
-`nothueypov`. Three separate requirements, each one flag:
+`nothueypov`. Three requirements, each one flag:
 
 ```bash
 herdr pane run <pane_id> 'export GH_TOKEN=$(gh auth token --user nothueypov)
@@ -115,22 +114,19 @@ pi --provider openai-codex --model gpt-5.6-sol \
    -n "review PR <n>" "review PR #<n>"'
 ```
 
-One tab per pull request. They run at the same time and you read them as they
-finish.
+One tab per pull request. They run at the same time.
 
-- `GH_TOKEN` is what makes the review a second signature rather than the author
-  approving their own work. `gh` has two accounts: `hueypov` (active, the author)
-  and `nothueypov` (the reviewer).
-- The fabrika `review` skill is the reviewer's whole behaviour. The `reviewer`
-  agent shell in `dist/agents/reviewer.md` adds nothing to it — its own text says
-  so — which is why preloading the skill is the same thing as spawning the shell.
-- The skill drives the `fabrika` CLI, which works here against the global install.
-  `FABRIKA_GLOBAL_WARNING_DISABLED=1` silences the no-local-install notice.
+- `GH_TOKEN` makes the review a second signature rather than the author approving
+  their own work. `gh` has two accounts: `hueypov` (active, the author) and
+  `nothueypov` (the reviewer).
+- The `review` skill is the reviewer's whole behaviour. The `reviewer` agent shell
+  in `dist/agents/reviewer.md` adds nothing to it — its own text says so.
+- `FABRIKA_GLOBAL_WARNING_DISABLED=1` silences the no-local-install notice from
+  the global `fabrika` CLI.
 
-**Do not write a review script.** A hand-rolled wrapper around `codex exec` existed
-here once and was deleted: it duplicated the fabrika skill, drifted from it, and
-sent the reviewer's output to a temp file so the pane looked dead. The skill is the
-review process. Use it.
+The skill is the review process. A hand-rolled wrapper around `codex exec` existed
+here once and was deleted: it drifted from the skill and hid the reviewer's output
+in a temp file.
 
 ## Other fabrika skills
 
@@ -140,14 +136,9 @@ Same pattern, swap the skill directory:
 ls /Users/huey/.pi/agent/npm/node_modules/@kampus/fabrika-pi/dist/skills/
 ```
 
-`build`, `review`, `review-ui`, `ship`, `triage`, `operate`, `adr`, `report`,
-`handoff` and the rest live there. Reach for one before writing a script that does
-the same job.
-
-pi also auto-discovers every one of them at startup, so a pi session can be asked
-for a skill by name without `--skill`. Passing `--skill` preloads it, which is what
-makes a tab a dedicated reviewer rather than a general agent that might choose
-something else.
+pi auto-discovers all of them, so a session can be asked for a skill by name.
+Passing `--skill` preloads it, which makes a tab a dedicated worker for that skill
+rather than a general agent that might choose something else.
 
 ## Package manager
 
