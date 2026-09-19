@@ -316,8 +316,9 @@ async function readGrammar(
 
 /**
  * Exported so a test can assert the plan, not just the rows. Reintroducing the
- * view here costs three orders of magnitude and nothing else changes, which is
- * exactly the kind of regression a rows-only test sails past.
+ * view here costs four orders of magnitude and nothing else changes, which is
+ * exactly the kind of regression a rows-only test sails past. `pnpm run
+ * bench:lookup` times both forms side by side.
  */
 export const LEMMA_LINK_SQL = `SELECT e.edge_id, e.json_pointer, e.target_word,
             t.record_id AS candidate_record_id,
@@ -346,9 +347,10 @@ async function readLemmaLinks(
   //
   // The `form_of_candidate` view's join is inlined rather than LEFT JOINed.
   // SQLite cannot push `e.record_id = ?` through a LEFT JOIN onto a view, so it
-  // materialises the whole view first — all 608,726 edges against 1,273,490
-  // lookup rows — then throws nearly all of it away. Measured on the real
-  // release for `bella`: 2,686 ms via the view, 0.1 ms inlined, same four rows.
+  // materialises the whole view first — every edge against every lookup row —
+  // then throws nearly all of it away. At release scale that is 6,722 ms via
+  // the view against 0.03 ms inlined, for the same rows, and the gap widens as
+  // the release grows. Reproduce with `pnpm run bench:lookup`.
   const rows = await queryAll<{    edge_id: number;
     json_pointer: string;
     target_word: string;
@@ -393,16 +395,13 @@ async function readLemmaLinks(
   return [...byEdge.values()];
 }
 
-async function readInflections(db: LookupDatabase, recordId: number): Promise<InflectionOf[]> {
-  const rows = await queryAll<{
-    record_id: number;
-    line_no: number;
-    word: string;
-    pos: string;
-    json_pointer: string;
-  }>(
-    db,
-    `SELECT f.record_id, f.line_no, f.word, f.pos, e.json_pointer
+/**
+ * Incoming edges: the records that declare themselves forms of the word this
+ * record spells. Exported alongside the candidate query below so a test can
+ * assert the plan as well as the rows.
+ */
+export const INFLECTION_SQL = `SELECT f.record_id, f.line_no, f.word, f.pos,
+            e.json_pointer, e.target_word
        FROM lookup_form lf
        JOIN source_release rel
          ON rel.release_id = lf.release_id AND rel.status = 'complete'
@@ -410,8 +409,53 @@ async function readInflections(db: LookupDatabase, recordId: number): Promise<In
          ON e.release_id = lf.release_id AND e.target_word_key = lf.surface_key
        JOIN source_record f ON f.record_id = e.record_id
       WHERE lf.record_id = ? AND lf.origin = 'headword'
-      ORDER BY f.line_no, e.json_pointer`, recordId,
-  );
+      ORDER BY f.line_no, e.json_pointer`;
+
+/**
+ * Every headword record spelling what this one spells — itself included.
+ *
+ * An incoming edge is matched on the target *word key*, so it lands on every
+ * record carrying that key at once. This is the set the source left unresolved,
+ * and it is what stops the reverse direction from inventing a chosen
+ * relationship the forward direction is careful never to assert.
+ */
+export const INFLECTION_CANDIDATE_SQL = `SELECT t.record_id, t.line_no, t.word, t.pos
+       FROM lookup_form self
+       JOIN lookup_form other
+         ON other.release_id = self.release_id
+        AND other.surface_key = self.surface_key
+        AND other.origin = 'headword'
+       JOIN source_record t ON t.record_id = other.record_id
+      WHERE self.record_id = ? AND self.origin = 'headword'
+      ORDER BY t.line_no, t.record_id`;
+
+async function readInflections(db: LookupDatabase, recordId: number): Promise<InflectionOf[]> {
+  const rows = await queryAll<{
+    record_id: number;
+    line_no: number;
+    word: string;
+    pos: string;
+    json_pointer: string;
+    target_word: string;
+  }>(db, INFLECTION_SQL, recordId);
+
+  if (rows.length === 0) return [];
+
+  // One extra read, not one per edge: every incoming edge on this record
+  // matched the same surface key, so they all resolve to the same candidate set.
+  const candidates = await queryAll<{
+    record_id: number;
+    line_no: number;
+    word: string;
+    pos: string;
+  }>(db, INFLECTION_CANDIDATE_SQL, recordId);
+
+  const targetCandidates = candidates.map((row) => ({
+    recordId: row.record_id,
+    lineNo: row.line_no,
+    word: row.word,
+    pos: row.pos,
+  }));
 
   return rows.map((row) => ({
     recordId: row.record_id,
@@ -419,6 +463,8 @@ async function readInflections(db: LookupDatabase, recordId: number): Promise<In
     word: row.word,
     pos: row.pos,
     pointer: row.json_pointer,
+    targetWord: row.target_word,
+    targetCandidates,
   }));
 }
 
