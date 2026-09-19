@@ -7,6 +7,11 @@ is fake, the data is fake, and the real schema is owned elsewhere (#3).
 
 Relates to #9 (pick the stack) and #14 (build the search screen).
 
+This page is the findings-and-tradeoffs report. Running the spike is covered in
+[`spike/vinext/README.md`](../spike/vinext/README.md); versions, scripts and
+other lookup facts live in
+[`spike/vinext/docs/REFERENCE.md`](../spike/vinext/docs/REFERENCE.md).
+
 ## What was proved
 
 On the real Workers runtime (workerd via wrangler/miniflare, **no deploy, no
@@ -30,71 +35,16 @@ Cloudflare account touched**):
 
 ![proof](../spike/vinext/docs/proof.png)
 
-## Run it yourself
-
-```bash
-cd spike/vinext
-pnpm install --frozen-lockfile
-pnpm run proof
-```
-
-`scripts/proof.sh` seeds D1, builds the Worker, starts it under wrangler,
-and asserts on real rows. It fails loudly if any step regresses.
-
-Expected tail:
-
-```
-== 4/5 route handler -> D1
-{"q":"casa","count":2,"rows":[{"id":1,"lemma":"casa","pos":"noun","gloss":"FAKE SEED DATA - a house"},{"id":2,"lemma":"casa","pos":"verb","gloss":"FAKE SEED DATA - third person of casare"}]}
-
-== 5/5 server-rendered React page -> D1
-<main>...<li data-row-id="3"><strong>gatto</strong> <em>(noun)</em> — FAKE SEED DATA - a cat</li>...</main>
-
-== bonus: client component hydration
-data-hydrated: no (server) -> yes (after hydration)
-
-PASS — vinext served real D1 rows from the Workers runtime.
-```
-
-## Exact versions that worked together
-
-Every direct dependency is pinned exact, with no `^`, and the committed
-lockfile locks the transitive resolutions. A beta that moves under us is the
-risk we are guarding against.
-
-Two honest limits on that claim. The lockfile still carries upstream peer
-ranges such as `vite: ^6.1.0 || ^7.0.0 || ^8.0.0` — those are compatibility
-metadata, not floating resolved versions, and stripping them would be wrong.
-And `.nvmrc` pins Node's major only (`24`), not an exact release. So the
-accurate phrasing is *exact direct versions plus a committed lockfile*,
-installed with `--frozen-lockfile`.
-
-| Package | Version |
-| --- | --- |
-| `vinext` | `1.0.0-beta.10` |
-| `@vinext/cloudflare` | `1.0.0-beta.8` |
-| `vite` | `8.3.0` |
-| `wrangler` | `4.135.0` |
-| `workerd` (via wrangler) | `1.20260918.1` |
-| `@cloudflare/vite-plugin` | `1.56.0` |
-| `@vitejs/plugin-rsc` | `0.5.35` |
-| `@vitejs/plugin-react` | `6.1.1` |
-| `react` / `react-dom` | `19.3.0` |
-| `react-server-dom-webpack` | `19.3.0` |
-| `typescript` | `5.9.3` |
-| Node | `24` (`.nvmrc`); also ran fine on local Node 26.2.0 |
-| pnpm | `10.13.1` |
-
-Scaffolded with `create-vinext-app@1.0.0-beta.3`.
-
-## How you reach a D1 binding from server code
+## Finding: the D1 binding comes from the runtime, not from vinext
 
 There is **no vinext helper** for this — no `getCloudflareContext()`, nothing in
-`@vinext/cloudflare` (that package is only cache and image adapters). You import
-the Workers runtime's own `env`. `@cloudflare/vite-plugin` provides the same
-module in dev, so one import works in both dev and production.
+`@vinext/cloudflare` (that package is only cache and image adapters). Server
+code imports the Workers runtime's own `env`. `@cloudflare/vite-plugin`
+provides the same module in dev, so one import works in both dev and
+production. That is the whole story, and it is why the escape hatch below is
+cheap.
 
-`spike/vinext/app/db.ts`:
+What that looks like, from `spike/vinext/app/db.ts`:
 
 ```ts
 import { env } from "cloudflare:workers";
@@ -130,8 +80,13 @@ into the generated `dist/server/wrangler.json` untouched. That part just works.
 **1. `create-vinext-app` writes `"latest"` for every dependency.**
 Every single entry in the generated `package.json` was `"latest"` — not even a
 caret. On a 1.0.0-beta that is a trap: two installs a week apart give you two
-different apps. Fixed by resolving once and pinning every version exactly.
-If we adopt vinext, pinning has to be a rule, not a preference.
+different apps. Fixed by resolving once and pinning every direct version
+exactly, with the lockfile committed alongside (the resolved versions are
+listed in the spike's reference page). If we adopt vinext, pinning has to be a
+rule, not a preference. Two honest limits on the claim: the lockfile still
+carries upstream peer ranges such as `vite: ^6.1.0 || ^7.0.0 || ^8.0.0`, which
+are compatibility metadata and were left alone, and `.nvmrc` pins Node's major
+only.
 
 **2. The built Worker could not see the seeded D1 database.**
 `pnpm run build` then `wrangler dev --config dist/server/wrangler.json` gave
