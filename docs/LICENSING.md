@@ -629,9 +629,10 @@ make a release describable:
 | `httpEtag`, `httpLastModified` | `"6aaab8c2-26493b7"` | Identifies the exact HTTP response fetched. |
 | `identityConfidence` | `verified` \| `inferred` \| `unknown` | Makes the July snapshot's gap representable instead of hidden. An `inferred` release must never be published. |
 
-`license` should be exactly `["CC-BY-SA-4.0"]` — not `["CC-BY-SA-4.0", "GFDL"]` as
-`LEXEMA_SPEC.md` currently suggests. Per §2.2 we elect CC BY-SA 4.0 and do not take on GFDL duties;
-listing GFDL claims obligations we are not meeting.
+`license` records the source licence we elect under ToU 7(a), which is a separate question from B2's
+bundle policy. It should not be `["CC-BY-SA-4.0", "GFDL"]` as `LEXEMA_SPEC.md` currently suggests:
+per §2.2 we elect CC BY-SA 4.0 and do not take on GFDL duties, and listing GFDL claims obligations we
+are not meeting.
 
 ### 7.2 Per record — the gap that matters
 
@@ -700,7 +701,7 @@ keep building.
 | B7 | Result-page attribution notice, per word, with history link and change notice. | §3.1 | #14, #19 |
 | B8 | Finalise and implement `/attribuzione` and `/attribution`: fill licence/audio choices, translate the full English page, verify metadata and include cleared extra notices. Drafts are not publication-ready. | §3.2 | #19 |
 | B9 | Fix form→lemma attribution so the notice cites the record the text actually came from. | §3.1, §7.2 | **#16 — now a compliance blocker, not just a bug** |
-| B10 | Add the missing `ReleaseMetadata` fields, including `identityConfidence`; set `license` to `["CC-BY-SA-4.0"]` only. | §7.1 | #2, #10 |
+| B10 | Add the missing `ReleaseMetadata` fields, including `identityConfidence`; set `license` to whatever B2 decides (the proposed policy is `["CC-BY-SA-4.0"]`). | §7.1 | #2, #10 |
 | B11 | Capture the kaikki log and edition-page footer at fetch time. | §1.4 | #10 |
 | B12 | Display `examples[].ref` wherever an example with a ref is shown. | §5.3 | #20 |
 | B13 | If the repo goes public, add `fixtures/ATTRIBUTION.md`. | §4.4 | — |
