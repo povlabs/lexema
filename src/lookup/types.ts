@@ -1,8 +1,6 @@
 // The shape a lookup returns. Written so the states that matter cannot be
-// confused with one another: a word the source has no opinion about, a word it
-// states something about, a claim it makes that review disputes, and a lemma
-// link it declares but does not resolve are four different things, and each has
-// its own representation here rather than sharing a nullable field.
+// confused with one another — each gets its own case rather than sharing a
+// nullable field. The reasoning is in docs/LOOKUP_DESIGN.md.
 
 /** Where a value came from, precise enough to check it against the archive. */
 export interface SourceRef {
@@ -28,10 +26,9 @@ export interface Evidence {
 }
 
 /**
- * Grammar, with the source's silence distinguished from its speech.
- *
- * A dimension with no claim at all was never expected here — different again
- * from `missing`, which means we looked and the source said nothing.
+ * Grammar, with the source's silence distinguished from its speech. A dimension
+ * with no claim at all was never expected here — different again from
+ * `missing`, which means we looked and the source said nothing.
  */
 export type GrammarClaim =
   | { status: "stated"; dimension: string; value: string; sourceText: string; ref: SourceRef }
@@ -53,7 +50,7 @@ export interface Sense {
   /**
    * Copied source text, never a Lexema definition. May be empty: 667 senses
    * carry no gloss at all, and a non-empty gloss is still not proof of a usable
-   * definition — `casa` has two that say nothing.
+   * one — `casa` has two that say nothing.
    */
   glosses: { text: string; ref: SourceRef }[];
   /** The source's own vocabulary: 'figuratively', 'form-of', 'scuola'. */
@@ -69,27 +66,19 @@ export interface LemmaCandidate {
 }
 
 /**
- * A declared "this word is a form of that word" link.
- *
- * The source names a word, and a word can be several records. `bella` points at
- * `bello`, which is one adjective and two separate nouns. So the resolved case
- * carries every candidate and never a winner, and an edge that resolves to
- * nothing stays visible instead of disappearing.
+ * A declared "this word is a form of that word" link. The source names a word,
+ * and a word can be several records, so the resolved case carries every
+ * candidate and never a winner; an edge resolving to nothing stays visible.
  */
 export type LemmaLink =
   | { kind: "dangling"; targetWord: string; ref: SourceRef }
   | { kind: "candidates"; targetWord: string; candidates: LemmaCandidate[]; ref: SourceRef };
 
 /**
- * A record that declares itself a form of a word this record spells. The
- * reverse direction of `LemmaLink`, and ambiguous in exactly the same way.
- *
- * The edge names a *word*, and a word can be several records. `bella` says it
- * is a form of `bello`, and `bello` is four records here; the source chose none
- * of them, so this record is only one candidate target among several. The
- * candidate set travels with the link for the same reason it does on the
- * forward side: presenting the edge as a settled relationship between two
- * records would be a claim the source never made.
+ * A record that declares itself a form of a word this record spells — the
+ * reverse direction of `LemmaLink`, and ambiguous in exactly the same way. The
+ * edge names a *word*, so this record is only one candidate target among
+ * several, and the candidate set travels with the link.
  */
 export interface InflectionOf {
   /** The declaring record — the inflected one. */

@@ -16,10 +16,10 @@ import {
 import { fromNodeSqlite } from "../src/lookup/database.js";
 import type { LookupResult, Reading, RejectedResult, SearchResult } from "../src/lookup/types.js";
 
-// A fixture built to carry the shapes the real file forces on a lookup: one
-// surface meaning several unrelated things, one word mentioned by records that
-// are not its lemma, an edge whose target is several records, a word with no
-// grammar at all, and an accented word.
+// A fixture carrying the shapes the real file forces on a lookup: one surface
+// meaning several unrelated things, one word mentioned by records that are not
+// its lemma, an edge whose target is several records, a word with no grammar at
+// all, and an accented word.
 const LINES = [
   JSON.stringify({
     word: "studente", pos: "noun", pos_title: "Sostantivo", lang_code: "it",
@@ -208,8 +208,8 @@ test("keeps the typed spelling and the source spelling both available", async ()
 
 test("returns every reading of an ambiguous surface, unranked", async () => {
   await withFixture(async (db) => {
-    // `sale` is salt, the plural of `sala`, and a form of `salire`. All three,
-    // in source order, with nothing chosen for the reader.
+    // Salt, the plural of `sala`, and a form of `salire`: all three, in source
+    // order, with nothing chosen for the reader.
     const readings = found(await ask(db, "sale"));
     assert.equal(readings.length, 3);
     assert.deepEqual(
@@ -250,9 +250,8 @@ test("a record that merely mentions a form is not called its lemma", async () =>
     const mentions = readings.filter((r) => !r.isAboutQuery);
     const about = readings.filter((r) => r.isAboutQuery);
 
-    // `studente` and `studentessa` both list `studenti` in their tables, and
-    // neither is a claim about the word. `studentessa` especially: it is the
-    // feminine, not the lemma.
+    // Both list `studenti` in their tables, and neither is a claim about the
+    // word. `studentessa` especially: it is the feminine, not the lemma.
     assert.deepEqual(mentions.map((r) => r.word).sort(), ["studente", "studentessa"]);
     assert.ok(mentions.every((r) => r.evidence.every((e) => e.origin === "embedded-form")));
 
@@ -283,8 +282,8 @@ test("an ambiguous lemma link keeps every candidate", async () => {
 
 test("a lemma link that resolves to nothing stays visible", async () => {
   await withFixture(async (db) => {
-    // `andavano` points at `andare`, which is in no record here. Dropping the
-    // edge would turn "points somewhere we cannot follow" into "points nowhere".
+    // `andare` is in no record here. Dropping the edge would turn "points
+    // somewhere we cannot follow" into "points nowhere".
     const [andavano] = found(await ask(db, "andavano"));
     assert.equal(andavano.lemmaLinks.length, 1);
     assert.equal(andavano.lemmaLinks[0].kind, "dangling");
@@ -306,10 +305,9 @@ test("lists the inflections that declare themselves forms of a reading", async (
 
 test("an incoming inflection edge stays as ambiguous as the source left it", async () => {
   await withFixture(async (db) => {
-    // `bella` says "femminile di bello". `bello` is three records here and the
-    // source picked none, so the edge lands on all three at once. Handing it to
-    // each of them as an established relationship would invent three facts out
-    // of one unresolved edge — the same mistake the forward direction refuses.
+    // The edge lands on all three `bello` records at once, and the source
+    // picked none. Handing it to each as an established relationship would
+    // invent three facts out of one unresolved edge.
     const bello = found(await ask(db, "bello"));
     assert.equal(bello.length, 3);
 
@@ -317,8 +315,8 @@ test("an incoming inflection edge stays as ambiguous as the source left it", asy
       assert.deepEqual(reading.inflections.map((i) => i.word), ["bella"]);
       const [link] = reading.inflections;
       assert.equal(link.targetWord, "bello");
-      // Every record the named word resolves to travels with the link, this
-      // reading included, so no caller can read it as "bella is a form of me".
+      // Every candidate travels with the link, this reading included, so no
+      // caller can read it as "bella is a form of me".
       assert.deepEqual(
         link.targetCandidates.map((c) => `${c.word}/${c.pos}`),
         ["bello/adj", "bello/noun", "bello/noun"],
@@ -438,11 +436,9 @@ test("refuses to serve a release that is not complete", async () => {
 
 test("resolving lemma links never materialises the candidate view", async () => {
   await withFixture(async (db) => {
-    // Rows-only tests cannot see this. LEFT JOINing `form_of_candidate` returns
-    // exactly the same answer and, at release scale, takes 6,722 ms instead of
-    // 0.03 ms: SQLite cannot push `record_id = ?` through a LEFT JOIN onto a
-    // view, so it builds every edge against every lookup row first. Both forms
-    // are timed side by side by `pnpm run bench:lookup`.
+    // Rows-only tests cannot see this: LEFT JOINing `form_of_candidate` returns
+    // exactly the same answer, four orders of magnitude slower at release
+    // scale. docs/LOOKUP_DESIGN.md explains why; #37 measures it.
     const plan = (
       db.prepare(`EXPLAIN QUERY PLAN ${LEMMA_LINK_SQL}`).all(1) as { detail: string }[]
     ).map((row) => row.detail);
@@ -461,9 +457,9 @@ test("resolving lemma links never materialises the candidate view", async () => 
 
 test("both inflection queries stay on indexes rather than scanning", async () => {
   await withFixture(async (db) => {
-    // Resolving the candidate set costs one extra read per reading, so that read
-    // has to stay an index probe. A scan here would reintroduce the same
-    // whole-table cost the lemma-link query was rewritten to avoid.
+    // The candidate set costs one extra read per reading, so it has to stay an
+    // index probe — a scan here reintroduces the cost the lemma-link query was
+    // rewritten to avoid.
     for (const [name, sql] of [
       ["inflection", INFLECTION_SQL],
       ["inflection candidate", INFLECTION_CANDIDATE_SQL],

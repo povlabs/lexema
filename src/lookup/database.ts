@@ -1,14 +1,6 @@
 // The one database capability lookup needs, and the two adapters that provide
-// it.
-//
-// Lookup runs in two places with incompatible APIs: a Worker talking to D1
-// (async, `bind().all()`, results under `.results`) and a Node process talking
-// to a local SQLite file (sync, `all(...params)`). Rather than write the query
-// layer twice, everything goes through `all` below.
-//
-// It is async because D1 is. A sync interface would have forced the Worker side
-// to fake it, and faking it is how you end up with two subtly different query
-// layers — which is the thing this file exists to prevent.
+// it: a Worker's D1 (async) and a local `node:sqlite` file (sync). One query
+// layer instead of two — see docs/LOOKUP_DESIGN.md.
 
 /** Every read lookup performs. Deliberately the smallest surface that works. */
 export interface LookupDatabase {
@@ -20,11 +12,7 @@ interface SyncSqlite {
   prepare(sql: string): { all(...params: (string | number)[]): unknown[] };
 }
 
-/**
- * Local SQLite, for the importer's output and for tests. Synchronous underneath
- * and wrapped in a resolved promise, which costs nothing and keeps one query
- * layer instead of two.
- */
+/** Local SQLite, for the importer's output and for tests. */
 export function fromNodeSqlite(db: SyncSqlite): LookupDatabase {
   return {
     all<T>(sql: string, params: readonly (string | number)[]): Promise<T[]> {
