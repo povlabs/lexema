@@ -4,6 +4,22 @@
 
 import type { GrammarClaim, Reading, Review } from "@lexema/lookup/types.ts";
 
+/**
+ * Where one reading can be checked by hand.
+ *
+ * The release is a Wiktextract dump of the Italian Wiktionary, so every record
+ * came from a page there under its own headword. The source stores no URL, so
+ * this one is built from the headword — which is why the link says "page for
+ * <word>" rather than claiming to cite this reading. The archive line number
+ * and JSON pointers stay next to it: they are what pin the reading to an exact
+ * byte of the release, and the link is what a reader can actually click.
+ */
+const WIKTIONARY_PAGE = "https://it.wiktionary.org/wiki/";
+
+function sourcePageUrl(word: string): string {
+  return WIKTIONARY_PAGE + encodeURIComponent(word.replace(/ /g, "_"));
+}
+
 /** Nicer than `pos_title`, which is Italian and inconsistent. */
 const POS_LABEL: Record<string, string> = {
   noun: "noun",
@@ -159,7 +175,14 @@ export function ReadingCard({ reading, query }: { reading: Reading; query: strin
       )}
 
       <footer className="source">
-        Source line {reading.lineNo}
+        <a
+          href={sourcePageUrl(reading.word)}
+          rel="noreferrer"
+          aria-label={`Wiktionary page for ${reading.word}, the source of this ${pos} entry`}
+        >
+          Wiktionary page for {reading.word}
+        </a>{" "}
+        · release line {reading.lineNo}
         {reading.evidence.map((e, i) => (
           <span key={i} className="pointer">
             {" "}

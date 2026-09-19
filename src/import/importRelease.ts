@@ -8,15 +8,19 @@
 //   2. Repeatable. Same input file, same database, byte for byte. record_id is
 //      assigned in line order rather than by insertion race.
 //   3. Honest. A record is admitted on `lang_code === 'it'` and nothing else.
-//      Malformed lines are counted and located, never skipped in silence.
+//      Every line that does not become a record — malformed, empty, or another
+//      language — is counted and located, never skipped in silence.
 //
 // The release row is committed as 'importing' before the first record, the
-// records land in batches, and the flip to 'complete' is its own last
+// records land in batches, and the final status flip is its own last
 // transaction. So a crash leaves exactly what docs/RELEASES.md says it leaves:
 // a release stuck at 'importing', with however many records had landed, hidden
 // from every canonical read. Wrapping the whole import in one transaction would
 // have been simpler and would have made that documented state unreachable —
 // a crash would roll the release row back and leave no trace to clean up.
+//
+// That last flip lands 'complete', or 'partial' when --limit stopped the run
+// early. Canonical reads require 'complete', so a truncated run stays hidden.
 
 import { createHash } from "node:crypto";
 import { createReadStream } from "node:fs";
@@ -39,8 +43,25 @@ export const IMPORTER_VERSION = "it-import/v2" as const;
 /** v2 added source_release.projection_sha256 / projection_counts. */
 export const SCHEMA_VERSION = 2;
 
-/** How many malformed line numbers to keep. The count is always exact. */
-const MALFORMED_SAMPLE_LIMIT = 50;
+/** How many line numbers to keep per rejection kind. The counts are always exact. */
+const SAMPLE_LIMIT = 50;
+
+/**
+ * A rejection tally: an exact count plus the first few line numbers.
+ *
+ * Keeping every line number would break the bounded-memory property — 239,243
+ * lines of this archive are another language — so the count is exact and the
+ * locations are a bounded sample.
+ */
+class Rejections {
+  count = 0;
+  readonly lineNumbers: number[] = [];
+
+  record(lineNo: number): void {
+    this.count += 1;
+    if (this.lineNumbers.length < SAMPLE_LIMIT) this.lineNumbers.push(lineNo);
+  }
+}
 
 /**
  * Records per committed batch. Small enough that a crash loses little work,
@@ -76,11 +97,18 @@ export interface ImportOptions {
 
 export interface ImportReport {
   releaseId: string;
+  /**
+   * 'complete' when the archive was read to its end, 'partial' when --limit
+   * stopped it early. Matches the status written to source_release.
+   */
+  status: "complete" | "partial";
   archiveSha256: string;
   archiveBytes: number;
   linesRead: number;
   admitted: number;
   skippedOtherLanguage: number;
+  /** First few line numbers of records rejected for their language. */
+  skippedLineNumbers: number[];
   malformed: number;
   malformedLineNumbers: number[];
   rows: Record<string, number>;
@@ -220,9 +248,9 @@ export async function importRelease(options: ImportOptions): Promise<ImportRepor
 
     let linesRead = 0;
     let admitted = 0;
-    let skippedOtherLanguage = 0;
-    let malformed = 0;
-    const malformedLineNumbers: number[] = [];
+    let truncated = false;
+    const skipped = new Rejections();
+    const malformed = new Rejections();
 
     // Committed on its own, before any record: this row is what makes an
     // interrupted import visible afterwards instead of vanishing.
@@ -248,26 +276,26 @@ export async function importRelease(options: ImportOptions): Promise<ImportRepor
     db.exec("BEGIN");
     for await (const line of lines) {
       linesRead += 1;
-      if (!line) continue;
 
       let record: KaikkiRecord;
       try {
+        // A blank line carries no record and is not valid JSONL, so it is
+        // malformed. Skipping it quietly would let input vanish under a
+        // reported zero.
+        if (line.trim() === "") throw new Error("blank line");
         const parsed: unknown = JSON.parse(line);
         if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
           throw new Error("line is not a JSON object");
         }
         record = parsed as KaikkiRecord;
       } catch {
-        malformed += 1;
-        if (malformedLineNumbers.length < MALFORMED_SAMPLE_LIMIT) {
-          malformedLineNumbers.push(linesRead);
-        }
+        malformed.record(linesRead);
         continue;
       }
 
       // The one admission test. Never the filename, never the spelling.
       if (record.lang_code !== "it") {
-        skippedOtherLanguage += 1;
+        skipped.record(linesRead);
         continue;
       }
 
@@ -279,10 +307,7 @@ export async function importRelease(options: ImportOptions): Promise<ImportRepor
         typeof record.pos !== "string" ||
         typeof record.pos_title !== "string"
       ) {
-        malformed += 1;
-        if (malformedLineNumbers.length < MALFORMED_SAMPLE_LIMIT) {
-          malformedLineNumbers.push(linesRead);
-        }
+        malformed.record(linesRead);
         continue;
       }
 
@@ -306,7 +331,10 @@ export async function importRelease(options: ImportOptions): Promise<ImportRepor
         options.onProgress?.(admitted);
         db.exec("BEGIN");
       }
-      if (options.limit !== undefined && admitted >= options.limit) break;
+      if (options.limit !== undefined && admitted >= options.limit) {
+        truncated = true;
+        break;
+      }
     }
 
     // `--limit` leaves the reader mid-file; close it so the process can exit.
@@ -319,10 +347,16 @@ export async function importRelease(options: ImportOptions): Promise<ImportRepor
     // agree with a projection that never landed.
     const projection = await computeProjection(fromNodeSqlite(db), options.releaseId);
 
+    // Only a run that reached the end of the archive is complete. A truncated
+    // one holds the checksum and byte count of the whole file but a prefix of
+    // its records, so calling it complete would make a smoke run servable.
+    const status = truncated ? "partial" : "complete";
+
     // The status flip and the projection identity land together, last. Until
     // this commit every canonical read hides the release.
     db.exec("BEGIN");
     statements.finishRelease.run(
+      status,
       projection.digest,
       encodeCounts(projection.counts),
       options.releaseId,
@@ -331,13 +365,15 @@ export async function importRelease(options: ImportOptions): Promise<ImportRepor
 
     return {
       releaseId: options.releaseId,
+      status,
       archiveSha256,
       archiveBytes,
       linesRead,
       admitted,
-      skippedOtherLanguage,
-      malformed,
-      malformedLineNumbers,
+      skippedOtherLanguage: skipped.count,
+      skippedLineNumbers: skipped.lineNumbers,
+      malformed: malformed.count,
+      malformedLineNumbers: malformed.lineNumbers,
       rows,
       projectionSha256: projection.digest,
       elapsedMs: Date.now() - startedAt,
@@ -366,11 +402,13 @@ function prepareStatements(db: DatabaseSync) {
           importer_version, schema_version, license, attribution, status)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'importing')`,
     ),
-    // The flip to 'complete' carries the derived data's identity with it, so a
-    // readable release always has one. Both land in the same last transaction.
+    // The final status flip carries the derived data's identity with it, so a
+    // release that finished its run always has one. Both land in the same last
+    // transaction: until it commits, every canonical read hides this release.
+    // Those reads require 'complete', so 'partial' stays hidden too.
     finishRelease: db.prepare(
       `UPDATE source_release
-          SET status = 'complete', projection_sha256 = ?, projection_counts = ?
+          SET status = ?, projection_sha256 = ?, projection_counts = ?
         WHERE release_id = ?`,
     ),
     insertRecord: db.prepare(

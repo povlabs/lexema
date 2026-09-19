@@ -64,12 +64,16 @@ CREATE TABLE source_release (
 
   -- A half-imported release must never be served. Lookup queries filter on
   -- status = 'complete'. Direct table reads are import diagnostics only.
+  -- 'partial' is a run that finished cleanly but stopped before the end of the
+  -- archive (a --limit smoke run): the checksum above describes the whole file
+  -- while only a prefix of it landed, so it is never 'complete'.
   status           TEXT NOT NULL DEFAULT 'importing'
-                   CHECK (status IN ('importing', 'complete', 'failed', 'superseded')),
+                   CHECK (status IN ('importing', 'partial', 'complete', 'failed', 'superseded')),
 
-  -- A release readers can reach, or could reach before it was retired, has to
-  -- carry the identity of its own derived data. Only a release that never
-  -- finished ('importing') or was written off ('failed') may lack it.
+  -- A release that finished its run has to carry the identity of its own
+  -- derived data, and a truncated run finished one — it wrote a prefix on
+  -- purpose. Only a release that never finished ('importing') or was written
+  -- off ('failed') may lack it.
   CHECK (
     status IN ('importing', 'failed')
     OR (projection_sha256 IS NOT NULL AND projection_counts IS NOT NULL)

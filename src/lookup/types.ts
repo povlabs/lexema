@@ -80,13 +80,34 @@ export type LemmaLink =
   | { kind: "dangling"; targetWord: string; ref: SourceRef }
   | { kind: "candidates"; targetWord: string; candidates: LemmaCandidate[]; ref: SourceRef };
 
-/** A record that declares itself a form of this one. The reverse direction. */
+/**
+ * A record that declares itself a form of a word this record spells. The
+ * reverse direction of `LemmaLink`, and ambiguous in exactly the same way.
+ *
+ * The edge names a *word*, and a word can be several records. `bella` says it
+ * is a form of `bello`, and `bello` is four records here; the source chose none
+ * of them, so this record is only one candidate target among several. The
+ * candidate set travels with the link for the same reason it does on the
+ * forward side: presenting the edge as a settled relationship between two
+ * records would be a claim the source never made.
+ */
 export interface InflectionOf {
+  /** The declaring record — the inflected one. */
   recordId: number;
   lineNo: number;
   word: string;
   pos: string;
+  /** Pointer to the edge on the declaring record. */
   pointer: string;
+  /** The word the edge names, verbatim. */
+  targetWord: string;
+  /**
+   * Every headword record `targetWord` resolves to, in source order. The
+   * reading carrying this link is always one of them. More than one means the
+   * source did not pick, and a caller must not present this reading as *the*
+   * lemma of `word`.
+   */
+  targetCandidates: LemmaCandidate[];
 }
 
 /**

@@ -93,6 +93,7 @@ async function main(): Promise<void> {
   const lines = [
     "",
     `release          ${report.releaseId}  (${IMPORTER_VERSION})`,
+    `status           ${report.status}${report.status === "partial" ? "  (--limit stopped the run; not servable)" : ""}`,
     `archive sha256   ${report.archiveSha256}`,
     `derived sha256   ${report.projectionSha256}`,
     `archive bytes    ${n(report.archiveBytes)}`,
@@ -109,14 +110,15 @@ async function main(): Promise<void> {
   ];
   process.stdout.write(lines.join("\n"));
 
-  if (report.malformed > 0) {
-    const shown = report.malformedLineNumbers.join(", ");
-    const more =
-      report.malformed > report.malformedLineNumbers.length
-        ? ` (first ${report.malformedLineNumbers.length} of ${n(report.malformed)})`
-        : "";
-    process.stdout.write(`malformed lines${more}: ${shown}\n\n`);
-  }
+  // Counts alone would not tell anyone which line to go and look at. The counts
+  // are exact; the line numbers are the bounded sample the importer kept.
+  const locations = (label: string, total: number, sample: number[]) => {
+    if (total === 0) return;
+    const more = total > sample.length ? ` (first ${sample.length} of ${n(total)})` : "";
+    process.stdout.write(`${label} lines${more}: ${sample.join(", ")}\n\n`);
+  };
+  locations("malformed", report.malformed, report.malformedLineNumbers);
+  locations("skipped (other language)", report.skippedOtherLanguage, report.skippedLineNumbers);
 }
 
 main().catch((error: unknown) => {

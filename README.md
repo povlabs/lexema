@@ -28,6 +28,14 @@ Any Node version manager works. `.nvmrc` pins Node 24 for CI; the checks also pa
 
 The commands above do not need dictionary data. GitHub Actions runs the typecheck and unit tests on pushes and pull requests.
 
+The lookup benchmark needs no dictionary data either — it generates its own release at two scales, so its numbers can be re-derived anywhere:
+
+```sh
+pnpm run bench:lookup
+```
+
+See [exact lookup](docs/LOOKUP.md) for what it measures and the captured output.
+
 ### Check the local dataset
 
 Dataset checks additionally require the original `it-extract.jsonl.gz` in the repository root. That file is intentionally ignored by Git and is not downloaded by CI. Do not substitute a newer download and assume it is the same snapshot.

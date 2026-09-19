@@ -81,6 +81,23 @@ Lemma links are a union too: `dangling` when the target word matches no record,
 dropping it would turn "points somewhere we cannot follow" into "points
 nowhere".
 
+## Both directions of an edge are equally unresolved
+
+An edge is matched on the target *word*, which means it lands on every record
+spelling that word at once — in both directions.
+
+Forward, `bella`'s link to `bello` carries all four `bello` records and picks
+none. Backward, each of those four records lists `bella` under `inflections`,
+and that link has to say the same thing: it carries `targetCandidates`, every
+record the named word resolves to, itself included. More than one candidate
+means the source chose none of them, and a caller must not render the reading as
+*the* lemma of the inflected word.
+
+One unresolved edge seen from four records is still one unresolved edge. Handing
+each of them a settled relationship would manufacture four lexical facts the
+source never stated — the same mistake as the forward direction, just harder to
+notice.
+
 ## Query handling
 
 Trim, NFC, case-fold, normalize apostrophe variants. **Accents are kept** —
@@ -104,32 +121,87 @@ Resolving lemma links inlines the `form_of_candidate` view's join instead of
 `LEFT JOIN`ing the view.
 
 SQLite cannot push `record_id = ?` through a LEFT JOIN onto a view, so it
-materialises the whole thing first — all 608,726 edges against 1,273,490 lookup
-rows — and then discards nearly all of it. Measured on the real release for
-`bella`: **2,686 ms via the view, 0.1 ms inlined**, returning the same four rows.
+materialises the whole thing first — every edge against every lookup row — and
+then discards nearly all of it. Both forms return the same rows, which is why
+this survives a rows-only test; the benchmark below times them side by side and
+asserts they agree before reporting.
 
-Rows-only tests cannot see that, so there is a test asserting the query plan
-contains no `MATERIALIZE` and still uses `form_of_edge_by_record`.
+There is also a test asserting the query plan contains no `MATERIALIZE` and
+still uses `form_of_edge_by_record`, and the same assertion on both inflection
+queries.
 
 Query 2a in `src/db/queries.sql` has the same shape and the same problem.
 
-## Measured on the real release
+## Benchmark
 
-560,357 records, warm cache, local SQLite:
+```
+pnpm run bench:lookup
+```
 
-| Query | Readings | Time |
-| --- | ---: | ---: |
-| `città` | 1 | 1.5 ms |
-| `casa` | 1 | 3.0 ms |
-| `andavano` | 2 | 8.9 ms |
-| `studenti` | 4 | 12.8 ms |
-| `bella` | 9 | 13.1 ms |
-| `sale` | 5 | 21.6 ms |
-| unknown word | 0 | 0.5 ms |
+No dataset needed. It generates a synthetic release at two scales, imports both,
+and times the same queries against each. The corpus comes from a seed and
+matches the real release's *shape* — 560,357 records, ~1.27 M lookup rows,
+~609 K form_of edges, homographs skewed so some keys reach eight readings — so
+the same command produces the same corpus anywhere. It is not Italian and does
+not pretend to be; lookup cost depends on how many rows a key matches, not on
+what the letters mean.
 
-Local SQLite is not D1, so these predict nothing about production latency. They
-are here to show the shape of the cost, and that it scales with the number of
-readings rather than the size of the release.
+Two scales rather than one on purpose. A single column cannot show whether cost
+follows the number of readings or the size of the release, and that is the only
+claim here worth making.
+
+Against the real archive instead, once it is imported per
+[`docs/IMPORT.md`](IMPORT.md):
+
+```
+pnpm run bench:lookup -- --database .data/lexema.sqlite --release it-local
+```
+
+First run builds and imports both corpora (~5 minutes); later runs reuse them,
+or pass `--rebuild`.
+
+### Captured output
+
+Verbatim from `pnpm run bench:lookup` on 2026-09-19. Local SQLite is not D1, so
+these predict nothing about production latency — they show the shape of the
+cost.
+
+#### Environment
+
+- Node v26.2.0, SQLite 3.53.1, `node:sqlite`
+- Apple M1 Pro, 8 cores, 17 GB, darwin-arm64
+- 25 timed iterations after 5 warmup runs; median reported
+
+#### Corpus
+
+| Release | Records | Lookup rows | form_of edges | Database |
+| --- | ---: | ---: | ---: | ---: |
+| 140,000 records | 140,000 | 318,407 | 152,184 | 0.25 GB |
+| 560,357 records | 560,357 | 1,274,725 | 609,161 | 0.99 GB |
+
+#### Lookup
+
+| Readings | 140,000 records | 560,357 records |
+| ---: | ---: | ---: |
+| 1 | 0.18 ms | 0.17 ms |
+| 2 | 0.31 ms | 0.35 ms |
+| 4 | 0.61 ms | 0.63 ms |
+| 8 | 1.23 ms | 1.28 ms |
+| 0 (miss) | 0.03 ms | 0.03 ms |
+
+Four times the release, the same cost per reading. That is the claim, and it is
+the reason the column pair exists.
+
+#### Lemma links: view LEFT JOINed vs. its join inlined
+
+| Release | Via `form_of_candidate` | Inlined | Rows |
+| --- | ---: | ---: | ---: |
+| 140,000 records | 981.1 ms | 0.03 ms | 1 |
+| 560,357 records | 6722.0 ms | 0.03 ms | 1 |
+
+Same rows, four orders of magnitude apart — and the view form is the one that
+gets worse as the release grows, which is exactly the cost the inlined query
+exists to avoid.
 
 ## Not in scope
 
