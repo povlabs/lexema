@@ -34,10 +34,10 @@ herdr pane run <pane_id> "unsetopt correct correct_all"   # zsh otherwise "corre
 herdr pane run <pane_id> "<the pi command>"
 ```
 
-Fire it and move on. The worker calls you back: the last line of its prompt tells it to type a line into your pane, which arrives as a new turn in your chat. Your `HERDR_PANE_ID` is the driver pane. The callback goes in the prompt, not after the pi command: pi stays open when the job ends, so a shell line after it never runs.
+Fire it and move on. The worker calls you back: the last line of its prompt tells it to submit a prompt to your pane, which arrives as a new turn in your chat. Your `HERDR_PANE_ID` is the driver pane. The callback goes in the prompt, not after the pi command: pi stays open when the job ends, so a shell line after it never runs. `agent prompt`, not `pane run`: `pane run` types raw keys and joins whatever Huey is typing.
 
 ```
-<job>. When done, run: herdr pane run <driver_pane_id> "<label> finished in pane <pane_id>. Read it and report."
+<job>. When done, run: herdr agent prompt <driver_pane_id> "<label> finished in pane <pane_id>. Read it and report."
 ```
 
 When that turn arrives, read the pane and report the result to Huey:
@@ -62,7 +62,7 @@ herdr pane run <pane_id> "export GH_TOKEN=\$(gh auth token --user nothueypov)
 export FABRIKA_GLOBAL_WARNING_DISABLED=1
 pi --provider openai-codex --model gpt-5.6-sol \\
    --skill ~/.pi/agent/npm/node_modules/@kampus/fabrika-pi/dist/skills/review \\
-   -n 'review PR <n>' 'review PR #<n>. When your verdict is posted, run: herdr pane run $DRIVER \"pr-<n> review finished in pane <pane_id>. Read it and report the verdict.\"'"
+   -n 'review PR <n>' 'review PR #<n>. When your verdict is posted, run: herdr agent prompt $DRIVER \"pr-<n> review finished in pane <pane_id>. Read it and report the verdict.\"'"
 ```
 
 Reviews run in parallel, one tab each. A review is done when `fabrika review verdicts <n>` lists every namespace that `fabrika review scope <n>` asks for, at the PR's current head. Report the verdict URL to Huey. Hold pushes to that branch until then: a new head restarts the review.
@@ -86,7 +86,7 @@ A builder starts like this:
 ```bash
 herdr pane run <pane_id> "pi --provider pi-claude --model claude-opus-5 \\
    --skill ~/.pi/agent/npm/node_modules/@kampus/fabrika-pi/dist/skills/build \\
-   -n 'build <n>' 'build #<n>. When the PR is open, run: herdr pane run $DRIVER \"build-<n> finished in pane <pane_id>. Read it and report.\"'"
+   -n 'build <n>' 'build #<n>. When the PR is open, run: herdr agent prompt $DRIVER \"build-<n> finished in pane <pane_id>. Read it and report.\"'"
 ```
 
 Repair is the builder again, with `repair PR #<n>` as the prompt. Only the shipper merges, and only after every required verdict is PASS at the current head ([0006](.decisions/0006-codex-review-is-the-merge-gate.md)).

@@ -23,7 +23,7 @@ Keeping the human gate on top of it means every pull request waits for Huey twic
 
 **A pull request merges when its Codex review passes. The shipper merges it.**
 
-- The gate is `fabrika ship scope <n>`: every required verdict namespace shows PASS at the current head, and CI is green. Nothing else opens it.
+- The gate is `fabrika ship gate <n> --sha <head>`: every required verdict namespace reads `pass` at the current head. CI green is a separate, required check. Nothing else opens it.
 - Only the `ship` skill merges. A builder, reviewer, or driver still stops at the PR URL.
 - A FAIL goes back to a builder for repair. The shipper never overrides a verdict.
 - Huey can still merge by hand, and can still say "hold" on any PR.
