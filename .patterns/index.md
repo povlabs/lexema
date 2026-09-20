@@ -14,6 +14,16 @@ records into candidates.
 |---|---|---|
 | [source-record-admission-and-provenance.md](./source-record-admission-and-provenance.md) | Admitting a record from the Kaikki file and attaching provenance to every derived value | Reading the source file, adding a derived field to a candidate, or deciding what a provenance ref must carry |
 
+## CI workflows
+
+For `.github/workflows/`. Adapted from phoenix's pattern library where lexema's own
+workflows already show the same shape; each doc cites the workflow here that does.
+
+| Pattern | Topic / scope | Read when |
+|---|---|---|
+| [repo-wide-gates-run-on-main.md](./repo-wide-gates-run-on-main.md) | Which trigger set a workflow carries, decided by the scope its guard scans | Adding a CI workflow, or changing an existing one's triggers or concurrency block |
+| [workflow-shell-fails-closed.md](./workflow-shell-fails-closed.md) | The shape of a run: block whose exit status is a verdict | Writing or editing a shell step that scans something and reports clean or red |
+
 ## When to add a new pattern doc here
 
 A pattern may enter through either source-backed path:
