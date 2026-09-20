@@ -6,7 +6,7 @@ Reference: observations from directly reading `it-extract.jsonl.gz`, not from th
 
 **Checked means faithful to this file, not independently verified Italian.** No grammar authority was consulted during this spot check. No articles or missing forms were generated. Counts below describe matching evidence, not distinct meanings or final search results.
 
-Follow-up: [source research](SOURCE_RESEARCH.md) compares these claims with Wiktionary and selected Treccani entries. It finds missing `casa` content and conflicting evidence for the `studente` verb claim; the raw observations below are unchanged.
+Follow-up: [source research](2026-09-18-source-research.md) compares these claims with Wiktionary and selected Treccani entries. It finds missing `casa` content and conflicting evidence for the `studente` verb claim; the raw observations below are unchanged.
 
 The inspection used Python's standard-library gzip and JSON readers, streaming one line at a time. Source locations below use 1-based physical JSONL line numbers and 0-based JSON Pointer array indexes. They apply only to this exact file:
 
