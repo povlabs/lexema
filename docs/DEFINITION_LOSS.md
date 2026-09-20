@@ -2,15 +2,19 @@
 
 Investigation for [issue #11](https://github.com/hueypov/lexema/issues/11), run 2026-09-18.
 
-Saved regression cases replay offline. Sampling/fetching reruns the heuristic study against current pages, not the historical hand review:
+Saved regression cases replay offline. Re-sampling re-runs the heuristic against whatever
+the pages say today; the hand labels in `fixtures/definition-loss-samples/hand-labels.json`
+are tied to the revisions reviewed here, so a fresh draw needs fresh review:
 
 ```bash
 python3 tools/definition_loss.py verify          # replays the regression cases, no network
 python3 test/definition-loss.py                  # proves verify fails when content is removed
-python3 tools/definition_loss.py sample   --stratum lemma --size 400 --seed 11 --out build/sample-lemma.json
+python3 tools/definition_loss.py sample   --stratum lemma --size 1200 --seed 11 --out build/sample-lemma.json
 python3 tools/definition_loss.py fetch    --sample build/sample-lemma.json
 python3 tools/definition_loss.py classify --sample build/sample-lemma.json --out build/report-lemma.json
 ```
+
+`classify` stops rather than print a rate if it flags a record that nobody has labelled.
 
 Source file under study: `it-extract.jsonl.gz`, SHA-256
 `0c432803c672aceccd48787eb64807c5366fdbd6796715c9a99e31c0024d5dcf`, 560,357 Italian
@@ -171,43 +175,91 @@ upstream and re-parsing confirms **4 real severe losses**: `casa`, `manuale`,
 This method has unknown recall: it can only see a control `#` line that renders to
 non-empty text.
 
-**Method B — record-weighted page sample.** Seed 11 sampled 400 of the 74,098 lemma records, then retained only distinct words. Classification inspected every Italian POS on each page. This is neither a record-level measurement nor a uniform page sample. Of 400 pages, 396 had classifiable Italian sections. A separate inflected-record draw yielded 200 pages.
+**Method B — uniform record sample.** The unit is the record, start to finish. Seed 11
+draws records uniformly from a stratum; each drawn record keeps its word and its part of
+speech; scoring then reads only *that* record's section of its page. So the numerator and
+the denominator count the same thing, and the rate multiplies out to the population.
 
-All five partial-loss flags were hand-reviewed against the cited revisions:
+This is the part an earlier version of this document got wrong. It sampled records,
+deduplicated to words, then classified every part of speech on each page — which credits a
+loss to a record nobody drew. `classico` is the worked example: the page loses the
+definition of *liceo classico* from its **noun** section, but the record drawn was the
+**adjective**. Page-level counting scored it a hit; record-level counting does not.
 
-| Page / revision | Human label | Reason |
+Two strata, covering all 560,357 Italian records:
+
+| Stratum | Population | Drawn | Scored | Flagged | Confirmed by hand |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Lemma | 74,098 | 1,200 | 1,189 | 15 | **12** |
+| Inflected | 486,259 | 1,000 | 1,000 | 0 | **0** |
+
+Eleven lemma records went unscored: 6 whose part of speech is no longer on the live page,
+5 whose page has no Italian section at all. They are dropped rather than guessed at.
+
+Every one of the 15 flags was read by hand and decided in writing before it counted.
+`classify` refuses to print a rate while any flag is unlabelled, so no number here comes
+from a flag nobody read. Twelve state a meaning; three are usage sentences and were
+thrown out:
+
+| Record | Flagged text | Verdict |
 | --- | --- | --- |
-| ammartaggio / 3907730 | usage example; exclude | Reports the particular InSight landing on 26 November 2018. |
-| canzone / 4049880 | definition | Explains `canzone d'amore` by its addressee. |
-| classico / 4050810 | definition | Explains `liceo classico` and its subjects. |
-| cruento / 3959787 | definition | Explains `sacrificio cruento` as an animal offering. |
-| partita / 4004491 | two definitions | Distinguishes accounting methods by their recording rules. |
+| `incignare` verb | *ho incignato il vestito nuovo* | example — one speaker, one new suit |
+| `virgulto` noun | *una pianta dai virgulti vigorosi* | example — adds nothing to the `#` line |
+| `spiluccare` verb | *Edoardo ha spiluccato il biscotto al cioccolato* | example — one person, one biscuit |
 
-**Corrected result: 4/396 inspected pages (1.01%) have confirmed partial definition loss.** These are page counts, not a projected record count. The previous 5/396 and projected 935 are withdrawn. Labels and reasons are in `fixtures/definition-loss-samples/report-lemma.json`; negatives were not exhaustively hand-reviewed.
+The twelve kept records, with the reason for each, are in
+`fixtures/definition-loss-samples/hand-labels.json` and repeated in the report.
 
-| Tier | Observed pages | Interpretation |
+### The answer
+
+**Roughly 750 Italian records lose a definition this way — about 1 in 750 — with a 95%
+interval of 430 to 1,300.**
+
+That comes from the lemma stratum: 12/1,189 = 1.01%, Wilson interval 0.58%–1.76%, times
+74,098 lemma records.
+
+The inflected stratum contributes nothing measurable, and there is a structural reason,
+not just a zero count. The bug needs a `#*`/`#:` child line to route into the example
+reader. Only **3 of 1,000** inflected records have such a line at all, and all three are
+italic usage sentences the extractor keeps correctly. An inflected page is a form-of
+pointer; there is rarely anything nested under it to lose. Its binomial upper bound is
+0.38%, so even the pessimistic reading of both strata together stays under 3,200 records.
+
+Among lemma records the bug can actually reach — the 179 of 1,189 with a nested child —
+the rate is 12/179, about **7%**. That is the number to hold in mind when reading a page
+with sub-senses, and it is why `casa` is not a freak.
+
+**This is a floor, not a ceiling.** The negatives were never exhaustively hand-reviewed,
+so the heuristic's recall is unknown; anything it failed to nominate is missing from the
+12. Read 750 as the right order of magnitude — hundreds, not tens and not tens of
+thousands — rather than a precise count.
+
+| Tier | Observed | Interpretation |
 | --- | ---: | --- |
-| Severe | 0 / 396 | No discoveries in this sample; Method A separately found four. |
-| Partial, reviewed positives | 4 / 396 | Descriptive page rate 1.01%; no population projection. |
-| Wrapped prose | 5 / 396 | Heuristic flags, not five verified losses. |
-| Inflected draw | 0 / 200 | No flags, not proof all inflected forms are unaffected. |
-
-The total affected population remains unknown. Four severe discoveries with unknown recall do not justify “order of tens” or a bound of 711 records. Both claims and the binomial intervals are withdrawn: the measurement unit did not match the sampling unit. `classify` now emits descriptive page rates only, explicitly labelled heuristic.
+| Severe (all glosses useless) | 4 records | Method A discoveries; none fell in the sample. |
+| Partial, hand-confirmed | 12 / 1,189 lemma | 1.01%, projecting to ~750 records. |
+| Wrapped prose (separate bug) | 16 / 1,189 | Heuristic flags, not 16 verified losses. |
+| Inflected | 0 / 1,000 | Only 3 are even exposed to the mechanism. |
 
 **Remaining uncertainty:**
 
 1. **Version skew.** The local snapshot is older than the pages I fetched. A page fixed
    or broken upstream since then shows up on the wrong side. This is the largest
    uncertainty in Method A; it does not affect the `verify` cases, which pin a revision id.
-2. **Classifier precision.** It decides "definition vs example" by whether the line
-   carries italic markup — a proxy for how the real extractor behaves, not a reading of
-   the Italian. It agreed with hand-checking on `casa`, `manuale`, `verde`, `informatica`
-   and `scarlatto`, but misread at least three inspected pages: `ammartaggio`'s dated usage sentence was counted as a definition; it also called
-   `lap steel guitar`'s definition an example (it contains an incidental italic) and
-   `malanga`'s citation a definition (it contains none). Both misreads are inherent to
-   the proxy. Not measured on a larger blind set.
-3. **Wrapped-prose precision is poor.** Of the 5 flagged pages only about 3 lose real
-   meaning; the rest are stray markup. Treat that row as an upper bound.
+2. **Classifier precision is measured; its recall is not.** It decides "definition vs
+   example" by whether the line carries italic markup — a proxy for how the real
+   extractor behaves, not a reading of the Italian. Hand review of all 15 flags puts its
+   precision at 12/15, **80%**, and the review, not the proxy, sets the numerator. What
+   is *not* measured is how much it misses: a lost definition that happens to carry an
+   incidental italic reads as an example and is never nominated. `lap steel guitar` is a
+   known case of exactly that. This is why 750 is a floor.
+3. **Wrapped-prose precision is poor.** Of the 16 flagged records only a fraction lose
+   real meaning; the rest are stray markup. Treat that row as an upper bound, and note
+   it is a different bug from the one this document measures.
+4. **One record, one section.** A record is matched to its page section by part of speech
+   title. 16 of 1,189 lemma records matched more than one section with the same title;
+   those count as hit if either section loses a definition, which can only overstate, and
+   only by at most 16 records.
 
 A single severe page can matter far more than its count suggests: `casa` is among the
 most common nouns in Italian. **Counting records understates the user-visible damage.**
@@ -269,9 +321,14 @@ The three clean controls matter as much as the failures: they are what stops a f
 
 ## 6. What I could not establish
 
-- **The exact severe-case count.** Method A's recall is unknown and Method B found zero
-  in 396 inspected pages. No defensible population bound follows from this design. Detecting
-  the shape reliably needs the upstream page, not the extract.
+- **The exact severe-case count.** Method A's recall is unknown, and Method B drew no
+  severe record in 2,189. Section 3 bounds the *partial* tier, which is the common case;
+  the severe tier is only known by its four named discoveries. Detecting that shape
+  reliably needs the upstream page, not the extract.
+- **The true total, as opposed to a floor.** ~750 counts what the heuristic nominated and
+  a person then confirmed. A definition it never nominated — one carrying an incidental
+  italic, say — is invisible to the count. Closing that needs a blind hand review of a
+  sample of negatives, which is not this PR.
 - **Whether version skew flips any of the 34 Method-A non-losses.** The local snapshot's
   upstream revision ids are not recorded anywhere, so I cannot fetch the matching
   revisions. `arteria` and `dolmen` are unresolved for this reason.

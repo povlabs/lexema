@@ -1,0 +1,82 @@
+{
+  "_README": "Every record the heuristic flags is decided here by hand before it counts. `classify` refuses to report a rate while any flag is missing from this file, so no number is ever projected from an unread flag. Key is `word|pos_title`, matching the extract record. `label` is what the flagged text actually is to a reader: `definition` states a meaning, `example` shows the word in use.",
+
+  "serata|Sostantivo": {
+    "label": "definition",
+    "reason": "'prima serata' and 'seconda serata' are named broadcast slots, and each line says which hours it covers. That is what the phrase means, not a sentence using it."
+  },
+  "forma|Sostantivo": {
+    "label": "definition",
+    "reason": "'forma strofa-ritornello' is defined by its parts: two verses, an interlude and a repeated chorus."
+  },
+  "musicale|Aggettivo": {
+    "label": "definition",
+    "reason": "'teoria musicale' is defined as the body of general concepts for composing and performing music."
+  },
+  "osso|Sostantivo": {
+    "label": "definition",
+    "reason": "'osso di seppia' is defined as the internal shell of cuttlefish."
+  },
+  "acustica|Sostantivo": {
+    "label": "definition",
+    "reason": "'ingegneria acustica' is defined as the branch of engineering that builds devices to produce, transmit, record and reproduce sound."
+  },
+  "farsi|Verbo": {
+    "label": "definition",
+    "reason": "The flagged line 'nelle varie forme pronominali' only heads a list, but the list it heads is definitions: 'farmi: fare + mi, fare a me' and its four siblings each gloss a pronominal form. Those sit at `#**`, one level below the example reader, so the record loses real definitions."
+  },
+  "diametro|Sostantivo": {
+    "label": "definition",
+    "reason": "'la lunghezza di tale retta' completes the sense above it, saying the measure is the length of that line. The italic lines around it are the usage sentences; this one is not."
+  },
+  "servizio|Sostantivo": {
+    "label": "definition",
+    "reason": "'servizio sociale' and 'servizio finanziario' are each given their meaning: prevention and relief of hardship, and a technical instrument for investing capital."
+  },
+  "RIS|Acronimo / Abbreviazione": {
+    "label": "definition",
+    "reason": "The `#` line only spells the acronym out. 'sezione dell'arma dei carabinieri' is the line that says what the RIS is."
+  },
+  "esornativo|Aggettivo": {
+    "label": "definition",
+    "reason": "'genere esornativo' is defined as epideictic in classical rhetoric; the sibling line defines 'epiteto esornativo' the same way."
+  },
+  "burocratico|Aggettivo": {
+    "label": "definition",
+    "reason": "'carte burocratiche' is defined as public documents concerning some or all citizens."
+  },
+  "dittatoriale|Aggettivo": {
+    "label": "definition",
+    "reason": "'regime dittatoriale' is defined by how it holds power: usually military sovereignty, often formed after a coup."
+  },
+
+  "incignare|Verbo": {
+    "label": "example",
+    "reason": "'ho incignato il vestito nuovo' is one speaker wearing one new suit. The meaning is already on the `#` line above it."
+  },
+  "virgulto|Sostantivo": {
+    "label": "example",
+    "reason": "'una pianta dai virgulti vigorosi' shows the noun inside a phrase. It says nothing the `#` line 'rampollo di pianta' does not."
+  },
+  "spiluccare|Verbo": {
+    "label": "example",
+    "reason": "'Edoardo ha spiluccato il biscotto al cioccolato' is one person nibbling one biscuit."
+  },
+
+  "ammartaggio|Sostantivo": {
+    "label": "example",
+    "reason": "'L'... della sonda InSight e avvenuto il 26 novembre 2018' reports one landing on one date. It does not say what the word means. Flagged in the earlier 400-record draw; kept here so the earlier review's finding stays recorded."
+  },
+  "canzone|Sostantivo": {
+    "label": "definition",
+    "reason": "'canzone d'amore' is defined by who it is addressed to. Flagged in the earlier 400-record draw."
+  },
+  "cruento|Aggettivo": {
+    "label": "definition",
+    "reason": "'sacrificio cruento' is defined as a biblical offering of slaughtered animals. Flagged in the earlier 400-record draw."
+  },
+  "partita|Sostantivo": {
+    "label": "definition",
+    "reason": "'partita semplice' and 'partita doppia' are defined by how each records transactions. Flagged in the earlier 400-record draw."
+  }
+}

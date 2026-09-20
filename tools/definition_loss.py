@@ -5,10 +5,11 @@ Standard library only. Streams `it-extract.jsonl.gz`; never loads it whole.
 
 Subcommands
 -----------
-sample        Pick a reproducible random sample of Italian words from the extract.
-fetch         Download the wikitext of sampled pages from it.wiktionary and cache it.
-classify      Read cached wikitext, label every Italian definition list line, and
-              compare the page against the record the extract produced.
+sample        Draw a reproducible uniform sample of Italian records from the extract.
+fetch         Download the wikitext of the sampled pages from it.wiktionary and cache it.
+classify      Score every sampled record against its own section of its own page,
+              decide each heuristic flag by a committed hand label, and project the
+              confirmed rate onto the stratum it was drawn from.
 regressions   Emit the verified regression fixture for the pages named on the
               command line, keeping page controls, definitions and examples apart.
 
@@ -25,6 +26,7 @@ from __future__ import annotations
 import argparse
 import gzip
 import json
+import math
 import os
 import random
 import re
@@ -41,10 +43,36 @@ CACHE = REPO / "fixtures" / "upstream-wikitext"     # rebuildable, not committed
 PAGES = REPO / "fixtures" / "upstream-pages"        # saved regression pages
 API = "https://it.wiktionary.org/w/api.php"
 
-# Sampling draws records; classification reads whole pages. The two units do not
-# match, so every report states the unit and claims nothing about the population.
-MEASUREMENT_UNIT = (
-    "distinct pages from a record-weighted sample; descriptive, not a population estimate")
+# Sampling draws records and classification scores those same records, so the
+# numerator and the denominator count one thing and the rate projects onto the
+# stratum it was drawn from. Measuring whole pages instead would not: a page can
+# lose a definition in a part of speech nobody sampled.
+MEASUREMENT_UNIT = "extract records, sampled uniformly and scored one by one"
+
+# A sampled record names its part of speech the way the extractor titled it; the
+# page names the same section with an it.wiktionary template. This is the bridge,
+# and `classify` reports every record it cannot bridge instead of guessing.
+POS_TITLE_BY_TEMPLATE = {
+    "sost": "Sostantivo", "agg": "Aggettivo", "adj": "Aggettivo",
+    "verb": "Verbo", "nome": "Nome proprio", "avv": "Avverbio",
+    "acron": "Acronimo / Abbreviazione", "chat": "Abbreviazione in uso nelle chat",
+    "card": "Aggettivo numerale", "inter": "Interiezione", "cong": "Congiunzione",
+    "prep": "Preposizione", "pronome": "Pronome", "art": "Articolo",
+    "pref": "Prefisso", "prefissoide": "Prefissoide", "suff": "Suffisso",
+    "confisso": "Confisso", "lettera": "Lettera", "sigla": "Codice / Simbolo",
+    "cifra": "Cifra", "part": "Particella", "espr": "Espressione",
+    "loc nom": "Locuzione nominale", "loc verb": "Locuzione verbale",
+    "loc avv": "Locuzione avverbiale", "loc agg": "Locuzione aggettivale",
+    "loc cong": "Locuzione congiuntiva", "loc prep": "Locuzione prepositiva",
+    "loc inter": "Locuzione interiettiva",
+    "agg poss": "Aggettivo possessivo", "agg dim": "Aggettivo dimostrativo",
+    "pronome poss": "Pronome possessivo",
+    "sost form": "Sostantivo, forma flessa", "agg form": "Aggettivo, forma flessa",
+    "verb form": "Voce verbale", "nome form": "Nome proprio, forma flessa",
+    "pronome form": "Pronome, forma flessa",
+    "loc nom form": "Locuzione nominale, forma flessa",
+    "card form": "Aggettivo numerale, forma flessa",
+}
 USER_AGENT = "lexema-definition-loss-study/1.0 (github.com/hueypov/lexema; issue 11)"
 
 # it.wiktionary marks a language section with {{-xx-}} and a part of speech with
@@ -294,6 +322,34 @@ def is_lemma(record: dict) -> bool:
     return not any("form-of" in (s.get("tags") or []) for s in record.get("senses") or [])
 
 
+def sections_for_record(sections: list[PosSection], pos_title: str | None) -> list[PosSection]:
+    """The page sections a sampled record was extracted from.
+
+    Empty when the page no longer carries that part of speech -- the dump and the
+    live page were written at different times, and a few pages were retitled in
+    between. `classify` counts those records as unmatched and drops them from the
+    denominator rather than scoring them against the wrong section.
+    """
+    return [s for s in sections
+            if POS_TITLE_BY_TEMPLATE.get(s.pos_template) == pos_title]
+
+
+def wilson(k: int, n: int, z: float = 1.96) -> tuple[float, float]:
+    """Wilson score interval for k successes in n draws.
+
+    Only meaningful because `sample` and `classify` both count records. Applying
+    it to a page-level count projected onto a record population would be wrong,
+    which is why `cmd_classify` refuses to project a sample whose unit is absent.
+    """
+    if n == 0:
+        return (0.0, 0.0)
+    p = k / n
+    denom = 1 + z * z / n
+    centre = (p + z * z / (2 * n)) / denom
+    margin = z / denom * math.sqrt(p * (1 - p) / n + z * z / (4 * n * n))
+    return (max(0.0, centre - margin), min(1.0, centre + margin))
+
+
 def records_for(words: set[str]) -> dict[str, list[dict]]:
     found: dict[str, list[dict]] = {w: [] for w in words}
     for lineno, record in iter_italian():
@@ -309,26 +365,40 @@ def records_for(words: set[str]) -> dict[str, list[dict]]:
 
 
 def cmd_sample(args) -> None:
-    """Sample records, then deduplicate words: page rates are descriptive only."""
+    """Draw a uniform reservoir sample of records from one stratum.
+
+    Each drawn record keeps its identity -- word, part of speech and line in the
+    archive -- because the record is the unit that gets scored later. `words` is
+    derived from the draw and exists only to tell `fetch` which pages to download.
+    """
     rng = random.Random(args.seed)
-    reservoir: list[str] = []
+    reservoir: list[dict] = []
     seen = 0
-    for _lineno, record in iter_italian():
+    for lineno, record in iter_italian():
         if args.stratum == "lemma" and not is_lemma(record):
             continue
         if args.stratum == "inflected" and is_lemma(record):
             continue
         seen += 1
+        drawn = {"word": record["word"], "pos": record.get("pos"),
+                 "pos_title": record.get("pos_title"), "line": lineno}
         if len(reservoir) < args.size:
-            reservoir.append(record["word"])
+            reservoir.append(drawn)
         else:
             j = rng.randrange(seen)
             if j < args.size:
-                reservoir[j] = record["word"]
-    out = {"stratum": args.stratum, "seed": args.seed, "population": seen,
-           "words": sorted(set(reservoir))}
-    Path(args.out).write_text(json.dumps(out, ensure_ascii=False, indent=2), encoding="utf-8")
-    print(f"stratum={args.stratum} population={seen} sampled={len(out['words'])} -> {args.out}")
+                reservoir[j] = drawn
+    reservoir.sort(key=lambda r: r["line"])
+    head = {"stratum": args.stratum, "seed": args.seed, "unit": "record",
+            "population": seen, "words": sorted({r["word"] for r in reservoir})}
+    # One record per line. These files run to thousands of entries, and a reviewer
+    # reading the diff wants one line per drawn record, not six.
+    body = ",\n  ".join(json.dumps(r, ensure_ascii=False) for r in reservoir)
+    text = json.dumps(head, ensure_ascii=False, indent=2)[:-2].rstrip()
+    Path(args.out).write_text(
+        f"{text},\n  \"records\": [\n  {body}\n  ]\n}}\n", encoding="utf-8")
+    print(f"stratum={args.stratum} population={seen} records={len(reservoir)} "
+          f"pages={len(head['words'])} -> {args.out}")
 
 
 def api_fetch(titles: list[str]) -> dict[str, dict]:
@@ -384,70 +454,115 @@ def cmd_fetch(args) -> None:
         time.sleep(2.0)
 
 
+def label_key(word: str, pos_title: str | None) -> str:
+    return f"{word}|{pos_title}"
+
+
 def cmd_classify(args) -> None:
+    """Score each sampled record against its own section of its own page.
+
+    The heuristic only nominates; every nomination is decided by a committed hand
+    label, and an unlabelled nomination stops the command. Nothing is projected
+    from flags nobody read.
+    """
     meta = json.loads(Path(args.sample).read_text(encoding="utf-8"))
-    words = meta["words"]
-    cached = {}
-    for w in words:
-        p = cache_path(w)
+    if meta.get("unit") != "record":
+        raise SystemExit(f"{args.sample}: not a record-unit sample; re-run `sample`")
+    labels = json.loads(Path(args.labels).read_text(encoding="utf-8"))
+
+    pages = {}
+    for word in meta["words"]:
+        p = cache_path(word)
         if p.exists():
-            cached[w] = json.loads(p.read_text(encoding="utf-8"))
-    print(f"cached pages: {len(cached)}/{len(words)}")
+            pages[word] = json.loads(p.read_text(encoding="utf-8"))
+    print(f"cached pages: {len(pages)}/{len(meta['words'])}")
 
-    extract = records_for(set(cached))
+    scored = flagged = exposed = wrapped = 0
+    missing = no_italian = unmatched = ambiguous = 0
+    confirmed, rejected, unlabelled = [], [], []
 
-    affected, examples_only, clean, no_italian, missing = [], [], [], [], []
-    continuation_loss = []
-    for word, payload in sorted(cached.items()):
-        if payload.get("missing"):
-            missing.append(word)
+    for record in meta["records"]:
+        word, pos_title = record["word"], record["pos_title"]
+        payload = pages.get(word)
+        if payload is None or payload.get("missing"):
+            missing += 1
             continue
         sections = parse_italian_sections(payload["wikitext"], word)
         if not sections:
-            no_italian.append(word)
+            no_italian += 1
             continue
-        lost_defs = [l for s in sections for l in s.lost_definitions]
-        lost_ex = [l for s in sections for l in s.lost_examples]
-        conts = [c for s in sections for c in s.continuations if c.kind == "prose"]
-        if conts:
-            continuation_loss.append(word)
-        entry = {
-            "word": word, "revid": payload.get("revid"),
-            "lost_definitions": [l.text for l in lost_defs],
-            "lost_examples": [l.text for l in lost_ex],
-            "wrapped_prose": [c.text for c in conts],
-            "extract_glosses": [g for r in extract.get(word, [])
-                                for s in r.get("senses", []) for g in (s.get("glosses") or [])],
-        }
-        if lost_defs:
-            affected.append(entry)
-        elif lost_ex:
-            examples_only.append(entry)
-        else:
-            clean.append(word)
+        mine = sections_for_record(sections, pos_title)
+        if not mine:
+            unmatched += 1
+            continue
+        if len(mine) > 1:
+            ambiguous += 1
+        scored += 1
 
-    n = len(affected) + len(examples_only) + len(clean)
+        # The loss needs a `#*`/`#:` child to route into the example reader. A
+        # record without one cannot lose a definition this way, so counting the
+        # exposed subset says how much of the stratum the mechanism can reach.
+        if any(l.depth > 1 and l.marker[1:2] in "*:" for s in mine for l in s.lines):
+            exposed += 1
+        if any(c.kind == "prose" for s in mine for c in s.continuations):
+            wrapped += 1
+
+        lost = [l for s in mine for l in s.lost_definitions]
+        if not lost:
+            continue
+        flagged += 1
+        key = label_key(word, pos_title)
+        entry = {
+            "word": word, "pos_title": pos_title, "record_line": record["line"],
+            "revid": payload.get("revid"),
+            "flagged_lines": [l.text for l in lost],
+        }
+        decision = labels.get(key)
+        if not decision or not decision.get("reason"):
+            unlabelled.append(key)
+            continue
+        entry["human_label"] = decision["label"]
+        entry["reason"] = decision["reason"]
+        (confirmed if decision["label"] == "definition" else rejected).append(entry)
+
+    if unlabelled:
+        raise SystemExit(
+            "unreviewed flags, refusing to report a rate:\n  " +
+            "\n  ".join(sorted(unlabelled)) +
+            f"\nAdd each one to {args.labels} with a label and a written reason.")
+
+    k, population = len(confirmed), meta["population"]
+    # Round the rate first, then project from the rounded bounds, so every number
+    # printed below can be re-derived from the numbers next to it.
+    low, high = (round(b, 5) for b in wilson(k, scored))
+    rate = round(k / scored, 5) if scored else 0.0
     report = {
         "stratum": meta["stratum"], "seed": meta["seed"],
-        "record_sampling_population": meta["population"],
         "measurement_unit": MEASUREMENT_UNIT,
-        "classification": "heuristic flags, not hand-verified definition losses",
-        "pages_cached": len(cached), "pages_classified": n,
-        "pages_missing_upstream": len(missing),
-        "pages_without_italian_section": len(no_italian),
-        "definition_loss": len(affected),
-        "example_loss_only": len(examples_only),
-        "clean": len(clean),
-        "pages_with_wrapped_prose": len(continuation_loss),
+        "stratum_population": population,
+        "records_sampled": len(meta["records"]),
+        "records_scored": scored,
+        "records_unmatched_pos": unmatched,
+        "records_page_missing_upstream": missing,
+        "records_page_without_italian_section": no_italian,
+        "records_with_ambiguous_section_match": ambiguous,
+        "records_exposed_to_mechanism": exposed,
+        "records_with_wrapped_prose": wrapped,
+        "records_flagged_by_heuristic": flagged,
+        "definition_loss": k,
+        "flags_rejected_by_review": len(rejected),
+        "definition_loss_rate": rate,
+        "definition_loss_rate_ci95": [low, high],
+        "projected_records": round(rate * population),
+        "projected_records_ci95": [round(low * population), round(high * population)],
+        "recall": "unknown; negatives were not exhaustively hand-reviewed, so the "
+                  "projection is a floor on the true count, not a ceiling",
+        "confirmed_records": confirmed,
+        "rejected_flags": rejected,
     }
-    for label, k in (("definition_loss", len(affected)),
-                     ("example_loss_only", len(examples_only))):
-        report[label + "_rate"] = round(k / n, 4) if n else 0.0
-        # No record projection: classification covers every POS on each page.
-    report["affected_pages"] = affected
     Path(args.out).write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
     for key, value in report.items():
-        if key != "affected_pages":
+        if key not in ("confirmed_records", "rejected_flags"):
             print(f"{key}: {value}")
     print(f"\nwrote {args.out}")
 
@@ -588,6 +703,8 @@ def main() -> int:
 
     p = sub.add_parser("classify")
     p.add_argument("--sample", required=True)
+    p.add_argument("--labels", default=str(
+        REPO / "fixtures" / "definition-loss-samples" / "hand-labels.json"))
     p.add_argument("--out", required=True)
     p.set_defaults(func=cmd_classify)
 
