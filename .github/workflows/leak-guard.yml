@@ -31,9 +31,14 @@ jobs:
           BASE_REF: ${{ github.base_ref }}
           FABRIKA_GLOBAL_WARNING_DISABLED: "1"
         run: |
-          set -euo pipefail
+          set -uo pipefail
           git fetch --no-tags origin "$BASE_REF"
-          mapfile -t changed < <(git diff --name-only --diff-filter=ACMR "origin/$BASE_REF...HEAD")
+          if ! diff_out="$(git diff --name-only --diff-filter=ACMR "origin/$BASE_REF...HEAD")"; then
+            echo "::error::could not diff origin/$BASE_REF...HEAD — refusing to report clean over nothing."
+            exit 1
+          fi
+          changed=()
+          while IFS= read -r f; do [ -n "$f" ] && changed+=("$f"); done <<< "$diff_out"
           if [ "${#changed[@]}" -eq 0 ]; then
             echo "No changed files — nothing to scan."
             exit 0
