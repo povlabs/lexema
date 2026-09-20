@@ -20,7 +20,7 @@ Source-derived lexical data is read-only: keep it as imported, keep where each f
 
 Decide this first.
 
-- **Worker** — you were started in a herdr pane with one job in the prompt (`review PR #33`, `build #14`). Do that job here, in this session, to the end. Your tools are the skill you were given, `git`, `gh` and `fabrika`. `herdr` is the driver's tool: a worker that opens a pane loses its job to a session nobody watches, and a worker that lists panes sees itself and quits as a duplicate.
+- **Worker** — you were started in a herdr pane with one job in the prompt (`review PR #33`, `build #14`). Do that job here, in this session, to the end. Your tools are the skill you were given, `git`, `gh` and `fabrika`. The one `herdr` command you run is the callback at the end of your prompt, after the job is done. Everything else in `herdr` is the driver's: a worker that opens a pane loses its job to a session nobody watches, and a worker that lists panes sees itself and quits as a duplicate.
 - **Driver** — you are talking to Huey and handing work out. Every job that takes minutes runs in its own herdr tab. Your own shell stays free for short commands.
 
 ## Driver: spawn a worker
@@ -34,10 +34,10 @@ herdr pane run <pane_id> "unsetopt correct correct_all"   # zsh otherwise "corre
 herdr pane run <pane_id> "<the pi command>"
 ```
 
-Fire it and move on. The worker calls you back: its command ends by typing a line into your pane, which arrives as a new turn in your chat. Your `HERDR_PANE_ID` is the driver pane.
+Fire it and move on. The worker calls you back: the last line of its prompt tells it to type a line into your pane, which arrives as a new turn in your chat. Your `HERDR_PANE_ID` is the driver pane. The callback goes in the prompt, not after the pi command: pi stays open when the job ends, so a shell line after it never runs.
 
-```bash
-<the pi command>; herdr pane run "$DRIVER" "<label> finished in pane <pane_id>. Read it and report."
+```
+<job>. When done, run: herdr pane run <driver_pane_id> "<label> finished in pane <pane_id>. Read it and report."
 ```
 
 When that turn arrives, read the pane and report the result to Huey:
@@ -62,8 +62,7 @@ herdr pane run <pane_id> "export GH_TOKEN=\$(gh auth token --user nothueypov)
 export FABRIKA_GLOBAL_WARNING_DISABLED=1
 pi --provider openai-codex --model gpt-5.6-sol \\
    --skill ~/.pi/agent/npm/node_modules/@kampus/fabrika-pi/dist/skills/review \\
-   -n 'review PR <n>' 'review PR #<n>'
-herdr pane run $DRIVER 'pr-<n> review finished in pane <pane_id>. Read it and report the verdict.'"
+   -n 'review PR <n>' 'review PR #<n>. When your verdict is posted, run: herdr pane run $DRIVER \"pr-<n> review finished in pane <pane_id>. Read it and report the verdict.\"'"
 ```
 
 Reviews run in parallel, one tab each. A review is done when `fabrika review verdicts <n>` lists every namespace that `fabrika review scope <n>` asks for, at the PR's current head. Report the verdict URL to Huey. Hold pushes to that branch until then: a new head restarts the review.
@@ -87,8 +86,7 @@ A builder starts like this:
 ```bash
 herdr pane run <pane_id> "pi --provider pi-claude --model claude-opus-5 \\
    --skill ~/.pi/agent/npm/node_modules/@kampus/fabrika-pi/dist/skills/build \\
-   -n 'build <n>' 'build #<n>'
-herdr pane run $DRIVER 'build-<n> finished in pane <pane_id>. Read it and report.'"
+   -n 'build <n>' 'build #<n>. When the PR is open, run: herdr pane run $DRIVER \"build-<n> finished in pane <pane_id>. Read it and report.\"'"
 ```
 
 Repair is the builder again, with `repair PR #<n>` as the prompt. Only the shipper merges, and only after every required verdict is PASS at the current head ([0006](.decisions/0006-codex-review-is-the-merge-gate.md)).
