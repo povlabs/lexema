@@ -9,7 +9,7 @@ tags: [process, agents]
 
 # 0006 — A passing Codex review is the merge gate; the shipper merges
 
-**What this decides:** A pull request merges when every required review verdict is PASS at its current head. The fabrika `ship` skill does the merge. Huey no longer has to.
+**What this decides:** A pull request merges when every required review verdict is PASS at its current head. The fabrika `ship` skill does the merge. Huey merges only what carries `ready-for:human`.
 
 ## Context
 
@@ -26,7 +26,8 @@ Keeping the human gate on top of it means every pull request waits for Huey twic
 - The gate is `fabrika ship gate <n> --sha <head>`: every required verdict namespace reads `pass` at the current head. CI green is a separate, required check. Nothing else opens it.
 - Only the `ship` skill merges. A builder, reviewer, or driver still stops at the PR URL.
 - A FAIL goes back to a builder for repair. The shipper never overrides a verdict.
-- Huey can still merge by hand, and can still say "hold" on any PR.
+- **`ready-for:human` holds the merge.** A PR carrying that label waits for Huey even with every verdict PASS. The shipper reports it and stops. Put the label on anything that changes a decision, a guard, money, or what gets published.
+- Huey can still merge by hand.
 
 **Still binding from 0001.** A green CI run alone is not approval. A push straight to `main` is not a route. An agent that merged says so plainly.
 

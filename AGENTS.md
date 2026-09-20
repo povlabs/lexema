@@ -89,7 +89,7 @@ herdr pane run <pane_id> "pi --provider pi-claude --model claude-opus-5 \\
    -n 'build <n>' 'build #<n>. When the PR is open, run: herdr agent prompt $DRIVER \"build-<n> finished in pane <pane_id>. Read it and report.\"'"
 ```
 
-Repair is the builder again, with `repair PR #<n>` as the prompt. Only the shipper merges, and only after every required verdict is PASS at the current head ([0006](.decisions/0006-codex-review-is-the-merge-gate.md)).
+Repair is the builder again, with `repair PR #<n>` as the prompt. Only the shipper merges, and only after every required verdict is PASS at the current head. A PR labelled `ready-for:human` waits for Huey instead ([0006](.decisions/0006-codex-review-is-the-merge-gate.md)).
 
 ## Driver: models
 
