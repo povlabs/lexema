@@ -771,7 +771,8 @@ test("no card of the twelve sampled queries renders a form twice", async () => {
 test("the searched form is outlined where it sits, and nothing is marked where it sits nowhere", async () => {
   await withFixture(async ({ db }) => {
     // `grandi` is the masculine and the feminine plural of `grande`, so both
-    // cells are marked, and the forms box marks it too.
+    // cells of the paradigm are marked. The paradigm placed it, so it does not
+    // appear again in the residual forms box: one fact at two coordinates.
     const grande = card(await render(db, "grandi"), "grande, adjective");
     const paradigm = section(grande, "Gender and number");
     assert.equal(occurrencesOf(paradigm, '<span class="searched">'), 2);
