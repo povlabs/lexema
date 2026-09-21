@@ -94,6 +94,9 @@ The gzip response was streamed only until its first Italian `casa` record. The c
 
 ## Follow-up
 
-The licence and attribution questions above are answered in [LICENSING.md](LICENSING.md): the exact
-release identity and re-fetch plan, the GFDL question, draft attribution text, how our own data is
-licensed, retention duties, media and quotation review, and the remaining publication blockers.
+The licence and attribution questions above are answered in
+[LICENSING.md](../docs/LICENSING.md): the release identity, the GFDL question, how our own data is
+licensed, retention duties, media and quotation review, and the remaining publication blockers. The
+draft notices and metadata field lists are in
+[attribution notices](../docs/ATTRIBUTION_NOTICES.md), and the fetch procedure is
+[how to re-fetch an identified release](../docs/REFETCH_A_RELEASE.md).

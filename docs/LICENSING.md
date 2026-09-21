@@ -8,9 +8,14 @@ them so a human — or a real lawyer — can check the reasoning. Items that nee
 
 **Status: research, not publication clearance or an accepted licence policy.** Issue #6's criterion that adapted-data and review-record licensing be settled remains open pending B2. The final notices also remain unfinished (B8). Merging this research would not settle either.
 
+The draft notices, the metadata field lists and the per-surface duty table are on
+[Attribution notices and release metadata](ATTRIBUTION_NOTICES.md). The fetch procedure that makes a
+release identifiable is [How to re-fetch an identified release](REFETCH_A_RELEASE.md). This page is
+the reasoning behind both.
+
 **Rule this document assumes:** local development continues freely. Nothing leaves this machine —
 no website, no API, no data download, no screenshot of definitions in a public deck — until the
-blockers in [Blockers to publishing](#blockers-to-publishing) are cleared.
+blockers in [Blockers to publishing](#9-blockers-to-publishing) are cleared.
 
 ---
 
@@ -76,32 +81,10 @@ From the footer of `https://kaikki.org/itwiktionary/`:
 > wiktextract ([d6fca27](https://github.com/tatuylonen/wiktextract/commit/d6fca2773bc90b9157248b9edf69585da06bf393)
 > and [65e1673](https://github.com/tatuylonen/wikitextprocessor/commit/65e1673d15c3b06f1de84d1c34303fc8f68c3528)).
 
-**Re-fetch plan.** Before any release, do a fresh fetch and capture all of this in one go. The log is
-tiny (154 kB) and the footer is one HTTP GET, so there is no excuse to skip either.
-
-```sh
-BASE=https://kaikki.org/dictionary/downloads/it
-STAMP=$(date -u +%Y%m%dT%H%M%SZ)
-
-# 1. response headers first, so ETag/Last-Modified belong to the body we then fetch
-curl -sS -D "release-$STAMP.headers" -o "it-extract-$STAMP.jsonl.gz" "$BASE/it-extract.jsonl.gz"
-curl -sS -o "it-extract-$STAMP.log" "$BASE/it-extract.log"
-
-# 2. our own checksum, since kaikki publishes none
-shasum -a 256 "it-extract-$STAMP.jsonl.gz" > "it-extract-$STAMP.sha256"
-
-# 3. the upstream dump this was built from
-grep -m1 "dump file path" "it-extract-$STAMP.log"
-
-# 4. gzip MTIME (upstream build time)
-python3 -c "import struct,sys,datetime;h=open(sys.argv[1],'rb').read(8);print(datetime.datetime.fromtimestamp(struct.unpack('<I',h[4:8])[0],datetime.timezone.utc).isoformat())" "it-extract-$STAMP.jsonl.gz"
-
-# 5. extractor commits, from the per-edition page footer
-curl -sS https://kaikki.org/itwiktionary/ -o "kaikki-itwiktionary-$STAMP.html"
-```
-
-Store all five outputs beside the `.gz` in the immutable release store. A re-fetch is the only way to
-get a release we can honestly describe, and it costs about a minute.
+So the identity gap is a capture problem, not an upstream one: everything missing from the July file
+is published, and a fetch that reads the log and the footer at the same time as the archive records
+all of it. The procedure is [How to re-fetch an identified release](REFETCH_A_RELEASE.md) — five
+steps, about a minute. A re-fetch is the only way to get a release we can honestly describe.
 
 **[HUEY]** Publish from a fresh, fully identified re-fetch, or publish from the July snapshot with the
 identity gap disclosed? Recommendation: **re-fetch**. The July file has no recoverable dump date or
@@ -261,31 +244,19 @@ one notice; the cost of getting the split wrong is a licence breach. Confidence:
 
 ---
 
-## 3. Draft attribution text
+## 3. What the attribution has to achieve
 
-These are draft templates, not paste-ready public notices. The English interface uses the English result notice. The full public page still needs an English translation, the B2 licence decision, any audio terms, verified metadata and any extra source notices from §6 before publication.
+The notices themselves — the result-page text, the public attribution page, the API envelope, and
+the wording we must not use — are drafted in
+[Attribution notices and release metadata](ATTRIBUTION_NOTICES.md). They are drafts, not paste-ready
+public notices: the full public page still needs an English translation, the B2 licence decision, any
+audio terms, verified metadata and any extra source notices from §6 before publication. This section
+is why each one is shaped the way it is.
 
 ### 3.1 On a word-result page
 
-Compact, sits under the definitions block. `{word}` is the headword, URL-encoded in the links.
-
-> **Fonte:** voce «{word}» su [Wikizionario](https://it.wiktionary.org/wiki/{word}) —
-> [cronologia e autori](https://it.wiktionary.org/w/index.php?title={word}&action=history).
-> Testo disponibile con licenza [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/deed.it).
-> **Lexema ha modificato questo materiale:** i dati sono stati estratti, ristrutturati e riorganizzati
-> automaticamente; il testo delle definizioni non è stato riscritto.
-> [Dettagli su fonti e licenze](/attribuzione).
-
-English equivalent:
-
-> **Source:** the entry "{word}" on [Italian Wiktionary](https://it.wiktionary.org/wiki/{word}) —
-> [page history and authors](https://it.wiktionary.org/w/index.php?title={word}&action=history).
-> Text available under [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/).
-> **Lexema modified this material:** the data was extracted, restructured and reorganised
-> automatically; the wording of the definitions was not rewritten.
-> [Full source and licence details](/attribution).
-
-Three things make this work, and all three are load-bearing:
+The [result-page notice](ATTRIBUTION_NOTICES.md#result-page-notice-draft) is compact and sits under
+the definitions block. Three things make it work, and all three are load-bearing:
 
 1. **The history link is the author credit.** ToU 7(g) accepts exactly this:
    > Through hyperlink (where possible) or URL to the page or pages that you are reusing (since each
@@ -309,112 +280,30 @@ compliance bug.
 
 ### 3.2 The public attribution page
 
-Route: `/attribuzione` (IT) and `/attribution` (EN), linked from the site footer on every page. Draft
-in full — placeholders in `{...}` come from release metadata, and **must not be published with
-guessed values.**
-
-> # Fonti e licenze
->
-> ## Da dove vengono le definizioni
->
-> I dati lessicali di Lexema per l'italiano provengono dal
-> [Wikizionario italiano](https://it.wiktionary.org/), l'edizione italiana di Wiktionary, un progetto
-> della [Wikimedia Foundation](https://wikimediafoundation.org/) scritto da volontari.
->
-> Non abbiamo letto il Wikizionario direttamente. Usiamo l'estrazione automatica pubblicata da
-> [kaikki.org](https://kaikki.org/itwiktionary/), prodotta con lo strumento
-> [wiktextract](https://github.com/tatuylonen/wiktextract) di Tatu Ylonen.
->
-> ## Licenza
->
-> Il testo del Wikizionario è pubblicato con licenza
-> [Creative Commons Attribuzione - Condividi allo stesso modo 4.0 Internazionale (CC BY-SA 4.0)](https://creativecommons.org/licenses/by-sa/4.0/deed.it).
-> Gli autori di ogni voce sono elencati nella cronologia della pagina corrispondente sul
-> Wikizionario; ogni risultato di ricerca su Lexema contiene il collegamento diretto a quella
-> cronologia.
->
-> Il materiale è fornito «così com'è», senza garanzie di alcun tipo, come previsto dalla
-> [sezione 5 della licenza](https://creativecommons.org/licenses/by-sa/4.0/legalcode.it).
-> Lexema non garantisce l'esattezza o la completezza delle definizioni.
->
-> ## Cosa abbiamo modificato
->
-> Lexema ha modificato il materiale. In particolare:
->
-> - i dati sono stati estratti dal testo wiki e convertiti in una struttura dati;
-> - le voci sono state indicizzate per forma esatta e per forma flessa, per permettere la ricerca;
-> - i tag grammaticali della fonte sono stati mappati su un insieme ristretto e uniforme;
-> - alcune informazioni presenti nella fonte non sono state importate;
-> - articoli e altre indicazioni grammaticali contrassegnate come «calcolate da Lexema» sono generate
->   da regole deterministiche nostre, non provengono dalla fonte.
->
-> Il testo delle definizioni non è stato riscritto né generato automaticamente. Dove Lexema aggiunge
-> contenuto proprio, questo è sempre indicato come tale e tenuto separato dal testo della fonte.
->
-> ## Versione dei dati
->
-> - Rilascio: `{releaseId}`
-> - File di origine: `{sourceUrl}`
-> - Scaricato il: `{retrievedAt}` (UTC)
-> - SHA-256: `{sha256}`
-> - Estratto dal dump `{dumpName}` del Wikizionario italiano
-> - Versione di wiktextract: `{extractorCommits}`
->
-> ## Licenza dei dati di Lexema
->
-> {see §4 — filled in once Huey decides}
->
-> ## Pronuncia e file audio
->
-> {see §5 — only if audio is ever shipped}
->
-> ## Marchi
->
-> Wikipedia, Wiktionary, Wikizionario e Wikimedia sono marchi registrati della Wikimedia Foundation,
-> Inc. Lexema non è affiliato alla Wikimedia Foundation e non è da essa approvato o sponsorizzato.
->
-> ## Altre fonti consultate
->
-> Durante lo sviluppo abbiamo consultato dizionari di terze parti, fra cui il
-> [Vocabolario Treccani](https://www.treccani.it/vocabolario/), esclusivamente come verifica
-> redazionale. **Nessun testo proveniente da queste fonti è stato importato in Lexema.**
-
-An English translation of this page should exist at `/attribution` with identical content.
+Route: `/attribuzione` (IT) and `/attribution` (EN), linked from the site footer on every page. It
+carries what 3(a)(2) lets a link absorb — the copyright notice, the warranty disclaimer, the release
+identification — plus what we changed, the trademark disclaimer, and the statement that no
+third-party dictionary text entered the data. The
+[draft page](ATTRIBUTION_NOTICES.md#public-attribution-page-draft) is written out in full, and its
+`{...}` placeholders come from release metadata: they **must not be published with guessed values.**
 
 ### 3.3 In API responses and data downloads
 
-Every response that carries source-derived text should carry a machine-readable notice. Suggested
-envelope field, present on every response:
+A machine consuming our data cannot read a footer, so every response that carries source-derived text
+has to carry the notice itself — the
+[`attribution` envelope](ATTRIBUTION_NOTICES.md#api-responses-and-bulk-downloads-draft) does that,
+carrying the same facts the result-page notice shows a reader.
 
-```json
-{
-  "attribution": {
-    "source": "Italian Wiktionary (it.wiktionary.org)",
-    "sourceUrl": "https://it.wiktionary.org/wiki/casa",
-    "authorsUrl": "https://it.wiktionary.org/w/index.php?title=casa&action=history",
-    "via": "kaikki.org / wiktextract",
-    "license": "CC-BY-SA-4.0",
-    "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/",
-    "modified": true,
-    "modificationNotice": "Extracted, restructured and re-indexed by Lexema. Definition wording unchanged.",
-    "releaseId": "{releaseId}",
-    "attributionPage": "https://{host}/attribution",
-    "disclaimer": "Provided as-is, without warranties. See CC BY-SA 4.0 section 5."
-  }
-}
-```
-
-For a bulk download, ship a sibling `LICENSE.txt` and `ATTRIBUTION.md` inside the archive with the
-same content as §3.2, plus the release metadata from §7 filled in. A bare `.jsonl.gz` with no notice
-files does not attribute anything.
+A bulk download is the same problem with no response to attach to, so the notice ships as files
+inside the archive. A bare `.jsonl.gz` with no notice files does not attribute anything.
 
 ### 3.4 Text we must not use
 
-- "Powered by Wiktionary", "Official Wiktionary data", any Wikimedia logo in our chrome — endorsement
-  and trademark, see §2.3.
-- "© Lexema. All rights reserved." on any page showing source-derived definitions — that is offering
-  additional restrictions on the Licensed Material, which 2(a)(5)(C) forbids. Our own code and design
-  can carry a copyright line; the definitions block cannot sit under a blanket one.
+Two families of wording are ruled out, and
+[the list is on the reference page](ATTRIBUTION_NOTICES.md#text-we-must-not-use). Anything implying
+Wikimedia endorses us is trademark and endorsement, see §2.3; a blanket "all rights reserved" over
+source-derived definitions is offering additional restrictions on the Licensed Material, which
+2(a)(5)(C) forbids.
 
 ---
 
@@ -616,18 +505,14 @@ Before publication, inspect the relevant source pages, histories and discussion 
 
 ### 7.1 Per release
 
-`ReleaseMetadata` in `src/core/types.ts` already has `releaseId, source, sourceUrl, retrievedAt,
-importerVersion, schemaVersion, license, attribution, compressedSha256`. Missing fields, all needed to
-make a release describable:
+`ReleaseMetadata` in [`src/core/types.ts`](../src/core/types.ts) carries most of what a release needs
+already. Six fields are missing, and every one of them is the difference between a release we can
+describe and one we can only point at: which dump it came from, when it was built, which extractor
+built it, which HTTP response we actually received, and how sure we are of all that. The field list
+is [Release metadata to retain](ATTRIBUTION_NOTICES.md#release-metadata-to-retain).
 
-| Field | Example | Why it is needed |
-| --- | --- | --- |
-| `upstreamDumpName` | `itwiktionary-20260901-pages-articles.xml.bz2` | The only true statement of which Wiktionary snapshot this is. From the kaikki log. |
-| `upstreamDumpDate` | `2026-09-01` | Human-readable form of the above, for the attribution page. |
-| `extractorVersion` | `wiktextract d6fca27 / wikitextprocessor 65e1673` | Extraction bugs are release-specific (see #11). Without it, a bug report cannot be reproduced. |
-| `upstreamBuiltAt` | `2026-09-16T15:41:54Z` | gzip MTIME / `Last-Modified`. Distinguishes builds when the dump is the same. |
-| `httpEtag`, `httpLastModified` | `"6aaab8c2-26493b7"` | Identifies the exact HTTP response fetched. |
-| `identityConfidence` | `verified` \| `inferred` \| `unknown` | Makes the July snapshot's gap representable instead of hidden. An `inferred` release must never be published. |
+`identityConfidence` is the one that earns its place twice: it makes the July snapshot's gap
+representable instead of hidden, and an `inferred` release must never be published.
 
 `license` records the source licence we elect under ToU 7(a), which is a separate question from B2's
 bundle policy. It should not be `["CC-BY-SA-4.0", "GFDL"]` as `LEXEMA_SPEC.md` currently suggests:
@@ -640,19 +525,12 @@ The extract has **no page ID and no revision ID.** Confirmed: no `source`, `page
 key exists anywhere in 799,600 records. So we cannot cite the exact revision our text came from — only
 the live page, which may have changed since.
 
-We must therefore retain, per served item:
-
-| Field | Source | Purpose |
-| --- | --- | --- |
-| `releaseId` | release metadata | Ties text to a described snapshot |
-| record ordinal + JSON pointer | already in `ProvenanceRef` | Locates the exact source value |
-| `word` **of the record the text came from** | the record | Builds the source and history URL. Must be the record's own `word`, not the query — this is issue #16. |
-| `lang_code` | the record | Distinguishes the `it` from the `la` record on the same page |
-| `recordHash` | already optional in `ProvenanceRef` | Detects drift between releases |
-
-Source URL: `https://it.wiktionary.org/wiki/{word}` (percent-encoded).
-Authors URL: `https://it.wiktionary.org/w/index.php?title={word}&action=history` (verified 200 for
-`casa` on 2026-09-18).
+We must therefore retain, per served item, enough to name the release, locate the exact source value
+inside it, and build the source and history URLs — which means the word **of the record the text came
+from**, not the word the user typed. That last one is issue
+[#16](https://github.com/hueypov/lexema/issues/16), which the licence turns from a quality bug into a
+compliance bug. The field list is
+[Per-record metadata to retain](ATTRIBUTION_NOTICES.md#per-record-metadata-to-retain).
 
 A stronger option, if we ever want revision-exact citations: resolve each headword to a revision ID
 once per release via the MediaWiki API and store it. Worth doing only if entry-level "as of revision
@@ -662,16 +540,16 @@ N" citations become a product requirement.
 
 ## 8. Redistribution duties for a download or an API
 
-The table combines applicable source-licence duties with our proposed notice design and conservative bundle policy. Exact placement and packaging are implementation proposals, not verbatim licence requirements. B2, B8 and B14 must be resolved before these can become final release instructions.
+The duties accumulate with reach: a website owes the result-page notice and the attribution page, an
+API owes those plus a machine-readable notice in every response, a bulk download owes those plus
+notice files and metadata in the archive, and audio owes a per-file licence and author before
+anything is served at all. The surface-by-surface table is
+[Duties per distribution surface](ATTRIBUTION_NOTICES.md#duties-per-distribution-surface); it
+combines applicable source-licence duties with our proposed notice design and conservative bundle
+policy, and exact placement and packaging there are implementation proposals, not verbatim licence
+requirements. B2, B8 and B14 must be resolved before any of it becomes a final release instruction.
 
-| We offer | Duties and proposed implementation |
-| --- | --- |
-| **Website only** | §3.1 notice on every result page; §3.2 attribution page linked from the footer; ShareAlike terms stated on that page; no ToS clause restricting reuse of displayed content. No duty to publish a bulk download. |
-| **Public API** | Everything above, plus §3.3's `attribution` object in every response carrying source-derived text, plus a machine-readable licence declaration at a stable path (`/v1/attribution`, as `LEXEMA_SPEC.md` already proposes). Rate limits and keys are fine; terms forbidding redistribution of returned content are not. |
-| **Bulk download** | Everything above, plus `LICENSE.txt` and `ATTRIBUTION.md` inside the archive, plus release metadata (§7.1) shipped with it, plus per-record provenance (§7.2) in the data. If the database qualifies as Adapted Material, §3(b) applies. The proposed bundle policy is CC BY-SA 4.0; §4.2 explains the unproven database-rights conditions. |
-| **Audio of any kind** | §5.1 — per-file licence and author, fetched and stored first. |
-
-Two things are true in every row: **no DRM or technical measure that restricts reuse** (2(a)(5)(C)),
+Two things are true on every surface: **no DRM or technical measure that restricts reuse** (2(a)(5)(C)),
 and **downstream recipients get their rights directly from the original authors**, not from us —
 2(a)(5)(A): "Every recipient of the Licensed Material automatically receives an offer from the
 Licensor." We are not in a position to grant or withhold anything.
@@ -679,6 +557,12 @@ Licensor." We are not in a position to grant or withhold anything.
 ---
 
 ## 9. Blockers to publishing
+
+**Decided since.** Huey ruled on the open decisions below on 2026-09-21, and the ruling is
+ADR 0009, `.decisions/0009-two-licences-and-a-source-link.md`, landing on
+[PR #55](https://github.com/hueypov/lexema/pull/55): two licences, one *Source* link per result, an attribution page, no audio at launch, open site terms, and a lawyer before public launch.
+Read this table as the history that led there, not as the current policy. The numbers are kept
+because other issues cite them.
 
 Everything below blocks **external publication only**. Nothing here blocks local development —
 keep building.
