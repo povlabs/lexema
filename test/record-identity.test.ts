@@ -56,6 +56,39 @@ test("the schema loads clean with foreign keys on", () => {
   assert.equal(db.prepare("PRAGMA integrity_check").get()?.integrity_check, "ok");
 });
 
+test("the grammar vocabulary is enforced on stated claims and only on them", () => {
+  const db = seededDatabase();
+  const insert = db.prepare(
+    `INSERT INTO grammar_claim
+       (record_id, scope, scope_index, json_pointer, status, dimension, value, source_text)
+     VALUES (1, 'record', NULL, ?, ?, ?, ?, ?)`,
+  );
+
+  // A stated value the vocabulary does not know is refused by the composite
+  // foreign key: the importer cannot invent 'common' as a gender.
+  assert.throws(
+    () => insert.run("/tags/0", "stated", "gender", "common", "common"),
+    /FOREIGN KEY constraint failed/,
+  );
+  // The same shape with a known value loads, so the refusal is the value.
+  insert.run("/tags/0", "stated", "gender", "feminine", "feminine");
+  // An unclassified row keeps the literal text and names no value at all.
+  insert.run("/tags/1", "unclassified", null, null, "pl.: case");
+
+  assert.deepEqual(db.prepare("PRAGMA foreign_key_check").all(), []);
+  assert.deepEqual(
+    db
+      .prepare("SELECT json_pointer, status, dimension, value, source_text FROM grammar_claim ORDER BY claim_id")
+      .all()
+      .map((row) => ({ ...row })),
+    [
+      { json_pointer: "", status: "missing", dimension: "gender", value: null, source_text: null },
+      { json_pointer: "/tags/0", status: "stated", dimension: "gender", value: "feminine", source_text: "feminine" },
+      { json_pointer: "/tags/1", status: "unclassified", dimension: null, value: null, source_text: "pl.: case" },
+    ],
+  );
+});
+
 test("every serving read hides a release that is not complete", () => {
   const db = seededDatabase();
   for (const status of ["importing", "failed", "superseded"]) {
