@@ -5,6 +5,13 @@
 -- Bind parameters are :release and :key, where :key is the query text with the
 -- release's normalizer already applied. All reads require a complete release.
 -- Direct base-table reads are for import diagnostics, not serving.
+--
+-- Where a query orders by json_pointer it orders by pointer *text*, which puts
+-- '/forms/10/form' before '/forms/2/form'. SQLite has no numeric-aware
+-- collation for the array index inside a pointer, so a caller that presents
+-- rows in source order re-orders them segment by segment itself; lookup does
+-- this in src/lookup/lookup.ts. The ORDER BY here is for a stable result, not
+-- for source order.
 
 
 -- 1. Exact-surface search.
