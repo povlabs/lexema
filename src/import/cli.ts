@@ -2,10 +2,12 @@
 // request: this is a plain Node program that reads the archive and writes a
 // SQLite database, and the Worker only ever reads what it produced.
 //
-//   pnpm run import -- --release-id it-2026-07-20
+//   pnpm run import -- --release-id it-0c432803 \
+//     --source-url https://kaikki.org/dictionary/downloads/it/it-extract.jsonl.gz
 //
 // Defaults point at the local file and .data/lexema.sqlite, both gitignored.
-// Every rejected line lands in <database>.rejections.tsv beside the database.
+// Every rejected line lands in <database>.rejections.tsv beside the database,
+// and so does every leaf value a landed record had to refuse.
 
 import { closeSync, openSync, writeSync } from "node:fs";
 import { mkdir, rm } from "node:fs/promises";
@@ -76,7 +78,7 @@ async function main(): Promise<void> {
   }
 
   process.stderr.write(`importing ${input} -> ${database} as ${releaseId}\n`);
-  // One line per rejected input line: line number, kind, reason. Written
+  // One line per refusal: line number, kind, reason. Written
   // synchronously as each rejection is met, so nothing is held for the 239,243
   // other-language lines of the real archive, and none of them goes unlisted.
   const rejectionsPath = `${database}.rejections.tsv`;
@@ -115,6 +117,7 @@ async function main(): Promise<void> {
     `admitted (it)    ${n(report.admitted)}`,
     `skipped (other)  ${n(report.skippedOtherLanguage)}`,
     `malformed        ${n(report.malformed)}`,
+    `refused leaves   ${n(report.malformedMembers)}`,
     "",
     "rows written",
     ...Object.entries(report.rows).map(([table, count]) => `  ${table.padEnd(20)}${n(count)}`),
@@ -123,6 +126,7 @@ async function main(): Promise<void> {
     "",
     // Counts alone would not tell anyone which line to go and look at.
     `rejected lines   ${n(report.skippedOtherLanguage + report.malformed)} listed in ${rejectionsPath}`,
+    "                 every refused leaf is listed there too, as malformed-member",
     "",
   ];
   process.stdout.write(lines.join("\n"));

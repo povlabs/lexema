@@ -17,16 +17,35 @@ Both paths are gitignored: the archive because redistributing it is unsettled
 ## Run it
 
 ```sh
-pnpm run import -- --release-id it-2026-07-20 --force
+pnpm run import -- \
+  --release-id it-0c432803 \
+  --source-url https://kaikki.org/dictionary/downloads/it/it-extract.jsonl.gz \
+  --force
 ```
 
 Defaults read `it-extract.jsonl.gz` and write `.data/lexema.sqlite`.
+
+The release id names the archive by the first eight characters of its SHA-256,
+and the URL is the one recovered from the file's own macOS download metadata —
+both from [the dataset spot check](../reports/2026-09-18-dataset-spot-check.md#status-and-method).
+A date-shaped id such as `it-2026-07-20` would be a guess: that same spot check
+records the upstream release date as unverified, and the importer's rule is that
+an unknown date is written as unknown, never invented. So there is no
+`--retrieved-at` and no `--upstream` here either; both columns stay empty.
+Check the archive you have is the one those flags describe:
+
+```sh
+shasum -a 256 it-extract.jsonl.gz
+# 0c432803c672aceccd48787eb64807c5366fdbd6796715c9a99e31c0024d5dcf
+```
 
 ## Flags
 
 | Flag | What it does |
 | --- | --- |
 | `--release-id <id>` | Names the release row. Defaults to `it-local`; name the real dump when you mean to keep it. |
+| `--source-url <url>` | Where the archive was downloaded from. Stored on the release row; left empty when you do not know it. |
+| `--retrieved-at <iso>`, `--upstream <id>` | Download time and upstream dump id, when you can show they are true. Omitted means unknown, which is what the release row then says. |
 | `--input <path>` | The `.jsonl.gz` to read. Defaults to `it-extract.jsonl.gz`. |
 | `--database <path>` | Where to write. Defaults to `.data/lexema.sqlite`. |
 | `--force` | Delete an existing database first. Without it a second run fails, which is deliberate: silently overwriting an imported release is how you lose one you meant to keep. |
@@ -45,6 +64,22 @@ next to the database — `.data/lexema.sqlite.rejections.tsv` by default — as 
 number, kind and reason, one per line. The summary's `rejected lines` count is
 the number of lines in that file. `malformed 0` is the expected answer for the
 current archive; anything else names a line to go and look at.
+
+`refused leaves 0` is the expected answer too. It counts values inside records
+that did land but were the wrong JSON type — a gloss that is not a string, say.
+Each one is in the same file as `malformed-member`, located by line number and
+JSON pointer.
+
+The counts are on the release row as well, so a database you were handed can be
+checked without the output of the run that made it:
+
+```sh
+sqlite3 -line .data/lexema.sqlite \
+  "SELECT status, lines_read, admitted, skipped_other_language,
+          malformed_lines, malformed_members FROM source_release;"
+sqlite3 -column .data/lexema.sqlite \
+  "SELECT table_name, rows FROM release_table_rows ORDER BY table_name;"
+```
 
 If the run stops with *"changed while it was being imported"*, something
 rewrote the archive under it. Nothing was committed; run it again on a file

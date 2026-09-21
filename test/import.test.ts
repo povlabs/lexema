@@ -125,6 +125,11 @@ function dumpAllTables(path: string): string {
   }
 }
 
+/** Query results as plain objects: node:sqlite returns null-prototype rows,
+ *  which deep-equal refuses against an object literal. */
+const rows = (db: DatabaseSync, sql: string): Record<string, unknown>[] =>
+  (db.prepare(sql).all() as Record<string, unknown>[]).map((row) => ({ ...row }));
+
 const hits = (db: DatabaseSync, key: string) =>
   db.prepare(
     "SELECT record_word, record_pos, origin FROM surface_hit WHERE surface_key = ? ORDER BY record_id, json_pointer",
@@ -140,6 +145,7 @@ test("imports only Italian records and locates every rejected line", async () =>
     // Line 12 is not JSON; lines 13 and 14 are empty and whitespace. All three
     // are input that produced no record, so none may be dropped in silence.
     assert.equal(report.malformed, 3);
+    assert.equal(report.malformedMembers, 0);
     assert.equal(report.rows.source_record, 9);
     // A count alone would not tell anyone which line to go and look at, and a
     // rejected record is as auditable as a malformed one.
@@ -209,6 +215,105 @@ test("a malformed nested member is a located rejection, not an abort", async () 
       [["f", 6]],
     );
     assert.equal(hits(db, "g").length, 1);
+  } finally {
+    db.close();
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test("a malformed leaf costs its own row and nothing else", async () => {
+  // A record that is admissible — word, pos and pos_title are strings, every
+  // nested member is an object — carrying a bad value at four leaves. Each one
+  // used to disappear, taking its siblings' pointers with it.
+  const lines = [
+    JSON.stringify({
+      word: "valido", pos: "noun", pos_title: "Sostantivo", lang_code: "it",
+      tags: [7, "masculine"],
+      forms: [{ form: 42, tags: ["plural"] }, { form: "validi", tags: "plural" }],
+      senses: [{ glosses: [42, "valido"], form_of: [{ word: 9 }] }],
+    }),
+  ];
+  const { dir, database, report, rejections } = await importFixture({}, lines);
+  const db = new DatabaseSync(database, { readOnly: true });
+  try {
+    // The line still became a record: a bad leaf is not a bad line.
+    assert.equal(report.admitted, 1);
+    assert.equal(report.malformed, 0);
+    assert.equal(report.malformedMembers, 5);
+    assert.deepEqual(rejections, [
+      { kind: "malformed-member", lineNo: 1, reason: "/forms/0/form is not a string" },
+      { kind: "malformed-member", lineNo: 1, reason: "/tags/0 is not a string" },
+      { kind: "malformed-member", lineNo: 1, reason: "/forms/1/tags is not an array" },
+      { kind: "malformed-member", lineNo: 1, reason: "/senses/0/glosses/0 is not a string" },
+      { kind: "malformed-member", lineNo: 1, reason: "/senses/0/form_of/0/word is not a string" },
+    ]);
+
+    // Every surviving sibling is stored at the index the archive gave it. The
+    // gloss is /glosses/1, not /glosses/0 — a reader who opens the archive at
+    // the stored pointer has to find this exact text there.
+    assert.deepEqual(
+      rows(db, "SELECT text, json_pointer FROM sense_gloss"),
+      [{ text: "valido", json_pointer: "/senses/0/glosses/1" }],
+    );
+    assert.deepEqual(
+      rows(db, "SELECT surface, json_pointer FROM lookup_form ORDER BY json_pointer"),
+      [
+        { surface: "validi", json_pointer: "/forms/1/form" },
+        { surface: "valido", json_pointer: "/word" },
+      ],
+    );
+    // Same for the record's own tags: 'masculine' is /tags/1.
+    assert.deepEqual(
+      rows(
+        db,
+        `SELECT value, json_pointer FROM grammar_claim
+          WHERE scope = 'record' AND status = 'stated'`,
+      ),
+      [{ value: "masculine", json_pointer: "/tags/1" }],
+    );
+    // The refused leaves left no row behind at all.
+    assert.equal((db.prepare("SELECT count(*) n FROM form_of_edge").get() as { n: number }).n, 0);
+  } finally {
+    db.close();
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test("the release row carries the counts the run reported", async () => {
+  const { dir, database, report } = await importFixture();
+  const db = new DatabaseSync(database, { readOnly: true });
+  try {
+    // The counts are import metadata, readable from the database alone — not
+    // only from the console output of the run that made it.
+    assert.deepEqual(
+      rows(
+        db,
+        `SELECT status, lines_read, admitted, skipped_other_language,
+                malformed_lines, malformed_members
+           FROM source_release`,
+      ),
+      [{
+        status: report.status,
+        lines_read: report.linesRead,
+        admitted: report.admitted,
+        skipped_other_language: report.skippedOtherLanguage,
+        malformed_lines: report.malformed,
+        malformed_members: report.malformedMembers,
+      }],
+    );
+    assert.deepEqual(
+      Object.fromEntries(
+        (rows(db, "SELECT table_name, rows FROM release_table_rows") as {
+          table_name: string; rows: number;
+        }[]).map((row) => [row.table_name, row.rows]),
+      ),
+      report.rows,
+    );
+    // Each stored row count is the table it names, counted.
+    assert.equal(
+      (db.prepare("SELECT count(*) n FROM lookup_form").get() as { n: number }).n,
+      report.rows.lookup_form,
+    );
   } finally {
     db.close();
     await rm(dir, { recursive: true, force: true });
