@@ -8,7 +8,14 @@
 // inside a document that is `lang="en"`; and every candidate the lookup
 // returned is rendered, never ranked down to one.
 
-import type { GrammarClaim, Reading, Review, SourceForm } from "@lexema/lookup/types.ts";
+import type {
+  ArticleWithholding,
+  GrammarClaim,
+  Reading,
+  ReadingArticles,
+  Review,
+  SourceForm,
+} from "@lexema/lookup/types.ts";
 
 /**
  * Where one reading can be checked by hand.
@@ -181,6 +188,9 @@ function Forms({ reading }: { reading: Reading }) {
  * and found none — and an article follows from gender and number, which this
  * source often leaves out. Deriving one here would be invention, so the section
  * says what is true and stops.
+ *
+ * Nouns do not use this: `it-articles/v1` derives their articles from stated
+ * gender and number, and `NounArticles` below shows what it returned.
  */
 function Articles({ reading }: { reading: Reading }) {
   const gender = stated(reading.grammar.record, "gender");
@@ -193,6 +203,207 @@ function Articles({ reading }: { reading: Reading }) {
           ? "Not available in the source: this release carries no article, and the gender or number an article agrees with is not stated here either."
           : `Not available in the source: this release carries no article. The source states ${gender} and ${number}; Lexema does not turn that into an article yet.`}
       </NotAvailable>
+    </section>
+  );
+}
+
+// --- the noun card ----------------------------------------------------------
+//
+// A noun is read for three things the generic card answers badly: what it
+// agrees with, how it goes singular and plural, and which article stands in
+// front of it. Each gets its own section below, and each says so in words when
+// the source gives it nothing — an empty table would read as "no plural", which
+// is a claim the source did not make.
+
+/** The dimensions an article agrees with, stated or visibly not. */
+const AGREEMENT_DIMENSIONS = ["gender", "number"] as const;
+
+/**
+ * Gender and number, in the header, in the `Grammar` component's own words.
+ *
+ * Rendered from the two dimensions rather than from whatever claims the record
+ * happens to carry, so a noun the source said nothing about still shows both
+ * rows — `casa` is that noun, and its silence is the point.
+ */
+function NounAgreement({ reading }: { reading: Reading }) {
+  return (
+    <dl className="grammar" aria-label={`grammar for ${reading.word}`}>
+      {AGREEMENT_DIMENSIONS.map((dimension) => {
+        const value = stated(reading.grammar.record, dimension);
+        return value === undefined ? (
+          <div key={dimension} className="claim claim-missing">
+            <dt>{dimension}</dt>
+            <dd>not stated in the source</dd>
+          </div>
+        ) : (
+          <div key={dimension} className="claim claim-stated">
+            <dt>{dimension}</dt>
+            <dd>{value}</dd>
+          </div>
+        );
+      })}
+    </dl>
+  );
+}
+
+/** One spelling the source files under a number, with the gender it gave it. */
+interface NumberedSurface {
+  key: string;
+  surface: string;
+  gender: string | undefined;
+}
+
+/**
+ * The record's spellings, grouped by the number the source stated for each.
+ *
+ * The headword goes under the record's own number, and every forms row under
+ * its own — which is the only grouping the source supports. A row the source
+ * gave no number is not guessed into one; it stays in the forms section below,
+ * where it is listed without a claim about it.
+ */
+function numberedSurfaces(reading: Reading, number: "singular" | "plural"): NumberedSurface[] {
+  const surfaces: NumberedSurface[] = [];
+  if (stated(reading.grammar.record, "number") === number) {
+    surfaces.push({
+      key: "headword",
+      surface: reading.word,
+      gender: stated(reading.grammar.record, "gender"),
+    });
+  }
+  for (const form of reading.forms) {
+    if (stated(form.claims, "number") !== number) continue;
+    surfaces.push({
+      key: `form-${form.index}`,
+      surface: form.surface,
+      gender: stated(form.claims, "gender"),
+    });
+  }
+  return surfaces;
+}
+
+/** One cell of the table: every spelling filed under that number, verbatim. */
+function NumberCell({ surfaces }: { surfaces: NumberedSurface[] }) {
+  if (surfaces.length === 0) return <span className="empty">not stated in the source</span>;
+  return (
+    <>
+      {surfaces.map((entry, i) => (
+        <span key={entry.key}>
+          {i > 0 && ", "}
+          {/* Exactly as the source spelled it: `studente/studentessa` is one
+              string the source wrote, not two words to split apart. */}
+          <It>{entry.surface}</It>
+          {entry.gender !== undefined && <span className="muted"> {entry.gender}</span>}
+        </span>
+      ))}
+    </>
+  );
+}
+
+function NounNumbers({ reading }: { reading: Reading }) {
+  const singular = numberedSurfaces(reading, "singular");
+  const plural = numberedSurfaces(reading, "plural");
+
+  return (
+    <section className="links" aria-labelledby={`numbers-${reading.recordId}`}>
+      <h3 id={`numbers-${reading.recordId}`}>Singular and plural</h3>
+      {singular.length === 0 && plural.length === 0 ? (
+        <NotAvailable>
+          Not available in the source: this entry gives neither a singular nor a plural — neither on
+          the record itself nor on any form it lists.
+        </NotAvailable>
+      ) : (
+        <table className="numbers">
+          <tbody>
+            <tr>
+              <th scope="row">singular</th>
+              <td>
+                <NumberCell surfaces={singular} />
+              </td>
+            </tr>
+            <tr>
+              <th scope="row">plural</th>
+              <td>
+                <NumberCell surfaces={plural} />
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      )}
+    </section>
+  );
+}
+
+/** Why there is no article, said as a sentence rather than left blank. */
+function withheldSentence(withholding: ArticleWithholding): string {
+  switch (withholding.reason) {
+    case "no-gender-or-number-stated":
+      return "No article is shown: an article agrees with gender and number, and the source states neither for this entry.";
+    case "gender-not-stated":
+      return "No article is shown: an article agrees with gender, and the source does not state one for this entry.";
+    case "number-not-stated":
+      return "No article is shown: an article agrees with number, and the source does not state one for this entry.";
+    case "gender-is-not-masculine-or-feminine":
+      return `No article is shown: the source gives the gender as ${withholding.statedGender}, which is neither masculine nor feminine, so no article agrees with it.`;
+    case "number-is-not-singular-or-plural":
+      return `No article is shown: the source gives the number as ${withholding.statedNumber}, which is neither singular nor plural, so no article agrees with it.`;
+    case "surface-not-handled":
+      return `No article is shown: rule it-articles/v1 derives an article for a single word, and this entry's headword is not one.`;
+  }
+}
+
+/**
+ * The articles, and where they came from.
+ *
+ * These are the one thing on this page the source did not say: `it-articles/v1`
+ * derives them from the gender and number the source *did* state, so every row
+ * carries that label where a reader can see it, and the section never shows a
+ * derived article beside a source fact without saying which is which.
+ */
+function NounArticles({ articles, recordId }: { articles: ReadingArticles; recordId: number }) {
+  return (
+    <section className="links" aria-labelledby={`articles-${recordId}`}>
+      <h3 id={`articles-${recordId}`}>Articles</h3>
+      {articles.status === "derived" ? (
+        <>
+          <table className="articles">
+            <thead>
+              <tr>
+                <th scope="col">kind</th>
+                <th scope="col">article</th>
+                <th scope="col">with the word</th>
+                <th scope="col">derived by</th>
+              </tr>
+            </thead>
+            <tbody>
+              {articles.articles.map((article) => (
+                <tr key={article.kind}>
+                  <th scope="row">{article.kind}</th>
+                  <td>
+                    <It>{article.article}</It>
+                  </td>
+                  <td>
+                    <It>{article.displayForm}</It>
+                  </td>
+                  <td className="muted">
+                    <code>{article.sourceType}</code> · <code>{article.rule}</code>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <p className="muted">
+            Not from the source: Lexema derives these from the{" "}
+            {articles.articles[0].gender} {articles.articles[0].number} the source states, by rule{" "}
+            <code>it-articles/v1</code>.
+          </p>
+        </>
+      ) : (
+        <NotAvailable>
+          {articles.status === "withheld"
+            ? withheldSentence(articles.withholding)
+            : "No article is shown: Lexema derives articles for nouns only."}
+        </NotAvailable>
+      )}
     </section>
   );
 }
@@ -276,8 +487,25 @@ function Candidates({ candidates }: { candidates: { recordId: number; word: stri
   );
 }
 
+/**
+ * Claims about the record that the noun header has not already shown.
+ *
+ * Gender and number are in the header, so repeating them under it would say the
+ * same thing twice; everything else the source stated about the record — an
+ * unclassified tag such as `form-of` — still has to be visible.
+ */
+function otherRecordClaims(claims: GrammarClaim[]): GrammarClaim[] {
+  return claims.filter((claim) => {
+    if (claim.status === "unclassified") return true;
+    return !AGREEMENT_DIMENSIONS.some((dimension) => dimension === claim.dimension);
+  });
+}
+
 export function ReadingCard({ reading, query }: { reading: Reading; query: string }) {
   const pos = posLabel(reading.pos);
+  // Nouns get their own layout (#53). Every other part of speech renders what
+  // it rendered before, unchanged.
+  const isNoun = reading.pos === "noun";
 
   return (
     <article className="reading" aria-label={`${reading.word}, ${pos}`}>
@@ -293,6 +521,7 @@ export function ReadingCard({ reading, query }: { reading: Reading; query: strin
             Does not define <q lang="it">{query}</q> — it lists the form in its own table.
           </p>
         )}
+        {isNoun && <NounAgreement reading={reading} />}
       </header>
 
       <Disputes reviews={reading.reviews} />
@@ -335,11 +564,24 @@ export function ReadingCard({ reading, query }: { reading: Reading; query: strin
         </ol>
       )}
 
-      <Grammar claims={reading.grammar.record} label={`grammar for ${reading.word}`} />
-
-      <Articles reading={reading} />
-      <Forms reading={reading} />
-      <Conjugations reading={reading} />
+      {isNoun ? (
+        <>
+          <Grammar
+            claims={otherRecordClaims(reading.grammar.record)}
+            label={`other grammar for ${reading.word}`}
+          />
+          <NounNumbers reading={reading} />
+          <NounArticles articles={reading.articles} recordId={reading.recordId} />
+          <Forms reading={reading} />
+        </>
+      ) : (
+        <>
+          <Grammar claims={reading.grammar.record} label={`grammar for ${reading.word}`} />
+          <Articles reading={reading} />
+          <Forms reading={reading} />
+          <Conjugations reading={reading} />
+        </>
+      )}
 
       {reading.lemmaLinks.length > 0 && (
         <section className="links" aria-labelledby={`form-of-${reading.recordId}`}>

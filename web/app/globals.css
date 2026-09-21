@@ -145,6 +145,33 @@ a { color: var(--accent); }
 .disputed ul { margin: 0.3rem 0 0; padding-left: 1.1rem; }
 .disputed p { margin: 0; }
 
+/* Noun tables --------------------------------------------------------------- */
+/* Two small tables, kept plain like the rest: the numbers a source states, and
+   the articles Lexema derives from them. The derived one says so in its own
+   column rather than by looking different. */
+
+.numbers, .articles {
+  border-collapse: collapse;
+  margin: 0.3rem 0;
+  font-size: 0.9rem;
+}
+.numbers th, .numbers td, .articles th, .articles td {
+  text-align: left;
+  padding: 0.2rem 0.9rem 0.2rem 0;
+  vertical-align: top;
+  font-weight: 400;
+}
+.numbers th[scope="row"], .articles th[scope="row"], .articles thead th {
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+.articles thead th {
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-size: 0.7rem;
+}
+.articles code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.9em; }
+
 /* Grammar ----------------------------------------------------------------- */
 
 .grammar { display: flex; flex-wrap: wrap; gap: 0.4rem; margin: 0.8rem 0; }
