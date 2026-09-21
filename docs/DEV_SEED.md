@@ -70,11 +70,9 @@ After the import, the seed writes the review verdicts in
 `claim_review` — today, the one on the `studente` verb record that
 [the source research](../reports/2026-09-18-source-research.md) contradicts.
 
-Review is not import output: the importer copies the source and says nothing
-about whether it is right. Without those rows the page shows a claim later
-research already disagreed with as an ordinary verified fact, which is the one
-thing it must not do. A dispute whose record is past the prefix cutoff writes
-nothing, and the seed says so on its own line.
+A dispute whose record is past the prefix cutoff writes nothing, and the seed
+says so on its own line. Why verdicts are written after the import rather than
+by it is in [WEB.md](WEB.md#why-a-disputed-claim-is-a-row-and-not-a-code-path).
 
 ## Statement batching
 

@@ -116,6 +116,11 @@ reviews, on what evidence, and how a verdict is reached is still #12; what is
 settled is that a claim later research disagreed with never renders as an
 ordinary verified fact.
 
+The verdicts are written after the import, not by it. The importer copies the
+source and says nothing about whether it is right; a review is a claim about
+the source, made on evidence the source does not contain, so it is a separate
+write over the release the import just made.
+
 ## Why the source link is labelled the way it is
 
 Each reading ends with a link to the Italian Wiktionary page for that record's
