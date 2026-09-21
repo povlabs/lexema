@@ -4,7 +4,7 @@ Research checked on 2026-09-18. This is a reference to observed source content, 
 
 ## Scope
 
-Compared the twelve queries in [the dataset spot check](DATASET_SPOT_CHECK.md) with Italian Wiktionary revision content. Also inspected live rendered conjugation tables, selected Treccani entries, Kaikki's current download, and current licence notices.
+Compared the twelve queries in [the dataset spot check](2026-09-18-dataset-spot-check.md) with Italian Wiktionary revision content. Also inspected live rendered conjugation tables, selected Treccani entries, Kaikki's current download, and current licence notices.
 
 The local file was not changed. Its SHA-256 is `0c432803c672aceccd48787eb64807c5366fdbd6796715c9a99e31c0024d5dcf`. Findings do not establish dictionary-wide accuracy.
 
