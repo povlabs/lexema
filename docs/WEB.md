@@ -9,11 +9,20 @@ underneath. This page is the reasoning. To run it, see
 ## Where the parts live
 
 ```
-web/app/page.tsx      the search form and the four outcomes
-web/app/Reading.tsx   how one entry renders
-web/app/db.ts         the D1 binding
-src/lookup/           the query layer, shared with the importer's tests
+web/app/page.tsx        reads the query, runs the lookup, streams the answer
+web/app/SearchPage.tsx  the shell, and the five states a query can be in
+web/app/Reading.tsx     how one entry renders
+web/app/params.ts       the query as it arrives in the URL
+web/app/attempt.ts      a lookup, or the fact that it did not happen
+web/app/db.ts           the D1 binding
+src/lookup/             the query layer, shared with the importer's tests
+web/test/page.test.tsx  the page, rendered over a fixture release
 ```
+
+The markup is split from the wiring so it can be rendered without a Worker.
+`db.ts` reaches D1 through `cloudflare:workers`, which exists only inside
+workerd; everything else runs in plain Node, which is how the rendered-page test
+runs in CI with no archive and no database.
 
 `web/` is a workspace package rather than a separate repository, so there is
 still exactly one lockfile at the root — which is what ADR 0002 asks for. It
@@ -35,10 +44,18 @@ release is served; flipping it safely is #18.
 ## Why a server component and no client fetching
 
 The query arrives in the URL, the D1 read happens on the Worker, and the HTML
-that comes back already holds the answer. Three things follow, and each was the
-point rather than a side effect: the page works before any JavaScript loads, a
-result is shareable by copying the address bar, and there is no loading state to
-get wrong.
+that comes back already holds the answer. Two things follow, and each was the
+point rather than a side effect: the page works before any JavaScript loads, and
+a result is shareable by copying the address bar.
+
+The loading state is a `Suspense` boundary around the D1 read, and nothing else.
+The shell — heading, form, the query still in the box — flushes as soon as the
+request is understood, and `Pending` stands in the result's place until the read
+answers. It needs no client JavaScript and cannot disagree with the result,
+because it is the same render. Against local D1 the read usually finishes before
+the first flush, so a reader does not see it; it was
+[shown to exist](../reports/2026-09-21-web-page-measurements.md#other-states) by
+slowing the read down and watching the first flush arrive without it.
 
 The cost is that a server component here has no way to set a response status, so
 even the failed-lookup page returns 200. The state the reader needs is on the
@@ -68,14 +85,36 @@ verbatim. Filtering them would hide how incomplete this data is, which is the
 one thing this page must not do.
 
 **A lookup that did not happen.** No release, a D1 error, or a release built by
-a different normalizer all produce a page that says the lookup failed and shows
-the reason. That is deliberately not the "found nothing" message: a reader must
-be able to tell *we could not look* from *we looked and the word is not here*.
-The attribution footer drops out in that state, because there is no release to
-attribute.
+a different normalizer all produce a page that says the lookup failed. That is
+deliberately not the "found nothing" message: a reader must be able to tell *we
+could not look* from *we looked and the word is not here*. The attribution
+footer drops out in that state, because there is no release to attribute. The
+reason is logged and not printed: a database message names releases, tables and
+bindings, which is the operator's business and not the reader's.
+
+**A form the source listed, and one it did not.** Each entry shows its own
+`forms[]` with the grammar the source stated about each one, grouped by tense
+under *Grouped conjugations*, and an *Articles* section. Where the source is
+silent — no forms, no tense, no article anywhere in this release — the section
+says so in words. Nothing is derived: an article follows from gender and number,
+which this source often leaves out, and inventing one is the failure this whole
+page is built against.
+
+**Ambiguity in both directions.** A `form_of` edge names a word, and a word can
+be several records. That is shown on the outgoing side (*Form of*) and on the
+incoming side (*Forms pointing here*) the same way: every candidate listed, none
+chosen.
+
+## Why a disputed claim is a row and not a code path
 
 A disputed claim renders with a warning and a link to the evidence, and the
-claim itself is left untouched. Nothing writes those rows yet — that is #12.
+claim itself is left untouched. The verdicts come from `claim_review` rows, and
+the development seed writes the ones this repository has evidence for — today,
+the `studente` verb claim that
+[the source research](../reports/2026-09-18-source-research.md) contradicts. Who
+reviews, on what evidence, and how a verdict is reached is still #12; what is
+settled is that a claim later research disagreed with never renders as an
+ordinary verified fact.
 
 ## Why the source link is labelled the way it is
 

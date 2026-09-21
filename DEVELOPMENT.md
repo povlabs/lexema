@@ -12,16 +12,22 @@ This is the builder's door. For what Lexema *is*, see [README.md](./README.md).
 
 ```sh
 pnpm install --frozen-lockfile
-pnpm run typecheck   # tsc --noEmit over src/ and test/
-pnpm test            # the unit tests; no dictionary data needed
+pnpm run typecheck                    # tsc --noEmit over src/ and test/
+pnpm test                             # the unit tests; no dictionary data needed
+pnpm --filter @lexema/web typecheck   # the Worker's own tsc, over web/ and the
+                                      # lookup layer it imports
 ```
 
 `.nvmrc` pins Node 24 for CI; the checks also pass on Node 26. GitHub Actions runs
-the typecheck and the unit tests on every push to `main` and every pull request
-([ci.yml](./.github/workflows/ci.yml)).
+all three on every push to `main` and every pull request
+([ci.yml](./.github/workflows/ci.yml)). The web typecheck runs `wrangler types`
+first, which generates from `wrangler.jsonc` and needs no Cloudflare account.
 
 The `test` script enumerates its files by name. A new unit test runs only once its
-path is added to that list in [package.json](./package.json).
+path is added to that list in [package.json](./package.json). Its last entry is the
+rendered-page test in `web/test/`, which renders the search page over an imported
+fixture release; it needs the web workspace's React, so it names that workspace's
+`tsconfig.json` and needs no archive and no database.
 
 ### Checks that need the dataset
 
@@ -107,7 +113,7 @@ development is the only access until that lands.
 
 | Workflow | Fails when |
 |---|---|
-| [ci.yml](./.github/workflows/ci.yml) | the typecheck or a unit test fails |
+| [ci.yml](./.github/workflows/ci.yml) | the root typecheck, a unit test, or the `@lexema/web` typecheck fails |
 | [gitleaks.yml](./.github/workflows/gitleaks.yml) | a changed file carries a secret |
 | [leak-guard.yml](./.github/workflows/leak-guard.yml) | a changed doc or shell file carries a machine-local path |
 | [decisions-index.yml](./.github/workflows/decisions-index.yml) | two records share an ADR id, or a filename disagrees with its frontmatter |

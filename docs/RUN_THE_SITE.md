@@ -40,17 +40,18 @@ reports that the lookup failed rather than showing anything (#47).
 |---|---|
 | `?q=sale` | 5 entries, two of them labelled as mentions |
 | `?q=casa` | 1 entry, gender and number shown as *not stated in the source* |
+| `?q=studente` | 5 entries, the verb one flagged *Disputed by later research* |
 | `?q=citta` | the empty state — accents are significant |
 | `?q=` | the opening hint |
 
-Observed on 2026-09-21 at the default seed, on `wrangler dev` over the built
-Worker: `sale` renders 5 entries with two marked as mentions and a two-candidate
-lemma link, `casa` renders 1 entry with gender and number *not stated in the
-source*, `citta` renders the empty state, and `?q=` renders the opening hint.
+What these actually rendered, on which release and on which date, is in
+[the dated report](../reports/2026-09-21-web-page-measurements.md) — including
+all twelve queries of the spot check, not only these.
 
 The seed loads a prefix of the archive, so a word past its cutoff returns the
 empty state rather than an error. [DEV_SEED.md](DEV_SEED.md) lists what the
-default covers.
+default covers. The same query can answer differently against a full release:
+`citta` is empty in the default prefix and has an entry in the whole archive.
 
 ## See the failed-lookup state
 
@@ -62,8 +63,10 @@ cd web && pnpm exec wrangler dev --config dist/server/wrangler.json \
   --var LEXEMA_RELEASE:does-not-exist
 ```
 
-The page then says the lookup failed and shows the reason, which is a different
-message from finding nothing.
+The page then says the lookup failed, which is a different message from finding
+nothing. It does not print the reason: a database message names releases,
+tables and bindings, so it goes to the Worker's log, where `wrangler dev` prints
+it.
 
 ## If it will not start
 

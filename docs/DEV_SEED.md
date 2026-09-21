@@ -52,27 +52,33 @@ the start of the file, and the prefix starts where the archive does.
 The seed is a **prefix of the archive, not a sample**: coverage stops at a
 source line number rather than being spread across the alphabet.
 
-| Fact | Value |
-|---|---|
-| Records | 25,000 |
-| Last source line reached | 60,501 |
-| Release status | `complete` |
-| Prefix archive | 8.3 MB |
-| Runtime | about 85 seconds |
-| Generated SQL | about 142 MB, 2,341 statements |
-| `lookup_form` rows | 186,830 |
-
 Surfaces present at the default: `casa`, `case`, `sale`, `sala`, `salire`,
 `studente`, `studenti`, `bella`, `bello`, `andare`, `andavano`, `città`,
-`parlare`. Surfaces past line 60,501 are absent, and the page reports finding
+`parlare`. Surfaces past the cutoff are absent, and the page reports finding
 nothing.
 
-`SEED_RECORDS=560000` covers the whole release: the prefix is then the whole
-archive, and the seed says so. The generated SQL is gigabytes and the loader is
-slow.
+How many records that is, which source line it stops at, how long it takes and
+how much SQL it writes are measurements, and they live in
+[the dated report](../reports/2026-09-21-web-page-measurements.md#the-development-seed-at-its-default).
 
-Measured on 2026-09-21 by running the recipe in
-[RUN_THE_SITE.md](RUN_THE_SITE.md) at the default.
+The archive holds **560,357** admitted records
+([import measurements](../reports/2026-09-21-import-measurements.md)), so
+`SEED_RECORDS=560357` takes every one of them: the cut stops on the line that
+carries the last record, and any larger value reports the archive exhausted. The
+generated SQL is then gigabytes and the loader is slow.
+
+## What the seed writes that the importer does not
+
+After the import, the seed writes the review verdicts in
+[`src/import/knownDisputes.ts`](../src/import/knownDisputes.ts) into
+`claim_review` — today, the one on the `studente` verb record that
+[the source research](../reports/2026-09-18-source-research.md) contradicts.
+
+Review is not import output: the importer copies the source and says nothing
+about whether it is right. Without those rows the page shows a claim later
+research already disagreed with as an ordinary verified fact, which is the one
+thing it must not do. A dispute whose record is past the prefix cutoff writes
+nothing, and the seed says so on its own line.
 
 ## Statement batching
 
