@@ -301,6 +301,57 @@ export function isVerbReading(reading: Reading): reading is OtherReading {
 }
 
 /**
+ * Whether this reading is the query's own form-of record: a record about the
+ * searched surface that declares itself a form of some other word (#49).
+ *
+ * Two facts read together, and neither alone is this one. `isAboutQuery` says
+ * the record is about the word that was typed rather than a record that merely
+ * lists it, and a `lemmaLinks` entry is the source's own `form_of` edge — so
+ * `vado`'s `Voce verbale` record passes and `andare`'s own verb record, which
+ * lists `vado` in its table and declares itself a form of nothing, does not.
+ *
+ * No spelling is compared and no gloss is read: the two fields the lookup
+ * already filled are the whole test, which is why it lives here rather than
+ * being re-derived at the page that orders on it.
+ */
+export function isFormOfReading(reading: Reading): boolean {
+  return reading.isAboutQuery && reading.lemmaLinks.length > 0;
+}
+
+/**
+ * Every spelling on this reading the query actually hit, in the two shapes a
+ * record spells a word in: its own headword, and its `forms[]` entries.
+ *
+ * The two come off the same evidence list, split by the kind each occurrence
+ * carries. An `embedded-form` occurrence is the surface inside this record's
+ * table, and its `ref.jsonPointer` is the same pointer the matching
+ * `SourceForm` carries — both read from one `lookup_form` row
+ * (`src/db/schema.sql`, view `surface_hit`), so a page marks a form by pointer
+ * rather than by spelling: no normalizing, no case guessing, and no risk of
+ * outlining a spelling the index never matched. A `headword` occurrence has no
+ * `forms[]` entry to point at — its ref is `/word` — so it is its own flag, and
+ * a record whose headword is the query is marked where that headword sits.
+ */
+export interface SearchedSpellings {
+  /** True when the query hit this record's own headword. */
+  readonly headword: boolean;
+  /** The `ref.jsonPointer` of every `forms[]` entry the query hit. */
+  readonly formPointers: ReadonlySet<string>;
+}
+
+/** Read {@link SearchedSpellings} off a reading's own evidence (#49). */
+export function searchedSpellings(reading: Reading): SearchedSpellings {
+  return {
+    headword: reading.evidence.some((occurrence) => occurrence.origin === "headword"),
+    formPointers: new Set(
+      reading.evidence
+        .filter((occurrence) => occurrence.origin === "embedded-form")
+        .map((occurrence) => occurrence.ref.jsonPointer),
+    ),
+  };
+}
+
+/**
  * Which imported file a page is answering from.
  *
  * Four of these columns are nullable in the schema, and a reader is told so in

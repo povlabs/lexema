@@ -247,6 +247,16 @@ export const FIXTURE_LINES: string[] = [
       formOf("terza persona plurale dell'imperfetto indicativo di andare", "andare"),
     ],
   }),
+  // vado — line 112915 of the release, in its own words: a `Voce verbale`
+  // record tagged `form-of`, with no forms of its own and one sense naming
+  // `andare`. Its gloss is the one that carries the mood, which is what makes
+  // it the card that leads a search for `vado` (#49). The release's own sense
+  // also carries an `examples` entry, which this archive models nowhere.
+  record({
+    word: "vado", pos: "verb", pos_title: "Voce verbale",
+    tags: ["form-of"],
+    senses: [formOf("1\u00aa persona singolare del presente semplice indicativo di andare", "andare")],
+  }),
 
   // parlare — 2 direct, 0 embedded. `parlerei` sits in the table tagged only
   // `present` with a raw `io`, which is the mood gap the research names. The

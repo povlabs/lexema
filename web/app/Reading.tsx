@@ -12,8 +12,12 @@
 // in the card's own silence line.
 
 import type { ReactNode } from "react";
-import { isAdjectiveReading, isNounReading, isVerbReading } from "@lexema/lookup/types.ts";
-import { normalizeItalianExact } from "@lexema/italian/normalize.ts";
+import {
+  isAdjectiveReading,
+  isNounReading,
+  isVerbReading,
+  searchedSpellings,
+} from "@lexema/lookup/types.ts";
 import {
   AMBIGUOUS,
   BOX,
@@ -64,6 +68,7 @@ import type {
   Reading,
   ReadingArticles,
   Review,
+  SearchedSpellings,
   Sense,
   SourceForm,
 } from "@lexema/lookup/types.ts";
@@ -159,7 +164,7 @@ function It({ children }: { children: string }) {
  */
 type Spelling =
   | { kind: "headword"; surface: string }
-  | { kind: "form"; index: number; surface: string; from: string | null };
+  | { kind: "form"; index: number; surface: string; from: string | null; pointer: string };
 
 const headwordOf = (reading: Reading): Spelling => ({ kind: "headword", surface: reading.word });
 
@@ -168,7 +173,18 @@ const spellingOf = (form: SourceForm): Spelling => ({
   index: form.index,
   surface: form.surface,
   from: form.formSource,
+  pointer: form.ref.jsonPointer,
 });
+
+/**
+ * The spellings this card's query actually hit, as `searchedSpellings`
+ * (`src/lookup/types.ts`) read them off the reading's own evidence.
+ *
+ * It travels to every box instead of the query string, because a box marks a
+ * form by pointer and the headword by the evidence's own kind, never by
+ * comparing spellings (#49).
+ */
+type Searched = SearchedSpellings;
 
 /**
  * The page the source says this form was taken from, where it names one.
@@ -425,14 +441,20 @@ function BoxLine({ label, children }: { label: ReactNode; children: ReactNode })
 }
 
 /**
- * Whether this spelling is the word that was searched for.
+ * Whether this spelling is the one the query hit, in whichever shape it sits.
  *
- * Compared through the release's own normalizer, which is what matched the
- * query to this record in the first place — anything looser would outline a
- * spelling the index never hit.
+ * A form is one pointer against a set of pointers, both read from the same
+ * source row: the form's own `ref.jsonPointer` and the `embedded-form`
+ * evidence the lookup recorded. A headword has no pointer into `forms[]`, so
+ * it is the `headword` evidence itself. Nothing here compares surfaces, so a
+ * spelling the index never matched is never outlined (#49), and a record whose
+ * headword is the query — `grande` in its own masculine-singular cell — keeps
+ * the mark the manifest asks for wherever a box places it.
  */
-function isSearchedForm(surface: string, query: string): boolean {
-  return normalizeItalianExact(surface) === normalizeItalianExact(query);
+function isSearchedSpelling(spelling: Spelling, searched: Searched): boolean {
+  return spelling.kind === "headword"
+    ? searched.headword
+    : searched.formPointers.has(spelling.pointer);
 }
 
 /**
@@ -443,8 +465,8 @@ function isSearchedForm(surface: string, query: string): boolean {
  * by a border, not by colour alone" — so the border is drawn by `.searched` and
  * the same fact is said in words beside it, for a reader who sees neither.
  */
-function BoxSurface({ spelling, query }: { spelling: Spelling; query: string }) {
-  if (!isSearchedForm(spelling.surface, query)) return <Spelled spelling={spelling} />;
+function BoxSurface({ spelling, searched }: { spelling: Spelling; searched: Searched }) {
+  if (!isSearchedSpelling(spelling, searched)) return <Spelled spelling={spelling} />;
   return (
     <span className={SEARCHED}>
       <Spelled spelling={spelling} />
@@ -536,16 +558,16 @@ function Unsplit() {
 /** One `forms[]` entry: the Italian spelling, and what the source said about it. */
 function FormEntry({
   form,
-  query,
+  searched,
   markUnsplit,
 }: {
   form: SourceForm;
-  query: string;
+  searched: Searched;
   markUnsplit: boolean;
 }) {
   return (
     <li className={FORM_ITEM}>
-      <BoxSurface spelling={spellingOf(form)} query={query} />
+      <BoxSurface spelling={spellingOf(form)} searched={searched} />
       {markUnsplit && !isOneWord(form.surface) && <Unsplit />}
       <Grammar claims={form.claims} label={`grammar for ${form.surface}`} />
       <SpellingSource spelling={spellingOf(form)} />
@@ -575,12 +597,12 @@ function FormEntry({
 function UnplacedForms({
   reading,
   forms,
-  query,
+  searched,
   markUnsplit = false,
 }: {
   reading: Reading;
   forms: readonly SourceForm[];
-  query: string;
+  searched: Searched;
   markUnsplit?: boolean;
 }) {
   if (forms.length === 0) return null;
@@ -592,7 +614,7 @@ function UnplacedForms({
     <Box id={`forms-${reading.recordId}`} heading={heading}>
       <ul className={FORM_LIST}>
         {forms.map((form) => (
-          <FormEntry key={form.index} form={form} query={query} markUnsplit={markUnsplit} />
+          <FormEntry key={form.index} form={form} searched={searched} markUnsplit={markUnsplit} />
         ))}
       </ul>
     </Box>
@@ -660,7 +682,7 @@ function numberedSurfaces(reading: Reading, number: "singular" | "plural"): Numb
 }
 
 /** One row's value: every spelling filed under that number, verbatim. */
-function NumberCell({ surfaces, query }: { surfaces: NumberedSurface[]; query: string }) {
+function NumberCell({ surfaces, searched }: { surfaces: NumberedSurface[]; searched: Searched }) {
   return (
     <>
       {surfaces.map((entry, i) => (
@@ -668,7 +690,7 @@ function NumberCell({ surfaces, query }: { surfaces: NumberedSurface[]; query: s
           {i > 0 && ", "}
           {/* Exactly as the source spelled it: `studente/studentessa` is one
               string the source wrote, not two words to split apart. */}
-          <BoxSurface spelling={entry.spelling} query={query} />
+          <BoxSurface spelling={entry.spelling} searched={searched} />
           {entry.gender !== undefined && <span className={MUTED}> {entry.gender}</span>}
           <Grammar claims={entry.rest} label={`grammar for ${entry.spelling.surface}`} />
           <SpellingSource spelling={entry.spelling} />
@@ -699,11 +721,11 @@ function nounNumberRows(reading: Reading): NumberRow[] {
 function NounNumbers({
   rows,
   recordId,
-  query,
+  searched,
 }: {
   rows: NumberRow[];
   recordId: number;
-  query: string;
+  searched: Searched;
 }) {
   if (rows.length === 0) return null;
   return (
@@ -711,7 +733,7 @@ function NounNumbers({
       <BoxRows>
         {rows.map((row) => (
           <BoxLine key={row.number} label={row.number}>
-            <NumberCell surfaces={row.surfaces} query={query} />
+            <NumberCell surfaces={row.surfaces} searched={searched} />
           </BoxLine>
         ))}
       </BoxRows>
@@ -994,11 +1016,11 @@ function paradigmWithheldClause(withholding: ParadigmWithholding): string {
 function AdjectiveParadigmBox({
   paradigm,
   recordId,
-  query,
+  searched,
 }: {
   paradigm: AdjectiveParadigm;
   recordId: number;
-  query: string;
+  searched: Searched;
 }) {
   if (paradigm.status === "withheld") return null;
 
@@ -1007,7 +1029,7 @@ function AdjectiveParadigmBox({
       <BoxRows>
         {paradigmCells(paradigm).map(([label, cell]) => (
           <BoxLine key={label} label={label}>
-            <BoxSurface spelling={cell.spelling} query={query} />
+            <BoxSurface spelling={cell.spelling} searched={searched} />
             <Grammar claims={cell.rest} label={`grammar for ${cell.spelling.surface}`} />
             <SpellingSource spelling={cell.spelling} />
           </BoxLine>
@@ -1045,11 +1067,11 @@ function degreeRows(reading: Reading): { degree: string; forms: SourceForm[] }[]
 function AdjectiveDegrees({
   rows,
   recordId,
-  query,
+  searched,
 }: {
   rows: { degree: string; forms: SourceForm[] }[];
   recordId: number;
-  query: string;
+  searched: Searched;
 }) {
   if (rows.length === 0) return null;
 
@@ -1063,7 +1085,7 @@ function AdjectiveDegrees({
                 {i > 0 && ", "}
                 {/* Verbatim, newlines and all: one `forms[]` entry the source
                     wrote, never two forms to pull apart. */}
-                <BoxSurface spelling={spellingOf(form)} query={query} />
+                <BoxSurface spelling={spellingOf(form)} searched={searched} />
                 {!isOneWord(form.surface) && <Unsplit />}
                 {/* The row says which degree; the gender and number the source
                     also tagged are said here, where the form sits, because
@@ -1442,6 +1464,7 @@ function ReadingShell({
  * first of those (#53).
  */
 function NounCard({ reading, query }: { reading: NounReading; query: string }) {
+  const searched = searchedSpellings(reading);
   const rows = nounNumberRows(reading);
   const placed = new Set(placedForms(rows.flatMap((row) => row.surfaces.map((s) => s.spelling))));
   const unplaced = unplacedForms(reading, placed);
@@ -1466,9 +1489,9 @@ function NounCard({ reading, query }: { reading: NounReading; query: string }) {
       />
       {boxed && (
         <BoxRow>
-          <NounNumbers rows={rows} recordId={reading.recordId} query={query} />
+          <NounNumbers rows={rows} recordId={reading.recordId} searched={searched} />
           <NounArticles articles={reading.articles} recordId={reading.recordId} />
-          <UnplacedForms reading={reading} forms={unplaced} query={query} />
+          <UnplacedForms reading={reading} forms={unplaced} searched={searched} />
         </BoxRow>
       )}
     </ReadingShell>
@@ -1484,6 +1507,7 @@ function NounCard({ reading, query }: { reading: NounReading; query: string }) {
  * took — `grande`'s comparatives, which the source states only in prose.
  */
 function AdjectiveCard({ reading, query }: { reading: Reading; query: string }) {
+  const searched = searchedSpellings(reading);
   const paradigm = adjectiveParadigm(reading);
   const degrees = degreeRows(reading);
   const placed = new Set([
@@ -1515,9 +1539,9 @@ function AdjectiveCard({ reading, query }: { reading: Reading; query: string }) 
       />
       {boxed && (
         <BoxRow>
-          <AdjectiveParadigmBox paradigm={paradigm} recordId={reading.recordId} query={query} />
-          <AdjectiveDegrees rows={degrees} recordId={reading.recordId} query={query} />
-          <UnplacedForms reading={reading} forms={unplaced} query={query} markUnsplit />
+          <AdjectiveParadigmBox paradigm={paradigm} recordId={reading.recordId} searched={searched} />
+          <AdjectiveDegrees rows={degrees} recordId={reading.recordId} searched={searched} />
+          <UnplacedForms reading={reading} forms={unplaced} searched={searched} markUnsplit />
         </BoxRow>
       )}
     </ReadingShell>
@@ -1813,12 +1837,12 @@ function filedInTable(
 function VerbForms({
   forms,
   filed,
-  query,
+  searched,
   markUnsplit = false,
 }: {
   forms: readonly SourceForm[];
   filed: (claim: GrammarClaim) => boolean;
-  query: string;
+  searched: Searched;
   markUnsplit?: boolean;
 }) {
   return (
@@ -1826,7 +1850,7 @@ function VerbForms({
       {forms.map((form, i) => (
         <span key={form.index}>
           {i > 0 && ", "}
-          <BoxSurface spelling={spellingOf(form)} query={query} />
+          <BoxSurface spelling={spellingOf(form)} searched={searched} />
           {markUnsplit && !isOneWord(form.surface) && <Unsplit />}
           <Grammar
             claims={claimsBeyond(form.claims, filed)}
@@ -1854,11 +1878,11 @@ function VerbRowLabel({ row }: { row: VerbRow }) {
 function VerbMoodGroup({
   group,
   recordId,
-  query,
+  searched,
 }: {
   group: MoodGroup;
   recordId: number;
-  query: string;
+  searched: Searched;
 }) {
   const id = `mood-${recordId}-${groupKey(group.mood)}`;
   return (
@@ -1880,7 +1904,7 @@ function VerbMoodGroup({
                   <VerbForms
                     forms={row.forms}
                     filed={filedInTable(group.mood, box.tense, row)}
-                    query={query}
+                    searched={searched}
                   />
                 </BoxLine>
               ))}
@@ -1904,6 +1928,7 @@ function VerbMoodGroup({
  * than disappearing.
  */
 function VerbCard({ reading, query }: { reading: Reading; query: string }) {
+  const searched = searchedSpellings(reading);
   const facts = nonFiniteFacts(reading);
   const groups = moodGroups(reading);
   const placed = new Set([
@@ -1923,7 +1948,7 @@ function VerbCard({ reading, query }: { reading: Reading; query: string }) {
         // `se intr. essere` is one auxiliary entry the source wrote as three
         // words, so it carries the marking that says this page does not split
         // a source string into separate forms.
-        value: <VerbForms forms={fact.forms} filed={fact.filed} query={query} markUnsplit />,
+        value: <VerbForms forms={fact.forms} filed={fact.filed} searched={searched} markUnsplit />,
       }))}
       silence={{ source: nonFiniteClause(facts), withheld: [] }}
     >
@@ -1936,12 +1961,12 @@ function VerbCard({ reading, query }: { reading: Reading; query: string }) {
           key={groupKey(group.mood)}
           group={group}
           recordId={reading.recordId}
-          query={query}
+          searched={searched}
         />
       ))}
       {unplaced.length > 0 && (
         <BoxRow>
-          <UnplacedForms reading={reading} forms={unplaced} query={query} markUnsplit />
+          <UnplacedForms reading={reading} forms={unplaced} searched={searched} markUnsplit />
         </BoxRow>
       )}
     </ReadingShell>
@@ -1956,6 +1981,7 @@ function VerbCard({ reading, query }: { reading: Reading; query: string }) {
  * its absence is exactly the wall of apologies #60 removes.
  */
 function GenericCard({ reading, query }: { reading: Reading; query: string }) {
+  const searched = searchedSpellings(reading);
   const table = conjugationTable(reading);
   const grouped = table.byTense.size > 0;
   const placed = new Set(placedByConjugations(table));
@@ -1981,7 +2007,7 @@ function GenericCard({ reading, query }: { reading: Reading; query: string }) {
       {boxed && (
         <BoxRow>
           <Conjugations table={table} recordId={reading.recordId} />
-          <UnplacedForms reading={reading} forms={unplaced} query={query} />
+          <UnplacedForms reading={reading} forms={unplaced} searched={searched} />
         </BoxRow>
       )}
     </ReadingShell>

@@ -28,7 +28,7 @@ import { lookup, readRelease } from "../../src/lookup/lookup.js";
 import type { Reading } from "../../src/lookup/types.js";
 import type { Attempt } from "../app/attempt.ts";
 import { Attribution } from "../app/Attribution";
-import { FirstLoad, Outcome, Pending, SearchPage } from "../app/SearchPage";
+import { FirstLoad, Outcome, pageOrder, Pending, SearchPage } from "../app/SearchPage";
 import { SiteFooter } from "../app/SiteFooter";
 import { firstQuery } from "../app/params";
 // The class strings the components carry, imported rather than copied. #67
@@ -367,10 +367,17 @@ async function readingFor(
   return match as Reading;
 }
 
-/** Every reading one query answers with, in the order the page renders them. */
+/**
+ * Every reading one query answers with, in the order the page renders them.
+ *
+ * The lookup's own order is source order and the page's is not: form-of
+ * readings about the query lead (#49). So this runs the page's own ordering
+ * function over the lookup's answer, which is what puts reading *i* beside
+ * card *i* below.
+ */
 async function readingsFor(db: DatabaseSync, query: string): Promise<Reading[]> {
   const attempt: Attempt = await lookup({ db: fromNodeSqlite(db), releaseId: RELEASE, query });
-  return attempt.outcome === "found" ? attempt.readings : [];
+  return attempt.outcome === "found" ? pageOrder(attempt.readings) : [];
 }
 
 /** Each card of a page, in the order the page rendered them. */
@@ -384,6 +391,18 @@ function cardsOf(html: string): string[] {
       return part.slice(0, end);
     });
 }
+
+/**
+ * Each card's own label, in the order the page rendered the cards.
+ *
+ * The label is the word and the part of speech the card announces itself with,
+ * so a list of them is the answer's order said the way a screen reader meets
+ * it — which is what an assertion about ranking is about (#49).
+ */
+const cardLabels = (html: string): string[] =>
+  [...html.matchAll(new RegExp(`<article class="${esc(CARD)}" aria-label="([^"]+)"`, "g"))].map(
+    (match) => match[1],
+  );
 
 /**
  * One card out of a page, by the label it announces itself with.
@@ -1130,6 +1149,28 @@ test("the searched form is outlined where it sits, and nothing is marked where i
       ),
     );
 
+    // A query that is its own headword is marked where the box places it:
+    // `grande` fills both singular cells of its own paradigm, and the plural
+    // cells, which hold `grandi`, stay unmarked.
+    const own = section(card(await render(db, "grande"), "grande, adjective"), "Gender and number");
+    assert.equal(occurrencesOf(own, `<span class="${SEARCHED}">`), 2);
+    for (const label of ["masculine singular", "feminine singular"]) {
+      assert.match(
+        own,
+        exact(
+          rowLabel(label) +
+            cell(
+              `<span class="${SEARCHED}"><span lang="it" data-headword="">grande</span>` +
+                `<span class="${MUTED}"> · the form you searched</span></span>`,
+            ),
+        ),
+      );
+    }
+    assert.match(
+      own,
+      exact(rowLabel("masculine plural") + cell(`<span lang="it" data-form="0">grandi</span>`)),
+    );
+
     // `fine` shows no paradigm, so `fini` is marked in the box it does sit in.
     const fine = card(await render(db, "fini"), "fine, adjective");
     assert.match(
@@ -1492,6 +1533,132 @@ test("a searched verb form is outlined in the tense box that holds it", async ()
     );
     // One mark on the whole card: `vo` sits on the same row and is not it.
     assert.equal(occurrencesOf(andare, `<span class="${SEARCHED}">`), 1);
+  });
+});
+
+/**
+ * A conjugated query leads with its own form, then the lemma's table (#49).
+ *
+ * Huey's own words on the issue: "if i search 'vado' it gives andare too, it
+ * should but the first explanation it should explain first like vado first
+ * ... then it should give all the conjugations for andare in below". The
+ * leading card is the record the source already carries for `vado`, rendered by
+ * the shell that renders every other card, and its gloss is the source's own
+ * sentence — which is the one place the mood is said at all. Nothing is
+ * generated, translated or parsed here: #50 is the generated explanation.
+ */
+test("a conjugated query leads with its own form, then the lemma's table", async () => {
+  await withFixture(async ({ db }) => {
+    const html = await render(db, "vado");
+    assert.equal(cards(html), 2, "vado: its own record and the lemma it names");
+    assert.deepEqual(cardLabels(html), ["vado, verb", "andare, verb"]);
+
+    // The leading card is the source's own sentence, verbatim and in Italian,
+    // under the `Form of` section the shell already renders.
+    const vado = cardsOf(html)[0];
+    assert.match(
+      vado,
+      exact(
+        `<p lang="it" class="${GLOSS}">` +
+          "1ª persona singolare del presente semplice indicativo di andare</p>",
+      ),
+    );
+    assert.match(vado, /Form of<\/h3>/);
+    assert.match(vado, exact('<li><span lang="it">andare</span>'));
+    // No English paraphrase of the form, and no parse of that sentence: the
+    // card's English is the shell's own labels (ADR 0004, and #50).
+    assert.doesNotMatch(textOf(vado), /I go|first person|present indicative/i);
+
+    // The lemma follows with the whole table, and the searched form is outlined
+    // where the source put it: the `io` row of the present box.
+    const andare = card(html, "andare, verb");
+    const present = section(moodGroup(andare, "Mood not stated in the source"), "present");
+    assert.match(
+      present,
+      exact(
+        pronounLabel("io", "first-person, singular") +
+          `<td class="${BOX_CELL}"><span><span class="${SEARCHED}">` +
+          `<span lang="it" data-form="4">vado</span>` +
+          `<span class="${MUTED}"> · the form you searched</span></span>`,
+      ),
+    );
+    // One mark on the card: `vo` shares that row and is not the searched form.
+    assert.equal(occurrencesOf(andare, `<span class="${SEARCHED}">`), 1);
+    assert.match(present, exact('<span lang="it" data-form="5">vo</span>'));
+  });
+});
+
+/**
+ * The same shape for `andavano`, where the mood the gloss names is a different
+ * one and the form sits at a `forms[]` index the report locates.
+ */
+test("andavano leads with its own gloss, and is outlined at /forms/16 of andare", async () => {
+  await withFixture(async ({ db }) => {
+    const html = await render(db, "andavano");
+    assert.equal(cards(html), 2);
+    assert.deepEqual(cardLabels(html), ["andavano, verb", "andare, verb"]);
+    assert.match(
+      cardsOf(html)[0],
+      exact(
+        `<p lang="it" class="${GLOSS}">` +
+          "terza persona plurale dell&#x27;imperfetto indicativo di andare</p>",
+      ),
+    );
+
+    const andare = card(html, "andare, verb");
+    const imperfect = section(moodGroup(andare, "Mood not stated in the source"), "imperfect");
+    assert.match(
+      imperfect,
+      exact(
+        `<span class="${SEARCHED}"><span lang="it" data-form="16">andavano</span>` +
+          `<span class="${MUTED}"> · the form you searched</span></span>`,
+      ),
+    );
+    assert.equal(occurrencesOf(andare, `<span class="${SEARCHED}">`), 1);
+    // The lemma card still says it does not define the query, and still shows
+    // every other form it lists.
+    assert.match(andare, /Does not define <q lang="it">andavano<\/q>/);
+    assert.match(imperfect, exact('<span lang="it" data-form="11">andavo</span>'));
+  });
+});
+
+/**
+ * Ranking never drops: `sale` is five records before this change and five
+ * after, in a new order (#49).
+ *
+ * "Every candidate a lookup returns is rendered. The interface may rank; it
+ * never drops" (design-system-manifest.md § "Settled law"). Both readings that
+ * are about `sale` and declare a lemma lead, in the lookup's own source order;
+ * the salt noun, `sala` and `salire` follow in theirs.
+ */
+test("sale keeps all five cards, with its form-of readings leading", async () => {
+  await withFixture(async ({ db }) => {
+    const html = await render(db, "sale");
+    assert.equal(cards(html), 5);
+    assert.match(html, /5 entries for/);
+    assert.deepEqual(cardLabels(html), [
+      "sale, noun",
+      "sale, verb",
+      "sale, noun",
+      "sala, noun",
+      "salire, verb",
+    ]);
+    // The labels repeat, so the order is said again by what each card holds:
+    // the plural of `sala`, then the form of `salire`, then the salt.
+    const rendered = cardsOf(html);
+    assert.match(rendered[0], /plurale di sala/);
+    assert.match(rendered[1], /dell&#x27;indicativo presente di salire/);
+    assert.match(rendered[2], /cloruro di sodio/);
+    // The two records that merely list `sale` are still here, still labelled as
+    // mentions, and `salire` still outlines the row the query hit.
+    assert.equal(mentions(html), 2);
+    assert.match(
+      section(card(html, "salire, verb"), "present"),
+      exact(
+        `<span class="${SEARCHED}"><span lang="it" data-form="1">sale</span>` +
+          `<span class="${MUTED}"> · the form you searched</span></span>`,
+      ),
+    );
   });
 });
 
