@@ -72,10 +72,17 @@ export function Pending({ raw }: { raw: string }) {
 }
 
 /**
- * Every state a probed query can land in, and the attribution under it.
+ * Every state a probed query can land in, and the release under it.
  *
  * Each is said plainly rather than collapsed into one blank page: asked badly,
  * the lookup itself failed, asked and not found, asked and found.
+ *
+ * The credit is not here. [ADR 0009](../../.decisions/0009-two-licences-and-a-source-link.md)
+ * puts no credit line, licence name or contributor text on the search page: each
+ * reading carries a *Source* link to its Wiktionary page, and the full credit is
+ * on `/attribution`, which the site footer reaches from every page. What stays
+ * below is provenance rather than credit — which release answered, so that the
+ * line numbers and pointers on each card name something exact.
  */
 export function Outcome({ raw, attempt }: { raw: string; attempt: Attempt }) {
   return (
@@ -119,24 +126,9 @@ export function Outcome({ raw, attempt }: { raw: string; attempt: Attempt }) {
       )}
 
       {(attempt.outcome === "found" || attempt.outcome === "not-found") && (
-        <footer className="attribution">
-          <p>
-            Entries come from a dictionary release derived from Wiktionary and are shown as the
-            source wrote them, including where it is incomplete or wrong. Nothing on this page is
-            generated.
-          </p>
+        <footer className="release">
           <p>
             Release <code>{attempt.release.releaseId}</code>
-            {attempt.release.license && <> · {attempt.release.license}</>}
-            {attempt.release.sourceUrl && (
-              <>
-                {" "}
-                ·{" "}
-                <a href={attempt.release.sourceUrl} rel="noreferrer">
-                  source
-                </a>
-              </>
-            )}
           </p>
         </footer>
       )}

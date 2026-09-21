@@ -24,9 +24,11 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { importRelease } from "../../src/import/importRelease.js";
 import { writeKnownDisputes } from "../../src/import/knownDisputes.js";
 import { fromNodeSqlite } from "../../src/lookup/database.js";
-import { lookup } from "../../src/lookup/lookup.js";
+import { lookup, readRelease } from "../../src/lookup/lookup.js";
 import type { Attempt } from "../app/attempt.ts";
+import { Attribution } from "../app/Attribution";
 import { FirstLoad, Outcome, Pending, SearchPage } from "../app/SearchPage";
+import { SiteFooter } from "../app/SiteFooter";
 import { firstQuery } from "../app/params";
 import { FIXTURE_LINES } from "./fixture.js";
 
@@ -524,8 +526,8 @@ test("renders the states that are not an answer: first load, loading, rejected, 
   );
   assert.match(failed, /<p class="error" role="alert">The lookup failed/);
   assert.doesNotMatch(failed, /release|D1|normalizer|SQLITE/i);
-  // Nothing to attribute when nothing was read.
-  assert.doesNotMatch(failed, /class="attribution"/);
+  // No release to name when nothing was read.
+  assert.doesNotMatch(failed, /class="release"/);
 
   await withFixture(async ({ db }) => {
     const rejected = await render(db, "   ");
@@ -533,5 +535,154 @@ test("renders the states that are not an answer: first load, loading, rejected, 
 
     const tooLong = await render(db, "a".repeat(200));
     assert.match(tooLong, /That is 200 characters\. The limit is 128\./);
+  });
+});
+
+// The credit, as ADR 0009 has it: one small link per reading, no credit at all
+// on the search page, and the whole of it on /attribution, reached from a
+// footer on every page.
+
+test("each reading credits its source with one link labelled Source, pointing where it did before", async () => {
+  await withFixture(async ({ db }) => {
+    const html = await render(db, "casa");
+    assert.match(
+      html,
+      /<a href="https:\/\/it\.wiktionary\.org\/wiki\/casa" rel="noreferrer" aria-label="Wiktionary page for casa, the source of this noun entry">Source<\/a>/,
+    );
+    // The link's visible text is the one word, and the old label is gone from
+    // the text. It survives in the accessible name, which is where "Source"
+    // repeated once per reading would otherwise say nothing about which
+    // reading it belongs to.
+    assert.doesNotMatch(html, /<a[^>]*>Wiktionary page for/);
+
+    // A word with five readings gets five of them, each at its own href.
+    const sale = await render(db, "sale");
+    assert.equal(sale.split(">Source</a>").length - 1, cards(sale));
+    assert.match(sale, /href="https:\/\/it\.wiktionary\.org\/wiki\/salire"[^>]*aria-label="Wiktionary page for salire, the source of this verb entry"/);
+  });
+});
+
+test("the search page carries no credit line, no licence name and no contributor text", async () => {
+  await withFixture(async ({ db }) => {
+    for (const query of ["sale", "zzzznothing"]) {
+      const html = await render(db, query);
+      // The licence is named on /attribution and nowhere else. The fixture
+      // release carries `CC-BY-SA-4.0` in its own row, so a page that still
+      // read the column would show it here.
+      assert.doesNotMatch(html, /CC.?BY.?SA/i, `${query}: no licence string`);
+      assert.doesNotMatch(html, /kaikki|wiktextract/i, `${query}: no via-credit`);
+      assert.doesNotMatch(html, /contributor|Wikimedia/i, `${query}: no contributor text`);
+      assert.doesNotMatch(html, /example\.invalid/, `${query}: no link to the archive`);
+      assert.doesNotMatch(html, /derived from Wiktionary/, `${query}: no credit prose`);
+      // What stays is provenance: which release answered, so that the line
+      // numbers and pointers on each card name something exact.
+      assert.match(html, /<footer class="release"><p>Release <code>it-page-test<\/code><\/p><\/footer>/);
+    }
+
+    // And the per-reading provenance under each card is untouched.
+    const html = await render(db, "casa");
+    assert.match(html, /· release line \d+/);
+    assert.match(html, /<span class="pointer"> <code>\/word<\/code><\/span>/);
+  });
+});
+
+test("every page reaches the attribution page from the footer", async () => {
+  const footer = renderToStaticMarkup(<SiteFooter />);
+  assert.match(footer, /<footer class="site-footer"><a href="\/attribution">[^<]+<\/a><\/footer>/);
+
+  // The layout itself cannot be rendered here — it imports globals.css, which
+  // Node cannot load — so that it carries this footer is asserted on the file,
+  // the way the document language above is.
+  const layout = await readFile(join(REPO, "web/app/layout.tsx"), "utf8");
+  assert.match(layout, /<SiteFooter \/>/);
+  assert.match(layout, /import \{ SiteFooter \} from "\.\/SiteFooter";/);
+});
+
+/** The attribution page, over the release the fixture imported. */
+async function attribution(db: DatabaseSync): Promise<string> {
+  const release = await readRelease(fromNodeSqlite(db), RELEASE);
+  assert.notEqual(release, undefined, "the fixture release must be readable");
+  return renderToStaticMarkup(<Attribution release={release} />);
+}
+
+test("the attribution page carries the credit, the licence and the restructuring statement", async () => {
+  await withFixture(async ({ db }) => {
+    const html = await attribution(db);
+
+    // The licence, linked, under the name the licence itself uses.
+    assert.match(
+      html,
+      /<a href="https:\/\/creativecommons\.org\/licenses\/by-sa\/4\.0\/" rel="noreferrer">Creative Commons Attribution-ShareAlike 4\.0 International \(CC BY-SA 4\.0\)<\/a>/,
+    );
+    // The credit: the contributors, and where their names are kept.
+    assert.match(html, /written by Wiktionary’s contributors/);
+    assert.match(html, /listed in the page history of that entry’s Wiktionary page/);
+    assert.match(html, /<a href="https:\/\/it\.wiktionary\.org\/" rel="noreferrer">Italian Wiktionary<\/a>/);
+    assert.match(html, /kaikki\.org/);
+    assert.match(html, /wiktextract/);
+    // What Lexema did to the material, and what it did not do.
+    assert.match(html, /Lexema modified this material/);
+    assert.match(html, /extracted from wiki text and converted into a data structure/);
+    assert.match(html, /The wording of the definitions was not rewritten and was not generated/);
+  });
+});
+
+test("the attribution page states the release identity, and says which columns were not recorded", async () => {
+  await withFixture(async ({ db }) => {
+    const html = await attribution(db);
+    const row = db
+      .prepare("SELECT archive_sha256 AS sha FROM source_release WHERE release_id = ?")
+      .get(RELEASE) as { sha: string };
+
+    assert.match(html, /<dt>Release<\/dt><dd><code>it-page-test<\/code><\/dd>/);
+    assert.match(
+      html,
+      /<dt>Source file<\/dt><dd><a href="https:\/\/example\.invalid\/it-extract\.jsonl\.gz" rel="noreferrer"><code>https:\/\/example\.invalid\/it-extract\.jsonl\.gz<\/code><\/a><\/dd>/,
+    );
+    assert.match(
+      html,
+      new RegExp(`<dt>SHA-256 of the downloaded file</dt><dd><code>${row.sha}</code></dd>`),
+    );
+    // The two columns this import left NULL. Said in words, in place: never a
+    // blank, and never a value nobody recorded.
+    assert.match(
+      html,
+      /<dt>Downloaded at \(UTC\)<\/dt><dd><span class="empty">not recorded<\/span><\/dd>/,
+    );
+    assert.match(
+      html,
+      /<dt>Upstream Wiktionary dump<\/dt><dd><span class="empty">not recorded<\/span><\/dd>/,
+    );
+    assert.equal(html.split("<dd></dd>").length - 1, 0, "no field renders blank");
+
+    // A release that cannot be read is a different answer from a release with
+    // nothing in it, and the page gives it in words rather than as five gaps.
+    const unread = renderToStaticMarkup(<Attribution release={undefined} />);
+    assert.match(unread, /The release serving this site could not be read/);
+    assert.doesNotMatch(unread, /class="release-identity"/);
+  });
+});
+
+test("the attribution page shows every open field as open, with nothing guessed in it", async () => {
+  await withFixture(async ({ db }) => {
+    const html = await attribution(db);
+
+    // The three the draft in docs/ATTRIBUTION_NOTICES.md leaves open, each
+    // named as open and each saying what would settle it.
+    assert.equal(html.split('<span class="ambiguous">— open</span>').length - 1, 3);
+    assert.match(
+      html,
+      /The licence for Lexema’s own material <span class="ambiguous">— open<\/span>/,
+    );
+    assert.match(html, /settled by the open decision recorded as §4/);
+    assert.match(html, /Pronunciation and audio <span class="ambiguous">— open<\/span>/);
+    assert.match(html, /per-file review recorded as §5/);
+    assert.match(html, /The version of the extractor <span class="ambiguous">— open<\/span>/);
+    assert.match(html, /version of wiktextract that produced this extraction is not recorded/);
+
+    // Nothing filled in behind a reader's back: no placeholder survives from
+    // the draft, and no licence is claimed for Lexema's own material.
+    assert.doesNotMatch(html, /\{[a-zA-Z]+\}/, "no draft placeholder is published");
+    assert.doesNotMatch(html, /Lexema’s own material[^<]*<\/dt><dd>[^<]*CC/i);
   });
 });

@@ -151,17 +151,30 @@ interface HitRow {
   is_headword_hit: number;
 }
 
-async function readRelease(db: LookupDatabase, releaseId: string): Promise<ReleaseInfo | undefined> {
+/**
+ * The identity of one complete release, or nothing if there is no such release.
+ *
+ * Exported because the attribution page asks for it on its own, without a
+ * query: the release is what that page has to describe, and a lookup nobody
+ * asked for is not the way to reach it.
+ */
+export async function readRelease(
+  db: LookupDatabase,
+  releaseId: string,
+): Promise<ReleaseInfo | undefined> {
   const row = await queryOne<{
     release_id: string;
     normalizer: string;
     source_url: string | null;
     retrieved_at: string | null;
+    archive_sha256: string;
+    upstream_release: string | null;
     license: string | null;
     attribution: string | null;
   }>(
     db,
-    `SELECT release_id, normalizer, source_url, retrieved_at, license, attribution
+    `SELECT release_id, normalizer, source_url, retrieved_at, archive_sha256,
+            upstream_release, license, attribution
        FROM source_release
       WHERE release_id = ? AND status = 'complete'`,
     releaseId,
@@ -174,6 +187,8 @@ async function readRelease(db: LookupDatabase, releaseId: string): Promise<Relea
         normalizer: row.normalizer,
         sourceUrl: row.source_url,
         retrievedAt: row.retrieved_at,
+        archiveSha256: row.archive_sha256,
+        upstreamRelease: row.upstream_release,
         license: row.license,
         attribution: row.attribution,
       };

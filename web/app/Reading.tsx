@@ -25,10 +25,14 @@ import type {
  *
  * The release is a Wiktextract dump of the Italian Wiktionary, so every record
  * came from a page there under its own headword. The source stores no URL, so
- * this one is built from the headword — which is why the link says "page for
- * <word>" rather than claiming to cite this reading. The archive line number
- * and JSON pointers stay next to it: they are what pin the reading to an exact
- * byte of the release, and the link is what a reader can actually click.
+ * this one is built from the headword. The link is labelled *Source* and
+ * nothing more — [ADR 0009](../../.decisions/0009-two-licences-and-a-source-link.md)
+ * keeps the credit itself off this page and on `/attribution`, which the site
+ * footer reaches. Its accessible name still names the word and the part of
+ * speech, because "Source" repeated once per reading tells a screen reader
+ * nothing about which reading it belongs to. The archive line number and JSON
+ * pointers stay next to it: they are what pin the reading to an exact byte of
+ * the release, and the link is what a reader can actually click.
  */
 const WIKTIONARY_PAGE = "https://it.wiktionary.org/wiki/";
 
@@ -944,7 +948,7 @@ function ReadingShell({
           rel="noreferrer"
           aria-label={`Wiktionary page for ${reading.word}, the source of this ${pos} entry`}
         >
-          Wiktionary page for <It>{reading.word}</It>
+          Source
         </a>{" "}
         · release line {reading.ref.lineNo}
         {reading.evidence.map((e, i) => (
