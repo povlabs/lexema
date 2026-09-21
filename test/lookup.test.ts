@@ -132,6 +132,18 @@ const LINES = [
     ],
     senses: [{ glosses: ["esprimersi con la parola"] }],
   }),
+
+  // One record declaring itself a form of `casa` on two of its senses, as the
+  // release record for `casetta` does. Kept last so every line above it keeps
+  // the number it had.
+  JSON.stringify({
+    word: "casetta", pos: "noun", pos_title: "Sostantivo", lang_code: "it",
+    tags: ["feminine", "singular"],
+    senses: [
+      { glosses: ["diminutivo di casa"], tags: ["form-of"], form_of: [{ word: "casa" }] },
+      { glosses: ["piccola casa di campagna"], tags: ["form-of"], form_of: [{ word: "casa" }] },
+    ],
+  }),
 ];
 
 const RELEASE = "it-test";
@@ -418,6 +430,26 @@ test("lists the inflections that declare themselves forms of a reading", async (
     );
     // Each link says which word the edge actually named, verbatim.
     assert.ok(studente.inflections.every((i) => i.targetWord === "studente"));
+    // One row per declaring record, and one edge each: neither of these says
+    // it on more than one sense.
+    assert.deepEqual(studente.inflections.map((i) => i.refs.length), [1, 1]);
+  });
+});
+
+test("a record declaring itself a form on several senses is one inflection, not several", async () => {
+  await withFixture(async (db) => {
+    // `casetta` carries two senses that each declare `form_of: casa`, exactly
+    // as the release record does. That is one record pointing here twice, and
+    // both pointers are kept (#60).
+    const [casa] = found(await ask(db, "casa"));
+    assert.deepEqual(casa.inflections.map((i) => i.word), ["casetta"]);
+    assert.deepEqual(
+      casa.inflections[0].refs.map((r) => r.jsonPointer),
+      ["/senses/0/form_of/0/word", "/senses/1/form_of/0/word"],
+    );
+    // And a record that says it once still carries exactly one.
+    const [bello] = found(await ask(db, "bello"));
+    assert.deepEqual(bello.inflections.map((i) => i.refs.length), [1]);
   });
 });
 
@@ -579,7 +611,7 @@ test("every ref names the release, the line, the field and the line's digest", a
       ...[...bella.grammar.bySense.values()].flat().map((c) => c.ref),
       forward.ref,
       ...(forward.kind === "candidates" ? forward.candidates.map((c) => c.ref) : []),
-      ...bello.inflections.map((i) => i.ref),
+      ...bello.inflections.flatMap((i) => i.refs),
       ...bello.inflections.flatMap((i) => i.targetCandidates.map((c) => c.ref)),
     ];
     assert.ok(refs.length > 10);

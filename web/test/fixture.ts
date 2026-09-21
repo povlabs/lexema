@@ -321,11 +321,29 @@ export const FIXTURE_LINES: string[] = [
     forms: [
       { form: "grandi", tags: ["positive", "masculine", "feminine", "plural"] },
       { form: "maggiore", tags: ["comparative"] },
+      // The release states this one's degree only in the prose of a raw tag,
+      // so no cell and no degree row can take it: it is the card's unplaced
+      // form, and the box named for the rest is where it has to land (#66).
+      { form: "maggiori", raw_tags: ["comparativo di maggioranza"] },
       {
         form: "grandissimo\n massimo",
         tags: ["absolute", "superlative", "masculine", "singular"],
       },
     ],
     senses: [{ glosses: ["di dimensioni notevoli"] }],
+  }),
+
+  // casetta — one record pointing at `casa` twice. The release record carries
+  // two senses that each declare `form_of: casa` (`/senses/0/form_of/0/word`
+  // and `/senses/1/form_of/0/word`), which is why "Forms pointing here" used to
+  // list it twice (#60). Its own surface is a hit for none of the twelve
+  // sampled queries, so it moves none of their counts.
+  record({
+    word: "casetta", pos: "noun", pos_title: "Sostantivo",
+    tags: ["feminine", "singular"],
+    senses: [
+      formOf("diminutivo di casa", "casa"),
+      formOf("piccola casa di campagna", "casa"),
+    ],
   }),
 ];
