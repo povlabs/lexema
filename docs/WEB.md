@@ -137,6 +137,23 @@ miniflare, so the development seed re-emits it as SQL and loads it statement by
 statement. It is slower and larger than a file copy, and it is the only route
 that exists.
 
+## Why the seed is a prefix file, not a limited import
+
+The first seed imported the full archive with `limit`. That stops the importer
+before the last line, so the release landed `partial`, and every canonical read
+hides a release that is not `complete`: the page answered every query with *the
+lookup failed* (#47).
+
+Both rules are worth keeping. `partial` exists so a smoke run can never be
+served as if it were the whole dictionary, and the page serving only `complete`
+is what makes that hold. So the seed does not ask for an exception; it changes
+what it imports. It cuts the head of the archive into its own file and imports
+that file whole. The release is then honestly `complete` for the file it names,
+and its checksum and byte count describe the bytes that were actually read
+rather than a full archive nobody imported. The lookup needs no
+development-only branch, and a deployed release and a development one are told
+apart by which file they name, not by a flag.
+
 ## Known rough edges
 
 - `form-of` renders as an *unclassified* grammar chip next to the "Form of"

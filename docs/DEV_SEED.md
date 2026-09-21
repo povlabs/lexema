@@ -28,18 +28,14 @@ The generated SQL creates the schema and inserts the release, so loading it over
 an existing seed collides on duplicate rows. Deleting the local D1 database
 first is what makes the script repeatable.
 
-## The release is complete, and why that took a prefix file
+## The prefix archive
 
-The seed used to import the full archive with `limit`. That stops the importer
-before the last line, so the release landed `partial` — and every canonical read
-hides a release that is not `complete`, so the page answered every query with
-*the lookup failed* (#47).
-
-So the seed cuts the prefix into **its own archive** under `.data/` and imports
-that file whole, with no `limit`. The release is then honestly `complete` for
-the file it names, and the `archive_sha256` and `archive_bytes` on it describe
-the prefix — the bytes that were actually read — rather than a full archive
-nobody imported. The lookup needs no development-only exception.
+The seed cuts the first `SEED_RECORDS` records into `.data/it-dev.jsonl.gz` and
+imports that file whole, without `limit`. The release is `complete`, and its
+`archive_sha256` and `archive_bytes` describe the prefix file. Why the seed is
+shaped this way is [WEB.md](WEB.md#why-the-seed-is-a-prefix-file-not-a-limited-import);
+[`test/seedComposition.test.ts`](../test/seedComposition.test.ts) pins the
+composition.
 
 The cut counts records with the importer's own admission test
 (`admitsRecord`, [`src/import/importRelease.ts`](../src/import/importRelease.ts)),

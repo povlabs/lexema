@@ -28,11 +28,10 @@ Then open <http://localhost:8790/?q=sale>.
 `pnpm run seed:dev` builds a development release and loads it into local D1. It
 drops the existing local D1 database first, so re-running it needs no cleanup.
 
-It gets its smallness by cutting the head of `it-extract.jsonl.gz` into its own
-archive under `.data/` and importing that file whole. The release is therefore
-`complete`, which is what the page will serve: a release left `partial` by an
-import stopped early is hidden by every canonical read, and the page then
-reports that the lookup failed rather than showing anything (#47).
+The seed is a prefix of the archive, cut into `.data/it-dev.jsonl.gz` and
+imported whole; what that covers is in [DEV_SEED.md](DEV_SEED.md), and why it is
+cut rather than limited is in
+[WEB.md](WEB.md#why-the-seed-is-a-prefix-file-not-a-limited-import).
 
 ## Check it came up
 
