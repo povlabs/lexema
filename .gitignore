@@ -17,7 +17,6 @@ it-extract.jsonl.gz
 
 # Rebuildable analysis output (tools/definition_loss.py)
 build/
-fixtures/upstream-wikitext/
 __pycache__/
 *.pyc
 
