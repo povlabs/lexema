@@ -98,3 +98,31 @@ test("refuses a prefix length that is not a positive whole number", async () => 
     await rm(dir, { recursive: true, force: true });
   }
 });
+
+test("a source that cannot be read fails the cut instead of shortening it", async () => {
+  const { dir, input, output } = await archive();
+  try {
+    // A prefix that stops because the read failed is indistinguishable, by its
+    // own report, from one that stopped because the archive ended — and the
+    // release built from it would be `complete` for bytes nobody chose. So
+    // both read failures have to reach the caller.
+    const notGzip = join(dir, "plain.jsonl.gz");
+    await writeFile(notGzip, "this is not a gzip member\n");
+    await assert.rejects(
+      () => writePrefixArchive({ input: notGzip, output, records: 1 }),
+      /incorrect header check|Z_DATA_ERROR/,
+    );
+
+    await assert.rejects(
+      () => writePrefixArchive({ input: join(dir, "absent.jsonl.gz"), output, records: 1 }),
+      /ENOENT/,
+    );
+
+    // The good path still works from the same directory, so the failures above
+    // are the input's and not the harness's.
+    const report = await writePrefixArchive({ input, output, records: 1 });
+    assert.equal(report.records, 1);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});

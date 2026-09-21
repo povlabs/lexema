@@ -17,8 +17,10 @@ import { execFileSync } from "node:child_process";
 import { closeSync, openSync, writeSync } from "node:fs";
 import { mkdir, rm } from "node:fs/promises";
 import { resolve } from "node:path";
+import { DatabaseSync } from "node:sqlite";
 import { exportSql } from "./exportSql.js";
 import { importRelease } from "./importRelease.js";
+import { writeKnownDisputes } from "./knownDisputes.js";
 import { writePrefixArchive } from "./prefixArchive.js";
 
 // 25,000 records reaches source line 60,501, which is where the words this
@@ -78,6 +80,22 @@ try {
 process.stderr.write(
   `  ${report.admitted} records, ${report.rows.lookup_form} lookup rows, release ${report.status}\n`,
 );
+
+// Review verdicts are not import output: the importer copies the source and
+// says nothing about whether it is right. They are written after it, over the
+// release it just made, so the page can show the one claim this repository has
+// already contradicted as disputed instead of as an ordinary fact.
+const reviewDb = new DatabaseSync(DB);
+try {
+  const disputes = writeKnownDisputes(reviewDb, RELEASE);
+  process.stderr.write(
+    disputes === 0
+      ? "  no known disputed claim is inside this prefix\n"
+      : `  flagged ${disputes} known disputed claim(s)\n`,
+  );
+} finally {
+  reviewDb.close();
+}
 
 const { statements } = await exportSql({ database: DB, schema: "src/db/schema.sql", output: SQL });
 process.stderr.write(`wrote ${statements} statements to ${SQL}\n`);

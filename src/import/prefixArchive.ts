@@ -57,10 +57,25 @@ export async function writePrefixArchive(options: PrefixOptions): Promise<Prefix
     throw new RangeError(`records must be a positive integer, got ${options.records}`);
   }
 
-  const source = createReadStream(options.input).pipe(createGunzip());
+  const input = createReadStream(options.input);
+  const source = input.pipe(createGunzip());
   const lines = createInterface({ input: source, crlfDelay: Infinity });
   const gzip = createGzip();
   const written = pipeline(gzip, createWriteStream(options.output));
+
+  // The read side is not in that pipeline — readline sits between them — so an
+  // unreadable file or a corrupt gzip member fails on a stream nothing awaits.
+  // Unheard, that is a prefix that stops early and reports success. So a read
+  // failure is kept, the write side is failed with it, and the line reader is
+  // closed: the loop below ends, and the error is raised at the end of this
+  // call rather than crashing the process from a stray rejection.
+  let readError: Error | undefined;
+  const failRead = (error: Error): void => {
+    readError ??= error;
+    gzip.destroy(error);
+    lines.close();
+  };
+  for (const stream of [input, source]) stream.on("error", failRead);
 
   const write = (chunk: string): Promise<void> =>
     gzip.write(chunk) ? Promise.resolve() : new Promise((r) => gzip.once("drain", () => r()));
@@ -78,12 +93,23 @@ export async function writePrefixArchive(options: PrefixOptions): Promise<Prefix
         break;
       }
     }
+  } catch (error) {
+    // The read side failed, and the write side is a separate pipeline. Fail it
+    // with the same error and wait for it here, or it rejects with nobody
+    // listening and takes the process down instead of this call.
+    gzip.destroy(error instanceof Error ? error : new Error(String(error)));
+    await written.catch(() => {});
+    throw error;
   } finally {
     lines.close();
     // The reader is left mid-file by the break above; closing the interface
     // does not release the handle underneath it.
     source.destroy();
-    gzip.end();
+    if (!gzip.destroyed) gzip.end();
+  }
+  if (readError !== undefined) {
+    await written.catch(() => {});
+    throw readError;
   }
   await written;
 
