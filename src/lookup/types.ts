@@ -2,6 +2,11 @@
 // confused with one another — each gets its own case rather than sharing a
 // nullable field. The reasoning is in docs/LOOKUP_DESIGN.md.
 
+import type { ArticleDisplay } from "../core/types.js";
+
+/** One article as `it-articles/v1` produced it, re-exported for the page. */
+export type { ArticleDisplay };
+
 /**
  * Where a value came from, precise enough to check it against the archive. These
  * are the four coordinates the schema names `release_id`, `line_no`,
@@ -149,6 +154,36 @@ export interface Review {
   reviewedBy: string;
 }
 
+/**
+ * Why no article is shown, named precisely enough to say it in a sentence.
+ *
+ * Each case is the *first* thing that stopped the rule, so at most one is ever
+ * true at a time: a surface the rule refuses can only be reported once gender
+ * and number were both usable, because `generateItalianArticles` checks them
+ * first (`src/italian/articles.ts`).
+ */
+export type ArticleWithholding =
+  | { reason: "no-gender-or-number-stated" }
+  | { reason: "gender-not-stated" }
+  | { reason: "number-not-stated" }
+  | { reason: "gender-is-not-masculine-or-feminine"; statedGender: string }
+  | { reason: "number-is-not-singular-or-plural"; statedNumber: string }
+  | { reason: "surface-not-handled"; surface: string };
+
+/**
+ * The articles Lexema derived for a reading, or the reason it derived none.
+ *
+ * Three states, never one list that means two things: a derived set is a
+ * non-empty tuple, a withholding carries its reason, and a reading nobody asked
+ * the question about says so. Articles are a noun fact here — deriving them for
+ * any other part of speech is outside #53 — so `not-a-noun` is the answer for
+ * every other `pos`, and it is not the same answer as "asked, and withheld".
+ */
+export type ReadingArticles =
+  | { status: "derived"; articles: [ArticleDisplay, ...ArticleDisplay[]] }
+  | { status: "withheld"; withholding: ArticleWithholding }
+  | { status: "not-a-noun" };
+
 /** One source record that matched the query. */
 export interface Reading {
   recordId: number;
@@ -183,6 +218,12 @@ export interface Reading {
   inflections: InflectionOf[];
   /** Review verdicts on this record's claims. Empty until #12 writes any. */
   reviews: Review[];
+  /**
+   * Articles for this reading, derived by `it-articles/v1` from the gender and
+   * number the source states — or the reason there are none. Nothing here comes
+   * from the release: the source carries no article field at all.
+   */
+  articles: ReadingArticles;
 }
 
 export interface ReleaseInfo {
