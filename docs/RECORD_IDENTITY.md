@@ -19,7 +19,7 @@ So the schema has no column anywhere that resolves a form to a lemma record. Tha
 A source record is identified by `(release_id, line_no)`.
 
 - `line_no` is the 1-based physical line in the `.jsonl.gz`.
-- `release_id` names one exact file, pinned by `source_release.archive_sha256` and its R2 key. Line numbers only mean something inside one release.
+- `release_id` names one exact file, pinned by `source_release.archive_sha256` and its R2 key. Line numbers only mean something inside one release. The importer opens the archive once and both hashes and reads it through that one open file, then re-checks the file before committing, so the recorded digest describes the bytes the line numbers were counted in — not just a path that held them at some point.
 
 Nothing else is stable. The file carries no id field, and `(word, pos)` is not unique: 1,435 Italian `(word, pos)` groups hold more than one record, up to 5. `sale` is one noun record for salt and a second noun record for the plural of `sala`.
 
@@ -95,7 +95,7 @@ Which dimensions are "expected" for which part of speech is importer policy ([#1
 
 The sharpest `missing` case: **no form in this entire file carries a structural mood tag.** `parlerei` at line 37 `/forms/53` is tagged only `present`, with raw tag `io`. The conditional is stated in prose on a different record (line 140699) and in the rendered upstream table. That is a gap the data has, and it shows up as a row rather than as silence.
 
-One known limit: grammar prose that hides in a *sense* `raw_tags`, like `casa` `/senses/0/raw_tags/0` = `pl.: case`, stays in `sense_label` verbatim. It is not promoted into `grammar_claim`, because deciding it means "plural: case" is parsing, not reading.
+One known limit: grammar prose that hides in a *sense* `raw_tags`, like `casa` `/senses/0/raw_tags/0` = `pl.: case`, is never read. The importer cannot tell a topic label (`scuola`) from grammar written in words, so the text is stored twice and interpreted neither time: verbatim in `sense_label` as a `raw_tag`, and in `grammar_claim` as `unclassified`, with no dimension and no value. Deciding that it means "plural: case" is parsing, not reading, and nothing here does it.
 
 ### Disputed
 
@@ -215,7 +215,7 @@ This does not prove no historical or regional verb use exists. It records that t
 | record | `""` | `missing` | gender | |
 | record | `""` | `missing` | number | |
 
-Its `pl.: case` sits in `sense_label` as a raw tag, unparsed. Meanwhile line 8864, `case`, does carry feminine and plural tags and an edge to `casa` — the relation exists even though `casa`'s own entry has nothing.
+Its `pl.: case` sits in `sense_label` as a raw tag and in `grammar_claim` as `unclassified`, unparsed in both. Meanwhile line 8864, `case`, does carry feminine and plural tags and an edge to `casa` — the relation exists even though `casa`'s own entry has nothing.
 
 `città` (line 31998) is `stated` on both dimensions — gender feminine, number invariable — and still cannot get an article, because `invariable` is not a number an article agrees with. That is a question for the article rule, not a gap in the data.
 

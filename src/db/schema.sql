@@ -297,11 +297,16 @@ INSERT INTO grammar_value (dimension, value) VALUES
 --                    text is kept; no value is guessed. e.g. raw_tags 'pl.: case'
 --                    on `casa`, 'lui/lei' on a `salire` form.
 --   'missing'     -> the importer looked for a dimension it expects here and the
---                    source gave nothing. e.g. `casa` has no gender tag at all,
---                    `città` has no number, and no form in this entire file
---                    carries a structural mood — `parlerei` at line 37 /forms/53
---                    is tagged only 'present', with the conditional stated in
---                    prose on a different record.
+--                    source gave nothing. e.g. `casa` at line 1 has no `tags` at
+--                    all, so both gender and number are missing, and no form in
+--                    this entire file carries a structural mood — `parlerei` at
+--                    line 37 /forms/53 is tagged only 'present', with the
+--                    conditional stated in prose on a different record.
+--                    `città` at line 31998 is NOT a missing case: it is tagged
+--                    ['feminine', 'invariable'], so number is 'stated' with the
+--                    value 'invariable'. A stated value can still be unusable —
+--                    no article agrees with 'invariable' — but that is a gap in
+--                    the article rule, not a missing claim.
 --
 -- Which dimensions are "expected" for which pos is importer policy (#10), not
 -- schema. The schema only guarantees the four states stay distinguishable.
