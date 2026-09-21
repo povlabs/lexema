@@ -186,7 +186,7 @@ async function buildReading(db: LookupDatabase, releaseId: string, group: HitRow
   const ref = (pointer: string): SourceRef => ({
     releaseId,
     lineNo: first.line_no,
-    pointer,
+    jsonPointer: pointer,
     lineSha256: record.lineSha256,
   });
 
@@ -360,7 +360,7 @@ async function readGrammar(
   // The rows arrive ordered by pointer as text, so put each bucket back into
   // the order the source wrote its tags in.
   const byPointer = (a: GrammarClaim, b: GrammarClaim): number =>
-    compareSourcePointers(a.ref.pointer, b.ref.pointer);
+    compareSourcePointers(a.ref.jsonPointer, b.ref.jsonPointer);
   grammar.record.sort(byPointer);
   for (const claims of grammar.byForm.values()) claims.sort(byPointer);
   for (const claims of grammar.bySense.values()) claims.sort(byPointer);
@@ -480,7 +480,7 @@ export const INFLECTION_CANDIDATE_SQL = `SELECT t.record_id, t.line_no, t.line_s
 
 /** The `/word` field of a headword record, which is where its spelling is. */
 function headwordRef(releaseId: string, lineNo: number, lineSha256: string): SourceRef {
-  return { releaseId, lineNo, pointer: "/word", lineSha256 };
+  return { releaseId, lineNo, jsonPointer: "/word", lineSha256 };
 }
 
 async function readInflections(
@@ -527,7 +527,7 @@ async function readInflections(
       ref: {
         releaseId,
         lineNo: row.line_no,
-        pointer: row.json_pointer,
+        jsonPointer: row.json_pointer,
         lineSha256: row.line_sha256,
       },
       targetWord: row.target_word,
@@ -535,7 +535,7 @@ async function readInflections(
     }))
     .sort(
       (a, b) =>
-        a.ref.lineNo - b.ref.lineNo || compareSourcePointers(a.ref.pointer, b.ref.pointer),
+        a.ref.lineNo - b.ref.lineNo || compareSourcePointers(a.ref.jsonPointer, b.ref.jsonPointer),
     );
 }
 
@@ -570,7 +570,7 @@ async function readReviews(
     }))
     .sort(
       (a, b) =>
-        compareSourcePointers(a.ref.pointer, b.ref.pointer) ||
+        compareSourcePointers(a.ref.jsonPointer, b.ref.jsonPointer) ||
         (a.reviewedAt < b.reviewedAt ? -1 : a.reviewedAt > b.reviewedAt ? 1 : 0),
     );
 }

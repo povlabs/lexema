@@ -87,7 +87,7 @@ counted in, so carrying the line without the release was a ref that could not
 actually be checked.
 
 The fields are the schema's `release_id`, `line_no`, `json_pointer` and
-`line_sha256`, spelled in camelCase as `releaseId`, `lineNo`, `pointer` and
+`line_sha256`, spelled in camelCase as `releaseId`, `lineNo`, `jsonPointer` and
 `lineSha256`. The digest is required rather than optional: every value a lookup
 returns was read from a line whose bytes were hashed on import, so a ref without
 one would be a ref nothing could check.

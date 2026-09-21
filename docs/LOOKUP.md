@@ -91,7 +91,7 @@ writes `result.outcome === "found" ? result.readings : []`, and neither
 | Field | Holds |
 | --- | --- |
 | `recordId` | the database's surrogate id, an artefact of one build — never publish it |
-| `ref` | the whole record: `pointer` is `""` |
+| `ref` | the whole record: `jsonPointer` is `""` |
 | `word`, `pos`, `posTitle` | the record's own headword and part of speech, verbatim |
 | `isAboutQuery` | `true` when at least one piece of evidence is a headword hit |
 | `evidence[]` | every occurrence of the surface on this record, in source order |
@@ -107,7 +107,7 @@ writes `result.outcome === "found" ? result.readings : []`, and neither
 | --- | --- |
 | `releaseId` | the release these coordinates are in; line numbers mean nothing outside one |
 | `lineNo` | 1-based physical line in that release's `.jsonl.gz` |
-| `pointer` | RFC 6901 pointer into that line; `""` is the whole record |
+| `jsonPointer` | RFC 6901 pointer into that line; `""` is the whole record |
 | `lineSha256` | sha256 of the line's bytes, so the claim is checkable against the archive |
 
 These are the four coordinates the schema names `release_id`, `line_no`,

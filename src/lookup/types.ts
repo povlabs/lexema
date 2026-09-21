@@ -17,7 +17,7 @@ export interface SourceRef {
   /** Line number in that release's .jsonl.gz, 1-based. */
   lineNo: number;
   /** JSON Pointer into that line. `""` is the whole record. */
-  pointer: string;
+  jsonPointer: string;
   /** sha256 of the raw line bytes, so the claim can be checked against R2. */
   lineSha256: string;
 }

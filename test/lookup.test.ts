@@ -262,8 +262,8 @@ test("a canonically decomposed query finds the same rows as the composed one", a
     // Same rows, not merely the same count: record ids and the evidence each
     // one carries.
     assert.deepEqual(
-      found(viaDecomposed).map((r) => [r.recordId, r.evidence.map((e) => e.ref.pointer)]),
-      found(viaComposed).map((r) => [r.recordId, r.evidence.map((e) => e.ref.pointer)]),
+      found(viaDecomposed).map((r) => [r.recordId, r.evidence.map((e) => e.ref.jsonPointer)]),
+      found(viaComposed).map((r) => [r.recordId, r.evidence.map((e) => e.ref.jsonPointer)]),
     );
     assert.equal(found(viaDecomposed).length, 1);
 
@@ -322,7 +322,7 @@ test("repeated evidence does not become repeated readings", async () => {
     // so collapsing them would lose a fact.
     assert.equal(studente.evidence.length, 2);
     assert.deepEqual(
-      studente.evidence.map((e) => e.ref.pointer),
+      studente.evidence.map((e) => e.ref.jsonPointer),
       ["/forms/0/form", "/forms/1/form"],
     );
   });
@@ -343,7 +343,7 @@ test("evidence from a long table is ordered by index, not by pointer text", asyn
     assert.equal(formCount, 12);
 
     assert.deepEqual(
-      parlare.evidence.map((e) => e.ref.pointer),
+      parlare.evidence.map((e) => e.ref.jsonPointer),
       ["/forms/1/form", "/forms/2/form", "/forms/10/form", "/forms/11/form"],
     );
 
@@ -353,7 +353,7 @@ test("evidence from a long table is ordered by index, not by pointer text", asyn
     const tenth = parlare.grammar.byForm.get(10);
     assert.ok(tenth);
     assert.deepEqual(
-      tenth.map((c) => c.ref.pointer),
+      tenth.map((c) => c.ref.jsonPointer),
       ["/forms/10", "/forms/10/tags/0"],
     );
   });
@@ -499,7 +499,7 @@ test("carries definitions, labels and a source reference for each", async () => 
     assert.equal(citta.senses[0].glosses[0].text, "centro abitato di grandi dimensioni");
     // Every value points at the exact line and field it was read from, so a
     // reader can check it against the archive.
-    assert.equal(citta.senses[0].glosses[0].ref.pointer, "/senses/0/glosses/0");
+    assert.equal(citta.senses[0].glosses[0].ref.jsonPointer, "/senses/0/glosses/0");
     assert.equal(citta.senses[0].glosses[0].ref.lineNo, citta.ref.lineNo);
 
     const [studente] = found(await ask(db, "studente")).filter((r) => r.pos === "noun");
@@ -554,7 +554,7 @@ test("every ref names the release, the line, the field and the line's digest", a
       // against the archive rather than decorative.
       assert.equal(ref.lineSha256, createHash("sha256").update(raw, "utf8").digest("hex"));
       // "" is the whole record; anything else is a field inside it.
-      assert.ok(ref.pointer === "" || ref.pointer.startsWith("/"));
+      assert.ok(ref.jsonPointer === "" || ref.jsonPointer.startsWith("/"));
     }
   });
 });
@@ -609,7 +609,7 @@ test("surfaces a disputed claim instead of hiding or correcting it", async () =>
     assert.ok(verb);
     assert.equal(verb.reviews.length, 1);
     assert.equal(verb.reviews[0].status, "disputed");
-    assert.equal(verb.reviews[0].ref.pointer, "/senses/0/glosses/0");
+    assert.equal(verb.reviews[0].ref.jsonPointer, "/senses/0/glosses/0");
 
     // The claim itself is untouched. A dispute annotates; it never rewrites.
     assert.equal(
