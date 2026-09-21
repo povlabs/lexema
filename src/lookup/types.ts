@@ -267,6 +267,20 @@ export function isNounReading(reading: Reading): reading is NounReading {
   return reading.pos === "noun";
 }
 
+/**
+ * Whether this reading is an adjective — which is the card the page picks for
+ * it (#52), and nothing else.
+ *
+ * It narrows to `OtherReading` because that is all the part of speech settles
+ * here: an adjective is not a noun, so it carries no articles. The comparison
+ * lives beside `isNounReading` for the same reason that one does — the brand on
+ * `NonNounPos` is not a unit type, so a bare `reading.pos === "adj"` written at
+ * a call site narrows nothing.
+ */
+export function isAdjectiveReading(reading: Reading): reading is OtherReading {
+  return (reading.pos as string) === "adj";
+}
+
 export interface ReleaseInfo {
   releaseId: string;
   normalizer: string;
