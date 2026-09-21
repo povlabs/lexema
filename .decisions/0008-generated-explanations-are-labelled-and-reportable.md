@@ -46,3 +46,7 @@ Costs: a generation pipeline, storage for generated rows and reports, a model bu
 ## Records
 
 No vocabulary impact yet: "generated explanation" and "report" earn glossary rows when the fields exist in the schema.
+
+## Amendments
+
+- **English is for the short explanation only (2026-09-21).** Huey, on seeing the first cards: "for english-italian i meant only the explanation and not all the italian thing in also english." The generated short explanation may carry an English version beside its Italian one. The example sentence stays Italian. Source definitions, forms, tables and grammar stay Italian, as 0004 rules. The deterministic grammatical paraphrase remains interface text and may be English. Nothing else on a result page is translated.
