@@ -15,6 +15,7 @@ import type {
   ReleaseInfo,
   Review,
   Sense,
+  SourceForm,
   SourceRef,
 } from "./types.js";
 
@@ -189,6 +190,9 @@ async function buildReading(db: LookupDatabase, releaseId: string, group: HitRow
     jsonPointer: pointer,
     lineSha256: record.lineSha256,
   });
+  // Read before the reading is assembled: a form's claims are the ones this
+  // grouped by index, so the two must be one read rather than two.
+  const grammar = await readGrammar(db, recordId, ref);
 
   const evidence: Evidence[] = [...group]
     // Headword hit first, then the forms table in its own order.
@@ -213,7 +217,8 @@ async function buildReading(db: LookupDatabase, releaseId: string, group: HitRow
     isAboutQuery: group.some((hit) => hit.origin === "headword"),
     evidence,
     senses: await readSenses(db, recordId, ref),
-    grammar: await readGrammar(db, recordId, ref),
+    forms: await readForms(db, recordId, ref, grammar),
+    grammar,
     lemmaLinks: await readLemmaLinks(db, releaseId, recordId, ref),
     inflections: await readInflections(db, releaseId, recordId),
     reviews: await readReviews(db, recordId, ref),
@@ -295,6 +300,46 @@ async function readSenses(
   }
 
   return [...senses.values()].sort((a, b) => a.index - b.index);
+}
+
+/**
+ * The record's own `forms[]` entries. Exported so a test can assert the plan as
+ * well as the rows, like the two edge queries below.
+ */
+export const RECORD_FORM_SQL = `SELECT form_index, surface, json_pointer, form_source
+       FROM lookup_form
+      WHERE record_id = ? AND origin = 'embedded-form'`;
+
+/**
+ * Every form the record lists, in the order the source wrote them.
+ *
+ * The rows are ordered here rather than in the SQL: `ORDER BY json_pointer`
+ * puts `/forms/10` before `/forms/2`, and the grammar a form carries is already
+ * grouped by index on `grammar.byForm`, so the two are joined in memory instead
+ * of read twice.
+ */
+async function readForms(
+  db: LookupDatabase,
+  recordId: number,
+  ref: (pointer: string) => SourceRef,
+  grammar: Grammar,
+): Promise<SourceForm[]> {
+  const rows = await queryAll<{
+    form_index: number;
+    surface: string;
+    json_pointer: string;
+    form_source: string | null;
+  }>(db, RECORD_FORM_SQL, recordId);
+
+  return rows
+    .map((row) => ({
+      index: row.form_index,
+      surface: row.surface,
+      ref: ref(row.json_pointer),
+      formSource: row.form_source,
+      claims: grammar.byForm.get(row.form_index) ?? [],
+    }))
+    .sort((a, b) => a.index - b.index);
 }
 
 async function readGrammar(

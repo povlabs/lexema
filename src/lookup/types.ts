@@ -58,6 +58,27 @@ export interface Grammar {
   bySense: Map<number, GrammarClaim[]>;
 }
 
+/**
+ * One `forms[]` entry of a record, as the source spells it.
+ *
+ * The entry is evidence of what the source listed, never a claim that this
+ * record is the base word: `studentessa` lists `studenti`. What the source said
+ * *about* the entry is in `claims`, which is the same list `grammar.byForm`
+ * holds under `index`.
+ */
+export interface SourceForm {
+  /** Index into the record's `forms[]`, which is the index in the pointer. */
+  index: number;
+  /** Verbatim source spelling, never cleaned. */
+  surface: string;
+  /** The entry this was read from: `/forms/3/form`. */
+  ref: SourceRef;
+  /** The conjugation table the source names for this entry, when it names one. */
+  formSource: string | null;
+  /** Grammar the source states about this entry, and the silences it left. */
+  claims: GrammarClaim[];
+}
+
 export interface Sense {
   index: number;
   /** The sense itself, as a pointer: `/senses/0`. */
@@ -150,6 +171,11 @@ export interface Reading {
   evidence: Evidence[];
 
   senses: Sense[];
+  /**
+   * Every `forms[]` entry this record carries, in source order. Empty when the
+   * source listed none — which is a fact about the source, not a gap to fill.
+   */
+  forms: SourceForm[];
   grammar: Grammar;
   /** Lemma links this record declares. */
   lemmaLinks: LemmaLink[];

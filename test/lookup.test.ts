@@ -510,6 +510,51 @@ test("carries definitions, labels and a source reference for each", async () => 
   });
 });
 
+test("a reading carries its own forms, spelled and ordered as the source wrote them", async () => {
+  await withFixture(async (db) => {
+    // `parlare` lists 12 forms, so the two-digit indexes are the ordinary case:
+    // sorting the pointers as text would put /forms/10 and /forms/11 between
+    // /forms/1 and /forms/2 and hand a reader a table the source never wrote.
+    const [parlare] = found(await ask(db, "parlare"));
+    assert.deepEqual(
+      parlare.forms.map((f) => f.surface),
+      [
+        "parlo", "parli", "parli", "parla", "parliamo", "parlate",
+        "parlano", "parlavo", "parlavi", "parlava", "parli", "parli",
+      ],
+    );
+    assert.deepEqual(
+      parlare.forms.map((f) => f.index),
+      [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
+    );
+    assert.deepEqual(
+      parlare.forms.map((f) => f.ref.jsonPointer),
+      parlare.forms.map((f) => `/forms/${f.index}/form`),
+    );
+
+    // Each form carries the grammar the source stated about it — and the mood
+    // it did not state, which is this dataset's largest silence.
+    const imperfect = parlare.forms[7];
+    assert.equal(imperfect.surface, "parlavo");
+    assert.deepEqual(
+      imperfect.claims.map((c) =>
+        c.status === "stated" ? `${c.dimension}=${c.value}` : c.status,
+      ),
+      ["missing", "person=first-person", "number=singular", "tense=imperfect"],
+    );
+    assert.deepEqual(
+      imperfect.claims,
+      parlare.grammar.byForm.get(7),
+      "a form's claims are the same list grammar.byForm holds under its index",
+    );
+
+    // A record the source gave no table at all keeps an empty list rather than
+    // borrowing one from a neighbour.
+    const [casa] = found(await ask(db, "casa"));
+    assert.deepEqual(casa.forms, []);
+  });
+});
+
 test("every ref names the release, the line, the field and the line's digest", async () => {
   await withFixture(async (db) => {
     // A line number only means something inside one release, and the digest is
