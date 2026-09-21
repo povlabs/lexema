@@ -319,26 +319,36 @@ export function isFormOfReading(reading: Reading): boolean {
 }
 
 /**
- * The pointers of this reading's own `forms[]` entries the query actually hit.
+ * Every spelling on this reading the query actually hit, in the two shapes a
+ * record spells a word in: its own headword, and its `forms[]` entries.
  *
- * `Evidence` with an `embedded-form` origin is one occurrence of the searched
- * surface inside this record's table, and its `ref.jsonPointer` is the same
- * pointer the matching `SourceForm` carries — both are read from one
- * `lookup_form` row (`src/db/schema.sql`, view `surface_hit`). So a page marks
- * the searched form by asking this set whether a form's pointer is in it,
- * rather than comparing spellings: no normalizing, no case guessing, and no
- * risk of outlining a spelling the index never matched.
- *
- * A `headword` occurrence is deliberately not in here. It points at `/word`,
- * which is no `forms[]` entry at all, and the card says what a headword is by
- * being the headword.
+ * The two come off the same evidence list, split by the kind each occurrence
+ * carries. An `embedded-form` occurrence is the surface inside this record's
+ * table, and its `ref.jsonPointer` is the same pointer the matching
+ * `SourceForm` carries — both read from one `lookup_form` row
+ * (`src/db/schema.sql`, view `surface_hit`), so a page marks a form by pointer
+ * rather than by spelling: no normalizing, no case guessing, and no risk of
+ * outlining a spelling the index never matched. A `headword` occurrence has no
+ * `forms[]` entry to point at — its ref is `/word` — so it is its own flag, and
+ * a record whose headword is the query is marked where that headword sits.
  */
-export function searchedFormPointers(reading: Reading): ReadonlySet<string> {
-  return new Set(
-    reading.evidence
-      .filter((occurrence) => occurrence.origin === "embedded-form")
-      .map((occurrence) => occurrence.ref.jsonPointer),
-  );
+export interface SearchedSpellings {
+  /** True when the query hit this record's own headword. */
+  readonly headword: boolean;
+  /** The `ref.jsonPointer` of every `forms[]` entry the query hit. */
+  readonly formPointers: ReadonlySet<string>;
+}
+
+/** Read {@link SearchedSpellings} off a reading's own evidence (#49). */
+export function searchedSpellings(reading: Reading): SearchedSpellings {
+  return {
+    headword: reading.evidence.some((occurrence) => occurrence.origin === "headword"),
+    formPointers: new Set(
+      reading.evidence
+        .filter((occurrence) => occurrence.origin === "embedded-form")
+        .map((occurrence) => occurrence.ref.jsonPointer),
+    ),
+  };
 }
 
 /**

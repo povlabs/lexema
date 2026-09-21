@@ -16,7 +16,7 @@ import {
   isAdjectiveReading,
   isNounReading,
   isVerbReading,
-  searchedFormPointers,
+  searchedSpellings,
 } from "@lexema/lookup/types.ts";
 import {
   AMBIGUOUS,
@@ -68,6 +68,7 @@ import type {
   Reading,
   ReadingArticles,
   Review,
+  SearchedSpellings,
   Sense,
   SourceForm,
 } from "@lexema/lookup/types.ts";
@@ -176,14 +177,14 @@ const spellingOf = (form: SourceForm): Spelling => ({
 });
 
 /**
- * The pointers of the `forms[]` entries this card's query actually hit, as
- * `searchedFormPointers` (`src/lookup/types.ts`) read them off the reading's
- * own evidence.
+ * The spellings this card's query actually hit, as `searchedSpellings`
+ * (`src/lookup/types.ts`) read them off the reading's own evidence.
  *
- * It travels to every box instead of the query string, because a box marks the
- * searched form by pointer and never by spelling (#49).
+ * It travels to every box instead of the query string, because a box marks a
+ * form by pointer and the headword by the evidence's own kind, never by
+ * comparing spellings (#49).
  */
-type Searched = ReadonlySet<string>;
+type Searched = SearchedSpellings;
 
 /**
  * The page the source says this form was taken from, where it names one.
@@ -440,15 +441,20 @@ function BoxLine({ label, children }: { label: ReactNode; children: ReactNode })
 }
 
 /**
- * Whether this spelling is the `forms[]` entry the query hit.
+ * Whether this spelling is the one the query hit, in whichever shape it sits.
  *
- * One pointer against a set of pointers, both read from the same source row:
- * the form's own `ref.jsonPointer` and the `embedded-form` evidence the lookup
- * recorded for this record. Nothing here compares surfaces, so a spelling the
- * index never matched is never outlined, whatever it looks like (#49).
+ * A form is one pointer against a set of pointers, both read from the same
+ * source row: the form's own `ref.jsonPointer` and the `embedded-form`
+ * evidence the lookup recorded. A headword has no pointer into `forms[]`, so
+ * it is the `headword` evidence itself. Nothing here compares surfaces, so a
+ * spelling the index never matched is never outlined (#49), and a record whose
+ * headword is the query — `grande` in its own masculine-singular cell — keeps
+ * the mark the manifest asks for wherever a box places it.
  */
-function isSearchedForm(spelling: Spelling, searched: Searched): boolean {
-  return spelling.kind === "form" && searched.has(spelling.pointer);
+function isSearchedSpelling(spelling: Spelling, searched: Searched): boolean {
+  return spelling.kind === "headword"
+    ? searched.headword
+    : searched.formPointers.has(spelling.pointer);
 }
 
 /**
@@ -460,7 +466,7 @@ function isSearchedForm(spelling: Spelling, searched: Searched): boolean {
  * the same fact is said in words beside it, for a reader who sees neither.
  */
 function BoxSurface({ spelling, searched }: { spelling: Spelling; searched: Searched }) {
-  if (!isSearchedForm(spelling, searched)) return <Spelled spelling={spelling} />;
+  if (!isSearchedSpelling(spelling, searched)) return <Spelled spelling={spelling} />;
   return (
     <span className={SEARCHED}>
       <Spelled spelling={spelling} />
@@ -1458,7 +1464,7 @@ function ReadingShell({
  * first of those (#53).
  */
 function NounCard({ reading, query }: { reading: NounReading; query: string }) {
-  const searched = searchedFormPointers(reading);
+  const searched = searchedSpellings(reading);
   const rows = nounNumberRows(reading);
   const placed = new Set(placedForms(rows.flatMap((row) => row.surfaces.map((s) => s.spelling))));
   const unplaced = unplacedForms(reading, placed);
@@ -1501,7 +1507,7 @@ function NounCard({ reading, query }: { reading: NounReading; query: string }) {
  * took — `grande`'s comparatives, which the source states only in prose.
  */
 function AdjectiveCard({ reading, query }: { reading: Reading; query: string }) {
-  const searched = searchedFormPointers(reading);
+  const searched = searchedSpellings(reading);
   const paradigm = adjectiveParadigm(reading);
   const degrees = degreeRows(reading);
   const placed = new Set([
@@ -1922,7 +1928,7 @@ function VerbMoodGroup({
  * than disappearing.
  */
 function VerbCard({ reading, query }: { reading: Reading; query: string }) {
-  const searched = searchedFormPointers(reading);
+  const searched = searchedSpellings(reading);
   const facts = nonFiniteFacts(reading);
   const groups = moodGroups(reading);
   const placed = new Set([
@@ -1975,7 +1981,7 @@ function VerbCard({ reading, query }: { reading: Reading; query: string }) {
  * its absence is exactly the wall of apologies #60 removes.
  */
 function GenericCard({ reading, query }: { reading: Reading; query: string }) {
-  const searched = searchedFormPointers(reading);
+  const searched = searchedSpellings(reading);
   const table = conjugationTable(reading);
   const grouped = table.byTense.size > 0;
   const placed = new Set(placedByConjugations(table));

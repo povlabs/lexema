@@ -1149,6 +1149,28 @@ test("the searched form is outlined where it sits, and nothing is marked where i
       ),
     );
 
+    // A query that is its own headword is marked where the box places it:
+    // `grande` fills both singular cells of its own paradigm, and the plural
+    // cells, which hold `grandi`, stay unmarked.
+    const own = section(card(await render(db, "grande"), "grande, adjective"), "Gender and number");
+    assert.equal(occurrencesOf(own, `<span class="${SEARCHED}">`), 2);
+    for (const label of ["masculine singular", "feminine singular"]) {
+      assert.match(
+        own,
+        exact(
+          rowLabel(label) +
+            cell(
+              `<span class="${SEARCHED}"><span lang="it" data-headword="">grande</span>` +
+                `<span class="${MUTED}"> · the form you searched</span></span>`,
+            ),
+        ),
+      );
+    }
+    assert.match(
+      own,
+      exact(rowLabel("masculine plural") + cell(`<span lang="it" data-form="0">grandi</span>`)),
+    );
+
     // `fine` shows no paradigm, so `fini` is marked in the box it does sit in.
     const fine = card(await render(db, "fini"), "fine, adjective");
     assert.match(
