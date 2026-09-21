@@ -61,6 +61,54 @@ The forward side always carries a list, even a list of one, rather than having a
 special unambiguous case. Both directions then read the same way, and a caller
 that handles the ambiguous case handles every case.
 
+## Two outcomes, two types
+
+`found` and `not-found` were one type with an `outcome` flag and a plain
+`Reading[]`. That type could hold `found` with an empty list and `not-found`
+with readings in it — two states the reference says do not exist, kept out only
+by the one function that builds them.
+
+They are separate types now. `found.readings` is `[Reading, ...Reading[]]`, and
+`not-found` has no `readings` field at all, so neither contradiction is a value
+anyone can construct. `lookup()` builds the tuple from the first group plus the
+rest rather than from an array it then checks, so the non-emptiness is the
+construction and not an assertion about it.
+
+What both still carry is the release: a page that found nothing still has to say
+which source it found nothing in.
+
+## One provenance ref, and the release travels in it
+
+Every value read out of the source carries a `SourceRef` of release, line,
+pointer and line digest — the repository's provenance ref
+([`.glossary/TERMS.md`](../.glossary/TERMS.md)), and the same four coordinates
+`source_record` stores. A line number means nothing without the release that
+pins the bytes it was counted in, so carrying the line without the release was a
+ref that could not actually be checked.
+
+The field names are this API's (`releaseId`, `lineNo`, `pointer`,
+`lineSha256`) rather than the wire form's `{ r, i, p, h }`. Nothing here is
+serialized for size, and `r`/`i` would need the glossary open to read. The
+coordinates are the same either way, and the compact form stays what it is for:
+the adapter's output.
+
+There is one `lineNo` per ref and no second copy beside it. A `Reading` with
+both `lineNo` and `ref.lineNo` is two places one fact can be written and one
+place it can be written wrong.
+
+## Pointers order as pointers, not as text
+
+A pointer's array segments are numbers, so `/forms/2/form` precedes
+`/forms/10/form`. Ordering pointers as text reverses that, and a verb table in
+this release runs to fifty-odd forms — so "in source order" was false for any
+record listing the searched surface at index 10 or beyond, which is most verbs.
+
+SQLite has no numeric-aware collation to fix it in an `ORDER BY`, so everything
+keyed by a pointer is ordered in one comparator in
+[`src/lookup/lookup.ts`](../src/lookup/lookup.ts): segment by segment, numbers
+numerically, and a container before what it holds, so the `missing` grammar
+claim hanging on `/forms/10` comes before the tag at `/forms/10/tags/0`.
+
 ## No ranking
 
 Every reading comes back in source order. Ordering by anything else would imply

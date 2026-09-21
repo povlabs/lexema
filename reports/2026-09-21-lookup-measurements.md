@@ -18,7 +18,7 @@ to re-run it.
   and [the import measurements](2026-09-21-import-measurements.md)).
 - Machine: Apple M1 Pro, 16 GB, macOS 27.0. Node v26.2.0, pnpm 10.13.1.
 - Run on PR #33's branch `huey/13-lookup`, as merged with
-  `origin/huey/10-import` at `7560e06`.
+  `origin/huey/10-import` at `42cef2a`.
 
 ## Longest headword
 
@@ -30,25 +30,26 @@ gives the lookup.
 ```sh
 gzcat it-extract.jsonl.gz | node -e '
 const rl = require("node:readline").createInterface({ input: process.stdin });
-let n = 0, admitted = 0, longest = "";
+let n = 0, admitted = 0;
 const hist = new Map();
+const longest = [];
 rl.on("line", (line) => {
   n += 1;
   const rec = JSON.parse(line);
   if (rec.lang_code !== "it" || typeof rec.word !== "string") return;
   admitted += 1;
   hist.set(rec.word.length, (hist.get(rec.word.length) ?? 0) + 1);
-  if (rec.word.length > longest.length) longest = rec.word;
+  longest.push(rec.word);
+  longest.sort((a, b) => b.length - a.length || (a < b ? -1 : a > b ? 1 : 0));
+  longest.length = Math.min(longest.length, 5);
 });
 rl.on("close", () => {
   console.log("lines read      ", n);
   console.log("it headwords    ", admitted);
-  console.log("longest length  ", longest.length);
-  console.log("longest headword", JSON.stringify(longest));
-  const over = [...hist].filter(([len]) => len > 128).reduce((s, [, c]) => s + c, 0);
-  console.log("longer than 128 ", over);
-  const top = [...hist].sort((a, b) => b[0] - a[0]).slice(0, 5);
-  console.log("top lengths     ", JSON.stringify(top));
+  console.log("longest length  ", longest[0].length);
+  console.log("longer than 128 ", [...hist].filter(([len]) => len > 128).reduce((s, [, c]) => s + c, 0));
+  console.log("five longest    ");
+  for (const word of longest) console.log("  " + String(word.length).padStart(3) + "  " + JSON.stringify(word));
 });
 '
 ```
@@ -59,12 +60,16 @@ Output, verbatim:
 lines read       799600
 it headwords     560357
 longest length   51
-longest headword "memoria a sola lettura cancellabile e programmabile"
 longer than 128  0
-top lengths      [[51,1],[47,1],[45,1],[44,1],[43,2]]
+five longest    
+   51  "memoria a sola lettura cancellabile e programmabile"
+   47  "Regno Unito di Gran Bretagna e Irlanda del Nord"
+   45  "capo dell'ordine costantiniano di San Giorgio"
+   44  "Anagrafe degli Italiani Residenti all'Estero"
+   43  "capo dei cavalieri di Santa Maria Teutonica"
 ```
 
-Wall clock: 2.8 s.
+Wall clock: 2.9 s.
 
 ### What it says
 
@@ -74,8 +79,12 @@ it. The `it headwords` count matches the 560,357 admitted records in
 [the import measurements](2026-09-21-import-measurements.md), which is the
 cross-check that this pass admitted the same records the importer does.
 
-The five longest headwords are all multi-word technical glosses rather than
-single words, so the margin over ordinary vocabulary is wider still.
+All five of the longest headwords printed above are multi-word phrases — a
+technical term, two titles, a country's full name, a registry's name — rather
+than single words. None of them is vocabulary a search box is likely to be
+handed, so the margin over ordinary single words is wider still. How much wider
+is not measured here: this pass prints these five spellings and the count over
+128, not a length distribution for single-word headwords.
 
 ## The timing claim is not from this report
 
