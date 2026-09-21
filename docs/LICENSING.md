@@ -744,4 +744,4 @@ All checked 2026-09-18.
 - Wikimedia dumps index for itwiktionary — <https://dumps.wikimedia.org/itwiktionary/>
 - Wikimedia Commons file metadata API — `https://commons.wikimedia.org/w/api.php?action=query&prop=imageinfo&iiprop=extmetadata&titles=File:...`
 - wiktextract — <https://github.com/tatuylonen/wiktextract>
-- Earlier research in this repo — [`SOURCE_RESEARCH.md`](SOURCE_RESEARCH.md), [`DATASET_FINDINGS.md`](DATASET_FINDINGS.md), [`LEXEMA_SPEC.md`](LEXEMA_SPEC.md)
+- Earlier research in this repo — [source research](../reports/2026-09-18-source-research.md), [dataset findings](../reports/dataset-findings.md), [`LEXEMA_SPEC.md`](LEXEMA_SPEC.md)
