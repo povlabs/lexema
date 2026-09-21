@@ -1,4 +1,10 @@
-"""Run with python3 test/definition-loss.py. No network or generated directories."""
+"""Run with python3 test/definition-loss.py.
+
+No network, no generated directories and no `it-extract.jsonl.gz`: the extract
+records `verify` compares are rebuilt from the committed regression cases, and
+the pages `classify` reads are the committed cache. When the archive is present
+the real records are checked against the cases as well.
+"""
 import contextlib
 import copy
 import io
@@ -10,10 +16,30 @@ import types
 root = pathlib.Path(__file__).resolve().parents[1]
 m = runpy.run_path(str(root / 'tools/definition_loss.py'))
 verify = m['cmd_verify']
+real_records_for = m['records_for']   # check() rebinds the name inside the module
 cases_path = root / 'fixtures/definition-loss-regressions.json'
 cases = json.loads(cases_path.read_text())
-records = m['records_for']({c['word'] for c in cases})
-args = types.SimpleNamespace(cases=str(cases_path))
+args = types.SimpleNamespace(cases=str(cases_path), with_extract=True)
+
+def records_from(cases):
+    """The extract records a case says the archive holds, in `records_for` shape.
+
+    A case states the retained glosses, example texts and example translations
+    flattened, and `verify` flattens the same way, so rebuilding one sense per
+    record round-trips. The translations land on the leading examples, which is
+    where the archive carries them.
+    """
+    built = {}
+    for case in cases:
+        records = []
+        for entry in case['extract']:
+            examples = [{'text': text} for text in entry['examples']]
+            for example, translation in zip(examples, entry.get('translations', [])):
+                example['translation'] = translation
+            records.append({'_line': entry['line'], 'pos': entry['pos'],
+                            'senses': [{'glosses': entry['glosses'], 'examples': examples}]})
+        built[case['word']] = records
+    return built
 
 def check(data, expected):
     verify.__globals__['records_for'] = lambda words: data
@@ -21,7 +47,12 @@ def check(data, expected):
         result = verify(args)
     assert result == expected, output.getvalue()
 
+records = records_from(cases)
 check(records, 0)
+if (root / 'it-extract.jsonl.gz').exists():
+    # The rebuilt records are the cases restated, so they cannot catch archive
+    # drift. Whoever has the archive gets that check too.
+    check(real_records_for({c['word'] for c in cases}), 0)
 check({}, 1)
 for field in ['glosses', 'examples']:
     changed = copy.deepcopy(records)

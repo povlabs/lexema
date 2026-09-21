@@ -39,7 +39,7 @@ from pathlib import Path
 
 REPO = Path(__file__).resolve().parent.parent
 EXTRACT = REPO / "it-extract.jsonl.gz"
-CACHE = REPO / "fixtures" / "upstream-wikitext"     # rebuildable, not committed
+CACHE = REPO / "fixtures" / "upstream-wikitext"     # committed sampled pages
 PAGES = REPO / "fixtures" / "upstream-pages"        # saved regression pages
 API = "https://it.wiktionary.org/w/api.php"
 
@@ -624,9 +624,14 @@ def cmd_regressions(args) -> None:
 
 
 def cmd_verify(args) -> None:
-    """Re-run every regression case from saved pages and the extract. No network."""
+    """Re-run every regression case from the saved pages. No network.
+
+    The page half reads committed fixtures only, so it runs in a fresh checkout.
+    The extract half compares the same cases against `it-extract.jsonl.gz`, which
+    is gitignored and absent from CI, so it runs only under `--with-extract`.
+    """
     cases = json.loads(Path(args.cases).read_text(encoding="utf-8"))
-    records = records_for({c["word"] for c in cases})
+    records = records_for({c["word"] for c in cases}) if args.with_extract else None
     failures = []
     for case in cases:
         word = case["word"]
@@ -647,30 +652,33 @@ def cmd_verify(args) -> None:
         if [s.pos_template for s in sections] != [s['pos_template'] for s in case['sections']]:
             failures.append(f"{word}: page POS sections changed")
 
-        actual_records = [
-            {'line': r['_line'], 'pos': r['pos'],
-             'glosses': [g for s in r.get('senses', []) for g in s.get('glosses', [])],
-             'examples': [e.get('text', '') for s in r.get('senses', []) for e in s.get('examples', [])],
-             'translations': [e['translation'] for s in r.get('senses', [])
-                              for e in s.get('examples', []) if 'translation' in e]}
-            for r in records.get(word, [])]
-        expected_records = [dict(r, translations=r.get('translations', [])) for r in case['extract']]
-        if not actual_records or actual_records != expected_records:
-            failures.append(f"{word}: required records or retained fields changed")
+        if records is not None:
+            actual_records = [
+                {'line': r['_line'], 'pos': r['pos'],
+                 'glosses': [g for s in r.get('senses', []) for g in s.get('glosses', [])],
+                 'examples': [e.get('text', '') for s in r.get('senses', [])
+                              for e in s.get('examples', [])],
+                 'translations': [e['translation'] for s in r.get('senses', [])
+                                  for e in s.get('examples', []) if 'translation' in e]}
+                for r in records.get(word, [])]
+            expected_records = [dict(r, translations=r.get('translations', []))
+                                for r in case['extract']]
+            if not actual_records or actual_records != expected_records:
+                failures.append(f"{word}: required records or retained fields changed")
 
-        # Every definition the page states must be absent from the extract when
-        # we call it unreachable, and present when we call it reachable.
-        glosses = " || ".join(g for r in records.get(word, [])
-                             for s in r.get("senses", []) for g in (s.get("glosses") or []))
-        for text in expected_lost:
-            # Probe the longest clause, not the opening words: a lost definition
-            # often restates the sub-headword that the `#` line above already
-            # contributed as a gloss, and that repeat proves nothing.
-            clauses = [c.strip() for c in re.split(r"[,;:]", text)]
-            probe = max(clauses, key=len)[:40]
-            if len(probe) >= 12 and probe in glosses:
-                failures.append(
-                    f"{word}: {probe!r} was expected missing but the extract has it")
+            # Every definition the page states must be absent from the extract when
+            # we call it unreachable, and present when we call it reachable.
+            glosses = " || ".join(g for r in records.get(word, [])
+                                 for s in r.get("senses", []) for g in (s.get("glosses") or []))
+            for text in expected_lost:
+                # Probe the longest clause, not the opening words: a lost definition
+                # often restates the sub-headword that the `#` line above already
+                # contributed as a gloss, and that repeat proves nothing.
+                clauses = [c.strip() for c in re.split(r"[,;:]", text)]
+                probe = max(clauses, key=len)[:40]
+                if len(probe) >= 12 and probe in glosses:
+                    failures.append(
+                        f"{word}: {probe!r} was expected missing but the extract has it")
 
         status = "LOSS" if expected_lost else "ok"
         print(f"{status:5} {word:18} {len(expected_lost)} definition(s) unreachable")
@@ -680,7 +688,9 @@ def cmd_verify(args) -> None:
         for f in failures:
             print("  " + f)
         return 1
-    print(f"\n{len(cases)} regression cases verified against saved upstream pages.")
+    scope = ("saved upstream pages and the local extract" if records is not None
+             else "saved upstream pages; --with-extract also reads the local archive")
+    print(f"\n{len(cases)} regression cases verified against {scope}.")
     return 0
 
 
@@ -715,6 +725,8 @@ def main() -> int:
 
     p = sub.add_parser("verify")
     p.add_argument("--cases", default=str(REPO / "fixtures" / "definition-loss-regressions.json"))
+    p.add_argument("--with-extract", action="store_true",
+                   help="also compare the cases against the local it-extract.jsonl.gz")
     p.set_defaults(func=cmd_verify)
 
     args = parser.parse_args()

@@ -337,7 +337,9 @@ The three clean controls matter as much as the failures: they are what stops a f
 
 ## 7. Attribution
 
-Page content in `fixtures/upstream-pages/` and `fixtures/definition-loss-regressions.json`
-is from Italian Wiktionary, CC BY-SA 4.0, saved verbatim with revision ids. Extractor
+Page content in `fixtures/upstream-pages/`, `fixtures/upstream-wikitext/` and
+`fixtures/definition-loss-regressions.json` is from Italian Wiktionary, CC BY-SA 4.0, saved
+verbatim with revision ids; the sampled pages carry
+[their own provenance page](../fixtures/upstream-wikitext/PROVENANCE.md). Extractor
 source is quoted from [tatuylonen/wiktextract](https://github.com/tatuylonen/wiktextract)
 for analysis.
