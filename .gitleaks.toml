@@ -1,0 +1,9 @@
+title = "lexema gitleaks config"
+
+[extend]
+useDefault = true
+
+# Add a fingerprint here only for a documented fake value, never a real credential.
+[allowlist]
+regexTarget = "match"
+regexes = []

@@ -1,6 +1,6 @@
 # Italian source-adapter validation results
 
-> Historical run report, not fresh verification of the current repository or linguistic correctness. Current scope is in [NEXT_STEPS.md](NEXT_STEPS.md); independently checked data and limits are in [DATASET_SPOT_CHECK.md](DATASET_SPOT_CHECK.md) and [SOURCE_RESEARCH.md](SOURCE_RESEARCH.md).
+> Historical run report, not fresh verification of the current repository or linguistic correctness. Current scope is in [DEVELOPMENT.md](../DEVELOPMENT.md); independently checked data and limits are in [DATASET_SPOT_CHECK.md](2026-09-18-dataset-spot-check.md) and [SOURCE_RESEARCH.md](2026-09-18-source-research.md).
 
 **Run date:** 2026-07-21  
 **Dataset:** `it-extract.jsonl.gz`  
