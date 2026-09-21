@@ -14,6 +14,47 @@
 import type { ReactNode } from "react";
 import { isAdjectiveReading, isNounReading } from "@lexema/lookup/types.ts";
 import { normalizeItalianExact } from "@lexema/italian/normalize.ts";
+import {
+  AMBIGUOUS,
+  BOX,
+  BOX_CELL,
+  BOX_HEADING,
+  BOX_ROW,
+  BOX_NOTE,
+  BOX_ROW_LABEL,
+  BOX_TABLE,
+  CARD,
+  CLAIM_LABEL,
+  CLAIM_STATED,
+  CLAIM_VALUE,
+  CLAIM_WITHOUT_VALUE,
+  CONJUGATION_GROUP,
+  CONJUGATION_TENSE,
+  DEFINITION,
+  DEFINITIONS,
+  DISPUTED,
+  DISPUTED_LINE,
+  DISPUTED_LIST,
+  EMPTY,
+  FORM_ITEM,
+  FORM_LIST,
+  FORM_SOURCE,
+  GLOSS,
+  GRAMMAR,
+  HEADLINE,
+  HEADLINE_FACT,
+  HEADLINE_LABEL,
+  HEADLINE_VALUE,
+  HEADWORD,
+  LABELS,
+  LINK,
+  LINKS,
+  LINKS_LIST,
+  MENTION,
+  MUTED,
+  SEARCHED,
+  SOURCE_LINE,
+} from "./styles.ts";
 import type {
   ArticleWithholding,
   GrammarClaim,
@@ -138,7 +179,7 @@ const spellingOf = (form: SourceForm): Spelling => ({
 function SpellingSource({ spelling }: { spelling: Spelling }) {
   if (spelling.kind === "headword" || spelling.from === null) return null;
   return (
-    <span className="form-source">
+    <span className={FORM_SOURCE}>
       {" "}
       from <It>{spelling.from}</It>
     </span>
@@ -215,11 +256,11 @@ interface HeadlineFact {
 
 function HeadlineBar({ facts }: { facts: HeadlineFact[] }) {
   return (
-    <dl className="headline">
+    <dl className={HEADLINE}>
       {facts.map((fact) => (
-        <div key={fact.label}>
-          <dt>{fact.label}</dt>
-          <dd>{fact.value}</dd>
+        <div key={fact.label} className={HEADLINE_FACT}>
+          <dt className={HEADLINE_LABEL}>{fact.label}</dt>
+          <dd className={HEADLINE_VALUE}>{fact.value}</dd>
         </div>
       ))}
     </dl>
@@ -289,7 +330,7 @@ function silenceSentences(silence: Silence): string {
 function CardSilence({ silence }: { silence: Silence }) {
   const said = silenceSentences(silence);
   if (said === "") return null;
-  return <p className="empty">{said}</p>;
+  return <p className={EMPTY}>{said}</p>;
 }
 
 /**
@@ -316,8 +357,10 @@ function unstatedClause(claims: readonly GrammarClaim[]): string[] {
 /** One boxed group: its own heading, and label-and-value rows under it. */
 function Box({ id, heading, children }: { id: string; heading: string; children: ReactNode }) {
   return (
-    <section className="box" aria-labelledby={id}>
-      <h3 id={id}>{heading}</h3>
+    <section className={BOX} aria-labelledby={id}>
+      <h3 className={BOX_HEADING} id={id}>
+        {heading}
+      </h3>
       {children}
     </section>
   );
@@ -325,13 +368,13 @@ function Box({ id, heading, children }: { id: string; heading: string; children:
 
 /** The one row a card's boxes sit in, side by side, wrapping when narrow. */
 function BoxRow({ children }: { children: ReactNode }) {
-  return <div className="box-row">{children}</div>;
+  return <div className={BOX_ROW}>{children}</div>;
 }
 
 /** The rows of one box: each a small English label and a value beside it. */
 function BoxRows({ children }: { children: ReactNode }) {
   return (
-    <table className="numbers">
+    <table className={BOX_TABLE}>
       <tbody>{children}</tbody>
     </table>
   );
@@ -340,8 +383,10 @@ function BoxRows({ children }: { children: ReactNode }) {
 function BoxLine({ label, children }: { label: string; children: ReactNode }) {
   return (
     <tr>
-      <th scope="row">{label}</th>
-      <td>{children}</td>
+      <th className={BOX_ROW_LABEL} scope="row">
+        {label}
+      </th>
+      <td className={BOX_CELL}>{children}</td>
     </tr>
   );
 }
@@ -368,9 +413,9 @@ function isSearchedForm(surface: string, query: string): boolean {
 function BoxSurface({ spelling, query }: { spelling: Spelling; query: string }) {
   if (!isSearchedForm(spelling.surface, query)) return <Spelled spelling={spelling} />;
   return (
-    <span className="searched">
+    <span className={SEARCHED}>
       <Spelled spelling={spelling} />
-      <span className="muted"> · the form you searched</span>
+      <span className={MUTED}> · the form you searched</span>
     </span>
   );
 }
@@ -379,30 +424,30 @@ function Grammar({ claims, label }: { claims: GrammarClaim[]; label: string }) {
   if (claims.length === 0) return null;
 
   return (
-    <dl className="grammar" aria-label={label}>
+    <dl className={GRAMMAR} aria-label={label}>
       {claims.map((claim, i) => {
         if (claim.status === "stated") {
           return (
-            <div key={i} className="claim claim-stated">
-              <dt>{claim.dimension}</dt>
-              <dd>{claim.value}</dd>
+            <div key={i} className={CLAIM_STATED}>
+              <dt className={CLAIM_LABEL}>{claim.dimension}</dt>
+              <dd className={CLAIM_VALUE}>{claim.value}</dd>
             </div>
           );
         }
         // The source was asked and said nothing. Different from never asking.
         if (claim.status === "missing") {
           return (
-            <div key={i} className="claim claim-missing">
-              <dt>{claim.dimension}</dt>
-              <dd>not stated in the source</dd>
+            <div key={i} className={CLAIM_WITHOUT_VALUE}>
+              <dt className={CLAIM_LABEL}>{claim.dimension}</dt>
+              <dd className={CLAIM_VALUE}>not stated in the source</dd>
             </div>
           );
         }
         // Text we will not guess at. Shown verbatim so a reader can judge it.
         return (
-          <div key={i} className="claim claim-unclassified">
-            <dt>unclassified</dt>
-            <dd>
+          <div key={i} className={CLAIM_WITHOUT_VALUE}>
+            <dt className={CLAIM_LABEL}>unclassified</dt>
+            <dd className={CLAIM_VALUE}>
               <q lang="it">{claim.sourceText}</q>
             </dd>
           </div>
@@ -423,16 +468,16 @@ function Disputes({ reviews }: { reviews: Review[] }) {
   const disputed = reviews.filter((review) => review.status === "disputed");
   if (disputed.length === 0) return null;
   return (
-    <div className="disputed" role="note">
-      <p>
+    <div className={DISPUTED} role="note">
+      <p className={DISPUTED_LINE}>
         <strong>Disputed by later research.</strong> This entry is shown as the source wrote it;
         the evidence below disagrees with it.
       </p>
-      <ul>
+      <ul className={DISPUTED_LIST}>
         {disputed.map((review, i) => (
           <li key={i}>
             {review.note}{" "}
-            <a href={review.evidenceUrl} rel="noreferrer">
+            <a className={LINK} href={review.evidenceUrl} rel="noreferrer">
               evidence
             </a>{" "}
             · reviewed {review.reviewedAt} by {review.reviewedBy} · claim{" "}
@@ -452,7 +497,7 @@ function Disputes({ reviews }: { reviews: Review[] }) {
  * a compound or incomplete source string rather than split or complete it.
  */
 function Unsplit() {
-  return <span className="ambiguous"> · source text, not split into separate forms</span>;
+  return <span className={AMBIGUOUS}> · source text, not split into separate forms</span>;
 }
 
 /** One `forms[]` entry: the Italian spelling, and what the source said about it. */
@@ -466,7 +511,7 @@ function FormEntry({
   markUnsplit: boolean;
 }) {
   return (
-    <li>
+    <li className={FORM_ITEM}>
       <BoxSurface spelling={spellingOf(form)} query={query} />
       {markUnsplit && !isOneWord(form.surface) && <Unsplit />}
       <Grammar claims={form.claims} label={`grammar for ${form.surface}`} />
@@ -512,7 +557,7 @@ function UnplacedForms({
       : "Other forms listed by this entry";
   return (
     <Box id={`forms-${reading.recordId}`} heading={heading}>
-      <ul className="forms">
+      <ul className={FORM_LIST}>
         {forms.map((form) => (
           <FormEntry key={form.index} form={form} query={query} markUnsplit={markUnsplit} />
         ))}
@@ -591,7 +636,7 @@ function NumberCell({ surfaces, query }: { surfaces: NumberedSurface[]; query: s
           {/* Exactly as the source spelled it: `studente/studentessa` is one
               string the source wrote, not two words to split apart. */}
           <BoxSurface spelling={entry.spelling} query={query} />
-          {entry.gender !== undefined && <span className="muted"> {entry.gender}</span>}
+          {entry.gender !== undefined && <span className={MUTED}> {entry.gender}</span>}
           <Grammar claims={entry.rest} label={`grammar for ${entry.spelling.surface}`} />
           <SpellingSource spelling={entry.spelling} />
         </span>
@@ -686,13 +731,13 @@ function NounArticles({ articles, recordId }: { articles: ReadingArticles; recor
         {articles.articles.map((article) => (
           <BoxLine key={article.kind} label={article.kind}>
             <It>{article.article}</It>{" "}
-            <span className="muted">
+            <span className={MUTED}>
               <It>{article.displayForm}</It>
             </span>
           </BoxLine>
         ))}
       </BoxRows>
-      <p className="muted">
+      <p className={BOX_NOTE}>
         Not from the source: Lexema derives these from the {articles.articles[0].gender}{" "}
         {articles.articles[0].number} the source states, by rule <code>it-articles/v1</code>.
       </p>
@@ -1059,19 +1104,19 @@ function Conjugations({ table, recordId }: { table: ConjugationTable; recordId: 
   return (
     <Box id={`conjugations-${recordId}`} heading="Grouped conjugations">
       {[...byTense].map(([tense, forms]) => (
-        <div key={tense} className="conjugation-group">
-          <h4>{tense}</h4>
-          <ul className="forms">
+        <div key={tense} className={CONJUGATION_GROUP}>
+          <h4 className={CONJUGATION_TENSE}>{tense}</h4>
+          <ul className={FORM_LIST}>
             {forms.map((form) => {
               const person = [stated(form.claims, "person"), stated(form.claims, "number")]
                 .filter((part) => part !== undefined)
                 .join(", ");
               return (
-                <li key={form.index}>
+                <li key={form.index} className={FORM_ITEM}>
                   <Spelled spelling={spellingOf(form)} />{" "}
-                  {person !== "" && <span className="muted">{person}</span>}
+                  {person !== "" && <span className={MUTED}>{person}</span>}
                   {isMissing(form.claims, "mood") && (
-                    <span className="ambiguous"> · mood not stated in the source</span>
+                    <span className={AMBIGUOUS}> · mood not stated in the source</span>
                   )}
                   {/* This group is where the form now sits, so whatever the
                       group has not already said about it is said here. */}
@@ -1096,7 +1141,7 @@ function Conjugations({ table, recordId }: { table: ConjugationTable; recordId: 
         </div>
       ))}
       {auxiliaries.length > 0 && (
-        <p className="muted">
+        <p className={BOX_NOTE}>
           Auxiliary named by the source:{" "}
           {auxiliaries.map((form, i) => (
             <span key={form.index}>
@@ -1201,9 +1246,9 @@ function ReadingShell({
   };
 
   return (
-    <article className="reading" aria-label={`${reading.word}, ${pos}`}>
+    <article className={CARD} aria-label={`${reading.word}, ${pos}`}>
       <header>
-        <h2>
+        <h2 className={HEADWORD}>
           <Spelled spelling={headwordOf(reading)} />
         </h2>
         <HeadlineBar facts={[{ label: "part of speech", value: pos }, ...facts]} />
@@ -1211,7 +1256,7 @@ function ReadingShell({
             merely lists the query in a table is not a claim about the query, and
             saying so prevents the reader inferring a lemma nobody stated. */}
         {!reading.isAboutQuery && (
-          <p className="mention">
+          <p className={MENTION}>
             Does not define <q lang="it">{query}</q> — it lists the form in its own table.
           </p>
         )}
@@ -1224,25 +1269,24 @@ function ReadingShell({
       {/* Senses stay apart, with their own labels: the source wrote several
           meanings and merging them into one list would invent a single one. */}
       {reading.senses.length > 0 && (
-        <ol className="definitions">
+        <ol className={DEFINITIONS}>
           {reading.senses.map((sense) => (
-            <li key={sense.index}>
+            <li key={sense.index} className={DEFINITION}>
               {sense.glosses.length === 0 ? (
-                <span className="empty">
+                <span className={EMPTY}>
                   The source carries no definition for this sense.
                 </span>
               ) : (
                 sense.glosses.map((gloss, i) => (
-                  <p key={i} lang="it" className="gloss">
+                  <p key={i} lang="it" className={GLOSS}>
                     {gloss.text}
                   </p>
                 ))
               )}
               {sense.labels.length > 0 && (
-                <p className="labels">
+                <p className={LABELS}>
                   {sense.labels.map((label, i) => (
-                    <span key={i} className="label">
-                      {i > 0 && " "}
+                    <span key={i}>
                       <It>{label.label}</It>
                     </span>
                   ))}
@@ -1260,15 +1304,17 @@ function ReadingShell({
       {children}
 
       {reading.lemmaLinks.length > 0 && (
-        <section className="links" aria-labelledby={`form-of-${reading.recordId}`}>
-          <h3 id={`form-of-${reading.recordId}`}>Form of</h3>
-          <ul>
+        <section className={LINKS} aria-labelledby={`form-of-${reading.recordId}`}>
+          <h3 className={BOX_HEADING} id={`form-of-${reading.recordId}`}>
+            Form of
+          </h3>
+          <ul className={LINKS_LIST}>
             {reading.lemmaLinks.map((link, i) => (
               <li key={i}>
                 {link.kind === "dangling" ? (
                   <>
                     <It>{link.targetWord}</It>{" "}
-                    <span className="empty">— named by the source, but no entry for it here</span>
+                    <span className={EMPTY}>— named by the source, but no entry for it here</span>
                   </>
                 ) : (
                   <>
@@ -1277,7 +1323,7 @@ function ReadingShell({
                         not an entry. Showing all of them is the honest move;
                         picking one would invent a fact. */}
                     {link.candidates.length > 1 && (
-                      <span className="ambiguous">
+                      <span className={AMBIGUOUS}>
                         {" "}
                         — {link.candidates.length} entries share this spelling:{" "}
                         <Candidates candidates={link.candidates} />. The source does not say which.
@@ -1292,15 +1338,21 @@ function ReadingShell({
       )}
 
       {reading.inflections.length > 0 && (
-        <section className="links" aria-labelledby={`inflections-${reading.recordId}`}>
-          <h3 id={`inflections-${reading.recordId}`}>Forms pointing here</h3>
-          <ul>
+        <section className={LINKS} aria-labelledby={`inflections-${reading.recordId}`}>
+          <h3 className={BOX_HEADING} id={`inflections-${reading.recordId}`}>
+            Forms pointing here
+          </h3>
+          <ul className={LINKS_LIST}>
             {reading.inflections.map((inflection) => (
               <li key={inflection.recordId}>
-                <a href={`/?q=${encodeURIComponent(inflection.word)}`} lang="it">
+                <a
+                  className={LINK}
+                  href={`/?q=${encodeURIComponent(inflection.word)}`}
+                  lang="it"
+                >
                   {inflection.word}
                 </a>{" "}
-                <span className="muted">({posLabel(inflection.pos)})</span> — declares itself a form
+                <span className={MUTED}>({posLabel(inflection.pos)})</span> — declares itself a form
                 of <It>{inflection.targetWord}</It>
                 {/* One row per record, not per edge: `casetta` says this on two
                     of its senses, and that is one record saying it twice. A
@@ -1310,7 +1362,7 @@ function ReadingShell({
                     forward one is: the edge names a word, and this reading is
                     only one of the records spelling it. */}
                 {inflection.targetCandidates.length > 1 && (
-                  <span className="ambiguous">
+                  <span className={AMBIGUOUS}>
                     {" "}
                     — {inflection.targetCandidates.length} entries share that spelling:{" "}
                     <Candidates candidates={inflection.targetCandidates} />. The source does not say
@@ -1323,8 +1375,9 @@ function ReadingShell({
         </section>
       )}
 
-      <footer className="source">
+      <footer className={SOURCE_LINE}>
         <a
+          className={LINK}
           href={sourcePageUrl(reading.word)}
           rel="noreferrer"
           aria-label={`Wiktionary page for ${reading.word}, the source of this ${pos} entry`}
@@ -1333,7 +1386,7 @@ function ReadingShell({
         </a>{" "}
         · release line {reading.ref.lineNo}
         {reading.evidence.map((e, i) => (
-          <span key={i} className="pointer">
+          <span key={i}>
             {" "}
             <code>{e.ref.jsonPointer}</code>
           </span>

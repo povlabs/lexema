@@ -64,6 +64,7 @@ See [how to run the search page](./docs/RUN_THE_SITE.md) for the full recipe,
 | Source data | Kaikki/Wiktextract `it-extract.jsonl.gz` | The lexical source of truth. Streamed one record at a time, filtered on `lang_code == "it"`, never loaded whole and never edited. |
 | Serving | Cloudflare Worker + D1 + R2 | The Worker reads a D1 projection; R2 keeps the immutable source release. The importer runs offline and never inside a request ([ADR 0004](./.decisions/0004-cloudflare-workers-d1-vinext.md)). |
 | Rendering | React via vinext | Cloudflare's Next.js-compatible framework on Vite, pinned exactly because it is beta ([ADR 0004](./.decisions/0004-cloudflare-workers-d1-vinext.md)). |
+| Styling | Tailwind v4 over role tokens, Base UI for interactive parts | Utility classes in the markup; the nine colour roles are declared once in `web/app/globals.css` and named by [the manifest](./design-system-manifest.md). Base UI supplies behaviour for a part that needs client state ([ADR 0010](./.decisions/0010-base-ui-and-tailwind-style-the-page.md)). |
 | Language | TypeScript, strict, `NodeNext` | `tsx` runs the CLI and the tests; there is no build step. |
 | Tests | `node:test` through `tsx` | Unit tests run without the dataset; one integration test streams it. |
 | Package manager | pnpm 10 | `pnpm-lock.yaml` is the only lockfile ([ADR 0002](./.decisions/0002-pnpm-is-the-package-manager.md)). |

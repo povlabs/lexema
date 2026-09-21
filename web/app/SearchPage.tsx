@@ -4,25 +4,61 @@
 // rather than a running Worker away: `web/test/page.test.tsx` renders these
 // components to HTML over an imported fixture release, and that test runs in CI
 // with no archive and no D1. What `page.tsx` adds is where the data comes from.
+//
+// Nothing here is a client component. The form is a plain GET form and every
+// state is decided by the URL, so no part of this page holds client state and no
+// `"use client"` boundary exists — the interactive parts Base UI supplies are
+// what the first card that needs one will reach for (#48).
 
 import type { ReactNode } from "react";
 import type { Attempt } from "./attempt.ts";
 import { ReadingCard } from "./Reading";
+import {
+  COUNT,
+  EMPTY,
+  ERROR,
+  HINT,
+  LINK,
+  PENDING,
+  RELEASE_FOOTER,
+  RELEASE_LINE,
+  SEARCH_BUTTON,
+  SEARCH_FORM,
+  SEARCH_INPUT,
+  SEARCH_LABEL,
+  SHELL_CENTRED,
+  SHELL_TOP,
+  SITE_NAME,
+  TAGLINE,
+} from "./styles.ts";
 
 /**
  * The shell every state shares: the heading, the search form, and the one
  * `main` landmark. The form is a plain GET form, so the query lands in the URL
  * and the page works before any JavaScript does.
+ *
+ * Two states, one bar. "Before a query, the page is the search bar alone,
+ * centred on the screen with the site name above it and nothing else competing.
+ * With a query, the bar sits at the top and the results fill the page below it"
+ * (design-system-manifest.md § "The page"). Which state this is is read off the
+ * query itself, and the only thing that changes is how the column is laid out:
+ * the same `main`, the same `h1`, the same one form, so a result stays
+ * shareable by its URL and moving the bar is layout rather than a second route.
  */
 export function SearchPage({ raw, children }: { raw: string; children: ReactNode }) {
-  return (
-    <main>
-      <h1>Lexema</h1>
-      <p className="tagline">Italian words, as the source dictionary has them.</p>
+  const asked = raw.trim() !== "";
 
-      <form action="/" method="get" role="search">
-        <label htmlFor="q">Italian word</label>
+  return (
+    <main className={asked ? SHELL_TOP : SHELL_CENTRED}>
+      <h1 className={SITE_NAME}>Lexema</h1>
+      <p className={TAGLINE}>Italian words, as the source dictionary has them.</p>
+
+      <form className={SEARCH_FORM} action="/" method="get" role="search">
+        <label className={SEARCH_LABEL} htmlFor="q">
+          Italian word
+        </label>
         <input
+          className={SEARCH_INPUT}
           id="q"
           name="q"
           type="search"
@@ -34,7 +70,9 @@ export function SearchPage({ raw, children }: { raw: string; children: ReactNode
           lang="it"
           autoFocus
         />
-        <button type="submit">Search</button>
+        <button className={SEARCH_BUTTON} type="submit">
+          Search
+        </button>
       </form>
 
       {children}
@@ -45,10 +83,20 @@ export function SearchPage({ raw, children }: { raw: string; children: ReactNode
 /** Nothing asked yet. */
 export function FirstLoad() {
   return (
-    <p className="hint">
-      Try <a href="/?q=sale" lang="it">sale</a>,{" "}
-      <a href="/?q=studenti" lang="it">studenti</a> or{" "}
-      <a href="/?q=bella" lang="it">bella</a> — each shows a different kind of ambiguity.
+    <p className={HINT}>
+      Try{" "}
+      <a className={LINK} href="/?q=sale" lang="it">
+        sale
+      </a>
+      ,{" "}
+      <a className={LINK} href="/?q=studenti" lang="it">
+        studenti
+      </a>{" "}
+      or{" "}
+      <a className={LINK} href="/?q=bella" lang="it">
+        bella
+      </a>{" "}
+      — each shows a different kind of ambiguity.
     </p>
   );
 }
@@ -65,7 +113,7 @@ export function FirstLoad() {
  */
 export function Pending({ raw }: { raw: string }) {
   return (
-    <p className="pending" role="status">
+    <p className={PENDING} role="status">
       Searching for <q lang="it">{raw.trim()}</q> …
     </p>
   );
@@ -88,7 +136,7 @@ export function Outcome({ raw, attempt }: { raw: string; attempt: Attempt }) {
   return (
     <>
       {attempt.outcome === "rejected" && (
-        <p className="error" role="alert">
+        <p className={ERROR} role="alert">
           {attempt.rejection.reason === "empty"
             ? "Type a word to search for."
             : `That is ${attempt.rejection.length} characters. The limit is ${attempt.rejection.limit}.`}
@@ -99,14 +147,14 @@ export function Outcome({ raw, attempt }: { raw: string; attempt: Attempt }) {
           able to tell "we could not look" from "we looked and found nothing".
           Why it failed is in the Worker's log, not on this page. */}
       {attempt.outcome === "failed" && (
-        <p className="error" role="alert">
+        <p className={ERROR} role="alert">
           The lookup failed, so this page cannot say whether <q lang="it">{raw.trim()}</q> is in
           the dictionary. Try again in a moment.
         </p>
       )}
 
       {attempt.outcome === "not-found" && (
-        <p className="empty" role="status">
+        <p className={EMPTY} role="status">
           Nothing in this release matches <q lang="it">{attempt.query.raw.trim()}</q>. Accents
           matter: <code lang="it">citta</code> and <code lang="it">città</code> are different
           words.
@@ -115,7 +163,7 @@ export function Outcome({ raw, attempt }: { raw: string; attempt: Attempt }) {
 
       {attempt.outcome === "found" && (
         <>
-          <p className="count" role="status">
+          <p className={COUNT} role="status">
             {attempt.readings.length} {attempt.readings.length === 1 ? "entry" : "entries"} for{" "}
             <q lang="it">{attempt.query.raw.trim()}</q>
           </p>
@@ -126,8 +174,8 @@ export function Outcome({ raw, attempt }: { raw: string; attempt: Attempt }) {
       )}
 
       {(attempt.outcome === "found" || attempt.outcome === "not-found") && (
-        <footer className="release">
-          <p>
+        <footer className={RELEASE_FOOTER}>
+          <p className={RELEASE_LINE}>
             Release <code>{attempt.release.releaseId}</code>
           </p>
         </footer>
