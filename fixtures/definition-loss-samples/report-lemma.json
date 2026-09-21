@@ -1,0 +1,199 @@
+{
+  "stratum": "lemma",
+  "seed": 11,
+  "measurement_unit": "extract records, sampled uniformly and scored one by one",
+  "stratum_population": 74098,
+  "records_sampled": 1200,
+  "records_scored": 1189,
+  "records_unmatched_pos": 6,
+  "records_page_missing_upstream": 0,
+  "records_page_without_italian_section": 5,
+  "records_with_ambiguous_section_match": 16,
+  "records_exposed_to_mechanism": 179,
+  "records_with_wrapped_prose": 16,
+  "records_flagged_by_heuristic": 15,
+  "definition_loss": 12,
+  "flags_rejected_by_review": 3,
+  "definition_loss_rate": 0.01009,
+  "definition_loss_rate_ci95": [
+    0.00578,
+    0.01756
+  ],
+  "projected_records": 748,
+  "projected_records_ci95": [
+    428,
+    1301
+  ],
+  "recall": "unknown; negatives were not exhaustively hand-reviewed, so the projection is a floor on the true count, not a ceiling",
+  "confirmed_records": [
+    {
+      "word": "serata",
+      "pos_title": "Sostantivo",
+      "record_line": 8444,
+      "revid": 3959114,
+      "flagged_lines": [
+        "prima serata : sono gli orari del rientro dal lavoro, dedicati a stare assieme in famiglia, con un po' più di tempo da dedicare anche a sé stessi, con maggiore libertà o tempo libero... quindi, così pare, con un numero maggiore di pubblico dinanzi alla TV",
+        "seconda serata : da sera inoltrata, ormai con la notte già iniziata"
+      ],
+      "human_label": "definition",
+      "reason": "'prima serata' and 'seconda serata' are named broadcast slots, and each line says which hours it covers. That is what the phrase means, not a sentence using it."
+    },
+    {
+      "word": "forma",
+      "pos_title": "Sostantivo",
+      "record_line": 18657,
+      "revid": 4221215,
+      "flagged_lines": [
+        "forma strofa-ritornello , struttura musicale caratteristica delle canzoni pop e rap, contraddistinta dalla presenza di due strofe, un interludio ed un ritornello cantabile, ripetuto molto spesso tre volte"
+      ],
+      "human_label": "definition",
+      "reason": "'forma strofa-ritornello' is defined by its parts: two verses, an interlude and a repeated chorus."
+    },
+    {
+      "word": "musicale",
+      "pos_title": "Aggettivo",
+      "record_line": 32871,
+      "revid": 3938681,
+      "flagged_lines": [
+        "teoria musicale , insieme di concetti generali che permettono di comporre ed eseguire musica"
+      ],
+      "human_label": "definition",
+      "reason": "'teoria musicale' is defined as the body of general concepts for composing and performing music."
+    },
+    {
+      "word": "osso",
+      "pos_title": "Sostantivo",
+      "record_line": 39637,
+      "revid": 4004364,
+      "flagged_lines": [
+        "osso di seppia : conchiglia interna delle seppie"
+      ],
+      "human_label": "definition",
+      "reason": "'osso di seppia' is defined as the internal shell of cuttlefish."
+    },
+    {
+      "word": "acustica",
+      "pos_title": "Sostantivo",
+      "record_line": 42429,
+      "revid": 4065296,
+      "flagged_lines": [
+        "ingegneria acustica : ramo dell'ingegneria che progetta e realizza dispositivi fisici atti a produrre, trasmettere, registrare e riprodurre le varie forme del suono"
+      ],
+      "human_label": "definition",
+      "reason": "'ingegneria acustica' is defined as the branch of engineering that builds devices to produce, transmit, record and reproduce sound."
+    },
+    {
+      "word": "farsi",
+      "pos_title": "Verbo",
+      "record_line": 48440,
+      "revid": 4067003,
+      "flagged_lines": [
+        "nelle varie forme pronominali"
+      ],
+      "human_label": "definition",
+      "reason": "The flagged line 'nelle varie forme pronominali' only heads a list, but the list it heads is definitions: 'farmi: fare + mi, fare a me' and its four siblings each gloss a pronominal form. Those sit at `#**`, one level below the example reader, so the record loses real definitions."
+    },
+    {
+      "word": "diametro",
+      "pos_title": "Sostantivo",
+      "record_line": 49328,
+      "revid": 4254177,
+      "flagged_lines": [
+        "la lunghezza di tale retta"
+      ],
+      "human_label": "definition",
+      "reason": "'la lunghezza di tale retta' completes the sense above it, saying the measure is the length of that line. The italic lines around it are the usage sentences; this one is not."
+    },
+    {
+      "word": "servizio",
+      "pos_title": "Sostantivo",
+      "record_line": 54035,
+      "revid": 4013301,
+      "flagged_lines": [
+        "servizio sociale : prevenzione e risoluzione delle situazioni di disagio e necessità",
+        "servizio finanziario : strumento tecnico di investimento di capitali"
+      ],
+      "human_label": "definition",
+      "reason": "'servizio sociale' and 'servizio finanziario' are each given their meaning: prevention and relief of hardship, and a technical instrument for investing capital."
+    },
+    {
+      "word": "RIS",
+      "pos_title": "Acronimo / Abbreviazione",
+      "record_line": 80990,
+      "revid": 3565636,
+      "flagged_lines": [
+        "sezione dell'arma dei carabinieri"
+      ],
+      "human_label": "definition",
+      "reason": "The `#` line only spells the acronym out. 'sezione dell'arma dei carabinieri' is the line that says what the RIS is."
+    },
+    {
+      "word": "esornativo",
+      "pos_title": "Aggettivo",
+      "record_line": 87010,
+      "revid": 3897546,
+      "flagged_lines": [
+        "genere esornativo , nella retorica classica, epidittico"
+      ],
+      "human_label": "definition",
+      "reason": "'genere esornativo' is defined as epideictic in classical rhetoric; the sibling line defines 'epiteto esornativo' the same way."
+    },
+    {
+      "word": "burocratico",
+      "pos_title": "Aggettivo",
+      "record_line": 108649,
+      "revid": 3898653,
+      "flagged_lines": [
+        "carte burocratiche : alcuni documenti pubblici e/o relativi ad alcuni o a tutti i cittadini"
+      ],
+      "human_label": "definition",
+      "reason": "'carte burocratiche' is defined as public documents concerning some or all citizens."
+    },
+    {
+      "word": "dittatoriale",
+      "pos_title": "Aggettivo",
+      "record_line": 448584,
+      "revid": 3919502,
+      "flagged_lines": [
+        "regime dittatoriale : in genere con sovranità militare, negli ultimi secoli si sono spesso formati in seguito ad un colpo di stato"
+      ],
+      "human_label": "definition",
+      "reason": "'regime dittatoriale' is defined by how it holds power: usually military sovereignty, often formed after a coup."
+    }
+  ],
+  "rejected_flags": [
+    {
+      "word": "incignare",
+      "pos_title": "Verbo",
+      "record_line": 40904,
+      "revid": 3697920,
+      "flagged_lines": [
+        "ho incignato il vestito nuovo|it"
+      ],
+      "human_label": "example",
+      "reason": "'ho incignato il vestito nuovo' is one speaker wearing one new suit. The meaning is already on the `#` line above it."
+    },
+    {
+      "word": "spiluccare",
+      "pos_title": "Verbo",
+      "record_line": 60792,
+      "revid": 3759506,
+      "flagged_lines": [
+        "Edoardo ha spiluccato il biscotto al cioccolato"
+      ],
+      "human_label": "example",
+      "reason": "'Edoardo ha spiluccato il biscotto al cioccolato' is one person nibbling one biscuit."
+    },
+    {
+      "word": "virgulto",
+      "pos_title": "Sostantivo",
+      "record_line": 81236,
+      "revid": 3896723,
+      "flagged_lines": [
+        "una pianta dai virgulti vigorosi"
+      ],
+      "human_label": "example",
+      "reason": "'una pianta dai virgulti vigorosi' shows the noun inside a phrase. It says nothing the `#` line 'rampollo di pianta' does not."
+    }
+  ]
+}

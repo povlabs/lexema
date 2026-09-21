@@ -1,0 +1,79 @@
+<!-- it.wiktionary.org/wiki/canzone revision 4049880 (2025-11-08T01:04:52Z), CC BY-SA 4.0. Saved verbatim. -->
+[[File:GoodMorningToAll 1893 song.jpg|thumb|300px|lo [[spartito]] di una {{Pn}}]]
+== {{-it-}} ==
+{{-sost-|it}}
+{{Pn|w}} ''f sing'' {{Linkp|canzoni}}
+# {{Term|musica|it}}  [[brano]] [[musicale]] [[che]] comprende un [[accompagnamento]] [[vocale]]
+#* ''quella {{Pn}} è la mia preferita''
+#* '''canzone d'amore''': dedicata all'amata
+# {{Term|letteratura|it}} [[componimento]] [[poetico]]
+# {{Fig}} [[situazione]] ripetuta fino alla [[noia]]
+
+{{-sill-}}
+; can | zó | ne
+
+{{-pron-}}
+{{IPA|/kanˈtsone/}}
+
+{{-etim-}}
+dal [[latino]] ''[[cantio]]'', derivazione  di ''[[canĕre]]'' ossia  "[[cantare]]"
+
+
+
+
+{{-sin-}}
+*{{Term|uso letterario|it}} [[ballata]], [[cantico]], [[lirica]], [[poema]], [[poesia]]
+*''(musica)''[[aria]], [[brano]], [[canto]], [[canzonetta]],  [[melodia]],  [[motivo]], [[pezzo]]
+*''(di disco)'' [[singolo]]
+*''(lirica)'' [[romanza]]
+* ''(metrica)'' [[componimento]], [[cantica]],  [[ode]]
+* {{Fig}}  [[disco]], discorso monotono,  [[minestra]], [[zuppa]], [[barba]], [[lagna]], [[musica]], [[noia]], [[predica]], [[solfa]] 
+
+{{-ant-}}
+*[[prosa]]
+* {{Fig}} [[novità]], [[spasso]], [[divertimento]]
+
+
+{{-der-}}
+* [[canzonare]], [[canzonatura]], [[canzonista]], [[canzoniere]], [[teatro-canzone]]
+
+{{-rel-}}
+* [[ballata]], [[vaudeville]], [[belcanto]], [[maggiolata]], [[romanza]] 
+
+{{-alter-}}
+* {{Dim}} [[canzoncina]], [[canzonetta]]
+* {{Pegg}}  [[canzonaccia]]
+
+{{-trad-}}
+{{Trad1|componimento per canto}}
+:*{{he}}: [[שִׁיר]]
+:*{{fr}}: [[chanson]]
+:*{{en}}: [[song]]
+:*{{ro}}: [[cântec]]
+:*{{ru}}: [[песня]]
+:*{{de}}: [[Lied]]
+:*{{tr}}: [[şarkı]]
+{{Trad2}}
+
+{{Trad1|poesia: componimento lirico}}
+:* {{en}}: (poetry) [[lyric]], [[madrigal]]
+{{Trad2}}
+
+{{-ref-}}
+* {{Fonte|sabco}}
+* {{Fonte|desan|C}}
+* {{Fonte|sin-co}}
+* {{Fonte|dem}}
+* {{Fonte|demsc}}
+* {{Fonte|dizit}}
+* {{Fonte|trec}}
+* {{Fonte|hoep}}
+* {{Fonte|sape}}
+* {{Fonte|gar}}
+* {{Fonte|eti}}
+* {{Fonte|rep}}
+*''lo Zingarelli on line'', 2024
+*AA.VV., ''Dizionario sinonimi e contrari'', Mariotti, 2006, pagina 101
+
+== Altri progetti ==
+{{Interprogetto|w|commons=Category:Songs|q|w_preposizione=riguardante la|commons_preposizione=sulla|q_preposizione=sulla}}

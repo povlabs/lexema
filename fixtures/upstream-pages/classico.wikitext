@@ -1,0 +1,110 @@
+<!-- it.wiktionary.org/wiki/classico revision 4050810 (2025-11-16T14:01:44Z), CC BY-SA 4.0. Saved verbatim. -->
+== {{-it-}} ==
+{{-agg-|it}}
+{{Pn}} ''m sing'' {{Tabs|classico|classici|classica|classiche}}
+# {{Term|letteratura|it}} {{Term|storia|it}} {{Term|filosofia|it}} {{Term|arte|it}} [[che]] riguarda la [[storia]] dell'[[antica]] [[Grecia]] e dell'[[antica]] [[Roma]], [[ritenute]] le [[patrie]] della [[civiltà]] [[occidentale]]
+#* ''il mondo {{Pn}} è davvero affascinante''
+#*'''liceo classico''', [[indirizzo]] della [[scuola]] [[secondaria]] [[superiore]] [[italiana]], [[incentrato]] sullo [[studio]] del {{la}} e del {{grc}}
+# che descrive qualcosa di caratteristico o tipico
+#* ''il {{Pn}} comportamento infantile''
+# {{Term|musica|it}} in [[riferimento]] alla [[musica]] [[classica]], [[ovvero]] [[quella]] [[composta]] da [[autori]] dei [[secoli]] [[immediatamente]] [[successivi]] alla [[fine]] del [[medioevo]]
+#* ''un brano {{Pn}}''
+#{{Term|danza|it}} in riferimento alla [[danza]] classica
+#* ''l'esibizione è tratta da un pezzo {{Pn}}''
+# riferimento a qualcosa di [[tradizionale]], in [[contrapposizione]] a qualcosa di moderno
+#* ''il corso di diritto {{Pn}} non è interessante come quello di diritto internazionale''
+# una denominazione di vini
+#* ''Chianti {{Pn}}, soave {{Pn}}, bardolino {{Pn}}''
+
+{{-sost-|it}}
+{{Pn|w}} ''m'' {{Linkp|classici}}
+# qualsiasi opera di [[riferimento]] o di particolare importanza
+#* ''la Divina Commedia è un {{Pn}} della letteratura''
+# qualcosa che viene considerato [[caratteristico]] o [[tipico]]
+#* ''la frittura mista di pesce è un classico della cucina di mare''
+#* ''questo piatto è un classico  della nostra regione''
+#{{Term|popolare|it}} [[liceo]] classico
+#* ''quella ragazza frequenta il secondo anno del {{Pn}}''
+
+{{-sill-}}
+; clàs | si | co
+
+{{-pron-}}
+{{IPA|/ˈklassiko/}}
+{{Audio|it-classico.ogg}}
+
+{{-etim-}}
+dal {{la}} ''[[classicus|clàssicus]]'', da [[classis]], riferimento alla classe di antichi romani di cui facevano parte quelli più facoltosi e ricchi. Il termine fu usato in seguito per indicare qualcosa di distinto e degno di esempio, per poi definire un modello prestigioso
+
+{{-quote-}}
+{{Quote
+|Un classico è qualcosa che tutti vorrebbero aver letto ma che nessuno vuole leggere
+|[[q:Mark Twain|Mark Twain]]}}
+
+{{-sin-}}
+*[[eccelso]], [[esemplare]], [[fondamentale]], [[sommo]]
+* [[antico]], [[greco]], [[greco-romano]], [[latino]], [[tradizionale]]
+*[[armonico]], [[perfetto]], [[puro]], [[regolare]]
+*  {{Est}} [[caratteristico]], [[immancabile]],  [[tipico]] 
+* ''(di artista, stile)'' [[antico]], [[intramontabile]] 
+* '' (di moda e sim.)'' [[sobrio]] 
+* ''( musica) '' [[colto]] 
+* [[modello]], [[esempio]]
+  
+{{-ant-}}
+*[[minore]], 
+* [[moderno]], [[contemporaneo]], [[nuovo]], [[d’avanguardia]]
+* {{Est}} [[eccentrico]], [[irregolare]], [[stravagante]]
+* [[inedito]], [[nuovo]]
+* ''(musica)'' [[leggero]], [[popolare]]
+
+{{-der-}}
+*[[classicistico]],  [[classicità]]
+
+{{-trad-}}
+{{Trad1|aggettivo, riferito all'antichità classica}}
+:*{{fr}}: [[classique]]
+:*{{en}}: [[classic]], [[classical]]
+{{Trad2}}
+
+{{Trad1|aggettivo, tipico o caratteristico}}
+:*{{fr}}: [[classique]]
+:*{{en}}: [[classic]]
+{{Trad2}}
+
+{{Trad1|aggettivo, relativo alla musica o alla danza}}
+:*{{fr}}: [[classique]]
+:*{{en}}: [[classical]]
+{{Trad2}}
+
+{{Trad1|(sostantivo), opera di fondamentale e intramontabile valore}}
+:*{{fr}}: [[classique]] ''m''
+:*{{en}}: [[classic]]
+{{Trad2}}
+
+{{Trad1|sostantivo, liceo classico}}
+:*{{fr}}: 
+{{Trad2}}
+
+== {{-ia-}} ==
+{{-agg-|ia}}
+{{Pn}}
+# {{Vd|#Italiano{{!}}italiano}}
+
+{{-sost-|ia}}
+{{Pn}}
+# {{Vd|#Italiano{{!}}italiano}}
+
+{{-ref-}}
+* {{Fonte|dizit}}
+* {{Fonte|sape}}
+* {{Fonte|dem}}
+* {{Fonte|gar}}
+* {{Fonte|sabco}}
+* {{Fonte|sin-co}}
+* {{Fonte|trec}}
+* {{Fonte|hoep}}
+*AA.VV., ''Dizionario sinonimi e contrari'', Mariotti, 2006, pagina 118
+
+== Altri progetti ==
+{{Interprogetto|q}}

@@ -1,0 +1,149 @@
+<!-- it.wiktionary.org/wiki/partita revision 4004491 (2024-11-24T22:18:50Z), CC BY-SA 4.0. Saved verbatim. -->
+== {{-it-}} ==
+{{-agg form-|it}}
+{{Pn}} '' f sing''
+{{Tabs|partito|partiti|partita|partite}}
+#femminile di [[partito]]
+
+{{-sost-|it}}
+{{Pn|w}}  '' f sing'' {{Linkp|partite}}
+# {{Term|sport|it}} [[gara]] sportiva tra due squadre 
+# {{Term|giochi|it}} {{Term|videogiochi|it}} una singola [[sessione]] di [[gioco]]
+# {{Term|diritto|it}} {{Term|economia|it}} {{Term|commercio|it}} {{Term|finanza|it}} [[scrittura]] di un [[conto]]
+#* '''partita semplice''', dove i fatti di gestione sono registrati in una sola serie
+#* '''partita doppia''', dove i fatti di gestione sono registrati nelle due serie contrapposte del dare e dell’avere
+# [[quantitativo]] [[ragguardevole]] di [[beni]] che si [[negozia]] [[commercialmente]]
+
+{{-verb form-|it}}
+{{Pn}}
+#participio passato femminile singolare  di [[partire]] 
+
+{{-sill-}}
+; par | tì | ta
+
+{{-pron-}}
+{{IPA|/parˈtita/}}
+
+{{-etim-}}
+derivazione di [[partire]], nella sua accezione primaria ossia [[dividere]]
+
+{{-sin-}}
+*'''(aggettivo)''' [[allontanata]], [[assente]], [[lontana]] 
+* ''(di nave)'' [[salpata]]
+* [[avviata]], [[cominciata]], [[iniziata]] 
+* ''(di motocicletta)'' [[avviata]], messa in moto, 
+* ''(di macchina)'' [[guasta]], [[rotta]]
+* ''(di pallottola)''  [[scappata]], [[uscita]]
+* {{Est}} ''(di idea)'' [[originata]], [[derivata]]
+* {{Est}} ''(di iniziativa)'' [[iniziata]], [[cominciata]], [[decorsa]]
+* {{Term|familiare|it}}) ''(di persona)'' senza controllo, [[ubriaca]]
+* ''(di donna)'' [[innamorata]]
+* ''(di persona)'' [[addormentata]] 
+*'''(sostantivo)''' ''(di merce)'' [[blocco]], [[carico]], [[lotto]], [[quantità]], [[stock]], [[quantitativo]],  
+* ''(di contabilità)'' [[computo]],[[conteggio]],  [[conto]], [[nota]],  [[registrazione]], 
+* ''(di porta, finestra, mobile)'' [[anta]], [[battente]]
+*''(sport)''  [[competizione]],  [[cimento]], [[gara]], [[gioco]], [[incontro]], [[match]], [[sfida]], [[scommessa]], 
+* {{Term|letterario|it}} [[dipartita]], [[partenza]] 
+* {{Fig}} {{Term|letterario|it}} [[morte]]
+
+{{-der-}}
+* [[contropartita]], [[dopopartita]]
+
+{{-alter-}}
+* {{Dim}} [[partitella]], [[partitina]]
+* {{Accr}} [[partitona]], [[partitone]]
+* {{Pegg}} [[partitaccia]]
+
+{{-prov-}}
+* ''[[saldare una partita]]''
+* ''[[partita di caccia]]''
+* ''abbandonare la partita''
+* ''essere della partita''
+
+{{-trad-}}
+{{Trad1|{{Term|sport|it}}}}
+:* {{en}}:  [[game]], [[match]]
+{{Trad2}} 
+{{Trad1|ubriaca}}
+:* {{en}}: [[smashed]], [[trashed]]
+{{Trad2}}
+
+{{Trad1|addormentata}} 
+:* {{en}}: [[asleep]]
+{{Trad2}}
+
+{{Trad1|andata}} 
+:* {{en}}: [[gone]]
+{{Trad2}}
+
+{{Trad1|innamorata}}
+:* {{en}}: [[smitten]], [[crazy]]
+{{Trad2}}
+
+{{Trad1|quantità di merce}}
+:* {{en}}: [[parcel]], [[lot]]
+{{Trad2}}
+
+{{Trad1|spedizione}}
+:* {{en}} [[consignment]], [[delivery]], [[shipment]]
+{{Trad2}}
+
+{{Trad1|blocco/disponibilità}}
+:*{{en}}:[[stock]]
+{{Trad2}}
+
+{{Trad1|lotto}}
+:*{{en}}: [[batch]], [[lot]]
+{{Trad2}}
+
+{{Trad1|participio femminile  passato di [[partire]]}}
+:* {{en}}
+{{Trad2}}
+
+=={{-la-}}==
+{{-verb form-|la}}
+{{Pn}}
+# nominativo femminile singolare del participio perfetto ([[partitus#Latino|partītus]]) di [[partio#Latino|partiō]] o di [[partior#Latino|partior]]
+# vocativo femminile singolare del participio perfetto ([[partitus#Latino|partītus]]) di [[partio#Latino|partiō]] o di [[partior#Latino|partior]]
+# ablativo femminile singolare del participio perfetto ([[partitus#Latino|partītus]]) di [[partio#Latino|partiō]] o di [[partior#Latino|partior]]
+# nominativo neutro plurale del participio perfetto ([[partitus#Latino|partītus]]) di [[partio#Latino|partiō]] o di [[partior#Latino|partior]]
+# accusativo neutro plurale del participio perfetto ([[partitus#Latino|partītus]]) di [[partio#Latino|partiō]] o di [[partior#Latino|partior]]
+# vocativo neutro plurale del participio perfetto ([[partitus#Latino|partītus]]) di [[partio#Latino|partiō]] o di [[partior#Latino|partior]]
+
+{{-sill-}}
+* {{Glossa|nominativo e vocativo femminile singolare del participio}} '''păr | tī | tă'''
+* {{Glossa|nominativo, accusativo e vocativo neutro plurale del participio}} '''păr | tī | tă'''
+* {{Glossa|ablativo femminile singolare del participio}} '''păr | tī | tā'''
+
+{{-pron-}}
+* {{La-pronclass|nocat|nominativo e vocativo femminile singolare del participio}} {{IPA|/parˈtiː.ta/}}
+* {{La-pronclass|nocat|nominativo, accusativo e vocativo neutro plurale del participio}} {{IPA|/parˈtiː.ta/}}
+* {{La-pronclass|nocat|ablativo femminile singolare del participio}} {{IPA|/parˈtiː.taː/}}
+* {{La-proneccl|nocat|tutte le accezioni}} {{IPA|/parˈti.ta/}}
+
+{{-etim-}}
+vedi [[partitus#Latino|partītus]], [[partio#Latino|partiō]]
+
+{{-ref-}}
+* italiano
+** {{Fonte|trec}}
+** {{Fonte|sabco|1}}
+** {{Fonte|sabco|2}}
+**[http://dizionari.corriere.it/dizionario_sinonimi_contrari/P/partito_1.shtml]Edizione on-line del, Dizionario dei Sinonimi e dei Contrari ospitata su "www.corriere.it"
+** {{Fonte|sin-co|1}}
+** {{Fonte|sin-co|2}}
+** {{Fonte|hoep|1}}
+** {{Fonte|hoep|2}}
+**Enciclopedia [http://www.treccani.it/enciclopedia/ricerca/Partita/ Treccani]
+** {{Fonte|dizit}}
+** {{Fonte|sape}}
+** {{Fonte|gar}}
+** {{Fonte|dem}}
+**AA.VV., ''Dizionario sinonimi e contrari'', Mariotti, 2006, pagina 388
+* latino
+** {{Ref-link|partio}}
+==Altri progetti==
+{{Interprogetto|etichetta=Partita (musica)|w=Partita (musica)}}
+
+[[Categoria:Ragioneria-IT|partita]]
+[[Categoria:Contabilità-IT|partita]]

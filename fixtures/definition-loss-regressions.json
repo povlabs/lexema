@@ -1,0 +1,937 @@
+[
+  {
+    "word": "casa",
+    "source": {
+      "wiki": "it.wiktionary.org",
+      "revid": 4257826,
+      "timestamp": "2026-08-25T08:45:07Z",
+      "url": "https://it.wiktionary.org/w/index.php?title=casa&oldid=4257826",
+      "licence": "CC BY-SA 4.0"
+    },
+    "sections": [
+      {
+        "pos_template": "sost",
+        "page_controls": [
+          "f sing",
+          ""
+        ],
+        "definitions": [
+          {
+            "text": "edificio costruito per essere utilizzato come abitazione e composto da uno o più piani, suddivisi in vani distinti, ognuno per un uso specifico",
+            "marker": "#*",
+            "reachable_by_extractor": false
+          },
+          {
+            "text": "dimora di una persona; costruzione o struttura in cui uno vive; in particolare la casa in cui uno vive con la sua famiglia",
+            "marker": "#*",
+            "reachable_by_extractor": false
+          },
+          {
+            "text": "edificio che accoglie temporaneamente, per motivi specifici di salute o altro, alcune categorie di persone",
+            "marker": "#*",
+            "reachable_by_extractor": false
+          },
+          {
+            "text": "casa costruttrice",
+            "marker": "#*",
+            "reachable_by_extractor": false
+          },
+          {
+            "text": "nel gioco degli scacchi, è il nome tecnico della casella sulla scacchiera",
+            "marker": "#*",
+            "reachable_by_extractor": false
+          },
+          {
+            "text": "ognuna di dodici parti in cui è suddiviso il cielo in un dato momento",
+            "marker": "#*",
+            "reachable_by_extractor": false
+          },
+          {
+            "text": "casa lunare: ognuna di ventotto parti in cui è suddiviso il cielo durante il moto di rivoluzione della Luna",
+            "marker": "#*",
+            "reachable_by_extractor": false
+          }
+        ],
+        "examples": [
+          {
+            "text": "un mio amico ha acquistato una bella casa in montagna",
+            "marker": "#**",
+            "reachable_by_extractor": false
+          },
+          {
+            "text": "ti avviso che stasera torno a casa tardi dal lavoro",
+            "marker": "#**",
+            "reachable_by_extractor": false
+          },
+          {
+            "text": "e, in quel momento solo, si recò in piazza per poi andare a casa e riprendere il lavoro",
+            "marker": "#**",
+            "reachable_by_extractor": false
+          },
+          {
+            "text": "ha dovuto ricoverare sua zia in una casa di riposo",
+            "marker": "#**",
+            "reachable_by_extractor": false
+          },
+          {
+            "text": "ho portato il mio scooter dal meccanico per una riparazione, ma ho dovuto aspettare qualche giorno perché il pezzo di ricambio era reperibile solo presso la casa costruttrice",
+            "marker": "#**",
+            "reachable_by_extractor": false
+          },
+          {
+            "text": "alla tua nascita Saturno si trovava nella settima",
+            "marker": "#**",
+            "reachable_by_extractor": false
+          },
+          {
+            "text": "la Luna entrerà nella venticinquesima lunare alle 16:31 di giovedì prossimo",
+            "marker": "#**",
+            "reachable_by_extractor": false
+          }
+        ]
+      }
+    ],
+    "extract": [
+      {
+        "line": 1,
+        "pos": "noun",
+        "glosses": [
+          "casa ( approfondimento) f sing",
+          "casa ( citazioni)"
+        ],
+        "examples": []
+      }
+    ]
+  },
+  {
+    "word": "manuale",
+    "source": {
+      "wiki": "it.wiktionary.org",
+      "revid": 3974272,
+      "timestamp": "2024-03-04T22:03:20Z",
+      "url": "https://it.wiktionary.org/w/index.php?title=manuale&oldid=3974272",
+      "licence": "CC BY-SA 4.0"
+    },
+    "sections": [
+      {
+        "pos_template": "agg",
+        "page_controls": [],
+        "definitions": [
+          {
+            "text": "fatto a mano, relativo all'uso delle mani",
+            "marker": "#",
+            "reachable_by_extractor": true
+          }
+        ],
+        "examples": [
+          {
+            "text": "procedimento",
+            "marker": "#*",
+            "reachable_by_extractor": true
+          }
+        ]
+      },
+      {
+        "pos_template": "sost",
+        "page_controls": [
+          "m sing",
+          "m sing"
+        ],
+        "definitions": [
+          {
+            "text": "manovale",
+            "marker": "#*",
+            "reachable_by_extractor": false
+          },
+          {
+            "text": "testo di istruzioni o trattato introduttivo e tecnico su una determinata materia",
+            "marker": "#*",
+            "reachable_by_extractor": false
+          },
+          {
+            "text": "libro, testo scolastico",
+            "marker": "#*",
+            "reachable_by_extractor": false
+          },
+          {
+            "text": "la tastiera dell'organo",
+            "marker": "#*",
+            "reachable_by_extractor": false
+          }
+        ],
+        "examples": [
+          {
+            "text": "di giardinaggio",
+            "marker": "#**",
+            "reachable_by_extractor": false
+          },
+          {
+            "text": "di diritto, di filosofia",
+            "marker": "#**",
+            "reachable_by_extractor": false
+          }
+        ]
+      }
+    ],
+    "extract": [
+      {
+        "line": 77844,
+        "pos": "adj",
+        "glosses": [
+          "fatto a mano, relativo all'uso delle mani"
+        ],
+        "examples": [
+          "manuale"
+        ]
+      },
+      {
+        "line": 77845,
+        "pos": "noun",
+        "glosses": [
+          "manuale ( approfondimento) m sing",
+          "manuale ( approfondimento) m sing"
+        ],
+        "examples": []
+      }
+    ]
+  },
+  {
+    "word": "pianoforte",
+    "source": {
+      "wiki": "it.wiktionary.org",
+      "revid": 3987678,
+      "timestamp": "2024-07-02T08:40:10Z",
+      "url": "https://it.wiktionary.org/w/index.php?title=pianoforte&oldid=3987678",
+      "licence": "CC BY-SA 4.0"
+    },
+    "sections": [
+      {
+        "pos_template": "sost",
+        "page_controls": [
+          "m sing",
+          ""
+        ],
+        "definitions": [
+          {
+            "text": "strumento musicale a corde e tastiera, nato a Firenze alla fine del diciassettesimo secolo, dove il suono è prodotto percuotendo le corde con martelletti messi in funzione dalla pressione dei tasti. L'origine del termine è italiana e si riferisce alla possibilità di suonare note a volumi diversi in base al tocco, effetto non ottenibile nel suo antenato, il clavicembalo. Il suono può essere modificato anche mediante pedali (solitamente tre), che azionano particolari meccanismi. Il è costituito in due tipi diversi",
+            "marker": "#*",
+            "reachable_by_extractor": false
+          },
+          {
+            "text": "a coda , con le corde tese orizzontalmente",
+            "marker": "#**",
+            "reachable_by_extractor": false
+          },
+          {
+            "text": "verticale , con le corde tese verticalmente",
+            "marker": "#**",
+            "reachable_by_extractor": false
+          }
+        ],
+        "examples": []
+      }
+    ],
+    "extract": [
+      {
+        "line": 41076,
+        "pos": "noun",
+        "glosses": [
+          "pianoforte ( approfondimento) m sing",
+          "pianoforte ( citazioni)"
+        ],
+        "examples": []
+      }
+    ]
+  },
+  {
+    "word": "lap steel guitar",
+    "source": {
+      "wiki": "it.wiktionary.org",
+      "revid": 3960902,
+      "timestamp": "2023-10-31T17:49:58Z",
+      "url": "https://it.wiktionary.org/w/index.php?title=lap%20steel%20guitar&oldid=3960902",
+      "licence": "CC BY-SA 4.0"
+    },
+    "sections": [
+      {
+        "pos_template": "sost",
+        "page_controls": [
+          "f sing"
+        ],
+        "definitions": [
+          {
+            "text": "elettrica, dotata di pick-up come sulle chitarre elettriche",
+            "marker": "#**",
+            "reachable_by_extractor": false,
+            "extractor_destination": "examples[].translation"
+          },
+          {
+            "text": "tipo di steel guitar che si suona da seduti, appoggiata sulle gambe ( lap , in , vuol dire effettivamente \"grembo\"), sprovvista quindi di meccanismi a pedale; ve ne sono due tipi fondamentali",
+            "marker": "#*",
+            "reachable_by_extractor": false,
+            "extractor_destination": "examples[].text"
+          },
+          {
+            "text": "acustica, con una cassa del tutto simile a quella di una chitarra classica, dreadnought o \"resofonica\" (dobro) o ancora di tipo Weissenborn",
+            "marker": "#**",
+            "reachable_by_extractor": false,
+            "extractor_destination": "absent"
+          }
+        ],
+        "examples": []
+      }
+    ],
+    "extract": [
+      {
+        "line": 605574,
+        "pos": "noun",
+        "translations": ["elettrica, dotata di pick-up come sulle chitarre elettriche"],
+        "glosses": [
+          "lap steel guitar ( approfondimento) f sing"
+        ],
+        "examples": [
+          "(musica) tipo di steel guitar che si suona da seduti, appoggiata sulle gambe (lap, in inglese, vuol dire effettivamente \"grembo\"), sprovvista quindi di meccanismi a pedale; ve ne sono due tipi fondamentali:"
+        ]
+      }
+    ]
+  },
+  {
+    "word": "classico",
+    "source": {
+      "wiki": "it.wiktionary.org",
+      "revid": 4050810,
+      "timestamp": "2025-11-16T14:01:44Z",
+      "url": "https://it.wiktionary.org/w/index.php?title=classico&oldid=4050810",
+      "licence": "CC BY-SA 4.0"
+    },
+    "sections": [
+      {
+        "pos_template": "agg",
+        "page_controls": [],
+        "definitions": [
+          {
+            "text": "che riguarda la storia dell'antica Grecia e dell'antica Roma, ritenute le patrie della civiltà occidentale",
+            "marker": "#",
+            "reachable_by_extractor": true
+          },
+          {
+            "text": "liceo classico , indirizzo della scuola secondaria superiore italiana, incentrato sullo studio del e del",
+            "marker": "#*",
+            "reachable_by_extractor": false
+          },
+          {
+            "text": "che descrive qualcosa di caratteristico o tipico",
+            "marker": "#",
+            "reachable_by_extractor": true
+          },
+          {
+            "text": "in riferimento alla musica classica, ovvero quella composta da autori dei secoli immediatamente successivi alla fine del medioevo",
+            "marker": "#",
+            "reachable_by_extractor": true
+          },
+          {
+            "text": "in riferimento alla danza classica",
+            "marker": "#",
+            "reachable_by_extractor": true
+          },
+          {
+            "text": "riferimento a qualcosa di tradizionale, in contrapposizione a qualcosa di moderno",
+            "marker": "#",
+            "reachable_by_extractor": true
+          },
+          {
+            "text": "una denominazione di vini",
+            "marker": "#",
+            "reachable_by_extractor": true
+          }
+        ],
+        "examples": [
+          {
+            "text": "il mondo è davvero affascinante",
+            "marker": "#*",
+            "reachable_by_extractor": true
+          },
+          {
+            "text": "il comportamento infantile",
+            "marker": "#*",
+            "reachable_by_extractor": true
+          },
+          {
+            "text": "un brano",
+            "marker": "#*",
+            "reachable_by_extractor": true
+          },
+          {
+            "text": "l'esibizione è tratta da un pezzo",
+            "marker": "#*",
+            "reachable_by_extractor": true
+          },
+          {
+            "text": "il corso di diritto non è interessante come quello di diritto internazionale",
+            "marker": "#*",
+            "reachable_by_extractor": true
+          },
+          {
+            "text": "Chianti , soave , bardolino",
+            "marker": "#*",
+            "reachable_by_extractor": true
+          }
+        ]
+      },
+      {
+        "pos_template": "sost",
+        "page_controls": [],
+        "definitions": [
+          {
+            "text": "qualsiasi opera di riferimento o di particolare importanza",
+            "marker": "#",
+            "reachable_by_extractor": true
+          },
+          {
+            "text": "qualcosa che viene considerato caratteristico o tipico",
+            "marker": "#",
+            "reachable_by_extractor": true
+          },
+          {
+            "text": "liceo classico",
+            "marker": "#",
+            "reachable_by_extractor": true
+          }
+        ],
+        "examples": [
+          {
+            "text": "la Divina Commedia è un della letteratura",
+            "marker": "#*",
+            "reachable_by_extractor": true
+          },
+          {
+            "text": "la frittura mista di pesce è un classico della cucina di mare",
+            "marker": "#*",
+            "reachable_by_extractor": true
+          },
+          {
+            "text": "questo piatto è un classico della nostra regione",
+            "marker": "#*",
+            "reachable_by_extractor": true
+          },
+          {
+            "text": "quella ragazza frequenta il secondo anno del",
+            "marker": "#*",
+            "reachable_by_extractor": true
+          }
+        ]
+      }
+    ],
+    "extract": [
+      {
+        "line": 48398,
+        "pos": "adj",
+        "glosses": [
+          "che riguarda la storia dell'antica Grecia e dell'antica Roma, ritenute le patrie della civiltà occidentale",
+          "che descrive qualcosa di caratteristico o tipico",
+          "in riferimento alla musica classica, ovvero quella composta da autori dei secoli immediatamente successivi alla fine del medioevo",
+          "in riferimento alla danza classica",
+          "riferimento a qualcosa di tradizionale, in contrapposizione a qualcosa di moderno",
+          "una denominazione di vini"
+        ],
+        "examples": [
+          "il mondo classico è davvero affascinante",
+          "il classico comportamento infantile",
+          "un brano classico",
+          "l'esibizione è tratta da un pezzo classico",
+          "il corso di diritto classico non è interessante come quello di diritto internazionale",
+          "Chianti classico, soave classico, bardolino classico"
+        ]
+      },
+      {
+        "line": 48399,
+        "pos": "noun",
+        "glosses": [
+          "qualsiasi opera di riferimento o di particolare importanza",
+          "qualcosa che viene considerato caratteristico o tipico",
+          "liceo classico"
+        ],
+        "examples": [
+          "la Divina Commedia è un classico della letteratura",
+          "la frittura mista di pesce è un classico della cucina di mare",
+          "questo piatto è un classico della nostra regione",
+          "quella ragazza frequenta il secondo anno del classico"
+        ]
+      }
+    ]
+  },
+  {
+    "word": "partita",
+    "source": {
+      "wiki": "it.wiktionary.org",
+      "revid": 4004491,
+      "timestamp": "2024-11-24T22:18:50Z",
+      "url": "https://it.wiktionary.org/w/index.php?title=partita&oldid=4004491",
+      "licence": "CC BY-SA 4.0"
+    },
+    "sections": [
+      {
+        "pos_template": "agg form",
+        "page_controls": [],
+        "definitions": [
+          {
+            "text": "femminile di partito",
+            "marker": "#",
+            "reachable_by_extractor": true
+          }
+        ],
+        "examples": []
+      },
+      {
+        "pos_template": "sost",
+        "page_controls": [],
+        "definitions": [
+          {
+            "text": "gara sportiva tra due squadre",
+            "marker": "#",
+            "reachable_by_extractor": true
+          },
+          {
+            "text": "una singola sessione di gioco",
+            "marker": "#",
+            "reachable_by_extractor": true
+          },
+          {
+            "text": "scrittura di un conto",
+            "marker": "#",
+            "reachable_by_extractor": true
+          },
+          {
+            "text": "partita semplice , dove i fatti di gestione sono registrati in una sola serie",
+            "marker": "#*",
+            "reachable_by_extractor": false
+          },
+          {
+            "text": "partita doppia , dove i fatti di gestione sono registrati nelle due serie contrapposte del dare e dell’avere",
+            "marker": "#*",
+            "reachable_by_extractor": false
+          },
+          {
+            "text": "quantitativo ragguardevole di beni che si negozia commercialmente",
+            "marker": "#",
+            "reachable_by_extractor": true
+          }
+        ],
+        "examples": []
+      },
+      {
+        "pos_template": "verb form",
+        "page_controls": [],
+        "definitions": [
+          {
+            "text": "participio passato femminile singolare di partire",
+            "marker": "#",
+            "reachable_by_extractor": true
+          }
+        ],
+        "examples": []
+      }
+    ],
+    "extract": [
+      {
+        "line": 41707,
+        "pos": "adj",
+        "glosses": [
+          "femminile di partito"
+        ],
+        "examples": []
+      },
+      {
+        "line": 41708,
+        "pos": "noun",
+        "glosses": [
+          "gara sportiva tra due squadre",
+          "una singola sessione di gioco",
+          "scrittura di un conto",
+          "quantitativo ragguardevole di beni che si negozia commercialmente"
+        ],
+        "examples": []
+      },
+      {
+        "line": 41709,
+        "pos": "verb",
+        "glosses": [
+          "participio passato femminile singolare di partire"
+        ],
+        "examples": []
+      }
+    ]
+  },
+  {
+    "word": "canzone",
+    "source": {
+      "wiki": "it.wiktionary.org",
+      "revid": 4049880,
+      "timestamp": "2025-11-08T01:04:52Z",
+      "url": "https://it.wiktionary.org/w/index.php?title=canzone&oldid=4049880",
+      "licence": "CC BY-SA 4.0"
+    },
+    "sections": [
+      {
+        "pos_template": "sost",
+        "page_controls": [],
+        "definitions": [
+          {
+            "text": "brano musicale che comprende un accompagnamento vocale",
+            "marker": "#",
+            "reachable_by_extractor": true
+          },
+          {
+            "text": "canzone d'amore : dedicata all'amata",
+            "marker": "#*",
+            "reachable_by_extractor": false
+          },
+          {
+            "text": "componimento poetico",
+            "marker": "#",
+            "reachable_by_extractor": true
+          },
+          {
+            "text": "situazione ripetuta fino alla noia",
+            "marker": "#",
+            "reachable_by_extractor": true
+          }
+        ],
+        "examples": [
+          {
+            "text": "quella è la mia preferita",
+            "marker": "#*",
+            "reachable_by_extractor": true
+          }
+        ]
+      }
+    ],
+    "extract": [
+      {
+        "line": 48130,
+        "pos": "noun",
+        "glosses": [
+          "brano musicale che comprende un accompagnamento vocale",
+          "componimento poetico",
+          "situazione ripetuta fino alla noia"
+        ],
+        "examples": [
+          "quella canzone è la mia preferita"
+        ]
+      }
+    ]
+  },
+  {
+    "word": "informatica",
+    "source": {
+      "wiki": "it.wiktionary.org",
+      "revid": 4255430,
+      "timestamp": "2026-08-07T03:57:08Z",
+      "url": "https://it.wiktionary.org/w/index.php?title=informatica&oldid=4255430",
+      "licence": "CC BY-SA 4.0"
+    },
+    "sections": [
+      {
+        "pos_template": "agg form",
+        "page_controls": [],
+        "definitions": [
+          {
+            "text": "femminile di informatico",
+            "marker": "#",
+            "reachable_by_extractor": true
+          }
+        ],
+        "examples": []
+      },
+      {
+        "pos_template": "sost",
+        "page_controls": [],
+        "definitions": [
+          {
+            "text": "disciplina scientifica e tecnica che studia, con l'aiuto di concetti logici, statistici e matematici, le operazioni per predisporre lo sviluppo di informazioni e dati con sistemi elettronici di calcolo e le loro applicazioni pratiche",
+            "marker": "#",
+            "reachable_by_extractor": true
+          },
+          {
+            "text": "ingegneria informatica : ramo dell'ingegneria che progetta e realizza sistemi e soluzioni per elaborare informazioni e dati",
+            "marker": "#",
+            "reachable_by_extractor": true
+          },
+          {
+            "text": "sicurezza informatica : ramo dell'informatica che si occupa delle operazioni per difendere reti e sistemi di computer da rischi e violazioni di dati",
+            "marker": "#",
+            "reachable_by_extractor": true
+          },
+          {
+            "text": "informatica umanistica : è un campo di studi, ricerca, insegnamento che nasce dall'unione di discipline umanistiche e informatiche",
+            "marker": "#",
+            "reachable_by_extractor": true
+          }
+        ],
+        "examples": [
+          {
+            "text": "Visto il costo contenuto di un personal computer, oggi l' è entrata in quasi tutte le case",
+            "marker": "#*",
+            "reachable_by_extractor": true
+          }
+        ]
+      },
+      {
+        "pos_template": "sost form",
+        "page_controls": [],
+        "definitions": [
+          {
+            "text": "femminile di informatico, studiosa di informatica",
+            "marker": "#",
+            "reachable_by_extractor": true
+          }
+        ],
+        "examples": []
+      }
+    ],
+    "extract": [
+      {
+        "line": 7,
+        "pos": "adj",
+        "glosses": [
+          "femminile di informatico"
+        ],
+        "examples": []
+      },
+      {
+        "line": 8,
+        "pos": "noun",
+        "glosses": [
+          "disciplina scientifica e tecnica che studia, con l'aiuto di concetti statistici e matematici, le operazioni per predisporre lo sviluppo di informazioni e dati con sistemi elettronici di calcolo e le loro applicazioni pratiche",
+          "ingegneria informatica: ramo dell'ingegneria che progetta e realizza sistemi e soluzioni per elaborare informazioni e dati",
+          "sicurezza informatica: ramo dell'informatica che si occupa delle operazioni per difendere reti e sistemi di computer da rischi e violazioni di dati",
+          "informatica umanistica: è un campo di studi, ricerca, insegnamento che nasce dall'unione di discipline umanistiche e informatiche"
+        ],
+        "examples": [
+          "Visto il costo contenuto di un personal computer, oggi l'informatica è entrata in quasi tutte le case"
+        ]
+      },
+      {
+        "line": 9,
+        "pos": "noun",
+        "glosses": [
+          "femminile di informatico, studiosa di informatica"
+        ],
+        "examples": []
+      }
+    ]
+  },
+  {
+    "word": "studente",
+    "source": {
+      "wiki": "it.wiktionary.org",
+      "revid": 4194138,
+      "timestamp": "2026-05-28T05:04:44Z",
+      "url": "https://it.wiktionary.org/w/index.php?title=studente&oldid=4194138",
+      "licence": "CC BY-SA 4.0"
+    },
+    "sections": [
+      {
+        "pos_template": "sost",
+        "page_controls": [],
+        "definitions": [
+          {
+            "text": "chi è regolarmente iscritto in un corso di studi",
+            "marker": "#",
+            "reachable_by_extractor": true
+          }
+        ],
+        "examples": []
+      },
+      {
+        "pos_template": "verb form",
+        "page_controls": [],
+        "definitions": [
+          {
+            "text": "participio presente singolare maschile di studiare",
+            "marker": "#",
+            "reachable_by_extractor": true
+          }
+        ],
+        "examples": []
+      }
+    ],
+    "extract": [
+      {
+        "line": 37883,
+        "pos": "noun",
+        "glosses": [
+          "chi è regolarmente iscritto in un corso di studi"
+        ],
+        "examples": []
+      },
+      {
+        "line": 37884,
+        "pos": "verb",
+        "glosses": [
+          "participio presente singolare maschile di studiare"
+        ],
+        "examples": []
+      }
+    ]
+  },
+  {
+    "word": "verde",
+    "source": {
+      "wiki": "it.wiktionary.org",
+      "revid": 4067992,
+      "timestamp": "2026-03-18T14:04:45Z",
+      "url": "https://it.wiktionary.org/w/index.php?title=verde&oldid=4067992",
+      "licence": "CC BY-SA 4.0"
+    },
+    "sections": [
+      {
+        "pos_template": "agg",
+        "page_controls": [
+          ""
+        ],
+        "definitions": [
+          {
+            "text": "di colore intermedio tra l'azzurro ed il giallo caratteristico dell'erba e delle foglie nel periodo vegetativo dell'erba e della maggior parte delle foglie",
+            "marker": "#",
+            "reachable_by_extractor": true
+          },
+          {
+            "text": "riferito a emozioni o sentimenti, intenso, forte",
+            "marker": "#",
+            "reachable_by_extractor": true
+          },
+          {
+            "text": "di cibo, che per effetto di verdure o di aromi, spec. prezzemolo o basilico, assume una colorazione verde",
+            "marker": "#",
+            "reachable_by_extractor": true
+          },
+          {
+            "text": "inerente al partito ed alla dottrina che si propone di salvaguardare l'ambiente",
+            "marker": "#",
+            "reachable_by_extractor": true
+          }
+        ],
+        "examples": [
+          {
+            "text": "la certificazione verde attesta l'avvenuta somministrazione di almeno una dose di vaccino",
+            "marker": "#*",
+            "reachable_by_extractor": true
+          },
+          {
+            "text": "il \"fondo regionale Aree verdi \" riguarda anche i parchi nazionali",
+            "marker": "#*",
+            "reachable_by_extractor": true
+          }
+        ]
+      },
+      {
+        "pos_template": "sost",
+        "page_controls": [
+          ""
+        ],
+        "definitions": [
+          {
+            "text": "colore dell’erba",
+            "marker": "#",
+            "reachable_by_extractor": true
+          },
+          {
+            "text": "sinonimo per ambientalista, ecologista",
+            "marker": "#",
+            "reachable_by_extractor": true
+          }
+        ],
+        "examples": [
+          {
+            "text": "il dipinto traboccava di bellissimi verdi",
+            "marker": "#:",
+            "reachable_by_extractor": true
+          }
+        ]
+      },
+      {
+        "pos_template": "sost",
+        "page_controls": [
+          ""
+        ],
+        "definitions": [
+          {
+            "text": "la parte verde di taluni vegetali",
+            "marker": "#",
+            "reachable_by_extractor": true
+          },
+          {
+            "text": "zona coperta di vegetazione",
+            "marker": "#",
+            "reachable_by_extractor": true
+          },
+          {
+            "text": "il segnale cromatico dei semafori per procedere",
+            "marker": "#",
+            "reachable_by_extractor": true
+          }
+        ],
+        "examples": [
+          {
+            "text": "taglia via un po' di da quegli alberi!",
+            "marker": "#:",
+            "reachable_by_extractor": true
+          },
+          {
+            "text": "abbiamo passato il pomeriggio nel",
+            "marker": "#:",
+            "reachable_by_extractor": true
+          },
+          {
+            "text": "attraversiamo, che c'è il",
+            "marker": "#:",
+            "reachable_by_extractor": true
+          }
+        ]
+      }
+    ],
+    "extract": [
+      {
+        "line": 110,
+        "pos": "adj",
+        "glosses": [
+          "di colore intermedio tra l'azzurro ed il giallo caratteristico dell'erba e delle foglie nel periodo vegetativo dell'erba e della maggior parte delle foglie",
+          "riferito a emozioni o sentimenti, intenso, forte",
+          "di cibo, che per effetto di verdure o di aromi, spec. prezzemolo o basilico, assume una colorazione verde",
+          "inerente al partito ed alla dottrina che si propone di salvaguardare l'ambiente"
+        ],
+        "examples": [
+          "la certificazione verde attesta l'avvenuta somministrazione di almeno una dose di vaccino",
+          "il \"fondo regionale Aree verdi\" riguarda anche i parchi nazionali"
+        ]
+      },
+      {
+        "line": 111,
+        "pos": "noun",
+        "glosses": [
+          "colore dell’erba",
+          "sinonimo per ambientalista, ecologista"
+        ],
+        "examples": [
+          "il dipinto traboccava di bellissimi verdi"
+        ]
+      },
+      {
+        "line": 112,
+        "pos": "noun",
+        "glosses": [
+          "la parte verde di taluni vegetali",
+          "zona coperta di vegetazione",
+          "il segnale cromatico dei semafori per procedere",
+          "verde ( approfondimento)"
+        ],
+        "examples": [
+          "taglia via un po' di verde da quegli alberi!",
+          "abbiamo passato il pomeriggio nel verde",
+          "attraversiamo, che c'è il verde"
+        ]
+      }
+    ]
+  }
+]

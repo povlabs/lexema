@@ -1,0 +1,57 @@
+<!-- it.wiktionary.org/wiki/studente revision 4194138 (2026-05-28T05:04:44Z), CC BY-SA 4.0. Saved verbatim. -->
+{{W|Dividere le traduzioni in base alla definizione a cui si riferiscono}}
+== {{-it-}} ==
+{{-sost-|it}}
+{{Tabs|studente|studenti|studente/studentessa|studentesse}}
+{{Pn|w}} ''m sing'' {{Linkp|studenti}}
+# {{Term|scuola|it}} [[chi]] è [[regolarmente]] [[iscritto]] in un [[corso]] di [[studi]]
+
+{{-verb form-|it}}
+{{Pn}}
+#participio presente singolare maschile  di [[studiare]]
+
+{{-sill-}}
+; stu | dèn | te
+
+{{-pron-}}
+{{IPA|//stuˈdɛnte/}}
+
+{{-etim-}}
+dal {{la}} ''[[studens]]'' che deriva da ''[[studere]]'' cioè "[[applicarsi]], [[studiare]]"
+
+{{-sin-}}
+*[[allievo]], [[alunno]], [[discente]], [[discepolo]], [[liceale]], [[scolaro]],  [[universitario]]
+
+{{-ant-}}
+* [[docente]], [[insegnante]], [[istruttore]], [[maestro]], [[professore]]
+
+{{-der-}}
+*[[studentesco]], [[studentescamente]]
+
+{{-trad-}}
+{{Trad1|}}
+:*{{ar}}: [[طالب| طَالِب]] (ṭālib)
+:*{{br}}: [[studier]] ''m''
+:*{{en}}: [[student]]
+{{mid}}
+:*{{la}}: [[discīpulus]], [[sectator]]
+:*{{pt}}: [[estudante]] ''mf''
+:*{{ru}}: [[студент]]
+:*{{tr}}: [[öğrenci]], [[talebe]]
+{{Trad2}}
+
+{{-ref-}}
+* {{Fonte|eti}}
+* {{Fonte|sabco}}
+* {{Fonte|sin-co}}
+* {{Fonte|dizit}}
+* {{Fonte|trec}}
+* {{Fonte|hoep}}
+* {{Fonte|gar}}
+* {{Fonte|sape}}
+*Devoto/Oli, ''Il dizionario della lingua italiana'' , edizione cartacea 2000-2001, Le Monnier, pagina 2069 
+* {{Fonte|dem}}
+* ''Dizionario sinonimi e contrari Mariotti'', edizione 2006, pagina 565
+
+==Altri progetti==
+{{Interprogetto|w|q|commons=Category:Students}}

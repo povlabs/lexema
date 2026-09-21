@@ -1,0 +1,30 @@
+{
+  "stratum": "inflected",
+  "seed": 11,
+  "measurement_unit": "extract records, sampled uniformly and scored one by one",
+  "stratum_population": 486259,
+  "records_sampled": 1000,
+  "records_scored": 1000,
+  "records_unmatched_pos": 0,
+  "records_page_missing_upstream": 0,
+  "records_page_without_italian_section": 0,
+  "records_with_ambiguous_section_match": 0,
+  "records_exposed_to_mechanism": 3,
+  "records_with_wrapped_prose": 0,
+  "records_flagged_by_heuristic": 0,
+  "definition_loss": 0,
+  "flags_rejected_by_review": 0,
+  "definition_loss_rate": 0.0,
+  "definition_loss_rate_ci95": [
+    0.0,
+    0.00383
+  ],
+  "projected_records": 0,
+  "projected_records_ci95": [
+    0,
+    1862
+  ],
+  "recall": "unknown; negatives were not exhaustively hand-reviewed, so the projection is a floor on the true count, not a ceiling",
+  "confirmed_records": [],
+  "rejected_flags": []
+}
