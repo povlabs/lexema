@@ -2,19 +2,16 @@
 
 Investigation for [issue #11](https://github.com/hueypov/lexema/issues/11), run 2026-09-18.
 
-Saved regression cases replay offline. Re-sampling re-runs the heuristic against whatever
-the pages say today; the hand labels in `fixtures/definition-loss-samples/hand-labels.json`
-are tied to the revisions reviewed here, so a fresh draw needs fresh review:
+> **Supersession.** This report supersedes the nested-markup diagnosis in
+> [the source research](2026-09-18-source-research.md), which could only call that cause
+> plausible and unproven; that report and
+> [the dataset spot check](2026-09-18-dataset-spot-check.md) are this one's inputs and stay
+> current on everything else. Nothing supersedes this report. The repair it recommends is
+> [issue #28](https://github.com/hueypov/lexema/issues/28), and the separate language-tag
+> finding is [issue #29](https://github.com/hueypov/lexema/issues/29).
 
-```bash
-python3 tools/definition_loss.py verify          # replays the regression cases, no network
-python3 test/definition-loss.py                  # proves verify fails when content is removed
-python3 tools/definition_loss.py sample   --stratum lemma --size 1200 --seed 11 --out build/sample-lemma.json
-python3 tools/definition_loss.py fetch    --sample build/sample-lemma.json
-python3 tools/definition_loss.py classify --sample build/sample-lemma.json --out build/report-lemma.json
-```
-
-`classify` stops rather than print a rate if it flags a record that nobody has labelled.
+To replay the regression cases, re-run the classification and re-derive the rate, follow
+[how to measure definition loss](../docs/MEASURE_DEFINITION_LOSS.md).
 
 Source file under study: `it-extract.jsonl.gz`, SHA-256
 `0c432803c672aceccd48787eb64807c5366fdbd6796715c9a99e31c0024d5dcf`, 560,357 Italian
@@ -145,7 +142,8 @@ This is reported separately below and is **not** the `casa` bug.
 
 ### What is not the cause
 
-- **Not a stale download.** Independently confirmed earlier in `docs/SOURCE_RESEARCH.md`.
+- **Not a stale download.** Independently confirmed earlier in
+  [the source research](2026-09-18-source-research.md).
   The mechanism is in the extractor, so a newer dump of the same code changes nothing.
 - **Not records being dropped.** Every Italian record survives; `page.py` inserts a
   `no-gloss` sense rather than discarding an entry.
@@ -277,7 +275,7 @@ and always wins when both agree; the enrichment only ever fills gaps.
 | Route | Cost | Why not chosen |
 | --- | --- | --- |
 | **Repair the extraction (chosen)** | Days. Re-parse `#*`/`#**` for the flagged pages, plus a detector to find them. Rules are already written down and tested in `tools/definition_loss.py`. | — |
-| Hand-source an enrichment corpus | Weeks, and never finishes. Needs a licensed source; Treccani reserves reproduction (`docs/SOURCE_RESEARCH.md`), so it would mean writing definitions ourselves. | Slow, unverifiable, and creates data with no provenance. |
+| Hand-source an enrichment corpus | Weeks, and never finishes. Needs a licensed source; Treccani reserves reproduction ([the source research](2026-09-18-source-research.md)), so it would mean writing definitions ourselves. | Slow, unverifiable, and creates data with no provenance. |
 | Upstream the fix to wiktextract | Small patch, but release timing is not ours and we would still need a local path until it lands. | Worth doing **as well**, not instead. |
 
 Why this route wins: the content is already ours under CC BY-SA 4.0, the loss rule is
