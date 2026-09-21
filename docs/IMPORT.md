@@ -26,7 +26,7 @@ grammar_claim     3,454,793
 ```
 
 Those first four numbers, and the 713,133 embedded forms inside `lookup_form`,
-match the independent inspection in [DATASET_SPOT_CHECK.md](DATASET_SPOT_CHECK.md),
+match the independent inspection in [the dataset spot check](../reports/2026-09-18-dataset-spot-check.md),
 which was measured by a different program. Two counts agreeing is not proof, but
 they were arrived at separately.
 
