@@ -9,9 +9,11 @@
 //      assigned in line order rather than by insertion race.
 //   3. Honest. A record is admitted on `lang_code === 'it'` and nothing else.
 //      Every line that does not become a record — malformed, empty, or another
-//      language — is counted and located, never skipped in silence. Locations
-//      are handed to the caller one at a time as they happen, so all of them
-//      are reported without any of them being held.
+//      language — is counted and located, never skipped in silence, and so is
+//      every leaf value a landed record had to refuse. Locations are handed to
+//      the caller one at a time as they happen, so all of them are reported
+//      without any of them being held. The counts land on the release row at
+//      the end of the run, so the database says what it was made from.
 //
 // The release is written as 'importing' and only flipped to 'complete' after the
 // last line of the archive lands, so a crash leaves a release that every
@@ -36,16 +38,19 @@ export const IMPORTER_VERSION = "it-import/v1" as const;
 export const SCHEMA_VERSION = 1;
 
 /**
- * One input line that produced no record, and why.
+ * One piece of input that produced no row, and why.
  *
  * `other-language` is a well-formed record whose `lang_code` is not `it`.
- * `malformed` is anything else: not JSON, not an object, blank, an Italian
- * record missing `word`/`pos`/`pos_title`, or one whose `forms`, `senses` or
- * `form_of` members are not objects. The reason names the JSON pointer where
- * the shape broke.
+ * `malformed` is a whole line that produced no record: not JSON, not an object,
+ * blank, an Italian record missing `word`/`pos`/`pos_title`, or one whose
+ * `forms`, `senses` or `form_of` members are not objects.
+ * `malformed-member` is one leaf value inside a record that did land — a gloss
+ * that is not a string, a `tags` that is not an array. The record keeps every
+ * leaf that is well formed; only the bad leaf is refused, and it is refused out
+ * loud. The reason names the JSON pointer where the shape broke.
  */
 export interface Rejection {
-  kind: "malformed" | "other-language";
+  kind: "malformed" | "malformed-member" | "other-language";
   /** 1-based physical line number in the archive. */
   lineNo: number;
   reason: string;
@@ -104,6 +109,8 @@ export interface ImportReport {
   /** Exact counts. Every location behind them went through `onRejection`. */
   skippedOtherLanguage: number;
   malformed: number;
+  /** Leaf values refused inside records that were otherwise admitted. */
+  malformedMembers: number;
   rows: Record<string, number>;
   elapsedMs: number;
 }
@@ -131,8 +138,9 @@ interface KaikkiSense {
 /**
  * An admitted Italian record. The three NOT NULL columns are strings and every
  * nested member is an object, because `readItalianRecord` refused the line
- * otherwise. Leaf fields stay `unknown`: a non-string form or gloss is dropped
- * per leaf, which is the same lenience the schema's nullable columns give.
+ * otherwise. Leaf fields stay `unknown`: a non-string form or gloss costs that
+ * one leaf its row rather than the whole record, and is reported at its own
+ * pointer on the way out.
  */
 interface KaikkiRecord {
   word: string;
@@ -146,9 +154,52 @@ interface KaikkiRecord {
 
 const isObject = (value: unknown): value is JsonObject =>
   typeof value === "object" && value !== null && !Array.isArray(value);
-const asArray = (value: unknown): unknown[] => (Array.isArray(value) ? value : []);
-const asStrings = (value: unknown): string[] =>
-  asArray(value).filter((item): item is string => typeof item === "string");
+
+/**
+ * A string leaf with the index the source gave it. The index is kept separate
+ * from the position in this list because it becomes the JSON pointer a reader
+ * checks the claim at: in `glosses: [42, "valido"]` the surviving gloss is
+ * `/glosses/1`, and calling it `/glosses/0` would point a reader at the wrong
+ * value in the archive.
+ */
+interface StringMember {
+  index: number;
+  text: string;
+}
+
+/** Where a refused leaf goes: one located rejection, one count. */
+type ReportMember = (reason: string) => void;
+
+/**
+ * `value` as its string members, each keeping its source index. A member that
+ * is not a string, and a `value` that is present but not an array, are counted
+ * and reported at their own pointer instead of vanishing.
+ */
+function stringMembers(value: unknown, pointer: string, report: ReportMember): StringMember[] {
+  if (value === undefined) return [];
+  if (!Array.isArray(value)) {
+    report(`${pointer} is not an array`);
+    return [];
+  }
+  const members: StringMember[] = [];
+  value.forEach((item, index) => {
+    if (typeof item === "string") members.push({ index, text: item });
+    else report(`${pointer}/${index} is not a string`);
+  });
+  return members;
+}
+
+/**
+ * A leaf whose row only means something when it is a string. An absent leaf is
+ * nothing to lose and yields null quietly; a present one of the wrong type is a
+ * value the source stated and this import refuses, so it is counted and located.
+ */
+function stringLeaf(value: unknown, pointer: string, report: ReportMember): string | null {
+  if (value === undefined) return null;
+  if (typeof value === "string") return value;
+  report(`${pointer} is not a string`);
+  return null;
+}
 
 /** The line as a JSON object, or a `MalformedLine` saying why it is not one. */
 function parseLine(line: string): JsonObject {
@@ -302,6 +353,15 @@ export async function importRelease(options: ImportOptions): Promise<ImportRepor
     let truncated = false;
     let skipped = 0;
     let malformed = 0;
+    let malformedMembers = 0;
+
+    // One closure for the whole run rather than one per line: it reads
+    // `linesRead` as it stands when a leaf is refused, which is the line that
+    // leaf came from.
+    const reportMember: ReportMember = (reason) => {
+      malformedMembers += 1;
+      options.onRejection({ kind: "malformed-member", lineNo: linesRead, reason });
+    };
 
     db.exec("BEGIN");
     statements.insertRelease.run(
@@ -357,6 +417,7 @@ export async function importRelease(options: ImportOptions): Promise<ImportRepor
         word: record.word,
         pos: record.pos,
         posTitle: record.pos_title,
+        reportMember,
       });
 
       if (admitted % (options.progressEvery ?? 25_000) === 0) options.onProgress?.(admitted);
@@ -380,7 +441,21 @@ export async function importRelease(options: ImportOptions): Promise<ImportRepor
     // one holds the checksum and byte count of the whole file but a prefix of
     // its records, so calling it complete would make a smoke run servable.
     const status = truncated ? "partial" : "complete";
-    statements.finishRelease.run(status, options.releaseId);
+    // The counts land with the status flip, in the same transaction and off the
+    // same variables the report is built from, so a database can be audited
+    // without the console output of the run that made it.
+    statements.finishRelease.run(
+      status,
+      linesRead,
+      admitted,
+      skipped,
+      malformed,
+      malformedMembers,
+      options.releaseId,
+    );
+    for (const [table, count] of Object.entries(rows)) {
+      statements.insertTableRows.run(options.releaseId, table, count);
+    }
     db.exec("COMMIT");
 
     return {
@@ -392,6 +467,7 @@ export async function importRelease(options: ImportOptions): Promise<ImportRepor
       admitted,
       skippedOtherLanguage: skipped,
       malformed,
+      malformedMembers,
       rows,
       elapsedMs: Date.now() - startedAt,
     };
@@ -414,7 +490,13 @@ function prepareStatements(db: DatabaseSync) {
     // every canonical read hides this release. Canonical reads require
     // 'complete', so 'partial' stays hidden too.
     finishRelease: db.prepare(
-      `UPDATE source_release SET status = ? WHERE release_id = ?`,
+      `UPDATE source_release
+          SET status = ?, lines_read = ?, admitted = ?, skipped_other_language = ?,
+              malformed_lines = ?, malformed_members = ?
+        WHERE release_id = ?`,
+    ),
+    insertTableRows: db.prepare(
+      `INSERT INTO release_table_rows (release_id, table_name, rows) VALUES (?, ?, ?)`,
     ),
     insertRecord: db.prepare(
       `INSERT INTO source_record
@@ -462,6 +544,8 @@ interface RecordContext {
   word: string;
   pos: string;
   posTitle: string;
+  /** Where a leaf of this record that is not a string goes. */
+  reportMember: ReportMember;
 }
 
 function writeRecord(
@@ -469,7 +553,13 @@ function writeRecord(
   rows: Record<string, number>,
   ctx: RecordContext,
 ): void {
-  const { recordId, releaseId, record } = ctx;
+  const { recordId, releaseId, record, reportMember } = ctx;
+
+  // Read once, before either pass over forms[], so a form whose surface is not
+  // a string is reported exactly once however many passes look at it.
+  const formSurfaces = record.forms.map((form, formIndex) =>
+    stringLeaf(form.form, `/forms/${formIndex}/form`, reportMember),
+  );
 
   statements.insertRecord.run(
     recordId,
@@ -500,16 +590,17 @@ function writeRecord(
   rows.lookup_form += 1;
 
   record.forms.forEach((form, formIndex) => {
-    if (typeof form.form !== "string") return;
+    const surface = formSurfaces[formIndex];
+    if (surface === null) return;
     statements.insertLookup.run(
       recordId,
       releaseId,
       "embedded-form",
-      form.form,
-      normalizeItalianExact(form.form),
+      surface,
+      normalizeItalianExact(surface),
       `/forms/${formIndex}/form`,
       formIndex,
-      typeof form.source === "string" ? form.source : null,
+      stringLeaf(form.source, `/forms/${formIndex}/source`, reportMember),
     );
     rows.lookup_form += 1;
   });
@@ -521,17 +612,17 @@ function writeRecord(
     container: "",
     tagsPointer: "/tags",
     rawTagsPointer: "/raw_tags",
-    tags: asStrings(record.tags),
-    rawTags: asStrings(record.raw_tags),
+    tags: stringMembers(record.tags, "/tags", reportMember),
+    rawTags: stringMembers(record.raw_tags, "/raw_tags", reportMember),
     expected: expectedRecordDimensions(ctx.pos),
   });
 
   record.forms.forEach((form, formIndex) => {
-    if (typeof form.form !== "string") return;
-    const tags = asStrings(form.tags);
+    if (formSurfaces[formIndex] === null) return;
+    const tags = stringMembers(form.tags, `/forms/${formIndex}/tags`, reportMember);
     const stated = new Set<string>();
-    for (const tag of tags) {
-      const mapped = mapStructuralTag(tag);
+    for (const { text } of tags) {
+      const mapped = mapStructuralTag(text);
       if (mapped.status === "stated") stated.add(mapped.dimension);
     }
     writeClaims(statements, rows, {
@@ -542,7 +633,7 @@ function writeRecord(
       tagsPointer: `/forms/${formIndex}/tags`,
       rawTagsPointer: `/forms/${formIndex}/raw_tags`,
       tags,
-      rawTags: asStrings(form.raw_tags),
+      rawTags: stringMembers(form.raw_tags, `/forms/${formIndex}/raw_tags`, reportMember),
       expected: expectedFormDimensions(ctx.pos, stated),
     });
   });
@@ -553,30 +644,30 @@ function writeRecord(
     statements.insertSense.run(senseId, recordId, senseIndex, `/senses/${senseIndex}`);
     rows.sense += 1;
 
-    asStrings(sense.glosses).forEach((text, glossIndex) => {
-      statements.insertGloss.run(
-        senseId,
-        glossIndex,
-        text,
-        `/senses/${senseIndex}/glosses/${glossIndex}`,
-      );
-      rows.sense_gloss += 1;
-    });
+    const sensePointer = `/senses/${senseIndex}`;
 
-    asStrings(sense.tags).forEach((label, labelIndex) => {
+    stringMembers(sense.glosses, `${sensePointer}/glosses`, reportMember).forEach(
+      ({ index, text }) => {
+        statements.insertGloss.run(senseId, index, text, `${sensePointer}/glosses/${index}`);
+        rows.sense_gloss += 1;
+      },
+    );
+
+    stringMembers(sense.tags, `${sensePointer}/tags`, reportMember).forEach(({ index, text }) => {
       statements.insertLabel.run(
         senseId,
-        labelIndex,
+        index,
         "tag",
-        label,
-        `/senses/${senseIndex}/tags/${labelIndex}`,
+        text,
+        `${sensePointer}/tags/${index}`,
       );
       rows.sense_label += 1;
     });
 
-    asStrings(sense.raw_tags).forEach((label, labelIndex) => {
-      const pointer = `/senses/${senseIndex}/raw_tags/${labelIndex}`;
-      statements.insertLabel.run(senseId, labelIndex, "raw_tag", label, pointer);
+    const senseRawTags = stringMembers(sense.raw_tags, `${sensePointer}/raw_tags`, reportMember);
+    senseRawTags.forEach(({ index, text: label }) => {
+      const pointer = `${sensePointer}/raw_tags/${index}`;
+      statements.insertLabel.run(senseId, index, "raw_tag", label, pointer);
       rows.sense_label += 1;
 
       // Also recorded as an unclassified grammar claim, on purpose, even though
@@ -594,14 +685,15 @@ function writeRecord(
     });
 
     sense.form_of.forEach((target, formOfIndex) => {
-      const { word } = target;
-      if (typeof word !== "string") return;
+      const pointer = `${sensePointer}/form_of/${formOfIndex}/word`;
+      const word = stringLeaf(target.word, pointer, reportMember);
+      if (word === null) return;
       statements.insertEdge.run(
         recordId,
         releaseId,
         senseIndex,
         formOfIndex,
-        `/senses/${senseIndex}/form_of/${formOfIndex}/word`,
+        pointer,
         word,
         normalizeItalianExact(word),
       );
@@ -618,8 +710,9 @@ interface ClaimScope {
   container: string;
   tagsPointer: string;
   rawTagsPointer: string;
-  tags: readonly string[];
-  rawTags: readonly string[];
+  /** String members only, each still carrying its source index. */
+  tags: readonly StringMember[];
+  rawTags: readonly StringMember[];
   expected: readonly string[];
 }
 
@@ -630,8 +723,8 @@ function writeClaims(
 ): void {
   const stated = new Set<string>();
 
-  scope.tags.forEach((tag, index) => {
-    const mapped = mapStructuralTag(tag);
+  scope.tags.forEach(({ index, text }) => {
+    const mapped = mapStructuralTag(text);
     const pointer = `${scope.tagsPointer}/${index}`;
     if (mapped.status === "stated") {
       stated.add(mapped.dimension);
@@ -648,8 +741,8 @@ function writeClaims(
     rows.grammar_claim += 1;
   });
 
-  scope.rawTags.forEach((rawTag, index) => {
-    const mapped = mapRawTag(rawTag);
+  scope.rawTags.forEach(({ index, text }) => {
+    const mapped = mapRawTag(text);
     statements.insertClaim.run(
       scope.recordId, scope.scope, scope.scopeIndex,
       `${scope.rawTagsPointer}/${index}`,

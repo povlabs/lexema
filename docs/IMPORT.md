@@ -14,6 +14,7 @@ lines read       799,600
 admitted (it)    560,357
 skipped (other)  239,243
 malformed        0
+refused leaves   0
 
 source_record       560,357
 source_record_json  560,357
@@ -45,6 +46,23 @@ zero. And so does an Italian record whose `forms`, `senses` or `form_of` is
 present but is not an array of objects — `forms: [null]`, say. The shape is
 checked before the record's first write, so a bad line is one located rejection
 with the JSON pointer in its reason, never a crash in the middle of the run.
+
+A single bad *leaf* inside an otherwise good record costs that leaf and nothing
+more. `glosses: [42, "valido"]` is a record worth keeping with one value that is
+not a gloss, so the record lands, the `42` is refused as a `malformed-member`
+rejection at `/senses/0/glosses/0`, and the surviving gloss is stored at
+`/senses/0/glosses/1` — the index the archive gave it. Closing that gap would
+renumber the pointer, and a reader who opened the archive at the stored pointer
+would find a different value there. `refused leaves` counts these. The current
+archive has none; the behaviour exists so that a later one cannot lose a value
+in silence.
+
+Every count above is written onto the release row when the run finishes —
+`lines_read`, `admitted`, `skipped_other_language`, `malformed_lines`,
+`malformed_members`, and the rows per table in `release_table_rows`. A database
+can be audited on its own, without the console output of the run that made it.
+They are written in the same transaction as the status flip, so a release that
+is servable has always counted.
 
 ## Three properties the importer has to keep
 
@@ -122,7 +140,7 @@ appears), so the text sits where either reader will find it.
 
 ## Size, and what it means for D1
 
-The database is **1.4 GB** on disk (1,441,595,392 bytes). Measured with
+The database is **1.4 GB** on disk (1,428,103,168 bytes). Measured with
 `dbstat` on 2026-09-21; the commands, the machine and the full per-object
 output are in
 [the import measurements report](../reports/2026-09-21-import-measurements.md):
@@ -132,11 +150,11 @@ output are in
 | `source_record_json` | 416.7 MiB |
 | `grammar_claim` | 199.8 MiB |
 | `grammar_claim_identity` index | 117.3 MiB |
-| `lookup_form` | 116.3 MiB |
+| `lookup_form` | 113.8 MiB |
 | `grammar_claim_by_record` index | 71.1 MiB |
-| `source_record` | 68.3 MiB |
+| `source_record` | 67.1 MiB |
 | `sense_gloss` | 64.8 MiB |
-| everything else | 320.5 MiB |
+| everything else | 311.3 MiB |
 
 D1's maximum database size is 10 GB on Workers Paid and 500 MB on Free
 ([D1 limits](https://developers.cloudflare.com/d1/platform/limits/), checked
