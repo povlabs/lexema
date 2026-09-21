@@ -226,7 +226,7 @@ export const FIXTURE_LINES: string[] = [
         ["andavo", "andavi", "andava", "andavamo", "andavate", "andavano"],
         "imperfect",
       ),
-      ...tenseForms(["andrò", "andrai", "andrà", "andremo", "andrete", "andranno"], "future"),
+      ...tenseForms(["anderò", "andrai", "andrà", "andremo", "andrete", "andranno"], "future"),
       ...imperativeForms([
         ["va'", "tu"],
         ["va", "tu"],
