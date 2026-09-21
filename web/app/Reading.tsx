@@ -182,11 +182,11 @@ export function ReadingCard({ reading, query }: { reading: Reading; query: strin
         >
           Wiktionary page for {reading.word}
         </a>{" "}
-        · release line {reading.lineNo}
+        · release line {reading.ref.lineNo}
         {reading.evidence.map((e, i) => (
           <span key={i} className="pointer">
             {" "}
-            <code>{e.pointer}</code>
+            <code>{e.ref.jsonPointer}</code>
           </span>
         ))}
       </footer>
