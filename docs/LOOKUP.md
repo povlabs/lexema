@@ -47,7 +47,7 @@ Applied in this order, by `normalizeItalianExact`:
 | trim | leading and trailing whitespace removed |
 | NFC | Unicode composed form |
 | case fold | `CITTÀ` and `città` probe the same key |
-| apostrophes | `’`, `ʼ` and `´` fold to `'` |
+| apostrophes | `’` U+2019, `‘` U+2018 and `ʼ` U+02BC fold to `'` U+0027; nothing else does, and `´` U+00B4 in particular stays as typed |
 | accents | **kept**; `città` and `citta` are different keys |
 
 Length bound: `MAX_QUERY_LENGTH` is 128 characters, measured after trimming.
@@ -61,7 +61,7 @@ Length bound: `MAX_QUERY_LENGTH` is 128 characters, measured after trimming.
 | `found` | at least one record matched | `query`, `release`, `readings` |
 
 `found` and `not-found` are separate types, not one type with a flag. A
-`not-found` has no `readings` field, and a `found`'s `readings` is
+`not-found` has no reading it can carry, and a `found`'s `readings` is
 `[Reading, ...Reading[]]` — at least one. So a caller that wants one array
 writes `result.outcome === "found" ? result.readings : []`, and neither
 "found nothing" nor "did not find these" is a value either type can hold.
@@ -110,10 +110,10 @@ writes `result.outcome === "found" ? result.readings : []`, and neither
 | `pointer` | RFC 6901 pointer into that line; `""` is the whole record |
 | `lineSha256` | sha256 of the line's bytes, so the claim is checkable against the archive |
 
-This is the repository's provenance ref — release, line, pointer, digest
-([`.glossary/TERMS.md`](../.glossary/TERMS.md),
-[record identity](RECORD_IDENTITY.md#identity)) — under this API's own field
-names rather than the wire form's `{ r, i, p, h }`.
+These are the four coordinates the schema names `release_id`, `line_no`,
+`json_pointer` and `line_sha256` ([`.glossary/TERMS.md`](../.glossary/TERMS.md),
+[record identity](RECORD_IDENTITY.md#identity)), spelled in this API's
+camelCase.
 
 A `ref` is on `Reading`, `Evidence`, `Sense`, every gloss, every label, every
 `GrammarClaim`, every `LemmaLink`, every `LemmaCandidate`, every `InflectionOf`

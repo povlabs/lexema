@@ -80,17 +80,17 @@ which source it found nothing in.
 ## One provenance ref, and the release travels in it
 
 Every value read out of the source carries a `SourceRef` of release, line,
-pointer and line digest — the repository's provenance ref
-([`.glossary/TERMS.md`](../.glossary/TERMS.md)), and the same four coordinates
-`source_record` stores. A line number means nothing without the release that
-pins the bytes it was counted in, so carrying the line without the release was a
-ref that could not actually be checked.
+pointer and line digest — the four coordinates
+[`.glossary/TERMS.md`](../.glossary/TERMS.md) names and `source_record` stores.
+A line number means nothing without the release that pins the bytes it was
+counted in, so carrying the line without the release was a ref that could not
+actually be checked.
 
-The field names are this API's (`releaseId`, `lineNo`, `pointer`,
-`lineSha256`) rather than the wire form's `{ r, i, p, h }`. Nothing here is
-serialized for size, and `r`/`i` would need the glossary open to read. The
-coordinates are the same either way, and the compact form stays what it is for:
-the adapter's output.
+The fields are the schema's `release_id`, `line_no`, `json_pointer` and
+`line_sha256`, spelled in camelCase as `releaseId`, `lineNo`, `pointer` and
+`lineSha256`. The digest is required rather than optional: every value a lookup
+returns was read from a line whose bytes were hashed on import, so a ref without
+one would be a ref nothing could check.
 
 There is one `lineNo` per ref and no second copy beside it. A `Reading` with
 both `lineNo` and `ref.lineNo` is two places one fact can be written and one
@@ -128,7 +128,8 @@ drift apart.
 
 ## Accents are meaning
 
-Normalization folds case, whitespace and apostrophe variants, but keeps accents:
+Normalization folds case, whitespace and three apostrophe variants (U+2019,
+U+2018, U+02BC, all to U+0027), but keeps accents:
 `città` and `citta` are different words, and folding them would merge distinct
 entries.
 

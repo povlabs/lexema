@@ -231,10 +231,18 @@ test("normalizes case, whitespace and apostrophes while keeping accents", async 
       assert.equal(found(await ask(db, variant))[0].word, "città");
     }
 
-    // A typed straight quote finds a source spelling with a typographic one.
-    const apostrophe = found(await ask(db, "un'amica"));
-    assert.equal(apostrophe.length, 1);
-    assert.equal(apostrophe[0].word, "un’amica");
+    // Every apostrophe in the folded set reaches the one source spelling, which
+    // carries U+2019. The set is U+0027, U+2019, U+2018 and U+02BC, and this is
+    // all four of them.
+    for (const mark of ["'", "’", "‘", "ʼ"]) {
+      const apostrophe = found(await ask(db, `un${mark}amica`));
+      assert.equal(apostrophe.length, 1);
+      assert.equal(apostrophe[0].word, "un’amica");
+    }
+
+    // And one character outside the set: U+00B4 is an acute accent, so it is a
+    // different key and finds nothing.
+    assert.equal((await ask(db, "un´amica")).outcome, "not-found");
   });
 });
 
@@ -570,8 +578,15 @@ test("the result type cannot express a found with nothing found", () => {
   // @ts-expect-error - `not-found` has no field a reading could go in
   const fullNotFound: NotFoundResult = { outcome: "not-found", query, release, readings: [] };
 
+  // The same contradiction built somewhere else first, so the excess-property
+  // check on a fresh literal is not what refuses it. `readings?: never` is.
+  const carried = { outcome: "not-found" as const, query, release, readings: [] as Reading[] };
+  // @ts-expect-error - a carried `readings` is not assignable to `never`
+  const laundered: NotFoundResult = carried;
+
   assert.equal(emptyFound.outcome, "found");
   assert.equal(fullNotFound.outcome, "not-found");
+  assert.equal(laundered.outcome, "not-found");
 });
 
 test("surfaces a disputed claim instead of hiding or correcting it", async () => {

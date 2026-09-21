@@ -3,10 +3,11 @@
 // nullable field. The reasoning is in docs/LOOKUP_DESIGN.md.
 
 /**
- * Where a value came from, precise enough to check it against the archive. This
- * is the repository's provenance ref (`.glossary/TERMS.md`) in the lookup API's
- * own field names: the release that pins the bytes, the physical line inside it,
- * the pointer to the field, and the line's digest. Line numbers only mean
+ * Where a value came from, precise enough to check it against the archive. These
+ * are the four coordinates the schema names `release_id`, `line_no`,
+ * `json_pointer` and `line_sha256` (`.glossary/TERMS.md`), in camelCase: the
+ * release that pins the bytes, the physical line inside it, the pointer to the
+ * field, and the line's digest. Line numbers only mean
  * something inside one release, so the release travels with every one of them
  * (docs/RECORD_IDENTITY.md#identity).
  */
@@ -206,15 +207,22 @@ export interface FoundResult {
 }
 
 /**
- * The index was probed and nothing matched. There is no `readings` field to
- * hold a reading, so `not-found` with readings is not a state this type can
- * express either. `release` is still here: a page showing nothing has to
+ * The index was probed and nothing matched. There is no reading a `not-found`
+ * can hold, so `not-found` with readings is not a state this type can express
+ * either. `release` is still here: a page showing nothing has to
  * attribute the source it found nothing in.
  */
 export interface NotFoundResult {
   outcome: "not-found";
   query: QueryInfo;
   release: ReleaseInfo;
+  /**
+   * Declared as `never` rather than left out. Omitting it only stops a fresh
+   * object literal; a value built elsewhere and carrying `readings` would still
+   * be assignable under structural typing. With this field there is no reading
+   * any `not-found` can hold, whatever it was built from.
+   */
+  readings?: never;
 }
 
 /** The index was probed, either way. */
