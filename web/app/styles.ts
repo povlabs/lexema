@@ -111,6 +111,19 @@ export const HEADLINE_VALUE = "m-0 text-[1.05rem]";
  */
 export const BOX_ROW = "mt-4 grid grid-cols-1 items-start gap-[0.9rem] sm:grid-cols-2 lg:grid-cols-3";
 
+/**
+ * One mood's own group on a verb card: a heading, and a row of tense boxes
+ * under it.
+ *
+ * "Groups are ordered by the source's own vocabulary — moods, then tenses"
+ * (design-system-manifest.md § "The result card"). A mood is a group of boxes
+ * rather than a box, so it is not raised itself: what a reader sees raised is
+ * the tense boxes inside it.
+ */
+export const MOOD_GROUP = "mt-4";
+export const MOOD_HEADING =
+  "m-0 text-[0.82rem] font-semibold uppercase tracking-[0.06em] text-text-strong";
+
 export const BOX = `${RAISED} px-[0.8rem] pt-2 pb-[0.7rem]`;
 export const BOX_HEADING =
   "mt-0 mb-[0.3rem] text-[0.78rem] font-semibold uppercase tracking-[0.06em] text-text-muted";

@@ -12,7 +12,7 @@
 // in the card's own silence line.
 
 import type { ReactNode } from "react";
-import { isAdjectiveReading, isNounReading } from "@lexema/lookup/types.ts";
+import { isAdjectiveReading, isNounReading, isVerbReading } from "@lexema/lookup/types.ts";
 import { normalizeItalianExact } from "@lexema/italian/normalize.ts";
 import {
   AMBIGUOUS,
@@ -51,6 +51,8 @@ import {
   LINKS,
   LINKS_LIST,
   MENTION,
+  MOOD_GROUP,
+  MOOD_HEADING,
   MUTED,
   SEARCHED,
   SOURCE_LINE,
@@ -248,10 +250,17 @@ function claimsBeyond(
 // state is not a row here: the card's silence line says that once, near the
 // top, instead of saying it beside every dimension it could have filled.
 
-/** One headline fact: a small English label, and the value under it. */
+/**
+ * One headline fact: a small English label, and the value under it.
+ *
+ * The value is a node rather than a string because a verb's headline facts are
+ * source spellings (#48) — each marked `lang="it"` and with the `forms[]` entry
+ * it came from, so the bar is one of the places the counting test looks. A noun's
+ * and an adjective's are plain stated values, and a string is still one of these.
+ */
 interface HeadlineFact {
   label: string;
-  value: string;
+  value: ReactNode;
 }
 
 function HeadlineBar({ facts }: { facts: HeadlineFact[] }) {
@@ -311,6 +320,12 @@ function listPhrase(parts: string[]): string {
   return `${parts.slice(0, -1).join(", ")} and ${parts[parts.length - 1]}`;
 }
 
+/** The same list under a negation, where *and* would read as the wrong claim. */
+function orPhrase(parts: string[]): string {
+  if (parts.length <= 1) return parts.join("");
+  return `${parts.slice(0, -1).join(", ")} or ${parts[parts.length - 1]}`;
+}
+
 /**
  * The one line that names this card's silence, or nothing at all.
  *
@@ -354,13 +369,31 @@ function unstatedClause(claims: readonly GrammarClaim[]): string[] {
 // on narrow screens. Rows inside a box are `label value`, the label small and
 // grey, the value in the reading language."
 
-/** One boxed group: its own heading, and label-and-value rows under it. */
-function Box({ id, heading, children }: { id: string; heading: string; children: ReactNode }) {
+/**
+ * One boxed group: its own heading, and label-and-value rows under it.
+ *
+ * The heading is the card's own third level by default. A verb's tense boxes
+ * sit inside a mood group that carries an `<h3>` of its own, so they take the
+ * fourth — the outline a reader tabs through says mood, then tense, rather
+ * than two headings at one level with no relation between them.
+ */
+function Box({
+  id,
+  heading,
+  level = 3,
+  children,
+}: {
+  id: string;
+  heading: string;
+  level?: 3 | 4;
+  children: ReactNode;
+}) {
+  const Heading = level === 3 ? "h3" : "h4";
   return (
     <section className={BOX} aria-labelledby={id}>
-      <h3 className={BOX_HEADING} id={id}>
+      <Heading className={BOX_HEADING} id={id}>
         {heading}
-      </h3>
+      </Heading>
       {children}
     </section>
   );
@@ -380,7 +413,7 @@ function BoxRows({ children }: { children: ReactNode }) {
   );
 }
 
-function BoxLine({ label, children }: { label: string; children: ReactNode }) {
+function BoxLine({ label, children }: { label: ReactNode; children: ReactNode }) {
   return (
     <tr>
       <th className={BOX_ROW_LABEL} scope="row">
@@ -1055,9 +1088,11 @@ function AdjectiveDegrees({
  * Grouping is by the tense the source stated, and by nothing else: no mood in
  * this release is stated structurally, so a group says so rather than filling
  * the gap in. An entry naming the auxiliary verb is not an inflected form and
- * is kept out of the tenses. Laying these out as boxes per tense is #48's, not
- * this one's; what #60 changed here is only that an entry with no tense at all
- * renders no box.
+ * is kept out of the tenses.
+ *
+ * A verb no longer arrives here — `VerbCard` lays its paradigm out as boxed
+ * tables under the mood the source states (#48). What is left for this is a
+ * part of speech with no card of its own that still tags a form with a tense.
  */
 function tenseGroups(reading: Reading): Map<string, SourceForm[]> {
   const byTense = new Map<string, SourceForm[]>();
@@ -1489,6 +1524,430 @@ function AdjectiveCard({ reading, query }: { reading: Reading; query: string }) 
   );
 }
 
+// A verb reads as a conjugation table rather than a tag list (#48): a header
+// bar carrying the non-finite facts the source states, then the finite forms as
+// boxed tables, grouped by the mood the source states and boxed by its tense.
+//
+// Nothing below reads a mood, a person or a tense off a spelling. The release
+// states four moods structurally — `imperative`, `participle`, `gerund` and
+// `infinitive` (src/import/grammarPolicy.ts) — and states `infinitive` on no
+// entry at all, while `indicative`, `subjunctive` and `conditional` never
+// appear as tags. So for almost every verb the whole indicative lands in the
+// group named for the source's own silence, and that group is the main path
+// here rather than an edge case: 5,638 of the release's 462,020 verb records
+// carry a structural mood on any form at all. Reading `io` as a first person is
+// #4's job, with tests; here it is a label, verbatim.
+
+/** The moods this source can state, in the order `grammarPolicy.ts` lists them. */
+const VERB_MOODS = ["imperative", "participle", "gerund", "infinitive"] as const;
+
+/** The moods whose forms are not conjugated: the header bar's own facts. */
+const NON_FINITE_MOODS = ["infinitive", "gerund", "participle"] as const;
+
+/** The tenses this source can state, in the order `grammarPolicy.ts` lists them. */
+const VERB_TENSES = [
+  "present",
+  "imperfect",
+  "future",
+  "past",
+  "past-remote",
+  "perfect",
+  "pluperfect",
+  "historic",
+] as const;
+
+/** What a group of entries is filed under, or `null` where the source says nothing. */
+type GroupKey = string | null;
+
+/**
+ * Where one key sits in the source's own vocabulary.
+ *
+ * "Groups are ordered by the source's own vocabulary — moods, then tenses, in
+ * the order the tag vocabulary lists them; forms the source leaves unplaced go
+ * in one last box named for what is missing" (design-system-manifest.md § "The
+ * result card"). A value outside the vocabulary sorts after every value inside
+ * it, and the source's silence sorts last of all.
+ */
+function vocabularyOrder(vocabulary: readonly string[], key: GroupKey): number {
+  if (key === null) return vocabulary.length + 1;
+  const at = vocabulary.indexOf(key);
+  return at === -1 ? vocabulary.length : at;
+}
+
+/**
+ * Entries grouped by what the source states for one dimension, in that
+ * dimension's vocabulary order, with the entries stating nothing for it last.
+ *
+ * The sort is stable over groups collected in source order, so two values the
+ * vocabulary does not list keep the order the record gave them.
+ */
+function groupByStated(
+  forms: readonly SourceForm[],
+  dimension: string,
+  vocabulary: readonly string[],
+): { key: GroupKey; forms: SourceForm[] }[] {
+  const groups = new Map<GroupKey, SourceForm[]>();
+  for (const form of forms) {
+    const key = stated(form.claims, dimension) ?? null;
+    const group = groups.get(key);
+    if (group) group.push(form);
+    else groups.set(key, [form]);
+  }
+  return [...groups]
+    .map(([key, grouped]) => ({ key, forms: grouped }))
+    .sort((a, b) => vocabularyOrder(vocabulary, a.key) - vocabularyOrder(vocabulary, b.key));
+}
+
+/** An entry naming the auxiliary verb, which is not an inflected form at all. */
+const isAuxiliary = (form: SourceForm): boolean =>
+  stated(form.claims, "form-role") === "auxiliary";
+
+/** An entry the header bar carries rather than a conjugation table. */
+function isNonFinite(form: SourceForm): boolean {
+  const mood = stated(form.claims, "mood");
+  return isAuxiliary(form) || NON_FINITE_MOODS.some((candidate) => candidate === mood);
+}
+
+/** One non-finite fact: an English label, and the entries the source filed under it. */
+interface NonFiniteFact {
+  label: string;
+  forms: SourceForm[];
+  /** What the label already states about each entry under it. */
+  filed: (claim: GrammarClaim) => boolean;
+}
+
+/**
+ * The header bar's facts, each from a stated claim and nothing else.
+ *
+ * A participle is labelled by the tense the source gives it, so the bar reads
+ * *present participle* and *past participle* — and *participle* alone where the
+ * source states no tense for one. The labels are English, which is the whole of
+ * what Lexema writes here; every value is the source's own spelling.
+ *
+ * The word *infinitive* appears only because an entry states that mood. No
+ * entry in the release does, and the headword of a `Verbo` record is not a
+ * claim that the source made one.
+ */
+function nonFiniteFacts(reading: Reading): NonFiniteFact[] {
+  const facts: NonFiniteFact[] = [];
+  const inflected = reading.forms.filter((form) => !isAuxiliary(form));
+
+  for (const mood of NON_FINITE_MOODS) {
+    const under = inflected.filter((form) => stated(form.claims, "mood") === mood);
+    if (under.length === 0) continue;
+    if (mood !== "participle") {
+      facts.push({ label: mood, forms: under, filed: filedUnder(["mood", mood]) });
+      continue;
+    }
+    for (const group of groupByStated(under, "tense", VERB_TENSES)) {
+      facts.push({
+        label: group.key === null ? "participle" : `${group.key} participle`,
+        forms: group.forms,
+        filed: filedUnder(["mood", mood], ["tense", group.key ?? undefined]),
+      });
+    }
+  }
+
+  const auxiliaries = reading.forms.filter(isAuxiliary);
+  if (auxiliaries.length > 0) {
+    facts.push({
+      label: "auxiliary",
+      forms: auxiliaries,
+      filed: filedUnder(["form-role", "auxiliary"]),
+    });
+  }
+  return facts;
+}
+
+/**
+ * The non-finite facts a verb entry is owed and does not state, as one clause
+ * of the card's silence line.
+ *
+ * *infinitive* is not one of them: no entry in the release states an infinitive
+ * mood, so naming it missing would put the word on every verb card in the
+ * release for a dimension the source never fills — and the card says the word
+ * only where a claim states it.
+ */
+const EXPECTED_NON_FINITE = [
+  "gerund",
+  "present participle",
+  "past participle",
+  "auxiliary",
+] as const;
+
+function nonFiniteClause(facts: readonly NonFiniteFact[]): string[] {
+  const shown = new Set(facts.map((fact) => fact.label));
+  const missing = EXPECTED_NON_FINITE.filter((label) => !shown.has(label));
+  return missing.length === 0 ? [] : [`states no ${orPhrase([...missing])}`];
+}
+
+/** One row of a tense box: a label, and every entry the source filed under it. */
+interface VerbRow {
+  /** The label's text, which keys the row: two entries under one label are one row. */
+  label: string;
+  /** Whether that text is the source's own Italian rather than a stated value. */
+  italian: boolean;
+  /** The person and number every entry here states, where they all state one. */
+  person: string;
+  forms: SourceForm[];
+}
+
+/**
+ * The person and number the source states for one entry, as one phrase.
+ *
+ * Two stated claims read together, never a reading of the row's label: the
+ * label may say `io` and this may say nothing at all, and those are two
+ * different facts about the same entry.
+ */
+function personPhrase(form: SourceForm): string {
+  return [stated(form.claims, "person"), stated(form.claims, "number")]
+    .filter((part) => part !== undefined)
+    .join(", ");
+}
+
+/**
+ * A row's label: the source's own unclassified text where it gave one, else the
+ * person and number it stated, else nothing.
+ *
+ * `io`, `tu`, `lui/lei`, `che io` are `raw_tags` the importer records verbatim
+ * as unclassified (src/import/grammarPolicy.ts), and they stay that way here —
+ * the label is that text, never a person claim read out of it.
+ */
+function rowLabelOf(form: SourceForm): { label: string; italian: boolean } {
+  for (const claim of form.claims) {
+    if (claim.status === "unclassified") return { label: claim.sourceText, italian: true };
+  }
+  return { label: personPhrase(form), italian: false };
+}
+
+/**
+ * The rows of one box, in source order, each holding every entry filed under it.
+ *
+ * `andare` files `vado` and `vo` under one `io` in the present, and a row that
+ * kept the first would drop a form the source listed. The person and number
+ * ride the label only while every entry in the row states the same pair; where
+ * they differ, the row cannot say it and each entry says it for itself.
+ */
+function verbRows(forms: readonly SourceForm[]): VerbRow[] {
+  const rows: VerbRow[] = [];
+  const byLabel = new Map<string, VerbRow>();
+  for (const form of forms) {
+    const { label, italian } = rowLabelOf(form);
+    const existing = byLabel.get(label);
+    if (existing === undefined) {
+      const row: VerbRow = { label, italian, person: personPhrase(form), forms: [form] };
+      byLabel.set(label, row);
+      rows.push(row);
+      continue;
+    }
+    existing.forms.push(form);
+    if (existing.person !== personPhrase(form)) existing.person = "";
+  }
+  return rows;
+}
+
+/** One box of a mood group: the tense the source stated, and its rows. */
+interface TenseBox {
+  tense: GroupKey;
+  rows: VerbRow[];
+}
+
+/** One mood group: the mood the source stated, and a box per tense under it. */
+interface MoodGroup {
+  mood: GroupKey;
+  boxes: TenseBox[];
+}
+
+/**
+ * Every finite entry of a record, under the mood the source stated for it and
+ * in the box its stated tense gives it.
+ *
+ * A group exists because at least one entry carries a stated `mood` claim for
+ * it, and everything else lands in the one group named for the source's
+ * silence. Inside a group the same rule runs again over `tense`, so `andare`'s
+ * eight `imperative` entries — tagged with a mood and no tense at all — are the
+ * untensed box of the imperative group.
+ */
+function moodGroups(reading: Reading): MoodGroup[] {
+  const finite = reading.forms.filter((form) => !isNonFinite(form));
+  return groupByStated(finite, "mood", VERB_MOODS).map((group) => ({
+    mood: group.key,
+    boxes: groupByStated(group.forms, "tense", VERB_TENSES).map((box) => ({
+      tense: box.key,
+      rows: verbRows(box.forms),
+    })),
+  }));
+}
+
+/** A group's heading: the source's own mood, or its silence said in words. */
+const moodHeading = (mood: GroupKey): string => mood ?? "Mood not stated in the source";
+
+/** A box's heading: the source's own tense, or its silence said in words. */
+const tenseHeading = (tense: GroupKey): string => tense ?? "No tense stated in the source";
+
+/** A key for a group or a box, from the value it is named for. */
+const groupKey = (key: GroupKey): string => key ?? "unstated";
+
+/**
+ * What the box and the row a form sits in already state about it.
+ *
+ * Everything else the source said about that entry renders beside it, because
+ * this is now the only place the entry sits. The row's own `missing` mood claim
+ * is one of those things the group states: its heading is that silence.
+ */
+function filedInTable(
+  mood: GroupKey,
+  tense: GroupKey,
+  row: VerbRow,
+): (claim: GrammarClaim) => boolean {
+  return (claim) => {
+    if (claim.status === "missing") return mood === null && claim.dimension === "mood";
+    if (claim.status === "unclassified") return row.italian && claim.sourceText === row.label;
+    if (claim.dimension === "mood") return claim.value === mood;
+    if (claim.dimension === "tense") return claim.value === tense;
+    return row.person !== "" && (claim.dimension === "person" || claim.dimension === "number");
+  };
+}
+
+/** Every spelling one row holds, with what the row has not already said. */
+function VerbForms({
+  forms,
+  filed,
+  query,
+  markUnsplit = false,
+}: {
+  forms: readonly SourceForm[];
+  filed: (claim: GrammarClaim) => boolean;
+  query: string;
+  markUnsplit?: boolean;
+}) {
+  return (
+    <>
+      {forms.map((form, i) => (
+        <span key={form.index}>
+          {i > 0 && ", "}
+          <BoxSurface spelling={spellingOf(form)} query={query} />
+          {markUnsplit && !isOneWord(form.surface) && <Unsplit />}
+          <Grammar
+            claims={claimsBeyond(form.claims, filed)}
+            label={`grammar for ${form.surface}`}
+          />
+          <SpellingSource spelling={spellingOf(form)} />
+        </span>
+      ))}
+    </>
+  );
+}
+
+/** A row's label cell: the source's own text, and the person it also stated. */
+function VerbRowLabel({ row }: { row: VerbRow }) {
+  if (!row.italian) return <>{row.label}</>;
+  return (
+    <>
+      <It>{row.label}</It>
+      {row.person !== "" && <span className={MUTED}> {row.person}</span>}
+    </>
+  );
+}
+
+/** One mood's boxes, three to a row, in the order the source's tenses give. */
+function VerbMoodGroup({
+  group,
+  recordId,
+  query,
+}: {
+  group: MoodGroup;
+  recordId: number;
+  query: string;
+}) {
+  const id = `mood-${recordId}-${groupKey(group.mood)}`;
+  return (
+    <section className={MOOD_GROUP} aria-labelledby={id}>
+      <h3 className={MOOD_HEADING} id={id}>
+        {moodHeading(group.mood)}
+      </h3>
+      <BoxRow>
+        {group.boxes.map((box) => (
+          <Box
+            key={groupKey(box.tense)}
+            id={`${id}-${groupKey(box.tense)}`}
+            heading={tenseHeading(box.tense)}
+            level={4}
+          >
+            <BoxRows>
+              {box.rows.map((row) => (
+                <BoxLine key={row.label} label={<VerbRowLabel row={row} />}>
+                  <VerbForms
+                    forms={row.forms}
+                    filed={filedInTable(group.mood, box.tense, row)}
+                    query={query}
+                  />
+                </BoxLine>
+              ))}
+            </BoxRows>
+          </Box>
+        ))}
+      </BoxRow>
+    </section>
+  );
+}
+
+/**
+ * A verb: its non-finite forms in the header bar, then the paradigm as boxed
+ * tables under the mood the source states (#48).
+ *
+ * The unplaced box is last and, on today's data, empty by construction: every
+ * entry the header does not carry is filed under a mood — the stated one or the
+ * source's silence — and under a tense or the box named for having none. It
+ * stays because the placement is computed by subtracting what rendered from
+ * what the record lists, so a form no rule reaches shows up as a box rather
+ * than disappearing.
+ */
+function VerbCard({ reading, query }: { reading: Reading; query: string }) {
+  const facts = nonFiniteFacts(reading);
+  const groups = moodGroups(reading);
+  const placed = new Set([
+    ...facts.flatMap((fact) => fact.forms.map((form) => form.index)),
+    ...groups.flatMap((group) =>
+      group.boxes.flatMap((box) => box.rows.flatMap((row) => row.forms.map((f) => f.index))),
+    ),
+  ]);
+  const unplaced = unplacedForms(reading, placed);
+
+  return (
+    <ReadingShell
+      reading={reading}
+      query={query}
+      facts={facts.map((fact) => ({
+        label: fact.label,
+        // `se intr. essere` is one auxiliary entry the source wrote as three
+        // words, so it carries the marking that says this page does not split
+        // a source string into separate forms.
+        value: <VerbForms forms={fact.forms} filed={fact.filed} query={query} markUnsplit />,
+      }))}
+      silence={{ source: nonFiniteClause(facts), withheld: [] }}
+    >
+      <Grammar
+        claims={otherRecordClaims(reading.grammar.record)}
+        label={`other grammar for ${reading.word}`}
+      />
+      {groups.map((group) => (
+        <VerbMoodGroup
+          key={groupKey(group.mood)}
+          group={group}
+          recordId={reading.recordId}
+          query={query}
+        />
+      ))}
+      {unplaced.length > 0 && (
+        <BoxRow>
+          <UnplacedForms reading={reading} forms={unplaced} query={query} markUnsplit />
+        </BoxRow>
+      )}
+    </ReadingShell>
+  );
+}
+
 /**
  * Every other part of speech, in the shape the shell now gives every card.
  *
@@ -1533,11 +1992,12 @@ function GenericCard({ reading, query }: { reading: Reading; query: string }) {
  * The card for one reading, chosen by its part of speech.
  *
  * This is the only place that choice is made. A part of speech with no card of
- * its own renders the generic one, unchanged — which is what makes adding the
- * next card (a verb's, #48) an addition here rather than a rewrite of it.
+ * its own renders the generic one, unchanged — which is what made each card so
+ * far an addition here rather than a rewrite of it.
  */
 export function ReadingCard({ reading, query }: { reading: Reading; query: string }) {
   if (isNounReading(reading)) return <NounCard reading={reading} query={query} />;
   if (isAdjectiveReading(reading)) return <AdjectiveCard reading={reading} query={query} />;
+  if (isVerbReading(reading)) return <VerbCard reading={reading} query={query} />;
   return <GenericCard reading={reading} query={query} />;
 }

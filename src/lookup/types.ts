@@ -288,6 +288,19 @@ export function isAdjectiveReading(reading: Reading): reading is OtherReading {
 }
 
 /**
+ * Whether this reading is a verb — which is the card the page picks for it
+ * (#48), and nothing else.
+ *
+ * It narrows to `OtherReading` for the reason `isAdjectiveReading` does: a verb
+ * is not a noun, so it carries no articles, and the brand on `NonNounPos` is
+ * not a unit type, so a bare `reading.pos === "verb"` written at a call site
+ * narrows nothing.
+ */
+export function isVerbReading(reading: Reading): reading is OtherReading {
+  return (reading.pos as string) === "verb";
+}
+
+/**
  * Which imported file a page is answering from.
  *
  * Four of these columns are nullable in the schema, and a reader is told so in
