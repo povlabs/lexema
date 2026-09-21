@@ -230,6 +230,15 @@ export const FIXTURE_LINES: string[] = [
   record({
     word: "bello", pos: "adj", pos_title: "Aggettivo",
     tags: ["masculine", "singular"],
+    // The three rows reports/dataset-findings.md "Adjective representation"
+    // reads off the real record. With the record's own masculine singular they
+    // are the four cells of a paradigm, which is what makes `bello` the clean
+    // case of #52.
+    forms: [
+      { form: "belli", tags: ["masculine", "plural"] },
+      { form: "bella", tags: ["feminine", "singular"] },
+      { form: "belle", tags: ["feminine", "plural"] },
+    ],
     senses: [{ glosses: ["che desta ammirazione"] }],
   }),
   record({
@@ -252,17 +261,27 @@ export const FIXTURE_LINES: string[] = [
     tags: ["feminine", "form-of", "singular"],
     senses: [formOf("femminile di bello", "bello")],
   }),
-  ...["bellissimo", "bellissima", "bellissimi", "bellissime", "belli", "belle", "bellino"].map(
-    (word) =>
-      record({
-        word, pos: "adj", pos_title: "Aggettivo",
-        tags: ["masculine", "singular"],
-        forms: [
-          { form: "bello", tags: ["positive"] },
-          { form: "bella", tags: ["feminine", "singular"] },
-        ],
-        senses: [formOf(`derivato di bello`, "bello")],
-      }),
+  // `bellino` is a diminutive, so its own feminine is `bellina`, not `bella` —
+  // which is also what holds the two `bella` counts where they were, now that
+  // the `bello` record above lists `bella` itself.
+  ...[
+    { word: "bellissimo", feminine: "bella" },
+    { word: "bellissima", feminine: "bella" },
+    { word: "bellissimi", feminine: "bella" },
+    { word: "bellissime", feminine: "bella" },
+    { word: "belli", feminine: "bella" },
+    { word: "belle", feminine: "bella" },
+    { word: "bellino", feminine: "bellina" },
+  ].map(({ word, feminine }) =>
+    record({
+      word, pos: "adj", pos_title: "Aggettivo",
+      tags: ["masculine", "singular"],
+      forms: [
+        { form: "bello", tags: ["positive"] },
+        { form: feminine, tags: ["feminine", "singular"] },
+      ],
+      senses: [formOf(`derivato di bello`, "bello")],
+    }),
   ),
 
   // città — 1 direct, 0 embedded. Feminine and invariable, so number is stated
@@ -271,5 +290,35 @@ export const FIXTURE_LINES: string[] = [
     word: "città", pos: "noun", pos_title: "Sostantivo",
     tags: ["feminine", "invariable"],
     senses: [{ glosses: ["centro abitato di grandi dimensioni"] }],
+  }),
+  // Two adjectives past the twelve queries, kept last so every line above them
+  // keeps the number it had. #52 needs the two shapes a clean paradigm does not
+  // have, and neither word is a hit for any sampled query.
+
+  // fine — the incomplete adjective. Tagged both genders and singular, and its
+  // one form carries a bare `plural`: nothing says whether `fini` is the
+  // masculine plural or the feminine one, so two cells cannot be filled without
+  // guessing. reports/dataset-findings.md, "Incomplete and compound adjective
+  // data".
+  record({
+    word: "fine", pos: "adj", pos_title: "Aggettivo",
+    tags: ["masculine", "feminine", "singular"],
+    forms: [{ form: "fini", tags: ["plural"] }],
+    senses: [{ glosses: ["sottile, delicato"] }],
+  }),
+
+  // grande — the compound one. All four cells are filled by single words, and
+  // the odd string is in the degrees the source tags: `grandissimo\n massimo`
+  // is one `forms[]` entry written over two lines, exactly as the report found
+  // it.
+  record({
+    word: "grande", pos: "adj", pos_title: "Aggettivo",
+    tags: ["masculine", "feminine", "singular"],
+    forms: [
+      { form: "grandi", tags: ["masculine", "feminine", "plural"] },
+      { form: "maggiore", tags: ["comparative"] },
+      { form: "grandissimo\n massimo", tags: ["superlative"] },
+    ],
+    senses: [{ glosses: ["di dimensioni notevoli"] }],
   }),
 ];

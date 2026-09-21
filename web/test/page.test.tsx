@@ -85,6 +85,21 @@ async function render(db: DatabaseSync, query: string): Promise<string> {
 const cards = (html: string): number => html.split('<article class="reading"').length - 1;
 const mentions = (html: string): number => html.split('class="mention"').length - 1;
 
+/**
+ * One card out of a page, by the label it announces itself with.
+ *
+ * A query answers with every record that matched, so "the page shows no table"
+ * and "this record shows no table" are different claims — and it is the second
+ * one an assertion about `bella` is making.
+ */
+function card(html: string, label: string): string {
+  const open = html.indexOf(`<article class="reading" aria-label="${label}">`);
+  assert.notEqual(open, -1, `no card labelled ${label}`);
+  const end = html.indexOf("</article>", open);
+  assert.notEqual(end, -1, `card ${label} is not closed`);
+  return html.slice(open, end);
+}
+
 /** How many rows of each kind the index holds for one surface. */
 function occurrences(db: DatabaseSync, surfaceKey: string): { direct: number; embedded: number } {
   const row = db
@@ -311,6 +326,98 @@ test("a noun renders its own card: agreement, numbers, and derived articles or a
     // for one; the verb card still does.
     assert.doesNotMatch(citta, /Grouped conjugations/);
     assert.match(await render(db, "parlare"), /Grouped conjugations/);
+  });
+});
+
+/**
+ * The adjective card, over the four shapes #52 names.
+ *
+ * The four are the whole range the source offers here: a paradigm it fills, a
+ * record that fills almost none of it, a record where a cell cannot be told
+ * apart, and one whose degrees are written as source text rather than as one
+ * word. The table appears in exactly one of them, and every other case says in
+ * words why it does not.
+ */
+test("an adjective renders its own card: a paradigm when the source fills it, a reason when it does not", async () => {
+  await withFixture(async ({ db }) => {
+    // `bello`: masculine singular on the record, and three forms tagged for the
+    // other three cells. All four are single words, so the table renders.
+    const bello = await render(db, "bello");
+    assert.match(bello, /<h2><span lang="it">bello<\/span> <span class="pos">adjective<\/span><\/h2>/);
+    assert.match(bello, /<h3 id="paradigm-\d+">Gender and number<\/h3><table class="numbers">/);
+    assert.match(
+      bello,
+      /<th scope="row">masculine<\/th><td><span lang="it">bello<\/span><\/td><td><span lang="it">belli<\/span><\/td>/,
+    );
+    assert.match(
+      bello,
+      /<th scope="row">feminine<\/th><td><span lang="it">bella<\/span><\/td><td><span lang="it">belle<\/span><\/td>/,
+    );
+    // No form is dropped: each of the three is in the list under the table too.
+    for (const form of ["belli", "bella", "belle"]) {
+      assert.match(bello, new RegExp(`<li><span lang="it">${form}</span>`), `${form} is listed`);
+    }
+    // Nothing in this entry carries a degree tag, so there is no row for one.
+    assert.match(bello, /no form in this entry is tagged comparative or superlative/);
+    assert.doesNotMatch(bello, /<th scope="row">superlative<\/th>/);
+
+    // `bella`: the adjective card, and no table of its own — the record is
+    // feminine singular and lists no forms, so three cells have nothing in
+    // them. The `bello` card on the same page still has its table, which is
+    // why this reads one card rather than the whole page.
+    const bella = card(await render(db, "bella"), "bella, adjective");
+    assert.match(bella, /<h2><span lang="it">bella<\/span> <span class="pos">adjective<\/span><\/h2>/);
+    assert.match(
+      bella,
+      /No table is shown: a gender-and-number table needs a masculine singular, and this entry files nothing under one/,
+    );
+    assert.doesNotMatch(bella, /<table/);
+
+    // `fine`: tagged masculine, feminine and singular, with one form under a
+    // bare `plural`. Nothing says whether `fini` is the masculine plural or the
+    // feminine one, so the table is withheld and `fini` stays in the list.
+    const fine = await render(db, "fine");
+    assert.match(fine, /<h2><span lang="it">fine<\/span> <span class="pos">adjective<\/span><\/h2>/);
+    assert.doesNotMatch(fine, /class="numbers"/);
+    assert.match(
+      fine,
+      /No table is shown: a gender-and-number table needs a masculine plural, and this entry files nothing under one — neither its own headword nor any form it lists\./,
+    );
+    assert.match(fine, /<li><span lang="it">fini<\/span>/);
+
+    // `grande`: four single words fill the table, and the source's own degree
+    // tags carry the odd strings.
+    const grande = await render(db, "grande");
+    assert.match(
+      grande,
+      /<th scope="row">masculine<\/th><td><span lang="it">grande<\/span><\/td><td><span lang="it">grandi<\/span><\/td>/,
+    );
+    assert.match(
+      grande,
+      /<th scope="row">comparative<\/th><td><span><span lang="it">maggiore<\/span><\/span><\/td>/,
+    );
+    // Verbatim, newline and leading space included, and marked as source text —
+    // never split into `grandissimo` and `massimo`.
+    assert.match(
+      grande,
+      /<th scope="row">superlative<\/th><td><span><span lang="it">grandissimo\n massimo<\/span>/,
+    );
+    assert.match(
+      grande,
+      /<span lang="it">grandissimo\n massimo<\/span><span class="ambiguous"> · source text, not split into separate forms<\/span>/,
+    );
+    assert.doesNotMatch(grande, /<span lang="it">massimo<\/span>/);
+    // Every entry the lookup returned is somewhere on the card.
+    for (const form of ["grandi", "maggiore", "grandissimo\n massimo"]) {
+      assert.ok(grande.includes(`<span lang="it">${form}</span>`), `${form} is rendered`);
+    }
+
+    // An adjective is not a noun and not a verb, so it claims neither's
+    // sections — and no other part of speech picked up the adjective's.
+    assert.doesNotMatch(grande, /Grouped conjugations/);
+    assert.doesNotMatch(grande, /Articles<\/h3>/);
+    assert.doesNotMatch(await render(db, "casa"), /Gender and number<\/h3>/);
+    assert.doesNotMatch(await render(db, "parlare"), /Gender and number<\/h3>/);
   });
 });
 
