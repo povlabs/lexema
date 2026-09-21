@@ -1,6 +1,6 @@
 # Italian Kaikki/Wiktextract dataset findings
 
-> Historical inspection notes. Their verification claims have not been accepted wholesale in the current work. See [DATASET_SPOT_CHECK.md](DATASET_SPOT_CHECK.md) for fresh direct observations and [SOURCE_RESEARCH.md](SOURCE_RESEARCH.md) for upstream comparisons and remaining uncertainty.
+> Historical inspection notes. Their verification claims have not been accepted wholesale in the current work. See [DATASET_SPOT_CHECK.md](2026-09-18-dataset-spot-check.md) for fresh direct observations and [SOURCE_RESEARCH.md](2026-09-18-source-research.md) for upstream comparisons and remaining uncertainty.
 
 ## Inspection method
 

@@ -1,118 +1,75 @@
 # Lexema
 
-The one rules file. Every agent, every session.
+An Italian word-search website, not built yet. `src/` holds the Italian source
+adapter, the candidate resolver and the validation CLI; `test/` and `fixtures/`
+hold their checks; `reports/` holds dated findings; `.decisions/` holds the
+rulings. The source file `it-extract.jsonl.gz` sits in the repository root,
+ignored by Git and absent in CI.
 
-## Read first
+## Working rules
 
-Read every file in [`.decisions/`](.decisions). They bind you.
+- Use `pnpm`, including `pnpm exec` and `pnpm dlx` instead of `npx`. Commands are
+  declared in [package.json](package.json) and explained in
+  [DEVELOPMENT.md](DEVELOPMENT.md)
+  ([ADR 0002](.decisions/0002-pnpm-is-the-package-manager.md)).
+- Source-derived lexical data is read-only: keep it as imported, keep where each
+  fact came from, and return every valid candidate. Italian grammar enrichment is
+  deterministic and language-specific. AI generation, a product UI, or wider work
+  needs an explicit request.
+- Make invalid states unrepresentable. Domain logic belongs in domain objects.
+- Verify claims about the dataset, the platform, and dependencies in source or a
+  real test, and cite the evidence. A report marked historical is context, not
+  fact; existing code is not accepted as correct without fresh review.
+- Replacing a tool is its own decision, never part of another change
+  ([ADR 0003](.decisions/0003-tool-replacement-is-its-own-decision.md)).
+- Delegated agent work runs through `pi-subagents` from the Pi session talking to
+  Huey, never in separate terminal tabs or Herdr panes. The parent routes child
+  questions and reports every result
+  ([ADR 0007](.decisions/0007-pi-subagents-runs-agent-work.md)).
+- Codex reviews as `nothueypov`; Claude builds and repairs. The roles do not swap.
+  A reviewer prefixes each `gh` or `fabrika` call with
+  `GH_TOKEN="$(gh auth token --user nothueypov)"` and never changes the active
+  account ([ADR 0005](.decisions/0005-codex-reviews-claude-builds.md)).
+- A pull request merges when every required verdict is PASS at its head, and only
+  the `shipper` merges. `ready-for:human` holds it for Huey
+  ([ADR 0006](.decisions/0006-codex-review-is-the-merge-gate.md)).
+- All mutation happens in this one checkout: no worktrees, no sibling clones, one
+  writer at a time. Check `git branch --show-current` before editing, and leave
+  the branch where you found it.
+- Use the definitions in [.glossary/TERMS.md](.glossary/TERMS.md) and
+  [.glossary/LANGUAGE.md](.glossary/LANGUAGE.md) when naming or changing a
+  concept. Technical identifiers and prose are English; source text stays Italian.
+- Follow applicable Fabrika skills when using Fabrika. File deferred work through
+  the `report` skill when it is found, unless the task explicitly excludes filing.
 
-Then, in order:
+## Discover the context for the task
 
-1. [`docs/LEXEMA_SPEC.md`](docs/LEXEMA_SPEC.md) — product, architecture, API, provenance, MVP boundaries.
-2. [`docs/DATASET_FINDINGS.md`](docs/DATASET_FINDINGS.md) — verified facts about the Italian Kaikki/Wiktextract dataset.
-3. [`docs/NEXT_STEPS.md`](docs/NEXT_STEPS.md) — decisions, open questions, the first milestone.
+Read the nearest working code and tests. [.patterns/index.md](.patterns/index.md)
+is the one task-to-pattern map; read the rows relevant to the change, not every
+linked document. Add or extend a pattern only when it meets that index's admission
+rules.
 
-## The product rule
+Verify current behavior in source. Check the governing decision before treating a
+difference between source and guidance as intended design.
 
-Source-derived lexical data is read-only: keep it as imported, keep where each fact came from, return every valid candidate. Italian grammar enrichment is deterministic and language-specific. AI generation, a product UI, or wider work needs an explicit request.
+| Home | Owns |
+|---|---|
+| [README.md](README.md) | Product introduction and ethos |
+| [DEVELOPMENT.md](DEVELOPMENT.md) | Setup, commands and current development state |
+| [design-system-manifest.md](design-system-manifest.md) | Rendered UI design law |
+| [.patterns/](.patterns/index.md) | Current implementation guidance and when to read it |
+| [.glossary/](.glossary/LANGUAGE.md) | Canonical terms and necessary distinctions |
+| [.decisions/](.decisions/) | Decisions, rationale and history |
+| [reports/](reports/) | Dated findings and measurements |
 
-## Your role
+Use resolvable Markdown links. Keep each fact in its owning document and link to it.
 
-Decide this first.
+## Decision discovery
 
-- **Worker** — you were started in a herdr pane with one job in the prompt (`review PR #33`, `build #14`). Do that job here, in this session, to the end. Your tools are the skill you were given, `git`, `gh` and `fabrika`. The one `herdr` command you run is the callback at the end of your prompt, after the job is done. Everything else in `herdr` is the driver's: a worker that opens a pane loses its job to a session nobody watches, and a worker that lists panes sees itself and quits as a duplicate.
-- **Driver** — you are talking to Huey and handing work out. Every job that takes minutes runs in its own herdr tab. Your own shell stays free for short commands.
+List `.decisions/`: filenames identify records, and each record's frontmatter gives
+its `id`, `title` and `status`. Read applicable records when changing the choice they
+govern or resolving conflicting guidance. Record new decisions with `/adr`.
 
-## Driver: spawn a worker
-
-One tab per job, labelled so Huey can see who started it.
-
-```bash
-herdr tab create --workspace "$HERDR_WORKSPACE_ID" --cwd "$PWD" --label <label> --no-focus   # pane id at .result.root_pane.pane_id
-herdr pane rename <pane_id> <label>                       # --label names the tab only
-herdr pane run <pane_id> "unsetopt correct correct_all"   # zsh otherwise "corrects" wrangler to .wrangler and drops the line
-herdr pane run <pane_id> "<the pi command>"
-```
-
-Fire it and move on. The worker calls you back: the last line of its prompt tells it to submit a prompt to your pane, which arrives as a new turn in your chat. Your `HERDR_PANE_ID` is the driver pane. The callback goes in the prompt, not after the pi command: pi stays open when the job ends, so a shell line after it never runs. `agent prompt`, not `pane run`: `pane run` types raw keys and joins whatever Huey is typing.
-
-```
-<job>. When done, run: herdr agent prompt <driver_pane_id> "<label> finished in pane <pane_id>. Read it and report."
-```
-
-When that turn arrives, read the pane and report the result to Huey:
-
-```bash
-herdr pane read <pane_id> --source recent-unwrapped --lines 40
-```
-
-Your task is not done until you have reported the result of every worker you started.
-
-Run pi interactively: prompt as a plain argument, `-n` to name the session. Then the pane shows thinking and tool calls live. `-p` buffers everything until the end and the pane looks hung.
-
-Close the tab after reporting.
-
-## Driver: start a review
-
-The reviewer is Codex running the fabrika `review` skill, posting as `nothueypov` so the author is not approving their own work. Label the tab `pr-<n>`.
-
-```bash
-DRIVER=$HERDR_PANE_ID
-herdr pane run <pane_id> "export GH_TOKEN=\$(gh auth token --user nothueypov)
-export FABRIKA_GLOBAL_WARNING_DISABLED=1
-pi --provider openai-codex --model gpt-5.6-sol \\
-   --skill ~/.pi/agent/npm/node_modules/@kampus/fabrika-pi/dist/skills/review \\
-   -n 'review PR <n>' 'review PR #<n>. When your verdict is posted, run: herdr agent prompt $DRIVER \"pr-<n> review finished in pane <pane_id>. Read it and report the verdict.\"'"
-```
-
-Reviews run in parallel, one tab each. A review is done when `fabrika review verdicts <n>` lists every namespace that `fabrika review scope <n>` asks for, at the PR's current head. Report the verdict URL to Huey. Hold pushes to that branch until then: a new head restarts the review.
-
-## Driver: the other agents
-
-Same command, different skill directory and model. Skills live in `~/.pi/agent/npm/node_modules/@kampus/fabrika-pi/dist/skills/`.
-
-| Agent | `--skill` | Provider | Job | Tab label |
-| --- | --- | --- | --- | --- |
-| reviewer | `review` | `openai-codex` | judge one PR's code and docs | `pr-<n>` |
-| ui-reviewer | `review-ui` | `openai-codex` | judge one PR's rendered UI | `ui-<n>` |
-| builder | `build` | `pi-claude` | build one issue, or repair one PR | `build-<n>` |
-| ui-builder | `build-ui` | `pi-claude` | build one issue whose deliverable is UI | `build-<n>` |
-| triager | `triage` | `pi-claude` | make one raw issue pickable | `triage-<n>` |
-| shipper | `ship` | `pi-claude` | merge one PR whose verdicts all PASS | `ship-<n>` |
-| operator | `operate` | `pi-claude` | drive one issue through all of the above | `op-<n>` |
-
-A builder starts like this:
-
-```bash
-herdr pane run <pane_id> "pi --provider pi-claude --model claude-opus-5 \\
-   --skill ~/.pi/agent/npm/node_modules/@kampus/fabrika-pi/dist/skills/build \\
-   -n 'build <n>' 'build #<n>. When the PR is open, run: herdr agent prompt $DRIVER \"build-<n> finished in pane <pane_id>. Read it and report.\"'"
-```
-
-Repair is the builder again, with `repair PR #<n>` as the prompt. Only the shipper merges, and only after every required verdict is PASS at the current head. A PR labelled `ready-for:human` waits for Huey instead ([0006](.decisions/0006-codex-review-is-the-merge-gate.md)).
-
-## Driver: models
-
-| Provider | Model | Use for |
-| --- | --- | --- |
-| `pi-claude` | `claude-opus-5` | building, repairing |
-| `openai-codex` | `gpt-5.6-sol` | reviewing (Codex plan 1) |
-| `openai-codex-2` | `gpt-5.6-sol` | reviewing (Codex plan 2) |
-| `anthropic` | — | never. Use `pi-claude`. |
-
-There are two different Codex plans, each its own provider. The pi status line shows which one a pane is on and what is left (`Codex #2 · 55% · 5h`). When one runs low, start the next review on the other.
-
-`pi auth check` lies: it reports `pi-claude` not ready and `anthropic` ready. The reverse is true. `anthropic` fails with `400 … Third-party apps now draw from your extra usage`.
-
-## Commands
-
-```bash
-pnpm install --frozen-lockfile
-pnpm run typecheck
-pnpm test
-pnpm exec wrangler ...   # npx picks another wrangler and prompts for login
-```
-
-## One checkout
-
-All work happens in `~/Documents/projects/lexema`. No worktrees, no sibling clones. Other sessions share this tree and may switch its branch while you work: check `git branch --show-current` before you edit, and leave it where you find it. Clean up anything you leave behind.
+There is no committed ADR index. Filenames plus frontmatter are the discovery
+contract, and CI reds a duplicate id or a filename that disagrees with its
+frontmatter ([decisions-index.yml](.github/workflows/decisions-index.yml)).
