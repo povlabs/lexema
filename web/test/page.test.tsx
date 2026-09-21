@@ -139,6 +139,21 @@ const mentions = (html: string): number => html.split(`class="${MENTION}"`).leng
 /** How many times a literal string occurs. Counting, never pattern-matching. */
 const occurrencesOf = (html: string, needle: string): number => html.split(needle).length - 1;
 
+/**
+ * How many `<tag>` elements the markup opens, whatever attributes they carry.
+ *
+ * A landmark or a heading is one because of its element, not because of the
+ * class string it happens to wear, so the counts that claim an exact total are
+ * taken here rather than off a production class: a stray `<main>` or `<h1>` a
+ * restyle forgot to class would otherwise go uncounted.
+ */
+const elementsOf = (html: string, tag: string): number =>
+  patternsOf(html, new RegExp(`<${tag}(?=[\\s/>])`));
+
+/** How many times a pattern occurs, counted over the whole markup. */
+const patternsOf = (html: string, pattern: RegExp): number =>
+  html.match(new RegExp(pattern, "g"))?.length ?? 0;
+
 /** A literal, as a pattern: an assertion over a class string stays exact. */
 const esc = (literal: string): string => literal.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 const exact = (literal: string): RegExp => new RegExp(esc(literal));
@@ -553,6 +568,8 @@ test("agreement sets render as boxed groups in one wrapping row, never as stacke
     // The articles are a box in that same row, not a section of their own
     // (design-system-manifest.md § "The result card", "Three boxes to a row").
     assert.match(studente, boxHeading("articles-\\d+", "Articles"));
+    // Counted on the row element, so a row that lost its class is still a row.
+    assert.equal(patternsOf(section(studente, "Articles"), /<th[^>]*scope="row"/), 3);
     assert.equal(occurrencesOf(section(studente, "Articles"), `<th class="${BOX_ROW_LABEL}"`), 3);
     // A row inside a box is a small English label and an Italian value.
     assert.match(
@@ -799,6 +816,7 @@ test("no fact renders twice on a card", async () => {
     assert.equal(occurrencesOf(rest, "comparativo di maggioranza"), 1);
     const grande = card(await render(db, "grande"), "grande, adjective");
     assert.doesNotMatch(grande, /aria-label="other grammar for grande"/);
+    assert.equal(patternsOf(grande, /<dt[^>]*>part of speech<\/dt>/), 1);
     assert.equal(occurrencesOf(grande, `<dt class="${HEADLINE_LABEL}">part of speech</dt>`), 1);
   });
 });
@@ -913,11 +931,13 @@ test("every form renders exactly once on the card, counted against the lookup's 
     // in the prose of a raw tag and nowhere a degree row could read it.
     const fine = card(await render(db, "fine"), "fine, adjective");
     assert.match(fine, boxHeading("forms-\\d+", "Forms listed by this entry"));
+    assert.equal(elementsOf(section(fine, "Forms listed by this entry"), "li"), 1);
     assert.equal(occurrencesOf(section(fine, "Forms listed by this entry"), formItem), 1);
 
     const grande = card(await render(db, "grande"), "grande, adjective");
     assert.match(grande, boxHeading("forms-\\d+", "Other forms listed by this entry"));
     const rest = section(grande, "Other forms listed by this entry");
+    assert.equal(elementsOf(rest, "li"), 1);
     assert.equal(occurrencesOf(rest, formItem), 1);
     assert.match(rest, exact(`${formItem}<span lang="it" data-form="2">maggiori</span>`));
     assert.match(rest, /<q lang="it">comparativo di maggioranza<\/q>/);
@@ -1192,12 +1212,17 @@ test("Italian is marked as Italian, and the interface is not", async () => {
 test("the page has the labels, headings and landmarks a keyboard reader needs", async () => {
   await withFixture(async ({ db }) => {
     const html = await render(db, "sale");
-    assert.equal(html.split(`<main class="${SHELL_TOP}">`).length - 1, 1, "exactly one main landmark");
-    assert.equal(
-      html.split(`<h1 class="${SITE_NAME}">`).length - 1,
-      1,
-      "exactly one first-level heading",
-    );
+    // Counted by element and by role, so nothing depends on how a part is
+    // classed: one `<main>`, no second element claiming that role, one `<h1>`,
+    // and one search form.
+    assert.equal(elementsOf(html, "main"), 1, "exactly one main landmark");
+    assert.equal(occurrencesOf(html, 'role="main"'), 0, "no second element claims the main role");
+    assert.equal(elementsOf(html, "h1"), 1, "exactly one first-level heading");
+    assert.equal(occurrencesOf(html, 'role="search"'), 1, "exactly one search landmark");
+    // The one of each carries the class string the page ships, which is the
+    // separate fact that the restyle reached it.
+    assert.equal(occurrencesOf(html, `<main class="${SHELL_TOP}">`), 1);
+    assert.equal(occurrencesOf(html, `<h1 class="${SITE_NAME}">`), 1);
     assert.match(
       html,
       exact(`<form class="${SEARCH_FORM}" role="search" action="/" method="get">`),
@@ -1209,7 +1234,10 @@ test("the page has the labels, headings and landmarks a keyboard reader needs", 
     );
     assert.match(html, exact(`<button class="${SEARCH_BUTTON}" type="submit">Search</button>`));
     // One card, one heading, and every section under it is labelled by its own.
-    assert.equal(html.split(`<h2 class="${HEADWORD}">`).length - 1, cards(html));
+    // The total is counted by element; the classed count says they are the same
+    // headings.
+    assert.equal(elementsOf(html, "h2"), cards(html));
+    assert.equal(occurrencesOf(html, `<h2 class="${HEADWORD}">`), cards(html));
     assert.match(
       html,
       new RegExp(`<section class="${esc(BOX)}" aria-labelledby="numbers-\\d+">`),
@@ -1489,19 +1517,27 @@ test("the attribution page states the release identity, and says which columns w
       html,
       exact(field("Upstream Wiktionary dump", `<span class="${EMPTY}">not recorded</span>`)),
     );
-    assert.equal(
-      html.split(`<dd class="${FIELD_VALUE}"></dd>`).length - 1,
-      0,
-      "no field renders blank",
-    );
+    // Counted on the element: a blank value is a blank whatever it is classed.
+    assert.equal(patternsOf(html, /<dd[^>]*><\/dd>/), 0, "no field renders blank");
 
     // A release that cannot be read is a different answer from a release with
     // nothing in it, and the page gives it in words rather than as five gaps.
     const unread = renderToStaticMarkup(<Attribution release={undefined} />);
     assert.match(unread, /The release serving this site could not be read/);
-    // And none of the five rows is rendered in its place.
-    assert.doesNotMatch(unread, exact(`<dt class="${FIELD_LABEL}">Release</dt>`));
-    assert.doesNotMatch(unread, exact(`<dt class="${FIELD_LABEL}">Source file</dt>`));
+    // And not one of the five rows is rendered in its place. Each is named by
+    // its own label, matched on the element rather than on a class string, so a
+    // row that comes back differently classed still fails this.
+    for (const label of [
+      "Release",
+      "Source file",
+      "Downloaded at (UTC)",
+      "SHA-256 of the downloaded file",
+      "Upstream Wiktionary dump",
+    ]) {
+      assert.doesNotMatch(unread, new RegExp(`<dt[^>]*>${esc(label)}</dt>`), label);
+    }
+    // Nor any value of theirs: the identity codes are what those rows carry.
+    assert.doesNotMatch(unread, /<code[^>]*>/, "no release identity value is rendered");
   });
 });
 
