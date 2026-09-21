@@ -279,6 +279,50 @@ test("a malformed leaf costs its own row and nothing else", async () => {
   }
 });
 
+test("a form the import refused still reports its own refused leaves", async () => {
+  // The form at /forms/0 is refused twice over: its surface is a number and so
+  // is one of its tags. The surface costs the form its lookup and claim rows,
+  // and that used to cost the tag its rejection too — the pass that reads the
+  // members returned before reading them, so the leaf vanished from both the
+  // rejection file and the count.
+  const lines = [
+    JSON.stringify({
+      word: "valido", pos: "noun", pos_title: "Sostantivo", lang_code: "it",
+      forms: [{ form: 42, tags: [9, "plural"], raw_tags: 8, source: 7 }],
+      senses: [{ glosses: ["valido"] }],
+    }),
+  ];
+  const { dir, database, report, rejections } = await importFixture({}, lines);
+  const db = new DatabaseSync(database, { readOnly: true });
+  try {
+    assert.equal(report.admitted, 1);
+    assert.equal(report.malformed, 0);
+    assert.equal(report.malformedMembers, 4);
+    assert.deepEqual(rejections, [
+      { kind: "malformed-member", lineNo: 1, reason: "/forms/0/form is not a string" },
+      { kind: "malformed-member", lineNo: 1, reason: "/forms/0/source is not a string" },
+      { kind: "malformed-member", lineNo: 1, reason: "/forms/0/tags/0 is not a string" },
+      { kind: "malformed-member", lineNo: 1, reason: "/forms/0/raw_tags is not an array" },
+    ]);
+    // The count on the release row says the same thing as the run did.
+    assert.deepEqual(
+      rows(db, "SELECT malformed_members FROM source_release"),
+      [{ malformed_members: 4 }],
+    );
+
+    // Reporting the members is not admitting them: the refused form names no
+    // surface, so it keeps its lookup row and every claim row off the database.
+    assert.deepEqual(
+      rows(db, "SELECT surface, json_pointer FROM lookup_form ORDER BY json_pointer"),
+      [{ surface: "valido", json_pointer: "/word" }],
+    );
+    assert.deepEqual(rows(db, "SELECT value FROM grammar_claim WHERE scope = 'form'"), []);
+  } finally {
+    db.close();
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
 test("the release row carries the counts the run reported", async () => {
   const { dir, database, report } = await importFixture();
   const db = new DatabaseSync(database, { readOnly: true });
