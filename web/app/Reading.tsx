@@ -8,7 +8,8 @@
 // inside a document that is `lang="en"`; and every candidate the lookup
 // returned is rendered, never ranked down to one.
 
-import { isNounReading } from "@lexema/lookup/types.ts";
+import type { ReactNode } from "react";
+import { isAdjectiveReading, isNounReading } from "@lexema/lookup/types.ts";
 import type {
   ArticleWithholding,
   GrammarClaim,
@@ -61,9 +62,31 @@ function stated(claims: readonly GrammarClaim[], dimension: string): string | un
   return undefined;
 }
 
+/** Every distinct value the source stated for one dimension, in source order. */
+function statedValues(claims: readonly GrammarClaim[], dimension: string): string[] {
+  const values: string[] = [];
+  for (const claim of claims) {
+    if (claim.status !== "stated" || claim.dimension !== dimension) continue;
+    if (!values.includes(claim.value)) values.push(claim.value);
+  }
+  return values;
+}
+
 /** True when the source was asked for this dimension here and said nothing. */
 function isMissing(claims: readonly GrammarClaim[], dimension: string): boolean {
   return claims.some((claim) => claim.status === "missing" && claim.dimension === dimension);
+}
+
+/**
+ * One word as the source wrote it, with nothing to split on.
+ *
+ * `grandissimo\n massimo` is a single `forms[]` entry the source wrote as two
+ * lines, and `più grande` is one it wrote as two words. Neither is two forms, and
+ * this page is not the place that decides it is: the test is the whole of what
+ * "a single word" means here, and anything failing it is shown verbatim.
+ */
+function isOneWord(surface: string): boolean {
+  return !/\s/u.test(surface);
 }
 
 /** An Italian word, in a page whose language is English. */
@@ -145,11 +168,23 @@ function Disputes({ reviews }: { reviews: Review[] }) {
   );
 }
 
+/**
+ * Said next to a surface the source did not write as one word.
+ *
+ * The note is the marking, and it is the only thing this page does about such a
+ * string: `docs/LEXEMA_SPEC.md` "Italian adjective enrichment" says to preserve
+ * a compound or incomplete source string rather than split or complete it.
+ */
+function Unsplit() {
+  return <span className="ambiguous"> · source text, not split into separate forms</span>;
+}
+
 /** One `forms[]` entry: the Italian spelling, and what the source said about it. */
-function FormEntry({ form }: { form: SourceForm }) {
+function FormEntry({ form, markUnsplit }: { form: SourceForm; markUnsplit: boolean }) {
   return (
     <li>
       <It>{form.surface}</It>
+      {markUnsplit && !isOneWord(form.surface) && <Unsplit />}
       <Grammar claims={form.claims} label={`grammar for ${form.surface}`} />
       {form.formSource !== null && (
         <span className="form-source">
@@ -166,7 +201,7 @@ function FormEntry({ form }: { form: SourceForm }) {
  * A listed form is not a claim that this record is the base word —
  * `studentessa` lists `studenti` — so the section says whose table it is.
  */
-function Forms({ reading }: { reading: Reading }) {
+function Forms({ reading, markUnsplit = false }: { reading: Reading; markUnsplit?: boolean }) {
   return (
     <section className="links" aria-labelledby={`forms-${reading.recordId}`}>
       <h3 id={`forms-${reading.recordId}`}>Forms listed by this entry</h3>
@@ -175,7 +210,7 @@ function Forms({ reading }: { reading: Reading }) {
       ) : (
         <ul className="forms">
           {reading.forms.map((form) => (
-            <FormEntry key={form.index} form={form} />
+            <FormEntry key={form.index} form={form} markUnsplit={markUnsplit} />
           ))}
         </ul>
       )}
@@ -404,6 +439,271 @@ function NounArticles({ articles, recordId }: { articles: ReadingArticles; recor
   );
 }
 
+// An adjective is read as a paradigm: masculine and feminine, singular and
+// plural, in one glance. This source supports that for some adjectives and not
+// for others, and that difference is what this card is for — a table when four
+// source-backed words fill it, and a reason in words when they do not. Nothing
+// below splits, trims or completes a source string, per docs/LEXEMA_SPEC.md
+// "Italian adjective enrichment".
+
+const ADJECTIVE_GENDERS = ["masculine", "feminine"] as const;
+const ADJECTIVE_NUMBERS = ["singular", "plural"] as const;
+
+type AdjectiveGender = (typeof ADJECTIVE_GENDERS)[number];
+type AdjectiveNumber = (typeof ADJECTIVE_NUMBERS)[number];
+
+/** One cell of the paradigm, named by the two dimensions that locate it. */
+interface Cell {
+  gender: AdjectiveGender;
+  number: AdjectiveNumber;
+}
+
+const CELLS: readonly Cell[] = ADJECTIVE_GENDERS.flatMap((gender) =>
+  ADJECTIVE_NUMBERS.map((number) => ({ gender, number })),
+);
+
+const cellKey = (cell: Cell): string => `${cell.gender}/${cell.number}`;
+const cellName = (cell: Cell): string => `${cell.gender} ${cell.number}`;
+
+/**
+ * Every cell the source filed one spelling under.
+ *
+ * A spelling lands in a cell only when the source stated both dimensions for
+ * it, and it lands in every cell those statements cover: `fine` is tagged
+ * masculine, feminine and singular, so the source really does file it under two
+ * cells. A spelling the source gave one dimension or neither lands nowhere —
+ * guessing the other half is the completion the spec forbids.
+ *
+ * A degree the source states keeps a spelling out of the table altogether,
+ * unless that degree is `positive`. `grande` lists `grandissimo` tagged
+ * absolute, superlative, masculine and singular: it is a masculine singular of
+ * something, and calling it the masculine singular of `grande` would be reading
+ * past the tag the source put there. It belongs in the degrees below.
+ */
+function placements(claims: readonly GrammarClaim[]): Cell[] {
+  const degrees = statedValues(claims, "degree");
+  if (degrees.some((degree) => degree !== "positive")) return [];
+
+  const genders = statedValues(claims, "gender");
+  const numbers = statedValues(claims, "number");
+  return CELLS.filter((cell) => genders.includes(cell.gender) && numbers.includes(cell.number));
+}
+
+/**
+ * The spellings this entry files under each cell: its own headword from the
+ * record's tags, and each `forms[]` entry from its own.
+ */
+function paradigmCandidates(reading: Reading): Map<string, string[]> {
+  const byCell = new Map<string, string[]>(CELLS.map((cell) => [cellKey(cell), []]));
+
+  const file = (claims: readonly GrammarClaim[], surface: string): void => {
+    for (const cell of placements(claims)) {
+      const surfaces = byCell.get(cellKey(cell));
+      if (surfaces !== undefined && !surfaces.includes(surface)) surfaces.push(surface);
+    }
+  };
+
+  file(reading.grammar.record, reading.word);
+  for (const form of reading.forms) file(form.claims, form.surface);
+  return byCell;
+}
+
+/** Why a cell could not be filled by one source-backed word. */
+type ParadigmWithholding =
+  | { reason: "cell-empty"; cell: Cell }
+  | { reason: "cell-ambiguous"; cell: Cell; count: number }
+  | { reason: "cell-not-one-word"; cell: Cell };
+
+/** Exactly four words, or the first cell that stopped the table. */
+type AdjectiveParadigm =
+  | {
+      status: "complete";
+      masculineSingular: string;
+      masculinePlural: string;
+      feminineSingular: string;
+      femininePlural: string;
+    }
+  | { status: "withheld"; withholding: ParadigmWithholding };
+
+type CellFill =
+  | { filled: true; surface: string }
+  | { filled: false; withholding: ParadigmWithholding };
+
+/** One cell: filled by a single source-backed word, or the reason it is not. */
+function fillCell(byCell: Map<string, string[]>, cell: Cell): CellFill {
+  const surfaces = byCell.get(cellKey(cell)) ?? [];
+  if (surfaces.length === 0) return { filled: false, withholding: { reason: "cell-empty", cell } };
+  if (surfaces.length > 1) {
+    return {
+      filled: false,
+      withholding: { reason: "cell-ambiguous", cell, count: surfaces.length },
+    };
+  }
+  const surface = surfaces[0];
+  if (!isOneWord(surface)) return { filled: false, withholding: { reason: "cell-not-one-word", cell } };
+  return { filled: true, surface };
+}
+
+/**
+ * The four-cell paradigm, or the first reason there is not one.
+ *
+ * `complete` carries four strings rather than a lookup that might miss one, so
+ * a half-filled table is not a value this function can return. The cells are
+ * read in a fixed order, so the reason a reader is given is always the same
+ * one.
+ */
+function adjectiveParadigm(reading: Reading): AdjectiveParadigm {
+  const byCell = paradigmCandidates(reading);
+
+  const masculineSingular = fillCell(byCell, { gender: "masculine", number: "singular" });
+  if (!masculineSingular.filled) {
+    return { status: "withheld", withholding: masculineSingular.withholding };
+  }
+  const masculinePlural = fillCell(byCell, { gender: "masculine", number: "plural" });
+  if (!masculinePlural.filled) {
+    return { status: "withheld", withholding: masculinePlural.withholding };
+  }
+  const feminineSingular = fillCell(byCell, { gender: "feminine", number: "singular" });
+  if (!feminineSingular.filled) {
+    return { status: "withheld", withholding: feminineSingular.withholding };
+  }
+  const femininePlural = fillCell(byCell, { gender: "feminine", number: "plural" });
+  if (!femininePlural.filled) {
+    return { status: "withheld", withholding: femininePlural.withholding };
+  }
+
+  return {
+    status: "complete",
+    masculineSingular: masculineSingular.surface,
+    masculinePlural: masculinePlural.surface,
+    feminineSingular: feminineSingular.surface,
+    femininePlural: femininePlural.surface,
+  };
+}
+
+/**
+ * Why there is no table, said as a sentence.
+ *
+ * No Italian spelling appears in one: these run inside English prose, and every
+ * Italian string on this page sits in its own `lang="it"`. The spellings are in
+ * the list below, where they are marked as Italian and shown in full.
+ */
+function paradigmWithheldSentence(withholding: ParadigmWithholding): string {
+  const cell = cellName(withholding.cell);
+  switch (withholding.reason) {
+    case "cell-empty":
+      return `No table is shown: a gender-and-number table needs a ${cell}, and this entry files nothing under one — neither its own headword nor any form it lists. The forms it does list are below, in the order the source wrote them.`;
+    case "cell-ambiguous":
+      return `No table is shown: this entry files ${withholding.count} different spellings under ${cell}, and the source does not say which one belongs in the cell. All of them are below, in the order the source wrote them.`;
+    case "cell-not-one-word":
+      return `No table is shown: the only ${cell} this entry files is source text rather than a single word, and this page does not split one. It is below, exactly as the source wrote it.`;
+  }
+}
+
+/**
+ * The four forms as a paradigm when the source fills all four, and a sentence
+ * when it does not.
+ */
+function AdjectiveParadigmTable({ reading }: { reading: Reading }) {
+  const paradigm = adjectiveParadigm(reading);
+
+  return (
+    <section className="links" aria-labelledby={`paradigm-${reading.recordId}`}>
+      <h3 id={`paradigm-${reading.recordId}`}>Gender and number</h3>
+      {paradigm.status === "withheld" ? (
+        <NotAvailable>{paradigmWithheldSentence(paradigm.withholding)}</NotAvailable>
+      ) : (
+        <table className="numbers">
+          <thead>
+            <tr>
+              <td />
+              <th scope="col">singular</th>
+              <th scope="col">plural</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <th scope="row">masculine</th>
+              <td>
+                <It>{paradigm.masculineSingular}</It>
+              </td>
+              <td>
+                <It>{paradigm.masculinePlural}</It>
+              </td>
+            </tr>
+            <tr>
+              <th scope="row">feminine</th>
+              <td>
+                <It>{paradigm.feminineSingular}</It>
+              </td>
+              <td>
+                <It>{paradigm.femininePlural}</It>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      )}
+    </section>
+  );
+}
+
+/** The two degrees this section shows, in the order it shows them. */
+const ADJECTIVE_DEGREES = ["comparative", "superlative"] as const;
+
+/**
+ * Comparative and superlative, from the source's own tags and nothing else.
+ *
+ * A row exists because a `forms[]` entry carries a stated `degree` claim for
+ * it. `grandissimo` looks like a superlative to anyone who reads Italian, and
+ * that is exactly the inference this page does not make: with no tag there is
+ * no row, whatever the spelling suggests. `grande`'s own comparatives are the
+ * other half of that — the release states their degree only in the prose of a
+ * `raw_tag`, so they get no row either.
+ *
+ * Every stated degree counts, not the first one: the release tags
+ * `grandissimo` `absolute` *and* `superlative`, and reading one claim per form
+ * would have dropped the whole row.
+ */
+function AdjectiveDegrees({ reading }: { reading: Reading }) {
+  const rows = ADJECTIVE_DEGREES.map((degree) => ({
+    degree,
+    forms: reading.forms.filter((form) => statedValues(form.claims, "degree").includes(degree)),
+  })).filter((row) => row.forms.length > 0);
+
+  return (
+    <section className="links" aria-labelledby={`degrees-${reading.recordId}`}>
+      <h3 id={`degrees-${reading.recordId}`}>Comparative and superlative</h3>
+      {rows.length === 0 ? (
+        <NotAvailable>
+          Not available in the source: no form in this entry is tagged comparative or superlative,
+          and Lexema does not read a degree off a spelling.
+        </NotAvailable>
+      ) : (
+        <table className="numbers">
+          <tbody>
+            {rows.map((row) => (
+              <tr key={row.degree}>
+                <th scope="row">{row.degree}</th>
+                <td>
+                  {row.forms.map((form, i) => (
+                    <span key={form.index}>
+                      {i > 0 && ", "}
+                      {/* Verbatim, newlines and all: one `forms[]` entry the
+                          source wrote, never two forms to pull apart. */}
+                      <It>{form.surface}</It>
+                      {!isOneWord(form.surface) && <Unsplit />}
+                    </span>
+                  ))}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+    </section>
+  );
+}
+
 /**
  * The record's forms grouped the way a conjugation table groups them.
  *
@@ -497,12 +797,27 @@ function otherRecordClaims(claims: GrammarClaim[]): GrammarClaim[] {
   });
 }
 
-export function ReadingCard({ reading, query }: { reading: Reading; query: string }) {
+/**
+ * Everything a card shows whatever the word is.
+ *
+ * The parts around the middle are the same for every part of speech — who the
+ * entry is about, what later research disputes, what it means, what points at
+ * it and where it can be checked — so they live here once. A card supplies two
+ * things: anything extra its header needs, and the middle that makes it its
+ * own.
+ */
+function ReadingShell({
+  reading,
+  query,
+  header,
+  children,
+}: {
+  reading: Reading;
+  query: string;
+  header?: ReactNode;
+  children: ReactNode;
+}) {
   const pos = posLabel(reading.pos);
-  // Nouns get their own layout (#53). Every other part of speech renders what
-  // it rendered before, unchanged. The narrowing is the type's own: a noun
-  // reading carries articles and no other reading has the field.
-  const noun = isNounReading(reading) ? reading : undefined;
 
   return (
     <article className="reading" aria-label={`${reading.word}, ${pos}`}>
@@ -518,7 +833,7 @@ export function ReadingCard({ reading, query }: { reading: Reading; query: strin
             Does not define <q lang="it">{query}</q> — it lists the form in its own table.
           </p>
         )}
-        {noun && <NounAgreement reading={noun} />}
+        {header}
       </header>
 
       <Disputes reviews={reading.reviews} />
@@ -561,24 +876,7 @@ export function ReadingCard({ reading, query }: { reading: Reading; query: strin
         </ol>
       )}
 
-      {noun ? (
-        <>
-          <Grammar
-            claims={otherRecordClaims(noun.grammar.record)}
-            label={`other grammar for ${noun.word}`}
-          />
-          <NounNumbers reading={noun} />
-          <NounArticles articles={noun.articles} recordId={noun.recordId} />
-          <Forms reading={noun} />
-        </>
-      ) : (
-        <>
-          <Grammar claims={reading.grammar.record} label={`grammar for ${reading.word}`} />
-          <Articles reading={reading} />
-          <Forms reading={reading} />
-          <Conjugations reading={reading} />
-        </>
-      )}
+      {children}
 
       {reading.lemmaLinks.length > 0 && (
         <section className="links" aria-labelledby={`form-of-${reading.recordId}`}>
@@ -658,4 +956,66 @@ export function ReadingCard({ reading, query }: { reading: Reading; query: strin
       </footer>
     </article>
   );
+}
+
+/**
+ * A noun: what it agrees with, how it goes singular and plural, and the
+ * articles `it-articles/v1` derives from the first of those (#53).
+ */
+function NounCard({ reading, query }: { reading: NounReading; query: string }) {
+  return (
+    <ReadingShell reading={reading} query={query} header={<NounAgreement reading={reading} />}>
+      <Grammar
+        claims={otherRecordClaims(reading.grammar.record)}
+        label={`other grammar for ${reading.word}`}
+      />
+      <NounNumbers reading={reading} />
+      <NounArticles articles={reading.articles} recordId={reading.recordId} />
+      <Forms reading={reading} />
+    </ReadingShell>
+  );
+}
+
+/**
+ * An adjective: the paradigm first when the source fills it, then the degrees
+ * the source tagged, then every form it listed (#52).
+ *
+ * Articles belong to a noun and conjugations to a verb, so neither section is
+ * here. The forms list stays, marked, because it is the one section carrying
+ * every entry the lookup returned — including the ones no table cell took.
+ */
+function AdjectiveCard({ reading, query }: { reading: Reading; query: string }) {
+  return (
+    <ReadingShell reading={reading} query={query}>
+      <Grammar claims={reading.grammar.record} label={`grammar for ${reading.word}`} />
+      <AdjectiveParadigmTable reading={reading} />
+      <AdjectiveDegrees reading={reading} />
+      <Forms reading={reading} markUnsplit />
+    </ReadingShell>
+  );
+}
+
+/** Every other part of speech, as this page has always rendered it. */
+function GenericCard({ reading, query }: { reading: Reading; query: string }) {
+  return (
+    <ReadingShell reading={reading} query={query}>
+      <Grammar claims={reading.grammar.record} label={`grammar for ${reading.word}`} />
+      <Articles reading={reading} />
+      <Forms reading={reading} />
+      <Conjugations reading={reading} />
+    </ReadingShell>
+  );
+}
+
+/**
+ * The card for one reading, chosen by its part of speech.
+ *
+ * This is the only place that choice is made. A part of speech with no card of
+ * its own renders the generic one, unchanged — which is what makes adding the
+ * next card (a verb's, #48) an addition here rather than a rewrite of it.
+ */
+export function ReadingCard({ reading, query }: { reading: Reading; query: string }) {
+  if (isNounReading(reading)) return <NounCard reading={reading} query={query} />;
+  if (isAdjectiveReading(reading)) return <AdjectiveCard reading={reading} query={query} />;
+  return <GenericCard reading={reading} query={query} />;
 }
