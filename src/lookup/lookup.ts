@@ -3,7 +3,7 @@
 // two mistakes the data invites, is in docs/LOOKUP_DESIGN.md.
 
 import { IT_NORMALIZER_VERSION, normalizeItalianExact } from "../italian/normalize.js";
-import { deriveReadingArticles } from "./articles.js";
+import { readingPartOfSpeech } from "./articles.js";
 import type { LookupDatabase } from "./database.js";
 import type {
   Evidence,
@@ -213,7 +213,6 @@ async function buildReading(db: LookupDatabase, releaseId: string, group: HitRow
     recordId,
     ref: ref(""),
     word: first.record_word,
-    pos: first.record_pos,
     posTitle: record.posTitle,
     isAboutQuery: group.some((hit) => hit.origin === "headword"),
     evidence,
@@ -224,8 +223,9 @@ async function buildReading(db: LookupDatabase, releaseId: string, group: HitRow
     inflections: await readInflections(db, releaseId, recordId),
     reviews: await readReviews(db, recordId, ref),
     // Derived, not read: the release carries no article field. The headword and
-    // the grammar the source stated about the record are the only inputs.
-    articles: deriveReadingArticles(first.record_pos, first.record_word, grammar.record),
+    // the grammar the source stated about the record are the only inputs, and a
+    // reading that is not a noun comes back carrying no articles at all.
+    ...readingPartOfSpeech(first.record_pos, first.record_word, grammar.record),
   };
 }
 

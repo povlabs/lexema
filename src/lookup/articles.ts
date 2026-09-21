@@ -8,7 +8,13 @@
 // can say it in a sentence instead of showing an empty section.
 
 import { generateItalianArticles } from "../italian/articles.js";
-import type { ArticleWithholding, GrammarClaim, ReadingArticles } from "./types.js";
+import type {
+  ArticleWithholding,
+  GrammarClaim,
+  NonNounPos,
+  ReadingArticles,
+  ReadingPartOfSpeech,
+} from "./types.js";
 
 /** The two values `it-articles/v1` can make an article agree with. */
 const AGREEING_GENDERS = ["masculine", "feminine"] as const;
@@ -26,19 +32,27 @@ function statedValue(claims: readonly GrammarClaim[], dimension: string): string
 }
 
 /**
- * The articles for one reading.
+ * A reading's part of speech, carrying articles exactly when it is a noun.
+ *
+ * This is the one place `NonNounPos` is minted, and it is minted only on the
+ * branch that has just proved the part of speech is not `noun` — which is what
+ * keeps "a noun without articles" out of the type.
  *
  * `surface` is the record's own headword and never a row of its forms table:
  * `studente` lists `studente/studentessa`, which is a pair the source wrote,
  * not a word an article goes in front of.
  */
-export function deriveReadingArticles(
+export function readingPartOfSpeech(
   pos: string,
   surface: string,
   claims: readonly GrammarClaim[],
-): ReadingArticles {
-  if (pos !== "noun") return { status: "not-a-noun" };
+): ReadingPartOfSpeech {
+  if (pos !== "noun") return { pos: pos as NonNounPos };
+  return { pos, articles: deriveArticles(surface, claims) };
+}
 
+/** The articles for one noun reading, or the reason there are none. */
+function deriveArticles(surface: string, claims: readonly GrammarClaim[]): ReadingArticles {
   const gender = statedValue(claims, "gender");
   const number = statedValue(claims, "number");
   // `invariable` is a number the importer states (src/import/grammarPolicy.ts)

@@ -171,27 +171,36 @@ export type ArticleWithholding =
   | { reason: "surface-not-handled"; surface: string };
 
 /**
- * The articles Lexema derived for a reading, or the reason it derived none.
+ * The articles Lexema derived for a noun reading, or the reason it derived none.
  *
- * Three states, never one list that means two things: a derived set is a
- * non-empty tuple, a withholding carries its reason, and a reading nobody asked
- * the question about says so. Articles are a noun fact here — deriving them for
- * any other part of speech is outside #53 — so `not-a-noun` is the answer for
- * every other `pos`, and it is not the same answer as "asked, and withheld".
+ * Two states, never one list that means two things: a derived set is a non-empty
+ * tuple, and a withholding carries its reason. There is no case for "not a
+ * noun", because only a noun reading carries this field at all.
  */
 export type ReadingArticles =
   | { status: "derived"; articles: [ArticleDisplay, ...ArticleDisplay[]] }
-  | { status: "withheld"; withholding: ArticleWithholding }
-  | { status: "not-a-noun" };
+  | { status: "withheld"; withholding: ArticleWithholding };
 
-/** One source record that matched the query. */
-export interface Reading {
+declare const nonNounPos: unique symbol;
+
+/**
+ * A part of speech the source stated that is not `noun`.
+ *
+ * No string literal is assignable to the brand, so an `OtherReading` cannot be
+ * written with a `pos` of `"noun"` — which is what stops a noun reading arriving
+ * without the articles every noun reading has. `readingPartOfSpeech`
+ * (`src/lookup/articles.ts`) is the one place that mints one, on the branch that
+ * has just proved the part of speech is not `noun`.
+ */
+export type NonNounPos = string & { readonly [nonNounPos]: true };
+
+/** What every reading carries, whatever part of speech it is. */
+interface ReadingFacts {
   recordId: number;
   /** The whole record, as a pointer: every ref below shares its line. */
   ref: SourceRef;
   /** The record's own headword, verbatim. */
   word: string;
-  pos: string;
   posTitle: string;
 
   /**
@@ -218,12 +227,44 @@ export interface Reading {
   inflections: InflectionOf[];
   /** Review verdicts on this record's claims. Empty until #12 writes any. */
   reviews: Review[];
+}
+
+interface NounPartOfSpeech {
+  pos: "noun";
   /**
    * Articles for this reading, derived by `it-articles/v1` from the gender and
    * number the source states — or the reason there are none. Nothing here comes
    * from the release: the source carries no article field at all.
    */
   articles: ReadingArticles;
+}
+
+interface OtherPartOfSpeech {
+  pos: NonNounPos;
+  articles?: never;
+}
+
+/** The part of a reading that follows from its part of speech, and nothing else. */
+export type ReadingPartOfSpeech = NounPartOfSpeech | OtherPartOfSpeech;
+
+/** A record the source states is a noun. Articles are a noun fact, so it has them. */
+export type NounReading = ReadingFacts & NounPartOfSpeech;
+
+/** A record of any other part of speech. Lexema derives no article for one. */
+export type OtherReading = ReadingFacts & OtherPartOfSpeech;
+
+/** One source record that matched the query. */
+export type Reading = NounReading | OtherReading;
+
+/**
+ * Whether this reading is a noun — and so whether it carries articles.
+ *
+ * The brand on `NonNounPos` is not a unit type, so `reading.pos === "noun"`
+ * written at a call site narrows nothing on its own. This is where that
+ * comparison lives, once, with the narrowing attached to it.
+ */
+export function isNounReading(reading: Reading): reading is NounReading {
+  return reading.pos === "noun";
 }
 
 export interface ReleaseInfo {

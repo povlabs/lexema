@@ -8,9 +8,11 @@
 // inside a document that is `lang="en"`; and every candidate the lookup
 // returned is rendered, never ranked down to one.
 
+import { isNounReading } from "@lexema/lookup/types.ts";
 import type {
   ArticleWithholding,
   GrammarClaim,
+  NounReading,
   Reading,
   ReadingArticles,
   Review,
@@ -207,8 +209,6 @@ function Articles({ reading }: { reading: Reading }) {
   );
 }
 
-// --- the noun card ----------------------------------------------------------
-//
 // A noun is read for three things the generic card answers badly: what it
 // agrees with, how it goes singular and plural, and which article stands in
 // front of it. Each gets its own section below, and each says so in words when
@@ -225,7 +225,7 @@ const AGREEMENT_DIMENSIONS = ["gender", "number"] as const;
  * happens to carry, so a noun the source said nothing about still shows both
  * rows — `casa` is that noun, and its silence is the point.
  */
-function NounAgreement({ reading }: { reading: Reading }) {
+function NounAgreement({ reading }: { reading: NounReading }) {
   return (
     <dl className="grammar" aria-label={`grammar for ${reading.word}`}>
       {AGREEMENT_DIMENSIONS.map((dimension) => {
@@ -299,7 +299,7 @@ function NumberCell({ surfaces }: { surfaces: NumberedSurface[] }) {
   );
 }
 
-function NounNumbers({ reading }: { reading: Reading }) {
+function NounNumbers({ reading }: { reading: NounReading }) {
   const singular = numberedSurfaces(reading, "singular");
   const plural = numberedSurfaces(reading, "plural");
 
@@ -398,11 +398,7 @@ function NounArticles({ articles, recordId }: { articles: ReadingArticles; recor
           </p>
         </>
       ) : (
-        <NotAvailable>
-          {articles.status === "withheld"
-            ? withheldSentence(articles.withholding)
-            : "No article is shown: Lexema derives articles for nouns only."}
-        </NotAvailable>
+        <NotAvailable>{withheldSentence(articles.withholding)}</NotAvailable>
       )}
     </section>
   );
@@ -504,8 +500,9 @@ function otherRecordClaims(claims: GrammarClaim[]): GrammarClaim[] {
 export function ReadingCard({ reading, query }: { reading: Reading; query: string }) {
   const pos = posLabel(reading.pos);
   // Nouns get their own layout (#53). Every other part of speech renders what
-  // it rendered before, unchanged.
-  const isNoun = reading.pos === "noun";
+  // it rendered before, unchanged. The narrowing is the type's own: a noun
+  // reading carries articles and no other reading has the field.
+  const noun = isNounReading(reading) ? reading : undefined;
 
   return (
     <article className="reading" aria-label={`${reading.word}, ${pos}`}>
@@ -521,7 +518,7 @@ export function ReadingCard({ reading, query }: { reading: Reading; query: strin
             Does not define <q lang="it">{query}</q> — it lists the form in its own table.
           </p>
         )}
-        {isNoun && <NounAgreement reading={reading} />}
+        {noun && <NounAgreement reading={noun} />}
       </header>
 
       <Disputes reviews={reading.reviews} />
@@ -564,15 +561,15 @@ export function ReadingCard({ reading, query }: { reading: Reading; query: strin
         </ol>
       )}
 
-      {isNoun ? (
+      {noun ? (
         <>
           <Grammar
-            claims={otherRecordClaims(reading.grammar.record)}
-            label={`other grammar for ${reading.word}`}
+            claims={otherRecordClaims(noun.grammar.record)}
+            label={`other grammar for ${noun.word}`}
           />
-          <NounNumbers reading={reading} />
-          <NounArticles articles={reading.articles} recordId={reading.recordId} />
-          <Forms reading={reading} />
+          <NounNumbers reading={noun} />
+          <NounArticles articles={noun.articles} recordId={noun.recordId} />
+          <Forms reading={noun} />
         </>
       ) : (
         <>
