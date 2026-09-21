@@ -154,6 +154,15 @@ const elementsOf = (html: string, tag: string): number =>
 const patternsOf = (html: string, pattern: RegExp): number =>
   html.match(new RegExp(pattern, "g"))?.length ?? 0;
 
+/**
+ * The words of some markup, with the tags taken out.
+ *
+ * What a serializer, a screen reader or a reader with styles off is left with
+ * — so an assertion over this is an assertion about the text, never about the
+ * layout that happens to space it out.
+ */
+const textOf = (html: string): string => html.replace(/<[^>]*>/g, "");
+
 /** A literal, as a pattern: an assertion over a class string stays exact. */
 const esc = (literal: string): string => literal.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 const exact = (literal: string): RegExp => new RegExp(esc(literal));
@@ -818,6 +827,32 @@ test("no fact renders twice on a card", async () => {
     assert.doesNotMatch(grande, /aria-label="other grammar for grande"/);
     assert.equal(patternsOf(grande, /<dt[^>]*>part of speech<\/dt>/), 1);
     assert.equal(occurrencesOf(grande, `<dt class="${HEADLINE_LABEL}">part of speech</dt>`), 1);
+  });
+});
+
+/**
+ * Two labels on one sense are two words, not one.
+ *
+ * The labels sit in a flex row, so the space between the pills is a matter of
+ * layout — and layout is not what a serializer or a screen reader reads.
+ * `studentessa` is this archive's one two-label sense, exactly as the real
+ * record has it: `scuola` off the sense's `raw_tags`, `form-of` off its tags.
+ * With no text separator between them they read as `scuolaform-of`, a word the
+ * source never wrote.
+ */
+test("two labels on one sense are separated in the text, not only in the layout", async () => {
+  await withFixture(async ({ db }) => {
+    const studentessa = card(await render(db, "studente"), "studentessa, noun");
+    const line = studentessa.match(new RegExp(`<p class="${esc(LABELS)}">.*?</p>`))?.[0];
+    assert.notEqual(line, undefined, "studentessa renders no labels line");
+    assert.match(
+      line as string,
+      exact(
+        `<span><span lang="it">scuola</span></span><span> <span lang="it">form-of</span></span>`,
+      ),
+    );
+    // The exact text between the two labels: one space, and nothing else.
+    assert.equal(textOf(line as string), "scuola form-of");
   });
 });
 

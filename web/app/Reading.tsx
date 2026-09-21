@@ -1287,6 +1287,11 @@ function ReadingShell({
                 <p className={LABELS}>
                   {sense.labels.map((label, i) => (
                     <span key={i}>
+                      {/* The gap between the pills is visual; this space is the
+                          text one. Without it `scuola` and `form-of` serialize
+                          as `scuolaform-of` to anything reading the words
+                          rather than the layout. */}
+                      {i > 0 && " "}
                       <It>{label.label}</It>
                     </span>
                   ))}
