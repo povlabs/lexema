@@ -1,10 +1,15 @@
 import { fileURLToPath } from "node:url";
 import { cloudflare } from "@cloudflare/vite-plugin";
+import tailwindcss from "@tailwindcss/vite";
 import vinext from "vinext";
 import { defineConfig } from "vite";
 
 export default defineConfig({
   plugins: [
+    // This order is the one the spike proved on vinext, and it is load-bearing:
+    // reports/2026-09-21-base-ui-tailwind-on-vinext.md ran `tailwindcss()`
+    // first, then vinext, then the Cloudflare environment.
+    tailwindcss(),
     vinext(),
     cloudflare({ viteEnvironment: { name: "rsc", childEnvironments: ["ssr"] } }),
   ],

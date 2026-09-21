@@ -7,10 +7,14 @@
 // One small link, and nothing else. ADR 0009 puts the credit itself on the page
 // this link reaches, not on the page a reader is looking at.
 
+import { LINK, SITE_FOOTER } from "./styles.ts";
+
 export function SiteFooter() {
   return (
-    <footer className="site-footer">
-      <a href="/attribution">Sources and licences</a>
+    <footer className={SITE_FOOTER}>
+      <a className={LINK} href="/attribution">
+        Sources and licences
+      </a>
     </footer>
   );
 }

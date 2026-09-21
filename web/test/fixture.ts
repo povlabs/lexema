@@ -116,7 +116,11 @@ export const FIXTURE_LINES: string[] = [
       { form: "studenti", tags: ["masculine", "plural"] },
       { form: "studente", tags: ["masculine", "singular"] },
     ],
-    senses: [formOf("femminile di studente", "studente")],
+    // The one sense in this archive that carries two labels, as the real
+    // `studentessa` record does: a `raw_tags` of `scuola` beside the `form-of`
+    // tag. The real page renders them `scuola form-of`, and the space between
+    // them is a rendered fact the page test asserts.
+    senses: [{ ...formOf("femminile di studente", "studente"), raw_tags: ["scuola"] }],
   }),
   record({
     word: "studentesse", pos: "noun", pos_title: "Sostantivo, forma flessa",
