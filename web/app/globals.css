@@ -99,11 +99,49 @@ a { color: var(--accent); }
 }
 
 .reading h2 { font-size: 1.25rem; margin: 0; font-weight: 600; }
-.pos {
-  font-size: 0.8rem;
-  font-weight: 400;
+
+/* The header bar: the part of speech and the few facts the source states, on
+   one line under the headword, each a small label with the value under it
+   (design-system-manifest.md, "The result card"). A fact the source did not
+   state is not here at all — the card's one silence line says that instead. */
+
+.headline { display: flex; flex-wrap: wrap; gap: 0.2rem 1.4rem; margin: 0.45rem 0 0; }
+.headline > div { display: flex; flex-direction: column; }
+.headline dt {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
   color: var(--muted);
-  font-style: italic;
+}
+.headline dd { margin: 0; font-size: 1.05rem; }
+
+/* The box row: each agreement set is one box with a heading, and the boxes sit
+   side by side in a row that wraps when the screen is narrow. */
+
+.box-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 0.9rem;
+  margin: 1rem 0 0;
+}
+.box {
+  flex: 1 1 14rem;
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 0.5rem 0.8rem 0.7rem;
+}
+.box > .numbers { margin: 0; }
+.box > .muted { margin: 0.5rem 0 0; }
+
+/* The searched form, outlined where it sits. The border carries it, and the
+   words beside it carry it again for a reader who sees no border. */
+
+.searched {
+  border: 1px solid var(--ink);
+  border-radius: 4px;
+  padding: 0 0.3rem;
 }
 
 .mention {
@@ -191,7 +229,7 @@ a { color: var(--accent); }
 /* Links ------------------------------------------------------------------- */
 
 .links { margin: 0.9rem 0 0; }
-.links h3 {
+.links h3, .box h3 {
   font-size: 0.78rem;
   text-transform: uppercase;
   letter-spacing: 0.06em;

@@ -121,14 +121,20 @@ export type LemmaLink =
  * reverse direction of `LemmaLink`, and ambiguous in exactly the same way. The
  * edge names a *word*, so this record is only one candidate target among
  * several, and the candidate set travels with the link.
+ *
+ * One of these is one *record*, not one edge. A record can say the same thing
+ * on several of its senses — `casetta` declares itself a form of `casa` on two
+ * of them — and a reader is owed that record once, with how many senses said
+ * it. The count is `refs.length` rather than a field beside it, so a count that
+ * disagrees with the pointers behind it is not a value this type can hold.
  */
 export interface InflectionOf {
   /** The declaring record — the inflected one. */
   recordId: number;
   word: string;
   pos: string;
-  /** The edge on the declaring record. */
-  ref: SourceRef;
+  /** Every edge on the declaring record that lands here, in source order. */
+  refs: [SourceRef, ...SourceRef[]];
   /** The word the edge names, verbatim. */
   targetWord: string;
   /**

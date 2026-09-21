@@ -581,26 +581,44 @@ async function readInflections(
     ref: headwordRef(releaseId, row.line_no, row.line_sha256),
   }));
 
-  return rows
-    .map((row) => ({
+  // One row per declaring *record*, not per edge: `casetta` says it is a form
+  // of `casa` on two of its senses, and that is one record pointing here twice,
+  // not two records. Every edge's pointer is kept, so nothing about where the
+  // claim came from is lost by the collapse.
+  const byRecord = new Map<number, InflectionOf>();
+  for (const row of rows) {
+    // The edge lives on the declaring record, so the ref carries that record's
+    // line, not this reading's.
+    const edge: SourceRef = {
+      releaseId,
+      lineNo: row.line_no,
+      jsonPointer: row.json_pointer,
+      lineSha256: row.line_sha256,
+    };
+    const existing = byRecord.get(row.record_id);
+    if (existing) {
+      existing.refs.push(edge);
+      continue;
+    }
+    byRecord.set(row.record_id, {
       recordId: row.record_id,
       word: row.word,
       pos: row.pos,
-      // The edge lives on the declaring record, so the ref carries that
-      // record's line, not this reading's.
-      ref: {
-        releaseId,
-        lineNo: row.line_no,
-        jsonPointer: row.json_pointer,
-        lineSha256: row.line_sha256,
-      },
+      refs: [edge],
       targetWord: row.target_word,
       targetCandidates,
-    }))
-    .sort(
-      (a, b) =>
-        a.ref.lineNo - b.ref.lineNo || compareSourcePointers(a.ref.jsonPointer, b.ref.jsonPointer),
-    );
+    });
+  }
+
+  for (const inflection of byRecord.values()) {
+    inflection.refs.sort((a, b) => compareSourcePointers(a.jsonPointer, b.jsonPointer));
+  }
+
+  return [...byRecord.values()].sort(
+    (a, b) =>
+      a.refs[0].lineNo - b.refs[0].lineNo ||
+      compareSourcePointers(a.refs[0].jsonPointer, b.refs[0].jsonPointer),
+  );
 }
 
 async function readReviews(
