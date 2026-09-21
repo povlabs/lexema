@@ -7,7 +7,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { gzipSync } from "node:zlib";
-import { importRelease } from "../src/import/importRelease.js";
+import { importRelease, type Rejection } from "../src/import/importRelease.js";
 
 // A hand-built archive, small enough to reason about and shaped to carry every
 // case the real file forces on us. It runs without the 38 MB download, so CI
@@ -78,27 +78,30 @@ const LINES: string[] = [
   "   ",
 ];
 
-async function writeFixture() {
+async function writeFixture(lines: readonly string[] = LINES) {
   const dir = await mkdtemp(join(tmpdir(), "lexema-import-"));
   const archive = join(dir, "fixture.jsonl.gz");
   const database = join(dir, "fixture.sqlite");
-  await writeFile(archive, gzipSync(Buffer.from(LINES.join("\n") + "\n", "utf8")));
+  await writeFile(archive, gzipSync(Buffer.from(lines.join("\n") + "\n", "utf8")));
   return { dir, archive, database };
 }
 
 async function importFixture(
   options: { limit?: number; onProgress?: (admitted: number) => void; progressEvery?: number } = {},
+  lines: readonly string[] = LINES,
 ) {
-  const { dir, archive, database } = await writeFixture();
+  const { dir, archive, database } = await writeFixture(lines);
+  const rejections: Rejection[] = [];
   const report = await importRelease({
     input: archive,
     database,
     schema: "src/db/schema.sql",
     releaseId: "it-test",
     archiveR2Key: "releases/it-test.jsonl.gz",
+    onRejection: (rejection) => rejections.push(rejection),
     ...options,
   });
-  return { dir, archive, database, report };
+  return { dir, archive, database, report, rejections };
 }
 
 /**
@@ -127,22 +130,87 @@ const hits = (db: DatabaseSync, key: string) =>
     "SELECT record_word, record_pos, origin FROM surface_hit WHERE surface_key = ? ORDER BY record_id, json_pointer",
   ).all(key) as { record_word: string; record_pos: string; origin: string }[];
 
-test("imports only Italian records and locates every malformed line", async () => {
-  const { dir, report } = await importFixture();
+test("imports only Italian records and locates every rejected line", async () => {
+  const { dir, report, rejections } = await importFixture();
   try {
     assert.equal(report.linesRead, LINES.length);
     assert.equal(report.admitted, 9);
     assert.equal(report.status, "complete");
     assert.equal(report.skippedOtherLanguage, 2);
-    // A count alone would not tell anyone which line to go and look at, and a
-    // rejected record is as auditable as a malformed one.
-    assert.deepEqual(report.skippedLineNumbers, [10, 11]);
     // Line 12 is not JSON; lines 13 and 14 are empty and whitespace. All three
     // are input that produced no record, so none may be dropped in silence.
     assert.equal(report.malformed, 3);
-    assert.deepEqual(report.malformedLineNumbers, [12, 13, 14]);
     assert.equal(report.rows.source_record, 9);
+    // A count alone would not tell anyone which line to go and look at, and a
+    // rejected record is as auditable as a malformed one.
+    assert.deepEqual(rejections, [
+      { kind: "other-language", lineNo: 10, reason: 'lang_code is "la"' },
+      { kind: "other-language", lineNo: 11, reason: 'lang_code is "fr"' },
+      { kind: "malformed", lineNo: 12, reason: "not valid JSON" },
+      { kind: "malformed", lineNo: 13, reason: "blank line" },
+      { kind: "malformed", lineNo: 14, reason: "blank line" },
+    ]);
   } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test("every rejection is located, however many there are", async () => {
+  // Well past any sample size a report might once have kept. Each line is a
+  // different language so the reasons prove each one came from its own line.
+  const lines = Array.from({ length: 300 }, (_, i) =>
+    JSON.stringify({ word: "x", pos: "noun", pos_title: "n", lang_code: `l${i}` }),
+  );
+  const { dir, report, rejections } = await importFixture({}, [...lines, LINES[0]]);
+  try {
+    assert.equal(report.admitted, 1);
+    assert.equal(report.skippedOtherLanguage, 300);
+    assert.deepEqual(
+      rejections.map((r) => [r.lineNo, r.reason]),
+      lines.map((_, i) => [i + 1, `lang_code is "l${i}"`]),
+    );
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test("a malformed nested member is a located rejection, not an abort", async () => {
+  // Valid JSON, valid headword, and a null where a form, sense or form_of
+  // target should be. Each one used to reach an unchecked cast and take the
+  // whole run down mid-transaction.
+  const italian = { pos: "noun", pos_title: "Sostantivo", lang_code: "it" };
+  const lines = [
+    JSON.stringify({ ...italian, word: "a", forms: [null] }),
+    JSON.stringify({ ...italian, word: "b", senses: [null] }),
+    JSON.stringify({ ...italian, word: "c", senses: [{ glosses: ["c"], form_of: ["d"] }] }),
+    JSON.stringify({ ...italian, word: "d", forms: {} }),
+    JSON.stringify({ ...italian, word: "e", pos: 7 }),
+    // A record after the bad ones, to prove the run went on.
+    JSON.stringify({ ...italian, word: "f", forms: [{ form: "g" }], senses: [{ form_of: [{ word: "h" }] }] }),
+  ];
+  const { dir, database, report, rejections } = await importFixture({}, lines);
+  const db = new DatabaseSync(database, { readOnly: true });
+  try {
+    assert.equal(report.status, "complete");
+    assert.equal(report.admitted, 1);
+    assert.equal(report.malformed, 5);
+    assert.deepEqual(rejections, [
+      { kind: "malformed", lineNo: 1, reason: "/forms/0 is not an object" },
+      { kind: "malformed", lineNo: 2, reason: "/senses/0 is not an object" },
+      { kind: "malformed", lineNo: 3, reason: "/senses/0/form_of/0 is not an object" },
+      { kind: "malformed", lineNo: 4, reason: "/forms is not an array" },
+      { kind: "malformed", lineNo: 5, reason: "word, pos and pos_title must be strings" },
+    ]);
+    // Nothing of a refused record reached any table: the refusal happens
+    // before its first write, so a bad line leaves no half-written record.
+    assert.deepEqual(
+      (db.prepare("SELECT word, line_no FROM source_record").all() as { word: string; line_no: number }[])
+        .map((row) => [row.word, row.line_no]),
+      [["f", 6]],
+    );
+    assert.equal(hits(db, "g").length, 1);
+  } finally {
+    db.close();
     await rm(dir, { recursive: true, force: true });
   }
 });
@@ -173,6 +241,7 @@ test("an archive that changes mid-import commits nothing", async () => {
         schema: "src/db/schema.sql",
         releaseId: "it-test",
         archiveR2Key: "releases/it-test.jsonl.gz",
+        onRejection: () => {},
         progressEvery: 1,
         onProgress: () => utimesSync(archive, new Date(0), new Date(0)),
       }),
