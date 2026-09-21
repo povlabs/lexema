@@ -45,9 +45,55 @@ onwards, and the repair of the shipped cards in [#60](https://github.com/hueypov
 | **Empty is said once.** | A section with nothing to show is omitted. One line near the top of the card names what the source does not state for this entry. A fact is never rendered twice on one card, and a related record is listed once with its count. |
 | **Every form still appears.** | Layout never drops a form; a form that fits no box is in the unplaced box, verbatim, in `lang="it"`. |
 
+## Role tokens: the dark scheme
+
+Ruled by Huey on 2026-09-21: "for now let's work on dark palette, use like one
+of the baseui's default dark ones." Base UI ships no styles; the palette its own
+documentation paints every demo with is the source, copied verbatim from
+`docs/src/demo-data/theme/css-modules/theme.css` in `mui/base-ui` at commit
+`50c371c` (2025-11-04), the `prefers-color-scheme: dark` block. Dark is the only
+scheme for now; a light scheme is a later ruling, not a fallback.
+
+The scale, as the source writes it (oklch, alpha where given):
+
+| Step | Value |
+|---|---|
+| gray-50 | `oklch(17% 0.25% 264deg)` |
+| gray-100 | `oklch(28% 0.75% 264deg / 65%)` |
+| gray-200 | `oklch(29% 0.75% 264deg / 80%)` |
+| gray-300 | `oklch(35% 0.75% 264deg / 80%)` |
+| gray-400 | `oklch(47% 0.875% 264deg / 80%)` |
+| gray-500 | `oklch(64% 1% 264deg / 80%)` |
+| gray-600 | `oklch(82% 1% 264deg / 80%)` |
+| gray-700 | `oklch(92% 1.125% 264deg / 80%)` |
+| gray-800 | `oklch(93% 0.875% 264deg / 85%)` |
+| gray-900 | `oklch(95% 0.5% 264deg / 90%)` |
+| gray-950 | `oklch(94% 0.375% 264deg / 95%)` |
+| blue | `oklch(69% 50% 264deg)` |
+| red | `oklch(80% 55% 31deg)` |
+
+The roles below are Lexema's mapping onto that scale, not the source's; the
+source declares the scale only. A component reaches for a role, never a step.
+
+| Role | Step | Used for |
+|---|---|---|
+| `surface` | gray-50 | the page background |
+| `surface-raised` | gray-100 | a box, a card, the search bar |
+| `border` | gray-200 | box and table edges |
+| `border-strong` | gray-300 | the searched-form outline |
+| `text-muted` | gray-500 | labels in a box row, the silence line, the release line |
+| `text` | gray-900 | body text, glosses, forms |
+| `text-strong` | gray-950 | the headword |
+| `accent` | blue | links, the focused control |
+| `warning` | red | the disputed-claim mark and the report control |
+
+These land as a Tailwind `@theme` block in `web/app/globals.css` under the same
+names; the migration is [#67](https://github.com/hueypov/lexema/issues/67).
+
 ## Not yet ruled
 
-Role tokens, the type ramp, colour roles, component primitives, density, focus
-treatment, and dark mode. The first UI issue settles these with Huey. Until then
-there is no role-token layer for the `taste-color` skill to read, and a builder
-who needs one stops and asks.
+The type ramp and font family (the Base UI docs use licensed fonts Lexema cannot
+copy; a system stack or an open face is a separate ruling), component primitives
+beyond Base UI's own, density, focus treatment beyond the `accent` ring, and a
+light scheme. A builder who needs one of these stops and asks; the `taste-color`
+skill now has a role layer to read for colour.
