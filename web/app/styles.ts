@@ -147,6 +147,33 @@ export const DISPUTED = `${NOTE} my-[0.7rem]`;
 export const DISPUTED_LIST = "mt-[0.3rem] mb-0 list-disc pl-[1.1rem]";
 export const DISPUTED_LINE = "m-0";
 
+// What Lexema wrote itself -----------------------------------------------
+
+/**
+ * The slot for Lexema's own explanation: a raised box above the source's own
+ * words, never mixed into them.
+ *
+ * It is raised rather than coloured. A dispute is a warning and reads as one;
+ * this is ordinary content that happens to be ours, and what separates it from
+ * the dictionary's text is the label in words inside it — design-system-manifest.md
+ * § "Settled law", "labelled as generated", and never by colour alone.
+ */
+export const EXPLANATION = `${RAISED} my-[0.7rem] px-[0.7rem] py-2`;
+/** The label itself, which the slot cannot render without. */
+export const EXPLANATION_LABEL = "m-0 text-[0.7rem] uppercase tracking-[0.06em] text-text-muted";
+export const EXPLANATION_TEXT = "mt-[0.35rem] mb-0";
+/**
+ * The same sentence in English, quieter, under the Italian it translates.
+ *
+ * The Italian is the explanation; the English is there for a learner who cannot
+ * yet read it (ADR 0008's amendment), so it sits below and reads as the second
+ * voice rather than as a second fact.
+ */
+export const EXPLANATION_ENGLISH = "mt-[0.15rem] mb-0 text-[0.95rem] text-text-muted";
+export const EXPLANATION_EXAMPLE = "mt-[0.45rem] mb-0 text-[0.9rem]";
+/** "Example", said in words beside the sentence it names. */
+export const EXPLANATION_EXAMPLE_LABEL = "text-[0.78rem] uppercase tracking-[0.06em] text-text-muted";
+
 // What the source wrote --------------------------------------------------
 
 export const DEFINITIONS = "my-[0.7rem] list-decimal pl-[1.3rem]";

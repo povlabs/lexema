@@ -161,6 +161,56 @@ export interface Review {
 }
 
 /**
+ * A short explanation Lexema wrote itself, with one basic example.
+ *
+ * Not source text, and never in the same field as any: the Italian explanation,
+ * its English version and the example are Lexema-original content, which ADR
+ * 0009 keeps in fields of its own. The example stays Italian — ADR 0008's
+ * amendment gives the short explanation an English version and nothing else on
+ * the card.
+ *
+ * The two origins are two cases rather than one shape with nullable provenance,
+ * because a generated item is bound to name the model, the prompt version and
+ * the time it was made (ADR 0008) and a hand-written one has none of those to
+ * name. So a hand-written item cannot be read for a model, a generated one
+ * cannot be missing its prompt version, and neither state needs a caller to
+ * check a field before trusting another.
+ */
+export type LexemaExplanation =
+  | {
+      origin: "hand-written";
+      /** The explanation, in plain Italian a learner can read. */
+      italian: string;
+      /** The same explanation in English, and nothing else translated. */
+      english: string;
+      /** One basic Italian sentence using the word. Italian only. */
+      exampleItalian: string;
+    }
+  | {
+      origin: "generated";
+      italian: string;
+      english: string;
+      exampleItalian: string;
+      /** The model that wrote it, the prompt it was written under, and when. */
+      model: string;
+      promptVersion: string;
+      /** ISO-8601, as the run recorded it. */
+      generatedAt: string;
+    };
+
+/**
+ * The explanation Lexema wrote for a reading, or the fact that it wrote none.
+ *
+ * Two states, never one nullable field meaning two things, in the style
+ * {@link ReadingArticles} uses: most records carry no explanation at all, and
+ * "nobody has written one" is a fact the page acts on — it renders no slot —
+ * rather than an empty string to paper over.
+ */
+export type ReadingExplanation =
+  | { status: "written"; explanation: LexemaExplanation }
+  | { status: "none" };
+
+/**
  * Why no article is shown, named precisely enough to say it in a sentence.
  *
  * Each case is the *first* thing that stopped the rule, so at most one is ever
@@ -233,6 +283,12 @@ interface ReadingFacts {
   inflections: InflectionOf[];
   /** Review verdicts on this record's claims. Empty until #12 writes any. */
   reviews: Review[];
+  /**
+   * What Lexema wrote about this record itself, or that it wrote nothing.
+   * Nothing here comes from the release: it is the one field on a reading the
+   * source did not supply a single character of.
+   */
+  explanation: ReadingExplanation;
 }
 
 interface NounPartOfSpeech {

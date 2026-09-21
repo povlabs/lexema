@@ -7,6 +7,10 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { gzipSync } from "node:zlib";
+import {
+  HAND_WRITTEN_EXPLANATIONS,
+  writeHandWrittenExplanations,
+} from "../src/import/handWrittenText.js";
 import { importRelease, type Rejection } from "../src/import/importRelease.js";
 
 // A hand-built archive, small enough to reason about and shaped to carry every
@@ -614,6 +618,138 @@ test("nothing is readable until the release completes", async () => {
     assert.equal(
       (db.prepare("SELECT count(*) n FROM form_of_candidate").get() as { n: number }).n,
       0,
+    );
+  } finally {
+    db.close();
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+// The twelve hand-written explanations -------------------------------------
+
+test("the hand-written batch is one entry per card shape, word for word", () => {
+  // The whole batch, spelled out, so the review this issue exists for is a diff
+  // rather than a database read: every string a reader will see is here, and a
+  // reworded explanation has to change this file to land.
+  //
+  // It is also what proves the example sentences carry no English translation.
+  // ADR 0008's amendment gives the short explanation an English version and
+  // stops there, and an example that quietly gained "(my house is small)" would
+  // be a translation of source-adjacent content nobody ruled — so the example
+  // field is asserted exactly, per entry, not pattern-matched.
+  assert.deepEqual(
+    HAND_WRITTEN_EXPLANATIONS.map((entry) => ({ ...entry })),
+    [
+      {
+        word: "casa", pos: "noun",
+        italian: "Il posto dove una persona vive.",
+        english: "The place where a person lives.",
+        exampleItalian: "La mia casa è piccola.",
+      },
+      {
+        word: "andare", pos: "verb",
+        italian: "Lasciare un posto per arrivare in un altro.",
+        english: "To leave one place in order to reach another.",
+        exampleItalian: "Voglio andare a casa.",
+      },
+      {
+        word: "bello", pos: "adj",
+        italian: "Che piace a chi lo guarda o lo ascolta.",
+        english: "Pleasing to whoever looks at it or hears it.",
+        exampleItalian: "Questo quadro è bello.",
+      },
+    ],
+  );
+
+  // One per card shape — a noun, a verb, an adjective — ruled by Huey so each
+  // shape is judged once before any generation runs. Every one of the three is
+  // a query of reports/2026-09-18-dataset-spot-check.md's "Twelve query
+  // checks", and every example uses the word it explains.
+  assert.deepEqual(
+    HAND_WRITTEN_EXPLANATIONS.map((entry) => entry.pos),
+    ["noun", "verb", "adj"],
+  );
+  for (const entry of HAND_WRITTEN_EXPLANATIONS) {
+    assert.ok(
+      entry.exampleItalian.toLowerCase().includes(entry.word.toLowerCase()),
+      `${entry.word}: the example does not use the word it explains`,
+    );
+  }
+});
+
+test("a hand-written entry with no record in the release is skipped, not an error", async () => {
+  const { dir, database } = await importFixture();
+  const db = new DatabaseSync(database);
+  try {
+    // Two of the three words have a record with that exact part of speech in
+    // this fixture; `bello` is in none of its lines at all, and a release that
+    // does not hold a word is a smaller release, not a missing explanation.
+    assert.equal(writeHandWrittenExplanations(db, "it-test"), 2);
+    assert.deepEqual(
+      rows(
+        db,
+        `SELECT r.word, r.pos, e.origin, e.model, e.prompt_version, e.generated_at
+           FROM lexema_explanation e JOIN source_record r ON r.record_id = e.record_id
+          ORDER BY r.line_no`,
+      ),
+      [
+        { word: "casa", pos: "noun", origin: "lexema-hand-written", model: null, prompt_version: null, generated_at: null },
+        { word: "andare", pos: "verb", origin: "lexema-hand-written", model: null, prompt_version: null, generated_at: null },
+      ],
+    );
+
+    // Running it twice writes no second row: one record, one explanation.
+    assert.equal(writeHandWrittenExplanations(db, "it-test"), 2);
+    assert.equal(
+      (db.prepare("SELECT count(*) n FROM lexema_explanation").get() as { n: number }).n,
+      2,
+    );
+  } finally {
+    db.close();
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test("the database refuses an explanation whose origin and provenance disagree", async () => {
+  const { dir, database } = await importFixture();
+  const db = new DatabaseSync(database);
+  try {
+    const recordId = (
+      db.prepare("SELECT record_id FROM source_record WHERE word = 'casa'").get() as {
+        record_id: number;
+      }
+    ).record_id;
+    const write = (
+      origin: string,
+      model: string | null,
+      promptVersion: string | null,
+      generatedAt: string | null,
+    ) =>
+      db.prepare(
+        `INSERT INTO lexema_explanation
+           (record_id, release_id, origin, explanation_it, explanation_en, example_it,
+            model, prompt_version, generated_at)
+         VALUES (?, 'it-test', ?, 'spiegazione', 'explanation', 'esempio', ?, ?, ?)`,
+      ).run(recordId, origin, model, promptVersion, generatedAt);
+
+    // A model with no prompt version is refused by the database, not by whoever
+    // happens to read the row later.
+    assert.throws(() => write("lexema-generated", "some-model", null, "2026-09-21"), /CHECK/);
+    assert.throws(() => write("lexema-generated", "some-model", "p/v1", null), /CHECK/);
+    // And a generated row with no model at all is not a generated row.
+    assert.throws(() => write("lexema-generated", null, null, null), /CHECK/);
+    // Hand-written means no model was involved: naming one here would be the
+    // false provenance value the origin column exists to prevent.
+    assert.throws(
+      () => write("lexema-hand-written", "some-model", "p/v1", "2026-09-21"),
+      /CHECK/,
+    );
+    assert.throws(() => write("lexema-written-by-someone", null, null, null), /CHECK/);
+
+    write("lexema-generated", "some-model", "p/v1", "2026-09-21");
+    assert.equal(
+      (db.prepare("SELECT count(*) n FROM lexema_explanation").get() as { n: number }).n,
+      1,
     );
   } finally {
     db.close();

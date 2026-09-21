@@ -27,6 +27,7 @@ const TABLES = [
   "sense_label",
   "grammar_claim",
   "claim_review",
+  "lexema_explanation",
 ] as const;
 
 // `grammar_value` is deliberately absent from TABLES: schema.sql seeds it with

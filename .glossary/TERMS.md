@@ -13,6 +13,14 @@ and this file is the doc to fix.
 | release | One immutable import of a source file, identified by `releaseId` and carrying source, licence, retrieval time and compressed SHA-256 (`ReleaseMetadata` in `src/core/types.ts`). A provenance ref's `release_id` names it. | a Git release or tag |
 | source example | A `senses[].examples[].text` string returned on a candidate only when it contains the exact searched surface after Italian normalization (`containsExactItalianSurface` in `src/italian/normalize.ts`); any other example is counted as rejected. | a generated sentence |
 
+## Lexema's own content
+| Term | Definition | Not |
+|---|---|---|
+| Lexema explanation | A short explanation of one record written by Lexema, not copied: a plain Italian sentence, the same sentence in English, and one basic Italian example, in three columns of `lexema_explanation` (`src/db/schema.sql`). It is shown beside the source's own words, labelled, and replaces none of them ([ADR 0008](../.decisions/0008-generated-explanations-are-labelled-and-reportable.md)). | a definition, or a translation of one |
+| explanation origin | Which of the two authors wrote an explanation, as the `origin` column states it: `lexema-hand-written` (a person, with no model, prompt version or generation time to name) or `lexema-generated` (a model, which must name all three). The card says which in words (`LexemaExplanation` in `src/lookup/types.ts`). | a quality grade, or a reason to hide either one |
+| source-derived | A value copied or adapted from Wiktionary, published under CC BY-SA 4.0 and always reachable back to its page ([ADR 0009](../.decisions/0009-two-licences-and-a-source-link.md)). | Lexema-original content, which never shares a field with it |
+| Lexema-original | Content Lexema wrote itself — an explanation, its example, a review verdict — kept in fields of its own under Lexema's terms ([ADR 0009](../.decisions/0009-two-licences-and-a-source-link.md)). | source-derived text |
+
 ## Lookup
 | Term | Definition | Not |
 |---|---|---|

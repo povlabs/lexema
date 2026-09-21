@@ -13,6 +13,7 @@ import type {
   LemmaLink,
   LookupResult,
   Reading,
+  ReadingExplanation,
   ReleaseInfo,
   Review,
   Sense,
@@ -237,6 +238,9 @@ async function buildReading(db: LookupDatabase, releaseId: string, group: HitRow
     lemmaLinks: await readLemmaLinks(db, releaseId, recordId, ref),
     inflections: await readInflections(db, releaseId, recordId),
     reviews: await readReviews(db, recordId, ref),
+    // Lexema's own words about this record, when anything has written any. No
+    // ref: the release did not supply it, so there is no line to check it at.
+    explanation: await readExplanation(db, recordId),
     // Derived, not read: the release carries no article field. The headword and
     // the grammar the source stated about the record are the only inputs, and a
     // reading that is not a noun comes back carrying no articles at all.
@@ -655,4 +659,63 @@ async function readReviews(
         compareSourcePointers(a.ref.jsonPointer, b.ref.jsonPointer) ||
         (a.reviewedAt < b.reviewedAt ? -1 : a.reviewedAt > b.reviewedAt ? 1 : 0),
     );
+}
+
+/**
+ * The explanation Lexema wrote for this record, or the fact that it wrote none.
+ *
+ * Most records have no row here and never will, so the absent case is the
+ * ordinary answer rather than a failure: nothing throws, and nothing is
+ * invented to fill the slot. The row's `origin` picks which case is built, and
+ * the schema has already refused any row whose provenance columns disagree with
+ * it (`src/db/schema.sql`), so a generated row's model, prompt version and time
+ * are all present here by the time this reads them.
+ */
+async function readExplanation(
+  db: LookupDatabase,
+  recordId: number,
+): Promise<ReadingExplanation> {
+  const row = await queryOne<{
+    origin: "lexema-generated" | "lexema-hand-written";
+    explanation_it: string;
+    explanation_en: string;
+    example_it: string;
+    model: string | null;
+    prompt_version: string | null;
+    generated_at: string | null;
+  }>(
+    db,
+    `SELECT origin, explanation_it, explanation_en, example_it,
+            model, prompt_version, generated_at
+       FROM lexema_explanation
+      WHERE record_id = ?`,
+    recordId,
+  );
+  if (row === undefined) return { status: "none" };
+
+  const words = {
+    italian: row.explanation_it,
+    english: row.explanation_en,
+    exampleItalian: row.example_it,
+  };
+  if (row.origin === "lexema-hand-written") {
+    return { status: "written", explanation: { origin: "hand-written", ...words } };
+  }
+  // A generated row with a missing provenance column cannot exist under the
+  // schema's checks, so one arriving here means the database is not the schema
+  // this code was written against. That is worth saying rather than rendering a
+  // generated item whose model nobody can name.
+  if (row.model === null || row.prompt_version === null || row.generated_at === null) {
+    throw new Error(`generated explanation for record ${recordId} is missing its provenance`);
+  }
+  return {
+    status: "written",
+    explanation: {
+      origin: "generated",
+      ...words,
+      model: row.model,
+      promptVersion: row.prompt_version,
+      generatedAt: row.generated_at,
+    },
+  };
 }

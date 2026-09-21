@@ -6,6 +6,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { gzipSync } from "node:zlib";
+import { writeHandWrittenExplanations } from "../src/import/handWrittenText.js";
 import { importRelease } from "../src/import/importRelease.js";
 import {
   INFLECTION_CANDIDATE_SQL,
@@ -17,12 +18,14 @@ import {
 import { fromNodeSqlite } from "../src/lookup/database.js";
 import type {
   FoundResult,
+  LexemaExplanation,
   LookupResult,
   NonNounPos,
   NotFoundResult,
   NounReading,
   Reading,
   ReadingArticles,
+  ReadingExplanation,
   RejectedResult,
   ReleaseInfo,
   SearchResult,
@@ -782,4 +785,82 @@ test("both inflection queries stay on indexes rather than scanning", async () =>
       );
     }
   });
+});
+
+test("a reading carries Lexema's own explanation, or says that there is none", async () => {
+  await withFixture(async (db) => {
+    // Written over this release exactly as `pnpm run seed:dev` writes it, from
+    // the same module, so what a reading carries here is what the page shows.
+    assert.ok(writeHandWrittenExplanations(db, RELEASE) > 0);
+
+    const casa = found(await ask(db, "casa"))[0];
+    assert.equal(casa.explanation.status, "written");
+    assert.ok(casa.explanation.status === "written");
+    const written = casa.explanation.explanation;
+    assert.equal(written.origin, "hand-written");
+    assert.equal(written.italian, "Il posto dove una persona vive.");
+    assert.equal(written.english, "The place where a person lives.");
+    assert.equal(written.exampleItalian, "La mia casa è piccola.");
+
+    // The source keeps saying exactly what it said: Lexema's words sit beside
+    // its two useless glosses and replace neither.
+    assert.deepEqual(
+      casa.senses[0].glosses.map((gloss) => gloss.text),
+      ["casa ( approfondimento) f sing"],
+    );
+
+    // A record nobody has written for gets the absent case, not an empty
+    // string and not a throw: `un’amica` is in no batch and never will be.
+    assert.deepEqual(found(await ask(db, "un’amica"))[0].explanation, { status: "none" });
+  });
+});
+
+test("a generated explanation arrives with the model, prompt and time that made it", async () => {
+  await withFixture(async (db) => {
+    const recordId = (
+      db.prepare("SELECT record_id FROM source_record WHERE word = 'città'").get() as {
+        record_id: number;
+      }
+    ).record_id;
+    db.prepare(
+      `INSERT INTO lexema_explanation
+         (record_id, release_id, origin, explanation_it, explanation_en, example_it,
+          model, prompt_version, generated_at)
+       VALUES (?, ?, 'lexema-generated', 'Un posto con molte persone.',
+               'A place with many people.', 'Roma è una città.',
+               'test-model', 'explain/v1', '2026-09-21T00:00:00Z')`,
+    ).run(recordId, RELEASE);
+
+    const reading = found(await ask(db, "città"))[0];
+    assert.ok(reading.explanation.status === "written");
+    const written = reading.explanation.explanation;
+    assert.ok(written.origin === "generated");
+    assert.equal(written.model, "test-model");
+    assert.equal(written.promptVersion, "explain/v1");
+    assert.equal(written.generatedAt, "2026-09-21T00:00:00Z");
+  });
+});
+
+test("an explanation is two origins with different facts, and absence is its own case", () => {
+  const handWritten: LexemaExplanation = {
+    origin: "hand-written",
+    italian: "Il posto dove una persona vive.",
+    english: "The place where a person lives.",
+    exampleItalian: "La mia casa è piccola.",
+  };
+  // @ts-expect-error - a hand-written item has no model to read: no model wrote it
+  const model: string = handWritten.model;
+  // @ts-expect-error - a generated item cannot be missing the prompt version ADR 0008 binds it to
+  const generated: LexemaExplanation = {
+    origin: "generated",
+    italian: "x", english: "x", exampleItalian: "x",
+    model: "test-model", generatedAt: "2026-09-21T00:00:00Z",
+  };
+  // @ts-expect-error - "none" is a case of its own, never an explanation with empty strings
+  const empty: ReadingExplanation = { status: "written" };
+
+  assert.equal(handWritten.origin, "hand-written");
+  assert.equal(model, undefined);
+  assert.equal(generated.origin, "generated");
+  assert.equal(empty.status, "written");
 });

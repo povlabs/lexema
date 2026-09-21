@@ -22,6 +22,7 @@ import { DatabaseSync } from "node:sqlite";
 import { gzipSync } from "node:zlib";
 import { renderToStaticMarkup } from "react-dom/server";
 import { importRelease } from "../../src/import/importRelease.js";
+import { writeHandWrittenExplanations } from "../../src/import/handWrittenText.js";
 import { writeKnownDisputes } from "../../src/import/knownDisputes.js";
 import { fromNodeSqlite } from "../../src/lookup/database.js";
 import { lookup, readRelease } from "../../src/lookup/lookup.js";
@@ -51,6 +52,12 @@ import {
   DEFINITIONS,
   EMPTY,
   ERROR,
+  EXPLANATION,
+  EXPLANATION_ENGLISH,
+  EXPLANATION_EXAMPLE,
+  EXPLANATION_EXAMPLE_LABEL,
+  EXPLANATION_LABEL,
+  EXPLANATION_TEXT,
   FIELD_LABEL,
   FIELD_VALUE,
   FORM_ITEM,
@@ -111,6 +118,10 @@ async function fixture(): Promise<Fixture> {
   // The same review rows `pnpm run seed:dev` writes, from the same module, so
   // the page under test meets the dispute the development seed shows.
   assert.equal(writeKnownDisputes(db, RELEASE), 1);
+  // And the same three hand-written explanations, from the same module the seed
+  // calls — one per card shape — so the label and the layout under test are the
+  // ones a reader meets (#72).
+  assert.equal(writeHandWrittenExplanations(db, RELEASE), 3);
   return { dir, db };
 }
 
@@ -1693,6 +1704,191 @@ test("every reading shows its own source forms, not only the forms pointing at i
     // once however many forms it holds — so it is never a claim pill.
     assert.equal(occurrencesOf(parlare, '<q lang="it">io</q>'), 0);
     assert.equal(occurrencesOf(parlare, pronounLabel("io")), 1);
+  });
+});
+
+/**
+ * Lexema's own words on a card: the three shapes, the label, and the silence
+ * everywhere else.
+ *
+ * ADR 0008 binds two things the tests below hold to: text Lexema wrote is
+ * marked as Lexema's in words, never by placement or colour, and the English
+ * is the short explanation only — the example sentence stays Italian, as
+ * everything from the source does.
+ */
+const HAND_WRITTEN_LABEL =
+  "Written by Lexema, not by the dictionary — written by hand, not by a model";
+
+/** Every slot of Lexema's own words the page rendered. */
+const explanationSlots = (html: string): number =>
+  occurrencesOf(html, `<section class="${EXPLANATION}"`);
+
+/** The three readings the hand-written batch was written for, by card label. */
+const WRITTEN_FOR = [
+  {
+    label: "casa, noun",
+    query: "casa",
+    italian: "Il posto dove una persona vive.",
+    english: "The place where a person lives.",
+    example: "La mia casa è piccola.",
+  },
+  {
+    label: "andare, verb",
+    query: "andare",
+    italian: "Lasciare un posto per arrivare in un altro.",
+    english: "To leave one place in order to reach another.",
+    example: "Voglio andare a casa.",
+  },
+  {
+    label: "bello, adjective",
+    query: "bello",
+    italian: "Che piace a chi lo guarda o lo ascolta.",
+    english: "Pleasing to whoever looks at it or hears it.",
+    example: "Questo quadro è bello.",
+  },
+] as const;
+
+test("a hand-written reading shows Lexema's words, in both languages, labelled as Lexema's", async () => {
+  await withFixture(async ({ db }) => {
+    for (const written of WRITTEN_FOR) {
+      const html = await render(db, written.query);
+      const one = card(html, written.label);
+
+      // The label is in words, and it says a person wrote this rather than a
+      // model — which is the whole reason the batch is hand-written at all.
+      assert.match(
+        one,
+        exact(`<p class="${EXPLANATION_LABEL}" id="explanation-`),
+        `${written.query}: the slot carries no label`,
+      );
+      assert.equal(
+        occurrencesOf(one, HAND_WRITTEN_LABEL),
+        1,
+        `${written.query}: the label does not say whose words these are`,
+      );
+      // And it cannot be missed by anything reading the words rather than the
+      // layout: strip the tags and it is still there, before the text it marks.
+      const text = textOf(one);
+      assert.ok(
+        text.indexOf(HAND_WRITTEN_LABEL) < text.indexOf(written.italian),
+        `${written.query}: the label does not precede the text it marks`,
+      );
+
+      // Italian marked as Italian inside an English document, the English
+      // beside it, and the example Italian and Italian only.
+      assert.match(one, exact(`<p class="${EXPLANATION_TEXT}" lang="it">${written.italian}</p>`));
+      assert.match(one, exact(`<p class="${EXPLANATION_ENGLISH}">${written.english}</p>`));
+      assert.match(
+        one,
+        exact(
+          `<p class="${EXPLANATION_EXAMPLE}">` +
+            `<span class="${EXPLANATION_EXAMPLE_LABEL}">Example</span> ` +
+            `<span lang="it">${written.example}</span></p>`,
+        ),
+      );
+
+      // Above the source's own words, and never mixed into them: the slot ends
+      // before the definitions list begins.
+      const slot = one.indexOf(`<section class="${EXPLANATION}"`);
+      const definitions = one.indexOf(`<ol class="${DEFINITIONS}"`);
+      assert.notEqual(slot, -1);
+      if (definitions !== -1) {
+        assert.ok(slot < definitions, `${written.query}: Lexema's words sit below the source's`);
+      }
+      // One slot per written reading, on the card it was written for.
+      assert.equal(explanationSlots(one), 1);
+    }
+
+    // The source keeps saying exactly what it said. `casa`'s two useless
+    // glosses are the case that matters: a readable explanation now sits above
+    // them, and neither of them moved, changed or disappeared.
+    const casa = card(await render(db, "casa"), "casa, noun");
+    assert.match(casa, exact(`<p lang="it" class="${GLOSS}">casa ( approfondimento) f sing</p>`));
+  });
+});
+
+test("a reading Lexema has written nothing for renders no slot, no label and no empty box", async () => {
+  await withFixture(async ({ db }) => {
+    const written = new Set<string>(WRITTEN_FOR.map((one) => one.label));
+    for (const row of QUERIES) {
+      const html = await render(db, row.query);
+      // Every slot on the page belongs to a card the batch was written for.
+      const slots = cardsOf(html).filter((one) => one.includes(`<section class="${EXPLANATION}"`));
+      assert.equal(
+        slots.length,
+        explanationSlots(html),
+        `${row.query}: a slot rendered outside a card`,
+      );
+      for (const one of slots) {
+        const label = /aria-label="([^"]*)"/.exec(one)?.[1];
+        assert.ok(
+          label !== undefined && written.has(label),
+          `${row.query}: ${label} carries a slot nobody wrote for it`,
+        );
+      }
+      // Nothing of the slot survives on a card with no explanation: no class,
+      // no label, no heading, no box with nothing in it.
+      const silentCards = cardsOf(html).filter((one) => !slots.includes(one));
+      for (const one of silentCards) {
+        assert.doesNotMatch(one, exact(EXPLANATION));
+        assert.doesNotMatch(one, /Written by Lexema/);
+        assert.doesNotMatch(one, /Example<\/span>/);
+      }
+    }
+
+    // `città` and `studente` are spot-check words outside the batch: their
+    // cards say nothing at all about Lexema having written anything.
+    for (const query of ["città", "studente"]) {
+      const html = await render(db, query);
+      assert.equal(explanationSlots(html), 0, `${query}: an empty slot rendered`);
+      assert.doesNotMatch(html, /Written by Lexema/);
+    }
+    // And `andare` is one card of two: the verb carries the words, the noun
+    // record of the same spelling carries none.
+    const andare = await render(db, "andare");
+    assert.equal(explanationSlots(andare), 1);
+    assert.doesNotMatch(card(andare, "andare, noun"), exact(EXPLANATION));
+  });
+});
+
+test("a generated item names the model that wrote it, where a hand-written one names none", async () => {
+  await withFixture(async ({ db }) => {
+    // The origin the batch does not use, rendered from the same slot: #50 will
+    // write rows like this one, and the label has to read differently before
+    // any of them ships.
+    const recordId = (
+      db.prepare("SELECT record_id FROM source_record WHERE word = 'città'").get() as {
+        record_id: number;
+      }
+    ).record_id;
+    db.prepare(
+      `INSERT INTO lexema_explanation
+         (record_id, release_id, origin, explanation_it, explanation_en, example_it,
+          model, prompt_version, generated_at)
+       VALUES (?, ?, 'lexema-generated', 'Un posto con molte persone.',
+               'A place with many people.', 'Roma è una città.',
+               'test-model', 'explain/v1', '2026-09-21T00:00:00Z')`,
+    ).run(recordId, RELEASE);
+
+    const generated = card(await render(db, "città"), "città, noun");
+    const label =
+      "Written by Lexema, not by the dictionary — generated by test-model, " +
+      "prompt explain/v1, on 2026-09-21T00:00:00Z";
+    // The text cannot be read without the label: it is in the same slot, and
+    // both are here exactly once.
+    assert.equal(occurrencesOf(generated, label), 1);
+    assert.equal(occurrencesOf(generated, "Un posto con molte persone."), 1);
+    assert.match(
+      generated,
+      exact(`<p class="${EXPLANATION_TEXT}" lang="it">Un posto con molte persone.</p>`),
+    );
+    // A generated item and a hand-written one read differently, which is what
+    // stops a reader taking one for the other.
+    assert.doesNotMatch(generated, exact(HAND_WRITTEN_LABEL));
+
+    const handWritten = card(await render(db, "casa"), "casa, noun");
+    assert.equal(occurrencesOf(handWritten, HAND_WRITTEN_LABEL), 1);
+    assert.doesNotMatch(handWritten, /generated by/);
   });
 });
 

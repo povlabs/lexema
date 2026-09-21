@@ -430,6 +430,61 @@ CREATE INDEX claim_review_by_record ON claim_review (record_id);
 
 
 -- ---------------------------------------------------------------------------
+-- Text Lexema wrote itself
+-- ---------------------------------------------------------------------------
+
+-- A short explanation of one record, written by Lexema rather than copied from
+-- the source: a plain Italian sentence, the same sentence in English, and one
+-- basic Italian example.
+--
+-- Three columns rather than one blob, because ADR 0009 keeps Lexema-original
+-- content out of any field that also holds source text, and the English is the
+-- explanation only: ADR 0008's amendment keeps the example sentence Italian,
+-- as everything from the source stays Italian. Nothing here ever overwrites a
+-- source value; a reading shows this text beside its glosses, labelled.
+--
+-- `origin` is the load-bearing column, and it is why the provenance columns are
+-- nullable at all. A generated row carries the model, the prompt version and
+-- the generation time ADR 0008 binds it to; a hand-written row has no model
+-- to name, and writing one ('hand-written', say) would be a false value in the
+-- one column the honesty rule rests on. So the two origins are separate branches
+-- with separate required columns, checked all-or-nothing the way source_release
+-- checks its count columns: a row with a model and no prompt version is refused
+-- by the database, not by whatever happens to read it.
+CREATE TABLE lexema_explanation (
+  -- One explanation per record, so a record cannot carry two that disagree.
+  record_id  INTEGER PRIMARY KEY,
+  release_id TEXT NOT NULL,
+
+  origin TEXT NOT NULL CHECK (origin IN ('lexema-generated', 'lexema-hand-written')),
+
+  -- Lexema's own words. All three required: an explanation with no example, or
+  -- an Italian one with no English, is not what the page renders.
+  explanation_it TEXT NOT NULL,
+  explanation_en TEXT NOT NULL,
+  example_it     TEXT NOT NULL,
+
+  -- What produced a generated row, and nothing a hand-written one can claim.
+  model          TEXT,
+  prompt_version TEXT,
+  generated_at   TEXT,   -- ISO-8601
+
+  CHECK ((model IS NULL) = (origin = 'lexema-hand-written')),
+  CHECK ((prompt_version IS NULL) = (model IS NULL)),
+  CHECK ((generated_at IS NULL) = (model IS NULL)),
+
+  FOREIGN KEY (record_id, release_id)
+    REFERENCES source_record(record_id, release_id) ON DELETE CASCADE
+) STRICT;
+
+-- "What has this release already been written for?" — the question a generation
+-- run asks before it spends a model, and the one access path the primary key
+-- does not already serve.
+CREATE INDEX lexema_explanation_by_release
+  ON lexema_explanation (release_id, origin);
+
+
+-- ---------------------------------------------------------------------------
 -- Views
 -- ---------------------------------------------------------------------------
 

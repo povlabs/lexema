@@ -19,6 +19,7 @@ import { mkdir, rm } from "node:fs/promises";
 import { resolve } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { exportSql } from "./exportSql.js";
+import { writeHandWrittenExplanations } from "./handWrittenText.js";
 import { importRelease } from "./importRelease.js";
 import { writeKnownDisputes } from "./knownDisputes.js";
 import { writePrefixArchive } from "./prefixArchive.js";
@@ -92,6 +93,17 @@ try {
     disputes === 0
       ? "  no known disputed claim is inside this prefix\n"
       : `  flagged ${disputes} known disputed claim(s)\n`,
+  );
+
+  // Lexema's own explanations are not import output either, and for the same
+  // reason: the importer copies the source and writes nothing of its own. The
+  // twelve hand-written ones land here, over the release just imported, so the
+  // page can show the label and the layout before any model is paid (#72).
+  const explanations = writeHandWrittenExplanations(reviewDb, RELEASE);
+  process.stderr.write(
+    explanations === 0
+      ? "  none of the hand-written explanations is inside this prefix\n"
+      : `  wrote ${explanations} hand-written explanation(s)\n`,
   );
 } finally {
   reviewDb.close();
