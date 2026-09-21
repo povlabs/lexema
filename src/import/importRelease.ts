@@ -251,6 +251,27 @@ function readItalianRecord(parsed: JsonObject): KaikkiRecord {
   return { ...parsed, word, pos, pos_title, forms, senses };
 }
 
+/**
+ * Whether one source line becomes a record — the same admission test the import
+ * loop runs, exported so nothing has to restate it.
+ *
+ * A prefix cut has to count records the way the importer counts them, and an
+ * `lang_code === 'it'` check written a second time would drift from this one:
+ * an Italian line missing `pos_title` is admitted by that check and refused
+ * here, so the two would disagree about how long a prefix is.
+ */
+export function admitsRecord(line: string): boolean {
+  try {
+    const parsed = parseLine(line);
+    if (parsed.lang_code !== "it") return false;
+    readItalianRecord(parsed);
+    return true;
+  } catch (error) {
+    if (error instanceof MalformedLine) return false;
+    throw error;
+  }
+}
+
 /** What an open file would have to keep for two reads of it to be the same bytes. */
 const identityOf = (stats: Stats): string =>
   `${stats.dev}:${stats.ino}:${stats.size}:${stats.mtimeMs}`;

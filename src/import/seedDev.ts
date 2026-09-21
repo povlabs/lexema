@@ -5,6 +5,13 @@
 // A few thousand records is enough to build a page against and loads in
 // seconds. The full release is 560,357 records and 1.3 GB, which is a
 // deployment problem (#18), not a development one.
+//
+// The seed gets that smallness by importing a smaller *archive*, never by
+// stopping the importer early. A run stopped by `--limit` ends as `partial`,
+// and every canonical read hides a release that is not `complete`, so the page
+// answered every query with "the lookup failed" (#47). Cutting the prefix into
+// its own file instead leaves the release honestly complete for the file it
+// names, and its checksum describes exactly the bytes that were imported.
 
 import { execFileSync } from "node:child_process";
 import { closeSync, openSync, writeSync } from "node:fs";
@@ -12,6 +19,7 @@ import { mkdir, rm } from "node:fs/promises";
 import { resolve } from "node:path";
 import { exportSql } from "./exportSql.js";
 import { importRelease } from "./importRelease.js";
+import { writePrefixArchive } from "./prefixArchive.js";
 
 // 25,000 records reaches source line 60,501, which is where the words this
 // page is built against stop being absent: `sale`, `sala`, `salire`, `casa`,
@@ -19,13 +27,15 @@ import { importRelease } from "./importRelease.js";
 // suggested searches find nothing.
 const RECORDS = Number(process.env.SEED_RECORDS ?? 25000);
 const RELEASE = process.env.SEED_RELEASE ?? "it-dev";
+const SOURCE = "it-extract.jsonl.gz";
+const ARCHIVE = resolve(`.data/${RELEASE}.jsonl.gz`);
 const DB = resolve(".data/dev.sqlite");
 const SQL = resolve(".data/dev.sql");
 const REJECTIONS = resolve(".data/dev-rejections.tsv");
 const STATE = resolve("web/.wrangler/state");
 
 await mkdir(".data", { recursive: true });
-for (const path of [DB, `${DB}-wal`, `${DB}-shm`, SQL, REJECTIONS])
+for (const path of [ARCHIVE, DB, `${DB}-wal`, `${DB}-shm`, SQL, REJECTIONS])
   await rm(path, { force: true });
 
 // The generated SQL creates the schema and inserts the release, so loading it
@@ -36,28 +46,38 @@ for (const path of [DB, `${DB}-wal`, `${DB}-shm`, SQL, REJECTIONS])
 process.stderr.write(`clearing local D1 under ${STATE}\n`);
 await rm(resolve(STATE, "v3/d1"), { recursive: true, force: true });
 
-// The importer requires a home for every rejected line rather than letting one
-// be dropped in silence, so the seed gives it a file beside the database.
-process.stderr.write(`importing ${RECORDS} records as ${RELEASE}\n`);
+process.stderr.write(`cutting the first ${RECORDS} records of ${SOURCE} into ${ARCHIVE}\n`);
+const prefix = await writePrefixArchive({ input: SOURCE, output: ARCHIVE, records: RECORDS });
+if (prefix.exhausted) {
+  process.stderr.write(`  ${SOURCE} holds only ${prefix.records} records; the prefix is all of it\n`);
+}
+process.stderr.write(`  ${prefix.records} records in ${prefix.lines} source lines\n`);
+
+// No `limit`: the importer reads this archive to its last line, which is what
+// makes the release `complete` rather than `partial`. The importer requires a
+// home for every rejected line rather than letting one be dropped in silence,
+// so the seed gives it a file beside the database.
+process.stderr.write(`importing ${ARCHIVE} whole as ${RELEASE}\n`);
 const rejectionsFd = openSync(REJECTIONS, "w");
 let report;
 try {
   report = await importRelease({
-    input: "it-extract.jsonl.gz",
+    input: ARCHIVE,
     database: DB,
     schema: "src/db/schema.sql",
     releaseId: RELEASE,
     archiveR2Key: `releases/${RELEASE}.jsonl.gz`,
     sourceUrl: "https://kaikki.org/dictionary/downloads/it/it-extract.jsonl.gz",
     license: "CC-BY-SA-4.0",
-    limit: RECORDS,
     onRejection: ({ lineNo, kind, reason }) =>
       writeSync(rejectionsFd, `${lineNo}\t${kind}\t${reason}\n`),
   });
 } finally {
   closeSync(rejectionsFd);
 }
-process.stderr.write(`  ${report.admitted} records, ${report.rows.lookup_form} lookup rows\n`);
+process.stderr.write(
+  `  ${report.admitted} records, ${report.rows.lookup_form} lookup rows, release ${report.status}\n`,
+);
 
 const { statements } = await exportSql({ database: DB, schema: "src/db/schema.sql", output: SQL });
 process.stderr.write(`wrote ${statements} statements to ${SQL}\n`);

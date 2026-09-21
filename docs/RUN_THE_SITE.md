@@ -28,6 +28,12 @@ Then open <http://localhost:8790/?q=sale>.
 `pnpm run seed:dev` builds a development release and loads it into local D1. It
 drops the existing local D1 database first, so re-running it needs no cleanup.
 
+It gets its smallness by cutting the head of `it-extract.jsonl.gz` into its own
+archive under `.data/` and importing that file whole. The release is therefore
+`complete`, which is what the page will serve: a release left `partial` by an
+import stopped early is hidden by every canonical read, and the page then
+reports that the lookup failed rather than showing anything (#47).
+
 ## Check it came up
 
 | Query | Expect |
@@ -36,6 +42,11 @@ drops the existing local D1 database first, so re-running it needs no cleanup.
 | `?q=casa` | 1 entry, gender and number shown as *not stated in the source* |
 | `?q=citta` | the empty state — accents are significant |
 | `?q=` | the opening hint |
+
+Observed on 2026-09-21 at the default seed, on `wrangler dev` over the built
+Worker: `sale` renders 5 entries with two marked as mentions and a two-candidate
+lemma link, `casa` renders 1 entry with gender and number *not stated in the
+source*, `citta` renders the empty state, and `?q=` renders the opening hint.
 
 The seed loads a prefix of the archive, so a word past its cutoff returns the
 empty state rather than an error. [DEV_SEED.md](DEV_SEED.md) lists what the

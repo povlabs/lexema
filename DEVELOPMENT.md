@@ -2,8 +2,9 @@
 
 Lexema turns the Kaikki/Wiktextract Italian dictionary dump into source-grounded
 search candidates. Today the repository holds the Italian source adapter, the
-candidate resolver, a validation CLI, and the research that checked them. The
-website, the importer that writes D1, and the Worker are decided but not built.
+candidate resolver, a validation CLI, the research that checked them, the
+importer that writes D1, the exact lookup over it, and a Worker serving the
+search page locally. Deploying that Worker to a real URL is not built.
 
 This is the builder's door. For what Lexema *is*, see [README.md](./README.md).
 
@@ -67,10 +68,15 @@ See [how to run the search page](./docs/RUN_THE_SITE.md) for the full recipe,
 src/
 ├── cli.ts          # `pnpm run validate` — streams the file, writes the report
 ├── core/           # dataset-independent: record types, candidate resolver, report
+├── db/             # the D1 schema and the lookup queries, as SQL
+├── import/         # the streaming importer, the SQL export and the dev seed
 ├── italian/        # the Italian adapter: normalize, tags, articles, examples
+├── lookup/         # exact surface lookup over a complete release
 └── source/         # gzip JSONL streaming and provenance refs
+web/                # the @lexema/web workspace: the Worker and the search page
 test/               # unit tests, plus the dataset-backed adapter test
 fixtures/           # the checked forms and the local release metadata
+docs/               # how the importer, the lookup and the page work
 reports/            # dated findings and measurements
 .decisions/         # the rulings
 ```
@@ -82,9 +88,11 @@ completion checks. There is no Markdown backlog. The current goal is a working
 Italian search website before complete dictionary cleanup; the milestone
 descriptions hold the scope, and nothing in them is approval to publish.
 
-The code is an experimental validation spike. Passing its tests establishes that
-the adapter reads the file as described, not that the dictionary is accurate or
-complete. The API-first plan it was written against is superseded by the
+The importer, the lookup and the search page run locally against a development
+seed; nothing is deployed, and no release has been published. Beneath them the
+code is still an experimental validation spike. Passing its tests establishes
+that the adapter reads the file as described, not that the dictionary is
+accurate or complete. The API-first plan it was written against is superseded by the
 website-first approach; [the original specification](./docs/LEXEMA_SPEC.md) is
 kept as history, and none of the existing code is accepted as correct without
 fresh review.
