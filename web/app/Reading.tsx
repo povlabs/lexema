@@ -473,8 +473,17 @@ const cellName = (cell: Cell): string => `${cell.gender} ${cell.number}`;
  * masculine, feminine and singular, so the source really does file it under two
  * cells. A spelling the source gave one dimension or neither lands nowhere —
  * guessing the other half is the completion the spec forbids.
+ *
+ * A degree the source states keeps a spelling out of the table altogether,
+ * unless that degree is `positive`. `grande` lists `grandissimo` tagged
+ * absolute, superlative, masculine and singular: it is a masculine singular of
+ * something, and calling it the masculine singular of `grande` would be reading
+ * past the tag the source put there. It belongs in the degrees below.
  */
 function placements(claims: readonly GrammarClaim[]): Cell[] {
+  const degrees = statedValues(claims, "degree");
+  if (degrees.some((degree) => degree !== "positive")) return [];
+
   const genders = statedValues(claims, "gender");
   const numbers = statedValues(claims, "number");
   return CELLS.filter((cell) => genders.includes(cell.gender) && numbers.includes(cell.number));
@@ -647,12 +656,18 @@ const ADJECTIVE_DEGREES = ["comparative", "superlative"] as const;
  * A row exists because a `forms[]` entry carries a stated `degree` claim for
  * it. `grandissimo` looks like a superlative to anyone who reads Italian, and
  * that is exactly the inference this page does not make: with no tag there is
- * no row, whatever the spelling suggests.
+ * no row, whatever the spelling suggests. `grande`'s own comparatives are the
+ * other half of that — the release states their degree only in the prose of a
+ * `raw_tag`, so they get no row either.
+ *
+ * Every stated degree counts, not the first one: the release tags
+ * `grandissimo` `absolute` *and* `superlative`, and reading one claim per form
+ * would have dropped the whole row.
  */
 function AdjectiveDegrees({ reading }: { reading: Reading }) {
   const rows = ADJECTIVE_DEGREES.map((degree) => ({
     degree,
-    forms: reading.forms.filter((form) => stated(form.claims, "degree") === degree),
+    forms: reading.forms.filter((form) => statedValues(form.claims, "degree").includes(degree)),
   })).filter((row) => row.forms.length > 0);
 
   return (

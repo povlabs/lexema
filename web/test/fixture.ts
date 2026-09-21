@@ -307,17 +307,24 @@ export const FIXTURE_LINES: string[] = [
     senses: [{ glosses: ["sottile, delicato"] }],
   }),
 
-  // grande — the compound one. All four cells are filled by single words, and
-  // the odd string is in the degrees the source tags: `grandissimo\n massimo`
-  // is one `forms[]` entry written over two lines, exactly as the report found
-  // it.
+  // grande — the compound one, tagged as the release tags the real record. Two
+  // traps live in these four rows. The superlative carries *two* degree tags,
+  // `absolute` and `superlative`, so anything reading one degree per form loses
+  // the row. And it is tagged masculine singular as well, so anything that
+  // ignores its degree files it in the plain masculine singular cell beside
+  // `grande` itself and withholds the table over an ambiguity the source never
+  // had. `grandissimo\n massimo` is one `forms[]` entry written over two lines,
+  // exactly as reports/dataset-findings.md found it.
   record({
     word: "grande", pos: "adj", pos_title: "Aggettivo",
     tags: ["masculine", "feminine", "singular"],
     forms: [
-      { form: "grandi", tags: ["masculine", "feminine", "plural"] },
+      { form: "grandi", tags: ["positive", "masculine", "feminine", "plural"] },
       { form: "maggiore", tags: ["comparative"] },
-      { form: "grandissimo\n massimo", tags: ["superlative"] },
+      {
+        form: "grandissimo\n massimo",
+        tags: ["absolute", "superlative", "masculine", "singular"],
+      },
     ],
     senses: [{ glosses: ["di dimensioni notevoli"] }],
   }),

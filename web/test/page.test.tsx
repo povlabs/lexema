@@ -386,12 +386,15 @@ test("an adjective renders its own card: a paradigm when the source fills it, a 
     assert.match(fine, /<li><span lang="it">fini<\/span>/);
 
     // `grande`: four single words fill the table, and the source's own degree
-    // tags carry the odd strings.
+    // tags carry the odd strings. The superlative here is tagged masculine
+    // singular too, so the masculine singular cell holds `grande` alone only
+    // because a stated degree keeps a form out of the plain paradigm.
     const grande = await render(db, "grande");
     assert.match(
       grande,
       /<th scope="row">masculine<\/th><td><span lang="it">grande<\/span><\/td><td><span lang="it">grandi<\/span><\/td>/,
     );
+    assert.doesNotMatch(grande, /No table is shown/);
     assert.match(
       grande,
       /<th scope="row">comparative<\/th><td><span><span lang="it">maggiore<\/span><\/span><\/td>/,
