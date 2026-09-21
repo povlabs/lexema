@@ -1,0 +1,48 @@
+---
+id: 0009
+title: Source-derived data is CC BY-SA, Lexema's own content is not, and a result shows one Source link
+status: accepted
+date: 2026-09-21
+tags: [licensing, product]
+---
+
+# 0009 — Source-derived data is CC BY-SA, Lexema's own content is not, and a result shows one Source link
+
+**What this decides:** What Lexema publishes under Wiktionary's licence, what it keeps under its own terms, how a result page credits the source, and what must happen before anything goes public.
+
+## Context
+
+Lexema's dictionary text is copied from Italian Wiktionary through Kaikki. Wiktionary text is CC BY-SA 4.0: anyone may reuse it, commercially too, if they credit the source, release adaptations of it under the same licence, and add no terms that block reuse. The licensing research on [#26](https://github.com/hueypov/lexema/pull/26) established that from the primary sources, settled that CC BY-SA 4.0 alone suffices (no GFDL duty), that ShareAlike reaches neither the application code nor any obligation to publish a bulk download, and left six calls to Huey.
+
+Huey intends a paid API. That makes one of those calls load-bearing: whether Lexema's own content, the labelled explanations and examples of [0008](0008-generated-explanations-are-labelled-and-reportable.md) and the review records, is released under CC BY-SA with the source text or kept under Lexema's terms. Huey also wants the result page to carry a single small link rather than a credit line.
+
+Huey ruled on 2026-09-21, in conversation, on each point below.
+
+## Decision
+
+**Source-derived data is published under CC BY-SA 4.0 because it must be; Lexema's own content is not, and stays separable; a result page credits the source with one link, and the full credit lives on one attribution page.**
+
+- **Two licences.** Everything copied or adapted from Wiktionary is CC BY-SA 4.0. Everything Lexema writes itself, generated explanations and examples, review verdicts, is licensed under Lexema's own terms, decided at launch, and may be paid-only. The schema keeps the two in separate fields with provenance, which is what makes the split real rather than claimed.
+- **One Source link per result.** Each reading shows a small link labelled *Source* to its Wiktionary page. No credit line, licence name, or contributor text appears on the search page.
+- **One attribution page.** A public `/attribution` page carries the full credit: Wiktionary contributors, the source pages and their histories, CC BY-SA 4.0 with a link, the release identity, and a statement that Lexema restructured the text. A small footer link reaches it from every page. Pages other than the search page may carry a normal-sized credit.
+- **API responses** carry the same attribution in a field, so a customer can pass it on.
+- **A dated release before publication.** The published data comes from a fetch whose date, checksum, and upstream dump are recorded; the July file, whose dump date is unrecoverable, is not published.
+- **No audio at launch.** Audio files carry per-file licences and wait for their own pipeline.
+- **Open site terms.** The terms of service add no clause restricting reuse of source-derived content a user sees or receives.
+- **Legal review before public launch.** A lawyer confirms the two-licence split and the link-only credit before the first public release. Until then, access stays local or private preview, per [0004](0004-cloudflare-workers-d1-vinext.md).
+- **Application code licence** is deferred to the decision on the repository's visibility.
+
+**Binding constraints.**
+
+- No source-derived value is served without a provenance pointer that can reach its Wiktionary page.
+- No Lexema-original content is stored in a field that also holds source text.
+- The *Source* link and the attribution page are implemented before any address outside this machine serves results.
+- Nothing above is legal advice; the lawyer's review can amend this record.
+
+## Consequences
+
+A paid API is possible: the service, and Lexema's own content, are what is sold; the Wiktionary text inside a response remains reusable by whoever receives it, and Lexema never claims otherwise. The search page stays clean at the cost of a link-only credit that the lawyer must accept. A fresh, identified fetch is required before launch, which #10's importer already records. #6 closes on this record; the implementation items in `docs/LICENSING.md` §9 become issues under "Controlled release".
+
+## Records
+
+Two terms to route to `.glossary/TERMS.md` once the fields exist: *source-derived* (copied or adapted from Wiktionary, CC BY-SA) and *Lexema-original* (written by Lexema, its own terms).

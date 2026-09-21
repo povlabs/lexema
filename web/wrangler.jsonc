@@ -1,0 +1,27 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "lexema-web",
+  "compatibility_date": "2026-09-18",
+  "compatibility_flags": ["nodejs_compat"],
+  "main": "vinext/server/fetch-handler",
+  "assets": {
+    "directory": "dist/client",
+    "not_found_handling": "none",
+    "binding": "ASSETS"
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "lexema",
+      // Local-only placeholder. `--local` keys the miniflare sqlite file off
+      // database_id, which can be any uuid; no Cloudflare account is touched.
+      // A real deployment replaces this, which is #19.
+      "database_id": "00000000-0000-4000-8000-000000000002"
+    }
+  ],
+  "vars": {
+    // Which imported release to serve. A deployment flips this to activate a
+    // new one; doing that safely is #18.
+    "LEXEMA_RELEASE": "it-dev"
+  }
+}

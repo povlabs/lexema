@@ -1,0 +1,3 @@
+# The lockfile is generated. Collapsing it in review keeps a dependency change
+# from burying the hand-written diff beside it; `git diff` is unaffected.
+pnpm-lock.yaml linguist-generated=true

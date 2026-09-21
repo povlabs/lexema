@@ -18,3 +18,6 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm run typecheck
       - run: pnpm test
+      # The Worker's own typecheck. `wrangler types` generates from
+      # wrangler.jsonc and needs no Cloudflare account.
+      - run: pnpm --filter @lexema/web typecheck

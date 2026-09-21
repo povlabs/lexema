@@ -3,9 +3,9 @@
 An Italian word-search website for meanings, conjugations, articles, and related
 forms.
 
-The website is not built yet. The first goal is a working search flow that shows
-available data honestly, including missing or disputed information. Dictionary
-quality can improve separately from the website.
+A search page now runs locally; it is not deployed anywhere. The first goal is a
+working search flow that shows available data honestly, including missing or
+disputed information. Dictionary quality can improve separately from the website.
 
 ## The ethos
 
