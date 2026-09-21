@@ -4,12 +4,15 @@
   "version": "0.1.0",
   "type": "module",
   "packageManager": "pnpm@10.13.1",
-  "engines": {"node": ">=20"},
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "test": "node --import tsx --test test/normalize.test.ts test/tags.test.ts test/articles.test.ts test/candidateResolver.test.ts test/usageExamples.test.ts test/record-identity.test.ts",
+    "test": "node --import tsx --test test/normalize.test.ts test/tags.test.ts test/articles.test.ts test/candidateResolver.test.ts test/usageExamples.test.ts test/record-identity.test.ts test/import.test.ts",
     "test:integration": "node --import tsx --test test/adapter-fixtures.test.ts",
-    "validate": "tsx src/cli.ts validate"
+    "validate": "tsx src/cli.ts validate",
+    "import": "tsx src/import/cli.ts"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",

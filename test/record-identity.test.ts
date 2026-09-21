@@ -91,7 +91,7 @@ test("the grammar vocabulary is enforced on stated claims and only on them", () 
 
 test("every serving read hides a release that is not complete", () => {
   const db = seededDatabase();
-  for (const status of ["importing", "failed", "superseded"]) {
+  for (const status of ["importing", "partial", "failed", "superseded"]) {
     db.prepare("UPDATE source_release SET status = ?").run(status);
     assert.deepEqual(db.prepare("SELECT * FROM surface_hit").all(), [], status);
     assert.deepEqual(db.prepare("SELECT * FROM form_of_candidate").all(), [], status);
