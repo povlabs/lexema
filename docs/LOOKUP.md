@@ -47,7 +47,7 @@ Applied in this order, by `normalizeItalianExact`:
 | trim | leading and trailing whitespace removed |
 | NFC | Unicode composed form |
 | case fold | `CITTÀ` and `città` probe the same key |
-| apostrophes | `’`, `ʼ` and `´` fold to `'` |
+| apostrophes | `’` U+2019, `‘` U+2018 and `ʼ` U+02BC fold to `'` U+0027; nothing else does, and `´` U+00B4 in particular stays as typed |
 | accents | **kept**; `città` and `citta` are different keys |
 
 Length bound: `MAX_QUERY_LENGTH` is 128 characters, measured after trimming.
@@ -57,8 +57,14 @@ Length bound: `MAX_QUERY_LENGTH` is 128 characters, measured after trimming.
 | `outcome` | When | Carries |
 | --- | --- | --- |
 | `rejected` | the query never reached the index | `query.raw`, `rejection` |
-| `not-found` | the index was probed, nothing matched | `query`, `release`, `readings: []` |
+| `not-found` | the index was probed, nothing matched | `query`, `release` |
 | `found` | at least one record matched | `query`, `release`, `readings` |
+
+`found` and `not-found` are separate types, not one type with a flag. A
+`not-found` has no reading it can carry, and a `found`'s `readings` is
+`[Reading, ...Reading[]]` — at least one. So a caller that wants one array
+writes `result.outcome === "found" ? result.readings : []`, and neither
+"found nothing" nor "did not find these" is a value either type can hold.
 
 `rejection` is `{ reason: "empty" }` or
 `{ reason: "too-long", length, limit }`.
@@ -78,23 +84,49 @@ Length bound: `MAX_QUERY_LENGTH` is 128 characters, measured after trimming.
 | `query.key` | the normalized key the index was probed with |
 | `query.normalizer` | the release's normalizer version |
 | `release` | id, normalizer, source url, retrieval date, licence, attribution — present on `not-found` too |
-| `readings[]` | one entry per matching record, in source order |
+| `readings[]` | one entry per matching record, in source order; `found` only |
 
 ### `Reading`
 
 | Field | Holds |
 | --- | --- |
-| `recordId`, `lineNo` | position in the release archive |
+| `recordId` | the database's surrogate id, an artefact of one build — never publish it |
+| `ref` | the whole record: `jsonPointer` is `""` |
 | `word`, `pos`, `posTitle` | the record's own headword and part of speech, verbatim |
 | `isAboutQuery` | `true` when at least one piece of evidence is a headword hit |
-| `evidence[]` | every occurrence of the surface on this record |
-| `senses[]` | source glosses and labels, each with a `SourceRef` |
+| `evidence[]` | every occurrence of the surface on this record, in source order |
+| `senses[]` | source glosses and labels |
 | `grammar` | claims split into `record`, `byForm` and `bySense` |
 | `lemmaLinks[]` | outgoing `form_of` edges this record declares |
 | `inflections[]` | records declaring themselves forms of this one |
 | `reviews[]` | review verdicts on this record's claims |
 
-Every value carries a `SourceRef` of `{ lineNo, pointer }`.
+### `SourceRef`
+
+| Field | Holds |
+| --- | --- |
+| `releaseId` | the release these coordinates are in; line numbers mean nothing outside one |
+| `lineNo` | 1-based physical line in that release's `.jsonl.gz` |
+| `jsonPointer` | RFC 6901 pointer into that line; `""` is the whole record |
+| `lineSha256` | sha256 of the line's bytes, so the claim is checkable against the archive |
+
+These are the four coordinates the schema names `release_id`, `line_no`,
+`json_pointer` and `line_sha256` ([`.glossary/TERMS.md`](../.glossary/TERMS.md),
+[record identity](RECORD_IDENTITY.md#identity)), spelled in this API's
+camelCase.
+
+A `ref` is on `Reading`, `Evidence`, `Sense`, every gloss, every label, every
+`GrammarClaim`, every `LemmaLink`, every `LemmaCandidate`, every `InflectionOf`
+and every `Review`. The two things without one are `query`, which is the
+caller's own string, and `release`, which *is* the release rather than something
+read out of it.
+
+Where a ref sits on a link, it names the record the link was read from — an
+`InflectionOf.ref` carries the declaring record's line, not the reading's, and a
+`LemmaCandidate.ref` carries the candidate's own `/word`.
+
+Pointers order by their segments, and an array index orders as a number:
+`/forms/2/form` comes before `/forms/10/form`.
 
 ### `Evidence.origin`
 
@@ -122,14 +154,15 @@ all; the three represented states are:
 | `candidates` | it matches one or more | `candidates[]` |
 
 `candidates[]` is never narrowed to one. More than one entry means the source
-did not choose.
+did not choose. Each candidate is `recordId`, `word`, `pos` and a `ref` to its
+own `/word`.
 
 ### `InflectionOf`
 
 | Field | Holds |
 | --- | --- |
-| `recordId`, `lineNo`, `word`, `pos` | the declaring (inflected) record |
-| `pointer` | the edge on that record |
+| `recordId`, `word`, `pos` | the declaring (inflected) record |
+| `ref` | the edge on that record |
 | `targetWord` | the word the edge names, verbatim |
 | `targetCandidates[]` | every headword record `targetWord` resolves to, this reading included |
 
@@ -138,8 +171,9 @@ not be rendered as *the* lemma of `word`.
 
 ### `Review`
 
-`pointer`, `status` (`disputed` or `corroborated`), `note`, `evidenceUrl`,
-`reviewedAt`, `reviewedBy`. A review annotates a claim; it never replaces it.
+`ref` (the claim under review), `status` (`disputed` or `corroborated`), `note`,
+`evidenceUrl`, `reviewedAt`, `reviewedBy`. A review annotates a claim; it never
+replaces it.
 
 ## Exported SQL
 

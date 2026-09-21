@@ -14,6 +14,7 @@ lines read       799,600
 admitted (it)    560,357
 skipped (other)  239,243
 malformed        0
+refused leaves   0
 
 source_record       560,357
 source_record_json  560,357
@@ -30,16 +31,38 @@ match the independent inspection in [the dataset spot check](../reports/2026-09-
 which was measured by a different program. Two counts agreeing is not proof, but
 they were arrived at separately.
 
-Every line that does not become a record is counted exactly, and the first fifty
-line numbers of each kind are printed — rejected non-Italian lines as well as
-malformed ones, so a run can be audited either way. Keeping all 239,243 skipped
-line numbers would break the bounded-memory property, so the counts are exact and
-the locations are a sample.
+Every line that does not become a record is counted exactly and located —
+rejected non-Italian lines as well as malformed ones, so a run can be audited
+either way. The importer hands each rejection to its caller the moment it is
+met, with the line number, the kind and the reason, and the command writes them
+to `<database>.rejections.tsv` one per line. Nothing is sampled and nothing is
+held: all 239,243 skipped lines are listed, and the importer's memory does not
+grow with them because each one is written and forgotten.
 
 A line that parses but lacks `word`, `pos` or `pos_title` counts as malformed,
 rather than being admitted with an invented empty string. So does an empty or
 whitespace-only line: it carries no record and must not vanish under a reported
-zero.
+zero. And so does an Italian record whose `forms`, `senses` or `form_of` is
+present but is not an array of objects — `forms: [null]`, say. The shape is
+checked before the record's first write, so a bad line is one located rejection
+with the JSON pointer in its reason, never a crash in the middle of the run.
+
+A single bad *leaf* inside an otherwise good record costs that leaf and nothing
+more. `glosses: [42, "valido"]` is a record worth keeping with one value that is
+not a gloss, so the record lands, the `42` is refused as a `malformed-member`
+rejection at `/senses/0/glosses/0`, and the surviving gloss is stored at
+`/senses/0/glosses/1` — the index the archive gave it. Closing that gap would
+renumber the pointer, and a reader who opened the archive at the stored pointer
+would find a different value there. `refused leaves` counts these. The current
+archive has none; the behaviour exists so that a later one cannot lose a value
+in silence.
+
+Every count above is written onto the release row when the run finishes —
+`lines_read`, `admitted`, `skipped_other_language`, `malformed_lines`,
+`malformed_members`, and the rows per table in `release_table_rows`. A database
+can be audited on its own, without the console output of the run that made it.
+They are written in the same transaction as the status flip, so a release that
+is servable has always counted.
 
 ## Three properties the importer has to keep
 
@@ -117,24 +140,27 @@ appears), so the text sits where either reader will find it.
 
 ## Size, and what it means for D1
 
-The database is **1.3 GB**. Measured with `dbstat`:
+The database is **1.4 GB** on disk (1,428,103,168 bytes). Measured with
+`dbstat` on 2026-09-21; the commands, the machine and the full per-object
+output are in
+[the import measurements report](../reports/2026-09-21-import-measurements.md):
 
 | Object | Size |
 | --- | ---: |
-| `source_record_json` | 416.7 MB |
-| `grammar_claim` | 199.0 MB |
-| `grammar_claim_identity` index | 116.9 MB |
-| `lookup_form` | 116.3 MB |
-| `grammar_claim_by_record` index | 70.8 MB |
-| `source_record` | 68.3 MB |
-| `sense_gloss` | 64.8 MB |
-| everything else | ~250 MB |
+| `source_record_json` | 416.7 MiB |
+| `grammar_claim` | 199.8 MiB |
+| `grammar_claim_identity` index | 117.3 MiB |
+| `lookup_form` | 113.8 MiB |
+| `grammar_claim_by_record` index | 71.1 MiB |
+| `source_record` | 67.1 MiB |
+| `sense_gloss` | 64.8 MiB |
+| everything else | 311.3 MiB |
 
 D1's maximum database size is 10 GB on Workers Paid and 500 MB on Free
 ([D1 limits](https://developers.cloudflare.com/d1/platform/limits/), checked
 2026-09-19). So this fits paid comfortably and does not fit free at all.
 
-The single biggest object is the verbatim JSON, at 417 MB — about a third of the
+The single biggest object is the verbatim JSON, at 417 MiB — about a third of the
 total. Moving it to R2 and keeping D1 as the index is the original proposal in
 [LEXEMA_SPEC.md](LEXEMA_SPEC.md), and these numbers are what #3 needs to decide
 it. That decision is #3's, not this importer's; the schema already keeps the raw

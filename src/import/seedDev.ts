@@ -7,6 +7,7 @@
 // deployment problem (#18), not a development one.
 
 import { execFileSync } from "node:child_process";
+import { closeSync, openSync, writeSync } from "node:fs";
 import { mkdir, rm } from "node:fs/promises";
 import { resolve } from "node:path";
 import { exportSql } from "./exportSql.js";
@@ -20,10 +21,12 @@ const RECORDS = Number(process.env.SEED_RECORDS ?? 25000);
 const RELEASE = process.env.SEED_RELEASE ?? "it-dev";
 const DB = resolve(".data/dev.sqlite");
 const SQL = resolve(".data/dev.sql");
+const REJECTIONS = resolve(".data/dev-rejections.tsv");
 const STATE = resolve("web/.wrangler/state");
 
 await mkdir(".data", { recursive: true });
-for (const path of [DB, `${DB}-wal`, `${DB}-shm`, SQL]) await rm(path, { force: true });
+for (const path of [DB, `${DB}-wal`, `${DB}-shm`, SQL, REJECTIONS])
+  await rm(path, { force: true });
 
 // The generated SQL creates the schema and inserts the release, so loading it
 // into a database that already holds a seed collides on duplicate rows. Local
@@ -33,17 +36,27 @@ for (const path of [DB, `${DB}-wal`, `${DB}-shm`, SQL]) await rm(path, { force: 
 process.stderr.write(`clearing local D1 under ${STATE}\n`);
 await rm(resolve(STATE, "v3/d1"), { recursive: true, force: true });
 
+// The importer requires a home for every rejected line rather than letting one
+// be dropped in silence, so the seed gives it a file beside the database.
 process.stderr.write(`importing ${RECORDS} records as ${RELEASE}\n`);
-const report = await importRelease({
-  input: "it-extract.jsonl.gz",
-  database: DB,
-  schema: "src/db/schema.sql",
-  releaseId: RELEASE,
-  archiveR2Key: `releases/${RELEASE}.jsonl.gz`,
-  sourceUrl: "https://kaikki.org/dictionary/downloads/it/it-extract.jsonl.gz",
-  license: "CC-BY-SA-4.0",
-  limit: RECORDS,
-});
+const rejectionsFd = openSync(REJECTIONS, "w");
+let report;
+try {
+  report = await importRelease({
+    input: "it-extract.jsonl.gz",
+    database: DB,
+    schema: "src/db/schema.sql",
+    releaseId: RELEASE,
+    archiveR2Key: `releases/${RELEASE}.jsonl.gz`,
+    sourceUrl: "https://kaikki.org/dictionary/downloads/it/it-extract.jsonl.gz",
+    license: "CC-BY-SA-4.0",
+    limit: RECORDS,
+    onRejection: ({ lineNo, kind, reason }) =>
+      writeSync(rejectionsFd, `${lineNo}\t${kind}\t${reason}\n`),
+  });
+} finally {
+  closeSync(rejectionsFd);
+}
 process.stderr.write(`  ${report.admitted} records, ${report.rows.lookup_form} lookup rows\n`);
 
 const { statements } = await exportSql({ database: DB, schema: "src/db/schema.sql", output: SQL });

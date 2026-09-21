@@ -9,7 +9,11 @@
 //      assigned in line order rather than by insertion race.
 //   3. Honest. A record is admitted on `lang_code === 'it'` and nothing else.
 //      Every line that does not become a record — malformed, empty, or another
-//      language — is counted and located, never skipped in silence.
+//      language — is counted and located, never skipped in silence, and so is
+//      every leaf value a landed record had to refuse. Locations are handed to
+//      the caller one at a time as they happen, so all of them are reported
+//      without any of them being held. The counts land on the release row at
+//      the end of the run, so the database says what it was made from.
 //
 // The release is written as 'importing' and only flipped to 'complete' after the
 // last line of the archive lands, so a crash leaves a release that every
@@ -33,25 +37,31 @@ import {
 export const IMPORTER_VERSION = "it-import/v1" as const;
 export const SCHEMA_VERSION = 1;
 
-/** How many line numbers to keep per rejection kind. The counts are always exact. */
-const SAMPLE_LIMIT = 50;
+/**
+ * One piece of input that produced no row, and why.
+ *
+ * `other-language` is a well-formed record whose `lang_code` is not `it`.
+ * `malformed` is a whole line that produced no record: not JSON, not an object,
+ * blank, an Italian record missing `word`/`pos`/`pos_title`, or one whose
+ * `forms`, `senses` or `form_of` members are not objects.
+ * `malformed-member` is one leaf value inside a record that did land — a gloss
+ * that is not a string, a `tags` that is not an array. The record keeps every
+ * leaf that is well formed; only the bad leaf is refused, and it is refused out
+ * loud. The reason names the JSON pointer where the shape broke.
+ */
+export interface Rejection {
+  kind: "malformed" | "malformed-member" | "other-language";
+  /** 1-based physical line number in the archive. */
+  lineNo: number;
+  reason: string;
+}
 
 /**
- * A rejection tally: an exact count plus the first few line numbers.
- *
- * Keeping every line number would break the bounded-memory property — 239,243
- * lines of this archive are another language — so the count is exact and the
- * locations are a bounded sample.
+ * A line that cannot become a record. Thrown while reading a line and turned
+ * into a located rejection by the loop; anything else thrown there is a bug
+ * and still aborts the run.
  */
-class Rejections {
-  count = 0;
-  readonly lineNumbers: number[] = [];
-
-  record(lineNo: number): void {
-    this.count += 1;
-    if (this.lineNumbers.length < SAMPLE_LIMIT) this.lineNumbers.push(lineNo);
-  }
-}
+class MalformedLine extends Error {}
 
 export interface ImportOptions {
   /** Path to the .jsonl.gz source file. */
@@ -73,6 +83,13 @@ export interface ImportOptions {
   attribution?: string;
   /** Stop after this many admitted records. For tests only. */
   limit?: number;
+  /**
+   * Receives every rejected line as it is met, in line order. Required rather
+   * than optional: keeping 239,243 locations in memory would break the
+   * bounded-memory property, and dropping them would break the honesty one,
+   * so the caller has to say where they go.
+   */
+  onRejection: (rejection: Rejection) => void;
   onProgress?: (admitted: number) => void;
   /** Admitted records between onProgress calls. */
   progressEvery?: number;
@@ -89,13 +106,19 @@ export interface ImportReport {
   archiveBytes: number;
   linesRead: number;
   admitted: number;
+  /** Exact counts. Every location behind them went through `onRejection`. */
   skippedOtherLanguage: number;
-  /** First few line numbers of records rejected for their language. */
-  skippedLineNumbers: number[];
   malformed: number;
-  malformedLineNumbers: number[];
+  /** Leaf values refused inside records that were otherwise admitted. */
+  malformedMembers: number;
   rows: Record<string, number>;
   elapsedMs: number;
+}
+
+type JsonObject = Record<string, unknown>;
+
+interface KaikkiFormOf {
+  word?: unknown;
 }
 
 interface KaikkiForm {
@@ -109,23 +132,124 @@ interface KaikkiSense {
   glosses?: unknown;
   tags?: unknown;
   raw_tags?: unknown;
-  form_of?: unknown;
+  form_of: readonly KaikkiFormOf[];
 }
 
+/**
+ * An admitted Italian record. The three NOT NULL columns are strings and every
+ * nested member is an object, because `readItalianRecord` refused the line
+ * otherwise. Leaf fields stay `unknown`: a non-string form or gloss costs that
+ * one leaf its row rather than the whole record, and is reported at its own
+ * pointer on the way out.
+ */
 interface KaikkiRecord {
-  word?: unknown;
-  pos?: unknown;
-  pos_title?: unknown;
-  lang_code?: unknown;
+  word: string;
+  pos: string;
+  pos_title: string;
   tags?: unknown;
   raw_tags?: unknown;
-  forms?: unknown;
-  senses?: unknown;
+  forms: readonly KaikkiForm[];
+  senses: readonly KaikkiSense[];
 }
 
-const asArray = (value: unknown): unknown[] => (Array.isArray(value) ? value : []);
-const asStrings = (value: unknown): string[] =>
-  asArray(value).filter((item): item is string => typeof item === "string");
+const isObject = (value: unknown): value is JsonObject =>
+  typeof value === "object" && value !== null && !Array.isArray(value);
+
+/**
+ * A string leaf with the index the source gave it. The index is kept separate
+ * from the position in this list because it becomes the JSON pointer a reader
+ * checks the claim at: in `glosses: [42, "valido"]` the surviving gloss is
+ * `/glosses/1`, and calling it `/glosses/0` would point a reader at the wrong
+ * value in the archive.
+ */
+interface StringMember {
+  index: number;
+  text: string;
+}
+
+/** Where a refused leaf goes: one located rejection, one count. */
+type ReportMember = (reason: string) => void;
+
+/**
+ * `value` as its string members, each keeping its source index. A member that
+ * is not a string, and a `value` that is present but not an array, are counted
+ * and reported at their own pointer instead of vanishing.
+ */
+function stringMembers(value: unknown, pointer: string, report: ReportMember): StringMember[] {
+  if (value === undefined) return [];
+  if (!Array.isArray(value)) {
+    report(`${pointer} is not an array`);
+    return [];
+  }
+  const members: StringMember[] = [];
+  value.forEach((item, index) => {
+    if (typeof item === "string") members.push({ index, text: item });
+    else report(`${pointer}/${index} is not a string`);
+  });
+  return members;
+}
+
+/**
+ * A leaf whose row only means something when it is a string. An absent leaf is
+ * nothing to lose and yields null quietly; a present one of the wrong type is a
+ * value the source stated and this import refuses, so it is counted and located.
+ */
+function stringLeaf(value: unknown, pointer: string, report: ReportMember): string | null {
+  if (value === undefined) return null;
+  if (typeof value === "string") return value;
+  report(`${pointer} is not a string`);
+  return null;
+}
+
+/** The line as a JSON object, or a `MalformedLine` saying why it is not one. */
+function parseLine(line: string): JsonObject {
+  // A blank line carries no record and is not valid JSONL, so it is malformed.
+  // Skipping it quietly would let input vanish under a reported zero.
+  if (line.trim() === "") throw new MalformedLine("blank line");
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(line);
+  } catch {
+    throw new MalformedLine("not valid JSON");
+  }
+  if (!isObject(parsed)) throw new MalformedLine("line is not a JSON object");
+  return parsed;
+}
+
+/**
+ * `container[key]` as a list of objects. Absent means empty; present means an
+ * array whose every member is an object. Anything else is malformed and named
+ * by pointer, so `forms: [null]` is a located rejection rather than a crash
+ * in the middle of a transaction.
+ */
+function objectList(container: JsonObject, key: string, pointer: string): JsonObject[] {
+  const value = container[key];
+  if (value === undefined) return [];
+  if (!Array.isArray(value)) throw new MalformedLine(`${pointer} is not an array`);
+  return value.map((item, index) => {
+    if (!isObject(item)) throw new MalformedLine(`${pointer}/${index} is not an object`);
+    return item;
+  });
+}
+
+/**
+ * The shape an Italian record has to have before anything is written for it.
+ * Every Italian record in this file passes, but a record that does not would
+ * violate NOT NULL or hit a nested cast, so it is refused here as malformed —
+ * never silently given an empty string, never allowed to abort the run.
+ */
+function readItalianRecord(parsed: JsonObject): KaikkiRecord {
+  const { word, pos, pos_title } = parsed;
+  if (typeof word !== "string" || typeof pos !== "string" || typeof pos_title !== "string") {
+    throw new MalformedLine("word, pos and pos_title must be strings");
+  }
+  const forms = objectList(parsed, "forms", "/forms");
+  const senses = objectList(parsed, "senses", "/senses").map((sense, senseIndex) => ({
+    ...sense,
+    form_of: objectList(sense, "form_of", `/senses/${senseIndex}/form_of`),
+  }));
+  return { ...parsed, word, pos, pos_title, forms, senses };
+}
 
 /** What an open file would have to keep for two reads of it to be the same bytes. */
 const identityOf = (stats: Stats): string =>
@@ -227,8 +351,17 @@ export async function importRelease(options: ImportOptions): Promise<ImportRepor
     let linesRead = 0;
     let admitted = 0;
     let truncated = false;
-    const skipped = new Rejections();
-    const malformed = new Rejections();
+    let skipped = 0;
+    let malformed = 0;
+    let malformedMembers = 0;
+
+    // One closure for the whole run rather than one per line: it reads
+    // `linesRead` as it stands when a leaf is refused, which is the line that
+    // leaf came from.
+    const reportMember: ReportMember = (reason) => {
+      malformedMembers += 1;
+      options.onRejection({ kind: "malformed-member", lineNo: linesRead, reason });
+    };
 
     db.exec("BEGIN");
     statements.insertRelease.run(
@@ -252,35 +385,22 @@ export async function importRelease(options: ImportOptions): Promise<ImportRepor
 
       let record: KaikkiRecord;
       try {
-        // A blank line carries no record and is not valid JSONL, so it is
-        // malformed. Skipping it quietly would let input vanish under a
-        // reported zero.
-        if (line.trim() === "") throw new Error("blank line");
-        const parsed: unknown = JSON.parse(line);
-        if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
-          throw new Error("line is not a JSON object");
+        const parsed = parseLine(line);
+        // The one admission test. Never the filename, never the spelling.
+        if (parsed.lang_code !== "it") {
+          skipped += 1;
+          options.onRejection({
+            kind: "other-language",
+            lineNo: linesRead,
+            reason: `lang_code is ${JSON.stringify(parsed.lang_code ?? null)}`,
+          });
+          continue;
         }
-        record = parsed as KaikkiRecord;
-      } catch {
-        malformed.record(linesRead);
-        continue;
-      }
-
-      // The one admission test. Never the filename, never the spelling.
-      if (record.lang_code !== "it") {
-        skipped.record(linesRead);
-        continue;
-      }
-
-      // Every Italian record in this file has all three, but a record missing
-      // one would violate NOT NULL, so it is counted as malformed rather than
-      // silently given an empty string.
-      if (
-        typeof record.word !== "string" ||
-        typeof record.pos !== "string" ||
-        typeof record.pos_title !== "string"
-      ) {
-        malformed.record(linesRead);
+        record = readItalianRecord(parsed);
+      } catch (error) {
+        if (!(error instanceof MalformedLine)) throw error;
+        malformed += 1;
+        options.onRejection({ kind: "malformed", lineNo: linesRead, reason: error.message });
         continue;
       }
 
@@ -297,6 +417,7 @@ export async function importRelease(options: ImportOptions): Promise<ImportRepor
         word: record.word,
         pos: record.pos,
         posTitle: record.pos_title,
+        reportMember,
       });
 
       if (admitted % (options.progressEvery ?? 25_000) === 0) options.onProgress?.(admitted);
@@ -320,7 +441,21 @@ export async function importRelease(options: ImportOptions): Promise<ImportRepor
     // one holds the checksum and byte count of the whole file but a prefix of
     // its records, so calling it complete would make a smoke run servable.
     const status = truncated ? "partial" : "complete";
-    statements.finishRelease.run(status, options.releaseId);
+    // The counts land with the status flip, in the same transaction and off the
+    // same variables the report is built from, so a database can be audited
+    // without the console output of the run that made it.
+    statements.finishRelease.run(
+      status,
+      linesRead,
+      admitted,
+      skipped,
+      malformed,
+      malformedMembers,
+      options.releaseId,
+    );
+    for (const [table, count] of Object.entries(rows)) {
+      statements.insertTableRows.run(options.releaseId, table, count);
+    }
     db.exec("COMMIT");
 
     return {
@@ -330,10 +465,9 @@ export async function importRelease(options: ImportOptions): Promise<ImportRepor
       archiveBytes,
       linesRead,
       admitted,
-      skippedOtherLanguage: skipped.count,
-      skippedLineNumbers: skipped.lineNumbers,
-      malformed: malformed.count,
-      malformedLineNumbers: malformed.lineNumbers,
+      skippedOtherLanguage: skipped,
+      malformed,
+      malformedMembers,
       rows,
       elapsedMs: Date.now() - startedAt,
     };
@@ -356,7 +490,13 @@ function prepareStatements(db: DatabaseSync) {
     // every canonical read hides this release. Canonical reads require
     // 'complete', so 'partial' stays hidden too.
     finishRelease: db.prepare(
-      `UPDATE source_release SET status = ? WHERE release_id = ?`,
+      `UPDATE source_release
+          SET status = ?, lines_read = ?, admitted = ?, skipped_other_language = ?,
+              malformed_lines = ?, malformed_members = ?
+        WHERE release_id = ?`,
+    ),
+    insertTableRows: db.prepare(
+      `INSERT INTO release_table_rows (release_id, table_name, rows) VALUES (?, ?, ?)`,
     ),
     insertRecord: db.prepare(
       `INSERT INTO source_record
@@ -404,6 +544,8 @@ interface RecordContext {
   word: string;
   pos: string;
   posTitle: string;
+  /** Where a leaf of this record that is not a string goes. */
+  reportMember: ReportMember;
 }
 
 function writeRecord(
@@ -411,7 +553,13 @@ function writeRecord(
   rows: Record<string, number>,
   ctx: RecordContext,
 ): void {
-  const { recordId, releaseId, record } = ctx;
+  const { recordId, releaseId, record, reportMember } = ctx;
+
+  // Read once, before either pass over forms[], so a form whose surface is not
+  // a string is reported exactly once however many passes look at it.
+  const formSurfaces = record.forms.map((form, formIndex) =>
+    stringLeaf(form.form, `/forms/${formIndex}/form`, reportMember),
+  );
 
   statements.insertRecord.run(
     recordId,
@@ -441,19 +589,22 @@ function writeRecord(
   );
   rows.lookup_form += 1;
 
-  const forms = asArray(record.forms);
-  forms.forEach((entry, formIndex) => {
-    const form = entry as KaikkiForm;
-    if (typeof form.form !== "string") return;
+  record.forms.forEach((form, formIndex) => {
+    // Read the leaf before deciding whether to write the row. A form whose
+    // surface the import refused still states a `source`, and a leaf nobody
+    // reads is a refusal nobody can count or locate.
+    const source = stringLeaf(form.source, `/forms/${formIndex}/source`, reportMember);
+    const surface = formSurfaces[formIndex];
+    if (surface === null) return;
     statements.insertLookup.run(
       recordId,
       releaseId,
       "embedded-form",
-      form.form,
-      normalizeItalianExact(form.form),
+      surface,
+      normalizeItalianExact(surface),
       `/forms/${formIndex}/form`,
       formIndex,
-      typeof form.source === "string" ? form.source : null,
+      source,
     );
     rows.lookup_form += 1;
   });
@@ -465,18 +616,22 @@ function writeRecord(
     container: "",
     tagsPointer: "/tags",
     rawTagsPointer: "/raw_tags",
-    tags: asStrings(record.tags),
-    rawTags: asStrings(record.raw_tags),
+    tags: stringMembers(record.tags, "/tags", reportMember),
+    rawTags: stringMembers(record.raw_tags, "/raw_tags", reportMember),
     expected: expectedRecordDimensions(ctx.pos),
   });
 
-  forms.forEach((entry, formIndex) => {
-    const form = entry as KaikkiForm;
-    if (typeof form.form !== "string") return;
-    const tags = asStrings(form.tags);
+  record.forms.forEach((form, formIndex) => {
+    // Same rule as the lookup pass: both member lists are read whatever the
+    // surface turned out to be, so their refusals reach the report. Only the
+    // claim rows wait on a surface, because a form the import refused has no
+    // surface for a claim to be about.
+    const tags = stringMembers(form.tags, `/forms/${formIndex}/tags`, reportMember);
+    const rawTags = stringMembers(form.raw_tags, `/forms/${formIndex}/raw_tags`, reportMember);
+    if (formSurfaces[formIndex] === null) return;
     const stated = new Set<string>();
-    for (const tag of tags) {
-      const mapped = mapStructuralTag(tag);
+    for (const { text } of tags) {
+      const mapped = mapStructuralTag(text);
       if (mapped.status === "stated") stated.add(mapped.dimension);
     }
     writeClaims(statements, rows, {
@@ -487,42 +642,41 @@ function writeRecord(
       tagsPointer: `/forms/${formIndex}/tags`,
       rawTagsPointer: `/forms/${formIndex}/raw_tags`,
       tags,
-      rawTags: asStrings(form.raw_tags),
+      rawTags,
       expected: expectedFormDimensions(ctx.pos, stated),
     });
   });
 
-  asArray(record.senses).forEach((entry, senseIndex) => {
-    const sense = entry as KaikkiSense;
+  record.senses.forEach((sense, senseIndex) => {
     // sense_id is derived, not auto-assigned, so it is stable across runs.
     const senseId = recordId * 1000 + senseIndex;
     statements.insertSense.run(senseId, recordId, senseIndex, `/senses/${senseIndex}`);
     rows.sense += 1;
 
-    asStrings(sense.glosses).forEach((text, glossIndex) => {
-      statements.insertGloss.run(
-        senseId,
-        glossIndex,
-        text,
-        `/senses/${senseIndex}/glosses/${glossIndex}`,
-      );
-      rows.sense_gloss += 1;
-    });
+    const sensePointer = `/senses/${senseIndex}`;
 
-    asStrings(sense.tags).forEach((label, labelIndex) => {
+    stringMembers(sense.glosses, `${sensePointer}/glosses`, reportMember).forEach(
+      ({ index, text }) => {
+        statements.insertGloss.run(senseId, index, text, `${sensePointer}/glosses/${index}`);
+        rows.sense_gloss += 1;
+      },
+    );
+
+    stringMembers(sense.tags, `${sensePointer}/tags`, reportMember).forEach(({ index, text }) => {
       statements.insertLabel.run(
         senseId,
-        labelIndex,
+        index,
         "tag",
-        label,
-        `/senses/${senseIndex}/tags/${labelIndex}`,
+        text,
+        `${sensePointer}/tags/${index}`,
       );
       rows.sense_label += 1;
     });
 
-    asStrings(sense.raw_tags).forEach((label, labelIndex) => {
-      const pointer = `/senses/${senseIndex}/raw_tags/${labelIndex}`;
-      statements.insertLabel.run(senseId, labelIndex, "raw_tag", label, pointer);
+    const senseRawTags = stringMembers(sense.raw_tags, `${sensePointer}/raw_tags`, reportMember);
+    senseRawTags.forEach(({ index, text: label }) => {
+      const pointer = `${sensePointer}/raw_tags/${index}`;
+      statements.insertLabel.run(senseId, index, "raw_tag", label, pointer);
       rows.sense_label += 1;
 
       // Also recorded as an unclassified grammar claim, on purpose, even though
@@ -539,15 +693,16 @@ function writeRecord(
       rows.grammar_claim += 1;
     });
 
-    asArray(sense.form_of).forEach((target, formOfIndex) => {
-      const word = (target as { word?: unknown }).word;
-      if (typeof word !== "string") return;
+    sense.form_of.forEach((target, formOfIndex) => {
+      const pointer = `${sensePointer}/form_of/${formOfIndex}/word`;
+      const word = stringLeaf(target.word, pointer, reportMember);
+      if (word === null) return;
       statements.insertEdge.run(
         recordId,
         releaseId,
         senseIndex,
         formOfIndex,
-        `/senses/${senseIndex}/form_of/${formOfIndex}/word`,
+        pointer,
         word,
         normalizeItalianExact(word),
       );
@@ -564,8 +719,9 @@ interface ClaimScope {
   container: string;
   tagsPointer: string;
   rawTagsPointer: string;
-  tags: readonly string[];
-  rawTags: readonly string[];
+  /** String members only, each still carrying its source index. */
+  tags: readonly StringMember[];
+  rawTags: readonly StringMember[];
   expected: readonly string[];
 }
 
@@ -576,8 +732,8 @@ function writeClaims(
 ): void {
   const stated = new Set<string>();
 
-  scope.tags.forEach((tag, index) => {
-    const mapped = mapStructuralTag(tag);
+  scope.tags.forEach(({ index, text }) => {
+    const mapped = mapStructuralTag(text);
     const pointer = `${scope.tagsPointer}/${index}`;
     if (mapped.status === "stated") {
       stated.add(mapped.dimension);
@@ -594,8 +750,8 @@ function writeClaims(
     rows.grammar_claim += 1;
   });
 
-  scope.rawTags.forEach((rawTag, index) => {
-    const mapped = mapRawTag(rawTag);
+  scope.rawTags.forEach(({ index, text }) => {
+    const mapped = mapRawTag(text);
     statements.insertClaim.run(
       scope.recordId, scope.scope, scope.scopeIndex,
       `${scope.rawTagsPointer}/${index}`,

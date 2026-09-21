@@ -61,6 +61,54 @@ The forward side always carries a list, even a list of one, rather than having a
 special unambiguous case. Both directions then read the same way, and a caller
 that handles the ambiguous case handles every case.
 
+## Two outcomes, two types
+
+`found` and `not-found` were one type with an `outcome` flag and a plain
+`Reading[]`. That type could hold `found` with an empty list and `not-found`
+with readings in it — two states the reference says do not exist, kept out only
+by the one function that builds them.
+
+They are separate types now. `found.readings` is `[Reading, ...Reading[]]`, and
+`not-found` has no `readings` field at all, so neither contradiction is a value
+anyone can construct. `lookup()` builds the tuple from the first group plus the
+rest rather than from an array it then checks, so the non-emptiness is the
+construction and not an assertion about it.
+
+What both still carry is the release: a page that found nothing still has to say
+which source it found nothing in.
+
+## One provenance ref, and the release travels in it
+
+Every value read out of the source carries a `SourceRef` of release, line,
+pointer and line digest — the four coordinates
+[`.glossary/TERMS.md`](../.glossary/TERMS.md) names and `source_record` stores.
+A line number means nothing without the release that pins the bytes it was
+counted in, so carrying the line without the release was a ref that could not
+actually be checked.
+
+The fields are the schema's `release_id`, `line_no`, `json_pointer` and
+`line_sha256`, spelled in camelCase as `releaseId`, `lineNo`, `jsonPointer` and
+`lineSha256`. The digest is required rather than optional: every value a lookup
+returns was read from a line whose bytes were hashed on import, so a ref without
+one would be a ref nothing could check.
+
+There is one `lineNo` per ref and no second copy beside it. A `Reading` with
+both `lineNo` and `ref.lineNo` is two places one fact can be written and one
+place it can be written wrong.
+
+## Pointers order as pointers, not as text
+
+A pointer's array segments are numbers, so `/forms/2/form` precedes
+`/forms/10/form`. Ordering pointers as text reverses that, and a verb table in
+this release runs to fifty-odd forms — so "in source order" was false for any
+record listing the searched surface at index 10 or beyond, which is most verbs.
+
+SQLite has no numeric-aware collation to fix it in an `ORDER BY`, so everything
+keyed by a pointer is ordered in one comparator in
+[`src/lookup/lookup.ts`](../src/lookup/lookup.ts): segment by segment, numbers
+numerically, and a container before what it holds, so the `missing` grammar
+claim hanging on `/forms/10` comes before the tag at `/forms/10/tags/0`.
+
 ## No ranking
 
 Every reading comes back in source order. Ordering by anything else would imply
@@ -80,12 +128,16 @@ drift apart.
 
 ## Accents are meaning
 
-Normalization folds case, whitespace and apostrophe variants, but keeps accents:
+Normalization folds case, whitespace and three apostrophe variants (U+2019,
+U+2018, U+02BC, all to U+0027), but keeps accents:
 `città` and `citta` are different words, and folding them would merge distinct
 entries.
 
-The 128-character bound is well past the longest headword in this release. It
-exists so a pathological query cannot become a pathological index probe.
+The 128-character bound is well past the longest headword in this release: the
+longest is 51 characters and none reaches 128, measured over the archive in
+[the lookup measurements](../reports/2026-09-21-lookup-measurements.md#longest-headword).
+The bound exists so a pathological query cannot become a pathological index
+probe.
 
 A lookup against a release that is absent, still importing, failed or superseded
 throws rather than returning "no results" — those are different claims. And
@@ -103,10 +155,21 @@ then discards nearly all of it. At release scale that is seconds against
 fractions of a millisecond, for identical rows, and the gap widens as the
 release grows.
 
+Those are measured numbers, but **they are not measured on this branch**. They
+come from the lookup benchmark on `huey/37-lookup-bench` (PR #38), whose
+`pnpm run bench:lookup` captured 6722.0 ms through the view against 0.03 ms
+inlined, at a 560,357-record corpus, on 2026-09-19 — a ratio of about 2 × 10⁵,
+so four orders of magnitude is the floor rather than the figure. At the smaller
+140,000-record corpus the same pair is 981.1 ms against 0.03 ms, which is the
+sense in which the gap widens with the release. The branch, the command and
+what the figures do and do not show are recorded in
+[the lookup measurements](../reports/2026-09-21-lookup-measurements.md#the-timing-claim-is-not-from-this-report).
+Nothing on this branch runs that harness.
+
 Identical rows is why a rows-only test sails straight past this. So there is a
 test asserting the query plan contains no `MATERIALIZE` and still uses
 `form_of_edge_by_record`, and the same assertion on both inflection queries.
-The harness that measures the cost is #37.
+That test proves the plan's shape, not its timing.
 
 Query 2a in `src/db/queries.sql` has the same shape and the same problem.
 

@@ -2,12 +2,24 @@
 // confused with one another — each gets its own case rather than sharing a
 // nullable field. The reasoning is in docs/LOOKUP_DESIGN.md.
 
-/** Where a value came from, precise enough to check it against the archive. */
+/**
+ * Where a value came from, precise enough to check it against the archive. These
+ * are the four coordinates the schema names `release_id`, `line_no`,
+ * `json_pointer` and `line_sha256` (`.glossary/TERMS.md`), in camelCase: the
+ * release that pins the bytes, the physical line inside it, the pointer to the
+ * field, and the line's digest. Line numbers only mean
+ * something inside one release, so the release travels with every one of them
+ * (docs/RECORD_IDENTITY.md#identity).
+ */
 export interface SourceRef {
-  /** Line number in the release's .jsonl.gz, 1-based. */
+  /** The release whose archive these coordinates are in. */
+  releaseId: string;
+  /** Line number in that release's .jsonl.gz, 1-based. */
   lineNo: number;
-  /** JSON Pointer into that line. */
-  pointer: string;
+  /** JSON Pointer into that line. `""` is the whole record. */
+  jsonPointer: string;
+  /** sha256 of the raw line bytes, so the claim can be checked against R2. */
+  lineSha256: string;
 }
 
 /** One occurrence of the searched surface on one record. */
@@ -20,7 +32,8 @@ export interface Evidence {
   origin: "headword" | "embedded-form";
   /** Verbatim source spelling, which can differ from what was typed. */
   surface: string;
-  pointer: string;
+  /** The exact field this occurrence was read from. */
+  ref: SourceRef;
   /** The conjugation table an embedded form came from, when the source names one. */
   formSource: string | null;
 }
@@ -47,6 +60,8 @@ export interface Grammar {
 
 export interface Sense {
   index: number;
+  /** The sense itself, as a pointer: `/senses/0`. */
+  ref: SourceRef;
   /**
    * Copied source text, never a Lexema definition. May be empty: 667 senses
    * carry no gloss at all, and a non-empty gloss is still not proof of a usable
@@ -60,9 +75,10 @@ export interface Sense {
 /** A record the source names as the target of a form_of edge. */
 export interface LemmaCandidate {
   recordId: number;
-  lineNo: number;
   word: string;
   pos: string;
+  /** The candidate's own headword field, where `word` was read from. */
+  ref: SourceRef;
 }
 
 /**
@@ -83,11 +99,10 @@ export type LemmaLink =
 export interface InflectionOf {
   /** The declaring record — the inflected one. */
   recordId: number;
-  lineNo: number;
   word: string;
   pos: string;
-  /** Pointer to the edge on the declaring record. */
-  pointer: string;
+  /** The edge on the declaring record. */
+  ref: SourceRef;
   /** The word the edge names, verbatim. */
   targetWord: string;
   /**
@@ -104,7 +119,8 @@ export interface InflectionOf {
  * claim stays visible with its dispute attached.
  */
 export interface Review {
-  pointer: string;
+  /** The claim under review, not the whole record. */
+  ref: SourceRef;
   status: "disputed" | "corroborated";
   note: string;
   evidenceUrl: string;
@@ -115,7 +131,8 @@ export interface Review {
 /** One source record that matched the query. */
 export interface Reading {
   recordId: number;
-  lineNo: number;
+  /** The whole record, as a pointer: every ref below shares its line. */
+  ref: SourceRef;
   /** The record's own headword, verbatim. */
   word: string;
   pos: string;
@@ -151,6 +168,15 @@ export interface ReleaseInfo {
   attribution: string | null;
 }
 
+/** What the caller asked and what the index was actually probed with. */
+export interface QueryInfo {
+  /** Exactly what the caller passed, kept so the page can echo it back. */
+  raw: string;
+  /** The normalized search key the index was probed with. */
+  key: string;
+  normalizer: string;
+}
+
 /** Why a query returned nothing to search for. */
 export type RejectedQuery =
   | { reason: "empty" }
@@ -164,26 +190,42 @@ export interface RejectedResult {
 }
 
 /**
- * The index was probed. `found` and `not-found` carry the same shape on
- * purpose: a page showing nothing still needs the release, so it can attribute
- * the source even when it has no reading to display.
+ * The index was probed and at least one record matched. The readings are a
+ * non-empty tuple, so `found` with nothing found is not a state this type can
+ * express.
  */
-export interface SearchResult {
-  outcome: "found" | "not-found";
-  query: {
-    /** Exactly what the caller passed, kept so the page can echo it back. */
-    raw: string;
-    /** The normalized search key the index was probed with. */
-    key: string;
-    normalizer: string;
-  };
+export interface FoundResult {
+  outcome: "found";
+  query: QueryInfo;
   release: ReleaseInfo;
   /**
    * Every reading the source supports, in source order. Nothing is ranked away
    * and nothing is merged on matching spelling: `sale` is three records and
    * stays three.
    */
-  readings: Reading[];
+  readings: [Reading, ...Reading[]];
 }
+
+/**
+ * The index was probed and nothing matched. There is no reading a `not-found`
+ * can hold, so `not-found` with readings is not a state this type can express
+ * either. `release` is still here: a page showing nothing has to
+ * attribute the source it found nothing in.
+ */
+export interface NotFoundResult {
+  outcome: "not-found";
+  query: QueryInfo;
+  release: ReleaseInfo;
+  /**
+   * Declared as `never` rather than left out. Omitting it only stops a fresh
+   * object literal; a value built elsewhere and carrying `readings` would still
+   * be assignable under structural typing. With this field there is no reading
+   * any `not-found` can hold, whatever it was built from.
+   */
+  readings?: never;
+}
+
+/** The index was probed, either way. */
+export type SearchResult = FoundResult | NotFoundResult;
 
 export type LookupResult = RejectedResult | SearchResult;

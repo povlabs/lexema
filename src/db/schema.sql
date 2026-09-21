@@ -58,7 +58,39 @@ CREATE TABLE source_release (
   -- archive (a --limit smoke run): the checksum above describes the whole file
   -- while only a prefix of it landed, so it is never 'complete'.
   status           TEXT NOT NULL DEFAULT 'importing'
-                   CHECK (status IN ('importing', 'partial', 'complete', 'failed', 'superseded'))
+                   CHECK (status IN ('importing', 'partial', 'complete', 'failed', 'superseded')),
+
+  -- What the run counted, written with the status flip at the end of the import.
+  -- These are import metadata, not a cache of a query: lines the archive held,
+  -- records admitted, and everything the run refused. A database can then be
+  -- audited without the console output of the run that produced it.
+  --
+  --   lines_read = admitted + skipped_other_language + malformed_lines
+  --
+  -- malformed_members is not in that sum: it counts leaf values refused inside
+  -- records that did land, so it says how much of an admitted record is missing.
+  lines_read             INTEGER CHECK (lines_read >= 0),
+  admitted               INTEGER CHECK (admitted >= 0),
+  skipped_other_language INTEGER CHECK (skipped_other_language >= 0),
+  malformed_lines        INTEGER CHECK (malformed_lines >= 0),
+  malformed_members      INTEGER CHECK (malformed_members >= 0),
+
+  -- The counts are written together or not at all, so 'not counted yet' is one
+  -- state a reader can test for rather than five that can disagree.
+  CHECK ((admitted IS NULL) = (lines_read IS NULL)),
+  CHECK ((admitted IS NULL) = (skipped_other_language IS NULL)),
+  CHECK ((admitted IS NULL) = (malformed_lines IS NULL)),
+  CHECK ((admitted IS NULL) = (malformed_members IS NULL))
+) STRICT;
+
+-- Rows the run wrote, one line per table it wrote them to. A table rather than
+-- more columns on source_release, because the set of tables is the schema's and
+-- it moves; a column per table would have to be migrated every time one is added.
+CREATE TABLE release_table_rows (
+  release_id TEXT    NOT NULL REFERENCES source_release(release_id) ON DELETE CASCADE,
+  table_name TEXT    NOT NULL,
+  rows       INTEGER NOT NULL CHECK (rows >= 0),
+  PRIMARY KEY (release_id, table_name)
 ) STRICT;
 
 

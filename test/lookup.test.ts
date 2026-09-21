@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import test from "node:test";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -14,7 +15,15 @@ import {
   lookup,
 } from "../src/lookup/lookup.js";
 import { fromNodeSqlite } from "../src/lookup/database.js";
-import type { LookupResult, Reading, RejectedResult, SearchResult } from "../src/lookup/types.js";
+import type {
+  FoundResult,
+  LookupResult,
+  NotFoundResult,
+  Reading,
+  RejectedResult,
+  ReleaseInfo,
+  SearchResult,
+} from "../src/lookup/types.js";
 
 // A fixture carrying the shapes the real file forces on a lookup: one surface
 // meaning several unrelated things, one word mentioned by records that are not
@@ -97,6 +106,29 @@ const LINES = [
     tags: ["form-of"],
     senses: [{ glosses: ["terza persona plurale dell'imperfetto di andare"], tags: ["form-of"], form_of: [{ word: "andare" }] }],
   }),
+
+  // A conjugation table long enough for two-digit indexes, listing one surface
+  // at /forms/1, /forms/2, /forms/10 and /forms/11. A verb table in the real
+  // file runs to 50-odd entries, so this is the ordinary case, not a corner.
+  JSON.stringify({
+    word: "parlare", pos: "verb", pos_title: "Verbo", lang_code: "it",
+    tags: ["transitive"],
+    forms: [
+      { form: "parlo", tags: ["first-person", "singular", "present"] },
+      { form: "parli", tags: ["second-person", "singular", "present"] },
+      { form: "parli", tags: ["second-person", "singular"] },
+      { form: "parla", tags: ["third-person", "singular", "present"] },
+      { form: "parliamo", tags: ["first-person", "plural", "present"] },
+      { form: "parlate", tags: ["second-person", "plural", "present"] },
+      { form: "parlano", tags: ["third-person", "plural", "present"] },
+      { form: "parlavo", tags: ["first-person", "singular", "imperfect"] },
+      { form: "parlavi", tags: ["second-person", "singular", "imperfect"] },
+      { form: "parlava", tags: ["third-person", "singular", "imperfect"] },
+      { form: "parli", tags: ["plural"] },
+      { form: "parli", tags: ["second-person"] },
+    ],
+    senses: [{ glosses: ["esprimersi con la parola"] }],
+  }),
 ];
 
 const RELEASE = "it-test";
@@ -114,6 +146,11 @@ async function fixture() {
     archiveR2Key: "releases/it-test.jsonl.gz",
     sourceUrl: "https://example.invalid/it-extract.jsonl.gz",
     license: "CC-BY-SA-4.0",
+    // The fixture is hand-written and every line is admissible, so a rejection
+    // means the fixture broke, not that the importer found something.
+    onRejection: (rejection) => {
+      throw new Error(`fixture line rejected: ${JSON.stringify(rejection)}`);
+    },
   });
   const db = new DatabaseSync(database);
   return { dir, db };
@@ -122,9 +159,14 @@ async function fixture() {
 const ask = (db: DatabaseSync, query: string): Promise<LookupResult> =>
   lookup({ db: fromNodeSqlite(db), releaseId: RELEASE, query });
 
-function found(result: LookupResult): Reading[] {
-  assert.equal(result.outcome, "found");
-  return (result as SearchResult).readings;
+function found(result: LookupResult): [Reading, ...Reading[]] {
+  assert.ok(result.outcome === "found", `expected a found result, got ${result.outcome}`);
+  return result.readings;
+}
+
+function searched(result: LookupResult): SearchResult {
+  assert.ok(result.outcome !== "rejected", "expected the index to have been probed");
+  return result;
 }
 
 async function withFixture(run: (db: DatabaseSync) => Promise<void>): Promise<void> {
@@ -167,10 +209,12 @@ test("an unknown word is not-found, not an error and not empty-handed", async ()
   await withFixture(async (db) => {
     const result = await ask(db, "qwertyuiop");
     assert.equal(result.outcome, "not-found");
-    const body = result as SearchResult;
-    assert.deepEqual(body.readings, []);
+    // There is no `readings` on a not-found result at all, so it has nowhere to
+    // put the reading it did not find.
+    assert.ok(!("readings" in result));
     // The release still comes back, so a page can attribute the source even
     // when it has nothing to show.
+    const body = searched(result);
     assert.equal(body.release.releaseId, RELEASE);
     assert.equal(body.release.license, "CC-BY-SA-4.0");
   });
@@ -187,22 +231,62 @@ test("normalizes case, whitespace and apostrophes while keeping accents", async 
       assert.equal(found(await ask(db, variant))[0].word, "città");
     }
 
-    // A typed straight quote finds a source spelling with a typographic one.
-    const apostrophe = found(await ask(db, "un'amica"));
-    assert.equal(apostrophe.length, 1);
-    assert.equal(apostrophe[0].word, "un’amica");
+    // Every apostrophe in the folded set reaches the one source spelling, which
+    // carries U+2019. The set is U+0027, U+2019, U+2018 and U+02BC, and this is
+    // all four of them.
+    for (const mark of ["'", "’", "‘", "ʼ"]) {
+      const apostrophe = found(await ask(db, `un${mark}amica`));
+      assert.equal(apostrophe.length, 1);
+      assert.equal(apostrophe[0].word, "un’amica");
+    }
+
+    // And one character outside the set: U+00B4 is an acute accent, so it is a
+    // different key and finds nothing.
+    assert.equal((await ask(db, "un´amica")).outcome, "not-found");
+  });
+});
+
+test("a canonically decomposed query finds the same rows as the composed one", async () => {
+  await withFixture(async (db) => {
+    // Two spellings of one word: U+00E0, and `a` followed by U+0300. A macOS
+    // filename or an IME can hand over either, and NFC is what makes them one
+    // query rather than a hit and a miss.
+    const composed = "citt\u00e0";
+    const decomposed = "citta\u0300";
+    assert.notEqual(composed, decomposed);
+    assert.equal(decomposed.normalize("NFC"), composed);
+
+    const viaDecomposed = await ask(db, decomposed);
+    const viaComposed = await ask(db, composed);
+
+    // Same rows, not merely the same count: record ids and the evidence each
+    // one carries.
+    assert.deepEqual(
+      found(viaDecomposed).map((r) => [r.recordId, r.evidence.map((e) => e.ref.jsonPointer)]),
+      found(viaComposed).map((r) => [r.recordId, r.evidence.map((e) => e.ref.jsonPointer)]),
+    );
+    assert.equal(found(viaDecomposed).length, 1);
+
+    // The key is composed whichever spelling arrived, because that is the form
+    // the stored surface keys are in.
+    assert.equal(searched(viaDecomposed).query.key, composed);
+    // The typed spelling is still the decomposed one, verbatim.
+    assert.equal(searched(viaDecomposed).query.raw, decomposed);
+
+    // Normalizing is not stripping: the unaccented spelling is a different word
+    // and stays a miss.
+    assert.equal((await ask(db, "citta")).outcome, "not-found");
   });
 });
 
 test("keeps the typed spelling and the source spelling both available", async () => {
   await withFixture(async (db) => {
     const result = await ask(db, "  CITTÀ ");
-    const body = result as SearchResult;
     // What the user typed, verbatim — a page has to be able to echo it back.
-    assert.equal(body.query.raw, "  CITTÀ ");
-    assert.equal(body.query.key, "città");
+    assert.equal(searched(result).query.raw, "  CITTÀ ");
+    assert.equal(searched(result).query.key, "città");
     // What the source wrote, verbatim.
-    assert.equal(body.readings[0].evidence[0].surface, "città");
+    assert.equal(found(result)[0].evidence[0].surface, "città");
   });
 });
 
@@ -218,15 +302,15 @@ test("returns every reading of an ambiguous surface, unranked", async () => {
     );
     assert.ok(readings.every((r) => r.isAboutQuery));
     assert.deepEqual(
-      readings.map((r) => r.lineNo),
-      [...readings.map((r) => r.lineNo)].sort((a, b) => a - b),
+      readings.map((r) => r.ref.lineNo),
+      [...readings.map((r) => r.ref.lineNo)].sort((a, b) => a - b),
     );
   });
 });
 
 test("repeated evidence does not become repeated readings", async () => {
   await withFixture(async (db) => {
-    // `studenti` sits on four records across five lookup rows: twice inside
+    // `studenti` sits on three records across four lookup rows: twice inside
     // `studente`, once inside `studentessa`, and once as its own headword.
     const readings = found(await ask(db, "studenti"));
     assert.equal(readings.length, 3);
@@ -238,8 +322,39 @@ test("repeated evidence does not become repeated readings", async () => {
     // so collapsing them would lose a fact.
     assert.equal(studente.evidence.length, 2);
     assert.deepEqual(
-      studente.evidence.map((e) => e.pointer),
+      studente.evidence.map((e) => e.ref.jsonPointer),
       ["/forms/0/form", "/forms/1/form"],
+    );
+  });
+});
+
+test("evidence from a long table is ordered by index, not by pointer text", async () => {
+  await withFixture(async (db) => {
+    // `parlare` lists 12 forms and spells `parli` at four of them. Comparing
+    // the pointers as text puts /forms/10 and /forms/11 ahead of /forms/2,
+    // which is not the order the source wrote the table in.
+    const [parlare] = found(await ask(db, "parli"));
+    const formCount = (
+      db.prepare(
+        `SELECT count(*) AS n FROM lookup_form
+          WHERE record_id = ? AND origin = 'embedded-form'`,
+      ).get(parlare.recordId) as { n: number }
+    ).n;
+    assert.equal(formCount, 12);
+
+    assert.deepEqual(
+      parlare.evidence.map((e) => e.ref.jsonPointer),
+      ["/forms/1/form", "/forms/2/form", "/forms/10/form", "/forms/11/form"],
+    );
+
+    // Grammar read off those same forms is keyed by the index, and the claims
+    // inside one index stay in source order too: the container `/forms/10`,
+    // which is where a 'missing' claim hangs, before the tag inside it.
+    const tenth = parlare.grammar.byForm.get(10);
+    assert.ok(tenth);
+    assert.deepEqual(
+      tenth.map((c) => c.ref.jsonPointer),
+      ["/forms/10", "/forms/10/tags/0"],
     );
   });
 });
@@ -384,8 +499,8 @@ test("carries definitions, labels and a source reference for each", async () => 
     assert.equal(citta.senses[0].glosses[0].text, "centro abitato di grandi dimensioni");
     // Every value points at the exact line and field it was read from, so a
     // reader can check it against the archive.
-    assert.equal(citta.senses[0].glosses[0].ref.pointer, "/senses/0/glosses/0");
-    assert.equal(citta.senses[0].glosses[0].ref.lineNo, citta.lineNo);
+    assert.equal(citta.senses[0].glosses[0].ref.jsonPointer, "/senses/0/glosses/0");
+    assert.equal(citta.senses[0].glosses[0].ref.lineNo, citta.ref.lineNo);
 
     const [studente] = found(await ask(db, "studente")).filter((r) => r.pos === "noun");
     assert.deepEqual(
@@ -393,6 +508,85 @@ test("carries definitions, labels and a source reference for each", async () => 
       ["raw_tag:scuola"],
     );
   });
+});
+
+test("every ref names the release, the line, the field and the line's digest", async () => {
+  await withFixture(async (db) => {
+    // A line number only means something inside one release, and the digest is
+    // what lets a reader check the claim against the archived bytes. So a ref
+    // carries all four, and a reading's own values, its candidates and its
+    // incoming edges all carry the same shape.
+    const [bella] = found(await ask(db, "bella"));
+    const forward = bella.lemmaLinks[0];
+    assert.equal(forward.kind, "candidates");
+    const [bello] = found(await ask(db, "bello"));
+
+    const refs = [
+      bella.ref,
+      ...bella.evidence.map((e) => e.ref),
+      ...bella.senses.map((s) => s.ref),
+      ...bella.senses.flatMap((s) => s.glosses.map((g) => g.ref)),
+      ...bella.senses.flatMap((s) => s.labels.map((l) => l.ref)),
+      ...bella.grammar.record.map((c) => c.ref),
+      ...[...bella.grammar.bySense.values()].flat().map((c) => c.ref),
+      forward.ref,
+      ...(forward.kind === "candidates" ? forward.candidates.map((c) => c.ref) : []),
+      ...bello.inflections.map((i) => i.ref),
+      ...bello.inflections.flatMap((i) => i.targetCandidates.map((c) => c.ref)),
+    ];
+    assert.ok(refs.length > 10);
+
+    const rawByLine = new Map(
+      (
+        db.prepare(
+          `SELECT r.line_no, j.raw_json
+             FROM source_record r
+             JOIN source_record_json j ON j.record_id = r.record_id`,
+        ).all() as { line_no: number; raw_json: string }[]
+      ).map((row) => [row.line_no, row.raw_json]),
+    );
+
+    for (const ref of refs) {
+      assert.equal(ref.releaseId, RELEASE);
+      const raw = rawByLine.get(ref.lineNo);
+      assert.ok(raw !== undefined, `ref points at line ${ref.lineNo}, which holds no record`);
+      // The digest is of the line the pointer is rooted in, so it is checkable
+      // against the archive rather than decorative.
+      assert.equal(ref.lineSha256, createHash("sha256").update(raw, "utf8").digest("hex"));
+      // "" is the whole record; anything else is a field inside it.
+      assert.ok(ref.jsonPointer === "" || ref.jsonPointer.startsWith("/"));
+    }
+  });
+});
+
+test("the result type cannot express a found with nothing found", () => {
+  // Checked by `pnpm run typecheck`, not at runtime: `@ts-expect-error` fails
+  // the build if the line it marks ever stops being an error. These are the
+  // two contradictions one `SearchResult` with a plain `Reading[]` permitted.
+  const query = { raw: "sale", key: "sale", normalizer: "it-normalize/v1" };
+  const release: ReleaseInfo = {
+    releaseId: RELEASE,
+    normalizer: "it-normalize/v1",
+    sourceUrl: null,
+    retrievedAt: null,
+    license: null,
+    attribution: null,
+  };
+
+  // @ts-expect-error - `found` needs at least one reading
+  const emptyFound: FoundResult = { outcome: "found", query, release, readings: [] };
+  // @ts-expect-error - `not-found` has no field a reading could go in
+  const fullNotFound: NotFoundResult = { outcome: "not-found", query, release, readings: [] };
+
+  // The same contradiction built somewhere else first, so the excess-property
+  // check on a fresh literal is not what refuses it. `readings?: never` is.
+  const carried = { outcome: "not-found" as const, query, release, readings: [] as Reading[] };
+  // @ts-expect-error - a carried `readings` is not assignable to `never`
+  const laundered: NotFoundResult = carried;
+
+  assert.equal(emptyFound.outcome, "found");
+  assert.equal(fullNotFound.outcome, "not-found");
+  assert.equal(laundered.outcome, "not-found");
 });
 
 test("surfaces a disputed claim instead of hiding or correcting it", async () => {
@@ -415,7 +609,7 @@ test("surfaces a disputed claim instead of hiding or correcting it", async () =>
     assert.ok(verb);
     assert.equal(verb.reviews.length, 1);
     assert.equal(verb.reviews[0].status, "disputed");
-    assert.equal(verb.reviews[0].pointer, "/senses/0/glosses/0");
+    assert.equal(verb.reviews[0].ref.jsonPointer, "/senses/0/glosses/0");
 
     // The claim itself is untouched. A dispute annotates; it never rewrites.
     assert.equal(
