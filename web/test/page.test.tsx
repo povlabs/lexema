@@ -116,7 +116,10 @@ const QUERIES = [
       /gender<\/dt><dd>not stated in the source/,
       /number<\/dt><dd>not stated in the source/,
       /Not available in the source: this entry lists no forms\./,
-      /Not available in the source: no form in this entry carries a tense/,
+      // A noun, so the noun card: no number to tabulate, and no article
+      // without a gender or a number for one to agree with.
+      /this entry gives neither a singular nor a plural/,
+      /No article is shown: an article agrees with gender and number, and the source states neither/,
     ],
   },
   {
@@ -130,6 +133,10 @@ const QUERIES = [
     expect: [
       /5 entries for/,
       /Disputed by later research/,
+      // Masculine singular is stated, so `it-articles/v1` derives all three.
+      /<td><span lang="it">lo<\/span><\/td>/,
+      /<td><span lang="it">uno<\/span><\/td>/,
+      /<td><span lang="it">dello<\/span><\/td>/,
       /studiante as the present participle of studiare/,
       /it\.wiktionary\.org\/wiki\/Appendice:Coniugazioni\/Italiano\/studiare/,
       /claim <code>\/senses\/0\/glosses\/0<\/code>/,
@@ -205,8 +212,9 @@ const QUERIES = [
       /1 entry for/,
       /<dt>gender<\/dt><dd>feminine/,
       /<dt>number<\/dt><dd>invariable/,
-      // Stated grammar still does not make an article.
-      /Not available in the source: this release carries no article/,
+      // Stated grammar still does not make an article: `invariable` is a
+      // number the source states and not one an article agrees with.
+      /No article is shown: the source gives the number as invariable, which is neither singular nor plural/,
     ],
   },
 ] as const;
@@ -228,6 +236,81 @@ test("answers each of the twelve sampled queries with the state the report predi
         assert.match(html, pattern, `${row.query}: ${pattern}`);
       }
     }
+  });
+});
+
+/**
+ * The noun card, over the three noun shapes #53 names.
+ *
+ * One card per shape, because the three are the whole range: both dimensions
+ * stated, a number the source states that no article agrees with, and a record
+ * the source tagged not at all. Nothing here is read off the release — the
+ * release carries no article field — so every article on the page has to say
+ * where it came from.
+ */
+test("a noun renders its own card: agreement, numbers, and derived articles or a reason", async () => {
+  await withFixture(async ({ db }) => {
+    const studente = await render(db, "studente");
+    // Header: the part of speech, and both dimensions the source stated.
+    assert.match(studente, /<h2><span lang="it">studente<\/span> <span class="pos">noun<\/span><\/h2>/);
+    assert.match(studente, /<dt>gender<\/dt><dd>masculine<\/dd>/);
+    assert.match(studente, /<dt>number<\/dt><dd>singular<\/dd>/);
+    // The singular/plural table, with the headword under the record's own
+    // number and each forms row under its own.
+    assert.match(studente, /<h3 id="numbers-\d+">Singular and plural<\/h3><table class="numbers">/);
+    assert.match(
+      studente,
+      /<th scope="row">plural<\/th><td><span><span lang="it">studenti<\/span>/,
+    );
+    // The gendered pair, exactly as the source spelled it: one string, marked
+    // Italian, never split on the slash.
+    assert.match(studente, /<span lang="it">studente\/studentessa<\/span>/);
+    assert.doesNotMatch(studente, /<span lang="it">studentessa<\/span><\/td>/);
+    // The three articles `it-articles/v1` derives for a masculine singular
+    // starting `st`, each labelled with where it came from.
+    for (const [kind, article] of [
+      ["definite", "lo"],
+      ["indefinite", "uno"],
+      ["partitive", "dello"],
+    ]) {
+      assert.match(
+        studente,
+        new RegExp(
+          `<th scope="row">${kind}</th><td><span lang="it">${article}</span></td>` +
+            `<td><span lang="it">${article} studente</span></td>` +
+            `<td class="muted"><code>lexema-deterministic</code> · <code>it-articles/v1</code></td>`,
+        ),
+        `${kind} article, labelled`,
+      );
+    }
+    assert.match(studente, /Not from the source: Lexema derives these from the masculine singular/);
+
+    // `città`: the source states a gender, and states the number as
+    // `invariable`, which is neither singular nor plural.
+    const citta = await render(db, "città");
+    assert.match(citta, /<dt>gender<\/dt><dd>feminine<\/dd>/);
+    assert.doesNotMatch(citta, /class="articles"/);
+    assert.match(
+      citta,
+      /No article is shown: the source gives the number as invariable, which is neither singular nor plural/,
+    );
+    assert.match(citta, /this entry gives neither a singular nor a plural/);
+
+    // `casa`: no tags at all, so both dimensions are visibly missing and the
+    // withholding names both.
+    const casa = await render(db, "casa");
+    assert.match(casa, /<dt>gender<\/dt><dd>not stated in the source<\/dd>/);
+    assert.match(casa, /<dt>number<\/dt><dd>not stated in the source<\/dd>/);
+    assert.doesNotMatch(casa, /class="articles"/);
+    assert.match(
+      casa,
+      /No article is shown: an article agrees with gender and number, and the source states neither for this entry/,
+    );
+
+    // A noun has no conjugation, and the noun card does not pretend to look
+    // for one; the verb card still does.
+    assert.doesNotMatch(citta, /Grouped conjugations/);
+    assert.match(await render(db, "parlare"), /Grouped conjugations/);
   });
 });
 

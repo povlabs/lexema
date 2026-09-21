@@ -2,6 +2,11 @@
 // confused with one another — each gets its own case rather than sharing a
 // nullable field. The reasoning is in docs/LOOKUP_DESIGN.md.
 
+import type { ArticleDisplay } from "../core/types.js";
+
+/** One article as `it-articles/v1` produced it, re-exported for the page. */
+export type { ArticleDisplay };
+
 /**
  * Where a value came from, precise enough to check it against the archive. These
  * are the four coordinates the schema names `release_id`, `line_no`,
@@ -149,14 +154,53 @@ export interface Review {
   reviewedBy: string;
 }
 
-/** One source record that matched the query. */
-export interface Reading {
+/**
+ * Why no article is shown, named precisely enough to say it in a sentence.
+ *
+ * Each case is the *first* thing that stopped the rule, so at most one is ever
+ * true at a time: a surface the rule refuses can only be reported once gender
+ * and number were both usable, because `generateItalianArticles` checks them
+ * first (`src/italian/articles.ts`).
+ */
+export type ArticleWithholding =
+  | { reason: "no-gender-or-number-stated" }
+  | { reason: "gender-not-stated" }
+  | { reason: "number-not-stated" }
+  | { reason: "gender-is-not-masculine-or-feminine"; statedGender: string }
+  | { reason: "number-is-not-singular-or-plural"; statedNumber: string }
+  | { reason: "surface-not-handled"; surface: string };
+
+/**
+ * The articles Lexema derived for a noun reading, or the reason it derived none.
+ *
+ * Two states, never one list that means two things: a derived set is a non-empty
+ * tuple, and a withholding carries its reason. There is no case for "not a
+ * noun", because only a noun reading carries this field at all.
+ */
+export type ReadingArticles =
+  | { status: "derived"; articles: [ArticleDisplay, ...ArticleDisplay[]] }
+  | { status: "withheld"; withholding: ArticleWithholding };
+
+declare const nonNounPos: unique symbol;
+
+/**
+ * A part of speech the source stated that is not `noun`.
+ *
+ * No string literal is assignable to the brand, so an `OtherReading` cannot be
+ * written with a `pos` of `"noun"` — which is what stops a noun reading arriving
+ * without the articles every noun reading has. `readingPartOfSpeech`
+ * (`src/lookup/articles.ts`) is the one place that mints one, on the branch that
+ * has just proved the part of speech is not `noun`.
+ */
+export type NonNounPos = string & { readonly [nonNounPos]: true };
+
+/** What every reading carries, whatever part of speech it is. */
+interface ReadingFacts {
   recordId: number;
   /** The whole record, as a pointer: every ref below shares its line. */
   ref: SourceRef;
   /** The record's own headword, verbatim. */
   word: string;
-  pos: string;
   posTitle: string;
 
   /**
@@ -183,6 +227,44 @@ export interface Reading {
   inflections: InflectionOf[];
   /** Review verdicts on this record's claims. Empty until #12 writes any. */
   reviews: Review[];
+}
+
+interface NounPartOfSpeech {
+  pos: "noun";
+  /**
+   * Articles for this reading, derived by `it-articles/v1` from the gender and
+   * number the source states — or the reason there are none. Nothing here comes
+   * from the release: the source carries no article field at all.
+   */
+  articles: ReadingArticles;
+}
+
+interface OtherPartOfSpeech {
+  pos: NonNounPos;
+  articles?: never;
+}
+
+/** The part of a reading that follows from its part of speech, and nothing else. */
+export type ReadingPartOfSpeech = NounPartOfSpeech | OtherPartOfSpeech;
+
+/** A record the source states is a noun. Articles are a noun fact, so it has them. */
+export type NounReading = ReadingFacts & NounPartOfSpeech;
+
+/** A record of any other part of speech. Lexema derives no article for one. */
+export type OtherReading = ReadingFacts & OtherPartOfSpeech;
+
+/** One source record that matched the query. */
+export type Reading = NounReading | OtherReading;
+
+/**
+ * Whether this reading is a noun — and so whether it carries articles.
+ *
+ * The brand on `NonNounPos` is not a unit type, so `reading.pos === "noun"`
+ * written at a call site narrows nothing on its own. This is where that
+ * comparison lives, once, with the narrowing attached to it.
+ */
+export function isNounReading(reading: Reading): reading is NounReading {
+  return reading.pos === "noun";
 }
 
 export interface ReleaseInfo {

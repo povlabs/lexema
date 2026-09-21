@@ -18,8 +18,11 @@ import { fromNodeSqlite } from "../src/lookup/database.js";
 import type {
   FoundResult,
   LookupResult,
+  NonNounPos,
   NotFoundResult,
+  NounReading,
   Reading,
+  ReadingArticles,
   RejectedResult,
   ReleaseInfo,
   SearchResult,
@@ -632,6 +635,38 @@ test("the result type cannot express a found with nothing found", () => {
   assert.equal(emptyFound.outcome, "found");
   assert.equal(fullNotFound.outcome, "not-found");
   assert.equal(laundered.outcome, "not-found");
+});
+
+test("the reading type cannot express articles apart from a noun", () => {
+  // Checked by `pnpm run typecheck` in the same way, over the three
+  // contradictions one `Reading` with an independent `pos` and `articles`
+  // permitted. Only the type of `facts` matters here, never its value.
+  const facts = {} as Omit<NounReading, "pos" | "articles">;
+  const derived: ReadingArticles = {
+    status: "derived",
+    articles: [
+      {
+        kind: "definite",
+        article: "la",
+        displayForm: "la casa",
+        gender: "feminine",
+        number: "singular",
+        sourceType: "lexema-deterministic",
+        rule: "it-articles/v1",
+      },
+    ],
+  };
+
+  // @ts-expect-error - articles are a noun fact: no other part of speech has the field
+  const verbWithArticles: Reading = { ...facts, pos: "verb" as NonNounPos, articles: derived };
+  // @ts-expect-error - a noun reading always carries its articles, derived or withheld
+  const nounWithoutArticles: NounReading = { ...facts, pos: "noun" };
+  // @ts-expect-error - "not a noun" is no longer an article state; the field is simply absent
+  const notANoun: ReadingArticles = { status: "not-a-noun" };
+
+  assert.equal(verbWithArticles.pos, "verb");
+  assert.equal(nounWithoutArticles.pos, "noun");
+  assert.equal(notANoun.status, "not-a-noun");
 });
 
 test("surfaces a disputed claim instead of hiding or correcting it", async () => {

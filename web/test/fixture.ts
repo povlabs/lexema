@@ -81,6 +81,11 @@ export const FIXTURE_LINES: string[] = [
     forms: [
       { form: "studenti", tags: ["masculine", "plural"] },
       { form: "studenti", tags: ["plural"] },
+      // The gendered pair, written as one string by the source itself:
+      // reports/dataset-findings.md "Noun representation" reads it off the real
+      // `studente` record. Its surface key is `studente/studentessa`, so it is a
+      // hit for none of the twelve sampled queries and moves none of the counts.
+      { form: "studente/studentessa", tags: ["feminine", "singular"] },
     ],
     senses: [{ glosses: ["chi è regolarmente iscritto in un corso di studi"], raw_tags: ["scuola"] }],
   }),
