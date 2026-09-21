@@ -5,10 +5,12 @@
 //   pnpm run import -- --release-id it-2026-07-20
 //
 // Defaults point at the local file and .data/lexema.sqlite, both gitignored.
+// Every rejected line lands in <database>.rejections.tsv beside the database.
 
+import { closeSync, openSync, writeSync } from "node:fs";
 import { mkdir, rm } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
-import { IMPORTER_VERSION, importRelease } from "./importRelease.js";
+import { IMPORTER_VERSION, importRelease, type ImportReport } from "./importRelease.js";
 
 function parseArgs(argv: string[]): Map<string, string | true> {
   const args = new Map<string, string | true>();
@@ -35,6 +37,7 @@ const USAGE = `Usage: pnpm run import -- [options]
 
   --input <path>        source .jsonl.gz            (default: it-extract.jsonl.gz)
   --database <path>     SQLite file to write        (default: .data/lexema.sqlite)
+                        rejected lines are listed in <database>.rejections.tsv
   --release-id <id>     release identifier          (default: it-local)
   --archive-key <key>   R2 key for the archive      (default: releases/<release-id>.jsonl.gz)
   --source-url <url>    download URL, if known
@@ -73,21 +76,33 @@ async function main(): Promise<void> {
   }
 
   process.stderr.write(`importing ${input} -> ${database} as ${releaseId}\n`);
-  const report = await importRelease({
-    input,
-    database,
-    schema: resolve(dirname(new URL(import.meta.url).pathname), "../db/schema.sql"),
-    releaseId,
-    archiveR2Key: str(args, "archive-key") ?? `releases/${releaseId}.jsonl.gz`,
-    sourceUrl: str(args, "source-url"),
-    retrievedAt: str(args, "retrieved-at"),
-    upstreamRelease: str(args, "upstream"),
-    license: str(args, "license"),
-    attribution: str(args, "attribution"),
-    limit,
-    onProgress: (admitted) =>
-      process.stderr.write(`  ${admitted.toLocaleString("en-US")} records\r`),
-  });
+  // One line per rejected input line: line number, kind, reason. Written
+  // synchronously as each rejection is met, so nothing is held for the 239,243
+  // other-language lines of the real archive, and none of them goes unlisted.
+  const rejectionsPath = `${database}.rejections.tsv`;
+  const rejectionsFd = openSync(resolve(rejectionsPath), "w");
+  let report: ImportReport;
+  try {
+    report = await importRelease({
+      input,
+      database,
+      schema: resolve(dirname(new URL(import.meta.url).pathname), "../db/schema.sql"),
+      releaseId,
+      archiveR2Key: str(args, "archive-key") ?? `releases/${releaseId}.jsonl.gz`,
+      sourceUrl: str(args, "source-url"),
+      retrievedAt: str(args, "retrieved-at"),
+      upstreamRelease: str(args, "upstream"),
+      license: str(args, "license"),
+      attribution: str(args, "attribution"),
+      limit,
+      onRejection: ({ lineNo, kind, reason }) =>
+        writeSync(rejectionsFd, `${lineNo}\t${kind}\t${reason}\n`),
+      onProgress: (admitted) =>
+        process.stderr.write(`  ${admitted.toLocaleString("en-US")} records\r`),
+    });
+  } finally {
+    closeSync(rejectionsFd);
+  }
 
   const n = (value: number) => value.toLocaleString("en-US");
   const lines = [
@@ -106,18 +121,11 @@ async function main(): Promise<void> {
     "",
     `elapsed          ${(report.elapsedMs / 1000).toFixed(1)}s`,
     "",
+    // Counts alone would not tell anyone which line to go and look at.
+    `rejected lines   ${n(report.skippedOtherLanguage + report.malformed)} listed in ${rejectionsPath}`,
+    "",
   ];
   process.stdout.write(lines.join("\n"));
-
-  // Counts alone would not tell anyone which line to go and look at. The counts
-  // are exact; the line numbers are the bounded sample the importer kept.
-  const locations = (label: string, total: number, sample: number[]) => {
-    if (total === 0) return;
-    const more = total > sample.length ? ` (first ${sample.length} of ${n(total)})` : "";
-    process.stdout.write(`${label} lines${more}: ${sample.join(", ")}\n\n`);
-  };
-  locations("malformed", report.malformed, report.malformedLineNumbers);
-  locations("skipped (other language)", report.skippedOtherLanguage, report.skippedLineNumbers);
 }
 
 main().catch((error: unknown) => {

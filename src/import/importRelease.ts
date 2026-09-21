@@ -9,7 +9,9 @@
 //      assigned in line order rather than by insertion race.
 //   3. Honest. A record is admitted on `lang_code === 'it'` and nothing else.
 //      Every line that does not become a record — malformed, empty, or another
-//      language — is counted and located, never skipped in silence.
+//      language — is counted and located, never skipped in silence. Locations
+//      are handed to the caller one at a time as they happen, so all of them
+//      are reported without any of them being held.
 //
 // The release is written as 'importing' and only flipped to 'complete' after the
 // last line of the archive lands, so a crash leaves a release that every
@@ -33,25 +35,28 @@ import {
 export const IMPORTER_VERSION = "it-import/v1" as const;
 export const SCHEMA_VERSION = 1;
 
-/** How many line numbers to keep per rejection kind. The counts are always exact. */
-const SAMPLE_LIMIT = 50;
+/**
+ * One input line that produced no record, and why.
+ *
+ * `other-language` is a well-formed record whose `lang_code` is not `it`.
+ * `malformed` is anything else: not JSON, not an object, blank, an Italian
+ * record missing `word`/`pos`/`pos_title`, or one whose `forms`, `senses` or
+ * `form_of` members are not objects. The reason names the JSON pointer where
+ * the shape broke.
+ */
+export interface Rejection {
+  kind: "malformed" | "other-language";
+  /** 1-based physical line number in the archive. */
+  lineNo: number;
+  reason: string;
+}
 
 /**
- * A rejection tally: an exact count plus the first few line numbers.
- *
- * Keeping every line number would break the bounded-memory property — 239,243
- * lines of this archive are another language — so the count is exact and the
- * locations are a bounded sample.
+ * A line that cannot become a record. Thrown while reading a line and turned
+ * into a located rejection by the loop; anything else thrown there is a bug
+ * and still aborts the run.
  */
-class Rejections {
-  count = 0;
-  readonly lineNumbers: number[] = [];
-
-  record(lineNo: number): void {
-    this.count += 1;
-    if (this.lineNumbers.length < SAMPLE_LIMIT) this.lineNumbers.push(lineNo);
-  }
-}
+class MalformedLine extends Error {}
 
 export interface ImportOptions {
   /** Path to the .jsonl.gz source file. */
@@ -73,6 +78,13 @@ export interface ImportOptions {
   attribution?: string;
   /** Stop after this many admitted records. For tests only. */
   limit?: number;
+  /**
+   * Receives every rejected line as it is met, in line order. Required rather
+   * than optional: keeping 239,243 locations in memory would break the
+   * bounded-memory property, and dropping them would break the honesty one,
+   * so the caller has to say where they go.
+   */
+  onRejection: (rejection: Rejection) => void;
   onProgress?: (admitted: number) => void;
   /** Admitted records between onProgress calls. */
   progressEvery?: number;
@@ -89,13 +101,17 @@ export interface ImportReport {
   archiveBytes: number;
   linesRead: number;
   admitted: number;
+  /** Exact counts. Every location behind them went through `onRejection`. */
   skippedOtherLanguage: number;
-  /** First few line numbers of records rejected for their language. */
-  skippedLineNumbers: number[];
   malformed: number;
-  malformedLineNumbers: number[];
   rows: Record<string, number>;
   elapsedMs: number;
+}
+
+type JsonObject = Record<string, unknown>;
+
+interface KaikkiFormOf {
+  word?: unknown;
 }
 
 interface KaikkiForm {
@@ -109,23 +125,80 @@ interface KaikkiSense {
   glosses?: unknown;
   tags?: unknown;
   raw_tags?: unknown;
-  form_of?: unknown;
+  form_of: readonly KaikkiFormOf[];
 }
 
+/**
+ * An admitted Italian record. The three NOT NULL columns are strings and every
+ * nested member is an object, because `readItalianRecord` refused the line
+ * otherwise. Leaf fields stay `unknown`: a non-string form or gloss is dropped
+ * per leaf, which is the same lenience the schema's nullable columns give.
+ */
 interface KaikkiRecord {
-  word?: unknown;
-  pos?: unknown;
-  pos_title?: unknown;
-  lang_code?: unknown;
+  word: string;
+  pos: string;
+  pos_title: string;
   tags?: unknown;
   raw_tags?: unknown;
-  forms?: unknown;
-  senses?: unknown;
+  forms: readonly KaikkiForm[];
+  senses: readonly KaikkiSense[];
 }
 
+const isObject = (value: unknown): value is JsonObject =>
+  typeof value === "object" && value !== null && !Array.isArray(value);
 const asArray = (value: unknown): unknown[] => (Array.isArray(value) ? value : []);
 const asStrings = (value: unknown): string[] =>
   asArray(value).filter((item): item is string => typeof item === "string");
+
+/** The line as a JSON object, or a `MalformedLine` saying why it is not one. */
+function parseLine(line: string): JsonObject {
+  // A blank line carries no record and is not valid JSONL, so it is malformed.
+  // Skipping it quietly would let input vanish under a reported zero.
+  if (line.trim() === "") throw new MalformedLine("blank line");
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(line);
+  } catch {
+    throw new MalformedLine("not valid JSON");
+  }
+  if (!isObject(parsed)) throw new MalformedLine("line is not a JSON object");
+  return parsed;
+}
+
+/**
+ * `container[key]` as a list of objects. Absent means empty; present means an
+ * array whose every member is an object. Anything else is malformed and named
+ * by pointer, so `forms: [null]` is a located rejection rather than a crash
+ * in the middle of a transaction.
+ */
+function objectList(container: JsonObject, key: string, pointer: string): JsonObject[] {
+  const value = container[key];
+  if (value === undefined) return [];
+  if (!Array.isArray(value)) throw new MalformedLine(`${pointer} is not an array`);
+  return value.map((item, index) => {
+    if (!isObject(item)) throw new MalformedLine(`${pointer}/${index} is not an object`);
+    return item;
+  });
+}
+
+/**
+ * The shape an Italian record has to have before anything is written for it.
+ * Every Italian record in this file passes, but a record that does not would
+ * violate NOT NULL or hit a nested cast, so it is refused here as malformed —
+ * never silently given an empty string, never allowed to abort the run.
+ */
+function readItalianRecord(parsed: JsonObject): KaikkiRecord {
+  const { word, pos, pos_title } = parsed;
+  if (typeof word !== "string" || typeof pos !== "string" || typeof pos_title !== "string") {
+    throw new MalformedLine("word, pos and pos_title must be strings");
+  }
+  const forms = objectList(parsed, "forms", "/forms");
+  const senses = objectList(parsed, "senses", "/senses").map((sense, senseIndex) => ({
+    ...sense,
+    form_of: objectList(sense, "form_of", `/senses/${senseIndex}/form_of`),
+  }));
+  return { ...parsed, word, pos, pos_title, forms, senses };
+}
 
 /** What an open file would have to keep for two reads of it to be the same bytes. */
 const identityOf = (stats: Stats): string =>
@@ -227,8 +300,8 @@ export async function importRelease(options: ImportOptions): Promise<ImportRepor
     let linesRead = 0;
     let admitted = 0;
     let truncated = false;
-    const skipped = new Rejections();
-    const malformed = new Rejections();
+    let skipped = 0;
+    let malformed = 0;
 
     db.exec("BEGIN");
     statements.insertRelease.run(
@@ -252,35 +325,22 @@ export async function importRelease(options: ImportOptions): Promise<ImportRepor
 
       let record: KaikkiRecord;
       try {
-        // A blank line carries no record and is not valid JSONL, so it is
-        // malformed. Skipping it quietly would let input vanish under a
-        // reported zero.
-        if (line.trim() === "") throw new Error("blank line");
-        const parsed: unknown = JSON.parse(line);
-        if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
-          throw new Error("line is not a JSON object");
+        const parsed = parseLine(line);
+        // The one admission test. Never the filename, never the spelling.
+        if (parsed.lang_code !== "it") {
+          skipped += 1;
+          options.onRejection({
+            kind: "other-language",
+            lineNo: linesRead,
+            reason: `lang_code is ${JSON.stringify(parsed.lang_code ?? null)}`,
+          });
+          continue;
         }
-        record = parsed as KaikkiRecord;
-      } catch {
-        malformed.record(linesRead);
-        continue;
-      }
-
-      // The one admission test. Never the filename, never the spelling.
-      if (record.lang_code !== "it") {
-        skipped.record(linesRead);
-        continue;
-      }
-
-      // Every Italian record in this file has all three, but a record missing
-      // one would violate NOT NULL, so it is counted as malformed rather than
-      // silently given an empty string.
-      if (
-        typeof record.word !== "string" ||
-        typeof record.pos !== "string" ||
-        typeof record.pos_title !== "string"
-      ) {
-        malformed.record(linesRead);
+        record = readItalianRecord(parsed);
+      } catch (error) {
+        if (!(error instanceof MalformedLine)) throw error;
+        malformed += 1;
+        options.onRejection({ kind: "malformed", lineNo: linesRead, reason: error.message });
         continue;
       }
 
@@ -330,10 +390,8 @@ export async function importRelease(options: ImportOptions): Promise<ImportRepor
       archiveBytes,
       linesRead,
       admitted,
-      skippedOtherLanguage: skipped.count,
-      skippedLineNumbers: skipped.lineNumbers,
-      malformed: malformed.count,
-      malformedLineNumbers: malformed.lineNumbers,
+      skippedOtherLanguage: skipped,
+      malformed,
       rows,
       elapsedMs: Date.now() - startedAt,
     };
@@ -441,9 +499,7 @@ function writeRecord(
   );
   rows.lookup_form += 1;
 
-  const forms = asArray(record.forms);
-  forms.forEach((entry, formIndex) => {
-    const form = entry as KaikkiForm;
+  record.forms.forEach((form, formIndex) => {
     if (typeof form.form !== "string") return;
     statements.insertLookup.run(
       recordId,
@@ -470,8 +526,7 @@ function writeRecord(
     expected: expectedRecordDimensions(ctx.pos),
   });
 
-  forms.forEach((entry, formIndex) => {
-    const form = entry as KaikkiForm;
+  record.forms.forEach((form, formIndex) => {
     if (typeof form.form !== "string") return;
     const tags = asStrings(form.tags);
     const stated = new Set<string>();
@@ -492,8 +547,7 @@ function writeRecord(
     });
   });
 
-  asArray(record.senses).forEach((entry, senseIndex) => {
-    const sense = entry as KaikkiSense;
+  record.senses.forEach((sense, senseIndex) => {
     // sense_id is derived, not auto-assigned, so it is stable across runs.
     const senseId = recordId * 1000 + senseIndex;
     statements.insertSense.run(senseId, recordId, senseIndex, `/senses/${senseIndex}`);
@@ -539,8 +593,8 @@ function writeRecord(
       rows.grammar_claim += 1;
     });
 
-    asArray(sense.form_of).forEach((target, formOfIndex) => {
-      const word = (target as { word?: unknown }).word;
+    sense.form_of.forEach((target, formOfIndex) => {
+      const { word } = target;
       if (typeof word !== "string") return;
       statements.insertEdge.run(
         recordId,
