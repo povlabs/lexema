@@ -84,8 +84,11 @@ Normalization folds case, whitespace and apostrophe variants, but keeps accents:
 `città` and `citta` are different words, and folding them would merge distinct
 entries.
 
-The 128-character bound is well past the longest headword in this release. It
-exists so a pathological query cannot become a pathological index probe.
+The 128-character bound is well past the longest headword in this release: the
+longest is 51 characters and none reaches 128, measured over the archive in
+[the lookup measurements](../reports/2026-09-21-lookup-measurements.md#longest-headword).
+The bound exists so a pathological query cannot become a pathological index
+probe.
 
 A lookup against a release that is absent, still importing, failed or superseded
 throws rather than returning "no results" — those are different claims. And
@@ -103,10 +106,21 @@ then discards nearly all of it. At release scale that is seconds against
 fractions of a millisecond, for identical rows, and the gap widens as the
 release grows.
 
+Those are measured numbers, but **they are not measured on this branch**. They
+come from the lookup benchmark on `huey/37-lookup-bench` (PR #38), whose
+`pnpm run bench:lookup` captured 6722.0 ms through the view against 0.03 ms
+inlined, at a 560,357-record corpus, on 2026-09-19 — a ratio of about 2 × 10⁵,
+so four orders of magnitude is the floor rather than the figure. At the smaller
+140,000-record corpus the same pair is 981.1 ms against 0.03 ms, which is the
+sense in which the gap widens with the release. The branch, the command and
+what the figures do and do not show are recorded in
+[the lookup measurements](../reports/2026-09-21-lookup-measurements.md#the-timing-claim-is-not-from-this-report).
+Nothing on this branch runs that harness.
+
 Identical rows is why a rows-only test sails straight past this. So there is a
 test asserting the query plan contains no `MATERIALIZE` and still uses
 `form_of_edge_by_record`, and the same assertion on both inflection queries.
-The harness that measures the cost is #37.
+That test proves the plan's shape, not its timing.
 
 Query 2a in `src/db/queries.sql` has the same shape and the same problem.
 

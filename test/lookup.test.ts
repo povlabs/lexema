@@ -114,6 +114,11 @@ async function fixture() {
     archiveR2Key: "releases/it-test.jsonl.gz",
     sourceUrl: "https://example.invalid/it-extract.jsonl.gz",
     license: "CC-BY-SA-4.0",
+    // The fixture is hand-written and every line is admissible, so a rejection
+    // means the fixture broke, not that the importer found something.
+    onRejection: (rejection) => {
+      throw new Error(`fixture line rejected: ${JSON.stringify(rejection)}`);
+    },
   });
   const db = new DatabaseSync(database);
   return { dir, db };
@@ -194,6 +199,39 @@ test("normalizes case, whitespace and apostrophes while keeping accents", async 
   });
 });
 
+test("a canonically decomposed query finds the same rows as the composed one", async () => {
+  await withFixture(async (db) => {
+    // Two spellings of one word: U+00E0, and `a` followed by U+0300. A macOS
+    // filename or an IME can hand over either, and NFC is what makes them one
+    // query rather than a hit and a miss.
+    const composed = "citt\u00e0";
+    const decomposed = "citta\u0300";
+    assert.notEqual(composed, decomposed);
+    assert.equal(decomposed.normalize("NFC"), composed);
+
+    const viaDecomposed = await ask(db, decomposed) as SearchResult;
+    const viaComposed = await ask(db, composed) as SearchResult;
+
+    // Same rows, not merely the same count: record ids and the evidence each
+    // one carries.
+    assert.deepEqual(
+      viaDecomposed.readings.map((r) => [r.recordId, r.evidence.map((e) => e.pointer)]),
+      viaComposed.readings.map((r) => [r.recordId, r.evidence.map((e) => e.pointer)]),
+    );
+    assert.equal(viaDecomposed.readings.length, 1);
+
+    // The key is composed whichever spelling arrived, because that is the form
+    // the stored surface keys are in.
+    assert.equal(viaDecomposed.query.key, composed);
+    // The typed spelling is still the decomposed one, verbatim.
+    assert.equal(viaDecomposed.query.raw, decomposed);
+
+    // Normalizing is not stripping: the unaccented spelling is a different word
+    // and stays a miss.
+    assert.equal((await ask(db, "citta")).outcome, "not-found");
+  });
+});
+
 test("keeps the typed spelling and the source spelling both available", async () => {
   await withFixture(async (db) => {
     const result = await ask(db, "  CITTÀ ");
@@ -226,7 +264,7 @@ test("returns every reading of an ambiguous surface, unranked", async () => {
 
 test("repeated evidence does not become repeated readings", async () => {
   await withFixture(async (db) => {
-    // `studenti` sits on four records across five lookup rows: twice inside
+    // `studenti` sits on three records across four lookup rows: twice inside
     // `studente`, once inside `studentessa`, and once as its own headword.
     const readings = found(await ask(db, "studenti"));
     assert.equal(readings.length, 3);
