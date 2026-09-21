@@ -9,6 +9,7 @@
   --accent: #1a4d8f;
   --warn: #8a5a00;
   --warn-bg: #fdf6e3;
+  --error: #a4262c;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -20,6 +21,10 @@
     --accent: #8ab4f8;
     --warn: #e0b34d;
     --warn-bg: #2e2612;
+    /* The light error red is about 2.5:1 on this background, which is below
+       the readable floor. Colour never carries the message on its own here,
+       and it still has to be legible. */
+    --error: #ff9c96;
   }
 }
 
@@ -79,10 +84,11 @@ button {
 
 /* Messages ---------------------------------------------------------------- */
 
-.hint, .empty, .error, .count { margin: 1.4rem 0; }
-.hint, .empty { color: var(--muted); }
-.error { color: #a4262c; }
+.hint, .empty, .error, .count, .pending { margin: 1.4rem 0; }
+.hint, .empty, .pending { color: var(--muted); }
+.error { color: var(--error); }
 .count { font-size: 0.9rem; color: var(--muted); }
+.muted { color: var(--muted); font-size: 0.9rem; }
 a { color: var(--accent); }
 
 /* Readings ---------------------------------------------------------------- */
@@ -120,6 +126,24 @@ a { color: var(--accent); }
 
 .definitions { margin: 0.7rem 0; padding-left: 1.3rem; }
 .definitions li { margin: 0.35rem 0; }
+.definitions .gloss { margin: 0.1rem 0; }
+.labels { margin: 0.2rem 0; font-size: 0.85rem; color: var(--muted); font-style: italic; }
+.labels .label + .label { margin-left: 0.4rem; }
+
+/* Forms and conjugations ---------------------------------------------------- */
+
+.forms { margin: 0.3rem 0; padding: 0; list-style: none; }
+.forms > li { margin: 0.3rem 0; }
+.form-source { font-size: 0.75rem; color: var(--muted); }
+.conjugation-group { margin: 0.5rem 0; }
+.conjugation-group h4 {
+  font-size: 0.82rem;
+  margin: 0.4rem 0 0.1rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+.disputed ul { margin: 0.3rem 0 0; padding-left: 1.1rem; }
+.disputed p { margin: 0; }
 
 /* Grammar ----------------------------------------------------------------- */
 

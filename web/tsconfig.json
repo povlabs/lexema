@@ -10,11 +10,11 @@
     "skipLibCheck": true,
     "noEmit": true,
     "allowImportingTsExtensions": true,
-    "types": ["./worker-configuration.d.ts"],
+    "types": ["node", "./worker-configuration.d.ts"],
     "paths": {
       "@lexema/lookup/*": ["../src/lookup/*"],
       "@lexema/italian/*": ["../src/italian/*"]
     }
   },
-  "include": ["app", "vite.config.ts", "worker-configuration.d.ts", "../src/lookup", "../src/italian"]
+  "include": ["app", "test", "vite.config.ts", "worker-configuration.d.ts", "../src/lookup", "../src/italian"]
 }
