@@ -103,6 +103,102 @@ function It({ children }: { children: string }) {
   return <span lang="it">{children}</span>;
 }
 
+/**
+ * One spelling of the entry itself: its headword, or one `forms[]` entry of it.
+ *
+ * Every box renders one of these rather than a bare string, so the page says
+ * which source row each spelling came from — `data-headword` for the headword,
+ * `data-form="3"` for the record's fourth `forms[]` entry. That is what turns
+ * "every form is on this card exactly once" into something a test counts
+ * instead of a spelling it pattern-matches, and a spelling that is neither —
+ * an article Lexema derived, a word another record points with — carries no
+ * mark and is not one of the entry's own forms.
+ */
+type Spelling =
+  | { kind: "headword"; surface: string }
+  | { kind: "form"; index: number; surface: string; from: string | null };
+
+const headwordOf = (reading: Reading): Spelling => ({ kind: "headword", surface: reading.word });
+
+const spellingOf = (form: SourceForm): Spelling => ({
+  kind: "form",
+  index: form.index,
+  surface: form.surface,
+  from: form.formSource,
+});
+
+/**
+ * The page the source says this form was taken from, where it names one.
+ *
+ * It travels with the spelling rather than with the box, because it is a fact
+ * about the form and the box that places the form is now the only place it
+ * renders — `parlerei` is read off a conjugation appendix, and dropping that
+ * would lose the one thing saying where it came from.
+ */
+function SpellingSource({ spelling }: { spelling: Spelling }) {
+  if (spelling.kind === "headword" || spelling.from === null) return null;
+  return (
+    <span className="form-source">
+      {" "}
+      from <It>{spelling.from}</It>
+    </span>
+  );
+}
+
+/** A key that tells one rendered spelling from another inside one box. */
+const spellingKey = (spelling: Spelling): string =>
+  spelling.kind === "headword" ? "headword" : `form-${spelling.index}`;
+
+/** An Italian spelling of this entry, marked with the source row it came from. */
+function Spelled({ spelling }: { spelling: Spelling }) {
+  if (spelling.kind === "headword") {
+    return (
+      <span lang="it" data-headword="">
+        {spelling.surface}
+      </span>
+    );
+  }
+  return (
+    <span lang="it" data-form={spelling.index}>
+      {spelling.surface}
+    </span>
+  );
+}
+
+/**
+ * The `forms[]` entries a set of rendered spellings placed, by index.
+ *
+ * A box hands back what it put on the page, and the card subtracts it from the
+ * record's forms — so the unplaced box below holds exactly what no box placed,
+ * and no form is rendered by two boxes at once.
+ */
+function placedForms(spellings: readonly Spelling[]): number[] {
+  return spellings.flatMap((spelling) => (spelling.kind === "form" ? [spelling.index] : []));
+}
+
+/** A claim the box that placed a form already states by filing it where it did. */
+function filedUnder(...pairs: readonly (readonly [string, string | undefined])[]) {
+  return (claim: GrammarClaim): boolean =>
+    claim.status === "stated" &&
+    pairs.some(([dimension, value]) => dimension === claim.dimension && value === claim.value);
+}
+
+/**
+ * What the box that placed a form has not already said about it.
+ *
+ * A placed form's spelling renders in one box and nowhere else, so the claims
+ * that box states itself — the row or cell it filed the form under — are not
+ * repeated beside the spelling, and everything else the source said about that
+ * form still is. Dropping the rest would trade one duplication for a missing
+ * source fact.
+ */
+function claimsBeyond(
+  claims: readonly GrammarClaim[],
+  said: (claim: GrammarClaim) => boolean,
+): GrammarClaim[] {
+  return claims.filter((claim) => !said(claim));
+}
+
 // The headline bar --------------------------------------------------------
 //
 // "Under the headword: part of speech, then the few facts the source states for
@@ -269,11 +365,11 @@ function isSearchedForm(surface: string, query: string): boolean {
  * by a border, not by colour alone" — so the border is drawn by `.searched` and
  * the same fact is said in words beside it, for a reader who sees neither.
  */
-function BoxSurface({ surface, query }: { surface: string; query: string }) {
-  if (!isSearchedForm(surface, query)) return <It>{surface}</It>;
+function BoxSurface({ spelling, query }: { spelling: Spelling; query: string }) {
+  if (!isSearchedForm(spelling.surface, query)) return <Spelled spelling={spelling} />;
   return (
     <span className="searched">
-      <It>{surface}</It>
+      <Spelled spelling={spelling} />
       <span className="muted"> · the form you searched</span>
     </span>
   );
@@ -371,46 +467,63 @@ function FormEntry({
 }) {
   return (
     <li>
-      <BoxSurface surface={form.surface} query={query} />
+      <BoxSurface spelling={spellingOf(form)} query={query} />
       {markUnsplit && !isOneWord(form.surface) && <Unsplit />}
       <Grammar claims={form.claims} label={`grammar for ${form.surface}`} />
-      {form.formSource !== null && (
-        <span className="form-source">
-          from <It>{form.formSource}</It>
-        </span>
-      )}
+      <SpellingSource spelling={spellingOf(form)} />
     </li>
   );
 }
 
 /**
- * Every form this record lists, in source order — the box that catches what no
- * other box placed, and holds the rest a second time so nothing is dropped.
+ * The forms of this record no table placed, in source order.
+ *
+ * "Forms the source leaves unplaced go in one last box named for what is
+ * missing, never scattered", and "a fact is never rendered twice on one card"
+ * (design-system-manifest.md § "The result card"). So this box holds what the
+ * singular-and-plural table, the gender-and-number paradigm, the degrees and
+ * the conjugations did not take, and nothing else — a form one of those placed
+ * is on the card already, and listing it here again is the duplication this
+ * box used to carry by design.
+ *
+ * It is named for what it holds: the whole table when no box placed anything,
+ * the rest when one did. An entry whose forms are all placed renders no box at
+ * all, and neither does one that lists no forms — the card's silence line says
+ * that once, which is the whole of #60.
  *
  * A listed form is not a claim that this record is the base word —
- * `studentessa` lists `studenti` — so the section says whose table it is. An
- * entry that lists none renders nothing at all: the card's silence line says
- * so once, which is the whole of #60.
+ * `studentessa` lists `studenti` — so the heading says whose table it is.
  */
-function Forms({
+function UnplacedForms({
   reading,
+  forms,
   query,
   markUnsplit = false,
 }: {
   reading: Reading;
+  forms: readonly SourceForm[];
   query: string;
   markUnsplit?: boolean;
 }) {
-  if (reading.forms.length === 0) return null;
+  if (forms.length === 0) return null;
+  const heading =
+    forms.length === reading.forms.length
+      ? "Forms listed by this entry"
+      : "Other forms listed by this entry";
   return (
-    <Box id={`forms-${reading.recordId}`} heading="Forms listed by this entry">
+    <Box id={`forms-${reading.recordId}`} heading={heading}>
       <ul className="forms">
-        {reading.forms.map((form) => (
+        {forms.map((form) => (
           <FormEntry key={form.index} form={form} query={query} markUnsplit={markUnsplit} />
         ))}
       </ul>
     </Box>
   );
+}
+
+/** The record's forms that no box on this card placed, in source order. */
+function unplacedForms(reading: Reading, placed: ReadonlySet<number>): SourceForm[] {
+  return reading.forms.filter((form) => !placed.has(form.index));
 }
 
 // A noun is read for three things the generic card answers badly: what it
@@ -422,9 +535,16 @@ function Forms({
 
 /** One spelling the source files under a number, with the gender it gave it. */
 interface NumberedSurface {
-  key: string;
-  surface: string;
+  spelling: Spelling;
   gender: string | undefined;
+  /** What the row has not already said about this spelling. */
+  rest: GrammarClaim[];
+}
+
+/** One row of the singular-and-plural box: a number, and what is filed under it. */
+interface NumberRow {
+  number: string;
+  surfaces: NumberedSurface[];
 }
 
 /**
@@ -437,20 +557,26 @@ interface NumberedSurface {
  */
 function numberedSurfaces(reading: Reading, number: "singular" | "plural"): NumberedSurface[] {
   const surfaces: NumberedSurface[] = [];
+  const filed = (claims: readonly GrammarClaim[], spelling: Spelling): NumberedSurface => {
+    const gender = stated(claims, "gender");
+    return {
+      spelling,
+      gender,
+      // A form's other claims render here, because this row is the only place
+      // that form now sits. The headword's do not: the card renders the
+      // record's own claims once, above the boxes.
+      rest:
+        spelling.kind === "headword"
+          ? []
+          : claimsBeyond(claims, filedUnder(["number", number], ["gender", gender])),
+    };
+  };
   if (stated(reading.grammar.record, "number") === number) {
-    surfaces.push({
-      key: "headword",
-      surface: reading.word,
-      gender: stated(reading.grammar.record, "gender"),
-    });
+    surfaces.push(filed(reading.grammar.record, headwordOf(reading)));
   }
   for (const form of reading.forms) {
     if (stated(form.claims, "number") !== number) continue;
-    surfaces.push({
-      key: `form-${form.index}`,
-      surface: form.surface,
-      gender: stated(form.claims, "gender"),
-    });
+    surfaces.push(filed(form.claims, spellingOf(form)));
   }
   return surfaces;
 }
@@ -460,12 +586,14 @@ function NumberCell({ surfaces, query }: { surfaces: NumberedSurface[]; query: s
   return (
     <>
       {surfaces.map((entry, i) => (
-        <span key={entry.key}>
+        <span key={spellingKey(entry.spelling)}>
           {i > 0 && ", "}
           {/* Exactly as the source spelled it: `studente/studentessa` is one
               string the source wrote, not two words to split apart. */}
-          <BoxSurface surface={entry.surface} query={query} />
+          <BoxSurface spelling={entry.spelling} query={query} />
           {entry.gender !== undefined && <span className="muted"> {entry.gender}</span>}
+          <Grammar claims={entry.rest} label={`grammar for ${entry.spelling.surface}`} />
+          <SpellingSource spelling={entry.spelling} />
         </span>
       ))}
     </>
@@ -474,29 +602,40 @@ function NumberCell({ surfaces, query }: { surfaces: NumberedSurface[]; query: s
 
 const NOUN_NUMBERS = ["singular", "plural"] as const;
 
-/** Whether this record files any spelling under a number the source stated. */
-function hasNumberedSurfaces(reading: Reading): boolean {
-  return NOUN_NUMBERS.some((number) => numberedSurfaces(reading, number).length > 0);
+/** Every number this record files a spelling under, with what it filed there. */
+function nounNumberRows(reading: Reading): NumberRow[] {
+  return NOUN_NUMBERS.map((number) => ({
+    number: number as string,
+    surfaces: numberedSurfaces(reading, number),
+  })).filter((row) => row.surfaces.length > 0);
 }
 
 /**
  * The singular-and-plural box: one row per number the source actually filed a
  * spelling under, and no box at all when it filed none.
+ *
+ * The rows are built by the card, which subtracts what they placed from the
+ * forms left over — so the box and the unplaced box cannot disagree about
+ * which forms this table is showing.
  */
-function NounNumbers({ reading, query }: { reading: NounReading; query: string }) {
-  if (!hasNumberedSurfaces(reading)) return null;
+function NounNumbers({
+  rows,
+  recordId,
+  query,
+}: {
+  rows: NumberRow[];
+  recordId: number;
+  query: string;
+}) {
+  if (rows.length === 0) return null;
   return (
-    <Box id={`numbers-${reading.recordId}`} heading="Singular and plural">
+    <Box id={`numbers-${recordId}`} heading="Singular and plural">
       <BoxRows>
-        {NOUN_NUMBERS.map((number) => {
-          const surfaces = numberedSurfaces(reading, number);
-          if (surfaces.length === 0) return null;
-          return (
-            <BoxLine key={number} label={number}>
-              <NumberCell surfaces={surfaces} query={query} />
-            </BoxLine>
-          );
-        })}
+        {rows.map((row) => (
+          <BoxLine key={row.number} label={row.number}>
+            <NumberCell surfaces={row.surfaces} query={query} />
+          </BoxLine>
+        ))}
       </BoxRows>
     </Box>
   );
@@ -615,19 +754,48 @@ function placements(claims: readonly GrammarClaim[]): Cell[] {
  * The spellings this entry files under each cell: its own headword from the
  * record's tags, and each `forms[]` entry from its own.
  */
-function paradigmCandidates(reading: Reading): Map<string, string[]> {
-  const byCell = new Map<string, string[]>(CELLS.map((cell) => [cellKey(cell), []]));
+function paradigmCandidates(reading: Reading): Map<string, ParadigmCandidate[]> {
+  const byCell = new Map<string, ParadigmCandidate[]>(CELLS.map((cell) => [cellKey(cell), []]));
 
-  const file = (claims: readonly GrammarClaim[], surface: string): void => {
+  const file = (claims: readonly GrammarClaim[], spelling: Spelling): void => {
+    const candidate: ParadigmCandidate = {
+      spelling,
+      // The table is what files a spelling by gender and number, and it takes
+      // only positive degrees, so those three are what it says itself. The
+      // headword carries nothing here: the card renders the record's own
+      // claims once, above the boxes.
+      rest:
+        spelling.kind === "headword"
+          ? []
+          : claimsBeyond(
+              claims,
+              (claim) =>
+                claim.status === "stated" &&
+                (claim.dimension === "gender" ||
+                  claim.dimension === "number" ||
+                  (claim.dimension === "degree" && claim.value === "positive")),
+            ),
+    };
     for (const cell of placements(claims)) {
-      const surfaces = byCell.get(cellKey(cell));
-      if (surfaces !== undefined && !surfaces.includes(surface)) surfaces.push(surface);
+      const candidates = byCell.get(cellKey(cell));
+      if (
+        candidates !== undefined &&
+        !candidates.some((other) => other.spelling.surface === spelling.surface)
+      ) {
+        candidates.push(candidate);
+      }
     }
   };
 
-  file(reading.grammar.record, reading.word);
-  for (const form of reading.forms) file(form.claims, form.surface);
+  file(reading.grammar.record, headwordOf(reading));
+  for (const form of reading.forms) file(form.claims, spellingOf(form));
   return byCell;
+}
+
+/** One spelling a cell could take, and what the table would not say about it. */
+interface ParadigmCandidate {
+  spelling: Spelling;
+  rest: GrammarClaim[];
 }
 
 /** Why a cell could not be filled by one source-backed word. */
@@ -640,30 +808,32 @@ type ParadigmWithholding =
 type AdjectiveParadigm =
   | {
       status: "complete";
-      masculineSingular: string;
-      masculinePlural: string;
-      feminineSingular: string;
-      femininePlural: string;
+      masculineSingular: ParadigmCandidate;
+      masculinePlural: ParadigmCandidate;
+      feminineSingular: ParadigmCandidate;
+      femininePlural: ParadigmCandidate;
     }
   | { status: "withheld"; withholding: ParadigmWithholding };
 
 type CellFill =
-  | { filled: true; surface: string }
+  | { filled: true; candidate: ParadigmCandidate }
   | { filled: false; withholding: ParadigmWithholding };
 
 /** One cell: filled by a single source-backed word, or the reason it is not. */
-function fillCell(byCell: Map<string, string[]>, cell: Cell): CellFill {
-  const surfaces = byCell.get(cellKey(cell)) ?? [];
-  if (surfaces.length === 0) return { filled: false, withholding: { reason: "cell-empty", cell } };
-  if (surfaces.length > 1) {
+function fillCell(byCell: Map<string, ParadigmCandidate[]>, cell: Cell): CellFill {
+  const candidates = byCell.get(cellKey(cell)) ?? [];
+  if (candidates.length === 0) return { filled: false, withholding: { reason: "cell-empty", cell } };
+  if (candidates.length > 1) {
     return {
       filled: false,
-      withholding: { reason: "cell-ambiguous", cell, count: surfaces.length },
+      withholding: { reason: "cell-ambiguous", cell, count: candidates.length },
     };
   }
-  const surface = surfaces[0];
-  if (!isOneWord(surface)) return { filled: false, withholding: { reason: "cell-not-one-word", cell } };
-  return { filled: true, surface };
+  const candidate = candidates[0];
+  if (!isOneWord(candidate.spelling.surface)) {
+    return { filled: false, withholding: { reason: "cell-not-one-word", cell } };
+  }
+  return { filled: true, candidate };
 }
 
 /**
@@ -696,11 +866,31 @@ function adjectiveParadigm(reading: Reading): AdjectiveParadigm {
 
   return {
     status: "complete",
-    masculineSingular: masculineSingular.surface,
-    masculinePlural: masculinePlural.surface,
-    feminineSingular: feminineSingular.surface,
-    femininePlural: femininePlural.surface,
+    masculineSingular: masculineSingular.candidate,
+    masculinePlural: masculinePlural.candidate,
+    feminineSingular: feminineSingular.candidate,
+    femininePlural: femininePlural.candidate,
   };
+}
+
+/**
+ * The four cells in reading order, each with the spelling that fills it.
+ *
+ * One spelling can fill two cells: `grande` is tagged masculine *and*
+ * feminine, so the source really does file it under both singulars. That is
+ * one fact shown at the two coordinates the source gave it — what a grid is
+ * for — and not the same fact rendered in two places, which is what the box
+ * below is about.
+ */
+function paradigmCells(
+  paradigm: AdjectiveParadigm & { status: "complete" },
+): [string, ParadigmCandidate][] {
+  return [
+    ["masculine singular", paradigm.masculineSingular],
+    ["masculine plural", paradigm.masculinePlural],
+    ["feminine singular", paradigm.feminineSingular],
+    ["feminine plural", paradigm.femininePlural],
+  ];
 }
 
 /**
@@ -723,23 +913,25 @@ function paradigmWithheldClause(withholding: ParadigmWithholding): string {
 }
 
 /** The four cells as label-and-value rows, when the source fills all four. */
-function AdjectiveParadigmBox({ reading, query }: { reading: Reading; query: string }) {
-  const paradigm = adjectiveParadigm(reading);
+function AdjectiveParadigmBox({
+  paradigm,
+  recordId,
+  query,
+}: {
+  paradigm: AdjectiveParadigm;
+  recordId: number;
+  query: string;
+}) {
   if (paradigm.status === "withheld") return null;
 
-  const rows: [string, string][] = [
-    ["masculine singular", paradigm.masculineSingular],
-    ["masculine plural", paradigm.masculinePlural],
-    ["feminine singular", paradigm.feminineSingular],
-    ["feminine plural", paradigm.femininePlural],
-  ];
-
   return (
-    <Box id={`paradigm-${reading.recordId}`} heading="Gender and number">
+    <Box id={`paradigm-${recordId}`} heading="Gender and number">
       <BoxRows>
-        {rows.map(([label, surface]) => (
+        {paradigmCells(paradigm).map(([label, cell]) => (
           <BoxLine key={label} label={label}>
-            <BoxSurface surface={surface} query={query} />
+            <BoxSurface spelling={cell.spelling} query={query} />
+            <Grammar claims={cell.rest} label={`grammar for ${cell.spelling.surface}`} />
+            <SpellingSource spelling={cell.spelling} />
           </BoxLine>
         ))}
       </BoxRows>
@@ -772,12 +964,19 @@ function degreeRows(reading: Reading): { degree: string; forms: SourceForm[] }[]
   })).filter((row) => row.forms.length > 0);
 }
 
-function AdjectiveDegrees({ reading, query }: { reading: Reading; query: string }) {
-  const rows = degreeRows(reading);
+function AdjectiveDegrees({
+  rows,
+  recordId,
+  query,
+}: {
+  rows: { degree: string; forms: SourceForm[] }[];
+  recordId: number;
+  query: string;
+}) {
   if (rows.length === 0) return null;
 
   return (
-    <Box id={`degrees-${reading.recordId}`} heading="Comparative and superlative">
+    <Box id={`degrees-${recordId}`} heading="Comparative and superlative">
       <BoxRows>
         {rows.map((row) => (
           <BoxLine key={row.degree} label={row.degree}>
@@ -786,8 +985,16 @@ function AdjectiveDegrees({ reading, query }: { reading: Reading; query: string 
                 {i > 0 && ", "}
                 {/* Verbatim, newlines and all: one `forms[]` entry the source
                     wrote, never two forms to pull apart. */}
-                <BoxSurface surface={form.surface} query={query} />
+                <BoxSurface spelling={spellingOf(form)} query={query} />
                 {!isOneWord(form.surface) && <Unsplit />}
+                {/* The row says which degree; the gender and number the source
+                    also tagged are said here, where the form sits, because
+                    this is now the only place it sits. */}
+                <Grammar
+                  claims={claimsBeyond(form.claims, filedUnder(["degree", row.degree]))}
+                  label={`grammar for ${form.surface}`}
+                />
+                <SpellingSource spelling={spellingOf(form)} />
               </span>
             ))}
           </BoxLine>
@@ -819,13 +1026,38 @@ function tenseGroups(reading: Reading): Map<string, SourceForm[]> {
   return byTense;
 }
 
-function Conjugations({ reading }: { reading: Reading }) {
-  const auxiliaries = reading.forms.filter((form) => stated(form.claims, "form-role") === "auxiliary");
-  const byTense = tenseGroups(reading);
+/**
+ * What the conjugation box shows: the tenses, and the auxiliary the entry
+ * names beside them.
+ *
+ * Built once by the card, which subtracts what it placed from the forms left
+ * over. The auxiliary is placed only when there is a box to place it in, so an
+ * entry naming one and tagging no tense keeps it in the unplaced box.
+ */
+interface ConjugationTable {
+  byTense: Map<string, SourceForm[]>;
+  auxiliaries: SourceForm[];
+}
+
+function conjugationTable(reading: Reading): ConjugationTable {
+  return {
+    byTense: tenseGroups(reading),
+    auxiliaries: reading.forms.filter((form) => stated(form.claims, "form-role") === "auxiliary"),
+  };
+}
+
+/** The `forms[]` entries the conjugation box puts on the page, by index. */
+function placedByConjugations(table: ConjugationTable): number[] {
+  if (table.byTense.size === 0) return [];
+  return [...[...table.byTense.values()].flat(), ...table.auxiliaries].map((form) => form.index);
+}
+
+function Conjugations({ table, recordId }: { table: ConjugationTable; recordId: number }) {
+  const { byTense, auxiliaries } = table;
   if (byTense.size === 0) return null;
 
   return (
-    <Box id={`conjugations-${reading.recordId}`} heading="Grouped conjugations">
+    <Box id={`conjugations-${recordId}`} heading="Grouped conjugations">
       {[...byTense].map(([tense, forms]) => (
         <div key={tense} className="conjugation-group">
           <h4>{tense}</h4>
@@ -836,11 +1068,27 @@ function Conjugations({ reading }: { reading: Reading }) {
                 .join(", ");
               return (
                 <li key={form.index}>
-                  <It>{form.surface}</It>{" "}
+                  <Spelled spelling={spellingOf(form)} />{" "}
                   {person !== "" && <span className="muted">{person}</span>}
                   {isMissing(form.claims, "mood") && (
                     <span className="ambiguous"> · mood not stated in the source</span>
                   )}
+                  {/* This group is where the form now sits, so whatever the
+                      group has not already said about it is said here. */}
+                  <Grammar
+                    claims={claimsBeyond(
+                      form.claims,
+                      (claim) =>
+                        filedUnder(
+                          ["tense", tense],
+                          ["person", stated(form.claims, "person")],
+                          ["number", stated(form.claims, "number")],
+                        )(claim) ||
+                        (claim.status === "missing" && claim.dimension === "mood"),
+                    )}
+                    label={`grammar for ${form.surface}`}
+                  />
+                  <SpellingSource spelling={spellingOf(form)} />
                 </li>
               );
             })}
@@ -853,7 +1101,11 @@ function Conjugations({ reading }: { reading: Reading }) {
           {auxiliaries.map((form, i) => (
             <span key={form.index}>
               {i > 0 ? ", " : ""}
-              <It>{form.surface}</It>
+              <Spelled spelling={spellingOf(form)} />
+              <Grammar
+                claims={claimsBeyond(form.claims, filedUnder(["form-role", "auxiliary"]))}
+                label={`grammar for ${form.surface}`}
+              />
             </span>
           ))}
           . Not an inflected form of this word.
@@ -952,7 +1204,7 @@ function ReadingShell({
     <article className="reading" aria-label={`${reading.word}, ${pos}`}>
       <header>
         <h2>
-          <It>{reading.word}</It>
+          <Spelled spelling={headwordOf(reading)} />
         </h2>
         <HeadlineBar facts={[{ label: "part of speech", value: pos }, ...facts]} />
         {/* The single most important honesty signal on this page. A record that
@@ -1097,8 +1349,10 @@ function ReadingShell({
  * first of those (#53).
  */
 function NounCard({ reading, query }: { reading: NounReading; query: string }) {
-  const boxed =
-    hasNumberedSurfaces(reading) || reading.articles.status === "derived" || reading.forms.length > 0;
+  const rows = nounNumberRows(reading);
+  const placed = new Set(placedForms(rows.flatMap((row) => row.surfaces.map((s) => s.spelling))));
+  const unplaced = unplacedForms(reading, placed);
+  const boxed = rows.length > 0 || reading.articles.status === "derived" || unplaced.length > 0;
 
   return (
     <ReadingShell
@@ -1119,9 +1373,9 @@ function NounCard({ reading, query }: { reading: NounReading; query: string }) {
       />
       {boxed && (
         <BoxRow>
-          <NounNumbers reading={reading} query={query} />
+          <NounNumbers rows={rows} recordId={reading.recordId} query={query} />
           <NounArticles articles={reading.articles} recordId={reading.recordId} />
-          <Forms reading={reading} query={query} />
+          <UnplacedForms reading={reading} forms={unplaced} query={query} />
         </BoxRow>
       )}
     </ReadingShell>
@@ -1133,13 +1387,20 @@ function NounCard({ reading, query }: { reading: NounReading; query: string }) {
  * degrees the source tagged, then every form it listed (#52).
  *
  * Articles belong to a noun and conjugations to a verb, so neither box is here.
- * The forms box stays, marked, because it is the one box carrying every entry
- * the lookup returned — including the ones no paradigm cell took.
+ * The unplaced box is last and holds what neither the paradigm nor the degrees
+ * took — `grande`'s comparatives, which the source states only in prose.
  */
 function AdjectiveCard({ reading, query }: { reading: Reading; query: string }) {
   const paradigm = adjectiveParadigm(reading);
-  const boxed =
-    paradigm.status === "complete" || degreeRows(reading).length > 0 || reading.forms.length > 0;
+  const degrees = degreeRows(reading);
+  const placed = new Set([
+    ...(paradigm.status === "complete"
+      ? placedForms(paradigmCells(paradigm).map(([, cell]) => cell.spelling))
+      : []),
+    ...degrees.flatMap((row) => row.forms.map((form) => form.index)),
+  ]);
+  const unplaced = unplacedForms(reading, placed);
+  const boxed = paradigm.status === "complete" || degrees.length > 0 || unplaced.length > 0;
 
   return (
     <ReadingShell
@@ -1149,9 +1410,7 @@ function AdjectiveCard({ reading, query }: { reading: Reading; query: string }) 
       silence={{
         source: [
           ...unstatedClause(reading.grammar.record),
-          ...(degreeRows(reading).length === 0
-            ? ["tags no comparative or superlative"]
-            : []),
+          ...(degrees.length === 0 ? ["tags no comparative or superlative"] : []),
         ],
         withheld:
           paradigm.status === "withheld" ? [paradigmWithheldClause(paradigm.withholding)] : [],
@@ -1163,9 +1422,9 @@ function AdjectiveCard({ reading, query }: { reading: Reading; query: string }) 
       />
       {boxed && (
         <BoxRow>
-          <AdjectiveParadigmBox reading={reading} query={query} />
-          <AdjectiveDegrees reading={reading} query={query} />
-          <Forms reading={reading} query={query} markUnsplit />
+          <AdjectiveParadigmBox paradigm={paradigm} recordId={reading.recordId} query={query} />
+          <AdjectiveDegrees rows={degrees} recordId={reading.recordId} query={query} />
+          <UnplacedForms reading={reading} forms={unplaced} query={query} markUnsplit />
         </BoxRow>
       )}
     </ReadingShell>
@@ -1180,8 +1439,11 @@ function AdjectiveCard({ reading, query }: { reading: Reading; query: string }) 
  * its absence is exactly the wall of apologies #60 removes.
  */
 function GenericCard({ reading, query }: { reading: Reading; query: string }) {
-  const grouped = tenseGroups(reading).size > 0;
-  const boxed = grouped || reading.forms.length > 0;
+  const table = conjugationTable(reading);
+  const grouped = table.byTense.size > 0;
+  const placed = new Set(placedByConjugations(table));
+  const unplaced = unplacedForms(reading, placed);
+  const boxed = grouped || unplaced.length > 0;
 
   return (
     <ReadingShell
@@ -1201,8 +1463,8 @@ function GenericCard({ reading, query }: { reading: Reading; query: string }) {
       />
       {boxed && (
         <BoxRow>
-          <Conjugations reading={reading} />
-          <Forms reading={reading} query={query} />
+          <Conjugations table={table} recordId={reading.recordId} />
+          <UnplacedForms reading={reading} forms={unplaced} query={query} />
         </BoxRow>
       )}
     </ReadingShell>

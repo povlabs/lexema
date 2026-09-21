@@ -321,6 +321,10 @@ export const FIXTURE_LINES: string[] = [
     forms: [
       { form: "grandi", tags: ["positive", "masculine", "feminine", "plural"] },
       { form: "maggiore", tags: ["comparative"] },
+      // The release states this one's degree only in the prose of a raw tag,
+      // so no cell and no degree row can take it: it is the card's unplaced
+      // form, and the box named for the rest is where it has to land (#66).
+      { form: "maggiori", raw_tags: ["comparativo di maggioranza"] },
       {
         form: "grandissimo\n massimo",
         tags: ["absolute", "superlative", "masculine", "singular"],

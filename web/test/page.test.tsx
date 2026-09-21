@@ -91,6 +91,80 @@ const mentions = (html: string): number => html.split('class="mention"').length 
 /** How many times a literal string occurs. Counting, never pattern-matching. */
 const occurrencesOf = (html: string, needle: string): number => html.split(needle).length - 1;
 
+/**
+ * Every rendered spelling of the entry's own forms, as the `forms[]` index it
+ * came from — in the order the card renders them, repeats included.
+ *
+ * `Reading.tsx` marks each one with `data-form="<index>"`, so this counts what
+ * the page actually rendered instead of searching for a spelling: two forms
+ * that share a spelling are two marks, and a spelling that is a gloss, a
+ * derived article or another record's word is not a mark at all.
+ */
+const formMarks = (html: string): number[] =>
+  [...html.matchAll(/data-form="(\d+)"/g)].map((match) => Number(match[1]));
+
+/** How many times the card renders the record's own headword. */
+const headwordMarks = (html: string): number => occurrencesOf(html, 'data-headword=""');
+
+/** Every `<section class="box">` of one card, each from its open tag to its close. */
+function boxesOf(html: string): string[] {
+  const found: string[] = [];
+  let at = html.indexOf('<section class="box"');
+  while (at !== -1) {
+    const end = html.indexOf("</section>", at);
+    assert.notEqual(end, -1, "a box is not closed");
+    found.push(html.slice(at, end));
+    at = html.indexOf('<section class="box"', end);
+  }
+  return found;
+}
+
+/** The card with every box cut out of it: everything no box renders. */
+function withoutBoxes(html: string): string {
+  let rest = html;
+  for (const box of boxesOf(html)) rest = rest.replace(box, "");
+  return rest;
+}
+
+/**
+ * One card against the reading it was rendered from: every form the lookup
+ * returned is on it, exactly one box holds each, and no form renders outside a
+ * box at all.
+ *
+ * "A fact is never rendered twice on one card" and "a form that fits no box is
+ * in the unplaced box" (design-system-manifest.md § "The result card"). One box
+ * per form is what those two rules mean together: a form a paradigm placed is
+ * not repeated in the unplaced box, and a form no paradigm placed is in it. A
+ * form filling two cells of one paradigm is not a second rendering — it is one
+ * fact at the two coordinates the source filed it under, which is what a grid
+ * is for — so that shows as two marks inside a single box, and the per-word
+ * counts below say where it happens.
+ *
+ * Returns the marks, for the caller to count.
+ */
+function assertPlacedOnce(html: string, reading: Reading, where: string): number[] {
+  const marks = formMarks(html);
+  for (const form of reading.forms) {
+    const holders = boxesOf(html).filter((box) => box.includes(`data-form="${form.index}"`));
+    assert.equal(
+      holders.length,
+      1,
+      `${where}: form ${form.index} (${form.surface}) is rendered by exactly one box`,
+    );
+  }
+  assert.deepEqual(
+    [...new Set(marks)].sort((a, b) => a - b),
+    reading.forms.map((form) => form.index),
+    `${where}: the card renders every form of the reading, and nothing else`,
+  );
+  assert.equal(
+    formMarks(withoutBoxes(html)).length,
+    0,
+    `${where}: no form is rendered outside a box`,
+  );
+  return marks;
+}
+
 /** The section of a card under one heading, from its heading to its close. */
 function section(html: string, heading: string): string {
   const open = html.indexOf(`>${heading}</h3>`);
@@ -119,6 +193,24 @@ async function readingFor(
   const match = readings.find((r) => r.word === word && r.pos === pos);
   assert.notEqual(match, undefined, `${query}: no ${pos} reading for ${word}`);
   return match as Reading;
+}
+
+/** Every reading one query answers with, in the order the page renders them. */
+async function readingsFor(db: DatabaseSync, query: string): Promise<Reading[]> {
+  const attempt: Attempt = await lookup({ db: fromNodeSqlite(db), releaseId: RELEASE, query });
+  return attempt.outcome === "found" ? attempt.readings : [];
+}
+
+/** Each card of a page, in the order the page rendered them. */
+function cardsOf(html: string): string[] {
+  return html
+    .split('<article class="reading"')
+    .slice(1)
+    .map((part) => {
+      const end = part.indexOf("</article>");
+      assert.notEqual(end, -1, "a card is not closed");
+      return part.slice(0, end);
+    });
 }
 
 /**
@@ -200,7 +292,7 @@ const QUERIES = [
       /5 entries for/,
       /cloruro di sodio/,
       /plurale di sala/,
-      /Auxiliary named by the source: <span><span lang="it">avere o essere<\/span>/,
+      /Auxiliary named by the source: <span><span lang="it" data-form="\d+">avere o essere<\/span>/,
     ],
   },
   {
@@ -210,7 +302,7 @@ const QUERIES = [
       /Grouped conjugations<\/h3>/,
       /<h4>present<\/h4>/,
       /<h4>imperfect<\/h4>/,
-      /<span lang="it">andavano<\/span>/,
+      /<span lang="it" data-form="\d+">andavano<\/span>/,
       /mood not stated in the source/,
     ],
   },
@@ -224,7 +316,11 @@ const QUERIES = [
   },
   {
     query: "parlare", direct: 2, embedded: 0, cards: 2, mentions: 0,
-    expect: [/2 entries for/, /<span lang="it">parlerei<\/span>/, /Appendice:Coniugazioni/],
+    expect: [
+      /2 entries for/,
+      /<span lang="it" data-form="\d+">parlerei<\/span>/,
+      /Appendice:Coniugazioni/,
+    ],
   },
   {
     query: "parlerei", direct: 1, embedded: 1, cards: 2, mentions: 1,
@@ -295,7 +391,12 @@ test("answers each of the twelve sampled queries with the state the report predi
 test("a card carries a header bar under the headword, holding only the facts the source states", async () => {
   await withFixture(async ({ db }) => {
     const studente = card(await render(db, "studente"), "studente, noun");
-    assert.match(studente, /<h2><span lang="it">studente<\/span><\/h2><dl class="headline">/);
+    // The headword carries its own mark, which is how the counting test tells
+    // the entry's own word from the forms it lists.
+    assert.match(
+      studente,
+      /<h2><span lang="it" data-headword="">studente<\/span><\/h2><dl class="headline">/,
+    );
     assert.match(studente, /<dt>part of speech<\/dt><dd>noun<\/dd>/);
     assert.match(studente, /<dt>gender<\/dt><dd>masculine<\/dd>/);
     assert.match(studente, /<dt>number<\/dt><dd>singular<\/dd>/);
@@ -309,7 +410,7 @@ test("a card carries a header bar under the headword, holding only the facts the
     // An adjective has a header bar too, and every gender the source tagged is
     // in it: `grande` is masculine *and* feminine.
     const grande = card(await render(db, "grande"), "grande, adjective");
-    assert.match(grande, /<h2><span lang="it">grande<\/span><\/h2><dl class="headline">/);
+    assert.match(grande, /<h2><span lang="it" data-headword="">grande<\/span><\/h2><dl class="headline">/);
     assert.match(grande, /<dt>part of speech<\/dt><dd>adjective<\/dd>/);
     assert.match(grande, /<dt>gender<\/dt><dd>masculine, feminine<\/dd>/);
     assert.match(grande, /<dt>number<\/dt><dd>singular<\/dd>/);
@@ -344,18 +445,22 @@ test("agreement sets render as boxed groups in one wrapping row, never as stacke
     assert.match(studente, /<div class="box-row">/);
     // Every box on the card is inside that one row, and each has its heading.
     assert.equal(occurrencesOf(studente, '<div class="box-row">'), 1);
-    assert.equal(occurrencesOf(studente, '<section class="box"'), 3);
+    // Two boxes, not three: `studente` files all three of its forms under a
+    // number, so there is nothing left for an unplaced box to hold.
+    assert.equal(occurrencesOf(studente, '<section class="box"'), 2);
     assert.equal(
       occurrencesOf(studente.slice(studente.indexOf('<div class="box-row">')), '<section class="box"'),
-      3,
+      2,
     );
     assert.match(studente, /<h3 id="numbers-\d+">Singular and plural<\/h3>/);
+    // The articles are a box in that same row, not a section of their own
+    // (design-system-manifest.md § "The result card", "Three boxes to a row").
     assert.match(studente, /<h3 id="articles-\d+">Articles<\/h3>/);
-    assert.match(studente, /<h3 id="forms-\d+">Forms listed by this entry<\/h3>/);
+    assert.equal(occurrencesOf(section(studente, "Articles"), '<th scope="row">'), 3);
     // A row inside a box is a small English label and an Italian value.
     assert.match(
       section(studente, "Singular and plural"),
-      /<th scope="row">plural<\/th><td><span><span lang="it">studenti<\/span>/,
+      /<th scope="row">plural<\/th><td><span><span lang="it" data-form="\d+">studenti<\/span>/,
     );
     assert.match(
       section(studente, "Articles"),
@@ -363,8 +468,8 @@ test("agreement sets render as boxed groups in one wrapping row, never as stacke
     );
     // The gendered pair, exactly as the source spelled it: one string, marked
     // Italian, never split on the slash.
-    assert.match(studente, /<span lang="it">studente\/studentessa<\/span>/);
-    assert.doesNotMatch(studente, /<span lang="it">studentessa<\/span><\/td>/);
+    assert.match(studente, /<span lang="it" data-form="\d+">studente\/studentessa<\/span>/);
+    assert.doesNotMatch(studente, /<span lang="it"[^>]*>studentessa<\/span><\/td>/);
     // The derivation is said once, under the rows, rather than once per row.
     assert.equal(occurrencesOf(studente, "<code>it-articles/v1</code>"), 1);
     assert.match(studente, /Not from the source: Lexema derives these from the masculine singular/);
@@ -376,18 +481,23 @@ test("agreement sets render as boxed groups in one wrapping row, never as stacke
     assert.match(grande, /<h3 id="paradigm-\d+">Gender and number<\/h3>/);
     assert.match(grande, /<h3 id="degrees-\d+">Comparative and superlative<\/h3>/);
     const paradigm = section(grande, "Gender and number");
-    assert.match(paradigm, /<th scope="row">masculine plural<\/th><td><span lang="it">grandi<\/span><\/td>/);
-    assert.match(paradigm, /<th scope="row">feminine plural<\/th><td><span lang="it">grandi<\/span><\/td>/);
+    assert.match(paradigm, /<th scope="row">masculine plural<\/th><td><span lang="it" data-form="0">grandi<\/span><\/td>/);
+    assert.match(paradigm, /<th scope="row">feminine plural<\/th><td><span lang="it" data-form="0">grandi<\/span><\/td>/);
     const degrees = section(grande, "Comparative and superlative");
-    assert.match(degrees, /<th scope="row">comparative<\/th><td><span><span lang="it">maggiore<\/span><\/span><\/td>/);
+    assert.match(degrees, /<th scope="row">comparative<\/th><td><span><span lang="it" data-form="1">maggiore<\/span><\/span><\/td>/);
     // Verbatim, newline and leading space included, and marked as source text —
     // never split into `grandissimo` and `massimo`.
-    assert.match(degrees, /<th scope="row">superlative<\/th><td><span><span lang="it">grandissimo\n massimo<\/span>/);
+    assert.match(degrees, /<th scope="row">superlative<\/th><td><span><span lang="it" data-form="3">grandissimo\n massimo<\/span>/);
     assert.match(
       degrees,
-      /<span lang="it">grandissimo\n massimo<\/span><span class="ambiguous"> · source text, not split into separate forms<\/span>/,
+      /<span lang="it" data-form="3">grandissimo\n massimo<\/span><span class="ambiguous"> · source text, not split into separate forms<\/span>/,
     );
-    assert.doesNotMatch(grande, /<span lang="it">massimo<\/span>/);
+    // The degrees box is the only place that form now sits, so the gender and
+    // number the source also tagged are said there rather than lost with the
+    // second rendering that used to carry them.
+    assert.match(degrees, /<dt>degree<\/dt><dd>absolute<\/dd>/);
+    assert.match(degrees, /<dt>gender<\/dt><dd>masculine<\/dd>/);
+    assert.doesNotMatch(grande, /<span lang="it"[^>]*>massimo<\/span>/);
 
     // `bella` files nothing under three cells and lists no forms, so it has no
     // box at all — and no empty row container standing in for one.
@@ -404,7 +514,7 @@ test("agreement sets render as boxed groups in one wrapping row, never as stacke
     // `bello` fills all four cells, so the paradigm box renders.
     const bello = card(await render(db, "bello"), "bello, adjective");
     assert.match(section(bello, "Gender and number"), /<th scope="row">masculine singular<\/th>/);
-    assert.match(section(bello, "Gender and number"), /<th scope="row">feminine plural<\/th><td><span lang="it">belle<\/span><\/td>/);
+    assert.match(section(bello, "Gender and number"), /<th scope="row">feminine plural<\/th><td><span lang="it" data-form="2">belle<\/span><\/td>/);
   });
 });
 
@@ -493,7 +603,14 @@ test("no fact renders twice on a card", async () => {
     // not listed again as chips under it. What stays is a *form's* grammar,
     // which is a different fact about a different spelling.
     assert.doesNotMatch(studente, /aria-label="other grammar for studente"/);
-    assert.match(studente, /aria-label="grammar for studenti"/);
+    // A placed form's own grammar is not repeated either: the row it sits in
+    // states the number and the gender, so there is nothing left to chip.
+    assert.doesNotMatch(studente, /aria-label="grammar for studenti"/);
+    // What the box does not state still renders, beside the form it belongs
+    // to: `maggiori` carries a raw tag no degree row can read.
+    const rest = card(await render(db, "grande"), "grande, adjective");
+    assert.match(rest, /aria-label="grammar for maggiori"/);
+    assert.equal(occurrencesOf(rest, "comparativo di maggioranza"), 1);
     const grande = card(await render(db, "grande"), "grande, adjective");
     assert.doesNotMatch(grande, /aria-label="other grammar for grande"/);
     assert.equal(occurrencesOf(grande, "<dt>part of speech</dt>"), 1);
@@ -531,37 +648,115 @@ test("a record pointing here is listed once, with how many of its senses point h
   });
 });
 
-/** Layout never drops a form: every `forms[]` entry is somewhere on the card. */
-test("every form the source listed still renders, counted against the lookup's own answer", async () => {
+/**
+ * Layout never drops a form, and never renders one twice.
+ *
+ * The old version of this test asked whether each spelling was somewhere in
+ * the card's HTML and then counted rows inside the all-forms box. Both passed
+ * while every placed form rendered a second time in that box, because "at
+ * least once" cannot see a second one and the row count only ever looked
+ * inside one section. This counts what the whole card rendered, off the marks
+ * `Reading.tsx` puts on each spelling, and names a literal per word.
+ *
+ * `occurrences` is the total across the card and `placed` is what a paradigm
+ * put at a second coordinate: `grande` is filed under masculine *and* feminine
+ * singular and `grandi` under both plurals, so its table renders `grandi`
+ * twice and the headword twice — one fact at the two coordinates the source
+ * gave it, inside one box, which `assertPlacedOnce` allows and a second box
+ * rendering the same form does not.
+ */
+const PLACEMENTS = [
+  // word, pos, query, forms[], form marks on the card, headword marks
+  { word: "studente", pos: "noun", query: "studente", forms: 3, marks: 3, headword: 2 },
+  { word: "casa", pos: "noun", query: "casa", forms: 0, marks: 0, headword: 1 },
+  { word: "citt\u00e0", pos: "noun", query: "citt\u00e0", forms: 0, marks: 0, headword: 1 },
+  { word: "bello", pos: "adj", query: "bello", forms: 3, marks: 3, headword: 2 },
+  { word: "bella", pos: "adj", query: "bella", forms: 0, marks: 0, headword: 1 },
+  { word: "fine", pos: "adj", query: "fine", forms: 1, marks: 1, headword: 1 },
+  { word: "grande", pos: "adj", query: "grande", forms: 4, marks: 5, headword: 3 },
+] as const;
+
+test("every form renders exactly once on the card, counted against the lookup's own answer", async () => {
   await withFixture(async ({ db }) => {
-    for (const [query, word, pos] of [
-      ["studente", "studente", "noun"],
-      ["grande", "grande", "adj"],
-      ["fine", "fine", "adj"],
-      ["bella", "bella", "adj"],
-    ] as const) {
-      const reading = await readingFor(db, query, word, pos);
-      const label = `${word}, ${pos === "adj" ? "adjective" : pos}`;
-      const html = card(await render(db, query), label);
+    for (const row of PLACEMENTS) {
+      const reading = await readingFor(db, row.query, row.word, row.pos);
+      const label = `${row.word}, ${row.pos === "adj" ? "adjective" : row.pos}`;
+      const html = card(await render(db, row.query), label);
 
-      // Every entry is rendered, and the forms box lists exactly as many rows
-      // as the lookup returned — so a form no box reaches fails here.
-      let rendered = 0;
-      for (const form of reading.forms) {
-        if (html.includes(`<span lang="it">${form.surface}</span>`)) rendered += 1;
-      }
-      assert.equal(rendered, reading.forms.length, `${query}: every form is on the card`);
+      // The lookup's own answer first: the literal beside it is only a literal
+      // if it is the number of forms this reading actually carries.
+      assert.equal(reading.forms.length, row.forms, `${row.word}: forms[] length`);
 
-      if (reading.forms.length === 0) {
-        assert.doesNotMatch(html, /Forms listed by this entry/, `${query}: no empty forms box`);
-        continue;
-      }
-      const forms = section(html, "Forms listed by this entry");
+      const marks = assertPlacedOnce(html, reading, row.word);
+      assert.equal(marks.length, row.marks, `${row.word}: form spellings rendered on the card`);
       assert.equal(
-        occurrencesOf(forms, "<li>"),
-        reading.forms.length,
-        `${query}: one row per forms[] entry`,
+        headwordMarks(html),
+        row.headword,
+        `${row.word}: the headword, which the card renders apart from its forms`,
       );
+
+      // An entry that lists no form has no box to hold one.
+      if (reading.forms.length === 0) {
+        assert.doesNotMatch(html, /forms listed by this entry/i, `${row.word}: no empty box`);
+      }
+    }
+
+    // `studente` and `bello` place every form they list, so neither carries an
+    // unplaced box at all — which is what the old test could not tell from a
+    // box holding all of them a second time.
+    for (const [query, label] of [
+      ["studente", "studente, noun"],
+      ["bello", "bello, adjective"],
+    ] as const) {
+      const html = card(await render(db, query), label);
+      assert.doesNotMatch(html, /Forms listed by this entry/, `${query}: every form is placed`);
+      assert.doesNotMatch(html, /Other forms listed by this entry/, `${query}: no leftover box`);
+    }
+
+    // `fine` places none of its one form, so the box holds the whole table and
+    // is named for that; `grande` places three of four, so the box is named
+    // for the rest and holds only `maggiori`, whose degree the source states
+    // in the prose of a raw tag and nowhere a degree row could read it.
+    const fine = card(await render(db, "fine"), "fine, adjective");
+    assert.match(fine, /<h3 id="forms-\d+">Forms listed by this entry<\/h3>/);
+    assert.equal(occurrencesOf(section(fine, "Forms listed by this entry"), "<li>"), 1);
+
+    const grande = card(await render(db, "grande"), "grande, adjective");
+    assert.match(grande, /<h3 id="forms-\d+">Other forms listed by this entry<\/h3>/);
+    const rest = section(grande, "Other forms listed by this entry");
+    assert.equal(occurrencesOf(rest, "<li>"), 1);
+    assert.match(rest, /<li><span lang="it" data-form="2">maggiori<\/span>/);
+    assert.match(rest, /<q lang="it">comparativo di maggioranza<\/q>/);
+    // And what the paradigm and the degrees took is not in it a second time.
+    for (const surface of ["grandi", "maggiore", "grandissimo"]) {
+      assert.ok(!rest.includes(surface), `${surface} is placed, so it is not in the unplaced box`);
+    }
+  });
+});
+
+/**
+ * The same rule over the twelve sampled queries, card by card.
+ *
+ * Every card of every one of those pages, checked against the reading it was
+ * rendered from: one box per form, no form outside a box, and no spelling of a
+ * form rendered twice anywhere on those pages — none of the twelve answers
+ * with an adjective whose paradigm files one spelling under two cells, so the
+ * page total is exactly the number of forms the lookup returned.
+ */
+test("no card of the twelve sampled queries renders a form twice", async () => {
+  await withFixture(async ({ db }) => {
+    for (const row of QUERIES) {
+      const readings = await readingsFor(db, row.query);
+      const rendered = cardsOf(await render(db, row.query));
+      assert.equal(rendered.length, readings.length, `${row.query}: one card per reading`);
+
+      let total = 0;
+      let expected = 0;
+      for (const [i, reading] of readings.entries()) {
+        total += assertPlacedOnce(rendered[i], reading, `${row.query}: ${reading.word}`).length;
+        expected += reading.forms.length;
+      }
+      assert.equal(total, expected, `${row.query}: one rendering per forms[] entry on the page`);
     }
   });
 });
@@ -582,16 +777,16 @@ test("the searched form is outlined where it sits, and nothing is marked where i
     assert.equal(occurrencesOf(paradigm, '<span class="searched">'), 2);
     assert.match(
       paradigm,
-      /<th scope="row">masculine plural<\/th><td><span class="searched"><span lang="it">grandi<\/span><span class="muted"> · the form you searched<\/span><\/span><\/td>/,
+      /<th scope="row">masculine plural<\/th><td><span class="searched"><span lang="it" data-form="0">grandi<\/span><span class="muted"> · the form you searched<\/span><\/span><\/td>/,
     );
     // Nothing that is not the query is marked.
-    assert.match(paradigm, /<th scope="row">masculine singular<\/th><td><span lang="it">grande<\/span><\/td>/);
+    assert.match(paradigm, /<th scope="row">masculine singular<\/th><td><span lang="it" data-headword="">grande<\/span><\/td>/);
 
     // `fine` shows no paradigm, so `fini` is marked in the box it does sit in.
     const fine = card(await render(db, "fini"), "fine, adjective");
     assert.match(
       section(fine, "Forms listed by this entry"),
-      /<li><span class="searched"><span lang="it">fini<\/span><span class="muted"> · the form you searched<\/span><\/span>/,
+      /<li><span class="searched"><span lang="it" data-form="0">fini<\/span><span class="muted"> · the form you searched<\/span><\/span>/,
     );
 
     // `casa` renders no box, so its own card marks nothing and invents none.
@@ -605,7 +800,7 @@ test("the searched form is outlined where it sits, and nothing is marked where i
     const page = await render(db, "bella");
     assert.match(
       section(card(page, "bello, adjective"), "Gender and number"),
-      /<th scope="row">feminine singular<\/th><td><span class="searched"><span lang="it">bella<\/span>/,
+      /<th scope="row">feminine singular<\/th><td><span class="searched"><span lang="it" data-form="1">bella<\/span>/,
     );
     assert.doesNotMatch(card(page, "bella, adjective"), /class="searched"/);
   });
@@ -669,12 +864,18 @@ test("an adjective renders its own card: a paradigm when the source fills it, a 
     // other three cells. All four are single words, so the box renders.
     const bello = card(await render(db, "bello"), "bello, adjective");
     const paradigm = section(bello, "Gender and number");
-    assert.match(paradigm, /<th scope="row">masculine plural<\/th><td><span lang="it">belli<\/span><\/td>/);
-    assert.match(paradigm, /<th scope="row">feminine singular<\/th><td><span lang="it">bella<\/span><\/td>/);
-    // No form is dropped: each of the three is in the forms box too.
-    for (const form of ["belli", "bella", "belle"]) {
-      assert.match(bello, new RegExp(`<li><span lang="it">${form}</span>`), `${form} is listed`);
+    assert.match(paradigm, /<th scope="row">masculine plural<\/th><td><span lang="it" data-form="0">belli<\/span><\/td>/);
+    assert.match(paradigm, /<th scope="row">feminine singular<\/th><td><span lang="it" data-form="1">bella<\/span><\/td>/);
+    // No form is dropped and none is shown twice: the table is the one place
+    // each of the three sits, so there is no box of leftovers under it.
+    for (const [i, form] of ["belli", "bella", "belle"].entries()) {
+      assert.equal(
+        occurrencesOf(bello, `<span lang="it" data-form="${i}">${form}</span>`),
+        1,
+        `${form} is rendered once`,
+      );
     }
+    assert.doesNotMatch(bello, /forms listed by this entry/i);
     // Nothing in this entry carries a degree tag, so there is no box for one.
     assert.doesNotMatch(bello, /Comparative and superlative/);
     assert.doesNotMatch(bello, /<th scope="row">superlative<\/th>/);
@@ -698,7 +899,7 @@ test("an adjective renders its own card: a paradigm when the source fills it, a 
       fine,
       /Lexema shows no gender-and-number table: this entry files nothing under masculine plural, neither its own headword nor any form it lists\./,
     );
-    assert.match(fine, /<li><span lang="it">fini<\/span>/);
+    assert.match(fine, /<li><span lang="it" data-form="0">fini<\/span>/);
 
     // An adjective is not a noun and not a verb, so it claims neither's
     // boxes — and no other part of speech picked up the adjective's.
@@ -713,18 +914,29 @@ test("an adjective renders its own card: a paradigm when the source fills it, a 
 test("every reading shows its own source forms, not only the forms pointing at it", async () => {
   await withFixture(async ({ db }) => {
     const html = await render(db, "studente");
-    // The noun's own table, which the page used to leave out entirely.
-    assert.match(html, /Forms listed by this entry<\/h3>/);
-    assert.match(html, /<span lang="it">studenti<\/span>/);
+    // The noun's own table, which the page used to leave out entirely. It is
+    // the singular-and-plural box now: every form `studente` lists is filed
+    // under a number, so that table is where they render.
+    assert.match(html, /Singular and plural<\/h3>/);
+    assert.match(html, /<span lang="it" data-form="\d+">studenti<\/span>/);
     // And the other direction, which is a different fact about the same word.
     assert.match(html, /Forms pointing here<\/h3>/);
+    // A form no table places still has its own box, named for the rest.
+    assert.match(await render(db, "fine"), /Forms listed by this entry<\/h3>/);
+    assert.match(await render(db, "grande"), /Other forms listed by this entry<\/h3>/);
 
     // A verb's table renders as its own grouped conjugation, with the source's
     // silences kept: no mood is stated anywhere in this release.
     const parlare = await render(db, "parlare");
     assert.match(parlare, /<h4>present<\/h4>/);
-    assert.match(parlare, /<span lang="it">parlavo<\/span>/);
-    assert.match(parlare, /Auxiliary named by the source: <span><span lang="it">avere<\/span>/);
+    assert.match(parlare, /<span lang="it" data-form="\d+">parlavo<\/span>/);
+    assert.match(
+      parlare,
+      /Auxiliary named by the source: <span><span lang="it" data-form="\d+">avere<\/span>/,
+    );
+    // The conjugation group is the only place those forms sit now, so a raw
+    // tag no group heading states is said there: `parlerei` carries `io`.
+    assert.equal(occurrencesOf(parlare, '<q lang="it">io</q>'), 1);
   });
 });
 
@@ -739,7 +951,7 @@ test("Italian is marked as Italian, and the interface is not", async () => {
     }
 
     const found = await render(db, "città");
-    assert.match(found, /<h2><span lang="it">città<\/span>/);
+    assert.match(found, /<h2><span lang="it" data-headword="">città<\/span>/);
     assert.match(found, /<p lang="it" class="gloss">centro abitato di grandi dimensioni<\/p>/);
 
     // The one thing this test cannot render: the layout imports globals.css,
@@ -760,8 +972,12 @@ test("the page has the labels, headings and landmarks a keyboard reader needs", 
     assert.match(html, /<button type="submit">Search<\/button>/);
     // One card, one heading, and every section under it is labelled by its own.
     assert.equal(html.split("<h2>").length - 1, cards(html));
-    assert.match(html, /<section class="box" aria-labelledby="forms-\d+">/);
-    assert.match(html, /<h3 id="forms-\d+">/);
+    assert.match(html, /<section class="box" aria-labelledby="numbers-\d+">/);
+    assert.match(html, /<h3 id="numbers-\d+">/);
+    // And the unplaced box is labelled by its own heading the same way.
+    const unplaced = await render(db, "fine");
+    assert.match(unplaced, /<section class="box" aria-labelledby="forms-\d+">/);
+    assert.match(unplaced, /<h3 id="forms-\d+">/);
     // The live regions that tell a screen reader something changed.
     assert.match(html, /<p class="count" role="status">/);
 
