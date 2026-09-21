@@ -617,6 +617,8 @@ test("the result type cannot express a found with nothing found", () => {
     normalizer: "it-normalize/v1",
     sourceUrl: null,
     retrievedAt: null,
+    archiveSha256: "0".repeat(64),
+    upstreamRelease: null,
     license: null,
     attribution: null,
   };

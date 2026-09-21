@@ -206,11 +206,40 @@ a { color: var(--accent); }
 .source { margin-top: 0.8rem; font-size: 0.75rem; color: var(--muted); }
 .source code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
 
-.attribution {
+/* Which release answered, and the way to the credit ----------------------- */
+/* The credit itself is on /attribution (ADR 0009). What sits under a result is
+   the release that answered it, and what sits under every page is one small
+   link. Both are the same quiet note the source line under a card already is. */
+
+.release, .site-footer {
   margin-top: 2.5rem;
   padding-top: 1rem;
   border-top: 1px solid var(--line);
   font-size: 0.8rem;
   color: var(--muted);
 }
-.attribution p { margin: 0.4rem 0; }
+.release p { margin: 0.4rem 0; }
+.site-footer {
+  max-width: 44rem;
+  margin: 2.5rem auto 0;
+  padding: 1rem 1.1rem 2rem;
+}
+
+/* The attribution page ---------------------------------------------------- */
+/* Prose and two description lists, in the same plain type as everything else.
+   An open field and a column the import did not record read as what they are:
+   the page's existing `.ambiguous` and `.empty` say so in words, and the layout
+   does not dress either of them up as a value. */
+
+.release-identity, .open-fields { margin: 0.8rem 0; }
+.release-identity > div, .open-field { margin: 0.6rem 0; }
+.release-identity dt, .open-field dt {
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  font-weight: 600;
+}
+.release-identity dd, .open-field dd { margin: 0.15rem 0 0; }
+.release-identity code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.85em; word-break: break-all; }
+.open-field dt .ambiguous { text-transform: none; letter-spacing: 0; }

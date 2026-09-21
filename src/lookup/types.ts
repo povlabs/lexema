@@ -281,11 +281,23 @@ export function isAdjectiveReading(reading: Reading): reading is OtherReading {
   return (reading.pos as string) === "adj";
 }
 
+/**
+ * Which imported file a page is answering from.
+ *
+ * Four of these columns are nullable in the schema, and a reader is told so in
+ * words rather than shown a blank: `null` here means the import did not know
+ * the value, never that it is empty. `archiveSha256` is the one identity the
+ * schema requires, so it is the one field that is always a string.
+ */
 export interface ReleaseInfo {
   releaseId: string;
   normalizer: string;
   sourceUrl: string | null;
   retrievedAt: string | null;
+  /** SHA-256 of the compressed archive these bytes came from. */
+  archiveSha256: string;
+  /** The upstream dump the archive was extracted from, when the import knew it. */
+  upstreamRelease: string | null;
   license: string | null;
   attribution: string | null;
 }

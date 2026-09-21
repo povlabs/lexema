@@ -87,8 +87,8 @@ one thing this page must not do.
 **A lookup that did not happen.** No release, a D1 error, or a release built by
 a different normalizer all produce a page that says the lookup failed. That is
 deliberately not the "found nothing" message: a reader must be able to tell *we
-could not look* from *we looked and the word is not here*. The attribution
-footer drops out in that state, because there is no release to attribute. The
+could not look* from *we looked and the word is not here*. The release footer
+drops out in that state, because there is no release to name. The
 reason is logged and not printed: a database message names releases, tables and
 bindings, which is the operator's business and not the reader's.
 
@@ -125,14 +125,39 @@ write over the release the import just made.
 
 Each reading ends with a link to the Italian Wiktionary page for that record's
 own headword, sitting next to the release line number and the JSON pointers the
-reading was built from.
+reading was built from. It is labelled *Source* and nothing more:
+[ADR 0009](../.decisions/0009-two-licences-and-a-source-link.md) puts one small
+link on a result and keeps the credit itself on `/attribution`, which the site
+footer reaches from every page.
+
+Its accessible name is longer than its text — "Wiktionary page for X, the source
+of this noun entry" — because *Source* repeated once per reading tells a screen
+reader nothing about which reading it belongs to.
 
 The release stores no per-record URL, so the link is *constructed* from the
-headword rather than recorded with the data. That is why it reads "Wiktionary
-page for X" instead of being presented as a citation of the reading: the line
-number and pointers are the exact source location, and the link is only the part
-a reader can click. On a mention row the link points at `sala` or `salire` — the
-page the record actually came from, not the word searched for.
+headword rather than recorded with the data. That is why the accessible name
+says "Wiktionary page for X" instead of presenting the link as a citation of the
+reading: the line number and pointers are the exact source location, and the
+link is only the part a reader can click. On a mention row the link points at
+`sala` or `salire` — the page the record actually came from, not the word
+searched for.
+
+## Why the credit is on its own page
+
+The search page carries no credit line, no licence name and no contributor text.
+That is ADR 0009's ruling, and the licence permits it: CC BY-SA 4.0 lets the
+credit be satisfied by a link to a page that carries the required information.
+`/attribution` is that page — the contributors, the page histories where their
+names are, the licence with its link, what Lexema restructured, and the identity
+of the release being served.
+
+It is built the way the search page is: `app/Attribution.tsx` is the markup with
+no database in it, and `app/attribution/page.tsx` is the wiring that reads the
+release from D1. A column the import did not record renders as *not recorded* in
+words, and a field the draft in
+[ATTRIBUTION_NOTICES.md](ATTRIBUTION_NOTICES.md) leaves open renders as open,
+naming what would settle it. Neither a blank nor a plausible-looking value is
+allowed to stand in for either.
 
 ## Why the seed goes through generated SQL
 
