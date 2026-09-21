@@ -42,6 +42,8 @@ than 500,000 Italian records while retaining fewer than 500 at peak
 
 ## When this applies
 
+The field names here are the spike's compact `{ r, i, p, h }`. The canonical names are the schema's `release_id`, `line_no`, `json_pointer`, `line_sha256` (`src/db/schema.sql`); code written against the schema uses those, and this reader is the pre-schema shape.
+
 Any code that reads the source file or derives a value from a record:
 `src/source/jsonlGzipReader.ts`, `src/source/provenance.ts`,
 `src/core/candidateResolver.ts` and `src/italian/adapter.ts`. It stops at the

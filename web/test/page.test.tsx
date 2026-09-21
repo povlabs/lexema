@@ -1,0 +1,344 @@
+// The search page, rendered.
+//
+// Issue #14 asks for the page to be checked against the twelve sampled queries
+// in reports/2026-09-18-dataset-spot-check.md plus a basic accessibility pass.
+// Doing that by hand against a running Worker proves one machine on one day, so
+// it is done here instead: an archive shaped like those twelve rows is imported
+// into a temporary database exactly as test/lookup.test.ts imports its fixture,
+// the real `lookup` answers each query, and the real components render the
+// answer to HTML. No dictionary archive, no D1, no browser — so it runs in CI.
+//
+// What it cannot cover is the wiring in app/page.tsx: reaching D1 needs
+// `cloudflare:workers`, which exists only inside workerd. The query parsing and
+// every rendered state are here; the binding is exercised by running the page.
+
+import assert from "node:assert/strict";
+import test from "node:test";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+import { DatabaseSync } from "node:sqlite";
+import { gzipSync } from "node:zlib";
+import { renderToStaticMarkup } from "react-dom/server";
+import { importRelease } from "../../src/import/importRelease.js";
+import { writeKnownDisputes } from "../../src/import/knownDisputes.js";
+import { fromNodeSqlite } from "../../src/lookup/database.js";
+import { lookup } from "../../src/lookup/lookup.js";
+import type { Attempt } from "../app/attempt.ts";
+import { FirstLoad, Outcome, Pending, SearchPage } from "../app/SearchPage";
+import { firstQuery } from "../app/params";
+import { FIXTURE_LINES } from "./fixture.js";
+
+const REPO = fileURLToPath(new URL("../..", import.meta.url));
+const RELEASE = "it-page-test";
+
+interface Fixture {
+  dir: string;
+  db: DatabaseSync;
+}
+
+async function fixture(): Promise<Fixture> {
+  const dir = await mkdtemp(join(tmpdir(), "lexema-page-"));
+  const archive = join(dir, "fixture.jsonl.gz");
+  const database = join(dir, "fixture.sqlite");
+  await writeFile(archive, gzipSync(Buffer.from(`${FIXTURE_LINES.join("\n")}\n`, "utf8")));
+  await importRelease({
+    input: archive,
+    database,
+    schema: join(REPO, "src/db/schema.sql"),
+    releaseId: RELEASE,
+    archiveR2Key: `releases/${RELEASE}.jsonl.gz`,
+    sourceUrl: "https://example.invalid/it-extract.jsonl.gz",
+    license: "CC-BY-SA-4.0",
+    onRejection: (rejection) => {
+      throw new Error(`fixture line rejected: ${JSON.stringify(rejection)}`);
+    },
+  });
+  const db = new DatabaseSync(database);
+  // The same review rows `pnpm run seed:dev` writes, from the same module, so
+  // the page under test meets the dispute the development seed shows.
+  assert.equal(writeKnownDisputes(db, RELEASE), 1);
+  return { dir, db };
+}
+
+async function withFixture(run: (f: Fixture) => Promise<void>): Promise<void> {
+  const f = await fixture();
+  try {
+    await run(f);
+  } finally {
+    f.db.close();
+    await rm(f.dir, { recursive: true, force: true });
+  }
+}
+
+/** The whole page, as the Worker would send it for `?q=<query>`. */
+async function render(db: DatabaseSync, query: string): Promise<string> {
+  const attempt: Attempt = await lookup({ db: fromNodeSqlite(db), releaseId: RELEASE, query });
+  return renderToStaticMarkup(
+    <SearchPage raw={query}>
+      <Outcome raw={query} attempt={attempt} />
+    </SearchPage>,
+  );
+}
+
+const cards = (html: string): number => html.split('<article class="reading"').length - 1;
+const mentions = (html: string): number => html.split('class="mention"').length - 1;
+
+/** How many rows of each kind the index holds for one surface. */
+function occurrences(db: DatabaseSync, surfaceKey: string): { direct: number; embedded: number } {
+  const row = db
+    .prepare(
+      `SELECT sum(origin = 'headword') AS direct, sum(origin = 'embedded-form') AS embedded
+         FROM lookup_form WHERE release_id = ? AND surface_key = ?`,
+    )
+    .get(RELEASE, surfaceKey) as { direct: number | null; embedded: number | null };
+  return { direct: row.direct ?? 0, embedded: row.embedded ?? 0 };
+}
+
+/**
+ * The twelve rows of the spot check, as this page has to answer them.
+ *
+ * `direct` and `embedded` are the report's own two counts for the query, and
+ * `cards` is what they mean on screen: one card per record, so four evidence
+ * rows spread over three records are three cards. `mentions` is how many of
+ * those cards are records that merely list the word in their own table.
+ */
+const QUERIES = [
+  {
+    query: "casa", direct: 1, embedded: 0, cards: 1, mentions: 0,
+    // The whole point of the entry: a gloss that defines nothing, and grammar
+    // the source was asked for and did not give.
+    expect: [
+      /1 entry for/,
+      /<q lang="it">casa<\/q>/,
+      /casa \( approfondimento\) f sing/,
+      /gender<\/dt><dd>not stated in the source/,
+      /number<\/dt><dd>not stated in the source/,
+      /Not available in the source: this entry lists no forms\./,
+      /Not available in the source: no form in this entry carries a tense/,
+    ],
+  },
+  {
+    query: "case", direct: 1, embedded: 0, cards: 1, mentions: 0,
+    expect: [/1 entry for/, /Form of<\/h3>/, /plurale di casa/],
+  },
+  {
+    query: "studente", direct: 2, embedded: 3, cards: 5, mentions: 3,
+    // Two analyses of the word, and the verb one is the claim later research
+    // contradicts. It must not read as an ordinary fact.
+    expect: [
+      /5 entries for/,
+      /Disputed by later research/,
+      /studiante as the present participle of studiare/,
+      /it\.wiktionary\.org\/wiki\/Appendice:Coniugazioni\/Italiano\/studiare/,
+      /claim <code>\/senses\/0\/glosses\/0<\/code>/,
+    ],
+  },
+  {
+    query: "studenti", direct: 1, embedded: 4, cards: 4, mentions: 3,
+    expect: [/4 entries for/, /Does not define <q lang="it">studenti<\/q>/],
+  },
+  {
+    query: "sale", direct: 3, embedded: 2, cards: 5, mentions: 2,
+    // Three unrelated words spelled the same, none of them merged away, plus
+    // the auxiliary row that is not a conjugation of anything.
+    expect: [
+      /5 entries for/,
+      /cloruro di sodio/,
+      /plurale di sala/,
+      /Auxiliary named by the source: <span><span lang="it">avere o essere<\/span>/,
+    ],
+  },
+  {
+    query: "andare", direct: 2, embedded: 0, cards: 2, mentions: 0,
+    expect: [
+      /2 entries for/,
+      /Grouped conjugations<\/h3>/,
+      /<h4>present<\/h4>/,
+      /<h4>imperfect<\/h4>/,
+      /<span lang="it">andavano<\/span>/,
+      /mood not stated in the source/,
+    ],
+  },
+  {
+    query: "andavano", direct: 1, embedded: 1, cards: 2, mentions: 1,
+    expect: [
+      /2 entries for/,
+      /terza persona plurale dell&#x27;imperfetto indicativo di andare/,
+      /Does not define <q lang="it">andavano<\/q>/,
+    ],
+  },
+  {
+    query: "parlare", direct: 2, embedded: 0, cards: 2, mentions: 0,
+    expect: [/2 entries for/, /<span lang="it">parlerei<\/span>/, /Appendice:Coniugazioni/],
+  },
+  {
+    query: "parlerei", direct: 1, embedded: 1, cards: 2, mentions: 1,
+    // The mood is in prose on one record and missing from the tags on the
+    // other. The page shows both and infers nothing.
+    expect: [
+      /2 entries for/,
+      /condizionale presente di parlare/,
+      /mood not stated in the source/,
+    ],
+  },
+  {
+    query: "bello", direct: 3, embedded: 7, cards: 10, mentions: 7,
+    // Reverse ambiguity: every incoming edge names the word `bello`, which
+    // three records spell, and the page says so on each of them.
+    expect: [
+      /10 entries for/,
+      /Forms pointing here<\/h3>/,
+      /3 entries share that spelling/,
+      /The source does not say\s+which of them this form belongs to/,
+    ],
+  },
+  {
+    query: "bella", direct: 2, embedded: 7, cards: 9, mentions: 7,
+    // Forward ambiguity, shown the same way.
+    expect: [/9 entries for/, /3 entries share this spelling/, /The source does not say which\./],
+  },
+  {
+    query: "città", direct: 1, embedded: 0, cards: 1, mentions: 0,
+    expect: [
+      /1 entry for/,
+      /<dt>gender<\/dt><dd>feminine/,
+      /<dt>number<\/dt><dd>invariable/,
+      // Stated grammar still does not make an article.
+      /Not available in the source: this release carries no article/,
+    ],
+  },
+] as const;
+
+test("answers each of the twelve sampled queries with the state the report predicts", async () => {
+  await withFixture(async ({ db }) => {
+    for (const row of QUERIES) {
+      const counted = occurrences(db, row.query.normalize("NFC").toLowerCase());
+      assert.deepEqual(
+        counted,
+        { direct: row.direct, embedded: row.embedded },
+        `${row.query}: the fixture must carry the spot check's own two counts`,
+      );
+
+      const html = await render(db, row.query);
+      assert.equal(cards(html), row.cards, `${row.query}: one card per matching record`);
+      assert.equal(mentions(html), row.mentions, `${row.query}: mentions labelled as mentions`);
+      for (const pattern of row.expect) {
+        assert.match(html, pattern, `${row.query}: ${pattern}`);
+      }
+    }
+  });
+});
+
+test("every reading shows its own source forms, not only the forms pointing at it", async () => {
+  await withFixture(async ({ db }) => {
+    const html = await render(db, "studente");
+    // The noun's own table, which the page used to leave out entirely.
+    assert.match(html, /Forms listed by this entry<\/h3>/);
+    assert.match(html, /<span lang="it">studenti<\/span>/);
+    // And the other direction, which is a different fact about the same word.
+    assert.match(html, /Forms pointing here<\/h3>/);
+
+    // A verb's table renders as its own grouped conjugation, with the source's
+    // silences kept: no mood is stated anywhere in this release.
+    const parlare = await render(db, "parlare");
+    assert.match(parlare, /<h4>present<\/h4>/);
+    assert.match(parlare, /<span lang="it">parlavo<\/span>/);
+    assert.match(parlare, /Auxiliary named by the source: <span><span lang="it">avere<\/span>/);
+  });
+});
+
+test("Italian is marked as Italian, and the interface is not", async () => {
+  await withFixture(async ({ db }) => {
+    for (const query of ["casa", "bello", "zzzznothing"]) {
+      const html = await render(db, query);
+      // The document is English (see the layout assertion below), so every
+      // Italian string has to say so where it sits.
+      assert.doesNotMatch(html, /lang="en"/, `${query}: nothing re-declares English`);
+      assert.match(html, /<input [^>]*lang="it"/, `${query}: the search box takes Italian`);
+    }
+
+    const found = await render(db, "città");
+    assert.match(found, /<h2><span lang="it">città<\/span>/);
+    assert.match(found, /<p lang="it" class="gloss">centro abitato di grandi dimensioni<\/p>/);
+
+    // The one thing this test cannot render: the layout imports globals.css,
+    // which Node cannot load. The document language is asserted on the file.
+    const layout = await readFile(join(REPO, "web/app/layout.tsx"), "utf8");
+    assert.match(layout, /<html lang="en">/);
+  });
+});
+
+test("the page has the labels, headings and landmarks a keyboard reader needs", async () => {
+  await withFixture(async ({ db }) => {
+    const html = await render(db, "sale");
+    assert.equal(html.split("<main>").length - 1, 1, "exactly one main landmark");
+    assert.equal(html.split("<h1>").length - 1, 1, "exactly one first-level heading");
+    assert.match(html, /<form role="search" action="\/" method="get">/);
+    assert.match(html, /<label for="q">Italian word<\/label>/);
+    assert.match(html, /<input id="q" type="search"[^>]* name="q"/);
+    assert.match(html, /<button type="submit">Search<\/button>/);
+    // One card, one heading, and every section under it is labelled by its own.
+    assert.equal(html.split("<h2>").length - 1, cards(html));
+    assert.match(html, /<section class="links" aria-labelledby="forms-\d+">/);
+    assert.match(html, /<h3 id="forms-\d+">/);
+    // The live regions that tell a screen reader something changed.
+    assert.match(html, /<p class="count" role="status">/);
+
+    const empty = await render(db, "zzzznothing");
+    assert.match(empty, /<p class="empty" role="status">/);
+    assert.match(empty, /Nothing in this release matches/);
+  });
+});
+
+test("a repeated query parameter is searched, not thrown on", async () => {
+  // `?q=sale&q=casa` is a URL anyone can type, and the router hands a repeated
+  // name back as an array. Reading it as a string made the page 500.
+  assert.equal(firstQuery(["sale", "casa"]), "sale");
+  assert.equal(firstQuery([]), "");
+  assert.equal(firstQuery(undefined), "");
+  assert.equal(firstQuery("sale"), "sale");
+
+  await withFixture(async ({ db }) => {
+    const html = await render(db, firstQuery(["sale", "casa"]));
+    assert.match(html, /5 entries for <q lang="it">sale<\/q>/);
+  });
+});
+
+test("renders the states that are not an answer: first load, loading, rejected, failed", async () => {
+  const first = renderToStaticMarkup(
+    <SearchPage raw="">
+      <FirstLoad />
+    </SearchPage>,
+  );
+  assert.match(first, /each shows a different kind of ambiguity/);
+
+  // The Suspense fallback app/page.tsx streams while D1 is answering.
+  const loading = renderToStaticMarkup(
+    <SearchPage raw="sale">
+      <Pending raw="sale" />
+    </SearchPage>,
+  );
+  assert.match(loading, /<p class="pending" role="status">Searching for <q lang="it">sale<\/q>/);
+
+  // A lookup that did not happen says so, and says nothing about why: the
+  // database's own message is for the Worker's log, not for a reader.
+  const failed = renderToStaticMarkup(
+    <SearchPage raw="sale">
+      <Outcome raw="sale" attempt={{ outcome: "failed" }} />
+    </SearchPage>,
+  );
+  assert.match(failed, /<p class="error" role="alert">The lookup failed/);
+  assert.doesNotMatch(failed, /release|D1|normalizer|SQLITE/i);
+  // Nothing to attribute when nothing was read.
+  assert.doesNotMatch(failed, /class="attribution"/);
+
+  await withFixture(async ({ db }) => {
+    const rejected = await render(db, "   ");
+    assert.match(rejected, /Type a word to search for\./);
+
+    const tooLong = await render(db, "a".repeat(200));
+    assert.match(tooLong, /That is 200 characters\. The limit is 128\./);
+  });
+});

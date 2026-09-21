@@ -1,0 +1,8 @@
+# One lockfile at the root covers every package here, which is what ADR 0002
+# asks for. `web/` is the Cloudflare Worker; the root holds the importer, the
+# lookup layer and their tests.
+packages:
+  - web
+onlyBuiltDependencies:
+  - esbuild
+  - workerd
