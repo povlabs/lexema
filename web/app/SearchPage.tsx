@@ -11,6 +11,8 @@
 // what the first card that needs one will reach for (#48).
 
 import type { ReactNode } from "react";
+import { isFormOfReading } from "@lexema/lookup/types.ts";
+import type { Reading } from "@lexema/lookup/types.ts";
 import type { Attempt } from "./attempt.ts";
 import { ReadingCard } from "./Reading";
 import {
@@ -120,6 +122,27 @@ export function Pending({ raw }: { raw: string }) {
 }
 
 /**
+ * The readings in the order this page shows them: the query's own form-of
+ * records first, then everything else, each group in the lookup's source order
+ * (#49).
+ *
+ * Searching a conjugated form is asking about that form, so the record that
+ * explains it leads and the lemma's own table follows. `src/lookup/lookup.ts`
+ * still returns source order and says why — the ranking is this page's, which
+ * is what "the interface may rank; it never drops"
+ * (design-system-manifest.md § "Settled law") allows. Nothing is dropped,
+ * merged or hidden: the two groups partition the readings, so the page renders
+ * exactly what the lookup returned, and a query matching no form-of record
+ * renders in source order unchanged.
+ */
+export function pageOrder(readings: readonly Reading[]): Reading[] {
+  return [
+    ...readings.filter((reading) => isFormOfReading(reading)),
+    ...readings.filter((reading) => !isFormOfReading(reading)),
+  ];
+}
+
+/**
  * Every state a probed query can land in, and the release under it.
  *
  * Each is said plainly rather than collapsed into one blank page: asked badly,
@@ -167,7 +190,7 @@ export function Outcome({ raw, attempt }: { raw: string; attempt: Attempt }) {
             {attempt.readings.length} {attempt.readings.length === 1 ? "entry" : "entries"} for{" "}
             <q lang="it">{attempt.query.raw.trim()}</q>
           </p>
-          {attempt.readings.map((reading) => (
+          {pageOrder(attempt.readings).map((reading) => (
             <ReadingCard key={reading.recordId} reading={reading} query={attempt.query.raw.trim()} />
           ))}
         </>

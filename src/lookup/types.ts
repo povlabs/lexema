@@ -301,6 +301,47 @@ export function isVerbReading(reading: Reading): reading is OtherReading {
 }
 
 /**
+ * Whether this reading is the query's own form-of record: a record about the
+ * searched surface that declares itself a form of some other word (#49).
+ *
+ * Two facts read together, and neither alone is this one. `isAboutQuery` says
+ * the record is about the word that was typed rather than a record that merely
+ * lists it, and a `lemmaLinks` entry is the source's own `form_of` edge — so
+ * `vado`'s `Voce verbale` record passes and `andare`'s own verb record, which
+ * lists `vado` in its table and declares itself a form of nothing, does not.
+ *
+ * No spelling is compared and no gloss is read: the two fields the lookup
+ * already filled are the whole test, which is why it lives here rather than
+ * being re-derived at the page that orders on it.
+ */
+export function isFormOfReading(reading: Reading): boolean {
+  return reading.isAboutQuery && reading.lemmaLinks.length > 0;
+}
+
+/**
+ * The pointers of this reading's own `forms[]` entries the query actually hit.
+ *
+ * `Evidence` with an `embedded-form` origin is one occurrence of the searched
+ * surface inside this record's table, and its `ref.jsonPointer` is the same
+ * pointer the matching `SourceForm` carries — both are read from one
+ * `lookup_form` row (`src/db/schema.sql`, view `surface_hit`). So a page marks
+ * the searched form by asking this set whether a form's pointer is in it,
+ * rather than comparing spellings: no normalizing, no case guessing, and no
+ * risk of outlining a spelling the index never matched.
+ *
+ * A `headword` occurrence is deliberately not in here. It points at `/word`,
+ * which is no `forms[]` entry at all, and the card says what a headword is by
+ * being the headword.
+ */
+export function searchedFormPointers(reading: Reading): ReadonlySet<string> {
+  return new Set(
+    reading.evidence
+      .filter((occurrence) => occurrence.origin === "embedded-form")
+      .map((occurrence) => occurrence.ref.jsonPointer),
+  );
+}
+
+/**
  * Which imported file a page is answering from.
  *
  * Four of these columns are nullable in the schema, and a reader is told so in
