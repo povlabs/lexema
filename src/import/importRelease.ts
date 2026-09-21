@@ -590,6 +590,10 @@ function writeRecord(
   rows.lookup_form += 1;
 
   record.forms.forEach((form, formIndex) => {
+    // Read the leaf before deciding whether to write the row. A form whose
+    // surface the import refused still states a `source`, and a leaf nobody
+    // reads is a refusal nobody can count or locate.
+    const source = stringLeaf(form.source, `/forms/${formIndex}/source`, reportMember);
     const surface = formSurfaces[formIndex];
     if (surface === null) return;
     statements.insertLookup.run(
@@ -600,7 +604,7 @@ function writeRecord(
       normalizeItalianExact(surface),
       `/forms/${formIndex}/form`,
       formIndex,
-      stringLeaf(form.source, `/forms/${formIndex}/source`, reportMember),
+      source,
     );
     rows.lookup_form += 1;
   });
@@ -618,8 +622,13 @@ function writeRecord(
   });
 
   record.forms.forEach((form, formIndex) => {
-    if (formSurfaces[formIndex] === null) return;
+    // Same rule as the lookup pass: both member lists are read whatever the
+    // surface turned out to be, so their refusals reach the report. Only the
+    // claim rows wait on a surface, because a form the import refused has no
+    // surface for a claim to be about.
     const tags = stringMembers(form.tags, `/forms/${formIndex}/tags`, reportMember);
+    const rawTags = stringMembers(form.raw_tags, `/forms/${formIndex}/raw_tags`, reportMember);
+    if (formSurfaces[formIndex] === null) return;
     const stated = new Set<string>();
     for (const { text } of tags) {
       const mapped = mapStructuralTag(text);
@@ -633,7 +642,7 @@ function writeRecord(
       tagsPointer: `/forms/${formIndex}/tags`,
       rawTagsPointer: `/forms/${formIndex}/raw_tags`,
       tags,
-      rawTags: stringMembers(form.raw_tags, `/forms/${formIndex}/raw_tags`, reportMember),
+      rawTags,
       expected: expectedFormDimensions(ctx.pos, stated),
     });
   });

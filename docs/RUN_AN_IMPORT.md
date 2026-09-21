@@ -59,16 +59,21 @@ The summary says `status complete`. Anything else means the database is not
 servable — see [IMPORT.md](IMPORT.md#what-a-run-reports) for what the counts
 mean and what `partial` is for.
 
-Every line that did not become a record is listed in `<database>.rejections.tsv`
-next to the database — `.data/lexema.sqlite.rejections.tsv` by default — as line
-number, kind and reason, one per line. The summary's `rejected lines` count is
-the number of lines in that file. `malformed 0` is the expected answer for the
-current archive; anything else names a line to go and look at.
+Everything the import refused goes to `<database>.rejections.tsv` next to the
+database — `.data/lexema.sqlite.rejections.tsv` by default — as line number,
+kind and reason, one per line. Two different refusals share that file, and the
+summary counts them separately:
 
-`refused leaves 0` is the expected answer too. It counts values inside records
-that did land but were the wrong JSON type — a gloss that is not a string, say.
-Each one is in the same file as `malformed-member`, located by line number and
-JSON pointer.
+- `rejected lines` is every line that did not become a record: the
+  `other-language` and `malformed` rows.
+- `refused leaves` is every value inside a record that did land but was the
+  wrong JSON type — a gloss that is not a string, say. These are the
+  `malformed-member` rows, located by line number and JSON pointer.
+
+So the file holds `rejected lines` + `refused leaves` rows, and neither count
+on its own is the length of the file. `malformed 0` and `refused leaves 0` are
+the expected answers for the current archive; anything else names a line to go
+and look at.
 
 The counts are on the release row as well, so a database you were handed can be
 checked without the output of the run that made it:
