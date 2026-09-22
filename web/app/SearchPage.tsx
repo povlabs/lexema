@@ -17,6 +17,14 @@ import type { Attempt } from "./attempt.ts";
 import { ReadingCard } from "./Reading";
 import {
   COUNT,
+  WORD_LAYER,
+  WORD_HEADING,
+  READING_INDEX,
+  INDEX_LIST,
+  INDEX_LINK,
+  INDEX_NUMBER,
+  INDEX_GLOSS,
+  READING_NUMBER,
   EMPTY,
   ERROR,
   HINT,
@@ -122,20 +130,15 @@ export function Pending({ raw }: { raw: string }) {
 }
 
 /**
- * The readings in the order this page shows them: the query's own form-of
- * records first, then everything else, each group in the lookup's source order
- * (#49).
- *
- * Searching a conjugated form is asking about that form, so the record that
- * explains it leads and the lemma's own table follows. `src/lookup/lookup.ts`
- * still returns source order and says why — the ranking is this page's, which
- * is what "the interface may rank; it never drops"
- * (design-system-manifest.md § "Settled law") allows. Nothing is dropped,
- * merged or hidden: the two groups partition the readings, so the page renders
- * exactly what the lookup returned, and a query matching no form-of record
- * renders in source order unchanged.
+ * Direct readings stay in the source's order: a word with a base reading
+ * leads with it, as in the design's sale and studente frames. When only a
+ * form-of record matches the queried headword, it leads the embedded lemma's
+ * table (#49). Neither branch drops or merges a reading.
  */
 export function pageOrder(readings: readonly Reading[]): Reading[] {
+  if (readings.some((reading) => reading.isAboutQuery && !isFormOfReading(reading))) {
+    return [...readings];
+  }
   return [
     ...readings.filter((reading) => isFormOfReading(reading)),
     ...readings.filter((reading) => !isFormOfReading(reading)),
@@ -190,8 +193,32 @@ export function Outcome({ raw, attempt }: { raw: string; attempt: Attempt }) {
             {attempt.readings.length} {attempt.readings.length === 1 ? "entry" : "entries"} for{" "}
             <q lang="it">{attempt.query.raw.trim()}</q>
           </p>
-          {pageOrder(attempt.readings).map((reading) => (
-            <ReadingCard key={reading.recordId} reading={reading} query={attempt.query.raw.trim()} />
+          <section className={WORD_LAYER} aria-label="Word">
+            <h2 className={WORD_HEADING} lang="it">{attempt.query.raw.trim()}</h2>
+          </section>
+          {attempt.readings.length > 1 && (
+            <nav className={READING_INDEX} aria-label="Reading index">
+              <h2>Readings</h2>
+              <ol className={INDEX_LIST}>
+                {pageOrder(attempt.readings).map((reading, index) => (
+                  <li key={reading.recordId}>
+                    <a className={INDEX_LINK} href={`#reading-${reading.recordId}`}>
+                      <span className={INDEX_NUMBER}>{index + 1}</span>
+                      <span>{reading.pos === "adj" ? "adjective" : reading.pos === "noun" ? "noun" : reading.pos === "verb" ? "verb" : reading.posTitle}</span>
+                      {reading.senses[0]?.glosses[0] && (
+                        <span className={INDEX_GLOSS} lang="it">{reading.senses[0].glosses[0].text}</span>
+                      )}
+                    </a>
+                  </li>
+                ))}
+              </ol>
+            </nav>
+          )}
+          {pageOrder(attempt.readings).map((reading, index) => (
+            <div key={reading.recordId} id={`reading-${reading.recordId}`}>
+              {attempt.readings.length > 1 && <p className={READING_NUMBER}>Reading {index + 1}</p>}
+              <ReadingCard reading={reading} query={attempt.query.raw.trim()} />
+            </div>
           ))}
         </>
       )}

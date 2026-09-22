@@ -370,10 +370,9 @@ async function readingFor(
 /**
  * Every reading one query answers with, in the order the page renders them.
  *
- * The lookup's own order is source order and the page's is not: form-of
- * readings about the query lead (#49). So this runs the page's own ordering
- * function over the lookup's answer, which is what puts reading *i* beside
- * card *i* below.
+ * Source order is kept when a base reading exists; an inflected query leads
+ * with its own form-of record (#49). This runs the page's ordering function
+ * over the lookup's answer to pair reading *i* with card *i* below.
  */
 async function readingsFor(db: DatabaseSync, query: string): Promise<Reading[]> {
   const attempt: Attempt = await lookup({ db: fromNodeSqlite(db), releaseId: RELEASE, query });
@@ -831,11 +830,10 @@ test("a section with nothing to show is omitted, and one line near the top names
         silence("The source states neither a gender nor a number and lists no forms for this entry."),
       ),
     );
-    // It is above the senses list, where a reader meets it first.
-    assert.ok(
-      casa.indexOf(`<p class="${EMPTY}">`) < casa.indexOf(`<ol class="${DEFINITIONS}">`),
-      "the silence line renders above the senses",
-    );
+    // The source's navigation furniture is not passed off as a definition.
+    assert.doesNotMatch(casa, /aria-label="Definitions"/);
+    assert.match(casa, /The source has entry notes but gives no definition/);
+    assert.ok(casa.indexOf(`<p class="${EMPTY}">`) < casa.indexOf("entry notes"));
     // And every section it stands in for is gone.
     assert.doesNotMatch(casa, /Singular and plural/);
     assert.doesNotMatch(casa, /Articles<\/h3>/);
@@ -1564,7 +1562,7 @@ test("a conjugated query leads with its own form, then the lemma's table", async
       ),
     );
     assert.match(vado, /Form of<\/h3>/);
-    assert.match(vado, exact('<li><span lang="it">andare</span>'));
+    assert.match(vado, /<li><a[^>]+href="\/\?q=andare" lang="it">andare<\/a>/);
     // No English paraphrase of the form, and no parse of that sentence: the
     // card's English is the shell's own labels (ADR 0004, and #50).
     assert.doesNotMatch(textOf(vado), /I go|first person|present indicative/i);
@@ -1623,32 +1621,26 @@ test("andavano leads with its own gloss, and is outlined at /forms/16 of andare"
 });
 
 /**
- * Ranking never drops: `sale` is five records before this change and five
- * after, in a new order (#49).
- *
- * "Every candidate a lookup returns is rendered. The interface may rank; it
- * never drops" (design-system-manifest.md § "Settled law"). Both readings that
- * are about `sale` and declare a lemma lead, in the lookup's own source order;
- * the salt noun, `sala` and `salire` follow in theirs.
+ * A base reading leads a mixed word; its two form-of readings follow, then
+ * the embedded records. All five remain available through the index.
  */
-test("sale keeps all five cards, with its form-of readings leading", async () => {
+test("sale keeps all five cards, with its base noun leading", async () => {
   await withFixture(async ({ db }) => {
     const html = await render(db, "sale");
     assert.equal(cards(html), 5);
     assert.match(html, /5 entries for/);
     assert.deepEqual(cardLabels(html), [
       "sale, noun",
-      "sale, verb",
       "sale, noun",
+      "sale, verb",
       "sala, noun",
       "salire, verb",
     ]);
-    // The labels repeat, so the order is said again by what each card holds:
-    // the plural of `sala`, then the form of `salire`, then the salt.
+    // Labels repeat, so distinguish the noun by the source's own gloss.
     const rendered = cardsOf(html);
-    assert.match(rendered[0], /plurale di sala/);
-    assert.match(rendered[1], /dell&#x27;indicativo presente di salire/);
-    assert.match(rendered[2], /cloruro di sodio/);
+    assert.match(rendered[0], /cloruro di sodio/);
+    assert.match(rendered[1], /plurale di sala/);
+    assert.match(rendered[2], /dell&#x27;indicativo presente di salire/);
     // The two records that merely list `sale` are still here, still labelled as
     // mentions, and `salire` still outlines the row the query hit.
     assert.equal(mentions(html), 2);
@@ -1750,7 +1742,7 @@ test("the page has the labels, headings and landmarks a keyboard reader needs", 
     // One card, one heading, and every section under it is labelled by its own.
     // The total is counted by element; the classed count says they are the same
     // headings.
-    assert.equal(elementsOf(html, "h2"), cards(html));
+    assert.equal(elementsOf(html, "h2"), cards(html) + 2, "cards plus word and index headings");
     assert.equal(occurrencesOf(html, `<h2 class="${HEADWORD}">`), cards(html));
     assert.match(
       html,
@@ -1824,6 +1816,48 @@ test("the bar is centred before a query and at the top with one, and it is the s
     // The query is in the bar because it came from the URL, which is what makes
     // a result shareable: the form is a GET to the same route.
     assert.match(answered, exact('name="q" value="casa"'));
+  });
+});
+
+test("word layer, reading index and card numbers share one ordered sequence", async () => {
+  await withFixture(async ({ db }) => {
+    const sale = await render(db, "sale");
+    assert.match(sale, /<section[^>]+aria-label="Word"><h2[^>]+lang="it">sale<\/h2>/);
+    assert.match(sale, /<nav[^>]+aria-label="Reading index">/);
+    const ids = [...sale.matchAll(/href="#reading-(\d+)"/g)].map((m) => m[1]);
+    assert.equal(ids.length, cards(sale));
+    assert.deepEqual([...sale.matchAll(/id="reading-(\d+)"/g)].map((m) => m[1]), ids);
+    assert.deepEqual([...sale.matchAll(/Reading (\d+)<\/p>/g)].map((m) => Number(m[1])), ids.map((_, i) => i + 1));
+    assert.match(sale, /lang="it">plurale di sala<\/span>/);
+    const studente = await render(db, "casa");
+    assert.doesNotMatch(studente, /Reading index|Reading 1<\/p>/);
+  });
+});
+
+test("thin casa, single reading, and standalone verb form retain honest source shapes", async () => {
+  await withFixture(async ({ db }) => {
+    const casa = await render(db, "casa");
+    assert.equal(cards(casa), 1);
+    assert.match(casa, /entry notes but gives no definition/);
+    assert.doesNotMatch(casa, /aria-label="Definitions"|Show all 2 definitions/);
+    const city = await render(db, "città");
+    assert.equal(cards(city), 1);
+    assert.doesNotMatch(city, /Reading index/);
+    const andavano = await render(db, "andavano");
+    assert.match(andavano, /lang="it">terza persona plurale/);
+    assert.match(andavano, /href="\/\?q=andare" lang="it">andare<\/a>/);
+    assert.match(andavano, /data-form="16">andavano<\/span>/);
+    assert.match(andavano, /Conjugation · 31 forms listed by the source/);
+  });
+});
+
+test("definitions beyond the first slice remain in a native disclosure", async () => {
+  await withFixture(async ({ db }) => {
+    const casetta = card(await render(db, "casetta"), "casetta, noun");
+    assert.match(casetta, /2 · showing 1/);
+    assert.match(casetta, /<summary[^>]*>Show all 2 definitions<\/summary>/);
+    assert.match(casetta, /<ol[^>]+start="2">/);
+    assert.match(casetta, /piccola casa di campagna/);
   });
 });
 

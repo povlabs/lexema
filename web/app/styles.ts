@@ -35,7 +35,7 @@ const COLUMN_PADDING = "pt-6 pb-16";
 export const SHELL_CENTRED = `${COLUMN} ${COLUMN_PADDING} flex min-h-screen flex-col justify-center text-center`;
 
 /** The page with a query: the same bar at the top, the results below it. */
-export const SHELL_TOP = `${COLUMN} ${COLUMN_PADDING}`;
+export const SHELL_TOP = `mx-auto w-full max-w-[72rem] px-[1.1rem] ${COLUMN_PADDING}`;
 
 /** The dark scheme itself: `surface` under everything, `text` on top of it. */
 export const BODY = "min-h-screen bg-surface font-serif text-base text-text";
@@ -51,7 +51,7 @@ export const LINK = `text-accent underline ${FOCUS_RING}`;
 
 // The search bar ----------------------------------------------------------
 
-export const SEARCH_FORM = "flex flex-wrap items-center justify-center gap-2";
+export const SEARCH_FORM = "flex max-w-[44rem] flex-wrap items-center justify-center gap-2";
 export const SEARCH_LABEL =
   "basis-full text-[0.8rem] uppercase tracking-[0.06em] text-text-muted";
 export const SEARCH_INPUT = `flex-[1_1_12rem] min-w-0 rounded-[6px] border border-border bg-surface-raised px-[0.7rem] py-[0.6rem] font-serif text-base text-text ${FOCUS_RING}`;
@@ -80,6 +80,20 @@ export const EMPTY = QUIET_MESSAGE;
 export const ERROR = `${MESSAGE} text-warning`;
 export const COUNT = `${MESSAGE} text-[0.9rem] text-text-muted`;
 
+/** Word identity sits above the index; source-only pronunciation waits for #20. */
+export const WORD_LAYER = "mt-8 border-b border-border pb-6";
+export const WORD_HEADING = "m-0 text-5xl font-semibold text-text-strong";
+export const READING_INDEX = "mt-8";
+export const INDEX_LIST = "mt-3 grid list-none grid-cols-1 gap-3 p-0 lg:grid-cols-3";
+export const INDEX_LINK = `flex h-full flex-col gap-1 rounded-[6px] border border-border bg-surface-raised p-4 no-underline text-text hover:border-accent ${FOCUS_RING}`;
+export const INDEX_GLOSS = "line-clamp-2 text-sm text-text-muted";
+export const INDEX_NUMBER = "font-mono text-sm text-accent";
+export const READING_NUMBER = "mt-8 mb-0 font-mono text-sm text-accent";
+export const SECTION_COUNT = "my-2 text-sm text-text-muted";
+export const MORE_DETAILS = "my-2";
+export const MORE_SUMMARY = `w-fit cursor-pointer text-accent underline ${FOCUS_RING}`;
+export const ENTRY_NOTE = "mt-4 border-l-2 border-border-strong pl-4 text-text-muted";
+
 /** A small aside beside a value: a gender, an article's display form. */
 export const MUTED = "text-[0.9rem] text-text-muted";
 /** Something the source left open, or a spelling it did not split. */
@@ -90,7 +104,7 @@ export const AMBIGUOUS = "text-[0.9rem] text-warning";
 /** A boxed, raised group — the shape `surface-raised` and `border` are for. */
 const RAISED = "rounded-[6px] border border-border bg-surface-raised";
 
-export const CARD = `${RAISED} mt-[1.4rem] p-[1.1rem]`;
+export const CARD = `${RAISED} mt-2 p-[1.1rem]`;
 export const HEADWORD = "m-0 text-xl font-semibold text-text-strong";
 
 export const HEADLINE = "m-0 mt-[0.45rem] flex flex-wrap gap-x-[1.4rem] gap-y-[0.2rem]";

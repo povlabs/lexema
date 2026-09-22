@@ -60,6 +60,10 @@ import {
   MUTED,
   SEARCHED,
   SOURCE_LINE,
+  SECTION_COUNT,
+  MORE_DETAILS,
+  MORE_SUMMARY,
+  ENTRY_NOTE,
 } from "./styles.ts";
 import type {
   ArticleWithholding,
@@ -1279,6 +1283,39 @@ function senseCountClause(count: number): string {
  * record: a record carrying no sense, and one listing no forms. A card adds its
  * own to them, and the whole set is said in one line near the top.
  */
+function Definition({ sense, reading }: { sense: Sense; reading: Reading }) {
+  return (
+    <li className={DEFINITION}>
+      {sense.glosses.length === 0 ? (
+        <span className={EMPTY}>The source carries no definition for this sense.</span>
+      ) : sense.glosses.map((gloss, i) => (
+        <p key={i} lang="it" className={GLOSS}>{gloss.text}</p>
+      ))}
+      {sense.labels.length > 0 && (
+        <p className={LABELS}>
+          {sense.labels.map((label, i) => (
+            <span key={i}>{i > 0 && " "}<It>{label.label}</It></span>
+          ))}
+        </p>
+      )}
+      <Grammar
+        claims={otherSenseClaims(sense, reading.grammar.bySense.get(sense.index) ?? [])}
+        label={`grammar for sense ${sense.index + 1}`}
+      />
+    </li>
+  );
+}
+
+/** The first visible definition slice. The native disclosure keeps the rest in the document. */
+const DEFINITION_SLICE = 1;
+
+/** Two source glosses for casa are page furniture, not definitions (#28, #61). */
+function isEntryFurniture(sense: Sense, word: string): boolean {
+  return sense.glosses.length > 0 && sense.glosses.every(({ text }) =>
+    text === `${word} ( citazioni)` || text.startsWith(`${word} ( approfondimento)`),
+  );
+}
+
 function ReadingShell({
   reading,
   query,
@@ -1293,6 +1330,8 @@ function ReadingShell({
   children: ReactNode;
 }) {
   const pos = posLabel(reading.pos);
+  const definitions = reading.senses.filter((sense) => !isEntryFurniture(sense, reading.word));
+  const furniture = reading.senses.filter((sense) => isEntryFurniture(sense, reading.word));
   const whole: Silence = {
     source: [
       ...silence.source,
@@ -1325,42 +1364,43 @@ function ReadingShell({
 
       {/* Senses stay apart, with their own labels: the source wrote several
           meanings and merging them into one list would invent a single one. */}
-      {reading.senses.length > 0 && (
-        <ol className={DEFINITIONS}>
-          {reading.senses.map((sense) => (
-            <li key={sense.index} className={DEFINITION}>
-              {sense.glosses.length === 0 ? (
-                <span className={EMPTY}>
-                  The source carries no definition for this sense.
-                </span>
-              ) : (
-                sense.glosses.map((gloss, i) => (
-                  <p key={i} lang="it" className={GLOSS}>
-                    {gloss.text}
-                  </p>
-                ))
-              )}
+      {furniture.length > 0 && (
+        <aside className={ENTRY_NOTE}>
+          <p>The source has entry notes but gives no definition for this reading.</p>
+          {furniture.map((sense) => (
+            <div key={sense.index}>
+              {sense.glosses.map((gloss, i) => <p key={i} lang="it">{gloss.text}</p>)}
               {sense.labels.length > 0 && (
                 <p className={LABELS}>
-                  {sense.labels.map((label, i) => (
-                    <span key={i}>
-                      {/* The gap between the pills is visual; this space is the
-                          text one. Without it `scuola` and `form-of` serialize
-                          as `scuolaform-of` to anything reading the words
-                          rather than the layout. */}
-                      {i > 0 && " "}
-                      <It>{label.label}</It>
-                    </span>
-                  ))}
+                  {sense.labels.map((label, i) => <span key={i}>{i > 0 && " "}<It>{label.label}</It></span>)}
                 </p>
               )}
               <Grammar
                 claims={otherSenseClaims(sense, reading.grammar.bySense.get(sense.index) ?? [])}
                 label={`grammar for sense ${sense.index + 1}`}
               />
-            </li>
+            </div>
           ))}
-        </ol>
+        </aside>
+      )}
+      {definitions.length > 0 && (
+        <section aria-label="Definitions">
+          <h3>Definitions</h3>
+          {definitions.length > DEFINITION_SLICE && (
+            <p className={SECTION_COUNT}>{definitions.length} · showing {DEFINITION_SLICE}</p>
+          )}
+          <ol className={DEFINITIONS}>
+            {definitions.slice(0, DEFINITION_SLICE).map((sense) => <Definition key={sense.index} sense={sense} reading={reading} />)}
+          </ol>
+          {definitions.length > DEFINITION_SLICE && (
+            <details className={MORE_DETAILS}>
+              <summary className={MORE_SUMMARY}>Show all {definitions.length} definitions</summary>
+              <ol className={DEFINITIONS} start={DEFINITION_SLICE + 1}>
+                {definitions.slice(DEFINITION_SLICE).map((sense) => <Definition key={sense.index} sense={sense} reading={reading} />)}
+              </ol>
+            </details>
+          )}
+        </section>
       )}
 
       {children}
@@ -1380,7 +1420,7 @@ function ReadingShell({
                   </>
                 ) : (
                   <>
-                    <It>{link.targetWord}</It>
+                    <a className={LINK} href={`/?q=${encodeURIComponent(link.targetWord)}`} lang="it">{link.targetWord}</a>
                     {/* More than one candidate means the source named a word,
                         not an entry. Showing all of them is the honest move;
                         picking one would invent a fact. */}
@@ -1391,6 +1431,9 @@ function ReadingShell({
                         <Candidates candidates={link.candidates} />. The source does not say which.
                       </span>
                     )}
+                    <p className={ENTRY_NOTE}>
+                      Meanings and shared facts for this reading live on the lemma page. <a className={LINK} href={`/?q=${encodeURIComponent(link.targetWord)}`}>Open entry →</a>
+                    </p>
                   </>
                 )}
               </li>
@@ -1950,12 +1993,13 @@ function VerbCard({ reading, query }: { reading: Reading; query: string }) {
         // a source string into separate forms.
         value: <VerbForms forms={fact.forms} filed={fact.filed} searched={searched} markUnsplit />,
       }))}
-      silence={{ source: nonFiniteClause(facts), withheld: [] }}
+      silence={{ source: reading.lemmaLinks.length > 0 ? [] : nonFiniteClause(facts), withheld: [] }}
     >
       <Grammar
         claims={otherRecordClaims(reading.grammar.record)}
         label={`other grammar for ${reading.word}`}
       />
+      {reading.forms.length > 0 && <p className={SECTION_COUNT}>Conjugation · {reading.forms.length} forms listed by the source</p>}
       {groups.map((group) => (
         <VerbMoodGroup
           key={groupKey(group.mood)}
