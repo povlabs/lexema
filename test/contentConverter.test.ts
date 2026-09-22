@@ -141,3 +141,25 @@ test("a second run is a no-op and editorial values survive canonicalization", as
     assert.deepEqual(updated.entries["noun:Sostantivo"].lexema, document.entries["noun:Sostantivo"].lexema);
   } finally { await rm(setup_.dir, { recursive: true, force: true }); }
 });
+
+test("a word whose records are split across the archive is refused, not half-written", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "lexema-content-"));
+  const output = join(dir, "content");
+  try {
+    // The database this converter replaced sorted by word, so a word's records
+    // were always adjacent. An archive carries whatever order it was written in.
+    const archive = await setupRelease(dir, "release-split", [
+      record("stabile", "noun", "X", { marker: "first" }),
+      record("sale", "noun", "Sostantivo"),
+      record("stabile", "noun", "X", { marker: "second" }),
+    ]);
+    await assert.rejects(
+      convertRelease({ input: archive, output, releaseId: "release-split" }),
+      /stabile appears in more than one run of records/,
+    );
+    // Whatever reached disk before the refusal holds the first run alone, so the
+    // second run cannot have overwritten it and restarted the suffixes silently.
+    const stable = JSON.parse(await readFile(contentFilePath(output, "stabile"), "utf8"));
+    assert.deepEqual(Object.keys(stable.entries), ["noun:X"]);
+  } finally { await rm(dir, { recursive: true, force: true }); }
+});

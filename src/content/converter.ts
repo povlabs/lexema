@@ -353,9 +353,24 @@ export async function convertRelease(options: ConversionOptions = {}): Promise<C
 
     const pending: ArchiveRecord[] = [];
     let pendingWord: string | undefined;
+    // A word is written once, when its run of records ends, so every record for a
+    // word must arrive in one run. The database this replaced sorted by word and
+    // guaranteed that; an archive only happens to. A second run would reopen the
+    // finished file and drop what the first run wrote, so refuse instead.
+    const closedWords = new Set<string>();
     const convertRecord = (record: ArchiveRecord): void => {
-      if (pendingWord !== undefined && pendingWord !== record.record.word) flushPending();
-      pendingWord = record.record.word;
+      const word = record.record.word;
+      if (pendingWord !== undefined && pendingWord !== word) {
+        closedWords.add(pendingWord);
+        flushPending();
+      }
+      if (closedWords.has(word)) {
+        throw new Error(
+          `${word} appears in more than one run of records at line ${record.lineNo}; ` +
+            "the archive must keep each word's records together",
+        );
+      }
+      pendingWord = word;
       pending.push(record);
     };
     const flushPending = (): void => {
