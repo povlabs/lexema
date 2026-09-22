@@ -1,15 +1,14 @@
-// How one reading renders. The whole job here is to show what the source says
-// and to be visibly silent where it says nothing — but said once, where a
-// reader meets it, rather than once per section.
+// How one reading renders: a numbered card with a title row, a header bar of
+// the facts the source states, then sections — definitions, examples, forms or
+// the conjugation — and, for a form, a panel pointing to its lemma.
 //
-// Three rules run through every section below, and all three come from
-// design-system-manifest.md § "The result card": the interface is English and
-// the source's own Italian is never translated, so every Italian string carries
-// `lang="it"` inside a document that is `lang="en"`; every candidate the lookup
-// returned is rendered, never ranked down to one; and facts are laid out rather
-// than listed — a header bar for the headline facts, boxed groups side by side
-// for the agreement sets, a section with nothing in it omitted and named once
-// in the card's own silence line.
+// Three rules run through every part of it, from design-system-manifest.md §
+// "The result card": the interface is English and the source's Italian is never
+// translated, so every Italian string carries `lang="it"` inside a document that
+// is `lang="en"`; every candidate the lookup returned is rendered, as a card or
+// as the lemma panel of one (`wordPage.ts`); and facts are laid out rather than
+// listed — a header bar for the headline facts, boxes three across for the
+// paradigms, and a section with nothing in it simply absent.
 
 import type { ReactNode } from "react";
 import {
@@ -18,84 +17,83 @@ import {
   isVerbReading,
   searchedSpellings,
 } from "@lexema/lookup/types.ts";
-import {
-  AMBIGUOUS,
-  BOX,
-  BOX_CELL,
-  BOX_HEADING,
-  BOX_ROW,
-  BOX_NOTE,
-  BOX_ROW_LABEL,
-  BOX_TABLE,
-  CARD,
-  CLAIM_LABEL,
-  CLAIM_STATED,
-  CLAIM_VALUE,
-  CLAIM_WITHOUT_VALUE,
-  CONJUGATION_GROUP,
-  CONJUGATION_TENSE,
-  DEFINITION,
-  DEFINITIONS,
-  DISPUTED,
-  DISPUTED_LINE,
-  DISPUTED_LIST,
-  EMPTY,
-  FORM_ITEM,
-  FORM_LIST,
-  FORM_SOURCE,
-  GLOSS,
-  GRAMMAR,
-  HEADLINE,
-  HEADLINE_FACT,
-  HEADLINE_LABEL,
-  HEADLINE_VALUE,
-  HEADWORD,
-  LABELS,
-  LINK,
-  LINKS,
-  LINKS_LIST,
-  MENTION,
-  MOOD_GROUP,
-  MOOD_HEADING,
-  MUTED,
-  SEARCHED,
-  SOURCE_LINE,
-  SECTION_COUNT,
-  MORE_DETAILS,
-  MORE_SUMMARY,
-  ENTRY_NOTE,
-} from "./styles.ts";
 import type {
+  ArticleDisplay,
   ArticleWithholding,
   GrammarClaim,
   NounReading,
   Reading,
-  ReadingArticles,
-  Review,
   SearchedSpellings,
   Sense,
   SourceForm,
 } from "@lexema/lookup/types.ts";
+import {
+  IT_MOODS_RULE,
+  NON_FINITE_ROLES,
+  TENSE_BOXES,
+  placeItalianVerbForm,
+  type NonFiniteRole,
+  type VerbSlot,
+} from "@lexema/italian/moods.ts";
+import { ChevronIcon } from "./icons";
+import type { Card, LemmaPanel } from "./wordPage.ts";
+import {
+  BOX,
+  BOX_CELL,
+  BOX_HEADING,
+  BOX_LINE,
+  BOX_NOTE,
+  BOX_ROW,
+  BOX_ROW_LABEL,
+  BOX_ROWS,
+  CARD,
+  CARD_BODY,
+  CARD_NUMBER,
+  CARD_TITLE,
+  CHEVRON,
+  DEFINITION,
+  DEFINITION_NUMBER,
+  DEFINITIONS,
+  ENTRY_NOTE,
+  EXAMPLE,
+  EXAMPLES,
+  FORM_OF,
+  GLOSS,
+  HEADLINE,
+  HEADLINE_FACT,
+  HEADLINE_FORM,
+  HEADLINE_LABEL,
+  HEADLINE_VALUE,
+  HEADWORD,
+  LEMMA_ARROW,
+  LEMMA_BODY,
+  LEMMA_LINE,
+  LEMMA_OPEN,
+  LEMMA_PANEL,
+  LEMMA_WORD,
+  MENTION,
+  MORE,
+  MORE_BUTTON,
+  MORE_BUTTON_WIDE,
+  MORE_CLOSED,
+  MORE_OPEN,
+  POS_PILL,
+  SEARCHED,
+  SEARCHED_CELL,
+  SEARCHED_LABEL,
+  SEARCHED_NOTE,
+  SECTION,
+  SECTION_COUNT,
+  SECTION_HEADER,
+  SECTION_NAME,
+  SECTION_NOTE,
+  SECTION_RULE,
+  SENSE_LABEL,
+  SILENCE,
+  TENSE_HEADING,
+} from "./styles.ts";
 
-/**
- * Where one reading can be checked by hand.
- *
- * The release is a Wiktextract dump of the Italian Wiktionary, so every record
- * came from a page there under its own headword. The source stores no URL, so
- * this one is built from the headword. The link is labelled *Source* and
- * nothing more — [ADR 0009](../../.decisions/0009-two-licences-and-a-source-link.md)
- * keeps the credit itself off this page and on `/attribution`, which the site
- * footer reaches. Its accessible name still names the word and the part of
- * speech, because "Source" repeated once per reading tells a screen reader
- * nothing about which reading it belongs to. The archive line number and JSON
- * pointers stay next to it: they are what pin the reading to an exact byte of
- * the release, and the link is what a reader can actually click.
- */
-const WIKTIONARY_PAGE = "https://it.wiktionary.org/wiki/";
-
-function sourcePageUrl(word: string): string {
-  return WIKTIONARY_PAGE + encodeURIComponent(word.replace(/ /g, "_"));
-}
+// Small shared pieces -------------------------------------------------------
 
 /** Nicer than `pos_title`, which is Italian and inconsistent. */
 const POS_LABEL: Record<string, string> = {
@@ -113,7 +111,21 @@ const POS_LABEL: Record<string, string> = {
   abbrev: "abbreviation",
 };
 
-const posLabel = (pos: string): string => POS_LABEL[pos] ?? pos;
+export const posLabel = (pos: string): string => POS_LABEL[pos] ?? pos;
+
+/**
+ * The part of speech a card's pill and index chip carry: `noun form` when the
+ * record says it is a form of another word, which is what the source's own
+ * `form_of` edge states.
+ */
+export function readingKind(reading: Reading): string {
+  return reading.lemmaLinks.length > 0 ? `${posLabel(reading.pos)} form` : posLabel(reading.pos);
+}
+
+/** The words a form reading names as its lemma, once each. */
+export function lemmaWords(reading: Reading): string[] {
+  return [...new Set(reading.lemmaLinks.map((link) => link.targetWord))];
+}
 
 /** The value the source stated for one dimension, if it stated one. */
 function stated(claims: readonly GrammarClaim[], dimension: string): string | undefined {
@@ -133,42 +145,41 @@ function statedValues(claims: readonly GrammarClaim[], dimension: string): strin
   return values;
 }
 
-/** True when the source was asked for this dimension here and said nothing. */
-function isMissing(claims: readonly GrammarClaim[], dimension: string): boolean {
-  return claims.some((claim) => claim.status === "missing" && claim.dimension === dimension);
-}
-
 /**
- * One word as the source wrote it, with nothing to split on.
- *
- * `grandissimo\n massimo` is a single `forms[]` entry the source wrote as two
- * lines, and `più grande` is one it wrote as two words. Neither is two forms, and
- * this page is not the place that decides it is: the test is the whole of what
- * "a single word" means here, and anything failing it is shown verbatim.
+ * `form-of` is how the source marks a record as a form of another word. The
+ * card says that once, in its title (`of sala`) and its lemma panel, so the tag
+ * itself is not printed again anywhere on the card.
  */
-function isOneWord(surface: string): boolean {
-  return !/\s/u.test(surface);
-}
+const isFormOfTag = (text: string): boolean => text === "form-of";
 
 /** An Italian word, in a page whose language is English. */
 function It({ children }: { children: string }) {
   return <span lang="it">{children}</span>;
 }
 
-/**
- * One spelling of the entry itself: its headword, or one `forms[]` entry of it.
- *
- * Every box renders one of these rather than a bare string, so the page says
- * which source row each spelling came from — `data-headword` for the headword,
- * `data-form="3"` for the record's fourth `forms[]` entry. That is what turns
- * "every form is on this card exactly once" into something a test counts
- * instead of a spelling it pattern-matches, and a spelling that is neither —
- * an article Lexema derived, a word another record points with — carries no
- * mark and is not one of the entry's own forms.
- */
+/** `a`, `a and b`, `a, b and c` — an English list inside one sentence. */
+function listPhrase(parts: readonly string[]): string {
+  if (parts.length <= 1) return parts.join("");
+  return `${parts.slice(0, -1).join(", ")} and ${parts[parts.length - 1]}`;
+}
+
+/** The same list under a negation, where *and* would read as the wrong claim. */
+function orPhrase(parts: readonly string[]): string {
+  if (parts.length <= 1) return parts.join("");
+  return `${parts.slice(0, -1).join(", ")} or ${parts[parts.length - 1]}`;
+}
+
+// Spellings -----------------------------------------------------------------
+//
+// Every Italian spelling of the entry renders through `Spelled`, which says
+// which source row it came from — `data-headword` for the headword,
+// `data-form="3"` for the record's fourth `forms[]` entry. That turns "every
+// form is on this card" into something a test counts rather than a spelling it
+// pattern-matches.
+
 type Spelling =
   | { kind: "headword"; surface: string }
-  | { kind: "form"; index: number; surface: string; from: string | null; pointer: string };
+  | { kind: "form"; index: number; surface: string; pointer: string };
 
 const headwordOf = (reading: Reading): Spelling => ({ kind: "headword", surface: reading.word });
 
@@ -176,1913 +187,1018 @@ const spellingOf = (form: SourceForm): Spelling => ({
   kind: "form",
   index: form.index,
   surface: form.surface,
-  from: form.formSource,
   pointer: form.ref.jsonPointer,
 });
 
-/**
- * The spellings this card's query actually hit, as `searchedSpellings`
- * (`src/lookup/types.ts`) read them off the reading's own evidence.
- *
- * It travels to every box instead of the query string, because a box marks a
- * form by pointer and the headword by the evidence's own kind, never by
- * comparing spellings (#49).
- */
-type Searched = SearchedSpellings;
-
-/**
- * The page the source says this form was taken from, where it names one.
- *
- * It travels with the spelling rather than with the box, because it is a fact
- * about the form and the box that places the form is now the only place it
- * renders — `parlerei` is read off a conjugation appendix, and dropping that
- * would lose the one thing saying where it came from.
- */
-function SpellingSource({ spelling }: { spelling: Spelling }) {
-  if (spelling.kind === "headword" || spelling.from === null) return null;
-  return (
-    <span className={FORM_SOURCE}>
-      {" "}
-      from <It>{spelling.from}</It>
-    </span>
-  );
-}
-
-/** A key that tells one rendered spelling from another inside one box. */
 const spellingKey = (spelling: Spelling): string =>
   spelling.kind === "headword" ? "headword" : `form-${spelling.index}`;
 
-/** An Italian spelling of this entry, marked with the source row it came from. */
 function Spelled({ spelling }: { spelling: Spelling }) {
-  if (spelling.kind === "headword") {
-    return (
-      <span lang="it" data-headword="">
-        {spelling.surface}
-      </span>
-    );
-  }
-  return (
+  return spelling.kind === "headword" ? (
+    <span lang="it" data-headword="">
+      {spelling.surface}
+    </span>
+  ) : (
     <span lang="it" data-form={spelling.index}>
       {spelling.surface}
     </span>
   );
 }
 
-/**
- * The `forms[]` entries a set of rendered spellings placed, by index.
- *
- * A box hands back what it put on the page, and the card subtracts it from the
- * record's forms — so the unplaced box below holds exactly what no box placed,
- * and no form is rendered by two boxes at once.
- */
-function placedForms(spellings: readonly Spelling[]): number[] {
-  return spellings.flatMap((spelling) => (spelling.kind === "form" ? [spelling.index] : []));
-}
-
-/** A claim the box that placed a form already states by filing it where it did. */
-function filedUnder(...pairs: readonly (readonly [string, string | undefined])[]) {
-  return (claim: GrammarClaim): boolean =>
-    claim.status === "stated" &&
-    pairs.some(([dimension, value]) => dimension === claim.dimension && value === claim.value);
-}
-
-/**
- * What the box that placed a form has not already said about it.
- *
- * A placed form's spelling renders in one box and nowhere else, so the claims
- * that box states itself — the row or cell it filed the form under — are not
- * repeated beside the spelling, and everything else the source said about that
- * form still is. Dropping the rest would trade one duplication for a missing
- * source fact.
- */
-function claimsBeyond(
-  claims: readonly GrammarClaim[],
-  said: (claim: GrammarClaim) => boolean,
-): GrammarClaim[] {
-  return claims.filter((claim) => !said(claim));
-}
-
-// The headline bar --------------------------------------------------------
-//
-// "Under the headword: part of speech, then the few facts the source states for
-// it, on one line, labelled in small text with the value in large"
-// (design-system-manifest.md § "The result card"). A fact the source did not
-// state is not a row here: the card's silence line says that once, near the
-// top, instead of saying it beside every dimension it could have filled.
-
-/**
- * One headline fact: a small English label, and the value under it.
- *
- * The value is a node rather than a string because a verb's headline facts are
- * source spellings (#48) — each marked `lang="it"` and with the `forms[]` entry
- * it came from, so the bar is one of the places the counting test looks. A noun's
- * and an adjective's are plain stated values, and a string is still one of these.
- */
-interface HeadlineFact {
-  label: string;
-  value: ReactNode;
-}
-
-function HeadlineBar({ facts }: { facts: HeadlineFact[] }) {
+/** Several spellings in one cell, as the source filed them: `va' / vai`. */
+function Spellings({ spellings }: { spellings: readonly Spelling[] }) {
   return (
-    <dl className={HEADLINE}>
-      {facts.map((fact) => (
-        <div key={fact.label} className={HEADLINE_FACT}>
-          <dt className={HEADLINE_LABEL}>{fact.label}</dt>
-          <dd className={HEADLINE_VALUE}>{fact.value}</dd>
-        </div>
+    <>
+      {spellings.map((spelling, i) => (
+        <span key={spellingKey(spelling)}>
+          {i > 0 && " / "}
+          <Spelled spelling={spelling} />
+        </span>
       ))}
-    </dl>
+    </>
   );
 }
 
-/** The dimensions the header bar carries, and the silence line accounts for. */
-const HEADLINE_DIMENSIONS = ["gender", "number"] as const;
-
 /**
- * The headline facts for a record, from the dimensions the source stated.
- *
- * Every stated value counts, not the first: `grande` is tagged masculine *and*
- * feminine, and a bar showing one of them would be reading past the source.
+ * Whether the query hit this spelling, read off the lookup's own evidence: a
+ * form by its pointer, the headword by a headword hit. Nothing compares
+ * spellings, so a form the index never matched is never outlined (#49).
  */
-function statedFacts(claims: readonly GrammarClaim[]): HeadlineFact[] {
-  const facts: HeadlineFact[] = [];
-  for (const dimension of HEADLINE_DIMENSIONS) {
-    const values = statedValues(claims, dimension);
-    if (values.length > 0) facts.push({ label: dimension, value: values.join(", ") });
-  }
-  return facts;
+function isSearched(spelling: Spelling, searched: SearchedSpellings): boolean {
+  return spelling.kind === "headword" ? searched.headword : searched.formPointers.has(spelling.pointer);
 }
 
-// Saying the silence once -------------------------------------------------
-//
-// "A section with nothing to show is omitted. One line near the top of the card
-// names what the source does not state for this entry" — the rule this whole
-// file used to break five times on one `casa` card (#60).
+// Sections and disclosure ---------------------------------------------------
 
-/**
- * Everything one card has nothing to show for, in two kinds.
- *
- * `source` is what the source itself does not say, and `withheld` is what
- * Lexema will not derive from what it does say. Keeping them apart is what
- * stops the page blaming the source for a line Lexema drew itself.
- */
-interface Silence {
-  source: string[];
-  withheld: string[];
-}
-
-const NO_SILENCE: Silence = { source: [], withheld: [] };
-
-/** `a`, `a and b`, `a, b and c` — an English list inside one sentence. */
-function listPhrase(parts: string[]): string {
-  if (parts.length <= 1) return parts.join("");
-  return `${parts.slice(0, -1).join(", ")} and ${parts[parts.length - 1]}`;
-}
-
-/** The same list under a negation, where *and* would read as the wrong claim. */
-function orPhrase(parts: string[]): string {
-  if (parts.length <= 1) return parts.join("");
-  return `${parts.slice(0, -1).join(", ")} or ${parts[parts.length - 1]}`;
-}
-
-/**
- * The one line that names this card's silence, or nothing at all.
- *
- * One paragraph, near the top, above the senses: a reader meets what this entry
- * does not have once, and every section it would have filled is simply not
- * there.
- */
-function silenceSentences(silence: Silence): string {
-  const sentences: string[] = [];
-  if (silence.source.length > 0) {
-    sentences.push(`The source ${listPhrase(silence.source)} for this entry.`);
-  }
-  for (const clause of silence.withheld) sentences.push(`Lexema ${clause}.`);
-  return sentences.join(" ");
-}
-
-function CardSilence({ silence }: { silence: Silence }) {
-  const said = silenceSentences(silence);
-  if (said === "") return null;
-  return <p className={EMPTY}>{said}</p>;
-}
-
-/**
- * The dimensions of `HEADLINE_DIMENSIONS` this record does not state, as one
- * clause — or nothing, when it states them all.
- */
-function unstatedClause(claims: readonly GrammarClaim[]): string[] {
-  const unstated = HEADLINE_DIMENSIONS.filter(
-    (dimension) => stated(claims, dimension) === undefined,
-  );
-  if (unstated.length === 0) return [];
-  if (unstated.length === HEADLINE_DIMENSIONS.length) {
-    return [`states neither a ${unstated[0]} nor a ${unstated[1]}`];
-  }
-  return [`states no ${unstated[0]}`];
-}
-
-// Boxed groups ------------------------------------------------------------
-//
-// "Each agreement set is one box with a heading; boxes sit in a row that wraps
-// on narrow screens. Rows inside a box are `label value`, the label small and
-// grey, the value in the reading language."
-
-/**
- * One boxed group: its own heading, and label-and-value rows under it.
- *
- * The heading is the card's own third level by default. A verb's tense boxes
- * sit inside a mood group that carries an `<h3>` of its own, so they take the
- * fourth — the outline a reader tabs through says mood, then tense, rather
- * than two headings at one level with no relation between them.
- */
-function Box({
+/** A section's header: its name, a count, and a hairline to the right edge. */
+function Section({
   id,
-  heading,
-  level = 3,
+  name,
+  count,
+  note,
   children,
 }: {
   id: string;
-  heading: string;
-  level?: 3 | 4;
+  name: string;
+  count?: string;
+  note?: ReactNode;
   children: ReactNode;
 }) {
-  const Heading = level === 3 ? "h3" : "h4";
   return (
-    <section className={BOX} aria-labelledby={id}>
-      <Heading className={BOX_HEADING} id={id}>
-        {heading}
-      </Heading>
+    <section className={SECTION} aria-labelledby={id}>
+      <div className={SECTION_HEADER}>
+        <h3 className={SECTION_NAME} id={id}>
+          {name}
+        </h3>
+        {count !== undefined && <span className={SECTION_COUNT}>{count}</span>}
+        <span className={SECTION_RULE} aria-hidden="true" />
+      </div>
+      {note !== undefined && <p className={SECTION_NOTE}>{note}</p>}
       {children}
     </section>
   );
 }
 
-/** The one row a card's boxes sit in, side by side, wrapping when narrow. */
-function BoxRow({ children }: { children: ReactNode }) {
-  return <div className={BOX_ROW}>{children}</div>;
-}
-
-/** The rows of one box: each a small English label and a value beside it. */
-function BoxRows({ children }: { children: ReactNode }) {
-  return (
-    <table className={BOX_TABLE}>
-      <tbody>{children}</tbody>
-    </table>
-  );
-}
-
-function BoxLine({ label, children }: { label: ReactNode; children: ReactNode }) {
-  return (
-    <tr>
-      <th className={BOX_ROW_LABEL} scope="row">
-        {label}
-      </th>
-      <td className={BOX_CELL}>{children}</td>
-    </tr>
-  );
+/** `5 · showing 1` when a set is sliced, else the total alone. */
+export function sliceCount(total: number, slice: number): string {
+  return total > slice ? `${total} · showing ${slice}` : `${total}`;
 }
 
 /**
- * Whether this spelling is the one the query hit, in whichever shape it sits.
+ * The rest of a set, behind a bordered button that opens it in place.
  *
- * A form is one pointer against a set of pointers, both read from the same
- * source row: the form's own `ref.jsonPointer` and the `embedded-form`
- * evidence the lookup recorded. A headword has no pointer into `forms[]`, so
- * it is the `headword` evidence itself. Nothing here compares surfaces, so a
- * spelling the index never matched is never outlined (#49), and a record whose
- * headword is the query — `grande` in its own masculine-singular cell — keeps
- * the mark the manifest asks for wherever a box places it.
+ * A native `<details>`: the whole set is in the document whether or not it is
+ * open, so nothing is dropped for a reader without JavaScript, a search engine
+ * or a screen reader.
  */
-function isSearchedSpelling(spelling: Spelling, searched: Searched): boolean {
-  return spelling.kind === "headword"
-    ? searched.headword
-    : searched.formPointers.has(spelling.pointer);
-}
-
-/**
- * One source spelling inside a box, outlined where it sits when it is the form
- * that was searched for.
- *
- * "A query that is itself a form is marked inside the paradigm it belongs to,
- * by a border, not by colour alone" — so the border is drawn by `.searched` and
- * the same fact is said in words beside it, for a reader who sees neither.
- */
-function BoxSurface({ spelling, searched }: { spelling: Spelling; searched: Searched }) {
-  if (!isSearchedSpelling(spelling, searched)) return <Spelled spelling={spelling} />;
+export function ShowAll({
+  total,
+  noun,
+  wide = false,
+  children,
+}: {
+  total: number;
+  noun: string;
+  wide?: boolean;
+  children: ReactNode;
+}) {
   return (
-    <span className={SEARCHED}>
-      <Spelled spelling={spelling} />
-      <span className={MUTED}> · your search</span>
-    </span>
+    <details className={MORE}>
+      <summary className={wide ? MORE_BUTTON_WIDE : MORE_BUTTON}>
+        <span className={MORE_CLOSED}>
+          Show all {total} {noun}
+        </span>
+        <span className={MORE_OPEN}>Show fewer {noun}</span>
+        <ChevronIcon className={CHEVRON} />
+      </summary>
+      {children}
+    </details>
   );
 }
 
-function Grammar({ claims, label }: { claims: GrammarClaim[]; label: string }) {
-  if (claims.length === 0) return null;
+// The header bar ------------------------------------------------------------
 
+/**
+ * One headline fact: a small English label over its value. A value that is a
+ * word form renders in mono, like every form on the page.
+ */
+interface HeadlineFact {
+  label: string;
+  value: ReactNode;
+  form?: boolean;
+}
+
+function HeadlineBar({ facts }: { facts: readonly HeadlineFact[] }) {
+  if (facts.length === 0) return null;
   return (
-    <dl className={GRAMMAR} aria-label={label}>
-      {claims.map((claim, i) => {
-        if (claim.status === "stated") {
-          return (
-            <div key={i} className={CLAIM_STATED}>
-              <dt className={CLAIM_LABEL}>{claim.dimension}</dt>
-              <dd className={CLAIM_VALUE}>{claim.value}</dd>
-            </div>
-          );
-        }
-        // The source was asked and said nothing. Different from never asking.
-        if (claim.status === "missing") {
-          return (
-            <div key={i} className={CLAIM_WITHOUT_VALUE}>
-              <dt className={CLAIM_LABEL}>{claim.dimension}</dt>
-              <dd className={CLAIM_VALUE}>not stated in the source</dd>
-            </div>
-          );
-        }
-        // Text we will not guess at. Shown verbatim so a reader can judge it.
-        return (
-          <div key={i} className={CLAIM_WITHOUT_VALUE}>
-            <dt className={CLAIM_LABEL}>unclassified</dt>
-            <dd className={CLAIM_VALUE}>
-              <q lang="it">{claim.sourceText}</q>
-            </dd>
-          </div>
-        );
-      })}
+    <dl className={HEADLINE}>
+      {facts.map((fact) => (
+        <div key={fact.label} className={HEADLINE_FACT}>
+          <dt className={HEADLINE_LABEL}>{fact.label}</dt>
+          <dd className={fact.form ? HEADLINE_FORM : HEADLINE_VALUE}>{fact.value}</dd>
+        </div>
+      ))}
     </dl>
   );
 }
 
 /**
- * A claim review, shown as a warning attached to the claim it is about.
- *
- * A disputed claim is never quietly dropped and never quietly corrected: the
- * source keeps saying what it said, and the page says that the evidence
- * disagrees. This is the state the `studente` verb claim is in.
+ * What the source states about the record itself beyond the bar's own facts —
+ * `transitivity`, or a label such as `inv.` it wrote as free text — as more
+ * facts on the same bar, so nothing it said is left off the card and nothing
+ * sits as a loose pill under it.
  */
-function Disputes({ reviews }: { reviews: Review[] }) {
-  const disputed = reviews.filter((review) => review.status === "disputed");
-  if (disputed.length === 0) return null;
-  return (
-    <div className={DISPUTED} role="note">
-      <p className={DISPUTED_LINE}>
-        <strong>Disputed by later research.</strong> This entry is shown as the source wrote it;
-        the evidence below disagrees with it.
-      </p>
-      <ul className={DISPUTED_LIST}>
-        {disputed.map((review, i) => (
-          <li key={i}>
-            {review.note}{" "}
-            <a className={LINK} href={review.evidenceUrl} rel="noreferrer">
-              evidence
-            </a>{" "}
-            · reviewed {review.reviewedAt} by {review.reviewedBy} · claim{" "}
-            <code>{review.ref.jsonPointer}</code>
-          </li>
-        ))}
-      </ul>
-    </div>
-  );
-}
-
-/**
- * Said next to a surface the source did not write as one word.
- *
- * The note is the marking, and it is the only thing this page does about such a
- * string: `docs/LEXEMA_SPEC.md` "Italian adjective enrichment" says to preserve
- * a compound or incomplete source string rather than split or complete it.
- */
-function Unsplit() {
-  return <span className={AMBIGUOUS}> · source text, not split into separate forms</span>;
-}
-
-/** One `forms[]` entry: the Italian spelling, and what the source said about it. */
-function FormEntry({
-  form,
-  searched,
-  markUnsplit,
-}: {
-  form: SourceForm;
-  searched: Searched;
-  markUnsplit: boolean;
-}) {
-  return (
-    <li className={FORM_ITEM}>
-      <BoxSurface spelling={spellingOf(form)} searched={searched} />
-      {markUnsplit && !isOneWord(form.surface) && <Unsplit />}
-      <Grammar claims={form.claims} label={`grammar for ${form.surface}`} />
-      <SpellingSource spelling={spellingOf(form)} />
-    </li>
-  );
-}
-
-/**
- * The forms of this record no table placed, in source order.
- *
- * "Forms the source leaves unplaced go in one last box named for what is
- * missing, never scattered", and "a fact is never rendered twice on one card"
- * (design-system-manifest.md § "The result card"). So this box holds what the
- * singular-and-plural table, the gender-and-number paradigm, the degrees and
- * the conjugations did not take, and nothing else — a form one of those placed
- * is on the card already, and listing it here again is the duplication this
- * box used to carry by design.
- *
- * It is named for what it holds: the whole table when no box placed anything,
- * the rest when one did. An entry whose forms are all placed renders no box at
- * all, and neither does one that lists no forms — the card's silence line says
- * that once, which is the whole of #60.
- *
- * A listed form is not a claim that this record is the base word —
- * `studentessa` lists `studenti` — so the heading says whose table it is.
- */
-function UnplacedForms({
-  reading,
-  forms,
-  searched,
-  markUnsplit = false,
-}: {
-  reading: Reading;
-  forms: readonly SourceForm[];
-  searched: Searched;
-  markUnsplit?: boolean;
-}) {
-  if (forms.length === 0) return null;
-  const heading =
-    forms.length === reading.forms.length
-      ? "Forms listed by this entry"
-      : "Other forms listed by this entry";
-  return (
-    <Box id={`forms-${reading.recordId}`} heading={heading}>
-      <ul className={FORM_LIST}>
-        {forms.map((form) => (
-          <FormEntry key={form.index} form={form} searched={searched} markUnsplit={markUnsplit} />
-        ))}
-      </ul>
-    </Box>
-  );
-}
-
-/** The record's forms that no box on this card placed, in source order. */
-function unplacedForms(reading: Reading, placed: ReadonlySet<number>): SourceForm[] {
-  return reading.forms.filter((form) => !placed.has(form.index));
-}
-
-// A noun is read for three things the generic card answers badly: what it
-// agrees with, how it goes singular and plural, and which article stands in
-// front of it. The first is in the header bar; the other two are boxes, and a
-// box with nothing in it is not rendered — an empty table would read as "no
-// plural", which is a claim the source did not make, and a sentence in its
-// place is the wall of apologies #60 is about.
-
-/** One spelling the source files under a number, with the gender it gave it. */
-interface NumberedSurface {
-  spelling: Spelling;
-  gender: string | undefined;
-  /** What the row has not already said about this spelling. */
-  rest: GrammarClaim[];
-}
-
-/** One row of the singular-and-plural box: a number, and what is filed under it. */
-interface NumberRow {
-  number: string;
-  surfaces: NumberedSurface[];
-}
-
-/**
- * The record's spellings, grouped by the number the source stated for each.
- *
- * The headword goes under the record's own number, and every forms row under
- * its own — which is the only grouping the source supports. A row the source
- * gave no number is not guessed into one; it stays in the forms box, where it
- * is listed without a claim about it.
- */
-function numberedSurfaces(reading: Reading, number: "singular" | "plural"): NumberedSurface[] {
-  const surfaces: NumberedSurface[] = [];
-  const filed = (claims: readonly GrammarClaim[], spelling: Spelling): NumberedSurface => {
-    const gender = stated(claims, "gender");
-    return {
-      spelling,
-      gender,
-      // A form's other claims render here, because this row is the only place
-      // that form now sits. The headword's do not: the card renders the
-      // record's own claims once, above the boxes.
-      rest:
-        spelling.kind === "headword"
-          ? []
-          : claimsBeyond(claims, filedUnder(["number", number], ["gender", gender])),
-    };
-  };
-  if (stated(reading.grammar.record, "number") === number) {
-    surfaces.push(filed(reading.grammar.record, headwordOf(reading)));
-  }
-  for (const form of reading.forms) {
-    if (stated(form.claims, "number") !== number) continue;
-    surfaces.push(filed(form.claims, spellingOf(form)));
-  }
-  return surfaces;
-}
-
-/** One row's value: every spelling filed under that number, verbatim. */
-function NumberCell({ surfaces, searched }: { surfaces: NumberedSurface[]; searched: Searched }) {
-  return (
-    <>
-      {surfaces.map((entry, i) => (
-        <span key={spellingKey(entry.spelling)}>
-          {i > 0 && ", "}
-          {/* Exactly as the source spelled it: `studente/studentessa` is one
-              string the source wrote, not two words to split apart. */}
-          <BoxSurface spelling={entry.spelling} searched={searched} />
-          {entry.gender !== undefined && <span className={MUTED}> {entry.gender}</span>}
-          <Grammar claims={entry.rest} label={`grammar for ${entry.spelling.surface}`} />
-          <SpellingSource spelling={entry.spelling} />
-        </span>
-      ))}
-    </>
-  );
-}
-
-const NOUN_NUMBERS = ["singular", "plural"] as const;
-
-/** Every number this record files a spelling under, with what it filed there. */
-function nounNumberRows(reading: Reading): NumberRow[] {
-  return NOUN_NUMBERS.map((number) => ({
-    number: number as string,
-    surfaces: numberedSurfaces(reading, number),
-  })).filter((row) => row.surfaces.length > 0);
-}
-
-/**
- * The singular-and-plural box: one row per number the source actually filed a
- * spelling under, and no box at all when it filed none.
- *
- * The rows are built by the card, which subtracts what they placed from the
- * forms left over — so the box and the unplaced box cannot disagree about
- * which forms this table is showing.
- */
-function NounNumbers({
-  rows,
-  recordId,
-  searched,
-}: {
-  rows: NumberRow[];
-  recordId: number;
-  searched: Searched;
-}) {
-  if (rows.length === 0) return null;
-  return (
-    <Box id={`numbers-${recordId}`} heading="Singular and plural">
-      <BoxRows>
-        {rows.map((row) => (
-          <BoxLine key={row.number} label={row.number}>
-            <NumberCell surfaces={row.surfaces} searched={searched} />
-          </BoxLine>
-        ))}
-      </BoxRows>
-    </Box>
-  );
-}
-
-/**
- * Why Lexema derives no article — for the card's silence line, and only when
- * the header bar has not already said it.
- *
- * Three of the six reasons are "the source states no gender or no number",
- * which the silence line's own first clause states: repeating it here would be
- * the duplication #60 is about.
- */
-function articleWithheldClause(withholding: ArticleWithholding): string[] {
-  switch (withholding.reason) {
-    case "no-gender-or-number-stated":
-    case "gender-not-stated":
-    case "number-not-stated":
-      return [];
-    case "gender-is-not-masculine-or-feminine":
-      return [
-        `derives no article: the source gives the gender as ${withholding.statedGender}, which is neither masculine nor feminine`,
-      ];
-    case "number-is-not-singular-or-plural":
-      return [
-        `derives no article: the source gives the number as ${withholding.statedNumber}, which is neither singular nor plural`,
-      ];
-    case "surface-not-handled":
-      return [
-        "derives no article: rule it-articles/v1 derives one for a single word, and this entry's headword is not one",
-      ];
-  }
-}
-
-/**
- * The articles box, and where the articles came from.
- *
- * These are the one thing on this page the source did not say: `it-articles/v1`
- * derives them from the gender and number the source *did* state, so the box
- * says that under its rows rather than in a column repeated once per row. A
- * withheld set renders no box: the card's silence line carries the reason.
- */
-function NounArticles({ articles, recordId }: { articles: ReadingArticles; recordId: number }) {
-  if (articles.status !== "derived") return null;
-  return (
-    <Box id={`articles-${recordId}`} heading="Articles">
-      <BoxRows>
-        {articles.articles.map((article) => (
-          <BoxLine key={article.kind} label={article.kind}>
-            <It>{article.article}</It>{" "}
-            <span className={MUTED}>
-              <It>{article.displayForm}</It>
-            </span>
-          </BoxLine>
-        ))}
-      </BoxRows>
-      <p className={BOX_NOTE}>
-        Not from the source: Lexema derives these from the {articles.articles[0].gender}{" "}
-        {articles.articles[0].number} the source states, by rule <code>it-articles/v1</code>.
-      </p>
-    </Box>
-  );
-}
-
-// An adjective is read as a paradigm: masculine and feminine, singular and
-// plural, in one glance. This source supports that for some adjectives and not
-// for others, and that difference is what this card is for — a box when four
-// source-backed words fill it, and one clause in the card's silence line when
-// it does not. Nothing below splits, trims or completes a source string, per
-// docs/LEXEMA_SPEC.md "Italian adjective enrichment".
-
-const ADJECTIVE_GENDERS = ["masculine", "feminine"] as const;
-const ADJECTIVE_NUMBERS = ["singular", "plural"] as const;
-
-type AdjectiveGender = (typeof ADJECTIVE_GENDERS)[number];
-type AdjectiveNumber = (typeof ADJECTIVE_NUMBERS)[number];
-
-/** One cell of the paradigm, named by the two dimensions that locate it. */
-interface Cell {
-  gender: AdjectiveGender;
-  number: AdjectiveNumber;
-}
-
-const CELLS: readonly Cell[] = ADJECTIVE_GENDERS.flatMap((gender) =>
-  ADJECTIVE_NUMBERS.map((number) => ({ gender, number })),
-);
-
-const cellKey = (cell: Cell): string => `${cell.gender}/${cell.number}`;
-const cellName = (cell: Cell): string => `${cell.gender} ${cell.number}`;
-
-/**
- * Every cell the source filed one spelling under.
- *
- * A spelling lands in a cell only when the source stated both dimensions for
- * it, and it lands in every cell those statements cover: `fine` is tagged
- * masculine, feminine and singular, so the source really does file it under two
- * cells. A spelling the source gave one dimension or neither lands nowhere —
- * guessing the other half is the completion the spec forbids.
- *
- * A degree the source states keeps a spelling out of the table altogether,
- * unless that degree is `positive`. `grande` lists `grandissimo` tagged
- * absolute, superlative, masculine and singular: it is a masculine singular of
- * something, and calling it the masculine singular of `grande` would be reading
- * past the tag the source put there. It belongs in the degrees below.
- */
-function placements(claims: readonly GrammarClaim[]): Cell[] {
-  const degrees = statedValues(claims, "degree");
-  if (degrees.some((degree) => degree !== "positive")) return [];
-
-  const genders = statedValues(claims, "gender");
-  const numbers = statedValues(claims, "number");
-  return CELLS.filter((cell) => genders.includes(cell.gender) && numbers.includes(cell.number));
-}
-
-/**
- * The spellings this entry files under each cell: its own headword from the
- * record's tags, and each `forms[]` entry from its own.
- */
-function paradigmCandidates(reading: Reading): Map<string, ParadigmCandidate[]> {
-  const byCell = new Map<string, ParadigmCandidate[]>(CELLS.map((cell) => [cellKey(cell), []]));
-
-  const file = (claims: readonly GrammarClaim[], spelling: Spelling): void => {
-    const candidate: ParadigmCandidate = {
-      spelling,
-      // The table is what files a spelling by gender and number, and it takes
-      // only positive degrees, so those three are what it says itself. The
-      // headword carries nothing here: the card renders the record's own
-      // claims once, above the boxes.
-      rest:
-        spelling.kind === "headword"
-          ? []
-          : claimsBeyond(
-              claims,
-              (claim) =>
-                claim.status === "stated" &&
-                (claim.dimension === "gender" ||
-                  claim.dimension === "number" ||
-                  (claim.dimension === "degree" && claim.value === "positive")),
-            ),
-    };
-    for (const cell of placements(claims)) {
-      const candidates = byCell.get(cellKey(cell));
-      if (
-        candidates !== undefined &&
-        !candidates.some((other) => other.spelling.surface === spelling.surface)
-      ) {
-        candidates.push(candidate);
-      }
-    }
-  };
-
-  file(reading.grammar.record, headwordOf(reading));
-  for (const form of reading.forms) file(form.claims, spellingOf(form));
-  return byCell;
-}
-
-/** One spelling a cell could take, and what the table would not say about it. */
-interface ParadigmCandidate {
-  spelling: Spelling;
-  rest: GrammarClaim[];
-}
-
-/** Why a cell could not be filled by one source-backed word. */
-type ParadigmWithholding =
-  | { reason: "cell-empty"; cell: Cell }
-  | { reason: "cell-ambiguous"; cell: Cell; count: number }
-  | { reason: "cell-not-one-word"; cell: Cell };
-
-/** Exactly four words, or the first cell that stopped the table. */
-type AdjectiveParadigm =
-  | {
-      status: "complete";
-      masculineSingular: ParadigmCandidate;
-      masculinePlural: ParadigmCandidate;
-      feminineSingular: ParadigmCandidate;
-      femininePlural: ParadigmCandidate;
-    }
-  | { status: "withheld"; withholding: ParadigmWithholding };
-
-type CellFill =
-  | { filled: true; candidate: ParadigmCandidate }
-  | { filled: false; withholding: ParadigmWithholding };
-
-/** One cell: filled by a single source-backed word, or the reason it is not. */
-function fillCell(byCell: Map<string, ParadigmCandidate[]>, cell: Cell): CellFill {
-  const candidates = byCell.get(cellKey(cell)) ?? [];
-  if (candidates.length === 0) return { filled: false, withholding: { reason: "cell-empty", cell } };
-  if (candidates.length > 1) {
-    return {
-      filled: false,
-      withholding: { reason: "cell-ambiguous", cell, count: candidates.length },
-    };
-  }
-  const candidate = candidates[0];
-  if (!isOneWord(candidate.spelling.surface)) {
-    return { filled: false, withholding: { reason: "cell-not-one-word", cell } };
-  }
-  return { filled: true, candidate };
-}
-
-/**
- * The four-cell paradigm, or the first reason there is not one.
- *
- * `complete` carries four strings rather than a lookup that might miss one, so
- * a half-filled table is not a value this function can return. The cells are
- * read in a fixed order, so the reason a reader is given is always the same
- * one.
- */
-function adjectiveParadigm(reading: Reading): AdjectiveParadigm {
-  const byCell = paradigmCandidates(reading);
-
-  const masculineSingular = fillCell(byCell, { gender: "masculine", number: "singular" });
-  if (!masculineSingular.filled) {
-    return { status: "withheld", withholding: masculineSingular.withholding };
-  }
-  const masculinePlural = fillCell(byCell, { gender: "masculine", number: "plural" });
-  if (!masculinePlural.filled) {
-    return { status: "withheld", withholding: masculinePlural.withholding };
-  }
-  const feminineSingular = fillCell(byCell, { gender: "feminine", number: "singular" });
-  if (!feminineSingular.filled) {
-    return { status: "withheld", withholding: feminineSingular.withholding };
-  }
-  const femininePlural = fillCell(byCell, { gender: "feminine", number: "plural" });
-  if (!femininePlural.filled) {
-    return { status: "withheld", withholding: femininePlural.withholding };
-  }
-
-  return {
-    status: "complete",
-    masculineSingular: masculineSingular.candidate,
-    masculinePlural: masculinePlural.candidate,
-    feminineSingular: feminineSingular.candidate,
-    femininePlural: femininePlural.candidate,
-  };
-}
-
-/**
- * The four cells in reading order, each with the spelling that fills it.
- *
- * One spelling can fill two cells: `grande` is tagged masculine *and*
- * feminine, so the source really does file it under both singulars. That is
- * one fact shown at the two coordinates the source gave it — what a grid is
- * for — and not the same fact rendered in two places, which is what the box
- * below is about.
- */
-function paradigmCells(
-  paradigm: AdjectiveParadigm & { status: "complete" },
-): [string, ParadigmCandidate][] {
-  return [
-    ["masculine singular", paradigm.masculineSingular],
-    ["masculine plural", paradigm.masculinePlural],
-    ["feminine singular", paradigm.feminineSingular],
-    ["feminine plural", paradigm.femininePlural],
-  ];
-}
-
-/**
- * Why there is no paradigm box, as one clause of the card's silence line.
- *
- * No Italian spelling appears in it: these run inside English prose, and every
- * Italian string on this page sits in its own `lang="it"`. The spellings are in
- * the forms box, where they are marked as Italian and shown in full.
- */
-function paradigmWithheldClause(withholding: ParadigmWithholding): string {
-  const cell = cellName(withholding.cell);
-  switch (withholding.reason) {
-    case "cell-empty":
-      return `shows no gender-and-number table: this entry files nothing under ${cell}, neither its own headword nor any form it lists`;
-    case "cell-ambiguous":
-      return `shows no gender-and-number table: this entry files ${withholding.count} different spellings under ${cell}, and the source does not say which one belongs in the cell`;
-    case "cell-not-one-word":
-      return `shows no gender-and-number table: the only ${cell} this entry files is source text rather than a single word, and this page does not split one`;
-  }
-}
-
-/** The four cells as label-and-value rows, when the source fills all four. */
-function AdjectiveParadigmBox({
-  paradigm,
-  recordId,
-  searched,
-}: {
-  paradigm: AdjectiveParadigm;
-  recordId: number;
-  searched: Searched;
-}) {
-  if (paradigm.status === "withheld") return null;
-
-  return (
-    <Box id={`paradigm-${recordId}`} heading="Gender and number">
-      <BoxRows>
-        {paradigmCells(paradigm).map(([label, cell]) => (
-          <BoxLine key={label} label={label}>
-            <BoxSurface spelling={cell.spelling} searched={searched} />
-            <Grammar claims={cell.rest} label={`grammar for ${cell.spelling.surface}`} />
-            <SpellingSource spelling={cell.spelling} />
-          </BoxLine>
-        ))}
-      </BoxRows>
-    </Box>
-  );
-}
-
-/** The two degrees this box shows, in the order it shows them. */
-const ADJECTIVE_DEGREES = ["comparative", "superlative"] as const;
-
-/**
- * Comparative and superlative, from the source's own tags and nothing else.
- *
- * A row exists because a `forms[]` entry carries a stated `degree` claim for
- * it. `grandissimo` looks like a superlative to anyone who reads Italian, and
- * that is exactly the inference this page does not make: with no tag there is
- * no row, whatever the spelling suggests. `grande`'s own comparatives are the
- * other half of that — the release states their degree only in the prose of a
- * `raw_tag`, so they get no row either, and an entry with no tagged degree at
- * all gets no box.
- *
- * Every stated degree counts, not the first one: the release tags
- * `grandissimo` `absolute` *and* `superlative`, and reading one claim per form
- * would have dropped the whole row.
- */
-function degreeRows(reading: Reading): { degree: string; forms: SourceForm[] }[] {
-  return ADJECTIVE_DEGREES.map((degree) => ({
-    degree: degree as string,
-    forms: reading.forms.filter((form) => statedValues(form.claims, "degree").includes(degree)),
-  })).filter((row) => row.forms.length > 0);
-}
-
-function AdjectiveDegrees({
-  rows,
-  recordId,
-  searched,
-}: {
-  rows: { degree: string; forms: SourceForm[] }[];
-  recordId: number;
-  searched: Searched;
-}) {
-  if (rows.length === 0) return null;
-
-  return (
-    <Box id={`degrees-${recordId}`} heading="Comparative and superlative">
-      <BoxRows>
-        {rows.map((row) => (
-          <BoxLine key={row.degree} label={row.degree}>
-            {row.forms.map((form, i) => (
-              <span key={form.index}>
-                {i > 0 && ", "}
-                {/* Verbatim, newlines and all: one `forms[]` entry the source
-                    wrote, never two forms to pull apart. */}
-                <BoxSurface spelling={spellingOf(form)} searched={searched} />
-                {!isOneWord(form.surface) && <Unsplit />}
-                {/* The row says which degree; the gender and number the source
-                    also tagged are said here, where the form sits, because
-                    this is now the only place it sits. */}
-                <Grammar
-                  claims={claimsBeyond(form.claims, filedUnder(["degree", row.degree]))}
-                  label={`grammar for ${form.surface}`}
-                />
-                <SpellingSource spelling={spellingOf(form)} />
-              </span>
-            ))}
-          </BoxLine>
-        ))}
-      </BoxRows>
-    </Box>
-  );
-}
-
-/**
- * The record's forms grouped the way a conjugation table groups them.
- *
- * Grouping is by the tense the source stated, and by nothing else: no mood in
- * this release is stated structurally, so a group says so rather than filling
- * the gap in. An entry naming the auxiliary verb is not an inflected form and
- * is kept out of the tenses.
- *
- * A verb no longer arrives here — `VerbCard` lays its paradigm out as boxed
- * tables under the mood the source states (#48). What is left for this is a
- * part of speech with no card of its own that still tags a form with a tense.
- */
-function tenseGroups(reading: Reading): Map<string, SourceForm[]> {
-  const byTense = new Map<string, SourceForm[]>();
-  for (const form of reading.forms) {
-    const tense = stated(form.claims, "tense");
-    if (tense === undefined || stated(form.claims, "form-role") === "auxiliary") continue;
-    const group = byTense.get(tense);
-    if (group) group.push(form);
-    else byTense.set(tense, [form]);
-  }
-  return byTense;
-}
-
-/**
- * What the conjugation box shows: the tenses, and the auxiliary the entry
- * names beside them.
- *
- * Built once by the card, which subtracts what it placed from the forms left
- * over. The auxiliary is placed only when there is a box to place it in, so an
- * entry naming one and tagging no tense keeps it in the unplaced box.
- */
-interface ConjugationTable {
-  byTense: Map<string, SourceForm[]>;
-  auxiliaries: SourceForm[];
-}
-
-function conjugationTable(reading: Reading): ConjugationTable {
-  return {
-    byTense: tenseGroups(reading),
-    auxiliaries: reading.forms.filter((form) => stated(form.claims, "form-role") === "auxiliary"),
-  };
-}
-
-/** The `forms[]` entries the conjugation box puts on the page, by index. */
-function placedByConjugations(table: ConjugationTable): number[] {
-  if (table.byTense.size === 0) return [];
-  return [...[...table.byTense.values()].flat(), ...table.auxiliaries].map((form) => form.index);
-}
-
-function Conjugations({ table, recordId }: { table: ConjugationTable; recordId: number }) {
-  const { byTense, auxiliaries } = table;
-  if (byTense.size === 0) return null;
-
-  return (
-    <Box id={`conjugations-${recordId}`} heading="Grouped conjugations">
-      {[...byTense].map(([tense, forms]) => (
-        <div key={tense} className={CONJUGATION_GROUP}>
-          <h4 className={CONJUGATION_TENSE}>{tense}</h4>
-          <ul className={FORM_LIST}>
-            {forms.map((form) => {
-              const person = [stated(form.claims, "person"), stated(form.claims, "number")]
-                .filter((part) => part !== undefined)
-                .join(", ");
-              return (
-                <li key={form.index} className={FORM_ITEM}>
-                  <Spelled spelling={spellingOf(form)} />{" "}
-                  {person !== "" && <span className={MUTED}>{person}</span>}
-                  {isMissing(form.claims, "mood") && (
-                    <span className={AMBIGUOUS}> · mood not stated in the source</span>
-                  )}
-                  {/* This group is where the form now sits, so whatever the
-                      group has not already said about it is said here. */}
-                  <Grammar
-                    claims={claimsBeyond(
-                      form.claims,
-                      (claim) =>
-                        filedUnder(
-                          ["tense", tense],
-                          ["person", stated(form.claims, "person")],
-                          ["number", stated(form.claims, "number")],
-                        )(claim) ||
-                        (claim.status === "missing" && claim.dimension === "mood"),
-                    )}
-                    label={`grammar for ${form.surface}`}
-                  />
-                  <SpellingSource spelling={spellingOf(form)} />
-                </li>
-              );
-            })}
-          </ul>
-        </div>
-      ))}
-      {auxiliaries.length > 0 && (
-        <p className={BOX_NOTE}>
-          Auxiliary named by the source:{" "}
-          {auxiliaries.map((form, i) => (
-            <span key={form.index}>
-              {i > 0 ? ", " : ""}
-              <Spelled spelling={spellingOf(form)} />
-              <Grammar
-                claims={claimsBeyond(form.claims, filedUnder(["form-role", "auxiliary"]))}
-                label={`grammar for ${form.surface}`}
-              />
-            </span>
-          ))}
-          . Not an inflected form of this word.
-        </p>
-      )}
-    </Box>
-  );
-}
-
-/** Every record a word could mean, listed rather than chosen between. */
-function Candidates({ candidates }: { candidates: { recordId: number; word: string; pos: string }[] }) {
-  return (
-    <>
-      {candidates.map((candidate, i) => (
-        <span key={candidate.recordId}>
-          {i > 0 && ", "}
-          <It>{candidate.word}</It> ({posLabel(candidate.pos)})
-        </span>
-      ))}
-    </>
-  );
-}
-
-/**
- * Claims about the record that the header bar has not already shown.
- *
- * Gender and number are in the bar, so repeating them under it would say the
- * same thing twice; everything else the source stated about the record — an
- * unclassified tag such as `form-of` — still has to be visible.
- */
-function otherRecordClaims(claims: GrammarClaim[]): GrammarClaim[] {
-  return claims.filter((claim) => {
-    if (claim.status === "unclassified") return true;
-    if (claim.status === "missing") return false;
-    return !HEADLINE_DIMENSIONS.some((dimension) => dimension === claim.dimension);
-  });
-}
-
-/**
- * The grammar claims on one sense that its labels have not already shown.
- *
- * `sense.labels` and `grammar.bySense` are two readings of one source array:
- * `casa`'s `pl.: case` is `/senses/0/raw_tags/0` on both sides, and the card
- * used to render it twice. The label line is the one that keeps the source's
- * own words, so a claim read from a pointer a label already carries is not
- * shown again — matched on the pointer, so a claim from anywhere else still is.
- */
-function otherSenseClaims(sense: Sense, claims: GrammarClaim[]): GrammarClaim[] {
-  const shown = new Set(sense.labels.map((label) => label.ref.jsonPointer));
-  return claims.filter((claim) => !shown.has(claim.ref.jsonPointer));
-}
-
-/** "2 of its senses", said the way the row around it reads. */
-function senseCountClause(count: number): string {
-  return `, in ${count} of its senses`;
-}
-
-/**
- * Everything a card shows whatever the word is.
- *
- * The parts around the middle are the same for every part of speech — who the
- * entry is about, the header bar under the headword, the one line naming what
- * this entry does not have, what later research disputes, what it means, what
- * points at it and where it can be checked — so they live here once. A card
- * supplies three things: the headline facts its part of speech has, the
- * silences only it can name, and the boxes that make it its own.
- *
- * The shell owns two of the silences itself, because they are facts about any
- * record: a record carrying no sense, and one listing no forms. A card adds its
- * own to them, and the whole set is said in one line near the top.
- */
-function Definition({ sense, reading }: { sense: Sense; reading: Reading }) {
-  return (
-    <li className={DEFINITION}>
-      {sense.glosses.length === 0 ? (
-        <span className={EMPTY}>The source carries no definition for this sense.</span>
-      ) : sense.glosses.map((gloss, i) => (
-        <p key={i} lang="it" className={GLOSS}>{gloss.text}</p>
-      ))}
-      {sense.labels.length > 0 && (
-        <p className={LABELS}>
-          {sense.labels.map((label, i) => (
-            <span key={i}>{i > 0 && " "}<It>{label.label}</It></span>
-          ))}
-        </p>
-      )}
-      <Grammar
-        claims={otherSenseClaims(sense, reading.grammar.bySense.get(sense.index) ?? [])}
-        label={`grammar for sense ${sense.index + 1}`}
-      />
-    </li>
-  );
-}
-
-/** The first visible definition slice. The native disclosure keeps the rest in the document. */
-const DEFINITION_SLICE = 1;
-
-/** Two source glosses for casa are page furniture, not definitions (#28, #61). */
-function isEntryFurniture(sense: Sense, word: string): boolean {
-  return sense.glosses.length > 0 && sense.glosses.every(({ text }) =>
-    text === `${word} ( citazioni)` || text.startsWith(`${word} ( approfondimento)`),
-  );
-}
-
-function ReadingShell({
-  reading,
-  query,
-  facts = [],
-  silence = NO_SILENCE,
-  children,
-  context,
-}: {
-  reading: Reading;
-  query: string;
-  facts?: HeadlineFact[];
-  silence?: Silence;
-  children: ReactNode;
-  context?: ReactNode;
-}) {
-  const pos = posLabel(reading.pos);
-  const definitions = reading.senses.filter((sense) => !isEntryFurniture(sense, reading.word));
-  const furniture = reading.senses.filter((sense) => isEntryFurniture(sense, reading.word));
-  const whole: Silence = {
-    source: [
-      ...silence.source,
-      ...(reading.senses.length === 0 ? ["carries no sense"] : []),
-      ...(reading.forms.length === 0 && !context ? ["lists no forms"] : []),
-    ],
-    withheld: silence.withheld,
-  };
-
-  return (
-    <article className={CARD} aria-label={`${reading.word}, ${pos}`}>
-      <header>
-        <h2 className={HEADWORD}>
-          <Spelled spelling={headwordOf(reading)} />
-        </h2>
-        <HeadlineBar facts={[...(context ? [] : [{ label: "part of speech", value: pos }]), ...facts]} />
-        {/* The single most important honesty signal on this page. A record that
-            merely lists the query in a table is not a claim about the query, and
-            saying so prevents the reader inferring a lemma nobody stated. */}
-        {!reading.isAboutQuery && (
-          <p className={MENTION}>
-            Does not define <q lang="it">{query}</q> — it lists the form in its own table.
-          </p>
-        )}
-      </header>
-
-      <Disputes reviews={reading.reviews} />
-
-      <CardSilence silence={whole} />
-
-      {/* Senses stay apart, with their own labels: the source wrote several
-          meanings and merging them into one list would invent a single one. */}
-      {furniture.length > 0 && (
-        <aside className={ENTRY_NOTE}>
-          <p>The source has entry notes but gives no definition for this reading.</p>
-          {furniture.map((sense) => (
-            <div key={sense.index}>
-              {sense.glosses.map((gloss, i) => <p key={i} lang="it">{gloss.text}</p>)}
-              {sense.labels.length > 0 && (
-                <p className={LABELS}>
-                  {sense.labels.map((label, i) => <span key={i}>{i > 0 && " "}<It>{label.label}</It></span>)}
-                </p>
-              )}
-              <Grammar
-                claims={otherSenseClaims(sense, reading.grammar.bySense.get(sense.index) ?? [])}
-                label={`grammar for sense ${sense.index + 1}`}
-              />
-            </div>
-          ))}
-        </aside>
-      )}
-      {definitions.length > 0 && (
-        <section aria-label="Definitions">
-          <h3>Definitions</h3>
-          {definitions.length > DEFINITION_SLICE && (
-            <p className={SECTION_COUNT}>{definitions.length} · showing {DEFINITION_SLICE}</p>
-          )}
-          <ol className={DEFINITIONS}>
-            {definitions.slice(0, DEFINITION_SLICE).map((sense) => <Definition key={sense.index} sense={sense} reading={reading} />)}
-          </ol>
-          {definitions.length > DEFINITION_SLICE && (
-            <details className={MORE_DETAILS}>
-              <summary className={MORE_SUMMARY}>Show all {definitions.length} definitions</summary>
-              <ol className={DEFINITIONS} start={DEFINITION_SLICE + 1}>
-                {definitions.slice(DEFINITION_SLICE).map((sense) => <Definition key={sense.index} sense={sense} reading={reading} />)}
-              </ol>
-            </details>
-          )}
-        </section>
-      )}
-
-      {children}
-      {context}
-
-      {reading.lemmaLinks.length > 0 && (
-        <section className={LINKS} aria-labelledby={`form-of-${reading.recordId}`}>
-          <h3 className={HEADLINE_LABEL} id={`form-of-${reading.recordId}`}>
-            Go to the lemma
-          </h3>
-          <div className="mt-2 flex flex-col gap-2">
-            {reading.lemmaLinks.map((link, i) => (
-              <div key={i} className="min-w-0 rounded-[4px] border border-border-strong p-4">
-                {link.kind === "dangling" ? <><It>{link.targetWord}</It> — named by the source, but no entry for it here</> : <>
-                  <a className={LINK} href={`/?q=${encodeURIComponent(link.targetWord)}`} lang="it">{link.targetWord}</a>
-                  {link.candidates.length > 1 && <p className={MUTED}>
-                    {link.candidates.length} entries share this spelling: <Candidates candidates={link.candidates} />.
-                    The source does not say which.</p>}
-                  <p className={MUTED}>Meanings, examples, etymology, synonyms and the full conjugation live on the lemma page.</p>
-                  <a className={LINK} href={`/?q=${encodeURIComponent(link.targetWord)}`}>Open entry →</a>
-                </>}
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
-
-      {reading.inflections.length > 0 && (
-        <section className={LINKS} aria-labelledby={`inflections-${reading.recordId}`}>
-          <h3 className={BOX_HEADING} id={`inflections-${reading.recordId}`}>
-            Forms pointing here
-          </h3>
-          <ul className={LINKS_LIST}>
-            {reading.inflections.map((inflection) => (
-              <li key={inflection.recordId}>
-                <a
-                  className={LINK}
-                  href={`/?q=${encodeURIComponent(inflection.word)}`}
-                  lang="it"
-                >
-                  {inflection.word}
-                </a>{" "}
-                <span className={MUTED}>({posLabel(inflection.pos)})</span> — declares itself a form
-                of <It>{inflection.targetWord}</It>
-                {/* One row per record, not per edge: `casetta` says this on two
-                    of its senses, and that is one record saying it twice. A
-                    record that says it once says nothing about how often. */}
-                {inflection.refs.length > 1 && senseCountClause(inflection.refs.length)}
-                {/* The reverse direction is ambiguous in exactly the way the
-                    forward one is: the edge names a word, and this reading is
-                    only one of the records spelling it. */}
-                {inflection.targetCandidates.length > 1 && (
-                  <span className={AMBIGUOUS}>
-                    {" "}
-                    — {inflection.targetCandidates.length} entries share that spelling:{" "}
-                    <Candidates candidates={inflection.targetCandidates} />. The source does not say
-                    which of them this form belongs to.
-                  </span>
-                )}
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
-
-      <footer className={SOURCE_LINE}>
-        <a
-          className={LINK}
-          href={sourcePageUrl(reading.word)}
-          rel="noreferrer"
-          aria-label={`Wiktionary page for ${reading.word}, the source of this ${pos} entry`}
-        >
-          Source
-        </a>{" "}
-        · release line {reading.ref.lineNo}
-        {reading.evidence.map((e, i) => (
-          <span key={i}>
-            {" "}
-            <code>{e.ref.jsonPointer}</code>
-          </span>
-        ))}
-      </footer>
-    </article>
-  );
-}
-
-/**
- * A noun: what it agrees with in the header bar, then boxes for how it goes
- * singular and plural and for the articles `it-articles/v1` derives from the
- * first of those (#53).
- */
-function NounCard({ reading, query }: { reading: NounReading; query: string }) {
-  const searched = searchedSpellings(reading);
-  const rows = nounNumberRows(reading);
-  const placed = new Set(placedForms(rows.flatMap((row) => row.surfaces.map((s) => s.spelling))));
-  const unplaced = unplacedForms(reading, placed);
-  const boxed = rows.length > 0 || reading.articles.status === "derived" || unplaced.length > 0;
-
-  return (
-    <ReadingShell
-      reading={reading}
-      query={query}
-      facts={statedFacts(reading.grammar.record)}
-      silence={{
-        source: unstatedClause(reading.grammar.record),
-        withheld:
-          reading.articles.status === "withheld"
-            ? articleWithheldClause(reading.articles.withholding)
-            : [],
-      }}
-    >
-      <Grammar
-        claims={otherRecordClaims(reading.grammar.record)}
-        label={`other grammar for ${reading.word}`}
-      />
-      {boxed && (
-        <BoxRow>
-          <NounNumbers rows={rows} recordId={reading.recordId} searched={searched} />
-          <NounArticles articles={reading.articles} recordId={reading.recordId} />
-          <UnplacedForms reading={reading} forms={unplaced} searched={searched} />
-        </BoxRow>
-      )}
-    </ReadingShell>
-  );
-}
-
-/**
- * An adjective: the paradigm box first when the source fills it, then the
- * degrees the source tagged, then every form it listed (#52).
- *
- * Articles belong to a noun and conjugations to a verb, so neither box is here.
- * The unplaced box is last and holds what neither the paradigm nor the degrees
- * took — `grande`'s comparatives, which the source states only in prose.
- */
-function AdjectiveCard({ reading, query }: { reading: Reading; query: string }) {
-  const searched = searchedSpellings(reading);
-  const paradigm = adjectiveParadigm(reading);
-  const degrees = degreeRows(reading);
-  const placed = new Set([
-    ...(paradigm.status === "complete"
-      ? placedForms(paradigmCells(paradigm).map(([, cell]) => cell.spelling))
-      : []),
-    ...degrees.flatMap((row) => row.forms.map((form) => form.index)),
-  ]);
-  const unplaced = unplacedForms(reading, placed);
-  const boxed = paradigm.status === "complete" || degrees.length > 0 || unplaced.length > 0;
-
-  return (
-    <ReadingShell
-      reading={reading}
-      query={query}
-      facts={statedFacts(reading.grammar.record)}
-      silence={{
-        source: [
-          ...unstatedClause(reading.grammar.record),
-          ...(degrees.length === 0 ? ["tags no comparative or superlative"] : []),
-        ],
-        withheld:
-          paradigm.status === "withheld" ? [paradigmWithheldClause(paradigm.withholding)] : [],
-      }}
-    >
-      <Grammar
-        claims={otherRecordClaims(reading.grammar.record)}
-        label={`other grammar for ${reading.word}`}
-      />
-      {boxed && (
-        <BoxRow>
-          <AdjectiveParadigmBox paradigm={paradigm} recordId={reading.recordId} searched={searched} />
-          <AdjectiveDegrees rows={degrees} recordId={reading.recordId} searched={searched} />
-          <UnplacedForms reading={reading} forms={unplaced} searched={searched} markUnsplit />
-        </BoxRow>
-      )}
-    </ReadingShell>
-  );
-}
-
-// A verb reads as a conjugation table rather than a tag list (#48): a header
-// bar carrying the non-finite facts the source states, then the finite forms as
-// boxed tables, grouped by the mood the source states and boxed by its tense.
-//
-// Nothing below reads a mood, a person or a tense off a spelling. The release
-// states four moods structurally — `imperative`, `participle`, `gerund` and
-// `infinitive` (src/import/grammarPolicy.ts) — and states `infinitive` on no
-// entry at all, while `indicative`, `subjunctive` and `conditional` never
-// appear as tags. So for almost every verb the whole indicative lands in the
-// group named for the source's own silence, and that group is the main path
-// here rather than an edge case: 5,638 of the release's 462,020 verb records
-// carry a structural mood on any form at all. Reading `io` as a first person is
-// #4's job, with tests; here it is a label, verbatim.
-
-/** The moods this source can state, in the order `grammarPolicy.ts` lists them. */
-const VERB_MOODS = ["imperative", "participle", "gerund", "infinitive"] as const;
-
-/** The moods whose forms are not conjugated: the header bar's own facts. */
-const NON_FINITE_MOODS = ["infinitive", "gerund", "participle"] as const;
-
-/** The tenses this source can state, in the order `grammarPolicy.ts` lists them. */
-const VERB_TENSES = [
-  "present",
-  "imperfect",
-  "future",
-  "past",
-  "past-remote",
-  "perfect",
-  "pluperfect",
-  "historic",
-] as const;
-
-/** What a group of entries is filed under, or `null` where the source says nothing. */
-type GroupKey = string | null;
-
-/**
- * Where one key sits in the source's own vocabulary.
- *
- * "Groups are ordered by the source's own vocabulary — moods, then tenses, in
- * the order the tag vocabulary lists them; forms the source leaves unplaced go
- * in one last box named for what is missing" (design-system-manifest.md § "The
- * result card"). A value outside the vocabulary sorts after every value inside
- * it, and the source's silence sorts last of all.
- */
-function vocabularyOrder(vocabulary: readonly string[], key: GroupKey): number {
-  if (key === null) return vocabulary.length + 1;
-  const at = vocabulary.indexOf(key);
-  return at === -1 ? vocabulary.length : at;
-}
-
-/**
- * Entries grouped by what the source states for one dimension, in that
- * dimension's vocabulary order, with the entries stating nothing for it last.
- *
- * The sort is stable over groups collected in source order, so two values the
- * vocabulary does not list keep the order the record gave them.
- */
-function groupByStated(
-  forms: readonly SourceForm[],
-  dimension: string,
-  vocabulary: readonly string[],
-): { key: GroupKey; forms: SourceForm[] }[] {
-  const groups = new Map<GroupKey, SourceForm[]>();
-  for (const form of forms) {
-    const key = stated(form.claims, dimension) ?? null;
-    const group = groups.get(key);
-    if (group) group.push(form);
-    else groups.set(key, [form]);
-  }
-  return [...groups]
-    .map(([key, grouped]) => ({ key, forms: grouped }))
-    .sort((a, b) => vocabularyOrder(vocabulary, a.key) - vocabularyOrder(vocabulary, b.key));
-}
-
-/** An entry naming the auxiliary verb, which is not an inflected form at all. */
-const isAuxiliary = (form: SourceForm): boolean =>
-  stated(form.claims, "form-role") === "auxiliary";
-
-/** An entry the header bar carries rather than a conjugation table. */
-function isNonFinite(form: SourceForm): boolean {
-  const mood = stated(form.claims, "mood");
-  return isAuxiliary(form) || NON_FINITE_MOODS.some((candidate) => candidate === mood);
-}
-
-/** One non-finite fact: an English label, and the entries the source filed under it. */
-interface NonFiniteFact {
-  label: string;
-  forms: SourceForm[];
-  /** What the label already states about each entry under it. */
-  filed: (claim: GrammarClaim) => boolean;
-}
-
-/**
- * The header bar's facts, each from a stated claim and nothing else.
- *
- * A participle is labelled by the tense the source gives it, so the bar reads
- * *present participle* and *past participle* — and *participle* alone where the
- * source states no tense for one. The labels are English, which is the whole of
- * what Lexema writes here; every value is the source's own spelling.
- *
- * The word *infinitive* appears only because an entry states that mood. No
- * entry in the release does, and the headword of a `Verbo` record is not a
- * claim that the source made one.
- */
-function nonFiniteFacts(reading: Reading): NonFiniteFact[] {
-  const facts: NonFiniteFact[] = [];
-  const inflected = reading.forms.filter((form) => !isAuxiliary(form));
-
-  for (const mood of NON_FINITE_MOODS) {
-    const under = inflected.filter((form) => stated(form.claims, "mood") === mood);
-    if (under.length === 0) continue;
-    if (mood !== "participle") {
-      facts.push({ label: mood, forms: under, filed: filedUnder(["mood", mood]) });
+function otherRecordFacts(claims: readonly GrammarClaim[], shown: readonly string[]): HeadlineFact[] {
+  const facts: HeadlineFact[] = [];
+  const labels: string[] = [];
+  for (const claim of claims) {
+    if (claim.status === "missing") continue;
+    if (claim.status === "unclassified") {
+      if (!isFormOfTag(claim.sourceText)) labels.push(claim.sourceText);
       continue;
     }
-    for (const group of groupByStated(under, "tense", VERB_TENSES)) {
-      facts.push({
-        label: group.key === null ? "participle" : `${group.key} participle`,
-        forms: group.forms,
-        filed: filedUnder(["mood", mood], ["tense", group.key ?? undefined]),
-      });
-    }
+    if (shown.includes(claim.dimension)) continue;
+    const existing = facts.find((fact) => fact.label === claim.dimension);
+    if (existing === undefined) facts.push({ label: claim.dimension, value: claim.value });
+    else existing.value = `${existing.value}, ${claim.value}`;
   }
-
-  const auxiliaries = reading.forms.filter(isAuxiliary);
-  if (auxiliaries.length > 0) {
-    facts.push({
-      label: "auxiliary",
-      forms: auxiliaries,
-      filed: filedUnder(["form-role", "auxiliary"]),
-    });
+  if (labels.length > 0) {
+    facts.push({ label: "label", value: <It>{labels.join(", ")}</It> });
   }
   return facts;
 }
 
-/**
- * The non-finite facts a verb entry is owed and does not state, as one clause
- * of the card's silence line.
- *
- * *infinitive* is not one of them: no entry in the release states an infinitive
- * mood, so naming it missing would put the word on every verb card in the
- * release for a dimension the source never fills — and the card says the word
- * only where a claim states it.
- */
-const EXPECTED_NON_FINITE = [
-  "gerund",
-  "present participle",
-  "past participle",
-  "auxiliary",
-] as const;
+// Boxes -----------------------------------------------------------------------
 
-function nonFiniteClause(facts: readonly NonFiniteFact[]): string[] {
-  const shown = new Set(facts.map((fact) => fact.label));
-  const missing = EXPECTED_NON_FINITE.filter((label) => !shown.has(label));
-  return missing.length === 0 ? [] : [`states no ${orPhrase([...missing])}`];
-}
-
-/** One row of a tense box: a label, and every entry the source filed under it. */
-interface VerbRow {
-  /** The label's text, which keys the row: two entries under one label are one row. */
-  label: string;
-  /** Whether that text is the source's own Italian rather than a stated value. */
-  italian: boolean;
-  /** The person and number every entry here states, where they all state one. */
-  person: string;
-  forms: SourceForm[];
+function Box({
+  id,
+  heading,
+  tense = false,
+  note,
+  children,
+}: {
+  id: string;
+  heading: string;
+  tense?: boolean;
+  note?: ReactNode;
+  children: ReactNode;
+}) {
+  return (
+    <section className={BOX} aria-labelledby={id}>
+      <h4 className={tense ? TENSE_HEADING : BOX_HEADING} id={id} lang={tense ? "it" : undefined}>
+        {heading}
+      </h4>
+      <dl className={BOX_ROWS}>{children}</dl>
+      {note !== undefined && <p className={BOX_NOTE}>{note}</p>}
+    </section>
+  );
 }
 
 /**
- * The person and number the source states for one entry, as one phrase.
- *
- * Two stated claims read together, never a reading of the row's label: the
- * label may say `io` and this may say nothing at all, and those are two
- * different facts about the same entry.
+ * One row: a small grey label and its value. The row the query hit is
+ * outlined where it sits, by a border and in words, never by colour alone.
  */
-function personPhrase(form: SourceForm): string {
-  return [stated(form.claims, "person"), stated(form.claims, "number")]
+function BoxLine({
+  label,
+  searched = false,
+  children,
+}: {
+  label: ReactNode;
+  searched?: boolean;
+  children: ReactNode;
+}) {
+  return (
+    <div className={searched ? SEARCHED : BOX_LINE} data-searched={searched ? "" : undefined}>
+      <dt className={searched ? SEARCHED_LABEL : BOX_ROW_LABEL}>{label}</dt>
+      <dd className={searched ? SEARCHED_CELL : BOX_CELL}>{children}</dd>
+      {searched && <span className={SEARCHED_NOTE}>your search</span>}
+    </div>
+  );
+}
+
+/** A row of spellings, outlined when one of them is the searched form. */
+function SpellingLine({
+  label,
+  spellings,
+  searched,
+}: {
+  label: ReactNode;
+  spellings: readonly Spelling[];
+  searched: SearchedSpellings;
+}) {
+  return (
+    <BoxLine label={label} searched={spellings.some((spelling) => isSearched(spelling, searched))}>
+      <Spellings spellings={spellings} />
+    </BoxLine>
+  );
+}
+
+// Definitions and examples ---------------------------------------------------
+
+/** The first visible slice of each sliced section, named once. */
+export const DEFINITION_SLICE = 1;
+export const EXAMPLE_SLICE = 1;
+
+/** Two source glosses for casa are page furniture, not definitions (#28, #61). */
+function isEntryFurniture(sense: Sense, word: string): boolean {
+  return (
+    sense.glosses.length > 0 &&
+    sense.glosses.every(
+      ({ text }) => text === `${word} ( citazioni)` || text.startsWith(`${word} ( approfondimento)`),
+    )
+  );
+}
+
+/**
+ * The labels the source put on a sense — `figuratively`, `scuola` — ahead of
+ * its gloss in parentheses, the way a dictionary prints them. `form-of` is not
+ * one of them: the card's title already says the reading is a form.
+ */
+function senseLabels(sense: Sense): string[] {
+  return sense.labels.map((label) => label.label).filter((label) => !isFormOfTag(label));
+}
+
+function Definition({ sense, number }: { sense: Sense; number: number }) {
+  const labels = senseLabels(sense);
+  return (
+    <li className={DEFINITION}>
+      <span className={DEFINITION_NUMBER} aria-hidden="true">
+        {number}.
+      </span>
+      <div>
+        {sense.glosses.length === 0 ? (
+          <p className={SILENCE}>The source carries no definition for this sense.</p>
+        ) : (
+          sense.glosses.map((gloss, i) => (
+            <p key={i} className={GLOSS} lang="it">
+              {i === 0 && labels.length > 0 && <span className={SENSE_LABEL}>({labels.join(", ")}) </span>}
+              {gloss.text}
+            </p>
+          ))
+        )}
+      </div>
+    </li>
+  );
+}
+
+function Definitions({ reading }: { reading: Reading }) {
+  const definitions = reading.senses.filter((sense) => !isEntryFurniture(sense, reading.word));
+  if (definitions.length === 0) return null;
+  const first = definitions.slice(0, DEFINITION_SLICE);
+  const rest = definitions.slice(DEFINITION_SLICE);
+  return (
+    <Section
+      id={`definitions-${reading.recordId}`}
+      name="Definitions"
+      count={sliceCount(definitions.length, DEFINITION_SLICE)}
+    >
+      <ol className={DEFINITIONS}>
+        {first.map((sense, i) => (
+          <Definition key={sense.index} sense={sense} number={i + 1} />
+        ))}
+      </ol>
+      {rest.length > 0 && (
+        <ShowAll total={definitions.length} noun="definitions">
+          <ol className={`${DEFINITIONS} mt-3`} start={DEFINITION_SLICE + 1}>
+            {rest.map((sense, i) => (
+              <Definition key={sense.index} sense={sense} number={DEFINITION_SLICE + i + 1} />
+            ))}
+          </ol>
+        </ShowAll>
+      )}
+    </Section>
+  );
+}
+
+/**
+ * The notes `casa`'s record carries in place of a definition: shown as notes,
+ * with no definition invented around them.
+ */
+function EntryNotes({ reading }: { reading: Reading }) {
+  const furniture = reading.senses.filter((sense) => isEntryFurniture(sense, reading.word));
+  if (furniture.length === 0) return null;
+  return (
+    <Section id={`notes-${reading.recordId}`} name="Source notes" count={`${furniture.length}`}>
+      <aside className={ENTRY_NOTE}>
+        <p className="m-0 font-sans text-[0.85rem]">
+          The source has entry notes but gives no definition for this reading.
+        </p>
+        {furniture.map((sense) =>
+          sense.glosses.map((gloss, i) => (
+            <p key={`${sense.index}-${i}`} className="m-0" lang="it">
+              {gloss.text}
+            </p>
+          )),
+        )}
+      </aside>
+    </Section>
+  );
+}
+
+/** Every example on the reading's senses, verbatim, first slice shown. */
+function Examples({ reading }: { reading: Reading }) {
+  const examples = reading.senses.flatMap((sense) => sense.examples);
+  if (examples.length === 0) return null;
+  const item = (example: (typeof examples)[number]) => (
+    <li key={example.ref.jsonPointer} className={EXAMPLE} lang="it">
+      {example.text}
+    </li>
+  );
+  return (
+    <Section id={`examples-${reading.recordId}`} name="Examples" count={sliceCount(examples.length, EXAMPLE_SLICE)}>
+      <ul className={EXAMPLES}>{examples.slice(0, EXAMPLE_SLICE).map(item)}</ul>
+      {examples.length > EXAMPLE_SLICE && (
+        <ShowAll total={examples.length} noun="examples">
+          <ul className={`${EXAMPLES} mt-3`}>{examples.slice(EXAMPLE_SLICE).map(item)}</ul>
+        </ShowAll>
+      )}
+    </Section>
+  );
+}
+
+// Agreement: nouns and adjectives --------------------------------------------
+//
+// A noun or adjective is read for how it goes singular and plural, masculine
+// and feminine. Each spelling the source filed under a gender or a number is a
+// cell; the headword fills the cell its record states. Nothing is filed where
+// the source did not file it: `sale` lists `sali` tagged plural and nothing
+// else, so `sali` sits under `pl`, not under `m pl`.
+
+type Gender = "masculine" | "feminine";
+type GrammaticalNumber = "singular" | "plural";
+
+interface AgreementCell {
+  gender: Gender | undefined;
+  number: GrammaticalNumber | undefined;
+  spellings: Spelling[];
+}
+
+const GENDERS: readonly Gender[] = ["masculine", "feminine"];
+const NUMBERS: readonly GrammaticalNumber[] = ["singular", "plural"];
+
+const genderOf = (claims: readonly GrammarClaim[]): Gender | undefined => {
+  const values = statedValues(claims, "gender");
+  return values.length === 1 ? GENDERS.find((gender) => gender === values[0]) : undefined;
+};
+const numberOf = (claims: readonly GrammarClaim[]): GrammaticalNumber | undefined => {
+  const values = statedValues(claims, "number");
+  return values.length === 1 ? NUMBERS.find((number) => number === values[0]) : undefined;
+};
+
+/** `m sg`, `f pl`, `pl` — the row labels studente's frame draws. */
+const cellLabel = (cell: Pick<AgreementCell, "gender" | "number">): string =>
+  [cell.gender?.[0], cell.number === undefined ? undefined : cell.number === "singular" ? "sg" : "pl"]
     .filter((part) => part !== undefined)
-    .join(", ");
+    .join(" ");
+
+/** A form carrying a degree other than positive belongs to the degree box. */
+const hasDegree = (form: SourceForm): boolean =>
+  statedValues(form.claims, "degree").some((degree) => degree !== "positive");
+
+/** Every agreement cell this reading fills, in m sg, m pl, f sg, f pl order. */
+function agreementCells(reading: Reading): AgreementCell[] {
+  const cells: AgreementCell[] = [];
+  const file = (claims: readonly GrammarClaim[], spelling: Spelling) => {
+    const gender = genderOf(claims);
+    const number = numberOf(claims);
+    if (gender === undefined && number === undefined) return;
+    const cell = cells.find((other) => other.gender === gender && other.number === number);
+    if (cell === undefined) cells.push({ gender, number, spellings: [spelling] });
+    else cell.spellings.push(spelling);
+  };
+  file(reading.grammar.record, headwordOf(reading));
+  for (const form of reading.forms) if (!hasDegree(form)) file(form.claims, spellingOf(form));
+  const rank = (cell: AgreementCell) =>
+    (cell.gender === undefined ? 2 : GENDERS.indexOf(cell.gender)) * 3 +
+    (cell.number === undefined ? 2 : NUMBERS.indexOf(cell.number));
+  return cells.sort((a, b) => rank(a) - rank(b));
+}
+
+/** A noun or adjective card's agreement facts, and the forms they put on the bar. */
+interface AgreementFacts {
+  facts: HeadlineFact[];
+  /** The `forms[]` entries the bar shows as its plural or feminine. */
+  placed: Set<number>;
 }
 
 /**
- * A row's label: the source's own unclassified text where it gave one, else the
- * person and number it stated, else nothing.
- *
- * `io`, `tu`, `lui/lei`, `che io` are `raw_tags` the importer records verbatim
- * as unclassified (src/import/grammarPolicy.ts), and they stay that way here —
- * the label is that text, never a person claim read out of it.
+ * The header bar's agreement facts: the record's own gender and number, then
+ * the plural and the feminine the source files for it, as spellings.
  */
-function rowLabelOf(form: SourceForm): { label: string; italian: boolean } {
-  for (const claim of form.claims) {
-    if (claim.status === "unclassified") return { label: claim.sourceText, italian: true };
-  }
-  return { label: personPhrase(form), italian: false };
-}
+function agreementFacts(reading: Reading, cells: readonly AgreementCell[]): AgreementFacts {
+  const facts: HeadlineFact[] = [];
+  const placed = new Set<number>();
+  const gender = statedValues(reading.grammar.record, "gender");
+  const number = statedValues(reading.grammar.record, "number");
+  if (gender.length > 0) facts.push({ label: "gender", value: gender.join(", ") });
+  if (number.length > 0) facts.push({ label: "number", value: number.join(", ") });
 
-/**
- * The rows of one box, in source order, each holding every entry filed under it.
- *
- * `andare` files `vado` and `vo` under one `io` in the present, and a row that
- * kept the first would drop a form the source listed. The person and number
- * ride the label only while every entry in the row states the same pair; where
- * they differ, the row cannot say it and each entry says it for itself.
- */
-function verbRows(forms: readonly SourceForm[]): VerbRow[] {
-  const rows: VerbRow[] = [];
-  const byLabel = new Map<string, VerbRow>();
-  for (const form of forms) {
-    const { label, italian } = rowLabelOf(form);
-    const existing = byLabel.get(label);
-    if (existing === undefined) {
-      const row: VerbRow = { label, italian, person: personPhrase(form), forms: [form] };
-      byLabel.set(label, row);
-      rows.push(row);
-      continue;
+  const recordGender = genderOf(reading.grammar.record);
+  const spellingsWhere = (keep: (cell: AgreementCell) => boolean): Spelling[] => {
+    const seen = new Set<string>();
+    const spellings: Spelling[] = [];
+    for (const spelling of cells.filter(keep).flatMap((cell) => cell.spellings)) {
+      if (spelling.kind !== "form") continue;
+      placed.add(spelling.index);
+      if (seen.has(spelling.surface)) continue;
+      seen.add(spelling.surface);
+      spellings.push(spelling);
     }
-    existing.forms.push(form);
-    if (existing.person !== personPhrase(form)) existing.person = "";
+    return spellings;
+  };
+  if (numberOf(reading.grammar.record) === "singular") {
+    const plural = spellingsWhere(
+      (cell) => cell.number === "plural" && (cell.gender === undefined || cell.gender === recordGender),
+    );
+    if (plural.length > 0) facts.push({ label: "plural", value: <Spellings spellings={plural} />, form: true });
+  }
+  if (recordGender === "masculine") {
+    const feminine = spellingsWhere((cell) => cell.gender === "feminine" && cell.number === "singular");
+    if (feminine.length > 0) facts.push({ label: "feminine", value: <Spellings spellings={feminine} />, form: true });
+  }
+  return { facts, placed };
+}
+
+/** Whether the source files spellings under more than one gender. */
+const spansGenders = (cells: readonly AgreementCell[]): boolean =>
+  new Set(cells.flatMap((cell) => (cell.gender === undefined ? [] : [cell.gender]))).size > 1;
+
+/**
+ * The gender-and-number box, drawn when the source files spellings under more
+ * than one gender — `studente` and `studentessa`, `bello` and `bella`. A word
+ * with one gender has its plural in the header bar already, and a box saying
+ * the same thing again is the duplication the manifest rules out.
+ */
+function AgreementBox({
+  id,
+  cells,
+  searched,
+}: {
+  id: string;
+  cells: readonly AgreementCell[];
+  searched: SearchedSpellings;
+}) {
+  return (
+    <Box id={id} heading="Gender and number">
+      {cells.map((cell) => (
+        <SpellingLine key={cellLabel(cell)} label={cellLabel(cell)} spellings={cell.spellings} searched={searched} />
+      ))}
+    </Box>
+  );
+}
+
+/**
+ * Comparative and superlative forms, one row per form. When every form states
+ * the same degree — `bella`'s four are all `absolute superlative` — the box is
+ * named for it and each row says only gender and number; otherwise each row
+ * names its own degree.
+ */
+function DegreeBox({ id, forms, searched }: { id: string; forms: readonly SourceForm[]; searched: SearchedSpellings }) {
+  const degreeOf = (form: SourceForm) => statedValues(form.claims, "degree").join(" ");
+  const shared = new Set(forms.map(degreeOf)).size === 1 ? degreeOf(forms[0]) : undefined;
+  const heading = shared === undefined ? "Comparative and superlative" : shared[0].toUpperCase() + shared.slice(1);
+  return (
+    <Box id={id} heading={heading}>
+      {forms.map((form) => {
+        const cell = cellLabel({ gender: genderOf(form.claims), number: numberOf(form.claims) });
+        const label = shared === undefined ? [degreeOf(form), cell].filter((part) => part !== "").join(" · ") : cell;
+        return <SpellingLine key={form.index} label={label || "form"} spellings={[spellingOf(form)]} searched={searched} />;
+      })}
+    </Box>
+  );
+}
+
+/** A short label for a form no box placed: its stated grammar, else its source text. */
+function unplacedLabel(form: SourceForm): string {
+  const cell = cellLabel({ gender: genderOf(form.claims), number: numberOf(form.claims) });
+  if (cell !== "") return cell;
+  const text = form.claims.flatMap((claim) =>
+    claim.status === "stated" ? [claim.value] : claim.status === "unclassified" ? [claim.sourceText] : [],
+  );
+  return text.length > 0 ? text.join(", ") : "form";
+}
+
+/**
+ * The forms of this record no box or bar placed, in source order, in one last
+ * box named for what it holds — "never scattered" (design-system-manifest.md §
+ * "The result card").
+ */
+function OtherForms({
+  id,
+  forms,
+  searched,
+}: {
+  id: string;
+  forms: readonly SourceForm[];
+  searched: SearchedSpellings;
+}) {
+  if (forms.length === 0) return null;
+  return (
+    <Box id={id} heading="Other forms listed by this entry">
+      {forms.map((form) => (
+        <SpellingLine key={form.index} label={unplacedLabel(form)} spellings={[spellingOf(form)]} searched={searched} />
+      ))}
+    </Box>
+  );
+}
+
+/** The articles `it-articles/v1` derives, in the order the frames list them. */
+const ARTICLE_ORDER: readonly [ArticleDisplay["kind"], GrammaticalNumber][] = [
+  ["definite", "singular"],
+  ["definite", "plural"],
+  ["indefinite", "singular"],
+  ["indefinite", "plural"],
+  ["partitive", "singular"],
+  ["partitive", "plural"],
+];
+
+/**
+ * The articles box: `definite sg  il sale`, the article and its noun once.
+ *
+ * These are the one thing on this card the source did not say, so the box
+ * says so under its rows, by the rule's name.
+ */
+function ArticlesBox({ reading }: { reading: NounReading }) {
+  if (reading.articles.status !== "derived") return null;
+  const articles = reading.articles.articles;
+  const rows = ARTICLE_ORDER.flatMap(([kind, number]) =>
+    articles.filter((article) => article.kind === kind && article.number === number),
+  );
+  return (
+    <Box
+      id={`articles-${reading.recordId}`}
+      heading="Articles"
+      note={
+        <>
+          Not from the source: Lexema derives these by rule <code>it-articles/v1</code> from the gender and number
+          the source states.
+        </>
+      }
+    >
+      {rows.map((article) => (
+        <BoxLine key={`${article.kind}-${article.number}`} label={`${article.kind} ${article.number === "singular" ? "sg" : "pl"}`}>
+          <It>{article.displayForm}</It>
+        </BoxLine>
+      ))}
+    </Box>
+  );
+}
+
+/**
+ * Why Lexema derives no article, when the card's silence line has not already
+ * said it: three of the six reasons are "the source states no gender or no
+ * number", which that line states on its own.
+ */
+function articleWithheldSentence(withholding: ArticleWithholding): string | undefined {
+  switch (withholding.reason) {
+    case "no-gender-or-number-stated":
+    case "gender-not-stated":
+    case "number-not-stated":
+      return undefined;
+    case "gender-is-not-masculine-or-feminine":
+      return `Lexema derives no article: the source gives the gender as ${withholding.statedGender}, which is neither masculine nor feminine.`;
+    case "number-is-not-singular-or-plural":
+      return `Lexema derives no article: the source gives the number as ${withholding.statedNumber}, which is neither singular nor plural.`;
+    case "surface-not-handled":
+      return "Lexema derives no article: rule it-articles/v1 derives one for a single word, and this entry's headword is not one.";
+  }
+}
+
+/** The gender and number a noun or adjective record does not state, as one sentence. */
+function agreementSilence(reading: Reading): string | undefined {
+  if (reading.lemmaLinks.length > 0) return undefined;
+  const unstated = ["gender", "number"].filter((dimension) => stated(reading.grammar.record, dimension) === undefined);
+  if (unstated.length === 2) return "The source states neither a gender nor a number for this entry.";
+  if (unstated.length === 1) return `The source states no ${unstated[0]} for this entry.`;
+  return undefined;
+}
+
+// Verbs -----------------------------------------------------------------------
+//
+// A verb reads as a conjugation: its non-finite facts in the header bar, then
+// the finite forms in tense boxes three across. Which box a form goes in is
+// `it-moods/v1` (src/italian/moods.ts): the tenses the source tags, and for the
+// congiuntivo and condizionale the pronoun it writes beside the form. Nothing
+// here reads a spelling.
+
+/** A form's own tags and raw tags, recovered from its claims by pointer. */
+function sourceTagsOf(form: SourceForm): { tags: string[]; rawTags: string[] } {
+  const tags: string[] = [];
+  const rawTags: string[] = [];
+  for (const claim of form.claims) {
+    if (claim.status === "missing") continue;
+    if (/\/raw_tags\/\d+$/.test(claim.ref.jsonPointer)) rawTags.push(claim.sourceText);
+    else if (/\/tags\/\d+$/.test(claim.ref.jsonPointer)) tags.push(claim.sourceText);
+  }
+  return { tags, rawTags };
+}
+
+const slotOf = (form: SourceForm): VerbSlot => placeItalianVerbForm(sourceTagsOf(form));
+
+/**
+ * A row's label: the pronoun the source wrote beside the form — `io`,
+ * `che lui/che lei` — verbatim, else the person and number it stated.
+ */
+function rowLabel(form: SourceForm): string {
+  const { rawTags } = sourceTagsOf(form);
+  if (rawTags.length > 0) return rawTags.join(", ");
+  return [stated(form.claims, "person")?.replace(/-person$/, ""), stated(form.claims, "number")]
+    .filter((part) => part !== undefined)
+    .join(" ");
+}
+
+/** Forms grouped into rows by label, in source order: `vado / vo` is one `io` row. */
+function rowsOf(forms: readonly SourceForm[]): { label: string; forms: SourceForm[] }[] {
+  const rows: { label: string; forms: SourceForm[] }[] = [];
+  for (const form of forms) {
+    const label = rowLabel(form);
+    const row = rows.find((existing) => existing.label === label);
+    if (row) row.forms.push(form);
+    else rows.push({ label, forms: [form] });
   }
   return rows;
 }
 
-/**
- * What the box and the row a form sits in already state about it.
- *
- * Everything else the source said about that entry renders beside it, because
- * this is now the only place the entry sits. The row's own `missing` mood claim
- * is one of those things the group states: its heading is that silence.
- */
-function filedInTable(
-  mood: GroupKey,
-  tense: GroupKey,
-  row: VerbRow,
-): (claim: GrammarClaim) => boolean {
-  return (claim) => {
-    if (claim.status === "missing") return mood === null && claim.dimension === "mood";
-    if (claim.status === "unclassified") return row.italian && claim.sourceText === row.label;
-    if (claim.dimension === "mood") return claim.value === mood;
-    if (claim.dimension === "tense") return claim.value === tense;
-    return row.person !== "" && (claim.dimension === "person" || claim.dimension === "number");
-  };
+/** The non-finite rows of the table, in their order, with the headword as infinito. */
+function nonFiniteRows(reading: Reading): { role: NonFiniteRole; spellings: Spelling[] }[] {
+  const byRole = new Map<NonFiniteRole, Spelling[]>();
+  for (const form of reading.forms) {
+    const slot = slotOf(form);
+    if (slot.kind !== "non-finite") continue;
+    byRole.set(slot.role, [...(byRole.get(slot.role) ?? []), spellingOf(form)]);
+  }
+  if (!byRole.has("infinito")) byRole.set("infinito", [headwordOf(reading)]);
+  return NON_FINITE_ROLES.flatMap((role) => {
+    const spellings = byRole.get(role);
+    return spellings === undefined ? [] : [{ role, spellings }];
+  });
 }
 
-/** Every spelling one row holds, with what the row has not already said. */
-function VerbForms({
-  forms,
-  filed,
-  searched,
-  markUnsplit = false,
-  tableSource = false,
-}: {
-  forms: readonly SourceForm[];
-  filed: (claim: GrammarClaim) => boolean;
-  searched: Searched;
-  markUnsplit?: boolean;
-  tableSource?: boolean;
-}) {
-  return (
-    <>
-      {forms.map((form, i) => (
-        <span key={form.index}>
-          {i > 0 && ", "}
-          <BoxSurface spelling={spellingOf(form)} searched={searched} />
-          {markUnsplit && !isOneWord(form.surface) && <Unsplit />}
-          {!tableSource && <Grammar
-            claims={claimsBeyond(form.claims, filed)}
-            label={`grammar for ${form.surface}`}
-          />}
-        </span>
+/** Every form the source writes as the auxiliary, and the verb-class text on it. */
+function auxiliaries(reading: Reading): SourceForm[] {
+  return reading.forms.filter((form) => slotOf(form).kind === "auxiliary");
+}
+
+/**
+ * The conjugation class, as the source writes it: `verbo di prima coniugazione
+ * (irregolare)`. It is the raw tag the source puts on the auxiliary and the
+ * non-finite rows, verbatim and never translated.
+ */
+function conjugationClass(reading: Reading): string[] {
+  const texts = reading.forms
+    .filter((form) => {
+      const slot = slotOf(form);
+      return slot.kind === "auxiliary" || slot.kind === "non-finite";
+    })
+    .flatMap((form) => sourceTagsOf(form).rawTags);
+  return [...new Set(texts)];
+}
+
+/** The header bar of a verb lemma: its non-finite facts, each a source spelling. */
+function verbFacts(reading: Reading): HeadlineFact[] {
+  const rows = nonFiniteRows(reading);
+  const spellingsFor = (role: NonFiniteRole) => rows.find((row) => row.role === role)?.spellings ?? [];
+  const facts: HeadlineFact[] = [
+    { label: "infinitive", value: <Spelled spelling={headwordOf(reading)} />, form: true },
+  ];
+  const gerund = spellingsFor("gerundio");
+  if (gerund.length > 0) facts.push({ label: "gerund", value: <Spellings spellings={gerund} />, form: true });
+  const participle = spellingsFor("participio passato");
+  if (participle.length > 0) facts.push({ label: "participle", value: <Spellings spellings={participle} />, form: true });
+  const auxiliary = auxiliaries(reading).map(spellingOf);
+  if (auxiliary.length > 0) facts.push({ label: "auxiliary", value: <Spellings spellings={auxiliary} />, form: true });
+  const verbClass = conjugationClass(reading);
+  if (verbClass.length > 0) facts.push({ label: "conjugation", value: <It>{verbClass.join("; ")}</It> });
+  return facts;
+}
+
+/** What a verb lemma card does not state of its non-finite facts, once. */
+function verbSilence(reading: Reading): string | undefined {
+  if (reading.forms.length === 0) return undefined;
+  const rows = nonFiniteRows(reading);
+  const missing = [
+    ...(rows.some((row) => row.role === "gerundio") ? [] : ["gerund"]),
+    ...(rows.some((row) => row.role === "participio passato") ? [] : ["past participle"]),
+    ...(auxiliaries(reading).length > 0 ? [] : ["auxiliary"]),
+  ];
+  return missing.length === 0 ? undefined : `The source states no ${orPhrase(missing)} for this entry.`;
+}
+
+/**
+ * The whole conjugation: sixteen boxes for a verb the source tabulates in
+ * full — fourteen tenses, the imperative, the non-finite forms — and one box
+ * for whatever `it-moods/v1` could not place, never guessed into another.
+ */
+function Conjugation({ reading }: { reading: Reading }) {
+  // The table outlines the form the query hit. A lemma's own headword is the
+  // page's title already, so its infinito row is not outlined as well.
+  const searched: SearchedSpellings = { ...searchedSpellings(reading), headword: false };
+  const byBox = new Map<string, SourceForm[]>();
+  const imperative: SourceForm[] = [];
+  const unplaced: SourceForm[] = [];
+  let derived = false;
+  for (const form of reading.forms) {
+    const slot = slotOf(form);
+    if (slot.kind === "tense") {
+      byBox.set(slot.box, [...(byBox.get(slot.box) ?? []), form]);
+      derived ||= slot.derivedMood;
+    } else if (slot.kind === "imperative") imperative.push(form);
+    else if (slot.kind === "unplaced") unplaced.push(form);
+  }
+  if (byBox.size === 0 && imperative.length === 0) return null;
+
+  const id = (key: string) => `conjugation-${reading.recordId}-${key.replace(/\s+/g, "-")}`;
+  const tenseBox = (name: string, forms: readonly SourceForm[]) => (
+    <Box key={name} id={id(name)} heading={name} tense>
+      {rowsOf(forms).map((row) => (
+        <SpellingLine key={row.label} label={<It>{row.label}</It>} spellings={row.forms.map(spellingOf)} searched={searched} />
       ))}
-    </>
+    </Box>
   );
-}
+  const auxiliary = auxiliaries(reading);
 
-/** A row's label cell: the source's own text, and the person it also stated. */
-function VerbRowLabel({ row }: { row: VerbRow }) {
-  return row.italian ? <It>{row.label}</It> : <>{row.label}</>;
-}
-
-/** Named tables are supported by the source's tense tags, not by inferred mood.
- * For a repeated tense signature, the first complete person/number cycle is
- * the named table; later cycles remain together in the one unplaceable box.
- * Alternate spellings in a row (vado / vo) stay in that row.
- */
-const NAMED_TENSES: { label: string; tags: string[] }[] = [
-  { label: "presente", tags: ["present"] },
-  { label: "imperfetto", tags: ["imperfect"] },
-  { label: "passato remoto", tags: ["past-remote"] },
-  { label: "futuro semplice", tags: ["future"] },
-  { label: "passato prossimo", tags: ["past", "perfect"] },
-  { label: "trapassato prossimo", tags: ["past", "perfect", "pluperfect"] },
-  { label: "trapassato remoto", tags: ["historic", "past-remote"] },
-  { label: "futuro anteriore", tags: ["future", "perfect"] },
-];
-
-function tenseSignature(form: SourceForm): string {
-  return statedValues(form.claims, "tense").sort().join("+");
-}
-
-function namedCycle(forms: SourceForm[]): SourceForm[] {
-  const cycle: SourceForm[] = [];
-  const seen = new Set<string>();
-  for (const form of forms) {
-    const person = personPhrase(form);
-    if (!person || (seen.size === 6 && !seen.has(person))) break;
-    if (seen.has(person) && seen.size > 1) break;
-    seen.add(person);
-    cycle.push(form);
-    if (seen.size === 6) break;
-  }
-  // Preserve additional spellings of the last person only if they precede a
-  // second cycle; the source's own ordering is the tie-breaker.
-  if (seen.size !== 6) return [];
-  for (const form of forms.slice(cycle.length)) {
-    if (personPhrase(form) !== personPhrase(cycle[cycle.length - 1])) break;
-    cycle.push(form);
-  }
-  return cycle;
-}
-
-function VerbParadigm({ reading, searched, includeNonFinite = false }: { reading: Reading; searched: Searched; includeNonFinite?: boolean }) {
-  const finite = reading.forms.filter((form) => !isNonFinite(form));
-  const used = new Set<number>();
-  const boxes = NAMED_TENSES.map(({ label, tags }) => {
-    const same = finite.filter((form) =>
-      !stated(form.claims, "mood") && tenseSignature(form) === [...tags].sort().join("+"));
-    const forms = namedCycle(same);
-    forms.forEach((form) => used.add(form.index));
-    return { label, forms };
-  }).filter((box) => box.forms.length > 0);
-  const imperative = finite.filter((form) => stated(form.claims, "mood") === "imperative");
-  imperative.forEach((form) => used.add(form.index));
-  const remainder = finite.filter((form) => !used.has(form.index));
-  const sources = [...new Set(finite.map((form) => form.formSource).filter((source) => source))];
-
-  function table(forms: SourceForm[], label: string, key: string) {
-    const id = `tense-${reading.recordId}-${key}`;
-    const containsSearch = forms.some((form) => searched.formPointers.has(form.ref.jsonPointer));
-    return <section key={key} className={BOX} aria-labelledby={id}>
-      <input type="checkbox" id={`${id}-toggle`} className="peer sr-only lg:hidden"
-        defaultChecked={containsSearch} aria-labelledby={id} />
-      <h3 className={`${BOX_HEADING} flex items-center justify-between gap-2 peer-focus-visible:outline-2 peer-focus-visible:outline-accent`} id={id}>
-        <label htmlFor={`${id}-toggle`}
-          className="cursor-pointer lg:cursor-default">{label}</label>
-        <span className="font-sans text-xs not-italic text-text-muted lg:hidden">{forms.length} ↓</span>
-      </h3>
-      <div className="hidden peer-checked:block lg:block">
-        <BoxRows>{verbRows(forms).map((row) =>
-          <BoxLine key={row.label} label={<VerbRowLabel row={row} />}>
-            <span className="font-mono"><VerbForms forms={row.forms}
-              filed={filedInTable(label === "imperativo" ? "imperative" : null, null, row)}
-              searched={searched} tableSource /></span>
-          </BoxLine>)}</BoxRows>
+  return (
+    <Section
+      id={`conjugation-${reading.recordId}`}
+      name="Conjugation"
+      count={`${reading.forms.length} forms`}
+      note={
+        derived ? (
+          <>
+            Lexema derives the congiuntivo and condizionale boxes by rule <code>{IT_MOODS_RULE}</code>, from the{" "}
+            <It>che</It> pronoun rows the source writes. The source tags no mood on these forms.
+          </>
+        ) : undefined
+      }
+    >
+      <div className={BOX_ROW}>
+        {TENSE_BOXES.flatMap((name) => {
+          const forms = byBox.get(name);
+          return forms === undefined ? [] : [tenseBox(name, forms)];
+        })}
+        {imperative.length > 0 && tenseBox("imperativo", imperative)}
+        <Box id={id("modi indefiniti")} heading="modi indefiniti" tense>
+          {nonFiniteRows(reading).map((row) => (
+            <SpellingLine key={row.role} label={<It>{row.role}</It>} spellings={row.spellings} searched={searched} />
+          ))}
+          {auxiliary.length > 0 && (
+            <SpellingLine label={<It>ausiliare</It>} spellings={auxiliary.map(spellingOf)} searched={searched} />
+          )}
+        </Box>
+        {unplaced.length > 0 && (
+          <Box id={id("unplaced")} heading={`Not placed in a tense by ${IT_MOODS_RULE}`}>
+            {rowsOf(unplaced).map((row) => (
+              <SpellingLine
+                key={row.label}
+                label={<It>{row.label === "" ? unplacedLabel(row.forms[0]) : row.label}</It>}
+                spellings={row.forms.map(spellingOf)}
+                searched={searched}
+              />
+            ))}
+          </Box>
+        )}
       </div>
-    </section>;
-  }
+    </Section>
+  );
+}
 
-  return <section aria-label="Conjugation">
-    <h3 className={MOOD_HEADING}>Conjugation · {reading.forms.length} forms listed by the source</h3>
-    <p className={SECTION_COUNT}>Grouped by stated tense; mood not given for the named tense boxes.</p>
-    {sources.length > 0 && <p className={`${SECTION_COUNT} break-all`}>Forms from {sources.map((source, i) =>
-      <span key={source}>{i > 0 && ", "}<It>{source!}</It></span>)}</p>}
-    <BoxRow>
-      {boxes.map(({ label, forms }) => table(forms, label, label))}
-      {imperative.length > 0 && table(imperative, "imperativo", "imperative")}
-      {includeNonFinite && nonFiniteFacts(reading).length > 0 && <Box id={`tense-${reading.recordId}-nonfinite`} heading="Non-finite forms">
-        <BoxRows>{nonFiniteFacts(reading).map((fact) =>
-          <BoxLine key={fact.label} label={fact.label}>
-            <span className="font-mono"><VerbForms forms={fact.forms} filed={fact.filed}
-              searched={searched} tableSource /></span>
-          </BoxLine>)}</BoxRows>
-      </Box>}
-      {remainder.length > 0 && <div className="lg:col-span-3">
-        <section className={BOX} aria-labelledby={`tense-${reading.recordId}-unplaced`}>
-          <input type="checkbox" id={`tense-${reading.recordId}-unplaced-toggle`}
-            className="peer sr-only lg:hidden" aria-labelledby={`tense-${reading.recordId}-unplaced`} />
-          <h3 className={`${BOX_HEADING} flex items-center justify-between gap-2 peer-focus-visible:outline-2 peer-focus-visible:outline-accent`}
-            id={`tense-${reading.recordId}-unplaced`}>
-            <label htmlFor={`tense-${reading.recordId}-unplaced-toggle`}
-              className="cursor-pointer lg:cursor-default">
-              Mood not stated — forms not placeable in a named tense
-            </label>
-            <span className="font-sans text-xs not-italic text-text-muted lg:hidden">{remainder.length} ↓</span>
-          </h3>
-          <div className="hidden peer-checked:block lg:block">
-            <p className={SECTION_COUNT}>The source gives a tense, but does not say which mood these forms belong to.</p>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {[...Map.groupBy(remainder, tenseSignature)].map(([signature, forms]) =>
-                <div key={signature}><h4 className={BOX_HEADING}>
-                  {signature ? signature.split("+").join(", ") : "Tense not stated"} · {forms.length}</h4>
-                  <BoxRows>{verbRows(forms).map((row) =>
-                    <BoxLine key={row.label} label={<VerbRowLabel row={row} />}>
-                      <span className="font-mono"><VerbForms forms={row.forms}
-                        filed={filedInTable(null, null, row)} searched={searched} tableSource /></span>
-                    </BoxLine>)}</BoxRows></div>)}
+// The lemma panel ---------------------------------------------------------------
+
+/**
+ * Where a form reading points: the lemma, one line on what lives on its own
+ * page, and a link to that page. A lemma this lookup also returned — `sala`
+ * and `salire` for `sale` — renders here rather than as a card, so the panel
+ * names it and says, when the source leaves it open, which records share the
+ * spelling.
+ */
+function LemmaPanels({ reading, panels }: { reading: Reading; panels: readonly LemmaPanel[] }) {
+  if (panels.length === 0) return null;
+  return (
+    <Section id={`lemma-${reading.recordId}`} name="Lemma">
+      <div className="flex flex-col gap-3">
+        {panels.map(({ link, returned }, i) => (
+          <div
+            key={i}
+            className={LEMMA_PANEL}
+            data-lemma-panel=""
+            data-returned={returned.map((candidate) => candidate.recordId).join(" ") || undefined}
+          >
+            <span className={LEMMA_ARROW} aria-hidden="true">
+              ↳
+            </span>
+            <div className={LEMMA_BODY}>
+              <p className={LEMMA_WORD} lang="it">
+                {link.targetWord}
+              </p>
+              {link.kind === "dangling" ? (
+                <p className={LEMMA_LINE}>The source names this word, but this release has no entry for it.</p>
+              ) : (
+                <>
+                  <p className={LEMMA_LINE}>
+                    Its meanings, synonyms and etymology live on its own page. Nothing is repeated here.
+                  </p>
+                  {link.candidates.length > 1 && (
+                    <p className={LEMMA_LINE}>
+                      {link.candidates.length} entries share this spelling:{" "}
+                      {link.candidates.map((candidate, j) => (
+                        <span key={candidate.recordId}>
+                          {j > 0 && ", "}
+                          <It>{candidate.word}</It> ({posLabel(candidate.pos)})
+                        </span>
+                      ))}
+                      . The source does not say which.
+                    </p>
+                  )}
+                </>
+              )}
             </div>
+            {link.kind === "candidates" && (
+              <a className={LEMMA_OPEN} href={`/?q=${encodeURIComponent(link.targetWord)}`}>
+                Open entry →
+              </a>
+            )}
           </div>
-        </section>
-      </div>}
-    </BoxRow>
-  </section>;
-}
-
-/** Render the form's own reading; a linked lemma contributes only paradigm context. */
-function VerbCard({ reading, query, context }: { reading: Reading; query: string; context?: Reading }) {
-  const searched = searchedSpellings(reading);
-  const facts = nonFiniteFacts(reading);
-  const matched = context?.forms.find((form) => context.evidence.some((evidence) =>
-    evidence.origin === "embedded-form" && evidence.ref.jsonPointer === form.ref.jsonPointer));
-  const formFacts: HeadlineFact[] = matched && context ? [
-    { label: "lemma", value: <It>{context.word}</It> },
-    ...["person", "number", "tense"].flatMap((dimension) => {
-      const values = statedValues(matched.claims, dimension);
-      if (values.length === 0) return [];
-      const value = dimension === "person"
-        ? values.map((person) => person.replace(/-person$/, "")).join(", ")
-        : dimension === "tense" && values.join("+") === "imperfect"
-          ? "imperfetto"
-          : values.join(", ");
-      return [{ label: dimension, value }];
-    }),
-  ] : [];
-  const placed = new Set(reading.forms.map((form) => form.index));
-  const unplaced = unplacedForms(reading, placed);
-  return (
-    <ReadingShell
-      reading={reading}
-      query={query}
-      facts={[...formFacts, ...facts.map((fact) => ({
-        label: fact.label,
-        // `se intr. essere` is one auxiliary entry the source wrote as three
-        // words, so it carries the marking that says this page does not split
-        // a source string into separate forms.
-        value: <VerbForms forms={fact.forms} filed={fact.filed} searched={searched} markUnsplit />,
-      }))]}
-      silence={{ source: reading.lemmaLinks.length > 0 ? [] : nonFiniteClause(facts), withheld: [] }}
-      context={context && <VerbParadigm reading={context} searched={searchedSpellings(context)} includeNonFinite />}
-    >
-      <Grammar
-        claims={otherRecordClaims(reading.grammar.record).filter((claim) =>
-          !(context && claim.status === "unclassified" && claim.sourceText === "form-of"))}
-        label={`other grammar for ${reading.word}`}
-      />
-      {reading.forms.some((form) => !isNonFinite(form)) && <VerbParadigm reading={reading} searched={searched} />}
-      {unplaced.length > 0 && (
-        <BoxRow>
-          <UnplacedForms reading={reading} forms={unplaced} searched={searched} markUnsplit />
-        </BoxRow>
-      )}
-    </ReadingShell>
+        ))}
+      </div>
+    </Section>
   );
 }
 
 /**
- * Every other part of speech, in the shape the shell now gives every card.
- *
- * It carries no articles box: an article is a noun fact, and `it-articles/v1`
- * derives one for a noun only, so a verb card promising one and then explaining
- * its absence is exactly the wall of apologies #60 removes.
+ * A form reading's header bar: its lemma, then where the lemma's own table
+ * places it — person, number and the box `it-moods/v1` files it in — or, for a
+ * noun or adjective form, the gender and number its own record states.
  */
-function GenericCard({ reading, query }: { reading: Reading; query: string }) {
-  const searched = searchedSpellings(reading);
-  const table = conjugationTable(reading);
-  const grouped = table.byTense.size > 0;
-  const placed = new Set(placedByConjugations(table));
-  const unplaced = unplacedForms(reading, placed);
-  const boxed = grouped || unplaced.length > 0;
+function formFacts(card: Card): HeadlineFact[] {
+  const { reading, lemmaRow } = card;
+  const lemma: HeadlineFact = {
+    label: "lemma",
+    value: <It>{lemmaWords(reading).join(", ")}</It>,
+    form: true,
+  };
+  if (!isVerbReading(reading)) {
+    return [lemma, ...agreementFacts(reading, []).facts];
+  }
+  if (lemmaRow === undefined) return [lemma];
+  const { form } = lemmaRow;
+  const facts: HeadlineFact[] = [lemma];
+  const person = statedValues(form.claims, "person").map((value) => value.replace(/-person$/, ""));
+  if (person.length > 0) facts.push({ label: "person", value: person.join(", ") });
+  const number = statedValues(form.claims, "number");
+  if (number.length > 0) facts.push({ label: "number", value: number.join(", ") });
+  const slot = slotOf(form);
+  if (slot.kind === "tense") facts.push({ label: "tense", value: <It>{slot.box}</It>, form: true });
+  else if (slot.kind === "imperative") facts.push({ label: "mood", value: <It>imperativo</It>, form: true });
+  else if (slot.kind === "non-finite") facts.push({ label: "form", value: <It>{slot.role}</It>, form: true });
+  return facts;
+}
 
+// The card ----------------------------------------------------------------------
+
+/** The forms section: its boxes in one wrapping row, or nothing when it has none. */
+function FormsSection({ reading, boxes }: { reading: Reading; boxes: ReactNode[] }) {
+  if (boxes.length === 0) return null;
+  const listsForms = reading.forms.length > 0;
   return (
-    <ReadingShell
-      reading={reading}
-      query={query}
-      facts={statedFacts(reading.grammar.record)}
-      silence={{
-        // A record listing no forms already says so through the shell; only an
-        // entry that lists forms and tags none of them with a tense adds this.
-        source: reading.forms.length > 0 && !grouped ? ["tags no form with a tense"] : [],
-        withheld: [],
-      }}
+    <Section
+      id={`forms-${reading.recordId}`}
+      name={listsForms ? "Forms" : "Articles"}
+      count={listsForms ? `${reading.forms.length}` : undefined}
     >
-      <Grammar
-        claims={otherRecordClaims(reading.grammar.record)}
-        label={`other grammar for ${reading.word}`}
-      />
-      {boxed && (
-        <BoxRow>
-          <Conjugations table={table} recordId={reading.recordId} />
-          <UnplacedForms reading={reading} forms={unplaced} searched={searched} />
-        </BoxRow>
-      )}
-    </ReadingShell>
+      <div className={BOX_ROW}>{boxes}</div>
+    </Section>
   );
 }
 
 /**
- * The card for one reading, chosen by its part of speech.
- *
- * This is the only place that choice is made. A part of speech with no card of
- * its own renders the generic one, unchanged — which is what made each card so
- * far an addition here rather than a rewrite of it.
+ * The boxes of a noun or adjective card. A form the bar or a box places is
+ * placed once; whatever neither placed goes in the last box, verbatim.
  */
-export function ReadingCard({ reading, query, context }: { reading: Reading; query: string; context?: Reading }) {
-  if (isNounReading(reading)) return <NounCard reading={reading} query={query} />;
-  if (isAdjectiveReading(reading)) return <AdjectiveCard reading={reading} query={query} />;
-  if (isVerbReading(reading)) return <VerbCard reading={reading} query={query} context={context} />;
-  return <GenericCard reading={reading} query={query} />;
+function NominalForms({ reading, placedOnBar }: { reading: Reading; placedOnBar: ReadonlySet<number> }) {
+  const searched = searchedSpellings(reading);
+  const cells = agreementCells(reading);
+  const boxed = spansGenders(cells);
+  const degrees = reading.forms.filter(hasDegree);
+  const placed = boxed
+    ? new Set(cells.flatMap((cell) => cell.spellings.flatMap((spelling) => (spelling.kind === "form" ? [spelling.index] : []))))
+    : placedOnBar;
+  const other = reading.forms.filter((form) => !placed.has(form.index) && !hasDegree(form));
+
+  const boxes: ReactNode[] = [];
+  if (boxed) boxes.push(<AgreementBox key="agreement" id={`agreement-${reading.recordId}`} cells={cells} searched={searched} />);
+  // A form reading's articles are its lemma's business: frame 01 draws the
+  // plural of `sala` with its definition and its lemma panel, and nothing else.
+  if (isNounReading(reading) && reading.lemmaLinks.length === 0 && reading.articles.status === "derived") boxes.push(<ArticlesBox key="articles" reading={reading} />);
+  if (degrees.length > 0) boxes.push(<DegreeBox key="degrees" id={`degrees-${reading.recordId}`} forms={degrees} searched={searched} />);
+  if (other.length > 0) boxes.push(<OtherForms key="other" id={`other-${reading.recordId}`} forms={other} searched={searched} />);
+  return <FormsSection reading={reading} boxes={boxes} />;
+}
+
+/** Every other part of speech: whatever forms it lists, in the one last box. */
+function GenericForms({ reading }: { reading: Reading }) {
+  if (reading.forms.length === 0) return null;
+  return (
+    <FormsSection
+      reading={reading}
+      boxes={[<OtherForms key="other" id={`other-${reading.recordId}`} forms={reading.forms} searched={searchedSpellings(reading)} />]}
+    />
+  );
+}
+
+/**
+ * One reading's card.
+ *
+ * The title row names it — the number the reading index uses, the headword,
+ * the kind of reading and, for a form, the word it is a form of. The header bar
+ * carries its headline facts, the silence line what it does not state, and the
+ * sections what the source wrote. A form reading ends in its lemma panel.
+ */
+export function ReadingCard({ card, query, numbered }: { card: Card; query: string; numbered: boolean }) {
+  const { reading } = card;
+  const isForm = reading.lemmaLinks.length > 0;
+  const kind = readingKind(reading);
+  const nominal = isNounReading(reading) || isAdjectiveReading(reading);
+  const verb = isVerbReading(reading);
+
+  const agreement = agreementFacts(reading, nominal && !isForm ? agreementCells(reading) : []);
+  const facts: HeadlineFact[] = [
+    ...(isForm ? formFacts(card) : verb ? verbFacts(reading) : agreement.facts),
+    ...otherRecordFacts(reading.grammar.record, ["gender", "number"]),
+  ];
+
+  const silence = [
+    nominal && !isForm ? agreementSilence(reading) : undefined,
+    isNounReading(reading) && !isForm && reading.articles.status === "withheld"
+      ? articleWithheldSentence(reading.articles.withholding)
+      : undefined,
+    verb && !isForm ? verbSilence(reading) : undefined,
+    reading.senses.length === 0 ? "The source carries no sense for this entry." : undefined,
+  ].filter((sentence): sentence is string => sentence !== undefined);
+
+  return (
+    <article
+      className={CARD}
+      id={`reading-${reading.recordId}`}
+      aria-label={`${reading.word}, ${kind}`}
+      data-record={reading.recordId}
+      data-line={reading.ref.lineNo}
+    >
+      <header className={CARD_TITLE}>
+        {numbered && (
+          <span className={CARD_NUMBER} aria-label={`Reading ${card.number}`}>
+            {card.number}
+          </span>
+        )}
+        <h2 className={HEADWORD}>
+          <Spelled spelling={headwordOf(reading)} />
+        </h2>
+        <span className={POS_PILL}>{kind}</span>
+        {isForm && (
+          <span className={FORM_OF}>
+            of <It>{listPhrase(lemmaWords(reading))}</It>
+          </span>
+        )}
+      </header>
+      <HeadlineBar facts={facts} />
+      <div className={CARD_BODY}>
+        {/* A record that merely lists the query in its table is not a claim
+            about the query, and saying so stops a reader inferring a lemma
+            nobody stated. Said plainly, in the muted text of every note. */}
+        {!reading.isAboutQuery && (
+          <p className={MENTION}>
+            This entry does not define <q lang="it">{query}</q>; it lists the form in its own table.
+          </p>
+        )}
+        {silence.length > 0 && <p className={SILENCE}>{silence.join(" ")}</p>}
+        <EntryNotes reading={reading} />
+        <Definitions reading={reading} />
+        <Examples reading={reading} />
+        {nominal && <NominalForms reading={reading} placedOnBar={agreement.placed} />}
+        {verb && reading.forms.length > 0 && <Conjugation reading={reading} />}
+        {card.inlineParadigm !== undefined && <Conjugation reading={card.inlineParadigm} />}
+        {!nominal && !verb && <GenericForms reading={card.reading} />}
+        <LemmaPanels reading={reading} panels={card.lemmas} />
+      </div>
+    </article>
+  );
 }

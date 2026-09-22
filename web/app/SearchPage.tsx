@@ -5,126 +5,128 @@
 // components to HTML over an imported fixture release, and that test runs in CI
 // with no archive and no D1. What `page.tsx` adds is where the data comes from.
 //
-// Nothing here is a client component. The form is a plain GET form and every
-// state is decided by the URL, so no part of this page holds client state and no
-// `"use client"` boundary exists — the interactive parts Base UI supplies are
-// what the first card that needs one will reach for (#48).
+// Nothing here is a client component. The form is a plain GET form, every
+// state is decided by the URL, and the "Show all" controls are native
+// `<details>`, so the page works before any JavaScript does.
 
 import type { ReactNode } from "react";
-import { isFormOfReading, searchedSpellings } from "@lexema/lookup/types.ts";
-import type { Reading } from "@lexema/lookup/types.ts";
 import type { Attempt } from "./attempt.ts";
-import { ReadingCard } from "./Reading";
+import { SearchIcon } from "./icons";
+import { SiteHeader } from "./SiteHeader";
+import { WordView } from "./Word";
+import { wordPage } from "./wordPage.ts";
 import {
-  COUNT,
-  WORD_LAYER,
-  WORD_HEADING,
-  READING_INDEX,
-  INDEX_LIST,
-  INDEX_LINK,
-  INDEX_NUMBER,
-  INDEX_GLOSS,
-  READING_NUMBER,
   EMPTY,
   ERROR,
-  HINT,
-  LINK,
+  HOME_NAME,
   PENDING,
-  RELEASE_FOOTER,
-  RELEASE_LINE,
-  SEARCH_BUTTON,
   SEARCH_CLEAR,
   SEARCH_FIELD,
   SEARCH_FORM,
+  SEARCH_HINT,
+  SEARCH_ICON,
   SEARCH_INPUT,
-  SEARCH_LABEL,
   SHELL_CENTRED,
   SHELL_TOP,
-  SITE_NAME,
-  TAGLINE,
+  TRY_CHIP,
+  TRY_LABEL,
+  TRY_ROW,
 } from "./styles.ts";
 
+export { pageOrder } from "./wordPage.ts";
+
 /**
- * The shell every state shares: the heading, the search form, and the one
- * `main` landmark. The form is a plain GET form, so the query lands in the URL
- * and the page works before any JavaScript does.
- *
- * Two states, one bar. "Before a query, the page is the search bar alone,
- * centred on the screen with the site name above it and nothing else competing.
- * With a query, the bar sits at the top and the results fill the page below it"
- * (design-system-manifest.md § "The page"). Which state this is is read off the
- * query itself, and the only thing that changes is how the column is laid out:
- * the same `main`, the same `h1`, the same one form, so a result stays
- * shareable by its URL and moving the bar is layout rather than a second route.
+ * The one search field: a magnifier at the left, and at the right either a
+ * `×` that clears a query or, before one, the `ENTER` hint. No label above it
+ * and no button beside it — Enter submits — and its accessible name is on the
+ * input itself, so a screen reader still hears what it is for.
  */
-export function SearchPage({ raw, children }: { raw: string; children: ReactNode }) {
+function SearchForm({ raw }: { raw: string }) {
   const asked = raw.trim() !== "";
-
   return (
-    <main className={asked ? SHELL_TOP : SHELL_CENTRED}>
-      <h1 className={SITE_NAME}>Lexema</h1>
-      <p className={TAGLINE}>Italian words, as the source dictionary has them.</p>
-
-      <form className={SEARCH_FORM} action="/" method="get" role="search">
-        <label className={SEARCH_LABEL} htmlFor="q">
-          Italian word
-        </label>
-        <div className={SEARCH_FIELD}>
-          <input
-            className={SEARCH_INPUT}
-            id="q"
-            name="q"
-            type="text"
-            defaultValue={raw}
-            placeholder="casa"
-            autoComplete="off"
-            autoCapitalize="none"
-            spellCheck={false}
-            lang="it"
-            autoFocus
-          />
-          {asked && <a className={SEARCH_CLEAR} href="/" aria-label="Clear search">×</a>}
-        </div>
-        <button className={SEARCH_BUTTON} type="submit">
-          Search
-        </button>
-      </form>
-
-      {children}
-    </main>
+    <form className={SEARCH_FORM} action="/" method="get" role="search">
+      <div className={SEARCH_FIELD}>
+        <SearchIcon className={SEARCH_ICON} />
+        <input
+          className={SEARCH_INPUT}
+          id="q"
+          name="q"
+          type="search"
+          aria-label="Search an Italian word"
+          defaultValue={raw}
+          placeholder="Search an Italian word"
+          autoComplete="off"
+          autoCapitalize="none"
+          spellCheck={false}
+          lang="it"
+          autoFocus={!asked}
+          enterKeyHint="search"
+        />
+        {asked ? (
+          <a className={SEARCH_CLEAR} href="/" aria-label="Clear search">
+            ×
+          </a>
+        ) : (
+          <kbd className={SEARCH_HINT} aria-hidden="true">
+            ENTER
+          </kbd>
+        )}
+      </div>
+    </form>
   );
 }
+
+/**
+ * The shell every state shares.
+ *
+ * Two states, one form. "Before a query, the page is the search bar alone,
+ * centred on the screen with the site name above it and nothing else
+ * competing. With a query, the bar sits at the top and the results fill the
+ * page below it" (design-system-manifest.md § "The page"). Which state this is
+ * is read off the query itself; the form is the same one in both, so a result
+ * stays shareable by its URL and moving the bar is layout, not a second route.
+ */
+export function SearchPage({ raw, children }: { raw: string; children: ReactNode }) {
+  if (raw.trim() === "") {
+    return (
+      <main className={SHELL_CENTRED}>
+        <h1 className={HOME_NAME}>Lexema</h1>
+        <SearchForm raw={raw} />
+        {children}
+      </main>
+    );
+  }
+  return (
+    <>
+      <SiteHeader />
+      <main className={SHELL_TOP}>
+        <SearchForm raw={raw} />
+        {children}
+      </main>
+    </>
+  );
+}
+
+/** The words frame 00 offers before a query, each a search. */
+export const TRY_WORDS = ["casa", "andare", "andavano", "bello", "sale", "studente"] as const;
 
 /** Nothing asked yet. */
 export function FirstLoad() {
   return (
-    <p className={HINT}>
-      Try{" "}
-      <a className={LINK} href="/?q=sale" lang="it">
-        sale
-      </a>
-      ,{" "}
-      <a className={LINK} href="/?q=studenti" lang="it">
-        studenti
-      </a>{" "}
-      or{" "}
-      <a className={LINK} href="/?q=bella" lang="it">
-        bella
-      </a>{" "}
-      — each shows a different kind of ambiguity.
-    </p>
+    <nav className={TRY_ROW} aria-label="Try a word">
+      <span className={TRY_LABEL}>Try</span>
+      {TRY_WORDS.map((word) => (
+        <a key={word} className={TRY_CHIP} href={`/?q=${word}`} lang="it">
+          {word}
+        </a>
+      ))}
+    </nav>
   );
 }
 
 /**
- * The lookup is running.
- *
- * This is the fallback of the streaming boundary in `page.tsx`: the shell above
- * is flushed as soon as the request is understood, and this stands in the
- * result's place until the D1 read answers. It is the smallest honest loading
- * state a server-rendered page has — no client JavaScript, and nothing that
- * pretends to know the answer yet. On a local D1 the read is usually faster
- * than the first flush, and then a reader never sees it.
+ * The lookup is running: the fallback of the streaming boundary in `page.tsx`.
+ * No client JavaScript, and nothing that pretends to know the answer yet.
  */
 export function Pending({ raw }: { raw: string }) {
   return (
@@ -135,38 +137,24 @@ export function Pending({ raw }: { raw: string }) {
 }
 
 /**
- * Direct readings stay in the source's order: a word with a base reading
- * leads with it, as in the design's sale and studente frames. When only a
- * form-of record matches the queried headword, it leads; the lemma's table
- * appears as context inside that form rather than as another reading. The
- * lemma remains reachable from the source-declared link.
- */
-export function pageOrder(readings: readonly Reading[]): Reading[] {
-  if (readings.some((reading) => reading.isAboutQuery && !isFormOfReading(reading))) {
-    return [...readings];
-  }
-  return [
-    ...readings.filter((reading) => isFormOfReading(reading)),
-    ...readings.filter((reading) => !isFormOfReading(reading)),
-  ];
-}
-
-/**
- * Every state a probed query can land in, and the release under it.
+ * Every state a probed query can land in, each said plainly rather than
+ * collapsed into one blank page: asked badly, the lookup itself failed, asked
+ * and not found, asked and found.
  *
- * Each is said plainly rather than collapsed into one blank page: asked badly,
- * the lookup itself failed, asked and not found, asked and found.
- *
- * The credit is not here. [ADR 0009](../../.decisions/0009-two-licences-and-a-source-link.md)
- * puts no credit line, licence name or contributor text on the search page: each
- * reading carries a *Source* link to its Wiktionary page, and the full credit is
- * on `/attribution`, which the site footer reaches from every page. What stays
- * below is provenance rather than credit — which release answered, so that the
- * line numbers and pointers on each card name something exact.
+ * The page has one `h1` in every state: the headword when a word was found,
+ * and otherwise a heading a screen reader can land on, visually hidden because
+ * the message under it says the same thing.
  */
 export function Outcome({ raw, attempt }: { raw: string; attempt: Attempt }) {
+  const query = raw.trim();
+  if (attempt.outcome === "found") {
+    return <WordView page={wordPage(attempt.query.raw.trim(), attempt.readings)} query={attempt.query.raw.trim()} />;
+  }
   return (
     <>
+      <h1 className="sr-only">
+        Search for <span lang="it">{query}</span>
+      </h1>
       {attempt.outcome === "rejected" && (
         <p className={ERROR} role="alert">
           {attempt.rejection.reason === "empty"
@@ -180,8 +168,8 @@ export function Outcome({ raw, attempt }: { raw: string; attempt: Attempt }) {
           Why it failed is in the Worker's log, not on this page. */}
       {attempt.outcome === "failed" && (
         <p className={ERROR} role="alert">
-          The lookup failed, so this page cannot say whether <q lang="it">{raw.trim()}</q> is in
-          the dictionary. Try again in a moment.
+          The lookup failed, so this page cannot say whether <q lang="it">{query}</q> is in the
+          dictionary. Try again in a moment.
         </p>
       )}
 
@@ -191,54 +179,6 @@ export function Outcome({ raw, attempt }: { raw: string; attempt: Attempt }) {
           matter: <code lang="it">citta</code> and <code lang="it">città</code> are different
           words.
         </p>
-      )}
-
-      {attempt.outcome === "found" && (
-        <>
-          {(() => {
-            const ordered = pageOrder(attempt.readings);
-            // A form-only query owns its reading; the lemma is context inside
-            // that reading, reached by its source-declared link, not a second card.
-            const direct = ordered.filter((reading) => reading.isAboutQuery);
-            const formOnly = direct.length === 1 && direct[0].pos === "verb" &&
-              isFormOfReading(direct[0]) && ordered.some((candidate) =>
-                !candidate.isAboutQuery && candidate.pos === "verb" &&
-                candidate.word === direct[0].lemmaLinks[0]?.targetWord);
-            const visible = formOnly ? ordered.filter((reading) => reading.isAboutQuery) : ordered;
-            return <>
-              <p className={COUNT} role="status">{formOnly ? "1 reading" : `${attempt.readings.length} ${attempt.readings.length === 1 ? "entry" : "entries"}`} for <q lang="it">{attempt.query.raw.trim()}</q></p>
-              <section className={WORD_LAYER} aria-label="Word">
-                <h2 className={WORD_HEADING} lang="it">{attempt.query.raw.trim()}</h2>
-              </section>
-              {visible.length > 1 && <nav className={READING_INDEX} aria-label="Reading index">
-                <h2 className="sr-only">Readings</h2>
-                <ol className={INDEX_LIST}>{visible.map((reading, index) =>
-                  <li key={reading.recordId}><a className={INDEX_LINK} href={`#reading-${reading.recordId}`}>
-                    <span className={INDEX_NUMBER}>{index + 1}</span>
-                    <span>{reading.pos === "adj" ? "adjective" : reading.pos === "noun" ? "noun" : reading.pos === "verb" ? "verb" : reading.posTitle}</span>
-                    {reading.senses[0]?.glosses[0] && <span className={INDEX_GLOSS} lang="it">{reading.senses[0].glosses[0].text}</span>}
-                  </a></li>)}</ol>
-              </nav>}
-              {visible.map((reading) => {
-                const target = reading.lemmaLinks[0]?.targetWord;
-                const context = formOnly && target ? ordered.find((candidate) =>
-                  !candidate.isAboutQuery && candidate.word === target && candidate.pos === "verb" &&
-                  searchedSpellings(candidate).formPointers.size > 0) : undefined;
-                return <div key={reading.recordId} id={`reading-${reading.recordId}`}>
-                  <ReadingCard reading={reading} query={attempt.query.raw.trim()} context={context} />
-                </div>;
-              })}
-            </>;
-          })()}
-        </>
-      )}
-
-      {(attempt.outcome === "found" || attempt.outcome === "not-found") && (
-        <footer className={RELEASE_FOOTER}>
-          <p className={RELEASE_LINE}>
-            Release <code>{attempt.release.releaseId}</code>
-          </p>
-        </footer>
       )}
     </>
   );
