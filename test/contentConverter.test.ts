@@ -112,6 +112,8 @@ test("re-conversion makes release B exact, preserves stable keys and editorial v
     assert.equal(updatedOrphan.status, "orphaned");
     assert.equal(updatedOrphan.orphanedFromReleaseId, "release-a");
     assert.deepEqual(updatedOrphan.orphanedEntries["noun:Sostantivo"].lexema, { italianExample: "Un esempio." });
+    assert.equal("entries" in updatedOrphan, false);
+    assert.equal("releaseId" in updatedOrphan, false);
 
     const updatedStable = JSON.parse(await readFile(stablePath, "utf8"));
     assert.deepEqual(Object.keys(updatedStable.entries), ["noun:X", "noun:X#2"]);
