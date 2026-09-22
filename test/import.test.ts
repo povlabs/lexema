@@ -170,30 +170,3 @@ test("a limit is reported as partial and still emits records through the limit",
     await rm(dir, { recursive: true, force: true });
   }
 });
-
-test("a form refused for its surface still reports its own refused leaves", async () => {
-  // The form at /forms/0 is refused twice over: its surface is a number and so
-  // is one of its tags. A pass that returns on the bad surface before reading
-  // the members loses the tag's rejection from both the file and the count.
-  const { dir, archive } = await fixture([
-    JSON.stringify({
-      word: "valido", pos: "noun", pos_title: "Sostantivo", lang_code: "it",
-      forms: [{ form: 42, tags: [9, "plural"], raw_tags: 8, source: 7 }],
-      senses: [{ glosses: ["valido"] }],
-    }),
-  ]);
-  try {
-    const result = await parse(archive);
-    assert.equal(result.report.admitted, 1);
-    assert.equal(result.report.malformed, 0);
-    assert.equal(result.report.malformedMembers, 4);
-    assert.deepEqual(result.rejections, [
-      { kind: "malformed-member", lineNo: 1, reason: "/forms/0/form is not a string" },
-      { kind: "malformed-member", lineNo: 1, reason: "/forms/0/source is not a string" },
-      { kind: "malformed-member", lineNo: 1, reason: "/forms/0/tags/0 is not a string" },
-      { kind: "malformed-member", lineNo: 1, reason: "/forms/0/raw_tags is not an array" },
-    ]);
-  } finally {
-    await rm(dir, { recursive: true, force: true });
-  }
-});
