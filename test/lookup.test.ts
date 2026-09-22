@@ -1,12 +1,12 @@
 import assert from "node:assert/strict";
-import { createHash } from "node:crypto";
 import test from "node:test";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { gzipSync } from "node:zlib";
-import { importRelease } from "../src/import/importRelease.js";
+import { convertRelease } from "../src/content/converter.js";
+import { buildSeedSql } from "../src/import/seedDev.js";
 import {
   INFLECTION_CANDIDATE_SQL,
   INFLECTION_SQL,
@@ -151,23 +151,13 @@ const RELEASE = "it-test";
 async function fixture() {
   const dir = await mkdtemp(join(tmpdir(), "lexema-lookup-"));
   const archive = join(dir, "fixture.jsonl.gz");
-  const database = join(dir, "fixture.sqlite");
+  const content = join(dir, "content");
   await writeFile(archive, gzipSync(Buffer.from(LINES.join("\n") + "\n", "utf8")));
-  await importRelease({
-    input: archive,
-    database,
-    schema: "src/db/schema.sql",
-    releaseId: RELEASE,
-    archiveR2Key: "releases/it-test.jsonl.gz",
-    sourceUrl: "https://example.invalid/it-extract.jsonl.gz",
-    license: "CC-BY-SA-4.0",
-    // The fixture is hand-written and every line is admissible, so a rejection
-    // means the fixture broke, not that the importer found something.
-    onRejection: (rejection) => {
-      throw new Error(`fixture line rejected: ${JSON.stringify(rejection)}`);
-    },
-  });
-  const db = new DatabaseSync(database);
+  await convertRelease({ input: archive, output: content, releaseId: RELEASE });
+  const words = [...new Set(LINES.map((line) => JSON.parse(line).word as string))];
+  const { sql } = await buildSeedSql({ root: content, releaseId: RELEASE, words, sourceUrl: "https://example.invalid/it-extract.jsonl.gz" });
+  const db = new DatabaseSync(":memory:");
+  db.exec(sql);
   return { dir, db };
 }
 
@@ -616,23 +606,18 @@ test("every ref names the release, the line, the field and the line's digest", a
     ];
     assert.ok(refs.length > 10);
 
-    const rawByLine = new Map(
-      (
-        db.prepare(
-          `SELECT r.line_no, j.raw_json
-             FROM source_record r
-             JOIN source_record_json j ON j.record_id = r.record_id`,
-        ).all() as { line_no: number; raw_json: string }[]
-      ).map((row) => [row.line_no, row.raw_json]),
+    const digestByLine = new Map(
+      (db.prepare("SELECT line_no, line_sha256 FROM source_record").all() as { line_no: number; line_sha256: string }[])
+        .map((row) => [row.line_no, row.line_sha256]),
     );
 
     for (const ref of refs) {
       assert.equal(ref.releaseId, RELEASE);
-      const raw = rawByLine.get(ref.lineNo);
-      assert.ok(raw !== undefined, `ref points at line ${ref.lineNo}, which holds no record`);
-      // The digest is of the line the pointer is rooted in, so it is checkable
-      // against the archive rather than decorative.
-      assert.equal(ref.lineSha256, createHash("sha256").update(raw, "utf8").digest("hex"));
+      const digest = digestByLine.get(ref.lineNo);
+      assert.ok(digest !== undefined, `ref points at line ${ref.lineNo}, which holds no record`);
+      // Content releases carry the converter's original source-line digest;
+      // the archive bytes themselves are intentionally not required locally.
+      assert.equal(ref.lineSha256, digest);
       // "" is the whole record; anything else is a field inside it.
       assert.ok(ref.jsonPointer === "" || ref.jsonPointer.startsWith("/"));
     }

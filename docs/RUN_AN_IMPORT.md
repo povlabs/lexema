@@ -1,97 +1,42 @@
-# How to run an import
+# Run an archive conversion
 
-Turn the Italian archive into a local SQLite database. Why the importer behaves
-the way it does is [IMPORT.md](IMPORT.md); this page is the operation.
+The archive remains an **offline conversion input**, not a development seed
+input. `src/content/converter.ts` reads it through the streaming parser in
+`src/import/importRelease.ts` and writes release content files. The parser keeps
+its admission, rejection, checksum, provenance and form-of semantics; it no
+longer writes a local SQLite database.
 
 ## Before you start
 
-- `it-extract.jsonl.gz` in the repository root.
-- Roughly 1.5 GB free for the database, and a minute or two of runtime. The
-  last measured full run is in
-  [the import measurements report](../reports/2026-09-21-import-measurements.md),
-  with the command that produced it.
+- `it-extract.jsonl.gz` in the repository root (not committed).
+- Enough space for the generated content files.
 
-Both paths are gitignored: the archive because redistributing it is unsettled
-(#6), the database because it is regenerated.
+The archive is gitignored because redistribution is unsettled. A data-repo
+checkout is needed for a real release conversion, not for `pnpm run seed:dev`.
 
-## Run it
+## Convert
 
 ```sh
-pnpm run import -- \
-  --release-id it-0c432803 \
-  --source-url https://kaikki.org/dictionary/downloads/it/it-extract.jsonl.gz \
-  --force
+pnpm run convert -- \
+  --input it-extract.jsonl.gz \
+  --output content \
+  --release-id it-<release-id>
 ```
 
-Defaults read `it-extract.jsonl.gz` and write `.data/lexema.sqlite`.
+The converter reports files, words, records, rejected lines and refused
+members. It preserves source locations in every generated value and leaves
+existing editorial fields in place. A conversion that encounters malformed
+input fails or reports the located rejection rather than silently dropping it.
 
-The release id names the archive by the first eight characters of its SHA-256,
-and the URL is the one recovered from the file's own macOS download metadata —
-both from [the dataset spot check](../reports/2026-09-18-dataset-spot-check.md#status-and-method).
-A date-shaped id such as `it-2026-07-20` would be a guess: that same spot check
-records the upstream release date as unverified, and the importer's rule is that
-an unknown date is written as unknown, never invented. So there is no
-`--retrieved-at` and no `--upstream` here either; both columns stay empty.
-Check the archive you have is the one those flags describe:
+## Development data
 
-```sh
-shasum -a 256 it-extract.jsonl.gz
-# 0c432803c672aceccd48787eb64807c5366fdbd6796715c9a99e31c0024d5dcf
-```
+To run the site from the committed fifty-word release, use
+[`DEV_SEED.md`](DEV_SEED.md). That path reads content files and emits SQL for a
+separate local D1; it does not call this archive conversion and does not write
+SQLite.
 
-## Flags
+## What remains out of this operation
 
-| Flag | What it does |
-| --- | --- |
-| `--release-id <id>` | Names the release row. Defaults to `it-local`; name the real dump when you mean to keep it. |
-| `--source-url <url>` | Where the archive was downloaded from. Stored on the release row; left empty when you do not know it. |
-| `--retrieved-at <iso>`, `--upstream <id>` | Download time and upstream dump id, when you can show they are true. Omitted means unknown, which is what the release row then says. |
-| `--input <path>` | The `.jsonl.gz` to read. Defaults to `it-extract.jsonl.gz`. |
-| `--database <path>` | Where to write. Defaults to `.data/lexema.sqlite`. |
-| `--force` | Delete an existing database first. Without it a second run fails, which is deliberate: silently overwriting an imported release is how you lose one you meant to keep. |
-| `--limit <n>` | Stop after n admitted records, for a smoke run. The release ends as `partial` and no canonical read will serve it. |
-
-`pnpm run import -- --help` prints the full list.
-
-## Check the run worked
-
-The summary says `status complete`. Anything else means the database is not
-servable — see [IMPORT.md](IMPORT.md#what-a-run-reports) for what the counts
-mean and what `partial` is for.
-
-Everything the import refused goes to `<database>.rejections.tsv` next to the
-database — `.data/lexema.sqlite.rejections.tsv` by default — as line number,
-kind and reason, one per line. Two different refusals share that file, and the
-summary counts them separately:
-
-- `rejected lines` is every line that did not become a record: the
-  `other-language` and `malformed` rows.
-- `refused leaves` is every value inside a record that did land but was the
-  wrong JSON type — a gloss that is not a string, say. These are the
-  `malformed-member` rows, located by line number and JSON pointer.
-
-So the file holds `rejected lines` + `refused leaves` rows, and neither count
-on its own is the length of the file. `malformed 0` and `refused leaves 0` are
-the expected answers for the current archive; anything else names a line to go
-and look at.
-
-The counts are on the release row as well, so a database you were handed can be
-checked without the output of the run that made it:
-
-```sh
-sqlite3 -line .data/lexema.sqlite \
-  "SELECT status, lines_read, admitted, skipped_other_language,
-          malformed_lines, malformed_members FROM source_release;"
-sqlite3 -column .data/lexema.sqlite \
-  "SELECT table_name, rows FROM release_table_rows ORDER BY table_name;"
-```
-
-If the run stops with *"changed while it was being imported"*, something
-rewrote the archive under it. Nothing was committed; run it again on a file
-nobody is touching.
-
-## Where it may not run
-
-Per [ADR 0004](../.decisions/0004-cloudflare-workers-d1-vinext.md) this never
-runs inside a request. It is a plain Node program; the Worker only reads what it
-produced.
+Deploying a full release to production D1 is a separate release operation. The
+old archive-to-SQLite import command and its SQL export/prefix helpers are
+retired; there is no `pnpm run import` command to run.

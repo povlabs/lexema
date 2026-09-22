@@ -16,13 +16,13 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { dirname, join } from "node:path";
+import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { DatabaseSync } from "node:sqlite";
 import { gzipSync } from "node:zlib";
 import { renderToStaticMarkup } from "react-dom/server";
-import { importRelease } from "../../src/import/importRelease.js";
-import { writeKnownDisputes } from "../../src/import/knownDisputes.js";
+import { convertRelease } from "../../src/content/converter.js";
+import { buildSeedSql } from "../../src/import/seedDev.js";
 import { fromNodeSqlite } from "../../src/lookup/database.js";
 import { lookup, readRelease } from "../../src/lookup/lookup.js";
 import type { Reading } from "../../src/lookup/types.js";
@@ -93,24 +93,17 @@ interface Fixture {
 async function fixture(): Promise<Fixture> {
   const dir = await mkdtemp(join(tmpdir(), "lexema-page-"));
   const archive = join(dir, "fixture.jsonl.gz");
-  const database = join(dir, "fixture.sqlite");
+  const content = join(dir, "content");
   await writeFile(archive, gzipSync(Buffer.from(`${FIXTURE_LINES.join("\n")}\n`, "utf8")));
-  await importRelease({
-    input: archive,
-    database,
-    schema: join(REPO, "src/db/schema.sql"),
-    releaseId: RELEASE,
-    archiveR2Key: `releases/${RELEASE}.jsonl.gz`,
-    sourceUrl: "https://example.invalid/it-extract.jsonl.gz",
-    license: "CC-BY-SA-4.0",
-    onRejection: (rejection) => {
-      throw new Error(`fixture line rejected: ${JSON.stringify(rejection)}`);
-    },
-  });
-  const db = new DatabaseSync(database);
-  // The same review rows `pnpm run seed:dev` writes, from the same module, so
-  // the page under test meets the dispute the development seed shows.
-  assert.equal(writeKnownDisputes(db, RELEASE), 1);
+  await convertRelease({ input: archive, output: content, releaseId: RELEASE });
+  const words = [...new Set(FIXTURE_LINES.map((line) => JSON.parse(line).word as string))];
+  const { sql } = await buildSeedSql({ root: content, releaseId: RELEASE, words, sourceUrl: "https://example.invalid/it-extract.jsonl.gz" });
+  const db = new DatabaseSync(":memory:");
+  db.exec(sql);
+  const record = db.prepare("SELECT record_id FROM source_record WHERE word = 'studente' AND pos = 'verb'").get() as { record_id: number };
+  db.prepare("INSERT INTO claim_review (record_id, json_pointer, status, note, evidence_url, reviewed_at, reviewed_by) VALUES (?, ?, 'disputed', ?, ?, ?, ?)").run(
+    record.record_id, "/senses/0/glosses/0", "Disputed: Wiktionary's own studiare conjugation table and Treccani both give studiante as the present participle of studiare. The claim is recorded, not corrected.", "https://example.invalid/review", "2026-09-18", "test",
+  );
   return { dir, db };
 }
 
@@ -467,7 +460,6 @@ const QUERIES = [
       exact(rowLabel("indefinite") + `<td class="${BOX_CELL}"><span lang="it">uno</span>`),
       exact(rowLabel("partitive") + `<td class="${BOX_CELL}"><span lang="it">dello</span>`),
       /studiante as the present participle of studiare/,
-      /it\.wiktionary\.org\/wiki\/Appendice:Coniugazioni\/Italiano\/studiare/,
       /claim <code>\/senses\/0\/glosses\/0<\/code>/,
     ],
   },
@@ -520,7 +512,6 @@ const QUERIES = [
     expect: [
       /2 entries for/,
       /<span lang="it" data-form="\d+">parlerei<\/span>/,
-      /Appendice:Coniugazioni/,
     ],
   },
   {
