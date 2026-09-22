@@ -11,7 +11,7 @@
 // what the first card that needs one will reach for (#48).
 
 import type { ReactNode } from "react";
-import { isFormOfReading } from "@lexema/lookup/types.ts";
+import { isFormOfReading, searchedSpellings } from "@lexema/lookup/types.ts";
 import type { Reading } from "@lexema/lookup/types.ts";
 import type { Attempt } from "./attempt.ts";
 import { ReadingCard } from "./Reading";
@@ -33,6 +33,8 @@ import {
   RELEASE_FOOTER,
   RELEASE_LINE,
   SEARCH_BUTTON,
+  SEARCH_CLEAR,
+  SEARCH_FIELD,
   SEARCH_FORM,
   SEARCH_INPUT,
   SEARCH_LABEL,
@@ -67,19 +69,22 @@ export function SearchPage({ raw, children }: { raw: string; children: ReactNode
         <label className={SEARCH_LABEL} htmlFor="q">
           Italian word
         </label>
-        <input
-          className={SEARCH_INPUT}
-          id="q"
-          name="q"
-          type="search"
-          defaultValue={raw}
-          placeholder="casa"
-          autoComplete="off"
-          autoCapitalize="none"
-          spellCheck={false}
-          lang="it"
-          autoFocus
-        />
+        <div className={SEARCH_FIELD}>
+          <input
+            className={SEARCH_INPUT}
+            id="q"
+            name="q"
+            type="text"
+            defaultValue={raw}
+            placeholder="casa"
+            autoComplete="off"
+            autoCapitalize="none"
+            spellCheck={false}
+            lang="it"
+            autoFocus
+          />
+          {asked && <a className={SEARCH_CLEAR} href="/" aria-label="Clear search">×</a>}
+        </div>
         <button className={SEARCH_BUTTON} type="submit">
           Search
         </button>
@@ -132,8 +137,9 @@ export function Pending({ raw }: { raw: string }) {
 /**
  * Direct readings stay in the source's order: a word with a base reading
  * leads with it, as in the design's sale and studente frames. When only a
- * form-of record matches the queried headword, it leads the embedded lemma's
- * table (#49). Neither branch drops or merges a reading.
+ * form-of record matches the queried headword, it leads; the lemma's table
+ * appears as context inside that form rather than as another reading. The
+ * lemma remains reachable from the source-declared link.
  */
 export function pageOrder(readings: readonly Reading[]): Reading[] {
   if (readings.some((reading) => reading.isAboutQuery && !isFormOfReading(reading))) {
@@ -189,37 +195,41 @@ export function Outcome({ raw, attempt }: { raw: string; attempt: Attempt }) {
 
       {attempt.outcome === "found" && (
         <>
-          <p className={COUNT} role="status">
-            {attempt.readings.length} {attempt.readings.length === 1 ? "entry" : "entries"} for{" "}
-            <q lang="it">{attempt.query.raw.trim()}</q>
-          </p>
-          <section className={WORD_LAYER} aria-label="Word">
-            <h2 className={WORD_HEADING} lang="it">{attempt.query.raw.trim()}</h2>
-          </section>
-          {attempt.readings.length > 1 && (
-            <nav className={READING_INDEX} aria-label="Reading index">
-              <h2>Readings</h2>
-              <ol className={INDEX_LIST}>
-                {pageOrder(attempt.readings).map((reading, index) => (
-                  <li key={reading.recordId}>
-                    <a className={INDEX_LINK} href={`#reading-${reading.recordId}`}>
-                      <span className={INDEX_NUMBER}>{index + 1}</span>
-                      <span>{reading.pos === "adj" ? "adjective" : reading.pos === "noun" ? "noun" : reading.pos === "verb" ? "verb" : reading.posTitle}</span>
-                      {reading.senses[0]?.glosses[0] && (
-                        <span className={INDEX_GLOSS} lang="it">{reading.senses[0].glosses[0].text}</span>
-                      )}
-                    </a>
-                  </li>
-                ))}
-              </ol>
-            </nav>
-          )}
-          {pageOrder(attempt.readings).map((reading, index) => (
-            <div key={reading.recordId} id={`reading-${reading.recordId}`}>
-              {attempt.readings.length > 1 && <p className={READING_NUMBER}>Reading {index + 1}</p>}
-              <ReadingCard reading={reading} query={attempt.query.raw.trim()} />
-            </div>
-          ))}
+          {(() => {
+            const ordered = pageOrder(attempt.readings);
+            // A form-only query owns its reading; the lemma is context inside
+            // that reading, reached by its source-declared link, not a second card.
+            const direct = ordered.filter((reading) => reading.isAboutQuery);
+            const formOnly = direct.length === 1 && direct[0].pos === "verb" &&
+              isFormOfReading(direct[0]) && ordered.some((candidate) =>
+                !candidate.isAboutQuery && candidate.pos === "verb" &&
+                candidate.word === direct[0].lemmaLinks[0]?.targetWord);
+            const visible = formOnly ? ordered.filter((reading) => reading.isAboutQuery) : ordered;
+            return <>
+              <p className={COUNT} role="status">{formOnly ? "1 reading" : `${attempt.readings.length} ${attempt.readings.length === 1 ? "entry" : "entries"}`} for <q lang="it">{attempt.query.raw.trim()}</q></p>
+              <section className={WORD_LAYER} aria-label="Word">
+                <h2 className={WORD_HEADING} lang="it">{attempt.query.raw.trim()}</h2>
+              </section>
+              {visible.length > 1 && <nav className={READING_INDEX} aria-label="Reading index">
+                <h2 className="sr-only">Readings</h2>
+                <ol className={INDEX_LIST}>{visible.map((reading, index) =>
+                  <li key={reading.recordId}><a className={INDEX_LINK} href={`#reading-${reading.recordId}`}>
+                    <span className={INDEX_NUMBER}>{index + 1}</span>
+                    <span>{reading.pos === "adj" ? "adjective" : reading.pos === "noun" ? "noun" : reading.pos === "verb" ? "verb" : reading.posTitle}</span>
+                    {reading.senses[0]?.glosses[0] && <span className={INDEX_GLOSS} lang="it">{reading.senses[0].glosses[0].text}</span>}
+                  </a></li>)}</ol>
+              </nav>}
+              {visible.map((reading) => {
+                const target = reading.lemmaLinks[0]?.targetWord;
+                const context = formOnly && target ? ordered.find((candidate) =>
+                  !candidate.isAboutQuery && candidate.word === target && candidate.pos === "verb" &&
+                  searchedSpellings(candidate).formPointers.size > 0) : undefined;
+                return <div key={reading.recordId} id={`reading-${reading.recordId}`}>
+                  <ReadingCard reading={reading} query={attempt.query.raw.trim()} context={context} />
+                </div>;
+              })}
+            </>;
+          })()}
         </>
       )}
 

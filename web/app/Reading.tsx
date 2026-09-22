@@ -474,7 +474,7 @@ function BoxSurface({ spelling, searched }: { spelling: Spelling; searched: Sear
   return (
     <span className={SEARCHED}>
       <Spelled spelling={spelling} />
-      <span className={MUTED}> · the form you searched</span>
+      <span className={MUTED}> · your search</span>
     </span>
   );
 }
@@ -1322,12 +1322,14 @@ function ReadingShell({
   facts = [],
   silence = NO_SILENCE,
   children,
+  context,
 }: {
   reading: Reading;
   query: string;
   facts?: HeadlineFact[];
   silence?: Silence;
   children: ReactNode;
+  context?: ReactNode;
 }) {
   const pos = posLabel(reading.pos);
   const definitions = reading.senses.filter((sense) => !isEntryFurniture(sense, reading.word));
@@ -1336,7 +1338,7 @@ function ReadingShell({
     source: [
       ...silence.source,
       ...(reading.senses.length === 0 ? ["carries no sense"] : []),
-      ...(reading.forms.length === 0 ? ["lists no forms"] : []),
+      ...(reading.forms.length === 0 && !context ? ["lists no forms"] : []),
     ],
     withheld: silence.withheld,
   };
@@ -1347,7 +1349,7 @@ function ReadingShell({
         <h2 className={HEADWORD}>
           <Spelled spelling={headwordOf(reading)} />
         </h2>
-        <HeadlineBar facts={[{ label: "part of speech", value: pos }, ...facts]} />
+        <HeadlineBar facts={[...(context ? [] : [{ label: "part of speech", value: pos }]), ...facts]} />
         {/* The single most important honesty signal on this page. A record that
             merely lists the query in a table is not a claim about the query, and
             saying so prevents the reader inferring a lemma nobody stated. */}
@@ -1404,41 +1406,27 @@ function ReadingShell({
       )}
 
       {children}
+      {context}
 
       {reading.lemmaLinks.length > 0 && (
         <section className={LINKS} aria-labelledby={`form-of-${reading.recordId}`}>
-          <h3 className={BOX_HEADING} id={`form-of-${reading.recordId}`}>
-            Form of
+          <h3 className={HEADLINE_LABEL} id={`form-of-${reading.recordId}`}>
+            Go to the lemma
           </h3>
-          <ul className={LINKS_LIST}>
+          <div className="mt-2 flex flex-col gap-2">
             {reading.lemmaLinks.map((link, i) => (
-              <li key={i}>
-                {link.kind === "dangling" ? (
-                  <>
-                    <It>{link.targetWord}</It>{" "}
-                    <span className={EMPTY}>— named by the source, but no entry for it here</span>
-                  </>
-                ) : (
-                  <>
-                    <a className={LINK} href={`/?q=${encodeURIComponent(link.targetWord)}`} lang="it">{link.targetWord}</a>
-                    {/* More than one candidate means the source named a word,
-                        not an entry. Showing all of them is the honest move;
-                        picking one would invent a fact. */}
-                    {link.candidates.length > 1 && (
-                      <span className={AMBIGUOUS}>
-                        {" "}
-                        — {link.candidates.length} entries share this spelling:{" "}
-                        <Candidates candidates={link.candidates} />. The source does not say which.
-                      </span>
-                    )}
-                    <p className={ENTRY_NOTE}>
-                      Meanings and shared facts for this reading live on the lemma page. <a className={LINK} href={`/?q=${encodeURIComponent(link.targetWord)}`}>Open entry →</a>
-                    </p>
-                  </>
-                )}
-              </li>
+              <div key={i} className="min-w-0 rounded-[4px] border border-border-strong p-4">
+                {link.kind === "dangling" ? <><It>{link.targetWord}</It> — named by the source, but no entry for it here</> : <>
+                  <a className={LINK} href={`/?q=${encodeURIComponent(link.targetWord)}`} lang="it">{link.targetWord}</a>
+                  {link.candidates.length > 1 && <p className={MUTED}>
+                    {link.candidates.length} entries share this spelling: <Candidates candidates={link.candidates} />.
+                    The source does not say which.</p>}
+                  <p className={MUTED}>Meanings, examples, etymology, synonyms and the full conjugation live on the lemma page.</p>
+                  <a className={LINK} href={`/?q=${encodeURIComponent(link.targetWord)}`}>Open entry →</a>
+                </>}
+              </div>
             ))}
-          </ul>
+          </div>
         </section>
       )}
 
@@ -1813,48 +1801,6 @@ function verbRows(forms: readonly SourceForm[]): VerbRow[] {
   return rows;
 }
 
-/** One box of a mood group: the tense the source stated, and its rows. */
-interface TenseBox {
-  tense: GroupKey;
-  rows: VerbRow[];
-}
-
-/** One mood group: the mood the source stated, and a box per tense under it. */
-interface MoodGroup {
-  mood: GroupKey;
-  boxes: TenseBox[];
-}
-
-/**
- * Every finite entry of a record, under the mood the source stated for it and
- * in the box its stated tense gives it.
- *
- * A group exists because at least one entry carries a stated `mood` claim for
- * it, and everything else lands in the one group named for the source's
- * silence. Inside a group the same rule runs again over `tense`, so `andare`'s
- * eight `imperative` entries — tagged with a mood and no tense at all — are the
- * untensed box of the imperative group.
- */
-function moodGroups(reading: Reading): MoodGroup[] {
-  const finite = reading.forms.filter((form) => !isNonFinite(form));
-  return groupByStated(finite, "mood", VERB_MOODS).map((group) => ({
-    mood: group.key,
-    boxes: groupByStated(group.forms, "tense", VERB_TENSES).map((box) => ({
-      tense: box.key,
-      rows: verbRows(box.forms),
-    })),
-  }));
-}
-
-/** A group's heading: the source's own mood, or its silence said in words. */
-const moodHeading = (mood: GroupKey): string => mood ?? "Mood not stated in the source";
-
-/** A box's heading: the source's own tense, or its silence said in words. */
-const tenseHeading = (tense: GroupKey): string => tense ?? "No tense stated in the source";
-
-/** A key for a group or a box, from the value it is named for. */
-const groupKey = (key: GroupKey): string => key ?? "unstated";
-
 /**
  * What the box and the row a form sits in already state about it.
  *
@@ -1882,11 +1828,13 @@ function VerbForms({
   filed,
   searched,
   markUnsplit = false,
+  tableSource = false,
 }: {
   forms: readonly SourceForm[];
   filed: (claim: GrammarClaim) => boolean;
   searched: Searched;
   markUnsplit?: boolean;
+  tableSource?: boolean;
 }) {
   return (
     <>
@@ -1895,11 +1843,10 @@ function VerbForms({
           {i > 0 && ", "}
           <BoxSurface spelling={spellingOf(form)} searched={searched} />
           {markUnsplit && !isOneWord(form.surface) && <Unsplit />}
-          <Grammar
+          {!tableSource && <Grammar
             claims={claimsBeyond(form.claims, filed)}
             label={`grammar for ${form.surface}`}
-          />
-          <SpellingSource spelling={spellingOf(form)} />
+          />}
         </span>
       ))}
     </>
@@ -1908,106 +1855,174 @@ function VerbForms({
 
 /** A row's label cell: the source's own text, and the person it also stated. */
 function VerbRowLabel({ row }: { row: VerbRow }) {
-  if (!row.italian) return <>{row.label}</>;
-  return (
-    <>
-      <It>{row.label}</It>
-      {row.person !== "" && <span className={MUTED}> {row.person}</span>}
-    </>
-  );
+  return row.italian ? <It>{row.label}</It> : <>{row.label}</>;
 }
 
-/** One mood's boxes, three to a row, in the order the source's tenses give. */
-function VerbMoodGroup({
-  group,
-  recordId,
-  searched,
-}: {
-  group: MoodGroup;
-  recordId: number;
-  searched: Searched;
-}) {
-  const id = `mood-${recordId}-${groupKey(group.mood)}`;
-  return (
-    <section className={MOOD_GROUP} aria-labelledby={id}>
-      <h3 className={MOOD_HEADING} id={id}>
-        {moodHeading(group.mood)}
-      </h3>
-      <BoxRow>
-        {group.boxes.map((box) => (
-          <Box
-            key={groupKey(box.tense)}
-            id={`${id}-${groupKey(box.tense)}`}
-            heading={tenseHeading(box.tense)}
-            level={4}
-          >
-            <BoxRows>
-              {box.rows.map((row) => (
-                <BoxLine key={row.label} label={<VerbRowLabel row={row} />}>
-                  <VerbForms
-                    forms={row.forms}
-                    filed={filedInTable(group.mood, box.tense, row)}
-                    searched={searched}
-                  />
-                </BoxLine>
-              ))}
-            </BoxRows>
-          </Box>
-        ))}
-      </BoxRow>
-    </section>
-  );
-}
-
-/**
- * A verb: its non-finite forms in the header bar, then the paradigm as boxed
- * tables under the mood the source states (#48).
- *
- * The unplaced box is last and, on today's data, empty by construction: every
- * entry the header does not carry is filed under a mood — the stated one or the
- * source's silence — and under a tense or the box named for having none. It
- * stays because the placement is computed by subtracting what rendered from
- * what the record lists, so a form no rule reaches shows up as a box rather
- * than disappearing.
+/** Named tables are supported by the source's tense tags, not by inferred mood.
+ * For a repeated tense signature, the first complete person/number cycle is
+ * the named table; later cycles remain together in the one unplaceable box.
+ * Alternate spellings in a row (vado / vo) stay in that row.
  */
-function VerbCard({ reading, query }: { reading: Reading; query: string }) {
+const NAMED_TENSES: { label: string; tags: string[] }[] = [
+  { label: "presente", tags: ["present"] },
+  { label: "imperfetto", tags: ["imperfect"] },
+  { label: "passato remoto", tags: ["past-remote"] },
+  { label: "futuro semplice", tags: ["future"] },
+  { label: "passato prossimo", tags: ["past", "perfect"] },
+  { label: "trapassato prossimo", tags: ["past", "perfect", "pluperfect"] },
+  { label: "trapassato remoto", tags: ["historic", "past-remote"] },
+  { label: "futuro anteriore", tags: ["future", "perfect"] },
+];
+
+function tenseSignature(form: SourceForm): string {
+  return statedValues(form.claims, "tense").sort().join("+");
+}
+
+function namedCycle(forms: SourceForm[]): SourceForm[] {
+  const cycle: SourceForm[] = [];
+  const seen = new Set<string>();
+  for (const form of forms) {
+    const person = personPhrase(form);
+    if (!person || (seen.size === 6 && !seen.has(person))) break;
+    if (seen.has(person) && seen.size > 1) break;
+    seen.add(person);
+    cycle.push(form);
+    if (seen.size === 6) break;
+  }
+  // Preserve additional spellings of the last person only if they precede a
+  // second cycle; the source's own ordering is the tie-breaker.
+  if (seen.size !== 6) return [];
+  for (const form of forms.slice(cycle.length)) {
+    if (personPhrase(form) !== personPhrase(cycle[cycle.length - 1])) break;
+    cycle.push(form);
+  }
+  return cycle;
+}
+
+function VerbParadigm({ reading, searched, includeNonFinite = false }: { reading: Reading; searched: Searched; includeNonFinite?: boolean }) {
+  const finite = reading.forms.filter((form) => !isNonFinite(form));
+  const used = new Set<number>();
+  const boxes = NAMED_TENSES.map(({ label, tags }) => {
+    const same = finite.filter((form) =>
+      !stated(form.claims, "mood") && tenseSignature(form) === [...tags].sort().join("+"));
+    const forms = namedCycle(same);
+    forms.forEach((form) => used.add(form.index));
+    return { label, forms };
+  }).filter((box) => box.forms.length > 0);
+  const imperative = finite.filter((form) => stated(form.claims, "mood") === "imperative");
+  imperative.forEach((form) => used.add(form.index));
+  const remainder = finite.filter((form) => !used.has(form.index));
+  const sources = [...new Set(finite.map((form) => form.formSource).filter((source) => source))];
+
+  function table(forms: SourceForm[], label: string, key: string) {
+    const id = `tense-${reading.recordId}-${key}`;
+    const containsSearch = forms.some((form) => searched.formPointers.has(form.ref.jsonPointer));
+    return <section key={key} className={BOX} aria-labelledby={id}>
+      <input type="checkbox" id={`${id}-toggle`} className="peer sr-only lg:hidden"
+        defaultChecked={containsSearch} aria-labelledby={id} />
+      <h3 className={`${BOX_HEADING} flex items-center justify-between gap-2 peer-focus-visible:outline-2 peer-focus-visible:outline-accent`} id={id}>
+        <label htmlFor={`${id}-toggle`}
+          className="cursor-pointer lg:cursor-default">{label}</label>
+        <span className="font-sans text-xs not-italic text-text-muted lg:hidden">{forms.length} ↓</span>
+      </h3>
+      <div className="hidden peer-checked:block lg:block">
+        <BoxRows>{verbRows(forms).map((row) =>
+          <BoxLine key={row.label} label={<VerbRowLabel row={row} />}>
+            <span className="font-mono"><VerbForms forms={row.forms}
+              filed={filedInTable(label === "imperativo" ? "imperative" : null, null, row)}
+              searched={searched} tableSource /></span>
+          </BoxLine>)}</BoxRows>
+      </div>
+    </section>;
+  }
+
+  return <section aria-label="Conjugation">
+    <h3 className={MOOD_HEADING}>Conjugation · {reading.forms.length} forms listed by the source</h3>
+    <p className={SECTION_COUNT}>Grouped by stated tense; mood not given for the named tense boxes.</p>
+    {sources.length > 0 && <p className={`${SECTION_COUNT} break-all`}>Forms from {sources.map((source, i) =>
+      <span key={source}>{i > 0 && ", "}<It>{source!}</It></span>)}</p>}
+    <BoxRow>
+      {boxes.map(({ label, forms }) => table(forms, label, label))}
+      {imperative.length > 0 && table(imperative, "imperativo", "imperative")}
+      {includeNonFinite && nonFiniteFacts(reading).length > 0 && <Box id={`tense-${reading.recordId}-nonfinite`} heading="Non-finite forms">
+        <BoxRows>{nonFiniteFacts(reading).map((fact) =>
+          <BoxLine key={fact.label} label={fact.label}>
+            <span className="font-mono"><VerbForms forms={fact.forms} filed={fact.filed}
+              searched={searched} tableSource /></span>
+          </BoxLine>)}</BoxRows>
+      </Box>}
+      {remainder.length > 0 && <div className="lg:col-span-3">
+        <section className={BOX} aria-labelledby={`tense-${reading.recordId}-unplaced`}>
+          <input type="checkbox" id={`tense-${reading.recordId}-unplaced-toggle`}
+            className="peer sr-only lg:hidden" aria-labelledby={`tense-${reading.recordId}-unplaced`} />
+          <h3 className={`${BOX_HEADING} flex items-center justify-between gap-2 peer-focus-visible:outline-2 peer-focus-visible:outline-accent`}
+            id={`tense-${reading.recordId}-unplaced`}>
+            <label htmlFor={`tense-${reading.recordId}-unplaced-toggle`}
+              className="cursor-pointer lg:cursor-default">
+              Mood not stated — forms not placeable in a named tense
+            </label>
+            <span className="font-sans text-xs not-italic text-text-muted lg:hidden">{remainder.length} ↓</span>
+          </h3>
+          <div className="hidden peer-checked:block lg:block">
+            <p className={SECTION_COUNT}>The source gives a tense, but does not say which mood these forms belong to.</p>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {[...Map.groupBy(remainder, tenseSignature)].map(([signature, forms]) =>
+                <div key={signature}><h4 className={BOX_HEADING}>
+                  {signature ? signature.split("+").join(", ") : "Tense not stated"} · {forms.length}</h4>
+                  <BoxRows>{verbRows(forms).map((row) =>
+                    <BoxLine key={row.label} label={<VerbRowLabel row={row} />}>
+                      <span className="font-mono"><VerbForms forms={row.forms}
+                        filed={filedInTable(null, null, row)} searched={searched} tableSource /></span>
+                    </BoxLine>)}</BoxRows></div>)}
+            </div>
+          </div>
+        </section>
+      </div>}
+    </BoxRow>
+  </section>;
+}
+
+/** Render the form's own reading; a linked lemma contributes only paradigm context. */
+function VerbCard({ reading, query, context }: { reading: Reading; query: string; context?: Reading }) {
   const searched = searchedSpellings(reading);
   const facts = nonFiniteFacts(reading);
-  const groups = moodGroups(reading);
-  const placed = new Set([
-    ...facts.flatMap((fact) => fact.forms.map((form) => form.index)),
-    ...groups.flatMap((group) =>
-      group.boxes.flatMap((box) => box.rows.flatMap((row) => row.forms.map((f) => f.index))),
-    ),
-  ]);
+  const matched = context?.forms.find((form) => context.evidence.some((evidence) =>
+    evidence.origin === "embedded-form" && evidence.ref.jsonPointer === form.ref.jsonPointer));
+  const formFacts: HeadlineFact[] = matched && context ? [
+    { label: "lemma", value: <It>{context.word}</It> },
+    ...["person", "number", "tense"].flatMap((dimension) => {
+      const values = statedValues(matched.claims, dimension);
+      if (values.length === 0) return [];
+      const value = dimension === "person"
+        ? values.map((person) => person.replace(/-person$/, "")).join(", ")
+        : dimension === "tense" && values.join("+") === "imperfect"
+          ? "imperfetto"
+          : values.join(", ");
+      return [{ label: dimension, value }];
+    }),
+  ] : [];
+  const placed = new Set(reading.forms.map((form) => form.index));
   const unplaced = unplacedForms(reading, placed);
-
   return (
     <ReadingShell
       reading={reading}
       query={query}
-      facts={facts.map((fact) => ({
+      facts={[...formFacts, ...facts.map((fact) => ({
         label: fact.label,
         // `se intr. essere` is one auxiliary entry the source wrote as three
         // words, so it carries the marking that says this page does not split
         // a source string into separate forms.
         value: <VerbForms forms={fact.forms} filed={fact.filed} searched={searched} markUnsplit />,
-      }))}
+      }))]}
       silence={{ source: reading.lemmaLinks.length > 0 ? [] : nonFiniteClause(facts), withheld: [] }}
+      context={context && <VerbParadigm reading={context} searched={searchedSpellings(context)} includeNonFinite />}
     >
       <Grammar
-        claims={otherRecordClaims(reading.grammar.record)}
+        claims={otherRecordClaims(reading.grammar.record).filter((claim) =>
+          !(context && claim.status === "unclassified" && claim.sourceText === "form-of"))}
         label={`other grammar for ${reading.word}`}
       />
-      {reading.forms.length > 0 && <p className={SECTION_COUNT}>Conjugation · {reading.forms.length} forms listed by the source</p>}
-      {groups.map((group) => (
-        <VerbMoodGroup
-          key={groupKey(group.mood)}
-          group={group}
-          recordId={reading.recordId}
-          searched={searched}
-        />
-      ))}
+      {reading.forms.some((form) => !isNonFinite(form)) && <VerbParadigm reading={reading} searched={searched} />}
       {unplaced.length > 0 && (
         <BoxRow>
           <UnplacedForms reading={reading} forms={unplaced} searched={searched} markUnsplit />
@@ -2065,9 +2080,9 @@ function GenericCard({ reading, query }: { reading: Reading; query: string }) {
  * its own renders the generic one, unchanged — which is what made each card so
  * far an addition here rather than a rewrite of it.
  */
-export function ReadingCard({ reading, query }: { reading: Reading; query: string }) {
+export function ReadingCard({ reading, query, context }: { reading: Reading; query: string; context?: Reading }) {
   if (isNounReading(reading)) return <NounCard reading={reading} query={query} />;
   if (isAdjectiveReading(reading)) return <AdjectiveCard reading={reading} query={query} />;
-  if (isVerbReading(reading)) return <VerbCard reading={reading} query={query} />;
+  if (isVerbReading(reading)) return <VerbCard reading={reading} query={query} context={context} />;
   return <GenericCard reading={reading} query={query} />;
 }

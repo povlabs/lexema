@@ -35,7 +35,7 @@ const COLUMN_PADDING = "pt-6 pb-16";
 export const SHELL_CENTRED = `${COLUMN} ${COLUMN_PADDING} flex min-h-screen flex-col justify-center text-center`;
 
 /** The page with a query: the same bar at the top, the results below it. */
-export const SHELL_TOP = `mx-auto w-full max-w-[72rem] px-[1.1rem] ${COLUMN_PADDING}`;
+export const SHELL_TOP = `mx-auto w-full min-w-0 max-w-[72rem] px-[1.1rem] ${COLUMN_PADDING}`;
 
 /** The dark scheme itself: `surface` under everything, `text` on top of it. */
 export const BODY = "min-h-screen bg-surface font-serif text-base text-text";
@@ -51,10 +51,12 @@ export const LINK = `text-accent underline ${FOCUS_RING}`;
 
 // The search bar ----------------------------------------------------------
 
-export const SEARCH_FORM = "flex max-w-[44rem] flex-wrap items-center justify-center gap-2";
+export const SEARCH_FORM = "flex w-full max-w-[44rem] min-w-0 flex-wrap items-center gap-2";
 export const SEARCH_LABEL =
   "basis-full text-[0.8rem] uppercase tracking-[0.06em] text-text-muted";
-export const SEARCH_INPUT = `flex-[1_1_12rem] min-w-0 rounded-[6px] border border-border bg-surface-raised px-[0.7rem] py-[0.6rem] font-serif text-base text-text ${FOCUS_RING}`;
+export const SEARCH_FIELD = "relative min-w-0 flex-[1_1_12rem]";
+export const SEARCH_INPUT = `w-full min-w-0 rounded-[6px] border border-border bg-surface-raised px-[0.7rem] py-[0.6rem] pr-10 font-serif text-base text-text ${FOCUS_RING}`;
+export const SEARCH_CLEAR = `absolute right-3 top-1/2 -translate-y-1/2 text-sm text-accent no-underline ${FOCUS_RING}`;
 export const SEARCH_BUTTON = `cursor-pointer rounded-[6px] border border-text bg-text px-[1.1rem] py-[0.6rem] font-serif text-base text-surface ${FOCUS_RING}`;
 
 // What the page says about itself ----------------------------------------
@@ -84,9 +86,9 @@ export const COUNT = `${MESSAGE} text-[0.9rem] text-text-muted`;
 export const WORD_LAYER = "mt-8 border-b border-border pb-6";
 export const WORD_HEADING = "m-0 text-5xl font-semibold text-text-strong";
 export const READING_INDEX = "mt-8";
-export const INDEX_LIST = "mt-3 grid list-none grid-cols-1 gap-3 p-0 lg:grid-cols-3";
-export const INDEX_LINK = `flex h-full flex-col gap-1 rounded-[6px] border border-border bg-surface-raised p-4 no-underline text-text hover:border-accent ${FOCUS_RING}`;
-export const INDEX_GLOSS = "line-clamp-2 text-sm text-text-muted";
+export const INDEX_LIST = "my-3 flex list-none flex-wrap gap-2 p-0 max-sm:flex-col";
+export const INDEX_LINK = `flex items-center gap-2 rounded-[4px] border border-border bg-surface-raised px-2 py-1 text-sm no-underline text-text hover:border-accent ${FOCUS_RING}`;
+export const INDEX_GLOSS = "max-w-[14rem] truncate italic text-text-muted";
 export const INDEX_NUMBER = "font-mono text-sm text-accent";
 export const READING_NUMBER = "mt-8 mb-0 font-mono text-sm text-accent";
 export const SECTION_COUNT = "my-2 text-sm text-text-muted";
@@ -97,18 +99,18 @@ export const ENTRY_NOTE = "mt-4 border-l-2 border-border-strong pl-4 text-text-m
 /** A small aside beside a value: a gender, an article's display form. */
 export const MUTED = "text-[0.9rem] text-text-muted";
 /** Something the source left open, or a spelling it did not split. */
-export const AMBIGUOUS = "text-[0.9rem] text-warning";
+export const AMBIGUOUS = "text-[0.9rem] text-text-muted";
 
 // The card ---------------------------------------------------------------
 
 /** A boxed, raised group — the shape `surface-raised` and `border` are for. */
 const RAISED = "rounded-[6px] border border-border bg-surface-raised";
 
-export const CARD = `${RAISED} mt-2 p-[1.1rem]`;
-export const HEADWORD = "m-0 text-xl font-semibold text-text-strong";
+export const CARD = `${RAISED} mt-2 min-w-0 p-[1.1rem]`;
+export const HEADWORD = "m-0 text-2xl font-semibold text-text-strong";
 
-export const HEADLINE = "m-0 mt-[0.45rem] flex flex-wrap gap-x-[1.4rem] gap-y-[0.2rem]";
-export const HEADLINE_FACT = "flex flex-col";
+export const HEADLINE = "m-0 mt-[0.45rem] grid min-w-0 grid-cols-2 gap-x-3 gap-y-2 sm:flex sm:flex-wrap sm:gap-x-[1.4rem]";
+export const HEADLINE_FACT = "flex min-w-0 flex-col break-words";
 export const HEADLINE_LABEL = "text-[0.7rem] uppercase tracking-[0.06em] text-text-muted";
 export const HEADLINE_VALUE = "m-0 text-[1.05rem]";
 
@@ -138,9 +140,9 @@ export const MOOD_GROUP = "mt-4";
 export const MOOD_HEADING =
   "m-0 text-[0.82rem] font-semibold uppercase tracking-[0.06em] text-text-strong";
 
-export const BOX = `${RAISED} px-[0.8rem] pt-2 pb-[0.7rem]`;
+export const BOX = `${RAISED} min-w-0 px-[0.8rem] pt-2 pb-[0.7rem]`;
 export const BOX_HEADING =
-  "mt-0 mb-[0.3rem] text-[0.78rem] font-semibold uppercase tracking-[0.06em] text-text-muted";
+  "mt-0 mb-[0.3rem] border-b border-border pb-2 font-serif text-base italic font-normal text-text";
 
 /** A box's rows: `label value`, the label small and grey. */
 export const BOX_TABLE = "m-0 border-collapse text-[0.9rem]";
@@ -148,7 +150,7 @@ export const BOX_TABLE = "m-0 border-collapse text-[0.9rem]";
 export const BOX_NOTE = "mt-2 mb-0 text-[0.9rem] text-text-muted";
 export const BOX_ROW_LABEL =
   "py-[0.2rem] pr-[0.9rem] text-left align-top text-[0.82rem] font-normal text-text-muted";
-export const BOX_CELL = "py-[0.2rem] pr-[0.9rem] text-left align-top font-normal";
+export const BOX_CELL = "py-[0.2rem] pr-[0.9rem] text-left align-top font-mono font-normal";
 
 /**
  * The searched form, outlined where it sits — by a border, never by colour.

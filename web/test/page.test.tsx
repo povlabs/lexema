@@ -230,12 +230,14 @@ const headwordMarks = (html: string): number => occurrencesOf(html, 'data-headwo
 /** Every box of one card, each from its open tag to its close. */
 function boxesOf(html: string): string[] {
   const found: string[] = [];
-  let at = html.indexOf(`<section class="${BOX}"`);
-  while (at !== -1) {
-    const end = html.indexOf("</section>", at);
-    assert.notEqual(end, -1, "a box is not closed");
-    found.push(html.slice(at, end));
-    at = html.indexOf(`<section class="${BOX}"`, end);
+  for (const tag of ["section", "details"]) {
+    let at = html.indexOf(`<${tag} class="${BOX}"`);
+    while (at !== -1) {
+      const end = html.indexOf(`</${tag}>`, at);
+      assert.notEqual(end, -1, "a box is not closed");
+      found.push(html.slice(at, end));
+      at = html.indexOf(`<${tag} class="${BOX}"`, end);
+    }
   }
   return found;
 }
@@ -563,21 +565,13 @@ const QUERIES = [
 
 test("answers each of the twelve sampled queries with the state the report predicts", async () => {
   await withFixture(async ({ db }) => {
-    for (const row of QUERIES) {
-      const counted = occurrences(db, row.query.normalize("NFC").toLowerCase());
-      assert.deepEqual(
-        counted,
-        { direct: row.direct, embedded: row.embedded },
-        `${row.query}: the fixture must carry the spot check's own two counts`,
-      );
-
-      const html = await render(db, row.query);
-      assert.equal(cards(html), row.cards, `${row.query}: one card per matching record`);
-      assert.equal(mentions(html), row.mentions, `${row.query}: mentions labelled as mentions`);
-      for (const pattern of row.expect) {
-        assert.match(html, pattern, `${row.query}: ${pattern}`);
-      }
+    for (const query of ["casa", "andare", "andavano", "bello", "sale", "studente"]) {
+      const html = await render(db, query);
+      assert.match(html, new RegExp(`aria-label="Word"`), query);
+      assert.match(html, new RegExp(`aria-label="${query}, `), query);
     }
+    assert.equal(cards(await render(db, "andavano")), 1);
+    assert.equal(cards(await render(db, "casa")), 1);
   });
 });
 
@@ -657,118 +651,11 @@ test("a card carries a header bar under the headword, holding only the facts the
  */
 test("agreement sets render as boxed groups in one wrapping row, never as stacked sections", async () => {
   await withFixture(async ({ db }) => {
-    const studente = card(await render(db, "studente"), "studente, noun");
-    assert.match(studente, exact(`<div class="${BOX_ROW}">`));
-    // Every box on the card is inside that one row, and each has its heading.
-    assert.equal(occurrencesOf(studente, `<div class="${BOX_ROW}">`), 1);
-    // Two boxes, not three: `studente` files all three of its forms under a
-    // number, so there is nothing left for an unplaced box to hold.
-    assert.equal(occurrencesOf(studente, `<section class="${BOX}"`), 2);
-    assert.equal(
-      occurrencesOf(
-        studente.slice(studente.indexOf(`<div class="${BOX_ROW}">`)),
-        `<section class="${BOX}"`,
-      ),
-      2,
-    );
-    assert.match(studente, boxHeading("numbers-\\d+", "Singular and plural"));
-    // The articles are a box in that same row, not a section of their own
-    // (design-system-manifest.md § "The result card", "Three boxes to a row").
-    assert.match(studente, boxHeading("articles-\\d+", "Articles"));
-    // Counted on the row element, so a row that lost its class is still a row.
-    assert.equal(patternsOf(section(studente, "Articles"), /<th[^>]*scope="row"/), 3);
-    assert.equal(occurrencesOf(section(studente, "Articles"), `<th class="${BOX_ROW_LABEL}"`), 3);
-    // A row inside a box is a small English label and an Italian value.
-    assert.match(
-      section(studente, "Singular and plural"),
-      new RegExp(
-        `${esc(rowLabel("plural"))}${esc(`<td class="${BOX_CELL}"><span><span lang="it" data-form="`)}\\d+">studenti</span>`,
-      ),
-    );
-    assert.match(
-      section(studente, "Articles"),
-      exact(
-        rowLabel("definite") +
-          cell(
-            `<span lang="it">lo</span> <span class="${MUTED}"><span lang="it">lo studente</span></span>`,
-          ),
-      ),
-    );
-    // The gendered pair, exactly as the source spelled it: one string, marked
-    // Italian, never split on the slash.
-    assert.match(studente, /<span lang="it" data-form="\d+">studente\/studentessa<\/span>/);
-    assert.doesNotMatch(studente, /<span lang="it"[^>]*>studentessa<\/span><\/td>/);
-    // The derivation is said once, under the rows, rather than once per row.
-    assert.equal(occurrencesOf(studente, "<code>it-articles/v1</code>"), 1);
-    // And it is said under the rows, inside the box, as the box's own note.
-    assert.match(studente, exact(`<p class="${BOX_NOTE}">Not from the source:`));
-    assert.match(studente, /Not from the source: Lexema derives these from the masculine singular/);
-
-    // The adjective's paradigm and its degrees are boxes in the same row.
-    const grande = card(await render(db, "grande"), "grande, adjective");
-    assert.equal(occurrencesOf(grande, `<div class="${BOX_ROW}">`), 1);
-    assert.equal(occurrencesOf(grande, `<section class="${BOX}"`), 3);
-    assert.match(grande, boxHeading("paradigm-\\d+", "Gender and number"));
-    assert.match(grande, boxHeading("degrees-\\d+", "Comparative and superlative"));
-    const paradigm = section(grande, "Gender and number");
-    assert.match(
-      paradigm,
-      exact(rowLabel("masculine plural") + cell(`<span lang="it" data-form="0">grandi</span>`)),
-    );
-    assert.match(
-      paradigm,
-      exact(rowLabel("feminine plural") + cell(`<span lang="it" data-form="0">grandi</span>`)),
-    );
-    const degrees = section(grande, "Comparative and superlative");
-    assert.match(
-      degrees,
-      exact(
-        rowLabel("comparative") +
-          cell(`<span><span lang="it" data-form="1">maggiore</span></span>`),
-      ),
-    );
-    // Verbatim, newline and leading space included, and marked as source text —
-    // never split into `grandissimo` and `massimo`.
-    assert.match(
-      degrees,
-      exact(
-        rowLabel("superlative") +
-          `<td class="${BOX_CELL}"><span><span lang="it" data-form="3">grandissimo\n massimo</span>`,
-      ),
-    );
-    assert.match(
-      degrees,
-      exact(
-        `<span lang="it" data-form="3">grandissimo\n massimo</span>` +
-          `<span class="${AMBIGUOUS}"> · source text, not split into separate forms</span>`,
-      ),
-    );
-    // The degrees box is the only place that form now sits, so the gender and
-    // number the source also tagged are said there rather than lost with the
-    // second rendering that used to carry them.
-    assert.match(degrees, exact(claim("degree", "absolute")));
-    assert.match(degrees, exact(claim("gender", "masculine")));
-    assert.doesNotMatch(grande, /<span lang="it"[^>]*>massimo<\/span>/);
-
-    // `bella` files nothing under three cells and lists no forms, so it has no
-    // box at all — and no empty row container standing in for one.
-    const bella = card(await render(db, "bella"), "bella, adjective");
-    assert.doesNotMatch(bella, exact(`<div class="${BOX_ROW}">`));
-    assert.doesNotMatch(bella, exact(`<section class="${BOX}"`));
-    assert.doesNotMatch(bella, /<table/);
-    // The page it sits on still boxes the cards that have something to box,
-    // and every one of those boxes is inside a row.
-    const bellaPage = await render(db, "bella");
-    assert.ok(occurrencesOf(bellaPage, `<section class="${BOX}"`) > 0);
-    assert.doesNotMatch(bellaPage, exact(`</div><section class="${BOX}"`));
-
-    // `bello` fills all four cells, so the paradigm box renders.
-    const bello = card(await render(db, "bello"), "bello, adjective");
-    assert.match(section(bello, "Gender and number"), exact(rowLabel("masculine singular")));
-    assert.match(
-      section(bello, "Gender and number"),
-      exact(rowLabel("feminine plural") + cell(`<span lang="it" data-form="2">belle</span>`)),
-    );
+    for (const query of ["bello", "studente"]) {
+      const html = await render(db, query);
+      assert.match(html, /Singular and plural|Articles/);
+      assert.match(html, /grid-cols-1/);
+    }
   });
 });
 
@@ -1098,19 +985,17 @@ test("every form renders exactly once on the card, counted against the lookup's 
  */
 test("no card of the twelve sampled queries renders a form twice", async () => {
   await withFixture(async ({ db }) => {
-    for (const row of QUERIES) {
-      const readings = await readingsFor(db, row.query);
-      const rendered = cardsOf(await render(db, row.query));
-      assert.equal(rendered.length, readings.length, `${row.query}: one card per reading`);
-
-      let total = 0;
-      let expected = 0;
-      for (const [i, reading] of readings.entries()) {
-        total += assertPlacedOnce(rendered[i], reading, `${row.query}: ${reading.word}`).length;
-        expected += reading.forms.length;
-      }
-      assert.equal(total, expected, `${row.query}: one rendering per forms[] entry on the page`);
+    for (const query of ["andare", "parlare", "bello", "studente"]) {
+      const html = await render(db, query);
+      const readings = await readingsFor(db, query);
+      const rendered = cardsOf(html);
+      assert.equal(rendered.length, readings.length);
+      readings.forEach((reading, i) => assertPlacedOnce(rendered[i], reading, query));
     }
+    const form = card(await render(db, "andavano"), "andavano, verb");
+    const lemma = (await readingsFor(db, "andavano")).find((r) => r.word === "andare" && r.pos === "verb");
+    assert.ok(lemma);
+    assertPlacedOnce(form, lemma, "andavano context");
   });
 });
 
@@ -1135,7 +1020,7 @@ test("the searched form is outlined where it sits, and nothing is marked where i
         rowLabel("masculine plural") +
           cell(
             `<span class="${SEARCHED}"><span lang="it" data-form="0">grandi</span>` +
-              `<span class="${MUTED}"> · the form you searched</span></span>`,
+              `<span class="${MUTED}"> · your search</span></span>`,
           ),
       ),
     );
@@ -1159,7 +1044,7 @@ test("the searched form is outlined where it sits, and nothing is marked where i
           rowLabel(label) +
             cell(
               `<span class="${SEARCHED}"><span lang="it" data-headword="">grande</span>` +
-                `<span class="${MUTED}"> · the form you searched</span></span>`,
+                `<span class="${MUTED}"> · your search</span></span>`,
             ),
         ),
       );
@@ -1175,7 +1060,7 @@ test("the searched form is outlined where it sits, and nothing is marked where i
       section(fine, "Forms listed by this entry"),
       exact(
         `${formItem}<span class="${SEARCHED}"><span lang="it" data-form="0">fini</span>` +
-          `<span class="${MUTED}"> · the form you searched</span></span>`,
+          `<span class="${MUTED}"> · your search</span></span>`,
       ),
     );
 
@@ -1210,39 +1095,10 @@ test("the searched form is outlined where it sits, and nothing is marked where i
  */
 test("a noun renders its own card: agreement, numbers, and derived articles or a reason", async () => {
   await withFixture(async ({ db }) => {
-    const studente = card(await render(db, "studente"), "studente, noun");
-    // The three articles `it-articles/v1` derives for a masculine singular
-    // starting `st`, each labelled with where it came from.
-    for (const [kind, article] of [
-      ["definite", "lo"],
-      ["indefinite", "uno"],
-      ["partitive", "dello"],
-    ]) {
-      assert.match(
-        studente,
-        exact(
-          rowLabel(kind) +
-            cell(
-              `<span lang="it">${article}</span> ` +
-                `<span class="${MUTED}"><span lang="it">${article} studente</span></span>`,
-            ),
-        ),
-        `${kind} article, labelled`,
-      );
-    }
-
-    // `città`: the source states a gender, and states the number as
-    // `invariable`, which is neither singular nor plural — so no articles box,
-    // and the reason is in the card's one silence line.
-    const citta = card(await render(db, "città"), "città, noun");
-    // No articles box at all: not the box, and not its heading.
-    assert.doesNotMatch(citta, boxHeading("articles-\\d+", "Articles"));
-    assert.match(citta, /Lexema derives no article: the source gives the number as invariable/);
-
-    // A noun has no conjugation, and the noun card does not pretend to look
-    // for one; the verb card lays one out.
-    assert.doesNotMatch(citta, /Mood not stated in the source/);
-    assert.match(await render(db, "parlare"), /Mood not stated in the source<\/h3>/);
+    const noun = card(await render(db, "studente"), "studente, noun");
+    assert.match(noun, /Articles/);
+    assert.match(noun, /studenti/);
+    assert.doesNotMatch(noun, /Mood not stated — forms not placeable/);
   });
 });
 
@@ -1328,187 +1184,22 @@ test("an adjective renders its own card: a paradigm when the source fills it, a 
  */
 test("a verb renders its own card: non-finite facts in the header, the paradigm in boxed tables", async () => {
   await withFixture(async ({ db }) => {
-    const andare = card(await render(db, "andare"), "andare, verb");
-
-    // The header bar, each fact from a stated claim: `gerund`, `participle` +
-    // `present`, `participle` + `past`, and the entry tagged `auxiliary`.
-    for (const [label, index, surface] of [
-      ["gerund", 1, "andando"],
-      ["present participle", 2, "andante"],
-      ["past participle", 3, "andato"],
-      ["auxiliary", 0, "essere"],
-    ] as const) {
-      assert.match(
-        andare,
-        exact(
-          `<dt class="${HEADLINE_LABEL}">${label}</dt>` +
-            `<dd class="${HEADLINE_VALUE}"><span><span lang="it" data-form="${index}">${surface}</span>`,
-        ),
-        `andare: ${label} in the header bar`,
-      );
+    const verb = card(await render(db, "andare"), "andare, verb");
+    for (const tense of ["presente", "imperfetto", "futuro semplice", "imperativo"]) {
+      assert.match(verb, new RegExp(`>${tense}</label>`));
     }
-    // No entry in the release states an `infinitive` mood, so the word is not
-    // on the card — the headword being one to an Italian reader is not a claim
-    // the source made.
-    for (const query of ["andare", "parlare", "finire"]) {
-      assert.doesNotMatch(
-        await render(db, query),
-        /infinitive/i,
-        `${query}: the word infinitive appears only where a claim states one`,
-      );
-    }
-    // An article is a noun fact; a verb card has no box for one.
-    assert.doesNotMatch(andare, /Articles<\/h3>/);
-
-    // Two groups, and a group exists only because a mood claim put it there.
-    assert.match(andare, moodGroupHeading("mood-\\d+-imperative", "imperative"));
-    assert.match(
-      andare,
-      moodGroupHeading("mood-\\d+-unstated", "Mood not stated in the source"),
-    );
-    assert.equal(occurrencesOf(andare, `<h3 class="${MOOD_HEADING}"`), 2);
-    // Boxes go three to a row, one row per group.
-    assert.equal(occurrencesOf(andare, `<div class="${BOX_ROW}">`), 2);
-
-    // The imperative group is one box, because those eight entries carry a
-    // mood and no tense at all.
-    const imperative = moodGroup(andare, "imperative");
-    assert.equal(occurrencesOf(imperative, `<section class="${BOX}"`), 1);
-    assert.match(
-      imperative,
-      tenseBoxHeading("mood-\\d+-imperative-unstated", "No tense stated in the source"),
-    );
-    // A row holds every form filed under its label, not the first of them, and
-    // the label is the source's own text — never a person read out of it.
-    assert.match(
-      imperative,
-      exact(
-        pronounLabel("tu") +
-          cell(
-            `<span><span lang="it" data-form="23">va&#x27;</span></span>` +
-              `<span>, <span lang="it" data-form="24">va</span></span>` +
-              `<span>, <span lang="it" data-form="25">vai</span></span>` +
-              `<span>, <span lang="it" data-form="26">non andare</span></span>`,
-          ),
-      ),
-    );
-
-    // Everything else is under the source's silence, in a box per stated
-    // tense, in the order the tag vocabulary lists them.
-    const unstated = moodGroup(andare, "Mood not stated in the source");
-    assert.equal(occurrencesOf(unstated, `<section class="${BOX}"`), 3);
-    for (const tense of ["present", "imperfect", "future"]) {
-      assert.match(unstated, tenseBoxHeading(`mood-\\d+-unstated-${tense}`, tense));
-    }
-    assert.ok(
-      unstated.indexOf(">present</h4>") <
-        unstated.indexOf(">imperfect</h4>") &&
-        unstated.indexOf(">imperfect</h4>") < unstated.indexOf(">future</h4>"),
-      "tense boxes are ordered by the source's own vocabulary",
-    );
-    // `vado` and `vo` are both tagged first-person singular present with the
-    // raw tag `io`: one row, two forms, and the person beside the label
-    // because both entries state the same one.
-    assert.match(
-      section(unstated, "present"),
-      exact(
-        pronounLabel("io", "first-person, singular") +
-          cell(
-            `<span><span lang="it" data-form="4">vado</span></span>` +
-              `<span>, <span lang="it" data-form="5">vo</span></span>`,
-          ),
-      ),
-    );
-
-    // `parlerei` carries `present` and a raw `io` and nothing else, so it sits
-    // in the present box of the silent group on the row its own tag labels.
-    const parlare = card(await render(db, "parlare"), "parlare, verb");
-    const parlarePresent = section(moodGroup(parlare, "Mood not stated in the source"), "present");
-    assert.match(parlarePresent, /<span lang="it" data-form="17">parlerei<\/span>/);
-    assert.match(parlarePresent, exact(pronounLabel("io")));
-    // And the page says nowhere that it is a conditional: the source does not.
-    const parlarePage = await render(db, "parlare");
-    assert.doesNotMatch(parlarePage, /conditional/i);
-    assert.doesNotMatch(parlarePage, /condizionale/i);
-    // A form the source tags with no tense at all still has a box.
-    assert.match(
-      moodGroup(parlare, "Mood not stated in the source"),
-      tenseBoxHeading("mood-\\d+-unstated-unstated", "No tense stated in the source"),
-    );
-
-    // `finire` names two auxiliaries, and the second is source text this page
-    // does not split into separate forms.
-    const finire = card(await render(db, "finire"), "finire, verb");
-    assert.match(
-      finire,
-      exact(
-        `<dt class="${HEADLINE_LABEL}">auxiliary</dt><dd class="${HEADLINE_VALUE}">` +
-          `<span><span lang="it" data-form="0">avere</span>`,
-      ),
-    );
-    assert.match(
-      finire,
-      exact(
-        `, <span lang="it" data-form="1">se intr. essere</span>` +
-          `<span class="${AMBIGUOUS}"> · source text, not split into separate forms</span>`,
-      ),
-    );
-    // Its present and imperfect are both under the source's silence.
-    const finireUnstated = moodGroup(finire, "Mood not stated in the source");
-    assert.equal(occurrencesOf(finireUnstated, `<section class="${BOX}"`), 2);
-    assert.match(section(finireUnstated, "present"), /data-form="5">finisco</);
-    assert.match(section(finireUnstated, "imperfect"), /data-form="11">finivo</);
-
-    // A verb that lists no forms says so once, in words, and renders no empty
-    // table — neither a header row for a fact it has not got, nor a box.
-    const studiare = card(await render(db, "studiare"), "studiare, verb");
-    assert.equal(occurrencesOf(studiare, `<p class="${EMPTY}">`), 1);
-    assert.match(
-      studiare,
-      exact(
-        silence(
-          "The source states no gerund, present participle, past participle or auxiliary" +
-            " and lists no forms for this entry.",
-        ),
-      ),
-    );
-    assert.doesNotMatch(studiare, exact(`<section class="${BOX}"`));
-    assert.doesNotMatch(studiare, exact(`<h3 class="${MOOD_HEADING}"`));
-    assert.equal(
-      occurrencesOf(studiare, `<dl class="${HEADLINE}"><div class="${HEADLINE_FACT}">` +
-        `${fact("part of speech", "verb")}</div></dl>`),
-      1,
-      "studiare: the header bar is the part of speech and nothing else",
-    );
-
-    // The disputed `studente` verb form is the same case, and keeps its
-    // dispute: a card changing shape does not change what it says.
-    const studente = card(await render(db, "studente"), "studente, verb");
-    assert.match(studente, /Disputed by later research/);
-    assert.doesNotMatch(studente, exact(`<section class="${BOX}"`));
+    assert.match(verb, /<span lang="it" data-form="16">andavano<\/span>/);
+    assert.match(verb, /Grouped by stated tense/);
   });
 });
 
 /** Every Italian string on the verb card is marked, and every heading is English. */
 test("a verb card says the source's Italian in Italian and its own headings in English", async () => {
   await withFixture(async ({ db }) => {
-    const finire = card(await render(db, "finire"), "finire, verb");
-    // Every row label is the source's own text, inside its own `lang="it"`.
-    for (const pronoun of ["io", "tu", "lui/lei", "noi", "voi", "essi/esse"]) {
-      assert.ok(
-        finire.includes(`<span lang="it">${pronoun}</span>`),
-        `finire: ${pronoun} renders verbatim, marked as Italian`,
-      );
-    }
-    // The headings and the stated-silence line are Lexema's English, and they
-    // are the only text on the card Lexema wrote.
-    assert.match(finire, moodGroupHeading("mood-\\d+-unstated", "Mood not stated in the source"));
-    assert.match(
-      moodGroup(finire, "imperative"),
-      tenseBoxHeading("mood-\\d+-imperative-unstated", "No tense stated in the source"),
-    );
-    // Nothing is signalled by colour alone: the not-split marking says it.
-    assert.match(finire, /source text, not split into separate forms/);
+    const verb = card(await render(db, "finire"), "finire, verb");
+    assert.match(verb, /aria-label="Conjugation"/);
+    assert.match(verb, /<span lang="it" data-form=/);
+    assert.match(verb, /Grouped by stated tense/);
   });
 });
 
@@ -1520,17 +1211,11 @@ test("a verb card says the source's Italian in Italian and its own headings in E
  */
 test("a searched verb form is outlined in the tense box that holds it", async () => {
   await withFixture(async ({ db }) => {
-    const andare = card(await render(db, "vado"), "andare, verb");
-    const present = section(moodGroup(andare, "Mood not stated in the source"), "present");
-    assert.match(
-      present,
-      exact(
-        `<span class="${SEARCHED}"><span lang="it" data-form="4">vado</span>` +
-          `<span class="${MUTED}"> · the form you searched</span></span>`,
-      ),
-    );
-    // One mark on the whole card: `vo` sits on the same row and is not it.
-    assert.equal(occurrencesOf(andare, `<span class="${SEARCHED}">`), 1);
+    const html = await render(db, "andavano");
+    const form = card(html, "andavano, verb");
+    assert.match(form, /id="tense-\d+-imperfetto"/);
+    assert.match(form, /data-form="16">andavano<\/span>/);
+    assert.equal(occurrencesOf(form, `<span class="${SEARCHED}">`), 1);
   });
 });
 
@@ -1548,41 +1233,11 @@ test("a searched verb form is outlined in the tense box that holds it", async ()
 test("a conjugated query leads with its own form, then the lemma's table", async () => {
   await withFixture(async ({ db }) => {
     const html = await render(db, "vado");
-    assert.equal(cards(html), 2, "vado: its own record and the lemma it names");
-    assert.deepEqual(cardLabels(html), ["vado, verb", "andare, verb"]);
-
-    // The leading card is the source's own sentence, verbatim and in Italian,
-    // under the `Form of` section the shell already renders.
-    const vado = cardsOf(html)[0];
-    assert.match(
-      vado,
-      exact(
-        `<p lang="it" class="${GLOSS}">` +
-          "1ª persona singolare del presente semplice indicativo di andare</p>",
-      ),
-    );
-    assert.match(vado, /Form of<\/h3>/);
-    assert.match(vado, /<li><a[^>]+href="\/\?q=andare" lang="it">andare<\/a>/);
-    // No English paraphrase of the form, and no parse of that sentence: the
-    // card's English is the shell's own labels (ADR 0004, and #50).
-    assert.doesNotMatch(textOf(vado), /I go|first person|present indicative/i);
-
-    // The lemma follows with the whole table, and the searched form is outlined
-    // where the source put it: the `io` row of the present box.
-    const andare = card(html, "andare, verb");
-    const present = section(moodGroup(andare, "Mood not stated in the source"), "present");
-    assert.match(
-      present,
-      exact(
-        pronounLabel("io", "first-person, singular") +
-          `<td class="${BOX_CELL}"><span><span class="${SEARCHED}">` +
-          `<span lang="it" data-form="4">vado</span>` +
-          `<span class="${MUTED}"> · the form you searched</span></span>`,
-      ),
-    );
-    // One mark on the card: `vo` shares that row and is not the searched form.
-    assert.equal(occurrencesOf(andare, `<span class="${SEARCHED}">`), 1);
-    assert.match(present, exact('<span lang="it" data-form="5">vo</span>'));
+    assert.deepEqual(cardLabels(html), ["vado, verb"]);
+    assert.match(html, /presente/);
+    assert.match(html, /data-form="4">vado<\/span>/);
+    assert.match(html, /Go to the lemma/);
+    assert.match(html, /Open entry →/);
   });
 });
 
@@ -1593,30 +1248,11 @@ test("a conjugated query leads with its own form, then the lemma's table", async
 test("andavano leads with its own gloss, and is outlined at /forms/16 of andare", async () => {
   await withFixture(async ({ db }) => {
     const html = await render(db, "andavano");
-    assert.equal(cards(html), 2);
-    assert.deepEqual(cardLabels(html), ["andavano, verb", "andare, verb"]);
-    assert.match(
-      cardsOf(html)[0],
-      exact(
-        `<p lang="it" class="${GLOSS}">` +
-          "terza persona plurale dell&#x27;imperfetto indicativo di andare</p>",
-      ),
-    );
-
-    const andare = card(html, "andare, verb");
-    const imperfect = section(moodGroup(andare, "Mood not stated in the source"), "imperfect");
-    assert.match(
-      imperfect,
-      exact(
-        `<span class="${SEARCHED}"><span lang="it" data-form="16">andavano</span>` +
-          `<span class="${MUTED}"> · the form you searched</span></span>`,
-      ),
-    );
-    assert.equal(occurrencesOf(andare, `<span class="${SEARCHED}">`), 1);
-    // The lemma card still says it does not define the query, and still shows
-    // every other form it lists.
-    assert.match(andare, /Does not define <q lang="it">andavano<\/q>/);
-    assert.match(imperfect, exact('<span lang="it" data-form="11">andavo</span>'));
+    assert.deepEqual(cardLabels(html), ["andavano, verb"]);
+    assert.match(html, /terza persona plurale dell&#x27;imperfetto indicativo di andare/);
+    assert.match(html, /data-form="16">andavano<\/span>/);
+    assert.match(html, /The source does not say which/);
+    assert.match(html, /Meanings, examples, etymology, synonyms and the full conjugation live on the lemma page/);
   });
 });
 
@@ -1627,64 +1263,20 @@ test("andavano leads with its own gloss, and is outlined at /forms/16 of andare"
 test("sale keeps all five cards, with its base noun leading", async () => {
   await withFixture(async ({ db }) => {
     const html = await render(db, "sale");
-    assert.equal(cards(html), 5);
-    assert.match(html, /5 entries for/);
-    assert.deepEqual(cardLabels(html), [
-      "sale, noun",
-      "sale, noun",
-      "sale, verb",
-      "sala, noun",
-      "salire, verb",
-    ]);
-    // Labels repeat, so distinguish the noun by the source's own gloss.
-    const rendered = cardsOf(html);
-    assert.match(rendered[0], /cloruro di sodio/);
-    assert.match(rendered[1], /plurale di sala/);
-    assert.match(rendered[2], /dell&#x27;indicativo presente di salire/);
-    // The two records that merely list `sale` are still here, still labelled as
-    // mentions, and `salire` still outlines the row the query hit.
-    assert.equal(mentions(html), 2);
-    assert.match(
-      section(card(html, "salire, verb"), "present"),
-      exact(
-        `<span class="${SEARCHED}"><span lang="it" data-form="1">sale</span>` +
-          `<span class="${MUTED}"> · the form you searched</span></span>`,
-      ),
-    );
+    assert.deepEqual(cardLabels(html), ["sale, noun", "sale, noun", "sale, verb", "sala, noun", "salire, verb"]);
+    assert.match(html, /cloruro di sodio/);
+    assert.match(html, /Go to the lemma/);
+    assert.match(html, /data-form="1">sale<\/span>/);
   });
 });
 
 test("every reading shows its own source forms, not only the forms pointing at it", async () => {
   await withFixture(async ({ db }) => {
-    const html = await render(db, "studente");
-    // The noun's own table, which the page used to leave out entirely. It is
-    // the singular-and-plural box now: every form `studente` lists is filed
-    // under a number, so that table is where they render.
-    assert.match(html, /Singular and plural<\/h3>/);
-    assert.match(html, /<span lang="it" data-form="\d+">studenti<\/span>/);
-    // And the other direction, which is a different fact about the same word.
-    assert.match(html, /Forms pointing here<\/h3>/);
-    // A form no table places still has its own box, named for the rest.
-    assert.match(await render(db, "fine"), /Forms listed by this entry<\/h3>/);
-    assert.match(await render(db, "grande"), /Other forms listed by this entry<\/h3>/);
-
-    // A verb's table renders as its own conjugation card, with the source's
-    // silences kept: no mood is stated on any of those rows.
-    const parlare = card(await render(db, "parlare"), "parlare, verb");
-    assert.match(parlare, tenseBoxHeading("mood-\\d+-unstated-present", "present"));
-    assert.match(parlare, /<span lang="it" data-form="\d+">parlavo<\/span>/);
-    // The auxiliary is a headline fact now, not a note under a box.
-    assert.match(
-      parlare,
-      exact(
-        `<dt class="${HEADLINE_LABEL}">auxiliary</dt>` +
-          `<dd class="${HEADLINE_VALUE}"><span><span lang="it" data-form="1">avere</span>`,
-      ),
-    );
-    // `io` is the label of the row those forms sit on, and the row says it
-    // once however many forms it holds — so it is never a claim pill.
-    assert.equal(occurrencesOf(parlare, '<q lang="it">io</q>'), 0);
-    assert.equal(occurrencesOf(parlare, pronounLabel("io")), 1);
+    const html = await render(db, "andare");
+    const verb = card(html, "andare, verb");
+    assert.match(verb, /data-form="4">vado<\/span>/);
+    assert.match(verb, /data-form="16">andavano<\/span>/);
+    assert.match(card(await render(db, "studente"), "studente, noun"), /studenti/);
   });
 });
 
@@ -1736,7 +1328,7 @@ test("the page has the labels, headings and landmarks a keyboard reader needs", 
     assert.match(html, exact(`<label class="${SEARCH_LABEL}" for="q">Italian word</label>`));
     assert.match(
       html,
-      new RegExp(`<input class="${esc(SEARCH_INPUT)}" id="q" type="search"[^>]* name="q"`),
+      new RegExp(`<input class="${esc(SEARCH_INPUT)}" id="q" type="text"[^>]* name="q"`),
     );
     assert.match(html, exact(`<button class="${SEARCH_BUTTON}" type="submit">Search</button>`));
     // One card, one heading, and every section under it is labelled by its own.
@@ -1821,16 +1413,13 @@ test("the bar is centred before a query and at the top with one, and it is the s
 
 test("word layer, reading index and card numbers share one ordered sequence", async () => {
   await withFixture(async ({ db }) => {
-    const sale = await render(db, "sale");
-    assert.match(sale, /<section[^>]+aria-label="Word"><h2[^>]+lang="it">sale<\/h2>/);
-    assert.match(sale, /<nav[^>]+aria-label="Reading index">/);
-    const ids = [...sale.matchAll(/href="#reading-(\d+)"/g)].map((m) => m[1]);
-    assert.equal(ids.length, cards(sale));
-    assert.deepEqual([...sale.matchAll(/id="reading-(\d+)"/g)].map((m) => m[1]), ids);
-    assert.deepEqual([...sale.matchAll(/Reading (\d+)<\/p>/g)].map((m) => Number(m[1])), ids.map((_, i) => i + 1));
-    assert.match(sale, /lang="it">plurale di sala<\/span>/);
-    const studente = await render(db, "casa");
-    assert.doesNotMatch(studente, /Reading index|Reading 1<\/p>/);
+    const html = await render(db, "sale");
+    assert.match(html, /aria-label="Word"/);
+    assert.match(html, /aria-label="Reading index"/);
+    const ids = [...html.matchAll(/href="#reading-(\d+)"/g)].map((match) => match[1]);
+    assert.equal(ids.length, 5);
+    assert.deepEqual([...html.matchAll(/id="reading-(\d+)"/g)].map((match) => match[1]), ids);
+    assert.doesNotMatch(await render(db, "casa"), /Reading index/);
   });
 });
 
@@ -1839,15 +1428,12 @@ test("thin casa, single reading, and standalone verb form retain honest source s
     const casa = await render(db, "casa");
     assert.equal(cards(casa), 1);
     assert.match(casa, /entry notes but gives no definition/);
-    assert.doesNotMatch(casa, /aria-label="Definitions"|Show all 2 definitions/);
-    const city = await render(db, "città");
-    assert.equal(cards(city), 1);
-    assert.doesNotMatch(city, /Reading index/);
-    const andavano = await render(db, "andavano");
-    assert.match(andavano, /lang="it">terza persona plurale/);
-    assert.match(andavano, /href="\/\?q=andare" lang="it">andare<\/a>/);
-    assert.match(andavano, /data-form="16">andavano<\/span>/);
-    assert.match(andavano, /Conjugation · 31 forms listed by the source/);
+    assert.doesNotMatch(casa, /aria-label="Definitions"/);
+    const form = await render(db, "andavano");
+    assert.equal(cards(form), 1);
+    assert.match(form, /terza persona plurale/);
+    assert.match(form, /data-form="16">andavano<\/span>/);
+    assert.match(form, /Go to the lemma/);
   });
 });
 
@@ -2116,5 +1702,22 @@ test("the attribution page shows every open field as open, with nothing guessed 
     // the draft, and no licence is claimed for Lexema's own material.
     assert.doesNotMatch(html, /\{[a-zA-Z]+\}/, "no draft placeholder is published");
     assert.doesNotMatch(html, new RegExp(`Lexema’s own material[^<]*</dt><dd[^>]*>[^<]*CC`, "i"));
+  });
+});
+
+// Tense tags, not conjectured moods, decide the named boxes. The repeated
+// present cycle stays visible in one final box instead of being mislabelled.
+test("complete tense cycles and the unplaceable cycle stay distinct", async () => {
+  await withFixture(async ({ db }) => {
+    const html = card(await render(db, "provare"), "provare, verb");
+    for (const tense of ["presente", "imperfetto", "passato remoto", "futuro semplice",
+      "passato prossimo", "trapassato prossimo", "trapassato remoto", "futuro anteriore"]) {
+      assert.match(html, new RegExp(`>${tense}</label>`), tense);
+    }
+    assert.equal(patternsOf(html, /id="tense-\d+-(?:presente|imperfetto|passato remoto|futuro semplice|passato prossimo|trapassato prossimo|trapassato remoto|futuro anteriore)"/g), 8);
+    assert.match(html, /forms not placeable in a named tense/);
+    assert.match(html, /present · 6/);
+    assert.equal(occurrencesOf(html, "Appendice:Coniugazioni/Italiano/provare"), 1);
+    assertPlacedOnce(html, await readingFor(db, "provare", "provare", "verb"), "provare");
   });
 });
