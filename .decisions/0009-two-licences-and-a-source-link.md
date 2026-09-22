@@ -46,3 +46,9 @@ A paid API is possible: the service, and Lexema's own content, are what is sold;
 ## Records
 
 Two terms to route to `.glossary/TERMS.md` once the fields exist: *source-derived* (copied or adapted from Wiktionary, CC BY-SA) and *Lexema-original* (written by Lexema, its own terms).
+
+## Amendments
+
+- **One licence, not two (2026-09-21).** Huey, the same evening: "i will try to sell the service not explanations. someone easily can create these explanations in a friday afternoon. especially in this ai era." Everything Lexema publishes, source-derived and Lexema-original alike, ships under CC BY-SA 4.0. A reader or an API customer may republish an explanation, with attribution, and that is accepted: the product is the service, not the sentences. The two-licence rule above, and the "may be paid-only" clause, are withdrawn.
+
+  What does not change: a paid API is still allowed, because CC BY-SA permits commercial use. Lexema-original content still lives in fields of its own, never mixed into a source record, for three reasons that outlive the licence question — the page must be able to say which words are the dictionary's and which are Lexema's, the attribution must credit Wiktionary's text specifically, and a re-import must never overwrite what Lexema wrote. The lawyer's review before public launch now confirms one licence and the link-only credit.
