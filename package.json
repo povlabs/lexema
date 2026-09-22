@@ -9,12 +9,13 @@
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "test": "node --import tsx --test test/normalize.test.ts test/tags.test.ts test/articles.test.ts test/candidateResolver.test.ts test/usageExamples.test.ts test/record-identity.test.ts test/import.test.ts test/lookup.test.ts test/prefixArchive.test.ts test/seedComposition.test.ts && TSX_TSCONFIG_PATH=web/tsconfig.json node --import tsx --test web/test/page.test.tsx web/test/tokens.test.ts",
+    "test": "node --import tsx --test test/normalize.test.ts test/tags.test.ts test/articles.test.ts test/candidateResolver.test.ts test/usageExamples.test.ts test/record-identity.test.ts test/import.test.ts test/lookup.test.ts test/prefixArchive.test.ts test/seedComposition.test.ts test/contentConverter.test.ts && TSX_TSCONFIG_PATH=web/tsconfig.json node --import tsx --test web/test/page.test.tsx web/test/tokens.test.ts",
     "test:integration": "node --import tsx --test test/adapter-fixtures.test.ts",
     "test:definition-loss": "python3 tools/definition_loss.py verify && python3 test/definition-loss.py",
     "validate": "tsx src/cli.ts validate",
     "import": "tsx src/import/cli.ts",
-    "seed:dev": "tsx src/import/seedDev.ts"
+    "seed:dev": "tsx src/import/seedDev.ts",
+    "convert": "tsx src/content/cli.ts"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
