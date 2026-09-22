@@ -1,0 +1,18 @@
+{
+  "$schema": "./.fabrika.schema.json",
+  "uiSurfaces": [
+    {
+      "name": "web",
+      // Covers fonts as well as app code. web/test/fixture.ts raises the UI
+      // class; only test filenames are excluded. Route pixel-neutral edits
+      // with review-ui route instead of capturing them.
+      "prefix": "web/",
+      "mount": "/",
+      "readyPath": "/",
+      "command": "state=$(mktemp -d \"${TMPDIR:-/tmp}/lexema-ui.XXXXXX\") && trap 'rm -rf \"$state\"' EXIT && SEED_SQL=\"$state/dev.sql\" SEED_STATE=\"$state/state\" pnpm run seed:dev && pnpm --filter @lexema/web build && cd web && pnpm exec wrangler dev --config dist/server/wrangler.json --persist-to \"$state/state\" --port {{port}} --var LEXEMA_RELEASE:it-dev"
+    }
+  ],
+  "uiCapture": {
+    "viewport": { "width": 1440, "height": 900 }
+  }
+}
