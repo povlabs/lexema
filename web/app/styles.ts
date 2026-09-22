@@ -136,8 +136,16 @@ export const BOX_ROW_LABEL =
   "py-[0.2rem] pr-[0.9rem] text-left align-top text-[0.82rem] font-normal text-text-muted";
 export const BOX_CELL = "py-[0.2rem] pr-[0.9rem] text-left align-top font-normal";
 
-/** The searched form, outlined where it sits — by a border, never by colour. */
-export const SEARCHED = "rounded-[4px] border border-border-strong px-[0.3rem]";
+/**
+ * The searched form, outlined where it sits — by a border, never by colour.
+ *
+ * The border is `accent` rather than `border-strong` because the rule is only
+ * met if the border can be seen: on this palette `border-strong` sits at 1.97:1
+ * against `surface-raised`, under the 3:1 a non-text indicator needs, while
+ * `accent` is 8.53:1. `lexema-design.pen` marks the row the same way, at
+ * `$accent` and two pixels.
+ */
+export const SEARCHED = "rounded-[4px] border-2 border-accent px-[0.3rem]";
 
 /** A note the reader has to weigh: a mention, a dispute. */
 const NOTE = `${RAISED} px-[0.7rem] py-2 text-[0.9rem] text-warning`;

@@ -27,16 +27,17 @@ pronunciation: `U+0100–02BA` holds `ɛ` and the rest of the IPA letters, and
 So `/ˈbɛl.lo/` needs `latin-ext` and `bèl·lo` does not.
 
 That splits what a page costs. The search page before a query is interface text
-and needs `latin` alone. A word page pulls `latin-ext` as well, because every
-entry carries a pronunciation.
+and needs `latin` alone, which is the 14 KB Spectral 400 face. Any page carrying
+a pronunciation pulls `latin-ext` too. Nothing renders a pronunciation yet —
+that is [#20](https://github.com/hueypov/lexema/issues/20) and the word page in
+[#100](https://github.com/hueypov/lexema/issues/100) — so today `latin-ext` is
+carried for what the entries will show, not for what they already do.
 
 Inter is one variable file per range covering weights 100–900: the API returns
 the same bytes for 400 and 600, so it is stored once and declared
 `font-weight: 100 900`.
 
-To refresh a face, re-run its request above with a browser `User-Agent` (the API
-answers older agents with `woff`), keep the `latin` and `latin-ext` blocks, and
-replace the file of the same name.
+To replace a face with a newer release, see [REFRESH.md](REFRESH.md).
 
 Licences: Spectral and IBM Plex Mono are under the SIL Open Font License 1.1,
 Inter under the SIL Open Font License 1.1.
