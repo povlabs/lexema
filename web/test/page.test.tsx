@@ -2084,3 +2084,5 @@ test("the attribution page shows every open field as open, with nothing guessed 
     assert.doesNotMatch(html, new RegExp(`Lexema’s own material[^<]*</dt><dd[^>]*>[^<]*CC`, "i"));
   });
 });
+
+// probe
