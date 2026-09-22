@@ -14,6 +14,7 @@ import type {
   NonNounPos,
   ReadingArticles,
   ReadingPartOfSpeech,
+  SourceForm,
 } from "./types.js";
 
 /** The two values `it-articles/v1` can make an article agree with. */
@@ -31,6 +32,13 @@ function statedValue(claims: readonly GrammarClaim[], dimension: string): string
   return undefined;
 }
 
+/** Every value the source stated for one dimension, in source order. */
+function statedValues(claims: readonly GrammarClaim[], dimension: string): string[] {
+  return claims.flatMap((claim) =>
+    claim.status === "stated" && claim.dimension === dimension ? [claim.value] : [],
+  );
+}
+
 /**
  * A reading's part of speech, carrying articles exactly when it is a noun.
  *
@@ -46,13 +54,40 @@ export function readingPartOfSpeech(
   pos: string,
   surface: string,
   claims: readonly GrammarClaim[],
+  forms: readonly SourceForm[] = [],
 ): ReadingPartOfSpeech {
   if (pos !== "noun") return { pos: pos as NonNounPos };
-  return { pos, articles: deriveArticles(surface, claims) };
+  return { pos, articles: deriveArticles(surface, claims, forms) };
+}
+
+/**
+ * The one plural spelling the source files for a singular noun, when it files
+ * exactly one — and states that form's gender itself, as the record's own.
+ *
+ * `studente` lists `studenti` tagged masculine and plural, so the rule has both
+ * halves from the source. `sale` lists `sali` tagged plural and nothing else;
+ * reading the record's gender onto it would be an inference the source did not
+ * make, so `sali` gets no article here.
+ */
+function pluralSurface(gender: AgreeingGender, forms: readonly SourceForm[]): string | undefined {
+  const spellings = new Set(
+    forms
+      .filter((form) => {
+        const numbers = statedValues(form.claims, "number");
+        const genders = statedValues(form.claims, "gender");
+        return numbers.length === 1 && numbers[0] === "plural" && genders.length === 1 && genders[0] === gender;
+      })
+      .map((form) => form.surface),
+  );
+  return spellings.size === 1 ? [...spellings][0] : undefined;
 }
 
 /** The articles for one noun reading, or the reason there are none. */
-function deriveArticles(surface: string, claims: readonly GrammarClaim[]): ReadingArticles {
+function deriveArticles(
+  surface: string,
+  claims: readonly GrammarClaim[],
+  forms: readonly SourceForm[],
+): ReadingArticles {
   const gender = statedValue(claims, "gender");
   const number = statedValue(claims, "number");
   // `invariable` is a number the importer states (src/import/grammarPolicy.ts)
@@ -62,6 +97,15 @@ function deriveArticles(surface: string, claims: readonly GrammarClaim[]): Readi
   const agreeingNumber = AGREEING_NUMBERS.find((value): value is AgreeingNumber => value === number);
 
   const { articles } = generateItalianArticles(surface, agreeingGender, agreeingNumber);
+  // A singular noun's plural gets its articles from the same rule, applied to
+  // the plural spelling the source itself filed — never to one built here.
+  const plural =
+    agreeingGender !== undefined && agreeingNumber === "singular"
+      ? pluralSurface(agreeingGender, forms)
+      : undefined;
+  if (articles.length > 0 && plural !== undefined) {
+    articles.push(...generateItalianArticles(plural, agreeingGender, "plural").articles);
+  }
   const [first, ...rest] = articles;
   if (first !== undefined) return { status: "derived", articles: [first, ...rest] };
 

@@ -5,6 +5,7 @@
 import { IT_NORMALIZER_VERSION, normalizeItalianExact } from "../italian/normalize.js";
 import { readingPartOfSpeech } from "./articles.js";
 import type { LookupDatabase } from "./database.js";
+import { readSourceRecord, type SourceRecordFields } from "./sourceRecord.js";
 import type {
   Evidence,
   Grammar,
@@ -209,6 +210,8 @@ async function buildReading(db: LookupDatabase, releaseId: string, group: HitRow
   // Read before the reading is assembled: a form's claims are the ones this
   // grouped by index, so the two must be one read rather than two.
   const grammar = await readGrammar(db, recordId, ref);
+  const source = readSourceRecord(record.rawJson, ref);
+  const forms = await readForms(db, recordId, ref, grammar);
 
   const evidence: Evidence[] = [...group]
     // Headword hit first, then the forms table in its own order.
@@ -229,10 +232,11 @@ async function buildReading(db: LookupDatabase, releaseId: string, group: HitRow
     ref: ref(""),
     word: first.record_word,
     posTitle: record.posTitle,
+    wordFacts: source.wordFacts,
     isAboutQuery: group.some((hit) => hit.origin === "headword"),
     evidence,
-    senses: await readSenses(db, recordId, ref),
-    forms: await readForms(db, recordId, ref, grammar),
+    senses: await readSenses(db, recordId, ref, source),
+    forms,
     grammar,
     lemmaLinks: await readLemmaLinks(db, releaseId, recordId, ref),
     inflections: await readInflections(db, releaseId, recordId),
@@ -240,33 +244,45 @@ async function buildReading(db: LookupDatabase, releaseId: string, group: HitRow
     // Derived, not read: the release carries no article field. The headword and
     // the grammar the source stated about the record are the only inputs, and a
     // reading that is not a noun comes back carrying no articles at all.
-    ...readingPartOfSpeech(first.record_pos, first.record_word, grammar.record),
+    ...readingPartOfSpeech(first.record_pos, first.record_word, grammar.record, forms),
   };
 }
 
 async function readRecord(
   db: LookupDatabase,
   recordId: number,
-): Promise<{ posTitle: string; lineSha256: string }> {
-  const row = await queryOne<{ pos_title: string; line_sha256: string }>(
+): Promise<{ posTitle: string; lineSha256: string; rawJson: string }> {
+  // The verbatim line is read here, once per matched record, and never for a
+  // record the query did not match: the table is split off for exactly that.
+  const row = await queryOne<{ pos_title: string; line_sha256: string; raw_json: string }>(
     db,
-    `SELECT pos_title, line_sha256 FROM source_record WHERE record_id = ?`,
+    `SELECT r.pos_title, r.line_sha256, j.raw_json
+       FROM source_record r
+       JOIN source_record_json j ON j.record_id = r.record_id
+      WHERE r.record_id = ?`,
     recordId,
   );
   if (row === undefined) throw new Error(`record ${recordId} vanished mid-lookup`);
-  return { posTitle: row.pos_title, lineSha256: row.line_sha256 };
+  return { posTitle: row.pos_title, lineSha256: row.line_sha256, rawJson: row.raw_json };
 }
 
 async function readSenses(
   db: LookupDatabase,
   recordId: number,
   ref: (pointer: string) => SourceRef,
+  source: SourceRecordFields,
 ): Promise<Sense[]> {
   const senses = new Map<number, Sense>();
   const ensure = (index: number, pointer: string): Sense => {
     let sense = senses.get(index);
     if (!sense) {
-      sense = { index, ref: ref(pointer), glosses: [], labels: [] };
+      sense = {
+        index,
+        ref: ref(pointer),
+        examples: source.examplesBySense.get(index) ?? [],
+        glosses: [],
+        labels: [],
+      };
       senses.set(index, sense);
     }
     return sense;

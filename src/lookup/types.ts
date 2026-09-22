@@ -84,10 +84,56 @@ export interface SourceForm {
   claims: GrammarClaim[];
 }
 
+/** A string the source wrote, verbatim, and the field it was read from. */
+export interface SourceText {
+  text: string;
+  ref: SourceRef;
+}
+
+/** One `sounds[].ipa`, with the qualifier the source wrote beside it, if any. */
+export interface Pronunciation {
+  ipa: string;
+  /** The source's own `sense` on the sound: `italiano standard`. */
+  note: string | null;
+  ref: SourceRef;
+}
+
+/** One `hyphenations[].parts`, never empty. */
+export interface Hyphenation {
+  parts: [string, ...string[]];
+  ref: SourceRef;
+}
+
+/**
+ * One spelling from a synonym, antonym or derived-word list. The source can
+ * list a spelling more than once, so every entry that spelled it keeps its
+ * pointer, and a count that disagrees with its pointers is not representable.
+ */
+export interface RelatedWord {
+  word: string;
+  refs: [SourceRef, ...SourceRef[]];
+}
+
+/**
+ * What the source says about the *headword* rather than about one record of
+ * it: read from `source_record_json`, where it is repeated on each record the
+ * headword has. A page shows it once per word, not once per reading.
+ */
+export interface WordFacts {
+  pronunciations: Pronunciation[];
+  hyphenations: Hyphenation[];
+  etymologies: SourceText[];
+  synonyms: RelatedWord[];
+  antonyms: RelatedWord[];
+  derived: RelatedWord[];
+}
+
 export interface Sense {
   index: number;
   /** The sense itself, as a pointer: `/senses/0`. */
   ref: SourceRef;
+  /** `senses[].examples[].text`, verbatim and in source order. */
+  examples: SourceText[];
   /**
    * Copied source text, never a Lexema definition. May be empty: 667 senses
    * carry no gloss at all, and a non-empty gloss is still not proof of a usable
@@ -208,6 +254,8 @@ interface ReadingFacts {
   /** The record's own headword, verbatim. */
   word: string;
   posTitle: string;
+  /** The headword-level fields this record's archive line carries. */
+  wordFacts: WordFacts;
 
   /**
    * True when at least one piece of evidence is a headword hit — that is, when
