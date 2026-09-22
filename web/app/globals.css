@@ -35,9 +35,10 @@
    something renders in it.
 
    Italian's accents — `à è é ì ò ù` — are in latin, at `U+0000–00FF`. latin-ext
-   is carried for the pronunciation instead: `ɛ` and its fellow IPA letters are
+   holds what a pronunciation would need instead: `ɛ` and its fellow IPA letters
    in `U+0100–02BA`, the stress mark `ˈ` in `U+02C7–02CC`, the length mark `ː` in
-   `U+02CE–02D7`. So a word page fetches it and the bare search page does not.
+   `U+02CE–02D7`. Nothing renders a pronunciation today, so no page currently
+   fetches latin-ext for one; it is carried against #20 and #100.
 
    The type ramp and density are still under the manifest's "Not yet ruled", so
    the base size and line height below are today's values, carried across
