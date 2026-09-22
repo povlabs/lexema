@@ -10,10 +10,15 @@ const input = resolve(process.env.SEED_INPUT ?? "fixtures/dev-seed.jsonl");
 const output = resolve(process.env.SEED_SQL ?? ".data/dev.sql");
 const persistTo = resolve(process.env.SEED_STATE ?? ".data/seed-state");
 const releaseId = process.env.SEED_RELEASE ?? "it-dev";
+// This is Huey's fifty-word development list from #81. The fixture also carries
+// the transitive form_of closure (currently `sola` and `solo`).
 const requiredWords = [
-  "casa", "case", "studente", "studenti", "sale", "andare", "andavano",
-  "parlare", "parlerei", "bello", "bella", "città", "fine", "grande", "vado",
-  "finire", "studentessa", "casetta", "zaino",
+  "acqua", "albero", "amica", "amico", "andare", "andavano", "avere", "bella", "bello",
+  "cane", "casa", "case", "casetta", "città", "dire", "dormire", "essere", "fare",
+  "fine", "finire", "gatto", "grande", "librare", "libro", "luna", "mangiare", "mare",
+  "parlare", "parlerei", "partire", "ragazza", "ragazzo", "rosso", "sala", "salare", "sale",
+  "salire", "scuola", "sole", "strada", "studente", "studentessa", "studenti", "studiare",
+  "tavolo", "vado", "vedere", "venire", "vivere", "zaino",
 ] as const;
 
 await mkdir(resolve(".data"), { recursive: true });

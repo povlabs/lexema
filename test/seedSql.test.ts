@@ -1,7 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { DatabaseSync } from "node:sqlite";
-import { readFileSync } from "node:fs";
+import { createGunzip } from "node:zlib";
+import { createReadStream, existsSync, readFileSync } from "node:fs";
+import { createInterface } from "node:readline";
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
@@ -65,6 +67,54 @@ test("fixture closure fails with the missing target name", async () => {
       /missing form_of target word: missing-lemma/,
     );
   } finally { await rm(dir, { recursive: true, force: true }); }
+});
+
+test("committed fixture lines are complete archive records", { skip: !existsSync(resolve("it-extract.jsonl.gz")) }, async () => {
+  const fixtureLines = readFileSync(resolve("fixtures/dev-seed.jsonl"), "utf8").trimEnd().split("\n");
+  const fixtureWords = new Set<string>();
+  const fixtureByWord = new Map<string, Array<{ raw: string; pos: string; posTitle: string; keys: string[]; forms: number }>>();
+  for (const raw of fixtureLines) {
+    const record = JSON.parse(raw) as { word: string; pos: string; pos_title: string; forms?: unknown[] };
+    fixtureWords.add(record.word);
+    const entries = fixtureByWord.get(record.word) ?? [];
+    entries.push({ raw, pos: record.pos, posTitle: record.pos_title, keys: Object.keys(record).sort(), forms: record.forms?.length ?? 0 });
+    fixtureByWord.set(record.word, entries);
+  }
+
+  const archiveByWord = new Map<string, Array<{ raw: string; pos: string; posTitle: string; keys: string[]; forms: number }>>();
+  const archiveSelectedLines: string[] = [];
+  const input = createReadStream(resolve("it-extract.jsonl.gz")).pipe(createGunzip());
+  // The archive has records larger than readline's 4 KiB default. Node accepts
+  // this option at runtime, but older @types/node releases do not declare it.
+  const lines = createInterface({ input, crlfDelay: Infinity, maxLineLength: 1_000_000 } as any);
+  for await (const raw of lines) {
+    const record = JSON.parse(raw) as { word?: string; lang_code?: string; pos?: string; pos_title?: string; forms?: unknown[] };
+    if (record.lang_code !== "it" || !record.word || !fixtureWords.has(record.word)) continue;
+    archiveSelectedLines.push(raw);
+    const entries = archiveByWord.get(record.word) ?? [];
+    entries.push({ raw, pos: record.pos ?? "", posTitle: record.pos_title ?? "", keys: Object.keys(record).sort(), forms: record.forms?.length ?? 0 });
+    archiveByWord.set(record.word, entries);
+  }
+
+  assert.deepEqual(fixtureLines, archiveSelectedLines, "fixture must be the archive selection in archive order");
+  assert.deepEqual([...archiveByWord.keys()].sort(), [...fixtureByWord.keys()].sort());
+  for (const word of fixtureWords) {
+    const fixtureRecords = fixtureByWord.get(word) ?? [];
+    const archiveRecords = archiveByWord.get(word) ?? [];
+    assert.equal(fixtureRecords.length, archiveRecords.length, `${word}: fixture record count`);
+    const remaining = new Map(archiveRecords.map((record, index) => [index, record]));
+    for (const fixtureRecord of fixtureRecords) {
+      const archiveEntry = [...remaining.entries()].find(([, candidate]) => candidate.raw === fixtureRecord.raw);
+      assert.ok(archiveEntry, `${word}: fixture line is not an archive line`);
+      const [index, archiveRecord] = archiveEntry;
+      assert.deepEqual(fixtureRecord.keys, archiveRecord.keys, `${word}: archive key set`);
+      assert.equal(fixtureRecord.forms, archiveRecord.forms, `${word}: archive form count`);
+      assert.equal(fixtureRecord.pos, archiveRecord.pos);
+      assert.equal(fixtureRecord.posTitle, archiveRecord.posTitle);
+      remaining.delete(index);
+    }
+    assert.equal(remaining.size, 0, `${word}: archive records omitted from fixture`);
+  }
 });
 
 test("missing required fixture words and repeated output are deterministic", async () => {
