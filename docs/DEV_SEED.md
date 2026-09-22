@@ -15,18 +15,19 @@ SQLite database. The same path can seed a release archive with `SEED_INPUT`.
 | `SEED_STATE` | `.data/seed-state` | isolated Wrangler D1 persist directory |
 
 The demo's `web/.wrangler` directory is never touched. The seed clears only
-`SEED_STATE`, so repeated runs rebuild the same local database. The fixture is
-about fifty source records and includes every required word plus every declared
-form-of target, including `andare` for `andavano`. A missing required word or
-fixture target stops the run with that word's name.
+`SEED_STATE`, so repeated runs rebuild the same local database. The fixture covers
+Huey's fifty required words and their `form_of` closure: 83 source records across
+52 words, including `andare` for `andavano`. A missing required word or fixture
+target stops the run with that word's name.
 
 ## What is emitted
 
 For each admitted Italian archive record, the seeder preserves the raw JSONL
 line and emits source, lookup, form-of, sense, and grammar rows. `forms[].source`
 is bound to its own `lookup_form.form_source` column. Form-of rows retain word
-keys and do not resolve a target id; the schema's `form_of_candidate` view keeps
-all matching candidates and dangling edges.
+keys and do not resolve a target id; the schema's `form_of_candidate` view returns
+every matching headword candidate, with no row for a dangling target. The original
+edge remains in `form_of_edge`.
 
 SQL is emitted in parent-before-child table order. INSERT statements are batched
 by a 64 KiB byte budget, matching the limit used by the previous SQL exporter.

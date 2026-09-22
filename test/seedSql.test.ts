@@ -19,6 +19,20 @@ const rawDangling = JSON.stringify({
   senses: [{ form_of: [{ word: "missing-lemma" }] }],
 });
 
+const HUEY_WORDS = [
+  "acqua", "albero", "amica", "amico", "andare", "andavano", "avere", "bella", "bello",
+  "cane", "casa", "case", "casetta", "città", "dire", "dormire", "essere", "fare",
+  "fine", "finire", "gatto", "grande", "librare", "libro", "luna", "mangiare", "mare",
+  "parlare", "parlerei", "partire", "ragazza", "ragazzo", "rosso", "sala", "salare", "sale",
+  "salire", "scuola", "sole", "strada", "studente", "studentessa", "studenti", "studiare",
+  "tavolo", "vado", "vedere", "venire", "vivere", "zaino",
+] as const;
+
+type ExpectedRecord = { pos: string; keyCount: number; forms: number };
+type FixtureExpectations = { recordsByWord: Record<string, { recordCount: number; records: ExpectedRecord[] }> };
+const expectations = JSON.parse(readFileSync(resolve("fixtures/dev-seed-expectations.json"), "utf8")) as FixtureExpectations;
+const fixturePath = resolve(process.env.DEV_SEED_FIXTURE ?? "fixtures/dev-seed.jsonl");
+
 async function fixture(lines: readonly string[]) {
   const dir = await mkdtemp(join(tmpdir(), "lexema-seed-"));
   const input = join(dir, "fixture.jsonl");
@@ -69,30 +83,59 @@ test("fixture closure fails with the missing target name", async () => {
   } finally { await rm(dir, { recursive: true, force: true }); }
 });
 
-test("committed fixture lines are complete archive records", { skip: !existsSync(resolve("it-extract.jsonl.gz")) }, async () => {
-  const fixtureLines = readFileSync(resolve("fixtures/dev-seed.jsonl"), "utf8").trimEnd().split("\n");
+test("committed fixture matches archive-derived expectations", async () => {
+  const fixtureLines = readFileSync(fixturePath, "utf8").trimEnd().split("\n");
   const fixtureWords = new Set<string>();
-  const fixtureByWord = new Map<string, Array<{ raw: string; pos: string; posTitle: string; keys: string[]; forms: number }>>();
+  const fixtureByWord = new Map<string, Array<{ raw: string; pos: string; keyCount: number; forms: number }>>();
+  const allFormOfTargets: string[] = [];
   for (const raw of fixtureLines) {
-    const record = JSON.parse(raw) as { word: string; pos: string; pos_title: string; forms?: unknown[] };
+    const record = JSON.parse(raw) as {
+      word: string;
+      pos: string;
+      forms?: unknown[];
+      senses?: Array<{ form_of?: Array<{ word?: unknown }> }>;
+    };
     fixtureWords.add(record.word);
     const entries = fixtureByWord.get(record.word) ?? [];
-    entries.push({ raw, pos: record.pos, posTitle: record.pos_title, keys: Object.keys(record).sort(), forms: record.forms?.length ?? 0 });
+    entries.push({ raw, pos: record.pos, keyCount: Object.keys(record).length, forms: record.forms?.length ?? 0 });
     fixtureByWord.set(record.word, entries);
+    for (const sense of record.senses ?? []) {
+      for (const edge of sense.form_of ?? []) {
+        assert.equal(typeof edge.word, "string", `${record.word}: form_of target must be a word`);
+        allFormOfTargets.push(edge.word as string);
+      }
+    }
   }
 
-  const archiveByWord = new Map<string, Array<{ raw: string; pos: string; posTitle: string; keys: string[]; forms: number }>>();
+  const expectedWords = Object.keys(expectations.recordsByWord);
+  assert.deepEqual([...fixtureWords].sort(), [...expectedWords].sort(), "fixture words must match the archive-derived table");
+  for (const word of HUEY_WORDS) {
+    assert.ok(fixtureWords.has(word), `missing required word: ${word}`);
+  }
+  for (const target of allFormOfTargets) {
+    assert.ok(fixtureWords.has(target), `missing form_of target word: ${target}`);
+  }
+  for (const [word, expectation] of Object.entries(expectations.recordsByWord)) {
+    const actualRecords = fixtureByWord.get(word) ?? [];
+    assert.equal(actualRecords.length, expectation.recordCount, `${word}: fixture record count`);
+    assert.deepEqual(actualRecords.map(({ pos, keyCount, forms }) => ({ pos, keyCount, forms })), expectation.records,
+      `${word}: fixture record shape differs from archive-derived expectation`);
+  }
+
+  // The archive is ignored and absent in CI; when present locally, retain the stronger byte check.
+  if (!existsSync(resolve("it-extract.jsonl.gz"))) return;
+  const archiveByWord = new Map<string, Array<{ raw: string; pos: string; keys: string[]; forms: number }>>();
   const archiveSelectedLines: string[] = [];
   const input = createReadStream(resolve("it-extract.jsonl.gz")).pipe(createGunzip());
   // The archive has records larger than readline's 4 KiB default. Node accepts
   // this option at runtime, but older @types/node releases do not declare it.
   const lines = createInterface({ input, crlfDelay: Infinity, maxLineLength: 1_000_000 } as any);
   for await (const raw of lines) {
-    const record = JSON.parse(raw) as { word?: string; lang_code?: string; pos?: string; pos_title?: string; forms?: unknown[] };
+    const record = JSON.parse(raw) as { word?: string; lang_code?: string; pos?: string; forms?: unknown[] };
     if (record.lang_code !== "it" || !record.word || !fixtureWords.has(record.word)) continue;
     archiveSelectedLines.push(raw);
     const entries = archiveByWord.get(record.word) ?? [];
-    entries.push({ raw, pos: record.pos ?? "", posTitle: record.pos_title ?? "", keys: Object.keys(record).sort(), forms: record.forms?.length ?? 0 });
+    entries.push({ raw, pos: record.pos ?? "", keys: Object.keys(record).sort(), forms: record.forms?.length ?? 0 });
     archiveByWord.set(record.word, entries);
   }
 
@@ -107,10 +150,9 @@ test("committed fixture lines are complete archive records", { skip: !existsSync
       const archiveEntry = [...remaining.entries()].find(([, candidate]) => candidate.raw === fixtureRecord.raw);
       assert.ok(archiveEntry, `${word}: fixture line is not an archive line`);
       const [index, archiveRecord] = archiveEntry;
-      assert.deepEqual(fixtureRecord.keys, archiveRecord.keys, `${word}: archive key set`);
+      assert.deepEqual(Object.keys(JSON.parse(fixtureRecord.raw)).sort(), archiveRecord.keys, `${word}: archive key set`);
       assert.equal(fixtureRecord.forms, archiveRecord.forms, `${word}: archive form count`);
       assert.equal(fixtureRecord.pos, archiveRecord.pos);
-      assert.equal(fixtureRecord.posTitle, archiveRecord.posTitle);
       remaining.delete(index);
     }
     assert.equal(remaining.size, 0, `${word}: archive records omitted from fixture`);
