@@ -26,10 +26,15 @@ ignored by Git and absent in CI.
   Huey, never in separate terminal tabs or Herdr panes. The parent routes child
   questions and reports every result
   ([ADR 0007](.decisions/0007-pi-subagents-runs-agent-work.md)).
-- Codex reviews as `nothueypov`; Claude builds and repairs. The roles do not swap.
-  A reviewer prefixes each `gh` or `fabrika` call with
+- A reviewer is never the agent that wrote the work, and always reviews under the
+  `nothueypov` account. That account is fixed: it is the only identity a review
+  is posted from, and it is never Huey's own. A builder does not review its own
+  change, a reviewer does not fix what it finds, and neither merges. A reviewer
+  prefixes each `gh` or `fabrika` call with
   `GH_TOKEN="$(gh auth token --user nothueypov)"` and never changes the active
-  account ([ADR 0005](.decisions/0005-codex-reviews-claude-builds.md)).
+  account. Which model fills a role is configuration in `.pi/settings.json`, and
+  Huey changes it whenever he likes
+  ([ADR 0005](.decisions/0005-codex-reviews-claude-builds.md)).
 - A pull request merges when every required verdict is PASS at its head, and only
   the `shipper` merges. `ready-for:human` holds it for Huey
   ([ADR 0006](.decisions/0006-codex-review-is-the-merge-gate.md)).
