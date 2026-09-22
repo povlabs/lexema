@@ -1,39 +1,171 @@
 @import "tailwindcss";
 
 /* The only stylesheet Lexema writes: the role tokens every component reaches
-   for, and nothing else. ADR 0010 makes Tailwind the styling language, so a
-   rule of our own here would be a second styling system.
+   for, the faces those roles name, and nothing else. ADR 0010 makes Tailwind
+   the styling language, so a rule of our own here would be a second styling
+   system.
 
-   The nine colour roles are transcribed from design-system-manifest.md § "Role
-   tokens: the dark scheme", which maps each of them onto one step of Base UI's
-   own dark scale. The values are copied verbatim, alpha included; the steps
-   themselves are deliberately not declared, so no component can reach past a
-   role to a step. Dark is the only scheme the manifest rules — a light one is a
-   later ruling and explicitly not a fallback — so there is no light palette and
-   no `prefers-color-scheme` branch.
+   The nine colour roles keep the names design-system-manifest.md § "Role
+   tokens: the dark scheme" gave them, and #99 moves their values onto the warm
+   near-black scheme in Huey's design file, `lexema-design.pen`, whose top-level
+   `variables` object is the source. That file writes each role as a hex; these
+   are the same nine colours written in oklch, because `web/test/tokens.test.ts`
+   asserts every role is declared as `oklch(`, and #99 changes values without
+   changing that test. Each conversion round-trips back to the design's own hex
+   byte for byte, so nothing is approximated — the hex is named beside each
+   role. Chroma is written on the 0–0.4 scale rather than as a percentage;
+   `0.0026` and `0.26%` are the same number.
 
-   The type ramp, the font family and density are still under the manifest's
-   "Not yet ruled". So the base size, the line height and the two font stacks
-   below are today's values, carried across unchanged rather than re-scaled.
-   `--text-base` and its line height are what the `text-base` utility on `body`
-   resolves to, and `--font-serif` is what `font-serif` resolves to. */
+   Dark is still the only scheme — a light one is a later ruling, not a
+   fallback — so there is no light palette and no `prefers-color-scheme` branch.
+
+   The three faces are the design file's too: Spectral for serif, Inter for
+   sans, IBM Plex Mono for mono. `sans` is a new role; the stylesheet declared
+   only serif and mono before. Each family names a fallback stack after its
+   webfont, so the page is legible before the face arrives and if it never does.
+
+   The faces are served from this repository, never from a font CDN: a reader
+   looking up a word tells no third origin which page they opened, which is
+   what README.md already promises. `@font-face` below points at
+   `web/fonts/*.woff2`, which Vite fingerprints into the client bundle. Only
+   latin and latin-ext are carried — latin-ext is what renders `è`, `à` and the
+   rest of Italian's accents — and only the weights the page uses: Spectral 400,
+   400 italic, 600 and 700, IBM Plex Mono 400, and Inter as one variable file
+   covering 100–900. `unicode-range` means a browser fetches a face only when a
+   glyph on the page needs it, so the sans face costs nothing until something
+   renders in it.
+
+   The type ramp and density are still under the manifest's "Not yet ruled", so
+   the base size and line height below are today's values, carried across
+   unchanged. */
+
+@font-face {
+  font-family: "Spectral";
+  font-style: italic;
+  font-weight: 400;
+  font-display: swap;
+  src: url("../fonts/Spectral-400-italic-latin-ext.woff2") format("woff2");
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+
+@font-face {
+  font-family: "Spectral";
+  font-style: italic;
+  font-weight: 400;
+  font-display: swap;
+  src: url("../fonts/Spectral-400-italic-latin.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: "Spectral";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("../fonts/Spectral-400-normal-latin-ext.woff2") format("woff2");
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+
+@font-face {
+  font-family: "Spectral";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("../fonts/Spectral-400-normal-latin.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: "Spectral";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("../fonts/Spectral-600-normal-latin-ext.woff2") format("woff2");
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+
+@font-face {
+  font-family: "Spectral";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("../fonts/Spectral-600-normal-latin.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: "Spectral";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("../fonts/Spectral-700-normal-latin-ext.woff2") format("woff2");
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+
+@font-face {
+  font-family: "Spectral";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("../fonts/Spectral-700-normal-latin.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: "Inter";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("../fonts/Inter-variable-latin-ext.woff2") format("woff2");
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+
+@font-face {
+  font-family: "Inter";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("../fonts/Inter-variable-latin.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: "IBM Plex Mono";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("../fonts/IBMPlexMono-400-normal-latin-ext.woff2") format("woff2");
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+
+@font-face {
+  font-family: "IBM Plex Mono";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("../fonts/IBMPlexMono-400-normal-latin.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
 
 @theme {
-  --color-surface: oklch(17% 0.25% 264deg);
-  --color-surface-raised: oklch(28% 0.75% 264deg / 65%);
-  --color-border: oklch(29% 0.75% 264deg / 80%);
-  --color-border-strong: oklch(35% 0.75% 264deg / 80%);
-  --color-text-muted: oklch(64% 1% 264deg / 80%);
-  --color-text: oklch(95% 0.5% 264deg / 90%);
-  --color-text-strong: oklch(94% 0.375% 264deg / 95%);
-  --color-accent: oklch(69% 50% 264deg);
-  --color-warning: oklch(80% 55% 31deg);
+  /* Design file `variables`, each as its own hex: #121110, #1A1917, #2C2A26,
+     #4E4940, #8B8579, #C4BEB2, #F4F0E6, #D2A85C, #D9704F. */
+  --color-surface: oklch(17.84% 0.0026 67.7deg);
+  --color-surface-raised: oklch(21.38% 0.0042 84.6deg);
+  --color-border: oklch(28.57% 0.0077 84.6deg);
+  --color-border-strong: oklch(40.74% 0.0161 82.4deg);
+  --color-text-muted: oklch(61.84% 0.0191 84.6deg);
+  --color-text: oklch(80.30% 0.0179 84.6deg);
+  --color-text-strong: oklch(95.55% 0.0140 88.7deg);
+  --color-accent: oklch(75.42% 0.1066 80.8deg);
+  --color-warning: oklch(66.01% 0.1400 38.1deg);
 
   --text-base: 16px;
   --text-base--line-height: 1.6;
 
-  --font-serif: ui-serif, Georgia, "Times New Roman", serif;
-  --font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+  --font-serif: "Spectral", ui-serif, Georgia, "Times New Roman", serif;
+  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
   --default-font-family: var(--font-serif);
   --default-mono-font-family: var(--font-mono);
 }
