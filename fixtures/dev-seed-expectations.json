@@ -1,0 +1,681 @@
+{
+  "source": "it-extract.jsonl.gz",
+  "selection": "Huey's fifty required words plus the archive's form_of closure (sola and solo)",
+  "recordsByWord": {
+    "acqua": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "noun",
+          "keyCount": 17,
+          "forms": 1
+        }
+      ]
+    },
+    "albero": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "noun",
+          "keyCount": 17,
+          "forms": 1
+        }
+      ]
+    },
+    "amica": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 14,
+          "forms": 3
+        },
+        {
+          "pos": "noun",
+          "keyCount": 14,
+          "forms": 3
+        }
+      ]
+    },
+    "amico": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 17,
+          "forms": 3
+        },
+        {
+          "pos": "noun",
+          "keyCount": 17,
+          "forms": 1
+        }
+      ]
+    },
+    "andare": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "noun",
+          "keyCount": 17,
+          "forms": 0
+        },
+        {
+          "pos": "verb",
+          "keyCount": 17,
+          "forms": 97
+        }
+      ]
+    },
+    "andavano": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "verb",
+          "keyCount": 11,
+          "forms": 0
+        }
+      ]
+    },
+    "avere": {
+      "recordCount": 3,
+      "records": [
+        {
+          "pos": "noun",
+          "keyCount": 17,
+          "forms": 1
+        },
+        {
+          "pos": "verb",
+          "keyCount": 17,
+          "forms": 94
+        },
+        {
+          "pos": "verb",
+          "keyCount": 16,
+          "forms": 0
+        }
+      ]
+    },
+    "bella": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 17,
+          "forms": 7
+        },
+        {
+          "pos": "noun",
+          "keyCount": 16,
+          "forms": 0
+        }
+      ]
+    },
+    "bello": {
+      "recordCount": 3,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 18,
+          "forms": 3
+        },
+        {
+          "pos": "noun",
+          "keyCount": 17,
+          "forms": 0
+        },
+        {
+          "pos": "noun",
+          "keyCount": 18,
+          "forms": 1
+        }
+      ]
+    },
+    "cane": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "noun",
+          "keyCount": 20,
+          "forms": 3
+        }
+      ]
+    },
+    "casa": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "noun",
+          "keyCount": 15,
+          "forms": 0
+        }
+      ]
+    },
+    "case": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "noun",
+          "keyCount": 11,
+          "forms": 0
+        }
+      ]
+    },
+    "casetta": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "noun",
+          "keyCount": 13,
+          "forms": 1
+        }
+      ]
+    },
+    "città": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "noun",
+          "keyCount": 16,
+          "forms": 0
+        }
+      ]
+    },
+    "dire": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "verb",
+          "keyCount": 18,
+          "forms": 136
+        }
+      ]
+    },
+    "dormire": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "verb",
+          "keyCount": 17,
+          "forms": 95
+        }
+      ]
+    },
+    "essere": {
+      "recordCount": 3,
+      "records": [
+        {
+          "pos": "noun",
+          "keyCount": 17,
+          "forms": 1
+        },
+        {
+          "pos": "verb",
+          "keyCount": 17,
+          "forms": 93
+        },
+        {
+          "pos": "verb",
+          "keyCount": 17,
+          "forms": 93
+        }
+      ]
+    },
+    "fare": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "noun",
+          "keyCount": 16,
+          "forms": 0
+        },
+        {
+          "pos": "verb",
+          "keyCount": 17,
+          "forms": 97
+        }
+      ]
+    },
+    "fine": {
+      "recordCount": 3,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 17,
+          "forms": 1
+        },
+        {
+          "pos": "noun",
+          "keyCount": 17,
+          "forms": 0
+        },
+        {
+          "pos": "noun",
+          "keyCount": 17,
+          "forms": 1
+        }
+      ]
+    },
+    "finire": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "verb",
+          "keyCount": 17,
+          "forms": 137
+        }
+      ]
+    },
+    "gatto": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "noun",
+          "keyCount": 19,
+          "forms": 3
+        }
+      ]
+    },
+    "grande": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 18,
+          "forms": 8
+        },
+        {
+          "pos": "noun",
+          "keyCount": 16,
+          "forms": 0
+        }
+      ]
+    },
+    "librare": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "verb",
+          "keyCount": 15,
+          "forms": 94
+        }
+      ]
+    },
+    "libro": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "noun",
+          "keyCount": 18,
+          "forms": 1
+        },
+        {
+          "pos": "verb",
+          "keyCount": 17,
+          "forms": 0
+        }
+      ]
+    },
+    "luna": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "noun",
+          "keyCount": 18,
+          "forms": 1
+        }
+      ]
+    },
+    "mangiare": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "noun",
+          "keyCount": 16,
+          "forms": 0
+        },
+        {
+          "pos": "verb",
+          "keyCount": 17,
+          "forms": 95
+        }
+      ]
+    },
+    "mare": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "noun",
+          "keyCount": 18,
+          "forms": 1
+        }
+      ]
+    },
+    "parlare": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "noun",
+          "keyCount": 16,
+          "forms": 0
+        },
+        {
+          "pos": "verb",
+          "keyCount": 17,
+          "forms": 95
+        }
+      ]
+    },
+    "parlerei": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "verb",
+          "keyCount": 9,
+          "forms": 0
+        }
+      ]
+    },
+    "partire": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "verb",
+          "keyCount": 18,
+          "forms": 94
+        }
+      ]
+    },
+    "ragazza": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "noun",
+          "keyCount": 15,
+          "forms": 3
+        }
+      ]
+    },
+    "ragazzo": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "noun",
+          "keyCount": 17,
+          "forms": 3
+        }
+      ]
+    },
+    "rosso": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 17,
+          "forms": 3
+        },
+        {
+          "pos": "noun",
+          "keyCount": 17,
+          "forms": 1
+        }
+      ]
+    },
+    "sala": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "noun",
+          "keyCount": 16,
+          "forms": 1
+        },
+        {
+          "pos": "verb",
+          "keyCount": 15,
+          "forms": 0
+        }
+      ]
+    },
+    "salare": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "verb",
+          "keyCount": 16,
+          "forms": 94
+        }
+      ]
+    },
+    "sale": {
+      "recordCount": 3,
+      "records": [
+        {
+          "pos": "noun",
+          "keyCount": 17,
+          "forms": 1
+        },
+        {
+          "pos": "noun",
+          "keyCount": 16,
+          "forms": 0
+        },
+        {
+          "pos": "verb",
+          "keyCount": 16,
+          "forms": 0
+        }
+      ]
+    },
+    "salire": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "verb",
+          "keyCount": 18,
+          "forms": 136
+        }
+      ]
+    },
+    "scuola": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "noun",
+          "keyCount": 19,
+          "forms": 1
+        }
+      ]
+    },
+    "sole": {
+      "recordCount": 3,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 18,
+          "forms": 3
+        },
+        {
+          "pos": "noun",
+          "keyCount": 17,
+          "forms": 0
+        },
+        {
+          "pos": "phrase",
+          "keyCount": 17,
+          "forms": 0
+        }
+      ]
+    },
+    "strada": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "noun",
+          "keyCount": 17,
+          "forms": 1
+        }
+      ]
+    },
+    "studente": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "noun",
+          "keyCount": 16,
+          "forms": 4
+        },
+        {
+          "pos": "verb",
+          "keyCount": 15,
+          "forms": 0
+        }
+      ]
+    },
+    "studentessa": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "noun",
+          "keyCount": 12,
+          "forms": 3
+        }
+      ]
+    },
+    "studenti": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "noun",
+          "keyCount": 12,
+          "forms": 3
+        }
+      ]
+    },
+    "studiare": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "verb",
+          "keyCount": 18,
+          "forms": 95
+        }
+      ]
+    },
+    "tavolo": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "noun",
+          "keyCount": 14,
+          "forms": 1
+        }
+      ]
+    },
+    "vado": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "verb",
+          "keyCount": 13,
+          "forms": 0
+        }
+      ]
+    },
+    "vedere": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "noun",
+          "keyCount": 17,
+          "forms": 0
+        },
+        {
+          "pos": "verb",
+          "keyCount": 18,
+          "forms": 95
+        }
+      ]
+    },
+    "venire": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "verb",
+          "keyCount": 18,
+          "forms": 94
+        }
+      ]
+    },
+    "vivere": {
+      "recordCount": 3,
+      "records": [
+        {
+          "pos": "noun",
+          "keyCount": 16,
+          "forms": 0
+        },
+        {
+          "pos": "verb",
+          "keyCount": 17,
+          "forms": 136
+        },
+        {
+          "pos": "verb",
+          "keyCount": 17,
+          "forms": 136
+        }
+      ]
+    },
+    "zaino": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 16,
+          "forms": 1
+        },
+        {
+          "pos": "noun",
+          "keyCount": 16,
+          "forms": 1
+        }
+      ]
+    },
+    "sola": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 13,
+          "forms": 3
+        },
+        {
+          "pos": "noun",
+          "keyCount": 13,
+          "forms": 1
+        }
+      ]
+    },
+    "solo": {
+      "recordCount": 3,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 17,
+          "forms": 3
+        },
+        {
+          "pos": "adv",
+          "keyCount": 15,
+          "forms": 0
+        },
+        {
+          "pos": "noun",
+          "keyCount": 15,
+          "forms": 0
+        }
+      ]
+    }
+  }
+}

@@ -129,6 +129,12 @@ export interface ArchiveParseOptions {
   input: string;
   releaseId?: string;
   onRejection: (rejection: Rejection) => void;
+  /** Called after the complete archive checksum is known and before records flow. */
+  onStart?: (metadata: {
+    releaseId: string;
+    archiveSha256: string;
+    archiveBytes: number;
+  }) => void | Promise<void>;
   onRecord: (record: ArchiveRecord, reportMember: ReportMember) => void | Promise<void>;
   /** Stop after this many admitted records. For tests only. */
   limit?: number;
@@ -404,9 +410,11 @@ export async function parseArchive(options: ArchiveParseOptions): Promise<Archiv
     options.onRejection({ kind: "malformed-member", lineNo: linesRead, reason });
   };
   try {
+    await options.onStart?.({ releaseId, archiveSha256, archiveBytes: archive.bytes });
     const source = archive.read();
+    const decompressed = options.input.endsWith(".gz") ? source.pipe(createGunzip()) : source;
     const lines = createInterface({
-      input: source.pipe(createGunzip()),
+      input: decompressed,
       crlfDelay: Infinity,
     });
     for await (const line of lines) {
@@ -492,8 +500,9 @@ export async function importRelease(options: ImportOptions): Promise<ImportRepor
     };
 
     const source = archive.read();
+    const decompressed = options.input.endsWith(".gz") ? source.pipe(createGunzip()) : source;
     const lines = createInterface({
-      input: source.pipe(createGunzip()),
+      input: decompressed,
       crlfDelay: Infinity,
     });
 
@@ -626,7 +635,25 @@ export async function importRelease(options: ImportOptions): Promise<ImportRepor
   }
 }
 
-function prepareStatements(db: DatabaseSync) {
+export interface ImportStatement {
+  run(...values: unknown[]): unknown;
+}
+
+export interface ImportStatements {
+  insertRelease: ImportStatement;
+  finishRelease: ImportStatement;
+  insertTableRows: ImportStatement;
+  insertRecord: ImportStatement;
+  insertJson: ImportStatement;
+  insertLookup: ImportStatement;
+  insertEdge: ImportStatement;
+  insertSense: ImportStatement;
+  insertGloss: ImportStatement;
+  insertLabel: ImportStatement;
+  insertClaim: ImportStatement;
+}
+
+function prepareStatements(db: DatabaseSync): ImportStatements {
   return {
     insertRelease: db.prepare(
       `INSERT INTO source_release
@@ -682,7 +709,7 @@ function prepareStatements(db: DatabaseSync) {
   };
 }
 
-type Statements = ReturnType<typeof prepareStatements>;
+type Statements = ImportStatements;
 
 interface RecordContext {
   recordId: number;
@@ -697,7 +724,7 @@ interface RecordContext {
   reportMember: ReportMember;
 }
 
-function writeRecord(
+export function writeRecord(
   statements: Statements,
   rows: Record<string, number>,
   ctx: RecordContext,
