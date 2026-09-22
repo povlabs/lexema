@@ -2,8 +2,7 @@
 
 `pnpm run seed:dev` ([`src/import/seedDev.ts`](../src/import/seedDev.ts)) streams the
 committed fixture through the archive parser, writes D1 SQL, and applies it with
-Wrangler. It does not create a converted content tree or an intermediate
-SQLite database. The same path can seed a release archive with `SEED_INPUT`.
+Wrangler. The same path can seed a release archive with `SEED_INPUT`.
 
 ## Environment and paths
 
