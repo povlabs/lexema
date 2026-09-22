@@ -28,12 +28,16 @@
    looking up a word tells no third origin which page they opened, which is
    what README.md already promises. `@font-face` below points at
    `web/fonts/*.woff2`, which Vite fingerprints into the client bundle. Only
-   latin and latin-ext are carried — latin-ext is what renders `è`, `à` and the
-   rest of Italian's accents — and only the weights the page uses: Spectral 400,
-   400 italic, 600 and 700, IBM Plex Mono 400, and Inter as one variable file
-   covering 100–900. `unicode-range` means a browser fetches a face only when a
-   glyph on the page needs it, so the sans face costs nothing until something
-   renders in it.
+   latin and latin-ext are carried, and only the weights the page uses: Spectral
+   400, 400 italic, 600 and 700, IBM Plex Mono 400, and Inter as one variable
+   file covering 100–900. `unicode-range` means a browser fetches a face only
+   when a glyph on the page needs it, so the sans face costs nothing until
+   something renders in it.
+
+   Italian's accents — `à è é ì ò ù` — are in latin, at `U+0000–00FF`. latin-ext
+   is carried for the pronunciation instead: `ɛ` and its fellow IPA letters are
+   in `U+0100–02BA`, the stress mark `ˈ` in `U+02C7–02CC`, the length mark `ː` in
+   `U+02CE–02D7`. So a word page fetches it and the bare search page does not.
 
    The type ramp and density are still under the manifest's "Not yet ruled", so
    the base size and line height below are today's values, carried across
