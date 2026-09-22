@@ -87,23 +87,35 @@ one thing this page must not do.
 **A lookup that did not happen.** No release, a D1 error, or a release built by
 a different normalizer all produce a page that says the lookup failed. That is
 deliberately not the "found nothing" message: a reader must be able to tell *we
-could not look* from *we looked and the word is not here*. The release footer
-drops out in that state, because there is no release to name. The
+could not look* from *we looked and the word is not here*. The
 reason is logged and not printed: a database message names releases, tables and
 bindings, which is the operator's business and not the reader's.
 
-**A form the source listed, and one it did not.** Each entry shows its own
-`forms[]` with the grammar the source stated about each one, grouped by tense
-under *Grouped conjugations*, and an *Articles* section. Where the source is
-silent — no forms, no tense, no article anywhere in this release — the section
-says so in words. Nothing is derived: an article follows from gender and number,
-which this source often leaves out, and inventing one is the failure this whole
-page is built against.
+**A form the source listed, and one it did not.** A noun or adjective shows its
+plural and feminine on the header bar and, when the source files spellings under
+both genders, a gender-and-number box. A verb shows its conjugation in tense
+boxes: which box a form goes in is rule `it-moods/v1`
+(`src/italian/moods.ts`), which reads the tenses the source tags and, for the
+congiuntivo and condizionale, the pronoun it writes beside the form — a *che*
+row is congiuntivo. The page says so under the conjugation's header, the way
+the articles box says `it-articles/v1` derived its articles. Whatever the rule
+cannot place stays in one box that says so. A section with nothing in it is
+absent.
 
 **Ambiguity in both directions.** A `form_of` edge names a word, and a word can
-be several records. That is shown on the outgoing side (*Form of*) and on the
-incoming side (*Forms pointing here*) the same way: every candidate listed, none
-chosen.
+be several records. A form reading ends in a lemma panel that names the word,
+lists every record spelling it when there is more than one, and says the
+source does not choose. A record the lookup returned only because it lists the
+query in its own table, and that a reading names as its lemma — `sala` and
+`salire` for `sale` — renders as that panel rather than as a card
+(`app/wordPage.ts`). Any other listing record keeps a card of its own, saying it
+does not define the query.
+
+**Once per word.** Pronunciation, syllables, etymologies, synonyms, antonyms
+and derived words are read from `source_record_json` and are the same on every
+record of a headword, so they render once: the strip under the headword, and
+the sections after the last card. Several etymologies are labelled *reading
+not given*, because the source does not say which reading each belongs to.
 
 ## Why a disputed claim is a row and not a code path
 
@@ -123,24 +135,18 @@ write over the release the import just made.
 
 ## Why the source link is labelled the way it is
 
-Each reading ends with a link to the Italian Wiktionary page for that record's
-own headword, sitting next to the release line number and the JSON pointers the
-reading was built from. It is labelled *Source* and nothing more:
+The page ends with one link to the Italian Wiktionary page for the headword —
+one per headword when a listing record from another page has a card. It is
+labelled *Source* and nothing more:
 [ADR 0009](../.decisions/0009-two-licences-and-a-source-link.md) puts one small
 link on a result and keeps the credit itself on `/attribution`, which the site
-footer reaches from every page.
-
-Its accessible name is longer than its text — "Wiktionary page for X, the source
-of this noun entry" — because *Source* repeated once per reading tells a screen
-reader nothing about which reading it belongs to.
+footer reaches from every page. Its accessible name is longer than its text —
+"Wiktionary page for X, the source of this page".
 
 The release stores no per-record URL, so the link is *constructed* from the
-headword rather than recorded with the data. That is why the accessible name
-says "Wiktionary page for X" instead of presenting the link as a citation of the
-reading: the line number and pointers are the exact source location, and the
-link is only the part a reader can click. On a mention row the link points at
-`sala` or `salire` — the page the record actually came from, not the word
-searched for.
+headword rather than recorded with the data. Each card still carries its
+record's archive line as `data-line`, so the page stays checkable against the
+release without printing the line on every card.
 
 ## Why the credit is on its own page
 
