@@ -45,10 +45,10 @@ test("keys identify every sale, casa and bello record exactly once", async () =>
 });
 
 test("prefix rule places ordinary and awkward words", () => {
-  assert.deepEqual(wordPrefix("casa"), ["c", "ca", "cas"]);
-  assert.deepEqual(wordPrefix("a"), ["a", "a_", "a__"]);
-  assert.deepEqual(wordPrefix("1x"), ["_", "_x", "_x_"]);
-  assert.deepEqual(wordPrefix("g/r"), ["g", "g_", "g_r"]);
+  assert.deepEqual(wordPrefix("casa"), ["c", "ca", "cas", "casa"]);
+  assert.deepEqual(wordPrefix("a"), ["a", "a_", "a__", "a___"]);
+  assert.deepEqual(wordPrefix("1x"), ["_", "_x", "_x_", "_x__"]);
+  assert.deepEqual(wordPrefix("g/r"), ["g", "g_", "g_r", "g_r_"]);
 });
 
 test("a second run is a no-op and editorial fields survive", async () => {

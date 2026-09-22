@@ -38,27 +38,31 @@ interface Entry {
  * and every other non-letter are `_`; a missing second letter is `_`. Thus the
  * rule is total: `a` is `a/a_`, while `/x` is `_/_x`.
  */
-export function wordPrefix(word: string): [string, string, string] {
+export function wordPrefix(word: string): [string, string, string, string] {
   const chars = [...word.toLocaleLowerCase("it-IT")];
   const letter = (char: string | undefined): string =>
     char !== undefined && /^\p{L}$/u.test(char) ? char : "_";
   const first = letter(chars[0]);
   const second = letter(chars[1]);
   const third = letter(chars[2]);
-  return [first, `${first}${second}`, `${first}${second}${third}`];
+  const fourth = letter(chars[3]);
+  return [first, `${first}${second}`, `${first}${second}${third}`, `${first}${second}${third}${fourth}`];
 }
 
 /** Filename encoding keeps lower-case words readable and makes `/` and case safe. */
 export function wordFileName(word: string): string {
-  const encoded = encodeURIComponent(word).replace(/[A-Z]/g, (char) =>
-    `%${char.charCodeAt(0).toString(16).toUpperCase()}`,
-  );
+  const encoded = [...word].map((char) => {
+    const code = char.codePointAt(0) as number;
+    return code >= 0x41 && code <= 0x5a
+      ? `%${code.toString(16).toUpperCase()}`
+      : encodeURIComponent(char);
+  }).join("");
   return `${encoded}.json`;
 }
 
 export function contentFilePath(root: string, word: string): string {
-  const [first, firstTwo, firstThree] = wordPrefix(word);
-  return join(root, "it", first, firstTwo, firstThree, wordFileName(word));
+  const [first, firstTwo, firstThree, firstFour] = wordPrefix(word);
+  return join(root, "it", first, firstTwo, firstThree, firstFour, wordFileName(word));
 }
 
 function ref(_releaseId: string, lineNo: number, _lineSha256: string, jsonPointer: string): Ref {
@@ -282,7 +286,7 @@ export function convertRelease(options: ConversionOptions = {}): ConversionRepor
         archiveSha256: release.archive_sha256,
         archiveBytes: release.archive_bytes,
       },
-      layout: { language: "it", directoryDepth: 3 },
+      layout: { language: "it", directoryDepth: 4 },
       words,
       records: records.length,
     });

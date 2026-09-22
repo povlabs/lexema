@@ -8,10 +8,11 @@ zero files and zero bytes.
 
 ## File identity and paths
 
-A file is `it/<first>/<first-two>/<first-three>/<word>.json`. The three
-components are the first one, two, and three Unicode code points of the
-lowercased word. A non-letter becomes `_`, and missing code points become `_`,
-so one-letter and punctuation-leading words are always placeable. Filenames are
+A file is `it/<first>/<first-two>/<first-three>/<first-four>/<word>.json`.
+The four components are the first one, two, three, and four Unicode code
+points of the lowercased word. A non-letter becomes `_`, and missing code
+points become `_`, so one-letter and punctuation-leading words are always
+placeable. Filenames are
 UTF-8 percent-encoded (including uppercase ASCII letters) so a source word
 containing `/`, or differing only by case on a case-insensitive filesystem,
 cannot escape or collide in its word-file directory.
@@ -22,8 +23,11 @@ key resolves to exactly one record. `sale` demonstrates the title distinction;
 `bello` demonstrates the deterministic suffix for two records whose title is
 also identical.
 
-`manifest.json` at the tree root names the release and archive SHA-256. Each
-word file names the release id, each entry carries its source line SHA-256, and
+`manifest.json` at the tree root names the release and archive SHA-256. The
+fixed four-level layout keeps a word's path stable; adaptive bucket splitting
+was deliberately rejected because a new word could move every existing file in
+a bucket and make a re-conversion diff unreadable. Each word file names the
+release id, each entry carries its source line SHA-256, and
 every source value carries its source line and JSON pointer; together these
 identify the exact archive bytes. The converter writes
 only source-derived fields; existing `lexema` fields (Italian explanation,
