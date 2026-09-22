@@ -3,6 +3,9 @@
   "uiSurfaces": [
     {
       "name": "web",
+      // Covers fonts as well as app code. web/test/fixture.ts raises the UI
+      // class; only test filenames are excluded. Route pixel-neutral edits
+      // with review-ui route instead of capturing them.
       "prefix": "web/",
       "mount": "/",
       "readyPath": "/",
