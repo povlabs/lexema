@@ -6,12 +6,17 @@ built this way is [WEB.md](WEB.md); the seed's exact numbers are
 
 ## Before you start
 
-- `it-extract.jsonl.gz` in the repository root.
-- A few hundred MB free under `.data/` and `web/.wrangler/`.
+- Nothing needs downloading for local work: `fixtures/dev-seed.jsonl` is the
+  committed fifty-word fixture used by `seed:dev`.
+- A few hundred MB free under `.data/`.
 - About two minutes, most of it the seed.
 
 Nothing here touches a Cloudflare account. `wrangler dev` runs the Worker on
-workerd locally, and `--local` D1 is a miniflare SQLite file.
+workerd locally, and local D1 state is kept in `.data/`, not `web/.wrangler/`.
+The full Italian archive is maintained at
+[`source/it-extract.jsonl.gz`](https://github.com/hueypov/lexema-data/blob/main/source/it-extract.jsonl.gz).
+A local copy at the repository root (`it-extract.jsonl.gz`) is gitignored and is
+the default full-archive input when an archive is selected explicitly.
 
 ## Run it
 
@@ -20,7 +25,7 @@ pnpm install --frozen-lockfile
 pnpm run seed:dev
 pnpm --filter @lexema/web build
 cd web && pnpm exec wrangler dev --config dist/server/wrangler.json \
-  --persist-to "$PWD/.wrangler/state" --port 8790
+  --persist-to "$PWD/../.data/web-state" --port 8790
 ```
 
 Then open <http://localhost:8790/?q=sale>.
@@ -28,10 +33,10 @@ Then open <http://localhost:8790/?q=sale>.
 `pnpm run seed:dev` builds a development release and loads it into local D1. It
 drops the existing local D1 database first, so re-running it needs no cleanup.
 
-The seed is a prefix of the archive, cut into `.data/it-dev.jsonl.gz` and
-imported whole; what that covers is in [DEV_SEED.md](DEV_SEED.md), and why it is
-cut rather than limited is in
-[WEB.md](WEB.md#why-the-seed-is-a-prefix-file-not-a-limited-import).
+The seed streams the committed fifty-word fixture directly into generated D1
+SQL and applies that SQL to local D1. It does not cut a prefix, create a
+SQLite staging database, or write to `web/.wrangler/`; the fixture's coverage is
+in [DEV_SEED.md](DEV_SEED.md).
 
 ## Check it came up
 
@@ -47,10 +52,11 @@ What these actually rendered, on which release and on which date, is in
 [the dated report](../reports/2026-09-21-web-page-measurements.md) — including
 all twelve queries of the spot check, not only these.
 
-The seed loads a prefix of the archive, so a word past its cutoff returns the
-empty state rather than an error. [DEV_SEED.md](DEV_SEED.md) lists what the
-default covers. The same query can answer differently against a full release:
-`citta` is empty in the default prefix and has an entry in the whole archive.
+The fixture is intentionally bounded, so a word outside its fifty-word set
+returns the empty state rather than an error. A full archive can be supplied
+with `SEED_INPUT=it-extract.jsonl.gz`, but full-release seeding currently fails
+when Wrangler reads the generated SQL because Node's maximum string length is
+exceeded; that limitation is tracked in #97.
 
 ## See the failed-lookup state
 
@@ -58,7 +64,7 @@ Point the Worker at a release that does not exist:
 
 ```sh
 cd web && pnpm exec wrangler dev --config dist/server/wrangler.json \
-  --persist-to "$PWD/.wrangler/state" --port 8790 \
+  --persist-to "$PWD/../.data/web-state" --port 8790 \
   --var LEXEMA_RELEASE:does-not-exist
 ```
 
@@ -72,8 +78,8 @@ it.
 | Symptom | Cause |
 |---|---|
 | zsh asks to correct `wrangler` to `.wrangler` | shell autocorrect; answer `n` or run from outside `web/` |
-| D1 looks empty after a seed | `--persist-to` was relative; wrangler resolves it against the config file, so pass an absolute path |
-| `SQLITE_TOOBIG` from a manual `d1 execute` | the SQL has a statement over wrangler's limit; the seed batches at 64 KiB for this reason |
+| D1 looks empty after a seed | `--persist-to` was relative; pass the `.data/web-state` path shown above |
+| Full-release seed fails with a maximum-string-length error | generated SQL is too large for Wrangler/Node to read as one input; this is #97, not a successful full-release path |
 
 ## Not this page
 

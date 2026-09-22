@@ -77,8 +77,10 @@ test("locates every rejection even when the archive has hundreds", async () => {
     const result = await parse(archive);
     assert.equal(result.report.admitted, 1);
     assert.equal(result.report.skippedOtherLanguage, 300);
-    assert.deepEqual(result.rejections.slice(0, 2).map((item) => item.lineNo), [1, 2]);
-    assert.equal(result.rejections.at(-1)?.lineNo, 300);
+    assert.deepEqual(
+      result.rejections.map((item) => [item.lineNo, item.reason]),
+      lines.map((_, index) => [index + 1, `lang_code is "l${index}"`]),
+    );
   } finally {
     await rm(dir, { recursive: true, force: true });
   }
@@ -89,13 +91,22 @@ test("rejects malformed nested objects as whole lines and continues", async () =
     JSON.stringify({ word: "a", pos: "noun", pos_title: "Sostantivo", lang_code: "it", forms: [null] }),
     JSON.stringify({ word: "b", pos: "noun", pos_title: "Sostantivo", lang_code: "it", senses: [null] }),
     JSON.stringify({ word: "c", pos: "noun", pos_title: "Sostantivo", lang_code: "it", senses: [{ form_of: ["d"] }] }),
+    JSON.stringify({ word: "d", pos: "noun", pos_title: "Sostantivo", lang_code: "it", forms: {} }),
+    JSON.stringify({ word: "e", pos: 7, pos_title: "Sostantivo", lang_code: "it" }),
     italian("after"),
   ];
   const { dir, archive } = await fixture(lines);
   try {
     const result = await parse(archive);
     assert.equal(result.report.admitted, 1);
-    assert.equal(result.report.malformed, 3);
+    assert.equal(result.report.malformed, 5);
+    assert.deepEqual(result.rejections, [
+      { kind: "malformed", lineNo: 1, reason: "/forms/0 is not an object" },
+      { kind: "malformed", lineNo: 2, reason: "/senses/0 is not an object" },
+      { kind: "malformed", lineNo: 3, reason: "/senses/0/form_of/0 is not an object" },
+      { kind: "malformed", lineNo: 4, reason: "/forms is not an array" },
+      { kind: "malformed", lineNo: 5, reason: "word, pos and pos_title must be strings" },
+    ]);
     assert.equal(result.lines[0].record.word, "after");
   } finally {
     await rm(dir, { recursive: true, force: true });
