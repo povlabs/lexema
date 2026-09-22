@@ -16,12 +16,12 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { dirname, join } from "node:path";
+import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { DatabaseSync } from "node:sqlite";
 import { gzipSync } from "node:zlib";
 import { renderToStaticMarkup } from "react-dom/server";
-import { importRelease } from "../../src/import/importRelease.js";
+import { seedSql } from "../../src/import/seedSql.js";
 import { writeKnownDisputes } from "../../src/import/knownDisputes.js";
 import { fromNodeSqlite } from "../../src/lookup/database.js";
 import { lookup, readRelease } from "../../src/lookup/lookup.js";
@@ -93,12 +93,12 @@ interface Fixture {
 async function fixture(): Promise<Fixture> {
   const dir = await mkdtemp(join(tmpdir(), "lexema-page-"));
   const archive = join(dir, "fixture.jsonl.gz");
-  const database = join(dir, "fixture.sqlite");
+  const output = join(dir, "seed.sql");
   await writeFile(archive, gzipSync(Buffer.from(`${FIXTURE_LINES.join("\n")}\n`, "utf8")));
-  await importRelease({
+  await seedSql({
     input: archive,
-    database,
-    schema: join(REPO, "src/db/schema.sql"),
+    output,
+    schema: join(process.cwd(), "src/db/schema.sql"),
     releaseId: RELEASE,
     archiveR2Key: `releases/${RELEASE}.jsonl.gz`,
     sourceUrl: "https://example.invalid/it-extract.jsonl.gz",
@@ -107,7 +107,8 @@ async function fixture(): Promise<Fixture> {
       throw new Error(`fixture line rejected: ${JSON.stringify(rejection)}`);
     },
   });
-  const db = new DatabaseSync(database);
+  const db = new DatabaseSync(":memory:");
+  db.exec(await readFile(output, "utf8"));
   // The same review rows `pnpm run seed:dev` writes, from the same module, so
   // the page under test meets the dispute the development seed shows.
   assert.equal(writeKnownDisputes(db, RELEASE), 1);

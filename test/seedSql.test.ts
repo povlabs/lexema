@@ -172,3 +172,33 @@ test("missing required fixture words and repeated output are deterministic", asy
     assert.equal(await readFile(output, "utf8"), await readFile(output2, "utf8"));
   } finally { await rm(dir, { recursive: true, force: true }); }
 });
+
+test("a form refused for its surface still reports its own refused leaves", async () => {
+  // writeRecord reads every form surface before it reads any form's members
+  // (importRelease.ts, "Read once, before either pass over forms[]"). A pass
+  // that returned on the refused surface lost the tag's rejection from both
+  // the rejection list and the count. This drives the seeder's own path, not
+  // the record validator, because writeRecord is where that ordering lives.
+  const { dir, input, output } = await fixture([
+    JSON.stringify({
+      word: "valido", pos: "noun", pos_title: "Sostantivo", lang_code: "it",
+      forms: [{ form: 42, tags: [9, "plural"], raw_tags: 8, source: 7 }],
+      senses: [{ glosses: ["valido"] }],
+    }),
+  ]);
+  try {
+    const rejections: { kind: string; lineNo: number; reason: string }[] = [];
+    const report = await seedSql({
+      input, output, schema: resolve("src/db/schema.sql"), releaseId: "it-test",
+      requiredWords: ["valido"], validateFixtureClosure: false,
+      onRejection: (item) => rejections.push(item),
+    });
+    assert.equal(report.rows.source_record, 1);
+    assert.deepEqual(rejections, [
+      { kind: "malformed-member", lineNo: 1, reason: "/forms/0/form is not a string" },
+      { kind: "malformed-member", lineNo: 1, reason: "/forms/0/source is not a string" },
+      { kind: "malformed-member", lineNo: 1, reason: "/forms/0/tags/0 is not a string" },
+      { kind: "malformed-member", lineNo: 1, reason: "/forms/0/raw_tags is not an array" },
+    ]);
+  } finally { await rm(dir, { recursive: true, force: true }); }
+});

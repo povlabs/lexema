@@ -1,8 +1,8 @@
 # Why the importer works this way
 
-How the Italian archive becomes a database the site can query, and what the
-importer will and will not claim about the data on the way through. To actually
-run one, see [RUN_AN_IMPORT.md](RUN_AN_IMPORT.md).
+How the Italian archive becomes a D1 projection the site can query, and what the
+streaming parser will and will not claim about the data on the way through. To
+actually run one, see [RUN_AN_IMPORT.md](RUN_AN_IMPORT.md).
 
 ## What a run reports
 
@@ -34,10 +34,11 @@ they were arrived at separately.
 Every line that does not become a record is counted exactly and located —
 rejected non-Italian lines as well as malformed ones, so a run can be audited
 either way. The importer hands each rejection to its caller the moment it is
-met, with the line number, the kind and the reason, and the command writes them
-to `<database>.rejections.tsv` one per line. Nothing is sampled and nothing is
-held: all 239,243 skipped lines are listed, and the importer's memory does not
-grow with them because each one is written and forgotten.
+met, with the line number, the kind and the reason, and the seed writes them
+beside the generated SQL as `<sql-file>.rejections.tsv`, one per line. Nothing
+is sampled and nothing is held: all 239,243 skipped lines are listed, and the
+importer's memory does not grow with them because the caller writes each one and
+forgets it.
 
 A line that parses but lacks `word`, `pos` or `pos_title` counts as malformed,
 rather than being admitted with an invented empty string. So does an empty or
@@ -70,11 +71,12 @@ is servable has always counted.
 at a time. Nothing accumulates except counters, so the archive can grow without
 the importer needing to change.
 
-**Repeatable.** The same archive produces the same database. `record_id` follows
-line order rather than insertion order, and `sense_id` is derived from it, so
-two runs agree row for row. A test asserts this by importing one fixture twice
-and comparing every row of every table — records, preserved JSON, lookup rows,
-edges, senses, glosses, labels and grammar claims — not a chosen few columns.
+**Repeatable.** The same archive produces the same D1 SQL projection.
+`record_id` follows line order rather than insertion order, and `sense_id` is
+derived from it, so two runs agree row for row. A test asserts this by running
+one fixture twice and comparing every emitted table — records, preserved JSON,
+lookup rows, edges, senses, glosses, labels and grammar claims — not a chosen
+few columns.
 
 **Honest about the filter.** A record is admitted on `lang_code === "it"` and
 nothing else — never the filename, the spelling, or the categories. The file is
@@ -138,9 +140,9 @@ is intentional: the importer cannot tell a topic label (`scuola`) from grammar
 written in words (`pl.: case` on `casa`, which is the only place that plural
 appears), so the text sits where either reader will find it.
 
-## Size, and what it means for D1
+## Projection size, and what it means for D1
 
-The database is **1.4 GB** on disk (1,428,103,168 bytes). Measured with
+The full D1 projection is **1.4 GB** (1,428,103,168 bytes), measured with
 `dbstat` on 2026-09-21; the commands, the machine and the full per-object
 output are in
 [the import measurements report](../reports/2026-09-21-import-measurements.md):
@@ -168,8 +170,13 @@ JSON in its own table so either answer is a small change.
 
 ## What this does not do
 
-No upload to D1 or R2. The importer writes a local SQLite file; getting a
-release onto Cloudflare, activating it and rolling it back is #18.
+The parser does not upload to D1 or R2 itself. `seed:dev` streams the committed
+fifty-word fixture (or an explicitly supplied archive) into generated SQL and
+loads local D1; getting a full release onto Cloudflare, activating it and
+rolling it back is #18. The source archive is maintained at
+[`source/it-extract.jsonl.gz`](https://github.com/hueypov/lexema-data/blob/main/source/it-extract.jsonl.gz),
+and a local root copy remains gitignored. Full-release seeding currently hits
+Node's maximum string length when Wrangler reads the generated SQL (#97).
 
 No repair of upstream extraction defects. `casa` still arrives with no usable
 definition, because that is what the archive contains. The cause is measured in
