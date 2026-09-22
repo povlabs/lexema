@@ -4,7 +4,6 @@ import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import test from "node:test";
-import { importRelease } from "../src/import/importRelease.js";
 import {
   assertUniqueContentKeys,
   contentFilePath,
@@ -18,10 +17,8 @@ const record = (word: string, pos: string, pos_title: string, extra: Record<stri
 
 async function setupRelease(dir: string, releaseId: string, lines: string[]) {
   const archive = join(dir, `${releaseId}.jsonl.gz`);
-  const database = join(dir, `${releaseId}.sqlite`);
   await writeFile(archive, gzipSync(`${lines.join("\n")}\n`));
-  await importRelease({ input: archive, database, schema: "src/db/schema.sql", releaseId, archiveR2Key: `${releaseId}.jsonl.gz`, onRejection: () => {} });
-  return database;
+  return archive;
 }
 
 async function setup() {
@@ -37,14 +34,14 @@ async function setup() {
     record("a", "noun", "Sostantivo"),
     record("g/r", "noun", "Sostantivo"),
   ];
-  const database = await setupRelease(dir, "it-test", lines);
-  return { dir, database, output: join(dir, "content") };
+  const archive = await setupRelease(dir, "it-test", lines);
+  return { dir, archive, output: join(dir, "content") };
 }
 
 test("keys identify every sale, casa and bello record exactly once", async () => {
   const setup_ = await setup();
   try {
-    convertRelease({ database: setup_.database, output: setup_.output });
+    await convertRelease({ input: setup_.archive, output: setup_.output, releaseId: "it-test" });
     const sale = JSON.parse(await readFile(contentFilePath(setup_.output, "sale"), "utf8"));
     assert.deepEqual(Object.keys(sale.entries), ["noun:Sostantivo", "noun:Sostantivo, forma flessa", "verb:Voce verbale"]);
     const casa = JSON.parse(await readFile(contentFilePath(setup_.output, "casa"), "utf8"));
@@ -73,7 +70,7 @@ test("re-conversion makes release B exact, preserves stable keys and editorial v
   const dir = await mkdtemp(join(tmpdir(), "lexema-content-reconversion-"));
   const output = join(dir, "content");
   try {
-    const firstDatabase = await setupRelease(dir, "release-a", [
+    const firstArchive = await setupRelease(dir, "release-a", [
       record("sale", "noun", "Sostantivo"),
       record("sale", "noun", "Forma flessa"),
       record("sparito", "noun", "Sostantivo"),
@@ -81,7 +78,7 @@ test("re-conversion makes release B exact, preserves stable keys and editorial v
       record("stabile", "noun", "X", { marker: "first" }),
       record("stabile", "noun", "X", { marker: "second" }),
     ]);
-    convertRelease({ database: firstDatabase, output });
+    await convertRelease({ input: firstArchive, output, releaseId: "release-a" });
 
     const salePath = contentFilePath(output, "sale");
     const sale = JSON.parse(await readFile(salePath, "utf8"));
@@ -96,12 +93,12 @@ test("re-conversion makes release B exact, preserves stable keys and editorial v
     stable.entries["noun:X"].lexema = { englishExplanation: "Stable editorial text" };
     await writeFile(stablePath, `${JSON.stringify(stable)}\n`);
 
-    const secondDatabase = await setupRelease(dir, "release-b", [
+    const secondArchive = await setupRelease(dir, "release-b", [
       record("stabile", "noun", "X", { marker: "second" }),
-      record("sale", "noun", "Sostantivo"),
       record("stabile", "noun", "X", { marker: "first" }),
+      record("sale", "noun", "Sostantivo"),
     ]);
-    const second = convertRelease({ database: secondDatabase, output });
+    const second = await convertRelease({ input: secondArchive, output, releaseId: "release-b" });
 
     const updatedSale = JSON.parse(await readFile(salePath, "utf8"));
     assert.deepEqual(Object.keys(updatedSale.entries), ["noun:Sostantivo"]);
@@ -126,7 +123,7 @@ test("re-conversion makes release B exact, preserves stable keys and editorial v
 test("a second run is a no-op and editorial values survive canonicalization", async () => {
   const setup_ = await setup();
   try {
-    const first = convertRelease({ database: setup_.database, output: setup_.output });
+    const first = await convertRelease({ input: setup_.archive, output: setup_.output, releaseId: "it-test" });
     const path = contentFilePath(setup_.output, "casa");
     const document = JSON.parse(await readFile(path, "utf8"));
     document.entries["noun:Sostantivo"].lexema = {
@@ -135,12 +132,34 @@ test("a second run is a no-op and editorial values survive canonicalization", as
       italianExample: "La casa è grande.",
     };
     await writeFile(path, ` {\n  "entries": ${JSON.stringify(document.entries)},\n  "releaseId": "it-test",\n  "schema": "lexema-content/v1"\n}\n`);
-    const second = convertRelease({ database: setup_.database, output: setup_.output });
+    const second = await convertRelease({ input: setup_.archive, output: setup_.output, releaseId: "it-test" });
     assert.equal(first.files, 7);
     assert.equal(second.files, 1); // the non-canonical document is normalized
-    const third = convertRelease({ database: setup_.database, output: setup_.output });
+    const third = await convertRelease({ input: setup_.archive, output: setup_.output, releaseId: "it-test" });
     assert.equal(third.files, 0);
     const updated = JSON.parse(await readFile(path, "utf8"));
     assert.deepEqual(updated.entries["noun:Sostantivo"].lexema, document.entries["noun:Sostantivo"].lexema);
   } finally { await rm(setup_.dir, { recursive: true, force: true }); }
+});
+
+test("a word whose records are split across the archive is refused, not half-written", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "lexema-content-"));
+  const output = join(dir, "content");
+  try {
+    // The database this converter replaced sorted by word, so a word's records
+    // were always adjacent. An archive carries whatever order it was written in.
+    const archive = await setupRelease(dir, "release-split", [
+      record("stabile", "noun", "X", { marker: "first" }),
+      record("sale", "noun", "Sostantivo"),
+      record("stabile", "noun", "X", { marker: "second" }),
+    ]);
+    await assert.rejects(
+      convertRelease({ input: archive, output, releaseId: "release-split" }),
+      /stabile appears in more than one run of records/,
+    );
+    // Whatever reached disk before the refusal holds the first run alone, so the
+    // second run cannot have overwritten it and restarted the suffixes silently.
+    const stable = JSON.parse(await readFile(contentFilePath(output, "stabile"), "utf8"));
+    assert.deepEqual(Object.keys(stable.entries), ["noun:X"]);
+  } finally { await rm(dir, { recursive: true, force: true }); }
 });

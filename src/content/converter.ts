@@ -1,10 +1,24 @@
-import { DatabaseSync } from "node:sqlite";
 import { existsSync, mkdirSync, readFileSync, readdirSync, unlinkSync, writeFileSync } from "node:fs";
-import { dirname, join, relative, resolve } from "node:path";
+import { dirname, join, resolve } from "node:path";
+import {
+  parseArchive,
+  validateArchiveRecord,
+  type ArchiveRecord,
+  type ArchiveParseReport,
+  type Rejection,
+} from "../import/importRelease.js";
+import {
+  expectedFormDimensions,
+  expectedRecordDimensions,
+  mapRawTag,
+  mapStructuralTag,
+} from "../import/grammarPolicy.js";
 
 export interface ConversionOptions {
-  database?: string;
+  input?: string;
   output?: string;
+  releaseId?: string;
+  onRejection?: (rejection: Rejection) => void;
 }
 
 export interface ConversionReport {
@@ -12,6 +26,10 @@ export interface ConversionReport {
   words: number;
   records: number;
   bytes: number;
+  linesRead: number;
+  skippedOtherLanguage: number;
+  malformed: number;
+  malformedMembers: number;
 }
 
 interface Ref {
@@ -100,6 +118,61 @@ function objectValues(
   return stringValues(input, pointer, source);
 }
 
+function grammarFor(record: ArchiveRecord["record"], releaseId: string, lineNo: number, lineSha256: string): unknown {
+  const source = (pointer: string) => ref(releaseId, lineNo, lineSha256, pointer);
+  const claims: Array<Record<string, unknown>> = [];
+  const addClaims = (
+    scope: "record" | "form" | "sense",
+    scopeIndex: number | null,
+    container: string,
+    tags: unknown,
+    rawTags: unknown,
+    tagsPointer: string,
+    rawTagsPointer: string,
+    expected: readonly string[],
+  ): void => {
+    const stated = new Set<string>();
+    stringValues(tags, tagsPointer, source).forEach((item) => {
+      const mapped = mapStructuralTag(item.value);
+      claims.push({
+        scope, scopeIndex, jsonPointer: item.source.pointer,
+        status: mapped.status, ...(mapped.status === "stated" ? { dimension: mapped.dimension, value: mapped.value } : {}),
+        ...(mapped.status === "stated" ? { sourceText: mapped.sourceText } : { sourceText: mapped.sourceText }),
+        source: item.source,
+      });
+      if (mapped.status === "stated") stated.add(mapped.dimension);
+    });
+    stringValues(rawTags, rawTagsPointer, source).forEach((item) => {
+      const mapped = mapRawTag(item.value);
+      claims.push({ scope, scopeIndex, jsonPointer: item.source.pointer, status: "unclassified", sourceText: mapped.sourceText, source: item.source });
+    });
+    for (const dimension of expected) {
+      if (!stated.has(dimension)) claims.push({ scope, scopeIndex, jsonPointer: container, status: "missing", dimension, source: source(container) });
+    }
+  };
+  addClaims("record", null, "", record.tags, record.raw_tags, "/tags", "/raw_tags", expectedRecordDimensions(record.pos));
+  record.forms.forEach((form, index) => {
+    const tags = stringValues(form.tags, `/forms/${index}/tags`, source);
+    const stated = new Set(tags.flatMap((item) => {
+      const mapped = mapStructuralTag(item.value);
+      return mapped.status === "stated" ? [mapped.dimension] : [];
+    }));
+    addClaims("form", index, `/forms/${index}`, form.tags, form.raw_tags, `/forms/${index}/tags`, `/forms/${index}/raw_tags`, expectedFormDimensions(record.pos, stated));
+  });
+  record.senses.forEach((sense, index) => {
+    stringValues(sense.raw_tags, `/senses/${index}/raw_tags`, source).forEach((item) => {
+      const mapped = mapRawTag(item.value);
+      claims.push({ scope: "sense", scopeIndex: index, jsonPointer: item.source.pointer, status: "unclassified", sourceText: mapped.sourceText, source: item.source });
+    });
+  });
+  const clean = ({ scope: _scope, scopeIndex: _scopeIndex, jsonPointer: _jsonPointer, ...claim }: Record<string, unknown>) => claim;
+  return {
+    record: claims.filter((claim) => claim.scope === "record").map(clean),
+    senses: claims.filter((claim) => claim.scope === "sense").map((claim) => ({ index: claim.scopeIndex, claim: clean(claim) })),
+    forms: claims.filter((claim) => claim.scope === "form").map((claim) => ({ index: claim.scopeIndex, claim: clean(claim) })),
+  };
+}
+
 function rawEntry(
   raw: RawRecord,
   releaseId: string,
@@ -158,35 +231,6 @@ function rawEntry(
       };
     }),
     grammar,
-  };
-}
-
-function grammarFor(
-  db: DatabaseSync,
-  recordId: number,
-  releaseId: string,
-  lineNo: number,
-  lineSha256: string,
-): unknown {
-  const rows = db.prepare(
-    `SELECT scope, scope_index, status, dimension, value, source_text, json_pointer
-       FROM grammar_claim WHERE record_id = ? ORDER BY claim_id`,
-  ).all(recordId) as Array<{
-    scope: "record" | "sense" | "form"; scope_index: number | null;
-    status: "stated" | "unclassified" | "missing"; dimension: string | null;
-    value: string | null; source_text: string | null; json_pointer: string;
-  }>;
-  const claim = (row: (typeof rows)[number]) => ({
-    status: row.status,
-    ...(row.dimension === null ? {} : { dimension: row.dimension }),
-    ...(row.value === null ? {} : { value: row.value }),
-    ...(row.source_text === null ? {} : { sourceText: row.source_text }),
-    source: ref(releaseId, lineNo, lineSha256, row.json_pointer),
-  });
-  return {
-    record: rows.filter((row) => row.scope === "record").map(claim),
-    senses: rows.filter((row) => row.scope === "sense").map((row) => ({ index: row.scope_index, claim: claim(row) })),
-    forms: rows.filter((row) => row.scope === "form").map((row) => ({ index: row.scope_index, claim: claim(row) })),
   };
 }
 
@@ -252,27 +296,16 @@ function contentFiles(root: string): string[] {
   return files;
 }
 
-/** Convert the complete release in SQLite into deterministic, editable content files. */
-export function convertRelease(options: ConversionOptions = {}): ConversionReport {
-  const database = resolve(options.database ?? ".data/lexema.sqlite");
+/** Convert the archive directly into deterministic, editable content files. */
+export async function convertRelease(options: ConversionOptions = {}): Promise<ConversionReport> {
+  const input = resolve(options.input ?? "it-extract.jsonl.gz");
   const output = resolve(options.output ?? "content");
-  const db = new DatabaseSync(database, { readOnly: true });
-  try {
-    const release = db.prepare(
-      `SELECT release_id, archive_sha256, archive_bytes, status FROM source_release ORDER BY release_id LIMIT 1`,
-    ).get() as { release_id: string; archive_sha256: string; archive_bytes: number; status: string } | undefined;
-    if (release === undefined) throw new Error(`no release found in ${database}`);
-    if (release.status !== "complete") throw new Error(`release ${release.release_id} is ${release.status}, not complete`);
+  let releaseId = options.releaseId;
+  let archive: ArchiveParseReport | undefined;
+  // The parser emits records in archive order; one word's records are buffered
+  // only long enough to apply the established stable ordering.
 
-    const records = db.prepare(
-      `SELECT record_id, line_no, line_sha256, word, pos, pos_title
-         FROM source_record WHERE release_id = ? ORDER BY word, pos, pos_title, line_sha256, record_id`,
-    ).all(release.release_id) as Array<{
-      record_id: number; line_no: number; line_sha256: string; word: string; pos: string; pos_title: string;
-    }>;
-    const rawQuery = db.prepare("SELECT raw_json FROM source_record_json WHERE record_id = ?");
-    // Records are ordered by word, so only one word document is held in memory.
-    let currentWord: string | undefined;
+  let currentWord: string | undefined;
     let currentPath: string | undefined;
     let currentDoc: Record<string, unknown> | undefined;
     let entries: Record<string, unknown> | undefined;
@@ -292,7 +325,7 @@ export function convertRelease(options: ConversionOptions = {}): ConversionRepor
       changedFiles += 1;
       bytes += next.byteLength;
     };
-    const releaseMeta = release.release_id;
+    let releaseMeta = releaseId ?? "";
     const flush = (): void => {
       if (currentPath === undefined || currentDoc === undefined || entries === undefined) return;
       const orphanedEntries: Record<string, unknown> = {};
@@ -318,40 +351,74 @@ export function convertRelease(options: ConversionOptions = {}): ConversionRepor
       writeIfChanged(currentPath, currentDoc);
     };
 
-    for (const record of records) {
-      if (record.word !== currentWord) {
-        flush();
-        currentWord = record.word;
-        currentPath = contentFilePath(output, record.word);
-        currentPaths.add(currentPath);
-        const old = existingDocument(currentPath);
-        currentDoc = old ?? { schema: "lexema-content/v1" };
-        oldEntries = { ...entriesOf(currentDoc, "orphanedEntries"), ...entriesOf(currentDoc, "entries") };
-        entries = {};
-        occurrences = new Map<string, number>();
-        words += 1;
+    const pending: ArchiveRecord[] = [];
+    let pendingWord: string | undefined;
+    // A word is written once, when its run of records ends, so every record for a
+    // word must arrive in one run. The database this replaced sorted by word and
+    // guaranteed that; an archive only happens to. A second run would reopen the
+    // finished file and drop what the first run wrote, so refuse instead.
+    const closedWords = new Set<string>();
+    const convertRecord = (record: ArchiveRecord): void => {
+      const word = record.record.word;
+      if (pendingWord !== undefined && pendingWord !== word) {
+        closedWords.add(pendingWord);
+        flushPending();
       }
-      const base = `${record.pos}:${record.pos_title}`;
-      const occurrence = (occurrences.get(base) ?? 0) + 1;
-      occurrences.set(base, occurrence);
-      const key = contentKey(record.pos, record.pos_title, occurrence);
-      const rawRow = rawQuery.get(record.record_id) as { raw_json: string } | undefined;
-      if (rawRow === undefined) throw new Error(`record ${record.record_id} has no raw JSON`);
-      const raw = JSON.parse(rawRow.raw_json) as RawRecord;
-      const generated = rawEntry(
-        raw, release.release_id, record.line_no, record.line_sha256, key,
-        grammarFor(db, record.record_id, release.release_id, record.line_no, record.line_sha256),
-      );
-      const oldEntry = oldEntries[key];
-      if (entries === undefined) throw new Error(`entries missing while converting ${record.word}`);
-      assertUniqueContentKeys([...Object.keys(entries), key], record.word);
-      // Spread first: source-derived fields below are refreshed, while fields
-      // Lexema owns (and any future editorial fields) survive conversion.
-      entries[key] = {
-        ...(typeof oldEntry === "object" && oldEntry !== null ? oldEntry : {}),
-        ...generated,
-      };
-    }
+      if (closedWords.has(word)) {
+        throw new Error(
+          `${word} appears in more than one run of records at line ${record.lineNo}; ` +
+            "the archive must keep each word's records together",
+        );
+      }
+      pendingWord = word;
+      pending.push(record);
+    };
+    const flushPending = (): void => {
+      const compare = (left: string, right: string): number => left < right ? -1 : left > right ? 1 : 0;
+      pending.sort((a, b) => compare(a.record.pos, b.record.pos) ||
+        compare(a.record.pos_title, b.record.pos_title) ||
+        compare(a.lineSha256, b.lineSha256) || a.recordId - b.recordId);
+      for (const record of pending.splice(0)) {
+        releaseMeta = record.releaseId;
+        if (record.record.word !== currentWord) {
+          flush();
+          currentWord = record.record.word;
+          currentPath = contentFilePath(output, record.record.word);
+          currentPaths.add(currentPath);
+          const old = existingDocument(currentPath);
+          currentDoc = old ?? { schema: "lexema-content/v1" };
+          oldEntries = { ...entriesOf(currentDoc, "orphanedEntries"), ...entriesOf(currentDoc, "entries") };
+          entries = {};
+          occurrences = new Map<string, number>();
+          words += 1;
+        }
+        const base = `${record.record.pos}:${record.record.pos_title}`;
+        const occurrence = (occurrences.get(base) ?? 0) + 1;
+        occurrences.set(base, occurrence);
+        const key = contentKey(record.record.pos, record.record.pos_title, occurrence);
+        const generated = rawEntry(
+          record.record as unknown as RawRecord, record.releaseId, record.lineNo, record.lineSha256, key,
+          grammarFor(record.record, record.releaseId, record.lineNo, record.lineSha256),
+        );
+        const oldEntry = oldEntries[key];
+        if (entries === undefined) throw new Error(`entries missing while converting ${record.record.word}`);
+        assertUniqueContentKeys([...Object.keys(entries), key], record.record.word);
+        entries[key] = {
+          ...(typeof oldEntry === "object" && oldEntry !== null ? oldEntry : {}),
+          ...generated,
+        };
+      }
+    };
+    archive = await parseArchive({
+      input,
+      releaseId,
+      onRejection: options.onRejection ?? (() => {}),
+      onRecord: (record, reportMember) => {
+        validateArchiveRecord(record.record, reportMember);
+        convertRecord(record);
+      },
+    });
+    flushPending();
     flush();
 
     // Files from the previous release are part of the conversion input too.
@@ -385,19 +452,26 @@ export function convertRelease(options: ConversionOptions = {}): ConversionRepor
       writeIfChanged(path, orphaned);
     }
 
+    if (archive === undefined) throw new Error("archive parser did not return a report");
     writeIfChanged(join(output, "manifest.json"), {
       schema: "lexema-content-manifest/v1",
       release: {
-        id: release.release_id,
-        archiveSha256: release.archive_sha256,
-        archiveBytes: release.archive_bytes,
+        id: releaseMeta,
+        archiveSha256: archive.archiveSha256,
+        archiveBytes: archive.archiveBytes,
       },
       layout: { language: "it", directoryDepth: 4 },
       words,
-      records: records.length,
+      records: archive.admitted,
     });
-    return { files: changedFiles, words, records: records.length, bytes };
-  } finally {
-    db.close();
-  }
+    return {
+      files: changedFiles,
+      words,
+      records: archive.admitted,
+      bytes,
+      linesRead: archive.linesRead,
+      skippedOtherLanguage: archive.skippedOtherLanguage,
+      malformed: archive.malformed,
+      malformedMembers: archive.malformedMembers,
+    };
 }

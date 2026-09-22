@@ -1,10 +1,11 @@
 # Content converter
 
-`pnpm run convert -- --database .data/lexema.sqlite --output content` converts a
-completed SQLite release into the content-file tree used for seeding. The
-converter does not read the archive. It reports changed files, distinct words,
+`pnpm run convert -- --input it-extract.jsonl.gz --output content` converts an
+archive directly into the content-file tree used for seeding. The converter
+never opens or requires SQLite. It reports changed files, distinct words,
 records, and bytes written; running it again against unchanged files reports
-zero files and zero bytes.
+zero files and zero bytes. The release id defaults to `it-` plus the first eight
+characters of the archive SHA-256 and can be set with `--release-id`.
 
 ## File identity and paths
 
@@ -23,10 +24,19 @@ Each entry key is `<escaped-pos>:<escaped-pos_title>`. `%`, `:` and `#` in eithe
 component are escaped as `%25`, `%3A` and `%23`; this keeps a literal title such
 as `X#2` distinct from the generated duplicate suffix `#2`. If a pair occurs
 more than once for a word, records are sorted by source-line hash and receive
-`#2`, `#3`, etc., so unchanged records retain their keys when a release
-reorders lines. A duplicate generated key fails conversion instead of silently
-overwriting an entry. `sale` demonstrates title distinction; `bello`
-demonstrates duplicate suffixes.
+`#2`, `#3`, etc., so unchanged records retain their keys when a release reorders
+that word's lines among themselves. A duplicate generated key fails conversion
+instead of silently overwriting an entry. `sale` demonstrates title distinction;
+`bello` demonstrates duplicate suffixes.
+
+One ordering property is required of the archive rather than provided by the
+converter: every record for a word must arrive in a single run of lines. A word
+is written once, when its run ends, so a word returning later in the file would
+reopen a finished document and lose what the earlier run wrote. Conversion
+refuses such an archive by name and line instead of writing a file that looks
+complete. The release this tree was built from holds 560,357 records in 541,247
+runs with no word repeating, and the database this converter replaced sorted by
+word, which is where the requirement comes from.
 
 `manifest.json` at the tree root names the release and archive SHA-256. The
 fixed four-level layout keeps a word's path stable; adaptive bucket splitting

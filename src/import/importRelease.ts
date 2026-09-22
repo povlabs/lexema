@@ -115,6 +115,38 @@ export interface ImportReport {
   elapsedMs: number;
 }
 
+/** One admitted archive record, before any destination-specific write. */
+export interface ArchiveRecord {
+  releaseId: string;
+  recordId: number;
+  lineNo: number;
+  line: string;
+  lineSha256: string;
+  record: KaikkiRecord;
+}
+
+export interface ArchiveParseOptions {
+  input: string;
+  releaseId?: string;
+  onRejection: (rejection: Rejection) => void;
+  onRecord: (record: ArchiveRecord, reportMember: ReportMember) => void | Promise<void>;
+  /** Stop after this many admitted records. For tests only. */
+  limit?: number;
+  onProgress?: (admitted: number) => void;
+  progressEvery?: number;
+}
+
+export interface ArchiveParseReport {
+  archiveSha256: string;
+  archiveBytes: number;
+  linesRead: number;
+  admitted: number;
+  skippedOtherLanguage: number;
+  malformed: number;
+  malformedMembers: number;
+  status: "complete" | "partial";
+}
+
 type JsonObject = Record<string, unknown>;
 
 interface KaikkiFormOf {
@@ -168,7 +200,7 @@ interface StringMember {
 }
 
 /** Where a refused leaf goes: one located rejection, one count. */
-type ReportMember = (reason: string) => void;
+export type ReportMember = (reason: string) => void;
 
 /**
  * `value` as its string members, each keeping its source index. A member that
@@ -199,6 +231,27 @@ function stringLeaf(value: unknown, pointer: string, report: ReportMember): stri
   if (typeof value === "string") return value;
   report(`${pointer} is not a string`);
   return null;
+}
+
+/** Apply the importer's leaf rejection rules without choosing a storage format. */
+export function validateArchiveRecord(record: ArchiveRecord["record"], report: ReportMember): void {
+  record.forms.forEach((form, formIndex) => {
+    stringLeaf(form.form, `/forms/${formIndex}/form`, report);
+    stringLeaf(form.source, `/forms/${formIndex}/source`, report);
+    stringMembers(form.tags, `/forms/${formIndex}/tags`, report);
+    stringMembers(form.raw_tags, `/forms/${formIndex}/raw_tags`, report);
+  });
+  stringMembers(record.tags, "/tags", report);
+  stringMembers(record.raw_tags, "/raw_tags", report);
+  record.senses.forEach((sense, senseIndex) => {
+    const pointer = `/senses/${senseIndex}`;
+    stringMembers(sense.glosses, `${pointer}/glosses`, report);
+    stringMembers(sense.tags, `${pointer}/tags`, report);
+    stringMembers(sense.raw_tags, `${pointer}/raw_tags`, report);
+    sense.form_of.forEach((target, targetIndex) => {
+      stringLeaf(target.word, `${pointer}/form_of/${targetIndex}/word`, report);
+    });
+  });
 }
 
 /** The line as a JSON object, or a `MalformedLine` saying why it is not one. */
@@ -333,6 +386,81 @@ class Archive {
     // Destroying a stream this handed out already closes the handle, so by here
     // the file is often shut. Cleanup either way.
     await this.handle.close().catch(() => {});
+  }
+}
+
+export async function parseArchive(options: ArchiveParseOptions): Promise<ArchiveParseReport> {
+  const archive = await Archive.open(options.input);
+  const archiveSha256 = await archive.sha256();
+  const releaseId = options.releaseId ?? `it-${archiveSha256.slice(0, 8)}`;
+  let linesRead = 0;
+  let admitted = 0;
+  let skippedOtherLanguage = 0;
+  let malformed = 0;
+  let malformedMembers = 0;
+  let truncated = false;
+  const reportMember: ReportMember = (reason) => {
+    malformedMembers += 1;
+    options.onRejection({ kind: "malformed-member", lineNo: linesRead, reason });
+  };
+  try {
+    const source = archive.read();
+    const lines = createInterface({
+      input: source.pipe(createGunzip()),
+      crlfDelay: Infinity,
+    });
+    for await (const line of lines) {
+      linesRead += 1;
+      let record: KaikkiRecord;
+      try {
+        const parsed = parseLine(line);
+        if (parsed.lang_code !== "it") {
+          skippedOtherLanguage += 1;
+          options.onRejection({
+            kind: "other-language",
+            lineNo: linesRead,
+            reason: `lang_code is ${JSON.stringify(parsed.lang_code ?? null)}`,
+          });
+          continue;
+        }
+        record = readItalianRecord(parsed);
+      } catch (error) {
+        if (!(error instanceof MalformedLine)) throw error;
+        malformed += 1;
+        options.onRejection({ kind: "malformed", lineNo: linesRead, reason: error.message });
+        continue;
+      }
+      admitted += 1;
+      const recordId = admitted;
+      await options.onRecord({
+        releaseId,
+        recordId,
+        lineNo: linesRead,
+        line,
+        lineSha256: createHash("sha256").update(line, "utf8").digest("hex"),
+        record,
+      }, reportMember);
+      if (admitted % (options.progressEvery ?? 25_000) === 0) options.onProgress?.(admitted);
+      if (options.limit !== undefined && admitted >= options.limit) {
+        truncated = true;
+        break;
+      }
+    }
+    lines.close();
+    await archive.assertUnchanged(options.input);
+    source.destroy();
+    return {
+      archiveSha256,
+      archiveBytes: archive.bytes,
+      linesRead,
+      admitted,
+      skippedOtherLanguage,
+      malformed,
+      malformedMembers,
+      status: truncated ? "partial" : "complete",
+    };
+  } finally {
+    await archive.close();
   }
 }
 
