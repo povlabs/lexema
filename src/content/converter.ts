@@ -1,5 +1,5 @@
 import { DatabaseSync } from "node:sqlite";
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, readdirSync, unlinkSync, writeFileSync } from "node:fs";
 import { dirname, join, relative, resolve } from "node:path";
 
 export interface ConversionOptions {
@@ -40,8 +40,14 @@ interface Entry {
  */
 export function wordPrefix(word: string): [string, string, string, string] {
   const chars = [...word.toLocaleLowerCase("it-IT")];
-  const letter = (char: string | undefined): string =>
-    char !== undefined && /^\p{L}$/u.test(char) ? char : "_";
+  const letter = (char: string | undefined): string => {
+    if (char === undefined || !/^\p{L}$/u.test(char)) return "_";
+    // Some filesystems case-fold letters that are distinct Unicode code points
+    // (for example `ſ` and `s`). Encode those directory components so word
+    // paths remain injective there too; ordinary letters stay readable.
+    const folded = char.toLocaleUpperCase("it-IT").toLocaleLowerCase("it-IT");
+    return folded === char ? char : encodeURIComponent(char);
+  };
   const first = letter(chars[0]);
   const second = letter(chars[1]);
   const third = letter(chars[2]);
@@ -184,15 +190,66 @@ function grammarFor(
   };
 }
 
-function keyFor(pos: string, posTitle: string, occurrence: number): string {
-  const base = `${pos}:${posTitle}`;
+function keyPart(value_: string): string {
+  // Keep ordinary keys readable while escaping every delimiter and escape byte.
+  // This makes a literal title such as `X#2` distinct from a generated suffix.
+  return value_.replaceAll("%", "%25").replaceAll(":", "%3A").replaceAll("#", "%23");
+}
+
+export function contentKey(pos: string, posTitle: string, occurrence: number): string {
+  const base = `${keyPart(pos)}:${keyPart(posTitle)}`;
   return occurrence === 1 ? base : `${base}#${occurrence}`;
+}
+
+export function assertUniqueContentKeys(keys: readonly string[], word: string): void {
+  const seen = new Set<string>();
+  for (const key of keys) {
+    if (seen.has(key)) throw new Error(`duplicate content key ${key} for ${word}`);
+    seen.add(key);
+  }
+}
+
+const generatedEntryFields = new Set([
+  "key", "sourceLineSha256", "word", "pos", "posTitle", "tags", "rawTags",
+  "senses", "forms", "grammar",
+]);
+
+function editorialPart(entry: unknown): Record<string, unknown> | undefined {
+  if (typeof entry !== "object" || entry === null || Array.isArray(entry)) return undefined;
+  const fields = Object.fromEntries(Object.entries(entry).filter(([name]) => !generatedEntryFields.has(name)));
+  return Object.keys(fields).length === 0 ? undefined : fields;
+}
+
+function entriesOf(document: Record<string, unknown>, name: "entries" | "orphanedEntries"): Record<string, unknown> {
+  const entries = document[name];
+  if (entries === undefined) return {};
+  if (typeof entries === "object" && entries !== null && !Array.isArray(entries)) {
+    return entries as Record<string, unknown>;
+  }
+  throw new Error(`${name} must be an object`);
 }
 
 function existingDocument(path: string): { [key: string]: unknown } | undefined {
   if (!existsSync(path)) return undefined;
   const parsed: unknown = JSON.parse(readFileSync(path, "utf8"));
-  return typeof parsed === "object" && parsed !== null ? parsed as { [key: string]: unknown } : undefined;
+  if (typeof parsed === "object" && parsed !== null && !Array.isArray(parsed)) {
+    return parsed as { [key: string]: unknown };
+  }
+  throw new Error(`content file ${path} is not a JSON object`);
+}
+
+function contentFiles(root: string): string[] {
+  if (!existsSync(root)) return [];
+  const files: string[] = [];
+  const visit = (directory: string): void => {
+    for (const item of readdirSync(directory, { withFileTypes: true })) {
+      const path = join(directory, item.name);
+      if (item.isDirectory()) visit(path);
+      else if (item.isFile() && item.name.endsWith(".json")) files.push(path);
+    }
+  };
+  visit(root);
+  return files;
 }
 
 /** Convert the complete release in SQLite into deterministic, editable content files. */
@@ -209,7 +266,7 @@ export function convertRelease(options: ConversionOptions = {}): ConversionRepor
 
     const records = db.prepare(
       `SELECT record_id, line_no, line_sha256, word, pos, pos_title
-         FROM source_record WHERE release_id = ? ORDER BY word, pos, pos_title, line_no, record_id`,
+         FROM source_record WHERE release_id = ? ORDER BY word, pos, pos_title, line_sha256, record_id`,
     ).all(release.release_id) as Array<{
       record_id: number; line_no: number; line_sha256: string; word: string; pos: string; pos_title: string;
     }>;
@@ -219,10 +276,13 @@ export function convertRelease(options: ConversionOptions = {}): ConversionRepor
     let currentPath: string | undefined;
     let currentDoc: Record<string, unknown> | undefined;
     let entries: Record<string, unknown> | undefined;
+    let oldEntries: Record<string, unknown> = {};
     let occurrences = new Map<string, number>();
     let changedFiles = 0;
     let bytes = 0;
     let words = 0;
+    const previousFiles = contentFiles(join(output, "it"));
+    const currentPaths = new Set<string>();
     const writeIfChanged = (path: string, doc: Record<string, unknown>): void => {
       const next = Buffer.from(`${JSON.stringify(doc)}\n`, "utf8");
       const previous = existsSync(path) ? readFileSync(path) : undefined;
@@ -234,7 +294,27 @@ export function convertRelease(options: ConversionOptions = {}): ConversionRepor
     };
     const releaseMeta = release.release_id;
     const flush = (): void => {
-      if (currentPath === undefined || currentDoc === undefined) return;
+      if (currentPath === undefined || currentDoc === undefined || entries === undefined) return;
+      const orphanedEntries: Record<string, unknown> = {};
+      for (const [key, oldEntry] of Object.entries(oldEntries)) {
+        if (Object.prototype.hasOwnProperty.call(entries, key)) continue;
+        const editorial = editorialPart(oldEntry);
+        if (editorial !== undefined) orphanedEntries[key] = editorial;
+      }
+      const {
+        release: _oldRelease,
+        status: _oldStatus,
+        orphanedFromReleaseId: _oldOrphanedRelease,
+        orphanedEntries: _oldOrphanedEntries,
+        ...withoutConversionState
+      } = currentDoc;
+      currentDoc = {
+        ...withoutConversionState,
+        schema: "lexema-content/v1",
+        releaseId: releaseMeta,
+        entries,
+        ...(Object.keys(orphanedEntries).length === 0 ? {} : { orphanedEntries }),
+      };
       writeIfChanged(currentPath, currentDoc);
     };
 
@@ -243,17 +323,18 @@ export function convertRelease(options: ConversionOptions = {}): ConversionRepor
         flush();
         currentWord = record.word;
         currentPath = contentFilePath(output, record.word);
+        currentPaths.add(currentPath);
         const old = existingDocument(currentPath);
         currentDoc = old ?? { schema: "lexema-content/v1" };
-        entries = typeof currentDoc.entries === "object" && currentDoc.entries !== null
-          ? currentDoc.entries as Record<string, unknown> : {};
+        oldEntries = { ...entriesOf(currentDoc, "orphanedEntries"), ...entriesOf(currentDoc, "entries") };
+        entries = {};
         occurrences = new Map<string, number>();
         words += 1;
       }
       const base = `${record.pos}:${record.pos_title}`;
       const occurrence = (occurrences.get(base) ?? 0) + 1;
       occurrences.set(base, occurrence);
-      const key = keyFor(record.pos, record.pos_title, occurrence);
+      const key = contentKey(record.pos, record.pos_title, occurrence);
       const rawRow = rawQuery.get(record.record_id) as { raw_json: string } | undefined;
       if (rawRow === undefined) throw new Error(`record ${record.record_id} has no raw JSON`);
       const raw = JSON.parse(rawRow.raw_json) as RawRecord;
@@ -261,24 +342,49 @@ export function convertRelease(options: ConversionOptions = {}): ConversionRepor
         raw, release.release_id, record.line_no, record.line_sha256, key,
         grammarFor(db, record.record_id, release.release_id, record.line_no, record.line_sha256),
       );
-      const oldEntry = entries?.[key];
+      const oldEntry = oldEntries[key];
+      if (entries === undefined) throw new Error(`entries missing while converting ${record.word}`);
+      assertUniqueContentKeys([...Object.keys(entries), key], record.word);
       // Spread first: source-derived fields below are refreshed, while fields
       // Lexema owns (and any future editorial fields) survive conversion.
-      if (entries !== undefined) entries[key] = {
+      entries[key] = {
         ...(typeof oldEntry === "object" && oldEntry !== null ? oldEntry : {}),
         ...generated,
       };
-      if (currentDoc !== undefined && entries !== undefined) {
-        const { release: _oldRelease, ...withoutOldRelease } = currentDoc;
-        currentDoc = {
-          ...withoutOldRelease,
-          schema: "lexema-content/v1",
-          releaseId: releaseMeta,
-          entries,
-        };
-      }
     }
     flush();
+
+    // Files from the previous release are part of the conversion input too.
+    // Remove files whose word disappeared unless they contain editorial text;
+    // in that case keep only that text in an explicitly orphaned document.
+    for (const path of previousFiles) {
+      if (currentPaths.has(path)) continue;
+      const old = existingDocument(path);
+      if (old === undefined) throw new Error(`content file ${path} is not a JSON object`);
+      const orphanedEntries: Record<string, unknown> = {};
+      const priorEntries = { ...entriesOf(old, "orphanedEntries"), ...entriesOf(old, "entries") };
+      for (const [key, entry] of Object.entries(priorEntries)) {
+        const editorial = editorialPart(entry);
+        if (editorial !== undefined) orphanedEntries[key] = editorial;
+      }
+      const rootEditorial = Object.fromEntries(Object.entries(old).filter(([name]) =>
+        !["schema", "releaseId", "status", "entries", "orphanedEntries", "orphanedFromReleaseId"].includes(name),
+      ));
+      if (Object.keys(orphanedEntries).length === 0 && Object.keys(rootEditorial).length === 0) {
+        unlinkSync(path);
+        changedFiles += 1;
+        continue;
+      }
+      const orphaned: Record<string, unknown> = {
+        schema: "lexema-content/v1",
+        status: "orphaned",
+        ...(typeof old.releaseId === "string" ? { orphanedFromReleaseId: old.releaseId } : {}),
+        ...(Object.keys(orphanedEntries).length === 0 ? {} : { orphanedEntries }),
+        ...(Object.keys(rootEditorial).length === 0 ? {} : { orphanedFields: rootEditorial }),
+      };
+      writeIfChanged(path, orphaned);
+    }
+
     writeIfChanged(join(output, "manifest.json"), {
       schema: "lexema-content-manifest/v1",
       release: {
