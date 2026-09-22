@@ -46,11 +46,11 @@ export type TenseBox = (typeof TENSE_BOXES)[number];
 
 /** The non-finite rows, in the order the table shows them. */
 export const NON_FINITE_ROLES = [
+  "infinito",
   "gerundio",
   "participio presente",
   "participio passato",
   "participio",
-  "infinito",
 ] as const;
 
 export type NonFiniteRole = (typeof NON_FINITE_ROLES)[number];

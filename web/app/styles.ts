@@ -155,6 +155,15 @@ export const SILENCE = "mt-0 mb-6 font-sans text-[0.85rem] text-text-muted";
 /** A card for a record that lists the searched form without defining it. */
 export const MENTION = "mt-0 mb-6 font-sans text-[0.85rem] text-text-muted";
 
+/**
+ * A claim later research disputes: the source's text stays as written, and
+ * the dispute is said beside it. The one mark in `warning` is the manifest's
+ * own use of the role — "the disputed-claim mark".
+ */
+export const DISPUTED = "mt-0 mb-6 rounded-[4px] border border-border px-4 py-3 font-sans text-[0.85rem] text-text-muted";
+export const DISPUTED_MARK = "font-semibold text-warning";
+export const DISPUTED_LIST = "mt-2 mb-0 list-disc pl-5";
+
 // What the source wrote --------------------------------------------------
 
 export const DEFINITIONS = "m-0 flex list-none flex-col gap-3 p-0";

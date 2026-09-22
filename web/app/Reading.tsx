@@ -23,6 +23,7 @@ import type {
   GrammarClaim,
   NounReading,
   Reading,
+  Review,
   SearchedSpellings,
   Sense,
   SourceForm,
@@ -54,6 +55,9 @@ import {
   DEFINITION,
   DEFINITION_NUMBER,
   DEFINITIONS,
+  DISPUTED,
+  DISPUTED_LIST,
+  DISPUTED_MARK,
   ENTRY_NOTE,
   EXAMPLE,
   EXAMPLES,
@@ -414,6 +418,36 @@ function SpellingLine({
 }
 
 // Definitions and examples ---------------------------------------------------
+
+/**
+ * A claim review, shown with the claim it is about. A disputed claim is never
+ * quietly dropped and never quietly corrected: the source keeps saying what it
+ * said, and the page says the evidence disagrees. `studente`'s verb reading is
+ * in this state.
+ */
+function Disputes({ reviews }: { reviews: readonly Review[] }) {
+  const disputed = reviews.filter((review) => review.status === "disputed");
+  if (disputed.length === 0) return null;
+  return (
+    <div className={DISPUTED} role="note">
+      <p className="m-0">
+        <strong className={DISPUTED_MARK}>Disputed by later research.</strong> This entry is shown as the source
+        wrote it; the evidence below disagrees with it.
+      </p>
+      <ul className={DISPUTED_LIST}>
+        {disputed.map((review, i) => (
+          <li key={i}>
+            {review.note}{" "}
+            <a className="text-accent underline" href={review.evidenceUrl} rel="noreferrer">
+              evidence
+            </a>{" "}
+            · reviewed {review.reviewedAt} by {review.reviewedBy} · claim <code>{review.ref.jsonPointer}</code>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
 
 /** The first visible slice of each sliced section, named once. */
 export const DEFINITION_SLICE = 1;
@@ -1190,6 +1224,7 @@ export function ReadingCard({ card, query, numbered }: { card: Card; query: stri
           </p>
         )}
         {silence.length > 0 && <p className={SILENCE}>{silence.join(" ")}</p>}
+        <Disputes reviews={reading.reviews} />
         <EntryNotes reading={reading} />
         <Definitions reading={reading} />
         <Examples reading={reading} />
