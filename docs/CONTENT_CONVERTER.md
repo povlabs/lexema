@@ -1,10 +1,11 @@
 # Content converter
 
-`pnpm run convert -- --database .data/lexema.sqlite --output content` converts a
-completed SQLite release into the content-file tree used for seeding. The
-converter does not read the archive. It reports changed files, distinct words,
+`pnpm run convert -- --input it-extract.jsonl.gz --output content` converts an
+archive directly into the content-file tree used for seeding. The converter
+never opens or requires SQLite. It reports changed files, distinct words,
 records, and bytes written; running it again against unchanged files reports
-zero files and zero bytes.
+zero files and zero bytes. The release id defaults to `it-` plus the first eight
+characters of the archive SHA-256 and can be set with `--release-id`.
 
 ## File identity and paths
 

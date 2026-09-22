@@ -9,10 +9,14 @@ for (let i = 2; i < process.argv.length; i += 1) {
     i += 1;
   }
 }
-const report = convertRelease({ database: args.get("database"), output: args.get("output") });
+const report = await convertRelease({ input: args.get("input"), output: args.get("output"), releaseId: args.get("release-id") });
 process.stdout.write([
   `files   ${report.files}`,
   `words   ${report.words}`,
   `records ${report.records}`,
   `bytes   ${report.bytes}`,
+  `lines   ${report.linesRead}`,
+  `skipped ${report.skippedOtherLanguage}`,
+  `malformed ${report.malformed}`,
+  `members ${report.malformedMembers}`,
 ].join("\n") + "\n");
