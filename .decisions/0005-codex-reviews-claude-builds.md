@@ -79,3 +79,9 @@ the model that wrote the code is not a review.
 ## Records
 
 No vocabulary impact.
+
+## Amendments
+
+- **The model family is configuration, not a decision (2026-09-22).** Huey, on moving the builders to a Codex model when the Claude budget ran low: "i can/may change the models whenever i want. no need for adr." So the title's pairing no longer binds. Which model fills a role is set in `.pi/settings.json` under `subagents.defaultModel` and `subagents.agentOverrides`, and Huey changes it whenever he likes, without a record.
+
+  What still binds, and is the reason this record exists: **the reviewer is a different agent from the builder, running in its own session, and posts under a different GitHub account.** A builder never reviews its own work, a reviewer never fixes what it finds, and neither merges. The evidence above is about independence, not about which vendor supplied it: four pull requests their authors had called finished, each with a blocking finding, from a reviewer that had not written them. Nothing in this amendment relaxes that.
