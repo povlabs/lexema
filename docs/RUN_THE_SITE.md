@@ -25,7 +25,7 @@ pnpm install --frozen-lockfile
 pnpm run seed:dev
 pnpm --filter @lexema/web build
 cd web && pnpm exec wrangler dev --config dist/server/wrangler.json \
-  --persist-to "$PWD/../.data/web-state" --port 8790
+  --persist-to "$PWD/../.data/seed-state" --port 8790
 ```
 
 Then open <http://localhost:8790/?q=sale>.
@@ -42,11 +42,11 @@ in [DEV_SEED.md](DEV_SEED.md).
 
 | Query | Expect |
 |---|---|
-| `?q=sale` | 5 entries, two of them labelled as mentions |
-| `?q=casa` | 1 entry, gender and number shown as *not stated in the source* |
-| `?q=studente` | 5 entries, the verb one flagged *Disputed by later research* |
+| `?q=sale` | 3 entries: the noun, a form of `sala`, and a verb form |
+| `?q=casa` | 1 entry that says the source states neither a gender nor a number, with definitions marked *recovered* from Wiktionary revision 4257826 |
+| `?q=studente` | 4 entries: the noun, a form of `studiare`, and two noun forms |
 | `?q=citta` | the empty state — accents are significant |
-| `?q=` | the opening hint |
+| `?q=` | the opening hint, with words to try |
 
 What these actually rendered, on which release and on which date, is in
 [the dated report](../reports/2026-09-21-web-page-measurements.md) — including
@@ -64,7 +64,7 @@ Point the Worker at a release that does not exist:
 
 ```sh
 cd web && pnpm exec wrangler dev --config dist/server/wrangler.json \
-  --persist-to "$PWD/../.data/web-state" --port 8790 \
+  --persist-to "$PWD/../.data/seed-state" --port 8790 \
   --var LEXEMA_RELEASE:does-not-exist
 ```
 
@@ -78,7 +78,7 @@ it.
 | Symptom | Cause |
 |---|---|
 | zsh asks to correct `wrangler` to `.wrangler` | shell autocorrect; answer `n` or run from outside `web/` |
-| D1 looks empty after a seed | `--persist-to` was relative; pass the `.data/web-state` path shown above |
+| D1 looks empty after a seed | `--persist-to` was relative; pass the `.data/seed-state` path shown above |
 | Seed stops with `part N of M failed` | one Wrangler run failed; the state directory is partial, so seed again into a fresh one ([RUN_AN_IMPORT.md § If a seed stops](RUN_AN_IMPORT.md#if-a-seed-stops)) |
 
 ## Not this page
