@@ -51,8 +51,11 @@ the parts an earlier seed left in `SEED_SQL`.
 The fifty-word fixture is 1.9 MB of SQL, so it is one part, byte for byte the
 single file the seeder wrote before parts existed.
 
-After the last part, the seeder counts every table in the loaded database and
-stops with an error if any count differs from the generated SQL.
+After the last part, the seeder counts the rows of every table the batches
+wrote and stops with an error if any count differs from the generated SQL. It
+then reads the one `source_release` row, which is written outside the batches,
+and stops unless exactly one exists and its status and line counts match what
+the run reported.
 
 The 64 MiB default keeps Wrangler's memory down for little extra time;
 [the measurements](../reports/2026-09-23-full-release-seed-measurements.md)

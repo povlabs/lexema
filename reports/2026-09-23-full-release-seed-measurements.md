@@ -46,6 +46,9 @@ fresh state directory:
 - 16 parts, 409 s, peak 2.8 GB for the process tree. `/usr/bin/time -l`
   reports 1.28 GB maximum resident size, which is `workerd`.
 - The seeder read back 560,357 `source_record` rows and 1,273,490 `lookup_form`
-  rows for release `it-0c432803`, matching the generated SQL for every table.
+  rows for release `it-0c432803`, matching the generated SQL for every batched
+  table. `source_release`, written outside the batches, was not part of that
+  automated check in this run; the next line is how it was verified. The seeder
+  now checks that row too, after this measurement was taken.
 - Opened read-only with `sqlite3 -readonly`: `form_source` is set on 546,410
   `lookup_form` rows, and the release's status is `complete`.

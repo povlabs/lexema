@@ -80,4 +80,31 @@ process.stderr.write(`loaded release ${report.releaseId}:\n`);
 for (const table of tables) process.stderr.write(`  ${table}: ${loaded[table]}\n`);
 const mismatched = tables.filter((table) => loaded[table] !== report.rows[table as keyof typeof report.rows]);
 if (mismatched.length > 0) throw new Error(`loaded row counts differ from the generated SQL: ${mismatched.join(", ")}`);
+
+// `source_release` is written as one row outside the batched tables, so a count
+// would say little. Hold the row itself against the run: exactly one, and it
+// carries the status and line counts the generator reported.
+const [releaseRows] = JSON.parse(
+  wrangler(
+    ["--json", "--command", `SELECT status, lines_read, admitted, skipped_other_language, malformed_lines, malformed_members FROM source_release WHERE release_id = '${report.releaseId.replace(/'/g, "''")}'`],
+    true,
+  ),
+) as [{ results: Record<string, string | number>[] }];
+const expectedRelease = {
+  status: report.status,
+  lines_read: report.linesRead,
+  admitted: report.admitted,
+  skipped_other_language: report.skippedOtherLanguage,
+  malformed_lines: report.malformed,
+  malformed_members: report.malformedMembers,
+};
+if (releaseRows.results.length !== 1) {
+  throw new Error(`expected one source_release row for ${report.releaseId}, found ${releaseRows.results.length}`);
+}
+const releaseRow = releaseRows.results[0];
+const releaseMismatch = Object.entries(expectedRelease).filter(([column, value]) => releaseRow[column] !== value);
+if (releaseMismatch.length > 0) {
+  throw new Error(`source_release differs from the run: ${releaseMismatch.map(([column]) => column).join(", ")}`);
+}
+process.stderr.write(`  source_release: 1 row, ${releaseRow.status}\n`);
 process.stdout.write(JSON.stringify({ ...report, rejectionPath, loaded }) + "\n");
