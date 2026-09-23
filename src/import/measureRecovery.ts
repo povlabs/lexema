@@ -1,0 +1,173 @@
+// `pnpm run measure:recovery` — how many archive records lose definitions their
+// raw page states, over every raw page committed under `fixtures/` (#28).
+//
+// Streams `it-extract.jsonl.gz` once. Every Italian record whose word has a raw
+// page is matched to its section of that page and run through the same
+// recovery the seed runs, so the counts here are the counts a seed recovers.
+// The uniformly sampled records in `fixtures/definition-loss-samples/` are
+// counted again on their own: they are the only records whose rate may be
+// projected onto the release.
+//
+// Needs the archive in the repository root; it is gitignored and absent in CI.
+
+import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { resolve } from "node:path";
+import { recordText, recoverDefinitions, type RecordRecovery } from "../italian/recovery.js";
+import { loadFixturePages } from "../source/rawPage.js";
+import { parseArchive } from "./importRelease.js";
+
+const input = resolve(process.env.RECOVERY_INPUT ?? "it-extract.jsonl.gz");
+const output = resolve(process.env.RECOVERY_OUTPUT ?? "artifacts/recovery-measure.json");
+
+interface Sample {
+  stratum: string;
+  population: number;
+  records: { word: string; pos_title: string; line: number }[];
+}
+
+const readSample = async (name: string): Promise<Sample> =>
+  JSON.parse(await readFile(resolve("fixtures/definition-loss-samples", name), "utf8")) as Sample;
+
+/** Counts over one set of records. */
+class Tally {
+  records = 0;
+  outcomes: Record<RecordRecovery["outcome"], number> = {
+    "no-italian-section": 0,
+    "no-matching-section": 0,
+    "ambiguous-section": 0,
+    matched: 0,
+  };
+  loss = { none: 0, partial: 0, full: 0 };
+  definitions = 0;
+  byRoute: Record<string, number> = {};
+  examples = 0;
+  heldAsExample = 0;
+  alreadyGlossed = 0;
+  unrendered = 0;
+
+  add(recovery: RecordRecovery): void {
+    this.records += 1;
+    this.outcomes[recovery.outcome] += 1;
+    if (recovery.outcome !== "matched") return;
+    this.loss[recovery.loss] += 1;
+    this.alreadyGlossed += recovery.alreadyGlossed.length;
+    this.unrendered += recovery.unrendered.length;
+    for (const definition of recovery.recovered) {
+      this.definitions += 1;
+      this.byRoute[definition.route] = (this.byRoute[definition.route] ?? 0) + 1;
+      this.examples += definition.examples.length;
+      if (definition.heldAsExample) this.heldAsExample += 1;
+    }
+  }
+}
+
+/** Wilson score interval, 95%, for k of n. */
+function wilson(k: number, n: number): [number, number] {
+  if (n === 0) return [0, 0];
+  const z = 1.96;
+  const p = k / n;
+  const denominator = 1 + (z * z) / n;
+  const centre = (p + (z * z) / (2 * n)) / denominator;
+  const margin = (z / denominator) * Math.sqrt((p * (1 - p)) / n + (z * z) / (4 * n * n));
+  return [Math.max(0, centre - margin), Math.min(1, centre + margin)];
+}
+
+const pages = await loadFixturePages(resolve("fixtures"));
+const samples = await Promise.all([readSample("sample-lemma.json"), readSample("sample-inflected.json")]);
+const sampledStratum = new Map<number, string>();
+for (const sample of samples) for (const record of sample.records) sampledStratum.set(record.line, sample.stratum);
+
+const all = new Tally();
+const byStratum = new Map(samples.map((sample) => [sample.stratum, new Tally()]));
+const losses: {
+  line: number;
+  word: string;
+  posTitle: string;
+  loss: string;
+  stratum: string | null;
+  recovered: { route: string; line: number; text: string; examples: number; heldAsExample: boolean }[];
+  unrendered: { line: number; template: string }[];
+}[] = [];
+const unrendered: { word: string; line: number; template: string }[] = [];
+
+const report = await parseArchive({
+  input,
+  onRejection: () => {},
+  onRecord: ({ lineNo, record }) => {
+    const page = pages.page(record.word);
+    if (page === undefined) return;
+    const recovery = recoverDefinitions(recordText(record), page);
+    all.add(recovery);
+    const stratum = sampledStratum.get(lineNo);
+    if (stratum !== undefined) byStratum.get(stratum)?.add(recovery);
+    if (recovery.outcome !== "matched") return;
+    for (const line of recovery.unrendered) unrendered.push({ word: record.word, line: line.ref.line, template: line.template });
+    if (recovery.loss === "none" && recovery.unrendered.length === 0) return;
+    losses.push({
+      line: lineNo,
+      word: record.word,
+      posTitle: record.pos_title,
+      loss: recovery.loss,
+      stratum: stratum ?? null,
+      recovered: recovery.recovered.map((definition) => ({
+        route: definition.route,
+        line: definition.ref.line,
+        text: definition.text,
+        examples: definition.examples.length,
+        heldAsExample: definition.heldAsExample,
+      })),
+      unrendered: recovery.unrendered.map((line) => ({ line: line.ref.line, template: line.template })),
+    });
+  },
+});
+
+const projections = samples.map((sample) => {
+  const tally = byStratum.get(sample.stratum) ?? new Tally();
+  const scored = tally.outcomes.matched;
+  const lossy = tally.loss.partial + tally.loss.full;
+  const [low, high] = wilson(lossy, scored);
+  return {
+    stratum: sample.stratum,
+    population: sample.population,
+    sampled: sample.records.length,
+    scored,
+    lossy,
+    full: tally.loss.full,
+    partial: tally.loss.partial,
+    definitions: tally.definitions,
+    rate: scored === 0 ? 0 : lossy / scored,
+    rateCi95: [low, high],
+    projectedRecords: scored === 0 ? 0 : Math.round((lossy / scored) * sample.population),
+    projectedRecordsCi95: [Math.round(low * sample.population), Math.round(high * sample.population)],
+    tally,
+  };
+});
+
+const result = {
+  archiveSha256: report.archiveSha256,
+  italianRecords: report.admitted,
+  rawPages: pages.size,
+  allRecordsWithAPage: all,
+  projections,
+  losses,
+  unrendered,
+};
+await mkdir(resolve(output, ".."), { recursive: true });
+await writeFile(output, `${JSON.stringify(result, null, 2)}\n`);
+
+const line = (text: string) => process.stdout.write(`${text}\n`);
+line(`archive ${report.archiveSha256.slice(0, 12)}…, ${report.admitted} Italian records, ${pages.size} raw pages`);
+line(`records with a raw page: ${all.records}`);
+line(`  matched to one section: ${all.outcomes.matched}; no Italian section: ${all.outcomes["no-italian-section"]}; ` +
+  `no matching section: ${all.outcomes["no-matching-section"]}; ambiguous: ${all.outcomes["ambiguous-section"]}`);
+line(`  loss: full ${all.loss.full}, partial ${all.loss.partial}, none ${all.loss.none}`);
+line(`  definitions recovered: ${all.definitions} (${Object.entries(all.byRoute).map(([route, n]) => `${route} ${n}`).join(", ")})`);
+line(`  examples recovered with them: ${all.examples}; held by the record as an example: ${all.heldAsExample}`);
+line(`  already a gloss: ${all.alreadyGlossed}; marked a definition but not rendered: ${all.unrendered}`);
+for (const projection of projections) {
+  line(`sample ${projection.stratum}: ${projection.lossy}/${projection.scored} scored records lose a definition ` +
+    `(full ${projection.full}, partial ${projection.partial}), ${projection.definitions} definitions; ` +
+    `rate ${(projection.rate * 100).toFixed(2)}% [${(projection.rateCi95[0] * 100).toFixed(2)}%, ${(projection.rateCi95[1] * 100).toFixed(2)}%] ` +
+    `of ${projection.population} → ${projection.projectedRecords} [${projection.projectedRecordsCi95.join("–")}]`);
+}
+line(`details: ${output}`);
