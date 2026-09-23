@@ -167,28 +167,26 @@ allowed to stand in for either.
 
 ## Why the seed goes through generated SQL
 
-Local D1 is only reachable through `wrangler d1 execute --file`. The importer
-already produces a SQLite file, but there is no way to hand that file to
-miniflare, so the development seed re-emits it as SQL and loads it statement by
-statement. It is slower and larger than a file copy, and it is the only route
-that exists.
+Local D1 is reached through `wrangler d1 execute --file`. The archive parser
+streams each admitted record into batched D1 SQL; there is no SQLite staging
+database, prefix cutter, or second import/export path. The development seed
+uses the committed fifty-word `fixtures/dev-seed.jsonl` and applies that SQL to
+an isolated `.data/seed-state` database. The full archive is maintained at
+[`source/it-extract.jsonl.gz`](https://github.com/hueypov/lexema-data/blob/main/source/it-extract.jsonl.gz);
+a local copy at the repository root remains gitignored. Full-release seeding
+currently fails when Wrangler reads the generated SQL because Node's maximum
+string length is exceeded (#97), so this page does not claim that a full release
+seeds successfully.
 
-## Why the seed is a prefix file, not a limited import
+## Why local work uses a committed fixture
 
-The first seed imported the full archive with `limit`. That stops the importer
-before the last line, so the release landed `partial`, and every canonical read
-hides a release that is not `complete`: the page answered every query with *the
-lookup failed* (#47).
-
-Both rules are worth keeping. `partial` exists so a smoke run can never be
-served as if it were the whole dictionary, and the page serving only `complete`
-is what makes that hold. So the seed does not ask for an exception; it changes
-what it imports. It cuts the head of the archive into its own file and imports
-that file whole. The release is then honestly `complete` for the file it names,
-and its checksum and byte count describe the bytes that were actually read
-rather than a full archive nobody imported. The lookup needs no
-development-only branch, and a deployed release and a development one are told
-apart by which file they name, not by a flag.
+The fixture is a bounded, reviewable fifty-word set with its transitive
+`form_of` closure. It lets a fresh checkout exercise the same parser,
+provenance, lookup, and grammar projection without downloading the archive or
+silently serving an incomplete archive as a complete release. A query for a
+word outside that set is an honest empty result. To run against another archive,
+set `SEED_INPUT`; the local full-archive copy is conventionally
+`it-extract.jsonl.gz` at the repository root.
 
 ## Known rough edges
 

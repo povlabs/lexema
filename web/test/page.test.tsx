@@ -1,6 +1,6 @@
 // The search page, rendered.
 //
-// Two archives are imported here exactly as the importer imports a release,
+// Two archives are seeded here exactly as the development seed seeds D1,
 // the real `lookup` answers each query, and the real components render the
 // answer to HTML — no D1, no browser, so it runs in CI.
 //
@@ -26,7 +26,7 @@ import { DatabaseSync } from "node:sqlite";
 import { gzipSync } from "node:zlib";
 import { renderToStaticMarkup } from "react-dom/server";
 import { TENSE_BOXES } from "../../src/italian/moods.js";
-import { importRelease } from "../../src/import/importRelease.js";
+import { seedSql } from "../../src/import/seedSql.js";
 import { writeKnownDisputes } from "../../src/import/knownDisputes.js";
 import { fromNodeSqlite } from "../../src/lookup/database.js";
 import { lookup, readRelease } from "../../src/lookup/lookup.js";
@@ -79,11 +79,11 @@ interface Fixture {
 async function fixture(lines: readonly string[]): Promise<Fixture> {
   const dir = await mkdtemp(join(tmpdir(), "lexema-page-"));
   const archive = join(dir, "fixture.jsonl.gz");
-  const database = join(dir, "fixture.sqlite");
+  const output = join(dir, "seed.sql");
   await writeFile(archive, gzipSync(Buffer.from(`${lines.join("\n")}\n`, "utf8")));
-  await importRelease({
+  await seedSql({
     input: archive,
-    database,
+    output,
     schema: join(REPO, "src/db/schema.sql"),
     releaseId: RELEASE,
     archiveR2Key: `releases/${RELEASE}.jsonl.gz`,
@@ -93,7 +93,8 @@ async function fixture(lines: readonly string[]): Promise<Fixture> {
       throw new Error(`fixture line rejected: ${JSON.stringify(rejection)}`);
     },
   });
-  const db = new DatabaseSync(database);
+  const db = new DatabaseSync(":memory:");
+  db.exec(await readFile(output, "utf8"));
   // The same review rows `pnpm run seed:dev` writes, from the same module.
   assert.equal(writeKnownDisputes(db, RELEASE), 1);
   return { dir, db };

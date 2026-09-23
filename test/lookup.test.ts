@@ -1,12 +1,12 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import test from "node:test";
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { gzipSync } from "node:zlib";
-import { importRelease } from "../src/import/importRelease.js";
+import { seedSql } from "../src/import/seedSql.js";
 import {
   INFLECTION_CANDIDATE_SQL,
   INFLECTION_SQL,
@@ -151,23 +151,22 @@ const RELEASE = "it-test";
 async function fixture() {
   const dir = await mkdtemp(join(tmpdir(), "lexema-lookup-"));
   const archive = join(dir, "fixture.jsonl.gz");
-  const database = join(dir, "fixture.sqlite");
+  const output = join(dir, "seed.sql");
   await writeFile(archive, gzipSync(Buffer.from(LINES.join("\n") + "\n", "utf8")));
-  await importRelease({
+  await seedSql({
     input: archive,
-    database,
+    output,
     schema: "src/db/schema.sql",
     releaseId: RELEASE,
     archiveR2Key: "releases/it-test.jsonl.gz",
     sourceUrl: "https://example.invalid/it-extract.jsonl.gz",
     license: "CC-BY-SA-4.0",
-    // The fixture is hand-written and every line is admissible, so a rejection
-    // means the fixture broke, not that the importer found something.
     onRejection: (rejection) => {
       throw new Error(`fixture line rejected: ${JSON.stringify(rejection)}`);
     },
   });
-  const db = new DatabaseSync(database);
+  const db = new DatabaseSync(":memory:");
+  db.exec(await readFile(output, "utf8"));
   return { dir, db };
 }
 
