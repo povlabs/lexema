@@ -192,11 +192,11 @@ const RELEASE = "it-test";
 async function fixture() {
   const dir = await mkdtemp(join(tmpdir(), "lexema-lookup-"));
   const archive = join(dir, "fixture.jsonl.gz");
-  const output = join(dir, "seed.sql");
+  const outputDir = join(dir, "sql");
   await writeFile(archive, gzipSync(Buffer.from(LINES.join("\n") + "\n", "utf8")));
-  await seedSql({
+  const { parts } = await seedSql({
     input: archive,
-    output,
+    outputDir,
     schema: "src/db/schema.sql",
     releaseId: RELEASE,
     archiveR2Key: "releases/it-test.jsonl.gz",
@@ -207,7 +207,7 @@ async function fixture() {
     },
   });
   const db = new DatabaseSync(":memory:");
-  db.exec(await readFile(output, "utf8"));
+  for (const part of parts) db.exec(await readFile(part, "utf8"));
   return { dir, db };
 }
 

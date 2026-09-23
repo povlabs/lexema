@@ -89,11 +89,11 @@ interface Fixture {
 async function fixture(lines: readonly string[]): Promise<Fixture> {
   const dir = await mkdtemp(join(tmpdir(), "lexema-page-"));
   const archive = join(dir, "fixture.jsonl.gz");
-  const output = join(dir, "seed.sql");
+  const outputDir = join(dir, "sql");
   await writeFile(archive, gzipSync(Buffer.from(`${lines.join("\n")}\n`, "utf8")));
-  await seedSql({
+  const { parts } = await seedSql({
     input: archive,
-    output,
+    outputDir,
     schema: join(REPO, "src/db/schema.sql"),
     releaseId: RELEASE,
     archiveR2Key: `releases/${RELEASE}.jsonl.gz`,
@@ -104,7 +104,7 @@ async function fixture(lines: readonly string[]): Promise<Fixture> {
     },
   });
   const db = new DatabaseSync(":memory:");
-  db.exec(await readFile(output, "utf8"));
+  for (const part of parts) db.exec(await readFile(part, "utf8"));
   // The same review rows `pnpm run seed:dev` writes, from the same module.
   assert.equal(writeKnownDisputes(db, RELEASE), 1);
   return { dir, db };

@@ -1,9 +1,10 @@
 // Stream the archive parser into foreign-key-safe D1 SQL without a SQLite staging file.
+// The SQL lands as numbered parts (sqlParts.ts) so no single file outgrows Node's string limit.
 // The parser remains the source of admission, identity, rejection, and grammar rules;
 // this module only changes the destination of those rows.
 
-import { appendFile, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
-import { dirname, join, resolve } from "node:path";
+import { appendFile, mkdir, mkdtemp, open, readFile, rm } from "node:fs/promises";
+import { join, resolve } from "node:path";
 import {
   parseArchive,
   writeRecord,
@@ -12,6 +13,7 @@ import {
   type ImportStatements,
   type Rejection,
 } from "./importRelease.js";
+import { clearParts, SqlPartWriter } from "./sqlParts.js";
 
 const TABLE_ORDER = [
   "source_record",
@@ -51,6 +53,9 @@ const literal = (value: unknown): string => {
 class SqlBatchWriter {
   private readonly rows = new Map<TableName, string[]>();
   private readonly bytes = new Map<TableName, number>();
+  // The byte length of every INSERT written to each table's file, in order, so
+  // copyTo can hand the part writer whole statements without parsing SQL.
+  private readonly statementBytes = new Map<TableName, number[]>();
   readonly counts: RowCounts = {
     source_record: 0,
     source_record_json: 0,
@@ -100,10 +105,13 @@ class SqlBatchWriter {
         bytes += tuple.length + 4;
       }
       if (batch.length > 0) batches.push(batch);
-      const text = batches.map((values) =>
+      const texts = batches.map((values) =>
         `-- ${table}: batch\nINSERT INTO ${table} (${COLUMNS[table]}) VALUES\n  ${values.join(",\n  ")};\n`,
-      ).join("");
-      await appendFile(join(this.directory, `${table}.sql`), text, "utf8");
+      );
+      const sizes = this.statementBytes.get(table) ?? [];
+      for (const text of texts) sizes.push(Buffer.byteLength(text, "utf8"));
+      this.statementBytes.set(table, sizes);
+      await appendFile(join(this.directory, `${table}.sql`), texts.join(""), "utf8");
       this.rows.set(table, []);
       this.bytes.set(table, 0);
     }
@@ -113,13 +121,21 @@ class SqlBatchWriter {
     await this.flush();
   }
 
-  async appendTo(output: string): Promise<void> {
+  /** Copy every table's statements, in table order, one statement per unit. */
+  async copyTo(parts: SqlPartWriter): Promise<void> {
     for (const table of TABLE_ORDER.slice(0, -1)) {
-      const path = join(this.directory, `${table}.sql`);
+      const sizes = this.statementBytes.get(table);
+      if (!sizes?.length) continue;
+      const file = await open(join(this.directory, `${table}.sql`), "r");
       try {
-        await appendFile(output, await readFile(path));
-      } catch (error: unknown) {
-        if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+        for (const size of sizes) {
+          const statement = Buffer.allocUnsafe(size);
+          const { bytesRead } = await file.read(statement, 0, size);
+          if (bytesRead !== size) throw new Error(`${table}.sql ended inside a statement`);
+          await parts.write(statement);
+        }
+      } finally {
+        await file.close();
       }
     }
   }
@@ -145,7 +161,8 @@ function statementsFor(writer: SqlBatchWriter): ImportStatements {
 
 export interface SeedSqlOptions {
   input: string;
-  output: string;
+  /** Directory the numbered SQL parts are written to; earlier parts in it are replaced. */
+  outputDir: string;
   schema: string;
   releaseId?: string;
   archiveR2Key?: string;
@@ -161,18 +178,32 @@ export interface SeedSqlOptions {
   validateFixtureClosure?: boolean;
   onRejection?: (rejection: Rejection) => void;
   maxStatementBytes?: number;
+  /** Byte ceiling for one SQL part; see DEFAULT_PART_CEILING_BYTES. */
+  partCeilingBytes?: number;
+  /**
+   * Leave the release `importing` at the end of the SQL instead of writing its
+   * final status. The counters are still written. A caller that verifies the
+   * loaded database sets the final status itself once every check passes, so
+   * nothing short of a verified load is ever marked servable.
+   */
+  leaveImporting?: boolean;
 }
 
 export interface SeedSqlReport extends ArchiveParseReport {
   releaseId: string;
   rows: RowCounts;
   statements: number;
-  output: string;
+  /** Part paths in the order they must be executed. */
+  parts: readonly string[];
 }
 
 export async function seedSql(options: SeedSqlOptions): Promise<SeedSqlReport> {
-  const output = resolve(options.output);
-  const work = await mkdtemp(join(dirname(output), ".seed-sql-"));
+  const outputDir = resolve(options.outputDir);
+  // Constructed before the parse so a bad ceiling fails before any work.
+  const parts = new SqlPartWriter(outputDir, options.partCeilingBytes);
+  await mkdir(outputDir, { recursive: true });
+  await clearParts(outputDir);
+  const work = await mkdtemp(join(outputDir, ".seed-sql-"));
   const writer = new SqlBatchWriter(work, options.maxStatementBytes);
   const statements = statementsFor(writer);
   const required = new Set(options.requiredWords ?? []);
@@ -226,14 +257,20 @@ export async function seedSql(options: SeedSqlOptions): Promise<SeedSqlReport> {
     const release = `INSERT INTO source_release\n` +
       `  (release_id,source_name,source_url,retrieved_at,upstream_release,archive_r2_key,archive_sha256,archive_bytes,normalizer,importer_version,schema_version,license,attribution,status)\n` +
       `VALUES (${[releaseId, options.sourceName ?? "kaikki-it-wiktextract", options.sourceUrl ?? null, options.retrievedAt ?? null, options.upstreamRelease ?? null, options.archiveR2Key ?? `releases/${releaseId}.jsonl.gz`, start.archiveSha256, start.archiveBytes, "it-normalize/v1", "it-import/v1", 1, options.license ?? null, options.attribution ?? null, "importing"].map(literal).join(",")});\n`;
-    const finish = `UPDATE source_release SET status='${report.status}', lines_read=${report.linesRead}, admitted=${report.admitted}, skipped_other_language=${report.skippedOtherLanguage}, malformed_lines=${report.malformed}, malformed_members=${report.malformedMembers} WHERE release_id=${literal(releaseId)};\n`;
+    const finalStatus = options.leaveImporting ? "importing" : report.status;
+    const finish = `UPDATE source_release SET status='${finalStatus}', lines_read=${report.linesRead}, admitted=${report.admitted}, skipped_other_language=${report.skippedOtherLanguage}, malformed_lines=${report.malformed}, malformed_members=${report.malformedMembers} WHERE release_id=${literal(releaseId)};\n`;
     const tableRows = TABLE_ORDER.slice(0, -1).map((table) =>
       `INSERT INTO release_table_rows (release_id,table_name,rows) VALUES (${literal(releaseId)},${literal(table)},${writer.counts[table]});\n`,
     ).join("");
 
-    await writeFile(output, `${schemaSql}\n\n-- Generated by src/import/seedSql.ts.\n${release}`);
-    await writer.appendTo(output);
-    await appendFile(output, `\n${finish}${tableRows}`, "utf8");
+    let partPaths: readonly string[];
+    try {
+      await parts.write(`${schemaSql}\n\n-- Generated by src/import/seedSql.ts.\n${release}`);
+      await writer.copyTo(parts);
+      await parts.write(`\n${finish}${tableRows}`);
+    } finally {
+      partPaths = await parts.close();
+    }
     writer.counts.release_table_rows = TABLE_ORDER.length - 1;
 
     return {
@@ -241,7 +278,7 @@ export async function seedSql(options: SeedSqlOptions): Promise<SeedSqlReport> {
       releaseId,
       rows: writer.counts,
       statements: writer.counts.source_record + writer.counts.source_record_json + writer.counts.lookup_form + writer.counts.form_of_edge + writer.counts.sense + writer.counts.sense_gloss + writer.counts.sense_label + writer.counts.grammar_claim,
-      output,
+      parts: partPaths,
     };
   } finally {
     await rm(work, { recursive: true, force: true });
