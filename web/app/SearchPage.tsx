@@ -5,8 +5,8 @@
 // components to HTML over an imported fixture release, and that test runs in CI
 // with no archive and no D1. What `page.tsx` adds is where the data comes from.
 //
-// One client component: the field, whose suggestion list answers keystrokes
-// (`SearchField.tsx`). The form around it is still a plain GET form, every
+// One client component: the search form, whose suggestion list answers
+// keystrokes (`SearchField.tsx`). The form is still a plain GET form, every
 // state is decided by the URL, and the "Show all" controls are native
 // `<details>`, so the page works before any JavaScript does.
 
@@ -21,7 +21,6 @@ import {
   ERROR,
   HOME_NAME,
   PENDING,
-  SEARCH_FORM,
   SHELL_CENTRED,
   SHELL_TOP,
   TRY_CHIP,
@@ -30,21 +29,6 @@ import {
 } from "./styles.ts";
 
 export { pageOrder } from "./wordPage.ts";
-
-/**
- * The one search field: a magnifier at the left, and at the right either a
- * `×` that clears a query or, before one, the `ENTER` hint. No label above it
- * and no button beside it — Enter submits — and its accessible name is on the
- * input itself, so a screen reader still hears what it is for. As a reader
- * types, suggestions open under it; that half is `SearchField.tsx`.
- */
-function SearchForm({ raw }: { raw: string }) {
-  return (
-    <form className={SEARCH_FORM} action="/" method="get" role="search">
-      <SearchField raw={raw} />
-    </form>
-  );
-}
 
 /**
  * The shell every state shares.
@@ -61,7 +45,7 @@ export function SearchPage({ raw, children }: { raw: string; children: ReactNode
     return (
       <main className={SHELL_CENTRED}>
         <h1 className={HOME_NAME}>Lexema</h1>
-        <SearchForm raw={raw} />
+        <SearchField raw={raw} />
         {children}
       </main>
     );
@@ -70,7 +54,7 @@ export function SearchPage({ raw, children }: { raw: string; children: ReactNode
     <>
       <SiteHeader />
       <main className={SHELL_TOP}>
-        <SearchForm raw={raw} />
+        <SearchField raw={raw} />
         {children}
       </main>
     </>

@@ -9,6 +9,14 @@
 // `<input name="q">`, so the page searches before any JavaScript arrives, and
 // what the script adds is the list.
 //
+// The form sits inside the Autocomplete root rather than around it, on
+// purpose. The root always renders a second, visually hidden `<input>` after
+// its children, and it has no `type`, so it is a text field. A form with two
+// text fields and no submit button is one Enter cannot submit (the HTML
+// standard's implicit submission rule), which silently broke Enter with no
+// suggestion highlighted, with or without JavaScript. Inside the root, the
+// form holds the one field and that input falls outside it.
+//
 // Base UI's Autocomplete owns the combobox: the ARIA roles and states, focus
 // staying in the input while arrow keys move a highlight through the list,
 // Enter on a highlighted row choosing it, Enter with nothing highlighted
@@ -23,6 +31,7 @@ import type { SuggestAnswer } from "./suggestAnswer.ts";
 import {
   SEARCH_CLEAR,
   SEARCH_FIELD,
+  SEARCH_FORM,
   SEARCH_HINT,
   SEARCH_ICON,
   SEARCH_INPUT,
@@ -57,6 +66,12 @@ function statusOf(shown: Shown | null): string {
   return `${count} suggestion${count === 1 ? "" : "s"}. Use the up and down arrows to choose one.`;
 }
 
+/**
+ * The one search field: a magnifier at the left, and at the right either a
+ * `×` that clears a query or, before one, the `ENTER` hint. No label above it
+ * and no button beside it — Enter submits — and its accessible name is on the
+ * input itself, so a screen reader still hears what it is for.
+ */
 export function SearchField({ raw }: { raw: string }) {
   const asked = raw.trim() !== "";
   const [value, setValue] = useState(raw);
@@ -128,31 +143,33 @@ export function SearchField({ raw }: { raw: string }) {
       onOpenChange={setOpen}
       submitOnItemClick
     >
-      <Autocomplete.InputGroup ref={field} className={SEARCH_FIELD}>
-        <SearchIcon className={SEARCH_ICON} />
-        <Autocomplete.Input
-          className={SEARCH_INPUT}
-          id="q"
-          type="search"
-          aria-label="Search an Italian word"
-          placeholder="Search an Italian word"
-          autoComplete="off"
-          autoCapitalize="none"
-          spellCheck={false}
-          lang="it"
-          autoFocus={!asked}
-          enterKeyHint="search"
-        />
-        {asked ? (
-          <a className={SEARCH_CLEAR} href="/" aria-label="Clear search">
-            ×
-          </a>
-        ) : (
-          <kbd className={SEARCH_HINT} aria-hidden="true">
-            ENTER
-          </kbd>
-        )}
-      </Autocomplete.InputGroup>
+      <form className={SEARCH_FORM} action="/" method="get" role="search">
+        <Autocomplete.InputGroup ref={field} className={SEARCH_FIELD}>
+          <SearchIcon className={SEARCH_ICON} />
+          <Autocomplete.Input
+            className={SEARCH_INPUT}
+            id="q"
+            type="search"
+            aria-label="Search an Italian word"
+            placeholder="Search an Italian word"
+            autoComplete="off"
+            autoCapitalize="none"
+            spellCheck={false}
+            lang="it"
+            autoFocus={!asked}
+            enterKeyHint="search"
+          />
+          {asked ? (
+            <a className={SEARCH_CLEAR} href="/" aria-label="Clear search">
+              ×
+            </a>
+          ) : (
+            <kbd className={SEARCH_HINT} aria-hidden="true">
+              ENTER
+            </kbd>
+          )}
+        </Autocomplete.InputGroup>
+      </form>
       <Autocomplete.Status className="sr-only">{statusOf(shown)}</Autocomplete.Status>
       <Autocomplete.Portal>
         <Autocomplete.Positioner anchor={field} side="bottom" align="start" sideOffset={6}>

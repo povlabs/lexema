@@ -560,6 +560,12 @@ test("the field is a combobox in both states, and still a plain named input for 
       assert.match(input, /aria-autocomplete="list"/, state);
       assert.match(input, / name="q"/, `${state}: the form submits the field as q`);
       assert.equal(patternsOf(html, /role="combobox"/), 1, `${state}: one field`);
+      // Enter submits a form without a submit button only when the form holds
+      // one text field. Base UI renders a second, typeless input beside the
+      // field; it has to fall outside the form, or Enter does nothing.
+      const form = html.match(/<form [^>]*role="search"[^>]*>.*?<\/form>/)?.[0];
+      assert.ok(form, state);
+      assert.equal(patternsOf(form, /<input[\s>]/), 1, `${state}: the form holds one input`);
       // The live region that says how many suggestions opened is in the page
       // before any list is, so the first announcement is not lost.
       assert.match(html, /<div role="status" aria-live="polite" aria-atomic="true" class="sr-only"><\/div>/, state);
