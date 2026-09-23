@@ -4,7 +4,8 @@ An Italian word-search website, not built yet. `src/` holds the Italian source
 adapter, the candidate resolver and the validation CLI; `test/` and `fixtures/`
 hold their checks; `reports/` holds dated findings; `.decisions/` holds the
 rulings. The source file `it-extract.jsonl.gz` sits in the repository root,
-ignored by Git and absent in CI.
+ignored by Git and absent in CI; its durable copy is `source/` in
+`hueypov/lexema-data`, and its SHA-256 is the release id.
 
 ## Working rules
 
