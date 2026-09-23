@@ -64,7 +64,7 @@ page; the status code cannot carry it.
 ## Why the page is visibly silent
 
 This dictionary's data is incomplete, and the page's job is to make that legible
-instead of smoothing it over. Six silences it refuses to hide:
+instead of smoothing it over. Eight silences it refuses to hide:
 
 **A lemma is where a reading points, not a match.** Searching `sale` returns
 three entries, the three records whose headword is `sale`. Two of them say what
