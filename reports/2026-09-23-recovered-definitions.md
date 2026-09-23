@@ -32,8 +32,9 @@ left it. Each record is matched to the one page section whose part-of-speech hea
 extraction titles as the record's `pos_title`; a record with no such section, or with two,
 is counted and skipped.
 
-*Full* loss: the record's section states no sense on a `#` line, so the record carries only
-furniture. *Partial* loss: the record keeps at least one sense and misses at least one
+*Full* loss: the record's section states no sense on a `#` line, so the record carries no
+extracted definition — only furniture, and in `lap steel guitar`'s case its main definition
+misfiled as an example. *Partial* loss: the record keeps at least one sense and misses at least one
 definition below it.
 
 ## Results over every record with a raw page

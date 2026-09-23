@@ -35,7 +35,8 @@ edge remains in `form_of_edge`.
 
 The seed also writes the recovered layer ([#28](https://github.com/hueypov/lexema/issues/28)):
 for a record whose word has a raw Wiktionary page under `fixtures/`, the
-definitions the page states and the record does not carry go to
+definitions the page states and the record does not carry as definitions — absent,
+or filed under an example — go to
 `recovered_definition`, with their labels and examples, beside the record and
 naming the page revision and line each was read from. The record's own rows are
 the same with or without it. The run prints how many definitions and examples

@@ -698,7 +698,8 @@ function Definitions({ reading }: { reading: Reading }) {
   const first = definitions.slice(0, DEFINITION_SLICE);
   const rest = definitions.slice(DEFINITION_SLICE);
   const recoveredFrom = reading.recovered[0]?.ref;
-  const misfiled = reading.recovered.some((definition) => definition.heldAsExample !== undefined);
+  // `heldAsExample` is null, not absent, on a definition the record did not misfile.
+  const misfiled = reading.recovered.some((definition) => definition.heldAsExample !== null);
   return (
     <Section
       id={`definitions-${reading.recordId}`}

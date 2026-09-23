@@ -627,6 +627,10 @@ test("lap steel guitar shows its main definition once, as a definition, and says
       // The section note does not claim every recovered entry was dropped.
       assert.match(text, /the extraction dropped them or filed them as examples\./);
       assert.doesNotMatch(text, /the extraction dropped them\.(?! or)/);
+      // A word none of whose recovered definitions was misfiled keeps the plain note.
+      const casaText = textOf(card(await render(db, "casa"), "casa, noun"));
+      assert.match(casaText, /the extraction dropped them\./);
+      assert.doesNotMatch(casaText, /filed them as examples/);
     },
     pages,
   );
