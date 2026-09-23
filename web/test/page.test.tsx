@@ -33,7 +33,7 @@ import { lookup, readRelease } from "../../src/lookup/lookup.js";
 import type { Reading } from "../../src/lookup/types.js";
 import type { Attempt } from "../app/attempt.ts";
 import { Attribution } from "../app/Attribution";
-import { DEFINITION_SLICE } from "../app/Reading";
+import { DEFINITION_SLICE, GROUPS_SHOWN_OPEN } from "../app/Reading";
 import { FirstLoad, Outcome, Pending, SearchPage, TRY_WORDS } from "../app/SearchPage";
 import { SiteFooter } from "../app/SiteFooter";
 import { SiteHeader } from "../app/SiteHeader";
@@ -52,6 +52,10 @@ import {
   ERROR,
   ETYMOLOGY_LABEL,
   FIELD_LABEL,
+  FOLD,
+  FOLD_BOX_SEARCHED,
+  FOLD_SUMMARY,
+  FOLD_TENSE_HEADING,
   INDEX_CHEVRON,
   CHIP_WIDE_SLICE,
   MORE,
@@ -197,23 +201,38 @@ function cardById(html: string, recordId: number): string {
   return html.slice(open, html.indexOf("</article>", open));
 }
 
-/** Every box of some markup, from its open tag to its close. */
+/**
+ * Every box of some markup, from its open tag to its close — a folding one
+ * included, which is outlined on a phone when it holds the searched form.
+ */
 function boxesOf(html: string): string[] {
   const found: string[] = [];
-  let at = html.indexOf(`<section class="${BOX}"`);
-  while (at !== -1) {
-    const end = html.indexOf("</section>", at);
-    found.push(html.slice(at, end));
-    at = html.indexOf(`<section class="${BOX}"`, end);
-  }
+  const open = new RegExp(`<section class="(?:${esc(BOX)}|${esc(FOLD_BOX_SEARCHED)})"`, "g");
+  for (const match of html.matchAll(open)) found.push(html.slice(match.index, html.indexOf("</section>", match.index)));
   return found;
 }
 
-/** The headings of every tense box, in page order. */
+/** The headings of every tense box, in page order, whether the set folds on a phone or not. */
 const tenseHeadings = (html: string): string[] =>
-  [...html.matchAll(new RegExp(`<h4 class="${esc(TENSE_HEADING)}" id="[^"]+" lang="it">([^<]+)</h4>`, "g"))].map(
-    (match) => match[1],
-  );
+  [
+    ...html.matchAll(
+      new RegExp(`<h4 class="(?:${esc(TENSE_HEADING)}|${esc(FOLD_TENSE_HEADING)})" id="[^"]+" lang="it">([^<]+)</h4>`, "g"),
+    ),
+  ].map((match) => match[1]);
+
+/** A class string as it sits in the markup, where `&` is written `&amp;`. */
+const attr = (classes: string): string => esc(classes.replace(/&/g, "&amp;"));
+
+/** Each folding group of some markup: its heading, the count its row shows, and whether it is open. */
+const foldsOf = (html: string): { name: string; count: number; open: boolean }[] =>
+  [
+    ...html.matchAll(
+      new RegExp(
+        `<details class="${attr(FOLD)}"( open="")? data-fold=""><summary class="${attr(FOLD_SUMMARY)}"><span[^>]*>([^<]+)</span><span[^>]*>(\\d+)<span class="sr-only"> forms</span></span>`,
+        "g",
+      ),
+    ),
+  ].map((match) => ({ name: match[2], count: Number(match[3]), open: match[1] !== undefined }));
 
 const formMarks = (html: string): number[] => [...html.matchAll(/data-form="(\d+)"/g)].map((match) => Number(match[1]));
 
@@ -417,8 +436,63 @@ test("andavano is one reading: its own facts, andare's whole table with the form
 
 // The page on a phone (#101) ---------------------------------------------------
 //
-// Width is CSS, so these assert the markup the phone layout is drawn from. What
-// each looks like at 390 px is in the pull request's captures.
+// Width is CSS, so these assert the markup the phone layout is drawn from: the
+// folding groups, their open state as the server sends it, and the phone's
+// shorter slice. What each looks like at 390 px is in the pull request's captures.
+
+/** Every spelling a box holds: its forms, and a headword where a box shows one. */
+const spellingsIn = (box: string): number => patternsOf(box, /data-form="\d+"|data-headword=""/);
+
+test("on a phone a verb's groups fold to one row each, naming the group and its count, under Expand all", async () => {
+  await withDevSeed(async ({ db }) => {
+    const verb = card(await render(db, "andare"), "andare, verb");
+    const folds = foldsOf(verb);
+    assert.ok(folds.length > GROUPS_SHOWN_OPEN);
+    // One tappable row per group, named as its box is named, with how many forms it holds.
+    assert.deepEqual(
+      folds.map((fold) => fold.name),
+      tenseHeadings(verb),
+    );
+    const boxes = boxesOf(verb);
+    assert.equal(boxes.length, folds.length);
+    folds.forEach((fold, i) => assert.equal(fold.count, spellingsIn(boxes[i]), `${fold.name}: its count is its forms`));
+    // A lemma's own page searched no form in its table, so every group starts closed.
+    assert.deepEqual(folds.filter((fold) => fold.open), []);
+    // The bar over them: how many groups, and the Expand all a script shows once it runs.
+    assert.match(verb, new RegExp(`>${folds.length} groups</span><button type="button" class="[^"]*" hidden="">Expand all<`));
+    // Folding hides nothing from the document: every form is still in it.
+    const reading = (await readingsFor(db, "andare")).find((candidate) => candidate.pos === "verb");
+    assert.ok(reading);
+    assertEveryFormShown(verb, reading, "andare");
+  });
+});
+
+test("the searched form opens its own group when the page first renders, the rest closed, the row marked in it", async () => {
+  await withDevSeed(async ({ db }) => {
+    const [only] = cardsOf(await render(db, "andavano"));
+    const open = foldsOf(only).filter((fold) => fold.open);
+    assert.deepEqual(open.map((fold) => fold.name), ["imperfetto"]);
+    assert.match(only, fact("tense", "imperfetto", true));
+    // The open group is the one outlined on a phone, and the marked row is inside it.
+    const outlined = boxesOf(only).filter((box) => box.startsWith(`<section class="${FOLD_BOX_SEARCHED}"`));
+    assert.equal(outlined.length, 1);
+    assert.match(outlined[0], /<details class="[^"]*" open="" data-fold="">/);
+    assert.equal(occurrencesOf(outlined[0], "data-searched"), 1);
+    assert.match(textOf(outlined[0]), /andavanoyour search/);
+  });
+});
+
+test("a noun's or adjective's boxes never fold: they stay open, one to a row on a phone", async () => {
+  await withDevSeed(async ({ db }) => {
+    for (const query of ["sale", "casa", "bello", "studente"]) {
+      const html = await render(db, query);
+      for (const part of cardsOf(html)) {
+        if (/<h4 class="[^"]*" id="conjugation-/.test(part)) continue;
+        assert.equal(occurrencesOf(part, "data-fold"), 0, `${query}: no folding group outside a conjugation`);
+      }
+    }
+  });
+});
 
 test("a related-word list shows a shorter first slice on a phone, and the same Show all reveals the rest", async () => {
   await withDevSeed(async ({ db }) => {
@@ -526,7 +600,8 @@ test("the noise the frames do not have is gone", async () => {
       assert.doesNotMatch(text, /Release it-page-test|release line/, `${query}: no release line`);
       assert.doesNotMatch(text, /Sources and licences/, `${query}: no old footer`);
       assert.doesNotMatch(text, /entries for|Italian word/, `${query}: no count line or field label`);
-      assert.equal(patternsOf(html, /<button[\s>]/), 0, `${query}: no search button`);
+      // No search button; the one button a page may carry is a folding set's Expand all.
+      assert.equal(patternsOf(html, /<button[\s>]/), patternsOf(html, />Expand all</), `${query}: no search button`);
       // `warning` marks the etymology labels the frames colour, and the
       // disputed-claim mark, and nothing else.
       const warnings = occurrencesOf(html, "text-warning");

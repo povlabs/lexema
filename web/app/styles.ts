@@ -254,11 +254,39 @@ export const TENSE_HEADING =
   "m-0 border-b border-border px-4 py-2.5 font-serif text-base italic font-normal text-text-strong";
 export const BOX_ROWS = "m-0 flex flex-col gap-0.5 px-2 py-2";
 const LINE = "flex items-baseline gap-4 rounded-[4px] border-2 px-2 py-0.5";
-const ROW_LABEL = "m-0 w-[7.5rem] shrink-0 font-sans text-[0.75rem]";
+/** Narrower on a phone, so a form beside the searched row's note is not broken mid-word. */
+const ROW_LABEL = "m-0 w-[7.5rem] shrink-0 font-sans text-[0.75rem] max-sm:w-20";
 const CELL = "m-0 min-w-0 break-words font-mono text-[0.95rem]";
 export const BOX_LINE = `${LINE} border-transparent`;
 export const BOX_ROW_LABEL = `${ROW_LABEL} text-text-muted`;
 export const BOX_CELL = `${CELL} text-text`;
+/**
+ * A set of more groups than `GROUPS_SHOWN_OPEN` on a phone (frame 08): one
+ * tappable row per group — its name, how many forms it holds, a chevron — and
+ * the rows under it when it is open. On a wide screen the same group is the box
+ * above: the row is not drawn, the heading is, and the rows show whether or not
+ * the group is open (`::details-content` is the part of a `<details>` its
+ * `open` state hides).
+ */
+export const FOLD_ROW = `${BOX_ROW} max-sm:gap-2`;
+/** The group holding the searched form, outlined as a whole on a phone as frame 08 draws it. */
+export const FOLD_BOX_SEARCHED = `${BOX} max-sm:border-accent`;
+export const FOLD = "group/fold sm:[&::details-content]:block sm:[&::details-content]:[content-visibility:visible]";
+export const FOLD_SUMMARY = `flex min-h-12 cursor-pointer list-none items-center gap-3 px-4 py-2 group-open/fold:border-b group-open/fold:border-border sm:hidden [&::-webkit-details-marker]:hidden ${FOCUS_RING}`;
+export const FOLD_NAME = "min-w-0 flex-1 font-sans text-[0.85rem] font-semibold text-text-strong";
+export const FOLD_TENSE_NAME = "min-w-0 flex-1 font-serif text-base italic text-text-strong";
+export const FOLD_COUNT = "font-sans text-[0.75rem] text-text-muted";
+export const FOLD_CHEVRON = "size-4 shrink-0 text-text-muted transition-transform group-open/fold:rotate-180";
+/** The box heading, drawn only where the tappable row is not. */
+export const FOLD_HEADING = `${BOX_HEADING} max-sm:hidden`;
+export const FOLD_TENSE_HEADING = `${TENSE_HEADING} max-sm:hidden`;
+/** Above the groups on a phone: how many there are, and Expand all. */
+export const FOLD_BAR = "mb-3 flex items-center justify-between gap-4 sm:hidden";
+export const FOLD_BAR_COUNT = "font-sans text-[0.8rem] text-text-muted";
+export const FOLD_ALL = BUTTON;
+export const FOLD_ALL_CHEVRON = "size-3.5 transition-transform";
+export const FOLD_ALL_CHEVRON_OPEN = `${FOLD_ALL_CHEVRON} rotate-180`;
+
 /** A note under a box's rows: where the derived articles came from. */
 export const BOX_NOTE = "m-0 border-t border-border px-4 py-2 font-sans text-[0.72rem] text-text-muted";
 
