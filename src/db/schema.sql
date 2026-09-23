@@ -485,8 +485,24 @@ CREATE TABLE recovered_definition (
   -- once, as this definition. NULL when no example carries it.
   held_as_example TEXT CHECK (held_as_example GLOB '/senses/[0-9]*/examples/[0-9]*/text'),
 
+  -- The definition whose list this line is an item of, when it sits below a line
+  -- ending in a colon (#123): `accollato`'s `#*` items under `# attributo araldico
+  -- che si applica a:`. The page's layout decides it, not the item's wording. The
+  -- lead-in is either a sense the record carries or a definition recovered before
+  -- this one from the same page; both NULL for a definition at the top of the list.
+  lead_in_sense_index  INTEGER,
+  lead_in_recovered_id INTEGER,
+
   CHECK ((route = 'sub-term') = (term IS NOT NULL)),
+  CHECK (lead_in_sense_index IS NULL OR lead_in_recovered_id IS NULL),
+  CHECK (lead_in_recovered_id < recovered_id),
   UNIQUE (record_id, definition_index),
+  UNIQUE (recovered_id, record_id),
+  FOREIGN KEY (record_id, lead_in_sense_index)
+    REFERENCES sense(record_id, sense_index) ON DELETE CASCADE,
+  -- A lead-in recovered for another record is not this record's list.
+  FOREIGN KEY (lead_in_recovered_id, record_id)
+    REFERENCES recovered_definition(recovered_id, record_id) ON DELETE CASCADE,
   FOREIGN KEY (record_id, release_id)
     REFERENCES source_record(record_id, release_id) ON DELETE CASCADE,
   -- The page must belong to the record's release.

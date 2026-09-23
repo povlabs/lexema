@@ -7,16 +7,24 @@
 // carries as a gloss is not recovered a second time.
 
 import type { RawPage } from "../source/rawPage.js";
-import { readItalianSections, type PageDefinition, type PageSection, type UnrenderedLine } from "./wikitext.js";
+import { readItalianSections, type LeadIn, type PageDefinition, type PageSection, type UnrenderedLine } from "./wikitext.js";
 
 /** The parts of an archive record recovery compares against. */
 export interface RecordText {
   word: string;
   posTitle: string;
-  /** Every `senses[].glosses[]` string, in source order. */
-  glosses: readonly string[];
+  /** How many senses the record has, glossed or not. */
+  senseCount: number;
+  /** Every `senses[].glosses[]` string, in source order, with its sense. */
+  glosses: readonly RecordGloss[];
   /** Every `senses[].examples[].text` string, in source order, with its pointer. */
   examples: readonly RecordExample[];
+}
+
+/** One `senses[].glosses[]` string and the index of the sense that holds it. */
+export interface RecordGloss {
+  senseIndex: number;
+  text: string;
 }
 
 /** One `senses[].examples[].text` string and where in the record it sits. */
@@ -37,7 +45,8 @@ export function recordText(record: {
   return {
     word: record.word,
     posTitle: record.pos_title,
-    glosses: record.senses.flatMap((sense) => strings(sense.glosses)),
+    senseCount: record.senses.length,
+    glosses: record.senses.flatMap((sense, senseIndex) => strings(sense.glosses).map((text) => ({ senseIndex, text }))),
     examples: record.senses.flatMap((sense, i) =>
       Array.isArray(sense.examples)
         ? sense.examples.flatMap((example: unknown, j) =>
@@ -50,8 +59,23 @@ export function recordText(record: {
   };
 }
 
+/**
+ * The definition a recovered item is listed under: the one whose closing colon
+ * opens its list on the page, found where the record keeps it.
+ */
+export type ListedUnder =
+  /** A sense the record carries, by its index in `senses`. */
+  | { in: "sense"; senseIndex: number }
+  /** A definition recovered before it for the same record, by its place in `recovered`. */
+  | { in: "recovered"; index: number };
+
 /** A definition recovered for one record, and how the record stood toward it. */
 export type RecoveredDefinition = PageDefinition & {
+  /**
+   * Where its lead-in is, when it has one and the record or the recovered
+   * layer holds it. Null for a definition at the top of the section's list.
+   */
+  listedUnder: ListedUnder | null;
   /**
    * The pointer of the record's example that carries this text, when the
    * record files it as an example rather than a definition — `lap steel
@@ -116,6 +140,29 @@ function sectionFor(sections: readonly PageSection[], posTitle: string): RecordR
   return matching[0];
 }
 
+/**
+ * Where a lead-in is kept. One recovered already is found by its page line.
+ * A `#` line is the sense in the same place, when the record has one sense for
+ * each of the section's `#` lines, as the extraction writes them; otherwise,
+ * and for a definition below a `#` line that the record glosses, it is the
+ * sense whose gloss carries its text. A lead-in found neither way leaves the
+ * item at the top of the list, and `measure:recovery` counts it.
+ */
+function placeUnder(
+  leadIn: LeadIn,
+  record: RecordText,
+  section: PageSection,
+  recovered: readonly RecoveredDefinition[],
+): ListedUnder | null {
+  const index = recovered.findIndex((definition) => definition.ref.line === leadIn.ref.line);
+  if (index !== -1) return { in: "recovered", index };
+  if (leadIn.on === "sense-line" && section.senseLines.length === record.senseCount) {
+    return { in: "sense", senseIndex: leadIn.senseLine };
+  }
+  const gloss = record.glosses.find((candidate) => carries(candidate.text, leadIn.text));
+  return gloss === undefined ? null : { in: "sense", senseIndex: gloss.senseIndex };
+}
+
 /** Recover what `record` lost from the page it was extracted from. */
 export function recoverDefinitions(record: RecordText, page: RawPage): RecordRecovery {
   if (page.title !== record.word) {
@@ -127,10 +174,11 @@ export function recoverDefinitions(record: RecordText, page: RawPage): RecordRec
   const recovered: RecoveredDefinition[] = [];
   const alreadyGlossed: PageDefinition[] = [];
   for (const definition of section.senseLines.flatMap((line) => line.below)) {
-    if (record.glosses.some((gloss) => carries(gloss, definition.text))) alreadyGlossed.push(definition);
+    if (record.glosses.some((gloss) => carries(gloss.text, definition.text))) alreadyGlossed.push(definition);
     else {
       const heldAs = record.examples.find((example) => carries(example.text, definition.text));
-      recovered.push({ ...definition, heldAsExample: heldAs?.pointer ?? null });
+      const listedUnder = definition.leadIn === null ? null : placeUnder(definition.leadIn, record, section, recovered);
+      recovered.push({ ...definition, heldAsExample: heldAs?.pointer ?? null, listedUnder });
     }
   }
 

@@ -12,6 +12,12 @@ import { loadFixturePages, RAW_PAGE_WIKI, type RawPage } from "../src/source/raw
 
 const pages = await loadFixturePages(resolve("fixtures"));
 
+/** A record's senses, one gloss each, as `recordText` reads them. */
+const senses = (...glosses: string[]): Pick<RecordText, "senseCount" | "glosses"> => ({
+  senseCount: glosses.length,
+  glosses: glosses.map((text, senseIndex) => ({ senseIndex, text })),
+});
+
 /** Example texts as one sense's examples, where a case's pointers carry nothing. */
 const inOneSense = (...texts: string[]): RecordText["examples"] =>
   texts.map((text, j) => ({ pointer: `/senses/0/examples/${j}/text`, text }));
@@ -31,7 +37,7 @@ function matched(recovery: RecordRecovery): Extract<RecordRecovery, { outcome: "
 const CASA: RecordText = {
   word: "casa",
   posTitle: "Sostantivo",
-  glosses: ["casa ( approfondimento) f sing", "casa ( citazioni)"],
+  ...senses("casa ( approfondimento) f sing", "casa ( citazioni)"),
   examples: [],
 };
 
@@ -85,14 +91,14 @@ test("casa: the two `#` lines are page controls, not senses, and the picture on 
 const CLASSICO: RecordText = {
   word: "classico",
   posTitle: "Aggettivo",
-  glosses: [
+  ...senses(
     "che riguarda la storia dell'antica Grecia e dell'antica Roma, ritenute le patrie della civiltà occidentale",
     "che descrive qualcosa di caratteristico o tipico",
     "in riferimento alla musica classica, ovvero quella composta da autori dei secoli immediatamente successivi alla fine del medioevo",
     "in riferimento alla danza classica",
     "riferimento a qualcosa di tradizionale, in contrapposizione a qualcosa di moderno",
     "una denominazione di vini",
-  ],
+  ),
   examples: inOneSense(
     "il mondo classico è davvero affascinante",
     "il classico comportamento infantile",
@@ -119,6 +125,8 @@ test("classico: a partial loss — the record keeps its six senses and loses the
           "#*'''liceo classico''', [[indirizzo]] della [[scuola]] [[secondaria]] [[superiore]] [[italiana]], [[incentrato]] sullo [[studio]] del {{la}} e del {{grc}}",
         examples: 0,
         heldAsExample: null,
+        leadIn: null,
+        listedUnder: null,
       },
     ],
   );
@@ -136,12 +144,12 @@ test("classico: a partial loss — the record keeps its six senses and loses the
 const INFORMATICA: RecordText = {
   word: "informatica",
   posTitle: "Sostantivo",
-  glosses: [
+  ...senses(
     "disciplina scientifica e tecnica che studia, con l'aiuto di concetti statistici e matematici, le operazioni per predisporre lo sviluppo di informazioni e dati con sistemi elettronici di calcolo e le loro applicazioni pratiche",
     "ingegneria informatica: ramo dell'ingegneria che progetta e realizza sistemi e soluzioni per elaborare informazioni e dati",
     "sicurezza informatica: ramo dell'informatica che si occupa delle operazioni per difendere reti e sistemi di computer da rischi e violazioni di dati",
     "informatica umanistica: è un campo di studi, ricerca, insegnamento che nasce dall'unione di discipline umanistiche e informatiche",
-  ],
+  ),
   examples: inOneSense("Visto il costo contenuto di un personal computer, oggi l'informatica è entrata in quasi tutte le case"),
 };
 
@@ -157,14 +165,14 @@ test("informatica: the ordinary layout — `#` states the sense, `#*` is a usage
 test("the rule is the page structure, not the word: casa's layout under another title recovers the same way", () => {
   const casa = page("casa");
   const renamed: RawPage = { ...casa, title: "dimora", wikitext: casa.wikitext.replaceAll("casa", "dimora") };
-  const recovery = matched(recoverDefinitions({ ...CASA, word: "dimora", glosses: [] }, renamed));
+  const recovery = matched(recoverDefinitions({ ...CASA, word: "dimora", ...senses() }, renamed));
   assert.equal(recovery.loss, "full");
   assert.equal(recovery.recovered.length, 7);
   assert.equal(recovery.recovered[3].text, "dimora costruttrice");
 });
 
 test("a definition the record already glosses is not recovered twice", () => {
-  const glossed = { ...CASA, glosses: [...CASA.glosses, "dimora di una persona; costruzione o struttura in cui uno vive; in particolare la casa in cui uno vive con la sua famiglia"] };
+  const glossed = { ...CASA, ...senses(...CASA.glosses.map((gloss) => gloss.text), "dimora di una persona; costruzione o struttura in cui uno vive; in particolare la casa in cui uno vive con la sua famiglia") };
   const recovery = matched(recoverDefinitions(glossed, page("casa")));
   assert.equal(recovery.recovered.length, 6);
   assert.deepEqual(recovery.alreadyGlossed.map((definition) => definition.ref.line), [10]);
@@ -178,6 +186,104 @@ test("lap steel guitar: a definition the extraction filed as an example is recov
   assert.deepEqual(
     recovery.recovered.map((definition) => [definition.route, definition.heldAsExample]),
     [["below-page-control", "/senses/0/examples/0/text"], ["lead-in-item", null], ["lead-in-item", null]],
+  );
+});
+
+test("lap steel guitar: the items of a recovered definition's colon list sit under it, not beside it", () => {
+  const record = recordText(JSON.parse(readFileSync(resolve("fixtures/lap-steel-guitar.jsonl"), "utf8")));
+  const recovery = matched(recoverDefinitions(record, page("lap steel guitar")));
+  assert.deepEqual(
+    recovery.recovered.map((definition) => [definition.ref.line, definition.leadIn?.ref.line ?? null, definition.listedUnder]),
+    [
+      [6, null, null],
+      [7, 6, { in: "recovered", index: 0 }],
+      [8, 6, { in: "recovered", index: 0 }],
+    ],
+  );
+});
+
+test("accollato: the items below a sense the record carries sit under that sense, exactly as the page words them", () => {
+  // Archive line 33357, verbatim, and its page from the 2026-07-01 dump.
+  const record = recordText(JSON.parse(readFileSync(resolve("fixtures/accollato.jsonl"), "utf8")));
+  const recovery = matched(recoverDefinitions(record, page("accollato")));
+  assert.equal(recovery.loss, "partial");
+  const under = { in: "sense", senseIndex: 2 };
+  assert.deepEqual(
+    recovery.recovered.map((definition) => [definition.route, definition.ref.line, definition.text, definition.listedUnder]),
+    [
+      ["lead-in-item", 7, "due scudi araldici contigui,", under],
+      ["lead-in-item", 8, "più figure lunghe i cui fianchi si toccano,", under],
+      [
+        "lead-in-item",
+        9,
+        "animali muniti di collare (preferibile il termine collarinato) o con altre figure poste attorno o sul collo, come un lambello o una corona",
+        under,
+      ],
+      ["lead-in-item", 10, "figure lunghe cui se ne attorcigliano altre,", under],
+      ["lead-in-item", 11, "scudi che si appoggiano a insegne d'onore sporgenti dal retro,", under],
+      ["lead-in-item", 12, "animali rappresentati con i colli intrecciati, o anche solo congiunti, e passati in decusse.", under],
+    ],
+  );
+  assert.deepEqual(recovery.recovered[0].leadIn, {
+    ref: { wiki: RAW_PAGE_WIKI, title: "accollato", revisionId: 3891844, line: 6 },
+    text: "attributo araldico che si applica a:",
+    on: "sense-line",
+    senseLine: 2,
+  });
+  assert.equal(recovery.recovered[0].wikitext, "#*due scudi araldici contigui,");
+});
+
+test("a lead-in is placed by the page's layout: the `#` line's place when the record has a sense for each, else its gloss", () => {
+  // filetto, revision 4045314: the record glosses `{{Pn|w=…}} detto di:` as
+  // `filetto ( approfondimento) detto di:`, which no probe finds.
+  const filetto = dumpLines("filetto", 4045314, [
+    "{{-sost-|it}}",
+    "# [[diminutivo]] di [[filo]]",
+    "# {{Term|araldica|it}} {{Pn|w=filetto (araldica)}} detto di:",
+    "#*linea di partizione leggermente ingrossata e dotata di smalto proprio, utilizzata soprattutto per separare due campi dello stesso smalto,",
+    "# {{Est}} [[ognuna]] delle [[quattro]] [[sezioni]] o [[parti]] dei [[pesci]]",
+  ]);
+  const placed = (record: Pick<RecordText, "senseCount" | "glosses">) =>
+    matched(recoverDefinitions({ word: "filetto", posTitle: "Sostantivo", examples: [], ...record }, filetto)).recovered.map(
+      (definition) => definition.listedUnder,
+    );
+  const glosses = ["diminutivo di filo", "filetto ( approfondimento) detto di:", "ognuna delle quattro sezioni o parti dei pesci"];
+  // One sense for each `#` line: the lead-in is the sense in its place.
+  assert.deepEqual(placed(senses(...glosses)), [{ in: "sense", senseIndex: 1 }]);
+  // A sense the page does not show as a `#` line: place proves nothing, and
+  // the lead-in is the sense whose gloss carries its text, or nowhere.
+  assert.deepEqual(placed(senses("aggiunto", "diminutivo di filo", "filetto detto di:", "ognuna delle quattro sezioni")), [
+    { in: "sense", senseIndex: 2 },
+  ]);
+  assert.deepEqual(placed(senses("aggiunto", ...glosses)), [null]);
+});
+
+test("an item that defines itself in full still sits in the list its lead-in opens: layout, not wording", () => {
+  // d'oro, revision 3395935.
+  const doro = dumpLines("d'oro", 3395935, [
+    "{{-agg-|it}}",
+    "# {{Fig}} [[prezioso]] o di [[valore]], anche in senso [[astratto]]:",
+    "#* ''[[parola|parole]] '''d'oro''''', ''[[persona]] '''d'oro''''', ''[[regola]] '''d'oro''''';",
+    "#* ''[[nozze d'oro]]'': il cinquantesimo [[anniversario]] di [[matrimonio]];",
+  ]);
+  const recovery = matched(
+    recoverDefinitions({ word: "d'oro", posTitle: "Aggettivo", examples: [], ...senses("prezioso o di valore, anche in senso astratto:") }, doro),
+  );
+  assert.deepEqual(
+    recovery.recovered.map((definition) => [definition.text, definition.listedUnder]),
+    [["nozze d'oro: il cinquantesimo anniversario di matrimonio;", { in: "sense", senseIndex: 0 }]],
+  );
+  // liceo, revision 4031729: a bold sub-term under a colon line sits in its list too.
+  const liceo = dumpLines("liceo", 4031729, [
+    "{{-sost-|it}}",
+    "#in particolare in [[Italia]]:",
+    "#* '''liceo classico''': [[incentrato]] sullo [[studio]] del [[latino]] e del [[greco]] [[antico]]",
+  ]);
+  assert.deepEqual(
+    matched(recoverDefinitions({ word: "liceo", posTitle: "Sostantivo", examples: [], ...senses("in particolare in Italia:") }, liceo)).recovered.map(
+      (definition) => [definition.route, definition.listedUnder],
+    ),
+    [["sub-term", { in: "sense", senseIndex: 0 }]],
   );
 });
 
@@ -195,7 +301,7 @@ test("page controls with no definition below them, and quotations below a colon,
     ].join("\n"),
   };
   for (const posTitle of ["Avverbio", "Sostantivo"]) {
-    const recovery = matched(recoverDefinitions({ word: "prova", posTitle, glosses: [], examples: [] }, nodef));
+    const recovery = matched(recoverDefinitions({ word: "prova", posTitle, ...senses(), examples: [] }, nodef));
     assert.deepEqual(recovery.recovered, [], posTitle);
   }
 });
@@ -205,7 +311,7 @@ test("a line whose template the renderer does not know is reported, never printe
     wiki: RAW_PAGE_WIKI, title: "prova", revisionId: 1, timestamp: "2026-09-23T00:00:00Z",
     wikitext: ["== {{-it-}} ==", "{{-sost-|it}}", "# {{Pn}} ''f sing''", "#* [[saggio]] {{Sconosciuto|x}} di qualcosa"].join("\n"),
   };
-  const recovery = matched(recoverDefinitions({ word: "prova", posTitle: "Sostantivo", glosses: [], examples: [] }, unknown));
+  const recovery = matched(recoverDefinitions({ word: "prova", posTitle: "Sostantivo", ...senses(), examples: [] }, unknown));
   assert.deepEqual(recovery.recovered, []);
   assert.deepEqual(recovery.unrendered.map((line) => [line.ref.line, line.template]), [[4, "sconosciuto"]]);
 });
@@ -225,7 +331,7 @@ function dumpLines(title: string, revisionId: number, lines: readonly string[]):
 }
 
 const recovered = (title: string, posTitle: string, page: RawPage): string[] =>
-  matched(recoverDefinitions({ word: title, posTitle, glosses: [], examples: [] }, page)).recovered.map((definition) => definition.text);
+  matched(recoverDefinitions({ word: title, posTitle, ...senses(), examples: [] }, page)).recovered.map((definition) => definition.text);
 
 test("below {{Nodef}} the page says it has no definition: a plain sentence there is not one, a sub-term that defines itself is", () => {
   // fondarsi, revision 3639635; colorito, revision 3964599.

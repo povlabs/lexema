@@ -47,7 +47,7 @@ const COLUMNS: Record<TableName, string> = {
   sense_label: "sense_id,label_index,kind,label,json_pointer",
   grammar_claim: "record_id,scope,scope_index,json_pointer,status,dimension,value,source_text",
   raw_page: "page_id,release_id,wiki,title,revision_id,revision_timestamp",
-  recovered_definition: "recovered_id,record_id,release_id,page_id,definition_index,route,term,page_line,wikitext,text,held_as_example",
+  recovered_definition: "recovered_id,record_id,release_id,page_id,definition_index,route,term,page_line,wikitext,text,held_as_example,lead_in_sense_index,lead_in_recovered_id",
   recovered_label: "recovered_id,label_index,label",
   recovered_example: "recovered_id,example_index,page_line,wikitext,text",
   release_table_rows: "release_id,table_name,rows",

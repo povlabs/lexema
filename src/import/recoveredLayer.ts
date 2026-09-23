@@ -3,8 +3,8 @@
 // For each admitted record whose word has a raw page, the page's section for the
 // record is read and every definition the record does not carry is written to
 // `recovered_definition`, with its labels and examples, naming the page
-// revision it came from. The record's own rows are written by `writeRecord`
-// first and are not touched here.
+// revision it came from and the lead-in whose list it sits in, if any. The
+// record's own rows are written by `writeRecord` first and are not touched here.
 
 import { recordText, recoverDefinitions } from "../italian/recovery.js";
 import type { RawPage, RawPageSource } from "../source/rawPage.js";
@@ -77,8 +77,12 @@ export class RecoveredLayer {
     if (recovery.recovered.length === 0) return;
 
     const pageId = this.pageId(releaseId, page);
+    // Ids follow page order, so a lead-in recovered for this record has the
+    // id its place in `recovered` gives it, lower than any item in its list.
+    const firstId = this.nextRecoveredId;
     recovery.recovered.forEach((definition, definitionIndex) => {
       const recoveredId = this.nextRecoveredId++;
+      const leadIn = definition.listedUnder;
       this.statements.insertDefinition.run(
         recoveredId,
         recordId,
@@ -91,6 +95,8 @@ export class RecoveredLayer {
         definition.wikitext,
         definition.text,
         definition.heldAsExample,
+        leadIn?.in === "sense" ? leadIn.senseIndex : null,
+        leadIn?.in === "recovered" ? firstId + leadIn.index : null,
       );
       this.rows.recovered_definition += 1;
       this.summary.definitions += 1;

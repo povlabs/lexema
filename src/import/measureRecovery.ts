@@ -15,7 +15,7 @@
 
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
-import { recordText, recoverDefinitions, type RecordRecovery } from "../italian/recovery.js";
+import { recordText, recoverDefinitions, type RecordRecovery, type RecoveredDefinition } from "../italian/recovery.js";
 import { openRawPages } from "../source/wiktionaryDump.js";
 import { parseArchive } from "./importRelease.js";
 
@@ -50,6 +50,8 @@ class Tally {
   byRoute: Record<string, number> = {};
   examples = 0;
   heldAsExample = 0;
+  /** Recovered items in a lead-in's list, by where the lead-in is kept; `unplaced` when neither holds it. */
+  listedUnder = { sense: 0, recovered: 0, unplaced: 0 };
   alreadyGlossed = 0;
   unrendered = 0;
 
@@ -65,6 +67,8 @@ class Tally {
       this.byRoute[definition.route] = (this.byRoute[definition.route] ?? 0) + 1;
       this.examples += definition.examples.length;
       if (definition.heldAsExample !== null) this.heldAsExample += 1;
+      if (definition.listedUnder !== null) this.listedUnder[definition.listedUnder.in] += 1;
+      else if (definition.leadIn !== null) this.listedUnder.unplaced += 1;
     }
   }
 }
@@ -94,7 +98,15 @@ const losses: {
   revisionId: number;
   loss: string;
   stratum: string | null;
-  recovered: { route: string; line: number; text: string; examples: number; heldAsExample: boolean }[];
+  recovered: {
+    route: string;
+    line: number;
+    text: string;
+    examples: number;
+    heldAsExample: boolean;
+    leadInLine: number | null;
+    listedUnder: RecoveredDefinition["listedUnder"];
+  }[];
   unrendered: { line: number; template: string }[];
 }[] = [];
 const unrendered: { word: string; line: number; template: string }[] = [];
@@ -133,6 +145,8 @@ const report = await parseArchive({
         text: definition.text,
         examples: definition.examples.length,
         heldAsExample: definition.heldAsExample !== null,
+        leadInLine: definition.leadIn?.ref.line ?? null,
+        listedUnder: definition.listedUnder,
       })),
       unrendered: recovery.unrendered.map((line) => ({ line: line.ref.line, template: line.template })),
     });
@@ -187,6 +201,8 @@ line(`  matched to one section: ${all.outcomes.matched}; no Italian section: ${a
 line(`  loss: full ${all.loss.full}, partial ${all.loss.partial}, none ${all.loss.none}`);
 line(`  definitions recovered: ${all.definitions} (${Object.entries(all.byRoute).map(([route, n]) => `${route} ${n}`).join(", ")})`);
 line(`  examples recovered with them: ${all.examples}; held by the record as an example: ${all.heldAsExample}`);
+line(`  in a lead-in's list: under a record sense ${all.listedUnder.sense}, under a recovered definition ` +
+  `${all.listedUnder.recovered}, lead-in not found ${all.listedUnder.unplaced}`);
 line(`  already a gloss: ${all.alreadyGlossed}; marked a definition but not rendered: ${all.unrendered}`);
 for (const projection of projections) {
   line(`sample ${projection.stratum}: ${projection.lossy}/${projection.scored} scored records lose a definition ` +

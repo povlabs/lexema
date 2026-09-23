@@ -307,6 +307,22 @@ export type DefinitionRoute =
   /** An item of the list a definition introduces with a closing colon. */
   | { route: "lead-in-item" };
 
+/**
+ * The line whose closing colon opens the list a definition is an item of:
+ * `# attributo araldico che si applica a:` above `accollato`'s `#*` items. The
+ * item belongs inside it.
+ */
+export type LeadIn = {
+  ref: RawPageRef;
+  /** Its text as a reader sees it, to find it among the record's glosses. */
+  text: string;
+} & (
+  /** A `#` line: `senseLine` is its place among the section's `#` lines, from 0. */
+  | { on: "sense-line"; senseLine: number }
+  /** A definition below a `#` line. */
+  | { on: "definition" }
+);
+
 /** A usage sentence the page attaches to a definition. */
 export interface PageExample {
   text: string;
@@ -325,6 +341,13 @@ export type PageDefinition = DefinitionRoute & {
   wikitext: string;
   /** The italic lines one level below it, in page order. */
   examples: PageExample[];
+  /**
+   * The line above it that ends in a colon, when it sits in that line's list.
+   * Layout decides it, not wording: an item that defines itself in full
+   * (`nozze d'oro`) is still in its lead-in's list. Null for a definition at
+   * the top of its section's list.
+   */
+  leadIn: LeadIn | null;
 };
 
 /** A line the structure marks as a definition but that could not be rendered. */
@@ -377,8 +400,11 @@ class SectionReader {
     return { wiki: this.page.wiki, title: this.page.title, revisionId: this.page.revisionId, line };
   }
 
-  /** A line below `#` that the structure has already marked as a definition. */
-  definition(node: ListLine, route: DefinitionRoute): PageDefinition[] {
+  /**
+   * A line below `#` that the structure has already marked as a definition.
+   * `leadIn` is the colon-ended line whose list it is in, if any.
+   */
+  definition(node: ListLine, route: DefinitionRoute, leadIn: LeadIn | null): PageDefinition[] {
     const rendered = renderInline(node.body, this.page.title);
     if (rendered.rendered && (opensQuotation(rendered.text) || endsAsUtterance(rendered.text))) return [];
     if (!rendered.rendered) {
@@ -392,18 +418,19 @@ class SectionReader {
       ref: this.ref(node.line),
       wikitext: node.wikitext,
       examples: [],
+      leadIn,
     };
-    const nested = this.below(node, leadsIn(rendered.text), definition.examples);
-    return [definition, ...nested];
+    const opens = leadsIn(rendered.text) ? { ref: definition.ref, text: definition.text, on: "definition" as const } : null;
+    return [definition, ...this.below(node, opens, definition.examples)];
   }
 
   /**
-   * The definitions below a line that states a meaning. `leadIn` is whether it
-   * ends in a colon, which makes its plain children items of its list. Italic
-   * children are its examples, collected into `examples` when the caller keeps
-   * them — a sense line's examples are the extraction's already.
+   * The definitions below a line that states a meaning. `leadIn` is the line
+   * itself when it ends in a colon, which makes its plain children items of its
+   * list. Italic children are its examples, collected into `examples` when the
+   * caller keeps them — a sense line's examples are the extraction's already.
    */
-  below(node: ListLine, leadIn: boolean, examples: PageExample[] | undefined): PageDefinition[] {
+  below(node: ListLine, leadIn: LeadIn | null, examples: PageExample[] | undefined): PageDefinition[] {
     return node.children.flatMap((child) => {
       if (isSenseMarker(child.marker)) return [];
       if (isWhollyItalic(child.body)) {
@@ -415,17 +442,19 @@ class SectionReader {
       }
       const rendered = renderInline(child.body, this.page.title);
       const term = rendered.rendered ? boldSubTerm(rendered.runs) : undefined;
-      if (term !== undefined) return this.definition(child, { route: "sub-term", term });
-      if (leadIn && hasPlainProse(child.body)) return this.definition(child, { route: "lead-in-item" });
+      if (term !== undefined) return this.definition(child, { route: "sub-term", term }, leadIn);
+      if (leadIn !== null && hasPlainProse(child.body)) return this.definition(child, { route: "lead-in-item" }, leadIn);
       return [];
     });
   }
 
-  senseLine(node: ListLine): PageSenseLine {
+  /** The section's `index`th `#` line, from 0. */
+  senseLine(node: ListLine, index: number): PageSenseLine {
     const ref = this.ref(node.line);
     if (hasPlainProse(node.body)) {
       const rendered = renderInline(node.body, this.page.title);
-      const leadIn = rendered.rendered && leadsIn(rendered.text);
+      const leadIn: LeadIn | null =
+        rendered.rendered && leadsIn(rendered.text) ? { ref, text: rendered.text, on: "sense-line", senseLine: index } : null;
       return { kind: "sense", ref, wikitext: node.wikitext, below: this.below(node, leadIn, undefined) };
     }
     // `{{Nodef}}` says the page gives no definition here, so a line below it is
@@ -433,11 +462,11 @@ class SectionReader {
     // bold sub-term that goes on to define itself is still a definition
     // (`colorito`: `'''espressione colorita''': utilizzo di termini volgari…`).
     if (NO_DEFINITION.test(node.body)) {
-      return { kind: "page-control", ref, wikitext: node.wikitext, below: this.below(node, false, undefined) };
+      return { kind: "page-control", ref, wikitext: node.wikitext, below: this.below(node, null, undefined) };
     }
     const below = node.children.flatMap((child) =>
       !isSenseMarker(child.marker) && hasPlainProse(child.body) && !isWhollyItalic(child.body)
-        ? this.definition(child, { route: "below-page-control" })
+        ? this.definition(child, { route: "below-page-control" }, null)
         : [],
     );
     return { kind: "page-control", ref, wikitext: node.wikitext, below };
@@ -482,7 +511,7 @@ export function readItalianSections(page: RawPage): PageSection[] {
     const reader = new SectionReader(page);
     const senseLines = listTree(list)
       .filter((node) => isSenseMarker(node.marker))
-      .map((node) => reader.senseLine(node));
+      .map((node, index) => reader.senseLine(node, index));
     return {
       posTemplate,
       posTitle: POS_TITLE_BY_TEMPLATE[posTemplate],
