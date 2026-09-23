@@ -118,10 +118,10 @@ export function wordPage(query: string, readings: readonly [Reading, ...Reading[
 /**
  * The headword-level fields, once for the word.
  *
- * The source repeats them on every record of a headword, byte for byte on the
- * words checked (`andare`, `sale`), so the union is normally one record's copy.
- * A union rather than the first record's copy is what keeps a record that did
- * differ from being dropped without a word.
+ * The source usually repeats them on every record of a headword, but not
+ * always: 133 of the 16,792 headwords with several records in release
+ * `it-0c432803` differ (docs/WEB.md). A union rather than the first record's
+ * copy is what keeps a record that differs from being dropped without a word.
  */
 function mergeWordFacts(readings: readonly Reading[]): WordFacts {
   const distinct = <T>(items: T[], key: (item: T) => string): T[] => {

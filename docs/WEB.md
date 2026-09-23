@@ -118,9 +118,12 @@ its own page. Any record that lists the query and is no reading's lemma keeps a
 card of its own, saying it does not define the query.
 
 **Once per word.** Pronunciation, syllables, etymologies, synonyms, antonyms
-and derived words are read from `source_record_json` and are the same on every
-record of a headword, so they render once: the strip under the headword, and
-the sections after the last card. Several etymologies are labelled *reading
+and derived words are read from `source_record_json` and render once: the strip
+under the headword, and the sections after the last card. The source usually
+repeats them on every record of a headword, but not always. In release
+`it-0c432803`, 16,659 of the 16,792 headwords with more than one record carry
+the six fields identically on each; 133 do not. So the page shows the union of
+what the records carry, each item once, rather than one record's copy. Several etymologies are labelled *reading
 not given*, because the source does not say which reading each belongs to.
 
 ## Why a disputed claim is a row and not a code path
