@@ -12,16 +12,21 @@
 //                a gender/number stamp in italics, a link to the plural, a
 //                no-definition marker. It is page furniture, and the lines one
 //                level below it are the definitions (`casa`, `pianoforte`,
-//                `manuale`).
+//                `manuale`) — except below `{{Nodef}}`, where the page says it
+//                has none.
 //   definition   a line below `#` the structure marks as a meaning — under a
-//                page control; opened by a bold sub-term followed by prose
+//                page control; opened by a bold sub-term that a comma, colon
+//                or bracket marks off from the prose defining it
 //                (`#*'''liceo classico''', indirizzo…`); or an item of a list a
 //                definition introduces with a colon.
-//   example      a line whose visible text is all italic, below a definition.
+//   example      a line whose visible text is all italic, below a definition;
+//                a closing attribution in brackets does not count.
 //
-// Anything else below a sense line — a plain usage sentence, a quotation — is
-// left exactly where the extraction left it. The rules read markup only: no
-// word, page or title list decides anything here.
+// Anything else below a sense line — a plain usage sentence, a quotation, a
+// line ending in `!` or `?`, the items after `Esempi:` — is left exactly where
+// the extraction left it. The rules read markup and punctuation only: no
+// headword, page or title list decides anything here, and the one phrase read
+// is the page's own `Esempi:` label.
 
 import type { RawPage, RawPageRef } from "../source/rawPage.js";
 
@@ -160,9 +165,13 @@ function hasPlainProse(body: string): boolean {
   return runsOf(withoutTemplates(body)).some((run) => !run.italic && hasLetters(run.text));
 }
 
-/** True when every visible letter on the line is italic, and there is one. */
+/**
+ * True when every visible letter on the line is italic, and there is one. A
+ * closing attribution in brackets does not count against it: an italic
+ * quotation followed by `(Deledda)` is still a quotation.
+ */
 function isWhollyItalic(body: string): boolean {
-  const runs = runsOf(withoutTemplates(body));
+  const runs = runsOf(withoutTemplates(body).replace(/\s*\([^()]*\)[\s.;,]*$/, ""));
   return runs.some((run) => run.italic && hasLetters(run.text)) && !runs.some((run) => !run.italic && hasLetters(run.text));
 }
 
@@ -172,6 +181,18 @@ function isWhollyItalic(body: string): boolean {
  * `«La marchesa si ritirò…» Antonio Fogazzaro`, not a list of meanings.
  */
 const opensQuotation = (text: string): boolean => /^[«“„"]/.test(text);
+
+/**
+ * A line that ends in `!` or `?` is something a person says, not a meaning:
+ * `'''Eppure''', me l'avevano detto!`, `'''qual''' è la tua stanza?`.
+ */
+const endsAsUtterance = (text: string): boolean => /[!?]$/.test(text);
+
+/** `#Esempi:` — the page announcing that examples follow, not meanings. */
+const EXAMPLES_LEAD_IN = /^(?:esempi|esempio|ad esempio|per esempio|es\.)\s*:$/i;
+
+/** Whether a line's text opens a list of meanings: it ends in a colon and does not announce examples. */
+const leadsIn = (text: string): boolean => text.endsWith(":") && !EXAMPLES_LEAD_IN.test(text);
 
 /** Collapse whitespace the way a browser does, and trim. */
 const collapse = (text: string): string => text.replace(/\s+/g, " ").trim();
@@ -233,6 +254,12 @@ function boldSubTerm(runs: readonly Run[]): string | undefined {
   const term = collapse(runs.slice(firstVisible, end + 1).map((run) => run.text).join(""));
   const rest = runs.slice(end + 1);
   if (term === "" || !rest.some((run) => !run.italic && !run.bold && hasLetters(run.text))) return undefined;
+  // The definition is marked off from its term: a comma or a colon after it, or
+  // a gloss in brackets first (`'''apparato genitale''' (maschile o femminile):`).
+  // A bold word that runs straight on into a sentence is the headword used in a
+  // usage sentence, not a term being defined (`'''Discordia''' tra familiari.`).
+  const after = collapse(rest.map((run) => run.text).join(""));
+  if (!/^\(|[:,]/.test(after)) return undefined;
   return term;
 }
 
@@ -262,6 +289,9 @@ function listTree(lines: readonly Omit<ListLine, "children">[]): ListLine[] {
   }
   return roots;
 }
+
+/** `{{Nodef|it}}`: the page's own mark that it gives no definition. */
+const NO_DEFINITION = /\{\{\s*nodef\s*[|}]/i;
 
 /** A line the extraction reads as a sense: its marker is `#`, `##`, … only. */
 const isSenseMarker = (marker: string): boolean => /^#+$/.test(marker);
@@ -350,7 +380,7 @@ class SectionReader {
   /** A line below `#` that the structure has already marked as a definition. */
   definition(node: ListLine, route: DefinitionRoute): PageDefinition[] {
     const rendered = renderInline(node.body, this.page.title);
-    if (rendered.rendered && opensQuotation(rendered.text)) return [];
+    if (rendered.rendered && (opensQuotation(rendered.text) || endsAsUtterance(rendered.text))) return [];
     if (!rendered.rendered) {
       this.unrendered.push({ ref: this.ref(node.line), wikitext: node.wikitext, template: rendered.template });
       return [];
@@ -363,7 +393,7 @@ class SectionReader {
       wikitext: node.wikitext,
       examples: [],
     };
-    const nested = this.below(node, rendered.text.endsWith(":"), definition.examples);
+    const nested = this.below(node, leadsIn(rendered.text), definition.examples);
     return [definition, ...nested];
   }
 
@@ -395,11 +425,18 @@ class SectionReader {
     const ref = this.ref(node.line);
     if (hasPlainProse(node.body)) {
       const rendered = renderInline(node.body, this.page.title);
-      const leadIn = rendered.rendered && rendered.text.endsWith(":");
+      const leadIn = rendered.rendered && leadsIn(rendered.text);
       return { kind: "sense", ref, wikitext: node.wikitext, below: this.below(node, leadIn, undefined) };
     }
+    // `{{Nodef}}` says the page gives no definition here, so a line below it is
+    // not one by position: `fondarsi` puts a plain usage sentence there. Only a
+    // bold sub-term that goes on to define itself is still a definition
+    // (`colorito`: `'''espressione colorita''': utilizzo di termini volgari…`).
+    if (NO_DEFINITION.test(node.body)) {
+      return { kind: "page-control", ref, wikitext: node.wikitext, below: this.below(node, false, undefined) };
+    }
     const below = node.children.flatMap((child) =>
-      !isSenseMarker(child.marker) && hasPlainProse(child.body)
+      !isSenseMarker(child.marker) && hasPlainProse(child.body) && !isWhollyItalic(child.body)
         ? this.definition(child, { route: "below-page-control" })
         : [],
     );
