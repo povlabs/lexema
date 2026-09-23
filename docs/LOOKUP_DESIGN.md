@@ -175,6 +175,7 @@ Query 2a in `src/db/queries.sql` has the same shape and the same problem.
 
 ## Not in scope
 
-No prefix search or autocomplete (#15). No ranking, contextual or otherwise. No
-HTTP layer — that arrives with the page in #14. Review rows are read but never
+Prefix suggestions are covered in [LOOKUP.md § Suggestions](LOOKUP.md#suggestions)
+(#15); they list headwords alphabetically and rank nothing. No ranking of lookup
+results, contextual or otherwise. No HTTP layer — that arrives with the page in #14. Review rows are read but never
 written; writing them is #12.

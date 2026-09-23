@@ -210,7 +210,50 @@ replaces it.
 so tests can assert their query plans. See
 [the design notes](LOOKUP_DESIGN.md#the-view-that-costs-four-orders-of-magnitude).
 
+## Suggestions
+
+`suggest()` in [`src/lookup/suggest.ts`](../src/lookup/suggest.ts) takes a
+prefix and returns at most ten headword spellings that start with it, in
+alphabetical order. The search field shows them as a list while a reader types
+(#15); choosing one runs `lookup()` for it.
+
+```ts
+await suggest({ db: fromD1(env.DB), releaseId, prefix: "a" });
+// { outcome: "suggested", prefix: { raw: "a", key: "a" },
+//   suggestions: ["a", …the first ten headwords under a] }
+```
+
+**Query handling** is `normalizeItalianExact`, as above: case and apostrophes
+fold, accents stay. `citt` suggests `città`; `citta` does not.
+
+**Bounds.** An empty prefix, or one over `MAX_PREFIX_LENGTH` (the 128 of
+`MAX_QUERY_LENGTH`), is `rejected` without reaching the index. One letter is
+enough. `SUGGESTION_LIMIT` is 10.
+
+**What is suggested.** Headwords only, each spelling once however many records
+carry it, as the source spells it. A spelling found only in another record's
+`forms[]` is not suggested.
+
+**Order.** Alphabetical by normalized key: the first words in the dictionary
+under what was typed. Huey's ruling, 2026-09-23: "it should show alphabetical
+order like the first 10, if i write a it should show words from letter a from
+database". The rows come back from `lookup_form_headword_by_key` already in key
+order, so nothing is sorted and the walk stops after a few rows; a one-letter
+prefix costs what a long one does.
+
+Keys compare by code point, so an accented letter sorts after every unaccented
+one in the same position: `citt` gives `cittadino` before `città`. A dictionary's
+own collation would put `città` first, but it would need every match under the
+prefix read and sorted, which for `a` is some sixty thousand rows.
+
+An earlier version of this branch ranked by definition and length instead;
+Huey rejected it for alphabetical. The measurements of both are in
+[the autocomplete measurements](../reports/2026-09-23-autocomplete-measurements.md).
+
+`SUGGEST_SQL` is exported so a test can assert it stays a range probe on
+`lookup_form_headword_by_key` with no sort step.
+
 ## Not covered here
 
-Prefix search and autocomplete (#15), ranking, and the HTTP layer (#14). Review
-rows are read but never written; writing them is #12.
+Fuzzy matching and did-you-mean (out of scope in #15), and the HTTP layer (#14).
+Review rows are read but never written; writing them is #12.

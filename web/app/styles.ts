@@ -60,11 +60,34 @@ export const SEARCH_FORM = "w-full max-w-[40rem]";
 export const SEARCH_FIELD =
   "relative flex w-full items-center rounded-[4px] border border-border-strong bg-surface-raised focus-within:border-accent";
 export const SEARCH_ICON = "pointer-events-none absolute left-4 size-4 text-text-muted";
+/**
+ * The browser's own clear button on a `type="search"` field is hidden: it is
+ * drawn in the browser's blue, not a role, and sat on top of the field's own
+ * `×` and `ENTER` hint once typing opened the suggestion list.
+ */
 export const SEARCH_INPUT =
-  "w-full min-w-0 bg-transparent py-3 pr-12 pl-11 font-serif text-lg text-text-strong outline-none placeholder:font-sans placeholder:text-base placeholder:text-text-muted";
+  "w-full min-w-0 bg-transparent py-3 pr-12 pl-11 font-serif text-lg text-text-strong outline-none placeholder:font-sans placeholder:text-base placeholder:text-text-muted [&::-webkit-search-cancel-button]:appearance-none";
 export const SEARCH_CLEAR = `absolute right-3 flex size-7 items-center justify-center font-sans text-lg text-text-muted no-underline hover:text-text ${FOCUS_RING}`;
 export const SEARCH_HINT =
   "pointer-events-none absolute right-4 font-sans text-[0.65rem] tracking-[0.12em] text-text-muted";
+
+/**
+ * The suggestion list under the field. No frame draws it, so it takes the
+ * field's own parts: `surface-raised` with a hairline `border`, as wide as the
+ * field, and the source's spellings in the serif the field is typed in. The
+ * highlighted row is outlined in `accent` the way the searched form is outlined
+ * in a paradigm box, and carries the field's own `ENTER` hint in words, so it is
+ * never marked by colour alone.
+ */
+export const SUGGEST_POPUP =
+  "w-[var(--anchor-width)] max-w-[var(--available-width)] rounded-[4px] border border-border bg-surface-raised p-1 text-left";
+export const SUGGEST_LIST = "outline-none";
+export const SUGGEST_ITEM =
+  "group flex cursor-default items-baseline justify-between gap-4 rounded-[4px] border-2 border-transparent px-3 py-1 font-serif text-lg text-text select-none data-highlighted:border-accent data-highlighted:text-text-strong";
+export const SUGGEST_ITEM_HINT =
+  "invisible font-sans text-[0.65rem] tracking-[0.12em] text-accent group-data-highlighted:visible";
+/** No suggestions, or none could be read: said in words, in the list's place. */
+export const SUGGEST_NOTE = "px-3 py-2 font-sans text-[0.85rem] text-text-muted";
 
 /** Frame 00: `Try` and a row of bordered chips under the field. */
 export const TRY_ROW = "mt-8 flex flex-wrap items-center justify-center gap-2";

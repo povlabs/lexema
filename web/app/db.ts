@@ -5,6 +5,7 @@
 import { env } from "cloudflare:workers";
 import { fromD1 } from "@lexema/lookup/database.ts";
 import { lookup, readRelease } from "@lexema/lookup/lookup.ts";
+import { suggest, type SuggestResult } from "@lexema/lookup/suggest.ts";
 import type { ReleaseInfo } from "@lexema/lookup/types.ts";
 import type { Attempt } from "./attempt.ts";
 
@@ -40,5 +41,22 @@ export async function release(): Promise<ReleaseInfo | undefined> {
   } catch (error) {
     console.error("release read failed", error);
     return undefined;
+  }
+}
+
+/**
+ * Suggestions for a prefix, or the fact that they could not be read.
+ *
+ * Failure is kept apart from an empty answer for the reason `search` keeps it
+ * apart from "not found": the field has to be able to say "no suggestions"
+ * only when the index was asked and held none. The database's message is
+ * logged, not returned.
+ */
+export async function suggestions(prefix: string): Promise<SuggestResult | { outcome: "failed" }> {
+  try {
+    return await suggest({ db: fromD1(env.DB), releaseId: env.LEXEMA_RELEASE, prefix });
+  } catch (error) {
+    console.error("suggest failed", error);
+    return { outcome: "failed" };
   }
 }
