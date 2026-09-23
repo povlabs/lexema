@@ -473,8 +473,19 @@ function FoldingBox({ group, searched }: { group: FormGroup; searched: SearchedS
   );
 }
 
-/** A set of groups: boxes in a row, or on a phone, past the threshold, folds. */
-function FormGroups({ groups, searched }: { groups: readonly FormGroup[]; searched: SearchedSpellings }) {
+/** What a set of groups outlines when it is not a verb's conjugation: nothing. */
+const UNMARKED: SearchedSpellings = { headword: false, formPointers: new Set() };
+
+/**
+ * A set of groups: boxes in a row, or on a phone, past the threshold, folds.
+ *
+ * Only a verb's conjugation passes `searched`. There the outline says which of
+ * ninety-odd forms, in which tense, the query was. A noun's or adjective's
+ * searched spelling is nearly always its headword, so outlining it would
+ * repeat the title: Huey's ruling on #111, "i want that your search box removed
+ * from adjectives + nouns only verbs stay".
+ */
+function FormGroups({ groups, searched = UNMARKED }: { groups: readonly FormGroup[]; searched?: SearchedSpellings }) {
   if (groups.length <= GROUPS_SHOWN_OPEN) {
     return (
       <div className={BOX_ROW}>
@@ -1411,7 +1422,7 @@ function FormsSection({ reading, groups }: { reading: Reading; groups: readonly 
       name={listsForms ? "Forms" : "Articles"}
       count={listsForms ? `${reading.forms.length}` : undefined}
     >
-      <FormGroups groups={groups} searched={searchedSpellings(reading)} />
+      <FormGroups groups={groups} />
     </Section>
   );
 }

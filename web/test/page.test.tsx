@@ -452,6 +452,22 @@ test("andavano is one reading: its own facts, andare's whole table with the form
   });
 });
 
+// Huey's ruling on #111: "i want that your search box removed from adjectives
+// + nouns only verbs stay".
+test("only a verb's conjugation outlines the searched form: a noun's and an adjective's boxes do not", async () => {
+  await withDevSeed(async ({ db }) => {
+    assert.equal(occurrencesOf(await render(db, "andavano"), "data-searched"), 1);
+    // `studenti` and `belle` are forms other records list; `studente` and `bello` are headwords.
+    for (const query of ["studenti", "studente", "belle", "bello"]) {
+      const readings = await readingsFor(db, query);
+      assert.ok(readings.some((reading) => reading.pos === "noun" || reading.pos === "adj"), `${query}: a nominal reading`);
+      const html = await render(db, query);
+      assert.equal(occurrencesOf(html, "data-searched"), 0, `${query}: no row outlined`);
+      assert.doesNotMatch(textOf(html), /your search/, `${query}: no label`);
+    }
+  });
+});
+
 // The page on a phone (#101) ---------------------------------------------------
 //
 // Width is CSS, so these assert the markup the phone layout is drawn from: the
