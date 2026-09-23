@@ -235,6 +235,12 @@ export const SENSE_LABEL = "font-serif italic text-text-muted";
  * section count's small grey sans, so it reads as a note on the text, not text.
  */
 export const RECOVERED_MARK = "ml-2 whitespace-nowrap font-sans text-[0.75rem] not-italic text-text-muted";
+/**
+ * The items of a list a definition opens with a colon (#123), nested under its
+ * text as the page nests them: bulleted, not numbered, in the gloss's own face.
+ */
+export const RECOVERED_ITEMS = "mt-2 mb-0 flex list-disc flex-col gap-2 pl-5 marker:text-text-muted";
+export const RECOVERED_ITEM = "pl-1";
 
 export const EXAMPLES = "m-0 flex list-none flex-col gap-3 p-0";
 export const EXAMPLE =

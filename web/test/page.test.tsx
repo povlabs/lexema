@@ -49,6 +49,7 @@ import {
   CARD,
   CARD_NUMBER,
   CODE_IDENTITY,
+  DEFINITION_NUMBER,
   EMPTY,
   ERROR,
   ETYMOLOGY_LABEL,
@@ -70,6 +71,7 @@ import {
   LINK,
   OPEN_MARK,
   PENDING,
+  RECOVERED_ITEMS,
   RECOVERED_MARK,
   SEARCHED,
   SHELL_CENTRED,
@@ -610,9 +612,11 @@ test("lap steel guitar shows its main definition once, as a definition, and says
       // The record is as imported: the text is still its example.
       const [held] = reading.senses.flatMap((sense) => sense.examples);
       assert.equal(held.ref.jsonPointer, "/senses/0/examples/0/text");
+      // One definition at the top of the list; the two kinds its colon opens
+      // sit inside it, as the page lists them (#123).
       assert.deepEqual(
-        reading.recovered.map((definition) => definition.heldAsExample),
-        [held.ref, null, null],
+        reading.recovered.map((definition) => [definition.heldAsExample, definition.items.map((item) => item.ref.line)]),
+        [[held.ref, [7, 8]]],
       );
 
       const html = card(await render(db, "lap steel guitar"), "lap steel guitar, noun");
@@ -621,7 +625,14 @@ test("lap steel guitar shows its main definition once, as a definition, and says
       assert.equal(occurrencesOf(text, main), 1, "the main definition is shown once");
       assert.equal(occurrencesOf(held.text, main), 1);
       const definitions = html.slice(html.indexOf(">Definitions</h3>"));
-      assert.match(definitions.slice(0, definitions.indexOf("</ol>")), exact(main));
+      assert.match(definitions, new RegExp(`^>Definitions</h3><span class="[^"]*">1</span>`));
+      const first = definitions.slice(0, definitions.indexOf("</ol>"));
+      assert.match(first, exact(main));
+      assert.match(
+        first,
+        new RegExp(`<ul class="${esc(RECOVERED_ITEMS)}"><li[^>]*><p[^>]*><span lang="it">acustica, con una cassa`),
+      );
+      assert.match(first, exact("elettrica, dotata di pick-up come sulle chitarre elettriche"));
       assert.doesNotMatch(html, />Examples<\/h3>/, "its only example is the definition, so there is no Examples section");
       assert.equal(occurrencesOf(html, `<span class="${RECOVERED_MARK}">the source record files this as an example</span>`), 1);
       // The section note does not claim every recovered entry was dropped.
@@ -634,6 +645,49 @@ test("lap steel guitar shows its main definition once, as a definition, and says
     },
     pages,
   );
+});
+
+test("accollato: the items its heraldic sense opens with a colon are nested inside that definition, not numbered after it", async () => {
+  // Archive line 33357, verbatim, and its page from the 2026-07-01 dump.
+  const devSeed = (await readFile(join(REPO, "fixtures/dev-seed.jsonl"), "utf8")).trim().split("\n");
+  const accollato = (await readFile(join(REPO, "fixtures/accollato.jsonl"), "utf8")).trim();
+  const pages = await loadFixturePages(join(REPO, "fixtures"));
+  await withLines(
+    [...devSeed, accollato],
+    async ({ db }) => {
+      const [reading] = await readingsFor(db, "accollato");
+      assert.deepEqual(reading.recovered, [], "nothing recovered stands at the top of the list");
+      assert.deepEqual(
+        reading.senses.map((sense) => sense.recoveredItems.map((item) => item.ref.line)),
+        [[], [], [7, 8, 9, 10, 11, 12]],
+      );
+      const [first] = reading.senses[2].recoveredItems;
+      assert.deepEqual(first.ref, { wiki: "it.wiktionary.org", title: "accollato", revisionId: 3891844, line: 7 });
+
+      const html = card(await render(db, "accollato"), "accollato, adjective");
+      const text = textOf(html);
+      // Three definitions, numbered and counted: the record's three senses.
+      assert.match(html, new RegExp(`>Definitions</h3><span class="[^"]*">3 · showing ${DEFINITION_SLICE}</span>`));
+      assert.equal(patternsOf(html, new RegExp(`<span class="${esc(DEFINITION_NUMBER)}" aria-hidden="true">\\d+\\.</span>`)), 3);
+      // The third holds the six items in one list, each marked, worded exactly as recovered.
+      const third = html.slice(html.indexOf("attributo araldico che si applica a:"));
+      const list = third.slice(third.indexOf(`<ul class="${RECOVERED_ITEMS}">`), third.indexOf("</ul>") + "</ul>".length);
+      assert.equal(occurrencesOf(list, "<li"), 6);
+      assert.equal(occurrencesOf(list, `<span class="${RECOVERED_MARK}">recovered</span>`), 6);
+      assert.ok(third.indexOf(`<ul class="${RECOVERED_ITEMS}">`) < third.indexOf("</li>"), "the list sits inside the third definition");
+      for (const item of reading.senses[2].recoveredItems) assert.match(textOf(list), exact(item.text));
+      assert.match(text, exact("scudi che si appoggiano a insegne d'onore sporgenti dal retro,"));
+      assert.match(text, /Entries marked recovered were read from the Wiktionary page, revision 3891844; the extraction dropped them\./);
+    },
+    pages,
+  );
+});
+
+test("casa has no colon list, and nothing on its card is nested", async () => {
+  await withDevSeedAndPages(async ({ db }) => {
+    const casa = card(await render(db, "casa"), "casa, noun");
+    assert.equal(occurrencesOf(casa, RECOVERED_ITEMS), 0);
+  });
 });
 
 test("an ordinary word's examples are unchanged by the recovered layer", async () => {

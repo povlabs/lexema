@@ -12,6 +12,7 @@
 
 import type { ReactNode } from "react";
 import {
+  everyRecovered,
   isAdjectiveReading,
   isNounReading,
   isVerbReading,
@@ -107,6 +108,8 @@ import {
   SECTION_NAME,
   SECTION_NOTE,
   SECTION_RULE,
+  RECOVERED_ITEM,
+  RECOVERED_ITEMS,
   RECOVERED_MARK,
   SENSE_LABEL,
   SILENCE,
@@ -567,10 +570,15 @@ function Disputes({ reviews }: { reviews: readonly Review[] }) {
 export const DEFINITION_SLICE = 1;
 export const EXAMPLE_SLICE = 1;
 
-/** Two source glosses for casa are page furniture, not definitions (#28, #61). */
+/**
+ * Two source glosses for casa are page furniture, not definitions (#28, #61).
+ * A sense that opens a list of recovered items is a definition whatever its
+ * gloss starts with: `filetto`'s `filetto ( approfondimento) detto di:`.
+ */
 function isEntryFurniture(sense: Sense, word: string): boolean {
   return (
     sense.glosses.length > 0 &&
+    sense.recoveredItems.length === 0 &&
     sense.glosses.every(
       ({ text }) => text === `${word} ( citazioni)` || text.startsWith(`${word} ( approfondimento)`),
     )
@@ -633,8 +641,44 @@ function Definition({ sense, number }: { sense: Sense; number: number }) {
             </p>
           ))
         )}
+        <RecoveredItems items={sense.recoveredItems} />
       </div>
     </li>
+  );
+}
+
+/** A recovered line's text, its labels, and its marks. */
+function RecoveredText({ definition }: { definition: RecoveredDefinition }) {
+  return (
+    <p className={GLOSS}>
+      <span lang="it">
+        {definition.labels.length > 0 && <span className={SENSE_LABEL}>({definition.labels.join(", ")}) </span>}
+        {definition.text}
+      </span>
+      <RecoveredMark />
+      {definition.heldAsExample !== null && (
+        <span className={RECOVERED_MARK}>the source record files this as an example</span>
+      )}
+    </p>
+  );
+}
+
+/**
+ * The items of the list a definition opens with a closing colon, nested inside
+ * it as the page lays them out (#123), unnumbered: they finish that definition
+ * rather than stand as definitions of their own.
+ */
+function RecoveredItems({ items }: { items: readonly RecoveredDefinition[] }) {
+  if (items.length === 0) return null;
+  return (
+    <ul className={RECOVERED_ITEMS}>
+      {items.map((item) => (
+        <li key={item.ref.line} className={RECOVERED_ITEM}>
+          <RecoveredText definition={item} />
+          <RecoveredItems items={item.items} />
+        </li>
+      ))}
+    </ul>
   );
 }
 
@@ -651,16 +695,8 @@ function RecoveredDefinitionItem({ definition, number }: { definition: Recovered
         {number}.
       </span>
       <div>
-        <p className={GLOSS}>
-          <span lang="it">
-            {definition.labels.length > 0 && <span className={SENSE_LABEL}>({definition.labels.join(", ")}) </span>}
-            {definition.text}
-          </span>
-          <RecoveredMark />
-          {definition.heldAsExample !== null && (
-            <span className={RECOVERED_MARK}>the source record files this as an example</span>
-          )}
-        </p>
+        <RecoveredText definition={definition} />
+        <RecoveredItems items={definition.items} />
       </div>
     </li>
   );
@@ -685,7 +721,8 @@ const definitionKey = (item: DefinitionItem): string =>
 /**
  * The extraction's definitions, then the ones recovered from the raw page, in
  * one numbered list. Recovered ones carry their mark, and the section says once
- * where they were read.
+ * where they were read. Only the top of the list is numbered and counted: an
+ * item of a list a definition opens with a colon sits inside that definition.
  */
 function Definitions({ reading }: { reading: Reading }) {
   const definitions: DefinitionItem[] = [
@@ -697,9 +734,10 @@ function Definitions({ reading }: { reading: Reading }) {
   if (definitions.length === 0) return null;
   const first = definitions.slice(0, DEFINITION_SLICE);
   const rest = definitions.slice(DEFINITION_SLICE);
-  const recoveredFrom = reading.recovered[0]?.ref;
+  const recovered = everyRecovered(reading);
+  const recoveredFrom = recovered[0]?.ref;
   // `heldAsExample` is null, not absent, on a definition the record did not misfile.
-  const misfiled = reading.recovered.some((definition) => definition.heldAsExample !== null);
+  const misfiled = recovered.some((definition) => definition.heldAsExample !== null);
   return (
     <Section
       id={`definitions-${reading.recordId}`}
@@ -737,7 +775,7 @@ function EntryNotes({ reading }: { reading: Reading }) {
     <Section id={`notes-${reading.recordId}`} name="Source notes" count={`${furniture.length}`}>
       <aside className={ENTRY_NOTE}>
         <p className="m-0 font-sans text-[0.85rem]">
-          {reading.recovered.length === 0
+          {everyRecovered(reading).length === 0
             ? "The source has entry notes but gives no definition for this reading."
             : "The extraction has entry notes here in place of a definition; the definitions below were recovered from the Wiktionary page."}
         </p>
@@ -762,19 +800,20 @@ type ExampleItem = { key: string; text: string; recovered: boolean };
  * definition is not an example, so it is shown once, among the definitions.
  */
 function Examples({ reading }: { reading: Reading }) {
-  const definitions = new Set(reading.recovered.flatMap((definition) => definition.heldAsExample?.jsonPointer ?? []));
+  const recovered = everyRecovered(reading);
+  const definitions = new Set(recovered.flatMap((definition) => definition.heldAsExample?.jsonPointer ?? []));
   const examples: ExampleItem[] = [
     ...reading.senses.flatMap((sense) =>
       sense.examples
         .filter((example) => !definitions.has(example.ref.jsonPointer))
         .map((example) => ({ key: example.ref.jsonPointer, text: example.text, recovered: false })),
     ),
-    ...reading.recovered.flatMap((definition) =>
+    ...recovered.flatMap((definition) =>
       definition.examples.map((example) => ({ key: `recovered-${example.ref.line}`, text: example.text, recovered: true })),
     ),
   ];
   if (examples.length === 0) return null;
-  const recoveredFrom = reading.recovered.find((definition) => definition.examples.length > 0)?.ref;
+  const recoveredFrom = recovered.find((definition) => definition.examples.length > 0)?.ref;
   const item = (example: ExampleItem) =>
     example.recovered ? (
       <li key={example.key} className={EXAMPLE}>
