@@ -184,6 +184,13 @@ function card(html: string, label: string): string {
   return html.slice(open, html.indexOf("</article>", open));
 }
 
+/** One card out of a page, by the record it renders. */
+function cardById(html: string, recordId: number): string {
+  const open = html.search(new RegExp(`<article class="${esc(CARD)}" id="reading-${recordId}"`));
+  assert.notEqual(open, -1, `no card for record ${recordId}`);
+  return html.slice(open, html.indexOf("</article>", open));
+}
+
 /** Every box of some markup, from its open tag to its close. */
 function boxesOf(html: string): string[] {
   const found: string[] = [];
@@ -220,7 +227,7 @@ function assertEveryFormShown(html: string, reading: Reading, where: string): vo
 
 // The six words the design frames draw, from their real records ---------------
 
-test("each frame word renders one card per reading, and every returned record is a card or a lemma panel", async () => {
+test("each frame word renders every record the lookup returns as a card, and every lemma it points to as that card's panel", async () => {
   await withDevSeed(async ({ db }) => {
     const expected: Record<string, string[]> = {
       casa: ["casa, noun"],
@@ -235,11 +242,21 @@ test("each frame word renders one card per reading, and every returned record is
       const readings = await readingsFor(db, query);
       const page = wordPage(query, readings);
       assert.deepEqual(cardLabels(html), labels, query);
-      // Nothing the lookup returned is dropped: it is a card, or it is named
-      // in the lemma panel of one.
-      assert.equal(page.cards.length + page.absorbed.length, readings.length, `${query}: every record is placed`);
-      for (const lemma of page.absorbed) {
-        assert.match(html, new RegExp(`data-returned="[^"]*\\b${lemma.recordId}\\b`), `${query}: ${lemma.word} is in a panel`);
+      // Nothing the lookup returned is dropped: every record is a card.
+      assert.deepEqual(
+        page.cards.map((c) => c.reading.recordId).sort((a, b) => a - b),
+        readings.map((reading) => reading.recordId).sort((a, b) => a - b),
+        `${query}: every record is a card`,
+      );
+      // And every lemma a reading points to is a panel on that reading's card,
+      // naming every record the source leaves it open between.
+      for (const reading of readings) {
+        const panels = [...cardById(html, reading.recordId).matchAll(/data-lemma-panel=""(?: data-lemma-records="([^"]*)")?/g)];
+        assert.equal(panels.length, reading.lemmaLinks.length, `${query}: ${reading.word} has one panel per lemma`);
+        reading.lemmaLinks.forEach((link, i) => {
+          const named = link.kind === "candidates" ? link.candidates.map((c) => c.recordId).join(" ") : undefined;
+          assert.equal(panels[i][1], named, `${query}: ${reading.word}'s panel ${i} names its lemma's records`);
+        });
       }
       // One h1, the headword; the index and the card numbers only when there
       // is more than one reading (#100).
@@ -251,18 +268,28 @@ test("each frame word renders one card per reading, and every returned record is
   });
 });
 
-test("sale: the salt noun, then two form readings whose lemma panels carry sala and salire", async () => {
+test("sale: the salt noun, then two form readings whose lemmas are sala and salire", async () => {
   await withDevSeed(async ({ db }) => {
     const html = await render(db, "sale");
     const readings = await readingsFor(db, "sale");
-    const sala = readings.filter((reading) => reading.word === "sala");
-    const salire = readings.filter((reading) => reading.word === "salire");
-    assert.equal(sala.length, 1);
-    assert.equal(salire.length, 1);
+    // `sala` and `salire` list `sale` in their tables, and they are the lemmas
+    // two `sale` readings name: so they come back as those readings' lemmas,
+    // with the row that spells `sale`, and not as readings.
+    assert.deepEqual(readings.map((reading) => reading.word), ["sale", "sale", "sale"]);
+    const lemmaOf = (pos: string) => {
+      const reading = readings.find((candidate) => candidate.pos === pos && candidate.lemmaLinks.length > 0);
+      const link = reading?.lemmaLinks[0];
+      assert.ok(link?.kind === "candidates");
+      return link.candidates;
+    };
+    const sala = lemmaOf("noun");
+    assert.deepEqual(sala.map((c) => `${c.word}/${c.pos}/${c.listing !== undefined}`), ["sala/noun/true", "sala/verb/false"]);
+    const salire = lemmaOf("verb");
+    assert.deepEqual(salire.map((c) => `${c.word}/${c.listing !== undefined}`), ["salire/true"]);
 
     const nounForm = card(html, "sale, noun form");
     assert.match(nounForm, /<p class="[^"]*" lang="it">sala<\/p>/);
-    assert.match(nounForm, new RegExp(`data-returned="${sala[0].recordId}"`));
+    assert.match(nounForm, new RegExp(`data-lemma-records="${sala.map((c) => c.recordId).join(" ")}"`));
     assert.match(textOf(nounForm), /2 entries share this spelling: sala \(noun\), sala \(verb\)\. The source does not say which\./);
     assert.match(nounForm, /href="\/\?q=sala">Open entry →<\/a>/);
     assert.match(nounForm, fact("lemma", "sala", true));
@@ -271,7 +298,7 @@ test("sale: the salt noun, then two form readings whose lemma panels carry sala 
 
     // The verb form reads its person, number and tense off salire's own row.
     const verbForm = card(html, "sale, verb form");
-    assert.match(verbForm, new RegExp(`data-returned="${salire[0].recordId}"`));
+    assert.match(verbForm, new RegExp(`data-lemma-records="${salire[0].recordId}"`));
     assert.match(verbForm, fact("lemma", "salire", true));
     assert.match(verbForm, fact("person", "third"));
     assert.match(verbForm, fact("number", "singular"));

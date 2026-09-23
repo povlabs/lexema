@@ -5,8 +5,8 @@
 // Three rules run through every part of it, from design-system-manifest.md §
 // "The result card": the interface is English and the source's Italian is never
 // translated, so every Italian string carries `lang="it"` inside a document that
-// is `lang="en"`; every candidate the lookup returned is rendered, as a card or
-// as the lemma panel of one (`wordPage.ts`); and facts are laid out rather than
+// is `lang="en"`; every record the lookup returned is a card, and every lemma a
+// card points to is its lemma panel (`wordPage.ts`); and facts are laid out rather than
 // listed — a header bar for the headline facts, boxes three across for the
 // paradigms, and a section with nothing in it simply absent.
 
@@ -28,6 +28,7 @@ import type {
   Sense,
   SourceForm,
 } from "@lexema/lookup/types.ts";
+import type { LemmaTarget } from "@lexema/lookup/types.ts";
 import {
   IT_MOODS_RULE,
   NON_FINITE_ROLES,
@@ -37,7 +38,7 @@ import {
   type VerbSlot,
 } from "@lexema/italian/moods.ts";
 import { ChevronIcon } from "./icons";
-import type { Card, LemmaPanel } from "./wordPage.ts";
+import type { Card } from "./wordPage.ts";
 import {
   BOX,
   BOX_CELL,
@@ -185,7 +186,7 @@ type Spelling =
   | { kind: "headword"; surface: string }
   | { kind: "form"; index: number; surface: string; pointer: string };
 
-const headwordOf = (reading: Reading): Spelling => ({ kind: "headword", surface: reading.word });
+const headwordOf = (entry: { word: string }): Spelling => ({ kind: "headword", surface: entry.word });
 
 const spellingOf = (form: SourceForm): Spelling => ({
   kind: "form",
@@ -873,15 +874,43 @@ function rowsOf(forms: readonly SourceForm[]): { label: string; forms: SourceFor
   return rows;
 }
 
+/**
+ * A verb's table, whoever's it is: a verb reading's own, or — on a page whose
+ * one card is a verb form — the lemma's, from the listing the lookup carried on
+ * the reading's lemma link. `searched` is the rows the query hit.
+ */
+interface VerbTable {
+  recordId: number;
+  word: string;
+  forms: readonly SourceForm[];
+  searched: SearchedSpellings;
+}
+
+/** What the non-finite rows and the auxiliary are read from: a headword and its forms. */
+type Tabulated = Pick<VerbTable, "word" | "forms">;
+
+const tableOf = (reading: Reading): VerbTable => ({
+  recordId: reading.recordId,
+  word: reading.word,
+  forms: reading.forms,
+  searched: searchedSpellings(reading),
+});
+
+/** The lemma's table, when its own `forms[]` list the searched surface. */
+const lemmaTableOf = (lemma: LemmaTarget): VerbTable | undefined =>
+  lemma.listing === undefined
+    ? undefined
+    : { recordId: lemma.recordId, word: lemma.word, forms: lemma.listing.forms, searched: searchedSpellings(lemma.listing) };
+
 /** The non-finite rows of the table, in their order, with the headword as infinito. */
-function nonFiniteRows(reading: Reading): { role: NonFiniteRole; spellings: Spelling[] }[] {
+function nonFiniteRows(table: Tabulated): { role: NonFiniteRole; spellings: Spelling[] }[] {
   const byRole = new Map<NonFiniteRole, Spelling[]>();
-  for (const form of reading.forms) {
+  for (const form of table.forms) {
     const slot = slotOf(form);
     if (slot.kind !== "non-finite") continue;
     byRole.set(slot.role, [...(byRole.get(slot.role) ?? []), spellingOf(form)]);
   }
-  if (!byRole.has("infinito")) byRole.set("infinito", [headwordOf(reading)]);
+  if (!byRole.has("infinito")) byRole.set("infinito", [headwordOf(table)]);
   return NON_FINITE_ROLES.flatMap((role) => {
     const spellings = byRole.get(role);
     return spellings === undefined ? [] : [{ role, spellings }];
@@ -889,8 +918,8 @@ function nonFiniteRows(reading: Reading): { role: NonFiniteRole; spellings: Spel
 }
 
 /** Every form the source writes as the auxiliary, and the verb-class text on it. */
-function auxiliaries(reading: Reading): SourceForm[] {
-  return reading.forms.filter((form) => slotOf(form).kind === "auxiliary");
+function auxiliaries(table: Tabulated): SourceForm[] {
+  return table.forms.filter((form) => slotOf(form).kind === "auxiliary");
 }
 
 /**
@@ -943,15 +972,15 @@ function verbSilence(reading: Reading): string | undefined {
  * full — fourteen tenses, the imperative, the non-finite forms — and one box
  * for whatever `it-moods/v1` could not place, never guessed into another.
  */
-function Conjugation({ reading }: { reading: Reading }) {
+function Conjugation({ table }: { table: VerbTable }) {
   // The table outlines the form the query hit. A lemma's own headword is the
   // page's title already, so its infinito row is not outlined as well.
-  const searched: SearchedSpellings = { ...searchedSpellings(reading), headword: false };
+  const searched: SearchedSpellings = { ...table.searched, headword: false };
   const byBox = new Map<string, SourceForm[]>();
   const imperative: SourceForm[] = [];
   const unplaced: SourceForm[] = [];
   let derived = false;
-  for (const form of reading.forms) {
+  for (const form of table.forms) {
     const slot = slotOf(form);
     if (slot.kind === "tense") {
       byBox.set(slot.box, [...(byBox.get(slot.box) ?? []), form]);
@@ -961,7 +990,7 @@ function Conjugation({ reading }: { reading: Reading }) {
   }
   if (byBox.size === 0 && imperative.length === 0) return null;
 
-  const id = (key: string) => `conjugation-${reading.recordId}-${key.replace(/\s+/g, "-")}`;
+  const id = (key: string) => `conjugation-${table.recordId}-${key.replace(/\s+/g, "-")}`;
   const tenseBox = (name: string, forms: readonly SourceForm[]) => (
     <Box key={name} id={id(name)} heading={name} tense>
       {rowsOf(forms).map((row) => (
@@ -969,13 +998,13 @@ function Conjugation({ reading }: { reading: Reading }) {
       ))}
     </Box>
   );
-  const auxiliary = auxiliaries(reading);
+  const auxiliary = auxiliaries(table);
 
   return (
     <Section
-      id={`conjugation-${reading.recordId}`}
+      id={`conjugation-${table.recordId}`}
       name="Conjugation"
-      count={`${reading.forms.length} forms`}
+      count={`${table.forms.length} forms`}
       note={
         derived ? (
           <>
@@ -992,7 +1021,7 @@ function Conjugation({ reading }: { reading: Reading }) {
         })}
         {imperative.length > 0 && tenseBox("imperativo", imperative)}
         <Box id={id("modi indefiniti")} heading="modi indefiniti" tense>
-          {nonFiniteRows(reading).map((row) => (
+          {nonFiniteRows(table).map((row) => (
             <SpellingLine key={row.role} label={<It>{row.role}</It>} spellings={row.spellings} searched={searched} />
           ))}
           {auxiliary.length > 0 && (
@@ -1019,23 +1048,27 @@ function Conjugation({ reading }: { reading: Reading }) {
 // The lemma panel ---------------------------------------------------------------
 
 /**
- * Where a form reading points: the lemma, one line on what lives on its own
- * page, and a link to that page. A lemma this lookup also returned — `sala`
- * and `salire` for `sale` — renders here rather than as a card, so the panel
- * names it and says, when the source leaves it open, which records share the
- * spelling.
+ * Where a form reading points: its lemma, one line on what lives on its own
+ * page, and a link to that page. This is the whole of the reading's
+ * `lemmaLinks`, one panel per link. A lemma the query also matched through its
+ * table — `sala` and `salire` for `sale` — is not a record of the result: it is
+ * this link, and its table's row is what the header bar and, on a page of one
+ * verb form, the conjugation read. When the source leaves open which of
+ * several same-spelled records it means, the panel names them all.
  */
-function LemmaPanels({ reading, panels }: { reading: Reading; panels: readonly LemmaPanel[] }) {
-  if (panels.length === 0) return null;
+function LemmaPanels({ reading }: { reading: Reading }) {
+  if (reading.lemmaLinks.length === 0) return null;
   return (
     <Section id={`lemma-${reading.recordId}`} name="Lemma">
       <div className="flex flex-col gap-3">
-        {panels.map(({ link, returned }, i) => (
+        {reading.lemmaLinks.map((link, i) => (
           <div
             key={i}
             className={LEMMA_PANEL}
             data-lemma-panel=""
-            data-returned={returned.map((candidate) => candidate.recordId).join(" ") || undefined}
+            data-lemma-records={
+              link.kind === "candidates" ? link.candidates.map((candidate) => candidate.recordId).join(" ") : undefined
+            }
           >
             <span className={LEMMA_ARROW} aria-hidden="true">
               ↳
@@ -1173,6 +1206,7 @@ export function ReadingCard({ card, query, numbered }: { card: Card; query: stri
   const kind = readingKind(reading);
   const nominal = isNounReading(reading) || isAdjectiveReading(reading);
   const verb = isVerbReading(reading);
+  const inlineTable = card.inlineParadigm === undefined ? undefined : lemmaTableOf(card.inlineParadigm);
 
   const agreement = agreementFacts(reading, nominal && !isForm ? agreementCells(reading) : []);
   const facts: HeadlineFact[] = [
@@ -1229,10 +1263,10 @@ export function ReadingCard({ card, query, numbered }: { card: Card; query: stri
         <Definitions reading={reading} />
         <Examples reading={reading} />
         {nominal && <NominalForms reading={reading} placedOnBar={agreement.placed} />}
-        {verb && reading.forms.length > 0 && <Conjugation reading={reading} />}
-        {card.inlineParadigm !== undefined && <Conjugation reading={card.inlineParadigm} />}
+        {verb && reading.forms.length > 0 && <Conjugation table={tableOf(reading)} />}
+        {inlineTable !== undefined && <Conjugation table={inlineTable} />}
         {!nominal && !verb && <GenericForms reading={card.reading} />}
-        <LemmaPanels reading={reading} panels={card.lemmas} />
+        <LemmaPanels reading={reading} />
       </div>
     </article>
   );

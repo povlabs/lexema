@@ -105,11 +105,15 @@ absent.
 **Ambiguity in both directions.** A `form_of` edge names a word, and a word can
 be several records. A form reading ends in a lemma panel that names the word,
 lists every record spelling it when there is more than one, and says the
-source does not choose. A record the lookup returned only because it lists the
-query in its own table, and that a reading names as its lemma — `sala` and
-`salire` for `sale` — renders as that panel rather than as a card
-(`app/wordPage.ts`). Any other listing record keeps a card of its own, saying it
-does not define the query.
+source does not choose. The panel is the whole of the reading's lemma: the
+lookup returns every record the query matches as a card, and a lemma the query
+also matched through its table — `sala` and `salire` for `sale` — is not one of
+those records but the lemma of the reading that points to it
+([the lookup reference](LOOKUP.md#result-fields)). Its table's row is what the
+form's header bar reads, and on a page of one verb form its whole conjugation
+renders on the card. A panel names and links the lemma; its meanings are on
+its own page. Any record that lists the query and is no reading's lemma keeps a
+card of its own, saying it does not define the query.
 
 **Once per word.** Pronunciation, syllables, etymologies, synonyms, antonyms
 and derived words are read from `source_record_json` and are the same on every
