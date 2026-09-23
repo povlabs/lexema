@@ -5,6 +5,7 @@
 import { execFileSync } from "node:child_process";
 import { mkdir, rm, stat, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
+import { loadFixturePages } from "../source/rawPage.js";
 import { seedSql } from "./seedSql.js";
 import { applyParts, DEFAULT_PART_CEILING_BYTES, PartFailure } from "./sqlParts.js";
 
@@ -48,6 +49,9 @@ const report = await seedSql({
   license: "CC-BY-SA-4.0",
   requiredWords,
   validateFixtureClosure: !isArchive,
+  // The raw pages committed under fixtures/ are the only ones the recovered
+  // layer reads for now (#28); a word without one is seeded as it always was.
+  rawPages: await loadFixturePages(resolve("fixtures")),
   onRejection: ({ lineNo, kind, reason }) => rejectionLines.push(`${lineNo}\t${kind}\t${reason}`),
   partCeilingBytes,
   // Marked servable below, only after the loaded database is verified.
@@ -59,6 +63,13 @@ await writeFile(rejectionPath, rejectionLines.length > 0 ? `${rejectionLines.joi
 process.stderr.write(`seed SQL: ${report.parts.length} part(s) under ${partCeilingBytes} bytes in ${outputDir}\n`);
 process.stderr.write(`archive: ${report.admitted} admitted, ${report.linesRead} lines, ${report.status}\n`);
 for (const [table, count] of Object.entries(report.rows)) process.stderr.write(`  ${table}: ${count}\n`);
+const { recovery } = report;
+process.stderr.write(
+  `recovered layer: ${recovery.definitions} definition(s) and ${recovery.examples} example(s) for ` +
+    `${recovery.fullLoss + recovery.partialLoss} record(s) (${recovery.fullLoss} with no definition of their own, ` +
+    `${recovery.partialLoss} missing some), from ${recovery.recordsWithAPage} record(s) with a raw page ` +
+    `of ${recovery.rawPages}; ${recovery.unrendered} line(s) not rendered\n`,
+);
 process.stderr.write(`loading local D1 into ${persistTo} (never web/.wrangler)\n`);
 try {
   await applyParts(report.parts, async (part, index, total) => {

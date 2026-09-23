@@ -13,6 +13,8 @@ import {
   type ImportStatements,
   type Rejection,
 } from "./importRelease.js";
+import type { RawPageSource } from "../source/rawPage.js";
+import { RecoveredLayer, type RecoverySummary } from "./recoveredLayer.js";
 import { clearParts, SqlPartWriter } from "./sqlParts.js";
 
 const TABLE_ORDER = [
@@ -24,6 +26,10 @@ const TABLE_ORDER = [
   "sense_gloss",
   "sense_label",
   "grammar_claim",
+  "raw_page",
+  "recovered_definition",
+  "recovered_label",
+  "recovered_example",
   "release_table_rows",
 ] as const;
 
@@ -40,6 +46,10 @@ const COLUMNS: Record<TableName, string> = {
   sense_gloss: "sense_id,gloss_index,text,json_pointer",
   sense_label: "sense_id,label_index,kind,label,json_pointer",
   grammar_claim: "record_id,scope,scope_index,json_pointer,status,dimension,value,source_text",
+  raw_page: "page_id,release_id,wiki,title,revision_id,revision_timestamp",
+  recovered_definition: "recovered_id,record_id,release_id,page_id,definition_index,route,term,page_line,wikitext,text,held_as_example",
+  recovered_label: "recovered_id,label_index,label",
+  recovered_example: "recovered_id,example_index,page_line,wikitext,text",
   release_table_rows: "release_id,table_name,rows",
 };
 
@@ -65,6 +75,10 @@ class SqlBatchWriter {
     sense_gloss: 0,
     sense_label: 0,
     grammar_claim: 0,
+    raw_page: 0,
+    recovered_definition: 0,
+    recovered_label: 0,
+    recovered_example: 0,
     release_table_rows: 0,
   };
 
@@ -181,6 +195,11 @@ export interface SeedSqlOptions {
   /** Byte ceiling for one SQL part; see DEFAULT_PART_CEILING_BYTES. */
   partCeilingBytes?: number;
   /**
+   * Raw Wiktionary pages to recover dropped definitions from (#28). Without
+   * them the recovered layer is empty and the records are seeded as before.
+   */
+  rawPages?: RawPageSource;
+  /**
    * Leave the release `importing` at the end of the SQL instead of writing its
    * final status. The counters are still written. A caller that verifies the
    * loaded database sets the final status itself once every check passes, so
@@ -195,6 +214,8 @@ export interface SeedSqlReport extends ArchiveParseReport {
   statements: number;
   /** Part paths in the order they must be executed. */
   parts: readonly string[];
+  /** What the recovered layer took from the raw pages. */
+  recovery: RecoverySummary;
 }
 
 export async function seedSql(options: SeedSqlOptions): Promise<SeedSqlReport> {
@@ -206,6 +227,16 @@ export async function seedSql(options: SeedSqlOptions): Promise<SeedSqlReport> {
   const work = await mkdtemp(join(outputDir, ".seed-sql-"));
   const writer = new SqlBatchWriter(work, options.maxStatementBytes);
   const statements = statementsFor(writer);
+  const recovered = new RecoveredLayer(
+    options.rawPages ?? { page: () => undefined, size: 0 },
+    {
+      insertPage: writer.statement("raw_page"),
+      insertDefinition: writer.statement("recovered_definition"),
+      insertLabel: writer.statement("recovered_label"),
+      insertExample: writer.statement("recovered_example"),
+    },
+    writer.counts,
+  );
   const required = new Set(options.requiredWords ?? []);
   const seenWords = new Set<string>();
   const targets = new Set<string>();
@@ -237,6 +268,7 @@ export async function seedSql(options: SeedSqlOptions): Promise<SeedSqlReport> {
           posTitle: archiveRecord.record.pos_title,
           reportMember,
         });
+        recovered.add(archiveRecord.releaseId, archiveRecord.recordId, archiveRecord.record);
         if (writer.hasFullBatch()) await writer.flush();
       },
     });
@@ -277,8 +309,9 @@ export async function seedSql(options: SeedSqlOptions): Promise<SeedSqlReport> {
       ...report,
       releaseId,
       rows: writer.counts,
-      statements: writer.counts.source_record + writer.counts.source_record_json + writer.counts.lookup_form + writer.counts.form_of_edge + writer.counts.sense + writer.counts.sense_gloss + writer.counts.sense_label + writer.counts.grammar_claim,
+      statements: TABLE_ORDER.slice(0, -1).reduce((sum, table) => sum + writer.counts[table], 0),
       parts: partPaths,
+      recovery: recovered.summary,
     };
   } finally {
     await rm(work, { recursive: true, force: true });
