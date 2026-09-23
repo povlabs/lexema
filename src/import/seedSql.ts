@@ -180,6 +180,13 @@ export interface SeedSqlOptions {
   maxStatementBytes?: number;
   /** Byte ceiling for one SQL part; see DEFAULT_PART_CEILING_BYTES. */
   partCeilingBytes?: number;
+  /**
+   * Leave the release `importing` at the end of the SQL instead of writing its
+   * final status. The counters are still written. A caller that verifies the
+   * loaded database sets the final status itself once every check passes, so
+   * nothing short of a verified load is ever marked servable.
+   */
+  leaveImporting?: boolean;
 }
 
 export interface SeedSqlReport extends ArchiveParseReport {
@@ -250,7 +257,8 @@ export async function seedSql(options: SeedSqlOptions): Promise<SeedSqlReport> {
     const release = `INSERT INTO source_release\n` +
       `  (release_id,source_name,source_url,retrieved_at,upstream_release,archive_r2_key,archive_sha256,archive_bytes,normalizer,importer_version,schema_version,license,attribution,status)\n` +
       `VALUES (${[releaseId, options.sourceName ?? "kaikki-it-wiktextract", options.sourceUrl ?? null, options.retrievedAt ?? null, options.upstreamRelease ?? null, options.archiveR2Key ?? `releases/${releaseId}.jsonl.gz`, start.archiveSha256, start.archiveBytes, "it-normalize/v1", "it-import/v1", 1, options.license ?? null, options.attribution ?? null, "importing"].map(literal).join(",")});\n`;
-    const finish = `UPDATE source_release SET status='${report.status}', lines_read=${report.linesRead}, admitted=${report.admitted}, skipped_other_language=${report.skippedOtherLanguage}, malformed_lines=${report.malformed}, malformed_members=${report.malformedMembers} WHERE release_id=${literal(releaseId)};\n`;
+    const finalStatus = options.leaveImporting ? "importing" : report.status;
+    const finish = `UPDATE source_release SET status='${finalStatus}', lines_read=${report.linesRead}, admitted=${report.admitted}, skipped_other_language=${report.skippedOtherLanguage}, malformed_lines=${report.malformed}, malformed_members=${report.malformedMembers} WHERE release_id=${literal(releaseId)};\n`;
     const tableRows = TABLE_ORDER.slice(0, -1).map((table) =>
       `INSERT INTO release_table_rows (release_id,table_name,rows) VALUES (${literal(releaseId)},${literal(table)},${writer.counts[table]});\n`,
     ).join("");

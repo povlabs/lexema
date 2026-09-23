@@ -50,6 +50,8 @@ const report = await seedSql({
   validateFixtureClosure: !isArchive,
   onRejection: ({ lineNo, kind, reason }) => rejectionLines.push(`${lineNo}\t${kind}\t${reason}`),
   partCeilingBytes,
+  // Marked servable below, only after the loaded database is verified.
+  leaveImporting: true,
 });
 const rejectionPath = join(outputDir, "rejections.tsv");
 await writeFile(rejectionPath, rejectionLines.length > 0 ? `${rejectionLines.join("\n")}\n` : "");
@@ -71,9 +73,9 @@ try {
 }
 
 /**
- * Mark the loaded release `failed` and stop. The last part sets the release
- * `complete` before these checks run, so a check that fails must undo that, or
- * a database that failed verification would still be served as complete.
+ * Mark the loaded release `failed` and stop. The SQL leaves the release
+ * `importing`, which is never served, so a check that fails, or a run killed
+ * before the end, can never leave a servable release; `failed` only says why.
  */
 function failVerification(message: string): never {
   wrangler(
@@ -104,7 +106,7 @@ const [releaseRows] = JSON.parse(
   ),
 ) as [{ results: Record<string, string | number>[] }];
 const expectedRelease = {
-  status: report.status,
+  status: "importing",
   lines_read: report.linesRead,
   admitted: report.admitted,
   skipped_other_language: report.skippedOtherLanguage,
@@ -119,5 +121,16 @@ const releaseMismatch = Object.entries(expectedRelease).filter(([column, value])
 if (releaseMismatch.length > 0) {
   failVerification(`source_release differs from the run: ${releaseMismatch.map(([column]) => column).join(", ")}`);
 }
-process.stderr.write(`  source_release: 1 row, ${releaseRow.status}\n`);
+
+// Every check passed: only now is the release given its final status, and the
+// write is read back, so a promotion that did not land is reported, not assumed.
+const quotedRelease = `'${report.releaseId.replace(/'/g, "''")}'`;
+wrangler(["--command", `UPDATE source_release SET status = '${report.status}' WHERE release_id = ${quotedRelease}`], true);
+const [promoted] = JSON.parse(
+  wrangler(["--json", "--command", `SELECT status FROM source_release WHERE release_id = ${quotedRelease}`], true),
+) as [{ results: { status: string }[] }];
+if (promoted.results[0]?.status !== report.status) {
+  throw new Error(`release ${report.releaseId} was verified but its status reads ${promoted.results[0]?.status ?? "missing"}, not ${report.status}`);
+}
+process.stderr.write(`  source_release: 1 row, ${report.status}\n`);
 process.stdout.write(JSON.stringify({ ...report, rejectionPath, loaded }) + "\n");

@@ -55,7 +55,9 @@ After the last part, the seeder counts the rows of every table the batches
 wrote and checks them against the generated SQL. It then reads the one
 `source_release` row, which is written outside the batches, and checks that
 exactly one exists and that its status and line counts match what the run
-reported. If either check fails, it marks the release `failed` and stops.
+reported, which at that point is `importing`. If either check fails, it marks
+the release `failed` and stops. Only when both pass does it set the release's
+final status and read it back.
 
 The 64 MiB default keeps Wrangler's memory down for little extra time;
 [the measurements](../reports/2026-09-23-full-release-seed-measurements.md)
@@ -68,9 +70,14 @@ What a stopped seed leaves in its `SEED_STATE`. The recovery steps are in
 
 | Where it stopped | Release status left | Usable |
 | --- | --- | --- |
-| A part failed to apply | `importing`: later parts never ran, and the failed part may have applied some of its statements | No |
-| All parts applied, then a row count or the `source_release` row differed from the run | `failed`: the seeder sets it before stopping, because the last part had already marked the release `complete` | No |
-| Every check passed | `complete` | Yes |
+| A part failed to apply, or the run was killed before every check passed | `importing`: the SQL never writes a servable status, and a failed part may have applied some of its statements | No |
+| All parts applied, then a row count or the `source_release` row differed from the run | `failed`, set by the seeder before it stops; if that write itself fails the release stays `importing` | No |
+| Every check passed, and the final status was written and read back | `complete` | Yes |
+
+`complete` therefore always means verified. The SQL leaves the release
+`importing`, and only the seeder, after every check, writes the final status and
+reads it back. Lookup serves only a `complete` release, so no interruption at
+any point can leave an unverified database servable.
 
 The seeder stops at the first failing part, names it and its number, and lists
 the parts applied before it. No later part runs.

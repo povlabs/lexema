@@ -304,3 +304,24 @@ test("a failed part stops the load and names the failed and applied parts", asyn
   );
   assert.deepEqual(attempted, ["part-001.sql", "part-002.sql"]);
 });
+
+test("with leaveImporting the SQL never marks the release servable, and still records its counters", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "lexema-seed-"));
+  const database = join(dir, "seed.sqlite");
+  try {
+    const report = await seedSql({
+      input: fixturePath, outputDir: join(dir, "sql"), schema: resolve("src/db/schema.sql"), releaseId: "it-dev",
+      requiredWords: HUEY_WORDS, validateFixtureClosure: true, leaveImporting: true,
+    });
+    assert.equal(report.status, "complete");
+    const db = openSeed(report.parts, database);
+    try {
+      const row = db.prepare("SELECT status, lines_read, admitted FROM source_release WHERE release_id = 'it-dev'").get() as
+        { status: string; lines_read: number; admitted: number };
+      // Loaded in full, and still not servable until a caller verifies it.
+      assert.equal(row.status, "importing");
+      assert.equal(row.lines_read, report.linesRead);
+      assert.equal(row.admitted, report.admitted);
+    } finally { db.close(); }
+  } finally { await rm(dir, { recursive: true, force: true }); }
+});
