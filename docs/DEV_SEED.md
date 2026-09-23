@@ -72,11 +72,13 @@ What a stopped seed leaves in its `SEED_STATE`. The recovery steps are in
 | --- | --- | --- |
 | A part failed to apply, or the run was killed before every check passed | `importing`: the SQL never writes a servable status, and a failed part may have applied some of its statements | No |
 | All parts applied, then a row count or the `source_release` row differed from the run | `failed`, set by the seeder before it stops; if that write itself fails the release stays `importing` | No |
-| Every check passed, and the final status was written and read back | `complete` | Yes |
+| Every check passed and the final status was written, whether or not the read-back that follows it completed | `complete` | Yes: it was verified before the write |
 
 `complete` therefore always means verified. The SQL leaves the release
-`importing`, and only the seeder, after every check, writes the final status and
-reads it back. Lookup serves only a `complete` release, so no interruption at
+`importing`, and only the seeder, after every check, writes the final status.
+It then reads the status back and reports an error if it disagrees; a run
+stopped between that write and its read-back leaves a verified `complete`
+release, whose status the seeder did not get to confirm. Lookup serves only a `complete` release, so no interruption at
 any point can leave an unverified database servable.
 
 The seeder stops at the first failing part, names it and its number, and lists
