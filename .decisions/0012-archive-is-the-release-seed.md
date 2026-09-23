@@ -24,7 +24,7 @@ Separately, the extraction loses the definitions of some entries — `casa`, `pi
 
 **A release is seeded from the archive, in one pass, and from raw Wiktionary pages where they recover what the archive lost.**
 
-- **The archive is the input.** `it-extract.jsonl.gz` is read once, streaming, and each Italian record becomes its rows in D1 directly. The committed copy lives in `hueypov/lexema-data` under `source/`, and its SHA-256 is the release id, so the file and the release name the same thing.
+- **The archive is the input.** `it-extract.jsonl.gz` is read once, streaming, and each Italian record becomes its rows in D1 directly. The committed copy lives in `hueypov/lexema-data` under `source/`. By default the release id is `it-` followed by the first eight hex digits of the archive's SHA-256 — `it-0c432803` — so the release names the file it came from; a seed may override the id, and the release row always records the full checksum.
 - **The record is kept as written.** Each record's archive line is stored verbatim in `source_record_json`. Structured rows exist so a query can be answered; the verbatim line is what a page reads for anything else.
 - **Raw pages recover, they do not replace.** Where the extraction dropped a page's definitions, the raw Wiktionary page may be read at seed time, and what it yields is stored as its own layer beside the record, with its own provenance naming the page and revision. The record is never edited. A recovered definition is marked as recovered wherever it is shown.
 - **Nothing Lexema writes is seeded.** No explanation (#90), and no dispute: Huey, 2026-09-23, "no disputes come from us". The one hand-written dispute still seeded is removed by #117.
