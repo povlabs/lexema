@@ -64,20 +64,25 @@ page; the status code cannot carry it.
 ## Why the page is visibly silent
 
 This dictionary's data is incomplete, and the page's job is to make that legible
-instead of smoothing it over. Five silences it refuses to hide:
+instead of smoothing it over. Six silences it refuses to hide:
 
-**A record that only mentions the word.** Searching `sale` returns five entries,
-and two of them — `sala` and `salire` — merely list `sale` in their own tables.
-Each is labelled as a mention. Without that label a reader would take `salire`
-to be the lemma of `sale`, which the source never said.
+**A lemma is where a reading points, not a match.** Searching `sale` returns
+three entries, the three records whose headword is `sale`. Two of them say what
+they are a form of, `sala` and `salire`, and those lemmas come back inside the
+reading that names them rather than as entries of their own. Each is drawn as
+that reading's lemma panel, with a link to its own page. A reader never sees
+`salire` offered as a meaning of `sale`, because the source only ever said one
+of `sale`'s readings is a form of it.
 
 **An ambiguous lemma link.** `sale` says it is the plural of `sala`, and `sala`
 is two entries, a noun and a verb. The page says two entries share the spelling
 instead of picking one, because picking one would invent a fact.
 
-**Grammar the source never stated.** `casa` shows gender and number as *not
-stated in the source*, drawn as dashed chips. That has to read differently from
-a word whose gender was never expected in the first place.
+**Grammar the source never stated.** `casa` says in a sentence that the source
+states neither a gender nor a number for the entry, where a noun would
+otherwise show them on its header bar. That has to read differently from a word
+whose gender was never expected in the first place, and it is said once, not
+drawn as empty fields.
 
 **Definitions that define nothing.** `casa`'s two glosses are page furniture and
 `sala` carries the source's own *"definizione mancante"*. Both are shown
@@ -199,13 +204,13 @@ set `SEED_INPUT`; the local full-archive copy is conventionally
 
 ## Known rough edges
 
-- `form-of` renders as an *unclassified* grammar chip next to the "Form of"
-  section, which is redundant. It is left in rather than filtered, because
-  hiding source data by hand is how you stop noticing what the source contains.
 - No favicon, so the dev log carries a 404 for it.
-- Styling is deliberately plain. This is the first working page, not a design.
+- A verb record the source tags as the auxiliary sense, one each for `essere`
+  and `avere`, shows `FORM-ROLE auxiliary` on its header bar.
+- `stare` takes tens of seconds on the full release. Its lookup returns one
+  record, so the cost is elsewhere and has not been found yet.
 
 ## Not in scope
 
-Autocomplete (#15). Pronunciation and examples (#20). Deployment, rate limits
-and smoke tests against a real URL (#19).
+Autocomplete (#15). The page at phone width (#101). Deployment, rate limits and
+smoke tests against a real URL (#19).
