@@ -626,8 +626,8 @@ test("lap steel guitar shows its main definition once, as a definition, and says
       assert.equal(occurrencesOf(held.text, main), 1);
       const definitions = html.slice(html.indexOf(">Definitions</h3>"));
       assert.match(definitions, new RegExp(`^>Definitions</h3><span class="[^"]*">1</span>`));
+      assert.match(definitions.slice(0, definitions.indexOf("</ol>")), exact(main));
       const first = definitions.slice(0, definitions.indexOf("</ol>"));
-      assert.match(first, exact(main));
       assert.match(
         first,
         new RegExp(`<ul class="${esc(RECOVERED_ITEMS)}"><li[^>]*><p[^>]*><span lang="it">acustica, con una cassa`),
