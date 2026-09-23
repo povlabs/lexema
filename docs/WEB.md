@@ -207,8 +207,6 @@ set `SEED_INPUT`; the local full-archive copy is conventionally
 - No favicon, so the dev log carries a 404 for it.
 - A verb record the source tags as the auxiliary sense, one each for `essere`
   and `avere`, shows `FORM-ROLE auxiliary` on its header bar.
-- `stare` takes tens of seconds on the full release. Its lookup returns one
-  record, so the cost is elsewhere and has not been found yet.
 
 ## Not in scope
 
