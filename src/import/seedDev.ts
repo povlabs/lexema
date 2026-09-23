@@ -11,7 +11,10 @@ import { applyParts, DEFAULT_PART_CEILING_BYTES, PartFailure } from "./sqlParts.
 const input = resolve(process.env.SEED_INPUT ?? "fixtures/dev-seed.jsonl");
 const outputDir = resolve(process.env.SEED_SQL ?? ".data/dev-sql");
 const persistTo = resolve(process.env.SEED_STATE ?? ".data/seed-state");
-const releaseId = process.env.SEED_RELEASE ?? "it-dev";
+const isArchive = input.endsWith(".gz");
+// The fixture is always `it-dev`; an archive is named by its own digest
+// (`it-<first 8 hex of its sha256>`) unless SEED_RELEASE says otherwise.
+const releaseId = process.env.SEED_RELEASE ?? (isArchive ? undefined : "it-dev");
 const partCeilingBytes = process.env.SEED_PART_BYTES === undefined
   ? DEFAULT_PART_CEILING_BYTES
   : Number(process.env.SEED_PART_BYTES);
@@ -41,11 +44,10 @@ const report = await seedSql({
   outputDir,
   schema: resolve("src/db/schema.sql"),
   releaseId,
-  archiveR2Key: `releases/${releaseId}.jsonl.gz`,
   sourceUrl: "https://kaikki.org/dictionary/downloads/it/it-extract.jsonl.gz",
   license: "CC-BY-SA-4.0",
   requiredWords,
-  validateFixtureClosure: !input.endsWith(".gz"),
+  validateFixtureClosure: !isArchive,
   onRejection: ({ lineNo, kind, reason }) => rejectionLines.push(`${lineNo}\t${kind}\t${reason}`),
   partCeilingBytes,
 });

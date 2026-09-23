@@ -9,10 +9,11 @@ import { open, readdir, rm, type FileHandle } from "node:fs/promises";
 import { join } from "node:path";
 
 /**
- * The default part ceiling: 128 MiB, a quarter of Node's string limit. The
+ * The default part ceiling: 64 MiB, an eighth of Node's string limit. Wrangler's
+ * local D1 peak memory grows with the part while total time barely moves; the
  * measurements behind this number are in docs/DEV_SEED.md.
  */
-export const DEFAULT_PART_CEILING_BYTES = 128 * 1024 * 1024;
+export const DEFAULT_PART_CEILING_BYTES = 64 * 1024 * 1024;
 
 const PART_NAME = /^part-\d{3,}\.sql$/;
 
