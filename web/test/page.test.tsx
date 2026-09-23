@@ -546,6 +546,29 @@ test("a results page has the top bar and one bordered field with a clear control
   assert.match(renderToStaticMarkup(<SiteHeader />), />Lexema<\/a>/);
 });
 
+test("the field is a combobox in both states, and still a plain named input for the GET form", async () => {
+  const home = renderToStaticMarkup(
+    <SearchPage raw="">
+      <FirstLoad />
+    </SearchPage>,
+  );
+  await withDevSeed(async ({ db }) => {
+    for (const [state, html] of [["home", home], ["results", await render(db, "casa")]] as const) {
+      const input = html.match(/<input [^>]*role="combobox"[^>]*\/>/)?.[0];
+      assert.ok(input, `${state}: the field is a combobox`);
+      assert.match(input, /aria-expanded="false"/, state);
+      assert.match(input, /aria-autocomplete="list"/, state);
+      assert.match(input, / name="q"/, `${state}: the form submits the field as q`);
+      assert.equal(patternsOf(html, /role="combobox"/), 1, `${state}: one field`);
+      // The live region that says how many suggestions opened is in the page
+      // before any list is, so the first announcement is not lost.
+      assert.match(html, /<div role="status" aria-live="polite" aria-atomic="true" class="sr-only"><\/div>/, state);
+      // No list is rendered on the server: nothing has been typed yet.
+      assert.doesNotMatch(html, /role="listbox"/, state);
+    }
+  });
+});
+
 test("every page reaches the attribution page from the footer's four links", async () => {
   const footer = renderToStaticMarkup(<SiteFooter />);
   const links = [...footer.matchAll(new RegExp(`<a class="${esc(SITE_FOOTER_LINK)}" href="([^"]+)">([^<]+)</a>`, "g"))];

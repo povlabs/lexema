@@ -5,13 +5,14 @@
 // components to HTML over an imported fixture release, and that test runs in CI
 // with no archive and no D1. What `page.tsx` adds is where the data comes from.
 //
-// Nothing here is a client component. The form is a plain GET form, every
+// One client component: the field, whose suggestion list answers keystrokes
+// (`SearchField.tsx`). The form around it is still a plain GET form, every
 // state is decided by the URL, and the "Show all" controls are native
 // `<details>`, so the page works before any JavaScript does.
 
 import type { ReactNode } from "react";
 import type { Attempt } from "./attempt.ts";
-import { SearchIcon } from "./icons";
+import { SearchField } from "./SearchField";
 import { SiteHeader } from "./SiteHeader";
 import { WordView } from "./Word";
 import { wordPage } from "./wordPage.ts";
@@ -20,12 +21,7 @@ import {
   ERROR,
   HOME_NAME,
   PENDING,
-  SEARCH_CLEAR,
-  SEARCH_FIELD,
   SEARCH_FORM,
-  SEARCH_HINT,
-  SEARCH_ICON,
-  SEARCH_INPUT,
   SHELL_CENTRED,
   SHELL_TOP,
   TRY_CHIP,
@@ -39,39 +35,13 @@ export { pageOrder } from "./wordPage.ts";
  * The one search field: a magnifier at the left, and at the right either a
  * `×` that clears a query or, before one, the `ENTER` hint. No label above it
  * and no button beside it — Enter submits — and its accessible name is on the
- * input itself, so a screen reader still hears what it is for.
+ * input itself, so a screen reader still hears what it is for. As a reader
+ * types, suggestions open under it; that half is `SearchField.tsx`.
  */
 function SearchForm({ raw }: { raw: string }) {
-  const asked = raw.trim() !== "";
   return (
     <form className={SEARCH_FORM} action="/" method="get" role="search">
-      <div className={SEARCH_FIELD}>
-        <SearchIcon className={SEARCH_ICON} />
-        <input
-          className={SEARCH_INPUT}
-          id="q"
-          name="q"
-          type="search"
-          aria-label="Search an Italian word"
-          defaultValue={raw}
-          placeholder="Search an Italian word"
-          autoComplete="off"
-          autoCapitalize="none"
-          spellCheck={false}
-          lang="it"
-          autoFocus={!asked}
-          enterKeyHint="search"
-        />
-        {asked ? (
-          <a className={SEARCH_CLEAR} href="/" aria-label="Clear search">
-            ×
-          </a>
-        ) : (
-          <kbd className={SEARCH_HINT} aria-hidden="true">
-            ENTER
-          </kbd>
-        )}
-      </div>
+      <SearchField raw={raw} />
     </form>
   );
 }
