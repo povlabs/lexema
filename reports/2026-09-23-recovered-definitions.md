@@ -1,5 +1,13 @@
 # Definitions the extraction drops, measured and recovered from the raw pages
 
+> **Superseded in part, 2026-09-23.** [Phase two](2026-09-23-recovered-definitions-full-release.md)
+> counted the loss exactly over every Italian record, against the Wiktionary dump the
+> archive was built from. Its exact counts replace this report's extrapolation: 430
+> lemma records with partial loss, not ~630; 12 inflected records, not 0; 6 with full
+> loss. Across the whole dump it also found the parser described below reading some
+> usage sentences and quotations as definitions; that is fixed, and this report's own
+> 37 definitions over the fixtures are unchanged by the fix. The sections below are kept as they were measured.
+
 Measurement for [issue #28](https://github.com/hueypov/lexema/issues/28), run 2026-09-23.
 It follows [why `casa` has no definition](2026-09-18-definition-loss.md), which named the
 cause; this report counts full and partial loss with the parser that now recovers it, and
@@ -83,6 +91,8 @@ tell from a usage sentence.
 
 ## Extrapolation to the full release
 
+*Replaced by the exact counts in [phase two](2026-09-23-recovered-definitions-full-release.md#exact-counts-against-the-phase-one-projection).*
+
 Only the uniformly sampled records may be projected, because only they were drawn at
 random ([the sampling](2026-09-18-definition-loss.md#3-blast-radius)). The regression
 pages were chosen because they were broken.
@@ -109,6 +119,9 @@ link to Wikipedia, so the true count is higher, but by the sample's bound not by
 a few hundred, and most likely by far less.
 
 ## What a full-release run needs
+
+*Done in [phase two](2026-09-23-recovered-definitions-full-release.md), from the
+2026-07-01 Italian Wiktionary dump.*
 
 These counts cover the 2,210 words whose raw pages are committed. Recovering the rest
 needs the raw page of every Italian entry, which means a second upstream input — most

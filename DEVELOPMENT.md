@@ -109,10 +109,14 @@ fresh review.
 Three dataset limits are already measured, in [reports/](./reports/): the `casa`
 entry loses its house definitions, embedded verb forms carry no mood tag, and the
 `studente` verb claim is disputed upstream. The first is partly repaired: the seed
-recovers dropped definitions from the raw Wiktionary pages committed under
-`fixtures/`, so `casa` shows its seven, and `pnpm run measure:recovery` counts the
-loss over those pages ([the measurement](./reports/2026-09-23-recovered-definitions.md)).
-Words without a committed raw page are not repaired yet. Source identity, licensing, and
+recovers dropped definitions from the raw Wiktionary pages, so `casa` shows its
+seven. With the dump the archive was built from in the repository root
+(`itwiktionary-20260701-pages-articles.xml.bz2`, gitignored, kept in
+`hueypov/lexema-data`), that covers every word, and `pnpm run measure:recovery`
+counts the loss exactly ([the measurement](./reports/2026-09-23-recovered-definitions-full-release.md));
+without it, the seed reads the pages committed under `fixtures/`
+([the development seed](./docs/DEV_SEED.md)). Losses with no structural mark are
+not repaired. Source identity, licensing, and
 attribution need review before any dictionary content is redistributed; local
 development is the only access until that lands.
 

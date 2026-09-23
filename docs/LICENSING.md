@@ -64,6 +64,12 @@ So the local snapshot was **most likely** extracted from the `itwiktionary-20260
 Do not write `20260701` into release metadata as a fact. If it is recorded at all, record it as
 `inferred`, with this reasoning attached.
 
+For [#28](https://github.com/hueypov/lexema/issues/28), that dump was downloaded on 2026-09-23 to
+recover the definitions the extraction drops (SHA-1 `2bdd444236f7dcd26fee3652dbd641c31d0d9651`,
+matching Wikimedia's `dumpstatus.json`). Every one of the archive's 560,357 Italian records has a
+page of its exact title in it, and its newest revision is 2026-07-03. That is consistent with the
+inference, not proof of it ([the measurement](../reports/2026-09-23-recovered-definitions-full-release.md)).
+
 ### 1.4 How a future release becomes traceable
 
 This is fixable, and cheaply. kaikki publishes, next to the download, a build log that names the exact

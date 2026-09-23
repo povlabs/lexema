@@ -14,6 +14,7 @@ with `SEED_INPUT`.
 | `SEED_SQL` | `.data/dev-sql` | directory for the SQL parts and `rejections.tsv` |
 | `SEED_STATE` | `.data/seed-state` | isolated Wrangler D1 persist directory |
 | `SEED_PART_BYTES` | `67108864` (64 MiB) | byte ceiling for one SQL part |
+| `RAW_PAGES` | the dump in the repository root if present, else `fixtures/` | where the recovered layer reads raw pages: a dump path, or `fixtures` |
 
 The demo's `web/.wrangler` directory is never touched. The seed clears only
 `SEED_STATE`, so repeated runs rebuild the same local database. Nothing else is
@@ -34,16 +35,28 @@ every matching headword candidate, with no row for a dangling target. The origin
 edge remains in `form_of_edge`.
 
 The seed also writes the recovered layer ([#28](https://github.com/hueypov/lexema/issues/28)):
-for a record whose word has a raw Wiktionary page under `fixtures/`, the
-definitions the page states and the record does not carry as definitions — absent,
-or filed under an example — go to
-`recovered_definition`, with their labels and examples, beside the record and
-naming the page revision and line each was read from. The record's own rows are
-the same with or without it. The run prints how many definitions and examples
-it recovered, for how many records; for the fifty-word fixture that is `casa`'s
-seven definitions and seven examples. How the lines are chosen, and how much
-the extraction loses, is in
-[the measurement](../reports/2026-09-23-recovered-definitions.md).
+for a record whose word has a raw Wiktionary page, the definitions the page
+states and the record does not carry as definitions — absent, or filed under an
+example — go to `recovered_definition`, with their labels and examples, beside
+the record and naming the page revision and line each was read from. The
+record's own rows are the same with or without it. The run prints where it read
+the pages and how many definitions and examples it recovered, for how many
+records; for the fifty-word fixture that is `casa`'s seven definitions and seven
+examples. How the lines are chosen, and how much the extraction loses, is in
+[the measurement](../reports/2026-09-23-recovered-definitions-full-release.md).
+
+The raw pages come from `itwiktionary-20260701-pages-articles.xml.bz2`, the
+Italian Wiktionary dump the archive was built from, when it sits in the
+repository root beside `it-extract.jsonl.gz`. It is gitignored; its durable copy,
+with its size and SHA-1, is `source/` in `hueypov/lexema-data`. It is not newer
+data: it is the page source the archive was converted from, read once to pick up
+the definitions the conversion dropped. Before any page is read, the seed checks
+the file's size and SHA-1 against that dump's and refuses a file that differs,
+naming both digests; a dump `RAW_PAGES` names is checked the same way. Reading it adds about 15 seconds, and the
+seeder held about 1.4 GB once the pages were loaded. Without it, the seed reads the pages committed under `fixtures/`, so a
+fresh clone and CI seed as before; `RAW_PAGES=fixtures` asks for those even when
+the dump is there. `casa`'s revision differs between the two (4051358 in the
+dump, 4257826 in `fixtures/`), and every recovered row names the one it read.
 
 SQL is emitted in parent-before-child table order. INSERT statements are batched
 by a 64 KiB byte budget, matching the limit used by the previous SQL exporter.
@@ -98,8 +111,8 @@ the parts applied before it. No later part runs.
 
 A release is seeded from the archive, and from raw Wiktionary pages only to
 recover definitions the extraction dropped
-([ADR 0012](../.decisions/0012-archive-is-the-release-seed.md)); today those pages
-are the ones committed under `fixtures/`. This development fixture exists so a
+([ADR 0012](../.decisions/0012-archive-is-the-release-seed.md)): the dump the
+archive was built from, or the pages committed under `fixtures/`. This development fixture exists so a
 fresh clone can seed without `it-extract.jsonl.gz` or a data-repository checkout.
 Loading a complete release into deployed D1 remains #18.
 

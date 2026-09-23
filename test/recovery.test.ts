@@ -213,3 +213,82 @@ test("a line whose template the renderer does not know is reported, never printe
 test("a record whose part of speech the page does not carry is unmatched, not guessed at", () => {
   assert.deepEqual(recoverDefinitions({ ...CASA, posTitle: "Verbo" }, page("casa")), { outcome: "no-matching-section" });
 });
+
+// The cases below are lines from the 2026-07-01 Italian Wiktionary dump
+// (CC BY-SA 4.0), each named with its title and revision. The first full run
+// over the dump read the negative ones as definitions; they are held here so
+// the fix stays.
+
+/** One Italian section built from dump lines, under a made-up revision. */
+function dumpLines(title: string, revisionId: number, lines: readonly string[]): RawPage {
+  return { wiki: RAW_PAGE_WIKI, title, revisionId, timestamp: "2026-07-01T00:00:00Z", wikitext: ["== {{-it-}} ==", ...lines].join("\n") };
+}
+
+const recovered = (title: string, posTitle: string, page: RawPage): string[] =>
+  matched(recoverDefinitions({ word: title, posTitle, glosses: [], examples: [] }, page)).recovered.map((definition) => definition.text);
+
+test("below {{Nodef}} the page says it has no definition: a plain sentence there is not one, a sub-term that defines itself is", () => {
+  // fondarsi, revision 3639635; colorito, revision 3964599.
+  const fondarsi = dumpLines("fondarsi", 3639635, [
+    "{{-verb-|it}}",
+    "# {{Nodef|it}}",
+    "#*la tua tesi, per essere credibile, deve fondarsi su dati incontrovertibili ",
+  ]);
+  assert.deepEqual(recovered("fondarsi", "Verbo", fondarsi), []);
+  const colorito = dumpLines("colorito", 3964599, [
+    "{{-agg-|it}}",
+    "# {{Nodef|it}}",
+    "#* '''espressione colorita''': utilizzo di termini volgari ed impropri",
+  ]);
+  assert.deepEqual(recovered("colorito", "Aggettivo", colorito), ["espressione colorita: utilizzo di termini volgari ed impropri"]);
+});
+
+test("a bold headword that runs on into a sentence is a usage sentence, not a sub-term", () => {
+  // discordia, revision 3982261: no comma, colon or bracket after the bold word.
+  const discordia = dumpLines("discordia", 3982261, [
+    "{{-sost-|it}}",
+    "# mancata [[conformità]] di opinioni.",
+    "#* '''Discordia''' di pareri.",
+  ]);
+  assert.deepEqual(recovered("discordia", "Sostantivo", discordia), []);
+  // fegato, revision 4037598: the colon marks the definition off from its term.
+  const fegato = dumpLines("fegato", 4037598, [
+    "{{-sost-|it}}",
+    "# {{Term|chimica|it}} nome di talune miscele di composti di colore bruno-rossiccio",
+    "#* '''fegato di zolfo''': miscela di polisolfuri impiegata nel trattamento di alcune malattie della pelle",
+  ]);
+  assert.deepEqual(recovered("fegato", "Sostantivo", fegato), [
+    "fegato di zolfo: miscela di polisolfuri impiegata nel trattamento di alcune malattie della pelle",
+  ]);
+});
+
+test("a line ending in ! or ? is something said, not a definition", () => {
+  // eppure, revision 4054630.
+  const eppure = dumpLines("eppure", 4054630, [
+    "{{-cong-|it}}",
+    "#(''Escalamazione'') esprime [[rammarico]]",
+    "#* '''Eppure''', me l'avevano detto!''",
+  ]);
+  assert.deepEqual(recovered("eppure", "Congiunzione", eppure), []);
+});
+
+test("the items after the page's own `Esempi:` are examples, not meanings", () => {
+  // famiglia, revision 4043061.
+  const famiglia = dumpLines("famiglia", 4043061, [
+    "{{-sost-|it}}",
+    "#Esempi: ",
+    "#* famiglia matriarcale,",
+    "#* famiglia patriarcale, f. matrimoniale, f. monogamica, f. genealogica",
+  ]);
+  assert.deepEqual(recovered("famiglia", "Sostantivo", famiglia), []);
+});
+
+test("an italic quotation with its author in brackets is a quotation, even in a list a colon opens", () => {
+  // paturnie, revision 3689785.
+  const paturnie = dumpLines("paturnie", 3689785, [
+    "{{-sost-|it}}",
+    "# pop. ansie o angosce improvvise, inspiegabili e deprimenti [[malumore]], [[nervosismo]], [[stizza]], [[intolleranza]]:",
+    "#* ''I genitori trasmettono ai figli le loro paturnie, le loro ubbie'' (Daniele Luttazzi)",
+  ]);
+  assert.deepEqual(recovered("paturnie", "Sostantivo", paturnie), []);
+});
