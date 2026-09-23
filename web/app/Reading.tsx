@@ -15,6 +15,7 @@ import {
   isAdjectiveReading,
   isNounReading,
   isVerbReading,
+  recoveredRevisionUrl,
   searchedSpellings,
 } from "@lexema/lookup/types.ts";
 import type {
@@ -22,6 +23,8 @@ import type {
   ArticleWithholding,
   GrammarClaim,
   Reading,
+  RecoveredDefinition,
+  RecoveredRef,
   Review,
   SearchedSpellings,
   Sense,
@@ -104,6 +107,7 @@ import {
   SECTION_NAME,
   SECTION_NOTE,
   SECTION_RULE,
+  RECOVERED_MARK,
   SENSE_LABEL,
   SILENCE,
   TENSE_HEADING,
@@ -582,6 +586,28 @@ function senseLabels(sense: Sense): string[] {
   return sense.labels.map((label) => label.label).filter((label) => !isFormOfTag(label));
 }
 
+/** The word that marks text read back from the raw page, not the extraction (#28). */
+function RecoveredMark() {
+  return <span className={RECOVERED_MARK}>recovered</span>;
+}
+
+/**
+ * Where a reading's recovered text came from, said once above it: the page
+ * revision, linked, and why it is here. Every recovered line on a record comes
+ * from the one page of its headword.
+ */
+function RecoveredNote({ source }: { source: RecoveredRef }) {
+  return (
+    <>
+      Entries marked recovered were read from the{" "}
+      <a className="text-accent underline" href={recoveredRevisionUrl(source)} rel="noreferrer">
+        Wiktionary page, revision {source.revisionId}
+      </a>
+      ; the extraction dropped them.
+    </>
+  );
+}
+
 function Definition({ sense, number }: { sense: Sense; number: number }) {
   const labels = senseLabels(sense);
   return (
@@ -605,27 +631,75 @@ function Definition({ sense, number }: { sense: Sense; number: number }) {
   );
 }
 
+/** A definition the raw page states and the extraction dropped, marked as such. */
+function RecoveredDefinitionItem({ definition, number }: { definition: RecoveredDefinition; number: number }) {
+  return (
+    <li className={DEFINITION}>
+      <span className={DEFINITION_NUMBER} aria-hidden="true">
+        {number}.
+      </span>
+      <div>
+        <p className={GLOSS}>
+          <span lang="it">
+            {definition.labels.length > 0 && <span className={SENSE_LABEL}>({definition.labels.join(", ")}) </span>}
+            {definition.text}
+          </span>
+          <RecoveredMark />
+        </p>
+      </div>
+    </li>
+  );
+}
+
+/** One numbered line of the Definitions section: the extraction's or the page's. */
+type DefinitionItem =
+  | { from: "extraction"; sense: Sense }
+  | { from: "recovered"; definition: RecoveredDefinition };
+
+function DefinitionLine({ item, number }: { item: DefinitionItem; number: number }) {
+  return item.from === "extraction" ? (
+    <Definition sense={item.sense} number={number} />
+  ) : (
+    <RecoveredDefinitionItem definition={item.definition} number={number} />
+  );
+}
+
+const definitionKey = (item: DefinitionItem): string =>
+  item.from === "extraction" ? `sense-${item.sense.index}` : `recovered-${item.definition.ref.line}`;
+
+/**
+ * The extraction's definitions, then the ones recovered from the raw page, in
+ * one numbered list. Recovered ones carry their mark, and the section says once
+ * where they were read.
+ */
 function Definitions({ reading }: { reading: Reading }) {
-  const definitions = reading.senses.filter((sense) => !isEntryFurniture(sense, reading.word));
+  const definitions: DefinitionItem[] = [
+    ...reading.senses
+      .filter((sense) => !isEntryFurniture(sense, reading.word))
+      .map((sense): DefinitionItem => ({ from: "extraction", sense })),
+    ...reading.recovered.map((definition): DefinitionItem => ({ from: "recovered", definition })),
+  ];
   if (definitions.length === 0) return null;
   const first = definitions.slice(0, DEFINITION_SLICE);
   const rest = definitions.slice(DEFINITION_SLICE);
+  const recoveredFrom = reading.recovered[0]?.ref;
   return (
     <Section
       id={`definitions-${reading.recordId}`}
       name="Definitions"
       count={sliceCount(definitions.length, DEFINITION_SLICE)}
+      note={recoveredFrom && <RecoveredNote source={recoveredFrom} />}
     >
       <ol className={DEFINITIONS}>
-        {first.map((sense, i) => (
-          <Definition key={sense.index} sense={sense} number={i + 1} />
+        {first.map((item, i) => (
+          <DefinitionLine key={definitionKey(item)} item={item} number={i + 1} />
         ))}
       </ol>
       {rest.length > 0 && (
         <ShowAll total={definitions.length} noun="definitions">
           <ol className={`${DEFINITIONS} mt-3`} start={DEFINITION_SLICE + 1}>
-            {rest.map((sense, i) => (
-              <Definition key={sense.index} sense={sense} number={DEFINITION_SLICE + i + 1} />
+            {rest.map((item, i) => (
+              <DefinitionLine key={definitionKey(item)} item={item} number={DEFINITION_SLICE + i + 1} />
             ))}
           </ol>
         </ShowAll>
@@ -636,7 +710,8 @@ function Definitions({ reading }: { reading: Reading }) {
 
 /**
  * The notes `casa`'s record carries in place of a definition: shown as notes,
- * with no definition invented around them.
+ * with no definition invented around them. When the raw page's definitions were
+ * recovered, the note says where they are instead of saying there are none.
  */
 function EntryNotes({ reading }: { reading: Reading }) {
   const furniture = reading.senses.filter((sense) => isEntryFurniture(sense, reading.word));
@@ -645,7 +720,9 @@ function EntryNotes({ reading }: { reading: Reading }) {
     <Section id={`notes-${reading.recordId}`} name="Source notes" count={`${furniture.length}`}>
       <aside className={ENTRY_NOTE}>
         <p className="m-0 font-sans text-[0.85rem]">
-          The source has entry notes but gives no definition for this reading.
+          {reading.recovered.length === 0
+            ? "The source has entry notes but gives no definition for this reading."
+            : "The extraction has entry notes here in place of a definition; the definitions below were recovered from the Wiktionary page."}
         </p>
         {furniture.map((sense) =>
           sense.glosses.map((gloss, i) => (
@@ -659,17 +736,39 @@ function EntryNotes({ reading }: { reading: Reading }) {
   );
 }
 
-/** Every example on the reading's senses, verbatim, first slice shown. */
+/** One usage sentence: the extraction's, or one recovered with its definition. */
+type ExampleItem = { key: string; text: string; recovered: boolean };
+
+/** Every example on the reading's senses, verbatim, then the recovered ones; first slice shown. */
 function Examples({ reading }: { reading: Reading }) {
-  const examples = reading.senses.flatMap((sense) => sense.examples);
+  const examples: ExampleItem[] = [
+    ...reading.senses.flatMap((sense) =>
+      sense.examples.map((example) => ({ key: example.ref.jsonPointer, text: example.text, recovered: false })),
+    ),
+    ...reading.recovered.flatMap((definition) =>
+      definition.examples.map((example) => ({ key: `recovered-${example.ref.line}`, text: example.text, recovered: true })),
+    ),
+  ];
   if (examples.length === 0) return null;
-  const item = (example: (typeof examples)[number]) => (
-    <li key={example.ref.jsonPointer} className={EXAMPLE} lang="it">
-      {example.text}
-    </li>
-  );
+  const recoveredFrom = reading.recovered.find((definition) => definition.examples.length > 0)?.ref;
+  const item = (example: ExampleItem) =>
+    example.recovered ? (
+      <li key={example.key} className={EXAMPLE}>
+        <span lang="it">{example.text}</span>
+        <RecoveredMark />
+      </li>
+    ) : (
+      <li key={example.key} className={EXAMPLE} lang="it">
+        {example.text}
+      </li>
+    );
   return (
-    <Section id={`examples-${reading.recordId}`} name="Examples" count={sliceCount(examples.length, EXAMPLE_SLICE)}>
+    <Section
+      id={`examples-${reading.recordId}`}
+      name="Examples"
+      count={sliceCount(examples.length, EXAMPLE_SLICE)}
+      note={recoveredFrom && <RecoveredNote source={recoveredFrom} />}
+    >
       <ul className={EXAMPLES}>{examples.slice(0, EXAMPLE_SLICE).map(item)}</ul>
       {examples.length > EXAMPLE_SLICE && (
         <ShowAll total={examples.length} noun="examples">
