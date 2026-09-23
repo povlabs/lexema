@@ -67,13 +67,25 @@ Archive `it-extract.jsonl.gz`, SHA-256 `0c432803c672…`, 560,357 Italian record
 attaches to them. By route: 17 below a page control, 561 sub-terms, 311 lead-in items
 (the routes are defined in [phase one](2026-09-23-recovered-definitions.md#what-counts-as-a-lost-definition)).
 
-**335 of the 889 sit in a list a definition opens with a colon**, and the page shows
-them nested inside that definition, not numbered as definitions of their own
+**335 of the 889 sit in a list a definition opens with a colon**: 311 lead-in items and
+24 sub-terms. **332 are placed inside that definition**, and the page shows them nested
+there, not numbered as definitions of their own
 ([#123](https://github.com/hueypov/lexema/issues/123), counted by `measure:recovery` on
-2026-09-23): 311 lead-in items and 24 sub-terms. For 330 the definition that opens the
-list is a sense the record carries (`accollato`'s `attributo araldico che si applica a:`);
-for 5 it is itself a recovered definition (`lap steel guitar`, `pianoforte`). None is
-left without its lead-in.
+2026-09-23 and in a full seed). For 327 the definition that opens the list is a sense
+the record carries (`accollato`'s `attributo araldico che si applica a:`). For 5 it is
+itself a recovered definition (`lap steel guitar`, `pianoforte`).
+
+An item is placed under a record sense only when a gloss proves which sense it is. The
+sense must carry the lead-in's text. It is the sense in the `#` line's own place, when
+the record has one sense for each `#` line; otherwise it must be the only sense that
+carries the text. The place alone, or a text two senses share, places nothing. The
+**3 unplaced** items are `filetto`'s heraldic ones. The record has a sense in the right
+place, but it prints the line's `{{Pn|w=…}}` as `filetto ( approfondimento) detto di:`,
+so no gloss carries the lead-in. They stay numbered at the top of the list, as before
+#123. 26 placements across 24 records were read against their dump pages (`Giano`,
+`-ismo` twice, `elemento` twice, `virtù`, `oro`, `lap steel guitar`, and heraldic
+attributes such as `merlato` and `sinistrato`), and every parent was the line whose
+colon opens the item's list.
 
 **51 of the 889 are misfiled as examples:** the record carries the text, but under
 `senses[].examples[]`, not as a definition. They sit in 18 records; 25 are `-ismo`'s

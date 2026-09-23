@@ -573,7 +573,7 @@ export const EXAMPLE_SLICE = 1;
 /**
  * Two source glosses for casa are page furniture, not definitions (#28, #61).
  * A sense that opens a list of recovered items is a definition whatever its
- * gloss starts with: `filetto`'s `filetto ( approfondimento) detto di:`.
+ * gloss starts with, so the items are never hidden inside a note.
  */
 function isEntryFurniture(sense: Sense, word: string): boolean {
   return (

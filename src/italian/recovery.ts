@@ -141,12 +141,14 @@ function sectionFor(sections: readonly PageSection[], posTitle: string): RecordR
 }
 
 /**
- * Where a lead-in is kept. One recovered already is found by its page line.
- * A `#` line is the sense in the same place, when the record has one sense for
- * each of the section's `#` lines, as the extraction writes them; otherwise,
- * and for a definition below a `#` line that the record glosses, it is the
- * sense whose gloss carries its text. A lead-in found neither way leaves the
- * item at the top of the list, and `measure:recovery` counts it.
+ * Where a lead-in is kept, only when the record proves it. One recovered
+ * already is found by its page line. Otherwise it is a sense whose gloss
+ * carries the lead-in's text: the sense in the `#` line's own place, when the
+ * record has one sense for each of the section's `#` lines and that sense
+ * carries it; else the one sense that carries it. Place alone proves nothing —
+ * the extraction can drop one sense and add another — and neither does a
+ * clause two senses share. A lead-in not proved leaves the item at the top of
+ * the list, and `measure:recovery` counts it.
  */
 function placeUnder(
   leadIn: LeadIn,
@@ -156,11 +158,13 @@ function placeUnder(
 ): ListedUnder | null {
   const index = recovered.findIndex((definition) => definition.ref.line === leadIn.ref.line);
   if (index !== -1) return { in: "recovered", index };
-  if (leadIn.on === "sense-line" && section.senseLines.length === record.senseCount) {
-    return { in: "sense", senseIndex: leadIn.senseLine };
-  }
-  const gloss = record.glosses.find((candidate) => carries(candidate.text, leadIn.text));
-  return gloss === undefined ? null : { in: "sense", senseIndex: gloss.senseIndex };
+  const carrying = new Set(record.glosses.filter((gloss) => carries(gloss.text, leadIn.text)).map((gloss) => gloss.senseIndex));
+  const inPlace =
+    leadIn.on === "sense-line" && section.senseLines.length === record.senseCount && carrying.has(leadIn.senseLine);
+  if (inPlace) return { in: "sense", senseIndex: leadIn.senseLine };
+  if (carrying.size !== 1) return null;
+  const [senseIndex] = carrying;
+  return { in: "sense", senseIndex };
 }
 
 /** Recover what `record` lost from the page it was extracted from. */

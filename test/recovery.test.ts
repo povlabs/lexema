@@ -6,7 +6,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { recordText, recoverDefinitions, type RecordRecovery, type RecordText } from "../src/italian/recovery.js";
+import { recordText, recoverDefinitions, type ListedUnder, type RecordRecovery, type RecordText } from "../src/italian/recovery.js";
 import { readItalianSections } from "../src/italian/wikitext.js";
 import { loadFixturePages, RAW_PAGE_WIKI, type RawPage } from "../src/source/rawPage.js";
 
@@ -233,7 +233,39 @@ test("accollato: the items below a sense the record carries sit under that sense
   assert.equal(recovery.recovered[0].wikitext, "#*due scudi araldici contigui,");
 });
 
-test("a lead-in is placed by the page's layout: the `#` line's place when the record has a sense for each, else its gloss", () => {
+/** Where accollato's six items sit when its archive record carries `glosses`, one sense each, instead of its own. */
+const accollatoUnder = (...glosses: string[]): (ListedUnder | null)[] => {
+  const record = recordText(JSON.parse(readFileSync(resolve("fixtures/accollato.jsonl"), "utf8")));
+  const places = matched(recoverDefinitions({ ...record, ...senses(...glosses) }, page("accollato"))).recovered.map(
+    (definition) => definition.listedUnder,
+  );
+  assert.equal(places.length, 6);
+  return [...new Set(places.map((place) => JSON.stringify(place)))].map((place) => JSON.parse(place));
+};
+
+const ABITO = "(di abito)che arriva fino al collo";
+const SCARPA = "(di scarpa)che copre fino al collo del piede";
+const ARALDICO = "attributo araldico che si applica a:";
+
+test("accollato: a lead-in two senses carry is proved by neither, and its items stay at the top of the list", () => {
+  // A sense ahead of the lead-in's that quotes it: the first gloss carrying the
+  // text is the wrong sense, and nothing tells the two apart.
+  const quoting = "(araldica) si dice di figura cui si applica l'attributo araldico che si applica a: vedi sotto";
+  assert.deepEqual(accollatoUnder(quoting, ABITO, SCARPA, ARALDICO), [null]);
+  // One sense for each `#` line: the sense in the lead-in's place carries it,
+  // and place and text together tell it from the one that quotes it.
+  assert.deepEqual(accollatoUnder(quoting, SCARPA, ARALDICO), [{ in: "sense", senseIndex: 2 }]);
+});
+
+test("accollato: one sense per `#` line does not prove the senses are the page's lines in order", () => {
+  // The record drops the first `#` line's sense and adds one at the end: the
+  // sense in the lead-in's place is the added one, and the gloss finds the right one.
+  assert.deepEqual(accollatoUnder(SCARPA, ARALDICO, "(figurato) che sta addosso"), [{ in: "sense", senseIndex: 1 }]);
+  // The record drops the lead-in's own sense: nothing carries it, so nothing holds its items.
+  assert.deepEqual(accollatoUnder(ABITO, SCARPA, "(figurato) che sta addosso"), [null]);
+});
+
+test("a lead-in is placed only where a gloss carries it: the `#` line's own sense, else the one sense that does", () => {
   // filetto, revision 4045314: the record glosses `{{Pn|w=…}} detto di:` as
   // `filetto ( approfondimento) detto di:`, which no probe finds.
   const filetto = dumpLines("filetto", 4045314, [
@@ -248,10 +280,11 @@ test("a lead-in is placed by the page's layout: the `#` line's place when the re
       (definition) => definition.listedUnder,
     );
   const glosses = ["diminutivo di filo", "filetto ( approfondimento) detto di:", "ognuna delle quattro sezioni o parti dei pesci"];
-  // One sense for each `#` line: the lead-in is the sense in its place.
-  assert.deepEqual(placed(senses(...glosses)), [{ in: "sense", senseIndex: 1 }]);
-  // A sense the page does not show as a `#` line: place proves nothing, and
-  // the lead-in is the sense whose gloss carries its text, or nowhere.
+  // One sense for each `#` line, but its gloss does not carry the lead-in:
+  // place alone proves nothing, and the item stays at the top of the list.
+  assert.deepEqual(placed(senses(...glosses)), [null]);
+  // A sense the page does not show as a `#` line: the lead-in is the one
+  // sense whose gloss carries its text, or nowhere.
   assert.deepEqual(placed(senses("aggiunto", "diminutivo di filo", "filetto detto di:", "ognuna delle quattro sezioni")), [
     { in: "sense", senseIndex: 2 },
   ]);

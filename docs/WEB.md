@@ -127,8 +127,10 @@ An item of a list a definition opens with a colon (`accollato`'s
 `attributo araldico che si applica a:`) sits inside that definition as a
 bulleted list, whether the definition is the record's or itself recovered
 (#123, Huey's ruling: "nest"). Only the top of the list is numbered and counted.
-A sense that opens such a list is a definition, never *Source notes* furniture,
-even when its gloss starts like `casa`'s (`filetto ( approfondimento) detto di:`).
+An item nests only where the record proves which definition opens its list; when
+it can't, the item stays numbered at the top of the list, as before (`filetto`'s
+heraldic items). A sense that opens such a list is a definition, never *Source
+notes* furniture, even when its gloss starts like `casa`'s.
 
 **A lookup that did not happen.** No release, a D1 error, or a release built by
 a different normalizer all produce a page that says the lookup failed. That is
