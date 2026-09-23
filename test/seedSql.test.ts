@@ -8,6 +8,7 @@ import { mkdtemp, readdir, readFile, rm, stat, writeFile } from "node:fs/promise
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { seedSql } from "../src/import/seedSql.js";
+import { loadFixturePages } from "../src/source/rawPage.js";
 import { applyParts, PartFailure } from "../src/import/sqlParts.js";
 
 const rawLemma = '{ "word":"lemma", "pos":"noun", "pos_title":"Sostantivo", "lang_code":"it", "forms":[{"form":"forma","source":"Appendice:Coniugazioni/Italiano/lemma","tags":["plural"]}], "senses":[{"glosses":["una voce"],"tags":["rare"]}] }';
@@ -216,10 +217,13 @@ function tableDump(db: DatabaseSync): Record<string, unknown[]> {
   return Object.fromEntries(tables.map((table) => [table, db.prepare(`SELECT * FROM "${table}" ORDER BY rowid`).all().map((row) => ({ ...row }))]));
 }
 
+// The raw pages seedDev reads, so the dev seed here carries the recovered layer too.
+const rawPages = await loadFixturePages(resolve("fixtures"));
+
 const devSeed = (outputDir: string, partCeilingBytes?: number) =>
   seedSql({
     input: fixturePath, outputDir, schema: resolve("src/db/schema.sql"), releaseId: "it-dev",
-    requiredWords: HUEY_WORDS, validateFixtureClosure: true, partCeilingBytes,
+    requiredWords: HUEY_WORDS, validateFixtureClosure: true, partCeilingBytes, rawPages,
   });
 
 test("the fifty-word dev seed is one part with the same rows", async () => {
@@ -229,7 +233,15 @@ test("the fifty-word dev seed is one part with the same rows", async () => {
     assert.deepEqual(report.parts, [join(dir, "sql", "part-001.sql")]);
     assert.deepEqual(report.rows, {
       source_record: 83, source_record_json: 83, lookup_form: 2171, form_of_edge: 19, sense: 268,
-      sense_gloss: 268, sense_label: 101, grammar_claim: 9140, release_table_rows: 8,
+      sense_gloss: 268, sense_label: 101, grammar_claim: 9140,
+      raw_page: 1, recovered_definition: 7, recovered_label: 6, recovered_example: 7,
+      release_table_rows: 12,
+    });
+    // Seven of the fixture's records have a raw page under fixtures/; `casa` is
+    // the one whose page states definitions the record does not carry.
+    assert.deepEqual(report.recovery, {
+      rawPages: rawPages.size, recordsWithAPage: 7, fullLoss: 1, partialLoss: 0,
+      definitions: 7, examples: 7, unrendered: 0,
     });
   } finally { await rm(dir, { recursive: true, force: true }); }
 });
@@ -255,6 +267,37 @@ test("a seed forced across parts cuts only between statements and loads the same
     try {
       assert.deepEqual(tableDump(splitDb), tableDump(singleDb));
     } finally { singleDb.close(); splitDb.close(); }
+  } finally { await rm(dir, { recursive: true, force: true }); }
+});
+
+test("the recovered layer sits beside casa's record and leaves every source row as the seed without pages writes it", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "lexema-seed-"));
+  try {
+    const withPages = await devSeed(join(dir, "pages"));
+    const without = await seedSql({
+      input: fixturePath, outputDir: join(dir, "bare"), schema: resolve("src/db/schema.sql"), releaseId: "it-dev",
+      requiredWords: HUEY_WORDS, validateFixtureClosure: true,
+    });
+    const pagesDb = openSeed(withPages.parts, ":memory:");
+    const bareDb = openSeed(without.parts, ":memory:");
+    try {
+      const layer = ["raw_page", "recovered_definition", "recovered_label", "recovered_example", "release_table_rows"];
+      const source = (dump: Record<string, unknown[]>) =>
+        Object.fromEntries(Object.entries(dump).filter(([table]) => !layer.includes(table)));
+      assert.deepEqual(source(tableDump(pagesDb)), source(tableDump(bareDb)));
+
+      const casaLine = readFileSync(fixturePath, "utf8").split("\n").find((line) => JSON.parse(line).word === "casa");
+      const casa = pagesDb.prepare(
+        "SELECT r.record_id, j.raw_json FROM source_record r JOIN source_record_json j USING (record_id) WHERE r.word = 'casa'",
+      ).get() as { record_id: number; raw_json: string };
+      assert.equal(casa.raw_json, casaLine);
+      const recovered = pagesDb.prepare(
+        `SELECT d.route, d.page_line, p.title, p.revision_id FROM recovered_definition d JOIN raw_page p USING (page_id)
+          WHERE d.record_id = ? ORDER BY d.definition_index`,
+      ).all(casa.record_id) as { route: string; page_line: number; title: string; revision_id: number }[];
+      assert.deepEqual(recovered.map((row) => row.page_line), [8, 10, 13, 15, 17, 18, 20]);
+      assert.ok(recovered.every((row) => row.route === "below-page-control" && row.title === "casa" && row.revision_id === 4257826));
+    } finally { pagesDb.close(); bareDb.close(); }
   } finally { await rm(dir, { recursive: true, force: true }); }
 });
 

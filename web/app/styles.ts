@@ -230,6 +230,11 @@ export const DEFINITION = "flex gap-5";
 export const DEFINITION_NUMBER = "w-5 shrink-0 pt-1 font-mono text-[0.85rem] text-text-muted";
 export const GLOSS = "m-0 font-serif text-[1.2rem] text-text wrap-anywhere";
 export const SENSE_LABEL = "font-serif italic text-text-muted";
+/**
+ * The mark on a definition or example read back from the raw page (#28): the
+ * section count's small grey sans, so it reads as a note on the text, not text.
+ */
+export const RECOVERED_MARK = "ml-2 whitespace-nowrap font-sans text-[0.75rem] not-italic text-text-muted";
 
 export const EXAMPLES = "m-0 flex list-none flex-col gap-3 p-0";
 export const EXAMPLE =

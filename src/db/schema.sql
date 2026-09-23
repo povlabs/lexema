@@ -430,6 +430,92 @@ CREATE INDEX claim_review_by_record ON claim_review (record_id);
 
 
 -- ---------------------------------------------------------------------------
+-- Recovered definitions (#28)
+-- ---------------------------------------------------------------------------
+
+-- Definitions a raw Wiktionary page states that its archive record does not
+-- carry. Wiktextract sends every `#*` line to its example reader, which keeps
+-- italic runs only, so a plain-prose definition written one level below `#` is
+-- dropped: `casa` keeps two page notes and loses all seven of its definitions
+-- (reports/2026-09-18-definition-loss.md, reports/2026-09-23-recovered-definitions.md).
+--
+-- This is a layer beside the record, never an edit of it. source_record_json
+-- and the sense tables stay exactly as imported; a recovered row points at its
+-- record and names its own source, the page revision and line it was read
+-- from, so a reader can always tell the two apart. The text is Wiktionary's own
+-- words, under the same licence as the archive.
+
+-- One revision of one raw page that at least one recovered row was read from.
+CREATE TABLE raw_page (
+  page_id     INTEGER PRIMARY KEY,
+  release_id  TEXT    NOT NULL REFERENCES source_release(release_id) ON DELETE CASCADE,
+  wiki        TEXT    NOT NULL CHECK (wiki = 'it.wiktionary.org'),
+  title       TEXT    NOT NULL,
+  revision_id INTEGER NOT NULL CHECK (revision_id > 0),
+  revision_timestamp TEXT NOT NULL,  -- ISO-8601, as the wiki reported it
+  UNIQUE (release_id, wiki, title),
+  UNIQUE (page_id, release_id)
+) STRICT;
+
+-- One definition read off a raw page for one record, in page order.
+--
+-- `route` is which structure marked the line a definition (src/italian/wikitext.ts):
+--   'below-page-control' -> one level below a `#` line that carries only the
+--                           headword and its grammar (`casa`).
+--   'sub-term'           -> opened by a bold sub-term, then prose
+--                           (`#*'''liceo classico''', indirizzo...`); `term` holds it.
+--   'lead-in-item'       -> an item of a list a definition opens with a colon.
+CREATE TABLE recovered_definition (
+  recovered_id     INTEGER PRIMARY KEY,
+  record_id        INTEGER NOT NULL REFERENCES source_record(record_id) ON DELETE CASCADE,
+  release_id       TEXT    NOT NULL,
+  page_id          INTEGER NOT NULL,
+  definition_index INTEGER NOT NULL CHECK (definition_index >= 0),
+
+  route TEXT NOT NULL CHECK (route IN ('below-page-control', 'sub-term', 'lead-in-item')),
+  term  TEXT,
+
+  page_line INTEGER NOT NULL CHECK (page_line > 0),  -- 1-based line in the revision
+  wikitext  TEXT    NOT NULL,                        -- that line, verbatim
+  text      TEXT    NOT NULL,                        -- as a reader sees it
+
+  -- The JSON pointer of the record's example that carries this text, when the
+  -- record files it as an example rather than a definition (`lap steel guitar`:
+  -- `/senses/0/examples/0/text`). The record keeps it there; a page shows it
+  -- once, as this definition. NULL when no example carries it.
+  held_as_example TEXT CHECK (held_as_example GLOB '/senses/[0-9]*/examples/[0-9]*/text'),
+
+  CHECK ((route = 'sub-term') = (term IS NOT NULL)),
+  UNIQUE (record_id, definition_index),
+  FOREIGN KEY (record_id, release_id)
+    REFERENCES source_record(record_id, release_id) ON DELETE CASCADE,
+  -- The page must belong to the record's release.
+  FOREIGN KEY (page_id, release_id)
+    REFERENCES raw_page(page_id, release_id) ON DELETE CASCADE
+) STRICT;
+
+CREATE INDEX recovered_definition_by_record ON recovered_definition (record_id);
+
+-- Usage labels a recovered line's templates print (`architettura`, `figurato`).
+CREATE TABLE recovered_label (
+  recovered_id INTEGER NOT NULL REFERENCES recovered_definition(recovered_id) ON DELETE CASCADE,
+  label_index  INTEGER NOT NULL CHECK (label_index >= 0),
+  label        TEXT    NOT NULL,
+  PRIMARY KEY (recovered_id, label_index)
+) STRICT;
+
+-- The italic usage sentences one level below a recovered definition.
+CREATE TABLE recovered_example (
+  recovered_id  INTEGER NOT NULL REFERENCES recovered_definition(recovered_id) ON DELETE CASCADE,
+  example_index INTEGER NOT NULL CHECK (example_index >= 0),
+  page_line     INTEGER NOT NULL CHECK (page_line > 0),
+  wikitext      TEXT    NOT NULL,
+  text          TEXT    NOT NULL,
+  PRIMARY KEY (recovered_id, example_index)
+) STRICT;
+
+
+-- ---------------------------------------------------------------------------
 -- Views
 -- ---------------------------------------------------------------------------
 

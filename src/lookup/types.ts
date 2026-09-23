@@ -144,6 +144,56 @@ export interface Sense {
   labels: { kind: "tag" | "raw_tag"; label: string; ref: SourceRef }[];
 }
 
+/**
+ * Where a recovered value was read: one line of one revision of a raw
+ * Wiktionary page. It is a different source from the archive, so it is a
+ * different ref from `SourceRef`, and a page can tell the two apart by type.
+ */
+export interface RecoveredRef {
+  wiki: string;
+  title: string;
+  revisionId: number;
+  /** 1-based line in the revision's wikitext. */
+  line: number;
+}
+
+/** The permanent URL of the page revision a recovered ref names. */
+export function recoveredRevisionUrl(ref: RecoveredRef): string {
+  return `https://${ref.wiki}/w/index.php?title=${encodeURIComponent(ref.title)}&oldid=${ref.revisionId}`;
+}
+
+/** A usage sentence the raw page attaches to a recovered definition. */
+export interface RecoveredExample {
+  text: string;
+  ref: RecoveredRef;
+}
+
+/** Which page structure marked the line a definition (`src/italian/wikitext.ts`). */
+export type RecoveredRoute =
+  | { route: "below-page-control" }
+  | { route: "sub-term"; term: string }
+  | { route: "lead-in-item" };
+
+/**
+ * A definition the raw page states and the extraction dropped (#28), read back
+ * from the page. It sits beside the record's senses, never inside them: the
+ * record stays as imported, and this carries its own ref.
+ */
+export type RecoveredDefinition = RecoveredRoute & {
+  /** Wiktionary's own words, templates printed, links as their labels. */
+  text: string;
+  /** Usage labels the line's templates print: `architettura`, `figurato`. */
+  labels: string[];
+  ref: RecoveredRef;
+  examples: RecoveredExample[];
+  /**
+   * The record's example that carries this text, when the record files it as
+   * an example rather than a definition (`lap steel guitar`). A page shows the
+   * text once, as this definition, and not again as that example.
+   */
+  heldAsExample: SourceRef | null;
+};
+
 /** A record the source names as the target of a form_of edge. */
 export interface LemmaCandidate {
   recordId: number;
@@ -315,6 +365,12 @@ interface ReadingFacts {
   inflections: InflectionOf[];
   /** Review verdicts on this record's claims. Empty until #12 writes any. */
   reviews: Review[];
+  /**
+   * Definitions the raw page states that the record does not carry, in page
+   * order. Empty for nearly every record, and for every record whose raw page
+   * this release did not read.
+   */
+  recovered: RecoveredDefinition[];
 }
 
 interface NounPartOfSpeech {

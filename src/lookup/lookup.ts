@@ -16,6 +16,8 @@ import type {
   LemmaListing,
   LookupResult,
   Reading,
+  RecoveredDefinition,
+  RecoveredRoute,
   ReleaseInfo,
   Review,
   Sense,
@@ -355,6 +357,7 @@ async function buildReading(
     lemmaLinks,
     inflections: await readInflections(db, releaseId, recordId),
     reviews: await readReviews(db, recordId, ref),
+    recovered: await readRecovered(db, recordId, ref),
     // Derived, not read: the release carries no article field. The headword and
     // the grammar the source stated about the record are the only inputs, and a
     // reading that is not a noun comes back carrying no articles at all.
@@ -785,4 +788,66 @@ async function readReviews(
         compareSourcePointers(a.ref.jsonPointer, b.ref.jsonPointer) ||
         (a.reviewedAt < b.reviewedAt ? -1 : a.reviewedAt > b.reviewedAt ? 1 : 0),
     );
+}
+
+/**
+ * The recovered layer's definitions for one record, with their labels and
+ * examples. Exported so a test can hold the query to its plan.
+ */
+export const RECOVERED_SQL = `SELECT d.recovered_id, d.route, d.term, d.page_line, d.text, d.held_as_example,
+            p.wiki, p.title, p.revision_id
+       FROM recovered_definition d
+       JOIN raw_page p ON p.page_id = d.page_id
+      WHERE d.record_id = ?
+      ORDER BY d.definition_index`;
+
+async function readRecovered(
+  db: LookupDatabase,
+  recordId: number,
+  ref: (pointer: string) => SourceRef,
+): Promise<RecoveredDefinition[]> {
+  const rows = await queryAll<{
+    recovered_id: number;
+    route: RecoveredRoute["route"];
+    term: string | null;
+    page_line: number;
+    text: string;
+    held_as_example: string | null;
+    wiki: string;
+    title: string;
+    revision_id: number;
+  }>(db, RECOVERED_SQL, recordId);
+  if (rows.length === 0) return [];
+
+  const ids = rows.map((row) => row.recovered_id);
+  const marks = ids.map(() => "?").join(",");
+  const labels = await queryAll<{ recovered_id: number; label: string }>(
+    db,
+    `SELECT recovered_id, label FROM recovered_label WHERE recovered_id IN (${marks}) ORDER BY recovered_id, label_index`,
+    ...ids,
+  );
+  const examples = await queryAll<{ recovered_id: number; page_line: number; text: string }>(
+    db,
+    `SELECT recovered_id, page_line, text FROM recovered_example WHERE recovered_id IN (${marks}) ORDER BY recovered_id, example_index`,
+    ...ids,
+  );
+
+  return rows.map((row) => {
+    const at = (line: number) => ({ wiki: row.wiki, title: row.title, revisionId: row.revision_id, line });
+    // The schema ties `term` to the sub-term route, so a null here is a
+    // database nobody seeded through the schema.
+    if (row.route === "sub-term" && row.term === null) throw new Error(`recovered ${row.recovered_id} has no term`);
+    const route: RecoveredRoute =
+      row.route === "sub-term" ? { route: "sub-term", term: row.term as string } : { route: row.route };
+    return {
+      ...route,
+      text: row.text,
+      labels: labels.filter((label) => label.recovered_id === row.recovered_id).map((label) => label.label),
+      ref: at(row.page_line),
+      examples: examples
+        .filter((example) => example.recovered_id === row.recovered_id)
+        .map((example) => ({ text: example.text, ref: at(example.page_line) })),
+      heldAsExample: row.held_as_example === null ? null : ref(row.held_as_example),
+    };
+  });
 }

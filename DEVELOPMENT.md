@@ -108,7 +108,11 @@ fresh review.
 
 Three dataset limits are already measured, in [reports/](./reports/): the `casa`
 entry loses its house definitions, embedded verb forms carry no mood tag, and the
-`studente` verb claim is disputed upstream. Source identity, licensing, and
+`studente` verb claim is disputed upstream. The first is partly repaired: the seed
+recovers dropped definitions from the raw Wiktionary pages committed under
+`fixtures/`, so `casa` shows its seven, and `pnpm run measure:recovery` counts the
+loss over those pages ([the measurement](./reports/2026-09-23-recovered-definitions.md)).
+Words without a committed raw page are not repaired yet. Source identity, licensing, and
 attribution need review before any dictionary content is redistributed; local
 development is the only access until that lands.
 

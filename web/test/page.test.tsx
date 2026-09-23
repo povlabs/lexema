@@ -28,6 +28,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { TENSE_BOXES } from "../../src/italian/moods.js";
 import { seedSql } from "../../src/import/seedSql.js";
 import { writeKnownDisputes } from "../../src/import/knownDisputes.js";
+import { loadFixturePages, type RawPageSource } from "../../src/source/rawPage.js";
 import { fromNodeSqlite } from "../../src/lookup/database.js";
 import { lookup, readRelease } from "../../src/lookup/lookup.js";
 import type { Reading } from "../../src/lookup/types.js";
@@ -69,6 +70,7 @@ import {
   LINK,
   OPEN_MARK,
   PENDING,
+  RECOVERED_MARK,
   SEARCHED,
   SHELL_CENTRED,
   SHELL_TOP,
@@ -86,7 +88,7 @@ interface Fixture {
   db: DatabaseSync;
 }
 
-async function fixture(lines: readonly string[]): Promise<Fixture> {
+async function fixture(lines: readonly string[], rawPages?: RawPageSource): Promise<Fixture> {
   const dir = await mkdtemp(join(tmpdir(), "lexema-page-"));
   const archive = join(dir, "fixture.jsonl.gz");
   const outputDir = join(dir, "sql");
@@ -99,6 +101,7 @@ async function fixture(lines: readonly string[]): Promise<Fixture> {
     archiveR2Key: `releases/${RELEASE}.jsonl.gz`,
     sourceUrl: "https://example.invalid/it-extract.jsonl.gz",
     license: "CC-BY-SA-4.0",
+    rawPages,
     onRejection: (rejection) => {
       throw new Error(`fixture line rejected: ${JSON.stringify(rejection)}`);
     },
@@ -110,8 +113,12 @@ async function fixture(lines: readonly string[]): Promise<Fixture> {
   return { dir, db };
 }
 
-async function withLines(lines: readonly string[], run: (f: Fixture) => Promise<void>): Promise<void> {
-  const f = await fixture(lines);
+async function withLines(
+  lines: readonly string[],
+  run: (f: Fixture) => Promise<void>,
+  rawPages?: RawPageSource,
+): Promise<void> {
+  const f = await fixture(lines, rawPages);
   try {
     await run(f);
   } finally {
@@ -127,6 +134,15 @@ const withFixture = (run: (f: Fixture) => Promise<void>) => withLines(FIXTURE_LI
 async function withDevSeed(run: (f: Fixture) => Promise<void>): Promise<void> {
   const text = await readFile(join(REPO, "fixtures/dev-seed.jsonl"), "utf8");
   return withLines(text.trim().split("\n"), run);
+}
+
+/**
+ * The development fixture seeded the way `pnpm run seed:dev` seeds it: with the
+ * raw pages under `fixtures/`, so records like `casa` carry the recovered layer.
+ */
+async function withDevSeedAndPages(run: (f: Fixture) => Promise<void>): Promise<void> {
+  const text = await readFile(join(REPO, "fixtures/dev-seed.jsonl"), "utf8");
+  return withLines(text.trim().split("\n"), run, await loadFixturePages(join(REPO, "fixtures")));
 }
 
 async function attempt(db: DatabaseSync, query: string): Promise<Attempt> {
@@ -536,6 +552,100 @@ test("casa stays a thin entry: its notes as notes, no invented definition, its s
     // Both transcriptions the source gives, each with its own qualifier.
     assert.match(html, /\/ˈkaza\/<span class="[^"]*" lang="it">italiano settentrionale<\/span>/);
     assert.match(html, /\/ˈkasa\/<span class="[^"]*" lang="it">italiano standard<\/span>/);
+  });
+});
+
+test("casa shows the seven definitions its raw page states, each marked recovered, with their examples", async () => {
+  await withDevSeedAndPages(async ({ db }) => {
+    const casa = card(await render(db, "casa"), "casa, noun");
+    const text = textOf(casa);
+    assert.match(casa, new RegExp(`>Definitions</h3><span class="[^"]*">7 · showing ${DEFINITION_SLICE}</span>`));
+    assert.equal(occurrencesOf(casa, `<span class="${RECOVERED_MARK}">recovered</span>`), 7 + 7, "seven definitions, seven examples");
+    // Wiktionary's own words, its labels ahead of them the way the extraction's are shown.
+    assert.match(
+      text,
+      exact("(architettura) edificio costruito per essere utilizzato come abitazione e composto da uno o più piani, suddivisi in vani distinti, ognuno per un uso specifico"),
+    );
+    assert.match(text, exact("(figurato, industriale) casa costruttrice"));
+    assert.match(text, exact("(astrologia) casa lunare: ognuna di ventotto parti in cui è suddiviso il cielo durante il moto di rivoluzione della Luna"));
+    assert.match(text, exact("ti avviso che stasera torno a casa tardi dal lavoro"));
+    assert.match(casa, new RegExp(`>Examples</h3><span class="[^"]*">7 · showing 1</span>`));
+    // Where the text came from, linked to the exact revision, said on both sections.
+    assert.equal(occurrencesOf(casa, 'href="https://it.wiktionary.org/w/index.php?title=casa&amp;oldid=4257826"'), 2);
+    assert.match(text, /Entries marked recovered were read from the Wiktionary page, revision 4257826; the extraction dropped them\./);
+    // The record's own notes stay notes, and now say where the definitions are.
+    assert.match(casa, />Source notes<\/h3>/);
+    assert.match(casa, /lang="it">casa \( approfondimento\) f sing<\/p>/);
+    assert.match(text, /the definitions below were recovered from the Wiktionary page\./);
+    assert.doesNotMatch(text, /gives no definition for this reading/);
+  });
+});
+
+test("a word whose raw page lost nothing renders exactly as it does without the page", async () => {
+  // `studente` has a raw page under fixtures/ and an ordinary layout: `#` lines
+  // state its senses and its `#*` lines are italic usage sentences.
+  const without: string[] = [];
+  await withDevSeed(async ({ db }) => {
+    for (const query of ["studente", "andare", "sale"]) without.push(await render(db, query));
+  });
+  await withDevSeedAndPages(async ({ db }) => {
+    for (const [i, query] of ["studente", "andare", "sale"].entries()) {
+      const html = await render(db, query);
+      assert.equal(html, without[i], query);
+      assert.doesNotMatch(html, /recovered/, query);
+    }
+  });
+});
+
+test("lap steel guitar shows its main definition once, as a definition, and says the record files it as an example", async () => {
+  // Archive line 605574, verbatim: its one sense is furniture, and the page's
+  // main definition sits in that sense's `examples`.
+  const devSeed = (await readFile(join(REPO, "fixtures/dev-seed.jsonl"), "utf8")).trim().split("\n");
+  const lapSteel = (await readFile(join(REPO, "fixtures/lap-steel-guitar.jsonl"), "utf8")).trim();
+  const pages = await loadFixturePages(join(REPO, "fixtures"));
+  await withLines(
+    [...devSeed, lapSteel],
+    async ({ db }) => {
+      const [reading] = await readingsFor(db, "lap steel guitar");
+      // The record is as imported: the text is still its example.
+      const [held] = reading.senses.flatMap((sense) => sense.examples);
+      assert.equal(held.ref.jsonPointer, "/senses/0/examples/0/text");
+      assert.deepEqual(
+        reading.recovered.map((definition) => definition.heldAsExample),
+        [held.ref, null, null],
+      );
+
+      const html = card(await render(db, "lap steel guitar"), "lap steel guitar, noun");
+      const text = textOf(html);
+      const main = "tipo di steel guitar che si suona da seduti";
+      assert.equal(occurrencesOf(text, main), 1, "the main definition is shown once");
+      assert.equal(occurrencesOf(held.text, main), 1);
+      const definitions = html.slice(html.indexOf(">Definitions</h3>"));
+      assert.match(definitions.slice(0, definitions.indexOf("</ol>")), exact(main));
+      assert.doesNotMatch(html, />Examples<\/h3>/, "its only example is the definition, so there is no Examples section");
+      assert.equal(occurrencesOf(html, `<span class="${RECOVERED_MARK}">the source record files this as an example</span>`), 1);
+      // The section note does not claim every recovered entry was dropped.
+      assert.match(text, /the extraction dropped them or filed them as examples\./);
+      assert.doesNotMatch(text, /the extraction dropped them\.(?! or)/);
+      // A word none of whose recovered definitions was misfiled keeps the plain note.
+      const casaText = textOf(card(await render(db, "casa"), "casa, noun"));
+      assert.match(casaText, /the extraction dropped them\./);
+      assert.doesNotMatch(casaText, /filed them as examples/);
+    },
+    pages,
+  );
+});
+
+test("an ordinary word's examples are unchanged by the recovered layer", async () => {
+  await withDevSeedAndPages(async ({ db }) => {
+    const reading = (await readingsFor(db, "andare")).find((candidate) => candidate.pos === "verb");
+    assert.ok(reading);
+    const examples = reading.senses.flatMap((sense) => sense.examples);
+    assert.equal(examples.length, 6);
+    const verb = card(await render(db, "andare"), "andare, verb");
+    assert.match(verb, new RegExp(`>Examples</h3><span class="[^"]*">6 · showing 1</span>`));
+    for (const example of examples) assert.match(textOf(verb), exact(example.text));
+    assert.doesNotMatch(verb, /files this as an example/);
   });
 });
 
