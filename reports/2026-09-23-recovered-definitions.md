@@ -49,7 +49,7 @@ definition below it.
 | **partial loss** | **14** |
 | no loss | 2,504 |
 
-**37 definitions lost** across those 18 records, with the 12 examples the page attaches to
+**37 definitions recovered** across those 18 records — 36 lost outright and 1 misfiled — with the 12 examples the page attaches to
 them. By route: 13 below a page control, 19 sub-terms, 5 lead-in items. One of the 37 —
 `lap steel guitar`'s main definition — is in the record, filed under `examples[].text`;
 the other 36 are nowhere in it. No matched definition was already a gloss, and none was

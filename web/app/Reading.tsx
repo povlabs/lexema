@@ -596,14 +596,21 @@ function RecoveredMark() {
  * revision, linked, and why it is here. Every recovered line on a record comes
  * from the one page of its headword.
  */
-function RecoveredNote({ source }: { source: RecoveredRef }) {
+/**
+ * Where the section's recovered entries were read. `misfiled` says one of them
+ * is in the record after all, filed as an example, so the note does not claim
+ * every one of them was dropped.
+ */
+function RecoveredNote({ source, misfiled = false }: { source: RecoveredRef; misfiled?: boolean }) {
   return (
     <>
       Entries marked recovered were read from the{" "}
       <a className="text-accent underline" href={recoveredRevisionUrl(source)} rel="noreferrer">
         Wiktionary page, revision {source.revisionId}
       </a>
-      ; the extraction dropped them.
+      {misfiled
+        ? "; the extraction dropped them or filed them as examples."
+        : "; the extraction dropped them."}
     </>
   );
 }
@@ -691,12 +698,13 @@ function Definitions({ reading }: { reading: Reading }) {
   const first = definitions.slice(0, DEFINITION_SLICE);
   const rest = definitions.slice(DEFINITION_SLICE);
   const recoveredFrom = reading.recovered[0]?.ref;
+  const misfiled = reading.recovered.some((definition) => definition.heldAsExample !== undefined);
   return (
     <Section
       id={`definitions-${reading.recordId}`}
       name="Definitions"
       count={sliceCount(definitions.length, DEFINITION_SLICE)}
-      note={recoveredFrom && <RecoveredNote source={recoveredFrom} />}
+      note={recoveredFrom && <RecoveredNote source={recoveredFrom} misfiled={misfiled} />}
     >
       <ol className={DEFINITIONS}>
         {first.map((item, i) => (

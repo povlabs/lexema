@@ -113,8 +113,9 @@ drawn as empty fields.
 verbatim. Filtering them would hide how incomplete this data is, which is the
 one thing this page must not do.
 
-**Definitions the extraction dropped.** Where the raw Wiktionary page states a
-definition the record lacks (#28), the seed recovers it into a layer beside the
+**Definitions the extraction dropped or misfiled.** Where the raw Wiktionary page states a
+definition the record does not carry as a definition (#28) — absent, or filed
+under an example — the seed recovers it into a layer beside the
 record, and the card lists it after the record's own definitions with a small
 *recovered* mark, and its examples the same way. Each section that shows one
 says once which page revision it was read from, linked. The record's furniture

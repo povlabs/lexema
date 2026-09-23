@@ -624,6 +624,9 @@ test("lap steel guitar shows its main definition once, as a definition, and says
       assert.match(definitions.slice(0, definitions.indexOf("</ol>")), exact(main));
       assert.doesNotMatch(html, />Examples<\/h3>/, "its only example is the definition, so there is no Examples section");
       assert.equal(occurrencesOf(html, `<span class="${RECOVERED_MARK}">the source record files this as an example</span>`), 1);
+      // The section note does not claim every recovered entry was dropped.
+      assert.match(text, /the extraction dropped them or filed them as examples\./);
+      assert.doesNotMatch(text, /the extraction dropped them\.(?! or)/);
     },
     pages,
   );

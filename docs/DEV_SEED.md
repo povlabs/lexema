@@ -95,6 +95,16 @@ any point can leave an unverified database servable.
 The seeder stops at the first failing part, names it and its number, and lists
 the parts applied before it. No later part runs.
 
-The archive is the only production input. This development fixture exists so a
+A release is seeded from the archive, and from raw Wiktionary pages only to
+recover definitions the extraction dropped
+([ADR 0012](../.decisions/0012-archive-is-the-release-seed.md)); today those pages
+are the ones committed under `fixtures/`. This development fixture exists so a
 fresh clone can seed without `it-extract.jsonl.gz` or a data-repository checkout.
 Loading a complete release into deployed D1 remains #18.
+
+**A database seeded before recovered definitions existed must be reseeded.**
+Lookup reads the `raw_page` and `recovered_definition` tables for every reading,
+and an older database has neither, so every search on it fails. Seeding again
+with `pnpm run seed:dev` into its `SEED_STATE` builds both. The `held_as_example`
+column also changed meaning, from a flag to a JSON pointer, so any database
+seeded from an earlier revision of this change needs the same reseed.
