@@ -45,8 +45,10 @@ else.
 
 ### Run the search page
 
-The page answers from imported data, so it needs the dictionary archive in the
-repository root. It runs on a local Worker only and is not deployed.
+The page answers from a seeded local D1. `pnpm run seed:dev` seeds it from the
+committed fifty-word fixture, so a fresh clone needs no archive; the full release
+needs the archive, as [RUN_AN_IMPORT.md](docs/RUN_AN_IMPORT.md) describes. It
+runs on a local Worker only and is not deployed.
 
 ```sh
 pnpm run seed:dev
