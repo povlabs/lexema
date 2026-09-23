@@ -77,10 +77,12 @@ export const SEARCH_HINT =
  * field, and the source's spellings in the serif the field is typed in. The
  * highlighted row is outlined in `accent` the way the searched form is outlined
  * in a paradigm box, and carries the field's own `ENTER` hint in words, so it is
- * never marked by colour alone.
+ * never marked by colour alone. It is never taller than the room left under the
+ * field — on a phone, the room above the open keyboard — and scrolls within
+ * itself instead.
  */
 export const SUGGEST_POPUP =
-  "w-[var(--anchor-width)] max-w-[var(--available-width)] rounded-[4px] border border-border bg-surface-raised p-1 text-left";
+  "max-h-[var(--available-height)] w-[var(--anchor-width)] max-w-[var(--available-width)] overflow-y-auto rounded-[4px] border border-border bg-surface-raised p-1 text-left";
 export const SUGGEST_LIST = "outline-none";
 export const SUGGEST_ITEM =
   "group flex cursor-default items-baseline justify-between gap-4 rounded-[4px] border-2 border-transparent px-3 py-1 font-serif text-lg text-text select-none data-highlighted:border-accent data-highlighted:text-text-strong";
