@@ -30,6 +30,7 @@ import {
   SECTION_HEADING,
   SHELL_TOP,
 } from "./styles.ts";
+import { SiteHeader } from "./SiteHeader";
 
 const LICENCE_URL = "https://creativecommons.org/licenses/by-sa/4.0/";
 const LICENCE_TEXT_URL = "https://creativecommons.org/licenses/by-sa/4.0/legalcode";
@@ -122,6 +123,8 @@ function ReleaseIdentity({ release }: { release: ReleaseInfo | undefined }) {
 /** The whole page, over one release. */
 export function Attribution({ release }: { release: ReleaseInfo | undefined }) {
   return (
+    <>
+    <SiteHeader />
     <main className={SHELL_TOP}>
       <h1 className={PAGE_HEADING}>Sources and licences</h1>
 
@@ -253,5 +256,6 @@ export function Attribution({ release }: { release: ReleaseInfo | undefined }) {
         </p>
       </section>
     </main>
+    </>
   );
 }

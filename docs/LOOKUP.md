@@ -52,6 +52,17 @@ Applied in this order, by `normalizeItalianExact`:
 
 Length bound: `MAX_QUERY_LENGTH` is 128 characters, measured after trimming.
 
+## What matches
+
+The key is matched against every record's headword and every entry of its
+`forms[]`, except an entry the source tags `auxiliary`. That entry names the
+verb a record conjugates with — `andare` lists `essere` — so it is a fact about
+`andare`, not a spelling of `essere`, and matching it made 309 other verbs
+results for `essere` and 5,267 for `avere` (#109). The entry is still in the
+record's `forms[]`, so the verb's card still states its auxiliary. The test is
+the `form-role` = `auxiliary` grammar claim the importer writes for that tag,
+applied at query time in `SEARCH_SQL`.
+
 ## Outcomes
 
 | `outcome` | When | Carries |
@@ -78,13 +89,22 @@ writes `result.outcome === "found" ? result.readings : []`, and neither
 
 ## Result fields
 
+A record matches when its headword or a `forms[]` entry spells the key. Every
+match is a reading, with one exception: a record that matched only through its
+table, and that a reading about the query names as its lemma, is that reading's
+lemma instead. `sala` and `salire` list `sale`, and two `sale` readings say they
+are forms of them, so a search for `sale` returns three readings, and `sala`
+and `salire` arrive on those readings' `lemmaLinks` with the rows of their
+tables that spell `sale`. A record that lists the query and is no reading's
+lemma — `studentessa` for `studenti` — is still a reading.
+
 | Field | Holds |
 | --- | --- |
 | `query.raw` | the caller's string, verbatim |
 | `query.key` | the normalized key the index was probed with |
 | `query.normalizer` | the release's normalizer version |
 | `release` | id, normalizer, source url, retrieval date, licence, attribution — present on `not-found` too |
-| `readings[]` | one entry per matching record, in source order; `found` only |
+| `readings[]` | one entry per matching record, in source order, except a lemma (below); `found` only |
 
 ### `Reading`
 
@@ -93,13 +113,15 @@ writes `result.outcome === "found" ? result.readings : []`, and neither
 | `recordId` | the database's surrogate id, an artefact of one build — never publish it |
 | `ref` | the whole record: `jsonPointer` is `""` |
 | `word`, `pos`, `posTitle` | the record's own headword and part of speech, verbatim |
+| `wordFacts` | pronunciations, hyphenations, etymologies, synonyms, antonyms and derived words, read from the record's own line in `source_record_json`; one entry per distinct related spelling, every pointer kept |
 | `isAboutQuery` | `true` when at least one piece of evidence is a headword hit |
 | `evidence[]` | every occurrence of the surface on this record, in source order |
-| `senses[]` | source glosses and labels |
+| `senses[]` | source glosses, labels and `examples[].text`, the examples read from `source_record_json` |
 | `grammar` | claims split into `record`, `byForm` and `bySense` |
-| `lemmaLinks[]` | outgoing `form_of` edges this record declares |
+| `lemmaLinks[]` | the reading's lemma: outgoing `form_of` edges this record declares, each candidate with its `listing` |
 | `inflections[]` | records declaring themselves forms of this one |
 | `reviews[]` | review verdicts on this record's claims |
+| `articles` | noun readings only: the singular articles `it-articles/v1` derives from the record's stated gender and number, plus the plural ones for the single plural form the source tags with the same gender |
 
 ### `SourceRef`
 
@@ -154,8 +176,15 @@ all; the three represented states are:
 | `candidates` | it matches one or more | `candidates[]` |
 
 `candidates[]` is never narrowed to one. More than one entry means the source
-did not choose. Each candidate is `recordId`, `word`, `pos` and a `ref` to its
-own `/word`.
+did not choose. Each candidate is `recordId`, `word`, `pos`, a `ref` to its
+own `/word`, and `listing`.
+
+`listing` is where the candidate's own table spells the query: its whole
+`forms[]` and the `evidence[]` rows the key hit, never empty. It is `undefined`
+when the candidate's table does not list the query — for `sale`, the `sala`
+verb record, which shares its spelling with the `sala` noun. A form reading
+reads its person, number and tense off that row, and a page of one verb form
+shows the lemma's whole table from it.
 
 ### `InflectionOf`
 
@@ -177,7 +206,7 @@ replaces it.
 
 ## Exported SQL
 
-`LEMMA_LINK_SQL`, `INFLECTION_SQL` and `INFLECTION_CANDIDATE_SQL` are exported
+`SEARCH_SQL`, `LEMMA_LINK_SQL`, `INFLECTION_SQL` and `INFLECTION_CANDIDATE_SQL` are exported
 so tests can assert their query plans. See
 [the design notes](LOOKUP_DESIGN.md#the-view-that-costs-four-orders-of-magnitude).
 

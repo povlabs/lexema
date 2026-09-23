@@ -12,6 +12,7 @@ import {
   INFLECTION_SQL,
   LEMMA_LINK_SQL,
   MAX_QUERY_LENGTH,
+  SEARCH_SQL,
   lookup,
 } from "../src/lookup/lookup.js";
 import { fromNodeSqlite } from "../src/lookup/database.js";
@@ -74,7 +75,10 @@ const LINES = [
     tags: ["form-of"],
     senses: [{ glosses: ["terza persona singolare di salire"], tags: ["form-of"], form_of: [{ word: "salire" }] }],
   }),
-  JSON.stringify({ word: "sala", pos: "noun", pos_title: "Sostantivo", lang_code: "it", tags: ["feminine", "singular"] }),
+  JSON.stringify({
+    word: "sala", pos: "noun", pos_title: "Sostantivo", lang_code: "it", tags: ["feminine", "singular"],
+    forms: [{ form: "sale", tags: ["feminine", "plural"] }],
+  }),
 
   // `bella` points at `bello`, which is three records. Nothing chooses.
   JSON.stringify({
@@ -143,6 +147,43 @@ const LINES = [
       { glosses: ["diminutivo di casa"], tags: ["form-of"], form_of: [{ word: "casa" }] },
       { glosses: ["piccola casa di campagna"], tags: ["form-of"], form_of: [{ word: "casa" }] },
     ],
+  }),
+
+  // The two auxiliaries, and verbs whose tables name them. The source writes a
+  // verb's auxiliary as a `forms[]` entry tagged `auxiliary` — `essere` lists
+  // `essere`, `venire` lists `essere`, `mangiare` lists `avere` — which is a
+  // fact about the verb, not a spelling of the auxiliary (#109).
+  JSON.stringify({
+    word: "essere", pos: "verb", pos_title: "Verbo", lang_code: "it",
+    forms: [
+      { form: "essere", tags: ["auxiliary"], raw_tags: ["verbo irregolare"] },
+      { form: "sono", tags: ["first-person", "singular", "present"] },
+    ],
+    senses: [{ glosses: ["esistere"] }],
+  }),
+  JSON.stringify({
+    word: "avere", pos: "verb", pos_title: "Verbo", lang_code: "it",
+    forms: [
+      { form: "avere", tags: ["auxiliary"], raw_tags: ["verbo di seconda coniugazione (irregolare)"] },
+      { form: "ho", tags: ["first-person", "singular", "present"] },
+    ],
+    senses: [{ glosses: ["possedere"] }],
+  }),
+  JSON.stringify({
+    word: "venire", pos: "verb", pos_title: "Verbo", lang_code: "it",
+    forms: [
+      { form: "essere", tags: ["auxiliary"], raw_tags: ["verbo di terza coniugazione (irregolare)"] },
+      { form: "vengo", tags: ["first-person", "singular", "present"] },
+    ],
+    senses: [{ glosses: ["giungere"] }],
+  }),
+  JSON.stringify({
+    word: "mangiare", pos: "verb", pos_title: "Verbo", lang_code: "it",
+    forms: [
+      { form: "avere", tags: ["auxiliary"], raw_tags: ["verbo di prima coniugazione"] },
+      { form: "mangio", tags: ["first-person", "singular", "present"] },
+    ],
+    senses: [{ glosses: ["nutrirsi"] }],
   }),
 ];
 
@@ -326,17 +367,19 @@ test("repeated evidence does not become repeated readings", async () => {
   await withFixture(async (db) => {
     // `studenti` sits on three records across four lookup rows: twice inside
     // `studente`, once inside `studentessa`, and once as its own headword.
+    // `studente` is the lemma `studenti` names, so it arrives as that lemma,
+    // not as a reading: two readings, and one lemma carrying two rows.
     const readings = found(await ask(db, "studenti"));
-    assert.equal(readings.length, 3);
+    assert.deepEqual(readings.map((r) => `${r.word}/${r.pos}`), ["studenti/noun", "studentessa/noun"]);
 
-    const byWord = new Map(readings.map((r) => [`${r.word}/${r.pos}`, r]));
-    const studente = byWord.get("studente/noun");
-    assert.ok(studente);
+    const link = readings[0].lemmaLinks[0];
+    assert.ok(link.kind === "candidates");
+    const studente = link.candidates.find((c) => c.pos === "noun");
+    assert.ok(studente?.listing);
     // Both mentions survive as separate evidence — they carry different tags,
     // so collapsing them would lose a fact.
-    assert.equal(studente.evidence.length, 2);
     assert.deepEqual(
-      studente.evidence.map((e) => e.ref.jsonPointer),
+      studente.listing.evidence.map((e) => e.ref.jsonPointer),
       ["/forms/0/form", "/forms/1/form"],
     );
   });
@@ -379,17 +422,47 @@ test("a record that merely mentions a form is not called its lemma", async () =>
     const mentions = readings.filter((r) => !r.isAboutQuery);
     const about = readings.filter((r) => r.isAboutQuery);
 
-    // Both list `studenti` in their tables, and neither is a claim about the
-    // word. `studentessa` especially: it is the feminine, not the lemma.
-    assert.deepEqual(mentions.map((r) => r.word).sort(), ["studente", "studentessa"]);
+    // `studentessa` lists `studenti` in its table, and that is no claim about
+    // the word: it is the feminine, not the lemma. Nothing names it, so it
+    // stays a reading, marked as a mention.
+    assert.deepEqual(mentions.map((r) => r.word), ["studentessa"]);
     assert.ok(mentions.every((r) => r.evidence.every((e) => e.origin === "embedded-form")));
 
     // The one record that IS about `studenti` is the inflected entry, and its
     // lemma claim comes from the edge it declares, not from anyone's table.
+    // `studente`'s table listing `studenti` is carried on that lemma, never
+    // made into a claim of its own.
     assert.deepEqual(about.map((r) => r.word), ["studenti"]);
     const link = about[0].lemmaLinks[0];
     assert.equal(link.kind, "candidates");
     assert.equal(link.targetWord, "studente");
+  });
+});
+
+test("a lemma the query matches through its table is its reading's lemma, not a reading", async () => {
+  await withFixture(async (db) => {
+    // `sala` lists `sale`, and `sale`'s second reading says it is the plural
+    // of `sala`. So `sala` comes back as that reading's lemma, with the row of
+    // its table that spells `sale` — and not as a fourth reading.
+    const readings = found(await ask(db, "sale"));
+    assert.deepEqual(readings.map((r) => `${r.word}/${r.pos}`), ["sale/noun", "sale/noun", "sale/verb"]);
+
+    const [link] = readings[1].lemmaLinks;
+    assert.ok(link.kind === "candidates");
+    assert.deepEqual(link.candidates.map((c) => c.word), ["sala"]);
+    const [sala] = link.candidates;
+    assert.ok(sala.listing, "sala's table lists sale");
+    assert.deepEqual(sala.listing.evidence.map((e) => e.ref.jsonPointer), ["/forms/0/form"]);
+    assert.deepEqual(sala.listing.forms.map((f) => f.surface), ["sale"]);
+
+    // A lemma whose table does not list the query carries no listing: `salire`
+    // is in no record here, and `bello`'s records list no `bella`.
+    const [verbLink] = readings[2].lemmaLinks;
+    assert.equal(verbLink.kind, "dangling");
+    const [bella] = found(await ask(db, "bella"));
+    const [bellaLink] = bella.lemmaLinks;
+    assert.ok(bellaLink.kind === "candidates");
+    assert.ok(bellaLink.candidates.every((c) => c.listing === undefined));
   });
 });
 
@@ -738,6 +811,48 @@ test("refuses to serve a release that is not complete", async () => {
     // Answering "no results" would be a different, false claim from "this
     // release is not servable".
     await assert.rejects(() => ask(db, "sale"), /no complete release/);
+  });
+});
+
+test("an auxiliary a verb's table names is not a match for the auxiliary", async () => {
+  await withFixture(async (db) => {
+    // `venire` lists `essere` and `mangiare` lists `avere`, each tagged
+    // `auxiliary`: the verb they conjugate with, not a spelling of them. Only
+    // the auxiliaries' own records come back.
+    for (const auxiliary of ["essere", "avere"]) {
+      const readings = found(await ask(db, auxiliary));
+      assert.deepEqual(readings.map((r) => r.word), [auxiliary], `${auxiliary}: only its own record`);
+      // Its own entry is a headword hit only: its own auxiliary row is the same
+      // tag, so it is not evidence either.
+      assert.deepEqual(readings[0].evidence.map((e) => e.ref.jsonPointer), ["/word"]);
+    }
+
+    // The entry stays in the record, so a card can still state the auxiliary.
+    const [venire] = found(await ask(db, "venire"));
+    const auxiliaryRow = venire.forms.find((form) => form.surface === "essere");
+    assert.ok(auxiliaryRow, "venire still lists essere");
+    assert.ok(
+      auxiliaryRow.claims.some((c) => c.status === "stated" && c.dimension === "form-role" && c.value === "auxiliary"),
+    );
+
+    // A form of the same table is still a match.
+    assert.deepEqual(found(await ask(db, "vengo")).map((r) => r.word), ["venire"]);
+  });
+});
+
+test("the search query stays on indexes rather than scanning", async () => {
+  await withFixture(async (db) => {
+    // The auxiliary test runs once per hit, and `avere` has 5,267 hits at
+    // release scale, so each has to be one probe of the claim index.
+    const plan = (
+      db.prepare(`EXPLAIN QUERY PLAN ${SEARCH_SQL}`).all(RELEASE, "avere") as { detail: string }[]
+    ).map((row) => row.detail);
+    assert.ok(
+      !plan.some((step) => /SCAN (lookup_form|grammar_claim|lf|g)\b/.test(step)),
+      `search query degraded to a scan:\n${plan.join("\n")}`,
+    );
+    assert.ok(plan.some((step) => step.includes("lookup_form_by_key")), plan.join("\n"));
+    assert.ok(plan.some((step) => step.includes("grammar_claim_by_record")), plan.join("\n"));
   });
 });
 

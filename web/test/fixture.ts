@@ -431,6 +431,34 @@ export const FIXTURE_LINES: string[] = [
     ],
   }),
 
+  // A full synthetic tense vocabulary: eight named six-person cycles and
+  // one second present cycle whose mood the source does not state.
+  record({
+    word: "provare", pos: "verb", pos_title: "Verbo",
+    forms: [
+      ...[
+        [["present"], "provo"], [["present"], "provi"],
+        [["present"], "prova"], [["present"], "proviamo"],
+        [["present"], "provate"], [["present"], "provano"],
+      ].map(([tags, form], i) => ({ form: form as string,
+        tags: [["first-person", "second-person", "third-person"][i % 3],
+          i < 3 ? "singular" : "plural", ...(tags as string[])],
+        raw_tags: [PRONOUNS[i]], source: "Appendice:Coniugazioni/Italiano/provare" })),
+      ...tenseForms(["provavo", "provavi", "provava", "provavamo", "provavate", "provavano"], "imperfect"),
+      ...tenseForms(["provai", "provasti", "provò", "provammo", "provaste", "provarono"], "past-remote"),
+      ...tenseForms(["proverò", "proverai", "proverà", "proveremo", "proverete", "proveranno"], "future"),
+      ...[["past", "perfect"], ["past", "perfect", "pluperfect"],
+        ["historic", "past-remote"], ["future", "perfect"]].flatMap((tenseTags, group) =>
+        PRONOUNS.map((pronoun, i) => ({
+          form: `prova-${group}-${i}`, raw_tags: [pronoun],
+          tags: [["first-person", "second-person", "third-person"][i % 3],
+            i < 3 ? "singular" : "plural", ...tenseTags],
+        }))),
+      ...tenseForms(["sub-io", "sub-tu", "sub-egli", "sub-noi", "sub-voi", "sub-loro"], "present"),
+      ...imperativeForms([["prova!", "tu"], ["provate!", "voi"]]),
+    ],
+    senses: [{ glosses: ["mettere alla prova"] }],
+  }),
   // finire — the verb the header bar is hardest on, kept last so every line
   // above it keeps the number it had. Drawn from line 1472 of the release, in
   // its order and its spellings.
