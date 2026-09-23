@@ -4,10 +4,11 @@ import { DatabaseSync } from "node:sqlite";
 import { createGunzip } from "node:zlib";
 import { createReadStream, existsSync, readFileSync } from "node:fs";
 import { createInterface } from "node:readline";
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, readdir, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { seedSql } from "../src/import/seedSql.js";
+import { applyParts, PartFailure } from "../src/import/sqlParts.js";
 
 const rawLemma = '{ "word":"lemma", "pos":"noun", "pos_title":"Sostantivo", "lang_code":"it", "forms":[{"form":"forma","source":"Appendice:Coniugazioni/Italiano/lemma","tags":["plural"]}], "senses":[{"glosses":["una voce"],"tags":["rare"]}] }';
 const rawForm = JSON.stringify({
@@ -36,23 +37,25 @@ const fixturePath = resolve(process.env.DEV_SEED_FIXTURE ?? "fixtures/dev-seed.j
 async function fixture(lines: readonly string[]) {
   const dir = await mkdtemp(join(tmpdir(), "lexema-seed-"));
   const input = join(dir, "fixture.jsonl");
-  const output = join(dir, "seed.sql");
+  const outputDir = join(dir, "sql");
   await writeFile(input, `${lines.join("\n")}\n`);
-  return { dir, input, output };
+  return { dir, input, outputDir };
 }
 
-function openSeed(sqlPath: string, database: string): DatabaseSync {
+// Each part is executed on its own, as Wrangler does, so a statement cut across
+// a part boundary fails here as an incomplete statement.
+function openSeed(parts: readonly string[], database: string): DatabaseSync {
   const db = new DatabaseSync(database);
-  db.exec(readFileSync(sqlPath, "utf8"));
+  for (const part of parts) db.exec(readFileSync(part, "utf8"));
   return db;
 }
 
 test("emits valid SQL with verbatim lines, form source, and all candidates", async () => {
-  const { dir, input, output } = await fixture([rawLemma, rawForm, rawDangling]);
+  const { dir, input, outputDir } = await fixture([rawLemma, rawForm, rawDangling]);
   const database = join(dir, "seed.sqlite");
   try {
     const report = await seedSql({
-      input, output, schema: resolve("src/db/schema.sql"), releaseId: "it-test",
+      input, outputDir, schema: resolve("src/db/schema.sql"), releaseId: "it-test",
       requiredWords: ["lemma", "forma", "orfano"], validateFixtureClosure: false,
     });
     assert.equal(report.rows.source_record, 3);
@@ -60,7 +63,7 @@ test("emits valid SQL with verbatim lines, form source, and all candidates", asy
     assert.equal(report.rows.lookup_form, 4);
     assert.equal(report.rows.form_of_edge, 2);
 
-    const db = openSeed(output, database);
+    const db = openSeed(report.parts, database);
     try {
       const raw = (db.prepare("SELECT raw_json FROM source_record_json WHERE record_id = 1").get() as { raw_json: string }).raw_json;
       assert.equal(raw, rawLemma);
@@ -74,10 +77,10 @@ test("emits valid SQL with verbatim lines, form source, and all candidates", asy
 });
 
 test("fixture closure fails with the missing target name", async () => {
-  const { dir, input, output } = await fixture([rawDangling]);
+  const { dir, input, outputDir } = await fixture([rawDangling]);
   try {
     await assert.rejects(
-      seedSql({ input, output, schema: resolve("src/db/schema.sql"), requiredWords: ["orfano"], validateFixtureClosure: true }),
+      seedSql({ input, outputDir, schema: resolve("src/db/schema.sql"), requiredWords: ["orfano"], validateFixtureClosure: true }),
       /missing form_of target word: missing-lemma/,
     );
   } finally { await rm(dir, { recursive: true, force: true }); }
@@ -160,16 +163,16 @@ test("committed fixture matches archive-derived expectations", async () => {
 });
 
 test("missing required fixture words and repeated output are deterministic", async () => {
-  const { dir, input, output } = await fixture([rawLemma]);
-  const output2 = join(dir, "seed-2.sql");
+  const { dir, input, outputDir } = await fixture([rawLemma]);
+  const outputDir2 = join(dir, "sql-2");
   try {
     await assert.rejects(
-      seedSql({ input, output, schema: resolve("src/db/schema.sql"), requiredWords: ["absent"] }),
+      seedSql({ input, outputDir, schema: resolve("src/db/schema.sql"), requiredWords: ["absent"] }),
       /missing required word: absent/,
     );
-    await seedSql({ input, output, schema: resolve("src/db/schema.sql"), releaseId: "it-test", requiredWords: ["lemma"] });
-    await seedSql({ input, output: output2, schema: resolve("src/db/schema.sql"), releaseId: "it-test", requiredWords: ["lemma"] });
-    assert.equal(await readFile(output, "utf8"), await readFile(output2, "utf8"));
+    const first = await seedSql({ input, outputDir, schema: resolve("src/db/schema.sql"), releaseId: "it-test", requiredWords: ["lemma"] });
+    const second = await seedSql({ input, outputDir: outputDir2, schema: resolve("src/db/schema.sql"), releaseId: "it-test", requiredWords: ["lemma"] });
+    assert.deepEqual(await concatenated(first.parts), await concatenated(second.parts));
   } finally { await rm(dir, { recursive: true, force: true }); }
 });
 
@@ -179,7 +182,7 @@ test("a form refused for its surface still reports its own refused leaves", asyn
   // that returned on the refused surface lost the tag's rejection from both
   // the rejection list and the count. This drives the seeder's own path, not
   // the record validator, because writeRecord is where that ordering lives.
-  const { dir, input, output } = await fixture([
+  const { dir, input, outputDir } = await fixture([
     JSON.stringify({
       word: "valido", pos: "noun", pos_title: "Sostantivo", lang_code: "it",
       forms: [{ form: 42, tags: [9, "plural"], raw_tags: 8, source: 7 }],
@@ -189,7 +192,7 @@ test("a form refused for its surface still reports its own refused leaves", asyn
   try {
     const rejections: { kind: string; lineNo: number; reason: string }[] = [];
     const report = await seedSql({
-      input, output, schema: resolve("src/db/schema.sql"), releaseId: "it-test",
+      input, outputDir, schema: resolve("src/db/schema.sql"), releaseId: "it-test",
       requiredWords: ["valido"], validateFixtureClosure: false,
       onRejection: (item) => rejections.push(item),
     });
@@ -201,4 +204,103 @@ test("a form refused for its surface still reports its own refused leaves", asyn
       { kind: "malformed-member", lineNo: 1, reason: "/forms/0/raw_tags is not an array" },
     ]);
   } finally { await rm(dir, { recursive: true, force: true }); }
+});
+
+async function concatenated(parts: readonly string[]): Promise<Buffer> {
+  return Buffer.concat(await Promise.all(parts.map((part) => readFile(part))));
+}
+
+function tableDump(db: DatabaseSync): Record<string, unknown[]> {
+  const tables = (db.prepare("SELECT name FROM sqlite_schema WHERE type = 'table' AND name NOT LIKE 'sqlite_%' ORDER BY name").all() as { name: string }[])
+    .map(({ name }) => name);
+  return Object.fromEntries(tables.map((table) => [table, db.prepare(`SELECT * FROM "${table}" ORDER BY rowid`).all().map((row) => ({ ...row }))]));
+}
+
+const devSeed = (outputDir: string, partCeilingBytes?: number) =>
+  seedSql({
+    input: fixturePath, outputDir, schema: resolve("src/db/schema.sql"), releaseId: "it-dev",
+    requiredWords: HUEY_WORDS, validateFixtureClosure: true, partCeilingBytes,
+  });
+
+test("the fifty-word dev seed is one part with the same rows", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "lexema-seed-"));
+  try {
+    const report = await devSeed(join(dir, "sql"));
+    assert.deepEqual(report.parts, [join(dir, "sql", "part-001.sql")]);
+    assert.deepEqual(report.rows, {
+      source_record: 83, source_record_json: 83, lookup_form: 2171, form_of_edge: 19, sense: 268,
+      sense_gloss: 268, sense_label: 101, grammar_claim: 9140, release_table_rows: 8,
+    });
+  } finally { await rm(dir, { recursive: true, force: true }); }
+});
+
+test("a seed forced across parts cuts only between statements and loads the same database", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "lexema-seed-"));
+  const ceiling = 256 * 1024;
+  try {
+    const single = await devSeed(join(dir, "single"));
+    const split = await devSeed(join(dir, "split"), ceiling);
+    assert.equal(single.parts.length, 1);
+    assert.ok(split.parts.length > 1, `expected several parts, got ${split.parts.length}`);
+    assert.deepEqual(split.parts, split.parts.map((_, index) => join(dir, "split", `part-${String(index + 1).padStart(3, "0")}.sql`)));
+    for (const part of split.parts) {
+      assert.ok((await stat(part)).size <= ceiling, `${part} exceeds the ceiling`);
+      assert.match(await readFile(part, "utf8"), /;\n$/, `${part} does not end on a statement`);
+    }
+    // Nothing is lost or reordered: the parts are the single seed, cut in pieces.
+    assert.deepEqual(await concatenated(split.parts), await concatenated(single.parts));
+
+    const singleDb = openSeed(single.parts, ":memory:");
+    const splitDb = openSeed(split.parts, ":memory:");
+    try {
+      assert.deepEqual(tableDump(splitDb), tableDump(singleDb));
+    } finally { singleDb.close(); splitDb.close(); }
+  } finally { await rm(dir, { recursive: true, force: true }); }
+});
+
+test("a reseed replaces the parts an earlier, larger seed left", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "lexema-seed-"));
+  const outputDir = join(dir, "sql");
+  try {
+    await devSeed(outputDir, 256 * 1024);
+    await writeFile(join(outputDir, "notes.txt"), "kept");
+    const report = await devSeed(outputDir);
+    assert.equal(report.parts.length, 1);
+    assert.deepEqual((await readdir(outputDir)).sort(), ["notes.txt", "part-001.sql"]);
+  } finally { await rm(dir, { recursive: true, force: true }); }
+});
+
+test("a statement larger than the ceiling is refused, not split", async () => {
+  const { dir, input, outputDir } = await fixture([rawLemma]);
+  try {
+    await assert.rejects(
+      seedSql({ input, outputDir, schema: resolve("src/db/schema.sql"), partCeilingBytes: 1024 }),
+      /-byte SQL unit exceeds the 1024-byte part ceiling/,
+    );
+    await assert.rejects(
+      seedSql({ input, outputDir, schema: resolve("src/db/schema.sql"), partCeilingBytes: 0 }),
+      /part ceiling must be a positive whole number of bytes/,
+    );
+  } finally { await rm(dir, { recursive: true, force: true }); }
+});
+
+test("a failed part stops the load and names the failed and applied parts", async () => {
+  const attempted: string[] = [];
+  const parts = ["part-001.sql", "part-002.sql", "part-003.sql"];
+  await assert.rejects(
+    applyParts(parts, (part) => {
+      attempted.push(part);
+      if (part === "part-002.sql") throw new Error("wrangler exited 1");
+    }),
+    (error: unknown) => {
+      assert.ok(error instanceof PartFailure);
+      assert.equal(error.part, "part-002.sql");
+      assert.equal(error.index, 2);
+      assert.equal(error.total, 3);
+      assert.deepEqual(error.applied, ["part-001.sql"]);
+      assert.match(error.message, /part 2 of 3 failed: part-002\.sql\napplied before it: part-001\.sql/);
+      return true;
+    },
+  );
+  assert.deepEqual(attempted, ["part-001.sql", "part-002.sql"]);
 });

@@ -71,11 +71,11 @@ async function withFixture(run: (db: DatabaseSync) => Promise<void>): Promise<vo
   const db = new DatabaseSync(":memory:");
   try {
     const archive = join(dir, "fixture.jsonl.gz");
-    const output = join(dir, "seed.sql");
+    const outputDir = join(dir, "sql");
     await writeFile(archive, gzipSync(Buffer.from(LINES.join("\n") + "\n", "utf8")));
-    await seedSql({
+    const { parts } = await seedSql({
       input: archive,
-      output,
+      outputDir,
       schema: "src/db/schema.sql",
       releaseId: RELEASE,
       archiveR2Key: "releases/it-suggest-test.jsonl.gz",
@@ -85,7 +85,7 @@ async function withFixture(run: (db: DatabaseSync) => Promise<void>): Promise<vo
         throw new Error(`fixture line rejected: ${JSON.stringify(rejection)}`);
       },
     });
-    db.exec(await readFile(output, "utf8"));
+    for (const part of parts) db.exec(await readFile(part, "utf8"));
     await run(db);
   } finally {
     db.close();
