@@ -32,7 +32,7 @@ export interface SuggestOptions {
 }
 
 /**
- * A prefix the index was probed for, and what it held, ranked. `suggestions`
+ * A prefix the index was probed for, and what it held, in key order. `suggestions`
  * is empty when no headword starts with the prefix, which is an answer and
  * not a failure.
  */
@@ -99,8 +99,10 @@ export function prefixUpperBound(key: string): string {
  * lookup of its own.
  *
  * One spelling can head several records (`sale` heads three), so more rows are
- * read than are returned and repeats are dropped in order. `SCAN_LIMIT` rows is
- * far more than any spelling's record count, so ten distinct spellings survive.
+ * read than are returned and repeats are dropped in order. `suggest()` starts
+ * with `FIRST_SCAN` rows and, only when a full read still holds fewer than ten
+ * distinct spellings, reads again with twice as many, so ten are always found
+ * when ten exist, however many records one spelling heads.
  */
 export const SUGGEST_SQL = `SELECT surface
        FROM lookup_form
@@ -109,8 +111,8 @@ export const SUGGEST_SQL = `SELECT surface
       ORDER BY surface_key
       LIMIT ?4`;
 
-/** Rows read to find `SUGGESTION_LIMIT` distinct spellings. */
-const SCAN_LIMIT = 200;
+/** Rows read on the first pass. The release never needs a second one today. */
+export const FIRST_SCAN = 200;
 
 export async function suggest({ db, releaseId, prefix }: SuggestOptions): Promise<SuggestResult> {
   const key = normalizeItalianExact(prefix);
@@ -134,7 +136,13 @@ export async function suggest({ db, releaseId, prefix }: SuggestOptions): Promis
     );
   }
 
-  const rows = await db.all<{ surface: string }>(SUGGEST_SQL, [releaseId, key, prefixUpperBound(key), SCAN_LIMIT]);
-  const suggestions = [...new Set(rows.map((row) => row.surface))].slice(0, SUGGESTION_LIMIT);
+  const upper = prefixUpperBound(key);
+  let suggestions: string[] = [];
+  for (let scan = FIRST_SCAN; ; scan *= 2) {
+    const rows = await db.all<{ surface: string }>(SUGGEST_SQL, [releaseId, key, upper, scan]);
+    suggestions = [...new Set(rows.map((row) => row.surface))].slice(0, SUGGESTION_LIMIT);
+    // Enough spellings, or the prefix holds no more rows to read.
+    if (suggestions.length === SUGGESTION_LIMIT || rows.length < scan) break;
+  }
   return { outcome: "suggested", prefix: { raw: prefix, key }, suggestions };
 }

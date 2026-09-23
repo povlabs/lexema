@@ -13,6 +13,7 @@ import {
   MIN_PREFIX_LENGTH,
   SUGGESTION_LIMIT,
   SUGGEST_SQL,
+  FIRST_SCAN,
   type SuggestResult,
   isAskablePrefix,
   prefixUpperBound,
@@ -53,6 +54,11 @@ const LINES = [
   record("città", [defines("centro abitato")]),
   record("cittadino", [defines("abitante")]),
   record("un’amica", [defines("una amica")]),
+
+  // One spelling heading more records than the first read takes, then nine
+  // more spellings: the first read sees only the repeated one.
+  ...Array.from({ length: 250 }, () => record("qq", [defines("ripetuta")])),
+  ...Array.from({ length: 9 }, (_, i) => record(`qq${String.fromCharCode(97 + i)}`, [defines("dopo")])),
 
   // Twelve spellings under one prefix, for the limit.
   ...Array.from({ length: 12 }, (_, i) => record(`zeta${String.fromCharCode(97 + i)}`, [defines("lettera")])),
@@ -150,6 +156,15 @@ test("accents are never dropped or folded away", async () => {
     assert.deepEqual(await spellings(db, "città"), ["città"]);
     // A decomposed accent is the same letter after NFC.
     assert.deepEqual(await spellings(db, "citta\u0300"), ["città"]);
+  });
+});
+
+test("ten distinct spellings are found when ten exist, however many records one spelling heads", async () => {
+  await withFixture(async (db) => {
+    // 250 records spell `qq`, more than the first read of FIRST_SCAN rows, so
+    // that read holds one spelling and the next read must find the rest.
+    assert.ok(250 > FIRST_SCAN);
+    assert.deepEqual(await spellings(db, "qq"), ["qq", "qqa", "qqb", "qqc", "qqd", "qqe", "qqf", "qqg", "qqh", "qqi"]);
   });
 });
 

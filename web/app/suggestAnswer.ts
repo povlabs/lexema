@@ -3,7 +3,7 @@
 // the server.
 
 export type SuggestAnswer =
-  /** Headword spellings starting with the prefix, ranked, at most ten; possibly none. */
+  /** Headword spellings starting with the prefix, alphabetically, at most ten; possibly none. */
   | { outcome: "suggested"; suggestions: string[] }
   /** The prefix was outside the bounds and the index was not asked. */
   | { outcome: "rejected"; reason: "too-short" | "too-long"; limit: number }

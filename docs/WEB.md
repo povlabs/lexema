@@ -232,5 +232,5 @@ set `SEED_INPUT`; the local full-archive copy is conventionally
 
 ## Not in scope
 
-Autocomplete (#15). The page at phone width (#101). Deployment, rate limits and
+The page at phone width (#101). Deployment, rate limits and
 smoke tests against a real URL (#19).
