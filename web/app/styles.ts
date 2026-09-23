@@ -12,7 +12,7 @@
 // on — declared in `globals.css`. No literal colour appears in this file or in
 // any component, and `web/test/tokens.test.ts` fails the build if one is added.
 //
-// The sizes follow Huey's design frames (`ss for designs/`, frames 00–06 and
+// The sizes follow Huey's design frames (`design/frames/`, frames 00–06 and
 // C1–C2) read at 1440 px. Three faces, three jobs: the interface — labels,
 // buttons, counts, header-bar values — is sans; the source's Italian —
 // headword, glosses, examples, etymology, related-word chips — is serif; word
