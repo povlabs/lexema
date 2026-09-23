@@ -15,8 +15,15 @@ export interface RecordText {
   posTitle: string;
   /** Every `senses[].glosses[]` string, in source order. */
   glosses: readonly string[];
-  /** Every `senses[].examples[].text` string, in source order. */
-  exampleTexts: readonly string[];
+  /** Every `senses[].examples[].text` string, in source order, with its pointer. */
+  examples: readonly RecordExample[];
+}
+
+/** One `senses[].examples[].text` string and where in the record it sits. */
+export interface RecordExample {
+  /** `/senses/0/examples/0/text`. */
+  pointer: string;
+  text: string;
 }
 
 /** Every string leaf of the record `recovery` reads, whatever else it holds. */
@@ -31,11 +38,11 @@ export function recordText(record: {
     word: record.word,
     posTitle: record.pos_title,
     glosses: record.senses.flatMap((sense) => strings(sense.glosses)),
-    exampleTexts: record.senses.flatMap((sense) =>
+    examples: record.senses.flatMap((sense, i) =>
       Array.isArray(sense.examples)
-        ? sense.examples.flatMap((example: unknown) =>
+        ? sense.examples.flatMap((example: unknown, j) =>
             typeof example === "object" && example !== null && typeof (example as { text?: unknown }).text === "string"
-              ? [(example as { text: string }).text]
+              ? [{ pointer: `/senses/${i}/examples/${j}/text`, text: (example as { text: string }).text }]
               : [],
           )
         : [],
@@ -46,12 +53,13 @@ export function recordText(record: {
 /** A definition recovered for one record, and how the record stood toward it. */
 export type RecoveredDefinition = PageDefinition & {
   /**
-   * True when the record carries this text, but as an example rather than a
-   * definition — `lap steel guitar` files its definition under
-   * `examples[].text`. The record is left as it is; the text is recovered as
-   * what it is.
+   * The pointer of the record's example that carries this text, when the
+   * record files it as an example rather than a definition — `lap steel
+   * guitar` files its definition at `/senses/0/examples/0/text`. The record is
+   * left as it is; the text is recovered as what it is, and a page shows it
+   * once, as a definition. Null when no example carries it.
    */
-  heldAsExample: boolean;
+  heldAsExample: string | null;
 };
 
 /**
@@ -83,17 +91,17 @@ export type RecordRecovery =
 const comparable = (text: string): string => text.toLowerCase().replace(/\s+/g, " ").trim();
 
 /**
- * Whether `text` is among `carried`. The page and the extraction print
+ * Whether `carried` holds `text`. The page and the extraction print
  * templates differently, so the test is the longest clause of the page text,
- * cut to 40 characters, found inside a carried string — the probe
+ * cut to 40 characters, found inside the carried string — the probe
  * `tools/definition_loss.py verify` uses. A clause under 12 characters proves
  * nothing and matches nothing.
  */
-function carries(carried: readonly string[], text: string): boolean {
+function carries(carried: string, text: string): boolean {
   const clauses = comparable(text).split(/[,;:]/).map((clause) => clause.trim());
   const probe = clauses.reduce((longest, clause) => (clause.length > longest.length ? clause : longest), "").slice(0, 40);
-  if (probe.length < 12) return carried.some((item) => comparable(item) === comparable(text));
-  return carried.some((item) => comparable(item).includes(probe));
+  if (probe.length < 12) return comparable(carried) === comparable(text);
+  return comparable(carried).includes(probe);
 }
 
 /**
@@ -119,8 +127,11 @@ export function recoverDefinitions(record: RecordText, page: RawPage): RecordRec
   const recovered: RecoveredDefinition[] = [];
   const alreadyGlossed: PageDefinition[] = [];
   for (const definition of section.senseLines.flatMap((line) => line.below)) {
-    if (carries(record.glosses, definition.text)) alreadyGlossed.push(definition);
-    else recovered.push({ ...definition, heldAsExample: carries(record.exampleTexts, definition.text) });
+    if (record.glosses.some((gloss) => carries(gloss, definition.text))) alreadyGlossed.push(definition);
+    else {
+      const heldAs = record.examples.find((example) => carries(example.text, definition.text));
+      recovered.push({ ...definition, heldAsExample: heldAs?.pointer ?? null });
+    }
   }
 
   const keepsASense = section.senseLines.some((line) => line.kind === "sense");

@@ -631,7 +631,12 @@ function Definition({ sense, number }: { sense: Sense; number: number }) {
   );
 }
 
-/** A definition the raw page states and the extraction dropped, marked as such. */
+/**
+ * A definition the raw page states and the extraction dropped, marked as such.
+ * When the record filed it as an example, the mark says so: the Examples
+ * section leaves that example out, and a reader comparing with the record
+ * learns where it went.
+ */
 function RecoveredDefinitionItem({ definition, number }: { definition: RecoveredDefinition; number: number }) {
   return (
     <li className={DEFINITION}>
@@ -645,6 +650,9 @@ function RecoveredDefinitionItem({ definition, number }: { definition: Recovered
             {definition.text}
           </span>
           <RecoveredMark />
+          {definition.heldAsExample !== null && (
+            <span className={RECOVERED_MARK}>the source record files this as an example</span>
+          )}
         </p>
       </div>
     </li>
@@ -739,11 +747,18 @@ function EntryNotes({ reading }: { reading: Reading }) {
 /** One usage sentence: the extraction's, or one recovered with its definition. */
 type ExampleItem = { key: string; text: string; recovered: boolean };
 
-/** Every example on the reading's senses, verbatim, then the recovered ones; first slice shown. */
+/**
+ * Every example on the reading's senses, verbatim, then the recovered ones;
+ * first slice shown. An example the record holds that is a recovered
+ * definition is not an example, so it is shown once, among the definitions.
+ */
 function Examples({ reading }: { reading: Reading }) {
+  const definitions = new Set(reading.recovered.flatMap((definition) => definition.heldAsExample?.jsonPointer ?? []));
   const examples: ExampleItem[] = [
     ...reading.senses.flatMap((sense) =>
-      sense.examples.map((example) => ({ key: example.ref.jsonPointer, text: example.text, recovered: false })),
+      sense.examples
+        .filter((example) => !definitions.has(example.ref.jsonPointer))
+        .map((example) => ({ key: example.ref.jsonPointer, text: example.text, recovered: false })),
     ),
     ...reading.recovered.flatMap((definition) =>
       definition.examples.map((example) => ({ key: `recovered-${example.ref.line}`, text: example.text, recovered: true })),

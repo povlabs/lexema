@@ -479,9 +479,11 @@ CREATE TABLE recovered_definition (
   wikitext  TEXT    NOT NULL,                        -- that line, verbatim
   text      TEXT    NOT NULL,                        -- as a reader sees it
 
-  -- 1 when the record carries this text, but filed as an example rather than a
-  -- definition (`lap steel guitar`). The record keeps it there.
-  held_as_example INTEGER NOT NULL CHECK (held_as_example IN (0, 1)),
+  -- The JSON pointer of the record's example that carries this text, when the
+  -- record files it as an example rather than a definition (`lap steel guitar`:
+  -- `/senses/0/examples/0/text`). The record keeps it there; a page shows it
+  -- once, as this definition. NULL when no example carries it.
+  held_as_example TEXT CHECK (held_as_example GLOB '/senses/[0-9]*/examples/[0-9]*/text'),
 
   CHECK ((route = 'sub-term') = (term IS NOT NULL)),
   UNIQUE (record_id, definition_index),

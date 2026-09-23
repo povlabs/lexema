@@ -597,6 +597,51 @@ test("a word whose raw page lost nothing renders exactly as it does without the 
   });
 });
 
+test("lap steel guitar shows its main definition once, as a definition, and says the record files it as an example", async () => {
+  // Archive line 605574, verbatim: its one sense is furniture, and the page's
+  // main definition sits in that sense's `examples`.
+  const devSeed = (await readFile(join(REPO, "fixtures/dev-seed.jsonl"), "utf8")).trim().split("\n");
+  const lapSteel = (await readFile(join(REPO, "fixtures/lap-steel-guitar.jsonl"), "utf8")).trim();
+  const pages = await loadFixturePages(join(REPO, "fixtures"));
+  await withLines(
+    [...devSeed, lapSteel],
+    async ({ db }) => {
+      const [reading] = await readingsFor(db, "lap steel guitar");
+      // The record is as imported: the text is still its example.
+      const [held] = reading.senses.flatMap((sense) => sense.examples);
+      assert.equal(held.ref.jsonPointer, "/senses/0/examples/0/text");
+      assert.deepEqual(
+        reading.recovered.map((definition) => definition.heldAsExample),
+        [held.ref, null, null],
+      );
+
+      const html = card(await render(db, "lap steel guitar"), "lap steel guitar, noun");
+      const text = textOf(html);
+      const main = "tipo di steel guitar che si suona da seduti";
+      assert.equal(occurrencesOf(text, main), 1, "the main definition is shown once");
+      assert.equal(occurrencesOf(held.text, main), 1);
+      const definitions = html.slice(html.indexOf(">Definitions</h3>"));
+      assert.match(definitions.slice(0, definitions.indexOf("</ol>")), exact(main));
+      assert.doesNotMatch(html, />Examples<\/h3>/, "its only example is the definition, so there is no Examples section");
+      assert.equal(occurrencesOf(html, `<span class="${RECOVERED_MARK}">the source record files this as an example</span>`), 1);
+    },
+    pages,
+  );
+});
+
+test("an ordinary word's examples are unchanged by the recovered layer", async () => {
+  await withDevSeedAndPages(async ({ db }) => {
+    const reading = (await readingsFor(db, "andare")).find((candidate) => candidate.pos === "verb");
+    assert.ok(reading);
+    const examples = reading.senses.flatMap((sense) => sense.examples);
+    assert.equal(examples.length, 6);
+    const verb = card(await render(db, "andare"), "andare, verb");
+    assert.match(verb, new RegExp(`>Examples</h3><span class="[^"]*">6 · showing 1</span>`));
+    for (const example of examples) assert.match(textOf(verb), exact(example.text));
+    assert.doesNotMatch(verb, /files this as an example/);
+  });
+});
+
 test("the word-level sections come once, after the cards, with their slices and Show all buttons", async () => {
   await withDevSeed(async ({ db }) => {
     const html = await render(db, "sale");

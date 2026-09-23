@@ -4,12 +4,17 @@
 
 import assert from "node:assert/strict";
 import test from "node:test";
+import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { recoverDefinitions, type RecordRecovery, type RecordText } from "../src/italian/recovery.js";
+import { recordText, recoverDefinitions, type RecordRecovery, type RecordText } from "../src/italian/recovery.js";
 import { readItalianSections } from "../src/italian/wikitext.js";
 import { loadFixturePages, RAW_PAGE_WIKI, type RawPage } from "../src/source/rawPage.js";
 
 const pages = await loadFixturePages(resolve("fixtures"));
+
+/** Example texts as one sense's examples, where a case's pointers carry nothing. */
+const inOneSense = (...texts: string[]): RecordText["examples"] =>
+  texts.map((text, j) => ({ pointer: `/senses/0/examples/${j}/text`, text }));
 
 function page(title: string): RawPage {
   const found = pages.page(title);
@@ -27,7 +32,7 @@ const CASA: RecordText = {
   word: "casa",
   posTitle: "Sostantivo",
   glosses: ["casa ( approfondimento) f sing", "casa ( citazioni)"],
-  exampleTexts: [],
+  examples: [],
 };
 
 test("casa: every definition sits below a page-control line, and all seven come back with their examples", () => {
@@ -88,14 +93,14 @@ const CLASSICO: RecordText = {
     "riferimento a qualcosa di tradizionale, in contrapposizione a qualcosa di moderno",
     "una denominazione di vini",
   ],
-  exampleTexts: [
+  examples: inOneSense(
     "il mondo classico è davvero affascinante",
     "il classico comportamento infantile",
     "un brano classico",
     "l'esibizione è tratta da un pezzo classico",
     "il corso di diritto classico non è interessante come quello di diritto internazionale",
     "Chianti classico, soave classico, bardolino classico",
-  ],
+  ),
 };
 
 test("classico: a partial loss — the record keeps its six senses and loses the sub-term below the first", () => {
@@ -113,14 +118,14 @@ test("classico: a partial loss — the record keeps its six senses and loses the
         wikitext:
           "#*'''liceo classico''', [[indirizzo]] della [[scuola]] [[secondaria]] [[superiore]] [[italiana]], [[incentrato]] sullo [[studio]] del {{la}} e del {{grc}}",
         examples: 0,
-        heldAsExample: false,
+        heldAsExample: null,
       },
     ],
   );
   // The italic `#*` lines beside it are usage sentences the extraction kept;
   // none of them is recovered, as a definition or otherwise.
-  for (const example of CLASSICO.exampleTexts) {
-    assert.equal(recovery.recovered.some((definition) => definition.text === example), false, example);
+  for (const example of CLASSICO.examples) {
+    assert.equal(recovery.recovered.some((definition) => definition.text === example.text), false, example.text);
   }
 });
 
@@ -137,7 +142,7 @@ const INFORMATICA: RecordText = {
     "sicurezza informatica: ramo dell'informatica che si occupa delle operazioni per difendere reti e sistemi di computer da rischi e violazioni di dati",
     "informatica umanistica: è un campo di studi, ricerca, insegnamento che nasce dall'unione di discipline umanistiche e informatiche",
   ],
-  exampleTexts: ["Visto il costo contenuto di un personal computer, oggi l'informatica è entrata in quasi tutte le case"],
+  examples: inOneSense("Visto il costo contenuto di un personal computer, oggi l'informatica è entrata in quasi tutte le case"),
 };
 
 test("informatica: the ordinary layout — `#` states the sense, `#*` is a usage sentence — recovers nothing", () => {
@@ -165,19 +170,14 @@ test("a definition the record already glosses is not recovered twice", () => {
   assert.deepEqual(recovery.alreadyGlossed.map((definition) => definition.ref.line), [10]);
 });
 
-test("lap steel guitar: a definition the extraction filed as an example is recovered as a definition, and says so", () => {
-  const record: RecordText = {
-    word: "lap steel guitar",
-    posTitle: "Sostantivo",
-    glosses: ["lap steel guitar ( approfondimento) f sing"],
-    exampleTexts: [
-      '(musica) tipo di steel guitar che si suona da seduti, appoggiata sulle gambe (lap, in inglese, vuol dire effettivamente "grembo"), sprovvista quindi di meccanismi a pedale; ve ne sono due tipi fondamentali:',
-    ],
-  };
+test("lap steel guitar: a definition the extraction filed as an example is recovered as a definition, and names that example", () => {
+  // Archive line 605574, verbatim: its one sense is furniture, and the page's
+  // main definition sits in that sense's `examples`.
+  const record = recordText(JSON.parse(readFileSync(resolve("fixtures/lap-steel-guitar.jsonl"), "utf8")));
   const recovery = matched(recoverDefinitions(record, page("lap steel guitar")));
   assert.deepEqual(
     recovery.recovered.map((definition) => [definition.route, definition.heldAsExample]),
-    [["below-page-control", true], ["lead-in-item", false], ["lead-in-item", false]],
+    [["below-page-control", "/senses/0/examples/0/text"], ["lead-in-item", null], ["lead-in-item", null]],
   );
 });
 
@@ -195,7 +195,7 @@ test("page controls with no definition below them, and quotations below a colon,
     ].join("\n"),
   };
   for (const posTitle of ["Avverbio", "Sostantivo"]) {
-    const recovery = matched(recoverDefinitions({ word: "prova", posTitle, glosses: [], exampleTexts: [] }, nodef));
+    const recovery = matched(recoverDefinitions({ word: "prova", posTitle, glosses: [], examples: [] }, nodef));
     assert.deepEqual(recovery.recovered, [], posTitle);
   }
 });
@@ -205,7 +205,7 @@ test("a line whose template the renderer does not know is reported, never printe
     wiki: RAW_PAGE_WIKI, title: "prova", revisionId: 1, timestamp: "2026-09-23T00:00:00Z",
     wikitext: ["== {{-it-}} ==", "{{-sost-|it}}", "# {{Pn}} ''f sing''", "#* [[saggio]] {{Sconosciuto|x}} di qualcosa"].join("\n"),
   };
-  const recovery = matched(recoverDefinitions({ word: "prova", posTitle: "Sostantivo", glosses: [], exampleTexts: [] }, unknown));
+  const recovery = matched(recoverDefinitions({ word: "prova", posTitle: "Sostantivo", glosses: [], examples: [] }, unknown));
   assert.deepEqual(recovery.recovered, []);
   assert.deepEqual(recovery.unrendered.map((line) => [line.ref.line, line.template]), [[4, "sconosciuto"]]);
 });

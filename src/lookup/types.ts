@@ -186,8 +186,12 @@ export type RecoveredDefinition = RecoveredRoute & {
   labels: string[];
   ref: RecoveredRef;
   examples: RecoveredExample[];
-  /** The record carries this text, filed as an example (`lap steel guitar`). */
-  heldAsExample: boolean;
+  /**
+   * The record's example that carries this text, when the record files it as
+   * an example rather than a definition (`lap steel guitar`). A page shows the
+   * text once, as this definition, and not again as that example.
+   */
+  heldAsExample: SourceRef | null;
 };
 
 /** A record the source names as the target of a form_of edge. */

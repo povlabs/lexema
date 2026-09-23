@@ -90,7 +90,7 @@ export class RecoveredLayer {
         definition.ref.line,
         definition.wikitext,
         definition.text,
-        definition.heldAsExample ? 1 : 0,
+        definition.heldAsExample,
       );
       this.rows.recovered_definition += 1;
       this.summary.definitions += 1;

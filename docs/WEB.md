@@ -119,6 +119,9 @@ record, and the card lists it after the record's own definitions with a small
 *recovered* mark, and its examples the same way. Each section that shows one
 says once which page revision it was read from, linked. The record's furniture
 stays under *Source notes*. `casa` now shows its seven definitions this way.
+When the record filed a recovered definition as an example (`lap steel
+guitar`), the card shows that text once, as the definition, with a note that
+the source record files it as an example, and leaves it out of *Examples*.
 
 **A lookup that did not happen.** No release, a D1 error, or a release built by
 a different normalizer all produce a page that says the lookup failed. That is

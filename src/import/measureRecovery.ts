@@ -56,7 +56,7 @@ class Tally {
       this.definitions += 1;
       this.byRoute[definition.route] = (this.byRoute[definition.route] ?? 0) + 1;
       this.examples += definition.examples.length;
-      if (definition.heldAsExample) this.heldAsExample += 1;
+      if (definition.heldAsExample !== null) this.heldAsExample += 1;
     }
   }
 }
@@ -114,7 +114,7 @@ const report = await parseArchive({
         line: definition.ref.line,
         text: definition.text,
         examples: definition.examples.length,
-        heldAsExample: definition.heldAsExample,
+        heldAsExample: definition.heldAsExample !== null,
       })),
       unrendered: recovery.unrendered.map((line) => ({ line: line.ref.line, template: line.template })),
     });

@@ -357,7 +357,7 @@ async function buildReading(
     lemmaLinks,
     inflections: await readInflections(db, releaseId, recordId),
     reviews: await readReviews(db, recordId, ref),
-    recovered: await readRecovered(db, recordId),
+    recovered: await readRecovered(db, recordId, ref),
     // Derived, not read: the release carries no article field. The headword and
     // the grammar the source stated about the record are the only inputs, and a
     // reading that is not a noun comes back carrying no articles at all.
@@ -801,14 +801,18 @@ export const RECOVERED_SQL = `SELECT d.recovered_id, d.route, d.term, d.page_lin
       WHERE d.record_id = ?
       ORDER BY d.definition_index`;
 
-async function readRecovered(db: LookupDatabase, recordId: number): Promise<RecoveredDefinition[]> {
+async function readRecovered(
+  db: LookupDatabase,
+  recordId: number,
+  ref: (pointer: string) => SourceRef,
+): Promise<RecoveredDefinition[]> {
   const rows = await queryAll<{
     recovered_id: number;
     route: RecoveredRoute["route"];
     term: string | null;
     page_line: number;
     text: string;
-    held_as_example: number;
+    held_as_example: string | null;
     wiki: string;
     title: string;
     revision_id: number;
@@ -843,7 +847,7 @@ async function readRecovered(db: LookupDatabase, recordId: number): Promise<Reco
       examples: examples
         .filter((example) => example.recovered_id === row.recovered_id)
         .map((example) => ({ text: example.text, ref: at(example.page_line) })),
-      heldAsExample: row.held_as_example === 1,
+      heldAsExample: row.held_as_example === null ? null : ref(row.held_as_example),
     };
   });
 }
