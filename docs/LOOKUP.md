@@ -52,6 +52,17 @@ Applied in this order, by `normalizeItalianExact`:
 
 Length bound: `MAX_QUERY_LENGTH` is 128 characters, measured after trimming.
 
+## What matches
+
+The key is matched against every record's headword and every entry of its
+`forms[]`, except an entry the source tags `auxiliary`. That entry names the
+verb a record conjugates with — `andare` lists `essere` — so it is a fact about
+`andare`, not a spelling of `essere`, and matching it made 309 other verbs
+results for `essere` and 5,267 for `avere` (#109). The entry is still in the
+record's `forms[]`, so the verb's card still states its auxiliary. The test is
+the `form-role` = `auxiliary` grammar claim the importer writes for that tag,
+applied at query time in `SEARCH_SQL`.
+
 ## Outcomes
 
 | `outcome` | When | Carries |
@@ -179,7 +190,7 @@ replaces it.
 
 ## Exported SQL
 
-`LEMMA_LINK_SQL`, `INFLECTION_SQL` and `INFLECTION_CANDIDATE_SQL` are exported
+`SEARCH_SQL`, `LEMMA_LINK_SQL`, `INFLECTION_SQL` and `INFLECTION_CANDIDATE_SQL` are exported
 so tests can assert their query plans. See
 [the design notes](LOOKUP_DESIGN.md#the-view-that-costs-four-orders-of-magnitude).
 

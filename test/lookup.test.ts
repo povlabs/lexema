@@ -12,6 +12,7 @@ import {
   INFLECTION_SQL,
   LEMMA_LINK_SQL,
   MAX_QUERY_LENGTH,
+  SEARCH_SQL,
   lookup,
 } from "../src/lookup/lookup.js";
 import { fromNodeSqlite } from "../src/lookup/database.js";
@@ -143,6 +144,43 @@ const LINES = [
       { glosses: ["diminutivo di casa"], tags: ["form-of"], form_of: [{ word: "casa" }] },
       { glosses: ["piccola casa di campagna"], tags: ["form-of"], form_of: [{ word: "casa" }] },
     ],
+  }),
+
+  // The two auxiliaries, and verbs whose tables name them. The source writes a
+  // verb's auxiliary as a `forms[]` entry tagged `auxiliary` — `essere` lists
+  // `essere`, `venire` lists `essere`, `mangiare` lists `avere` — which is a
+  // fact about the verb, not a spelling of the auxiliary (#109).
+  JSON.stringify({
+    word: "essere", pos: "verb", pos_title: "Verbo", lang_code: "it",
+    forms: [
+      { form: "essere", tags: ["auxiliary"], raw_tags: ["verbo irregolare"] },
+      { form: "sono", tags: ["first-person", "singular", "present"] },
+    ],
+    senses: [{ glosses: ["esistere"] }],
+  }),
+  JSON.stringify({
+    word: "avere", pos: "verb", pos_title: "Verbo", lang_code: "it",
+    forms: [
+      { form: "avere", tags: ["auxiliary"], raw_tags: ["verbo di seconda coniugazione (irregolare)"] },
+      { form: "ho", tags: ["first-person", "singular", "present"] },
+    ],
+    senses: [{ glosses: ["possedere"] }],
+  }),
+  JSON.stringify({
+    word: "venire", pos: "verb", pos_title: "Verbo", lang_code: "it",
+    forms: [
+      { form: "essere", tags: ["auxiliary"], raw_tags: ["verbo di terza coniugazione (irregolare)"] },
+      { form: "vengo", tags: ["first-person", "singular", "present"] },
+    ],
+    senses: [{ glosses: ["giungere"] }],
+  }),
+  JSON.stringify({
+    word: "mangiare", pos: "verb", pos_title: "Verbo", lang_code: "it",
+    forms: [
+      { form: "avere", tags: ["auxiliary"], raw_tags: ["verbo di prima coniugazione"] },
+      { form: "mangio", tags: ["first-person", "singular", "present"] },
+    ],
+    senses: [{ glosses: ["nutrirsi"] }],
   }),
 ];
 
@@ -738,6 +776,48 @@ test("refuses to serve a release that is not complete", async () => {
     // Answering "no results" would be a different, false claim from "this
     // release is not servable".
     await assert.rejects(() => ask(db, "sale"), /no complete release/);
+  });
+});
+
+test("an auxiliary a verb's table names is not a match for the auxiliary", async () => {
+  await withFixture(async (db) => {
+    // `venire` lists `essere` and `mangiare` lists `avere`, each tagged
+    // `auxiliary`: the verb they conjugate with, not a spelling of them. Only
+    // the auxiliaries' own records come back.
+    for (const auxiliary of ["essere", "avere"]) {
+      const readings = found(await ask(db, auxiliary));
+      assert.deepEqual(readings.map((r) => r.word), [auxiliary], `${auxiliary}: only its own record`);
+      // Its own entry is a headword hit only: its own auxiliary row is the same
+      // tag, so it is not evidence either.
+      assert.deepEqual(readings[0].evidence.map((e) => e.ref.jsonPointer), ["/word"]);
+    }
+
+    // The entry stays in the record, so a card can still state the auxiliary.
+    const [venire] = found(await ask(db, "venire"));
+    const auxiliaryRow = venire.forms.find((form) => form.surface === "essere");
+    assert.ok(auxiliaryRow, "venire still lists essere");
+    assert.ok(
+      auxiliaryRow.claims.some((c) => c.status === "stated" && c.dimension === "form-role" && c.value === "auxiliary"),
+    );
+
+    // A form of the same table is still a match.
+    assert.deepEqual(found(await ask(db, "vengo")).map((r) => r.word), ["venire"]);
+  });
+});
+
+test("the search query stays on indexes rather than scanning", async () => {
+  await withFixture(async (db) => {
+    // The auxiliary test runs once per hit, and `avere` has 5,267 hits at
+    // release scale, so each has to be one probe of the claim index.
+    const plan = (
+      db.prepare(`EXPLAIN QUERY PLAN ${SEARCH_SQL}`).all(RELEASE, "avere") as { detail: string }[]
+    ).map((row) => row.detail);
+    assert.ok(
+      !plan.some((step) => /SCAN (lookup_form|grammar_claim|lf|g)\b/.test(step)),
+      `search query degraded to a scan:\n${plan.join("\n")}`,
+    );
+    assert.ok(plan.some((step) => step.includes("lookup_form_by_key")), plan.join("\n"));
+    assert.ok(plan.some((step) => step.includes("grammar_claim_by_record")), plan.join("\n"));
   });
 });
 

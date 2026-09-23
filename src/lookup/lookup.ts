@@ -100,16 +100,7 @@ export async function lookup({ db, releaseId, query }: LookupOptions): Promise<L
   const key = normalizeItalianExact(trimmed);
   const queryInfo = { raw: query, key, normalizer: release.normalizer };
 
-  const hits = await queryAll<HitRow>(
-    db,
-    `SELECT record_id, line_no, record_word, record_pos, origin, json_pointer,
-            form_source, surface, is_headword_hit
-       FROM surface_hit
-      WHERE release_id = ? AND surface_key = ?
-      ORDER BY is_headword_hit DESC, line_no, json_pointer`,
-    releaseId,
-    key,
-  );
+  const hits = await queryAll<HitRow>(db, SEARCH_SQL, releaseId, key);
 
   // Group evidence by record. This is the step that keeps five lookup rows from
   // becoming five readings.
@@ -137,6 +128,39 @@ export async function lookup({ db, releaseId, query }: LookupOptions): Promise<L
 
   return { outcome: "found", query: queryInfo, release, readings };
 }
+
+/**
+ * Every row that spells the query: headwords, and `forms[]` entries that are
+ * spellings of their record.
+ *
+ * A `forms[]` entry the source tags `auxiliary` is not a spelling. It names the
+ * verb a record conjugates with — `andare` lists `essere` — so it is a fact
+ * about `andare`, and a hit on it would call 309 other verbs matches for
+ * `essere` and 5,267 for `avere` (#109). The entry stays in the record: the
+ * forms read below come off `lookup_form` by record, not through this query, so
+ * the card still states its auxiliary.
+ *
+ * The test is the grammar claim the importer already wrote for that tag
+ * (`form-role` = `auxiliary`, `src/import/grammarPolicy.ts`), probed per hit
+ * through `grammar_claim_by_record`. It reads `lookup_form` rather than the
+ * `surface_hit` view because the view does not carry `form_index`, which is
+ * how a claim names its form. Exported so a test can assert the plan.
+ */
+export const SEARCH_SQL = `SELECT r.record_id, r.line_no, r.word AS record_word, r.pos AS record_pos,
+            lf.origin, lf.json_pointer, lf.form_source, lf.surface,
+            (lf.origin = 'headword') AS is_headword_hit
+       FROM lookup_form lf
+       JOIN source_record r ON r.record_id = lf.record_id
+       JOIN source_release rel
+         ON rel.release_id = lf.release_id AND rel.status = 'complete'
+      WHERE lf.release_id = ? AND lf.surface_key = ?
+        AND NOT EXISTS (
+              SELECT 1 FROM grammar_claim g
+               WHERE g.record_id = lf.record_id
+                 AND g.scope = 'form' AND g.scope_index = lf.form_index
+                 AND g.status = 'stated'
+                 AND g.dimension = 'form-role' AND g.value = 'auxiliary')
+      ORDER BY is_headword_hit DESC, r.line_no, lf.json_pointer`;
 
 // --- rows as they come back from SQLite -------------------------------------
 
