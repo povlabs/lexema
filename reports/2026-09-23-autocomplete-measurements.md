@@ -31,26 +31,29 @@ in key order, and there is no sort, so `LIMIT` stops the walk after the first
 rows. How many headwords share the prefix no longer matters: `a` has 59,642 in
 range and costs what `cas`, with 575, does.
 
-`suggest()` reads the first 25 rows and keeps the first ten distinct
+`suggest()` reads the first 22 rows and keeps the first ten distinct
 spellings. Only if a full read holds fewer than ten does it read again with
 twice as many, so ten are found whenever ten exist.
 
-25 is the fewest rows that answer every prefix in one read. Over all 14,162
-prefixes of one to four letters in this release:
+22 is the fewest rows that answer every prefix in one read. Measured over every
+prefix of every headword in this release, 1,132,910 of them, and separately
+over the 14,162 of one to four letters, which are the ones typed first:
 
-| first read | rows read, average | prefixes needing a second read | worst case |
+| first read | prefixes needing a second read (all) | (1–4 letters) | rows read, average (1–4 letters) |
 | ---: | ---: | ---: | ---: |
-| 10 | 8.7 | 2,217 | 70 |
-| 12 | 7.2 | 445 | 36 |
-| 15 | 7.8 | 34 | 45 |
-| 20 | 9.7 | 2 | 60 |
-| **25** | **11.5** | **0** | **25** |
-| 40 | 16.7 | 0 | 40 |
+| 20 | 5 | 2 | 9.7 |
+| 21 | 2 | 1 | 10.0 |
+| **22** | **0** | **0** | **10.4** |
+| 25 | 0 | 0 | 11.5 |
+| 40 | 0 | 0 | 16.7 |
 
-Below 25 the average dips, but some prefixes cost a second round trip to the
-database, which is worth more than the rows saved. No spelling in the release
-heads more than six records (`rosa`, `pizzicato`, `walser`). Longer prefixes
-have fewer headwords under them and only get cheaper.
+Below 22, some prefixes cost a second round trip to the database, worth more
+than the row saved. No spelling in the release heads more than six records
+(`rosa`, `pizzicato`, `walser`). Longer prefixes have fewer headwords under them
+and only get cheaper: over all prefixes the average read is 2.6 rows.
+
+An earlier commit on this branch set 25 and called it the minimum; review found
+22 suffices, because the measurement had skipped from 20 to 25.
 
 ## What it returns
 
@@ -110,7 +113,7 @@ The browser keeps an answer five minutes, so a reader retyping a prefix sends
 no request; it helps that reader only. An edge cache through the Workers Cache
 API was built, measured working (`miss` then `hit` on repeats) and removed:
 Cloudflare's pricing bills a cache hit as a request, so it cut no billed
-request, and the D1 reads it skipped — 11.5 rows on average — are far inside
+request, and the D1 reads it skipped — about 10 rows on average — are far inside
 the 25 billion a month the Workers Paid plan includes. A failed lookup is never
 cached.
 
