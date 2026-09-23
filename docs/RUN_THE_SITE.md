@@ -54,9 +54,9 @@ all twelve queries of the spot check, not only these.
 
 The fixture is intentionally bounded, so a word outside its fifty-word set
 returns the empty state rather than an error. A full archive can be supplied
-with `SEED_INPUT=it-extract.jsonl.gz`, but full-release seeding currently fails
-when Wrangler reads the generated SQL because Node's maximum string length is
-exceeded; that limitation is tracked in #97.
+with `SEED_INPUT=it-extract.jsonl.gz`; it loads in numbered SQL parts and takes
+about seven minutes
+([DEV_SEED.md § Seed the full release](DEV_SEED.md#seed-the-full-release)).
 
 ## See the failed-lookup state
 
@@ -79,7 +79,7 @@ it.
 |---|---|
 | zsh asks to correct `wrangler` to `.wrangler` | shell autocorrect; answer `n` or run from outside `web/` |
 | D1 looks empty after a seed | `--persist-to` was relative; pass the `.data/web-state` path shown above |
-| Full-release seed fails with a maximum-string-length error | generated SQL is too large for Wrangler/Node to read as one input; this is #97, not a successful full-release path |
+| Seed stops with `part N of M failed` | one Wrangler run failed; the state directory is partial, so seed again into a fresh one ([DEV_SEED.md § When a part fails](DEV_SEED.md#when-a-part-fails)) |
 
 ## Not this page
 

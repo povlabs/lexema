@@ -211,10 +211,9 @@ database, prefix cutter, or second import/export path. The development seed
 uses the committed fifty-word `fixtures/dev-seed.jsonl` and applies that SQL to
 an isolated `.data/seed-state` database. The full archive is maintained at
 [`source/it-extract.jsonl.gz`](https://github.com/hueypov/lexema-data/blob/main/source/it-extract.jsonl.gz);
-a local copy at the repository root remains gitignored. Full-release seeding
-currently fails when Wrangler reads the generated SQL because Node's maximum
-string length is exceeded (#97), so this page does not claim that a full release
-seeds successfully.
+a local copy at the repository root remains gitignored. The same seed loads a
+full release in numbered SQL parts
+([DEV_SEED.md § Seed the full release](DEV_SEED.md#seed-the-full-release)).
 
 ## Why local work uses a committed fixture
 

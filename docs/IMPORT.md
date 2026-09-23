@@ -35,7 +35,7 @@ Every line that does not become a record is counted exactly and located —
 rejected non-Italian lines as well as malformed ones, so a run can be audited
 either way. The importer hands each rejection to its caller the moment it is
 met, with the line number, the kind and the reason, and the seed writes them
-beside the generated SQL as `<sql-file>.rejections.tsv`, one per line. Nothing
+to `rejections.tsv` beside the generated SQL parts, one per line. Nothing
 is sampled and nothing is held: all 239,243 skipped lines are listed, and the
 importer's memory does not grow with them because the caller writes each one and
 forgets it.
@@ -175,8 +175,8 @@ fifty-word fixture (or an explicitly supplied archive) into generated SQL and
 loads local D1; getting a full release onto Cloudflare, activating it and
 rolling it back is #18. The source archive is maintained at
 [`source/it-extract.jsonl.gz`](https://github.com/hueypov/lexema-data/blob/main/source/it-extract.jsonl.gz),
-and a local root copy remains gitignored. Full-release seeding currently hits
-Node's maximum string length when Wrangler reads the generated SQL (#97).
+and a local root copy remains gitignored. A full release seeds into local D1
+in parts ([DEV_SEED.md § Seed the full release](DEV_SEED.md#seed-the-full-release)).
 
 No repair of upstream extraction defects. `casa` still arrives with no usable
 definition, because that is what the archive contains. The cause is measured in
