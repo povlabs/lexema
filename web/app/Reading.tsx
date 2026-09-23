@@ -82,6 +82,7 @@ import {
   MORE_BUTTON_WIDE,
   MORE_CLOSED,
   MORE_OPEN,
+  MORE_PHONE_ONLY,
   POS_PILL,
   SEARCHED,
   SEARCHED_CELL,
@@ -280,15 +281,18 @@ export function ShowAll({
   total,
   noun,
   wide = false,
+  phoneOnly = false,
   children,
 }: {
   total: number;
   noun: string;
   wide?: boolean;
+  /** Only a phone's shorter slice leaves anything behind it. */
+  phoneOnly?: boolean;
   children: ReactNode;
 }) {
   return (
-    <details className={MORE}>
+    <details className={phoneOnly ? MORE_PHONE_ONLY : MORE}>
       <summary className={wide ? MORE_BUTTON_WIDE : MORE_BUTTON}>
         <span className={MORE_CLOSED}>
           Show all {total} {noun}

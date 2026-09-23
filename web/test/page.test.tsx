@@ -53,6 +53,11 @@ import {
   ETYMOLOGY_LABEL,
   FIELD_LABEL,
   INDEX_CHEVRON,
+  CHIP_WIDE_SLICE,
+  MORE,
+  MORE_PHONE_ONLY,
+  PHONE_ONLY,
+  WIDE_ONLY,
   FIELD_VALUE,
   HEADLINE_FORM,
   HEADLINE_LABEL,
@@ -415,6 +420,28 @@ test("andavano is one reading: its own facts, andare's whole table with the form
 // Width is CSS, so these assert the markup the phone layout is drawn from. What
 // each looks like at 390 px is in the pull request's captures.
 
+test("a related-word list shows a shorter first slice on a phone, and the same Show all reveals the rest", async () => {
+  await withDevSeed(async ({ db }) => {
+    const sale = await render(db, "sale");
+    const synonyms = wordPage("sale", await readingsFor(db, "sale")).wordFacts.synonyms;
+    const list = sale.slice(sale.indexOf(">Synonyms</h2>"), sale.indexOf(">Antonyms</h2>"));
+    const first = list.slice(list.indexOf("<ul"), list.indexOf("</ul>"));
+    // The wide slice is the first list; the chips past the phone's slice wait for Show all there.
+    assert.equal(patternsOf(first, /<li[\s>]/), RELATED_SLICE.wide);
+    assert.equal(occurrencesOf(first, `<li class="${CHIP_WIDE_SLICE}">`), RELATED_SLICE.wide - RELATED_SLICE.phone);
+    assert.equal(occurrencesOf(first, "<li><a"), RELATED_SLICE.phone);
+    assert.match(list, new RegExp(`<details class="${esc(MORE)}"><summary[^>]*><span[^>]*>Show all ${synonyms.length} synonyms`));
+
+    // `andare`'s antonyms fit the wide slice, so only a phone has a button to press.
+    const andare = await render(db, "andare");
+    const antonyms = wordPage("andare", await readingsFor(db, "andare")).wordFacts.antonyms;
+    assert.ok(antonyms.length > RELATED_SLICE.phone && antonyms.length <= RELATED_SLICE.wide);
+    const rest = andare.slice(andare.indexOf(">Antonyms</h2>"));
+    assert.match(rest, new RegExp(`<details class="${esc(MORE_PHONE_ONLY)}"><summary[^>]*><span[^>]*>Show all ${antonyms.length} antonyms`));
+    assert.match(rest, new RegExp(`<span class="${PHONE_ONLY}">${antonyms.length} · showing ${RELATED_SLICE.phone}</span><span class="${WIDE_ONLY}">${antonyms.length}</span>`));
+  });
+});
+
 test("the reading index carries a chevron on each row, which a phone shows", async () => {
   await withDevSeed(async ({ db }) => {
     const html = await render(db, "sale");
@@ -450,8 +477,14 @@ test("the word-level sections come once, after the cards, with their slices and 
     assert.match(afterCards, /Etymology 2 — reading not given/);
 
     const synonyms = page.wordFacts.synonyms.length;
-    assert.ok(synonyms > RELATED_SLICE);
-    assert.match(afterCards, new RegExp(`>Synonyms</h2><span class="[^"]*">${synonyms} · showing ${RELATED_SLICE}</span>`));
+    assert.ok(synonyms > RELATED_SLICE.wide);
+    assert.match(
+      afterCards,
+      new RegExp(
+        `>Synonyms</h2><span class="[^"]*"><span class="${PHONE_ONLY}">${synonyms} · showing ${RELATED_SLICE.phone}</span>` +
+          `<span class="${WIDE_ONLY}">${synonyms} · showing ${RELATED_SLICE.wide}</span></span>`,
+      ),
+    );
     assert.match(afterCards, new RegExp(`<summary class="[^"]*flex w-full[^"]*"><span[^>]*>Show all ${synonyms} synonyms</span>`));
     // Every chip is in the document, each a search for its word.
     assert.equal(patternsOf(afterCards, /href="\/\?q=[^"]+" lang="it">/), synonyms + page.wordFacts.antonyms.length + page.wordFacts.derived.length);

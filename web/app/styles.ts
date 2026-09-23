@@ -166,6 +166,9 @@ export const SECTION = "mt-8 first:mt-0";
 export const SECTION_HEADER = "mb-4 flex items-center gap-3";
 export const SECTION_NAME = `m-0 ${LABEL}`;
 export const SECTION_COUNT = "font-sans text-[0.75rem] text-text-muted";
+/** A count that differs by width: the phone's words, then the wide screen's. */
+export const PHONE_ONLY = "sm:hidden";
+export const WIDE_ONLY = "max-sm:hidden";
 export const SECTION_RULE = "h-px flex-1 bg-border";
 /** A one-line note under a section's name: where a derived grouping came from. */
 export const SECTION_NOTE = "-mt-1 mb-4 font-sans text-[0.8rem] text-text-muted";
@@ -175,6 +178,8 @@ export const MORE = "group mt-4";
 const BUTTON = `inline-flex cursor-pointer list-none items-center gap-2 rounded-[4px] border border-border-strong px-3 py-1.5 font-sans text-[0.8rem] text-text-strong hover:border-accent [&::-webkit-details-marker]:hidden ${FOCUS_RING}`;
 export const MORE_BUTTON = BUTTON;
 export const MORE_BUTTON_WIDE = `${BUTTON} flex w-full justify-center py-2.5`;
+/** A button only a phone needs: its set's whole first slice fits a wide screen. */
+export const MORE_PHONE_ONLY = `${MORE} sm:hidden`;
 export const MORE_CLOSED = "group-open:hidden";
 export const MORE_OPEN = "hidden group-open:inline";
 export const CHEVRON = "size-3.5 transition-transform group-open:rotate-180";
@@ -288,6 +293,14 @@ export const ETYMOLOGY =
   "m-0 rounded-[4px] border border-border bg-surface-raised px-5 py-4 font-serif text-[1.05rem] text-text";
 export const ETYMOLOGY_LABEL = "mb-2 block font-sans text-[0.75rem] font-semibold text-warning";
 
+/**
+ * A related-word list shows `RELATED_SLICE.phone` chips on a phone and
+ * `RELATED_SLICE.wide` on a wide screen (frame 09). The chips between the two
+ * are in the first list at every width, hidden on a phone until its Show all
+ * button opens — the same button, in the same place, as on a wide screen.
+ */
+export const RELATED = "group/related";
+export const CHIP_WIDE_SLICE = "max-sm:hidden max-sm:group-has-[[open]]/related:block";
 export const CHIPS = "m-0 flex list-none flex-wrap gap-2 p-0";
 export const CHIP = `block rounded-[3px] border border-border bg-surface-raised px-3 py-1 font-serif text-base text-text no-underline wrap-anywhere hover:border-border-strong ${FOCUS_RING}`;
 
