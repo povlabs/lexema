@@ -665,8 +665,10 @@ function RecoveredText({ definition }: { definition: RecoveredDefinition }) {
 
 /**
  * The items of the list a definition opens with a closing colon, nested inside
- * it as the page lays them out (#123), unnumbered: they finish that definition
- * rather than stand as definitions of their own.
+ * it (#123), unnumbered: they finish that definition rather than stand as
+ * definitions of their own. Lookup hands over only the items whose lead-in was
+ * matched: a recovered one by its page line, a record sense by a gloss equal to
+ * the line's text, with no other sense or `#` line sharing that text.
  */
 function RecoveredItems({ items }: { items: readonly RecoveredDefinition[] }) {
   if (items.length === 0) return null;
@@ -722,7 +724,8 @@ const definitionKey = (item: DefinitionItem): string =>
  * The extraction's definitions, then the ones recovered from the raw page, in
  * one numbered list. Recovered ones carry their mark, and the section says once
  * where they were read. Only the top of the list is numbered and counted: an
- * item of a list a definition opens with a colon sits inside that definition.
+ * item of a list a definition opens with a colon sits inside that definition
+ * when its lead-in was matched, and stays here, numbered, when it was not.
  */
 function Definitions({ reading }: { reading: Reading }) {
   const definitions: DefinitionItem[] = [

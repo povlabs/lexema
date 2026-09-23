@@ -75,17 +75,40 @@ there, not numbered as definitions of their own
 the record carries (`accollato`'s `attributo araldico che si applica a:`). For 5 it is
 itself a recovered definition (`lap steel guitar`, `pianoforte`).
 
-An item is placed under a record sense only when a gloss proves which sense it is. The
-sense must carry the lead-in's text. It is the sense in the `#` line's own place, when
-the record has one sense for each `#` line; otherwise it must be the only sense that
-carries the text. The place alone, or a text two senses share, places nothing. The
-**3 unplaced** items are `filetto`'s heraldic ones. The record has a sense in the right
-place, but it prints the line's `{{Pn|w=…}}` as `filetto ( approfondimento) detto di:`,
-so no gloss carries the lead-in. They stay numbered at the top of the list, as before
-#123. 26 placements across 24 records were read against their dump pages (`Giano`,
-`-ismo` twice, `elemento` twice, `virtù`, `oro`, `lap steel guitar`, and heraldic
-attributes such as `merlato` and `sinistrato`), and every parent was the line whose
-colon opens the item's list.
+An item is placed under a record sense only by text identity, checked on both sides.
+The lead-in's `#` line is rendered as a reader sees it and compared with each gloss,
+both with whitespace collapsed and one closing colon dropped. Nothing else is changed:
+Wiktextract moves a line's usage labels (`{{Term|araldica|it}}`, `{{Est}}`) out of the
+gloss into `topics`, `tags` and `raw_tags`, and the renderer drops the same templates.
+Exactly one sense must have a gloss equal to that text, and no other `#` line in the
+section may have it. A `#` line with a template the renderer does not know may read as
+anything where that template prints, so it is told apart only by the words around it.
+`{{Nodef}}` is the exception: it prints *definizione mancante; se vuoi, aggiungila tu*,
+exactly the gloss of 9,370 archive senses, so it prints that. A gloss that only quotes
+the line, or a sense that sits in the line's place, places nothing. This is a text
+match, not a record of which page line a sense came from: the archive keeps no such
+link. Two lines or two senses with one text, or a lead-in not glossed at all, leave
+the items numbered at the top of the list.
+
+Over the release, 121 `#` lines open a list of recovered items. 120 render to exactly
+the text of one of their record's glosses, colon included; `filetto`'s is the other.
+The check places the same 332 items as the earlier 40-character clause test, under the
+same senses. Before the gap rule it placed 261. Each of the 71 it missed sat beside
+another `#` line with a template the renderer does not know, so that line's text was
+unknown: `{{it}}` for 28 (`-ismo`), `{{Nodef}}` for 23 (heraldic attributes such as
+`armato` and `coperto`), `{{Vd}}` for 16 (`oro`, `gente`, `sposo`), `{{Taxon}}` for 3
+(`grifone`) and both of the last two for 1 (`fico`).
+
+The **3 unplaced** items are `filetto`'s heraldic ones. The record has a sense in the
+right place, but it prints the line's `{{Pn|w=…}}` as `filetto ( approfondimento) detto
+di:`, which is not the line's text. They stay numbered at the top of the list, as before
+#123. 24 placements, spread across the 120 lead-ins, were read against their dump pages
+on 2026-09-23 (`suolo`, `oro`, `fico`, `-ismo` twice, `-esimo`, `litania`, `liceo`,
+`d'oro`, `metallico`, `digitato`, `brisura`, `arma di dipendenza`, `in banda`, and
+heraldic attributes such as `troncato`, `incappucciato` and `controinquartato`). In each,
+the items are the `#*` lines directly below the matched `#` line, and the sense they
+are placed under glosses that line's text. A sample does not show every placement is
+right; it shows the check did what it says on these.
 
 **51 of the 889 are misfiled as examples:** the record carries the text, but under
 `senses[].examples[]`, not as a definition. They sit in 18 records; 25 are `-ismo`'s

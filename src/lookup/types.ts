@@ -390,8 +390,9 @@ interface ReadingFacts {
    * Definitions the raw page states that the record does not carry, in page
    * order. Empty for nearly every record, and for every record whose raw page
    * this release did not read. An item of a list a definition opens with a
-   * colon is not here but under that definition: in a sense's
-   * `recoveredItems`, or in a recovered definition's `items`.
+   * colon is not here but under that definition, in a sense's
+   * `recoveredItems` or a recovered definition's `items`, when recovery
+   * matched the definition; when it did not, the item is here.
    */
   recovered: RecoveredDefinition[];
 }

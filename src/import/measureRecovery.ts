@@ -50,7 +50,7 @@ class Tally {
   byRoute: Record<string, number> = {};
   examples = 0;
   heldAsExample = 0;
-  /** Recovered items in a lead-in's list, by where the lead-in is kept; `unplaced` when the record does not prove where. */
+  /** Recovered items in a lead-in's list, by where the lead-in is kept; `unplaced` when the lead-in is not matched. */
   listedUnder = { sense: 0, recovered: 0, unplaced: 0 };
   alreadyGlossed = 0;
   unrendered = 0;
@@ -202,7 +202,7 @@ line(`  loss: full ${all.loss.full}, partial ${all.loss.partial}, none ${all.los
 line(`  definitions recovered: ${all.definitions} (${Object.entries(all.byRoute).map(([route, n]) => `${route} ${n}`).join(", ")})`);
 line(`  examples recovered with them: ${all.examples}; held by the record as an example: ${all.heldAsExample}`);
 line(`  in a lead-in's list: under a record sense ${all.listedUnder.sense}, under a recovered definition ` +
-  `${all.listedUnder.recovered}, lead-in not proved ${all.listedUnder.unplaced}`);
+  `${all.listedUnder.recovered}, lead-in not matched ${all.listedUnder.unplaced}`);
 line(`  already a gloss: ${all.alreadyGlossed}; marked a definition but not rendered: ${all.unrendered}`);
 for (const projection of projections) {
   line(`sample ${projection.stratum}: ${projection.lossy}/${projection.scored} scored records lose a definition ` +

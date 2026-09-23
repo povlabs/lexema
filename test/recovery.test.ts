@@ -228,7 +228,6 @@ test("accollato: the items below a sense the record carries sit under that sense
     ref: { wiki: RAW_PAGE_WIKI, title: "accollato", revisionId: 3891844, line: 6 },
     text: "attributo araldico che si applica a:",
     on: "sense-line",
-    senseLine: 2,
   });
   assert.equal(recovery.recovered[0].wikitext, "#*due scudi araldici contigui,");
 });
@@ -247,14 +246,19 @@ const ABITO = "(di abito)che arriva fino al collo";
 const SCARPA = "(di scarpa)che copre fino al collo del piede";
 const ARALDICO = "attributo araldico che si applica a:";
 
-test("accollato: a lead-in two senses carry is proved by neither, and its items stay at the top of the list", () => {
-  // A sense ahead of the lead-in's that quotes it: the first gloss carrying the
-  // text is the wrong sense, and nothing tells the two apart.
+test("accollato: a lead-in two senses gloss is the sense of neither, and its items stay at the top of the list", () => {
+  assert.deepEqual(accollatoUnder(ARALDICO, ABITO, SCARPA, ARALDICO), [null]);
+  // A sense that quotes the lead-in beside the one whose gloss is its text:
+  // only the equal one is its sense, wherever the two sit.
   const quoting = "(araldica) si dice di figura cui si applica l'attributo araldico che si applica a: vedi sotto";
-  assert.deepEqual(accollatoUnder(quoting, ABITO, SCARPA, ARALDICO), [null]);
-  // One sense for each `#` line: the sense in the lead-in's place carries it,
-  // and place and text together tell it from the one that quotes it.
+  assert.deepEqual(accollatoUnder(quoting, ABITO, SCARPA, ARALDICO), [{ in: "sense", senseIndex: 3 }]);
   assert.deepEqual(accollatoUnder(quoting, SCARPA, ARALDICO), [{ in: "sense", senseIndex: 2 }]);
+});
+
+test("accollato: a gloss is compared with its whitespace collapsed and its closing colon dropped, and nothing else", () => {
+  assert.deepEqual(accollatoUnder(ABITO, SCARPA, "attributo  araldico che si applica a"), [{ in: "sense", senseIndex: 2 }]);
+  assert.deepEqual(accollatoUnder(ABITO, SCARPA, "Attributo araldico che si applica a:"), [null]);
+  assert.deepEqual(accollatoUnder(ABITO, SCARPA, "attributo araldico che si applica a:;"), [null]);
 });
 
 test("accollato: one sense per `#` line does not prove the senses are the page's lines in order", () => {
@@ -265,9 +269,59 @@ test("accollato: one sense per `#` line does not prove the senses are the page's
   assert.deepEqual(accollatoUnder(ABITO, SCARPA, "(figurato) che sta addosso"), [null]);
 });
 
-test("a lead-in is placed only where a gloss carries it: the `#` line's own sense, else the one sense that does", () => {
+test("accollato: a sense that quotes the lead-in is not the lead-in's sense, even when it is the only one that does", () => {
+  // The record drops the heraldic sense and carries one that quotes its line.
+  // It is the one sense holding those words, and it sits in the lead-in's
+  // place, but its gloss is not the line's text.
+  const quoting = "(araldica) si dice di figura cui si applica l'attributo araldico che si applica a: vedi sotto";
+  assert.deepEqual(accollatoUnder(ABITO, SCARPA, quoting), [null]);
+  assert.deepEqual(accollatoUnder(ABITO, SCARPA, quoting, "(figurato) che sta addosso"), [null]);
+});
+
+test("two `#` lines with the same text: a gloss equal to both is the sense of neither, and their items stay at the top", () => {
+  const twice = dumpLines("accollato", 3891844, [
+    "{{-agg-|it}}",
+    "# {{Term|araldica|it}} attributo araldico che si applica a:",
+    "#*due scudi araldici contigui,",
+    "#{{Term|abbigliamento|it}}''(di abito)''che arriva fino al [[collo]]",
+    "# {{Term|araldica|it}} attributo araldico che si applica a:",
+    "#*figure lunghe cui se ne attorcigliano altre,",
+  ]);
+  // The record keeps one of the two lines' senses. Which one the page cannot say.
+  const record = { word: "accollato", posTitle: "Aggettivo", examples: [], ...senses(ABITO, ARALDICO) };
+  assert.deepEqual(
+    matched(recoverDefinitions(record, twice)).recovered.map((definition) => definition.listedUnder),
+    [null, null],
+  );
+});
+
+test("a `#` line the renderer cannot print whole is told apart from a lead-in by the words it does print", () => {
+  const withSibling = (sibling: string) =>
+    dumpLines("accollato", 3891844, [
+      "{{-agg-|it}}",
+      sibling,
+      "# {{Term|araldica|it}} attributo araldico che si applica a:",
+      "#*due scudi araldici contigui,",
+    ]);
+  const placed = (sibling: string, ...glosses: string[]) =>
+    matched(
+      recoverDefinitions({ word: "accollato", posTitle: "Aggettivo", examples: [], ...senses(...glosses) }, withSibling(sibling)),
+    ).recovered.map((definition) => definition.listedUnder);
+  // `{{Vd}}` is unknown, but the words around it are not the lead-in's.
+  assert.deepEqual(placed("#per gli usi al plurale {{Vd|accollati}};", "per gli usi al plurale vedi accollati;", ARALDICO), [
+    { in: "sense", senseIndex: 1 },
+  ]);
+  // `{{Nodef}}` prints the archive's own words, which are not the lead-in's.
+  assert.deepEqual(placed("# {{Nodef|it}}", "definizione mancante; se vuoi, aggiungila tu", ARALDICO), [{ in: "sense", senseIndex: 1 }]);
+  // A line that is one unknown template could print the lead-in's text.
+  assert.deepEqual(placed("# {{Vd|accollati}}", "vedi accollati", ARALDICO), [null]);
+  // So could one whose known words fit around it.
+  assert.deepEqual(placed("# attributo {{Vd|x}} a:", "attributo vedi x a:", ARALDICO), [null]);
+});
+
+test("a lead-in is placed only under the one sense whose gloss is its text, wherever that sense sits", () => {
   // filetto, revision 4045314: the record glosses `{{Pn|w=…}} detto di:` as
-  // `filetto ( approfondimento) detto di:`, which no probe finds.
+  // `filetto ( approfondimento) detto di:`, which is not the line's text.
   const filetto = dumpLines("filetto", 4045314, [
     "{{-sost-|it}}",
     "# [[diminutivo]] di [[filo]]",
@@ -280,11 +334,11 @@ test("a lead-in is placed only where a gloss carries it: the `#` line's own sens
       (definition) => definition.listedUnder,
     );
   const glosses = ["diminutivo di filo", "filetto ( approfondimento) detto di:", "ognuna delle quattro sezioni o parti dei pesci"];
-  // One sense for each `#` line, but its gloss does not carry the lead-in:
-  // place alone proves nothing, and the item stays at the top of the list.
+  // One sense for each `#` line, but its gloss is not the lead-in's text:
+  // place alone places nothing, and the item stays at the top of the list.
   assert.deepEqual(placed(senses(...glosses)), [null]);
   // A sense the page does not show as a `#` line: the lead-in is the one
-  // sense whose gloss carries its text, or nowhere.
+  // sense whose gloss is its text, or nowhere.
   assert.deepEqual(placed(senses("aggiunto", "diminutivo di filo", "filetto detto di:", "ognuna delle quattro sezioni")), [
     { in: "sense", senseIndex: 2 },
   ]);

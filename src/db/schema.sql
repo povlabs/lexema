@@ -488,8 +488,9 @@ CREATE TABLE recovered_definition (
   -- The definition whose list this line is an item of, when it sits below a line
   -- ending in a colon (#123): `accollato`'s `#*` items under `# attributo araldico
   -- che si applica a:`. The page's layout decides it, not the item's wording. The
-  -- lead-in is either a sense the record carries or a definition recovered before
-  -- this one from the same page; both NULL for a definition at the top of the list.
+  -- lead-in is either a sense the record carries, matched by a gloss equal to its
+  -- line's text, or a definition recovered before this one from the same page;
+  -- both NULL for a definition at the top of the list or a lead-in not matched.
   lead_in_sense_index  INTEGER,
   lead_in_recovered_id INTEGER,
 
