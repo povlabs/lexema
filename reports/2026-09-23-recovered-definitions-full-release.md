@@ -67,6 +67,14 @@ Archive `it-extract.jsonl.gz`, SHA-256 `0c432803c672…`, 560,357 Italian record
 attaches to them. By route: 17 below a page control, 561 sub-terms, 311 lead-in items
 (the routes are defined in [phase one](2026-09-23-recovered-definitions.md#what-counts-as-a-lost-definition)).
 
+**335 of the 889 sit in a list a definition opens with a colon**, and the page shows
+them nested inside that definition, not numbered as definitions of their own
+([#123](https://github.com/hueypov/lexema/issues/123), counted by `measure:recovery` on
+2026-09-23): 311 lead-in items and 24 sub-terms. For 330 the definition that opens the
+list is a sense the record carries (`accollato`'s `attributo araldico che si applica a:`);
+for 5 it is itself a recovered definition (`lap steel guitar`, `pianoforte`). None is
+left without its lead-in.
+
 **51 of the 889 are misfiled as examples:** the record carries the text, but under
 `senses[].examples[]`, not as a definition. They sit in 18 records; 25 are `-ismo`'s
 derivation lists, and the rest include `lap steel guitar` and `console steel guitar`'s
@@ -161,9 +169,12 @@ the books of `Giano` and `Samuele` (`II Samuele: 24 capitoli`), one of `radioril
 kinds, one of `libro`'s classes, a row of `virtù`'s virtues, two botanical forms
 (`digitato`, `peltato`), one of `apparato`'s organ systems and one of `lutto`'s durations.
 They are the page's definition text, which the extraction dropped. But a page that lists
-them as numbered definitions of their own reads oddly. Whether lead-in items should show
-as definitions is a product call for Huey; the route is stored on every row, so it can
-be turned off by route.
+them as numbered definitions of their own reads oddly. Huey ruled on 2026-09-23, choosing
+among nest, flat, join into one line and drop: **"nest"**. Each item is stored with the
+definition whose colon opens its list, and the page shows it nested inside that
+definition, worded exactly as recovered and still marked *recovered*
+([#123](https://github.com/hueypov/lexema/issues/123)). The rule is the page's layout, so
+the items that define themselves in full nest too.
 
 **This first said 53 and 7, and that was wrong.** The documentation review of the pull
 request found three of the items counted as meanings (`accollato`, `armato`, `fustato`).

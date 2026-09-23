@@ -123,6 +123,12 @@ stays under *Source notes*. `casa` now shows its seven definitions this way.
 When the record filed a recovered definition as an example (`lap steel
 guitar`), the card shows that text once, as the definition, with a note that
 the source record files it as an example, and leaves it out of *Examples*.
+An item of a list a definition opens with a colon (`accollato`'s
+`attributo araldico che si applica a:`) sits inside that definition as a
+bulleted list, whether the definition is the record's or itself recovered
+(#123, Huey's ruling: "nest"). Only the top of the list is numbered and counted.
+A sense that opens such a list is a definition, never *Source notes* furniture,
+even when its gloss starts like `casa`'s (`filetto ( approfondimento) detto di:`).
 
 **A lookup that did not happen.** No release, a D1 error, or a release built by
 a different normalizer all produce a page that says the lookup failed. That is
