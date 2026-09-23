@@ -210,7 +210,48 @@ replaces it.
 so tests can assert their query plans. See
 [the design notes](LOOKUP_DESIGN.md#the-view-that-costs-four-orders-of-magnitude).
 
+## Suggestions
+
+`suggest()` in [`src/lookup/suggest.ts`](../src/lookup/suggest.ts) takes a
+prefix and returns at most ten headword spellings that start with it. The
+search field shows them as a list while a reader types (#15); choosing one runs
+`lookup()` for it. It is the one place in the lookup layer that ranks, because a
+list of ten has to leave most matches out.
+
+```ts
+await suggest({ db: fromD1(env.DB), releaseId, prefix: "ess" });
+// { outcome: "suggested", prefix: { raw: "ess", key: "ess" },
+//   suggestions: ["esse", "essi", "esso", "Essen", "esseno", "essere", …] }
+```
+
+**Query handling** is `normalizeItalianExact`, as above: case and apostrophes
+fold, accents stay. `citt` suggests `città`; `citta` does not.
+
+**Bounds.** A prefix under `MIN_PREFIX_LENGTH` (2 characters of the normalized
+key) or over `MAX_PREFIX_LENGTH` (the 128 of `MAX_QUERY_LENGTH`) is `rejected`
+without reaching the index. `SUGGESTION_LIMIT` is 10.
+
+**What is suggested.** Headwords only, each spelling once however many records
+carry it, as the source spells it. A spelling found only in another record's
+`forms[]` is not suggested.
+
+**Order.** The source has no word frequency, so the rank is built from what it
+does hold, and it is total, so the same prefix gives the same list every time:
+
+1. The spelling whose key is the prefix itself.
+2. Spellings with a definition of their own: at least one record has a sense
+   with no `form_of` edge. A spelling whose every record only says which word it
+   is a form of (`andai`, `essa`) comes after.
+3. The shorter spelling, in characters.
+4. The key, then the spelling itself, so `Salva` and `salva` keep one order.
+
+Measured on the full release in
+[the autocomplete measurements](../reports/2026-09-23-autocomplete-measurements.md).
+
+`SUGGEST_SQL` is exported so a test can assert it stays a range probe on
+`lookup_form_headword_by_key`.
+
 ## Not covered here
 
-Prefix search and autocomplete (#15), ranking, and the HTTP layer (#14). Review
-rows are read but never written; writing them is #12.
+Fuzzy matching and did-you-mean (out of scope in #15), and the HTTP layer (#14).
+Review rows are read but never written; writing them is #12.

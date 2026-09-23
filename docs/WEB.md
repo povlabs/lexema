@@ -11,6 +11,8 @@ underneath. This page is the reasoning. To run it, see
 ```
 web/app/page.tsx        reads the query, runs the lookup, streams the answer
 web/app/SearchPage.tsx  the shell, and the five states a query can be in
+web/app/SearchField.tsx the search form, and the suggestion list under it
+web/app/suggest/route.ts  GET /suggest, the list's JSON
 web/app/Reading.tsx     how one entry renders
 web/app/params.ts       the query as it arrives in the URL
 web/app/attempt.ts      a lookup, or the fact that it did not happen
@@ -60,6 +62,26 @@ slowing the read down and watching the first flush arrive without it.
 The cost is that a server component here has no way to set a response status, so
 even the failed-lookup page returns 200. The state the reader needs is on the
 page; the status code cannot carry it.
+
+## Why the suggestion list is the one thing the browser fetches
+
+Suggestions answer keystrokes, which the URL cannot carry, so the field is the
+one client component and `GET /suggest?q=` is the one request the page makes
+after it loads. The route returns JSON rather than a rendered page, so an
+answer costs the prefix query and nothing else. Everything else above still
+holds: the server renders the field as a plain `<input name="q">` in a GET form,
+and without JavaScript Enter searches as it always did.
+
+Base UI's Autocomplete owns the combobox: focus stays in the field, the arrow
+keys move a highlight, Enter on a highlighted row opens that word, Enter with
+none searches what was typed, and Escape closes the list. A polite live region
+says how many suggestions opened. The field waits 150 ms after a keystroke
+before asking, and a newer keystroke aborts the older request, so a slow answer
+for `ca` is never drawn over the list for `cas`.
+
+The form sits inside the Autocomplete root, not around it. The root renders a
+second, typeless input, and a form with two text fields and no submit button is
+one Enter cannot submit.
 
 ## Why the page is visibly silent
 
