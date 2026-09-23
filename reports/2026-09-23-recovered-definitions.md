@@ -101,8 +101,9 @@ is a form-of pointer with almost nothing below its `#` lines.
 **Full loss is too rare for the sample to see.** No sampled record had it (0 of 1,177
 lemma records, so at most about 0.33%, or 240 records, at 95%). The whole archive gives a
 tighter answer: a scan for records whose every gloss is the headword plus
-`( approfondimento)` or `( citazioni)` finds 6, and 5 of them are furniture only — the
-four above and `console steel guitar`, whose raw page is not in `fixtures/`. The sixth,
+`( approfondimento)` or `( citazioni)` finds 6, and 5 of them have glosses that are furniture only — the
+four above and `console steel guitar`, whose raw page is not in `fixtures/`. (Their glosses are
+furniture; `lap steel guitar` still carries its main definition, misfiled as an example.) The sixth,
 `controbastone`, keeps a definition inside its gloss. That scan only sees headers that
 link to Wikipedia, so the true count is higher, but by the sample's bound not by more than
 a few hundred, and most likely by far less.
