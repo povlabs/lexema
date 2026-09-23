@@ -68,7 +68,10 @@ page; the status code cannot carry it.
 Suggestions answer keystrokes, which the URL cannot carry, so the field is the
 one client component and `GET /suggest?q=` is the one request the page makes
 after it loads. The route returns JSON rather than a rendered page, so an
-answer costs the prefix query and nothing else. Everything else above still
+answer costs the prefix query and nothing else, and usually not even that: the
+browser keeps an answer five minutes and Cloudflare's edge cache keeps it a
+day, keyed by release, so a repeated prefix is answered without reaching D1.
+The `x-lexema-cache` header says `hit` or `miss`. Everything else above still
 holds: the server renders the field as a plain `<input name="q">` in a GET form,
 and without JavaScript Enter searches as it always did.
 

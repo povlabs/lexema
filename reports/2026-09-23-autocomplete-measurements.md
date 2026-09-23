@@ -31,10 +31,26 @@ in key order, and there is no sort, so `LIMIT` stops the walk after the first
 rows. How many headwords share the prefix no longer matters: `a` has 59,642 in
 range and costs what `cas`, with 575, does.
 
-`suggest()` reads the first 200 rows and keeps the first ten distinct
+`suggest()` reads the first 25 rows and keeps the first ten distinct
 spellings. Only if a full read holds fewer than ten does it read again with
-twice as many, so ten are found whenever ten exist. No prefix in this release
-needs a second read.
+twice as many, so ten are found whenever ten exist.
+
+25 is the fewest rows that answer every prefix in one read. Over all 14,162
+prefixes of one to four letters in this release:
+
+| first read | rows read, average | prefixes needing a second read | worst case |
+| ---: | ---: | ---: | ---: |
+| 10 | 8.7 | 2,217 | 70 |
+| 12 | 7.2 | 445 | 36 |
+| 15 | 7.8 | 34 | 45 |
+| 20 | 9.7 | 2 | 60 |
+| **25** | **11.5** | **0** | **25** |
+| 40 | 16.7 | 0 | 40 |
+
+Below 25 the average dips, but some prefixes cost a second round trip to the
+database, which is worth more than the rows saved. No spelling in the release
+heads more than six records (`rosa`, `pizzicato`, `walser`). Longer prefixes
+have fewer headwords under them and only get cheaper.
 
 ## What it returns
 
@@ -87,6 +103,15 @@ that prefix after the restart; warm is the next five.
 
 Every prefix, one letter included, answers in 4–11 ms. What a reader feels is
 the round trip and the 150 ms debounce, not the query.
+
+## Caching
+
+Answers are cached twice, because readers repeat prefixes and a release never
+changes once served. The browser keeps an answer five minutes, so retyping a
+prefix sends nothing. Cloudflare's edge cache keeps it a day, keyed by release
+and prefix and shared by every reader near that location, so a repeated prefix
+never reaches the database. Against the local Worker, the first `man` answered
+`x-lexema-cache: miss` and every repeat `hit`. A failed lookup is never cached.
 
 ## The choices this backs
 

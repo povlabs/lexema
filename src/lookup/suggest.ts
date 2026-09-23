@@ -111,8 +111,14 @@ export const SUGGEST_SQL = `SELECT surface
       ORDER BY surface_key
       LIMIT ?4`;
 
-/** Rows read on the first pass. The release never needs a second one today. */
-export const FIRST_SCAN = 200;
+/**
+ * Rows read on the first pass: the fewest that answer every prefix in one
+ * read. Measured over all 14,162 prefixes of one to four letters in release
+ * `it-0c432803`, 25 rows finds ten distinct spellings every time, at 11.5 rows
+ * read on average; 20 needs a second read for 2 prefixes and 12 for 445, each
+ * costing another round trip. No spelling heads more than six records.
+ */
+export const FIRST_SCAN = 25;
 
 export async function suggest({ db, releaseId, prefix }: SuggestOptions): Promise<SuggestResult> {
   const key = normalizeItalianExact(prefix);
