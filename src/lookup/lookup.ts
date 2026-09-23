@@ -342,6 +342,7 @@ async function buildReading(
   const record = await readRecord(db, recordId);
   const ref = refOn(releaseId, first);
   const source = readSourceRecord(record.rawJson, ref);
+  const recovered = await readRecovered(db, recordId, ref);
 
   return {
     recordId,
@@ -351,13 +352,13 @@ async function buildReading(
     wordFacts: source.wordFacts,
     isAboutQuery: isAbout(group),
     evidence: evidenceOf(releaseId, group),
-    senses: await readSenses(db, recordId, ref, source),
+    senses: await readSenses(db, recordId, ref, source, recovered.underSense),
     forms,
     grammar,
     lemmaLinks,
     inflections: await readInflections(db, releaseId, recordId),
     reviews: await readReviews(db, recordId, ref),
-    recovered: await readRecovered(db, recordId, ref),
+    recovered: recovered.topLevel,
     // Derived, not read: the release carries no article field. The headword and
     // the grammar the source stated about the record are the only inputs, and a
     // reading that is not a noun comes back carrying no articles at all.
@@ -388,6 +389,7 @@ async function readSenses(
   recordId: number,
   ref: (pointer: string) => SourceRef,
   source: SourceRecordFields,
+  recoveredItems: ReadonlyMap<number, RecoveredDefinition[]>,
 ): Promise<Sense[]> {
   const senses = new Map<number, Sense>();
   const ensure = (index: number, pointer: string): Sense => {
@@ -399,6 +401,7 @@ async function readSenses(
         examples: source.examplesBySense.get(index) ?? [],
         glosses: [],
         labels: [],
+        recoveredItems: recoveredItems.get(index) ?? [],
       };
       senses.set(index, sense);
     }
@@ -795,17 +798,25 @@ async function readReviews(
  * examples. Exported so a test can hold the query to its plan.
  */
 export const RECOVERED_SQL = `SELECT d.recovered_id, d.route, d.term, d.page_line, d.text, d.held_as_example,
-            p.wiki, p.title, p.revision_id
+            d.lead_in_sense_index, d.lead_in_recovered_id, p.wiki, p.title, p.revision_id
        FROM recovered_definition d
        JOIN raw_page p ON p.page_id = d.page_id
       WHERE d.record_id = ?
       ORDER BY d.definition_index`;
 
+/** A record's recovered definitions, placed where the page lists them. */
+interface RecoveredOfRecord {
+  /** At the top of the section's list, after the record's senses. */
+  topLevel: RecoveredDefinition[];
+  /** Items of the list a sense the record carries opens, by sense index. */
+  underSense: Map<number, RecoveredDefinition[]>;
+}
+
 async function readRecovered(
   db: LookupDatabase,
   recordId: number,
   ref: (pointer: string) => SourceRef,
-): Promise<RecoveredDefinition[]> {
+): Promise<RecoveredOfRecord> {
   const rows = await queryAll<{
     recovered_id: number;
     route: RecoveredRoute["route"];
@@ -813,11 +824,14 @@ async function readRecovered(
     page_line: number;
     text: string;
     held_as_example: string | null;
+    lead_in_sense_index: number | null;
+    lead_in_recovered_id: number | null;
     wiki: string;
     title: string;
     revision_id: number;
   }>(db, RECOVERED_SQL, recordId);
-  if (rows.length === 0) return [];
+  const placed: RecoveredOfRecord = { topLevel: [], underSense: new Map() };
+  if (rows.length === 0) return placed;
 
   const ids = rows.map((row) => row.recovered_id);
   const marks = ids.map(() => "?").join(",");
@@ -832,14 +846,17 @@ async function readRecovered(
     ...ids,
   );
 
-  return rows.map((row) => {
+  // Rows come in page order, and the schema holds a lead-in's id below its
+  // items', so every recovered lead-in is placed before its first item.
+  const byId = new Map<number, RecoveredDefinition>();
+  for (const row of rows) {
     const at = (line: number) => ({ wiki: row.wiki, title: row.title, revisionId: row.revision_id, line });
     // The schema ties `term` to the sub-term route, so a null here is a
     // database nobody seeded through the schema.
     if (row.route === "sub-term" && row.term === null) throw new Error(`recovered ${row.recovered_id} has no term`);
     const route: RecoveredRoute =
       row.route === "sub-term" ? { route: "sub-term", term: row.term as string } : { route: row.route };
-    return {
+    const definition: RecoveredDefinition = {
       ...route,
       text: row.text,
       labels: labels.filter((label) => label.recovered_id === row.recovered_id).map((label) => label.label),
@@ -848,6 +865,20 @@ async function readRecovered(
         .filter((example) => example.recovered_id === row.recovered_id)
         .map((example) => ({ text: example.text, ref: at(example.page_line) })),
       heldAsExample: row.held_as_example === null ? null : ref(row.held_as_example),
+      items: [],
     };
-  });
+    byId.set(row.recovered_id, definition);
+    if (row.lead_in_recovered_id !== null) {
+      const leadIn = byId.get(row.lead_in_recovered_id);
+      if (leadIn === undefined) throw new Error(`recovered ${row.recovered_id} names lead-in ${row.lead_in_recovered_id}, not read before it`);
+      leadIn.items.push(definition);
+    } else if (row.lead_in_sense_index !== null) {
+      const items = placed.underSense.get(row.lead_in_sense_index) ?? [];
+      items.push(definition);
+      placed.underSense.set(row.lead_in_sense_index, items);
+    } else {
+      placed.topLevel.push(definition);
+    }
+  }
+  return placed;
 }

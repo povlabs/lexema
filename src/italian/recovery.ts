@@ -7,16 +7,31 @@
 // carries as a gloss is not recovered a second time.
 
 import type { RawPage } from "../source/rawPage.js";
-import { readItalianSections, type PageDefinition, type PageSection, type UnrenderedLine } from "./wikitext.js";
+import {
+  readItalianSections,
+  type LeadIn,
+  type PageDefinition,
+  type PageSection,
+  type SenseLineText,
+  type UnrenderedLine,
+} from "./wikitext.js";
 
 /** The parts of an archive record recovery compares against. */
 export interface RecordText {
   word: string;
   posTitle: string;
-  /** Every `senses[].glosses[]` string, in source order. */
-  glosses: readonly string[];
+  /** How many senses the record has, glossed or not. */
+  senseCount: number;
+  /** Every `senses[].glosses[]` string, in source order, with its sense. */
+  glosses: readonly RecordGloss[];
   /** Every `senses[].examples[].text` string, in source order, with its pointer. */
   examples: readonly RecordExample[];
+}
+
+/** One `senses[].glosses[]` string and the index of the sense that holds it. */
+export interface RecordGloss {
+  senseIndex: number;
+  text: string;
 }
 
 /** One `senses[].examples[].text` string and where in the record it sits. */
@@ -37,7 +52,8 @@ export function recordText(record: {
   return {
     word: record.word,
     posTitle: record.pos_title,
-    glosses: record.senses.flatMap((sense) => strings(sense.glosses)),
+    senseCount: record.senses.length,
+    glosses: record.senses.flatMap((sense, senseIndex) => strings(sense.glosses).map((text) => ({ senseIndex, text }))),
     examples: record.senses.flatMap((sense, i) =>
       Array.isArray(sense.examples)
         ? sense.examples.flatMap((example: unknown, j) =>
@@ -50,8 +66,23 @@ export function recordText(record: {
   };
 }
 
+/**
+ * The definition a recovered item is listed under: the one whose closing colon
+ * opens its list on the page, found where the record keeps it.
+ */
+export type ListedUnder =
+  /** A sense the record carries, by its index in `senses`. */
+  | { in: "sense"; senseIndex: number }
+  /** A definition recovered before it for the same record, by its place in `recovered`. */
+  | { in: "recovered"; index: number };
+
 /** A definition recovered for one record, and how the record stood toward it. */
 export type RecoveredDefinition = PageDefinition & {
+  /**
+   * Where its lead-in is, when it has one and the record or the recovered
+   * layer holds it. Null for a definition at the top of the section's list.
+   */
+  listedUnder: ListedUnder | null;
   /**
    * The pointer of the record's example that carries this text, when the
    * record files it as an example rather than a definition — `lap steel
@@ -116,6 +147,63 @@ function sectionFor(sections: readonly PageSection[], posTitle: string): RecordR
   return matching[0];
 }
 
+/**
+ * A line's text and a gloss, put in the one form both are compared in:
+ * whitespace collapsed and one closing colon dropped. Nothing else is changed.
+ * Wiktextract moves a line's usage labels (`{{Term|araldica|it}}`, `{{Fig}}`)
+ * out of its gloss into `topics`, `tags` and `raw_tags`, and the renderer
+ * drops the same templates, so neither side holds them.
+ */
+const asGloss = (text: string): string => text.replace(/\s+/g, " ").trim().replace(/\s*:$/, "");
+
+/**
+ * Whether a `#` line may read as `text`, in the form `asGloss` gives. A line
+ * known whole must equal it. A line with gaps may, when its known parts sit in
+ * `text` in order, the first at its start and the last at its end: a gap can
+ * print anything, so only the known parts can tell the two apart.
+ */
+function mayRead(line: SenseLineText, text: string): boolean {
+  if (line.known === "whole") return asGloss(line.text) === text;
+  const [first, ...rest] = line.parts;
+  const last = asGloss(rest.pop() ?? "");
+  if (!text.startsWith(first)) return false;
+  let at = first.length;
+  for (const part of rest) {
+    const found = text.indexOf(part, at);
+    if (found === -1) return false;
+    at = found + part.length;
+  }
+  return text.endsWith(last) && text.length - last.length >= at;
+}
+
+/**
+ * Where a lead-in is kept. One recovered already is found by its page line.
+ * One on a `#` line is a record sense only by text identity, checked on both
+ * sides: exactly one sense has a gloss equal to the line's text, and no other
+ * `#` line of the section has that text. A gloss that quotes the line, a sense
+ * in the line's place, or a text two lines or two senses share places nothing.
+ * Anything else leaves the item at the top of the list, and `measure:recovery`
+ * counts it.
+ */
+function placeUnder(
+  leadIn: LeadIn,
+  record: RecordText,
+  section: PageSection,
+  recovered: readonly RecoveredDefinition[],
+): ListedUnder | null {
+  if (leadIn.on === "definition") {
+    const index = recovered.findIndex((definition) => definition.ref.line === leadIn.ref.line);
+    return index === -1 ? null : { in: "recovered", index };
+  }
+  const text = asGloss(leadIn.text);
+  const lines = section.senseLines.filter((line) => mayRead(line.text, text));
+  if (lines.length !== 1) return null;
+  const equal = new Set(record.glosses.filter((gloss) => asGloss(gloss.text) === text).map((gloss) => gloss.senseIndex));
+  if (equal.size !== 1) return null;
+  const [senseIndex] = equal;
+  return { in: "sense", senseIndex };
+}
+
 /** Recover what `record` lost from the page it was extracted from. */
 export function recoverDefinitions(record: RecordText, page: RawPage): RecordRecovery {
   if (page.title !== record.word) {
@@ -127,10 +215,11 @@ export function recoverDefinitions(record: RecordText, page: RawPage): RecordRec
   const recovered: RecoveredDefinition[] = [];
   const alreadyGlossed: PageDefinition[] = [];
   for (const definition of section.senseLines.flatMap((line) => line.below)) {
-    if (record.glosses.some((gloss) => carries(gloss, definition.text))) alreadyGlossed.push(definition);
+    if (record.glosses.some((gloss) => carries(gloss.text, definition.text))) alreadyGlossed.push(definition);
     else {
       const heldAs = record.examples.find((example) => carries(example.text, definition.text));
-      recovered.push({ ...definition, heldAsExample: heldAs?.pointer ?? null });
+      const listedUnder = definition.leadIn === null ? null : placeUnder(definition.leadIn, record, section, recovered);
+      recovered.push({ ...definition, heldAsExample: heldAs?.pointer ?? null, listedUnder });
     }
   }
 

@@ -1,0 +1,55 @@
+<!-- it.wiktionary.org/wiki/accollato revision 3891844 (2023-01-19T16:52:38Z), CC BY-SA 4.0. Saved verbatim. -->
+== {{-it-}} ==
+{{-agg-|it}}
+{{Pn|w}} ''m sing'' {{Tabs|accollato|accollati|accollata|accollate}}
+#{{Term|abbigliamento|it}}''(di abito)''che arriva fino al [[collo]]
+#{{Term|abbigliamento|it}}''(di scarpa)''che copre fino al [[collo]] del [[piede]]
+# {{Term|araldica|it}} attributo araldico che si applica a:
+#*due scudi araldici contigui,
+#*più figure lunghe i cui fianchi si toccano,
+#*animali muniti di collare (preferibile il termine [[collarinato]]) o con altre figure poste attorno o sul collo, come un lambello o una corona
+#*figure lunghe cui se ne attorcigliano altre,
+#*scudi che si appoggiano a insegne d'onore sporgenti dal retro,
+#*animali rappresentati con i colli intrecciati, o anche solo congiunti, e passati in decusse.
+
+{{-sill-}}
+;ac | col | là | to
+
+{{-pron-}}
+{{IPA|/akkolˈlato/}}
+
+{{-etim-}}
+participio passato  di [[accollare]]
+
+{{-sin-}}
+* [[in consorteria]] (riferito a due scudi araldici contigui)
+
+{{-trad-}}
+{{Trad1|[[abbigliamento]]}}
+:*{{en}}: high-necked 
+{{Trad2}}
+
+{{Trad1|di calzatura}}
+:* {{en}}: with a high inste
+{{Trad2}}
+
+{{Trad1|[[araldica]]}}
+:*{{fr}}: [[accolé]]
+:*{{en}}: [[accollé]], [[accolle]], [[conjoined in fess]] (solo per le figure ordinate in fascia
+:*{{nl}}: [[aaneengesloten]]
+:*{{oc}}: [[acolat]]
+:*{{es}}:  [[acolado]]
+:*{{de}}:  [[aneinanderstossend]]
+{{Trad2}}
+
+{{-ref-}}
+* {{Fonte|trec}}
+* {{Fonte|hoep}}
+* {{Term|araldica|it}} ''Enciclopedia araldico-cavalleresca, di G. di Crollalanza - edito a Pisa nel 1877''
+* {{Term|araldica|it}}  ''Vocabolario Araldico Ufficiale, a cura di Antonio Manno – edito a Roma nel 1907''
+* {{Term|araldica|it}}  ''Dizionario araldico, di Piero Guelfi Camajani - edito a Milano nel 1940''
+* {{Term|araldica|it}}  ''[http://www.heraldica.org/shell/translatf.pl Traduttore di Heraldica.org]''
+* {{Term|araldica|it}} ''Manuale di araldica ecclesiastica, di A. Cordero Lanza di Montezemolo e A. Pompili - edito a Roma nel 2014''
+
+== Altri progetti ==
+{{Interprogetto|w}}

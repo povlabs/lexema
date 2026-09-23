@@ -122,3 +122,9 @@ and an older database has neither, so every search on it fails. Seeding again
 with `pnpm run seed:dev` into its `SEED_STATE` builds both. The `held_as_example`
 column also changed meaning, from a flag to a JSON pointer, so any database
 seeded from an earlier revision of this change needs the same reseed.
+
+**A database seeded before #123 must be reseeded too.** `recovered_definition`
+gained `lead_in_sense_index` and `lead_in_recovered_id`, which place an item of
+a list a definition opens with a colon under that definition, and lookup reads
+both. An older database has neither column, so every search on it fails until
+`pnpm run seed:dev` rebuilds its `SEED_STATE`.

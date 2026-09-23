@@ -203,18 +203,18 @@ type Rendered =
   | { rendered: false; template: string };
 
 /**
- * Render one line of wikitext to plain text.
- *
- * Every template on the line is either a label, the headword, a language name,
- * or unknown. An unknown template stops the line: printing it wrong, or
- * dropping words it prints, would put text on the page that the page upstream
- * does not say. The line is reported instead.
+ * Replace every template on a line, innermost first: a label by a space, noted
+ * in `labels`; the headword and a language name by what they print; any other
+ * by what `unknown` returns for its name.
  */
-function renderInline(body: string, headword: string): Rendered {
+function expandTemplates(
+  body: string,
+  headword: string,
+  unknown: (name: string) => string,
+): { text: string; labels: string[] } {
   const labels: string[] = [];
-  let unknown: string | undefined;
   let text = withoutNoise(body);
-  for (let previous = ""; previous !== text && unknown === undefined; ) {
+  for (let previous = ""; previous !== text; ) {
     previous = text;
     text = text.replace(TEMPLATE, (_, inner: string) => {
       const { name, args } = templateParts(inner);
@@ -225,16 +225,49 @@ function renderInline(body: string, headword: string): Rendered {
         if (printed !== undefined && printed !== "") labels.push(printed);
         return " ";
       }
-      const language = LANGUAGE_TEMPLATES[name];
-      if (language !== undefined) return language;
-      unknown ??= name;
-      return " ";
+      return LANGUAGE_TEMPLATES[name] ?? unknown(name);
     });
   }
+  return { text: text.replace(LINK, (_, target: string, label?: string) => label ?? target), labels };
+}
+
+/**
+ * Render one line of wikitext to plain text.
+ *
+ * Every template on the line is either a label, the headword, a language name,
+ * or unknown. An unknown template stops the line: printing it wrong, or
+ * dropping words it prints, would put text on the page that the page upstream
+ * does not say. The line is reported instead.
+ */
+function renderInline(body: string, headword: string): Rendered {
+  let unknown: string | undefined;
+  const { text, labels } = expandTemplates(body, headword, (name) => {
+    unknown ??= name;
+    return " ";
+  });
   if (unknown !== undefined) return { rendered: false, template: unknown };
-  text = text.replace(LINK, (_, target: string, label?: string) => label ?? target);
   const runs = runsOf(text);
   return { rendered: true, text: collapse(runs.map((run) => run.text).join("")), labels, runs };
+}
+
+/**
+ * What `{{Nodef}}` prints, as the archive has it: 9,370 of its glosses are
+ * exactly this, and the others hold it beside the words around the template.
+ */
+const NODEF_PRINTS = "definizione mancante; se vuoi, aggiungila tu";
+
+/** Stands where a template the renderer does not know prints. XML cannot carry it, so no page holds it. */
+const GAP = "\u0000";
+
+/**
+ * A `#` line's text as far as it is known, to tell it from another line's. It
+ * is never shown. `{{Nodef}}` prints its fixed words here; any other template
+ * the renderer does not know leaves a gap, which may hold any text.
+ */
+function readSenseLine(body: string, headword: string): SenseLineText {
+  const { text } = expandTemplates(body, headword, (name) => (name === "nodef" ? NODEF_PRINTS : GAP));
+  const [first, ...rest] = runsOf(text).map((run) => run.text).join("").split(GAP).map(collapse);
+  return rest.length === 0 ? { known: "whole", text: first } : { known: "around-gaps", parts: [first, ...rest] };
 }
 
 /**
@@ -307,6 +340,19 @@ export type DefinitionRoute =
   /** An item of the list a definition introduces with a closing colon. */
   | { route: "lead-in-item" };
 
+/**
+ * The line whose closing colon opens the list a definition is an item of:
+ * `# attributo araldico che si applica a:` above `accollato`'s `#*` items. The
+ * item belongs inside it.
+ */
+export interface LeadIn {
+  ref: RawPageRef;
+  /** Its text as a reader sees it, to find it among the record's glosses. */
+  text: string;
+  /** A `#` line, which the record may keep as a sense, or a definition below one. */
+  on: "sense-line" | "definition";
+}
+
 /** A usage sentence the page attaches to a definition. */
 export interface PageExample {
   text: string;
@@ -325,6 +371,13 @@ export type PageDefinition = DefinitionRoute & {
   wikitext: string;
   /** The italic lines one level below it, in page order. */
   examples: PageExample[];
+  /**
+   * The line above it that ends in a colon, when it sits in that line's list.
+   * Layout decides it, not wording: an item that defines itself in full
+   * (`nozze d'oro`) is still in its lead-in's list. Null for a definition at
+   * the top of its section's list.
+   */
+  leadIn: LeadIn | null;
 };
 
 /** A line the structure marks as a definition but that could not be rendered. */
@@ -335,6 +388,13 @@ export interface UnrenderedLine {
   template: string;
 }
 
+/**
+ * A `#` line's text, as far as the renderer can print it: the whole of it, or
+ * the parts around the places where a template it does not know prints, each
+ * of which may hold any text. Two or more parts.
+ */
+export type SenseLineText = { known: "whole"; text: string } | { known: "around-gaps"; parts: string[] };
+
 /** One `#` line of a part-of-speech section: one sense of the extraction's record. */
 export type PageSenseLine =
   | {
@@ -342,6 +402,7 @@ export type PageSenseLine =
       kind: "sense";
       ref: RawPageRef;
       wikitext: string;
+      text: SenseLineText;
       /** Definitions below it the extraction cannot read. */
       below: PageDefinition[];
     }
@@ -354,6 +415,7 @@ export type PageSenseLine =
       kind: "page-control";
       ref: RawPageRef;
       wikitext: string;
+      text: SenseLineText;
           /** The definitions one level below it. Empty when the page gives none. */
       below: PageDefinition[];
     };
@@ -377,8 +439,11 @@ class SectionReader {
     return { wiki: this.page.wiki, title: this.page.title, revisionId: this.page.revisionId, line };
   }
 
-  /** A line below `#` that the structure has already marked as a definition. */
-  definition(node: ListLine, route: DefinitionRoute): PageDefinition[] {
+  /**
+   * A line below `#` that the structure has already marked as a definition.
+   * `leadIn` is the colon-ended line whose list it is in, if any.
+   */
+  definition(node: ListLine, route: DefinitionRoute, leadIn: LeadIn | null): PageDefinition[] {
     const rendered = renderInline(node.body, this.page.title);
     if (rendered.rendered && (opensQuotation(rendered.text) || endsAsUtterance(rendered.text))) return [];
     if (!rendered.rendered) {
@@ -392,18 +457,19 @@ class SectionReader {
       ref: this.ref(node.line),
       wikitext: node.wikitext,
       examples: [],
+      leadIn,
     };
-    const nested = this.below(node, leadsIn(rendered.text), definition.examples);
-    return [definition, ...nested];
+    const opens = leadsIn(rendered.text) ? { ref: definition.ref, text: definition.text, on: "definition" as const } : null;
+    return [definition, ...this.below(node, opens, definition.examples)];
   }
 
   /**
-   * The definitions below a line that states a meaning. `leadIn` is whether it
-   * ends in a colon, which makes its plain children items of its list. Italic
-   * children are its examples, collected into `examples` when the caller keeps
-   * them — a sense line's examples are the extraction's already.
+   * The definitions below a line that states a meaning. `leadIn` is the line
+   * itself when it ends in a colon, which makes its plain children items of its
+   * list. Italic children are its examples, collected into `examples` when the
+   * caller keeps them — a sense line's examples are the extraction's already.
    */
-  below(node: ListLine, leadIn: boolean, examples: PageExample[] | undefined): PageDefinition[] {
+  below(node: ListLine, leadIn: LeadIn | null, examples: PageExample[] | undefined): PageDefinition[] {
     return node.children.flatMap((child) => {
       if (isSenseMarker(child.marker)) return [];
       if (isWhollyItalic(child.body)) {
@@ -415,32 +481,34 @@ class SectionReader {
       }
       const rendered = renderInline(child.body, this.page.title);
       const term = rendered.rendered ? boldSubTerm(rendered.runs) : undefined;
-      if (term !== undefined) return this.definition(child, { route: "sub-term", term });
-      if (leadIn && hasPlainProse(child.body)) return this.definition(child, { route: "lead-in-item" });
+      if (term !== undefined) return this.definition(child, { route: "sub-term", term }, leadIn);
+      if (leadIn !== null && hasPlainProse(child.body)) return this.definition(child, { route: "lead-in-item" }, leadIn);
       return [];
     });
   }
 
   senseLine(node: ListLine): PageSenseLine {
     const ref = this.ref(node.line);
+    const text = readSenseLine(node.body, this.page.title);
     if (hasPlainProse(node.body)) {
       const rendered = renderInline(node.body, this.page.title);
-      const leadIn = rendered.rendered && leadsIn(rendered.text);
-      return { kind: "sense", ref, wikitext: node.wikitext, below: this.below(node, leadIn, undefined) };
+      const leadIn: LeadIn | null =
+        rendered.rendered && leadsIn(rendered.text) ? { ref, text: rendered.text, on: "sense-line" } : null;
+      return { kind: "sense", ref, wikitext: node.wikitext, text, below: this.below(node, leadIn, undefined) };
     }
     // `{{Nodef}}` says the page gives no definition here, so a line below it is
     // not one by position: `fondarsi` puts a plain usage sentence there. Only a
     // bold sub-term that goes on to define itself is still a definition
     // (`colorito`: `'''espressione colorita''': utilizzo di termini volgari…`).
     if (NO_DEFINITION.test(node.body)) {
-      return { kind: "page-control", ref, wikitext: node.wikitext, below: this.below(node, false, undefined) };
+      return { kind: "page-control", ref, wikitext: node.wikitext, text, below: this.below(node, null, undefined) };
     }
     const below = node.children.flatMap((child) =>
       !isSenseMarker(child.marker) && hasPlainProse(child.body) && !isWhollyItalic(child.body)
-        ? this.definition(child, { route: "below-page-control" })
+        ? this.definition(child, { route: "below-page-control" }, null)
         : [],
     );
-    return { kind: "page-control", ref, wikitext: node.wikitext, below };
+    return { kind: "page-control", ref, wikitext: node.wikitext, text, below };
   }
 }
 

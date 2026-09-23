@@ -67,6 +67,49 @@ Archive `it-extract.jsonl.gz`, SHA-256 `0c432803c672…`, 560,357 Italian record
 attaches to them. By route: 17 below a page control, 561 sub-terms, 311 lead-in items
 (the routes are defined in [phase one](2026-09-23-recovered-definitions.md#what-counts-as-a-lost-definition)).
 
+**335 of the 889 sit in a list a definition opens with a colon**: 311 lead-in items and
+24 sub-terms. **332 are placed inside that definition**, and the page shows them nested
+there, not numbered as definitions of their own
+([#123](https://github.com/hueypov/lexema/issues/123), counted by `measure:recovery` on
+2026-09-23 and in a full seed). For 327 the definition that opens the list is a sense
+the record carries (`accollato`'s `attributo araldico che si applica a:`). For 5 it is
+itself a recovered definition (`lap steel guitar`, `pianoforte`).
+
+An item is placed under a record sense only by text identity, checked on both sides.
+The lead-in's `#` line is rendered as a reader sees it and compared with each gloss,
+both with whitespace collapsed and one closing colon dropped. Nothing else is changed:
+Wiktextract moves a line's usage labels (`{{Term|araldica|it}}`, `{{Est}}`) out of the
+gloss into `topics`, `tags` and `raw_tags`, and the renderer drops the same templates.
+Exactly one sense must have a gloss equal to that text, and no other `#` line in the
+section may have it. A `#` line with a template the renderer does not know may read as
+anything where that template prints, so it is told apart only by the words around it.
+`{{Nodef}}` is the exception: it prints *definizione mancante; se vuoi, aggiungila tu*,
+exactly the gloss of 9,370 archive senses, so it prints that. A gloss that only quotes
+the line, or a sense that sits in the line's place, places nothing. This is a text
+match, not a record of which page line a sense came from: the archive keeps no such
+link. Two lines or two senses with one text, or a lead-in not glossed at all, leave
+the items numbered at the top of the list.
+
+Over the release, 121 `#` lines open a list of recovered items. 120 render to exactly
+the text of one of their record's glosses, colon included; `filetto`'s is the other.
+The check places the same 332 items as the earlier 40-character clause test, under the
+same senses. Before the gap rule it placed 261. Each of the 71 it missed sat beside
+another `#` line with a template the renderer does not know, so that line's text was
+unknown: `{{it}}` for 28 (`-ismo`), `{{Nodef}}` for 23 (heraldic attributes such as
+`armato` and `coperto`), `{{Vd}}` for 16 (`oro`, `gente`, `sposo`), `{{Taxon}}` for 3
+(`grifone`) and both of the last two for 1 (`fico`).
+
+The **3 unplaced** items are `filetto`'s heraldic ones. The record has a sense in the
+right place, but it prints the line's `{{Pn|w=…}}` as `filetto ( approfondimento) detto
+di:`, which is not the line's text. They stay numbered at the top of the list, as before
+#123. 24 placements, spread across the 120 lead-ins, were read against their dump pages
+on 2026-09-23 (`suolo`, `oro`, `fico`, `-ismo` twice, `-esimo`, `litania`, `liceo`,
+`d'oro`, `metallico`, `digitato`, `brisura`, `arma di dipendenza`, `in banda`, and
+heraldic attributes such as `troncato`, `incappucciato` and `controinquartato`). In each,
+the items are the `#*` lines directly below the matched `#` line, and the sense they
+are placed under glosses that line's text. A sample does not show every placement is
+right; it shows the check did what it says on these.
+
 **51 of the 889 are misfiled as examples:** the record carries the text, but under
 `senses[].examples[]`, not as a definition. They sit in 18 records; 25 are `-ismo`'s
 derivation lists, and the rest include `lap steel guitar` and `console steel guitar`'s
@@ -161,9 +204,12 @@ the books of `Giano` and `Samuele` (`II Samuele: 24 capitoli`), one of `radioril
 kinds, one of `libro`'s classes, a row of `virtù`'s virtues, two botanical forms
 (`digitato`, `peltato`), one of `apparato`'s organ systems and one of `lutto`'s durations.
 They are the page's definition text, which the extraction dropped. But a page that lists
-them as numbered definitions of their own reads oddly. Whether lead-in items should show
-as definitions is a product call for Huey; the route is stored on every row, so it can
-be turned off by route.
+them as numbered definitions of their own reads oddly. Huey ruled on 2026-09-23, choosing
+among nest, flat, join into one line and drop: **"nest"**. Each item is stored with the
+definition whose colon opens its list, and the page shows it nested inside that
+definition, worded exactly as recovered and still marked *recovered*
+([#123](https://github.com/hueypov/lexema/issues/123)). The rule is the page's layout, so
+the items that define themselves in full nest too.
 
 **This first said 53 and 7, and that was wrong.** The documentation review of the pull
 request found three of the items counted as meanings (`accollato`, `armato`, `fustato`).

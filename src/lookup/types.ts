@@ -142,6 +142,13 @@ export interface Sense {
   glosses: { text: string; ref: SourceRef }[];
   /** The source's own vocabulary: 'figuratively', 'form-of', 'scuola'. */
   labels: { kind: "tag" | "raw_tag"; label: string; ref: SourceRef }[];
+  /**
+   * The recovered items of the list this sense opens with a closing colon, in
+   * page order (#123): `accollato`'s `attributo araldico che si applica a:`
+   * and the `#*` lines below it. They come from the raw page, not the record,
+   * and carry their own refs. Empty for nearly every sense.
+   */
+  recoveredItems: RecoveredDefinition[];
 }
 
 /**
@@ -192,7 +199,21 @@ export type RecoveredDefinition = RecoveredRoute & {
    * text once, as this definition, and not again as that example.
    */
   heldAsExample: SourceRef | null;
+  /** The recovered items of the list it opens with a closing colon, in page order (#123). */
+  items: RecoveredDefinition[];
 };
+
+/**
+ * Every recovered definition on a reading, in page order: the ones at the top
+ * of the list, and the items nested under a sense or under another recovered
+ * definition.
+ */
+export function everyRecovered(reading: Pick<Reading, "senses" | "recovered">): RecoveredDefinition[] {
+  const withItems = (definition: RecoveredDefinition): RecoveredDefinition[] => [definition, ...definition.items.flatMap(withItems)];
+  return [...reading.senses.flatMap((sense) => sense.recoveredItems), ...reading.recovered]
+    .flatMap(withItems)
+    .sort((a, b) => a.ref.line - b.ref.line);
+}
 
 /** A record the source names as the target of a form_of edge. */
 export interface LemmaCandidate {
@@ -368,7 +389,10 @@ interface ReadingFacts {
   /**
    * Definitions the raw page states that the record does not carry, in page
    * order. Empty for nearly every record, and for every record whose raw page
-   * this release did not read.
+   * this release did not read. An item of a list a definition opens with a
+   * colon is not here but under that definition, in a sense's
+   * `recoveredItems` or a recovered definition's `items`, when recovery
+   * matched the definition; when it did not, the item is here.
    */
   recovered: RecoveredDefinition[];
 }
