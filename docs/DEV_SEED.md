@@ -52,40 +52,28 @@ The fifty-word fixture is 1.9 MB of SQL, so it is one part, byte for byte the
 single file the seeder wrote before parts existed.
 
 After the last part, the seeder counts the rows of every table the batches
-wrote and stops with an error if any count differs from the generated SQL. It
-then reads the one `source_release` row, which is written outside the batches,
-and stops unless exactly one exists and its status and line counts match what
-the run reported.
+wrote and checks them against the generated SQL. It then reads the one
+`source_release` row, which is written outside the batches, and checks that
+exactly one exists and that its status and line counts match what the run
+reported. If either check fails, it marks the release `failed` and stops.
 
 The 64 MiB default keeps Wrangler's memory down for little extra time;
 [the measurements](../reports/2026-09-23-full-release-seed-measurements.md)
 compare 32, 64 and 128 MiB.
 
-## Seed the full release
+## Failure states
 
-```sh
-SEED_INPUT=it-extract.jsonl.gz \
-SEED_SQL=.data/full-sql \
-SEED_STATE=.data/full-state \
-pnpm run seed:dev
-```
+What a stopped seed leaves in its `SEED_STATE`. The recovery steps are in
+[RUN_AN_IMPORT.md § If a seed stops](RUN_AN_IMPORT.md#if-a-seed-stops).
 
-On an Apple M1 Pro with 16 GB this takes about seven minutes (409 s) and peaks at
-about 2.8 GB across the seeder, Wrangler and `workerd`. It writes 16 parts,
-about 1 GB, and the database is about 1.4 GB. It ends by printing the loaded
-counts for release `it-0c432803`: 560,357 `source_record` rows and 1,273,490
-`lookup_form` rows.
+| Where it stopped | Release status left | Usable |
+| --- | --- | --- |
+| A part failed to apply | `importing`: later parts never ran, and the failed part may have applied some of its statements | No |
+| All parts applied, then a row count or the `source_release` row differed from the run | `failed`: the seeder sets it before stopping, because the last part had already marked the release `complete` | No |
+| Every check passed | `complete` | Yes |
 
-## When a part fails
-
-The seed stops at the first part that fails, names it and its number, and lists
-the parts applied before it. No later part runs. The state directory then holds
-a partial release, marked `importing`, and is not safe to use.
-
-To recover, fix the cause and seed again into a fresh state directory: a new
-`SEED_STATE` path, or the same one, which the seed clears before loading. Do not
-apply the remaining parts by hand; a part that failed may have applied some of
-its statements.
+The seeder stops at the first failing part, names it and its number, and lists
+the parts applied before it. No later part runs.
 
 The archive is the only production input. This development fixture exists so a
 fresh clone can seed without `it-extract.jsonl.gz` or a data-repository checkout.

@@ -70,6 +70,19 @@ try {
   process.exit(1);
 }
 
+/**
+ * Mark the loaded release `failed` and stop. The last part sets the release
+ * `complete` before these checks run, so a check that fails must undo that, or
+ * a database that failed verification would still be served as complete.
+ */
+function failVerification(message: string): never {
+  wrangler(
+    ["--command", `UPDATE source_release SET status = 'failed' WHERE release_id = '${report.releaseId.replace(/'/g, "''")}'`],
+    true,
+  );
+  throw new Error(`${message}; release ${report.releaseId} marked failed`);
+}
+
 // Read the loaded row counts back and hold them against what was generated.
 const tables = Object.keys(report.rows);
 const [counted] = JSON.parse(
@@ -79,7 +92,7 @@ const loaded = counted.results[0];
 process.stderr.write(`loaded release ${report.releaseId}:\n`);
 for (const table of tables) process.stderr.write(`  ${table}: ${loaded[table]}\n`);
 const mismatched = tables.filter((table) => loaded[table] !== report.rows[table as keyof typeof report.rows]);
-if (mismatched.length > 0) throw new Error(`loaded row counts differ from the generated SQL: ${mismatched.join(", ")}`);
+if (mismatched.length > 0) failVerification(`loaded row counts differ from the generated SQL: ${mismatched.join(", ")}`);
 
 // `source_release` is written as one row outside the batched tables, so a count
 // would say little. Hold the row itself against the run: exactly one, and it
@@ -99,12 +112,12 @@ const expectedRelease = {
   malformed_members: report.malformedMembers,
 };
 if (releaseRows.results.length !== 1) {
-  throw new Error(`expected one source_release row for ${report.releaseId}, found ${releaseRows.results.length}`);
+  failVerification(`expected one source_release row for ${report.releaseId}, found ${releaseRows.results.length}`);
 }
 const releaseRow = releaseRows.results[0];
 const releaseMismatch = Object.entries(expectedRelease).filter(([column, value]) => releaseRow[column] !== value);
 if (releaseMismatch.length > 0) {
-  throw new Error(`source_release differs from the run: ${releaseMismatch.map(([column]) => column).join(", ")}`);
+  failVerification(`source_release differs from the run: ${releaseMismatch.map(([column]) => column).join(", ")}`);
 }
 process.stderr.write(`  source_release: 1 row, ${releaseRow.status}\n`);
 process.stdout.write(JSON.stringify({ ...report, rejectionPath, loaded }) + "\n");

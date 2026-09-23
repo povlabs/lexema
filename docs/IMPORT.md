@@ -176,7 +176,7 @@ loads local D1; getting a full release onto Cloudflare, activating it and
 rolling it back is #18. The source archive is maintained at
 [`source/it-extract.jsonl.gz`](https://github.com/hueypov/lexema-data/blob/main/source/it-extract.jsonl.gz),
 and a local root copy remains gitignored. A full release seeds into local D1
-in parts ([DEV_SEED.md § Seed the full release](DEV_SEED.md#seed-the-full-release)).
+in parts ([RUN_AN_IMPORT.md § Run it](RUN_AN_IMPORT.md#run-it)).
 
 No repair of upstream extraction defects. `casa` still arrives with no usable
 definition, because that is what the archive contains. The cause is measured in

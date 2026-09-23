@@ -36,9 +36,20 @@ peaks at about 2.8 GB of memory
 ends by printing the loaded row counts: 560,357 `source_record` and 1,273,490
 `lookup_form` rows for release `it-0c432803`.
 
-If a part fails, the seed stops, names that part, and lists the parts already
-applied. Seed again into a fresh `SEED_STATE`
-([DEV_SEED.md § When a part fails](DEV_SEED.md#when-a-part-fails)).
+## If a seed stops
+
+The seed stops when a part fails to apply, or when the loaded database does not
+match what was generated. Either way the state directory is not usable; what
+each case leaves is in [DEV_SEED.md § Failure states](DEV_SEED.md#failure-states).
+
+1. Read the error. It names the failing part and the parts already applied, or
+   the tables and release fields that differed.
+2. Fix the cause.
+3. Seed again, into a new `SEED_STATE` path or the same one, which the seed
+   clears before it loads.
+
+Do not apply the remaining parts by hand: a part that failed may have applied
+some of its statements.
 
 Loading a complete release into deployed D1 remains a separate release
 operation.

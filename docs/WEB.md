@@ -213,7 +213,7 @@ an isolated `.data/seed-state` database. The full archive is maintained at
 [`source/it-extract.jsonl.gz`](https://github.com/hueypov/lexema-data/blob/main/source/it-extract.jsonl.gz);
 a local copy at the repository root remains gitignored. The same seed loads a
 full release in numbered SQL parts
-([DEV_SEED.md § Seed the full release](DEV_SEED.md#seed-the-full-release)).
+([RUN_AN_IMPORT.md § Run it](RUN_AN_IMPORT.md#run-it)).
 
 ## Why local work uses a committed fixture
 
