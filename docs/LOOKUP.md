@@ -89,13 +89,22 @@ writes `result.outcome === "found" ? result.readings : []`, and neither
 
 ## Result fields
 
+A record matches when its headword or a `forms[]` entry spells the key. Every
+match is a reading, with one exception: a record that matched only through its
+table, and that a reading about the query names as its lemma, is that reading's
+lemma instead. `sala` and `salire` list `sale`, and two `sale` readings say they
+are forms of them, so a search for `sale` returns three readings, and `sala`
+and `salire` arrive on those readings' `lemmaLinks` with the rows of their
+tables that spell `sale`. A record that lists the query and is no reading's
+lemma — `studentessa` for `studenti` — is still a reading.
+
 | Field | Holds |
 | --- | --- |
 | `query.raw` | the caller's string, verbatim |
 | `query.key` | the normalized key the index was probed with |
 | `query.normalizer` | the release's normalizer version |
 | `release` | id, normalizer, source url, retrieval date, licence, attribution — present on `not-found` too |
-| `readings[]` | one entry per matching record, in source order; `found` only |
+| `readings[]` | one entry per matching record, in source order, except a lemma (below); `found` only |
 
 ### `Reading`
 
@@ -109,7 +118,7 @@ writes `result.outcome === "found" ? result.readings : []`, and neither
 | `evidence[]` | every occurrence of the surface on this record, in source order |
 | `senses[]` | source glosses, labels and `examples[].text`, the examples read from `source_record_json` |
 | `grammar` | claims split into `record`, `byForm` and `bySense` |
-| `lemmaLinks[]` | outgoing `form_of` edges this record declares |
+| `lemmaLinks[]` | the reading's lemma: outgoing `form_of` edges this record declares, each candidate with its `listing` |
 | `inflections[]` | records declaring themselves forms of this one |
 | `reviews[]` | review verdicts on this record's claims |
 | `articles` | noun readings only: the singular articles `it-articles/v1` derives from the record's stated gender and number, plus the plural ones for the single plural form the source tags with the same gender |
@@ -167,8 +176,15 @@ all; the three represented states are:
 | `candidates` | it matches one or more | `candidates[]` |
 
 `candidates[]` is never narrowed to one. More than one entry means the source
-did not choose. Each candidate is `recordId`, `word`, `pos` and a `ref` to its
-own `/word`.
+did not choose. Each candidate is `recordId`, `word`, `pos`, a `ref` to its
+own `/word`, and `listing`.
+
+`listing` is where the candidate's own table spells the query: its whole
+`forms[]` and the `evidence[]` rows the key hit, never empty. It is `undefined`
+when the candidate's table does not list the query — for `sale`, the `sala`
+verb record, which shares its spelling with the `sala` noun. A form reading
+reads its person, number and tense off that row, and a page of one verb form
+shows the lemma's whole table from it.
 
 ### `InflectionOf`
 

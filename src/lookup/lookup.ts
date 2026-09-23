@@ -11,7 +11,9 @@ import type {
   Grammar,
   GrammarClaim,
   InflectionOf,
+  LemmaCandidate,
   LemmaLink,
+  LemmaListing,
   LookupResult,
   Reading,
   ReleaseInfo,
@@ -119,12 +121,66 @@ export async function lookup({ db, releaseId, query }: LookupOptions): Promise<L
     return { outcome: "not-found", query: queryInfo, release };
   }
 
-  // Built as a tuple rather than an array, so the non-empty `readings` a
-  // `found` requires is what the construction produces.
-  const readings: [Reading, ...Reading[]] = await Promise.all([
-    buildReading(db, releaseId, groups[0]),
-    ...groups.slice(1).map((group) => buildReading(db, releaseId, group)),
-  ]);
+  // A record's forms are read once, whether it becomes a reading, a lemma's
+  // listing, or both.
+  const tables = new Map<number, Promise<RecordTable>>();
+  const tableOf = (group: HitRow[]): Promise<RecordTable> => {
+    const recordId = group[0].record_id;
+    let table = tables.get(recordId);
+    if (table === undefined) {
+      table = readTable(db, recordId, refOn(releaseId, group[0]));
+      tables.set(recordId, table);
+    }
+    return table;
+  };
+
+  const declared = new Map(
+    await Promise.all(
+      groups.map(async (group) => {
+        const recordId = group[0].record_id;
+        return [recordId, await readLemmaLinks(db, releaseId, recordId, refOn(releaseId, group[0]))] as const;
+      }),
+    ),
+  );
+
+  // The lemmas the readings about the query point to. A record the query
+  // matched only through its table, and that is one of these, is that
+  // reading's lemma rather than a reading of its own: `sale` names `sala` and
+  // `salire`, and both list `sale`.
+  const lemmaIds = new Set(
+    groups
+      .filter(isAbout)
+      .flatMap((group) => (declared.get(group[0].record_id) ?? []).flatMap(candidateIds)),
+  );
+
+  const listingOf = async (recordId: number): Promise<LemmaListing | undefined> => {
+    const group = byRecord.get(recordId);
+    if (group === undefined) return undefined;
+    const [first, ...rest] = evidenceOf(releaseId, group).filter((occurrence) => occurrence.origin === "embedded-form");
+    if (first === undefined) return undefined;
+    return { forms: (await tableOf(group)).forms, evidence: [first, ...rest] };
+  };
+
+  const resolve = (links: DeclaredLink[]): Promise<LemmaLink[]> =>
+    Promise.all(
+      links.map(async (link): Promise<LemmaLink> => {
+        if (link.kind === "dangling") return link;
+        const candidates = await Promise.all(
+          link.candidates.map(async (candidate) => ({ ...candidate, listing: await listingOf(candidate.recordId) })),
+        );
+        return { ...link, candidates };
+      }),
+    );
+
+  const kept = groups.filter((group) => isAbout(group) || !lemmaIds.has(group[0].record_id));
+  const build = async (group: HitRow[]): Promise<Reading> =>
+    buildReading(db, releaseId, group, await tableOf(group), await resolve(declared.get(group[0].record_id) ?? []));
+
+  // A lemma is only ever taken out on behalf of a reading about the query, so
+  // at least one group is kept; the tuple is what `found` requires.
+  const [head, ...tail] = kept;
+  if (head === undefined) throw new Error("every match was a lemma of no reading");
+  const readings: [Reading, ...Reading[]] = await Promise.all([build(head), ...tail.map(build)]);
 
   return { outcome: "found", query: queryInfo, release, readings };
 }
@@ -146,7 +202,7 @@ export async function lookup({ db, releaseId, query }: LookupOptions): Promise<L
  * `surface_hit` view because the view does not carry `form_index`, which is
  * how a claim names its form. Exported so a test can assert the plan.
  */
-export const SEARCH_SQL = `SELECT r.record_id, r.line_no, r.word AS record_word, r.pos AS record_pos,
+export const SEARCH_SQL = `SELECT r.record_id, r.line_no, r.line_sha256, r.word AS record_word, r.pos AS record_pos,
             lf.origin, lf.json_pointer, lf.form_source, lf.surface,
             (lf.origin = 'headword') AS is_headword_hit
        FROM lookup_form lf
@@ -167,6 +223,7 @@ export const SEARCH_SQL = `SELECT r.record_id, r.line_no, r.word AS record_word,
 interface HitRow {
   record_id: number;
   line_no: number;
+  line_sha256: string;
   record_word: string;
   record_pos: string;
   origin: "headword" | "embedded-form";
@@ -219,26 +276,34 @@ export async function readRelease(
       };
 }
 
-async function buildReading(db: LookupDatabase, releaseId: string, group: HitRow[]): Promise<Reading> {
-  const first = group[0];
-  const recordId = first.record_id;
-  const record = await readRecord(db, recordId);
-  // Every value read off this record shares the record's release, line and
-  // digest, so a ref is the pointer plus those three.
-  const ref = (pointer: string): SourceRef => ({
-    releaseId,
-    lineNo: first.line_no,
-    jsonPointer: pointer,
-    lineSha256: record.lineSha256,
-  });
-  // Read before the reading is assembled: a form's claims are the ones this
-  // grouped by index, so the two must be one read rather than two.
-  const grammar = await readGrammar(db, recordId, ref);
-  const source = readSourceRecord(record.rawJson, ref);
-  const forms = await readForms(db, recordId, ref, grammar);
+/** A record's grammar and the forms it lists, which the grammar is keyed into. */
+interface RecordTable {
+  grammar: Grammar;
+  forms: SourceForm[];
+}
 
-  const evidence: Evidence[] = [...group]
-    // Headword hit first, then the forms table in its own order.
+/** A `form_of` edge as the record declares it, before this lookup's listings are attached. */
+type DeclaredLink =
+  | { kind: "dangling"; targetWord: string; ref: SourceRef }
+  | { kind: "candidates"; targetWord: string; candidates: LemmaCandidate[]; ref: SourceRef };
+
+const isAbout = (group: readonly HitRow[]): boolean => group.some((hit) => hit.origin === "headword");
+
+const candidateIds = (link: DeclaredLink): number[] =>
+  link.kind === "candidates" ? link.candidates.map((candidate) => candidate.recordId) : [];
+
+/**
+ * Refs on one record. Every value read off it shares the record's release,
+ * line and digest, so a ref is the pointer plus those three.
+ */
+function refOn(releaseId: string, hit: HitRow): (pointer: string) => SourceRef {
+  return (pointer) => ({ releaseId, lineNo: hit.line_no, jsonPointer: pointer, lineSha256: hit.line_sha256 });
+}
+
+/** Every occurrence of the surface on one record: headword hit first, then the forms table in its own order. */
+function evidenceOf(releaseId: string, group: readonly HitRow[]): Evidence[] {
+  const ref = refOn(releaseId, group[0]);
+  return [...group]
     .sort(
       (a, b) =>
         b.is_headword_hit - a.is_headword_hit ||
@@ -250,6 +315,31 @@ async function buildReading(db: LookupDatabase, releaseId: string, group: HitRow
       ref: ref(hit.json_pointer),
       formSource: hit.form_source,
     }));
+}
+
+async function readTable(
+  db: LookupDatabase,
+  recordId: number,
+  ref: (pointer: string) => SourceRef,
+): Promise<RecordTable> {
+  // Read before the forms: a form's claims are the ones this grouped by index,
+  // so the two must be one read rather than two.
+  const grammar = await readGrammar(db, recordId, ref);
+  return { grammar, forms: await readForms(db, recordId, ref, grammar) };
+}
+
+async function buildReading(
+  db: LookupDatabase,
+  releaseId: string,
+  group: HitRow[],
+  { grammar, forms }: RecordTable,
+  lemmaLinks: LemmaLink[],
+): Promise<Reading> {
+  const first = group[0];
+  const recordId = first.record_id;
+  const record = await readRecord(db, recordId);
+  const ref = refOn(releaseId, first);
+  const source = readSourceRecord(record.rawJson, ref);
 
   return {
     recordId,
@@ -257,12 +347,12 @@ async function buildReading(db: LookupDatabase, releaseId: string, group: HitRow
     word: first.record_word,
     posTitle: record.posTitle,
     wordFacts: source.wordFacts,
-    isAboutQuery: group.some((hit) => hit.origin === "headword"),
-    evidence,
+    isAboutQuery: isAbout(group),
+    evidence: evidenceOf(releaseId, group),
     senses: await readSenses(db, recordId, ref, source),
     forms,
     grammar,
-    lemmaLinks: await readLemmaLinks(db, releaseId, recordId, ref),
+    lemmaLinks,
     inflections: await readInflections(db, releaseId, recordId),
     reviews: await readReviews(db, recordId, ref),
     // Derived, not read: the release carries no article field. The headword and
@@ -275,19 +365,19 @@ async function buildReading(db: LookupDatabase, releaseId: string, group: HitRow
 async function readRecord(
   db: LookupDatabase,
   recordId: number,
-): Promise<{ posTitle: string; lineSha256: string; rawJson: string }> {
-  // The verbatim line is read here, once per matched record, and never for a
+): Promise<{ posTitle: string; rawJson: string }> {
+  // The verbatim line is read here, once per returned reading, and never for a
   // record the query did not match: the table is split off for exactly that.
-  const row = await queryOne<{ pos_title: string; line_sha256: string; raw_json: string }>(
+  const row = await queryOne<{ pos_title: string; raw_json: string }>(
     db,
-    `SELECT r.pos_title, r.line_sha256, j.raw_json
+    `SELECT r.pos_title, j.raw_json
        FROM source_record r
        JOIN source_record_json j ON j.record_id = r.record_id
       WHERE r.record_id = ?`,
     recordId,
   );
   if (row === undefined) throw new Error(`record ${recordId} vanished mid-lookup`);
-  return { posTitle: row.pos_title, lineSha256: row.line_sha256, rawJson: row.raw_json };
+  return { posTitle: row.pos_title, rawJson: row.raw_json };
 }
 
 async function readSenses(
@@ -500,7 +590,7 @@ async function readLemmaLinks(
   releaseId: string,
   recordId: number,
   ref: (pointer: string) => SourceRef,
-): Promise<LemmaLink[]> {
+): Promise<DeclaredLink[]> {
   // LEFT JOIN on purpose: an edge whose target word matches no headword record
   // must still appear. Dropping it would turn "the source points somewhere we
   // cannot follow" into "the source points nowhere".
@@ -518,7 +608,7 @@ async function readLemmaLinks(
     LEMMA_LINK_SQL, recordId,
   );
 
-  const byEdge = new Map<number, LemmaLink>();
+  const byEdge = new Map<number, DeclaredLink>();
   for (const row of rows) {
     if (row.candidate_record_id === null) {
       byEdge.set(row.edge_id, {

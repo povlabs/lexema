@@ -154,13 +154,43 @@ export interface LemmaCandidate {
 }
 
 /**
- * A declared "this word is a form of that word" link. The source names a word,
- * and a word can be several records, so the resolved case carries every
- * candidate and never a winner; an edge resolving to nothing stays visible.
+ * Where a lemma's own table spells the searched surface: `andare`'s `forms[]`,
+ * with `andavano` at `/forms/16`, for a search of `andavano`.
+ *
+ * It is the part of the lemma a form reading needs to place itself — the row
+ * that says which person, number and tense the form is, and the table it sits
+ * in — and nothing else of the lemma: its senses and word-level facts are on
+ * its own page.
+ */
+export interface LemmaListing {
+  /** The lemma's whole `forms[]`, in source order. */
+  forms: SourceForm[];
+  /** The entries of `forms` the query hit, in source order. Never empty. */
+  evidence: [Evidence, ...Evidence[]];
+}
+
+/**
+ * One record a reading's lemma link resolves to, as this lookup found it.
+ *
+ * A lemma whose own table lists the searched surface matches the query too,
+ * but it is not returned as a reading of its own: it is the lemma of the
+ * reading that points to it, and it arrives here. `listing` is where its table
+ * spells the query, and is absent when its table does not — `sala` the verb
+ * record, for `sale`, lists no `sale`.
+ */
+export interface LemmaTarget extends LemmaCandidate {
+  listing: LemmaListing | undefined;
+}
+
+/**
+ * A declared "this word is a form of that word" link: the reading's lemma. The
+ * source names a word, and a word can be several records, so the resolved case
+ * carries every candidate and never a winner; an edge resolving to nothing
+ * stays visible.
  */
 export type LemmaLink =
   | { kind: "dangling"; targetWord: string; ref: SourceRef }
-  | { kind: "candidates"; targetWord: string; candidates: LemmaCandidate[]; ref: SourceRef };
+  | { kind: "candidates"; targetWord: string; candidates: LemmaTarget[]; ref: SourceRef };
 
 /**
  * A record that declares itself a form of a word this record spells — the
@@ -275,7 +305,11 @@ interface ReadingFacts {
    */
   forms: SourceForm[];
   grammar: Grammar;
-  /** Lemma links this record declares. */
+  /**
+   * The lemma this record declares it is a form of, one link per `form_of`
+   * edge. A lemma the query also matched through its table is here, with its
+   * `listing`, rather than in the result's `readings`.
+   */
   lemmaLinks: LemmaLink[];
   /** Records declaring themselves forms of this one. */
   inflections: InflectionOf[];
@@ -387,12 +421,15 @@ export interface SearchedSpellings {
   readonly formPointers: ReadonlySet<string>;
 }
 
-/** Read {@link SearchedSpellings} off a reading's own evidence (#49). */
-export function searchedSpellings(reading: Reading): SearchedSpellings {
+/**
+ * Read {@link SearchedSpellings} off a reading's own evidence (#49), or off a
+ * lemma's {@link LemmaListing}, which carries evidence of the same kind.
+ */
+export function searchedSpellings(hit: { readonly evidence: readonly Evidence[] }): SearchedSpellings {
   return {
-    headword: reading.evidence.some((occurrence) => occurrence.origin === "headword"),
+    headword: hit.evidence.some((occurrence) => occurrence.origin === "headword"),
     formPointers: new Set(
-      reading.evidence
+      hit.evidence
         .filter((occurrence) => occurrence.origin === "embedded-form")
         .map((occurrence) => occurrence.ref.jsonPointer),
     ),
@@ -451,9 +488,16 @@ export interface FoundResult {
   query: QueryInfo;
   release: ReleaseInfo;
   /**
-   * Every reading the source supports, in source order. Nothing is ranked away
+   * Every record the query matches, in source order. Nothing is ranked away
    * and nothing is merged on matching spelling: `sale` is three records and
    * stays three.
+   *
+   * A record that matched only through its table, and that a reading about
+   * the query names as its lemma, is not one of these: it is that reading's
+   * lemma, in `lemmaLinks`. `sala` and `salire` list `sale`, and `sale`'s
+   * readings point to them, so they are navigation from `sale`, not readings
+   * of it. A record that lists the query and is nobody's lemma here — `bella`
+   * for `bello` — stays a reading.
    */
   readings: [Reading, ...Reading[]];
 }
