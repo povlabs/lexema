@@ -1,7 +1,7 @@
 ---
 id: 0011
 title: Content files in this repository are the only source a release is seeded from
-status: accepted
+status: superseded by [0012](0012-archive-is-the-release-seed.md)
 date: 2026-09-21
 tags: [stack, content, data]
 ---
