@@ -106,12 +106,13 @@ the round trip and the 150 ms debounce, not the query.
 
 ## Caching
 
-Answers are cached twice, because readers repeat prefixes and a release never
-changes once served. The browser keeps an answer five minutes, so retyping a
-prefix sends nothing. Cloudflare's edge cache keeps it a day, keyed by release
-and prefix and shared by every reader near that location, so a repeated prefix
-never reaches the database. Against the local Worker, the first `man` answered
-`x-lexema-cache: miss` and every repeat `hit`. A failed lookup is never cached.
+The browser keeps an answer five minutes, so a reader retyping a prefix sends
+no request; it helps that reader only. An edge cache through the Workers Cache
+API was built, measured working (`miss` then `hit` on repeats) and removed:
+Cloudflare's pricing bills a cache hit as a request, so it cut no billed
+request, and the D1 reads it skipped — 11.5 rows on average — are far inside
+the 25 billion a month the Workers Paid plan includes. A failed lookup is never
+cached.
 
 ## The choices this backs
 
