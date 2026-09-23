@@ -1008,8 +1008,10 @@ function Conjugation({ table }: { table: VerbTable }) {
       note={
         derived ? (
           <>
-            Lexema derives the congiuntivo and condizionale boxes by rule <code>{IT_MOODS_RULE}</code>, from the{" "}
-            <It>che</It> pronoun rows the source writes. The source tags no mood on these forms.
+            Lexema places forms in the congiuntivo and condizionale boxes by rule <code>{IT_MOODS_RULE}</code>. A
+            form the source tags with a tense and no person is congiuntivo when its pronoun begins <It>che</It>,
+            and condizionale when its tense is present or past and its pronoun is bare, as in <It>io</It>. The
+            source tags no mood on these forms.
           </>
         ) : undefined
       }

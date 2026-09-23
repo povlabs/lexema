@@ -96,8 +96,10 @@ plural and feminine on the header bar and, when the source files spellings under
 both genders, a gender-and-number box. A verb shows its conjugation in tense
 boxes: which box a form goes in is rule `it-moods/v1`
 (`src/italian/moods.ts`), which reads the tenses the source tags and, for the
-congiuntivo and condizionale, the pronoun it writes beside the form — a *che*
-row is congiuntivo. The page says so under the conjugation's header, the way
+congiuntivo and condizionale, the pronoun it writes beside the form. A row with
+a tense and no person is congiuntivo when its pronoun begins *che*, and
+condizionale when its tense is present or past and its pronoun is bare, as in
+*io*. The page says so under the conjugation's header, the way
 the articles box says `it-articles/v1` derived its articles. Whatever the rule
 cannot place stays in one box that says so. A section with nothing in it is
 absent.

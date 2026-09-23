@@ -361,7 +361,10 @@ test("andare's verb card lays the conjugation out in sixteen boxes, in the frame
     const html = await render(db, "andare");
     const verb = card(html, "andare, verb");
     assert.deepEqual(tenseHeadings(verb), [...TENSE_BOXES, "imperativo", "modi indefiniti"]);
-    assert.match(textOf(verb), /Lexema derives the congiuntivo and condizionale boxes by rule it-moods\/v1, from the che pronoun rows the source writes\./);
+    assert.match(
+      textOf(verb),
+      /Lexema places forms in the congiuntivo and condizionale boxes by rule it-moods\/v1\. A form the source tags with a tense and no person is congiuntivo when its pronoun begins che, and condizionale when its tense is present or past and its pronoun is bare, as in io\./,
+    );
 
     const box = (name: string) => boxesOf(verb).find((part) => part.includes(`lang="it">${name}</h4>`)) ?? "";
     assert.match(textOf(box("congiuntivo presente")), /che iovada/);
