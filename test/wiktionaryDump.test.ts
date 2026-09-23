@@ -4,13 +4,14 @@
 
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { createHash } from "node:crypto";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 import { Readable } from "node:stream";
 import test from "node:test";
 import { RAW_PAGE_WIKI, type RawPage } from "../src/source/rawPage.js";
-import { loadDumpPages, openRawPages, readDumpFile, readDumpPages } from "../src/source/wiktionaryDump.js";
+import { type DumpIdentity, loadDumpPages, openRawPages, readDumpPages, VerifiedDump } from "../src/source/wiktionaryDump.js";
 
 /** One `<page>` as `pages-articles` writes it, contributor id and all. */
 const page = (title: string, ns: number, revisionId: number, text: string): string => `  <page>
@@ -45,6 +46,12 @@ ${page("vuota", 0, 12, `<text bytes="0" xml:space="preserve" />`)}
 ${page("riga", 0, 13, `<text bytes="5" xml:space="preserve">riga\r</text>`)}
 </mediawiki>
 `;
+
+/** A file's size and SHA-1: what a dump must match to be read. */
+async function identityOf(path: string): Promise<DumpIdentity> {
+  const bytes = await readFile(path);
+  return { bytes: bytes.length, sha1: createHash("sha1").update(bytes).digest("hex") };
+}
 
 async function all(pages: AsyncIterable<RawPage>): Promise<RawPage[]> {
   const read: RawPage[] = [];
@@ -89,12 +96,37 @@ test("a bz2 dump is streamed through bzip2 and gives the same pages; the source 
     const xml = join(dir, "mini.xml");
     await writeFile(xml, EXPORT);
     execFileSync("bzip2", ["-k", xml]);
-    const plain = await all(readDumpFile(xml));
-    assert.deepEqual(await all(readDumpFile(`${xml}.bz2`)), plain);
-    const source = await loadDumpPages(`${xml}.bz2`);
+    const plain = await all(readDumpPages(Readable.from([EXPORT])));
+    const dump = await VerifiedDump.open(`${xml}.bz2`, await identityOf(`${xml}.bz2`));
+    try {
+      assert.deepEqual(await all(dump.pages()), plain);
+    } finally {
+      await dump.close();
+    }
+    const source = await loadDumpPages(`${xml}.bz2`, await identityOf(`${xml}.bz2`));
     assert.equal(source.size, 3);
     assert.deepEqual(source.page("casa"), plain[0]);
     assert.equal(source.page("MediaWiki:Category"), undefined);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test("a dump whose bytes are not the expected ones is refused before any page is read, naming both digests", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "lexema-dump-"));
+  try {
+    const xml = join(dir, "mini.xml");
+    await writeFile(xml, EXPORT);
+    const actual = await identityOf(xml);
+    const wrongDigest: DumpIdentity = { ...actual, sha1: "0".repeat(40) };
+    const expectedMessage = new RegExp(`expected SHA-1 ${"0".repeat(40)} .* got SHA-1 ${actual.sha1}`);
+    await assert.rejects(VerifiedDump.open(xml, wrongDigest), expectedMessage);
+    await assert.rejects(loadDumpPages(xml, wrongDigest), expectedMessage);
+    // Same name, other bytes: the size alone is enough to refuse it.
+    await assert.rejects(loadDumpPages(xml, { ...actual, bytes: actual.bytes + 1 }), /is not the expected dump/);
+    // Neither the root dump nor one RAW_PAGES names is read unchecked.
+    await assert.rejects(openRawPages({}, xml, join(dir, "unused"), wrongDigest), expectedMessage);
+    await assert.rejects(openRawPages({ RAW_PAGES: xml }, xml, join(dir, "unused"), wrongDigest), expectedMessage);
   } finally {
     await rm(dir, { recursive: true, force: true });
   }
@@ -110,13 +142,15 @@ test("without the dump, the committed fixture pages are read; RAW_PAGES picks ei
 
     const xml = join(dir, "mini.xml");
     await writeFile(xml, EXPORT);
-    const present = await openRawPages({}, xml);
+    const mini = await identityOf(xml);
+    const fixtures = resolve("fixtures");
+    const present = await openRawPages({}, xml, fixtures, mini);
     assert.equal(present.described, `dump ${xml}`);
     assert.equal(present.pages.page("casa")?.revisionId, 4051358);
 
-    assert.match((await openRawPages({ RAW_PAGES: "fixtures" }, xml)).described, /^fixtures /);
-    assert.equal((await openRawPages({ RAW_PAGES: xml }, absent)).described, `dump ${xml}`);
-    await assert.rejects(openRawPages({ RAW_PAGES: absent }, xml), /does not exist/);
+    assert.match((await openRawPages({ RAW_PAGES: "fixtures" }, xml, fixtures, mini)).described, /^fixtures /);
+    assert.equal((await openRawPages({ RAW_PAGES: xml }, absent, fixtures, mini)).described, `dump ${xml}`);
+    await assert.rejects(openRawPages({ RAW_PAGES: absent }, xml, fixtures, mini), /does not exist/);
   } finally {
     await rm(dir, { recursive: true, force: true });
   }

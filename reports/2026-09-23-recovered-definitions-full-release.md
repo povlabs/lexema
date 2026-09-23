@@ -41,8 +41,9 @@ not name its dump, so this stays an inference
 The data agrees with it: every one of the archive's 560,357 Italian records has a page
 of its exact title in this dump.
 
-`src/source/wiktionaryDump.ts` streams the file through `bzip2 -dc` and reads it line by
-line; it never holds the XML whole. Re-run with the dump in the repository root:
+`src/source/wiktionaryDump.ts` first checks the file's size and SHA-1 against the table
+above and refuses a file that differs. It then streams the file through `bzip2 -dc` and
+reads it line by line; it never holds the XML whole. Re-run with the dump in the repository root:
 `pnpm run measure:recovery`, about 25 seconds. It writes every loss it finds to
 `artifacts/recovery-measure.json`.
 
@@ -151,14 +152,28 @@ does not stop a line counting as italic. It removed 12 lines, all literary quota
 (`croceo`, `glie`, `paturnie`, `puttanesimo`, `tacito`).
 
 **Round 3, the final parser (889 definitions): no quotation, example or page control.**
-53 of the 60 state a meaning. The other 7 are items of a list that a definition opens
-with a colon, and they finish that definition rather than stand alone: `-ismo`'s
-derivation groups (2), the books of `Giano` and `Samuele` (`II Samuele: 24 capitoli`),
-one of `radiorilevatore`'s kinds, one of `libro`'s classes, and a row of `virtù`'s
-virtues. They are the page's definition text, which the extraction dropped. But a page
-that lists them as numbered definitions of their own reads oddly. Whether lead-in items
-should show as definitions is a product call for Huey; the route is stored on every row,
-so it can be turned off by route.
+38 of the 60 state a meaning. The other 22 are items of a list that a definition opens
+with a colon, and they finish that definition rather than stand alone. Most are
+heraldic: 11 follow `attributo araldico che si applica a:` (`accollato`, `armato`,
+`fustato`, `gigliato`, `graticolato`, `illuminato`, `incappucciato`, `posto`,
+`scorciato`, `semipartito`, `squamato`). The rest are `-ismo`'s derivation groups (2),
+the books of `Giano` and `Samuele` (`II Samuele: 24 capitoli`), one of `radiorilevatore`'s
+kinds, one of `libro`'s classes, a row of `virtù`'s virtues, two botanical forms
+(`digitato`, `peltato`), one of `apparato`'s organ systems and one of `lutto`'s durations.
+They are the page's definition text, which the extraction dropped. But a page that lists
+them as numbered definitions of their own reads oddly. Whether lead-in items should show
+as definitions is a product call for Huey; the route is stored on every row, so it can
+be turned off by route.
+
+**This first said 53 and 7, and that was wrong.** The documentation review of the pull
+request found three of the items counted as meanings (`accollato`, `armato`, `fustato`).
+Re-reading all 60 against the dump then found twelve more. Two of the 22 are judgement
+calls, counted as items: `apparato`'s `'''apparato visivo''': anche con riferimento al
+sistema nervoso` and `lutto`'s `''lutto vedovile'' della durata di trecento giorni` are
+worded as sub-terms, but neither says more than the lead-in above it. Four sub-terms
+that also sit under a colon-ended line are counted as meanings, because each defines
+itself in full: `d'oro`'s `nozze d'oro`, `metallico`'s `legame metallico`, `oro`'s
+`schiavo dell'oro` and `suolo`'s `suolo a cuscinetto`.
 
 One line outside the samples is known to be wrong and is left: `simpatia`'s
 `'''simpatia''' del mare con la luna''`, an example that lost its opening italics.
@@ -181,18 +196,18 @@ shows its recovered definitions marked *recovered*, with a link to the dump revi
 Title and page line of each sampled definition, in draw order. *m*: states a meaning;
 *i*: an item that finishes a definition ending in a colon.
 
-`-ismo` 11 i · `-ismo` 25 i · `abuso` 11 m · `accollato` 11 m · `affare` 9 m ·
-`amore` 7 m · `antisemita` 5 m · `apparato` 8 m · `armato` 9 m · `attribuzione` 6 m ·
+`-ismo` 11 i · `-ismo` 25 i · `abuso` 11 m · `accollato` 11 i · `affare` 9 m ·
+`amore` 7 m · `antisemita` 5 m · `apparato` 8 i · `armato` 9 i · `attribuzione` 6 m ·
 `automobilistico` 7 m · `biochimica` 10 m · `burocratico` 5 m · `calcolatrice` 11 m ·
 `casa` 10 m · `cocktail` 5 m · `computer` 10 m · `consulente` 9 m · `controllo` 8 m ·
-`cruento` 6 m · `d'oro` 19 m · `digitato` 6 m · `diritto` 27 m · `economia` 9 m ·
+`cruento` 6 m · `d'oro` 19 m · `digitato` 6 i · `diritto` 27 m · `economia` 9 m ·
 `elettronica` 12 m · `equazione` 7 m · `excursus` 5 m · `fisica` 13 m · `focaccia` 12 m ·
-`fustato` 6 m · `Giano` 7 i · `gigliato` 6 m · `graticolato` 7 m · `illuminato` 8 m ·
-`incappucciato` 11 m · `ingegneria` 9 m · `internazionale` 7 m · `libro` 17 i ·
-`lutto` 8 m · `manuale` 13 m · `mercato` 10 m · `metallico` 14 m · `nutrizionale` 6 m ·
-`oro` 59 m · `peltato` 7 m · `pizza` 9 m · `posto` 10 m · `pressione` 13 m ·
-`radiorilevatore` 9 i · `repubblica` 6 m · `sacro` 6 m · `Samuele` 8 i · `scorciato` 6 m ·
-`semipartito` 5 m · `somma` 10 m · `squamato` 7 m · `suolo` 10 m · `transigere` 10 m ·
+`fustato` 6 i · `Giano` 7 i · `gigliato` 6 i · `graticolato` 7 i · `illuminato` 8 i ·
+`incappucciato` 11 i · `ingegneria` 9 m · `internazionale` 7 m · `libro` 17 i ·
+`lutto` 8 i · `manuale` 13 m · `mercato` 10 m · `metallico` 14 m · `nutrizionale` 6 m ·
+`oro` 59 m · `peltato` 7 i · `pizza` 9 m · `posto` 10 i · `pressione` 13 m ·
+`radiorilevatore` 9 i · `repubblica` 6 m · `sacro` 6 m · `Samuele` 8 i · `scorciato` 6 i ·
+`semipartito` 5 i · `somma` 10 m · `squamato` 7 i · `suolo` 10 m · `transigere` 10 m ·
 `tributario` 6 m · `virtù` 12 i
 
 ## Attribution

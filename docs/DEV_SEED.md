@@ -50,7 +50,9 @@ Italian Wiktionary dump the archive was built from, when it sits in the
 repository root beside `it-extract.jsonl.gz`. It is gitignored; its durable copy,
 with its size and SHA-1, is `source/` in `hueypov/lexema-data`. It is not newer
 data: it is the page source the archive was converted from, read once to pick up
-the definitions the conversion dropped. Reading it adds about 15 seconds, and the
+the definitions the conversion dropped. Before any page is read, the seed checks
+the file's size and SHA-1 against that dump's and refuses a file that differs,
+naming both digests; a dump `RAW_PAGES` names is checked the same way. Reading it adds about 15 seconds, and the
 seeder held about 1.4 GB once the pages were loaded. Without it, the seed reads the pages committed under `fixtures/`, so a
 fresh clone and CI seed as before; `RAW_PAGES=fixtures` asks for those even when
 the dump is there. `casa`'s revision differs between the two (4051358 in the
