@@ -21,7 +21,6 @@ import type {
   ArticleDisplay,
   ArticleWithholding,
   GrammarClaim,
-  NounReading,
   Reading,
   Review,
   SearchedSpellings,
@@ -37,6 +36,7 @@ import {
   type NonFiniteRole,
   type VerbSlot,
 } from "@lexema/italian/moods.ts";
+import { Folds } from "./Folds";
 import { ChevronIcon } from "./icons";
 import type { Card } from "./wordPage.ts";
 import {
@@ -62,6 +62,16 @@ import {
   ENTRY_NOTE,
   EXAMPLE,
   EXAMPLES,
+  FOLD,
+  FOLD_BOX_SEARCHED,
+  FOLD_CHEVRON,
+  FOLD_COUNT,
+  FOLD_HEADING,
+  FOLD_NAME,
+  FOLD_ROW,
+  FOLD_SUMMARY,
+  FOLD_TENSE_HEADING,
+  FOLD_TENSE_NAME,
   FORM_OF,
   GLOSS,
   HEADLINE,
@@ -82,6 +92,7 @@ import {
   MORE_BUTTON_WIDE,
   MORE_CLOSED,
   MORE_OPEN,
+  MORE_PHONE_ONLY,
   POS_PILL,
   SEARCHED,
   SEARCHED_CELL,
@@ -280,15 +291,18 @@ export function ShowAll({
   total,
   noun,
   wide = false,
+  phoneOnly = false,
   children,
 }: {
   total: number;
   noun: string;
   wide?: boolean;
+  /** Only a phone's shorter slice leaves anything behind it. */
+  phoneOnly?: boolean;
   children: ReactNode;
 }) {
   return (
-    <details className={MORE}>
+    <details className={phoneOnly ? MORE_PHONE_ONLY : MORE}>
       <summary className={wide ? MORE_BUTTON_WIDE : MORE_BUTTON}>
         <span className={MORE_CLOSED}>
           Show all {total} {noun}
@@ -354,28 +368,123 @@ function otherRecordFacts(claims: readonly GrammarClaim[], shown: readonly strin
 }
 
 // Boxes -----------------------------------------------------------------------
+//
+// A box is a group of forms: a heading and its label-value rows. It is data —
+// `FormGroup` — until `FormGroups` lays a set of them out, because how a group
+// is drawn depends on the set it is in: three to a row on a wide screen, and on
+// a phone, in a set of more than `GROUPS_SHOWN_OPEN`, one tappable row each.
 
-function Box({
-  id,
-  heading,
-  tense = false,
-  note,
-  children,
-}: {
+/**
+ * One row of a group: the spellings the source filed under a label, or — the
+ * articles — a spelling Lexema derived, which is never the searched form.
+ */
+type GroupLine =
+  | { key: string; label: ReactNode; spellings: readonly Spelling[] }
+  | { key: string; label: string; derived: string };
+
+interface FormGroup {
   id: string;
   heading: string;
-  tense?: boolean;
+  /** A tense's name is Italian and drawn as the conjugation frames draw it. */
+  tense: boolean;
+  lines: readonly GroupLine[];
   note?: ReactNode;
-  children: ReactNode;
-}) {
+}
+
+/** How many forms a group holds: what its tappable row says on a phone. */
+const formsIn = (group: FormGroup): number =>
+  group.lines.reduce((count, line) => count + ("spellings" in line ? line.spellings.length : 1), 0);
+
+/** Whether the query hit a form of this group, so the group opens on its own. */
+const holdsSearched = (group: FormGroup, searched: SearchedSpellings): boolean =>
+  group.lines.some((line) => "spellings" in line && line.spellings.some((spelling) => isSearched(spelling, searched)));
+
+/**
+ * How many groups a set may hold and still render open on a phone. A noun or
+ * adjective card makes at most four — gender and number, articles, degrees and
+ * the other forms — so only a verb's conjugation, with up to seventeen, folds.
+ */
+export const GROUPS_SHOWN_OPEN = 4;
+
+/** A group's rows, the searched one outlined where it sits. */
+function GroupRows({ group, searched }: { group: FormGroup; searched: SearchedSpellings }) {
   return (
-    <section className={BOX} aria-labelledby={id}>
-      <h4 className={tense ? TENSE_HEADING : BOX_HEADING} id={id} lang={tense ? "it" : undefined}>
-        {heading}
+    <dl className={BOX_ROWS}>
+      {group.lines.map((line) =>
+        "spellings" in line ? (
+          <SpellingLine key={line.key} label={line.label} spellings={line.spellings} searched={searched} />
+        ) : (
+          <BoxLine key={line.key} label={line.label}>
+            <It>{line.derived}</It>
+          </BoxLine>
+        ),
+      )}
+    </dl>
+  );
+}
+
+function Box({ group, searched }: { group: FormGroup; searched: SearchedSpellings }) {
+  return (
+    <section className={BOX} aria-labelledby={group.id}>
+      <h4 className={group.tense ? TENSE_HEADING : BOX_HEADING} id={group.id} lang={group.tense ? "it" : undefined}>
+        {group.heading}
       </h4>
-      <dl className={BOX_ROWS}>{children}</dl>
-      {note !== undefined && <p className={BOX_NOTE}>{note}</p>}
+      <GroupRows group={group} searched={searched} />
+      {group.note !== undefined && <p className={BOX_NOTE}>{group.note}</p>}
     </section>
+  );
+}
+
+/**
+ * A group that folds on a phone: a native `<details>`, so it opens and closes
+ * with no script, and the one holding the searched form is open in the HTML the
+ * server sends. On a wide screen it is drawn as the box above, open or not.
+ */
+function FoldingBox({ group, searched }: { group: FormGroup; searched: SearchedSpellings }) {
+  const open = holdsSearched(group, searched);
+  const lang = group.tense ? "it" : undefined;
+  return (
+    <section className={open ? FOLD_BOX_SEARCHED : BOX} aria-labelledby={group.id}>
+      <h4 className={group.tense ? FOLD_TENSE_HEADING : FOLD_HEADING} id={group.id} lang={lang}>
+        {group.heading}
+      </h4>
+      <details className={FOLD} open={open} data-fold="">
+        <summary className={FOLD_SUMMARY}>
+          <span className={group.tense ? FOLD_TENSE_NAME : FOLD_NAME} lang={lang}>
+            {group.heading}
+          </span>
+          <span className={FOLD_COUNT}>
+            {formsIn(group)}
+            <span className="sr-only"> forms</span>
+          </span>
+          <ChevronIcon className={FOLD_CHEVRON} />
+        </summary>
+        <GroupRows group={group} searched={searched} />
+        {group.note !== undefined && <p className={BOX_NOTE}>{group.note}</p>}
+      </details>
+    </section>
+  );
+}
+
+/** A set of groups: boxes in a row, or on a phone, past the threshold, folds. */
+function FormGroups({ groups, searched }: { groups: readonly FormGroup[]; searched: SearchedSpellings }) {
+  if (groups.length <= GROUPS_SHOWN_OPEN) {
+    return (
+      <div className={BOX_ROW}>
+        {groups.map((group) => (
+          <Box key={group.id} group={group} searched={searched} />
+        ))}
+      </div>
+    );
+  }
+  return (
+    <Folds groups={groups.length}>
+      <div className={FOLD_ROW}>
+        {groups.map((group) => (
+          <FoldingBox key={group.id} group={group} searched={searched} />
+        ))}
+      </div>
+    </Folds>
   );
 }
 
@@ -684,22 +793,13 @@ const spansGenders = (cells: readonly AgreementCell[]): boolean =>
  * with one gender has its plural in the header bar already, and a box saying
  * the same thing again is the duplication the manifest rules out.
  */
-function AgreementBox({
-  id,
-  cells,
-  searched,
-}: {
-  id: string;
-  cells: readonly AgreementCell[];
-  searched: SearchedSpellings;
-}) {
-  return (
-    <Box id={id} heading="Gender and number">
-      {cells.map((cell) => (
-        <SpellingLine key={cellLabel(cell)} label={cellLabel(cell)} spellings={cell.spellings} searched={searched} />
-      ))}
-    </Box>
-  );
+function agreementGroup(id: string, cells: readonly AgreementCell[]): FormGroup {
+  return {
+    id,
+    heading: "Gender and number",
+    tense: false,
+    lines: cells.map((cell) => ({ key: cellLabel(cell), label: cellLabel(cell), spellings: cell.spellings })),
+  };
 }
 
 /**
@@ -708,19 +808,20 @@ function AgreementBox({
  * named for it and each row says only gender and number; otherwise each row
  * names its own degree.
  */
-function DegreeBox({ id, forms, searched }: { id: string; forms: readonly SourceForm[]; searched: SearchedSpellings }) {
+function degreeGroup(id: string, forms: readonly SourceForm[]): FormGroup {
   const degreeOf = (form: SourceForm) => statedValues(form.claims, "degree").join(" ");
   const shared = new Set(forms.map(degreeOf)).size === 1 ? degreeOf(forms[0]) : undefined;
   const heading = shared === undefined ? "Comparative and superlative" : shared[0].toUpperCase() + shared.slice(1);
-  return (
-    <Box id={id} heading={heading}>
-      {forms.map((form) => {
-        const cell = cellLabel({ gender: genderOf(form.claims), number: numberOf(form.claims) });
-        const label = shared === undefined ? [degreeOf(form), cell].filter((part) => part !== "").join(" · ") : cell;
-        return <SpellingLine key={form.index} label={label || "form"} spellings={[spellingOf(form)]} searched={searched} />;
-      })}
-    </Box>
-  );
+  return {
+    id,
+    heading,
+    tense: false,
+    lines: forms.map((form) => {
+      const cell = cellLabel({ gender: genderOf(form.claims), number: numberOf(form.claims) });
+      const label = shared === undefined ? [degreeOf(form), cell].filter((part) => part !== "").join(" · ") : cell;
+      return { key: `form-${form.index}`, label: label || "form", spellings: [spellingOf(form)] };
+    }),
+  };
 }
 
 /** A short label for a form no box placed: its stated grammar, else its source text. */
@@ -738,23 +839,13 @@ function unplacedLabel(form: SourceForm): string {
  * box named for what it holds — "never scattered" (design-system-manifest.md §
  * "The result card").
  */
-function OtherForms({
-  id,
-  forms,
-  searched,
-}: {
-  id: string;
-  forms: readonly SourceForm[];
-  searched: SearchedSpellings;
-}) {
-  if (forms.length === 0) return null;
-  return (
-    <Box id={id} heading="Other forms listed by this entry">
-      {forms.map((form) => (
-        <SpellingLine key={form.index} label={unplacedLabel(form)} spellings={[spellingOf(form)]} searched={searched} />
-      ))}
-    </Box>
-  );
+function otherGroup(id: string, forms: readonly SourceForm[]): FormGroup {
+  return {
+    id,
+    heading: "Other forms listed by this entry",
+    tense: false,
+    lines: forms.map((form) => ({ key: `form-${form.index}`, label: unplacedLabel(form), spellings: [spellingOf(form)] })),
+  };
 }
 
 /** The articles `it-articles/v1` derives, in the order the frames list them. */
@@ -773,30 +864,26 @@ const ARTICLE_ORDER: readonly [ArticleDisplay["kind"], GrammaticalNumber][] = [
  * These are the one thing on this card the source did not say, so the box
  * says so under its rows, by the rule's name.
  */
-function ArticlesBox({ reading }: { reading: NounReading }) {
-  if (reading.articles.status !== "derived") return null;
-  const articles = reading.articles.articles;
+function articlesGroup(id: string, articles: readonly ArticleDisplay[]): FormGroup {
   const rows = ARTICLE_ORDER.flatMap(([kind, number]) =>
     articles.filter((article) => article.kind === kind && article.number === number),
   );
-  return (
-    <Box
-      id={`articles-${reading.recordId}`}
-      heading="Articles"
-      note={
-        <>
-          Not from the source: Lexema derives these by rule <code>it-articles/v1</code> from the gender and number
-          the source states.
-        </>
-      }
-    >
-      {rows.map((article) => (
-        <BoxLine key={`${article.kind}-${article.number}`} label={`${article.kind} ${article.number === "singular" ? "sg" : "pl"}`}>
-          <It>{article.displayForm}</It>
-        </BoxLine>
-      ))}
-    </Box>
-  );
+  return {
+    id,
+    heading: "Articles",
+    tense: false,
+    lines: rows.map((article) => ({
+      key: `${article.kind}-${article.number}`,
+      label: `${article.kind} ${article.number === "singular" ? "sg" : "pl"}`,
+      derived: article.displayForm,
+    })),
+    note: (
+      <>
+        Not from the source: Lexema derives these by rule <code>it-articles/v1</code> from the gender and number the
+        source states.
+      </>
+    ),
+  };
 }
 
 /**
@@ -991,14 +1078,45 @@ function Conjugation({ table }: { table: VerbTable }) {
   if (byBox.size === 0 && imperative.length === 0) return null;
 
   const id = (key: string) => `conjugation-${table.recordId}-${key.replace(/\s+/g, "-")}`;
-  const tenseBox = (name: string, forms: readonly SourceForm[]) => (
-    <Box key={name} id={id(name)} heading={name} tense>
-      {rowsOf(forms).map((row) => (
-        <SpellingLine key={row.label} label={<It>{row.label}</It>} spellings={row.forms.map(spellingOf)} searched={searched} />
-      ))}
-    </Box>
-  );
+  const tenseGroup = (name: string, forms: readonly SourceForm[]): FormGroup => ({
+    id: id(name),
+    heading: name,
+    tense: true,
+    lines: rowsOf(forms).map((row) => ({ key: row.label, label: <It>{row.label}</It>, spellings: row.forms.map(spellingOf) })),
+  });
   const auxiliary = auxiliaries(table);
+  const groups: FormGroup[] = [
+    ...TENSE_BOXES.flatMap((name) => {
+      const forms = byBox.get(name);
+      return forms === undefined ? [] : [tenseGroup(name, forms)];
+    }),
+    ...(imperative.length > 0 ? [tenseGroup("imperativo", imperative)] : []),
+    {
+      id: id("modi indefiniti"),
+      heading: "modi indefiniti",
+      tense: true,
+      lines: [
+        ...nonFiniteRows(table).map((row) => ({ key: row.role, label: <It>{row.role}</It>, spellings: row.spellings })),
+        ...(auxiliary.length > 0
+          ? [{ key: "ausiliare", label: <It>ausiliare</It>, spellings: auxiliary.map(spellingOf) }]
+          : []),
+      ],
+    },
+    ...(unplaced.length > 0
+      ? [
+          {
+            id: id("unplaced"),
+            heading: `Not placed in a tense by ${IT_MOODS_RULE}`,
+            tense: false,
+            lines: rowsOf(unplaced).map((row) => ({
+              key: row.label,
+              label: <It>{row.label === "" ? unplacedLabel(row.forms[0]) : row.label}</It>,
+              spellings: row.forms.map(spellingOf),
+            })),
+          },
+        ]
+      : []),
+  ];
 
   return (
     <Section
@@ -1016,33 +1134,7 @@ function Conjugation({ table }: { table: VerbTable }) {
         ) : undefined
       }
     >
-      <div className={BOX_ROW}>
-        {TENSE_BOXES.flatMap((name) => {
-          const forms = byBox.get(name);
-          return forms === undefined ? [] : [tenseBox(name, forms)];
-        })}
-        {imperative.length > 0 && tenseBox("imperativo", imperative)}
-        <Box id={id("modi indefiniti")} heading="modi indefiniti" tense>
-          {nonFiniteRows(table).map((row) => (
-            <SpellingLine key={row.role} label={<It>{row.role}</It>} spellings={row.spellings} searched={searched} />
-          ))}
-          {auxiliary.length > 0 && (
-            <SpellingLine label={<It>ausiliare</It>} spellings={auxiliary.map(spellingOf)} searched={searched} />
-          )}
-        </Box>
-        {unplaced.length > 0 && (
-          <Box id={id("unplaced")} heading={`Not placed in a tense by ${IT_MOODS_RULE}`}>
-            {rowsOf(unplaced).map((row) => (
-              <SpellingLine
-                key={row.label}
-                label={<It>{row.label === "" ? unplacedLabel(row.forms[0]) : row.label}</It>}
-                spellings={row.forms.map(spellingOf)}
-                searched={searched}
-              />
-            ))}
-          </Box>
-        )}
-      </div>
+      <FormGroups groups={groups} searched={searched} />
     </Section>
   );
 }
@@ -1145,8 +1237,8 @@ function formFacts(card: Card): HeadlineFact[] {
 // The card ----------------------------------------------------------------------
 
 /** The forms section: its boxes in one wrapping row, or nothing when it has none. */
-function FormsSection({ reading, boxes }: { reading: Reading; boxes: ReactNode[] }) {
-  if (boxes.length === 0) return null;
+function FormsSection({ reading, groups }: { reading: Reading; groups: readonly FormGroup[] }) {
+  if (groups.length === 0) return null;
   const listsForms = reading.forms.length > 0;
   return (
     <Section
@@ -1154,7 +1246,7 @@ function FormsSection({ reading, boxes }: { reading: Reading; boxes: ReactNode[]
       name={listsForms ? "Forms" : "Articles"}
       count={listsForms ? `${reading.forms.length}` : undefined}
     >
-      <div className={BOX_ROW}>{boxes}</div>
+      <FormGroups groups={groups} searched={searchedSpellings(reading)} />
     </Section>
   );
 }
@@ -1164,7 +1256,6 @@ function FormsSection({ reading, boxes }: { reading: Reading; boxes: ReactNode[]
  * placed once; whatever neither placed goes in the last box, verbatim.
  */
 function NominalForms({ reading, placedOnBar }: { reading: Reading; placedOnBar: ReadonlySet<number> }) {
-  const searched = searchedSpellings(reading);
   const cells = agreementCells(reading);
   const boxed = spansGenders(cells);
   const degrees = reading.forms.filter(hasDegree);
@@ -1173,25 +1264,22 @@ function NominalForms({ reading, placedOnBar }: { reading: Reading; placedOnBar:
     : placedOnBar;
   const other = reading.forms.filter((form) => !placed.has(form.index) && !hasDegree(form));
 
-  const boxes: ReactNode[] = [];
-  if (boxed) boxes.push(<AgreementBox key="agreement" id={`agreement-${reading.recordId}`} cells={cells} searched={searched} />);
+  const groups: FormGroup[] = [];
+  if (boxed) groups.push(agreementGroup(`agreement-${reading.recordId}`, cells));
   // A form reading's articles are its lemma's business: frame 01 draws the
   // plural of `sala` with its definition and its lemma panel, and nothing else.
-  if (isNounReading(reading) && reading.lemmaLinks.length === 0 && reading.articles.status === "derived") boxes.push(<ArticlesBox key="articles" reading={reading} />);
-  if (degrees.length > 0) boxes.push(<DegreeBox key="degrees" id={`degrees-${reading.recordId}`} forms={degrees} searched={searched} />);
-  if (other.length > 0) boxes.push(<OtherForms key="other" id={`other-${reading.recordId}`} forms={other} searched={searched} />);
-  return <FormsSection reading={reading} boxes={boxes} />;
+  if (isNounReading(reading) && reading.lemmaLinks.length === 0 && reading.articles.status === "derived") {
+    groups.push(articlesGroup(`articles-${reading.recordId}`, reading.articles.articles));
+  }
+  if (degrees.length > 0) groups.push(degreeGroup(`degrees-${reading.recordId}`, degrees));
+  if (other.length > 0) groups.push(otherGroup(`other-${reading.recordId}`, other));
+  return <FormsSection reading={reading} groups={groups} />;
 }
 
 /** Every other part of speech: whatever forms it lists, in the one last box. */
 function GenericForms({ reading }: { reading: Reading }) {
   if (reading.forms.length === 0) return null;
-  return (
-    <FormsSection
-      reading={reading}
-      boxes={[<OtherForms key="other" id={`other-${reading.recordId}`} forms={reading.forms} searched={searchedSpellings(reading)} />]}
-    />
-  );
+  return <FormsSection reading={reading} groups={[otherGroup(`other-${reading.recordId}`, reading.forms)]} />;
 }
 
 /**

@@ -5,10 +5,11 @@
 // components to HTML over an imported fixture release, and that test runs in CI
 // with no archive and no D1. What `page.tsx` adds is where the data comes from.
 //
-// One client component: the search form, whose suggestion list answers
-// keystrokes (`SearchField.tsx`). The form is still a plain GET form, every
-// state is decided by the URL, and the "Show all" controls are native
-// `<details>`, so the page works before any JavaScript does.
+// Two client components: the search form, whose suggestion list answers
+// keystrokes (`SearchField.tsx`), and the Expand all button over a verb's
+// folding groups on a phone (`Folds.tsx`). The form is still a plain GET form,
+// every state is decided by the URL, and the "Show all" controls and the groups
+// themselves are native `<details>`, so the page works before any JavaScript does.
 
 import type { ReactNode } from "react";
 import type { Attempt } from "./attempt.ts";

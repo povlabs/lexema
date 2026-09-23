@@ -7,24 +7,30 @@
 
 import type { ReactNode } from "react";
 import type { Reading, RelatedWord, WordFacts } from "@lexema/lookup/types.ts";
-import { ExternalIcon } from "./icons";
+import { ChevronIcon, ExternalIcon } from "./icons";
 import { ReadingCard, ShowAll, readingKind, lemmaWords, sliceCount } from "./Reading";
 import type { WordPage } from "./wordPage.ts";
 import {
   CARDS,
   CHIP,
+  CHIP_WIDE_SLICE,
   CHIPS,
   ETYMOLOGIES,
   ETYMOLOGY,
   ETYMOLOGY_LABEL,
   ETYMOLOGY_SINGLE,
   ICON,
+  INDEX_CHEVRON,
   INDEX_GLOSS,
+  INDEX_ITEM,
+  INDEX_KIND,
   INDEX_LINK,
   INDEX_LIST,
   INDEX_NUMBER,
   LABEL,
+  PHONE_ONLY,
   READING_INDEX,
+  RELATED,
   SECTION,
   SECTION_COUNT,
   SECTION_HEADER,
@@ -32,6 +38,7 @@ import {
   SECTION_RULE,
   SOURCE_LINE,
   SOURCE_LINK,
+  WIDE_ONLY,
   WORD_HEADING,
   WORD_SECTION,
   WORD_STRIP,
@@ -40,8 +47,11 @@ import {
   WORD_STRIP_VALUE,
 } from "./styles.ts";
 
-/** How many related words a list shows before its "Show all" button. */
-export const RELATED_SLICE = 24;
+/**
+ * How many related words a list shows before its "Show all" button: fewer on a
+ * phone, where a screen of chips is half as wide (frame 09).
+ */
+export const RELATED_SLICE = { phone: 12, wide: 24 } as const;
 
 /**
  * Where a word can be checked by hand. The release is a Wiktextract dump of
@@ -92,7 +102,10 @@ function WordStrip({ facts }: { facts: WordFacts }) {
   );
 }
 
-/** One compact chip per card: its number, its kind, its first gloss verbatim. */
+/**
+ * One compact chip per card: its number, its kind, its first gloss verbatim. On
+ * a phone, a full-width row with a chevron (frame 07).
+ */
 function ReadingIndex({ page }: { page: WordPage }) {
   return (
     <nav className={READING_INDEX} aria-label="Readings">
@@ -100,15 +113,16 @@ function ReadingIndex({ page }: { page: WordPage }) {
         {page.cards.map(({ number, reading }) => {
           const gloss = firstGloss(reading);
           return (
-            <li key={reading.recordId} className="min-w-0">
+            <li key={reading.recordId} className={INDEX_ITEM}>
               <a className={INDEX_LINK} href={`#reading-${reading.recordId}`}>
                 <span className={INDEX_NUMBER}>{number}</span>
-                <span>{readingKind(reading)}</span>
+                <span className={INDEX_KIND}>{readingKind(reading)}</span>
                 {gloss !== undefined && (
                   <span className={INDEX_GLOSS} lang="it">
                     {gloss}
                   </span>
                 )}
+                <ChevronIcon className={INDEX_CHEVRON} />
               </a>
             </li>
           );
@@ -131,7 +145,7 @@ function WordSectionBlock({
 }: {
   id: string;
   name: string;
-  count: string;
+  count: ReactNode;
   children: ReactNode;
 }) {
   return (
@@ -171,24 +185,48 @@ function Etymologies({ facts }: { facts: WordFacts }) {
   );
 }
 
-/** A wrapping grid of chips, each a search for that word; the rest behind a button. */
+/** `86 · showing 12` on a phone and `86 · showing 24` on a wide screen. */
+function RelatedCount({ total }: { total: number }) {
+  const phone = sliceCount(total, RELATED_SLICE.phone);
+  const wide = sliceCount(total, RELATED_SLICE.wide);
+  if (phone === wide) return phone;
+  return (
+    <>
+      <span className={PHONE_ONLY}>{phone}</span>
+      <span className={WIDE_ONLY}>{wide}</span>
+    </>
+  );
+}
+
+/**
+ * A wrapping grid of chips, each a search for that word; the rest behind a
+ * button. Every chip is in the document at every width: the ones past the
+ * phone's slice wait for the button there, and the ones past the wide slice
+ * are inside it.
+ */
 function RelatedWords({ id, name, noun, words }: { id: string; name: string; noun: string; words: RelatedWord[] }) {
   if (words.length === 0) return null;
-  const chip = (word: RelatedWord) => (
-    <li key={word.word}>
+  const chip = (word: RelatedWord, className?: string) => (
+    <li key={word.word} className={className}>
       <a className={CHIP} href={`/?q=${encodeURIComponent(word.word)}`} lang="it">
         {word.word}
       </a>
     </li>
   );
+  const first = words.slice(0, RELATED_SLICE.wide);
+  const rest = words.slice(RELATED_SLICE.wide);
   return (
-    <WordSectionBlock id={id} name={name} count={sliceCount(words.length, RELATED_SLICE)}>
-      <ul className={CHIPS}>{words.slice(0, RELATED_SLICE).map(chip)}</ul>
-      {words.length > RELATED_SLICE && (
-        <ShowAll total={words.length} noun={noun} wide>
-          <ul className={`${CHIPS} mt-4`}>{words.slice(RELATED_SLICE).map(chip)}</ul>
-        </ShowAll>
-      )}
+    <WordSectionBlock id={id} name={name} count={<RelatedCount total={words.length} />}>
+      <div className={RELATED}>
+        <ul className={CHIPS}>
+          {first.map((word, i) => chip(word, i < RELATED_SLICE.phone ? undefined : CHIP_WIDE_SLICE))}
+        </ul>
+        {words.length > RELATED_SLICE.phone && (
+          <ShowAll total={words.length} noun={noun} wide phoneOnly={rest.length === 0}>
+            {rest.length > 0 && <ul className={`${CHIPS} mt-4`}>{rest.map((word) => chip(word))}</ul>}
+          </ShowAll>
+        )}
+      </div>
     </WordSectionBlock>
   );
 }
