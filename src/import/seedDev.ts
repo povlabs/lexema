@@ -5,7 +5,7 @@
 import { execFileSync } from "node:child_process";
 import { mkdir, rm, stat, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
-import { loadFixturePages } from "../source/rawPage.js";
+import { openRawPages } from "../source/wiktionaryDump.js";
 import { seedSql } from "./seedSql.js";
 import { applyParts, DEFAULT_PART_CEILING_BYTES, PartFailure } from "./sqlParts.js";
 
@@ -39,6 +39,8 @@ const wrangler = (args: readonly string[], capture: boolean): string =>
 
 await mkdir(resolve(".data"), { recursive: true });
 await rm(persistTo, { recursive: true, force: true });
+const rawPages = await openRawPages();
+process.stderr.write(`raw pages: ${rawPages.pages.size} from ${rawPages.described}\n`);
 const rejectionLines: string[] = [];
 const report = await seedSql({
   input,
@@ -49,9 +51,10 @@ const report = await seedSql({
   license: "CC-BY-SA-4.0",
   requiredWords,
   validateFixtureClosure: !isArchive,
-  // The raw pages committed under fixtures/ are the only ones the recovered
-  // layer reads for now (#28); a word without one is seeded as it always was.
-  rawPages: await loadFixturePages(resolve("fixtures")),
+  // The dump the archive was built from when it is in the repository root,
+  // else the pages committed under fixtures/ (#28). A word without a page is
+  // seeded as it always was.
+  rawPages: rawPages.pages,
   onRejection: ({ lineNo, kind, reason }) => rejectionLines.push(`${lineNo}\t${kind}\t${reason}`),
   partCeilingBytes,
   // Marked servable below, only after the loaded database is verified.

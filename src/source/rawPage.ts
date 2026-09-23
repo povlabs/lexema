@@ -6,9 +6,10 @@
 // one title, saved verbatim, and its revision id travels with every value read
 // from it.
 //
-// Phase one reads the pages already committed under `fixtures/`. A later run can
-// feed the same `RawPageSource` from an Italian Wiktionary database dump; nothing
-// downstream knows which one it is reading.
+// Two things feed a `RawPageSource`: the Italian Wiktionary dump the archive was
+// built from (`wiktionaryDump.ts`), and the pages committed under `fixtures/`,
+// which a fresh clone and CI read. Nothing downstream knows which one it is
+// reading.
 
 import { readdir, readFile } from "node:fs/promises";
 import { join } from "node:path";

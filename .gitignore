@@ -6,8 +6,10 @@ dist/
 coverage/
 artifacts/
 
-# Source downloads stay local until redistribution is reviewed
+# Source downloads stay local until redistribution is reviewed; their durable
+# copies are source/ in hueypov/lexema-data
 it-extract.jsonl.gz
+itwiktionary-20260701-pages-articles.xml.bz2
 
 # Local settings and credentials
 .DS_Store

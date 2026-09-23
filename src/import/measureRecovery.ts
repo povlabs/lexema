@@ -1,22 +1,30 @@
 // `pnpm run measure:recovery` — how many archive records lose definitions their
-// raw page states, over every raw page committed under `fixtures/` (#28).
+// raw page states (#28).
 //
 // Streams `it-extract.jsonl.gz` once. Every Italian record whose word has a raw
 // page is matched to its section of that page and run through the same
 // recovery the seed runs, so the counts here are the counts a seed recovers.
+// The raw pages are the Wiktionary dump the archive was built from when it is in
+// the repository root, else the pages committed under `fixtures/`
+// (`openRawPages`). Over the dump the counts are exact for the whole release.
 // The uniformly sampled records in `fixtures/definition-loss-samples/` are
 // counted again on their own: they are the only records whose rate may be
-// projected onto the release.
+// projected onto the release from the fixtures alone.
 //
 // Needs the archive in the repository root; it is gitignored and absent in CI.
 
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { recordText, recoverDefinitions, type RecordRecovery } from "../italian/recovery.js";
-import { loadFixturePages } from "../source/rawPage.js";
+import { openRawPages } from "../source/wiktionaryDump.js";
 import { parseArchive } from "./importRelease.js";
 
 const input = resolve(process.env.RECOVERY_INPUT ?? "it-extract.jsonl.gz");
+/**
+ * When Wiktextract wrote the archive (gzip header mtime, docs/LICENSING.md §1.1).
+ * A page revised after this cannot be the revision the record was read from.
+ */
+const ARCHIVE_BUILT = "2026-07-16T03:17:09Z";
 const output = resolve(process.env.RECOVERY_OUTPUT ?? "artifacts/recovery-measure.json");
 
 interface Sample {
@@ -72,7 +80,7 @@ function wilson(k: number, n: number): [number, number] {
   return [Math.max(0, centre - margin), Math.min(1, centre + margin)];
 }
 
-const pages = await loadFixturePages(resolve("fixtures"));
+const { pages, described } = await openRawPages();
 const samples = await Promise.all([readSample("sample-lemma.json"), readSample("sample-inflected.json")]);
 const sampledStratum = new Map<number, string>();
 for (const sample of samples) for (const record of sample.records) sampledStratum.set(record.line, sample.stratum);
@@ -83,19 +91,28 @@ const losses: {
   line: number;
   word: string;
   posTitle: string;
+  revisionId: number;
   loss: string;
   stratum: string | null;
   recovered: { route: string; line: number; text: string; examples: number; heldAsExample: boolean }[];
   unrendered: { line: number; template: string }[];
 }[] = [];
 const unrendered: { word: string; line: number; template: string }[] = [];
+/** Italian records whose word has no raw page at all. */
+const withoutAPage: { line: number; word: string; posTitle: string }[] = [];
+/** Pages a record was matched to whose revision is newer than the archive. */
+const revisedAfterArchive = new Map<string, { revisionId: number; timestamp: string }>();
 
 const report = await parseArchive({
   input,
   onRejection: () => {},
   onRecord: ({ lineNo, record }) => {
     const page = pages.page(record.word);
-    if (page === undefined) return;
+    if (page === undefined) {
+      withoutAPage.push({ line: lineNo, word: record.word, posTitle: record.pos_title });
+      return;
+    }
+    if (page.timestamp > ARCHIVE_BUILT) revisedAfterArchive.set(page.title, { revisionId: page.revisionId, timestamp: page.timestamp });
     const recovery = recoverDefinitions(recordText(record), page);
     all.add(recovery);
     const stratum = sampledStratum.get(lineNo);
@@ -107,6 +124,7 @@ const report = await parseArchive({
       line: lineNo,
       word: record.word,
       posTitle: record.pos_title,
+      revisionId: page.revisionId,
       loss: recovery.loss,
       stratum: stratum ?? null,
       recovered: recovery.recovered.map((definition) => ({
@@ -146,18 +164,24 @@ const projections = samples.map((sample) => {
 const result = {
   archiveSha256: report.archiveSha256,
   italianRecords: report.admitted,
+  rawPageInput: described,
   rawPages: pages.size,
+  archiveBuilt: ARCHIVE_BUILT,
   allRecordsWithAPage: all,
+  recordsWithoutAPage: withoutAPage.length,
+  pagesRevisedAfterArchive: [...revisedAfterArchive].map(([title, revision]) => ({ title, ...revision })),
   projections,
   losses,
   unrendered,
+  withoutAPage,
 };
 await mkdir(resolve(output, ".."), { recursive: true });
 await writeFile(output, `${JSON.stringify(result, null, 2)}\n`);
 
 const line = (text: string) => process.stdout.write(`${text}\n`);
-line(`archive ${report.archiveSha256.slice(0, 12)}…, ${report.admitted} Italian records, ${pages.size} raw pages`);
-line(`records with a raw page: ${all.records}`);
+line(`archive ${report.archiveSha256.slice(0, 12)}…, ${report.admitted} Italian records, ${pages.size} raw pages from ${described}`);
+line(`records with a raw page: ${all.records}; without one: ${withoutAPage.length}`);
+line(`  pages revised after the archive was built (${ARCHIVE_BUILT}): ${revisedAfterArchive.size}`);
 line(`  matched to one section: ${all.outcomes.matched}; no Italian section: ${all.outcomes["no-italian-section"]}; ` +
   `no matching section: ${all.outcomes["no-matching-section"]}; ambiguous: ${all.outcomes["ambiguous-section"]}`);
 line(`  loss: full ${all.loss.full}, partial ${all.loss.partial}, none ${all.loss.none}`);
