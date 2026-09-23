@@ -60,8 +60,13 @@ export const SEARCH_FORM = "w-full max-w-[40rem]";
 export const SEARCH_FIELD =
   "relative flex w-full items-center rounded-[4px] border border-border-strong bg-surface-raised focus-within:border-accent";
 export const SEARCH_ICON = "pointer-events-none absolute left-4 size-4 text-text-muted";
+/**
+ * The browser's own clear button on a `type="search"` field is hidden: it is
+ * drawn in the browser's blue, not a role, and sat on top of the field's own
+ * `×` and `ENTER` hint once typing opened the suggestion list.
+ */
 export const SEARCH_INPUT =
-  "w-full min-w-0 bg-transparent py-3 pr-12 pl-11 font-serif text-lg text-text-strong outline-none placeholder:font-sans placeholder:text-base placeholder:text-text-muted";
+  "w-full min-w-0 bg-transparent py-3 pr-12 pl-11 font-serif text-lg text-text-strong outline-none placeholder:font-sans placeholder:text-base placeholder:text-text-muted [&::-webkit-search-cancel-button]:appearance-none";
 export const SEARCH_CLEAR = `absolute right-3 flex size-7 items-center justify-center font-sans text-lg text-text-muted no-underline hover:text-text ${FOCUS_RING}`;
 export const SEARCH_HINT =
   "pointer-events-none absolute right-4 font-sans text-[0.65rem] tracking-[0.12em] text-text-muted";
