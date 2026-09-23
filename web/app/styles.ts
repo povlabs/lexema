@@ -17,6 +17,11 @@
 // buttons, counts, header-bar values — is sans; the source's Italian —
 // headword, glosses, examples, etymology, related-word chips — is serif; word
 // forms, pronunciation and syllables are mono.
+//
+// Below Tailwind's `sm` breakpoint the page is laid out for a phone, as frames
+// 07–09 draw it at 390 px (#101). A phone-only rule is a `max-sm:` variant
+// beside the wide one, or a part only a phone draws, hidden from `sm` up; so
+// from `sm` up the page is the one the wide frames draw, class for class.
 
 /** The one column every page is laid out in, and the chrome lines up with. */
 const COLUMN = "mx-auto w-full max-w-[75rem] px-4 sm:px-6";
@@ -112,22 +117,44 @@ export const AMBIGUOUS = "font-sans text-[0.85rem] text-text-muted";
 
 // The word ----------------------------------------------------------------
 
+/**
+ * A headword longer than a phone is wide breaks rather than pushing the page
+ * sideways: `precipitevolissimevolmente` is one word, and so is its syllable
+ * string. The same `wrap-anywhere` sits on every other single word the page
+ * sets large — a card's headword, a header-bar value, a gloss, a chip.
+ */
 export const WORD_HEADING =
-  "m-0 mt-10 font-serif text-[4rem] leading-none font-normal text-text-strong sm:text-[5.5rem]";
+  "m-0 mt-10 font-serif text-[4rem] leading-none font-normal break-words text-text-strong sm:text-[5.5rem]";
+
+/**
+ * A header bar on a phone (frame 09): the facts that sit on one line on a wide
+ * screen wrap into two columns, drawn as a hairline grid — the bar's `border`
+ * showing through a one-pixel gap between cells filled with `surface`. A last
+ * fact left alone on its row spans both columns, so no cell is an empty hole.
+ */
+const HAIRLINE_GRID = "max-sm:grid max-sm:grid-cols-2 max-sm:gap-px max-sm:border max-sm:bg-border max-sm:p-0";
+const HAIRLINE_CELL =
+  "max-sm:border-l-0 max-sm:bg-surface max-sm:px-4 max-sm:py-3 max-sm:first:pl-4 max-sm:odd:last:col-span-2";
 
 /** Pronunciation and syllables, between two hairlines. */
-export const WORD_STRIP = "mt-10 flex flex-wrap border-y border-border py-4";
-export const WORD_STRIP_FACT =
-  "flex min-w-0 flex-col gap-1 border-l border-border px-8 first:border-l-0 first:pl-0";
-export const WORD_STRIP_VALUE = "m-0 font-mono text-lg text-text-strong";
+export const WORD_STRIP = `mt-10 flex flex-wrap border-y border-border py-4 ${HAIRLINE_GRID}`;
+export const WORD_STRIP_FACT = `flex min-w-0 flex-col gap-1 border-l border-border px-8 first:border-l-0 first:pl-0 ${HAIRLINE_CELL}`;
+export const WORD_STRIP_VALUE = "m-0 font-mono text-lg text-text-strong wrap-anywhere";
 export const WORD_STRIP_NOTE = "ml-2 font-sans text-[0.75rem] text-text-muted";
 
-/** The reading index: compact bordered chips, one per card. */
+/**
+ * The reading index: compact bordered chips, one per card. On a phone each is a
+ * full-width row, tall enough to tap, with a chevron saying it leads somewhere
+ * (frame 07); the gloss takes the room the row has and is cut where it runs out.
+ */
 export const READING_INDEX = "mt-6 border-b border-border pb-8";
-export const INDEX_LIST = "m-0 flex list-none flex-wrap gap-2 p-0";
-export const INDEX_LINK = `flex max-w-full items-center gap-2 rounded-[3px] border border-border-strong px-3 py-1.5 font-sans text-[0.85rem] text-text-strong no-underline hover:border-accent ${FOCUS_RING}`;
+export const INDEX_LIST = "m-0 flex list-none flex-wrap gap-2 p-0 max-sm:flex-col max-sm:flex-nowrap";
+export const INDEX_ITEM = "min-w-0";
+export const INDEX_LINK = `flex max-w-full items-center gap-2 rounded-[3px] border border-border-strong px-3 py-1.5 font-sans text-[0.85rem] text-text-strong no-underline hover:border-accent max-sm:min-h-12 max-sm:gap-3 max-sm:px-4 max-sm:text-[0.95rem] ${FOCUS_RING}`;
 export const INDEX_NUMBER = "font-mono text-[0.8rem] text-accent";
-export const INDEX_GLOSS = "max-w-[16rem] truncate font-serif italic text-text-muted";
+export const INDEX_KIND = "max-sm:shrink-0";
+export const INDEX_GLOSS = "max-w-[16rem] truncate font-serif italic text-text-muted max-sm:max-w-none max-sm:min-w-0 max-sm:flex-1";
+export const INDEX_CHEVRON = "ml-auto size-4 shrink-0 -rotate-90 text-text-muted sm:hidden";
 
 // Labels, counts and hairlines -------------------------------------------
 
@@ -160,18 +187,20 @@ export const CARD = "min-w-0 scroll-mt-6 overflow-hidden rounded-[6px] border bo
 export const CARD_TITLE = "flex flex-wrap items-center gap-x-4 gap-y-2 px-5 py-6 sm:px-8";
 export const CARD_NUMBER =
   "flex size-7 shrink-0 items-center justify-center rounded-full bg-accent font-sans text-[0.8rem] font-semibold text-surface";
-export const HEADWORD = "m-0 font-serif text-[1.9rem] leading-tight font-normal text-text-strong";
+export const HEADWORD = "m-0 min-w-0 font-serif text-[1.9rem] leading-tight font-normal text-text-strong wrap-anywhere";
 export const POS_PILL = "rounded-[3px] bg-border px-2 py-0.5 font-sans text-[0.8rem] text-text-strong";
 export const FORM_OF = "font-serif text-base italic text-text-muted";
 
-/** The header bar: a darker band, facts in one row, hairlines between them. */
-export const HEADLINE = "m-0 flex flex-wrap gap-y-3 border-y border-border bg-surface px-5 py-4 sm:px-8";
-export const HEADLINE_FACT =
-  "flex min-w-0 flex-col gap-1 border-l border-border px-6 first:border-l-0 first:pl-0";
+/**
+ * The header bar: a darker band, facts in one row, hairlines between them; on a
+ * phone, a hairline grid set in from the card's edges, as frames 07 and 08 draw it.
+ */
+export const HEADLINE = `m-0 flex flex-wrap gap-y-3 border-y border-border bg-surface px-5 py-4 sm:px-8 max-sm:mx-5 ${HAIRLINE_GRID}`;
+export const HEADLINE_FACT = `flex min-w-0 flex-col gap-1 border-l border-border px-6 first:border-l-0 first:pl-0 ${HAIRLINE_CELL}`;
 export const HEADLINE_LABEL = LABEL;
-export const HEADLINE_VALUE = "m-0 font-sans text-[1.1rem] text-text-strong";
+export const HEADLINE_VALUE = "m-0 font-sans text-[1.1rem] text-text-strong wrap-anywhere";
 /** A header-bar value that is a word form: mono, like every form. */
-export const HEADLINE_FORM = "m-0 font-mono text-[1.05rem] text-text-strong";
+export const HEADLINE_FORM = "m-0 font-mono text-[1.05rem] text-text-strong wrap-anywhere";
 
 export const CARD_BODY = "px-5 py-6 sm:px-8";
 
@@ -194,7 +223,7 @@ export const DISPUTED_LIST = "mt-2 mb-0 list-disc pl-5";
 export const DEFINITIONS = "m-0 flex list-none flex-col gap-3 p-0";
 export const DEFINITION = "flex gap-5";
 export const DEFINITION_NUMBER = "w-5 shrink-0 pt-1 font-mono text-[0.85rem] text-text-muted";
-export const GLOSS = "m-0 font-serif text-[1.2rem] text-text";
+export const GLOSS = "m-0 font-serif text-[1.2rem] text-text wrap-anywhere";
 export const SENSE_LABEL = "font-serif italic text-text-muted";
 
 export const EXAMPLES = "m-0 flex list-none flex-col gap-3 p-0";
@@ -245,9 +274,10 @@ export const LEMMA_PANEL =
   "flex flex-wrap items-center gap-x-4 gap-y-2 rounded-[4px] border border-border-strong bg-surface px-5 py-4";
 export const LEMMA_ARROW = "font-sans text-lg text-accent";
 export const LEMMA_BODY = "flex min-w-0 flex-1 flex-col gap-1";
-export const LEMMA_WORD = "m-0 font-serif text-[1.25rem] text-text-strong";
+export const LEMMA_WORD = "m-0 font-serif text-[1.25rem] text-text-strong wrap-anywhere";
 export const LEMMA_LINE = "m-0 font-sans text-[0.8rem] text-text-muted";
-export const LEMMA_OPEN = `font-sans text-[0.85rem] text-accent no-underline hover:underline ${FOCUS_RING}`;
+/** On a phone the link takes its own line under the text, rather than squeezing it into a column. */
+export const LEMMA_OPEN = `font-sans text-[0.85rem] text-accent no-underline hover:underline max-sm:basis-full max-sm:pl-8 ${FOCUS_RING}`;
 
 // The word-level section --------------------------------------------------
 
@@ -259,7 +289,7 @@ export const ETYMOLOGY =
 export const ETYMOLOGY_LABEL = "mb-2 block font-sans text-[0.75rem] font-semibold text-warning";
 
 export const CHIPS = "m-0 flex list-none flex-wrap gap-2 p-0";
-export const CHIP = `block rounded-[3px] border border-border bg-surface-raised px-3 py-1 font-serif text-base text-text no-underline hover:border-border-strong ${FOCUS_RING}`;
+export const CHIP = `block rounded-[3px] border border-border bg-surface-raised px-3 py-1 font-serif text-base text-text no-underline wrap-anywhere hover:border-border-strong ${FOCUS_RING}`;
 
 export const SOURCE_LINE = "mt-10 border-t border-border pt-8 flex flex-wrap gap-6";
 export const SOURCE_LINK = `inline-flex items-center gap-1.5 font-sans text-[0.85rem] text-text no-underline hover:text-accent ${FOCUS_RING}`;

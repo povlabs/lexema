@@ -52,6 +52,7 @@ import {
   ERROR,
   ETYMOLOGY_LABEL,
   FIELD_LABEL,
+  INDEX_CHEVRON,
   FIELD_VALUE,
   HEADLINE_FORM,
   HEADLINE_LABEL,
@@ -406,6 +407,19 @@ test("andavano is one reading: its own facts, andare's whole table with the form
     assert.match(only, new RegExp(`<div class="${esc(SEARCHED)}" data-searched=""><dt[^>]*><span lang="it">essi/esse</span></dt><dd[^>]*><span><span lang="it" data-form="\\d+">andavano</span></span></dd><span[^>]*>your search</span>`));
     assert.match(only, /href="\/\?q=andare">Open entry →<\/a>/);
     assert.match(only, /data-lemma-panel=""/);
+  });
+});
+
+// The page on a phone (#101) ---------------------------------------------------
+//
+// Width is CSS, so these assert the markup the phone layout is drawn from. What
+// each looks like at 390 px is in the pull request's captures.
+
+test("the reading index carries a chevron on each row, which a phone shows", async () => {
+  await withDevSeed(async ({ db }) => {
+    const html = await render(db, "sale");
+    const index = html.slice(html.indexOf('aria-label="Readings"'), html.indexOf("</nav>", html.indexOf('aria-label="Readings"')));
+    assert.equal(occurrencesOf(index, `<svg class="${INDEX_CHEVRON}"`), 3);
   });
 });
 

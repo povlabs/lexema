@@ -7,7 +7,7 @@
 
 import type { ReactNode } from "react";
 import type { Reading, RelatedWord, WordFacts } from "@lexema/lookup/types.ts";
-import { ExternalIcon } from "./icons";
+import { ChevronIcon, ExternalIcon } from "./icons";
 import { ReadingCard, ShowAll, readingKind, lemmaWords, sliceCount } from "./Reading";
 import type { WordPage } from "./wordPage.ts";
 import {
@@ -19,7 +19,10 @@ import {
   ETYMOLOGY_LABEL,
   ETYMOLOGY_SINGLE,
   ICON,
+  INDEX_CHEVRON,
   INDEX_GLOSS,
+  INDEX_ITEM,
+  INDEX_KIND,
   INDEX_LINK,
   INDEX_LIST,
   INDEX_NUMBER,
@@ -92,7 +95,10 @@ function WordStrip({ facts }: { facts: WordFacts }) {
   );
 }
 
-/** One compact chip per card: its number, its kind, its first gloss verbatim. */
+/**
+ * One compact chip per card: its number, its kind, its first gloss verbatim. On
+ * a phone, a full-width row with a chevron (frame 07).
+ */
 function ReadingIndex({ page }: { page: WordPage }) {
   return (
     <nav className={READING_INDEX} aria-label="Readings">
@@ -100,15 +106,16 @@ function ReadingIndex({ page }: { page: WordPage }) {
         {page.cards.map(({ number, reading }) => {
           const gloss = firstGloss(reading);
           return (
-            <li key={reading.recordId} className="min-w-0">
+            <li key={reading.recordId} className={INDEX_ITEM}>
               <a className={INDEX_LINK} href={`#reading-${reading.recordId}`}>
                 <span className={INDEX_NUMBER}>{number}</span>
-                <span>{readingKind(reading)}</span>
+                <span className={INDEX_KIND}>{readingKind(reading)}</span>
                 {gloss !== undefined && (
                   <span className={INDEX_GLOSS} lang="it">
                     {gloss}
                   </span>
                 )}
+                <ChevronIcon className={INDEX_CHEVRON} />
               </a>
             </li>
           );
