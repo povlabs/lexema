@@ -19,18 +19,17 @@ import {
   suggest,
 } from "../src/lookup/suggest.js";
 
-// Each line is here for one rule of the rank or one bound. The shapes are the
-// release's: a verb with its own senses beside records that are only its
-// forms, one spelling carried by several records, a capitalised proper noun,
-// an accented word and its unaccented twin, and a typographic apostrophe.
+// Each line is here for one rule of the order or one bound. The shapes are the
+// release's: a verb beside records that are only its forms, one spelling
+// carried by several records, a capitalised proper noun, an accented word and
+// its unaccented twin, and a typographic apostrophe.
 const record = (word: string, senses: object[], extra: object = {}) =>
   JSON.stringify({ word, pos: "noun", pos_title: "Sostantivo", lang_code: "it", senses, ...extra });
 const defines = (gloss: string) => ({ glosses: [gloss] });
 const formOf = (lemma: string) => ({ glosses: [`forma di ${lemma}`], tags: ["form-of"], form_of: [{ word: lemma }] });
 
 const LINES = [
-  // `and`: alphabetical order puts `anda`, `andai` and `Andalusia` ahead of
-  // `andare`; only `andare` and the proper noun define anything.
+  // `and`: listed in key order, whatever each record defines.
   record("andai", [formOf("andare")]),
   record("anda", [formOf("andare")]),
   record("andammo", [formOf("andare")]),
@@ -97,35 +96,27 @@ async function spellings(db: DatabaseSync, prefix: string): Promise<string[]> {
   return result.suggestions;
 }
 
-test("a spelling with its own definition ranks above records that are only forms of another word", async () => {
+test("suggestions come in alphabetical order of the key", async () => {
   await withFixture(async (db) => {
-    // Alphabetically this is anda, andai, Andalusia, andammo, andare.
-    assert.deepEqual(await spellings(db, "and"), ["andare", "Andalusia", "anda", "andai", "andammo"]);
+    // Huey's ruling: "it should show alphabetical order like the first 10".
+    assert.deepEqual(await spellings(db, "and"), ["anda", "andai", "Andalusia", "andammo", "andare"]);
+    assert.deepEqual(await spellings(db, "sal"), ["sala", "salacca", "sale"]);
   });
 });
 
-test("the exact spelling comes first, even when it only names another word", async () => {
+test("a single letter lists the first words under it", async () => {
   await withFixture(async (db) => {
-    assert.deepEqual(await spellings(db, "anda"), ["anda", "andare", "Andalusia", "andai", "andammo"]);
+    assert.deepEqual(await spellings(db, "c"), ["casa", "casacca", "casetta", "casette", "cittadino", "città"]);
   });
 });
 
-test("among spellings that define something, the shorter comes first", async () => {
+test("a spelling several records carry is suggested once", async () => {
   await withFixture(async (db) => {
-    assert.deepEqual(await spellings(db, "sal"), ["sala", "sale", "salacca"]);
+    assert.equal((await spellings(db, "sal")).filter((word) => word === "sale").length, 1);
   });
 });
 
-test("a spelling several records carry is suggested once, and counts as defined if any record defines it", async () => {
-  await withFixture(async (db) => {
-    const sale = await spellings(db, "sal");
-    assert.equal(sale.filter((word) => word === "sale").length, 1);
-    // `sale` has one defining record among three; it ranks with the defined.
-    assert.ok(sale.indexOf("sale") < sale.indexOf("salacca"));
-  });
-});
-
-test("a record with any sense of its own defines something, even beside a form-of sense", async () => {
+test("every headword under the prefix is offered, whatever its senses say", async () => {
   await withFixture(async (db) => {
     // casetta: one form-of sense and one of its own. casette: only a form.
     assert.deepEqual(await spellings(db, "case"), ["casetta", "casette"]);
@@ -150,7 +141,10 @@ test("the original spelling is shown, and the prefix goes through exact lookup's
 
 test("accents are never dropped or folded away", async () => {
   await withFixture(async (db) => {
-    assert.deepEqual(await spellings(db, "citt"), ["città", "cittadino"]);
+    // Keys compare by code point, so `à` (U+00E0) sorts after every unaccented
+    // letter at the same position: `cittadino` before `città`. Recorded in
+    // docs/LOOKUP.md; a reader-facing collation would need every match sorted.
+    assert.deepEqual(await spellings(db, "citt"), ["cittadino", "città"]);
     // `città` does not start with `citta`, and is not offered as if it did.
     assert.deepEqual(await spellings(db, "citta"), ["cittadino"]);
     assert.deepEqual(await spellings(db, "città"), ["città"]);
@@ -170,7 +164,7 @@ test("an answer holds at most ten suggestions", async () => {
 
 test("a prefix outside the bounds is refused without asking the index", async () => {
   await withFixture(async (db) => {
-    for (const short of ["", " ", "a", " a ", "è"]) {
+    for (const short of ["", " "]) {
       const result = await ask(db, short);
       assert.equal(result.outcome, "rejected", short);
       assert.equal(result.outcome === "rejected" && result.rejection.reason, "too-short", short);
@@ -187,9 +181,9 @@ test("a prefix outside the bounds is refused without asking the index", async ()
 });
 
 test("the field and the server agree on which prefixes can be asked", () => {
-  assert.equal(MIN_PREFIX_LENGTH, 2);
-  for (const short of ["", "a", " a ", "è"]) assert.equal(isAskablePrefix(short), false, short);
-  for (const askable of ["io", "è?", " ca ", "città"]) assert.equal(isAskablePrefix(askable), true, askable);
+  assert.equal(MIN_PREFIX_LENGTH, 1);
+  for (const short of ["", " "]) assert.equal(isAskablePrefix(short), false, short);
+  for (const askable of ["a", " a ", "è", "io", " ca ", "città"]) assert.equal(isAskablePrefix(askable), true, askable);
   assert.equal(isAskablePrefix("a".repeat(MAX_PREFIX_LENGTH + 1)), false);
 });
 
@@ -218,5 +212,8 @@ test("the prefix query is a range probe on the headword index, not a scan", asyn
       plan.some((step) => step.includes("lookup_form_headword_by_key") && /surface_key>\? AND surface_key<\?/.test(step)),
       plan.join("\n"),
     );
+    // Rows come back in index order, so nothing is sorted and LIMIT stops the
+    // walk early: a one-letter prefix costs what a long one does.
+    assert.ok(!plan.some((step) => /TEMP B-TREE/.test(step)), plan.join("\n"));
   });
 });

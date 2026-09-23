@@ -12,12 +12,12 @@ import type { LookupDatabase } from "./database.js";
 import { MAX_QUERY_LENGTH, readRelease } from "./lookup.js";
 
 /**
- * The shortest prefix answered, in characters of the normalized key. One
- * letter matches a tenth of the release (`a` is 59,642 headword rows) and says
- * nothing about which word is meant; two is where Italian's own two-letter
- * words — `io`, `tu`, `re`, `va` — can come back as the exact match.
+ * The shortest prefix answered, in characters of the normalized key. One letter
+ * is enough: Huey's ruling is that typing `a` lists the first words under `a`.
+ * The query walks the index in key order and stops after a handful of rows, so
+ * a one-letter prefix costs no more than a long one.
  */
-export const MIN_PREFIX_LENGTH = 2;
+export const MIN_PREFIX_LENGTH = 1;
 
 /** The longest prefix answered: the same bound exact lookup puts on a query. */
 export const MAX_PREFIX_LENGTH = MAX_QUERY_LENGTH;
@@ -87,35 +87,30 @@ export function prefixUpperBound(key: string): string {
 }
 
 /**
- * Headword spellings starting with a prefix, one row per spelling, ranked.
+ * Headword spellings starting with a prefix, in alphabetical order of the
+ * normalized key: the first words in the dictionary under what was typed.
+ * Huey's ruling, 2026-09-23: "it should show alphabetical order like the first
+ * 10, if i write a it should show words from letter a from database".
  *
- * The range probe is served by `lookup_form_headword_by_key`, the partial index
- * over headword rows; `test/suggest.test.ts` asserts the plan. Only headwords
- * are read: an embedded form is a spelling inside another record's table, and
- * every form a reader could pick already has a lookup of its own.
+ * The range probe walks `lookup_form_headword_by_key` in key order, so the rows
+ * come back already sorted and `LIMIT` stops the scan early; `test/suggest.test.ts`
+ * asserts the plan. Only headwords are read: an embedded form is a spelling
+ * inside another record's table, and every form a reader could pick has a
+ * lookup of its own.
  *
- * The rank, and the reason for each key, is in docs/LOOKUP.md § "Suggestions".
- * In short: the exact spelling first; then spellings at least one of whose
- * records has a sense of its own, rather than only senses that say which word
- * it is a form of; then the shorter spelling; then the key, then the spelling,
- * so the order is total and the same on every run.
- *
- * `defined` is read per record and folded per spelling, so one defining record
- * among several form-of records (`sale`, salt, beside two plurals) counts.
+ * One spelling can head several records (`sale` heads three), so more rows are
+ * read than are returned and repeats are dropped in order. `SCAN_LIMIT` rows is
+ * far more than any spelling's record count, so ten distinct spellings survive.
  */
 export const SUGGEST_SQL = `SELECT surface
-       FROM (SELECT lf.surface, lf.surface_key,
-                    EXISTS (SELECT 1 FROM sense s
-                             WHERE s.record_id = lf.record_id
-                               AND NOT EXISTS (SELECT 1 FROM form_of_edge e
-                                                WHERE e.record_id = s.record_id
-                                                  AND e.sense_index = s.sense_index)) AS defined
-               FROM lookup_form lf
-              WHERE lf.release_id = ?1 AND lf.origin = 'headword'
-                AND lf.surface_key >= ?2 AND lf.surface_key < ?3)
-      GROUP BY surface
-      ORDER BY MAX(surface_key = ?2) DESC, MAX(defined) DESC, length(surface), surface_key, surface
+       FROM lookup_form
+      WHERE release_id = ?1 AND origin = 'headword'
+        AND surface_key >= ?2 AND surface_key < ?3
+      ORDER BY surface_key
       LIMIT ?4`;
+
+/** Rows read to find `SUGGESTION_LIMIT` distinct spellings. */
+const SCAN_LIMIT = 200;
 
 export async function suggest({ db, releaseId, prefix }: SuggestOptions): Promise<SuggestResult> {
   const key = normalizeItalianExact(prefix);
@@ -139,6 +134,7 @@ export async function suggest({ db, releaseId, prefix }: SuggestOptions): Promis
     );
   }
 
-  const rows = await db.all<{ surface: string }>(SUGGEST_SQL, [releaseId, key, prefixUpperBound(key), SUGGESTION_LIMIT]);
-  return { outcome: "suggested", prefix: { raw: prefix, key }, suggestions: rows.map((row) => row.surface) };
+  const rows = await db.all<{ surface: string }>(SUGGEST_SQL, [releaseId, key, prefixUpperBound(key), SCAN_LIMIT]);
+  const suggestions = [...new Set(rows.map((row) => row.surface))].slice(0, SUGGESTION_LIMIT);
+  return { outcome: "suggested", prefix: { raw: prefix, key }, suggestions };
 }

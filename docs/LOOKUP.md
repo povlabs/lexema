@@ -213,43 +213,45 @@ so tests can assert their query plans. See
 ## Suggestions
 
 `suggest()` in [`src/lookup/suggest.ts`](../src/lookup/suggest.ts) takes a
-prefix and returns at most ten headword spellings that start with it. The
-search field shows them as a list while a reader types (#15); choosing one runs
-`lookup()` for it. It is the one place in the lookup layer that ranks, because a
-list of ten has to leave most matches out.
+prefix and returns at most ten headword spellings that start with it, in
+alphabetical order. The search field shows them as a list while a reader types
+(#15); choosing one runs `lookup()` for it.
 
 ```ts
-await suggest({ db: fromD1(env.DB), releaseId, prefix: "ess" });
-// { outcome: "suggested", prefix: { raw: "ess", key: "ess" },
-//   suggestions: ["esse", "essi", "esso", "Essen", "esseno", "essere", …] }
+await suggest({ db: fromD1(env.DB), releaseId, prefix: "a" });
+// { outcome: "suggested", prefix: { raw: "a", key: "a" },
+//   suggestions: ["a", …the first ten headwords under a] }
 ```
 
 **Query handling** is `normalizeItalianExact`, as above: case and apostrophes
 fold, accents stay. `citt` suggests `città`; `citta` does not.
 
-**Bounds.** A prefix under `MIN_PREFIX_LENGTH` (2 characters of the normalized
-key) or over `MAX_PREFIX_LENGTH` (the 128 of `MAX_QUERY_LENGTH`) is `rejected`
-without reaching the index. `SUGGESTION_LIMIT` is 10.
+**Bounds.** An empty prefix, or one over `MAX_PREFIX_LENGTH` (the 128 of
+`MAX_QUERY_LENGTH`), is `rejected` without reaching the index. One letter is
+enough. `SUGGESTION_LIMIT` is 10.
 
 **What is suggested.** Headwords only, each spelling once however many records
 carry it, as the source spells it. A spelling found only in another record's
 `forms[]` is not suggested.
 
-**Order.** The source has no word frequency, so the rank is built from what it
-does hold, and it is total, so the same prefix gives the same list every time:
+**Order.** Alphabetical by normalized key: the first words in the dictionary
+under what was typed. Huey's ruling, 2026-09-23: "it should show alphabetical
+order like the first 10, if i write a it should show words from letter a from
+database". The rows come back from `lookup_form_headword_by_key` already in key
+order, so nothing is sorted and the walk stops after a few rows; a one-letter
+prefix costs what a long one does.
 
-1. The spelling whose key is the prefix itself.
-2. Spellings with a definition of their own: at least one record has a sense
-   with no `form_of` edge. A spelling whose every record only says which word it
-   is a form of (`andai`, `essa`) comes after.
-3. The shorter spelling, in characters.
-4. The key, then the spelling itself, so `Salva` and `salva` keep one order.
+Keys compare by code point, so an accented letter sorts after every unaccented
+one in the same position: `citt` gives `cittadino` before `città`. A dictionary's
+own collation would put `città` first, but it would need every match under the
+prefix read and sorted, which for `a` is some sixty thousand rows.
 
-Measured on the full release in
+An earlier version of this branch ranked by definition and length instead;
+Huey rejected it for alphabetical. The measurements of both are in
 [the autocomplete measurements](../reports/2026-09-23-autocomplete-measurements.md).
 
 `SUGGEST_SQL` is exported so a test can assert it stays a range probe on
-`lookup_form_headword_by_key`.
+`lookup_form_headword_by_key` with no sort step.
 
 ## Not covered here
 

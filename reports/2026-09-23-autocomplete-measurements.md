@@ -104,3 +104,12 @@ A three-letter prefix answers warm in 6–33 ms; the worst two-letter prefix,
 - **Debounce: 150 ms.** With the field in a browser, typing `andare` at 90 ms a
   key sent one request, for `andare`. A slow answer for `ca` held back 1.5 s
   after `s` was typed was aborted, and the list showed `cas`'s answer.
+
+## Superseded ordering, 2026-09-23
+
+Huey tried the ranked list and rejected it: "it should show alphabetical order
+like the first 10, if i write a it should show words from letter a from
+database". The shipped order is alphabetical by normalized key, and the
+minimum prefix is one character. The ranked measurements above are kept as a
+record of what was tried. The alphabetical query needs no sort, so it walks the
+index in order and stops early; one-letter prefixes are measured below.

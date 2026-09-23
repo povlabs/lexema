@@ -135,7 +135,7 @@ export function SearchField({ raw }: { raw: string }) {
         ask(next);
       }}
       items={suggestions}
-      // The server already ranked and bounded the list; filtering it again on
+      // The server already ordered and bounded the list; filtering it again on
       // the client would drop spellings the prefix matches only after the
       // normalization the server applied.
       filter={null}
