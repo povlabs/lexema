@@ -8,7 +8,7 @@ tags: [stack, hosting]
 
 # 0013 — The site is public at lexema.fyi, and every search is rate-limited per visitor before it can reach the database
 
-**What this decides:** The website shell is live at `lexema.fyi` without the dictionary behind it, two per-visitor limits stand in front of every search, and publishing needs no lawyer's review.
+**What this decides:** The website shell is live at `lexema.fyi` without the dictionary behind it, two per-visitor limits stand in front of every search, publishing needs no lawyer's review, and the July archive may be published as the 1 July 2026 Wiktionary snapshot.
 
 ## Context
 
@@ -29,7 +29,9 @@ The public shell conflicted with ADR 0009's legal-review condition. Huey ruled t
 
 The check also found two wrong statements on `/attribution`: that Lexema never reads Wiktionary directly (the recovery layer reads the Wikimedia dump), and that the licence for Lexema's own material is undecided (ADR 0009's amendment settled it). They are fixed separately.
 
-This record amends ADR 0004 in part, its *Access* line, and ADR 0009 in part, its *Legal review before public launch* clause and the legal-review sentence of its amendment. The rest of both stands.
+ADR 0009 also barred publishing the July archive, because the file does not record which Wiktionary dump it was built from. Huey ruled that Lexema keeps that archive and states its source as the 1 July 2026 dump. kaikki rebuilds its files about weekly and publishes no list of what changes between builds, so moving to a newer file now would mean re-checking the data for no stated gain. The evidence for 1 July: the archive was built on 16 July, the most recent dump before that is `itwiktionary-20260701`, every one of the archive's 560,357 records has a page of its exact title in that dump, and the dump's newest revision is from 3 July ([report](../reports/2026-09-23-recovered-definitions-full-release.md)). Checking kaikki for newer builds automatically is left for later ([#132](https://github.com/hueypov/lexema/issues/132)).
+
+This record amends ADR 0004 in part, its *Access* line. It amends ADR 0009 in part: the *Legal review before public launch* clause, the legal-review sentence of its amendment, and the clause that the July file is not published. The rest of both stands.
 
 ## Decision
 
@@ -37,7 +39,8 @@ This record amends ADR 0004 in part, its *Access* line, and ADR 0009 in part, it
 
 - **What is public.** The Worker `lexema-web` answers on `lexema.fyi` only. `workers.dev` and preview URLs are off. `www.lexema.fyi` redirects to the apex, and HTTP redirects to HTTPS. `pnpm --filter @lexema/web run deploy:production` deploys it ([docs/DEPLOY.md](../docs/DEPLOY.md)).
 - **No lawyer's review.** Publishing, the site or its data, needs no legal review. Compliance means meeting the licence's own terms, checked as above, and any change to what is published or how it is credited is checked against them again.
-- **No dictionary data yet.** The production config has no D1 binding. Attaching one publishes Wiktionary text, so it waits for ADR 0009's remaining pre-publication condition, a dated release.
+- **The published source is the 1 July 2026 snapshot.** The archive `it-0c432803` is published as extracted from `itwiktionary-20260701`, and every place that names the source says the dump is inferred from the build date and confirmed by the page match, not recorded by kaikki.
+- **No dictionary data yet.** The production config has no D1 binding. Attaching one publishes Wiktionary text, so it waits until the release records its source dump, download date and checksum, which the attribution page then shows.
 - **Layer one, Cloudflare's rate-limiting rule "Lexema flood guard".** It matches the paths `/`, `/index.rsc` and `/suggest`, and allows 60 requests per 10 seconds per IP, then blocks for 10 seconds. The free plan allows path matching only and a 10-second window, so this rule is a flood guard, not the reading policy. It runs before the Worker, so a blocked request is not a billed Worker request.
 - **Layer two, the Worker's rate-limit binding.** It allows 15 searches and 120 suggestions per 60 seconds per visitor. It keys on `CF-Connecting-IP`, using the /64 for IPv6, and runs before any route and any database access. Over the limit, a search gets a 429 page that keeps the search field, and a suggestion gets nothing. Blocks are logged without the address.
 - **The numbers are configuration.** The limits live in `web/wrangler.jsonc` and in the dashboard rule. They are a starting point, tuned on logged blocks, and changing them needs no new record.
@@ -45,7 +48,7 @@ This record amends ADR 0004 in part, its *Access* line, and ADR 0009 in part, it
 **Binding constraints.**
 
 - No request path reaches a lookup or suggestion without first passing the Worker's limit.
-- Production gains a D1 binding only once ADR 0009's remaining pre-publication condition, a dated release, is met.
+- Production gains a D1 binding only once the served release records its source dump, download date and checksum.
 - A setting made in the Cloudflare dashboard is written down in the repository, on #19 or in `docs/DEPLOY.md`, the day it is made.
 
 ## Consequences
