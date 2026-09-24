@@ -51,9 +51,13 @@ metadata, and **must not be published with guessed values.**
 > [Wikizionario italiano](https://it.wiktionary.org/), l'edizione italiana di Wiktionary, un progetto
 > della [Wikimedia Foundation](https://wikimediafoundation.org/) scritto da volontari.
 >
-> Non abbiamo letto il Wikizionario direttamente. Usiamo l'estrazione automatica pubblicata da
+> La maggior parte proviene dall'estrazione automatica pubblicata da
 > [kaikki.org](https://kaikki.org/itwiktionary/), prodotta con lo strumento
 > [wiktextract](https://github.com/tatuylonen/wiktextract) di Tatu Ylonen.
+>
+> Dove quell'estrazione ha perso una definizione, Lexema la legge dalla pagina stessa, nel
+> [dump Wikimedia del Wikizionario italiano](https://dumps.wikimedia.org/itwiktionary/), e la
+> segna come *recuperata*, con un link alla revisione della pagina da cui è stata letta.
 >
 > ## Licenza
 >
