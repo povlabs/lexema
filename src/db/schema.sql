@@ -33,9 +33,20 @@ CREATE TABLE source_release (
   release_id       TEXT PRIMARY KEY,
 
   source_name      TEXT NOT NULL,           -- e.g. 'kaikki-it-wiktextract'
+  -- The archive does not carry these in its own bytes. The seed copies them
+  -- from src/source/archiveFacts.ts, and only for the archive whose SHA-256
+  -- they are keyed by; any other file leaves all of them NULL.
   source_url       TEXT,                    -- download URL, when known
   retrieved_at     TEXT,                    -- ISO-8601, when known
-  upstream_release TEXT,                    -- upstream dump id; still unverified for the local file
+  -- The Wiktionary dump id, when known: `itwiktionary-YYYYMMDD`. Spelled out
+  -- rather than as one GLOB, which D1 refuses as too complex.
+  upstream_release TEXT
+                   CHECK (length(upstream_release) = 21
+                          AND substr(upstream_release, 1, 13) = 'itwiktionary-'
+                          AND substr(upstream_release, 14) NOT GLOB '*[^0-9]*'),
+  -- 'recorded' when kaikki's build names the dump, 'inferred' when it does not
+  -- and the dump was reasoned to; the reasoning is in src/source/archiveFacts.ts.
+  upstream_release_basis TEXT CHECK (upstream_release_basis IN ('recorded', 'inferred')),
 
   archive_r2_key   TEXT NOT NULL,           -- the untouched .jsonl.gz in R2
   archive_sha256   TEXT NOT NULL,           -- of the compressed bytes
@@ -80,7 +91,10 @@ CREATE TABLE source_release (
   CHECK ((admitted IS NULL) = (lines_read IS NULL)),
   CHECK ((admitted IS NULL) = (skipped_other_language IS NULL)),
   CHECK ((admitted IS NULL) = (malformed_lines IS NULL)),
-  CHECK ((admitted IS NULL) = (malformed_members IS NULL))
+  CHECK ((admitted IS NULL) = (malformed_members IS NULL)),
+
+  -- A dump is never stated without how it is known.
+  CHECK ((upstream_release IS NULL) = (upstream_release_basis IS NULL))
 ) STRICT;
 
 -- Rows the run wrote, one line per table it wrote them to. A table rather than

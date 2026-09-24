@@ -18,6 +18,7 @@ import type {
   Reading,
   RecoveredDefinition,
   RecoveredRoute,
+  ReleaseDump,
   ReleaseInfo,
   Review,
   Sense,
@@ -253,12 +254,13 @@ export async function readRelease(
     retrieved_at: string | null;
     archive_sha256: string;
     upstream_release: string | null;
+    upstream_release_basis: "recorded" | "inferred" | null;
     license: string | null;
     attribution: string | null;
   }>(
     db,
     `SELECT release_id, normalizer, source_url, retrieved_at, archive_sha256,
-            upstream_release, license, attribution
+            upstream_release, upstream_release_basis, license, attribution
        FROM source_release
       WHERE release_id = ? AND status = 'complete'`,
     releaseId,
@@ -272,10 +274,31 @@ export async function readRelease(
         sourceUrl: row.source_url,
         retrievedAt: row.retrieved_at,
         archiveSha256: row.archive_sha256,
-        upstreamRelease: row.upstream_release,
+        dump: releaseDump(row),
         license: row.license,
         attribution: row.attribution,
       };
+}
+
+/**
+ * The dump columns as one value. The schema's checks make a dump without its
+ * basis, or an id that is not `itwiktionary-YYYYMMDD`, impossible, so the date
+ * and the dump's Wikimedia page are read off the id.
+ */
+function releaseDump(row: {
+  upstream_release: string | null;
+  upstream_release_basis: "recorded" | "inferred" | null;
+}): ReleaseDump | null {
+  const { upstream_release: id, upstream_release_basis: basis } = row;
+  if (id === null) return null;
+  if (basis === null) throw new Error(`source_release names dump '${id}' without its basis`);
+  const digits = id.slice(-8);
+  return {
+    id,
+    date: `${digits.slice(0, 4)}-${digits.slice(4, 6)}-${digits.slice(6, 8)}`,
+    url: `https://dumps.wikimedia.org/itwiktionary/${digits}/`,
+    basis,
+  };
 }
 
 /** A record's grammar and the forms it lists, which the grammar is keyed into. */

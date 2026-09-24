@@ -531,10 +531,25 @@ export interface ReleaseInfo {
   retrievedAt: string | null;
   /** SHA-256 of the compressed archive these bytes came from. */
   archiveSha256: string;
-  /** The upstream dump the archive was extracted from, when the import knew it. */
-  upstreamRelease: string | null;
+  /** The Wiktionary dump the archive was extracted from, when the import knew it. */
+  dump: ReleaseDump | null;
   license: string | null;
   attribution: string | null;
+}
+
+/**
+ * The Wiktionary dump a release was extracted from. `inferred` is a dump
+ * kaikki's build did not name and the import reasoned to; the reasoning is in
+ * src/source/archiveFacts.ts, not in the database.
+ */
+export interface ReleaseDump {
+  /** The Wikimedia dump id, e.g. `itwiktionary-20260701`. */
+  id: string;
+  /** The dump's date, `YYYY-MM-DD`, which its id spells. */
+  date: string;
+  /** The dump's public page at Wikimedia, which its id also spells. */
+  url: string;
+  basis: "recorded" | "inferred";
 }
 
 /** What the caller asked and what the index was actually probed with. */

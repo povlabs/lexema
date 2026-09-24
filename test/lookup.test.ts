@@ -200,7 +200,6 @@ async function fixture() {
     schema: "src/db/schema.sql",
     releaseId: RELEASE,
     archiveR2Key: "releases/it-test.jsonl.gz",
-    sourceUrl: "https://example.invalid/it-extract.jsonl.gz",
     license: "CC-BY-SA-4.0",
     onRejection: (rejection) => {
       throw new Error(`fixture line rejected: ${JSON.stringify(rejection)}`);
@@ -722,7 +721,7 @@ test("the result type cannot express a found with nothing found", () => {
     sourceUrl: null,
     retrievedAt: null,
     archiveSha256: "0".repeat(64),
-    upstreamRelease: null,
+    dump: null,
     license: null,
     attribution: null,
   };

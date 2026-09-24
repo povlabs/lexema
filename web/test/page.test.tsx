@@ -17,6 +17,7 @@
 // `cloudflare:workers`, which exists only inside workerd.
 
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import test from "node:test";
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -29,6 +30,7 @@ import { TENSE_BOXES } from "../../src/italian/moods.js";
 import { seedSql } from "../../src/import/seedSql.js";
 import { writeKnownDisputes } from "../../src/import/knownDisputes.js";
 import { loadFixturePages, type RawPageSource } from "../../src/source/rawPage.js";
+import { ARCHIVE_FACTS, type ArchiveFacts } from "../../src/source/archiveFacts.js";
 import { fromNodeSqlite } from "../../src/lookup/database.js";
 import { lookup, readRelease } from "../../src/lookup/lookup.js";
 import type { Reading } from "../../src/lookup/types.js";
@@ -90,18 +92,26 @@ interface Fixture {
   db: DatabaseSync;
 }
 
-async function fixture(lines: readonly string[], rawPages?: RawPageSource): Promise<Fixture> {
+async function fixture(
+  lines: readonly string[],
+  rawPages?: RawPageSource,
+  facts?: ArchiveFacts,
+): Promise<Fixture> {
   const dir = await mkdtemp(join(tmpdir(), "lexema-page-"));
   const archive = join(dir, "fixture.jsonl.gz");
   const outputDir = join(dir, "sql");
-  await writeFile(archive, gzipSync(Buffer.from(`${lines.join("\n")}\n`, "utf8")));
+  const bytes = gzipSync(Buffer.from(`${lines.join("\n")}\n`, "utf8"));
+  await writeFile(archive, bytes);
   const { parts } = await seedSql({
     input: archive,
     outputDir,
     schema: join(REPO, "src/db/schema.sql"),
     releaseId: RELEASE,
     archiveR2Key: `releases/${RELEASE}.jsonl.gz`,
-    sourceUrl: "https://example.invalid/it-extract.jsonl.gz",
+    // Facts, when a test gives them, are keyed by this archive's own checksum,
+    // exactly as the committed ones are keyed by the July archive's.
+    archiveFacts:
+      facts === undefined ? undefined : { [createHash("sha256").update(bytes).digest("hex")]: facts },
     license: "CC-BY-SA-4.0",
     rawPages,
     onRejection: (rejection) => {
@@ -119,8 +129,9 @@ async function withLines(
   lines: readonly string[],
   run: (f: Fixture) => Promise<void>,
   rawPages?: RawPageSource,
+  facts?: ArchiveFacts,
 ): Promise<void> {
-  const f = await fixture(lines, rawPages);
+  const f = await fixture(lines, rawPages, facts);
   try {
     await run(f);
   } finally {
@@ -1014,63 +1025,72 @@ test("the attribution page carries the credit, the licence and the restructuring
   });
 });
 
-test("the attribution page states the release identity, and says which columns were not recorded", async () => {
+/** The July archive's facts, as committed: the ones the live page will show. */
+const JULY_FACTS = ARCHIVE_FACTS["0c432803c672aceccd48787eb64807c5366fdbd6796715c9a99e31c0024d5dcf"];
+
+test("the attribution page names the dump and links the download the release came from", async () => {
+  await withLines(FIXTURE_LINES, async ({ db }) => {
+    const html = await attribution(db);
+
+    assert.match(
+      html,
+      exact(
+        field(
+          "Source",
+          `<a class="${LINK}" href="https://dumps.wikimedia.org/itwiktionary/20260701/" rel="noreferrer">` +
+            `Italian Wiktionary, dump of 1 July 2026</a>`,
+        ),
+      ),
+    );
+    assert.match(
+      html,
+      exact(
+        field(
+          "Downloaded from",
+          `<a class="${LINK}" href="https://kaikki.org/dictionary/downloads/it/it-extract.jsonl.gz" rel="noreferrer">` +
+            `<code class="${CODE_IDENTITY}">https://kaikki.org/dictionary/downloads/it/it-extract.jsonl.gz</code></a>`,
+        ),
+      ),
+    );
+
+    // Short and plain, by Huey's ruling on #133: the two facts a reader needs
+    // to know where the data came from, and nothing else about the release.
+    const identity = html.slice(html.indexOf('id="version"'), html.indexOf('id="open"'));
+    assert.deepEqual(
+      [...identity.matchAll(/<dt[^>]*>([^<]*)<\/dt>/g)].map((match) => match[1]),
+      ["Source", "Downloaded from"],
+    );
+    const row = db.prepare("SELECT archive_sha256 AS sha FROM source_release").get() as { sha: string };
+    assert.doesNotMatch(html, new RegExp(row.sha), "no checksum");
+    assert.doesNotMatch(html, /it-page-test/, "no release id");
+    assert.doesNotMatch(html, /2026-07-20|20 July|16 July|3 July/, "no download, build or edit date");
+    assert.doesNotMatch(html, /560,357/, "no counts");
+    assert.doesNotMatch(html, /inferred/i, "the basis stays in the facts and the docs");
+    assert.doesNotMatch(html, /github\.com\/hueypov|reports\//, "no report links");
+  }, undefined, JULY_FACTS);
+});
+
+test("the attribution page says not recorded for a release whose checksum has no facts", async () => {
   await withFixture(async ({ db }) => {
     const html = await attribution(db);
-    const row = db
-      .prepare("SELECT archive_sha256 AS sha FROM source_release WHERE release_id = ?")
-      .get(RELEASE) as { sha: string };
 
-    assert.match(html, exact(field("Release", `<code class="${CODE_IDENTITY}">it-page-test</code>`)));
-    assert.match(
-      html,
-      exact(
-        field(
-          "Source file",
-          `<a class="${LINK}" href="https://example.invalid/it-extract.jsonl.gz" rel="noreferrer">` +
-            `<code class="${CODE_IDENTITY}">https://example.invalid/it-extract.jsonl.gz</code></a>`,
-        ),
-      ),
-    );
-    assert.match(
-      html,
-      exact(
-        field(
-          "SHA-256 of the downloaded file",
-          `<code class="${CODE_IDENTITY}">${row.sha}</code>`,
-        ),
-      ),
-    );
-    // The two columns this import left NULL. Said in words, in place: never a
-    // blank, and never a value nobody recorded.
-    assert.match(
-      html,
-      exact(field("Downloaded at (UTC)", `<span class="${EMPTY}">not recorded</span>`)),
-    );
-    assert.match(
-      html,
-      exact(field("Upstream Wiktionary dump", `<span class="${EMPTY}">not recorded</span>`)),
-    );
+    // Said in words, in place: never a blank, and never a value nobody recorded.
+    assert.match(html, exact(field("Source", `<span class="${EMPTY}">not recorded</span>`)));
+    assert.match(html, exact(field("Downloaded from", `<span class="${EMPTY}">not recorded</span>`)));
+    assert.doesNotMatch(html, /kaikki\.org\/dictionary\/downloads|dumps\.wikimedia\.org/);
     // Counted on the element: a blank value is a blank whatever it is classed.
     assert.equal(patternsOf(html, /<dd[^>]*><\/dd>/), 0, "no field renders blank");
 
     // A release that cannot be read is a different answer from a release with
-    // nothing in it, and the page gives it in words rather than as five gaps.
+    // nothing in it, and the page gives it in words rather than as empty rows.
     const unread = renderToStaticMarkup(<Attribution release={undefined} />);
     assert.match(unread, /The release serving this site could not be read/);
-    // And not one of the five rows is rendered in its place. Each is named by
-    // its own label, matched on the element rather than on a class string, so a
-    // row that comes back differently classed still fails this.
-    for (const label of [
-      "Release",
-      "Source file",
-      "Downloaded at (UTC)",
-      "SHA-256 of the downloaded file",
-      "Upstream Wiktionary dump",
-    ]) {
+    // And neither row is rendered in its place. Each is named by its own label,
+    // matched on the element rather than on a class string, so a row that comes
+    // back differently classed still fails this.
+    for (const label of ["Source", "Downloaded from"]) {
       assert.doesNotMatch(unread, new RegExp(`<dt[^>]*>${esc(label)}</dt>`), label);
     }
-    // Nor any value of theirs: the identity codes are what those rows carry.
     assert.doesNotMatch(unread, /<code[^>]*>/, "no release identity value is rendered");
   });
 });

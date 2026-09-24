@@ -7,7 +7,9 @@ import { createInterface } from "node:readline";
 import { mkdtemp, readdir, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
+import { createHash } from "node:crypto";
 import { seedSql } from "../src/import/seedSql.js";
+import { ARCHIVE_FACTS, archiveFactsFor } from "../src/source/archiveFacts.js";
 import { loadFixturePages } from "../src/source/rawPage.js";
 import { applyParts, PartFailure } from "../src/import/sqlParts.js";
 
@@ -367,4 +369,113 @@ test("with leaveImporting the SQL never marks the release servable, and still re
       assert.equal(row.admitted, report.admitted);
     } finally { db.close(); }
   } finally { await rm(dir, { recursive: true, force: true }); }
+});
+
+const JULY_SHA256 = "0c432803c672aceccd48787eb64807c5366fdbd6796715c9a99e31c0024d5dcf";
+
+type ReleaseFactsRow = {
+  source_url: string | null;
+  retrieved_at: string | null;
+  upstream_release: string | null;
+  upstream_release_basis: string | null;
+};
+
+const releaseFacts = (db: DatabaseSync): ReleaseFactsRow =>
+  ({ ...db.prepare("SELECT source_url, retrieved_at, upstream_release, upstream_release_basis FROM source_release").get() }) as ReleaseFactsRow;
+
+test("the July archive's facts are committed once, keyed by its checksum, with their evidence", async () => {
+  assert.deepEqual(
+    { ...archiveFactsFor(JULY_SHA256), evidence: undefined },
+    {
+      sourceUrl: "https://kaikki.org/dictionary/downloads/it/it-extract.jsonl.gz",
+      retrievedAt: "2026-07-20T09:04:02Z",
+      dump: { id: "itwiktionary-20260701", basis: "inferred" },
+      evidence: undefined,
+    },
+  );
+  assert.equal(archiveFactsFor("f".repeat(64)), undefined);
+  // A key the seed could never compute would hold facts no archive gets.
+  for (const [sha, facts] of Object.entries(ARCHIVE_FACTS)) {
+    assert.match(sha, /^[0-9a-f]{64}$/, `${sha}: a lowercase SHA-256`);
+    assert.match(facts.dump.id, /^itwiktionary-\d{8}$/, `${sha}: a Wikimedia dump id`);
+    // Each pointer names a file in this repository that shows the fact.
+    assert.ok(facts.evidence.length > 0, `${sha}: evidence`);
+    for (const pointer of facts.evidence) {
+      const path = pointer.split(/[ :]/, 1)[0];
+      assert.ok(existsSync(resolve(path)), `${sha}: evidence ${path} exists`);
+    }
+  }
+});
+
+test("a seed records the facts keyed by its archive's checksum, and only those", async () => {
+  const { dir, input, outputDir } = await fixture([rawLemma]);
+  try {
+    const sha = createHash("sha256").update(await readFile(input)).digest("hex");
+    const report = await seedSql({
+      input, outputDir, schema: resolve("src/db/schema.sql"), releaseId: "it-test",
+      archiveFacts: { [sha]: ARCHIVE_FACTS[JULY_SHA256] },
+    });
+    assert.equal(report.archiveFacts, ARCHIVE_FACTS[JULY_SHA256]);
+    const db = openSeed(report.parts, join(dir, "match.sqlite"));
+    try {
+      assert.deepEqual(releaseFacts(db), {
+        source_url: "https://kaikki.org/dictionary/downloads/it/it-extract.jsonl.gz",
+        retrieved_at: "2026-07-20T09:04:02Z",
+        upstream_release: "itwiktionary-20260701",
+        upstream_release_basis: "inferred",
+      });
+    } finally { db.close(); }
+  } finally { await rm(dir, { recursive: true, force: true }); }
+});
+
+test("an archive with any other checksum records none of the facts", async () => {
+  const { dir, input, outputDir } = await fixture([rawLemma]);
+  try {
+    // The committed catalog, as every real seed reads it. This file is not the
+    // July archive, so nothing of the July archive's may land on it.
+    const report = await seedSql({ input, outputDir, schema: resolve("src/db/schema.sql"), releaseId: "it-test" });
+    assert.equal(report.archiveFacts, undefined);
+    const db = openSeed(report.parts, join(dir, "other.sqlite"));
+    try {
+      assert.deepEqual(releaseFacts(db), {
+        source_url: null, retrieved_at: null, upstream_release: null, upstream_release_basis: null,
+      });
+    } finally { db.close(); }
+  } finally { await rm(dir, { recursive: true, force: true }); }
+});
+
+test("the dev fixture, cut from the July archive, is a different file and records none of its facts", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "lexema-seed-"));
+  try {
+    const report = await seedSql({
+      input: fixturePath, outputDir: join(dir, "sql"), schema: resolve("src/db/schema.sql"), releaseId: "it-dev",
+      requiredWords: HUEY_WORDS, validateFixtureClosure: true,
+    });
+    assert.notEqual(report.archiveSha256, JULY_SHA256);
+    const db = openSeed(report.parts, join(dir, "dev.sqlite"));
+    try {
+      assert.deepEqual(releaseFacts(db), {
+        source_url: null, retrieved_at: null, upstream_release: null, upstream_release_basis: null,
+      });
+    } finally { db.close(); }
+  } finally { await rm(dir, { recursive: true, force: true }); }
+});
+
+test("the schema refuses a dump without its basis, and an id that is not a dump's", () => {
+  const db = new DatabaseSync(":memory:");
+  try {
+    db.exec(readFileSync(resolve("src/db/schema.sql"), "utf8"));
+    const insert = (dump: string | null, basis: string | null) =>
+      db.prepare(
+        `INSERT INTO source_release (release_id, source_name, upstream_release, upstream_release_basis,
+           archive_r2_key, archive_sha256, archive_bytes, normalizer, importer_version, schema_version)
+         VALUES (?, 'kaikki-it-wiktextract', ?, ?, 'releases/x.jsonl.gz', ?, 1, 'it-normalize/v1', 'it-import/v1', 1)`,
+      ).run(`it-${Math.random()}`, dump, basis, "0".repeat(64));
+    insert("itwiktionary-20260701", "inferred");
+    insert(null, null);
+    assert.throws(() => insert("itwiktionary-20260701", null), /CHECK constraint failed/);
+    assert.throws(() => insert(null, "inferred"), /CHECK constraint failed/);
+    assert.throws(() => insert("itwiktionary-20260701", "guessed"), /CHECK constraint failed/);
+    assert.throws(() => insert("1 July 2026", "inferred"), /CHECK constraint failed/);
+  } finally { db.close(); }
 });
