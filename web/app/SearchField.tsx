@@ -51,7 +51,26 @@ import {
 export const DEBOUNCE_MS = 150;
 
 /** What the list is showing: suggestions for some prefix, or that none could be read. */
-type Shown = { kind: "suggested"; suggestions: string[] } | { kind: "failed" };
+export type Shown = { kind: "suggested"; suggestions: string[] } | { kind: "failed" };
+
+/**
+ * What the list shows for an answer, or `null` to show nothing.
+ *
+ * A prefix the server refused and a visitor over the suggestion limit
+ * (`limited`, sent with a 429) both show nothing: there is no list to offer,
+ * and neither is a failure the reader can act on, so neither says one.
+ */
+export function shownFor(answer: SuggestAnswer): Shown | null {
+  switch (answer.outcome) {
+    case "suggested":
+      return { kind: "suggested", suggestions: answer.suggestions };
+    case "failed":
+      return { kind: "failed" };
+    case "rejected":
+    case "limited":
+      return null;
+  }
+}
 
 /**
  * What a screen reader is told when the list changes. Base UI's `Status` is a
@@ -104,13 +123,7 @@ export function SearchField({ raw }: { raw: string }) {
         const response = await fetch(`/suggest?q=${encodeURIComponent(prefix)}`, { signal: request.signal });
         const answer = (await response.json()) as SuggestAnswer;
         if (request.signal.aborted) return;
-        setShown(
-          answer.outcome === "suggested"
-            ? { kind: "suggested", suggestions: answer.suggestions }
-            : answer.outcome === "failed"
-              ? { kind: "failed" }
-              : null,
-        );
+        setShown(shownFor(answer));
       } catch {
         if (request.signal.aborted) return;
         setShown({ kind: "failed" });

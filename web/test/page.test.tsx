@@ -35,7 +35,7 @@ import type { Reading } from "../../src/lookup/types.js";
 import type { Attempt } from "../app/attempt.ts";
 import { Attribution } from "../app/Attribution";
 import { DEFINITION_SLICE, GROUPS_SHOWN_OPEN } from "../app/Reading";
-import { FirstLoad, Outcome, Pending, SearchPage, TRY_WORDS } from "../app/SearchPage";
+import { FirstLoad, Limited, Outcome, Pending, SearchPage, TRY_WORDS } from "../app/SearchPage";
 import { SiteFooter } from "../app/SiteFooter";
 import { SiteHeader } from "../app/SiteHeader";
 import { RELATED_SLICE } from "../app/Word";
@@ -956,6 +956,24 @@ test("renders the states that are not an answer: loading, rejected, failed, not 
     const missing = await render(db, "zzzznothing");
     assert.match(missing, exact(`<p class="${EMPTY}" role="status">Nothing in this release matches`));
   });
+});
+
+test("a search over the limit says so plainly, under the same field, and claims nothing about the word", () => {
+  const html = renderToStaticMarkup(
+    <SearchPage raw="sale">
+      <Limited raw="sale" />
+    </SearchPage>,
+  );
+  assert.match(
+    html,
+    exact(
+      `<p class="${ERROR}" role="alert">Too many searches in the last minute, so this one did not run. ` +
+        `Try again in a minute.</p>`,
+    ),
+  );
+  assert.match(html, /<input [^>]*type="search" aria-label="Search an Italian word"[^>]*name="q" value="sale"\/>/);
+  assert.equal(patternsOf(html, /<h1[\s>]/), 1);
+  assert.doesNotMatch(html, /Nothing in this release|The lookup failed|Searching for/);
 });
 
 /** The attribution page, over the release the fixture imported. */

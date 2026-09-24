@@ -92,6 +92,25 @@ export function Pending({ raw }: { raw: string }) {
 }
 
 /**
+ * Too many searches from this visitor this minute (worker/rateLimit.ts), so
+ * the lookup did not run and the page answers with a 429. Said plainly, with
+ * the search field still above it; nothing here claims anything about the
+ * word, because nobody looked.
+ */
+export function Limited({ raw }: { raw: string }) {
+  return (
+    <>
+      <h1 className="sr-only">
+        Search for <span lang="it">{raw.trim()}</span>
+      </h1>
+      <p className={ERROR} role="alert">
+        Too many searches in the last minute, so this one did not run. Try again in a minute.
+      </p>
+    </>
+  );
+}
+
+/**
  * Every state a probed query can land in, each said plainly rather than
  * collapsed into one blank page: asked badly, the lookup itself failed, asked
  * and not found, asked and found.

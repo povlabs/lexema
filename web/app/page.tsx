@@ -6,9 +6,15 @@
 // The markup itself is in SearchPage.tsx, which knows nothing about D1. This
 // file is the wiring: read the query, run the lookup, and put the two together
 // behind a streaming boundary so the page can say it is searching.
+//
+// A search over the visitor's limit is decided before this runs, in
+// worker/rateLimit.ts, which marks the request; a marked request renders the
+// "too many searches" state and never reaches `search`.
 
+import { headers } from "next/headers";
 import { Suspense } from "react";
-import { FirstLoad, Outcome, Pending, SearchPage } from "./SearchPage";
+import { SEARCH_LIMITED_HEADER } from "../worker/rateLimit.ts";
+import { FirstLoad, Limited, Outcome, Pending, SearchPage } from "./SearchPage";
 import { firstQuery, type QueryParam } from "./params";
 import { search } from "./db";
 
@@ -26,13 +32,16 @@ async function Results({ raw }: { raw: string }) {
   return <Outcome raw={raw} attempt={await search(raw)} />;
 }
 
-export default function Page({ searchParams }: PageProps) {
+export default async function Page({ searchParams }: PageProps) {
   const raw = firstQuery(searchParams.q);
+  const limited = (await headers()).has(SEARCH_LIMITED_HEADER);
 
   return (
     <SearchPage raw={raw}>
       {raw.trim() === "" ? (
         <FirstLoad />
+      ) : limited ? (
+        <Limited raw={raw} />
       ) : (
         // The loading state a server-rendered page can honestly have: React
         // streams `Pending` in the result's place and replaces it when the

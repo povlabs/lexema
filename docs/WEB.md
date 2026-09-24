@@ -17,8 +17,11 @@ web/app/Reading.tsx     how one entry renders
 web/app/params.ts       the query as it arrives in the URL
 web/app/attempt.ts      a lookup, or the fact that it did not happen
 web/app/db.ts           the D1 binding
+web/worker/index.ts     the Worker's entry: the rate limits, then vinext
+web/worker/rateLimit.ts which requests are counted, and against whose count
 src/lookup/             the query layer, shared with the importer's tests
 web/test/page.test.tsx  the page, rendered over a fixture release
+web/test/rateLimit.test.ts  the limits, with a fake binding
 ```
 
 The markup is split from the wiring so it can be rendered without a Worker.
@@ -84,6 +87,33 @@ for `ca` is never drawn over the list for `cas`.
 The form sits inside the Autocomplete root, not around it. The root renders a
 second, typeless input, and a form with two text fields and no submit button is
 one Enter cannot submit.
+
+## Why the rate limits sit in front of vinext
+
+Requests are the cost (#19), so a visitor gets 15 searches and 120 suggestions a
+minute ([#128](https://github.com/hueypov/lexema/issues/128)). The numbers are
+Cloudflare's rate-limit bindings in `web/wrangler.jsonc`, with Huey's reasons
+beside them. The binding counts per Cloudflare location and has only 10 s and
+60 s windows.
+
+The check is `web/worker/index.ts`, the Worker's `main`. It wraps vinext's own
+App Router entry, so it runs before any route and in one place. A request counts
+as a suggestion when its path is `/suggest`, and as a search when it carries a
+non-empty `q`. That rule covers the HTML page and an RSC request for the same URL
+alike, and every spelling of the path vinext would normalize back to `/`. Static
+assets never reach the Worker, and the home page has no `q`.
+
+A visitor is `CF-Connecting-IP`, with an IPv6 address cut to its /64, since one
+host can use any address in its /64. A block is logged by which limit it was,
+never by the address.
+
+A blocked suggestion is answered in the entry with a 429 and
+`{"outcome":"limited"}`; the field shows nothing for it. A blocked search still
+has to render the page, with the field, so the entry marks the request and
+passes it on. `page.tsx` sees the mark, renders `Limited` in place of the lookup,
+and the entry sends that page as a 429 with `Retry-After: 60`. This is the one
+page status a server component could not set by itself: the limit is decided
+before the render starts. A mark sent by the client is removed first.
 
 ## Why the page is visibly silent
 
@@ -255,5 +285,5 @@ set `SEED_INPUT`; the local full-archive copy is conventionally
 
 ## Not in scope
 
-The page at phone width (#101). Deployment, rate limits and
-smoke tests against a real URL (#19).
+The page at phone width (#101). Attaching D1 in production and smoke tests
+against a real URL (#19). Deploying is [DEPLOY.md](DEPLOY.md).

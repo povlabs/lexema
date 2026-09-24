@@ -3,25 +3,71 @@
   "name": "lexema-web",
   "compatibility_date": "2026-09-18",
   "compatibility_flags": ["nodejs_compat"],
-  "main": "vinext/server/fetch-handler",
+  // Lexema's own entry: it checks the rate limits below, then hands the request
+  // to vinext's App Router entry (worker/index.ts).
+  "main": "worker/index.ts",
   "assets": {
     "directory": "dist/client",
     "not_found_handling": "none",
     "binding": "ASSETS"
   },
+  // Workers Logs, so every rate-limit block (logged as which limit, never the
+  // address) can be read when the numbers are tuned (#128).
+  "observability": { "enabled": true },
   "d1_databases": [
     {
       "binding": "DB",
       "database_name": "lexema",
       // Local-only placeholder. `--local` keys the miniflare sqlite file off
       // database_id, which can be any uuid; no Cloudflare account is touched.
-      // A real deployment replaces this, which is #19.
+      // Production has no D1 binding yet; attaching the real one is #19.
       "database_id": "00000000-0000-4000-8000-000000000002"
     }
+  ],
+  // Per-visitor limits, checked in worker/index.ts before the database is
+  // touched. Rulings by Huey on 2026-09-24 in #128
+  // (https://github.com/hueypov/lexema/issues/128):
+  // - SEARCH_LIMIT, 15 searches a minute. 30 was rejected ("nobody can write
+  //   that with a keyboard"); 15 leaves room for a reader clicking through
+  //   links in bursts, and keeps one address scraping 560k words to ~26 days.
+  // - SUGGEST_LIMIT, 120 suggestions a minute: one request per keystroke.
+  // - The binding counts per Cloudflare location and allows only a 10 s or
+  //   60 s period, which is why there is no hourly limit.
+  // - The numbers are a starting point; each block is logged so they can be
+  //   tuned on real traffic.
+  // `namespace_id` is any integer string, unique per limit in this account.
+  // Bindings are not inherited by environments, so env.production repeats
+  // these exactly; web/test/rateLimit.test.ts fails if the two drift.
+  "ratelimits": [
+    { "name": "SEARCH_LIMIT", "namespace_id": "1281", "simple": { "limit": 15, "period": 60 } },
+    { "name": "SUGGEST_LIMIT", "namespace_id": "1282", "simple": { "limit": 120, "period": 60 } }
   ],
   "vars": {
     // Which imported release to serve. A deployment flips this to activate a
     // new one; doing that safely is #18.
     "LEXEMA_RELEASE": "it-dev"
+  },
+  "env": {
+    // What runs at https://lexema.fyi. Selected at build time with
+    // CLOUDFLARE_ENV=production, which `pnpm --filter @lexema/web run
+    // deploy:production` sets (docs/DEPLOY.md). Only the custom domain serves
+    // it: no workers.dev address and no preview URLs. No D1 binding until #19,
+    // so a search there answers with the failed-lookup state.
+    "production": {
+      "name": "lexema-web",
+      "workers_dev": false,
+      "preview_urls": false,
+      "routes": [{ "pattern": "lexema.fyi", "custom_domain": true }],
+      // Empty on purpose. Wrangler warns at build that the top-level DB has no
+      // counterpart here; that absence is what is live until #19.
+      "d1_databases": [],
+      "ratelimits": [
+        { "name": "SEARCH_LIMIT", "namespace_id": "1281", "simple": { "limit": 15, "period": 60 } },
+        { "name": "SUGGEST_LIMIT", "namespace_id": "1282", "simple": { "limit": 120, "period": 60 } }
+      ],
+      "vars": {
+        "LEXEMA_RELEASE": "it-dev"
+      }
+    }
   }
 }
