@@ -250,10 +250,11 @@ those two, by Huey's ruling on [#133](https://github.com/hueypov/lexema/issues/1
 the release's other facts are in
 [`src/source/archiveFacts.ts`](../src/source/archiveFacts.ts).
 
-It is built the way the search page is: `app/Attribution.tsx` is the markup with
-no database in it, and `app/attribution/page.tsx` is the wiring that reads the
-release from D1. A column the import did not record renders as *not recorded* in
-words, and a field the draft in
+`app/Attribution.tsx` is the markup, and `app/attribution/page.tsx` is the wiring.
+The page reads no database: it looks up the served release id (`LEXEMA_RELEASE`)
+in `src/source/archiveFacts.ts`, so it shows the source even while production has
+no D1. A release id with no recorded facts, such as the development fixture's
+`it-dev`, renders *not recorded* in words, and a field the draft in
 [ATTRIBUTION_NOTICES.md](ATTRIBUTION_NOTICES.md) leaves open renders as open,
 naming what would settle it. Neither a blank nor a plausible-looking value is
 allowed to stand in for either.

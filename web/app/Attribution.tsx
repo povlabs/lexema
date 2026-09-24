@@ -13,7 +13,7 @@
 // it. Neither a blank nor a plausible-looking value is allowed to stand in.
 
 import type { ReactNode } from "react";
-import type { ReleaseInfo } from "@lexema/lookup/types.ts";
+import type { ReleaseSource } from "@lexema/source/archiveFacts.ts";
 import {
   CODE_IDENTITY,
   EMPTY,
@@ -67,36 +67,23 @@ function OpenField({ title, children }: { title: string; children: ReactNode }) 
 }
 
 /**
- * Where this release's data came from, or the reason there is none to show.
- *
- * Only what a reader needs to know that: the Wiktionary dump, and the file it
- * was downloaded as. The release's other facts — its checksum, when it was
- * downloaded, that the dump is inferred and why — are kept with the release
- * (src/source/archiveFacts.ts) and not shown here, by Huey's ruling on #133.
- *
- * A page that cannot read its release says so rather than rendering a table of
- * blanks, which would read as a release with no identity at all.
+ * Where this release's data came from: the Wiktionary dump, and the file it was
+ * downloaded as. It comes from src/source/archiveFacts.ts, not the database, so
+ * the page always shows it. The release's other facts — its checksum, when it
+ * was downloaded, that the dump is inferred and why — stay in that file and are
+ * not shown here, by Huey's ruling on #133.
  */
-function ReleaseIdentity({ release }: { release: ReleaseInfo | undefined }) {
-  if (release === undefined) {
-    return (
-      <p className={EMPTY} role="status">
-        The release serving this site could not be read, so this page cannot state which
-        snapshot of the source it is showing. Nothing is assumed in its place.
-      </p>
-    );
-  }
-
+function ReleaseIdentity({ source }: { source: ReleaseSource }) {
   return (
     <dl className={RELEASE_FIELDS}>
       <div className={FIELD}>
         <dt className={FIELD_LABEL}>Source</dt>
         <dd className={FIELD_VALUE}>
-          {release.dump === null ? (
+          {source.dump === null ? (
             <NotRecorded />
           ) : (
-            <a className={LINK} href={release.dump.url} rel="noreferrer">
-              Italian Wiktionary, dump of {DUMP_DATE.format(new Date(release.dump.date))}
+            <a className={LINK} href={source.dump.url} rel="noreferrer">
+              Italian Wiktionary, dump of {DUMP_DATE.format(new Date(source.dump.date))}
             </a>
           )}
         </dd>
@@ -104,11 +91,11 @@ function ReleaseIdentity({ release }: { release: ReleaseInfo | undefined }) {
       <div className={FIELD}>
         <dt className={FIELD_LABEL}>Downloaded from</dt>
         <dd className={FIELD_VALUE}>
-          {release.sourceUrl === null ? (
+          {source.sourceUrl === null ? (
             <NotRecorded />
           ) : (
-            <a className={LINK} href={release.sourceUrl} rel="noreferrer">
-              <code className={CODE_IDENTITY}>{release.sourceUrl}</code>
+            <a className={LINK} href={source.sourceUrl} rel="noreferrer">
+              <code className={CODE_IDENTITY}>{source.sourceUrl}</code>
             </a>
           )}
         </dd>
@@ -118,7 +105,7 @@ function ReleaseIdentity({ release }: { release: ReleaseInfo | undefined }) {
 }
 
 /** The whole page, over one release. */
-export function Attribution({ release }: { release: ReleaseInfo | undefined }) {
+export function Attribution({ source }: { source: ReleaseSource }) {
   return (
     <>
     <SiteHeader />
@@ -220,7 +207,7 @@ export function Attribution({ release }: { release: ReleaseInfo | undefined }) {
 
       <section aria-labelledby="version">
         <h2 className={SECTION_HEADING} id="version">Which data this is</h2>
-        <ReleaseIdentity release={release} />
+        <ReleaseIdentity source={source} />
       </section>
 
       {/* The draft in docs/ATTRIBUTION_NOTICES.md leaves these open. They are

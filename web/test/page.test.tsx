@@ -30,9 +30,9 @@ import { TENSE_BOXES } from "../../src/italian/moods.js";
 import { seedSql } from "../../src/import/seedSql.js";
 import { writeKnownDisputes } from "../../src/import/knownDisputes.js";
 import { loadFixturePages, type RawPageSource } from "../../src/source/rawPage.js";
-import { ARCHIVE_FACTS, type ArchiveFacts } from "../../src/source/archiveFacts.js";
+import { releaseSource, type ArchiveFacts } from "../../src/source/archiveFacts.js";
 import { fromNodeSqlite } from "../../src/lookup/database.js";
-import { lookup, readRelease } from "../../src/lookup/lookup.js";
+import { lookup } from "../../src/lookup/lookup.js";
 import type { Reading } from "../../src/lookup/types.js";
 import type { Attempt } from "../app/attempt.ts";
 import { Attribution } from "../app/Attribution";
@@ -988,15 +988,17 @@ test("a search over the limit says so plainly, under the same field, and claims 
 });
 
 /** The attribution page, over the release the fixture imported. */
-async function attribution(db: DatabaseSync): Promise<string> {
-  const release = await readRelease(fromNodeSqlite(db), RELEASE);
-  assert.notEqual(release, undefined, "the fixture release must be readable");
-  return renderToStaticMarkup(<Attribution release={release} />);
+/** The page as served for this release id. It reads no database. */
+function attribution(releaseId = "it-dev"): string {
+  return renderToStaticMarkup(<Attribution source={releaseSource(releaseId)} />);
 }
 
-test("the attribution page carries the credit, the licence and the restructuring statement", async () => {
-  await withFixture(async ({ db }) => {
-    const html = await attribution(db);
+/** The July archive's release id, as production serves it (web/wrangler.jsonc). */
+const JULY_RELEASE = "it-0c432803";
+
+test("the attribution page carries the credit, the licence and the restructuring statement", () => {
+  {
+    const html = attribution();
 
     // The licence, linked, under the name the licence itself uses.
     assert.match(
@@ -1022,15 +1024,12 @@ test("the attribution page carries the credit, the licence and the restructuring
     assert.match(html, /Lexema modified this material/);
     assert.match(html, /extracted from wiki text and converted into a data structure/);
     assert.match(html, /The wording of the definitions was not rewritten and was not generated/);
-  });
+  }
 });
 
-/** The July archive's facts, as committed: the ones the live page will show. */
-const JULY_FACTS = ARCHIVE_FACTS["0c432803c672aceccd48787eb64807c5366fdbd6796715c9a99e31c0024d5dcf"];
-
-test("the attribution page names the dump and links the download the release came from", async () => {
-  await withLines(FIXTURE_LINES, async ({ db }) => {
-    const html = await attribution(db);
+test("the attribution page names the dump and links the download the release came from, with no database", () => {
+  {
+    const html = attribution(JULY_RELEASE);
 
     assert.match(
       html,
@@ -1060,19 +1059,17 @@ test("the attribution page names the dump and links the download the release cam
       [...identity.matchAll(/<dt[^>]*>([^<]*)<\/dt>/g)].map((match) => match[1]),
       ["Source", "Downloaded from"],
     );
-    const row = db.prepare("SELECT archive_sha256 AS sha FROM source_release").get() as { sha: string };
-    assert.doesNotMatch(html, new RegExp(row.sha), "no checksum");
-    assert.doesNotMatch(html, /it-page-test/, "no release id");
+    assert.doesNotMatch(html, /0c432803/, "no checksum and no release id");
     assert.doesNotMatch(html, /2026-07-20|20 July|16 July|3 July/, "no download, build or edit date");
     assert.doesNotMatch(html, /560,357/, "no counts");
     assert.doesNotMatch(html, /inferred/i, "the basis stays in the facts and the docs");
     assert.doesNotMatch(html, /github\.com\/hueypov|reports\//, "no report links");
-  }, undefined, JULY_FACTS);
+  }
 });
 
-test("the attribution page says not recorded for a release whose checksum has no facts", async () => {
-  await withFixture(async ({ db }) => {
-    const html = await attribution(db);
+test("the attribution page says not recorded for a release with no recorded facts", () => {
+  {
+    const html = attribution("it-dev");
 
     // Said in words, in place: never a blank, and never a value nobody recorded.
     assert.match(html, exact(field("Source", `<span class="${EMPTY}">not recorded</span>`)));
@@ -1084,23 +1081,19 @@ test("the attribution page says not recorded for a release whose checksum has no
     // Counted on the element: a blank value is a blank whatever it is classed.
     assert.equal(patternsOf(html, /<dd[^>]*><\/dd>/), 0, "no field renders blank");
 
-    // A release that cannot be read is a different answer from a release with
-    // nothing in it, and the page gives it in words rather than as empty rows.
-    const unread = renderToStaticMarkup(<Attribution release={undefined} />);
-    assert.match(unread, /The release serving this site could not be read/);
-    // And neither row is rendered in its place. Each is named by its own label,
-    // matched on the element rather than on a class string, so a row that comes
-    // back differently classed still fails this.
-    for (const label of ["Source", "Downloaded from"]) {
-      assert.doesNotMatch(unread, new RegExp(`<dt[^>]*>${esc(label)}</dt>`), label);
+    // Any id that names no archive in the facts says the same: an unknown
+    // archive, and an id one hex digit away from the July archive's.
+    for (const releaseId of ["it-ffffffff", "it-0c432804", "production"]) {
+      const other = attribution(releaseId);
+      assert.match(other, exact(field("Source", `<span class="${EMPTY}">not recorded</span>`)), releaseId);
+      assert.match(other, exact(field("Downloaded from", `<span class="${EMPTY}">not recorded</span>`)), releaseId);
     }
-    assert.doesNotMatch(unread, /<code[^>]*>/, "no release identity value is rendered");
-  });
+  }
 });
 
 test("the attribution page shows every open field as open, with nothing guessed in it", async () => {
-  await withFixture(async ({ db }) => {
-    const html = await attribution(db);
+  await withFixture(async () => {
+    const html = attribution();
 
     // The two the draft in docs/ATTRIBUTION_NOTICES.md still leaves open, each
     // named as open and each saying what would settle it. The licence for

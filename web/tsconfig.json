@@ -13,7 +13,8 @@
     "types": ["node", "vinext/types", "./worker-configuration.d.ts"],
     "paths": {
       "@lexema/lookup/*": ["../src/lookup/*"],
-      "@lexema/italian/*": ["../src/italian/*"]
+      "@lexema/italian/*": ["../src/italian/*"],
+      "@lexema/source/*": ["../src/source/*"]
     }
   },
   "include": ["app", "worker", "test", "vite.config.ts", "worker-configuration.d.ts", "../src/lookup", "../src/italian"]
