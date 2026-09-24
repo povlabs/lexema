@@ -85,7 +85,6 @@ metadata, and **must not be published with guessed values.**
 >
 > - Fonte: [Wikizionario italiano, dump del {dumpDate}](https://dumps.wikimedia.org/itwiktionary/{dumpYYYYMMDD}/)
 > - Scaricato da: [`{sourceUrl}`]({sourceUrl})
-> - Versione di wiktextract: `{extractorCommits}`
 
 This section says where the data came from and nothing else, by Huey's ruling on
 [#133](https://github.com/hueypov/lexema/issues/133): no release id, download date, build date,
