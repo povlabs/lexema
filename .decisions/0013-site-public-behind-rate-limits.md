@@ -39,8 +39,9 @@ This record amends ADR 0004 in part, its *Access* line. It amends ADR 0009 in pa
 
 - **What is public.** The Worker `lexema-web` answers on `lexema.fyi` only. `workers.dev` and preview URLs are off. `www.lexema.fyi` redirects to the apex, and HTTP redirects to HTTPS. `pnpm --filter @lexema/web run deploy:production` deploys it ([docs/DEPLOY.md](../docs/DEPLOY.md)).
 - **No lawyer's review.** Publishing, the site or its data, needs no legal review. Compliance means meeting the licence's own terms, checked as above, and any change to what is published or how it is credited is checked against them again.
-- **The published source is the 1 July 2026 snapshot.** The archive `it-0c432803` is published as extracted from `itwiktionary-20260701`, and every place that names the source says the dump is inferred from the build date and confirmed by the page match, not recorded by kaikki.
-- **No dictionary data yet.** The production config has no D1 binding. Attaching one publishes Wiktionary text, so it waits until the release records its source dump, download date and checksum, which the attribution page then shows.
+- **The published source is the 1 July 2026 snapshot.** The archive `it-0c432803` is published as extracted from `itwiktionary-20260701`, The dump is inferred, not recorded by kaikki: it is the last dump before the build, and the page match is consistent with it, not proof of it. The repository's records say so.
+- **The attribution page stays short.** Huey ruled that `/attribution` should be as clear as possible. It names the source, the 1 July 2026 Italian Wiktionary dump, linked to its Wikimedia page, and links the kaikki.org download the file came from. Dates, checksums, release ids and the evidence stay in the repository, not on the page.
+- **No dictionary data yet.** The production config has no D1 binding. Attaching one publishes Wiktionary text, so it waits until the release records its source dump and download URL, which the attribution page then shows.
 - **Layer one, Cloudflare's rate-limiting rule "Lexema flood guard".** It matches the paths `/`, `/index.rsc` and `/suggest`, and allows 60 requests per 10 seconds per IP, then blocks for 10 seconds. The free plan allows path matching only and a 10-second window, so this rule is a flood guard, not the reading policy. It runs before the Worker, so a blocked request is not a billed Worker request.
 - **Layer two, the Worker's rate-limit binding.** It allows 15 searches and 120 suggestions per 60 seconds per visitor. It keys on `CF-Connecting-IP`, using the /64 for IPv6, and runs before any route and any database access. Over the limit, a search gets a 429 page that keeps the search field, and a suggestion gets nothing. Blocks are logged without the address.
 - **The numbers are configuration.** The limits live in `web/wrangler.jsonc` and in the dashboard rule. They are a starting point, tuned on logged blocks, and changing them needs no new record.
@@ -48,7 +49,7 @@ This record amends ADR 0004 in part, its *Access* line. It amends ADR 0009 in pa
 **Binding constraints.**
 
 - No request path reaches a lookup or suggestion without first passing the Worker's limit.
-- Production gains a D1 binding only once the served release records its source dump, download date and checksum.
+- Production gains a D1 binding only once the served release records its source dump and download URL.
 - A setting made in the Cloudflare dashboard is written down in the repository, on #19 or in `docs/DEPLOY.md`, the day it is made.
 
 ## Consequences
