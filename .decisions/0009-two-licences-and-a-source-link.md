@@ -1,7 +1,7 @@
 ---
 id: 0009
 title: Source-derived data is CC BY-SA, Lexema's own content is not, and a result shows one Source link
-status: accepted
+status: amended-in-part by [0013](0013-site-public-behind-rate-limits.md)
 date: 2026-09-21
 tags: [licensing, product]
 ---
