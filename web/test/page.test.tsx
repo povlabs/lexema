@@ -1077,7 +1077,10 @@ test("the attribution page says not recorded for a release whose checksum has no
     // Said in words, in place: never a blank, and never a value nobody recorded.
     assert.match(html, exact(field("Source", `<span class="${EMPTY}">not recorded</span>`)));
     assert.match(html, exact(field("Downloaded from", `<span class="${EMPTY}">not recorded</span>`)));
-    assert.doesNotMatch(html, /kaikki\.org\/dictionary\/downloads|dumps\.wikimedia\.org/);
+    // The sources paragraph links Wikimedia's dump index in general; the
+    // release section itself must name no dump and no download.
+    const version = html.slice(html.indexOf('id="version"'), html.indexOf('id="open"'));
+    assert.doesNotMatch(version, /kaikki\.org\/dictionary\/downloads|dumps\.wikimedia\.org/);
     // Counted on the element: a blank value is a blank whatever it is classed.
     assert.equal(patternsOf(html, /<dd[^>]*><\/dd>/), 0, "no field renders blank");
 
