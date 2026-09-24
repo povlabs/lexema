@@ -13,6 +13,7 @@ import {
   type ImportStatements,
   type Rejection,
 } from "./importRelease.js";
+import { archiveFactsFor, type ArchiveFacts, type ArchiveFactsCatalog } from "../source/archiveFacts.js";
 import type { RawPageSource } from "../source/rawPage.js";
 import { RecoveredLayer, type RecoverySummary } from "./recoveredLayer.js";
 import { clearParts, SqlPartWriter } from "./sqlParts.js";
@@ -181,9 +182,13 @@ export interface SeedSqlOptions {
   releaseId?: string;
   archiveR2Key?: string;
   sourceName?: string;
-  sourceUrl?: string;
-  retrievedAt?: string;
-  upstreamRelease?: string;
+  /**
+   * Where the download URL, download time and source dump come from, keyed by
+   * archive SHA-256. There is no option to pass those facts directly: they are
+   * read from here for the archive's own checksum, so they never land on a
+   * file they were not read from. Tests pass their own catalog.
+   */
+  archiveFacts?: ArchiveFactsCatalog;
   license?: string;
   attribution?: string;
   /** Development fixtures use this to make list/fixture drift fail by name. */
@@ -216,6 +221,8 @@ export interface SeedSqlReport extends ArchiveParseReport {
   parts: readonly string[];
   /** What the recovered layer took from the raw pages. */
   recovery: RecoverySummary;
+  /** The facts recorded for this archive's checksum, or none. */
+  archiveFacts: ArchiveFacts | undefined;
 }
 
 export async function seedSql(options: SeedSqlOptions): Promise<SeedSqlReport> {
@@ -286,9 +293,11 @@ export async function seedSql(options: SeedSqlOptions): Promise<SeedSqlReport> {
 
     const schemaSql = await readFile(options.schema, "utf8");
     const releaseId = start.releaseId;
+    const facts = archiveFactsFor(start.archiveSha256, options.archiveFacts);
+    const dump = facts?.dump;
     const release = `INSERT INTO source_release\n` +
-      `  (release_id,source_name,source_url,retrieved_at,upstream_release,archive_r2_key,archive_sha256,archive_bytes,normalizer,importer_version,schema_version,license,attribution,status)\n` +
-      `VALUES (${[releaseId, options.sourceName ?? "kaikki-it-wiktextract", options.sourceUrl ?? null, options.retrievedAt ?? null, options.upstreamRelease ?? null, options.archiveR2Key ?? `releases/${releaseId}.jsonl.gz`, start.archiveSha256, start.archiveBytes, "it-normalize/v1", "it-import/v1", 1, options.license ?? null, options.attribution ?? null, "importing"].map(literal).join(",")});\n`;
+      `  (release_id,source_name,source_url,retrieved_at,upstream_release,upstream_release_basis,archive_r2_key,archive_sha256,archive_bytes,normalizer,importer_version,schema_version,license,attribution,status)\n` +
+      `VALUES (${[releaseId, options.sourceName ?? "kaikki-it-wiktextract", facts?.sourceUrl ?? null, facts?.retrievedAt ?? null, dump?.id ?? null, dump?.basis ?? null, options.archiveR2Key ?? `releases/${releaseId}.jsonl.gz`, start.archiveSha256, start.archiveBytes, "it-normalize/v1", "it-import/v1", 1, options.license ?? null, options.attribution ?? null, "importing"].map(literal).join(",")});\n`;
     const finalStatus = options.leaveImporting ? "importing" : report.status;
     const finish = `UPDATE source_release SET status='${finalStatus}', lines_read=${report.linesRead}, admitted=${report.admitted}, skipped_other_language=${report.skippedOtherLanguage}, malformed_lines=${report.malformed}, malformed_members=${report.malformedMembers} WHERE release_id=${literal(releaseId)};\n`;
     const tableRows = TABLE_ORDER.slice(0, -1).map((table) =>
@@ -312,6 +321,7 @@ export async function seedSql(options: SeedSqlOptions): Promise<SeedSqlReport> {
       statements: TABLE_ORDER.slice(0, -1).reduce((sum, table) => sum + writer.counts[table], 0),
       parts: partPaths,
       recovery: recovered.summary,
+      archiveFacts: facts,
     };
   } finally {
     await rm(work, { recursive: true, force: true });

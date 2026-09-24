@@ -36,19 +36,23 @@ const LICENCE_URL = "https://creativecommons.org/licenses/by-sa/4.0/";
 const LICENCE_TEXT_URL = "https://creativecommons.org/licenses/by-sa/4.0/legalcode";
 
 /**
- * One column of the release row.
+ * A column the import did not know.
  *
  * `null` is the import saying it did not know the value, which is a different
  * fact from an empty one, so it is said in words. Nothing here falls back to a
  * default: a release identity that guesses is worse than one that admits a gap.
  */
-function Recorded({ value }: { value: string | null }) {
-  return value === null ? (
-    <span className={EMPTY}>not recorded</span>
-  ) : (
-    <code className={CODE_IDENTITY}>{value}</code>
-  );
+function NotRecorded() {
+  return <span className={EMPTY}>not recorded</span>;
 }
+
+/** `2026-07-01` as `1 July 2026`, the date a reader would say. */
+const DUMP_DATE = new Intl.DateTimeFormat("en-GB", {
+  day: "numeric",
+  month: "long",
+  year: "numeric",
+  timeZone: "UTC",
+});
 
 /** A field of the draft that is still open, and what would close it. */
 function OpenField({ title, children }: { title: string; children: ReactNode }) {
@@ -63,7 +67,12 @@ function OpenField({ title, children }: { title: string; children: ReactNode }) 
 }
 
 /**
- * The release identity, or the reason there is none to show.
+ * Where this release's data came from, or the reason there is none to show.
+ *
+ * Only what a reader needs to know that: the Wiktionary dump, and the file it
+ * was downloaded as. The release's other facts — its checksum, when it was
+ * downloaded, that the dump is inferred and why — are kept with the release
+ * (src/source/archiveFacts.ts) and not shown here, by Huey's ruling on #133.
  *
  * A page that cannot read its release says so rather than rendering a table of
  * blanks, which would read as a release with no identity at all.
@@ -81,39 +90,27 @@ function ReleaseIdentity({ release }: { release: ReleaseInfo | undefined }) {
   return (
     <dl className={RELEASE_FIELDS}>
       <div className={FIELD}>
-        <dt className={FIELD_LABEL}>Release</dt>
+        <dt className={FIELD_LABEL}>Source</dt>
         <dd className={FIELD_VALUE}>
-          <code className={CODE_IDENTITY}>{release.releaseId}</code>
-        </dd>
-      </div>
-      <div className={FIELD}>
-        <dt className={FIELD_LABEL}>Source file</dt>
-        <dd className={FIELD_VALUE}>
-          {release.sourceUrl === null ? (
-            <span className={EMPTY}>not recorded</span>
+          {release.dump === null ? (
+            <NotRecorded />
           ) : (
-            <a className={LINK} href={release.sourceUrl} rel="noreferrer">
-              <code className={CODE_IDENTITY}>{release.sourceUrl}</code>
+            <a className={LINK} href={release.dump.url} rel="noreferrer">
+              Italian Wiktionary, dump of {DUMP_DATE.format(new Date(release.dump.date))}
             </a>
           )}
         </dd>
       </div>
       <div className={FIELD}>
-        <dt className={FIELD_LABEL}>Downloaded at (UTC)</dt>
+        <dt className={FIELD_LABEL}>Downloaded from</dt>
         <dd className={FIELD_VALUE}>
-          <Recorded value={release.retrievedAt} />
-        </dd>
-      </div>
-      <div className={FIELD}>
-        <dt className={FIELD_LABEL}>SHA-256 of the downloaded file</dt>
-        <dd className={FIELD_VALUE}>
-          <code className={CODE_IDENTITY}>{release.archiveSha256}</code>
-        </dd>
-      </div>
-      <div className={FIELD}>
-        <dt className={FIELD_LABEL}>Upstream Wiktionary dump</dt>
-        <dd className={FIELD_VALUE}>
-          <Recorded value={release.upstreamRelease} />
+          {release.sourceUrl === null ? (
+            <NotRecorded />
+          ) : (
+            <a className={LINK} href={release.sourceUrl} rel="noreferrer">
+              <code className={CODE_IDENTITY}>{release.sourceUrl}</code>
+            </a>
+          )}
         </dd>
       </div>
     </dl>

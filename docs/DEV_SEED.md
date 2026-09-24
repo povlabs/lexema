@@ -58,6 +58,15 @@ fresh clone and CI seed as before; `RAW_PAGES=fixtures` asks for those even when
 the dump is there. `casa`'s revision differs between the two (4051358 in the
 dump, 4257826 in `fixtures/`), and every recovered row names the one it read.
 
+The seed records the archive's download URL, download time and source dump only
+from [`src/source/archiveFacts.ts`](../src/source/archiveFacts.ts), for the
+file whose SHA-256 they are keyed by: today the July archive, `it-0c432803`,
+whose dump `itwiktionary-20260701` is stored as `inferred`. Any other file,
+including this fixture, leaves them NULL, and `/attribution` says *not
+recorded*. The fixture is a byte-for-byte selection of that archive's lines,
+but it is a different file, and the facts were read off the archive, not off
+it. The run prints which facts it recorded, and checks them in the loaded row.
+
 SQL is emitted in parent-before-child table order. INSERT statements are batched
 by a 64 KiB byte budget, matching the limit used by the previous SQL exporter.
 The release is marked complete only after all rows are present. Rejections are
@@ -128,3 +137,8 @@ gained `lead_in_sense_index` and `lead_in_recovered_id`, which place an item of
 a list a definition opens with a colon under that definition, and lookup reads
 both. An older database has neither column, so every search on it fails until
 `pnpm run seed:dev` rebuilds its `SEED_STATE`.
+
+**A database seeded before #133 must be reseeded as well.** `source_release`
+gained `upstream_release_basis`, and every lookup and the attribution page read
+it, so both fail on an older database until `pnpm run seed:dev` rebuilds its
+`SEED_STATE`. A full release needs the same reseed, into a fresh `SEED_STATE`.

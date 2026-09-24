@@ -79,8 +79,7 @@ async function withFixture(run: (db: DatabaseSync) => Promise<void>): Promise<vo
       schema: "src/db/schema.sql",
       releaseId: RELEASE,
       archiveR2Key: "releases/it-suggest-test.jsonl.gz",
-      sourceUrl: "https://example.invalid/it-extract.jsonl.gz",
-      license: "CC-BY-SA-4.0",
+        license: "CC-BY-SA-4.0",
       onRejection: (rejection) => {
         throw new Error(`fixture line rejected: ${JSON.stringify(rejection)}`);
       },

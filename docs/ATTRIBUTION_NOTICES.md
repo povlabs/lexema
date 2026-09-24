@@ -87,12 +87,14 @@ metadata, and **must not be published with guessed values.**
 >
 > ## Versione dei dati
 >
-> - Rilascio: `{releaseId}`
-> - File di origine: `{sourceUrl}`
-> - Scaricato il: `{retrievedAt}` (UTC)
-> - SHA-256: `{sha256}`
-> - Estratto dal dump `{dumpName}` del Wikizionario italiano
-> - Versione di wiktextract: `{extractorCommits}`
+> - Fonte: [Wikizionario italiano, dump del {dumpDate}](https://dumps.wikimedia.org/itwiktionary/{dumpYYYYMMDD}/)
+> - Scaricato da: [`{sourceUrl}`]({sourceUrl})
+
+This section says where the data came from and nothing else, by Huey's ruling on
+[#133](https://github.com/hueypov/lexema/issues/133): no release id, download date, build date,
+checksum or counts. For the July archive the dump is inferred, not recorded by kaikki; that basis
+and its evidence are kept in [`src/source/archiveFacts.ts`](../src/source/archiveFacts.ts) and
+[LICENSING.md §1.3](LICENSING.md#13-the-one-reasonable-inference--and-its-limit), not on the page.
 >
 > ## Licenza dei dati di Lexema
 >
@@ -168,7 +170,7 @@ release describable:
 | `extractorVersion` | `wiktextract d6fca27 / wikitextprocessor 65e1673` | Extraction bugs are release-specific (see #11). Without it, a bug report cannot be reproduced. |
 | `upstreamBuiltAt` | `2026-09-16T15:41:54Z` | gzip MTIME / `Last-Modified`. Distinguishes builds when the dump is the same. |
 | `httpEtag`, `httpLastModified` | `"6aaab8c2-26493b7"` | Identifies the exact HTTP response fetched. |
-| `identityConfidence` | `verified` \| `inferred` \| `unknown` | Makes the July snapshot's gap representable instead of hidden. An `inferred` release must never be published. |
+| `identityConfidence` | `verified` \| `inferred` \| `unknown` | Makes the July snapshot's gap representable instead of hidden. The July snapshot's dump is stored as `upstream_release_basis = 'inferred'` and may be published (ADR 0013, PR #130). |
 
 [How to re-fetch an identified release](REFETCH_A_RELEASE.md) is the procedure
 that produces every value above.

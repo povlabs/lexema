@@ -61,14 +61,25 @@ The most recent dump that existed before our file was built (2026-07-16) is **`i
 So the local snapshot was **most likely** extracted from the `itwiktionary-20260701` dump.
 
 **[UNPROVEN]** This is arithmetic on dates, not evidence. kaikki could have re-run an older dump.
-Do not write `20260701` into release metadata as a fact. If it is recorded at all, record it as
-`inferred`, with this reasoning attached.
+So `20260701` is recorded as `inferred`, never as a fact kaikki stated.
 
 For [#28](https://github.com/hueypov/lexema/issues/28), that dump was downloaded on 2026-09-23 to
 recover the definitions the extraction drops (SHA-1 `2bdd444236f7dcd26fee3652dbd641c31d0d9651`,
 matching Wikimedia's `dumpstatus.json`). Every one of the archive's 560,357 Italian records has a
 page of its exact title in it, and its newest revision is 2026-07-03. That is consistent with the
 inference, not proof of it ([the measurement](../reports/2026-09-23-recovered-definitions-full-release.md)).
+
+**Recorded since ([#133](https://github.com/hueypov/lexema/issues/133)).** Huey ruled that Lexema
+keeps this archive and states its source as the 1 July 2026 dump (ADR 0013, PR #130). The facts
+live in [`src/source/archiveFacts.ts`](../src/source/archiveFacts.ts), keyed by the SHA-256 above:
+the download URL and time from §1.1, and the dump `itwiktionary-20260701` with basis `inferred`
+and this section as its evidence. A seed of this file copies them into `source_release`, with
+`upstream_release_basis = 'inferred'`; a file with any other checksum gets none of them.
+`/attribution` shows two of them and nothing more, by Huey's ruling on #133: the source, as the
+Italian Wiktionary dump of 1 July 2026 linked to
+[its Wikimedia page](https://dumps.wikimedia.org/itwiktionary/20260701/), and the kaikki.org
+download the file came from. The download time, the checksum, the basis and this reasoning stay
+here and in the facts file, not on the page.
 
 ### 1.4 How a future release becomes traceable
 
@@ -98,6 +109,9 @@ extractor version, so every provenance claim about it would carry an asterisk fo
 existing validation work (issues #11, #16) would need redoing against the new data anyway. Trade-off:
 a re-fetch invalidates the spot checks in `DATASET_SPOT_CHECK.md`, which were done against the July
 bytes. Confidence: high that re-fetching is the right call; medium on how much re-validation it costs.
+
+**Decided 2026-09-24:** Huey kept the July snapshot (ADR 0013, PR #130). §1.3 says how its source
+is recorded.
 
 ---
 
@@ -517,8 +531,10 @@ describe and one we can only point at: which dump it came from, when it was buil
 built it, which HTTP response we actually received, and how sure we are of all that. The field list
 is [Release metadata to retain](ATTRIBUTION_NOTICES.md#release-metadata-to-retain).
 
-`identityConfidence` is the one that earns its place twice: it makes the July snapshot's gap
-representable instead of hidden, and an `inferred` release must never be published.
+`identityConfidence` is the one that earns its place: it makes the July snapshot's gap
+representable instead of hidden. The July snapshot is published with its dump recorded as
+`inferred` (ADR 0013, PR #130; §1.3); the rule that an `inferred` release is never published no
+longer holds.
 
 `license` records the source licence we elect under ToU 7(a), which is a separate question from B2's
 bundle policy. It should not be `["CC-BY-SA-4.0", "GFDL"]` as `LEXEMA_SPEC.md` currently suggests:

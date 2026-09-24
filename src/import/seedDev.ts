@@ -47,7 +47,6 @@ const report = await seedSql({
   outputDir,
   schema: resolve("src/db/schema.sql"),
   releaseId,
-  sourceUrl: "https://kaikki.org/dictionary/downloads/it/it-extract.jsonl.gz",
   license: "CC-BY-SA-4.0",
   requiredWords,
   validateFixtureClosure: !isArchive,
@@ -66,6 +65,12 @@ await writeFile(rejectionPath, rejectionLines.length > 0 ? `${rejectionLines.joi
 process.stderr.write(`seed SQL: ${report.parts.length} part(s) under ${partCeilingBytes} bytes in ${outputDir}\n`);
 process.stderr.write(`archive: ${report.admitted} admitted, ${report.linesRead} lines, ${report.status}\n`);
 for (const [table, count] of Object.entries(report.rows)) process.stderr.write(`  ${table}: ${count}\n`);
+process.stderr.write(
+  report.archiveFacts === undefined
+    ? `archive facts: none for SHA-256 ${report.archiveSha256}; download URL, download time and source dump left unrecorded\n`
+    : `archive facts: ${report.archiveFacts.sourceUrl}, downloaded ${report.archiveFacts.retrievedAt}, ` +
+        `dump ${report.archiveFacts.dump.id} (${report.archiveFacts.dump.basis})\n`,
+);
 const { recovery } = report;
 process.stderr.write(
   `recovered layer: ${recovery.definitions} definition(s) and ${recovery.examples} example(s) for ` +
@@ -115,10 +120,10 @@ if (mismatched.length > 0) failVerification(`loaded row counts differ from the g
 // carries the status and line counts the generator reported.
 const [releaseRows] = JSON.parse(
   wrangler(
-    ["--json", "--command", `SELECT status, lines_read, admitted, skipped_other_language, malformed_lines, malformed_members FROM source_release WHERE release_id = '${report.releaseId.replace(/'/g, "''")}'`],
+    ["--json", "--command", `SELECT status, lines_read, admitted, skipped_other_language, malformed_lines, malformed_members, source_url, upstream_release, upstream_release_basis FROM source_release WHERE release_id = '${report.releaseId.replace(/'/g, "''")}'`],
     true,
   ),
-) as [{ results: Record<string, string | number>[] }];
+) as [{ results: Record<string, string | number | null>[] }];
 const expectedRelease = {
   status: "importing",
   lines_read: report.linesRead,
@@ -126,6 +131,9 @@ const expectedRelease = {
   skipped_other_language: report.skippedOtherLanguage,
   malformed_lines: report.malformed,
   malformed_members: report.malformedMembers,
+  source_url: report.archiveFacts?.sourceUrl ?? null,
+  upstream_release: report.archiveFacts?.dump.id ?? null,
+  upstream_release_basis: report.archiveFacts?.dump.basis ?? null,
 };
 if (releaseRows.results.length !== 1) {
   failVerification(`expected one source_release row for ${report.releaseId}, found ${releaseRows.results.length}`);

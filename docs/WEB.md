@@ -244,8 +244,11 @@ The search page carries no credit line, no licence name and no contributor text.
 That is ADR 0009's ruling, and the licence permits it: CC BY-SA 4.0 lets the
 credit be satisfied by a link to a page that carries the required information.
 `/attribution` is that page — the contributors, the page histories where their
-names are, the licence with its link, what Lexema restructured, and the identity
-of the release being served.
+names are, the licence with its link, what Lexema restructured, and where the
+served release came from: the Wiktionary dump and the kaikki.org download. Only
+those two, by Huey's ruling on [#133](https://github.com/hueypov/lexema/issues/133);
+the release's other facts are in
+[`src/source/archiveFacts.ts`](../src/source/archiveFacts.ts).
 
 It is built the way the search page is: `app/Attribution.tsx` is the markup with
 no database in it, and `app/attribution/page.tsx` is the wiring that reads the

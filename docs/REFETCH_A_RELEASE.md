@@ -79,5 +79,6 @@ each other in the release store, and record the fields they supply:
 list and what each one is for is in
 [Attribution notices and release metadata](ATTRIBUTION_NOTICES.md#release-metadata-to-retain).
 
-A release fetched any other way is `inferred` at best, and an `inferred` release
-must never be published.
+A release fetched any other way is `inferred` at best. The July snapshot is one,
+published with its dump recorded as inferred by ADR 0013 (PR #130); see
+[LICENSING.md §1.3](LICENSING.md#13-the-one-reasonable-inference--and-its-limit).
