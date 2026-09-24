@@ -8,4 +8,9 @@ export type SuggestAnswer =
   /** The prefix was outside the bounds and the index was not asked. */
   | { outcome: "rejected"; reason: "too-short" | "too-long"; limit: number }
   /** The index could not be read. */
-  | { outcome: "failed" };
+  | { outcome: "failed" }
+  /**
+   * Too many suggestions asked for this minute (worker/rateLimit.ts); sent with
+   * a 429 and the index was not asked.
+   */
+  | { outcome: "limited" };

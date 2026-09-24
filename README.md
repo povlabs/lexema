@@ -3,7 +3,8 @@
 An Italian word-search website for meanings, conjugations, articles, and related
 forms.
 
-A search page now runs locally; it is not deployed anywhere. The first goal is a
+A search page runs locally. It is also live at https://lexema.fyi, but without
+its dictionary yet, so a search there cannot answer. The first goal is a
 working search flow that shows available data honestly, including missing or
 disputed information. Dictionary quality can improve separately from the website.
 

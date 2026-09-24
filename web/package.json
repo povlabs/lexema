@@ -7,6 +7,7 @@
     "dev": "vinext dev",
     "build": "vinext build",
     "start": "wrangler dev --config dist/server/wrangler.json --persist-to \"$PWD/.wrangler/state\"",
+    "deploy:production": "CLOUDFLARE_ENV=production vinext build && wrangler deploy --config dist/server/wrangler.json",
     "typecheck": "wrangler types && tsc --noEmit"
   },
   "dependencies": {

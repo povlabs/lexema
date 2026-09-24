@@ -73,15 +73,24 @@ nothing. It does not print the reason: a database message names releases,
 tables and bindings, so it goes to the Worker's log, where `wrangler dev` prints
 it.
 
+## See the rate limits
+
+The local Worker counts searches and suggestions like the live one: 15 searches
+and 120 suggestions a minute from one address. The sixteenth search in a minute
+answers 429 with the "too many searches" message under the field; wait a minute
+or restart `wrangler dev` to reset the count. Why they are there is
+[WEB.md](WEB.md#why-the-rate-limits-sit-in-front-of-vinext).
+
 ## If it will not start
 
 | Symptom | Cause |
 |---|---|
 | zsh asks to correct `wrangler` to `.wrangler` | shell autocorrect; answer `n` or run from outside `web/` |
 | D1 looks empty after a seed | `--persist-to` was relative; pass the `.data/seed-state` path shown above |
+| Every search says the lookup failed | `web/dist/` holds a production build, which has no D1; run `pnpm --filter @lexema/web build` again |
 | Seed stops with `part N of M failed` | one Wrangler run failed; the state directory is partial, so seed again into a fresh one ([RUN_AN_IMPORT.md § If a seed stops](RUN_AN_IMPORT.md#if-a-seed-stops)) |
 
 ## Not this page
 
-Deploying to a real URL is #19, and is blocked on licensing (#6). Flipping which
-imported release is served is #18.
+Deploying is [DEPLOY.md](DEPLOY.md); attaching D1 in production is #19. Flipping
+which imported release is served is #18.

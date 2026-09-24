@@ -10,6 +10,17 @@ import type { ReleaseInfo } from "@lexema/lookup/types.ts";
 import type { Attempt } from "./attempt.ts";
 
 /**
+ * The lookup database. Production has no D1 binding until #19
+ * (web/wrangler.jsonc, `env.production`), so its absence is thrown here and
+ * lands where any other database failure does: in the log, and as the
+ * failed state on the page.
+ */
+function database() {
+  if (env.DB === undefined) throw new Error("no D1 binding: this Worker has no DB");
+  return fromD1(env.DB);
+}
+
+/**
  * Run the lookup, or report that it did not run.
  *
  * A missing release, a D1 outage and a normalizer mismatch all land in the
@@ -20,7 +31,7 @@ import type { Attempt } from "./attempt.ts";
  */
 export async function search(query: string): Promise<Attempt> {
   try {
-    return await lookup({ db: fromD1(env.DB), releaseId: env.LEXEMA_RELEASE, query });
+    return await lookup({ db: database(), releaseId: env.LEXEMA_RELEASE, query });
   } catch (error) {
     console.error("lookup failed", error);
     return { outcome: "failed" };
@@ -37,7 +48,7 @@ export async function search(query: string): Promise<Attempt> {
  */
 export async function release(): Promise<ReleaseInfo | undefined> {
   try {
-    return await readRelease(fromD1(env.DB), env.LEXEMA_RELEASE);
+    return await readRelease(database(), env.LEXEMA_RELEASE);
   } catch (error) {
     console.error("release read failed", error);
     return undefined;
@@ -54,7 +65,7 @@ export async function release(): Promise<ReleaseInfo | undefined> {
  */
 export async function suggestions(prefix: string): Promise<SuggestResult | { outcome: "failed" }> {
   try {
-    return await suggest({ db: fromD1(env.DB), releaseId: env.LEXEMA_RELEASE, prefix });
+    return await suggest({ db: database(), releaseId: env.LEXEMA_RELEASE, prefix });
   } catch (error) {
     console.error("suggest failed", error);
     return { outcome: "failed" };

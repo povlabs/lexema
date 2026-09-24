@@ -4,7 +4,9 @@ Lexema turns the Kaikki/Wiktextract Italian dictionary dump into source-grounded
 search candidates. Today the repository holds the Italian source adapter, the
 candidate resolver, a validation CLI, the research that checked them, the
 importer that writes D1, the exact lookup over it, and a Worker serving the
-search page locally. Deploying that Worker to a real URL is not built.
+search page locally. The same Worker is live at https://lexema.fyi, without a
+database yet, so a search there says the lookup failed
+([how to deploy it](./docs/DEPLOY.md)).
 
 This is the builder's door. For what Lexema *is*, see [README.md](./README.md).
 
@@ -47,8 +49,8 @@ else.
 
 The page answers from a seeded local D1. `pnpm run seed:dev` seeds it from the
 committed fifty-word fixture, so a fresh clone needs no archive; the full release
-needs the archive, as [RUN_AN_IMPORT.md](docs/RUN_AN_IMPORT.md) describes. It
-runs on a local Worker only and is not deployed.
+needs the archive, as [RUN_AN_IMPORT.md](docs/RUN_AN_IMPORT.md) describes. A
+search needs that local D1; the deployed Worker has none yet.
 
 ```sh
 pnpm run seed:dev
@@ -56,6 +58,7 @@ pnpm --filter @lexema/web build
 ```
 
 See [how to run the search page](./docs/RUN_THE_SITE.md) for the full recipe,
+[how to deploy it](./docs/DEPLOY.md) for production,
 [why the search page works this way](./docs/WEB.md) for the design, and
 [the development seed](./docs/DEV_SEED.md) for what the seed covers.
 
@@ -98,7 +101,8 @@ Italian search website before complete dictionary cleanup; the milestone
 descriptions hold the scope, and nothing in them is approval to publish.
 
 The importer, the lookup and the search page run locally against a development
-seed; nothing is deployed, and no release has been published. Beneath them the
+seed. The Worker is deployed with no database, and no release has been
+published to it. Beneath them the
 code is still an experimental validation spike. Passing its tests establishes
 that the adapter reads the file as described, not that the dictionary is
 accurate or complete. The API-first plan it was written against is superseded by the
