@@ -47,13 +47,11 @@ It ends by listing the bindings, and nothing else:
 env.SEARCH_LIMIT (15 requests/60s)         Rate Limit
 env.SUGGEST_LIMIT (120 requests/60s)       Rate Limit
 env.ASSETS                                 Assets
-env.LEXEMA_RELEASE ("it-0c432803")        Environment Variable
+env.LEXEMA_RELEASE ("it-dev")              Environment Variable
 ```
 
 The build warns that the top-level `DB` has no counterpart in `env.production`.
-That is expected: production has no D1 until #19. Production already names the
-full July release, `it-0c432803`, so `/attribution` shows its source now, and
-search will read that release once D1 is attached.
+That is expected: production has no D1 until #19.
 
 ## After a deploy
 

@@ -9,9 +9,9 @@
 // fixture cut from this one — gets none of them.
 //
 // This is the one place these facts live. The seed copies them into
-// `source_release` (src/db/schema.sql), and the attribution page reads them from
-// here, by the release id the site serves, so it can show them whether or not
-// the database is attached; nothing else types them in.
+// `source_release` (src/db/schema.sql), and the attribution page reads the
+// published archive's facts from here, so it shows them whether or not a
+// database is attached; nothing else types them in.
 
 /** A Wikimedia dump id, `itwiktionary-` and the dump's date as `YYYYMMDD`. */
 export type WiktionaryDumpId = `itwiktionary-${string}`;
@@ -78,24 +78,7 @@ export function dumpPage(id: WiktionaryDumpId): { date: string; url: string } {
   };
 }
 
-/**
- * The facts for a release, found by its id. A release imported from a full
- * archive is named `it-` and the first eight hex digits of the archive's
- * SHA-256 (src/import/importRelease.ts), so the id names exactly one archive
- * here or none. Any other id, the development fixture's `it-dev` among them,
- * has no facts.
- */
-export function archiveFactsForRelease(
-  releaseId: string,
-  catalog: ArchiveFactsCatalog = ARCHIVE_FACTS,
-): ArchiveFacts | undefined {
-  const prefix = /^it-([0-9a-f]{8})$/.exec(releaseId)?.[1];
-  if (prefix === undefined) return undefined;
-  const matches = Object.keys(catalog).filter((sha256) => sha256.startsWith(prefix));
-  return matches.length === 1 ? catalog[matches[0]] : undefined;
-}
-
-/** What the attribution page says about where a release came from. */
+/** What the attribution page says about where Lexema's data came from. */
 export interface ReleaseSource {
   /** The dump's date and Wikimedia page, or null when none is recorded. */
   dump: { date: string; url: string } | null;
@@ -103,9 +86,15 @@ export interface ReleaseSource {
   sourceUrl: string | null;
 }
 
-/** Where the release with this id came from, as far as this repository records. */
-export function releaseSource(releaseId: string, catalog: ArchiveFactsCatalog = ARCHIVE_FACTS): ReleaseSource {
-  const facts = archiveFactsForRelease(releaseId, catalog);
+/**
+ * The archive Lexema publishes: the July `it-extract.jsonl.gz`, named the
+ * 1 July 2026 snapshot by ADR 0013.
+ */
+export const PUBLISHED_ARCHIVE_SHA256 = "0c432803c672aceccd48787eb64807c5366fdbd6796715c9a99e31c0024d5dcf";
+
+/** Where an archive came from, as far as this repository records. */
+export function sourceOf(sha256: string, catalog: ArchiveFactsCatalog = ARCHIVE_FACTS): ReleaseSource {
+  const facts = archiveFactsFor(sha256, catalog);
   return facts === undefined
     ? { dump: null, sourceUrl: null }
     : { dump: dumpPage(facts.dump.id), sourceUrl: facts.sourceUrl };

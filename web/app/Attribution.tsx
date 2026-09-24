@@ -67,9 +67,9 @@ function OpenField({ title, children }: { title: string; children: ReactNode }) 
 }
 
 /**
- * Where this release's data came from: the Wiktionary dump, and the file it was
+ * Where Lexema's data came from: the Wiktionary dump, and the file it was
  * downloaded as. It comes from src/source/archiveFacts.ts, not the database, so
- * the page always shows it. The release's other facts — its checksum, when it
+ * the page always shows it. The archive's other facts — its checksum, when it
  * was downloaded, that the dump is inferred and why — stay in that file and are
  * not shown here, by Huey's ruling on #133.
  */

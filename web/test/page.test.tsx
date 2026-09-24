@@ -30,7 +30,7 @@ import { TENSE_BOXES } from "../../src/italian/moods.js";
 import { seedSql } from "../../src/import/seedSql.js";
 import { writeKnownDisputes } from "../../src/import/knownDisputes.js";
 import { loadFixturePages, type RawPageSource } from "../../src/source/rawPage.js";
-import { releaseSource, type ArchiveFacts } from "../../src/source/archiveFacts.js";
+import { PUBLISHED_ARCHIVE_SHA256, sourceOf, type ArchiveFacts, type ReleaseSource } from "../../src/source/archiveFacts.js";
 import { fromNodeSqlite } from "../../src/lookup/database.js";
 import { lookup } from "../../src/lookup/lookup.js";
 import type { Reading } from "../../src/lookup/types.js";
@@ -988,13 +988,13 @@ test("a search over the limit says so plainly, under the same field, and claims 
 });
 
 /** The attribution page, over the release the fixture imported. */
-/** The page as served for this release id. It reads no database. */
-function attribution(releaseId = "it-dev"): string {
-  return renderToStaticMarkup(<Attribution source={releaseSource(releaseId)} />);
+/** The page as the route serves it: the published archive's source. It reads no database. */
+function attribution(source: ReleaseSource = sourceOf(PUBLISHED_ARCHIVE_SHA256)): string {
+  return renderToStaticMarkup(<Attribution source={source} />);
 }
 
-/** The July archive's release id, as production serves it (web/wrangler.jsonc). */
-const JULY_RELEASE = "it-0c432803";
+/** A source nothing is recorded for. */
+const UNRECORDED: ReleaseSource = { dump: null, sourceUrl: null };
 
 test("the attribution page carries the credit, the licence and the restructuring statement", () => {
   {
@@ -1029,7 +1029,7 @@ test("the attribution page carries the credit, the licence and the restructuring
 
 test("the attribution page names the dump and links the download the release came from, with no database", () => {
   {
-    const html = attribution(JULY_RELEASE);
+    const html = attribution();
 
     assert.match(
       html,
@@ -1069,7 +1069,7 @@ test("the attribution page names the dump and links the download the release cam
 
 test("the attribution page says not recorded for a release with no recorded facts", () => {
   {
-    const html = attribution("it-dev");
+    const html = attribution(UNRECORDED);
 
     // Said in words, in place: never a blank, and never a value nobody recorded.
     assert.match(html, exact(field("Source", `<span class="${EMPTY}">not recorded</span>`)));
@@ -1081,13 +1081,10 @@ test("the attribution page says not recorded for a release with no recorded fact
     // Counted on the element: a blank value is a blank whatever it is classed.
     assert.equal(patternsOf(html, /<dd[^>]*><\/dd>/), 0, "no field renders blank");
 
-    // Any id that names no archive in the facts says the same: an unknown
-    // archive, and an id one hex digit away from the July archive's.
-    for (const releaseId of ["it-ffffffff", "it-0c432804", "production"]) {
-      const other = attribution(releaseId);
-      assert.match(other, exact(field("Source", `<span class="${EMPTY}">not recorded</span>`)), releaseId);
-      assert.match(other, exact(field("Downloaded from", `<span class="${EMPTY}">not recorded</span>`)), releaseId);
-    }
+    // An archive with no facts recorded says the same.
+    const other = attribution(sourceOf("f".repeat(64)));
+    assert.match(other, exact(field("Source", `<span class="${EMPTY}">not recorded</span>`)));
+    assert.match(other, exact(field("Downloaded from", `<span class="${EMPTY}">not recorded</span>`)));
   }
 });
 

@@ -66,9 +66,7 @@
         { "name": "SUGGEST_LIMIT", "namespace_id": "1282", "simple": { "limit": 120, "period": 60 } }
       ],
       "vars": {
-        // The full July archive (ADR 0013). The attribution page shows its
-        // source from src/source/archiveFacts.ts even before D1 is attached.
-        "LEXEMA_RELEASE": "it-0c432803"
+        "LEXEMA_RELEASE": "it-dev"
       }
     }
   }

@@ -2,7 +2,6 @@
 // What it returns is in docs/LOOKUP.md; why it is shaped this way, including the
 // two mistakes the data invites, is in docs/LOOKUP_DESIGN.md.
 
-import { dumpPage, type WiktionaryDumpId } from "../source/archiveFacts.js";
 import { IT_NORMALIZER_VERSION, normalizeItalianExact } from "../italian/normalize.js";
 import { readingPartOfSpeech } from "./articles.js";
 import type { LookupDatabase } from "./database.js";
@@ -293,9 +292,11 @@ function releaseDump(row: {
   const { upstream_release: id, upstream_release_basis: basis } = row;
   if (id === null) return null;
   if (basis === null) throw new Error(`source_release names dump '${id}' without its basis`);
+  const digits = id.slice(-8);
   return {
     id,
-    ...dumpPage(id as WiktionaryDumpId),
+    date: `${digits.slice(0, 4)}-${digits.slice(4, 6)}-${digits.slice(6, 8)}`,
+    url: `https://dumps.wikimedia.org/itwiktionary/${digits}/`,
     basis,
   };
 }
