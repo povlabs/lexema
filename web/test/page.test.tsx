@@ -1079,14 +1079,12 @@ test("the attribution page shows every open field as open, with nothing guessed 
   await withFixture(async ({ db }) => {
     const html = await attribution(db);
 
-    // The three the draft in docs/ATTRIBUTION_NOTICES.md leaves open, each
-    // named as open and each saying what would settle it.
-    assert.equal(html.split(`<span class="${OPEN_MARK}">— open</span>`).length - 1, 3);
-    assert.match(
-      html,
-      exact(`The licence for Lexema’s own material <span class="${OPEN_MARK}">— open</span>`),
-    );
-    assert.match(html, /settled by the open decision recorded as §4/);
+    // The two the draft in docs/ATTRIBUTION_NOTICES.md still leaves open, each
+    // named as open and each saying what would settle it. The licence for
+    // Lexema's own material is settled (ADR 0009's amendment) and stated.
+    assert.equal(html.split(`<span class="${OPEN_MARK}">— open</span>`).length - 1, 2);
+    assert.doesNotMatch(html, /Lexema’s own material <span/);
+    assert.match(textOf(html), /What Lexema writes itself — its own explanations, examples and review records — is published under the same licence, CC BY-SA 4\.0\./);
     assert.match(
       html,
       exact(`Pronunciation and audio <span class="${OPEN_MARK}">— open</span>`),
@@ -1099,8 +1097,11 @@ test("the attribution page shows every open field as open, with nothing guessed 
     assert.match(html, /version of wiktextract that produced this extraction is not recorded/);
 
     // Nothing filled in behind a reader's back: no placeholder survives from
-    // the draft, and no licence is claimed for Lexema's own material.
+    // the draft.
     assert.doesNotMatch(html, /\{[a-zA-Z]+\}/, "no draft placeholder is published");
-    assert.doesNotMatch(html, new RegExp(`Lexema’s own material[^<]*</dt><dd[^>]*>[^<]*CC`, "i"));
+
+    // The page says where recovered definitions were read, not only the extraction.
+    assert.doesNotMatch(textOf(html), /did not read Wiktionary directly/);
+    assert.match(textOf(html), /Where that extraction dropped a definition, Lexema reads it from the page itself/);
   });
 });

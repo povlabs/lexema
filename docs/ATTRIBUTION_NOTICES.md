@@ -92,7 +92,7 @@ metadata, and **must not be published with guessed values.**
 >
 > ## Licenza dei dati di Lexema
 >
-> {open — see [LICENSING.md §4](LICENSING.md#4-how-our-own-outputs-are-licensed)}
+> Anche i contenuti scritti da Lexema sono pubblicati con licenza CC BY-SA 4.0 ([ADR 0009](../.decisions/0009-two-licences-and-a-source-link.md), emendamento del 2026-09-21).
 >
 > ## Pronuncia e file audio
 >

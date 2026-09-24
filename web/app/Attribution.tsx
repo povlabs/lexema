@@ -144,7 +144,7 @@ export function Attribution({ release }: { release: ReleaseInfo | undefined }) {
           written by volunteers.
         </p>
         <p className={PARAGRAPH}>
-          We did not read Wiktionary directly. We use the automatic extraction published by{" "}
+          Most of it comes from the automatic extraction published by{" "}
           <a className={LINK} href="https://kaikki.org/itwiktionary/" rel="noreferrer">
             kaikki.org
           </a>
@@ -153,6 +153,14 @@ export function Attribution({ release }: { release: ReleaseInfo | undefined }) {
             wiktextract
           </a>{" "}
           by Tatu Ylonen.
+        </p>
+        <p className={PARAGRAPH}>
+          Where that extraction dropped a definition, Lexema reads it from the page itself, in
+          the{" "}
+          <a className={LINK} href="https://dumps.wikimedia.org/itwiktionary/" rel="noreferrer">
+            Wikimedia dump of the Italian Wiktionary
+          </a>
+          , and marks it <em>recovered</em>, with a link to the page revision it was read from.
         </p>
       </section>
 
@@ -175,6 +183,10 @@ export function Attribution({ release }: { release: ReleaseInfo | undefined }) {
           history is reachable from there.
         </p>
         <p className={PARAGRAPH}>
+          What Lexema writes itself — its own explanations, examples and review records — is
+          published under the same licence, CC BY-SA 4.0.
+        </p>
+        <p className={PARAGRAPH}>
           The material is provided as-is, without warranties of any kind, as{" "}
           <a className={LINK} href={LICENCE_TEXT_URL} rel="noreferrer">
             section 5 of the licence
@@ -193,6 +205,10 @@ export function Attribution({ release }: { release: ReleaseInfo | undefined }) {
             the source&rsquo;s grammatical tags were mapped onto a smaller, uniform set;
           </li>
           <li>some information present in the source was not imported;</li>
+          <li>
+            definitions the extraction dropped were read from the page&rsquo;s wiki text and are
+            marked <em>recovered</em>;
+          </li>
           <li>
             articles and other grammatical indications marked as derived by Lexema come from our
             own deterministic rules and are not from the source.
@@ -216,11 +232,6 @@ export function Attribution({ release }: { release: ReleaseInfo | undefined }) {
       <section aria-labelledby="open">
         <h2 className={SECTION_HEADING} id="open">Still open</h2>
         <dl className={OPEN_FIELDS}>
-          <OpenField title="The licence for Lexema’s own material">
-            Lexema has not decided the licence for what it writes itself — its own explanations,
-            examples and review records. It is settled by the open decision recorded as §4 of
-            Lexema’s licensing record, and nothing is assumed here until it is.
-          </OpenField>
           <OpenField title="Pronunciation and audio">
             Lexema ships no audio. Audio files carry a licence and an author per file, so shipping
             any waits on the per-file review recorded as §5 of Lexema’s licensing record.
