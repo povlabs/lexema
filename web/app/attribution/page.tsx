@@ -1,14 +1,14 @@
 // The `/attribution` route: the full credit ADR 0009 keeps off the search page.
 //
 // This file is the wiring, exactly as `../page.tsx` is for the search page: it
-// reads the serving release from D1 and hands it to the markup, which lives in
-// `../Attribution.tsx` and knows nothing about D1.
-
+// hands where Lexema's data came from to the markup in `../Attribution.tsx`.
+// That is read from the repository's record of the published archive, not from
+// D1, so the page always shows it.
+import { PUBLISHED_ARCHIVE_SHA256, sourceOf } from "@lexema/source/archiveFacts.ts";
 import { Attribution } from "../Attribution";
-import { release } from "../db";
 
 export const metadata = { title: "Sources and licences — Lexema" };
 
-export default async function Page() {
-  return <Attribution release={await release()} />;
+export default function Page() {
+  return <Attribution source={sourceOf(PUBLISHED_ARCHIVE_SHA256)} />;
 }
