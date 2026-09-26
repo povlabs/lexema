@@ -24,19 +24,19 @@ of its SHA-256, `it-0c432803`.
   fact; existing code is not accepted as correct without fresh review.
 - Replacing a tool is its own decision, never part of another change
   ([ADR 0003](.decisions/0003-tool-replacement-is-its-own-decision.md)).
-- Delegated agent work runs through `pi-subagents` from the Pi session talking to
-  Huey, never in separate terminal tabs or Herdr panes. The parent routes child
-  questions and reports every result
-  ([ADR 0007](.decisions/0007-pi-subagents-runs-agent-work.md)).
+- Delegated agent work may run in any harness. The session talking to Huey is the
+  parent: it routes child questions and reports every result
+  ([ADR 0014](.decisions/0014-agent-work-runs-in-any-harness.md)).
 - A reviewer is never the agent that wrote the work, and always reviews under the
   `nothueypov` account. That account is fixed: it is the only identity a review
   is posted from, and it is never Huey's own. A builder does not review its own
   change, a reviewer does not fix what it finds, and neither merges. A reviewer
   prefixes each `gh` or `fabrika` call with
   `GH_TOKEN="$(gh auth token --user nothueypov)"` and never changes the active
-  account. Which model fills a role is configuration in `.pi/settings.json`, and
-  Huey changes it whenever he likes
-  ([ADR 0005](.decisions/0005-codex-reviews-claude-builds.md)).
+  account. Which model fills a role is configuration in the harness that runs it, and
+  Huey changes it whenever he likes. The reviewer never inherits the builder's
+  model ([ADR 0005](.decisions/0005-codex-reviews-claude-builds.md),
+  [ADR 0014](.decisions/0014-agent-work-runs-in-any-harness.md)).
 - A pull request merges when every required verdict is PASS at its head, and only
   the `shipper` merges. `ready-for:human` holds it for Huey
   ([ADR 0006](.decisions/0006-codex-review-is-the-merge-gate.md)).
