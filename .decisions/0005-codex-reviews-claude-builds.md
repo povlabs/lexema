@@ -1,7 +1,7 @@
 ---
 id: 0005
 title: Codex reviews the work, Claude builds and repairs it
-status: accepted
+status: amended-in-part by [0014](0014-agent-work-runs-in-any-harness.md)
 date: 2026-09-19
 tags: [process, agents]
 ---

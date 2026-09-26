@@ -1,0 +1,4 @@
+# Codex is Lexema's reviewer (ADR 0005, ADR 0014), so any Codex session here
+# reviews on this model. Huey changes it whenever he likes.
+model = "gpt-6-sol"
+model_reasoning_effort = "high"

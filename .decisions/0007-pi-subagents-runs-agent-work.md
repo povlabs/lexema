@@ -1,7 +1,7 @@
 ---
 id: 0007
 title: Agent work runs through pi-subagents, never Herdr tabs
-status: accepted
+status: superseded by [0014](0014-agent-work-runs-in-any-harness.md)
 date: 2026-09-20
 tags: [process, agents, tooling]
 ---
