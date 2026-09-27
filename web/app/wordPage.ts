@@ -9,6 +9,7 @@
 // tables are their lemmas'.
 
 import { isFormOfReading, isVerbReading } from "@lexema/lookup/types.ts";
+import { labelParts, readingsNamed, splitLabel } from "./readingLabels.ts";
 import type {
   LemmaListing,
   LemmaTarget,
@@ -16,6 +17,7 @@ import type {
   Hyphenation,
   Reading,
   RelatedWord,
+  SourceRef,
   SourceText,
   WordFacts,
 } from "@lexema/lookup/types.ts";
@@ -40,12 +42,17 @@ export interface PageReading {
    * tables that differ each show.
    */
   lemmaTables: LemmaTable[];
+  /** The etymologies the source ties to this reading, their bracket label dropped. */
+  etymologies: SourceText[];
+  /** The synonym groups the source labels with this reading's part of speech. */
+  synonyms: RelatedWord[];
 }
 
 export interface WordPage {
   /** The headword as the source spells it, or the query when no record is about it. */
   headword: string;
   readings: [PageReading, ...PageReading[]];
+  /** The facts about the word no reading took: shown once, after the readings. */
   wordFacts: WordFacts;
   /**
    * Every Wiktionary page the readings and lemma tables on this page come from,
@@ -100,14 +107,24 @@ function lemmaTablesOf(reading: Reading): LemmaTable[] {
 export function wordPage(query: string, readings: readonly [Reading, ...Reading[]]): WordPage {
   const ordered = pageOrder(readings);
   const about = ordered.filter((reading) => reading.isAboutQuery);
-  const entries = ordered.map((reading, i): PageReading => ({ number: i + 1, reading, lemmaTables: lemmaTablesOf(reading) }));
+  const merged = mergeWordFacts(about);
+  const placed = placeWordFacts(about, merged);
+  const entries = ordered.map(
+    (reading, i): PageReading => ({
+      number: i + 1,
+      reading,
+      lemmaTables: lemmaTablesOf(reading),
+      etymologies: placed.etymologies.get(reading) ?? [],
+      synonyms: placed.synonyms.get(reading) ?? [],
+    }),
+  );
   const [first, ...rest] = entries;
   if (first === undefined) throw new Error("a found result renders at least one reading");
 
   return {
     headword: about[0]?.word ?? query,
     readings: [first, ...rest],
-    wordFacts: mergeWordFacts(about),
+    wordFacts: placed.rest,
     sourceWords: [
       ...new Set(entries.flatMap((entry) => [entry.reading.word, ...entry.lemmaTables.map((table) => table.lemma.word)])),
     ],
@@ -144,7 +161,63 @@ function mergeWordFacts(readings: readonly Reading[]): WordFacts {
     hyphenations: distinct<Hyphenation>(all((facts) => facts.hyphenations), (h) => h.parts.join("\u0000")),
     etymologies: distinct<SourceText>(all((facts) => facts.etymologies), (e) => e.text),
     synonyms: related((facts) => facts.synonyms),
+    synonymList: all((facts) => facts.synonymList),
     antonyms: related((facts) => facts.antonyms),
     derived: related((facts) => facts.derived),
   };
+}
+
+/** A source position, the key an occurrence is placed by. */
+const refKey = (ref: SourceRef): string => `${ref.lineNo}\u0000${ref.jsonPointer}`;
+
+/**
+ * Etymologies and synonym groups the source ties to one part of speech, moved
+ * into the readings of that part of speech (design-system-manifest.md §
+ * "Layout"). Only a word with two readings or more has anything to move.
+ *
+ * - An etymology moves when the word has two or more and its bracket label
+ *   names readings on the page (`sale`: `(sostantivo plurale) vedi sala`). It
+ *   shows there without the label, which the reading's heading already says.
+ * - A synonym moves when a part-of-speech label earlier in its record's list
+ *   opens the group it is in and names readings (`vivere`: `sostantivo` on
+ *   `esistenza`, `verbo` on `esistere`).
+ *
+ * Whatever is not moved stays in `rest`, verbatim, once for the word.
+ */
+function placeWordFacts(
+  about: readonly Reading[],
+  merged: WordFacts,
+): { etymologies: Map<Reading, SourceText[]>; synonyms: Map<Reading, RelatedWord[]>; rest: WordFacts } {
+  const etymologies = new Map<Reading, SourceText[]>();
+  const synonyms = new Map<Reading, RelatedWord[]>();
+  if (about.length < 2) return { etymologies, synonyms, rest: merged };
+
+  const keptEtymologies: SourceText[] = [];
+  for (const etymology of merged.etymologies) {
+    const { label, rest } = splitLabel(etymology.text);
+    const named = merged.etymologies.length > 1 && label !== undefined ? readingsNamed(label, about) : [];
+    if (named.length === 0) keptEtymologies.push(etymology);
+    for (const reading of named) etymologies.set(reading, [...(etymologies.get(reading) ?? []), { text: rest, ref: etymology.ref }]);
+  }
+
+  const placedRefs = new Set<string>();
+  for (const record of about) {
+    let group: Reading[] = [];
+    for (const entry of record.wordFacts.synonymList) {
+      const label = entry.rawTags.find((tag) => labelParts(tag).length > 0);
+      if (label !== undefined) group = readingsNamed(label, about);
+      if (group.length === 0) continue;
+      placedRefs.add(refKey(entry.ref));
+      for (const reading of group) {
+        const words = synonyms.get(reading) ?? [];
+        const existing = words.find((word) => word.word === entry.word);
+        if (existing === undefined) words.push({ word: entry.word, refs: [entry.ref] });
+        else if (!existing.refs.some((ref) => refKey(ref) === refKey(entry.ref))) existing.refs.push(entry.ref);
+        synonyms.set(reading, words);
+      }
+    }
+  }
+  const keptSynonyms = merged.synonyms.filter((word) => word.refs.some((ref) => !placedRefs.has(refKey(ref))));
+
+  return { etymologies, synonyms, rest: { ...merged, etymologies: keptEtymologies, synonyms: keptSynonyms } };
 }

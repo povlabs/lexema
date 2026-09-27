@@ -16,6 +16,7 @@ import type {
   Hyphenation,
   Pronunciation,
   RelatedWord,
+  SynonymEntry,
   SourceRef,
   SourceText,
   WordFacts,
@@ -64,6 +65,7 @@ export function readSourceRecord(
         nonEmptyString(text) ? [{ text, ref: ref(`/etymology_texts/${i}`) }] : [],
       ),
       synonyms: relatedWords(parsed, "synonyms", ref),
+      synonymList: synonymList(parsed, ref),
       antonyms: relatedWords(parsed, "antonyms", ref),
       derived: relatedWords(parsed, "derived", ref),
     },
@@ -72,7 +74,7 @@ export function readSourceRecord(
 }
 
 export function emptyWordFacts(): WordFacts {
-  return { pronunciations: [], hyphenations: [], etymologies: [], synonyms: [], antonyms: [], derived: [] };
+  return { pronunciations: [], hyphenations: [], etymologies: [], synonyms: [], synonymList: [], antonyms: [], derived: [] };
 }
 
 /**
@@ -125,6 +127,15 @@ function relatedWords(
     else byWord.set(entry.word, { word: entry.word, refs: [pointer] });
   });
   return [...byWord.values()];
+}
+
+/** Every `synonyms[]` entry with a word, uncollapsed, with its `raw_tags` verbatim. */
+function synonymList(record: Record<string, Json>, ref: (pointer: string) => SourceRef): SynonymEntry[] {
+  return arrayAt(record, "synonyms").flatMap((entry, i) =>
+    isObject(entry) && nonEmptyString(entry.word)
+      ? [{ word: entry.word, rawTags: arrayAt(entry, "raw_tags").filter(nonEmptyString), ref: ref(`/synonyms/${i}/word`) }]
+      : [],
+  );
 }
 
 /** `senses[i].examples[j].text`, by sense index, in source order. */

@@ -5,43 +5,31 @@
 // Which records are readings and which lemma tables they carry is
 // `wordPage.ts`; this file only lays the answer out.
 
-import type { RelatedWord, WordFacts } from "@lexema/lookup/types.ts";
-import { searchHref } from "./Forms";
+import type { WordFacts } from "@lexema/lookup/types.ts";
 import { ExternalIcon } from "./icons";
 import { ReadingView } from "./Reading";
+import { WordList } from "./WordList";
 import type { WordPage } from "./wordPage.ts";
 import {
-  BLOCK,
   BLOCK_LABEL,
   ETYMOLOGY,
   ICON,
   JUMP_LINK,
   JUMP_LINKS,
   JUMP_NUMBER,
-  MORE_CLOSED,
-  MORE_OPEN,
   PRONUNCIATION,
   PRONUNCIATION_NOTE,
   READINGS,
   SOURCE_LINE,
   SOURCE_LINK,
-  WORD_DOT,
-  WORD_DOT_BEFORE_REST,
   WORD_FACTS,
   WORD_HEADING,
-  WORD_LINK,
-  WORD_LIST,
-  WORD_LIST_ITEM,
-  WORD_LIST_REST,
-  WORD_MORE,
-  WORD_MORE_SUMMARY,
 } from "./styles.ts";
 
 /** Jump links appear from this many readings up. */
 export const JUMP_LINKS_FROM = 3;
 
-/** How many words of a list show before `+ N more`. */
-export const WORD_LIST_SLICE = 8;
+export { WORD_LIST_SLICE } from "./WordList";
 
 /**
  * Where a word can be checked by hand. Every record came from the Italian
@@ -93,57 +81,6 @@ function JumpLinks({ page }: { page: WordPage }) {
   );
 }
 
-/** A run of words separated by `·`, each a search; eight, then `+ N more`. */
-function WordList({ id, label, words }: { id: string; label: string; words: readonly RelatedWord[] }) {
-  if (words.length === 0) return null;
-  const rest = words.slice(WORD_LIST_SLICE);
-  // The dot trails its word, so a wrapped line never opens on one. The dot
-  // after the eighth word shows only once the rest are open.
-  const item = (word: RelatedWord, i: number) => {
-    const last = i === words.length - 1;
-    const beforeRest = i === WORD_LIST_SLICE - 1 && rest.length > 0;
-    return (
-      <li key={word.word} className={WORD_LIST_ITEM}>
-        <a className={WORD_LINK} href={searchHref(word.word)} lang="it">
-          {word.word}
-        </a>
-        {!last && (
-          <span className={beforeRest ? WORD_DOT_BEFORE_REST : WORD_DOT} aria-hidden="true">
-            ·
-          </span>
-        )}
-      </li>
-    );
-  };
-  return (
-    <section className={BLOCK} aria-labelledby={id}>
-      <h2 className={BLOCK_LABEL} id={id}>
-        {label}
-      </h2>
-      <ul className={`${WORD_LIST} group/words`}>
-        {words.slice(0, WORD_LIST_SLICE).map(item)}
-        {rest.length > 0 && (
-          <li className={WORD_LIST_ITEM}>
-            <details className={WORD_MORE}>
-              <summary className={WORD_MORE_SUMMARY}>
-                <span className={MORE_CLOSED}>+ {rest.length} more</span>
-                <span className={MORE_OPEN}>fewer</span>
-              </summary>
-            </details>
-          </li>
-        )}
-        {/* The rest are in the document, shown once the summary above is open. */}
-        {rest.length > 0 && (
-          <li className="contents" data-more-words="">
-            <ul className={WORD_LIST_REST}>
-              {rest.map((word, i) => item(word, WORD_LIST_SLICE + i))}
-            </ul>
-          </li>
-        )}
-      </ul>
-    </section>
-  );
-}
 
 function WordFactsView({ facts }: { facts: WordFacts }) {
   const any = facts.etymologies.length + facts.synonyms.length + facts.antonyms.length + facts.derived.length > 0;

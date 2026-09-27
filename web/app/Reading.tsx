@@ -14,6 +14,7 @@ import { conjugationOf } from "./conjugation.ts";
 import { agreementOf } from "./genderGrid.ts";
 import { ConjugationView, GridView, OtherForms, SuperlativeGrid, searchHref } from "./Forms";
 import type { PageReading } from "./wordPage.ts";
+import { WordList } from "./WordList";
 import {
   BLOCK,
   BLOCK_LABEL,
@@ -29,6 +30,7 @@ import {
   EXAMPLE,
   EXAMPLE_EXTRA,
   EXAMPLE_FROM,
+  ETYMOLOGY,
   GLOSS,
   GLOSS_LINK,
   GLOSS_SILENT,
@@ -498,6 +500,16 @@ export function ReadingView({ entry, query }: { entry: PageReading; query: strin
       <LemmaLines reading={reading} />
       <OwnForms reading={reading} />
       <LemmaForms entry={entry} />
+      {entry.etymologies.length > 0 && (
+        <Block id={`etymology-${reading.recordId}`} label="Etymology">
+          {entry.etymologies.map((etymology) => (
+            <p key={etymology.ref.jsonPointer} className={ETYMOLOGY} lang="it">
+              {etymology.text}
+            </p>
+          ))}
+        </Block>
+      )}
+      <WordList id={`synonyms-${reading.recordId}`} label="Synonyms" words={entry.synonyms} level="h3" />
     </article>
   );
 }

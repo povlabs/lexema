@@ -609,6 +609,115 @@ test("a gloss that names two lemmas links both, and neither is repeated on a lin
   });
 });
 
+/** The dev seed plus the real `libero`, `calcio` and `svolta` lines. */
+async function withPlacementWords(run: (f: Fixture) => Promise<void>): Promise<void> {
+  const lines = async (file: string) => (await readFile(join(REPO, file), "utf8")).trim().split("\n");
+  return withLines([...(await lines("fixtures/dev-seed.jsonl")), ...(await lines("fixtures/word-facts-placement.jsonl"))], run);
+}
+
+/** The text of a reading's own Etymology block, or undefined when it has none. */
+function readingEtymology(reading: string): string | undefined {
+  const at = reading.indexOf('id="etymology-');
+  return at === -1 ? undefined : textOf(reading.slice(reading.indexOf(">", at) + 1, reading.indexOf("</section>", at)));
+}
+
+/** The words of a Synonyms run, from a reading or from the facts after the readings. */
+const synonymWords = (html: string, id: string): string[] => {
+  const at = html.indexOf(`id="${id}"`);
+  if (at === -1) return [];
+  const section = html.slice(at, html.indexOf("</section>", at));
+  return [...section.matchAll(new RegExp(`<a class="${esc(WORD_LINK)}" href="[^"]+" lang="it">([^<]+)</a>`, "g"))].map((match) => textOf(match[1]));
+};
+
+/** The page after the last reading: the facts no reading took. */
+const afterReadings = (html: string): string => html.slice(html.lastIndexOf("</article>"));
+
+test("an etymology whose label names a reading shows in that reading, without its label", async () => {
+  await withPlacementWords(async ({ db }) => {
+    // sale: the singular noun gets the salt etymology, the plural noun form
+    // (plural of sala) gets `vedi sala`; nothing is left for the bottom.
+    const sale = await render(db, "sale");
+    assert.match(readingEtymology(nth(sale, 1)) ?? "", /^Etymologyderivato dal greco/);
+    assert.equal(readingEtymology(nth(sale, 2)), "Etymologyvedi sala");
+    assert.equal(readingEtymology(nth(sale, 3)), undefined);
+    assert.doesNotMatch(afterReadings(sale), />Etymology</);
+    assert.doesNotMatch(sale, /\(sostantivo (singolare|plurale)\)/);
+
+    // libero: (aggettivo) to the adjective, (voce verbale) to the verb form;
+    // the noun reading has no etymology of its own.
+    const libero = await render(db, "libero");
+    assert.match(readingEtymology(nth(libero, 1)) ?? "", /^Etymologyderivato dal latino liber/);
+    assert.equal(readingEtymology(nth(libero, 2)), undefined);
+    assert.equal(readingEtymology(nth(libero, 3)), "Etymologyvedi liberare");
+
+    // calcio: only (voce verbale) names a reading; the topic labels stay at
+    // the bottom verbatim, with no note about them.
+    const calcio = await render(db, "calcio");
+    assert.equal(readingEtymology(nth(calcio, 3)), "Etymologyvedi calciare");
+    const bottom = textOf(afterReadings(calcio));
+    assert.match(bottom, /\(elemento chimico\) dal latino calx/);
+    assert.match(bottom, /\(sport\) dalla somiglianza/);
+    assert.doesNotMatch(bottom, /voce verbale|vedi calciare/);
+    assert.doesNotMatch(bottom, /not matched|unmatched/i);
+
+    // svolta: (aggettivo) and (sostantivo) each name one reading, but it has
+    // two Voce verbale readings, so its two (voce verbale) etymologies could
+    // be either and stay at the bottom rather than go to both.
+    const svolta = await render(db, "svolta");
+    const readings = await readingsFor(db, "svolta");
+    const verbForms = readings.filter((reading) => reading.posTitle === "Voce verbale");
+    assert.equal(verbForms.length, 2);
+    for (const reading of verbForms) assert.equal(readingEtymology(readingById(svolta, reading.recordId)), undefined);
+    const adjective = readings.find((reading) => reading.posTitle === "Aggettivo, forma flessa");
+    assert.ok(adjective);
+    assert.equal(readingEtymology(readingById(svolta, adjective.recordId)), "Etymologyvedi svolto");
+    const svoltaBottom = textOf(afterReadings(svolta));
+    assert.match(svoltaBottom, /\(voce verbale\) vedi svoltare/);
+    assert.match(svoltaBottom, /\(voce verbale\) vedi svolgere/);
+  });
+});
+
+test("a synonym group labelled with one reading's part of speech goes to it; an ambiguous one stays at the bottom", async () => {
+  await withDevSeed(async ({ db }) => {
+    const html = await render(db, "vivere");
+    const readings = await readingsFor(db, "vivere");
+    const noun = readings.find((reading) => reading.pos === "noun");
+    const verbs = readings.filter((reading) => reading.pos === "verb");
+    assert.ok(noun && verbs.length === 2);
+    const nounWords = synonymWords(readingById(html, noun.recordId), `synonyms-${noun.recordId}`);
+    assert.equal(nounWords[0], "esistenza");
+    assert.ok(!nounWords.includes("esistere"));
+    // vivere has two Verbo readings, so the `verbo` group could be either:
+    // it stays at the bottom, starting at its label, rather than go to both.
+    for (const verb of verbs) {
+      assert.deepEqual(synonymWords(readingById(html, verb.recordId), `synonyms-${verb.recordId}`), []);
+    }
+    const bottomWords = synonymWords(afterReadings(html), "synonyms");
+    assert.ok(bottomWords.includes("esistere"));
+    assert.ok(!bottomWords.includes("esistenza"), "the sostantivo group moved to its reading");
+    // Every synonym is still on the page, in a reading or at the bottom.
+    const shown = new Set([
+      ...[noun, ...verbs].flatMap((reading) => synonymWords(readingById(html, reading.recordId), `synonyms-${reading.recordId}`)),
+      ...synonymWords(afterReadings(html), "synonyms"),
+    ]);
+    for (const word of noun.wordFacts.synonyms) assert.ok(shown.has(word.word), word.word);
+
+    // An unlabelled list stays once at the bottom.
+    const andare = await render(db, "andare");
+    assert.doesNotMatch(andare, /id="synonyms-\d+"/);
+    assert.ok(synonymWords(afterReadings(andare), "synonyms").length > 0);
+  });
+});
+
+test("a word with one reading keeps its etymology and synonyms after the reading", async () => {
+  await withDevSeed(async ({ db }) => {
+    const casa = await render(db, "casa");
+    assert.doesNotMatch(casa, /id="etymology-\d+"|id="synonyms-\d+"/);
+    assert.match(textOf(afterReadings(casa)), /Etymologydal latino casa/);
+    assert.ok(synonymWords(afterReadings(casa), "synonyms").length > 0);
+  });
+});
+
 test("a proper name gets no grid and no generated articles; its forms stay visible", async () => {
   await withFixture(async ({ db }) => {
     const mercurio = nth(await render(db, "Mercurio"), 1);
