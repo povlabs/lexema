@@ -1,0 +1,7 @@
+# Huey owns the files that set Lexema's rules. Fabrika reads this list to know
+# who may approve an epic's plan and changes to these files.
+/.decisions/                @hueypov
+/AGENTS.md                  @hueypov
+/design-system-manifest.md  @hueypov
+/.fabrika.jsonc             @hueypov
+/.github/                   @hueypov
