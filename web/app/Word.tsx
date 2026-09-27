@@ -137,7 +137,7 @@ function SourceLinks({ page, siteKey }: { page: WordPage; siteKey: string | unde
   );
 }
 
-export function WordView({ page, query, siteKey }: { page: WordPage; query: string; siteKey?: string }) {
+export function WordView({ page, siteKey }: { page: WordPage; siteKey?: string }) {
   return (
     <>
       <h1 className={WORD_HEADING} lang="it">
@@ -147,7 +147,7 @@ export function WordView({ page, query, siteKey }: { page: WordPage; query: stri
       <JumpLinks page={page} />
       <div className={READINGS}>
         {page.readings.map((entry) => (
-          <ReadingView key={entry.reading.recordId} entry={entry} query={query} />
+          <ReadingView key={entry.reading.recordId} entry={entry} />
         ))}
       </div>
       <WordFactsView facts={page.wordFacts} />

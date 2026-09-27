@@ -76,7 +76,7 @@ page; the status code cannot carry it.
 
 Suggestions answer keystrokes, which the URL cannot carry, so `GET /suggest?q=`
 is the one request the page makes while a reader reads. (The other client parts
-fetch nothing until asked: the mood tabs, the one-line etymology toggle, and the
+fetch nothing until asked: the mood tabs, the measuring of the etymology line and the word lists, and the
 report box, which posts only when opened and sent.) The route returns JSON rather than a rendered page, so an
 answer costs the prefix query and nothing else. The browser keeps an answer
 five minutes, so a reader retyping a prefix sends no request. There is no edge
@@ -210,15 +210,16 @@ what the record states and nothing when it states neither, and shows a
 gender-and-number grid; its article lines are rule
 `it-articles/v1` (`src/italian/articles.ts`) applied to each spelling. A form
 that states a number but no gender takes the record's gender only when the
-record states exactly one; otherwise it waits under *Gender not given*. A verb shows
+record states exactly one; otherwise it takes no cell. A verb shows
 a conjugation with mood tabs; which mood a form goes in is rule `it-moods/v1`
 (`src/italian/moods.ts`), which reads the shape of the source's row: person
 tags for the indicativo, a pronoun beginning *che* for the congiuntivo, a bare
 pronoun on a tense-only row for the condizionale. Neither rule is named on the
-page (ADR 0016). Whatever takes no cell is listed verbatim in a last group
-named for what it lacks, such as *Mood and tense not given*.
-Every form the source gives is shown, variants such as `vo`, `annò` and
-`anderò` included. A block with nothing in it is absent.
+page (ADR 0016). A form that takes no cell, such as `parlarsi (coniugazione)`,
+the link to the reflexive verb, is not shown, and nothing says so: Huey ruled on
+2026-09-27 that the result page shows data only, never a note on what it could
+not place. Every form that has a cell is shown, variants such as `vo`, `annò`
+and `anderò` included. A block with nothing in it is absent.
 
 **Ambiguity in both directions.** A `form_of` edge names a word, and a word can
 be several records. The link on a form reading's definition searches that word,
@@ -230,14 +231,25 @@ query matches as a reading, and a lemma the query also matched through its
 table — `sala` and `salire` for `sale` — is not one of those records but the
 lemma of the reading that points to it
 ([the lookup reference](LOOKUP.md#result-fields)). Any record that lists the
-query and is no reading's lemma keeps a reading of its own, saying it lists the
-query among its forms.
+query and is no reading's lemma keeps a reading of its own, drawn like any
+other, with no line saying why it is there.
 
-**One line of etymology.** Every Etymology block shows its text on one line, cut
-with an ellipsis by CSS, and a native `<details>` `+ more` right after it that
-lets the whole text wrap in place (`web/app/OneLine.tsx`). The whole text is in
-the HTML and the toggle opens with no script; once hydrated, a text that fits
-on its line drops the toggle.
+**One expand control.** Etymology, the word lists and Definitions share one
+control (`web/app/More.tsx`): `+ more` right after what shows, and, open, `less`
+at the very end, with no count. It is a native `<details>` placed after all the
+content it reveals; that content is its sibling, not its child, and CSS shows it
+once the `<details>` is open (`:has(details[open])`). So with the rest hidden
+the control follows the last thing that shows, and with it shown the control is
+last of all. Everything is in the HTML and opens with no script.
+
+An Etymology block cuts its text to one line with an ellipsis, and open lets it
+wrap with `less` after its last word (`web/app/OneLine.tsx`). A word list
+(`web/app/WordList.tsx`) shows the words that fit on its first line: once
+hydrated it lays every word out, measures which fit with `+ more` after them,
+and hides the rest, again on a resize or when closed. Without a script the
+first eight show. In both, a text or list that fits needs no control and shows
+none. Definitions show the first definition and its own first example, then
+`+ more` under it; open, every definition with its examples in order.
 
 **Once per word.** Pronunciation, etymologies, synonyms, antonyms and derived
 words are read from `source_record_json` and render once: the IPA under the
@@ -288,8 +300,8 @@ small box: what is wrong, which reading (optional), and details, with no account
 and no email. `POST /report` (`web/app/report/route.ts`, `web/app/report.ts`)
 stores the report in `reader_report` and changes nothing on the page; a person
 reviews it (#12) and may then write a `claim_review` row. A report is not stored
-in `claim_review` itself, because that table holds reviewed verdicts and every
-disputed row there is shown to readers.
+in `claim_review` itself, because that table holds reviewed verdicts, not
+reports waiting for one.
 
 Spam is kept out in four layers, as ruled on #51: the `REPORT_LIMIT` Worker
 binding stops a burst (2 a minute) before D1 is touched, and the ruled 5 reports
@@ -309,14 +321,14 @@ stored as a SHA-256 of their rate-limit key, never as an address.
 
 ## Why a disputed claim is a row and not a code path
 
-A disputed claim renders with a warning and a link to the evidence, and the
-claim itself is left untouched. The verdicts come from `claim_review` rows, and
+A disputed claim is left untouched, and the result page does not show the
+dispute: Huey ruled on 2026-09-27 that the page shows data only, with no note
+on disputed data. The verdicts come from `claim_review` rows, and
 the development seed writes the ones this repository has evidence for — today,
 the `studente` verb claim that
 [the source research](../reports/2026-09-18-source-research.md) contradicts. Who
 reviews, on what evidence, and how a verdict is reached is still #12; what is
-settled is that a claim later research disagreed with never renders as an
-ordinary verified fact.
+settled is that a review is data beside the claim, never a change to it.
 
 The verdicts are written after the import, not by it. The importer copies the
 source and says nothing about whether it is right; a review is a claim about
@@ -337,8 +349,7 @@ itself on `/attribution`, which the site footer reaches from every page. Its acc
 
 Every link that leaves Lexema opens in a new tab (`target="_blank"
 rel="noopener noreferrer"`, `web/app/ExternalLink.tsx`), so the page stays where
-the reader left it: the Source links and a disputed claim's evidence link on a
-result, and the credit, licence and source links on `/attribution`. Each says
+the reader left it: the Source links on a result, and the credit, licence and source links on `/attribution`. Each says
 so to a screen reader. Links inside Lexema stay in the same tab.
 
 The release stores no per-record URL, so the link is *constructed* from the

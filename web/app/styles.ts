@@ -192,19 +192,13 @@ export const WORD_BLOCK = "mt-6 first:mt-0 sm:mt-8";
 export const BLOCK_LABEL = "m-0 mb-3 font-sans text-[0.8rem] font-normal text-text-muted";
 export const BLOCK_LABEL_WORD = "ml-2 font-semibold text-text-strong";
 
-/** A record that lists the searched form without defining it, said plainly. */
-export const MENTION = "m-0 mt-4 font-sans text-[0.85rem] text-text-muted";
-
-/**
- * A claim later research disputes: the source's text stays as written, and
- * the dispute is said beside it. `warning` is the manifest's "disputed-claim mark".
- */
-export const DISPUTED = "mt-6 mb-0 font-sans text-[0.85rem] text-text-muted";
-export const DISPUTED_MARK = "font-semibold text-warning";
-export const DISPUTED_LIST = "mt-2 mb-0 list-disc pl-5";
+/** `Form of andare`: a lemma the gloss does not write, linked on a line of its own. */
+export const FORM_OF_LINE = "m-0 mt-4 font-sans text-[0.85rem] text-text-muted";
 
 export const DEFINITIONS = "m-0 flex list-none flex-col gap-4 p-0";
 export const DEFINITION = "flex gap-4";
+/** A definition after the first: in the document, shown once the reading's `+ more` is open. */
+export const DEFINITION_EXTRA = "hidden gap-4 group-has-[details[open]]/definitions:flex";
 export const DEFINITION_NUMBER = "w-5 shrink-0 pt-1 font-mono text-[0.85rem] text-text-muted";
 export const DEFINITION_BODY = "min-w-0 flex-1";
 export const GLOSS = "m-0 max-w-[48rem] font-serif text-[1.2rem] leading-snug text-text-strong wrap-anywhere sm:text-[1.3rem]";
@@ -214,17 +208,22 @@ export const GLOSS_LINK = `text-accent no-underline ${FOCUS_RING}`;
 /** The items of a list a definition opens with a colon (#123), nested under it. */
 export const SUB_ITEMS = "mt-2 mb-0 flex list-disc flex-col gap-2 pl-5 marker:text-text-muted";
 export const EXAMPLE = "m-0 mt-2 max-w-[48rem] font-serif text-[1.05rem] italic text-text-muted";
-/** The first definition's other examples: in the document, shown once the reading's `more` control is open. */
+/** An example past the first definition's first: in the document, shown once `+ more` is open. */
 export const EXAMPLE_EXTRA = `${EXAMPLE} hidden group-has-[details[open]]/definitions:block`;
-/** The first definition and the reading's one `more` control, which reveals everything else. */
+/** An example of a sense not shown as a definition, after the definitions, in line with their text. */
+export const EXAMPLE_LOOSE = `${EXAMPLE_EXTRA} ml-9`;
+/** A reading's definitions and the one `+ more` after them, which reveals everything else. */
 export const DEFINITIONS_GROUP = "group/definitions";
 
-/** `N more definitions`: a native `<details>`, so every definition is in the document. */
-export const MORE = "group mt-4";
-export const MORE_SUMMARY = `inline-block cursor-pointer list-none font-sans text-[0.85rem] text-accent [&::-webkit-details-marker]:hidden ${FOCUS_RING}`;
+/**
+ * The one expand control, `+ more` closed and `less` open (More.tsx): small,
+ * in the accent, in the flow of the text it ends.
+ */
+export const MORE_SUMMARY = `inline cursor-pointer list-none font-sans text-[0.8rem] text-accent [&::-webkit-details-marker]:hidden ${FOCUS_RING}`;
 export const MORE_CLOSED = "group-open:hidden";
 export const MORE_OPEN = "hidden group-open:inline";
-export const MORE_LIST = "mt-4";
+/** Under the definition it ends, in line with its text. */
+export const DEFINITIONS_MORE = "group mt-2 ml-9 block";
 
 /**
  * Columns singolare and plurale with a gender column before them; on a phone
@@ -244,11 +243,6 @@ export const GRID_ARTICLE_DOT = "px-2 max-sm:hidden";
 /** A form the source does not give: a dash, with no note. */
 export const DASH = "font-mono text-text-muted";
 export const GRID_LABEL = "m-0 mt-4 mb-3 font-sans text-[0.75rem] font-semibold text-text-muted";
-
-/** Forms that fit no cell, verbatim, in one last group. */
-export const OTHER_FORMS = "m-0 mt-4 flex flex-col gap-1.5";
-export const OTHER_FORM = "flex flex-wrap items-baseline gap-x-3";
-export const OTHER_FORM_LABEL = "font-sans text-[0.75rem] text-text-muted";
 
 /** A form in a conjugation: a link to its own search, the pointer the only cue. */
 export const FORM_LINK = `cursor-pointer font-mono text-text-strong no-underline ${FOCUS_RING}`;
@@ -301,24 +295,29 @@ export const COMPOUND_TABLES = "mb-4 pt-3";
 export const WORD_FACTS = "mt-7 border-t border-border pt-7 sm:mt-10 sm:pt-10";
 export const ETYMOLOGY = "m-0 max-w-[48rem] font-serif text-[1.1rem] text-text";
 /**
- * An etymology on one line, cut with an ellipsis, and a small accent `+ more`
- * right after the ellipsis; open, the whole text wraps and `less` sits under it.
- * The text takes only its own width, so the control follows it, not the edge.
+ * An etymology on one line, cut with an ellipsis, and `+ more` right after the
+ * ellipsis; open, the whole text wraps and `less` follows its last word. The
+ * text takes only its own width, so the control follows it, not the edge.
  */
-export const ONE_LINE =
-  "group/line flex max-w-[48rem] items-baseline gap-1.5 [&+&]:mt-3 has-[details[open]]:flex-col has-[details[open]]:gap-1";
-export const ONE_LINE_TEXT = `${ETYMOLOGY} min-w-0 truncate group-has-[details[open]]/line:whitespace-normal`;
-export const ONE_LINE_TOGGLE = "group shrink-0";
-export const ONE_LINE_TOGGLE_SUMMARY = `cursor-pointer list-none font-sans text-[0.8rem] text-accent [&::-webkit-details-marker]:hidden ${FOCUS_RING}`;
-export const WORD_LIST = "m-0 flex list-none flex-wrap items-baseline gap-x-3 gap-y-2 p-0";
+export const ONE_LINE = "group/line flex max-w-[48rem] items-baseline gap-1.5 [&+&]:mt-3 has-[details[open]]:block";
+export const ONE_LINE_TEXT = `${ETYMOLOGY} min-w-0 truncate group-has-[details[open]]/line:inline group-has-[details[open]]/line:whitespace-normal`;
+export const ONE_LINE_MORE = "group inline shrink-0 open:ml-1.5";
+/** A text that fits on its line needs no control. */
+export const ONE_LINE_MORE_UNNEEDED = "hidden";
+export const WORD_LIST = "group/words m-0 flex list-none flex-wrap items-baseline gap-x-3 gap-y-2 p-0";
 export const WORD_LIST_ITEM = "flex items-baseline gap-3";
-/** The words past the first eight: in the document, shown once `+ N more` is open. */
-export const WORD_LIST_REST = "hidden group-has-[details[open]]/words:contents";
+/**
+ * A word past the first line: in the document, shown once `+ more` is open,
+ * and while the list measures which words fit (WordList.tsx).
+ */
+export const WORD_LIST_ITEM_REST = "hidden items-baseline gap-3 group-has-[details[open]]/words:flex group-data-measuring/words:flex";
+/** The `+ more` item of a list whose words all fit: laid out only to be measured. */
+export const WORD_LIST_MORE_UNNEEDED = "hidden group-data-measuring/words:flex";
 export const WORD_LINK = `cursor-pointer font-serif text-[1.1rem] text-text-strong no-underline ${FOCUS_RING}`;
 export const WORD_DOT = "font-sans text-[0.75rem] text-text-muted";
+/** The dot after the last word that shows closed: `+ more` follows the word itself. */
 export const WORD_DOT_BEFORE_REST = "hidden font-sans text-[0.75rem] text-text-muted group-has-[details[open]]/words:inline";
 export const WORD_MORE = "group inline";
-export const WORD_MORE_SUMMARY = `inline cursor-pointer list-none font-sans text-[0.8rem] text-accent [&::-webkit-details-marker]:hidden ${FOCUS_RING}`;
 
 /** `Source ↗`, with the same space above and below it. */
 export const SOURCE_LINE = "mt-9 sm:mt-12 flex flex-wrap items-center gap-x-3 gap-y-1 font-sans text-[0.8rem] text-text-muted";

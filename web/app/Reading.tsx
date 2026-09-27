@@ -9,12 +9,12 @@
 
 import type { ReactNode } from "react";
 import { everyRecovered, isVerbReading, searchedSpellings } from "@lexema/lookup/types.ts";
-import type { RecoveredDefinition, Reading, Review, Sense } from "@lexema/lookup/types.ts";
+import type { RecoveredDefinition, Reading, Sense } from "@lexema/lookup/types.ts";
 import { conjugationOf } from "./conjugation.ts";
 import { agreementOf, headingGrammar } from "./genderGrid.ts";
-import { ConjugationView, GridView, OtherForms, SuperlativeGrid, searchHref } from "./Forms";
+import { ConjugationView, GridView, SuperlativeGrid, searchHref } from "./Forms";
 import type { PageReading } from "./wordPage.ts";
-import { ExternalLink } from "./ExternalLink";
+import { More } from "./More";
 import { OneLine } from "./OneLine";
 import { WordList } from "./WordList";
 import {
@@ -23,22 +23,17 @@ import {
   BLOCK_LABEL_WORD,
   DEFINITION,
   DEFINITION_BODY,
+  DEFINITION_EXTRA,
   DEFINITION_NUMBER,
   DEFINITIONS,
   DEFINITIONS_GROUP,
-  DISPUTED,
-  DISPUTED_LIST,
-  DISPUTED_MARK,
+  DEFINITIONS_MORE,
   EXAMPLE,
   EXAMPLE_EXTRA,
+  EXAMPLE_LOOSE,
+  FORM_OF_LINE,
   GLOSS,
   GLOSS_LINK,
-  MENTION,
-  MORE,
-  MORE_CLOSED,
-  MORE_LIST,
-  MORE_OPEN,
-  MORE_SUMMARY,
   READING,
   READING_DOT,
   READING_GRAMMAR,
@@ -48,9 +43,6 @@ import {
   SENSE_LABEL,
   SUB_ITEMS,
 } from "./styles.ts";
-
-/** How many definitions show before `N more definitions`. */
-export const DEFINITION_SLICE = 1;
 
 /** A block: a small grey label over its content. */
 function Block({ id, label, children }: { id: string; label: ReactNode; children: ReactNode }) {
@@ -125,9 +117,9 @@ function definitionsOf(reading: Reading): { items: DefinitionItem[]; looseExampl
   return { items, looseExamples };
 }
 
-/** How many examples a definition's nested items carry, at any depth. */
-const nestedExamples = (items: readonly RecoveredDefinition[]): number =>
-  items.reduce((count, item) => count + item.examples.length + nestedExamples(item.items), 0);
+/** Whether a definition's nested items carry an example, at any depth. */
+const nestedExamples = (items: readonly RecoveredDefinition[]): boolean =>
+  items.some((item) => item.examples.length > 0 || nestedExamples(item.items));
 
 const nestedItemsOf = (item: DefinitionItem): readonly RecoveredDefinition[] =>
   item.from === "record" ? item.sense.recoveredItems : item.definition.items;
@@ -194,7 +186,8 @@ function senseLabels(labels: readonly string[]): string[] {
   return labels.filter((label) => label !== "form-of");
 }
 
-function SubItems({ items, showExamples = true }: { items: readonly RecoveredDefinition[]; showExamples?: boolean }) {
+/** A definition's nested items; their examples show once the definitions are open. */
+function SubItems({ items }: { items: readonly RecoveredDefinition[] }) {
   if (items.length === 0) return null;
   return (
     <ul className={SUB_ITEMS}>
@@ -204,19 +197,19 @@ function SubItems({ items, showExamples = true }: { items: readonly RecoveredDef
             {item.labels.length > 0 && <span className={SENSE_LABEL}>({item.labels.join(", ")}) </span>}
             {item.text}
           </p>
-          {showExamples && item.examples.map((example) => (
+          {item.examples.map((example) => (
             <p key={example.ref.line} className={EXAMPLE_EXTRA}>
               <span lang="it">{example.text}</span>
             </p>
           ))}
-          <SubItems items={item.items} showExamples={showExamples} />
+          <SubItems items={item.items} />
         </li>
       ))}
     </ul>
   );
 }
 
-function DefinitionText({ item, reading, showNestedExamples = true }: { item: DefinitionItem; reading: Reading; showNestedExamples?: boolean }) {
+function DefinitionText({ item, reading }: { item: DefinitionItem; reading: Reading }) {
   if (item.from === "page") {
     const { definition } = item;
     return (
@@ -225,7 +218,7 @@ function DefinitionText({ item, reading, showNestedExamples = true }: { item: De
           {definition.labels.length > 0 && <span className={SENSE_LABEL}>({definition.labels.join(", ")}) </span>}
           {definition.text}
         </p>
-        <SubItems items={definition.items} showExamples={showNestedExamples} />
+        <SubItems items={definition.items} />
       </>
     );
   }
@@ -240,7 +233,7 @@ function DefinitionText({ item, reading, showNestedExamples = true }: { item: De
           <LinkedGloss text={gloss.text} lemmas={lemmas} />
         </p>
       ))}
-      <SubItems items={sense.recoveredItems} showExamples={showNestedExamples} />
+      <SubItems items={sense.recoveredItems} />
     </>
   );
 }
@@ -248,52 +241,20 @@ function DefinitionText({ item, reading, showNestedExamples = true }: { item: De
 const definitionKey = (item: DefinitionItem): string =>
   item.from === "record" ? `sense-${item.sense.index}` : `page-${item.definition.ref.line}`;
 
-function Example({ text }: { text: string }) {
+function Example({ text, className = EXAMPLE }: { text: string; className?: string }) {
   return (
-    <p className={EXAMPLE}>
+    <p className={className}>
       <span lang="it">{text}</span>
     </p>
   );
 }
 
-function DefinitionLine({
-  item,
-  number,
-  reading,
-  children,
-  showNestedExamples = true,
-}: {
-  item: DefinitionItem;
-  number: number;
-  reading: Reading;
-  children: ReactNode;
-  showNestedExamples?: boolean;
-}) {
-  return (
-    <li className={DEFINITION} data-definition={number}>
-      <span className={DEFINITION_NUMBER} aria-hidden="true">
-        {number}.
-      </span>
-      <div className={DEFINITION_BODY}>
-        <DefinitionText item={item} reading={reading} showNestedExamples={showNestedExamples} />
-        {children}
-      </div>
-    </li>
-  );
-}
-
-const plural = (count: number, noun: string): string => `${count} more ${noun}${count === 1 ? "" : "s"}`;
-
-/** Every example on a definition's nested items, at any depth, in page order. */
-const nestedExampleTexts = (items: readonly RecoveredDefinition[]): string[] =>
-  items.flatMap((item) => [...item.examples.map((example) => example.text), ...nestedExampleTexts(item.items)]);
-
 /**
- * The first definition with one example, then one control that shows the
- * rest: the other definitions, and every example not yet shown, including
- * those of nested items and of furniture senses left out. Every example stays
- * under its own definition: the first definition shows its own first example,
- * or none. Everything is in the document whether the control is open or not.
+ * Closed, the first definition and its own first example, or none: an example
+ * stays under its own definition. Then `+ more`, when anything else is there.
+ * Open, every definition with every example in order, then those of senses
+ * not shown as definitions, then `less` (design-system-manifest.md § "Layout",
+ * one expand control). Everything is in the document whether it is open or not.
  */
 function Definitions({ reading }: { reading: Reading }) {
   const { items, looseExamples } = definitionsOf(reading);
@@ -308,57 +269,31 @@ function Definitions({ reading }: { reading: Reading }) {
       </Block>
     );
   }
-  const [first] = items;
-  const firstExtra = first.examples.slice(1);
-  const rest = items.slice(DEFINITION_SLICE);
-  // Examples the closed control hides outside the other definitions: the first
-  // definition's others, those of its nested items, and those of senses not
-  // shown as definitions.
-  const hiddenExamples = firstExtra.length + nestedExamples(nestedItemsOf(first)) + looseExamples.length;
-  const label = [
-    ...(rest.length > 0 ? [plural(rest.length, "definition")] : []),
-    ...(hiddenExamples > 0 ? [plural(hiddenExamples, "example")] : []),
-  ].join(" · ");
+  const [first, ...rest] = items;
+  const more =
+    rest.length > 0 || first.examples.length > 1 || nestedExamples(nestedItemsOf(first)) || looseExamples.length > 0;
   return (
     <Block id={`definitions-${reading.recordId}`} label="Definitions">
       <div className={DEFINITIONS_GROUP}>
         <ol className={DEFINITIONS}>
-          {/* The first definition's nested items show; their examples wait
-              behind the control with its other examples. */}
-          <DefinitionLine item={first} number={1} reading={reading} showNestedExamples={false}>
-            {/* Its own first example, or none: an example stays under its own definition. */}
-            {first.examples.length > 0 && <Example text={first.examples[0]} />}
-          </DefinitionLine>
+          {items.map((item, i) => (
+            <li key={definitionKey(item)} className={i === 0 ? DEFINITION : DEFINITION_EXTRA} data-definition={i + 1}>
+              <span className={DEFINITION_NUMBER} aria-hidden="true">
+                {i + 1}.
+              </span>
+              <div className={DEFINITION_BODY}>
+                <DefinitionText item={item} reading={reading} />
+                {item.examples.map((text, j) => (
+                  <Example key={j} text={text} className={i === 0 && j > 0 ? EXAMPLE_EXTRA : EXAMPLE} />
+                ))}
+              </div>
+            </li>
+          ))}
         </ol>
-        {label !== "" && (
-          <details className={MORE}>
-            <summary className={MORE_SUMMARY}>
-              <span className={MORE_CLOSED}>{label}</span>
-              <span className={MORE_OPEN}>fewer</span>
-            </summary>
-            {/* The first definition's other examples, then those of its nested items. */}
-            {[...firstExtra, ...nestedExampleTexts(nestedItemsOf(first))].map((text, i) => (
-              <Example key={`first-${i}`} text={text} />
-            ))}
-            {rest.length > 0 && (
-              <ol className={`${DEFINITIONS} ${MORE_LIST}`} start={DEFINITION_SLICE + 1}>
-                {rest.map((item, i) => {
-                  const index = DEFINITION_SLICE + i;
-                  return (
-                    <DefinitionLine key={definitionKey(item)} item={item} number={index + 1} reading={reading}>
-                      {item.examples.map((text, j) => (
-                        <Example key={j} text={text} />
-                      ))}
-                    </DefinitionLine>
-                  );
-                })}
-              </ol>
-            )}
-            {looseExamples.map((text, i) => (
-              <Example key={`loose-${i}`} text={text} />
-            ))}
-          </details>
-        )}
+        {looseExamples.map((text, i) => (
+          <Example key={`loose-${i}`} text={text} className={EXAMPLE_LOOSE} />
+        ))}
+        {more && <More className={DEFINITIONS_MORE} />}
       </div>
     </Block>
   );
@@ -385,7 +320,7 @@ function LemmaLines({ reading }: { reading: Reading }) {
   return (
     <>
       {[...unlinked].map((word) => (
-        <p key={word} className={MENTION}>
+        <p key={word} className={FORM_OF_LINE}>
           Form of{" "}
           <a className={GLOSS_LINK} href={searchHref(word)} lang="it">
             {word}
@@ -396,34 +331,6 @@ function LemmaLines({ reading }: { reading: Reading }) {
     </>
   );
 }
-
-/**
- * A claim later research disputes. The source keeps saying what it said, and
- * the page says the evidence disagrees. `studente`'s verb reading is in this state.
- */
-function Disputes({ reviews }: { reviews: readonly Review[] }) {
-  const disputed = reviews.filter((review) => review.status === "disputed");
-  if (disputed.length === 0) return null;
-  return (
-    <div className={DISPUTED} role="note">
-      <p className="m-0">
-        <strong className={DISPUTED_MARK}>Disputed by later research.</strong> This entry is shown as the source
-        wrote it; the evidence below disagrees with it.
-      </p>
-      <ul className={DISPUTED_LIST}>
-        {disputed.map((review, i) => (
-          <li key={i}>
-            {review.note}{" "}
-            <ExternalLink className="text-accent underline" href={review.evidenceUrl}>
-              evidence
-            </ExternalLink>
-          </li>
-        ))}
-      </ul>
-    </div>
-  );
-}
-
 
 /** The reading's own forms, in the shape they have. */
 function OwnForms({ reading }: { reading: Reading }) {
@@ -441,13 +348,12 @@ function OwnForms({ reading }: { reading: Reading }) {
       </Block>
     );
   }
-  const { grid, superlative, unplaced } = agreementOf(reading);
-  if (grid === undefined && superlative === undefined && unplaced.length === 0) return null;
+  const { grid, superlative } = agreementOf(reading);
+  if (grid === undefined && superlative === undefined) return null;
   return (
     <Block id={id} label="Forms">
       {grid !== undefined && <GridView grid={grid} label={`Forms of ${reading.word}`} />}
       {superlative !== undefined && <SuperlativeGrid grid={superlative} />}
-      <OtherForms groups={unplaced} links={false} />
     </Block>
   );
 }
@@ -483,7 +389,7 @@ function LemmaForms({ entry }: { entry: PageReading }) {
   );
 }
 
-export function ReadingView({ entry, query }: { entry: PageReading; query: string }) {
+export function ReadingView({ entry }: { entry: PageReading }) {
   const { reading, number } = entry;
   const grammar = headingGrammar(reading);
   return (
@@ -512,15 +418,6 @@ export function ReadingView({ entry, query }: { entry: PageReading; query: strin
           </span>
         )}
       </h2>
-      {/* A record that merely lists the query in its table is not a claim
-          about the query, and saying so stops a reader inferring a lemma
-          nobody stated. */}
-      {!reading.isAboutQuery && (
-        <p className={MENTION}>
-          <span lang="it">{reading.word}</span> lists <q lang="it">{query}</q> among its forms.
-        </p>
-      )}
-      <Disputes reviews={reading.reviews} />
       <Definitions reading={reading} />
       <LemmaLines reading={reading} />
       <OwnForms reading={reading} />

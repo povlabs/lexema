@@ -292,7 +292,7 @@ the word list per request.
 |---|---|---|
 | `{ kind: "accent", best, others }` | the same letters with an accent | "Did you mean città?", then other words that begin with the query |
 | `{ kind: "typo", best, others }` | one edit away | "Did you mean mangiare?", then other close spellings |
-| `{ kind: "prefix", words }` | words that begin with it | the words, eight shown, then `+ N more` |
+| `{ kind: "prefix", words }` | words that begin with it | the words that fit on one line, then `+ more` |
 | `{ kind: "none" }` | nothing | how to search instead |
 
 ## Not covered here

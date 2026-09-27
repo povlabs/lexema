@@ -9,20 +9,19 @@
 //   states. A form that states a number but no gender takes the record's
 //   gender when the record states exactly one: `bello` the noun is masculine
 //   and lists `belli` tagged plural only. When the record states both (`fine`
-//   lists `fini` tagged plural), the form's gender is not guessed: it is
-//   unplaced, under "Gender not given".
+//   lists `fini` tagged plural), the form's gender is not guessed, so it takes
+//   no cell.
 // - The headword sits in every number its record states (`khmer` is tagged
 //   singular and plural, so it fills both), and, as the citation form, in the
 //   singolare column when its record states no usable number (`andare` the
 //   noun, `bello` invariable).
 // - A form with a degree other than positive is a comparison, not an agreement
-//   cell: a superlative goes to the superlativo grid, anything else to
-//   `unplaced`.
+//   cell: a superlative goes to the superlativo grid, anything else takes no
+//   cell.
 // - Only nouns, adjectives and phrases get a grid. A proper name, a prefix or
-//   any other part of speech gets none, and no generated articles: its forms
-//   are unplaced (`Mercurio` lists `Mercuria`).
-// - Whatever takes no cell is `unplaced`, verbatim, grouped by what it lacks.
-//   Layout never drops a form.
+//   any other part of speech gets none, and no generated articles.
+// - A form that takes no cell is not shown: the page shows data, never a note
+//   on what it could not place (Huey, 2026-09-27, on #142).
 //
 // Each spelling's articles are `it-articles/v1` (src/italian/articles.ts),
 // applied to it with the cell's gender and number, exactly as it stands; a cell
@@ -32,7 +31,6 @@
 import { isAdjectiveReading, isNounReading } from "@lexema/lookup/types.ts";
 import type { GrammarClaim, Reading, SourceForm } from "@lexema/lookup/types.ts";
 import { generateItalianArticles } from "@lexema/italian/articles.ts";
-import { groupUnplaced, type Missing, type UnplacedGroup } from "./unplaced.ts";
 
 export const GENDERS = ["masculine", "feminine"] as const;
 export type Gender = (typeof GENDERS)[number];
@@ -73,7 +71,6 @@ export interface Agreement {
   grid: Grid | undefined;
   /** The superlativo grid, when the source lists superlatives with a gender and number. */
   superlative: Grid | undefined;
-  unplaced: UnplacedGroup[];
 }
 
 function statedValues(claims: readonly GrammarClaim[], dimension: string): string[] {
@@ -152,15 +149,14 @@ function inflects(reading: Reading): boolean {
 }
 
 export function agreementOf(reading: Reading): Agreement {
+  if (!inflects(reading)) return { grid: undefined, superlative: undefined };
   const plain = new GridBuilder();
   const superlative = new GridBuilder();
-  const unplaced: { form: SourceForm; missing: Missing }[] = [];
   const recordGenders = gendersOf(reading.grammar.record);
 
   const stated = numbersOf(reading.grammar.record);
   const headwordNumbers: GrammaticalNumber[] =
-    !inflects(reading) ? []
-    : reading.lemmaLinks.length === 0 ? (stated.length > 0 ? stated : ["singular"])
+    reading.lemmaLinks.length === 0 ? (stated.length > 0 ? stated : ["singular"])
     // A form reading with a table of its own (`bella`) is placed in it too.
     : reading.forms.length > 0 ? stated
     : [];
@@ -174,24 +170,11 @@ export function agreementOf(reading: Reading): Agreement {
     const own = gendersOf(form.claims);
     const genders = own.length > 0 ? own : recordGenders.length === 1 ? recordGenders : [];
     const number = numberOf(form.claims);
-    if (!inflects(reading) || target === undefined || genders.length === 0 || number === undefined) {
-      const missing: Missing =
-        genders.length === 0 && number === undefined
-          ? "gender and number not given"
-          : number === undefined
-            ? "number not given"
-            : genders.length === 0
-              ? "gender not given"
-              : !inflects(reading)
-                ? "not a noun, adjective or phrase"
-                : "comparison not in the grid";
-      unplaced.push({ form, missing });
-      continue;
-    }
+    if (target === undefined || genders.length === 0 || number === undefined) continue;
     for (const gender of genders) target.put(gender, number, form, form.surface);
   }
 
-  return { grid: plain.build(), superlative: superlative.build(), unplaced: groupUnplaced(unplaced) };
+  return { grid: plain.build(), superlative: superlative.build() };
 }
 
 /** Two labels as Italian joins them: `maschile e femminile`. */

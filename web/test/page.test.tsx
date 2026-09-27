@@ -38,15 +38,16 @@ import { Attribution } from "../app/Attribution";
 import { FirstLoad, Limited, Outcome, Pending, SearchPage, TRY_WORDS } from "../app/SearchPage";
 import { SiteFooter } from "../app/SiteFooter";
 import { SiteHeader } from "../app/SiteHeader";
-import { WORD_LIST_SLICE } from "../app/Word";
 import { wordPage } from "../app/wordPage.ts";
 import { firstQuery, pageTitle } from "../app/params";
 // The class strings the components carry, imported rather than copied, so a
 // restyle that changes one changes both together.
 import {
   CODE_IDENTITY,
+  DEFINITION_EXTRA,
   EMPTY,
   ERROR,
+  EXAMPLE_EXTRA,
   FIELD_LABEL,
   FIELD_VALUE,
   JUMP_LINK,
@@ -287,7 +288,6 @@ test("casa shows the definitions its raw page states, with no mark for where the
     const reading = nth(casa, 1);
     assert.equal(patternsOf(reading, /data-definition="/g), 7);
     assert.match(textOf(reading), /edificio costruito per essere utilizzato come abitazione/);
-    assert.match(reading, />6 more definitions</);
     // ADR 0016: no recovered mark, no revision link, no rule note, and the
     // two furniture glosses are not definitions.
     assert.doesNotMatch(casa, /recovered|oldid=|it-moods|it-articles|Not from the source/i);
@@ -409,42 +409,23 @@ test("a searched compound form opens the compound tenses; otherwise they wait be
   });
 });
 
-test("etymology and synonyms come once after the readings: eight synonyms, then + N more, each a search", async () => {
+test("etymology and synonyms come once after the readings: every synonym a search, then + more and no count", async () => {
   await withDevSeed(async ({ db }) => {
     const html = await render(db, "andare");
     const facts = html.slice(html.lastIndexOf("</article>"));
     assert.equal(patternsOf(html, />Etymology</g), 1);
     const synonyms = facts.slice(facts.indexOf('id="synonyms"'), facts.indexOf("</section>", facts.indexOf('id="synonyms"')));
     const words = [...synonyms.matchAll(new RegExp(`<a class="${esc(WORD_LINK)}" href="([^"]+)" lang="it">([^<]+)</a>`, "g"))];
-    const total = (await readingsFor(db, "andare"))[0].wordFacts.synonyms.length;
-    assert.ok(total > WORD_LIST_SLICE);
     assert.equal(words.length, wordPage("andare", await readingsFor(db, "andare")).wordFacts.synonyms.length, "every synonym is in the document");
-    assert.match(synonyms, new RegExp(`>\\+ ${words.length - WORD_LIST_SLICE} more<`));
     for (const [, href, word] of words) assert.equal(href, `/?q=${encodeURIComponent(textOf(word))}`);
-    // No count beside a label.
-    assert.doesNotMatch(html, /showing \d/);
+    // The one control, last in the list so it ends what shows, open or closed.
+    assert.match(synonyms, /<li[^>]*><details class="[^"]*"><summary class="[^"]*"><span class="[^"]*">\+ more<\/span><span class="[^"]*">less<\/span><\/summary><\/details><\/li><\/ul>$/);
+    // No count anywhere: not beside a label, not on a control.
+    assert.doesNotMatch(textOf(html), /showing \d|\d+ more/);
   });
 });
 
-test("every form entry of every reading is on the page, whatever shape its forms take", async () => {
-  await withDevSeed(async ({ db }) => {
-    for (const query of ["andare", "bello", "sale", "studente", "grande", "casa", "vivere"]) {
-      const html = await render(db, query);
-      for (const reading of await readingsFor(db, query)) {
-        const shown = new Set(
-          [...readingById(html, reading.recordId).matchAll(/data-form="([\d ]+)"/g)].flatMap((match) =>
-            match[1].split(" ").map(Number),
-          ),
-        );
-        for (const form of reading.forms) {
-          assert.ok(shown.has(form.index), `${query}: ${reading.word} form ${form.index} (${form.surface}) is shown`);
-        }
-      }
-    }
-  });
-});
-
-test("an identical spelling in one place shows once and keeps every entry: a grid cell, a conjugation slot, an unplaced group", async () => {
+test("an identical spelling in one place shows once and keeps every entry: a grid cell, a conjugation slot", async () => {
   await withFixture(async ({ db }) => {
     // `studente` lists `studenti` as masculine plural and as bare plural; both
     // land in maschile plurale.
@@ -459,71 +440,86 @@ test("an identical spelling in one place shows once and keeps every entry: a gri
     assert.equal(patternsOf(verb, />abbisogno<\/a>/g), 1);
     assert.match(verb, /data-form="1 8">abbisogno<\/a>/);
   });
-  await withFixture(async ({ db }) => {
-    const alpe = nth(await render(db, "alpe"), 1);
-    const group = alpe.slice(alpe.indexOf('data-unplaced="gender not given"'));
-    assert.equal(patternsOf(group, />alpi</g), 1);
-    assert.match(group, /<span data-form="0 1">alpi<\/span>/);
-  });
 });
 
-test("one definition and one example show; one control per reading holds every other definition and example", async () => {
+/** A reading's Definitions block, from its label to the end of its section. */
+function definitionsBlock(reading: string): string {
+  const at = reading.search(/id="definitions-\d+"/);
+  assert.notEqual(at, -1, "no Definitions block");
+  return reading.slice(at, reading.indexOf("</section>", at));
+}
+
+/**
+ * What a Definitions block shows closed, as text: the first definition, less
+ * the examples that wait for `+ more`. The other definitions and every
+ * example after them are hidden by class until the control is open.
+ */
+function closedDefinitions(block: string): string {
+  const firstEnd = block.indexOf(`<li class="${DEFINITION_EXTRA}"`);
+  const first = block.slice(0, firstEnd === -1 ? block.indexOf("</ol>") : firstEnd);
+  return textOf(first.replace(new RegExp(`<p class="${esc(EXAMPLE_EXTRA)}[^"]*">.*?</p>`, "g"), ""));
+}
+
+/** The one expand control, last in its block, so `less` ends what the open block shows. */
+const MORE_LAST = /<details class="[^"]*"><summary class="[^"]*"><span class="[^"]*">\+ more<\/span><span class="[^"]*">less<\/span><\/summary><\/details><\/div>$/;
+
+test("closed, the first definition and its own first example; + more, last, opens every definition and example in order", async () => {
   await withDevSeed(async ({ db }) => {
     const readings = await readingsFor(db, "libro");
     const noun = readings.find((reading) => reading.pos === "noun");
     assert.ok(noun);
     const examples = noun.senses[0].examples.map((example) => example.text);
     assert.ok(examples.length > 2, "libro's first sense carries several examples");
-    const reading = readingById(await render(db, "libro"), noun.recordId);
-    const definitions = reading.slice(0, reading.indexOf(`id="forms-${noun.recordId}"`));
-    const closed = definitions.slice(0, definitions.indexOf("<details"));
-    const control = definitions.slice(definitions.indexOf("<details"));
-    // Every example is in the document; the first shows, the others wait for
-    // the one control, which also holds the other definitions.
-    for (const text of examples) assert.ok(textOf(definitions).includes(text), `example in the page: ${text}`);
+    const block = definitionsBlock(readingById(await render(db, "libro"), noun.recordId));
+    const closed = closedDefinitions(block);
+    // Every example is in the document, in order; closed, only the first shows.
+    const all = textOf(block);
+    let at = -1;
+    for (const text of examples) {
+      assert.ok(all.indexOf(text) > at, `example in the page, in order: ${text}`);
+      at = all.indexOf(text);
+    }
     assert.ok(closed.includes(examples[0]));
-    for (const text of examples.slice(1)) assert.ok(!textOf(closed).includes(text), `extra example starts hidden: ${text}`);
-    for (const text of examples.slice(1)) assert.ok(textOf(control).includes(text), `extra example is reachable: ${text}`);
-    assert.equal(patternsOf(definitions, /<details[\s>]/g), 1, "one control for the whole reading");
-    assert.match(definitions, new RegExp(`>6 more definitions · ${examples.length - 1} more examples<`));
+    for (const text of examples.slice(1)) assert.ok(!closed.includes(text), `extra example starts hidden: ${text}`);
+    assert.equal(patternsOf(block, /data-definition="/g), noun.senses.length, "every definition is in the document");
+    assert.equal(patternsOf(block, /<details[\s>]/g), 1, "one control for the whole reading");
+    assert.match(block, MORE_LAST);
+    assert.doesNotMatch(textOf(block), /\d+ more|fewer/);
 
     // A single-definition reading still gets the control when its first
-    // definition has additional examples.
+    // definition has more examples.
     const onlyDefinition = await renderChanged(db, "libro", (changed) => {
       const target = changed.find((reading) => reading.recordId === noun.recordId);
       assert.ok(target);
       target.senses.splice(1);
     });
-    const onlyReading = readingById(onlyDefinition, noun.recordId);
-    const onlyDefinitions = onlyReading.slice(0, onlyReading.indexOf(`id="forms-${noun.recordId}"`));
-    assert.equal(patternsOf(onlyReading, /data-definition="/g), 1);
-    assert.equal(patternsOf(onlyDefinitions, /<details[\s>]/g), 1);
-    assert.match(onlyReading, new RegExp(`>${examples.length - 1} more examples<`));
+    const only = definitionsBlock(readingById(onlyDefinition, noun.recordId));
+    assert.equal(patternsOf(only, /data-definition="/g), 1);
+    assert.match(only, MORE_LAST);
 
     // bello's first adjective sense has no example, so it shows none: no other
     // definition's example is borrowed, and no "from definition" label appears.
-    // The third definition's example stays under the third, behind the control.
+    // The third definition's example stays under the third.
     const bello = await readingsFor(db, "bello");
     const adjective = bello.find((r) => r.pos === "adj" && r.isAboutQuery);
     assert.ok(adjective);
     const third = adjective.senses[2].examples[0].text;
-    const belloReading = readingById(await render(db, "bello"), adjective.recordId);
-    const [belloShown, belloRest] = belloReading.split("<details");
-    assert.ok(!textOf(belloShown).includes(third), "not borrowed onto the first definition");
-    assert.ok(textOf(belloRest).includes(third), "reachable under its own definition");
-    assert.doesNotMatch(belloReading, /from definition/);
+    const belloBlock = definitionsBlock(readingById(await render(db, "bello"), adjective.recordId));
+    assert.ok(!closedDefinitions(belloBlock).includes(third), "not borrowed onto the first definition");
+    const thirdDefinition = belloBlock.slice(belloBlock.indexOf('data-definition="3"'), belloBlock.indexOf('data-definition="4"'));
+    assert.ok(textOf(thirdDefinition).includes(third), "reachable under its own definition");
+    assert.doesNotMatch(belloBlock, /from definition/);
   });
   await withDevSeed(async ({ db }) => {
-    const verb = nth(await render(db, "andare"), 2);
-    const [first, rest] = verb.split("<details");
-    assert.equal(patternsOf(first, /data-definition="/g), 1);
-    assert.match(textOf(first), /muoversi da un luogo verso un altro luogo/);
-    assert.match(textOf(first), /ogni mattina devo andare a scuola/);
-    assert.match(rest, />4 more definitions</);
-    assert.equal(patternsOf(verb, /data-definition="/g), 5, "all five definitions are in the document");
+    const block = definitionsBlock(nth(await render(db, "andare"), 2));
+    const closed = closedDefinitions(block);
+    assert.match(closed, /muoversi da un luogo verso un altro luogo/);
+    assert.match(closed, /ogni mattina devo andare a scuola/);
+    assert.equal(patternsOf(block, /data-definition="/g), 5, "all five definitions are in the document");
+    assert.match(block, MORE_LAST);
 
-    // A reading with one definition has no link.
-    assert.doesNotMatch(nth(await render(db, "bello"), 3), /more definition/);
+    // A reading with one definition and one example has no control.
+    assert.doesNotMatch(definitionsBlock(nth(await render(db, "bello"), 3)), /<details|\+ more/);
   });
 });
 
@@ -590,7 +586,7 @@ const recoveredExample = (text: string, line: number) => ({
   ref: { wiki: "it.wiktionary.org", title: "x", revisionId: 1, line },
 });
 
-test("no example becomes unreachable: nested items', hidden furniture's and glossless senses' examples sit behind the control", async () => {
+test("no example becomes unreachable: nested items', hidden furniture's and glossless senses' examples wait for + more", async () => {
   // No committed record carries either, so the lookup's own readings are
   // given one of each before the page renders them.
   await withLines(
@@ -611,12 +607,11 @@ test("no example becomes unreachable: nested items', hidden furniture's and glos
           items: [],
         });
       });
-      const reading = nth(html, 1);
-      const closed = reading.slice(0, reading.indexOf("<details"));
-      const control = reading.slice(reading.indexOf("<details"));
-      assert.doesNotMatch(textOf(closed), /uno scudo accollato a un altro/);
-      assert.match(textOf(control), /uno scudo accollato a un altro/);
-      assert.match(control, />2 more definitions · 1 more example</);
+      const block = definitionsBlock(nth(html, 1));
+      assert.doesNotMatch(closedDefinitions(block), /uno scudo accollato a un altro/);
+      assert.match(closedDefinitions(block), /una voce annidata della prima definizione/, "the nested item itself shows");
+      assert.match(textOf(block), /uno scudo accollato a un altro/);
+      assert.match(block, MORE_LAST);
     },
     await loadFixturePages(join(REPO, "fixtures")),
   );
@@ -628,9 +623,10 @@ test("no example becomes unreachable: nested items', hidden furniture's and glos
     });
     const reading = nth(html, 1);
     assert.doesNotMatch(textOf(reading), /\( citazioni\)/, "the furniture gloss stays hidden");
-    const control = reading.slice(reading.indexOf("<details"));
-    assert.match(textOf(control), /la casa è dove si torna/, "its example is behind the control");
-    assert.match(control, />6 more definitions · 1 more example</);
+    const block = definitionsBlock(reading);
+    assert.doesNotMatch(closedDefinitions(block), /la casa è dove si torna/);
+    assert.match(textOf(block), /la casa è dove si torna/, "its example waits for + more");
+    assert.match(block, MORE_LAST);
   });
   await withDevSeed(async ({ db }) => {
     const noun = (await readingsFor(db, "libro")).find((reading) => reading.pos === "noun");
@@ -650,8 +646,9 @@ test("no example becomes unreachable: nested items', hidden furniture's and glos
     const reading = readingById(html, noun.recordId);
     assert.equal(patternsOf(reading, /data-definition="/g), noun.senses.length, "no numbered line for it");
     assert.doesNotMatch(reading, /no definition|gives no/i);
-    const control = reading.slice(reading.indexOf("<details"));
-    assert.match(textOf(control), /un libro senza definizione/);
+    const block = definitionsBlock(reading);
+    assert.doesNotMatch(closedDefinitions(block), /un libro senza definizione/);
+    assert.match(textOf(block), /un libro senza definizione/);
   });
 });
 
@@ -847,9 +844,27 @@ test("an etymology shows one cut line and a native + more that opens the whole t
   });
 });
 
+test("the page shows data only: no dispute, no 'lists … among its forms', no 'not given' on a dash", async () => {
+  await withDevSeed(async ({ db }) => {
+    // studente's verb claim has a disputed review row; the page does not show it.
+    const studente = await render(db, "studente");
+    assert.ok((await readingsFor(db, "studente")).some((reading) => reading.reviews.some((review) => review.status === "disputed")));
+    assert.doesNotMatch(studente, /Disputed|treccani|role="note"/i);
+    // A record that only lists the query in its table is a reading like any other.
+    const listed: string[] = [];
+    for (const query of ["andavano", "sale", "bello", "casa", "belli"]) {
+      if ((await readingsFor(db, query)).some((reading) => !reading.isAboutQuery)) listed.push(query);
+      assert.doesNotMatch(textOf(await render(db, query)), /among its forms/, query);
+    }
+    assert.ok(listed.length > 0, "some query here is listed by a record that is not about it");
+    // An empty cell is a dash and nothing more.
+    assert.doesNotMatch(await render(db, "andare"), /not given/);
+    assert.match(await render(db, "andare"), /<span class="[^"]*" aria-hidden="true">—<\/span>/);
+  });
+});
+
 test("every link that leaves Lexema, on a result or on /attribution, opens in a new tab; every link inside it stays", async () => {
   await withDevSeed(async ({ db }) => {
-    // studente carries a disputed claim, whose evidence link leaves Lexema.
     for (const query of ["andavano", "sale", "studente", "bello"]) {
       const html = await render(db, query);
       const links = [...html.matchAll(/<a ([^>]*)>/g)].map((match) => match[1]);
@@ -865,7 +880,6 @@ test("every link that leaves Lexema, on a result or on /attribution, opens in a 
       }
       for (const attributes of internal) assert.doesNotMatch(attributes, /target=/, `${query}: ${attributes}`);
     }
-    assert.match(await render(db, "studente"), /Disputed by later research/);
   });
   // /attribution's credits leave Lexema too; its nav and footer links stay.
   const page = attribution();
@@ -919,31 +933,29 @@ test("a search that finds nothing offers, in order: an accent, one edit, words t
   });
 });
 
-test("a proper name gets no grid and no generated articles; its forms stay visible", async () => {
+test("a form the page cannot place is not shown, and nothing on the page says so", async () => {
   await withFixture(async ({ db }) => {
+    // A proper name gets no grid and no generated articles; `Mercuria` has no place.
     const mercurio = nth(await render(db, "Mercurio"), 1);
-    assert.doesNotMatch(mercurio, /data-grid=""/);
-    assert.doesNotMatch(textOf(mercurio), /\bi Mercuria|dei Mercuria|il Mercurio/);
-    const group = mercurio.slice(mercurio.indexOf('data-unplaced="not a noun, adjective or phrase"'));
-    assert.match(group, /^data-unplaced="not a noun, adjective or phrase"><p class="[^"]*">Not a noun, adjective or phrase<\/p>/);
-    assert.match(group, /<dt class="[^"]*" lang="it">plurale<\/dt><dd [^>]*><span data-form="0">Mercuria<\/span>/);
-  });
-});
-
-test("a form with no gender of its own is not guessed into a record that states both", async () => {
-  await withFixture(async ({ db }) => {
+    assert.doesNotMatch(mercurio, /data-grid=""|>Forms</);
+    assert.doesNotMatch(textOf(mercurio), /Mercuria|il Mercurio/);
     // `fine` is tagged masculine and feminine; `fini` only plural. Which
-    // gender's plural it is, the source does not say.
+    // gender's plural it is, the source does not say, so it is not guessed.
     const fine = nth(await render(db, "fine"), 1);
-    const grid = fine.slice(0, fine.indexOf("data-unplaced"));
-    assert.doesNotMatch(grid, />fini</);
     assert.deepEqual(gridRows(fine).map((row) => row[0]), ["", "maschile", "femminile"]);
-    assert.match(fine, /data-unplaced="gender not given"><p class="[^"]*">Gender not given<\/p>/);
-    const unplaced = fine.slice(fine.indexOf('data-unplaced="gender not given"'));
-    assert.match(unplaced, /<span data-form="0">fini<\/span>/);
-    // Its grammar is labelled in Italian (ADR 0015), not as the tag `plural`.
-    assert.match(unplaced, /<dt class="[^"]*" lang="it">plurale<\/dt>/);
-    assert.doesNotMatch(unplaced, />plural</);
+    assert.doesNotMatch(textOf(fine), /\bfini\b/);
+    // `parlarsi (coniugazione)` is the link to the reflexive verb, not a cell.
+    const parlare = await render(db, "parlare");
+    assert.doesNotMatch(textOf(parlare), /parlarsi/);
+    // `maggiori` states its degree only in raw prose; `grandi` still has its cell.
+    const grande = textOf(await render(db, "grande"));
+    assert.doesNotMatch(grande, /maggiori|comparativo di maggioranza/);
+    assert.match(grande, /grandi/);
+    for (const html of [mercurio, fine, parlare, grande]) {
+      assert.doesNotMatch(html, /not given|Not a noun|data-unplaced/i);
+    }
+    // An auxiliary the source writes as text still has its slot, as it wrote it.
+    assert.match(textOf(await render(db, "finire")), /ausiliareavere, se intr\. essere/);
   });
 });
 
@@ -951,25 +963,6 @@ test("each spelling of a cell has its own article line", async () => {
   await withFixture(async ({ db }) => {
     const olio = textOf(nth(await render(db, "olio"), 1));
     assert.match(olio, /oligli oli·degli olioliigli olii·degli olii/);
-  });
-});
-
-test("forms that fit no cell are shown verbatim, grouped under what they lack", async () => {
-  await withFixture(async ({ db }) => {
-    // `parlarsi (coniugazione)` carries no tense and no mood: it is the link
-    // to the reflexive verb, and the page files it under what it lacks.
-    const parlare = await render(db, "parlare");
-    const verbGroup = parlare.slice(parlare.indexOf('data-unplaced="mood and tense not given"'));
-    assert.match(verbGroup, /^data-unplaced="mood and tense not given"><p class="[^"]*">Mood and tense not given<\/p>/);
-    assert.match(verbGroup, />parlarsi \(coniugazione\)</);
-    assert.doesNotMatch(parlare, />Other forms</);
-    // `maggiore` and `maggiori` state no gender and no number, and `grande`
-    // states both genders, so neither is guessed.
-    const grande = await render(db, "grande");
-    assert.match(grande, /data-unplaced="gender and number not given"><p class="[^"]*">Gender and number not given<\/p>/);
-    assert.match(textOf(grande), /comparativo di maggioranzamaggiori/);
-    // An auxiliary the source writes as text is shown as it wrote it.
-    assert.match(textOf(await render(db, "finire")), /ausiliareavere, se intr\. essere/);
   });
 });
 

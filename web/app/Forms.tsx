@@ -8,12 +8,10 @@
 // Every form in a conjugation links to its own search; grid forms do not.
 
 import type { ReactNode } from "react";
-import type { SourceForm, GrammarClaim } from "@lexema/lookup/types.ts";
+import type { SourceForm } from "@lexema/lookup/types.ts";
 import type { Conjugation, MoodTable, NonFinite, Person, Tense } from "./conjugation.ts";
 import { GENDER_LABEL, NUMBER_LABEL, NUMBERS, type Grid, type GridCell } from "./genderGrid.ts";
 import { MoodTabs } from "./MoodTabs";
-import { italianLabel } from "./italianLabels.ts";
-import type { UnplacedGroup } from "./unplaced.ts";
 import {
   CELL_SEPARATOR,
   COMPOUND,
@@ -44,9 +42,6 @@ import {
   NON_FINITE_ITEM,
   NON_FINITE_LABEL,
   NON_FINITE_LABEL_SEARCHED,
-  OTHER_FORM,
-  OTHER_FORM_LABEL,
-  OTHER_FORMS,
   PERSON,
   PERSON_HEAD,
   PERSON_HEAD_REPEAT,
@@ -63,7 +58,7 @@ export const searchHref = (word: string): string => `/?q=${encodeURIComponent(wo
 
 function Dash() {
   return (
-    <span className={DASH} aria-label="not given">
+    <span className={DASH} aria-hidden="true">
       —
     </span>
   );
@@ -141,57 +136,6 @@ export function SuperlativeGrid({ grid }: { grid: Grid }) {
         superlativo
       </p>
       <GridView grid={grid} label="superlativo" />
-    </>
-  );
-}
-
-/**
- * A form's grammar, each value in its Italian label (ADR 0015), or as the
- * source wrote it when Lexema has no Italian label for it.
- */
-function grammarLabel(claims: readonly GrammarClaim[]): string {
-  const texts = claims.flatMap((claim) => (claim.status === "missing" ? [] : [italianLabel(claim)]));
-  return [...new Set(texts)].join(", ");
-}
-
-/**
- * Forms that take no cell, one group per thing they lack, each named for it.
- * An identical spelling with the same grammar shows once (`alpe` lists `alpi`
- * twice) and carries every entry.
- */
-export function OtherForms({ groups, links }: { groups: readonly UnplacedGroup[]; links: boolean }) {
-  return (
-    <>
-      {groups.map((group) => {
-        const lines: { label: string; forms: SourceForm[] }[] = [];
-        for (const form of group.forms) {
-          const label = grammarLabel(form.claims);
-          const same = lines.find((line) => line.label === label && line.forms[0].surface === form.surface);
-          if (same === undefined) lines.push({ label, forms: [form] });
-          else same.forms.push(form);
-        }
-        return (
-          <div key={group.missing} data-unplaced={group.missing}>
-            <p className={GRID_LABEL}>{group.missing[0].toUpperCase() + group.missing.slice(1)}</p>
-            <dl className={OTHER_FORMS}>
-              {lines.map(({ label, forms }) => (
-                <div key={forms[0].index} className={OTHER_FORM}>
-                  <dt className={OTHER_FORM_LABEL} lang="it">
-                    {label || "—"}
-                  </dt>
-                  <dd className="m-0 font-mono text-text-strong" lang="it">
-                    {links ? (
-                      <FormLink forms={forms} searched={false} />
-                    ) : (
-                      <span data-form={forms.map((form) => form.index).join(" ")}>{forms[0].surface}</span>
-                    )}
-                  </dd>
-                </div>
-              ))}
-            </dl>
-          </div>
-        );
-      })}
     </>
   );
 }
@@ -392,7 +336,6 @@ export function ConjugationView({
           }))}
         />
       )}
-      <OtherForms groups={conjugation.unplaced} links />
     </>
   );
 }
