@@ -13,7 +13,8 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { DatabaseSync } from "node:sqlite";
 import { gzipSync } from "node:zlib";
-import { createKey, revokeKey } from "../../src/api/keys.js";
+import { createKey, KEY_BY_HASH_SQL, revokeKey } from "../../src/api/keys.js";
+import { COUNT_MINUTE_SQL, SWEEP_MINUTES_SQL } from "../../src/api/usage.js";
 import { seedSql } from "../../src/import/seedSql.js";
 import { fromNodeSqlite, type LookupDatabase } from "../../src/lookup/database.js";
 import { lookup } from "../../src/lookup/lookup.js";
@@ -62,12 +63,19 @@ const newKey = async (perMinuteLimit = 60, label = "test"): Promise<{ keyId: num
   createKey(db, { label, perMinuteLimit, dailyUnits: 10_000 }, NOW);
 
 /** One API request, as the Worker hands it over. */
-const call = (path: string, key: string | undefined, now = NOW): Promise<Response> =>
-  handleApi(new Request(`https://lexema.fyi${path}`, { headers: key === undefined ? {} : { "x-api-key": key } }), {
-    db,
-    releaseId: RELEASE,
-    now,
-  });
+const call = (path: string, key: string | undefined, now = NOW, method = "GET", over = db): Promise<Response> =>
+  handleApi(
+    new Request(`https://lexema.fyi${path}`, { method, headers: key === undefined ? {} : { "x-api-key": key } }),
+    { db: over, releaseId: RELEASE, now },
+  );
+
+/** The per-key limit headers, in a fixed order. */
+const limitHeaders = (response: Response) =>
+  ["ratelimit-limit", "ratelimit-remaining", "ratelimit-reset", "retry-after"].map((name) => response.headers.get(name));
+
+/** Units the key has been charged, per day. */
+const unitsOf = (keyId: number) =>
+  sqlite.prepare("SELECT day, units FROM api_key_usage WHERE key_id = ? ORDER BY day").all(keyId).map((row) => ({ ...row }));
 
 // Loose on purpose: each test reads the fields it asserts.
 type Json = any;
@@ -145,15 +153,19 @@ test("a word not in the release is a 404 offering findNearby's spellings in its 
   }
 });
 
-test("a bad q is a 400 and costs no units", async () => {
-  const { keyId, key } = await newKey();
+test("a /lookup refused before an answer costs no units: a bad q, a wrong method, a 429", async () => {
+  const { keyId, key } = await newKey(4);
   for (const q of ["", "%20%20", "a".repeat(129)]) {
     const response = await call(`/api/v1/lookup?q=${q}`, key);
     assert.equal(response.status, 400);
     const body: Json = await response.json();
     assert.equal(body.error.code, "invalid_query");
   }
-  assert.deepEqual(sqlite.prepare("SELECT units FROM api_key_usage WHERE key_id = ?").all(keyId), []);
+  const wrongMethod = await call("/api/v1/lookup?q=casa", key, NOW, "POST");
+  assert.equal(wrongMethod.status, 405);
+  const overLimit = await call("/api/v1/lookup?q=casa", key);
+  assert.equal(overLimit.status, 429);
+  assert.deepEqual(unitsOf(keyId), []);
 });
 
 test("no key, an unknown key and a revoked key are each a 401; the key row holds a hash, never the key", async () => {
@@ -179,8 +191,7 @@ test("no key, an unknown key and a revoked key are each a 401; the key row holds
 test("a key past its own minute limit gets a 429 until the minute ends; another key is counted apart", async () => {
   const tight = await newKey(2, "tight");
   const roomy = await newKey(5, "roomy");
-  const headers = (response: Response) =>
-    ["ratelimit-limit", "ratelimit-remaining", "ratelimit-reset", "retry-after"].map((name) => response.headers.get(name));
+  const headers = limitHeaders;
 
   assert.deepEqual(headers(await call("/api/v1/lookup?q=casa", tight.key)), ["2", "1", "40", null]);
   // A 404 and a 400 carry the headers too.
@@ -199,18 +210,40 @@ test("a key past its own minute limit gets a 429 until the minute ends; another 
   assert.deepEqual(headers(nextMinute), ["2", "1", "55", null]);
 });
 
+test("a 405, an unknown endpoint and a failed answer carry the key's limit headers; a 401 carries none", async (t) => {
+  const { key } = await newKey(10);
+  const wrongMethod = await call("/api/v1/lookup?q=casa", key, NOW, "POST");
+  assert.equal(wrongMethod.status, 405);
+  assert.deepEqual(limitHeaders(wrongMethod), ["10", "9", "40", null]);
+
+  const unknown = await call("/api/v1/nowhere", key);
+  assert.equal(unknown.status, 404);
+  assert.equal(((await unknown.json()) as Json).error.code, "not_found");
+  assert.deepEqual(limitHeaders(unknown), ["10", "8", "40", null]);
+
+  // The key is read and its minute counted; the lookup's own read then fails.
+  const counting = new Set([KEY_BY_HASH_SQL, COUNT_MINUTE_SQL, SWEEP_MINUTES_SQL]);
+  const failing: LookupDatabase = {
+    all: (sql, params) => (counting.has(sql) ? db.all(sql, params) : Promise.reject(new Error("D1 is down"))),
+  };
+  t.mock.method(console, "error", () => {});
+  const failed = await call("/api/v1/lookup?q=casa", key, NOW, "GET", failing);
+  assert.equal(failed.status, 503);
+  assert.equal(((await failed.json()) as Json).error.code, "unavailable");
+  assert.deepEqual(limitHeaders(failed), ["10", "7", "40", null]);
+
+  assert.deepEqual(limitHeaders(await call("/api/v1/lookup?q=casa", undefined)), [null, null, null, null]);
+});
+
 test("each /lookup a key makes adds 2 units to its row for the day", async () => {
   const { keyId, key } = await newKey();
   await call("/api/v1/lookup?q=casa", key);
   await call("/api/v1/lookup?q=qqqqqq", key);
   await call("/api/v1/lookup?q=casa", key, Date.parse("2026-09-28T00:00:01Z"));
-  assert.deepEqual(
-    sqlite.prepare("SELECT day, units FROM api_key_usage WHERE key_id = ? ORDER BY day").all(keyId).map((row) => ({ ...row })),
-    [
-      { day: "2026-09-27", units: 4 },
-      { day: "2026-09-28", units: 2 },
-    ],
-  );
+  assert.deepEqual(unitsOf(keyId), [
+    { day: "2026-09-27", units: 4 },
+    { day: "2026-09-28", units: 2 },
+  ]);
 });
 
 /** The binding's contract, as web/test/rateLimit.test.ts fakes it: every call counted. */

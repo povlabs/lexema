@@ -86,9 +86,11 @@ curl -i -H "X-API-Key: lx_…" "http://localhost:8790/api/v1/lookup?q=andavano"
 ```
 
 Each key has its own per-minute request limit, counted in D1, and every answer
-carries `RateLimit-Limit`, `RateLimit-Remaining` and `RateLimit-Reset`; past the
-limit the answer is a 429 with `Retry-After`. Each answered request adds its
-units to the key's row for the day ([src/api/units.ts](./src/api/units.ts)). An
+to a known key carries `RateLimit-Limit`, `RateLimit-Remaining` and
+`RateLimit-Reset`; a 401 carries none. Past the limit the answer is a 429 with
+`Retry-After`. Each answered request, found (200) or not found (404), adds its
+units to the key's row for the day ([src/api/units.ts](./src/api/units.ts)). A
+request refused before an answer (a 400 bad `q`, a 405 or a 429) adds none. An
 API request is never counted against the site's per-visitor limits.
 
 ## Stack
