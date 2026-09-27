@@ -39,3 +39,7 @@ Huey can drive the pipeline from any session, and a harness outage no longer blo
 ## Records
 
 no vocabulary impact
+
+## Amendments
+
+- **Builder and reviewer may share a model (2026-09-27).** Huey moved both roles to the same model after the Codex sandbox could not reach GitHub. The rule that the reviewer never inherits the builder's model, in the Decision and the first binding constraint, no longer holds. By default the reviewer runs on the same model as the builder, unless Huey asks for a different one. What still binds is that the reviewer is a separate agent from the builder, reviews under `nothueypov`, never fixes what it finds, and never merges.
