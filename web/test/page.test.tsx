@@ -403,7 +403,7 @@ test("a searched verb form shows its lemma's table, opened on its mood with its 
     assert.match(indicativo, new RegExp(`<th scope="col" class="${esc(TENSE_HEAD_SEARCHED)}" lang="it">imperfetto</th>`));
     // Two pages are shown, so each has its own Source link (ADR 0009).
     assert.deepEqual(
-      [...html.matchAll(/href="https:\/\/it\.wiktionary\.org\/wiki\/([^"]+)" rel="noreferrer"/g)].map((match) => match[1]),
+      [...html.matchAll(/href="https:\/\/it\.wiktionary\.org\/wiki\/([^"]+)" target="_blank"/g)].map((match) => match[1]),
       ["andavano", "andare"],
     );
 
@@ -878,6 +878,24 @@ test("an etymology shows one cut line and a native + more that opens the whole t
   });
 });
 
+test("every link that leaves Lexema opens in a new tab; every link inside it stays in this one", async () => {
+  await withDevSeed(async ({ db }) => {
+    // studente carries a disputed claim, whose evidence link leaves Lexema.
+    for (const query of ["andavano", "sale", "studente", "bello"]) {
+      const html = await render(db, query);
+      const links = [...html.matchAll(/<a ([^>]*)>/g)].map((match) => match[1]);
+      const external = links.filter((attributes) => /href="https?:\/\//.test(attributes));
+      const internal = links.filter((attributes) => /href="[/#]/.test(attributes));
+      assert.ok(external.length > 0 && internal.length > 0, query);
+      for (const attributes of external) {
+        assert.match(attributes, /target="_blank" rel="noopener noreferrer"/, `${query}: ${attributes}`);
+      }
+      for (const attributes of internal) assert.doesNotMatch(attributes, /target=/, `${query}: ${attributes}`);
+    }
+    assert.match(await render(db, "studente"), /Disputed by later research/);
+  });
+});
+
 test("a proper name gets no grid and no generated articles; its forms stay visible", async () => {
   await withFixture(async ({ db }) => {
     const mercurio = nth(await render(db, "Mercurio"), 1);
@@ -1014,7 +1032,10 @@ test("the search page carries no credit line, no licence name and no contributor
       assert.doesNotMatch(html, /example\.invalid/, `${query}: no link to the archive`);
     }
     const sale = await render(db, "sale");
-    assert.match(sale, /href="https:\/\/it\.wiktionary\.org\/wiki\/sale" rel="noreferrer" aria-label="Wiktionary page for sale, the source of this page">Source/);
+    assert.match(
+      sale,
+      /href="https:\/\/it\.wiktionary\.org\/wiki\/sale" target="_blank" rel="noopener noreferrer" aria-label="Wiktionary page for sale, the source of this page \(opens in a new tab\)">Source/,
+    );
   });
 });
 

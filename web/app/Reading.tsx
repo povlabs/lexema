@@ -14,6 +14,7 @@ import { conjugationOf } from "./conjugation.ts";
 import { agreementOf, headingGrammar } from "./genderGrid.ts";
 import { ConjugationView, GridView, OtherForms, SuperlativeGrid, searchHref } from "./Forms";
 import type { PageReading } from "./wordPage.ts";
+import { NEW_TAB } from "./externalLink.ts";
 import { OneLine } from "./OneLine";
 import { WordList } from "./WordList";
 import {
@@ -421,7 +422,7 @@ function Disputes({ reviews }: { reviews: readonly Review[] }) {
         {disputed.map((review, i) => (
           <li key={i}>
             {review.note}{" "}
-            <a className="text-accent underline" href={review.evidenceUrl} rel="noreferrer">
+            <a className="text-accent underline" href={review.evidenceUrl} {...NEW_TAB}>
               evidence
             </a>
           </li>

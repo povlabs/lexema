@@ -7,6 +7,7 @@
 
 import type { WordFacts } from "@lexema/lookup/types.ts";
 import { ExternalIcon } from "./icons";
+import { NEW_TAB } from "./externalLink.ts";
 import { OneLine } from "./OneLine";
 import { ReadingView } from "./Reading";
 import { ReportDialog } from "./ReportDialog";
@@ -117,8 +118,8 @@ function SourceLinks({ page, siteKey }: { page: WordPage; siteKey: string | unde
           <a
             className={SOURCE_LINK}
             href={sourcePageUrl(word)}
-            rel="noreferrer"
-            aria-label={`Wiktionary page for ${word}, the source of this page`}
+            {...NEW_TAB}
+            aria-label={`Wiktionary page for ${word}, the source of this page (opens in a new tab)`}
           >
             Source
             {words.length > 1 && <span lang="it">{word}</span>}
