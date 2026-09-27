@@ -470,6 +470,16 @@ CREATE TABLE reader_report (
 
 CREATE INDEX reader_report_by_visitor ON reader_report (visitor_hash, received_at);
 
+-- One opening of the report box: a random token the server hands the box when
+-- it opens, and the server's own time. A report must carry one, and at least
+-- 3 s must have passed on the server's clock since it was issued, so the check
+-- never compares two clocks. Used once: deleted when its report is stored.
+-- Openings older than a day are swept when a new one is issued.
+CREATE TABLE report_opening (
+  token     TEXT PRIMARY KEY,
+  opened_at TEXT NOT NULL      -- ISO-8601, the server's clock
+) STRICT;
+
 
 -- ---------------------------------------------------------------------------
 -- Recovered definitions (#28)

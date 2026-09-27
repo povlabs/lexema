@@ -16,7 +16,7 @@ import { Suspense } from "react";
 import { SEARCH_LIMITED_HEADER } from "../worker/rateLimit.ts";
 import { FirstLoad, Limited, Outcome, Pending, SearchPage } from "./SearchPage";
 import { firstQuery, type QueryParam } from "./params";
-import { search, turnstileSiteKey } from "./db";
+import { search, turnstile } from "./db";
 
 interface PageProps {
   searchParams: { q?: QueryParam };
@@ -29,7 +29,7 @@ export function generateMetadata({ searchParams }: PageProps) {
 
 /** The half that waits on D1, so the shell above it can flush before it does. */
 async function Results({ raw }: { raw: string }) {
-  return <Outcome raw={raw} attempt={await search(raw)} siteKey={turnstileSiteKey()} />;
+  return <Outcome raw={raw} attempt={await search(raw)} siteKey={turnstile()?.siteKey} />;
 }
 
 export default async function Page({ searchParams }: PageProps) {

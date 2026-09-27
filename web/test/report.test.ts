@@ -19,9 +19,13 @@ import {
   REPORT_DETAILS_LIMIT,
   REPORT_MIN_OPEN_MS,
   REPORTS_PER_HOUR,
+  afterAnswer,
+  openReport,
   readSubmission,
   receiveReport,
+  turnstileConfig,
   visitorHash,
+  type ReportAnswer,
   type ReportContext,
   type ReportSubmission,
 } from "../app/report.ts";
@@ -56,16 +60,19 @@ async function withDatabase(run: (db: DatabaseSync) => Promise<void>): Promise<v
   }
 }
 
-const submission = (overrides: Partial<ReportSubmission> = {}): ReportSubmission => ({
+const submission = (openToken: string, overrides: Partial<ReportSubmission> = {}): ReportSubmission => ({
   word: "casa",
   choice: "form",
   recordId: undefined,
   details: "The plural should be case.",
-  openedAt: NOW - 10_000,
+  openToken,
   website: "",
   challenge: undefined,
   ...overrides,
 });
+
+/** A box opened on the server's clock at `at`. */
+const opened = (db: DatabaseSync, at = NOW - 10_000): Promise<string> => openReport(fromNodeSqlite(db), at);
 
 const context = (db: DatabaseSync, overrides: Partial<ReportContext> = {}): ReportContext => ({
   db: fromNodeSqlite(db),
@@ -88,13 +95,14 @@ const stored = (db: DatabaseSync) =>
   }[];
 
 test("a report needs a choice and details, within the length limit; the reading is optional", () => {
-  const body = { word: "casa", choice: "form", details: "wrong plural", openedAt: NOW };
+  const body = { word: "casa", choice: "form", details: "wrong plural", openToken: "token" };
   assert.deepEqual(readSubmission({ ...body, choice: undefined }), { reason: "choice" });
   assert.deepEqual(readSubmission({ ...body, choice: "spelling" }), { reason: "choice" });
   assert.deepEqual(readSubmission({ ...body, details: "   " }), { reason: "details" });
   assert.deepEqual(readSubmission({ ...body, details: "x".repeat(REPORT_DETAILS_LIMIT + 1) }), { reason: "details-too-long" });
   assert.deepEqual(readSubmission({ ...body, recordId: "2" }), { reason: "reading" });
   assert.deepEqual(readSubmission({ ...body, word: "" }), { reason: "malformed" });
+  assert.deepEqual(readSubmission({ ...body, openToken: undefined }), { reason: "malformed" });
   assert.deepEqual(readSubmission("not an object"), { reason: "malformed" });
   const read = readSubmission({ ...body, details: "  wrong plural  ", recordId: null });
   assert.ok(!("reason" in read));
@@ -108,7 +116,9 @@ test("a valid report is stored for review, with the served release and a hash in
     const [casa] = db.prepare("SELECT record_id FROM source_record WHERE word = 'casa' AND release_id = ?").all(RELEASE) as {
       record_id: number;
     }[];
-    assert.deepEqual(await receiveReport(submission({ recordId: casa.record_id }), context(db)), { outcome: "sent" });
+    assert.deepEqual(await receiveReport(submission(await opened(db), { recordId: casa.record_id }), context(db)), {
+      outcome: "sent",
+    });
     const [row] = stored(db);
     assert.equal(row.release_id, RELEASE);
     assert.equal(row.record_id, casa.record_id);
@@ -120,40 +130,63 @@ test("a valid report is stored for review, with the served release and a hash in
   });
 });
 
-test("a filled honeypot or a box sent too fast is answered as sent and stores nothing", async () => {
+test("a filled honeypot or a box sent too fast, on the server's clock, is answered as sent and stores nothing", async () => {
   await withDatabase(async (db) => {
-    assert.deepEqual(await receiveReport(submission({ website: "http://spam.example" }), context(db)), { outcome: "sent" });
-    assert.deepEqual(
-      await receiveReport(submission({ openedAt: NOW - (REPORT_MIN_OPEN_MS - 1) }), context(db)),
-      { outcome: "sent" },
-    );
+    assert.deepEqual(await receiveReport(submission(await opened(db), { website: "http://spam.example" }), context(db)), {
+      outcome: "sent",
+    });
+    // The box opened 2.999 s ago by the server's own clock; the report carries
+    // no time of the reader's, so their clock cannot move the check.
+    const tooFast = await opened(db, NOW - (REPORT_MIN_OPEN_MS - 1));
+    assert.deepEqual(await receiveReport(submission(tooFast), context(db)), { outcome: "sent" });
     assert.equal(stored(db).length, 0);
-    // At the minimum it is a person's pace, and it is stored.
-    await receiveReport(submission({ openedAt: NOW - REPORT_MIN_OPEN_MS }), context(db));
+    await receiveReport(submission(await opened(db, NOW - REPORT_MIN_OPEN_MS)), context(db));
     assert.equal(stored(db).length, 1);
+  });
+});
+
+test("a report needs a token the server issued; each token stores one report", async () => {
+  await withDatabase(async (db) => {
+    assert.deepEqual(await receiveReport(submission("made-up"), context(db)), { outcome: "rejected", reason: "expired" });
+    const token = await opened(db);
+    assert.deepEqual(await receiveReport(submission(token), context(db)), { outcome: "sent" });
+    assert.deepEqual(await receiveReport(submission(token), context(db)), { outcome: "rejected", reason: "expired" });
+    assert.equal(stored(db).length, 1);
+    // A day-old opening is swept when the next box opens.
+    await opened(db, NOW - 2 * 24 * 60 * 60_000);
+    await opened(db, NOW);
+    assert.equal((db.prepare("SELECT count(*) AS n FROM report_opening").get() as { n: number }).n, 1);
   });
 });
 
 test("a visitor may send five reports an hour; the sixth is limited, and others and the next hour are not", async () => {
   await withDatabase(async (db) => {
     for (let i = 0; i < REPORTS_PER_HOUR; i++) {
-      assert.deepEqual(await receiveReport(submission(), context(db, { now: NOW + i * 60_000 })), { outcome: "sent" });
+      const token = await opened(db, NOW + i * 60_000 - 10_000);
+      assert.deepEqual(await receiveReport(submission(token), context(db, { now: NOW + i * 60_000 })), { outcome: "sent" });
     }
     const later = NOW + REPORTS_PER_HOUR * 60_000;
-    assert.deepEqual(await receiveReport(submission({ openedAt: later - 10_000 }), context(db, { now: later })), { outcome: "limited" });
+    assert.deepEqual(await receiveReport(submission(await opened(db, later - 10_000)), context(db, { now: later })), {
+      outcome: "limited",
+    });
     assert.equal(stored(db).length, REPORTS_PER_HOUR);
     assert.deepEqual(
-      await receiveReport(submission({ openedAt: later - 10_000 }), context(db, { now: later, visitor: "v4:198.51.100.9" })),
+      await receiveReport(submission(await opened(db, later - 10_000)), context(db, { now: later, visitor: "v4:198.51.100.9" })),
       { outcome: "sent" },
     );
     const nextHour = NOW + 61 * 60_000 + REPORTS_PER_HOUR * 60_000;
-    assert.deepEqual(await receiveReport(submission({ openedAt: nextHour - 10_000 }), context(db, { now: nextHour })), { outcome: "sent" });
+    assert.deepEqual(await receiveReport(submission(await opened(db, nextHour - 10_000)), context(db, { now: nextHour })), {
+      outcome: "sent",
+    });
   });
 });
 
 test("a reading from another release is refused, and nothing is stored", async () => {
   await withDatabase(async (db) => {
-    assert.deepEqual(await receiveReport(submission({ recordId: 999_999 }), context(db)), { outcome: "rejected", reason: "reading" });
+    assert.deepEqual(await receiveReport(submission(await opened(db), { recordId: 999_999 }), context(db)), {
+      outcome: "rejected",
+      reason: "reading",
+    });
     assert.equal(stored(db).length, 0);
   });
 });
@@ -165,14 +198,46 @@ test("with Turnstile configured a failed check is refused; with none configured 
       tokens.push(token);
       return token === "good";
     };
-    assert.deepEqual(await receiveReport(submission({ challenge: "bad" }), context(db, { verifyChallenge })), {
+    // A failed check keeps the opening, so a retry with a fresh token works.
+    const token = await opened(db);
+    assert.deepEqual(await receiveReport(submission(token, { challenge: "bad" }), context(db, { verifyChallenge })), {
       outcome: "rejected",
       reason: "challenge",
     });
     assert.equal(stored(db).length, 0);
-    assert.deepEqual(await receiveReport(submission({ challenge: "good" }), context(db, { verifyChallenge })), { outcome: "sent" });
+    assert.deepEqual(await receiveReport(submission(token, { challenge: "good" }), context(db, { verifyChallenge })), {
+      outcome: "sent",
+    });
     assert.deepEqual(tokens, ["bad", "good"]);
-    assert.deepEqual(await receiveReport(submission(), context(db)), { outcome: "sent" });
+    assert.deepEqual(await receiveReport(submission(await opened(db)), context(db)), { outcome: "sent" });
     assert.equal(stored(db).length, 2);
   });
+});
+
+test("Turnstile is on only when both keys are set; one alone is off, with a warning naming the missing key", () => {
+  const warnings: string[] = [];
+  const warn = (message: string) => void warnings.push(message);
+  assert.deepEqual(turnstileConfig("site", "secret", warn), { siteKey: "site", secretKey: "secret" });
+  assert.equal(turnstileConfig(undefined, undefined, warn), undefined);
+  assert.equal(turnstileConfig("", "", warn), undefined);
+  assert.deepEqual(warnings, []);
+  assert.equal(turnstileConfig("", "secret", warn), undefined);
+  assert.equal(turnstileConfig("site", undefined, warn), undefined);
+  assert.equal(warnings.length, 2);
+  assert.match(warnings[0], /TURNSTILE_SITE_KEY is not set/);
+  assert.match(warnings[1], /TURNSTILE_SECRET_KEY is not set/);
+});
+
+test("after any answer that did not store the report, the box drops its Turnstile token for a fresh one", () => {
+  const answers: ReportAnswer[] = [
+    { outcome: "limited" },
+    { outcome: "failed" },
+    { outcome: "rejected", reason: "challenge" },
+    { outcome: "rejected", reason: "expired" },
+    { outcome: "rejected", reason: "details" },
+  ];
+  for (const answer of answers) assert.equal(afterAnswer(answer).keepChallenge, false, JSON.stringify(answer));
+  assert.deepEqual(afterAnswer({ outcome: "sent" }), { status: "sent", keepChallenge: true });
+  assert.equal(afterAnswer({ outcome: "rejected", reason: "challenge" }).status, "challenge");
+  assert.equal(afterAnswer({ outcome: "rejected", reason: "expired" }).status, "expired");
 });

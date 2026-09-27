@@ -10,7 +10,7 @@
 
 import { Dialog } from "@base-ui/react/dialog";
 import { useEffect, useId, useRef, useState } from "react";
-import { REPORT_CHOICE_LABEL, REPORT_CHOICES, REPORT_DETAILS_LIMIT, type ReportAnswer, type ReportChoice } from "./report.ts";
+import { afterAnswer, REPORT_CHOICE_LABEL, REPORT_CHOICES, REPORT_DETAILS_LIMIT, type ReportAnswer, type ReportChoice } from "./report.ts";
 import {
   REPORT_BACKDROP,
   REPORT_CANCEL,
@@ -41,11 +41,12 @@ export interface ReportReading {
   posTitle: string;
 }
 
-type Status = "editing" | "sending" | "sent" | "limited" | "challenge" | "failed";
+type Status = "editing" | "sending" | ReturnType<typeof afterAnswer>["status"];
 
 const TROUBLE: Partial<Record<Status, string>> = {
   limited: "Too many reports from you in the last hour. Try again later.",
   challenge: "The check that you are a person did not pass. Try again.",
+  expired: "This box has been open too long. Close it and open it again.",
   failed: "The report could not be sent. Try again in a moment.",
 };
 
@@ -53,11 +54,16 @@ const TURNSTILE_SCRIPT = "https://challenges.cloudflare.com/turnstile/v0/api.js?
 
 interface Turnstile {
   render(container: HTMLElement, options: { sitekey: string; callback: (token: string) => void }): string;
+  reset(widget: string): void;
   remove(widget: string): void;
 }
 
-/** Load Turnstile once, and render its widget into `container` while it is mounted. */
+/**
+ * Load Turnstile once, render its widget into `container` while it is
+ * mounted, and return a function that resets it for a fresh token.
+ */
 function useTurnstile(siteKey: string | undefined, container: HTMLDivElement | null, onToken: (token: string) => void) {
+  const resetRef = useRef<() => void>(() => {});
   useEffect(() => {
     if (siteKey === undefined || container === null) return;
     const withTurnstile = (run: (turnstile: Turnstile) => void) => {
@@ -77,11 +83,16 @@ function useTurnstile(siteKey: string | undefined, container: HTMLDivElement | n
     withTurnstile((turnstile) => {
       turnstileRef = turnstile;
       widget = turnstile.render(container, { sitekey: siteKey, callback: onToken });
+      resetRef.current = () => {
+        if (widget !== undefined) turnstile.reset(widget);
+      };
     });
     return () => {
+      resetRef.current = () => {};
       if (widget !== undefined) turnstileRef?.remove(widget);
     };
   }, [siteKey, container, onToken]);
+  return () => resetRef.current();
 }
 
 function Chip({ name, value, checked, onChange, children }: { name: string; value: string; checked: boolean; onChange: () => void; children: string }) {
@@ -101,11 +112,11 @@ export function ReportDialog({ word, readings, siteKey }: { word: string; readin
   const [status, setStatus] = useState<Status>("editing");
   const [token, setToken] = useState<string | undefined>(undefined);
   const [widget, setWidget] = useState<HTMLDivElement | null>(null);
-  const openedAt = useRef(0);
+  const [openToken, setOpenToken] = useState<string | undefined>(undefined);
   const honeypot = useRef<HTMLInputElement>(null);
   const ids = { choice: useId(), reading: useId(), details: useId() };
 
-  useTurnstile(open && status !== "sent" ? siteKey : undefined, widget, setToken);
+  const resetChallenge = useTurnstile(open && status !== "sent" ? siteKey : undefined, widget, setToken);
 
   const reset = () => {
     setChoice(undefined);
@@ -113,9 +124,27 @@ export function ReportDialog({ word, readings, siteKey }: { word: string; readin
     setDetails("");
     setStatus("editing");
     setToken(undefined);
+    setOpenToken(undefined);
   };
 
-  const ready = choice !== undefined && details.trim() !== "" && status !== "sending" && (siteKey === undefined || token !== undefined);
+  /** Ask the server for the token this opening is timed against. */
+  async function requestOpenToken() {
+    try {
+      const response = await fetch("/report/open", { method: "POST" });
+      const opened = (await response.json()) as { outcome: string; token?: string };
+      if (opened.outcome === "opened" && opened.token !== undefined) setOpenToken(opened.token);
+      else setStatus(response.status === 429 ? "limited" : "failed");
+    } catch {
+      setStatus("failed");
+    }
+  }
+
+  const ready =
+    choice !== undefined &&
+    details.trim() !== "" &&
+    status !== "sending" &&
+    openToken !== undefined &&
+    (siteKey === undefined || token !== undefined);
 
   async function send() {
     if (!ready) return;
@@ -129,24 +158,25 @@ export function ReportDialog({ word, readings, siteKey }: { word: string; readin
           choice,
           recordId: typeof reading === "number" ? reading : undefined,
           details,
-          openedAt: openedAt.current,
+          openToken,
           website: honeypot.current?.value ?? "",
           challenge: token,
         }),
       });
-      const answer = (await response.json()) as ReportAnswer;
-      setStatus(
-        answer.outcome === "sent"
-          ? "sent"
-          : answer.outcome === "limited"
-            ? "limited"
-            : answer.outcome === "rejected" && answer.reason === "challenge"
-              ? "challenge"
-              : "failed",
-      );
+      settle((await response.json()) as ReportAnswer);
     } catch {
-      setStatus("failed");
+      settle({ outcome: "failed" });
     }
+  }
+
+  /** Show the answer; a Turnstile token is single-use, so any failure asks for a fresh one. */
+  function settle(answer: ReportAnswer) {
+    const next = afterAnswer(answer);
+    if (!next.keepChallenge) {
+      setToken(undefined);
+      resetChallenge();
+    }
+    setStatus(next.status);
   }
 
   return (
@@ -156,7 +186,7 @@ export function ReportDialog({ word, readings, siteKey }: { word: string; readin
         setOpen(next);
         if (next) {
           reset();
-          openedAt.current = Date.now();
+          void requestOpenToken();
         }
       }}
     >

@@ -14,17 +14,23 @@
 import type { ReportAnswer } from "../app/report.ts";
 import type { SuggestAnswer } from "../app/suggestAnswer.ts";
 
-/** The three things a visitor can do that reach the database. */
-export type Limit = "search" | "suggest" | "report";
+/** The things a visitor can do that reach the database. */
+export type Limit = "search" | "suggest" | "report" | "report-open";
 
 /** The bindings this module counts with, one per limit, as wrangler.jsonc names them. */
 export interface LimitBindings {
   SEARCH_LIMIT: RateLimit;
   SUGGEST_LIMIT: RateLimit;
   REPORT_LIMIT: RateLimit;
+  REPORT_OPEN_LIMIT: RateLimit;
 }
 
-const BINDING = { search: "SEARCH_LIMIT", suggest: "SUGGEST_LIMIT", report: "REPORT_LIMIT" } as const satisfies Record<
+const BINDING = {
+  search: "SEARCH_LIMIT",
+  suggest: "SUGGEST_LIMIT",
+  report: "REPORT_LIMIT",
+  "report-open": "REPORT_OPEN_LIMIT",
+} as const satisfies Record<
   Limit,
   keyof LimitBindings
 >;
@@ -61,6 +67,8 @@ export function limitOf(url: URL): Limit | undefined {
   // A report's hourly allowance is counted over stored reports (app/report.ts);
   // this binding only stops a burst before the database is touched.
   if (url.pathname === "/report") return "report";
+  // Opening the box stores a token; counted apart so opening does not use up sending.
+  if (url.pathname === "/report/open") return "report-open";
   if ((url.searchParams.get("q") ?? "").trim() !== "") return "search";
   return undefined;
 }
@@ -142,7 +150,7 @@ export function withRateLimits<E extends LimitBindings>(app: FetchHandler<E>): F
       const body: SuggestAnswer = { outcome: "limited" };
       return Response.json(body, { status: 429, headers: tooManyHeaders() });
     }
-    if (limit === "report") {
+    if (limit === "report" || limit === "report-open") {
       const body: ReportAnswer = { outcome: "limited" };
       return Response.json(body, { status: 429, headers: tooManyHeaders() });
     }

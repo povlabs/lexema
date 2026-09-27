@@ -259,10 +259,17 @@ Spam is kept out in four layers, as ruled on #51: the `REPORT_LIMIT` Worker
 binding stops a burst (2 a minute) before D1 is touched, and the ruled 5 reports
 an hour is counted over the stored rows, because the binding has no hourly
 period; a hidden honeypot field and a 3-second minimum between opening the box
-and sending it drop a bot's report while answering it as sent; Cloudflare
-Turnstile is checked before storing when `TURNSTILE_SITE_KEY` (a var) and
-`TURNSTILE_SECRET_KEY` (a secret) are set, and skipped when they are not. The
-visitor is stored as a SHA-256 of their rate-limit key, never as an address.
+and sending it drop a bot's report while answering it as sent. The 3 seconds are
+measured on the server's clock alone: when the box opens it asks `POST
+/report/open` for a random token, which is stored with the server's time in
+`report_opening`, and the report is timed against it and consumes it when it is
+stored, so a reader's clock never enters the check. Cloudflare Turnstile is
+checked before storing only when both `TURNSTILE_SITE_KEY` (a var) and
+`TURNSTILE_SECRET_KEY` (a secret) are set; with either missing it is off, and
+the Worker logs which key is missing, so a half-configured Worker never refuses
+every report. After any answer that did not store the report, the box resets the
+widget for a fresh token, because a token can be used once. The visitor is
+stored as a SHA-256 of their rate-limit key, never as an address.
 
 ## Why a disputed claim is a row and not a code path
 

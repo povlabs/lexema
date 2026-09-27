@@ -6,7 +6,7 @@
 // wiring to the request and the Worker's bindings.
 
 import { visitorKey } from "../../worker/rateLimit.ts";
-import { database, servedRelease, turnstileSecretKey } from "../db";
+import { database, servedRelease, turnstile } from "../db";
 import { readSubmission, receiveReport, REPORT_STATUS, verifyTurnstile, type ReportAnswer } from "../report.ts";
 
 const answer = (body: ReportAnswer): Response =>
@@ -23,7 +23,7 @@ export async function POST(request: Request): Promise<Response> {
   if ("reason" in submission) return answer({ outcome: "rejected", reason: submission.reason });
 
   const ip = request.headers.get("cf-connecting-ip");
-  const secret = turnstileSecretKey();
+  const secret = turnstile()?.secretKey;
   try {
     return answer(
       await receiveReport(submission, {

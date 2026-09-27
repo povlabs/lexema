@@ -8,10 +8,12 @@
 //    burst before the database is touched; it only knows 10 s and 60 s
 //    windows, so the hourly allowance is counted here, over the stored reports.
 // 2. A hidden honeypot field and a minimum time between opening the box and
-//    sending it. A report that trips either is dropped and answered as sent,
-//    so a bot learns nothing from the reply.
-// 3. Cloudflare Turnstile, verified before storing when a secret key is
-//    configured; with none configured it is skipped (see the PR body).
+//    sending it, measured on the server's clock alone: the box asks for a
+//    token when it opens (`openReport`), and the send is timed against it. A
+//    report that trips either is dropped and answered as sent, so a bot learns
+//    nothing from the reply.
+// 3. Cloudflare Turnstile, verified before storing when both its keys are
+//    configured (`turnstileConfig`); with either missing it is off.
 // 4. Nothing automatic: a stored report changes nothing on the page.
 
 import type { LookupDatabase } from "@lexema/lookup/database.ts";
@@ -44,15 +46,16 @@ export interface ReportSubmission {
   /** The reading the reader picked; absent for none or "Not sure". */
   recordId: number | undefined;
   details: string;
-  /** When the box was opened, in the reader's clock, milliseconds since the epoch. */
-  openedAt: number;
+  /** The token `openReport` issued when the box opened. */
+  openToken: string;
   /** The honeypot: a field no reader sees, so any value in it is a bot's. */
   website: string;
   /** The Turnstile token, when the page carried the widget. */
   challenge: string | undefined;
 }
 
-export type ReportRejection = "malformed" | "choice" | "details" | "details-too-long" | "reading" | "challenge";
+/** `expired`: the box's opening token is unknown, e.g. the box was open across a new release. */
+export type ReportRejection = "malformed" | "choice" | "details" | "details-too-long" | "reading" | "challenge" | "expired";
 
 /** The answer the box gets. */
 export type ReportAnswer =
@@ -75,10 +78,10 @@ const isObject = (value: unknown): value is Record<string, unknown> =>
 /** A submission read from the request body, or why it cannot be one. */
 export function readSubmission(body: unknown): ReportSubmission | { reason: ReportRejection } {
   if (!isObject(body)) return { reason: "malformed" };
-  const { word, choice, recordId, details, openedAt, website, challenge } = body;
+  const { word, choice, recordId, details, openToken, website, challenge } = body;
   if (typeof word !== "string") return { reason: "malformed" };
   if (word.trim() === "" || word.length > WORD_LIMIT) return { reason: "malformed" };
-  if (typeof openedAt !== "number" || !Number.isFinite(openedAt)) return { reason: "malformed" };
+  if (typeof openToken !== "string" || openToken === "" || openToken.length > 100) return { reason: "malformed" };
   if (!REPORT_CHOICES.includes(choice as ReportChoice)) return { reason: "choice" };
   if (typeof details !== "string" || details.trim() === "") return { reason: "details" };
   if (details.length > REPORT_DETAILS_LIMIT) return { reason: "details-too-long" };
@@ -90,7 +93,7 @@ export function readSubmission(body: unknown): ReportSubmission | { reason: Repo
     choice: choice as ReportChoice,
     recordId: typeof recordId === "number" ? recordId : undefined,
     details: details.trim(),
-    openedAt,
+    openToken,
     website: typeof website === "string" ? website : "",
     challenge: typeof challenge === "string" && challenge !== "" ? challenge : undefined,
   };
@@ -118,8 +121,14 @@ export async function visitorHash(visitor: string): Promise<string> {
 /** Check, count and store one report. The only writer of `reader_report`. */
 export async function receiveReport(submission: ReportSubmission, context: ReportContext): Promise<ReportAnswer> {
   const { db, now } = context;
-  // Dropped quietly: a filled honeypot, or a box sent faster than a person can.
-  if (submission.website !== "" || now - submission.openedAt < REPORT_MIN_OPEN_MS) return { outcome: "sent" };
+  // Dropped quietly: a filled honeypot.
+  if (submission.website !== "") return { outcome: "sent" };
+  const [opening] = await db.all<{ opened_at: string }>("SELECT opened_at FROM report_opening WHERE token = ?", [
+    submission.openToken,
+  ]);
+  if (opening === undefined) return { outcome: "rejected", reason: "expired" };
+  // Dropped quietly: a box sent faster than a person can, on the server's clock.
+  if (now - Date.parse(opening.opened_at) < REPORT_MIN_OPEN_MS) return { outcome: "sent" };
 
   if (context.verifyChallenge !== undefined && !(await context.verifyChallenge(submission.challenge))) {
     return { outcome: "rejected", reason: "challenge" };
@@ -154,7 +163,70 @@ export async function receiveReport(submission: ReportSubmission, context: Repor
       new Date(now).toISOString(),
     ],
   );
+  await db.all("DELETE FROM report_opening WHERE token = ? RETURNING token", [submission.openToken]);
   return { outcome: "sent" };
+}
+
+const DAY_MS = 24 * HOUR_MS;
+
+/**
+ * Issue the token a box carries when it sends: a random value and the server's
+ * time, stored until its report is stored. Openings older than a day are swept.
+ */
+export async function openReport(db: LookupDatabase, now: number): Promise<string> {
+  await db.all("DELETE FROM report_opening WHERE opened_at < ? RETURNING token", [new Date(now - DAY_MS).toISOString()]);
+  const token = crypto.randomUUID();
+  await db.all("INSERT INTO report_opening (token, opened_at) VALUES (?, ?) RETURNING token", [token, new Date(now).toISOString()]);
+  return token;
+}
+
+/** Turnstile's two keys, both set or neither. */
+export interface TurnstileConfig {
+  siteKey: string;
+  secretKey: string;
+}
+
+/**
+ * Turnstile is on only when both keys are set. With one alone the widget and
+ * the check could not agree — a secret with no site key would refuse every
+ * report — so it is off, and `warn` says which key is missing.
+ */
+export function turnstileConfig(
+  siteKey: string | undefined,
+  secretKey: string | undefined,
+  warn: (message: string) => void,
+): TurnstileConfig | undefined {
+  const site = siteKey?.trim() ?? "";
+  const secret = secretKey?.trim() ?? "";
+  if (site !== "" && secret !== "") return { siteKey: site, secretKey: secret };
+  if (site !== "" || secret !== "") {
+    warn(`Turnstile is off: ${site === "" ? "TURNSTILE_SITE_KEY" : "TURNSTILE_SECRET_KEY"} is not set, and both are needed`);
+  }
+  return undefined;
+}
+
+/**
+ * What the box shows after an answer, and whether its Turnstile token may be
+ * kept. A token is single-use, so after any answer that did not store the
+ * report the widget is reset and asked for a fresh one before a retry.
+ */
+export function afterAnswer(answer: ReportAnswer): {
+  status: "sent" | "limited" | "challenge" | "expired" | "failed";
+  keepChallenge: boolean;
+} {
+  switch (answer.outcome) {
+    case "sent":
+      return { status: "sent", keepChallenge: true };
+    case "limited":
+      return { status: "limited", keepChallenge: false };
+    case "rejected":
+      return {
+        status: answer.reason === "challenge" ? "challenge" : answer.reason === "expired" ? "expired" : "failed",
+        keepChallenge: false,
+      };
+    case "failed":
+      return { status: "failed", keepChallenge: false };
+  }
 }
 
 /** Turnstile's server-side check of a token, with the Worker's `fetch`. */

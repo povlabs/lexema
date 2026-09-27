@@ -40,6 +40,7 @@ function harness() {
     SEARCH_LIMIT: new FakeRateLimit(15),
     SUGGEST_LIMIT: new FakeRateLimit(120),
     REPORT_LIMIT: new FakeRateLimit(2),
+    REPORT_OPEN_LIMIT: new FakeRateLimit(10),
   } satisfies LimitBindings;
   const seen: Request[] = [];
   const worker = withRateLimits<LimitBindings>(async (request) => {
@@ -145,6 +146,9 @@ test("two reports a minute reach the app, and the third is a 429 the app never s
   });
   assert.equal(seen.length, 2);
   assert.equal(env.SEARCH_LIMIT.counts.size, 0, "a report is not a search");
+  // Opening the box is counted apart, so it does not use up sending.
+  assert.equal((await fetch("/report/open", "203.0.113.7", {}, "POST")).status, 200);
+  assert.equal(env.REPORT_OPEN_LIMIT.counts.get("v4:203.0.113.7"), 1);
   assert.deepEqual(logged, [["rate limited", { limit: "report" }]]);
 });
 
@@ -231,6 +235,7 @@ test("the limits are the rulings, in the Wrangler configuration, the same in pro
     { name: "SEARCH_LIMIT", namespace_id: "1281", simple: { limit: 15, period: 60 } },
     { name: "SUGGEST_LIMIT", namespace_id: "1282", simple: { limit: 120, period: 60 } },
     { name: "REPORT_LIMIT", namespace_id: "1283", simple: { limit: 2, period: 60 } },
+    { name: "REPORT_OPEN_LIMIT", namespace_id: "1284", simple: { limit: 10, period: 60 } },
   ]);
   // Bindings are not inherited by an environment, so production repeats them.
   assert.deepEqual(production.ratelimits, local.ratelimits);

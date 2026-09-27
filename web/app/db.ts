@@ -7,6 +7,7 @@ import { fromD1 } from "@lexema/lookup/database.ts";
 import { lookup } from "@lexema/lookup/lookup.ts";
 import { suggest, type SuggestResult } from "@lexema/lookup/suggest.ts";
 import type { Attempt } from "./attempt.ts";
+import { turnstileConfig, type TurnstileConfig } from "./report.ts";
 
 /**
  * The lookup database. Production has no D1 binding until #19
@@ -54,15 +55,17 @@ export async function suggestions(prefix: string): Promise<SuggestResult | { out
   }
 }
 
-/** The report box's Turnstile site key, or undefined when none is configured (#51). */
-export function turnstileSiteKey(): string | undefined {
-  return env.TURNSTILE_SITE_KEY === "" ? undefined : env.TURNSTILE_SITE_KEY;
-}
-
-/** The Turnstile secret, set with `wrangler secret put`; undefined skips the check. */
-export function turnstileSecretKey(): string | undefined {
-  const secret = (env as { TURNSTILE_SECRET_KEY?: string }).TURNSTILE_SECRET_KEY;
-  return secret === undefined || secret === "" ? undefined : secret;
+/**
+ * The report box's Turnstile keys (#51): the site key is a var, the secret is
+ * set with `wrangler secret put`. On only when both are set; one alone is off,
+ * with a warning in the log.
+ */
+export function turnstile(): TurnstileConfig | undefined {
+  return turnstileConfig(
+    env.TURNSTILE_SITE_KEY,
+    (env as { TURNSTILE_SECRET_KEY?: string }).TURNSTILE_SECRET_KEY,
+    (message) => console.warn(message),
+  );
 }
 
 /** The release this Worker serves. */
