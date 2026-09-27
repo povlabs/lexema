@@ -14,6 +14,7 @@ import { conjugationOf } from "./conjugation.ts";
 import { agreementOf, headingGrammar } from "./genderGrid.ts";
 import { ConjugationView, GridView, OtherForms, SuperlativeGrid, searchHref } from "./Forms";
 import type { PageReading } from "./wordPage.ts";
+import { OneLine } from "./OneLine";
 import { WordList } from "./WordList";
 import {
   BLOCK,
@@ -30,7 +31,6 @@ import {
   EXAMPLE,
   EXAMPLE_EXTRA,
   EXAMPLE_FROM,
-  ETYMOLOGY,
   GLOSS,
   GLOSS_LINK,
   MENTION,
@@ -535,9 +535,7 @@ export function ReadingView({ entry, query }: { entry: PageReading; query: strin
       {entry.etymologies.length > 0 && (
         <Block id={`etymology-${reading.recordId}`} label="Etymology">
           {entry.etymologies.map((etymology) => (
-            <p key={etymology.ref.jsonPointer} className={ETYMOLOGY} lang="it">
-              {etymology.text}
-            </p>
+            <OneLine key={etymology.ref.jsonPointer} text={etymology.text} lang="it" />
           ))}
         </Block>
       )}

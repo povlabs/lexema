@@ -276,7 +276,17 @@ export const COMPOUND_SUMMARY = `inline-block cursor-pointer list-none font-sans
 export const COMPOUND_TABLES = "mb-4 pt-3";
 
 export const WORD_FACTS = "mt-7 border-t border-border pt-7 sm:mt-10 sm:pt-10";
-export const ETYMOLOGY = "m-0 max-w-[48rem] font-serif text-[1.1rem] text-text [&+&]:mt-3";
+export const ETYMOLOGY = "m-0 max-w-[48rem] font-serif text-[1.1rem] text-text";
+/**
+ * An etymology on one line, cut with an ellipsis, and a small accent `+ more`
+ * right after the ellipsis; open, the whole text wraps and `less` sits under it.
+ * The text takes only its own width, so the control follows it, not the edge.
+ */
+export const ONE_LINE =
+  "group/line flex max-w-[48rem] items-baseline gap-1.5 [&+&]:mt-3 has-[details[open]]:flex-col has-[details[open]]:gap-1";
+export const ONE_LINE_TEXT = `${ETYMOLOGY} min-w-0 truncate group-has-[details[open]]/line:whitespace-normal`;
+export const ONE_LINE_TOGGLE = "group shrink-0";
+export const ONE_LINE_TOGGLE_SUMMARY = `cursor-pointer list-none font-sans text-[0.8rem] text-accent [&::-webkit-details-marker]:hidden ${FOCUS_RING}`;
 export const WORD_LIST = "m-0 flex list-none flex-wrap items-baseline gap-x-3 gap-y-2 p-0";
 export const WORD_LIST_ITEM = "flex items-baseline gap-3";
 /** The words past the first eight: in the document, shown once `+ N more` is open. */

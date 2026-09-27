@@ -68,9 +68,10 @@ page; the status code cannot carry it.
 
 ## Why the suggestion list is the one thing the browser fetches
 
-Suggestions answer keystrokes, which the URL cannot carry, so the field is the
-one client component and `GET /suggest?q=` is the one request the page makes
-after it loads. The route returns JSON rather than a rendered page, so an
+Suggestions answer keystrokes, which the URL cannot carry, so `GET /suggest?q=`
+is the one request the page makes while a reader reads. (The other client parts
+fetch nothing until asked: the mood tabs, the one-line etymology toggle, and the
+report box, which posts only when opened and sent.) The route returns JSON rather than a rendered page, so an
 answer costs the prefix query and nothing else. The browser keeps an answer
 five minutes, so a reader retyping a prefix sends no request. There is no edge
 cache: Cloudflare bills a cache hit as a request, so it would save none. Everything else above still
@@ -83,6 +84,10 @@ none searches what was typed, and Escape closes the list. A polite live region
 says how many suggestions opened. The field waits 150 ms after a keystroke
 before asking, and a newer keystroke aborts the older request, so a slow answer
 for `ca` is never drawn over the list for `cas`.
+
+The `×` empties the field and puts the cursor back in it; the result on the
+page stays until a new search is sent. It is still a link to the empty home
+page, which is what it does with no script.
 
 The form sits inside the Autocomplete root, not around it. The root renders a
 second, typeless input, and a form with two text fields and no submit button is
@@ -205,6 +210,12 @@ lemma of the reading that points to it
 ([the lookup reference](LOOKUP.md#result-fields)). Any record that lists the
 query and is no reading's lemma keeps a reading of its own, saying it lists the
 query among its forms.
+
+**One line of etymology.** Every Etymology block shows its text on one line, cut
+with an ellipsis by CSS, and a native `<details>` `+ more` right after it that
+lets the whole text wrap in place (`web/app/OneLine.tsx`). The whole text is in
+the HTML and the toggle opens with no script; once hydrated, a text that fits
+on its line drops the toggle.
 
 **Once per word.** Pronunciation, etymologies, synonyms, antonyms and derived
 words are read from `source_record_json` and render once: the IPA under the

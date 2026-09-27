@@ -52,6 +52,7 @@ import {
   JUMP_LINK,
   LINK,
   NON_FINITE_LABEL_SEARCHED,
+  ONE_LINE_TEXT,
   OPEN_MARK,
   PENDING,
   PERSON_SEARCHED,
@@ -498,8 +499,9 @@ test("one example per definition shows; one control per reading reveals every ot
       target.senses.splice(1);
     });
     const onlyReading = readingById(onlyDefinition, noun.recordId);
+    const onlyDefinitions = onlyReading.slice(0, onlyReading.indexOf(`id="forms-${noun.recordId}"`));
     assert.equal(patternsOf(onlyReading, /data-definition="/g), 1);
-    assert.equal(patternsOf(onlyReading, /<details[\s>]/g), 1);
+    assert.equal(patternsOf(onlyDefinitions, /<details[\s>]/g), 1);
     assert.match(onlyReading, new RegExp(`>${examples.length - 1} more examples<`));
 
     // A borrowed example shows once: under the first definition, not again
@@ -653,7 +655,10 @@ async function withPlacementWords(run: (f: Fixture) => Promise<void>): Promise<v
 /** The text of a reading's own Etymology block, or undefined when it has none. */
 function readingEtymology(reading: string): string | undefined {
   const at = reading.indexOf('id="etymology-');
-  return at === -1 ? undefined : textOf(reading.slice(reading.indexOf(">", at) + 1, reading.indexOf("</section>", at)));
+  if (at === -1) return undefined;
+  // The text alone, without its one-line toggle's `+ more` / `less`.
+  const section = reading.slice(reading.indexOf(">", at) + 1, reading.indexOf("</section>", at));
+  return textOf(section.replace(/<details[\s\S]*?<\/details>/g, ""));
 }
 
 /** The words of a Synonyms run, from a reading or from the facts after the readings. */
@@ -851,6 +856,25 @@ test("a heading states both numbers when the record does, and nothing on a prope
     assert.deepEqual(headingsOf(await render(db, "Mercurio")), ["1·Nome proprio"]);
     // The grammar is muted and Italian, beside the part of speech, not inside it.
     assert.match(await render(db, "khmer"), /<span lang="it">Sostantivo<\/span><span class="[^"]*"><span class="[^"]*" aria-hidden="true">·<\/span><span class="[^"]*" lang="it">maschile, singolare e plurale<\/span><\/span><\/h2>/);
+  });
+});
+
+test("an etymology shows one cut line and a native + more that opens the whole text in place", async () => {
+  await withDevSeed(async ({ db }) => {
+    const html = await render(db, "andare");
+    const facts = afterReadings(html);
+    const reading = (await readingsFor(db, "andare"))[0];
+    const [etymology] = reading.wordFacts.etymologies;
+    const block = facts.slice(facts.indexOf('data-one-line=""'));
+    // The whole text is in the HTML, on a line that CSS cuts with an ellipsis
+    // and lets wrap once the toggle is open.
+    assert.match(block, new RegExp(`<p class="${esc(ONE_LINE_TEXT.replace(/&/g, "&amp;"))}" lang="it">`));
+    assert.ok(textOf(block).includes(textOf(etymology.text.replace(/</g, "&lt;"))));
+    assert.match(ONE_LINE_TEXT, /\btruncate\b/);
+    assert.match(ONE_LINE_TEXT, /group-has-\[details\[open\]\]\/line:whitespace-normal/);
+    // The toggle is a native <details>, so it opens with no script; the
+    // script only hides it when the text already fits.
+    assert.match(block, /<details class="[^"]*"><summary class="[^"]*"><span class="[^"]*">\+ more<\/span><span class="[^"]*">less<\/span><\/summary><\/details>/);
   });
 });
 

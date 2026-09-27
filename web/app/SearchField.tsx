@@ -24,7 +24,7 @@
 // owns is where the suggestions come from and when.
 
 import { Autocomplete } from "@base-ui/react/autocomplete";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type MouseEvent } from "react";
 import { isAskablePrefix } from "@lexema/lookup/suggest.ts";
 import { SearchIcon } from "./icons";
 import type { SuggestAnswer } from "./suggestAnswer.ts";
@@ -97,6 +97,7 @@ export function SearchField({ raw }: { raw: string }) {
   const [open, setOpen] = useState(false);
   const [shown, setShown] = useState<Shown | null>(null);
   const field = useRef<HTMLDivElement>(null);
+  const input = useRef<HTMLInputElement>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   // The one request whose answer may still be shown. A newer keystroke aborts
   // it, so an answer for `ca` that arrives after the reader typed `cas` is
@@ -133,6 +134,20 @@ export function SearchField({ raw }: { raw: string }) {
 
   const suggestions = shown?.kind === "suggested" ? shown.suggestions : [];
 
+  /**
+   * The `×`: empty the field and keep the reader in it, ready for the next
+   * word. The result on the page stays until a new search is sent. Without a
+   * script the `×` is still a link to the empty home page.
+   */
+  const clear = (event: MouseEvent<HTMLAnchorElement>) => {
+    event.preventDefault();
+    cancel();
+    setShown(null);
+    setOpen(false);
+    setValue("");
+    input.current?.focus();
+  };
+
   return (
     <Autocomplete.Root
       name="q"
@@ -160,6 +175,7 @@ export function SearchField({ raw }: { raw: string }) {
         <Autocomplete.InputGroup ref={field} className={SEARCH_FIELD}>
           <SearchIcon className={SEARCH_ICON} />
           <Autocomplete.Input
+            ref={input}
             className={SEARCH_INPUT}
             id="q"
             type="search"
@@ -172,8 +188,8 @@ export function SearchField({ raw }: { raw: string }) {
             autoFocus={!asked}
             enterKeyHint="search"
           />
-          {asked ? (
-            <a className={SEARCH_CLEAR} href="/" aria-label="Clear search">
+          {value !== "" ? (
+            <a className={SEARCH_CLEAR} href="/" aria-label="Clear search" onClick={clear}>
               ×
             </a>
           ) : (

@@ -7,6 +7,7 @@
 
 import type { WordFacts } from "@lexema/lookup/types.ts";
 import { ExternalIcon } from "./icons";
+import { OneLine } from "./OneLine";
 import { ReadingView } from "./Reading";
 import { ReportDialog } from "./ReportDialog";
 import { WordList } from "./WordList";
@@ -14,7 +15,6 @@ import type { WordPage } from "./wordPage.ts";
 import {
   BLOCK_LABEL,
   WORD_BLOCK,
-  ETYMOLOGY,
   ICON,
   JUMP_LINK,
   JUMP_LINKS,
@@ -95,9 +95,7 @@ function WordFactsView({ facts }: { facts: WordFacts }) {
             Etymology
           </h2>
           {facts.etymologies.map((etymology) => (
-            <p key={etymology.ref.jsonPointer} className={ETYMOLOGY} lang="it">
-              {etymology.text}
-            </p>
+            <OneLine key={etymology.ref.jsonPointer} text={etymology.text} lang="it" />
           ))}
         </section>
       )}
