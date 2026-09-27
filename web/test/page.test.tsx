@@ -500,14 +500,18 @@ test("one definition and one example show; one control per reading holds every o
     assert.equal(patternsOf(onlyDefinitions, /<details[\s>]/g), 1);
     assert.match(onlyReading, new RegExp(`>${examples.length - 1} more examples<`));
 
-    // A borrowed example shows once: under the first definition, not again
-    // under its own when the rest open.
+    // bello's first adjective sense has no example, so it shows none: no other
+    // definition's example is borrowed, and no "from definition" label appears.
+    // The third definition's example stays under the third, behind the control.
     const bello = await readingsFor(db, "bello");
     const adjective = bello.find((r) => r.pos === "adj" && r.isAboutQuery);
     assert.ok(adjective);
-    const borrowed = adjective.senses[2].examples[0].text;
-    const html = textOf(readingById(await render(db, "bello"), adjective.recordId));
-    assert.equal(html.split(borrowed).length - 1, 1, "the borrowed example shows once");
+    const third = adjective.senses[2].examples[0].text;
+    const belloReading = readingById(await render(db, "bello"), adjective.recordId);
+    const [belloShown, belloRest] = belloReading.split("<details");
+    assert.ok(!textOf(belloShown).includes(third), "not borrowed onto the first definition");
+    assert.ok(textOf(belloRest).includes(third), "reachable under its own definition");
+    assert.doesNotMatch(belloReading, /from definition/);
   });
   await withDevSeed(async ({ db }) => {
     const verb = nth(await render(db, "andare"), 2);
@@ -517,12 +521,6 @@ test("one definition and one example show; one control per reading holds every o
     assert.match(textOf(first), /ogni mattina devo andare a scuola/);
     assert.match(rest, />4 more definitions</);
     assert.equal(patternsOf(verb, /data-definition="/g), 5, "all five definitions are in the document");
-
-    // bello's first adjective sense has no example, so the reading's first
-    // example stands in, marked with the definition it belongs to.
-    const adjective = nth(await render(db, "bello"), 1).split("<details")[0];
-    assert.match(textOf(adjective), /from definition 3/);
-    assert.equal(patternsOf(adjective, /from definition/g), 1);
 
     // A reading with one definition has no link.
     assert.doesNotMatch(nth(await render(db, "bello"), 3), /more definition/);
@@ -900,6 +898,14 @@ test("a search that finds nothing offers, in order: an accent, one edit, words t
     const stud = textOf(await render(db, "stud"));
     assert.match(stud, /Lexema has no word spelled this way\. Words that begin with “stud”:/);
     assert.match(stud, /Suggestionsstudente·studentessa·studenti·studiare/);
+
+    // Among spellings one edit away, the more common word leads: mangiare,
+    // translated into three languages, before the shorter magnare.
+    await withFixture(async ({ db: fixture }) => {
+      const offers = textOf(await render(fixture, "mangare"));
+      assert.match(offers, /Did you mean mangiare\?/);
+      assert.match(offers, /Other close spellingsmagnare/);
+    });
 
     // A three-letter query skips the typo step: `mar` is one edit from `mare`,
     // but the words that begin with it are the better offer.

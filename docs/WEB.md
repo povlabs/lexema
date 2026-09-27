@@ -168,9 +168,10 @@ raw page stand in for them, as for `casa`, the furniture is left out.
 definition the record does not carry as a definition (#28) — absent, or filed
 under an example — the seed recovers it into a layer beside the
 record, and the reading lists it after the record's own definitions, with its
-examples. Each definition shows one example; one control per reading shows the
-other definitions and every other example, including extra examples on the first
-definition and examples on nested items. Nothing marks it as recovered
+examples. The first definition shows its own first example, or none when it
+has none: no other definition's example stands in. One control per reading shows
+the other definitions and every other example, each under its own definition,
+including extra examples on the first definition and examples on nested items. Nothing marks it as recovered
 ([ADR 0016](../.decisions/0016-page-shows-no-origin-marks.md)); the layer keeps
 its own provenance in the data. `casa` shows its seven definitions this way.
 When the record filed a recovered definition as an example (`lap steel

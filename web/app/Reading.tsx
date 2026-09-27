@@ -31,7 +31,6 @@ import {
   DISPUTED_MARK,
   EXAMPLE,
   EXAMPLE_EXTRA,
-  EXAMPLE_FROM,
   GLOSS,
   GLOSS_LINK,
   MENTION,
@@ -249,11 +248,10 @@ function DefinitionText({ item, reading, showNestedExamples = true }: { item: De
 const definitionKey = (item: DefinitionItem): string =>
   item.from === "record" ? `sense-${item.sense.index}` : `page-${item.definition.ref.line}`;
 
-function Example({ text, from }: { text: string; from?: number }) {
+function Example({ text }: { text: string }) {
   return (
     <p className={EXAMPLE}>
       <span lang="it">{text}</span>
-      {from !== undefined && <span className={EXAMPLE_FROM}>from definition {from}</span>}
     </p>
   );
 }
@@ -293,10 +291,9 @@ const nestedExampleTexts = (items: readonly RecoveredDefinition[]): string[] =>
 /**
  * The first definition with one example, then one control that shows the
  * rest: the other definitions, and every example not yet shown, including
- * those of nested items and of furniture senses left out. The example
- * under the first definition is its own; when it has none, the reading's first
- * example, marked with the definition it belongs to and not shown again there.
- * Everything is in the document whether the control is open or not.
+ * those of nested items and of furniture senses left out. Every example stays
+ * under its own definition: the first definition shows its own first example,
+ * or none. Everything is in the document whether the control is open or not.
  */
 function Definitions({ reading }: { reading: Reading }) {
   const { items, looseExamples } = definitionsOf(reading);
@@ -312,7 +309,6 @@ function Definitions({ reading }: { reading: Reading }) {
     );
   }
   const [first] = items;
-  const borrowed = first.examples.length === 0 ? items.findIndex((item) => item.examples.length > 0) : -1;
   const firstExtra = first.examples.slice(1);
   const rest = items.slice(DEFINITION_SLICE);
   // Examples the closed control hides outside the other definitions: the first
@@ -330,11 +326,8 @@ function Definitions({ reading }: { reading: Reading }) {
           {/* The first definition's nested items show; their examples wait
               behind the control with its other examples. */}
           <DefinitionLine item={first} number={1} reading={reading} showNestedExamples={false}>
-            {borrowed > 0 ? (
-              <Example text={items[borrowed].examples[0]} from={borrowed + 1} />
-            ) : (
-              first.examples.length > 0 && <Example text={first.examples[0]} />
-            )}
+            {/* Its own first example, or none: an example stays under its own definition. */}
+            {first.examples.length > 0 && <Example text={first.examples[0]} />}
           </DefinitionLine>
         </ol>
         {label !== "" && (
@@ -351,10 +344,9 @@ function Definitions({ reading }: { reading: Reading }) {
               <ol className={`${DEFINITIONS} ${MORE_LIST}`} start={DEFINITION_SLICE + 1}>
                 {rest.map((item, i) => {
                   const index = DEFINITION_SLICE + i;
-                  const examples = index === borrowed ? item.examples.slice(1) : item.examples;
                   return (
                     <DefinitionLine key={definitionKey(item)} item={item} number={index + 1} reading={reading}>
-                      {examples.map((text, j) => (
+                      {item.examples.map((text, j) => (
                         <Example key={j} text={text} />
                       ))}
                     </DefinitionLine>

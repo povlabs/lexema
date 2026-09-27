@@ -218,7 +218,6 @@ export const EXAMPLE = "m-0 mt-2 max-w-[48rem] font-serif text-[1.05rem] italic 
 export const EXAMPLE_EXTRA = `${EXAMPLE} hidden group-has-[details[open]]/definitions:block`;
 /** The first definition and the reading's one `more` control, which reveals everything else. */
 export const DEFINITIONS_GROUP = "group/definitions";
-export const EXAMPLE_FROM = "ml-2.5 whitespace-nowrap font-sans text-[0.75rem] not-italic text-text-muted";
 
 /** `N more definitions`: a native `<details>`, so every definition is in the document. */
 export const MORE = "group mt-4";
