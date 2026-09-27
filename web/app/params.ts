@@ -20,3 +20,9 @@ export function firstQuery(value: QueryParam): string {
   if (value === undefined) return "";
   return Array.isArray(value) ? (value[0] ?? "") : value;
 }
+
+/** The browser tab's title: the word on a result, and what Lexema is before a query. */
+export function pageTitle(query: string): string {
+  const q = query.trim();
+  return q === "" ? "Lexema — a simple dictionary" : `${q} — Lexema`;
+}

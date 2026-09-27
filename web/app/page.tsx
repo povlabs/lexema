@@ -15,7 +15,7 @@ import { headers } from "next/headers";
 import { Suspense } from "react";
 import { SEARCH_LIMITED_HEADER } from "../worker/rateLimit.ts";
 import { FirstLoad, Limited, Outcome, Pending, SearchPage } from "./SearchPage";
-import { firstQuery, type QueryParam } from "./params";
+import { firstQuery, pageTitle, type QueryParam } from "./params";
 import { search, turnstile } from "./db";
 
 interface PageProps {
@@ -23,8 +23,7 @@ interface PageProps {
 }
 
 export function generateMetadata({ searchParams }: PageProps) {
-  const q = firstQuery(searchParams.q).trim();
-  return { title: q ? `${q} — Lexema` : "Lexema — Italian dictionary search" };
+  return { title: pageTitle(firstQuery(searchParams.q)) };
 }
 
 /** The half that waits on D1, so the shell above it can flush before it does. */

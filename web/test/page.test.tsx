@@ -40,7 +40,7 @@ import { SiteFooter } from "../app/SiteFooter";
 import { SiteHeader } from "../app/SiteHeader";
 import { JUMP_LINKS_FROM, WORD_LIST_SLICE } from "../app/Word";
 import { wordPage } from "../app/wordPage.ts";
-import { firstQuery } from "../app/params";
+import { firstQuery, pageTitle } from "../app/params";
 // The class strings the components carry, imported rather than copied, so a
 // restyle that changes one changes both together.
 import {
@@ -1065,6 +1065,12 @@ test("the search page carries no credit line, no licence name and no contributor
       /href="https:\/\/it\.wiktionary\.org\/wiki\/sale" target="_blank" rel="noopener noreferrer" aria-label="Wiktionary page for sale, the source of this page \(opens in a new tab\)">Source/,
     );
   });
+});
+
+test("the tab title is the word on a result, and what Lexema is on the home page", () => {
+  assert.equal(pageTitle(""), "Lexema — a simple dictionary");
+  assert.equal(pageTitle("   "), "Lexema — a simple dictionary");
+  assert.equal(pageTitle(" casa "), "casa — Lexema");
 });
 
 test("a repeated query parameter is searched, not thrown on", async () => {
