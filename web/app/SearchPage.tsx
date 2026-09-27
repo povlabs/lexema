@@ -6,10 +6,10 @@
 // with no archive and no D1. What `page.tsx` adds is where the data comes from.
 //
 // Two client components: the search form, whose suggestion list answers
-// keystrokes (`SearchField.tsx`), and the Expand all button over a verb's
-// folding groups on a phone (`Folds.tsx`). The form is still a plain GET form,
-// every state is decided by the URL, and the "Show all" controls and the groups
-// themselves are native `<details>`, so the page works before any JavaScript does.
+// keystrokes (`SearchField.tsx`), and the mood tabs over a conjugation
+// (`MoodTabs.tsx`). The form is still a plain GET form, every state is decided
+// by the URL, every mood's table is in the HTML the server sends, and the
+// `more` links are native `<details>`, so the page reads before any JavaScript does.
 
 import type { ReactNode } from "react";
 import type { Attempt } from "./attempt.ts";

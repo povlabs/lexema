@@ -123,36 +123,37 @@ instead of smoothing it over. Eight silences it refuses to hide:
 **A lemma is where a reading points, not a match.** Searching `sale` returns
 three entries, the three records whose headword is `sale`. Two of them say what
 they are a form of, `sala` and `salire`, and those lemmas come back inside the
-reading that names them rather than as entries of their own. Each is drawn as
-that reading's lemma panel, with a link to its own page. A reader never sees
+reading that names them rather than as entries of their own. The definition
+that names each links it to its own search, and a verb lemma whose table lists
+the searched form renders its whole conjugation under the reading, as *Forms of
+salire*. A reader never sees
 `salire` offered as a meaning of `sale`, because the source only ever said one
 of `sale`'s readings is a form of it.
 
 **An ambiguous lemma link.** `sale` says it is the plural of `sala`, and `sala`
-is two entries, a noun and a verb. The page says two entries share the spelling
-instead of picking one, because picking one would invent a fact.
+is two entries, a noun and a verb. The link searches the word `sala`, which
+shows both, instead of picking one, because picking one would invent a fact.
 
-**Grammar the source never stated.** `casa` says in a sentence that the source
-states neither a gender nor a number for the entry, where a noun would
-otherwise show them on its header bar. That has to read differently from a word
-whose gender was never expected in the first place, and it is said once, not
-drawn as empty fields.
+**Grammar the source never stated.** A form the source does not give is a dash
+in its cell, with no note (design-system-manifest.md § "The result"). `casa`'s
+record states no gender, no number and no forms, so nothing can be placed in a
+grid and its reading has no *Forms* block.
 
 **Definitions that define nothing.** `casa`'s two glosses are page furniture and
 `sala` carries the source's own *"definizione mancante"*. Both are shown
-verbatim. Filtering them would hide how incomplete this data is, which is the
-one thing this page must not do.
+verbatim when they are all a reading has. When definitions recovered from the
+raw page stand in for them, as for `casa`, the furniture is left out.
 
 **Definitions the extraction dropped or misfiled.** Where the raw Wiktionary page states a
 definition the record does not carry as a definition (#28) — absent, or filed
 under an example — the seed recovers it into a layer beside the
-record, and the card lists it after the record's own definitions with a small
-*recovered* mark, and its examples the same way. Each section that shows one
-says once which page revision it was read from, linked. The record's furniture
-stays under *Source notes*. `casa` now shows its seven definitions this way.
+record, and the reading lists it after the record's own definitions, with its
+examples. Nothing marks it as recovered
+([ADR 0016](../.decisions/0016-page-shows-no-origin-marks.md)); the layer keeps
+its own provenance in the data. `casa` shows its seven definitions this way.
 When the record filed a recovered definition as an example (`lap steel
-guitar`), the card shows that text once, as the definition, with a note that
-the source record files it as an example, and leaves it out of *Examples*.
+guitar`), the page shows that text once, as the definition, and not again as
+an example.
 An item of a list a definition opens with a colon (`accollato`'s
 `attributo araldico che si applica a:`) sits inside that definition as a
 bulleted list, whether the definition is the record's or itself recovered
@@ -163,7 +164,7 @@ matched by text: exactly one sense has a gloss equal to the line's text, and no
 other `#` line in the section has that text. A gloss that only quotes the line
 matches nothing. When there is no match, the item stays numbered at the top of
 the list, as before (`filetto`'s heraldic items). A sense that opens such a list is a definition, never *Source
-notes* furniture, even when its gloss starts like `casa`'s.
+furniture, even when its gloss starts like `casa`'s.
 
 **A lookup that did not happen.** No release, a D1 error, or a release built by
 a different normalizer all produce a page that says the lookup failed. That is
@@ -172,40 +173,34 @@ could not look* from *we looked and the word is not here*. The
 reason is logged and not printed: a database message names releases, tables and
 bindings, which is the operator's business and not the reader's.
 
-**A form the source listed, and one it did not.** A noun or adjective shows its
-plural and feminine on the header bar and, when the source files spellings under
-both genders, a gender-and-number box. A verb shows its conjugation in tense
-boxes: which box a form goes in is rule `it-moods/v1`
-(`src/italian/moods.ts`), which reads the tenses the source tags and, for the
-congiuntivo and condizionale, the pronoun it writes beside the form. A row with
-a tense and no person is congiuntivo when its pronoun begins *che*, and
-condizionale when its tense is present or past and its pronoun is bare, as in
-*io*. The page says so under the conjugation's header, the way
-the articles box says `it-articles/v1` derived its articles. Whatever the rule
-cannot place stays in one box that says so. A section with nothing in it is
-absent.
+**A form the source listed, and one it did not.** A noun, adjective or
+inflecting phrase shows a gender-and-number grid; its article lines are rule
+`it-articles/v1` (`src/italian/articles.ts`) applied to each cell. A verb shows
+a conjugation with mood tabs; which mood a form goes in is rule `it-moods/v1`
+(`src/italian/moods.ts`), which reads the shape of the source's row: person
+tags for the indicativo, a pronoun beginning *che* for the congiuntivo, a bare
+pronoun on a tense-only row for the condizionale. Neither rule is named on the
+page (ADR 0016). Whatever takes no cell is listed verbatim under *Other forms*.
+Every form the source gives is shown, variants such as `vo`, `annò` and
+`anderò` included. A block with nothing in it is absent.
 
 **Ambiguity in both directions.** A `form_of` edge names a word, and a word can
-be several records. A form reading ends in a lemma panel that names the word,
-lists every record spelling it when there is more than one, and says the
-source does not choose. The panel is the whole of the reading's lemma: the
-lookup returns every record the query matches as a card, and a lemma the query
-also matched through its table — `sala` and `salire` for `sale` — is not one of
-those records but the lemma of the reading that points to it
-([the lookup reference](LOOKUP.md#result-fields)). Its table's row is what the
-form's header bar reads, and on a page of one verb form its whole conjugation
-renders on the card. A panel names and links the lemma; its meanings are on
-its own page. Any record that lists the query and is no reading's lemma keeps a
-card of its own, saying it does not define the query.
+be several records. The link on a form reading's definition searches that word,
+so every record spelling it shows there. The lookup returns every record the
+query matches as a reading, and a lemma the query also matched through its
+table — `sala` and `salire` for `sale` — is not one of those records but the
+lemma of the reading that points to it
+([the lookup reference](LOOKUP.md#result-fields)). Any record that lists the
+query and is no reading's lemma keeps a reading of its own, saying it lists the
+query among its forms.
 
-**Once per word.** Pronunciation, syllables, etymologies, synonyms, antonyms
-and derived words are read from `source_record_json` and render once: the strip
-under the headword, and the sections after the last card. The source usually
+**Once per word.** Pronunciation, etymologies, synonyms, antonyms and derived
+words are read from `source_record_json` and render once: the IPA under the
+headword, and the facts after the last reading. Syllable breaks are not shown. The source usually
 repeats them on every record of a headword, but not always. In release
 `it-0c432803`, 16,659 of the 16,792 headwords with more than one record carry
 the six fields identically on each; 133 do not. So the page shows the union of
-what the records carry, each item once, rather than one record's copy. Several etymologies are labelled *reading
-not given*, because the source does not say which reading each belongs to.
+what the records carry, each item once, rather than one record's copy.
 
 ## Why a disputed claim is a row and not a code path
 
@@ -226,7 +221,8 @@ write over the release the import just made.
 ## Why the source link is labelled the way it is
 
 The page ends with one link to the Italian Wiktionary page for the headword —
-one per headword when a listing record from another page has a card. It is
+one per page when the result shows readings or a lemma table from another page,
+as `andavano` does with `andare`. It is
 labelled *Source* and nothing more:
 [ADR 0009](../.decisions/0009-two-licences-and-a-source-link.md) puts one small
 link on a result and keeps the credit itself on `/attribution`, which the site
@@ -234,9 +230,9 @@ footer reaches from every page. Its accessible name is longer than its text —
 "Wiktionary page for X, the source of this page".
 
 The release stores no per-record URL, so the link is *constructed* from the
-headword rather than recorded with the data. Each card still carries its
+headword rather than recorded with the data. Each reading still carries its
 record's archive line as `data-line`, so the page stays checkable against the
-release without printing the line on every card.
+release without printing the line on the page.
 
 ## Why the credit is on its own page
 
@@ -283,10 +279,8 @@ set `SEED_INPUT`; the local full-archive copy is conventionally
 ## Known rough edges
 
 - No favicon, so the dev log carries a 404 for it.
-- A verb record the source tags as the auxiliary sense, one each for `essere`
-  and `avere`, shows `FORM-ROLE auxiliary` on its header bar.
 
 ## Not in scope
 
-The page at phone width (#101). Attaching D1 in production and smoke tests
+Attaching D1 in production and smoke tests
 against a real URL (#19). Deploying is [DEPLOY.md](DEPLOY.md).

@@ -1,59 +1,51 @@
 // What one word's page is made of, decided before anything renders.
 //
-// A lookup returns every record the query matches, and each is a card. Some
-// are *about* the searched word (`isAboutQuery`); some merely list it in their
-// own table, and say so. A card that is a form of another word ends in its
-// lemma panel, which is the whole of the reading's `lemmaLinks`: `sale`'s
-// plural-of-`sala` reading names `sala`, and `sala`'s own table, which lists
-// `sale`, arrives on that link as its `listing`. The lookup does not return
-// `sala` as a record of its own, so there is nothing here to absorb or count
-// twice: the cards are the lookup's records, and the panels are their lemmas.
+// A lookup returns every record the query matches, and each is a reading on
+// the page. Some are *about* the searched word (`isAboutQuery`); some merely
+// list it in their own table. A reading that is a form of a verb carries that
+// verb's table when the table lists the query: `andavano` shows *Forms of
+// andare*. The lookup does not return the lemma as a record of its own, so
+// nothing is counted twice: the readings are the lookup's records, and the
+// tables are their lemmas'.
 
-import { isFormOfReading, searchedSpellings } from "@lexema/lookup/types.ts";
+import { isFormOfReading, isVerbReading } from "@lexema/lookup/types.ts";
 import type {
+  LemmaListing,
   LemmaTarget,
   Pronunciation,
   Hyphenation,
   Reading,
   RelatedWord,
-  SourceForm,
   SourceText,
   WordFacts,
 } from "@lexema/lookup/types.ts";
 
 /**
- * The form a reading is, located inside its lemma's own table.
- *
- * `andavano`'s record says only that it is a form of `andare`; `andare`'s verb
- * record lists `andavano` at `/forms/16` with its person, number and tense. The
- * lemma's row is where those facts are stated, so a form reading reads them
- * from there — by the pointer the lookup matched, never by spelling.
+ * A verb lemma whose table lists the searched form: `andare` for `andavano`.
+ * Its whole conjugation renders under the form's reading, as *Forms of andare*,
+ * opened where the form sits (design-system-manifest.md § "The result").
  */
-export interface LemmaRow {
+export interface LemmaTable {
   lemma: LemmaTarget;
-  form: SourceForm;
+  listing: LemmaListing;
 }
 
-export interface Card {
-  /** 1-based, and the same number the reading index shows. */
+export interface PageReading {
+  /** 1-based, and the same number the jump links show. */
   number: number;
   reading: Reading;
-  /** Where this form sits in its lemma's table, if the lemma's table lists it. */
-  lemmaRow: LemmaRow | undefined;
-  /**
-   * The lemma whose whole conjugation renders inside this card — frame 03, a
-   * page whose only reading is a verb form. With several readings a form card
-   * points to its lemma and carries no table (frame 01, reading 3).
-   */
-  inlineParadigm: LemmaTarget | undefined;
+  lemmaTable: LemmaTable | undefined;
 }
 
 export interface WordPage {
   /** The headword as the source spells it, or the query when no record is about it. */
   headword: string;
-  cards: [Card, ...Card[]];
+  readings: [PageReading, ...PageReading[]];
   wordFacts: WordFacts;
-  /** Every headword a card belongs to, once, for the page's Source links. */
+  /**
+   * Every Wiktionary page the readings and lemma tables on this page come from,
+   * once each, for the page's Source links (ADR 0009).
+   */
   sourceWords: string[];
 }
 
@@ -72,46 +64,35 @@ export function pageOrder(readings: readonly Reading[]): Reading[] {
   ];
 }
 
-/** The row of `lemma`'s own table the lookup matched the query against. */
-function matchedRow(lemma: LemmaTarget): SourceForm | undefined {
-  if (lemma.listing === undefined) return undefined;
-  const { formPointers } = searchedSpellings(lemma.listing);
-  return lemma.listing.forms.find((form) => formPointers.has(form.ref.jsonPointer));
+/**
+ * The verb lemma whose own table lists the query, for a verb reading that is a
+ * form of it. A lemma of the reading's own part of speech is the one taken.
+ */
+function lemmaTableOf(reading: Reading): LemmaTable | undefined {
+  if (!isVerbReading(reading)) return undefined;
+  for (const link of reading.lemmaLinks) {
+    if (link.kind !== "candidates") continue;
+    for (const lemma of link.candidates) {
+      if (lemma.pos === "verb" && lemma.listing !== undefined) return { lemma, listing: lemma.listing };
+    }
+  }
+  return undefined;
 }
 
 export function wordPage(query: string, readings: readonly [Reading, ...Reading[]]): WordPage {
   const ordered = pageOrder(readings);
   const about = ordered.filter((reading) => reading.isAboutQuery);
-
-  const cards = ordered.map((reading, i): Card => {
-    const lemmaRow = reading.lemmaLinks
-      .flatMap((link) => (link.kind === "candidates" ? link.candidates : []))
-      // A lemma of the reading's own part of speech places it first: `sale`
-      // the plural noun is a row of `sala` the noun, not of `sala` the verb.
-      .sort((a, b) => Number(b.pos === reading.pos) - Number(a.pos === reading.pos))
-      .flatMap((lemma) => {
-        const form = matchedRow(lemma);
-        return form === undefined ? [] : [{ lemma, form }];
-      })[0];
-    return { number: i + 1, reading, lemmaRow, inlineParadigm: undefined };
-  });
-
-  // Frame 03: a page whose one card is a verb form carries its lemma's table.
-  if (cards.length === 1) {
-    const [only] = cards;
-    if (only.reading.pos === "verb" && only.lemmaRow?.lemma.pos === "verb") {
-      only.inlineParadigm = only.lemmaRow.lemma;
-    }
-  }
-
-  const [first, ...rest] = cards;
-  if (first === undefined) throw new Error("a found result renders at least one card");
+  const entries = ordered.map((reading, i): PageReading => ({ number: i + 1, reading, lemmaTable: lemmaTableOf(reading) }));
+  const [first, ...rest] = entries;
+  if (first === undefined) throw new Error("a found result renders at least one reading");
 
   return {
     headword: about[0]?.word ?? query,
-    cards: [first, ...rest],
+    readings: [first, ...rest],
     wordFacts: mergeWordFacts(about),
-    sourceWords: [...new Set(ordered.map((reading) => reading.word))],
+    sourceWords: [
+      ...new Set(entries.flatMap((entry) => [entry.reading.word, ...(entry.lemmaTable ? [entry.lemmaTable.lemma.word] : [])])),
+    ],
   };
 }
 
