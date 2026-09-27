@@ -49,6 +49,8 @@ import {
   ERROR,
   FIELD_LABEL,
   FIELD_VALUE,
+  HOME_PRONUNCIATION,
+  HOME_TAGLINE,
   JUMP_LINK,
   LINK,
   NON_FINITE_LABEL_SEARCHED,
@@ -890,6 +892,10 @@ test("every link that leaves Lexema opens in a new tab; every link inside it sta
       for (const attributes of external) {
         assert.match(attributes, /target="_blank" rel="noopener noreferrer"/, `${query}: ${attributes}`);
       }
+      // Each says so to a screen reader, in its label or its text.
+      for (const [, attributes, inner] of html.matchAll(/<a ([^>]*href="https?:\/\/[^>]*)>(.*?)<\/a>/g)) {
+        assert.match(`${attributes} ${inner}`, /opens in a new tab/, `${query}: ${attributes}`);
+      }
       for (const attributes of internal) assert.doesNotMatch(attributes, /target=/, `${query}: ${attributes}`);
     }
     assert.match(await render(db, "studente"), /Disputed by later research/);
@@ -959,6 +965,14 @@ test("the home page is the name, the field and the Try chips, centred", async ()
     </SearchPage>,
   );
   assert.match(home, new RegExp(`^<main class="${esc(SHELL_CENTRED)}"><h1 [^>]*>Lexema</h1>`));
+  // Under the wordmark: its pronunciation, drawn as a word's is, then what it is.
+  assert.match(
+    home,
+    new RegExp(
+      `</h1><p class="${esc(HOME_PRONUNCIATION)}" aria-label="Pronunciation">/lekˈsɛːma/</p>` +
+        `<p class="${esc(HOME_TAGLINE)}">a simple dictionary</p>`,
+    ),
+  );
   assert.doesNotMatch(home, new RegExp(esc(TOP_BAR)));
   assert.match(home, /placeholder="Search an Italian word"/);
   assert.match(home, /aria-label="Search an Italian word"/);

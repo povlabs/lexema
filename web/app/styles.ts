@@ -56,7 +56,10 @@ export const SITE_FOOTER_LINK = `font-sans text-[0.8rem] text-text-muted no-unde
  * screen, with nothing else competing (design-system-manifest.md § "The page").
  */
 export const SHELL_CENTRED = `${COLUMN} flex flex-1 flex-col items-center justify-center py-16 text-center`;
-export const HOME_NAME = "m-0 mb-10 font-serif text-[3.75rem] leading-none font-normal text-text-strong";
+export const HOME_NAME = "m-0 font-serif text-[3.75rem] leading-none font-normal text-text-strong";
+/** Under the wordmark on the home page: its pronunciation, as a word's is drawn, then what it is. */
+export const HOME_PRONUNCIATION = "m-0 mt-4 font-mono text-base text-text-muted sm:text-lg";
+export const HOME_TAGLINE = "m-0 mt-1 mb-10 font-serif text-[1.1rem] italic text-text-muted";
 
 /**
  * With a query: the bar at the top of the column, the word below it. It does
@@ -77,10 +80,18 @@ export const SEARCH_ICON = "pointer-events-none absolute left-4 size-4 text-text
  * `×` and `ENTER` hint once typing opened the suggestion list.
  */
 export const SEARCH_INPUT =
-  "w-full min-w-0 bg-transparent py-3 pr-12 pl-11 font-serif text-lg text-text-strong outline-none placeholder:font-sans placeholder:text-base placeholder:text-text-muted [&::-webkit-search-cancel-button]:appearance-none";
+  "w-full min-w-0 bg-transparent py-3 pr-24 pl-11 font-serif text-lg text-text-strong outline-none placeholder:font-sans placeholder:text-base placeholder:text-text-muted [&::-webkit-search-cancel-button]:appearance-none";
 export const SEARCH_CLEAR = `absolute right-3 flex size-7 items-center justify-center font-sans text-lg text-text-muted no-underline hover:text-text ${FOCUS_RING}`;
 export const SEARCH_HINT =
   "pointer-events-none absolute right-4 font-sans text-[0.65rem] tracking-[0.12em] text-text-muted";
+/**
+ * `⌘K` / `Ctrl K`, the shortcut back to the field, shown while it does not
+ * have focus: in the hint's place, or left of the `×`. Hidden on a touch-only
+ * screen, which has no keys to press.
+ */
+const SHORTCUT = "pointer-events-none absolute font-sans text-[0.7rem] tracking-[0.08em] text-text-muted [@media(hover:none)_and_(pointer:coarse)]:hidden";
+export const SEARCH_SHORTCUT = `${SHORTCUT} right-4`;
+export const SEARCH_SHORTCUT_BESIDE_CLEAR = `${SHORTCUT} right-12`;
 
 /**
  * The suggestion list under the field. No frame draws it, so it takes the

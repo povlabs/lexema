@@ -27,12 +27,15 @@ import { Autocomplete } from "@base-ui/react/autocomplete";
 import { useEffect, useRef, useState, type MouseEvent } from "react";
 import { isAskablePrefix } from "@lexema/lookup/suggest.ts";
 import { SearchIcon } from "./icons";
+import { isApple, isSearchShortcut, shortcutApplies, shortcutLabel } from "./searchShortcut.ts";
 import type { SuggestAnswer } from "./suggestAnswer.ts";
 import {
   SEARCH_CLEAR,
   SEARCH_FIELD,
   SEARCH_FORM,
   SEARCH_HINT,
+  SEARCH_SHORTCUT,
+  SEARCH_SHORTCUT_BESIDE_CLEAR,
   SEARCH_ICON,
   SEARCH_INPUT,
   SUGGEST_ITEM,
@@ -98,6 +101,41 @@ export function SearchField({ raw }: { raw: string }) {
   const [shown, setShown] = useState<Shown | null>(null);
   const field = useRef<HTMLDivElement>(null);
   const input = useRef<HTMLInputElement>(null);
+  const [focused, setFocused] = useState(false);
+  // Known only in the browser: until then the field draws what the server did.
+  const [apple, setApple] = useState<boolean | undefined>(undefined);
+
+  // ⌘K / Ctrl+K from anywhere on the page scrolls to the top, smoothly unless
+  // the reader asks for reduced motion, then focuses the field and selects its
+  // text; not while a dialog is open or the reader is typing in another field.
+  useEffect(() => {
+    const onApple = isApple(
+      (navigator as Navigator & { userAgentData?: { platform?: string } }).userAgentData?.platform ?? navigator.platform,
+    );
+    setApple(onApple);
+    // The home page's field takes focus before the script runs; start from where focus really is.
+    setFocused(document.activeElement === input.current);
+    const onKey = (event: KeyboardEvent) => {
+      if (!isSearchShortcut(event, onApple)) return;
+      const active = document.activeElement;
+      const typingElsewhere =
+        active !== input.current &&
+        (active instanceof HTMLInputElement ||
+          active instanceof HTMLTextAreaElement ||
+          active instanceof HTMLSelectElement ||
+          (active instanceof HTMLElement && active.isContentEditable));
+      const dialogOpen = document.querySelector('[role="dialog"]') !== null;
+      if (!shortcutApplies({ dialogOpen, typingElsewhere })) return;
+      event.preventDefault();
+      const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+      window.scrollTo({ top: 0, behavior: reduced ? "auto" : "smooth" });
+      // The scroll above brings the bar into view; focus must not jump it again.
+      input.current?.focus({ preventScroll: true });
+      input.current?.select();
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, []);
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   // The one request whose answer may still be shown. A newer keystroke aborts
   // it, so an answer for `ca` that arrives after the reader typed `cas` is
@@ -187,15 +225,25 @@ export function SearchField({ raw }: { raw: string }) {
             lang="it"
             autoFocus={!asked}
             enterKeyHint="search"
+            onFocus={() => setFocused(true)}
+            onBlur={() => setFocused(false)}
           />
+          {/* Away from the field, the shortcut back to it; left of the × when there is text. */}
+          {apple !== undefined && !focused && (
+            <kbd className={value !== "" ? SEARCH_SHORTCUT_BESIDE_CLEAR : SEARCH_SHORTCUT} aria-hidden="true">
+              {shortcutLabel(apple)}
+            </kbd>
+          )}
           {value !== "" ? (
             <a className={SEARCH_CLEAR} href="/" aria-label="Clear search" onClick={clear}>
               ×
             </a>
           ) : (
-            <kbd className={SEARCH_HINT} aria-hidden="true">
-              ENTER
-            </kbd>
+            (apple === undefined || focused) && (
+              <kbd className={SEARCH_HINT} aria-hidden="true">
+                ENTER
+              </kbd>
+            )
           )}
         </Autocomplete.InputGroup>
       </form>

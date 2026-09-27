@@ -48,6 +48,12 @@ release is served; flipping it safely is #18.
 
 ## Why a server component and no client fetching
 
+Before a query the page is the wordmark, its pronunciation `/lekˈsɛːma/` and
+*a simple dictionary* under it, and the search field, centred on the screen
+([design-system-manifest.md § "The page"](../design-system-manifest.md#the-page));
+with a query, the field moves to the top and the result fills the page. Both
+are this one server-rendered route.
+
 The query arrives in the URL, the D1 read happens on the Worker, and the HTML
 that comes back already holds the answer. Two things follow, and each was the
 point rather than a side effect: the page works before any JavaScript loads, and
@@ -88,6 +94,14 @@ for `ca` is never drawn over the list for `cas`.
 The `×` empties the field and puts the cursor back in it; the result on the
 page stays until a new search is sent. It is still a link to the empty home
 page, which is what it does with no script.
+
+⌘K on a Mac, Ctrl+K elsewhere, scrolls to the top, smoothly unless the reader
+asks for reduced motion, and puts the cursor in the field with its text
+selected (`web/app/searchShortcut.ts`). It stands aside while a dialog is open
+and while the reader types in another field. While the field does not have the
+cursor, a muted `⌘K` or `Ctrl K` shows in the bar; it appears only once the
+page has loaded its script, since the server cannot know the reader's keyboard,
+and not on a touch-only screen.
 
 The form sits inside the Autocomplete root, not around it. The root renders a
 second, typeless input, and a form with two text fields and no submit button is
@@ -311,7 +325,13 @@ are several.
 [ADR 0009](../.decisions/0009-two-licences-and-a-source-link.md) has each
 reading reach its Wiktionary page through one small link and keeps the credit
 itself on `/attribution`, which the site footer reaches from every page. Its accessible name is longer than its text —
-"Wiktionary page for X, the source of this page".
+"Wiktionary page for X, the source of this page (opens in a new tab)".
+
+Every link that leaves Lexema opens in a new tab (`target="_blank"
+rel="noopener noreferrer"`, `web/app/externalLink.ts`), so the result stays
+where the reader left it: the Source links and a disputed claim's evidence link,
+each of which says so to a screen reader. Links inside Lexema stay in the same
+tab.
 
 The release stores no per-record URL, so the link is *constructed* from the
 headword rather than recorded with the data. Each reading still carries its

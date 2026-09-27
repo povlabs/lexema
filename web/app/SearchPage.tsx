@@ -21,6 +21,8 @@ import {
   EMPTY,
   ERROR,
   HOME_NAME,
+  HOME_PRONUNCIATION,
+  HOME_TAGLINE,
   PENDING,
   SHELL_CENTRED,
   SHELL_TOP,
@@ -46,6 +48,10 @@ export function SearchPage({ raw, children }: { raw: string; children: ReactNode
     return (
       <main className={SHELL_CENTRED}>
         <h1 className={HOME_NAME}>Lexema</h1>
+        <p className={HOME_PRONUNCIATION} aria-label="Pronunciation">
+          /lekˈsɛːma/
+        </p>
+        <p className={HOME_TAGLINE}>a simple dictionary</p>
         <SearchField raw={raw} />
         {children}
       </main>

@@ -423,7 +423,7 @@ function Disputes({ reviews }: { reviews: readonly Review[] }) {
           <li key={i}>
             {review.note}{" "}
             <a className="text-accent underline" href={review.evidenceUrl} {...NEW_TAB}>
-              evidence
+              evidence<span className="sr-only"> (opens in a new tab)</span>
             </a>
           </li>
         ))}

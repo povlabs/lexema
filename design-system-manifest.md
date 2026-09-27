@@ -27,8 +27,8 @@ first and then when I search, it goes top as right now."
 
 | Rule | What it means on the page |
 |---|---|
-| **Two states.** | Before a query, the page is the search bar alone, centred on the screen with the site name above it and nothing else competing. With a query, the bar sits at the top and the results fill the page below it. |
-| **One bar, one route.** | The same form serves both states; the query stays in the URL so a result can be shared. Moving the bar is layout, not a second page. The `×` in the bar empties it and keeps the cursor there; the result stays until a new search is sent. |
+| **Two states.** | Before a query, the page is the search bar alone, centred on the screen with the site name above it and nothing else competing. Under the name, centred, sit its pronunciation `/lekˈsɛːma/` in mono, muted, as a word's pronunciation is drawn, and *a simple dictionary* in italic serif (board 00). With a query, the bar sits at the top and the results fill the page below it. |
+| **One bar, one route.** | The same form serves both states; the query stays in the URL so a result can be shared. Moving the bar is layout, not a second page. The `×` in the bar empties it and keeps the cursor there; the result stays until a new search is sent. ⌘K on a Mac, Ctrl+K elsewhere, scrolls to the top (smoothly, or at once for a reader who asks for reduced motion) and puts the cursor in the bar with its text selected, on the home page and on a result; not while a dialog is open or the reader is typing in another field. While the bar does not have the cursor, a small muted `⌘K` (`Ctrl K`) sits where the `ENTER` hint does, left of the `×` when there is text; a touch-only screen does not show it. |
 
 ## The result
 
