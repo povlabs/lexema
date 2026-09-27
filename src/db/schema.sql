@@ -223,6 +223,8 @@ CREATE TABLE accent_fold (
   fold_key    TEXT    NOT NULL,
   surface_key TEXT    NOT NULL,
   headword    INTEGER NOT NULL CHECK (headword IN (0, 1)),  -- some record's own headword
+  languages   INTEGER NOT NULL CHECK (languages >= 0),      -- see typo_key
+  richness    INTEGER NOT NULL CHECK (richness >= 0),       -- see typo_key
   PRIMARY KEY (release_id, fold_key, surface_key)
 ) STRICT, WITHOUT ROWID;
 
@@ -235,6 +237,13 @@ CREATE TABLE typo_key (
   release_id   TEXT NOT NULL,
   deletion_key TEXT NOT NULL,
   surface_key  TEXT NOT NULL,
+  -- How common the word is, as far as the source can say: the number of
+  -- distinct languages its lemma records list translations in, then the
+  -- senses plus forms those records carry. Among candidates the same number
+  -- of edits away, the higher leads (`mangare` offers `mangiare`, 51
+  -- languages, before `magnare`, none). 0 and 0 for a spelling only a form.
+  languages    INTEGER NOT NULL CHECK (languages >= 0),
+  richness     INTEGER NOT NULL CHECK (richness >= 0),
   PRIMARY KEY (release_id, deletion_key, surface_key)
 ) STRICT, WITHOUT ROWID;
 

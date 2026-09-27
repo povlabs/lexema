@@ -277,10 +277,16 @@ steps, each only when the one before found nothing:
    D1 allows 100.
 4. **Words that begin with it:** `suggest()` for the query.
 
-Candidates rank by fewest edits, then a headword before a form, then shorter,
-then alphabetical (`rankCandidates`); the best leads, and up to eight more
-follow. Every probe is one indexed read on a primary key; nothing scores the
-word list per request.
+Candidates rank by fewest edits, then the most translation languages, then
+the most senses and forms, then a headword before a form, then shorter, then
+alphabetical (`rankCandidates`); the best leads, and up to eight more follow.
+The two scores are counted at seed time over the key's lemma records
+(`seedSql.ts`) and stored in `accent_fold` and `typo_key` beside the key:
+`languages` is the number of distinct `translations[].lang_code` values, and
+`richness` is senses plus forms. `mangiare` has 51 languages and `magnare`
+none, so `mangare` offers `mangiare` first. A key with no lemma record scores
+0 on both. Every probe is one indexed read on a primary key; nothing scores
+the word list per request.
 
 | Answer | Case | Page |
 |---|---|---|

@@ -55,13 +55,24 @@ export interface Candidate {
   edits: number;
   /** Some record's own headword, not only a form inside a table. */
   headword: boolean;
+  /** Distinct languages its lemma records translate into: how common it is, as the source can say. */
+  languages: number;
+  /** Its lemma records' senses plus forms; the tie-break when languages tie (often at 0). */
+  richness: number;
 }
 
-/** Fewest edits, then a headword before a form, then shorter, then alphabetical. */
+/**
+ * Fewest edits; then the more common word, as the source can say: more
+ * translation languages, then more senses and forms (Huey, 2026-09-27:
+ * `mangare` offers `mangiare` before `magnare`); then a headword before a
+ * form, then shorter, then alphabetical.
+ */
 export function rankCandidates(candidates: readonly Candidate[]): Candidate[] {
   return [...candidates].sort(
     (a, b) =>
       a.edits - b.edits ||
+      b.languages - a.languages ||
+      b.richness - a.richness ||
       Number(b.headword) - Number(a.headword) ||
       [...a.surface].length - [...b.surface].length ||
       a.surface.localeCompare(b.surface, "it-IT"),
@@ -108,16 +119,23 @@ async function surfacesFor(db: LookupDatabase, releaseId: string, keys: readonly
   return found;
 }
 
+/** A candidate key's edit count and how common it is, as its index row states them. */
+interface Found {
+  edits: number;
+  languages: number;
+  richness: number;
+}
+
 async function candidatesFor(
   db: LookupDatabase,
   releaseId: string,
-  keys: ReadonlyMap<string, number>,
+  keys: ReadonlyMap<string, Found>,
 ): Promise<Candidate[]> {
   const surfaces = await surfacesFor(db, releaseId, [...keys.keys()]);
   return rankCandidates(
-    [...keys].flatMap(([key, edits]) => {
-      const found = surfaces.get(key);
-      return found === undefined ? [] : [{ key, surface: found.surface, edits, headword: found.headword }];
+    [...keys].flatMap(([key, found]) => {
+      const spelled = surfaces.get(key);
+      return spelled === undefined ? [] : [{ key, surface: spelled.surface, headword: spelled.headword, ...found }];
     }),
   );
 }
@@ -125,12 +143,15 @@ async function candidatesFor(
 /** Step 2: the same letters with other accents, including an unaccented spelling of an accented query. */
 async function accentMatches(db: LookupDatabase, releaseId: string, key: string): Promise<Candidate[]> {
   const folded = foldKey(key);
-  const rows = await db.all<{ surface_key: string }>(
-    "SELECT surface_key FROM accent_fold WHERE release_id = ?1 AND fold_key = ?2",
+  const rows = await db.all<{ surface_key: string; languages: number; richness: number }>(
+    "SELECT surface_key, languages, richness FROM accent_fold WHERE release_id = ?1 AND fold_key = ?2",
     [releaseId, folded],
   );
-  const keys = new Map(rows.map((row) => [row.surface_key, 0] as const));
-  if (folded !== key) keys.set(folded, 0);
+  const keys = new Map<string, Found>(
+    rows.map((row) => [row.surface_key, { edits: 0, languages: row.languages, richness: row.richness }]),
+  );
+  // An unaccented spelling of an accented query is not in accent_fold; it ranks last among equals.
+  if (folded !== key && !keys.has(folded)) keys.set(folded, { edits: 0, languages: 0, richness: 0 });
   keys.delete(key);
   return candidatesFor(db, releaseId, keys);
 }
@@ -140,12 +161,14 @@ async function typoMatches(db: LookupDatabase, releaseId: string, key: string): 
   const length = [...key].length;
   if (length < TYPO_MIN_LENGTH || length > TYPO_MAX_LENGTH) return [];
   const probes = deletionKeys(key);
-  const rows = await db.all<{ surface_key: string }>(
-    `SELECT DISTINCT surface_key FROM typo_key WHERE release_id = ?1 AND deletion_key IN (${placeholders(probes.length, 2)})`,
+  const rows = await db.all<{ surface_key: string; languages: number; richness: number }>(
+    `SELECT DISTINCT surface_key, languages, richness FROM typo_key WHERE release_id = ?1 AND deletion_key IN (${placeholders(probes.length, 2)})`,
     [releaseId, ...probes],
   );
-  const keys = new Map(
-    rows.filter((row) => row.surface_key !== key && withinOneEdit(key, row.surface_key)).map((row) => [row.surface_key, 1] as const),
+  const keys = new Map<string, Found>(
+    rows
+      .filter((row) => row.surface_key !== key && withinOneEdit(key, row.surface_key))
+      .map((row) => [row.surface_key, { edits: 1, languages: row.languages, richness: row.richness }]),
   );
   return candidatesFor(db, releaseId, keys);
 }

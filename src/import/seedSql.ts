@@ -46,8 +46,8 @@ const COLUMNS: Record<TableName, string> = {
   source_record: "record_id,release_id,line_no,line_sha256,word,pos,pos_title,lang_code",
   source_record_json: "record_id,raw_json",
   lookup_form: "record_id,release_id,origin,surface,surface_key,json_pointer,form_index,form_source",
-  accent_fold: "release_id,fold_key,surface_key,headword",
-  typo_key: "release_id,deletion_key,surface_key",
+  accent_fold: "release_id,fold_key,surface_key,headword,languages,richness",
+  typo_key: "release_id,deletion_key,surface_key,languages,richness",
   form_of_edge: "record_id,release_id,sense_index,form_of_index,json_pointer,target_word,target_word_key",
   sense: "sense_id,record_id,sense_index,json_pointer",
   sense_gloss: "sense_id,gloss_index,text,json_pointer",
@@ -182,6 +182,16 @@ function statementsFor(writer: SqlBatchWriter): ImportStatements {
   };
 }
 
+/** The distinct language codes a record's `translations` list, ignoring anything malformed. */
+function translationLanguages(translations: unknown): string[] {
+  if (!Array.isArray(translations)) return [];
+  return translations.flatMap((entry) =>
+    typeof entry === "object" && entry !== null && typeof (entry as { lang_code?: unknown }).lang_code === "string"
+      ? [(entry as { lang_code: string }).lang_code]
+      : [],
+  );
+}
+
 /**
  * The two indexes a search that found nothing reads (src/lookup/nearby.ts):
  * accent-folded keys, and the lemma headwords' single-deletion keys.
@@ -190,20 +200,21 @@ async function writeNearbyIndexes(
   writer: SqlBatchWriter,
   releaseId: string,
   keys: ReadonlyMap<string, boolean>,
-  lemmaKeys: ReadonlySet<string>,
+  lemmaKeys: ReadonlyMap<string, { languages: ReadonlySet<string>; richness: number }>,
 ): Promise<void> {
   const fold = writer.statement("accent_fold");
   for (const [key, headword] of keys) {
     const folded = foldKey(key);
     if (folded === key) continue;
-    fold.run(releaseId, folded, key, headword ? 1 : 0);
+    const score = lemmaKeys.get(key);
+    fold.run(releaseId, folded, key, headword ? 1 : 0, score?.languages.size ?? 0, score?.richness ?? 0);
     writer.counts.accent_fold += 1;
     if (writer.hasFullBatch()) await writer.flush();
   }
   const typo = writer.statement("typo_key");
-  for (const key of lemmaKeys) {
+  for (const [key, score] of lemmaKeys) {
     for (const deletion of deletionKeys(key)) {
-      typo.run(releaseId, deletion, key);
+      typo.run(releaseId, deletion, key, score.languages.size, score.richness);
       writer.counts.typo_key += 1;
     }
     if (writer.hasFullBatch()) await writer.flush();
@@ -273,7 +284,9 @@ export async function seedSql(options: SeedSqlOptions): Promise<SeedSqlReport> {
   // Every searchable key, and whether some record heads it; and the lemma
   // headword keys. They become accent_fold and typo_key once the parse ends.
   const keys = new Map<string, boolean>();
-  const lemmaKeys = new Set<string>();
+  // A lemma headword key, and how common it is: the distinct languages its
+  // lemma records translate into, and their senses plus forms.
+  const lemmaKeys = new Map<string, { languages: Set<string>; richness: number }>();
   const lookupRow = statements.insertLookup;
   statements.insertLookup = {
     run: (...values: unknown[]) => {
@@ -308,7 +321,11 @@ export async function seedSql(options: SeedSqlOptions): Promise<SeedSqlReport> {
       onRecord: async (archiveRecord, reportMember) => {
         seenWords.add(archiveRecord.record.word);
         if (archiveRecord.record.senses.every((sense) => sense.form_of.length === 0)) {
-          lemmaKeys.add(normalizeItalianExact(archiveRecord.record.word));
+          const key = normalizeItalianExact(archiveRecord.record.word);
+          const score = lemmaKeys.get(key) ?? { languages: new Set<string>(), richness: 0 };
+          for (const language of translationLanguages(archiveRecord.record.translations)) score.languages.add(language);
+          score.richness += archiveRecord.record.senses.length + archiveRecord.record.forms.length;
+          lemmaKeys.set(key, score);
         }
         archiveRecord.record.senses.forEach((sense) =>
           sense.form_of.forEach((target) => {

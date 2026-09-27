@@ -608,4 +608,22 @@ export const FIXTURE_LINES: string[] = [
       form_of: [{ word: "andare" }, { word: "salire" }],
     }],
   }),
+  // mangiare and magnare — both one edit from `mangare`. magnare is shorter
+  // and one swap away, but the source translates mangiare into many
+  // languages and magnare into none, and the more common word leads (Huey,
+  // 2026-09-27). Translations as the release writes them. Kept last, as above.
+  JSON.stringify({
+    word: "mangiare", pos: "verb", pos_title: "Verbo", lang_code: "it",
+    forms: tenseForms(["mangio", "mangi", "mangia", "mangiamo", "mangiate", "mangiano"], "present"),
+    senses: [{ glosses: ["assumere cibo"] }],
+    translations: [
+      { lang_code: "en", lang: "inglese", word: "eat" },
+      { lang_code: "fr", lang: "francese", word: "manger" },
+      { lang_code: "de", lang: "tedesco", word: "essen" },
+    ],
+  }),
+  record({
+    word: "magnare", pos: "verb", pos_title: "Verbo",
+    senses: [{ glosses: ["mangiare, in romanesco"] }],
+  }),
 ];

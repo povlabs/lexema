@@ -31,15 +31,27 @@ test("one edit is one insertion, deletion, replacement or swap of neighbours, an
   assert.ok(!withinOneEdit("casa", "casale"));
 });
 
-test("candidates rank by fewest edits, then headword before form, then shorter, then alphabetical", () => {
-  const c = (surface: string, edits: number, headword: boolean): Candidate => ({ key: surface, surface, edits, headword });
+test("candidates rank by fewest edits, translation languages, senses and forms, headword first, length, then alphabet", () => {
+  const c = (surface: string, edits: number, languages: number, richness: number, headword = true): Candidate => ({
+    key: surface,
+    surface,
+    edits,
+    languages,
+    richness,
+    headword,
+  });
   const ranked = rankCandidates([
-    c("mangiate", 1, false),
-    c("mandare", 1, true),
-    c("mangiare", 1, true),
-    c("mancare", 1, true),
-    c("città", 0, false),
-    c("mangiarsi", 1, true),
+    c("mangiate", 1, 0, 0, false),
+    c("magnare", 1, 0, 1),
+    c("mandare", 1, 6, 40),
+    c("mangiare", 1, 51, 99),
+    c("mancare", 1, 5, 60),
+    c("città", 0, 0, 1),
+    c("vangare", 1, 0, 3),
+    c("zappare", 1, 0, 3),
   ]).map((candidate) => candidate.surface);
-  assert.deepEqual(ranked, ["città", "mancare", "mandare", "mangiare", "mangiarsi", "mangiate"]);
+  // città is fewer edits. Then most languages: mangiare, mandare (6), mancare
+  // (5, though richer). With no translations, richness: vangare and zappare
+  // (3, then alphabetical), magnare (1); the form mangiate last.
+  assert.deepEqual(ranked, ["città", "mangiare", "mandare", "mancare", "vangare", "zappare", "magnare", "mangiate"]);
 });
