@@ -14,11 +14,13 @@ import { fileURLToPath } from "node:url";
 import { DatabaseSync } from "node:sqlite";
 import { gzipSync } from "node:zlib";
 import { createKey, KEY_BY_HASH_SQL, revokeKey } from "../../src/api/keys.js";
+import { UNIT_WEIGHT, type Endpoint } from "../../src/api/units.js";
 import { COUNT_MINUTE_SQL, SWEEP_MINUTES_SQL } from "../../src/api/usage.js";
 import { seedSql } from "../../src/import/seedSql.js";
 import { fromNodeSqlite, type LookupDatabase } from "../../src/lookup/database.js";
 import { lookup } from "../../src/lookup/lookup.js";
 import { findNearby } from "../../src/lookup/nearby.js";
+import { suggest } from "../../src/lookup/suggest.js";
 import { loadFixturePages } from "../../src/source/rawPage.js";
 import { handleApi, withApi, type ApiBindings } from "../worker/api/handler.ts";
 import { withRateLimits, type LimitBindings } from "../worker/rateLimit.ts";
@@ -455,4 +457,232 @@ test("a filtered /lookup still costs 2 units and carries release_id, attribution
   assert.equal(((await refused.json()) as Json).error.code, "invalid_parameter");
   assert.deepEqual(limitHeaders(refused), ["10", "8", "40", null]);
   assert.deepEqual(unitsOf(keyId), [{ day: "2026-09-27", units: 2 }]);
+});
+
+// The other endpoints (#152).
+
+/** One request to an endpoint, a POST when it has a body. */
+const send = (key: string, path: string, body?: string): Promise<Response> =>
+  handleApi(
+    new Request(`https://lexema.fyi/api/v1/${path}`, { method: body === undefined ? "GET" : "POST", body, headers: { "x-api-key": key } }),
+    { db, releaseId: RELEASE, now: NOW },
+  );
+
+let endpointKey: string | undefined;
+
+/** A request on one roomy key the endpoint tests share. */
+const ask = async (path: string, body?: string): Promise<Response> =>
+  send((endpointKey ??= (await newKey(1_000, "endpoints")).key), path, body);
+
+/** A 200 answer's body. */
+const okBody = async (path: string, body?: string): Promise<Json> => {
+  const response = await ask(path, body);
+  assert.equal(response.status, 200, path);
+  return response.json();
+};
+
+/** The refusal a request that cannot be read gets: a 400 with this code. */
+const assertBadRequest = async (path: string, code: string, body?: string) => {
+  const response = await ask(path, body);
+  assert.equal(response.status, 400, `${path} ${body ?? ""}`);
+  assert.equal(((await response.json()) as Json).error.code, code, `${path} ${body ?? ""}`);
+};
+
+test("/lemmatize answers each /lookup candidate with only its lemma and the match's grammar", async () => {
+  const body = await okBody("lemmatize?q=andavano");
+  assert.deepEqual(
+    body.results.map((result: Json) => [result.lemma, result.pos, result.pos_title, result.match]),
+    [["andare", "verb", "Verbo", { surface: "andavano", via: "form_of", grammar: [{ mood: "indicativo", tense: "imperfetto", person: "loro" }] }]],
+  );
+  const lemmas = (await okBody("lemmatize?q=sale")).results;
+  const full = (await lookupBody("q=sale")).results;
+  assert.deepEqual(
+    lemmas.map((result: Json) => [result.id, result.lemma, result.match]),
+    full.map((result: Json) => [result.id, result.word, result.match]),
+  );
+  assert.deepEqual(Object.keys(lemmas[0]).sort(), ["attribution", "id", "lemma", "match", "pos", "pos_title"]);
+
+  const missing = await ask("lemmatize?q=qqqqqq");
+  assert.equal(missing.status, 404);
+  assert.deepEqual(await missing.json(), { query: "qqqqqq", release_id: RELEASE, results: [] });
+  await assertBadRequest("lemmatize?q=", "invalid_query");
+});
+
+test("/exists is true exactly when /lookup finds the word, and always a 200 for a well-formed q", async () => {
+  for (const q of ["sale", "andavano", "bella", "Casa", "citta", "qqqqqq"]) {
+    const found = (await ask(`lookup?q=${q}`)).status === 200;
+    const body = await okBody(`exists?q=${q}`);
+    assert.equal(body.exists, found, q);
+    assert.equal(body.attribution === null, !found, q);
+  }
+  assert.deepEqual(await okBody("exists?q=qqqqqq"), { query: "qqqqqq", release_id: RELEASE, exists: false, attribution: null });
+  await assertBadRequest("exists?q=%20", "invalid_query");
+  await assertBadRequest(`exists?q=${"a".repeat(129)}`, "invalid_query");
+});
+
+test("/inflect finds andiamo for andare, congiuntivo presente noi, in Italian labels or English codes", async () => {
+  const italian = await okBody("inflect?lemma=andare&mood=congiuntivo&tense=presente&person=noi");
+  assert.deepEqual(
+    italian.results.map((result: Json) => [result.word, result.pos, result.inflections]),
+    [["andare", "verb", [{ grammar: { mood: "congiuntivo", tense: "presente", person: "noi" }, forms: ["andiamo"] }]]],
+  );
+  assert.deepEqual(await okBody("inflect?lemma=andare&mood=subjunctive&tense=present&person=1pl"), italian);
+  assert.equal(italian.lemma, "andare");
+  assert.equal(italian.release_id, RELEASE);
+});
+
+test("/inflect answers the cells /lookup's narrowed forms hold, and leaves out a record with none", async () => {
+  const cells = (body: Json) => body.results.map((result: Json) => [result.word, result.pos, result.inflections]);
+  assert.deepEqual(cells(await okBody("inflect?lemma=grande&gender=femminile&number=plurale")), [
+    [
+      "grande",
+      "adj",
+      [
+        { grammar: { gender: "femminile", number: "plurale" }, forms: ["grandi"] },
+        { grammar: { gender: "femminile", number: "plurale", degree: "superlativo" }, forms: ["grandissime\n massime"] },
+      ],
+    ],
+  ]);
+
+  // The same narrowing through /lookup holds the same forms, cell for cell.
+  const narrowing = "tense=passato&person=noi";
+  const [inflected] = (await okBody(`inflect?lemma=andare&${narrowing}`)).results;
+  const [looked] = (await lookupBody(`q=andare&pos=verb&${narrowing}`)).results;
+  assert.deepEqual(
+    inflected.inflections.filter((cell: Json) => cell.grammar.person !== undefined),
+    Object.entries(looked.forms.moods).flatMap(([mood, tenses]: [string, Json]) =>
+      Object.entries(tenses).flatMap(([tense, persons]: [string, Json]) =>
+        Object.entries(persons).map(([person, forms]) => ({ grammar: { mood, tense, person }, forms })),
+      ),
+    ),
+  );
+
+  // A verb's cells have no gender, so asking for one keeps only the noun.
+  assert.deepEqual((await okBody("inflect?lemma=andare&gender=maschile")).results.map((result: Json) => result.pos), ["noun"]);
+});
+
+test("/inflect is a 404 for a word that heads no record, and a 400 for a lemma or grammar value it cannot read", async () => {
+  for (const lemma of ["qqqqqq", "andavano"]) {
+    const response = await ask(`inflect?lemma=${lemma}`);
+    assert.equal(response.status, 404, lemma);
+    assert.equal(((await response.json()) as Json).error.code, "unknown_lemma", lemma);
+  }
+  await assertBadRequest("inflect?lemma=andare&mood=indicativ", "invalid_parameter");
+  await assertBadRequest("inflect?lemma=andare&person=noi&person=voi", "invalid_parameter");
+  await assertBadRequest("inflect?mood=congiuntivo", "invalid_query");
+});
+
+test("/suggest answers suggest()'s spellings, in its order and within its limit", async () => {
+  for (const q of ["sal", "a", "c", "qqq"]) {
+    const answer = await suggest({ db, releaseId: RELEASE, prefix: q });
+    assert.equal(answer.outcome, "suggested");
+    const body = await okBody(`suggest?q=${q}`);
+    assert.deepEqual(body.results.map((result: Json) => result.word), answer.suggestions, q);
+  }
+  await assertBadRequest("suggest?q=", "invalid_query");
+});
+
+test("/nearby answers findNearby()'s spellings in its ranking, typo called edit", async () => {
+  const cases: [string, string[]][] = [
+    ["citta", ["accent"]],
+    ["mangare", ["edit"]],
+    ["sal", ["prefix"]],
+    ["qqqqqq", []],
+  ];
+  for (const [q, kinds] of cases) {
+    const nearby = await findNearby({ db, releaseId: RELEASE, query: q });
+    const offered = nearby.kind === "prefix" ? nearby.words : nearby.kind === "none" ? [] : [nearby.best, ...nearby.others];
+    const body = await okBody(`nearby?q=${q}`);
+    assert.deepEqual(body.results.map((result: Json) => result.word), offered, q);
+    assert.deepEqual([...new Set(body.results.slice(0, 1).map((result: Json) => result.kind))], kinds, q);
+  }
+  await assertBadRequest("nearby?q=", "invalid_query");
+});
+
+test("/random?pos=noun answers a noun headword, and pos takes /lookup's values", async () => {
+  for (let draw = 0; draw < 5; draw++) {
+    const [headword] = (await okBody("random?pos=noun")).results;
+    assert.equal(headword.pos, "noun");
+    const record = sqlite
+      .prepare("SELECT word, pos, pos_title FROM source_record WHERE release_id = ? AND line_no = ?")
+      .get(RELEASE, Number(headword.id.split(":")[1]));
+    assert.deepEqual({ ...record }, { word: headword.word, pos: "noun", pos_title: headword.pos_title });
+  }
+  assert.equal((await okBody("random?pos=adverb")).results[0].pos, "adv");
+  assert.equal((await okBody("random")).results.length, 1);
+  assert.deepEqual((await okBody("random?pos=affix")).results, []);
+  await assertBadRequest("random?pos=nouns", "invalid_parameter");
+});
+
+test("POST /lookup/batch answers each word light: every candidate's lemma, or not found", async () => {
+  const body = await okBody("lookup/batch", JSON.stringify({ q: ["sale", "andavano", "qqqqqq"] }));
+  assert.equal(body.release_id, RELEASE);
+  assert.deepEqual(
+    body.results.map(({ attribution, id, ...light }: Json) => light),
+    [
+      { query: "sale", found: true, lemma: "sale", pos: "noun", pos_title: "Sostantivo" },
+      { query: "sale", found: true, lemma: "sala", pos: "noun", pos_title: "Sostantivo" },
+      { query: "sale", found: true, lemma: "salire", pos: "verb", pos_title: "Verbo" },
+      { query: "andavano", found: true, lemma: "andare", pos: "verb", pos_title: "Verbo" },
+      { query: "qqqqqq", found: false, lemma: null, pos: null, pos_title: null },
+    ],
+  );
+});
+
+test("POST /lookup/batch takes up to 200 words and refuses more, none, a non-string or a body that is not JSON", async () => {
+  const words = (count: number) => JSON.stringify({ q: Array.from({ length: count }, (_, i) => (i % 2 === 0 ? "casa" : "qqqqqq")) });
+  assert.equal((await okBody("lookup/batch", words(200))).results.filter((result: Json) => result.found === false).length, 100);
+  await assertBadRequest("lookup/batch", "invalid_body", words(201));
+  await assertBadRequest("lookup/batch", "invalid_body", words(0));
+  await assertBadRequest("lookup/batch", "invalid_body", JSON.stringify({ q: ["casa", 3] }));
+  await assertBadRequest("lookup/batch", "invalid_body", JSON.stringify({ q: ["casa", ""] }));
+  await assertBadRequest("lookup/batch", "invalid_body", JSON.stringify(["casa"]));
+  await assertBadRequest("lookup/batch", "invalid_body", "q=casa");
+  const get = await ask("lookup/batch");
+  assert.equal(get.status, 405);
+  assert.equal(get.headers.get("allow"), "POST");
+});
+
+test("each endpoint charges its weight from the unit map and answers with release_id, attribution and the limit headers", async () => {
+  const requests: [Endpoint, string, string?][] = [
+    ["lemmatize", "lemmatize?q=sale"],
+    ["exists", "exists?q=sale"],
+    ["inflect", "inflect?lemma=andare&mood=congiuntivo"],
+    ["suggest", "suggest?q=sal"],
+    ["nearby", "nearby?q=mangare"],
+    ["random", "random?pos=noun"],
+    ["lookup/batch", "lookup/batch", JSON.stringify({ q: ["sale", "casa", "qqqqqq"] })],
+  ];
+  for (const [endpoint, path, body] of requests) {
+    const { keyId, key } = await newKey(10, endpoint);
+    const response = await send(key, path, body);
+    assert.equal(response.status, 200, path);
+    assert.deepEqual(limitHeaders(response), ["10", "9", "40", null], path);
+    const json: Json = await response.json();
+    assert.equal(json.release_id, RELEASE, path);
+    const attributed = (json.results ?? [json]).filter((result: Json) => result.found !== false);
+    assert.ok(attributed.length > 0, path);
+    for (const result of attributed) {
+      assert.equal(result.attribution.source, "Wikizionario", path);
+      assert.equal(result.attribution.licence, "CC BY-SA 4.0", path);
+      assert.match(result.attribution.source_url, /^https:\/\/it\.wiktionary\.org\/wiki\/./, path);
+    }
+    const weight = UNIT_WEIGHT[endpoint];
+    assert.deepEqual(unitsOf(keyId), [{ day: "2026-09-27", units: weight.per === "word" ? weight.units * 3 : weight.units }], path);
+  }
+});
+
+test("a request an endpoint refuses before answering costs no units", async () => {
+  const { keyId, key } = await newKey(20, "refused");
+  const refusedRequests: [string, string?][] = [
+    ["lemmatize?q="],
+    ["exists?q="],
+    ["inflect?lemma=andare&tense=futuro%20remoto"],
+    ["suggest?q=%20"],
+    ["nearby?q="],
+    ["random?pos=nouns"],
+    ["lookup/batch", JSON.stringify({ q: Array.from({ length: 201 }, () => "casa") })],
+  ];
+  for (const [path, body] of refusedRequests) assert.equal((await send(key, path, body)).status, 400, path);
+  assert.deepEqual(unitsOf(keyId), []);
 });

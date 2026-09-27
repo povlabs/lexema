@@ -145,7 +145,7 @@ export type AgreementNarrowing = {
   number?: ReadonlySet<LabelOf<typeof NUMBER>>;
 };
 
-export interface LookupFilters {
+export interface LookupFilters extends GrammarNarrowing {
   /** Only candidates of this part of speech; every candidate when absent. */
   pos: PartOfSpeech | undefined;
   match: Match;
@@ -153,8 +153,6 @@ export interface LookupFilters {
   fields: ReadonlySet<Section> | undefined;
   /** At most this many definitions per result, a positive integer. */
   limitDefinitions: number | undefined;
-  verb: VerbNarrowing;
-  agreement: AgreementNarrowing;
 }
 
 /** No filter: the whole answer, as `/lookup` gives it with no parameter but `q`. */
@@ -232,32 +230,65 @@ function limitDefinitions(params: URLSearchParams): number | undefined {
   });
 }
 
-/** Every filter a `/lookup` query string sends, or the first one it gets wrong. */
-export function readLookupFilters(params: URLSearchParams): FilterReading {
+function partOfSpeech(params: URLSearchParams): PartOfSpeech | undefined {
+  const pos = single(params, "pos");
+  return pos === undefined ? undefined : oneOf("pos", pos, PARTS_OF_SPEECH, POS_ALIASES);
+}
+
+/** The grammar filters: a verb's mood, tense and person, a noun's or adjective's gender and number. */
+export interface GrammarNarrowing {
+  verb: VerbNarrowing;
+  agreement: AgreementNarrowing;
+}
+
+function grammarNarrowing(params: URLSearchParams): GrammarNarrowing {
+  return {
+    verb: {
+      mood: grammar(params, "mood", MOOD),
+      tense: grammar(params, "tense", TENSE),
+      person: grammar(params, "person", PERSON),
+    },
+    agreement: {
+      gender: grammar(params, "gender", GENDER),
+      number: grammar(params, "number", NUMBER),
+    },
+  };
+}
+
+/** A parameter read into a closed value, or the refusal naming what was wrong with it. */
+export type ParameterReading<T> = { ok: true; value: T } | { ok: false; refusal: FilterRefusal };
+
+function reading<T>(read: () => T): ParameterReading<T> {
   try {
-    const pos = single(params, "pos");
-    const match = single(params, "match");
-    const filters: LookupFilters = {
-      pos: pos === undefined ? undefined : oneOf("pos", pos, PARTS_OF_SPEECH, POS_ALIASES),
-      match: match === undefined ? "any" : oneOf("match", match, MATCHES),
-      fields: fields(params),
-      limitDefinitions: limitDefinitions(params),
-      verb: {
-        mood: grammar(params, "mood", MOOD),
-        tense: grammar(params, "tense", TENSE),
-        person: grammar(params, "person", PERSON),
-      },
-      agreement: {
-        gender: grammar(params, "gender", GENDER),
-        number: grammar(params, "number", NUMBER),
-      },
-    };
-    return { ok: true, filters };
+    return { ok: true, value: read() };
   } catch (failure) {
     if (failure instanceof Refused) return { ok: false, refusal: failure.refusal };
     throw failure;
   }
 }
+
+/** Every filter a `/lookup` query string sends, or the first one it gets wrong. */
+export function readLookupFilters(params: URLSearchParams): FilterReading {
+  const read = reading<LookupFilters>(() => {
+    const match = single(params, "match");
+    return {
+      pos: partOfSpeech(params),
+      match: match === undefined ? "any" : oneOf("match", match, MATCHES),
+      fields: fields(params),
+      limitDefinitions: limitDefinitions(params),
+      ...grammarNarrowing(params),
+    };
+  });
+  return read.ok ? { ok: true, filters: read.value } : read;
+}
+
+/** `pos` as `/lookup` reads it, for an endpoint that takes it alone (`/random`). */
+export const readPartOfSpeech = (params: URLSearchParams): ParameterReading<PartOfSpeech | undefined> =>
+  reading(() => partOfSpeech(params));
+
+/** The grammar filters as `/lookup` reads them, for an endpoint that takes them alone (`/inflect`). */
+export const readGrammarNarrowing = (params: URLSearchParams): ParameterReading<GrammarNarrowing> =>
+  reading(() => grammarNarrowing(params));
 
 /** Whether `pos` and `match` keep a candidate of this part of speech, reached this way. */
 export function admits(filters: LookupFilters, candidate: { pos: string; via: "headword" | "form" | "form_of" }): boolean {

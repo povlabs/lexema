@@ -35,6 +35,7 @@ import { conjugationOf, slotOf, type Conjugation } from "../../app/conjugation.t
 import { definitionsOf, senseLabels, type DefinitionItem } from "../../app/definitions.ts";
 import {
   agreementOf,
+  type Agreement,
   gendersOf,
   GENDER_LABEL,
   NUMBERS,
@@ -316,23 +317,38 @@ function shaped(result: ResultCoreJson & SectionsJson, filters: LookupFilters): 
   return Object.fromEntries(Object.entries(full).filter(([key]) => !dropped.has(key))) as ResultJson;
 }
 
+const NO_HIT: SearchedSpellings = { headword: false, formPointers: new Set<string>() };
+
+/** A reading's forms as the page lays them out: a verb's conjugation, or anything else's grids. */
+type Layout = { conjugation: Conjugation; agreement?: never } | { conjugation?: never; agreement: Agreement };
+
+function layoutOf(reading: Reading, hit: SearchedSpellings): Layout {
+  return isVerbReading(reading) ? { conjugation: conjugationOf(reading.forms, hit) } : { agreement: agreementOf(reading) };
+}
+
+/** Where the query sits in the candidate's forms. */
+function grammarOf(candidate: Candidate, hit: SearchedSpellings, layout: Layout): GrammarPlace[] {
+  if (candidate.via === "form_of" && candidate.hit === undefined) return statedPlaces(candidate.formOf);
+  if (layout.conjugation !== undefined) return conjugationPlaces(candidate.reading, hit, layout.conjugation);
+  return [
+    ...gridPlaces(layout.agreement.grid, hit, {}),
+    ...gridPlaces(layout.agreement.superlative, hit, { degree: "superlativo" }),
+  ];
+}
+
+/** How the query reached a candidate: the spelling matched, the route, and its places in the forms. */
+export function matchOf(candidate: Candidate): ResultCoreJson["match"] {
+  const hit = candidate.hit ?? NO_HIT;
+  return { surface: candidate.surface, via: candidate.via, grammar: grammarOf(candidate, hit, layoutOf(candidate.reading, hit)) };
+}
+
 /** One candidate as JSON, shaped by the filters that kept it. */
 export function resultJson(candidate: Candidate, filters: LookupFilters): ResultJson {
   const { reading } = candidate;
-  const hit = candidate.hit ?? { headword: false, formPointers: new Set<string>() };
-  const verb = isVerbReading(reading);
-  const conjugation = verb ? conjugationOf(reading.forms, hit) : undefined;
-  const agreement = verb ? undefined : agreementOf(reading);
-
-  const grammar =
-    candidate.via === "form_of" && candidate.hit === undefined
-      ? statedPlaces(candidate.formOf)
-      : conjugation !== undefined
-        ? conjugationPlaces(reading, hit, conjugation)
-        : [
-            ...gridPlaces(agreement?.grid, hit, {}),
-            ...gridPlaces(agreement?.superlative, hit, { degree: "superlativo" }),
-          ];
+  const hit = candidate.hit ?? NO_HIT;
+  const layout = layoutOf(reading, hit);
+  const { conjugation, agreement } = layout;
+  const grammar = grammarOf(candidate, hit, layout);
 
   const forms: FormsJson =
     conjugation !== undefined
@@ -348,7 +364,7 @@ export function resultJson(candidate: Candidate, filters: LookupFilters): Result
   const { items, looseExamples } = definitionsOf(reading);
   const facts = reading.wordFacts;
   const result: ResultCoreJson & SectionsJson = {
-    id: `${reading.ref.releaseId}:${reading.ref.lineNo}`,
+    id: idOf(reading),
     word: reading.word,
     pos: reading.pos,
     pos_title: reading.posTitle,
@@ -429,4 +445,90 @@ export function notFoundJson(result: NotFoundResult, nearby: Nearby): NotFoundJs
     results: [],
     suggestions: suggestionsOf(nearby, result.query.raw),
   };
+}
+
+/** A candidate for `/lemmatize`: the lookup's core without any section. */
+export interface LemmaJson {
+  id: string;
+  lemma: string;
+  pos: string;
+  pos_title: string;
+  match: ResultCoreJson["match"];
+  attribution: AttributionJson;
+}
+
+export const idOf = (reading: Reading): string => `${reading.ref.releaseId}:${reading.ref.lineNo}`;
+
+export function lemmaJson(candidate: Candidate): LemmaJson {
+  const { reading } = candidate;
+  return {
+    id: idOf(reading),
+    lemma: reading.word,
+    pos: reading.pos,
+    pos_title: reading.posTitle,
+    match: matchOf(candidate),
+    attribution: attributionOf(reading.word),
+  };
+}
+
+/** One cell of a reading's forms: its place, in Italian labels, and every spelling filed there. */
+export interface InflectionJson {
+  grammar: GrammarPlace;
+  forms: string[];
+}
+
+/**
+ * Every cell of a reading's forms, in the page's order: a verb's non-finite
+ * forms, then each mood's tenses and persons; anything else's grid, then its
+ * superlativo. A cell is placed exactly as `/lookup` places a match, so a
+ * form `/inflect` returns is one `/lookup` reports at the same place. The
+ * ausiliare is a fact about the verb, not one of its forms, so it is no cell.
+ */
+export function inflectionsOf(reading: Reading): InflectionJson[] {
+  const layout = layoutOf(reading, NO_HIT);
+  if (layout.conjugation === undefined) {
+    const { grid, superlative } = layout.agreement;
+    return [...gridInflections(grid, {}), ...gridInflections(superlative, { degree: "superlativo" })];
+  }
+  const nonFinite = new Map<string, InflectionJson>();
+  for (const entry of layout.conjugation.nonFinite) {
+    for (const form of entry.forms) {
+      const grammar = nonFinitePlace(form);
+      if (Object.keys(grammar).length === 0) continue;
+      const key = JSON.stringify(grammar);
+      const cell = nonFinite.get(key) ?? { grammar, forms: [] };
+      cell.forms.push(form.surface);
+      nonFinite.set(key, cell);
+    }
+  }
+  const finite = layout.conjugation.moods.flatMap((table) =>
+    [...table.simple, ...table.compound].flatMap((tense) =>
+      tense.cells.flatMap((cell, i) =>
+        cell.forms.length === 0
+          ? []
+          : [
+              {
+                grammar: { mood: table.mood.toLowerCase(), tense: tense.name, person: table.persons[i] },
+                forms: cell.forms.map((form) => form.surface),
+              },
+            ],
+      ),
+    ),
+  );
+  return [...nonFinite.values(), ...finite];
+}
+
+function gridInflections(grid: Grid | undefined, degree: GrammarPlace): InflectionJson[] {
+  return (grid?.rows ?? []).flatMap((row) =>
+    row.cells.flatMap((cell, n) =>
+      cell.spellings.length === 0
+        ? []
+        : [
+            {
+              grammar: { gender: GENDER_LABEL[row.gender], number: NUMBER_LABEL[NUMBERS[n]], ...degree },
+              forms: cell.spellings.map((spelling) => spelling.surface),
+            },
+          ],
+    ),
+  );
 }
