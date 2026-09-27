@@ -49,7 +49,6 @@ import {
   ERROR,
   FIELD_LABEL,
   FIELD_VALUE,
-  EXAMPLE_EXTRA,
   JUMP_LINK,
   LINK,
   NON_FINITE_LABEL_SEARCHED,
@@ -472,12 +471,28 @@ test("one example per definition shows; one control per reading reveals every ot
     assert.ok(examples.length > 2, "libro's first sense carries several examples");
     const reading = readingById(await render(db, "libro"), noun.recordId);
     const definitions = reading.slice(0, reading.indexOf(`id="forms-${noun.recordId}"`));
+    const closed = definitions.slice(0, definitions.indexOf("<details"));
+    const control = definitions.slice(definitions.indexOf("<details"));
     // Every example is in the document; the first shows, the others wait for
     // the one control, which also holds the other definitions.
     for (const text of examples) assert.ok(textOf(definitions).includes(text), `example in the page: ${text}`);
+    assert.ok(closed.includes(examples[0]));
+    for (const text of examples.slice(1)) assert.ok(!textOf(closed).includes(text), `extra example starts hidden: ${text}`);
+    for (const text of examples.slice(1)) assert.ok(textOf(control).includes(text), `extra example is reachable: ${text}`);
     assert.equal(patternsOf(definitions, /<details[\s>]/g), 1, "one control for the whole reading");
-    assert.equal(patternsOf(definitions, new RegExp(`<p class="${esc(EXAMPLE_EXTRA)}"`, "g")), examples.length - 1);
     assert.match(definitions, new RegExp(`>6 more definitions · ${examples.length - 1} more examples<`));
+
+    // A single-definition reading still gets the control when its first
+    // definition has additional examples.
+    const onlyDefinition = await renderChanged(db, "libro", (changed) => {
+      const target = changed.find((reading) => reading.recordId === noun.recordId);
+      assert.ok(target);
+      target.senses.splice(1);
+    });
+    const onlyReading = readingById(onlyDefinition, noun.recordId);
+    assert.equal(patternsOf(onlyReading, /data-definition="/g), 1);
+    assert.equal(patternsOf(onlyReading, /<details[\s>]/g), 1);
+    assert.match(onlyReading, new RegExp(`>${examples.length - 1} more examples<`));
 
     // A borrowed example shows once: under the first definition, not again
     // under its own when the rest open.
@@ -579,11 +594,23 @@ test("examples on nested items and on hidden furniture senses stay reachable beh
     ],
     async ({ db }) => {
       const html = await renderChanged(db, "accollato", (readings) => {
-        const heraldic = readings[0].senses.find((sense) => sense.recoveredItems.length > 0);
-        assert.ok(heraldic);
-        heraldic.recoveredItems[0].examples.push(recoveredExample("uno scudo accollato a un altro", 9001));
+        const first = readings[0].senses[0];
+        first.recoveredItems.push({
+          text: "una voce annidata della prima definizione",
+          labels: [],
+          route: "lead-in-item",
+          ref: { wiki: "it.wiktionary.org", title: "x", revisionId: 1, line: 9000 },
+          examples: [recoveredExample("uno scudo accollato a un altro", 9001)],
+          heldAsExample: null,
+          items: [],
+        });
       });
-      assert.match(html, new RegExp(`<p class="${esc(EXAMPLE_EXTRA)}"><span lang="it">uno scudo accollato a un altro</span></p>`));
+      const reading = nth(html, 1);
+      const closed = reading.slice(0, reading.indexOf("<details"));
+      const control = reading.slice(reading.indexOf("<details"));
+      assert.doesNotMatch(textOf(closed), /uno scudo accollato a un altro/);
+      assert.match(textOf(control), /uno scudo accollato a un altro/);
+      assert.match(control, />2 more definitions · 1 more example</);
     },
     await loadFixturePages(join(REPO, "fixtures")),
   );
@@ -609,7 +636,7 @@ test("a gloss that names two lemmas links both, and neither is repeated on a lin
   });
 });
 
-/** The dev seed plus the real `libero`, `calcio`, `svolta`, `strutto` and `sette` lines. */
+/** The dev seed plus the real `libero`, `calcio`, `svolta`, `strutto`, `sette` and `ori` lines. */
 async function withPlacementWords(run: (f: Fixture) => Promise<void>): Promise<void> {
   const lines = async (file: string) => (await readFile(join(REPO, file), "utf8")).trim().split("\n");
   return withLines([...(await lines("fixtures/dev-seed.jsonl")), ...(await lines("fixtures/word-facts-placement.jsonl"))], run);
@@ -688,7 +715,23 @@ test("an etymology whose label names a reading shows in that reading, without it
     for (const reading of await readingsFor(db, "sette")) {
       assert.doesNotMatch(readingEtymology(readingById(sette, reading.recordId)) ?? "", /plurale di setta/);
     }
+    const setteReadings = await readingsFor(db, "sette");
+    const numeral = setteReadings.find((reading) => reading.posTitle === "Aggettivo numerale");
+    assert.ok(numeral);
+    assert.equal(readingEtymology(readingById(sette, numeral.recordId)), "Etymologydal latino sĕptem");
     assert.match(textOf(afterReadings(sette)), /\(sostantivo\) plurale di setta/);
+
+    // ori: `(sostantivo, forma flessa)` is a whole pos_title with a comma in
+    // it, not the compound `sostantivo` + `forma flessa`, so it names the
+    // Sostantivo, forma flessa reading; `(voce verbale)` names the verb form.
+    const ori = await render(db, "ori");
+    const oriReadings = await readingsFor(db, "ori");
+    const inflectedNoun = oriReadings.find((reading) => reading.posTitle === "Sostantivo, forma flessa");
+    const oriVerb = oriReadings.find((reading) => reading.posTitle === "Voce verbale");
+    assert.ok(inflectedNoun && oriVerb);
+    assert.equal(readingEtymology(readingById(ori, inflectedNoun.recordId)), "Etymologyvedi oro");
+    assert.equal(readingEtymology(readingById(ori, oriVerb.recordId)), "Etymologyvedi orare");
+    assert.doesNotMatch(afterReadings(ori), />Etymology</);
   });
 });
 

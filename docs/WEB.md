@@ -150,7 +150,8 @@ definition the record does not carry as a definition (#28) — absent, or filed
 under an example — the seed recovers it into a layer beside the
 record, and the reading lists it after the record's own definitions, with its
 examples. Each definition shows one example; one control per reading shows the
-other definitions and every other example. Nothing marks it as recovered
+other definitions and every other example, including extra examples on the first
+definition and examples on nested items. Nothing marks it as recovered
 ([ADR 0016](../.decisions/0016-page-shows-no-origin-marks.md)); the layer keeps
 its own provenance in the data. `casa` shows its seven definitions this way.
 When the record filed a recovered definition as an example (`lap steel
@@ -221,7 +222,10 @@ or more, a label that names readings by their `pos_title` moves its etymology
 into them, without the label (`web/app/readingLabels.ts`). A compound label
 names each part; `singolare`/`plurale` and `transitivo`/`intransitivo` narrow to
 the readings whose record states them. A lone labelled etymology moves too
-(`strutto`: `(voce verbale) vedi struggere`). A label that fits more than one
+(`strutto`: `(voce verbale) vedi struggere`). A label names a reading whose
+`pos_title` is its part of speech or begins with it, so `(aggettivo)` names
+`sette`'s *Aggettivo numerale*; a whole label that is itself a `pos_title` with a
+comma, `(sostantivo, forma flessa)` on `ori`, names that reading. A label that fits more than one
 reading of the same kind is ambiguous and goes to none, and a bare
 `(sostantivo)` fits both *Sostantivo* and *Sostantivo, forma flessa* (`sette`): `svolta` has two *Voce verbale*
 readings, so its two `(voce verbale)` etymologies stay after the readings (108

@@ -3,7 +3,9 @@
 // a synonym that opens a group — `sostantivo` on `esistenza`.
 //
 // A label names readings by their `pos_title`, compared without case or extra
-// space. A compound label (`aggettivo, sostantivo`, `aggettivo e sostantivo`)
+// space. A whole label that is a `pos_title` with a comma in it
+// (`(sostantivo, forma flessa)`) names that reading before any comma is read as
+// joining two parts. A compound label (`aggettivo, sostantivo`, `aggettivo e sostantivo`)
 // names every reading of either part. A qualifier narrows a part to the
 // readings whose record states it: `sostantivo plurale` is the Sostantivo
 // reading tagged plural, `verbo transitivo` the Verbo reading tagged
@@ -74,6 +76,16 @@ export function labelParts(label: string): LabelPart[] {
   return parts.every((part) => part !== undefined) ? parts.filter((part) => part !== undefined) : [];
 }
 
+/**
+ * Whether a reading's `pos_title` is a head or begins with it: `Sostantivo`
+ * and `Sostantivo, forma flessa` for `sostantivo`, `Aggettivo numerale` for
+ * `aggettivo`.
+ */
+function headedBy(reading: Reading, head: string): boolean {
+  const title = normal(reading.posTitle);
+  return title === head || title.startsWith(`${head},`) || title.startsWith(`${head} `);
+}
+
 function states(claims: readonly GrammarClaim[], dimension: string, value: string): boolean {
   return claims.some((claim) => claim.status === "stated" && claim.dimension === dimension && claim.value === value);
 }
@@ -86,8 +98,7 @@ function states(claims: readonly GrammarClaim[], dimension: string, value: strin
  * only the readings that state it (`sostantivo plurale` → the plural one).
  */
 function readingOf({ head, qualifier }: LabelPart, readings: readonly Reading[]): Reading | undefined {
-  const title = (reading: Reading) => normal(reading.posTitle);
-  const headed = readings.filter((reading) => title(reading).split(",")[0].trim() === head);
+  const headed = readings.filter((reading) => headedBy(reading, head));
   const fits = headed.filter(
     (reading) => qualifier === undefined || states(reading.grammar.record, qualifier.dimension, qualifier.value),
   );
@@ -100,10 +111,15 @@ function readingOf({ head, qualifier }: LabelPart, readings: readonly Reading[])
  * on a word with no adjective reading) is skipped.
  */
 export function readingsNamed(label: string, readings: readonly Reading[]): Reading[] {
+  // A complete source label can itself be the record's pos_title (including
+  // commas), so resolve that before interpreting commas as compound labels.
+  const complete = normal(label.split(":")[0]);
+  const exact = readings.filter((reading) => normal(reading.posTitle) === complete);
+  if (complete.includes(",") && exact.length > 0) return exact.length === 1 ? exact : [];
+
   const named = new Set<Reading>();
   for (const part of labelParts(label)) {
-    const title = (reading: Reading) => normal(reading.posTitle);
-    const candidates = readings.filter((reading) => title(reading) === part.head || title(reading).split(",")[0].trim() === part.head);
+    const candidates = readings.filter((reading) => headedBy(reading, part.head));
     const reading = readingOf(part, readings);
     if (reading === undefined && candidates.length > 1) return [];
     if (reading !== undefined) named.add(reading);

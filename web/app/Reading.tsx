@@ -189,7 +189,7 @@ function senseLabels(labels: readonly string[]): string[] {
   return labels.filter((label) => label !== "form-of");
 }
 
-function SubItems({ items }: { items: readonly RecoveredDefinition[] }) {
+function SubItems({ items, showExamples = true }: { items: readonly RecoveredDefinition[]; showExamples?: boolean }) {
   if (items.length === 0) return null;
   return (
     <ul className={SUB_ITEMS}>
@@ -199,19 +199,19 @@ function SubItems({ items }: { items: readonly RecoveredDefinition[] }) {
             {item.labels.length > 0 && <span className={SENSE_LABEL}>({item.labels.join(", ")}) </span>}
             {item.text}
           </p>
-          {item.examples.map((example) => (
+          {showExamples && item.examples.map((example) => (
             <p key={example.ref.line} className={EXAMPLE_EXTRA}>
               <span lang="it">{example.text}</span>
             </p>
           ))}
-          <SubItems items={item.items} />
+          <SubItems items={item.items} showExamples={showExamples} />
         </li>
       ))}
     </ul>
   );
 }
 
-function DefinitionText({ item, reading }: { item: DefinitionItem; reading: Reading }) {
+function DefinitionText({ item, reading, showNestedExamples = true }: { item: DefinitionItem; reading: Reading; showNestedExamples?: boolean }) {
   if (item.from === "page") {
     const { definition } = item;
     return (
@@ -220,7 +220,7 @@ function DefinitionText({ item, reading }: { item: DefinitionItem; reading: Read
           {definition.labels.length > 0 && <span className={SENSE_LABEL}>({definition.labels.join(", ")}) </span>}
           {definition.text}
         </p>
-        <SubItems items={definition.items} />
+        <SubItems items={definition.items} showExamples={showNestedExamples} />
       </>
     );
   }
@@ -238,7 +238,7 @@ function DefinitionText({ item, reading }: { item: DefinitionItem; reading: Read
           <LinkedGloss text={gloss.text} lemmas={lemmas} />
         </p>
       ))}
-      <SubItems items={sense.recoveredItems} />
+      <SubItems items={sense.recoveredItems} showExamples={showNestedExamples} />
     </>
   );
 }
@@ -260,11 +260,13 @@ function DefinitionLine({
   number,
   reading,
   children,
+  showNestedExamples = true,
 }: {
   item: DefinitionItem;
   number: number;
   reading: Reading;
   children: ReactNode;
+  showNestedExamples?: boolean;
 }) {
   return (
     <li className={DEFINITION} data-definition={number}>
@@ -272,7 +274,7 @@ function DefinitionLine({
         {number}.
       </span>
       <div className={DEFINITION_BODY}>
-        <DefinitionText item={item} reading={reading} />
+        <DefinitionText item={item} reading={reading} showNestedExamples={showNestedExamples} />
         {children}
       </div>
     </li>
@@ -280,6 +282,10 @@ function DefinitionLine({
 }
 
 const plural = (count: number, noun: string): string => `${count} more ${noun}${count === 1 ? "" : "s"}`;
+
+/** Every example on a definition's nested items, at any depth, in page order. */
+const nestedExampleTexts = (items: readonly RecoveredDefinition[]): string[] =>
+  items.flatMap((item) => [...item.examples.map((example) => example.text), ...nestedExampleTexts(item.items)]);
 
 /**
  * The first definition with one example, then one control that shows the
@@ -307,17 +313,14 @@ function Definitions({ reading }: { reading: Reading }) {
     <Block id={`definitions-${reading.recordId}`} label="Definitions">
       <div className={DEFINITIONS_GROUP}>
         <ol className={DEFINITIONS}>
-          <DefinitionLine item={first} number={1} reading={reading}>
+          {/* The first definition's nested items show; their examples wait
+              behind the control with its other examples. */}
+          <DefinitionLine item={first} number={1} reading={reading} showNestedExamples={false}>
             {borrowed > 0 ? (
               <Example text={items[borrowed].examples[0]} from={borrowed + 1} />
             ) : (
               first.examples.length > 0 && <Example text={first.examples[0]} />
             )}
-            {firstExtra.map((text, i) => (
-              <p key={i} className={EXAMPLE_EXTRA}>
-                <span lang="it">{text}</span>
-              </p>
-            ))}
           </DefinitionLine>
         </ol>
         {label !== "" && (
@@ -326,6 +329,10 @@ function Definitions({ reading }: { reading: Reading }) {
               <span className={MORE_CLOSED}>{label}</span>
               <span className={MORE_OPEN}>fewer</span>
             </summary>
+            {/* The first definition's other examples, then those of its nested items. */}
+            {[...firstExtra, ...nestedExampleTexts(nestedItemsOf(first))].map((text, i) => (
+              <Example key={`first-${i}`} text={text} />
+            ))}
             {rest.length > 0 && (
               <ol className={`${DEFINITIONS} ${MORE_LIST}`} start={DEFINITION_SLICE + 1}>
                 {rest.map((item, i) => {
