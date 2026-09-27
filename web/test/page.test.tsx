@@ -49,8 +49,10 @@ import {
   ERROR,
   FIELD_LABEL,
   FIELD_VALUE,
+  EXAMPLE_EXTRA,
   JUMP_LINK,
   LINK,
+  NON_FINITE_LABEL_SEARCHED,
   OPEN_MARK,
   PENDING,
   PERSON_SEARCHED,
@@ -461,38 +463,78 @@ test("a spelling the source files twice in one cell is shown once and keeps both
   });
 });
 
-test("every example is reachable: the first under its definition, the rest behind N more examples", async () => {
+test("one example per definition shows; one control per reading reveals every other example", async () => {
   await withDevSeed(async ({ db }) => {
     const readings = await readingsFor(db, "libro");
     const noun = readings.find((reading) => reading.pos === "noun");
     assert.ok(noun);
     const examples = noun.senses[0].examples.map((example) => example.text);
     assert.ok(examples.length > 2, "libro's first sense carries several examples");
-    const first = readingById(await render(db, "libro"), noun.recordId).split('data-definition="2"')[0];
-    for (const text of examples) assert.ok(textOf(first).includes(text), `example shown: ${text}`);
-    assert.match(first, new RegExp(`>${examples.length - 1} more examples<`));
-    // The first example sits under the definition, before the link.
-    assert.ok(textOf(first).indexOf(examples[0]) < textOf(first).indexOf("more examples"));
+    const reading = readingById(await render(db, "libro"), noun.recordId);
+    const definitions = reading.slice(0, reading.indexOf(`id="forms-${noun.recordId}"`));
+    // Every example is in the document; the first shows, the others wait for
+    // the one control, which also holds the other definitions.
+    for (const text of examples) assert.ok(textOf(definitions).includes(text), `example in the page: ${text}`);
+    assert.equal(patternsOf(definitions, /<details[\s>]/g), 1, "one control for the whole reading");
+    assert.equal(patternsOf(definitions, new RegExp(`<p class="${esc(EXAMPLE_EXTRA)}"`, "g")), examples.length - 1);
+    assert.match(definitions, new RegExp(`>6 more definitions · ${examples.length - 1} more examples<`));
+
+    // A borrowed example shows once: under the first definition, not again
+    // under its own when the rest open.
+    const bello = await readingsFor(db, "bello");
+    const adjective = bello.find((r) => r.pos === "adj" && r.isAboutQuery);
+    assert.ok(adjective);
+    const borrowed = adjective.senses[2].examples[0].text;
+    const html = textOf(readingById(await render(db, "bello"), adjective.recordId));
+    assert.equal(html.split(borrowed).length - 1, 1, "the borrowed example shows once");
   });
 });
 
-test("a lemma the release has no entry for is said in words, with no link", async () => {
+test("a lemma the release has no entry for is not mentioned; one it has is always reachable", async () => {
   await withFixture(async ({ db }) => {
+    // Huey, 2026-09-27: a missing target is simply empty.
     const reading = nth(await render(db, "pigmento"), 1);
-    assert.match(reading, /<p class="[^"]*" data-lemma-missing=""><span lang="it">pigmentare<\/span> has no entry in this release\.<\/p>/);
-    assert.doesNotMatch(reading, /href="\/\?q=pigmentare"/);
+    assert.doesNotMatch(reading, /href="\/\?q=pigmentare"|no entry|not in this release/);
+    assert.match(textOf(reading), /indicativo presente di pigmentare/);
     // A lemma the release has is linked in the gloss, and not said again.
     const andavano = nth(await render(db, "andavano"), 1);
-    assert.doesNotMatch(andavano, /no entry in this release|Form of/);
+    assert.match(andavano, /href="\/\?q=andare">andare<\/a>/);
+    assert.doesNotMatch(andavano, /Form of/);
   });
 });
 
-test("forms that fit no cell are shown verbatim in one last group", async () => {
+test("identical lemma tables show once; tables that differ each show", async () => {
   await withFixture(async ({ db }) => {
+    const chiusi = nth(await render(db, "chiusi"), 1);
+    assert.equal(patternsOf(chiusi, />Forms of<span[^>]*>chiudere</g), 1);
+    const punsi = nth(await render(db, "punsi"), 1);
+    assert.equal(patternsOf(punsi, />Forms of<span[^>]*>pungere</g), 2);
+    assert.match(textOf(punsi), /pungesti/);
+    assert.match(textOf(punsi), /pungisti/);
+  });
+});
+
+test("a searched non-finite form is marked in its table like any cell", async () => {
+  await withDevSeed(async ({ db }) => {
+    const html = await render(db, "andando");
+    assert.deepEqual(formLinks(html).filter((link) => link.searched).map((link) => link.text), ["andando"]);
+    assert.match(html, new RegExp(`<dt class="${esc(NON_FINITE_LABEL_SEARCHED)}" lang="it">gerundio</dt>`));
+  });
+});
+
+test("forms that fit no cell are shown verbatim, grouped under what they lack", async () => {
+  await withFixture(async ({ db }) => {
+    // `parlarsi (coniugazione)` carries no tense and no mood: it is the link
+    // to the reflexive verb, and the page files it under what it lacks.
     const parlare = await render(db, "parlare");
-    assert.match(parlare, />Other forms</);
-    assert.match(parlare, />parlarsi \(coniugazione\)</);
+    const verbGroup = parlare.slice(parlare.indexOf('data-unplaced="mood and tense not given"'));
+    assert.match(verbGroup, /^data-unplaced="mood and tense not given"><p class="[^"]*">Mood and tense not given<\/p>/);
+    assert.match(verbGroup, />parlarsi \(coniugazione\)</);
+    assert.doesNotMatch(parlare, />Other forms</);
+    // `maggiore` and `maggiori` state no number; they take the record's two
+    // genders, so a number is what they lack.
     const grande = await render(db, "grande");
+    assert.match(grande, /data-unplaced="number not given"><p class="[^"]*">Number not given<\/p>/);
     assert.match(textOf(grande), /comparativo di maggioranzamaggiori/);
     // An auxiliary the source writes as text is shown as it wrote it.
     assert.match(textOf(await render(db, "finire")), /ausiliareavere, se intr\. essere/);

@@ -12,6 +12,7 @@ import type { SourceForm, GrammarClaim } from "@lexema/lookup/types.ts";
 import type { Conjugation, MoodTable, NonFinite, Person, Tense } from "./conjugation.ts";
 import { GENDER_LABEL, NUMBER_LABEL, NUMBERS, type Grid, type GridCell } from "./genderGrid.ts";
 import { MoodTabs } from "./MoodTabs";
+import type { UnplacedGroup } from "./unplaced.ts";
 import {
   CELL_SEPARATOR,
   COMPOUND,
@@ -37,6 +38,7 @@ import {
   NON_FINITE_FORMS,
   NON_FINITE_ITEM,
   NON_FINITE_LABEL,
+  NON_FINITE_LABEL_SEARCHED,
   OTHER_FORM,
   OTHER_FORM_LABEL,
   OTHER_FORMS,
@@ -151,23 +153,27 @@ function sourceLabel(claims: readonly GrammarClaim[]): string {
   return [...new Set(texts)].join(", ");
 }
 
-export function OtherForms({ forms, links }: { forms: readonly SourceForm[]; links: boolean }) {
-  if (forms.length === 0) return null;
+/** Forms that take no cell, one group per thing they lack, each named for it. */
+export function OtherForms({ groups, links }: { groups: readonly UnplacedGroup[]; links: boolean }) {
   return (
     <>
-    <p className={GRID_LABEL}>Other forms</p>
-    <dl className={OTHER_FORMS} aria-label="Other forms">
-      {forms.map((form) => (
-        <div key={form.index} className={OTHER_FORM}>
-          <dt className={OTHER_FORM_LABEL} lang="it">
-            {sourceLabel(form.claims) || "—"}
-          </dt>
-          <dd className="m-0 font-mono text-text-strong" lang="it">
-            {links ? <FormLink form={form} searched={false} /> : <span data-form={form.index}>{form.surface}</span>}
-          </dd>
+      {groups.map((group) => (
+        <div key={group.missing} data-unplaced={group.missing}>
+          <p className={GRID_LABEL}>{group.missing[0].toUpperCase() + group.missing.slice(1)}</p>
+          <dl className={OTHER_FORMS}>
+            {group.forms.map((form) => (
+              <div key={form.index} className={OTHER_FORM}>
+                <dt className={OTHER_FORM_LABEL} lang="it">
+                  {sourceLabel(form.claims) || "—"}
+                </dt>
+                <dd className="m-0 font-mono text-text-strong" lang="it">
+                  {links ? <FormLink form={form} searched={false} /> : <span data-form={form.index}>{form.surface}</span>}
+                </dd>
+              </div>
+            ))}
+          </dl>
         </div>
       ))}
-    </dl>
     </>
   );
 }
@@ -208,7 +214,7 @@ const NON_FINITE_SHOWN: NonFinite["label"][] = ["gerundio", "participio", "ausil
  * Gerundio · participio · ausiliare, and any other non-finite form the source
  * lists (`participio presente`). A slot the source leaves empty is a dash.
  */
-function NonFiniteLine({ items }: { items: readonly NonFinite[] }) {
+function NonFiniteLine({ items, searched }: { items: readonly NonFinite[]; searched: (form: SourceForm) => boolean }) {
   const labels = [...new Set([...items.map((item) => item.label), ...NON_FINITE_SHOWN])].sort(
     (a, b) => ORDER.indexOf(a) - ORDER.indexOf(b),
   );
@@ -223,11 +229,11 @@ function NonFiniteLine({ items }: { items: readonly NonFinite[] }) {
                 ·
               </span>
             )}
-            <dt className={NON_FINITE_LABEL} lang="it">
+            <dt className={forms.some(searched) ? NON_FINITE_LABEL_SEARCHED : NON_FINITE_LABEL} lang="it">
               {label}
             </dt>
             <dd className={NON_FINITE_FORMS}>
-              {forms.length === 0 ? <Dash /> : <FormLinks forms={forms} searched={() => false} />}
+              {forms.length === 0 ? <Dash /> : <FormLinks forms={forms} searched={searched} />}
             </dd>
           </div>
         );
@@ -331,7 +337,7 @@ export function ConjugationView({
   const searched = (form: SourceForm) => searchedPointers.has(form.ref.jsonPointer);
   return (
     <>
-      <NonFiniteLine items={conjugation.nonFinite} />
+      <NonFiniteLine items={conjugation.nonFinite} searched={searched} />
       {conjugation.openMood !== undefined && (
         <MoodTabs
           label={`Moods of ${word}`}
@@ -342,7 +348,7 @@ export function ConjugationView({
           }))}
         />
       )}
-      <OtherForms forms={conjugation.unplaced} links />
+      <OtherForms groups={conjugation.unplaced} links />
     </>
   );
 }

@@ -34,7 +34,12 @@ export interface PageReading {
   /** 1-based, and the same number the jump links show. */
   number: number;
   reading: Reading;
-  lemmaTable: LemmaTable | undefined;
+  /**
+   * The verb lemmas whose tables list the query, one per distinct table. Two
+   * records with the same table (`chiusi` names `chiudere` twice) show it once;
+   * tables that differ each show.
+   */
+  lemmaTables: LemmaTable[];
 }
 
 export interface WordPage {
@@ -64,25 +69,38 @@ export function pageOrder(readings: readonly Reading[]): Reading[] {
   ];
 }
 
+/** What a table shows: each form's spelling and the grammar the source states for it, in order. */
+function tableKey(listing: LemmaListing): string {
+  return JSON.stringify(
+    listing.forms.map((form) => [
+      form.surface,
+      form.claims.map((claim) => (claim.status === "missing" ? "" : claim.sourceText)),
+    ]),
+  );
+}
+
 /**
- * The verb lemma whose own table lists the query, for a verb reading that is a
- * form of it. A lemma of the reading's own part of speech is the one taken.
+ * The verb lemmas whose own tables list the query, for a verb reading that is
+ * a form of them: every candidate of every link, once per distinct table.
  */
-function lemmaTableOf(reading: Reading): LemmaTable | undefined {
-  if (!isVerbReading(reading)) return undefined;
+function lemmaTablesOf(reading: Reading): LemmaTable[] {
+  if (!isVerbReading(reading)) return [];
+  const tables = new Map<string, LemmaTable>();
   for (const link of reading.lemmaLinks) {
     if (link.kind !== "candidates") continue;
     for (const lemma of link.candidates) {
-      if (lemma.pos === "verb" && lemma.listing !== undefined) return { lemma, listing: lemma.listing };
+      if (lemma.pos !== "verb" || lemma.listing === undefined) continue;
+      const key = `${lemma.word}\u0000${tableKey(lemma.listing)}`;
+      if (!tables.has(key)) tables.set(key, { lemma, listing: lemma.listing });
     }
   }
-  return undefined;
+  return [...tables.values()];
 }
 
 export function wordPage(query: string, readings: readonly [Reading, ...Reading[]]): WordPage {
   const ordered = pageOrder(readings);
   const about = ordered.filter((reading) => reading.isAboutQuery);
-  const entries = ordered.map((reading, i): PageReading => ({ number: i + 1, reading, lemmaTable: lemmaTableOf(reading) }));
+  const entries = ordered.map((reading, i): PageReading => ({ number: i + 1, reading, lemmaTables: lemmaTablesOf(reading) }));
   const [first, ...rest] = entries;
   if (first === undefined) throw new Error("a found result renders at least one reading");
 
@@ -91,7 +109,7 @@ export function wordPage(query: string, readings: readonly [Reading, ...Reading[
     readings: [first, ...rest],
     wordFacts: mergeWordFacts(about),
     sourceWords: [
-      ...new Set(entries.flatMap((entry) => [entry.reading.word, ...(entry.lemmaTable ? [entry.lemmaTable.lemma.word] : [])])),
+      ...new Set(entries.flatMap((entry) => [entry.reading.word, ...entry.lemmaTables.map((table) => table.lemma.word)])),
     ],
   };
 }

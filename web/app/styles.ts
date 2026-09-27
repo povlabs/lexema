@@ -172,6 +172,10 @@ export const GLOSS_SILENT = "m-0 font-sans text-[0.85rem] text-text-muted";
 /** The items of a list a definition opens with a colon (#123), nested under it. */
 export const SUB_ITEMS = "mt-2 mb-0 flex list-disc flex-col gap-2 pl-5 marker:text-text-muted";
 export const EXAMPLE = "m-0 mt-2 max-w-[48rem] font-serif text-[1.05rem] italic text-text-muted";
+/** The first definition's other examples: in the document, shown once the reading's `more` control is open. */
+export const EXAMPLE_EXTRA = `${EXAMPLE} hidden group-has-[details[open]]/definitions:block`;
+/** The first definition and the reading's one `more` control, which reveals everything else. */
+export const DEFINITIONS_GROUP = "group/definitions";
 export const EXAMPLE_FROM = "ml-2.5 whitespace-nowrap font-sans text-[0.75rem] not-italic text-text-muted";
 
 /** `N more definitions`: a native `<details>`, so every definition is in the document. */
@@ -216,6 +220,7 @@ export const FORM_LINK_SEARCHED = `cursor-pointer font-mono text-accent underlin
 export const NON_FINITE = "m-0 flex flex-wrap items-baseline gap-x-2.5 gap-y-1 max-sm:flex-col";
 export const NON_FINITE_ITEM = "flex items-baseline gap-2 max-sm:grid max-sm:grid-cols-[8.5rem_1fr]";
 export const NON_FINITE_LABEL = "m-0 font-sans text-[0.75rem] text-text-muted";
+export const NON_FINITE_LABEL_SEARCHED = "m-0 font-sans text-[0.75rem] font-semibold text-accent";
 export const NON_FINITE_FORMS = "m-0 font-mono text-[1.05rem]";
 export const NON_FINITE_DOT = "font-sans text-[0.75rem] text-text-muted max-sm:hidden";
 

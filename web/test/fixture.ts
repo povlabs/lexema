@@ -524,4 +524,31 @@ export const FIXTURE_LINES: string[] = [
     tags: ["form-of"],
     senses: [formOf("prima persona singolare dell'indicativo presente di pigmentare", "pigmentare")],
   }),
+  // chiusi and punsi — a verb form whose lemma word two records spell. The
+  // two `chiudere` tables are the same, so the page shows one; the two
+  // `pungere` tables differ, so it shows both. Kept last, as above.
+  ...[0, 1].map(() =>
+    record({
+      word: "chiudere", pos: "verb", pos_title: "Verbo",
+      forms: tenseForms(["chiusi", "chiudesti", "chiuse", "chiudemmo", "chiudeste", "chiusero"], "past-remote"),
+      senses: [{ glosses: ["serrare"] }],
+    }),
+  ),
+  record({
+    word: "chiusi", pos: "verb", pos_title: "Voce verbale",
+    tags: ["form-of"],
+    senses: [formOf("prima persona singolare del passato remoto di chiudere", "chiudere")],
+  }),
+  ...[["punsi", "pungesti"], ["punsi", "pungisti"]].map((forms) =>
+    record({
+      word: "pungere", pos: "verb", pos_title: "Verbo",
+      forms: tenseForms(forms, "past-remote"),
+      senses: [{ glosses: ["forare con una punta"] }],
+    }),
+  ),
+  record({
+    word: "punsi", pos: "verb", pos_title: "Voce verbale",
+    tags: ["form-of"],
+    senses: [formOf("prima persona singolare del passato remoto di pungere", "pungere")],
+  }),
 ];

@@ -13,7 +13,8 @@
 // - A form with a degree other than positive is a comparison, not an agreement
 //   cell: a superlative goes to the superlativo grid, anything else to
 //   `unplaced`.
-// - Whatever takes no cell is `unplaced`, verbatim. Layout never drops a form.
+// - Whatever takes no cell is `unplaced`, verbatim, grouped by what it lacks.
+//   Layout never drops a form.
 //
 // Each cell's articles are `it-articles/v1` (src/italian/articles.ts), applied
 // to the cell's spelling with the cell's gender and number, exactly as it
@@ -23,6 +24,7 @@
 import { isAdjectiveReading, isNounReading } from "@lexema/lookup/types.ts";
 import type { GrammarClaim, Reading, SourceForm } from "@lexema/lookup/types.ts";
 import { generateItalianArticles } from "@lexema/italian/articles.ts";
+import { groupUnplaced, type Missing, type UnplacedGroup } from "./unplaced.ts";
 
 export const GENDERS = ["masculine", "feminine"] as const;
 export type Gender = (typeof GENDERS)[number];
@@ -64,7 +66,7 @@ export interface Agreement {
   grid: Grid | undefined;
   /** The superlativo grid, when the source lists superlatives with a gender and number. */
   superlative: Grid | undefined;
-  unplaced: SourceForm[];
+  unplaced: UnplacedGroup[];
 }
 
 function statedValues(claims: readonly GrammarClaim[], dimension: string): string[] {
@@ -141,7 +143,7 @@ function inflects(reading: Reading): boolean {
 export function agreementOf(reading: Reading): Agreement {
   const plain = new GridBuilder();
   const superlative = new GridBuilder();
-  const unplaced: SourceForm[] = [];
+  const unplaced: { form: SourceForm; missing: Missing }[] = [];
   const recordGenders = gendersOf(reading.grammar.record);
 
   if (inflects(reading) && reading.lemmaLinks.length === 0) {
@@ -162,11 +164,19 @@ export function agreementOf(reading: Reading): Agreement {
     const genders = own.length > 0 ? own : recordGenders;
     const number = numberOf(form.claims);
     if (target === undefined || genders.length === 0 || number === undefined) {
-      unplaced.push(form);
+      const missing: Missing =
+        genders.length === 0 && number === undefined
+          ? "gender and number not given"
+          : number === undefined
+            ? "number not given"
+            : genders.length === 0
+              ? "gender not given"
+              : "comparison not in the grid";
+      unplaced.push({ form, missing });
       continue;
     }
     for (const gender of genders) target.put(gender, number, form, form.surface);
   }
 
-  return { grid: plain.build(), superlative: superlative.build(), unplaced };
+  return { grid: plain.build(), superlative: superlative.build(), unplaced: groupUnplaced(unplaced) };
 }

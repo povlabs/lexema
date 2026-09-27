@@ -22,10 +22,12 @@ import {
   DEFINITION_BODY,
   DEFINITION_NUMBER,
   DEFINITIONS,
+  DEFINITIONS_GROUP,
   DISPUTED,
   DISPUTED_LIST,
   DISPUTED_MARK,
   EXAMPLE,
+  EXAMPLE_EXTRA,
   EXAMPLE_FROM,
   GLOSS,
   GLOSS_LINK,
@@ -219,41 +221,16 @@ function Example({ text, from }: { text: string; from?: number }) {
   );
 }
 
-/**
- * A definition's examples: the first under it, the rest behind `N more
- * examples`, in the document either way. `lead` stands in for the first when
- * the first definition borrows another's example.
- */
-function Examples({ examples, lead }: { examples: readonly string[]; lead?: ReactNode }) {
-  const rest = lead === undefined ? examples.slice(1) : examples;
-  return (
-    <>
-      {lead ?? (examples.length > 0 && <Example text={examples[0]} />)}
-      {rest.length > 0 && (
-        <details className={MORE}>
-          <summary className={MORE_SUMMARY}>
-            <span className={MORE_CLOSED}>{rest.length === 1 ? "1 more example" : `${rest.length} more examples`}</span>
-            <span className={MORE_OPEN}>fewer examples</span>
-          </summary>
-          {rest.map((text, i) => (
-            <Example key={i} text={text} />
-          ))}
-        </details>
-      )}
-    </>
-  );
-}
-
 function DefinitionLine({
   item,
   number,
   reading,
-  lead,
+  children,
 }: {
   item: DefinitionItem;
   number: number;
   reading: Reading;
-  lead?: ReactNode;
+  children: ReactNode;
 }) {
   return (
     <li className={DEFINITION} data-definition={number}>
@@ -262,58 +239,81 @@ function DefinitionLine({
       </span>
       <div className={DEFINITION_BODY}>
         <DefinitionText item={item} reading={reading} />
-        <Examples examples={item.examples} lead={lead} />
+        {children}
       </div>
     </li>
   );
 }
 
+const plural = (count: number, noun: string): string => `${count} more ${noun}${count === 1 ? "" : "s"}`;
+
 /**
- * The first definition and one example, then `N more definitions`. The example
- * is the first definition's own; when it has none, the reading's first example,
- * marked with the definition it belongs to. The rest are in the document behind
- * the link, each with its first example and the others behind `N more examples`.
+ * The first definition with one example, then one control that shows the
+ * rest: the other definitions, and every example not yet shown. The example
+ * under the first definition is its own; when it has none, the reading's first
+ * example, marked with the definition it belongs to and not shown again there.
+ * Everything is in the document whether the control is open or not.
  */
 function Definitions({ reading }: { reading: Reading }) {
   const items = definitionsOf(reading);
   if (items.length === 0) return null;
   const [first] = items;
   const borrowed = first.examples.length === 0 ? items.findIndex((item) => item.examples.length > 0) : -1;
-  const lead = borrowed > 0 ? <Example text={items[borrowed].examples[0]} from={borrowed + 1} /> : undefined;
+  const firstExtra = first.examples.slice(1);
   const rest = items.slice(DEFINITION_SLICE);
-  const more = rest.length === 1 ? "1 more definition" : `${rest.length} more definitions`;
+  const label = [
+    ...(rest.length > 0 ? [plural(rest.length, "definition")] : []),
+    ...(firstExtra.length > 0 ? [plural(firstExtra.length, "example")] : []),
+  ].join(" · ");
   return (
     <Block id={`definitions-${reading.recordId}`} label="Definitions">
-      <ol className={DEFINITIONS}>
-        <DefinitionLine item={first} number={1} reading={reading} lead={lead} />
-      </ol>
-      {rest.length > 0 && (
-        <details className={MORE}>
-          <summary className={MORE_SUMMARY}>
-            <span className={MORE_CLOSED}>{more}</span>
-            <span className={MORE_OPEN}>fewer definitions</span>
-          </summary>
-          <ol className={`${DEFINITIONS} ${MORE_LIST}`} start={DEFINITION_SLICE + 1}>
-            {rest.map((item, i) => (
-              <DefinitionLine
-                key={definitionKey(item)}
-                item={item}
-                number={DEFINITION_SLICE + i + 1}
-                reading={reading}
-              />
+      <div className={DEFINITIONS_GROUP}>
+        <ol className={DEFINITIONS}>
+          <DefinitionLine item={first} number={1} reading={reading}>
+            {borrowed > 0 ? (
+              <Example text={items[borrowed].examples[0]} from={borrowed + 1} />
+            ) : (
+              first.examples.length > 0 && <Example text={first.examples[0]} />
+            )}
+            {firstExtra.map((text, i) => (
+              <p key={i} className={EXAMPLE_EXTRA}>
+                <span lang="it">{text}</span>
+              </p>
             ))}
-          </ol>
-        </details>
-      )}
+          </DefinitionLine>
+        </ol>
+        {label !== "" && (
+          <details className={MORE}>
+            <summary className={MORE_SUMMARY}>
+              <span className={MORE_CLOSED}>{label}</span>
+              <span className={MORE_OPEN}>fewer</span>
+            </summary>
+            {rest.length > 0 && (
+              <ol className={`${DEFINITIONS} ${MORE_LIST}`} start={DEFINITION_SLICE + 1}>
+                {rest.map((item, i) => {
+                  const index = DEFINITION_SLICE + i;
+                  const examples = index === borrowed ? item.examples.slice(1) : item.examples;
+                  return (
+                    <DefinitionLine key={definitionKey(item)} item={item} number={index + 1} reading={reading}>
+                      {examples.map((text, j) => (
+                        <Example key={j} text={text} />
+                      ))}
+                    </DefinitionLine>
+                  );
+                })}
+              </ol>
+            )}
+          </details>
+        )}
+      </div>
     </Block>
   );
 }
 
 /**
- * The lemmas a reading names that no definition links: one the release has no
- * entry for (`pigmentare`, for the verb reading of `pigmento`), said in words
- * with nothing to link; and one whose word the gloss does not write, linked on
- * a line of its own. Either way the source's `form_of` edge stays on the page.
+ * A lemma the release has whose word the definition does not write, linked on
+ * a line of its own, so the source's `form_of` edge stays reachable. A lemma
+ * the release has no entry for is not mentioned (Huey, 2026-09-27, on #142).
  */
 function LemmaLines({ reading }: { reading: Reading }) {
   const linkedInGloss = (word: string, pointer: string) =>
@@ -322,21 +322,14 @@ function LemmaLines({ reading }: { reading: Reading }) {
         pointer.startsWith(`/senses/${sense.index}/`) &&
         sense.glosses.some((gloss) => findLemma(gloss.text, word) !== -1),
     );
-  const missing = new Set<string>();
   const unlinked = new Set<string>();
   for (const link of reading.lemmaLinks) {
-    if (link.kind === "dangling") missing.add(link.targetWord);
-    else if (!linkedInGloss(link.targetWord, link.ref.jsonPointer)) unlinked.add(link.targetWord);
+    if (link.kind === "candidates" && !linkedInGloss(link.targetWord, link.ref.jsonPointer)) unlinked.add(link.targetWord);
   }
   return (
     <>
-      {[...missing].map((word) => (
-        <p key={`missing-${word}`} className={MENTION} data-lemma-missing="">
-          <span lang="it">{word}</span> has no entry in this release.
-        </p>
-      ))}
       {[...unlinked].map((word) => (
-        <p key={`unlinked-${word}`} className={MENTION}>
+        <p key={word} className={MENTION}>
           Form of{" "}
           <a className={GLOSS_LINK} href={searchHref(word)} lang="it">
             {word}
@@ -399,34 +392,39 @@ function OwnForms({ reading }: { reading: Reading }) {
     <Block id={id} label="Forms">
       {grid !== undefined && <GridView grid={grid} label={`Forms of ${reading.word}`} />}
       {superlative !== undefined && <SuperlativeGrid grid={superlative} />}
-      <OtherForms forms={unplaced} links={false} />
+      <OtherForms groups={unplaced} links={false} />
     </Block>
   );
 }
 
 /** *Forms of andare*: the lemma's whole table, opened where the searched form sits. */
 function LemmaForms({ entry }: { entry: PageReading }) {
-  if (entry.lemmaTable === undefined) return null;
-  const { lemma, listing } = entry.lemmaTable;
-  const searched = searchedSpellings(listing);
   return (
-    <Block
-      id={`lemma-forms-${entry.reading.recordId}`}
-      label={
-        <>
-          Forms of
-          <span className={BLOCK_LABEL_WORD} lang="it">
-            {lemma.word}
-          </span>
-        </>
-      }
-    >
-      <ConjugationView
-        conjugation={conjugationOf(listing.forms, searched)}
-        searchedPointers={searched.formPointers}
-        word={lemma.word}
-      />
-    </Block>
+    <>
+      {entry.lemmaTables.map(({ lemma, listing }) => {
+        const searched = searchedSpellings(listing);
+        return (
+          <Block
+            key={lemma.recordId}
+            id={`lemma-forms-${entry.reading.recordId}-${lemma.recordId}`}
+            label={
+              <>
+                Forms of
+                <span className={BLOCK_LABEL_WORD} lang="it">
+                  {lemma.word}
+                </span>
+              </>
+            }
+          >
+            <ConjugationView
+              conjugation={conjugationOf(listing.forms, searched)}
+              searchedPointers={searched.formPointers}
+              word={lemma.word}
+            />
+          </Block>
+        );
+      })}
+    </>
   );
 }
 

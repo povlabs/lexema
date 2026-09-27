@@ -148,7 +148,8 @@ raw page stand in for them, as for `casa`, the furniture is left out.
 definition the record does not carry as a definition (#28) — absent, or filed
 under an example — the seed recovers it into a layer beside the
 record, and the reading lists it after the record's own definitions, with its
-examples. Nothing marks it as recovered
+examples. Each definition shows one example; one control per reading shows the
+other definitions and every other example. Nothing marks it as recovered
 ([ADR 0016](../.decisions/0016-page-shows-no-origin-marks.md)); the layer keeps
 its own provenance in the data. `casa` shows its seven definitions this way.
 When the record filed a recovered definition as an example (`lap steel
@@ -180,13 +181,17 @@ a conjugation with mood tabs; which mood a form goes in is rule `it-moods/v1`
 (`src/italian/moods.ts`), which reads the shape of the source's row: person
 tags for the indicativo, a pronoun beginning *che* for the congiuntivo, a bare
 pronoun on a tense-only row for the condizionale. Neither rule is named on the
-page (ADR 0016). Whatever takes no cell is listed verbatim under *Other forms*.
+page (ADR 0016). Whatever takes no cell is listed verbatim in a last group
+named for what it lacks, such as *Mood and tense not given*.
 Every form the source gives is shown, variants such as `vo`, `annò` and
 `anderò` included. A block with nothing in it is absent.
 
 **Ambiguity in both directions.** A `form_of` edge names a word, and a word can
 be several records. The link on a form reading's definition searches that word,
-so every record spelling it shows there. The lookup returns every record the
+so every record spelling it shows there. A verb form whose lemma word is several
+verb records shows each record's table, and shows two identical tables once
+(`chiusi` → `chiudere`). A lemma the release has no entry for is not mentioned
+(Huey, on #142). The lookup returns every record the
 query matches as a reading, and a lemma the query also matched through its
 table — `sala` and `salire` for `sale` — is not one of those records but the
 lemma of the reading that points to it
@@ -220,13 +225,14 @@ write over the release the import just made.
 
 ## Why the source link is labelled the way it is
 
-The page ends with one link to the Italian Wiktionary page for the headword —
-one per page when the result shows readings or a lemma table from another page,
-as `andavano` does with `andare`. It is
-labelled *Source* and nothing more:
-[ADR 0009](../.decisions/0009-two-licences-and-a-source-link.md) puts one small
-link on a result and keeps the credit itself on `/attribution`, which the site
-footer reaches from every page. Its accessible name is longer than its text —
+The page ends with one *Source* link per distinct Italian Wiktionary page it
+shows. That is usually one, the headword's. `andavano` gets two, its own page
+and `andare`'s, because it shows its own reading and `andare`'s table. Each link
+is labelled *Source* and nothing more, with the page's word beside it when there
+are several.
+[ADR 0009](../.decisions/0009-two-licences-and-a-source-link.md) has each
+reading reach its Wiktionary page through one small link and keeps the credit
+itself on `/attribution`, which the site footer reaches from every page. Its accessible name is longer than its text —
 "Wiktionary page for X, the source of this page".
 
 The release stores no per-record URL, so the link is *constructed* from the

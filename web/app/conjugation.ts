@@ -6,10 +6,11 @@
 // is read from the shape of the source's row, never from a spelling. This file
 // only turns that answer into the page's grid, with Italian labels (ADR 0015),
 // and says which cells the query hit. Nothing is dropped: a form with no cell
-// is in `unplaced`, verbatim.
+// is in `unplaced`, verbatim, grouped by what it lacks.
 
 import type { SearchedSpellings, SourceForm } from "@lexema/lookup/types.ts";
 import { placeItalianVerbForm, type TenseBox, type VerbSlot } from "@lexema/italian/moods.ts";
+import { groupUnplaced, type Missing, type UnplacedGroup } from "./unplaced.ts";
 
 export const MOODS = ["Indicativo", "Congiuntivo", "Condizionale", "Imperativo"] as const;
 export type Mood = (typeof MOODS)[number];
@@ -112,8 +113,8 @@ export interface Conjugation {
   moods: MoodTable[];
   /** The tab the table opens on: the searched form's mood, else Indicativo. */
   openMood: Mood | undefined;
-  /** Forms no cell and no non-finite slot takes, verbatim and in source order. */
-  unplaced: SourceForm[];
+  /** Forms no cell and no non-finite slot takes, grouped by what they lack. */
+  unplaced: UnplacedGroup[];
 }
 
 /** A form's own tags and raw tags, recovered from its claims by pointer. */
@@ -139,13 +140,13 @@ function personOf(form: SourceForm): Person | undefined {
   return rawTags.length === 1 ? PRONOUN_PERSON[rawTags[0]] : undefined;
 }
 
-/** Where a finite form goes, or undefined when it has no cell. */
-function placeOf(form: SourceForm): { mood: Mood; tense: string; person: Person } | undefined {
+/** Where a finite form goes, or what it lacks that a cell needs. */
+function placeOf(form: SourceForm): { mood: Mood; tense: string; person: Person } | { missing: Missing } {
   const slot = slotOf(form);
+  if (slot.kind !== "imperative" && slot.kind !== "tense") return { missing: "mood and tense not given" };
   const person = personOf(form);
-  if (person === undefined) return undefined;
+  if (person === undefined) return { missing: "person not given" };
   if (slot.kind === "imperative") return { mood: "Imperativo", tense: "presente", person };
-  if (slot.kind !== "tense") return undefined;
   const { mood, tense } = TENSE_PLACE[slot.box];
   return { mood, tense, person };
 }
@@ -157,7 +158,7 @@ export function conjugationOf(forms: readonly SourceForm[], searched: SearchedSp
   const hit = (form: SourceForm) => searched.formPointers.has(form.ref.jsonPointer);
   const grid = new Map<Mood, Map<string, Map<Person, SourceForm[]>>>();
   const nonFinite = new Map<NonFinite["label"], SourceForm[]>();
-  const unplaced: SourceForm[] = [];
+  const unplaced: { form: SourceForm; missing: Missing }[] = [];
   const addNonFinite = (label: NonFinite["label"], form: SourceForm) =>
     nonFinite.set(label, [...(nonFinite.get(label) ?? []), form]);
 
@@ -172,8 +173,8 @@ export function conjugationOf(forms: readonly SourceForm[], searched: SearchedSp
       continue;
     }
     const place = placeOf(form);
-    if (place === undefined) {
-      unplaced.push(form);
+    if ("missing" in place) {
+      unplaced.push({ form, missing: place.missing });
       continue;
     }
     const tenses = grid.get(place.mood) ?? new Map<string, Map<Person, SourceForm[]>>();
@@ -219,6 +220,6 @@ export function conjugationOf(forms: readonly SourceForm[], searched: SearchedSp
     }),
     moods,
     openMood: searchedMood?.mood ?? moods[0]?.mood,
-    unplaced,
+    unplaced: groupUnplaced(unplaced),
   };
 }
