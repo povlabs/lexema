@@ -1,7 +1,7 @@
 ---
 id: 0004
 title: Lexema runs on Cloudflare Workers, with D1 for lookup and vinext for rendering
-status: amended-in-part by [0013](0013-site-public-behind-rate-limits.md)
+status: amended-in-part by [0013](0013-site-public-behind-rate-limits.md), [0015](0015-grammar-labels-are-italian.md)
 date: 2026-09-18
 tags: [stack]
 ---
