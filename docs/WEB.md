@@ -245,6 +245,25 @@ group fits two *Verbo* readings and stays after the readings. Topic labels
 (`calcio`'s `(sport)`), unlabelled texts and ungrouped lists stay there too, and
 the page says nothing about what it did not match.
 
+## Why a report is stored and nothing more
+
+Every word page ends with `Source ↗ · Report a mistake` (#51). The link opens a
+small box: what is wrong, which reading (optional), and details, with no account
+and no email. `POST /report` (`web/app/report/route.ts`, `web/app/report.ts`)
+stores the report in `reader_report` and changes nothing on the page; a person
+reviews it (#12) and may then write a `claim_review` row. A report is not stored
+in `claim_review` itself, because that table holds reviewed verdicts and every
+disputed row there is shown to readers.
+
+Spam is kept out in four layers, as ruled on #51: the `REPORT_LIMIT` Worker
+binding stops a burst (2 a minute) before D1 is touched, and the ruled 5 reports
+an hour is counted over the stored rows, because the binding has no hourly
+period; a hidden honeypot field and a 3-second minimum between opening the box
+and sending it drop a bot's report while answering it as sent; Cloudflare
+Turnstile is checked before storing when `TURNSTILE_SITE_KEY` (a var) and
+`TURNSTILE_SECRET_KEY` (a secret) are set, and skipped when they are not. The
+visitor is stored as a SHA-256 of their rate-limit key, never as an address.
+
 ## Why a disputed claim is a row and not a code path
 
 A disputed claim renders with a warning and a link to the evidence, and the

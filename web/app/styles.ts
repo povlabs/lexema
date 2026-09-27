@@ -58,8 +58,12 @@ export const SITE_FOOTER_LINK = `font-sans text-[0.8rem] text-text-muted no-unde
 export const SHELL_CENTRED = `${COLUMN} flex flex-1 flex-col items-center justify-center py-16 text-center`;
 export const HOME_NAME = "m-0 mb-10 font-serif text-[3.75rem] leading-none font-normal text-text-strong";
 
-/** With a query: the bar at the top of the column, the word below it. */
-export const SHELL_TOP = `${COLUMN} flex-1 pt-6 pb-4`;
+/**
+ * With a query: the bar at the top of the column, the word below it. It does
+ * not stretch to the window: the footer follows the content by the Source
+ * line's gap (design-system-manifest.md § "Layout"), however short the page.
+ */
+export const SHELL_TOP = `${COLUMN} pt-6 pb-4`;
 
 // The search field --------------------------------------------------------
 
@@ -258,9 +262,14 @@ export const TENSE_CELL = "p-0 py-1 pr-4 align-baseline font-mono text-[1rem] te
 export const CELL_SEPARATOR = "text-text-muted";
 
 /** The compound tenses, behind a `compound tenses` link. */
-export const COMPOUND = "group mt-4";
+/** Open, the link sits under the compound tables it hides; the HTML keeps it first. */
+export const COMPOUND = "group mt-4 flex flex-col-reverse";
+export const MOOD_PANEL = "group/panel";
+/** *Tempi semplici* / *Tempi composti*, named only while the compound tenses are open. */
+export const TENSE_SET = "m-0 mb-2 font-sans text-[0.8rem] font-semibold text-text-strong";
+export const TENSE_SET_SIMPLE = `${TENSE_SET} hidden group-has-[details[open]]/panel:block`;
 export const COMPOUND_SUMMARY = `inline-block cursor-pointer list-none font-sans text-[0.85rem] text-accent [&::-webkit-details-marker]:hidden ${FOCUS_RING}`;
-export const COMPOUND_TABLES = "mt-4";
+export const COMPOUND_TABLES = "mb-4 pt-3";
 
 export const WORD_FACTS = "mt-7 border-t border-border pt-7 sm:mt-10 sm:pt-10";
 export const ETYMOLOGY = "m-0 max-w-[48rem] font-serif text-[1.1rem] text-text [&+&]:mt-3";

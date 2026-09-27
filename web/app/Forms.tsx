@@ -19,6 +19,9 @@ import {
   COMPOUND,
   COMPOUND_SUMMARY,
   COMPOUND_TABLES,
+  MOOD_PANEL,
+  TENSE_SET,
+  TENSE_SET_SIMPLE,
   DASH,
   FORM_LINK,
   FORM_LINK_SEARCHED,
@@ -330,10 +333,24 @@ function TenseTables({
   );
 }
 
+/**
+ * One mood's tables. With the compound tenses open, each set is named —
+ * *Tempi semplici*, *Tempi composti* — and the link to hide them sits under
+ * them (board f9vHId); closed, the simple tenses need no name.
+ */
 function MoodPanelView({ table, searched }: { table: MoodTable; searched: (form: SourceForm) => boolean }) {
   return (
-    <>
-      {table.simple.length > 0 && <TenseTables table={table} tenses={table.simple} searched={searched} />}
+    <div className={MOOD_PANEL}>
+      {table.simple.length > 0 && (
+        <>
+          {table.compound.length > 0 && (
+            <p className={TENSE_SET_SIMPLE} lang="it">
+              Tempi semplici
+            </p>
+          )}
+          <TenseTables table={table} tenses={table.simple} searched={searched} />
+        </>
+      )}
       {table.compound.length > 0 && (
         <details className={COMPOUND} open={table.compoundSearched}>
           <summary className={COMPOUND_SUMMARY}>
@@ -341,11 +358,14 @@ function MoodPanelView({ table, searched }: { table: MoodTable; searched: (form:
             <span className={MORE_OPEN}>hide compound tenses</span>
           </summary>
           <div className={COMPOUND_TABLES}>
+            <p className={TENSE_SET} lang="it">
+              Tempi composti
+            </p>
             <TenseTables table={table} tenses={table.compound} searched={searched} />
           </div>
         </details>
       )}
-    </>
+    </div>
   );
 }
 
