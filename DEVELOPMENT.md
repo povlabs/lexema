@@ -121,6 +121,12 @@ units to the key's row for the day ([src/api/units.ts](./src/api/units.ts)). A
 request refused before an answer (a 400 bad `q`, parameter or body, a 405 or a 429) adds none. An
 API request is never counted against the site's per-visitor limits.
 
+The reference a key holder reads is the site's `/developers` page. What it states
+is [web/app/apiReference.ts](./web/app/apiReference.ts), and
+[web/test/developers.test.tsx](./web/test/developers.test.tsx) sends every example
+it prints to the API and fails when an answer differs, so a change to an answer
+changes the example with it.
+
 ## Stack
 
 | Layer | Choice | What it does for Lexema |
