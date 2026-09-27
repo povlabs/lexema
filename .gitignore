@@ -31,3 +31,6 @@ web/.wrangler/
 web/worker-configuration.d.ts
 web/.vinext/
 web/.next/
+
+# Fabrika lane ledgers (local state)
+.fabrika/

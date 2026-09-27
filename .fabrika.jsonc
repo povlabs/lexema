@@ -12,6 +12,14 @@
       "command": "state=$(mktemp -d \"${TMPDIR:-/tmp}/lexema-ui.XXXXXX\") && trap 'rm -rf \"$state\"' EXIT && SEED_SQL=\"$state/dev.sql\" SEED_STATE=\"$state/state\" pnpm run seed:dev && pnpm --filter @lexema/web build && cd web && pnpm exec wrangler dev --config dist/server/wrangler.json --persist-to \"$state/state\" --port {{port}} --var LEXEMA_RELEASE:it-dev"
     }
   ],
+  // What the lane runs to install dependencies and check a merged tree
+  // (the same checks builders and reviewers run).
+  "dependencyReconciler": { "command": ["pnpm", "install", "--frozen-lockfile"] },
+  "codeValidators": [
+    { "command": ["pnpm", "run", "typecheck"] },
+    { "command": ["pnpm", "--filter", "@lexema/web", "typecheck"] },
+    { "command": ["pnpm", "test"] }
+  ],
   "uiCapture": {
     "viewport": { "width": 1440, "height": 900 }
   }
