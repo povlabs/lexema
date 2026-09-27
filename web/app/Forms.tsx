@@ -56,10 +56,8 @@ import {
   TENSE_TABLE,
 } from "./styles.ts";
 
-/** The search a form links to. */
 export const searchHref = (word: string): string => `/?q=${encodeURIComponent(word)}`;
 
-/** A dash where the source gives no form. */
 function Dash() {
   return (
     <span className={DASH} aria-label="not given">

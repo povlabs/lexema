@@ -18,6 +18,9 @@
 // - A form with a degree other than positive is a comparison, not an agreement
 //   cell: a superlative goes to the superlativo grid, anything else to
 //   `unplaced`.
+// - Only nouns, adjectives and phrases get a grid. A proper name, a prefix or
+//   any other part of speech gets none, and no generated articles: its forms
+//   are unplaced (`Mercurio` lists `Mercuria`).
 // - Whatever takes no cell is `unplaced`, verbatim, grouped by what it lacks.
 //   Layout never drops a form.
 //
@@ -171,7 +174,7 @@ export function agreementOf(reading: Reading): Agreement {
     const own = gendersOf(form.claims);
     const genders = own.length > 0 ? own : recordGenders.length === 1 ? recordGenders : [];
     const number = numberOf(form.claims);
-    if (target === undefined || genders.length === 0 || number === undefined) {
+    if (!inflects(reading) || target === undefined || genders.length === 0 || number === undefined) {
       const missing: Missing =
         genders.length === 0 && number === undefined
           ? "gender and number not given"
@@ -179,7 +182,9 @@ export function agreementOf(reading: Reading): Agreement {
             ? "number not given"
             : genders.length === 0
               ? "gender not given"
-              : "comparison not in the grid";
+              : !inflects(reading)
+                ? "not a noun, adjective or phrase"
+                : "comparison not in the grid";
       unplaced.push({ form, missing });
       continue;
     }

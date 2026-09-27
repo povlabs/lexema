@@ -551,6 +551,17 @@ test("an identical spelling with the same grammar shows once in an unplaced grou
   });
 });
 
+test("a proper name gets no grid and no generated articles; its forms stay visible", async () => {
+  await withFixture(async ({ db }) => {
+    const mercurio = nth(await render(db, "Mercurio"), 1);
+    assert.doesNotMatch(mercurio, /data-grid=""/);
+    assert.doesNotMatch(textOf(mercurio), /\bi Mercuria|dei Mercuria|il Mercurio/);
+    const group = mercurio.slice(mercurio.indexOf('data-unplaced="not a noun, adjective or phrase"'));
+    assert.match(group, /^data-unplaced="not a noun, adjective or phrase"><p class="[^"]*">Not a noun, adjective or phrase<\/p>/);
+    assert.match(group, /<dt class="[^"]*" lang="it">plurale<\/dt><dd [^>]*><span data-form="0">Mercuria<\/span>/);
+  });
+});
+
 test("a form with no gender of its own is not guessed into a record that states both", async () => {
   await withFixture(async ({ db }) => {
     // `fine` is tagged masculine and feminine; `fini` only plural. Which

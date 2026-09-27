@@ -11,7 +11,8 @@ export type Missing =
   | "number not given"
   | "person not given"
   | "mood and tense not given"
-  | "comparison not in the grid";
+  | "comparison not in the grid"
+  | "not a noun, adjective or phrase";
 
 export interface UnplacedGroup {
   missing: Missing;

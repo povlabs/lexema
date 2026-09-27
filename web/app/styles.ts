@@ -222,8 +222,9 @@ export const NON_FINITE_DOT = "font-sans text-[0.75rem] text-text-muted max-sm:h
 
 /** The mood tabs: one line, the open one underlined in `text-strong`. */
 export const TABS = "mt-6";
-export const TAB_LIST = "flex gap-5 border-border max-sm:gap-3 max-sm:border-b";
-export const TAB = `-mb-px cursor-pointer border-b-2 border-transparent pb-1.5 font-sans text-[0.9rem] text-text-muted data-active:border-text-strong data-active:font-semibold data-active:text-text-strong max-sm:text-[0.8rem] ${FOCUS_RING}`;
+/** The four tabs stay on one line: on the narrowest phones they spread across it at a smaller size. */
+export const TAB_LIST = "flex gap-5 border-border max-sm:gap-3 max-sm:border-b max-[24rem]:justify-between max-[24rem]:gap-1";
+export const TAB = `-mb-px cursor-pointer border-b-2 border-transparent pb-1.5 font-sans text-[0.9rem] text-text-muted data-active:border-text-strong data-active:font-semibold data-active:text-text-strong max-sm:text-[0.8rem] max-[24rem]:text-[0.72rem] ${FOCUS_RING}`;
 export const TAB_PANEL = `mt-6 ${FOCUS_RING}`;
 
 /**

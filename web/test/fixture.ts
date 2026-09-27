@@ -589,4 +589,12 @@ export const FIXTURE_LINES: string[] = [
     ],
     senses: [{ glosses: ["montagna alta"] }],
   }),
+  // Mercurio — a proper name as the release has it: masculine, listing
+  // `Mercuria` tagged plural. Kept last, as above.
+  record({
+    word: "Mercurio", pos: "name", pos_title: "Nome proprio",
+    tags: ["masculine"],
+    forms: [{ form: "Mercuria", tags: ["plural"] }],
+    senses: [{ glosses: ["pianeta del sistema solare"] }],
+  }),
 ];
