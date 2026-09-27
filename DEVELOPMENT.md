@@ -94,12 +94,31 @@ The accepted values are in
 outside them is a 400 `invalid_parameter` naming the parameter. Filters that
 keep none of a found word's candidates answer 200 with empty `results`.
 
+The other endpoints ([web/worker/api/endpoints.ts](./web/worker/api/endpoints.ts))
+reuse the same lookup and never rank anew:
+
+```sh
+curl -i -H "X-API-Key: lx_…" "http://localhost:8790/api/v1/lemmatize?q=andavano"
+curl -i -H "X-API-Key: lx_…" "http://localhost:8790/api/v1/exists?q=sale"
+curl -i -H "X-API-Key: lx_…" "http://localhost:8790/api/v1/inflect?lemma=andare&mood=congiuntivo&tense=presente&person=noi"
+curl -i -H "X-API-Key: lx_…" "http://localhost:8790/api/v1/suggest?q=sal"
+curl -i -H "X-API-Key: lx_…" "http://localhost:8790/api/v1/nearby?q=mangare"
+curl -i -H "X-API-Key: lx_…" "http://localhost:8790/api/v1/random?pos=noun"
+curl -i -H "X-API-Key: lx_…" -H "content-type: application/json" -d '{"q":["sale","andavano"]}' "http://localhost:8790/api/v1/lookup/batch"
+```
+
+`/inflect` takes `/lookup`'s grammar filters and is a 404 `unknown_lemma` for a
+word that heads no record. `/random` takes `/lookup`'s `pos` and reads the
+`source_record_by_pos` index, so a database seeded before it needs
+`pnpm run seed:dev` again. `/lookup/batch` takes 1 to 200 words and answers one
+light result per candidate, or one `found: false` per word not in the release.
+
 Each key has its own per-minute request limit, counted in D1, and every answer
 to a known key carries `RateLimit-Limit`, `RateLimit-Remaining` and
 `RateLimit-Reset`; a 401 carries none. Past the limit the answer is a 429 with
 `Retry-After`. Each answered request, found (200) or not found (404), adds its
 units to the key's row for the day ([src/api/units.ts](./src/api/units.ts)). A
-request refused before an answer (a 400 bad `q` or filter, a 405 or a 429) adds none. An
+request refused before an answer (a 400 bad `q`, parameter or body, a 405 or a 429) adds none. An
 API request is never counted against the site's per-visitor limits.
 
 ## Stack

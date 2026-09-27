@@ -142,6 +142,12 @@ CREATE TABLE source_record (
   UNIQUE (record_id, release_id)
 ) STRICT;
 
+-- The records of one part of speech in line order, so a random pick of one
+-- (`/api/v1/random?pos=`, src/lookup/random.ts) is two index probes, never a
+-- scan. A pick with no part of speech walks UNIQUE (release_id, line_no).
+CREATE INDEX source_record_by_pos
+  ON source_record (release_id, pos, line_no);
+
 -- The verbatim record, split off because it is large (391 MB of Italian JSON,
 -- ~700 bytes a row) and is only read when rendering one result. Keeping it out
 -- of source_record keeps the table that every lookup joins small enough to stay

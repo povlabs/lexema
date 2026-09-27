@@ -6,47 +6,23 @@
 // and limits are untouched.
 //
 // A request goes: its `X-API-Key` (401 when missing, unknown or revoked), its
-// key's minute counted in D1 (429 past the key's own limit), its endpoint, and
-// then the endpoint's answer, charged in units (src/api/units.ts). Every
-// response to a known key carries `RateLimit-Limit`, `RateLimit-Remaining` and
-// `RateLimit-Reset`, errors included.
+// key's minute counted in D1 (429 past the key's own limit), its endpoint and
+// method, and then the endpoint's answer (./endpoints.ts), charged in units
+// (src/api/units.ts). Every response to a known key carries `RateLimit-Limit`,
+// `RateLimit-Remaining` and `RateLimit-Reset`, errors included.
 
 import { authenticate, type ApiKey, type KeyRefusal } from "@lexema/api/keys.ts";
-import { endpointOf, type Charge, type Endpoint } from "@lexema/api/units.ts";
+import { endpointOf } from "@lexema/api/units.ts";
 import { chargeUnits, countRequest, type MinuteWindow } from "@lexema/api/usage.ts";
-import { fromD1, type LookupDatabase } from "@lexema/lookup/database.ts";
-import { lookup, MAX_QUERY_LENGTH } from "@lexema/lookup/lookup.ts";
-import { findNearby } from "@lexema/lookup/nearby.ts";
-import type { LookupResult } from "@lexema/lookup/types.ts";
+import { fromD1 } from "@lexema/lookup/database.ts";
 import type { FetchHandler } from "../rateLimit.ts";
-import { foundJson, notFoundJson, type LemmaReader } from "./lookupAnswer.ts";
-import { readLookupFilters } from "./lookupFilters.ts";
+import { error, type ApiContext, type ErrorJson } from "./answer.ts";
+import { ROUTES } from "./endpoints.ts";
+
+export type { ApiContext, ErrorJson } from "./answer.ts";
 
 /** Where every API request starts. Anything under it is the API's, never the site's. */
 export const API_ROOT = "/api/";
-
-/** What one request needs from the Worker around it. */
-export interface ApiContext {
-  db: LookupDatabase;
-  /** The release this Worker serves. */
-  releaseId: string;
-  /** The server's clock, milliseconds since the epoch. */
-  now: number;
-}
-
-/** What an endpoint answers: a status and a body, and the charge when it did the work. */
-interface Answer {
-  status: number;
-  body: unknown;
-  charge: Charge | undefined;
-}
-
-/** The error body every refusal carries. */
-export interface ErrorJson {
-  error: { code: string; message: string };
-}
-
-const error = (code: string, message: string): ErrorJson => ({ error: { code, message } });
 
 const REFUSAL: Record<KeyRefusal, ErrorJson> = {
   missing: error("missing_key", "Send your API key in the X-API-Key header."),
@@ -56,55 +32,6 @@ const REFUSAL: Record<KeyRefusal, ErrorJson> = {
 
 function json(status: number, body: unknown, headers: Record<string, string> = {}): Response {
   return Response.json(body, { status, headers: { "cache-control": "no-store", ...headers } });
-}
-
-/** The endpoints this Worker answers so far. The rest of the table lands with #152. */
-const ROUTES: Partial<Record<Endpoint, (url: URL, context: ApiContext) => Promise<Answer>>> = {
-  lookup: lookupAnswer,
-};
-
-/**
- * `/lookup`: every candidate for `q`, narrowed by its filters
- * (./lookupFilters.ts). A filter value it cannot read is a 400 naming the
- * parameter, before any lookup. A word the release has is a 200 even when the
- * filters keep none of its candidates: `results` is then empty, and only a
- * word the release does not have is a 404.
- */
-async function lookupAnswer(url: URL, { db, releaseId }: ApiContext): Promise<Answer> {
-  const filters = readLookupFilters(url.searchParams);
-  if (!filters.ok) return { status: 400, body: error("invalid_parameter", filters.refusal.message), charge: undefined };
-  const result = await lookup({ db, releaseId, query: url.searchParams.get("q") ?? "" });
-  if (result.outcome === "rejected") {
-    const message =
-      result.rejection.reason === "empty"
-        ? "Send the word to look up as q."
-        : `q is ${result.rejection.length} characters long; the limit is ${MAX_QUERY_LENGTH}.`;
-    return { status: 400, body: error("invalid_query", message), charge: undefined };
-  }
-  const charge: Charge = { endpoint: "lookup" };
-  if (result.outcome === "not-found") {
-    const nearby = await findNearby({ db, releaseId, query: result.query.raw });
-    return { status: 404, body: notFoundJson(result, nearby), charge };
-  }
-  return { status: 200, body: await foundJson(result, lemmaReader(db, releaseId), filters.filters), charge };
-}
-
-/**
- * A lemma a form-of record names, read as the lookup reads any word: a lookup
- * of its headword, and the reading that is that record. Each word is looked up
- * once per request.
- */
-function lemmaReader(db: LookupDatabase, releaseId: string): LemmaReader {
-  const lookups = new Map<string, Promise<LookupResult>>();
-  return async (lemma) => {
-    let result = lookups.get(lemma.word);
-    if (result === undefined) {
-      result = lookup({ db, releaseId, query: lemma.word });
-      lookups.set(lemma.word, result);
-    }
-    const answer = await result;
-    return answer.outcome === "found" ? answer.readings.find((reading) => reading.recordId === lemma.recordId) : undefined;
-  };
 }
 
 /** Answer one API request. */
@@ -128,13 +55,16 @@ export async function handleApi(request: Request, context: ApiContext): Promise<
 
     const url = new URL(request.url);
     const endpoint = endpointOf(url.pathname);
-    const route = endpoint === undefined ? undefined : ROUTES[endpoint];
-    if (route === undefined) return json(404, error("not_found", `There is no endpoint at ${url.pathname}.`), limits);
-    if (request.method !== "GET") {
-      return json(405, error("method_not_allowed", `${url.pathname} answers GET only.`), { ...limits, allow: "GET" });
+    if (endpoint === undefined) return json(404, error("not_found", `There is no endpoint at ${url.pathname}.`), limits);
+    const route = ROUTES[endpoint];
+    if (request.method !== route.method) {
+      return json(405, error("method_not_allowed", `${url.pathname} answers ${route.method} only.`), {
+        ...limits,
+        allow: route.method,
+      });
     }
 
-    const answer = await route(url, context);
+    const answer = await route.answer(request, url, context);
     if (answer.charge !== undefined) await chargeUnits(db, key, answer.charge, now);
     return json(answer.status, answer.body, limits);
   } catch (failure) {
