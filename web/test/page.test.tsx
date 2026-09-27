@@ -433,6 +433,60 @@ test("etymology and synonyms come once after the readings: eight synonyms, then 
   });
 });
 
+test("every form entry of every reading is on the page, whatever shape its forms take", async () => {
+  await withDevSeed(async ({ db }) => {
+    for (const query of ["andare", "bello", "sale", "studente", "grande", "casa", "vivere"]) {
+      const html = await render(db, query);
+      for (const reading of await readingsFor(db, query)) {
+        const shown = new Set(
+          [...readingById(html, reading.recordId).matchAll(/data-form="([\d ]+)"/g)].flatMap((match) =>
+            match[1].split(" ").map(Number),
+          ),
+        );
+        for (const form of reading.forms) {
+          assert.ok(shown.has(form.index), `${query}: ${reading.word} form ${form.index} (${form.surface}) is shown`);
+        }
+      }
+    }
+  });
+});
+
+test("a spelling the source files twice in one cell is shown once and keeps both entries", async () => {
+  await withFixture(async ({ db }) => {
+    // `studente` lists `studenti` as masculine plural and as bare plural; both
+    // land in maschile plurale.
+    const reading = nth(await render(db, "studente"), 1);
+    assert.equal(patternsOf(reading, />studenti</g), 1);
+    assert.match(reading, /<span data-form="0 1">studenti<\/span>/);
+  });
+});
+
+test("every example is reachable: the first under its definition, the rest behind N more examples", async () => {
+  await withDevSeed(async ({ db }) => {
+    const readings = await readingsFor(db, "libro");
+    const noun = readings.find((reading) => reading.pos === "noun");
+    assert.ok(noun);
+    const examples = noun.senses[0].examples.map((example) => example.text);
+    assert.ok(examples.length > 2, "libro's first sense carries several examples");
+    const first = readingById(await render(db, "libro"), noun.recordId).split('data-definition="2"')[0];
+    for (const text of examples) assert.ok(textOf(first).includes(text), `example shown: ${text}`);
+    assert.match(first, new RegExp(`>${examples.length - 1} more examples<`));
+    // The first example sits under the definition, before the link.
+    assert.ok(textOf(first).indexOf(examples[0]) < textOf(first).indexOf("more examples"));
+  });
+});
+
+test("a lemma the release has no entry for is said in words, with no link", async () => {
+  await withFixture(async ({ db }) => {
+    const reading = nth(await render(db, "pigmento"), 1);
+    assert.match(reading, /<p class="[^"]*" data-lemma-missing=""><span lang="it">pigmentare<\/span> has no entry in this release\.<\/p>/);
+    assert.doesNotMatch(reading, /href="\/\?q=pigmentare"/);
+    // A lemma the release has is linked in the gloss, and not said again.
+    const andavano = nth(await render(db, "andavano"), 1);
+    assert.doesNotMatch(andavano, /no entry in this release|Form of/);
+  });
+});
+
 test("forms that fit no cell are shown verbatim in one last group", async () => {
   await withFixture(async ({ db }) => {
     const parlare = await render(db, "parlare");

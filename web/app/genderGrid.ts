@@ -32,10 +32,16 @@ export type GrammaticalNumber = (typeof NUMBERS)[number];
 export const GENDER_LABEL: Record<Gender, string> = { masculine: "maschile", feminine: "femminile" };
 export const NUMBER_LABEL: Record<GrammaticalNumber, string> = { singular: "singolare", plural: "plurale" };
 
-/** One spelling in a cell: the headword, or a `forms[]` entry by its index. */
-export type Spelling =
-  | { kind: "headword"; surface: string }
-  | { kind: "form"; surface: string; form: SourceForm };
+/**
+ * One spelling in a cell, and every source entry that spells it there: the
+ * headword, `forms[]` entries, or both. `studente` lists `studenti` twice, and
+ * both land in maschile plurale; the cell shows the word once and keeps both.
+ */
+export interface Spelling {
+  surface: string;
+  headword: boolean;
+  forms: SourceForm[];
+}
 
 export interface GridCell {
   spellings: Spelling[];
@@ -94,11 +100,16 @@ function articleLine(surface: string, gender: Gender, number: GrammaticalNumber)
 class GridBuilder {
   private readonly cells = new Map<string, Spelling[]>();
 
-  put(gender: Gender, number: GrammaticalNumber, spelling: Spelling): void {
+  put(gender: Gender, number: GrammaticalNumber, entry: SourceForm | "headword", surface: string): void {
     const key = `${gender} ${number}`;
     const spellings = this.cells.get(key) ?? [];
-    // The source can file one spelling twice in a cell (`studenti`); it is one word there.
-    if (!spellings.some((existing) => existing.surface === spelling.surface)) spellings.push(spelling);
+    let spelling = spellings.find((existing) => existing.surface === surface);
+    if (spelling === undefined) {
+      spelling = { surface, headword: false, forms: [] };
+      spellings.push(spelling);
+    }
+    if (entry === "headword") spelling.headword = true;
+    else spelling.forms.push(entry);
     this.cells.set(key, spellings);
   }
 
@@ -135,12 +146,12 @@ export function agreementOf(reading: Reading): Agreement {
 
   if (inflects(reading) && reading.lemmaLinks.length === 0) {
     const number = numberOf(reading.grammar.record) ?? "singular";
-    for (const gender of recordGenders) plain.put(gender, number, { kind: "headword", surface: reading.word });
+    for (const gender of recordGenders) plain.put(gender, number, "headword", reading.word);
   } else if (inflects(reading) && reading.forms.length > 0) {
     // A form reading with a table of its own (`bella`) is placed in it too.
     const number = numberOf(reading.grammar.record);
     if (number !== undefined) {
-      for (const gender of recordGenders) plain.put(gender, number, { kind: "headword", surface: reading.word });
+      for (const gender of recordGenders) plain.put(gender, number, "headword", reading.word);
     }
   }
 
@@ -154,7 +165,7 @@ export function agreementOf(reading: Reading): Agreement {
       unplaced.push(form);
       continue;
     }
-    for (const gender of genders) target.put(gender, number, { kind: "form", surface: form.surface, form });
+    for (const gender of genders) target.put(gender, number, form, form.surface);
   }
 
   return { grid: plain.build(), superlative: superlative.build(), unplaced };

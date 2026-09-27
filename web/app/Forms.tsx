@@ -78,9 +78,12 @@ function GridCellView({ cell }: { cell: GridCell }) {
     <div className={GRID_CELL} role="cell">
       <p className={GRID_FORM} lang="it">
         {cell.spellings.map((spelling, i) => (
-          <span key={spelling.kind === "form" ? `form-${spelling.form.index}` : "headword"}>
+          <span key={spelling.surface}>
             {i > 0 && ", "}
-            <span data-form={spelling.kind === "form" ? spelling.form.index : undefined} data-headword={spelling.kind === "headword" ? "" : undefined}>
+            <span
+              data-form={spelling.forms.length > 0 ? spelling.forms.map((form) => form.index).join(" ") : undefined}
+              data-headword={spelling.headword ? "" : undefined}
+            >
               {spelling.surface}
             </span>
           </span>

@@ -516,4 +516,12 @@ export const FIXTURE_LINES: string[] = [
     ],
     senses: [{ glosses: ["portare a compimento"] }],
   }),
+  // pigmento — a verb form whose lemma this archive has no entry for, as the
+  // release's own `pigmento` Voce verbale names `pigmentare`, which is not in
+  // the dev seed. Kept last so every line above keeps its number.
+  record({
+    word: "pigmento", pos: "verb", pos_title: "Voce verbale",
+    tags: ["form-of"],
+    senses: [formOf("prima persona singolare dell'indicativo presente di pigmentare", "pigmentare")],
+  }),
 ];

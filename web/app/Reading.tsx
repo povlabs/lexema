@@ -126,13 +126,19 @@ function lemmaWordsOf(reading: Reading, sense: Sense): string[] {
 
 const isLetter = (char: string | undefined): boolean => char !== undefined && /\p{L}/u.test(char);
 
-/** A gloss with the last whole-word occurrence of each lemma it names linked to its search. */
+/** Where a gloss writes a lemma as a whole word, last occurrence first; -1 when it does not. */
+function findLemma(text: string, lemma: string): number {
+  let at = text.lastIndexOf(lemma);
+  while (at !== -1 && (isLetter(text[at - 1]) || isLetter(text[at + lemma.length]))) {
+    at = at === 0 ? -1 : text.lastIndexOf(lemma, at - 1);
+  }
+  return at;
+}
+
+/** A gloss with the last whole-word occurrence of a lemma it names linked to its search. */
 function LinkedGloss({ text, lemmas }: { text: string; lemmas: readonly string[] }) {
   for (const lemma of lemmas) {
-    let at = text.lastIndexOf(lemma);
-    while (at !== -1 && (isLetter(text[at - 1]) || isLetter(text[at + lemma.length]))) {
-      at = at === 0 ? -1 : text.lastIndexOf(lemma, at - 1);
-    }
+    const at = findLemma(text, lemma);
     if (at === -1) continue;
     return (
       <>
@@ -213,16 +219,41 @@ function Example({ text, from }: { text: string; from?: number }) {
   );
 }
 
+/**
+ * A definition's examples: the first under it, the rest behind `N more
+ * examples`, in the document either way. `lead` stands in for the first when
+ * the first definition borrows another's example.
+ */
+function Examples({ examples, lead }: { examples: readonly string[]; lead?: ReactNode }) {
+  const rest = lead === undefined ? examples.slice(1) : examples;
+  return (
+    <>
+      {lead ?? (examples.length > 0 && <Example text={examples[0]} />)}
+      {rest.length > 0 && (
+        <details className={MORE}>
+          <summary className={MORE_SUMMARY}>
+            <span className={MORE_CLOSED}>{rest.length === 1 ? "1 more example" : `${rest.length} more examples`}</span>
+            <span className={MORE_OPEN}>fewer examples</span>
+          </summary>
+          {rest.map((text, i) => (
+            <Example key={i} text={text} />
+          ))}
+        </details>
+      )}
+    </>
+  );
+}
+
 function DefinitionLine({
   item,
   number,
   reading,
-  example,
+  lead,
 }: {
   item: DefinitionItem;
   number: number;
   reading: Reading;
-  example: ReactNode;
+  lead?: ReactNode;
 }) {
   return (
     <li className={DEFINITION} data-definition={number}>
@@ -231,7 +262,7 @@ function DefinitionLine({
       </span>
       <div className={DEFINITION_BODY}>
         <DefinitionText item={item} reading={reading} />
-        {example}
+        <Examples examples={item.examples} lead={lead} />
       </div>
     </li>
   );
@@ -241,25 +272,20 @@ function DefinitionLine({
  * The first definition and one example, then `N more definitions`. The example
  * is the first definition's own; when it has none, the reading's first example,
  * marked with the definition it belongs to. The rest are in the document behind
- * the link, each with its first example.
+ * the link, each with its first example and the others behind `N more examples`.
  */
 function Definitions({ reading }: { reading: Reading }) {
   const items = definitionsOf(reading);
   if (items.length === 0) return null;
   const [first] = items;
   const borrowed = first.examples.length === 0 ? items.findIndex((item) => item.examples.length > 0) : -1;
-  const firstExample =
-    first.examples.length > 0 ? (
-      <Example text={first.examples[0]} />
-    ) : borrowed > 0 ? (
-      <Example text={items[borrowed].examples[0]} from={borrowed + 1} />
-    ) : null;
+  const lead = borrowed > 0 ? <Example text={items[borrowed].examples[0]} from={borrowed + 1} /> : undefined;
   const rest = items.slice(DEFINITION_SLICE);
   const more = rest.length === 1 ? "1 more definition" : `${rest.length} more definitions`;
   return (
     <Block id={`definitions-${reading.recordId}`} label="Definitions">
       <ol className={DEFINITIONS}>
-        <DefinitionLine item={first} number={1} reading={reading} example={firstExample} />
+        <DefinitionLine item={first} number={1} reading={reading} lead={lead} />
       </ol>
       {rest.length > 0 && (
         <details className={MORE}>
@@ -274,13 +300,51 @@ function Definitions({ reading }: { reading: Reading }) {
                 item={item}
                 number={DEFINITION_SLICE + i + 1}
                 reading={reading}
-                example={item.examples.length > 0 ? <Example text={item.examples[0]} /> : null}
               />
             ))}
           </ol>
         </details>
       )}
     </Block>
+  );
+}
+
+/**
+ * The lemmas a reading names that no definition links: one the release has no
+ * entry for (`pigmentare`, for the verb reading of `pigmento`), said in words
+ * with nothing to link; and one whose word the gloss does not write, linked on
+ * a line of its own. Either way the source's `form_of` edge stays on the page.
+ */
+function LemmaLines({ reading }: { reading: Reading }) {
+  const linkedInGloss = (word: string, pointer: string) =>
+    reading.senses.some(
+      (sense) =>
+        pointer.startsWith(`/senses/${sense.index}/`) &&
+        sense.glosses.some((gloss) => findLemma(gloss.text, word) !== -1),
+    );
+  const missing = new Set<string>();
+  const unlinked = new Set<string>();
+  for (const link of reading.lemmaLinks) {
+    if (link.kind === "dangling") missing.add(link.targetWord);
+    else if (!linkedInGloss(link.targetWord, link.ref.jsonPointer)) unlinked.add(link.targetWord);
+  }
+  return (
+    <>
+      {[...missing].map((word) => (
+        <p key={`missing-${word}`} className={MENTION} data-lemma-missing="">
+          <span lang="it">{word}</span> has no entry in this release.
+        </p>
+      ))}
+      {[...unlinked].map((word) => (
+        <p key={`unlinked-${word}`} className={MENTION}>
+          Form of{" "}
+          <a className={GLOSS_LINK} href={searchHref(word)} lang="it">
+            {word}
+          </a>
+          .
+        </p>
+      ))}
+    </>
   );
 }
 
@@ -393,6 +457,7 @@ export function ReadingView({ entry, query }: { entry: PageReading; query: strin
       )}
       <Disputes reviews={reading.reviews} />
       <Definitions reading={reading} />
+      <LemmaLines reading={reading} />
       <OwnForms reading={reading} />
       <LemmaForms entry={entry} />
     </article>
