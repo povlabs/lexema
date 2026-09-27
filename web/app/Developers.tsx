@@ -105,6 +105,11 @@ function Parameters({ parameters }: { parameters: readonly Parameter[] }) {
   );
 }
 
+/** A result's fields, each named with what it holds. */
+function Fields({ fields }: { fields: Readonly<Record<string, string>> }) {
+  return <Rows rows={Object.entries(fields).map(([term, description]) => ({ term, description }))} />;
+}
+
 function Block({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div className={BLOCK}>
@@ -156,8 +161,11 @@ function EndpointSection({ endpoint }: { endpoint: Endpoint }) {
           <Block label="Grammar values">
             <GrammarValues />
           </Block>
-          <Block label="Result">
-            <Parameters parameters={LOOKUP_RESULT.map((field) => ({ ...field, required: false }))} />
+          <Block label="Result: always returned">
+            <Fields fields={LOOKUP_RESULT.always} />
+          </Block>
+          <Block label="Result: sections fields chooses among">
+            <Fields fields={LOOKUP_RESULT.sections} />
           </Block>
         </>
       ) : null}

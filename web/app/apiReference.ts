@@ -6,7 +6,7 @@
 // (web/worker/api/lookupFilters.ts), the batch and query bounds. Every example
 // response is what the handler answers for its request over the development
 // fixture, which holds lines of release it-0c432803; `id` numbers are the lines
-// those records sit on in that release's archive. web/test/developers.test.ts
+// those records sit on in that release's archive. web/test/developers.test.tsx
 // runs every example through `handleApi` and fails when an answer drifts.
 //
 // Text in backticks renders as code.
@@ -16,6 +16,7 @@ import { MAX_QUERY_LENGTH } from "@lexema/lookup/lookup.ts";
 import { SUGGESTION_LIMIT } from "@lexema/lookup/suggest.ts";
 import { MAX_BATCH_WORDS } from "../worker/api/endpoints.ts";
 import { GRAMMAR_CODES, MATCHES, PARTS_OF_SPEECH, SECTIONS } from "../worker/api/lookupFilters.ts";
+import type { ResultCoreJson, SectionsJson } from "../worker/api/lookupAnswer.ts";
 
 export const API_ORIGIN = "https://lexema.fyi";
 export const API_BASE = `${API_ORIGIN}${API_PREFIX.slice(0, -1)}`;
@@ -82,6 +83,36 @@ const AGREEMENT_GRAMMAR: readonly Parameter[] = [
   { name: "number", required: false, description: "Only the grid's column of this number." },
 ];
 
+/**
+ * A `/lookup` result's fields, split as web/worker/api/lookupAnswer.ts splits
+ * them: what every result carries, and the sections `fields` chooses among.
+ */
+export const LOOKUP_RESULT: {
+  always: Readonly<Record<keyof ResultCoreJson, string>>;
+  sections: Readonly<Record<keyof SectionsJson, string>>;
+} = {
+  always: {
+    id: "The record: its release and its line in that release's archive.",
+    word: "The record's headword.",
+    pos: "The part of speech, as `pos` takes it.",
+    pos_title: "The part of speech as Wikizionario titles it.",
+    match:
+      "How `q` reached the record: `surface`, the spelling matched; `via`, `headword`, `form` or `form_of`; `grammar`, each place `q` fills in the record's forms.",
+    attribution: "The credit for the record's text; see Attribution.",
+  },
+  sections: {
+    pronunciations: "`ipa` and `note` for each pronunciation.",
+    definitions: "`definition`, its `labels`, its `examples`, and the `items` of a list it opens.",
+    examples: "Examples of senses that are not definitions.",
+    forms:
+      "A verb's `conjugation`: those of `infinito`, `gerundio`, `participio presente`, `participio` and `ausiliare` it has, then `moods` by mood, tense and person. A noun's or adjective's `gender_number`: `grid`, and `superlativo` or `null`, by gender and number. `null` when the record has no forms. Each cell is a list of spellings.",
+    etymology: "The etymology, or `null`.",
+    synonyms: "Words.",
+    antonyms: "Words.",
+    derived: "Words.",
+  },
+};
+
 /** Every endpoint, keyed as src/api/units.ts names it, so none goes undocumented. */
 export const ENDPOINT_REFERENCE: Readonly<Record<Endpoint, EndpointReference>> = {
   lookup: {
@@ -99,7 +130,7 @@ export const ENDPOINT_REFERENCE: Readonly<Record<Endpoint, EndpointReference>> =
       {
         name: "fields",
         required: false,
-        description: `A comma list of ${code(SECTIONS)}. Only these sections are returned; \`pronunciation\` returns \`pronunciations\`.`,
+        description: `A comma list of ${code(SECTIONS)}. Only these sections are returned; \`pronunciation\` returns \`pronunciations\`. ${code(Object.keys(LOOKUP_RESULT.always))} are always returned.`,
       },
       { name: "limit_definitions", required: false, description: "At most this many definitions per result, a positive integer." },
       ...VERB_GRAMMAR,
@@ -332,38 +363,6 @@ export const unitsText = (weight: UnitWeight): string => (weight.per === "word" 
 export const GRAMMAR_VALUES = (Object.entries(GRAMMAR_CODES) as [string, Readonly<Record<string, readonly string[]>>][]).map(
   ([parameter, codes]) => ({ parameter, values: Object.entries(codes).map(([label, english]) => ({ label, english })) }),
 );
-
-/** What every `/lookup` result carries. */
-export const LOOKUP_RESULT: readonly Parameter[] = [
-  { name: "id", required: true, description: "The record: its release and its line in that release's archive." },
-  { name: "word", required: true, description: "The record's headword." },
-  { name: "pos", required: true, description: "The part of speech, as `pos` takes it." },
-  { name: "pos_title", required: true, description: "The part of speech as Wikizionario titles it." },
-  {
-    name: "match",
-    required: true,
-    description:
-      "How `q` reached the record: `surface`, the spelling matched; `via`, `headword`, `form` or `form_of`; `grammar`, each place `q` fills in the record's forms.",
-  },
-  { name: "pronunciations", required: false, description: "`ipa` and `note` for each pronunciation." },
-  {
-    name: "definitions",
-    required: false,
-    description: "`definition`, its `labels`, its `examples`, and the `items` of a list it opens.",
-  },
-  { name: "examples", required: false, description: "Examples of senses that are not definitions." },
-  {
-    name: "forms",
-    required: false,
-    description:
-      "A verb's `conjugation`: those of `infinito`, `gerundio`, `participio presente`, `participio` and `ausiliare` it has, then `moods` by mood, tense and person. A noun's or adjective's `gender_number`: `grid`, and `superlativo` or `null`, by gender and number. `null` when the record has no forms. Each cell is a list of spellings.",
-  },
-  { name: "etymology", required: false, description: "The etymology, or `null`." },
-  { name: "synonyms", required: false, description: "Words." },
-  { name: "antonyms", required: false, description: "Words." },
-  { name: "derived", required: false, description: "Words." },
-  { name: "attribution", required: true, description: "The credit for the record's text; see Attribution." },
-];
 
 export interface ErrorReference {
   status: 400 | 401 | 404 | 405 | 429 | 503;
