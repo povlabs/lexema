@@ -15,6 +15,9 @@
 // (app/conjugation.ts) and a noun's or adjective's are the page's grid
 // (app/genderGrid.ts). The grammar of a match is the cell those put it in,
 // with the page's Italian labels (ADR 0015).
+//
+// The filters (#151, ./lookupFilters.ts) choose among these candidates and
+// narrow what each carries; they never reorder them.
 
 import { normalizeItalianExact } from "@lexema/italian/normalize.ts";
 import { foldKey, type Nearby } from "@lexema/lookup/nearby.ts";
@@ -26,6 +29,7 @@ import type {
   Reading,
   RecoveredDefinition,
   SearchedSpellings,
+  SourceForm,
 } from "@lexema/lookup/types.ts";
 import { conjugationOf, slotOf, type Conjugation } from "../../app/conjugation.ts";
 import { definitionsOf, senseLabels, type DefinitionItem } from "../../app/definitions.ts";
@@ -39,6 +43,15 @@ import {
   type Grid,
 } from "../../app/genderGrid.ts";
 import { sourcePageUrl } from "../../app/sourcePage.ts";
+import {
+  admits,
+  fits,
+  narrows,
+  type AgreementNarrowing,
+  type LookupFilters,
+  type Section,
+  type VerbNarrowing,
+} from "./lookupFilters.ts";
 
 /** How the query reached a candidate's record. */
 export type Via = "headword" | "form" | "form_of";
@@ -152,7 +165,8 @@ function statedPlaces(formOf: Reading): GrammarPlace[] {
   );
 }
 
-type GridJson = Partial<Record<"maschile" | "femminile", { singolare: string[]; plurale: string[] }>>;
+/** A grid's rows and columns; a narrowed grid carries only the ones its narrowing keeps. */
+type GridJson = Partial<Record<"maschile" | "femminile", Partial<Record<"singolare" | "plurale", string[]>>>>;
 
 /** A verb's conjugation, or a noun's or adjective's grid, or null when the reading places no form. */
 export type FormsJson =
@@ -162,38 +176,52 @@ export type FormsJson =
   | { type: "gender_number"; grid: GridJson; superlativo: GridJson | null }
   | null;
 
-function gridJson(grid: Grid): GridJson {
+function gridJson(grid: Grid, narrowing: AgreementNarrowing): GridJson {
   return Object.fromEntries(
-    grid.rows.map((row) => [
-      GENDER_LABEL[row.gender],
-      {
-        singolare: row.cells[0].spellings.map((spelling) => spelling.surface),
-        plurale: row.cells[1].spellings.map((spelling) => spelling.surface),
-      },
-    ]),
+    grid.rows.flatMap((row) => {
+      const gender = GENDER_LABEL[row.gender];
+      const cells = row.cells.flatMap((cell, n) => {
+        const number = NUMBER_LABEL[NUMBERS[n]];
+        return fits({ gender, number }, narrowing) ? [[number, cell.spellings.map((spelling) => spelling.surface)]] : [];
+      });
+      return cells.length === 0 ? [] : [[gender, Object.fromEntries(cells)]];
+    }),
   );
 }
 
-function conjugationJson(conjugation: Conjugation): FormsJson {
+/** Where a non-finite form sits; the ausiliare sits nowhere, so any narrowing drops it. */
+function nonFinitePlace(form: SourceForm): GrammarPlace {
+  const slot = slotOf(form);
+  return slot.kind === "non-finite" ? NON_FINITE_PLACE[slot.role] : {};
+}
+
+/**
+ * A conjugation as JSON, narrowed to the cells whose place fits. A tense or a
+ * mood the narrowing empties is left out, and a conjugation it empties is
+ * still a conjugation, with no moods.
+ */
+function conjugationJson(conjugation: Conjugation, narrowing: VerbNarrowing): FormsJson {
   if (conjugation.moods.length === 0 && conjugation.nonFinite.length === 0) return null;
+  const narrowed = narrows(narrowing);
   const surfaces = (forms: readonly { surface: string }[]) => forms.map((form) => form.surface);
-  return {
-    type: "conjugation",
-    ...Object.fromEntries(conjugation.nonFinite.map((entry) => [entry.label, surfaces(entry.forms)])),
-    moods: Object.fromEntries(
-      conjugation.moods.map((table) => [
-        table.mood.toLowerCase(),
-        Object.fromEntries(
-          [...table.simple, ...table.compound].map((tense) => [
-            tense.name,
-            Object.fromEntries(
-              tense.cells.flatMap((cell, i) => (cell.forms.length === 0 ? [] : [[table.persons[i], surfaces(cell.forms)]])),
-            ),
-          ]),
-        ),
-      ]),
-    ),
-  };
+  const nonFinite = conjugation.nonFinite.flatMap((entry) => {
+    const kept = narrowed ? entry.forms.filter((form) => fits(nonFinitePlace(form), narrowing)) : entry.forms;
+    return kept.length === 0 ? [] : [[entry.label, surfaces(kept)]];
+  });
+  const moods = conjugation.moods.flatMap((table) => {
+    const mood = table.mood.toLowerCase();
+    const tenses = [...table.simple, ...table.compound].flatMap((tense) => {
+      const cells = tense.cells.flatMap((cell, i) => {
+        const person = table.persons[i];
+        return cell.forms.length > 0 && fits({ mood, tense: tense.name, person }, narrowing)
+          ? [[person, surfaces(cell.forms)]]
+          : [];
+      });
+      return cells.length === 0 && narrowed ? [] : [[tense.name, Object.fromEntries(cells)]];
+    });
+    return tenses.length === 0 && narrowed ? [] : [[mood, Object.fromEntries(tenses)]];
+  });
+  return { type: "conjugation", ...Object.fromEntries(nonFinite), moods: Object.fromEntries(moods) };
 }
 
 /** One definition as the API returns it; nested items are the recovered list it opens. */
@@ -238,13 +266,19 @@ export const attributionOf = (word: string): AttributionJson => ({
   source_url: sourcePageUrl(word),
 });
 
-export interface ResultJson {
+/** What every result carries, whatever `fields` asks for. */
+export interface ResultCoreJson {
   /** The record's identity: its release and its line in that release's archive. */
   id: string;
   word: string;
   pos: string;
   pos_title: string;
   match: { surface: string; via: Via; grammar: GrammarPlace[] };
+  attribution: AttributionJson;
+}
+
+/** The sections `fields` chooses among, by the name each has in a result. */
+export interface SectionsJson {
   pronunciations: { ipa: string; note: string | null }[];
   definitions: DefinitionJson[];
   /** Examples of senses that are not definitions, as the page shows them after the list. */
@@ -254,11 +288,36 @@ export interface ResultJson {
   synonyms: string[];
   antonyms: string[];
   derived: string[];
-  attribution: AttributionJson;
 }
 
-/** One candidate as JSON. */
-export function resultJson(candidate: Candidate): ResultJson {
+/** One result: every section, or the ones `fields` named. */
+export type ResultJson = ResultCoreJson & Partial<SectionsJson>;
+
+/** The key each `fields` name selects in a result. */
+const SECTION_KEY: Record<Section, keyof SectionsJson> = {
+  definitions: "definitions",
+  examples: "examples",
+  forms: "forms",
+  etymology: "etymology",
+  synonyms: "synonyms",
+  antonyms: "antonyms",
+  derived: "derived",
+  pronunciation: "pronunciations",
+};
+
+/** A result with only the sections `fields` names, and its definitions capped at `limit_definitions`. */
+function shaped(result: ResultCoreJson & SectionsJson, filters: LookupFilters): ResultJson {
+  const definitions =
+    filters.limitDefinitions === undefined ? result.definitions : result.definitions.slice(0, filters.limitDefinitions);
+  const full: ResultJson = { ...result, definitions };
+  if (filters.fields === undefined) return full;
+  const dropped = new Set<string>(Object.values(SECTION_KEY));
+  for (const field of filters.fields) dropped.delete(SECTION_KEY[field]);
+  return Object.fromEntries(Object.entries(full).filter(([key]) => !dropped.has(key))) as ResultJson;
+}
+
+/** One candidate as JSON, shaped by the filters that kept it. */
+export function resultJson(candidate: Candidate, filters: LookupFilters): ResultJson {
   const { reading } = candidate;
   const hit = candidate.hit ?? { headword: false, formPointers: new Set<string>() };
   const verb = isVerbReading(reading);
@@ -277,18 +336,18 @@ export function resultJson(candidate: Candidate): ResultJson {
 
   const forms: FormsJson =
     conjugation !== undefined
-      ? conjugationJson(conjugation)
+      ? conjugationJson(conjugation, filters.verb)
       : agreement?.grid !== undefined || agreement?.superlative !== undefined
         ? {
             type: "gender_number",
-            grid: agreement.grid === undefined ? {} : gridJson(agreement.grid),
-            superlativo: agreement.superlative === undefined ? null : gridJson(agreement.superlative),
+            grid: agreement.grid === undefined ? {} : gridJson(agreement.grid, filters.agreement),
+            superlativo: agreement.superlative === undefined ? null : gridJson(agreement.superlative, filters.agreement),
           }
         : null;
 
   const { items, looseExamples } = definitionsOf(reading);
   const facts = reading.wordFacts;
-  return {
+  const result: ResultCoreJson & SectionsJson = {
     id: `${reading.ref.releaseId}:${reading.ref.lineNo}`,
     word: reading.word,
     pos: reading.pos,
@@ -304,6 +363,7 @@ export function resultJson(candidate: Candidate): ResultJson {
     derived: facts.derived.map((word) => word.word),
     attribution: attributionOf(reading.word),
   };
+  return shaped(result, filters);
 }
 
 /** What the not-found answer offers: `findNearby`'s spellings in its order, its `typo` called `edit`. */
@@ -346,11 +406,19 @@ export interface NotFoundJson {
   suggestions: { word: string; kind: SuggestionKind }[];
 }
 
-export async function foundJson(result: FoundResult, readLemma: LemmaReader): Promise<FoundJson> {
+/**
+ * A found word's answer: the candidates `pos` and `match` keep, in the
+ * lookup's order, each shaped by the other filters. Filters that keep no
+ * candidate leave `results` empty; the word was still found.
+ */
+export async function foundJson(result: FoundResult, readLemma: LemmaReader, filters: LookupFilters): Promise<FoundJson> {
+  const candidates = await candidatesOf(result, readLemma);
   return {
     query: result.query.raw,
     release_id: result.release.releaseId,
-    results: (await candidatesOf(result, readLemma)).map(resultJson),
+    results: candidates
+      .filter((candidate) => admits(filters, { pos: candidate.reading.pos, via: candidate.via }))
+      .map((candidate) => resultJson(candidate, filters)),
   };
 }
 

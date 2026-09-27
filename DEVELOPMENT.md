@@ -83,14 +83,23 @@ With the Worker running as in [how to run the search page](./docs/RUN_THE_SITE.m
 
 ```sh
 curl -i -H "X-API-Key: lx_…" "http://localhost:8790/api/v1/lookup?q=andavano"
+curl -i -H "X-API-Key: lx_…" "http://localhost:8790/api/v1/lookup?q=andare&pos=verb&fields=forms&mood=congiuntivo&tense=presente&person=noi"
 ```
+
+`/lookup` takes optional filters, each once: `pos`, `match` (`exact`, `form` or
+`any`), `fields`, `limit_definitions`, and the grammar filters `mood`, `tense`,
+`person`, `gender` and `number`, in ADR 0015's Italian labels or English codes.
+The accepted values are in
+[web/worker/api/lookupFilters.ts](./web/worker/api/lookupFilters.ts). A value
+outside them is a 400 `invalid_parameter` naming the parameter. Filters that
+keep none of a found word's candidates answer 200 with empty `results`.
 
 Each key has its own per-minute request limit, counted in D1, and every answer
 to a known key carries `RateLimit-Limit`, `RateLimit-Remaining` and
 `RateLimit-Reset`; a 401 carries none. Past the limit the answer is a 429 with
 `Retry-After`. Each answered request, found (200) or not found (404), adds its
 units to the key's row for the day ([src/api/units.ts](./src/api/units.ts)). A
-request refused before an answer (a 400 bad `q`, a 405 or a 429) adds none. An
+request refused before an answer (a 400 bad `q` or filter, a 405 or a 429) adds none. An
 API request is never counted against the site's per-visitor limits.
 
 ## Stack
