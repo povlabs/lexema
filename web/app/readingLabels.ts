@@ -80,16 +80,15 @@ function states(claims: readonly GrammarClaim[], dimension: string, value: strin
 
 /**
  * The one reading a label part names, or undefined when it names none or
- * several. It looks among the readings whose `pos_title` is exactly the head;
- * failing any, those whose `pos_title` begins with it (`Sostantivo, forma
- * flessa`). A qualifier keeps only the readings that state it.
+ * several. It looks among the readings whose `pos_title` is the head or begins
+ * with it (`Sostantivo`, `Sostantivo, forma flessa`), so a bare `(sostantivo)`
+ * on a page with both fits two and names neither (`sette`). A qualifier keeps
+ * only the readings that state it (`sostantivo plurale` → the plural one).
  */
 function readingOf({ head, qualifier }: LabelPart, readings: readonly Reading[]): Reading | undefined {
   const title = (reading: Reading) => normal(reading.posTitle);
-  const exact = readings.filter((reading) => title(reading) === head);
   const headed = readings.filter((reading) => title(reading).split(",")[0].trim() === head);
-  const pool = qualifier === undefined && exact.length > 0 ? exact : headed;
-  const fits = pool.filter(
+  const fits = headed.filter(
     (reading) => qualifier === undefined || states(reading.grammar.record, qualifier.dimension, qualifier.value),
   );
   return fits.length === 1 ? fits[0] : undefined;

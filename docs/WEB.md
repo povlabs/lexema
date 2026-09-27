@@ -210,15 +210,20 @@ repeats them on every record of a headword, but not always. In release
 the six fields identically on each; 133 do not. So the page shows the union of
 what the records carry, each item once, rather than one record's copy.
 
-**Once per reading, where the source says so.** Every record of a headword
-carries the same etymologies, but in 2,756 of the 3,276 headwords with two or
-more, each text opens with a bracket label, mostly a part of speech: `sale` has
+**Once per reading, where the source says so.** The records of a headword
+usually carry the same etymologies, but not always: `bacca`'s two records list
+two and one. The page takes every distinct text from every record once, as it
+does for each word fact above, and places each by its own label. In 2,756 of
+the 3,276 headwords with two or more etymologies, each text opens with a
+bracket label, mostly a part of speech: `sale` has
 `(sostantivo singolare)` and `(sostantivo plurale)`. On a word with two readings
 or more, a label that names readings by their `pos_title` moves its etymology
 into them, without the label (`web/app/readingLabels.ts`). A compound label
 names each part; `singolare`/`plurale` and `transitivo`/`intransitivo` narrow to
-the readings whose record states them. A label that fits more than one reading
-of the same kind is ambiguous and goes to none: `svolta` has two *Voce verbale*
+the readings whose record states them. A lone labelled etymology moves too
+(`strutto`: `(voce verbale) vedi struggere`). A label that fits more than one
+reading of the same kind is ambiguous and goes to none, and a bare
+`(sostantivo)` fits both *Sostantivo* and *Sostantivo, forma flessa* (`sette`): `svolta` has two *Voce verbale*
 readings, so its two `(voce verbale)` etymologies stay after the readings (108
 etymologies across the release are like this). Synonyms work the same way where
 the source groups them: in 207 headwords a part-of-speech `raw_tags` on one

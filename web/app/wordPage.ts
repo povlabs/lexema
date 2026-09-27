@@ -175,9 +175,10 @@ const refKey = (ref: SourceRef): string => `${ref.lineNo}\u0000${ref.jsonPointer
  * into the readings of that part of speech (design-system-manifest.md §
  * "Layout"). Only a word with two readings or more has anything to move.
  *
- * - An etymology moves when the word has two or more and its bracket label
- *   names readings on the page (`sale`: `(sostantivo plurale) vedi sala`). It
- *   shows there without the label, which the reading's heading already says.
+ * - An etymology moves when its bracket label names readings on the page
+ *   (`sale`: `(sostantivo plurale) vedi sala`), even when it is the word's only
+ *   one (`strutto`: `(voce verbale) vedi struggere`). It shows there without
+ *   the label, which the reading's heading already says.
  * - A synonym moves when a part-of-speech label earlier in its record's list
  *   opens the group it is in and names readings (`vivere`: `sostantivo` on
  *   `esistenza`, `verbo` on `esistere`).
@@ -195,7 +196,7 @@ function placeWordFacts(
   const keptEtymologies: SourceText[] = [];
   for (const etymology of merged.etymologies) {
     const { label, rest } = splitLabel(etymology.text);
-    const named = merged.etymologies.length > 1 && label !== undefined ? readingsNamed(label, about) : [];
+    const named = label !== undefined ? readingsNamed(label, about) : [];
     if (named.length === 0) keptEtymologies.push(etymology);
     for (const reading of named) etymologies.set(reading, [...(etymologies.get(reading) ?? []), { text: rest, ref: etymology.ref }]);
   }

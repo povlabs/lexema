@@ -609,7 +609,7 @@ test("a gloss that names two lemmas links both, and neither is repeated on a lin
   });
 });
 
-/** The dev seed plus the real `libero`, `calcio` and `svolta` lines. */
+/** The dev seed plus the real `libero`, `calcio`, `svolta`, `strutto` and `sette` lines. */
 async function withPlacementWords(run: (f: Fixture) => Promise<void>): Promise<void> {
   const lines = async (file: string) => (await readFile(join(REPO, file), "utf8")).trim().split("\n");
   return withLines([...(await lines("fixtures/dev-seed.jsonl")), ...(await lines("fixtures/word-facts-placement.jsonl"))], run);
@@ -674,6 +674,21 @@ test("an etymology whose label names a reading shows in that reading, without it
     const svoltaBottom = textOf(afterReadings(svolta));
     assert.match(svoltaBottom, /\(voce verbale\) vedi svoltare/);
     assert.match(svoltaBottom, /\(voce verbale\) vedi svolgere/);
+
+    // strutto: its only etymology, `(voce verbale)`, still names one reading.
+    const strutto = await render(db, "strutto");
+    const struttoVerb = (await readingsFor(db, "strutto")).find((reading) => reading.posTitle === "Voce verbale");
+    assert.ok(struttoVerb);
+    assert.equal(readingEtymology(readingById(strutto, struttoVerb.recordId)), "Etymologyvedi struggere");
+    assert.doesNotMatch(afterReadings(strutto), />Etymology</);
+
+    // sette: a bare `(sostantivo)` fits both the Sostantivo and the
+    // Sostantivo, forma flessa reading, so it goes to neither.
+    const sette = await render(db, "sette");
+    for (const reading of await readingsFor(db, "sette")) {
+      assert.doesNotMatch(readingEtymology(readingById(sette, reading.recordId)) ?? "", /plurale di setta/);
+    }
+    assert.match(textOf(afterReadings(sette)), /\(sostantivo\) plurale di setta/);
   });
 });
 
