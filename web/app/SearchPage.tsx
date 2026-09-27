@@ -15,10 +15,10 @@ import type { ReactNode } from "react";
 import type { Attempt } from "./attempt.ts";
 import { SearchField } from "./SearchField";
 import { SiteHeader } from "./SiteHeader";
+import { NotFound } from "./NotFound";
 import { WordView } from "./Word";
 import { wordPage } from "./wordPage.ts";
 import {
-  EMPTY,
   ERROR,
   HOME_NAME,
   HOME_PRONUNCIATION,
@@ -122,8 +122,9 @@ export function Limited({ raw }: { raw: string }) {
  * and not found, asked and found.
  *
  * The page has one `h1` in every state: the headword when a word was found,
- * and otherwise a heading a screen reader can land on, visually hidden because
- * the message under it says the same thing.
+ * `No entry for "<query>"` when none was (NotFound.tsx), and otherwise a
+ * heading a screen reader can land on, visually hidden because the message
+ * under it says the same thing.
  */
 export function Outcome({ raw, attempt, siteKey }: { raw: string; attempt: Attempt; siteKey?: string }) {
   const query = raw.trim();
@@ -132,6 +133,7 @@ export function Outcome({ raw, attempt, siteKey }: { raw: string; attempt: Attem
       <WordView page={wordPage(attempt.query.raw.trim(), attempt.readings)} query={attempt.query.raw.trim()} siteKey={siteKey} />
     );
   }
+  if (attempt.outcome === "not-found") return <NotFound query={attempt.query.raw.trim()} nearby={attempt.nearby} />;
   return (
     <>
       <h1 className="sr-only">
@@ -155,13 +157,6 @@ export function Outcome({ raw, attempt, siteKey }: { raw: string; attempt: Attem
         </p>
       )}
 
-      {attempt.outcome === "not-found" && (
-        <p className={EMPTY} role="status">
-          Nothing in this release matches <q lang="it">{attempt.query.raw.trim()}</q>. Accents
-          matter: <code lang="it">citta</code> and <code lang="it">città</code> are different
-          words.
-        </p>
-      )}
     </>
   );
 }

@@ -210,6 +210,34 @@ CREATE INDEX lookup_form_headword_by_key
 CREATE INDEX lookup_form_by_record
   ON lookup_form (record_id);
 
+-- What a search that found nothing offers instead (src/lookup/nearby.ts,
+-- board 24). Both are written by the seed from the keys above, and both are
+-- read by one indexed probe per request; neither is ever scanned.
+--
+-- The same letters with other accents: every distinct surface_key whose
+-- accent-folded spelling (NFD, combining marks removed) differs from it, under
+-- that folded spelling. `citta` finds `città`. Keys with no accent are left
+-- out, since the exact lookup already found them.
+CREATE TABLE accent_fold (
+  release_id  TEXT    NOT NULL,
+  fold_key    TEXT    NOT NULL,
+  surface_key TEXT    NOT NULL,
+  headword    INTEGER NOT NULL CHECK (headword IN (0, 1)),  -- some record's own headword
+  PRIMARY KEY (release_id, fold_key, surface_key)
+) STRICT, WITHOUT ROWID;
+
+-- A spelling one edit away (SymSpell's deletion index): every distinct lemma
+-- headword key (a record declaring no form_of) under itself and under each
+-- spelling of it with one character left out. A query probes its own
+-- deletions and itself; the candidates are then checked for a true distance
+-- of one. Inflected forms are left out, so a typo leads to a base word.
+CREATE TABLE typo_key (
+  release_id   TEXT NOT NULL,
+  deletion_key TEXT NOT NULL,
+  surface_key  TEXT NOT NULL,
+  PRIMARY KEY (release_id, deletion_key, surface_key)
+) STRICT, WITHOUT ROWID;
+
 
 -- ---------------------------------------------------------------------------
 -- form_of edges

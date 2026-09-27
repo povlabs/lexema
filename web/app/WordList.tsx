@@ -32,7 +32,7 @@ export function WordList({
 }: {
   id: string;
   label: string;
-  words: readonly RelatedWord[];
+  words: readonly Pick<RelatedWord, "word">[];
   /** `h3` inside a reading, `h2` after the readings. */
   level?: "h2" | "h3";
 }) {
@@ -41,7 +41,7 @@ export function WordList({
   const rest = words.slice(WORD_LIST_SLICE);
   // The dot trails its word, so a wrapped line never opens on one. The dot
   // after the eighth word shows only once the rest are open.
-  const item = (word: RelatedWord, i: number) => {
+  const item = (word: Pick<RelatedWord, "word">, i: number) => {
     const last = i === words.length - 1;
     const beforeRest = i === WORD_LIST_SLICE - 1 && rest.length > 0;
     return (

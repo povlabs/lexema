@@ -213,10 +213,13 @@ async function concatenated(parts: readonly string[]): Promise<Buffer> {
   return Buffer.concat(await Promise.all(parts.map((part) => readFile(part))));
 }
 
+/** Tables keyed by their primary key alone (no rowid), dumped in key order instead. */
+const WITHOUT_ROWID = new Set(["accent_fold", "typo_key"]);
+
 function tableDump(db: DatabaseSync): Record<string, unknown[]> {
   const tables = (db.prepare("SELECT name FROM sqlite_schema WHERE type = 'table' AND name NOT LIKE 'sqlite_%' ORDER BY name").all() as { name: string }[])
     .map(({ name }) => name);
-  return Object.fromEntries(tables.map((table) => [table, db.prepare(`SELECT * FROM "${table}" ORDER BY rowid`).all().map((row) => ({ ...row }))]));
+  return Object.fromEntries(tables.map((table) => [table, db.prepare(`SELECT * FROM "${table}" ORDER BY ${WITHOUT_ROWID.has(table) ? "1, 2, 3" : "rowid"}`).all().map((row) => ({ ...row }))]));
 }
 
 // The raw pages seedDev reads, so the dev seed here carries the recovered layer too.
@@ -234,10 +237,10 @@ test("the fifty-word dev seed is one part with the same rows", async () => {
     const report = await devSeed(join(dir, "sql"));
     assert.deepEqual(report.parts, [join(dir, "sql", "part-001.sql")]);
     assert.deepEqual(report.rows, {
-      source_record: 83, source_record_json: 83, lookup_form: 2171, form_of_edge: 19, sense: 268,
-      sense_gloss: 268, sense_label: 101, grammar_claim: 9140,
+      source_record: 83, source_record_json: 83, lookup_form: 2171, accent_fold: 96, typo_key: 273, form_of_edge: 19,
+      sense: 268, sense_gloss: 268, sense_label: 101, grammar_claim: 9140,
       raw_page: 1, recovered_definition: 7, recovered_label: 6, recovered_example: 7,
-      release_table_rows: 12,
+      release_table_rows: 14,
     });
     // Seven of the fixture's records have a raw page under fixtures/; `casa` is
     // the one whose page states definitions the record does not carry.

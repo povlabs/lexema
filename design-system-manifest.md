@@ -76,6 +76,15 @@ reading changes with the word type.
 | **Conjugations show two tenses at a time.** | The four mood tabs stay on one line. The table shows two tenses side by side, then the next two below. The non-finite forms are three short rows. |
 | **Synonyms wrap.** | The run of words wraps onto as many lines as it needs. |
 
+## When a search finds nothing
+
+Ruled by Huey on 2026-09-27, board 24.
+
+| Rule | What it means on the page |
+|---|---|
+| **Say it, then offer what is close.** | The heading is `No entry for "<query>"`, serif, large, with the page's own search bar above it and the footer at the foot of the window. Under it, the first of these that finds something: the same letters with an accent (`Did you mean città?`, the word in the accent colour, then *Other words that begin with "citta"*); a spelling one edit away (`Did you mean mangiare?`, then *Other close spellings*); the words that begin with what was typed (*Suggestions*, eight, then `+ N more`); or, with nothing close, "Lexema has no word spelled this way. Check the spelling, or search for the word's base form: the infinitive of a verb, the singular of a noun." |
+| **Every word offered is a search.** | Each links to its own result, in the same style as a synonym run. The page does not say how an offer was found. |
+
 ## Role tokens: the dark scheme
 
 The nine colour roles take the values of the design file's `variables`, moved

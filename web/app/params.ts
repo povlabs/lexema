@@ -21,8 +21,24 @@ export function firstQuery(value: QueryParam): string {
   return Array.isArray(value) ? (value[0] ?? "") : value;
 }
 
-/** The browser tab's title: the word on a result, and what Lexema is before a query. */
-export function pageTitle(query: string): string {
+/** What the title knows about the answer: the headword found, or that nothing was. */
+export type TitleOutcome = { found: string } | "not-found" | undefined;
+
+/** A word's first letter in capitals, as Italian writes it; `Roma` stays `Roma`. */
+const capitalised = (word: string): string => {
+  const [first = "", ...rest] = [...word];
+  return first.toLocaleUpperCase("it-IT") + rest.join("");
+};
+
+/**
+ * The browser tab's title. Before a query, what Lexema is; on a result, the
+ * headword with its first letter in capitals (`Casa — Lexema`), though the page
+ * shows it as the source spells it; when nothing was found, `No entry for
+ * "<query>" — Lexema`, as typed.
+ */
+export function pageTitle(query: string, outcome?: TitleOutcome): string {
   const q = query.trim();
-  return q === "" ? "Lexema — a simple dictionary" : `${q} — Lexema`;
+  if (q === "") return "Lexema — a simple dictionary";
+  if (outcome === "not-found") return `No entry for "${q}" — Lexema`;
+  return `${capitalised(outcome?.found ?? q)} — Lexema`;
 }

@@ -4,9 +4,10 @@
 // this; the comment is here so nobody has to rediscover it.
 import { env } from "cloudflare:workers";
 import { fromD1 } from "@lexema/lookup/database.ts";
-import { lookup } from "@lexema/lookup/lookup.ts";
+import { cache } from "react";
 import { suggest, type SuggestResult } from "@lexema/lookup/suggest.ts";
 import type { Attempt } from "./attempt.ts";
+import { searchAttempt } from "./searchAttempt.ts";
 import { turnstileConfig, type TurnstileConfig } from "./report.ts";
 
 /**
@@ -28,15 +29,18 @@ export function database() {
  * blank 500. The error itself stays here: a database message names tables,
  * releases and binding state, which is the operator's business and not the
  * reader's, so it is logged and nothing of it reaches the page.
+ *
+ * Memoised for the request with React's `cache`, so the tab title and the
+ * result read one lookup, not two.
  */
-export async function search(query: string): Promise<Attempt> {
+export const search = cache(async (query: string): Promise<Attempt> => {
   try {
-    return await lookup({ db: database(), releaseId: env.LEXEMA_RELEASE, query });
+    return await searchAttempt(database(), env.LEXEMA_RELEASE, query);
   } catch (error) {
     console.error("lookup failed", error);
     return { outcome: "failed" };
   }
-}
+});
 
 /**
  * Suggestions for a prefix, or the fact that they could not be read.

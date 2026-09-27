@@ -16,14 +16,26 @@ import { Suspense } from "react";
 import { SEARCH_LIMITED_HEADER } from "../worker/rateLimit.ts";
 import { FirstLoad, Limited, Outcome, Pending, SearchPage } from "./SearchPage";
 import { firstQuery, pageTitle, type QueryParam } from "./params";
+import { wordPage } from "./wordPage.ts";
 import { search, turnstile } from "./db";
 
 interface PageProps {
   searchParams: { q?: QueryParam };
 }
 
-export function generateMetadata({ searchParams }: PageProps) {
-  return { title: pageTitle(firstQuery(searchParams.q)) };
+export async function generateMetadata({ searchParams }: PageProps) {
+  const raw = firstQuery(searchParams.q);
+  // A search over the visitor's limit is not run for its title either.
+  if (raw.trim() === "" || (await headers()).has(SEARCH_LIMITED_HEADER)) return { title: pageTitle(raw) };
+  // The same memoised search the result renders from (db.ts).
+  const attempt = await search(raw);
+  const outcome =
+    attempt.outcome === "found"
+      ? { found: wordPage(attempt.query.raw.trim(), attempt.readings).headword }
+      : attempt.outcome === "not-found"
+        ? ("not-found" as const)
+        : undefined;
+  return { title: pageTitle(raw, outcome) };
 }
 
 /** The half that waits on D1, so the shell above it can flush before it does. */

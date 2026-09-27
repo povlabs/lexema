@@ -188,6 +188,13 @@ matches nothing. When there is no match, the item stays numbered at the top of
 the list, as before (`filetto`'s heraldic items). A sense that opens such a list is a definition, never
 furniture, even when its gloss starts like `casa`'s.
 
+**A search that found nothing.** The page says `No entry for "<query>"` and
+offers what is close, in order: the same letters with an accent, a spelling one
+edit away, the words that begin with it, or how to search instead
+([the lookup reference](LOOKUP.md#when-nothing-is-found)). The old "Nothing in
+this release matches … Accents matter" line is gone: the accent step now finds
+`città` for `citta` itself.
+
 **A lookup that did not happen.** No release, a D1 error, or a release built by
 a different normalizer all produce a page that says the lookup failed. That is
 deliberately not the "found nothing" message: a reader must be able to tell *we

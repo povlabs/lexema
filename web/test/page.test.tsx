@@ -34,6 +34,7 @@ import { fromNodeSqlite } from "../../src/lookup/database.js";
 import { lookup } from "../../src/lookup/lookup.js";
 import type { Reading } from "../../src/lookup/types.js";
 import type { Attempt } from "../app/attempt.ts";
+import { searchAttempt } from "../app/searchAttempt.ts";
 import { Attribution } from "../app/Attribution";
 import { FirstLoad, Limited, Outcome, Pending, SearchPage, TRY_WORDS } from "../app/SearchPage";
 import { SiteFooter } from "../app/SiteFooter";
@@ -54,6 +55,8 @@ import {
   JUMP_LINK,
   LINK,
   NON_FINITE_LABEL_SEARCHED,
+  NOT_FOUND_HEADING,
+  NOT_FOUND_LINK,
   ONE_LINE_TEXT,
   OPEN_MARK,
   PENDING,
@@ -144,7 +147,7 @@ async function withDevSeedAndPages(run: (f: Fixture) => Promise<void>): Promise<
 }
 
 async function attempt(db: DatabaseSync, query: string): Promise<Attempt> {
-  return lookup({ db: fromNodeSqlite(db), releaseId: RELEASE, query });
+  return searchAttempt(fromNodeSqlite(db), RELEASE, query);
 }
 
 /** The whole page, as the Worker would send it for `?q=<query>`. */
@@ -912,6 +915,39 @@ test("every link that leaves Lexema, on a result or on /attribution, opens in a 
   for (const [, attributes] of page.matchAll(/<a ([^>]*href="[/#][^>]*)>/g)) assert.doesNotMatch(attributes, /target=/, attributes);
 });
 
+test("a search that finds nothing offers, in order: an accent, one edit, words that begin with it, or how to search", async () => {
+  await withDevSeed(async ({ db }) => {
+    const heading = (query: string) => new RegExp(`<h1 class="${esc(NOT_FOUND_HEADING)}">No entry for “<span lang="it">${esc(query)}</span>”</h1>`);
+    const link = (word: string) => new RegExp(`<a class="${esc(NOT_FOUND_LINK)}" href="/\\?q=${encodeURIComponent(word)}" lang="it">${esc(word)}</a>`);
+
+    // B: the same letters with an accent, before any other step.
+    const citta = await render(db, "citta");
+    assert.match(citta, heading("citta"));
+    assert.match(citta, /Did you mean /);
+    assert.match(citta, link("città"));
+
+    // C: one edit away, from a lemma headword.
+    const mangare = await render(db, "mangare");
+    assert.match(mangare, heading("mangare"));
+    assert.match(mangare, link("mangiare"));
+
+    // A: nothing close, so the words that begin with it, each a search.
+    const stud = textOf(await render(db, "stud"));
+    assert.match(stud, /Lexema has no word spelled this way\. Words that begin with “stud”:/);
+    assert.match(stud, /Suggestionsstudente·studentessa·studenti·studiare/);
+
+    // A three-letter query skips the typo step: `mar` is one edit from `mare`,
+    // but the words that begin with it are the better offer.
+    assert.match(textOf(await render(db, "mar")), /Words that begin with “mar”:Suggestionsmare/);
+
+    // D: nothing at all.
+    const none = textOf(await render(db, "xqzt"));
+    assert.match(none, /No entry for “xqzt”/);
+    assert.match(none, /Check the spelling, or search for the word’s base form: the infinitive of a verb, the singular of a noun\./);
+    assert.doesNotMatch(none, /Did you mean|Suggestions/);
+  });
+});
+
 test("a proper name gets no grid and no generated articles; its forms stay visible", async () => {
   await withFixture(async ({ db }) => {
     const mercurio = nth(await render(db, "Mercurio"), 1);
@@ -1070,7 +1106,12 @@ test("the search page carries no credit line, no licence name and no contributor
 test("the tab title is the word on a result, and what Lexema is on the home page", () => {
   assert.equal(pageTitle(""), "Lexema — a simple dictionary");
   assert.equal(pageTitle("   "), "Lexema — a simple dictionary");
-  assert.equal(pageTitle(" casa "), "casa — Lexema");
+  // A result's title capitalises the headword's first letter; the page does not.
+  assert.equal(pageTitle(" casa ", { found: "casa" }), "Casa — Lexema");
+  assert.equal(pageTitle("citta", { found: "città" }), "Città — Lexema");
+  assert.equal(pageTitle("roma", { found: "Roma" }), "Roma — Lexema");
+  assert.equal(pageTitle("andavano", { found: "andavano" }), "Andavano — Lexema");
+  assert.equal(pageTitle("xqzt", "not-found"), 'No entry for "xqzt" — Lexema');
 });
 
 test("a repeated query parameter is searched, not thrown on", async () => {
@@ -1106,7 +1147,8 @@ test("renders the states that are not an answer: loading, rejected, failed, not 
     assert.match(await render(db, "   "), /Type a word to search for\./);
     assert.match(await render(db, "a".repeat(200)), /That is 200 characters\. The limit is 128\./);
     const missing = await render(db, "zzzznothing");
-    assert.match(missing, exact(`<p class="${EMPTY}" role="status">Nothing in this release matches`));
+    assert.match(missing, /No entry for “<span lang="it">zzzznothing<\/span>”<\/h1>/);
+    assert.doesNotMatch(missing, /Nothing in this release matches|Accents matter/);
   });
 });
 

@@ -326,6 +326,15 @@ export const SOURCE_LINE = "mt-9 sm:mt-12 flex flex-wrap items-center gap-x-3 ga
 export const SOURCE_LINK = `inline-flex items-center gap-1.5 text-text-muted no-underline hover:text-text ${FOCUS_RING}`;
 export const ICON = "size-3.5";
 
+// A search that found nothing (board 24) ---------------------------------
+
+export const NOT_FOUND_HEADING =
+  "m-0 mt-12 font-serif text-[2.25rem] leading-tight font-normal break-words text-text-strong sm:mt-16 sm:text-[3rem]";
+export const NOT_FOUND_TEXT = "m-0 mt-6 max-w-[42rem] font-sans text-[0.95rem] text-text";
+/** "Did you mean città?": the word in the accent, larger, and a link to its search. */
+export const NOT_FOUND_LEAD = "m-0 mt-6 font-sans text-[0.95rem] text-text";
+export const NOT_FOUND_LINK = `mx-1 font-serif text-[1.5rem] text-accent no-underline ${FOCUS_RING}`;
+
 // The report box (board 22, #51) ----------------------------------------------
 
 /** "Report a mistake", beside Source and in the same small muted type. */
