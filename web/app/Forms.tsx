@@ -11,11 +11,12 @@ import type { ReactNode } from "react";
 import type { SourceForm } from "@lexema/lookup/types.ts";
 import type { Conjugation, MoodTable, NonFinite, Person, Tense } from "./conjugation.ts";
 import { GENDER_LABEL, NUMBER_LABEL, NUMBERS, type Grid, type GridCell } from "./genderGrid.ts";
+import { More } from "./More";
 import { MoodTabs } from "./MoodTabs";
 import {
   CELL_SEPARATOR,
   COMPOUND,
-  COMPOUND_SUMMARY,
+  COMPOUND_MORE,
   COMPOUND_TABLES,
   MOOD_PANEL,
   TENSE_SET,
@@ -34,8 +35,6 @@ import {
   GRID_HEAD,
   GRID_LABEL,
   GRID_SPELLING,
-  MORE_CLOSED,
-  MORE_OPEN,
   NON_FINITE,
   NON_FINITE_DOT,
   NON_FINITE_FORMS,
@@ -278,9 +277,10 @@ function TenseTables({
 }
 
 /**
- * One mood's tables. With the compound tenses open, each set is named —
- * *Tempi semplici*, *Tempi composti* — and the link to hide them sits under
- * them (board f9vHId); closed, the simple tenses need no name.
+ * One mood's tables. The compound tenses wait behind the one `+ more` after the
+ * simple tenses, open when the search hit one. Open, each set is named —
+ * *Tempi semplici*, *Tempi composti* (board f9vHId) — and `less` ends them;
+ * closed, the simple tenses need no name.
  */
 function MoodPanelView({ table, searched }: { table: MoodTable; searched: (form: SourceForm) => boolean }) {
   return (
@@ -296,18 +296,15 @@ function MoodPanelView({ table, searched }: { table: MoodTable; searched: (form:
         </>
       )}
       {table.compound.length > 0 && (
-        <details className={COMPOUND} open={table.compoundSearched}>
-          <summary className={COMPOUND_SUMMARY}>
-            <span className={MORE_CLOSED}>compound tenses</span>
-            <span className={MORE_OPEN}>hide compound tenses</span>
-          </summary>
+        <div className={COMPOUND}>
           <div className={COMPOUND_TABLES}>
             <p className={TENSE_SET} lang="it">
               Tempi composti
             </p>
             <TenseTables table={table} tenses={table.compound} searched={searched} />
           </div>
-        </details>
+          <More className={COMPOUND_MORE} open={table.compoundSearched} />
+        </div>
       )}
     </div>
   );

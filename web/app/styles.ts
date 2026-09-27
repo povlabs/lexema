@@ -282,15 +282,15 @@ export const PERSON_REPEAT = "sm:sr-only";
 export const TENSE_CELL = "p-0 py-1 pr-4 align-baseline font-mono text-[1rem] text-text-strong wrap-anywhere max-sm:pr-2 max-sm:text-[0.8rem]";
 export const CELL_SEPARATOR = "text-text-muted";
 
-/** The compound tenses, behind a `compound tenses` link. */
-/** Open, the link sits under the compound tables it hides; the HTML keeps it first. */
-export const COMPOUND = "group mt-4 flex flex-col-reverse";
+/** The compound tenses and the `+ more` after the simple tenses that shows them. */
+export const COMPOUND = "group/compound";
 export const MOOD_PANEL = "group/panel";
 /** *Tempi semplici* / *Tempi composti*, named only while the compound tenses are open. */
 export const TENSE_SET = "m-0 mb-2 font-sans text-[0.8rem] font-semibold text-text-strong";
 export const TENSE_SET_SIMPLE = `${TENSE_SET} hidden group-has-[details[open]]/panel:block`;
-export const COMPOUND_SUMMARY = `inline-block cursor-pointer list-none font-sans text-[0.85rem] text-accent [&::-webkit-details-marker]:hidden ${FOCUS_RING}`;
-export const COMPOUND_TABLES = "mb-4 pt-3";
+/** Hidden until the `+ more` after them opens. */
+export const COMPOUND_TABLES = "hidden pt-4 group-has-[details[open]]/compound:block";
+export const COMPOUND_MORE = "group mt-2 block";
 
 export const WORD_FACTS = "mt-7 border-t border-border pt-7 sm:mt-10 sm:pt-10";
 export const ETYMOLOGY = "m-0 max-w-[48rem] font-serif text-[1.1rem] text-text";

@@ -57,7 +57,7 @@ reading changes with the word type.
 |---|---|---|
 | **None** | adverbs, proper names, abbreviations, prefixes and suffixes, grammar words, most phrases | No *Forms* block. |
 | **Gender × number grid** | nouns, adjectives, phrases that inflect | Columns *singolare* and *plurale*; rows *maschile* and *femminile*, only the rows the source has. Each cell is the form, with its definite and indefinite article under it (`il bello · un bello`; on a phone, on two lines). An adjective's superlative is a second grid of the same shape, labelled *superlativo*. |
-| **Conjugation** | verbs, and the lemma of a searched verb form | One line of non-finite forms (*gerundio*, *participio*, *ausiliare*). Then mood tabs (*Indicativo*, *Congiuntivo*, *Condizionale*, *Imperativo*), then a table with persons down and the simple tenses across, named in Italian. The compound tenses open below it from a `compound tenses` link. The tabs open on the mood of the searched form, else *Indicativo*. |
+| **Conjugation** | verbs, and the lemma of a searched verb form | One line of non-finite forms (*gerundio*, *participio*, *ausiliare*). Then mood tabs (*Indicativo*, *Congiuntivo*, *Condizionale*, *Imperativo*), then a table with persons down and the simple tenses across, named in Italian. The compound tenses wait behind the one `+ more` right after that table; opened, *Tempi semplici* and *Tempi composti* are named and `less` ends them. The tabs open on the mood of the searched form, else *Indicativo*. |
 
 | Rule | What it means on the page |
 |---|---|

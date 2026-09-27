@@ -11,9 +11,18 @@
 import type { Ref } from "react";
 import { MORE_CLOSED, MORE_OPEN, MORE_SUMMARY } from "./styles.ts";
 
-export function More({ className, ref }: { className: string; ref?: Ref<HTMLDetailsElement> }) {
+/** `open` starts it open, as when the search hit something it reveals. */
+export function More({
+  className,
+  open,
+  ref,
+}: {
+  className: string;
+  open?: boolean;
+  ref?: Ref<HTMLDetailsElement>;
+}) {
   return (
-    <details ref={ref} className={className}>
+    <details ref={ref} className={className} open={open}>
       <summary className={MORE_SUMMARY}>
         <span className={MORE_CLOSED}>+ more</span>
         <span className={MORE_OPEN}>less</span>

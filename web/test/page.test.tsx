@@ -400,10 +400,13 @@ test("a searched verb form is marked where it sits, in its lemma's table opened 
   });
 });
 
-test("a searched compound form opens the compound tenses; otherwise they wait behind their link", async () => {
+test("a searched compound form opens the compound tenses; otherwise they wait behind + more", async () => {
   await withDevSeed(async ({ db }) => {
     const plain = nth(await render(db, "andavano"), 1);
-    assert.match(panel(plain, "Indicativo"), /<details class="[^"]*"><summary [^>]*><span [^>]*>compound tenses<\/span>/);
+    const closed = panel(plain, "Indicativo");
+    assert.match(closed, /<details class="[^"]*"><summary [^>]*><span [^>]*>\+ more<\/span><span [^>]*>less<\/span>/);
+    assert.ok(closed.indexOf("Tempi composti") < closed.indexOf("<details"), "the control ends the compound tables");
+    assert.doesNotMatch(closed, /compound tenses/);
     const compound = await render(db, "sono andato");
     assert.match(panel(compound, "Indicativo"), /<details class="[^"]*" open=""><summary/);
   });
