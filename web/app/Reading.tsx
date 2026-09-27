@@ -61,7 +61,6 @@ function Block({ id, label, children }: { id: string; label: ReactNode; children
   );
 }
 
-// Definitions and examples ---------------------------------------------------
 
 /**
  * Two source glosses for `casa` are page furniture, not definitions (#28, #61).
@@ -368,7 +367,6 @@ function Disputes({ reviews }: { reviews: readonly Review[] }) {
   );
 }
 
-// Forms ------------------------------------------------------------------------
 
 /** The reading's own forms, in the shape they have. */
 function OwnForms({ reading }: { reading: Reading }) {

@@ -562,4 +562,14 @@ export const FIXTURE_LINES: string[] = [
     ],
     senses: [{ glosses: ["sostanza grassa liquida"] }],
   }),
+  // abbisognare — the release repeats its whole table (188 rows, twice 94);
+  // here the gerund and the present, each twice. Kept last, as above.
+  record({
+    word: "abbisognare", pos: "verb", pos_title: "Verbo",
+    forms: [0, 1].flatMap(() => [
+      { form: "abbisognando", tags: ["gerund"], raw_tags: ["verbo di prima coniugazione"] },
+      ...tenseForms(["abbisogno", "abbisogni", "abbisogna", "abbisogniamo", "abbisognate", "abbisognano"], "present"),
+    ]),
+    senses: [{ glosses: ["avere bisogno"] }],
+  }),
 ];

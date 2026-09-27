@@ -12,6 +12,7 @@ import type { SourceForm, GrammarClaim } from "@lexema/lookup/types.ts";
 import type { Conjugation, MoodTable, NonFinite, Person, Tense } from "./conjugation.ts";
 import { GENDER_LABEL, NUMBER_LABEL, NUMBERS, type Grid, type GridCell } from "./genderGrid.ts";
 import { MoodTabs } from "./MoodTabs";
+import { italianLabel } from "./italianLabels.ts";
 import type { UnplacedGroup } from "./unplaced.ts";
 import {
   CELL_SEPARATOR,
@@ -67,7 +68,6 @@ function Dash() {
   );
 }
 
-// The grid ------------------------------------------------------------------
 
 function GridCellView({ cell }: { cell: GridCell }) {
   if (cell.spellings.length === 0) {
@@ -145,11 +145,10 @@ export function SuperlativeGrid({ grid }: { grid: Grid }) {
   );
 }
 
-// Forms that take no cell ----------------------------------------------------
 
 /** A form's grammar as the source wrote it: its tags, then its raw tags. */
 function sourceLabel(claims: readonly GrammarClaim[]): string {
-  const texts = claims.flatMap((claim) => (claim.status === "missing" ? [] : [claim.sourceText]));
+  const texts = claims.flatMap((claim) => (claim.status === "missing" ? [] : [italianLabel(claim)]));
   return [...new Set(texts)].join(", ");
 }
 
@@ -167,7 +166,7 @@ export function OtherForms({ groups, links }: { groups: readonly UnplacedGroup[]
                   {sourceLabel(form.claims) || "—"}
                 </dt>
                 <dd className="m-0 font-mono text-text-strong" lang="it">
-                  {links ? <FormLink form={form} searched={false} /> : <span data-form={form.index}>{form.surface}</span>}
+                  {links ? <FormLink forms={[form]} searched={false} /> : <span data-form={form.index}>{form.surface}</span>}
                 </dd>
               </div>
             ))}
@@ -178,30 +177,40 @@ export function OtherForms({ groups, links }: { groups: readonly UnplacedGroup[]
   );
 }
 
-// The conjugation ------------------------------------------------------------
 
-function FormLink({ form, searched }: { form: SourceForm; searched: boolean }) {
+/** One spelling, linked to its search, carrying every source entry that spells it here. */
+function FormLink({ forms, searched }: { forms: readonly SourceForm[]; searched: boolean }) {
   return (
     <a
       className={searched ? FORM_LINK_SEARCHED : FORM_LINK}
-      href={searchHref(form.surface)}
+      href={searchHref(forms[0].surface)}
       lang="it"
-      data-form={form.index}
+      data-form={forms.map((form) => form.index).join(" ")}
       data-searched={searched ? "" : undefined}
     >
-      {form.surface}
+      {forms[0].surface}
     </a>
   );
 }
 
-/** Several spellings in one cell, each its own link: `va', va, vai`. */
+/**
+ * Every spelling of one slot, each once and each its own link: `va', va, vai`.
+ * A spelling the source files twice in the slot (`abbisognare` repeats its
+ * whole table) shows once and keeps both entries.
+ */
 function FormLinks({ forms, searched }: { forms: readonly SourceForm[]; searched: (form: SourceForm) => boolean }) {
+  const spellings: SourceForm[][] = [];
+  for (const form of forms) {
+    const same = spellings.find((group) => group[0].surface === form.surface);
+    if (same === undefined) spellings.push([form]);
+    else same.push(form);
+  }
   return (
     <>
-      {forms.map((form, i) => (
-        <span key={form.index}>
+      {spellings.map((group, i) => (
+        <span key={group[0].index}>
           {i > 0 && <span className={CELL_SEPARATOR}>, </span>}
-          <FormLink form={form} searched={searched(form)} />
+          <FormLink forms={group} searched={group.some(searched)} />
         </span>
       ))}
     </>

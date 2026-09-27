@@ -218,7 +218,7 @@ function gridRows(html: string): string[][] {
 
 /** Every form link in some markup: its text and where it points. */
 const formLinks = (html: string): { text: string; href: string; searched: boolean }[] =>
-  [...html.matchAll(/<a class="[^"]*" href="([^"]+)" lang="it" data-form="\d+"( data-searched="")?>([^<]+)<\/a>/g)].map((match) => ({
+  [...html.matchAll(/<a class="[^"]*" href="([^"]+)" lang="it" data-form="[\d ]+"( data-searched="")?>([^<]+)<\/a>/g)].map((match) => ({
     href: textOf(match[1]),
     searched: match[2] !== undefined,
     text: textOf(match[3]),
@@ -522,6 +522,16 @@ test("a searched non-finite form is marked in its table like any cell", async ()
   });
 });
 
+test("a spelling the source files twice in one conjugation slot shows once and keeps both entries", async () => {
+  await withFixture(async ({ db }) => {
+    const verb = nth(await render(db, "abbisognare"), 1);
+    assert.equal(patternsOf(verb, />abbisognando<\/a>/g), 1);
+    assert.match(verb, /data-form="0 7">abbisognando<\/a>/);
+    assert.equal(patternsOf(verb, />abbisogno<\/a>/g), 1);
+    assert.match(verb, /data-form="1 8">abbisogno<\/a>/);
+  });
+});
+
 test("a form with no gender of its own is not guessed into a record that states both", async () => {
   await withFixture(async ({ db }) => {
     // `fine` is tagged masculine and feminine; `fini` only plural. Which
@@ -531,7 +541,11 @@ test("a form with no gender of its own is not guessed into a record that states 
     assert.doesNotMatch(grid, />fini</);
     assert.deepEqual(gridRows(fine).map((row) => row[0]), ["", "maschile", "femminile"]);
     assert.match(fine, /data-unplaced="gender not given"><p class="[^"]*">Gender not given<\/p>/);
-    assert.match(fine.slice(fine.indexOf('data-unplaced="gender not given"')), /<span data-form="0">fini<\/span>/);
+    const unplaced = fine.slice(fine.indexOf('data-unplaced="gender not given"'));
+    assert.match(unplaced, /<span data-form="0">fini<\/span>/);
+    // Its grammar is labelled in Italian (ADR 0015), not as the tag `plural`.
+    assert.match(unplaced, /<dt class="[^"]*" lang="it">plurale<\/dt>/);
+    assert.doesNotMatch(unplaced, />plural</);
   });
 });
 

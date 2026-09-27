@@ -135,7 +135,8 @@ is two entries, a noun and a verb. The link searches the word `sala`, which
 shows both, instead of picking one, because picking one would invent a fact.
 
 **Grammar the source never stated.** A form the source does not give is a dash
-in its cell, with no note (design-system-manifest.md § "The result"). `casa`'s
+in its cell, with no note
+([design-system-manifest.md § "The result"](../design-system-manifest.md#the-result)). `casa`'s
 record states no gender, no number and no forms, so nothing can be placed in a
 grid and its reading has no *Forms* block.
 
@@ -164,7 +165,7 @@ recovered definition is matched by its page line. A sense the record carries is
 matched by text: exactly one sense has a gloss equal to the line's text, and no
 other `#` line in the section has that text. A gloss that only quotes the line
 matches nothing. When there is no match, the item stays numbered at the top of
-the list, as before (`filetto`'s heraldic items). A sense that opens such a list is a definition, never *Source
+the list, as before (`filetto`'s heraldic items). A sense that opens such a list is a definition, never
 furniture, even when its gloss starts like `casa`'s.
 
 **A lookup that did not happen.** No release, a D1 error, or a release built by
