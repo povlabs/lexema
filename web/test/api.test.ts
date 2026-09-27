@@ -358,6 +358,14 @@ test("fields returns the named sections and the always-returned fields, and refu
   await assertRefused("q=sale&fields=", "fields");
 });
 
+test("pos, match and fields refuse a name every object inherits", async () => {
+  for (const inherited of ["constructor", "toString", "__proto__", "hasOwnProperty"]) {
+    await assertRefused(`q=sale&pos=${inherited}`, "pos");
+    await assertRefused(`q=sale&match=${inherited}`, "match");
+    await assertRefused(`q=sale&fields=definitions,${inherited}`, "fields");
+  }
+});
+
 test("limit_definitions caps each result's definitions, and refuses anything but a positive integer", async () => {
   const full = (await lookupBody("q=sale")).results;
   const capped = (await lookupBody("q=sale&limit_definitions=2")).results;

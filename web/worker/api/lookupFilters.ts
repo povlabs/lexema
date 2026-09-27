@@ -42,8 +42,14 @@ export const PARTS_OF_SPEECH = [
 ] as const;
 export type PartOfSpeech = (typeof PARTS_OF_SPEECH)[number];
 
-/** The brief's spellings of the two codes the source abbreviates. */
-const POS_ALIASES: Readonly<Record<string, PartOfSpeech>> = { adjective: "adj", adverb: "adv" };
+/**
+ * The brief's spellings of the two codes the source abbreviates. A `Map`, so
+ * a name every object inherits (`constructor`, `__proto__`) is no alias.
+ */
+const POS_ALIASES: ReadonlyMap<string, PartOfSpeech> = new Map([
+  ["adjective", "adj"],
+  ["adverb", "adv"],
+]);
 
 /** `exact`: headword matches only. `form`: inflected-form matches only. `any`: both. */
 export const MATCHES = ["exact", "form", "any"] as const;
@@ -186,10 +192,15 @@ function single(params: URLSearchParams, parameter: string): string | undefined 
   return values[0];
 }
 
-function oneOf<T extends string>(parameter: string, value: string, allowed: readonly T[], aliases: Record<string, T> = {}): T {
-  const found = allowed.find((candidate) => candidate === value) ?? aliases[value];
+function oneOf<T extends string>(
+  parameter: string,
+  value: string,
+  allowed: readonly T[],
+  aliases: ReadonlyMap<string, T> = new Map(),
+): T {
+  const found = allowed.find((candidate) => candidate === value) ?? aliases.get(value);
   if (found !== undefined) return found;
-  const accepted = [...allowed, ...Object.keys(aliases)];
+  const accepted = [...allowed, ...aliases.keys()];
   throw new Refused({ parameter, message: `${parameter} must be one of ${quoted(accepted)}; got "${value}".` });
 }
 
