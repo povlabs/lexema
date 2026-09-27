@@ -33,11 +33,8 @@ of its SHA-256, `it-0c432803`.
   change, a reviewer does not fix what it finds, and neither merges. A reviewer
   prefixes each `gh` or `fabrika` call with
   `GH_TOKEN="$(gh auth token --user nothueypov)"` and never changes the active
-  account. Which model fills a role is configuration in the harness that runs it, and
-  Huey changes it whenever he likes. By default the reviewer runs on the same model
-  as the builder, unless Huey asks otherwise; it is always a separate agent
-  ([ADR 0005](.decisions/0005-codex-reviews-claude-builds.md),
-  [ADR 0014](.decisions/0014-agent-work-runs-in-any-harness.md)).
+  account. Which model fills a role is configuration in the harness that runs it
+  ([ADR 0005](.decisions/0005-codex-reviews-claude-builds.md)).
 - A pull request merges when every required verdict is PASS at its head, and only
   the `shipper` merges. `ready-for:human` holds it for Huey
   ([ADR 0006](.decisions/0006-codex-review-is-the-merge-gate.md)).
