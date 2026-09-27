@@ -87,6 +87,7 @@ test("a search is any request with a non-empty q, and /suggest is a suggestion",
   assert.equal(of("/?q="), undefined);
   assert.equal(of("/?q=%20%20"), undefined);
   assert.equal(of("/attribution"), undefined);
+  assert.equal(of("/developers"), undefined);
   assert.equal(of("/_next/static/app.js"), undefined);
 });
 

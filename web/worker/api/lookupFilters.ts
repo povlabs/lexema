@@ -75,7 +75,7 @@ export type Section = (typeof SECTIONS)[number];
 class Vocabulary<Label extends string> {
   private readonly spellings = new Map<string, Set<Label>>();
 
-  constructor(codes: Readonly<Record<Label, readonly string[]>>) {
+  constructor(readonly codes: Readonly<Record<Label, readonly string[]>>) {
     for (const [label, english] of Object.entries(codes) as [Label, readonly string[]][]) {
       for (const spelling of [label, ...english]) {
         const labels = this.spellings.get(spelling) ?? new Set<Label>();
@@ -129,6 +129,15 @@ const PERSON = new Vocabulary({
 
 const GENDER = new Vocabulary({ maschile: ["masculine"], femminile: ["feminine"] });
 const NUMBER = new Vocabulary({ singolare: ["singular"], plurale: ["plural"] });
+
+/** The grammar filters, by parameter: each Italian label and the English codes that name it. */
+export const GRAMMAR_CODES = {
+  mood: MOOD.codes,
+  tense: TENSE.codes,
+  person: PERSON.codes,
+  gender: GENDER.codes,
+  number: NUMBER.codes,
+} as const;
 
 type LabelOf<V> = V extends Vocabulary<infer Label> ? Label : never;
 

@@ -393,3 +393,45 @@ export const OPEN_MARK = `${AMBIGUOUS} normal-case tracking-normal`;
  * `<code>` already renders in `--font-mono` through Tailwind's base layer.
  */
 export const CODE_IDENTITY = "text-[0.85em] break-all";
+
+// The developers page (#153) ------------------------------------------------
+//
+// No board draws it: Huey ruled on #148 that it is built from the site's
+// existing tokens, faces, header and footer. It takes the attribution page's
+// headings and prose, and the result page's parts where it has the same kind
+// of thing: a reading's heading for an endpoint, a block's grey label, the
+// thin rule between readings, the jump links. Code sits on `surface-raised`
+// inside a hairline `border`, as the search bar does.
+
+/** Prose held to the width definitions are read at. */
+export const REFERENCE_PARAGRAPH = "my-4 max-w-[48rem]";
+/** A section after the first sits under a thin rule, as a reading does. */
+export const REFERENCE_SECTION = "mt-10 border-t border-border pt-6 sm:mt-12 sm:pt-8";
+/** An endpoint: its heading and blocks, a thin rule before every one after the first. */
+export const REFERENCE_ENDPOINT = READING;
+export const REFERENCE_ENDPOINTS = READINGS;
+/** `GET · /api/v1/lookup`: the method in the accent, as a reading's number is. */
+export const REFERENCE_ENDPOINT_HEADING = READING_HEADING;
+export const REFERENCE_METHOD = READING_NUMBER;
+export const REFERENCE_PATH = "font-mono font-normal text-[1.05rem] break-all";
+
+/** Name and meaning in two columns; stacked on a phone. */
+export const REFERENCE_ROWS = "m-0 grid max-w-[60rem] grid-cols-1 gap-x-8 gap-y-1 sm:grid-cols-[13rem_1fr] sm:gap-y-3";
+export const REFERENCE_TERM = "m-0 font-mono text-[0.95rem] text-text-strong wrap-anywhere max-sm:mt-3 max-sm:first:mt-0";
+export const REFERENCE_REQUIRED = "ml-2 font-sans text-[0.75rem] text-text-muted";
+export const REFERENCE_DESCRIPTION = "m-0 font-sans text-[0.9rem] text-text";
+
+/** A table of plain rows: grey heads, no box. */
+export const REFERENCE_TABLE = "border-collapse text-left";
+export const REFERENCE_HEAD = "p-0 pr-10 pb-2 align-bottom font-sans text-[0.75rem] font-normal text-text-muted max-sm:pr-4";
+export const REFERENCE_CELL = "p-0 py-1 pr-10 align-baseline font-sans text-[0.9rem] text-text max-sm:pr-4";
+/** A value in a table; on a phone a two-word label wraps rather than pushing the page sideways. */
+export const REFERENCE_CELL_CODE = "p-0 py-1 pr-10 align-baseline font-mono text-[0.95rem] text-text-strong sm:whitespace-nowrap max-sm:pr-4 max-sm:text-[0.85rem]";
+
+/** A request or a response, as it is sent or received. */
+export const CODE_BLOCK =
+  "m-0 max-w-[60rem] overflow-x-auto rounded-[4px] border border-border bg-surface-raised p-4 font-mono text-[0.8rem] leading-relaxed text-text sm:text-[0.85rem]";
+/** Code inside a sentence. */
+export const CODE_INLINE = "font-mono text-[0.9em] text-text-strong";
+/** An example's two blocks, request then response. */
+export const EXAMPLE_BLOCKS = "flex flex-col gap-3";
