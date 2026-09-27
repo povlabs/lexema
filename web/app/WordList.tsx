@@ -7,6 +7,7 @@ import { searchHref } from "./Forms";
 import {
   BLOCK,
   BLOCK_LABEL,
+  WORD_BLOCK,
   MORE_CLOSED,
   MORE_OPEN,
   WORD_DOT,
@@ -57,7 +58,7 @@ export function WordList({
     );
   };
   return (
-    <section className={BLOCK} aria-labelledby={id}>
+    <section className={level === "h2" ? WORD_BLOCK : BLOCK} aria-labelledby={id}>
       <Heading className={BLOCK_LABEL} id={id}>
         {label}
       </Heading>

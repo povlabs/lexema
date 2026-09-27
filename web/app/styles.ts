@@ -41,7 +41,11 @@ export const TOP_BAR_INNER = `${COLUMN} flex h-16 items-center`;
 export const TOP_BAR_NAME = `font-serif text-xl text-text-strong no-underline ${FOCUS_RING}`;
 
 /** C2: the name at the left, four small links at the right. */
-export const SITE_FOOTER = "mt-16 border-t border-border";
+/**
+ * The site footer's rule sits the Source line's gap below the page: the
+ * shell's `pb-4` plus this margin make 48px, 36px on a phone.
+ */
+export const SITE_FOOTER = "mt-5 border-t border-border sm:mt-8";
 export const SITE_FOOTER_INNER = `${COLUMN} flex flex-wrap items-center justify-between gap-4 py-8`;
 export const SITE_FOOTER_NAME = "font-serif text-base text-text-strong";
 export const SITE_FOOTER_LINKS = "m-0 flex list-none flex-wrap gap-x-6 gap-y-2 p-0";
@@ -135,14 +139,24 @@ export const JUMP_LINK = `font-sans text-[0.85rem] text-text no-underline ${FOCU
 export const JUMP_NUMBER = "mr-1.5 text-accent";
 
 /** A reading: a heading and its blocks, with a thin rule before every one after the first. */
-export const READINGS = "mt-10 sm:mt-14";
-export const READING = "scroll-mt-6 border-t border-border py-9 first:border-t-0 first:pt-0 sm:py-10";
+/**
+ * The page's vertical rhythm, one value per kind of gap (desktop / phone):
+ * 40 / 28 on either side of a rule between readings and before the first
+ * reading; 28 / 22 between blocks inside a reading; 32 / 24 between the word's
+ * own blocks; 48 / 36 above and below Source. Each gap is the top edge of the
+ * thing below it, so an empty section adds nothing.
+ */
+export const READINGS = "mt-7 sm:mt-10";
+export const READING =
+  "scroll-mt-6 mt-7 border-t border-border pt-7 first:mt-0 first:border-t-0 first:pt-0 sm:mt-10 sm:pt-10";
 export const READING_HEADING = "m-0 flex items-baseline gap-2.5 font-sans text-[0.95rem] font-semibold text-text-strong";
 export const READING_NUMBER = "font-normal text-accent";
 export const READING_DOT = "font-normal text-text-muted";
 
 /** A small grey label over a block: Definitions, Forms, Etymology, Synonyms. */
-export const BLOCK = "mt-8";
+export const BLOCK = "mt-[1.375rem] sm:mt-7";
+/** A block of the word's own facts, after the readings; the first sits right under the rule. */
+export const WORD_BLOCK = "mt-6 first:mt-0 sm:mt-8";
 export const BLOCK_LABEL = "m-0 mb-3 font-sans text-[0.8rem] font-normal text-text-muted";
 export const BLOCK_LABEL_WORD = "ml-2 font-semibold text-text-strong";
 
@@ -248,8 +262,8 @@ export const COMPOUND = "group mt-4";
 export const COMPOUND_SUMMARY = `inline-block cursor-pointer list-none font-sans text-[0.85rem] text-accent [&::-webkit-details-marker]:hidden ${FOCUS_RING}`;
 export const COMPOUND_TABLES = "mt-4";
 
-export const WORD_FACTS = "border-t border-border pt-10";
-export const ETYMOLOGY = "m-0 max-w-[48rem] font-serif text-[1.1rem] text-text";
+export const WORD_FACTS = "mt-7 border-t border-border pt-7 sm:mt-10 sm:pt-10";
+export const ETYMOLOGY = "m-0 max-w-[48rem] font-serif text-[1.1rem] text-text [&+&]:mt-3";
 export const WORD_LIST = "m-0 flex list-none flex-wrap items-baseline gap-x-3 gap-y-2 p-0";
 export const WORD_LIST_ITEM = "flex items-baseline gap-3";
 /** The words past the first eight: in the document, shown once `+ N more` is open. */
@@ -261,7 +275,7 @@ export const WORD_MORE = "group inline";
 export const WORD_MORE_SUMMARY = `inline cursor-pointer list-none font-sans text-[0.8rem] text-accent [&::-webkit-details-marker]:hidden ${FOCUS_RING}`;
 
 /** `Source ↗`, with the same space above and below it. */
-export const SOURCE_LINE = "mt-12 flex flex-wrap items-center gap-x-3 gap-y-1 font-sans text-[0.8rem] text-text-muted";
+export const SOURCE_LINE = "mt-9 sm:mt-12 flex flex-wrap items-center gap-x-3 gap-y-1 font-sans text-[0.8rem] text-text-muted";
 export const SOURCE_LINK = `inline-flex items-center gap-1.5 text-text-muted no-underline hover:text-text ${FOCUS_RING}`;
 export const ICON = "size-3.5";
 

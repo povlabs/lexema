@@ -12,6 +12,7 @@ import { WordList } from "./WordList";
 import type { WordPage } from "./wordPage.ts";
 import {
   BLOCK_LABEL,
+  WORD_BLOCK,
   ETYMOLOGY,
   ICON,
   JUMP_LINK,
@@ -88,7 +89,7 @@ function WordFactsView({ facts }: { facts: WordFacts }) {
   return (
     <div className={WORD_FACTS}>
       {facts.etymologies.length > 0 && (
-        <section aria-labelledby="etymology">
+        <section className={WORD_BLOCK} aria-labelledby="etymology">
           <h2 className={BLOCK_LABEL} id="etymology">
             Etymology
           </h2>
