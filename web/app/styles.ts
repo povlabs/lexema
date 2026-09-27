@@ -235,12 +235,13 @@ export const TENSE_PAIRS = "flex flex-col gap-5 sm:flex-row sm:gap-0";
 /** On a phone a pair fills the width with fixed columns, so a long form wraps rather than scrolls. */
 export const TENSE_TABLE = "border-collapse text-left max-sm:w-full max-sm:table-fixed";
 export const PERSON_HEAD = "w-[5.5rem] p-0 sm:w-28";
-export const PERSON_HEAD_REPEAT = `${PERSON_HEAD} sm:hidden`;
+/** A second table's person column: drawn on a phone, kept for screen readers on a wide screen. */
+export const PERSON_HEAD_REPEAT = `${PERSON_HEAD} sm:sr-only`;
 export const TENSE_HEAD = "p-0 pb-2 pr-4 font-sans text-[0.75rem] font-normal text-text-muted sm:w-48";
 export const TENSE_HEAD_SEARCHED = "p-0 pb-2 pr-4 font-sans text-[0.75rem] font-semibold text-accent sm:w-48";
 export const PERSON = "p-0 py-1 pr-3 align-baseline whitespace-nowrap font-sans text-[0.8rem] font-normal text-text-muted";
 export const PERSON_SEARCHED = "p-0 py-1 pr-3 align-baseline whitespace-nowrap font-sans text-[0.8rem] font-semibold text-accent";
-export const PERSON_REPEAT = "sm:hidden";
+export const PERSON_REPEAT = "sm:sr-only";
 export const TENSE_CELL = "p-0 py-1 pr-4 align-baseline font-mono text-[1rem] text-text-strong wrap-anywhere max-sm:pr-2 max-sm:text-[0.8rem]";
 export const CELL_SEPARATOR = "text-text-muted";
 

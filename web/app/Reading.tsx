@@ -81,11 +81,12 @@ type DefinitionItem =
   | { from: "page"; definition: RecoveredDefinition; examples: string[] };
 
 /**
- * The reading's definitions in order, each with its examples. An example the
- * record holds that is really a recovered definition is shown once, as that
- * definition.
+ * The reading's definitions in order, each with its examples, and the examples
+ * of the furniture senses left out, which stay reachable behind the reading's
+ * control. An example the record holds that is really a recovered definition
+ * is shown once, as that definition.
  */
-function definitionsOf(reading: Reading): DefinitionItem[] {
+function definitionsOf(reading: Reading): { items: DefinitionItem[]; furnitureExamples: string[] } {
   const heldAsDefinition = new Set(
     everyRecovered(reading).flatMap((definition) => definition.heldAsExample?.jsonPointer ?? []),
   );
@@ -93,16 +94,16 @@ function definitionsOf(reading: Reading): DefinitionItem[] {
   // instead; a reading with nothing else shows it verbatim rather than nothing.
   const furniture = (sense: Sense) => isEntryFurniture(sense, reading.word);
   const hasOwn = reading.recovered.length > 0 || reading.senses.some((sense) => !furniture(sense));
-  return [
+  const examplesOf = (sense: Sense): string[] =>
+    sense.examples.filter((example) => !heldAsDefinition.has(example.ref.jsonPointer)).map((example) => example.text);
+  const items: DefinitionItem[] = [
     ...reading.senses
       .filter((sense) => !hasOwn || !furniture(sense))
       .map(
         (sense): DefinitionItem => ({
           from: "record",
           sense,
-          examples: sense.examples
-            .filter((example) => !heldAsDefinition.has(example.ref.jsonPointer))
-            .map((example) => example.text),
+          examples: examplesOf(sense),
         }),
       ),
     ...reading.recovered.map(
@@ -113,7 +114,16 @@ function definitionsOf(reading: Reading): DefinitionItem[] {
       }),
     ),
   ];
+  const furnitureExamples = hasOwn ? reading.senses.filter(furniture).flatMap(examplesOf) : [];
+  return { items, furnitureExamples };
 }
+
+/** How many examples a definition's nested items carry, at any depth. */
+const nestedExamples = (items: readonly RecoveredDefinition[]): number =>
+  items.reduce((count, item) => count + item.examples.length + nestedExamples(item.items), 0);
+
+const nestedItemsOf = (item: DefinitionItem): readonly RecoveredDefinition[] =>
+  item.from === "record" ? item.sense.recoveredItems : item.definition.items;
 
 /**
  * The words a sense's `form_of` edges name, to link where its gloss writes
@@ -136,22 +146,40 @@ function findLemma(text: string, lemma: string): number {
   return at;
 }
 
-/** A gloss with the last whole-word occurrence of a lemma it names linked to its search. */
-function LinkedGloss({ text, lemmas }: { text: string; lemmas: readonly string[] }) {
-  for (const lemma of lemmas) {
-    const at = findLemma(text, lemma);
-    if (at === -1) continue;
-    return (
-      <>
-        {text.slice(0, at)}
-        <a className={GLOSS_LINK} href={searchHref(lemma)}>
-          {lemma}
-        </a>
-        {text.slice(at + lemma.length)}
-      </>
-    );
+/**
+ * Every lemma a gloss writes as a whole word, where it writes it last, in text
+ * order and never overlapping. The one place a gloss is matched against its
+ * lemmas, so what `LinkedGloss` links and what `LemmaLines` counts as linked
+ * cannot disagree.
+ */
+function lemmaMatches(text: string, lemmas: readonly string[]): { at: number; lemma: string }[] {
+  const found = [...new Set(lemmas)]
+    .map((lemma) => ({ at: findLemma(text, lemma), lemma }))
+    .filter((match) => match.at !== -1)
+    .sort((a, b) => a.at - b.at || b.lemma.length - a.lemma.length);
+  const kept: { at: number; lemma: string }[] = [];
+  for (const match of found) {
+    const last = kept[kept.length - 1];
+    if (last === undefined || match.at >= last.at + last.lemma.length) kept.push(match);
   }
-  return <>{text}</>;
+  return kept;
+}
+
+/** A gloss with each lemma it names linked to its search. */
+function LinkedGloss({ text, lemmas }: { text: string; lemmas: readonly string[] }) {
+  const parts: ReactNode[] = [];
+  let from = 0;
+  for (const { at, lemma } of lemmaMatches(text, lemmas)) {
+    parts.push(text.slice(from, at));
+    parts.push(
+      <a key={at} className={GLOSS_LINK} href={searchHref(lemma)}>
+        {lemma}
+      </a>,
+    );
+    from = at + lemma.length;
+  }
+  parts.push(text.slice(from));
+  return <>{parts}</>;
 }
 
 /** The labels the source put on a sense — `figurato`, `scuola` — before its gloss. */
@@ -169,6 +197,11 @@ function SubItems({ items }: { items: readonly RecoveredDefinition[] }) {
             {item.labels.length > 0 && <span className={SENSE_LABEL}>({item.labels.join(", ")}) </span>}
             {item.text}
           </p>
+          {item.examples.map((example) => (
+            <p key={example.ref.line} className={EXAMPLE_EXTRA}>
+              <span lang="it">{example.text}</span>
+            </p>
+          ))}
           <SubItems items={item.items} />
         </li>
       ))}
@@ -248,21 +281,25 @@ const plural = (count: number, noun: string): string => `${count} more ${noun}${
 
 /**
  * The first definition with one example, then one control that shows the
- * rest: the other definitions, and every example not yet shown. The example
+ * rest: the other definitions, and every example not yet shown, including
+ * those of nested items and of furniture senses left out. The example
  * under the first definition is its own; when it has none, the reading's first
  * example, marked with the definition it belongs to and not shown again there.
  * Everything is in the document whether the control is open or not.
  */
 function Definitions({ reading }: { reading: Reading }) {
-  const items = definitionsOf(reading);
+  const { items, furnitureExamples } = definitionsOf(reading);
   if (items.length === 0) return null;
   const [first] = items;
   const borrowed = first.examples.length === 0 ? items.findIndex((item) => item.examples.length > 0) : -1;
   const firstExtra = first.examples.slice(1);
   const rest = items.slice(DEFINITION_SLICE);
+  // Examples the closed control hides outside the other definitions: the first
+  // definition's others, those of its nested items, and the furniture's.
+  const hiddenExamples = firstExtra.length + nestedExamples(nestedItemsOf(first)) + furnitureExamples.length;
   const label = [
     ...(rest.length > 0 ? [plural(rest.length, "definition")] : []),
-    ...(firstExtra.length > 0 ? [plural(firstExtra.length, "example")] : []),
+    ...(hiddenExamples > 0 ? [plural(hiddenExamples, "example")] : []),
   ].join(" · ");
   return (
     <Block id={`definitions-${reading.recordId}`} label="Definitions">
@@ -302,6 +339,9 @@ function Definitions({ reading }: { reading: Reading }) {
                 })}
               </ol>
             )}
+            {furnitureExamples.map((text, i) => (
+              <Example key={`furniture-${i}`} text={text} />
+            ))}
           </details>
         )}
       </div>
@@ -319,7 +359,9 @@ function LemmaLines({ reading }: { reading: Reading }) {
     reading.senses.some(
       (sense) =>
         pointer.startsWith(`/senses/${sense.index}/`) &&
-        sense.glosses.some((gloss) => findLemma(gloss.text, word) !== -1),
+        sense.glosses.some((gloss) =>
+          lemmaMatches(gloss.text, lemmaWordsOf(reading, sense)).some((match) => match.lemma === word),
+        ),
     );
   const unlinked = new Set<string>();
   for (const link of reading.lemmaLinks) {

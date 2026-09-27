@@ -551,6 +551,64 @@ test("an identical spelling with the same grammar shows once in an unplaced grou
   });
 });
 
+/** The page for a query after `change` edits the readings the lookup returned. */
+async function renderChanged(db: DatabaseSync, query: string, change: (readings: Reading[]) => void): Promise<string> {
+  const answer = await attempt(db, query);
+  assert.equal(answer.outcome, "found");
+  if (answer.outcome !== "found") throw new Error("unreachable");
+  change(answer.readings);
+  return renderToStaticMarkup(
+    <SearchPage raw={query}>
+      <Outcome raw={query} attempt={answer} />
+    </SearchPage>,
+  );
+}
+
+const recoveredExample = (text: string, line: number) => ({
+  text,
+  ref: { wiki: "it.wiktionary.org", title: "x", revisionId: 1, line },
+});
+
+test("examples on nested items and on hidden furniture senses stay reachable behind the control", async () => {
+  // No committed record carries either, so the lookup's own readings are
+  // given one of each before the page renders them.
+  await withLines(
+    [
+      ...(await readFile(join(REPO, "fixtures/dev-seed.jsonl"), "utf8")).trim().split("\n"),
+      ...(await readFile(join(REPO, "fixtures/accollato.jsonl"), "utf8")).trim().split("\n"),
+    ],
+    async ({ db }) => {
+      const html = await renderChanged(db, "accollato", (readings) => {
+        const heraldic = readings[0].senses.find((sense) => sense.recoveredItems.length > 0);
+        assert.ok(heraldic);
+        heraldic.recoveredItems[0].examples.push(recoveredExample("uno scudo accollato a un altro", 9001));
+      });
+      assert.match(html, new RegExp(`<p class="${esc(EXAMPLE_EXTRA)}"><span lang="it">uno scudo accollato a un altro</span></p>`));
+    },
+    await loadFixturePages(join(REPO, "fixtures")),
+  );
+  await withDevSeedAndPages(async ({ db }) => {
+    const html = await renderChanged(db, "casa", (readings) => {
+      const citazioni = readings[0].senses.find((sense) => sense.glosses[0]?.text === "casa ( citazioni)");
+      assert.ok(citazioni);
+      citazioni.examples.push({ text: "la casa è dove si torna", ref: { ...citazioni.ref, jsonPointer: "/senses/1/examples/0" } });
+    });
+    const reading = nth(html, 1);
+    assert.doesNotMatch(textOf(reading), /\( citazioni\)/, "the furniture gloss stays hidden");
+    const control = reading.slice(reading.indexOf("<details"));
+    assert.match(textOf(control), /la casa è dove si torna/, "its example is behind the control");
+    assert.match(control, />6 more definitions · 1 more example</);
+  });
+});
+
+test("a gloss that names two lemmas links both, and neither is repeated on a line of its own", async () => {
+  await withFixture(async ({ db }) => {
+    const vadi = nth(await render(db, "vadi"), 1);
+    assert.match(vadi, /forma antica di <a class="[^"]*" href="\/\?q=andare">andare<\/a>, come di <a class="[^"]*" href="\/\?q=salire">salire<\/a>/);
+    assert.doesNotMatch(vadi, /Form of/);
+  });
+});
+
 test("a proper name gets no grid and no generated articles; its forms stay visible", async () => {
   await withFixture(async ({ db }) => {
     const mercurio = nth(await render(db, "Mercurio"), 1);

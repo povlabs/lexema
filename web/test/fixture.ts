@@ -597,4 +597,15 @@ export const FIXTURE_LINES: string[] = [
     forms: [{ form: "Mercuria", tags: ["plural"] }],
     senses: [{ glosses: ["pianeta del sistema solare"] }],
   }),
+  // vadi — a form whose one sense names two lemmas in its gloss and in its
+  // form_of edges, both of which this archive has. Kept last, as above.
+  record({
+    word: "vadi", pos: "verb", pos_title: "Voce verbale",
+    tags: ["form-of"],
+    senses: [{
+      glosses: ["forma antica di andare, come di salire"],
+      tags: ["form-of"],
+      form_of: [{ word: "andare" }, { word: "salire" }],
+    }],
+  }),
 ];
