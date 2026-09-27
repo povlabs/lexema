@@ -241,3 +241,31 @@ export async function verifyTurnstile(secret: string, token: string | undefined,
   const verdict = (await response.json()) as { success?: boolean };
   return verdict.success === true;
 }
+
+/** Why the box could not get its opening token: opened too often, or anything else. */
+export type OpeningTrouble = "open-limited" | "open-failed";
+
+/** What the box says when it could not open, above a Try again button. */
+export const OPENING_TROUBLE: Readonly<Record<OpeningTrouble, string>> = {
+  "open-limited": "You have opened this box too often in the last minute. Wait a moment, then try again.",
+  "open-failed": "The box could not get ready to send. Try again in a moment.",
+};
+
+/**
+ * Ask the server for this opening's token (`POST /report/open`). The box calls
+ * it when it opens and again from its Try again button, so a failed opening is
+ * never final. A 429 is the opening limit, told apart from the hourly report
+ * limit.
+ */
+export async function requestOpening(send: typeof fetch): Promise<{ token: string } | { trouble: OpeningTrouble }> {
+  try {
+    const response = await send("/report/open", { method: "POST" });
+    if (response.status === 429) return { trouble: "open-limited" };
+    const opened = (await response.json()) as { outcome?: string; token?: unknown };
+    return opened.outcome === "opened" && typeof opened.token === "string" && opened.token !== ""
+      ? { token: opened.token }
+      : { trouble: "open-failed" };
+  } catch {
+    return { trouble: "open-failed" };
+  }
+}

@@ -20,7 +20,9 @@ import {
   REPORT_MIN_OPEN_MS,
   REPORTS_PER_HOUR,
   afterAnswer,
+  OPENING_TROUBLE,
   openReport,
+  requestOpening,
   readSubmission,
   receiveReport,
   turnstileConfig,
@@ -240,4 +242,32 @@ test("after any answer that did not store the report, the box drops its Turnstil
   assert.deepEqual(afterAnswer({ outcome: "sent" }), { status: "sent", keepChallenge: true });
   assert.equal(afterAnswer({ outcome: "rejected", reason: "challenge" }).status, "challenge");
   assert.equal(afterAnswer({ outcome: "rejected", reason: "expired" }).status, "expired");
+});
+
+test("a failed opening is not final: asking again gets a token, and a 429 says the box was opened too often", async () => {
+  // The box's own request, against a server that fails once, then answers.
+  const replies = [
+    Response.json({ outcome: "failed" }, { status: 503 }),
+    Response.json({ outcome: "opened", token: "fresh-token" }),
+  ];
+  const calls: string[] = [];
+  const server = (async (url: string | URL | Request, init?: RequestInit) => {
+    calls.push(`${init?.method} ${String(url)}`);
+    const reply = replies.shift();
+    if (reply === undefined) throw new Error("no more replies");
+    return reply;
+  }) as typeof fetch;
+  assert.deepEqual(await requestOpening(server), { trouble: "open-failed" });
+  assert.deepEqual(await requestOpening(server), { token: "fresh-token" }, "the retry gets a token");
+  assert.deepEqual(calls, ["POST /report/open", "POST /report/open"]);
+
+  const offline = (async () => {
+    throw new TypeError("network down");
+  }) as typeof fetch;
+  assert.deepEqual(await requestOpening(offline), { trouble: "open-failed" });
+
+  const limited = (async () => Response.json({ outcome: "limited" }, { status: 429 })) as typeof fetch;
+  assert.deepEqual(await requestOpening(limited), { trouble: "open-limited" });
+  assert.match(OPENING_TROUBLE["open-limited"], /opened this box too often/);
+  assert.doesNotMatch(OPENING_TROUBLE["open-limited"], /hour/, "not the hourly report limit");
 });

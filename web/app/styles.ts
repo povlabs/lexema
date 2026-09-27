@@ -310,6 +310,8 @@ export const REPORT_CHIP =
 export const REPORT_DETAILS =
   "block min-h-28 w-full resize-y rounded-[4px] border border-border-strong bg-surface px-3.5 py-3 font-sans text-[0.9rem] text-text-strong outline-none placeholder:text-text-muted focus:border-accent";
 export const REPORT_ERROR = "m-0 mt-4 font-sans text-[0.8rem] text-warning";
+/** Try again, after the box could not get its opening token. */
+export const REPORT_RETRY = `ml-2 cursor-pointer border-0 bg-transparent p-0 font-sans text-[0.8rem] text-accent underline ${FOCUS_RING}`;
 /** "No account needed." on its own line on a phone, Cancel and Send together on the right. */
 export const REPORT_FOOTER = "mt-7 flex flex-wrap items-center justify-end gap-x-6 gap-y-3";
 export const REPORT_NOTE = "m-0 mr-auto font-sans text-[0.75rem] text-text-muted max-sm:w-full";

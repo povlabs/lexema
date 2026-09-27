@@ -10,7 +10,17 @@
 
 import { Dialog } from "@base-ui/react/dialog";
 import { useEffect, useId, useRef, useState } from "react";
-import { afterAnswer, REPORT_CHOICE_LABEL, REPORT_CHOICES, REPORT_DETAILS_LIMIT, type ReportAnswer, type ReportChoice } from "./report.ts";
+import {
+  afterAnswer,
+  OPENING_TROUBLE,
+  REPORT_CHOICE_LABEL,
+  REPORT_CHOICES,
+  REPORT_DETAILS_LIMIT,
+  requestOpening,
+  type OpeningTrouble,
+  type ReportAnswer,
+  type ReportChoice,
+} from "./report.ts";
 import {
   REPORT_BACKDROP,
   REPORT_CANCEL,
@@ -25,6 +35,7 @@ import {
   REPORT_NOTE,
   REPORT_OPTIONAL,
   REPORT_POPUP,
+  REPORT_RETRY,
   REPORT_SEND,
   REPORT_SENT_CHECK,
   REPORT_SENT_TEXT,
@@ -41,14 +52,17 @@ export interface ReportReading {
   posTitle: string;
 }
 
-type Status = "editing" | "sending" | ReturnType<typeof afterAnswer>["status"];
+type Status = "editing" | "sending" | ReturnType<typeof afterAnswer>["status"] | OpeningTrouble;
 
 const TROUBLE: Partial<Record<Status, string>> = {
   limited: "Too many reports from you in the last hour. Try again later.",
   challenge: "The check that you are a person did not pass. Try again.",
   expired: "This box has been open too long. Close it and open it again.",
   failed: "The report could not be sent. Try again in a moment.",
+  ...OPENING_TROUBLE,
 };
+
+const isOpeningTrouble = (status: Status): status is OpeningTrouble => status === "open-limited" || status === "open-failed";
 
 const TURNSTILE_SCRIPT = "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit";
 
@@ -129,13 +143,12 @@ export function ReportDialog({ word, readings, siteKey }: { word: string; readin
 
   /** Ask the server for the token this opening is timed against. */
   async function requestOpenToken() {
-    try {
-      const response = await fetch("/report/open", { method: "POST" });
-      const opened = (await response.json()) as { outcome: string; token?: string };
-      if (opened.outcome === "opened" && opened.token !== undefined) setOpenToken(opened.token);
-      else setStatus(response.status === 429 ? "limited" : "failed");
-    } catch {
-      setStatus("failed");
+    const opening = await requestOpening(fetch);
+    if ("token" in opening) {
+      setOpenToken(opening.token);
+      setStatus((current) => (isOpeningTrouble(current) ? "editing" : current));
+    } else {
+      setStatus(opening.trouble);
     }
   }
 
@@ -299,6 +312,11 @@ export function ReportDialog({ word, readings, siteKey }: { word: string; readin
               {TROUBLE[status] !== undefined && (
                 <p className={REPORT_ERROR} role="alert">
                   {TROUBLE[status]}
+                  {isOpeningTrouble(status) && (
+                    <button type="button" className={REPORT_RETRY} onClick={() => void requestOpenToken()}>
+                      Try again
+                    </button>
+                  )}
                 </p>
               )}
 
