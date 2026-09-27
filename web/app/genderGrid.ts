@@ -11,8 +11,10 @@
 //   and lists `belli` tagged plural only. When the record states both (`fine`
 //   lists `fini` tagged plural), the form's gender is not guessed: it is
 //   unplaced, under "Gender not given".
-// - The headword is the citation form, so it sits in the singolare column when
-//   its record states no usable number (`andare` the noun, `bello` invariable).
+// - The headword sits in every number its record states (`khmer` is tagged
+//   singular and plural, so it fills both), and, as the citation form, in the
+//   singolare column when its record states no usable number (`andare` the
+//   noun, `bello` invariable).
 // - A form with a degree other than positive is a comparison, not an agreement
 //   cell: a superlative goes to the superlativo grid, anything else to
 //   `unplaced`.
@@ -84,6 +86,10 @@ function statedValues(claims: readonly GrammarClaim[], dimension: string): strin
 const gendersOf = (claims: readonly GrammarClaim[]): Gender[] =>
   GENDERS.filter((gender) => statedValues(claims, "gender").includes(gender));
 
+/** Every agreeing number the claims state, in NUMBERS order. */
+const numbersOf = (claims: readonly GrammarClaim[]): GrammaticalNumber[] =>
+  NUMBERS.filter((number) => statedValues(claims, "number").includes(number));
+
 function numberOf(claims: readonly GrammarClaim[]): GrammaticalNumber | undefined {
   const numbers = NUMBERS.filter((number) => statedValues(claims, "number").includes(number));
   return numbers.length === 1 ? numbers[0] : undefined;
@@ -148,15 +154,15 @@ export function agreementOf(reading: Reading): Agreement {
   const unplaced: { form: SourceForm; missing: Missing }[] = [];
   const recordGenders = gendersOf(reading.grammar.record);
 
-  if (inflects(reading) && reading.lemmaLinks.length === 0) {
-    const number = numberOf(reading.grammar.record) ?? "singular";
-    for (const gender of recordGenders) plain.put(gender, number, "headword", reading.word);
-  } else if (inflects(reading) && reading.forms.length > 0) {
+  const stated = numbersOf(reading.grammar.record);
+  const headwordNumbers: GrammaticalNumber[] =
+    !inflects(reading) ? []
+    : reading.lemmaLinks.length === 0 ? (stated.length > 0 ? stated : ["singular"])
     // A form reading with a table of its own (`bella`) is placed in it too.
-    const number = numberOf(reading.grammar.record);
-    if (number !== undefined) {
-      for (const gender of recordGenders) plain.put(gender, number, "headword", reading.word);
-    }
+    : reading.forms.length > 0 ? stated
+    : [];
+  for (const number of headwordNumbers) {
+    for (const gender of recordGenders) plain.put(gender, number, "headword", reading.word);
   }
 
   for (const form of reading.forms) {

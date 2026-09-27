@@ -532,6 +532,25 @@ test("a spelling the source files twice in one conjugation slot shows once and k
   });
 });
 
+test("a headword whose record states both numbers fills both columns", async () => {
+  await withFixture(async ({ db }) => {
+    const khmer = nth(await render(db, "khmer"), 1);
+    assert.deepEqual(gridRows(khmer).map((row) => row.map((cell) => cell.split(/(?=il |un |i |dei |gli |degli )/)[0])), [
+      ["", "singolare", "plurale"],
+      ["maschile", "khmer", "khmer"],
+    ]);
+  });
+});
+
+test("an identical spelling with the same grammar shows once in an unplaced group", async () => {
+  await withFixture(async ({ db }) => {
+    const alpe = nth(await render(db, "alpe"), 1);
+    const group = alpe.slice(alpe.indexOf('data-unplaced="gender not given"'));
+    assert.equal(patternsOf(group, />alpi</g), 1);
+    assert.match(group, /<span data-form="0 1">alpi<\/span>/);
+  });
+});
+
 test("a form with no gender of its own is not guessed into a record that states both", async () => {
   await withFixture(async ({ db }) => {
     // `fine` is tagged masculine and feminine; `fini` only plural. Which

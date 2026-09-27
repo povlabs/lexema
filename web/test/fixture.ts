@@ -572,4 +572,21 @@ export const FIXTURE_LINES: string[] = [
     ]),
     senses: [{ glosses: ["avere bisogno"] }],
   }),
+  // khmer and alpe — as the release has them. `khmer` the noun is tagged
+  // masculine, singular and plural, with no forms; `alpe` is tagged both
+  // genders and lists `alpi` twice, tagged plural only. Kept last, as above.
+  record({
+    word: "khmer", pos: "noun", pos_title: "Sostantivo",
+    tags: ["masculine", "plural", "singular"],
+    senses: [{ glosses: ["lingua della Cambogia"] }],
+  }),
+  record({
+    word: "alpe", pos: "noun", pos_title: "Sostantivo",
+    tags: ["feminine", "masculine", "singular"],
+    forms: [
+      { form: "alpi", tags: ["plural"] },
+      { form: "alpi", tags: ["plural"] },
+    ],
+    senses: [{ glosses: ["montagna alta"] }],
+  }),
 ];

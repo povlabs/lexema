@@ -68,7 +68,6 @@ function Dash() {
   );
 }
 
-
 function GridCellView({ cell }: { cell: GridCell }) {
   if (cell.spellings.length === 0) {
     return (
@@ -145,38 +144,56 @@ export function SuperlativeGrid({ grid }: { grid: Grid }) {
   );
 }
 
-
-/** A form's grammar as the source wrote it: its tags, then its raw tags. */
-function sourceLabel(claims: readonly GrammarClaim[]): string {
+/**
+ * A form's grammar, each value in its Italian label (ADR 0015), or as the
+ * source wrote it when Lexema has no Italian label for it.
+ */
+function grammarLabel(claims: readonly GrammarClaim[]): string {
   const texts = claims.flatMap((claim) => (claim.status === "missing" ? [] : [italianLabel(claim)]));
   return [...new Set(texts)].join(", ");
 }
 
-/** Forms that take no cell, one group per thing they lack, each named for it. */
+/**
+ * Forms that take no cell, one group per thing they lack, each named for it.
+ * An identical spelling with the same grammar shows once (`alpe` lists `alpi`
+ * twice) and carries every entry.
+ */
 export function OtherForms({ groups, links }: { groups: readonly UnplacedGroup[]; links: boolean }) {
   return (
     <>
-      {groups.map((group) => (
-        <div key={group.missing} data-unplaced={group.missing}>
-          <p className={GRID_LABEL}>{group.missing[0].toUpperCase() + group.missing.slice(1)}</p>
-          <dl className={OTHER_FORMS}>
-            {group.forms.map((form) => (
-              <div key={form.index} className={OTHER_FORM}>
-                <dt className={OTHER_FORM_LABEL} lang="it">
-                  {sourceLabel(form.claims) || "—"}
-                </dt>
-                <dd className="m-0 font-mono text-text-strong" lang="it">
-                  {links ? <FormLink forms={[form]} searched={false} /> : <span data-form={form.index}>{form.surface}</span>}
-                </dd>
-              </div>
-            ))}
-          </dl>
-        </div>
-      ))}
+      {groups.map((group) => {
+        const lines: { label: string; forms: SourceForm[] }[] = [];
+        for (const form of group.forms) {
+          const label = grammarLabel(form.claims);
+          const same = lines.find((line) => line.label === label && line.forms[0].surface === form.surface);
+          if (same === undefined) lines.push({ label, forms: [form] });
+          else same.forms.push(form);
+        }
+        return (
+          <div key={group.missing} data-unplaced={group.missing}>
+            <p className={GRID_LABEL}>{group.missing[0].toUpperCase() + group.missing.slice(1)}</p>
+            <dl className={OTHER_FORMS}>
+              {lines.map(({ label, forms }) => (
+                <div key={forms[0].index} className={OTHER_FORM}>
+                  <dt className={OTHER_FORM_LABEL} lang="it">
+                    {label || "—"}
+                  </dt>
+                  <dd className="m-0 font-mono text-text-strong" lang="it">
+                    {links ? (
+                      <FormLink forms={forms} searched={false} />
+                    ) : (
+                      <span data-form={forms.map((form) => form.index).join(" ")}>{forms[0].surface}</span>
+                    )}
+                  </dd>
+                </div>
+              ))}
+            </dl>
+          </div>
+        );
+      })}
     </>
   );
 }
-
 
 /** One spelling, linked to its search, carrying every source entry that spells it here. */
 function FormLink({ forms, searched }: { forms: readonly SourceForm[]; searched: boolean }) {

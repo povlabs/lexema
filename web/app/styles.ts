@@ -157,8 +157,6 @@ export const DISPUTED = "mt-6 mb-0 font-sans text-[0.85rem] text-text-muted";
 export const DISPUTED_MARK = "font-semibold text-warning";
 export const DISPUTED_LIST = "mt-2 mb-0 list-disc pl-5";
 
-// Definitions and examples ------------------------------------------------
-
 export const DEFINITIONS = "m-0 flex list-none flex-col gap-4 p-0";
 export const DEFINITION = "flex gap-4";
 export const DEFINITION_NUMBER = "w-5 shrink-0 pt-1 font-mono text-[0.85rem] text-text-muted";
@@ -185,8 +183,6 @@ export const MORE_CLOSED = "group-open:hidden";
 export const MORE_OPEN = "hidden group-open:inline";
 export const MORE_LIST = "mt-4";
 
-// Forms: the gender-and-number grid ---------------------------------------
-
 /**
  * Columns singolare and plurale with a gender column before them; on a phone
  * two columns, with each gender's label over its pair.
@@ -210,8 +206,6 @@ export const GRID_LABEL = "m-0 mt-4 mb-3 font-sans text-[0.75rem] font-semibold 
 export const OTHER_FORMS = "m-0 mt-4 flex flex-col gap-1.5";
 export const OTHER_FORM = "flex flex-wrap items-baseline gap-x-3";
 export const OTHER_FORM_LABEL = "font-sans text-[0.75rem] text-text-muted";
-
-// Forms: the conjugation ----------------------------------------------------
 
 /** A form in a conjugation: a link to its own search, the pointer the only cue. */
 export const FORM_LINK = `cursor-pointer font-mono text-text-strong no-underline ${FOCUS_RING}`;
@@ -237,7 +231,8 @@ export const TAB_PANEL = `mt-6 ${FOCUS_RING}`;
  * table under one person column; on a phone each pair under its own.
  */
 export const TENSE_PAIRS = "flex flex-col gap-5 sm:flex-row sm:gap-0";
-export const TENSE_TABLE = "border-collapse text-left";
+/** On a phone a pair fills the width with fixed columns, so a long form wraps rather than scrolls. */
+export const TENSE_TABLE = "border-collapse text-left max-sm:w-full max-sm:table-fixed";
 export const PERSON_HEAD = "w-[5.5rem] p-0 sm:w-28";
 export const PERSON_HEAD_REPEAT = `${PERSON_HEAD} sm:hidden`;
 export const TENSE_HEAD = "p-0 pb-2 pr-4 font-sans text-[0.75rem] font-normal text-text-muted sm:w-48";
@@ -245,15 +240,13 @@ export const TENSE_HEAD_SEARCHED = "p-0 pb-2 pr-4 font-sans text-[0.75rem] font-
 export const PERSON = "p-0 py-1 pr-3 align-baseline whitespace-nowrap font-sans text-[0.8rem] font-normal text-text-muted";
 export const PERSON_SEARCHED = "p-0 py-1 pr-3 align-baseline whitespace-nowrap font-sans text-[0.8rem] font-semibold text-accent";
 export const PERSON_REPEAT = "sm:hidden";
-export const TENSE_CELL = "p-0 py-1 pr-4 align-baseline font-mono text-[1rem] text-text-strong";
+export const TENSE_CELL = "p-0 py-1 pr-4 align-baseline font-mono text-[1rem] text-text-strong wrap-anywhere max-sm:pr-2 max-sm:text-[0.8rem]";
 export const CELL_SEPARATOR = "text-text-muted";
 
 /** The compound tenses, behind a `compound tenses` link. */
 export const COMPOUND = "group mt-4";
 export const COMPOUND_SUMMARY = `inline-block cursor-pointer list-none font-sans text-[0.85rem] text-accent [&::-webkit-details-marker]:hidden ${FOCUS_RING}`;
 export const COMPOUND_TABLES = "mt-4";
-
-// Facts about the word, once after the readings ----------------------------
 
 export const WORD_FACTS = "border-t border-border pt-10";
 export const ETYMOLOGY = "m-0 max-w-[48rem] font-serif text-[1.1rem] text-text";
