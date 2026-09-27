@@ -5,16 +5,20 @@ reads [AGENTS.md](./AGENTS.md). It holds only the law Huey has ruled, transcribe
 an agent; an agent records a ruling here and never invents one. Where the law is
 silent, ask Huey before painting; the gap is not filled here.
 
+The drawings are in [`lexema-design.pen`](./lexema-design.pen). Boards 08 to 22 are
+the current design; frames 00 to 07 and their notes are the earlier design, kept for
+history. Where a board and this file disagree, this file wins and the board is fixed.
+
 ## Settled law
 
 | Rule | Source |
 |---|---|
-| The interface is in English. | [ADR 0004](./.decisions/0004-cloudflare-workers-d1-vinext.md) |
+| Headings, section names, controls and links are in English. Grammar labels on a result are Italian: the part of speech, moods, tenses, persons, gender, number, and the non-finite labels. | [ADR 0015](./.decisions/0015-grammar-labels-are-italian.md) |
 | Definitions, examples, and forms appear in the Italian the source wrote them in, never translated or paraphrased. | [ADR 0004](./.decisions/0004-cloudflare-workers-d1-vinext.md) |
-| Missing, ambiguous, and disputed data is shown as such, in words. It is never hidden, smoothed over, or signalled by colour alone. | [README.md](./README.md) |
+| Missing, ambiguous, and disputed data is shown as such. It is never hidden, smoothed over, or signalled by colour alone. A form the source does not give is a dash in its cell, with no note beside it. | [README.md](./README.md); the dash ruled by Huey on 2026-09-27 |
 | Every candidate a lookup returns is rendered. The interface may rank; it never drops. | [AGENTS.md](./AGENTS.md), the product rule |
 | A generated short explanation may appear in Italian and in English, labelled as generated. Its example sentence, and everything from the source, stays Italian. | [ADR 0008](./.decisions/0008-generated-explanations-are-labelled-and-reportable.md), amendment of 2026-09-21 |
-| One small *Source* link per result; no credit line on the search page. The full credit is on `/attribution`, linked from the footer. | [ADR 0009](./.decisions/0009-two-licences-and-a-source-link.md) |
+| One small *Source* link per page; no credit line on the search page. The full credit is on `/attribution`, linked from the footer. | [ADR 0009](./.decisions/0009-two-licences-and-a-source-link.md) |
 
 ## The page
 
@@ -23,77 +27,81 @@ first and then when I search, it goes top as right now."
 
 | Rule | What it means on the page |
 |---|---|
-| **Two states.** | Before a query, the page is the search bar alone, centred on the screen with the site name above it and nothing else competing. With a query, the bar sits at the top and the results fill the page below it, as today. |
+| **Two states.** | Before a query, the page is the search bar alone, centred on the screen with the site name above it and nothing else competing. With a query, the bar sits at the top and the results fill the page below it. |
 | **One bar, one route.** | The same form serves both states; the query stays in the URL so a result can be shared. Moving the bar is layout, not a second page. |
 
-## The result card
+## The result
 
-Ruled by Huey on 2026-09-21 with Reverso's conjugation page as the reference
-(https://conjugator.reverso.net/conjugation-italian-verb-andare.html), after the
-first noun and adjective cards shipped as vertical lists: "why all of them as a
-list". These rules bind every part-of-speech card, [#48](https://github.com/hueypov/lexema/issues/48)
-onwards, and the repair of the shipped cards in [#60](https://github.com/hueypov/lexema/issues/60).
+Ruled by Huey on 2026-09-27, on boards 08 to 21. These rules replace the result-card
+rules of 2026-09-21 (boxed paradigms, header bars, three boxes to a row).
+
+### Layout
 
 | Rule | What it means on the page |
 |---|---|
-| **Facts are laid out, not listed.** | Forms, agreements and conjugations render as tables and boxed groups, never as one bullet or sentence per fact. A list is for prose the source wrote, such as glosses. |
-| **A header bar carries the headline facts.** | Under the headword: part of speech, then the few facts the source states for it (gender and number for a noun; infinitive, gerund, participle and auxiliary for a verb), on one line, labelled in small text with the value in large. |
-| **Three boxes to a row.** | Paradigm boxes sit three across on a wide screen, in the order the source's vocabulary gives, wrapping to fewer on narrow screens. A verb card is rows of tense boxes; a noun or adjective card puts its agreement boxes (singular and plural, masculine and feminine) and, for a noun, its article box in that same slot. |
-| **Paradigms are boxed groups side by side.** | Each tense (verb) or agreement set (noun, adjective) is one box with a heading; boxes sit in a row that wraps on narrow screens. Rows inside a box are `label value`, the label small and grey, the value in the reading language. Verb rows are labelled with the pronoun the source gives. |
-| **Groups are ordered by the source's own vocabulary.** | Moods, then tenses, in the order the tag vocabulary lists them; forms the source leaves unplaced go in one last box named for what is missing, never scattered. |
-| **The searched form is outlined where it sits.** | A query that is itself a form is marked inside the paradigm it belongs to, by a border, not by colour alone. |
-| **Empty is said once.** | A section with nothing to show is omitted. One line near the top of the card names what the source does not state for this entry. A fact is never rendered twice on one card, and a related record is listed once with its count. |
-| **Every form still appears.** | Layout never drops a form; a form that fits no box is in the unplaced box, verbatim, in `lang="it"`. |
+| **One layout for every word type.** | Headword, then its readings in source order, then the facts about the word, then *Source*. No box or card surrounds a reading; readings are separated by a thin rule. |
+| **The headword carries its pronunciation.** | The IPA sits under the headword. Syllable breaks are not shown. A word with no pronunciation shows none. |
+| **Jump links only for three or more readings.** | Under the headword, one link per reading, `1 Aggettivo`. A page with one or two readings has none. |
+| **A reading is a heading and blocks.** | The heading is `1 · Sostantivo`: the number, then the record's `pos_title`. Then *Definitions*, then *Forms*. A block with nothing to show is left out. |
+| **Section labels are plain.** | A small grey label (*Definitions*, *Forms*, *Etymology*, *Synonyms*). No count, no rule beside it, no box around the block. |
+| **One definition, then a link.** | The first definition shows, then `N more definitions`. Its example sits under it in italics. If the first definition has no example, the reading's first example shows instead, marked `from definition N`. A reading with no examples shows none. |
+| **Word facts come once, after the readings.** | *Etymology* as prose. *Synonyms* as a run of words separated by `·`, eight shown, then `+ N more`. |
+| **Source and report sit together at the bottom.** | `Source ↗ · Report a mistake`, with the same space above and below it. What the report box asks is on board 22 and in [#51](https://github.com/hueypov/lexema/issues/51). |
+
+### Forms: three shapes
+
+A reading's *Forms* block takes the shape its data has. Nothing else about the
+reading changes with the word type.
+
+| Shape | Used for | What it means on the page |
+|---|---|---|
+| **None** | adverbs, proper names, abbreviations, prefixes and suffixes, grammar words, most phrases | No *Forms* block. |
+| **Gender × number grid** | nouns, adjectives, phrases that inflect | Columns *singolare* and *plurale*; rows *maschile* and *femminile*, only the rows the source has. Each cell is the form, with its definite and indefinite article under it (`il bello · un bello`; on a phone, on two lines). An adjective's superlative is a second grid of the same shape, labelled *superlativo*. |
+| **Conjugation** | verbs, and the lemma of a searched verb form | One line of non-finite forms (*gerundio*, *participio*, *ausiliare*). Then mood tabs (*Indicativo*, *Congiuntivo*, *Condizionale*, *Imperativo*), then a table with persons down and the simple tenses across, named in Italian. The compound tenses open below it from a `compound tenses` link. The tabs open on the mood of the searched form, else *Indicativo*. |
+
+| Rule | What it means on the page |
+|---|---|
+| **A searched form is marked only in a conjugation.** | In a verb table the searched form is underlined in the accent colour, and its person and tense labels take the accent. A grid does not mark it; it is obvious there. |
+| **A searched verb form leads to its lemma's table.** | Searching `andavano` shows its own reading, whose definition links to `andare`, and under it *Forms of andare*, opened where `andavano` sits. When one spelling fills two cells (`andassi`), both are marked. |
+| **Forms and synonyms are links.** | Every form in a conjugation table and every synonym links to its own search. No underline and no hover colour; the pointer cursor is the only cue. A cell holding several spellings links each one. |
+| **Groups follow the source's own vocabulary.** | Moods, then tenses, in the order the tag vocabulary lists them; forms the source leaves unplaced go in one last group named for what is missing, never scattered. |
+| **Every form still appears.** | Layout never drops a form. A form that fits no cell is in the unplaced group, verbatim, in `lang="it"`. |
+
+### On a phone
+
+| Rule | What it means on the page |
+|---|---|
+| **Same order, re-stacked.** | Boards 19 to 21. Nothing is dropped and nothing scrolls sideways. |
+| **Grids stack by gender.** | The gender label sits above each singular and plural pair. |
+| **Conjugations show two tenses at a time.** | The four mood tabs stay on one line. The table shows two tenses side by side, then the next two below. The non-finite forms are three short rows. |
+| **Synonyms wrap.** | The run of words wraps onto as many lines as it needs. |
 
 ## Role tokens: the dark scheme
 
-Ruled by Huey on 2026-09-21: "for now let's work on dark palette, use like one
-of the baseui's default dark ones." Base UI ships no styles; the palette its own
-documentation paints every demo with is the source, copied verbatim from
-`docs/src/demo-data/theme/css-modules/theme.css` in `mui/base-ui` at commit
-`50c371c` (2025-11-04), the `prefers-color-scheme: dark` block. Dark is the only
-scheme for now; a light scheme is a later ruling, not a fallback.
+The nine colour roles take the values of the design file's `variables`, moved
+into the token layer by [#102](https://github.com/hueypov/lexema/pull/102). They
+land as oklch in the `@theme` block of `web/app/globals.css`. A component reaches
+for a role, never a value.
 
-The scale, as the source writes it (oklch, alpha where given):
-
-| Step | Value |
-|---|---|
-| gray-50 | `oklch(17% 0.25% 264deg)` |
-| gray-100 | `oklch(28% 0.75% 264deg / 65%)` |
-| gray-200 | `oklch(29% 0.75% 264deg / 80%)` |
-| gray-300 | `oklch(35% 0.75% 264deg / 80%)` |
-| gray-400 | `oklch(47% 0.875% 264deg / 80%)` |
-| gray-500 | `oklch(64% 1% 264deg / 80%)` |
-| gray-600 | `oklch(82% 1% 264deg / 80%)` |
-| gray-700 | `oklch(92% 1.125% 264deg / 80%)` |
-| gray-800 | `oklch(93% 0.875% 264deg / 85%)` |
-| gray-900 | `oklch(95% 0.5% 264deg / 90%)` |
-| gray-950 | `oklch(94% 0.375% 264deg / 95%)` |
-| blue | `oklch(69% 50% 264deg)` |
-| red | `oklch(80% 55% 31deg)` |
-
-The roles below are Lexema's mapping onto that scale, not the source's; the
-source declares the scale only. A component reaches for a role, never a step.
-
-| Role | Step | Used for |
+| Role | Design file | Used for |
 |---|---|---|
-| `surface` | gray-50 | the page background |
-| `surface-raised` | gray-100 | a box, a card, the search bar |
-| `border` | gray-200 | box and table edges |
-| `border-strong` | gray-300 | the searched-form outline |
-| `text-muted` | gray-500 | labels in a box row, the silence line, the release line |
-| `text` | gray-900 | body text, glosses, forms |
-| `text-strong` | gray-950 | the headword |
-| `accent` | blue | links, the focused control |
-| `warning` | red | the disputed-claim mark and the report control |
+| `surface` | `#121110` | the page background |
+| `surface-raised` | `#1A1917` | the search bar, the report box |
+| `border` | `#2C2A26` | thin rules between readings and sections |
+| `border-strong` | `#4E4940` | control outlines |
+| `text-muted` | `#8B8579` | labels, grammar labels, articles, examples |
+| `text` | `#C4BEB2` | body prose, etymology |
+| `text-strong` | `#F4F0E6` | the headword, definitions, forms, synonyms |
+| `accent` | `#D2A85C` | reading numbers, links such as `more definitions`, the searched form in a conjugation |
+| `warning` | `#D9704F` | the disputed-claim mark |
 
-These land as a Tailwind `@theme` block in `web/app/globals.css` under the same
-names; the migration is [#67](https://github.com/hueypov/lexema/issues/67).
+Three families, served from this repository: **Spectral** for the headword,
+definitions, examples, etymology and synonyms; **Inter** for labels, controls and
+grammar labels; **IBM Plex Mono** for forms, articles and pronunciation. The dark
+scheme is the only scheme.
 
 ## Not yet ruled
 
-The type ramp and font family (the Base UI docs use licensed fonts Lexema cannot
-copy; a system stack or an open face is a separate ruling), component primitives
-beyond Base UI's own, density, focus treatment beyond the `accent` ring, and a
-light scheme. A builder who needs one of these stops and asks; the `taste-color`
-skill now has a role layer to read for colour.
+A light scheme; the attribution and licence page ([#139](https://github.com/hueypov/lexema/issues/139));
+the phone version of the report box. A builder who needs one of these stops and
+asks. Sizes and spacing not stated here follow the boards.
