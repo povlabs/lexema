@@ -83,11 +83,11 @@ function statedValues(claims: readonly GrammarClaim[], dimension: string): strin
   return values;
 }
 
-const gendersOf = (claims: readonly GrammarClaim[]): Gender[] =>
+export const gendersOf = (claims: readonly GrammarClaim[]): Gender[] =>
   GENDERS.filter((gender) => statedValues(claims, "gender").includes(gender));
 
 /** Every agreeing number the claims state, in NUMBERS order. */
-const numbersOf = (claims: readonly GrammarClaim[]): GrammaticalNumber[] =>
+export const numbersOf = (claims: readonly GrammarClaim[]): GrammaticalNumber[] =>
   NUMBERS.filter((number) => statedValues(claims, "number").includes(number));
 
 function numberOf(claims: readonly GrammarClaim[]): GrammaticalNumber | undefined {
