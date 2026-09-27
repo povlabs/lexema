@@ -57,16 +57,20 @@ interface LabelPart {
   qualifier?: { dimension: string; value: string };
 }
 
-/** One part of a label, read as a head and an optional qualifier; undefined when it names no part of speech. */
+/**
+ * One part of a label, read as a head and an optional qualifier; undefined
+ * when it names no part of speech. Words after the head that are not a
+ * qualifier do not stop it: `voce verbale di dare`, `preposizione
+ * articolata`, `aggettivo cardinale` name their head.
+ */
 function partOf(text: string): LabelPart | undefined {
   const words = normal(text);
-  const spelled = HEAD_SPELLINGS[words] ?? words;
+  const spelling = Object.keys(HEAD_SPELLINGS).find((variant) => words === variant || words.startsWith(`${variant} `));
+  const spelled = spelling === undefined ? words : HEAD_SPELLINGS[spelling] + words.slice(spelling.length);
   const head = HEADS.find((candidate) => spelled === candidate || spelled.startsWith(`${candidate} `));
   if (head === undefined) return undefined;
-  const rest = spelled.slice(head.length).trim();
-  if (rest === "") return { head };
-  const qualifier = QUALIFIERS[rest];
-  return qualifier === undefined ? undefined : { head, qualifier };
+  const qualifier = QUALIFIERS[spelled.slice(head.length).trim().split(" ")[0]];
+  return qualifier === undefined ? { head } : { head, qualifier };
 }
 
 /** The parts of speech a label names; empty when it is a topic or unreadable. */

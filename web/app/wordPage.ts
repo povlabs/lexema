@@ -167,6 +167,13 @@ function mergeWordFacts(readings: readonly Reading[]): WordFacts {
   };
 }
 
+/**
+ * The one reading a label names, or undefined. A label that names two
+ * (`medico`'s `(aggettivo e sostantivo)`) would copy one text into both, so
+ * it stays once after the readings instead (Huey: identical things show once).
+ */
+const onlyReading = (named: readonly Reading[]): Reading | undefined => (named.length === 1 ? named[0] : undefined);
+
 /** A source position, the key an occurrence is placed by. */
 const refKey = (ref: SourceRef): string => `${ref.lineNo}\u0000${ref.jsonPointer}`;
 
@@ -175,12 +182,12 @@ const refKey = (ref: SourceRef): string => `${ref.lineNo}\u0000${ref.jsonPointer
  * into the readings of that part of speech (design-system-manifest.md §
  * "Layout"). Only a word with two readings or more has anything to move.
  *
- * - An etymology moves when its bracket label names readings on the page
+ * - An etymology moves when its bracket label names one reading on the page
  *   (`sale`: `(sostantivo plurale) vedi sala`), even when it is the word's only
  *   one (`strutto`: `(voce verbale) vedi struggere`). It shows there without
  *   the label, which the reading's heading already says.
  * - A synonym moves when a part-of-speech label earlier in its record's list
- *   opens the group it is in and names readings (`vivere`: `sostantivo` on
+ *   opens the group it is in and names one reading (`vivere`: `sostantivo` on
  *   `esistenza`, `verbo` on `esistere`).
  *
  * Whatever is not moved stays in `rest`, verbatim, once for the word.
@@ -196,26 +203,25 @@ function placeWordFacts(
   const keptEtymologies: SourceText[] = [];
   for (const etymology of merged.etymologies) {
     const { label, rest } = splitLabel(etymology.text);
-    const named = label !== undefined ? readingsNamed(label, about) : [];
-    if (named.length === 0) keptEtymologies.push(etymology);
-    for (const reading of named) etymologies.set(reading, [...(etymologies.get(reading) ?? []), { text: rest, ref: etymology.ref }]);
+    const reading = label !== undefined ? onlyReading(readingsNamed(label, about)) : undefined;
+    if (reading === undefined) keptEtymologies.push(etymology);
+    // A text that was only its label says nothing the reading's heading does not.
+    else if (rest !== "") etymologies.set(reading, [...(etymologies.get(reading) ?? []), { text: rest, ref: etymology.ref }]);
   }
 
   const placedRefs = new Set<string>();
   for (const record of about) {
-    let group: Reading[] = [];
+    let group: Reading | undefined;
     for (const entry of record.wordFacts.synonymList) {
       const label = entry.rawTags.find((tag) => labelParts(tag).length > 0);
-      if (label !== undefined) group = readingsNamed(label, about);
-      if (group.length === 0) continue;
+      if (label !== undefined) group = onlyReading(readingsNamed(label, about));
+      if (group === undefined) continue;
       placedRefs.add(refKey(entry.ref));
-      for (const reading of group) {
-        const words = synonyms.get(reading) ?? [];
-        const existing = words.find((word) => word.word === entry.word);
-        if (existing === undefined) words.push({ word: entry.word, refs: [entry.ref] });
-        else if (!existing.refs.some((ref) => refKey(ref) === refKey(entry.ref))) existing.refs.push(entry.ref);
-        synonyms.set(reading, words);
-      }
+      const words = synonyms.get(group) ?? [];
+      const existing = words.find((word) => word.word === entry.word);
+      if (existing === undefined) words.push({ word: entry.word, refs: [entry.ref] });
+      else if (!existing.refs.some((ref) => refKey(ref) === refKey(entry.ref))) existing.refs.push(entry.ref);
+      synonyms.set(group, words);
     }
   }
   const keptSynonyms = merged.synonyms.filter((word) => word.refs.some((ref) => !placedRefs.has(refKey(ref))));

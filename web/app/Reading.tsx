@@ -33,7 +33,6 @@ import {
   ETYMOLOGY,
   GLOSS,
   GLOSS_LINK,
-  GLOSS_SILENT,
   MENTION,
   MORE,
   MORE_CLOSED,
@@ -84,11 +83,12 @@ type DefinitionItem =
 
 /**
  * The reading's definitions in order, each with its examples, and the examples
- * of the furniture senses left out, which stay reachable behind the reading's
- * control. An example the record holds that is really a recovered definition
- * is shown once, as that definition.
+ * of the senses that are not shown as definitions — furniture, and a sense with
+ * no gloss — which stay reachable behind the reading's control. The page adds
+ * no note about either. An example the record holds that is really a
+ * recovered definition is shown once, as that definition.
  */
-function definitionsOf(reading: Reading): { items: DefinitionItem[]; furnitureExamples: string[] } {
+function definitionsOf(reading: Reading): { items: DefinitionItem[]; looseExamples: string[] } {
   const heldAsDefinition = new Set(
     everyRecovered(reading).flatMap((definition) => definition.heldAsExample?.jsonPointer ?? []),
   );
@@ -96,11 +96,12 @@ function definitionsOf(reading: Reading): { items: DefinitionItem[]; furnitureEx
   // instead; a reading with nothing else shows it verbatim rather than nothing.
   const furniture = (sense: Sense) => isEntryFurniture(sense, reading.word);
   const hasOwn = reading.recovered.length > 0 || reading.senses.some((sense) => !furniture(sense));
+  const glossless = (sense: Sense) => sense.glosses.length === 0 && sense.recoveredItems.length === 0;
   const examplesOf = (sense: Sense): string[] =>
     sense.examples.filter((example) => !heldAsDefinition.has(example.ref.jsonPointer)).map((example) => example.text);
   const items: DefinitionItem[] = [
     ...reading.senses
-      .filter((sense) => !hasOwn || !furniture(sense))
+      .filter((sense) => !glossless(sense) && (!hasOwn || !furniture(sense)))
       .map(
         (sense): DefinitionItem => ({
           from: "record",
@@ -116,8 +117,10 @@ function definitionsOf(reading: Reading): { items: DefinitionItem[]; furnitureEx
       }),
     ),
   ];
-  const furnitureExamples = hasOwn ? reading.senses.filter(furniture).flatMap(examplesOf) : [];
-  return { items, furnitureExamples };
+  const looseExamples = reading.senses
+    .filter((sense) => glossless(sense) || (hasOwn && furniture(sense)))
+    .flatMap(examplesOf);
+  return { items, looseExamples };
 }
 
 /** How many examples a definition's nested items carry, at any depth. */
@@ -225,9 +228,6 @@ function DefinitionText({ item, reading, showNestedExamples = true }: { item: De
     );
   }
   const { sense } = item;
-  if (sense.glosses.length === 0) {
-    return <p className={GLOSS_SILENT}>The source gives no definition for this sense.</p>;
-  }
   const labels = senseLabels(sense.labels.map((label) => label.label));
   const lemmas = lemmaWordsOf(reading, sense);
   return (
@@ -296,15 +296,26 @@ const nestedExampleTexts = (items: readonly RecoveredDefinition[]): string[] =>
  * Everything is in the document whether the control is open or not.
  */
 function Definitions({ reading }: { reading: Reading }) {
-  const { items, furnitureExamples } = definitionsOf(reading);
-  if (items.length === 0) return null;
+  const { items, looseExamples } = definitionsOf(reading);
+  if (items.length === 0) {
+    // Nothing to define, but the source's examples are still shown.
+    if (looseExamples.length === 0) return null;
+    return (
+      <Block id={`examples-${reading.recordId}`} label="Examples">
+        {looseExamples.map((text, i) => (
+          <Example key={i} text={text} />
+        ))}
+      </Block>
+    );
+  }
   const [first] = items;
   const borrowed = first.examples.length === 0 ? items.findIndex((item) => item.examples.length > 0) : -1;
   const firstExtra = first.examples.slice(1);
   const rest = items.slice(DEFINITION_SLICE);
   // Examples the closed control hides outside the other definitions: the first
-  // definition's others, those of its nested items, and the furniture's.
-  const hiddenExamples = firstExtra.length + nestedExamples(nestedItemsOf(first)) + furnitureExamples.length;
+  // definition's others, those of its nested items, and those of senses not
+  // shown as definitions.
+  const hiddenExamples = firstExtra.length + nestedExamples(nestedItemsOf(first)) + looseExamples.length;
   const label = [
     ...(rest.length > 0 ? [plural(rest.length, "definition")] : []),
     ...(hiddenExamples > 0 ? [plural(hiddenExamples, "example")] : []),
@@ -348,8 +359,8 @@ function Definitions({ reading }: { reading: Reading }) {
                 })}
               </ol>
             )}
-            {furnitureExamples.map((text, i) => (
-              <Example key={`furniture-${i}`} text={text} />
+            {looseExamples.map((text, i) => (
+              <Example key={`loose-${i}`} text={text} />
             ))}
           </details>
         )}

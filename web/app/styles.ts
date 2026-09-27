@@ -165,8 +165,6 @@ export const GLOSS = "m-0 max-w-[48rem] font-serif text-[1.2rem] leading-snug te
 export const SENSE_LABEL = "italic text-text-muted";
 /** The word a form-of definition names, linked to its own search. */
 export const GLOSS_LINK = `text-accent no-underline ${FOCUS_RING}`;
-/** A definition the source leaves without a gloss, said in words. */
-export const GLOSS_SILENT = "m-0 font-sans text-[0.85rem] text-text-muted";
 /** The items of a list a definition opens with a colon (#123), nested under it. */
 export const SUB_ITEMS = "mt-2 mb-0 flex list-disc flex-col gap-2 pl-5 marker:text-text-muted";
 export const EXAMPLE = "m-0 mt-2 max-w-[48rem] font-serif text-[1.05rem] italic text-text-muted";

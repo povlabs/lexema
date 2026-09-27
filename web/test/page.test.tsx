@@ -636,7 +636,7 @@ test("a gloss that names two lemmas links both, and neither is repeated on a lin
   });
 });
 
-/** The dev seed plus the real `libero`, `calcio`, `svolta`, `strutto`, `sette` and `ori` lines. */
+/** The dev seed plus the real lines of the words `fixtures/word-facts-placement.jsonl` holds. */
 async function withPlacementWords(run: (f: Fixture) => Promise<void>): Promise<void> {
   const lines = async (file: string) => (await readFile(join(REPO, file), "utf8")).trim().split("\n");
   return withLines([...(await lines("fixtures/dev-seed.jsonl")), ...(await lines("fixtures/word-facts-placement.jsonl"))], run);
@@ -732,6 +732,56 @@ test("an etymology whose label names a reading shows in that reading, without it
     assert.equal(readingEtymology(readingById(ori, inflectedNoun.recordId)), "Etymologyvedi oro");
     assert.equal(readingEtymology(readingById(ori, oriVerb.recordId)), "Etymologyvedi orare");
     assert.doesNotMatch(afterReadings(ori), />Etymology</);
+  });
+});
+
+test("a label that names two readings stays once at the bottom; a label with nothing after it leaves no block", async () => {
+  await withPlacementWords(async ({ db }) => {
+    // medico: `(aggettivo e sostantivo)` names the Aggettivo and the
+    // Sostantivo reading; it is not copied into both.
+    const medico = await render(db, "medico");
+    assert.doesNotMatch(medico, /id="etymology-\d+"/);
+    assert.equal(patternsOf(medico, /\(aggettivo e sostantivo\)/g), 1);
+    assert.match(textOf(afterReadings(medico)), /Etymology\(aggettivo e sostantivo\)/);
+
+    // cazzi: each etymology is only a label naming one reading. Nothing is
+    // left to say, so no reading has an empty Etymology block, and nothing
+    // stays at the bottom.
+    const cazzi = await render(db, "cazzi");
+    assert.doesNotMatch(cazzi, /id="etymology-\d+"/);
+    assert.doesNotMatch(cazzi, />Etymology</);
+
+    // dai: `(voce verbale di dare)` names its head, voce verbale, despite the
+    // words after it; `(contrazione di da e i)` names nothing and stays.
+    const dai = await render(db, "dai");
+    const daiVerb = (await readingsFor(db, "dai")).find((reading) => reading.posTitle === "Voce verbale");
+    assert.ok(daiVerb);
+    assert.equal(readingEtymology(readingById(dai, daiVerb.recordId)), "Etymologyvedi dare");
+    assert.match(textOf(afterReadings(dai)), /\(contrazione di da e i\) deriva dalla fusione/);
+  });
+});
+
+test("a sense with no gloss is not a definition and carries no note; its examples stay behind the control", async () => {
+  await withDevSeed(async ({ db }) => {
+    const noun = (await readingsFor(db, "libro")).find((reading) => reading.pos === "noun");
+    assert.ok(noun);
+    const html = await renderChanged(db, "libro", (readings) => {
+      const target = readings.find((reading) => reading.recordId === noun.recordId);
+      assert.ok(target);
+      target.senses.push({
+        index: 99,
+        ref: { ...target.ref, jsonPointer: "/senses/99" },
+        examples: [{ text: "un libro senza definizione", ref: { ...target.ref, jsonPointer: "/senses/99/examples/0/text" } }],
+        glosses: [],
+        labels: [],
+        recoveredItems: [],
+      });
+    });
+    const reading = readingById(html, noun.recordId);
+    assert.equal(patternsOf(reading, /data-definition="/g), noun.senses.length, "no numbered line for it");
+    assert.doesNotMatch(reading, /no definition|gives no/i);
+    const control = reading.slice(reading.indexOf("<details"));
+    assert.match(textOf(control), /un libro senza definizione/);
   });
 });
 

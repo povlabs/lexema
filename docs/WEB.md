@@ -118,7 +118,7 @@ before the render starts. A mark sent by the client is removed first.
 ## Why the page is visibly silent
 
 This dictionary's data is incomplete, and the page's job is to make that legible
-instead of smoothing it over. Eight silences it refuses to hide:
+instead of smoothing it over. The silences it refuses to hide:
 
 **A lemma is where a reading points, not a match.** Searching `sale` returns
 three entries, the three records whose headword is `sale`. Two of them say what
@@ -214,28 +214,36 @@ what the records carry, each item once, rather than one record's copy.
 **Once per reading, where the source says so.** The records of a headword
 usually carry the same etymologies, but not always: `bacca`'s two records list
 two and one. The page takes every distinct text from every record once, as it
-does for each word fact above, and places each by its own label. In 2,756 of
-the 3,276 headwords with two or more etymologies, each text opens with a
-bracket label, mostly a part of speech: `sale` has
-`(sostantivo singolare)` and `(sostantivo plurale)`. On a word with two readings
-or more, a label that names readings by their `pos_title` moves its etymology
-into them, without the label (`web/app/readingLabels.ts`). A compound label
-names each part; `singolare`/`plurale` and `transitivo`/`intransitivo` narrow to
-the readings whose record states them. A lone labelled etymology moves too
-(`strutto`: `(voce verbale) vedi struggere`). A label names a reading whose
-`pos_title` is its part of speech or begins with it, so `(aggettivo)` names
-`sette`'s *Aggettivo numerale*; a whole label that is itself a `pos_title` with a
-comma, `(sostantivo, forma flessa)` on `ori`, names that reading. A label that fits more than one
-reading of the same kind is ambiguous and goes to none, and a bare
-`(sostantivo)` fits both *Sostantivo* and *Sostantivo, forma flessa* (`sette`): `svolta` has two *Voce verbale*
-readings, so its two `(voce verbale)` etymologies stay after the readings (108
-etymologies across the release are like this). Synonyms work the same way where
-the source groups them: in 207 headwords a part-of-speech `raw_tags` on one
-synonym opens a group that runs to the next label. `vivere`'s `sostantivo`
-group moves to its noun reading; its `verbo` group fits two *Verbo* readings
-and stays after the readings. Topic labels (`calcio`'s `(sport)`), unlabelled
-texts and ungrouped lists stay there too, and the page says nothing about what
-it did not match.
+does for each word fact above, and places each by its own label
+(`web/app/readingLabels.ts`). In 2,756 of the 3,276 headwords with two or more
+etymologies, each text opens with a bracket label, mostly a part of speech:
+`sale` has `(sostantivo singolare)` and `(sostantivo plurale)`.
+
+On a word with two readings or more, an etymology whose label names exactly
+one reading moves into it, without the label, even when it is the word's only
+one (`strutto`: `(voce verbale) vedi struggere`). A label names a reading whose
+`pos_title` is its part of speech or begins with it: `(aggettivo)` names
+`sette`'s *Aggettivo numerale*. Words after the part of speech do not stop it
+(`dai`'s `(voce verbale di dare)`), and `singolare`/`plurale` or
+`transitivo`/`intransitivo` right after it narrow to the reading whose record
+states them. A whole label that is itself a `pos_title` with a comma,
+`(sostantivo, forma flessa)` on `ori`, names that reading.
+
+A label that names more than one reading does not move, because moving it would
+copy one text into two places, and identical things show once. That covers a
+compound label naming two readings (`medico`'s `(aggettivo e sostantivo)`) and
+a label that fits two readings of the same kind: a bare `(sostantivo)` beside
+*Sostantivo* and *Sostantivo, forma flessa* (`sette`), or `(voce verbale)` on
+`svolta`, which has two *Voce verbale* readings. An etymology that is only a
+label (`cazzi`'s `(voce verbale)`) moves and leaves nothing to show, so its
+reading gets no Etymology block.
+
+Synonyms follow the same rule where the source groups them: in 207 headwords a
+part-of-speech `raw_tags` on one synonym opens a group that runs to the next
+label. `vivere`'s `sostantivo` group moves to its noun reading; its `verbo`
+group fits two *Verbo* readings and stays after the readings. Topic labels
+(`calcio`'s `(sport)`), unlabelled texts and ungrouped lists stay there too, and
+the page says nothing about what it did not match.
 
 ## Why a disputed claim is a row and not a code path
 
