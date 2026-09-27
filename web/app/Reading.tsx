@@ -11,7 +11,7 @@ import type { ReactNode } from "react";
 import { everyRecovered, isVerbReading, searchedSpellings } from "@lexema/lookup/types.ts";
 import type { RecoveredDefinition, Reading, Review, Sense } from "@lexema/lookup/types.ts";
 import { conjugationOf } from "./conjugation.ts";
-import { agreementOf } from "./genderGrid.ts";
+import { agreementOf, headingGrammar } from "./genderGrid.ts";
 import { ConjugationView, GridView, OtherForms, SuperlativeGrid, searchHref } from "./Forms";
 import type { PageReading } from "./wordPage.ts";
 import { WordList } from "./WordList";
@@ -41,6 +41,8 @@ import {
   MORE_SUMMARY,
   READING,
   READING_DOT,
+  READING_GRAMMAR,
+  READING_GRAMMAR_GROUP,
   READING_HEADING,
   READING_NUMBER,
   SENSE_LABEL,
@@ -490,6 +492,7 @@ function LemmaForms({ entry }: { entry: PageReading }) {
 
 export function ReadingView({ entry, query }: { entry: PageReading; query: string }) {
   const { reading, number } = entry;
+  const grammar = headingGrammar(reading);
   return (
     <article
       className={READING}
@@ -504,6 +507,17 @@ export function ReadingView({ entry, query }: { entry: PageReading; query: strin
           ·
         </span>
         <span lang="it">{reading.posTitle}</span>
+        {grammar !== undefined && (
+          // The dot travels with the grammar, so a wrapped heading never ends on it.
+          <span className={READING_GRAMMAR_GROUP}>
+            <span className={READING_DOT} aria-hidden="true">
+              ·
+            </span>
+            <span className={READING_GRAMMAR} lang="it">
+              {grammar}
+            </span>
+          </span>
+        )}
       </h2>
       {/* A record that merely lists the query in its table is not a claim
           about the query, and saying so stops a reader inferring a lemma

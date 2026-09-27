@@ -228,11 +228,19 @@ const formLinks = (html: string): { text: string; href: string; searched: boolea
 test("every record the lookup returns is a reading, headed by its number and its own pos_title", async () => {
   await withDevSeed(async ({ db }) => {
     const expected: Record<string, string[]> = {
+      // After a grid reading's part of speech, the gender and number its
+      // record states: none for casa, whose record states neither, and never
+      // on a verb or a Voce verbale.
       casa: ["1·Sostantivo"],
-      andare: ["1·Sostantivo", "2·Verbo"],
+      andare: ["1·Sostantivo·maschile", "2·Verbo"],
       andavano: ["1·Voce verbale"],
-      bello: ["1·Aggettivo", "2·Sostantivo", "3·Sostantivo", "4·Aggettivo, forma flessa"],
-      sale: ["1·Sostantivo", "2·Sostantivo, forma flessa", "3·Voce verbale"],
+      bello: [
+        "1·Aggettivo·maschile, singolare",
+        "2·Sostantivo·maschile, invariabile",
+        "3·Sostantivo·maschile, singolare",
+        "4·Aggettivo, forma flessa·femminile, singolare",
+      ],
+      sale: ["1·Sostantivo·maschile, singolare", "2·Sostantivo, forma flessa·femminile, plurale", "3·Voce verbale"],
     };
     for (const [query, headings] of Object.entries(expected)) {
       const html = await render(db, query);
@@ -834,6 +842,15 @@ test("every word page ends with Source and Report a mistake together", async () 
       assert.match(textOf(line), /Source.*·.*Report a mistake$/, query);
       assert.match(line, /<button [^>]*>Report a mistake<\/button>/, `${query}: a button that opens the box`);
     }
+  });
+});
+
+test("a heading states both numbers when the record does, and nothing on a proper name", async () => {
+  await withFixture(async ({ db }) => {
+    assert.deepEqual(headingsOf(await render(db, "khmer")), ["1·Sostantivo·maschile, singolare e plurale"]);
+    assert.deepEqual(headingsOf(await render(db, "Mercurio")), ["1·Nome proprio"]);
+    // The grammar is muted and Italian, beside the part of speech, not inside it.
+    assert.match(await render(db, "khmer"), /<span lang="it">Sostantivo<\/span><span class="[^"]*"><span class="[^"]*" aria-hidden="true">·<\/span><span class="[^"]*" lang="it">maschile, singolare e plurale<\/span><\/span><\/h2>/);
   });
 });
 

@@ -177,7 +177,10 @@ reason is logged and not printed: a database message names releases, tables and
 bindings, which is the operator's business and not the reader's.
 
 **A form the source listed, and one it did not.** A noun, adjective or
-inflecting phrase shows a gender-and-number grid; its article lines are rule
+inflecting phrase names its record's own gender and number after its part of
+speech in the reading's heading (`1 · Aggettivo · maschile, singolare`), only
+what the record states and nothing when it states neither, and shows a
+gender-and-number grid; its article lines are rule
 `it-articles/v1` (`src/italian/articles.ts`) applied to each spelling. A form
 that states a number but no gender takes the record's gender only when the
 record states exactly one; otherwise it waits under *Gender not given*. A verb shows

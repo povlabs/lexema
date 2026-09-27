@@ -153,9 +153,13 @@ export const JUMP_NUMBER = "mr-1.5 text-accent";
 export const READINGS = "mt-7 sm:mt-10";
 export const READING =
   "scroll-mt-6 mt-7 border-t border-border pt-7 first:mt-0 first:border-t-0 first:pt-0 sm:mt-10 sm:pt-10";
-export const READING_HEADING = "m-0 flex items-baseline gap-2.5 font-sans text-[0.95rem] font-semibold text-text-strong";
+export const READING_HEADING =
+  "m-0 flex flex-wrap items-baseline gap-x-2.5 gap-y-1 font-sans text-[0.95rem] font-semibold text-text-strong";
 export const READING_NUMBER = "font-normal text-accent";
 export const READING_DOT = "font-normal text-text-muted";
+/** The record's own gender and number after the part of speech, muted: `maschile, singolare`. */
+export const READING_GRAMMAR = "font-normal text-text-muted";
+export const READING_GRAMMAR_GROUP = "inline-flex items-baseline gap-2.5";
 
 /** A small grey label over a block: Definitions, Forms, Etymology, Synonyms. */
 export const BLOCK = "mt-[1.375rem] sm:mt-7";

@@ -193,3 +193,26 @@ export function agreementOf(reading: Reading): Agreement {
 
   return { grid: plain.build(), superlative: superlative.build(), unplaced: groupUnplaced(unplaced) };
 }
+
+/** Two labels as Italian joins them: `maschile e femminile`. */
+const both = (labels: readonly string[]): string =>
+  labels.length < 2 ? labels.join("") : `${labels.slice(0, -1).join(", ")} e ${labels[labels.length - 1]}`;
+
+/**
+ * The record's own gender and number, in Italian, for the heading of a reading
+ * that takes a grid: `maschile, singolare`; `maschile, singolare e plurale`
+ * when it states both numbers (`khmer`). Only what the record states: one of
+ * the two alone when it states only one, and nothing when it states neither or
+ * the reading takes no grid (a verb, a Voce verbale, a proper name).
+ */
+export function headingGrammar(reading: Reading): string | undefined {
+  if (!inflects(reading)) return undefined;
+  const claims = reading.grammar.record;
+  const genders = gendersOf(claims).map((gender) => GENDER_LABEL[gender]);
+  const numbers = [
+    ...numbersOf(claims).map((number) => NUMBER_LABEL[number]),
+    ...(statedValues(claims, "number").includes("invariable") ? ["invariabile"] : []),
+  ];
+  const parts = [both(genders), both(numbers)].filter((part) => part !== "");
+  return parts.length === 0 ? undefined : parts.join(", ");
+}
