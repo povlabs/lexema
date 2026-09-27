@@ -328,10 +328,10 @@ itself on `/attribution`, which the site footer reaches from every page. Its acc
 "Wiktionary page for X, the source of this page (opens in a new tab)".
 
 Every link that leaves Lexema opens in a new tab (`target="_blank"
-rel="noopener noreferrer"`, `web/app/externalLink.ts`), so the result stays
-where the reader left it: the Source links and a disputed claim's evidence link,
-each of which says so to a screen reader. Links inside Lexema stay in the same
-tab.
+rel="noopener noreferrer"`, `web/app/ExternalLink.tsx`), so the page stays where
+the reader left it: the Source links and a disputed claim's evidence link on a
+result, and the credit, licence and source links on `/attribution`. Each says
+so to a screen reader. Links inside Lexema stay in the same tab.
 
 The release stores no per-record URL, so the link is *constructed* from the
 headword rather than recorded with the data. Each reading still carries its

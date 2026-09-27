@@ -881,7 +881,7 @@ test("an etymology shows one cut line and a native + more that opens the whole t
   });
 });
 
-test("every link that leaves Lexema opens in a new tab; every link inside it stays in this one", async () => {
+test("every link that leaves Lexema, on a result or on /attribution, opens in a new tab; every link inside it stays", async () => {
   await withDevSeed(async ({ db }) => {
     // studente carries a disputed claim, whose evidence link leaves Lexema.
     for (const query of ["andavano", "sale", "studente", "bello"]) {
@@ -901,6 +901,15 @@ test("every link that leaves Lexema opens in a new tab; every link inside it sta
     }
     assert.match(await render(db, "studente"), /Disputed by later research/);
   });
+  // /attribution's credits leave Lexema too; its nav and footer links stay.
+  const page = attribution();
+  const external = [...page.matchAll(/<a ([^>]*href="https?:\/\/[^>]*)>(.*?)<\/a>/g)];
+  assert.ok(external.length >= 5, "the attribution page links out");
+  for (const [, attributes, inner] of external) {
+    assert.match(attributes, /target="_blank" rel="noopener noreferrer"/, attributes);
+    assert.match(inner, /opens in a new tab/, attributes);
+  }
+  for (const [, attributes] of page.matchAll(/<a ([^>]*href="[/#][^>]*)>/g)) assert.doesNotMatch(attributes, /target=/, attributes);
 });
 
 test("a proper name gets no grid and no generated articles; its forms stay visible", async () => {
@@ -1131,8 +1140,8 @@ test("the attribution page carries the credit, the licence and the restructuring
       html,
       exact(
         `<a class="${LINK}" href="https://creativecommons.org/licenses/by-sa/4.0/" ` +
-          `rel="noreferrer">Creative Commons Attribution-ShareAlike 4.0 International ` +
-          `(CC BY-SA 4.0)</a>`,
+          `target="_blank" rel="noopener noreferrer">Creative Commons Attribution-ShareAlike 4.0 International ` +
+          `(CC BY-SA 4.0)<span class="sr-only"> (opens in a new tab)</span></a>`,
       ),
     );
     // The credit: the contributors, and where their names are kept.
@@ -1141,7 +1150,7 @@ test("the attribution page carries the credit, the licence and the restructuring
     assert.match(
       html,
       exact(
-        `<a class="${LINK}" href="https://it.wiktionary.org/" rel="noreferrer">Italian Wiktionary</a>`,
+        `<a class="${LINK}" href="https://it.wiktionary.org/" target="_blank" rel="noopener noreferrer">Italian Wiktionary<span class="sr-only"> (opens in a new tab)</span></a>`,
       ),
     );
     assert.match(html, /kaikki\.org/);
@@ -1162,8 +1171,8 @@ test("the attribution page names the dump and links the download the release cam
       exact(
         field(
           "Source",
-          `<a class="${LINK}" href="https://dumps.wikimedia.org/itwiktionary/20260701/" rel="noreferrer">` +
-            `Italian Wiktionary, dump of 1 July 2026</a>`,
+          `<a class="${LINK}" href="https://dumps.wikimedia.org/itwiktionary/20260701/" target="_blank" rel="noopener noreferrer">` +
+            `Italian Wiktionary, dump of 1 July 2026<span class="sr-only"> (opens in a new tab)</span></a>`,
         ),
       ),
     );
@@ -1172,8 +1181,8 @@ test("the attribution page names the dump and links the download the release cam
       exact(
         field(
           "Downloaded from",
-          `<a class="${LINK}" href="https://kaikki.org/dictionary/downloads/it/it-extract.jsonl.gz" rel="noreferrer">` +
-            `<code class="${CODE_IDENTITY}">https://kaikki.org/dictionary/downloads/it/it-extract.jsonl.gz</code></a>`,
+          `<a class="${LINK}" href="https://kaikki.org/dictionary/downloads/it/it-extract.jsonl.gz" target="_blank" rel="noopener noreferrer">` +
+            `<code class="${CODE_IDENTITY}">https://kaikki.org/dictionary/downloads/it/it-extract.jsonl.gz</code><span class="sr-only"> (opens in a new tab)</span></a>`,
         ),
       ),
     );

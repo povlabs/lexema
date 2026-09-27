@@ -84,17 +84,27 @@ export const SEARCH_ICON = "pointer-events-none absolute left-4 size-4 text-text
  */
 export const SEARCH_INPUT =
   "w-full min-w-0 bg-transparent py-3 pr-24 pl-11 font-serif text-lg text-text-strong outline-none placeholder:font-sans placeholder:text-base placeholder:text-text-muted [&::-webkit-search-cancel-button]:appearance-none";
-export const SEARCH_CLEAR = `absolute right-3 flex size-7 items-center justify-center font-sans text-lg text-text-muted no-underline hover:text-text ${FOCUS_RING}`;
-export const SEARCH_HINT =
-  "pointer-events-none absolute right-4 font-sans text-[0.65rem] tracking-[0.12em] text-text-muted";
+/**
+ * The right end of the bar: the shortcut hint, the `ENTER` hint and the `×`,
+ * in one row centred on the input. Each sits in a box of the same height with
+ * its glyph centred in it, so their centres line up with each other and with
+ * the typed text.
+ */
+export const SEARCH_TRAILING = "pointer-events-none absolute inset-y-0 right-3 flex items-center gap-1.5";
+const TRAILING_BOX = "flex h-7 items-center leading-none";
+/**
+ * Capitals and `⌘` are drawn higher in their line than `×`; measured, the
+ * key hints' ink sat 1.5 px above the `×`'s, so they are nudged down by that.
+ */
+const KEY_NUDGE = "translate-y-[0.09375rem]";
+export const SEARCH_CLEAR = `${TRAILING_BOX} pointer-events-auto w-7 justify-center font-sans text-lg text-text-muted no-underline hover:text-text ${FOCUS_RING}`;
+export const SEARCH_HINT = `${TRAILING_BOX} ${KEY_NUDGE} px-1 font-sans text-[0.65rem] tracking-[0.12em] text-text-muted`;
 /**
  * `⌘K` / `Ctrl K`, the shortcut back to the field, shown while it does not
  * have focus: in the hint's place, or left of the `×`. Hidden on a touch-only
  * screen, which has no keys to press.
  */
-const SHORTCUT = "pointer-events-none absolute font-sans text-[0.7rem] tracking-[0.08em] text-text-muted [@media(hover:none)_and_(pointer:coarse)]:hidden";
-export const SEARCH_SHORTCUT = `${SHORTCUT} right-4`;
-export const SEARCH_SHORTCUT_BESIDE_CLEAR = `${SHORTCUT} right-12`;
+export const SEARCH_SHORTCUT = `${TRAILING_BOX} ${KEY_NUDGE} px-1 font-sans text-[0.7rem] tracking-[0.08em] text-text-muted [@media(hover:none)_and_(pointer:coarse)]:hidden`;
 
 /**
  * The suggestion list under the field. No frame draws it, so it takes the

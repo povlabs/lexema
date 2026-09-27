@@ -7,7 +7,7 @@
 
 import type { WordFacts } from "@lexema/lookup/types.ts";
 import { ExternalIcon } from "./icons";
-import { NEW_TAB } from "./externalLink.ts";
+import { NEW_TAB } from "./ExternalLink";
 import { OneLine } from "./OneLine";
 import { ReadingView } from "./Reading";
 import { ReportDialog } from "./ReportDialog";

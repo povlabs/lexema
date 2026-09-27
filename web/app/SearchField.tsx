@@ -35,7 +35,7 @@ import {
   SEARCH_FORM,
   SEARCH_HINT,
   SEARCH_SHORTCUT,
-  SEARCH_SHORTCUT_BESIDE_CLEAR,
+  SEARCH_TRAILING,
   SEARCH_ICON,
   SEARCH_INPUT,
   SUGGEST_ITEM,
@@ -228,23 +228,25 @@ export function SearchField({ raw }: { raw: string }) {
             onFocus={() => setFocused(true)}
             onBlur={() => setFocused(false)}
           />
-          {/* Away from the field, the shortcut back to it; left of the × when there is text. */}
-          {apple !== undefined && !focused && (
-            <kbd className={value !== "" ? SEARCH_SHORTCUT_BESIDE_CLEAR : SEARCH_SHORTCUT} aria-hidden="true">
-              {shortcutLabel(apple)}
-            </kbd>
-          )}
-          {value !== "" ? (
-            <a className={SEARCH_CLEAR} href="/" aria-label="Clear search" onClick={clear}>
-              ×
-            </a>
-          ) : (
-            (apple === undefined || focused) && (
-              <kbd className={SEARCH_HINT} aria-hidden="true">
-                ENTER
+          <div className={SEARCH_TRAILING}>
+            {/* Away from the field, the shortcut back to it; left of the × when there is text. */}
+            {apple !== undefined && !focused && (
+              <kbd className={SEARCH_SHORTCUT} aria-hidden="true">
+                {shortcutLabel(apple)}
               </kbd>
-            )
-          )}
+            )}
+            {value !== "" ? (
+              <a className={SEARCH_CLEAR} href="/" aria-label="Clear search" onClick={clear}>
+                ×
+              </a>
+            ) : (
+              (apple === undefined || focused) && (
+                <kbd className={SEARCH_HINT} aria-hidden="true">
+                  ENTER
+                </kbd>
+              )
+            )}
+          </div>
         </Autocomplete.InputGroup>
       </form>
       <Autocomplete.Status className="sr-only">{statusOf(shown)}</Autocomplete.Status>
