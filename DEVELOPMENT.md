@@ -62,6 +62,37 @@ See [how to run the search page](./docs/RUN_THE_SITE.md) for the full recipe,
 [why the search page works this way](./docs/WEB.md) for the design, and
 [the development seed](./docs/DEV_SEED.md) for what the seed covers.
 
+### Call the JSON API
+
+The same Worker answers a private JSON API under `/api/v1` (epic
+[#148](https://github.com/hueypov/lexema/issues/148)). Every request needs an
+API key in the `X-API-Key` header. Keys live in the local D1 the seed writes,
+and are made and revoked by hand; there is no signup.
+
+```sh
+pnpm run api-key create --label "learning app" --per-minute 60 --daily-units 20000
+pnpm run api-key revoke 3
+```
+
+`create` prints the new key's id and the key itself, once. Only the key's SHA-256
+is stored, so a lost key is revoked and replaced, never read back. `revoke`
+takes the id. Both write to `SEED_STATE` (default `.data/seed-state`), the
+database `pnpm run seed:dev` loads, and re-seeding drops every key with it.
+
+With the Worker running as in [how to run the search page](./docs/RUN_THE_SITE.md):
+
+```sh
+curl -i -H "X-API-Key: lx_…" "http://localhost:8790/api/v1/lookup?q=andavano"
+```
+
+Each key has its own per-minute request limit, counted in D1, and every answer
+to a known key carries `RateLimit-Limit`, `RateLimit-Remaining` and
+`RateLimit-Reset`; a 401 carries none. Past the limit the answer is a 429 with
+`Retry-After`. Each answered request, found (200) or not found (404), adds its
+units to the key's row for the day ([src/api/units.ts](./src/api/units.ts)). A
+request refused before an answer (a 400 bad `q`, a 405 or a 429) adds none. An
+API request is never counted against the site's per-visitor limits.
+
 ## Stack
 
 | Layer | Choice | What it does for Lexema |
@@ -78,6 +109,7 @@ See [how to run the search page](./docs/RUN_THE_SITE.md) for the full recipe,
 
 ```
 src/
+├── api/            # API keys, unit weights and per-key counters; `pnpm run api-key`
 ├── cli.ts          # `pnpm run validate` — streams the file, writes the report
 ├── core/           # dataset-independent: record types, candidate resolver, report
 ├── db/             # the D1 schema and the lookup queries, as SQL
