@@ -1,64 +1,43 @@
-// One word's page: the headword and what the source says about it as a word,
-// the reading index, one card per reading, and — after the last card — the
-// sections the source repeats on every record of the headword, said once.
+// One word's page: the headword with its pronunciation, jump links when there
+// are three readings or more, the readings in source order, then the facts
+// about the word once, then *Source* (design-system-manifest.md § "The result").
 //
-// Which records are cards and which are lemma panels is `wordPage.ts`; this
-// file only lays the answer out, in the order frames 01–06 draw it.
+// Which records are readings and which lemma tables they carry is
+// `wordPage.ts`; this file only lays the answer out.
 
-import type { ReactNode } from "react";
-import type { Reading, RelatedWord, WordFacts } from "@lexema/lookup/types.ts";
-import { ChevronIcon, ExternalIcon } from "./icons";
-import { ReadingCard, ShowAll, readingKind, lemmaWords, sliceCount } from "./Reading";
+import type { WordFacts } from "@lexema/lookup/types.ts";
+import { ExternalIcon } from "./icons";
+import { NEW_TAB } from "./ExternalLink";
+import { OneLine } from "./OneLine";
+import { ReadingView } from "./Reading";
+import { ReportDialog } from "./ReportDialog";
+import { WordList } from "./WordList";
 import type { WordPage } from "./wordPage.ts";
 import {
-  CARDS,
-  CHIP,
-  CHIP_WIDE_SLICE,
-  CHIPS,
-  ETYMOLOGIES,
-  ETYMOLOGY,
-  ETYMOLOGY_LABEL,
-  ETYMOLOGY_SINGLE,
+  BLOCK_LABEL,
+  WORD_BLOCK,
   ICON,
-  INDEX_CHEVRON,
-  INDEX_GLOSS,
-  INDEX_ITEM,
-  INDEX_KIND,
-  INDEX_LINK,
-  INDEX_LIST,
-  INDEX_NUMBER,
-  LABEL,
-  PHONE_ONLY,
-  READING_INDEX,
-  RELATED,
-  SECTION,
-  SECTION_COUNT,
-  SECTION_HEADER,
-  SECTION_NAME,
-  SECTION_RULE,
+  JUMP_LINK,
+  JUMP_LINKS,
+  JUMP_NUMBER,
+  PRONUNCIATION,
+  PRONUNCIATION_NOTE,
+  READINGS,
   SOURCE_LINE,
   SOURCE_LINK,
-  WIDE_ONLY,
+  WORD_FACTS,
   WORD_HEADING,
-  WORD_SECTION,
-  WORD_STRIP,
-  WORD_STRIP_FACT,
-  WORD_STRIP_NOTE,
-  WORD_STRIP_VALUE,
 } from "./styles.ts";
 
-/**
- * How many related words a list shows before its "Show all" button: fewer on a
- * phone, where a screen of chips is half as wide (frame 09).
- */
-export const RELATED_SLICE = { phone: 12, wide: 24 } as const;
+/** Jump links appear from this many readings up. */
+export const JUMP_LINKS_FROM = 3;
+
+export { WORD_LIST_SLICE } from "./WordList";
 
 /**
- * Where a word can be checked by hand. The release is a Wiktextract dump of
- * the Italian Wiktionary, so every record came from the page of its headword;
- * the source stores no URL, so it is built from the headword. One link per
- * headword on the page, labelled *Source* (ADR 0009) — the full credit is on
- * `/attribution`, which the footer reaches.
+ * Where a word can be checked by hand. Every record came from the Italian
+ * Wiktionary page of its headword; the source stores no URL, so it is built
+ * from the headword (ADR 0009). The full credit is on `/attribution`.
  */
 const WIKTIONARY_PAGE = "https://it.wiktionary.org/wiki/";
 
@@ -66,221 +45,113 @@ export function sourcePageUrl(word: string): string {
   return WIKTIONARY_PAGE + encodeURIComponent(word.replace(/ /g, "_"));
 }
 
-/** Pronunciation over the IPA, syllables over the hyphenation, a divider between. */
-function WordStrip({ facts }: { facts: WordFacts }) {
-  if (facts.pronunciations.length === 0 && facts.hyphenations.length === 0) return null;
+/** The IPA under the headword; the source's own qualifier tells several apart. */
+function Pronunciation({ facts }: { facts: WordFacts }) {
+  const { pronunciations } = facts;
+  if (pronunciations.length === 0) return null;
   return (
-    <dl className={WORD_STRIP} aria-label="Pronunciation and syllables">
-      {facts.pronunciations.length > 0 && (
-        <div className={WORD_STRIP_FACT}>
-          <dt className={LABEL}>Pronunciation</dt>
-          {facts.pronunciations.map((sound) => (
-            <dd key={sound.ref.jsonPointer} className={WORD_STRIP_VALUE}>
-              {sound.ipa}
-              {/* `casa` gives two, and the source's own qualifier is what
-                  tells them apart. */}
-              {facts.pronunciations.length > 1 && sound.note !== null && (
-                <span className={WORD_STRIP_NOTE} lang="it">
-                  {sound.note}
-                </span>
-              )}
-            </dd>
-          ))}
-        </div>
-      )}
-      {facts.hyphenations.length > 0 && (
-        <div className={WORD_STRIP_FACT}>
-          <dt className={LABEL}>Syllables</dt>
-          {facts.hyphenations.map((hyphenation) => (
-            <dd key={hyphenation.ref.jsonPointer} className={WORD_STRIP_VALUE} lang="it">
-              {hyphenation.parts.join("·")}
-            </dd>
-          ))}
-        </div>
-      )}
-    </dl>
+    <p className={PRONUNCIATION} aria-label="Pronunciation">
+      {pronunciations.map((sound, i) => (
+        <span key={sound.ref.jsonPointer}>
+          {i > 0 && " · "}
+          {sound.ipa}
+          {pronunciations.length > 1 && sound.note !== null && (
+            <span className={PRONUNCIATION_NOTE} lang="it">
+              {sound.note}
+            </span>
+          )}
+        </span>
+      ))}
+    </p>
   );
 }
 
-/**
- * One compact chip per card: its number, its kind, its first gloss verbatim. On
- * a phone, a full-width row with a chevron (frame 07).
- */
-function ReadingIndex({ page }: { page: WordPage }) {
+function JumpLinks({ page }: { page: WordPage }) {
+  if (page.readings.length < JUMP_LINKS_FROM) return null;
   return (
-    <nav className={READING_INDEX} aria-label="Readings">
-      <ol className={INDEX_LIST}>
-        {page.cards.map(({ number, reading }) => {
-          const gloss = firstGloss(reading);
-          return (
-            <li key={reading.recordId} className={INDEX_ITEM}>
-              <a className={INDEX_LINK} href={`#reading-${reading.recordId}`}>
-                <span className={INDEX_NUMBER}>{number}</span>
-                <span className={INDEX_KIND}>{readingKind(reading)}</span>
-                {gloss !== undefined && (
-                  <span className={INDEX_GLOSS} lang="it">
-                    {gloss}
-                  </span>
-                )}
-                <ChevronIcon className={INDEX_CHEVRON} />
-              </a>
-            </li>
-          );
-        })}
-      </ol>
+    <nav aria-label="Readings">
+      <ul className={JUMP_LINKS}>
+        {page.readings.map(({ number, reading }) => (
+          <li key={reading.recordId}>
+            <a className={JUMP_LINK} href={`#reading-${reading.recordId}`}>
+              <span className={JUMP_NUMBER}>{number}</span>
+              <span lang="it">{reading.posTitle}</span>
+            </a>
+          </li>
+        ))}
+      </ul>
     </nav>
   );
 }
 
-function firstGloss(reading: Reading): string | undefined {
-  for (const sense of reading.senses) for (const gloss of sense.glosses) return gloss.text;
-  return lemmaWords(reading).length > 0 ? `of ${lemmaWords(reading).join(", ")}` : undefined;
-}
 
-function WordSectionBlock({
-  id,
-  name,
-  count,
-  children,
-}: {
-  id: string;
-  name: string;
-  count: ReactNode;
-  children: ReactNode;
-}) {
-  return (
-    <section className={SECTION} aria-labelledby={id}>
-      <div className={SECTION_HEADER}>
-        <h2 className={SECTION_NAME} id={id}>
-          {name}
-        </h2>
-        <span className={SECTION_COUNT}>{count}</span>
-        <span className={SECTION_RULE} aria-hidden="true" />
-      </div>
-      {children}
-    </section>
-  );
-}
-
-/**
- * The etymologies, each in its own box. When there are several and the source
- * does not say which reading each belongs to — `sale` has two — each says so in
- * words. Lexema never assigns one to a reading itself.
- */
-function Etymologies({ facts }: { facts: WordFacts }) {
-  const { etymologies } = facts;
-  if (etymologies.length === 0) return null;
-  const several = etymologies.length > 1;
-  return (
-    <WordSectionBlock id="etymology" name="Etymology" count={`${etymologies.length}`}>
-      <div className={several ? ETYMOLOGIES : ETYMOLOGY_SINGLE}>
-        {etymologies.map((etymology, i) => (
-          <p key={etymology.ref.jsonPointer} className={ETYMOLOGY}>
-            {several && <span className={ETYMOLOGY_LABEL}>Etymology {i + 1} — reading not given</span>}
-            <span lang="it">{etymology.text}</span>
-          </p>
-        ))}
-      </div>
-    </WordSectionBlock>
-  );
-}
-
-/** `86 · showing 12` on a phone and `86 · showing 24` on a wide screen. */
-function RelatedCount({ total }: { total: number }) {
-  const phone = sliceCount(total, RELATED_SLICE.phone);
-  const wide = sliceCount(total, RELATED_SLICE.wide);
-  if (phone === wide) return phone;
-  return (
-    <>
-      <span className={PHONE_ONLY}>{phone}</span>
-      <span className={WIDE_ONLY}>{wide}</span>
-    </>
-  );
-}
-
-/**
- * A wrapping grid of chips, each a search for that word; the rest behind a
- * button. Every chip is in the document at every width: the ones past the
- * phone's slice wait for the button there, and the ones past the wide slice
- * are inside it.
- */
-function RelatedWords({ id, name, noun, words }: { id: string; name: string; noun: string; words: RelatedWord[] }) {
-  if (words.length === 0) return null;
-  const chip = (word: RelatedWord, className?: string) => (
-    <li key={word.word} className={className}>
-      <a className={CHIP} href={`/?q=${encodeURIComponent(word.word)}`} lang="it">
-        {word.word}
-      </a>
-    </li>
-  );
-  const first = words.slice(0, RELATED_SLICE.wide);
-  const rest = words.slice(RELATED_SLICE.wide);
-  return (
-    <WordSectionBlock id={id} name={name} count={<RelatedCount total={words.length} />}>
-      <div className={RELATED}>
-        <ul className={CHIPS}>
-          {first.map((word, i) => chip(word, i < RELATED_SLICE.phone ? undefined : CHIP_WIDE_SLICE))}
-        </ul>
-        {words.length > RELATED_SLICE.phone && (
-          <ShowAll total={words.length} noun={noun} wide phoneOnly={rest.length === 0}>
-            {rest.length > 0 && <ul className={`${CHIPS} mt-4`}>{rest.map((word) => chip(word))}</ul>}
-          </ShowAll>
-        )}
-      </div>
-    </WordSectionBlock>
-  );
-}
-
-function WordSection({ facts }: { facts: WordFacts }) {
-  const any =
-    facts.etymologies.length + facts.synonyms.length + facts.antonyms.length + facts.derived.length > 0;
+function WordFactsView({ facts }: { facts: WordFacts }) {
+  const any = facts.etymologies.length + facts.synonyms.length + facts.antonyms.length + facts.derived.length > 0;
   if (!any) return null;
   return (
-    <div className={WORD_SECTION}>
-      <Etymologies facts={facts} />
-      <RelatedWords id="synonyms" name="Synonyms" noun="synonyms" words={facts.synonyms} />
-      <RelatedWords id="antonyms" name="Antonyms" noun="antonyms" words={facts.antonyms} />
-      <RelatedWords id="derived" name="Derived words" noun="derived words" words={facts.derived} />
+    <div className={WORD_FACTS}>
+      {facts.etymologies.length > 0 && (
+        <section className={WORD_BLOCK} aria-labelledby="etymology">
+          <h2 className={BLOCK_LABEL} id="etymology">
+            Etymology
+          </h2>
+          {facts.etymologies.map((etymology) => (
+            <OneLine key={etymology.ref.jsonPointer} text={etymology.text} lang="it" />
+          ))}
+        </section>
+      )}
+      <WordList id="synonyms" label="Synonyms" words={facts.synonyms} />
+      <WordList id="antonyms" label="Antonyms" words={facts.antonyms} />
+      <WordList id="derived" label="Derived words" words={facts.derived} />
     </div>
   );
 }
 
-/** One *Source* link per headword the cards belong to; normally exactly one. */
-function SourceLinks({ words }: { words: readonly string[] }) {
+/** *Source* to each Wiktionary page the readings come from; normally exactly one. */
+function SourceLinks({ page, siteKey }: { page: WordPage; siteKey: string | undefined }) {
+  const words = page.sourceWords;
   return (
     <footer className={SOURCE_LINE}>
       {words.map((word, i) => (
-        <a
-          key={word}
-          className={SOURCE_LINK}
-          href={sourcePageUrl(word)}
-          rel="noreferrer"
-          aria-label={`Wiktionary page for ${word}, the source of this page`}
-        >
-          Source{i > 0 && <span lang="it"> · {word}</span>}
-          <ExternalIcon className={ICON} />
-        </a>
+        <span key={word} className="inline-flex items-center gap-3">
+          {i > 0 && <span aria-hidden="true">·</span>}
+          <a
+            className={SOURCE_LINK}
+            href={sourcePageUrl(word)}
+            {...NEW_TAB}
+            aria-label={`Wiktionary page for ${word}, the source of this page (opens in a new tab)`}
+          >
+            Source
+            {words.length > 1 && <span lang="it">{word}</span>}
+            <ExternalIcon className={ICON} />
+          </a>
+        </span>
       ))}
+      <span aria-hidden="true">·</span>
+      <ReportDialog
+        word={page.headword}
+        readings={page.readings.map(({ number, reading }) => ({ number, recordId: reading.recordId, posTitle: reading.posTitle }))}
+        siteKey={siteKey}
+      />
     </footer>
   );
 }
 
-export function WordView({ page, query }: { page: WordPage; query: string }) {
-  const numbered = page.cards.length > 1;
+export function WordView({ page, siteKey }: { page: WordPage; siteKey?: string }) {
   return (
     <>
       <h1 className={WORD_HEADING} lang="it">
         {page.headword}
       </h1>
-      <WordStrip facts={page.wordFacts} />
-      {numbered && <ReadingIndex page={page} />}
-      <div className={CARDS}>
-        {page.cards.map((card) => (
-          <ReadingCard key={card.reading.recordId} card={card} query={query} numbered={numbered} />
+      <Pronunciation facts={page.wordFacts} />
+      <JumpLinks page={page} />
+      <div className={READINGS}>
+        {page.readings.map((entry) => (
+          <ReadingView key={entry.reading.recordId} entry={entry} />
         ))}
       </div>
-      <WordSection facts={page.wordFacts} />
-      <SourceLinks words={page.sourceWords} />
+      <WordFactsView facts={page.wordFacts} />
+      <SourceLinks page={page} siteKey={siteKey} />
     </>
   );
 }

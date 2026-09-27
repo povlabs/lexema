@@ -4,9 +4,11 @@
 // this; the comment is here so nobody has to rediscover it.
 import { env } from "cloudflare:workers";
 import { fromD1 } from "@lexema/lookup/database.ts";
-import { lookup } from "@lexema/lookup/lookup.ts";
+import { cache } from "react";
 import { suggest, type SuggestResult } from "@lexema/lookup/suggest.ts";
 import type { Attempt } from "./attempt.ts";
+import { searchAttempt } from "./searchAttempt.ts";
+import { turnstileConfig, type TurnstileConfig } from "./report.ts";
 
 /**
  * The lookup database. Production has no D1 binding until #19
@@ -14,7 +16,7 @@ import type { Attempt } from "./attempt.ts";
  * lands where any other database failure does: in the log, and as the
  * failed state on the page.
  */
-function database() {
+export function database() {
   if (env.DB === undefined) throw new Error("no D1 binding: this Worker has no DB");
   return fromD1(env.DB);
 }
@@ -27,15 +29,18 @@ function database() {
  * blank 500. The error itself stays here: a database message names tables,
  * releases and binding state, which is the operator's business and not the
  * reader's, so it is logged and nothing of it reaches the page.
+ *
+ * Memoised for the request with React's `cache`, so the tab title and the
+ * result read one lookup, not two.
  */
-export async function search(query: string): Promise<Attempt> {
+export const search = cache(async (query: string): Promise<Attempt> => {
   try {
-    return await lookup({ db: database(), releaseId: env.LEXEMA_RELEASE, query });
+    return await searchAttempt(database(), env.LEXEMA_RELEASE, query);
   } catch (error) {
     console.error("lookup failed", error);
     return { outcome: "failed" };
   }
-}
+});
 
 /**
  * Suggestions for a prefix, or the fact that they could not be read.
@@ -53,3 +58,19 @@ export async function suggestions(prefix: string): Promise<SuggestResult | { out
     return { outcome: "failed" };
   }
 }
+
+/**
+ * The report box's Turnstile keys (#51): the site key is a var, the secret is
+ * set with `wrangler secret put`. On only when both are set; one alone is off,
+ * with a warning in the log.
+ */
+export function turnstile(): TurnstileConfig | undefined {
+  return turnstileConfig(
+    env.TURNSTILE_SITE_KEY,
+    (env as { TURNSTILE_SECRET_KEY?: string }).TURNSTILE_SECRET_KEY,
+    (message) => console.warn(message),
+  );
+}
+
+/** The release this Worker serves. */
+export const servedRelease = (): string => env.LEXEMA_RELEASE;

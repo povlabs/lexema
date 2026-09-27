@@ -26,61 +26,46 @@ import { fileURLToPath } from "node:url";
 import { DatabaseSync } from "node:sqlite";
 import { gzipSync } from "node:zlib";
 import { renderToStaticMarkup } from "react-dom/server";
-import { TENSE_BOXES } from "../../src/italian/moods.js";
 import { seedSql } from "../../src/import/seedSql.js";
 import { writeKnownDisputes } from "../../src/import/knownDisputes.js";
 import { loadFixturePages, type RawPageSource } from "../../src/source/rawPage.js";
 import { PUBLISHED_ARCHIVE_SHA256, sourceOf, type ArchiveFacts, type ReleaseSource } from "../../src/source/archiveFacts.js";
 import { fromNodeSqlite } from "../../src/lookup/database.js";
-import { lookup } from "../../src/lookup/lookup.js";
 import type { Reading } from "../../src/lookup/types.js";
 import type { Attempt } from "../app/attempt.ts";
+import { searchAttempt } from "../app/searchAttempt.ts";
 import { Attribution } from "../app/Attribution";
-import { DEFINITION_SLICE, GROUPS_SHOWN_OPEN } from "../app/Reading";
 import { FirstLoad, Limited, Outcome, Pending, SearchPage, TRY_WORDS } from "../app/SearchPage";
 import { SiteFooter } from "../app/SiteFooter";
 import { SiteHeader } from "../app/SiteHeader";
-import { RELATED_SLICE } from "../app/Word";
 import { wordPage } from "../app/wordPage.ts";
-import { firstQuery } from "../app/params";
+import { firstQuery, pageTitle } from "../app/params";
 // The class strings the components carry, imported rather than copied, so a
 // restyle that changes one changes both together.
 import {
-  BOX,
-  BOX_HEADING,
-  CARD,
-  CARD_NUMBER,
   CODE_IDENTITY,
-  DEFINITION_NUMBER,
+  DEFINITION_EXTRA,
   EMPTY,
   ERROR,
-  ETYMOLOGY_LABEL,
+  EXAMPLE_EXTRA,
   FIELD_LABEL,
-  FOLD,
-  FOLD_BOX_SEARCHED,
-  FOLD_SUMMARY,
-  FOLD_TENSE_HEADING,
-  INDEX_CHEVRON,
-  CHIP_WIDE_SLICE,
-  MORE,
-  MORE_PHONE_ONLY,
-  PHONE_ONLY,
-  WIDE_ONLY,
   FIELD_VALUE,
-  HEADLINE_FORM,
-  HEADLINE_LABEL,
-  HEADLINE_VALUE,
+  JUMP_LINK,
   LINK,
+  NON_FINITE_LABEL_SEARCHED,
+  NOT_FOUND_HEADING,
+  NOT_FOUND_LINK,
   OPEN_MARK,
   PENDING,
-  RECOVERED_ITEMS,
-  RECOVERED_MARK,
-  SEARCHED,
+  PERSON_SEARCHED,
+  READING,
   SHELL_CENTRED,
   SHELL_TOP,
   SITE_FOOTER_LINK,
-  TENSE_HEADING,
+  SITE_FOOTER_NAME,
+  TENSE_HEAD_SEARCHED,
   TOP_BAR,
+  WORD_LINK,
 } from "../app/styles.ts";
 import { FIXTURE_LINES } from "./fixture.js";
 
@@ -159,7 +144,7 @@ async function withDevSeedAndPages(run: (f: Fixture) => Promise<void>): Promise<
 }
 
 async function attempt(db: DatabaseSync, query: string): Promise<Attempt> {
-  return lookup({ db: fromNodeSqlite(db), releaseId: RELEASE, query });
+  return searchAttempt(fromNodeSqlite(db), RELEASE, query);
 }
 
 /** The whole page, as the Worker would send it for `?q=<query>`. */
@@ -192,628 +177,799 @@ const textOf = (html: string): string => html.replace(/<[^>]*>/g, "").replace(/&
 const esc = (literal: string): string => literal.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 const exact = (literal: string): RegExp => new RegExp(esc(literal));
 
-/** One headline fact of the header bar, label and value. */
-const fact = (label: string, value: string, form = false): RegExp =>
-  new RegExp(
-    `<dt class="${esc(HEADLINE_LABEL)}">${esc(label)}</dt><dd class="${esc(form ? HEADLINE_FORM : HEADLINE_VALUE)}">` +
-      `(?:<span[^>]*>)*${esc(value)}<`,
-  );
-
 /** One row of the attribution page's release identity. */
 const field = (label: string, value: string): string =>
   `<dt class="${FIELD_LABEL}">${label}</dt><dd class="${FIELD_VALUE}">${value}</dd>`;
 
-/** Each card of a page, in the order the page rendered them. */
-function cardsOf(html: string): string[] {
+/** Each reading of a page, in the order the page rendered them. */
+function readingsOfPage(html: string): string[] {
   return html
-    .split(`<article class="${CARD}"`)
+    .split(`<article class="${READING}"`)
     .slice(1)
     .map((part) => part.slice(0, part.indexOf("</article>")));
 }
 
-const cardLabels = (html: string): string[] =>
-  [...html.matchAll(new RegExp(`<article class="${esc(CARD)}" id="[^"]+" aria-label="([^"]+)"`, "g"))].map(
-    (match) => match[1],
+/** The headings of a page's readings, as text: `1·Sostantivo`. */
+const headingsOf = (html: string): string[] =>
+  [...html.matchAll(/<h2 class="[^"]*" id="reading-heading-\d+">(.*?)<\/h2>/g)].map((match) => textOf(match[1]));
+
+/** One reading out of a page, by the record it renders. */
+function readingById(html: string, recordId: number): string {
+  const open = html.search(new RegExp(`<article class="${esc(READING)}" id="reading-${recordId}"`));
+  assert.notEqual(open, -1, `no reading for record ${recordId}`);
+  return html.slice(open, html.indexOf("</article>", open));
+}
+
+/** A reading by its 1-based place on the page. */
+const nth = (html: string, n: number): string => readingsOfPage(html)[n - 1];
+
+/** One mood's panel out of some markup. */
+function panel(html: string, mood: string): string {
+  const open = html.search(new RegExp(`<div [^>]*data-mood="${mood}"`));
+  assert.notEqual(open, -1, `no ${mood} panel`);
+  const next = html.slice(open + 1).search(/<div [^>]*data-mood="/);
+  return next === -1 ? html.slice(open) : html.slice(open, open + 1 + next);
+}
+
+/** The words of a grid, row by row: `maschile | bello il bello un bello | belli …`. */
+function gridRows(html: string): string[][] {
+  const grid = html.slice(html.indexOf('data-grid=""'));
+  return [...grid.matchAll(/<div role="row" class="contents">(.*?)(?=<div role="row"|<\/div><\/section>|<\/div><p |$)/g)].map(
+    (row) => [...row[1].matchAll(/<(?:span|div) class="[^"]*" role="(?:rowheader|cell|columnheader)"[^>]*>(.*?)<\/(?:span|div)>(?=<(?:span|div) class="[^"]*" role=|<\/div>|$)/g)].map((cell) => textOf(cell[1]).trim()),
   );
-
-/** One card out of a page, by the label it announces itself with. */
-function card(html: string, label: string): string {
-  const open = html.search(new RegExp(`<article class="${esc(CARD)}" id="[^"]+" aria-label="${esc(label)}"`));
-  assert.notEqual(open, -1, `no card labelled ${label}`);
-  return html.slice(open, html.indexOf("</article>", open));
 }
 
-/** One card out of a page, by the record it renders. */
-function cardById(html: string, recordId: number): string {
-  const open = html.search(new RegExp(`<article class="${esc(CARD)}" id="reading-${recordId}"`));
-  assert.notEqual(open, -1, `no card for record ${recordId}`);
-  return html.slice(open, html.indexOf("</article>", open));
-}
+/** Every form link in some markup: its text and where it points. */
+const formLinks = (html: string): { text: string; href: string; searched: boolean }[] =>
+  [...html.matchAll(/<a class="[^"]*" href="([^"]+)" lang="it" data-form="[\d ]+"( data-searched="")?>([^<]+)<\/a>/g)].map((match) => ({
+    href: textOf(match[1]),
+    searched: match[2] !== undefined,
+    text: textOf(match[3]),
+  }));
 
-/**
- * Every box of some markup, from its open tag to its close — a folding one
- * included, which is outlined on a phone when it holds the searched form.
- */
-function boxesOf(html: string): string[] {
-  const found: string[] = [];
-  const open = new RegExp(`<section class="(?:${esc(BOX)}|${esc(FOLD_BOX_SEARCHED)})"`, "g");
-  for (const match of html.matchAll(open)) found.push(html.slice(match.index, html.indexOf("</section>", match.index)));
-  return found;
-}
+// The design's words, from their real records ----------------------------------
 
-/** The headings of every tense box, in page order, whether the set folds on a phone or not. */
-const tenseHeadings = (html: string): string[] =>
-  [
-    ...html.matchAll(
-      new RegExp(`<h4 class="(?:${esc(TENSE_HEADING)}|${esc(FOLD_TENSE_HEADING)})" id="[^"]+" lang="it">([^<]+)</h4>`, "g"),
-    ),
-  ].map((match) => match[1]);
-
-/** A class string as it sits in the markup, where `&` is written `&amp;`. */
-const attr = (classes: string): string => esc(classes.replace(/&/g, "&amp;"));
-
-/** Each folding group of some markup: its heading, the count its row shows, and whether it is open. */
-const foldsOf = (html: string): { name: string; count: number; open: boolean }[] =>
-  [
-    ...html.matchAll(
-      new RegExp(
-        `<details class="${attr(FOLD)}"( open="")? data-fold=""><summary class="${attr(FOLD_SUMMARY)}"><span[^>]*>([^<]+)</span><span[^>]*>(\\d+)<span class="sr-only"> forms</span></span>`,
-        "g",
-      ),
-    ),
-  ].map((match) => ({ name: match[2], count: Number(match[3]), open: match[1] !== undefined }));
-
-const formMarks = (html: string): number[] => [...html.matchAll(/data-form="(\d+)"/g)].map((match) => Number(match[1]));
-
-/**
- * Every form the lookup returned for a reading is on its card, and no box
- * renders one twice. The header bar may repeat a form a box also shows — the
- * frames put `studenti` in both — so the per-box count is the one held to one.
- */
-function assertEveryFormShown(html: string, reading: Reading, where: string): void {
-  const shown = new Set(formMarks(html));
-  for (const form of reading.forms) {
-    assert.ok(shown.has(form.index), `${where}: form ${form.index} (${form.surface}) is on the card`);
-  }
-  const inBoxes = boxesOf(html).flatMap(formMarks);
-  assert.equal(new Set(inBoxes).size, inBoxes.length, `${where}: no box renders a form twice`);
-}
-
-// The six words the design frames draw, from their real records ---------------
-
-test("each frame word renders every record the lookup returns as a card, and every lemma it points to as that card's panel", async () => {
+test("every record the lookup returns is a reading, headed by its number and its own pos_title", async () => {
   await withDevSeed(async ({ db }) => {
     const expected: Record<string, string[]> = {
-      casa: ["casa, noun"],
-      andare: ["andare, noun", "andare, verb"],
-      andavano: ["andavano, verb form"],
-      sale: ["sale, noun", "sale, noun form", "sale, verb form"],
-      bello: ["bello, adjective", "bello, noun", "bello, noun", "bella, adjective form"],
-      studente: ["studente, noun", "studente, verb form", "studenti, noun form", "studentessa, noun form"],
+      // After a grid reading's part of speech, the gender and number its
+      // record states: none for casa, whose record states neither, and never
+      // on a verb or a Voce verbale.
+      casa: ["1·Sostantivo"],
+      andare: ["1·Sostantivo·maschile", "2·Verbo"],
+      andavano: ["1·Voce verbale"],
+      bello: [
+        "1·Aggettivo·maschile, singolare",
+        "2·Sostantivo·maschile, invariabile",
+        "3·Sostantivo·maschile, singolare",
+        "4·Aggettivo, forma flessa·femminile, singolare",
+      ],
+      sale: ["1·Sostantivo·maschile, singolare", "2·Sostantivo, forma flessa·femminile, plurale", "3·Voce verbale"],
     };
-    for (const [query, labels] of Object.entries(expected)) {
+    for (const [query, headings] of Object.entries(expected)) {
       const html = await render(db, query);
       const readings = await readingsFor(db, query);
-      const page = wordPage(query, readings);
-      assert.deepEqual(cardLabels(html), labels, query);
-      // Nothing the lookup returned is dropped: every record is a card.
+      assert.deepEqual(headingsOf(html), headings, query);
+      // Nothing the lookup returned is dropped: every record is a reading.
       assert.deepEqual(
-        page.cards.map((c) => c.reading.recordId).sort((a, b) => a - b),
+        wordPage(query, readings).readings.map((entry) => entry.reading.recordId).sort((a, b) => a - b),
         readings.map((reading) => reading.recordId).sort((a, b) => a - b),
-        `${query}: every record is a card`,
+        query,
       );
-      // And every lemma a reading points to is a panel on that reading's card,
-      // naming every record the source leaves it open between.
-      for (const reading of readings) {
-        const panels = [...cardById(html, reading.recordId).matchAll(/data-lemma-panel=""(?: data-lemma-records="([^"]*)")?/g)];
-        assert.equal(panels.length, reading.lemmaLinks.length, `${query}: ${reading.word} has one panel per lemma`);
-        reading.lemmaLinks.forEach((link, i) => {
-          const named = link.kind === "candidates" ? link.candidates.map((c) => c.recordId).join(" ") : undefined;
-          assert.equal(panels[i][1], named, `${query}: ${reading.word}'s panel ${i} names its lemma's records`);
-        });
-      }
-      // One h1, the headword; the index and the card numbers only when there
-      // is more than one reading (#100).
-      assert.equal(patternsOf(html, /<h1[\s>]/), 1, query);
-      assert.match(html, new RegExp(`<h1 [^>]*lang="it">${esc(page.headword)}</h1>`), query);
-      assert.equal(occurrencesOf(html, 'aria-label="Readings"'), labels.length > 1 ? 1 : 0, query);
-      assert.equal(occurrencesOf(html, `class="${CARD_NUMBER}"`), labels.length > 1 ? labels.length : 0, query);
+      assert.equal(patternsOf(html, /<h1[\s>]/), 1, `${query}: one h1`);
     }
   });
 });
 
-test("sale: the salt noun, then two form readings whose lemmas are sala and salire", async () => {
+test("jump links appear from three readings up, one per reading, and never below", async () => {
   await withDevSeed(async ({ db }) => {
-    const html = await render(db, "sale");
-    const readings = await readingsFor(db, "sale");
-    // `sala` and `salire` list `sale` in their tables, and they are the lemmas
-    // two `sale` readings name: so they come back as those readings' lemmas,
-    // with the row that spells `sale`, and not as readings.
-    assert.deepEqual(readings.map((reading) => reading.word), ["sale", "sale", "sale"]);
-    const lemmaOf = (pos: string) => {
-      const reading = readings.find((candidate) => candidate.pos === pos && candidate.lemmaLinks.length > 0);
-      const link = reading?.lemmaLinks[0];
-      assert.ok(link?.kind === "candidates");
-      return link.candidates;
-    };
-    const sala = lemmaOf("noun");
-    assert.deepEqual(sala.map((c) => `${c.word}/${c.pos}/${c.listing !== undefined}`), ["sala/noun/true", "sala/verb/false"]);
-    const salire = lemmaOf("verb");
-    assert.deepEqual(salire.map((c) => `${c.word}/${c.listing !== undefined}`), ["salire/true"]);
-
-    const nounForm = card(html, "sale, noun form");
-    assert.match(nounForm, /<p class="[^"]*" lang="it">sala<\/p>/);
-    assert.match(nounForm, new RegExp(`data-lemma-records="${sala.map((c) => c.recordId).join(" ")}"`));
-    assert.match(textOf(nounForm), /2 entries share this spelling: sala \(noun\), sala \(verb\)\. The source does not say which\./);
-    assert.match(nounForm, /href="\/\?q=sala">Open entry →<\/a>/);
-    assert.match(nounForm, fact("lemma", "sala", true));
-    assert.match(nounForm, fact("gender", "feminine"));
-    assert.match(nounForm, fact("number", "plural"));
-
-    // The verb form reads its person, number and tense off salire's own row.
-    const verbForm = card(html, "sale, verb form");
-    assert.match(verbForm, new RegExp(`data-lemma-records="${salire[0].recordId}"`));
-    assert.match(verbForm, fact("lemma", "salire", true));
-    assert.match(verbForm, fact("person", "third"));
-    assert.match(verbForm, fact("number", "singular"));
-    assert.match(verbForm, fact("tense", "presente", true));
-    // With several readings a form points to its lemma and carries no table.
-    assert.equal(tenseHeadings(verbForm).length, 0);
-  });
-});
-
-test("the articles box prints each article with its noun once, and says Lexema derived it", async () => {
-  await withDevSeed(async ({ db }) => {
-    const sale = card(await render(db, "sale"), "sale, noun");
-    assert.equal(occurrencesOf(textOf(sale), "il sale"), 1);
-    assert.doesNotMatch(textOf(sale), /il il|un un|del del/);
-    assert.match(sale, /<dt class="[^"]*">definite sg<\/dt><dd class="[^"]*"><span lang="it">il sale<\/span>/);
-    assert.match(textOf(sale), /Not from the source: Lexema derives these by rule it-articles\/v1/);
-    // `sali` is tagged plural and nothing else, so no plural article is built.
-    assert.doesNotMatch(textOf(sale), /definite pl/);
-    assert.match(sale, fact("plural", "sali", true));
-
-    // `studenti` is tagged masculine plural, so its articles come from the rule.
-    const studente = card(await render(db, "studente"), "studente, noun");
-    for (const [label, value] of [
-      ["definite sg", "lo studente"],
-      ["definite pl", "gli studenti"],
-      ["indefinite sg", "uno studente"],
-      ["partitive sg", "dello studente"],
-      ["partitive pl", "degli studenti"],
-    ]) {
-      assert.match(studente, new RegExp(`<dt class="[^"]*">${label}</dt><dd class="[^"]*"><span lang="it">${value}</span>`), label);
-    }
-  });
-});
-
-test("studente carries its plural and feminine on the bar and a gender-and-number box", async () => {
-  await withDevSeed(async ({ db }) => {
-    const html = await render(db, "studente");
-    const studente = card(html, "studente, noun");
-    assert.match(studente, fact("gender", "masculine"));
-    assert.match(studente, fact("plural", "studenti", true));
-    assert.match(studente, fact("feminine", "studente/studentessa", true));
-    const box = boxesOf(studente).find((part) => part.includes(">Gender and number</h4>"));
-    assert.ok(box);
-    assert.deepEqual([...box.matchAll(/<dt class="[^"]*">([^<]+)<\/dt>/g)].map((match) => match[1]), [
-      "m sg",
-      "m pl",
-      "f sg",
-      "f pl",
-      "pl",
-    ]);
-    const [reading] = await readingsFor(db, "studente");
-    assertEveryFormShown(studente, reading, "studente");
-    // The verb reading the research contradicts is still marked disputed.
-    assert.match(card(html, "studente, verb form"), /Disputed by later research\./);
-  });
-});
-
-test("andare's verb card lays the conjugation out in sixteen boxes, in the frame's order", async () => {
-  await withDevSeed(async ({ db }) => {
-    const html = await render(db, "andare");
-    const verb = card(html, "andare, verb");
-    assert.deepEqual(tenseHeadings(verb), [...TENSE_BOXES, "imperativo", "modi indefiniti"]);
-    assert.match(
-      textOf(verb),
-      /Lexema places forms in the congiuntivo and condizionale boxes by rule it-moods\/v1\. A form the source tags with a tense and no person is congiuntivo when its pronoun begins che, and condizionale when its tense is present or past and its pronoun is bare, as in io\./,
+    const bello = await render(db, "bello");
+    const jumps = [...bello.matchAll(new RegExp(`<a class="${esc(JUMP_LINK)}" href="#reading-(\\d+)">(.*?)</a>`, "g"))];
+    assert.deepEqual(
+      jumps.map((match) => textOf(match[2])),
+      ["1Aggettivo", "2Sostantivo", "3Sostantivo", "4Aggettivo, forma flessa"],
     );
-
-    const box = (name: string) => boxesOf(verb).find((part) => part.includes(`lang="it">${name}</h4>`)) ?? "";
-    assert.match(textOf(box("congiuntivo presente")), /che iovada/);
-    assert.match(textOf(box("condizionale presente")), /ioandrei/);
-    assert.match(textOf(box("congiuntivo trapassato")), /che iofossi andato/);
-    assert.match(textOf(box("condizionale passato")), /iosarei andato/);
-    // `vado` and `vo` are both the source's `io` present: one row, two forms.
-    assert.match(textOf(box("presente")), /iovado \/ vo/);
-    // Nothing is left for the unplaced box on this verb.
-    assert.doesNotMatch(verb, /Not placed in a tense/);
-
-    // The header bar: the non-finite facts and the class, verbatim.
-    assert.match(verb, fact("infinitive", "andare", true));
-    assert.match(verb, fact("gerund", "andando", true));
-    assert.match(verb, fact("participle", "andato", true));
-    assert.match(verb, fact("auxiliary", "essere", true));
-    assert.match(verb, fact("conjugation", "verbo di prima coniugazione (irregolare)"));
-
-    const reading = (await readingsFor(db, "andare")).find((candidate) => candidate.pos === "verb");
-    assert.ok(reading);
-    assert.match(verb, new RegExp(`>Conjugation</h3><span class="[^"]*">${reading.forms.length} forms</span>`));
-    assertEveryFormShown(verb, reading, "andare");
-    // A lemma's own page outlines nothing in its table: the query is the title.
-    assert.equal(occurrencesOf(verb, "data-searched"), 0);
+    for (const [, id] of jumps) assert.match(bello, new RegExp(`<article [^>]*id="reading-${id}"`));
+    assert.doesNotMatch(await render(db, "andare"), /aria-label="Readings"/);
   });
 });
 
-test("andavano is one reading: its own facts, andare's whole table with the form outlined, and the lemma", async () => {
+test("the headword carries its IPA and no syllable breaks", async () => {
+  await withDevSeed(async ({ db }) => {
+    const andare = await render(db, "andare");
+    assert.match(andare, /<h1 [^>]*lang="it">andare<\/h1><p class="[^"]*" aria-label="Pronunciation"><span>\/anˈda\.re\/<\/span><\/p>/);
+    assert.doesNotMatch(andare, /Syllables|an·da·re/);
+  });
+});
+
+test("casa shows the definitions its raw page states, with no mark for where they came from", async () => {
+  await withDevSeedAndPages(async ({ db }) => {
+    const casa = await render(db, "casa");
+    const reading = nth(casa, 1);
+    assert.equal(patternsOf(reading, /data-definition="/g), 7);
+    assert.match(textOf(reading), /edificio costruito per essere utilizzato come abitazione/);
+    // ADR 0016: no recovered mark, no revision link, no rule note, and the
+    // two furniture glosses are not definitions.
+    assert.doesNotMatch(casa, /recovered|oldid=|it-moods|it-articles|Not from the source/i);
+    assert.doesNotMatch(textOf(reading), /\( citazioni\)|\( approfondimento\)/);
+  });
+  // Without the raw page, the furniture is all the record says, so it shows
+  // verbatim rather than leaving the reading silent.
+  await withDevSeed(async ({ db }) => {
+    const reading = nth(await render(db, "casa"), 1);
+    assert.match(textOf(reading), /casa \( approfondimento\) f sing/);
+    assert.match(textOf(reading), /casa \( citazioni\)/);
+  });
+});
+
+test("a noun or adjective's forms are a gender by number grid with its article lines, and a missing form is a dash", async () => {
+  await withDevSeed(async ({ db }) => {
+    const bello = await render(db, "bello");
+    assert.deepEqual(gridRows(nth(bello, 1)), [
+      ["", "singolare", "plurale"],
+      ["maschile", "belloil bello·un bello", "bellii belli·dei belli"],
+      ["femminile", "bellala bella·una bella", "bellele belle·delle belle"],
+    ]);
+    // `andare` the noun is masculine and states no number: its headword is the
+    // singular, and the plural the source does not give is a dash, no note.
+    const noun = nth(await render(db, "andare"), 1);
+    assert.deepEqual(gridRows(noun), [
+      ["", "singolare", "plurale"],
+      ["maschile", "andarel'andare·un andare", "—"],
+    ]);
+    // A grid never marks the searched form.
+    assert.doesNotMatch(bello, /data-searched/);
+  });
+});
+
+test("an adjective's superlatives are a second grid, labelled superlativo", async () => {
+  await withDevSeed(async ({ db }) => {
+    const bella = nth(await render(db, "bello"), 4);
+    const superlative = textOf(bella.slice(bella.indexOf(">superlativo</p>")));
+    assert.match(
+      superlative,
+      /^>superlativosingolarepluralemaschilebellissimoil bellissimo·un bellissimobellissimii bellissimi·dei bellissimifemminilebellissimala bellissima·una bellissimabellissimele bellissime·delle bellissime/,
+    );
+  });
+});
+
+test("a verb's conjugation: the non-finite line, four Italian mood tabs, persons down, every form a link", async () => {
+  await withDevSeed(async ({ db }) => {
+    const verb = nth(await render(db, "andare"), 2);
+    const reading = (await readingsFor(db, "andare")).find((r) => r.pos === "verb");
+    assert.ok(reading);
+    assert.match(textOf(verb), /gerundioandando·participio presenteandante·participioandato·ausiliareessere/);
+    const tabs = [...verb.matchAll(/<button [^>]*role="tab"[^>]*>([^<]+)<\/button>/g)];
+    assert.deepEqual(tabs.map((match) => match[1]), ["Indicativo", "Congiuntivo", "Condizionale", "Imperativo"]);
+    assert.match(tabs[0][0], /aria-selected="true"/, "Indicativo opens when no finite form was searched");
+
+    const indicativo = panel(verb, "Indicativo");
+    assert.deepEqual(
+      [...indicativo.matchAll(/<th scope="row"[^>]*>([^<]+)<\/th>/g)].slice(0, 6).map((match) => match[1]),
+      ["io", "tu", "lui, lei", "noi", "voi", "loro"],
+    );
+    assert.deepEqual(
+      [...indicativo.matchAll(/<th scope="col"[^>]*>([^<]+)<\/th>/g)].map((match) => match[1]),
+      ["presente", "imperfetto", "passato remoto", "futuro semplice", "passato prossimo", "trapassato prossimo", "trapassato remoto", "futuro anteriore"],
+    );
+    assert.match(textOf(panel(verb, "Congiuntivo")), /che lui, leivada/);
+
+    // Every form the source gives is on the page, variants included, each a
+    // link to its own search; nothing is marked, since none was searched.
+    const links = formLinks(verb);
+    const shown = new Set([...verb.matchAll(/data-form="(\d+)"/g)].map((match) => Number(match[1])));
+    for (const form of reading.forms) assert.ok(shown.has(form.index), `form ${form.index} (${form.surface}) is shown`);
+    for (const variant of ["vo", "annò", "anderò"]) assert.ok(links.some((link) => link.text === variant), variant);
+    for (const link of links) assert.equal(link.href, `/?q=${encodeURIComponent(link.text)}`);
+    assert.ok(links.every((link) => !link.searched));
+    // Several spellings in one cell link each one.
+    assert.match(textOf(panel(verb, "Imperativo")), /tuva', va, vai, non andare/);
+    assert.equal(links.filter((link) => ["va'", "non andare"].includes(link.text)).length, 2);
+  });
+});
+
+test("a searched verb form is marked where it sits, in its lemma's table opened on its mood: a cell, two cells, a non-finite form", async () => {
   await withDevSeed(async ({ db }) => {
     const html = await render(db, "andavano");
-    const [only] = cardsOf(html);
-    assert.match(only, fact("lemma", "andare", true));
-    assert.match(only, fact("person", "third"));
-    assert.match(only, fact("number", "plural"));
-    assert.match(only, fact("tense", "imperfetto", true));
-    assert.deepEqual(tenseHeadings(only), [...TENSE_BOXES, "imperativo", "modi indefiniti"]);
-    // Outlined exactly once, where it sits, and said in words.
-    assert.equal(occurrencesOf(only, "data-searched"), 1);
-    assert.match(only, new RegExp(`<div class="${esc(SEARCHED)}" data-searched=""><dt[^>]*><span lang="it">essi/esse</span></dt><dd[^>]*><span><span lang="it" data-form="\\d+">andavano</span></span></dd><span[^>]*>your search</span>`));
-    assert.match(only, /href="\/\?q=andare">Open entry →<\/a>/);
-    assert.match(only, /data-lemma-panel=""/);
-  });
-});
-
-// The page on a phone (#101) ---------------------------------------------------
-//
-// Width is CSS, so these assert the markup the phone layout is drawn from: the
-// folding groups, their open state as the server sends it, and the phone's
-// shorter slice. What each looks like at 390 px is in the pull request's captures.
-
-/** Every spelling a box holds: its forms, and a headword where a box shows one. */
-const spellingsIn = (box: string): number => patternsOf(box, /data-form="\d+"|data-headword=""/);
-
-test("on a phone a verb's groups fold to one row each, naming the group and its count, under Expand all", async () => {
-  await withDevSeed(async ({ db }) => {
-    const verb = card(await render(db, "andare"), "andare, verb");
-    const folds = foldsOf(verb);
-    assert.ok(folds.length > GROUPS_SHOWN_OPEN);
-    // One tappable row per group, named as its box is named, with how many forms it holds.
+    const reading = nth(html, 1);
+    // Its definition links to its lemma, and the lemma's table follows.
+    assert.match(reading, /imperfetto indicativo di <a class="[^"]*" href="\/\?q=andare">andare<\/a>/);
+    assert.match(textOf(reading), /Forms ofandare/);
+    const indicativo = panel(reading, "Indicativo");
+    assert.deepEqual(formLinks(reading).filter((link) => link.searched).map((link) => link.text), ["andavano"]);
+    assert.match(indicativo, new RegExp(`<th scope="row" class="${esc(PERSON_SEARCHED)}" lang="it">loro</th>`));
+    assert.match(indicativo, new RegExp(`<th scope="col" class="${esc(TENSE_HEAD_SEARCHED)}" lang="it">imperfetto</th>`));
+    // Two pages are shown, so each has its own Source link (ADR 0009).
     assert.deepEqual(
-      folds.map((fold) => fold.name),
-      tenseHeadings(verb),
+      [...html.matchAll(/href="https:\/\/it\.wiktionary\.org\/wiki\/([^"]+)" target="_blank"/g)].map((match) => match[1]),
+      ["andavano", "andare"],
     );
-    const boxes = boxesOf(verb);
-    assert.equal(boxes.length, folds.length);
-    folds.forEach((fold, i) => assert.equal(fold.count, spellingsIn(boxes[i]), `${fold.name}: its count is its forms`));
-    // A lemma's own page searched no form in its table, so every group starts closed.
-    assert.deepEqual(folds.filter((fold) => fold.open), []);
-    // The bar over them: how many groups, and the Expand all a script shows once it runs.
-    assert.match(verb, new RegExp(`>${folds.length} groups</span><button type="button" class="[^"]*" hidden="">Expand all<`));
-    // Folding hides nothing from the document: every form is still in it.
-    const reading = (await readingsFor(db, "andare")).find((candidate) => candidate.pos === "verb");
-    assert.ok(reading);
-    assertEveryFormShown(verb, reading, "andare");
+
+    // One spelling in two cells marks both, and the tabs open on its mood.
+    const andassi = await render(db, "andassi");
+    const tabs = [...andassi.matchAll(/<button [^>]*role="tab"[^>]*>([^<]+)<\/button>/g)];
+    assert.match(tabs.find((match) => match[1] === "Congiuntivo")?.[0] ?? "", /aria-selected="true"/);
+    const congiuntivo = panel(andassi, "Congiuntivo");
+    assert.deepEqual(formLinks(congiuntivo).filter((link) => link.searched).map((link) => link.text), ["andassi", "andassi"]);
+    assert.equal(patternsOf(congiuntivo, new RegExp(esc(`class="${PERSON_SEARCHED}"`), "g")), 2);
+  });
+  await withDevSeed(async ({ db }) => {
+    const html = await render(db, "andando");
+    assert.deepEqual(formLinks(html).filter((link) => link.searched).map((link) => link.text), ["andando"]);
+    assert.match(html, new RegExp(`<dt class="${esc(NON_FINITE_LABEL_SEARCHED)}" lang="it">gerundio</dt>`));
   });
 });
 
-test("the searched form opens its own group when the page first renders, the rest closed, the row marked in it", async () => {
+test("a searched compound form opens the compound tenses; otherwise they wait behind + more", async () => {
   await withDevSeed(async ({ db }) => {
-    const [only] = cardsOf(await render(db, "andavano"));
-    const open = foldsOf(only).filter((fold) => fold.open);
-    assert.deepEqual(open.map((fold) => fold.name), ["imperfetto"]);
-    assert.match(only, fact("tense", "imperfetto", true));
-    // The open group is the one outlined on a phone, and the marked row is inside it.
-    const outlined = boxesOf(only).filter((box) => box.startsWith(`<section class="${FOLD_BOX_SEARCHED}"`));
-    assert.equal(outlined.length, 1);
-    assert.match(outlined[0], /<details class="[^"]*" open="" data-fold="">/);
-    assert.equal(occurrencesOf(outlined[0], "data-searched"), 1);
-    assert.match(textOf(outlined[0]), /andavanoyour search/);
+    const plain = nth(await render(db, "andavano"), 1);
+    const closed = panel(plain, "Indicativo");
+    assert.match(closed, /<details class="[^"]*"><summary [^>]*><span [^>]*>\+ more<\/span><span [^>]*>less<\/span>/);
+    assert.ok(closed.indexOf("Tempi composti") < closed.indexOf("<details"), "the control ends the compound tables");
+    assert.doesNotMatch(closed, /compound tenses/);
+    const compound = await render(db, "sono andato");
+    assert.match(panel(compound, "Indicativo"), /<details class="[^"]*" open=""><summary/);
   });
 });
 
-test("a noun's or adjective's boxes never fold: they stay open, one to a row on a phone", async () => {
+test("etymology and synonyms come once after the readings: every synonym a search, then + more and no count", async () => {
   await withDevSeed(async ({ db }) => {
-    for (const query of ["sale", "casa", "bello", "studente"]) {
-      const html = await render(db, query);
-      for (const part of cardsOf(html)) {
-        if (/<h4 class="[^"]*" id="conjugation-/.test(part)) continue;
-        assert.equal(occurrencesOf(part, "data-fold"), 0, `${query}: no folding group outside a conjugation`);
-      }
+    const html = await render(db, "andare");
+    const facts = html.slice(html.lastIndexOf("</article>"));
+    assert.equal(patternsOf(html, />Etymology</g), 1);
+    const synonyms = facts.slice(facts.indexOf('id="synonyms"'), facts.indexOf("</section>", facts.indexOf('id="synonyms"')));
+    const words = [...synonyms.matchAll(new RegExp(`<a class="${esc(WORD_LINK)}" href="([^"]+)" lang="it">([^<]+)</a>`, "g"))];
+    assert.equal(words.length, wordPage("andare", await readingsFor(db, "andare")).wordFacts.synonyms.length, "every synonym is in the document");
+    for (const [, href, word] of words) assert.equal(href, `/?q=${encodeURIComponent(textOf(word))}`);
+    // The one control, last in the list so it ends what shows, open or closed.
+    assert.match(synonyms, /<li[^>]*><details class="[^"]*"><summary class="[^"]*"><span class="[^"]*">\+ more<\/span><span class="[^"]*">less<\/span><\/summary><\/details><\/li><\/ul>$/);
+    // No count anywhere: not beside a label, not on a control.
+    assert.doesNotMatch(textOf(html), /showing \d|\d+ more/);
+  });
+});
+
+test("an identical spelling in one place shows once and keeps every entry: a grid cell, a conjugation slot", async () => {
+  await withFixture(async ({ db }) => {
+    // `studente` lists `studenti` as masculine plural and as bare plural; both
+    // land in maschile plurale.
+    const reading = nth(await render(db, "studente"), 1);
+    assert.equal(patternsOf(reading, />studenti</g), 1);
+    assert.match(reading, /<span data-form="0 1">studenti<\/span>/);
+  });
+  await withFixture(async ({ db }) => {
+    const verb = nth(await render(db, "abbisognare"), 1);
+    assert.equal(patternsOf(verb, />abbisognando<\/a>/g), 1);
+    assert.match(verb, /data-form="0 7">abbisognando<\/a>/);
+    assert.equal(patternsOf(verb, />abbisogno<\/a>/g), 1);
+    assert.match(verb, /data-form="1 8">abbisogno<\/a>/);
+  });
+});
+
+/** A reading's Definitions block, from its label to the end of its section. */
+function definitionsBlock(reading: string): string {
+  const at = reading.search(/id="definitions-\d+"/);
+  assert.notEqual(at, -1, "no Definitions block");
+  return reading.slice(at, reading.indexOf("</section>", at));
+}
+
+/**
+ * What a Definitions block shows closed, as text: the first definition, less
+ * the examples that wait for `+ more`. The other definitions and every
+ * example after them are hidden by class until the control is open.
+ */
+function closedDefinitions(block: string): string {
+  const firstEnd = block.indexOf(`<li class="${DEFINITION_EXTRA}"`);
+  const first = block.slice(0, firstEnd === -1 ? block.indexOf("</ol>") : firstEnd);
+  return textOf(first.replace(new RegExp(`<p class="${esc(EXAMPLE_EXTRA)}[^"]*">.*?</p>`, "g"), ""));
+}
+
+/** The one expand control, last in its block, so `less` ends what the open block shows. */
+const MORE_LAST = /<details class="[^"]*"><summary class="[^"]*"><span class="[^"]*">\+ more<\/span><span class="[^"]*">less<\/span><\/summary><\/details><\/div>$/;
+
+test("closed, the first definition and its own first example; + more, last, opens every definition and example in order", async () => {
+  await withDevSeed(async ({ db }) => {
+    const readings = await readingsFor(db, "libro");
+    const noun = readings.find((reading) => reading.pos === "noun");
+    assert.ok(noun);
+    const examples = noun.senses[0].examples.map((example) => example.text);
+    assert.ok(examples.length > 2, "libro's first sense carries several examples");
+    const block = definitionsBlock(readingById(await render(db, "libro"), noun.recordId));
+    const closed = closedDefinitions(block);
+    // Every example is in the document, in order; closed, only the first shows.
+    const all = textOf(block);
+    let at = -1;
+    for (const text of examples) {
+      assert.ok(all.indexOf(text) > at, `example in the page, in order: ${text}`);
+      at = all.indexOf(text);
     }
+    assert.ok(closed.includes(examples[0]));
+    for (const text of examples.slice(1)) assert.ok(!closed.includes(text), `extra example starts hidden: ${text}`);
+    assert.equal(patternsOf(block, /data-definition="/g), noun.senses.length, "every definition is in the document");
+    assert.equal(patternsOf(block, /<details[\s>]/g), 1, "one control for the whole reading");
+    assert.match(block, MORE_LAST);
+    assert.doesNotMatch(textOf(block), /\d+ more|fewer/);
+
+    // A single-definition reading still gets the control when its first
+    // definition has more examples.
+    const onlyDefinition = await renderChanged(db, "libro", (changed) => {
+      const target = changed.find((reading) => reading.recordId === noun.recordId);
+      assert.ok(target);
+      target.senses.splice(1);
+    });
+    const only = definitionsBlock(readingById(onlyDefinition, noun.recordId));
+    assert.equal(patternsOf(only, /data-definition="/g), 1);
+    assert.match(only, MORE_LAST);
+
+    // bello's first adjective sense has no example, so it shows none: no other
+    // definition's example is borrowed, and no "from definition" label appears.
+    // The third definition's example stays under the third.
+    const bello = await readingsFor(db, "bello");
+    const adjective = bello.find((r) => r.pos === "adj" && r.isAboutQuery);
+    assert.ok(adjective);
+    const third = adjective.senses[2].examples[0].text;
+    const belloBlock = definitionsBlock(readingById(await render(db, "bello"), adjective.recordId));
+    assert.ok(!closedDefinitions(belloBlock).includes(third), "not borrowed onto the first definition");
+    const thirdDefinition = belloBlock.slice(belloBlock.indexOf('data-definition="3"'), belloBlock.indexOf('data-definition="4"'));
+    assert.ok(textOf(thirdDefinition).includes(third), "reachable under its own definition");
+    assert.doesNotMatch(belloBlock, /from definition/);
+  });
+  await withDevSeed(async ({ db }) => {
+    const block = definitionsBlock(nth(await render(db, "andare"), 2));
+    const closed = closedDefinitions(block);
+    assert.match(closed, /muoversi da un luogo verso un altro luogo/);
+    assert.match(closed, /ogni mattina devo andare a scuola/);
+    assert.equal(patternsOf(block, /data-definition="/g), 5, "all five definitions are in the document");
+    assert.match(block, MORE_LAST);
+
+    // A reading with one definition and one example has no control.
+    assert.doesNotMatch(definitionsBlock(nth(await render(db, "bello"), 3)), /<details|\+ more/);
   });
 });
 
-test("a related-word list shows a shorter first slice on a phone, and the same Show all reveals the rest", async () => {
+test("a lemma the release has is linked where the gloss names it, every one of them; one it has no entry for is not mentioned", async () => {
+  await withFixture(async ({ db }) => {
+    // Huey, 2026-09-27: a missing target is simply empty.
+    const reading = nth(await render(db, "pigmento"), 1);
+    assert.doesNotMatch(reading, /href="\/\?q=pigmentare"|no entry|not in this release/);
+    assert.match(textOf(reading), /indicativo presente di pigmentare/);
+    // A lemma the release has is linked in the gloss, and not said again.
+    const andavano = nth(await render(db, "andavano"), 1);
+    assert.match(andavano, /href="\/\?q=andare">andare<\/a>/);
+    assert.doesNotMatch(andavano, /Form of/);
+  });
+  await withFixture(async ({ db }) => {
+    const vadi = nth(await render(db, "vadi"), 1);
+    assert.match(vadi, /forma antica di <a class="[^"]*" href="\/\?q=andare">andare<\/a>, come di <a class="[^"]*" href="\/\?q=salire">salire<\/a>/);
+    assert.doesNotMatch(vadi, /Form of/);
+  });
+});
+
+test("identical lemma tables show once; tables that differ each show", async () => {
+  await withFixture(async ({ db }) => {
+    const chiusi = nth(await render(db, "chiusi"), 1);
+    assert.equal(patternsOf(chiusi, />Forms of<span[^>]*>chiudere</g), 1);
+    const punsi = nth(await render(db, "punsi"), 1);
+    assert.equal(patternsOf(punsi, />Forms of<span[^>]*>pungere</g), 2);
+    assert.match(textOf(punsi), /pungesti/);
+    assert.match(textOf(punsi), /pungisti/);
+  });
+});
+
+test("a record that states both numbers fills both columns and names both in its heading; a proper name names neither", async () => {
+  await withFixture(async ({ db }) => {
+    const khmer = nth(await render(db, "khmer"), 1);
+    assert.deepEqual(gridRows(khmer).map((row) => row.map((cell) => cell.split(/(?=il |un |i |dei |gli |degli )/)[0])), [
+      ["", "singolare", "plurale"],
+      ["maschile", "khmer", "khmer"],
+    ]);
+  });
+  await withFixture(async ({ db }) => {
+    assert.deepEqual(headingsOf(await render(db, "khmer")), ["1·Sostantivo·maschile, singolare e plurale"]);
+    assert.deepEqual(headingsOf(await render(db, "Mercurio")), ["1·Nome proprio"]);
+    // The grammar is muted and Italian, beside the part of speech, not inside it.
+    assert.match(await render(db, "khmer"), /<span lang="it">Sostantivo<\/span><span class="[^"]*"><span class="[^"]*" aria-hidden="true">·<\/span><span class="[^"]*" lang="it">maschile, singolare e plurale<\/span><\/span><\/h2>/);
+  });
+});
+
+/** The page for a query after `change` edits the readings the lookup returned. */
+async function renderChanged(db: DatabaseSync, query: string, change: (readings: Reading[]) => void): Promise<string> {
+  const answer = await attempt(db, query);
+  assert.equal(answer.outcome, "found");
+  if (answer.outcome !== "found") throw new Error("unreachable");
+  change(answer.readings);
+  return renderToStaticMarkup(
+    <SearchPage raw={query}>
+      <Outcome raw={query} attempt={answer} />
+    </SearchPage>,
+  );
+}
+
+const recoveredExample = (text: string, line: number) => ({
+  text,
+  ref: { wiki: "it.wiktionary.org", title: "x", revisionId: 1, line },
+});
+
+test("no example becomes unreachable: nested items', hidden furniture's and glossless senses' examples wait for + more", async () => {
+  // No committed record carries either, so the lookup's own readings are
+  // given one of each before the page renders them.
+  await withLines(
+    [
+      ...(await readFile(join(REPO, "fixtures/dev-seed.jsonl"), "utf8")).trim().split("\n"),
+      ...(await readFile(join(REPO, "fixtures/accollato.jsonl"), "utf8")).trim().split("\n"),
+    ],
+    async ({ db }) => {
+      const html = await renderChanged(db, "accollato", (readings) => {
+        const first = readings[0].senses[0];
+        first.recoveredItems.push({
+          text: "una voce annidata della prima definizione",
+          labels: [],
+          route: "lead-in-item",
+          ref: { wiki: "it.wiktionary.org", title: "x", revisionId: 1, line: 9000 },
+          examples: [recoveredExample("uno scudo accollato a un altro", 9001)],
+          heldAsExample: null,
+          items: [],
+        });
+      });
+      const block = definitionsBlock(nth(html, 1));
+      assert.doesNotMatch(closedDefinitions(block), /uno scudo accollato a un altro/);
+      assert.match(closedDefinitions(block), /una voce annidata della prima definizione/, "the nested item itself shows");
+      assert.match(textOf(block), /uno scudo accollato a un altro/);
+      assert.match(block, MORE_LAST);
+    },
+    await loadFixturePages(join(REPO, "fixtures")),
+  );
+  await withDevSeedAndPages(async ({ db }) => {
+    const html = await renderChanged(db, "casa", (readings) => {
+      const citazioni = readings[0].senses.find((sense) => sense.glosses[0]?.text === "casa ( citazioni)");
+      assert.ok(citazioni);
+      citazioni.examples.push({ text: "la casa è dove si torna", ref: { ...citazioni.ref, jsonPointer: "/senses/1/examples/0" } });
+    });
+    const reading = nth(html, 1);
+    assert.doesNotMatch(textOf(reading), /\( citazioni\)/, "the furniture gloss stays hidden");
+    const block = definitionsBlock(reading);
+    assert.doesNotMatch(closedDefinitions(block), /la casa è dove si torna/);
+    assert.match(textOf(block), /la casa è dove si torna/, "its example waits for + more");
+    assert.match(block, MORE_LAST);
+  });
   await withDevSeed(async ({ db }) => {
+    const noun = (await readingsFor(db, "libro")).find((reading) => reading.pos === "noun");
+    assert.ok(noun);
+    const html = await renderChanged(db, "libro", (readings) => {
+      const target = readings.find((reading) => reading.recordId === noun.recordId);
+      assert.ok(target);
+      target.senses.push({
+        index: 99,
+        ref: { ...target.ref, jsonPointer: "/senses/99" },
+        examples: [{ text: "un libro senza definizione", ref: { ...target.ref, jsonPointer: "/senses/99/examples/0/text" } }],
+        glosses: [],
+        labels: [],
+        recoveredItems: [],
+      });
+    });
+    const reading = readingById(html, noun.recordId);
+    assert.equal(patternsOf(reading, /data-definition="/g), noun.senses.length, "no numbered line for it");
+    assert.doesNotMatch(reading, /no definition|gives no/i);
+    const block = definitionsBlock(reading);
+    assert.doesNotMatch(closedDefinitions(block), /un libro senza definizione/);
+    assert.match(textOf(block), /un libro senza definizione/);
+  });
+});
+
+/** The dev seed plus the real lines of the words `fixtures/word-facts-placement.jsonl` holds. */
+async function withPlacementWords(run: (f: Fixture) => Promise<void>): Promise<void> {
+  const lines = async (file: string) => (await readFile(join(REPO, file), "utf8")).trim().split("\n");
+  return withLines([...(await lines("fixtures/dev-seed.jsonl")), ...(await lines("fixtures/word-facts-placement.jsonl"))], run);
+}
+
+/** The text of a reading's own Etymology block, or undefined when it has none. */
+function readingEtymology(reading: string): string | undefined {
+  const at = reading.indexOf('id="etymology-');
+  if (at === -1) return undefined;
+  // The text alone, without its one-line toggle's `+ more` / `less`.
+  const section = reading.slice(reading.indexOf(">", at) + 1, reading.indexOf("</section>", at));
+  return textOf(section.replace(/<details[\s\S]*?<\/details>/g, ""));
+}
+
+/** The words of a Synonyms run, from a reading or from the facts after the readings. */
+const synonymWords = (html: string, id: string): string[] => {
+  const at = html.indexOf(`id="${id}"`);
+  if (at === -1) return [];
+  const section = html.slice(at, html.indexOf("</section>", at));
+  return [...section.matchAll(new RegExp(`<a class="${esc(WORD_LINK)}" href="[^"]+" lang="it">([^<]+)</a>`, "g"))].map((match) => textOf(match[1]));
+};
+
+/** The page after the last reading: the facts no reading took. */
+const afterReadings = (html: string): string => html.slice(html.lastIndexOf("</article>"));
+
+test("an etymology moves to the one reading its label names, without the label; a label naming none or two stays once at the bottom", async () => {
+  await withPlacementWords(async ({ db }) => {
+    // sale: the singular noun gets the salt etymology, the plural noun form
+    // (plural of sala) gets `vedi sala`; nothing is left for the bottom.
     const sale = await render(db, "sale");
-    const synonyms = wordPage("sale", await readingsFor(db, "sale")).wordFacts.synonyms;
-    const list = sale.slice(sale.indexOf(">Synonyms</h2>"), sale.indexOf(">Antonyms</h2>"));
-    const first = list.slice(list.indexOf("<ul"), list.indexOf("</ul>"));
-    // The wide slice is the first list; the chips past the phone's slice wait for Show all there.
-    assert.equal(patternsOf(first, /<li[\s>]/), RELATED_SLICE.wide);
-    assert.equal(occurrencesOf(first, `<li class="${CHIP_WIDE_SLICE}">`), RELATED_SLICE.wide - RELATED_SLICE.phone);
-    assert.equal(occurrencesOf(first, "<li><a"), RELATED_SLICE.phone);
-    assert.match(list, new RegExp(`<details class="${esc(MORE)}"><summary[^>]*><span[^>]*>Show all ${synonyms.length} synonyms`));
+    assert.match(readingEtymology(nth(sale, 1)) ?? "", /^Etymologyderivato dal greco/);
+    assert.equal(readingEtymology(nth(sale, 2)), "Etymologyvedi sala");
+    assert.equal(readingEtymology(nth(sale, 3)), undefined);
+    assert.doesNotMatch(afterReadings(sale), />Etymology</);
+    assert.doesNotMatch(sale, /\(sostantivo (singolare|plurale)\)/);
 
-    // `andare`'s antonyms fit the wide slice, so only a phone has a button to press.
+    // libero: (aggettivo) to the adjective, (voce verbale) to the verb form;
+    // the noun reading has no etymology of its own.
+    const libero = await render(db, "libero");
+    assert.match(readingEtymology(nth(libero, 1)) ?? "", /^Etymologyderivato dal latino liber/);
+    assert.equal(readingEtymology(nth(libero, 2)), undefined);
+    assert.equal(readingEtymology(nth(libero, 3)), "Etymologyvedi liberare");
+
+    // calcio: only (voce verbale) names a reading; the topic labels stay at
+    // the bottom verbatim, with no note about them.
+    const calcio = await render(db, "calcio");
+    assert.equal(readingEtymology(nth(calcio, 3)), "Etymologyvedi calciare");
+    const bottom = textOf(afterReadings(calcio));
+    assert.match(bottom, /\(elemento chimico\) dal latino calx/);
+    assert.match(bottom, /\(sport\) dalla somiglianza/);
+    assert.doesNotMatch(bottom, /voce verbale|vedi calciare/);
+    assert.doesNotMatch(bottom, /not matched|unmatched/i);
+
+    // svolta: (aggettivo) and (sostantivo) each name one reading, but it has
+    // two Voce verbale readings, so its two (voce verbale) etymologies could
+    // be either and stay at the bottom rather than go to both.
+    const svolta = await render(db, "svolta");
+    const readings = await readingsFor(db, "svolta");
+    const verbForms = readings.filter((reading) => reading.posTitle === "Voce verbale");
+    assert.equal(verbForms.length, 2);
+    for (const reading of verbForms) assert.equal(readingEtymology(readingById(svolta, reading.recordId)), undefined);
+    const adjective = readings.find((reading) => reading.posTitle === "Aggettivo, forma flessa");
+    assert.ok(adjective);
+    assert.equal(readingEtymology(readingById(svolta, adjective.recordId)), "Etymologyvedi svolto");
+    const svoltaBottom = textOf(afterReadings(svolta));
+    assert.match(svoltaBottom, /\(voce verbale\) vedi svoltare/);
+    assert.match(svoltaBottom, /\(voce verbale\) vedi svolgere/);
+
+    // strutto: its only etymology, `(voce verbale)`, still names one reading.
+    const strutto = await render(db, "strutto");
+    const struttoVerb = (await readingsFor(db, "strutto")).find((reading) => reading.posTitle === "Voce verbale");
+    assert.ok(struttoVerb);
+    assert.equal(readingEtymology(readingById(strutto, struttoVerb.recordId)), "Etymologyvedi struggere");
+    assert.doesNotMatch(afterReadings(strutto), />Etymology</);
+
+    // sette: a bare `(sostantivo)` fits both the Sostantivo and the
+    // Sostantivo, forma flessa reading, so it goes to neither.
+    const sette = await render(db, "sette");
+    for (const reading of await readingsFor(db, "sette")) {
+      assert.doesNotMatch(readingEtymology(readingById(sette, reading.recordId)) ?? "", /plurale di setta/);
+    }
+    const setteReadings = await readingsFor(db, "sette");
+    const numeral = setteReadings.find((reading) => reading.posTitle === "Aggettivo numerale");
+    assert.ok(numeral);
+    assert.equal(readingEtymology(readingById(sette, numeral.recordId)), "Etymologydal latino sĕptem");
+    assert.match(textOf(afterReadings(sette)), /\(sostantivo\) plurale di setta/);
+
+    // ori: `(sostantivo, forma flessa)` is a whole pos_title with a comma in
+    // it, not the compound `sostantivo` + `forma flessa`, so it names the
+    // Sostantivo, forma flessa reading; `(voce verbale)` names the verb form.
+    const ori = await render(db, "ori");
+    const oriReadings = await readingsFor(db, "ori");
+    const inflectedNoun = oriReadings.find((reading) => reading.posTitle === "Sostantivo, forma flessa");
+    const oriVerb = oriReadings.find((reading) => reading.posTitle === "Voce verbale");
+    assert.ok(inflectedNoun && oriVerb);
+    assert.equal(readingEtymology(readingById(ori, inflectedNoun.recordId)), "Etymologyvedi oro");
+    assert.equal(readingEtymology(readingById(ori, oriVerb.recordId)), "Etymologyvedi orare");
+    assert.doesNotMatch(afterReadings(ori), />Etymology</);
+  });
+  await withPlacementWords(async ({ db }) => {
+    // medico: `(aggettivo e sostantivo)` names the Aggettivo and the
+    // Sostantivo reading; it is not copied into both.
+    const medico = await render(db, "medico");
+    assert.doesNotMatch(medico, /id="etymology-\d+"/);
+    assert.equal(patternsOf(medico, /\(aggettivo e sostantivo\)/g), 1);
+    assert.match(textOf(afterReadings(medico)), /Etymology\(aggettivo e sostantivo\)/);
+
+    // cazzi: each etymology is only a label naming one reading. Nothing is
+    // left to say, so no reading has an empty Etymology block, and nothing
+    // stays at the bottom.
+    const cazzi = await render(db, "cazzi");
+    assert.doesNotMatch(cazzi, /id="etymology-\d+"/);
+    assert.doesNotMatch(cazzi, />Etymology</);
+
+    // dai: `(voce verbale di dare)` names its head, voce verbale, despite the
+    // words after it; `(contrazione di da e i)` names nothing and stays.
+    const dai = await render(db, "dai");
+    const daiVerb = (await readingsFor(db, "dai")).find((reading) => reading.posTitle === "Voce verbale");
+    assert.ok(daiVerb);
+    assert.equal(readingEtymology(readingById(dai, daiVerb.recordId)), "Etymologyvedi dare");
+    assert.match(textOf(afterReadings(dai)), /\(contrazione di da e i\) deriva dalla fusione/);
+  });
+});
+
+test("a synonym group labelled with one reading's part of speech goes to it; an ambiguous one stays at the bottom", async () => {
+  await withDevSeed(async ({ db }) => {
+    const html = await render(db, "vivere");
+    const readings = await readingsFor(db, "vivere");
+    const noun = readings.find((reading) => reading.pos === "noun");
+    const verbs = readings.filter((reading) => reading.pos === "verb");
+    assert.ok(noun && verbs.length === 2);
+    const nounWords = synonymWords(readingById(html, noun.recordId), `synonyms-${noun.recordId}`);
+    assert.equal(nounWords[0], "esistenza");
+    assert.ok(!nounWords.includes("esistere"));
+    // vivere has two Verbo readings, so the `verbo` group could be either:
+    // it stays at the bottom, starting at its label, rather than go to both.
+    for (const verb of verbs) {
+      assert.deepEqual(synonymWords(readingById(html, verb.recordId), `synonyms-${verb.recordId}`), []);
+    }
+    const bottomWords = synonymWords(afterReadings(html), "synonyms");
+    assert.ok(bottomWords.includes("esistere"));
+    assert.ok(!bottomWords.includes("esistenza"), "the sostantivo group moved to its reading");
+    // Every synonym is still on the page, in a reading or at the bottom.
+    const shown = new Set([
+      ...[noun, ...verbs].flatMap((reading) => synonymWords(readingById(html, reading.recordId), `synonyms-${reading.recordId}`)),
+      ...synonymWords(afterReadings(html), "synonyms"),
+    ]);
+    for (const word of noun.wordFacts.synonyms) assert.ok(shown.has(word.word), word.word);
+
+    // An unlabelled list stays once at the bottom.
     const andare = await render(db, "andare");
-    const antonyms = wordPage("andare", await readingsFor(db, "andare")).wordFacts.antonyms;
-    assert.ok(antonyms.length > RELATED_SLICE.phone && antonyms.length <= RELATED_SLICE.wide);
-    const rest = andare.slice(andare.indexOf(">Antonyms</h2>"));
-    assert.match(rest, new RegExp(`<details class="${esc(MORE_PHONE_ONLY)}"><summary[^>]*><span[^>]*>Show all ${antonyms.length} antonyms`));
-    assert.match(rest, new RegExp(`<span class="${PHONE_ONLY}">${antonyms.length} · showing ${RELATED_SLICE.phone}</span><span class="${WIDE_ONLY}">${antonyms.length}</span>`));
+    assert.doesNotMatch(andare, /id="synonyms-\d+"/);
+    assert.ok(synonymWords(afterReadings(andare), "synonyms").length > 0);
   });
 });
 
-test("the reading index carries a chevron on each row, which a phone shows", async () => {
+test("a word with one reading keeps its etymology and synonyms after the reading", async () => {
   await withDevSeed(async ({ db }) => {
-    const html = await render(db, "sale");
-    const index = html.slice(html.indexOf('aria-label="Readings"'), html.indexOf("</nav>", html.indexOf('aria-label="Readings"')));
-    assert.equal(occurrencesOf(index, `<svg class="${INDEX_CHEVRON}"`), 3);
+    const casa = await render(db, "casa");
+    assert.doesNotMatch(casa, /id="etymology-\d+"|id="synonyms-\d+"/);
+    assert.match(textOf(afterReadings(casa)), /Etymologydal latino casa/);
+    assert.ok(synonymWords(afterReadings(casa), "synonyms").length > 0);
   });
 });
 
-test("casa stays a thin entry: its notes as notes, no invented definition, its silence said once", async () => {
+test("every word page ends with Source and Report a mistake together", async () => {
   await withDevSeed(async ({ db }) => {
-    const html = await render(db, "casa");
-    const casa = card(html, "casa, noun");
-    assert.match(casa, />Source notes<\/h3>/);
-    assert.doesNotMatch(casa, />Definitions<\/h3>/);
-    assert.match(textOf(casa), /The source has entry notes but gives no definition for this reading\./);
-    assert.match(casa, /lang="it">casa \( approfondimento\) f sing<\/p>/);
-    assert.equal(occurrencesOf(textOf(casa), "The source states neither a gender nor a number for this entry."), 1);
-    // Both transcriptions the source gives, each with its own qualifier.
-    assert.match(html, /\/ˈkaza\/<span class="[^"]*" lang="it">italiano settentrionale<\/span>/);
-    assert.match(html, /\/ˈkasa\/<span class="[^"]*" lang="it">italiano standard<\/span>/);
+    for (const query of ["casa", "andavano", "bello"]) {
+      const source = (await render(db, query)).split("</article>").pop() ?? "";
+      const line = source.slice(source.lastIndexOf("<footer"), source.indexOf("</footer>", source.lastIndexOf("<footer")));
+      assert.match(textOf(line), /Source.*·.*Report a mistake$/, query);
+      assert.match(line, /<button [^>]*>Report a mistake<\/button>/, `${query}: a button that opens the box`);
+    }
   });
 });
 
-test("casa shows the seven definitions its raw page states, each marked recovered, with their examples", async () => {
-  await withDevSeedAndPages(async ({ db }) => {
-    const casa = card(await render(db, "casa"), "casa, noun");
-    const text = textOf(casa);
-    assert.match(casa, new RegExp(`>Definitions</h3><span class="[^"]*">7 · showing ${DEFINITION_SLICE}</span>`));
-    assert.equal(occurrencesOf(casa, `<span class="${RECOVERED_MARK}">recovered</span>`), 7 + 7, "seven definitions, seven examples");
-    // Wiktionary's own words, its labels ahead of them the way the extraction's are shown.
-    assert.match(
-      text,
-      exact("(architettura) edificio costruito per essere utilizzato come abitazione e composto da uno o più piani, suddivisi in vani distinti, ognuno per un uso specifico"),
-    );
-    assert.match(text, exact("(figurato, industriale) casa costruttrice"));
-    assert.match(text, exact("(astrologia) casa lunare: ognuna di ventotto parti in cui è suddiviso il cielo durante il moto di rivoluzione della Luna"));
-    assert.match(text, exact("ti avviso che stasera torno a casa tardi dal lavoro"));
-    assert.match(casa, new RegExp(`>Examples</h3><span class="[^"]*">7 · showing 1</span>`));
-    // Where the text came from, linked to the exact revision, said on both sections.
-    assert.equal(occurrencesOf(casa, 'href="https://it.wiktionary.org/w/index.php?title=casa&amp;oldid=4257826"'), 2);
-    assert.match(text, /Entries marked recovered were read from the Wiktionary page, revision 4257826; the extraction dropped them\./);
-    // The record's own notes stay notes, and now say where the definitions are.
-    assert.match(casa, />Source notes<\/h3>/);
-    assert.match(casa, /lang="it">casa \( approfondimento\) f sing<\/p>/);
-    assert.match(text, /the definitions below were recovered from the Wiktionary page\./);
-    assert.doesNotMatch(text, /gives no definition for this reading/);
-  });
-});
-
-test("a word whose raw page lost nothing renders exactly as it does without the page", async () => {
-  // `studente` has a raw page under fixtures/ and an ordinary layout: `#` lines
-  // state its senses and its `#*` lines are italic usage sentences.
-  const without: string[] = [];
+test("an etymology shows one cut line and a native + more that opens the whole text in place", async () => {
   await withDevSeed(async ({ db }) => {
-    for (const query of ["studente", "andare", "sale"]) without.push(await render(db, query));
+    const html = await render(db, "andare");
+    const facts = afterReadings(html);
+    const reading = (await readingsFor(db, "andare"))[0];
+    const [etymology] = reading.wordFacts.etymologies;
+    const block = facts.slice(facts.indexOf('data-one-line=""'));
+    // The whole text is in the HTML; CSS cuts it to one line.
+    assert.ok(textOf(block).includes(textOf(etymology.text.replace(/</g, "&lt;"))));
+    // The toggle is a native <details>, so it opens with no script; the
+    // script only hides it when the text already fits.
+    assert.match(block, /<details class="[^"]*"><summary class="[^"]*"><span class="[^"]*">\+ more<\/span><span class="[^"]*">less<\/span><\/summary><\/details>/);
   });
-  await withDevSeedAndPages(async ({ db }) => {
-    for (const [i, query] of ["studente", "andare", "sale"].entries()) {
+});
+
+test("the page shows data only: no dispute, no 'lists … among its forms', no 'not given' on a dash", async () => {
+  await withDevSeed(async ({ db }) => {
+    // studente's verb claim has a disputed review row; the page does not show it.
+    const studente = await render(db, "studente");
+    assert.ok((await readingsFor(db, "studente")).some((reading) => reading.reviews.some((review) => review.status === "disputed")));
+    assert.doesNotMatch(studente, /Disputed|treccani|role="note"/i);
+    // A record that only lists the query in its table is a reading like any other.
+    const listed: string[] = [];
+    for (const query of ["andavano", "sale", "bello", "casa", "belli"]) {
+      if ((await readingsFor(db, query)).some((reading) => !reading.isAboutQuery)) listed.push(query);
+      assert.doesNotMatch(textOf(await render(db, query)), /among its forms/, query);
+    }
+    assert.ok(listed.length > 0, "some query here is listed by a record that is not about it");
+    // An empty cell is a dash and nothing more.
+    assert.doesNotMatch(await render(db, "andare"), /not given/);
+    assert.match(await render(db, "andare"), /<span class="[^"]*" aria-hidden="true">—<\/span>/);
+  });
+});
+
+test("every link that leaves Lexema, on a result or on /attribution, opens in a new tab; every link inside it stays", async () => {
+  await withDevSeed(async ({ db }) => {
+    for (const query of ["andavano", "sale", "studente", "bello"]) {
       const html = await render(db, query);
-      assert.equal(html, without[i], query);
-      assert.doesNotMatch(html, /recovered/, query);
+      const links = [...html.matchAll(/<a ([^>]*)>/g)].map((match) => match[1]);
+      const external = links.filter((attributes) => /href="https?:\/\//.test(attributes));
+      const internal = links.filter((attributes) => /href="[/#]/.test(attributes));
+      assert.ok(external.length > 0 && internal.length > 0, query);
+      for (const attributes of external) {
+        assert.match(attributes, /target="_blank" rel="noopener noreferrer"/, `${query}: ${attributes}`);
+      }
+      // Each says so to a screen reader, in its label or its text.
+      for (const [, attributes, inner] of html.matchAll(/<a ([^>]*href="https?:\/\/[^>]*)>(.*?)<\/a>/g)) {
+        assert.match(`${attributes} ${inner}`, /opens in a new tab/, `${query}: ${attributes}`);
+      }
+      for (const attributes of internal) assert.doesNotMatch(attributes, /target=/, `${query}: ${attributes}`);
     }
   });
+  // /attribution's credits leave Lexema too; its nav and footer links stay.
+  const page = attribution();
+  const external = [...page.matchAll(/<a ([^>]*href="https?:\/\/[^>]*)>(.*?)<\/a>/g)];
+  assert.ok(external.length >= 5, "the attribution page links out");
+  for (const [, attributes, inner] of external) {
+    assert.match(attributes, /target="_blank" rel="noopener noreferrer"/, attributes);
+    assert.match(inner, /opens in a new tab/, attributes);
+  }
+  for (const [, attributes] of page.matchAll(/<a ([^>]*href="[/#][^>]*)>/g)) assert.doesNotMatch(attributes, /target=/, attributes);
 });
 
-test("lap steel guitar shows its main definition once, as a definition, and says the record files it as an example", async () => {
-  // Archive line 605574, verbatim: its one sense is furniture, and the page's
-  // main definition sits in that sense's `examples`.
-  const devSeed = (await readFile(join(REPO, "fixtures/dev-seed.jsonl"), "utf8")).trim().split("\n");
-  const lapSteel = (await readFile(join(REPO, "fixtures/lap-steel-guitar.jsonl"), "utf8")).trim();
-  const pages = await loadFixturePages(join(REPO, "fixtures"));
-  await withLines(
-    [...devSeed, lapSteel],
-    async ({ db }) => {
-      const [reading] = await readingsFor(db, "lap steel guitar");
-      // The record is as imported: the text is still its example.
-      const [held] = reading.senses.flatMap((sense) => sense.examples);
-      assert.equal(held.ref.jsonPointer, "/senses/0/examples/0/text");
-      // One definition at the top of the list; the two kinds its colon opens
-      // sit inside it, as the page lists them (#123).
-      assert.deepEqual(
-        reading.recovered.map((definition) => [definition.heldAsExample, definition.items.map((item) => item.ref.line)]),
-        [[held.ref, [7, 8]]],
-      );
-
-      const html = card(await render(db, "lap steel guitar"), "lap steel guitar, noun");
-      const text = textOf(html);
-      const main = "tipo di steel guitar che si suona da seduti";
-      assert.equal(occurrencesOf(text, main), 1, "the main definition is shown once");
-      assert.equal(occurrencesOf(held.text, main), 1);
-      const definitions = html.slice(html.indexOf(">Definitions</h3>"));
-      assert.match(definitions, new RegExp(`^>Definitions</h3><span class="[^"]*">1</span>`));
-      assert.match(definitions.slice(0, definitions.indexOf("</ol>")), exact(main));
-      const first = definitions.slice(0, definitions.indexOf("</ol>"));
-      assert.match(
-        first,
-        new RegExp(`<ul class="${esc(RECOVERED_ITEMS)}"><li[^>]*><p[^>]*><span lang="it">acustica, con una cassa`),
-      );
-      assert.match(first, exact("elettrica, dotata di pick-up come sulle chitarre elettriche"));
-      assert.doesNotMatch(html, />Examples<\/h3>/, "its only example is the definition, so there is no Examples section");
-      assert.equal(occurrencesOf(html, `<span class="${RECOVERED_MARK}">the source record files this as an example</span>`), 1);
-      // The section note does not claim every recovered entry was dropped.
-      assert.match(text, /the extraction dropped them or filed them as examples\./);
-      assert.doesNotMatch(text, /the extraction dropped them\.(?! or)/);
-      // A word none of whose recovered definitions was misfiled keeps the plain note.
-      const casaText = textOf(card(await render(db, "casa"), "casa, noun"));
-      assert.match(casaText, /the extraction dropped them\./);
-      assert.doesNotMatch(casaText, /filed them as examples/);
-    },
-    pages,
-  );
-});
-
-test("accollato: the items its heraldic sense opens with a colon are nested inside that definition, not numbered after it", async () => {
-  // Archive line 33357, verbatim, and its page from the 2026-07-01 dump.
-  const devSeed = (await readFile(join(REPO, "fixtures/dev-seed.jsonl"), "utf8")).trim().split("\n");
-  const accollato = (await readFile(join(REPO, "fixtures/accollato.jsonl"), "utf8")).trim();
-  const pages = await loadFixturePages(join(REPO, "fixtures"));
-  await withLines(
-    [...devSeed, accollato],
-    async ({ db }) => {
-      const [reading] = await readingsFor(db, "accollato");
-      assert.deepEqual(reading.recovered, [], "nothing recovered stands at the top of the list");
-      assert.deepEqual(
-        reading.senses.map((sense) => sense.recoveredItems.map((item) => item.ref.line)),
-        [[], [], [7, 8, 9, 10, 11, 12]],
-      );
-      const [first] = reading.senses[2].recoveredItems;
-      assert.deepEqual(first.ref, { wiki: "it.wiktionary.org", title: "accollato", revisionId: 3891844, line: 7 });
-
-      const html = card(await render(db, "accollato"), "accollato, adjective");
-      const text = textOf(html);
-      // Three definitions, numbered and counted: the record's three senses.
-      assert.match(html, new RegExp(`>Definitions</h3><span class="[^"]*">3 · showing ${DEFINITION_SLICE}</span>`));
-      assert.equal(patternsOf(html, new RegExp(`<span class="${esc(DEFINITION_NUMBER)}" aria-hidden="true">\\d+\\.</span>`)), 3);
-      // The third holds the six items in one list, each marked, worded exactly as recovered.
-      const third = html.slice(html.indexOf("attributo araldico che si applica a:"));
-      const list = third.slice(third.indexOf(`<ul class="${RECOVERED_ITEMS}">`), third.indexOf("</ul>") + "</ul>".length);
-      assert.equal(occurrencesOf(list, "<li"), 6);
-      assert.equal(occurrencesOf(list, `<span class="${RECOVERED_MARK}">recovered</span>`), 6);
-      assert.ok(third.indexOf(`<ul class="${RECOVERED_ITEMS}">`) < third.indexOf("</li>"), "the list sits inside the third definition");
-      for (const item of reading.senses[2].recoveredItems) assert.match(textOf(list), exact(item.text));
-      assert.match(text, exact("scudi che si appoggiano a insegne d'onore sporgenti dal retro,"));
-      assert.match(text, /Entries marked recovered were read from the Wiktionary page, revision 3891844; the extraction dropped them\./);
-    },
-    pages,
-  );
-});
-
-test("casa has no colon list, and nothing on its card is nested", async () => {
-  await withDevSeedAndPages(async ({ db }) => {
-    const casa = card(await render(db, "casa"), "casa, noun");
-    assert.equal(occurrencesOf(casa, RECOVERED_ITEMS), 0);
-  });
-});
-
-test("an ordinary word's examples are unchanged by the recovered layer", async () => {
-  await withDevSeedAndPages(async ({ db }) => {
-    const reading = (await readingsFor(db, "andare")).find((candidate) => candidate.pos === "verb");
-    assert.ok(reading);
-    const examples = reading.senses.flatMap((sense) => sense.examples);
-    assert.equal(examples.length, 6);
-    const verb = card(await render(db, "andare"), "andare, verb");
-    assert.match(verb, new RegExp(`>Examples</h3><span class="[^"]*">6 · showing 1</span>`));
-    for (const example of examples) assert.match(textOf(verb), exact(example.text));
-    assert.doesNotMatch(verb, /files this as an example/);
-  });
-});
-
-test("the word-level sections come once, after the cards, with their slices and Show all buttons", async () => {
+test("a search that finds nothing offers, in order: an accent, one edit, words that begin with it, or how to search", async () => {
   await withDevSeed(async ({ db }) => {
-    const html = await render(db, "sale");
-    const page = wordPage("sale", await readingsFor(db, "sale"));
-    const afterCards = html.slice(html.lastIndexOf("</article>"));
+    const heading = (query: string) => new RegExp(`<h1 class="${esc(NOT_FOUND_HEADING)}">No entry for “<span lang="it">${esc(query)}</span>”</h1>`);
+    const link = (word: string) => new RegExp(`<a class="${esc(NOT_FOUND_LINK)}" href="/\\?q=${encodeURIComponent(word)}" lang="it">${esc(word)}</a>`);
 
-    // Two etymologies, and the source does not say which reading each is for.
-    assert.equal(occurrencesOf(afterCards, `<span class="${ETYMOLOGY_LABEL}">`), 2);
-    assert.match(afterCards, /Etymology 1 — reading not given/);
-    assert.match(afterCards, /Etymology 2 — reading not given/);
+    // B: the same letters with an accent, before any other step.
+    const citta = await render(db, "citta");
+    assert.match(citta, heading("citta"));
+    assert.match(citta, /Did you mean /);
+    assert.match(citta, link("città"));
 
-    const synonyms = page.wordFacts.synonyms.length;
-    assert.ok(synonyms > RELATED_SLICE.wide);
-    assert.match(
-      afterCards,
-      new RegExp(
-        `>Synonyms</h2><span class="[^"]*"><span class="${PHONE_ONLY}">${synonyms} · showing ${RELATED_SLICE.phone}</span>` +
-          `<span class="${WIDE_ONLY}">${synonyms} · showing ${RELATED_SLICE.wide}</span></span>`,
-      ),
-    );
-    assert.match(afterCards, new RegExp(`<summary class="[^"]*flex w-full[^"]*"><span[^>]*>Show all ${synonyms} synonyms</span>`));
-    // Every chip is in the document, each a search for its word.
-    assert.equal(patternsOf(afterCards, /href="\/\?q=[^"]+" lang="it">/), synonyms + page.wordFacts.antonyms.length + page.wordFacts.derived.length);
-    assert.match(afterCards, />Derived words<\/h2><span class="[^"]*">5<\/span>/);
+    // C: one edit away, from a lemma headword.
+    const mangare = await render(db, "mangare");
+    assert.match(mangare, heading("mangare"));
+    assert.match(mangare, link("mangiare"));
 
-    // Nothing of it is inside a card.
-    for (const part of cardsOf(html)) assert.doesNotMatch(part, />Synonyms<|>Etymology</);
-    // And a word without any of it has no section at all.
-    const andavano = await render(db, "andavano");
-    assert.doesNotMatch(andavano, />Synonyms<|>Antonyms<|>Derived words</);
-    assert.doesNotMatch(andavano, />Pronunciation</);
-    assert.match(andavano, />Syllables<\/dt>/);
+    // A: nothing close, so the words that begin with it, each a search.
+    const stud = textOf(await render(db, "stud"));
+    assert.match(stud, /Lexema has no word spelled this way\. Words that begin with “stud”:/);
+    assert.match(stud, /Suggestionsstudente·studentessa·studenti·studiare/);
+
+    // Among spellings one edit away, the more common word leads: mangiare,
+    // translated into three languages, before the shorter magnare.
+    await withFixture(async ({ db: fixture }) => {
+      const offers = textOf(await render(fixture, "mangare"));
+      assert.match(offers, /Did you mean mangiare\?/);
+      assert.match(offers, /Other close spellingsmagnare/);
+    });
+
+    // A three-letter query skips the typo step: `mar` is one edit from `mare`,
+    // but the words that begin with it are the better offer.
+    assert.match(textOf(await render(db, "mar")), /Words that begin with “mar”:Suggestionsmare/);
+
+    // D: nothing at all.
+    const none = textOf(await render(db, "xqzt"));
+    assert.match(none, /No entry for “xqzt”/);
+    assert.match(none, /Check the spelling, or search for the word’s base form: the infinitive of a verb, the singular of a noun\./);
+    assert.doesNotMatch(none, /Did you mean|Suggestions/);
   });
 });
 
-test("definitions and examples show one, and put the rest behind a bordered button", async () => {
-  await withDevSeed(async ({ db }) => {
-    const verb = card(await render(db, "andare"), "andare, verb");
-    const reading = (await readingsFor(db, "andare")).find((candidate) => candidate.pos === "verb");
-    assert.ok(reading);
-    const examples = reading.senses.flatMap((sense) => sense.examples);
-    assert.match(verb, new RegExp(`>Definitions</h3><span class="[^"]*">${reading.senses.length} · showing ${DEFINITION_SLICE}</span>`));
-    assert.match(verb, new RegExp(`<summary class="[^"]*border-border-strong[^"]*"><span[^>]*>Show all ${reading.senses.length} definitions</span>`));
-    assert.match(verb, new RegExp(`>Examples</h3><span class="[^"]*">${examples.length} · showing 1</span>`));
-    assert.match(verb, new RegExp(`Show all ${examples.length} examples`));
-    for (const example of examples) assert.ok(verb.includes(`lang="it">${example.text.replace(/'/g, "&#x27;").replace(/"/g, "&quot;")}</li>`), example.text);
-  });
-});
-
-test("the noise the frames do not have is gone", async () => {
-  await withDevSeed(async ({ db }) => {
-    for (const query of ["casa", "andare", "andavano", "bello", "sale", "studente"]) {
-      const html = await render(db, query);
-      const text = textOf(html);
-      assert.doesNotMatch(text, /form-of/, `${query}: no form-of label`);
-      assert.doesNotMatch(text, /unclassified/, `${query}: no unclassified pill`);
-      assert.doesNotMatch(text, /Forms pointing here/, `${query}: no reverse links`);
-      assert.doesNotMatch(text, /lists no forms/, `${query}: no empty-section apology`);
-      assert.doesNotMatch(text, /Release it-page-test|release line/, `${query}: no release line`);
-      assert.doesNotMatch(text, /Sources and licences/, `${query}: no old footer`);
-      assert.doesNotMatch(text, /entries for|Italian word/, `${query}: no count line or field label`);
-      // No search button; the one button a page may carry is a folding set's Expand all.
-      assert.equal(patternsOf(html, /<button[\s>]/), patternsOf(html, />Expand all</), `${query}: no search button`);
-      // `warning` marks the etymology labels the frames colour, and the
-      // disputed-claim mark, and nothing else.
-      const warnings = occurrencesOf(html, "text-warning");
-      const allowed = occurrencesOf(html, `class="${ETYMOLOGY_LABEL}"`) + occurrencesOf(html, "Disputed by later research.");
-      assert.equal(warnings, allowed, `${query}: no other red text`);
-      // One Source link per headword on the page.
-      assert.equal(occurrencesOf(html, "aria-label=\"Wiktionary page for "), new Set(cardLabels(html).map((label) => label.split(",")[0])).size, query);
+test("a form the page cannot place is not shown, and nothing on the page says so", async () => {
+  await withFixture(async ({ db }) => {
+    // A proper name gets no grid and no generated articles; `Mercuria` has no place.
+    const mercurio = nth(await render(db, "Mercurio"), 1);
+    assert.doesNotMatch(mercurio, /data-grid=""|>Forms</);
+    assert.doesNotMatch(textOf(mercurio), /Mercuria|il Mercurio/);
+    // `fine` is tagged masculine and feminine; `fini` only plural. Which
+    // gender's plural it is, the source does not say, so it is not guessed.
+    const fine = nth(await render(db, "fine"), 1);
+    assert.deepEqual(gridRows(fine).map((row) => row[0]), ["", "maschile", "femminile"]);
+    assert.doesNotMatch(textOf(fine), /\bfini\b/);
+    // `parlarsi (coniugazione)` is the link to the reflexive verb, not a cell.
+    const parlare = await render(db, "parlare");
+    assert.doesNotMatch(textOf(parlare), /parlarsi/);
+    // `maggiori` states its degree only in raw prose; `grandi` still has its cell.
+    const grande = textOf(await render(db, "grande"));
+    assert.doesNotMatch(grande, /maggiori|comparativo di maggioranza/);
+    assert.match(grande, /grandi/);
+    for (const html of [mercurio, fine, parlare, grande]) {
+      assert.doesNotMatch(html, /not given|Not a noun|data-unplaced/i);
     }
+    // An auxiliary the source writes as text still has its slot, as it wrote it.
+    assert.match(textOf(await render(db, "finire")), /ausiliareavere, se intr\. essere/);
   });
 });
 
-test("bello's superlatives are rows in a box, not a stack of pills", async () => {
-  await withDevSeed(async ({ db }) => {
-    const bella = card(await render(db, "bello"), "bella, adjective form");
-    const box = boxesOf(bella).find((part) => part.includes(">Absolute superlative</h4>"));
-    assert.ok(box);
-    assert.deepEqual(textOf(box).replace("Absolute superlative", ""), "m sgbellissimom plbellissimif sgbellissimaf plbellissime");
-    assert.match(textOf(bella), /This entry does not define “?"?bello"?”?; it lists the form in its own table\./);
+test("each spelling of a cell has its own article line", async () => {
+  await withFixture(async ({ db }) => {
+    const olio = textOf(nth(await render(db, "olio"), 1));
+    assert.match(olio, /oligli oli·degli olioliigli olii·degli olii/);
   });
 });
 
-test("the source's Italian carries lang=\"it\": glosses and etymologies", async () => {
-  await withDevSeed(async ({ db }) => {
-    const html = await render(db, "sale");
-    const reading = (await readingsFor(db, "sale"))[0];
-    for (const sense of reading.senses) for (const gloss of sense.glosses) {
-      assert.ok(html.includes(`lang="it">${gloss.text}`), gloss.text);
-    }
-    const page = wordPage("sale", await readingsFor(db, "sale"));
-    for (const etymology of page.wordFacts.etymologies) {
-      assert.ok(html.includes(`<span lang="it">${etymology.text}</span>`), etymology.text);
-    }
-    assert.doesNotMatch(html, /<html/);
-  });
-});
-
-// Page chrome ------------------------------------------------------------------
+// The page around the result ----------------------------------------------------
 
 test("the home page is the name, the field and the Try chips, centred", async () => {
   const home = renderToStaticMarkup(
@@ -822,6 +978,8 @@ test("the home page is the name, the field and the Try chips, centred", async ()
     </SearchPage>,
   );
   assert.match(home, new RegExp(`^<main class="${esc(SHELL_CENTRED)}"><h1 [^>]*>Lexema</h1>`));
+  // Under the wordmark: its pronunciation, then what it is.
+  assert.match(textOf(home), /^Lexema\/lekˈsɛːma\/a simple dictionary/);
   assert.doesNotMatch(home, new RegExp(esc(TOP_BAR)));
   assert.match(home, /placeholder="Search an Italian word"/);
   assert.match(home, /aria-label="Search an Italian word"/);
@@ -829,6 +987,7 @@ test("the home page is the name, the field and the Try chips, centred", async ()
   assert.match(home, /<form class="[^"]*" role="search" action="\/" method="get">/);
   assert.match(home, />Try<\/span>/);
   for (const word of TRY_WORDS) assert.match(home, new RegExp(`href="/\\?q=${word}" lang="it">${word}</a>`));
+  assert.doesNotMatch(home, /href="\/\?q=andavano"/);
 });
 
 test("a results page has the top bar and one bordered field with a clear control", async () => {
@@ -877,7 +1036,9 @@ test("every page reaches the attribution page from the footer's four links", asy
   const links = [...footer.matchAll(new RegExp(`<a class="${esc(SITE_FOOTER_LINK)}" href="([^"]+)">([^<]+)</a>`, "g"))];
   assert.deepEqual(links.map((match) => match[2]), ["Attribution", "About the data", "Licence", "Contact"]);
   for (const [, href] of links) assert.match(href, /^\/attribution(#|$)/);
-  assert.match(footer, />Lexema<\/span>/);
+  // The footer's wordmark goes home, in the same tab, like the top bar's.
+  assert.match(footer, new RegExp(`<a class="${esc(SITE_FOOTER_NAME)}" href="/">Lexema</a>`));
+  assert.match(renderToStaticMarkup(<SiteHeader />), /<a class="[^"]*" href="\/">Lexema<\/a>/);
 
   // The layout imports globals.css, which Node cannot load, so that it carries
   // this footer is asserted on the file.
@@ -895,41 +1056,22 @@ test("the search page carries no credit line, no licence name and no contributor
       assert.doesNotMatch(html, /example\.invalid/, `${query}: no link to the archive`);
     }
     const sale = await render(db, "sale");
-    assert.match(sale, /href="https:\/\/it\.wiktionary\.org\/wiki\/sale" rel="noreferrer" aria-label="Wiktionary page for sale, the source of this page">Source/);
+    assert.match(
+      sale,
+      /href="https:\/\/it\.wiktionary\.org\/wiki\/sale" target="_blank" rel="noopener noreferrer" aria-label="Wiktionary page for sale, the source of this page \(opens in a new tab\)">Source/,
+    );
   });
 });
 
-// Edge cases the synthetic archive reaches ---------------------------------------
-
-test("a verb whose auxiliary is source text shows it verbatim, and a second tagged cycle joins its tense rows", async () => {
-  await withFixture(async ({ db }) => {
-    const finire = card(await render(db, "finire"), "finire, verb");
-    assert.match(finire, /<span lang="it" data-form="1">se intr\. essere<\/span>/);
-    assert.match(finire, fact("conjugation", "verbo incoativo di terza coniugazione"));
-    assert.deepEqual(tenseHeadings(finire), ["presente", "imperfetto", "imperativo", "modi indefiniti"]);
-
-    // `provare`'s eight person-tagged cycles fill the eight tense boxes; its
-    // second present cycle is person-tagged too, so it is alternates in the
-    // same presente rows rather than a box of its own.
-    const provare = card(await render(db, "provare"), "provare, verb");
-    assert.deepEqual(tenseHeadings(provare), [
-      "presente",
-      "imperfetto",
-      "passato remoto",
-      "futuro semplice",
-      "passato prossimo",
-      "trapassato prossimo",
-      "trapassato remoto",
-      "futuro anteriore",
-      "imperativo",
-      "modi indefiniti",
-    ]);
-    assert.match(textOf(provare), /ioprovo \/ sub-io/);
-    // No che rows, so nothing was derived and the rule is not named.
-    assert.doesNotMatch(provare, /it-moods\/v1/);
-    const reading = (await readingsFor(db, "provare"))[0];
-    assertEveryFormShown(provare, reading, "provare");
-  });
+test("the tab title is the word on a result, and what Lexema is on the home page", () => {
+  assert.equal(pageTitle(""), "Lexema — a simple dictionary");
+  assert.equal(pageTitle("   "), "Lexema — a simple dictionary");
+  // A result's title capitalises the headword's first letter; the page does not.
+  assert.equal(pageTitle(" casa ", { found: "casa" }), "Casa — Lexema");
+  assert.equal(pageTitle("citta", { found: "città" }), "Città — Lexema");
+  assert.equal(pageTitle("roma", { found: "Roma" }), "Roma — Lexema");
+  assert.equal(pageTitle("andavano", { found: "andavano" }), "Andavano — Lexema");
+  assert.equal(pageTitle("xqzt", "not-found"), 'No entry for "xqzt" — Lexema');
 });
 
 test("a repeated query parameter is searched, not thrown on", async () => {
@@ -965,7 +1107,8 @@ test("renders the states that are not an answer: loading, rejected, failed, not 
     assert.match(await render(db, "   "), /Type a word to search for\./);
     assert.match(await render(db, "a".repeat(200)), /That is 200 characters\. The limit is 128\./);
     const missing = await render(db, "zzzznothing");
-    assert.match(missing, exact(`<p class="${EMPTY}" role="status">Nothing in this release matches`));
+    assert.match(missing, /No entry for “<span lang="it">zzzznothing<\/span>”<\/h1>/);
+    assert.doesNotMatch(missing, /Nothing in this release matches|Accents matter/);
   });
 });
 
@@ -1005,8 +1148,8 @@ test("the attribution page carries the credit, the licence and the restructuring
       html,
       exact(
         `<a class="${LINK}" href="https://creativecommons.org/licenses/by-sa/4.0/" ` +
-          `rel="noreferrer">Creative Commons Attribution-ShareAlike 4.0 International ` +
-          `(CC BY-SA 4.0)</a>`,
+          `target="_blank" rel="noopener noreferrer">Creative Commons Attribution-ShareAlike 4.0 International ` +
+          `(CC BY-SA 4.0)<span class="sr-only"> (opens in a new tab)</span></a>`,
       ),
     );
     // The credit: the contributors, and where their names are kept.
@@ -1015,7 +1158,7 @@ test("the attribution page carries the credit, the licence and the restructuring
     assert.match(
       html,
       exact(
-        `<a class="${LINK}" href="https://it.wiktionary.org/" rel="noreferrer">Italian Wiktionary</a>`,
+        `<a class="${LINK}" href="https://it.wiktionary.org/" target="_blank" rel="noopener noreferrer">Italian Wiktionary<span class="sr-only"> (opens in a new tab)</span></a>`,
       ),
     );
     assert.match(html, /kaikki\.org/);
@@ -1036,8 +1179,8 @@ test("the attribution page names the dump and links the download the release cam
       exact(
         field(
           "Source",
-          `<a class="${LINK}" href="https://dumps.wikimedia.org/itwiktionary/20260701/" rel="noreferrer">` +
-            `Italian Wiktionary, dump of 1 July 2026</a>`,
+          `<a class="${LINK}" href="https://dumps.wikimedia.org/itwiktionary/20260701/" target="_blank" rel="noopener noreferrer">` +
+            `Italian Wiktionary, dump of 1 July 2026<span class="sr-only"> (opens in a new tab)</span></a>`,
         ),
       ),
     );
@@ -1046,8 +1189,8 @@ test("the attribution page names the dump and links the download the release cam
       exact(
         field(
           "Downloaded from",
-          `<a class="${LINK}" href="https://kaikki.org/dictionary/downloads/it/it-extract.jsonl.gz" rel="noreferrer">` +
-            `<code class="${CODE_IDENTITY}">https://kaikki.org/dictionary/downloads/it/it-extract.jsonl.gz</code></a>`,
+          `<a class="${LINK}" href="https://kaikki.org/dictionary/downloads/it/it-extract.jsonl.gz" target="_blank" rel="noopener noreferrer">` +
+            `<code class="${CODE_IDENTITY}">https://kaikki.org/dictionary/downloads/it/it-extract.jsonl.gz</code><span class="sr-only"> (opens in a new tab)</span></a>`,
         ),
       ),
     );

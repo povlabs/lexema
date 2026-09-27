@@ -30,6 +30,7 @@ import {
   SECTION_HEADING,
   SHELL_TOP,
 } from "./styles.ts";
+import { ExternalLink } from "./ExternalLink";
 import { SiteHeader } from "./SiteHeader";
 
 const LICENCE_URL = "https://creativecommons.org/licenses/by-sa/4.0/";
@@ -82,9 +83,9 @@ function ReleaseIdentity({ source }: { source: ReleaseSource }) {
           {source.dump === null ? (
             <NotRecorded />
           ) : (
-            <a className={LINK} href={source.dump.url} rel="noreferrer">
+            <ExternalLink className={LINK} href={source.dump.url}>
               Italian Wiktionary, dump of {DUMP_DATE.format(new Date(source.dump.date))}
-            </a>
+            </ExternalLink>
           )}
         </dd>
       </div>
@@ -94,9 +95,9 @@ function ReleaseIdentity({ source }: { source: ReleaseSource }) {
           {source.sourceUrl === null ? (
             <NotRecorded />
           ) : (
-            <a className={LINK} href={source.sourceUrl} rel="noreferrer">
+            <ExternalLink className={LINK} href={source.sourceUrl}>
               <code className={CODE_IDENTITY}>{source.sourceUrl}</code>
-            </a>
+            </ExternalLink>
           )}
         </dd>
       </div>
@@ -118,32 +119,32 @@ export function Attribution({ source }: { source: ReleaseSource }) {
         </h2>
         <p className={PARAGRAPH}>
           Lexema&rsquo;s Italian lexical data comes from the{" "}
-          <a className={LINK} href="https://it.wiktionary.org/" rel="noreferrer">
+          <ExternalLink className={LINK} href="https://it.wiktionary.org/">
             Italian Wiktionary
-          </a>
+          </ExternalLink>
           , the Italian edition of Wiktionary, a project of the{" "}
-          <a className={LINK} href="https://wikimediafoundation.org/" rel="noreferrer">
+          <ExternalLink className={LINK} href="https://wikimediafoundation.org/">
             Wikimedia Foundation
-          </a>{" "}
+          </ExternalLink>{" "}
           written by volunteers.
         </p>
         <p className={PARAGRAPH}>
           Most of it comes from the automatic extraction published by{" "}
-          <a className={LINK} href="https://kaikki.org/itwiktionary/" rel="noreferrer">
+          <ExternalLink className={LINK} href="https://kaikki.org/itwiktionary/">
             kaikki.org
-          </a>
+          </ExternalLink>
           , produced with{" "}
-          <a className={LINK} href="https://github.com/tatuylonen/wiktextract" rel="noreferrer">
+          <ExternalLink className={LINK} href="https://github.com/tatuylonen/wiktextract">
             wiktextract
-          </a>{" "}
+          </ExternalLink>{" "}
           by Tatu Ylonen.
         </p>
         <p className={PARAGRAPH}>
           Where that extraction dropped a definition, Lexema reads it from the page itself, in
           the{" "}
-          <a className={LINK} href="https://dumps.wikimedia.org/itwiktionary/" rel="noreferrer">
+          <ExternalLink className={LINK} href="https://dumps.wikimedia.org/itwiktionary/">
             Wikimedia dump of the Italian Wiktionary
-          </a>
+          </ExternalLink>
           , and marks it <em>recovered</em>, with a link to the page revision it was read from.
         </p>
       </section>
@@ -152,9 +153,9 @@ export function Attribution({ source }: { source: ReleaseSource }) {
         <h2 className={SECTION_HEADING} id="licence">Licence</h2>
         <p className={PARAGRAPH}>
           Wiktionary&rsquo;s text is published under{" "}
-          <a className={LINK} href={LICENCE_URL} rel="noreferrer">
+          <ExternalLink className={LINK} href={LICENCE_URL}>
             Creative Commons Attribution-ShareAlike 4.0 International (CC BY-SA 4.0)
-          </a>
+          </ExternalLink>
           .
         </p>
         {/* The credit the licence asks for: the authors, and where a reader can
@@ -172,9 +173,9 @@ export function Attribution({ source }: { source: ReleaseSource }) {
         </p>
         <p className={PARAGRAPH}>
           The material is provided as-is, without warranties of any kind, as{" "}
-          <a className={LINK} href={LICENCE_TEXT_URL} rel="noreferrer">
+          <ExternalLink className={LINK} href={LICENCE_TEXT_URL}>
             section 5 of the licence
-          </a>{" "}
+          </ExternalLink>{" "}
           provides. Lexema does not warrant that the definitions are accurate or complete.
         </p>
       </section>
@@ -243,9 +244,9 @@ export function Attribution({ source }: { source: ReleaseSource }) {
         </h2>
         <p className={PARAGRAPH}>
           During development we consulted third-party dictionaries, among them the{" "}
-          <a className={LINK} href="https://www.treccani.it/vocabolario/" rel="noreferrer">
+          <ExternalLink className={LINK} href="https://www.treccani.it/vocabolario/">
             Vocabolario Treccani
-          </a>
+          </ExternalLink>
           , solely as an editorial cross-check.{" "}
           <strong>No text from those sources was imported into Lexema.</strong>
         </p>

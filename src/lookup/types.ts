@@ -115,6 +115,18 @@ export interface RelatedWord {
 }
 
 /**
+ * One `synonyms[]` entry exactly as the source lists it, before spellings are
+ * collapsed: its word, its `raw_tags`, and where it sits. Position matters —
+ * in 207 headwords of release `it-0c432803` a part-of-speech label such as
+ * `sostantivo` on one entry opens a group that runs to the next label.
+ */
+export interface SynonymEntry {
+  word: string;
+  rawTags: string[];
+  ref: SourceRef;
+}
+
+/**
  * What the source says about the *headword* rather than about one record of
  * it: read from `source_record_json`, where it is repeated on each record the
  * headword has. A page shows it once per word, not once per reading.
@@ -124,6 +136,8 @@ export interface WordFacts {
   hyphenations: Hyphenation[];
   etymologies: SourceText[];
   synonyms: RelatedWord[];
+  /** The same synonyms uncollapsed, in source order, each with its `raw_tags`. */
+  synonymList: SynonymEntry[];
   antonyms: RelatedWord[];
   derived: RelatedWord[];
 }

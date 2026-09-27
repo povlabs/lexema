@@ -11,18 +11,26 @@
 // which limit a request counts against, whose count it is, and what a blocked
 // request is answered with.
 
+import type { ReportAnswer } from "../app/report.ts";
 import type { SuggestAnswer } from "../app/suggestAnswer.ts";
 
-/** The two things a visitor can do that reach the database. */
-export type Limit = "search" | "suggest";
+/** The things a visitor can do that reach the database. */
+export type Limit = "search" | "suggest" | "report" | "report-open";
 
 /** The bindings this module counts with, one per limit, as wrangler.jsonc names them. */
 export interface LimitBindings {
   SEARCH_LIMIT: RateLimit;
   SUGGEST_LIMIT: RateLimit;
+  REPORT_LIMIT: RateLimit;
+  REPORT_OPEN_LIMIT: RateLimit;
 }
 
-const BINDING = { search: "SEARCH_LIMIT", suggest: "SUGGEST_LIMIT" } as const satisfies Record<
+const BINDING = {
+  search: "SEARCH_LIMIT",
+  suggest: "SUGGEST_LIMIT",
+  report: "REPORT_LIMIT",
+  "report-open": "REPORT_OPEN_LIMIT",
+} as const satisfies Record<
   Limit,
   keyof LimitBindings
 >;
@@ -56,6 +64,11 @@ export const SEARCH_LIMITED_HEADER = "x-lexema-search-limited";
  */
 export function limitOf(url: URL): Limit | undefined {
   if (url.pathname === "/suggest") return "suggest";
+  // A report's hourly allowance is counted over stored reports (app/report.ts);
+  // this binding only stops a burst before the database is touched.
+  if (url.pathname === "/report") return "report";
+  // Opening the box stores a token; counted apart so opening does not use up sending.
+  if (url.pathname === "/report/open") return "report-open";
   if ((url.searchParams.get("q") ?? "").trim() !== "") return "search";
   return undefined;
 }
@@ -135,6 +148,10 @@ export function withRateLimits<E extends LimitBindings>(app: FetchHandler<E>): F
     console.warn("rate limited", { limit });
     if (limit === "suggest") {
       const body: SuggestAnswer = { outcome: "limited" };
+      return Response.json(body, { status: 429, headers: tooManyHeaders() });
+    }
+    if (limit === "report" || limit === "report-open") {
+      const body: ReportAnswer = { outcome: "limited" };
       return Response.json(body, { status: 429, headers: tooManyHeaders() });
     }
     const page = await app(marked(request, true), env, ctx);

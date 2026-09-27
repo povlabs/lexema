@@ -210,6 +210,43 @@ CREATE INDEX lookup_form_headword_by_key
 CREATE INDEX lookup_form_by_record
   ON lookup_form (record_id);
 
+-- What a search that found nothing offers instead (src/lookup/nearby.ts,
+-- board 24). Both are written by the seed from the keys above, and both are
+-- read by one indexed probe per request; neither is ever scanned.
+--
+-- The same letters with other accents: every distinct surface_key whose
+-- accent-folded spelling (NFD, combining marks removed) differs from it, under
+-- that folded spelling. `citta` finds `città`. Keys with no accent are left
+-- out, since the exact lookup already found them.
+CREATE TABLE accent_fold (
+  release_id  TEXT    NOT NULL,
+  fold_key    TEXT    NOT NULL,
+  surface_key TEXT    NOT NULL,
+  headword    INTEGER NOT NULL CHECK (headword IN (0, 1)),  -- some record's own headword
+  languages   INTEGER NOT NULL CHECK (languages >= 0),      -- see typo_key
+  richness    INTEGER NOT NULL CHECK (richness >= 0),       -- see typo_key
+  PRIMARY KEY (release_id, fold_key, surface_key)
+) STRICT, WITHOUT ROWID;
+
+-- A spelling one edit away (SymSpell's deletion index): every distinct lemma
+-- headword key (a record declaring no form_of) under itself and under each
+-- spelling of it with one character left out. A query probes its own
+-- deletions and itself; the candidates are then checked for a true distance
+-- of one. Inflected forms are left out, so a typo leads to a base word.
+CREATE TABLE typo_key (
+  release_id   TEXT NOT NULL,
+  deletion_key TEXT NOT NULL,
+  surface_key  TEXT NOT NULL,
+  -- How common the word is, as far as the source can say: the number of
+  -- distinct languages its lemma records list translations in, then the
+  -- senses plus forms those records carry. Among candidates the same number
+  -- of edits away, the higher leads (`mangare` offers `mangiare`, 51
+  -- languages, before `magnare`, none). 0 and 0 for a spelling only a form.
+  languages    INTEGER NOT NULL CHECK (languages >= 0),
+  richness     INTEGER NOT NULL CHECK (richness >= 0),
+  PRIMARY KEY (release_id, deletion_key, surface_key)
+) STRICT, WITHOUT ROWID;
+
 
 -- ---------------------------------------------------------------------------
 -- form_of edges
@@ -441,6 +478,44 @@ CREATE TABLE claim_review (
 ) STRICT;
 
 CREATE INDEX claim_review_by_record ON claim_review (record_id);
+
+
+-- ---------------------------------------------------------------------------
+-- Reader reports (#51)
+-- ---------------------------------------------------------------------------
+
+-- A reader's report that something on a word page is wrong, as sent from the
+-- page's "Report a mistake" box. It is not a review: claim_review holds
+-- verdicts, and every disputed row there is shown on the page, so an unreviewed
+-- report cannot live in it. A report changes nothing; it waits for a person
+-- (#12), who may then write a claim_review row.
+--
+-- No foreign key: a report names the release and record it was sent from, and
+-- has to outlive that release. The visitor is stored as a SHA-256 of their
+-- rate-limit key (web/app/report.ts), never as an address, and is kept only so
+-- the hourly allowance can be counted.
+CREATE TABLE reader_report (
+  report_id    INTEGER PRIMARY KEY,
+  release_id   TEXT NOT NULL,
+  word         TEXT NOT NULL,
+  record_id    INTEGER,          -- the reading the reader picked; NULL for none or "Not sure"
+  choice       TEXT NOT NULL CHECK (choice IN ('meaning', 'example', 'form', 'synonym', 'other')),
+  details      TEXT NOT NULL CHECK (length(details) BETWEEN 1 AND 2000),
+  visitor_hash TEXT NOT NULL,
+  received_at  TEXT NOT NULL     -- ISO-8601
+) STRICT;
+
+CREATE INDEX reader_report_by_visitor ON reader_report (visitor_hash, received_at);
+
+-- One opening of the report box: a random token the server hands the box when
+-- it opens, and the server's own time. A report must carry one, and at least
+-- 3 s must have passed on the server's clock since it was issued, so the check
+-- never compares two clocks. Used once: deleted when its report is stored.
+-- Openings older than a day are swept when a new one is issued.
+CREATE TABLE report_opening (
+  token     TEXT PRIMARY KEY,
+  opened_at TEXT NOT NULL      -- ISO-8601, the server's clock
+) STRICT;
 
 
 -- ---------------------------------------------------------------------------

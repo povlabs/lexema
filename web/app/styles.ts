@@ -12,16 +12,14 @@
 // on — declared in `globals.css`. No literal colour appears in this file or in
 // any component, and `web/test/tokens.test.ts` fails the build if one is added.
 //
-// The sizes follow Huey's design frames (`design/frames/`, frames 00–06 and
-// C1–C2) read at 1440 px. Three faces, three jobs: the interface — labels,
-// buttons, counts, header-bar values — is sans; the source's Italian —
-// headword, glosses, examples, etymology, related-word chips — is serif; word
-// forms, pronunciation and syllables are mono.
+// The sizes follow the design boards in `lexema-design.pen` (boards 08 to 21)
+// read at 1440 px. Three faces, three jobs: labels and controls are sans; the
+// source's Italian prose — headword, definitions, examples, etymology,
+// synonyms — is serif; word forms, articles and pronunciation are mono.
 //
-// Below Tailwind's `sm` breakpoint the page is laid out for a phone, as frames
-// 07–09 draw it at 390 px (#101). A phone-only rule is a `max-sm:` variant
-// beside the wide one, or a part only a phone draws, hidden from `sm` up; so
-// from `sm` up the page is the one the wide frames draw, class for class.
+// Below Tailwind's `sm` breakpoint the page is laid out for a phone, as boards
+// 19 to 21 draw it at 390 px. A phone-only rule is a `max-sm:` variant beside
+// the wide one, so from `sm` up the page is the one the wide boards draw.
 
 /** The one column every page is laid out in, and the chrome lines up with. */
 const COLUMN = "mx-auto w-full max-w-[75rem] px-4 sm:px-6";
@@ -43,9 +41,14 @@ export const TOP_BAR_INNER = `${COLUMN} flex h-16 items-center`;
 export const TOP_BAR_NAME = `font-serif text-xl text-text-strong no-underline ${FOCUS_RING}`;
 
 /** C2: the name at the left, four small links at the right. */
-export const SITE_FOOTER = "mt-16 border-t border-border";
+/**
+ * The site footer's rule sits the Source line's gap below the page: the
+ * shell's `pb-4` plus this margin make 48px, 36px on a phone.
+ */
+export const SITE_FOOTER = "mt-5 border-t border-border sm:mt-8";
 export const SITE_FOOTER_INNER = `${COLUMN} flex flex-wrap items-center justify-between gap-4 py-8`;
-export const SITE_FOOTER_NAME = "font-serif text-base text-text-strong";
+/** The footer's wordmark, a link home like the top bar's. */
+export const SITE_FOOTER_NAME = `font-serif text-base text-text-strong no-underline ${FOCUS_RING}`;
 export const SITE_FOOTER_LINKS = "m-0 flex list-none flex-wrap gap-x-6 gap-y-2 p-0";
 export const SITE_FOOTER_LINK = `font-sans text-[0.8rem] text-text-muted no-underline hover:text-text ${FOCUS_RING}`;
 
@@ -54,9 +57,18 @@ export const SITE_FOOTER_LINK = `font-sans text-[0.8rem] text-text-muted no-unde
  * screen, with nothing else competing (design-system-manifest.md § "The page").
  */
 export const SHELL_CENTRED = `${COLUMN} flex flex-1 flex-col items-center justify-center py-16 text-center`;
-export const HOME_NAME = "m-0 mb-10 font-serif text-[3.75rem] leading-none font-normal text-text-strong";
+export const HOME_NAME = "m-0 font-serif text-[3.75rem] leading-none font-normal text-text-strong";
+/** Under the wordmark on the home page: its pronunciation, as a word's is drawn, then what it is. */
+export const HOME_PRONUNCIATION = "m-0 mt-4 font-mono text-base text-text-muted sm:text-lg";
+export const HOME_TAGLINE = "m-0 mt-1 mb-10 font-serif text-[1.1rem] italic text-text-muted";
 
-/** With a query: the bar at the top of the column, the word below it. */
+/**
+ * With a query: the bar at the top of the column, the word below it. The
+ * column grows to fill the window, so on a short page the footer sits at the
+ * bottom of the window and the extra room falls between Source and the
+ * footer; the Source line's own gap below it (design-system-manifest.md §
+ * "Layout") is the minimum, and a long page is unchanged.
+ */
 export const SHELL_TOP = `${COLUMN} flex-1 pt-6 pb-4`;
 
 // The search field --------------------------------------------------------
@@ -71,10 +83,28 @@ export const SEARCH_ICON = "pointer-events-none absolute left-4 size-4 text-text
  * `×` and `ENTER` hint once typing opened the suggestion list.
  */
 export const SEARCH_INPUT =
-  "w-full min-w-0 bg-transparent py-3 pr-12 pl-11 font-serif text-lg text-text-strong outline-none placeholder:font-sans placeholder:text-base placeholder:text-text-muted [&::-webkit-search-cancel-button]:appearance-none";
-export const SEARCH_CLEAR = `absolute right-3 flex size-7 items-center justify-center font-sans text-lg text-text-muted no-underline hover:text-text ${FOCUS_RING}`;
-export const SEARCH_HINT =
-  "pointer-events-none absolute right-4 font-sans text-[0.65rem] tracking-[0.12em] text-text-muted";
+  "w-full min-w-0 bg-transparent py-3 pr-24 pl-11 font-serif text-lg text-text-strong outline-none placeholder:font-sans placeholder:text-base placeholder:text-text-muted [&::-webkit-search-cancel-button]:appearance-none";
+/**
+ * The right end of the bar: the shortcut hint, the `ENTER` hint and the `×`,
+ * in one row centred on the input. Each sits in a box of the same height with
+ * its glyph centred in it, so their centres line up with each other and with
+ * the typed text.
+ */
+export const SEARCH_TRAILING = "pointer-events-none absolute inset-y-0 right-3 flex items-center gap-1.5";
+const TRAILING_BOX = "flex h-7 items-center leading-none";
+/**
+ * Capitals and `⌘` are drawn higher in their line than `×`; measured, the
+ * key hints' ink sat 1.5 px above the `×`'s, so they are nudged down by that.
+ */
+const KEY_NUDGE = "translate-y-[0.09375rem]";
+export const SEARCH_CLEAR = `${TRAILING_BOX} pointer-events-auto w-7 justify-center font-sans text-lg text-text-muted no-underline hover:text-text ${FOCUS_RING}`;
+export const SEARCH_HINT = `${TRAILING_BOX} ${KEY_NUDGE} px-1 font-sans text-[0.65rem] tracking-[0.12em] text-text-muted`;
+/**
+ * `⌘K` / `Ctrl K`, the shortcut back to the field, shown while it does not
+ * have focus: in the hint's place, or left of the `×`. Hidden on a touch-only
+ * screen, which has no keys to press.
+ */
+export const SEARCH_SHORTCUT = `${TRAILING_BOX} ${KEY_NUDGE} px-1 font-sans text-[0.7rem] tracking-[0.08em] text-text-muted [@media(hover:none)_and_(pointer:coarse)]:hidden`;
 
 /**
  * The suggestion list under the field. No frame draws it, so it takes the
@@ -115,237 +145,226 @@ export const MUTED = "font-sans text-[0.85rem] text-text-muted";
 /** Something the source left open, said plainly and never in colour alone. */
 export const AMBIGUOUS = "font-sans text-[0.85rem] text-text-muted";
 
-// The word ----------------------------------------------------------------
+// The result ----------------------------------------------------------------
+//
+// design-system-manifest.md § "The result": one layout for every word type,
+// no box around a reading, thin rules between readings. Serif for the source's
+// prose, sans for labels and controls, mono for forms, articles and the IPA.
 
 /**
  * A headword longer than a phone is wide breaks rather than pushing the page
- * sideways: `precipitevolissimevolmente` is one word, and so is its syllable
- * string. The same `wrap-anywhere` sits on every other single word the page
- * sets large — a card's headword, a header-bar value, a gloss, a chip.
+ * sideways: `precipitevolissimevolmente` is one word.
  */
 export const WORD_HEADING =
-  "m-0 mt-10 font-serif text-[4rem] leading-none font-normal break-words text-text-strong sm:text-[5.5rem]";
+  "m-0 mt-12 font-serif text-[3.25rem] leading-none font-normal break-words text-text-strong sm:mt-16 sm:text-[4.5rem]";
+/** The IPA under the headword. */
+export const PRONUNCIATION = "m-0 mt-4 font-mono text-base text-text-muted sm:mt-6 sm:text-lg";
+export const PRONUNCIATION_NOTE = "ml-2 font-sans text-[0.75rem]";
+
+/** Jump links, one per reading, for three readings or more. */
+export const JUMP_LINKS = "m-0 mt-4 flex list-none flex-wrap gap-x-5 gap-y-1 p-0";
+export const JUMP_LINK = `font-sans text-[0.85rem] text-text no-underline ${FOCUS_RING}`;
+export const JUMP_NUMBER = "mr-1.5 text-accent";
+
+/** A reading: a heading and its blocks, with a thin rule before every one after the first. */
+/**
+ * The page's vertical rhythm, one value per kind of gap (desktop / phone):
+ * 40 / 28 on either side of a rule between readings and before the first
+ * reading; 28 / 22 between blocks inside a reading; 32 / 24 between the word's
+ * own blocks; 48 / 36 above and below Source. Each gap is the top edge of the
+ * thing below it, so an empty section adds nothing.
+ */
+export const READINGS = "mt-7 sm:mt-10";
+export const READING =
+  "scroll-mt-6 mt-7 border-t border-border pt-7 first:mt-0 first:border-t-0 first:pt-0 sm:mt-10 sm:pt-10";
+export const READING_HEADING =
+  "m-0 flex flex-wrap items-baseline gap-x-2.5 gap-y-1 font-sans text-[0.95rem] font-semibold text-text-strong";
+export const READING_NUMBER = "font-normal text-accent";
+export const READING_DOT = "font-normal text-text-muted";
+/** The record's own gender and number after the part of speech, muted: `maschile, singolare`. */
+export const READING_GRAMMAR = "font-normal text-text-muted";
+export const READING_GRAMMAR_GROUP = "inline-flex items-baseline gap-2.5";
+
+/** A small grey label over a block: Definitions, Forms, Etymology, Synonyms. */
+export const BLOCK = "mt-[1.375rem] sm:mt-7";
+/** A block of the word's own facts, after the readings; the first sits right under the rule. */
+export const WORD_BLOCK = "mt-6 first:mt-0 sm:mt-8";
+export const BLOCK_LABEL = "m-0 mb-3 font-sans text-[0.8rem] font-normal text-text-muted";
+export const BLOCK_LABEL_WORD = "ml-2 font-semibold text-text-strong";
+
+/** `Form of andare`: a lemma the gloss does not write, linked on a line of its own. */
+export const FORM_OF_LINE = "m-0 mt-4 font-sans text-[0.85rem] text-text-muted";
+
+export const DEFINITIONS = "m-0 flex list-none flex-col gap-4 p-0";
+export const DEFINITION = "flex gap-4";
+/** A definition after the first: in the document, shown once the reading's `+ more` is open. */
+export const DEFINITION_EXTRA = "hidden gap-4 group-has-[details[open]]/definitions:flex";
+export const DEFINITION_NUMBER = "w-5 shrink-0 pt-1 font-mono text-[0.85rem] text-text-muted";
+export const DEFINITION_BODY = "min-w-0 flex-1";
+export const GLOSS = "m-0 max-w-[48rem] font-serif text-[1.2rem] leading-snug text-text-strong wrap-anywhere sm:text-[1.3rem]";
+export const SENSE_LABEL = "italic text-text-muted";
+/** The word a form-of definition names, linked to its own search. */
+export const GLOSS_LINK = `text-accent no-underline ${FOCUS_RING}`;
+/** The items of a list a definition opens with a colon (#123), nested under it. */
+export const SUB_ITEMS = "mt-2 mb-0 flex list-disc flex-col gap-2 pl-5 marker:text-text-muted";
+export const EXAMPLE = "m-0 mt-2 max-w-[48rem] font-serif text-[1.05rem] italic text-text-muted";
+/** An example past the first definition's first: in the document, shown once `+ more` is open. */
+export const EXAMPLE_EXTRA = `${EXAMPLE} hidden group-has-[details[open]]/definitions:block`;
+/** An example of a sense not shown as a definition, after the definitions, in line with their text. */
+export const EXAMPLE_LOOSE = `${EXAMPLE_EXTRA} ml-9`;
+/** A reading's definitions and the one `+ more` after them, which reveals everything else. */
+export const DEFINITIONS_GROUP = "group/definitions";
 
 /**
- * A header bar on a phone (frame 09): the facts that sit on one line on a wide
- * screen wrap into two columns, drawn as a hairline grid — the bar's `border`
- * showing through a one-pixel gap between cells filled with `surface`. A last
- * fact left alone on its row spans both columns, so no cell is an empty hole.
+ * The one expand control, `+ more` closed and `less` open (More.tsx): small,
+ * in the accent, in the flow of the text it ends.
  */
-const HAIRLINE_GRID = "max-sm:grid max-sm:grid-cols-2 max-sm:gap-px max-sm:border max-sm:bg-border max-sm:p-0";
-const HAIRLINE_CELL =
-  "max-sm:border-l-0 max-sm:bg-surface max-sm:px-4 max-sm:py-3 max-sm:first:pl-4 max-sm:odd:last:col-span-2";
-
-/** Pronunciation and syllables, between two hairlines. */
-export const WORD_STRIP = `mt-10 flex flex-wrap border-y border-border py-4 ${HAIRLINE_GRID}`;
-export const WORD_STRIP_FACT = `flex min-w-0 flex-col gap-1 border-l border-border px-8 first:border-l-0 first:pl-0 ${HAIRLINE_CELL}`;
-export const WORD_STRIP_VALUE = "m-0 font-mono text-lg text-text-strong wrap-anywhere";
-export const WORD_STRIP_NOTE = "ml-2 font-sans text-[0.75rem] text-text-muted";
-
-/**
- * The reading index: compact bordered chips, one per card. On a phone each is a
- * full-width row, tall enough to tap, with a chevron saying it leads somewhere
- * (frame 07); the gloss takes the room the row has and is cut where it runs out.
- */
-export const READING_INDEX = "mt-6 border-b border-border pb-8";
-export const INDEX_LIST = "m-0 flex list-none flex-wrap gap-2 p-0 max-sm:flex-col max-sm:flex-nowrap";
-export const INDEX_ITEM = "min-w-0";
-export const INDEX_LINK = `flex max-w-full items-center gap-2 rounded-[3px] border border-border-strong px-3 py-1.5 font-sans text-[0.85rem] text-text-strong no-underline hover:border-accent max-sm:min-h-12 max-sm:gap-3 max-sm:px-4 max-sm:text-[0.95rem] ${FOCUS_RING}`;
-export const INDEX_NUMBER = "font-mono text-[0.8rem] text-accent";
-export const INDEX_KIND = "max-sm:shrink-0";
-export const INDEX_GLOSS = "max-w-[16rem] truncate font-serif italic text-text-muted max-sm:max-w-none max-sm:min-w-0 max-sm:flex-1";
-export const INDEX_CHEVRON = "ml-auto size-4 shrink-0 -rotate-90 text-text-muted sm:hidden";
-
-// Labels, counts and hairlines -------------------------------------------
-
-/** Small caps grey sans: the header bar's labels and every section's name. */
-export const LABEL = "font-sans text-[0.68rem] font-semibold uppercase tracking-[0.12em] text-text-muted";
-
-/** A section: its name, a count, and a hairline running to the right edge. */
-export const SECTION = "mt-8 first:mt-0";
-export const SECTION_HEADER = "mb-4 flex items-center gap-3";
-export const SECTION_NAME = `m-0 ${LABEL}`;
-export const SECTION_COUNT = "font-sans text-[0.75rem] text-text-muted";
-/** A count that differs by width: the phone's words, then the wide screen's. */
-export const PHONE_ONLY = "sm:hidden";
-export const WIDE_ONLY = "max-sm:hidden";
-export const SECTION_RULE = "h-px flex-1 bg-border";
-/** A one-line note under a section's name: where a derived grouping came from. */
-export const SECTION_NOTE = "-mt-1 mb-4 font-sans text-[0.8rem] text-text-muted";
-
-/** A bordered button that reveals the rest of a set in place. */
-export const MORE = "group mt-4";
-const BUTTON = `inline-flex cursor-pointer list-none items-center gap-2 rounded-[4px] border border-border-strong px-3 py-1.5 font-sans text-[0.8rem] text-text-strong hover:border-accent [&::-webkit-details-marker]:hidden ${FOCUS_RING}`;
-export const MORE_BUTTON = BUTTON;
-export const MORE_BUTTON_WIDE = `${BUTTON} flex w-full justify-center py-2.5`;
-/** A button only a phone needs: its set's whole first slice fits a wide screen. */
-export const MORE_PHONE_ONLY = `${MORE} sm:hidden`;
+export const MORE_SUMMARY = `inline cursor-pointer list-none font-sans text-[0.8rem] text-accent [&::-webkit-details-marker]:hidden ${FOCUS_RING}`;
 export const MORE_CLOSED = "group-open:hidden";
 export const MORE_OPEN = "hidden group-open:inline";
-export const CHEVRON = "size-3.5 transition-transform group-open:rotate-180";
-
-// The reading card --------------------------------------------------------
-
-export const CARDS = "mt-8 flex flex-col gap-6";
-export const CARD = "min-w-0 scroll-mt-6 overflow-hidden rounded-[6px] border border-border bg-surface-raised";
-
-export const CARD_TITLE = "flex flex-wrap items-center gap-x-4 gap-y-2 px-5 py-6 sm:px-8";
-export const CARD_NUMBER =
-  "flex size-7 shrink-0 items-center justify-center rounded-full bg-accent font-sans text-[0.8rem] font-semibold text-surface";
-export const HEADWORD = "m-0 min-w-0 font-serif text-[1.9rem] leading-tight font-normal text-text-strong wrap-anywhere";
-export const POS_PILL = "rounded-[3px] bg-border px-2 py-0.5 font-sans text-[0.8rem] text-text-strong";
-export const FORM_OF = "font-serif text-base italic text-text-muted";
+/** Under the definition it ends, in line with its text. */
+export const DEFINITIONS_MORE = "group mt-2 ml-9 block";
 
 /**
- * The header bar: a darker band, facts in one row, hairlines between them; on a
- * phone, a hairline grid set in from the card's edges, as frames 07 and 08 draw it.
+ * Columns singolare and plurale with a gender column before them; on a phone
+ * two columns, with each gender's label over its pair.
  */
-export const HEADLINE = `m-0 flex flex-wrap gap-y-3 border-y border-border bg-surface px-5 py-4 sm:px-8 max-sm:mx-5 ${HAIRLINE_GRID}`;
-export const HEADLINE_FACT = `flex min-w-0 flex-col gap-1 border-l border-border px-6 first:border-l-0 first:pl-0 ${HAIRLINE_CELL}`;
-export const HEADLINE_LABEL = LABEL;
-export const HEADLINE_VALUE = "m-0 font-sans text-[1.1rem] text-text-strong wrap-anywhere";
-/** A header-bar value that is a word form: mono, like every form. */
-export const HEADLINE_FORM = "m-0 font-mono text-[1.05rem] text-text-strong wrap-anywhere";
+export const GRID = "grid grid-cols-2 gap-x-6 sm:grid-cols-[7rem_15rem_15rem]";
+export const GRID_CORNER = "max-sm:hidden";
+export const GRID_HEAD = "pb-3 font-sans text-[0.75rem] text-text-muted";
+export const GRID_GENDER = "pt-1 font-sans text-[0.75rem] text-text-muted max-sm:col-span-2 max-sm:pt-0 max-sm:pb-1.5 max-sm:font-semibold";
+export const GRID_CELL = "min-w-0 pb-4";
+/** One spelling of a cell and its article line; a second spelling sits under the first. */
+export const GRID_SPELLING = "[&+&]:mt-2";
+export const GRID_FORM = "m-0 font-mono text-[1.05rem] text-text-strong wrap-anywhere";
+export const GRID_ARTICLES = "m-0 mt-1 font-mono text-[0.75rem] text-text-muted";
+export const GRID_ARTICLE = "max-sm:block";
+export const GRID_ARTICLE_DOT = "px-2 max-sm:hidden";
+/** A form the source does not give: a dash, with no note. */
+export const DASH = "font-mono text-text-muted";
+export const GRID_LABEL = "m-0 mt-4 mb-3 font-sans text-[0.75rem] font-semibold text-text-muted";
 
-export const CARD_BODY = "px-5 py-6 sm:px-8";
+/** A form in a conjugation: a link to its own search, the pointer the only cue. */
+export const FORM_LINK = `cursor-pointer font-mono text-text-strong no-underline ${FOCUS_RING}`;
+/** The searched form, underlined in the accent where it sits. */
+export const FORM_LINK_SEARCHED = `cursor-pointer font-mono text-accent underline decoration-accent decoration-1 underline-offset-[0.3em] ${FOCUS_RING}`;
 
-/** The line naming what this card does not have, said once. */
-export const SILENCE = "mt-0 mb-6 font-sans text-[0.85rem] text-text-muted";
-/** A card for a record that lists the searched form without defining it. */
-export const MENTION = "mt-0 mb-6 font-sans text-[0.85rem] text-text-muted";
+/** Gerundio · participio · ausiliare: one line, three short rows on a phone. */
+export const NON_FINITE = "m-0 flex flex-wrap items-baseline gap-x-2.5 gap-y-1 max-sm:flex-col";
+export const NON_FINITE_ITEM = "flex items-baseline gap-2 max-sm:grid max-sm:grid-cols-[8.5rem_1fr]";
+export const NON_FINITE_LABEL = "m-0 font-sans text-[0.75rem] text-text-muted";
+export const NON_FINITE_LABEL_SEARCHED = "m-0 font-sans text-[0.75rem] font-semibold text-accent";
+export const NON_FINITE_FORMS = "m-0 font-mono text-[1.05rem]";
+export const NON_FINITE_DOT = "font-sans text-[0.75rem] text-text-muted max-sm:hidden";
+
+/** The mood tabs: one line, the open one underlined in `text-strong`. */
+export const TABS = "mt-6";
+/** The four tabs stay on one line: on the narrowest phones they spread across it at a smaller size. */
+export const TAB_LIST = "flex gap-5 border-border max-sm:gap-3 max-sm:border-b max-[24rem]:justify-between max-[24rem]:gap-1";
+export const TAB = `-mb-px cursor-pointer border-b-2 border-transparent pb-1.5 font-sans text-[0.9rem] text-text-muted data-active:border-text-strong data-active:font-semibold data-active:text-text-strong max-sm:text-[0.8rem] max-[24rem]:text-[0.72rem] ${FOCUS_RING}`;
+export const TAB_PANEL = `mt-6 ${FOCUS_RING}`;
 
 /**
- * A claim later research disputes: the source's text stays as written, and
- * the dispute is said beside it. The one mark in `warning` is the manifest's
- * own use of the role — "the disputed-claim mark".
+ * Tenses two at a time: pairs side by side on a wide screen, reading as one
+ * table under one person column; on a phone each pair under its own.
  */
-export const DISPUTED = "mt-0 mb-6 rounded-[4px] border border-border px-4 py-3 font-sans text-[0.85rem] text-text-muted";
-export const DISPUTED_MARK = "font-semibold text-warning";
-export const DISPUTED_LIST = "mt-2 mb-0 list-disc pl-5";
+export const TENSE_PAIRS = "flex flex-col gap-5 sm:flex-row sm:gap-0";
+/** On a phone a pair fills the width with fixed columns, so a long form wraps rather than scrolls. */
+export const TENSE_TABLE = "border-collapse text-left max-sm:w-full max-sm:table-fixed";
+export const PERSON_HEAD = "w-[5.5rem] p-0 sm:w-28";
+/** A second table's person column: drawn on a phone, kept for screen readers on a wide screen. */
+export const PERSON_HEAD_REPEAT = `${PERSON_HEAD} sm:sr-only`;
+export const TENSE_HEAD = "p-0 pb-2 pr-4 font-sans text-[0.75rem] font-normal text-text-muted sm:w-48";
+export const TENSE_HEAD_SEARCHED = "p-0 pb-2 pr-4 font-sans text-[0.75rem] font-semibold text-accent sm:w-48";
+export const PERSON = "p-0 py-1 pr-3 align-baseline whitespace-nowrap font-sans text-[0.8rem] font-normal text-text-muted";
+export const PERSON_SEARCHED = "p-0 py-1 pr-3 align-baseline whitespace-nowrap font-sans text-[0.8rem] font-semibold text-accent";
+export const PERSON_REPEAT = "sm:sr-only";
+export const TENSE_CELL = "p-0 py-1 pr-4 align-baseline font-mono text-[1rem] text-text-strong wrap-anywhere max-sm:pr-2 max-sm:text-[0.8rem]";
+export const CELL_SEPARATOR = "text-text-muted";
 
-// What the source wrote --------------------------------------------------
+/** The compound tenses and the `+ more` after the simple tenses that shows them. */
+export const COMPOUND = "group/compound";
+export const MOOD_PANEL = "group/panel";
+/** *Tempi semplici* / *Tempi composti*, named only while the compound tenses are open. */
+export const TENSE_SET = "m-0 mb-2 font-sans text-[0.8rem] font-semibold text-text-strong";
+export const TENSE_SET_SIMPLE = `${TENSE_SET} hidden group-has-[details[open]]/panel:block`;
+/** Hidden until the `+ more` after them opens. */
+export const COMPOUND_TABLES = "hidden pt-4 group-has-[details[open]]/compound:block";
+export const COMPOUND_MORE = "group mt-2 block";
 
-export const DEFINITIONS = "m-0 flex list-none flex-col gap-3 p-0";
-export const DEFINITION = "flex gap-5";
-export const DEFINITION_NUMBER = "w-5 shrink-0 pt-1 font-mono text-[0.85rem] text-text-muted";
-export const GLOSS = "m-0 font-serif text-[1.2rem] text-text wrap-anywhere";
-export const SENSE_LABEL = "font-serif italic text-text-muted";
+export const WORD_FACTS = "mt-7 border-t border-border pt-7 sm:mt-10 sm:pt-10";
+export const ETYMOLOGY = "m-0 max-w-[48rem] font-serif text-[1.1rem] text-text";
 /**
- * The mark on a definition or example read back from the raw page (#28): the
- * section count's small grey sans, so it reads as a note on the text, not text.
+ * An etymology on one line, cut with an ellipsis, and `+ more` right after the
+ * ellipsis; open, the whole text wraps and `less` follows its last word. The
+ * text takes only its own width, so the control follows it, not the edge.
  */
-export const RECOVERED_MARK = "ml-2 whitespace-nowrap font-sans text-[0.75rem] not-italic text-text-muted";
+export const ONE_LINE = "group/line flex max-w-[48rem] items-baseline gap-1.5 [&+&]:mt-3 has-[details[open]]:block";
+export const ONE_LINE_TEXT = `${ETYMOLOGY} min-w-0 truncate group-has-[details[open]]/line:inline group-has-[details[open]]/line:whitespace-normal`;
+export const ONE_LINE_MORE = "group inline shrink-0 open:ml-1.5";
+/** A text that fits on its line needs no control. */
+export const ONE_LINE_MORE_UNNEEDED = "hidden";
+export const WORD_LIST = "group/words m-0 flex list-none flex-wrap items-baseline gap-x-3 gap-y-2 p-0";
+export const WORD_LIST_ITEM = "flex items-baseline gap-3";
 /**
- * The items of a list a definition opens with a colon (#123), nested under its
- * text as the page nests them: bulleted, not numbered, in the gloss's own face.
+ * A word past the first line: in the document, shown once `+ more` is open,
+ * and while the list measures which words fit (WordList.tsx).
  */
-export const RECOVERED_ITEMS = "mt-2 mb-0 flex list-disc flex-col gap-2 pl-5 marker:text-text-muted";
-export const RECOVERED_ITEM = "pl-1";
+export const WORD_LIST_ITEM_REST = "hidden items-baseline gap-3 group-has-[details[open]]/words:flex group-data-measuring/words:flex";
+/** The `+ more` item of a list whose words all fit: laid out only to be measured. */
+export const WORD_LIST_MORE_UNNEEDED = "hidden group-data-measuring/words:flex";
+export const WORD_LINK = `cursor-pointer font-serif text-[1.1rem] text-text-strong no-underline ${FOCUS_RING}`;
+export const WORD_DOT = "font-sans text-[0.75rem] text-text-muted";
+/** The dot after the last word that shows closed: `+ more` follows the word itself. */
+export const WORD_DOT_BEFORE_REST = "hidden font-sans text-[0.75rem] text-text-muted group-has-[details[open]]/words:inline";
+export const WORD_MORE = "group inline";
 
-export const EXAMPLES = "m-0 flex list-none flex-col gap-3 p-0";
-export const EXAMPLE =
-  "border-l-2 border-border-strong bg-surface px-5 py-4 font-serif text-[1.1rem] italic text-text";
-
-export const ENTRY_NOTE = "flex flex-col gap-2 border-l-2 border-border-strong pl-4 font-serif text-text-muted";
-
-// Boxes -------------------------------------------------------------------
-
-/**
- * The row the boxes sit in: three across on a wide screen, one on a phone.
- * A grid rather than a wrapping flex row, so three is the count at the wide
- * breakpoint rather than whatever the box widths happen to allow.
- */
-export const BOX_ROW = "grid grid-cols-1 items-start gap-4 sm:grid-cols-2 lg:grid-cols-3";
-export const BOX = "min-w-0 rounded-[4px] border border-border bg-surface";
-/** A box that holds facts: Articles, Gender and number. */
-export const BOX_HEADING =
-  "m-0 border-b border-border px-4 py-2.5 font-sans text-[0.85rem] font-semibold text-text-strong";
-/** A tense box's name: italic serif, as the conjugation frames draw it. */
-export const TENSE_HEADING =
-  "m-0 border-b border-border px-4 py-2.5 font-serif text-base italic font-normal text-text-strong";
-export const BOX_ROWS = "m-0 flex flex-col gap-0.5 px-2 py-2";
-const LINE = "flex items-baseline gap-4 rounded-[4px] border-2 px-2 py-0.5";
-/** Narrower on a phone, so a form beside the searched row's note is not broken mid-word. */
-const ROW_LABEL = "m-0 w-[7.5rem] shrink-0 font-sans text-[0.75rem] max-sm:w-20";
-const CELL = "m-0 min-w-0 break-words font-mono text-[0.95rem]";
-export const BOX_LINE = `${LINE} border-transparent`;
-export const BOX_ROW_LABEL = `${ROW_LABEL} text-text-muted`;
-export const BOX_CELL = `${CELL} text-text`;
-/**
- * A set of more groups than `GROUPS_SHOWN_OPEN` on a phone (frame 08): one
- * tappable row per group — its name, how many forms it holds, a chevron — and
- * the rows under it when it is open. On a wide screen the same group is the box
- * above: the row is not drawn, the heading is, and the rows show whether or not
- * the group is open (`::details-content` is the part of a `<details>` its
- * `open` state hides).
- */
-export const FOLD_ROW = `${BOX_ROW} max-sm:gap-2`;
-/** The group holding the searched form, outlined as a whole on a phone as frame 08 draws it. */
-export const FOLD_BOX_SEARCHED = `${BOX} max-sm:border-accent`;
-export const FOLD = "group/fold sm:[&::details-content]:block sm:[&::details-content]:[content-visibility:visible]";
-export const FOLD_SUMMARY = `flex min-h-12 cursor-pointer list-none items-center gap-3 px-4 py-2 group-open/fold:border-b group-open/fold:border-border sm:hidden [&::-webkit-details-marker]:hidden ${FOCUS_RING}`;
-export const FOLD_NAME = "min-w-0 flex-1 font-sans text-[0.85rem] font-semibold text-text-strong";
-export const FOLD_TENSE_NAME = "min-w-0 flex-1 font-serif text-base italic text-text-strong";
-export const FOLD_COUNT = "font-sans text-[0.75rem] text-text-muted";
-export const FOLD_CHEVRON = "size-4 shrink-0 text-text-muted transition-transform group-open/fold:rotate-180";
-/** The box heading, drawn only where the tappable row is not. */
-export const FOLD_HEADING = `${BOX_HEADING} max-sm:hidden`;
-export const FOLD_TENSE_HEADING = `${TENSE_HEADING} max-sm:hidden`;
-/** Above the groups on a phone: how many there are, and Expand all. */
-export const FOLD_BAR = "mb-3 flex items-center justify-between gap-4 sm:hidden";
-export const FOLD_BAR_COUNT = "font-sans text-[0.8rem] text-text-muted";
-export const FOLD_ALL = BUTTON;
-export const FOLD_ALL_CHEVRON = "size-3.5 transition-transform";
-export const FOLD_ALL_CHEVRON_OPEN = `${FOLD_ALL_CHEVRON} rotate-180`;
-
-/** A note under a box's rows: where the derived articles came from. */
-export const BOX_NOTE = "m-0 border-t border-border px-4 py-2 font-sans text-[0.72rem] text-text-muted";
-
-/**
- * The searched form, outlined where it sits — by a border, never by colour
- * alone, and said in words beside it. `accent` rather than `border-strong`
- * because the border has to be seen: `border-strong` is under the 3:1 a
- * non-text indicator needs on this palette.
- */
-export const SEARCHED = `${LINE} border-accent`;
-export const SEARCHED_LABEL = `${ROW_LABEL} text-accent`;
-export const SEARCHED_CELL = `${CELL} font-semibold text-accent`;
-export const SEARCHED_NOTE = "ml-auto shrink-0 font-sans text-[0.7rem] text-accent";
-
-// The lemma panel ---------------------------------------------------------
-
-export const LEMMA_PANEL =
-  "flex flex-wrap items-center gap-x-4 gap-y-2 rounded-[4px] border border-border-strong bg-surface px-5 py-4";
-export const LEMMA_ARROW = "font-sans text-lg text-accent";
-export const LEMMA_BODY = "flex min-w-0 flex-1 flex-col gap-1";
-export const LEMMA_WORD = "m-0 font-serif text-[1.25rem] text-text-strong wrap-anywhere";
-export const LEMMA_LINE = "m-0 font-sans text-[0.8rem] text-text-muted";
-/** On a phone the link takes its own line under the text, rather than squeezing it into a column. */
-export const LEMMA_OPEN = `font-sans text-[0.85rem] text-accent no-underline hover:underline max-sm:basis-full max-sm:pl-8 ${FOCUS_RING}`;
-
-// The word-level section --------------------------------------------------
-
-export const WORD_SECTION = "mt-10 border-t border-border-strong pt-8";
-export const ETYMOLOGIES = "grid grid-cols-1 gap-4 md:grid-cols-2";
-export const ETYMOLOGY_SINGLE = "grid grid-cols-1";
-export const ETYMOLOGY =
-  "m-0 rounded-[4px] border border-border bg-surface-raised px-5 py-4 font-serif text-[1.05rem] text-text";
-export const ETYMOLOGY_LABEL = "mb-2 block font-sans text-[0.75rem] font-semibold text-warning";
-
-/**
- * A related-word list shows `RELATED_SLICE.phone` chips on a phone and
- * `RELATED_SLICE.wide` on a wide screen (frame 09). The chips between the two
- * are in the first list at every width, hidden on a phone until its Show all
- * button opens — the same button, in the same place, as on a wide screen.
- */
-export const RELATED = "group/related";
-export const CHIP_WIDE_SLICE = "max-sm:hidden max-sm:group-has-[[open]]/related:block";
-export const CHIPS = "m-0 flex list-none flex-wrap gap-2 p-0";
-export const CHIP = `block rounded-[3px] border border-border bg-surface-raised px-3 py-1 font-serif text-base text-text no-underline wrap-anywhere hover:border-border-strong ${FOCUS_RING}`;
-
-export const SOURCE_LINE = "mt-10 border-t border-border pt-8 flex flex-wrap gap-6";
-export const SOURCE_LINK = `inline-flex items-center gap-1.5 font-sans text-[0.85rem] text-text no-underline hover:text-accent ${FOCUS_RING}`;
+/** `Source ↗`, with the same space above and below it. */
+export const SOURCE_LINE = "mt-9 sm:mt-12 flex flex-wrap items-center gap-x-3 gap-y-1 font-sans text-[0.8rem] text-text-muted";
+export const SOURCE_LINK = `inline-flex items-center gap-1.5 text-text-muted no-underline hover:text-text ${FOCUS_RING}`;
 export const ICON = "size-3.5";
+
+// A search that found nothing (board 24) ---------------------------------
+
+export const NOT_FOUND_HEADING =
+  "m-0 mt-12 font-serif text-[2.25rem] leading-tight font-normal break-words text-text-strong sm:mt-16 sm:text-[3rem]";
+export const NOT_FOUND_TEXT = "m-0 mt-6 max-w-[42rem] font-sans text-[0.95rem] text-text";
+/** "Did you mean città?": the word in the accent, larger, and a link to its search. */
+export const NOT_FOUND_LEAD = "m-0 mt-6 font-sans text-[0.95rem] text-text";
+export const NOT_FOUND_LINK = `mx-1 font-serif text-[1.5rem] text-accent no-underline ${FOCUS_RING}`;
+
+// The report box (board 22, #51) ----------------------------------------------
+
+/** "Report a mistake", beside Source and in the same small muted type. */
+export const REPORT_TRIGGER = `cursor-pointer border-0 bg-transparent p-0 font-sans text-[0.8rem] text-text-muted hover:text-text ${FOCUS_RING}`;
+export const REPORT_BACKDROP = "fixed inset-0 bg-surface/70";
+/** A small box in the middle of the screen; on a phone, the width of the screen less its margin. */
+export const REPORT_POPUP =
+  "fixed top-1/2 left-1/2 w-[32.5rem] max-w-[calc(100vw-2rem)] max-h-[calc(100dvh-2rem)] -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-[6px] border border-border-strong bg-surface-raised p-7 outline-none max-sm:p-5";
+export const REPORT_X = `absolute top-6 right-6 flex size-7 cursor-pointer items-center justify-center border-0 bg-transparent font-sans text-lg text-text-muted hover:text-text max-sm:top-4 max-sm:right-4 ${FOCUS_RING}`;
+export const REPORT_TITLE = "m-0 flex items-center gap-3 pr-10 font-serif text-[1.5rem] font-normal text-text-strong";
+export const REPORT_SUBTITLE = "m-0 mt-1 font-sans text-[0.85rem] text-text-muted";
+export const REPORT_SUBTITLE_WORD = "ml-1 font-serif text-[1.05rem] text-text-strong";
+export const REPORT_FIELD = "m-0 mt-6 border-0 p-0";
+export const REPORT_FIELD_LABEL = "mb-2.5 block p-0 font-sans text-[0.85rem] font-semibold text-text-strong";
+export const REPORT_OPTIONAL = "ml-1.5 font-normal text-text-muted";
+export const REPORT_CHIPS = "flex flex-wrap gap-2";
+/** A choice: a native radio, drawn as a chip; the chosen one is outlined in the accent. */
+export const REPORT_CHIP =
+  "inline-flex cursor-pointer items-center rounded-[3px] border border-border-strong px-3 py-1.5 font-sans text-[0.85rem] text-text hover:border-text-muted has-[:checked]:border-accent has-[:checked]:font-semibold has-[:checked]:text-accent has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-accent";
+export const REPORT_DETAILS =
+  "block min-h-28 w-full resize-y rounded-[4px] border border-border-strong bg-surface px-3.5 py-3 font-sans text-[0.9rem] text-text-strong outline-none placeholder:text-text-muted focus:border-accent";
+export const REPORT_ERROR = "m-0 mt-4 font-sans text-[0.8rem] text-warning";
+/** Try again, after the box could not get its opening token. */
+export const REPORT_RETRY = `ml-2 cursor-pointer border-0 bg-transparent p-0 font-sans text-[0.8rem] text-accent underline ${FOCUS_RING}`;
+/** "No account needed." on its own line on a phone, Cancel and Send together on the right. */
+export const REPORT_FOOTER = "mt-7 flex flex-wrap items-center justify-end gap-x-6 gap-y-3";
+export const REPORT_NOTE = "m-0 mr-auto font-sans text-[0.75rem] text-text-muted max-sm:w-full";
+export const REPORT_CANCEL = `cursor-pointer border-0 bg-transparent p-0 font-sans text-[0.9rem] text-text hover:text-text-strong ${FOCUS_RING}`;
+export const REPORT_SEND = `cursor-pointer rounded-[3px] border-0 bg-accent px-4 py-2 font-sans text-[0.9rem] font-semibold text-surface disabled:cursor-not-allowed disabled:bg-border disabled:font-normal disabled:text-text-muted ${FOCUS_RING}`;
+export const REPORT_SENT_CHECK = "font-sans text-base text-accent";
+export const REPORT_SENT_TEXT = "m-0 mt-4 font-sans text-[0.9rem] text-text";
+export const REPORT_CLOSE = `mt-5 cursor-pointer rounded-[3px] border border-border-strong bg-transparent px-4 py-2 font-sans text-[0.9rem] text-text-strong hover:border-text-muted ${FOCUS_RING}`;
 
 // The attribution page ---------------------------------------------------
 

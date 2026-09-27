@@ -6,21 +6,23 @@
 // with no archive and no D1. What `page.tsx` adds is where the data comes from.
 //
 // Two client components: the search form, whose suggestion list answers
-// keystrokes (`SearchField.tsx`), and the Expand all button over a verb's
-// folding groups on a phone (`Folds.tsx`). The form is still a plain GET form,
-// every state is decided by the URL, and the "Show all" controls and the groups
-// themselves are native `<details>`, so the page works before any JavaScript does.
+// keystrokes (`SearchField.tsx`), and the mood tabs over a conjugation
+// (`MoodTabs.tsx`). The form is still a plain GET form, every state is decided
+// by the URL, every mood's table is in the HTML the server sends, and the
+// `more` links are native `<details>`, so the page reads before any JavaScript does.
 
 import type { ReactNode } from "react";
 import type { Attempt } from "./attempt.ts";
 import { SearchField } from "./SearchField";
 import { SiteHeader } from "./SiteHeader";
+import { NotFound } from "./NotFound";
 import { WordView } from "./Word";
 import { wordPage } from "./wordPage.ts";
 import {
-  EMPTY,
   ERROR,
   HOME_NAME,
+  HOME_PRONUNCIATION,
+  HOME_TAGLINE,
   PENDING,
   SHELL_CENTRED,
   SHELL_TOP,
@@ -46,6 +48,10 @@ export function SearchPage({ raw, children }: { raw: string; children: ReactNode
     return (
       <main className={SHELL_CENTRED}>
         <h1 className={HOME_NAME}>Lexema</h1>
+        <p className={HOME_PRONUNCIATION} aria-label="Pronunciation">
+          /lekˈsɛːma/
+        </p>
+        <p className={HOME_TAGLINE}>a simple dictionary</p>
         <SearchField raw={raw} />
         {children}
       </main>
@@ -63,7 +69,7 @@ export function SearchPage({ raw, children }: { raw: string; children: ReactNode
 }
 
 /** The words frame 00 offers before a query, each a search. */
-export const TRY_WORDS = ["casa", "andare", "andavano", "bello", "sale", "studente"] as const;
+export const TRY_WORDS = ["casa", "andare", "bello", "sale", "studente"] as const;
 
 /** Nothing asked yet. */
 export function FirstLoad() {
@@ -116,14 +122,18 @@ export function Limited({ raw }: { raw: string }) {
  * and not found, asked and found.
  *
  * The page has one `h1` in every state: the headword when a word was found,
- * and otherwise a heading a screen reader can land on, visually hidden because
- * the message under it says the same thing.
+ * `No entry for "<query>"` when none was (NotFound.tsx), and otherwise a
+ * heading a screen reader can land on, visually hidden because the message
+ * under it says the same thing.
  */
-export function Outcome({ raw, attempt }: { raw: string; attempt: Attempt }) {
+export function Outcome({ raw, attempt, siteKey }: { raw: string; attempt: Attempt; siteKey?: string }) {
   const query = raw.trim();
   if (attempt.outcome === "found") {
-    return <WordView page={wordPage(attempt.query.raw.trim(), attempt.readings)} query={attempt.query.raw.trim()} />;
+    return (
+      <WordView page={wordPage(attempt.query.raw.trim(), attempt.readings)} siteKey={siteKey} />
+    );
   }
+  if (attempt.outcome === "not-found") return <NotFound query={attempt.query.raw.trim()} nearby={attempt.nearby} />;
   return (
     <>
       <h1 className="sr-only">
@@ -147,13 +157,6 @@ export function Outcome({ raw, attempt }: { raw: string; attempt: Attempt }) {
         </p>
       )}
 
-      {attempt.outcome === "not-found" && (
-        <p className={EMPTY} role="status">
-          Nothing in this release matches <q lang="it">{attempt.query.raw.trim()}</q>. Accents
-          matter: <code lang="it">citta</code> and <code lang="it">città</code> are different
-          words.
-        </p>
-      )}
     </>
   );
 }

@@ -16,12 +16,16 @@ import {
 import { archiveFactsFor, type ArchiveFacts, type ArchiveFactsCatalog } from "../source/archiveFacts.js";
 import type { RawPageSource } from "../source/rawPage.js";
 import { RecoveredLayer, type RecoverySummary } from "./recoveredLayer.js";
+import { normalizeItalianExact } from "../italian/normalize.js";
+import { deletionKeys, foldKey } from "../lookup/nearby.js";
 import { clearParts, SqlPartWriter } from "./sqlParts.js";
 
 const TABLE_ORDER = [
   "source_record",
   "source_record_json",
   "lookup_form",
+  "accent_fold",
+  "typo_key",
   "form_of_edge",
   "sense",
   "sense_gloss",
@@ -42,6 +46,8 @@ const COLUMNS: Record<TableName, string> = {
   source_record: "record_id,release_id,line_no,line_sha256,word,pos,pos_title,lang_code",
   source_record_json: "record_id,raw_json",
   lookup_form: "record_id,release_id,origin,surface,surface_key,json_pointer,form_index,form_source",
+  accent_fold: "release_id,fold_key,surface_key,headword,languages,richness",
+  typo_key: "release_id,deletion_key,surface_key,languages,richness",
   form_of_edge: "record_id,release_id,sense_index,form_of_index,json_pointer,target_word,target_word_key",
   sense: "sense_id,record_id,sense_index,json_pointer",
   sense_gloss: "sense_id,gloss_index,text,json_pointer",
@@ -71,6 +77,8 @@ class SqlBatchWriter {
     source_record: 0,
     source_record_json: 0,
     lookup_form: 0,
+    accent_fold: 0,
+    typo_key: 0,
     form_of_edge: 0,
     sense: 0,
     sense_gloss: 0,
@@ -174,6 +182,45 @@ function statementsFor(writer: SqlBatchWriter): ImportStatements {
   };
 }
 
+/** The distinct language codes a record's `translations` list, ignoring anything malformed. */
+function translationLanguages(translations: unknown): string[] {
+  if (!Array.isArray(translations)) return [];
+  return translations.flatMap((entry) =>
+    typeof entry === "object" && entry !== null && typeof (entry as { lang_code?: unknown }).lang_code === "string"
+      ? [(entry as { lang_code: string }).lang_code]
+      : [],
+  );
+}
+
+/**
+ * The two indexes a search that found nothing reads (src/lookup/nearby.ts):
+ * accent-folded keys, and the lemma headwords' single-deletion keys.
+ */
+async function writeNearbyIndexes(
+  writer: SqlBatchWriter,
+  releaseId: string,
+  keys: ReadonlyMap<string, boolean>,
+  lemmaKeys: ReadonlyMap<string, { languages: ReadonlySet<string>; richness: number }>,
+): Promise<void> {
+  const fold = writer.statement("accent_fold");
+  for (const [key, headword] of keys) {
+    const folded = foldKey(key);
+    if (folded === key) continue;
+    const score = lemmaKeys.get(key);
+    fold.run(releaseId, folded, key, headword ? 1 : 0, score?.languages.size ?? 0, score?.richness ?? 0);
+    writer.counts.accent_fold += 1;
+    if (writer.hasFullBatch()) await writer.flush();
+  }
+  const typo = writer.statement("typo_key");
+  for (const [key, score] of lemmaKeys) {
+    for (const deletion of deletionKeys(key)) {
+      typo.run(releaseId, deletion, key, score.languages.size, score.richness);
+      writer.counts.typo_key += 1;
+    }
+    if (writer.hasFullBatch()) await writer.flush();
+  }
+}
+
 export interface SeedSqlOptions {
   input: string;
   /** Directory the numbered SQL parts are written to; earlier parts in it are replaced. */
@@ -234,6 +281,20 @@ export async function seedSql(options: SeedSqlOptions): Promise<SeedSqlReport> {
   const work = await mkdtemp(join(outputDir, ".seed-sql-"));
   const writer = new SqlBatchWriter(work, options.maxStatementBytes);
   const statements = statementsFor(writer);
+  // Every searchable key, and whether some record heads it; and the lemma
+  // headword keys. They become accent_fold and typo_key once the parse ends.
+  const keys = new Map<string, boolean>();
+  // A lemma headword key, and how common it is: the distinct languages its
+  // lemma records translate into, and their senses plus forms.
+  const lemmaKeys = new Map<string, { languages: Set<string>; richness: number }>();
+  const lookupRow = statements.insertLookup;
+  statements.insertLookup = {
+    run: (...values: unknown[]) => {
+      const key = values[4] as string;
+      keys.set(key, keys.get(key) === true || values[2] === "headword");
+      lookupRow.run(...values);
+    },
+  };
   const recovered = new RecoveredLayer(
     options.rawPages ?? { page: () => undefined, size: 0 },
     {
@@ -259,6 +320,13 @@ export async function seedSql(options: SeedSqlOptions): Promise<SeedSqlReport> {
       },
       onRecord: async (archiveRecord, reportMember) => {
         seenWords.add(archiveRecord.record.word);
+        if (archiveRecord.record.senses.every((sense) => sense.form_of.length === 0)) {
+          const key = normalizeItalianExact(archiveRecord.record.word);
+          const score = lemmaKeys.get(key) ?? { languages: new Set<string>(), richness: 0 };
+          for (const language of translationLanguages(archiveRecord.record.translations)) score.languages.add(language);
+          score.richness += archiveRecord.record.senses.length + archiveRecord.record.forms.length;
+          lemmaKeys.set(key, score);
+        }
         archiveRecord.record.senses.forEach((sense) =>
           sense.form_of.forEach((target) => {
             if (typeof target.word === "string") targets.add(target.word);
@@ -279,8 +347,9 @@ export async function seedSql(options: SeedSqlOptions): Promise<SeedSqlReport> {
         if (writer.hasFullBatch()) await writer.flush();
       },
     });
-    await writer.finish();
     if (!start) throw new Error("archive parser did not provide seed metadata");
+    await writeNearbyIndexes(writer, start.releaseId, keys, lemmaKeys);
+    await writer.finish();
 
     for (const word of required) {
       if (!seenWords.has(word)) throw new Error(`fixture is missing required word: ${word}`);

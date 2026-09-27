@@ -253,7 +253,49 @@ Huey rejected it for alphabetical. The measurements of both are in
 `SUGGEST_SQL` is exported so a test can assert it stays a range probe on
 `lookup_form_headword_by_key` with no sort step.
 
+## When nothing is found
+
+`findNearby()` in [`src/lookup/nearby.ts`](../src/lookup/nearby.ts) is what the
+page offers after `lookup()` answers `not-found` (board 24). The web layer calls
+it (`web/app/searchAttempt.ts`); `lookup()` itself is unchanged. It tries four
+steps, each only when the one before found nothing:
+
+1. **Exact lookup**, which already failed.
+2. **Accent.** The query's key with its accents taken off (`foldKey`: NFD,
+   combining marks removed) is probed in `accent_fold`, which holds every
+   `surface_key` whose folded spelling differs from it. `citta` → `città`. An
+   accented query also tries its unaccented spelling.
+3. **One edit** (a SymSpell deletion index). `typo_key` holds every distinct
+   lemma headword key (a record declaring no `form_of`) under itself and each
+   spelling with one character left out. The query's own deletions and itself
+   are probed in one `IN` query; every candidate is then checked with a true
+   restricted Damerau–Levenshtein distance of one (`withinOneEdit`), so an
+   insertion, deletion, replacement or swap of neighbours counts. `mangare` →
+   `mangiare`. Keys under 4 characters are not tried (`bab` is one edit from
+   `AB`, `BA`, `bar`, `bau`, `bob`, none a better guess than the words that
+   begin with it), nor keys over 30: their deletions are bound parameters, and
+   D1 allows 100.
+4. **Words that begin with it:** `suggest()` for the query.
+
+Candidates rank by fewest edits, then the most translation languages, then
+the most senses and forms, then a headword before a form, then shorter, then
+alphabetical (`rankCandidates`); the best leads, and up to eight more follow.
+The two scores are counted at seed time over the key's lemma records
+(`seedSql.ts`) and stored in `accent_fold` and `typo_key` beside the key:
+`languages` is the number of distinct `translations[].lang_code` values, and
+`richness` is senses plus forms. `mangiare` has 51 languages and `magnare`
+none, so `mangare` offers `mangiare` first. A key with no lemma record scores
+0 on both. Every probe is one indexed read on a primary key; nothing scores
+the word list per request.
+
+| Answer | Case | Page |
+|---|---|---|
+| `{ kind: "accent", best, others }` | the same letters with an accent | "Did you mean città?", then other words that begin with the query |
+| `{ kind: "typo", best, others }` | one edit away | "Did you mean mangiare?", then other close spellings |
+| `{ kind: "prefix", words }` | words that begin with it | the words that fit on one line, then `+ more` |
+| `{ kind: "none" }` | nothing | how to search instead |
+
 ## Not covered here
 
-Fuzzy matching and did-you-mean (out of scope in #15), and the HTTP layer (#14).
+The HTTP layer (#14).
 Review rows are read but never written; writing them is #12.

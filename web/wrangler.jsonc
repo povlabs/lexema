@@ -40,12 +40,23 @@
   // these exactly; web/test/rateLimit.test.ts fails if the two drift.
   "ratelimits": [
     { "name": "SEARCH_LIMIT", "namespace_id": "1281", "simple": { "limit": 15, "period": 60 } },
-    { "name": "SUGGEST_LIMIT", "namespace_id": "1282", "simple": { "limit": 120, "period": 60 } }
+    { "name": "SUGGEST_LIMIT", "namespace_id": "1282", "simple": { "limit": 120, "period": 60 } },
+    // - REPORT_LIMIT, 2 reports a minute (#51): stops a burst before D1. The
+    //   ruled 5 an hour is counted over stored reports in app/report.ts,
+    //   because the binding has no hourly period.
+    { "name": "REPORT_LIMIT", "namespace_id": "1283", "simple": { "limit": 2, "period": 60 } },
+    // - REPORT_OPEN_LIMIT, 10 openings of the report box a minute: each stores
+    //   the token the 3 s minimum is timed against.
+    { "name": "REPORT_OPEN_LIMIT", "namespace_id": "1284", "simple": { "limit": 10, "period": 60 } }
   ],
   "vars": {
     // Which imported release to serve. A deployment flips this to activate a
     // new one; doing that safely is #18.
-    "LEXEMA_RELEASE": "it-dev"
+    "LEXEMA_RELEASE": "it-dev",
+    // Cloudflare Turnstile's public site key for the report box (#51). Empty
+    // means no widget and no check; the secret is TURNSTILE_SECRET_KEY, set
+    // with `wrangler secret put`, never here.
+    "TURNSTILE_SITE_KEY": ""
   },
   "env": {
     // What runs at https://lexema.fyi. Selected at build time with
@@ -63,10 +74,13 @@
       "d1_databases": [],
       "ratelimits": [
         { "name": "SEARCH_LIMIT", "namespace_id": "1281", "simple": { "limit": 15, "period": 60 } },
-        { "name": "SUGGEST_LIMIT", "namespace_id": "1282", "simple": { "limit": 120, "period": 60 } }
+        { "name": "SUGGEST_LIMIT", "namespace_id": "1282", "simple": { "limit": 120, "period": 60 } },
+        { "name": "REPORT_LIMIT", "namespace_id": "1283", "simple": { "limit": 2, "period": 60 } },
+        { "name": "REPORT_OPEN_LIMIT", "namespace_id": "1284", "simple": { "limit": 10, "period": 60 } }
       ],
       "vars": {
-        "LEXEMA_RELEASE": "it-dev"
+        "LEXEMA_RELEASE": "it-dev",
+        "TURNSTILE_SITE_KEY": ""
       }
     }
   }

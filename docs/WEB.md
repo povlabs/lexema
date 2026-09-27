@@ -48,6 +48,12 @@ release is served; flipping it safely is #18.
 
 ## Why a server component and no client fetching
 
+Before a query the page is the wordmark, its pronunciation `/lekˈsɛːma/` and
+*a simple dictionary* under it, and the search field, centred on the screen
+([design-system-manifest.md § "The page"](../design-system-manifest.md#the-page));
+with a query, the field moves to the top and the result fills the page. Both
+are this one server-rendered route.
+
 The query arrives in the URL, the D1 read happens on the Worker, and the HTML
 that comes back already holds the answer. Two things follow, and each was the
 point rather than a side effect: the page works before any JavaScript loads, and
@@ -68,9 +74,10 @@ page; the status code cannot carry it.
 
 ## Why the suggestion list is the one thing the browser fetches
 
-Suggestions answer keystrokes, which the URL cannot carry, so the field is the
-one client component and `GET /suggest?q=` is the one request the page makes
-after it loads. The route returns JSON rather than a rendered page, so an
+Suggestions answer keystrokes, which the URL cannot carry, so `GET /suggest?q=`
+is the one request the page makes while a reader reads. (The other client parts
+fetch nothing until asked: the mood tabs, the measuring of the etymology line and the word lists, and the
+report box, which posts only when opened and sent.) The route returns JSON rather than a rendered page, so an
 answer costs the prefix query and nothing else. The browser keeps an answer
 five minutes, so a reader retyping a prefix sends no request. There is no edge
 cache: Cloudflare bills a cache hit as a request, so it would save none. Everything else above still
@@ -83,6 +90,18 @@ none searches what was typed, and Escape closes the list. A polite live region
 says how many suggestions opened. The field waits 150 ms after a keystroke
 before asking, and a newer keystroke aborts the older request, so a slow answer
 for `ca` is never drawn over the list for `cas`.
+
+The `×` empties the field and puts the cursor back in it; the result on the
+page stays until a new search is sent. It is still a link to the empty home
+page, which is what it does with no script.
+
+⌘K on a Mac, Ctrl+K elsewhere, scrolls to the top, smoothly unless the reader
+asks for reduced motion, and puts the cursor in the field with its text
+selected (`web/app/searchShortcut.ts`). It stands aside while a dialog is open
+and while the reader types in another field. While the field does not have the
+cursor, a muted `⌘K` or `Ctrl K` shows in the bar; it appears only once the
+page has loaded its script, since the server cannot know the reader's keyboard,
+and not on a touch-only screen.
 
 The form sits inside the Autocomplete root, not around it. The root renders a
 second, typeless input, and a form with two text fields and no submit button is
@@ -118,41 +137,46 @@ before the render starts. A mark sent by the client is removed first.
 ## Why the page is visibly silent
 
 This dictionary's data is incomplete, and the page's job is to make that legible
-instead of smoothing it over. Eight silences it refuses to hide:
+instead of smoothing it over. The silences it refuses to hide:
 
 **A lemma is where a reading points, not a match.** Searching `sale` returns
 three entries, the three records whose headword is `sale`. Two of them say what
 they are a form of, `sala` and `salire`, and those lemmas come back inside the
-reading that names them rather than as entries of their own. Each is drawn as
-that reading's lemma panel, with a link to its own page. A reader never sees
+reading that names them rather than as entries of their own. The definition
+that names each links it to its own search, and a verb lemma whose table lists
+the searched form renders its whole conjugation under the reading, as *Forms of
+salire*. A reader never sees
 `salire` offered as a meaning of `sale`, because the source only ever said one
 of `sale`'s readings is a form of it.
 
 **An ambiguous lemma link.** `sale` says it is the plural of `sala`, and `sala`
-is two entries, a noun and a verb. The page says two entries share the spelling
-instead of picking one, because picking one would invent a fact.
+is two entries, a noun and a verb. The link searches the word `sala`, which
+shows both, instead of picking one, because picking one would invent a fact.
 
-**Grammar the source never stated.** `casa` says in a sentence that the source
-states neither a gender nor a number for the entry, where a noun would
-otherwise show them on its header bar. That has to read differently from a word
-whose gender was never expected in the first place, and it is said once, not
-drawn as empty fields.
+**Grammar the source never stated.** A form the source does not give is a dash
+in its cell, with no note
+([design-system-manifest.md § "The result"](../design-system-manifest.md#the-result)). `casa`'s
+record states no gender, no number and no forms, so nothing can be placed in a
+grid and its reading has no *Forms* block.
 
 **Definitions that define nothing.** `casa`'s two glosses are page furniture and
 `sala` carries the source's own *"definizione mancante"*. Both are shown
-verbatim. Filtering them would hide how incomplete this data is, which is the
-one thing this page must not do.
+verbatim when they are all a reading has. When definitions recovered from the
+raw page stand in for them, as for `casa`, the furniture is left out.
 
 **Definitions the extraction dropped or misfiled.** Where the raw Wiktionary page states a
 definition the record does not carry as a definition (#28) — absent, or filed
 under an example — the seed recovers it into a layer beside the
-record, and the card lists it after the record's own definitions with a small
-*recovered* mark, and its examples the same way. Each section that shows one
-says once which page revision it was read from, linked. The record's furniture
-stays under *Source notes*. `casa` now shows its seven definitions this way.
+record, and the reading lists it after the record's own definitions, with its
+examples. The first definition shows its own first example, or none when it
+has none: no other definition's example stands in. One control per reading shows
+the other definitions and every other example, each under its own definition,
+including extra examples on the first definition and examples on nested items. Nothing marks it as recovered
+([ADR 0016](../.decisions/0016-page-shows-no-origin-marks.md)); the layer keeps
+its own provenance in the data. `casa` shows its seven definitions this way.
 When the record filed a recovered definition as an example (`lap steel
-guitar`), the card shows that text once, as the definition, with a note that
-the source record files it as an example, and leaves it out of *Examples*.
+guitar`), the page shows that text once, as the definition, and not again as
+an example.
 An item of a list a definition opens with a colon (`accollato`'s
 `attributo araldico che si applica a:`) sits inside that definition as a
 bulleted list, whether the definition is the record's or itself recovered
@@ -162,8 +186,15 @@ recovered definition is matched by its page line. A sense the record carries is
 matched by text: exactly one sense has a gloss equal to the line's text, and no
 other `#` line in the section has that text. A gloss that only quotes the line
 matches nothing. When there is no match, the item stays numbered at the top of
-the list, as before (`filetto`'s heraldic items). A sense that opens such a list is a definition, never *Source
-notes* furniture, even when its gloss starts like `casa`'s.
+the list, as before (`filetto`'s heraldic items). A sense that opens such a list is a definition, never
+furniture, even when its gloss starts like `casa`'s.
+
+**A search that found nothing.** The page says `No entry for "<query>"` and
+offers what is close, in order: the same letters with an accent, a spelling one
+edit away, the words that begin with it, or how to search instead
+([the lookup reference](LOOKUP.md#when-nothing-is-found)). The old "Nothing in
+this release matches … Accents matter" line is gone: the accent step now finds
+`città` for `citta` itself.
 
 **A lookup that did not happen.** No release, a D1 error, or a release built by
 a different normalizer all produce a page that says the lookup failed. That is
@@ -172,51 +203,132 @@ could not look* from *we looked and the word is not here*. The
 reason is logged and not printed: a database message names releases, tables and
 bindings, which is the operator's business and not the reader's.
 
-**A form the source listed, and one it did not.** A noun or adjective shows its
-plural and feminine on the header bar and, when the source files spellings under
-both genders, a gender-and-number box. A verb shows its conjugation in tense
-boxes: which box a form goes in is rule `it-moods/v1`
-(`src/italian/moods.ts`), which reads the tenses the source tags and, for the
-congiuntivo and condizionale, the pronoun it writes beside the form. A row with
-a tense and no person is congiuntivo when its pronoun begins *che*, and
-condizionale when its tense is present or past and its pronoun is bare, as in
-*io*. The page says so under the conjugation's header, the way
-the articles box says `it-articles/v1` derived its articles. Whatever the rule
-cannot place stays in one box that says so. A section with nothing in it is
-absent.
+**A form the source listed, and one it did not.** A noun, adjective or
+inflecting phrase names its record's own gender and number after its part of
+speech in the reading's heading (`1 · Aggettivo · maschile, singolare`), only
+what the record states and nothing when it states neither, and shows a
+gender-and-number grid; its article lines are rule
+`it-articles/v1` (`src/italian/articles.ts`) applied to each spelling. A form
+that states a number but no gender takes the record's gender only when the
+record states exactly one; otherwise it takes no cell. A verb shows
+a conjugation with mood tabs; which mood a form goes in is rule `it-moods/v1`
+(`src/italian/moods.ts`), which reads the shape of the source's row: person
+tags for the indicativo, a pronoun beginning *che* for the congiuntivo, a bare
+pronoun on a tense-only row for the condizionale. Neither rule is named on the
+page (ADR 0016). A form that takes no cell, such as `parlarsi (coniugazione)`,
+the link to the reflexive verb, is not shown, and nothing says so: Huey ruled on
+2026-09-27 that the result page shows data only, never a note on what it could
+not place. Every form that has a cell is shown, variants such as `vo`, `annò`
+and `anderò` included. A block with nothing in it is absent.
 
 **Ambiguity in both directions.** A `form_of` edge names a word, and a word can
-be several records. A form reading ends in a lemma panel that names the word,
-lists every record spelling it when there is more than one, and says the
-source does not choose. The panel is the whole of the reading's lemma: the
-lookup returns every record the query matches as a card, and a lemma the query
-also matched through its table — `sala` and `salire` for `sale` — is not one of
-those records but the lemma of the reading that points to it
-([the lookup reference](LOOKUP.md#result-fields)). Its table's row is what the
-form's header bar reads, and on a page of one verb form its whole conjugation
-renders on the card. A panel names and links the lemma; its meanings are on
-its own page. Any record that lists the query and is no reading's lemma keeps a
-card of its own, saying it does not define the query.
+be several records. The link on a form reading's definition searches that word,
+so every record spelling it shows there. A verb form whose lemma word is several
+verb records shows each record's table, and shows two identical tables once
+(`chiusi` → `chiudere`). A lemma the release has no entry for is not mentioned
+(Huey, on #142). The lookup returns every record the
+query matches as a reading, and a lemma the query also matched through its
+table — `sala` and `salire` for `sale` — is not one of those records but the
+lemma of the reading that points to it
+([the lookup reference](LOOKUP.md#result-fields)). Any record that lists the
+query and is no reading's lemma keeps a reading of its own, drawn like any
+other, with no line saying why it is there.
 
-**Once per word.** Pronunciation, syllables, etymologies, synonyms, antonyms
-and derived words are read from `source_record_json` and render once: the strip
-under the headword, and the sections after the last card. The source usually
+**One expand control.** Etymology, the word lists and Definitions share one
+control (`web/app/More.tsx`): `+ more` right after what shows, and, open, `less`
+at the very end, with no count. It is a native `<details>` placed after all the
+content it reveals; that content is its sibling, not its child, and CSS shows it
+once the `<details>` is open (`:has(details[open])`). So with the rest hidden
+the control follows the last thing that shows, and with it shown the control is
+last of all. Everything is in the HTML and opens with no script.
+
+An Etymology block cuts its text to one line with an ellipsis, and open lets it
+wrap with `less` after its last word (`web/app/OneLine.tsx`). A word list
+(`web/app/WordList.tsx`) shows the words that fit on its first line: once
+hydrated it lays every word out, measures which fit with `+ more` after them,
+and hides the rest, again on a resize or when closed. Without a script the
+first eight show. In both, a text or list that fits needs no control and shows
+none. Definitions show the first definition and its own first example, then
+`+ more` under it; open, every definition with its examples in order.
+
+**Once per word.** Pronunciation, etymologies, synonyms, antonyms and derived
+words are read from `source_record_json` and render once: the IPA under the
+headword, and the facts after the last reading. Syllable breaks are not shown. The source usually
 repeats them on every record of a headword, but not always. In release
 `it-0c432803`, 16,659 of the 16,792 headwords with more than one record carry
 the six fields identically on each; 133 do not. So the page shows the union of
-what the records carry, each item once, rather than one record's copy. Several etymologies are labelled *reading
-not given*, because the source does not say which reading each belongs to.
+what the records carry, each item once, rather than one record's copy.
+
+**Once per reading, where the source says so.** The records of a headword
+usually carry the same etymologies, but not always: `bacca`'s two records list
+two and one. The page takes every distinct text from every record once, as it
+does for each word fact above, and places each by its own label
+(`web/app/readingLabels.ts`). In 2,756 of the 3,276 headwords with two or more
+etymologies, each text opens with a bracket label, mostly a part of speech:
+`sale` has `(sostantivo singolare)` and `(sostantivo plurale)`.
+
+On a word with two readings or more, an etymology whose label names exactly
+one reading moves into it, without the label, even when it is the word's only
+one (`strutto`: `(voce verbale) vedi struggere`). A label names a reading whose
+`pos_title` is its part of speech or begins with it: `(aggettivo)` names
+`sette`'s *Aggettivo numerale*. Words after the part of speech do not stop it
+(`dai`'s `(voce verbale di dare)`), and `singolare`/`plurale` or
+`transitivo`/`intransitivo` right after it narrow to the reading whose record
+states them. A whole label that is itself a `pos_title` with a comma,
+`(sostantivo, forma flessa)` on `ori`, names that reading.
+
+A label that names more than one reading does not move, because moving it would
+copy one text into two places, and identical things show once. That covers a
+compound label naming two readings (`medico`'s `(aggettivo e sostantivo)`) and
+a label that fits two readings of the same kind: a bare `(sostantivo)` beside
+*Sostantivo* and *Sostantivo, forma flessa* (`sette`), or `(voce verbale)` on
+`svolta`, which has two *Voce verbale* readings. An etymology that is only a
+label (`cazzi`'s `(voce verbale)`) moves and leaves nothing to show, so its
+reading gets no Etymology block.
+
+Synonyms follow the same rule where the source groups them: in 207 headwords a
+part-of-speech `raw_tags` on one synonym opens a group that runs to the next
+label. `vivere`'s `sostantivo` group moves to its noun reading; its `verbo`
+group fits two *Verbo* readings and stays after the readings. Topic labels
+(`calcio`'s `(sport)`), unlabelled texts and ungrouped lists stay there too, and
+the page says nothing about what it did not match.
+
+## Why a report is stored and nothing more
+
+Every word page ends with `Source ↗ · Report a mistake` (#51). The link opens a
+small box: what is wrong, which reading (optional), and details, with no account
+and no email. `POST /report` (`web/app/report/route.ts`, `web/app/report.ts`)
+stores the report in `reader_report` and changes nothing on the page; a person
+reviews it (#12) and may then write a `claim_review` row. A report is not stored
+in `claim_review` itself, because that table holds reviewed verdicts, not
+reports waiting for one.
+
+Spam is kept out in four layers, as ruled on #51: the `REPORT_LIMIT` Worker
+binding stops a burst (2 a minute) before D1 is touched, and the ruled 5 reports
+an hour is counted over the stored rows, because the binding has no hourly
+period; a hidden honeypot field and a 3-second minimum between opening the box
+and sending it drop a bot's report while answering it as sent. The 3 seconds are
+measured on the server's clock alone: when the box opens it asks `POST
+/report/open` for a random token, which is stored with the server's time in
+`report_opening`, and the report is timed against it and consumes it when it is
+stored, so a reader's clock never enters the check. Cloudflare Turnstile is
+checked before storing only when both `TURNSTILE_SITE_KEY` (a var) and
+`TURNSTILE_SECRET_KEY` (a secret) are set; with either missing it is off, and
+the Worker logs which key is missing, so a half-configured Worker never refuses
+every report. After any answer that did not store the report, the box resets the
+widget for a fresh token, because a token can be used once. The visitor is
+stored as a SHA-256 of their rate-limit key, never as an address.
 
 ## Why a disputed claim is a row and not a code path
 
-A disputed claim renders with a warning and a link to the evidence, and the
-claim itself is left untouched. The verdicts come from `claim_review` rows, and
+A disputed claim is left untouched, and the result page does not show the
+dispute: Huey ruled on 2026-09-27 that the page shows data only, with no note
+on disputed data. The verdicts come from `claim_review` rows, and
 the development seed writes the ones this repository has evidence for — today,
 the `studente` verb claim that
 [the source research](../reports/2026-09-18-source-research.md) contradicts. Who
 reviews, on what evidence, and how a verdict is reached is still #12; what is
-settled is that a claim later research disagreed with never renders as an
-ordinary verified fact.
+settled is that a review is data beside the claim, never a change to it.
 
 The verdicts are written after the import, not by it. The importer copies the
 source and says nothing about whether it is right; a review is a claim about
@@ -225,18 +337,25 @@ write over the release the import just made.
 
 ## Why the source link is labelled the way it is
 
-The page ends with one link to the Italian Wiktionary page for the headword —
-one per headword when a listing record from another page has a card. It is
-labelled *Source* and nothing more:
-[ADR 0009](../.decisions/0009-two-licences-and-a-source-link.md) puts one small
-link on a result and keeps the credit itself on `/attribution`, which the site
-footer reaches from every page. Its accessible name is longer than its text —
-"Wiktionary page for X, the source of this page".
+The page ends with one *Source* link per distinct Italian Wiktionary page it
+shows. That is usually one, the headword's. `andavano` gets two, its own page
+and `andare`'s, because it shows its own reading and `andare`'s table. Each link
+is labelled *Source* and nothing more, with the page's word beside it when there
+are several.
+[ADR 0009](../.decisions/0009-two-licences-and-a-source-link.md) has each
+reading reach its Wiktionary page through one small link and keeps the credit
+itself on `/attribution`, which the site footer reaches from every page. Its accessible name is longer than its text —
+"Wiktionary page for X, the source of this page (opens in a new tab)".
+
+Every link that leaves Lexema opens in a new tab (`target="_blank"
+rel="noopener noreferrer"`, `web/app/ExternalLink.tsx`), so the page stays where
+the reader left it: the Source links on a result, and the credit, licence and source links on `/attribution`. Each says
+so to a screen reader. Links inside Lexema stay in the same tab.
 
 The release stores no per-record URL, so the link is *constructed* from the
-headword rather than recorded with the data. Each card still carries its
+headword rather than recorded with the data. Each reading still carries its
 record's archive line as `data-line`, so the page stays checkable against the
-release without printing the line on every card.
+release without printing the line on the page.
 
 ## Why the credit is on its own page
 
@@ -283,10 +402,8 @@ set `SEED_INPUT`; the local full-archive copy is conventionally
 ## Known rough edges
 
 - No favicon, so the dev log carries a 404 for it.
-- A verb record the source tags as the auxiliary sense, one each for `essere`
-  and `avere`, shows `FORM-ROLE auxiliary` on its header bar.
 
 ## Not in scope
 
-The page at phone width (#101). Attaching D1 in production and smoke tests
+Attaching D1 in production and smoke tests
 against a real URL (#19). Deploying is [DEPLOY.md](DEPLOY.md).

@@ -406,8 +406,7 @@ export const FIXTURE_LINES: string[] = [
       { form: "grandi", tags: ["positive", "masculine", "feminine", "plural"] },
       { form: "maggiore", tags: ["comparative"] },
       // The release states this one's degree only in the prose of a raw tag,
-      // so no cell and no degree row can take it: it is the card's unplaced
-      // form, and the box named for the rest is where it has to land (#66).
+      // so no cell and no degree row can take it, and the page leaves it out.
       { form: "maggiori", raw_tags: ["comparativo di maggioranza"] },
       {
         form: "grandissimo\n massimo",
@@ -515,5 +514,105 @@ export const FIXTURE_LINES: string[] = [
       ]),
     ],
     senses: [{ glosses: ["portare a compimento"] }],
+  }),
+  // pigmento — a verb form whose lemma this archive has no entry for, as the
+  // release's own `pigmento` Voce verbale names `pigmentare`, which is not in
+  // the dev seed. Kept last so every line above keeps its number.
+  record({
+    word: "pigmento", pos: "verb", pos_title: "Voce verbale",
+    tags: ["form-of"],
+    senses: [formOf("prima persona singolare dell'indicativo presente di pigmentare", "pigmentare")],
+  }),
+  // chiusi and punsi — a verb form whose lemma word two records spell. The
+  // two `chiudere` tables are the same, so the page shows one; the two
+  // `pungere` tables differ, so it shows both. Kept last, as above.
+  ...[0, 1].map(() =>
+    record({
+      word: "chiudere", pos: "verb", pos_title: "Verbo",
+      forms: tenseForms(["chiusi", "chiudesti", "chiuse", "chiudemmo", "chiudeste", "chiusero"], "past-remote"),
+      senses: [{ glosses: ["serrare"] }],
+    }),
+  ),
+  record({
+    word: "chiusi", pos: "verb", pos_title: "Voce verbale",
+    tags: ["form-of"],
+    senses: [formOf("prima persona singolare del passato remoto di chiudere", "chiudere")],
+  }),
+  ...[["punsi", "pungesti"], ["punsi", "pungisti"]].map((forms) =>
+    record({
+      word: "pungere", pos: "verb", pos_title: "Verbo",
+      forms: tenseForms(forms, "past-remote"),
+      senses: [{ glosses: ["forare con una punta"] }],
+    }),
+  ),
+  record({
+    word: "punsi", pos: "verb", pos_title: "Voce verbale",
+    tags: ["form-of"],
+    senses: [formOf("prima persona singolare del passato remoto di pungere", "pungere")],
+  }),
+  // olio — as the release has it: masculine singular, with two plurals each
+  // tagged plural only. Both land in maschile plurale. Kept last, as above.
+  record({
+    word: "olio", pos: "noun", pos_title: "Sostantivo",
+    tags: ["masculine", "singular"],
+    forms: [
+      { form: "oli", tags: ["plural"] },
+      { form: "olii", tags: ["plural"] },
+    ],
+    senses: [{ glosses: ["sostanza grassa liquida"] }],
+  }),
+  // abbisognare — the release repeats its whole table (188 rows, twice 94);
+  // here the gerund and the present, each twice. Kept last, as above.
+  record({
+    word: "abbisognare", pos: "verb", pos_title: "Verbo",
+    forms: [0, 1].flatMap(() => [
+      { form: "abbisognando", tags: ["gerund"], raw_tags: ["verbo di prima coniugazione"] },
+      ...tenseForms(["abbisogno", "abbisogni", "abbisogna", "abbisogniamo", "abbisognate", "abbisognano"], "present"),
+    ]),
+    senses: [{ glosses: ["avere bisogno"] }],
+  }),
+  // khmer — as the release has it: the noun is tagged masculine, singular and
+  // plural, with no forms. Kept last, as above.
+  record({
+    word: "khmer", pos: "noun", pos_title: "Sostantivo",
+    tags: ["masculine", "plural", "singular"],
+    senses: [{ glosses: ["lingua della Cambogia"] }],
+  }),
+  // Mercurio — a proper name as the release has it: masculine, listing
+  // `Mercuria` tagged plural. Kept last, as above.
+  record({
+    word: "Mercurio", pos: "name", pos_title: "Nome proprio",
+    tags: ["masculine"],
+    forms: [{ form: "Mercuria", tags: ["plural"] }],
+    senses: [{ glosses: ["pianeta del sistema solare"] }],
+  }),
+  // vadi — a form whose one sense names two lemmas in its gloss and in its
+  // form_of edges, both of which this archive has. Kept last, as above.
+  record({
+    word: "vadi", pos: "verb", pos_title: "Voce verbale",
+    tags: ["form-of"],
+    senses: [{
+      glosses: ["forma antica di andare, come di salire"],
+      tags: ["form-of"],
+      form_of: [{ word: "andare" }, { word: "salire" }],
+    }],
+  }),
+  // mangiare and magnare — both one edit from `mangare`. magnare is shorter
+  // and one swap away, but the source translates mangiare into many
+  // languages and magnare into none, and the more common word leads (Huey,
+  // 2026-09-27). Translations as the release writes them. Kept last, as above.
+  JSON.stringify({
+    word: "mangiare", pos: "verb", pos_title: "Verbo", lang_code: "it",
+    forms: tenseForms(["mangio", "mangi", "mangia", "mangiamo", "mangiate", "mangiano"], "present"),
+    senses: [{ glosses: ["assumere cibo"] }],
+    translations: [
+      { lang_code: "en", lang: "inglese", word: "eat" },
+      { lang_code: "fr", lang: "francese", word: "manger" },
+      { lang_code: "de", lang: "tedesco", word: "essen" },
+    ],
+  }),
+  record({
+    word: "magnare", pos: "verb", pos_title: "Verbo",
+    senses: [{ glosses: ["mangiare, in romanesco"] }],
   }),
 ];

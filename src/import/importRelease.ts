@@ -120,6 +120,8 @@ interface KaikkiRecord {
   raw_tags?: unknown;
   forms: readonly KaikkiForm[];
   senses: readonly KaikkiSense[];
+  /** Kept as parsed; only the seed's suggestion ranking reads it (seedSql.ts). */
+  translations?: unknown;
 }
 
 const isObject = (value: unknown): value is JsonObject =>
