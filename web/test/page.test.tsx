@@ -62,6 +62,7 @@ import {
   SHELL_CENTRED,
   SHELL_TOP,
   SITE_FOOTER_LINK,
+  SITE_FOOTER_NAME,
   TENSE_HEAD_SEARCHED,
   TOP_BAR,
   WORD_LINK,
@@ -979,7 +980,9 @@ test("the home page is the name, the field and the Try chips, centred", async ()
   assert.match(home, />ENTER<\/kbd>/);
   assert.match(home, /<form class="[^"]*" role="search" action="\/" method="get">/);
   assert.match(home, />Try<\/span>/);
+  assert.deepEqual([...TRY_WORDS], ["casa", "andare", "bello", "sale", "studente"]);
   for (const word of TRY_WORDS) assert.match(home, new RegExp(`href="/\\?q=${word}" lang="it">${word}</a>`));
+  assert.doesNotMatch(home, /href="\/\?q=andavano"/);
 });
 
 test("a results page has the top bar and one bordered field with a clear control", async () => {
@@ -1028,7 +1031,9 @@ test("every page reaches the attribution page from the footer's four links", asy
   const links = [...footer.matchAll(new RegExp(`<a class="${esc(SITE_FOOTER_LINK)}" href="([^"]+)">([^<]+)</a>`, "g"))];
   assert.deepEqual(links.map((match) => match[2]), ["Attribution", "About the data", "Licence", "Contact"]);
   for (const [, href] of links) assert.match(href, /^\/attribution(#|$)/);
-  assert.match(footer, />Lexema<\/span>/);
+  // The footer's wordmark goes home, in the same tab, like the top bar's.
+  assert.match(footer, new RegExp(`<a class="${esc(SITE_FOOTER_NAME)}" href="/">Lexema</a>`));
+  assert.match(renderToStaticMarkup(<SiteHeader />), /<a class="[^"]*" href="\/">Lexema<\/a>/);
 
   // The layout imports globals.css, which Node cannot load, so that it carries
   // this footer is asserted on the file.

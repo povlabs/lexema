@@ -47,7 +47,8 @@ export const TOP_BAR_NAME = `font-serif text-xl text-text-strong no-underline ${
  */
 export const SITE_FOOTER = "mt-5 border-t border-border sm:mt-8";
 export const SITE_FOOTER_INNER = `${COLUMN} flex flex-wrap items-center justify-between gap-4 py-8`;
-export const SITE_FOOTER_NAME = "font-serif text-base text-text-strong";
+/** The footer's wordmark, a link home like the top bar's. */
+export const SITE_FOOTER_NAME = `font-serif text-base text-text-strong no-underline ${FOCUS_RING}`;
 export const SITE_FOOTER_LINKS = "m-0 flex list-none flex-wrap gap-x-6 gap-y-2 p-0";
 export const SITE_FOOTER_LINK = `font-sans text-[0.8rem] text-text-muted no-underline hover:text-text ${FOCUS_RING}`;
 
@@ -62,11 +63,13 @@ export const HOME_PRONUNCIATION = "m-0 mt-4 font-mono text-base text-text-muted 
 export const HOME_TAGLINE = "m-0 mt-1 mb-10 font-serif text-[1.1rem] italic text-text-muted";
 
 /**
- * With a query: the bar at the top of the column, the word below it. It does
- * not stretch to the window: the footer follows the content by the Source
- * line's gap (design-system-manifest.md § "Layout"), however short the page.
+ * With a query: the bar at the top of the column, the word below it. The
+ * column grows to fill the window, so on a short page the footer sits at the
+ * bottom of the window and the extra room falls between Source and the
+ * footer; the Source line's own gap below it (design-system-manifest.md §
+ * "Layout") is the minimum, and a long page is unchanged.
  */
-export const SHELL_TOP = `${COLUMN} pt-6 pb-4`;
+export const SHELL_TOP = `${COLUMN} flex-1 pt-6 pb-4`;
 
 // The search field --------------------------------------------------------
 

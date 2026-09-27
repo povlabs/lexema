@@ -28,7 +28,9 @@ export function SiteFooter() {
   return (
     <footer className={SITE_FOOTER}>
       <div className={SITE_FOOTER_INNER}>
-        <span className={SITE_FOOTER_NAME}>Lexema</span>
+        <a className={SITE_FOOTER_NAME} href="/">
+          Lexema
+        </a>
         <nav aria-label="Site">
           <ul className={SITE_FOOTER_LINKS}>
             {LINKS.map((link) => (

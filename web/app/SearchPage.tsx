@@ -69,7 +69,7 @@ export function SearchPage({ raw, children }: { raw: string; children: ReactNode
 }
 
 /** The words frame 00 offers before a query, each a search. */
-export const TRY_WORDS = ["casa", "andare", "andavano", "bello", "sale", "studente"] as const;
+export const TRY_WORDS = ["casa", "andare", "bello", "sale", "studente"] as const;
 
 /** Nothing asked yet. */
 export function FirstLoad() {
