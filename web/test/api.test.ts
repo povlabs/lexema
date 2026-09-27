@@ -290,3 +290,169 @@ test("an API request is answered before the site, and no per-visitor limit count
   assert.deepEqual(siteSaw, ["/"]);
   assert.equal(limits.SEARCH_LIMIT.calls, 1);
 });
+
+// The /lookup filters (#151).
+
+let filterKey: string | undefined;
+
+/** A /lookup with these parameters, on one roomy key the filter tests share. */
+const lookupWith = async (query: string): Promise<Response> =>
+  call(`/api/v1/lookup?${query}`, (filterKey ??= (await newKey(1_000, "filters")).key));
+
+/** A 200 /lookup answer's body. */
+const lookupBody = async (query: string): Promise<Json> => {
+  const response = await lookupWith(query);
+  assert.equal(response.status, 200, query);
+  return response.json();
+};
+
+/** Each result as `word pos via`, the lookup's order kept. */
+const candidates = (body: Json): string[] => body.results.map((result: Json) => `${result.word} ${result.pos} ${result.match.via}`);
+
+/** The refusal a bad filter value gets: a 400 whose error names the parameter. */
+const assertRefused = async (query: string, parameter: string) => {
+  const response = await lookupWith(query);
+  assert.equal(response.status, 400, query);
+  const body: Json = await response.json();
+  assert.equal(body.error.code, "invalid_parameter", query);
+  assert.ok(body.error.message.startsWith(`${parameter} `) || body.error.message.includes(` ${parameter} `), query);
+};
+
+test("pos keeps only the candidates of that part of speech, in the lookup's order", async () => {
+  assert.deepEqual(candidates(await lookupBody("q=sale&pos=noun")), ["sale noun headword", "sala noun form_of"]);
+  assert.deepEqual(candidates(await lookupBody("q=sale&pos=verb")), ["salire verb form_of"]);
+  // The brief spells two of the source's codes out in full; both spellings are read.
+  assert.deepEqual(candidates(await lookupBody("q=solo&pos=adv")), ["solo adv headword"]);
+  assert.deepEqual(candidates(await lookupBody("q=solo&pos=adverb")), ["solo adv headword"]);
+  await assertRefused("q=sale&pos=nouns", "pos");
+  await assertRefused("q=sale&pos=noun&pos=verb", "pos");
+});
+
+test("match=exact keeps headword matches, match=form keeps form matches, and any, the default, keeps both", async () => {
+  const exact = candidates(await lookupBody("q=solo&match=exact"));
+  const form = candidates(await lookupBody("q=solo&match=form"));
+  assert.deepEqual(exact, ["solo adj headword", "solo adv headword", "solo noun headword"]);
+  assert.deepEqual(form, ["sola adj form", "sole adj form"]);
+  const every = candidates(await lookupBody("q=solo"));
+  assert.deepEqual(candidates(await lookupBody("q=solo&match=any")), every);
+  assert.deepEqual([...every].sort(), [...exact, ...form].sort());
+  assert.deepEqual(candidates(await lookupBody("q=andavano&match=form")), ["andare verb form_of"]);
+  await assertRefused("q=solo&match=headword", "match");
+});
+
+test("fields returns the named sections and the always-returned fields, and refuses an unknown name", async () => {
+  const [sale] = (await lookupBody("q=sale&fields=definitions,pronunciation")).results;
+  assert.deepEqual(Object.keys(sale).sort(), [
+    "attribution",
+    "definitions",
+    "id",
+    "match",
+    "pos",
+    "pos_title",
+    "pronunciations",
+    "word",
+  ]);
+  const [full] = (await lookupBody("q=sale")).results;
+  assert.deepEqual(sale.definitions, full.definitions);
+  await assertRefused("q=sale&fields=definitions,meaning", "fields");
+  await assertRefused("q=sale&fields=", "fields");
+});
+
+test("pos, match and fields refuse a name every object inherits", async () => {
+  for (const inherited of ["constructor", "toString", "__proto__", "hasOwnProperty"]) {
+    await assertRefused(`q=sale&pos=${inherited}`, "pos");
+    await assertRefused(`q=sale&match=${inherited}`, "match");
+    await assertRefused(`q=sale&fields=definitions,${inherited}`, "fields");
+  }
+});
+
+test("limit_definitions caps each result's definitions, and refuses anything but a positive integer", async () => {
+  const full = (await lookupBody("q=sale")).results;
+  const capped = (await lookupBody("q=sale&limit_definitions=2")).results;
+  assert.ok(full.some((result: Json) => result.definitions.length > 2), "the cap has something to cut");
+  assert.deepEqual(
+    capped.map((result: Json) => result.definitions),
+    full.map((result: Json) => result.definitions.slice(0, 2)),
+  );
+  for (const bad of ["0", "-1", "1.5", "two", "1e2"]) await assertRefused(`q=sale&limit_definitions=${bad}`, "limit_definitions");
+});
+
+test("mood, tense and person narrow a verb's forms, in Italian labels or English codes", async () => {
+  const formsOf = async (query: string) => (await lookupBody(`q=andare&pos=verb&${query}`)).results[0].forms;
+
+  const noi = await formsOf("mood=congiuntivo&tense=presente&person=noi");
+  assert.deepEqual(noi, { type: "conjugation", moods: { congiuntivo: { presente: { noi: ["andiamo"] } } } });
+  assert.deepEqual(await formsOf("mood=subjunctive&tense=present&person=1pl"), noi);
+
+  const imperativo = await formsOf("mood=imperativo");
+  assert.deepEqual(Object.keys(imperativo.moods), ["imperativo"]);
+  assert.equal(imperativo.infinito, undefined, "a non-finite form has no finite mood");
+
+  const passato = await formsOf("tense=passato");
+  assert.deepEqual(Object.keys(passato.moods), ["congiuntivo", "condizionale"]);
+  assert.deepEqual(passato.participio, ["andato"]);
+
+  const loro = await formsOf("person=loro");
+  assert.ok(Object.values(loro.moods).every((tenses: Json) => Object.values(tenses).every((cells: Json) => Object.keys(cells).join() === "loro")));
+  assert.equal(loro.gerundio, undefined, "a non-finite form has no person");
+
+  await assertRefused("q=andare&mood=indicativ", "mood");
+  await assertRefused("q=andare&tense=passato%20recente", "tense");
+  await assertRefused("q=andare&person=egli", "person");
+});
+
+test("gender and number narrow a noun's or adjective's grid, in Italian labels or English codes", async () => {
+  const grande = async (query: string) => (await lookupBody(`q=grande&pos=adj&${query}`)).results[0].forms;
+
+  const femminilePlurale = await grande("gender=femminile&number=plurale");
+  assert.deepEqual(femminilePlurale, {
+    type: "gender_number",
+    grid: { femminile: { plurale: ["grandi"] } },
+    superlativo: { femminile: { plurale: ["grandissime\n massime"] } },
+  });
+  assert.deepEqual(await grande("gender=feminine&number=plural"), femminilePlurale);
+  assert.deepEqual(Object.keys((await grande("gender=maschile")).grid.maschile), ["singolare", "plurale"]);
+  assert.deepEqual(Object.keys((await grande("number=singular")).grid), ["maschile", "femminile"]);
+  assert.deepEqual((await lookupBody("q=sale&pos=noun&number=plurale")).results[0].forms.grid, { maschile: { plurale: ["sali"] } });
+
+  await assertRefused("q=grande&gender=neutro", "gender");
+  await assertRefused("q=grande&number=duale", "number");
+});
+
+test("filters that keep no candidate of a word the release has answer 200 with no results", async () => {
+  const body = await lookupBody("q=sale&pos=adv");
+  assert.deepEqual(body.results, []);
+  assert.equal(body.query, "sale");
+  assert.equal(body.release_id, RELEASE);
+});
+
+test("every filter kind at once: each kept candidate is filtered, shaped and narrowed", async () => {
+  const body = await lookupBody(
+    "q=sale&pos=verb&match=form&fields=forms,definitions&limit_definitions=1" +
+      "&mood=indicativo&tense=presente&person=3sg&gender=maschile&number=singolare",
+  );
+  assert.deepEqual(candidates(body), ["salire verb form_of"]);
+  const [salire] = body.results;
+  assert.deepEqual(Object.keys(salire).sort(), ["attribution", "definitions", "forms", "id", "match", "pos", "pos_title", "word"]);
+  assert.equal(salire.definitions.length, 1);
+  assert.deepEqual(salire.forms, { type: "conjugation", moods: { indicativo: { presente: { "lui, lei": ["sale"] } } } });
+});
+
+test("a filtered /lookup still costs 2 units and carries release_id, attribution and the limit headers; a refused one costs none", async () => {
+  const { keyId, key } = await newKey(10);
+  const response = await call("/api/v1/lookup?q=sale&pos=noun&fields=definitions&limit_definitions=1&number=plurale", key);
+  assert.equal(response.status, 200);
+  assert.deepEqual(limitHeaders(response), ["10", "9", "40", null]);
+  const body: Json = await response.json();
+  assert.equal(body.release_id, RELEASE);
+  assert.deepEqual(
+    body.results.map((result: Json) => result.attribution.source_url),
+    ["https://it.wiktionary.org/wiki/sale", "https://it.wiktionary.org/wiki/sala"],
+  );
+
+  const refused = await call("/api/v1/lookup?q=sale&pos=nouns", key);
+  assert.equal(refused.status, 400);
+  assert.equal(((await refused.json()) as Json).error.code, "invalid_parameter");
+  assert.deepEqual(limitHeaders(refused), ["10", "8", "40", null]);
+  assert.deepEqual(unitsOf(keyId), [{ day: "2026-09-27", units: 2 }]);
+});

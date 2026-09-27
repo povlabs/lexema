@@ -20,6 +20,7 @@ import { findNearby } from "@lexema/lookup/nearby.ts";
 import type { LookupResult } from "@lexema/lookup/types.ts";
 import type { FetchHandler } from "../rateLimit.ts";
 import { foundJson, notFoundJson, type LemmaReader } from "./lookupAnswer.ts";
+import { readLookupFilters } from "./lookupFilters.ts";
 
 /** Where every API request starts. Anything under it is the API's, never the site's. */
 export const API_ROOT = "/api/";
@@ -62,7 +63,16 @@ const ROUTES: Partial<Record<Endpoint, (url: URL, context: ApiContext) => Promis
   lookup: lookupAnswer,
 };
 
+/**
+ * `/lookup`: every candidate for `q`, narrowed by its filters
+ * (./lookupFilters.ts). A filter value it cannot read is a 400 naming the
+ * parameter, before any lookup. A word the release has is a 200 even when the
+ * filters keep none of its candidates: `results` is then empty, and only a
+ * word the release does not have is a 404.
+ */
 async function lookupAnswer(url: URL, { db, releaseId }: ApiContext): Promise<Answer> {
+  const filters = readLookupFilters(url.searchParams);
+  if (!filters.ok) return { status: 400, body: error("invalid_parameter", filters.refusal.message), charge: undefined };
   const result = await lookup({ db, releaseId, query: url.searchParams.get("q") ?? "" });
   if (result.outcome === "rejected") {
     const message =
@@ -76,7 +86,7 @@ async function lookupAnswer(url: URL, { db, releaseId }: ApiContext): Promise<An
     const nearby = await findNearby({ db, releaseId, query: result.query.raw });
     return { status: 404, body: notFoundJson(result, nearby), charge };
   }
-  return { status: 200, body: await foundJson(result, lemmaReader(db, releaseId)), charge };
+  return { status: 200, body: await foundJson(result, lemmaReader(db, releaseId), filters.filters), charge };
 }
 
 /**
