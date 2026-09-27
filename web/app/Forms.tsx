@@ -31,6 +31,7 @@ import {
   GRID_GENDER,
   GRID_HEAD,
   GRID_LABEL,
+  GRID_SPELLING,
   MORE_CLOSED,
   MORE_OPEN,
   NON_FINITE,
@@ -78,33 +79,32 @@ function GridCellView({ cell }: { cell: GridCell }) {
   }
   return (
     <div className={GRID_CELL} role="cell">
-      <p className={GRID_FORM} lang="it">
-        {cell.spellings.map((spelling, i) => (
-          <span key={spelling.surface}>
-            {i > 0 && ", "}
+      {cell.spellings.map((spelling) => (
+        <div key={spelling.surface} className={GRID_SPELLING}>
+          <p className={GRID_FORM} lang="it">
             <span
               data-form={spelling.forms.length > 0 ? spelling.forms.map((form) => form.index).join(" ") : undefined}
               data-headword={spelling.headword ? "" : undefined}
             >
               {spelling.surface}
             </span>
-          </span>
-        ))}
-      </p>
-      {cell.articles.length > 0 && (
-        <p className={GRID_ARTICLES} lang="it">
-          {cell.articles.map((article, i) => (
-            <span key={article}>
-              {i > 0 && (
-                <span className={GRID_ARTICLE_DOT} aria-hidden="true">
-                  ·
+          </p>
+          {spelling.articles.length > 0 && (
+            <p className={GRID_ARTICLES} lang="it">
+              {spelling.articles.map((article, i) => (
+                <span key={article}>
+                  {i > 0 && (
+                    <span className={GRID_ARTICLE_DOT} aria-hidden="true">
+                      ·
+                    </span>
+                  )}
+                  <span className={GRID_ARTICLE}>{article}</span>
                 </span>
-              )}
-              <span className={GRID_ARTICLE}>{article}</span>
-            </span>
-          ))}
-        </p>
-      )}
+              ))}
+            </p>
+          )}
+        </div>
+      ))}
     </div>
   );
 }

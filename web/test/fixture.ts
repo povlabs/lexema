@@ -551,4 +551,15 @@ export const FIXTURE_LINES: string[] = [
     tags: ["form-of"],
     senses: [formOf("prima persona singolare del passato remoto di pungere", "pungere")],
   }),
+  // olio — as the release has it: masculine singular, with two plurals each
+  // tagged plural only. Both land in maschile plurale. Kept last, as above.
+  record({
+    word: "olio", pos: "noun", pos_title: "Sostantivo",
+    tags: ["masculine", "singular"],
+    forms: [
+      { form: "oli", tags: ["plural"] },
+      { form: "olii", tags: ["plural"] },
+    ],
+    senses: [{ glosses: ["sostanza grassa liquida"] }],
+  }),
 ];

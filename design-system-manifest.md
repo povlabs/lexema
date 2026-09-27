@@ -18,7 +18,7 @@ history. Where a board and this file disagree, this file wins and the board is f
 | Missing, ambiguous, and disputed data is shown as such. It is never hidden, smoothed over, or signalled by colour alone. A form the source does not give is a dash in its cell, with no note beside it. | [README.md](./README.md); the dash ruled by Huey on 2026-09-27 |
 | Every candidate a lookup returns is rendered. The interface may rank; it never drops. | [AGENTS.md](./AGENTS.md), the product rule |
 | A generated short explanation may appear in Italian and in English, labelled as generated. Its example sentence, and everything from the source, stays Italian. | [ADR 0008](./.decisions/0008-generated-explanations-are-labelled-and-reportable.md), amendment of 2026-09-21 |
-| One small *Source* link per page; no credit line on the search page. The full credit is on `/attribution`, linked from the footer. | [ADR 0009](./.decisions/0009-two-licences-and-a-source-link.md) |
+| One small *Source* link for each Wiktionary page whose content the result shows, usually one; no credit line on the search page. The full credit is on `/attribution`, linked from the footer. | [ADR 0009](./.decisions/0009-two-licences-and-a-source-link.md) |
 
 ## The page
 
@@ -46,7 +46,7 @@ rules of 2026-09-21 (boxed paradigms, header bars, three boxes to a row).
 | **Section labels are plain.** | A small grey label (*Definitions*, *Forms*, *Etymology*, *Synonyms*). No count, no rule beside it, no box around the block. |
 | **One definition, then a link.** | The first definition shows, then `N more definitions`. Its example sits under it in italics. If the first definition has no example, the reading's first example shows instead, marked `from definition N`. A reading with no examples shows none. |
 | **Word facts come once, after the readings.** | *Etymology* as prose. *Synonyms* as a run of words separated by `·`, eight shown, then `+ N more`. |
-| **Source and report sit together at the bottom.** | `Source ↗ · Report a mistake`, with the same space above and below it. What the report box asks is on board 22 and in [#51](https://github.com/hueypov/lexema/issues/51). |
+| **Source and report sit together at the bottom.** | `Source ↗ · Report a mistake`, with the same space above and below it. A result that shows content from more than one Wiktionary page, such as `andavano` with `andare`'s table, has one *Source* link per page, each naming its word. What the report box asks is on board 22 and in [#51](https://github.com/hueypov/lexema/issues/51). |
 
 ### Forms: three shapes
 

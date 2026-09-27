@@ -176,7 +176,9 @@ bindings, which is the operator's business and not the reader's.
 
 **A form the source listed, and one it did not.** A noun, adjective or
 inflecting phrase shows a gender-and-number grid; its article lines are rule
-`it-articles/v1` (`src/italian/articles.ts`) applied to each cell. A verb shows
+`it-articles/v1` (`src/italian/articles.ts`) applied to each spelling. A form
+that states a number but no gender takes the record's gender only when the
+record states exactly one; otherwise it waits under *Gender not given*. A verb shows
 a conjugation with mood tabs; which mood a form goes in is rule `it-moods/v1`
 (`src/italian/moods.ts`), which reads the shape of the source's row: person
 tags for the indicativo, a pronoun beginning *che* for the congiuntivo, a bare

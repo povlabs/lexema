@@ -196,6 +196,8 @@ export const GRID_CORNER = "max-sm:hidden";
 export const GRID_HEAD = "pb-3 font-sans text-[0.75rem] text-text-muted";
 export const GRID_GENDER = "pt-1 font-sans text-[0.75rem] text-text-muted max-sm:col-span-2 max-sm:pt-0 max-sm:pb-1.5 max-sm:font-semibold";
 export const GRID_CELL = "min-w-0 pb-4";
+/** One spelling of a cell and its article line; a second spelling sits under the first. */
+export const GRID_SPELLING = "[&+&]:mt-2";
 export const GRID_FORM = "m-0 font-mono text-[1.05rem] text-text-strong wrap-anywhere";
 export const GRID_ARTICLES = "m-0 mt-1 font-mono text-[0.75rem] text-text-muted";
 export const GRID_ARTICLE = "max-sm:block";

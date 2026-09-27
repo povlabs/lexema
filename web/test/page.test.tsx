@@ -522,6 +522,26 @@ test("a searched non-finite form is marked in its table like any cell", async ()
   });
 });
 
+test("a form with no gender of its own is not guessed into a record that states both", async () => {
+  await withFixture(async ({ db }) => {
+    // `fine` is tagged masculine and feminine; `fini` only plural. Which
+    // gender's plural it is, the source does not say.
+    const fine = nth(await render(db, "fine"), 1);
+    const grid = fine.slice(0, fine.indexOf("data-unplaced"));
+    assert.doesNotMatch(grid, />fini</);
+    assert.deepEqual(gridRows(fine).map((row) => row[0]), ["", "maschile", "femminile"]);
+    assert.match(fine, /data-unplaced="gender not given"><p class="[^"]*">Gender not given<\/p>/);
+    assert.match(fine.slice(fine.indexOf('data-unplaced="gender not given"')), /<span data-form="0">fini<\/span>/);
+  });
+});
+
+test("each spelling of a cell has its own article line", async () => {
+  await withFixture(async ({ db }) => {
+    const olio = textOf(nth(await render(db, "olio"), 1));
+    assert.match(olio, /oligli oli·degli olioliigli olii·degli olii/);
+  });
+});
+
 test("forms that fit no cell are shown verbatim, grouped under what they lack", async () => {
   await withFixture(async ({ db }) => {
     // `parlarsi (coniugazione)` carries no tense and no mood: it is the link
@@ -531,10 +551,10 @@ test("forms that fit no cell are shown verbatim, grouped under what they lack", 
     assert.match(verbGroup, /^data-unplaced="mood and tense not given"><p class="[^"]*">Mood and tense not given<\/p>/);
     assert.match(verbGroup, />parlarsi \(coniugazione\)</);
     assert.doesNotMatch(parlare, />Other forms</);
-    // `maggiore` and `maggiori` state no number; they take the record's two
-    // genders, so a number is what they lack.
+    // `maggiore` and `maggiori` state no gender and no number, and `grande`
+    // states both genders, so neither is guessed.
     const grande = await render(db, "grande");
-    assert.match(grande, /data-unplaced="number not given"><p class="[^"]*">Number not given<\/p>/);
+    assert.match(grande, /data-unplaced="gender and number not given"><p class="[^"]*">Gender and number not given<\/p>/);
     assert.match(textOf(grande), /comparativo di maggioranzamaggiori/);
     // An auxiliary the source writes as text is shown as it wrote it.
     assert.match(textOf(await render(db, "finire")), /ausiliareavere, se intr\. essere/);

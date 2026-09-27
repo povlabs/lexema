@@ -6,8 +6,11 @@
 // Placement rules, each deterministic and none reading a spelling:
 //
 // - A spelling goes in every gender its row states, and in the number it
-//   states. A form that states a number but no gender takes the record's own
-//   gender: `bello` the noun is masculine and lists `belli` tagged plural only.
+//   states. A form that states a number but no gender takes the record's
+//   gender when the record states exactly one: `bello` the noun is masculine
+//   and lists `belli` tagged plural only. When the record states both (`fine`
+//   lists `fini` tagged plural), the form's gender is not guessed: it is
+//   unplaced, under "Gender not given".
 // - The headword is the citation form, so it sits in the singolare column when
 //   its record states no usable number (`andare` the noun, `bello` invariable).
 // - A form with a degree other than positive is a comparison, not an agreement
@@ -16,9 +19,9 @@
 // - Whatever takes no cell is `unplaced`, verbatim, grouped by what it lacks.
 //   Layout never drops a form.
 //
-// Each cell's articles are `it-articles/v1` (src/italian/articles.ts), applied
-// to the cell's spelling with the cell's gender and number, exactly as it
-// stands. Where the rule refuses (a phrase, a spelling it does not handle) the
+// Each spelling's articles are `it-articles/v1` (src/italian/articles.ts),
+// applied to it with the cell's gender and number, exactly as it stands; a cell
+// with two spellings (`oli`, `olii`) gives each its own line. Where the rule refuses (a phrase, a spelling it does not handle) the
 // cell has no article line.
 
 import { isAdjectiveReading, isNounReading } from "@lexema/lookup/types.ts";
@@ -46,9 +49,8 @@ export interface Spelling {
 }
 
 export interface GridCell {
-  spellings: Spelling[];
-  /** `il bello`, `un bello` — definite, then indefinite or partitive. Empty when the rule gives none. */
-  articles: string[];
+  /** Each spelling with its own `il bello · un bello` line; empty when the rule gives none. */
+  spellings: (Spelling & { articles: string[] })[];
 }
 
 export interface GridRow {
@@ -124,9 +126,9 @@ class GridBuilder {
       if (!NUMBERS.some((number) => this.cells.has(`${gender} ${number}`))) return [];
       const cell = (number: GrammaticalNumber): GridCell => {
         const spellings = this.cells.get(`${gender} ${number}`) ?? [];
-        // One article line per cell: the first spelling's, which is the one the eye reads first.
-        const articles = spellings.length === 1 ? articleLine(spellings[0].surface, gender, number) : [];
-        return { spellings, articles };
+        return {
+          spellings: spellings.map((spelling) => ({ ...spelling, articles: articleLine(spelling.surface, gender, number) })),
+        };
       };
       return [{ gender, cells: [cell("singular"), cell("plural")] }];
     });
@@ -161,7 +163,7 @@ export function agreementOf(reading: Reading): Agreement {
     const degrees = degreesOf(form);
     const target = degrees.length === 0 ? plain : degrees.includes("superlative") ? superlative : undefined;
     const own = gendersOf(form.claims);
-    const genders = own.length > 0 ? own : recordGenders;
+    const genders = own.length > 0 ? own : recordGenders.length === 1 ? recordGenders : [];
     const number = numberOf(form.claims);
     if (target === undefined || genders.length === 0 || number === undefined) {
       const missing: Missing =
