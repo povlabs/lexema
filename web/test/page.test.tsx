@@ -429,8 +429,8 @@ test("etymology and synonyms come once after the readings: eight synonyms, then 
     assert.equal(words.length, wordPage("andare", await readingsFor(db, "andare")).wordFacts.synonyms.length, "every synonym is in the document");
     assert.match(synonyms, new RegExp(`>\\+ ${words.length - WORD_LIST_SLICE} more<`));
     for (const [, href, word] of words) assert.equal(href, `/?q=${encodeURIComponent(textOf(word))}`);
-    // No count beside a label, and no Report link yet.
-    assert.doesNotMatch(html, /showing \d|Report a mistake/);
+    // No count beside a label.
+    assert.doesNotMatch(html, /showing \d/);
   });
 });
 
@@ -823,6 +823,17 @@ test("a word with one reading keeps its etymology and synonyms after the reading
     assert.doesNotMatch(casa, /id="etymology-\d+"|id="synonyms-\d+"/);
     assert.match(textOf(afterReadings(casa)), /Etymologydal latino casa/);
     assert.ok(synonymWords(afterReadings(casa), "synonyms").length > 0);
+  });
+});
+
+test("every word page ends with Source and Report a mistake together", async () => {
+  await withDevSeed(async ({ db }) => {
+    for (const query of ["casa", "andavano", "bello"]) {
+      const source = (await render(db, query)).split("</article>").pop() ?? "";
+      const line = source.slice(source.lastIndexOf("<footer"), source.indexOf("</footer>", source.lastIndexOf("<footer")));
+      assert.match(textOf(line), /Source.*·.*Report a mistake$/, query);
+      assert.match(line, /<button [^>]*>Report a mistake<\/button>/, `${query}: a button that opens the box`);
+    }
   });
 });
 

@@ -14,7 +14,7 @@ import type { Attempt } from "./attempt.ts";
  * lands where any other database failure does: in the log, and as the
  * failed state on the page.
  */
-function database() {
+export function database() {
   if (env.DB === undefined) throw new Error("no D1 binding: this Worker has no DB");
   return fromD1(env.DB);
 }
@@ -53,3 +53,17 @@ export async function suggestions(prefix: string): Promise<SuggestResult | { out
     return { outcome: "failed" };
   }
 }
+
+/** The report box's Turnstile site key, or undefined when none is configured (#51). */
+export function turnstileSiteKey(): string | undefined {
+  return env.TURNSTILE_SITE_KEY === "" ? undefined : env.TURNSTILE_SITE_KEY;
+}
+
+/** The Turnstile secret, set with `wrangler secret put`; undefined skips the check. */
+export function turnstileSecretKey(): string | undefined {
+  const secret = (env as { TURNSTILE_SECRET_KEY?: string }).TURNSTILE_SECRET_KEY;
+  return secret === undefined || secret === "" ? undefined : secret;
+}
+
+/** The release this Worker serves. */
+export const servedRelease = (): string => env.LEXEMA_RELEASE;

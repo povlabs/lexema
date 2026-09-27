@@ -279,6 +279,37 @@ export const SOURCE_LINE = "mt-9 sm:mt-12 flex flex-wrap items-center gap-x-3 ga
 export const SOURCE_LINK = `inline-flex items-center gap-1.5 text-text-muted no-underline hover:text-text ${FOCUS_RING}`;
 export const ICON = "size-3.5";
 
+// The report box (board 22, #51) ----------------------------------------------
+
+/** "Report a mistake", beside Source and in the same small muted type. */
+export const REPORT_TRIGGER = `cursor-pointer border-0 bg-transparent p-0 font-sans text-[0.8rem] text-text-muted hover:text-text ${FOCUS_RING}`;
+export const REPORT_BACKDROP = "fixed inset-0 bg-surface/70";
+/** A small box in the middle of the screen; on a phone, the width of the screen less its margin. */
+export const REPORT_POPUP =
+  "fixed top-1/2 left-1/2 w-[32.5rem] max-w-[calc(100vw-2rem)] max-h-[calc(100dvh-2rem)] -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-[6px] border border-border-strong bg-surface-raised p-7 outline-none max-sm:p-5";
+export const REPORT_X = `absolute top-6 right-6 flex size-7 cursor-pointer items-center justify-center border-0 bg-transparent font-sans text-lg text-text-muted hover:text-text max-sm:top-4 max-sm:right-4 ${FOCUS_RING}`;
+export const REPORT_TITLE = "m-0 flex items-center gap-3 pr-10 font-serif text-[1.5rem] font-normal text-text-strong";
+export const REPORT_SUBTITLE = "m-0 mt-1 font-sans text-[0.85rem] text-text-muted";
+export const REPORT_SUBTITLE_WORD = "ml-1 font-serif text-[1.05rem] text-text-strong";
+export const REPORT_FIELD = "m-0 mt-6 border-0 p-0";
+export const REPORT_FIELD_LABEL = "mb-2.5 block p-0 font-sans text-[0.85rem] font-semibold text-text-strong";
+export const REPORT_OPTIONAL = "ml-1.5 font-normal text-text-muted";
+export const REPORT_CHIPS = "flex flex-wrap gap-2";
+/** A choice: a native radio, drawn as a chip; the chosen one is outlined in the accent. */
+export const REPORT_CHIP =
+  "inline-flex cursor-pointer items-center rounded-[3px] border border-border-strong px-3 py-1.5 font-sans text-[0.85rem] text-text hover:border-text-muted has-[:checked]:border-accent has-[:checked]:font-semibold has-[:checked]:text-accent has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-accent";
+export const REPORT_DETAILS =
+  "block min-h-28 w-full resize-y rounded-[4px] border border-border-strong bg-surface px-3.5 py-3 font-sans text-[0.9rem] text-text-strong outline-none placeholder:text-text-muted focus:border-accent";
+export const REPORT_ERROR = "m-0 mt-4 font-sans text-[0.8rem] text-warning";
+/** "No account needed." on its own line on a phone, Cancel and Send together on the right. */
+export const REPORT_FOOTER = "mt-7 flex flex-wrap items-center justify-end gap-x-6 gap-y-3";
+export const REPORT_NOTE = "m-0 mr-auto font-sans text-[0.75rem] text-text-muted max-sm:w-full";
+export const REPORT_CANCEL = `cursor-pointer border-0 bg-transparent p-0 font-sans text-[0.9rem] text-text hover:text-text-strong ${FOCUS_RING}`;
+export const REPORT_SEND = `cursor-pointer rounded-[3px] border-0 bg-accent px-4 py-2 font-sans text-[0.9rem] font-semibold text-surface disabled:cursor-not-allowed disabled:bg-border disabled:font-normal disabled:text-text-muted ${FOCUS_RING}`;
+export const REPORT_SENT_CHECK = "font-sans text-base text-accent";
+export const REPORT_SENT_TEXT = "m-0 mt-4 font-sans text-[0.9rem] text-text";
+export const REPORT_CLOSE = `mt-5 cursor-pointer rounded-[3px] border border-border-strong bg-transparent px-4 py-2 font-sans text-[0.9rem] text-text-strong hover:border-text-muted ${FOCUS_RING}`;
+
 // The attribution page ---------------------------------------------------
 
 /** Prose on the attribution page, where the browser's own margins used to do it. */

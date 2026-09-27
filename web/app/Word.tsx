@@ -8,6 +8,7 @@
 import type { WordFacts } from "@lexema/lookup/types.ts";
 import { ExternalIcon } from "./icons";
 import { ReadingView } from "./Reading";
+import { ReportDialog } from "./ReportDialog";
 import { WordList } from "./WordList";
 import type { WordPage } from "./wordPage.ts";
 import {
@@ -108,7 +109,8 @@ function WordFactsView({ facts }: { facts: WordFacts }) {
 }
 
 /** *Source* to each Wiktionary page the readings come from; normally exactly one. */
-function SourceLinks({ words }: { words: readonly string[] }) {
+function SourceLinks({ page, siteKey }: { page: WordPage; siteKey: string | undefined }) {
+  const words = page.sourceWords;
   return (
     <footer className={SOURCE_LINE}>
       {words.map((word, i) => (
@@ -126,11 +128,17 @@ function SourceLinks({ words }: { words: readonly string[] }) {
           </a>
         </span>
       ))}
+      <span aria-hidden="true">·</span>
+      <ReportDialog
+        word={page.headword}
+        readings={page.readings.map(({ number, reading }) => ({ number, recordId: reading.recordId, posTitle: reading.posTitle }))}
+        siteKey={siteKey}
+      />
     </footer>
   );
 }
 
-export function WordView({ page, query }: { page: WordPage; query: string }) {
+export function WordView({ page, query, siteKey }: { page: WordPage; query: string; siteKey?: string }) {
   return (
     <>
       <h1 className={WORD_HEADING} lang="it">
@@ -144,7 +152,7 @@ export function WordView({ page, query }: { page: WordPage; query: string }) {
         ))}
       </div>
       <WordFactsView facts={page.wordFacts} />
-      <SourceLinks words={page.sourceWords} />
+      <SourceLinks page={page} siteKey={siteKey} />
     </>
   );
 }

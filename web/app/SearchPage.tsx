@@ -119,10 +119,12 @@ export function Limited({ raw }: { raw: string }) {
  * and otherwise a heading a screen reader can land on, visually hidden because
  * the message under it says the same thing.
  */
-export function Outcome({ raw, attempt }: { raw: string; attempt: Attempt }) {
+export function Outcome({ raw, attempt, siteKey }: { raw: string; attempt: Attempt; siteKey?: string }) {
   const query = raw.trim();
   if (attempt.outcome === "found") {
-    return <WordView page={wordPage(attempt.query.raw.trim(), attempt.readings)} query={attempt.query.raw.trim()} />;
+    return (
+      <WordView page={wordPage(attempt.query.raw.trim(), attempt.readings)} query={attempt.query.raw.trim()} siteKey={siteKey} />
+    );
   }
   return (
     <>
