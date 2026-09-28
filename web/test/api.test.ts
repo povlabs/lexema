@@ -1,4 +1,4 @@
-// The JSON API's core (#150): `/api/v1/lookup` behind a key, its per-key
+// The JSON API's core (#150): `/v1/lookup` behind a key, its per-key
 // minute limit and its daily units, over the development fixture seeded the
 // way `pnpm run seed:dev` seeds D1.
 //
@@ -7,6 +7,7 @@
 
 import assert from "node:assert/strict";
 import { after, before, test } from "node:test";
+import { existsSync } from "node:fs";
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -22,7 +23,8 @@ import { lookup } from "../../src/lookup/lookup.js";
 import { findNearby } from "../../src/lookup/nearby.js";
 import { suggest } from "../../src/lookup/suggest.js";
 import { loadFixturePages } from "../../src/source/rawPage.js";
-import { handleApi, withApi, type ApiBindings } from "../worker/api/handler.ts";
+import { answerApi, apiNotFound, handleApi, type ApiBindings } from "../worker/api/handler.ts";
+import { byHost, DEVELOPERS_SEGMENT } from "../worker/hosts.ts";
 import { withRateLimits, type LimitBindings } from "../worker/rateLimit.ts";
 
 const REPO = fileURLToPath(new URL("../..", import.meta.url));
@@ -67,7 +69,7 @@ const newKey = async (perMinuteLimit = 60, label = "test"): Promise<{ keyId: num
 /** One API request, as the Worker hands it over. */
 const call = (path: string, key: string | undefined, now = NOW, method = "GET", over = db): Promise<Response> =>
   handleApi(
-    new Request(`https://lexema.fyi${path}`, { method, headers: key === undefined ? {} : { "x-api-key": key } }),
+    new Request(`https://api.lexema.fyi${path}`, { method, headers: key === undefined ? {} : { "x-api-key": key } }),
     { db: over, releaseId: RELEASE, now },
   );
 
@@ -84,7 +86,7 @@ type Json = any;
 
 test("a form answers with its lemma in one call: andavano is andare, at indicativo imperfetto loro", async () => {
   const { key } = await newKey();
-  const response = await call("/api/v1/lookup?q=andavano", key);
+  const response = await call("/v1/lookup?q=andavano", key);
   assert.equal(response.status, 200);
   const body: Json = await response.json();
   assert.deepEqual(
@@ -98,7 +100,7 @@ test("a form answers with its lemma in one call: andavano is andare, at indicati
 
 test("sale answers every candidate the lookup returns: the salt noun, sala and salire", async () => {
   const { key } = await newKey();
-  const body: Json = await (await call("/api/v1/lookup?q=sale", key)).json();
+  const body: Json = await (await call("/v1/lookup?q=sale", key)).json();
   const found = await lookup({ db, releaseId: RELEASE, query: "sale" });
   assert.equal(found.outcome, "found");
   assert.equal(body.results.length, found.readings.length);
@@ -116,7 +118,7 @@ test("sale answers every candidate the lookup returns: the salt noun, sala and s
 test("every found result carries the release and an attribution with the word's Wiktionary page", async () => {
   const { key } = await newKey();
   for (const q of ["sale", "andavano", "casa"]) {
-    const body: Json = await (await call(`/api/v1/lookup?q=${encodeURIComponent(q)}`, key)).json();
+    const body: Json = await (await call(`/v1/lookup?q=${encodeURIComponent(q)}`, key)).json();
     assert.equal(body.release_id, RELEASE);
     for (const result of body.results) {
       assert.deepEqual(result.attribution, {
@@ -138,7 +140,7 @@ test("a word not in the release is a 404 offering findNearby's spellings in its 
     ["qqqqqq", []],
   ];
   for (const [q, kinds] of cases) {
-    const response = await call(`/api/v1/lookup?q=${q}`, key);
+    const response = await call(`/v1/lookup?q=${q}`, key);
     assert.equal(response.status, 404, q);
     const body: Json = await response.json();
     const nearby = await findNearby({ db, releaseId: RELEASE, query: q });
@@ -158,26 +160,26 @@ test("a word not in the release is a 404 offering findNearby's spellings in its 
 test("a /lookup refused before an answer costs no units: a bad q, a wrong method, a 429", async () => {
   const { keyId, key } = await newKey(4);
   for (const q of ["", "%20%20", "a".repeat(129)]) {
-    const response = await call(`/api/v1/lookup?q=${q}`, key);
+    const response = await call(`/v1/lookup?q=${q}`, key);
     assert.equal(response.status, 400);
     const body: Json = await response.json();
     assert.equal(body.error.code, "invalid_query");
   }
-  const wrongMethod = await call("/api/v1/lookup?q=casa", key, NOW, "POST");
+  const wrongMethod = await call("/v1/lookup?q=casa", key, NOW, "POST");
   assert.equal(wrongMethod.status, 405);
-  const overLimit = await call("/api/v1/lookup?q=casa", key);
+  const overLimit = await call("/v1/lookup?q=casa", key);
   assert.equal(overLimit.status, 429);
   assert.deepEqual(unitsOf(keyId), []);
 });
 
 test("no key, an unknown key and a revoked key are each a 401; the key row holds a hash, never the key", async () => {
   const { keyId, key } = await newKey();
-  assert.equal((await call("/api/v1/lookup?q=casa", key)).status, 200);
+  assert.equal((await call("/v1/lookup?q=casa", key)).status, 200);
   await revokeKey(db, keyId, NOW);
   const refused = [
-    [await call("/api/v1/lookup?q=casa", undefined), "missing_key"],
-    [await call("/api/v1/lookup?q=casa", "lx_not-a-key"), "invalid_key"],
-    [await call("/api/v1/lookup?q=casa", key), "revoked_key"],
+    [await call("/v1/lookup?q=casa", undefined), "missing_key"],
+    [await call("/v1/lookup?q=casa", "lx_not-a-key"), "invalid_key"],
+    [await call("/v1/lookup?q=casa", key), "revoked_key"],
   ] as const;
   for (const [response, code] of refused) {
     assert.equal(response.status, 401);
@@ -195,30 +197,30 @@ test("a key past its own minute limit gets a 429 until the minute ends; another 
   const roomy = await newKey(5, "roomy");
   const headers = limitHeaders;
 
-  assert.deepEqual(headers(await call("/api/v1/lookup?q=casa", tight.key)), ["2", "1", "40", null]);
+  assert.deepEqual(headers(await call("/v1/lookup?q=casa", tight.key)), ["2", "1", "40", null]);
   // A 404 and a 400 carry the headers too.
-  assert.deepEqual(headers(await call("/api/v1/lookup?q=qqqqqq", tight.key)), ["2", "0", "40", null]);
-  const refused = await call("/api/v1/lookup?q=casa", tight.key);
+  assert.deepEqual(headers(await call("/v1/lookup?q=qqqqqq", tight.key)), ["2", "0", "40", null]);
+  const refused = await call("/v1/lookup?q=casa", tight.key);
   assert.equal(refused.status, 429);
   assert.deepEqual(headers(refused), ["2", "0", "40", "40"]);
   assert.equal(((await refused.json()) as Json).error.code, "rate_limited");
 
-  const other = await call("/api/v1/lookup?q=", roomy.key);
+  const other = await call("/v1/lookup?q=", roomy.key);
   assert.equal(other.status, 400);
   assert.deepEqual(headers(other), ["5", "4", "40", null]);
 
-  const nextMinute = await call("/api/v1/lookup?q=casa", tight.key, Date.parse("2026-09-27T12:01:05Z"));
+  const nextMinute = await call("/v1/lookup?q=casa", tight.key, Date.parse("2026-09-27T12:01:05Z"));
   assert.equal(nextMinute.status, 200);
   assert.deepEqual(headers(nextMinute), ["2", "1", "55", null]);
 });
 
 test("a 405, an unknown endpoint and a failed answer carry the key's limit headers; a 401 carries none", async (t) => {
   const { key } = await newKey(10);
-  const wrongMethod = await call("/api/v1/lookup?q=casa", key, NOW, "POST");
+  const wrongMethod = await call("/v1/lookup?q=casa", key, NOW, "POST");
   assert.equal(wrongMethod.status, 405);
   assert.deepEqual(limitHeaders(wrongMethod), ["10", "9", "40", null]);
 
-  const unknown = await call("/api/v1/nowhere", key);
+  const unknown = await call("/v1/nowhere", key);
   assert.equal(unknown.status, 404);
   assert.equal(((await unknown.json()) as Json).error.code, "not_found");
   assert.deepEqual(limitHeaders(unknown), ["10", "8", "40", null]);
@@ -229,19 +231,19 @@ test("a 405, an unknown endpoint and a failed answer carry the key's limit heade
     all: (sql, params) => (counting.has(sql) ? db.all(sql, params) : Promise.reject(new Error("D1 is down"))),
   };
   t.mock.method(console, "error", () => {});
-  const failed = await call("/api/v1/lookup?q=casa", key, NOW, "GET", failing);
+  const failed = await call("/v1/lookup?q=casa", key, NOW, "GET", failing);
   assert.equal(failed.status, 503);
   assert.equal(((await failed.json()) as Json).error.code, "unavailable");
   assert.deepEqual(limitHeaders(failed), ["10", "7", "40", null]);
 
-  assert.deepEqual(limitHeaders(await call("/api/v1/lookup?q=casa", undefined)), [null, null, null, null]);
+  assert.deepEqual(limitHeaders(await call("/v1/lookup?q=casa", undefined)), [null, null, null, null]);
 });
 
 test("each /lookup a key makes adds 2 units to its row for the day", async () => {
   const { keyId, key } = await newKey();
-  await call("/api/v1/lookup?q=casa", key);
-  await call("/api/v1/lookup?q=qqqqqq", key);
-  await call("/api/v1/lookup?q=casa", key, Date.parse("2026-09-28T00:00:01Z"));
+  await call("/v1/lookup?q=casa", key);
+  await call("/v1/lookup?q=qqqqqq", key);
+  await call("/v1/lookup?q=casa", key, Date.parse("2026-09-28T00:00:01Z"));
   assert.deepEqual(unitsOf(keyId), [
     { day: "2026-09-27", units: 4 },
     { day: "2026-09-28", units: 2 },
@@ -257,7 +259,7 @@ class CountingRateLimit implements RateLimit {
   }
 }
 
-test("an API request is answered before the site, and no per-visitor limit counts it", async () => {
+test("each host reaches its own site: lexema.fyi the pages as before, api.lexema.fyi the API, developers.lexema.fyi its route group", async () => {
   const { key } = await newKey();
   const limits = {
     SEARCH_LIMIT: new CountingRateLimit(),
@@ -273,24 +275,54 @@ test("an API request is answered before the site, and no per-visitor limit count
     }),
   };
   const env = { ...limits, DB: d1 as unknown as D1Database, LEXEMA_RELEASE: RELEASE } satisfies ApiBindings & LimitBindings;
-  const siteSaw: string[] = [];
-  const worker = withApi(
-    withRateLimits<typeof env>(async (request) => {
-      siteSaw.push(new URL(request.url).pathname);
-      return new Response("<p>page</p>");
+  const appSaw: Request[] = [];
+  const worker = byHost<typeof env>({
+    app: withRateLimits<typeof env>(async (request) => {
+      appSaw.push(request);
+      // The site sets a cookie, so the API's no-cookie check fails if a request reaches it.
+      return new Response("<p>page</p>", { headers: { "set-cookie": "visitor=1" } });
     }),
-  );
-  const fetch = (path: string, headers: Record<string, string> = {}) =>
-    worker(new Request(`https://lexema.fyi${path}`, { headers }), env, {} as ExecutionContext);
+    api: answerApi,
+    apiNotFound,
+  });
+  const send = (request: Request) => worker(request, env, {} as ExecutionContext);
 
-  assert.equal((await fetch("/api/v1/lookup?q=casa", { "x-api-key": key })).status, 200);
-  assert.equal((await fetch("/api/v1/lookup?q=casa")).status, 401);
-  assert.deepEqual(siteSaw, []);
+  // The API's host answers the API, sets no cookie, and no per-visitor limit counts it.
+  const answered = await send(new Request("https://api.lexema.fyi/v1/lookup?q=casa", { headers: { "x-api-key": key } }));
+  assert.equal(answered.status, 200);
+  assert.equal(((await answered.json()) as Json).query, "casa");
+  assert.equal(answered.headers.get("set-cookie"), null);
+  assert.equal((await send(new Request("https://api.lexema.fyi/v1/lookup?q=casa"))).status, 401);
+  assert.equal(appSaw.length, 0);
   assert.deepEqual(Object.values(limits).map((limit) => limit.calls), [0, 0, 0, 0]);
 
-  await fetch("/?q=casa");
-  assert.deepEqual(siteSaw, ["/"]);
+  // lexema.fyi's pages get the very request that came, counted as before.
+  const search = new Request("https://lexema.fyi/?q=casa");
+  assert.equal(await (await send(search)).text(), "<p>page</p>");
+  assert.equal(appSaw[0], search);
   assert.equal(limits.SEARCH_LIMIT.calls, 1);
+
+  // developers.lexema.fyi/ is the developer route group's page, on its own host.
+  await send(new Request("https://developers.lexema.fyi/"));
+  const developers = new URL(appSaw[1].url);
+  assert.equal(developers.host, "developers.lexema.fyi");
+  assert.equal(developers.pathname, `/${DEVELOPERS_SEGMENT}`);
+  assert.ok(existsSync(join(REPO, "web/app/(developers)", DEVELOPERS_SEGMENT, "page.tsx")));
+
+  // The API's old path on lexema.fyi is gone: a 404 that points nowhere, and nothing behind it runs.
+  const retired = await send(new Request("https://lexema.fyi/api/v1/lookup?q=sale", { headers: { "x-api-key": key } }));
+  assert.equal(retired.status, 404);
+  assert.equal(retired.headers.get("location"), null);
+  assert.equal(appSaw.length, 2);
+  assert.equal(limits.SEARCH_LIMIT.calls, 1);
+});
+
+test("api.lexema.fyi answers a JSON 503 when the Worker has no D1 binding", async (t) => {
+  t.mock.method(console, "error", () => {});
+  const response = await answerApi(new Request("https://api.lexema.fyi/v1/lookup?q=casa"), { LEXEMA_RELEASE: RELEASE });
+  assert.equal(response.status, 503);
+  assert.match(response.headers.get("content-type") ?? "", /^application\/json/);
+  assert.equal(((await response.json()) as Json).error.code, "unavailable");
 });
 
 // The /lookup filters (#151).
@@ -299,7 +331,7 @@ let filterKey: string | undefined;
 
 /** A /lookup with these parameters, on one roomy key the filter tests share. */
 const lookupWith = async (query: string): Promise<Response> =>
-  call(`/api/v1/lookup?${query}`, (filterKey ??= (await newKey(1_000, "filters")).key));
+  call(`/v1/lookup?${query}`, (filterKey ??= (await newKey(1_000, "filters")).key));
 
 /** A 200 /lookup answer's body. */
 const lookupBody = async (query: string): Promise<Json> => {
@@ -442,7 +474,7 @@ test("every filter kind at once: each kept candidate is filtered, shaped and nar
 
 test("a filtered /lookup still costs 2 units and carries release_id, attribution and the limit headers; a refused one costs none", async () => {
   const { keyId, key } = await newKey(10);
-  const response = await call("/api/v1/lookup?q=sale&pos=noun&fields=definitions&limit_definitions=1&number=plurale", key);
+  const response = await call("/v1/lookup?q=sale&pos=noun&fields=definitions&limit_definitions=1&number=plurale", key);
   assert.equal(response.status, 200);
   assert.deepEqual(limitHeaders(response), ["10", "9", "40", null]);
   const body: Json = await response.json();
@@ -452,7 +484,7 @@ test("a filtered /lookup still costs 2 units and carries release_id, attribution
     ["https://it.wiktionary.org/wiki/sale", "https://it.wiktionary.org/wiki/sala"],
   );
 
-  const refused = await call("/api/v1/lookup?q=sale&pos=nouns", key);
+  const refused = await call("/v1/lookup?q=sale&pos=nouns", key);
   assert.equal(refused.status, 400);
   assert.equal(((await refused.json()) as Json).error.code, "invalid_parameter");
   assert.deepEqual(limitHeaders(refused), ["10", "8", "40", null]);
@@ -464,7 +496,7 @@ test("a filtered /lookup still costs 2 units and carries release_id, attribution
 /** One request to an endpoint, a POST when it has a body. */
 const send = (key: string, path: string, body?: string): Promise<Response> =>
   handleApi(
-    new Request(`https://lexema.fyi/api/v1/${path}`, { method: body === undefined ? "GET" : "POST", body, headers: { "x-api-key": key } }),
+    new Request(`https://api.lexema.fyi/v1/${path}`, { method: body === undefined ? "GET" : "POST", body, headers: { "x-api-key": key } }),
     { db, releaseId: RELEASE, now: NOW },
   );
 

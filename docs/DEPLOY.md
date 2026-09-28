@@ -1,19 +1,20 @@
 # How to deploy the site
 
-Put the Worker that serves https://lexema.fyi live from this repository. Running
-it locally is [RUN_THE_SITE.md](RUN_THE_SITE.md); why the page works as it does
-is [WEB.md](WEB.md). Deploying is Huey's call.
+Put the Worker that serves https://lexema.fyi, https://developers.lexema.fyi
+and https://api.lexema.fyi live from this repository. Running it locally is
+[RUN_THE_SITE.md](RUN_THE_SITE.md); why the page works as it does is
+[WEB.md](WEB.md). Deploying is Huey's call.
 
 ## What production is
 
 `web/wrangler.jsonc` holds two configurations. The top level is local
 development, with the placeholder D1 that `pnpm run seed:dev` fills.
-`env.production` is what is live:
+`env.production` is what is deployed:
 
 | Setting | Production |
 |---|---|
 | Worker | `lexema-web` |
-| Address | the custom domain `lexema.fyi` only |
+| Address | the custom domains `lexema.fyi`, `developers.lexema.fyi` and `api.lexema.fyi` only, told apart by host (`web/worker/hosts.ts`) |
 | `workers_dev`, `preview_urls` | both off |
 | D1 | none yet, so a search shows the failed-lookup state; attaching it is #19 |
 | Rate limits | 15 searches and 120 suggestions a minute per visitor ([#128](https://github.com/hueypov/lexema/issues/128)) |
@@ -35,13 +36,19 @@ pnpm --filter @lexema/web run deploy:production
 That builds with `CLOUDFLARE_ENV=production`, which makes the build write the
 production settings into `web/dist/server/wrangler.json`, and deploys that file.
 
+A deploy creates every custom domain its routes list. So a production deploy
+from `main` puts `lexema.fyi`, `developers.lexema.fyi` and `api.lexema.fyi`
+live. The API cannot look anything up there until production has a D1 (#19).
+
 To see what would go up without deploying, add `--dry-run`:
 
 ```sh
 pnpm --filter @lexema/web run deploy:production --dry-run
 ```
 
-It ends by listing the bindings, and nothing else:
+The domains it would create are the `routes` in
+`web/dist/server/wrangler.json`. The dry run ends by listing the bindings, and
+nothing else:
 
 ```
 env.SEARCH_LIMIT (15 requests/60s)         Rate Limit

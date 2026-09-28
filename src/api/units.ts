@@ -21,7 +21,7 @@ const PER_WORD = {
 export type RequestPricedEndpoint = keyof typeof PER_REQUEST;
 export type WordPricedEndpoint = keyof typeof PER_WORD;
 
-/** Every endpoint of the API, as its path under `/api/v1/` names it. */
+/** Every endpoint of the API, as its path under `/v1/` names it. */
 export type Endpoint = RequestPricedEndpoint | WordPricedEndpoint;
 
 /** How an endpoint is priced. */
@@ -53,8 +53,8 @@ export function unitCost(charge: Charge): number {
   return "words" in charge ? PER_WORD[charge.endpoint] * charge.words : PER_REQUEST[charge.endpoint];
 }
 
-/** Where every API path starts. */
-export const API_PREFIX = "/api/v1/";
+/** Where every API path starts, on https://api.lexema.fyi. */
+export const API_PREFIX = "/v1/";
 
 /** The endpoint a path names, or undefined for any path that is not one. */
 export function endpointOf(path: string): Endpoint | undefined {

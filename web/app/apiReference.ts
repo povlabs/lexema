@@ -16,9 +16,10 @@ import { MAX_QUERY_LENGTH } from "@lexema/lookup/lookup.ts";
 import { SUGGESTION_LIMIT } from "@lexema/lookup/suggest.ts";
 import { MAX_BATCH_WORDS } from "../worker/api/endpoints.ts";
 import { GRAMMAR_CODES, MATCHES, PARTS_OF_SPEECH, SECTIONS } from "../worker/api/lookupFilters.ts";
+import { ORIGIN } from "../worker/hosts.ts";
 import type { ResultCoreJson, SectionsJson } from "../worker/api/lookupAnswer.ts";
 
-export const API_ORIGIN = "https://lexema.fyi";
+export const API_ORIGIN = ORIGIN.api;
 export const API_BASE = `${API_ORIGIN}${API_PREFIX.slice(0, -1)}`;
 
 /** A key as the examples write it. */
@@ -32,7 +33,7 @@ export interface Parameter {
 
 /** One request and what the API answers it with. */
 export interface Example {
-  /** The path and query, from `/api/v1/`. */
+  /** The path and query, from `/v1/`. */
   path: string;
   /** The JSON body a POST sends. */
   body?: unknown;

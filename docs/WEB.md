@@ -9,15 +9,16 @@ underneath. This page is the reasoning. To run it, see
 ## Where the parts live
 
 ```
-web/app/page.tsx        reads the query, runs the lookup, streams the answer
+web/app/(lexema)/page.tsx  reads the query, runs the lookup, streams the answer
 web/app/SearchPage.tsx  the shell, and the five states a query can be in
 web/app/SearchField.tsx the search form, and the suggestion list under it
-web/app/suggest/route.ts  GET /suggest, the list's JSON
+web/app/(lexema)/suggest/route.ts  GET /suggest, the list's JSON
 web/app/Reading.tsx     how one entry renders
 web/app/params.ts       the query as it arrives in the URL
 web/app/attempt.ts      a lookup, or the fact that it did not happen
 web/app/db.ts           the D1 binding
-web/worker/index.ts     the Worker's entry: the rate limits, then vinext
+web/worker/index.ts     the Worker's entry: the host, then the API or the rate limits and vinext
+web/worker/hosts.ts     which of the three hosts a request is for, and where it goes
 web/worker/rateLimit.ts which requests are counted, and against whose count
 src/lookup/             the query layer, shared with the importer's tests
 web/test/page.test.tsx  the page, rendered over a fixture release
@@ -297,7 +298,7 @@ the page says nothing about what it did not match.
 
 Every word page ends with `Source ↗ · Report a mistake` (#51). The link opens a
 small box: what is wrong, which reading (optional), and details, with no account
-and no email. `POST /report` (`web/app/report/route.ts`, `web/app/report.ts`)
+and no email. `POST /report` (`web/app/(lexema)/report/route.ts`, `web/app/report.ts`)
 stores the report in `reader_report` and changes nothing on the page; a person
 reviews it (#12) and may then write a `claim_review` row. A report is not stored
 in `claim_review` itself, because that table holds reviewed verdicts, not
@@ -369,7 +370,7 @@ those two, by Huey's ruling on [#133](https://github.com/hueypov/lexema/issues/1
 the release's other facts are in
 [`src/source/archiveFacts.ts`](../src/source/archiveFacts.ts).
 
-`app/Attribution.tsx` is the markup, and `app/attribution/page.tsx` is the wiring.
+`app/Attribution.tsx` is the markup, and `app/(lexema)/attribution/page.tsx` is the wiring.
 The page reads no database: it shows the published archive's source from
 `src/source/archiveFacts.ts`, so it shows it even while production has no D1. A
 fact that is not recorded renders as *not recorded* in words, and a field the draft in

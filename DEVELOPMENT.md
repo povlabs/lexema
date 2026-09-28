@@ -64,8 +64,11 @@ See [how to run the search page](./docs/RUN_THE_SITE.md) for the full recipe,
 
 ### Call the JSON API
 
-The same Worker answers a private JSON API under `/api/v1` (epic
-[#148](https://github.com/hueypov/lexema/issues/148)). Every request needs an
+The same Worker answers a private JSON API on its own host,
+`https://api.lexema.fyi/v1`, and `http://api.localhost:8790/v1` locally (epic
+[#148](https://github.com/hueypov/lexema/issues/148); how each host is reached
+is in [how to run the search page](./docs/RUN_THE_SITE.md#reach-each-host)).
+Every request needs an
 API key in the `X-API-Key` header. Keys live in the local D1 the seed writes,
 and are made and revoked by hand; there is no signup.
 
@@ -82,8 +85,8 @@ database `pnpm run seed:dev` loads, and re-seeding drops every key with it.
 With the Worker running as in [how to run the search page](./docs/RUN_THE_SITE.md):
 
 ```sh
-curl -i -H "X-API-Key: lx_…" "http://localhost:8790/api/v1/lookup?q=andavano"
-curl -i -H "X-API-Key: lx_…" "http://localhost:8790/api/v1/lookup?q=andare&pos=verb&fields=forms&mood=congiuntivo&tense=presente&person=noi"
+curl -i -H "X-API-Key: lx_…" "http://api.localhost:8790/v1/lookup?q=andavano"
+curl -i -H "X-API-Key: lx_…" "http://api.localhost:8790/v1/lookup?q=andare&pos=verb&fields=forms&mood=congiuntivo&tense=presente&person=noi"
 ```
 
 `/lookup` takes optional filters, each once: `pos`, `match` (`exact`, `form` or
@@ -98,13 +101,13 @@ The other endpoints ([web/worker/api/endpoints.ts](./web/worker/api/endpoints.ts
 reuse the same lookup and never rank anew:
 
 ```sh
-curl -i -H "X-API-Key: lx_…" "http://localhost:8790/api/v1/lemmatize?q=andavano"
-curl -i -H "X-API-Key: lx_…" "http://localhost:8790/api/v1/exists?q=sale"
-curl -i -H "X-API-Key: lx_…" "http://localhost:8790/api/v1/inflect?lemma=andare&mood=congiuntivo&tense=presente&person=noi"
-curl -i -H "X-API-Key: lx_…" "http://localhost:8790/api/v1/suggest?q=sal"
-curl -i -H "X-API-Key: lx_…" "http://localhost:8790/api/v1/nearby?q=mangare"
-curl -i -H "X-API-Key: lx_…" "http://localhost:8790/api/v1/random?pos=noun"
-curl -i -H "X-API-Key: lx_…" -H "content-type: application/json" -d '{"q":["sale","andavano"]}' "http://localhost:8790/api/v1/lookup/batch"
+curl -i -H "X-API-Key: lx_…" "http://api.localhost:8790/v1/lemmatize?q=andavano"
+curl -i -H "X-API-Key: lx_…" "http://api.localhost:8790/v1/exists?q=sale"
+curl -i -H "X-API-Key: lx_…" "http://api.localhost:8790/v1/inflect?lemma=andare&mood=congiuntivo&tense=presente&person=noi"
+curl -i -H "X-API-Key: lx_…" "http://api.localhost:8790/v1/suggest?q=sal"
+curl -i -H "X-API-Key: lx_…" "http://api.localhost:8790/v1/nearby?q=mangare"
+curl -i -H "X-API-Key: lx_…" "http://api.localhost:8790/v1/random?pos=noun"
+curl -i -H "X-API-Key: lx_…" -H "content-type: application/json" -d '{"q":["sale","andavano"]}' "http://api.localhost:8790/v1/lookup/batch"
 ```
 
 `/inflect` takes `/lookup`'s grammar filters and is a 404 `unknown_lemma` for a

@@ -410,7 +410,7 @@ export const REFERENCE_SECTION = "mt-10 border-t border-border pt-6 sm:mt-12 sm:
 /** An endpoint: its heading and blocks, a thin rule before every one after the first. */
 export const REFERENCE_ENDPOINT = READING;
 export const REFERENCE_ENDPOINTS = READINGS;
-/** `GET · /api/v1/lookup`: the method in the accent, as a reading's number is. */
+/** `GET · /v1/lookup`: the method in the accent, as a reading's number is. */
 export const REFERENCE_ENDPOINT_HEADING = READING_HEADING;
 export const REFERENCE_METHOD = READING_NUMBER;
 export const REFERENCE_PATH = "font-mono font-normal text-[1.05rem] break-all";

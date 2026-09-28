@@ -13,11 +13,11 @@
 
 import { headers } from "next/headers";
 import { Suspense } from "react";
-import { SEARCH_LIMITED_HEADER } from "../worker/rateLimit.ts";
-import { FirstLoad, Limited, Outcome, Pending, SearchPage } from "./SearchPage";
-import { firstQuery, pageTitle, type QueryParam } from "./params";
-import { wordPage } from "./wordPage.ts";
-import { search, turnstile } from "./db";
+import { SEARCH_LIMITED_HEADER } from "../../worker/rateLimit.ts";
+import { FirstLoad, Limited, Outcome, Pending, SearchPage } from "../SearchPage";
+import { firstQuery, pageTitle, type QueryParam } from "../params";
+import { wordPage } from "../wordPage.ts";
+import { search, turnstile } from "../db";
 
 interface PageProps {
   searchParams: { q?: QueryParam };

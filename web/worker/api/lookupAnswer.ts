@@ -1,5 +1,5 @@
-// What `GET /api/v1/lookup` answers (#150): every candidate the lookup
-// returns, as JSON in the shape #148's brief draws.
+// What `GET /v1/lookup` on api.lexema.fyi answers (#150): every candidate the
+// lookup returns, as JSON in the shape #148's brief draws.
 //
 // A candidate is a record and how the query reached it:
 //

@@ -17,12 +17,13 @@ import { DatabaseSync } from "node:sqlite";
 import { gzipSync } from "node:zlib";
 import { renderToStaticMarkup } from "react-dom/server";
 import { createKey, KEY_BY_HASH_SQL, revokeKey } from "../../src/api/keys.js";
-import { ENDPOINTS, UNIT_WEIGHT } from "../../src/api/units.js";
+import { API_PREFIX, ENDPOINTS, UNIT_WEIGHT } from "../../src/api/units.js";
 import { COUNT_MINUTE_SQL, SWEEP_MINUTES_SQL } from "../../src/api/usage.js";
 import { seedSql } from "../../src/import/seedSql.js";
 import { fromNodeSqlite, type LookupDatabase } from "../../src/lookup/database.js";
 import { loadFixturePages } from "../../src/source/rawPage.js";
 import {
+  API_BASE,
   ENDPOINT_REFERENCE,
   ERROR_EXAMPLE,
   ERRORS,
@@ -72,7 +73,7 @@ const newKey = (perMinuteLimit = 1_000) => createKey(db, { label: "developers", 
 /** One request as the Worker hands it to the API. */
 function send(path: string, init: { key?: string; method?: string; body?: string } = {}, over = db): Promise<Response> {
   const headers: Record<string, string> = init.key === undefined ? {} : { "x-api-key": init.key };
-  return handleApi(new Request(`https://lexema.fyi/api/v1/${path}`, { method: init.method ?? "GET", body: init.body, headers }), {
+  return handleApi(new Request(`${API_BASE}/${path}`, { method: init.method ?? "GET", body: init.body, headers }), {
     db: over,
     releaseId: RELEASE,
     now: NOW,
@@ -169,13 +170,20 @@ test("the page names every endpoint of the unit map with its weight, every /look
   for (const endpoint of ENDPOINTS) {
     const { units, per } = UNIT_WEIGHT[endpoint];
     const cost = `${units} unit${units === 1 ? "" : "s"}${per === "word" ? " per word" : ""}`;
-    assert.ok(text.includes(`/api/v1/${endpoint} · ${cost}`), `${endpoint}: ${cost}`);
+    assert.ok(text.includes(`${API_PREFIX}${endpoint} · ${cost}`), `${endpoint}: ${cost}`);
   }
   // The filters #148 names for /lookup, each a parameter row of its section.
-  const lookup = text.slice(text.indexOf("/api/v1/lookup · "), text.indexOf("/api/v1/lemmatize · "));
+  const lookup = text.slice(text.indexOf(`${API_PREFIX}lookup · `), text.indexOf(`${API_PREFIX}lemmatize · `));
   for (const filter of ["pos", "match", "fields", "limit_definitions", "mood", "tense", "person", "gender", "number"]) {
     assert.match(lookup, new RegExp(` ${filter} (required )?[A-Z\`]`), filter);
   }
   for (const error of ERRORS) assert.ok(text.includes(` ${error.status} ${error.code} `), error.code);
   for (const header of HEADERS) assert.ok(text.includes(` ${header.name} `), header.name);
+});
+
+test("every request the page prints is sent to https://api.lexema.fyi/v1", () => {
+  const requests = codeBlocks(renderToStaticMarkup(<Developers />)).filter((block) => block.startsWith("curl"));
+  // Each example's request, and the one that shows the key header.
+  assert.equal(requests.length, EXAMPLES.length + 1);
+  for (const request of requests) assert.match(request, /\n? *"https:\/\/api\.lexema\.fyi\/v1\/[^"]+"$/, request);
 });

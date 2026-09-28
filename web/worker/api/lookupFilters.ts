@@ -1,6 +1,7 @@
-// The filters on `GET /api/v1/lookup` (#151), each read once from the query
-// string into a closed value. A value outside a filter's vocabulary is a
-// refusal naming the parameter, never a filter that silently matches nothing.
+// The filters on `GET /v1/lookup` on api.lexema.fyi (#151), each read once
+// from the query string into a closed value. A value outside a filter's
+// vocabulary is a refusal naming the parameter, never a filter that silently
+// matches nothing.
 //
 // `pos` and `match` choose candidates. The rest shape each candidate that is
 // kept: `fields` and `limit_definitions` choose what a result carries, and the
