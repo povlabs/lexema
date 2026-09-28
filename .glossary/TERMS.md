@@ -28,3 +28,10 @@ and this file is the doc to fix.
 |---|---|---|
 | API key | The secret a client of the JSON API sends as `X-API-Key`. Stored only as its SHA-256, with its own label, per-minute request limit and daily unit allowance (`api_key` in `src/db/schema.sql`; `src/api/keys.ts`); created and revoked with `pnpm run api-key`. | a visitor key — the per-visitor rate-limit identity the site derives from an address (`visitorKey` in `web/worker/rateLimit.ts`) |
 | unit | The usage weight of one answered API request, fixed per endpoint in one closed map (`UNIT_WEIGHT` in `src/api/units.ts`: `/lookup` is 2, a batch 1 per word) and summed per key per UTC day in `api_key_usage`. | a request — the per-minute limit counts requests, not units |
+
+## Developer site
+| Term | Definition | Not |
+|---|---|---|
+| developer account | A person signed in to developers.lexema.fyi, one row of `developer_account` (`src/accounts/accounts.ts`). It holds nothing personal itself; who it is lives in its provider identities. Created on the first sign-in under a verified email nobody has used. | a Google or GitHub account — that is a provider identity |
+| provider identity | One Google or GitHub account linked to one developer account, by the provider's own id for the person and the verified email it was linked with (`provider_identity` in `src/db/schema.sql`). A second provider's identity with the same verified email links to the same account. | the account itself, or an unverified email, which is never stored |
+| session | A signed-in browser: a random token in a host-only `__Host-` cookie on developers.lexema.fyi, stored only as its SHA-256 with its account and expiry (`developer_session`; `src/accounts/sessions.ts`). | an API key — a session never authenticates an API call |

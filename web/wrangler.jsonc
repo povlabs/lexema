@@ -47,7 +47,10 @@
     { "name": "REPORT_LIMIT", "namespace_id": "1283", "simple": { "limit": 2, "period": 60 } },
     // - REPORT_OPEN_LIMIT, 10 openings of the report box a minute: each stores
     //   the token the 3 s minimum is timed against.
-    { "name": "REPORT_OPEN_LIMIT", "namespace_id": "1284", "simple": { "limit": 10, "period": 60 } }
+    { "name": "REPORT_OPEN_LIMIT", "namespace_id": "1284", "simple": { "limit": 10, "period": 60 } },
+    // - SIGN_IN_LIMIT, 10 sign-in starts a minute on developers.lexema.fyi
+    //   (Huey, #163 R1.2; worker/signIn.ts).
+    { "name": "SIGN_IN_LIMIT", "namespace_id": "1651", "simple": { "limit": 10, "period": 60 } }
   ],
   "vars": {
     // Which imported release to serve. A deployment flips this to activate a
@@ -56,7 +59,12 @@
     // Cloudflare Turnstile's public site key for the report box (#51). Empty
     // means no widget and no check; the secret is TURNSTILE_SECRET_KEY, set
     // with `wrangler secret put`, never here.
-    "TURNSTILE_SITE_KEY": ""
+    "TURNSTILE_SITE_KEY": "",
+    // The sign-in providers' OAuth client ids (#165). Empty means that
+    // provider is unavailable; so does an unset secret, GOOGLE_CLIENT_SECRET
+    // or GITHUB_CLIENT_SECRET, set with `wrangler secret put`, never here.
+    "GOOGLE_CLIENT_ID": "",
+    "GITHUB_CLIENT_ID": ""
   },
   "env": {
     // What runs at https://lexema.fyi, https://developers.lexema.fyi and
@@ -82,11 +90,14 @@
         { "name": "SEARCH_LIMIT", "namespace_id": "1281", "simple": { "limit": 15, "period": 60 } },
         { "name": "SUGGEST_LIMIT", "namespace_id": "1282", "simple": { "limit": 120, "period": 60 } },
         { "name": "REPORT_LIMIT", "namespace_id": "1283", "simple": { "limit": 2, "period": 60 } },
-        { "name": "REPORT_OPEN_LIMIT", "namespace_id": "1284", "simple": { "limit": 10, "period": 60 } }
+        { "name": "REPORT_OPEN_LIMIT", "namespace_id": "1284", "simple": { "limit": 10, "period": 60 } },
+        { "name": "SIGN_IN_LIMIT", "namespace_id": "1651", "simple": { "limit": 10, "period": 60 } }
       ],
       "vars": {
         "LEXEMA_RELEASE": "it-dev",
-        "TURNSTILE_SITE_KEY": ""
+        "TURNSTILE_SITE_KEY": "",
+        "GOOGLE_CLIENT_ID": "",
+        "GITHUB_CLIENT_ID": ""
       }
     }
   }
