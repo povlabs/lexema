@@ -45,4 +45,4 @@ jobs:
           fi
           printf 'Scanning %d changed file(s):\n' "${#changed[@]}"
           printf '  %s\n' "${changed[@]}"
-          pnpm dlx @kampus/fabrika-cli@0.7.1 guard leak-guard scan "${changed[@]}"
+          pnpm dlx @kampus/fabrika-cli@0.8.0 guard leak-guard scan "${changed[@]}"
