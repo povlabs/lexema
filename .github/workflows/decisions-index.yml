@@ -28,4 +28,4 @@ jobs:
       - name: Validate
         env:
           FABRIKA_GLOBAL_WARNING_DISABLED: "1"
-        run: pnpm dlx @kampus/fabrika-cli@0.7.1 guard decisions-index validate
+        run: pnpm dlx @kampus/fabrika-cli@0.8.0 guard decisions-index validate
