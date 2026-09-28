@@ -62,6 +62,71 @@ See [how to run the search page](./docs/RUN_THE_SITE.md) for the full recipe,
 [why the search page works this way](./docs/WEB.md) for the design, and
 [the development seed](./docs/DEV_SEED.md) for what the seed covers.
 
+### Call the JSON API
+
+The same Worker answers a private JSON API under `/api/v1` (epic
+[#148](https://github.com/hueypov/lexema/issues/148)). Every request needs an
+API key in the `X-API-Key` header. Keys live in the local D1 the seed writes,
+and are made and revoked by hand; there is no signup.
+
+```sh
+pnpm run api-key create --label "learning app" --per-minute 60 --daily-units 20000
+pnpm run api-key revoke 3
+```
+
+`create` prints the new key's id and the key itself, once. Only the key's SHA-256
+is stored, so a lost key is revoked and replaced, never read back. `revoke`
+takes the id. Both write to `SEED_STATE` (default `.data/seed-state`), the
+database `pnpm run seed:dev` loads, and re-seeding drops every key with it.
+
+With the Worker running as in [how to run the search page](./docs/RUN_THE_SITE.md):
+
+```sh
+curl -i -H "X-API-Key: lx_…" "http://localhost:8790/api/v1/lookup?q=andavano"
+curl -i -H "X-API-Key: lx_…" "http://localhost:8790/api/v1/lookup?q=andare&pos=verb&fields=forms&mood=congiuntivo&tense=presente&person=noi"
+```
+
+`/lookup` takes optional filters, each once: `pos`, `match` (`exact`, `form` or
+`any`), `fields`, `limit_definitions`, and the grammar filters `mood`, `tense`,
+`person`, `gender` and `number`, in ADR 0015's Italian labels or English codes.
+The accepted values are in
+[web/worker/api/lookupFilters.ts](./web/worker/api/lookupFilters.ts). A value
+outside them is a 400 `invalid_parameter` naming the parameter. Filters that
+keep none of a found word's candidates answer 200 with empty `results`.
+
+The other endpoints ([web/worker/api/endpoints.ts](./web/worker/api/endpoints.ts))
+reuse the same lookup and never rank anew:
+
+```sh
+curl -i -H "X-API-Key: lx_…" "http://localhost:8790/api/v1/lemmatize?q=andavano"
+curl -i -H "X-API-Key: lx_…" "http://localhost:8790/api/v1/exists?q=sale"
+curl -i -H "X-API-Key: lx_…" "http://localhost:8790/api/v1/inflect?lemma=andare&mood=congiuntivo&tense=presente&person=noi"
+curl -i -H "X-API-Key: lx_…" "http://localhost:8790/api/v1/suggest?q=sal"
+curl -i -H "X-API-Key: lx_…" "http://localhost:8790/api/v1/nearby?q=mangare"
+curl -i -H "X-API-Key: lx_…" "http://localhost:8790/api/v1/random?pos=noun"
+curl -i -H "X-API-Key: lx_…" -H "content-type: application/json" -d '{"q":["sale","andavano"]}' "http://localhost:8790/api/v1/lookup/batch"
+```
+
+`/inflect` takes `/lookup`'s grammar filters and is a 404 `unknown_lemma` for a
+word that heads no record. `/random` takes `/lookup`'s `pos` and reads the
+`source_record_by_pos` index, so a database seeded before it needs
+`pnpm run seed:dev` again. `/lookup/batch` takes 1 to 200 words and answers one
+light result per candidate, or one `found: false` per word not in the release.
+
+Each key has its own per-minute request limit, counted in D1, and every answer
+to a known key carries `RateLimit-Limit`, `RateLimit-Remaining` and
+`RateLimit-Reset`; a 401 carries none. Past the limit the answer is a 429 with
+`Retry-After`. Each answered request, found (200) or not found (404), adds its
+units to the key's row for the day ([src/api/units.ts](./src/api/units.ts)). A
+request refused before an answer (a 400 bad `q`, parameter or body, a 405 or a 429) adds none. An
+API request is never counted against the site's per-visitor limits.
+
+The reference a key holder reads is the site's `/developers` page. What it states
+is [web/app/apiReference.ts](./web/app/apiReference.ts), and
+[web/test/developers.test.tsx](./web/test/developers.test.tsx) sends every example
+it prints to the API and fails when an answer differs, so a change to an answer
+changes the example with it.
+
 ## Stack
 
 | Layer | Choice | What it does for Lexema |
@@ -78,6 +143,7 @@ See [how to run the search page](./docs/RUN_THE_SITE.md) for the full recipe,
 
 ```
 src/
+├── api/            # API keys, unit weights and per-key counters; `pnpm run api-key`
 ├── cli.ts          # `pnpm run validate` — streams the file, writes the report
 ├── core/           # dataset-independent: record types, candidate resolver, report
 ├── db/             # the D1 schema and the lookup queries, as SQL

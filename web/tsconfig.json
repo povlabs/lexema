@@ -14,8 +14,9 @@
     "paths": {
       "@lexema/lookup/*": ["../src/lookup/*"],
       "@lexema/italian/*": ["../src/italian/*"],
-      "@lexema/source/*": ["../src/source/*"]
+      "@lexema/source/*": ["../src/source/*"],
+      "@lexema/api/*": ["../src/api/*"]
     }
   },
-  "include": ["app", "worker", "test", "vite.config.ts", "worker-configuration.d.ts", "../src/lookup", "../src/italian"]
+  "include": ["app", "worker", "test", "vite.config.ts", "worker-configuration.d.ts", "../src/lookup", "../src/italian", "../src/api"]
 }

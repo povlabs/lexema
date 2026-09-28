@@ -15,11 +15,14 @@ import type {
   LemmaLink,
   LemmaListing,
   LookupResult,
+  QueryInfo,
   Reading,
   RecoveredDefinition,
   RecoveredRoute,
   ReleaseDump,
   ReleaseInfo,
+  RejectedQuery,
+  RejectedResult,
   Review,
   Sense,
   SourceForm,
@@ -74,18 +77,29 @@ async function queryOne<T>(db: LookupDatabase, sql: string, ...params: (string |
   return (await db.all<T>(sql, params))[0];
 }
 
-export async function lookup({ db, releaseId, query }: LookupOptions): Promise<LookupResult> {
+/** Why a query is not sent to the index, or undefined when it may be: empty, or longer than the bound. */
+export function rejectionOf(query: string): RejectedQuery | undefined {
   const trimmed = query.trim();
-  if (trimmed.length === 0) {
-    return { outcome: "rejected", query: { raw: query }, rejection: { reason: "empty" } };
-  }
-  if (trimmed.length > MAX_QUERY_LENGTH) {
-    return {
-      outcome: "rejected",
-      query: { raw: query },
-      rejection: { reason: "too-long", length: trimmed.length, limit: MAX_QUERY_LENGTH },
-    };
-  }
+  if (trimmed.length === 0) return { reason: "empty" };
+  if (trimmed.length > MAX_QUERY_LENGTH) return { reason: "too-long", length: trimmed.length, limit: MAX_QUERY_LENGTH };
+  return undefined;
+}
+
+/** A query that passed every check and names a servable release: ready to probe the index. */
+interface ReadyQuery {
+  outcome: "ready";
+  query: QueryInfo;
+  release: ReleaseInfo;
+}
+
+/**
+ * The checks every probe of the index makes first: a query that is not empty
+ * and not too long, a complete release, and that release's own normalizer.
+ */
+async function prepareQuery(db: LookupDatabase, releaseId: string, query: string): Promise<RejectedResult | ReadyQuery> {
+  const rejection = rejectionOf(query);
+  if (rejection !== undefined) return { outcome: "rejected", query: { raw: query }, rejection };
+  const trimmed = query.trim();
 
   const release = await readRelease(db, releaseId);
   if (release === undefined) {
@@ -103,7 +117,34 @@ export async function lookup({ db, releaseId, query }: LookupOptions): Promise<L
     );
   }
   const key = normalizeItalianExact(trimmed);
-  const queryInfo = { raw: query, key, normalizer: release.normalizer };
+  return { outcome: "ready", query: { raw: query, key, normalizer: release.normalizer }, release };
+}
+
+/**
+ * Whether a lookup of the query would find anything, read without building a
+ * reading: the first row of the lookup's own search, so the two never disagree.
+ * `word` is that row's record, a headword hit before a form hit, so an answer
+ * can credit the page the query was found on.
+ */
+export type ExistsResult =
+  | RejectedResult
+  | { outcome: "absent"; query: QueryInfo; release: ReleaseInfo }
+  | { outcome: "present"; query: QueryInfo; release: ReleaseInfo; word: string };
+
+export async function exists({ db, releaseId, query }: LookupOptions): Promise<ExistsResult> {
+  const prepared = await prepareQuery(db, releaseId, query);
+  if (prepared.outcome === "rejected") return prepared;
+  const [first] = await queryAll<HitRow>(db, `${SEARCH_SQL}\n      LIMIT 1`, releaseId, prepared.query.key);
+  return first === undefined
+    ? { outcome: "absent", query: prepared.query, release: prepared.release }
+    : { outcome: "present", query: prepared.query, release: prepared.release, word: first.record_word };
+}
+
+export async function lookup({ db, releaseId, query }: LookupOptions): Promise<LookupResult> {
+  const prepared = await prepareQuery(db, releaseId, query);
+  if (prepared.outcome === "rejected") return prepared;
+  const { release, query: queryInfo } = prepared;
+  const { key } = queryInfo;
 
   const hits = await queryAll<HitRow>(db, SEARCH_SQL, releaseId, key);
 

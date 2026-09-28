@@ -142,6 +142,12 @@ CREATE TABLE source_record (
   UNIQUE (record_id, release_id)
 ) STRICT;
 
+-- The records of one part of speech in line order, so a random pick of one
+-- (`/api/v1/random?pos=`, src/lookup/random.ts) is two index probes, never a
+-- scan. A pick with no part of speech walks UNIQUE (release_id, line_no).
+CREATE INDEX source_record_by_pos
+  ON source_record (release_id, pos, line_no);
+
 -- The verbatim record, split off because it is large (391 MB of Italian JSON,
 -- ~700 bytes a row) and is only read when rendering one result. Keeping it out
 -- of source_record keeps the table that every lookup joins small enough to stay
@@ -515,6 +521,44 @@ CREATE INDEX reader_report_by_visitor ON reader_report (visitor_hash, received_a
 CREATE TABLE report_opening (
   token     TEXT PRIMARY KEY,
   opened_at TEXT NOT NULL      -- ISO-8601, the server's clock
+) STRICT;
+
+
+-- ---------------------------------------------------------------------------
+-- API keys and usage (#150)
+-- ---------------------------------------------------------------------------
+
+-- A key that may call the JSON API under /api/v1 (src/api/keys.ts). Only the
+-- SHA-256 of the key is stored, never the key: the CLI prints it once, when it
+-- is created (src/api/keyCli.ts). The limits are the key's own (Huey, #148):
+-- requests a minute, counted in api_key_minute, and units a day, recorded in
+-- api_key_usage. A revoked key stays, so its usage keeps its owner.
+CREATE TABLE api_key (
+  key_id           INTEGER PRIMARY KEY,
+  key_hash         TEXT    NOT NULL UNIQUE CHECK (length(key_hash) = 64),
+  label            TEXT    NOT NULL CHECK (length(label) BETWEEN 1 AND 200),
+  per_minute_limit INTEGER NOT NULL CHECK (per_minute_limit > 0),
+  daily_units      INTEGER NOT NULL CHECK (daily_units > 0),
+  created_at       TEXT    NOT NULL,  -- ISO-8601
+  revoked_at       TEXT               -- ISO-8601; NULL while the key is live
+) STRICT;
+
+-- A key's requests in one minute, `minute` being whole minutes since the epoch.
+-- One upsert counts a request and returns the count (src/api/usage.ts); the
+-- key's finished minutes are deleted when its next minute starts.
+CREATE TABLE api_key_minute (
+  key_id   INTEGER NOT NULL REFERENCES api_key(key_id),
+  minute   INTEGER NOT NULL,
+  requests INTEGER NOT NULL CHECK (requests > 0),
+  PRIMARY KEY (key_id, minute)
+) STRICT;
+
+-- A key's units in one UTC day, by the weights in src/api/units.ts.
+CREATE TABLE api_key_usage (
+  key_id INTEGER NOT NULL REFERENCES api_key(key_id),
+  day    TEXT    NOT NULL CHECK (day GLOB '[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]'),
+  units  INTEGER NOT NULL CHECK (units >= 0),
+  PRIMARY KEY (key_id, day)
 ) STRICT;
 
 

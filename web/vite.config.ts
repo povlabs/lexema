@@ -22,6 +22,7 @@ export default defineConfig({
       "@lexema/lookup": fileURLToPath(new URL("../src/lookup", import.meta.url)),
       "@lexema/italian": fileURLToPath(new URL("../src/italian", import.meta.url)),
       "@lexema/source": fileURLToPath(new URL("../src/source", import.meta.url)),
+      "@lexema/api": fileURLToPath(new URL("../src/api", import.meta.url)),
     },
   },
 });

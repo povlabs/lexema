@@ -11,6 +11,7 @@ import { NEW_TAB } from "./ExternalLink";
 import { OneLine } from "./OneLine";
 import { ReadingView } from "./Reading";
 import { ReportDialog } from "./ReportDialog";
+import { sourcePageUrl } from "./sourcePage.ts";
 import { WordList } from "./WordList";
 import type { WordPage } from "./wordPage.ts";
 import {
@@ -33,17 +34,6 @@ import {
 export const JUMP_LINKS_FROM = 3;
 
 export { WORD_LIST_SLICE } from "./WordList";
-
-/**
- * Where a word can be checked by hand. Every record came from the Italian
- * Wiktionary page of its headword; the source stores no URL, so it is built
- * from the headword (ADR 0009). The full credit is on `/attribution`.
- */
-const WIKTIONARY_PAGE = "https://it.wiktionary.org/wiki/";
-
-export function sourcePageUrl(word: string): string {
-  return WIKTIONARY_PAGE + encodeURIComponent(word.replace(/ /g, "_"));
-}
 
 /** The IPA under the headword; the source's own qualifier tells several apart. */
 function Pronunciation({ facts }: { facts: WordFacts }) {
