@@ -15,7 +15,6 @@ import { fileURLToPath } from "node:url";
 import { unstable_readConfig } from "wrangler";
 import { shownFor } from "../app/SearchField";
 import type { SuggestAnswer } from "../app/suggestAnswer.ts";
-import { withoutHeldBack } from "../worker/heldBack.ts";
 import {
   RETRY_AFTER_SECONDS,
   SEARCH_LIMITED_HEADER,
@@ -245,7 +244,7 @@ test("the limits are the rulings, in the Wrangler configuration, the same in pro
   for (const { simple } of local.ratelimits) assert.equal(simple.period, RETRY_AFTER_SECONDS);
 });
 
-test("production lists its three custom domains only, no D1, logs on; local keeps its D1", () => {
+test("production is what is live: its three custom domains only, no D1, logs on; local keeps its D1", () => {
   const production = read("production");
   assert.equal(production.name, "lexema-web");
   assert.equal(production.workers_dev, false);
@@ -267,8 +266,4 @@ test("production lists its three custom domains only, no D1, logs on; local keep
     [{ binding: "DB", database_name: "lexema" }],
   );
   assert.equal(local.observability?.enabled, true);
-});
-
-test("a production deploy creates lexema.fyi alone until the developer site is ready", () => {
-  assert.deepEqual(withoutHeldBack(read("production").routes ?? []), [{ pattern: "lexema.fyi", custom_domain: true }]);
 });

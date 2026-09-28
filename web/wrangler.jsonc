@@ -65,9 +65,7 @@
     // which `pnpm --filter @lexema/web run deploy:production` sets
     // (docs/DEPLOY.md). Only the custom domains serve it: no workers.dev
     // address and no preview URLs. No D1 binding until #19, so a search there
-    // answers with the failed-lookup state. Until the developer site is ready,
-    // the build leaves developers.lexema.fyi and api.lexema.fyi out of the
-    // routes it deploys (worker/heldBack.ts).
+    // answers with the failed-lookup state.
     "production": {
       "name": "lexema-web",
       "workers_dev": false,
