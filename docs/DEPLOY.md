@@ -17,7 +17,7 @@ development, with the placeholder D1 that `pnpm run seed:dev` fills.
 | Address | the custom domains `lexema.fyi`, `developers.lexema.fyi` and `api.lexema.fyi` only, told apart by host (`web/worker/hosts.ts`) |
 | `workers_dev`, `preview_urls` | both off |
 | D1 | none yet, so a search shows the failed-lookup state; attaching it is #19 |
-| Rate limits | 15 searches and 120 suggestions a minute per visitor ([#128](https://github.com/hueypov/lexema/issues/128)); 10 sign-in starts a minute on the developer site ([#165](https://github.com/hueypov/lexema/issues/165)) |
+| Rate limits | 15 searches and 120 suggestions a minute per visitor ([#128](https://github.com/hueypov/lexema/issues/128)); 10 sign-in starts ([#165](https://github.com/hueypov/lexema/issues/165)) and 5 key creations ([#168](https://github.com/hueypov/lexema/issues/168)) a minute on the developer site |
 | Sign-in | Google and GitHub, each on only once its client id and secret are set ([below](#turn-on-sign-in)) |
 | Workers Logs | on |
 

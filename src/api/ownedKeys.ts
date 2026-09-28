@@ -7,7 +7,7 @@
 // another's keys. A dashboard key takes the default limits (#163 R1.1) and
 // there is no cap on how many an account holds.
 
-import type { LookupDatabase } from "../lookup/database.js";
+import type { LookupDatabase, Statement } from "../lookup/database.js";
 import { DEFAULT_KEY_LIMITS, displayPrefix, generateApiKey, hashApiKey, type NewKey } from "./keys.js";
 
 /** The longest name a key may have: the `label` check in src/db/schema.sql. */
@@ -114,7 +114,11 @@ export async function revokeAccountKey(db: LookupDatabase, accountId: number, ke
 export const REVOKE_ACCOUNT_KEYS_SQL = `UPDATE api_key SET revoked_at = ?
      WHERE owner_account_id = ? AND revoked_at IS NULL RETURNING key_id`;
 
-/** Revoke all the account's live keys, and answer how many there were. */
-export async function revokeAllAccountKeys(db: LookupDatabase, accountId: number, now: number): Promise<number> {
-  return (await db.all<{ key_id: number }>(REVOKE_ACCOUNT_KEYS_SQL, [new Date(now).toISOString(), accountId])).length;
+/**
+ * The statement that revokes all the account's live keys, answering one row
+ * per key it revoked. A statement rather than a call, so account deletion
+ * (src/accounts/accounts.ts) runs it in the same transaction as the rest.
+ */
+export function revokeAllAccountKeys(accountId: number, now: number): Statement {
+  return { sql: REVOKE_ACCOUNT_KEYS_SQL, params: [new Date(now).toISOString(), accountId] };
 }

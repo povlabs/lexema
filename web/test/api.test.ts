@@ -269,6 +269,7 @@ test("each host reaches its own site: lexema.fyi the pages as before, api.lexema
     REPORT_LIMIT: new CountingRateLimit(),
     REPORT_OPEN_LIMIT: new CountingRateLimit(),
     SIGN_IN_LIMIT: new CountingRateLimit(),
+    KEY_CREATE_LIMIT: new CountingRateLimit(),
   };
   // D1's shape over the same database: prepare, bind, all.
   const d1 = {
@@ -297,7 +298,7 @@ test("each host reaches its own site: lexema.fyi the pages as before, api.lexema
   assert.equal(answered.headers.get("set-cookie"), null);
   assert.equal((await send(new Request("https://api.lexema.fyi/v1/lookup?q=casa"))).status, 401);
   assert.equal(appSaw.length, 0);
-  assert.deepEqual(Object.values(limits).map((limit) => limit.calls), [0, 0, 0, 0, 0]);
+  assert.deepEqual(Object.values(limits).map((limit) => limit.calls), [0, 0, 0, 0, 0, 0]);
 
   // lexema.fyi's pages get the very request that came, counted as before.
   const search = new Request("https://lexema.fyi/?q=casa");

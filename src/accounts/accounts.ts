@@ -8,7 +8,7 @@
 // value this module takes.
 
 import { revokeAllAccountKeys } from "../api/ownedKeys.js";
-import type { LookupDatabase } from "../lookup/database.js";
+import type { LookupDatabase, TransactionalDatabase } from "../lookup/database.js";
 import type { ProviderId, ProviderProfile } from "./providers.js";
 
 /** A person a provider vouched for, with an email it says is verified. */
@@ -74,20 +74,24 @@ export const DELETE_ACCOUNT_IDENTITIES_SQL = `DELETE FROM provider_identity WHER
  * nothing personal in it, so its revoked keys and their usage keep an owner;
  * signing in again with the same email makes a new account.
  *
- * The account is marked first, so no key can be made for it while the rest
- * runs. Each step is idempotent, so a deletion that stops partway is finished
- * by running it again. Answers the number of keys it revoked, or `unknown`
- * when there is no such account.
+ * The four statements run as one transaction, so a deletion that fails leaves
+ * the account exactly as it was, still signed in and with its keys live, and
+ * one that succeeds leaves no session or identity that could reach it. Running
+ * it again on a deleted account changes nothing and keeps the first time.
+ * Answers the number of keys it revoked, or `unknown` when there is no such
+ * account.
  */
 export async function deleteAccount(
-  db: LookupDatabase,
+  db: TransactionalDatabase,
   accountId: number,
   now: number,
 ): Promise<{ outcome: "deleted"; revokedKeys: number } | { outcome: "unknown" }> {
-  const marked = await db.all<{ account_id: number }>(MARK_ACCOUNT_DELETED_SQL, [new Date(now).toISOString(), accountId]);
+  const [marked = [], revoked = []] = await db.batch([
+    { sql: MARK_ACCOUNT_DELETED_SQL, params: [new Date(now).toISOString(), accountId] },
+    revokeAllAccountKeys(accountId, now),
+    { sql: DELETE_ACCOUNT_SESSIONS_SQL, params: [accountId] },
+    { sql: DELETE_ACCOUNT_IDENTITIES_SQL, params: [accountId] },
+  ]);
   if (marked.length === 0) return { outcome: "unknown" };
-  const revokedKeys = await revokeAllAccountKeys(db, accountId, now);
-  await db.all(DELETE_ACCOUNT_SESSIONS_SQL, [accountId]);
-  await db.all(DELETE_ACCOUNT_IDENTITIES_SQL, [accountId]);
-  return { outcome: "deleted", revokedKeys };
+  return { outcome: "deleted", revokedKeys: revoked.length };
 }
