@@ -9,8 +9,8 @@
 // Cloudflare bills a cache hit as a request, so it saved no request, and the
 // database reads it skipped are far inside the plan's included allowance.
 
-import { suggestions } from "../db";
-import type { SuggestAnswer } from "../suggestAnswer.ts";
+import { suggestions } from "../../db";
+import type { SuggestAnswer } from "../../suggestAnswer.ts";
 
 /**
  * How long a browser may reuse an answer, so retyping a prefix sends no request.

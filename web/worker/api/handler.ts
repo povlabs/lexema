@@ -1,9 +1,9 @@
-// The JSON API under /api/v1 (#148, #150), in front of vinext.
+// The JSON API at https://api.lexema.fyi/v1 (#148, #150, #164).
 //
 // It sits at the Worker level for the reason worker/rateLimit.ts does: it has
-// to decide each response's status, and a streamed page cannot. An API request
-// never reaches the per-visitor limits or the App Router; the site's own pages
-// and limits are untouched.
+// to decide each response's status, and a streamed page cannot. worker/hosts.ts
+// sends it every request for its host, so an API request never reaches the
+// per-visitor limits or the App Router, and the API never sets a cookie.
 //
 // A request goes: its `X-API-Key` (401 when missing, unknown or revoked), its
 // key's minute counted in D1 (429 past the key's own limit), its endpoint and
@@ -15,14 +15,10 @@ import { authenticate, type ApiKey, type KeyRefusal } from "@lexema/api/keys.ts"
 import { endpointOf } from "@lexema/api/units.ts";
 import { chargeUnits, countRequest, type MinuteWindow } from "@lexema/api/usage.ts";
 import { fromD1 } from "@lexema/lookup/database.ts";
-import type { FetchHandler } from "../rateLimit.ts";
 import { error, type ApiContext, type ErrorJson } from "./answer.ts";
 import { ROUTES } from "./endpoints.ts";
 
 export type { ApiContext, ErrorJson } from "./answer.ts";
-
-/** Where every API request starts. Anything under it is the API's, never the site's. */
-export const API_ROOT = "/api/";
 
 const REFUSAL: Record<KeyRefusal, ErrorJson> = {
   missing: error("missing_key", "Send your API key in the X-API-Key header."),
@@ -81,17 +77,18 @@ export interface ApiBindings {
 }
 
 /**
- * Send every request under `/api/` to the API, and every other request to the
- * site as it was. An API request is never seen by `site`, so it is never
- * counted against a per-visitor limit.
+ * Answer a request `api.lexema.fyi` routed to the API. A Worker with no D1
+ * binding answers 503, as a failed read does.
  */
-export function withApi<E extends ApiBindings>(site: FetchHandler<E>): FetchHandler<E> {
-  return async (request, env, ctx) => {
-    if (!new URL(request.url).pathname.startsWith(API_ROOT)) return site(request, env, ctx);
-    if (env.DB === undefined) {
-      console.error("api request failed", new Error("no D1 binding: this Worker has no DB"));
-      return json(503, error("unavailable", "The request could not be answered. Try again later."));
-    }
-    return handleApi(request, { db: fromD1(env.DB), releaseId: env.LEXEMA_RELEASE, now: Date.now() });
-  };
+export function answerApi<E extends ApiBindings>(request: Request, env: E): Promise<Response> {
+  if (env.DB === undefined) {
+    console.error("api request failed", new Error("no D1 binding: this Worker has no DB"));
+    return Promise.resolve(json(503, error("unavailable", "The request could not be answered. Try again later.")));
+  }
+  return handleApi(request, { db: fromD1(env.DB), releaseId: env.LEXEMA_RELEASE, now: Date.now() });
+}
+
+/** The API host's answer to a path outside `/v1/`: the error an unknown endpoint gets, without a key. */
+export function apiNotFound(url: URL): Response {
+  return json(404, error("not_found", `There is no endpoint at ${url.pathname}.`));
 }

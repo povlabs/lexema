@@ -13,7 +13,7 @@ development, with the placeholder D1 that `pnpm run seed:dev` fills.
 | Setting | Production |
 |---|---|
 | Worker | `lexema-web` |
-| Address | the custom domain `lexema.fyi` only |
+| Address | the custom domains `lexema.fyi`, `developers.lexema.fyi` and `api.lexema.fyi` only, told apart by host (`web/worker/hosts.ts`) |
 | `workers_dev`, `preview_urls` | both off |
 | D1 | none yet, so a search shows the failed-lookup state; attaching it is #19 |
 | Rate limits | 15 searches and 120 suggestions a minute per visitor ([#128](https://github.com/hueypov/lexema/issues/128)) |

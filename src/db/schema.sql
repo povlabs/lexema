@@ -143,7 +143,7 @@ CREATE TABLE source_record (
 ) STRICT;
 
 -- The records of one part of speech in line order, so a random pick of one
--- (`/api/v1/random?pos=`, src/lookup/random.ts) is two index probes, never a
+-- (`/v1/random?pos=`, src/lookup/random.ts) is two index probes, never a
 -- scan. A pick with no part of speech walks UNIQUE (release_id, line_no).
 CREATE INDEX source_record_by_pos
   ON source_record (release_id, pos, line_no);
@@ -528,7 +528,7 @@ CREATE TABLE report_opening (
 -- API keys and usage (#150)
 -- ---------------------------------------------------------------------------
 
--- A key that may call the JSON API under /api/v1 (src/api/keys.ts). Only the
+-- A key that may call the JSON API at api.lexema.fyi/v1 (src/api/keys.ts). Only the
 -- SHA-256 of the key is stored, never the key: the CLI prints it once, when it
 -- is created (src/api/keyCli.ts). The limits are the key's own (Huey, #148):
 -- requests a minute, counted in api_key_minute, and units a day, recorded in

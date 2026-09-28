@@ -244,12 +244,16 @@ test("the limits are the rulings, in the Wrangler configuration, the same in pro
   for (const { simple } of local.ratelimits) assert.equal(simple.period, RETRY_AFTER_SECONDS);
 });
 
-test("production is what is live: the custom domain only, no D1, logs on; local keeps its D1", () => {
+test("production is what is live: its three custom domains only, no D1, logs on; local keeps its D1", () => {
   const production = read("production");
   assert.equal(production.name, "lexema-web");
   assert.equal(production.workers_dev, false);
   assert.equal(production.preview_urls, false);
-  assert.deepEqual(production.routes, [{ pattern: "lexema.fyi", custom_domain: true }]);
+  assert.deepEqual(production.routes, [
+    { pattern: "lexema.fyi", custom_domain: true },
+    { pattern: "developers.lexema.fyi", custom_domain: true },
+    { pattern: "api.lexema.fyi", custom_domain: true },
+  ]);
   assert.deepEqual(production.d1_databases, []);
   assert.equal(production.observability?.enabled, true);
 

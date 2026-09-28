@@ -55,7 +55,7 @@ export const SEARCH_LIMITED_HEADER = "x-lexema-search-limited";
  *
  * `/suggest` is a suggestion. Anything else carrying a non-empty `q` is a
  * search: the page runs its lookup for the first `q` when its trimmed value is
- * not empty (app/page.tsx), and that holds for the HTML request and for an RSC
+ * not empty (app/(lexema)/page.tsx), and that holds for the HTML request and for an RSC
  * request for the same URL alike. Counting every other path with a `q` too
  * (`/attribution?q=…`, a mistyped path) costs a reader nothing and means no
  * spelling of the page's path that vinext normalizes back to `/` gets past the

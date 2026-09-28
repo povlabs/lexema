@@ -38,6 +38,32 @@ SQL and applies that SQL to local D1. It does not cut a prefix, create a
 SQLite staging database, or write to `web/.wrangler/`; the fixture's coverage is
 in [DEV_SEED.md](DEV_SEED.md).
 
+## Reach each host
+
+One Worker serves three hosts, and tells them apart by the request's host
+(`web/worker/hosts.ts`). Locally each has a `.localhost` twin on the same port:
+
+| Live | Local | Serves |
+|---|---|---|
+| `lexema.fyi` | <http://localhost:8790/> | the dictionary |
+| `developers.lexema.fyi` | <http://developers.localhost:8790/> | the developer site |
+| `api.lexema.fyi` | <http://api.localhost:8790/v1/> | the JSON API, under `/v1/` only |
+
+`curl`, Chrome and Firefox resolve any `.localhost` name to this machine, so nothing
+needs adding to `/etc/hosts`. Any other host, such as `127.0.0.1`, is the
+dictionary. The `.localhost` names never reach the live Worker, which is routed
+from its three custom domains only (`web/wrangler.jsonc`).
+
+A client that cannot resolve `.localhost` sends the host itself:
+
+```sh
+curl -i -H "Host: api.localhost" "http://127.0.0.1:8790/v1/exists?q=sale"
+```
+
+`lexema.fyi/api/v1/…` answers 301 to the same path and query under
+`https://api.lexema.fyi/v1/`; locally, `localhost:8790/api/v1/…` answers 301 to
+`api.localhost:8790/v1/…`.
+
 ## Check it came up
 
 | Query | Expect |

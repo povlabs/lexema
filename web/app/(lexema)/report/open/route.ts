@@ -3,8 +3,8 @@
 // against them, so the 3 s minimum is measured on the server's clock alone
 // (app/report.ts). Counted by the REPORT_OPEN_LIMIT binding (worker/rateLimit.ts).
 
-import { database } from "../../db";
-import { openReport } from "../../report.ts";
+import { database } from "../../../db";
+import { openReport } from "../../../report.ts";
 
 export async function POST(): Promise<Response> {
   try {

@@ -13,7 +13,7 @@
 //   real words do not all reach: a verb auxiliary written as source text, a
 //   tense cycle the source leaves without a pronoun, and the attribution page.
 //
-// What this cannot cover is the wiring in app/page.tsx: reaching D1 needs
+// What this cannot cover is the wiring in app/(lexema)/page.tsx: reaching D1 needs
 // `cloudflare:workers`, which exists only inside workerd.
 
 import assert from "node:assert/strict";
@@ -1042,7 +1042,7 @@ test("every page reaches the attribution page from the footer's four links", asy
 
   // The layout imports globals.css, which Node cannot load, so that it carries
   // this footer is asserted on the file.
-  const layout = await readFile(join(REPO, "web/app/layout.tsx"), "utf8");
+  const layout = await readFile(join(REPO, "web/app/(lexema)/layout.tsx"), "utf8");
   assert.match(layout, /<SiteFooter \/>/);
 });
 

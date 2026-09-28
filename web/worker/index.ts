@@ -1,16 +1,22 @@
-// The Worker's entry: the JSON API, then the rate limits, then vinext.
+// The Worker's entry: the host decides, then the API or the rate limits and vinext.
 //
 // wrangler.jsonc used to name `vinext/server/fetch-handler` as `main`, which is
-// vinext's App Router entry and nothing else. This file puts the per-visitor
-// limits (worker/rateLimit.ts) in front of that same entry, so every request
-// that could reach D1 is counted in one place before any route runs. The API
-// (worker/api/handler.ts) is in front of both: a request under /api/ is
-// answered there, against its key's own limits, and never reaches the site.
+// vinext's App Router entry and nothing else. This file puts two things in
+// front of that entry. worker/hosts.ts reads each request's host: the API's
+// host goes to the API (worker/api/handler.ts), against its key's own limits,
+// and `lexema.fyi` and the developer site go to the App Router. On the way
+// there, the per-visitor limits (worker/rateLimit.ts) count every request that
+// could reach D1, in one place, before any route runs.
 
 import app from "vinext/server/app-router-entry";
-import { withApi } from "./api/handler.ts";
+import { answerApi, apiNotFound } from "./api/handler.ts";
+import { byHost } from "./hosts.ts";
 import { withRateLimits } from "./rateLimit.ts";
 
 export default {
-  fetch: withApi<Env>(withRateLimits<Env>((request, env, ctx) => app.fetch(request, env, ctx))),
+  fetch: byHost<Env>({
+    app: withRateLimits<Env>((request, env, ctx) => app.fetch(request, env, ctx)),
+    api: answerApi,
+    apiNotFound,
+  }),
 } satisfies ExportedHandler<Env>;

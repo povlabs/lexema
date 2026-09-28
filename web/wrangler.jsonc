@@ -59,16 +59,22 @@
     "TURNSTILE_SITE_KEY": ""
   },
   "env": {
-    // What runs at https://lexema.fyi. Selected at build time with
-    // CLOUDFLARE_ENV=production, which `pnpm --filter @lexema/web run
-    // deploy:production` sets (docs/DEPLOY.md). Only the custom domain serves
-    // it: no workers.dev address and no preview URLs. No D1 binding until #19,
-    // so a search there answers with the failed-lookup state.
+    // What runs at https://lexema.fyi, https://developers.lexema.fyi and
+    // https://api.lexema.fyi: one Worker, which tells the three apart by host
+    // (worker/hosts.ts). Selected at build time with CLOUDFLARE_ENV=production,
+    // which `pnpm --filter @lexema/web run deploy:production` sets
+    // (docs/DEPLOY.md). Only the custom domains serve it: no workers.dev
+    // address and no preview URLs. No D1 binding until #19, so a search there
+    // answers with the failed-lookup state.
     "production": {
       "name": "lexema-web",
       "workers_dev": false,
       "preview_urls": false,
-      "routes": [{ "pattern": "lexema.fyi", "custom_domain": true }],
+      "routes": [
+        { "pattern": "lexema.fyi", "custom_domain": true },
+        { "pattern": "developers.lexema.fyi", "custom_domain": true },
+        { "pattern": "api.lexema.fyi", "custom_domain": true }
+      ],
       // Empty on purpose. Wrangler warns at build that the top-level DB has no
       // counterpart here; that absence is what is live until #19.
       "d1_databases": [],
