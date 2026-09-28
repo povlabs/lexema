@@ -1,0 +1,255 @@
+// The dashboard's actions on developers.lexema.fyi (#168), through the Worker's
+// host routing, rate limits, sign-in and dashboard wiring as deployed, over a
+// local `node:sqlite` database with the real schema. Sign-in runs against the
+// stub provider, as in signIn.test.ts.
+
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { test } from "node:test";
+import { fileURLToPath } from "node:url";
+import { DatabaseSync } from "node:sqlite";
+import type { ProviderProfile } from "../../src/accounts/providers.js";
+import { authenticate } from "../../src/api/keys.js";
+import { createAccountKey, keyName, listAccountKeys } from "../../src/api/ownedKeys.js";
+import { fromNodeSqlite } from "../../src/lookup/database.js";
+import { apiNotFound, handleApi } from "../worker/api/handler.ts";
+import {
+  CSRF_FIELD,
+  csrfTokenOf,
+  type DashboardBindings,
+  DASHBOARD,
+  DELETE_CONFIRMATION,
+  NEW_KEY_HEADER,
+  newKeyOf,
+  withDashboard,
+} from "../worker/dashboard.ts";
+import { byHost } from "../worker/hosts.ts";
+import { withRateLimits, type LimitBindings } from "../worker/rateLimit.ts";
+import { AFTER_SIGN_OUT, SESSION_COOKIE, signedInAccount, withSignIn, type SignInBindings } from "../worker/signIn.ts";
+import { StubProvider } from "./stubProvider.ts";
+
+const SCHEMA = readFileSync(fileURLToPath(new URL("../../src/db/schema.sql", import.meta.url)), "utf8");
+const NOW = Date.parse("2026-09-28T12:00:00Z");
+const DEVELOPERS = "https://developers.lexema.fyi";
+
+const allow: RateLimit = { limit: async () => ({ success: true }) };
+const env: LimitBindings & SignInBindings & DashboardBindings = {
+  SEARCH_LIMIT: allow,
+  SUGGEST_LIMIT: allow,
+  REPORT_LIMIT: allow,
+  REPORT_OPEN_LIMIT: allow,
+  SIGN_IN_LIMIT: allow,
+  KEY_CREATE_LIMIT: allow,
+};
+
+/** The Worker over a fresh database; each browser keeps its own cookies. */
+function site() {
+  const sqlite = new DatabaseSync(":memory:");
+  sqlite.exec(SCHEMA);
+  const db = fromNodeSqlite(sqlite);
+  const google = new StubProvider("google");
+  const appSaw: Request[] = [];
+  const worker = byHost<typeof env>({
+    app: withRateLimits(
+      withSignIn(
+        withDashboard(
+          async (request) => {
+            appSaw.push(request);
+            return new Response("page", { headers: { "content-type": "text/html" } });
+          },
+          () => ({ db, now: NOW }),
+        ),
+        () => ({ providers: { google, github: undefined }, db, now: NOW }),
+      ),
+    ),
+    api: async () => Response.json({}),
+    apiNotFound,
+  });
+
+  /** A browser signed in with this profile. */
+  async function browser(profile: ProviderProfile) {
+    const jar = new Map<string, string>();
+    const cookie = () => [...jar].map(([name, value]) => `${name}=${value}`).join("; ");
+    async function send(url: string, init: RequestInit = {}): Promise<Response> {
+      const headers = new Headers(init.headers);
+      if (jar.size > 0) headers.set("cookie", cookie());
+      const response = await worker(new Request(url, { ...init, headers }), env, {} as ExecutionContext);
+      for (const header of response.headers.getSetCookie()) {
+        const [pair, ...attributes] = header.split(";").map((part) => part.trim());
+        const at = pair.indexOf("=");
+        if (attributes.some((attribute) => attribute.toLowerCase() === "max-age=0")) jar.delete(pair.slice(0, at));
+        else jar.set(pair.slice(0, at), pair.slice(at + 1));
+      }
+      return response;
+    }
+    const start = await send(`${DEVELOPERS}/sign-in/google`);
+    const back = await send(google.consent(start.headers.get("location") ?? "", profile).toString());
+    assert.equal(back.status, 303);
+    const accountId = await signedInAccount(cookie(), db, NOW);
+    assert.ok(accountId !== undefined);
+    const csrf = await csrfTokenOf(cookie());
+    assert.ok(csrf !== undefined);
+
+    /** Post a form to a dashboard action, from this site, with this session's token unless told otherwise. */
+    const post = (path: string, fields: Record<string, string> = {}, headers: Record<string, string> = { origin: DEVELOPERS }) =>
+      send(`${DEVELOPERS}${path}`, { method: "POST", headers, body: new URLSearchParams({ [CSRF_FIELD]: csrf, ...fields }) });
+    return { jar, send, post, accountId, csrf, signedIn: () => signedInAccount(cookie(), db, NOW) };
+  }
+
+  /** Every row an action could change, to prove one changed nothing. */
+  const snapshot = () =>
+    ["developer_account", "provider_identity", "developer_session", "api_key"].map((table) =>
+      sqlite.prepare(`SELECT * FROM ${table} ORDER BY rowid`).all().map((row) => ({ ...row })),
+    );
+  return { sqlite, db, appSaw, browser, snapshot, worker };
+}
+
+const ada: ProviderProfile = { subject: "g-ada", verifiedEmail: "ada@example.com" };
+const bob: ProviderProfile = { subject: "g-bob", verifiedEmail: "bob@example.com" };
+
+const name = (text: string) => {
+  const parsed = keyName(text);
+  assert.ok(parsed !== undefined);
+  return parsed;
+};
+
+test("a signed-in form with its CSRF token makes a named key, and its secret reaches the key-created page once", async () => {
+  const { db, appSaw, browser } = site();
+  const { post, send, accountId } = await browser(ada);
+
+  const response = await post("/dashboard/keys", { name: "  learning app " });
+  assert.equal(response.status, 200);
+  assert.equal(response.headers.get("cache-control"), "no-store");
+  assert.equal(appSaw.length, 1);
+  const page = appSaw[0];
+  assert.equal(page.method, "GET");
+  assert.equal(new URL(page.url).pathname, "/developer-site/dashboard/key-created");
+  const created = newKeyOf(page.headers);
+  assert.ok(created !== undefined);
+
+  const [listed] = await listAccountKeys(db, accountId);
+  assert.deepEqual([listed.keyId, listed.name, listed.displayPrefix], [created.keyId, "learning app", created.key.slice(0, 11)]);
+  assert.equal((await authenticate(db, created.key, NOW)).outcome, "accepted");
+
+  // Opening the page again shows no secret, and one a client sends is removed.
+  await send(`${DEVELOPERS}/dashboard/key-created`, { headers: { [NEW_KEY_HEADER]: `${created.keyId}.${created.key}` } });
+  assert.equal(appSaw.length, 2);
+  assert.equal(appSaw[1].headers.get(NEW_KEY_HEADER), null);
+  assert.equal(newKeyOf(appSaw[1].headers), undefined);
+
+  // A name that is blank or too long makes nothing.
+  for (const bad of ["   ", "x".repeat(201)]) assert.equal((await post("/dashboard/keys", { name: bad })).status, 400);
+  assert.equal((await listAccountKeys(db, accountId)).length, 1);
+});
+
+test("revoke succeeds for the session's own key and is refused for another account's; deletion touches only the session's account", async () => {
+  const { db, browser } = site();
+  const adas = await browser(ada);
+  const bobs = await browser(bob);
+  const own = await createAccountKey(db, adas.accountId, name("own"), NOW);
+  const other = await createAccountKey(db, bobs.accountId, name("bob's"), NOW);
+  assert.ok(own.outcome === "created" && other.outcome === "created");
+
+  const revoked = await adas.post(`/dashboard/keys/${own.keyId}/revoke`);
+  assert.equal(revoked.status, 303);
+  assert.equal(revoked.headers.get("location"), DASHBOARD);
+  assert.equal((await authenticate(db, own.key, NOW)).outcome, "refused");
+  // Revoking it again lands on the dashboard as well.
+  assert.equal((await adas.post(`/dashboard/keys/${own.keyId}/revoke`)).status, 303);
+
+  const refused = await adas.post(`/dashboard/keys/${other.keyId}/revoke`);
+  assert.equal(refused.status, 404);
+  assert.equal((await authenticate(db, other.key, NOW)).outcome, "accepted");
+
+  const deleted = await adas.post("/dashboard/account/delete", { confirm: DELETE_CONFIRMATION });
+  assert.equal(deleted.status, 303);
+  assert.equal((await authenticate(db, other.key, NOW)).outcome, "accepted");
+  assert.equal(await bobs.signedIn(), bobs.accountId);
+});
+
+test("each action without a session, with a missing or wrong CSRF token, or from another origin is refused and changes nothing", async () => {
+  const { db, appSaw, browser, snapshot, worker } = site();
+  const adas = await browser(ada);
+  const bobs = await browser(bob);
+  const key = await createAccountKey(db, adas.accountId, name("one"), NOW);
+  assert.equal(key.outcome, "created");
+  const before = snapshot();
+
+  const actions: [string, Record<string, string>][] = [
+    ["/dashboard/keys", { name: "another" }],
+    [`/dashboard/keys/${key.keyId}/revoke`, {}],
+    ["/dashboard/account/delete", { confirm: DELETE_CONFIRMATION }],
+  ];
+  for (const [path, fields] of actions) {
+    const cases: [string, Promise<Response>, number][] = [
+      [
+        "no session",
+        worker(
+          new Request(`${DEVELOPERS}${path}`, {
+            method: "POST",
+            headers: { origin: DEVELOPERS },
+            body: new URLSearchParams({ [CSRF_FIELD]: adas.csrf, ...fields }),
+          }),
+          env,
+          {} as ExecutionContext,
+        ),
+        401,
+      ],
+      ["no CSRF token", adas.post(path, { ...fields, [CSRF_FIELD]: "" }), 403],
+      ["another session's CSRF token", adas.post(path, { ...fields, [CSRF_FIELD]: bobs.csrf }), 403],
+      ["another origin", adas.post(path, fields, { origin: "https://evil.example" }), 403],
+      ["no origin", adas.post(path, fields, {}), 403],
+      ["the API's origin", adas.post(path, fields, { origin: "https://api.lexema.fyi" }), 403],
+    ];
+    for (const [label, response, status] of cases) {
+      const answer = await response;
+      assert.equal(answer.status, status, `${path}: ${label}`);
+      assert.deepEqual(answer.headers.getSetCookie(), [], `${path}: ${label}`);
+    }
+    // A GET changes nothing either.
+    assert.equal((await adas.send(`${DEVELOPERS}${path}`)).status, 405, path);
+  }
+  // Deleting without the confirmation is refused too.
+  assert.equal((await adas.post("/dashboard/account/delete")).status, 400);
+  assert.equal((await adas.post("/dashboard/account/delete", { confirm: "yes" })).status, 400);
+
+  assert.deepEqual(snapshot(), before);
+  assert.deepEqual(appSaw, []);
+  assert.equal(await adas.signedIn(), adas.accountId);
+});
+
+test("after delete-account every key the account owned answers 401 revoked_key, and the session no longer reads as signed in", async () => {
+  const { db, appSaw, browser } = site();
+  const adas = await browser(ada);
+  for (const label of ["one", "two"]) assert.equal((await adas.post("/dashboard/keys", { name: label })).status, 200);
+  const secrets = appSaw.map((request) => newKeyOf(request.headers)?.key ?? "");
+  assert.equal(secrets.length, 2);
+  const cookie = `${SESSION_COOKIE}=${adas.jar.get(SESSION_COOKIE)}`;
+
+  const deleted = await adas.post("/dashboard/account/delete", { confirm: DELETE_CONFIRMATION });
+  assert.equal(deleted.status, 303);
+  assert.equal(deleted.headers.get("location"), AFTER_SIGN_OUT);
+  assert.ok(!adas.jar.has(SESSION_COOKIE), "the session cookie is cleared");
+  assert.equal(await signedInAccount(cookie, db, NOW), undefined);
+
+  for (const key of secrets) {
+    const request = new Request("https://api.lexema.fyi/v1/lookup?q=casa", { headers: { "x-api-key": key } });
+    const answer = await handleApi(request, { db, releaseId: "it-dev", now: NOW });
+    assert.equal(answer.status, 401);
+    assert.equal(((await answer.json()) as { error: { code: string } }).error.code, "revoked_key");
+  }
+});
+
+test("the dashboard actions exist on the developer site only", async () => {
+  const { worker, appSaw } = site();
+  const post = (url: string) =>
+    worker(new Request(url, { method: "POST", headers: { origin: new URL(url).origin } }), env, {} as ExecutionContext);
+  assert.equal((await post("https://lexema.fyi/developer-site/dashboard/keys")).status, 404);
+  assert.equal((await post("https://api.lexema.fyi/dashboard/keys")).status, 404);
+  // On lexema.fyi, /dashboard/keys is just a path the dictionary does not have.
+  await post("https://lexema.fyi/dashboard/keys");
+  assert.deepEqual(
+    appSaw.map((request) => new URL(request.url).pathname),
+    ["/dashboard/keys"],
+  );
+});

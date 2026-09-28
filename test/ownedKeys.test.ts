@@ -284,3 +284,25 @@ test("deleting an account revokes its keys, removes its sessions and identities,
   );
   assert.deepEqual(await deleteAccount(db, 99, NOW), { outcome: "unknown" });
 });
+
+test("a deletion that fails partway changes nothing: the account stays signed in with its keys live, and running it again finishes it", async () => {
+  const sqlite = schemaDb();
+  const db = fromNodeSqlite(sqlite);
+  const ada = await account(db, "ada@example.com");
+  const { key } = await ownedKey(db, ada, "one");
+  const session = await createSession(db, ada, NOW);
+  // The last of the four statements fails, after the other three have run.
+  sqlite.exec("CREATE TRIGGER identities_down BEFORE DELETE ON provider_identity BEGIN SELECT RAISE(ABORT, 'D1 is down'); END");
+
+  await assert.rejects(deleteAccount(db, ada, NOW), /D1 is down/);
+
+  assert.equal(await sessionAccount(db, session.token, NOW), ada);
+  assert.equal((await authenticate(db, key, NOW)).outcome, "accepted");
+  assert.equal((sqlite.prepare("SELECT deleted_at FROM developer_account WHERE account_id = ?").get(ada) as { deleted_at: null }).deleted_at, null);
+  assert.equal((await createAccountKey(db, ada, name("two"), NOW)).outcome, "created");
+
+  sqlite.exec("DROP TRIGGER identities_down");
+  assert.deepEqual(await deleteAccount(db, ada, NOW), { outcome: "deleted", revokedKeys: 2 });
+  assert.equal(await sessionAccount(db, session.token, NOW), undefined);
+  assert.deepEqual(await authenticate(db, key, NOW), { outcome: "refused", refusal: "revoked" });
+});

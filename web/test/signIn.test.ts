@@ -34,6 +34,7 @@ const env: LimitBindings & SignInBindings = {
   REPORT_LIMIT: allow,
   REPORT_OPEN_LIMIT: allow,
   SIGN_IN_LIMIT: allow,
+  KEY_CREATE_LIMIT: allow,
 };
 
 /** One `Set-Cookie` value, split into its name, value and attributes. */

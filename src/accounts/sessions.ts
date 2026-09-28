@@ -3,9 +3,14 @@
 // The browser holds a random token; the table holds only its SHA-256, so a
 // read of the table signs nobody in. A session lasts `SESSION_LIFETIME_MS`
 // and ends early when its developer signs out.
+//
+// Each session also has a CSRF token (#168): the one value a dashboard form
+// must carry for its action to run. It is derived from the session's own
+// token, so it needs no column, changes with every sign-in, and cannot be
+// worked out by anyone who does not hold the session cookie.
 
 import type { LookupDatabase } from "../lookup/database.js";
-import { randomToken, sha256Hex, TOKEN_SHAPE } from "./secrets.js";
+import { randomToken, sameString, sha256Base64Url, sha256Hex, TOKEN_SHAPE } from "./secrets.js";
 
 /** How long a sign-in lasts: 30 days. */
 export const SESSION_LIFETIME_MS = 30 * 24 * 60 * 60 * 1000;
@@ -48,4 +53,15 @@ export async function sessionAccount(db: LookupDatabase, token: string | undefin
 export async function endSession(db: LookupDatabase, token: string | undefined): Promise<void> {
   if (token === undefined || !TOKEN_SHAPE.test(token)) return;
   await db.all(DELETE_SESSION_SQL, [await sha256Hex(token)]);
+}
+
+/** The CSRF token of the session this token names: 43 base64url characters. */
+export function csrfToken(sessionToken: string): Promise<string> {
+  // Prefixed, so it is never the SHA-256 the session table stores.
+  return sha256Base64Url(`csrf:${sessionToken}`);
+}
+
+/** Whether a form's submitted token is this session's CSRF token. */
+export async function csrfMatches(sessionToken: string, submitted: string | undefined): Promise<boolean> {
+  return submitted !== undefined && sameString(submitted, await csrfToken(sessionToken));
 }

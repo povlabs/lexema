@@ -7,18 +7,20 @@
 // and `lexema.fyi` and the developer site go to the App Router. On the way
 // there, the per-visitor limits (worker/rateLimit.ts) count every request that
 // could reach D1, in one place, before any route runs. Behind them, the
-// developer site's sign-in routes (worker/signIn.ts) are answered before
-// vinext, since they set cookies and redirect rather than render.
+// developer site's sign-in routes (worker/signIn.ts) and dashboard actions
+// (worker/dashboard.ts) are answered before vinext, since they set cookies,
+// change data and redirect rather than render.
 
 import app from "vinext/server/app-router-entry";
 import { answerApi, apiNotFound } from "./api/handler.ts";
+import { withDashboard } from "./dashboard.ts";
 import { byHost } from "./hosts.ts";
 import { withRateLimits } from "./rateLimit.ts";
 import { withSignIn } from "./signIn.ts";
 
 export default {
   fetch: byHost<Env>({
-    app: withRateLimits<Env>(withSignIn<Env>((request, env, ctx) => app.fetch(request, env, ctx))),
+    app: withRateLimits<Env>(withSignIn<Env>(withDashboard<Env>((request, env, ctx) => app.fetch(request, env, ctx)))),
     api: answerApi,
     apiNotFound,
   }),

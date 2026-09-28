@@ -88,7 +88,8 @@ export function signedInAccount(cookieHeader: string | null, db: LookupDatabase,
 function cookie(name: string, value: string, maxAgeSeconds: number): string {
   return `${name}=${value}; Max-Age=${maxAgeSeconds}; Path=/; HttpOnly; Secure; SameSite=Lax`;
 }
-const cleared = (name: string): string => cookie(name, "", 0);
+/** A `Set-Cookie` value that removes the named cookie. */
+export const clearedCookie = (name: string): string => cookie(name, "", 0);
 
 function text(status: number, body: string, headers: Headers = new Headers()): Response {
   headers.set("content-type", "text/plain; charset=utf-8");
@@ -155,14 +156,14 @@ export async function answerSignIn(request: Request, route: SignInRoute, context
         );
         if (outcome.outcome === "refused") {
           const { status, body } = REFUSAL[outcome.refusal];
-          return text(status, body, new Headers({ "set-cookie": cleared(PENDING_COOKIE) }));
+          return text(status, body, new Headers({ "set-cookie": clearedCookie(PENDING_COOKIE) }));
         }
         const db = requireDatabase(context);
         await endSession(db, readCookie(cookies, SESSION_COOKIE));
         const { accountId } = await signInAccount(db, outcome.identity, context.now);
         const session = await createSession(db, accountId, context.now);
         return redirect(AFTER_SIGN_IN, [
-          cleared(PENDING_COOKIE),
+          clearedCookie(PENDING_COOKIE),
           cookie(SESSION_COOKIE, session.token, SESSION_LIFETIME_MS / 1000),
         ]);
       }
@@ -172,7 +173,7 @@ export async function answerSignIn(request: Request, route: SignInRoute, context
         const origin = request.headers.get("origin");
         if (origin !== null && origin !== url.origin) return text(403, "Sign-out must come from this site.");
         await endSession(requireDatabase(context), readCookie(request.headers.get("cookie"), SESSION_COOKIE));
-        return redirect(AFTER_SIGN_OUT, [cleared(SESSION_COOKIE)]);
+        return redirect(AFTER_SIGN_OUT, [clearedCookie(SESSION_COOKIE)]);
       }
     }
   } catch (failure) {

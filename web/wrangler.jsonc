@@ -50,7 +50,10 @@
     { "name": "REPORT_OPEN_LIMIT", "namespace_id": "1284", "simple": { "limit": 10, "period": 60 } },
     // - SIGN_IN_LIMIT, 10 sign-in starts a minute on developers.lexema.fyi
     //   (Huey, #163 R1.2; worker/signIn.ts).
-    { "name": "SIGN_IN_LIMIT", "namespace_id": "1651", "simple": { "limit": 10, "period": 60 } }
+    { "name": "SIGN_IN_LIMIT", "namespace_id": "1651", "simple": { "limit": 10, "period": 60 } },
+    // - KEY_CREATE_LIMIT, 5 key creations a minute on developers.lexema.fyi
+    //   (Huey, #163 R1.2; worker/dashboard.ts).
+    { "name": "KEY_CREATE_LIMIT", "namespace_id": "1681", "simple": { "limit": 5, "period": 60 } }
   ],
   "vars": {
     // Which imported release to serve. A deployment flips this to activate a
@@ -91,7 +94,8 @@
         { "name": "SUGGEST_LIMIT", "namespace_id": "1282", "simple": { "limit": 120, "period": 60 } },
         { "name": "REPORT_LIMIT", "namespace_id": "1283", "simple": { "limit": 2, "period": 60 } },
         { "name": "REPORT_OPEN_LIMIT", "namespace_id": "1284", "simple": { "limit": 10, "period": 60 } },
-        { "name": "SIGN_IN_LIMIT", "namespace_id": "1651", "simple": { "limit": 10, "period": 60 } }
+        { "name": "SIGN_IN_LIMIT", "namespace_id": "1651", "simple": { "limit": 10, "period": 60 } },
+        { "name": "KEY_CREATE_LIMIT", "namespace_id": "1681", "simple": { "limit": 5, "period": 60 } }
       ],
       "vars": {
         "LEXEMA_RELEASE": "it-dev",
