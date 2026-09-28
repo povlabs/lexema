@@ -397,161 +397,213 @@ export const CODE_IDENTITY = "text-[0.85em] break-all";
 // The developer site (#166) -------------------------------------------------
 //
 // developers.lexema.fyi, boards 25 (landing), 26 (pricing) and 31 (docs) in
-// `lexema-design.pen`, read at 1440 px. The dictionary's roles and faces:
-// serif for page and section headings, sans for prose and controls, mono for
-// code, paths and parameter names. A filled accent button is the one action a
-// page leads with; an outlined one sits beside it.
+// `lexema-design.pen`, drawn at 1440 px, and their phone boards at 390 px
+// (25m, 26m, 31m, the ☰ menu and the docs contents). Below `sm` (640 px) a
+// page takes its phone board; from `sm` up, its wide board. Sizes and spacing
+// are the boards' own, as the manifest's closing rule has them. The
+// dictionary's roles and faces: serif for page and section headings, sans for
+// prose and controls, mono for code, paths and parameter names.
 
+/** The landing and pricing column: 1200 px of content, 120 px in from a 1440 px window. */
+const DEV_COLUMN = "mx-auto w-full max-w-[78rem] px-5 sm:px-6";
 /** The docs lay out edge to edge, the sidebar against the window's left edge. */
-const WIDE = "w-full px-6 sm:px-10";
+const WIDE = "w-full px-5 sm:px-10";
 
+/** The bar: 56 px on a phone, 68 on a wide screen. `relative` holds the ☰ button above its open menu. */
 export const DEV_BAR = "border-b border-border";
-export const DEV_BAR_INNER = `${COLUMN} flex h-16 items-center gap-5 sm:gap-12`;
-export const DEV_BAR_INNER_WIDE = `${WIDE} flex h-16 items-center gap-5 sm:gap-12`;
+const BAR_ROW = "flex h-14 items-center sm:h-[4.25rem]";
+export const DEV_BAR_INNER = `${DEV_COLUMN} ${BAR_ROW}`;
+export const DEV_BAR_INNER_WIDE = `${WIDE} ${BAR_ROW}`;
 /** `Lexema Developers`: the name in serif, the site in small muted sans beside it. */
-export const DEV_NAME = `flex shrink-0 items-baseline gap-2 sm:gap-2.5 font-serif text-xl text-text-strong no-underline ${FOCUS_RING}`;
-export const DEV_NAME_SITE = "font-sans text-[0.8rem] text-text-muted";
-export const DEV_NAV = "m-0 flex list-none gap-4 p-0 sm:gap-6";
-export const DEV_NAV_LINK = `font-sans text-[0.95rem] text-text no-underline hover:text-text-strong aria-[current=page]:font-semibold aria-[current=page]:text-text-strong ${FOCUS_RING}`;
+export const DEV_NAME = `flex shrink-0 items-center gap-2 font-serif text-[1.1875rem] leading-none text-text-strong no-underline sm:gap-3 sm:pt-[3px] sm:text-[1.375rem] ${FOCUS_RING}`;
+export const DEV_NAME_SITE = "font-sans text-[0.75rem] text-text-muted sm:text-[0.8125rem]";
+/** Docs and Pricing in the bar, on a wide screen only: on a phone they are in the ☰ menu. */
+export const DEV_NAV = "m-0 ml-[3.25rem] hidden list-none gap-6 p-0 pt-[3px] text-[0.875rem] leading-5 sm:flex";
+export const DEV_NAV_LINK = `font-sans text-text no-underline hover:text-text-strong aria-[current=page]:font-semibold aria-[current=page]:text-text-strong ${FOCUS_RING}`;
 
 /** A page's one leading action: accent, filled. */
-export const BUTTON_PRIMARY = `inline-flex items-center rounded-[4px] border border-accent bg-accent px-5 py-2.5 font-sans text-[0.95rem] font-semibold text-surface no-underline disabled:cursor-not-allowed ${FOCUS_RING}`;
+export const BUTTON_PRIMARY = `inline-flex h-10 items-center justify-center rounded-[4px] border border-accent bg-accent px-5 font-sans text-[0.875rem] font-semibold whitespace-nowrap text-surface no-underline disabled:cursor-not-allowed ${FOCUS_RING}`;
 /** An action beside it: outlined. */
-export const BUTTON_SECONDARY = `inline-flex items-center rounded-[4px] border border-border-strong bg-transparent px-5 py-2.5 font-sans text-[0.95rem] font-semibold text-text-strong no-underline hover:border-text-muted ${FOCUS_RING}`;
+export const BUTTON_SECONDARY = `inline-flex h-10 items-center justify-center rounded-[4px] border border-border-strong bg-transparent px-5 font-sans text-[0.875rem] font-semibold whitespace-nowrap text-text-strong no-underline hover:border-text-muted ${FOCUS_RING}`;
 /** Sign in, at the right of the bar. */
-export const DEV_SIGN_IN = `ml-auto inline-flex shrink-0 items-center whitespace-nowrap rounded-[4px] border border-border-strong px-3 py-1.5 sm:px-4 font-sans text-[0.9rem] text-text-strong no-underline hover:border-text-muted ${FOCUS_RING}`;
+export const DEV_SIGN_IN = `ml-auto inline-flex h-[1.8125rem] shrink-0 items-center rounded-[4px] border border-border-strong px-[0.6875rem] font-sans text-[0.875rem] whitespace-nowrap text-text-strong no-underline hover:border-text-muted sm:h-[2.0625rem] sm:px-[0.9375rem] ${FOCUS_RING}`;
+
+/**
+ * The ☰ menu, on a phone only: a `<details>`, so it opens and closes without a
+ * script. Its summary is the ☰ in the bar; open, it is pinned where the ☰ was
+ * and shows ×, above the menu, which fills the screen.
+ */
+export const DEV_MENU = "group/menu ml-0.5 -mr-[0.5625rem] sm:hidden";
+export const DEV_MENU_TOGGLE = `relative z-50 flex size-10 cursor-pointer list-none items-center justify-center text-text-strong group-open/menu:fixed group-open/menu:top-2 group-open/menu:right-[0.6875rem] [&::-webkit-details-marker]:hidden ${FOCUS_RING}`;
+export const DEV_MENU_OPEN_ICON = "block group-open/menu:hidden";
+export const DEV_MENU_CLOSE_ICON = "hidden group-open/menu:block";
+export const DEV_MENU_PANEL = "fixed inset-0 z-40 overflow-y-auto bg-surface";
+/** The menu's own copy of the bar, the same 57 px with its rule. */
+export const DEV_MENU_BAR = `${WIDE} flex h-[3.5625rem] items-center border-b border-border`;
+export const DEV_MENU_LINKS = "m-0 list-none p-0 pt-[0.4375rem]";
+export const DEV_MENU_LINK = `flex h-[3.0625rem] items-start border-b border-border px-5 pt-2.5 font-sans text-base leading-6 text-text no-underline aria-[current=page]:text-text-strong ${FOCUS_RING}`;
+/** Under the links: what the visitor can do next, full width. */
+export const DEV_MENU_ACTIONS = "flex flex-col gap-3.5 px-5 pt-[1.6875rem] pb-10";
+const MENU_BUTTON = `flex w-full items-center justify-center rounded-[4px] border font-sans text-[0.9375rem] no-underline ${FOCUS_RING}`;
+export const DEV_MENU_OUTLINE = `${MENU_BUTTON} h-[2.6875rem] border-border-strong text-text-strong`;
+export const DEV_MENU_FILLED = `${MENU_BUTTON} h-[2.625rem] border-accent bg-accent text-surface`;
 
 export const DEV_FOOTER = "border-t border-border";
-export const DEV_FOOTER_INNER = `${COLUMN} flex flex-wrap items-center justify-between gap-4 py-8`;
-export const DEV_FOOTER_INNER_WIDE = `${WIDE} flex flex-wrap items-center justify-between gap-4 py-8`;
-export const DEV_FOOTER_NAME = SITE_FOOTER_NAME;
-export const DEV_FOOTER_LINKS = SITE_FOOTER_LINKS;
-export const DEV_FOOTER_LINK = SITE_FOOTER_LINK;
+const FOOTER_ROW = "flex flex-col gap-[0.28125rem] py-5 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:pt-7 sm:pb-[1.625rem]";
+export const DEV_FOOTER_INNER = `${DEV_COLUMN} ${FOOTER_ROW}`;
+export const DEV_FOOTER_INNER_WIDE = `${WIDE} ${FOOTER_ROW}`;
+export const DEV_FOOTER_NAME = `self-start font-serif text-[0.9375rem] leading-6 text-text-strong no-underline ${FOCUS_RING}`;
+export const DEV_FOOTER_LINKS = "m-0 flex list-none flex-wrap gap-x-[1.125rem] gap-y-2 p-0 sm:gap-x-6";
+export const DEV_FOOTER_LINK = `font-sans text-[0.78125rem] text-text-muted no-underline hover:text-text ${FOCUS_RING}`;
 
 /** A landing or pricing page: the column, with room above the heading. */
-export const DEV_SHELL = `${COLUMN} flex-1 pt-16 pb-24 sm:pt-24`;
-export const DEV_HEADING = "m-0 font-serif text-[3rem] leading-none font-normal text-text-strong sm:text-[4rem]";
+export const DEV_SHELL = `${DEV_COLUMN} flex-1 pt-[2.875rem] pb-[3.4375rem] sm:pt-20 sm:pb-[5.9375rem]`;
+/** A page's heading: `Pricing`. */
+export const DEV_HEADING = "m-0 font-serif text-[2.125rem] leading-[1.2] font-normal text-text-strong sm:text-[3rem]";
 /** A section's heading under the page's: `Endpoints`, `What a call costs`. */
-export const DEV_SECTION_HEADING = "m-0 font-serif text-[1.75rem] font-normal text-text-strong";
+export const DEV_SECTION_HEADING = "m-0 font-serif text-[1.375rem] leading-[1.3] font-normal text-text-strong sm:text-[1.625rem]";
 
-// Landing (board 25)
+// Landing (boards 25 and 25m)
 
-export const LANDING_LEAD = "m-0 mt-8 max-w-[48rem] font-sans text-lg leading-relaxed text-text sm:text-xl";
-export const LANDING_ACTIONS = "mt-8 flex flex-wrap gap-3";
-/** The request and an excerpt of its answer. */
+export const LANDING_HEADING = "m-0 font-serif text-[2.25rem] leading-[1.2] font-normal text-text-strong sm:text-[3.5rem]";
+export const LANDING_LEAD = "m-0 mt-6 max-w-[50rem] font-sans text-[1.125rem] leading-[1.5] text-text sm:mt-7";
+export const LANDING_ACTIONS = "mt-[1.6rem] flex gap-3";
+/** The request and an excerpt of its answer; on a phone the lines run on, and scroll inside the box. */
 export const LANDING_CODE =
-  "m-0 mt-14 max-w-[56rem] overflow-x-auto rounded-[6px] border border-border bg-surface-raised px-6 py-6 font-mono text-[0.85rem] leading-relaxed text-text-strong sm:text-[0.95rem]";
+  "m-0 mt-[2.4375rem] max-w-[56.25rem] overflow-x-auto rounded-[6px] border border-border bg-surface-raised px-4 py-[0.84375rem] font-mono text-[0.703125rem] leading-[1.1875rem] text-text sm:mt-[3.4375rem] sm:px-6 sm:py-[1.1rem] sm:text-[0.84375rem] sm:leading-[1.375rem]";
+export const LANDING_CODE_STRONG = "text-text-strong";
 export const LANDING_CODE_MUTED = "text-text-muted";
-export const LANDING_FEATURES = "m-0 mt-16 grid list-none gap-10 p-0 sm:grid-cols-3 sm:gap-8";
-export const LANDING_FEATURE_HEADING = "m-0 font-serif text-[1.35rem] font-normal text-text-strong";
-export const LANDING_FEATURE_TEXT = "m-0 mt-3 font-sans text-[0.95rem] leading-relaxed text-text";
-export const LANDING_ENDPOINTS = "mt-16 sm:mt-20";
-export const LANDING_ENDPOINT_LIST = "m-0 mt-6 list-none p-0";
+export const LANDING_FEATURES = "m-0 mt-[2.5625rem] grid list-none gap-[1.5625rem] p-0 sm:mt-[3.5625rem] sm:grid-cols-3 sm:gap-12";
+export const LANDING_FEATURE_HEADING = "m-0 font-serif text-[1.25rem] leading-[1.4] font-normal text-text-strong";
+export const LANDING_FEATURE_TEXT = "m-0 mt-[0.5625rem] font-sans text-[0.90625rem] leading-[1.5] text-text";
+export const LANDING_ENDPOINTS = "mt-[2.78125rem] sm:mt-[3.78125rem]";
+export const LANDING_ENDPOINT_LIST = "m-0 mt-[1.1875rem] list-none p-0 sm:mt-[1.09375rem]";
 export const LANDING_ENDPOINT_ROW =
-  "grid grid-cols-1 gap-1 border-b border-border py-3 sm:grid-cols-[20rem_1fr] sm:items-baseline sm:gap-8";
-export const LANDING_ENDPOINT_PATH = `font-mono text-[0.95rem] text-text-strong no-underline ${FOCUS_RING}`;
-export const LANDING_ENDPOINT_TEXT = "font-sans text-[0.95rem] text-text";
+  "grid grid-cols-1 border-b border-border pt-2 pb-[0.5625rem] sm:grid-cols-[20rem_1fr] sm:items-baseline sm:py-[0.65625rem]";
+export const LANDING_ENDPOINT_PATH = `font-mono text-[0.875rem] leading-[1.40625rem] text-text-strong no-underline sm:leading-5 ${FOCUS_RING}`;
+export const LANDING_ENDPOINT_TEXT = "font-sans text-[0.875rem] leading-[1.40625rem] text-text sm:leading-5";
 
-// Pricing (board 26)
+// Pricing (boards 26 and 26m)
 
-export const PLANS = "mt-14 grid gap-6 sm:mt-16 md:grid-cols-2";
-const PLAN = "flex flex-col rounded-[6px] bg-surface-raised p-8 sm:p-10";
+export const PLANS = "mt-[3.78125rem] grid gap-5 sm:mt-[3.90625rem] sm:grid-cols-2 sm:gap-6";
+const PLAN = "flex flex-col rounded-[6px] bg-surface-raised px-8 pt-[1.875rem] pb-[1.96875rem]";
 export const PLAN_FEATURED = `${PLAN} border border-accent`;
 export const PLAN_OTHER = `${PLAN} border border-border`;
-export const PLAN_NAME_FEATURED = "m-0 font-sans text-[0.95rem] font-semibold text-accent";
-export const PLAN_NAME_OTHER = "m-0 font-sans text-[0.95rem] font-semibold text-text-muted";
-export const PLAN_PRICE = "m-0 mt-8 flex items-baseline gap-2 font-serif text-[3rem] leading-none font-normal text-text-strong";
-export const PLAN_PERIOD = "font-sans text-[0.95rem] text-text-muted";
-export const PLAN_FEATURES = "m-0 mt-6 flex list-none flex-col gap-2 p-0 pb-8";
-export const PLAN_FEATURE = "flex items-baseline gap-3 font-sans text-[0.95rem] text-text";
-export const PLAN_CHECK = "text-accent";
+export const PLAN_NAME_FEATURED = "m-0 font-sans text-[0.8125rem] leading-5 font-semibold text-accent";
+export const PLAN_NAME_OTHER = "m-0 font-sans text-[0.8125rem] leading-5 font-semibold text-text-muted";
+/** `$15 / month`: the period sits low, its foot below the price's. */
+export const PLAN_PRICE = "m-0 mt-4 flex items-end gap-1.5 font-serif text-[1.9375rem] leading-[1.6] font-normal text-text-strong sm:text-[2.75rem]";
+export const PLAN_PERIOD = "font-sans text-[0.875rem] leading-5 text-text-muted";
+export const PLAN_FEATURES = "m-0 mt-[0.78125rem] flex list-none flex-col p-0 pb-[0.8125rem] sm:mt-[0.71875rem]";
+export const PLAN_FEATURE = "flex h-[1.625rem] items-center gap-3 font-sans text-[0.875rem] text-text";
+export const PLAN_CHECK = "w-3 shrink-0 text-accent";
 export const PLAN_ACTION = "mt-auto flex";
-export const COSTS = "mt-16 max-w-[38.75rem] sm:mt-20";
-export const COST_TABLE = "mt-5 w-full border-collapse text-left";
+export const COSTS = "mt-[3.6875rem] max-w-[38.75rem]";
+export const COSTS_HEADING = "m-0 font-serif text-[1.5rem] leading-[1.3] font-normal text-text-strong";
+export const COST_TABLE = "mt-4 w-full border-collapse text-left";
 export const COST_ROW = "border-b border-border";
-export const COST_ENDPOINTS = "p-0 py-2.5 pr-6 font-mono text-[0.95rem] font-normal text-text-strong";
-export const COST_UNITS = "p-0 py-2.5 text-right font-sans text-[0.95rem] whitespace-nowrap text-text";
+export const COST_ENDPOINTS = "p-0 pt-2 pr-6 pb-[0.5625rem] font-mono text-[0.875rem] leading-5 font-normal text-text-strong";
+export const COST_UNITS = "p-0 pt-2 pb-[0.5625rem] text-right font-sans text-[0.875rem] leading-5 whitespace-nowrap text-text";
 
-// Docs (board 31)
+// Docs (boards 31, 31m and the open contents)
 
-export const DOCS_LAYOUT = "flex flex-1 flex-col lg:flex-row";
-/** The sidebar, on a wide screen only: its rule runs the page's height. */
-export const DOCS_SIDEBAR = "hidden shrink-0 border-r border-border lg:block lg:w-[16.5rem]";
+export const DOCS_LAYOUT = "flex flex-1 flex-col sm:flex-row";
+/** The sidebar, from `sm` up: its rule runs the page's height. */
+export const DOCS_SIDEBAR = "hidden shrink-0 border-r border-border sm:block sm:w-[16.5rem]";
 /** Inside it, the pages: their own scroll, held in view beside the page. */
-export const DOCS_SIDEBAR_INNER = "sticky top-0 max-h-screen overflow-y-auto px-8 py-9";
-/** Below `lg`, the sidebar's pages behind one Contents menu at the top of the page. */
-export const DOCS_CONTENTS = "group mb-9 rounded-[4px] border border-border-strong bg-surface-raised lg:hidden";
-export const DOCS_CONTENTS_SUMMARY = `flex cursor-pointer list-none items-center justify-between px-4 py-2.5 font-sans text-[0.95rem] font-medium text-text-strong [&::-webkit-details-marker]:hidden ${FOCUS_RING}`;
-export const DOCS_CONTENTS_ICON = "size-4 text-text-muted group-open:rotate-180";
-export const DOCS_SEARCH = "relative flex items-center rounded-[4px] border border-border-strong bg-surface-raised focus-within:border-accent";
+export const DOCS_SIDEBAR_INNER = "sticky top-0 max-h-screen overflow-y-auto pt-8 pr-5 pb-8 pl-10";
+/**
+ * On a phone the sidebar is this bar under the header, naming the page's group
+ * and the page: a `<details>`, so it opens without a script, and open it holds
+ * the sidebar's search and pages.
+ */
+export const DOCS_CONTENTS = "group/contents border-b border-border sm:hidden";
+/** Open, the bar keeps its rule, and the list under it has its own. */
+export const DOCS_CONTENTS_SUMMARY = `flex h-10 cursor-pointer list-none items-center gap-[0.5625rem] border-border px-5 font-sans text-[0.8125rem] text-text-muted group-open/contents:border-b [&::-webkit-details-marker]:hidden ${FOCUS_RING}`;
+export const DOCS_CONTENTS_PAGE = "min-w-0 truncate text-text-strong";
+export const DOCS_CONTENTS_ICON = "ml-auto size-[1.0625rem] shrink-0 text-text-muted group-open/contents:rotate-180";
+export const DOCS_CONTENTS_PANEL = "px-5 pt-[0.9375rem] pb-[1.375rem]";
+export const DOCS_SEARCH = "relative flex h-9 items-center sm:mb-px rounded-[4px] border border-border bg-surface focus-within:border-accent";
 export const DOCS_SEARCH_INPUT =
-  "w-full min-w-0 bg-transparent py-2 pr-12 pl-3 font-sans text-[0.9rem] text-text-strong outline-none placeholder:text-text-muted [&::-webkit-search-cancel-button]:appearance-none";
+  "w-full min-w-0 bg-transparent py-2 pr-12 pl-3 font-sans text-[0.8125rem] text-text-strong outline-none placeholder:text-text-muted [&::-webkit-search-cancel-button]:appearance-none";
 export const DOCS_SEARCH_HINT = `${SEARCH_SHORTCUT} pointer-events-none absolute right-2`;
-export const DOCS_NAV_GROUP = "mt-7";
-export const DOCS_NAV_LABEL = "m-0 mb-2 font-sans text-[0.75rem] font-semibold tracking-[0.08em] text-text-muted uppercase";
+export const DOCS_NAV_GROUP = "mt-[1.125rem] sm:mt-[1.5625rem]";
+export const DOCS_NAV_LABEL = "m-0 mb-[0.5625rem] font-sans text-[0.6875rem] leading-4 font-semibold tracking-[0.08em] text-text-muted uppercase";
 export const DOCS_NAV_LIST = "m-0 flex list-none flex-col p-0";
 /** A page in the sidebar; the page being read is raised, and its name strong. */
-export const DOCS_NAV_LINK = `group/link flex items-baseline gap-4 rounded-[4px] px-3 py-1.5 font-sans text-[0.95rem] text-text no-underline hover:bg-surface-raised hover:text-text-strong aria-[current=page]:bg-surface-raised aria-[current=page]:font-semibold aria-[current=page]:text-text-strong ${FOCUS_RING}`;
+export const DOCS_NAV_LINK = `group/link flex h-[1.9375rem] items-center rounded-[4px] px-2.5 font-sans text-[0.84375rem] text-text no-underline hover:bg-surface-raised hover:text-text-strong aria-[current=page]:bg-surface-raised aria-[current=page]:font-semibold aria-[current=page]:text-text-strong ${FOCUS_RING}`;
 export const DOCS_NAV_METHOD =
-  "w-8 shrink-0 font-mono text-[0.7rem] font-normal text-text-muted group-aria-[current=page]/link:text-accent";
-export const DOCS_NAV_ENDPOINT = "font-mono text-[0.9rem]";
+  "w-11 shrink-0 font-mono text-[0.65625rem] font-normal text-text-muted group-aria-[current=page]/link:text-accent";
+export const DOCS_NAV_ENDPOINT = "font-mono text-[0.8125rem]";
 
-export const DOCS_MAIN = "min-w-0 flex-1 px-6 pt-9 pb-24 sm:px-10 lg:px-16";
+export const DOCS_MAIN = "min-w-0 flex-1 px-5 pt-[2.65625rem] pb-[2.9375rem] sm:pt-12 sm:pr-10 sm:pb-[3.9375rem] sm:pl-14";
 /** A page's topic: its text, and beside it on a wide screen the code it shows. */
 export const DOCS_SECTION =
-  "xl:grid xl:grid-cols-[minmax(0,33rem)_minmax(0,31rem)] xl:grid-rows-[auto_1fr] xl:gap-x-14";
+  "xl:grid xl:grid-cols-[minmax(0,33.125rem)_minmax(0,1fr)] xl:grid-rows-[auto_1fr] xl:gap-x-[3.125rem]";
 export const DOCS_TEXT = "min-w-0";
 /**
  * The code beside a topic, never taller than the window: a response longer
- * than the room left scrolls inside its own panel.
+ * than the room left scrolls inside its own panel. On a phone it follows the
+ * topic's text, and a response scrolls inside a box about 360 px tall.
  */
 export const DOCS_CODE =
-  "mt-8 flex max-h-[80svh] min-w-0 flex-col gap-5 xl:sticky xl:top-6 xl:col-start-2 xl:row-span-2 xl:row-start-1 xl:mt-0 xl:max-h-[calc(100svh-3rem)] xl:self-start";
-/** `Endpoints`, over a topic's heading: which part of the docs it is in. */
-export const DOCS_EYEBROW = "m-0 font-sans text-[0.9rem] font-medium text-accent";
-export const DOCS_HEADING = "m-0 mt-3 font-serif text-[2.25rem] leading-tight font-normal text-text-strong sm:text-[2.5rem]";
-/** `GET https://api.lexema.fyi/v1/lookup`, in a hairline box. */
-export const DOCS_ENDPOINT = "mt-6 inline-flex max-w-full items-center gap-3 rounded-[4px] border border-border bg-surface-raised px-3 py-2";
-export const DOCS_METHOD = "rounded-[3px] border border-accent px-1.5 font-mono text-[0.75rem] text-accent";
-export const DOCS_URL = "font-mono text-[0.85rem] break-all text-text-strong";
-export const DOCS_PARAGRAPH = "m-0 mt-6 font-sans text-[1.05rem] leading-relaxed text-text";
-export const DOCS_SUBHEADING = "m-0 mt-12 border-b border-border pb-4 font-serif text-[1.6rem] font-normal text-text-strong";
+  "mt-[4.4375rem] flex min-w-0 flex-col gap-[0.9375rem] sm:max-h-[80svh] sm:gap-5 xl:sticky xl:top-6 xl:col-start-2 xl:row-span-2 xl:row-start-1 xl:mt-0 xl:max-h-[calc(100svh-3rem)] xl:self-start";
+/** `Endpoints`, over a topic's heading: which part of the docs it is in. On a phone the contents bar says it. */
+export const DOCS_EYEBROW = "m-0 hidden font-sans text-[0.8125rem] leading-4 font-medium text-accent sm:block";
+export const DOCS_HEADING = "m-0 font-serif text-[1.875rem] leading-[1.2] font-normal text-text-strong sm:mt-[1.09375rem] sm:text-[2.5rem]";
+/** `GET https://api.lexema.fyi/v1/lookup`, in a hairline box: the column's width on a phone. */
+export const DOCS_ENDPOINT = "mt-[1.15625rem] flex h-9 max-w-full items-center gap-2.5 rounded-[4px] border border-border bg-surface-raised pr-3.5 pl-3 sm:inline-flex";
+export const DOCS_METHOD =
+  "inline-flex h-5 w-[2.125rem] shrink-0 items-center justify-center rounded-[3px] border border-accent font-mono text-[0.6875rem] text-accent";
+export const DOCS_URL = "min-w-0 truncate font-mono text-[0.75rem] text-text-strong sm:text-[0.8125rem]";
+export const DOCS_PARAGRAPH = "m-0 mt-[1.28125rem] font-sans text-[0.96875rem] leading-[1.6] text-text";
+export const DOCS_SUBHEADING = "m-0 mt-[2.6875rem] border-b border-border pb-[0.8125rem] font-serif text-[1.375rem] leading-[1.3] font-normal text-text-strong";
 export const DOCS_ROWS = "m-0 list-none p-0";
-export const DOCS_ROW = "border-b border-border py-4";
-export const DOCS_ROW_HEAD = "m-0 flex flex-wrap items-baseline gap-x-2.5";
-export const DOCS_ROW_NAME = "font-mono text-[0.95rem] font-semibold text-text-strong";
-export const DOCS_ROW_TYPE = "font-sans text-[0.8rem] text-text-muted";
-export const DOCS_ROW_REQUIRED = "font-sans text-[0.8rem] font-medium text-warning";
-export const DOCS_ROW_TEXT = "m-0 mt-1.5 font-sans text-[0.95rem] leading-relaxed text-text";
+export const DOCS_ROW = "border-b border-border pt-[0.9375rem] pb-[0.96875rem]";
+export const DOCS_ROW_HEAD = "m-0 flex flex-wrap items-baseline gap-x-2.5 leading-5";
+export const DOCS_ROW_NAME = "font-mono text-[0.8125rem] font-semibold text-text-strong";
+export const DOCS_ROW_TYPE = "font-sans text-[0.75rem] text-text-muted";
+export const DOCS_ROW_REQUIRED = "font-sans text-[0.75rem] font-medium text-warning";
+export const DOCS_ROW_TEXT = "m-0 mt-[0.28125rem] font-sans text-[0.875rem] leading-[1.375rem] text-text";
 /** A response: its status in a small box, then what it means. */
-export const DOCS_ANSWER = "flex gap-4 border-b border-border py-4";
-export const DOCS_STATUS_OK = "h-fit shrink-0 rounded-[3px] border border-border-strong px-2 font-mono text-[0.8rem] text-accent";
-export const DOCS_STATUS_OTHER = "h-fit shrink-0 rounded-[3px] border border-border-strong px-2 font-mono text-[0.8rem] text-text-strong";
-export const DOCS_ANSWER_TEXT = "m-0 font-sans text-[0.95rem] leading-relaxed text-text";
+export const DOCS_ANSWER = "flex gap-4 border-b border-border pt-[0.9375rem] pb-4";
+const STATUS = "inline-flex h-[1.3125rem] w-10 shrink-0 items-center justify-center rounded-[3px] border border-border bg-surface-raised font-mono text-[0.75rem]";
+export const DOCS_STATUS_OK = `${STATUS} text-accent`;
+export const DOCS_STATUS_OTHER = `${STATUS} text-text-strong`;
+export const DOCS_ANSWER_TEXT = "m-0 font-sans text-[0.875rem] leading-[1.375rem] text-text";
 export const DOCS_TABLE = "mt-6 w-full border-collapse text-left";
-export const DOCS_TABLE_HEAD = "border-b border-border p-0 pr-6 pb-2 font-sans text-[0.8rem] font-normal text-text-muted";
-export const DOCS_TABLE_CELL = "border-b border-border p-0 py-2 pr-6 align-baseline font-sans text-[0.95rem] text-text";
-export const DOCS_TABLE_CODE = "border-b border-border p-0 py-2 pr-6 align-baseline font-mono text-[0.9rem] text-text-strong";
+export const DOCS_TABLE_HEAD = "border-b border-border p-0 pr-6 pb-2 font-sans text-[0.75rem] font-normal text-text-muted";
+export const DOCS_TABLE_CELL = "border-b border-border p-0 py-2 pr-6 align-baseline font-sans text-[0.875rem] text-text";
+export const DOCS_TABLE_CODE = "border-b border-border p-0 py-2 pr-6 align-baseline font-mono text-[0.8125rem] text-text-strong";
 /** Previous / Next at the foot of a page, under its text: two hairline cards, Next on the right. */
-export const DOCS_NEIGHBOURS = "mt-16 grid grid-cols-2 gap-4 self-start sm:gap-6 xl:col-start-1";
-export const DOCS_NEIGHBOUR = `flex min-w-0 flex-col gap-1 rounded-[6px] border border-border px-4 py-4 no-underline hover:border-border-strong sm:px-5 ${FOCUS_RING}`;
+export const DOCS_NEIGHBOURS = "mt-[1.9375rem] grid grid-cols-2 gap-2.5 self-start sm:mt-[2.875rem] sm:gap-4 xl:col-start-1";
+export const DOCS_NEIGHBOUR = `flex min-w-0 flex-col gap-[0.1875rem] rounded-[6px] border border-border px-[1.125rem] pt-3 pb-[0.8125rem] no-underline hover:border-border-strong ${FOCUS_RING}`;
 export const DOCS_NEIGHBOUR_NEXT = `${DOCS_NEIGHBOUR} col-start-2 items-end text-right`;
-export const DOCS_NEIGHBOUR_LABEL = "font-sans text-[0.8rem] text-text-muted";
-export const DOCS_NEIGHBOUR_TITLE = "font-sans text-[0.95rem] font-semibold text-text-strong";
+export const DOCS_NEIGHBOUR_LABEL = "font-sans text-[0.75rem] leading-4 text-text-muted";
+/** On a phone a long title runs past the card's padding rather than wrap, as board 31m draws `Lemmatize a form →`. */
+export const DOCS_NEIGHBOUR_TITLE = "font-sans text-[0.859375rem] leading-5 font-semibold whitespace-nowrap text-text-strong sm:text-[0.90625rem]";
 
-/** A request or a response panel beside a topic. */
-const CODE_PANEL = "min-w-0 overflow-hidden rounded-[6px] border border-border bg-surface-raised";
+/**
+ * A request or a response panel beside a topic. Board 31 fills it darker than
+ * the page, a value no role holds; it takes the page's own `surface` until the
+ * manifest names one.
+ */
+const CODE_PANEL = "min-w-0 overflow-hidden rounded-[6px] border border-border bg-surface";
 export const CODE_PANEL_REQUEST = `${CODE_PANEL} shrink-0`;
 /** The response takes the room the request leaves, and no more than its answer needs. */
 export const CODE_PANEL_RESPONSE = `${CODE_PANEL} flex min-h-0 flex-col`;
-export const CODE_PANEL_HEAD = "flex shrink-0 items-center gap-3 border-b border-border px-5 py-2.5 sm:gap-4";
-export const CODE_PANEL_TITLE = "m-0 mr-auto font-sans text-[0.85rem] font-semibold text-text-strong";
-export const CODE_PANEL_TAB = `cursor-pointer border-0 bg-transparent p-0 font-sans text-[0.85rem] text-text-muted hover:text-text aria-pressed:font-semibold aria-pressed:text-accent ${FOCUS_RING}`;
-export const CODE_PANEL_STATUS = "font-sans text-[0.85rem] font-semibold text-accent";
-export const CODE_PANEL_COPY = `cursor-pointer border-0 bg-transparent p-0 font-sans text-[0.85rem] text-text-muted hover:text-text ${FOCUS_RING}`;
+export const CODE_PANEL_HEAD = "flex h-[2.1875rem] shrink-0 items-center gap-4 border-b border-border px-4";
+export const CODE_PANEL_TITLE = "m-0 mr-auto font-sans text-[0.75rem] font-semibold text-text-strong";
+export const CODE_PANEL_TAB = `cursor-pointer border-0 bg-transparent p-0 font-sans text-[0.75rem] text-text-muted hover:text-text aria-pressed:font-semibold aria-pressed:text-accent ${FOCUS_RING}`;
+export const CODE_PANEL_STATUS = "font-sans text-[0.75rem] font-semibold text-accent";
+export const CODE_PANEL_COPY = `cursor-pointer border-0 bg-transparent p-0 font-sans text-[0.75rem] text-text-muted hover:text-text ${FOCUS_RING}`;
 export const CODE_PANEL_BODY =
-  "m-0 overflow-x-auto px-5 py-5 font-mono text-[0.8rem] leading-relaxed text-text-strong sm:text-[0.85rem]";
-export const CODE_PANEL_RESPONSE_BODY = `${CODE_PANEL_BODY} min-h-0 overflow-y-auto overscroll-contain`;
+  "m-0 overflow-x-auto px-3.5 py-3 font-mono text-[0.6875rem] leading-[1.125rem] text-text sm:px-4 sm:py-3.5 sm:text-[0.75rem] sm:leading-[1.1875rem]";
+export const CODE_PANEL_RESPONSE_BODY = `${CODE_PANEL_BODY} min-h-0 overflow-y-auto overscroll-contain max-sm:max-h-[22.5rem]`;
+/** A line of code: the command's first line strong, the address it calls in the accent, a bracket on its own muted. */
+export const CODE_LINE_STRONG = "text-text-strong";
+export const CODE_LINE_ADDRESS = "text-accent";
+export const CODE_LINE_MUTED = "text-text-muted";
 
 /** Code inside a sentence. */
 export const CODE_INLINE = "font-mono text-[0.9em] text-text-strong";

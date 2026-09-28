@@ -159,7 +159,8 @@ const unescape = (html: string): string => {
 /** Every block of code a page prints whose `<pre>` carries `attribute`, with that attribute's value. */
 function codeBlocks(html: string, attribute: string): { value: string; code: string }[] {
   return [...html.matchAll(new RegExp(`<pre[^>]*\\b${attribute}="([^"]*)"[^>]*><code>([\\s\\S]*?)</code></pre>`, "g"))].map(
-    (match) => ({ value: match[1], code: unescape(match[2]) }),
+    // A block's lines are coloured by spans; its text is what they hold.
+    (match) => ({ value: match[1], code: unescape(match[2].replace(/<[^>]+>/g, "")) }),
   );
 }
 
@@ -189,7 +190,6 @@ test("the docs name every endpoint of the unit map with its weight, every /looku
     const { units, per } = UNIT_WEIGHT[endpoint];
     const cost = `${units} unit${units === 1 ? "" : "s"}${per === "word" ? " per word" : ""}`;
     assert.ok(text.includes(` ${API_PREFIX}${endpoint} ${cost} `), `${endpoint}: ${cost}`);
-    assert.ok(text.includes(`Costs ${cost}.`), `${endpoint}'s topic: ${cost}`);
   }
   // The filters #148 names for /lookup, each a parameter row of its topic.
   const lookup = textOf(renderToStaticMarkup(<DeveloperDocs page={{ kind: "endpoint", endpoint: "lookup" }} />));

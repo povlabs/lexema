@@ -10,9 +10,12 @@
 // so the page states every example without a script and
 // web/test/developers.test.tsx reads them all off the static markup.
 
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import type { Language } from "./apiReference.ts";
 import {
+  CODE_LINE_ADDRESS,
+  CODE_LINE_MUTED,
+  CODE_LINE_STRONG,
   CODE_PANEL_BODY,
   CODE_PANEL_COPY,
   CODE_PANEL_HEAD,
@@ -32,6 +35,34 @@ export interface PanelExample {
   requests: Readonly<Record<Language, string>>;
   /** The answer's JSON; absent where a topic shows only how to send a request. */
   response?: string;
+}
+
+/** A line that is only brackets and commas: `{`, `],`, `}`. */
+const BRACKETS = /^\s*[[\]{}(),]+\s*$/;
+/** A command's last line: the address it calls, quoted. */
+const ADDRESS = /^\s*"https:\/\/[^"]+"$/;
+
+/**
+ * Code as board 31 colours it: a request's first line strong and the address a
+ * command calls in the accent; a line of brackets muted; the rest plain.
+ */
+function roleOf(line: string, index: number, request: boolean): string | undefined {
+  if (request && index === 0) return CODE_LINE_STRONG;
+  if (request && ADDRESS.test(line)) return CODE_LINE_ADDRESS;
+  if (!request && BRACKETS.test(line)) return CODE_LINE_MUTED;
+  return undefined;
+}
+
+function CodeLines({ text, request }: { text: string; request: boolean }) {
+  return text.split("\n").map((line, i) => {
+    const role = roleOf(line, i, request);
+    return (
+      <Fragment key={i}>
+        {i === 0 ? null : "\n"}
+        {role === undefined ? line : <span className={role}>{line}</span>}
+      </Fragment>
+    );
+  });
 }
 
 function Copy({ text }: { text: string }) {
@@ -84,7 +115,9 @@ export function CodePanel({ examples, languages }: { examples: readonly PanelExa
               data-status={each.status}
               hidden={i !== shown || lang !== language}
             >
-              <code>{each.requests[lang]}</code>
+              <code>
+                <CodeLines text={each.requests[lang]} request />
+              </code>
             </pre>
           )),
         )}
@@ -112,7 +145,7 @@ export function CodePanel({ examples, languages }: { examples: readonly PanelExa
           </div>
           {examples.map((each, i) => (
             <pre key={i} className={CODE_PANEL_RESPONSE_BODY} data-response={each.status} hidden={i !== shown} tabIndex={0}>
-              <code>{each.response}</code>
+              <code>{each.response === undefined ? null : <CodeLines text={each.response} request={false} />}</code>
             </pre>
           ))}
         </div>

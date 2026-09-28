@@ -1,15 +1,13 @@
 // developers.lexema.fyi/ (#166, board 25): what the API is, one call and an
 // excerpt of its answer, and every endpoint. The call is the docs' filtered
-// `/lookup` example and the excerpt is read from its answer, so the landing
-// page shows nothing the API does not return.
+// `/lookup` example, and every value in the excerpt is read from its answer;
+// the excerpt's lines are laid out as board 25 draws them.
 
 import { API_PREFIX } from "@lexema/api/units.ts";
 import {
   API_BASE,
   ENDPOINT_REFERENCE,
   ENDPOINTS_IN_ORDER,
-  EXAMPLE_KEY,
-  formatJson,
   LOOKUP_FILTERED_EXAMPLE,
 } from "./apiReference.ts";
 import { DeveloperPage, SIGN_IN_PATH } from "./DeveloperPage";
@@ -17,12 +15,12 @@ import { DOCS_PATH, endpointPath } from "./docsPages.ts";
 import {
   BUTTON_PRIMARY,
   BUTTON_SECONDARY,
-  DEV_HEADING,
   DEV_SECTION_HEADING,
   DEV_SHELL,
   LANDING_ACTIONS,
   LANDING_CODE,
   LANDING_CODE_MUTED,
+  LANDING_CODE_STRONG,
   LANDING_ENDPOINT_LIST,
   LANDING_ENDPOINT_PATH,
   LANDING_ENDPOINT_ROW,
@@ -31,29 +29,40 @@ import {
   LANDING_FEATURE_HEADING,
   LANDING_FEATURE_TEXT,
   LANDING_FEATURES,
+  LANDING_HEADING,
   LANDING_LEAD,
 } from "./styles.ts";
 
 /** The word the landing page looks up: a verb form, so the answer shows its lemma. */
 const WORD = "andavano";
 
+/** The key as board 25 writes it on the landing page. */
+const LANDING_KEY = "lx_live_••••••••";
+
 interface LookupResult {
   word: string;
   pos_title: string;
-  match: unknown;
-  definitions: { definition: string }[];
+  match: { surface: string; grammar: readonly { tense?: string; person?: string }[] };
+  definitions: readonly { definition: string }[];
 }
 
-/** The fields of `/lookup`'s answer the landing page shows, from the docs' example. */
-function excerpt(): string {
-  const response = LOOKUP_FILTERED_EXAMPLE.response as { results: LookupResult[] };
+const quote = (value: string) => JSON.stringify(value);
+
+/**
+ * The excerpt of the docs' filtered `/lookup` answer board 25 prints: the
+ * lemma and its part of speech on one line, the form's tense and person
+ * beside what was typed, and the first definition. Every value is read from
+ * the example's answer.
+ */
+function excerptLines(): string[] {
+  const response = LOOKUP_FILTERED_EXAMPLE.response as { results: readonly LookupResult[] };
   const [result] = response.results;
-  return formatJson({
-    word: result.word,
-    pos_title: result.pos_title,
-    match: result.match,
-    definitions: result.definitions.slice(0, 1).map(({ definition }) => ({ definition })),
-  });
+  const [grammar] = result.match.grammar;
+  return [
+    `  "word": ${quote(result.word)},  "pos_title": ${quote(result.pos_title)},`,
+    `  "match": { "surface": ${quote(result.match.surface)}, "tense": ${quote(grammar.tense ?? "")}, "person": ${quote(grammar.person ?? "")} },`,
+    `  "definitions": [{ "definition": ${quote(result.definitions[0].definition)} }]`,
+  ];
 }
 
 const FEATURES = [
@@ -66,7 +75,7 @@ export function DeveloperLanding() {
   return (
     <DeveloperPage>
       <main className={DEV_SHELL}>
-        <h1 className={DEV_HEADING}>The Lexema API</h1>
+        <h1 className={LANDING_HEADING}>The Lexema API</h1>
         <p className={LANDING_LEAD}>
           Look up any Italian word, in any form, and get its lemma, meanings, forms and examples as JSON.
         </p>
@@ -81,9 +90,13 @@ export function DeveloperLanding() {
 
         <pre className={LANDING_CODE}>
           <code>
-            {`GET ${API_BASE}/lookup?q=${WORD}\n`}
-            <span className={LANDING_CODE_MUTED}>{`X-API-Key: ${EXAMPLE_KEY}`}</span>
-            {`\n\n${excerpt()}`}
+            <span className={LANDING_CODE_STRONG}>{`GET ${API_BASE}/lookup?q=${WORD}`}</span>
+            {"\n"}
+            <span className={LANDING_CODE_MUTED}>{`X-API-Key: ${LANDING_KEY}`}</span>
+            {"\n\n"}
+            <span className={LANDING_CODE_MUTED}>{"{"}</span>
+            {`\n${excerptLines().join("\n")}\n`}
+            <span className={LANDING_CODE_MUTED}>{"}"}</span>
           </code>
         </pre>
 

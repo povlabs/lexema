@@ -8,6 +8,7 @@
 import { MAX_BATCH_WORDS } from "../worker/api/endpoints.ts";
 import { COST_ROWS, costText } from "./apiReference.ts";
 import { CONTACT_EMAIL, DeveloperPage } from "./DeveloperPage";
+import { CheckIcon } from "./MenuIcons";
 import {
   BUTTON_PRIMARY,
   BUTTON_SECONDARY,
@@ -16,8 +17,8 @@ import {
   COST_TABLE,
   COST_UNITS,
   COSTS,
+  COSTS_HEADING,
   DEV_HEADING,
-  DEV_SECTION_HEADING,
   DEV_SHELL,
   PLAN_ACTION,
   PLAN_CHECK,
@@ -37,9 +38,7 @@ function Features({ items }: { items: readonly string[] }) {
     <ul className={PLAN_FEATURES}>
       {items.map((item) => (
         <li key={item} className={PLAN_FEATURE}>
-          <span className={PLAN_CHECK} aria-hidden="true">
-            ✓
-          </span>
+          <CheckIcon className={PLAN_CHECK} />
           {item}
         </li>
       ))}
@@ -49,7 +48,8 @@ function Features({ items }: { items: readonly string[] }) {
 
 export function DeveloperPricing() {
   return (
-    <DeveloperPage current="pricing">
+    // Board 26 draws the bar with neither page marked.
+    <DeveloperPage>
       <main className={DEV_SHELL}>
         <h1 className={DEV_HEADING}>Pricing</h1>
 
@@ -84,7 +84,7 @@ export function DeveloperPricing() {
         </div>
 
         <section className={COSTS} aria-labelledby="costs">
-          <h2 className={DEV_SECTION_HEADING} id="costs">
+          <h2 className={COSTS_HEADING} id="costs">
             What a call costs
           </h2>
           <table className={COST_TABLE}>

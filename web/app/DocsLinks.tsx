@@ -1,6 +1,6 @@
 // The docs' pages in their groups (board 31): the sidebar's list on a wide
-// screen, and the list the Contents menu opens on a phone. The page being read
-// is marked `aria-current` and drawn active.
+// screen, and the list the contents bar opens on a phone (board 31m). The
+// page being read is marked `aria-current` and drawn active.
 
 import {
   DOCS_NAV_ENDPOINT,

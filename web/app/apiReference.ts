@@ -17,7 +17,6 @@ import { SUGGESTION_LIMIT } from "@lexema/lookup/suggest.ts";
 import { MAX_BATCH_WORDS } from "../worker/api/endpoints.ts";
 import { GRAMMAR_CODES, MATCHES, PARTS_OF_SPEECH, SECTIONS } from "../worker/api/lookupFilters.ts";
 import { ORIGIN } from "../worker/hosts.ts";
-import type { ResultCoreJson, SectionsJson } from "../worker/api/lookupAnswer.ts";
 
 export const API_ORIGIN = ORIGIN.api;
 export const API_BASE = `${API_ORIGIN}${API_PREFIX.slice(0, -1)}`;
@@ -77,14 +76,18 @@ const Q: Parameter = {
   description: `The word, 1 to ${MAX_QUERY_LENGTH} characters.`,
 };
 
-const code = (values: readonly string[]) => values.map((value) => `\`${value}\``).join(", ");
+/** The first of a vocabulary's values, then `...`: as board 31 names a list too long for its line. */
+const opening = (values: readonly string[], count: number) => `${values.slice(0, count).join(", ")}, ...`;
 
 const POS: Parameter = {
   name: "pos",
   type: "string",
   required: false,
-  description: `Only this part of speech: ${code(PARTS_OF_SPEECH)}. \`adjective\` and \`adverb\` are read as \`adj\` and \`adv\`.`,
+  description: `Only this part of speech: ${opening(PARTS_OF_SPEECH, 3)}`,
 };
+
+/** The sections `fields`' row names before `...`, as board 31 does. */
+const FIELDS_NAMED: readonly (typeof SECTIONS)[number][] = ["definitions", "forms", "etymology", "synonyms"];
 
 const VERB_GRAMMAR: readonly Parameter[] = [
   { name: "mood", type: "string", required: false, description: "Only a verb's forms of this mood." },
@@ -96,36 +99,6 @@ const AGREEMENT_GRAMMAR: readonly Parameter[] = [
   { name: "gender", type: "string", required: false, description: "Only the grid's row of this gender." },
   { name: "number", type: "string", required: false, description: "Only the grid's column of this number." },
 ];
-
-/**
- * A `/lookup` result's fields, split as web/worker/api/lookupAnswer.ts splits
- * them: what every result carries, and the sections `fields` chooses among.
- */
-export const LOOKUP_RESULT: {
-  always: Readonly<Record<keyof ResultCoreJson, string>>;
-  sections: Readonly<Record<keyof SectionsJson, string>>;
-} = {
-  always: {
-    id: "The record: its release and its line in that release's archive.",
-    word: "The record's headword.",
-    pos: "The part of speech, as `pos` takes it.",
-    pos_title: "The part of speech as Wikizionario titles it.",
-    match:
-      "How `q` reached the record: `surface`, the spelling matched; `via`, `headword`, `form` or `form_of`; `grammar`, each place `q` fills in the record's forms.",
-    attribution: "The credit for the record's text; see Attribution.",
-  },
-  sections: {
-    pronunciations: "`ipa` and `note` for each pronunciation.",
-    definitions: "`definition`, its `labels`, its `examples`, and the `items` of a list it opens.",
-    examples: "Examples of senses that are not definitions.",
-    forms:
-      "A verb's `conjugation`: those of `infinito`, `gerundio`, `participio presente`, `participio` and `ausiliare` it has, then `moods` by mood, tense and person. A noun's or adjective's `gender_number`: `grid`, and `superlativo` or `null`, by gender and number. `null` when the record has no forms. Each cell is a list of spellings.",
-    etymology: "The etymology, or `null`.",
-    synonyms: "Words.",
-    antonyms: "Words.",
-    derived: "Words.",
-  },
-};
 
 /** `/lookup` unfiltered: every candidate for `andare`, with every section. */
 export const LOOKUP_EXAMPLE: Example = {
@@ -457,7 +430,7 @@ export const ENDPOINT_REFERENCE: Readonly<Record<Endpoint, EndpointReference>> =
     title: "Look up a word",
     tagline: "Everything about a word",
     summary:
-      "Every candidate for `q`, in full: the record the word heads, the lemma it is a form of, and any record that lists it among its forms.",
+      "Every candidate for q, in full: the record the word heads, the lemma it is a form of, and any record that lists it among its forms.",
     parameters: [
       Q,
       POS,
@@ -465,21 +438,21 @@ export const ENDPOINT_REFERENCE: Readonly<Record<Endpoint, EndpointReference>> =
         name: "match",
         type: "string",
         required: false,
-        description: `${code(MATCHES)}; \`any\` when absent. \`exact\`: headword matches only. \`form\`: form matches only.`,
+        description: `${MATCHES.slice(0, -1).join(", ")} or ${MATCHES[MATCHES.length - 1]}; any when absent.`,
       },
       {
         name: "fields",
         type: "string",
         required: false,
-        description: `A comma list of ${code(SECTIONS)}. Only these sections are returned; \`pronunciation\` returns \`pronunciations\`. ${code(Object.keys(LOOKUP_RESULT.always))} are always returned.`,
+        description: `A comma list of sections to return: ${opening(FIELDS_NAMED, FIELDS_NAMED.length)}`,
       },
-      { name: "limit_definitions", type: "integer", required: false, description: "At most this many definitions per result, a positive integer." },
+      { name: "limit_definitions", type: "integer", required: false, description: "At most this many definitions per result." },
       ...VERB_GRAMMAR,
       ...AGREEMENT_GRAMMAR,
     ],
     answers: [
-      { status: "200", description: "The word is in the release. `results` holds every candidate the filters keep, in the lookup's order, and is empty when they keep none." },
-      { status: "404", description: "The word is not in the release. `results` is empty and `suggestions` lists spellings of kind `accent`, `edit` or `prefix`." },
+      { status: "200", description: "The word is in the release. results holds every candidate the filters keep." },
+      { status: "404", description: "The word is not in the release. results is empty and suggestions lists close spellings." },
     ],
     examples: [LOOKUP_EXAMPLE, LOOKUP_FILTERED_EXAMPLE, NOT_FOUND_EXAMPLE],
   },
@@ -720,24 +693,19 @@ export const HEADERS: readonly { name: string; description: string }[] = [
 const WIDTH = 76;
 
 /**
- * The request an example sends, as a command. A query too long for one line
- * is sent as `-G` with one `--data-urlencode` per parameter, which is the same
- * request.
+ * The request an example sends, as a command, the way board 31 writes it: a
+ * query as `-G` with one `--data-urlencode` per parameter, a body as `-d`,
+ * then the address.
  */
 export function curlOf(example: Example): string {
   const [path, query = ""] = example.path.split("?");
-  const url = `${API_BASE}/${example.path}`;
-  const lines = [`curl -H "X-API-Key: ${EXAMPLE_KEY}" \\`];
+  const parameters = [...new URLSearchParams(query)];
+  const lines = [`curl ${parameters.length > 0 ? "-G " : ""}-H "X-API-Key: ${EXAMPLE_KEY}" \\`];
   if (example.body !== undefined) {
     lines.push(`  -H "content-type: application/json" \\`, `  -d '${JSON.stringify(example.body)}' \\`);
   }
-  if (url.length + 4 <= WIDTH) {
-    lines.push(`  "${url}"`);
-  } else {
-    lines[0] = `curl -G -H "X-API-Key: ${EXAMPLE_KEY}" \\`;
-    for (const [name, value] of new URLSearchParams(query)) lines.push(`  --data-urlencode "${name}=${value}" \\`);
-    lines.push(`  "${API_BASE}/${path}"`);
-  }
+  for (const [name, value] of parameters) lines.push(`  --data-urlencode "${name}=${value}" \\`);
+  lines.push(`  "${API_BASE}/${path}"`);
   return lines.join("\n");
 }
 
@@ -783,13 +751,26 @@ export interface CostRow {
   weight: UnitWeight;
 }
 
+/** Where each endpoint sits among those of its cost on the pricing page, as board 26 lists them. */
+const PRICING_ORDER: Readonly<Record<Endpoint, number>> = {
+  exists: 0,
+  lemmatize: 1,
+  lookup: 2,
+  inflect: 3,
+  random: 4,
+  suggest: 5,
+  nearby: 6,
+  "lookup/batch": 7,
+};
+
 /**
  * The unit map grouped by cost: endpoints charged per request from cheapest
  * up, then those charged per word. Each endpoint sits in exactly one row.
  */
 export const COST_ROWS: readonly CostRow[] = (() => {
   const rows = new Map<string, CostRow>();
-  for (const endpoint of ENDPOINTS_IN_ORDER) {
+  const inPricingOrder = [...ENDPOINTS_IN_ORDER].sort((a, b) => PRICING_ORDER[a] - PRICING_ORDER[b]);
+  for (const endpoint of inPricingOrder) {
     const weight = UNIT_WEIGHT[endpoint];
     const key = `${weight.per} ${weight.units}`;
     const row = rows.get(key);

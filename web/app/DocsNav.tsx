@@ -1,7 +1,8 @@
 "use client";
 
 // The docs' sidebar (board 31): a search field over the pages, then the
-// pages in their groups (DocsLinks.tsx). Typing keeps only the pages whose
+// pages in their groups (DocsLinks.tsx). On a phone the same list opens from
+// the contents bar (board 31m), so it takes the name its place gives it. Typing keeps only the pages whose
 // name holds what was typed; ⌘K (Ctrl K) puts the cursor in the field, as it
 // does in the dictionary's search bar (searchShortcut.ts). Without a script
 // every page shows and the field does nothing.
@@ -14,7 +15,7 @@ import { DOCS_SEARCH, DOCS_SEARCH_HINT, DOCS_SEARCH_INPUT } from "./styles.ts";
 const matches = (link: DocsLink, query: string) =>
   `${link.method ?? ""} ${link.label}`.toLowerCase().includes(query.trim().toLowerCase());
 
-export function DocsNav({ groups }: { groups: readonly DocsGroup[] }) {
+export function DocsNav({ groups, label }: { groups: readonly DocsGroup[]; label: string }) {
   const [query, setQuery] = useState("");
   const [hint, setHint] = useState<string | undefined>(undefined);
   const field = useRef<HTMLInputElement>(null);
@@ -37,7 +38,7 @@ export function DocsNav({ groups }: { groups: readonly DocsGroup[] }) {
   }, []);
 
   return (
-    <nav aria-label="Docs">
+    <nav aria-label={label}>
       <div className={DOCS_SEARCH}>
         <input
           ref={field}

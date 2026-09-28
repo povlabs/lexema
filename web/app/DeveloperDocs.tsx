@@ -22,14 +22,13 @@ import {
   GRAMMAR_VALUES,
   HEADERS,
   LANGUAGES,
-  LOOKUP_RESULT,
   requestsOf,
   type Example,
   type Parameter,
 } from "./apiReference.ts";
 import { CodePanel } from "./CodePanel";
 import { DeveloperPage, SIGN_IN_PATH } from "./DeveloperPage";
-import { DocsLinks, type DocsGroup } from "./DocsLinks";
+import type { DocsGroup } from "./DocsLinks";
 import { DocsNav } from "./DocsNav";
 import {
   DOCS_PAGES,
@@ -53,6 +52,8 @@ import {
   DOCS_CODE,
   DOCS_CONTENTS,
   DOCS_CONTENTS_ICON,
+  DOCS_CONTENTS_PAGE,
+  DOCS_CONTENTS_PANEL,
   DOCS_CONTENTS_SUMMARY,
   DOCS_ENDPOINT,
   DOCS_EYEBROW,
@@ -194,10 +195,6 @@ const describeParameter = (parameter: Parameter) => ({
   description: parameter.description,
 });
 
-/** A result's fields, each named with what it holds. */
-const describeFields = (fields: Readonly<Record<string, string>>) =>
-  Object.entries(fields).map(([name, description]) => ({ name, description }));
-
 function Answers({ answers }: { answers: readonly { status: string; description: string }[] }) {
   return (
     <ul className={DOCS_ROWS}>
@@ -224,17 +221,9 @@ function EndpointTopic({ endpoint }: { endpoint: Endpoint }) {
         <span className={DOCS_METHOD}>{reference.method}</span>
         <span className={DOCS_URL}>{`${API_BASE}/${endpoint}`}</span>
       </p>
-      <Paragraph>{`${reference.summary} Costs ${costText(UNIT_WEIGHT[endpoint])}.`}</Paragraph>
+      <Paragraph>{reference.summary}</Paragraph>
       <Subheading>{reference.method === "POST" ? "Body" : "Query parameters"}</Subheading>
       <Rows rows={reference.parameters.map(describeParameter)} />
-      {endpoint === "lookup" ? (
-        <>
-          <Subheading>Always returned</Subheading>
-          <Rows rows={describeFields(LOOKUP_RESULT.always)} />
-          <Subheading>Sections fields chooses among</Subheading>
-          <Rows rows={describeFields(LOOKUP_RESULT.sections)} />
-        </>
-      ) : null}
       <Subheading>Responses</Subheading>
       <Answers answers={reference.answers} />
     </Topic>
@@ -378,20 +367,22 @@ export function DeveloperDocs({ page }: { page: DocsPage }) {
       <div className={DOCS_LAYOUT}>
         <aside className={DOCS_SIDEBAR}>
           <div className={DOCS_SIDEBAR_INNER}>
-            <DocsNav groups={groups} />
+            <DocsNav groups={groups} label="Docs" />
           </div>
         </aside>
+        {/* On a phone the sidebar is this bar: the page's group and name, opening onto the sidebar's list. */}
+        <details className={DOCS_CONTENTS}>
+          <summary className={DOCS_CONTENTS_SUMMARY}>
+            {groupOf(page)}
+            <span aria-hidden="true">/</span>
+            <span className={DOCS_CONTENTS_PAGE}>{titleOf(page)}</span>
+            <ChevronIcon className={DOCS_CONTENTS_ICON} />
+          </summary>
+          <div className={DOCS_CONTENTS_PANEL}>
+            <DocsNav groups={groups} label="Docs contents" />
+          </div>
+        </details>
         <main className={DOCS_MAIN}>
-          {/* On a phone the sidebar folds into this menu, closed until opened. */}
-          <details className={DOCS_CONTENTS}>
-            <summary className={DOCS_CONTENTS_SUMMARY}>
-              Contents
-              <ChevronIcon className={DOCS_CONTENTS_ICON} />
-            </summary>
-            <nav aria-label="Docs contents">
-              <DocsLinks groups={groups} />
-            </nav>
-          </details>
           {page.kind === "guide" ? GUIDE_TOPICS[page.guide]() : <EndpointTopic endpoint={page.endpoint} />}
         </main>
       </div>
