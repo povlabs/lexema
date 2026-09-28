@@ -1,7 +1,7 @@
-// developers.lexema.fyi/docs (#153, #166, board 31): the reference for the
-// JSON API, one page per sidebar item (docsPages.ts). Each page has the
-// sidebar with itself marked, its text, beside it the requests and answers it
-// shows, and Previous / Next.
+// developers.lexema.fyi/docs (#153, #166, boards 31 and 31b): the reference
+// for the JSON API, one page per sidebar item (docsPages.ts). Each page has the
+// sidebar with itself marked, its text, and Previous / Next. An endpoint's page
+// has beside its text the requests and answers it shows; a guide's has none.
 //
 // Split from its routes' `page.tsx` so `web/test/developers.test.tsx` can
 // render it. It reads nothing from D1: what it states is `apiReference.ts`,
@@ -12,11 +12,9 @@ import { API_PREFIX, UNIT_WEIGHT, type Endpoint } from "@lexema/api/units.ts";
 import { ORIGIN } from "../worker/hosts.ts";
 import {
   API_BASE,
-  AUTH_EXAMPLE,
   costText,
   ENDPOINT_REFERENCE,
   ENDPOINTS_IN_ORDER,
-  ERROR_EXAMPLE,
   ERRORS,
   FIELDS_TEXT,
   formatJson,
@@ -61,6 +59,8 @@ import {
   DOCS_CONTENTS_SUMMARY,
   DOCS_ENDPOINT,
   DOCS_EYEBROW,
+  DOCS_GUIDE,
+  DOCS_GUIDE_BODY,
   DOCS_HEADING,
   DOCS_LAYOUT,
   DOCS_MAIN,
@@ -70,6 +70,7 @@ import {
   DOCS_NEIGHBOUR_NEXT,
   DOCS_NEIGHBOUR_TITLE,
   DOCS_NEIGHBOURS,
+  DOCS_NEIGHBOURS_GUIDE,
   DOCS_PARAGRAPH,
   DOCS_ROW,
   DOCS_ROW_HEAD,
@@ -170,19 +171,19 @@ function Subheading({ id, children }: { id?: string; children: string }) {
 const PANEL_WIDTH = 56;
 
 /** Examples as the code panel prints them. */
-const panelOf = (examples: readonly Example[], withResponse = true) =>
+const panelOf = (examples: readonly Example[]) =>
   examples.map((example) => ({
     status: example.status,
     label: example.label,
     requests: requestsOf(example),
-    response: withResponse ? formatJson(example.response, PANEL_WIDTH) : undefined,
+    response: formatJson(example.response, PANEL_WIDTH),
   }));
 
 /** Previous / Next: the pages either side of this one, in the sidebar's order. */
 function Neighbours({ page }: { page: DocsPage }) {
   const { previous, next } = neighboursOf(page);
   return (
-    <nav className={DOCS_NEIGHBOURS} aria-label="Previous and next">
+    <nav className={page.kind === "guide" ? DOCS_NEIGHBOURS_GUIDE : DOCS_NEIGHBOURS} aria-label="Previous and next">
       {previous === undefined ? null : (
         <a className={DOCS_NEIGHBOUR} href={pathOf(previous)} rel="prev">
           <span className={DOCS_NEIGHBOUR_LABEL}>Previous</span>
@@ -199,18 +200,27 @@ function Neighbours({ page }: { page: DocsPage }) {
   );
 }
 
-/** A page's topic: its eyebrow and heading, its text, the code beside it, and Previous / Next under all. */
-function Topic({ page, code, children }: { page: DocsPage; code?: ReactNode; children: ReactNode }) {
+/**
+ * A page's topic: its eyebrow and heading, its text, and Previous / Next under
+ * all. An endpoint's topic has its code beside the text; a guide's has none,
+ * and its text takes the column's width (board 31b).
+ */
+function Topic(
+  props:
+    | { page: Extract<DocsPage, { kind: "guide" }>; children: ReactNode }
+    | { page: Extract<DocsPage, { kind: "endpoint" }>; code: ReactNode; children: ReactNode },
+) {
+  const { page, children } = props;
   return (
-    <article className={DOCS_SECTION} aria-labelledby="topic-heading">
+    <article className={page.kind === "guide" ? DOCS_GUIDE : DOCS_SECTION} aria-labelledby="topic-heading">
       <div className={DOCS_TEXT}>
         <p className={DOCS_EYEBROW}>{groupOf(page)}</p>
         <h1 className={DOCS_HEADING} id="topic-heading">
           {titleOf(page)}
         </h1>
-        {children}
+        {page.kind === "guide" ? <div className={DOCS_GUIDE_BODY}>{children}</div> : children}
       </div>
-      {code === undefined ? null : <div className={DOCS_CODE}>{code}</div>}
+      {"code" in props ? <div className={DOCS_CODE}>{props.code}</div> : null}
       <Neighbours page={page} />
     </article>
   );
@@ -294,10 +304,7 @@ const GUIDE_TOPICS: Readonly<Record<Guide, () => ReactNode>> = {
     </Topic>
   ),
   authentication: () => (
-    <Topic
-      page={{ kind: "guide", guide: "authentication" }}
-      code={<CodePanel examples={panelOf([AUTH_EXAMPLE], false)} languages={LANGUAGES} />}
-    >
+    <Topic page={{ kind: "guide", guide: "authentication" }}>
       <p className={DOCS_PARAGRAPH}>
         <a className={LINK} href={SIGN_IN_PATH}>
           Sign in
@@ -338,8 +345,8 @@ const GUIDE_TOPICS: Readonly<Record<Guide, () => ReactNode>> = {
     </Topic>
   ),
   errors: () => (
-    <Topic page={{ kind: "guide", guide: "errors" }} code={<CodePanel examples={panelOf([ERROR_EXAMPLE])} languages={LANGUAGES} />}>
-      <Paragraph>{"An error answers with its status and a body naming it."}</Paragraph>
+    <Topic page={{ kind: "guide", guide: "errors" }}>
+      <Paragraph>{"An error answers with its status and a body naming it: `error.code`, one of these, and `error.message`, what was wrong."}</Paragraph>
       <Rows rows={ERRORS.map((error) => ({ name: `${error.status} ${error.code}`, description: error.when }))} />
       <p className={DOCS_PARAGRAPH}>
         {"A word "}

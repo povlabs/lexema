@@ -541,7 +541,17 @@ export const DOCS_MAIN = "min-w-0 flex-1 px-5 pt-[2.65625rem] pb-[2.9375rem] sm:
 /** A page's topic: its text, and beside it on a wide screen the code it shows. */
 export const DOCS_SECTION =
   "xl:grid xl:grid-cols-[minmax(0,33.125rem)_minmax(0,1fr)] xl:grid-rows-[auto_1fr] xl:gap-x-[3.125rem]";
+/**
+ * A guide's topic has no code beside it: its text, tables and Previous / Next
+ * take the column to 120 px from the window's edge (board 31b).
+ */
+export const DOCS_GUIDE = "xl:pr-20";
 export const DOCS_TEXT = "min-w-0";
+/**
+ * A guide page's text under its heading. Board 31b sets it lower than an
+ * endpoint's box, one paragraph 16 px after another.
+ */
+export const DOCS_GUIDE_BODY = "sm:pt-5 sm:[&>p+p]:mt-4";
 /**
  * The code beside a topic, never taller than the window: a response longer
  * than the room left scrolls inside its own panel. On a phone it follows the
@@ -578,6 +588,8 @@ export const DOCS_TABLE_CELL = "border-b border-border p-0 py-2 pr-6 align-basel
 export const DOCS_TABLE_CODE = "border-b border-border p-0 py-2 pr-6 align-baseline font-mono text-[0.8125rem] text-text-strong";
 /** Previous / Next at the foot of a page, under its text: two hairline cards, Next on the right. */
 export const DOCS_NEIGHBOURS = "mt-[1.9375rem] grid grid-cols-2 gap-2.5 self-start sm:mt-[2.875rem] sm:gap-4 xl:col-start-1";
+/** Under a guide's text, which has no code beside it: board 31b sets it 39 px below. */
+export const DOCS_NEIGHBOURS_GUIDE = "mt-[1.9375rem] grid grid-cols-2 gap-2.5 sm:mt-[2.4375rem] sm:gap-4";
 export const DOCS_NEIGHBOUR = `flex min-w-0 flex-col gap-[0.1875rem] rounded-[6px] border border-border px-[1.125rem] pt-3 pb-[0.8125rem] no-underline hover:border-border-strong ${FOCUS_RING}`;
 export const DOCS_NEIGHBOUR_NEXT = `${DOCS_NEIGHBOUR} col-start-2 items-end text-right`;
 export const DOCS_NEIGHBOUR_LABEL = "font-sans text-[0.75rem] leading-4 text-text-muted";

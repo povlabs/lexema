@@ -28,14 +28,14 @@ import {
   API_BASE,
   ENDPOINT_REFERENCE,
   ENDPOINTS_IN_ORDER,
-  ERROR_EXAMPLE,
   ERRORS,
   EXAMPLE_KEY,
   HEADERS,
   type Example,
 } from "../app/apiReference.ts";
 import { DeveloperDocs } from "../app/DeveloperDocs";
-import { DOCS_PAGES, endpointPath } from "../app/docsPages.ts";
+import { DOCS_PAGES, endpointPath, pathOf } from "../app/docsPages.ts";
+import { DOCS_CODE } from "../app/styles.ts";
 import { DeveloperLanding } from "../app/DeveloperLanding";
 import { DeveloperFooter } from "../app/DeveloperPage";
 import { DeveloperPricing } from "../app/DeveloperPricing";
@@ -93,17 +93,14 @@ function send(path: string, init: { key?: string; method?: string; body?: string
 const withoutLines = (value: unknown): unknown =>
   JSON.parse(JSON.stringify(value).replaceAll(new RegExp(`"${RELEASE}:\\d+"`, "g"), `"${RELEASE}:#"`));
 
-/** Every example the docs print, with the method it is sent with: the endpoints' in their order, then the error's. */
-const EXAMPLES: [string, "GET" | "POST", Example][] = [
-  ...ENDPOINTS_IN_ORDER.flatMap((name) =>
-    ENDPOINT_REFERENCE[name].examples.map((example): [string, "GET" | "POST", Example] => [
-      `${name} ${example.status}`,
-      ENDPOINT_REFERENCE[name].method,
-      example,
-    ]),
-  ),
-  ["error", "GET", ERROR_EXAMPLE],
-];
+/** Every example the docs print, with the method it is sent with: the endpoints', in their order. */
+const EXAMPLES: [string, "GET" | "POST", Example][] = ENDPOINTS_IN_ORDER.flatMap((name) =>
+  ENDPOINT_REFERENCE[name].examples.map((example): [string, "GET" | "POST", Example] => [
+    `${name} ${example.status}`,
+    ENDPOINT_REFERENCE[name].method,
+    example,
+  ]),
+);
 
 test("every example the docs print is what the API answers for its request", async (t) => {
   // `/random`'s draw, fixed at the start of the range: the release's first noun.
@@ -147,7 +144,10 @@ test("every error the docs list is one the API answers, with that status and cod
   for (const error of ERRORS) {
     const response = await earned[error.code]();
     assert.equal(response.status, error.status, error.code);
-    assert.equal(((await response.json()) as { error: { code: string } }).error.code, error.code);
+    // The Errors page says a body names its `error.code` and `error.message`.
+    const body = (await response.json()) as { error: { code: string; message: string } };
+    assert.equal(body.error.code, error.code);
+    assert.equal(typeof body.error.message, "string", error.code);
   }
 });
 
@@ -172,11 +172,9 @@ test("the docs print each example's status and response as the reference states 
     status: Number(value),
     response: JSON.parse(code),
   }));
-  // The Errors topic comes before the endpoints.
-  const inPageOrder = [EXAMPLES[EXAMPLES.length - 1], ...EXAMPLES.slice(0, -1)];
   assert.deepEqual(
     printed,
-    inPageOrder.map(([, , example]) => ({ status: example.status, response: example.response })),
+    EXAMPLES.map(([, , example]) => ({ status: example.status, response: example.response })),
   );
 });
 
@@ -249,8 +247,8 @@ test("the Grammar values page lists every value the API takes for pos, match and
 
 test("every request the docs print, in every language, is sent to https://api.lexema.fyi/v1", () => {
   const requests = codeBlocks(docs(), "data-request");
-  // Each example's request, and the one that shows the key header, three ways each.
-  assert.equal(requests.length, (EXAMPLES.length + 1) * 3);
+  // Each example's request, three ways.
+  assert.equal(requests.length, EXAMPLES.length * 3);
   for (const { value, code } of requests) {
     assert.ok(["curl", "JavaScript", "Python"].includes(value), value);
     assert.match(code, /"https:\/\/api\.lexema\.fyi\/v1\/[^"?]+(\?[^"]*)?"|`https:\/\/api\.lexema\.fyi\/v1\/[^`]+`/, code);
@@ -261,9 +259,7 @@ test("every request the docs print, in every language, is sent to https://api.le
 const requestsIn = (language: string): string[] =>
   codeBlocks(docs(), "data-request")
     .filter(({ value }) => value === language)
-    .map(({ code }) => code)
-    // The first is the Authentication topic's, the one that shows the key header.
-    .slice(1);
+    .map(({ code }) => code);
 
 test("every JavaScript example, run, sends its example's request and gets its example's answer", async (t) => {
   t.mock.method(Math, "random", () => 0);
@@ -272,9 +268,8 @@ test("every JavaScript example, run, sends its example's request and gets its ex
     fetch: typeof globalThis.fetch,
   ) => Promise<unknown>;
   const scripts = requestsIn("JavaScript");
-  const inPageOrder = [EXAMPLES[EXAMPLES.length - 1], ...EXAMPLES.slice(0, -1)];
-  assert.equal(scripts.length, inPageOrder.length);
-  for (const [i, [name, , example]] of inPageOrder.entries()) {
+  assert.equal(scripts.length, EXAMPLES.length);
+  for (const [i, [name, , example]] of EXAMPLES.entries()) {
     let status = 0;
     const fetch = (async (input: string, init: RequestInit) => {
       const response = await handleApi(new Request(input, init), { db, releaseId: RELEASE, now: NOW });
@@ -293,9 +288,8 @@ test("every JavaScript example, run, sends its example's request and gets its ex
 
 test("every Python example sends its example's method, path, query and body", () => {
   const scripts = requestsIn("Python");
-  const inPageOrder = [EXAMPLES[EXAMPLES.length - 1], ...EXAMPLES.slice(0, -1)];
-  assert.equal(scripts.length, inPageOrder.length);
-  for (const [i, [name, method, example]] of inPageOrder.entries()) {
+  assert.equal(scripts.length, EXAMPLES.length);
+  for (const [i, [name, method, example]] of EXAMPLES.entries()) {
     const script = scripts[i];
     const call = script.match(/requests\.(get|post)\(\n {4}"([^"]+)",/);
     assert.ok(call, name);
@@ -310,6 +304,22 @@ test("every Python example sends its example's method, path, query and body", ()
     assert.equal(sent.pathname, printed.pathname, name);
     assert.deepEqual([...sent.searchParams], [...printed.searchParams], name);
     assert.deepEqual(body === undefined ? undefined : JSON.parse(body), example.body, name);
+  }
+});
+
+test("a guide page renders no code column, and each endpoint page its request and response", () => {
+  for (const page of DOCS_PAGES) {
+    const html = renderToStaticMarkup(<DeveloperDocs page={page} />);
+    const name = pathOf(page);
+    const column = html.includes(`class="${DOCS_CODE}"`);
+    if (page.kind === "guide") {
+      assert.ok(!column, name);
+      assert.equal(codeBlocks(html, "data-request").length + codeBlocks(html, "data-response").length, 0, name);
+    } else {
+      assert.ok(column, name);
+      assert.equal(codeBlocks(html, "data-response").length, ENDPOINT_REFERENCE[page.endpoint].examples.length, name);
+      assert.equal(codeBlocks(html, "data-request").length, ENDPOINT_REFERENCE[page.endpoint].examples.length * 3, name);
+    }
   }
 });
 

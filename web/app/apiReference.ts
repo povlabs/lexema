@@ -716,13 +716,6 @@ export const ERRORS: readonly ErrorReference[] = [
   { status: 503, code: "unavailable", when: "The request could not be answered. Try again later." },
 ];
 
-/** An error, as every error is answered. */
-export const ERROR_EXAMPLE: Example = {
-  path: "lookup?q=sale&limit_definitions=0",
-  status: 400,
-  response: { error: { code: "invalid_parameter", message: 'limit_definitions must be a positive integer; got "0".' } },
-};
-
 /** The rate-limit headers, and what each says. */
 export const HEADERS: readonly { name: string; description: string }[] = [
   { name: "RateLimit-Limit", description: "The key's requests per minute." },
@@ -871,6 +864,3 @@ export const requestsOf = (example: Example): Readonly<Record<Language, string>>
   JavaScript: javascriptOf(example),
   Python: pythonOf(example),
 });
-
-/** The request the Authentication section shows the key header with. */
-export const AUTH_EXAMPLE: Example = ENDPOINT_REFERENCE.exists.examples[0];
