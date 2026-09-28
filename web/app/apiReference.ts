@@ -52,9 +52,6 @@ export interface Example {
   response: unknown;
 }
 
-/** A request as the docs print it: its path and query from `/v1/`, and the JSON body a POST sends. */
-export type ApiRequest = Pick<Example, "path" | "body">;
-
 export interface EndpointReference {
   method: "GET" | "POST";
   /** The endpoint's heading in the docs: what a call does, as a verb phrase. */
@@ -719,6 +716,13 @@ export const ERRORS: readonly ErrorReference[] = [
   { status: 503, code: "unavailable", when: "The request could not be answered. Try again later." },
 ];
 
+/** An error, as every error is answered. */
+export const ERROR_EXAMPLE: Example = {
+  path: "lookup?q=sale&limit_definitions=0",
+  status: 400,
+  response: { error: { code: "invalid_parameter", message: 'limit_definitions must be a positive integer; got "0".' } },
+};
+
 /** The rate-limit headers, and what each says. */
 export const HEADERS: readonly { name: string; description: string }[] = [
   { name: "RateLimit-Limit", description: "The key's requests per minute." },
@@ -731,37 +735,19 @@ export const HEADERS: readonly { name: string; description: string }[] = [
 const WIDTH = 76;
 
 /**
- * How a request's query is printed. `separate`, as board 31 writes an
- * endpoint's examples: each parameter apart (`--data-urlencode`, `params`).
- * `inline`, as board 31b writes a guide's short request: in the address.
+ * The request an example sends, as a command, the way board 31 writes it: a
+ * query as `-G` with one `--data-urlencode` per parameter, a body as `-d`,
+ * then the address.
  */
-export type QueryStyle = "separate" | "inline";
-
-/** What a printed request sends: its address, the parameters printed apart from it, and its body. */
-interface Call {
-  url: string;
-  query: [string, string][];
-  body?: unknown;
-}
-
-function callOf(example: ApiRequest, style: QueryStyle): Call {
+export function curlOf(example: Example): string {
   const [path, query = ""] = example.path.split("?");
-  if (style === "inline") return { url: `${API_BASE}/${example.path}`, query: [], body: example.body };
-  return { url: `${API_BASE}/${path}`, query: [...new URLSearchParams(query)], body: example.body };
-}
-
-/**
- * The request an example sends, as a command: a separate query as `-G` with
- * one `--data-urlencode` per parameter, a body as `-d`, then the address.
- */
-export function curlOf(example: ApiRequest, style: QueryStyle = "separate"): string {
-  const { url, query, body } = callOf(example, style);
-  const lines = [`curl ${query.length > 0 ? "-G " : ""}-H "X-API-Key: ${EXAMPLE_KEY}" \\`];
-  if (body !== undefined) {
-    lines.push(`  -H "content-type: application/json" \\`, `  -d '${JSON.stringify(body)}' \\`);
+  const parameters = [...new URLSearchParams(query)];
+  const lines = [`curl ${parameters.length > 0 ? "-G " : ""}-H "X-API-Key: ${EXAMPLE_KEY}" \\`];
+  if (example.body !== undefined) {
+    lines.push(`  -H "content-type: application/json" \\`, `  -d '${JSON.stringify(example.body)}' \\`);
   }
-  for (const [name, value] of query) lines.push(`  --data-urlencode "${name}=${value}" \\`);
-  lines.push(`  "${url}"`);
+  for (const [name, value] of parameters) lines.push(`  --data-urlencode "${name}=${value}" \\`);
+  lines.push(`  "${API_BASE}/${path}"`);
   return lines.join("\n");
 }
 
@@ -777,7 +763,7 @@ export function formatJson(value: unknown, width: number = WIDTH): string {
 /** `value` printed at `indent`, its first line already `lead` characters in. */
 function format(value: unknown, indent: string, lead: number, width: number): string {
   const inline = oneLine(value);
-  if (value === null || typeof value !== "object" || value instanceof Folded || indent.length + lead + inline.length <= width) return inline;
+  if (value === null || typeof value !== "object" || indent.length + lead + inline.length <= width) return inline;
   const inner = `${indent}  `;
   const members = Array.isArray(value)
     ? value.map((item) => inner + format(item, inner, 0, width))
@@ -790,54 +776,10 @@ function format(value: unknown, indent: string, lead: number, width: number): st
 }
 
 function oneLine(value: unknown): string {
-  if (value instanceof Folded) return value.printed;
   if (value === null || typeof value !== "object") return JSON.stringify(value);
   if (Array.isArray(value)) return `[${value.map(oneLine).join(", ")}]`;
   const members = Object.entries(value).map(([key, item]) => `${JSON.stringify(key)}: ${oneLine(item)}`);
   return members.length === 0 ? "{}" : `{ ${members.join(", ")} }`;
-}
-
-/** A list or an object printed closed, `[ … ]` or `{ … }`: what it holds is in the answer, not on the page. */
-class Folded {
-  constructor(readonly printed: "[ … ]" | "{ … }") {}
-}
-
-/**
- * How much of an answer a guide prints. `whole` prints the value as it is;
- * `closed` prints a list or an object as `[ … ]` or `{ … }`. An object of
- * folds keeps only the members it names, each folded so, in the answer's
- * order. A list of folds folds a list's items: the first fold the first item,
- * and so on, the last fold every item after.
- */
-export type Fold = "whole" | "closed" | { readonly [member: string]: Fold } | readonly [Fold, ...Fold[]];
-
-/**
- * An answer folded for printing. Every member a fold names must be in the
- * answer and every closed value must hold something, so a fold that no
- * longer fits the answer it is read from throws rather than print a shape
- * the API does not give.
- */
-export function fold(value: unknown, how: Fold, at = "answer"): unknown {
-  if (how === "whole") return value;
-  if (how === "closed") {
-    const size = Array.isArray(value) ? value.length : value !== null && typeof value === "object" ? Object.keys(value).length : 0;
-    if (size === 0) throw new Error(`${at}: only a list or an object that holds something is printed closed`);
-    return new Folded(Array.isArray(value) ? "[ … ]" : "{ … }");
-  }
-  if (Array.isArray(how)) {
-    if (!Array.isArray(value)) throw new Error(`${at}: not a list`);
-    return value.map((item, i) => fold(item, how[Math.min(i, how.length - 1)], `${at}[${i}]`));
-  }
-  if (value === null || typeof value !== "object" || Array.isArray(value)) throw new Error(`${at}: not an object`);
-  const members = how as { readonly [member: string]: Fold };
-  for (const member of Object.keys(members)) {
-    if (!(member in value)) throw new Error(`${at}: no member ${member}`);
-  }
-  return Object.fromEntries(
-    Object.entries(value)
-      .filter(([member]) => member in members)
-      .map(([member, item]) => [member, fold(item, members[member], `${at}.${member}`)]),
-  );
 }
 
 /** An endpoint's cost as the docs and the pricing page write it: `2 units`, `1 unit per word`. */
@@ -884,6 +826,9 @@ export const COST_ROWS: readonly CostRow[] = (() => {
 export const LANGUAGES = ["curl", "JavaScript", "Python"] as const;
 export type Language = (typeof LANGUAGES)[number];
 
+/** An example's query, as name and value pairs. */
+const queryOf = (example: Example): [string, string][] => [...new URLSearchParams(example.path.split("?")[1] ?? "")];
+const urlOf = (example: Example): string => `${API_BASE}/${example.path.split("?")[0]}`;
 /** Pairs as a one-line object literal both JavaScript and Python read. */
 const objectOf = (pairs: [string, string][]): string =>
   `{ ${pairs.map(([name, value]) => `${JSON.stringify(name)}: ${JSON.stringify(value)}`).join(", ")} }`;
@@ -892,38 +837,40 @@ const objectOf = (pairs: [string, string][]): string =>
  * The request an example sends, as JavaScript: `fetch`, then the answer's
  * JSON. It is the same request `curlOf` prints.
  */
-export function javascriptOf(example: ApiRequest, style: QueryStyle = "separate"): string {
-  const { url, query, body } = callOf(example, style);
+export function javascriptOf(example: Example): string {
+  const query = queryOf(example);
   const lines: string[] = [];
   if (query.length > 0) lines.push(`const params = new URLSearchParams(${objectOf(query)});`);
-  const address = query.length > 0 ? `\`${url}?\${params}\`` : JSON.stringify(url);
-  lines.push(`const response = await fetch(${address}, {`);
-  if (body === undefined) {
+  const url = query.length > 0 ? `\`${urlOf(example)}?\${params}\`` : JSON.stringify(urlOf(example));
+  lines.push(`const response = await fetch(${url}, {`);
+  if (example.body !== undefined) lines.push(`  method: "POST",`);
+  if (example.body === undefined) {
     lines.push(`  headers: { "X-API-Key": ${JSON.stringify(EXAMPLE_KEY)} },`);
   } else {
-    lines.push(`  method: "POST",`);
     lines.push(`  headers: { "X-API-Key": ${JSON.stringify(EXAMPLE_KEY)}, "content-type": "application/json" },`);
-    lines.push(`  body: JSON.stringify(${oneLine(body)}),`);
+    lines.push(`  body: JSON.stringify(${oneLine(example.body)}),`);
   }
   lines.push(`});`, `const data = await response.json();`);
   return lines.join("\n");
 }
 
 /** The request an example sends, as Python with `requests`. */
-export function pythonOf(example: ApiRequest, style: QueryStyle = "separate"): string {
-  const { url, query, body } = callOf(example, style);
-  const method = body === undefined ? "get" : "post";
-  const lines = [`import requests`, ``, `response = requests.${method}(`, `    ${JSON.stringify(url)},`];
+export function pythonOf(example: Example): string {
+  const query = queryOf(example);
+  const method = example.body === undefined ? "get" : "post";
+  const lines = [`import requests`, ``, `response = requests.${method}(`, `    ${JSON.stringify(urlOf(example))},`];
   if (query.length > 0) lines.push(`    params=${objectOf(query)},`);
-  if (body !== undefined) lines.push(`    json=${oneLine(body)},`);
+  if (example.body !== undefined) lines.push(`    json=${oneLine(example.body)},`);
   lines.push(`    headers={ "X-API-Key": ${JSON.stringify(EXAMPLE_KEY)} },`, `)`, `data = response.json()`);
   return lines.join("\n");
 }
 
 /** An example's request in every language the docs print. */
-export const requestsOf = (example: ApiRequest, style: QueryStyle = "separate"): Readonly<Record<Language, string>> => ({
-  curl: curlOf(example, style),
-  JavaScript: javascriptOf(example, style),
-  Python: pythonOf(example, style),
+export const requestsOf = (example: Example): Readonly<Record<Language, string>> => ({
+  curl: curlOf(example),
+  JavaScript: javascriptOf(example),
+  Python: pythonOf(example),
 });
 
+/** The request the Authentication section shows the key header with. */
+export const AUTH_EXAMPLE: Example = ENDPOINT_REFERENCE.exists.examples[0];

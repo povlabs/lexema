@@ -542,8 +542,6 @@ export const DOCS_MAIN = "min-w-0 flex-1 px-5 pt-[2.65625rem] pb-[2.9375rem] sm:
 export const DOCS_SECTION =
   "xl:grid xl:grid-cols-[minmax(0,33.125rem)_minmax(0,1fr)] xl:grid-rows-[auto_1fr] xl:gap-x-[3.125rem]";
 export const DOCS_TEXT = "min-w-0";
-/** A guide page's text under its heading: board 31b sets it lower than an endpoint's box. */
-export const DOCS_GUIDE_BODY = "sm:pt-5";
 /**
  * The code beside a topic, never taller than the window: a response longer
  * than the room left scrolls inside its own panel. On a phone it follows the
@@ -595,13 +593,8 @@ const CODE_PANEL = "min-w-0 overflow-hidden rounded-[6px] border border-border b
 export const CODE_PANEL_REQUEST = `${CODE_PANEL} shrink-0`;
 /** The response takes the room the request leaves, and no more than its answer needs. */
 export const CODE_PANEL_RESPONSE = `${CODE_PANEL} flex min-h-0 flex-col`;
-/**
- * A panel's name, then its tabs and Copy 16 px apart. The name keeps its line
- * and at least 12 px before the first tab, so `Your first request` and its
- * three tabs fit a phone's panel.
- */
-export const CODE_PANEL_HEAD = "flex h-[2.1875rem] shrink-0 items-center border-b border-border px-4 [&>*:nth-child(n+3)]:ml-4";
-export const CODE_PANEL_TITLE = "m-0 mr-auto pr-3 font-sans text-[0.75rem] font-semibold whitespace-nowrap text-text-strong";
+export const CODE_PANEL_HEAD = "flex h-[2.1875rem] shrink-0 items-center gap-4 border-b border-border px-4";
+export const CODE_PANEL_TITLE = "m-0 mr-auto font-sans text-[0.75rem] font-semibold text-text-strong";
 export const CODE_PANEL_TAB = `cursor-pointer border-0 bg-transparent p-0 font-sans text-[0.75rem] text-text-muted hover:text-text aria-pressed:font-semibold aria-pressed:text-accent ${FOCUS_RING}`;
 export const CODE_PANEL_STATUS = "font-sans text-[0.75rem] font-semibold text-accent";
 export const CODE_PANEL_COPY = `cursor-pointer border-0 bg-transparent p-0 font-sans text-[0.75rem] text-text-muted hover:text-text ${FOCUS_RING}`;

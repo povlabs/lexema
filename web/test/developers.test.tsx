@@ -28,15 +28,14 @@ import {
   API_BASE,
   ENDPOINT_REFERENCE,
   ENDPOINTS_IN_ORDER,
+  ERROR_EXAMPLE,
   ERRORS,
   EXAMPLE_KEY,
   HEADERS,
-  type ApiRequest,
   type Example,
 } from "../app/apiReference.ts";
 import { DeveloperDocs } from "../app/DeveloperDocs";
-import { DOCS_PAGES, endpointPath, type Guide } from "../app/docsPages.ts";
-import { EXAMPLE_PER_MINUTE, GUIDE_PANELS, printedAnswer, type GuideAnswer, type Sender } from "../app/guidePanels.ts";
+import { DOCS_PAGES, endpointPath } from "../app/docsPages.ts";
 import { DeveloperLanding } from "../app/DeveloperLanding";
 import { DeveloperFooter } from "../app/DeveloperPage";
 import { DeveloperPricing } from "../app/DeveloperPricing";
@@ -94,44 +93,17 @@ function send(path: string, init: { key?: string; method?: string; body?: string
 const withoutLines = (value: unknown): unknown =>
   JSON.parse(JSON.stringify(value).replaceAll(new RegExp(`"${RELEASE}:\\d+"`, "g"), `"${RELEASE}:#"`));
 
-/** Every example an endpoint's page prints, with the method it is sent with, in the endpoints' order. */
-const EXAMPLES: [string, "GET" | "POST", Example][] = ENDPOINTS_IN_ORDER.flatMap((name) =>
-  ENDPOINT_REFERENCE[name].examples.map((example): [string, "GET" | "POST", Example] => [
-    `${name} ${example.status}`,
-    ENDPOINT_REFERENCE[name].method,
-    example,
-  ]),
-);
-
-/** Each guide page's panel, in the sidebar's order. */
-const GUIDES: Guide[] = DOCS_PAGES.flatMap((page) => (page.kind === "guide" ? [page.guide] : []));
-
-/** A key of the examples' limit, with `before` of its requests already made this minute. */
-async function keyWith(before: number): Promise<string> {
-  const { key } = await newKey(EXAMPLE_PER_MINUTE);
-  for (let i = 0; i < before; i++) await send("exists?q=sale", { key });
-  return key;
-}
-
-/** Send a guide's request as `sender` sends it. */
-async function sendAs(sender: Sender, request: ApiRequest): Promise<Response> {
-  const keys: Record<Sender, () => Promise<string | undefined>> = {
-    key: () => keyWith(0),
-    "no-key": async () => undefined,
-    "unknown-key": async () => "lx_not-a-key",
-    "spent-key": () => keyWith(EXAMPLE_PER_MINUTE),
-  };
-  return send(request.path, { key: await keys[sender]() });
-}
-
-/** The body an answer prints, whole or folded; undefined where it prints only headers. */
-const bodyOf = (answer: GuideAnswer): unknown => answer.shown.body;
-
-/** The rate-limit headers a response carries, as `name: value`, lower-cased. */
-const limitHeadersOf = (response: Response): string[] =>
-  [...response.headers]
-    .filter(([name]) => name.startsWith("ratelimit-") || name === "retry-after")
-    .map(([name, value]) => `${name}: ${value}`);
+/** Every example the docs print, with the method it is sent with: the endpoints' in their order, then the error's. */
+const EXAMPLES: [string, "GET" | "POST", Example][] = [
+  ...ENDPOINTS_IN_ORDER.flatMap((name) =>
+    ENDPOINT_REFERENCE[name].examples.map((example): [string, "GET" | "POST", Example] => [
+      `${name} ${example.status}`,
+      ENDPOINT_REFERENCE[name].method,
+      example,
+    ]),
+  ),
+  ["error", "GET", ERROR_EXAMPLE],
+];
 
 test("every example the docs print is what the API answers for its request", async (t) => {
   // `/random`'s draw, fixed at the start of the range: the release's first noun.
@@ -195,54 +167,17 @@ function codeBlocks(html: string, attribute: string): { value: string; code: str
 /** Every page of the docs, in the sidebar's order. */
 const docs = () => DOCS_PAGES.map((page) => renderToStaticMarkup(<DeveloperDocs page={page} />)).join("\n");
 
-test("the endpoint pages print each example's status and response as the reference states them", () => {
-  const html = ENDPOINTS_IN_ORDER.map((endpoint) => renderToStaticMarkup(<DeveloperDocs page={{ kind: "endpoint", endpoint }} />)).join("\n");
-  const printed = codeBlocks(html, "data-response").map(({ value, code }) => ({ status: Number(value), response: JSON.parse(code) }));
+test("the docs print each example's status and response as the reference states them", () => {
+  const printed = codeBlocks(docs(), "data-response").map(({ value, code }) => ({
+    status: Number(value),
+    response: JSON.parse(code),
+  }));
+  // The Errors topic comes before the endpoints.
+  const inPageOrder = [EXAMPLES[EXAMPLES.length - 1], ...EXAMPLES.slice(0, -1)];
   assert.deepEqual(
     printed,
-    EXAMPLES.map(([, , example]) => ({ status: example.status, response: example.response })),
+    inPageOrder.map(([, , example]) => ({ status: example.status, response: example.response })),
   );
-});
-
-test("every guide page's answer is what the API answers its request, sent as it names, headers and all", async () => {
-  for (const guide of GUIDES) {
-    const panel = GUIDE_PANELS[guide];
-    for (const answer of panel.answers) {
-      const name = `${guide} ${answer.status}`;
-      const response = await sendAs(answer.sender, panel.request);
-      assert.equal(response.status, answer.status, name);
-      const body = await response.json();
-      if (bodyOf(answer) !== undefined) assert.deepEqual(withoutLines(body), withoutLines(bodyOf(answer)), name);
-      if (answer.shown.kind === "headers") {
-        // Every rate-limit header the API sends, and no other, with the value the page prints.
-        assert.deepEqual(
-          limitHeadersOf(response),
-          answer.shown.headers.map(([header, value]) => `${header.toLowerCase()}: ${value}`),
-          name,
-        );
-      }
-    }
-  }
-});
-
-test("every guide page prints each of its answers, folded from the whole answer, under a status tab", () => {
-  for (const guide of GUIDES) {
-    const html = renderToStaticMarkup(<DeveloperDocs page={{ kind: "guide", guide }} />);
-    const printed = codeBlocks(html, "data-response");
-    assert.deepEqual(
-      printed.map(({ value, code }) => ({ status: Number(value), code })),
-      GUIDE_PANELS[guide].answers.map((answer) => ({ status: answer.status, code: printedAnswer(answer, 56) })),
-      guide,
-    );
-  }
-  // Folded as board 31b draws the introduction's: each result's lists and objects closed.
-  const introduction = printedAnswer(GUIDE_PANELS.introduction.answers[0], 56);
-  for (const closed of ['"definitions": [ … ]', '"forms": { … }', '"attribution": { … }']) {
-    assert.ok(introduction.includes(closed), closed);
-  }
-  // Grammar values echoes the grammar it was asked for; Attribution shows one result's in full.
-  assert.match(printedAnswer(GUIDE_PANELS["grammar-values"].answers[0], 56), /"mood": "indicativo",\s+"tense": "imperfetto"/);
-  assert.match(printedAnswer(GUIDE_PANELS.attribution.answers[0], 56), /"source_url": "https:\/\/it\.wiktionary\.org\/wiki\/sale"/);
 });
 
 /** A page as a reader reads it: its text, tags dropped. */
@@ -314,55 +249,32 @@ test("the Grammar values page lists every value the API takes for pos, match and
 
 test("every request the docs print, in every language, is sent to https://api.lexema.fyi/v1", () => {
   const requests = codeBlocks(docs(), "data-request");
-  // Each endpoint example's request, and each guide page's, three ways each.
-  assert.equal(requests.length, (EXAMPLES.length + GUIDES.length) * 3);
+  // Each example's request, and the one that shows the key header, three ways each.
+  assert.equal(requests.length, (EXAMPLES.length + 1) * 3);
   for (const { value, code } of requests) {
     assert.ok(["curl", "JavaScript", "Python"].includes(value), value);
     assert.match(code, /"https:\/\/api\.lexema\.fyi\/v1\/[^"?]+(\?[^"]*)?"|`https:\/\/api\.lexema\.fyi\/v1\/[^`]+`/, code);
   }
 });
 
-/** A request the docs print, and the answer a valid key gets; `body` is undefined where only headers are printed. */
-interface Printed {
-  name: string;
-  method: "GET" | "POST";
-  request: ApiRequest;
-  status: number;
-  body?: unknown;
-}
-
-/** Every request the docs print, in page order. */
-const PRINTED: Printed[] = DOCS_PAGES.flatMap(
-  (page): Printed[] => {
-    if (page.kind === "endpoint") {
-      return EXAMPLES.filter(([name]) => name.startsWith(`${page.endpoint} `)).map(([name, method, example]) => ({
-        name,
-        method,
-        request: example,
-        status: example.status,
-        body: example.response,
-      }));
-    }
-    const { request, answers } = GUIDE_PANELS[page.guide];
-    return [{ name: page.guide, method: "GET" as const, request, status: answers[0].status, body: bodyOf(answers[0]) }];
-  },
-);
-
-/** The printed requests of one language, in page order. */
+/** The printed requests of one language, in the order the examples are printed. */
 const requestsIn = (language: string): string[] =>
   codeBlocks(docs(), "data-request")
     .filter(({ value }) => value === language)
-    .map(({ code }) => code);
+    .map(({ code }) => code)
+    // The first is the Authentication topic's, the one that shows the key header.
+    .slice(1);
 
-test("every JavaScript example, run, sends its request and gets the answer printed for it", async (t) => {
+test("every JavaScript example, run, sends its example's request and gets its example's answer", async (t) => {
   t.mock.method(Math, "random", () => 0);
+  const { key } = await newKey();
   const run = Object.getPrototypeOf(async () => {}).constructor as new (...args: string[]) => (
     fetch: typeof globalThis.fetch,
   ) => Promise<unknown>;
   const scripts = requestsIn("JavaScript");
-  assert.equal(scripts.length, PRINTED.length);
-  for (const [i, { name, status: printedStatus, body }] of PRINTED.entries()) {
-    const { key } = await newKey(EXAMPLE_PER_MINUTE);
+  const inPageOrder = [EXAMPLES[EXAMPLES.length - 1], ...EXAMPLES.slice(0, -1)];
+  assert.equal(scripts.length, inPageOrder.length);
+  for (const [i, [name, , example]] of inPageOrder.entries()) {
     let status = 0;
     const fetch = (async (input: string, init: RequestInit) => {
       const response = await handleApi(new Request(input, init), { db, releaseId: RELEASE, now: NOW });
@@ -374,30 +286,16 @@ test("every JavaScript example, run, sends its request and gets the answer print
     assert.ok(scripts[i].includes(placeholder), name);
     const script = scripts[i].replaceAll(placeholder, JSON.stringify(key));
     const data = await new run("fetch", `${script}\nreturn data;`)(fetch);
-    assert.equal(status, printedStatus, name);
-    if (body !== undefined) assert.deepEqual(withoutLines(data), withoutLines(body), name);
+    assert.equal(status, example.status, name);
+    assert.deepEqual(withoutLines(data), withoutLines(example.response), name);
   }
 });
 
-test("every curl and Python example sends its request's method, path, query and body", () => {
-  const curls = requestsIn("curl");
+test("every Python example sends its example's method, path, query and body", () => {
   const scripts = requestsIn("Python");
-  assert.equal(curls.length, PRINTED.length);
-  assert.equal(scripts.length, PRINTED.length);
-  for (const [i, { name, method, request }] of PRINTED.entries()) {
-    const printed = new URL(`${API_BASE}/${request.path}`);
-
-    const address = curls[i].match(/\n {2}"([^"]+)"$/);
-    assert.ok(address, name);
-    const curled = new URL(address[1]);
-    for (const [, param] of curls[i].matchAll(/--data-urlencode "([^"]*)"/g)) {
-      const [key, ...value] = param.split("=");
-      curled.searchParams.append(key, value.join("="));
-    }
-    assert.equal(curled.pathname, printed.pathname, name);
-    assert.deepEqual([...curled.searchParams], [...printed.searchParams], name);
-    assert.ok(curls[i].includes(`-H "X-API-Key: ${EXAMPLE_KEY}"`), name);
-
+  const inPageOrder = [EXAMPLES[EXAMPLES.length - 1], ...EXAMPLES.slice(0, -1)];
+  assert.equal(scripts.length, inPageOrder.length);
+  for (const [i, [name, method, example]] of inPageOrder.entries()) {
     const script = scripts[i];
     const call = script.match(/requests\.(get|post)\(\n {4}"([^"]+)",/);
     assert.ok(call, name);
@@ -408,9 +306,10 @@ test("every curl and Python example sends its request's method, path, query and 
     for (const [param, value] of Object.entries(params === undefined ? {} : (JSON.parse(params) as Record<string, string>))) {
       sent.searchParams.append(param, value);
     }
+    const printed = new URL(`${API_BASE}/${example.path}`);
     assert.equal(sent.pathname, printed.pathname, name);
     assert.deepEqual([...sent.searchParams], [...printed.searchParams], name);
-    assert.deepEqual(body === undefined ? undefined : JSON.parse(body), request.body, name);
+    assert.deepEqual(body === undefined ? undefined : JSON.parse(body), example.body, name);
   }
 });
 
