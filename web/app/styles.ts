@@ -494,7 +494,12 @@ export const DOCS_MAIN = "min-w-0 flex-1 px-6 pt-9 pb-24 sm:px-10 lg:px-16";
 export const DOCS_SECTION =
   "scroll-mt-6 border-t border-border pt-12 pb-4 first:border-t-0 first:pt-0 [&+&]:mt-12 xl:grid xl:grid-cols-[minmax(0,33rem)_minmax(0,31rem)] xl:gap-14";
 export const DOCS_TEXT = "min-w-0";
-export const DOCS_CODE = "mt-8 flex min-w-0 flex-col gap-5 xl:sticky xl:top-6 xl:mt-0 xl:self-start";
+/**
+ * The code beside a topic, never taller than the window: a response longer
+ * than the room left scrolls inside its own panel.
+ */
+export const DOCS_CODE =
+  "mt-8 flex max-h-[80svh] min-w-0 flex-col gap-5 xl:sticky xl:top-6 xl:mt-0 xl:max-h-[calc(100svh-3rem)] xl:self-start";
 /** `Endpoints`, over a topic's heading: which part of the docs it is in. */
 export const DOCS_EYEBROW = "m-0 font-sans text-[0.9rem] font-medium text-accent";
 export const DOCS_HEADING = "m-0 mt-3 font-serif text-[2.25rem] leading-tight font-normal text-text-strong sm:text-[2.5rem]";
@@ -522,14 +527,18 @@ export const DOCS_TABLE_CELL = "border-b border-border p-0 py-2 pr-6 align-basel
 export const DOCS_TABLE_CODE = "border-b border-border p-0 py-2 pr-6 align-baseline font-mono text-[0.9rem] text-text-strong";
 
 /** A request or a response panel beside a topic. */
-export const CODE_PANEL = "min-w-0 overflow-hidden rounded-[6px] border border-border bg-surface-raised";
-export const CODE_PANEL_HEAD = "flex items-center gap-4 border-b border-border px-5 py-2.5";
+const CODE_PANEL = "min-w-0 overflow-hidden rounded-[6px] border border-border bg-surface-raised";
+export const CODE_PANEL_REQUEST = `${CODE_PANEL} shrink-0`;
+/** The response takes the room the request leaves, and no more than its answer needs. */
+export const CODE_PANEL_RESPONSE = `${CODE_PANEL} flex min-h-0 flex-col`;
+export const CODE_PANEL_HEAD = "flex shrink-0 items-center gap-3 border-b border-border px-5 py-2.5 sm:gap-4";
 export const CODE_PANEL_TITLE = "m-0 mr-auto font-sans text-[0.85rem] font-semibold text-text-strong";
 export const CODE_PANEL_TAB = `cursor-pointer border-0 bg-transparent p-0 font-sans text-[0.85rem] text-text-muted hover:text-text aria-pressed:font-semibold aria-pressed:text-accent ${FOCUS_RING}`;
 export const CODE_PANEL_STATUS = "font-sans text-[0.85rem] font-semibold text-accent";
 export const CODE_PANEL_COPY = `cursor-pointer border-0 bg-transparent p-0 font-sans text-[0.85rem] text-text-muted hover:text-text ${FOCUS_RING}`;
 export const CODE_PANEL_BODY =
   "m-0 overflow-x-auto px-5 py-5 font-mono text-[0.8rem] leading-relaxed text-text-strong sm:text-[0.85rem]";
+export const CODE_PANEL_RESPONSE_BODY = `${CODE_PANEL_BODY} min-h-0 overflow-y-auto overscroll-contain`;
 
 /** Code inside a sentence. */
 export const CODE_INLINE = "font-mono text-[0.9em] text-text-strong";

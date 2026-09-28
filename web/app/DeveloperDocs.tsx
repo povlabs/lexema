@@ -120,6 +120,7 @@ const PANEL_WIDTH = 56;
 const panelOf = (examples: readonly Example[], withResponse = true) =>
   examples.map((example) => ({
     status: example.status,
+    label: example.label,
     requests: requestsOf(example),
     response: withResponse ? formatJson(example.response, PANEL_WIDTH) : undefined,
   }));

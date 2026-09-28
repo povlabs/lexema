@@ -1,10 +1,18 @@
 // developers.lexema.fyi/ (#166, board 25): what the API is, one call and an
-// excerpt of its answer, and every endpoint. The call is the docs' own
+// excerpt of its answer, and every endpoint. The call is the docs' filtered
 // `/lookup` example and the excerpt is read from its answer, so the landing
 // page shows nothing the API does not return.
 
 import { API_PREFIX } from "@lexema/api/units.ts";
-import { anchorOf, API_BASE, ENDPOINT_REFERENCE, ENDPOINTS_IN_ORDER, EXAMPLE_KEY, formatJson } from "./apiReference.ts";
+import {
+  anchorOf,
+  API_BASE,
+  ENDPOINT_REFERENCE,
+  ENDPOINTS_IN_ORDER,
+  EXAMPLE_KEY,
+  formatJson,
+  LOOKUP_FILTERED_EXAMPLE,
+} from "./apiReference.ts";
 import { DeveloperPage, SIGN_IN_PATH } from "./DeveloperPage";
 import {
   BUTTON_PRIMARY,
@@ -38,7 +46,7 @@ interface LookupResult {
 
 /** The fields of `/lookup`'s answer the landing page shows, from the docs' example. */
 function excerpt(): string {
-  const response = ENDPOINT_REFERENCE.lookup.examples[0].response as { results: LookupResult[] };
+  const response = LOOKUP_FILTERED_EXAMPLE.response as { results: LookupResult[] };
   const [result] = response.results;
   return formatJson({
     word: result.word,

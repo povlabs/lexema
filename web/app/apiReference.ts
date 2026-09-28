@@ -42,6 +42,8 @@ export interface Example {
   /** The JSON body a POST sends. */
   body?: unknown;
   status: 200 | 400 | 404;
+  /** What sets the example apart from another of its status, as its tab names it. */
+  label?: string;
   response: unknown;
 }
 
@@ -55,7 +57,7 @@ export interface EndpointReference {
   parameters: readonly Parameter[];
   /** What each status this endpoint answers with means. */
   answers: readonly { status: string; description: string }[];
-  /** One example per status the docs show, the first the one they open on. */
+  /** The examples the docs show, the first the one they open on. */
   examples: readonly [Example, ...Example[]];
 }
 
@@ -125,6 +127,322 @@ export const LOOKUP_RESULT: {
   },
 };
 
+/** `/lookup` unfiltered: every candidate for `andare`, with every section. */
+export const LOOKUP_EXAMPLE: Example = {
+  path: "lookup?q=andare",
+  status: 200,
+  response: {
+    query: "andare",
+    release_id: RELEASE,
+    results: [
+      {
+        id: `${RELEASE}:2344`,
+        word: "andare",
+        pos: "noun",
+        pos_title: "Sostantivo",
+        match: {
+          surface: "andare",
+          via: "headword",
+          grammar: [{ gender: "maschile", number: "singolare" }],
+        },
+        pronunciations: [{ ipa: "/anˈda.re/", note: null }],
+        definitions: [
+          {
+            definition: "incedere, modo di incedere",
+            labels: [],
+            examples: ["il suo andare con alterigia"],
+            items: [],
+          },
+          {
+            definition: "passaggio del tempo",
+            labels: [],
+            examples: [
+              "con l'andare degli anni, la pressione sale, soprattutto la sistolica la \"massima\"",
+            ],
+            items: [],
+          },
+          {
+            definition: "espressione che indica il continuo realizzarsi del tempo, in particolare nella consapevolezza precedente oppure successiva ad un'azione o a qualcosa che deve succedere oppure appena accaduto",
+            labels: ["figuratively"],
+            examples: ["una sigaretta... e andare"],
+            items: [],
+          },
+        ],
+        examples: [],
+        forms: {
+          type: "gender_number",
+          grid: { maschile: { singolare: ["andare"], plurale: [] } },
+          superlativo: null,
+        },
+        etymology: "Devoto/Oli: dal latino ambitare, forma intensiva di ambire, andare in giro\nTreccani: etimo incerto; nella coniugazione, il tema and- si alterna in alcune forme con il tema vad- del latino vadere\ndal latino \"vadere\" ossia \"andare\" derivano le forme suppletive della coniugazione del verbo.\nIncerto l'etimo delle altre forme:\nc'è chi propone \"aditare\" (frequentativo) o un volgare \"*adare\" come varianti di \"adīre\" ossia \"andare verso\", proponendo come similitudine il modo in cui \"aditu(m)\" (anche questo derivato da \"adīre\") ha dato origine a \"andito\";\naltri propongono il latino \"ambitāre\" (frequentativo) o un volgare \"*ambare\" derivati di \"ambīre\" ossia \"andare intorno\";\naltri suggeriscono il latino \"* ad- nare\" ossia \"nuotare verso\", proponendo come similitudine \"arrivare\" derivato da \"* ad- ripare\" ossia \"giungere a riva\"",
+        synonyms: [
+          "andata", "andatura", "camminata", "portamento", "viaggio", "avanzare", "avviarsi", "camminare",
+          "dirigersi", "incamminarsi", "procedere", "recarsi", "allontanarsi", "andarsene", "emigrare",
+          "espatriare", "partire", "uscire", "consumarsi", "fluire", "fuggire", "passare", "scorrere",
+          "trascorrere", "volare", "continuare", "funzionare", "progredire", "proseguire", "svolgere",
+          "condursi", "inoltrarsi", "marciare", "muoversi", "penetrare", "peregrinare", "portarsi",
+          "spostarsi", "trasferirsi", "traslocare", "aggirarsi", "circolare", "errare", "gironzolare",
+          "passeggiare", "vagabondare", "vagare", "condurre", "confluire", "portare", "sboccare",
+          "sfociare", "avere successo", "essere di moda", "essere venduto", "avere corso", "valere",
+          "essere necessario", "occorrere", "essere gradito", "gustare", "piacere", "essere destinato",
+          "essere collocato",
+        ],
+        antonyms: [
+          "fermarsi", "restare fermo", "restare immobile", "sostare", "trattenersi", "entrare",
+          "rientrare", "ritornare", "tornare", "arrestarsi", "bloccarsi", "essere guasto", "venire",
+          "arrivare", "stare", "rimanere", "restare", "ire", "gire", "essere fuori corso", "dispiacere",
+          "disgustare",
+        ],
+        derived: ["andato", "riandare", "andarsene"],
+        attribution: ATTRIBUTION("andare"),
+      },
+      {
+        id: `${RELEASE}:2345`,
+        word: "andare",
+        pos: "verb",
+        pos_title: "Verbo",
+        match: { surface: "andare", via: "headword", grammar: [] },
+        pronunciations: [{ ipa: "/anˈda.re/", note: null }],
+        definitions: [
+          {
+            definition: "muoversi da un luogo verso un altro luogo",
+            labels: [],
+            examples: ["ogni mattina devo andare a scuola"],
+            items: [],
+          },
+          { definition: "partire", labels: [], examples: ["\"Coraggio, vai!\""], items: [] },
+          {
+            definition: "essere destinato a esser messo in una data posizione",
+            labels: [],
+            examples: ["quell'elettrodomestico va in cucina"],
+            items: [],
+          },
+          {
+            definition: "dover essere (con un participio passato), dover subire una certa azione (usato prevalentemente alla terza persona, singolare o plurale)",
+            labels: [],
+            examples: ["quel documento va portato dall'avvocato", "quei furfanti andrebbero acciuffati"],
+            items: [],
+          },
+          {
+            definition: "necessità fisiche naturali, in particolare con riferimento all'evacuazione",
+            labels: ["rare"],
+            examples: [
+              "Molto mestamente ma con rispetto, disse al medico: \"Vado regolarmente, non è un problema\"",
+            ],
+            items: [],
+          },
+        ],
+        examples: [],
+        forms: {
+          type: "conjugation",
+          gerundio: ["andando"],
+          "participio presente": ["andante"],
+          participio: ["andato"],
+          ausiliare: ["essere"],
+          moods: {
+            indicativo: {
+              presente: {
+                io: ["vado", "vo"],
+                tu: ["vai"],
+                "lui, lei": ["va"],
+                noi: ["andiamo"],
+                voi: ["andate"],
+                loro: ["vanno"],
+              },
+              imperfetto: {
+                io: ["andavo"],
+                tu: ["andavi"],
+                "lui, lei": ["andava"],
+                noi: ["andavamo"],
+                voi: ["andavate"],
+                loro: ["andavano"],
+              },
+              "passato remoto": {
+                io: ["andai"],
+                tu: ["andasti"],
+                "lui, lei": ["annò"],
+                noi: ["andammo"],
+                voi: ["andaste"],
+                loro: ["andarono"],
+              },
+              "futuro semplice": {
+                io: ["anderò"],
+                tu: ["andrai"],
+                "lui, lei": ["andrà"],
+                noi: ["andremo"],
+                voi: ["andrete"],
+                loro: ["andranno"],
+              },
+              "passato prossimo": {
+                io: ["sono andato"],
+                tu: ["sei andato"],
+                "lui, lei": ["è andato"],
+                noi: ["siamo andati"],
+                voi: ["siete andati"],
+                loro: ["sono andati"],
+              },
+              "trapassato prossimo": {
+                io: ["ero andato"],
+                tu: ["eri andato"],
+                "lui, lei": ["era andato"],
+                noi: ["eravamo andati"],
+                voi: ["eravate andati"],
+                loro: ["erano andati"],
+              },
+              "trapassato remoto": {
+                io: ["fui andato"],
+                tu: ["fosti andato"],
+                "lui, lei": ["fu andato"],
+                noi: ["fummo andati"],
+                voi: ["foste andati"],
+                loro: ["furono andati"],
+              },
+              "futuro anteriore": {
+                io: ["sarò andato"],
+                tu: ["sarai andato"],
+                "lui, lei": ["sarà andato"],
+                noi: ["saremo andati"],
+                voi: ["sarete andati"],
+                loro: ["saranno andati"],
+              },
+            },
+            congiuntivo: {
+              presente: {
+                io: ["vada"],
+                tu: ["vada"],
+                "lui, lei": ["vada"],
+                noi: ["andiamo"],
+                voi: ["andiate"],
+                loro: ["vadano"],
+              },
+              imperfetto: {
+                io: ["andassi"],
+                tu: ["andassi"],
+                "lui, lei": ["andasse"],
+                noi: ["andassimo"],
+                voi: ["andaste"],
+                loro: ["andassero"],
+              },
+              passato: {
+                io: ["sia andato"],
+                tu: ["sia andato"],
+                "lui, lei": ["sia andato"],
+                noi: ["siamo andati"],
+                voi: ["siate andati"],
+                loro: ["siano andati"],
+              },
+              trapassato: {
+                io: ["fossi andato"],
+                tu: ["fossi andato"],
+                "lui, lei": ["fosse andato"],
+                noi: ["fossimo andati"],
+                voi: ["foste andati"],
+                loro: ["fossero andati"],
+              },
+            },
+            condizionale: {
+              presente: {
+                io: ["andrei"],
+                tu: ["andresti"],
+                "lui, lei": ["andrebbe"],
+                noi: ["andremmo"],
+                voi: ["andreste"],
+                loro: ["andrebbero"],
+              },
+              passato: {
+                io: ["sarei andato"],
+                tu: ["saresti andato"],
+                "lui, lei": ["sarebbe andato"],
+                noi: ["saremmo andati"],
+                voi: ["sareste andati"],
+                loro: ["sarebbero andati"],
+              },
+            },
+            imperativo: {
+              presente: {
+                tu: ["va'", "va", "vai", "non andare"],
+                "lui, lei": ["vada"],
+                noi: ["andiamo"],
+                voi: ["andate"],
+                loro: ["vadano"],
+              },
+            },
+          },
+        },
+        etymology: "Devoto/Oli: dal latino ambitare, forma intensiva di ambire, andare in giro\nTreccani: etimo incerto; nella coniugazione, il tema and- si alterna in alcune forme con il tema vad- del latino vadere\ndal latino \"vadere\" ossia \"andare\" derivano le forme suppletive della coniugazione del verbo.\nIncerto l'etimo delle altre forme:\nc'è chi propone \"aditare\" (frequentativo) o un volgare \"*adare\" come varianti di \"adīre\" ossia \"andare verso\", proponendo come similitudine il modo in cui \"aditu(m)\" (anche questo derivato da \"adīre\") ha dato origine a \"andito\";\naltri propongono il latino \"ambitāre\" (frequentativo) o un volgare \"*ambare\" derivati di \"ambīre\" ossia \"andare intorno\";\naltri suggeriscono il latino \"* ad- nare\" ossia \"nuotare verso\", proponendo come similitudine \"arrivare\" derivato da \"* ad- ripare\" ossia \"giungere a riva\"",
+        synonyms: [
+          "andata", "andatura", "camminata", "portamento", "viaggio", "avanzare", "avviarsi", "camminare",
+          "dirigersi", "incamminarsi", "procedere", "recarsi", "allontanarsi", "andarsene", "emigrare",
+          "espatriare", "partire", "uscire", "consumarsi", "fluire", "fuggire", "passare", "scorrere",
+          "trascorrere", "volare", "continuare", "funzionare", "progredire", "proseguire", "svolgere",
+          "condursi", "inoltrarsi", "marciare", "muoversi", "penetrare", "peregrinare", "portarsi",
+          "spostarsi", "trasferirsi", "traslocare", "aggirarsi", "circolare", "errare", "gironzolare",
+          "passeggiare", "vagabondare", "vagare", "condurre", "confluire", "portare", "sboccare",
+          "sfociare", "avere successo", "essere di moda", "essere venduto", "avere corso", "valere",
+          "essere necessario", "occorrere", "essere gradito", "gustare", "piacere", "essere destinato",
+          "essere collocato",
+        ],
+        antonyms: [
+          "fermarsi", "restare fermo", "restare immobile", "sostare", "trattenersi", "entrare",
+          "rientrare", "ritornare", "tornare", "arrestarsi", "bloccarsi", "essere guasto", "venire",
+          "arrivare", "stare", "rimanere", "restare", "ire", "gire", "essere fuori corso", "dispiacere",
+          "disgustare",
+        ],
+        derived: ["andato", "riandare", "andarsene"],
+        attribution: ATTRIBUTION("andare"),
+      },
+    ],
+  },
+};
+
+/** `/lookup` narrowed by `fields`, `limit_definitions`, `mood` and `tense`. */
+export const LOOKUP_FILTERED_EXAMPLE: Example = {
+  path: "lookup?q=andavano&fields=definitions,forms&limit_definitions=1&mood=indicativo&tense=imperfetto",
+  status: 200,
+  label: "filtered",
+  response: {
+    query: "andavano",
+    release_id: RELEASE,
+    results: [
+      {
+        id: `${RELEASE}:2345`,
+        word: "andare",
+        pos: "verb",
+        pos_title: "Verbo",
+        match: {
+          surface: "andavano",
+          via: "form_of",
+          grammar: [{ mood: "indicativo", tense: "imperfetto", person: "loro" }],
+        },
+        definitions: [
+          {
+            definition: "muoversi da un luogo verso un altro luogo",
+            labels: [],
+            examples: ["ogni mattina devo andare a scuola"],
+            items: [],
+          },
+        ],
+        forms: {
+          type: "conjugation",
+          moods: {
+            indicativo: {
+              imperfetto: {
+                io: ["andavo"],
+                tu: ["andavi"],
+                "lui, lei": ["andava"],
+                noi: ["andavamo"],
+                voi: ["andavate"],
+                loro: ["andavano"],
+              },
+            },
+          },
+        },
+        attribution: ATTRIBUTION("andare"),
+      },
+    ],
+  },
+};
+
 /** The not-found answer of `/lookup`, which is a result, not an error. */
 export const NOT_FOUND_EXAMPLE: Example = {
   path: "lookup?q=citta",
@@ -163,51 +481,7 @@ export const ENDPOINT_REFERENCE: Readonly<Record<Endpoint, EndpointReference>> =
       { status: "200", description: "The word is in the release. `results` holds every candidate the filters keep, in the lookup's order, and is empty when they keep none." },
       { status: "404", description: "The word is not in the release. `results` is empty and `suggestions` lists spellings of kind `accent`, `edit` or `prefix`." },
     ],
-    examples: [{
-      path: "lookup?q=andavano&fields=definitions,forms&limit_definitions=1&mood=indicativo&tense=imperfetto",
-      status: 200,
-      response: {
-        query: "andavano",
-        release_id: RELEASE,
-        results: [
-          {
-            id: `${RELEASE}:2345`,
-            word: "andare",
-            pos: "verb",
-            pos_title: "Verbo",
-            match: {
-              surface: "andavano",
-              via: "form_of",
-              grammar: [{ mood: "indicativo", tense: "imperfetto", person: "loro" }],
-            },
-            definitions: [
-              {
-                definition: "muoversi da un luogo verso un altro luogo",
-                labels: [],
-                examples: ["ogni mattina devo andare a scuola"],
-                items: [],
-              },
-            ],
-            forms: {
-              type: "conjugation",
-              moods: {
-                indicativo: {
-                  imperfetto: {
-                    io: ["andavo"],
-                    tu: ["andavi"],
-                    "lui, lei": ["andava"],
-                    noi: ["andavamo"],
-                    voi: ["andavate"],
-                    loro: ["andavano"],
-                  },
-                },
-              },
-            },
-            attribution: ATTRIBUTION("andare"),
-          },
-        ],
-      },
-    }, NOT_FOUND_EXAMPLE],
+    examples: [LOOKUP_EXAMPLE, LOOKUP_FILTERED_EXAMPLE, NOT_FOUND_EXAMPLE],
   },
   lemmatize: {
     method: "GET",
