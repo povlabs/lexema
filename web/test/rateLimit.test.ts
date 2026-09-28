@@ -41,15 +41,16 @@ function harness() {
     SUGGEST_LIMIT: new FakeRateLimit(120),
     REPORT_LIMIT: new FakeRateLimit(2),
     REPORT_OPEN_LIMIT: new FakeRateLimit(10),
+    SIGN_IN_LIMIT: new FakeRateLimit(10),
   } satisfies LimitBindings;
   const seen: Request[] = [];
   const worker = withRateLimits<LimitBindings>(async (request) => {
     seen.push(request);
     return new Response("<p>page</p>", { status: 200, headers: { "content-type": "text/html" } });
   });
-  const fetch = (path: string, ip = "203.0.113.7", headers: Record<string, string> = {}, method = "GET") =>
+  const fetch = (path: string, ip = "203.0.113.7", headers: Record<string, string> = {}, method = "GET", origin = "https://lexema.fyi") =>
     worker(
-      new Request(`https://lexema.fyi${path}`, {
+      new Request(`${origin}${path}`, {
         method,
         headers: { "cf-connecting-ip": ip, ...headers },
         body: method === "POST" ? "{}" : undefined,
@@ -153,6 +154,27 @@ test("two reports a minute reach the app, and the third is a 429 the app never s
   assert.deepEqual(logged, [["rate limited", { limit: "report" }]]);
 });
 
+test("ten sign-in starts a minute go through, and the eleventh is a 429 the app never sees", async () => {
+  const { env, seen, fetch } = harness();
+  // worker/hosts.ts hands a developers.lexema.fyi request on under the developer-site segment.
+  const start = (ip = "203.0.113.7") => fetch("/developer-site/sign-in/google", ip, {}, "GET", "https://developers.lexema.fyi");
+  const logged = await warnings(async () => {
+    for (let i = 0; i < 10; i++) assert.equal((await start()).status, 200);
+    const blocked = await start();
+    assert.equal(blocked.status, 429);
+    assert.equal(blocked.headers.get("retry-after"), String(RETRY_AFTER_SECONDS));
+    assert.equal(blocked.headers.get("cache-control"), "no-store");
+    assert.deepEqual(blocked.headers.getSetCookie(), []);
+  });
+  assert.equal(seen.length, 10);
+  assert.deepEqual(logged, [["rate limited", { limit: "sign-in" }]]);
+  // Another visitor, and the callback, are not held back by that count.
+  assert.equal((await start("198.51.100.2")).status, 200);
+  const callback = await fetch("/developer-site/sign-in/google/callback?code=c&state=s", "203.0.113.7", {}, "GET", "https://developers.lexema.fyi");
+  assert.equal(callback.status, 200);
+  assert.equal(env.SEARCH_LIMIT.counts.size, 0);
+});
+
 test("searches and suggestions are counted apart", async () => {
   // The blocks these provoke are logged; the log is checked elsewhere.
   await warnings(async () => {
@@ -237,6 +259,7 @@ test("the limits are the rulings, in the Wrangler configuration, the same in pro
     { name: "SUGGEST_LIMIT", namespace_id: "1282", simple: { limit: 120, period: 60 } },
     { name: "REPORT_LIMIT", namespace_id: "1283", simple: { limit: 2, period: 60 } },
     { name: "REPORT_OPEN_LIMIT", namespace_id: "1284", simple: { limit: 10, period: 60 } },
+    { name: "SIGN_IN_LIMIT", namespace_id: "1651", simple: { limit: 10, period: 60 } },
   ]);
   // Bindings are not inherited by an environment, so production repeats them.
   assert.deepEqual(production.ratelimits, local.ratelimits);

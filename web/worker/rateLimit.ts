@@ -6,16 +6,18 @@
 // the App Router sees the request, so a blocked search or suggestion never
 // reaches the code that queries D1.
 //
-// The limits themselves (15 searches and 120 suggestions a minute, and why)
-// are the `ratelimits` bindings in web/wrangler.jsonc. This module decides
+// The limits themselves (15 searches and 120 suggestions a minute, 10 sign-in
+// starts a minute on the developer site, and why) are the `ratelimits`
+// bindings in web/wrangler.jsonc. This module decides
 // which limit a request counts against, whose count it is, and what a blocked
 // request is answered with.
 
 import type { ReportAnswer } from "../app/report.ts";
 import type { SuggestAnswer } from "../app/suggestAnswer.ts";
+import { signInRouteOf } from "./signIn.ts";
 
-/** The things a visitor can do that reach the database. */
-export type Limit = "search" | "suggest" | "report" | "report-open";
+/** The things a visitor can do that reach the database, or start a sign-in. */
+export type Limit = "search" | "suggest" | "report" | "report-open" | "sign-in";
 
 /** The bindings this module counts with, one per limit, as wrangler.jsonc names them. */
 export interface LimitBindings {
@@ -23,6 +25,7 @@ export interface LimitBindings {
   SUGGEST_LIMIT: RateLimit;
   REPORT_LIMIT: RateLimit;
   REPORT_OPEN_LIMIT: RateLimit;
+  SIGN_IN_LIMIT: RateLimit;
 }
 
 const BINDING = {
@@ -30,6 +33,7 @@ const BINDING = {
   suggest: "SUGGEST_LIMIT",
   report: "REPORT_LIMIT",
   "report-open": "REPORT_OPEN_LIMIT",
+  "sign-in": "SIGN_IN_LIMIT",
 } as const satisfies Record<
   Limit,
   keyof LimitBindings
@@ -69,6 +73,9 @@ export function limitOf(url: URL): Limit | undefined {
   if (url.pathname === "/report") return "report";
   // Opening the box stores a token; counted apart so opening does not use up sending.
   if (url.pathname === "/report/open") return "report-open";
+  // Starting a sign-in (Huey, #163 R1.2). Its path exists on the developer
+  // site's host only (worker/signIn.ts); the callback is not counted.
+  if (signInRouteOf(url)?.kind === "start") return "sign-in";
   if ((url.searchParams.get("q") ?? "").trim() !== "") return "search";
   return undefined;
 }
@@ -153,6 +160,11 @@ export function withRateLimits<E extends LimitBindings>(app: FetchHandler<E>): F
     if (limit === "report" || limit === "report-open") {
       const body: ReportAnswer = { outcome: "limited" };
       return Response.json(body, { status: 429, headers: tooManyHeaders() });
+    }
+    if (limit === "sign-in") {
+      const headers = tooManyHeaders();
+      headers.set("content-type", "text/plain; charset=utf-8");
+      return new Response("Too many sign-in attempts. Try again in a minute.", { status: 429, headers });
     }
     const page = await app(marked(request, true), env, ctx);
     const headers = new Headers(page.headers);

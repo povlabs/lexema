@@ -106,6 +106,23 @@ answers 429 with the "too many searches" message under the field; wait a minute
 or restart `wrangler dev` to reset the count. Why they are there is
 [WEB.md](WEB.md#why-the-rate-limits-sit-in-front-of-vinext).
 
+## Sign in locally
+
+The developer site's sign-in (`web/worker/signIn.ts`) needs a real Google or
+GitHub OAuth client, so it is off locally until you give it one: each provider's
+sign-in route answers 503 until both its client id and secret are set. Register
+a client whose callback is `http://developers.localhost:8790/sign-in/google/callback`
+(or `…/github/callback`), then put its values in `web/.dev.vars`, which is
+gitignored and which `wrangler dev` reads:
+
+```sh
+GOOGLE_CLIENT_ID=…
+GOOGLE_CLIENT_SECRET=…
+```
+
+The tests need none of this: they sign in against a stub provider
+(`web/test/stubProvider.ts`).
+
 ## If it will not start
 
 | Symptom | Cause |

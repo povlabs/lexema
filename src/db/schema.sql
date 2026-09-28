@@ -563,6 +563,50 @@ CREATE TABLE api_key_usage (
 
 
 -- ---------------------------------------------------------------------------
+-- Developer accounts (#159, #165)
+-- ---------------------------------------------------------------------------
+
+-- A person signed in to developers.lexema.fyi (src/accounts/accounts.ts). It
+-- holds no name and no email of its own: who it is lives in its provider
+-- identities, so deleting those leaves a row with nothing personal in it.
+CREATE TABLE developer_account (
+  account_id INTEGER PRIMARY KEY,
+  created_at TEXT NOT NULL      -- ISO-8601
+) STRICT;
+
+-- A Google or GitHub account signed in with, linked to one developer account.
+-- `provider_user_id` is the provider's own stable id for the person (Google's
+-- `sub`, GitHub's numeric user id), so a changed email still signs in to the
+-- same account. `email` is the verified address as it was when the identity was
+-- linked, lowercased; a second provider's identity with the same email links to
+-- the same account. Only verified emails are ever stored.
+CREATE TABLE provider_identity (
+  identity_id      INTEGER PRIMARY KEY,
+  account_id       INTEGER NOT NULL REFERENCES developer_account(account_id),
+  provider         TEXT    NOT NULL CHECK (provider IN ('google', 'github')),
+  provider_user_id TEXT    NOT NULL CHECK (length(provider_user_id) > 0),
+  email            TEXT    NOT NULL CHECK (email = lower(email) AND email LIKE '%_@_%'),
+  linked_at        TEXT    NOT NULL, -- ISO-8601
+  UNIQUE (provider, provider_user_id)
+) STRICT;
+
+CREATE INDEX provider_identity_by_email ON provider_identity (email);
+CREATE INDEX provider_identity_by_account ON provider_identity (account_id);
+
+-- A signed-in browser. The cookie carries a random id; only its SHA-256 is
+-- stored, so the table cannot sign anyone in (src/accounts/sessions.ts).
+-- Sign-out deletes the row; expired rows are swept when a session is made.
+CREATE TABLE developer_session (
+  session_hash TEXT    PRIMARY KEY CHECK (length(session_hash) = 64),
+  account_id   INTEGER NOT NULL REFERENCES developer_account(account_id),
+  created_at   TEXT    NOT NULL,  -- ISO-8601
+  expires_at   TEXT    NOT NULL   -- ISO-8601
+) STRICT;
+
+CREATE INDEX developer_session_by_expiry ON developer_session (expires_at);
+
+
+-- ---------------------------------------------------------------------------
 -- Recovered definitions (#28)
 -- ---------------------------------------------------------------------------
 

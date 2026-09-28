@@ -9,7 +9,7 @@
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "test": "node --import tsx --test test/normalize.test.ts test/tags.test.ts test/articles.test.ts test/moods.test.ts test/candidateResolver.test.ts test/usageExamples.test.ts test/record-identity.test.ts test/import.test.ts test/lookup.test.ts test/suggest.test.ts test/nearby.test.ts test/seedSql.test.ts test/recovery.test.ts test/wiktionaryDump.test.ts test/archiveFacts.test.ts test/apiKeys.test.ts test/random.test.ts && TSX_TSCONFIG_PATH=web/tsconfig.json node --import tsx --test web/test/page.test.tsx web/test/tokens.test.ts web/test/rateLimit.test.ts web/test/report.test.ts web/test/searchShortcut.test.ts web/test/api.test.ts web/test/hosts.test.ts web/test/developers.test.tsx",
+    "test": "node --import tsx --test test/normalize.test.ts test/tags.test.ts test/articles.test.ts test/moods.test.ts test/candidateResolver.test.ts test/usageExamples.test.ts test/record-identity.test.ts test/import.test.ts test/lookup.test.ts test/suggest.test.ts test/nearby.test.ts test/seedSql.test.ts test/recovery.test.ts test/wiktionaryDump.test.ts test/archiveFacts.test.ts test/apiKeys.test.ts test/random.test.ts test/accounts.test.ts && TSX_TSCONFIG_PATH=web/tsconfig.json node --import tsx --test web/test/page.test.tsx web/test/tokens.test.ts web/test/rateLimit.test.ts web/test/report.test.ts web/test/searchShortcut.test.ts web/test/api.test.ts web/test/hosts.test.ts web/test/developers.test.tsx web/test/signIn.test.ts",
     "test:integration": "node --import tsx --test test/adapter-fixtures.test.ts",
     "test:definition-loss": "python3 tools/definition_loss.py verify && python3 test/definition-loss.py",
     "validate": "tsx src/cli.ts validate",

@@ -16,6 +16,7 @@ itwiktionary-20260701-pages-articles.xml.bz2
 .env
 .env.*
 !.env.example
+.dev.vars
 
 # Rebuildable analysis output (tools/definition_loss.py)
 build/

@@ -17,7 +17,8 @@ development, with the placeholder D1 that `pnpm run seed:dev` fills.
 | Address | the custom domains `lexema.fyi`, `developers.lexema.fyi` and `api.lexema.fyi` only, told apart by host (`web/worker/hosts.ts`) |
 | `workers_dev`, `preview_urls` | both off |
 | D1 | none yet, so a search shows the failed-lookup state; attaching it is #19 |
-| Rate limits | 15 searches and 120 suggestions a minute per visitor ([#128](https://github.com/hueypov/lexema/issues/128)) |
+| Rate limits | 15 searches and 120 suggestions a minute per visitor ([#128](https://github.com/hueypov/lexema/issues/128)); 10 sign-in starts a minute on the developer site ([#165](https://github.com/hueypov/lexema/issues/165)) |
+| Sign-in | Google and GitHub, each on only once its client id and secret are set ([below](#turn-on-sign-in)) |
 | Workers Logs | on |
 
 `www` to the apex and HTTP to HTTPS are dashboard settings (a redirect rule and
@@ -59,6 +60,29 @@ env.LEXEMA_RELEASE ("it-dev")              Environment Variable
 
 The build warns that the top-level `DB` has no counterpart in `env.production`.
 That is expected: production has no D1 until #19.
+
+## Turn on sign-in
+
+The developer site signs in with Google and GitHub (`web/worker/signIn.ts`).
+A provider stays unavailable, and its sign-in route answers 503, until both its
+client id and its secret are set. Neither is in the repository.
+
+1. Create a Google OAuth client of type *Web application* in the Google Cloud
+   console, with the authorized redirect URI
+   `https://developers.lexema.fyi/sign-in/google/callback`.
+2. Create a GitHub OAuth app (Settings, Developer settings, OAuth Apps) with the
+   homepage `https://developers.lexema.fyi` and the authorization callback URL
+   `https://developers.lexema.fyi/sign-in/github/callback`.
+3. Put each client id in `env.production.vars` in `web/wrangler.jsonc`, as
+   `GOOGLE_CLIENT_ID` and `GITHUB_CLIENT_ID`.
+4. Set each secret on the Worker, from `web/`:
+
+   ```sh
+   pnpm exec wrangler secret put GOOGLE_CLIENT_SECRET --env production
+   pnpm exec wrangler secret put GITHUB_CLIENT_SECRET --env production
+   ```
+
+Sign-in also needs the production D1 (#19): without it, a callback answers 503.
 
 ## After a deploy
 
