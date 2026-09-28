@@ -279,7 +279,8 @@ test("each host reaches its own site: lexema.fyi the pages as before, api.lexema
   const worker = byHost<typeof env>({
     app: withRateLimits<typeof env>(async (request) => {
       appSaw.push(request);
-      return new Response("<p>page</p>");
+      // The site sets a cookie, so the API's no-cookie check fails if a request reaches it.
+      return new Response("<p>page</p>", { headers: { "set-cookie": "visitor=1" } });
     }),
     api: answerApi,
     apiNotFound,
@@ -307,6 +308,14 @@ test("each host reaches its own site: lexema.fyi the pages as before, api.lexema
   assert.equal(developers.host, "developers.lexema.fyi");
   assert.equal(developers.pathname, `/${DEVELOPERS_SEGMENT}`);
   assert.ok(existsSync(join(REPO, "web/app/(developers)", DEVELOPERS_SEGMENT, "page.tsx")));
+});
+
+test("api.lexema.fyi answers a JSON 503 when the Worker has no D1 binding", async (t) => {
+  t.mock.method(console, "error", () => {});
+  const response = await answerApi(new Request("https://api.lexema.fyi/v1/lookup?q=casa"), { LEXEMA_RELEASE: RELEASE });
+  assert.equal(response.status, 503);
+  assert.match(response.headers.get("content-type") ?? "", /^application\/json/);
+  assert.equal(((await response.json()) as Json).error.code, "unavailable");
 });
 
 // The /lookup filters (#151).

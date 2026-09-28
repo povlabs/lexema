@@ -16,7 +16,8 @@ function worker() {
   const fetch = byHost<object>({
     app: async (request) => {
       app.push(request.url);
-      return new Response("page");
+      // The site sets a cookie, so a no-cookie check fails if a request reaches it.
+      return new Response("page", { headers: { "set-cookie": "visitor=1" } });
     },
     api: async (request) => {
       api.push(request.url);
@@ -97,7 +98,12 @@ test("the query survives the rewrite, and every other host is the dictionary's",
     `https://developers.lexema.fyi/${DEVELOPERS_SEGMENT}/docs?tab=keys`,
     `http://developers.localhost:8790/${DEVELOPERS_SEGMENT}`,
   ]);
-  for (const url of ["https://lexema.fyi/?q=casa", "http://localhost:8790/attribution", "http://127.0.0.1:8790/"]) {
+  for (const url of [
+    "https://lexema.fyi/?q=casa",
+    "http://localhost:8790/attribution",
+    "http://127.0.0.1:8790/",
+    "https://www.lexema.fyi/v1/lookup?q=casa",
+  ]) {
     assert.deepEqual(to(url), { to: "site" }, url);
   }
   assert.deepEqual(to("http://api.localhost:8790/v1/lookup?q=sale"), { to: "api" });
