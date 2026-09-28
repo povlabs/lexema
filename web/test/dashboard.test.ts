@@ -14,6 +14,7 @@ import { createAccountKey, keyName, listAccountKeys } from "../../src/api/ownedK
 import { fromNodeSqlite } from "../../src/lookup/database.js";
 import { apiNotFound, handleApi } from "../worker/api/handler.ts";
 import {
+  CONFIRM_DELETE_PAGE,
   CSRF_FIELD,
   csrfTokenOf,
   type DashboardBindings,
@@ -116,18 +117,19 @@ const name = (text: string) => {
   return parsed;
 };
 
-test("a signed-in form with its CSRF token makes a named key, and its secret reaches the key-created page once", async () => {
+test("a signed-in form with its CSRF token makes a key, and its secret reaches the key-created page once", async () => {
   const { db, appSaw, browser } = site();
   const { post, send, jar, accountId } = await browser(ada);
 
   // The POST makes the key and redirects; it renders nothing, so reloading the page never posts again.
-  const response = await post("/dashboard/keys", { name: "  learning app " });
+  // Board 28's form is a lone Create key button: the key is named for its place, `Key 1`.
+  const response = await post("/dashboard/keys");
   assert.equal(response.status, 303);
   assert.equal(response.headers.get("location"), KEY_CREATED);
   assert.equal(response.headers.get("cache-control"), "no-store");
   assert.equal(appSaw.length, 0);
   const [listed] = await listAccountKeys(db, accountId);
-  assert.equal(listed.name, "learning app");
+  assert.equal(listed.name, "Key 1");
   const carried = jar.get(NEW_KEY_COOKIE);
   assert.ok(carried !== undefined);
   assert.match(response.headers.getSetCookie()[0], /; Max-Age=60; Path=\/; HttpOnly; Secure; SameSite=Lax$/);
@@ -154,11 +156,23 @@ test("a signed-in form with its CSRF token makes a named key, and its secret rea
   // A name that is blank or too long makes nothing.
   for (const bad of ["   ", "x".repeat(201)]) assert.equal((await post("/dashboard/keys", { name: bad })).status, 400);
   assert.equal((await listAccountKeys(db, accountId)).length, 1);
+
+  // The next key is `Key 2`, and a revoked key still counts, so no name comes round twice.
+  await post("/dashboard/keys");
+  await post(`/dashboard/keys/${listed.keyId}/revoke`);
+  await post("/dashboard/keys");
+  assert.deepEqual(
+    (await listAccountKeys(db, accountId)).map((each) => each.name),
+    ["Key 3", "Key 2", "Key 1"],
+  );
+  // A form that names its key still may.
+  await post("/dashboard/keys", { name: "  learning app " });
+  assert.equal((await listAccountKeys(db, accountId))[0].name, "learning app");
 });
 
-test("a visitor without a session who opens the dashboard or the key-created page is sent to sign-in", async () => {
+test("a visitor without a session who opens the dashboard, its delete confirmation or the key-created page is sent to sign-in", async () => {
   const { appSaw, browser, worker } = site();
-  for (const path of [DASHBOARD, KEY_CREATED]) {
+  for (const path of [DASHBOARD, CONFIRM_DELETE_PAGE, KEY_CREATED]) {
     const answer = await worker(new Request(`${DEVELOPERS}${path}`), env, {} as ExecutionContext);
     assert.equal(answer.status, 303, path);
     assert.equal(answer.headers.get("location"), SIGN_IN_PAGE, path);
@@ -178,6 +192,10 @@ test("a visitor without a session who opens the dashboard or the key-created pag
   assert.equal(page.status, 200);
   assert.equal(page.headers.get("cache-control"), "no-store");
   assert.equal(new URL(appSaw[0].url).pathname, "/developer-site/dashboard");
+  // So does the delete confirmation, which the page draws from its address alone.
+  const confirming = await adas.send(`${DEVELOPERS}${CONFIRM_DELETE_PAGE}`);
+  assert.equal(confirming.status, 200);
+  assert.equal(new URL(appSaw[1].url).search, "?confirm=delete");
 });
 
 test("revoke succeeds for the session's own key and is refused for another account's; deletion touches only the session's account", async () => {

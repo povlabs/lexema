@@ -27,7 +27,7 @@ src/lookup/             the query layer, shared with the importer's tests
 web/test/page.test.tsx  the page, rendered over a fixture release
 web/test/rateLimit.test.ts  the limits, with a fake binding
 web/test/dashboard.test.ts  the dashboard's actions and pages, their CSRF and session checks
-web/test/signedIn.test.tsx  sign-in, the dashboard and the key-created page, rendered
+web/test/signedIn.test.tsx  sign-in, the dashboard and its two dialogs, rendered
 ```
 
 The markup is split from the wiring so it can be rendered without a Worker.

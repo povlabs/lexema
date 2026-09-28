@@ -42,7 +42,7 @@ export interface UsageBar {
   share: number;
 }
 
-/** A row of usage: the account's total, or one key's. */
+/** The account's usage: 30 days of bars and their total. */
 export interface UsageRow {
   bars: readonly UsageBar[];
   total: number;
@@ -56,7 +56,7 @@ function usageRow(days: readonly string[], perDay: readonly number[]): UsageRow 
   };
 }
 
-/** One of the account's keys as its table row shows it. */
+/** One of the account's live keys as its row shows it. A revoked key has no row (board 28). */
 export interface KeyRow {
   keyId: number;
   name: string;
@@ -64,9 +64,6 @@ export interface KeyRow {
   prefix: string;
   created: string;
   lastUsed: string;
-  /** `null` while the key is live; the date it was revoked after. */
-  revoked: string | null;
-  usage: UsageRow;
 }
 
 /** The whole dashboard, as the page lays it out. */
@@ -74,31 +71,28 @@ export interface DashboardView {
   email: string;
   /** `Signed in with Google · ada@example.com`. */
   signedInWith: string;
+  /** The live keys, oldest first; deleting the account revokes each of them. */
   keys: readonly KeyRow[];
-  /** Every key's units added up. Each row's bars are scaled to its own tallest day; its total says how much. */
+  /** Every key's units added up, revoked keys' too: their calls were made. */
   usage: UsageRow;
-  /** How many keys deleting the account revokes. */
-  liveKeys: number;
 }
 
 /** The dashboard for an account's profile, keys and usage at `now`. */
 export function dashboardView(profile: AccountProfile, keys: readonly OwnedKey[], usage: AccountUsage, now: number): DashboardView {
-  const total = usage.total;
-  const byKey = new Map(usage.keys.map((key) => [key.keyId, key.units]));
   return {
     email: profile.email,
     signedInWith: `Signed in with ${profile.providers.map((provider) => PROVIDER_NAME[provider]).join(" or ")} · ${profile.email}`,
-    keys: keys.map((key) => ({
-      keyId: key.keyId,
-      name: key.name,
-      prefix: `${key.displayPrefix}…`,
-      created: shortDate(key.createdAt),
-      lastUsed: lastUsed(key.lastUsedAt, now),
-      revoked: key.revokedAt === null ? null : shortDate(key.revokedAt),
-      usage: usageRow(usage.days, byKey.get(key.keyId) ?? usage.days.map(() => 0)),
-    })),
-    usage: usageRow(usage.days, total),
-    liveKeys: keys.filter((key) => key.revokedAt === null).length,
+    keys: keys
+      .filter((key) => key.revokedAt === null)
+      .sort((a, b) => a.keyId - b.keyId)
+      .map((key) => ({
+        keyId: key.keyId,
+        name: key.name,
+        prefix: `${key.displayPrefix}…`,
+        created: shortDate(key.createdAt),
+        lastUsed: lastUsed(key.lastUsedAt, now),
+      })),
+    usage: usageRow(usage.days, usage.total),
   };
 }
 

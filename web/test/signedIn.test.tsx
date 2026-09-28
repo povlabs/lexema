@@ -1,6 +1,6 @@
 // The signed-in side of developers.lexema.fyi (#169): the sign-in page, the
-// dashboard, the key-created page and the delete confirmation's words, as the
-// server renders them. The Worker's guard and the actions the forms post to
+// dashboard, and the two dialogs the server opens over it (the new key's
+// secret and the delete confirmation), as the server renders them. The Worker's guard and the actions the forms post to
 // are web/test/dashboard.test.ts.
 
 import assert from "node:assert/strict";
@@ -11,9 +11,8 @@ import type { OwnedKey } from "../../src/api/ownedKeys.js";
 import { AccountUsage, usageDays } from "../../src/api/usage.js";
 import { CREATE_KEY_ACTION, Dashboard, DELETE_ACCOUNT_ACTION, revokeKeyAction } from "../app/Dashboard";
 import { dashboardView, deleteWarning, lastUsed, shortDate } from "../app/dashboardView.ts";
-import { KeyCreated } from "../app/KeyCreated";
 import { SignIn, signInStart } from "../app/SignIn";
-import { CSRF_FIELD, DASHBOARD } from "../worker/dashboard.ts";
+import { CONFIRM_DELETE_PAGE, CSRF_FIELD, DASHBOARD, DELETE_CONFIRMATION } from "../worker/dashboard.ts";
 
 const NOW = Date.parse("2026-09-28T12:00:00Z");
 const CSRF = "c".repeat(43);
@@ -85,20 +84,25 @@ function sample() {
   return { days, keys, view: dashboardView(profile, keys, usage, NOW) };
 }
 
-test("the dashboard lists each key's name, prefix, created and last used, with a revoke form for a live one", () => {
+test("the dashboard lists each live key, oldest first, with its name, prefix, created, last used and a revoke form", () => {
   const { keys, view } = sample();
   const html = renderToStaticMarkup(<Dashboard view={view} csrf={CSRF} />);
 
+  const rows = [...html.matchAll(/<tr[^>]*data-key-id="(\d+)"/g)].map((match) => Number(match[1]));
+  assert.deepEqual(rows, [2, 3], "board 28 lists live keys only, oldest first");
   for (const [name, prefix, used] of [
-    ["Browser extension", "lx_33333333…", "never"],
     ["Learning app", "lx_22222222…", "2 minutes ago"],
+    ["Browser extension", "lx_33333333…", "never"],
   ]) {
-    const row = new RegExp(`<tr[^>]*><td[^>]*>${name}</td><td[^>]*>${prefix}</td><td[^>]*>27 Sep 2026</td><td[^>]*>${used}</td>`);
+    // On a phone the created and last-used cells read "Created … · Last used …" (board 28m).
+    const row = new RegExp(
+      `<tr[^>]*><td[^>]*>${name}</td><td[^>]*>${prefix}</td><td[^>]*><span[^>]*>Created </span>27 Sep 2026</td><td[^>]*><span[^>]*>\u00a0· Last used </span>${used}</td>`,
+    );
     assert.match(html, row, name);
   }
   assert.ok(html.includes(`action="${revokeKeyAction(3)}"`) && html.includes(`action="${revokeKeyAction(2)}"`));
-  assert.ok(!html.includes(`action="${revokeKeyAction(1)}"`), "a revoked key has no revoke form");
-  assert.match(html, /Revoked 20 Sep 2026/);
+  assert.ok(!html.includes(`action="${revokeKeyAction(1)}"`), "a revoked key has no row");
+  assert.doesNotMatch(html, /Revoked|>Old</);
   assert.equal(keys.length, 3);
 
   // The bar names the account, and signing out is a POST.
@@ -107,22 +111,14 @@ test("the dashboard lists each key's name, prefix, created and last used, with a
   assert.match(html, /<a[^>]*href="\/dashboard"[^>]*aria-current="page"[^>]*>Dashboard<\/a>/);
 });
 
-test("the dashboard shows 30 days of units per key and in total, today last", () => {
+test("the dashboard shows 30 days of units in total, revoked keys' too, today last, and no per-key rows", () => {
   const { days, view } = sample();
   const html = renderToStaticMarkup(<Dashboard view={view} csrf={CSRF} />);
   assert.match(html, /Last 30 days · 18,840 units/);
-
-  /** The bars one chart draws: its days and units, in order. */
-  const bars = (usage: string) => {
-    const chart = new RegExp(`data-usage="${usage}"[^>]*>(.*?)</(?:div|li)>`).exec(html)?.[1] ?? "";
-    return [...chart.matchAll(/data-day="([^"]+)" data-units="(\d+)"/g)].map((match) => [match[1], Number(match[2])]);
-  };
-  const expected = (units: Record<number, number>) => days.map((day, i) => [day, units[i] ?? 0]);
-  assert.deepEqual(bars("total"), expected({ 0: 17000, 10: 600, 29: 1240 }));
-  assert.deepEqual(bars("2"), expected({ 10: 600, 29: 1200 }));
-  assert.deepEqual(bars("3"), expected({ 29: 40 }));
-  assert.deepEqual(bars("1"), expected({ 0: 17000 }));
-  assert.match(html, /data-usage="2"[^>]*><span[^>]*>Learning app<\/span>.*?1,800 units<\/span>/);
+  const bars = [...html.matchAll(/data-day="([^"]+)" data-units="(\d+)"/g)].map((match) => [match[1], Number(match[2])]);
+  const expected = days.map((day, i) => [day, ({ 0: 17000, 10: 600, 29: 1240 } as Record<number, number>)[i] ?? 0]);
+  assert.deepEqual(bars, expected);
+  assert.equal([...html.matchAll(/data-usage="/g)].length, 1, "one chart, the account's");
 });
 
 test("the plan card offers nothing to buy, and every form posts to a dashboard action with the CSRF token", () => {
@@ -134,34 +130,52 @@ test("the plan card offers nothing to buy, and every form posts to a dashboard a
   const forms = [...html.matchAll(/<form[^>]*action="([^"]+)"[^>]*>(.*?)<\/form>/g)];
   const actions = forms.map((form) => form[1]);
   // Sign out twice: in the bar, and in the ☰ menu a phone shows instead.
-  assert.deepEqual(actions, ["/sign-out", "/sign-out", CREATE_KEY_ACTION, revokeKeyAction(3), revokeKeyAction(2)]);
+  assert.deepEqual(actions, ["/sign-out", "/sign-out", CREATE_KEY_ACTION, revokeKeyAction(2), revokeKeyAction(3)]);
   for (const [, action, body] of forms.slice(2)) {
     assert.ok(body.includes(`name="${CSRF_FIELD}" value="${CSRF}"`), action);
   }
-  assert.match(html, /<input(?=[^>]*required="")(?=[^>]*maxLength="200")[^>]*name="name"\/>/);
-  // The account section: who is signed in, and the button that opens the confirmation.
+  // Board 28's Create key is a lone button: no name field.
+  assert.match(forms[2][2], /^<input type="hidden"[^>]*\/><button[^>]*type="submit"[^>]*>Create key<\/button>$/);
+  // The account section: who is signed in, and Delete account, a link to the confirmation that works without a script.
   assert.match(html, /Signed in with Google · ada@example\.com/);
-  assert.match(html, /<button[^>]*>Delete account<\/button>/);
-  assert.equal(view.liveKeys, 2);
+  assert.match(html, new RegExp(`<a[^>]*href="${CONFIRM_DELETE_PAGE.replace("?", "\\?")}"[^>]*>Delete account</a>`));
+  assert.doesNotMatch(html, /role="dialog"/, "no dialog is open");
   assert.ok(DELETE_ACCOUNT_ACTION.startsWith(DASHBOARD));
 });
 
-test("an account with no keys has no key table and no per-key usage", () => {
+test("an account with no keys has no key table", () => {
   const view = dashboardView(profile, [], AccountUsage.of(usageDays(NOW), [], []), NOW);
   const html = renderToStaticMarkup(<Dashboard view={view} csrf={CSRF} />);
   assert.doesNotMatch(html, /<table/);
   assert.match(html, /Last 30 days · 0 units/);
-  assert.doesNotMatch(html, /data-usage="\d+"/);
-  assert.equal(view.liveKeys, 0);
+  assert.equal(view.keys.length, 0);
 });
 
-test("the key-created page shows the secret, Copy, the once-only note, and the way back", () => {
+test("the key-created dialog sits over the dashboard with the secret, Copy, the once-only note, and the way back", () => {
+  const { view } = sample();
   const secret = `lx_${"ab".repeat(32)}`;
-  const html = renderToStaticMarkup(<KeyCreated name="Learning app" secret={secret} />);
-  assert.match(html, /<h1[^>]*>Key created<\/h1>/);
-  assert.match(html, />Learning app</);
-  assert.ok(html.includes(`>${secret}<`));
-  assert.match(html, /Copy<\/button>/);
-  assert.match(html, /Copy it now\. You won(?:'|&#x27;)t be able to see it again\./);
-  assert.equal([...html.matchAll(new RegExp(`href="${DASHBOARD}"`, "g"))].length, 2);
+  const html = renderToStaticMarkup(<Dashboard view={view} csrf={CSRF} dialog={{ kind: "key-created", name: "Learning app", secret }} />);
+  // The dashboard is behind it, inert, so the keyboard stays in the dialog.
+  assert.match(html, /^<div[^>]*inert=""[^>]*>.*<h1[^>]*>Dashboard<\/h1>/);
+  const dialog = /<section[^>]*role="dialog"[^>]*aria-modal="true"[^>]*>(.*)<\/section>/.exec(html)?.[1] ?? "";
+  assert.match(dialog, /<h2[^>]*id="key-created"[^>]*>Key created<\/h2>/);
+  assert.match(dialog, />Learning app</);
+  assert.ok(dialog.includes(`>${secret}<`));
+  assert.match(dialog, /Copy<\/button>/);
+  assert.match(dialog, /Copy it now\. You won(?:'|&#x27;)t be able to see it again\./);
+  // × and Done go back to the dashboard.
+  assert.equal([...dialog.matchAll(new RegExp(`href="${DASHBOARD}"`, "g"))].length, 2);
+});
+
+test("the delete confirmation sits over the dashboard, posts the confirmed deletion, and Cancel goes back", () => {
+  const { view } = sample();
+  const html = renderToStaticMarkup(<Dashboard view={view} csrf={CSRF} dialog={{ kind: "confirm-delete" }} />);
+  assert.match(html, /^<div[^>]*inert=""/);
+  const dialog = /<section[^>]*role="dialog"[^>]*aria-modal="true"[^>]*>(.*)<\/section>/.exec(html)?.[1] ?? "";
+  assert.match(dialog, /<h2[^>]*>Delete your account\?<\/h2>/);
+  assert.match(dialog, /Your 2 API keys will be revoked right away, and any app using them will stop working\. This can(?:'|&#x27;)t be undone\./);
+  const form = new RegExp(`<form[^>]*action="${DELETE_ACCOUNT_ACTION}"[^>]*>(.*?)</form>`).exec(dialog)?.[1] ?? "";
+  assert.ok(form.includes(`name="${CSRF_FIELD}" value="${CSRF}"`));
+  assert.ok(form.includes(`name="confirm" value="${DELETE_CONFIRMATION}"`));
+  assert.match(form, new RegExp(`<a[^>]*href="${DASHBOARD}"[^>]*>Cancel</a><button[^>]*type="submit"[^>]*>Delete account</button>$`));
 });

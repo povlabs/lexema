@@ -1,9 +1,10 @@
-// The dashboard's actions on developers.lexema.fyi (#168): make a named key,
-// revoke one, and delete the account.
+// The dashboard's actions on developers.lexema.fyi (#168): make a key, revoke
+// one, and delete the account.
 //
 // The routes, on the developer site's host only, each a form POST:
 //
-//   POST /dashboard/keys               make a key named by the form's `name`
+//   POST /dashboard/keys               make a key named by the form's `name`, or
+//                                      without one `Key 1`, `Key 2`, … (#169)
 //   POST /dashboard/keys/<id>/revoke   revoke one of the account's keys
 //   POST /dashboard/account/delete     delete the account; the form must carry
 //                                      `confirm=delete-account`
@@ -15,7 +16,8 @@
 // segment that worker/hosts.ts answers with a 404 on every other host.
 //
 // A new key's secret is shown once (#169). The POST that made it answers 303
-// to the key-created page, with the secret in a one-shot cookie that lives a
+// to the key-created page (the dashboard with board 29's dialog over it), with
+// the secret in a one-shot cookie that lives a
 // minute. The GET that follows moves the secret into a header only this module
 // sets, hands the page to the App Router, and clears the cookie in the same
 // response; any copy of that header a client sends is removed from every
@@ -28,7 +30,7 @@
 
 import { deleteAccount } from "@lexema/accounts/accounts.ts";
 import { csrfMatches, csrfToken, sessionAccount } from "@lexema/accounts/sessions.ts";
-import { createAccountKey, keyName, revokeAccountKey } from "@lexema/api/ownedKeys.ts";
+import { createAccountKey, keyName, listAccountKeys, revokeAccountKey, type KeyName } from "@lexema/api/ownedKeys.ts";
 import { fromD1, type TransactionalDatabase } from "@lexema/lookup/database.ts";
 import { DEVELOPERS_SEGMENT } from "./hosts.ts";
 import type { FetchHandler } from "./rateLimit.ts";
@@ -44,6 +46,23 @@ export const SIGN_IN_PAGE = "/sign-in";
 export const NEW_KEY_COOKIE = "__Host-lexema-new-key";
 /** How long the new key's cookie lives if the page is never opened. */
 const NEW_KEY_SECONDS = 60;
+/** What `/dashboard?confirm=` says to open the delete confirmation (board 30) without a script. */
+export const CONFIRM_DELETE_PARAM = "confirm";
+export const CONFIRM_DELETE_VALUE = "delete";
+/** The dashboard with the delete confirmation open. */
+export const CONFIRM_DELETE_PAGE = `${DASHBOARD}?${CONFIRM_DELETE_PARAM}=${CONFIRM_DELETE_VALUE}`;
+
+/**
+ * The name a key made from board 28's lone Create key button gets: `Key 1`,
+ * then `Key 2`, counting every key the account has made, revoked ones too, so
+ * a name is never handed out twice.
+ */
+export function defaultKeyName(made: number): KeyName {
+  const name = keyName(`Key ${made + 1}`);
+  if (name === undefined) throw new Error("a default key name is always a valid name");
+  return name;
+}
+
 /** The form field carrying the session's CSRF token. */
 export const CSRF_FIELD = "csrf";
 /** What the delete form's `confirm` field must say for the account to be deleted. */
@@ -182,7 +201,8 @@ export async function answerDashboard(request: Request, route: DashboardRoute, c
 
     switch (route.kind) {
       case "create-key": {
-        const name = keyName(field(form, "name") ?? "");
+        const given = field(form, "name");
+        const name = given === undefined ? defaultKeyName((await listAccountKeys(db, accountId)).length) : keyName(given);
         if (name === undefined) return text(400, "A key needs a name of 1 to 200 characters.");
         const created = await createAccountKey(db, accountId, name, context.now);
         if (created.outcome === "refused") return text(401, "Sign in first.");

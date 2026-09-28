@@ -1,28 +1,15 @@
 // developers.lexema.fyi/dashboard (#169): the wiring only; the markup is
-// `../../../Dashboard.tsx` and what it shows is `../../../dashboardView.ts`.
-// worker/dashboard.ts sends a visitor without a session to sign-in before
-// this runs; the check here covers any request that reaches the page anyway.
-import { accountProfile } from "@lexema/accounts/accounts.ts";
-import { listAccountKeys } from "@lexema/api/ownedKeys.ts";
-import { accountUsage } from "@lexema/api/usage.ts";
+// `../../../Dashboard.tsx`. `?confirm=delete` opens the delete confirmation
+// (board 30) from the server, so Delete account works with no script.
 import { headers } from "next/headers";
-import { redirect } from "next/navigation";
-import { csrfTokenOf, SIGN_IN_PAGE } from "../../../../worker/dashboard.ts";
-import { signedInAccount } from "../../../../worker/signIn.ts";
+import { CONFIRM_DELETE_PARAM, CONFIRM_DELETE_VALUE } from "../../../../worker/dashboard.ts";
 import { Dashboard } from "../../../Dashboard";
-import { dashboardView } from "../../../dashboardView.ts";
-import { database } from "../../../db";
+import { loadDashboard } from "./load.ts";
 
 export const metadata = { title: "Dashboard — Lexema API" };
 
-export default async function Page() {
-  const cookies = (await headers()).get("cookie");
-  const db = database();
-  const now = Date.now();
-  const accountId = await signedInAccount(cookies, db, now);
-  const csrf = await csrfTokenOf(cookies);
-  const profile = accountId === undefined ? undefined : await accountProfile(db, accountId);
-  if (accountId === undefined || csrf === undefined || profile === undefined) redirect(SIGN_IN_PAGE);
-  const [keys, usage] = await Promise.all([listAccountKeys(db, accountId), accountUsage(db, accountId, now)]);
-  return <Dashboard view={dashboardView(profile, keys, usage, now)} csrf={csrf} />;
+export default async function Page({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
+  const { view, csrf } = await loadDashboard((await headers()).get("cookie"));
+  const confirming = (await searchParams)[CONFIRM_DELETE_PARAM] === CONFIRM_DELETE_VALUE;
+  return <Dashboard view={view} csrf={csrf} dialog={confirming ? { kind: "confirm-delete" } : undefined} />;
 }
