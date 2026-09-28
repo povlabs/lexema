@@ -3,6 +3,7 @@ import { cloudflare } from "@cloudflare/vite-plugin";
 import tailwindcss from "@tailwindcss/vite";
 import vinext from "vinext";
 import { defineConfig } from "vite";
+import { withoutHeldBack } from "./worker/heldBack.ts";
 
 export default defineConfig({
   plugins: [
@@ -11,7 +12,16 @@ export default defineConfig({
     // first, then vinext, then the Cloudflare environment.
     tailwindcss(),
     vinext(),
-    cloudflare({ viteEnvironment: { name: "rsc", childEnvironments: ["ssr"] } }),
+    cloudflare({
+      viteEnvironment: { name: "rsc", childEnvironments: ["ssr"] },
+      // The routes the build writes for `wrangler deploy`, minus the hosts
+      // held back until the developer site is ready (worker/heldBack.ts).
+      // Changed in place: a returned `routes` would be added to the list, not
+      // replace it.
+      config: (worker) => {
+        if (worker.routes) worker.routes = withoutHeldBack(worker.routes);
+      },
+    }),
   ],
   resolve: {
     alias: {

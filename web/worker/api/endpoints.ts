@@ -1,6 +1,7 @@
-// Every endpoint of the JSON API under /api/v1 (#150, #151, #152), each an
-// answer to one request and nothing else: the key, the limits and the charge
-// are the handler's (./handler.ts), and every cost is src/api/units.ts's.
+// Every endpoint of the JSON API under /v1 on api.lexema.fyi (#150, #151,
+// #152), each an answer to one request and nothing else: the key, the limits
+// and the charge are the handler's (./handler.ts), and every cost is
+// src/api/units.ts's.
 //
 // None of them ranks or places anew. `/lookup`, `/lemmatize`, `/inflect` and
 // `/lookup/batch` read `lookup()` and its candidates (./lookupAnswer.ts);
