@@ -108,20 +108,45 @@ or restart `wrangler dev` to reset the count. Why they are there is
 
 ## Sign in locally
 
-The developer site's sign-in (`web/worker/signIn.ts`) needs a real Google or
-GitHub OAuth client, so it is off locally until you give it one: each provider's
-sign-in route answers 503 until both its client id and secret are set. Register
-a client whose callback is `http://developers.localhost:8790/sign-in/google/callback`
-(or `…/github/callback`), then put its values in `web/.dev.vars`, which is
-gitignored and which `wrangler dev` reads:
+The developer site's sign-in (`web/worker/signIn.ts`) needs a real OAuth
+client, so it is off locally until you give it one: each provider's sign-in
+route answers 503 until both its client id and secret are set. Locally that
+means GitHub only.
+
+Google cannot sign in locally. The Worker sends the callback on the host it was
+asked on, `developers.localhost`. Google's
+[redirect URI rules](https://developers.google.com/identity/protocols/oauth2/web-server#uri-validation)
+say a host's top-level domain must be on the
+[public suffix list](https://publicsuffix.org/list/public_suffix_list.dat).
+`localhost` is not on it, and Google exempts localhost only from the HTTPS and
+raw-IP rules, not from this one. Google's side is covered by the tests instead
+(below), and live on `developers.lexema.fyi`
+([DEPLOY.md](DEPLOY.md#turn-on-sign-in)).
+
+To sign in with GitHub, create a GitHub OAuth app whose authorization callback
+URL is `http://developers.localhost:8790/sign-in/github/callback`. GitHub sets no
+host or scheme rule on a callback URL; the one it asks is that the Worker's
+`redirect_uri` matches it
+([Redirect URLs](https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/authorizing-oauth-apps#redirect-urls)).
+Put its values in `web/.dev.vars`, which is gitignored and which `wrangler dev`
+reads:
 
 ```sh
-GOOGLE_CLIENT_ID=…
-GOOGLE_CLIENT_SECRET=…
+GITHUB_CLIENT_ID=…
+GITHUB_CLIENT_SECRET=…
 ```
 
+Then start at <http://developers.localhost:8790/sign-in/github>.
+
+The session cookie is `__Host-` prefixed and `Secure`, yet the local site is
+plain `http://`. It still sticks only because the browser treats
+`*.localhost` as a secure context
+([MDN, potentially trustworthy origins](https://developer.mozilla.org/en-US/docs/Web/Security/Secure_Contexts#potentially_trustworthy_origins)).
+A browser that does not will drop the cookie, and you will not stay signed in.
+
 The tests need none of this: they sign in against a stub provider
-(`web/test/stubProvider.ts`).
+(`web/test/stubProvider.ts`), and Google's and GitHub's token and email calls
+run against a fake `fetch` (`test/accounts.test.ts`).
 
 ## If it will not start
 
