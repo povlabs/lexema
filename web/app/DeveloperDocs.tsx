@@ -12,11 +12,9 @@ import { API_PREFIX, UNIT_WEIGHT, type Endpoint } from "@lexema/api/units.ts";
 import { ORIGIN } from "../worker/hosts.ts";
 import {
   API_BASE,
-  AUTH_EXAMPLE,
   costText,
   ENDPOINT_REFERENCE,
   ENDPOINTS_IN_ORDER,
-  ERROR_EXAMPLE,
   ERRORS,
   FIELDS_TEXT,
   formatJson,
@@ -30,7 +28,7 @@ import {
   type Parameter,
   type ValueList,
 } from "./apiReference.ts";
-import { CodePanel } from "./CodePanel";
+import { CodePanel, type PanelResponse } from "./CodePanel";
 import { DeveloperPage, SIGN_IN_PATH } from "./DeveloperPage";
 import type { DocsGroup } from "./DocsLinks";
 import { DocsNav } from "./DocsNav";
@@ -47,6 +45,7 @@ import {
   type DocsPage,
   type Guide,
 } from "./docsPages.ts";
+import { GUIDE_PANELS, printedAnswer, queryStyleOf } from "./guidePanels.ts";
 import { ChevronIcon } from "./icons";
 import { ExternalLink } from "./ExternalLink";
 import {
@@ -61,6 +60,7 @@ import {
   DOCS_CONTENTS_SUMMARY,
   DOCS_ENDPOINT,
   DOCS_EYEBROW,
+  DOCS_GUIDE_BODY,
   DOCS_HEADING,
   DOCS_LAYOUT,
   DOCS_MAIN,
@@ -169,14 +169,35 @@ function Subheading({ id, children }: { id?: string; children: string }) {
 /** The widest line a response is printed to, in characters: the code panel's width. */
 const PANEL_WIDTH = 56;
 
-/** Examples as the code panel prints them. */
-const panelOf = (examples: readonly Example[], withResponse = true) =>
-  examples.map((example) => ({
-    status: example.status,
-    label: example.label,
-    requests: requestsOf(example),
-    response: withResponse ? formatJson(example.response, PANEL_WIDTH) : undefined,
-  }));
+/** An endpoint's examples as the code panel prints them: each its own request, and its answer whole. */
+function EndpointCode({ examples }: { examples: readonly [Example, ...Example[]] }) {
+  const [first, ...rest] = examples.map(
+    (example, i): PanelResponse => ({
+      status: example.status,
+      label: example.label,
+      request: i,
+      text: formatJson(example.response, PANEL_WIDTH),
+    }),
+  );
+  return <CodePanel requests={examples.map((example) => requestsOf(example))} responses={[first, ...rest]} languages={LANGUAGES} />;
+}
+
+/** A guide's request, and under it each answer the API gives it: its body, or its headers where the page is about them. */
+function GuideCode({ guide }: { guide: Guide }) {
+  const panel = GUIDE_PANELS[guide];
+  const [first, ...rest] = panel.answers.map(
+    (answer): PanelResponse => ({ status: answer.status, request: 0, text: printedAnswer(answer, PANEL_WIDTH) }),
+  );
+  return (
+    <CodePanel
+      requestTitle={panel.requestTitle}
+      responseTitle={panel.answers.some((answer) => answer.shown.kind === "headers") ? "Response headers" : "Response"}
+      requests={[requestsOf(panel.request, queryStyleOf(panel.request))]}
+      responses={[first, ...rest]}
+      languages={LANGUAGES}
+    />
+  );
+}
 
 /** Previous / Next: the pages either side of this one, in the sidebar's order. */
 function Neighbours({ page }: { page: DocsPage }) {
@@ -200,7 +221,7 @@ function Neighbours({ page }: { page: DocsPage }) {
 }
 
 /** A page's topic: its eyebrow and heading, its text, the code beside it, and Previous / Next under all. */
-function Topic({ page, code, children }: { page: DocsPage; code?: ReactNode; children: ReactNode }) {
+function Topic({ page, code, children }: { page: DocsPage; code: ReactNode; children: ReactNode }) {
   return (
     <article className={DOCS_SECTION} aria-labelledby="topic-heading">
       <div className={DOCS_TEXT}>
@@ -208,9 +229,9 @@ function Topic({ page, code, children }: { page: DocsPage; code?: ReactNode; chi
         <h1 className={DOCS_HEADING} id="topic-heading">
           {titleOf(page)}
         </h1>
-        {children}
+        {page.kind === "guide" ? <div className={DOCS_GUIDE_BODY}>{children}</div> : children}
       </div>
-      {code === undefined ? null : <div className={DOCS_CODE}>{code}</div>}
+      <div className={DOCS_CODE}>{code}</div>
       <Neighbours page={page} />
     </article>
   );
@@ -244,7 +265,7 @@ function EndpointTopic({ endpoint }: { endpoint: Endpoint }) {
   return (
     <Topic
       page={{ kind: "endpoint", endpoint }}
-      code={<CodePanel examples={panelOf(reference.examples)} languages={LANGUAGES} />}
+      code={<EndpointCode examples={reference.examples} />}
     >
       <p className={DOCS_ENDPOINT}>
         <span className={DOCS_METHOD}>{reference.method}</span>
@@ -288,7 +309,7 @@ function GrammarValues() {
 /** Each guide page's topic. */
 const GUIDE_TOPICS: Readonly<Record<Guide, () => ReactNode>> = {
   introduction: () => (
-    <Topic page={{ kind: "guide", guide: "introduction" }}>
+    <Topic page={{ kind: "guide", guide: "introduction" }} code={<GuideCode guide="introduction" />}>
       <Paragraph>{`A JSON API over Lexema's Italian dictionary. Every endpoint is under \`${API_BASE}\`, takes an API key, and answers JSON.`}</Paragraph>
       <Paragraph>{"Each parameter is sent at most once. `release_id` names the release every answer was read from. Grammar values are Italian labels; the English codes are read as the same."}</Paragraph>
     </Topic>
@@ -296,7 +317,7 @@ const GUIDE_TOPICS: Readonly<Record<Guide, () => ReactNode>> = {
   authentication: () => (
     <Topic
       page={{ kind: "guide", guide: "authentication" }}
-      code={<CodePanel examples={panelOf([AUTH_EXAMPLE], false)} languages={LANGUAGES} />}
+      code={<GuideCode guide="authentication" />}
     >
       <p className={DOCS_PARAGRAPH}>
         <a className={LINK} href={SIGN_IN_PATH}>
@@ -309,7 +330,7 @@ const GUIDE_TOPICS: Readonly<Record<Guide, () => ReactNode>> = {
     </Topic>
   ),
   "units-and-limits": () => (
-    <Topic page={{ kind: "guide", guide: "units-and-limits" }}>
+    <Topic page={{ kind: "guide", guide: "units-and-limits" }} code={<GuideCode guide="units-and-limits" />}>
       <Paragraph>{"Each answer an endpoint gives, a `200` or a `404`, costs the units this table lists, counted per key per UTC day. Every other response costs none."}</Paragraph>
       <table className={DOCS_TABLE}>
         <thead>
@@ -338,7 +359,7 @@ const GUIDE_TOPICS: Readonly<Record<Guide, () => ReactNode>> = {
     </Topic>
   ),
   errors: () => (
-    <Topic page={{ kind: "guide", guide: "errors" }} code={<CodePanel examples={panelOf([ERROR_EXAMPLE])} languages={LANGUAGES} />}>
+    <Topic page={{ kind: "guide", guide: "errors" }} code={<GuideCode guide="errors" />}>
       <Paragraph>{"An error answers with its status and a body naming it."}</Paragraph>
       <Rows rows={ERRORS.map((error) => ({ name: `${error.status} ${error.code}`, description: error.when }))} />
       <p className={DOCS_PARAGRAPH}>
@@ -351,7 +372,7 @@ const GUIDE_TOPICS: Readonly<Record<Guide, () => ReactNode>> = {
     </Topic>
   ),
   "grammar-values": () => (
-    <Topic page={{ kind: "guide", guide: "grammar-values" }}>
+    <Topic page={{ kind: "guide", guide: "grammar-values" }} code={<GuideCode guide="grammar-values" />}>
       <Paragraph>{"Every value `pos`, `match`, `fields` and the grammar parameters take."}</Paragraph>
       <Subheading id="pos">pos</Subheading>
       <Paragraph>{POS_TEXT}</Paragraph>
@@ -365,7 +386,7 @@ const GUIDE_TOPICS: Readonly<Record<Guide, () => ReactNode>> = {
     </Topic>
   ),
   attribution: () => (
-    <Topic page={{ kind: "guide", guide: "attribution" }}>
+    <Topic page={{ kind: "guide", guide: "attribution" }} code={<GuideCode guide="attribution" />}>
       <Paragraph>{"The API's text comes from Wikizionario, the Italian Wiktionary, under CC BY-SA 4.0. Every result carries `attribution`: `licence`, `licence_url`, `source`, and `source_url`, the word's Wikizionario page."}</Paragraph>
       <p className={DOCS_PARAGRAPH}>
         <Text>{"Where you show or pass on that text, credit it with the source and its page, name the licence with its link, and share what you adapt from it under the same licence. "}</Text>

@@ -1,10 +1,11 @@
 "use client";
 
-// The request and response panels beside a docs topic (board 31). The request
-// is shown in curl, JavaScript or Python; the response by status, where a topic
-// has more than one example (`/lookup`'s 200, its filtered 200 and its 404). A
-// response's tab picks its request too, since each example is its own request.
-// A long response scrolls inside its panel.
+// The request and response panels beside a docs topic (boards 31 and 31b). The
+// request is shown in curl, JavaScript or Python; the response by status, where
+// a topic has more than one answer (`/lookup`'s 200, its filtered 200 and its
+// 404; a guide's 200 and 401). A response's tab picks the request it answers,
+// which an endpoint's examples each have their own of, and a guide's answers
+// share. A long response scrolls inside its panel.
 //
 // Every block is in the HTML the server sends, the ones not showing `hidden`,
 // so the page states every example without a script and
@@ -27,14 +28,18 @@ import {
   CODE_PANEL_TITLE,
 } from "./styles.ts";
 
-/** One example, printed: its request in each language, and its answer. */
-export interface PanelExample {
+/** A request in each language the docs print it in. */
+export type PanelRequest = Readonly<Record<Language, string>>;
+
+/** One answer, printed: its status, the request it answers, and its text. */
+export interface PanelResponse {
   status: number;
-  /** What sets it apart from another example of its status, after the status on its tab. */
+  /** What sets it apart from another answer of its status, after the status on its tab. */
   label?: string;
-  requests: Readonly<Record<Language, string>>;
-  /** The answer's JSON; absent where a topic shows only how to send a request. */
-  response?: string;
+  /** Which of the panel's requests it answers. */
+  request: number;
+  /** The answer as printed: its JSON, folded or whole, or its headers. */
+  text: string;
 }
 
 /** A line that is only brackets and commas: `{`, `],`, `}`. */
@@ -83,16 +88,27 @@ function Copy({ text }: { text: string }) {
   );
 }
 
-export function CodePanel({ examples, languages }: { examples: readonly PanelExample[]; languages: readonly Language[] }) {
+export function CodePanel({
+  requestTitle = "Request",
+  responseTitle = "Response",
+  requests,
+  responses,
+  languages,
+}: {
+  requestTitle?: string;
+  responseTitle?: string;
+  requests: readonly PanelRequest[];
+  responses: readonly [PanelResponse, ...PanelResponse[]];
+  languages: readonly Language[];
+}) {
   const [language, setLanguage] = useState<Language>(languages[0]);
   const [shown, setShown] = useState(0);
-  const example = examples[shown];
-  const withResponse = examples.some((each) => each.response !== undefined);
+  const response = responses[shown];
   return (
     <>
       <div className={CODE_PANEL_REQUEST}>
         <div className={CODE_PANEL_HEAD}>
-          <h4 className={CODE_PANEL_TITLE}>Request</h4>
+          <h4 className={CODE_PANEL_TITLE}>{requestTitle}</h4>
           {languages.map((each) => (
             <button
               key={each}
@@ -104,52 +120,51 @@ export function CodePanel({ examples, languages }: { examples: readonly PanelExa
               {each}
             </button>
           ))}
-          <Copy text={example.requests[language]} />
+          <Copy text={requests[response.request][language]} />
         </div>
-        {examples.map((each, i) =>
+        {requests.map((request, i) =>
           languages.map((lang) => (
             <pre
               key={`${i} ${lang}`}
               className={CODE_PANEL_BODY}
               data-request={lang}
-              data-status={each.status}
-              hidden={i !== shown || lang !== language}
+              hidden={i !== response.request || lang !== language}
             >
               <code>
-                <CodeLines text={each.requests[lang]} request />
+                <CodeLines text={request[lang]} request />
               </code>
             </pre>
           )),
         )}
       </div>
-      {withResponse ? (
-        <div className={CODE_PANEL_RESPONSE}>
-          <div className={CODE_PANEL_HEAD}>
-            <h4 className={CODE_PANEL_TITLE}>Response</h4>
-            {examples.length === 1 ? (
-              <span className={CODE_PANEL_STATUS}>{example.status}</span>
-            ) : (
-              examples.map((each, i) => (
-                <button
-                  key={i}
-                  className={CODE_PANEL_TAB}
-                  type="button"
-                  aria-pressed={i === shown}
-                  onClick={() => setShown(i)}
-                >
-                  {each.label === undefined ? each.status : `${each.status} ${each.label}`}
-                </button>
-              ))
-            )}
-            <Copy text={example.response ?? ""} />
-          </div>
-          {examples.map((each, i) => (
-            <pre key={i} className={CODE_PANEL_RESPONSE_BODY} data-response={each.status} hidden={i !== shown} tabIndex={0}>
-              <code>{each.response === undefined ? null : <CodeLines text={each.response} request={false} />}</code>
-            </pre>
-          ))}
+      <div className={CODE_PANEL_RESPONSE}>
+        <div className={CODE_PANEL_HEAD}>
+          <h4 className={CODE_PANEL_TITLE}>{responseTitle}</h4>
+          {responses.length === 1 ? (
+            <span className={CODE_PANEL_STATUS}>{response.status}</span>
+          ) : (
+            responses.map((each, i) => (
+              <button
+                key={i}
+                className={CODE_PANEL_TAB}
+                type="button"
+                aria-pressed={i === shown}
+                onClick={() => setShown(i)}
+              >
+                {each.label === undefined ? each.status : `${each.status} ${each.label}`}
+              </button>
+            ))
+          )}
+          <Copy text={response.text} />
         </div>
-      ) : null}
+        {responses.map((each, i) => (
+          <pre key={i} className={CODE_PANEL_RESPONSE_BODY} data-response={each.status} hidden={i !== shown} tabIndex={0}>
+            <code>
+              <CodeLines text={each.text} request={false} />
+            </code>
+          </pre>
+        ))}
+      </div>
     </>
   );
 }

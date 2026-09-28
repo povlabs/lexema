@@ -129,10 +129,13 @@ landing page at `/` and `/pricing`; `lexema.fyi` links to that site from its
 footer and has no `/developers` page. The docs are one page per sidebar item,
 `/docs` and `/docs/<page>`, listed in
 [web/app/docsPages.ts](./web/app/docsPages.ts). What they state is
-[web/app/apiReference.ts](./web/app/apiReference.ts), and
+[web/app/apiReference.ts](./web/app/apiReference.ts); the request and answers
+beside each guide page are [web/app/guidePanels.ts](./web/app/guidePanels.ts),
+where a shortened answer is folded from the whole one.
 [web/test/developers.test.tsx](./web/test/developers.test.tsx) sends every example
-they print to the API, runs each JavaScript example against it, and fails when an
-answer differs, so a change to an answer changes the example with it. It also
+they print to the API, with the key, no key, a bad key or a spent key each answer
+names, runs each JavaScript example against it, and fails when an answer or a
+rate-limit header differs, so a change to an answer changes the example with it. It also
 fails when a sidebar link reaches no page. The
 pricing page's cost table is read from the same unit map the API charges by.
 
