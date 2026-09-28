@@ -15,7 +15,8 @@ import { API_PREFIX, UNIT_WEIGHT, type Endpoint, type UnitWeight } from "@lexema
 import { MAX_QUERY_LENGTH } from "@lexema/lookup/lookup.ts";
 import { SUGGESTION_LIMIT } from "@lexema/lookup/suggest.ts";
 import { MAX_BATCH_WORDS } from "../worker/api/endpoints.ts";
-import { GRAMMAR_CODES, MATCHES, PARTS_OF_SPEECH, SECTIONS } from "../worker/api/lookupFilters.ts";
+import { SECTION_KEY } from "../worker/api/lookupAnswer.ts";
+import { GRAMMAR_CODES, MATCHES, PARTS_OF_SPEECH, POS_ALIASES, SECTIONS, type Match } from "../worker/api/lookupFilters.ts";
 import { ORIGIN } from "../worker/hosts.ts";
 
 export const API_ORIGIN = ORIGIN.api;
@@ -27,11 +28,16 @@ export const EXAMPLE_KEY = "lx_…";
 /** What a parameter's value is, as the docs name it. */
 export type ParameterType = "string" | "integer" | "string[]";
 
+/** A parameter whose values are a closed list, each listed in full on the Grammar values page. */
+export type ValueList = "pos" | "match" | "fields";
+
 export interface Parameter {
   name: string;
   type: ParameterType;
   required: boolean;
   description: string;
+  /** The list `description`'s `...` continues: the docs link the `...` to it. */
+  continued?: ValueList;
 }
 
 /** One request and what the API answers it with. */
@@ -76,14 +82,18 @@ const Q: Parameter = {
   description: `The word, 1 to ${MAX_QUERY_LENGTH} characters.`,
 };
 
-/** The first of a vocabulary's values, then `...`: as board 31 names a list too long for its line. */
-const opening = (values: readonly string[], count: number) => `${values.slice(0, count).join(", ")}, ...`;
+/**
+ * The first of a vocabulary's values, as board 31 names a list too long for
+ * its line. The docs follow it with `...`, linked to the whole list.
+ */
+const opening = (values: readonly string[], count: number) => `${values.slice(0, count).join(", ")},`;
 
 const POS: Parameter = {
   name: "pos",
   type: "string",
   required: false,
   description: `Only this part of speech: ${opening(PARTS_OF_SPEECH, 3)}`,
+  continued: "pos",
 };
 
 /** The sections `fields`' row names before `...`, as board 31 does. */
@@ -445,6 +455,7 @@ export const ENDPOINT_REFERENCE: Readonly<Record<Endpoint, EndpointReference>> =
         type: "string",
         required: false,
         description: `A comma list of sections to return: ${opening(FIELDS_NAMED, FIELDS_NAMED.length)}`,
+        continued: "fields",
       },
       { name: "limit_definitions", type: "integer", required: false, description: "At most this many definitions per result." },
       ...VERB_GRAMMAR,
@@ -643,6 +654,37 @@ export const ENDPOINTS_IN_ORDER = Object.keys(UNIT_WEIGHT) as Endpoint[];
 
 /** A unit weight as the page writes it. */
 export const unitsText = (weight: UnitWeight): string => (weight.per === "word" ? `${weight.units} per word` : String(weight.units));
+
+/** A list of values as the docs write it: each in backticks, comma separated. */
+const codeList = (values: readonly string[]) => values.map((value) => `\`${value}\``).join(", ");
+
+/** Every `pos` the API takes, and the spellings it reads as one of them. */
+export const POS_TEXT = [
+  `\`/lookup\` and \`/random\` take one part of speech: ${codeList(PARTS_OF_SPEECH)}.`,
+  ...[...POS_ALIASES].map(([alias, value]) => `\`${alias}\` is read as \`${value}\`.`),
+].join(" ");
+
+/** What each `match` keeps: every value the API takes, and none it does not. */
+const MATCH_MEANING: Readonly<Record<Match, string>> = {
+  exact: "Only the records `q` heads.",
+  form: "Only the lemma `q` is a form of, and any record that lists `q` among its forms.",
+  any: "Both. The default when `match` is absent.",
+};
+
+/** Every `match` the API takes, and what it keeps. */
+export const MATCH_VALUES: readonly { value: Match; meaning: string }[] = MATCHES.map((value) => ({
+  value,
+  meaning: MATCH_MEANING[value],
+}));
+
+/** Every section `fields` takes, and the key a section returns under another name. */
+export const FIELDS_TEXT = [
+  `\`/lookup\` takes a comma list of sections: ${codeList(SECTIONS)}.`,
+  ...SECTIONS.filter((section) => SECTION_KEY[section] !== section).map(
+    (section) => `\`${section}\` returns \`${SECTION_KEY[section]}\`.`,
+  ),
+  "The rest of a result is always returned.",
+].join(" ");
 
 /** The grammar parameters, each Italian label with the English codes also accepted for it. */
 export const GRAMMAR_VALUES = (Object.entries(GRAMMAR_CODES) as [string, Readonly<Record<string, readonly string[]>>][]).map(

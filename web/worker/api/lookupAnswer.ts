@@ -295,7 +295,7 @@ export interface SectionsJson {
 export type ResultJson = ResultCoreJson & Partial<SectionsJson>;
 
 /** The key each `fields` name selects in a result. */
-const SECTION_KEY: Record<Section, keyof SectionsJson> = {
+export const SECTION_KEY: Record<Section, keyof SectionsJson> = {
   definitions: "definitions",
   examples: "examples",
   forms: "forms",

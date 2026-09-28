@@ -200,6 +200,53 @@ test("the docs name every endpoint of the unit map with its weight, every /looku
   for (const header of HEADERS) assert.ok(text.includes(` ${header.name} `), header.name);
 });
 
+/** The values the API accepts for a parameter, read from its refusal of one it does not. */
+async function acceptedBy(path: string, parameter: string, key: string): Promise<string[]> {
+  const response = await send(`${path}${path.includes("?") ? "&" : "?"}${parameter}=not-a-value`, { key });
+  assert.equal(response.status, 400, `${path} ${parameter}`);
+  const { message } = ((await response.json()) as { error: { message: string } }).error;
+  const listed = /must be one of (.*); got /.exec(message);
+  assert.ok(listed, message);
+  return [...listed[1].matchAll(/"([^"]+)"/g)].map((value) => value[1]);
+}
+
+test("the Grammar values page lists every value the API takes for pos, match and fields, and each ... links there", async () => {
+  const { key } = await newKey();
+  const reference = renderToStaticMarkup(<DeveloperDocs page={{ kind: "guide", guide: "grammar-values" }} />);
+  /** The values a section of the page names, as code or as a row's name, from its heading to the next. */
+  const named = (id: string): Set<string> => {
+    const start = reference.indexOf(`id="${id}"`);
+    assert.ok(start >= 0, id);
+    const end = reference.indexOf("<h2", start);
+    const section = reference.slice(start, end < 0 ? undefined : end);
+    return new Set([...section.matchAll(/<(code|span)\b[^>]*>([^<]+)<\/\1>/g)].map((match) => unescape(match[2])));
+  };
+  const asked: [string, string, string][] = [
+    ["lookup?q=sale", "pos", "pos"],
+    ["random", "pos", "pos"],
+    ["lookup?q=sale", "match", "match"],
+    ["lookup?q=sale", "fields", "fields"],
+  ];
+  for (const [path, parameter, id] of asked) {
+    const accepted = await acceptedBy(path, parameter, key);
+    assert.ok(accepted.length > 0, `${path} ${parameter}`);
+    const listed = named(id);
+    for (const value of accepted) assert.ok(listed.has(value), `${path} ${parameter}: ${value}`);
+  }
+  // `fields=pronunciation` returns `pronunciations`: the page says so.
+  assert.ok(named("fields").has("pronunciations"));
+
+  // Where a row names part of a list and then `...`, the `...` links to the whole list.
+  for (const endpoint of ["lookup", "random"] as const) {
+    const html = renderToStaticMarkup(<DeveloperDocs page={{ kind: "endpoint", endpoint }} />);
+    for (const parameter of ENDPOINT_REFERENCE[endpoint].parameters.filter((each) => each.continued !== undefined)) {
+      const href = `/docs/grammar-values#${parameter.continued}`;
+      assert.ok(html.includes(`href="${href}"`), `${endpoint} ${parameter.name}`);
+      assert.ok(reference.includes(`id="${parameter.continued}"`), href);
+    }
+  }
+});
+
 test("every request the docs print, in every language, is sent to https://api.lexema.fyi/v1", () => {
   const requests = codeBlocks(docs(), "data-request");
   // Each example's request, and the one that shows the key header, three ways each.

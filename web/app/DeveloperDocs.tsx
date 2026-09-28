@@ -18,13 +18,17 @@ import {
   ENDPOINTS_IN_ORDER,
   ERROR_EXAMPLE,
   ERRORS,
+  FIELDS_TEXT,
   formatJson,
   GRAMMAR_VALUES,
   HEADERS,
   LANGUAGES,
+  MATCH_VALUES,
+  POS_TEXT,
   requestsOf,
   type Example,
   type Parameter,
+  type ValueList,
 } from "./apiReference.ts";
 import { CodePanel } from "./CodePanel";
 import { DeveloperPage, SIGN_IN_PATH } from "./DeveloperPage";
@@ -114,8 +118,20 @@ function Paragraph({ children }: { children: string }) {
   );
 }
 
+/** Where a closed list of values is written in full: its section of the Grammar values page. */
+const valueListPath = (list: ValueList): string => `${pathOf({ kind: "guide", guide: "grammar-values" })}#${list}`;
+
+interface Row {
+  name: string;
+  type?: string;
+  required?: boolean;
+  description: string;
+  /** The list `description` ends partway through: its `...` links to the whole. */
+  continued?: ValueList;
+}
+
 /** Rows of a name, what kind of value it is, and what it means. */
-function Rows({ rows }: { rows: readonly { name: string; type?: string; required?: boolean; description: string }[] }) {
+function Rows({ rows }: { rows: readonly Row[] }) {
   return (
     <ul className={DOCS_ROWS}>
       {rows.map((row) => (
@@ -127,6 +143,14 @@ function Rows({ rows }: { rows: readonly { name: string; type?: string; required
           </p>
           <p className={DOCS_ROW_TEXT}>
             <Text>{row.description}</Text>
+            {row.continued === undefined ? null : (
+              <>
+                {" "}
+                <a className={LINK} href={valueListPath(row.continued)} aria-label={`Every ${row.continued} value`}>
+                  ...
+                </a>
+              </>
+            )}
           </p>
         </li>
       ))}
@@ -134,8 +158,12 @@ function Rows({ rows }: { rows: readonly { name: string; type?: string; required
   );
 }
 
-function Subheading({ children }: { children: string }) {
-  return <h2 className={DOCS_SUBHEADING}>{children}</h2>;
+function Subheading({ id, children }: { id?: string; children: string }) {
+  return (
+    <h2 className={DOCS_SUBHEADING} id={id}>
+      {children}
+    </h2>
+  );
 }
 
 /** The widest line a response is printed to, in characters: the code panel's width. */
@@ -188,11 +216,12 @@ function Topic({ page, code, children }: { page: DocsPage; code?: ReactNode; chi
   );
 }
 
-const describeParameter = (parameter: Parameter) => ({
+const describeParameter = (parameter: Parameter): Row => ({
   name: parameter.name,
   type: parameter.type,
   required: parameter.required,
   description: parameter.description,
+  continued: parameter.continued,
 });
 
 function Answers({ answers }: { answers: readonly { status: string; description: string }[] }) {
@@ -323,7 +352,15 @@ const GUIDE_TOPICS: Readonly<Record<Guide, () => ReactNode>> = {
   ),
   "grammar-values": () => (
     <Topic page={{ kind: "guide", guide: "grammar-values" }}>
-      <Paragraph>{"The grammar parameters take these Italian labels, and read the English codes beside them as the same."}</Paragraph>
+      <Paragraph>{"Every value `pos`, `match`, `fields` and the grammar parameters take."}</Paragraph>
+      <Subheading id="pos">pos</Subheading>
+      <Paragraph>{POS_TEXT}</Paragraph>
+      <Subheading id="match">match</Subheading>
+      <Rows rows={MATCH_VALUES.map(({ value, meaning }) => ({ name: value, description: meaning }))} />
+      <Subheading id="fields">fields</Subheading>
+      <Paragraph>{FIELDS_TEXT}</Paragraph>
+      <Subheading id="grammar">Grammar</Subheading>
+      <Paragraph>{"`mood`, `tense`, `person`, `gender` and `number` take these Italian labels, and read the English codes beside them as the same."}</Paragraph>
       <GrammarValues />
     </Topic>
   ),

@@ -47,7 +47,7 @@ export type PartOfSpeech = (typeof PARTS_OF_SPEECH)[number];
  * The brief's spellings of the two codes the source abbreviates. A `Map`, so
  * a name every object inherits (`constructor`, `__proto__`) is no alias.
  */
-const POS_ALIASES: ReadonlyMap<string, PartOfSpeech> = new Map([
+export const POS_ALIASES: ReadonlyMap<string, PartOfSpeech> = new Map([
   ["adjective", "adj"],
   ["adverb", "adv"],
 ]);
