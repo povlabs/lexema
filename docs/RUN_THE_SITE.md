@@ -136,7 +136,8 @@ GITHUB_CLIENT_ID=…
 GITHUB_CLIENT_SECRET=…
 ```
 
-Then start at <http://developers.localhost:8790/sign-in/github>.
+Then start at <http://developers.localhost:8790/sign-in>. The page shows a
+provider without both values as a disabled button.
 
 The session cookie is `__Host-` prefixed and `Secure`, yet the local site is
 plain `http://`. It still sticks only because the browser treats

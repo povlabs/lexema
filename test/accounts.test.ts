@@ -8,6 +8,9 @@ import test from "node:test";
 import { DatabaseSync } from "node:sqlite";
 import { fileURLToPath } from "node:url";
 import {
+  ACCOUNT_IDENTITIES_SQL,
+  accountProfile,
+  deleteAccount,
   IDENTITY_BY_EMAIL_SQL,
   IDENTITY_BY_SUBJECT_SQL,
   signInAccount,
@@ -49,6 +52,7 @@ test("every account and session read is on a primary key or an index", () => {
   const cases: [string, (string | number)[], RegExp][] = [
     [IDENTITY_BY_SUBJECT_SQL, ["google", "x"], /SEARCH provider_identity USING INDEX sqlite_autoindex_provider_identity_1/],
     [IDENTITY_BY_EMAIL_SQL, ["a@b.c"], /SEARCH provider_identity USING INDEX provider_identity_by_email/],
+    [ACCOUNT_IDENTITIES_SQL, [1], /SEARCH provider_identity USING INDEX provider_identity_by_account/],
     [SESSION_ACCOUNT_SQL, ["0".repeat(64), at], /SEARCH developer_session USING INDEX sqlite_autoindex_developer_session_1/],
     [DELETE_SESSION_SQL, ["0".repeat(64)], /SEARCH developer_session USING (COVERING )?INDEX sqlite_autoindex_developer_session_1/],
     [SWEEP_SESSIONS_SQL, [at], /SEARCH developer_session USING (COVERING )?INDEX developer_session_by_expiry/],
@@ -67,6 +71,17 @@ test("an identity signs in to its own account first, then to the account its ver
   // The provider's own id wins over a changed email.
   assert.deepEqual(await signInAccount(db, identity("github", "7", "ada@elsewhere.org"), NOW), { accountId: 1, match: "identity" });
   assert.deepEqual(await signInAccount(db, identity("google", "g-2", "bob@example.com"), NOW), { accountId: 2, match: "new" });
+});
+
+test("an account's profile is its first email and every provider linked to it, and a deleted account has none", async () => {
+  const sqlite = schemaDb();
+  const db = fromNodeSqlite(sqlite);
+  const { accountId } = await signInAccount(db, identity("github", "7", "ada@example.com"), NOW);
+  assert.deepEqual(await accountProfile(db, accountId), { email: "ada@example.com", providers: ["github"] });
+  await signInAccount(db, identity("google", "g-1", "ada@example.com"), NOW);
+  assert.deepEqual(await accountProfile(db, accountId), { email: "ada@example.com", providers: ["google", "github"] });
+  await deleteAccount(db, accountId, NOW);
+  assert.equal(await accountProfile(db, accountId), undefined);
 });
 
 test("only a provider-verified email makes an identity", () => {

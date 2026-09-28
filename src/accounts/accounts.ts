@@ -9,7 +9,7 @@
 
 import { revokeAllAccountKeys } from "../api/ownedKeys.js";
 import type { LookupDatabase, TransactionalDatabase } from "../lookup/database.js";
-import type { ProviderId, ProviderProfile } from "./providers.js";
+import { PROVIDER_IDS, type ProviderId, type ProviderProfile } from "./providers.js";
 
 /** A person a provider vouched for, with an email it says is verified. */
 export interface VerifiedIdentity {
@@ -61,6 +61,26 @@ export async function signInAccount(
   }
   await db.all(INSERT_IDENTITY_SQL, [accountId, identity.provider, identity.subject, identity.email, at]);
   return { accountId, match };
+}
+
+export const ACCOUNT_IDENTITIES_SQL = `SELECT provider, email FROM provider_identity
+       WHERE account_id = ? ORDER BY identity_id`;
+
+/** Who an account is, as the dashboard names it: an email and the providers it signs in with. */
+export interface AccountProfile {
+  /** The email its first linked identity was verified with. */
+  readonly email: string;
+  /** Each provider linked to the account, once, in `PROVIDER_IDS` order; never empty. */
+  readonly providers: readonly [ProviderId, ...ProviderId[]];
+}
+
+/** The account's profile, or `undefined` when it has no identity: deleted, or never signed in. */
+export async function accountProfile(db: LookupDatabase, accountId: number): Promise<AccountProfile | undefined> {
+  const rows = await db.all<{ provider: ProviderId; email: string }>(ACCOUNT_IDENTITIES_SQL, [accountId]);
+  const [first] = rows;
+  if (first === undefined) return undefined;
+  const linked = PROVIDER_IDS.filter((provider) => rows.some((row) => row.provider === provider));
+  return { email: first.email, providers: linked as [ProviderId, ...ProviderId[]] };
 }
 
 export const MARK_ACCOUNT_DELETED_SQL = `UPDATE developer_account SET deleted_at = coalesce(deleted_at, ?)

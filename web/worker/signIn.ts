@@ -85,7 +85,7 @@ export function signedInAccount(cookieHeader: string | null, db: LookupDatabase,
 }
 
 /** A host-only cookie: HttpOnly, Secure, SameSite=Lax, path `/`, no `Domain`. */
-function cookie(name: string, value: string, maxAgeSeconds: number): string {
+export function cookie(name: string, value: string, maxAgeSeconds: number): string {
   return `${name}=${value}; Max-Age=${maxAgeSeconds}; Path=/; HttpOnly; Secure; SameSite=Lax`;
 }
 /** A `Set-Cookie` value that removes the named cookie. */
