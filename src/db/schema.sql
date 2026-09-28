@@ -529,10 +529,16 @@ CREATE TABLE report_opening (
 -- ---------------------------------------------------------------------------
 
 -- A key that may call the JSON API at api.lexema.fyi/v1 (src/api/keys.ts). Only the
--- SHA-256 of the key is stored, never the key: the CLI prints it once, when it
--- is created (src/api/keyCli.ts). The limits are the key's own (Huey, #148):
--- requests a minute, counted in api_key_minute, and units a day, recorded in
--- api_key_usage. A revoked key stays, so its usage keeps its owner.
+-- SHA-256 of the key is stored, never the key: it is shown once, when it is
+-- created. The limits are the key's own (Huey, #148): requests a minute,
+-- counted in api_key_minute, and units a day, recorded in api_key_usage. A
+-- revoked key stays, so its usage keeps its owner.
+--
+-- `owner_account_id` is the developer account that made the key in the
+-- dashboard (an owned key, src/api/ownedKeys.ts), or NULL for an admin key made
+-- with the CLI (src/api/keyCli.ts). `display_prefix` is the key's first
+-- characters, stored so a key can be named without its secret (#167).
+-- `last_used_at` is stamped each time the key is accepted.
 CREATE TABLE api_key (
   key_id           INTEGER PRIMARY KEY,
   key_hash         TEXT    NOT NULL UNIQUE CHECK (length(key_hash) = 64),
@@ -540,8 +546,16 @@ CREATE TABLE api_key (
   per_minute_limit INTEGER NOT NULL CHECK (per_minute_limit > 0),
   daily_units      INTEGER NOT NULL CHECK (daily_units > 0),
   created_at       TEXT    NOT NULL,  -- ISO-8601
-  revoked_at       TEXT               -- ISO-8601; NULL while the key is live
+  revoked_at       TEXT,              -- ISO-8601; NULL while the key is live
+  owner_account_id INTEGER REFERENCES developer_account(account_id),
+  -- `lx_` and 8 hex digits. Spelled without one long GLOB: local D1 refused
+  -- the 59-byte pattern as "LIKE or GLOB pattern too complex" (#167).
+  display_prefix   TEXT    NOT NULL CHECK (length(display_prefix) = 11 AND display_prefix GLOB 'lx_*'
+                                           AND substr(display_prefix, 4) NOT GLOB '*[^0-9a-f]*'),
+  last_used_at     TEXT               -- ISO-8601; NULL until the key is first accepted
 ) STRICT;
+
+CREATE INDEX api_key_by_owner ON api_key (owner_account_id);
 
 -- A key's requests in one minute, `minute` being whole minutes since the epoch.
 -- One upsert counts a request and returns the count (src/api/usage.ts); the
@@ -569,9 +583,12 @@ CREATE TABLE api_key_usage (
 -- A person signed in to developers.lexema.fyi (src/accounts/accounts.ts). It
 -- holds no name and no email of its own: who it is lives in its provider
 -- identities, so deleting those leaves a row with nothing personal in it.
+-- A deleted account keeps that row, so its revoked keys and their usage keep
+-- an owner (#163 R1.4); `deleted_at` marks it, and it can own no new key.
 CREATE TABLE developer_account (
   account_id INTEGER PRIMARY KEY,
-  created_at TEXT NOT NULL      -- ISO-8601
+  created_at TEXT NOT NULL,     -- ISO-8601
+  deleted_at TEXT               -- ISO-8601; NULL while the account is in use
 ) STRICT;
 
 -- A Google or GitHub account signed in with, linked to one developer account.
@@ -604,6 +621,7 @@ CREATE TABLE developer_session (
 ) STRICT;
 
 CREATE INDEX developer_session_by_expiry ON developer_session (expires_at);
+CREATE INDEX developer_session_by_account ON developer_session (account_id);
 
 
 -- ---------------------------------------------------------------------------

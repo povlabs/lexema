@@ -69,8 +69,11 @@ The same Worker answers a private JSON API on its own host,
 [#148](https://github.com/hueypov/lexema/issues/148); how each host is reached
 is in [how to run the search page](./docs/RUN_THE_SITE.md#reach-each-host)).
 Every request needs an
-API key in the `X-API-Key` header. Keys live in the local D1 the seed writes,
-and are made and revoked by hand; there is no signup.
+API key in the `X-API-Key` header. Keys live in the local D1 the seed writes.
+The CLI below makes admin keys, which belong to no developer account; a key a
+developer makes for their own account is an owned key
+([src/api/ownedKeys.ts](./src/api/ownedKeys.ts)), with the CLI's example limits
+of 60 requests a minute and 20,000 units a day.
 
 ```sh
 pnpm run api-key create --label "learning app" --per-minute 60 --daily-units 20000
@@ -81,6 +84,13 @@ pnpm run api-key revoke 3
 is stored, so a lost key is revoked and replaced, never read back. `revoke`
 takes the id. Both write to `SEED_STATE` (default `.data/seed-state`), the
 database `pnpm run seed:dev` loads, and re-seeding drops every key with it.
+
+A local database seeded before
+[#167](https://github.com/hueypov/lexema/issues/167) has no `owner_account_id`,
+`display_prefix` or `last_used_at` on `api_key`, and no `deleted_at` on
+`developer_account`, so `create` and every API call fail on the missing column.
+Run `pnpm run seed:dev` again: it rebuilds the database from
+[src/db/schema.sql](./src/db/schema.sql), so make its keys again afterwards.
 
 With the Worker running as in [how to run the search page](./docs/RUN_THE_SITE.md):
 

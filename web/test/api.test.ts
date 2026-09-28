@@ -14,9 +14,11 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { DatabaseSync } from "node:sqlite";
 import { gzipSync } from "node:zlib";
-import { createKey, KEY_BY_HASH_SQL, revokeKey } from "../../src/api/keys.js";
+import { signInAccount, verifiedIdentity } from "../../src/accounts/accounts.js";
+import { ACCEPT_KEY_SQL, createKey, revokeKey } from "../../src/api/keys.js";
+import { createAccountKey, keyName, listAccountKeys } from "../../src/api/ownedKeys.js";
 import { UNIT_WEIGHT, type Endpoint } from "../../src/api/units.js";
-import { COUNT_MINUTE_SQL, SWEEP_MINUTES_SQL } from "../../src/api/usage.js";
+import { accountUsage, COUNT_MINUTE_SQL, SWEEP_MINUTES_SQL, USAGE_WINDOW_DAYS } from "../../src/api/usage.js";
 import { seedSql } from "../../src/import/seedSql.js";
 import { fromNodeSqlite, type LookupDatabase } from "../../src/lookup/database.js";
 import { lookup } from "../../src/lookup/lookup.js";
@@ -226,7 +228,7 @@ test("a 405, an unknown endpoint and a failed answer carry the key's limit heade
   assert.deepEqual(limitHeaders(unknown), ["10", "8", "40", null]);
 
   // The key is read and its minute counted; the lookup's own read then fails.
-  const counting = new Set([KEY_BY_HASH_SQL, COUNT_MINUTE_SQL, SWEEP_MINUTES_SQL]);
+  const counting = new Set([ACCEPT_KEY_SQL, COUNT_MINUTE_SQL, SWEEP_MINUTES_SQL]);
   const failing: LookupDatabase = {
     all: (sql, params) => (counting.has(sql) ? db.all(sql, params) : Promise.reject(new Error("D1 is down"))),
   };
@@ -718,4 +720,53 @@ test("a request an endpoint refuses before answering costs no units", async () =
   ];
   for (const [path, body] of refusedRequests) assert.equal((await send(key, path, body)).status, 400, path);
   assert.deepEqual(unitsOf(keyId), []);
+});
+
+test("an owned key's calls stamp its last use, and the account's 30-day usage reads back exactly the units the API charged", async () => {
+  const identity = verifiedIdentity("github", { subject: "usage-reader", verifiedEmail: "usage@example.com" });
+  assert.ok(identity !== undefined);
+  const { accountId } = await signInAccount(db, identity, NOW);
+  const name = keyName("dashboard");
+  assert.ok(name !== undefined);
+  const created = await createAccountKey(db, accountId, name, NOW);
+  assert.equal(created.outcome, "created");
+  const [before] = await listAccountKeys(db, accountId);
+  assert.equal(before.lastUsedAt, null);
+
+  const yesterday = NOW - 24 * 60 * 60 * 1000;
+  const calls: [string, number, string?][] = [
+    ["lookup?q=casa", yesterday],
+    ["lookup?q=qqqqqq", NOW],
+    ["nearby?q=mangare", NOW],
+    ["lookup/batch", NOW, JSON.stringify({ q: ["sale", "casa"] })],
+    ["lookup?q=", NOW], // a 400: accepted, so it stamps the key, but charged nothing
+  ];
+  for (const [path, at, body] of calls) {
+    await handleApi(
+      new Request(`https://api.lexema.fyi/v1/${path}`, {
+        method: body === undefined ? "GET" : "POST",
+        headers: { "x-api-key": created.key, ...(body === undefined ? {} : { "content-type": "application/json" }) },
+        body,
+      }),
+      { db, releaseId: RELEASE, now: at },
+    );
+  }
+
+  const [after] = await listAccountKeys(db, accountId);
+  assert.equal(after.lastUsedAt, new Date(NOW).toISOString());
+
+  const charged = sqlite.prepare("SELECT day, units FROM api_key_usage WHERE key_id = ? ORDER BY day").all(created.keyId);
+  const lookup = UNIT_WEIGHT.lookup.units;
+  const today = lookup + UNIT_WEIGHT.nearby.units + 2 * UNIT_WEIGHT["lookup/batch"].units;
+  assert.deepEqual(charged.map((row) => ({ ...row })), [
+    { day: "2026-09-26", units: lookup },
+    { day: "2026-09-27", units: today },
+  ]);
+
+  const usage = await accountUsage(db, accountId, NOW);
+  const expected = Array<number>(USAGE_WINDOW_DAYS).fill(0);
+  expected[USAGE_WINDOW_DAYS - 2] = lookup;
+  expected[USAGE_WINDOW_DAYS - 1] = today;
+  assert.deepEqual(usage.keys, [{ keyId: created.keyId, units: expected }]);
+  assert.deepEqual(usage.total, expected);
 });

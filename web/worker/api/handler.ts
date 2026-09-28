@@ -35,7 +35,7 @@ export async function handleApi(request: Request, context: ApiContext): Promise<
   const { db, now } = context;
   let window: MinuteWindow | undefined;
   try {
-    const authentication = await authenticate(db, request.headers.get("x-api-key"));
+    const authentication = await authenticate(db, request.headers.get("x-api-key"), now);
     if (authentication.outcome === "refused") return json(401, REFUSAL[authentication.refusal]);
     const key: ApiKey = authentication.key;
 

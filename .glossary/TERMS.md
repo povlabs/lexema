@@ -26,12 +26,15 @@ and this file is the doc to fix.
 ## API
 | Term | Definition | Not |
 |---|---|---|
-| API key | The secret a client of the JSON API sends as `X-API-Key`. Stored only as its SHA-256, with its own label, per-minute request limit and daily unit allowance (`api_key` in `src/db/schema.sql`; `src/api/keys.ts`); created and revoked with `pnpm run api-key`. | a visitor key — the per-visitor rate-limit identity the site derives from an address (`visitorKey` in `web/worker/rateLimit.ts`) |
+| API key | The secret a client of the JSON API sends as `X-API-Key`. Stored only as its SHA-256, with its own label, per-minute request limit and daily unit allowance (`api_key` in `src/db/schema.sql`; `src/api/keys.ts`). Either an admin key or an owned key. | a visitor key — the per-visitor rate-limit identity the site derives from an address (`visitorKey` in `web/worker/rateLimit.ts`) |
+| admin key | An API key made with `pnpm run api-key` (`src/api/keyCli.ts`). It has no owner (`owner_account_id` is NULL), and no developer account can list or revoke it. | an owned key |
+| owned key | An API key a developer account made for itself, with the default limits (`src/api/ownedKeys.ts`). Its owner is that account; only that account lists or revokes it, and a deleted account's owned keys stay stored, revoked. | an admin key |
+| display prefix | A key's first 11 characters, `lx_` and 8 hex digits, stored beside its hash so the key can be named without its secret (`displayPrefix` in `src/api/keys.ts`). | the key — the rest is never stored |
 | unit | The usage weight of one answered API request, fixed per endpoint in one closed map (`UNIT_WEIGHT` in `src/api/units.ts`: `/lookup` is 2, a batch 1 per word) and summed per key per UTC day in `api_key_usage`. | a request — the per-minute limit counts requests, not units |
 
 ## Developer site
 | Term | Definition | Not |
 |---|---|---|
-| developer account | A person signed in to developers.lexema.fyi, one row of `developer_account` (`src/accounts/accounts.ts`). It holds nothing personal itself; who it is lives in its provider identities. Created on the first sign-in under a verified email nobody has used. | a Google or GitHub account — that is a provider identity |
+| developer account | A person signed in to developers.lexema.fyi, one row of `developer_account` (`src/accounts/accounts.ts`). It holds nothing personal itself; who it is lives in its provider identities. Created on the first sign-in under a verified email nobody has used. Deleting it (`deleteAccount`) revokes its keys and removes its sessions and identities; the row stays, marked deleted, so its keys and usage keep an owner, and the next sign-in makes a new account. | a Google or GitHub account — that is a provider identity |
 | provider identity | One Google or GitHub account linked to one developer account, by the provider's own id for the person and the verified email it was linked with (`provider_identity` in `src/db/schema.sql`). A second provider's identity with the same verified email links to the same account. | the account itself, or an unverified email, which is never stored |
 | session | A signed-in browser: a random token in a host-only `__Host-` cookie on developers.lexema.fyi, stored only as its SHA-256 with its account and expiry (`developer_session`; `src/accounts/sessions.ts`). | an API key — a session never authenticates an API call |

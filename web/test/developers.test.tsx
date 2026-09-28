@@ -18,7 +18,7 @@ import { DatabaseSync } from "node:sqlite";
 import { gzipSync } from "node:zlib";
 import type { ReactElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { createKey, KEY_BY_HASH_SQL, revokeKey } from "../../src/api/keys.js";
+import { ACCEPT_KEY_SQL, createKey, revokeKey } from "../../src/api/keys.js";
 import { API_PREFIX, ENDPOINTS, UNIT_WEIGHT } from "../../src/api/units.js";
 import { COUNT_MINUTE_SQL, SWEEP_MINUTES_SQL } from "../../src/api/usage.js";
 import { seedSql } from "../../src/import/seedSql.js";
@@ -121,7 +121,7 @@ test("every error the docs list is one the API answers, with that status and cod
   const tight = await newKey(1);
   await send("exists?q=sale", { key: tight.key });
   // The key is read and its minute counted; the lookup's own read then fails.
-  const counting = new Set([KEY_BY_HASH_SQL, COUNT_MINUTE_SQL, SWEEP_MINUTES_SQL]);
+  const counting = new Set([ACCEPT_KEY_SQL, COUNT_MINUTE_SQL, SWEEP_MINUTES_SQL]);
   const failing: LookupDatabase = {
     all: (sql, params) => (counting.has(sql) ? db.all(sql, params) : Promise.reject(new Error("D1 is down"))),
   };
