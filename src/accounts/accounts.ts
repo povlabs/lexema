@@ -7,6 +7,7 @@
 // email ever reaches here: `verifiedIdentity` is the one way to build the
 // value this module takes.
 
+import { revokeAllAccountKeys } from "../api/ownedKeys.js";
 import type { LookupDatabase } from "../lookup/database.js";
 import type { ProviderId, ProviderProfile } from "./providers.js";
 
@@ -60,4 +61,33 @@ export async function signInAccount(
   }
   await db.all(INSERT_IDENTITY_SQL, [accountId, identity.provider, identity.subject, identity.email, at]);
   return { accountId, match };
+}
+
+export const MARK_ACCOUNT_DELETED_SQL = `UPDATE developer_account SET deleted_at = coalesce(deleted_at, ?)
+     WHERE account_id = ? RETURNING account_id`;
+export const DELETE_ACCOUNT_SESSIONS_SQL = `DELETE FROM developer_session WHERE account_id = ?`;
+export const DELETE_ACCOUNT_IDENTITIES_SQL = `DELETE FROM provider_identity WHERE account_id = ?`;
+
+/**
+ * Delete an account (#163 R1.4): revoke every key it owns, end its sessions
+ * and unlink its provider identities. The row stays, marked deleted and with
+ * nothing personal in it, so its revoked keys and their usage keep an owner;
+ * signing in again with the same email makes a new account.
+ *
+ * The account is marked first, so no key can be made for it while the rest
+ * runs. Each step is idempotent, so a deletion that stops partway is finished
+ * by running it again. Answers the number of keys it revoked, or `unknown`
+ * when there is no such account.
+ */
+export async function deleteAccount(
+  db: LookupDatabase,
+  accountId: number,
+  now: number,
+): Promise<{ outcome: "deleted"; revokedKeys: number } | { outcome: "unknown" }> {
+  const marked = await db.all<{ account_id: number }>(MARK_ACCOUNT_DELETED_SQL, [new Date(now).toISOString(), accountId]);
+  if (marked.length === 0) return { outcome: "unknown" };
+  const revokedKeys = await revokeAllAccountKeys(db, accountId, now);
+  await db.all(DELETE_ACCOUNT_SESSIONS_SQL, [accountId]);
+  await db.all(DELETE_ACCOUNT_IDENTITIES_SQL, [accountId]);
+  return { outcome: "deleted", revokedKeys };
 }

@@ -8,6 +8,7 @@ import { DatabaseSync } from "node:sqlite";
 import { fileURLToPath } from "node:url";
 import { runKeyCommand } from "../src/api/keyCli.js";
 import {
+  ACCEPT_KEY_SQL,
   INSERT_KEY_SQL,
   KEY_BY_HASH_SQL,
   KEY_BY_ID_SQL,
@@ -51,6 +52,7 @@ test("every key, minute and usage read or write is on a primary key or an index"
   // Reads and updates: a SEARCH through the key's index, never a SCAN.
   const searches: [string, (string | number)[], RegExp][] = [
     [KEY_BY_HASH_SQL, ["0".repeat(64)], /SEARCH api_key USING (COVERING )?INDEX sqlite_autoindex_api_key_1 \(key_hash=\?\)/],
+    [ACCEPT_KEY_SQL, [new Date(NOW).toISOString(), "0".repeat(64)], /SEARCH api_key USING INDEX sqlite_autoindex_api_key_1 \(key_hash=\?\)/],
     [KEY_BY_ID_SQL, [1], /SEARCH api_key USING INTEGER PRIMARY KEY \(rowid=\?\)/],
     [REVOKE_KEY_SQL, [new Date(NOW).toISOString(), 1], /SEARCH api_key USING INTEGER PRIMARY KEY \(rowid=\?\)/],
     [SWEEP_MINUTES_SQL, [1, 100], /SEARCH api_key_minute USING (COVERING )?INDEX sqlite_autoindex_api_key_minute_1 \(key_id=\? AND minute<\?\)/],
@@ -65,7 +67,7 @@ test("every key, minute and usage read or write is on a primary key or an index"
   // foreign keys through their primary keys, and SQLite accepts an upsert's
   // conflict target only when a primary key or unique index backs it.
   for (const [sql, params] of [
-    [INSERT_KEY_SQL, ["0".repeat(64), "k", 1, 1, "t"]],
+    [INSERT_KEY_SQL, ["0".repeat(64), "k", 1, 1, "t", "lx_00000000"]],
     [COUNT_MINUTE_SQL, [1, 100]],
     [CHARGE_UNITS_SQL, [1, "2026-09-27", 2]],
   ] as const) {
@@ -90,10 +92,13 @@ test("the key CLI prints a new key once, stores only its hash, and revokes it", 
   assert.equal(stored.length, 1);
   assert.equal(stored[0].key_hash, await hashApiKey(key));
   assert.ok(!Object.values(stored[0]).includes(key));
-  assert.equal((await authenticate(db, key)).outcome, "accepted");
+  // An admin key: no owner, and its first characters kept to name it by.
+  assert.equal(stored[0].owner_account_id, null);
+  assert.equal(stored[0].display_prefix, key.slice(0, 11));
+  assert.equal((await authenticate(db, key, NOW)).outcome, "accepted");
 
   assert.deepEqual(await runKeyCommand(["revoke", "1"], db, NOW), { out: "revoked key 1", status: 0 });
-  assert.deepEqual(await authenticate(db, key), { outcome: "refused", refusal: "revoked" });
+  assert.deepEqual(await authenticate(db, key, NOW), { outcome: "refused", refusal: "revoked" });
   assert.deepEqual(await runKeyCommand(["revoke", "2"], db, NOW), { out: "no key 2", status: 1 });
 
   for (const args of [["create", "--label", "x", "--per-minute", "0", "--daily-units", "5"], ["create"], ["revoke"], ["list"]]) {

@@ -6,8 +6,8 @@
 // `create` prints the key once; only its hash is stored, so it cannot be shown
 // again. It also prints the key's id, which is what `revoke` takes. The
 // database is the local D1 the dev seed writes (`SEED_STATE`, default
-// `.data/seed-state`), reached through Wrangler as the seed reaches it. There
-// is no self-serve signup: a key is given by hand.
+// `.data/seed-state`), reached through Wrangler as the seed reaches it. A key
+// made here is an admin key: it has no owner, and no developer account sees it.
 
 import { execFileSync } from "node:child_process";
 import { resolve } from "node:path";
