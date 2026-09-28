@@ -440,8 +440,9 @@ export const DEV_MENU_CLOSE_ICON = "hidden group-open/menu:block";
 export const DEV_MENU_PANEL = "fixed inset-0 z-40 overflow-y-auto bg-surface";
 /** The menu's own copy of the bar, the same 57 px with its rule. */
 export const DEV_MENU_BAR = `${WIDE} flex h-[3.5625rem] items-center border-b border-border`;
-export const DEV_MENU_LINKS = "m-0 list-none p-0 pt-[0.4375rem]";
-export const DEV_MENU_LINK = `flex h-[3.0625rem] items-start border-b border-border px-5 pt-2.5 font-sans text-base leading-6 text-text no-underline aria-[current=page]:text-text-strong ${FOCUS_RING}`;
+/** Boards `VDNSE` and `j6UaW`: 57 px from the bar's rule to the first link's, then 49 px a link, at 17 px. */
+export const DEV_MENU_LINKS = "m-0 list-none p-0 pt-2";
+export const DEV_MENU_LINK = `flex h-[3.0625rem] items-start border-b border-border px-5 pt-[0.6875rem] font-sans text-[1.0625rem] leading-[1.625rem] text-text no-underline aria-[current=page]:text-text-strong ${FOCUS_RING}`;
 /** Under the links: what the visitor can do next, full width. */
 export const DEV_MENU_ACTIONS = "flex flex-col gap-3.5 px-5 pt-[1.6875rem] pb-10";
 const MENU_BUTTON = `flex w-full items-center justify-center rounded-[4px] border font-sans text-[0.9375rem] no-underline ${FOCUS_RING}`;
