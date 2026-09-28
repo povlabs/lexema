@@ -1031,11 +1031,12 @@ test("the field is a combobox in both states, and still a plain named input for 
   });
 });
 
-test("every page reaches the attribution page from the footer's four links", async () => {
+test("every page reaches the attribution page from the footer's four links, and the developer site from a fifth", async () => {
   const footer = renderToStaticMarkup(<SiteFooter />);
   const links = [...footer.matchAll(new RegExp(`<a class="${esc(SITE_FOOTER_LINK)}" href="([^"]+)">([^<]+)</a>`, "g"))];
-  assert.deepEqual(links.map((match) => match[2]), ["Attribution", "About the data", "Licence", "Contact"]);
-  for (const [, href] of links) assert.match(href, /^\/attribution(#|$)/);
+  assert.deepEqual(links.map((match) => match[2]), ["Attribution", "About the data", "Licence", "Contact", "Developers"]);
+  for (const [, href] of links.slice(0, 4)) assert.match(href, /^\/attribution(#|$)/);
+  assert.equal(links[4][1], "https://developers.lexema.fyi");
   // The footer's wordmark goes home, in the same tab, like the top bar's.
   assert.match(footer, new RegExp(`<a class="${esc(SITE_FOOTER_NAME)}" href="/">Lexema</a>`));
   assert.match(renderToStaticMarkup(<SiteHeader />), /<a class="[^"]*" href="\/">Lexema<\/a>/);

@@ -1,10 +1,7 @@
-// developers.lexema.fyi/ (#159).
-import { PAGE_HEADING, SHELL_TOP } from "../../styles.ts";
+// developers.lexema.fyi/ (#166): the landing page. The wiring only; the markup
+// is `../../DeveloperLanding.tsx`. It reads no session and nothing from D1.
+import { DeveloperLanding } from "../../DeveloperLanding";
 
 export default function Page() {
-  return (
-    <main className={SHELL_TOP}>
-      <h1 className={PAGE_HEADING}>Lexema API</h1>
-    </main>
-  );
+  return <DeveloperLanding />;
 }

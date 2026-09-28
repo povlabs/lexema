@@ -124,11 +124,17 @@ units to the key's row for the day ([src/api/units.ts](./src/api/units.ts)). A
 request refused before an answer (a 400 bad `q`, parameter or body, a 405 or a 429) adds none. An
 API request is never counted against the site's per-visitor limits.
 
-The reference a key holder reads is the site's `/developers` page. What it states
-is [web/app/apiReference.ts](./web/app/apiReference.ts), and
+The reference a key holder reads is `developers.lexema.fyi/docs`, beside the
+landing page at `/` and `/pricing`; `lexema.fyi` links to that site from its
+footer and has no `/developers` page. The docs are one page per sidebar item,
+`/docs` and `/docs/<page>`, listed in
+[web/app/docsPages.ts](./web/app/docsPages.ts). What they state is
+[web/app/apiReference.ts](./web/app/apiReference.ts), and
 [web/test/developers.test.tsx](./web/test/developers.test.tsx) sends every example
-it prints to the API and fails when an answer differs, so a change to an answer
-changes the example with it.
+they print to the API, runs each JavaScript example against it, and fails when an
+answer differs, so a change to an answer changes the example with it. It also
+fails when a sidebar link reaches no page. The
+pricing page's cost table is read from the same unit map the API charges by.
 
 ## Stack
 

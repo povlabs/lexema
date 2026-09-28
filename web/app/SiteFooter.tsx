@@ -8,7 +8,10 @@
 // The frame names four links. Only `/attribution` exists today, and ADR 0009
 // puts the credit on that page, so all four reach it until the other three
 // pages are written — a link to a page that does not exist would be worse.
+// A fifth, Developers, is the one way from the dictionary to the developer
+// site (#159): `lexema.fyi/developers` is gone, with no redirect.
 
+import { ORIGIN } from "../worker/hosts.ts";
 import {
   SITE_FOOTER,
   SITE_FOOTER_INNER,
@@ -22,6 +25,7 @@ const LINKS = [
   { label: "About the data", href: "/attribution#changed" },
   { label: "Licence", href: "/attribution#licence" },
   { label: "Contact", href: "/attribution" },
+  { label: "Developers", href: ORIGIN.developers },
 ] as const;
 
 export function SiteFooter() {
