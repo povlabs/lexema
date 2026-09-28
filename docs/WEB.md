@@ -20,11 +20,14 @@ web/app/db.ts           the D1 binding
 web/worker/index.ts     the Worker's entry: the host, then the API or the rate limits and vinext
 web/worker/hosts.ts     which of the three hosts a request is for, and where it goes
 web/worker/rateLimit.ts which requests are counted, and against whose count
-web/worker/dashboard.ts the developer dashboard's actions: make or revoke a key, delete the account
+web/worker/dashboard.ts the developer dashboard's actions: make or revoke a key, delete the account;
+                        and its pages' guard: sign-in without a session, a new key's secret shown once
+web/app/Dashboard.tsx   the dashboard's markup; what it shows is web/app/dashboardView.ts
 src/lookup/             the query layer, shared with the importer's tests
 web/test/page.test.tsx  the page, rendered over a fixture release
 web/test/rateLimit.test.ts  the limits, with a fake binding
-web/test/dashboard.test.ts  the dashboard's actions, their CSRF and session checks
+web/test/dashboard.test.ts  the dashboard's actions and pages, their CSRF and session checks
+web/test/signedIn.test.tsx  sign-in, the dashboard and the key-created page, rendered
 ```
 
 The markup is split from the wiring so it can be rendered without a Worker.

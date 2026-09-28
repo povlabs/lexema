@@ -620,3 +620,93 @@ export const CODE_LINE_MUTED = "text-text-muted";
 
 /** Code inside a sentence. */
 export const CODE_INLINE = "font-mono text-[0.9em] text-text-strong";
+
+// Signed in (#169): sign-in (board 27), the dashboard (board 28), the
+// key-created page (board 29) and the delete confirmation (board 30).
+
+/** The bar's right-hand side when signed in: the account's email, then Sign out. On a phone both are in the ☰ menu. */
+export const DEV_ACCOUNT = "ml-auto flex min-w-0 items-center gap-5";
+export const DEV_ACCOUNT_EMAIL = "truncate font-sans text-[0.9rem] text-text-muted max-sm:hidden";
+export const DEV_SIGN_OUT = `shrink-0 cursor-pointer whitespace-nowrap border-0 bg-transparent p-0 font-sans text-[0.9rem] text-accent max-sm:hidden ${FOCUS_RING}`;
+/** The signed-in ☰ menu's foot (board `j6UaW`): the email, muted, then Sign out in the accent. */
+export const DEV_MENU_ACCOUNT = "flex flex-col items-start gap-3.5 px-5 pt-[1.6875rem] pb-10";
+export const DEV_MENU_EMAIL = "font-sans text-[0.9375rem] leading-5 text-text-muted wrap-anywhere";
+export const DEV_MENU_SIGN_OUT = `cursor-pointer border-0 bg-transparent p-0 font-sans text-base leading-6 text-accent ${FOCUS_RING}`;
+
+/** Sign-in: a raised card in the middle of the page. */
+export const SIGN_IN_SHELL = `${COLUMN} flex flex-1 items-center justify-center py-16 sm:py-28`;
+export const SIGN_IN_CARD = "w-full max-w-[27.5rem] rounded-[6px] border border-border bg-surface-raised px-6 py-10 text-center sm:px-10 sm:py-12";
+export const SIGN_IN_HEADING = "m-0 font-serif text-[2.25rem] leading-tight font-normal text-text-strong";
+export const SIGN_IN_LEAD = "m-0 mt-4 font-sans text-[0.95rem] text-text-muted";
+export const SIGN_IN_PROVIDERS = "m-0 mt-10 flex list-none flex-col gap-4 p-0";
+/** A provider: outlined, on the page's own surface; unconfigured, muted and not clickable. */
+export const SIGN_IN_PROVIDER = `flex w-full items-center justify-center gap-3 rounded-[4px] border border-border-strong bg-surface px-5 py-3 font-sans text-[0.95rem] font-medium text-text-strong no-underline hover:border-text-muted disabled:cursor-not-allowed disabled:border-border disabled:text-text-muted ${FOCUS_RING}`;
+export const SIGN_IN_ICON = "size-4 shrink-0";
+/** Google's mark as the board draws it: a bold `G` in the button's colour. */
+export const SIGN_IN_G = "w-4 shrink-0 text-center font-sans text-[0.95rem] font-bold leading-none";
+
+/** The dashboard's sections, each a heading with its content under it. */
+export const DASH_SECTION = "mt-14 sm:mt-16";
+export const DASH_SECTION_HEAD = "flex flex-wrap items-center justify-between gap-x-6 gap-y-4";
+export const DASH_SECTION_NOTE = "m-0 font-sans text-[0.9rem] text-text-muted";
+/** The create form: the key's name, then Create key. */
+export const DASH_CREATE = "flex w-full gap-3 sm:w-auto";
+export const DASH_CREATE_BUTTON = `${BUTTON_PRIMARY} shrink-0 whitespace-nowrap`;
+export const DASH_CREATE_INPUT =
+  "w-full min-w-0 rounded-[4px] border border-border-strong bg-surface-raised px-3.5 py-2.5 font-sans text-[0.95rem] text-text-strong outline-none placeholder:text-text-muted focus:border-accent sm:w-64";
+
+/** The keys, in a hairline box; on a phone the table scrolls inside it. */
+export const DASH_CARD = "mt-6 overflow-hidden rounded-[6px] border border-border";
+export const DASH_CARD_RAISED = "mt-6 rounded-[6px] border border-border bg-surface-raised";
+/** `relative`, so the hidden column label scrolls with the table instead of widening the page. */
+export const KEYS_SCROLL = "relative overflow-x-auto";
+export const KEYS_TABLE = "w-full min-w-[40rem] border-collapse text-left";
+export const KEYS_HEAD = "border-b border-border px-5 py-3.5 font-sans text-[0.8rem] font-normal text-text-muted first:pl-5 sm:first:pl-7";
+export const KEYS_ROW = "border-b border-border last:border-b-0";
+export const KEYS_NAME = "px-5 py-4 font-sans text-[0.95rem] text-text-strong sm:pl-7 wrap-anywhere";
+export const KEYS_PREFIX = "px-5 py-4 font-mono text-[0.9rem] whitespace-nowrap text-text";
+export const KEYS_CELL = "px-5 py-4 font-sans text-[0.95rem] whitespace-nowrap text-text";
+export const KEYS_ACTION = "px-5 py-4 text-right sm:pr-7";
+export const KEYS_REVOKE = `cursor-pointer border-0 bg-transparent p-0 font-sans text-[0.9rem] text-warning ${FOCUS_RING}`;
+export const KEYS_REVOKED = "font-sans text-[0.85rem] whitespace-nowrap text-text-muted";
+
+/** Usage: the account's 30 days as bars, today in the accent, then each key's. */
+export const USAGE_CHART = "block h-44 w-full";
+export const USAGE_PLOT = "px-5 pt-6 pb-5 sm:px-7";
+export const USAGE_BAR = "fill-border-strong";
+export const USAGE_BAR_TODAY = "fill-accent";
+export const USAGE_KEYS = "m-0 list-none border-t border-border p-0";
+export const USAGE_KEY =
+  "grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-6 gap-y-2 border-b border-border px-5 py-3 last:border-b-0 sm:grid-cols-[14rem_minmax(0,1fr)_8rem] sm:px-7";
+export const USAGE_KEY_NAME = "truncate font-sans text-[0.9rem] text-text";
+export const USAGE_KEY_CHART = "block h-7 w-full max-sm:col-span-2 max-sm:row-start-2";
+export const USAGE_KEY_TOTAL = "text-right font-sans text-[0.9rem] whitespace-nowrap text-text-muted";
+
+/** The plan and account cards: what they say on the left, the action on the right. */
+export const DASH_ROW_CARD = "mt-6 flex flex-wrap items-center justify-between gap-x-6 gap-y-4 rounded-[6px] border border-border bg-surface-raised px-6 py-6 sm:px-8";
+export const PLAN_NONE = "m-0 font-serif text-[1.5rem] font-normal text-text-strong";
+/** "Choose a plan — coming soon": there is nothing to buy yet. */
+export const PLAN_SOON = "inline-flex cursor-not-allowed items-center rounded-[4px] border border-border bg-surface px-5 py-2.5 font-sans text-[0.95rem] font-semibold text-text-muted";
+export const ACCOUNT_TITLE = "m-0 font-sans text-[0.95rem] font-semibold text-text-strong";
+export const ACCOUNT_DETAIL = "m-0 mt-1 font-sans text-[0.9rem] text-text-muted wrap-anywhere";
+/** Delete account: outlined in `warning`, the one destructive action. */
+export const BUTTON_DANGER_OUTLINE = `inline-flex cursor-pointer items-center rounded-[4px] border border-warning bg-transparent px-5 py-2.5 font-sans text-[0.95rem] font-semibold text-warning ${FOCUS_RING}`;
+export const BUTTON_DANGER = `inline-flex cursor-pointer items-center rounded-[4px] border border-warning bg-warning px-5 py-2.5 font-sans text-[0.95rem] font-semibold text-surface ${FOCUS_RING}`;
+
+/** A small box in the middle of the screen: the key-created page and the delete confirmation. */
+export const MODAL_BACKDROP = REPORT_BACKDROP;
+export const MODAL_POPUP =
+  "fixed top-1/2 left-1/2 w-[32.5rem] max-w-[calc(100vw-2rem)] max-h-[calc(100dvh-2rem)] -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-[6px] border border-border-strong bg-surface-raised p-8 outline-none max-sm:p-5";
+export const MODAL_PAGE = "flex min-h-screen flex-1 items-center justify-center px-4 py-10";
+export const MODAL_BOX = "relative w-full max-w-[35rem] rounded-[6px] border border-border-strong bg-surface-raised p-8 max-sm:p-5";
+export const MODAL_TITLE = "m-0 pr-10 font-serif text-[1.75rem] leading-tight font-normal text-text-strong";
+export const MODAL_TEXT = "m-0 mt-5 font-sans text-[0.95rem] leading-relaxed text-text";
+export const MODAL_ACTIONS = "mt-7 flex flex-wrap justify-end gap-3";
+export const MODAL_X = `absolute top-8 right-7 flex size-7 items-center justify-center font-sans text-xl text-text-muted no-underline hover:text-text max-sm:top-5 max-sm:right-4 ${FOCUS_RING}`;
+
+/** The new key's name, its secret with Copy, and the note that it is shown once. */
+export const KEY_CREATED_NAME = "m-0 mt-5 font-sans text-[0.95rem] text-text-muted wrap-anywhere";
+export const KEY_SECRET = "mt-4 flex items-center gap-4 rounded-[4px] border border-border bg-surface px-4 py-3";
+export const KEY_SECRET_TEXT = "m-0 min-w-0 flex-1 font-mono text-[0.9rem] break-all text-text-strong";
+export const KEY_COPY = `inline-flex shrink-0 cursor-pointer items-center gap-1.5 border-0 bg-transparent p-0 font-sans text-[0.9rem] text-accent ${FOCUS_RING}`;
+export const KEY_COPY_ICON = "size-4";

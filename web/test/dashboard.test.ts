@@ -1,4 +1,4 @@
-// The dashboard's actions on developers.lexema.fyi (#168), through the Worker's
+// The dashboard's actions on developers.lexema.fyi (#168) and its pages (#169), through the Worker's
 // host routing, rate limits, sign-in and dashboard wiring as deployed, over a
 // local `node:sqlite` database with the real schema. Sign-in runs against the
 // stub provider, as in signIn.test.ts.
@@ -19,8 +19,11 @@ import {
   type DashboardBindings,
   DASHBOARD,
   DELETE_CONFIRMATION,
+  KEY_CREATED,
+  NEW_KEY_COOKIE,
   NEW_KEY_HEADER,
   newKeyOf,
+  SIGN_IN_PAGE,
   withDashboard,
 } from "../worker/dashboard.ts";
 import { byHost } from "../worker/hosts.ts";
@@ -115,31 +118,66 @@ const name = (text: string) => {
 
 test("a signed-in form with its CSRF token makes a named key, and its secret reaches the key-created page once", async () => {
   const { db, appSaw, browser } = site();
-  const { post, send, accountId } = await browser(ada);
+  const { post, send, jar, accountId } = await browser(ada);
 
+  // The POST makes the key and redirects; it renders nothing, so reloading the page never posts again.
   const response = await post("/dashboard/keys", { name: "  learning app " });
-  assert.equal(response.status, 200);
+  assert.equal(response.status, 303);
+  assert.equal(response.headers.get("location"), KEY_CREATED);
   assert.equal(response.headers.get("cache-control"), "no-store");
-  assert.equal(appSaw.length, 1);
-  const page = appSaw[0];
-  assert.equal(page.method, "GET");
-  assert.equal(new URL(page.url).pathname, "/developer-site/dashboard/key-created");
-  const created = newKeyOf(page.headers);
-  assert.ok(created !== undefined);
-
+  assert.equal(appSaw.length, 0);
   const [listed] = await listAccountKeys(db, accountId);
-  assert.deepEqual([listed.keyId, listed.name, listed.displayPrefix], [created.keyId, "learning app", created.key.slice(0, 11)]);
+  assert.equal(listed.name, "learning app");
+  const carried = jar.get(NEW_KEY_COOKIE);
+  assert.ok(carried !== undefined);
+  assert.match(response.headers.getSetCookie()[0], /; Max-Age=60; Path=\/; HttpOnly; Secure; SameSite=Lax$/);
+
+  // The GET it redirects to hands the secret to the page, once, and clears the cookie.
+  const shown = await send(`${DEVELOPERS}${KEY_CREATED}`);
+  assert.equal(shown.status, 200);
+  assert.equal(shown.headers.get("cache-control"), "no-store");
+  assert.ok(!jar.has(NEW_KEY_COOKIE), "the one-shot cookie is cleared");
+  assert.equal(appSaw.length, 1);
+  assert.equal(new URL(appSaw[0].url).pathname, "/developer-site/dashboard/key-created");
+  const created = newKeyOf(appSaw[0].headers);
+  assert.ok(created !== undefined);
+  assert.deepEqual([listed.keyId, listed.displayPrefix], [created.keyId, created.key.slice(0, 11)]);
   assert.equal((await authenticate(db, created.key, NOW)).outcome, "accepted");
 
-  // Opening the page again shows no secret, and one a client sends is removed.
-  await send(`${DEVELOPERS}/dashboard/key-created`, { headers: { [NEW_KEY_HEADER]: `${created.keyId}.${created.key}` } });
-  assert.equal(appSaw.length, 2);
-  assert.equal(appSaw[1].headers.get(NEW_KEY_HEADER), null);
-  assert.equal(newKeyOf(appSaw[1].headers), undefined);
+  // Reloading finds no secret and lands on the dashboard; a header a client sends is removed.
+  const reloaded = await send(`${DEVELOPERS}${KEY_CREATED}`, { headers: { [NEW_KEY_HEADER]: `${created.keyId}.${created.key}` } });
+  assert.equal(reloaded.status, 303);
+  assert.equal(reloaded.headers.get("location"), DASHBOARD);
+  assert.equal(appSaw.length, 1);
+  assert.equal((await listAccountKeys(db, accountId)).length, 1, "reloading made no second key");
 
   // A name that is blank or too long makes nothing.
   for (const bad of ["   ", "x".repeat(201)]) assert.equal((await post("/dashboard/keys", { name: bad })).status, 400);
   assert.equal((await listAccountKeys(db, accountId)).length, 1);
+});
+
+test("a visitor without a session who opens the dashboard or the key-created page is sent to sign-in", async () => {
+  const { appSaw, browser, worker } = site();
+  for (const path of [DASHBOARD, KEY_CREATED]) {
+    const answer = await worker(new Request(`${DEVELOPERS}${path}`), env, {} as ExecutionContext);
+    assert.equal(answer.status, 303, path);
+    assert.equal(answer.headers.get("location"), SIGN_IN_PAGE, path);
+  }
+  // A new-key cookie alone signs nobody in.
+  const forged = await worker(
+    new Request(`${DEVELOPERS}${KEY_CREATED}`, { headers: { cookie: `${NEW_KEY_COOKIE}=1.lx_${"0".repeat(64)}` } }),
+    env,
+    {} as ExecutionContext,
+  );
+  assert.equal(forged.headers.get("location"), SIGN_IN_PAGE);
+  assert.equal(appSaw.length, 0);
+
+  // Signed in, the dashboard reaches the page, never kept by a cache.
+  const adas = await browser(ada);
+  const page = await adas.send(`${DEVELOPERS}${DASHBOARD}`);
+  assert.equal(page.status, 200);
+  assert.equal(page.headers.get("cache-control"), "no-store");
+  assert.equal(new URL(appSaw[0].url).pathname, "/developer-site/dashboard");
 });
 
 test("revoke succeeds for the session's own key and is refused for another account's; deletion touches only the session's account", async () => {
@@ -221,7 +259,10 @@ test("each action without a session, with a missing or wrong CSRF token, or from
 test("after delete-account every key the account owned answers 401 revoked_key, and the session no longer reads as signed in", async () => {
   const { db, appSaw, browser } = site();
   const adas = await browser(ada);
-  for (const label of ["one", "two"]) assert.equal((await adas.post("/dashboard/keys", { name: label })).status, 200);
+  for (const label of ["one", "two"]) {
+    assert.equal((await adas.post("/dashboard/keys", { name: label })).status, 303);
+    assert.equal((await adas.send(`${DEVELOPERS}${KEY_CREATED}`)).status, 200);
+  }
   const secrets = appSaw.map((request) => newKeyOf(request.headers)?.key ?? "");
   assert.equal(secrets.length, 2);
   const cookie = `${SESSION_COOKIE}=${adas.jar.get(SESSION_COOKIE)}`;
