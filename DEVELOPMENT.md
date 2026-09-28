@@ -126,11 +126,14 @@ API request is never counted against the site's per-visitor limits.
 
 The reference a key holder reads is `developers.lexema.fyi/docs`, beside the
 landing page at `/` and `/pricing`; `lexema.fyi` links to that site from its
-footer and has no `/developers` page. What the docs state is
+footer and has no `/developers` page. The docs are one page per sidebar item,
+`/docs` and `/docs/<page>`, listed in
+[web/app/docsPages.ts](./web/app/docsPages.ts). What they state is
 [web/app/apiReference.ts](./web/app/apiReference.ts), and
 [web/test/developers.test.tsx](./web/test/developers.test.tsx) sends every example
 they print to the API, runs each JavaScript example against it, and fails when an
-answer differs, so a change to an answer changes the example with it. The
+answer differs, so a change to an answer changes the example with it. It also
+fails when a sidebar link reaches no page. The
 pricing page's cost table is read from the same unit map the API charges by.
 
 ## Stack

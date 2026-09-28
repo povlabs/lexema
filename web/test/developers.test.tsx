@@ -9,12 +9,14 @@
 
 import assert from "node:assert/strict";
 import { after, before, test } from "node:test";
-import { access, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { access, mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
+import { registerHooks } from "node:module";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { DatabaseSync } from "node:sqlite";
 import { gzipSync } from "node:zlib";
+import type { ReactElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { createKey, KEY_BY_HASH_SQL, revokeKey } from "../../src/api/keys.js";
 import { API_PREFIX, ENDPOINTS, UNIT_WEIGHT } from "../../src/api/units.js";
@@ -33,11 +35,13 @@ import {
   type Example,
 } from "../app/apiReference.ts";
 import { DeveloperDocs } from "../app/DeveloperDocs";
+import { DOCS_PAGES, endpointPath } from "../app/docsPages.ts";
 import { DeveloperLanding } from "../app/DeveloperLanding";
 import { DeveloperFooter } from "../app/DeveloperPage";
 import { DeveloperPricing } from "../app/DeveloperPricing";
 import { SiteFooter } from "../app/SiteFooter";
 import { handleApi } from "../worker/api/handler.ts";
+import { destinationOf, ORIGIN } from "../worker/hosts.ts";
 
 const REPO = fileURLToPath(new URL("../..", import.meta.url));
 const RELEASE = "it-0c432803";
@@ -159,7 +163,8 @@ function codeBlocks(html: string, attribute: string): { value: string; code: str
   );
 }
 
-const docs = () => renderToStaticMarkup(<DeveloperDocs />);
+/** Every page of the docs, in the sidebar's order. */
+const docs = () => DOCS_PAGES.map((page) => renderToStaticMarkup(<DeveloperDocs page={page} />)).join("\n");
 
 test("the docs print each example's status and response as the reference states them", () => {
   const printed = codeBlocks(docs(), "data-response").map(({ value, code }) => ({
@@ -187,7 +192,7 @@ test("the docs name every endpoint of the unit map with its weight, every /looku
     assert.ok(text.includes(`Costs ${cost}.`), `${endpoint}'s topic: ${cost}`);
   }
   // The filters #148 names for /lookup, each a parameter row of its topic.
-  const lookup = textOf(html.slice(html.indexOf('id="lookup"'), html.indexOf('id="lemmatize"')));
+  const lookup = textOf(renderToStaticMarkup(<DeveloperDocs page={{ kind: "endpoint", endpoint: "lookup" }} />));
   for (const filter of ["pos", "match", "fields", "limit_definitions", "mood", "tense", "person", "gender", "number"]) {
     assert.match(lookup, new RegExp(` ${filter} (string|integer) `), filter);
   }
@@ -288,9 +293,10 @@ test("every developer page carries the footer: lexema.fyi, Docs, Pricing and Con
     ["Pricing", "/pricing"],
     ["Contact", "mailto:contact@lexema.fyi"],
   ]);
-  for (const page of [<DeveloperLanding />, <DeveloperDocs />, <DeveloperPricing />]) {
+  const docsPages = DOCS_PAGES.map((page) => <DeveloperDocs page={page} />);
+  for (const page of [<DeveloperLanding />, ...docsPages, <DeveloperPricing />]) {
     const html = renderToStaticMarkup(page);
-    assert.ok(html.includes(renderToStaticMarkup(<DeveloperFooter wide={html.includes('id="introduction"')} />)));
+    assert.ok(html.includes(renderToStaticMarkup(<DeveloperFooter wide={html.includes('aria-label="Docs"')} />)));
     assert.doesNotMatch(html, /Terms/);
   }
 });
@@ -299,4 +305,86 @@ test("lexema.fyi keeps no /developers route, and its footer links to the develop
   await assert.rejects(access(join(REPO, "web/app/(lexema)/developers")), { code: "ENOENT" });
   const footer = renderToStaticMarkup(<SiteFooter />);
   assert.match(footer, /<a class="[^"]*" href="https:\/\/developers\.lexema\.fyi">Developers<\/a>/);
+});
+
+/**
+ * The App Router page file a developer-site link is served from, with the
+ * params its dynamic segments take: the link goes through `destinationOf` as
+ * the Worker routes it, then down `app/(developers)`, a literal folder before
+ * a `[param]` one.
+ */
+async function routeOf(href: string): Promise<{ file: string; params: Record<string, string> }> {
+  const destination = destinationOf(new URL(href, ORIGIN.developers));
+  assert.equal(destination.to, "developers", href);
+  if (destination.to !== "developers") throw new Error(href);
+  let dir = join(REPO, "web/app/(developers)");
+  const params: Record<string, string> = {};
+  for (const segment of destination.path.split("/").filter(Boolean).map(decodeURIComponent)) {
+    const entries = await readdir(dir, { withFileTypes: true });
+    const literal = entries.find((entry) => entry.isDirectory() && entry.name === segment);
+    const dynamic = entries.find((entry) => entry.isDirectory() && /^\[[^.\]]+\]$/.test(entry.name));
+    const next = literal ?? dynamic;
+    assert.ok(next, `${href}: no route for ${segment}`);
+    if (next === dynamic) params[next.name.slice(1, -1)] = segment;
+    dir = join(dir, next.name);
+  }
+  return { file: join(dir, "page.tsx"), params };
+}
+
+interface RouteModule {
+  default: (props: { params: Promise<Record<string, string>> }) => ReactElement | Promise<ReactElement>;
+  dynamicParams?: boolean;
+  generateStaticParams?: () => Record<string, string>[];
+}
+
+test("every docs sidebar link resolves to a page that renders, with that link marked current", async () => {
+  // Outside vinext, `next/navigation`'s notFound throws what vinext answers a 404 for.
+  const hooks = registerHooks({
+    resolve: (specifier, context, nextResolve) =>
+      specifier === "next/navigation"
+        ? {
+            url: `data:text/javascript,export function notFound() { throw Object.assign(new Error("404"), { digest: "NEXT_HTTP_ERROR_FALLBACK;404" }); }`,
+            shortCircuit: true,
+          }
+        : nextResolve(specifier, context),
+  });
+  try {
+    const links = new Set(
+      DOCS_PAGES.flatMap((page) => {
+        const html = renderToStaticMarkup(<DeveloperDocs page={page} />);
+        const start = html.indexOf('<nav aria-label="Docs">');
+        const sidebar = html.slice(start, html.indexOf("</nav>", start));
+        return [...sidebar.matchAll(/<a [^>]*href="([^"]+)"/g)].map((match) => match[1]);
+      }),
+    );
+    assert.equal(links.size, DOCS_PAGES.length);
+    for (const href of links) {
+      const { file, params } = await routeOf(href);
+      await access(file);
+      const route = (await import(file)) as RouteModule;
+      if (route.dynamicParams === false) {
+        assert.ok(
+          route.generateStaticParams?.().some((each) => JSON.stringify(each) === JSON.stringify(params)),
+          `${href}: not among the route's static params`,
+        );
+      }
+      const html = renderToStaticMarkup(await route.default({ params: Promise.resolve(params) }));
+      assert.match(html, new RegExp(`<a [^>]*href="${href}" aria-current="page"`), href);
+    }
+    // A slug that is no page's is a 404.
+    const { file } = await routeOf("/docs/nowhere");
+    const route = (await import(file)) as RouteModule;
+    assert.equal(route.dynamicParams, false);
+    await assert.rejects(Promise.resolve().then(() => route.default({ params: Promise.resolve({ page: "nowhere" }) })), {
+      digest: "NEXT_HTTP_ERROR_FALLBACK;404",
+    });
+  } finally {
+    hooks.deregister();
+  }
+});
+
+test("the landing page links to the docs, and each endpoint to its own docs page", () => {
+  const html = renderToStaticMarkup(<DeveloperLanding />);
+  assert.match(html, /href="\/docs">Read the docs</);
+  for (const endpoint of ENDPOINTS_IN_ORDER) assert.ok(html.includes(`href="${endpointPath(endpoint)}"`), endpoint);
 });

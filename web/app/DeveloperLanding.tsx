@@ -5,7 +5,6 @@
 
 import { API_PREFIX } from "@lexema/api/units.ts";
 import {
-  anchorOf,
   API_BASE,
   ENDPOINT_REFERENCE,
   ENDPOINTS_IN_ORDER,
@@ -14,6 +13,7 @@ import {
   LOOKUP_FILTERED_EXAMPLE,
 } from "./apiReference.ts";
 import { DeveloperPage, SIGN_IN_PATH } from "./DeveloperPage";
+import { DOCS_PATH, endpointPath } from "./docsPages.ts";
 import {
   BUTTON_PRIMARY,
   BUTTON_SECONDARY,
@@ -74,7 +74,7 @@ export function DeveloperLanding() {
           <a className={BUTTON_PRIMARY} href={SIGN_IN_PATH}>
             Get an API key
           </a>
-          <a className={BUTTON_SECONDARY} href="/docs">
+          <a className={BUTTON_SECONDARY} href={DOCS_PATH}>
             Read the docs
           </a>
         </div>
@@ -103,7 +103,7 @@ export function DeveloperLanding() {
           <ul className={LANDING_ENDPOINT_LIST}>
             {ENDPOINTS_IN_ORDER.map((endpoint) => (
               <li key={endpoint} className={LANDING_ENDPOINT_ROW}>
-                <a className={LANDING_ENDPOINT_PATH} href={`/docs#${anchorOf(endpoint)}`}>
+                <a className={LANDING_ENDPOINT_PATH} href={endpointPath(endpoint)}>
                   {`${ENDPOINT_REFERENCE[endpoint].method} ${API_PREFIX}${endpoint}`}
                 </a>
                 <span className={LANDING_ENDPOINT_TEXT}>{ENDPOINT_REFERENCE[endpoint].tagline}</span>

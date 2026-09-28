@@ -1,8 +1,9 @@
 // developers.lexema.fyi/docs (#153, #166, board 31): the reference for the
-// JSON API, one page of topics with a sidebar, and beside each topic the
-// requests and answers it shows.
+// JSON API, one page per sidebar item (docsPages.ts). Each page has the
+// sidebar with itself marked, its text, beside it the requests and answers it
+// shows, and Previous / Next.
 //
-// Split from its route's `page.tsx` so `web/test/developers.test.tsx` can
+// Split from its routes' `page.tsx` so `web/test/developers.test.tsx` can
 // render it. It reads nothing from D1: what it states is `apiReference.ts`,
 // and the unit weights are the API's own map.
 
@@ -10,7 +11,6 @@ import { Fragment, type ReactNode } from "react";
 import { API_PREFIX, UNIT_WEIGHT, type Endpoint } from "@lexema/api/units.ts";
 import { ORIGIN } from "../worker/hosts.ts";
 import {
-  anchorOf,
   API_BASE,
   AUTH_EXAMPLE,
   costText,
@@ -29,19 +29,42 @@ import {
 } from "./apiReference.ts";
 import { CodePanel } from "./CodePanel";
 import { DeveloperPage, SIGN_IN_PATH } from "./DeveloperPage";
-import { DocsNav, type DocsGroup } from "./DocsNav";
+import { DocsLinks, type DocsGroup } from "./DocsLinks";
+import { DocsNav } from "./DocsNav";
+import {
+  DOCS_PAGES,
+  endpointPath,
+  groupOf,
+  labelOf,
+  neighboursOf,
+  pathOf,
+  samePage,
+  titleOf,
+  type DocsGroupName,
+  type DocsPage,
+  type Guide,
+} from "./docsPages.ts";
+import { ChevronIcon } from "./icons";
 import { ExternalLink } from "./ExternalLink";
 import {
   CODE_INLINE,
   DOCS_ANSWER,
   DOCS_ANSWER_TEXT,
   DOCS_CODE,
+  DOCS_CONTENTS,
+  DOCS_CONTENTS_ICON,
+  DOCS_CONTENTS_SUMMARY,
   DOCS_ENDPOINT,
   DOCS_EYEBROW,
   DOCS_HEADING,
   DOCS_LAYOUT,
   DOCS_MAIN,
   DOCS_METHOD,
+  DOCS_NEIGHBOUR,
+  DOCS_NEIGHBOUR_LABEL,
+  DOCS_NEIGHBOUR_NEXT,
+  DOCS_NEIGHBOUR_TITLE,
+  DOCS_NEIGHBOURS,
   DOCS_PARAGRAPH,
   DOCS_ROW,
   DOCS_ROW_HEAD,
@@ -52,6 +75,7 @@ import {
   DOCS_ROWS,
   DOCS_SECTION,
   DOCS_SIDEBAR,
+  DOCS_SIDEBAR_INNER,
   DOCS_STATUS_OK,
   DOCS_STATUS_OTHER,
   DOCS_SUBHEADING,
@@ -110,7 +134,7 @@ function Rows({ rows }: { rows: readonly { name: string; type?: string; required
 }
 
 function Subheading({ children }: { children: string }) {
-  return <h3 className={DOCS_SUBHEADING}>{children}</h3>;
+  return <h2 className={DOCS_SUBHEADING}>{children}</h2>;
 }
 
 /** The widest line a response is printed to, in characters: the code panel's width. */
@@ -125,31 +149,41 @@ const panelOf = (examples: readonly Example[], withResponse = true) =>
     response: withResponse ? formatJson(example.response, PANEL_WIDTH) : undefined,
   }));
 
-/** A topic: its eyebrow and heading, its text, and the code beside it. */
-function Topic({
-  id,
-  group,
-  title,
-  code,
-  children,
-}: {
-  id: string;
-  group: string;
-  title: string;
-  code?: ReactNode;
-  children: ReactNode;
-}) {
+/** Previous / Next: the pages either side of this one, in the sidebar's order. */
+function Neighbours({ page }: { page: DocsPage }) {
+  const { previous, next } = neighboursOf(page);
   return (
-    <section className={DOCS_SECTION} id={id} aria-labelledby={`${id}-heading`}>
+    <nav className={DOCS_NEIGHBOURS} aria-label="Previous and next">
+      {previous === undefined ? null : (
+        <a className={DOCS_NEIGHBOUR} href={pathOf(previous)} rel="prev">
+          <span className={DOCS_NEIGHBOUR_LABEL}>Previous</span>
+          <span className={DOCS_NEIGHBOUR_TITLE}>{`← ${titleOf(previous)}`}</span>
+        </a>
+      )}
+      {next === undefined ? null : (
+        <a className={DOCS_NEIGHBOUR_NEXT} href={pathOf(next)} rel="next">
+          <span className={DOCS_NEIGHBOUR_LABEL}>Next</span>
+          <span className={DOCS_NEIGHBOUR_TITLE}>{`${titleOf(next)} →`}</span>
+        </a>
+      )}
+    </nav>
+  );
+}
+
+/** A page's topic: its eyebrow and heading, its text, the code beside it, and Previous / Next under all. */
+function Topic({ page, code, children }: { page: DocsPage; code?: ReactNode; children: ReactNode }) {
+  return (
+    <article className={DOCS_SECTION} aria-labelledby="topic-heading">
       <div className={DOCS_TEXT}>
-        <p className={DOCS_EYEBROW}>{group}</p>
-        <h2 className={DOCS_HEADING} id={`${id}-heading`}>
-          {title}
-        </h2>
+        <p className={DOCS_EYEBROW}>{groupOf(page)}</p>
+        <h1 className={DOCS_HEADING} id="topic-heading">
+          {titleOf(page)}
+        </h1>
         {children}
       </div>
       {code === undefined ? null : <div className={DOCS_CODE}>{code}</div>}
-    </section>
+      <Neighbours page={page} />
+    </article>
   );
 }
 
@@ -183,9 +217,7 @@ function EndpointTopic({ endpoint }: { endpoint: Endpoint }) {
   const reference = ENDPOINT_REFERENCE[endpoint];
   return (
     <Topic
-      id={anchorOf(endpoint)}
-      group="Endpoints"
-      title={reference.title}
+      page={{ kind: "endpoint", endpoint }}
       code={<CodePanel examples={panelOf(reference.examples)} languages={LANGUAGES} />}
     >
       <p className={DOCS_ENDPOINT}>
@@ -235,129 +267,132 @@ function GrammarValues() {
   );
 }
 
-const GETTING_STARTED = "Getting started";
-const REFERENCE = "Reference";
+/** Each guide page's topic. */
+const GUIDE_TOPICS: Readonly<Record<Guide, () => ReactNode>> = {
+  introduction: () => (
+    <Topic page={{ kind: "guide", guide: "introduction" }}>
+      <Paragraph>{`A JSON API over Lexema's Italian dictionary. Every endpoint is under \`${API_BASE}\`, takes an API key, and answers JSON.`}</Paragraph>
+      <Paragraph>{"Each parameter is sent at most once. `release_id` names the release every answer was read from. Grammar values are Italian labels; the English codes are read as the same."}</Paragraph>
+    </Topic>
+  ),
+  authentication: () => (
+    <Topic
+      page={{ kind: "guide", guide: "authentication" }}
+      code={<CodePanel examples={panelOf([AUTH_EXAMPLE], false)} languages={LANGUAGES} />}
+    >
+      <p className={DOCS_PARAGRAPH}>
+        <a className={LINK} href={SIGN_IN_PATH}>
+          Sign in
+        </a>{" "}
+        with Google or GitHub to create a key on your dashboard. A key is shown once, when it is made; Lexema keeps only
+        its SHA-256, so a lost key is revoked and replaced.
+      </p>
+      <Paragraph>{"Send the key in the `X-API-Key` header of every request. A request without a valid key is a `401`."}</Paragraph>
+    </Topic>
+  ),
+  "units-and-limits": () => (
+    <Topic page={{ kind: "guide", guide: "units-and-limits" }}>
+      <Paragraph>{"Each answer an endpoint gives, a `200` or a `404`, costs the units this table lists, counted per key per UTC day. Every other response costs none."}</Paragraph>
+      <table className={DOCS_TABLE}>
+        <thead>
+          <tr>
+            <th className={DOCS_TABLE_HEAD} scope="col">Method</th>
+            <th className={DOCS_TABLE_HEAD} scope="col">Endpoint</th>
+            <th className={DOCS_TABLE_HEAD} scope="col">Units</th>
+          </tr>
+        </thead>
+        <tbody>
+          {ENDPOINTS_IN_ORDER.map((endpoint) => (
+            <tr key={endpoint}>
+              <td className={DOCS_TABLE_CODE}>{ENDPOINT_REFERENCE[endpoint].method}</td>
+              <td className={DOCS_TABLE_CODE}>
+                <a className={LINK} href={endpointPath(endpoint)}>
+                  {`${API_PREFIX}${endpoint}`}
+                </a>
+              </td>
+              <td className={DOCS_TABLE_CELL}>{costText(UNIT_WEIGHT[endpoint])}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <Paragraph>{"Each key has its own number of requests per minute. Every request made with a valid key counts, refused ones included, and every response to it carries these headers. Past the limit, the answer is a `429` until the minute ends."}</Paragraph>
+      <Rows rows={HEADERS.map((header) => ({ name: header.name, description: header.description }))} />
+    </Topic>
+  ),
+  errors: () => (
+    <Topic page={{ kind: "guide", guide: "errors" }} code={<CodePanel examples={panelOf([ERROR_EXAMPLE])} languages={LANGUAGES} />}>
+      <Paragraph>{"An error answers with its status and a body naming it."}</Paragraph>
+      <Rows rows={ERRORS.map((error) => ({ name: `${error.status} ${error.code}`, description: error.when }))} />
+      <p className={DOCS_PARAGRAPH}>
+        {"A word "}
+        <a className={LINK} href={endpointPath("lookup")}>
+          <code className={CODE_INLINE}>/lookup</code>
+        </a>
+        <Text>{" does not find is a `404` with no `error`: its `suggestions` offer close spellings."}</Text>
+      </p>
+    </Topic>
+  ),
+  "grammar-values": () => (
+    <Topic page={{ kind: "guide", guide: "grammar-values" }}>
+      <Paragraph>{"The grammar parameters take these Italian labels, and read the English codes beside them as the same."}</Paragraph>
+      <GrammarValues />
+    </Topic>
+  ),
+  attribution: () => (
+    <Topic page={{ kind: "guide", guide: "attribution" }}>
+      <Paragraph>{"The API's text comes from Wikizionario, the Italian Wiktionary, under CC BY-SA 4.0. Every result carries `attribution`: `licence`, `licence_url`, `source`, and `source_url`, the word's Wikizionario page."}</Paragraph>
+      <p className={DOCS_PARAGRAPH}>
+        <Text>{"Where you show or pass on that text, credit it with the source and its page, name the licence with its link, and share what you adapt from it under the same licence. "}</Text>
+        <a className={LINK} href={`${ORIGIN.lexema}/attribution`}>
+          Sources and licences
+        </a>
+        {" has the full credit; "}
+        <ExternalLink className={LINK} href="https://creativecommons.org/licenses/by-sa/4.0/">
+          CC BY-SA 4.0
+        </ExternalLink>{" "}
+        has the licence.
+      </p>
+    </Topic>
+  ),
+};
 
-/** The sidebar: every topic the page has, in its order. */
-const GROUPS: readonly DocsGroup[] = [
-  {
-    label: GETTING_STARTED,
-    topics: [
-      { id: "introduction", label: "Introduction" },
-      { id: "authentication", label: "Authentication" },
-      { id: "units-and-limits", label: "Units and limits" },
-      { id: "errors", label: "Errors" },
-    ],
-  },
-  {
-    label: "Endpoints",
-    topics: ENDPOINTS_IN_ORDER.map((endpoint) => ({
-      id: anchorOf(endpoint),
-      label: endpoint,
-      method: ENDPOINT_REFERENCE[endpoint].method,
+const GROUP_ORDER: readonly DocsGroupName[] = ["Getting started", "Endpoints", "Reference"];
+
+/** The sidebar's groups, with the page being read marked. */
+const groupsFor = (current: DocsPage): DocsGroup[] =>
+  GROUP_ORDER.map((label) => ({
+    label,
+    links: DOCS_PAGES.filter((page) => groupOf(page) === label).map((page) => ({
+      href: pathOf(page),
+      label: labelOf(page),
+      method: page.kind === "endpoint" ? ENDPOINT_REFERENCE[page.endpoint].method : undefined,
+      current: samePage(page, current),
     })),
-  },
-  {
-    label: REFERENCE,
-    topics: [
-      { id: "grammar-values", label: "Grammar values" },
-      { id: "attribution", label: "Attribution" },
-    ],
-  },
-];
+  }));
 
-/** The whole page. */
-export function DeveloperDocs() {
+/** One page of the docs. */
+export function DeveloperDocs({ page }: { page: DocsPage }) {
+  const groups = groupsFor(page);
   return (
     <DeveloperPage current="docs" wide>
       <div className={DOCS_LAYOUT}>
         <aside className={DOCS_SIDEBAR}>
-          <DocsNav groups={GROUPS} />
+          <div className={DOCS_SIDEBAR_INNER}>
+            <DocsNav groups={groups} />
+          </div>
         </aside>
         <main className={DOCS_MAIN}>
-          <Topic id="introduction" group={GETTING_STARTED} title="The Lexema API">
-            <Paragraph>{`A JSON API over Lexema's Italian dictionary. Every endpoint is under \`${API_BASE}\`, takes an API key, and answers JSON.`}</Paragraph>
-            <Paragraph>{"Each parameter is sent at most once. `release_id` names the release every answer was read from. Grammar values are Italian labels; the English codes are read as the same."}</Paragraph>
-          </Topic>
-
-          <Topic
-            id="authentication"
-            group={GETTING_STARTED}
-            title="Authentication"
-            code={<CodePanel examples={panelOf([AUTH_EXAMPLE], false)} languages={LANGUAGES} />}
-          >
-            <p className={DOCS_PARAGRAPH}>
-              <a className={LINK} href={SIGN_IN_PATH}>
-                Sign in
-              </a>{" "}
-              with Google or GitHub to create a key on your dashboard. A key is shown once, when it is made; Lexema keeps
-              only its SHA-256, so a lost key is revoked and replaced.
-            </p>
-            <Paragraph>{"Send the key in the `X-API-Key` header of every request. A request without a valid key is a `401`."}</Paragraph>
-          </Topic>
-
-          <Topic id="units-and-limits" group={GETTING_STARTED} title="Units and limits">
-            <Paragraph>{"Each answer an endpoint gives, a `200` or a `404`, costs the units this table lists, counted per key per UTC day. Every other response costs none."}</Paragraph>
-            <table className={DOCS_TABLE}>
-              <thead>
-                <tr>
-                  <th className={DOCS_TABLE_HEAD} scope="col">Method</th>
-                  <th className={DOCS_TABLE_HEAD} scope="col">Endpoint</th>
-                  <th className={DOCS_TABLE_HEAD} scope="col">Units</th>
-                </tr>
-              </thead>
-              <tbody>
-                {ENDPOINTS_IN_ORDER.map((endpoint) => (
-                  <tr key={endpoint}>
-                    <td className={DOCS_TABLE_CODE}>{ENDPOINT_REFERENCE[endpoint].method}</td>
-                    <td className={DOCS_TABLE_CODE}>
-                      <a className={LINK} href={`#${anchorOf(endpoint)}`}>
-                        {`${API_PREFIX}${endpoint}`}
-                      </a>
-                    </td>
-                    <td className={DOCS_TABLE_CELL}>{costText(UNIT_WEIGHT[endpoint])}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            <Paragraph>{"Each key has its own number of requests per minute. Every request made with a valid key counts, refused ones included, and every response to it carries these headers. Past the limit, the answer is a `429` until the minute ends."}</Paragraph>
-            <Rows rows={HEADERS.map((header) => ({ name: header.name, description: header.description }))} />
-          </Topic>
-
-          <Topic
-            id="errors"
-            group={GETTING_STARTED}
-            title="Errors"
-            code={<CodePanel examples={panelOf([ERROR_EXAMPLE])} languages={LANGUAGES} />}
-          >
-            <Paragraph>{"An error answers with its status and a body naming it."}</Paragraph>
-            <Rows rows={ERRORS.map((error) => ({ name: `${error.status} ${error.code}`, description: error.when }))} />
-            <Paragraph>{"A word `/lookup` does not find is a `404` with no `error`: its `suggestions` offer close spellings."}</Paragraph>
-          </Topic>
-
-          {ENDPOINTS_IN_ORDER.map((endpoint) => (
-            <EndpointTopic key={endpoint} endpoint={endpoint} />
-          ))}
-
-          <Topic id="grammar-values" group={REFERENCE} title="Grammar values">
-            <Paragraph>{"The grammar parameters take these Italian labels, and read the English codes beside them as the same."}</Paragraph>
-            <GrammarValues />
-          </Topic>
-
-          <Topic id="attribution" group={REFERENCE} title="Attribution">
-            <Paragraph>{"The API's text comes from Wikizionario, the Italian Wiktionary, under CC BY-SA 4.0. Every result carries `attribution`: `licence`, `licence_url`, `source`, and `source_url`, the word's Wikizionario page."}</Paragraph>
-            <p className={DOCS_PARAGRAPH}>
-              <Text>{"Where you show or pass on that text, credit it with the source and its page, name the licence with its link, and share what you adapt from it under the same licence. "}</Text>
-              <a className={LINK} href={`${ORIGIN.lexema}/attribution`}>
-                Sources and licences
-              </a>
-              {" has the full credit; "}
-              <ExternalLink className={LINK} href="https://creativecommons.org/licenses/by-sa/4.0/">
-                CC BY-SA 4.0
-              </ExternalLink>{" "}
-              has the licence.
-            </p>
-          </Topic>
+          {/* On a phone the sidebar folds into this menu, closed until opened. */}
+          <details className={DOCS_CONTENTS}>
+            <summary className={DOCS_CONTENTS_SUMMARY}>
+              Contents
+              <ChevronIcon className={DOCS_CONTENTS_ICON} />
+            </summary>
+            <nav aria-label="Docs contents">
+              <DocsLinks groups={groups} />
+            </nav>
+          </details>
+          {page.kind === "guide" ? GUIDE_TOPICS[page.guide]() : <EndpointTopic endpoint={page.endpoint} />}
         </main>
       </div>
     </DeveloperPage>

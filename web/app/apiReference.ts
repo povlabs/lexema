@@ -851,6 +851,3 @@ export const requestsOf = (example: Example): Readonly<Record<Language, string>>
 
 /** The request the Authentication section shows the key header with. */
 export const AUTH_EXAMPLE: Example = ENDPOINT_REFERENCE.exists.examples[0];
-
-/** The id an endpoint's section carries in the docs: `lookup-batch` for `lookup/batch`. */
-export const anchorOf = (endpoint: Endpoint): string => endpoint.replace("/", "-");

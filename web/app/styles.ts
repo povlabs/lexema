@@ -475,9 +475,14 @@ export const COST_UNITS = "p-0 py-2.5 text-right font-sans text-[0.95rem] whites
 // Docs (board 31)
 
 export const DOCS_LAYOUT = "flex flex-1 flex-col lg:flex-row";
-/** The sidebar: its own scroll, held in view beside the page. */
-export const DOCS_SIDEBAR =
-  "shrink-0 border-b border-border px-6 py-6 lg:sticky lg:top-0 lg:h-screen lg:w-[16.5rem] lg:overflow-y-auto lg:border-r lg:border-b-0 lg:px-8 lg:py-9";
+/** The sidebar, on a wide screen only: its rule runs the page's height. */
+export const DOCS_SIDEBAR = "hidden shrink-0 border-r border-border lg:block lg:w-[16.5rem]";
+/** Inside it, the pages: their own scroll, held in view beside the page. */
+export const DOCS_SIDEBAR_INNER = "sticky top-0 max-h-screen overflow-y-auto px-8 py-9";
+/** Below `lg`, the sidebar's pages behind one Contents menu at the top of the page. */
+export const DOCS_CONTENTS = "group mb-9 rounded-[4px] border border-border-strong bg-surface-raised lg:hidden";
+export const DOCS_CONTENTS_SUMMARY = `flex cursor-pointer list-none items-center justify-between px-4 py-2.5 font-sans text-[0.95rem] font-medium text-text-strong [&::-webkit-details-marker]:hidden ${FOCUS_RING}`;
+export const DOCS_CONTENTS_ICON = "size-4 text-text-muted group-open:rotate-180";
 export const DOCS_SEARCH = "relative flex items-center rounded-[4px] border border-border-strong bg-surface-raised focus-within:border-accent";
 export const DOCS_SEARCH_INPUT =
   "w-full min-w-0 bg-transparent py-2 pr-12 pl-3 font-sans text-[0.9rem] text-text-strong outline-none placeholder:text-text-muted [&::-webkit-search-cancel-button]:appearance-none";
@@ -485,21 +490,23 @@ export const DOCS_SEARCH_HINT = `${SEARCH_SHORTCUT} pointer-events-none absolute
 export const DOCS_NAV_GROUP = "mt-7";
 export const DOCS_NAV_LABEL = "m-0 mb-2 font-sans text-[0.75rem] font-semibold tracking-[0.08em] text-text-muted uppercase";
 export const DOCS_NAV_LIST = "m-0 flex list-none flex-col p-0";
-export const DOCS_NAV_LINK = `flex items-baseline gap-4 rounded-[4px] px-3 py-1.5 font-sans text-[0.95rem] text-text no-underline hover:bg-surface-raised hover:text-text-strong ${FOCUS_RING}`;
-export const DOCS_NAV_METHOD = "w-8 shrink-0 font-mono text-[0.7rem] text-text-muted";
+/** A page in the sidebar; the page being read is raised, and its name strong. */
+export const DOCS_NAV_LINK = `group/link flex items-baseline gap-4 rounded-[4px] px-3 py-1.5 font-sans text-[0.95rem] text-text no-underline hover:bg-surface-raised hover:text-text-strong aria-[current=page]:bg-surface-raised aria-[current=page]:font-semibold aria-[current=page]:text-text-strong ${FOCUS_RING}`;
+export const DOCS_NAV_METHOD =
+  "w-8 shrink-0 font-mono text-[0.7rem] font-normal text-text-muted group-aria-[current=page]/link:text-accent";
 export const DOCS_NAV_ENDPOINT = "font-mono text-[0.9rem]";
 
 export const DOCS_MAIN = "min-w-0 flex-1 px-6 pt-9 pb-24 sm:px-10 lg:px-16";
-/** A topic: its text, and beside it on a wide screen the code it shows. */
+/** A page's topic: its text, and beside it on a wide screen the code it shows. */
 export const DOCS_SECTION =
-  "scroll-mt-6 border-t border-border pt-12 pb-4 first:border-t-0 first:pt-0 [&+&]:mt-12 xl:grid xl:grid-cols-[minmax(0,33rem)_minmax(0,31rem)] xl:gap-14";
+  "xl:grid xl:grid-cols-[minmax(0,33rem)_minmax(0,31rem)] xl:grid-rows-[auto_1fr] xl:gap-x-14";
 export const DOCS_TEXT = "min-w-0";
 /**
  * The code beside a topic, never taller than the window: a response longer
  * than the room left scrolls inside its own panel.
  */
 export const DOCS_CODE =
-  "mt-8 flex max-h-[80svh] min-w-0 flex-col gap-5 xl:sticky xl:top-6 xl:mt-0 xl:max-h-[calc(100svh-3rem)] xl:self-start";
+  "mt-8 flex max-h-[80svh] min-w-0 flex-col gap-5 xl:sticky xl:top-6 xl:col-start-2 xl:row-span-2 xl:row-start-1 xl:mt-0 xl:max-h-[calc(100svh-3rem)] xl:self-start";
 /** `Endpoints`, over a topic's heading: which part of the docs it is in. */
 export const DOCS_EYEBROW = "m-0 font-sans text-[0.9rem] font-medium text-accent";
 export const DOCS_HEADING = "m-0 mt-3 font-serif text-[2.25rem] leading-tight font-normal text-text-strong sm:text-[2.5rem]";
@@ -525,6 +532,12 @@ export const DOCS_TABLE = "mt-6 w-full border-collapse text-left";
 export const DOCS_TABLE_HEAD = "border-b border-border p-0 pr-6 pb-2 font-sans text-[0.8rem] font-normal text-text-muted";
 export const DOCS_TABLE_CELL = "border-b border-border p-0 py-2 pr-6 align-baseline font-sans text-[0.95rem] text-text";
 export const DOCS_TABLE_CODE = "border-b border-border p-0 py-2 pr-6 align-baseline font-mono text-[0.9rem] text-text-strong";
+/** Previous / Next at the foot of a page, under its text: two hairline cards, Next on the right. */
+export const DOCS_NEIGHBOURS = "mt-16 grid grid-cols-2 gap-4 self-start sm:gap-6 xl:col-start-1";
+export const DOCS_NEIGHBOUR = `flex min-w-0 flex-col gap-1 rounded-[6px] border border-border px-4 py-4 no-underline hover:border-border-strong sm:px-5 ${FOCUS_RING}`;
+export const DOCS_NEIGHBOUR_NEXT = `${DOCS_NEIGHBOUR} col-start-2 items-end text-right`;
+export const DOCS_NEIGHBOUR_LABEL = "font-sans text-[0.8rem] text-text-muted";
+export const DOCS_NEIGHBOUR_TITLE = "font-sans text-[0.95rem] font-semibold text-text-strong";
 
 /** A request or a response panel beside a topic. */
 const CODE_PANEL = "min-w-0 overflow-hidden rounded-[6px] border border-border bg-surface-raised";
