@@ -1,5 +1,5 @@
-// What `/developers` states about the JSON API (#153), as data, so the page
-// and its test read one copy.
+// What the developer site states about the JSON API (#153, #166), as data, so
+// its pages and their tests read one copy.
 //
 // Whatever the API already names is imported, never restated: the endpoints and
 // their unit weights (src/api/units.ts), the filter vocabularies
@@ -25,8 +25,12 @@ export const API_BASE = `${API_ORIGIN}${API_PREFIX.slice(0, -1)}`;
 /** A key as the examples write it. */
 export const EXAMPLE_KEY = "lx_…";
 
+/** What a parameter's value is, as the docs name it. */
+export type ParameterType = "string" | "integer" | "string[]";
+
 export interface Parameter {
   name: string;
+  type: ParameterType;
   required: boolean;
   description: string;
 }
@@ -43,11 +47,16 @@ export interface Example {
 
 export interface EndpointReference {
   method: "GET" | "POST";
+  /** The endpoint's heading in the docs: what a call does, as a verb phrase. */
+  title: string;
+  /** The endpoint in a few words, on the landing page's list. */
+  tagline: string;
   summary: string;
   parameters: readonly Parameter[];
   /** What each status this endpoint answers with means. */
   answers: readonly { status: string; description: string }[];
-  example: Example;
+  /** One example per status the docs show, the first the one they open on. */
+  examples: readonly [Example, ...Example[]];
 }
 
 const ATTRIBUTION = (word: string) => ({
@@ -61,6 +70,7 @@ const RELEASE = "it-0c432803";
 
 const Q: Parameter = {
   name: "q",
+  type: "string",
   required: true,
   description: `The word, 1 to ${MAX_QUERY_LENGTH} characters.`,
 };
@@ -69,19 +79,20 @@ const code = (values: readonly string[]) => values.map((value) => `\`${value}\``
 
 const POS: Parameter = {
   name: "pos",
+  type: "string",
   required: false,
   description: `Only this part of speech: ${code(PARTS_OF_SPEECH)}. \`adjective\` and \`adverb\` are read as \`adj\` and \`adv\`.`,
 };
 
 const VERB_GRAMMAR: readonly Parameter[] = [
-  { name: "mood", required: false, description: "Only a verb's forms of this mood." },
-  { name: "tense", required: false, description: "Only a verb's forms of this tense." },
-  { name: "person", required: false, description: "Only a verb's forms of this person." },
+  { name: "mood", type: "string", required: false, description: "Only a verb's forms of this mood." },
+  { name: "tense", type: "string", required: false, description: "Only a verb's forms of this tense." },
+  { name: "person", type: "string", required: false, description: "Only a verb's forms of this person." },
 ];
 
 const AGREEMENT_GRAMMAR: readonly Parameter[] = [
-  { name: "gender", required: false, description: "Only the grid's row of this gender." },
-  { name: "number", required: false, description: "Only the grid's column of this number." },
+  { name: "gender", type: "string", required: false, description: "Only the grid's row of this gender." },
+  { name: "number", type: "string", required: false, description: "Only the grid's column of this number." },
 ];
 
 /**
@@ -114,10 +125,19 @@ export const LOOKUP_RESULT: {
   },
 };
 
+/** The not-found answer of `/lookup`, which is a result, not an error. */
+export const NOT_FOUND_EXAMPLE: Example = {
+  path: "lookup?q=citta",
+  status: 404,
+  response: { query: "citta", release_id: RELEASE, results: [], suggestions: [{ word: "città", kind: "accent" }] },
+};
+
 /** Every endpoint, keyed as src/api/units.ts names it, so none goes undocumented. */
 export const ENDPOINT_REFERENCE: Readonly<Record<Endpoint, EndpointReference>> = {
   lookup: {
     method: "GET",
+    title: "Look up a word",
+    tagline: "Everything about a word",
     summary:
       "Every candidate for `q`, in full: the record the word heads, the lemma it is a form of, and any record that lists it among its forms.",
     parameters: [
@@ -125,15 +145,17 @@ export const ENDPOINT_REFERENCE: Readonly<Record<Endpoint, EndpointReference>> =
       POS,
       {
         name: "match",
+        type: "string",
         required: false,
         description: `${code(MATCHES)}; \`any\` when absent. \`exact\`: headword matches only. \`form\`: form matches only.`,
       },
       {
         name: "fields",
+        type: "string",
         required: false,
         description: `A comma list of ${code(SECTIONS)}. Only these sections are returned; \`pronunciation\` returns \`pronunciations\`. ${code(Object.keys(LOOKUP_RESULT.always))} are always returned.`,
       },
-      { name: "limit_definitions", required: false, description: "At most this many definitions per result, a positive integer." },
+      { name: "limit_definitions", type: "integer", required: false, description: "At most this many definitions per result, a positive integer." },
       ...VERB_GRAMMAR,
       ...AGREEMENT_GRAMMAR,
     ],
@@ -141,7 +163,7 @@ export const ENDPOINT_REFERENCE: Readonly<Record<Endpoint, EndpointReference>> =
       { status: "200", description: "The word is in the release. `results` holds every candidate the filters keep, in the lookup's order, and is empty when they keep none." },
       { status: "404", description: "The word is not in the release. `results` is empty and `suggestions` lists spellings of kind `accent`, `edit` or `prefix`." },
     ],
-    example: {
+    examples: [{
       path: "lookup?q=andavano&fields=definitions,forms&limit_definitions=1&mood=indicativo&tense=imperfetto",
       status: 200,
       response: {
@@ -185,14 +207,16 @@ export const ENDPOINT_REFERENCE: Readonly<Record<Endpoint, EndpointReference>> =
           },
         ],
       },
-    },
+    }, NOT_FOUND_EXAMPLE],
   },
   lemmatize: {
     method: "GET",
+    title: "Lemmatize a form",
+    tagline: "A form's lemma and grammar",
     summary: "The lemma of each `/lookup` candidate, and where `q` sits in its forms.",
     parameters: [Q],
     answers: [{ status: "200", description: "`results` holds one lemma per candidate." }, { status: "404", description: "The word is not in the release; `results` is empty." }],
-    example: {
+    examples: [{
       path: "lemmatize?q=andavano",
       status: 200,
       response: {
@@ -213,24 +237,28 @@ export const ENDPOINT_REFERENCE: Readonly<Record<Endpoint, EndpointReference>> =
           },
         ],
       },
-    },
+    }],
   },
   exists: {
     method: "GET",
+    title: "Check a word",
+    tagline: "Whether a word is in the dictionary",
     summary: "Whether `/lookup` finds `q`.",
     parameters: [Q],
     answers: [{ status: "200", description: "`exists` is `true` with the word's `attribution`, or `false` with `attribution` `null`." }],
-    example: {
+    examples: [{
       path: "exists?q=sale",
       status: 200,
       response: { query: "sale", release_id: RELEASE, exists: true, attribution: ATTRIBUTION("sale") },
-    },
+    }],
   },
   inflect: {
     method: "GET",
+    title: "Inflect a lemma",
+    tagline: "A lemma's form for a mood, tense and person",
     summary: "The forms of `lemma` at the places the grammar parameters name; every form when none is sent.",
     parameters: [
-      { name: "lemma", required: true, description: `A headword, 1 to ${MAX_QUERY_LENGTH} characters.` },
+      { name: "lemma", type: "string", required: true, description: `A headword, 1 to ${MAX_QUERY_LENGTH} characters.` },
       ...VERB_GRAMMAR,
       ...AGREEMENT_GRAMMAR,
     ],
@@ -238,7 +266,7 @@ export const ENDPOINT_REFERENCE: Readonly<Record<Endpoint, EndpointReference>> =
       { status: "200", description: "One result per record headed by `lemma` with a form that fits, each form with its `grammar`." },
       { status: "404 unknown_lemma", description: "`lemma` heads no record of the release." },
     ],
-    example: {
+    examples: [{
       path: "inflect?lemma=andare&mood=congiuntivo&tense=presente&person=noi",
       status: 200,
       response: {
@@ -255,14 +283,16 @@ export const ENDPOINT_REFERENCE: Readonly<Record<Endpoint, EndpointReference>> =
           },
         ],
       },
-    },
+    }],
   },
   suggest: {
     method: "GET",
+    title: "Suggest words",
+    tagline: "Words that begin with a prefix",
     summary: `Up to ${SUGGESTION_LIMIT} words that begin with \`q\`, as the search field suggests them.`,
-    parameters: [{ name: "q", required: true, description: `The beginning of a word, 1 to ${MAX_QUERY_LENGTH} characters.` }],
+    parameters: [{ name: "q", type: "string", required: true, description: `The beginning of a word, 1 to ${MAX_QUERY_LENGTH} characters.` }],
     answers: [{ status: "200", description: "`results` holds the words, and is empty when none begins with `q`." }],
-    example: {
+    examples: [{
       path: "suggest?q=sal",
       status: 200,
       response: {
@@ -270,15 +300,17 @@ export const ENDPOINT_REFERENCE: Readonly<Record<Endpoint, EndpointReference>> =
         release_id: RELEASE,
         results: ["sala", "salare", "sale", "salire"].map((word) => ({ word, attribution: ATTRIBUTION(word) })),
       },
-    },
+    }],
   },
   nearby: {
     method: "GET",
+    title: "Find close spellings",
+    tagline: "Did you mean",
     summary:
       "Spellings close to `q`, in the not-found page's order: the same letters with accents (`accent`), one edit away (`edit`), or words that begin with `q` (`prefix`).",
     parameters: [Q],
     answers: [{ status: "200", description: "`results` holds the spellings, and is empty when none is close." }],
-    example: {
+    examples: [{
       path: "nearby?q=mangare",
       status: 200,
       response: {
@@ -286,34 +318,39 @@ export const ENDPOINT_REFERENCE: Readonly<Record<Endpoint, EndpointReference>> =
         release_id: RELEASE,
         results: [{ word: "mangiare", kind: "edit", attribution: ATTRIBUTION("mangiare") }],
       },
-    },
+    }],
   },
   random: {
     method: "GET",
+    title: "Draw a random word",
+    tagline: "One random headword",
     summary: "One random headword.",
     parameters: [POS],
     answers: [{ status: "200", description: "`results` holds one headword, or none when the release has none of `pos`." }],
-    example: {
+    examples: [{
       path: "random?pos=noun",
       status: 200,
       response: {
         release_id: RELEASE,
         results: [{ id: `${RELEASE}:1`, word: "casa", pos: "noun", pos_title: "Sostantivo", attribution: ATTRIBUTION("casa") }],
       },
-    },
+    }],
   },
   "lookup/batch": {
     method: "POST",
+    title: "Look up many words",
+    tagline: `Up to ${MAX_BATCH_WORDS} words at once`,
     summary: `Up to ${MAX_BATCH_WORDS} words at once, each answered light: one entry per candidate with its lemma and part of speech, or one \`found: false\` entry for a word not in the release.`,
     parameters: [
       {
         name: "q",
+        type: "string[]",
         required: true,
         description: `In the JSON body, \`{"q": [...]}\`: 1 to ${MAX_BATCH_WORDS} words, each 1 to ${MAX_QUERY_LENGTH} characters.`,
       },
     ],
     answers: [{ status: "200", description: "`results` holds the entries, word by word in the order sent." }],
-    example: {
+    examples: [{
       path: "lookup/batch",
       body: { q: ["sale", "mangare"] },
       status: 200,
@@ -350,7 +387,7 @@ export const ENDPOINT_REFERENCE: Readonly<Record<Endpoint, EndpointReference>> =
           { query: "mangare", found: false, lemma: null, pos: null, pos_title: null },
         ],
       },
-    },
+    }],
   },
 };
 
@@ -389,13 +426,6 @@ export const ERRORS: readonly ErrorReference[] = [
   { status: 429, code: "rate_limited", when: "The key has used its requests for this minute." },
   { status: 503, code: "unavailable", when: "The request could not be answered. Try again later." },
 ];
-
-/** The not-found answer of `/lookup`, which is a result, not an error. */
-export const NOT_FOUND_EXAMPLE: Example = {
-  path: "lookup?q=citta",
-  status: 404,
-  response: { query: "citta", release_id: RELEASE, results: [], suggestions: [{ word: "città", kind: "accent" }] },
-};
 
 /** An error, as every error is answered. */
 export const ERROR_EXAMPLE: Example = {
@@ -438,23 +468,24 @@ export function curlOf(example: Example): string {
 }
 
 /**
- * JSON as the page prints it: a value that fits on its line stays on it, and
- * anything longer opens one member per line. It parses back to the same value.
+ * JSON as the page prints it: a value that fits in `width` characters stays on
+ * its line, and anything longer opens one member per line. It parses back to
+ * the same value.
  */
-export function formatJson(value: unknown): string {
-  return format(value, "", 0);
+export function formatJson(value: unknown, width: number = WIDTH): string {
+  return format(value, "", 0, width);
 }
 
 /** `value` printed at `indent`, its first line already `lead` characters in. */
-function format(value: unknown, indent: string, lead: number): string {
+function format(value: unknown, indent: string, lead: number, width: number): string {
   const inline = oneLine(value);
-  if (value === null || typeof value !== "object" || indent.length + lead + inline.length <= WIDTH) return inline;
+  if (value === null || typeof value !== "object" || indent.length + lead + inline.length <= width) return inline;
   const inner = `${indent}  `;
   const members = Array.isArray(value)
-    ? value.map((item) => inner + format(item, inner, 0))
+    ? value.map((item) => inner + format(item, inner, 0, width))
     : Object.entries(value).map(([key, item]) => {
         const head = `${JSON.stringify(key)}: `;
-        return inner + head + format(item, inner, head.length);
+        return inner + head + format(item, inner, head.length, width);
       });
   const [open, close] = Array.isArray(value) ? ["[", "]"] : ["{", "}"];
   return `${open}\n${members.join(",\n")}\n${indent}${close}`;
@@ -466,3 +497,86 @@ function oneLine(value: unknown): string {
   const members = Object.entries(value).map(([key, item]) => `${JSON.stringify(key)}: ${oneLine(item)}`);
   return members.length === 0 ? "{}" : `{ ${members.join(", ")} }`;
 }
+
+/** An endpoint's cost as the docs and the pricing page write it: `2 units`, `1 unit per word`. */
+export function costText(weight: UnitWeight): string {
+  return `${weight.units} ${weight.units === 1 ? "unit" : "units"}${weight.per === "word" ? " per word" : ""}`;
+}
+
+/** One row of the pricing page's cost table: every endpoint that costs the same. */
+export interface CostRow {
+  endpoints: readonly Endpoint[];
+  weight: UnitWeight;
+}
+
+/**
+ * The unit map grouped by cost: endpoints charged per request from cheapest
+ * up, then those charged per word. Each endpoint sits in exactly one row.
+ */
+export const COST_ROWS: readonly CostRow[] = (() => {
+  const rows = new Map<string, CostRow>();
+  for (const endpoint of ENDPOINTS_IN_ORDER) {
+    const weight = UNIT_WEIGHT[endpoint];
+    const key = `${weight.per} ${weight.units}`;
+    const row = rows.get(key);
+    rows.set(key, { weight, endpoints: [...(row?.endpoints ?? []), endpoint] });
+  }
+  const order = (row: CostRow) => (row.weight.per === "word" ? 1 : 0);
+  return [...rows.values()].sort((a, b) => order(a) - order(b) || a.weight.units - b.weight.units);
+})();
+
+/** The languages the docs print each request in. */
+export const LANGUAGES = ["curl", "JavaScript", "Python"] as const;
+export type Language = (typeof LANGUAGES)[number];
+
+/** An example's query, as name and value pairs. */
+const queryOf = (example: Example): [string, string][] => [...new URLSearchParams(example.path.split("?")[1] ?? "")];
+const urlOf = (example: Example): string => `${API_BASE}/${example.path.split("?")[0]}`;
+/** Pairs as a one-line object literal both JavaScript and Python read. */
+const objectOf = (pairs: [string, string][]): string =>
+  `{ ${pairs.map(([name, value]) => `${JSON.stringify(name)}: ${JSON.stringify(value)}`).join(", ")} }`;
+
+/**
+ * The request an example sends, as JavaScript: `fetch`, then the answer's
+ * JSON. It is the same request `curlOf` prints.
+ */
+export function javascriptOf(example: Example): string {
+  const query = queryOf(example);
+  const lines: string[] = [];
+  if (query.length > 0) lines.push(`const params = new URLSearchParams(${objectOf(query)});`);
+  const url = query.length > 0 ? `\`${urlOf(example)}?\${params}\`` : JSON.stringify(urlOf(example));
+  lines.push(`const response = await fetch(${url}, {`);
+  if (example.body !== undefined) lines.push(`  method: "POST",`);
+  if (example.body === undefined) {
+    lines.push(`  headers: { "X-API-Key": ${JSON.stringify(EXAMPLE_KEY)} },`);
+  } else {
+    lines.push(`  headers: { "X-API-Key": ${JSON.stringify(EXAMPLE_KEY)}, "content-type": "application/json" },`);
+    lines.push(`  body: JSON.stringify(${oneLine(example.body)}),`);
+  }
+  lines.push(`});`, `const data = await response.json();`);
+  return lines.join("\n");
+}
+
+/** The request an example sends, as Python with `requests`. */
+export function pythonOf(example: Example): string {
+  const query = queryOf(example);
+  const method = example.body === undefined ? "get" : "post";
+  const lines = [`import requests`, ``, `response = requests.${method}(`, `    ${JSON.stringify(urlOf(example))},`];
+  if (query.length > 0) lines.push(`    params=${objectOf(query)},`);
+  if (example.body !== undefined) lines.push(`    json=${oneLine(example.body)},`);
+  lines.push(`    headers={ "X-API-Key": ${JSON.stringify(EXAMPLE_KEY)} },`, `)`, `data = response.json()`);
+  return lines.join("\n");
+}
+
+/** An example's request in every language the docs print. */
+export const requestsOf = (example: Example): Readonly<Record<Language, string>> => ({
+  curl: curlOf(example),
+  JavaScript: javascriptOf(example),
+  Python: pythonOf(example),
+});
+
+/** The request the Authentication section shows the key header with. */
+export const AUTH_EXAMPLE: Example = ENDPOINT_REFERENCE.exists.examples[0];
+
+/** The id an endpoint's section carries in the docs: `lookup-batch` for `lookup/batch`. */
+export const anchorOf = (endpoint: Endpoint): string => endpoint.replace("/", "-");
