@@ -60,9 +60,8 @@ A client that cannot resolve `.localhost` sends the host itself:
 curl -i -H "Host: api.localhost" "http://127.0.0.1:8790/v1/exists?q=sale"
 ```
 
-`lexema.fyi/api/v1/…` answers 301 to the same path and query under
-`https://api.lexema.fyi/v1/`; locally, `localhost:8790/api/v1/…` answers 301 to
-`api.localhost:8790/v1/…`.
+The API is only on its own host. Its old path, `lexema.fyi/api/v1/…`, answers
+404 with no redirect, and so does `localhost:8790/api/v1/…`.
 
 ## Check it came up
 

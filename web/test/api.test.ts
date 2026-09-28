@@ -308,6 +308,13 @@ test("each host reaches its own site: lexema.fyi the pages as before, api.lexema
   assert.equal(developers.host, "developers.lexema.fyi");
   assert.equal(developers.pathname, `/${DEVELOPERS_SEGMENT}`);
   assert.ok(existsSync(join(REPO, "web/app/(developers)", DEVELOPERS_SEGMENT, "page.tsx")));
+
+  // The API's old path on lexema.fyi is gone: a 404 that points nowhere, and nothing behind it runs.
+  const retired = await send(new Request("https://lexema.fyi/api/v1/lookup?q=sale", { headers: { "x-api-key": key } }));
+  assert.equal(retired.status, 404);
+  assert.equal(retired.headers.get("location"), null);
+  assert.equal(appSaw.length, 2);
+  assert.equal(limits.SEARCH_LIMIT.calls, 1);
 });
 
 test("api.lexema.fyi answers a JSON 503 when the Worker has no D1 binding", async (t) => {

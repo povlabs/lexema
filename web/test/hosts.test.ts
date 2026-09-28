@@ -28,19 +28,19 @@ function worker() {
   return { app, api, send: (url: string) => fetch(new Request(url), {}, {} as ExecutionContext) };
 }
 
-test("lexema.fyi/api/v1/ answers 301 to the same path and query under https://api.lexema.fyi/v1/", async () => {
+test("lexema.fyi/api/v1/ answers 404 with no location: the API is only at api.lexema.fyi/v1/", async () => {
   const { app, api, send } = worker();
-  const response = await send("https://lexema.fyi/api/v1/lookup?q=sale");
-  assert.equal(response.status, 301);
-  assert.equal(response.headers.get("location"), "https://api.lexema.fyi/v1/lookup?q=sale");
+  for (const url of [
+    "https://lexema.fyi/api/v1/lookup?q=sale",
+    "https://lexema.fyi/api/v1/lookup/batch",
+    "https://lexema.fyi/api//v1/exists?q=sale",
+    "http://localhost:8790/api/v1/exists?q=sale",
+  ]) {
+    const response = await send(url);
+    assert.equal(response.status, 404, url);
+    assert.equal(response.headers.get("location"), null, url);
+  }
   assert.deepEqual([app, api], [[], []]);
-
-  assert.deepEqual(to("https://lexema.fyi/api/v1/lookup/batch"), { to: "redirect", location: "https://api.lexema.fyi/v1/lookup/batch" });
-  // In development the API's host is api.localhost, on the same port.
-  assert.deepEqual(to("http://localhost:8790/api/v1/exists?q=sale"), {
-    to: "redirect",
-    location: "http://api.localhost:8790/v1/exists?q=sale",
-  });
 });
 
 test("api.lexema.fyi answers a path outside /v1/ with a JSON 404 and no cookie", async () => {

@@ -31,8 +31,7 @@ export const ORIGIN: Readonly<Record<Site, string>> = {
 const SUBDOMAIN: Readonly<Record<Site, string>> = { lexema: "", developers: "developers.", api: "api." };
 
 /** The live domain, and the one local development answers under. */
-type Domain = "lexema.fyi" | "localhost";
-const DOMAINS: readonly Domain[] = ["lexema.fyi", "localhost"];
+const DOMAINS = ["lexema.fyi", "localhost"] as const;
 
 /**
  * The segment the developer site's pages live under, inside the App Router.
@@ -40,8 +39,11 @@ const DOMAINS: readonly Domain[] = ["lexema.fyi", "localhost"];
  */
 export const DEVELOPERS_SEGMENT = "developer-site";
 
-/** Where the API lived on `lexema.fyi` before it moved to its own host. */
-const OLD_API_PREFIX = "/api/v1/";
+/**
+ * Where the API lived on `lexema.fyi` before it moved to its own host. It is
+ * gone, not moved: a request there is a 404, with no redirect (#159, #164).
+ */
+const RETIRED_API_SEGMENTS = ["api", "v1"] as const;
 
 /** Where a request goes. Each arm carries exactly what answering it needs. */
 export type Destination =
@@ -51,30 +53,17 @@ export type Destination =
   | { to: "developers"; path: string }
   /** The JSON API, handed on exactly as it came. */
   | { to: "api" }
-  /** A permanent redirect to this absolute URL. */
-  | { to: "redirect"; location: string }
   /** Nothing is here: answered as the named site answers a missing path. */
   | { to: "not-found"; site: "lexema" | "api" };
 
-interface Host {
-  site: Site;
-  domain: Domain;
-}
-
-/** The site and domain a URL's host names. Any other host is the dictionary's. */
-function hostOf(url: URL): Host {
+/** The site a URL's host names. Any other host is the dictionary's. */
+function siteOf(url: URL): Site {
   for (const domain of DOMAINS) {
     for (const site of Object.keys(SUBDOMAIN) as Site[]) {
-      if (url.hostname === `${SUBDOMAIN[site]}${domain}`) return { site, domain };
+      if (url.hostname === `${SUBDOMAIN[site]}${domain}`) return site;
     }
   }
-  return { site: "lexema", domain: "lexema.fyi" };
-}
-
-/** `site`'s origin beside `host`: the live one, or its `.localhost` twin on the same port. */
-function originBeside(host: Host, site: Site, url: URL): string {
-  if (host.domain === "lexema.fyi") return ORIGIN[site];
-  return `${url.protocol}//${SUBDOMAIN[site]}localhost${url.port === "" ? "" : `:${url.port}`}`;
+  return "lexema";
 }
 
 /**
@@ -109,18 +98,15 @@ function developersPath(segments: string[]): string {
 
 /** Where a request for this URL goes. */
 export function destinationOf(url: URL): Destination {
-  const host = hostOf(url);
-  switch (host.site) {
+  switch (siteOf(url)) {
     case "api":
       return url.pathname.startsWith(API_PREFIX) ? { to: "api" } : { to: "not-found", site: "api" };
     case "developers":
       return { to: "developers", path: developersPath(segmentsOf(url.pathname)) };
     case "lexema": {
-      if (url.pathname.startsWith(OLD_API_PREFIX)) {
-        const rest = url.pathname.slice(OLD_API_PREFIX.length);
-        return { to: "redirect", location: `${originBeside(host, "api", url)}${API_PREFIX}${rest}${url.search}` };
-      }
-      const [first = ""] = segmentsOf(url.pathname);
+      const segments = segmentsOf(url.pathname);
+      if (RETIRED_API_SEGMENTS.every((segment, i) => segments[i] === segment)) return { to: "not-found", site: "lexema" };
+      const [first = ""] = segments;
       const segment = first.endsWith(".rsc") ? first.slice(0, -".rsc".length) : first;
       return segment === DEVELOPERS_SEGMENT ? { to: "not-found", site: "lexema" } : { to: "site" };
     }
@@ -149,8 +135,6 @@ export function byHost<E>(handlers: SiteHandlers<E>): FetchHandler<E> {
         return handlers.app(new Request(new URL(`${destination.path}${url.search}`, url), request), env, ctx);
       case "api":
         return handlers.api(request, env, ctx);
-      case "redirect":
-        return new Response(null, { status: 301, headers: { location: destination.location } });
       case "not-found":
         return destination.site === "api"
           ? handlers.apiNotFound(url)
