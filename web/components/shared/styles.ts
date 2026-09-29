@@ -110,11 +110,10 @@ export const SEARCH_SHORTCUT = `${TRAILING_BOX} ${KEY_NUDGE} px-1 font-sans text
  * The suggestion list under the field. No frame draws it, so it takes the
  * field's own parts: `surface-raised` with a hairline `border`, as wide as the
  * field, and the source's spellings in the serif the field is typed in. The
- * highlighted row is outlined in `accent` the way the searched form is outlined
- * in a paradigm box, and carries the field's own `ENTER` hint in words, so it is
- * never marked by colour alone. It is never taller than the room left under the
- * field — on a phone, the room above the open keyboard — and scrolls within
- * itself instead.
+ * highlighted row is outlined in `accent`, and carries the field's own `ENTER`
+ * hint in words, so it is never marked by colour alone. It is never taller than
+ * the room left under the field — on a phone, the room above the open keyboard —
+ * and scrolls within itself instead.
  */
 export const SUGGEST_POPUP =
   "max-h-[var(--available-height)] w-[var(--anchor-width)] max-w-[var(--available-width)] overflow-y-auto rounded-[4px] border border-border bg-surface-raised p-1 text-left";
