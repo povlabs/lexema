@@ -4,6 +4,7 @@
 
 import type { AccountProfile } from "@lexema/accounts/accounts.ts";
 import { PROVIDER_NAME } from "@lexema/accounts/providers.ts";
+import { LIFETIME_LABEL, type EndpointScope } from "@lexema/api/keyAccess.ts";
 import type { OwnedKey } from "@lexema/api/ownedKeys.ts";
 import type { AccountUsage } from "@lexema/api/usage.ts";
 
@@ -64,7 +65,17 @@ export interface KeyRow {
   prefix: string;
   created: string;
   lastUsed: string;
+  /** What it may call, as the create-key dialog put it (#187). */
+  endpoints: EndpointScope;
+  /** When it expires, as the dialog put it: `Never`, else the date. */
+  expires: string;
 }
+
+/** A key's endpoints as the dialog names them: `All endpoints`, or the ticked ones in the checklist's order. */
+export const endpointsText = (scope: EndpointScope): string => (scope.kind === "all" ? "All endpoints" : scope.endpoints.join(", "));
+
+/** A key's expiry as the dialog names it: `Never`, or the day it expires. */
+export const expiresText = (expiresAt: string | null): string => (expiresAt === null ? LIFETIME_LABEL.never : shortDate(expiresAt));
 
 /** The whole dashboard, as the page lays it out. */
 export interface DashboardView {
@@ -91,6 +102,8 @@ export function dashboardView(profile: AccountProfile, keys: readonly OwnedKey[]
         prefix: `${key.displayPrefix}…`,
         created: shortDate(key.createdAt),
         lastUsed: lastUsed(key.lastUsedAt, now),
+        endpoints: key.endpoints,
+        expires: expiresText(key.expiresAt),
       })),
     usage: usageRow(usage.days, usage.total),
   };

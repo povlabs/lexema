@@ -5,12 +5,14 @@
 // sends it every request for its host, so an API request never reaches the
 // per-visitor limits or the App Router, and the API never sets a cookie.
 //
-// A request goes: its `X-API-Key` (401 when missing, unknown or revoked), its
-// key's minute counted in D1 (429 past the key's own limit), its endpoint and
-// method, and then the endpoint's answer (./endpoints.ts), charged in units
+// A request goes: its `X-API-Key` (401 when missing, unknown, revoked or
+// expired), its key's minute counted in D1 (429 past the key's own limit), its
+// endpoint (403 when the key may not call it, #187) and method, and then the
+// endpoint's answer (./endpoints.ts), charged in units
 // (src/api/units.ts). Every response to a known key carries `RateLimit-Limit`,
 // `RateLimit-Remaining` and `RateLimit-Reset`, errors included.
 
+import { allows } from "@lexema/api/keyAccess.ts";
 import { authenticate, type ApiKey, type KeyRefusal } from "@lexema/api/keys.ts";
 import { endpointOf } from "@lexema/api/units.ts";
 import { chargeUnits, countRequest, type MinuteWindow } from "@lexema/api/usage.ts";
@@ -24,6 +26,7 @@ const REFUSAL: Record<KeyRefusal, ErrorJson> = {
   missing: error("missing_key", "Send your API key in the X-API-Key header."),
   unknown: error("invalid_key", "This API key is not valid."),
   revoked: error("revoked_key", "This API key has been revoked."),
+  expired: error("expired_key", "This API key has expired."),
 };
 
 function json(status: number, body: unknown, headers: Record<string, string> = {}): Response {
@@ -52,6 +55,10 @@ export async function handleApi(request: Request, context: ApiContext): Promise<
     const url = new URL(request.url);
     const endpoint = endpointOf(url.pathname);
     if (endpoint === undefined) return json(404, error("not_found", `There is no endpoint at ${url.pathname}.`), limits);
+    // Refused before any answer, so it is charged nothing.
+    if (!allows(key.endpoints, endpoint)) {
+      return json(403, error("endpoint_not_allowed", `This key may not call ${url.pathname}.`), limits);
+    }
     const route = ROUTES[endpoint];
     if (request.method !== route.method) {
       return json(405, error("method_not_allowed", `${url.pathname} answers ${route.method} only.`), {

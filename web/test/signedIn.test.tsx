@@ -7,6 +7,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { renderToStaticMarkup } from "react-dom/server";
 import type { AccountProfile } from "../../src/accounts/accounts.js";
+import { ALL_ENDPOINTS, onlyEndpoints } from "../../src/api/keyAccess.js";
 import type { OwnedKey } from "../../src/api/ownedKeys.js";
 import { AccountUsage, usageDays } from "../../src/api/usage.js";
 import { CREATE_KEY_ACTION, Dashboard, DELETE_ACCOUNT_ACTION, revokeKeyAction } from "../app/Dashboard";
@@ -60,6 +61,8 @@ const key = (keyId: number, name: string, extra: Partial<OwnedKey> = {}): OwnedK
   createdAt: "2026-09-27T08:00:00.000Z",
   lastUsedAt: null,
   revokedAt: null,
+  endpoints: ALL_ENDPOINTS,
+  expiresAt: null,
   ...extra,
 });
 
@@ -67,7 +70,7 @@ const key = (keyId: number, name: string, extra: Partial<OwnedKey> = {}): OwnedK
 function sample() {
   const days = usageDays(NOW);
   const keys = [
-    key(3, "Browser extension"),
+    key(3, "Browser extension", { endpoints: onlyEndpoints(["lemmatize", "lookup"]), expiresAt: "2026-12-27T08:00:00.000Z" }),
     key(2, "Learning app", { lastUsedAt: "2026-09-28T11:58:00.000Z" }),
     key(1, "Old", { revokedAt: "2026-09-20T00:00:00.000Z" }),
   ];
@@ -84,19 +87,22 @@ function sample() {
   return { days, keys, view: dashboardView(profile, keys, usage, NOW) };
 }
 
-test("the dashboard lists each live key, oldest first, with its name, prefix, created, last used and a revoke form", () => {
+test("the dashboard lists each live key, oldest first, with its name, prefix, endpoints, expiry, created, last used and a revoke form", () => {
   const { keys, view } = sample();
   const html = renderToStaticMarkup(<Dashboard view={view} csrf={CSRF} />);
 
   const rows = [...html.matchAll(/<tr[^>]*data-key-id="(\d+)"/g)].map((match) => Number(match[1]));
   assert.deepEqual(rows, [2, 3], "board 28 lists live keys only, oldest first");
-  for (const [name, prefix, used] of [
-    ["Learning app", "lx_22222222…", "2 minutes ago"],
-    ["Browser extension", "lx_33333333…", "never"],
+  for (const [name, prefix, endpoints, expires, used] of [
+    // A key made with the dialog's defaults reads as the dialog put them.
+    ["Learning app", "lx_22222222…", "All endpoints", "Never", "2 minutes ago"],
+    // Only some: the ticked endpoints, in the checklist's order, as the checklist writes them; the expiry is its day.
+    ["Browser extension", "lx_33333333…", "<span[^>]*>lookup, lemmatize</span>", "27 Dec 2026", "never"],
   ]) {
-    // On a phone the created and last-used cells read "Created … · Last used …" (board 28m).
+    // On a phone the cells read "Created … · Last used …", then the endpoints, then "Expires …" (board 28m, #187).
     const row = new RegExp(
-      `<tr[^>]*><td[^>]*>${name}</td><td[^>]*>${prefix}</td><td[^>]*><span[^>]*>Created </span>27 Sep 2026</td><td[^>]*><span[^>]*>\u00a0· Last used </span>${used}</td>`,
+      `<tr[^>]*><td[^>]*>${name}</td><td[^>]*>${prefix}</td><td[^>]*>${endpoints}</td><td[^>]*><span[^>]*>Expires </span>${expires}</td>` +
+        `<td[^>]*><span[^>]*>Created </span>27 Sep 2026</td><td[^>]*><span[^>]*>\u00a0· Last used </span>${used}</td>`,
     );
     assert.match(html, row, name);
   }
@@ -197,6 +203,37 @@ test("the create-key dialog sits over the dashboard, asks for an optional name, 
   assert.match(input, /maxLength="200"/);
   assert.doesNotMatch(input, /required/);
   assert.match(form, /<p[^>]*id="create-key-hint"[^>]*>Optional\. Left empty, it(?:'|&#x27;)s called Key 4\.<\/p>/);
+  // Endpoints (#187, boards 28b and 28c): All endpoints, ticked, or Only some, then its hint and the 8 endpoints' checklist, none ticked.
+  const radios = [...form.matchAll(/<input[^>]*type="radio"[^>]*\/>/g)].map((match) => match[0]);
+  assert.deepEqual(
+    radios.map((radio) => [/name="([^"]*)"/.exec(radio)?.[1], /value="([^"]*)"/.exec(radio)?.[1], radio.includes('checked=""')]),
+    [
+      ["endpoints", "all", true],
+      ["endpoints", "some", false],
+    ],
+  );
+  assert.match(form, />All endpoints<\/label>.*>Only some<\/label>/);
+  assert.match(form, /<p[^>]*id="create-key-endpoints-hint"[^>]*>Only some: pick the endpoints this key may call\. Anything else answers 403\.<\/p>/);
+  const boxes = [...form.matchAll(/<input[^>]*type="checkbox"[^>]*\/>/g)].map((match) => match[0]);
+  assert.deepEqual(
+    boxes.map((box) => /value="([^"]*)"/.exec(box)?.[1]),
+    ["lookup", "lemmatize", "exists", "inflect", "suggest", "nearby", "random", "lookup/batch"],
+  );
+  assert.ok(boxes.every((box) => box.includes('name="endpoint"') && !box.includes('checked=""')));
+  // Expires: Never, 30 days, 90 days and 1 year, Never chosen, and its hint.
+  const select = /<select[^>]*id="create-key-expires"[^>]*>(.*?)<\/select>/.exec(form);
+  assert.ok(select !== null);
+  assert.match(select[0], /name="expires"/);
+  assert.deepEqual(
+    [...select[1].matchAll(/<option value="([^"]*)"( selected="")?>([^<]*)<\/option>/g)].map((option) => [option[1], option[2] !== undefined, option[3]]),
+    [
+      ["never", true, "Never"],
+      ["30-days", false, "30 days"],
+      ["90-days", false, "90 days"],
+      ["1-year", false, "1 year"],
+    ],
+  );
+  assert.match(form, /<p[^>]*id="create-key-expires-hint"[^>]*>After this date the key answers 401\.<\/p>/);
   // Cancel is a link back, so it makes no key; Create key is the form's one submit.
   assert.match(form, new RegExp(`<a[^>]*href="${DASHBOARD}"[^>]*>Cancel</a><button[^>]*type="submit"[^>]*>Create key</button></div>$`));
   assert.equal([...form.matchAll(/type="submit"/g)].length, 1);

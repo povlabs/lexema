@@ -692,7 +692,7 @@ export const GRAMMAR_VALUES = (Object.entries(GRAMMAR_CODES) as [string, Readonl
 );
 
 export interface ErrorReference {
-  status: 400 | 401 | 404 | 405 | 429 | 503;
+  status: 400 | 401 | 403 | 404 | 405 | 429 | 503;
   code: string;
   when: string;
 }
@@ -709,6 +709,8 @@ export const ERRORS: readonly ErrorReference[] = [
   { status: 401, code: "missing_key", when: "No `X-API-Key` header." },
   { status: 401, code: "invalid_key", when: "The key is not one Lexema issued." },
   { status: 401, code: "revoked_key", when: "The key has been revoked." },
+  { status: 401, code: "expired_key", when: "The key is past the expiry it was made with." },
+  { status: 403, code: "endpoint_not_allowed", when: "The key is limited to other endpoints." },
   { status: 404, code: "unknown_lemma", when: "`/inflect`: `lemma` heads no record." },
   { status: 404, code: "not_found", when: "No endpoint at this path." },
   { status: 405, code: "method_not_allowed", when: "The endpoint takes another method, named in the `Allow` header." },

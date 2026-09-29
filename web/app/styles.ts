@@ -666,7 +666,7 @@ export const DASH_CREATE_BUTTON = `inline-flex h-[2.4375rem] cursor-pointer item
 export const DASH_KEYS_CARD = "mt-[1.0625rem] rounded-[6px] border border-border sm:mt-[0.9375rem]";
 export const KEYS_TABLE = "w-full border-collapse text-left max-sm:block";
 export const KEYS_HEAD_ROW = "max-sm:hidden";
-export const KEYS_HEAD = "h-[2.4375rem] border-b border-border px-0 font-sans text-[0.78125rem] font-normal text-text-muted first:w-[17.5rem] first:pl-5 [&:nth-child(2)]:w-[18.75rem] [&:nth-child(3)]:w-[11.25rem]";
+export const KEYS_HEAD = "h-[2.4375rem] border-b border-border px-0 font-sans text-[0.78125rem] font-normal text-text-muted first:w-[13.75rem] first:pl-5 [&:nth-child(2)]:w-[9.375rem] [&:nth-child(3)]:w-[16.25rem] [&:nth-child(4)]:w-[8.125rem] [&:nth-child(5)]:w-[8.125rem]";
 export const KEYS_BODY = "max-sm:block";
 export const KEYS_ROW =
   "border-b border-border last:border-b-0 max-sm:flex max-sm:flex-wrap max-sm:items-baseline max-sm:px-4 max-sm:pt-3 max-sm:pb-[0.65625rem] sm:h-[2.875rem] sm:last:h-[2.8125rem]";
@@ -676,6 +676,14 @@ export const KEYS_PREFIX = "p-0 font-mono text-[0.8125rem] leading-5 sm:text-[0.
 const KEYS_WHEN = `${KEYS_TEXT} whitespace-nowrap text-text max-sm:order-3 max-sm:mt-[0.1875rem] max-sm:inline max-sm:text-[0.75rem] max-sm:text-text-muted`;
 export const KEYS_CREATED = KEYS_WHEN;
 export const KEYS_LAST_USED = KEYS_WHEN;
+/** What a key may call and when it expires (#187): on a phone, a line each under Created and Last used. */
+export const KEYS_ENDPOINTS =
+  "py-0 pr-4 pl-0 font-sans text-[0.9375rem] leading-5 text-text max-sm:order-5 max-sm:mt-[0.1875rem] max-sm:block max-sm:w-full max-sm:pr-0 max-sm:text-[0.75rem] max-sm:text-text-muted sm:py-3 sm:text-[0.875rem]";
+/** Only some: the endpoints' names, as the checklist writes them. */
+export const KEYS_ENDPOINT_NAMES = "font-mono text-[0.8125rem] max-sm:text-[0.75rem]";
+export const KEYS_EXPIRES = `${KEYS_TEXT} whitespace-nowrap text-text max-sm:order-6 max-sm:mt-[0.1875rem] max-sm:block max-sm:w-full max-sm:text-[0.75rem] max-sm:text-text-muted`;
+/** Ends a phone card's Created line, so the endpoints start their own. */
+export const KEYS_PHONE_BREAK = "hidden p-0 max-sm:order-4 max-sm:block max-sm:h-0 max-sm:basis-full";
 /** "Created " and " · Last used ": a phone's card names what the table's heads name. */
 export const KEYS_PHONE_LABEL = "sm:hidden";
 export const KEYS_ACTION = "p-0 text-right max-sm:order-1 max-sm:block sm:pr-5 sm:pl-4";
@@ -732,13 +740,49 @@ export const KEY_CREATED_ACTIONS = "mt-[0.8125rem] flex justify-end sm:mt-[0.937
 /** Done: the board's 76 × 37 px. */
 export const KEY_DONE = `inline-flex h-[2.3125rem] items-center rounded-[4px] border border-accent bg-accent px-[1.1875rem] font-sans text-[0.875rem] font-semibold whitespace-nowrap text-surface no-underline ${FOCUS_RING}`;
 
-/** Board 28b: the title, Name, its field and hint, Cancel and Create key; the same on a phone (28bm). */
-export const CREATE_KEY_BOX = DELETE_BOX;
-export const CREATE_KEY_LABEL = "mt-[0.9375rem] mb-[0.4375rem] block font-sans text-[0.875rem] leading-[1.0625rem] font-semibold text-text-strong";
-export const CREATE_KEY_INPUT =
-  "block h-[2.5625rem] w-full rounded-[4px] border border-border-strong bg-surface px-3.5 font-sans text-[0.875rem] text-text-strong outline-none placeholder:text-text-muted focus:border-accent";
-export const CREATE_KEY_HINT = "m-0 mt-[0.4375rem] font-sans text-[0.8125rem] leading-4 text-text-muted";
-export const CREATE_KEY_ACTIONS = "mt-[1.4375rem] flex justify-end gap-2.5";
+/**
+ * Board 28b: the title; Name, its field and hint; Endpoints, All endpoints or
+ * Only some, and its hint; Expires, its select and hint; Cancel and Create
+ * key. Board 28c: Only some ticked, the hint gives way to the checklist of
+ * endpoints. The same on a phone (28bm), where the Endpoints hint wraps.
+ */
+export const CREATE_KEY_BOX = `${MODAL_BOX} sm:max-w-[37.5rem]`;
+/** Opens and closes the checklist with no script: the form knows whether Only some is ticked. */
+export const CREATE_KEY_FORM = "group/create";
+const CREATE_KEY_LABEL_TEXT = "block font-sans text-[0.84375rem] leading-[1.0625rem] font-semibold text-text-strong";
+export const CREATE_KEY_LABEL = `${CREATE_KEY_LABEL_TEXT} mt-[1.1875rem] mb-2`;
+/** Name, under the title. */
+export const CREATE_KEY_LABEL_FIRST = `${CREATE_KEY_LABEL_TEXT} mt-[1.125rem] mb-2`;
+const CREATE_KEY_CONTROL =
+  "block h-[2.375rem] w-full rounded-[4px] border border-border-strong bg-surface px-3.5 font-sans text-[0.9375rem] text-text-strong outline-none focus:border-accent";
+export const CREATE_KEY_INPUT = `${CREATE_KEY_CONTROL} placeholder:text-text-muted`;
+export const CREATE_KEY_HINT = "m-0 mt-2 font-sans text-[0.78125rem] leading-[1.1875rem] text-text-muted";
+/** The Endpoints hint, which gives way to the checklist while Only some is ticked (board 28c). */
+export const CREATE_KEY_SCOPE_HINT = `${CREATE_KEY_HINT} group-has-[[name=endpoints][value=some]:checked]/create:hidden`;
+
+/** All endpoints and Only some, side by side at every width. */
+export const CREATE_KEY_SCOPES = "grid grid-cols-2 gap-2";
+/** One choice: outlined; ticked, on the page's own surface with an accent outline and bright text. */
+export const CREATE_KEY_SCOPE =
+  "flex h-[2.3125rem] cursor-pointer items-center gap-[0.5625rem] rounded-[4px] border border-border-strong pl-2.5 font-sans text-[0.875rem] text-text has-checked:border-accent has-checked:bg-surface has-checked:text-text-strong has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-accent";
+/** The radio's circle: 18 px in `border-strong`; ticked, a 20 px accent ring round the surface. */
+export const CREATE_KEY_RADIO =
+  "m-px size-[1.125rem] shrink-0 cursor-pointer appearance-none rounded-full border-[1.5px] border-border-strong outline-none checked:m-0 checked:size-5 checked:border-[5px] checked:border-accent";
+
+/** Board 28c's checklist: the 8 endpoints in two columns, shown only while Only some is ticked. */
+export const CREATE_KEY_CHECKLIST =
+  "m-0 mt-2 hidden grid-cols-2 gap-x-2.5 gap-y-3.5 rounded-[4px] border border-border px-2.5 py-3 group-has-[[name=endpoints][value=some]:checked]/create:grid";
+export const CREATE_KEY_CHECK = "relative flex cursor-pointer items-center gap-3 font-mono text-[0.8125rem] leading-[1.125rem] text-text has-checked:text-text-strong";
+export const CREATE_KEY_CHECKBOX = `peer size-[1.125rem] shrink-0 cursor-pointer appearance-none rounded-[4px] border border-border-strong checked:border-accent checked:bg-accent ${FOCUS_RING}`;
+/** The tick, drawn over a ticked box in the page's surface colour. */
+export const CREATE_KEY_TICK = "pointer-events-none absolute top-1/2 left-1 hidden h-auto w-2.5 -translate-y-1/2 text-surface peer-checked:block";
+
+/** Expires: the select, its value muted while it says Never, and a chevron where the native arrow was. */
+export const CREATE_KEY_SELECT_WRAP = "relative";
+export const CREATE_KEY_SELECT = `${CREATE_KEY_CONTROL} cursor-pointer appearance-none pr-10 has-[option[value=never]:checked]:text-text-muted`;
+export const CREATE_KEY_CHEVRON = "pointer-events-none absolute top-1/2 right-3.5 size-4 -translate-y-1/2 text-text-muted";
+
+export const CREATE_KEY_ACTIONS = "mt-7 flex justify-end gap-2.5";
 export const CREATE_KEY_SUBMIT = `inline-flex h-[2.3125rem] cursor-pointer items-center rounded-[4px] border border-accent bg-accent px-[1.0625rem] font-sans text-[0.875rem] font-semibold whitespace-nowrap text-surface ${FOCUS_RING}`;
 
 /** Board 30: the question, what deleting does, Cancel and Delete account. */

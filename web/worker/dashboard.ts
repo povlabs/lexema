@@ -5,7 +5,9 @@
 //
 //   POST /dashboard/keys               make a key named by the form's `name`, or,
 //                                      when it is absent or blank, `Key 1`,
-//                                      `Key 2`, … (#169, #187)
+//                                      `Key 2`, … (#169, #187); limited to the
+//                                      ticked `endpoint`s when `endpoints` is
+//                                      `some`, and expiring after `expires`
 //   POST /dashboard/keys/<id>/revoke   revoke one of the account's keys
 //   POST /dashboard/account/delete     delete the account; the form must carry
 //                                      `confirm=delete-account`
@@ -31,6 +33,7 @@
 
 import { deleteAccount } from "@lexema/accounts/accounts.ts";
 import { csrfMatches, csrfToken, sessionAccount } from "@lexema/accounts/sessions.ts";
+import { ALL_ENDPOINTS, expiresAt, keyLifetime, onlyEndpoints, type KeyAccess } from "@lexema/api/keyAccess.ts";
 import { createAccountKey, KEY_NAME_MAX, keyName, listAccountKeys, revokeAccountKey, type KeyName } from "@lexema/api/ownedKeys.ts";
 import { fromD1, type TransactionalDatabase } from "@lexema/lookup/database.ts";
 import { DEVELOPERS_SEGMENT } from "./hosts.ts";
@@ -93,6 +96,37 @@ export async function requestedKeyName(sent: string | undefined, made: () => Pro
 export const CSRF_FIELD = "csrf";
 /** The create form's field carrying the key's name. */
 export const KEY_NAME_FIELD = "name";
+/** The create form's choice between every endpoint and some (board 28b): `all` or `some`. */
+export const ENDPOINT_SCOPE_FIELD = "endpoints";
+export const ENDPOINT_SCOPE = { all: "all", some: "some" } as const;
+/** The create form's checklist (board 28c): one `endpoint` field per endpoint ticked. */
+export const ENDPOINT_FIELD = "endpoint";
+/** The create form's expiry: one of `KEY_LIFETIMES`. */
+export const EXPIRES_FIELD = "expires";
+
+/**
+ * What a create form asks the key to reach (#187): every endpoint unless it
+ * says `some`, and then exactly the ticked ones, at least one; never expiring
+ * unless it names a lifetime the dialog offers. Anything else is refused with
+ * the reason, and no key is made.
+ */
+export function requestedAccess(form: FormData, now: number): { ok: true; access: KeyAccess } | { ok: false; refusal: string } {
+  const scope = field(form, ENDPOINT_SCOPE_FIELD) ?? ENDPOINT_SCOPE.all;
+  let endpoints = ALL_ENDPOINTS;
+  if (scope === ENDPOINT_SCOPE.some) {
+    const ticked = form.getAll(ENDPOINT_FIELD).filter((value) => typeof value === "string");
+    const only = onlyEndpoints(ticked);
+    if (only === undefined) {
+      return { ok: false, refusal: ticked.length === 0 ? "Tick at least one endpoint, or choose All endpoints." : "That is not an endpoint." };
+    }
+    endpoints = only;
+  } else if (scope !== ENDPOINT_SCOPE.all) {
+    return { ok: false, refusal: "Choose All endpoints or Only some." };
+  }
+  const lifetime = keyLifetime(field(form, EXPIRES_FIELD) ?? "never");
+  if (lifetime === undefined) return { ok: false, refusal: "Choose when the key expires." };
+  return { ok: true, access: { endpoints, expiresAt: expiresAt(lifetime, now) } };
+}
 /** What the delete form's `confirm` field must say for the account to be deleted. */
 export const DELETE_CONFIRMATION = "delete-account";
 
@@ -231,7 +265,9 @@ export async function answerDashboard(request: Request, route: DashboardRoute, c
       case "create-key": {
         const name = await requestedKeyName(field(form, KEY_NAME_FIELD), async () => (await listAccountKeys(db, accountId)).length);
         if (name === undefined) return text(400, `A key's name can be at most ${KEY_NAME_MAX} characters.`);
-        const created = await createAccountKey(db, accountId, name, context.now);
+        const asked = requestedAccess(form, context.now);
+        if (!asked.ok) return text(400, asked.refusal);
+        const created = await createAccountKey(db, accountId, name, context.now, asked.access);
         if (created.outcome === "refused") return text(401, "Sign in first.");
         return seeOther(KEY_CREATED, [cookie(NEW_KEY_COOKIE, `${created.keyId}.${created.key}`, NEW_KEY_SECONDS)]);
       }

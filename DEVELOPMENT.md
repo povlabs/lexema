@@ -89,6 +89,8 @@ A local database seeded before
 [#167](https://github.com/hueypov/lexema/issues/167) has no `owner_account_id`,
 `display_prefix` or `last_used_at` on `api_key`, and no `deleted_at` on
 `developer_account`, so `create` and every API call fail on the missing column.
+One seeded before [#187](https://github.com/hueypov/lexema/issues/187) has no
+`endpoints` or `expires_at` on `api_key`, so every API call fails on the missing column.
 Run `pnpm run seed:dev` again: it rebuilds the database from
 [src/db/schema.sql](./src/db/schema.sql), so make its keys again afterwards.
 

@@ -15,6 +15,7 @@ import { fileURLToPath } from "node:url";
 import { DatabaseSync } from "node:sqlite";
 import { gzipSync } from "node:zlib";
 import { signInAccount, verifiedIdentity } from "../../src/accounts/accounts.js";
+import { ALL_ENDPOINTS, onlyEndpoints, type KeyAccess } from "../../src/api/keyAccess.js";
 import { ACCEPT_KEY_SQL, createKey, revokeKey } from "../../src/api/keys.js";
 import { createAccountKey, keyName, listAccountKeys } from "../../src/api/ownedKeys.js";
 import { UNIT_WEIGHT, type Endpoint } from "../../src/api/units.js";
@@ -770,4 +771,64 @@ test("an owned key's calls stamp its last use, and the account's 30-day usage re
   expected[USAGE_WINDOW_DAYS - 1] = today;
   assert.deepEqual(usage.keys, [{ keyId: created.keyId, units: expected }]);
   assert.deepEqual(usage.total, expected);
+});
+
+/** A key made in the dashboard with this access (#187), under its own account. */
+async function keyWith(subject: string, access: KeyAccess): Promise<{ keyId: number; key: string }> {
+  const identity = verifiedIdentity("github", { subject, verifiedEmail: `${subject}@example.com` });
+  const name = keyName(subject);
+  assert.ok(identity !== undefined && name !== undefined);
+  const created = await createAccountKey(db, (await signInAccount(db, identity, NOW)).accountId, name, NOW, access);
+  assert.ok(created.outcome === "created");
+  return created;
+}
+
+test("a key limited to some endpoints answers them, and every other endpoint is a 403 with the JSON error, costing no units", async () => {
+  const some = onlyEndpoints(["lookup", "exists"]);
+  assert.ok(some !== undefined);
+  const { keyId, key } = await keyWith("limited", { endpoints: some, expiresAt: null });
+
+  for (const path of ["lookup?q=casa", "exists?q=casa"]) assert.equal((await send(key, path)).status, 200, path);
+  const allowed = unitsOf(keyId);
+  assert.deepEqual(allowed, [{ day: "2026-09-27", units: UNIT_WEIGHT.lookup.units + UNIT_WEIGHT.exists.units }]);
+
+  const others: [Endpoint, string, string?][] = [
+    ["lemmatize", "lemmatize?q=sale"],
+    ["inflect", "inflect?lemma=andare"],
+    ["suggest", "suggest?q=sal"],
+    ["nearby", "nearby?q=mangare"],
+    ["random", "random"],
+    ["lookup/batch", "lookup/batch", JSON.stringify({ q: ["casa"] })],
+  ];
+  for (const [endpoint, path, body] of others) {
+    const response = await send(key, path, body);
+    assert.equal(response.status, 403, endpoint);
+    assert.equal(response.headers.get("content-type"), "application/json", endpoint);
+    assert.equal(response.headers.get("ratelimit-limit"), "60", endpoint);
+    const json: Json = await response.json();
+    assert.equal(json.error.code, "endpoint_not_allowed", endpoint);
+    assert.equal(json.error.message, `This key may not call /v1/${endpoint}.`, endpoint);
+  }
+  // A wrong method on a forbidden endpoint is refused the same way, and none of it was charged.
+  assert.equal((await send(key, "lemmatize?q=sale", "{}")).status, 403);
+  assert.deepEqual(unitsOf(keyId), allowed);
+
+  // Every endpoint is open to a key made with All endpoints.
+  const open = await keyWith("open", { endpoints: ALL_ENDPOINTS, expiresAt: null });
+  assert.equal((await send(open.key, "lemmatize?q=sale")).status, 200);
+});
+
+test("an expired key answers 401 expired_key from its expiry on, like a revoked key, and is not charged", async () => {
+  const { keyId, key } = await keyWith("expiring", { endpoints: ALL_ENDPOINTS, expiresAt: new Date(NOW + 60_000).toISOString() });
+  // A minute before its expiry it still answers.
+  assert.equal((await call("/v1/lookup?q=casa", key)).status, 200);
+  for (const later of [NOW + 60_000, NOW + 24 * 60 * 60 * 1000]) {
+    const response = await call("/v1/lookup?q=casa", key, later);
+    assert.equal(response.status, 401);
+    // No limit headers: like any refused key, it never reached its minute.
+    assert.equal(response.headers.get("ratelimit-limit"), null);
+    const json: Json = await response.json();
+    assert.deepEqual(json.error, { code: "expired_key", message: "This API key has expired." });
+  }
+  assert.deepEqual(unitsOf(keyId), [{ day: "2026-09-27", units: UNIT_WEIGHT.lookup.units }]);
 });

@@ -539,6 +539,12 @@ CREATE TABLE report_opening (
 -- with the CLI (src/api/keyCli.ts). `display_prefix` is the key's first
 -- characters, stored so a key can be named without its secret (#167).
 -- `last_used_at` is stamped each time the key is accepted.
+--
+-- `endpoints` and `expires_at` are what the key may reach and until when
+-- (#187, src/api/keyAccess.ts). `endpoints` is NULL for every endpoint, or a
+-- JSON array of the endpoints it may call, never empty. `expires_at` is NULL
+-- for a key that never expires; from that moment the key is refused. A key
+-- made before #187 has both NULL: every endpoint, never expiring.
 CREATE TABLE api_key (
   key_id           INTEGER PRIMARY KEY,
   key_hash         TEXT    NOT NULL UNIQUE CHECK (length(key_hash) = 64),
@@ -552,7 +558,10 @@ CREATE TABLE api_key (
   -- the 59-byte pattern as "LIKE or GLOB pattern too complex" (#167).
   display_prefix   TEXT    NOT NULL CHECK (length(display_prefix) = 11 AND display_prefix GLOB 'lx_*'
                                            AND substr(display_prefix, 4) NOT GLOB '*[^0-9a-f]*'),
-  last_used_at     TEXT               -- ISO-8601; NULL until the key is first accepted
+  last_used_at     TEXT,              -- ISO-8601; NULL until the key is first accepted
+  endpoints        TEXT    CHECK (endpoints IS NULL OR (json_valid(endpoints) AND json_type(endpoints) = 'array'
+                                                        AND json_array_length(endpoints) >= 1)),
+  expires_at       TEXT               -- ISO-8601; NULL for a key that never expires
 ) STRICT;
 
 CREATE INDEX api_key_by_owner ON api_key (owner_account_id);

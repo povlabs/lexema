@@ -52,7 +52,7 @@ test("every key, minute and usage read or write is on a primary key or an index"
   // Reads and updates: a SEARCH through the key's index, never a SCAN.
   const searches: [string, (string | number)[], RegExp][] = [
     [KEY_BY_HASH_SQL, ["0".repeat(64)], /SEARCH api_key USING (COVERING )?INDEX sqlite_autoindex_api_key_1 \(key_hash=\?\)/],
-    [ACCEPT_KEY_SQL, [new Date(NOW).toISOString(), "0".repeat(64)], /SEARCH api_key USING INDEX sqlite_autoindex_api_key_1 \(key_hash=\?\)/],
+    [ACCEPT_KEY_SQL, [new Date(NOW).toISOString(), "0".repeat(64), new Date(NOW).toISOString()], /SEARCH api_key USING INDEX sqlite_autoindex_api_key_1 \(key_hash=\?\)/],
     [KEY_BY_ID_SQL, [1], /SEARCH api_key USING INTEGER PRIMARY KEY \(rowid=\?\)/],
     [REVOKE_KEY_SQL, [new Date(NOW).toISOString(), 1], /SEARCH api_key USING INTEGER PRIMARY KEY \(rowid=\?\)/],
     [SWEEP_MINUTES_SQL, [1, 100], /SEARCH api_key_minute USING (COVERING )?INDEX sqlite_autoindex_api_key_minute_1 \(key_id=\? AND minute<\?\)/],

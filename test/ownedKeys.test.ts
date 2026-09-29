@@ -16,6 +16,7 @@ import {
   verifiedIdentity,
 } from "../src/accounts/accounts.js";
 import { createSession, sessionAccount } from "../src/accounts/sessions.js";
+import { ALL_ENDPOINTS, expiresAt, onlyEndpoints } from "../src/api/keyAccess.js";
 import { authenticate, createKey, DEFAULT_KEY_LIMITS, hashApiKey } from "../src/api/keys.js";
 import {
   ACCOUNT_KEYS_SQL,
@@ -69,7 +70,7 @@ test("every owned-key, usage and deletion statement is on a primary key or an in
   const at = new Date(NOW).toISOString();
   const cases: [string, (string | number)[]][] = [
     [ACCOUNT_KEYS_SQL, [1]],
-    [INSERT_OWNED_KEY_SQL, ["0".repeat(64), "k", 1, 1, at, "lx_00000000", 1]],
+    [INSERT_OWNED_KEY_SQL, ["0".repeat(64), "k", 1, 1, at, "lx_00000000", "[\"lookup\"]", at, 1]],
     [REVOKE_OWNED_KEY_SQL, [at, 1, 1]],
     [OWNED_KEY_SQL, [1, 1]],
     [REVOKE_ACCOUNT_KEYS_SQL, [at, 1]],
@@ -108,6 +109,8 @@ test("a key made for an account is stored hashed with its owner, name, display p
       owner_account_id: ada,
       display_prefix: created.displayPrefix,
       last_used_at: null,
+      endpoints: null,
+      expires_at: null,
     },
   );
   assert.deepEqual(DEFAULT_KEY_LIMITS, { perMinuteLimit: 60, dailyUnits: 20_000 });
@@ -150,6 +153,8 @@ test("an account lists only its own keys, newest first, with name, display prefi
       createdAt: new Date(NOW + 1_000).toISOString(),
       lastUsedAt: null,
       revokedAt: new Date(NOW + 9_000).toISOString(),
+      endpoints: ALL_ENDPOINTS,
+      expiresAt: null,
     },
     {
       keyId: first.keyId,
@@ -158,6 +163,8 @@ test("an account lists only its own keys, newest first, with name, display prefi
       createdAt: new Date(NOW).toISOString(),
       lastUsedAt: new Date(NOW + 5_000).toISOString(),
       revokedAt: null,
+      endpoints: ALL_ENDPOINTS,
+      expiresAt: null,
     },
   ]);
   assert.deepEqual(await listAccountKeys(db, 99), []);
@@ -208,7 +215,7 @@ test("usage covers the last 30 UTC days per key and in total, 0 where a key was 
   const a = await ownedKey(db, ada, "a");
   const b = await ownedKey(db, ada, "b");
   const bobs = await ownedKey(db, bob, "bob's");
-  const keyOf = (keyId: number) => ({ keyId, label: "", perMinuteLimit: 60, dailyUnits: 20_000 });
+  const keyOf = (keyId: number) => ({ keyId, label: "", perMinuteLimit: 60, dailyUnits: 20_000, endpoints: ALL_ENDPOINTS });
 
   await chargeUnits(db, keyOf(a.keyId), { endpoint: "lookup" }, NOW); // today: 2
   await chargeUnits(db, keyOf(a.keyId), { endpoint: "nearby" }, NOW); // today: 5 more
@@ -245,7 +252,7 @@ test("deleting an account revokes its keys, removes its sessions and identities,
   const keys = [await ownedKey(db, ada, "one"), await ownedKey(db, ada, "two")];
   const bobs = await ownedKey(db, bob, "bob's");
   await revokeAccountKey(db, ada, keys[1].keyId, NOW - 1_000);
-  await chargeUnits(db, { keyId: keys[0].keyId, label: "", perMinuteLimit: 60, dailyUnits: 20_000 }, { endpoint: "lookup" }, NOW);
+  await chargeUnits(db, { keyId: keys[0].keyId, label: "", perMinuteLimit: 60, dailyUnits: 20_000, endpoints: ALL_ENDPOINTS }, { endpoint: "lookup" }, NOW);
   const session = await createSession(db, ada, NOW);
   const bobSession = await createSession(db, bob, NOW);
 
@@ -305,4 +312,60 @@ test("a deletion that fails partway changes nothing: the account stays signed in
   assert.deepEqual(await deleteAccount(db, ada, NOW), { outcome: "deleted", revokedKeys: 2 });
   assert.equal(await sessionAccount(db, session.token, NOW), undefined);
   assert.deepEqual(await authenticate(db, key, NOW), { outcome: "refused", refusal: "revoked" });
+});
+
+test("a key keeps the endpoints and expiry it was made with; a key made before #187 is every endpoint, never expiring", async () => {
+  const sqlite = schemaDb();
+  const db = fromNodeSqlite(sqlite);
+  const ada = await account(db, "ada@example.com");
+  const some = onlyEndpoints(["inflect", "lookup"]);
+  assert.ok(some !== undefined);
+  const limited = await createAccountKey(db, ada, name("limited"), NOW, { endpoints: some, expiresAt: expiresAt("30-days", NOW) });
+  const open = await ownedKey(db, ada, "open");
+  // A row as #167 wrote it: no endpoints and no expiry.
+  const earlier = await ownedKey(db, ada, "earlier");
+  assert.ok(limited.outcome === "created" && earlier.outcome === "created");
+  sqlite.prepare("UPDATE api_key SET endpoints = NULL, expires_at = NULL WHERE key_id = ?").run(earlier.keyId);
+
+  const stored = (keyId: number) => ({ ...sqlite.prepare("SELECT endpoints, expires_at FROM api_key WHERE key_id = ?").get(keyId) });
+  assert.deepEqual(stored(limited.keyId), { endpoints: '["lookup","inflect"]', expires_at: "2026-10-28T12:00:00.000Z" });
+  assert.deepEqual(stored(open.keyId), { endpoints: null, expires_at: null });
+
+  const listed = new Map((await listAccountKeys(db, ada)).map((key) => [key.name, [key.endpoints, key.expiresAt]]));
+  assert.deepEqual(listed.get("limited"), [{ kind: "only", endpoints: ["lookup", "inflect"] }, "2026-10-28T12:00:00.000Z"]);
+  assert.deepEqual(listed.get("open"), [ALL_ENDPOINTS, null]);
+  assert.deepEqual(listed.get("earlier"), [ALL_ENDPOINTS, null]);
+
+  const accepted = await authenticate(db, limited.key, NOW);
+  assert.ok(accepted.outcome === "accepted");
+  assert.deepEqual(accepted.key.endpoints, some);
+  const earlierAccepted = await authenticate(db, earlier.key, NOW + 400 * DAY);
+  assert.ok(earlierAccepted.outcome === "accepted");
+  assert.deepEqual(earlierAccepted.key.endpoints, ALL_ENDPOINTS);
+
+  // The table keeps no empty or malformed endpoint list.
+  for (const value of ["[]", "{}", "lookup", "3"]) {
+    assert.throws(() => sqlite.prepare("UPDATE api_key SET endpoints = ? WHERE key_id = ?").run(value, open.keyId), /CHECK constraint failed/, value);
+  }
+});
+
+test("an expired key is refused as expired from its expiry on, and its last use is not stamped; a revoked one reads as revoked", async () => {
+  const sqlite = schemaDb();
+  const db = fromNodeSqlite(sqlite);
+  const ada = await account(db, "ada@example.com");
+  const access = { endpoints: ALL_ENDPOINTS, expiresAt: expiresAt("30-days", NOW) };
+  const expiring = await createAccountKey(db, ada, name("expiring"), NOW, access);
+  const revoked = await createAccountKey(db, ada, name("revoked"), NOW, access);
+  assert.ok(expiring.outcome === "created" && revoked.outcome === "created");
+  await revokeAccountKey(db, ada, revoked.keyId, NOW);
+  const lastUsed = (keyId: number) => sqlite.prepare("SELECT last_used_at FROM api_key WHERE key_id = ?").get(keyId)?.last_used_at;
+
+  const expiry = NOW + 30 * DAY;
+  assert.equal((await authenticate(db, expiring.key, expiry - 1)).outcome, "accepted");
+  assert.equal(lastUsed(expiring.keyId), new Date(expiry - 1).toISOString());
+  for (const at of [expiry, expiry + DAY]) {
+    assert.deepEqual(await authenticate(db, expiring.key, at), { outcome: "refused", refusal: "expired" });
+  }
+  assert.equal(lastUsed(expiring.keyId), new Date(expiry - 1).toISOString());
+  assert.deepEqual(await authenticate(db, revoked.key, expiry + DAY), { outcome: "refused", refusal: "revoked" });
 });

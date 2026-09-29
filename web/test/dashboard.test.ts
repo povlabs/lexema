@@ -97,8 +97,12 @@ function site() {
     assert.ok(csrf !== undefined);
 
     /** Post a form to a dashboard action, from this site, with this session's token unless told otherwise. */
-    const post = (path: string, fields: Record<string, string> = {}, headers: Record<string, string> = { origin: DEVELOPERS }) =>
-      send(`${DEVELOPERS}${path}`, { method: "POST", headers, body: new URLSearchParams({ [CSRF_FIELD]: csrf, ...fields }) });
+    const post = (path: string, fields: Record<string, string> | [string, string][] = {}, headers: Record<string, string> = { origin: DEVELOPERS }) => {
+      // A list sends a field more than once, as a checklist does.
+      const body = new URLSearchParams(Array.isArray(fields) ? fields : Object.entries(fields));
+      if (!body.has(CSRF_FIELD)) body.set(CSRF_FIELD, csrf);
+      return send(`${DEVELOPERS}${path}`, { method: "POST", headers, body });
+    };
     return { jar, send, post, accountId, csrf, signedIn: () => signedInAccount(cookie(), db, NOW) };
   }
 
@@ -183,6 +187,53 @@ test("the create-key dialog's form: a sent name is kept, trimmed; an empty one i
   assert.deepEqual(await names(), ["Key 4", "Key 3", "Key 2", "Learning app"]);
 });
 
+test("the create-key dialog's endpoints and expiry: Only some keeps the ticked endpoints, Expires sets the date, the defaults are every endpoint and never", async () => {
+  const { db, browser } = site();
+  const { post, accountId } = await browser(ada);
+  const made = async () => (await listAccountKeys(db, accountId)).map((key) => [key.name, key.endpoints, key.expiresAt]);
+
+  // Board 28b's defaults, as the form sends them: All endpoints, Never.
+  assert.equal((await post("/dashboard/keys", { name: "", endpoints: "all", expires: "never" })).status, 303);
+  // Board 28c: Only some, three ticked; 90 days.
+  const ticked = await post("/dashboard/keys", [
+    ["name", "Learning app"],
+    ["endpoints", "some"],
+    ["endpoint", "inflect"],
+    ["endpoint", "lookup"],
+    ["endpoint", "lemmatize"],
+    ["expires", "90-days"],
+  ]);
+  assert.equal(ticked.status, 303);
+  assert.equal(ticked.headers.get("location"), KEY_CREATED);
+  // Ticked boxes are ignored while All endpoints is chosen, as the dialog hides them.
+  assert.equal((await post("/dashboard/keys", [["endpoints", "all"], ["endpoint", "lookup"], ["expires", "1-year"]])).status, 303);
+  assert.deepEqual(await made(), [
+    ["Key 3", { kind: "all" }, "2027-09-28T12:00:00.000Z"],
+    ["Learning app", { kind: "only", endpoints: ["lookup", "lemmatize", "inflect"] }, "2026-12-27T12:00:00.000Z"],
+    ["Key 1", { kind: "all" }, null],
+  ]);
+});
+
+test("Only some with nothing ticked, an endpoint that does not exist, or an expiry the dialog does not offer is refused, and no key is made", async () => {
+  const { browser, snapshot } = site();
+  const { post } = await browser(ada);
+  const before = snapshot();
+  const refused: [string, [string, string][]][] = [
+    ["Tick at least one endpoint, or choose All endpoints.", [["endpoints", "some"]]],
+    ["Tick at least one endpoint, or choose All endpoints.", [["name", "app"], ["endpoints", "some"], ["expires", "30-days"]]],
+    ["That is not an endpoint.", [["endpoints", "some"], ["endpoint", "lookup"], ["endpoint", "everything"]]],
+    ["Choose All endpoints or Only some.", [["endpoints", "none"]]],
+    ["Choose when the key expires.", [["expires", "forever"]]],
+  ];
+  for (const [message, fields] of refused) {
+    const answer = await post("/dashboard/keys", fields);
+    assert.equal(answer.status, 400, JSON.stringify(fields));
+    assert.equal(await answer.text(), message);
+    assert.deepEqual(answer.headers.getSetCookie(), []);
+  }
+  assert.deepEqual(snapshot(), before);
+});
+
 test("opening the create-key dialog makes no key: Create key is a link to a page the server draws", async () => {
   const { appSaw, browser, snapshot } = site();
   const adas = await browser(ada);
@@ -264,6 +315,7 @@ test("each action without a session, with a missing or wrong CSRF token, or from
   const actions: [string, Record<string, string>][] = [
     ["/dashboard/keys", { name: "another" }],
     ["/dashboard/keys", { name: "" }],
+    ["/dashboard/keys", { name: "limited", endpoints: "some", endpoint: "lookup", expires: "30-days" }],
     [`/dashboard/keys/${key.keyId}/revoke`, {}],
     ["/dashboard/account/delete", { confirm: DELETE_CONFIRMATION }],
   ];

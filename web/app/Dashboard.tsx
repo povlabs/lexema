@@ -12,14 +12,15 @@
 //
 // On a phone (below `sm`, board 28m) the key table becomes one card per key,
 // with no column heads: the name and Revoke, the prefix, then "Created … ·
-// Last used …". The plan and account cards stack their action under the text.
+// Last used …", then its endpoints, then "Expires …" (#187). The plan and
+// account cards stack their action under the text.
 
 import { CONFIRM_DELETE_PAGE, CREATE_KEY_PAGE, CSRF_FIELD, DELETE_CONFIRMATION } from "../worker/dashboard.ts";
 import { CreateKeyDialog } from "./CreateKeyDialog";
 import { DeleteAccountDialog } from "./DeleteAccountDialog";
 import { DeveloperPage } from "./DeveloperPage";
 import { KeyCreatedDialog } from "./KeyCreated";
-import { deleteWarning, units, type DashboardView, type UsageRow } from "./dashboardView.ts";
+import { deleteWarning, endpointsText, units, type DashboardView, type UsageRow } from "./dashboardView.ts";
 import {
   ACCOUNT_DETAIL,
   ACCOUNT_TEXT,
@@ -39,11 +40,15 @@ import {
   DASH_USAGE_NOTE,
   KEYS_BODY,
   KEYS_CREATED,
+  KEYS_ENDPOINT_NAMES,
+  KEYS_ENDPOINTS,
+  KEYS_EXPIRES,
   KEYS_HEAD,
   KEYS_HEAD_ROW,
   KEYS_LAST_USED,
   KEYS_NAME,
   KEYS_ACTION,
+  KEYS_PHONE_BREAK,
   KEYS_PHONE_LABEL,
   KEYS_PREFIX,
   KEYS_REVOKE,
@@ -125,6 +130,12 @@ export function Dashboard({ view, csrf, dialog }: { view: DashboardView; csrf: s
                           Key
                         </th>
                         <th className={KEYS_HEAD} scope="col">
+                          Endpoints
+                        </th>
+                        <th className={KEYS_HEAD} scope="col">
+                          Expires
+                        </th>
+                        <th className={KEYS_HEAD} scope="col">
                           Created
                         </th>
                         <th className={KEYS_HEAD} scope="col">
@@ -140,6 +151,17 @@ export function Dashboard({ view, csrf, dialog }: { view: DashboardView; csrf: s
                         <tr key={key.keyId} className={KEYS_ROW} data-key-id={key.keyId}>
                           <td className={KEYS_NAME}>{key.name}</td>
                           <td className={KEYS_PREFIX}>{key.prefix}</td>
+                          <td className={KEYS_ENDPOINTS}>
+                            {key.endpoints.kind === "all" ? (
+                              endpointsText(key.endpoints)
+                            ) : (
+                              <span className={KEYS_ENDPOINT_NAMES}>{endpointsText(key.endpoints)}</span>
+                            )}
+                          </td>
+                          <td className={KEYS_EXPIRES}>
+                            <span className={KEYS_PHONE_LABEL}>Expires </span>
+                            {key.expires}
+                          </td>
                           <td className={KEYS_CREATED}>
                             <span className={KEYS_PHONE_LABEL}>Created </span>
                             {key.created}
@@ -148,6 +170,7 @@ export function Dashboard({ view, csrf, dialog }: { view: DashboardView; csrf: s
                             <span className={KEYS_PHONE_LABEL}>{"\u00a0· Last used "}</span>
                             {key.lastUsed}
                           </td>
+                          <td className={KEYS_PHONE_BREAK} aria-hidden="true" />
                           <td className={KEYS_ACTION}>
                             <form method="post" action={revokeKeyAction(key.keyId)}>
                               <CsrfField csrf={csrf} />
