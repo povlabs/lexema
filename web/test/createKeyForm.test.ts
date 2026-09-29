@@ -3,7 +3,7 @@
 
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { canSend, draftFields, draftOf, drawnStatus, EMPTY_DRAFT, readDraft, type CreateKeyDraft } from "../app/createKeyForm.ts";
+import { canSend, draftFields, draftOf, EMPTY_DRAFT, readDraft, shownProblems, type CreateKeyDraft } from "../app/createKeyForm.ts";
 
 const fields = (pairs: [string, string][]) => new URLSearchParams(pairs);
 
@@ -17,7 +17,7 @@ test("Create key can be pressed only while the form is valid and not on its way:
   assert.equal(canSend(EMPTY_DRAFT, { kind: "failed", message: "Too many keys made. Try again in a minute." }), true);
 });
 
-test("a draft reads its form's defaults, keeps what was sent, and survives the trip through form fields", () => {
+test("a draft reads its form's defaults, keeps what was sent, and survives the trip through the fields the dialog sends", () => {
   assert.deepEqual(draftOf(fields([])), EMPTY_DRAFT);
   const sent = draftOf(
     fields([
@@ -44,7 +44,13 @@ test("a draft's problems come from the draft alone, one per field, in the form's
   assert.deepEqual(reading.problems.map((problem) => problem.field), ["name", "endpoints", "expires"]);
   // Ticks are ignored while All endpoints is chosen, as the dialog hides them.
   assert.equal(readDraft({ ...EMPTY_DRAFT, ticked: ["lookup"], strayTick: true }).ok, true);
-  // A form the server drew again opens refused with its own problems; one with none opens as a plain form.
-  assert.deepEqual(drawnStatus({ ...EMPTY_DRAFT, scope: "some" }), { kind: "refused", problems: [{ field: "endpoints", message: "Tick at least one endpoint." }] });
-  assert.deepEqual(drawnStatus(EMPTY_DRAFT), { kind: "editing" });
+});
+
+test("the dialog shows the draft's own problems as it is filled in, and the server's for a form it refused", () => {
+  const nothingTicked = { ...EMPTY_DRAFT, scope: "some" as const };
+  assert.deepEqual(shownProblems(nothingTicked, { kind: "editing" }), [{ field: "endpoints", message: "Tick at least one endpoint." }]);
+  assert.deepEqual(shownProblems({ ...nothingTicked, ticked: ["lookup"] }, { kind: "editing" }), []);
+  assert.deepEqual(shownProblems(EMPTY_DRAFT, { kind: "editing" }), []);
+  const refused = { kind: "refused", problems: [{ field: "expires", message: "Choose when the key expires." }] } as const;
+  assert.deepEqual(shownProblems(EMPTY_DRAFT, refused), refused.problems);
 });

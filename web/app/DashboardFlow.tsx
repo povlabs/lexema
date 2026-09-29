@@ -1,40 +1,38 @@
 "use client";
 
-// The dashboard's key flow in place (#187): with a script, Create key, Revoke
-// and Delete account change the page where it stands instead of loading
-// another. Every control here is still a link or a form the server answers,
-// so with no script the page works as before: Create key goes to
-// `/dashboard?create=key`, each form posts, and the server draws the answer.
+// The dashboard's key flow, in place (#187): Create key, Revoke and Delete
+// account change the page where it stands instead of loading another. Each
+// sends its action with fetch (dashboardActions.ts), through the session,
+// Origin, CSRF and key-creation checks.
 //
-// With a script, a plain click on Create key or Delete account opens its
-// dialog here, and each form is sent with fetch asking for JSON
-// (dashboardActions.ts), through the same session, CSRF and key-creation
-// checks. A new key's dialog (board 29) then opens with its secret, which
-// lives only in this page's memory and goes when the dialog closes; the key
-// list gains the new row. Revoke takes the row away. Deleting the account ends
-// the session, so the page then goes where signing out goes.
-//
-// Closing a dialog in place (Cancel, Done, ×, Escape) leaves the address at
-// `/dashboard`, so reloading never reopens it, and gives the focus back to the
-// control that opened it.
+// Create key opens board 28b; a new key closes it and opens board 29 with its
+// secret, which lives only in this page's memory and goes when that dialog
+// closes, and the key list gains the new row. Revoke takes the row away.
+// Delete account opens board 30; deleting ends the session, so the page then
+// goes where signing out goes. The dialogs are Base UI's (ADR 0010,
+// DashboardModal.tsx), and whether each is open is held here.
 
+import { Dialog } from "@base-ui/react/dialog";
 import { createContext, useCallback, useContext, useMemo, useRef, useState, type ReactNode } from "react";
-import { EMPTY_DRAFT, defaultKeyName, type CreateKeyDraft } from "./createKeyForm.ts";
-import { CreateKeyDialog } from "./CreateKeyDialog";
-import { CsrfField, plainClick } from "./DashboardControls";
-import { CONFIRM_DELETE_PAGE, CREATE_KEY_PAGE, DASHBOARD, revokeKeyAction, sendAction } from "./dashboardActions.ts";
+import { defaultKeyName } from "./createKeyForm.ts";
+import { CreateKeyForm } from "./CreateKeyDialog";
+import { CSRF_FIELD, revokeKeyAction, sendAction, UNREACHABLE } from "./dashboardActions.ts";
+import { DashboardModal } from "./DashboardModal";
 import { deleteWarning, endpointsText, type KeyRow } from "./dashboardView.ts";
-import { DeleteAccountDialog } from "./DeleteAccountDialog";
-import { KeyCreatedDialog } from "./KeyCreated";
+import { DeleteAccount } from "./DeleteAccountDialog";
+import { KeyCreated } from "./KeyCreated";
 import {
-  DASH_BEHIND,
+  CREATE_KEY_BOX,
   DASH_KEYS_CARD,
+  DELETE_BOX,
+  KEY_CREATED_BOX,
   KEYS_ACTION,
   KEYS_BODY,
   KEYS_CREATED,
   KEYS_ENDPOINT_NAMES,
   KEYS_ENDPOINTS,
   KEYS_EXPIRES,
+  KEYS_FAILURE,
   KEYS_HEAD,
   KEYS_HEAD_ROW,
   KEYS_LAST_USED,
@@ -47,25 +45,12 @@ import {
   KEYS_TABLE,
 } from "./styles.ts";
 
-/**
- * A dialog open over the dashboard: the create form (board 28b), holding the
- * draft it opens with; a new key's secret (board 29); or the delete
- * confirmation (board 30).
- */
-export type DashboardDialog =
-  | { readonly kind: "create-key"; readonly draft: CreateKeyDraft }
-  | { readonly kind: "key-created"; readonly name: string; readonly secret: string }
-  | { readonly kind: "confirm-delete" };
-
 interface Flow {
   readonly keys: readonly KeyRow[];
   /** Every key the account has made, revoked ones too: the next default name's number. */
   readonly made: number;
   readonly csrf: string;
-  readonly dialog: DashboardDialog | undefined;
-  open(dialog: DashboardDialog): void;
-  close(): void;
-  created(key: KeyRow, secret: string): void;
+  created(key: KeyRow): void;
   revoked(keyId: number): void;
 }
 
@@ -77,196 +62,176 @@ function useFlow(): Flow {
   return flow;
 }
 
-/** The dashboard's state, around the page (`children`, inert while a dialog is open) and whichever dialog is open. */
+/** The dashboard's live keys and key count, around the page (`children`). */
 export function DashboardFlow({
   keys: firstKeys,
   made: firstMade,
   csrf,
-  dialog: firstDialog,
   children,
 }: {
   keys: readonly KeyRow[];
   made: number;
   csrf: string;
-  dialog?: DashboardDialog;
   children: ReactNode;
 }) {
   const [keys, setKeys] = useState(firstKeys);
   const [made, setMade] = useState(firstMade);
-  const [dialog, setDialog] = useState(firstDialog);
-  const opener = useRef<HTMLElement | null>(null);
-
-  const open = useCallback((next: DashboardDialog) => {
-    opener.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    setDialog(next);
-  }, []);
-  const close = useCallback(() => {
-    setDialog(undefined);
-    // The key-created page and `?create=key` are addresses for the page with no script; closed here, the page is the dashboard.
-    if (window.location.pathname + window.location.search !== DASHBOARD) window.history.replaceState(window.history.state, "", DASHBOARD);
-    const back = opener.current;
-    opener.current = null;
-    requestAnimationFrame(() => back?.focus());
-  }, []);
-  const created = useCallback((key: KeyRow, secret: string) => {
+  const created = useCallback((key: KeyRow) => {
     setKeys((live) => [...live, key]);
     setMade((count) => count + 1);
-    setDialog({ kind: "key-created", name: key.name, secret });
   }, []);
   const revoked = useCallback((keyId: number) => setKeys((live) => live.filter((key) => key.keyId !== keyId)), []);
+  const flow = useMemo<Flow>(() => ({ keys, made, csrf, created, revoked }), [keys, made, csrf, created, revoked]);
+  return <FlowContext.Provider value={flow}>{children}</FlowContext.Provider>;
+}
 
-  const flow = useMemo<Flow>(() => ({ keys, made, csrf, dialog, open, close, created, revoked }), [keys, made, csrf, dialog, open, close, created, revoked]);
+/** Where making a key stands: no dialog, board 28b open, or board 29 open with the new key's secret. */
+type KeyStep =
+  | { readonly kind: "closed" }
+  | { readonly kind: "asking" }
+  | { readonly kind: "created"; readonly name: string; readonly secret: string };
+
+const CLOSED: KeyStep = { kind: "closed" };
+
+/** Create key, and the two dialogs it leads to: the form (board 28b), then the new key's secret (board 29). */
+export function CreateKeyControl({ className }: { className: string }) {
+  const { made, csrf, created } = useFlow();
+  const [step, setStep] = useState<KeyStep>(CLOSED);
+  const trigger = useRef<HTMLButtonElement>(null);
   return (
-    <FlowContext.Provider value={flow}>
-      <div className={DASH_BEHIND} inert={dialog !== undefined}>
-        {children}
-      </div>
-      <OpenDialog />
-    </FlowContext.Provider>
+    <>
+      <Dialog.Root
+        open={step.kind === "asking"}
+        onOpenChange={(open) => setStep((now) => (open ? { kind: "asking" } : now.kind === "asking" ? CLOSED : now))}
+      >
+        <Dialog.Trigger ref={trigger} className={className}>
+          Create key
+        </Dialog.Trigger>
+        <DashboardModal className={CREATE_KEY_BOX}>
+          <CreateKeyForm
+            defaultName={defaultKeyName(made)}
+            csrf={csrf}
+            onCreated={(key, secret) => {
+              created(key);
+              setStep({ kind: "created", name: key.name, secret });
+            }}
+          />
+        </DashboardModal>
+      </Dialog.Root>
+      <Dialog.Root open={step.kind === "created"} onOpenChange={(open) => !open && setStep(CLOSED)}>
+        <DashboardModal className={KEY_CREATED_BOX} finalFocus={trigger}>
+          {step.kind === "created" && <KeyCreated name={step.name} secret={step.secret} />}
+        </DashboardModal>
+      </Dialog.Root>
+    </>
   );
 }
 
-function OpenDialog() {
-  const { dialog, made, keys, csrf, close, created } = useFlow();
-  switch (dialog?.kind) {
-    case "create-key":
-      return <CreateKeyDialog draft={dialog.draft} defaultName={defaultKeyName(made)} csrf={csrf} onClose={close} onCreated={created} />;
-    case "key-created":
-      return <KeyCreatedDialog name={dialog.name} secret={dialog.secret} onClose={close} />;
-    case "confirm-delete":
-      return <DeleteAccountDialog warning={deleteWarning(keys.length)} csrf={csrf} onClose={close} />;
-    case undefined:
-      return null;
-  }
-}
-
-/** Create key: a link to the page that draws the dialog, or, with a script, the dialog opened here. */
-export function CreateKeyLink({ className }: { className: string }) {
-  const { open } = useFlow();
+/** Delete account, and the confirmation it opens (board 30). */
+export function DeleteAccountControl({ className }: { className: string }) {
+  const { keys, csrf } = useFlow();
   return (
-    <a
-      className={className}
-      href={CREATE_KEY_PAGE}
-      onClick={(event) => {
-        if (!plainClick(event)) return;
-        event.preventDefault();
-        open({ kind: "create-key", draft: EMPTY_DRAFT });
-      }}
-    >
-      Create key
-    </a>
+    <Dialog.Root>
+      <Dialog.Trigger className={className}>Delete account</Dialog.Trigger>
+      <DashboardModal className={DELETE_BOX}>
+        <DeleteAccount warning={deleteWarning(keys.length)} csrf={csrf} />
+      </DashboardModal>
+    </Dialog.Root>
   );
 }
 
-/** Delete account: a link to the page that draws the confirmation, or, with a script, the confirmation opened here. */
-export function DeleteAccountLink({ className }: { className: string }) {
-  const { open } = useFlow();
-  return (
-    <a
-      className={className}
-      href={CONFIRM_DELETE_PAGE}
-      onClick={(event) => {
-        if (!plainClick(event)) return;
-        event.preventDefault();
-        open({ kind: "confirm-delete" });
-      }}
-    >
-      Delete account
-    </a>
-  );
-}
-
-/**
- * Revoke: a form that posts, or, with a script, the row taken away in place.
- * An answer that is not `revoked` (an expired form, an outage) sends the form
- * the plain way instead, so the server's own answer says what went wrong.
- */
-function RevokeForm({ keyRow }: { keyRow: KeyRow }) {
+/** Revoke: the row taken away in place, or, refused, the reason said under the table. */
+function RevokeButton({ keyRow, onRefused }: { keyRow: KeyRow; onRefused: (message: string) => void }) {
   const { csrf, revoked } = useFlow();
   const [sending, setSending] = useState(false);
   return (
-    <form
-      method="post"
-      action={revokeKeyAction(keyRow.keyId)}
-      onSubmit={(event) => {
-        event.preventDefault();
-        const form = event.currentTarget;
+    <button
+      className={KEYS_REVOKE}
+      type="button"
+      disabled={sending}
+      aria-label={`Revoke ${keyRow.name}`}
+      onClick={() => {
         setSending(true);
-        void sendAction(form.action, new FormData(form)).then((answer) => {
+        void sendAction(revokeKeyAction(keyRow.keyId), new URLSearchParams({ [CSRF_FIELD]: csrf })).then((answer) => {
           setSending(false);
           if (answer.outcome === "revoked") revoked(keyRow.keyId);
-          else form.submit();
+          else onRefused(answer.outcome === "refused" ? answer.message : UNREACHABLE);
         });
       }}
     >
-      <CsrfField csrf={csrf} />
-      <button className={KEYS_REVOKE} type="submit" disabled={sending} aria-label={`Revoke ${keyRow.name}`}>
-        Revoke
-      </button>
-    </form>
+      Revoke
+    </button>
   );
 }
 
 /** The account's live keys (board 28; one card per key on a phone, 28m), or nothing while it has none. */
 export function KeyTable() {
   const { keys } = useFlow();
+  const [refusal, setRefusal] = useState<string | undefined>(undefined);
   if (keys.length === 0) return null;
   return (
-    <div className={DASH_KEYS_CARD}>
-      <table className={KEYS_TABLE}>
-        <thead className={KEYS_HEAD_ROW}>
-          <tr>
-            <th className={KEYS_HEAD} scope="col">
-              Name
-            </th>
-            <th className={KEYS_HEAD} scope="col">
-              Key
-            </th>
-            <th className={KEYS_HEAD} scope="col">
-              Endpoints
-            </th>
-            <th className={KEYS_HEAD} scope="col">
-              Expires
-            </th>
-            <th className={KEYS_HEAD} scope="col">
-              Created
-            </th>
-            <th className={KEYS_HEAD} scope="col">
-              Last used
-            </th>
-            <th className={KEYS_HEAD} scope="col">
-              <span className="sr-only">Revoke</span>
-            </th>
-          </tr>
-        </thead>
-        <tbody className={KEYS_BODY}>
-          {keys.map((key) => (
-            <tr key={key.keyId} className={KEYS_ROW} data-key-id={key.keyId}>
-              <td className={KEYS_NAME}>{key.name}</td>
-              <td className={KEYS_PREFIX}>{key.prefix}</td>
-              <td className={KEYS_ENDPOINTS}>
-                {key.endpoints.kind === "all" ? endpointsText(key.endpoints) : <span className={KEYS_ENDPOINT_NAMES}>{endpointsText(key.endpoints)}</span>}
-              </td>
-              <td className={KEYS_EXPIRES}>
-                <span className={KEYS_PHONE_LABEL}>Expires </span>
-                {key.expires}
-              </td>
-              <td className={KEYS_CREATED}>
-                <span className={KEYS_PHONE_LABEL}>Created </span>
-                {key.created}
-              </td>
-              <td className={KEYS_LAST_USED}>
-                <span className={KEYS_PHONE_LABEL}>{" · Last used "}</span>
-                {key.lastUsed}
-              </td>
-              <td className={KEYS_PHONE_BREAK} aria-hidden="true" />
-              <td className={KEYS_ACTION}>
-                <RevokeForm keyRow={key} />
-              </td>
+    <>
+      <div className={DASH_KEYS_CARD}>
+        <table className={KEYS_TABLE}>
+          <thead className={KEYS_HEAD_ROW}>
+            <tr>
+              <th className={KEYS_HEAD} scope="col">
+                Name
+              </th>
+              <th className={KEYS_HEAD} scope="col">
+                Key
+              </th>
+              <th className={KEYS_HEAD} scope="col">
+                Endpoints
+              </th>
+              <th className={KEYS_HEAD} scope="col">
+                Expires
+              </th>
+              <th className={KEYS_HEAD} scope="col">
+                Created
+              </th>
+              <th className={KEYS_HEAD} scope="col">
+                Last used
+              </th>
+              <th className={KEYS_HEAD} scope="col">
+                <span className="sr-only">Revoke</span>
+              </th>
             </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+          </thead>
+          <tbody className={KEYS_BODY}>
+            {keys.map((key) => (
+              <tr key={key.keyId} className={KEYS_ROW} data-key-id={key.keyId}>
+                <td className={KEYS_NAME}>{key.name}</td>
+                <td className={KEYS_PREFIX}>{key.prefix}</td>
+                <td className={KEYS_ENDPOINTS}>
+                  {key.endpoints.kind === "all" ? endpointsText(key.endpoints) : <span className={KEYS_ENDPOINT_NAMES}>{endpointsText(key.endpoints)}</span>}
+                </td>
+                <td className={KEYS_EXPIRES}>
+                  <span className={KEYS_PHONE_LABEL}>Expires </span>
+                  {key.expires}
+                </td>
+                <td className={KEYS_CREATED}>
+                  <span className={KEYS_PHONE_LABEL}>Created </span>
+                  {key.created}
+                </td>
+                <td className={KEYS_LAST_USED}>
+                  <span className={KEYS_PHONE_LABEL}>{" · Last used "}</span>
+                  {key.lastUsed}
+                </td>
+                <td className={KEYS_PHONE_BREAK} aria-hidden="true" />
+                <td className={KEYS_ACTION}>
+                  <RevokeButton keyRow={key} onRefused={setRefusal} />
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {refusal !== undefined && (
+        <p className={KEYS_FAILURE} role="alert">
+          {refusal}
+        </p>
+      )}
+    </>
   );
 }

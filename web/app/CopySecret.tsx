@@ -1,8 +1,7 @@
 "use client";
 
-// Copy, beside a new key's secret (board 29). The secret itself is in the
-// server's HTML, selectable without a script; this only puts it on the
-// clipboard.
+// Copy, beside a new key's secret (board 29). The secret itself is text in
+// the dialog, selectable; this only puts it on the clipboard.
 
 import { useState } from "react";
 import { CopyIcon } from "./icons";

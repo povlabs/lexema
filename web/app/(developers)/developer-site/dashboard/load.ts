@@ -1,7 +1,7 @@
-// What both dashboard pages read (#169): the signed-in account's view and the
+// What the dashboard page reads (#169): the signed-in account's view and the
 // session's CSRF token, or a trip to sign-in. worker/dashboard.ts sends a
-// visitor without a session to sign-in before either page runs; the check
-// here covers any request that reaches a page anyway.
+// visitor without a session to sign-in before the page runs; the check here
+// covers any request that reaches it anyway.
 import { accountProfile } from "@lexema/accounts/accounts.ts";
 import { listAccountKeys, type OwnedKey } from "@lexema/api/ownedKeys.ts";
 import { accountUsage } from "@lexema/api/usage.ts";

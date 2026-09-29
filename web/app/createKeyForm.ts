@@ -1,11 +1,10 @@
 // The create-key form (#187, boards 28b and 28c) as a value: what it holds,
-// whether it can be sent, and why not. The server reads a posted form with it,
-// the dialog draws itself from it, and the browser disables Create key with it,
-// so the three never disagree about what a valid form is.
-//
-// A draft keeps the form's fields as they came, so a refused form is drawn
-// again with them; a problem is never stored beside a draft, only read off it,
-// so a message can never describe a value the form no longer holds.
+// whether it can be sent, and why not. The dialog holds a draft and sends it
+// as form fields, the server reads those fields back into a draft, and both
+// read its problems with `readDraft`, so the dialog's messages, its disabled
+// Create key and the server's refusal never disagree about what a valid form
+// is. A problem is never stored beside a draft, only read off it, so a message
+// can never describe a value the form no longer holds.
 
 import { ALL_ENDPOINTS, expiresAt, keyLifetime, onlyEndpoints, type EndpointScope, type KeyAccess, type KeyLifetime } from "@lexema/api/keyAccess.ts";
 import { KEY_NAME_MAX, keyName, type KeyName } from "@lexema/api/ownedKeys.ts";
@@ -34,7 +33,7 @@ export interface FormFields {
  * reads as a problem rather than as a default.
  */
 export interface CreateKeyDraft {
-  /** Trimmed. Past `KEY_NAME_MAX + 1` characters it is cut there: still too long, and small enough to draw again. */
+  /** Trimmed (`nameOf`). Past `KEY_NAME_MAX + 1` characters it is cut there: still too long, and small enough to hold. */
   readonly name: string;
   readonly scope: "all" | "some" | "unknown";
   /** The endpoints ticked, each once, in the checklist's order. */
@@ -49,13 +48,16 @@ export const EMPTY_DRAFT: CreateKeyDraft = { name: "", scope: "all", ticked: [],
 
 const text = (value: FormDataEntryValue | null): string | undefined => (typeof value === "string" ? value : undefined);
 
+/** A typed name as a draft holds it: trimmed, and cut one character past the longest a name may be. */
+export const nameOf = (typed: string): string => typed.trim().slice(0, KEY_NAME_MAX + 1);
+
 /** The draft a posted form holds. */
 export function draftOf(fields: FormFields): CreateKeyDraft {
   const scope = text(fields.get(ENDPOINT_SCOPE_FIELD)) ?? ENDPOINT_SCOPE.all;
   const sent = fields.getAll(ENDPOINT_FIELD).map((value) => (typeof value === "string" ? value : ""));
   const expires = text(fields.get(EXPIRES_FIELD)) ?? "never";
   return {
-    name: (text(fields.get(KEY_NAME_FIELD)) ?? "").trim().slice(0, KEY_NAME_MAX + 1),
+    name: nameOf(text(fields.get(KEY_NAME_FIELD)) ?? ""),
     scope: scope === ENDPOINT_SCOPE.all || scope === ENDPOINT_SCOPE.some ? scope : "unknown",
     ticked: ENDPOINTS.filter((endpoint) => sent.includes(endpoint)),
     strayTick: sent.some((value) => !(ENDPOINTS as readonly string[]).includes(value)),
@@ -63,7 +65,7 @@ export function draftOf(fields: FormFields): CreateKeyDraft {
   };
 }
 
-/** The draft as form fields again: `draftOf` reads them back to the same draft. An `unknown` or a stray tick is written as an empty value. */
+/** The draft as the form fields the dialog sends: `draftOf` reads them back to the same draft. An `unknown` or a stray tick is written as an empty value. */
 export function draftFields(draft: CreateKeyDraft): URLSearchParams {
   const fields = new URLSearchParams();
   fields.set(KEY_NAME_FIELD, draft.name);
@@ -170,10 +172,11 @@ export type CreateKeyStatus =
   | { readonly kind: "refused"; readonly problems: CreateKeyProblems }
   | { readonly kind: "failed"; readonly message: string };
 
-/** How a draft the server drew again opens: refused with its problems, or, if it has none, editing. */
-export function drawnStatus(draft: CreateKeyDraft): CreateKeyStatus {
-  const reading = readDraft(draft);
-  return reading.ok ? { kind: "editing" } : { kind: "refused", problems: reading.problems };
+/** The problems the dialog shows: the server's, for the form it refused, else the ones the draft has now. */
+export function shownProblems(live: CreateKeyDraft, status: CreateKeyStatus): readonly CreateKeyProblem[] {
+  if (status.kind === "refused") return status.problems;
+  const reading = readDraft(live);
+  return reading.ok ? [] : reading.problems;
 }
 
 /** Whether Create key can be pressed: the form holds a valid draft and is not already on its way. */

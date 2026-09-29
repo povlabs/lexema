@@ -2,57 +2,52 @@
 
 // Board 28b (28bm on a phone): what a new key is called, what it may call and
 // how long it lasts, asked before it is made (#187). Create key on the
-// dashboard is a link to `/dashboard?create=key`, which the server draws with
-// this dialog open, so the button never makes a key on its own; with a script
-// the dialog opens in place instead (DashboardFlow.tsx).
+// dashboard opens it (DashboardFlow.tsx), so the button never makes a key on
+// its own.
 //
 // The name is optional: left empty, the key gets the default the hint names.
-// Endpoints is All endpoints by default; Only some opens the checklist of the
-// 8 endpoints (board 28c) with no script, since the form's own CSS reads which
-// is ticked. Expires is Never by default. The form posts to the create action
-// with the session's CSRF token.
+// Endpoints is All endpoints by default; Only some swaps the hint for the
+// checklist of the 8 endpoints (board 28c). Expires is Never by default. The
+// choice and the checklist are Base UI's radio and checkbox (ADR 0010).
 //
 // What the form holds and why it cannot be sent are one value
-// (createKeyForm.ts). With a script, Create key is pressable only while the
-// form is valid, so Only some with nothing ticked cannot be sent, and the form
-// goes with fetch: the new key opens board 29 in place, and a refusal is said
-// in this dialog. With no script, or on a forced post, the server answers a
-// refused form with this dialog drawn again holding what was sent, each
-// problem in `warning` under its own field. Cancel, and Escape with a script,
-// close it.
+// (createKeyForm.ts): each problem shows in `warning` under its own field,
+// and Create key is pressable only while there is none, so Only some with
+// nothing ticked cannot be sent. Create key sends the form with fetch, with
+// the session's CSRF token; the new key then opens board 29 in place, and a
+// refusal is said in this dialog. Cancel and Escape close it.
 
-import { useEffect, useState, type FormEvent } from "react";
-import { KEY_LIFETIMES, LIFETIME_LABEL } from "@lexema/api/keyAccess.ts";
+import { Checkbox } from "@base-ui/react/checkbox";
+import { CheckboxGroup } from "@base-ui/react/checkbox-group";
+import { Dialog } from "@base-ui/react/dialog";
+import { Radio } from "@base-ui/react/radio";
+import { RadioGroup } from "@base-ui/react/radio-group";
+import { useState, type FormEvent } from "react";
+import { KEY_LIFETIMES, keyLifetime, LIFETIME_LABEL, type KeyLifetime } from "@lexema/api/keyAccess.ts";
 import { KEY_NAME_MAX } from "@lexema/api/ownedKeys.ts";
-import { ENDPOINTS } from "@lexema/api/units.ts";
+import { ENDPOINTS, type Endpoint } from "@lexema/api/units.ts";
 import {
   canSend,
-  draftOf,
-  drawnStatus,
-  ENDPOINT_FIELD,
+  draftFields,
+  EMPTY_DRAFT,
   ENDPOINT_SCOPE,
-  ENDPOINT_SCOPE_FIELD,
-  EXPIRES_FIELD,
-  KEY_NAME_FIELD,
+  nameOf,
   problemAt,
+  shownProblems,
   type CreateKeyDraft,
   type CreateKeyField,
   type CreateKeyStatus,
 } from "./createKeyForm.ts";
-import { CloseLink, CsrfField } from "./DashboardControls";
-import { CREATE_KEY_ACTION, sendAction, UNREACHABLE } from "./dashboardActions.ts";
+import { CREATE_KEY_ACTION, CSRF_FIELD, sendAction, UNREACHABLE } from "./dashboardActions.ts";
 import type { KeyRow } from "./dashboardView.ts";
 import { ChevronIcon } from "./icons";
 import { CheckIcon } from "./MenuIcons";
-import { PageDialog } from "./PageDialog";
 import {
   CREATE_KEY_ACTIONS,
-  CREATE_KEY_BOX,
   CREATE_KEY_CHECK,
   CREATE_KEY_CHECKBOX,
   CREATE_KEY_CHECKLIST,
   CREATE_KEY_CHEVRON,
-  CREATE_KEY_FORM,
   CREATE_KEY_HINT,
   CREATE_KEY_INPUT,
   CREATE_KEY_LABEL,
@@ -60,7 +55,6 @@ import {
   CREATE_KEY_PROBLEM,
   CREATE_KEY_RADIO,
   CREATE_KEY_SCOPE,
-  CREATE_KEY_SCOPE_HINT,
   CREATE_KEY_SCOPES,
   CREATE_KEY_SELECT,
   CREATE_KEY_SELECT_WRAP,
@@ -87,42 +81,43 @@ function Problem({ field, message }: { field: CreateKeyField; message: string | 
 const describedBy = (hint: string | undefined, field: CreateKeyField, message: string | undefined): string | undefined =>
   [hint, message === undefined ? undefined : problemId(field)].filter((id) => id !== undefined).join(" ") || undefined;
 
-export function CreateKeyDialog({
-  draft,
+/** What the create-key dialog holds: drawn inside its `Dialog.Popup`, it opens on board 28b's defaults unless given a draft. */
+export function CreateKeyForm({
   defaultName,
   csrf,
-  onClose,
   onCreated,
+  opening = EMPTY_DRAFT,
 }: {
-  /** What the form opens holding: board 28b's defaults, or a refused form the server drew again. */
-  draft: CreateKeyDraft;
   defaultName: string;
   csrf: string;
-  onClose: () => void;
   onCreated: (key: KeyRow, secret: string) => void;
+  opening?: CreateKeyDraft;
 }) {
-  const [live, setLive] = useState(draft);
-  const [status, setStatus] = useState<CreateKeyStatus>(() => drawnStatus(draft));
-  // Create key is disabled only once a script runs: the server's HTML never
-  // disables it, so a form drawn again with no script can still be sent.
-  const [scripted, setScripted] = useState(false);
-  useEffect(() => setScripted(true), []);
+  const [typed, setTyped] = useState(opening.name);
+  const [scope, setScope] = useState<"all" | "some">(opening.scope === ENDPOINT_SCOPE.some ? ENDPOINT_SCOPE.some : ENDPOINT_SCOPE.all);
+  const [ticked, setTicked] = useState<readonly Endpoint[]>(opening.ticked);
+  const [expires, setExpires] = useState<KeyLifetime>(opening.expires === "unknown" ? "never" : opening.expires);
+  const [status, setStatus] = useState<CreateKeyStatus>({ kind: "editing" });
 
-  const problems = status.kind === "refused" ? status.problems : [];
+  const draft: CreateKeyDraft = { name: nameOf(typed), scope, ticked, strayTick: false, expires };
+  const problems = shownProblems(draft, status);
   const nameProblem = problemAt(problems, "name");
   const endpointsProblem = problemAt(problems, "endpoints");
   const expiresProblem = problemAt(problems, "expires");
 
-  const edited = (event: FormEvent<HTMLFormElement>) => {
-    setLive(draftOf(new FormData(event.currentTarget)));
+  /** Any edit: the form is being filled in again. */
+  const edit = <T,>(set: (value: T) => void) => (value: T) => {
+    set(value);
     setStatus((now) => (now.kind === "sending" ? now : { kind: "editing" }));
   };
+
   const send = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!canSend(live, status)) return;
-    const form = new FormData(event.currentTarget);
+    if (!canSend(draft, status)) return;
+    const fields = draftFields(draft);
+    fields.set(CSRF_FIELD, csrf);
     setStatus({ kind: "sending" });
-    void sendAction(CREATE_KEY_ACTION, form).then((answer) => {
+    void sendAction(CREATE_KEY_ACTION, fields).then((answer) => {
       switch (answer.outcome) {
         case "created":
           onCreated(answer.key, answer.secret);
@@ -140,24 +135,21 @@ export function CreateKeyDialog({
   };
 
   return (
-    <PageDialog titleId="create-key" onClose={onClose} className={CREATE_KEY_BOX}>
-      <h2 className={MODAL_TITLE} id="create-key">
-        Create an API key
-      </h2>
-      <form className={CREATE_KEY_FORM} method="post" action={CREATE_KEY_ACTION} onChange={edited} onSubmit={send}>
-        <CsrfField csrf={csrf} />
+    <>
+      <Dialog.Title className={MODAL_TITLE}>Create an API key</Dialog.Title>
+      <form onSubmit={send} noValidate>
         <label className={CREATE_KEY_LABEL_FIRST} htmlFor="create-key-name">
           Name
         </label>
         <input
           className={CREATE_KEY_INPUT}
           id="create-key-name"
-          name={KEY_NAME_FIELD}
           type="text"
           maxLength={KEY_NAME_MAX}
           autoComplete="off"
           placeholder="What's it for? e.g. Learning app"
-          defaultValue={draft.name}
+          value={typed}
+          onChange={(event) => edit(setTyped)(event.target.value)}
           aria-invalid={nameProblem !== undefined || undefined}
           aria-describedby={describedBy("create-key-hint", "name", nameProblem)}
         />
@@ -169,43 +161,47 @@ export function CreateKeyDialog({
         <p className={CREATE_KEY_LABEL} id="create-key-endpoints">
           Endpoints
         </p>
-        <div
+        <RadioGroup
           className={CREATE_KEY_SCOPES}
-          role="radiogroup"
+          value={scope}
+          onValueChange={(value) => edit(setScope)(value === ENDPOINT_SCOPE.some ? ENDPOINT_SCOPE.some : ENDPOINT_SCOPE.all)}
           aria-labelledby="create-key-endpoints"
-          aria-describedby={describedBy("create-key-endpoints-hint", "endpoints", endpointsProblem)}
+          aria-describedby={describedBy(scope === "all" ? "create-key-endpoints-hint" : undefined, "endpoints", endpointsProblem)}
         >
           <label className={CREATE_KEY_SCOPE}>
-            <input className={CREATE_KEY_RADIO} type="radio" name={ENDPOINT_SCOPE_FIELD} value={ENDPOINT_SCOPE.all} defaultChecked={draft.scope === "all"} />
+            <Radio.Root className={CREATE_KEY_RADIO} value={ENDPOINT_SCOPE.all} />
             All endpoints
           </label>
           <label className={CREATE_KEY_SCOPE}>
-            <input className={CREATE_KEY_RADIO} type="radio" name={ENDPOINT_SCOPE_FIELD} value={ENDPOINT_SCOPE.some} defaultChecked={draft.scope === "some"} />
+            <Radio.Root className={CREATE_KEY_RADIO} value={ENDPOINT_SCOPE.some} />
             Only some
           </label>
-        </div>
-        <p className={CREATE_KEY_SCOPE_HINT} id="create-key-endpoints-hint">
-          Only some: pick the endpoints this key may call. Anything else answers 403.
-        </p>
-        <fieldset
-          className={CREATE_KEY_CHECKLIST}
-          aria-label="The endpoints this key may call"
-          aria-describedby={endpointsProblem === undefined ? undefined : problemId("endpoints")}
-        >
-          {ENDPOINTS.map((endpoint) => (
-            <label key={endpoint} className={CREATE_KEY_CHECK}>
-              <input
-                className={CREATE_KEY_CHECKBOX}
-                type="checkbox"
-                name={ENDPOINT_FIELD}
-                value={endpoint}
-                defaultChecked={draft.ticked.includes(endpoint)}
-              />
-              <CheckIcon className={CREATE_KEY_TICK} />
-              {endpoint}
-            </label>
-          ))}
-        </fieldset>
+        </RadioGroup>
+        {scope === "all" ? (
+          <p className={CREATE_KEY_HINT} id="create-key-endpoints-hint">
+            Only some: pick the endpoints this key may call. Anything else answers 403.
+          </p>
+        ) : (
+          <CheckboxGroup
+            className={CREATE_KEY_CHECKLIST}
+            value={[...ticked]}
+            onValueChange={(value) => edit(setTicked)(ENDPOINTS.filter((endpoint) => value.includes(endpoint)))}
+            role="group"
+            aria-label="The endpoints this key may call"
+            aria-describedby={endpointsProblem === undefined ? undefined : problemId("endpoints")}
+          >
+            {ENDPOINTS.map((endpoint) => (
+              <label key={endpoint} className={CREATE_KEY_CHECK}>
+                <Checkbox.Root className={CREATE_KEY_CHECKBOX} value={endpoint}>
+                  <Checkbox.Indicator>
+                    <CheckIcon className={CREATE_KEY_TICK} />
+                  </Checkbox.Indicator>
+                </Checkbox.Root>
+                {endpoint}
+              </label>
+            ))}
+          </CheckboxGroup>
+        )}
         <Problem field="endpoints" message={endpointsProblem} />
 
         <label className={CREATE_KEY_LABEL} htmlFor="create-key-expires">
@@ -215,8 +211,8 @@ export function CreateKeyDialog({
           <select
             className={CREATE_KEY_SELECT}
             id="create-key-expires"
-            name={EXPIRES_FIELD}
-            defaultValue={draft.expires === "unknown" ? "never" : draft.expires}
+            value={expires}
+            onChange={(event) => edit(setExpires)(keyLifetime(event.target.value) ?? "never")}
             aria-invalid={expiresProblem !== undefined || undefined}
             aria-describedby={describedBy("create-key-expires-hint", "expires", expiresProblem)}
           >
@@ -239,14 +235,12 @@ export function CreateKeyDialog({
         )}
 
         <div className={CREATE_KEY_ACTIONS}>
-          <CloseLink className={DELETE_CANCEL} onClose={onClose}>
-            Cancel
-          </CloseLink>
-          <button className={CREATE_KEY_SUBMIT} type="submit" disabled={scripted && !canSend(live, status)}>
+          <Dialog.Close className={DELETE_CANCEL}>Cancel</Dialog.Close>
+          <button className={CREATE_KEY_SUBMIT} type="submit" disabled={!canSend(draft, status)}>
             Create key
           </button>
         </div>
       </form>
-    </PageDialog>
+    </>
   );
 }

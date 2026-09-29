@@ -1,15 +1,14 @@
 // developers.lexema.fyi/dashboard (#169, boards 28 and 28m): the account's live
 // keys with Create key and a Revoke each, 30 days of usage, the plan card, and
-// the account section. Every form posts to a dashboard action
-// (worker/dashboard.ts) with the session's CSRF token. What the page shows is
-// worked out in `dashboardView.ts`; the wiring that reads the session and D1
-// is `(developers)/developer-site/dashboard/`.
+// the account section. Every action (worker/dashboard.ts) carries the
+// session's CSRF token. What the page shows is worked out in
+// `dashboardView.ts`; the wiring that reads the session and D1 is
+// `(developers)/developer-site/dashboard/`.
 //
-// Three dialogs open over it, each by its own address so it opens with no
-// script: the new key's name (board 28b) at `/dashboard?create=key`, the new
-// key's secret (board 29) on the key-created page, and the delete
-// confirmation (board 30) at `/dashboard?confirm=delete`. With a script they
-// open, and the key list changes, in place (DashboardFlow.tsx).
+// Create key, Revoke and Delete account send their action with fetch, and
+// three dialogs open over the page in place: the new key's name (board 28b),
+// its secret (board 29) and the delete confirmation (board 30)
+// (DashboardFlow.tsx).
 //
 // On a phone (below `sm`, board 28m) the key table becomes one card per key,
 // with no column heads: the name and Revoke, the prefix, then "Created … ·
@@ -17,7 +16,7 @@
 // account cards stack their action under the text.
 
 import { DeveloperPage } from "./DeveloperPage";
-import { CreateKeyLink, DashboardFlow, DeleteAccountLink, KeyTable, type DashboardDialog } from "./DashboardFlow";
+import { CreateKeyControl, DashboardFlow, DeleteAccountControl, KeyTable } from "./DashboardFlow";
 import { units, type DashboardView, type UsageRow } from "./dashboardView.ts";
 import {
   ACCOUNT_DETAIL,
@@ -45,7 +44,6 @@ import {
 } from "./styles.ts";
 
 export { CREATE_KEY_ACTION, DELETE_ACCOUNT_ACTION, revokeKeyAction } from "./dashboardActions.ts";
-export type { DashboardDialog } from "./DashboardFlow";
 
 /** 30 days of units as bars, oldest first; the last, today, in the accent. Each day is its own box, so the gap between bars is the board's at every width. */
 function UsageBars({ row }: { row: UsageRow }) {
@@ -71,11 +69,11 @@ function UsageBars({ row }: { row: UsageRow }) {
 /**
  * The dashboard for a view, with the session's CSRF token in every form.
  * `made` counts every key the account has made, revoked ones too, for the
- * create dialog's default name; `dialog` is the one the server draws open.
+ * create dialog's default name.
  */
-export function Dashboard({ view, csrf, made, dialog }: { view: DashboardView; csrf: string; made: number; dialog?: DashboardDialog }) {
+export function Dashboard({ view, csrf, made }: { view: DashboardView; csrf: string; made: number }) {
   return (
-    <DashboardFlow keys={view.keys} made={made} csrf={csrf} dialog={dialog}>
+    <DashboardFlow keys={view.keys} made={made} csrf={csrf}>
       <DeveloperPage current="dashboard" signedIn={{ email: view.email }}>
         <main className={DASH_SHELL}>
           <h1 className={DASH_HEADING}>Dashboard</h1>
@@ -85,7 +83,7 @@ export function Dashboard({ view, csrf, made, dialog }: { view: DashboardView; c
               <h2 className={DASH_SECTION_HEADING} id="keys">
                 API keys
               </h2>
-              <CreateKeyLink className={DASH_CREATE_BUTTON} />
+              <CreateKeyControl className={DASH_CREATE_BUTTON} />
             </div>
             <KeyTable />
           </section>
@@ -125,7 +123,7 @@ export function Dashboard({ view, csrf, made, dialog }: { view: DashboardView; c
                 <p className={ACCOUNT_TITLE}>Delete account</p>
                 <p className={ACCOUNT_DETAIL}>{view.signedInWith}</p>
               </div>
-              <DeleteAccountLink className={BUTTON_DANGER_OUTLINE} />
+              <DeleteAccountControl className={BUTTON_DANGER_OUTLINE} />
             </div>
           </section>
         </main>

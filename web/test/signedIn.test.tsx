@@ -1,21 +1,26 @@
 // The signed-in side of developers.lexema.fyi (#169, #187): the sign-in page,
-// the dashboard, and the three dialogs the server opens over it (the new key's
-// name, its secret and the delete confirmation), as the server renders them. The Worker's guard and the actions the forms post to
-// are web/test/dashboard.test.ts.
+// the dashboard as the server renders it, and what the three dialogs over it
+// hold (the new key's name, its secret and the delete confirmation). The
+// Worker's guard and the actions the page sends are web/test/dashboard.test.ts.
 
 import assert from "node:assert/strict";
 import { test } from "node:test";
+import { Dialog } from "@base-ui/react/dialog";
+import type { ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import type { AccountProfile } from "../../src/accounts/accounts.js";
 import { ALL_ENDPOINTS, onlyEndpoints } from "../../src/api/keyAccess.js";
 import type { OwnedKey } from "../../src/api/ownedKeys.js";
 import { AccountUsage, usageDays } from "../../src/api/usage.js";
-import { CREATE_KEY_ACTION, Dashboard, DELETE_ACCOUNT_ACTION, revokeKeyAction } from "../app/Dashboard";
+import { CREATE_KEY_ACTION, Dashboard, DELETE_ACCOUNT_ACTION } from "../app/Dashboard";
+import { CreateKeyForm } from "../app/CreateKeyDialog";
+import { DeleteAccount } from "../app/DeleteAccountDialog";
+import { KeyCreated } from "../app/KeyCreated";
 import { dashboardView, deleteWarning, lastUsed, shortDate } from "../app/dashboardView.ts";
 import { SignIn, signInStart } from "../app/SignIn";
 import { EMPTY_DRAFT, type CreateKeyDraft } from "../app/createKeyForm.ts";
 import { CREATE_KEY_HINT, CREATE_KEY_PROBLEM } from "../app/styles.ts";
-import { CONFIRM_DELETE_PAGE, CREATE_KEY_PAGE, CSRF_FIELD, DASHBOARD, DELETE_CONFIRMATION } from "../worker/dashboard.ts";
+import { DASHBOARD } from "../worker/dashboard.ts";
 
 const NOW = Date.parse("2026-09-28T12:00:00Z");
 const CSRF = "c".repeat(43);
@@ -89,7 +94,7 @@ function sample() {
   return { days, keys, view: dashboardView(profile, keys, usage, NOW) };
 }
 
-test("the dashboard lists each live key, oldest first, with its name, prefix, endpoints, expiry, created, last used and a revoke form", () => {
+test("the dashboard lists each live key, oldest first, with its name, prefix, endpoints, expiry, created, last used and Revoke", () => {
   const { keys, view } = sample();
   const html = renderToStaticMarkup(<Dashboard view={view} csrf={CSRF} made={3} />);
 
@@ -108,8 +113,8 @@ test("the dashboard lists each live key, oldest first, with its name, prefix, en
     );
     assert.match(html, row, name);
   }
-  assert.ok(html.includes(`action="${revokeKeyAction(3)}"`) && html.includes(`action="${revokeKeyAction(2)}"`));
-  assert.ok(!html.includes(`action="${revokeKeyAction(1)}"`), "a revoked key has no row");
+  const revokes = [...html.matchAll(/<button[^>]*type="button"[^>]*aria-label="Revoke ([^"]*)"[^>]*>Revoke<\/button>/g)].map((match) => match[1]);
+  assert.deepEqual(revokes, ["Learning app", "Browser extension"], "a revoked key has no row");
   assert.doesNotMatch(html, /Revoked|>Old</);
   assert.equal(keys.length, 3);
 
@@ -129,26 +134,20 @@ test("the dashboard shows 30 days of units in total, revoked keys' too, today la
   assert.equal([...html.matchAll(/data-usage="/g)].length, 1, "one chart, the account's");
 });
 
-test("the plan card offers nothing to buy, and every form posts to a dashboard action with the CSRF token", () => {
+test("the plan card offers nothing to buy; Create key and Delete account open their dialogs and make nothing themselves", () => {
   const { view } = sample();
   const html = renderToStaticMarkup(<Dashboard view={view} csrf={CSRF} made={3} />);
   assert.match(html, />No plan yet</);
   assert.match(html, /<button[^>]*type="button" disabled=""[^>]*>Choose a plan — coming soon<\/button>/);
 
-  const forms = [...html.matchAll(/<form[^>]*action="([^"]+)"[^>]*>(.*?)<\/form>/g)];
-  const actions = forms.map((form) => form[1]);
-  // Sign out twice: in the bar, and in the ☰ menu a phone shows instead.
-  assert.deepEqual(actions, ["/sign-out", "/sign-out", revokeKeyAction(2), revokeKeyAction(3)]);
-  for (const [, action, body] of forms.slice(2)) {
-    assert.ok(body.includes(`name="${CSRF_FIELD}" value="${CSRF}"`), action);
-  }
-  // Create key makes nothing itself: it is a link to the create-key dialog, which works without a script (#187).
-  assert.match(html, new RegExp(`<a[^>]*href="${CREATE_KEY_PAGE.replace("?", "\\?")}"[^>]*>Create key</a>`));
-  assert.ok(!html.includes(`action="${CREATE_KEY_ACTION}"`), "no form on the dashboard makes a key");
-  // The account section: who is signed in, and Delete account, a link to the confirmation that works without a script.
+  // The only forms are Sign out's, in the bar and in the ☰ menu a phone shows instead: every dashboard action is sent from the page.
+  assert.deepEqual([...html.matchAll(/<form[^>]*action="([^"]+)"/g)].map((form) => form[1]), ["/sign-out", "/sign-out"]);
+  assert.ok(!html.includes(CREATE_KEY_ACTION) && !html.includes(DELETE_ACCOUNT_ACTION), "nothing on the page posts a key or a deletion by itself");
+  // Create key and Delete account are buttons that open a dialog (#187); none is open yet.
+  assert.match(html, /<button type="button"[^>]*aria-haspopup="dialog"[^>]*>Create key<\/button>/);
   assert.match(html, /Signed in with Google · ada@example\.com/);
-  assert.match(html, new RegExp(`<a[^>]*href="${CONFIRM_DELETE_PAGE.replace("?", "\\?")}"[^>]*>Delete account</a>`));
-  assert.doesNotMatch(html, /role="dialog"/, "no dialog is open");
+  assert.match(html, /<button type="button"[^>]*aria-haspopup="dialog"[^>]*>Delete account<\/button>/);
+  assert.doesNotMatch(html, /role="dialog"|Create an API key|Delete your account\?/);
   assert.ok(DELETE_ACCOUNT_ACTION.startsWith(DASHBOARD));
 });
 
@@ -160,72 +159,61 @@ test("an account with no keys has no key table", () => {
   assert.equal(view.keys.length, 0);
 });
 
-test("the key-created dialog sits over the dashboard with the secret, Copy, the once-only note, and the way back", () => {
-  const { view } = sample();
+/** What a dialog holds, drawn open inside its Base UI root (ADR 0010), as the page's popup holds it. */
+const opened = (content: ReactNode): string => renderToStaticMarkup(<Dialog.Root open>{content}</Dialog.Root>);
+
+test("the key-created dialog holds the key's name, its secret, Copy, the once-only note, and the ways to close it", () => {
   const secret = `lx_${"ab".repeat(32)}`;
-  const html = renderToStaticMarkup(<Dashboard view={view} csrf={CSRF} made={3} dialog={{ kind: "key-created", name: "Learning app", secret }} />);
-  // The dashboard is behind it, inert, so the keyboard stays in the dialog.
-  assert.match(html, /^<div[^>]*inert=""[^>]*>.*<h1[^>]*>Dashboard<\/h1>/);
-  const dialog = /<section[^>]*role="dialog"[^>]*aria-modal="true"[^>]*>(.*)<\/section>/.exec(html)?.[1] ?? "";
-  assert.match(dialog, /<h2[^>]*id="key-created"[^>]*>Key created<\/h2>/);
+  const dialog = opened(<KeyCreated name="Learning app" secret={secret} />);
+  assert.match(dialog, /<h2[^>]*>Key created<\/h2>/);
   assert.match(dialog, />Learning app</);
   assert.ok(dialog.includes(`>${secret}<`));
   assert.match(dialog, /Copy<\/button>/);
   assert.match(dialog, /Copy it now\. You won(?:'|&#x27;)t be able to see it again\./);
-  // × and Done go back to the dashboard.
-  assert.equal([...dialog.matchAll(new RegExp(`href="${DASHBOARD}"`, "g"))].length, 2);
+  // × and Done close it; neither goes anywhere.
+  assert.match(dialog, /<button type="button"[^>]*aria-label="Close"/);
+  assert.match(dialog, /<button type="button"[^>]*>Done<\/button><\/div>$/);
+  assert.doesNotMatch(dialog, /href=/);
 });
 
-test("the delete confirmation sits over the dashboard, posts the confirmed deletion, and Cancel goes back", () => {
-  const { view } = sample();
-  const html = renderToStaticMarkup(<Dashboard view={view} csrf={CSRF} made={3} dialog={{ kind: "confirm-delete" }} />);
-  assert.match(html, /^<div[^>]*inert=""/);
-  const dialog = /<section[^>]*role="dialog"[^>]*aria-modal="true"[^>]*>(.*)<\/section>/.exec(html)?.[1] ?? "";
+test("the delete confirmation says what deleting does, then Cancel and Delete account", () => {
+  const dialog = opened(<DeleteAccount warning={deleteWarning(2)} csrf={CSRF} />);
   assert.match(dialog, /<h2[^>]*>Delete your account\?<\/h2>/);
   assert.match(dialog, /Your 2 API keys will be revoked right away, and any app using them will stop working\. This can(?:'|&#x27;)t be undone\./);
-  const form = new RegExp(`<form[^>]*action="${DELETE_ACCOUNT_ACTION}"[^>]*>(.*?)</form>`).exec(dialog)?.[1] ?? "";
-  assert.ok(form.includes(`name="${CSRF_FIELD}" value="${CSRF}"`));
-  assert.ok(form.includes(`name="confirm" value="${DELETE_CONFIRMATION}"`));
-  assert.match(form, new RegExp(`<a[^>]*href="${DASHBOARD}"[^>]*>Cancel</a><button[^>]*type="submit"[^>]*>Delete account</button>$`));
+  assert.match(dialog, /<button type="button"[^>]*>Cancel<\/button><button[^>]*type="button"[^>]*>Delete account<\/button><\/div>$/);
+  assert.doesNotMatch(dialog, /role="alert"|disabled=""/);
 });
 
-test("the create-key dialog sits over the dashboard, asks for an optional name, names the default, and Cancel goes back", () => {
-  const { view } = sample();
-  const html = renderToStaticMarkup(<Dashboard view={view} csrf={CSRF} made={3} dialog={{ kind: "create-key", draft: EMPTY_DRAFT }} />);
-  assert.match(html, /^<div[^>]*inert=""[^>]*>.*<h1[^>]*>Dashboard<\/h1>/);
-  const dialog = /<section[^>]*role="dialog"[^>]*aria-modal="true"[^>]*>(.*)<\/section>/.exec(html)?.[1] ?? "";
-  assert.match(dialog, /<h2[^>]*id="create-key"[^>]*>Create an API key<\/h2>/);
-  const form = new RegExp(`<form[^>]*action="${CREATE_KEY_ACTION}"[^>]*>(.*?)</form>`).exec(dialog)?.[1] ?? "";
-  assert.ok(form.includes(`name="${CSRF_FIELD}" value="${CSRF}"`));
+/** The create-key dialog's form, opened holding this draft. */
+const createForm = (opening: CreateKeyDraft = EMPTY_DRAFT): string =>
+  opened(<CreateKeyForm defaultName="Key 4" csrf={CSRF} onCreated={() => {}} opening={opening} />);
+
+/** Each Base UI control of a role in a form, as its label's text and whether it is checked. */
+const controls = (form: string, role: string) =>
+  [...form.matchAll(new RegExp(`<span[^>]*role="${role}"[^>]*aria-checked="(true|false)".*?([^>]*)</label>`, "g"))].map((match) => [match[2], match[1] === "true"]);
+
+test("the create-key dialog asks for an optional name, names the default, offers All endpoints or Only some and an expiry, and Cancel", () => {
+  const form = createForm();
+  assert.match(form, /^<h2[^>]*>Create an API key<\/h2><form/);
   // One Name field, optional, labelled, with the board's placeholder and the hint naming the default.
   assert.match(form, /<label[^>]*for="create-key-name"[^>]*>Name<\/label>/);
   const input = /<input[^>]*id="create-key-name"[^>]*\/>/.exec(form)?.[0] ?? "";
-  assert.match(input, /name="name"/);
   assert.match(input, /placeholder="What(?:'|&#x27;)s it for\? e\.g\. Learning app"/);
   assert.match(input, /maxLength="200"/);
   assert.doesNotMatch(input, /required/);
   assert.match(form, /<p[^>]*id="create-key-hint"[^>]*>Optional\. Left empty, it(?:'|&#x27;)s called Key 4\.<\/p>/);
-  // Endpoints (#187, boards 28b and 28c): All endpoints, ticked, or Only some, then its hint and the 8 endpoints' checklist, none ticked.
-  const radios = [...form.matchAll(/<input[^>]*type="radio"[^>]*\/>/g)].map((match) => match[0]);
-  assert.deepEqual(
-    radios.map((radio) => [/name="([^"]*)"/.exec(radio)?.[1], /value="([^"]*)"/.exec(radio)?.[1], radio.includes('checked=""')]),
-    [
-      ["endpoints", "all", true],
-      ["endpoints", "some", false],
-    ],
-  );
+  // Endpoints (boards 28b and 28c): Base UI's radio group, All endpoints ticked, then its hint and no checklist.
+  assert.match(form, /<div role="radiogroup" aria-labelledby="create-key-endpoints"/);
+  assert.deepEqual(controls(form, "radio"), [
+    ["All endpoints", true],
+    ["Only some", false],
+  ]);
   assert.match(form, />All endpoints<\/label>.*>Only some<\/label>/);
   assert.match(form, /<p[^>]*id="create-key-endpoints-hint"[^>]*>Only some: pick the endpoints this key may call\. Anything else answers 403\.<\/p>/);
-  const boxes = [...form.matchAll(/<input[^>]*type="checkbox"[^>]*\/>/g)].map((match) => match[0]);
-  assert.deepEqual(
-    boxes.map((box) => /value="([^"]*)"/.exec(box)?.[1]),
-    ["lookup", "lemmatize", "exists", "inflect", "suggest", "nearby", "random", "lookup/batch"],
-  );
-  assert.ok(boxes.every((box) => box.includes('name="endpoint"') && !box.includes('checked=""')));
+  assert.doesNotMatch(form, /role="checkbox"/);
   // Expires: Never, 30 days, 90 days and 1 year, Never chosen, and its hint.
   const select = /<select[^>]*id="create-key-expires"[^>]*>(.*?)<\/select>/.exec(form);
   assert.ok(select !== null);
-  assert.match(select[0], /name="expires"/);
   assert.deepEqual(
     [...select[1].matchAll(/<option value="([^"]*)"( selected="")?>([^<]*)<\/option>/g)].map((option) => [option[1], option[2] !== undefined, option[3]]),
     [
@@ -236,60 +224,48 @@ test("the create-key dialog sits over the dashboard, asks for an optional name, 
     ],
   );
   assert.match(form, /<p[^>]*id="create-key-expires-hint"[^>]*>After this date the key answers 401\.<\/p>/);
-  // Cancel is a link back, so it makes no key; Create key is the form's one submit.
-  assert.match(form, new RegExp(`<a[^>]*href="${DASHBOARD}"[^>]*>Cancel</a><button[^>]*type="submit"[^>]*>Create key</button></div>$`));
+  // Cancel closes the dialog; Create key is the form's one submit, pressable on the defaults.
+  assert.match(form, /<button type="button"[^>]*>Cancel<\/button><button[^>]*type="submit">Create key<\/button><\/div><\/form>$/);
   assert.equal([...form.matchAll(/type="submit"/g)].length, 1);
-  // Nothing is refused yet, and the server's HTML never disables Create key: a form drawn with no script can always be sent.
   assert.doesNotMatch(form, /role="alert"|aria-invalid|disabled=""/);
 });
-
-/** The create-key dialog's form, drawn again by the server holding this draft. */
-function redrawn(draft: CreateKeyDraft): string {
-  const { view } = sample();
-  const html = renderToStaticMarkup(<Dashboard view={view} csrf={CSRF} made={3} dialog={{ kind: "create-key", draft }} />);
-  return new RegExp(`<form[^>]*action="${CREATE_KEY_ACTION}"[^>]*>(.*?)</form>`).exec(html)?.[1] ?? "";
-}
-
-/** Each `<input>` of a type in a form, as its value and whether it is checked. */
-const inputs = (form: string, type: string) =>
-  [...form.matchAll(new RegExp(`<input[^>]*type="${type}"[^>]*/>`, "g"))].map((match) => [/value="([^"]*)"/.exec(match[0])?.[1], match[0].includes('checked=""')]);
-const nameInput = (form: string) => /<input[^>]*id="create-key-name"[^>]*\/>/.exec(form)?.[0] ?? "";
 
 /** A problem as the dialog says it: in `warning`, at the hint's size. */
 const PROBLEM = (id: string, message: string) =>
   `<p class="${CREATE_KEY_PROBLEM}" id="${id}" role="alert">${message.replace(/'/g, "&#x27;")}</p>`;
 
-test("a refused create form is drawn again holding what was sent, the reason in warning under its field, at the hint's size", () => {
+test("Only some shows the checklist; with nothing ticked, the reason sits right under it in warning at the hint's size, and Create key is disabled", () => {
   assert.match(CREATE_KEY_PROBLEM, /text-warning/);
   assert.ok(CREATE_KEY_PROBLEM.includes("text-[0.78125rem]") && CREATE_KEY_HINT.includes("text-[0.78125rem]"), "the problem is the hint's size");
 
-  // Only some with nothing ticked: the name, the choice and the expiry are kept; the message sits right under the checklist.
-  const none = redrawn({ ...EMPTY_DRAFT, name: "Learning app", scope: "some", expires: "30-days" });
-  assert.match(nameInput(none), /value="Learning app"/);
-  assert.deepEqual(inputs(none, "radio"), [
-    ["all", false],
-    ["some", true],
+  const none = createForm({ ...EMPTY_DRAFT, name: "Learning app", scope: "some", expires: "30-days" });
+  assert.match(none, /id="create-key-name"[^>]*value="Learning app"/);
+  assert.deepEqual(controls(none, "radio"), [
+    ["All endpoints", false],
+    ["Only some", true],
   ]);
-  assert.match(none, /<option value="30-days" selected="">/);
-  assert.ok(none.includes(`</fieldset>${PROBLEM("create-key-endpoints-problem", "Tick at least one endpoint.")}`), none);
-  assert.match(none, /aria-describedby="create-key-endpoints-hint create-key-endpoints-problem"/);
+  assert.doesNotMatch(none, /id="create-key-endpoints-hint"/, "the checklist takes the hint's place");
+  // Board 28c's checklist: Base UI's checkboxes, the 8 endpoints in order, none ticked.
+  assert.deepEqual(
+    controls(none, "checkbox"),
+    ["lookup", "lemmatize", "exists", "inflect", "suggest", "nearby", "random", "lookup/batch"].map((endpoint) => [endpoint, false]),
+  );
+  assert.ok(none.includes(`lookup/batch</label></div>${PROBLEM("create-key-endpoints-problem", "Tick at least one endpoint.")}`), none);
+  assert.match(none, /role="radiogroup"[^>]*aria-describedby="create-key-endpoints-problem"/);
   assert.equal([...none.matchAll(/role="alert"/g)].length, 1);
+  assert.match(none, /<option value="30-days" selected="">/);
+  assert.match(none, /<button[^>]*type="submit" disabled="">Create key<\/button>/);
 
-  // Ticked endpoints are kept too, beside a problem elsewhere: an expiry the dialog does not offer, said under Expires.
-  const expiry = redrawn({ ...EMPTY_DRAFT, scope: "some", ticked: ["lookup", "inflect"], expires: "unknown" });
-  const ticked = inputs(expiry, "checkbox").filter(([, checked]) => checked).map(([value]) => value);
-  assert.deepEqual(ticked, ["lookup", "inflect"]);
-  assert.ok(expiry.includes(`After this date the key answers 401.</p>${PROBLEM("create-key-expires-problem", "Choose when the key expires.")}`));
-  assert.match(expiry, /<select[^>]*aria-invalid="true"/);
-  assert.equal([...expiry.matchAll(/role="alert"/g)].length, 1);
+  // One ticked: no problem, and Create key can be pressed.
+  const ticked = createForm({ ...EMPTY_DRAFT, scope: "some", ticked: ["lookup", "inflect"] });
+  assert.deepEqual(
+    controls(ticked, "checkbox").filter(([, checked]) => checked).map(([value]) => value),
+    ["lookup", "inflect"],
+  );
+  assert.doesNotMatch(ticked, /role="alert"|disabled=""/);
 
-  // A name too long to keep: said under the name's hint, the name kept.
-  const long = "x".repeat(201);
-  const named = redrawn({ ...EMPTY_DRAFT, name: long });
-  assert.ok(nameInput(named).includes(`value="${long}"`));
+  // A name too long to keep: said under the name's hint.
+  const named = createForm({ ...EMPTY_DRAFT, name: "x".repeat(201) });
   assert.ok(named.includes(`Left empty, it&#x27;s called Key 4.</p>${PROBLEM("create-key-name-problem", "A key's name can be at most 200 characters.")}`));
-  assert.ok(nameInput(named).includes('aria-invalid="true"') && nameInput(named).includes('aria-describedby="create-key-hint create-key-name-problem"'));
-
-  // Drawn with no script, Create key stays pressable: the browser alone can send the fixed form.
-  for (const form of [none, expiry, named]) assert.doesNotMatch(form, /disabled=""/);
+  assert.match(named, /id="create-key-name"[^>]*aria-invalid="true" aria-describedby="create-key-hint create-key-name-problem"/);
 });
