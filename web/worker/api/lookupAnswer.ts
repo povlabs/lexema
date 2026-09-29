@@ -11,9 +11,9 @@
 //   lemma's own definitions and forms, with the query's place in its table.
 //
 // Nothing here ranks or places anew. Definitions are the page's list
-// (app/definitions.ts), a verb's forms are the page's conjugation
-// (app/conjugation.ts) and a noun's or adjective's are the page's grid
-// (app/genderGrid.ts). The grammar of a match is the cell those put it in,
+// (lib/dictionary/definitions.ts), a verb's forms are the page's conjugation
+// (lib/dictionary/conjugation.ts) and a noun's or adjective's are the page's grid
+// (lib/dictionary/genderGrid.ts). The grammar of a match is the cell those put it in,
 // with the page's Italian labels (ADR 0015).
 //
 // The filters (#151, ./lookupFilters.ts) choose among these candidates and
@@ -31,8 +31,8 @@ import type {
   SearchedSpellings,
   SourceForm,
 } from "@lexema/lookup/types.ts";
-import { conjugationOf, slotOf, type Conjugation } from "../../app/conjugation.ts";
-import { definitionsOf, senseLabels, type DefinitionItem } from "../../app/definitions.ts";
+import { conjugationOf, slotOf, type Conjugation } from "@/lib/dictionary/conjugation.ts";
+import { definitionsOf, senseLabels, type DefinitionItem } from "@/lib/dictionary/definitions.ts";
 import {
   agreementOf,
   type Agreement,
@@ -42,8 +42,8 @@ import {
   NUMBER_LABEL,
   numbersOf,
   type Grid,
-} from "../../app/genderGrid.ts";
-import { sourcePageUrl } from "../../app/sourcePage.ts";
+} from "@/lib/dictionary/genderGrid.ts";
+import { sourcePageUrl } from "@/lib/dictionary/sourcePage.ts";
 import {
   admits,
   fits,

@@ -2,15 +2,15 @@
 //
 // A route handler rather than a page, so an answer costs the prefix query and
 // nothing else — no React render, no layout, no fonts. The body is
-// `SuggestAnswer` (web/app/suggestAnswer.ts); the query, its bounds and its
+// `SuggestAnswer` (web/lib/dictionary/suggestAnswer.ts); the query, its bounds and its
 // order are src/lookup/suggest.ts.
 //
 // Only the browser caches an answer. An edge cache was tried and removed:
 // Cloudflare bills a cache hit as a request, so it saved no request, and the
 // database reads it skipped are far inside the plan's included allowance.
 
-import { suggestions } from "../../db";
-import type { SuggestAnswer } from "../../suggestAnswer.ts";
+import { suggestions } from "@/lib/dictionary/db";
+import type { SuggestAnswer } from "@/lib/dictionary/suggestAnswer.ts";
 
 /**
  * How long a browser may reuse an answer, so retyping a prefix sends no request.

@@ -13,8 +13,8 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
 import { unstable_readConfig } from "wrangler";
-import { shownFor } from "../app/SearchField";
-import type { SuggestAnswer } from "../app/suggestAnswer.ts";
+import { shownFor } from "@/components/dictionary/SearchField";
+import type { SuggestAnswer } from "@/lib/dictionary/suggestAnswer.ts";
 import {
   RETRY_AFTER_SECONDS,
   SEARCH_LIMITED_HEADER,
@@ -22,7 +22,7 @@ import {
   visitorKey,
   withRateLimits,
   type LimitBindings,
-} from "../worker/rateLimit.ts";
+} from "@/worker/rateLimit.ts";
 
 /** The binding's contract: `limit` answers success until a key has used up its allowance. */
 class FakeRateLimit implements RateLimit {

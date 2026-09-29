@@ -2,12 +2,13 @@
 //
 // The Worker has already counted it against the per-minute report limit
 // (worker/rateLimit.ts). What a report must carry, the hourly allowance, the
-// honeypot, the timing check and the store are app/report.ts; this file is the
+// honeypot, the timing check and the store are lib/dictionary/report.ts; this file is the
 // wiring to the request and the Worker's bindings.
 
-import { visitorKey } from "../../../worker/rateLimit.ts";
-import { database, servedRelease, turnstile } from "../../db";
-import { readSubmission, receiveReport, REPORT_STATUS, verifyTurnstile, type ReportAnswer } from "../../report.ts";
+import { visitorKey } from "@/worker/rateLimit.ts";
+import { servedRelease, turnstile } from "@/lib/dictionary/db";
+import { database } from "@/lib/shared/database.ts";
+import { readSubmission, receiveReport, REPORT_STATUS, verifyTurnstile, type ReportAnswer } from "@/lib/dictionary/report.ts";
 
 const answer = (body: ReportAnswer): Response =>
   Response.json(body, { status: REPORT_STATUS[body.outcome], headers: { "cache-control": "no-store" } });

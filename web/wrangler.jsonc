@@ -42,7 +42,7 @@
     { "name": "SEARCH_LIMIT", "namespace_id": "1281", "simple": { "limit": 15, "period": 60 } },
     { "name": "SUGGEST_LIMIT", "namespace_id": "1282", "simple": { "limit": 120, "period": 60 } },
     // - REPORT_LIMIT, 2 reports a minute (#51): stops a burst before D1. The
-    //   ruled 5 an hour is counted over stored reports in app/report.ts,
+    //   ruled 5 an hour is counted over stored reports in lib/dictionary/report.ts,
     //   because the binding has no hourly period.
     { "name": "REPORT_LIMIT", "namespace_id": "1283", "simple": { "limit": 2, "period": 60 } },
     // - REPORT_OPEN_LIMIT, 10 openings of the report box a minute: each stores

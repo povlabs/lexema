@@ -30,7 +30,7 @@ import {
   type ReportAnswer,
   type ReportContext,
   type ReportSubmission,
-} from "../app/report.ts";
+} from "@/lib/dictionary/report.ts";
 import { FIXTURE_LINES } from "./fixture.js";
 
 const REPO = fileURLToPath(new URL("../..", import.meta.url));

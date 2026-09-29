@@ -35,16 +35,16 @@ import {
   EXAMPLE_KEY,
   HEADERS,
   type Example,
-} from "../app/apiReference.ts";
-import { DeveloperDocs } from "../app/DeveloperDocs";
-import { DOCS_PAGES, endpointPath, pathOf } from "../app/docsPages.ts";
-import { DOCS_CODE } from "../app/styles.ts";
-import { DeveloperLanding } from "../app/DeveloperLanding";
-import { DeveloperFooter } from "../app/DeveloperPage";
-import { DeveloperPricing } from "../app/DeveloperPricing";
-import { SiteFooter } from "../app/SiteFooter";
-import { handleApi } from "../worker/api/handler.ts";
-import { destinationOf, ORIGIN } from "../worker/hosts.ts";
+} from "@/lib/developers/apiReference.ts";
+import { DeveloperDocs } from "@/components/developers/DeveloperDocs";
+import { DOCS_PAGES, endpointPath, pathOf } from "@/lib/developers/docsPages.ts";
+import { DOCS_CODE } from "@/components/shared/styles.ts";
+import { DeveloperLanding } from "@/components/developers/DeveloperLanding";
+import { DeveloperFooter } from "@/components/developers/DeveloperPage";
+import { DeveloperPricing } from "@/components/developers/DeveloperPricing";
+import { SiteFooter } from "@/components/dictionary/SiteFooter";
+import { handleApi } from "@/worker/api/handler.ts";
+import { destinationOf, ORIGIN } from "@/worker/hosts.ts";
 
 const REPO = fileURLToPath(new URL("../..", import.meta.url));
 const RELEASE = "it-0c432803";

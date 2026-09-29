@@ -257,7 +257,7 @@ Huey rejected it for alphabetical. The measurements of both are in
 
 `findNearby()` in [`src/lookup/nearby.ts`](../src/lookup/nearby.ts) is what the
 page offers after `lookup()` answers `not-found` (board 24). The web layer calls
-it (`web/app/searchAttempt.ts`); `lookup()` itself is unchanged. It tries four
+it (`web/lib/dictionary/searchAttempt.ts`); `lookup()` itself is unchanged. It tries four
 steps, each only when the one before found nothing:
 
 1. **Exact lookup**, which already failed.

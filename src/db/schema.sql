@@ -498,7 +498,7 @@ CREATE INDEX claim_review_by_record ON claim_review (record_id);
 --
 -- No foreign key: a report names the release and record it was sent from, and
 -- has to outlive that release. The visitor is stored as a SHA-256 of their
--- rate-limit key (web/app/report.ts), never as an address, and is kept only so
+-- rate-limit key (web/lib/dictionary/report.ts), never as an address, and is kept only so
 -- the hourly allowance can be counted.
 CREATE TABLE reader_report (
   report_id    INTEGER PRIMARY KEY,

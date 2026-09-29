@@ -4,9 +4,9 @@
 // is one, for the account menu (#190), and nothing else from D1. A slug that
 // is no page's is a 404.
 import { notFound } from "next/navigation";
-import { DeveloperDocs } from "../../../../DeveloperDocs";
-import { signedInVisitor } from "../../visitor.ts";
-import { DOCS_PAGES, pageAt, slugOf, titleOf } from "../../../../docsPages.ts";
+import { DeveloperDocs } from "@/components/developers/DeveloperDocs";
+import { signedInVisitor } from "@/lib/developers/visitor.ts";
+import { DOCS_PAGES, pageAt, slugOf, titleOf } from "@/lib/developers/docsPages.ts";
 
 interface PageProps {
   params: Promise<{ page: string }>;

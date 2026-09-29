@@ -1,3 +1,4 @@
+import { dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { cloudflare } from "@cloudflare/vite-plugin";
 import tailwindcss from "@tailwindcss/vite";
@@ -15,6 +16,9 @@ export default defineConfig({
   ],
   resolve: {
     alias: {
+      // `@/…` is web/ itself, so an import names where a file lives
+      // (`@/components/dictionary/Word`) instead of how far up it is.
+      "@": dirname(fileURLToPath(import.meta.url)),
       // The lookup layer lives at the repository root, beside the importer that
       // produces the data it reads. Aliased rather than copied: two copies of a
       // query layer drift apart, which is the whole reason it has a single

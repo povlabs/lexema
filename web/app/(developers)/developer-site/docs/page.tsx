@@ -2,8 +2,8 @@
 // The wiring only; the markup is `../../../DeveloperDocs.tsx`. It reads the
 // session, when there is one, for the account menu (#190), and nothing else
 // from D1.
-import { DeveloperDocs } from "../../../DeveloperDocs";
-import { signedInVisitor } from "../visitor.ts";
+import { DeveloperDocs } from "@/components/developers/DeveloperDocs";
+import { signedInVisitor } from "@/lib/developers/visitor.ts";
 
 export const metadata = { title: "Docs — Lexema API" };
 

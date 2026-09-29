@@ -149,8 +149,8 @@ The reference a key holder reads is `developers.lexema.fyi/docs`, beside the
 landing page at `/` and `/pricing`; `lexema.fyi` links to that site from its
 footer and has no `/developers` page. The docs are one page per sidebar item,
 `/docs` and `/docs/<page>`, listed in
-[web/app/docsPages.ts](./web/app/docsPages.ts). What they state is
-[web/app/apiReference.ts](./web/app/apiReference.ts), and
+[web/lib/developers/docsPages.ts](./web/lib/developers/docsPages.ts). What they state is
+[web/lib/developers/apiReference.ts](./web/lib/developers/apiReference.ts), and
 [web/test/developers.test.tsx](./web/test/developers.test.tsx) sends every example
 they print to the API, runs each JavaScript example against it, and fails when an
 answer differs, so a change to an answer changes the example with it. It also

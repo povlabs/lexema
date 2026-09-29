@@ -26,9 +26,9 @@ import { lookup } from "../../src/lookup/lookup.js";
 import { findNearby } from "../../src/lookup/nearby.js";
 import { suggest } from "../../src/lookup/suggest.js";
 import { loadFixturePages } from "../../src/source/rawPage.js";
-import { answerApi, apiNotFound, handleApi, type ApiBindings } from "../worker/api/handler.ts";
-import { byHost, DEVELOPERS_SEGMENT } from "../worker/hosts.ts";
-import { withRateLimits, type LimitBindings } from "../worker/rateLimit.ts";
+import { answerApi, apiNotFound, handleApi, type ApiBindings } from "@/worker/api/handler.ts";
+import { byHost, DEVELOPERS_SEGMENT } from "@/worker/hosts.ts";
+import { withRateLimits, type LimitBindings } from "@/worker/rateLimit.ts";
 
 const REPO = fileURLToPath(new URL("../..", import.meta.url));
 const RELEASE = "it-api-test";

@@ -12,6 +12,7 @@
     "allowImportingTsExtensions": true,
     "types": ["node", "vinext/types", "./worker-configuration.d.ts"],
     "paths": {
+      "@/*": ["./*"],
       "@lexema/lookup/*": ["../src/lookup/*"],
       "@lexema/italian/*": ["../src/italian/*"],
       "@lexema/source/*": ["../src/source/*"],
@@ -19,5 +20,5 @@
       "@lexema/accounts/*": ["../src/accounts/*"]
     }
   },
-  "include": ["app", "worker", "test", "vite.config.ts", "worker-configuration.d.ts", "../src/lookup", "../src/italian", "../src/api", "../src/accounts"]
+  "include": ["app", "components", "lib", "worker", "test", "vite.config.ts", "worker-configuration.d.ts", "../src/lookup", "../src/italian", "../src/api", "../src/accounts"]
 }

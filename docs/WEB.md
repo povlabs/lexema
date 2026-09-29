@@ -8,32 +8,61 @@ underneath. This page is the reasoning. To run it, see
 
 ## Where the parts live
 
+`web/app/` holds the routes and nothing else: each route group's `layout.tsx`,
+its `page.tsx` and `route.ts` files, and `globals.css`. What they render and
+call lives beside it, split by site. `components/` is markup, `lib/` is what
+the markup shows and the server calls, and each has a `dictionary/`, a
+`developers/` and a `shared/` folder. Code imports through `@/`, which is
+`web/` (`@/components/dictionary/Word`), set in both `vite.config.ts` and
+`tsconfig.json`.
+
 ```
-web/app/(lexema)/page.tsx  reads the query, runs the lookup, streams the answer
-web/app/SearchPage.tsx  the shell, and the five states a query can be in
-web/app/SearchField.tsx the search form, and the suggestion list under it
-web/app/(lexema)/suggest/route.ts  GET /suggest, the list's JSON
-web/app/Reading.tsx     how one entry renders
-web/app/params.ts       the query as it arrives in the URL
-web/app/attempt.ts      a lookup, or the fact that it did not happen
-web/app/db.ts           the D1 binding
-web/worker/index.ts     the Worker's entry: the host, then the API or the rate limits and vinext
-web/worker/hosts.ts     which of the three hosts a request is for, and where it goes
-web/worker/rateLimit.ts which requests are counted, and against whose count
-web/worker/dashboard.ts the developer dashboard's actions: make or revoke a key, delete the account;
-                        and its pages' guard: sign-in without a session, a new key's secret shown once
-web/app/Dashboard.tsx   the dashboard's markup; what it shows is web/app/dashboardView.ts
-src/lookup/             the query layer, shared with the importer's tests
-web/test/page.test.tsx  the page, rendered over a fixture release
-web/test/rateLimit.test.ts  the limits, with a fake binding
-web/test/dashboard.test.ts  the dashboard's actions and pages, their CSRF and session checks
-web/test/signedIn.test.tsx  sign-in, the dashboard and its two dialogs, rendered
+web/app/(lexema)/        lexema.fyi: the search page, attribution, /suggest and /report
+web/app/(developers)/    developers.lexema.fyi: landing, docs, pricing, sign-in, the dashboard
+web/components/dictionary/   the word page, the search field, the site's header and footer
+web/components/developers/   the developer site's pages, its docs, menus and sign-in
+web/components/developers/dashboard/  the dashboard, its dialogs and toasts
+web/components/shared/   what both sites draw: links, icons and styles.ts, the one home of class strings
+web/lib/dictionary/      the query, the lookup attempt, the page's grammar, reports
+web/lib/developers/      the API reference, the docs pages, the dashboard's view and actions
+web/lib/shared/          what both sites call: the D1 binding and the search shortcut
+```
+
+A dictionary file never imports from a `developers/` folder, nor the other way
+round; what both need goes in `shared/`, which imports from neither.
+[web/test/layout.test.ts](../web/test/layout.test.ts) fails `pnpm test` when an
+import crosses, or when anything but a route file lands in `web/app/`.
+
+The files a change to the search page most often starts from:
+
+```
+web/app/(lexema)/page.tsx                  reads the query, runs the lookup, streams the answer
+web/components/dictionary/SearchPage.tsx   the shell, and the five states a query can be in
+web/components/dictionary/SearchField.tsx  the search form, and the suggestion list under it
+web/app/(lexema)/suggest/route.ts          GET /suggest, the list's JSON
+web/components/dictionary/Reading.tsx      how one entry renders
+web/lib/dictionary/params.ts               the query as it arrives in the URL
+web/lib/dictionary/attempt.ts              a lookup, or the fact that it did not happen
+web/lib/dictionary/db.ts                   the lookup and the suggestions, read from D1
+web/lib/shared/database.ts                 the D1 binding
+web/worker/index.ts                        the Worker's entry: the host, then the API or the rate limits and vinext
+web/worker/hosts.ts                        which of the three hosts a request is for, and where it goes
+web/worker/rateLimit.ts                    which requests are counted, and against whose count
+web/worker/dashboard.ts                    the developer dashboard's actions: make or revoke a key, delete the account;
+                                           and its pages' guard: sign-in without a session, a new key's secret shown once
+web/components/developers/dashboard/Dashboard.tsx  the dashboard's markup; what it shows is web/lib/developers/dashboardView.ts
+src/lookup/                                the query layer, shared with the importer's tests
+web/test/page.test.tsx                     the page, rendered over a fixture release
+web/test/rateLimit.test.ts                 the limits, with a fake binding
+web/test/dashboard.test.ts                 the dashboard's actions and pages, their CSRF and session checks
+web/test/signedIn.test.tsx                 sign-in, the dashboard and its two dialogs, rendered
 ```
 
 The markup is split from the wiring so it can be rendered without a Worker.
-`db.ts` reaches D1 through `cloudflare:workers`, which exists only inside
-workerd; everything else runs in plain Node, which is how the rendered-page test
-runs in CI with no archive and no database.
+`lib/shared/database.ts` and `lib/dictionary/db.ts` reach D1 through
+`cloudflare:workers`, which exists only inside workerd; everything else runs in
+plain Node, which is how the rendered-page test runs in CI with no archive and
+no database.
 
 `web/` is a workspace package rather than a separate repository, so there is
 still exactly one lockfile at the root — which is what ADR 0002 asks for. It
@@ -103,7 +132,7 @@ page, which is what it does with no script.
 
 ⌘K on a Mac, Ctrl+K elsewhere, scrolls to the top, smoothly unless the reader
 asks for reduced motion, and puts the cursor in the field with its text
-selected (`web/app/searchShortcut.ts`). It stands aside while a dialog is open
+selected (`web/lib/shared/searchShortcut.ts`). It stands aside while a dialog is open
 and while the reader types in another field. While the field does not have the
 cursor, a muted `⌘K` or `Ctrl K` shows in the bar; it appears only once the
 page has loaded its script, since the server cannot know the reader's keyboard,
@@ -241,7 +270,7 @@ query and is no reading's lemma keeps a reading of its own, drawn like any
 other, with no line saying why it is there.
 
 **One expand control.** Etymology, the word lists and Definitions share one
-control (`web/app/More.tsx`): `+ more` right after what shows, and, open, `less`
+control (`web/components/dictionary/More.tsx`): `+ more` right after what shows, and, open, `less`
 at the very end, with no count. It is a native `<details>` placed after all the
 content it reveals; that content is its sibling, not its child, and CSS shows it
 once the `<details>` is open (`:has(details[open])`). So with the rest hidden
@@ -249,8 +278,8 @@ the control follows the last thing that shows, and with it shown the control is
 last of all. Everything is in the HTML and opens with no script.
 
 An Etymology block cuts its text to one line with an ellipsis, and open lets it
-wrap with `less` after its last word (`web/app/OneLine.tsx`). A word list
-(`web/app/WordList.tsx`) shows the words that fit on its first line: once
+wrap with `less` after its last word (`web/components/dictionary/OneLine.tsx`). A word list
+(`web/components/dictionary/WordList.tsx`) shows the words that fit on its first line: once
 hydrated it lays every word out, measures which fit with `+ more` after them,
 and hides the rest, again on a resize or when closed. Without a script the
 first eight show. In both, a text or list that fits needs no control and shows
@@ -269,7 +298,7 @@ what the records carry, each item once, rather than one record's copy.
 usually carry the same etymologies, but not always: `bacca`'s two records list
 two and one. The page takes every distinct text from every record once, as it
 does for each word fact above, and places each by its own label
-(`web/app/readingLabels.ts`). In 2,756 of the 3,276 headwords with two or more
+(`web/lib/dictionary/readingLabels.ts`). In 2,756 of the 3,276 headwords with two or more
 etymologies, each text opens with a bracket label, mostly a part of speech:
 `sale` has `(sostantivo singolare)` and `(sostantivo plurale)`.
 
@@ -303,7 +332,7 @@ the page says nothing about what it did not match.
 
 Every word page ends with `Source ↗ · Report a mistake` (#51). The link opens a
 small box: what is wrong, which reading (optional), and details, with no account
-and no email. `POST /report` (`web/app/(lexema)/report/route.ts`, `web/app/report.ts`)
+and no email. `POST /report` (`web/app/(lexema)/report/route.ts`, `web/lib/dictionary/report.ts`)
 stores the report in `reader_report` and changes nothing on the page; a person
 reviews it (#12) and may then write a `claim_review` row. A report is not stored
 in `claim_review` itself, because that table holds reviewed verdicts, not
@@ -354,7 +383,7 @@ itself on `/attribution`, which the site footer reaches from every page. Its acc
 "Wiktionary page for X, the source of this page (opens in a new tab)".
 
 Every link that leaves Lexema opens in a new tab (`target="_blank"
-rel="noopener noreferrer"`, `web/app/ExternalLink.tsx`), so the page stays where
+rel="noopener noreferrer"`, `web/components/shared/ExternalLink.tsx`), so the page stays where
 the reader left it: the Source links on a result, and the credit, licence and source links on `/attribution`. Each says
 so to a screen reader. Links inside Lexema stay in the same tab.
 
@@ -375,7 +404,7 @@ those two, by Huey's ruling on [#133](https://github.com/hueypov/lexema/issues/1
 the release's other facts are in
 [`src/source/archiveFacts.ts`](../src/source/archiveFacts.ts).
 
-`app/Attribution.tsx` is the markup, and `app/(lexema)/attribution/page.tsx` is the wiring.
+`components/dictionary/Attribution.tsx` is the markup, and `app/(lexema)/attribution/page.tsx` is the wiring.
 The page reads no database: it shows the published archive's source from
 `src/source/archiveFacts.ts`, so it shows it even while production has no D1. A
 fact that is not recorded renders as *not recorded* in words, and a field the draft in

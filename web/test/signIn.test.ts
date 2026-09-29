@@ -10,9 +10,9 @@ import { DatabaseSync } from "node:sqlite";
 import { accountProfile } from "../../src/accounts/accounts.js";
 import { configuredProviders, type ProviderProfile, type ProviderRegistry } from "../../src/accounts/providers.js";
 import { fromNodeSqlite } from "../../src/lookup/database.js";
-import { apiNotFound } from "../worker/api/handler.ts";
-import { byHost } from "../worker/hosts.ts";
-import { withRateLimits, type LimitBindings } from "../worker/rateLimit.ts";
+import { apiNotFound } from "@/worker/api/handler.ts";
+import { byHost } from "@/worker/hosts.ts";
+import { withRateLimits, type LimitBindings } from "@/worker/rateLimit.ts";
 import {
   AFTER_SIGN_IN,
   availableProviders,
@@ -21,7 +21,7 @@ import {
   signedInAccount,
   withSignIn,
   type SignInBindings,
-} from "../worker/signIn.ts";
+} from "@/worker/signIn.ts";
 import { StubProvider } from "./stubProvider.ts";
 
 const SCHEMA = readFileSync(fileURLToPath(new URL("../../src/db/schema.sql", import.meta.url)), "utf8");

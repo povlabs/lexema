@@ -5,7 +5,7 @@
 // That is read from the repository's record of the published archive, not from
 // D1, so the page always shows it.
 import { PUBLISHED_ARCHIVE_SHA256, sourceOf } from "@lexema/source/archiveFacts.ts";
-import { Attribution } from "../../Attribution";
+import { Attribution } from "@/components/dictionary/Attribution";
 
 export const metadata = { title: "Sources and licences — Lexema" };
 
