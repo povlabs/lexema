@@ -28,7 +28,7 @@ import {
 import { createSession, endSession, SESSION_LIFETIME_MS, sessionAccount } from "@lexema/accounts/sessions.ts";
 import { beginSignIn, finishSignIn, readPending, writePending, type SignInRefusal } from "@lexema/accounts/signIn.ts";
 import { fromD1, type LookupDatabase } from "@lexema/lookup/database.ts";
-import { DEVELOPERS_SEGMENT } from "./hosts.ts";
+import { DEVELOPERS_SEGMENT, googleCallbackUri } from "./hosts.ts";
 import type { FetchHandler } from "./rateLimit.ts";
 
 /** The session cookie: the session's token. */
@@ -127,8 +127,9 @@ export function liveContext(env: SignInBindings): SignInContext {
   return { providers: configuredProviders(env), db: env.DB === undefined ? undefined : fromD1(env.DB), now: Date.now() };
 }
 
-/** The public URL the provider sends the browser back to. */
-const callbackUri = (url: URL, provider: ProviderId): string => `${url.origin}/sign-in/${provider}/callback`;
+/** The public URL the provider sends the browser back to. Google's differs locally (worker/hosts.ts). */
+const callbackUri = (url: URL, provider: ProviderId): string =>
+  provider === "google" ? googleCallbackUri(url) : `${url.origin}/sign-in/${provider}/callback`;
 
 /** Answer one sign-in route. */
 export async function answerSignIn(request: Request, route: SignInRoute, context: SignInContext): Promise<Response> {

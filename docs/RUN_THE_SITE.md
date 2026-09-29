@@ -110,31 +110,37 @@ or restart `wrangler dev` to reset the count. Why they are there is
 
 The developer site's sign-in (`web/worker/signIn.ts`) needs a real OAuth
 client, so it is off locally until you give it one: each provider's sign-in
-route answers 503 until both its client id and secret are set. Locally that
-means GitHub only.
-
-Google cannot sign in locally. The Worker sends the callback on the host it was
-asked on, `developers.localhost`. Google's
-[redirect URI rules](https://developers.google.com/identity/protocols/oauth2/web-server#uri-validation)
-say a host's top-level domain must be on the
-[public suffix list](https://publicsuffix.org/list/public_suffix_list.dat).
-`localhost` is not on it, and Google exempts localhost only from the HTTPS and
-raw-IP rules, not from this one. Google's side is covered by the tests instead
-(below), and live on `developers.lexema.fyi`
-([DEPLOY.md](DEPLOY.md#turn-on-sign-in)).
-
-To sign in with GitHub, create a GitHub OAuth app whose authorization callback
-URL is `http://developers.localhost:8790/sign-in/github/callback`. GitHub sets no
-host or scheme rule on a callback URL; the one it asks is that the Worker's
-`redirect_uri` matches it
-([Redirect URLs](https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/authorizing-oauth-apps#redirect-urls)).
-Put its values in `web/.dev.vars`, which is gitignored and which `wrangler dev`
-reads:
+route answers 503 until both its client id and secret are set. Put the values
+in `web/.dev.vars`, which is gitignored and which `wrangler dev` reads, for
+either provider or both:
 
 ```sh
+GOOGLE_CLIENT_ID=…
+GOOGLE_CLIENT_SECRET=…
 GITHUB_CLIENT_ID=…
 GITHUB_CLIENT_SECRET=…
 ```
+
+For Google, add the authorized redirect URI
+`http://localhost:8790/sign-in/google/callback` to a Google OAuth client of type
+*Web application*. It can be the production client, which may list this URI
+beside the live one ([DEPLOY.md](DEPLOY.md#turn-on-sign-in)). The URI is on
+`localhost`, not `developers.localhost`. Google accepts `http://localhost`,
+but its
+[redirect URI rules](https://developers.google.com/identity/protocols/oauth2/web-server#uri-validation)
+want any other host's top-level domain on the
+[public suffix list](https://publicsuffix.org/list/public_suffix_list.dat), and
+`localhost` is not on it. So when the developer site
+runs on `developers.localhost`, the Worker sends Google the `localhost`
+callback, and `localhost` answers it with a 302 to the same path and query on
+`developers.localhost`, which checks the sign-in as it does live
+(`web/worker/hosts.ts`, #185). The port in the URI is the one you run on.
+
+For GitHub, create a GitHub OAuth app whose authorization callback URL is
+`http://developers.localhost:8790/sign-in/github/callback`. GitHub sets no host
+or scheme rule on a callback URL; the one it asks is that the Worker's
+`redirect_uri` matches it
+([Redirect URLs](https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/authorizing-oauth-apps#redirect-urls)).
 
 Then start at <http://developers.localhost:8790/sign-in>. The page shows a
 provider without both values as a disabled button.

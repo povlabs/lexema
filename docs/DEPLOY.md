@@ -69,7 +69,10 @@ client id and its secret are set. Neither is in the repository.
 
 1. Create a Google OAuth client of type *Web application* in the Google Cloud
    console, with the authorized redirect URI
-   `https://developers.lexema.fyi/sign-in/google/callback`.
+   `https://developers.lexema.fyi/sign-in/google/callback`. The same client can
+   also list the local one, `http://localhost:8790/sign-in/google/callback`, to
+   sign in on your own machine
+   ([RUN_THE_SITE.md](RUN_THE_SITE.md#sign-in-locally)).
 2. Create a GitHub OAuth app (Settings, Developer settings, OAuth Apps) with the
    homepage `https://developers.lexema.fyi` and the authorization callback URL
    `https://developers.lexema.fyi/sign-in/github/callback`.

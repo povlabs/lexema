@@ -108,3 +108,25 @@ test("the query survives the rewrite, and every other host is the dictionary's",
   }
   assert.deepEqual(to("http://api.localhost:8790/v1/lookup?q=sale"), { to: "api" });
 });
+
+test("localhost relays Google's sign-in callback to developers.localhost with the same query; lexema.fyi does not (#185)", async () => {
+  const { app, api, send } = worker();
+  const relayed = await send("http://localhost:8791/sign-in/google/callback?code=x&state=y");
+  assert.equal(relayed.status, 302);
+  assert.equal(relayed.headers.get("location"), "http://developers.localhost:8791/sign-in/google/callback?code=x&state=y");
+  assert.equal(relayed.headers.get("set-cookie"), null);
+  assert.deepEqual([app, api], [[], []]);
+
+  for (const url of [
+    "https://lexema.fyi/sign-in/google/callback?code=x&state=y",
+    "http://localhost:8791/sign-in/github/callback?code=x",
+    "http://localhost:8791/sign-in/google",
+    "http://127.0.0.1:8791/sign-in/google/callback?code=x",
+  ]) {
+    assert.deepEqual(to(url), { to: "site" }, url);
+  }
+  assert.deepEqual(to("http://developers.localhost:8791/sign-in/google/callback?code=x"), {
+    to: "developers",
+    path: `/${DEVELOPERS_SEGMENT}/sign-in/google/callback`,
+  });
+});

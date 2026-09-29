@@ -3,7 +3,7 @@
 // local `node:sqlite` database over the real schema.
 
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
 import { DatabaseSync } from "node:sqlite";
@@ -226,4 +226,55 @@ test("the sign-in routes exist on the developer site only, and nothing else sets
     assert.deepEqual(response.headers.getSetCookie(), [], url);
   }
   assert.deepEqual(appSaw, ["/sign-in/google", "/sign-out", "/developer-site/sign-in/nobody"]);
+});
+
+const LOCAL_DEVELOPERS = "http://developers.localhost:8791";
+const LOCAL_GOOGLE_CALLBACK = "http://localhost:8791/sign-in/google/callback";
+
+test("locally, Google returns to localhost, which relays the callback to the developer site with its query (#185)", async () => {
+  const { send, google, jar, account } = site();
+
+  const start = await send(`${LOCAL_DEVELOPERS}/sign-in/google`);
+  assert.equal(start.status, 303);
+  const location = new URL(start.headers.get("location") ?? "");
+  assert.equal(location.searchParams.get("redirect_uri"), LOCAL_GOOGLE_CALLBACK);
+
+  const callback = google.consent(location.toString(), ada);
+  assert.equal(`${callback.origin}${callback.pathname}`, LOCAL_GOOGLE_CALLBACK);
+  const relayed = await send(callback.toString());
+  assert.equal(relayed.status, 302);
+  assert.equal(relayed.headers.get("location"), `${LOCAL_DEVELOPERS}/sign-in/google/callback${callback.search}`);
+  assert.deepEqual(relayed.headers.getSetCookie(), []);
+
+  // The stub redeems a code only for the redirect URI it was issued for, so
+  // the token exchange sends the same localhost value.
+  const back = await send(relayed.headers.get("location") ?? "");
+  assert.equal(back.status, 303);
+  assert.equal(back.headers.get("location"), AFTER_SIGN_IN);
+  assert.ok(jar.has(SESSION_COOKIE));
+  assert.equal(typeof (await account()), "number");
+});
+
+test("the relay is local and Google's only: production's redirect URI and GitHub's are the developer site's own", async () => {
+  const { send } = site();
+  const redirectUri = async (url: string) =>
+    new URL((await send(url)).headers.get("location") ?? "").searchParams.get("redirect_uri");
+  assert.equal(await redirectUri(`${DEVELOPERS}/sign-in/google`), "https://developers.lexema.fyi/sign-in/google/callback");
+  assert.equal(await redirectUri(`${DEVELOPERS}/sign-in/github`), "https://developers.lexema.fyi/sign-in/github/callback");
+  assert.equal(await redirectUri(`${LOCAL_DEVELOPERS}/sign-in/github`), `${LOCAL_DEVELOPERS}/sign-in/github/callback`);
+});
+
+test("lexema.fyi/sign-in/google/callback is the App Router's, which has no page there: a 404, as before", async () => {
+  const { send, appSaw } = site();
+  const response = await send("https://lexema.fyi/sign-in/google/callback?code=x&state=y");
+  assert.equal(response.headers.get("location"), null);
+  assert.deepEqual(response.headers.getSetCookie(), []);
+  assert.deepEqual(appSaw, ["/sign-in/google/callback"]);
+
+  // Only the developer site's route group has a sign-in page.
+  const app = fileURLToPath(new URL("../app/", import.meta.url));
+  const signInDirectories = readdirSync(app, { recursive: true, withFileTypes: true })
+    .filter((entry) => entry.isDirectory() && entry.name === "sign-in")
+    .map((entry) => entry.parentPath.slice(app.length));
+  assert.deepEqual(signInDirectories, ["(developers)/developer-site"]);
 });
