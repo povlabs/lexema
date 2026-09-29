@@ -10,39 +10,16 @@
 // made here is an admin key: it has no owner, no developer account sees it, and
 // its per-minute limit is its own.
 
-import { execFileSync } from "node:child_process";
-import { resolve } from "node:path";
-import { pathToFileURL } from "node:url";
-import type { LookupDatabase, SqlValue } from "../lookup/database.js";
+import { finish, flags, isMain, positive, usageError, type CommandResult } from "../commandLine.js";
+import { seededD1 } from "../db/localD1.js";
+import type { LookupDatabase } from "../lookup/database.js";
 import { createKey, revokeKey } from "./keys.js";
 
 const USAGE = `usage:
   pnpm run api-key create --label <text> --per-minute <calls>
   pnpm run api-key revoke <key id>`;
 
-/** What a command printed, and the exit status it ends with. */
-export interface CommandResult {
-  out: string;
-  status: 0 | 1;
-}
-
-const usage = (problem: string): CommandResult => ({ out: `${problem}\n${USAGE}`, status: 1 });
-
-/** A whole number above zero, or undefined. */
-const positive = (text: string | undefined): number | undefined =>
-  text !== undefined && /^[1-9]\d*$/.test(text) ? Number(text) : undefined;
-
-/** The value after each `--flag`, for the flags named. */
-function flags(args: readonly string[], names: readonly string[]): Map<string, string> | string {
-  const values = new Map<string, string>();
-  for (let i = 0; i < args.length; i += 2) {
-    const name = args[i].replace(/^--/, "");
-    if (!args[i].startsWith("--") || !names.includes(name)) return `unknown argument ${args[i]}`;
-    if (args[i + 1] === undefined) return `--${name} needs a value`;
-    values.set(name, args[i + 1]);
-  }
-  return values;
-}
+const usage = (problem: string): CommandResult => usageError(problem, USAGE);
 
 /** Run one command against a database. */
 export async function runKeyCommand(args: readonly string[], db: LookupDatabase, now: number): Promise<CommandResult> {
@@ -76,37 +53,4 @@ export async function runKeyCommand(args: readonly string[], db: LookupDatabase,
   return usage(command === undefined ? "no command" : `unknown command ${command}`);
 }
 
-/** A value written into SQL as a literal, for Wrangler's `--command`, which binds no parameters. */
-function sqlLiteral(value: SqlValue): string {
-  if (value === null) return "NULL";
-  if (typeof value === "number") {
-    if (!Number.isFinite(value)) throw new Error(`not a finite number: ${value}`);
-    return String(value);
-  }
-  return `'${value.replace(/'/g, "''")}'`;
-}
-
-/** The local D1 through Wrangler, as src/import/seedDev.ts reaches it. */
-function localD1(persistTo: string): LookupDatabase {
-  return {
-    async all<T>(sql: string, params: readonly SqlValue[]): Promise<T[]> {
-      let next = 0;
-      const command = sql.replace(/\?/g, () => sqlLiteral(params[next++]));
-      if (next !== params.length) throw new Error(`the statement takes ${next} parameter(s), was given ${params.length}`);
-      const output = execFileSync(
-        "pnpm",
-        ["exec", "wrangler", "d1", "execute", "lexema", "--local", "--persist-to", persistTo, "--json", "--command", command],
-        { cwd: resolve("web"), stdio: ["ignore", "pipe", "inherit"], env: { ...process.env, CI: "1" }, encoding: "utf8" },
-      );
-      const [answer] = JSON.parse(output) as [{ results: T[] }];
-      return answer.results;
-    },
-  };
-}
-
-if (process.argv[1] !== undefined && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
-  const db = localD1(resolve(process.env.SEED_STATE ?? ".data/seed-state"));
-  const { out, status } = await runKeyCommand(process.argv.slice(2), db, Date.now());
-  (status === 0 ? process.stdout : process.stderr).write(`${out}\n`);
-  process.exitCode = status;
-}
+if (isMain(import.meta.url)) finish(await runKeyCommand(process.argv.slice(2), seededD1(), Date.now()));

@@ -641,6 +641,61 @@ CREATE INDEX developer_session_by_account ON developer_session (account_id);
 
 
 -- ---------------------------------------------------------------------------
+-- Plans (#161, #202)
+-- ---------------------------------------------------------------------------
+
+-- A developer account's plan state (src/billing/plans.ts, src/billing/accountPlan.ts),
+-- one row per account that has ever had a plan or a Stripe customer. An account
+-- with no row has no plan. `state` is the `PlanState` arm, and the CHECKs below
+-- let a row hold only what its arm carries:
+--   none        nothing but, perhaps, the Stripe customer
+--   active      a plan and its period
+--   past-due    a Stripe plan and its period
+--   cancelling  a Stripe plan, its period and `ends_at` (Stripe's `cancel_at`)
+--   ended       the plan it had
+-- Starter and Pro come from a Stripe subscription, so they carry its id;
+-- Enterprise is set by hand (`pnpm run plan`), carries its own calls a period
+-- and a minute, and is only ever active or ended. Times are ISO-8601; a period
+-- runs from `period_start` up to, not including, `period_end`.
+--
+-- `as_of` is when the state was true: the creation time of the Stripe event it
+-- was applied from, or when Huey set it by hand. A Stripe event older than it
+-- changes nothing, so events arriving out of order cannot undo a newer state.
+-- It is NULL only on a row that holds just a linked customer.
+CREATE TABLE account_plan (
+  account_id             INTEGER PRIMARY KEY REFERENCES developer_account(account_id),
+  state                  TEXT    NOT NULL CHECK (state IN ('none', 'active', 'past-due', 'cancelling', 'ended')),
+  plan                   TEXT    CHECK (plan IN ('starter', 'pro', 'enterprise')),
+  calls_per_period       INTEGER CHECK (calls_per_period > 0),  -- Enterprise only
+  calls_per_minute       INTEGER CHECK (calls_per_minute > 0),  -- Enterprise only
+  stripe_customer_id     TEXT    CHECK (stripe_customer_id GLOB 'cus_?*'),
+  stripe_subscription_id TEXT    CHECK (stripe_subscription_id GLOB 'sub_?*'),
+  period_start           TEXT,
+  period_end             TEXT,
+  ends_at                TEXT,
+  as_of                  TEXT,
+  CHECK ((state = 'none') = (plan IS NULL)),
+  CHECK ((coalesce(plan, '') = 'enterprise') = (calls_per_period IS NOT NULL)),
+  CHECK ((coalesce(plan, '') = 'enterprise') = (calls_per_minute IS NOT NULL)),
+  CHECK ((coalesce(plan, '') IN ('starter', 'pro')) = (stripe_subscription_id IS NOT NULL)),
+  CHECK (coalesce(plan, '') <> 'enterprise' OR state IN ('active', 'ended')),
+  CHECK ((state IN ('active', 'past-due', 'cancelling')) = (period_start IS NOT NULL)),
+  CHECK ((state IN ('active', 'past-due', 'cancelling')) = (period_end IS NOT NULL)),
+  CHECK (period_start < period_end),
+  CHECK ((state = 'cancelling') = (ends_at IS NOT NULL)),
+  CHECK (state = 'none' OR as_of IS NOT NULL)
+) STRICT;
+
+-- Every Stripe webhook event applied, by its id, so a replay changes nothing.
+-- The row is written in the same transaction as the change the event made.
+CREATE TABLE stripe_event (
+  event_id    TEXT PRIMARY KEY CHECK (event_id GLOB 'evt_?*'),
+  type        TEXT NOT NULL CHECK (length(type) > 0),
+  received_at TEXT NOT NULL   -- ISO-8601, the server's clock
+) STRICT;
+
+
+-- ---------------------------------------------------------------------------
 -- Recovered definitions (#28)
 -- ---------------------------------------------------------------------------
 

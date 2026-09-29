@@ -97,6 +97,8 @@ One seeded before [#190](https://github.com/hueypov/lexema/issues/190) has no
 One seeded before [#201](https://github.com/hueypov/lexema/issues/201) still has
 `daily_units` on `api_key` and `units` on `api_key_usage`, so making a key and
 every answered call fail.
+One seeded before [#202](https://github.com/hueypov/lexema/issues/202) has no
+`account_plan` or `stripe_event` table, so `pnpm run plan` fails on the missing table.
 Run `pnpm run seed:dev` again: it rebuilds the database from
 [src/db/schema.sql](./src/db/schema.sql), so make its keys again afterwards.
 The `display_name` column alone can instead be added in place, keeping accounts
@@ -162,6 +164,26 @@ answer differs, so a change to an answer changes the example with it. It also
 fails when a sidebar link reaches no page. The
 pricing page's "What counts as a call" table is read from the same call map the API charges by.
 
+### Set an Enterprise plan
+
+Each developer account's plan state lives in `account_plan` in the local D1
+([src/billing/accountPlan.ts](./src/billing/accountPlan.ts); the plans and
+their numbers are [src/billing/plans.ts](./src/billing/plans.ts), epic
+[#161](https://github.com/hueypov/lexema/issues/161)). Starter and Pro come from
+Stripe. Enterprise is set by hand, with its own calls, rate and period:
+
+```sh
+pnpm run plan enterprise 3 --calls 20000000 --per-minute 1000 --from 2026-10-01 --until 2026-11-01
+pnpm run plan end 3
+```
+
+The number is the developer account's id. The period runs from the start of
+`--from` up to the start of `--until`, both UTC days, and nothing renews it:
+set the next period with `enterprise` again. An account on a Starter or Pro
+plan Stripe still bills is refused until that plan is cancelled in Stripe.
+Bad flags print the usage line and exit 1. Both commands write to
+`SEED_STATE`, as `pnpm run api-key` does.
+
 ## Stack
 
 | Layer | Choice | What it does for Lexema |
@@ -179,6 +201,7 @@ pricing page's "What counts as a call" table is read from the same call map the 
 ```
 src/
 ├── api/            # API keys, call counts and per-key counters; `pnpm run api-key`
+├── billing/        # plans, plan states and their D1 rows; `pnpm run plan`
 ├── cli.ts          # `pnpm run validate` — streams the file, writes the report
 ├── core/           # dataset-independent: record types, candidate resolver, report
 ├── db/             # the D1 schema and the lookup queries, as SQL
