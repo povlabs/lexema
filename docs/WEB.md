@@ -358,17 +358,16 @@ stored as a SHA-256 of their rate-limit key, never as an address.
 
 A disputed claim is left untouched, and the result page does not show the
 dispute: Huey ruled on 2026-09-27 that the page shows data only, with no note
-on disputed data. The verdicts come from `claim_review` rows, and
-the development seed writes the ones this repository has evidence for — today,
-the `studente` verb claim that
-[the source research](../reports/2026-09-18-source-research.md) contradicts. Who
-reviews, on what evidence, and how a verdict is reached is still #12; what is
-settled is that a review is data beside the claim, never a change to it.
+on disputed data. The verdicts come from `claim_review` rows, and no seed
+writes one: Huey ruled on 2026-09-23 that no dispute comes from Lexema (#117).
+Disputes and corrections come from readers' reports (#51), which a person
+reviews (#12). Who reviews, on what evidence, and how a verdict is reached is
+still #12; what is settled is that a review is data beside the claim, never a
+change to it.
 
-The verdicts are written after the import, not by it. The importer copies the
-source and says nothing about whether it is right; a review is a claim about
-the source, made on evidence the source does not contain, so it is a separate
-write over the release the import just made.
+The importer copies the source and says nothing about whether it is right; a
+review is a claim about the source, made on evidence the source does not
+contain, so it is a separate write over a release the import already made.
 
 ## Why the source link is labelled the way it is
 

@@ -27,7 +27,6 @@ import { DatabaseSync } from "node:sqlite";
 import { gzipSync } from "node:zlib";
 import { renderToStaticMarkup } from "react-dom/server";
 import { seedSql } from "../../src/import/seedSql.js";
-import { writeKnownDisputes } from "../../src/import/knownDisputes.js";
 import { loadFixturePages, type RawPageSource } from "../../src/source/rawPage.js";
 import { PUBLISHED_ARCHIVE_SHA256, sourceOf, type ArchiveFacts, type ReleaseSource } from "../../src/source/archiveFacts.js";
 import { fromNodeSqlite } from "../../src/lookup/database.js";
@@ -105,8 +104,8 @@ async function fixture(
   });
   const db = new DatabaseSync(":memory:");
   for (const part of parts) db.exec(await readFile(part, "utf8"));
-  // The same review rows `pnpm run seed:dev` writes, from the same module.
-  assert.equal(writeKnownDisputes(db, RELEASE), 1);
+  // No review comes from Lexema: the seed writes no `claim_review` row (#117).
+  assert.deepEqual({ ...db.prepare("SELECT count(*) AS n FROM claim_review").get() }, { n: 0 });
   return { dir, db };
 }
 
@@ -851,10 +850,20 @@ test("an etymology shows one cut line and a + more that opens the whole text in 
 
 test("the page shows data only: no dispute, no 'lists … among its forms', no 'not given' on a dash", async () => {
   await withDevSeed(async ({ db }) => {
-    // studente's verb claim has a disputed review row; the page does not show it.
-    const studente = await render(db, "studente");
+    // As seeded, no reading of studente carries a review, and none shows one.
+    assert.ok((await readingsFor(db, "studente")).every((reading) => reading.reviews.length === 0));
+    assert.doesNotMatch(await render(db, "studente"), /Disputed|treccani|role="note"/i);
+    // A disputed review row, written here as a reviewer (#12) would write it:
+    // lookup reads it, and the page still does not show it.
+    const verb = db
+      .prepare("SELECT record_id FROM source_record WHERE release_id = ? AND word = 'studente' AND pos = 'verb'")
+      .get(RELEASE) as { record_id: number };
+    db.prepare(
+      `INSERT INTO claim_review (record_id, json_pointer, status, note, evidence_url, reviewed_at, reviewed_by)
+       VALUES (?, '/senses/0/glosses/0', 'disputed', 'Treccani gives studiante.', 'https://www.treccani.it/vocabolario/studiare/', '2026-09-29', 'test')`,
+    ).run(verb.record_id);
     assert.ok((await readingsFor(db, "studente")).some((reading) => reading.reviews.some((review) => review.status === "disputed")));
-    assert.doesNotMatch(studente, /Disputed|treccani|role="note"/i);
+    assert.doesNotMatch(await render(db, "studente"), /Disputed|treccani|role="note"/i);
     // A record that only lists the query in its table is a reading like any other.
     const listed: string[] = [];
     for (const query of ["andavano", "sale", "bello", "casa", "belli"]) {
