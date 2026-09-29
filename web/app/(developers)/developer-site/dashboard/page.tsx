@@ -1,5 +1,5 @@
 // developers.lexema.fyi/dashboard (#169): the wiring only; the markup is
-// `../../../Dashboard.tsx`.
+// `@/components/developers/dashboard/Dashboard.tsx`.
 import { headers } from "next/headers";
 import { Dashboard } from "@/components/developers/dashboard/Dashboard";
 import { loadDashboard } from "@/lib/developers/loadDashboard.ts";

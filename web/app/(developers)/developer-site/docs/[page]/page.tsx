@@ -1,8 +1,8 @@
 // developers.lexema.fyi/docs/<page> (#166): every docs page but the
 // introduction, one per sidebar item (docsPages.ts). The wiring only; the
-// markup is `../../../../DeveloperDocs.tsx`. It reads the session, when there
-// is one, for the account menu (#190), and nothing else from D1. A slug that
-// is no page's is a 404.
+// markup is `@/components/developers/DeveloperDocs.tsx`. It reads the session,
+// when there is one, for the account menu (#190), and nothing else from D1. A
+// slug that is no page's is a 404.
 import { notFound } from "next/navigation";
 import { DeveloperDocs } from "@/components/developers/DeveloperDocs";
 import { signedInVisitor } from "@/lib/developers/visitor.ts";

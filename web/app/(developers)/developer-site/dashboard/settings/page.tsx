@@ -1,5 +1,5 @@
 // developers.lexema.fyi/dashboard/settings (#190): the wiring only; the markup
-// is `../../../../DashboardSettings.tsx`.
+// is `@/components/developers/dashboard/DashboardSettings.tsx`.
 import { headers } from "next/headers";
 import { DashboardSettings } from "@/components/developers/dashboard/DashboardSettings";
 import { loadSettings } from "@/lib/developers/loadDashboard.ts";
