@@ -26,11 +26,11 @@ and this file is the doc to fix.
 ## API
 | Term | Definition | Not |
 |---|---|---|
-| API key | The secret a client of the JSON API sends as `X-API-Key`. Stored only as its SHA-256, with its own label, per-minute request limit and daily unit allowance (`api_key` in `src/db/schema.sql`; `src/api/keys.ts`). Either an admin key or an owned key. | a visitor key — the per-visitor rate-limit identity the site derives from an address (`visitorKey` in `web/worker/rateLimit.ts`) |
-| admin key | An API key made with `pnpm run api-key` (`src/api/keyCli.ts`). It has no owner (`owner_account_id` is NULL), and no developer account can list or revoke it. | an owned key |
-| owned key | An API key a developer account made for itself, with the default limits (`src/api/ownedKeys.ts`). It may be limited to some endpoints and given an expiry (`src/api/keyAccess.ts`); an admin key has neither. Its owner is that account; only that account lists or revokes it, and a deleted account's owned keys stay stored, revoked. | an admin key |
+| API key | The secret a client of the JSON API sends as `X-API-Key`. Stored only as its SHA-256, with its own label (`api_key` in `src/db/schema.sql`; `src/api/keys.ts`). Either an admin key or an owned key. | a visitor key — the per-visitor rate-limit identity the site derives from an address (`visitorKey` in `web/worker/rateLimit.ts`) |
+| admin key | An API key made with `pnpm run api-key` (`src/api/keyCli.ts`). It has no owner (`owner_account_id` is NULL), carries its own per-minute limit, and no developer account can list or revoke it. | an owned key |
+| owned key | An API key a developer account made for itself (`src/api/ownedKeys.ts`). It carries no per-minute limit of its own: its rate is its account's, and the schema refuses one that has a limit. It may be limited to some endpoints and given an expiry (`src/api/keyAccess.ts`); an admin key has neither. Its owner is that account; only that account lists or revokes it, and a deleted account's owned keys stay stored, revoked. | an admin key |
 | display prefix | A key's first 11 characters, `lx_` and 8 hex digits, stored beside its hash so the key can be named without its secret (`displayPrefix` in `src/api/keys.ts`). | the key — the rest is never stored |
-| unit | The usage weight of one answered API request, fixed per endpoint in one closed map (`UNIT_WEIGHT` in `src/api/units.ts`: `/lookup` is 2, a batch 1 per word) and summed per key per UTC day in `api_key_usage`. | a request — the per-minute limit counts requests, not units |
+| call | What API usage is counted in: every answered request is 1 call, and `lookup/batch` is 1 call per word it is sent (`CALL_BASIS` and `callCost` in `src/api/calls.ts`; Huey, #183). Summed per key per UTC day in `api_key_usage.calls`. | a request — a batch of 7 words is one request and 7 calls; nor the retired *unit*, the per-endpoint weight calls replaced (#201) |
 
 ## Developer site
 | Term | Definition | Not |

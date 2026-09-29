@@ -70,13 +70,14 @@ The same Worker answers a private JSON API on its own host,
 is in [how to run the search page](./docs/RUN_THE_SITE.md#reach-each-host)).
 Every request needs an
 API key in the `X-API-Key` header. Keys live in the local D1 the seed writes.
-The CLI below makes admin keys, which belong to no developer account; a key a
-developer makes for their own account is an owned key
-([src/api/ownedKeys.ts](./src/api/ownedKeys.ts)), with the CLI's example limits
-of 60 requests a minute and 20,000 units a day.
+The CLI below makes admin keys, which belong to no developer account and carry
+their own per-minute limit; a key a developer makes for their own account is an
+owned key ([src/api/ownedKeys.ts](./src/api/ownedKeys.ts)), which carries none:
+its rate is its account's, 60 calls a minute until plans set it
+([#161](https://github.com/hueypov/lexema/issues/161)).
 
 ```sh
-pnpm run api-key create --label "learning app" --per-minute 60 --daily-units 20000
+pnpm run api-key create --label "learning app" --per-minute 60
 pnpm run api-key revoke 3
 ```
 
@@ -93,6 +94,9 @@ One seeded before [#187](https://github.com/hueypov/lexema/issues/187) has no
 `endpoints` or `expires_at` on `api_key`, so every API call fails on the missing column.
 One seeded before [#190](https://github.com/hueypov/lexema/issues/190) has no
 `display_name` on `provider_identity`, so signing in fails on the missing column.
+One seeded before [#201](https://github.com/hueypov/lexema/issues/201) still has
+`daily_units` on `api_key` and `units` on `api_key_usage`, so making a key and
+every answered call fail.
 Run `pnpm run seed:dev` again: it rebuilds the database from
 [src/db/schema.sql](./src/db/schema.sql), so make its keys again afterwards.
 The `display_name` column alone can instead be added in place, keeping accounts
@@ -137,11 +141,12 @@ word that heads no record. `/random` takes `/lookup`'s `pos` and reads the
 `pnpm run seed:dev` again. `/lookup/batch` takes 1 to 200 words and answers one
 light result per candidate, or one `found: false` per word not in the release.
 
-Each key has its own per-minute request limit, counted in D1, and every answer
+Each key has its own per-minute limit, counted in D1, and every answer
 to a known key carries `RateLimit-Limit`, `RateLimit-Remaining` and
 `RateLimit-Reset`; a 401 carries none. Past the limit the answer is a 429 with
 `Retry-After`. Each answered request, found (200) or not found (404), adds its
-units to the key's row for the day ([src/api/units.ts](./src/api/units.ts)). A
+calls to the key's row for the day: 1 call, or 1 per word for `/lookup/batch`
+([src/api/calls.ts](./src/api/calls.ts)). A
 request refused before an answer (a 400 bad `q`, parameter or body, a 405 or a 429) adds none. An
 API request is never counted against the site's per-visitor limits.
 
@@ -155,7 +160,7 @@ footer and has no `/developers` page. The docs are one page per sidebar item,
 they print to the API, runs each JavaScript example against it, and fails when an
 answer differs, so a change to an answer changes the example with it. It also
 fails when a sidebar link reaches no page. The
-pricing page's cost table is read from the same unit map the API charges by.
+pricing page's "What counts as a call" table is read from the same call map the API charges by.
 
 ## Stack
 
@@ -173,7 +178,7 @@ pricing page's cost table is read from the same unit map the API charges by.
 
 ```
 src/
-├── api/            # API keys, unit weights and per-key counters; `pnpm run api-key`
+├── api/            # API keys, call counts and per-key counters; `pnpm run api-key`
 ├── cli.ts          # `pnpm run validate` — streams the file, writes the report
 ├── core/           # dataset-independent: record types, candidate resolver, report
 ├── db/             # the D1 schema and the lookup queries, as SQL

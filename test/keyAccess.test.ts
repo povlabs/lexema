@@ -15,7 +15,7 @@ import {
   LIFETIME_LABEL,
   onlyEndpoints,
 } from "../src/api/keyAccess.js";
-import { ENDPOINTS } from "../src/api/units.js";
+import { ENDPOINTS } from "../src/api/calls.js";
 
 test("only some endpoints is at least one real endpoint, each once, in the checklist's order", () => {
   assert.deepEqual(onlyEndpoints(["random", "lookup", "random"]), { kind: "only", endpoints: ["lookup", "random"] });

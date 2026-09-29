@@ -2,7 +2,7 @@
 // #152). The handler (./handler.ts) owns the key, the limits and the charge;
 // an endpoint (./endpoints.ts) owns only its answer.
 
-import type { Charge } from "@lexema/api/units.ts";
+import type { Charge } from "@lexema/api/calls.ts";
 import type { LookupDatabase } from "@lexema/lookup/database.ts";
 
 /** What one request needs from the Worker around it. */

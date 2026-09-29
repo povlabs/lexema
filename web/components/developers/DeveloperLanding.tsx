@@ -3,7 +3,7 @@
 // `/lookup` example, and every value in the excerpt is read from its answer;
 // the excerpt's lines are laid out as board 25 draws them.
 
-import { API_PREFIX } from "@lexema/api/units.ts";
+import { API_PREFIX } from "@lexema/api/calls.ts";
 import {
   API_BASE,
   ENDPOINT_REFERENCE,

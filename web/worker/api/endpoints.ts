@@ -1,7 +1,7 @@
 // Every endpoint of the JSON API under /v1 on api.lexema.fyi (#150, #151,
 // #152), each an answer to one request and nothing else: the key, the limits
 // and the charge are the handler's (./handler.ts), and every cost is
-// src/api/units.ts's.
+// src/api/calls.ts's.
 //
 // None of them ranks or places anew. `/lookup`, `/lemmatize`, `/inflect` and
 // `/lookup/batch` read `lookup()` and its candidates (./lookupAnswer.ts);
@@ -12,7 +12,7 @@
 // A request an endpoint cannot read is a 400 before any lookup, and costs
 // nothing. Anything else did the work and is charged, found (200) or not (404).
 
-import type { Endpoint } from "@lexema/api/units.ts";
+import type { Endpoint } from "@lexema/api/calls.ts";
 import type { LookupDatabase } from "@lexema/lookup/database.ts";
 import { exists, lookup, MAX_QUERY_LENGTH, rejectionOf } from "@lexema/lookup/lookup.ts";
 import { findNearby } from "@lexema/lookup/nearby.ts";

@@ -22,7 +22,7 @@ import { signInAccount, verifiedIdentity } from "../../src/accounts/accounts.js"
 import { ALL_ENDPOINTS, onlyEndpoints, type KeyAccess } from "../../src/api/keyAccess.js";
 import { ACCEPT_KEY_SQL, createKey, revokeKey } from "../../src/api/keys.js";
 import { createAccountKey, keyName } from "../../src/api/ownedKeys.js";
-import { API_PREFIX, ENDPOINTS, UNIT_WEIGHT } from "../../src/api/units.js";
+import { API_PREFIX, ENDPOINTS } from "../../src/api/calls.js";
 import { COUNT_MINUTE_SQL, SWEEP_MINUTES_SQL } from "../../src/api/usage.js";
 import { seedSql } from "../../src/import/seedSql.js";
 import { fromNodeSqlite, type LookupDatabase } from "../../src/lookup/database.js";
@@ -80,7 +80,7 @@ after(async () => {
   await rm(dir, { recursive: true, force: true });
 });
 
-const newKey = (perMinuteLimit = 1_000) => createKey(db, { label: "developers", perMinuteLimit, dailyUnits: 10_000 }, NOW);
+const newKey = (perMinuteLimit = 1_000) => createKey(db, { label: "developers", perMinuteLimit }, NOW);
 
 /** A key a developer made in the dashboard, with this access. */
 async function ownedKey(access: KeyAccess): Promise<string> {
@@ -200,13 +200,12 @@ test("the docs print each example's status and response as the reference states 
 /** A page as a reader reads it: its text, tags dropped. */
 const textOf = (html: string): string => unescape(html.replace(/<[^>]+>/g, " ")).replace(/\s+/g, " ");
 
-test("the docs name every endpoint of the unit map with its weight, every /lookup filter, error code and header", () => {
+test("the docs name every endpoint of the call map with the calls it counts, every /lookup filter, error code and header", () => {
   const html = docs();
   const text = textOf(html);
   for (const endpoint of ENDPOINTS) {
-    const { units, per } = UNIT_WEIGHT[endpoint];
-    const cost = `${units} unit${units === 1 ? "" : "s"}${per === "word" ? " per word" : ""}`;
-    assert.ok(text.includes(` ${API_PREFIX}${endpoint} ${cost} `), `${endpoint}: ${cost}`);
+    const calls = endpoint === "lookup/batch" ? "1 call per word" : "1 call";
+    assert.ok(text.includes(` ${API_PREFIX}${endpoint} ${calls} `), `${endpoint}: ${calls}`);
   }
   // The filters #148 names for /lookup, each a parameter row of its topic.
   const lookup = textOf(renderToStaticMarkup(<DeveloperDocs page={{ kind: "endpoint", endpoint: "lookup" }} />));
@@ -342,18 +341,16 @@ test("a guide page renders no code column, and each endpoint page its request an
   }
 });
 
-test("the pricing table states each endpoint's weight from the unit map, each endpoint once", () => {
+test("pricing's What counts as a call table is board 26's: any endpoint 1 call, lookup/batch 1 call per word", () => {
   const html = renderToStaticMarkup(<DeveloperPricing />);
-  const rows = [...html.matchAll(/<tr[^>]*data-cost-row=""[^>]*><th[^>]*>([^<]+)<\/th><td[^>]*>([^<]+)<\/td><\/tr>/g)].map(
-    (match) => ({ endpoints: match[1].split(", "), cost: match[2] }),
+  assert.match(html, /<h2[^>]*>What counts as a call<\/h2>/);
+  const rows = [...html.matchAll(/<tr[^>]*data-call-row=""[^>]*><th[^>]*>([^<]+)<\/th><td[^>]*>([^<]+)<\/td><\/tr>/g)].map(
+    (match) => [match[1], match[2]],
   );
-  assert.deepEqual(rows.flatMap((row) => row.endpoints).sort(), [...ENDPOINTS].sort());
-  for (const row of rows) {
-    for (const endpoint of row.endpoints) {
-      const { units, per } = UNIT_WEIGHT[endpoint as keyof typeof UNIT_WEIGHT];
-      assert.equal(row.cost, `${units} unit${units === 1 ? "" : "s"}${per === "word" ? " per word" : ""}`, endpoint);
-    }
-  }
+  assert.deepEqual(rows, [
+    ["Any endpoint", "1 call"],
+    ["lookup/batch", "1 call per word"],
+  ]);
   // No payment action (#161): no form, and the one plan button is disabled.
   assert.doesNotMatch(html, /<form/);
   assert.match(html, /<button[^>]*disabled=""[^>]*>Coming soon<\/button>/);

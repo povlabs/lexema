@@ -1,13 +1,14 @@
 // `pnpm run api-key`: create and revoke API keys in the local D1 (#150).
 //
-//   pnpm run api-key create --label "learning app" --per-minute 60 --daily-units 20000
+//   pnpm run api-key create --label "learning app" --per-minute 60
 //   pnpm run api-key revoke 3
 //
 // `create` prints the key once; only its hash is stored, so it cannot be shown
 // again. It also prints the key's id, which is what `revoke` takes. The
 // database is the local D1 the dev seed writes (`SEED_STATE`, default
 // `.data/seed-state`), reached through Wrangler as the seed reaches it. A key
-// made here is an admin key: it has no owner, and no developer account sees it.
+// made here is an admin key: it has no owner, no developer account sees it, and
+// its per-minute limit is its own.
 
 import { execFileSync } from "node:child_process";
 import { resolve } from "node:path";
@@ -16,7 +17,7 @@ import type { LookupDatabase, SqlValue } from "../lookup/database.js";
 import { createKey, revokeKey } from "./keys.js";
 
 const USAGE = `usage:
-  pnpm run api-key create --label <text> --per-minute <requests> --daily-units <units>
+  pnpm run api-key create --label <text> --per-minute <calls>
   pnpm run api-key revoke <key id>`;
 
 /** What a command printed, and the exit status it ends with. */
@@ -47,18 +48,16 @@ function flags(args: readonly string[], names: readonly string[]): Map<string, s
 export async function runKeyCommand(args: readonly string[], db: LookupDatabase, now: number): Promise<CommandResult> {
   const [command, ...rest] = args;
   if (command === "create") {
-    const given = flags(rest, ["label", "per-minute", "daily-units"]);
+    const given = flags(rest, ["label", "per-minute"]);
     if (typeof given === "string") return usage(given);
     const label = given.get("label")?.trim() ?? "";
     const perMinuteLimit = positive(given.get("per-minute"));
-    const dailyUnits = positive(given.get("daily-units"));
     if (label === "") return usage("create needs --label");
     if (perMinuteLimit === undefined) return usage("create needs --per-minute, a whole number above 0");
-    if (dailyUnits === undefined) return usage("create needs --daily-units, a whole number above 0");
-    const { keyId, key } = await createKey(db, { label, perMinuteLimit, dailyUnits }, now);
+    const { keyId, key } = await createKey(db, { label, perMinuteLimit }, now);
     return {
       out: [
-        `created key ${keyId} "${label}": ${perMinuteLimit} requests a minute, ${dailyUnits} units a day`,
+        `created key ${keyId} "${label}": ${perMinuteLimit} calls a minute`,
         "",
         `  ${key}`,
         "",
