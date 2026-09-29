@@ -13,7 +13,7 @@ import { ReadingView } from "./Reading";
 import { ReportDialog } from "./ReportDialog";
 import { sourcePageUrl } from "@/lib/dictionary/sourcePage.ts";
 import { WordList } from "./WordList";
-import type { WordPage } from "@/lib/dictionary/wordPage.ts";
+import type { WordLists, WordPage } from "@/lib/dictionary/wordPage.ts";
 import {
   BLOCK_LABEL,
   WORD_BLOCK,
@@ -75,8 +75,8 @@ function JumpLinks({ page }: { page: WordPage }) {
 }
 
 
-function WordFactsView({ facts }: { facts: WordFacts }) {
-  const any = facts.etymologies.length + facts.synonyms.length + facts.antonyms.length + facts.derived.length > 0;
+function WordFactsView({ facts, lists }: { facts: WordFacts; lists: WordLists }) {
+  const any = facts.etymologies.length + lists.synonyms.length + lists.antonyms.length + lists.derived.length > 0;
   if (!any) return null;
   return (
     <div className={WORD_FACTS}>
@@ -90,9 +90,9 @@ function WordFactsView({ facts }: { facts: WordFacts }) {
           ))}
         </section>
       )}
-      <WordList id="synonyms" label="Synonyms" words={facts.synonyms} />
-      <WordList id="antonyms" label="Antonyms" words={facts.antonyms} />
-      <WordList id="derived" label="Derived words" words={facts.derived} />
+      <WordList id="synonyms" label="Synonyms" items={lists.synonyms} />
+      <WordList id="antonyms" label="Antonyms" items={lists.antonyms} />
+      <WordList id="derived" label="Derived words" items={lists.derived} />
     </div>
   );
 }
@@ -140,7 +140,7 @@ export function WordView({ page, siteKey }: { page: WordPage; siteKey?: string }
           <ReadingView key={entry.reading.recordId} entry={entry} />
         ))}
       </div>
-      <WordFactsView facts={page.wordFacts} />
+      <WordFactsView facts={page.wordFacts} lists={page.wordLists} />
       <SourceLinks page={page} siteKey={siteKey} />
     </>
   );

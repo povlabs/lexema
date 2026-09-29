@@ -314,6 +314,8 @@ export const WORD_LIST_ITEM_REST = "hidden items-baseline gap-3 group-data-open/
 /** The `+ more` item of a list whose words all fit: laid out only to be measured. */
 export const WORD_LIST_MORE_UNNEEDED = "hidden group-data-measuring/words:flex";
 export const WORD_LINK = `cursor-pointer font-serif text-[1.1rem] text-text-strong no-underline ${FOCUS_RING}`;
+/** A note the source wrote inside a word list: its text, muted, and no link. */
+export const WORD_NOTE = "font-serif text-[1.1rem] italic text-text-muted";
 export const WORD_DOT = "font-sans text-[0.75rem] text-text-muted";
 /** The dot after the last word that shows closed: `+ more` follows the word itself. */
 export const WORD_DOT_BEFORE_REST = "hidden font-sans text-[0.75rem] text-text-muted group-data-open/words:inline";

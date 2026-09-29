@@ -12,9 +12,10 @@
 import type { Nearby } from "@lexema/lookup/nearby.ts";
 import { searchHref } from "./Forms";
 import { WordList } from "./WordList";
+import type { RelatedItem } from "@/lib/dictionary/relatedList.ts";
 import { NOT_FOUND_HEADING, NOT_FOUND_LEAD, NOT_FOUND_LINK, NOT_FOUND_TEXT } from "@/components/shared/styles.ts";
 
-const words = (list: readonly string[]) => list.map((word) => ({ word }));
+const words = (list: readonly string[]): RelatedItem[] => list.map((word) => ({ kind: "word", word }));
 
 function DidYouMean({ word }: { word: string }) {
   return (
@@ -39,7 +40,7 @@ export function NotFound({ query, nearby }: { query: string; nearby: Nearby }) {
           <p className={NOT_FOUND_TEXT}>
             Lexema has no word spelled this way. Words that begin with “<span lang="it">{query}</span>”:
           </p>
-          <WordList id="nearby" label="Suggestions" words={words(nearby.words)} />
+          <WordList id="nearby" label="Suggestions" items={words(nearby.words)} />
         </>
       )}
       {(nearby.kind === "accent" || nearby.kind === "typo") && (
@@ -48,7 +49,7 @@ export function NotFound({ query, nearby }: { query: string; nearby: Nearby }) {
           <WordList
             id="nearby"
             label={nearby.kind === "accent" ? `Other words that begin with “${query}”` : "Other close spellings"}
-            words={words(nearby.others)}
+            items={words(nearby.others)}
           />
         </>
       )}

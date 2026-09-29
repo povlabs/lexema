@@ -366,7 +366,7 @@ export function ReadingView({ entry }: { entry: PageReading }) {
           ))}
         </Block>
       )}
-      <WordList id={`synonyms-${reading.recordId}`} label="Synonyms" words={entry.synonyms} level="h3" />
+      <WordList id={`synonyms-${reading.recordId}`} label="Synonyms" items={entry.synonyms} level="h3" />
     </article>
   );
 }
