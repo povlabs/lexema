@@ -465,3 +465,20 @@ test("the landing page links to the docs, and each endpoint to its own docs page
   assert.match(html, /href="\/docs">Read the docs</);
   for (const endpoint of ENDPOINTS_IN_ORDER) assert.ok(html.includes(`href="${endpointPath(endpoint)}"`), endpoint);
 });
+
+test("an endpoint's code panels are Base UI tabs, the first of each selected, and the phone contents bar is a closed collapsible holding the pages (#189)", () => {
+  const html = renderToStaticMarkup(<DeveloperDocs page={{ kind: "endpoint", endpoint: "lookup" }} />);
+  const tabsIn = (label: string) => {
+    const list = new RegExp(`<div[^>]*role="tablist" aria-label="${label}"[^>]*>(.*?)</div>`).exec(html)?.[1] ?? "";
+    return [...list.matchAll(/<button[^>]*role="tab" aria-selected="(true|false)"[^>]*>([^<]+)<\/button>/g)].map((tab) => [tab[2], tab[1] === "true"]);
+  };
+  assert.deepEqual(tabsIn("Request language"), [["curl", true], ["JavaScript", false], ["Python", false]]);
+  const statuses = tabsIn("Response");
+  assert.equal(statuses.length, ENDPOINT_REFERENCE.lookup.examples.length);
+  assert.deepEqual(statuses.map(([, selected]) => selected), statuses.map((_, i) => i === 0));
+  assert.doesNotMatch(html, /aria-pressed/);
+  // The contents bar is the trigger; the pages wait in its panel, in the HTML while closed.
+  assert.match(html, /<div data-closed="" class="[^"]*"><button type="button"[^>]*aria-expanded="false"[^>]*>Endpoints<span aria-hidden="true">\/<\/span><span[^>]*>Look up a word<\/span>/);
+  assert.match(html, /<div data-closed="" hidden=""[^>]*><nav aria-label="Docs contents">/);
+  assert.doesNotMatch(html, /<details|<summary/);
+});

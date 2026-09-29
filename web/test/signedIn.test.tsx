@@ -20,6 +20,8 @@ import { AccountMenuContent } from "../app/AccountMenu";
 import { CREATE_KEY_ACTION, Dashboard, DELETE_ACCOUNT_ACTION } from "../app/Dashboard";
 import { DashboardSettings } from "../app/DashboardSettings";
 import { DeveloperDocs } from "../app/DeveloperDocs";
+import { DeveloperMenuContent } from "../app/DeveloperMenu";
+import { developerMenuLinks, SignedInMenuActions, type DeveloperSection } from "../app/DeveloperPage";
 import { DeveloperPricing } from "../app/DeveloperPricing";
 import { avatarInitial } from "../app/signedIn.ts";
 import { CreateKeyForm, KeyResult } from "../app/CreateKeyDialog";
@@ -129,8 +131,9 @@ test("the dashboard lists each live key, oldest first, with its name, prefix, en
   assert.doesNotMatch(html, /Revoked|>Old</);
   assert.equal(keys.length, 3);
 
-  // The bar marks the dashboard, and signing out is a POST.
-  assert.match(html, /<form action="\/sign-out" method="post"><button[^>]*>Sign out<\/button><\/form>/);
+  // The bar marks the dashboard, and signing out is a POST, from the bar's form and from the ☰ menu's.
+  assert.match(html, /<form id="sign-out" hidden="" action="\/sign-out" method="post"><\/form>/);
+  assert.match(developerMenuOpen("dashboard"), /<form action="\/sign-out" method="post"><button[^>]*>Sign out<\/button><\/form>/);
   assert.match(html, /<a[^>]*href="\/dashboard"[^>]*aria-current="page"[^>]*>Dashboard<\/a>/);
 });
 
@@ -172,7 +175,7 @@ test("settings is the second tab: Plan with nothing to buy, then Account with De
   assert.ok(!html.includes(DELETE_ACCOUNT_ACTION));
   // The bar marks the dashboard (board 28g); the ☰ menu marks Settings.
   assert.match(html, /<ul[^>]*><li><a[^>]*href="\/dashboard" aria-current="page"[^>]*>Dashboard<\/a>/);
-  assert.match(html, /<a[^>]*href="\/dashboard\/settings" aria-current="page"[^>]*>Settings<\/a>/);
+  assert.match(developerMenuOpen("settings"), /<a[^>]*href="\/dashboard\/settings" aria-current="page"[^>]*>Settings<\/a>/);
   // The confirmation counts the live keys, not the revoked one.
   assert.equal(settings.deleteWarning, deleteWarning(2));
 });
@@ -185,7 +188,10 @@ test("signed in, the bar ends with the avatar, and the ☰ menu names Dashboard,
   assert.doesNotMatch(html, /role="menu"/);
   // Sign out still posts the bar's form, which the menu's Sign out submits.
   assert.match(html, /<form id="sign-out" hidden="" action="\/sign-out" method="post"><\/form>/);
-  const menu = /<nav aria-label="Menu">(.*?)<\/nav>/.exec(html)?.[1] ?? "";
+  // The ☰ is Base UI's dialog trigger, closed; the menu is drawn only once it opens.
+  assert.match(html, /<button[^>]*aria-haspopup="dialog"[^>]*aria-expanded="false"[^>]*aria-label="Menu"[^>]*>/);
+  assert.doesNotMatch(html, /<nav aria-label="Menu">/);
+  const menu = /<nav aria-label="Menu">(.*?)<\/nav>/.exec(developerMenuOpen("dashboard"))?.[1] ?? "";
   assert.deepEqual([...menu.matchAll(/>([^<]+)<\/a>/g)].map((link) => link[1]), ["Dashboard", "Settings", "Docs", "Pricing"]);
   // The bar itself names no Settings.
   const bar = /<nav aria-label="Developer site">(.*?)<\/nav>/.exec(html)?.[1] ?? "";
@@ -243,8 +249,8 @@ test("the dashboard shows 30 days of units in total, revoked keys' too, today la
 test("Create key opens its dialog and makes nothing itself", () => {
   const { view } = sample();
   const html = renderToStaticMarkup(<Dashboard view={view} csrf={CSRF} made={3} />);
-  // The only forms are Sign out's, the account menu's and the ☰ menu's a phone shows instead: every dashboard action is sent from the page.
-  assert.deepEqual([...html.matchAll(/<form[^>]*action="([^"]+)"/g)].map((form) => form[1]), ["/sign-out", "/sign-out"]);
+  // The only form is Sign out's, which the account menu submits (the ☰ menu a phone shows instead holds its own, drawn once open): every dashboard action is sent from the page.
+  assert.deepEqual([...html.matchAll(/<form[^>]*action="([^"]+)"/g)].map((form) => form[1]), ["/sign-out"]);
   assert.ok(!html.includes(CREATE_KEY_ACTION), "nothing on the page posts a key by itself");
   // Create key is a button that opens a dialog (#187); none is open yet.
   assert.match(html, /<button type="button"[^>]*aria-haspopup="dialog"[^>]*>Create key<\/button>/);
@@ -268,6 +274,18 @@ function AccountMenuOpen({ signedIn }: { signedIn: { email: string; name: string
     </Menu.Root>
   );
 }
+
+/** The signed-in ☰ menu drawn open, as a tap on the ☰ opens it on the page `current` names (board `j6UaW`). */
+const developerMenuOpen = (current: DeveloperSection): string => {
+  const signedIn = { email: "ada@example.com", name: "Ada Lovelace" };
+  return renderToStaticMarkup(
+    <Dialog.Root open>
+      <DeveloperMenuContent name="Lexema" links={developerMenuLinks(signedIn, current)}>
+        <SignedInMenuActions signedIn={signedIn} />
+      </DeveloperMenuContent>
+    </Dialog.Root>,
+  );
+};
 
 /** What a dialog holds, drawn open inside its Base UI root (ADR 0010), as the page's popup holds it. */
 const opened = (content: ReactNode): string => renderToStaticMarkup(<Dialog.Root open>{content}</Dialog.Root>);

@@ -404,11 +404,13 @@ test("a searched compound form opens the compound tenses; otherwise they wait be
   await withDevSeed(async ({ db }) => {
     const plain = nth(await render(db, "andavano"), 1);
     const closed = panel(plain, "Indicativo");
-    assert.match(closed, /<details class="[^"]*"><summary [^>]*><span [^>]*>\+ more<\/span><span [^>]*>less<\/span>/);
-    assert.ok(closed.indexOf("Tempi composti") < closed.indexOf("<details"), "the control ends the compound tables");
+    // The compound tables are Base UI's collapsible panel, in the HTML while closed, and the control ends them.
+    assert.match(closed, /<div data-closed="" hidden="" id="[^"]+"[^>]*><p class="[^"]*" lang="it">Tempi composti<\/p>/);
+    assert.match(closed, /<button type="button"[^>]*aria-expanded="false"[^>]*><span [^>]*>\+ more<\/span><span [^>]*>less<\/span><\/button>/);
+    assert.ok(closed.indexOf("Tempi composti") < closed.indexOf("+ more"), "the control ends the compound tables");
     assert.doesNotMatch(closed, /compound tenses/);
     const compound = await render(db, "sono andato");
-    assert.match(panel(compound, "Indicativo"), /<details class="[^"]*" open=""><summary/);
+    assert.match(panel(compound, "Indicativo"), /<button type="button" data-panel-open=""[^>]*aria-expanded="true"[^>]*><span [^>]*>\+ more/);
   });
 });
 
@@ -422,7 +424,7 @@ test("etymology and synonyms come once after the readings: every synonym a searc
     assert.equal(words.length, wordPage("andare", await readingsFor(db, "andare")).wordFacts.synonyms.length, "every synonym is in the document");
     for (const [, href, word] of words) assert.equal(href, `/?q=${encodeURIComponent(textOf(word))}`);
     // The one control, last in the list so it ends what shows, open or closed.
-    assert.match(synonyms, /<li[^>]*><details class="[^"]*"><summary class="[^"]*"><span class="[^"]*">\+ more<\/span><span class="[^"]*">less<\/span><\/summary><\/details><\/li><\/ul>$/);
+    assert.match(synonyms, /<li[^>]*><div class="[^"]*"><button type="button"[^>]*aria-controls="synonyms-words" aria-expanded="false"[^>]*><span class="[^"]*">\+ more<\/span><span class="[^"]*">less<\/span><\/button><\/div><\/li><\/ul>$/);
     // No count anywhere: not beside a label, not on a control.
     assert.doesNotMatch(textOf(html), /showing \d|\d+ more/);
   });
@@ -464,7 +466,7 @@ function closedDefinitions(block: string): string {
 }
 
 /** The one expand control, last in its block, so `less` ends what the open block shows. */
-const MORE_LAST = /<details class="[^"]*"><summary class="[^"]*"><span class="[^"]*">\+ more<\/span><span class="[^"]*">less<\/span><\/summary><\/details><\/div>$/;
+const MORE_LAST = /<div class="[^"]*"><button type="button"[^>]*aria-expanded="false"[^>]*><span class="[^"]*">\+ more<\/span><span class="[^"]*">less<\/span><\/button><\/div><\/div>$/;
 
 test("closed, the first definition and its own first example; + more, last, opens every definition and example in order", async () => {
   await withDevSeed(async ({ db }) => {
@@ -485,7 +487,7 @@ test("closed, the first definition and its own first example; + more, last, open
     assert.ok(closed.includes(examples[0]));
     for (const text of examples.slice(1)) assert.ok(!closed.includes(text), `extra example starts hidden: ${text}`);
     assert.equal(patternsOf(block, /data-definition="/g), noun.senses.length, "every definition is in the document");
-    assert.equal(patternsOf(block, /<details[\s>]/g), 1, "one control for the whole reading");
+    assert.equal(patternsOf(block, /aria-expanded="/g), 1, "one control for the whole reading");
     assert.match(block, MORE_LAST);
     assert.doesNotMatch(textOf(block), /\d+ more|fewer/);
 
@@ -522,7 +524,7 @@ test("closed, the first definition and its own first example; + more, last, open
     assert.match(block, MORE_LAST);
 
     // A reading with one definition and one example has no control.
-    assert.doesNotMatch(definitionsBlock(nth(await render(db, "bello"), 3)), /<details|\+ more/);
+    assert.doesNotMatch(definitionsBlock(nth(await render(db, "bello"), 3)), /aria-expanded|\+ more/);
   });
 });
 
@@ -667,7 +669,7 @@ function readingEtymology(reading: string): string | undefined {
   if (at === -1) return undefined;
   // The text alone, without its one-line toggle's `+ more` / `less`.
   const section = reading.slice(reading.indexOf(">", at) + 1, reading.indexOf("</section>", at));
-  return textOf(section.replace(/<details[\s\S]*?<\/details>/g, ""));
+  return textOf(section.replace(/<button[^>]*aria-expanded[\s\S]*?<\/button>/g, ""));
 }
 
 /** The words of a Synonyms run, from a reading or from the facts after the readings. */
@@ -832,7 +834,7 @@ test("every word page ends with Source and Report a mistake together", async () 
   });
 });
 
-test("an etymology shows one cut line and a native + more that opens the whole text in place", async () => {
+test("an etymology shows one cut line and a + more that opens the whole text in place", async () => {
   await withDevSeed(async ({ db }) => {
     const html = await render(db, "andare");
     const facts = afterReadings(html);
@@ -841,9 +843,9 @@ test("an etymology shows one cut line and a native + more that opens the whole t
     const block = facts.slice(facts.indexOf('data-one-line=""'));
     // The whole text is in the HTML; CSS cuts it to one line.
     assert.ok(textOf(block).includes(textOf(etymology.text.replace(/</g, "&lt;"))));
-    // The toggle is a native <details>, so it opens with no script; the
-    // script only hides it when the text already fits.
-    assert.match(block, /<details class="[^"]*"><summary class="[^"]*"><span class="[^"]*">\+ more<\/span><span class="[^"]*">less<\/span><\/summary><\/details>/);
+    // The line is Base UI's collapsible and the toggle its trigger, which
+    // names the text it opens; the script hides it when the text already fits.
+    assert.match(block, /^data-one-line="" class="[^"]*"><p id="([^"]+)"[^>]*>[\s\S]*?<\/p><div class="[^"]*"><button type="button"[^>]*aria-controls="\1" aria-expanded="false"[^>]*><span class="[^"]*">\+ more<\/span><span class="[^"]*">less<\/span><\/button><\/div>/);
   });
 });
 

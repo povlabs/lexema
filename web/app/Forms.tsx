@@ -11,11 +11,10 @@ import type { ReactNode } from "react";
 import type { SourceForm } from "@lexema/lookup/types.ts";
 import type { Conjugation, MoodTable, NonFinite, Person, Tense } from "./conjugation.ts";
 import { GENDER_LABEL, NUMBER_LABEL, NUMBERS, type Grid, type GridCell } from "./genderGrid.ts";
-import { More } from "./More";
+import { More, MoreBlock, MorePanel } from "./More";
 import { MoodTabs } from "./MoodTabs";
 import {
   CELL_SEPARATOR,
-  COMPOUND,
   COMPOUND_MORE,
   COMPOUND_TABLES,
   MOOD_PANEL,
@@ -284,7 +283,7 @@ function TenseTables({
  */
 function MoodPanelView({ table, searched }: { table: MoodTable; searched: (form: SourceForm) => boolean }) {
   return (
-    <div className={MOOD_PANEL}>
+    <MoreBlock className={MOOD_PANEL} open={table.compoundSearched}>
       {table.simple.length > 0 && (
         <>
           {table.compound.length > 0 && (
@@ -296,17 +295,17 @@ function MoodPanelView({ table, searched }: { table: MoodTable; searched: (form:
         </>
       )}
       {table.compound.length > 0 && (
-        <div className={COMPOUND}>
-          <div className={COMPOUND_TABLES}>
+        <>
+          <MorePanel className={COMPOUND_TABLES}>
             <p className={TENSE_SET} lang="it">
               Tempi composti
             </p>
             <TenseTables table={table} tenses={table.compound} searched={searched} />
-          </div>
-          <More className={COMPOUND_MORE} open={table.compoundSearched} />
-        </div>
+          </MorePanel>
+          <More className={COMPOUND_MORE} />
+        </>
       )}
-    </div>
+    </MoreBlock>
   );
 }
 
