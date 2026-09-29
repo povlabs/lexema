@@ -26,27 +26,29 @@
 // does not offer, a name too long) is answered 400 with each problem by its
 // field, and no key is made.
 //
-// The dashboard page is for a signed-in developer only: without a session it
-// answers 303 to sign-in.
+// The dashboard and its settings page (#190) are for a signed-in developer
+// only: without a session each answers 303 to sign-in.
 
 import { deleteAccount } from "@lexema/accounts/accounts.ts";
 import { csrfMatches, csrfToken, sessionAccount } from "@lexema/accounts/sessions.ts";
 import { createAccountKey, listAccountKeys, revokeAccountKey } from "@lexema/api/ownedKeys.ts";
 import { fromD1, type TransactionalDatabase } from "@lexema/lookup/database.ts";
 import { accessOf, defaultKeyName, draftOf, readDraft } from "../app/createKeyForm.ts";
-import { CSRF_FIELD, DASHBOARD, DELETE_CONFIRM_FIELD, DELETE_CONFIRMATION, UNREACHABLE, type ActionAnswer } from "../app/dashboardActions.ts";
+import { CSRF_FIELD, DASHBOARD, DELETE_CONFIRM_FIELD, DELETE_CONFIRMATION, SETTINGS, UNREACHABLE, type ActionAnswer } from "../app/dashboardActions.ts";
 import { keyRowOf } from "../app/dashboardView.ts";
 import { DEVELOPERS_SEGMENT } from "./hosts.ts";
 import type { FetchHandler } from "./rateLimit.ts";
 import { AFTER_SIGN_OUT, clearedCookie, readCookie, SESSION_COOKIE, signedInAccount } from "./signIn.ts";
 
-export { CSRF_FIELD, DASHBOARD, DELETE_CONFIRMATION } from "../app/dashboardActions.ts";
+export { CSRF_FIELD, DASHBOARD, DELETE_CONFIRMATION, SETTINGS } from "../app/dashboardActions.ts";
 export { defaultKeyName } from "../app/createKeyForm.ts";
 
 /** Where a visitor without a session is sent. */
 export const SIGN_IN_PAGE = "/sign-in";
-/** The signed-in page a developer-site URL names: the dashboard, or none. */
-const isDashboardPage = (url: URL): boolean => url.pathname === `/${DEVELOPERS_SEGMENT}${DASHBOARD}`;
+/** The signed-in pages, as the App Router sees their paths. */
+const SIGNED_IN_PAGES: readonly string[] = [DASHBOARD, SETTINGS].map((path) => `/${DEVELOPERS_SEGMENT}${path}`);
+/** Whether a developer-site URL names a signed-in page: the dashboard or its settings. */
+const isDashboardPage = (url: URL): boolean => SIGNED_IN_PAGES.includes(url.pathname);
 
 /** A dashboard action, read off the path the App Router would see. */
 export type DashboardRoute =
@@ -187,7 +189,7 @@ export async function answerDashboard(request: Request, route: DashboardRoute, c
   }
 }
 
-/** Open the dashboard: sign-in without a session. */
+/** Open the dashboard or its settings: sign-in without a session. */
 export async function openDashboardPage<E>(request: Request, context: DashboardContext, app: FetchHandler<E>, env: E, ctx: ExecutionContext): Promise<Response> {
   let accountId: number | undefined;
   try {

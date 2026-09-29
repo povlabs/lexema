@@ -47,6 +47,7 @@ import {
 } from "./docsPages.ts";
 import { ChevronIcon } from "./icons";
 import { ExternalLink } from "./ExternalLink";
+import type { SignedIn } from "./signedIn.ts";
 import {
   CODE_INLINE,
   DOCS_ANSWER,
@@ -404,10 +405,10 @@ const groupsFor = (current: DocsPage): DocsGroup[] =>
   }));
 
 /** One page of the docs. */
-export function DeveloperDocs({ page }: { page: DocsPage }) {
+export function DeveloperDocs({ page, signedIn }: { page: DocsPage; signedIn?: SignedIn }) {
   const groups = groupsFor(page);
   return (
-    <DeveloperPage current="docs" wide>
+    <DeveloperPage current="docs" wide signedIn={signedIn}>
       <div className={DOCS_LAYOUT}>
         <aside className={DOCS_SIDEBAR}>
           <div className={DOCS_SIDEBAR_INNER}>

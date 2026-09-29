@@ -6,10 +6,14 @@
 // sign-in under an email nobody has used makes the account. Only a verified
 // email ever reaches here: `verifiedIdentity` is the one way to build the
 // value this module takes.
+//
+// Each identity also keeps the name its provider gives the person, refreshed
+// at every sign-in, for the account menu (#190). It lives on the identity and
+// not the account, so deleting the identities still empties the account.
 
 import { revokeAllAccountKeys } from "../api/ownedKeys.js";
 import type { LookupDatabase, TransactionalDatabase } from "../lookup/database.js";
-import { PROVIDER_IDS, type ProviderId, type ProviderProfile } from "./providers.js";
+import { nameOf, PROVIDER_IDS, type ProviderId, type ProviderProfile } from "./providers.js";
 
 /** A person a provider vouched for, with an email it says is verified. */
 export interface VerifiedIdentity {
@@ -17,33 +21,37 @@ export interface VerifiedIdentity {
   readonly subject: string;
   /** Lowercased, so one address is one account however a provider spells it. */
   readonly email: string;
+  /** The name the provider gives the person, or `undefined` when it gives none. */
+  readonly name: string | undefined;
 }
 
 /** The identity a profile proves, or `undefined` when the provider verified no email. */
 export function verifiedIdentity(provider: ProviderId, profile: ProviderProfile): VerifiedIdentity | undefined {
   const email = profile.verifiedEmail?.trim().toLowerCase() ?? "";
   if (profile.subject === "" || !/^[^@\s]+@[^@\s]+$/.test(email)) return undefined;
-  return { provider, subject: profile.subject, email };
+  return { provider, subject: profile.subject, email, name: nameOf(profile.name) };
 }
 
-export const IDENTITY_BY_SUBJECT_SQL = `SELECT account_id FROM provider_identity
-       WHERE provider = ? AND provider_user_id = ?`;
+/** A known identity's account, with its name refreshed to what the provider gives now. */
+export const REFRESH_IDENTITY_SQL = `UPDATE provider_identity SET display_name = ?
+       WHERE provider = ? AND provider_user_id = ? RETURNING account_id`;
 export const IDENTITY_BY_EMAIL_SQL = `SELECT account_id FROM provider_identity
        WHERE email = ? ORDER BY identity_id LIMIT 1`;
 export const INSERT_ACCOUNT_SQL = `INSERT INTO developer_account (created_at) VALUES (?) RETURNING account_id`;
-export const INSERT_IDENTITY_SQL = `INSERT INTO provider_identity (account_id, provider, provider_user_id, email, linked_at)
-     VALUES (?, ?, ?, ?, ?)`;
+export const INSERT_IDENTITY_SQL = `INSERT INTO provider_identity (account_id, provider, provider_user_id, email, display_name, linked_at)
+     VALUES (?, ?, ?, ?, ?, ?)`;
 
 /** How a sign-in reached its account. */
 export type AccountMatch = "identity" | "email" | "new";
 
-/** The account this identity signs in to, linking or creating as needed. */
+/** The account this identity signs in to, linking or creating as needed; a known identity's name is refreshed. */
 export async function signInAccount(
   db: LookupDatabase,
   identity: VerifiedIdentity,
   now: number,
 ): Promise<{ accountId: number; match: AccountMatch }> {
-  const [known] = await db.all<{ account_id: number }>(IDENTITY_BY_SUBJECT_SQL, [identity.provider, identity.subject]);
+  const displayName = identity.name ?? null;
+  const [known] = await db.all<{ account_id: number }>(REFRESH_IDENTITY_SQL, [displayName, identity.provider, identity.subject]);
   if (known !== undefined) return { accountId: known.account_id, match: "identity" };
 
   const at = new Date(now).toISOString();
@@ -59,28 +67,31 @@ export async function signInAccount(
     accountId = created.account_id;
     match = "new";
   }
-  await db.all(INSERT_IDENTITY_SQL, [accountId, identity.provider, identity.subject, identity.email, at]);
+  await db.all(INSERT_IDENTITY_SQL, [accountId, identity.provider, identity.subject, identity.email, displayName, at]);
   return { accountId, match };
 }
 
-export const ACCOUNT_IDENTITIES_SQL = `SELECT provider, email FROM provider_identity
+export const ACCOUNT_IDENTITIES_SQL = `SELECT provider, email, display_name FROM provider_identity
        WHERE account_id = ? ORDER BY identity_id`;
 
-/** Who an account is, as the dashboard names it: an email and the providers it signs in with. */
+/** Who an account is, as the dashboard names it: a name, an email and the providers it signs in with. */
 export interface AccountProfile {
   /** The email its first linked identity was verified with. */
   readonly email: string;
+  /** The first name any of its identities carries, in the order they were linked, or `undefined` when none does. */
+  readonly name: string | undefined;
   /** Each provider linked to the account, once, in `PROVIDER_IDS` order; never empty. */
   readonly providers: readonly [ProviderId, ...ProviderId[]];
 }
 
 /** The account's profile, or `undefined` when it has no identity: deleted, or never signed in. */
 export async function accountProfile(db: LookupDatabase, accountId: number): Promise<AccountProfile | undefined> {
-  const rows = await db.all<{ provider: ProviderId; email: string }>(ACCOUNT_IDENTITIES_SQL, [accountId]);
+  const rows = await db.all<{ provider: ProviderId; email: string; display_name: string | null }>(ACCOUNT_IDENTITIES_SQL, [accountId]);
   const [first] = rows;
   if (first === undefined) return undefined;
   const linked = PROVIDER_IDS.filter((provider) => rows.some((row) => row.provider === provider));
-  return { email: first.email, providers: linked as [ProviderId, ...ProviderId[]] };
+  const name = rows.find((row) => row.display_name !== null)?.display_name ?? undefined;
+  return { email: first.email, name, providers: linked as [ProviderId, ...ProviderId[]] };
 }
 
 export const MARK_ACCOUNT_DELETED_SQL = `UPDATE developer_account SET deleted_at = coalesce(deleted_at, ?)

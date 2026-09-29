@@ -10,6 +10,7 @@ import {
   ENDPOINTS_IN_ORDER,
   LOOKUP_FILTERED_EXAMPLE,
 } from "./apiReference.ts";
+import { ArrivalToast } from "./ArrivalToast";
 import { DeveloperPage, SIGN_IN_PATH } from "./DeveloperPage";
 import { DOCS_PATH, endpointPath } from "./docsPages.ts";
 import {
@@ -125,6 +126,7 @@ export function DeveloperLanding() {
           </ul>
         </section>
       </main>
+      <ArrivalToast />
     </DeveloperPage>
   );
 }

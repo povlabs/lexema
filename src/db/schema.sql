@@ -605,13 +605,16 @@ CREATE TABLE developer_account (
 -- `sub`, GitHub's numeric user id), so a changed email still signs in to the
 -- same account. `email` is the verified address as it was when the identity was
 -- linked, lowercased; a second provider's identity with the same email links to
--- the same account. Only verified emails are ever stored.
+-- the same account. Only verified emails are ever stored. `display_name` is the
+-- name the provider gives the person (Google's `name`, GitHub's `name` or else
+-- its `login`), refreshed at each sign-in; NULL when it gives none (#190).
 CREATE TABLE provider_identity (
   identity_id      INTEGER PRIMARY KEY,
   account_id       INTEGER NOT NULL REFERENCES developer_account(account_id),
   provider         TEXT    NOT NULL CHECK (provider IN ('google', 'github')),
   provider_user_id TEXT    NOT NULL CHECK (length(provider_user_id) > 0),
   email            TEXT    NOT NULL CHECK (email = lower(email) AND email LIKE '%_@_%'),
+  display_name     TEXT    CHECK (display_name IS NULL OR length(trim(display_name)) > 0),
   linked_at        TEXT    NOT NULL, -- ISO-8601
   UNIQUE (provider, provider_user_id)
 ) STRICT;

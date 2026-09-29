@@ -725,7 +725,7 @@ test("a request an endpoint refuses before answering costs no units", async () =
 });
 
 test("an owned key's calls stamp its last use, and the account's 30-day usage reads back exactly the units the API charged", async () => {
-  const identity = verifiedIdentity("github", { subject: "usage-reader", verifiedEmail: "usage@example.com" });
+  const identity = verifiedIdentity("github", { subject: "usage-reader", verifiedEmail: "usage@example.com", name: undefined });
   assert.ok(identity !== undefined);
   const { accountId } = await signInAccount(db, identity, NOW);
   const name = keyName("dashboard");
@@ -775,7 +775,7 @@ test("an owned key's calls stamp its last use, and the account's 30-day usage re
 
 /** A key made in the dashboard with this access (#187), under its own account. */
 async function keyWith(subject: string, access: KeyAccess): Promise<{ keyId: number; key: string }> {
-  const identity = verifiedIdentity("github", { subject, verifiedEmail: `${subject}@example.com` });
+  const identity = verifiedIdentity("github", { subject, verifiedEmail: `${subject}@example.com`, name: undefined });
   const name = keyName(subject);
   assert.ok(identity !== undefined && name !== undefined);
   const created = await createAccountKey(db, (await signInAccount(db, identity, NOW)).accountId, name, NOW, access);

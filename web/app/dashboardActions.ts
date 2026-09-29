@@ -9,8 +9,9 @@
 import type { CreateKeyProblems } from "./createKeyForm.ts";
 import type { KeyRow } from "./dashboardView.ts";
 
-/** Where the dashboard lives. */
+/** Where the dashboard lives, and its settings page (#190). */
 export const DASHBOARD = "/dashboard";
+export const SETTINGS = "/dashboard/settings";
 
 /** Where each form posts. */
 export const CREATE_KEY_ACTION = "/dashboard/keys";

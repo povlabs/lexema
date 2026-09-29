@@ -91,8 +91,17 @@ A local database seeded before
 `developer_account`, so `create` and every API call fail on the missing column.
 One seeded before [#187](https://github.com/hueypov/lexema/issues/187) has no
 `endpoints` or `expires_at` on `api_key`, so every API call fails on the missing column.
+One seeded before [#190](https://github.com/hueypov/lexema/issues/190) has no
+`display_name` on `provider_identity`, so signing in fails on the missing column.
 Run `pnpm run seed:dev` again: it rebuilds the database from
 [src/db/schema.sql](./src/db/schema.sql), so make its keys again afterwards.
+The `display_name` column alone can instead be added in place, keeping accounts
+and keys, from `web/` after a build, with `--persist-to` naming the database's state:
+
+```sh
+pnpm exec wrangler d1 execute DB --local --config dist/server/wrangler.json --persist-to ../.data/seed-state \
+  --command "ALTER TABLE provider_identity ADD COLUMN display_name TEXT CHECK (display_name IS NULL OR length(trim(display_name)) > 0)"
+```
 
 With the Worker running as in [how to run the search page](./docs/RUN_THE_SITE.md):
 

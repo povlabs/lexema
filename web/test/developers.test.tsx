@@ -84,7 +84,7 @@ const newKey = (perMinuteLimit = 1_000) => createKey(db, { label: "developers", 
 
 /** A key a developer made in the dashboard, with this access. */
 async function ownedKey(access: KeyAccess): Promise<string> {
-  const identity = verifiedIdentity("github", { subject: "docs", verifiedEmail: "docs@example.com" });
+  const identity = verifiedIdentity("github", { subject: "docs", verifiedEmail: "docs@example.com", name: undefined });
   const name = keyName("docs");
   assert.ok(identity !== undefined && name !== undefined);
   const created = await createAccountKey(db, (await signInAccount(db, identity, NOW)).accountId, name, NOW, access);
@@ -414,15 +414,16 @@ interface RouteModule {
 }
 
 test("every docs sidebar link resolves to a page that renders, with that link marked current", async () => {
-  // Outside vinext, `next/navigation`'s notFound throws what vinext answers a 404 for.
+  // Outside vinext, `next/navigation`'s notFound throws what vinext answers a 404 for. The pages read the
+  // visitor's session for the account menu (#190); with no D1 binding they read none and render signed out.
+  const STUBS: Record<string, string> = {
+    "next/navigation": `export function notFound() { throw Object.assign(new Error("404"), { digest: "NEXT_HTTP_ERROR_FALLBACK;404" }); } export function redirect() { throw new Error("redirect"); }`,
+    "next/headers": `export async function headers() { return new Headers(); }`,
+    "cloudflare:workers": `export const env = {};`,
+  };
   const hooks = registerHooks({
     resolve: (specifier, context, nextResolve) =>
-      specifier === "next/navigation"
-        ? {
-            url: `data:text/javascript,export function notFound() { throw Object.assign(new Error("404"), { digest: "NEXT_HTTP_ERROR_FALLBACK;404" }); }`,
-            shortCircuit: true,
-          }
-        : nextResolve(specifier, context),
+      specifier in STUBS ? { url: `data:text/javascript,${encodeURIComponent(STUBS[specifier])}`, shortCircuit: true } : nextResolve(specifier, context),
   });
   try {
     const links = new Set(

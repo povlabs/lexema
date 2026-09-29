@@ -52,7 +52,7 @@ const name = (text: string): KeyName => {
 
 /** A new account signed in under this email. */
 async function account(db: LookupDatabase, email: string): Promise<number> {
-  const identity = verifiedIdentity("github", { subject: email, verifiedEmail: email });
+  const identity = verifiedIdentity("github", { subject: email, verifiedEmail: email, name: undefined });
   assert.ok(identity !== undefined);
   return (await signInAccount(db, identity, NOW)).accountId;
 }
@@ -245,7 +245,7 @@ test("deleting an account revokes its keys, removes its sessions and identities,
   const sqlite = schemaDb();
   const db = fromNodeSqlite(sqlite);
   const ada = await account(db, "ada@example.com");
-  const google = verifiedIdentity("google", { subject: "g-ada", verifiedEmail: "ada@example.com" });
+  const google = verifiedIdentity("google", { subject: "g-ada", verifiedEmail: "ada@example.com", name: undefined });
   assert.ok(google !== undefined);
   assert.equal((await signInAccount(db, google, NOW)).accountId, ada);
   const bob = await account(db, "bob@example.com");
