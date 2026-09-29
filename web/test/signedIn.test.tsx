@@ -1,7 +1,7 @@
-// The signed-in side of developers.lexema.fyi (#169, #187): the sign-in page,
-// the dashboard as the server renders it, and what its dialogs hold (the new
-// key's form, then the key in its place, and the revoke and delete
-// confirmations). Where the flow goes next, and the toasts it ends in, is
+// The signed-in side of developers.lexema.fyi (#169, #187, #190): the sign-in
+// page, the dashboard and its settings page as the server renders them, the
+// account menu in the bar, and what the dialogs hold (the new key's form, then
+// the key in its place, and the revoke and delete confirmations). Where the flow goes next, and the toasts it ends in, is
 // web/test/keyFlow.test.ts. The Worker's guard and the actions the page sends
 // are web/test/dashboard.test.ts.
 
@@ -9,21 +9,27 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { AlertDialog } from "@base-ui/react/alert-dialog";
 import { Dialog } from "@base-ui/react/dialog";
+import { Menu } from "@base-ui/react/menu";
 import type { ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import type { AccountProfile } from "../../src/accounts/accounts.js";
 import { ALL_ENDPOINTS, onlyEndpoints } from "../../src/api/keyAccess.js";
 import type { OwnedKey } from "../../src/api/ownedKeys.js";
 import { AccountUsage, usageDays } from "../../src/api/usage.js";
+import { AccountMenuContent } from "../app/AccountMenu";
 import { CREATE_KEY_ACTION, Dashboard, DELETE_ACCOUNT_ACTION } from "../app/Dashboard";
+import { DashboardSettings } from "../app/DashboardSettings";
+import { DeveloperDocs } from "../app/DeveloperDocs";
+import { DeveloperPricing } from "../app/DeveloperPricing";
+import { avatarInitial } from "../app/signedIn.ts";
 import { CreateKeyForm, KeyResult } from "../app/CreateKeyDialog";
 import { DeleteAccount } from "../app/DeleteAccountDialog";
 import { RevokeKey } from "../app/RevokeKeyDialog";
-import { dashboardView, deleteWarning, lastUsed, shortDate, type KeyRow } from "../app/dashboardView.ts";
+import { dashboardView, deleteWarning, lastUsed, settingsView, shortDate, type KeyRow } from "../app/dashboardView.ts";
 import { SignIn, signInStart } from "../app/SignIn";
 import { EMPTY_DRAFT, type CreateKeyDraft } from "../app/createKeyForm.ts";
 import { CREATE_KEY_HINT, CREATE_KEY_PROBLEM } from "../app/styles.ts";
-import { DASHBOARD } from "../worker/dashboard.ts";
+import { DASHBOARD, SETTINGS } from "../worker/dashboard.ts";
 
 const NOW = Date.parse("2026-09-28T12:00:00Z");
 const CSRF = "c".repeat(43);
@@ -63,7 +69,7 @@ test("the delete confirmation says board 30's sentence with the account's live k
   assert.equal(deleteWarning(0), "This can't be undone.");
 });
 
-const profile: AccountProfile = { email: "ada@example.com", providers: ["google"] };
+const profile: AccountProfile = { email: "ada@example.com", name: "Ada Lovelace", providers: ["google"] };
 const key = (keyId: number, name: string, extra: Partial<OwnedKey> = {}): OwnedKey => ({
   keyId,
   name,
@@ -94,7 +100,7 @@ function sample() {
       { key_id: 1, day: days[0], units: 17000 },
     ],
   );
-  return { days, keys, view: dashboardView(profile, keys, usage, NOW) };
+  return { days, keys, view: dashboardView(profile, keys, usage, NOW), settings: settingsView(profile, keys) };
 }
 
 test("the dashboard lists each live key, oldest first, with its name, prefix, endpoints, expiry, created, last used and Revoke", () => {
@@ -123,10 +129,105 @@ test("the dashboard lists each live key, oldest first, with its name, prefix, en
   assert.doesNotMatch(html, /Revoked|>Old</);
   assert.equal(keys.length, 3);
 
-  // The bar names the account, and signing out is a POST.
-  assert.match(html, /ada@example\.com/);
+  // The bar marks the dashboard, and signing out is a POST.
   assert.match(html, /<form action="\/sign-out" method="post"><button[^>]*>Sign out<\/button><\/form>/);
   assert.match(html, /<a[^>]*href="\/dashboard"[^>]*aria-current="page"[^>]*>Dashboard<\/a>/);
+});
+
+/** The tab bar's links, in order, each with whether it is the current page. */
+const tabsOf = (html: string) => {
+  const nav = /<nav[^>]*aria-label="Dashboard"[^>]*>(.*?)<\/nav>/.exec(html)?.[1] ?? "";
+  return [...nav.matchAll(/<a[^>]*href="([^"]+)"([^>]*)>([^<]+)<\/a>/g)].map((link) => [link[1], link[2].includes('aria-current="page"'), link[3]]);
+};
+
+test("the dashboard is Keys and usage: the tab bar, API keys and Usage, and no plan or account (#190)", () => {
+  const { view } = sample();
+  const html = renderToStaticMarkup(<Dashboard view={view} csrf={CSRF} made={3} />);
+  assert.deepEqual(tabsOf(html), [
+    [DASHBOARD, true, "Keys and usage"],
+    [SETTINGS, false, "Settings"],
+  ]);
+  const headings = [...html.matchAll(/<h2[^>]*>([^<]+)<\/h2>/g)].map((heading) => heading[1].trim());
+  assert.deepEqual(headings, ["API keys", "Usage"]);
+  assert.doesNotMatch(html, /No plan yet|Choose a plan|Delete account|Signed in with/);
+  assert.ok(!html.includes(DELETE_ACCOUNT_ACTION), "nothing on the page deletes the account");
+});
+
+test("settings is the second tab: Plan with nothing to buy, then Account with Delete account and who is signed in (board 28g, #190)", () => {
+  const { settings } = sample();
+  const html = renderToStaticMarkup(<DashboardSettings view={settings} csrf={CSRF} />);
+  assert.match(html, /<h1[^>]*>Dashboard<\/h1>/);
+  assert.deepEqual(tabsOf(html), [
+    [DASHBOARD, false, "Keys and usage"],
+    [SETTINGS, true, "Settings"],
+  ]);
+  const headings = [...html.matchAll(/<h2[^>]*>([^<]+)<\/h2>/g)].map((heading) => heading[1].trim());
+  assert.deepEqual(headings, ["Plan", "Account"]);
+  assert.match(html, />No plan yet</);
+  assert.match(html, /<button[^>]*type="button" disabled=""[^>]*>Choose a plan — coming soon<\/button>/);
+  assert.match(html, /Signed in with Google · ada@example\.com/);
+  // Delete account opens board 30's confirmation; the page posts nothing by itself.
+  assert.match(html, /<button type="button"[^>]*aria-haspopup="dialog"[^>]*>Delete account<\/button>/);
+  assert.doesNotMatch(html, /role="dialog"|Delete your account\?/);
+  assert.ok(!html.includes(DELETE_ACCOUNT_ACTION));
+  // The bar marks the dashboard (board 28g); the ☰ menu marks Settings.
+  assert.match(html, /<ul[^>]*><li><a[^>]*href="\/dashboard" aria-current="page"[^>]*>Dashboard<\/a>/);
+  assert.match(html, /<a[^>]*href="\/dashboard\/settings" aria-current="page"[^>]*>Settings<\/a>/);
+  // The confirmation counts the live keys, not the revoked one.
+  assert.equal(settings.deleteWarning, deleteWarning(2));
+});
+
+test("signed in, the bar ends with the avatar, and the ☰ menu names Dashboard, Settings, Docs and Pricing (boards 28, j6UaW, #190)", () => {
+  const { view } = sample();
+  const html = renderToStaticMarkup(<Dashboard view={view} csrf={CSRF} made={3} />);
+  // The avatar is Base UI's menu trigger, closed, with the name's initial; no menu is drawn until it opens.
+  assert.match(html, /<button[^>]*aria-haspopup="menu"[^>]*aria-expanded="false"[^>]*aria-label="Account"[^>]*><span[^>]*><span[^>]*>A<\/span><\/span><\/button>/);
+  assert.doesNotMatch(html, /role="menu"/);
+  // Sign out still posts the bar's form, which the menu's Sign out submits.
+  assert.match(html, /<form id="sign-out" hidden="" action="\/sign-out" method="post"><\/form>/);
+  const menu = /<nav aria-label="Menu">(.*?)<\/nav>/.exec(html)?.[1] ?? "";
+  assert.deepEqual([...menu.matchAll(/>([^<]+)<\/a>/g)].map((link) => link[1]), ["Dashboard", "Settings", "Docs", "Pricing"]);
+  // The bar itself names no Settings.
+  const bar = /<nav aria-label="Developer site">(.*?)<\/nav>/.exec(html)?.[1] ?? "";
+  assert.deepEqual([...bar.matchAll(/>([^<]+)<\/a>/g)].map((link) => link[1]), ["Dashboard", "Docs", "Pricing"]);
+});
+
+test("the account menu, open, shows the name and the email, then Dashboard, Settings and Sign out (board 28h, #190)", () => {
+  const menu = (signedIn: { email: string; name: string | undefined }) =>
+    renderToStaticMarkup(<AccountMenuOpen signedIn={signedIn} />);
+  const named = menu({ email: "ada@example.com", name: "Ada Lovelace" });
+  assert.match(named, /<p[^>]*>Ada Lovelace<\/p><p[^>]*>ada@example\.com<\/p>/);
+  assert.doesNotMatch(named, /Signed in with/);
+  const items = [...named.matchAll(/role="menuitem"[^>]*>(?:<svg.*?<\/svg>)([^<]+)</g)].map((item) => item[1]);
+  assert.deepEqual(items, ["Dashboard", "Settings", "Sign out"]);
+  assert.match(named, /<a[^>]*href="\/dashboard"[^>]*role="menuitem"|<a[^>]*role="menuitem"[^>]*href="\/dashboard"/);
+  assert.match(named, /href="\/dashboard\/settings"/);
+  assert.match(named, /<button[^>]*type="submit"[^>]*form="sign-out"|<button[^>]*form="sign-out"[^>]*type="submit"/);
+  // Without a name, the email alone.
+  const unnamed = menu({ email: "ada@example.com", name: undefined });
+  assert.equal([...unnamed.matchAll(/<p[^>]*>([^<]*)<\/p>/g)].map((line) => line[1]).join("|"), "ada@example.com");
+});
+
+test("the avatar's letter is the name's first, else the email's, as a capital", () => {
+  assert.equal(avatarInitial({ email: "huey@example.com", name: "Huey Pov" }), "H");
+  assert.equal(avatarInitial({ email: "ada@example.com", name: undefined }), "A");
+  assert.equal(avatarInitial({ email: "zoe@example.com", name: "élodie" }), "É");
+});
+
+test("signed in, the docs and the pricing page carry the same avatar; signed out, Sign in (#190)", () => {
+  const signedIn = { email: "ada@example.com", name: "Ada Lovelace" };
+  const avatar = /aria-haspopup="menu"[^>]*aria-label="Account"/;
+  for (const html of [
+    renderToStaticMarkup(<DeveloperDocs page={{ kind: "guide", guide: "introduction" }} signedIn={signedIn} />),
+    renderToStaticMarkup(<DeveloperPricing signedIn={signedIn} />),
+  ]) {
+    assert.match(html, avatar);
+    assert.doesNotMatch(html, /Sign in</);
+  }
+  for (const html of [renderToStaticMarkup(<DeveloperDocs page={{ kind: "guide", guide: "introduction" }} />), renderToStaticMarkup(<DeveloperPricing />)]) {
+    assert.doesNotMatch(html, avatar);
+    assert.match(html, /Sign in</);
+  }
 });
 
 test("the dashboard shows 30 days of units in total, revoked keys' too, today last, and no per-key rows", () => {
@@ -139,20 +240,15 @@ test("the dashboard shows 30 days of units in total, revoked keys' too, today la
   assert.equal([...html.matchAll(/data-usage="/g)].length, 1, "one chart, the account's");
 });
 
-test("the plan card offers nothing to buy; Create key and Delete account open their dialogs and make nothing themselves", () => {
+test("Create key opens its dialog and makes nothing itself", () => {
   const { view } = sample();
   const html = renderToStaticMarkup(<Dashboard view={view} csrf={CSRF} made={3} />);
-  assert.match(html, />No plan yet</);
-  assert.match(html, /<button[^>]*type="button" disabled=""[^>]*>Choose a plan — coming soon<\/button>/);
-
-  // The only forms are Sign out's, in the bar and in the ☰ menu a phone shows instead: every dashboard action is sent from the page.
+  // The only forms are Sign out's, the account menu's and the ☰ menu's a phone shows instead: every dashboard action is sent from the page.
   assert.deepEqual([...html.matchAll(/<form[^>]*action="([^"]+)"/g)].map((form) => form[1]), ["/sign-out", "/sign-out"]);
-  assert.ok(!html.includes(CREATE_KEY_ACTION) && !html.includes(DELETE_ACCOUNT_ACTION), "nothing on the page posts a key or a deletion by itself");
-  // Create key and Delete account are buttons that open a dialog (#187); none is open yet.
+  assert.ok(!html.includes(CREATE_KEY_ACTION), "nothing on the page posts a key by itself");
+  // Create key is a button that opens a dialog (#187); none is open yet.
   assert.match(html, /<button type="button"[^>]*aria-haspopup="dialog"[^>]*>Create key<\/button>/);
-  assert.match(html, /Signed in with Google · ada@example\.com/);
-  assert.match(html, /<button type="button"[^>]*aria-haspopup="dialog"[^>]*>Delete account<\/button>/);
-  assert.doesNotMatch(html, /role="dialog"|Create an API key|Delete your account\?/);
+  assert.doesNotMatch(html, /role="dialog"|Create an API key/);
   assert.ok(DELETE_ACCOUNT_ACTION.startsWith(DASHBOARD));
 });
 
@@ -163,6 +259,15 @@ test("an account with no keys has no key table", () => {
   assert.match(html, /Last 30 days · 0 units/);
   assert.equal(view.keys.length, 0);
 });
+
+/** The account menu drawn open, as a click on the avatar opens it. */
+function AccountMenuOpen({ signedIn }: { signedIn: { email: string; name: string | undefined } }) {
+  return (
+    <Menu.Root open>
+      <AccountMenuContent signedIn={signedIn} signOutForm="sign-out" />
+    </Menu.Root>
+  );
+}
 
 /** What a dialog holds, drawn open inside its Base UI root (ADR 0010), as the page's popup holds it. */
 const opened = (content: ReactNode): string => renderToStaticMarkup(<Dialog.Root open>{content}</Dialog.Root>);

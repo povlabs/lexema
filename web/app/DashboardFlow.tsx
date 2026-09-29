@@ -1,7 +1,7 @@
 "use client";
 
-// The dashboard's key flow, in place (#187): Create key, Revoke and Delete
-// account change the page where it stands instead of loading another. Each
+// The dashboard's key flow, in place (#187): Create key and Revoke change the
+// page where it stands instead of loading another. Each
 // sends its action with fetch (dashboardActions.ts), through the session,
 // Origin, CSRF and key-creation checks. Where each stands is a value in
 // keyFlow.ts; this file wires those values to Base UI (ADR 0010).
@@ -11,8 +11,7 @@
 // when the dialog closes, and the key list gains the new row. Closing it says
 // "Key “…” created" in a toast (28f). Revoke asks first (28d); Revoke key
 // takes the row away and says so in a toast, or says in one why it could
-// not. Delete account asks first (30); deleting ends the session, so the
-// page then goes where signing out goes.
+// not. Delete account lives on the settings page (DeleteAccountDialog.tsx).
 
 import { AlertDialog } from "@base-ui/react/alert-dialog";
 import { Dialog } from "@base-ui/react/dialog";
@@ -22,8 +21,7 @@ import { CreateKeyForm, KeyResult } from "./CreateKeyDialog";
 import { CREATE_KEY_ACTION, CSRF_FIELD, revokeKeyAction, sendAction } from "./dashboardActions.ts";
 import { DashboardModal } from "./DashboardModal";
 import { DashboardToasts, useShowToast } from "./DashboardToasts";
-import { deleteWarning, endpointsText, type KeyRow } from "./dashboardView.ts";
-import { DeleteAccount } from "./DeleteAccountDialog";
+import { endpointsText, type KeyRow } from "./dashboardView.ts";
 import { answeredKeyStep, closeKeyStep, KEY_ASKING, KEY_CLOSED, REVOKE_IDLE, revokeAfter, revokeToast, type KeyStep, type RevokeStep } from "./keyFlow.ts";
 import { RevokeKey } from "./RevokeKeyDialog";
 import {
@@ -138,19 +136,6 @@ export function CreateKeyControl({ className }: { className: string }) {
         )}
       </DashboardModal>
     </Dialog.Root>
-  );
-}
-
-/** Delete account, and the confirmation it opens (board 30). */
-export function DeleteAccountControl({ className }: { className: string }) {
-  const { keys, csrf } = useFlow();
-  return (
-    <AlertDialog.Root>
-      <AlertDialog.Trigger className={className}>Delete account</AlertDialog.Trigger>
-      <DashboardModal className={CONFIRM_BOX}>
-        <DeleteAccount warning={deleteWarning(keys.length)} csrf={csrf} />
-      </DashboardModal>
-    </AlertDialog.Root>
   );
 }
 

@@ -12,7 +12,7 @@ import {
   accountProfile,
   deleteAccount,
   IDENTITY_BY_EMAIL_SQL,
-  IDENTITY_BY_SUBJECT_SQL,
+  REFRESH_IDENTITY_SQL,
   signInAccount,
   verifiedIdentity,
   type VerifiedIdentity,
@@ -38,19 +38,19 @@ function schemaDb(): DatabaseSync {
   return db;
 }
 
-const identity = (provider: "google" | "github", subject: string, email: string): VerifiedIdentity => {
-  const verified = verifiedIdentity(provider, { subject, verifiedEmail: email });
+const identity = (provider: "google" | "github", subject: string, email: string, name?: string): VerifiedIdentity => {
+  const verified = verifiedIdentity(provider, { subject, verifiedEmail: email, name });
   assert.ok(verified !== undefined);
   return verified;
 };
 
 test("every account and session read is on a primary key or an index", () => {
   const db = schemaDb();
-  const planOf = (sql: string, params: (string | number)[]) =>
+  const planOf = (sql: string, params: (string | number | null)[]) =>
     (db.prepare(`EXPLAIN QUERY PLAN ${sql}`).all(...params) as { detail: string }[]).map((row) => row.detail).join("\n");
   const at = new Date(NOW).toISOString();
-  const cases: [string, (string | number)[], RegExp][] = [
-    [IDENTITY_BY_SUBJECT_SQL, ["google", "x"], /SEARCH provider_identity USING INDEX sqlite_autoindex_provider_identity_1/],
+  const cases: [string, (string | number | null)[], RegExp][] = [
+    [REFRESH_IDENTITY_SQL, [null, "google", "x"], /SEARCH provider_identity USING INDEX sqlite_autoindex_provider_identity_1/],
     [IDENTITY_BY_EMAIL_SQL, ["a@b.c"], /SEARCH provider_identity USING INDEX provider_identity_by_email/],
     [ACCOUNT_IDENTITIES_SQL, [1], /SEARCH provider_identity USING INDEX provider_identity_by_account/],
     [SESSION_ACCOUNT_SQL, ["0".repeat(64), at], /SEARCH developer_session USING INDEX sqlite_autoindex_developer_session_1/],
@@ -77,18 +77,39 @@ test("an account's profile is its first email and every provider linked to it, a
   const sqlite = schemaDb();
   const db = fromNodeSqlite(sqlite);
   const { accountId } = await signInAccount(db, identity("github", "7", "ada@example.com"), NOW);
-  assert.deepEqual(await accountProfile(db, accountId), { email: "ada@example.com", providers: ["github"] });
-  await signInAccount(db, identity("google", "g-1", "ada@example.com"), NOW);
-  assert.deepEqual(await accountProfile(db, accountId), { email: "ada@example.com", providers: ["google", "github"] });
+  assert.deepEqual(await accountProfile(db, accountId), { email: "ada@example.com", name: undefined, providers: ["github"] });
+  await signInAccount(db, identity("google", "g-1", "ada@example.com", "Ada Lovelace"), NOW);
+  assert.deepEqual(await accountProfile(db, accountId), { email: "ada@example.com", name: "Ada Lovelace", providers: ["google", "github"] });
   await deleteAccount(db, accountId, NOW);
   assert.equal(await accountProfile(db, accountId), undefined);
 });
 
-test("only a provider-verified email makes an identity", () => {
-  assert.equal(verifiedIdentity("github", { subject: "7", verifiedEmail: undefined }), undefined);
-  assert.equal(verifiedIdentity("github", { subject: "7", verifiedEmail: "not an email" }), undefined);
-  assert.equal(verifiedIdentity("github", { subject: "", verifiedEmail: "a@b.c" }), undefined);
-  assert.deepEqual(verifiedIdentity("google", { subject: "g", verifiedEmail: " A@B.C " }), { provider: "google", subject: "g", email: "a@b.c" });
+test("only a provider-verified email makes an identity, and a blank name is no name", () => {
+  assert.equal(verifiedIdentity("github", { subject: "7", verifiedEmail: undefined, name: "Ada" }), undefined);
+  assert.equal(verifiedIdentity("github", { subject: "7", verifiedEmail: "not an email", name: undefined }), undefined);
+  assert.equal(verifiedIdentity("github", { subject: "", verifiedEmail: "a@b.c", name: undefined }), undefined);
+  assert.deepEqual(verifiedIdentity("google", { subject: "g", verifiedEmail: " A@B.C ", name: " Ada " }), {
+    provider: "google",
+    subject: "g",
+    email: "a@b.c",
+    name: "Ada",
+  });
+  assert.equal(verifiedIdentity("google", { subject: "g", verifiedEmail: "a@b.c", name: "  " })?.name, undefined);
+});
+
+test("each sign-in refreshes the identity's name, and a name the provider drops is dropped (#190)", async () => {
+  const sqlite = schemaDb();
+  const db = fromNodeSqlite(sqlite);
+  const { accountId } = await signInAccount(db, identity("google", "g-1", "ada@example.com", "Ada"), NOW);
+  assert.equal((await accountProfile(db, accountId))?.name, "Ada");
+  await signInAccount(db, identity("google", "g-1", "ada@example.com", "Ada Lovelace"), NOW);
+  assert.equal((await accountProfile(db, accountId))?.name, "Ada Lovelace");
+  await signInAccount(db, identity("google", "g-1", "ada@example.com"), NOW);
+  assert.equal((await accountProfile(db, accountId))?.name, undefined);
+  // The account holds nothing personal: deleting it takes the names with the identities.
+  await signInAccount(db, identity("google", "g-1", "ada@example.com", "Ada"), NOW);
+  await deleteAccount(db, accountId, NOW);
+  assert.equal((sqlite.prepare("SELECT count(*) AS n FROM provider_identity WHERE display_name IS NOT NULL").get() as { n: number }).n, 0);
 });
 
 test("a session reads as its account until it expires, and is stored only as a hash", async () => {
@@ -140,21 +161,26 @@ test("Google is asked with PKCE S256 and state, and vouches only for an email it
     client_id: "client",
     redirect_uri: REQUEST.redirectUri,
     response_type: "code",
-    scope: "openid email",
+    scope: "openid email profile",
     state: "st",
     code_challenge: "ch",
     code_challenge_method: "S256",
   });
 
-  const userinfo = (verified: boolean) =>
+  const userinfo = (verified: boolean, extra: Record<string, unknown> = { name: "Ada Lovelace" }) =>
     fakeFetch({
       "https://oauth2.googleapis.com/token": () => Response.json({ access_token: "tok" }),
-      "https://openidconnect.googleapis.com/v1/userinfo": () => Response.json({ sub: "g-1", email: "a@b.c", email_verified: verified }),
+      "https://openidconnect.googleapis.com/v1/userinfo": () => Response.json({ sub: "g-1", email: "a@b.c", email_verified: verified, ...extra }),
     });
   const verified = userinfo(true);
   assert.deepEqual(await googleProvider(CREDENTIALS, verified.fetcher).exchange(GRANT), {
     outcome: "profile",
-    profile: { subject: "g-1", verifiedEmail: "a@b.c" },
+    profile: { subject: "g-1", verifiedEmail: "a@b.c", name: "Ada Lovelace" },
+  });
+  // The `profile` scope is what gives userinfo a name; without one there is none (#190).
+  assert.deepEqual(await googleProvider(CREDENTIALS, userinfo(true, {}).fetcher).exchange(GRANT), {
+    outcome: "profile",
+    profile: { subject: "g-1", verifiedEmail: "a@b.c", name: undefined },
   });
   const form = new URLSearchParams(String(verified.sent[0].init?.body));
   assert.equal(form.get("code_verifier"), "ver");
@@ -163,7 +189,7 @@ test("Google is asked with PKCE S256 and state, and vouches only for an email it
 
   assert.deepEqual(await googleProvider(CREDENTIALS, userinfo(false).fetcher).exchange(GRANT), {
     outcome: "profile",
-    profile: { subject: "g-1", verifiedEmail: undefined },
+    profile: { subject: "g-1", verifiedEmail: undefined, name: "Ada Lovelace" },
   });
   // A wrong verifier is Google's 400 invalid_grant.
   const refused = fakeFetch({ "https://oauth2.googleapis.com/token": () => Response.json({ error: "invalid_grant" }, { status: 400 }) });
@@ -176,10 +202,10 @@ test("GitHub is asked with PKCE S256 and state, and vouches only for a verified 
   assert.equal(url.searchParams.get("code_challenge_method"), "S256");
   assert.equal(url.searchParams.get("scope"), "user:email");
 
-  const github = (emails: unknown) =>
+  const github = (emails: unknown, user: Record<string, unknown> = { name: "Ada Lovelace", login: "ada" }) =>
     fakeFetch({
       "https://github.com/login/oauth/access_token": () => Response.json({ access_token: "tok" }),
-      "https://api.github.com/user": () => Response.json({ id: 4242 }),
+      "https://api.github.com/user": () => Response.json({ id: 4242, ...user }),
       "https://api.github.com/user/emails": () => Response.json(emails),
     });
   const both = [
@@ -188,12 +214,17 @@ test("GitHub is asked with PKCE S256 and state, and vouches only for a verified 
   ];
   assert.deepEqual(await githubProvider(CREDENTIALS, github(both).fetcher).exchange(GRANT), {
     outcome: "profile",
-    profile: { subject: "4242", verifiedEmail: "a@b.c" },
+    profile: { subject: "4242", verifiedEmail: "a@b.c", name: "Ada Lovelace" },
+  });
+  // GitHub's `name` is null for anyone who never set one: the login stands in (#190).
+  assert.deepEqual(await githubProvider(CREDENTIALS, github(both, { name: null, login: "ada" }).fetcher).exchange(GRANT), {
+    outcome: "profile",
+    profile: { subject: "4242", verifiedEmail: "a@b.c", name: "ada" },
   });
   const unverified = [{ email: "a@b.c", primary: true, verified: false }];
   assert.deepEqual(await githubProvider(CREDENTIALS, github(unverified).fetcher).exchange(GRANT), {
     outcome: "profile",
-    profile: { subject: "4242", verifiedEmail: undefined },
+    profile: { subject: "4242", verifiedEmail: undefined, name: "Ada Lovelace" },
   });
   // GitHub answers a bad code or verifier with a 200 carrying `error`.
   const refused = fakeFetch({

@@ -1,12 +1,14 @@
-// What the dashboard on developers.lexema.fyi shows (#169, board 28), worked
-// out from the account's keys, usage and profile. Pure, so the page's words
-// and numbers are tested without a Worker; `Dashboard.tsx` only lays them out.
+// What the dashboard on developers.lexema.fyi shows (#169, board 28) and its
+// settings page (#190, board 28g), worked out from the account's keys, usage
+// and profile. Pure, so the pages' words and numbers are tested without a
+// Worker; `Dashboard.tsx` and `DashboardSettings.tsx` only lay them out.
 
 import type { AccountProfile } from "@lexema/accounts/accounts.ts";
 import { PROVIDER_NAME } from "@lexema/accounts/providers.ts";
 import { LIFETIME_LABEL, type EndpointScope } from "@lexema/api/keyAccess.ts";
 import type { OwnedKey } from "@lexema/api/ownedKeys.ts";
 import type { AccountUsage } from "@lexema/api/usage.ts";
+import { signedInOf, type SignedIn } from "./signedIn.ts";
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
@@ -88,12 +90,13 @@ export const keyRowOf = (key: OwnedKey, now: number): KeyRow => ({
   expires: expiresText(key.expiresAt),
 });
 
-/** The whole dashboard, as the page lays it out. */
+/** The account's keys that are not revoked, oldest first. */
+const liveKeys = (keys: readonly OwnedKey[]): OwnedKey[] => keys.filter((key) => key.revokedAt === null).sort((a, b) => a.keyId - b.keyId);
+
+/** Keys and usage, the dashboard's first tab, as the page lays it out. */
 export interface DashboardView {
-  email: string;
-  /** `Signed in with Google · ada@example.com`. */
-  signedInWith: string;
-  /** The live keys, oldest first; deleting the account revokes each of them. */
+  signedIn: SignedIn;
+  /** The live keys, oldest first. */
   keys: readonly KeyRow[];
   /** Every key's units added up, revoked keys' too: their calls were made. */
   usage: UsageRow;
@@ -102,13 +105,27 @@ export interface DashboardView {
 /** The dashboard for an account's profile, keys and usage at `now`. */
 export function dashboardView(profile: AccountProfile, keys: readonly OwnedKey[], usage: AccountUsage, now: number): DashboardView {
   return {
-    email: profile.email,
-    signedInWith: `Signed in with ${profile.providers.map((provider) => PROVIDER_NAME[provider]).join(" or ")} · ${profile.email}`,
-    keys: keys
-      .filter((key) => key.revokedAt === null)
-      .sort((a, b) => a.keyId - b.keyId)
-      .map((key) => keyRowOf(key, now)),
+    signedIn: signedInOf(profile),
+    keys: liveKeys(keys).map((key) => keyRowOf(key, now)),
     usage: usageRow(usage.days, usage.total),
+  };
+}
+
+/** Settings, the dashboard's second tab (board 28g): the plan, and the account with Delete account. */
+export interface SettingsView {
+  signedIn: SignedIn;
+  /** `Signed in with Google · ada@example.com`. */
+  signedInWith: string;
+  /** What the delete confirmation says, with the account's live key count (board 30). */
+  deleteWarning: string;
+}
+
+/** The settings page for an account's profile and keys. */
+export function settingsView(profile: AccountProfile, keys: readonly OwnedKey[]): SettingsView {
+  return {
+    signedIn: signedInOf(profile),
+    signedInWith: `Signed in with ${profile.providers.map((provider) => PROVIDER_NAME[provider]).join(" or ")} · ${profile.email}`,
+    deleteWarning: deleteWarning(liveKeys(keys).length),
   };
 }
 

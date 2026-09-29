@@ -36,13 +36,21 @@ export interface CodeGrant {
 }
 
 /**
- * The person the provider vouched for: its own stable id for them, and their
- * email when the provider says it is verified. `undefined` is "no verified
- * email", never an unverified address.
+ * The person the provider vouched for: its own stable id for them, their
+ * email when the provider says it is verified, and the name they go by there
+ * (#190). `undefined` is "no verified email", never an unverified address, and
+ * "no name", never a blank one.
  */
 export interface ProviderProfile {
   subject: string;
   verifiedEmail: string | undefined;
+  name: string | undefined;
+}
+
+/** A provider's name field as a name: trimmed, or `undefined` when it is not a string or is blank. */
+export function nameOf(value: unknown): string | undefined {
+  const name = typeof value === "string" ? value.trim() : "";
+  return name === "" ? undefined : name;
 }
 
 /** A code exchanged: the person, or the provider's refusal (a bad code or verifier). */
@@ -108,8 +116,9 @@ async function readJson(fetcher: Fetch, url: string, headers: Record<string, str
 }
 
 /**
- * Google, over OpenID Connect: the `openid email` scopes, then the userinfo
- * endpoint's `sub`, `email` and `email_verified`
+ * Google, over OpenID Connect: the `openid email profile` scopes, then the
+ * userinfo endpoint's `sub`, `email`, `email_verified` and, for the account
+ * menu (#190), `name`
  * (https://developers.google.com/identity/openid-connect/openid-connect).
  * The userinfo answer comes straight from Google over TLS with the token just
  * issued, so no ID token signature needs checking.
@@ -123,7 +132,7 @@ export function googleProvider(credentials: ProviderCredentials, fetcher: Fetch 
         client_id: credentials.clientId,
         redirect_uri: redirectUri,
         response_type: "code",
-        scope: "openid email",
+        scope: "openid email profile",
         state,
         code_challenge: codeChallenge,
         code_challenge_method: "S256",
@@ -142,10 +151,10 @@ export function googleProvider(credentials: ProviderCredentials, fetcher: Fetch 
       if (token === undefined) return { outcome: "refused" };
       const user = (await readJson(fetcher, "https://openidconnect.googleapis.com/v1/userinfo", {
         authorization: `Bearer ${token}`,
-      })) as { sub?: unknown; email?: unknown; email_verified?: unknown };
+      })) as { sub?: unknown; email?: unknown; email_verified?: unknown; name?: unknown };
       if (typeof user.sub !== "string" || user.sub === "") throw new Error("Google's userinfo carried no sub");
       const verifiedEmail = user.email_verified === true && typeof user.email === "string" ? user.email : undefined;
-      return { outcome: "profile", profile: { subject: user.sub, verifiedEmail } };
+      return { outcome: "profile", profile: { subject: user.sub, verifiedEmail, name: nameOf(user.name) } };
     },
   };
 }
@@ -158,8 +167,10 @@ const GITHUB_HEADERS = {
 };
 
 /**
- * GitHub, over OAuth 2.0 with PKCE: the numeric user id from `/user`, and the
- * primary email from `/user/emails` when GitHub marks it verified
+ * GitHub, over OAuth 2.0 with PKCE: the numeric user id from `/user`, its
+ * `name`, or, since GitHub leaves that null for anyone who never set one, its
+ * `login` (#190), and the primary email from `/user/emails` when GitHub marks
+ * it verified
  * (https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/authorizing-oauth-apps,
  * https://docs.github.com/en/rest/users/emails). The `user:email` scope is what
  * lets `/user/emails` answer.
@@ -189,14 +200,14 @@ export function githubProvider(credentials: ProviderCredentials, fetcher: Fetch 
       });
       if (token === undefined) return { outcome: "refused" };
       const headers = { ...GITHUB_HEADERS, authorization: `Bearer ${token}` };
-      const user = (await readJson(fetcher, "https://api.github.com/user", headers)) as { id?: unknown };
+      const user = (await readJson(fetcher, "https://api.github.com/user", headers)) as { id?: unknown; name?: unknown; login?: unknown };
       if (typeof user.id !== "number") throw new Error("GitHub's /user carried no id");
       const emails = (await readJson(fetcher, "https://api.github.com/user/emails", headers)) as unknown;
       const primary = Array.isArray(emails)
         ? (emails as { email?: unknown; primary?: unknown; verified?: unknown }[]).find((entry) => entry.primary === true)
         : undefined;
       const verifiedEmail = primary?.verified === true && typeof primary.email === "string" ? primary.email : undefined;
-      return { outcome: "profile", profile: { subject: String(user.id), verifiedEmail } };
+      return { outcome: "profile", profile: { subject: String(user.id), verifiedEmail, name: nameOf(user.name) ?? nameOf(user.login) } };
     },
   };
 }

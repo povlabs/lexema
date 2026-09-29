@@ -7,6 +7,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
 import { DatabaseSync } from "node:sqlite";
+import { accountProfile } from "../../src/accounts/accounts.js";
 import { configuredProviders, type ProviderProfile, type ProviderRegistry } from "../../src/accounts/providers.js";
 import { fromNodeSqlite } from "../../src/lookup/database.js";
 import { apiNotFound } from "../worker/api/handler.ts";
@@ -98,7 +99,7 @@ function site(providers?: ProviderRegistry) {
   return { sqlite, db, jar, send, signIn, google, github, appSaw, count, account };
 }
 
-const ada: ProviderProfile = { subject: "g-100", verifiedEmail: "ada@example.com" };
+const ada: ProviderProfile = { subject: "g-100", verifiedEmail: "ada@example.com", name: "Ada Lovelace" };
 
 test("a stub sign-in round trip ends with a host-only session cookie: HttpOnly, Secure, SameSite=Lax, no Domain", async () => {
   const { send, google, jar, account, appSaw } = site();
@@ -151,7 +152,7 @@ test("Google then GitHub under one verified email is one account with two identi
   const { signIn, google, github, sqlite, jar, count } = site();
   assert.equal((await signIn(google, ada)).status, 303);
   jar.clear();
-  assert.equal((await signIn(github, { subject: "4242", verifiedEmail: "Ada@Example.com" })).status, 303);
+  assert.equal((await signIn(github, { subject: "4242", verifiedEmail: "Ada@Example.com", name: "ada" })).status, 303);
 
   const identities = sqlite
     .prepare("SELECT account_id, provider, provider_user_id, email FROM provider_identity ORDER BY identity_id")
@@ -164,11 +165,39 @@ test("Google then GitHub under one verified email is one account with two identi
   assert.equal(count("developer_account"), 1);
 
   jar.clear();
-  const unverified = await signIn(github, { subject: "7", verifiedEmail: undefined });
+  const unverified = await signIn(github, { subject: "7", verifiedEmail: undefined, name: undefined });
   assert.equal(unverified.status, 403);
   assert.ok(!jar.has(SESSION_COOKIE));
   assert.equal(count("provider_identity"), 2);
   assert.equal(count("developer_account"), 1);
+});
+
+test("each identity keeps the name its provider gave, and the next sign-in refreshes it (#190)", async () => {
+  const { signIn, google, github, sqlite, jar, db } = site();
+  const names = () =>
+    sqlite
+      .prepare("SELECT provider, display_name FROM provider_identity ORDER BY identity_id")
+      .all()
+      .map((row) => ({ ...row }));
+  assert.equal((await signIn(google, ada)).status, 303);
+  jar.clear();
+  // GitHub's login, standing in for a name it has not got (githubProvider, test/accounts.test.ts).
+  assert.equal((await signIn(github, { subject: "4242", verifiedEmail: "ada@example.com", name: "ada" })).status, 303);
+  assert.deepEqual(names(), [
+    { provider: "google", display_name: "Ada Lovelace" },
+    { provider: "github", display_name: "ada" },
+  ]);
+  assert.equal((await accountProfile(db, 1))?.name, "Ada Lovelace");
+
+  jar.clear();
+  assert.equal((await signIn(google, { ...ada, name: "Ada King" })).status, 303);
+  jar.clear();
+  assert.equal((await signIn(github, { subject: "4242", verifiedEmail: "ada@example.com", name: "Ada K." })).status, 303);
+  assert.deepEqual(names(), [
+    { provider: "google", display_name: "Ada King" },
+    { provider: "github", display_name: "Ada K." },
+  ]);
+  assert.equal((await accountProfile(db, 1))?.name, "Ada King");
 });
 
 test("a provider with its client id or secret unset reads as unavailable, and its start route answers without throwing", async () => {

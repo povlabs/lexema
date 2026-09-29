@@ -1,42 +1,34 @@
 // developers.lexema.fyi/dashboard (#169, boards 28 and 28m): the account's live
-// keys with Create key and a Revoke each, 30 days of usage, the plan card, and
-// the account section. Every action (worker/dashboard.ts) carries the
+// keys with Create key and a Revoke each, and 30 days of usage, under the tab
+// bar (#190). The plan and the account are the Settings tab's
+// (DashboardSettings.tsx). Every action (worker/dashboard.ts) carries the
 // session's CSRF token. What the page shows is worked out in
 // `dashboardView.ts`; the wiring that reads the session and D1 is
 // `(developers)/developer-site/dashboard/`.
 //
-// Create key, Revoke and Delete account open their dialogs over the page in
-// place and send their action with fetch: the new key's form, then its secret
-// in the same dialog (boards 28b and 28e), the revoke confirmation (28d) and
-// the delete confirmation (30). Toasts say what happened (28f)
-// (DashboardFlow.tsx).
+// Create key and Revoke open their dialogs over the page in place and send
+// their action with fetch: the new key's form, then its secret in the same
+// dialog (boards 28b and 28e), and the revoke confirmation (28d). Toasts say
+// what happened (28f) (DashboardFlow.tsx).
 //
 // On a phone (below `sm`, board 28m) the key table becomes one card per key,
 // with no column heads: the name and Revoke, the prefix, then "Created … ·
-// Last used …", then its endpoints, then "Expires …" (#187). The plan and
-// account cards stack their action under the text.
+// Last used …", then its endpoints, then "Expires …" (#187).
 
 import { DeveloperPage } from "./DeveloperPage";
-import { CreateKeyControl, DashboardFlow, DeleteAccountControl, KeyTable } from "./DashboardFlow";
+import { CreateKeyControl, DashboardFlow, KeyTable } from "./DashboardFlow";
+import { DashboardTabs } from "./DashboardTabs";
 import { units, type DashboardView, type UsageRow } from "./dashboardView.ts";
 import {
-  ACCOUNT_DETAIL,
-  ACCOUNT_TEXT,
-  ACCOUNT_TITLE,
-  BUTTON_DANGER_OUTLINE,
   DASH_CREATE_BUTTON,
+  DASH_FIRST_SECTION,
   DASH_HEADING,
-  DASH_KEYS_SECTION,
-  DASH_ROW_CARD,
   DASH_SECTION,
   DASH_SECTION_HEAD,
   DASH_SECTION_HEADING,
   DASH_SHELL,
   DASH_USAGE_HEAD,
   DASH_USAGE_NOTE,
-  PLAN_CARD,
-  PLAN_NONE,
-  PLAN_SOON,
   USAGE_BAR,
   USAGE_BAR_TODAY,
   USAGE_CARD,
@@ -75,11 +67,12 @@ function UsageBars({ row }: { row: UsageRow }) {
 export function Dashboard({ view, csrf, made }: { view: DashboardView; csrf: string; made: number }) {
   return (
     <DashboardFlow keys={view.keys} made={made} csrf={csrf}>
-      <DeveloperPage current="dashboard" signedIn={{ email: view.email }}>
+      <DeveloperPage current="dashboard" signedIn={view.signedIn}>
         <main className={DASH_SHELL}>
           <h1 className={DASH_HEADING}>Dashboard</h1>
+          <DashboardTabs current="keys" />
 
-          <section className={DASH_KEYS_SECTION} aria-labelledby="keys">
+          <section className={DASH_FIRST_SECTION} aria-labelledby="keys">
             <div className={DASH_SECTION_HEAD}>
               <h2 className={DASH_SECTION_HEADING} id="keys">
                 API keys
@@ -100,31 +93,6 @@ export function Dashboard({ view, csrf, made }: { view: DashboardView; csrf: str
             </div>
             <div className={USAGE_CARD} data-usage="total">
               <UsageBars row={view.usage} />
-            </div>
-          </section>
-
-          <section className={DASH_SECTION} aria-labelledby="plan">
-            <h2 className={DASH_SECTION_HEADING} id="plan">
-              Plan
-            </h2>
-            <div className={PLAN_CARD}>
-              <p className={PLAN_NONE}>No plan yet</p>
-              <button className={PLAN_SOON} type="button" disabled>
-                Choose a plan — coming soon
-              </button>
-            </div>
-          </section>
-
-          <section className={DASH_SECTION} aria-labelledby="account">
-            <h2 className={DASH_SECTION_HEADING} id="account">
-              Account
-            </h2>
-            <div className={DASH_ROW_CARD}>
-              <div className={ACCOUNT_TEXT}>
-                <p className={ACCOUNT_TITLE}>Delete account</p>
-                <p className={ACCOUNT_DETAIL}>{view.signedInWith}</p>
-              </div>
-              <DeleteAccountControl className={BUTTON_DANGER_OUTLINE} />
             </div>
           </section>
         </main>

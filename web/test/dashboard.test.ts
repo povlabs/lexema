@@ -1,4 +1,4 @@
-// The dashboard's actions on developers.lexema.fyi (#168, #187) and its page (#169), through the Worker's
+// The dashboard's actions on developers.lexema.fyi (#168, #187) and its pages (#169, #190), through the Worker's
 // host routing, rate limits, sign-in and dashboard wiring as deployed, over a
 // local `node:sqlite` database with the real schema. Sign-in runs against the
 // stub provider, as in signIn.test.ts.
@@ -23,8 +23,9 @@ import {
   UNREACHABLE,
   type ActionAnswer,
 } from "../app/dashboardActions.ts";
+import { afterDelete, takeNotice, type NoticeStore } from "../app/arrivalNotice.ts";
 import { apiNotFound, handleApi } from "../worker/api/handler.ts";
-import { CSRF_FIELD, csrfTokenOf, type DashboardBindings, DASHBOARD, DELETE_CONFIRMATION, SIGN_IN_PAGE, withDashboard } from "../worker/dashboard.ts";
+import { CSRF_FIELD, csrfTokenOf, type DashboardBindings, DASHBOARD, DELETE_CONFIRMATION, SETTINGS, SIGN_IN_PAGE, withDashboard } from "../worker/dashboard.ts";
 import { byHost } from "../worker/hosts.ts";
 import { withRateLimits, type LimitBindings } from "../worker/rateLimit.ts";
 import { AFTER_SIGN_OUT, SESSION_COOKIE, signedInAccount, withSignIn, type SignInBindings } from "../worker/signIn.ts";
@@ -110,8 +111,8 @@ function site({ limits = {} }: { limits?: Partial<LimitBindings> } = {}) {
   return { sqlite, db, appSaw, browser, snapshot, worker };
 }
 
-const ada: ProviderProfile = { subject: "g-ada", verifiedEmail: "ada@example.com" };
-const bob: ProviderProfile = { subject: "g-bob", verifiedEmail: "bob@example.com" };
+const ada: ProviderProfile = { subject: "g-ada", verifiedEmail: "ada@example.com", name: "Ada Lovelace" };
+const bob: ProviderProfile = { subject: "g-bob", verifiedEmail: "bob@example.com", name: undefined };
 
 const name = (text: string) => {
   const parsed = keyName(text);
@@ -337,6 +338,61 @@ test("Revoke answers the revoked key in JSON, another account's key is a 404, an
   assert.equal(await bobs.signedIn(), bobs.accountId);
 });
 
+/** A tab's session storage, as the browser keeps it across the page it leaves and the one it opens. */
+function tabStorage(): NoticeStore & { readonly items: Map<string, string> } {
+  const items = new Map<string, string>();
+  return {
+    items,
+    getItem: (key) => items.get(key) ?? null,
+    setItem: (key, value) => void items.set(key, value),
+    removeItem: (key) => void items.delete(key),
+  };
+}
+
+test("Delete account on the settings page lands on the landing page, which says \u201cYour account was deleted.\u201d once (#190)", async () => {
+  const { browser } = site();
+  const adas = await browser(ada);
+  const tab = tabStorage();
+  const went: string[] = [];
+
+  // A refusal stays on the page with its reason, and leaves nothing for the next one.
+  const refused = await sendAction(DELETE_ACCOUNT_ACTION, formOf(adas.csrf), scripted(adas.send));
+  assert.equal(afterDelete(refused, tab, (location) => went.push(location)), "Confirm the deletion first.");
+  assert.equal(went.length, 0, "a refusal stays on the page");
+  assert.equal(takeNotice(tab), undefined);
+
+  const deleted = await sendAction(DELETE_ACCOUNT_ACTION, formOf(adas.csrf, [["confirm", DELETE_CONFIRMATION]]), scripted(adas.send));
+  assert.equal(afterDelete(deleted, tab, (location) => went.push(location)), undefined);
+  assert.deepEqual(went, ["/"], "the browser goes to developers.lexema.fyi/");
+  assert.equal(await adas.signedIn(), undefined);
+
+  // The landing page takes the notice as it opens: one toast, in board 28f's success style, and none on a reload.
+  assert.deepEqual(takeNotice(tab), { tone: "success", message: "Your account was deleted." });
+  assert.equal(takeNotice(tab), undefined);
+  assert.equal(tab.items.size, 0);
+});
+
+test("a notice nobody left, or a storage the browser refuses, shows no toast and breaks nothing", () => {
+  const tab = tabStorage();
+  tab.setItem("lexema:arrival", "hacked");
+  assert.equal(takeNotice(tab), undefined);
+  assert.equal(takeNotice(undefined), undefined);
+  const refusing: NoticeStore = {
+    getItem: () => {
+      throw new Error("SecurityError");
+    },
+    setItem: () => {
+      throw new Error("QuotaExceededError");
+    },
+    removeItem: () => {},
+  };
+  assert.equal(takeNotice(refusing), undefined);
+  const went: string[] = [];
+  assert.equal(afterDelete({ outcome: "signed-out", location: "/" }, refusing, (location) => went.push(location)), undefined);
+  assert.deepEqual(went, ["/"], "the deletion still leaves the page, without its toast");
+  assert.equal(afterDelete({ outcome: "revoked", keyId: 1 }, tab, () => {}), UNREACHABLE);
+});
+
 test("an action the page cannot reach is read as a refusal to show, never as a success", async () => {
   const offline: typeof fetch = async () => {
     throw new TypeError("network down");
@@ -358,6 +414,26 @@ test("a visitor without a session who opens the dashboard is sent to sign-in", a
   assert.equal(page.status, 200);
   assert.equal(page.headers.get("cache-control"), "no-store");
   assert.equal(new URL(appSaw[0].url).pathname, "/developer-site/dashboard");
+});
+
+test("the settings page needs a session like the dashboard: without one, sign-in; with one, the page, never cached (#190)", async () => {
+  const { appSaw, browser, worker } = site();
+  const answer = await worker(new Request(`${DEVELOPERS}${SETTINGS}`), env, {} as ExecutionContext);
+  assert.equal(answer.status, 303);
+  assert.equal(answer.headers.get("location"), SIGN_IN_PAGE);
+  assert.equal(appSaw.length, 0);
+
+  const adas = await browser(ada);
+  const page = await adas.send(`${DEVELOPERS}${SETTINGS}`);
+  assert.equal(page.status, 200);
+  assert.equal(page.headers.get("cache-control"), "no-store");
+  assert.equal(new URL(appSaw[0].url).pathname, "/developer-site/dashboard/settings");
+
+  // Signed out again, the same.
+  await adas.send(`${DEVELOPERS}/sign-out`, { method: "POST" });
+  const after = await adas.send(`${DEVELOPERS}${SETTINGS}`);
+  assert.equal(after.status, 303);
+  assert.equal(after.headers.get("location"), SIGN_IN_PAGE);
 });
 
 test("revoke succeeds for the session's own key and is refused for another account's; deletion touches only the session's account", async () => {

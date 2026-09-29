@@ -9,6 +9,7 @@ import { MAX_BATCH_WORDS } from "../worker/api/endpoints.ts";
 import { COST_ROWS, costText } from "./apiReference.ts";
 import { CONTACT_EMAIL, DeveloperPage } from "./DeveloperPage";
 import { CheckIcon } from "./MenuIcons";
+import type { SignedIn } from "./signedIn.ts";
 import {
   BUTTON_PRIMARY,
   BUTTON_SECONDARY,
@@ -46,10 +47,10 @@ function Features({ items }: { items: readonly string[] }) {
   );
 }
 
-export function DeveloperPricing() {
+export function DeveloperPricing({ signedIn }: { signedIn?: SignedIn } = {}) {
   return (
     // Board 26 draws the bar with neither page marked.
-    <DeveloperPage>
+    <DeveloperPage signedIn={signedIn}>
       <main className={DEV_SHELL}>
         <h1 className={DEV_HEADING}>Pricing</h1>
 

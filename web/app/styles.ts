@@ -625,10 +625,28 @@ export const CODE_INLINE = "font-mono text-[0.9em] text-text-strong";
 // key dialogs and toasts (boards 28b to 28f) and the delete confirmation
 // (board 30).
 
-/** The bar's right-hand side when signed in: the account's email, then Sign out. On a phone both are in the ☰ menu. */
-export const DEV_ACCOUNT = "ml-auto flex min-w-0 items-center gap-4 sm:pt-[3px] sm:pl-6";
-export const DEV_ACCOUNT_EMAIL = "truncate font-sans text-[0.8125rem] leading-5 text-text-muted max-sm:hidden";
-export const DEV_SIGN_OUT = `shrink-0 cursor-pointer whitespace-nowrap border-0 bg-transparent p-0 font-sans text-[0.8125rem] leading-5 text-accent max-sm:hidden ${FOCUS_RING}`;
+/** The bar's right-hand side when signed in: the account menu's avatar (#190). On a phone the ☰ menu stands in for it. */
+export const DEV_ACCOUNT = "ml-auto flex items-center sm:pl-6";
+
+/** The avatar (board 28h): 32 px, round, filled `accent`, the initial in `surface`. It opens the account menu. */
+export const ACCOUNT_TRIGGER = `flex shrink-0 cursor-pointer rounded-full border-0 bg-transparent p-0 max-sm:hidden ${FOCUS_RING}`;
+export const ACCOUNT_AVATAR = "flex size-8 items-center justify-center overflow-hidden rounded-full bg-accent select-none";
+export const ACCOUNT_AVATAR_INITIAL = "font-sans text-[0.875rem] leading-none font-semibold text-surface";
+/** The account menu under the avatar, its right edge on the avatar's: 240 px, raised, in a strong hairline. */
+export const ACCOUNT_MENU_POSITIONER = "z-50 outline-none";
+export const ACCOUNT_MENU = "w-60 rounded-[6px] border border-border-strong bg-surface-raised p-1.5 outline-none";
+/** The name in `text-strong`, the email muted under it; without a name, the email alone in the name's place. */
+export const ACCOUNT_MENU_HEAD = "px-2.5 pt-1.5 pb-2";
+export const ACCOUNT_MENU_NAME = "m-0 truncate font-sans text-[0.875rem] leading-5 font-semibold text-text-strong";
+export const ACCOUNT_MENU_EMAIL = "m-0 truncate font-sans text-[0.8125rem] leading-[1.125rem] text-text-muted";
+export const ACCOUNT_MENU_RULE = "mb-1 h-px bg-border";
+/** Dashboard and Settings; the highlighted one sits on the page's own `surface`. */
+const ACCOUNT_MENU_ROW =
+  "flex h-8 w-full cursor-pointer items-center gap-2.5 rounded-[4px] border-0 bg-transparent px-2.5 font-sans text-[0.9375rem] leading-5 no-underline outline-none data-highlighted:bg-surface";
+export const ACCOUNT_MENU_ITEM = `${ACCOUNT_MENU_ROW} text-text data-highlighted:text-text-strong`;
+/** Sign out, in the accent, as it was in the bar. */
+export const ACCOUNT_MENU_SIGN_OUT = `${ACCOUNT_MENU_ROW} text-accent`;
+export const ACCOUNT_MENU_ICON = "size-4 shrink-0";
 /** The signed-in ☰ menu's foot (board `j6UaW`): the email, muted, then Sign out in the accent. */
 export const DEV_MENU_ACCOUNT = "flex flex-col items-start gap-[0.6875rem] px-5 pt-[1.6875rem] pb-10";
 export const DEV_MENU_EMAIL = "font-sans text-[0.875rem] leading-5 text-text-muted wrap-anywhere";
@@ -646,12 +664,16 @@ export const SIGN_IN_ICON = "size-4 shrink-0";
 /** Google's mark as the board draws it: a bold `G` in the button's colour. */
 export const SIGN_IN_G = "w-4 shrink-0 text-center font-sans text-[0.8125rem] font-bold leading-none";
 
-/** The dashboard's column, as the landing's; each section a heading with its content under it. */
+/** The dashboard's column, as the landing's: the heading, the tab bar, then each section a heading with its content under it. */
 export const DASH_SHELL = `${DEV_COLUMN} flex-1 pt-[2.375rem] pb-[3.1875rem] sm:pt-20 sm:pb-[5.9375rem]`;
 /** `Dashboard`: 44 px on a wide screen, as board 28 draws it; the phone size is the landing's. */
 export const DASH_HEADING = "m-0 font-serif text-[2rem] leading-[1.2] font-normal text-text-strong sm:text-[2.75rem]";
-/** API keys; its heading shares a row with Create key, so it sits lower than the other sections' (board 28). */
-export const DASH_KEYS_SECTION = "mt-11 sm:mt-[3.4375rem]";
+/** Keys and usage, and Settings (#190, boards 28 and 28g): links under the heading on a hairline, the current one underlined in the accent. */
+export const DASH_TABS = "mt-[2.875rem] border-b border-border sm:mt-[3.4375rem]";
+export const DASH_TABS_LIST = "m-0 flex list-none gap-[1.3125rem] p-0 sm:gap-7";
+export const DASH_TAB = `-mb-px block border-b-2 border-transparent pb-2.5 font-sans text-[0.9375rem] leading-5 whitespace-nowrap text-text-muted no-underline hover:text-text aria-[current=page]:border-accent aria-[current=page]:font-semibold aria-[current=page]:text-text-strong ${FOCUS_RING}`;
+/** The first section under the tab bar: API keys, or Plan. */
+export const DASH_FIRST_SECTION = "mt-11 sm:mt-[3.125rem]";
 export const DASH_SECTION = "mt-11 sm:mt-[3.25rem]";
 export const DASH_SECTION_HEADING = DEV_SECTION_HEADING;
 /** API keys, with Create key at the right, on a phone too. */
