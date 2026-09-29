@@ -1,6 +1,6 @@
 // The small line icons the frames draw: the magnifier in the search field,
 // the chevron on a "Show all" button, the out-arrow beside Source, and on the
-// developer site GitHub's mark and Copy.
+// developer site GitHub's mark, Copy and a toast's alert.
 // Drawn in `currentColor`, so each takes the role colour of the text it sits
 // in and none carries a colour of its own. Decorative: the text beside each
 // says what it means.
@@ -44,12 +44,23 @@ export function GitHubIcon({ className }: { className: string }) {
   );
 }
 
-/** Two overlapping sheets: Copy (board 29). */
+/** Two overlapping sheets: Copy (board 28e). */
 export function CopyIcon({ className }: { className: string }) {
   return (
     <svg className={className} width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
       <rect x="5.5" y="5.5" width="8" height="8" rx="1.25" />
       <path d="M10.5 3.5v-.25A1.25 1.25 0 0 0 9.25 2h-6A1.25 1.25 0 0 0 2 3.25v6A1.25 1.25 0 0 0 3.25 10.5h.25" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+/** An exclamation mark in a circle: a toast's error (board 28f). */
+export function AlertIcon({ className }: { className: string }) {
+  return (
+    <svg className={className} width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
+      <circle cx="8" cy="8" r="6.75" />
+      <path d="M8 4.75v3.75" strokeLinecap="round" />
+      <circle cx="8" cy="11.25" r=".5" fill="currentColor" stroke="none" />
     </svg>
   );
 }

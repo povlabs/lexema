@@ -9,6 +9,7 @@
 // (src/api/ownedKeys.ts). Both are this one kind of row, answered the same way.
 
 import type { LookupDatabase } from "../lookup/database.js";
+import { endpointsOfColumn, type EndpointScope } from "./keyAccess.js";
 
 /** Every key starts with this, so a leaked one is recognisable as Lexema's. */
 export const API_KEY_PREFIX = "lx_";
@@ -51,40 +52,54 @@ export interface ApiKey {
   perMinuteLimit: number;
   /** Units it may use in one day. Stored for plans; nothing enforces it yet. */
   dailyUnits: number;
+  /** The endpoints it may call (#187). */
+  endpoints: EndpointScope;
 }
 
-/** Why a request's key was refused. */
-export type KeyRefusal = "missing" | "unknown" | "revoked";
+/** Why a request's key was refused. A key both revoked and expired reads as revoked. */
+export type KeyRefusal = "missing" | "unknown" | "revoked" | "expired";
 
 export type Authentication = { outcome: "accepted"; key: ApiKey } | { outcome: "refused"; refusal: KeyRefusal };
 
 /**
  * Accept a live key by its hash and stamp when it was used, in one statement
- * through the unique index on `key_hash`. No row means unknown or revoked.
+ * through the unique index on `key_hash`. A live key is neither revoked nor
+ * expired: its `expires_at`, if it has one, is still ahead of now (#187). No
+ * row means unknown, revoked or expired.
  */
-export const ACCEPT_KEY_SQL = `UPDATE api_key SET last_used_at = ? WHERE key_hash = ? AND revoked_at IS NULL
-     RETURNING key_id, label, per_minute_limit, daily_units`;
+export const ACCEPT_KEY_SQL = `UPDATE api_key SET last_used_at = ?
+     WHERE key_hash = ? AND revoked_at IS NULL AND (expires_at IS NULL OR expires_at > ?)
+     RETURNING key_id, label, per_minute_limit, daily_units, endpoints`;
 
 /** The key named by its hash: the unique index on `key_hash`. */
-export const KEY_BY_HASH_SQL = `SELECT key_id FROM api_key WHERE key_hash = ?`;
+export const KEY_BY_HASH_SQL = `SELECT revoked_at FROM api_key WHERE key_hash = ?`;
 
 /** The `X-API-Key` a request presented, checked against the stored hashes; an accepted key's `last_used_at` becomes `now`. */
 export async function authenticate(db: LookupDatabase, presented: string | null, now: number): Promise<Authentication> {
   const key = presented?.trim() ?? "";
   if (key === "") return { outcome: "refused", refusal: "missing" };
   const hash = await hashApiKey(key);
-  const [row] = await db.all<{ key_id: number; label: string; per_minute_limit: number; daily_units: number }>(ACCEPT_KEY_SQL, [
-    new Date(now).toISOString(),
-    hash,
-  ]);
+  const at = new Date(now).toISOString();
+  const [row] = await db.all<{ key_id: number; label: string; per_minute_limit: number; daily_units: number; endpoints: string | null }>(
+    ACCEPT_KEY_SQL,
+    [at, hash, at],
+  );
   if (row !== undefined) {
     return {
       outcome: "accepted",
-      key: { keyId: row.key_id, label: row.label, perMinuteLimit: row.per_minute_limit, dailyUnits: row.daily_units },
+      key: {
+        keyId: row.key_id,
+        label: row.label,
+        perMinuteLimit: row.per_minute_limit,
+        dailyUnits: row.daily_units,
+        endpoints: endpointsOfColumn(row.endpoints),
+      },
     };
   }
-  const [stored] = await db.all<{ key_id: number }>(KEY_BY_HASH_SQL, [hash]);
-  return { outcome: "refused", refusal: stored === undefined ? "unknown" : "revoked" };
+  // Not accepted, yet stored: revoked, or else past its expiry.
+  const [stored] = await db.all<{ revoked_at: string | null }>(KEY_BY_HASH_SQL, [hash]);
+  if (stored === undefined) return { outcome: "refused", refusal: "unknown" };
+  return { outcome: "refused", refusal: stored.revoked_at === null ? "expired" : "revoked" };
 }
 
 /** What a new key is given. */

@@ -18,7 +18,10 @@ import { DatabaseSync } from "node:sqlite";
 import { gzipSync } from "node:zlib";
 import type { ReactElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
+import { signInAccount, verifiedIdentity } from "../../src/accounts/accounts.js";
+import { ALL_ENDPOINTS, onlyEndpoints, type KeyAccess } from "../../src/api/keyAccess.js";
 import { ACCEPT_KEY_SQL, createKey, revokeKey } from "../../src/api/keys.js";
+import { createAccountKey, keyName } from "../../src/api/ownedKeys.js";
 import { API_PREFIX, ENDPOINTS, UNIT_WEIGHT } from "../../src/api/units.js";
 import { COUNT_MINUTE_SQL, SWEEP_MINUTES_SQL } from "../../src/api/usage.js";
 import { seedSql } from "../../src/import/seedSql.js";
@@ -79,6 +82,16 @@ after(async () => {
 
 const newKey = (perMinuteLimit = 1_000) => createKey(db, { label: "developers", perMinuteLimit, dailyUnits: 10_000 }, NOW);
 
+/** A key a developer made in the dashboard, with this access. */
+async function ownedKey(access: KeyAccess): Promise<string> {
+  const identity = verifiedIdentity("github", { subject: "docs", verifiedEmail: "docs@example.com" });
+  const name = keyName("docs");
+  assert.ok(identity !== undefined && name !== undefined);
+  const created = await createAccountKey(db, (await signInAccount(db, identity, NOW)).accountId, name, NOW, access);
+  assert.ok(created.outcome === "created");
+  return created.key;
+}
+
 /** One request as the Worker hands it to the API. */
 function send(path: string, init: { key?: string; method?: string; body?: string } = {}, over = db): Promise<Response> {
   const headers: Record<string, string> = init.key === undefined ? {} : { "x-api-key": init.key };
@@ -120,6 +133,10 @@ test("every error the docs list is one the API answers, with that status and cod
   await revokeKey(db, revoked.keyId, NOW);
   const tight = await newKey(1);
   await send("exists?q=sale", { key: tight.key });
+  const expired = await ownedKey({ endpoints: ALL_ENDPOINTS, expiresAt: new Date(NOW - 1_000).toISOString() });
+  const lookup = onlyEndpoints(["lookup"]);
+  assert.ok(lookup !== undefined);
+  const lookupOnly = await ownedKey({ endpoints: lookup, expiresAt: null });
   // The key is read and its minute counted; the lookup's own read then fails.
   const counting = new Set([ACCEPT_KEY_SQL, COUNT_MINUTE_SQL, SWEEP_MINUTES_SQL]);
   const failing: LookupDatabase = {
@@ -134,6 +151,8 @@ test("every error the docs list is one the API answers, with that status and cod
     missing_key: () => send("lookup?q=sale"),
     invalid_key: () => send("lookup?q=sale", { key: "lx_not-a-key" }),
     revoked_key: () => send("lookup?q=sale", { key: revoked.key }),
+    expired_key: () => send("lookup?q=sale", { key: expired }),
+    endpoint_not_allowed: () => send("exists?q=sale", { key: lookupOnly }),
     unknown_lemma: () => send("inflect?lemma=qqqqqq", { key }),
     not_found: () => send("nowhere", { key }),
     method_not_allowed: () => send("lookup?q=sale", { key, method: "POST" }),

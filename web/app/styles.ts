@@ -621,8 +621,9 @@ export const CODE_LINE_MUTED = "text-text-muted";
 /** Code inside a sentence. */
 export const CODE_INLINE = "font-mono text-[0.9em] text-text-strong";
 
-// Signed in (#169): sign-in (board 27), the dashboard (board 28), the
-// key-created page (board 29) and the delete confirmation (board 30).
+// Signed in (#169, #187): sign-in (board 27), the dashboard (board 28), its
+// key dialogs and toasts (boards 28b to 28f) and the delete confirmation
+// (board 30).
 
 /** The bar's right-hand side when signed in: the account's email, then Sign out. On a phone both are in the ☰ menu. */
 export const DEV_ACCOUNT = "ml-auto flex min-w-0 items-center gap-4 sm:pt-[3px] sm:pl-6";
@@ -646,7 +647,6 @@ export const SIGN_IN_ICON = "size-4 shrink-0";
 export const SIGN_IN_G = "w-4 shrink-0 text-center font-sans text-[0.8125rem] font-bold leading-none";
 
 /** The dashboard's column, as the landing's; each section a heading with its content under it. */
-export const DASH_BEHIND = "flex flex-1 flex-col";
 export const DASH_SHELL = `${DEV_COLUMN} flex-1 pt-[2.375rem] pb-[3.1875rem] sm:pt-20 sm:pb-[5.9375rem]`;
 /** `Dashboard`: 44 px on a wide screen, as board 28 draws it; the phone size is the landing's. */
 export const DASH_HEADING = "m-0 font-serif text-[2rem] leading-[1.2] font-normal text-text-strong sm:text-[2.75rem]";
@@ -666,7 +666,7 @@ export const DASH_CREATE_BUTTON = `inline-flex h-[2.4375rem] cursor-pointer item
 export const DASH_KEYS_CARD = "mt-[1.0625rem] rounded-[6px] border border-border sm:mt-[0.9375rem]";
 export const KEYS_TABLE = "w-full border-collapse text-left max-sm:block";
 export const KEYS_HEAD_ROW = "max-sm:hidden";
-export const KEYS_HEAD = "h-[2.4375rem] border-b border-border px-0 font-sans text-[0.78125rem] font-normal text-text-muted first:w-[17.5rem] first:pl-5 [&:nth-child(2)]:w-[18.75rem] [&:nth-child(3)]:w-[11.25rem]";
+export const KEYS_HEAD = "h-[2.4375rem] border-b border-border px-0 font-sans text-[0.78125rem] font-normal text-text-muted first:w-[13.75rem] first:pl-5 [&:nth-child(2)]:w-[9.375rem] [&:nth-child(3)]:w-[16.25rem] [&:nth-child(4)]:w-[8.125rem] [&:nth-child(5)]:w-[8.125rem]";
 export const KEYS_BODY = "max-sm:block";
 export const KEYS_ROW =
   "border-b border-border last:border-b-0 max-sm:flex max-sm:flex-wrap max-sm:items-baseline max-sm:px-4 max-sm:pt-3 max-sm:pb-[0.65625rem] sm:h-[2.875rem] sm:last:h-[2.8125rem]";
@@ -676,6 +676,14 @@ export const KEYS_PREFIX = "p-0 font-mono text-[0.8125rem] leading-5 sm:text-[0.
 const KEYS_WHEN = `${KEYS_TEXT} whitespace-nowrap text-text max-sm:order-3 max-sm:mt-[0.1875rem] max-sm:inline max-sm:text-[0.75rem] max-sm:text-text-muted`;
 export const KEYS_CREATED = KEYS_WHEN;
 export const KEYS_LAST_USED = KEYS_WHEN;
+/** What a key may call and when it expires (#187): on a phone, a line each under Created and Last used. */
+export const KEYS_ENDPOINTS =
+  "py-0 pr-4 pl-0 font-sans text-[0.9375rem] leading-5 text-text max-sm:order-5 max-sm:mt-[0.1875rem] max-sm:block max-sm:w-full max-sm:pr-0 max-sm:text-[0.75rem] max-sm:text-text-muted sm:py-3 sm:text-[0.875rem]";
+/** Only some: the endpoints' names, as the checklist writes them. */
+export const KEYS_ENDPOINT_NAMES = "font-mono text-[0.8125rem] max-sm:text-[0.75rem]";
+export const KEYS_EXPIRES = `${KEYS_TEXT} whitespace-nowrap text-text max-sm:order-6 max-sm:mt-[0.1875rem] max-sm:block max-sm:w-full max-sm:text-[0.75rem] max-sm:text-text-muted`;
+/** Ends a phone card's Created line, so the endpoints start their own. */
+export const KEYS_PHONE_BREAK = "hidden p-0 max-sm:order-4 max-sm:block max-sm:h-0 max-sm:basis-full";
 /** "Created " and " · Last used ": a phone's card names what the table's heads name. */
 export const KEYS_PHONE_LABEL = "sm:hidden";
 export const KEYS_ACTION = "p-0 text-right max-sm:order-1 max-sm:block sm:pr-5 sm:pl-4";
@@ -706,33 +714,96 @@ export const BUTTON_DANGER_OUTLINE = `inline-flex h-[2.3125rem] shrink-0 cursor-
 export const BUTTON_DANGER = `inline-flex h-[2.3125rem] cursor-pointer items-center rounded-[4px] border border-warning bg-warning px-[1.0625rem] font-sans text-[0.875rem] font-semibold whitespace-nowrap text-surface ${FOCUS_RING}`;
 
 /**
- * A dialog over the dashboard (boards 29 and 30): the page behind dimmed, the
- * box in the middle of the screen; on a phone, the width of the screen less 20 px a side.
+ * A dialog over the dashboard (boards 28b to 28e and 30), Base UI's (ADR 0010):
+ * the page behind dimmed, the box in the middle of the screen, scrolling when
+ * it is taller than the screen; on a phone, the width of the screen less 20 px a side.
  */
-export const MODAL_LAYER = "fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-surface/70 px-5 py-5";
+export const MODAL_BACKDROP = "fixed inset-0 z-50 bg-surface/70";
+export const MODAL_VIEWPORT = "fixed inset-0 z-50 flex items-center justify-center overflow-y-auto px-5 py-5";
 const MODAL_BOX = "relative w-full rounded-[8px] border border-border-strong bg-surface-raised p-[1.4375rem] outline-none sm:p-[1.9375rem]";
-export const KEY_CREATED_BOX = `${MODAL_BOX} sm:max-w-[35rem]`;
-export const DELETE_BOX = `${MODAL_BOX} sm:max-w-[32.5rem]`;
+/** The revoke and delete confirmations (boards 28d and 30). */
+export const CONFIRM_BOX = `${MODAL_BOX} sm:max-w-[32.5rem]`;
 export const MODAL_TITLE = "m-0 font-serif text-[1.5rem] leading-[2.375rem] font-normal text-text-strong sm:text-[1.625rem] sm:leading-[2.5625rem]";
-/** × on board 29: an 11 px cross in an 18 px box. */
-export const MODAL_X = `flex size-[1.125rem] shrink-0 items-center justify-center text-text-muted no-underline hover:text-text ${FOCUS_RING}`;
-export const MODAL_X_ICON = "size-[0.6875rem]";
 
-/** Board 29: the title and ×, the key's name, its secret with Copy, the once-only note, Done. */
-export const KEY_CREATED_HEAD = "flex items-center justify-between gap-4";
-export const KEY_CREATED_NAME = "m-0 mt-3.5 sm:mt-4 font-sans text-[0.875rem] leading-5 text-text-muted wrap-anywhere";
-/** The secret and Copy on one line; on a phone the secret wraps and Copy goes under it. */
-export const KEY_SECRET =
-  "mt-3 flex flex-col items-start gap-1.5 rounded-[4px] border border-border bg-surface px-3.5 pt-[0.6875rem] pb-2.5 sm:mt-4 sm:flex-row sm:items-center sm:gap-4 sm:py-2.5";
+/**
+ * Board 28e: the create dialog once the key is made. The title; the key's
+ * name, endpoints and expiry in one muted line; its secret with Copy under it;
+ * the once-only note; Done.
+ */
+export const KEY_CREATED_SUMMARY = "m-0 mt-3.5 sm:mt-[1.125rem] font-sans text-[0.8125rem] leading-5 text-text-muted wrap-anywhere";
+export const KEY_SECRET = "mt-3 flex flex-col items-start gap-2 rounded-[4px] border border-border bg-surface px-3.5 pt-3 pb-2.5 sm:mt-[1.125rem]";
 export const KEY_SECRET_TEXT = "m-0 min-w-0 flex-1 font-mono text-[0.84375rem] leading-5 break-all text-text-strong";
 export const KEY_COPY = `inline-flex shrink-0 cursor-pointer items-center gap-1.5 border-0 bg-transparent p-0 font-sans text-[0.8125rem] leading-5 text-accent ${FOCUS_RING}`;
 export const KEY_COPY_ICON = "size-4";
-export const KEY_CREATED_NOTE = "m-0 mt-3.5 sm:mt-[1.0625rem] font-sans text-[0.84375rem] leading-5 text-text";
-export const KEY_CREATED_ACTIONS = "mt-[0.8125rem] flex justify-end sm:mt-[0.9375rem]";
+export const KEY_CREATED_NOTE = "m-0 mt-3.5 sm:mt-[1.125rem] font-sans text-[0.84375rem] leading-5 text-text";
+export const KEY_CREATED_ACTIONS = "mt-5 flex justify-end sm:mt-[1.625rem]";
 /** Done: the board's 76 × 37 px. */
-export const KEY_DONE = `inline-flex h-[2.3125rem] items-center rounded-[4px] border border-accent bg-accent px-[1.1875rem] font-sans text-[0.875rem] font-semibold whitespace-nowrap text-surface no-underline ${FOCUS_RING}`;
+export const KEY_DONE = `inline-flex h-[2.3125rem] cursor-pointer items-center rounded-[4px] border border-accent bg-accent px-[1.1875rem] font-sans text-[0.875rem] font-semibold whitespace-nowrap text-surface ${FOCUS_RING}`;
 
-/** Board 30: the question, what deleting does, Cancel and Delete account. */
-export const DELETE_ACTIONS = "mt-6 flex justify-end gap-2.5";
-export const DELETE_TEXT = "m-0 mt-[0.9375rem] sm:mt-4 font-sans text-[0.90625rem] leading-[1.375rem] text-text";
-export const DELETE_CANCEL = `inline-flex h-[2.3125rem] items-center rounded-[4px] border border-border-strong bg-transparent px-[1.0625rem] font-sans text-[0.875rem] whitespace-nowrap text-text-strong no-underline hover:border-text-muted ${FOCUS_RING}`;
+/**
+ * Board 28b: the title; Name, its field and hint; Endpoints, All endpoints or
+ * Only some, and its hint; Expires, its select and hint; Cancel and Create
+ * key. Board 28c: Only some ticked, the hint gives way to the checklist of
+ * endpoints. The same on a phone (28bm), where the Endpoints hint wraps.
+ */
+export const CREATE_KEY_BOX = `${MODAL_BOX} sm:max-w-[37.5rem]`;
+const CREATE_KEY_LABEL_TEXT = "block font-sans text-[0.84375rem] leading-[1.0625rem] font-semibold text-text-strong";
+export const CREATE_KEY_LABEL = `${CREATE_KEY_LABEL_TEXT} mt-[1.1875rem] mb-2`;
+/** Name, under the title. */
+export const CREATE_KEY_LABEL_FIRST = `${CREATE_KEY_LABEL_TEXT} mt-[1.125rem] mb-2`;
+const CREATE_KEY_CONTROL =
+  "block h-[2.375rem] w-full rounded-[4px] border border-border-strong bg-surface px-3.5 font-sans text-[0.9375rem] text-text-strong outline-none focus:border-accent";
+export const CREATE_KEY_INPUT = `${CREATE_KEY_CONTROL} placeholder:text-text-muted`;
+export const CREATE_KEY_HINT = "m-0 mt-2 font-sans text-[0.78125rem] leading-[1.1875rem] text-text-muted";
+
+/** All endpoints and Only some, side by side at every width. */
+export const CREATE_KEY_SCOPES = "grid grid-cols-2 gap-2";
+/** One choice: outlined; ticked, on the page's own surface with an accent outline and bright text. */
+export const CREATE_KEY_SCOPE =
+  "flex h-[2.3125rem] cursor-pointer items-center gap-[0.5625rem] rounded-[4px] border border-border-strong pl-2.5 font-sans text-[0.875rem] text-text has-[[data-checked]]:border-accent has-[[data-checked]]:bg-surface has-[[data-checked]]:text-text-strong has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-accent";
+/** Base UI's radio (ADR 0010), its circle: 18 px in `border-strong`; ticked, a 20 px accent ring round the surface. */
+export const CREATE_KEY_RADIO =
+  "m-px size-[1.125rem] shrink-0 cursor-pointer rounded-full border-[1.5px] border-border-strong outline-none data-checked:m-0 data-checked:size-5 data-checked:border-[5px] data-checked:border-accent";
+
+/** Board 28c's checklist: the 8 endpoints in two columns, shown only while Only some is ticked. */
+export const CREATE_KEY_CHECKLIST = "m-0 mt-2 grid grid-cols-2 gap-x-2.5 gap-y-3.5 rounded-[4px] border border-border px-2.5 py-3";
+export const CREATE_KEY_CHECK = "flex cursor-pointer items-center gap-3 font-mono text-[0.8125rem] leading-[1.125rem] text-text has-[[data-checked]]:text-text-strong";
+/** Base UI's checkbox (ADR 0010): an 18 px box; ticked, filled with the accent. */
+export const CREATE_KEY_CHECKBOX = `flex size-[1.125rem] shrink-0 cursor-pointer items-center justify-center rounded-[4px] border border-border-strong data-checked:border-accent data-checked:bg-accent ${FOCUS_RING}`;
+/** The tick, drawn in a ticked box in the page's surface colour. */
+export const CREATE_KEY_TICK = "h-auto w-2.5 text-surface";
+
+/** Expires: the select, its value muted while it says Never, and a chevron where the native arrow was. */
+export const CREATE_KEY_SELECT_WRAP = "relative";
+export const CREATE_KEY_SELECT = `${CREATE_KEY_CONTROL} cursor-pointer appearance-none pr-10 has-[option[value=never]:checked]:text-text-muted`;
+export const CREATE_KEY_CHEVRON = "pointer-events-none absolute top-1/2 right-3.5 size-4 -translate-y-1/2 text-text-muted";
+
+/** A field's problem, under it: the hint's size, in `warning` (#187). */
+export const CREATE_KEY_PROBLEM = "m-0 mt-2 font-sans text-[0.78125rem] leading-[1.1875rem] text-warning";
+/** Why a dialog's form was refused when no one field is at fault (an expired form, the key-creation limit, an outage): as a field's problem, above the buttons. */
+export const DIALOG_FAILURE = CREATE_KEY_PROBLEM;
+
+export const CREATE_KEY_ACTIONS = "mt-7 flex justify-end gap-2.5";
+/** Create key; disabled while the form cannot be sent, as the report box's Send is. */
+export const CREATE_KEY_SUBMIT = `inline-flex h-[2.3125rem] cursor-pointer items-center rounded-[4px] border border-accent bg-accent px-[1.0625rem] font-sans text-[0.875rem] font-semibold whitespace-nowrap text-surface disabled:cursor-not-allowed disabled:border-border disabled:bg-border disabled:text-text-muted ${FOCUS_RING}`;
+
+/** Boards 28d and 30: the question, what it does, Cancel and the destructive action. */
+export const CONFIRM_ACTIONS = "mt-6 flex justify-end gap-2.5";
+export const CONFIRM_TEXT = "m-0 mt-[0.9375rem] sm:mt-4 font-sans text-[0.90625rem] leading-[1.375rem] text-text";
+/** Cancel in every dashboard dialog: outlined, secondary. */
+export const DIALOG_CANCEL = `inline-flex h-[2.3125rem] cursor-pointer items-center rounded-[4px] border border-border-strong bg-transparent px-[1.0625rem] font-sans text-[0.875rem] whitespace-nowrap text-text-strong no-underline hover:border-text-muted ${FOCUS_RING}`;
+
+/**
+ * Board 28f: the dashboard's toasts, Base UI's (ADR 0010), stacked at the
+ * screen's bottom right, the newest lowest; on a phone, the width of the
+ * screen less 20 px a side. Each is a 42 px bar: a tick in `accent` for a
+ * success or an alert in `warning` for an error, the message, and ×.
+ */
+export const TOAST_VIEWPORT = "fixed right-5 bottom-5 left-5 z-[60] flex flex-col-reverse gap-3 outline-none sm:right-8 sm:bottom-8 sm:left-auto sm:w-[22.5rem]";
+export const TOAST = "flex items-center gap-2.5 rounded-[6px] border border-border-strong bg-surface-raised py-2.5 pr-3.5 pl-4 outline-none data-limited:hidden";
+export const TOAST_SUCCESS_ICON = "h-auto w-3.5 shrink-0 text-accent";
+export const TOAST_ERROR_ICON = "size-4 shrink-0 text-warning";
+export const TOAST_TEXT = "m-0 min-w-0 flex-1 font-sans text-[0.875rem] leading-5 text-text-strong";
+/** × on a toast: an 11 px cross in an 18 px box. */
+export const TOAST_X = `flex size-[1.125rem] shrink-0 cursor-pointer items-center justify-center border-0 bg-transparent p-0 text-text-muted hover:text-text ${FOCUS_RING}`;
+export const TOAST_X_ICON = "size-[0.6875rem]";
