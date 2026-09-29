@@ -196,13 +196,13 @@ Two headword records:
 
 Both are returned. The verb record's edge resolves cleanly to `studiare` (line 50118, one candidate), so the shape has no structural complaint about it.
 
-The complaint is external. Italian Wiktionary's rendered `studiare` conjugation table and Treccani's `studiare` entry both give the present participle as `studiante`; Treccani's `studente` entry calls it a noun from Latin `studens`. So a `claim_review` row hangs off the exact gloss:
+The complaint is external. Italian Wiktionary's rendered `studiare` conjugation table and Treccani's `studiare` entry both give the present participle as `studiante`; Treccani's `studente` entry calls it a noun from Latin `studens`. A reviewer who upheld it would record a `claim_review` row on the exact gloss:
 
 | record | pointer | status | evidence |
 | ---: | --- | --- | --- |
 | 37884 | `/senses/0/glosses/0` | `disputed` | <https://www.treccani.it/vocabolario/studiare/> |
 
-Line 37884 itself is unchanged, and `raw_json` still holds the original line byte-for-byte. A result page shows the verb reading **with** its dispute attached. Deleting it would be overwriting source data; showing it unmarked would be repeating a claim we have contrary evidence for.
+No such row is seeded. Huey ruled on 2026-09-23 that no dispute comes from Lexema ([#117](https://github.com/hueypov/lexema/issues/117)): disputes come from readers' reports ([#51](https://github.com/hueypov/lexema/issues/51)), reviewed by a person ([#12](https://github.com/hueypov/lexema/issues/12)). Either way line 37884 is unchanged, and `raw_json` still holds the original line byte-for-byte; a review annotates a claim and never deletes or corrects it.
 
 This does not prove no historical or regional verb use exists. It records that two independent sources disagree with the import.
 
@@ -226,5 +226,5 @@ Its `pl.: case` sits in `sense_label` as a raw tag and in `grammar_claim` as `un
 - **Normalization.** `it-normalize/v1` does not touch accents. Whether a search for `citta` should also find `città` is undecided. Any accent-folded discovery must use a separately versioned approximate key; the accent-preserving exact key and form-of matching remain unchanged.
 - **Composite surfaces.** `studente/studentessa` and `avere o essere` are stored whole and will not match a search for their parts. Splitting them needs a rule nobody has validated.
 - **Expected-dimension policy.** Which dimensions get a `missing` row for which part of speech is [#10](https://github.com/hueypov/lexema/issues/10)'s call.
-- **Review workflow.** `claim_review` is a shape with one example row. [#12](https://github.com/hueypov/lexema/issues/12) owns the rest.
+- **Review workflow.** `claim_review` is a shape with no rows seeded. [#12](https://github.com/hueypov/lexema/issues/12) owns the rest.
 - **Search beyond exact match.** No full-text index here. First release is exact word search.
