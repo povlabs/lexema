@@ -12,8 +12,8 @@
 // which limit a request counts against, whose count it is, and what a blocked
 // request is answered with.
 
-import type { ReportAnswer } from "../app/report.ts";
-import type { SuggestAnswer } from "../app/suggestAnswer.ts";
+import type { ReportAnswer } from "@/lib/dictionary/report.ts";
+import type { SuggestAnswer } from "@/lib/dictionary/suggestAnswer.ts";
 import { dashboardRouteOf } from "./dashboard.ts";
 import { signInRouteOf } from "./signIn.ts";
 
@@ -71,7 +71,7 @@ export const SEARCH_LIMITED_HEADER = "x-lexema-search-limited";
  */
 export function limitOf(url: URL): Limit | undefined {
   if (url.pathname === "/suggest") return "suggest";
-  // A report's hourly allowance is counted over stored reports (app/report.ts);
+  // A report's hourly allowance is counted over stored reports (lib/dictionary/report.ts);
   // this binding only stops a burst before the database is touched.
   if (url.pathname === "/report") return "report";
   // Opening the box stores a token; counted apart so opening does not use up sending.

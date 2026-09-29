@@ -6,8 +6,8 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { ALL_ENDPOINTS } from "../../src/api/keyAccess.js";
-import { UNREACHABLE, type ActionAnswer } from "../app/dashboardActions.ts";
-import type { KeyRow } from "../app/dashboardView.ts";
+import { UNREACHABLE, type ActionAnswer } from "@/lib/developers/dashboardActions.ts";
+import type { KeyRow } from "@/lib/developers/dashboardView.ts";
 import {
   answeredKeyStep,
   closeKeyStep,
@@ -22,7 +22,7 @@ import {
   revokeToast,
   type KeyStep,
   type RevokeStep,
-} from "../app/keyFlow.ts";
+} from "@/lib/developers/keyFlow.ts";
 
 const LEARNING_APP: KeyRow = {
   keyId: 7,

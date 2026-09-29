@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
-import "../globals.css";
-import { SiteFooter } from "../SiteFooter";
-import { BODY } from "../styles.ts";
+import "@/app/globals.css";
+import { SiteFooter } from "@/components/dictionary/SiteFooter";
+import { BODY } from "@/components/shared/styles.ts";
 
 export const metadata = { title: "Lexema" };
 

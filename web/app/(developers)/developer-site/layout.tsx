@@ -5,8 +5,8 @@
 // rewrites `developers.lexema.fyi/…` onto this segment; on any other host the
 // segment is a 404, so no dictionary URL reaches it.
 import type { ReactNode } from "react";
-import "../../globals.css";
-import { BODY } from "../../styles.ts";
+import "@/app/globals.css";
+import { BODY } from "@/components/shared/styles.ts";
 
 export const metadata = { title: "Lexema API" };
 

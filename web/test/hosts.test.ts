@@ -4,8 +4,8 @@
 
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { apiNotFound } from "../worker/api/handler.ts";
-import { byHost, destinationOf, DEVELOPERS_SEGMENT } from "../worker/hosts.ts";
+import { apiNotFound } from "@/worker/api/handler.ts";
+import { byHost, destinationOf, DEVELOPERS_SEGMENT } from "@/worker/hosts.ts";
 
 const to = (url: string) => destinationOf(new URL(url));
 

@@ -4,10 +4,10 @@
 // value: "A component never uses a raw colour or size where a role token
 // exists; a missing role is a manifest question for Huey, not a literal in the
 // markup." The nine roles live in one `@theme` block in `web/app/globals.css`,
-// and `web/app/styles.ts` is the one place a class string is written. This test
-// is what keeps it that way after the migration: a hex colour, an `rgb()`, an
-// `hsl()`, an `oklch()` or a `style={{ … }}` added to any component under
-// `web/app/` fails `pnpm test`.
+// and `web/components/shared/styles.ts` is the one place a class string is
+// written. This test is what keeps it that way after the migration: a hex
+// colour, an `rgb()`, an `hsl()`, an `oklch()` or a `style={{ … }}` added to
+// any file under `web/app/`, `web/components/` or `web/lib/` fails `pnpm test`.
 //
 // It reads the source text rather than a rendered page on purpose. A literal is
 // a fact about the file, and a rendered page shows only the states the fixture
@@ -19,9 +19,10 @@ import { readFile, readdir } from "node:fs/promises";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-const APP = fileURLToPath(new URL("../app", import.meta.url));
+/** The folders the page's code lives in: routes, components and their logic. */
+const ROOTS = ["../app", "../components", "../lib"].map((dir) => fileURLToPath(new URL(dir, import.meta.url)));
 
-/** Every component and module under `web/app/`, at any depth. */
+/** Every component and module under one folder, at any depth. */
 async function sources(dir: string): Promise<string[]> {
   const found: string[] = [];
   for (const entry of await readdir(dir, { withFileTypes: true })) {
@@ -60,9 +61,11 @@ const FORBIDDEN: { what: string; pattern: RegExp }[] = [
   { what: "an inline style attribute", pattern: /style=\{\{/ },
 ];
 
-test("no component under web/app/ carries a colour literal or an inline style", async () => {
-  const files = await sources(APP);
-  assert.ok(files.length > 0, "found no sources to scan under web/app/");
+test("no component under web/app/, web/components/ or web/lib/ carries a colour literal or an inline style", async () => {
+  const files = (await Promise.all(ROOTS.map(sources))).flat();
+  for (const root of ROOTS) {
+    assert.ok(files.some((file) => file.startsWith(root)), `found no sources to scan under ${root}`);
+  }
 
   const offences: string[] = [];
   for (const file of files) {

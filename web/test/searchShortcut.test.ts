@@ -4,7 +4,7 @@
 
 import assert from "node:assert/strict";
 import test from "node:test";
-import { isApple, isSearchShortcut, shortcutApplies, shortcutLabel, type ShortcutKey } from "../app/searchShortcut.ts";
+import { isApple, isSearchShortcut, shortcutApplies, shortcutLabel, type ShortcutKey } from "@/lib/shared/searchShortcut.ts";
 
 const key = (overrides: Partial<ShortcutKey>): ShortcutKey => ({
   key: "k",

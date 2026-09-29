@@ -18,7 +18,7 @@
 // the sign-in routes (worker/signIn.ts), they sit under the developer-site
 // segment that worker/hosts.ts answers with a 404 on every other host.
 //
-// Every action answers one `ActionAnswer` in JSON (app/dashboardActions.ts):
+// Every action answers one `ActionAnswer` in JSON (lib/developers/dashboardActions.ts):
 // the page sends each with fetch from its dialogs and key rows, and changes in
 // place (#187). A new key's secret is in the create answer alone, shown once
 // in the create dialog (board 28e), and never stored on the server. A create
@@ -33,15 +33,15 @@ import { deleteAccount } from "@lexema/accounts/accounts.ts";
 import { csrfMatches, csrfToken, sessionAccount } from "@lexema/accounts/sessions.ts";
 import { createAccountKey, listAccountKeys, revokeAccountKey } from "@lexema/api/ownedKeys.ts";
 import { fromD1, type TransactionalDatabase } from "@lexema/lookup/database.ts";
-import { accessOf, defaultKeyName, draftOf, readDraft } from "../app/createKeyForm.ts";
-import { CSRF_FIELD, DASHBOARD, DELETE_CONFIRM_FIELD, DELETE_CONFIRMATION, SETTINGS, UNREACHABLE, type ActionAnswer } from "../app/dashboardActions.ts";
-import { keyRowOf } from "../app/dashboardView.ts";
+import { accessOf, defaultKeyName, draftOf, readDraft } from "@/lib/developers/createKeyForm.ts";
+import { CSRF_FIELD, DASHBOARD, DELETE_CONFIRM_FIELD, DELETE_CONFIRMATION, SETTINGS, UNREACHABLE, type ActionAnswer } from "@/lib/developers/dashboardActions.ts";
+import { keyRowOf } from "@/lib/developers/dashboardView.ts";
 import { DEVELOPERS_SEGMENT } from "./hosts.ts";
 import type { FetchHandler } from "./rateLimit.ts";
 import { AFTER_SIGN_OUT, clearedCookie, readCookie, SESSION_COOKIE, signedInAccount } from "./signIn.ts";
 
-export { CSRF_FIELD, DASHBOARD, DELETE_CONFIRMATION, SETTINGS } from "../app/dashboardActions.ts";
-export { defaultKeyName } from "../app/createKeyForm.ts";
+export { CSRF_FIELD, DASHBOARD, DELETE_CONFIRMATION, SETTINGS } from "@/lib/developers/dashboardActions.ts";
+export { defaultKeyName } from "@/lib/developers/createKeyForm.ts";
 
 /** Where a visitor without a session is sent. */
 export const SIGN_IN_PAGE = "/sign-in";

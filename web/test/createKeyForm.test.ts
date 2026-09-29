@@ -3,7 +3,7 @@
 
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { canSend, draftFields, draftOf, EMPTY_DRAFT, readDraft, shownProblems, type CreateKeyDraft } from "../app/createKeyForm.ts";
+import { canSend, draftFields, draftOf, EMPTY_DRAFT, readDraft, shownProblems, type CreateKeyDraft } from "@/lib/developers/createKeyForm.ts";
 
 const fields = (pairs: [string, string][]) => new URLSearchParams(pairs);
 

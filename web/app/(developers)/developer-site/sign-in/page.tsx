@@ -1,12 +1,13 @@
 // developers.lexema.fyi/sign-in (#169): the wiring only; the markup is
-// `../../../SignIn.tsx`. A developer already signed in goes to the dashboard.
+// `@/components/developers/SignIn.tsx`. A developer already signed in goes to
+// the dashboard.
 import { env } from "cloudflare:workers";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
-import { DASHBOARD } from "../../../../worker/dashboard.ts";
-import { availableProviders, signedInAccount } from "../../../../worker/signIn.ts";
-import { database } from "../../../db";
-import { SignIn } from "../../../SignIn";
+import { DASHBOARD } from "@/worker/dashboard.ts";
+import { availableProviders, signedInAccount } from "@/worker/signIn.ts";
+import { database } from "@/lib/shared/database.ts";
+import { SignIn } from "@/components/developers/SignIn";
 
 export const metadata = { title: "Sign in — Lexema API" };
 

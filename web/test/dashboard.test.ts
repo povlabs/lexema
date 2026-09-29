@@ -12,7 +12,7 @@ import type { ProviderProfile } from "../../src/accounts/providers.js";
 import { authenticate } from "../../src/api/keys.js";
 import { createAccountKey, keyName, listAccountKeys } from "../../src/api/ownedKeys.js";
 import { fromNodeSqlite } from "../../src/lookup/database.js";
-import type { CreateKeyProblems } from "../app/createKeyForm.ts";
+import type { CreateKeyProblems } from "@/lib/developers/createKeyForm.ts";
 import {
   answerOf,
   CREATE_KEY_ACTION,
@@ -22,13 +22,13 @@ import {
   sendAction,
   UNREACHABLE,
   type ActionAnswer,
-} from "../app/dashboardActions.ts";
-import { afterDelete, takeNotice, type NoticeStore } from "../app/arrivalNotice.ts";
-import { apiNotFound, handleApi } from "../worker/api/handler.ts";
-import { CSRF_FIELD, csrfTokenOf, type DashboardBindings, DASHBOARD, DELETE_CONFIRMATION, SETTINGS, SIGN_IN_PAGE, withDashboard } from "../worker/dashboard.ts";
-import { byHost } from "../worker/hosts.ts";
-import { withRateLimits, type LimitBindings } from "../worker/rateLimit.ts";
-import { AFTER_SIGN_OUT, SESSION_COOKIE, signedInAccount, withSignIn, type SignInBindings } from "../worker/signIn.ts";
+} from "@/lib/developers/dashboardActions.ts";
+import { afterDelete, takeNotice, type NoticeStore } from "@/lib/developers/arrivalNotice.ts";
+import { apiNotFound, handleApi } from "@/worker/api/handler.ts";
+import { CSRF_FIELD, csrfTokenOf, type DashboardBindings, DASHBOARD, DELETE_CONFIRMATION, SETTINGS, SIGN_IN_PAGE, withDashboard } from "@/worker/dashboard.ts";
+import { byHost } from "@/worker/hosts.ts";
+import { withRateLimits, type LimitBindings } from "@/worker/rateLimit.ts";
+import { AFTER_SIGN_OUT, SESSION_COOKIE, signedInAccount, withSignIn, type SignInBindings } from "@/worker/signIn.ts";
 import { StubProvider } from "./stubProvider.ts";
 
 const SCHEMA = readFileSync(fileURLToPath(new URL("../../src/db/schema.sql", import.meta.url)), "utf8");
@@ -168,7 +168,7 @@ test("the create-key dialog's endpoints and expiry: Only some keeps the ticked e
   ]);
 });
 
-/** A fetch as the page sends it (app/dashboardActions.ts), from this browser, on this site. */
+/** A fetch as the page sends it (lib/developers/dashboardActions.ts), from this browser, on this site. */
 const scripted =
   (send: (url: string, init?: RequestInit) => Promise<Response>): typeof fetch =>
   async (input, init) =>

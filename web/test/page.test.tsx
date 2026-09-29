@@ -32,14 +32,14 @@ import { loadFixturePages, type RawPageSource } from "../../src/source/rawPage.j
 import { PUBLISHED_ARCHIVE_SHA256, sourceOf, type ArchiveFacts, type ReleaseSource } from "../../src/source/archiveFacts.js";
 import { fromNodeSqlite } from "../../src/lookup/database.js";
 import type { Reading } from "../../src/lookup/types.js";
-import type { Attempt } from "../app/attempt.ts";
-import { searchAttempt } from "../app/searchAttempt.ts";
-import { Attribution } from "../app/Attribution";
-import { FirstLoad, Limited, Outcome, Pending, SearchPage, TRY_WORDS } from "../app/SearchPage";
-import { SiteFooter } from "../app/SiteFooter";
-import { SiteHeader } from "../app/SiteHeader";
-import { wordPage } from "../app/wordPage.ts";
-import { firstQuery, pageTitle } from "../app/params";
+import type { Attempt } from "@/lib/dictionary/attempt.ts";
+import { searchAttempt } from "@/lib/dictionary/searchAttempt.ts";
+import { Attribution } from "@/components/dictionary/Attribution";
+import { FirstLoad, Limited, Outcome, Pending, SearchPage, TRY_WORDS } from "@/components/dictionary/SearchPage";
+import { SiteFooter } from "@/components/dictionary/SiteFooter";
+import { SiteHeader } from "@/components/dictionary/SiteHeader";
+import { wordPage } from "@/lib/dictionary/wordPage.ts";
+import { firstQuery, pageTitle } from "@/lib/dictionary/params";
 // The class strings the components carry, imported rather than copied, so a
 // restyle that changes one changes both together.
 import {
@@ -66,7 +66,7 @@ import {
   TENSE_HEAD_SEARCHED,
   TOP_BAR,
   WORD_LINK,
-} from "../app/styles.ts";
+} from "@/components/shared/styles.ts";
 import { FIXTURE_LINES } from "./fixture.js";
 
 const REPO = fileURLToPath(new URL("../..", import.meta.url));
