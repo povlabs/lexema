@@ -15,7 +15,7 @@ import { definitionsOf, senseLabels, type DefinitionItem } from "./definitions.t
 import { agreementOf, headingGrammar } from "./genderGrid.ts";
 import { ConjugationView, GridView, SuperlativeGrid, searchHref } from "./Forms";
 import type { PageReading } from "./wordPage.ts";
-import { More } from "./More";
+import { More, MoreBlock } from "./More";
 import { OneLine } from "./OneLine";
 import { WordList } from "./WordList";
 import {
@@ -208,10 +208,11 @@ function Definitions({ reading }: { reading: Reading }) {
   const [first, ...rest] = items;
   const more =
     rest.length > 0 || first.examples.length > 1 || nestedExamples(nestedItemsOf(first)) || looseExamples.length > 0;
+  const list = `definition-list-${reading.recordId}`;
   return (
     <Block id={`definitions-${reading.recordId}`} label="Definitions">
-      <div className={DEFINITIONS_GROUP}>
-        <ol className={DEFINITIONS}>
+      <MoreBlock className={DEFINITIONS_GROUP}>
+        <ol className={DEFINITIONS} id={list}>
           {items.map((item, i) => (
             <li key={definitionKey(item)} className={i === 0 ? DEFINITION : DEFINITION_EXTRA} data-definition={i + 1}>
               <span className={DEFINITION_NUMBER} aria-hidden="true">
@@ -229,8 +230,8 @@ function Definitions({ reading }: { reading: Reading }) {
         {looseExamples.map((text, i) => (
           <Example key={`loose-${i}`} text={text} className={EXAMPLE_LOOSE} />
         ))}
-        {more && <More className={DEFINITIONS_MORE} />}
-      </div>
+        {more && <More className={DEFINITIONS_MORE} controls={list} />}
+      </MoreBlock>
     </Block>
   );
 }

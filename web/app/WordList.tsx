@@ -6,9 +6,11 @@
 // (More.tsx). Used after the readings and, where the source ties a synonym
 // group to one part of speech, inside a reading.
 //
-// Every word is in the HTML. Which words fit on the line needs a script: until
-// it runs, or without one, the first eight show.
+// Every word is in the HTML, and the list is Base UI's collapsible, open or
+// closed. Which words fit on the line needs measuring: until that runs, the
+// first eight show.
 
+import { Collapsible } from "@base-ui/react/collapsible";
 import { useEffect, useRef, useState } from "react";
 import type { RelatedWord } from "@lexema/lookup/types.ts";
 import { searchHref } from "./Forms";
@@ -63,29 +65,31 @@ export function WordList({
   level?: "h2" | "h3";
 }) {
   const list = useRef<HTMLUListElement>(null);
-  const toggle = useRef<HTMLDetailsElement>(null);
+  const toggle = useRef<HTMLLIElement>(null);
   const [shown, setShown] = useState(Math.min(WORD_LIST_SLICE, words.length));
 
   useEffect(() => {
     const element = list.current;
-    const details = toggle.current;
-    if (element === null || details === null) return;
+    const more = toggle.current;
+    if (element === null || more === null) return;
     const measure = () => {
       // Only a closed list is measured; an open one shows every word.
-      if (details.open) return;
+      if (element.hasAttribute("data-open")) return;
       element.dataset.measuring = "";
-      const fit = wordsOnFirstLine(element, details.parentElement ?? details);
+      const fit = wordsOnFirstLine(element, more);
       delete element.dataset.measuring;
       setShown(fit);
     };
     measure();
     const observer = new ResizeObserver(measure);
     observer.observe(element);
-    details.addEventListener("toggle", measure);
+    // A list closed after a resize is measured again.
+    const toggled = new MutationObserver(measure);
+    toggled.observe(element, { attributeFilter: ["data-open"] });
     void document.fonts.ready.then(measure);
     return () => {
       observer.disconnect();
-      details.removeEventListener("toggle", measure);
+      toggled.disconnect();
     };
   }, [words.length]);
 
@@ -97,7 +101,7 @@ export function WordList({
       <Heading className={BLOCK_LABEL} id={id}>
         {label}
       </Heading>
-      <ul ref={list} className={WORD_LIST}>
+      <Collapsible.Root className={WORD_LIST} id={`${id}-words`} render={<ul ref={list} />}>
         {words.map(({ word }, i) => (
           <li key={word} className={i < shown ? WORD_LIST_ITEM : WORD_LIST_ITEM_REST} data-word="">
             <a className={WORD_LINK} href={searchHref(word)} lang="it">
@@ -113,10 +117,10 @@ export function WordList({
         ))}
         {/* Last, so it ends what shows, open or closed; kept when every word
             fits, so a narrower window can bring it back. */}
-        <li className={cut ? WORD_LIST_ITEM : WORD_LIST_MORE_UNNEEDED}>
-          <More ref={toggle} className={WORD_MORE} />
+        <li ref={toggle} className={cut ? WORD_LIST_ITEM : WORD_LIST_MORE_UNNEEDED}>
+          <More className={WORD_MORE} controls={`${id}-words`} />
         </li>
-      </ul>
+      </Collapsible.Root>
     </section>
   );
 }

@@ -198,7 +198,7 @@ export const FORM_OF_LINE = "m-0 mt-4 font-sans text-[0.85rem] text-text-muted";
 export const DEFINITIONS = "m-0 flex list-none flex-col gap-4 p-0";
 export const DEFINITION = "flex gap-4";
 /** A definition after the first: in the document, shown once the reading's `+ more` is open. */
-export const DEFINITION_EXTRA = "hidden gap-4 group-has-[details[open]]/definitions:flex";
+export const DEFINITION_EXTRA = "hidden gap-4 group-data-open/definitions:flex";
 export const DEFINITION_NUMBER = "w-5 shrink-0 pt-1 font-mono text-[0.85rem] text-text-muted";
 export const DEFINITION_BODY = "min-w-0 flex-1";
 export const GLOSS = "m-0 max-w-[48rem] font-serif text-[1.2rem] leading-snug text-text-strong wrap-anywhere sm:text-[1.3rem]";
@@ -209,21 +209,22 @@ export const GLOSS_LINK = `text-accent no-underline ${FOCUS_RING}`;
 export const SUB_ITEMS = "mt-2 mb-0 flex list-disc flex-col gap-2 pl-5 marker:text-text-muted";
 export const EXAMPLE = "m-0 mt-2 max-w-[48rem] font-serif text-[1.05rem] italic text-text-muted";
 /** An example past the first definition's first: in the document, shown once `+ more` is open. */
-export const EXAMPLE_EXTRA = `${EXAMPLE} hidden group-has-[details[open]]/definitions:block`;
+export const EXAMPLE_EXTRA = `${EXAMPLE} hidden group-data-open/definitions:block`;
 /** An example of a sense not shown as a definition, after the definitions, in line with their text. */
 export const EXAMPLE_LOOSE = `${EXAMPLE_EXTRA} ml-9`;
-/** A reading's definitions and the one `+ more` after them, which reveals everything else. */
+/** A reading's definitions and the one `+ more` after them, which reveals everything else: `data-open` once open. */
 export const DEFINITIONS_GROUP = "group/definitions";
 
 /**
  * The one expand control, `+ more` closed and `less` open (More.tsx): small,
- * in the accent, in the flow of the text it ends.
+ * in the accent, in the flow of the text it ends. Base UI marks the open
+ * trigger `data-panel-open`.
  */
-export const MORE_SUMMARY = `inline cursor-pointer list-none font-sans text-[0.8rem] text-accent [&::-webkit-details-marker]:hidden ${FOCUS_RING}`;
-export const MORE_CLOSED = "group-open:hidden";
-export const MORE_OPEN = "hidden group-open:inline";
+export const MORE_TRIGGER = `group inline cursor-pointer font-sans text-[0.8rem] text-accent ${FOCUS_RING}`;
+export const MORE_CLOSED = "group-data-panel-open:hidden";
+export const MORE_OPEN = "hidden group-data-panel-open:inline";
 /** Under the definition it ends, in line with its text. */
-export const DEFINITIONS_MORE = "group mt-2 ml-9 block";
+export const DEFINITIONS_MORE = "mt-2 ml-9 block";
 
 /**
  * Columns singolare and plurale with a gender column before them; on a phone
@@ -282,15 +283,14 @@ export const PERSON_REPEAT = "sm:sr-only";
 export const TENSE_CELL = "p-0 py-1 pr-4 align-baseline font-mono text-[1rem] text-text-strong wrap-anywhere max-sm:pr-2 max-sm:text-[0.8rem]";
 export const CELL_SEPARATOR = "text-text-muted";
 
-/** The compound tenses and the `+ more` after the simple tenses that shows them. */
-export const COMPOUND = "group/compound";
+/** One mood's tables, and the `+ more` after the simple tenses that shows the compound ones: `data-open` once open. */
 export const MOOD_PANEL = "group/panel";
 /** *Tempi semplici* / *Tempi composti*, named only while the compound tenses are open. */
 export const TENSE_SET = "m-0 mb-2 font-sans text-[0.8rem] font-semibold text-text-strong";
-export const TENSE_SET_SIMPLE = `${TENSE_SET} hidden group-has-[details[open]]/panel:block`;
-/** Hidden until the `+ more` after them opens. */
-export const COMPOUND_TABLES = "hidden pt-4 group-has-[details[open]]/compound:block";
-export const COMPOUND_MORE = "group mt-2 block";
+export const TENSE_SET_SIMPLE = `${TENSE_SET} hidden group-data-open/panel:block`;
+/** Base UI's panel: hidden until the `+ more` after it opens. */
+export const COMPOUND_TABLES = "pt-4";
+export const COMPOUND_MORE = "mt-2 block";
 
 export const WORD_FACTS = "mt-7 border-t border-border pt-7 sm:mt-10 sm:pt-10";
 export const ETYMOLOGY = "m-0 max-w-[48rem] font-serif text-[1.1rem] text-text";
@@ -299,9 +299,9 @@ export const ETYMOLOGY = "m-0 max-w-[48rem] font-serif text-[1.1rem] text-text";
  * ellipsis; open, the whole text wraps and `less` follows its last word. The
  * text takes only its own width, so the control follows it, not the edge.
  */
-export const ONE_LINE = "group/line flex max-w-[48rem] items-baseline gap-1.5 [&+&]:mt-3 has-[details[open]]:block";
-export const ONE_LINE_TEXT = `${ETYMOLOGY} min-w-0 truncate group-has-[details[open]]/line:inline group-has-[details[open]]/line:whitespace-normal`;
-export const ONE_LINE_MORE = "group inline shrink-0 open:ml-1.5";
+export const ONE_LINE = "group/line flex max-w-[48rem] items-baseline gap-1.5 [&+&]:mt-3 data-open:block";
+export const ONE_LINE_TEXT = `${ETYMOLOGY} min-w-0 truncate group-data-open/line:inline group-data-open/line:whitespace-normal`;
+export const ONE_LINE_MORE = "inline shrink-0 group-data-open/line:ml-1.5";
 /** A text that fits on its line needs no control. */
 export const ONE_LINE_MORE_UNNEEDED = "hidden";
 export const WORD_LIST = "group/words m-0 flex list-none flex-wrap items-baseline gap-x-3 gap-y-2 p-0";
@@ -310,14 +310,14 @@ export const WORD_LIST_ITEM = "flex items-baseline gap-3";
  * A word past the first line: in the document, shown once `+ more` is open,
  * and while the list measures which words fit (WordList.tsx).
  */
-export const WORD_LIST_ITEM_REST = "hidden items-baseline gap-3 group-has-[details[open]]/words:flex group-data-measuring/words:flex";
+export const WORD_LIST_ITEM_REST = "hidden items-baseline gap-3 group-data-open/words:flex group-data-measuring/words:flex";
 /** The `+ more` item of a list whose words all fit: laid out only to be measured. */
 export const WORD_LIST_MORE_UNNEEDED = "hidden group-data-measuring/words:flex";
 export const WORD_LINK = `cursor-pointer font-serif text-[1.1rem] text-text-strong no-underline ${FOCUS_RING}`;
 export const WORD_DOT = "font-sans text-[0.75rem] text-text-muted";
 /** The dot after the last word that shows closed: `+ more` follows the word itself. */
-export const WORD_DOT_BEFORE_REST = "hidden font-sans text-[0.75rem] text-text-muted group-has-[details[open]]/words:inline";
-export const WORD_MORE = "group inline";
+export const WORD_DOT_BEFORE_REST = "hidden font-sans text-[0.75rem] text-text-muted group-data-open/words:inline";
+export const WORD_MORE = "inline";
 
 /** `Source ↗`, with the same space above and below it. */
 export const SOURCE_LINE = "mt-9 sm:mt-12 flex flex-wrap items-center gap-x-3 gap-y-1 font-sans text-[0.8rem] text-text-muted";
@@ -429,15 +429,14 @@ export const BUTTON_SECONDARY = `inline-flex h-10 items-center justify-center ro
 export const DEV_SIGN_IN = `ml-auto inline-flex h-[1.8125rem] shrink-0 items-center rounded-[4px] border border-border-strong px-[0.6875rem] font-sans text-[0.875rem] whitespace-nowrap text-text-strong no-underline hover:border-text-muted sm:h-[2.0625rem] sm:px-[0.9375rem] ${FOCUS_RING}`;
 
 /**
- * The ☰ menu, on a phone only: a `<details>`, so it opens and closes without a
- * script. Its summary is the ☰ in the bar; open, it is pinned where the ☰ was
- * and shows ×, above the menu, which fills the screen.
+ * The ☰ menu, on a phone only (DeveloperMenu.tsx): the ☰ in the bar opens
+ * Base UI's dialog, which fills the screen; its × is pinned where the ☰ was.
  */
-export const DEV_MENU = "group/menu ml-0.5 -mr-[0.5625rem] sm:hidden";
-export const DEV_MENU_TOGGLE = `relative z-50 flex size-10 cursor-pointer list-none items-center justify-center text-text-strong group-open/menu:fixed group-open/menu:top-2 group-open/menu:right-[0.6875rem] [&::-webkit-details-marker]:hidden ${FOCUS_RING}`;
-export const DEV_MENU_OPEN_ICON = "block group-open/menu:hidden";
-export const DEV_MENU_CLOSE_ICON = "hidden group-open/menu:block";
-export const DEV_MENU_PANEL = "fixed inset-0 z-40 overflow-y-auto bg-surface";
+const DEV_MENU_BUTTON = `flex size-10 cursor-pointer items-center justify-center text-text-strong ${FOCUS_RING}`;
+export const DEV_MENU_TOGGLE = `${DEV_MENU_BUTTON} ml-0.5 -mr-[0.5625rem] sm:hidden`;
+export const DEV_MENU_CLOSE = `${DEV_MENU_BUTTON} fixed top-2 right-[0.6875rem] z-50`;
+export const DEV_MENU_ICON = "block";
+export const DEV_MENU_PANEL = "fixed inset-0 z-40 overflow-y-auto bg-surface sm:hidden";
 /** The menu's own copy of the bar, the same 57 px with its rule. */
 export const DEV_MENU_BAR = `${WIDE} flex h-[3.5625rem] items-center border-b border-border`;
 /** Boards `VDNSE` and `j6UaW`: 57 px from the bar's rule to the first link's, then 49 px a link, at 17 px. */
@@ -515,14 +514,14 @@ export const DOCS_SIDEBAR = "hidden shrink-0 border-r border-border sm:block sm:
 export const DOCS_SIDEBAR_INNER = "sticky top-0 max-h-screen overflow-y-auto pt-8 pr-5 pb-8 pl-10";
 /**
  * On a phone the sidebar is this bar under the header, naming the page's group
- * and the page: a `<details>`, so it opens without a script, and open it holds
- * the sidebar's search and pages.
+ * and the page (DocsContents.tsx): Base UI's collapsible, `data-open` while
+ * open, and open it holds the sidebar's search and pages.
  */
 export const DOCS_CONTENTS = "group/contents border-b border-border sm:hidden";
 /** Open, the bar keeps its rule, and the list under it has its own. */
-export const DOCS_CONTENTS_SUMMARY = `flex h-10 cursor-pointer list-none items-center gap-[0.5625rem] border-border px-5 font-sans text-[0.8125rem] text-text-muted group-open/contents:border-b [&::-webkit-details-marker]:hidden ${FOCUS_RING}`;
+export const DOCS_CONTENTS_TRIGGER = `flex h-10 w-full cursor-pointer items-center gap-[0.5625rem] border-border px-5 text-left font-sans text-[0.8125rem] text-text-muted group-data-open/contents:border-b ${FOCUS_RING}`;
 export const DOCS_CONTENTS_PAGE = "min-w-0 truncate text-text-strong";
-export const DOCS_CONTENTS_ICON = "ml-auto size-[1.0625rem] shrink-0 text-text-muted group-open/contents:rotate-180";
+export const DOCS_CONTENTS_ICON = "ml-auto size-[1.0625rem] shrink-0 text-text-muted group-data-open/contents:rotate-180";
 export const DOCS_CONTENTS_PANEL = "px-5 pt-[0.9375rem] pb-[1.375rem]";
 export const DOCS_SEARCH = "relative flex h-9 items-center sm:mb-px rounded-[4px] border border-border bg-surface focus-within:border-accent";
 export const DOCS_SEARCH_INPUT =
@@ -607,11 +606,15 @@ export const CODE_PANEL_REQUEST = `${CODE_PANEL} shrink-0`;
 export const CODE_PANEL_RESPONSE = `${CODE_PANEL} flex min-h-0 flex-col`;
 export const CODE_PANEL_HEAD = "flex h-[2.1875rem] shrink-0 items-center gap-4 border-b border-border px-4";
 export const CODE_PANEL_TITLE = "m-0 mr-auto font-sans text-[0.75rem] font-semibold text-text-strong";
-export const CODE_PANEL_TAB = `cursor-pointer border-0 bg-transparent p-0 font-sans text-[0.75rem] text-text-muted hover:text-text aria-pressed:font-semibold aria-pressed:text-accent ${FOCUS_RING}`;
+/** The tabs sit apart as the head's own items do; Base UI marks the open one `data-active`. */
+export const CODE_PANEL_TABS = "flex items-center gap-4";
+export const CODE_PANEL_TAB = `cursor-pointer border-0 bg-transparent p-0 font-sans text-[0.75rem] text-text-muted hover:text-text data-active:font-semibold data-active:text-accent ${FOCUS_RING}`;
 export const CODE_PANEL_STATUS = "font-sans text-[0.75rem] font-semibold text-accent";
 export const CODE_PANEL_COPY = `cursor-pointer border-0 bg-transparent p-0 font-sans text-[0.75rem] text-text-muted hover:text-text ${FOCUS_RING}`;
 export const CODE_PANEL_BODY =
   "m-0 overflow-x-auto px-3.5 py-3 font-mono text-[0.6875rem] leading-[1.125rem] text-text sm:px-4 sm:py-3.5 sm:text-[0.75rem] sm:leading-[1.1875rem]";
+/** A request's tab panel, which holds that language's request for every example. */
+export const CODE_PANEL_CODE = FOCUS_RING;
 export const CODE_PANEL_RESPONSE_BODY = `${CODE_PANEL_BODY} min-h-0 overflow-y-auto overscroll-contain max-sm:max-h-[22.5rem]`;
 /** A line of code: the command's first line strong, the address it calls in the accent, a bracket on its own muted. */
 export const CODE_LINE_STRONG = "text-text-strong";

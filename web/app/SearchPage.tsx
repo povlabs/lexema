@@ -5,11 +5,12 @@
 // components to HTML over an imported fixture release, and that test runs in CI
 // with no archive and no D1. What `page.tsx` adds is where the data comes from.
 //
-// Two client components: the search form, whose suggestion list answers
-// keystrokes (`SearchField.tsx`), and the mood tabs over a conjugation
-// (`MoodTabs.tsx`). The form is still a plain GET form, every state is decided
-// by the URL, every mood's table is in the HTML the server sends, and the
-// `more` links are native `<details>`, so the page reads before any JavaScript does.
+// The interactive parts are client components on Base UI (ADR 0010): the
+// search form, whose suggestion list answers keystrokes (`SearchField.tsx`),
+// the mood tabs over a conjugation (`MoodTabs.tsx`), and the one `+ more`
+// (`More.tsx`). The form is still a plain GET form, every state is decided by
+// the URL, and every mood's table and everything `+ more` reveals is in the
+// HTML the server sends.
 
 import type { ReactNode } from "react";
 import type { Attempt } from "./attempt.ts";

@@ -7,10 +7,9 @@
 // footer out edge to edge where the other pages keep them to the column.
 //
 // On a phone (below `sm`) the bar keeps the name and Sign in, and Docs and
-// Pricing move into the ☰ menu (DeveloperMenu), a `<details>` that works
-// without a script. Signed in, the bar keeps only the name, and the menu names
-// the dashboard and its settings first and ends with the email and Sign out
-// (board `j6UaW`).
+// Pricing move into the ☰ menu (DeveloperMenu.tsx), Base UI's dialog. Signed
+// in, the bar keeps only the name, and the menu names the dashboard and its
+// settings first and ends with the email and Sign out (board `j6UaW`).
 //
 // Paths here are the developer site's own (`/docs`): worker/hosts.ts serves
 // them from the route group, so no link names the group's segment.
@@ -20,7 +19,7 @@ import { SIGN_IN_PAGE } from "../worker/dashboard.ts";
 import { ORIGIN } from "../worker/hosts.ts";
 import { AccountMenu } from "./AccountMenu";
 import { DASHBOARD, SETTINGS } from "./dashboardActions.ts";
-import { CloseIcon, MenuIcon } from "./MenuIcons";
+import { DeveloperMenu, type DeveloperMenuLink } from "./DeveloperMenu";
 import type { SignedIn } from "./signedIn.ts";
 import {
   DEV_ACCOUNT,
@@ -33,20 +32,12 @@ import {
   DEV_FOOTER_LINK,
   DEV_FOOTER_LINKS,
   DEV_FOOTER_NAME,
-  DEV_MENU,
   DEV_MENU_ACCOUNT,
   DEV_MENU_ACTIONS,
-  DEV_MENU_BAR,
-  DEV_MENU_CLOSE_ICON,
   DEV_MENU_EMAIL,
   DEV_MENU_FILLED,
-  DEV_MENU_LINK,
-  DEV_MENU_LINKS,
-  DEV_MENU_OPEN_ICON,
   DEV_MENU_OUTLINE,
-  DEV_MENU_PANEL,
   DEV_MENU_SIGN_OUT,
-  DEV_MENU_TOGGLE,
   DEV_NAME,
   DEV_NAME_SITE,
   DEV_NAV,
@@ -89,6 +80,10 @@ const SIGNED_IN_MENU: readonly DeveloperNavItem[] = [DASHBOARD_ITEM, { section: 
 /** The id of the signed-in bar's sign-out form, which the account menu's Sign out submits. */
 const SIGN_OUT_FORM = "sign-out";
 
+/** The pages the ☰ menu names, with the one being read marked; signed in, the dashboard and its settings first. */
+export const developerMenuLinks = (signedIn: SignedIn | undefined, current: DeveloperSection | undefined): DeveloperMenuLink[] =>
+  (signedIn === undefined ? NAV : SIGNED_IN_MENU).map((item) => ({ label: item.label, href: item.href, current: item.section === current }));
+
 /** The bar has no Settings: on the settings page it marks the dashboard, as board 28g draws it. */
 const barSection = (current: DeveloperSection | undefined): DeveloperSection | undefined => (current === "settings" ? "dashboard" : current);
 
@@ -108,51 +103,6 @@ function DeveloperName() {
   );
 }
 
-/**
- * The ☰ menu, on a phone only (board `VDNSE`): the bar's pages, one a row,
- * then `children`, the menu's foot. Open, it fills the screen under its own
- * copy of the bar, and the ☰ turns to × where it was.
- *
- * `links` and `children` are what a signed-in bar changes (board `j6UaW`):
- * the dashboard first among the links, and the account's email and Sign out
- * as the foot.
- */
-export function DeveloperMenu({
-  links,
-  current,
-  children,
-}: {
-  links: readonly DeveloperNavItem[];
-  current?: DeveloperSection;
-  children: ReactNode;
-}) {
-  return (
-    <details className={DEV_MENU}>
-      <summary className={DEV_MENU_TOGGLE} aria-label="Menu">
-        <MenuIcon className={DEV_MENU_OPEN_ICON} />
-        <CloseIcon className={DEV_MENU_CLOSE_ICON} />
-      </summary>
-      <div className={DEV_MENU_PANEL}>
-        <div className={DEV_MENU_BAR}>
-          <DeveloperName />
-        </div>
-        <nav aria-label="Menu">
-          <ul className={DEV_MENU_LINKS}>
-            {links.map((item) => (
-              <li key={item.section}>
-                <a className={DEV_MENU_LINK} href={item.href} aria-current={item.section === current ? "page" : undefined}>
-                  {item.label}
-                </a>
-              </li>
-            ))}
-          </ul>
-        </nav>
-        {children}
-      </div>
-    </details>
-  );
-}
-
 /** The signed-out menu's foot: Sign in, then Get an API key, which also starts at sign-in. */
 function SignedOutMenuActions() {
   return (
@@ -168,7 +118,7 @@ function SignedOutMenuActions() {
 }
 
 /** The signed-in menu's foot (board `j6UaW`): the account's email, then Sign out. */
-function SignedInMenuActions({ signedIn }: { signedIn: SignedIn }) {
+export function SignedInMenuActions({ signedIn }: { signedIn: SignedIn }) {
   return (
     <div className={DEV_MENU_ACCOUNT}>
       <span className={DEV_MENU_EMAIL}>{signedIn.email}</span>
@@ -204,7 +154,7 @@ function DeveloperHeader({ current, wide, signedIn }: { current?: DeveloperSecti
             <a className={DEV_SIGN_IN} href={SIGN_IN_PATH}>
               Sign in
             </a>
-            <DeveloperMenu links={NAV} current={current}>
+            <DeveloperMenu name={<DeveloperName />} links={developerMenuLinks(signedIn, current)}>
               <SignedOutMenuActions />
             </DeveloperMenu>
           </>
@@ -214,7 +164,7 @@ function DeveloperHeader({ current, wide, signedIn }: { current?: DeveloperSecti
               <form id={SIGN_OUT_FORM} method="post" action={SIGN_OUT_PATH} hidden />
               <AccountMenu signedIn={signedIn} signOutForm={SIGN_OUT_FORM} />
             </div>
-            <DeveloperMenu links={SIGNED_IN_MENU} current={current}>
+            <DeveloperMenu name={<DeveloperName />} links={developerMenuLinks(signedIn, current)}>
               <SignedInMenuActions signedIn={signedIn} />
             </DeveloperMenu>
           </>

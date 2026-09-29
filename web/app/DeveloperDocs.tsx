@@ -31,6 +31,7 @@ import {
 import { CodePanel } from "./CodePanel";
 import { DeveloperPage, SIGN_IN_PATH } from "./DeveloperPage";
 import type { DocsGroup } from "./DocsLinks";
+import { DocsContents } from "./DocsContents";
 import { DocsNav } from "./DocsNav";
 import {
   DOCS_PAGES,
@@ -45,7 +46,6 @@ import {
   type DocsPage,
   type Guide,
 } from "./docsPages.ts";
-import { ChevronIcon } from "./icons";
 import { ExternalLink } from "./ExternalLink";
 import type { SignedIn } from "./signedIn.ts";
 import {
@@ -53,11 +53,6 @@ import {
   DOCS_ANSWER,
   DOCS_ANSWER_TEXT,
   DOCS_CODE,
-  DOCS_CONTENTS,
-  DOCS_CONTENTS_ICON,
-  DOCS_CONTENTS_PAGE,
-  DOCS_CONTENTS_PANEL,
-  DOCS_CONTENTS_SUMMARY,
   DOCS_ENDPOINT,
   DOCS_EYEBROW,
   DOCS_GUIDE,
@@ -416,17 +411,9 @@ export function DeveloperDocs({ page, signedIn }: { page: DocsPage; signedIn?: S
           </div>
         </aside>
         {/* On a phone the sidebar is this bar: the page's group and name, opening onto the sidebar's list. */}
-        <details className={DOCS_CONTENTS}>
-          <summary className={DOCS_CONTENTS_SUMMARY}>
-            {groupOf(page)}
-            <span aria-hidden="true">/</span>
-            <span className={DOCS_CONTENTS_PAGE}>{titleOf(page)}</span>
-            <ChevronIcon className={DOCS_CONTENTS_ICON} />
-          </summary>
-          <div className={DOCS_CONTENTS_PANEL}>
-            <DocsNav groups={groups} label="Docs contents" />
-          </div>
-        </details>
+        <DocsContents group={groupOf(page)} page={titleOf(page)}>
+          <DocsNav groups={groups} label="Docs contents" />
+        </DocsContents>
         <main className={DOCS_MAIN}>
           {page.kind === "guide" ? GUIDE_TOPICS[page.guide]() : <EndpointTopic endpoint={page.endpoint} />}
         </main>
