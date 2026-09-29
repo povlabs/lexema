@@ -77,6 +77,17 @@ export const endpointsText = (scope: EndpointScope): string => (scope.kind === "
 /** A key's expiry as the dialog names it: `Never`, or the day it expires. */
 export const expiresText = (expiresAt: string | null): string => (expiresAt === null ? LIFETIME_LABEL.never : shortDate(expiresAt));
 
+/** A live key's row at `now`. */
+export const keyRowOf = (key: OwnedKey, now: number): KeyRow => ({
+  keyId: key.keyId,
+  name: key.name,
+  prefix: `${key.displayPrefix}…`,
+  created: shortDate(key.createdAt),
+  lastUsed: lastUsed(key.lastUsedAt, now),
+  endpoints: key.endpoints,
+  expires: expiresText(key.expiresAt),
+});
+
 /** The whole dashboard, as the page lays it out. */
 export interface DashboardView {
   email: string;
@@ -96,15 +107,7 @@ export function dashboardView(profile: AccountProfile, keys: readonly OwnedKey[]
     keys: keys
       .filter((key) => key.revokedAt === null)
       .sort((a, b) => a.keyId - b.keyId)
-      .map((key) => ({
-        keyId: key.keyId,
-        name: key.name,
-        prefix: `${key.displayPrefix}…`,
-        created: shortDate(key.createdAt),
-        lastUsed: lastUsed(key.lastUsedAt, now),
-        endpoints: key.endpoints,
-        expires: expiresText(key.expiresAt),
-      })),
+      .map((key) => keyRowOf(key, now)),
     usage: usageRow(usage.days, usage.total),
   };
 }

@@ -28,38 +28,58 @@
 // and reloading never posts the form again, so it never makes a second key.
 // The secret is never stored on the server.
 //
+// That is the plain form's answer, the page with no script. A create form the
+// server refuses (Only some with nothing ticked, an expiry the dialog does not
+// offer, a name too long) is answered 400 with the whole dashboard, its
+// create-key dialog drawn open again with what was sent and the reason under
+// the field at fault; the draft reaches the page in another header only this
+// module sets. With a script, the page sends the same forms asking for JSON
+// (app/dashboardActions.ts) and changes in place: the same session, Origin,
+// CSRF and key-creation checks run, and only the answer's shape differs.
+//
 // The two dashboard pages, `/dashboard` and the key-created page, are for a
 // signed-in developer only: without a session, both answer 303 to sign-in.
 
 import { deleteAccount } from "@lexema/accounts/accounts.ts";
 import { csrfMatches, csrfToken, sessionAccount } from "@lexema/accounts/sessions.ts";
-import { ALL_ENDPOINTS, expiresAt, keyLifetime, onlyEndpoints, type KeyAccess } from "@lexema/api/keyAccess.ts";
-import { createAccountKey, KEY_NAME_MAX, keyName, listAccountKeys, revokeAccountKey, type KeyName } from "@lexema/api/ownedKeys.ts";
+import { createAccountKey, listAccountKeys, revokeAccountKey } from "@lexema/api/ownedKeys.ts";
 import { fromD1, type TransactionalDatabase } from "@lexema/lookup/database.ts";
+import { accessOf, defaultKeyName, draftFields, draftOf, readDraft, type CreateKeyDraft } from "../app/createKeyForm.ts";
+import {
+  CONFIRM_DELETE_PARAM,
+  CONFIRM_DELETE_VALUE,
+  CREATE_KEY_PAGE,
+  CREATE_KEY_PARAM,
+  CREATE_KEY_VALUE,
+  CSRF_FIELD,
+  DASHBOARD,
+  DELETE_CONFIRM_FIELD,
+  DELETE_CONFIRMATION,
+  JSON_ANSWER,
+  KEY_CREATED,
+  type ActionAnswer,
+} from "../app/dashboardActions.ts";
+import { keyRowOf } from "../app/dashboardView.ts";
 import { DEVELOPERS_SEGMENT } from "./hosts.ts";
 import type { FetchHandler } from "./rateLimit.ts";
 import { AFTER_SIGN_OUT, clearedCookie, cookie, readCookie, SESSION_COOKIE, signedInAccount } from "./signIn.ts";
 
-/** Where the dashboard lives, and where a revocation lands. */
-export const DASHBOARD = "/dashboard";
-/** The page that shows a new key's secret, once. */
-export const KEY_CREATED = "/dashboard/key-created";
+export {
+  CONFIRM_DELETE_PAGE,
+  CREATE_KEY_PAGE,
+  CSRF_FIELD,
+  DASHBOARD,
+  DELETE_CONFIRMATION,
+  KEY_CREATED,
+} from "../app/dashboardActions.ts";
+export { defaultKeyName } from "../app/createKeyForm.ts";
+
 /** Where a visitor without a session is sent. */
 export const SIGN_IN_PAGE = "/sign-in";
 /** The one-shot cookie carrying a new key from its POST to the key-created page: `<key id>.<secret>`. */
 export const NEW_KEY_COOKIE = "__Host-lexema-new-key";
 /** How long the new key's cookie lives if the page is never opened. */
 const NEW_KEY_SECONDS = 60;
-/** What `/dashboard?confirm=` says to open the delete confirmation (board 30) without a script. */
-export const CONFIRM_DELETE_PARAM = "confirm";
-export const CONFIRM_DELETE_VALUE = "delete";
-/** The dashboard with the delete confirmation open. */
-export const CONFIRM_DELETE_PAGE = `${DASHBOARD}?${CONFIRM_DELETE_PARAM}=${CONFIRM_DELETE_VALUE}`;
-/** What `/dashboard?create=` says to open the create-key dialog (board 28b) without a script. */
-export const CREATE_KEY_PARAM = "create";
-export const CREATE_KEY_VALUE = "key";
-/** The dashboard with the create-key dialog open: Create key's link, so the button never makes a key itself. */
-export const CREATE_KEY_PAGE = `${DASHBOARD}?${CREATE_KEY_PARAM}=${CREATE_KEY_VALUE}`;
 
 /** The dialog a dashboard address asks the server to draw open, if any. */
 export type DashboardDialogRequest = "confirm-delete" | "create-key";
@@ -72,63 +92,17 @@ export function requestedDialog(query: Record<string, string | string[] | undefi
 }
 
 /**
- * The name a key gets when its form leaves the name empty: `Key 1`, then
- * `Key 2`, counting every key the account has made, revoked ones too, so a
- * name is never handed out twice. Board 28b's hint names it in advance.
+ * Set on the request for the dashboard drawn again under a refused create
+ * form, and only by this module: the form's draft as form fields
+ * (`draftFields`). `createKeyDraftOf` reads it back.
  */
-export function defaultKeyName(made: number): KeyName {
-  const name = keyName(`Key ${made + 1}`);
-  if (name === undefined) throw new Error("a default key name is always a valid name");
-  return name;
-}
+export const CREATE_KEY_DRAFT_HEADER = "x-lexema-create-key-draft";
 
-/**
- * The name a create form asks for (#187): what it sent, trimmed; with nothing
- * sent, or only spaces, the default the account's `made` keys lead to; and
- * `undefined` for a name too long to keep.
- */
-export async function requestedKeyName(sent: string | undefined, made: () => Promise<number>): Promise<KeyName | undefined> {
-  if (sent === undefined || sent.trim() === "") return defaultKeyName(await made());
-  return keyName(sent);
+/** The refused draft a redrawn dashboard request carries, or `undefined` on any other request. */
+export function createKeyDraftOf(headers: Headers): CreateKeyDraft | undefined {
+  const fields = headers.get(CREATE_KEY_DRAFT_HEADER);
+  return fields === null ? undefined : draftOf(new URLSearchParams(fields));
 }
-
-/** The form field carrying the session's CSRF token. */
-export const CSRF_FIELD = "csrf";
-/** The create form's field carrying the key's name. */
-export const KEY_NAME_FIELD = "name";
-/** The create form's choice between every endpoint and some (board 28b): `all` or `some`. */
-export const ENDPOINT_SCOPE_FIELD = "endpoints";
-export const ENDPOINT_SCOPE = { all: "all", some: "some" } as const;
-/** The create form's checklist (board 28c): one `endpoint` field per endpoint ticked. */
-export const ENDPOINT_FIELD = "endpoint";
-/** The create form's expiry: one of `KEY_LIFETIMES`. */
-export const EXPIRES_FIELD = "expires";
-
-/**
- * What a create form asks the key to reach (#187): every endpoint unless it
- * says `some`, and then exactly the ticked ones, at least one; never expiring
- * unless it names a lifetime the dialog offers. Anything else is refused with
- * the reason, and no key is made.
- */
-export function requestedAccess(form: FormData, now: number): { ok: true; access: KeyAccess } | { ok: false; refusal: string } {
-  const scope = field(form, ENDPOINT_SCOPE_FIELD) ?? ENDPOINT_SCOPE.all;
-  let endpoints = ALL_ENDPOINTS;
-  if (scope === ENDPOINT_SCOPE.some) {
-    const ticked = form.getAll(ENDPOINT_FIELD).filter((value) => typeof value === "string");
-    const only = onlyEndpoints(ticked);
-    if (only === undefined) {
-      return { ok: false, refusal: ticked.length === 0 ? "Tick at least one endpoint, or choose All endpoints." : "That is not an endpoint." };
-    }
-    endpoints = only;
-  } else if (scope !== ENDPOINT_SCOPE.all) {
-    return { ok: false, refusal: "Choose All endpoints or Only some." };
-  }
-  const lifetime = keyLifetime(field(form, EXPIRES_FIELD) ?? "never");
-  if (lifetime === undefined) return { ok: false, refusal: "Choose when the key expires." };
-  return { ok: true, access: { endpoints, expiresAt: expiresAt(lifetime, now) } };
-}
-/** What the delete form's `confirm` field must say for the account to be deleted. */
-export const DELETE_CONFIRMATION = "delete-account";
 
 /**
  * Set on the key-created page's request, and only by this module:
@@ -220,11 +194,29 @@ function seeOther(location: string, cookies: string[] = []): Response {
   return new Response(null, { status: 303, headers });
 }
 
-/** The request without any client-sent copy of `NEW_KEY_HEADER`. */
-function withoutNewKey(request: Request): Request {
-  if (!request.headers.has(NEW_KEY_HEADER)) return request;
+function json(status: number, body: ActionAnswer, cookies: string[] = []): Response {
+  const headers = new Headers({ "cache-control": "no-store" });
+  for (const value of cookies) headers.append("set-cookie", value);
+  return Response.json(body, { status, headers });
+}
+
+/** How an action is answered: as a page, for a plain form, or with an `ActionAnswer`, for a script that asked for JSON. */
+type Answering = "page" | "json";
+
+const answeringOf = (request: Request): Answering => ((request.headers.get("accept") ?? "").includes(JSON_ANSWER) ? "json" : "page");
+
+/** Nothing changed, and why: the sentence alone for a plain form, as a `refused` answer for a script. */
+const refuse = (answering: Answering, status: number, message: string): Response =>
+  answering === "page" ? text(status, message) : json(status, { outcome: "refused", message });
+
+/** The headers only this module sets, which no client may send. */
+const INTERNAL_HEADERS = [NEW_KEY_HEADER, CREATE_KEY_DRAFT_HEADER];
+
+/** The request without any client-sent copy of an internal header. */
+function withoutInternalHeaders(request: Request): Request {
+  if (!INTERNAL_HEADERS.some((name) => request.headers.has(name))) return request;
   const headers = new Headers(request.headers);
-  headers.delete(NEW_KEY_HEADER);
+  for (const name of INTERNAL_HEADERS) headers.delete(name);
   return new Request(request, { headers });
 }
 
@@ -242,50 +234,88 @@ const field = (form: FormData, name: string): string | undefined => {
   return typeof value === "string" ? value : undefined;
 };
 
-/** Answer one dashboard action. */
-export async function answerDashboard(request: Request, route: DashboardRoute, context: DashboardContext): Promise<Response> {
+/** Renders a page of the app, for an action whose answer is the dashboard itself. */
+export type PageRenderer = (request: Request) => Promise<Response>;
+
+/**
+ * A plain create form the server refused: the dashboard with the create-key
+ * dialog drawn open again (as at `/dashboard?create=key`), holding what was
+ * sent and each problem under its field, answered 400.
+ */
+async function redrawCreateKey(request: Request, draft: CreateKeyDraft, render: PageRenderer): Promise<Response> {
+  const headers = new Headers(request.headers);
+  for (const name of ["content-type", "content-length"]) headers.delete(name);
+  headers.set(CREATE_KEY_DRAFT_HEADER, draftFields(draft).toString());
+  const page = await render(new Request(new URL(`/${DEVELOPERS_SEGMENT}${CREATE_KEY_PAGE}`, request.url), { method: "GET", headers }));
+  const answer = new Headers(page.headers);
+  answer.set("cache-control", "no-store");
+  return new Response(page.body, { status: 400, statusText: "Bad Request", headers: answer });
+}
+
+/** Answer one dashboard action; `render` draws the dashboard when a refused create form is answered with it. */
+export async function answerDashboard(request: Request, route: DashboardRoute, context: DashboardContext, render: PageRenderer): Promise<Response> {
   if (request.method !== "POST") return text(405, "POST only.", new Headers({ allow: "POST" }));
+  const answering = answeringOf(request);
   const url = new URL(request.url);
   // A cross-site form would carry the session cookie on no request here
   // (SameSite=Lax), but the check does not lean on that.
-  if (request.headers.get("origin") !== url.origin) return text(403, "This action must come from this site.");
+  if (request.headers.get("origin") !== url.origin) return refuse(answering, 403, "This action must come from this site.");
 
   try {
     const db = context.db;
     if (db === undefined) throw new Error("no D1 binding: this Worker has no DB");
     const session = readCookie(request.headers.get("cookie"), SESSION_COOKIE);
     const accountId = await sessionAccount(db, session, context.now);
-    if (session === undefined || accountId === undefined) return text(401, "Sign in first.");
+    if (session === undefined || accountId === undefined) return refuse(answering, 401, "Sign in first.");
     const form = await formOf(request);
     if (form === undefined || !(await csrfMatches(session, field(form, CSRF_FIELD)))) {
-      return text(403, "This form has expired. Reload the page and try again.");
+      return refuse(answering, 403, "This form has expired. Reload the page and try again.");
     }
 
     switch (route.kind) {
       case "create-key": {
-        const name = await requestedKeyName(field(form, KEY_NAME_FIELD), async () => (await listAccountKeys(db, accountId)).length);
-        if (name === undefined) return text(400, `A key's name can be at most ${KEY_NAME_MAX} characters.`);
-        const asked = requestedAccess(form, context.now);
-        if (!asked.ok) return text(400, asked.refusal);
-        const created = await createAccountKey(db, accountId, name, context.now, asked.access);
-        if (created.outcome === "refused") return text(401, "Sign in first.");
-        return seeOther(KEY_CREATED, [cookie(NEW_KEY_COOKIE, `${created.keyId}.${created.key}`, NEW_KEY_SECONDS)]);
+        const draft = draftOf(form);
+        const reading = readDraft(draft);
+        if (!reading.ok) {
+          return answering === "json" ? json(400, { outcome: "refused-form", problems: reading.problems }) : redrawCreateKey(request, draft, render);
+        }
+        const asked = reading.request;
+        const name = asked.name.kind === "typed" ? asked.name.name : defaultKeyName((await listAccountKeys(db, accountId)).length);
+        const access = accessOf(asked, context.now);
+        const created = await createAccountKey(db, accountId, name, context.now, access);
+        if (created.outcome === "refused") return refuse(answering, 401, "Sign in first.");
+        if (answering === "page") return seeOther(KEY_CREATED, [cookie(NEW_KEY_COOKIE, `${created.keyId}.${created.key}`, NEW_KEY_SECONDS)]);
+        const key = keyRowOf(
+          {
+            keyId: created.keyId,
+            name,
+            displayPrefix: created.displayPrefix,
+            createdAt: new Date(context.now).toISOString(),
+            lastUsedAt: null,
+            revokedAt: null,
+            ...access,
+          },
+          context.now,
+        );
+        return json(201, { outcome: "created", key, secret: created.key });
       }
       case "revoke-key": {
         const revoked = await revokeAccountKey(db, accountId, route.keyId, context.now);
-        return revoked === "not-yours" ? text(404, "No such key.") : seeOther(DASHBOARD);
+        if (revoked === "not-yours") return refuse(answering, 404, "No such key.");
+        return answering === "page" ? seeOther(DASHBOARD) : json(200, { outcome: "revoked", keyId: route.keyId });
       }
       case "delete-account": {
-        if (field(form, "confirm") !== DELETE_CONFIRMATION) return text(400, "Confirm the deletion first.");
+        if (field(form, DELETE_CONFIRM_FIELD) !== DELETE_CONFIRMATION) return refuse(answering, 400, "Confirm the deletion first.");
         await deleteAccount(db, accountId, context.now);
-        return seeOther(AFTER_SIGN_OUT, [clearedCookie(SESSION_COOKIE)]);
+        const signedOut = [clearedCookie(SESSION_COOKIE)];
+        return answering === "page" ? seeOther(AFTER_SIGN_OUT, signedOut) : json(200, { outcome: "signed-out", location: AFTER_SIGN_OUT }, signedOut);
       }
     }
   } catch (failure) {
     // The database's message stays in the log. Nothing is half done: each
     // action is one statement, and account deletion one transaction.
     console.error("dashboard action failed", { route: route.kind }, failure);
-    return text(503, "That could not be done. Try again later.");
+    return refuse(answering, 503, "That could not be done. Try again later.");
   }
 }
 
@@ -335,10 +365,10 @@ export function withDashboard<E extends DashboardBindings>(
   contextOf: (env: E) => DashboardContext = liveDashboardContext,
 ): FetchHandler<E> {
   return (request, env, ctx) => {
-    const clean = withoutNewKey(request);
+    const clean = withoutInternalHeaders(request);
     const url = new URL(clean.url);
     const route = dashboardRouteOf(url);
-    if (route !== undefined) return answerDashboard(clean, route, contextOf(env));
+    if (route !== undefined) return answerDashboard(clean, route, contextOf(env), (page) => app(page, env, ctx));
     const page = clean.method === "GET" || clean.method === "HEAD" ? dashboardPageOf(url) : undefined;
     return page === undefined ? app(clean, env, ctx) : openDashboardPage(clean, page, contextOf(env), app, env, ctx);
   };

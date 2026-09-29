@@ -12,10 +12,28 @@ import type { ProviderProfile } from "../../src/accounts/providers.js";
 import { authenticate } from "../../src/api/keys.js";
 import { createAccountKey, keyName, listAccountKeys } from "../../src/api/ownedKeys.js";
 import { fromNodeSqlite } from "../../src/lookup/database.js";
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
+import { AccountUsage, usageDays } from "../../src/api/usage.js";
+import { EMPTY_DRAFT, type CreateKeyDraft, type CreateKeyProblems } from "../app/createKeyForm.ts";
+import { Dashboard } from "../app/Dashboard";
+import {
+  answerOf,
+  CREATE_KEY_ACTION,
+  DELETE_ACCOUNT_ACTION,
+  JSON_ANSWER,
+  revokeKeyAction,
+  sendAction,
+  UNREACHABLE,
+  type ActionAnswer,
+} from "../app/dashboardActions.ts";
+import { dashboardView } from "../app/dashboardView.ts";
 import { apiNotFound, handleApi } from "../worker/api/handler.ts";
 import {
   CONFIRM_DELETE_PAGE,
+  CREATE_KEY_DRAFT_HEADER,
   CREATE_KEY_PAGE,
+  createKeyDraftOf,
   CSRF_FIELD,
   csrfTokenOf,
   type DashboardBindings,
@@ -48,8 +66,8 @@ const env: LimitBindings & SignInBindings & DashboardBindings = {
   KEY_CREATE_LIMIT: allow,
 };
 
-/** The Worker over a fresh database; each browser keeps its own cookies. */
-function site() {
+/** The Worker over a fresh database; each browser keeps its own cookies. `page` stands in for the App Router; `limits` for the rate limits. */
+function site({ page, limits = {} }: { page?: (request: Request) => Response; limits?: Partial<LimitBindings> } = {}) {
   const sqlite = new DatabaseSync(":memory:");
   sqlite.exec(SCHEMA);
   const db = fromNodeSqlite(sqlite);
@@ -61,7 +79,7 @@ function site() {
         withDashboard(
           async (request) => {
             appSaw.push(request);
-            return new Response("page", { headers: { "content-type": "text/html" } });
+            return page?.(request) ?? new Response("page", { headers: { "content-type": "text/html" } });
           },
           () => ({ db, now: NOW }),
         ),
@@ -79,7 +97,7 @@ function site() {
     async function send(url: string, init: RequestInit = {}): Promise<Response> {
       const headers = new Headers(init.headers);
       if (jar.size > 0) headers.set("cookie", cookie());
-      const response = await worker(new Request(url, { ...init, headers }), env, {} as ExecutionContext);
+      const response = await worker(new Request(url, { ...init, headers }), { ...env, ...limits }, {} as ExecutionContext);
       for (const header of response.headers.getSetCookie()) {
         const [pair, ...attributes] = header.split(";").map((part) => part.trim());
         const at = pair.indexOf("=");
@@ -214,24 +232,232 @@ test("the create-key dialog's endpoints and expiry: Only some keeps the ticked e
   ]);
 });
 
-test("Only some with nothing ticked, an endpoint that does not exist, or an expiry the dialog does not offer is refused, and no key is made", async () => {
-  const { browser, snapshot } = site();
+test("a refused plain create form is answered 400 with the whole dashboard, its dialog drawn again holding what was sent; no key is made", async () => {
+  // The page stands in for app/(developers)/developer-site/dashboard/page.tsx: the dialog the address asks for, holding the draft the Worker hands on.
+  const view = dashboardView({ email: "ada@example.com", providers: ["google"] }, [], AccountUsage.of(usageDays(NOW), [], []), NOW);
+  const { appSaw, browser, snapshot } = site({
+    page: (request) => {
+      const url = new URL(request.url);
+      const dialog = requestedDialog(Object.fromEntries(url.searchParams)) === "create-key" ? { kind: "create-key" as const, draft: createKeyDraftOf(request.headers) ?? EMPTY_DRAFT } : undefined;
+      return new Response(`<!doctype html>${renderToStaticMarkup(createElement(Dashboard, { view, csrf: "c", made: 0, dialog }))}`, {
+        headers: { "content-type": "text/html; charset=utf-8" },
+      });
+    },
+  });
   const { post } = await browser(ada);
   const before = snapshot();
-  const refused: [string, [string, string][]][] = [
-    ["Tick at least one endpoint, or choose All endpoints.", [["endpoints", "some"]]],
-    ["Tick at least one endpoint, or choose All endpoints.", [["name", "app"], ["endpoints", "some"], ["expires", "30-days"]]],
-    ["That is not an endpoint.", [["endpoints", "some"], ["endpoint", "lookup"], ["endpoint", "everything"]]],
-    ["Choose All endpoints or Only some.", [["endpoints", "none"]]],
-    ["Choose when the key expires.", [["expires", "forever"]]],
+  const refused: [string, [string, string][], CreateKeyDraft][] = [
+    [
+      "Tick at least one endpoint.",
+      [["name", " Learning app "], ["endpoints", "some"], ["expires", "30-days"]],
+      { ...EMPTY_DRAFT, name: "Learning app", scope: "some", expires: "30-days" },
+    ],
+    ["Tick at least one endpoint.", [["endpoints", "some"]], { ...EMPTY_DRAFT, scope: "some" }],
+    [
+      "That is not an endpoint.",
+      [["endpoints", "some"], ["endpoint", "lookup"], ["endpoint", "everything"]],
+      { ...EMPTY_DRAFT, scope: "some", ticked: ["lookup"], strayTick: true },
+    ],
+    ["Choose All endpoints or Only some.", [["endpoints", "none"]], { ...EMPTY_DRAFT, scope: "unknown" }],
+    [
+      "Choose when the key expires.",
+      [["name", "app"], ["endpoints", "some"], ["endpoint", "inflect"], ["expires", "forever"]],
+      { ...EMPTY_DRAFT, name: "app", scope: "some", ticked: ["inflect"], expires: "unknown" },
+    ],
+    ["A key&#x27;s name can be at most 200 characters.", [["name", "x".repeat(201)]], { ...EMPTY_DRAFT, name: "x".repeat(201) }],
   ];
-  for (const [message, fields] of refused) {
+  for (const [message, fields, draft] of refused) {
+    const seen = appSaw.length;
     const answer = await post("/dashboard/keys", fields);
-    assert.equal(answer.status, 400, JSON.stringify(fields));
-    assert.equal(await answer.text(), message);
-    assert.deepEqual(answer.headers.getSetCookie(), []);
+    const label = JSON.stringify(fields).slice(0, 80);
+    assert.equal(answer.status, 400, label);
+    assert.equal(answer.headers.get("cache-control"), "no-store", label);
+    assert.match(answer.headers.get("content-type") ?? "", /^text\/html/, label);
+    assert.deepEqual(answer.headers.getSetCookie(), [], label);
+    // Never bare text: the dashboard, with the create-key dialog open over it, as `/dashboard?create=key` draws it.
+    const html = await answer.text();
+    assert.match(html, /<h1[^>]*>Dashboard<\/h1>/, label);
+    assert.match(html, /<section[^>]*role="dialog"[^>]*>.*Create an API key/, label);
+    assert.ok(html.includes(`role="alert">${message}</p>`), label);
+    // The page was asked for with a GET, carrying what the form sent.
+    assert.equal(appSaw.length, seen + 1);
+    const asked = appSaw[seen];
+    assert.equal(asked.method, "GET");
+    assert.equal(new URL(asked.url).pathname + new URL(asked.url).search, `/developer-site${CREATE_KEY_PAGE}`);
+    assert.deepEqual(createKeyDraftOf(asked.headers), draft, label);
+  }
+  assert.deepEqual(snapshot(), before, "no key was made");
+});
+
+test("a draft header a client sends never reaches the page", async () => {
+  const { appSaw, browser } = site();
+  const adas = await browser(ada);
+  await adas.send(`${DEVELOPERS}${CREATE_KEY_PAGE}`, { headers: { [CREATE_KEY_DRAFT_HEADER]: "endpoints=some" } });
+  assert.equal(createKeyDraftOf(appSaw[0].headers), undefined);
+});
+
+/** A script's fetch as the page sends it (app/dashboardActions.ts), from this browser, on this site. */
+const scripted =
+  (send: (url: string, init?: RequestInit) => Promise<Response>): typeof fetch =>
+  async (input, init) =>
+    send(`${DEVELOPERS}${String(input)}`, { ...init, headers: { ...Object.fromEntries(new Headers(init?.headers)), origin: DEVELOPERS } });
+
+/** A dashboard form as the page holds it: these fields and the session's CSRF token. */
+function formOf(csrf: string, fields: [string, string][] = []): FormData {
+  const form = new FormData();
+  form.set(CSRF_FIELD, csrf);
+  for (const [name, value] of fields) form.append(name, value);
+  return form;
+}
+
+test("with a script, a create is answered in JSON: the new key's row and its secret, once; no cookie, no redirect, no page", async () => {
+  const { db, appSaw, browser } = site();
+  const adas = await browser(ada);
+  const fetchFromPage = scripted(adas.send);
+
+  const answer = await sendAction(
+    CREATE_KEY_ACTION,
+    formOf(adas.csrf, [
+      ["name", " Learning app "],
+      ["endpoints", "some"],
+      ["endpoint", "lookup"],
+      ["endpoint", "inflect"],
+      ["expires", "90-days"],
+    ]),
+    fetchFromPage,
+  );
+  assert.equal(answer.outcome, "created");
+  assert.ok(answer.outcome === "created");
+  const [made] = await listAccountKeys(db, adas.accountId);
+  assert.deepEqual(answer.key, {
+    keyId: made.keyId,
+    name: "Learning app",
+    prefix: `${made.displayPrefix}…`,
+    created: "28 Sep 2026",
+    lastUsed: "never",
+    endpoints: { kind: "only", endpoints: ["lookup", "inflect"] },
+    expires: "27 Dec 2026",
+  });
+  assert.equal((await authenticate(db, answer.secret, NOW)).outcome, "accepted");
+  assert.ok(!adas.jar.has(NEW_KEY_COOKIE), "the secret travels in the answer only");
+  assert.deepEqual(appSaw, []);
+
+  // The raw answer: 201, JSON, never kept by a cache. An empty name is still `Key N`.
+  const raw = await fetchFromPage(CREATE_KEY_ACTION, { method: "POST", body: formOf(adas.csrf, [["name", ""]]), headers: { accept: JSON_ANSWER } });
+  assert.equal(raw.status, 201);
+  assert.equal(raw.headers.get("cache-control"), "no-store");
+  assert.deepEqual(raw.headers.getSetCookie(), []);
+  const body = (await raw.json()) as ActionAnswer;
+  assert.ok(body.outcome === "created");
+  assert.equal(body.key.name, "Key 2");
+});
+
+test("with a script, a refused create form is answered 400 in JSON with each problem by its field, and no key is made", async () => {
+  const { browser, snapshot } = site();
+  const adas = await browser(ada);
+  const before = snapshot();
+  const cases: [[string, string][], CreateKeyProblems][] = [
+    [[["endpoints", "some"]], [{ field: "endpoints", message: "Tick at least one endpoint." }]],
+    [[["name", "x".repeat(201)], ["expires", "forever"]], [
+      { field: "name", message: "A key's name can be at most 200 characters." },
+      { field: "expires", message: "Choose when the key expires." },
+    ]],
+  ];
+  for (const [fields, problems] of cases) {
+    const raw = await scripted(adas.send)(CREATE_KEY_ACTION, { method: "POST", body: formOf(adas.csrf, fields), headers: { accept: JSON_ANSWER } });
+    assert.equal(raw.status, 400);
+    assert.deepEqual(await answerOf(raw), { outcome: "refused-form", problems });
   }
   assert.deepEqual(snapshot(), before);
+});
+
+test("with a script, a missing or wrong CSRF token, another origin or no session is refused in JSON at the plain form's status, and nothing changes", async () => {
+  const { db, browser, snapshot, worker } = site();
+  const adas = await browser(ada);
+  const bobs = await browser(bob);
+  const key = await createAccountKey(db, adas.accountId, name("one"), NOW);
+  assert.ok(key.outcome === "created");
+  const before = snapshot();
+  const json = { accept: JSON_ANSWER };
+  for (const [action, fields] of [
+    [CREATE_KEY_ACTION, [["name", "another"]]],
+    [revokeKeyAction(key.keyId), []],
+    [DELETE_ACCOUNT_ACTION, [["confirm", DELETE_CONFIRMATION]]],
+  ] as [string, [string, string][]][]) {
+    const cases: [string, Promise<Response>, number, string][] = [
+      ["no CSRF token", scripted(adas.send)(action, { method: "POST", body: formOf("", fields), headers: json }), 403, "This form has expired. Reload the page and try again."],
+      ["another session's token", scripted(adas.send)(action, { method: "POST", body: formOf(bobs.csrf, fields), headers: json }), 403, "This form has expired. Reload the page and try again."],
+      [
+        "another origin",
+        adas.send(`${DEVELOPERS}${action}`, { method: "POST", body: formOf(adas.csrf, fields), headers: { ...json, origin: "https://evil.example" } }),
+        403,
+        "This action must come from this site.",
+      ],
+      [
+        "no session",
+        worker(new Request(`${DEVELOPERS}${action}`, { method: "POST", body: formOf(adas.csrf, fields), headers: { ...json, origin: DEVELOPERS } }), env, {} as ExecutionContext),
+        401,
+        "Sign in first.",
+      ],
+    ];
+    for (const [label, sent, status, message] of cases) {
+      const answer = await sent;
+      assert.equal(answer.status, status, `${action}: ${label}`);
+      assert.deepEqual(answer.headers.getSetCookie(), [], `${action}: ${label}`);
+      assert.deepEqual(await answerOf(answer), { outcome: "refused", message }, `${action}: ${label}`);
+    }
+  }
+  assert.deepEqual(snapshot(), before);
+});
+
+test("with a script, the key-creation limit still holds: its 429 is read as the reason, and no key is made", async () => {
+  let asked = 0;
+  const { browser, snapshot } = site({
+    limits: {
+      KEY_CREATE_LIMIT: {
+        limit: async () => {
+          asked += 1;
+          return { success: false };
+        },
+      },
+    },
+  });
+  const adas = await browser(ada);
+  const before = snapshot();
+  const answer = await sendAction(CREATE_KEY_ACTION, formOf(adas.csrf, [["name", "app"]]), scripted(adas.send));
+  assert.deepEqual(answer, { outcome: "refused", message: "Too many keys made. Try again in a minute." });
+  assert.equal(asked, 1, "the fetch counts against the same limit as the plain form");
+  assert.deepEqual(snapshot(), before);
+});
+
+test("with a script, Revoke answers the revoked key in JSON, another account's key is a 404, and Delete account answers where to go with the session cleared", async () => {
+  const { db, browser } = site();
+  const adas = await browser(ada);
+  const bobs = await browser(bob);
+  const own = await createAccountKey(db, adas.accountId, name("own"), NOW);
+  const other = await createAccountKey(db, bobs.accountId, name("bob's"), NOW);
+  assert.ok(own.outcome === "created" && other.outcome === "created");
+  const fetchFromPage = scripted(adas.send);
+
+  assert.deepEqual(await sendAction(revokeKeyAction(own.keyId), formOf(adas.csrf), fetchFromPage), { outcome: "revoked", keyId: own.keyId });
+  assert.equal((await authenticate(db, own.key, NOW)).outcome, "refused");
+  assert.deepEqual(await sendAction(revokeKeyAction(other.keyId), formOf(adas.csrf), fetchFromPage), { outcome: "refused", message: "No such key." });
+  assert.equal((await authenticate(db, other.key, NOW)).outcome, "accepted");
+
+  assert.deepEqual(await sendAction(DELETE_ACCOUNT_ACTION, formOf(adas.csrf), fetchFromPage), { outcome: "refused", message: "Confirm the deletion first." });
+  assert.equal(await adas.signedIn(), adas.accountId);
+  const deleted = await sendAction(DELETE_ACCOUNT_ACTION, formOf(adas.csrf, [["confirm", DELETE_CONFIRMATION]]), fetchFromPage);
+  assert.deepEqual(deleted, { outcome: "signed-out", location: AFTER_SIGN_OUT });
+  assert.ok(!adas.jar.has(SESSION_COOKIE), "the session cookie is cleared");
+  assert.equal(await bobs.signedIn(), bobs.accountId);
+});
+
+test("an action the page cannot reach is read as a refusal to show, never as a success", async () => {
+  const offline: typeof fetch = async () => {
+    throw new TypeError("network down");
+  };
+  assert.deepEqual(await sendAction(CREATE_KEY_ACTION, new FormData(), offline), { outcome: "refused", message: UNREACHABLE });
+  assert.deepEqual(await answerOf(Response.json({ outcome: "hacked" })), { outcome: "refused", message: UNREACHABLE });
 });
 
 test("opening the create-key dialog makes no key: Create key is a link to a page the server draws", async () => {

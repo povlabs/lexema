@@ -18,5 +18,5 @@ export default async function Page() {
   const { view, csrf, keys } = await loadDashboard(request.get("cookie"));
   const key = keys.find((owned) => owned.keyId === created.keyId && owned.revokedAt === null);
   if (key === undefined) redirect(DASHBOARD);
-  return <Dashboard view={view} csrf={csrf} dialog={{ kind: "key-created", name: key.name, secret: created.key }} />;
+  return <Dashboard view={view} csrf={csrf} made={keys.length} dialog={{ kind: "key-created", name: key.name, secret: created.key }} />;
 }

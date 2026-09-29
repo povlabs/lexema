@@ -782,8 +782,14 @@ export const CREATE_KEY_SELECT_WRAP = "relative";
 export const CREATE_KEY_SELECT = `${CREATE_KEY_CONTROL} cursor-pointer appearance-none pr-10 has-[option[value=never]:checked]:text-text-muted`;
 export const CREATE_KEY_CHEVRON = "pointer-events-none absolute top-1/2 right-3.5 size-4 -translate-y-1/2 text-text-muted";
 
+/** A field's problem, under it: the hint's size, in `warning` (#187). */
+export const CREATE_KEY_PROBLEM = "m-0 mt-2 font-sans text-[0.78125rem] leading-[1.1875rem] text-warning";
+/** Why a dialog's form was refused when no one field is at fault (an expired form, the key-creation limit, an outage): as a field's problem, above the buttons. */
+export const DIALOG_FAILURE = CREATE_KEY_PROBLEM;
+
 export const CREATE_KEY_ACTIONS = "mt-7 flex justify-end gap-2.5";
-export const CREATE_KEY_SUBMIT = `inline-flex h-[2.3125rem] cursor-pointer items-center rounded-[4px] border border-accent bg-accent px-[1.0625rem] font-sans text-[0.875rem] font-semibold whitespace-nowrap text-surface ${FOCUS_RING}`;
+/** Create key; with a script, disabled while the form cannot be sent, as the report box's Send is. */
+export const CREATE_KEY_SUBMIT = `inline-flex h-[2.3125rem] cursor-pointer items-center rounded-[4px] border border-accent bg-accent px-[1.0625rem] font-sans text-[0.875rem] font-semibold whitespace-nowrap text-surface disabled:cursor-not-allowed disabled:border-border disabled:bg-border disabled:text-text-muted ${FOCUS_RING}`;
 
 /** Board 30: the question, what deleting does, Cancel and Delete account. */
 export const DELETE_ACTIONS = "mt-6 flex justify-end gap-2.5";
