@@ -13,6 +13,11 @@
 // `api.localhost`. A `.localhost` name always resolves to this machine, and
 // the live Worker is reached only through its custom domains
 // (web/wrangler.jsonc), so those names are never answered in production.
+//
+// One local-only route: Google refuses a redirect URI on `developers.localhost`,
+// since a subdomain's top-level domain must be a public suffix, but accepts
+// `localhost`. So locally Google's callback is on `localhost`, which relays
+// the browser to the developer site with the same query (#185).
 
 import { API_PREFIX } from "@lexema/api/units.ts";
 import type { FetchHandler } from "./rateLimit.ts";
@@ -30,8 +35,13 @@ export const ORIGIN: Readonly<Record<Site, string>> = {
 /** What each site's host puts in front of the domain. */
 const SUBDOMAIN: Readonly<Record<Site, string>> = { lexema: "", developers: "developers.", api: "api." };
 
-/** The live domain, and the one local development answers under. */
-const DOMAINS = ["lexema.fyi", "localhost"] as const;
+/** The domain local development answers under. */
+const LOCAL_DOMAIN = "localhost";
+/** The live domain, and the local one. */
+const DOMAINS = ["lexema.fyi", LOCAL_DOMAIN] as const;
+
+/** The path Google sends the browser back to after sign-in. */
+const GOOGLE_CALLBACK_PATH = "/sign-in/google/callback";
 
 /**
  * The segment the developer site's pages live under, inside the App Router.
@@ -53,6 +63,8 @@ export type Destination =
   | { to: "developers"; path: string }
   /** The JSON API, handed on exactly as it came. */
   | { to: "api" }
+  /** Local Google sign-in only: the browser is sent on to `location`. */
+  | { to: "relay"; location: string }
   /** Nothing is here: answered as the named site answers a missing path. */
   | { to: "not-found"; site: "lexema" | "api" };
 
@@ -64,6 +76,23 @@ function siteOf(url: URL): Site {
     }
   }
   return "lexema";
+}
+
+/** This URL's origin with the host of `site` on the local domain, keeping the port. */
+function localOrigin(url: URL, site: Site): string {
+  const origin = new URL(url.origin);
+  origin.hostname = `${SUBDOMAIN[site]}${LOCAL_DOMAIN}`;
+  return origin.origin;
+}
+
+/**
+ * The redirect URI Google sends the browser back to, for a sign-in started at
+ * this developer-site URL. Live it is the developer site's own; locally it is
+ * on `localhost`, whose relay hands the callback on to `developers.localhost`.
+ */
+export function googleCallbackUri(url: URL): string {
+  const local = url.hostname === `${SUBDOMAIN.developers}${LOCAL_DOMAIN}`;
+  return `${local ? localOrigin(url, "lexema") : url.origin}${GOOGLE_CALLBACK_PATH}`;
 }
 
 /**
@@ -106,6 +135,9 @@ export function destinationOf(url: URL): Destination {
     case "lexema": {
       const segments = segmentsOf(url.pathname);
       if (RETIRED_API_SEGMENTS.every((segment, i) => segments[i] === segment)) return { to: "not-found", site: "lexema" };
+      if (url.hostname === LOCAL_DOMAIN && `/${segments.join("/")}` === GOOGLE_CALLBACK_PATH) {
+        return { to: "relay", location: `${localOrigin(url, "developers")}${GOOGLE_CALLBACK_PATH}${url.search}` };
+      }
       const [first = ""] = segments;
       const segment = first.endsWith(".rsc") ? first.slice(0, -".rsc".length) : first;
       return segment === DEVELOPERS_SEGMENT ? { to: "not-found", site: "lexema" } : { to: "site" };
@@ -135,6 +167,8 @@ export function byHost<E>(handlers: SiteHandlers<E>): FetchHandler<E> {
         return handlers.app(new Request(new URL(`${destination.path}${url.search}`, url), request), env, ctx);
       case "api":
         return handlers.api(request, env, ctx);
+      case "relay":
+        return new Response(null, { status: 302, headers: { location: destination.location, "cache-control": "no-store" } });
       case "not-found":
         return destination.site === "api"
           ? handlers.apiNotFound(url)
