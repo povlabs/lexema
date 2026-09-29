@@ -659,8 +659,8 @@ export const DASH_SECTION_HEAD = "flex items-center justify-between gap-6";
 /** Usage, with its total at the right; on a phone the total goes under the heading. */
 export const DASH_USAGE_HEAD = "flex flex-col sm:flex-row sm:items-center sm:justify-between sm:gap-6";
 export const DASH_USAGE_NOTE = "m-0 font-sans text-[0.8125rem] leading-5 text-text-muted";
-/** Create key, the board's own 39 px. */
-export const DASH_CREATE_BUTTON = `inline-flex h-[2.4375rem] cursor-pointer items-center justify-center rounded-[4px] border border-accent bg-accent px-[1.1875rem] font-sans text-[0.875rem] font-semibold whitespace-nowrap text-surface ${FOCUS_RING}`;
+/** Create key, the board's own 39 px; a link, since it opens the create-key dialog. */
+export const DASH_CREATE_BUTTON = `inline-flex h-[2.4375rem] cursor-pointer items-center justify-center rounded-[4px] border border-accent bg-accent px-[1.1875rem] font-sans text-[0.875rem] font-semibold whitespace-nowrap text-surface no-underline ${FOCUS_RING}`;
 
 /** The live keys: a table in a hairline box; on a phone one card per key, with no column heads. */
 export const DASH_KEYS_CARD = "mt-[1.0625rem] rounded-[6px] border border-border sm:mt-[0.9375rem]";
@@ -731,6 +731,15 @@ export const KEY_CREATED_NOTE = "m-0 mt-3.5 sm:mt-[1.0625rem] font-sans text-[0.
 export const KEY_CREATED_ACTIONS = "mt-[0.8125rem] flex justify-end sm:mt-[0.9375rem]";
 /** Done: the board's 76 × 37 px. */
 export const KEY_DONE = `inline-flex h-[2.3125rem] items-center rounded-[4px] border border-accent bg-accent px-[1.1875rem] font-sans text-[0.875rem] font-semibold whitespace-nowrap text-surface no-underline ${FOCUS_RING}`;
+
+/** Board 28b: the title, Name, its field and hint, Cancel and Create key; the same on a phone (28bm). */
+export const CREATE_KEY_BOX = DELETE_BOX;
+export const CREATE_KEY_LABEL = "mt-[0.9375rem] mb-[0.4375rem] block font-sans text-[0.875rem] leading-[1.0625rem] font-semibold text-text-strong";
+export const CREATE_KEY_INPUT =
+  "block h-[2.5625rem] w-full rounded-[4px] border border-border-strong bg-surface px-3.5 font-sans text-[0.875rem] text-text-strong outline-none placeholder:text-text-muted focus:border-accent";
+export const CREATE_KEY_HINT = "m-0 mt-[0.4375rem] font-sans text-[0.8125rem] leading-4 text-text-muted";
+export const CREATE_KEY_ACTIONS = "mt-[1.4375rem] flex justify-end gap-2.5";
+export const CREATE_KEY_SUBMIT = `inline-flex h-[2.3125rem] cursor-pointer items-center rounded-[4px] border border-accent bg-accent px-[1.0625rem] font-sans text-[0.875rem] font-semibold whitespace-nowrap text-surface ${FOCUS_RING}`;
 
 /** Board 30: the question, what deleting does, Cancel and Delete account. */
 export const DELETE_ACTIONS = "mt-6 flex justify-end gap-2.5";

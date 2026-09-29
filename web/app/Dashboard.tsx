@@ -5,15 +5,17 @@
 // worked out in `dashboardView.ts`; the wiring that reads the session and D1
 // is `(developers)/developer-site/dashboard/`.
 //
-// Two dialogs open over it, each by its own address so it opens with no
-// script: the new key's secret (board 29) on the key-created page, and the
-// delete confirmation (board 30) at `/dashboard?confirm=delete`.
+// Three dialogs open over it, each by its own address so it opens with no
+// script: the new key's name (board 28b) at `/dashboard?create=key`, the new
+// key's secret (board 29) on the key-created page, and the delete
+// confirmation (board 30) at `/dashboard?confirm=delete`.
 //
 // On a phone (below `sm`, board 28m) the key table becomes one card per key,
 // with no column heads: the name and Revoke, the prefix, then "Created … ·
 // Last used …". The plan and account cards stack their action under the text.
 
-import { CONFIRM_DELETE_PAGE, CSRF_FIELD, DELETE_CONFIRMATION } from "../worker/dashboard.ts";
+import { CONFIRM_DELETE_PAGE, CREATE_KEY_PAGE, CSRF_FIELD, DELETE_CONFIRMATION } from "../worker/dashboard.ts";
+import { CreateKeyDialog } from "./CreateKeyDialog";
 import { DeleteAccountDialog } from "./DeleteAccountDialog";
 import { DeveloperPage } from "./DeveloperPage";
 import { KeyCreatedDialog } from "./KeyCreated";
@@ -67,8 +69,11 @@ export function CsrfField({ csrf }: { csrf: string }) {
   return <input type="hidden" name={CSRF_FIELD} value={csrf} />;
 }
 
-/** A dialog open over the dashboard: the new key's secret (board 29), or the delete confirmation (board 30). */
-export type DashboardDialog = { kind: "key-created"; name: string; secret: string } | { kind: "confirm-delete" };
+/** A dialog open over the dashboard: the new key's name (board 28b), its secret (board 29), or the delete confirmation (board 30). */
+export type DashboardDialog =
+  | { kind: "create-key"; defaultName: string }
+  | { kind: "key-created"; name: string; secret: string }
+  | { kind: "confirm-delete" };
 
 /** 30 days of units as bars, oldest first; the last, today, in the accent. Each day is its own box, so the gap between bars is the board's at every width. */
 function UsageBars({ row }: { row: UsageRow }) {
@@ -104,12 +109,9 @@ export function Dashboard({ view, csrf, dialog }: { view: DashboardView; csrf: s
                 <h2 className={DASH_SECTION_HEADING} id="keys">
                   API keys
                 </h2>
-                <form method="post" action={CREATE_KEY_ACTION}>
-                  <CsrfField csrf={csrf} />
-                  <button className={DASH_CREATE_BUTTON} type="submit">
-                    Create key
-                  </button>
-                </form>
+                <a className={DASH_CREATE_BUTTON} href={CREATE_KEY_PAGE}>
+                  Create key
+                </a>
               </div>
               {view.keys.length > 0 && (
                 <div className={DASH_KEYS_CARD}>
@@ -205,6 +207,11 @@ export function Dashboard({ view, csrf, dialog }: { view: DashboardView; csrf: s
           </main>
         </DeveloperPage>
       </div>
+      {dialog?.kind === "create-key" && (
+        <CreateKeyDialog action={CREATE_KEY_ACTION} defaultName={dialog.defaultName}>
+          <CsrfField csrf={csrf} />
+        </CreateKeyDialog>
+      )}
       {dialog?.kind === "key-created" && <KeyCreatedDialog name={dialog.name} secret={dialog.secret} />}
       {dialog?.kind === "confirm-delete" && (
         <DeleteAccountDialog action={DELETE_ACCOUNT_ACTION} warning={deleteWarning(view.keys.length)}>

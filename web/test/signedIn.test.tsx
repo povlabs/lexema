@@ -1,6 +1,6 @@
-// The signed-in side of developers.lexema.fyi (#169): the sign-in page, the
-// dashboard, and the two dialogs the server opens over it (the new key's
-// secret and the delete confirmation), as the server renders them. The Worker's guard and the actions the forms post to
+// The signed-in side of developers.lexema.fyi (#169, #187): the sign-in page,
+// the dashboard, and the three dialogs the server opens over it (the new key's
+// name, its secret and the delete confirmation), as the server renders them. The Worker's guard and the actions the forms post to
 // are web/test/dashboard.test.ts.
 
 import assert from "node:assert/strict";
@@ -12,7 +12,7 @@ import { AccountUsage, usageDays } from "../../src/api/usage.js";
 import { CREATE_KEY_ACTION, Dashboard, DELETE_ACCOUNT_ACTION, revokeKeyAction } from "../app/Dashboard";
 import { dashboardView, deleteWarning, lastUsed, shortDate } from "../app/dashboardView.ts";
 import { SignIn, signInStart } from "../app/SignIn";
-import { CONFIRM_DELETE_PAGE, CSRF_FIELD, DASHBOARD, DELETE_CONFIRMATION } from "../worker/dashboard.ts";
+import { CONFIRM_DELETE_PAGE, CREATE_KEY_PAGE, CSRF_FIELD, DASHBOARD, DELETE_CONFIRMATION } from "../worker/dashboard.ts";
 
 const NOW = Date.parse("2026-09-28T12:00:00Z");
 const CSRF = "c".repeat(43);
@@ -130,12 +130,13 @@ test("the plan card offers nothing to buy, and every form posts to a dashboard a
   const forms = [...html.matchAll(/<form[^>]*action="([^"]+)"[^>]*>(.*?)<\/form>/g)];
   const actions = forms.map((form) => form[1]);
   // Sign out twice: in the bar, and in the ☰ menu a phone shows instead.
-  assert.deepEqual(actions, ["/sign-out", "/sign-out", CREATE_KEY_ACTION, revokeKeyAction(2), revokeKeyAction(3)]);
+  assert.deepEqual(actions, ["/sign-out", "/sign-out", revokeKeyAction(2), revokeKeyAction(3)]);
   for (const [, action, body] of forms.slice(2)) {
     assert.ok(body.includes(`name="${CSRF_FIELD}" value="${CSRF}"`), action);
   }
-  // Board 28's Create key is a lone button: no name field.
-  assert.match(forms[2][2], /^<input type="hidden"[^>]*\/><button[^>]*type="submit"[^>]*>Create key<\/button>$/);
+  // Create key makes nothing itself: it is a link to the create-key dialog, which works without a script (#187).
+  assert.match(html, new RegExp(`<a[^>]*href="${CREATE_KEY_PAGE.replace("?", "\\?")}"[^>]*>Create key</a>`));
+  assert.ok(!html.includes(`action="${CREATE_KEY_ACTION}"`), "no form on the dashboard makes a key");
   // The account section: who is signed in, and Delete account, a link to the confirmation that works without a script.
   assert.match(html, /Signed in with Google · ada@example\.com/);
   assert.match(html, new RegExp(`<a[^>]*href="${CONFIRM_DELETE_PAGE.replace("?", "\\?")}"[^>]*>Delete account</a>`));
@@ -178,4 +179,25 @@ test("the delete confirmation sits over the dashboard, posts the confirmed delet
   assert.ok(form.includes(`name="${CSRF_FIELD}" value="${CSRF}"`));
   assert.ok(form.includes(`name="confirm" value="${DELETE_CONFIRMATION}"`));
   assert.match(form, new RegExp(`<a[^>]*href="${DASHBOARD}"[^>]*>Cancel</a><button[^>]*type="submit"[^>]*>Delete account</button>$`));
+});
+
+test("the create-key dialog sits over the dashboard, asks for an optional name, names the default, and Cancel goes back", () => {
+  const { view } = sample();
+  const html = renderToStaticMarkup(<Dashboard view={view} csrf={CSRF} dialog={{ kind: "create-key", defaultName: "Key 4" }} />);
+  assert.match(html, /^<div[^>]*inert=""[^>]*>.*<h1[^>]*>Dashboard<\/h1>/);
+  const dialog = /<section[^>]*role="dialog"[^>]*aria-modal="true"[^>]*>(.*)<\/section>/.exec(html)?.[1] ?? "";
+  assert.match(dialog, /<h2[^>]*id="create-key"[^>]*>Create an API key<\/h2>/);
+  const form = new RegExp(`<form[^>]*action="${CREATE_KEY_ACTION}"[^>]*>(.*?)</form>`).exec(dialog)?.[1] ?? "";
+  assert.ok(form.includes(`name="${CSRF_FIELD}" value="${CSRF}"`));
+  // One Name field, optional, labelled, with the board's placeholder and the hint naming the default.
+  assert.match(form, /<label[^>]*for="create-key-name"[^>]*>Name<\/label>/);
+  const input = /<input[^>]*id="create-key-name"[^>]*\/>/.exec(form)?.[0] ?? "";
+  assert.match(input, /name="name"/);
+  assert.match(input, /placeholder="What(?:'|&#x27;)s it for\? e\.g\. Learning app"/);
+  assert.match(input, /maxLength="200"/);
+  assert.doesNotMatch(input, /required/);
+  assert.match(form, /<p[^>]*id="create-key-hint"[^>]*>Optional\. Left empty, it(?:'|&#x27;)s called Key 4\.<\/p>/);
+  // Cancel is a link back, so it makes no key; Create key is the form's one submit.
+  assert.match(form, new RegExp(`<a[^>]*href="${DASHBOARD}"[^>]*>Cancel</a><button[^>]*type="submit"[^>]*>Create key</button></div>$`));
+  assert.equal([...form.matchAll(/type="submit"/g)].length, 1);
 });

@@ -3,8 +3,9 @@
 //
 // The routes, on the developer site's host only, each a form POST:
 //
-//   POST /dashboard/keys               make a key named by the form's `name`, or
-//                                      without one `Key 1`, `Key 2`, … (#169)
+//   POST /dashboard/keys               make a key named by the form's `name`, or,
+//                                      when it is absent or blank, `Key 1`,
+//                                      `Key 2`, … (#169, #187)
 //   POST /dashboard/keys/<id>/revoke   revoke one of the account's keys
 //   POST /dashboard/account/delete     delete the account; the form must carry
 //                                      `confirm=delete-account`
@@ -30,7 +31,7 @@
 
 import { deleteAccount } from "@lexema/accounts/accounts.ts";
 import { csrfMatches, csrfToken, sessionAccount } from "@lexema/accounts/sessions.ts";
-import { createAccountKey, keyName, listAccountKeys, revokeAccountKey, type KeyName } from "@lexema/api/ownedKeys.ts";
+import { createAccountKey, KEY_NAME_MAX, keyName, listAccountKeys, revokeAccountKey, type KeyName } from "@lexema/api/ownedKeys.ts";
 import { fromD1, type TransactionalDatabase } from "@lexema/lookup/database.ts";
 import { DEVELOPERS_SEGMENT } from "./hosts.ts";
 import type { FetchHandler } from "./rateLimit.ts";
@@ -51,11 +52,26 @@ export const CONFIRM_DELETE_PARAM = "confirm";
 export const CONFIRM_DELETE_VALUE = "delete";
 /** The dashboard with the delete confirmation open. */
 export const CONFIRM_DELETE_PAGE = `${DASHBOARD}?${CONFIRM_DELETE_PARAM}=${CONFIRM_DELETE_VALUE}`;
+/** What `/dashboard?create=` says to open the create-key dialog (board 28b) without a script. */
+export const CREATE_KEY_PARAM = "create";
+export const CREATE_KEY_VALUE = "key";
+/** The dashboard with the create-key dialog open: Create key's link, so the button never makes a key itself. */
+export const CREATE_KEY_PAGE = `${DASHBOARD}?${CREATE_KEY_PARAM}=${CREATE_KEY_VALUE}`;
+
+/** The dialog a dashboard address asks the server to draw open, if any. */
+export type DashboardDialogRequest = "confirm-delete" | "create-key";
+
+/** The dialog `/dashboard`'s query opens: `?confirm=delete` or `?create=key`, else none. */
+export function requestedDialog(query: Record<string, string | string[] | undefined>): DashboardDialogRequest | undefined {
+  if (query[CONFIRM_DELETE_PARAM] === CONFIRM_DELETE_VALUE) return "confirm-delete";
+  if (query[CREATE_KEY_PARAM] === CREATE_KEY_VALUE) return "create-key";
+  return undefined;
+}
 
 /**
- * The name a key made from board 28's lone Create key button gets: `Key 1`,
- * then `Key 2`, counting every key the account has made, revoked ones too, so
- * a name is never handed out twice.
+ * The name a key gets when its form leaves the name empty: `Key 1`, then
+ * `Key 2`, counting every key the account has made, revoked ones too, so a
+ * name is never handed out twice. Board 28b's hint names it in advance.
  */
 export function defaultKeyName(made: number): KeyName {
   const name = keyName(`Key ${made + 1}`);
@@ -63,8 +79,20 @@ export function defaultKeyName(made: number): KeyName {
   return name;
 }
 
+/**
+ * The name a create form asks for (#187): what it sent, trimmed; with nothing
+ * sent, or only spaces, the default the account's `made` keys lead to; and
+ * `undefined` for a name too long to keep.
+ */
+export async function requestedKeyName(sent: string | undefined, made: () => Promise<number>): Promise<KeyName | undefined> {
+  if (sent === undefined || sent.trim() === "") return defaultKeyName(await made());
+  return keyName(sent);
+}
+
 /** The form field carrying the session's CSRF token. */
 export const CSRF_FIELD = "csrf";
+/** The create form's field carrying the key's name. */
+export const KEY_NAME_FIELD = "name";
 /** What the delete form's `confirm` field must say for the account to be deleted. */
 export const DELETE_CONFIRMATION = "delete-account";
 
@@ -201,9 +229,8 @@ export async function answerDashboard(request: Request, route: DashboardRoute, c
 
     switch (route.kind) {
       case "create-key": {
-        const given = field(form, "name");
-        const name = given === undefined ? defaultKeyName((await listAccountKeys(db, accountId)).length) : keyName(given);
-        if (name === undefined) return text(400, "A key needs a name of 1 to 200 characters.");
+        const name = await requestedKeyName(field(form, KEY_NAME_FIELD), async () => (await listAccountKeys(db, accountId)).length);
+        if (name === undefined) return text(400, `A key's name can be at most ${KEY_NAME_MAX} characters.`);
         const created = await createAccountKey(db, accountId, name, context.now);
         if (created.outcome === "refused") return text(401, "Sign in first.");
         return seeOther(KEY_CREATED, [cookie(NEW_KEY_COOKIE, `${created.keyId}.${created.key}`, NEW_KEY_SECONDS)]);

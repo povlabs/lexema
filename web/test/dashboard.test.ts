@@ -15,6 +15,7 @@ import { fromNodeSqlite } from "../../src/lookup/database.js";
 import { apiNotFound, handleApi } from "../worker/api/handler.ts";
 import {
   CONFIRM_DELETE_PAGE,
+  CREATE_KEY_PAGE,
   CSRF_FIELD,
   csrfTokenOf,
   type DashboardBindings,
@@ -24,6 +25,7 @@ import {
   NEW_KEY_COOKIE,
   NEW_KEY_HEADER,
   newKeyOf,
+  requestedDialog,
   SIGN_IN_PAGE,
   withDashboard,
 } from "../worker/dashboard.ts";
@@ -122,7 +124,7 @@ test("a signed-in form with its CSRF token makes a key, and its secret reaches t
   const { post, send, jar, accountId } = await browser(ada);
 
   // The POST makes the key and redirects; it renders nothing, so reloading the page never posts again.
-  // Board 28's form is a lone Create key button: the key is named for its place, `Key 1`.
+  // A form that sends no name gets the default, `Key 1`.
   const response = await post("/dashboard/keys");
   assert.equal(response.status, 303);
   assert.equal(response.headers.get("location"), KEY_CREATED);
@@ -153,26 +155,54 @@ test("a signed-in form with its CSRF token makes a key, and its secret reaches t
   assert.equal(appSaw.length, 1);
   assert.equal((await listAccountKeys(db, accountId)).length, 1, "reloading made no second key");
 
-  // A name that is blank or too long makes nothing.
-  for (const bad of ["   ", "x".repeat(201)]) assert.equal((await post("/dashboard/keys", { name: bad })).status, 400);
+  // A name too long to keep makes nothing.
+  assert.equal((await post("/dashboard/keys", { name: "x".repeat(201) })).status, 400);
   assert.equal((await listAccountKeys(db, accountId)).length, 1);
-
-  // The next key is `Key 2`, and a revoked key still counts, so no name comes round twice.
-  await post("/dashboard/keys");
-  await post(`/dashboard/keys/${listed.keyId}/revoke`);
-  await post("/dashboard/keys");
-  assert.deepEqual(
-    (await listAccountKeys(db, accountId)).map((each) => each.name),
-    ["Key 3", "Key 2", "Key 1"],
-  );
-  // A form that names its key still may.
-  await post("/dashboard/keys", { name: "  learning app " });
-  assert.equal((await listAccountKeys(db, accountId))[0].name, "learning app");
 });
 
-test("a visitor without a session who opens the dashboard, its delete confirmation or the key-created page is sent to sign-in", async () => {
+test("the create-key dialog's form: a sent name is kept, trimmed; an empty one is `Key N`, revoked keys counted", async () => {
+  const { db, browser } = site();
+  const { post, accountId } = await browser(ada);
+  const names = async () => (await listAccountKeys(db, accountId)).map((each) => each.name);
+
+  // Board 28b's form always sends its Name field; a typed name is the key's, trimmed.
+  const named = await post("/dashboard/keys", { name: "  Learning app " });
+  assert.equal(named.status, 303);
+  assert.equal(named.headers.get("location"), KEY_CREATED);
+  assert.deepEqual(await names(), ["Learning app"]);
+
+  // Left empty, or only spaces, it is `Key N`: N counts every key made, so the first empty one is `Key 2`.
+  assert.equal((await post("/dashboard/keys", { name: "" })).status, 303);
+  assert.equal((await post("/dashboard/keys", { name: "   " })).status, 303);
+  assert.deepEqual(await names(), ["Key 3", "Key 2", "Learning app"]);
+
+  // A revoked key still counts, so no name comes round twice.
+  const [newest] = await listAccountKeys(db, accountId);
+  await post(`/dashboard/keys/${newest.keyId}/revoke`);
+  await post("/dashboard/keys", { name: "" });
+  assert.deepEqual(await names(), ["Key 4", "Key 3", "Key 2", "Learning app"]);
+});
+
+test("opening the create-key dialog makes no key: Create key is a link to a page the server draws", async () => {
+  const { appSaw, browser, snapshot } = site();
+  const adas = await browser(ada);
+  const before = snapshot();
+  const opened = await adas.send(`${DEVELOPERS}${CREATE_KEY_PAGE}`);
+  assert.equal(opened.status, 200);
+  assert.equal(opened.headers.get("cache-control"), "no-store");
+  assert.equal(new URL(appSaw[0].url).pathname, "/developer-site/dashboard");
+  assert.equal(new URL(appSaw[0].url).search, "?create=key");
+  assert.deepEqual(snapshot(), before, "opening the dialog changed nothing");
+
+  // The page reads which dialog to draw off the query alone.
+  assert.equal(requestedDialog({ create: "key" }), "create-key");
+  assert.equal(requestedDialog({ confirm: "delete" }), "confirm-delete");
+  for (const other of [{}, { create: "" }, { create: "keys" }, { create: ["key", "key"] }]) assert.equal(requestedDialog(other), undefined);
+});
+
+test("a visitor without a session who opens the dashboard, its create-key or delete dialog, or the key-created page is sent to sign-in", async () => {
   const { appSaw, browser, worker } = site();
-  for (const path of [DASHBOARD, CONFIRM_DELETE_PAGE, KEY_CREATED]) {
+  for (const path of [DASHBOARD, CONFIRM_DELETE_PAGE, CREATE_KEY_PAGE, KEY_CREATED]) {
     const answer = await worker(new Request(`${DEVELOPERS}${path}`), env, {} as ExecutionContext);
     assert.equal(answer.status, 303, path);
     assert.equal(answer.headers.get("location"), SIGN_IN_PAGE, path);
@@ -233,6 +263,7 @@ test("each action without a session, with a missing or wrong CSRF token, or from
 
   const actions: [string, Record<string, string>][] = [
     ["/dashboard/keys", { name: "another" }],
+    ["/dashboard/keys", { name: "" }],
     [`/dashboard/keys/${key.keyId}/revoke`, {}],
     ["/dashboard/account/delete", { confirm: DELETE_CONFIRMATION }],
   ];
