@@ -4,17 +4,18 @@
 // deleted only from here: Delete account sends the session's CSRF token and
 // `confirm=delete-account` with fetch, and a refusal is said above the
 // buttons. Once deleted, the session is gone, so the page goes where signing
-// out goes. Cancel and Escape close it.
+// out goes. Cancel and Escape close it. It is Base UI's alert dialog (ADR
+// 0010), so a click on the dimmed page does not close it.
 
-import { Dialog } from "@base-ui/react/dialog";
+import { AlertDialog } from "@base-ui/react/alert-dialog";
 import { useState } from "react";
 import { CSRF_FIELD, DELETE_ACCOUNT_ACTION, DELETE_CONFIRM_FIELD, DELETE_CONFIRMATION, sendAction, UNREACHABLE } from "./dashboardActions.ts";
-import { BUTTON_DANGER, DELETE_ACTIONS, DELETE_CANCEL, DELETE_TEXT, DIALOG_FAILURE, MODAL_TITLE } from "./styles.ts";
+import { BUTTON_DANGER, CONFIRM_ACTIONS, CONFIRM_TEXT, DIALOG_CANCEL, DIALOG_FAILURE, MODAL_TITLE } from "./styles.ts";
 
 /** The delete form while it is open: not yet sent, on its way, or refused with the reason. */
 type DeleteStatus = { readonly kind: "ready" } | { readonly kind: "sending" } | { readonly kind: "failed"; readonly message: string };
 
-/** What the delete confirmation holds: drawn inside its `Dialog.Popup`. */
+/** What the delete confirmation holds: drawn inside its `AlertDialog.Popup`. */
 export function DeleteAccount({ warning, csrf }: { warning: string; csrf: string }) {
   const [status, setStatus] = useState<DeleteStatus>({ kind: "ready" });
   const send = () => {
@@ -28,15 +29,15 @@ export function DeleteAccount({ warning, csrf }: { warning: string; csrf: string
   };
   return (
     <>
-      <Dialog.Title className={MODAL_TITLE}>Delete your account?</Dialog.Title>
-      <Dialog.Description className={DELETE_TEXT}>{warning}</Dialog.Description>
+      <AlertDialog.Title className={MODAL_TITLE}>Delete your account?</AlertDialog.Title>
+      <AlertDialog.Description className={CONFIRM_TEXT}>{warning}</AlertDialog.Description>
       {status.kind === "failed" && (
         <p className={DIALOG_FAILURE} role="alert">
           {status.message}
         </p>
       )}
-      <div className={DELETE_ACTIONS}>
-        <Dialog.Close className={DELETE_CANCEL}>Cancel</Dialog.Close>
+      <div className={CONFIRM_ACTIONS}>
+        <AlertDialog.Close className={DIALOG_CANCEL}>Cancel</AlertDialog.Close>
         <button className={BUTTON_DANGER} type="button" disabled={status.kind === "sending"} onClick={send}>
           Delete account
         </button>

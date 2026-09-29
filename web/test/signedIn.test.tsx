@@ -1,10 +1,13 @@
 // The signed-in side of developers.lexema.fyi (#169, #187): the sign-in page,
-// the dashboard as the server renders it, and what the three dialogs over it
-// hold (the new key's name, its secret and the delete confirmation). The
-// Worker's guard and the actions the page sends are web/test/dashboard.test.ts.
+// the dashboard as the server renders it, and what its dialogs hold (the new
+// key's form, then the key in its place, and the revoke and delete
+// confirmations). Where the flow goes next, and the toasts it ends in, is
+// web/test/keyFlow.test.ts. The Worker's guard and the actions the page sends
+// are web/test/dashboard.test.ts.
 
 import assert from "node:assert/strict";
 import { test } from "node:test";
+import { AlertDialog } from "@base-ui/react/alert-dialog";
 import { Dialog } from "@base-ui/react/dialog";
 import type { ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
@@ -13,10 +16,10 @@ import { ALL_ENDPOINTS, onlyEndpoints } from "../../src/api/keyAccess.js";
 import type { OwnedKey } from "../../src/api/ownedKeys.js";
 import { AccountUsage, usageDays } from "../../src/api/usage.js";
 import { CREATE_KEY_ACTION, Dashboard, DELETE_ACCOUNT_ACTION } from "../app/Dashboard";
-import { CreateKeyForm } from "../app/CreateKeyDialog";
+import { CreateKeyForm, KeyResult } from "../app/CreateKeyDialog";
 import { DeleteAccount } from "../app/DeleteAccountDialog";
-import { KeyCreated } from "../app/KeyCreated";
-import { dashboardView, deleteWarning, lastUsed, shortDate } from "../app/dashboardView.ts";
+import { RevokeKey } from "../app/RevokeKeyDialog";
+import { dashboardView, deleteWarning, lastUsed, shortDate, type KeyRow } from "../app/dashboardView.ts";
 import { SignIn, signInStart } from "../app/SignIn";
 import { EMPTY_DRAFT, type CreateKeyDraft } from "../app/createKeyForm.ts";
 import { CREATE_KEY_HINT, CREATE_KEY_PROBLEM } from "../app/styles.ts";
@@ -113,8 +116,10 @@ test("the dashboard lists each live key, oldest first, with its name, prefix, en
     );
     assert.match(html, row, name);
   }
-  const revokes = [...html.matchAll(/<button[^>]*type="button"[^>]*aria-label="Revoke ([^"]*)"[^>]*>Revoke<\/button>/g)].map((match) => match[1]);
+  // Each Revoke opens its confirmation (board 28d) and revokes nothing itself.
+  const revokes = [...html.matchAll(/<button type="button"[^>]*aria-haspopup="dialog"[^>]*aria-label="Revoke ([^"]*)"[^>]*>Revoke<\/button>/g)].map((match) => match[1]);
   assert.deepEqual(revokes, ["Learning app", "Browser extension"], "a revoked key has no row");
+  assert.ok(!html.includes("/revoke"), "nothing on the page revokes a key by itself");
   assert.doesNotMatch(html, /Revoked|>Old</);
   assert.equal(keys.length, 3);
 
@@ -161,23 +166,48 @@ test("an account with no keys has no key table", () => {
 
 /** What a dialog holds, drawn open inside its Base UI root (ADR 0010), as the page's popup holds it. */
 const opened = (content: ReactNode): string => renderToStaticMarkup(<Dialog.Root open>{content}</Dialog.Root>);
+/** The same, for a confirmation: Base UI's alert dialog. */
+const confirming = (content: ReactNode): string => renderToStaticMarkup(<AlertDialog.Root open>{content}</AlertDialog.Root>);
 
-test("the key-created dialog holds the key's name, its secret, Copy, the once-only note, and the ways to close it", () => {
+const LEARNING_APP: KeyRow = {
+  keyId: 2,
+  name: "Learning app",
+  prefix: "lx_7f3a9c21…",
+  created: "27 Sep 2026",
+  lastUsed: "never",
+  endpoints: ALL_ENDPOINTS,
+  expires: "Never",
+};
+
+test("once the key is made, the create dialog holds it in the form's place: the title, its summary, the secret with Copy, the note and Done", () => {
   const secret = `lx_${"ab".repeat(32)}`;
-  const dialog = opened(<KeyCreated name="Learning app" secret={secret} />);
-  assert.match(dialog, /<h2[^>]*>Key created<\/h2>/);
-  assert.match(dialog, />Learning app</);
-  assert.ok(dialog.includes(`>${secret}<`));
-  assert.match(dialog, /Copy<\/button>/);
-  assert.match(dialog, /Copy it now\. You won(?:'|&#x27;)t be able to see it again\./);
-  // × and Done close it; neither goes anywhere.
-  assert.match(dialog, /<button type="button"[^>]*aria-label="Close"/);
-  assert.match(dialog, /<button type="button"[^>]*>Done<\/button><\/div>$/);
-  assert.doesNotMatch(dialog, /href=/);
+  const result = opened(<KeyResult keyRow={LEARNING_APP} secret={secret} />);
+  // Board 28e, in order, and nothing of the form left.
+  assert.match(
+    result,
+    new RegExp(
+      `^<h2[^>]*>Key created</h2><p[^>]*>Learning app · All endpoints · Never expires</p><div[^>]*><p[^>]*data-secret="true">${secret}</p>` +
+        `<button[^>]*type="button"[^>]*>.*Copy</button></div><p[^>]*>Copy it now\\. You won(?:'|&#x27;)t be able to see it again\\.</p>` +
+        `<div[^>]*><button type="button"[^>]*>Done</button></div>$`,
+    ),
+  );
+  assert.doesNotMatch(result, /<form|<input|aria-label="Close"|href=/);
+
+  // Limited and expiring: how many endpoints, and the day.
+  const limited = opened(<KeyResult keyRow={{ ...LEARNING_APP, name: "Browser extension", endpoints: { kind: "only", endpoints: ["lookup", "inflect"] }, expires: "27 Dec 2026" }} secret={secret} />);
+  assert.match(limited, />Browser extension · 2 endpoints · Expires 27 Dec 2026</);
+});
+
+test("the revoke confirmation names the key and its prefix, then Cancel and Revoke key in warning", () => {
+  const dialog = confirming(<RevokeKey keyRow={LEARNING_APP} onConfirm={() => {}} />);
+  assert.match(dialog, /^<h2[^>]*>Revoke “Learning app”\?<\/h2>/);
+  assert.match(dialog, /<p[^>]*>Any app using lx_7f3a9c21… will stop working right away\. This can(?:'|&#x27;)t be undone\.<\/p>/);
+  assert.match(dialog, /<button type="button"[^>]*>Cancel<\/button><button class="([^"]*)" type="button">Revoke key<\/button><\/div>$/);
+  assert.match(/>Cancel<\/button><button class="([^"]*)"/.exec(dialog)?.[1] ?? "", /bg-warning/, "Revoke key is filled in warning");
 });
 
 test("the delete confirmation says what deleting does, then Cancel and Delete account", () => {
-  const dialog = opened(<DeleteAccount warning={deleteWarning(2)} csrf={CSRF} />);
+  const dialog = confirming(<DeleteAccount warning={deleteWarning(2)} csrf={CSRF} />);
   assert.match(dialog, /<h2[^>]*>Delete your account\?<\/h2>/);
   assert.match(dialog, /Your 2 API keys will be revoked right away, and any app using them will stop working\. This can(?:'|&#x27;)t be undone\./);
   assert.match(dialog, /<button type="button"[^>]*>Cancel<\/button><button[^>]*type="button"[^>]*>Delete account<\/button><\/div>$/);
@@ -186,7 +216,7 @@ test("the delete confirmation says what deleting does, then Cancel and Delete ac
 
 /** The create-key dialog's form, opened holding this draft. */
 const createForm = (opening: CreateKeyDraft = EMPTY_DRAFT): string =>
-  opened(<CreateKeyForm defaultName="Key 4" csrf={CSRF} onCreated={() => {}} opening={opening} />);
+  opened(<CreateKeyForm defaultName="Key 4" status={{ kind: "editing" }} onEdit={() => {}} onSend={() => {}} opening={opening} />);
 
 /** Each Base UI control of a role in a form, as its label's text and whether it is checked. */
 const controls = (form: string, role: string) =>
@@ -228,6 +258,11 @@ test("the create-key dialog asks for an optional name, names the default, offers
   assert.match(form, /<button type="button"[^>]*>Cancel<\/button><button[^>]*type="submit">Create key<\/button><\/div><\/form>$/);
   assert.equal([...form.matchAll(/type="submit"/g)].length, 1);
   assert.doesNotMatch(form, /role="alert"|aria-invalid|disabled=""/);
+});
+
+test("while the form is on its way, Cancel and Create key are both disabled, so the dialog waits for its answer", () => {
+  const sending = opened(<CreateKeyForm defaultName="Key 4" status={{ kind: "sending" }} onEdit={() => {}} onSend={() => {}} />);
+  assert.match(sending, /<button type="button"[^>]*disabled=""[^>]*>Cancel<\/button><button[^>]*type="submit" disabled="">Create key<\/button>/);
 });
 
 /** A problem as the dialog says it: in `warning`, at the hint's size. */

@@ -21,10 +21,10 @@
 // Every action answers one `ActionAnswer` in JSON (app/dashboardActions.ts):
 // the page sends each with fetch from its dialogs and key rows, and changes in
 // place (#187). A new key's secret is in the create answer alone, shown once
-// in board 29's dialog, and never stored on the server. A create form the
-// server refuses (Only some with nothing ticked, an expiry the dialog does not
-// offer, a name too long) is answered 400 with each problem by its field, and
-// no key is made.
+// in the create dialog (board 28e), and never stored on the server. A create
+// form the server refuses (Only some with nothing ticked, an expiry the dialog
+// does not offer, a name too long) is answered 400 with each problem by its
+// field, and no key is made.
 //
 // The dashboard page is for a signed-in developer only: without a session it
 // answers 303 to sign-in.
@@ -34,7 +34,7 @@ import { csrfMatches, csrfToken, sessionAccount } from "@lexema/accounts/session
 import { createAccountKey, listAccountKeys, revokeAccountKey } from "@lexema/api/ownedKeys.ts";
 import { fromD1, type TransactionalDatabase } from "@lexema/lookup/database.ts";
 import { accessOf, defaultKeyName, draftOf, readDraft } from "../app/createKeyForm.ts";
-import { CSRF_FIELD, DASHBOARD, DELETE_CONFIRM_FIELD, DELETE_CONFIRMATION, type ActionAnswer } from "../app/dashboardActions.ts";
+import { CSRF_FIELD, DASHBOARD, DELETE_CONFIRM_FIELD, DELETE_CONFIRMATION, UNREACHABLE, type ActionAnswer } from "../app/dashboardActions.ts";
 import { keyRowOf } from "../app/dashboardView.ts";
 import { DEVELOPERS_SEGMENT } from "./hosts.ts";
 import type { FetchHandler } from "./rateLimit.ts";
@@ -183,7 +183,7 @@ export async function answerDashboard(request: Request, route: DashboardRoute, c
     // The database's message stays in the log. Nothing is half done: each
     // action is one statement, and account deletion one transaction.
     console.error("dashboard action failed", { route: route.kind }, failure);
-    return refuse(503, "That could not be done. Try again later.");
+    return refuse(503, UNREACHABLE);
   }
 }
 

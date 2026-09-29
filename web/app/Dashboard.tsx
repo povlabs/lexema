@@ -5,9 +5,10 @@
 // `dashboardView.ts`; the wiring that reads the session and D1 is
 // `(developers)/developer-site/dashboard/`.
 //
-// Create key, Revoke and Delete account send their action with fetch, and
-// three dialogs open over the page in place: the new key's name (board 28b),
-// its secret (board 29) and the delete confirmation (board 30)
+// Create key, Revoke and Delete account open their dialogs over the page in
+// place and send their action with fetch: the new key's form, then its secret
+// in the same dialog (boards 28b and 28e), the revoke confirmation (28d) and
+// the delete confirmation (30). Toasts say what happened (28f)
 // (DashboardFlow.tsx).
 //
 // On a phone (below `sm`, board 28m) the key table becomes one card per key,

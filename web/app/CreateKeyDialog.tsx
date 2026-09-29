@@ -13,9 +13,10 @@
 // What the form holds and why it cannot be sent are one value
 // (createKeyForm.ts): each problem shows in `warning` under its own field,
 // and Create key is pressable only while there is none, so Only some with
-// nothing ticked cannot be sent. Create key sends the form with fetch, with
-// the session's CSRF token; the new key then opens board 29 in place, and a
-// refusal is said in this dialog. Cancel and Escape close it.
+// nothing ticked cannot be sent. Create key hands the form to the dashboard,
+// which sends it (DashboardFlow.tsx); a refusal is said in this dialog, and
+// the new key takes the dialog's place (board 28e, `KeyResult`). Cancel and
+// Escape close it.
 
 import { Checkbox } from "@base-ui/react/checkbox";
 import { CheckboxGroup } from "@base-ui/react/checkbox-group";
@@ -23,6 +24,7 @@ import { Dialog } from "@base-ui/react/dialog";
 import { Radio } from "@base-ui/react/radio";
 import { RadioGroup } from "@base-ui/react/radio-group";
 import { useState, type FormEvent } from "react";
+import { CopySecret } from "./CopySecret";
 import { KEY_LIFETIMES, keyLifetime, LIFETIME_LABEL, type KeyLifetime } from "@lexema/api/keyAccess.ts";
 import { KEY_NAME_MAX } from "@lexema/api/ownedKeys.ts";
 import { ENDPOINTS, type Endpoint } from "@lexema/api/units.ts";
@@ -38,9 +40,9 @@ import {
   type CreateKeyField,
   type CreateKeyStatus,
 } from "./createKeyForm.ts";
-import { CREATE_KEY_ACTION, CSRF_FIELD, sendAction, UNREACHABLE } from "./dashboardActions.ts";
 import type { KeyRow } from "./dashboardView.ts";
 import { ChevronIcon } from "./icons";
+import { createdSummary } from "./keyFlow.ts";
 import { CheckIcon } from "./MenuIcons";
 import {
   CREATE_KEY_ACTIONS,
@@ -60,8 +62,14 @@ import {
   CREATE_KEY_SELECT_WRAP,
   CREATE_KEY_SUBMIT,
   CREATE_KEY_TICK,
-  DELETE_CANCEL,
+  DIALOG_CANCEL,
   DIALOG_FAILURE,
+  KEY_CREATED_ACTIONS,
+  KEY_CREATED_NOTE,
+  KEY_CREATED_SUMMARY,
+  KEY_DONE,
+  KEY_SECRET,
+  KEY_SECRET_TEXT,
   MODAL_TITLE,
 } from "./styles.ts";
 
@@ -81,23 +89,29 @@ function Problem({ field, message }: { field: CreateKeyField; message: string | 
 const describedBy = (hint: string | undefined, field: CreateKeyField, message: string | undefined): string | undefined =>
   [hint, message === undefined ? undefined : problemId(field)].filter((id) => id !== undefined).join(" ") || undefined;
 
-/** What the create-key dialog holds: drawn inside its `Dialog.Popup`, it opens on board 28b's defaults unless given a draft. */
+/**
+ * What the create-key dialog holds before the key is made: drawn inside its
+ * `Dialog.Popup`, it opens on board 28b's defaults unless given a draft.
+ * `status` is where the sent form stands; `onEdit` says the form changed,
+ * and `onSend` takes the fields to send.
+ */
 export function CreateKeyForm({
   defaultName,
-  csrf,
-  onCreated,
+  status,
+  onEdit,
+  onSend,
   opening = EMPTY_DRAFT,
 }: {
   defaultName: string;
-  csrf: string;
-  onCreated: (key: KeyRow, secret: string) => void;
+  status: CreateKeyStatus;
+  onEdit: () => void;
+  onSend: (fields: URLSearchParams) => void;
   opening?: CreateKeyDraft;
 }) {
   const [typed, setTyped] = useState(opening.name);
   const [scope, setScope] = useState<"all" | "some">(opening.scope === ENDPOINT_SCOPE.some ? ENDPOINT_SCOPE.some : ENDPOINT_SCOPE.all);
   const [ticked, setTicked] = useState<readonly Endpoint[]>(opening.ticked);
   const [expires, setExpires] = useState<KeyLifetime>(opening.expires === "unknown" ? "never" : opening.expires);
-  const [status, setStatus] = useState<CreateKeyStatus>({ kind: "editing" });
 
   const draft: CreateKeyDraft = { name: nameOf(typed), scope, ticked, strayTick: false, expires };
   const problems = shownProblems(draft, status);
@@ -108,30 +122,12 @@ export function CreateKeyForm({
   /** Any edit: the form is being filled in again. */
   const edit = <T,>(set: (value: T) => void) => (value: T) => {
     set(value);
-    setStatus((now) => (now.kind === "sending" ? now : { kind: "editing" }));
+    onEdit();
   };
 
   const send = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!canSend(draft, status)) return;
-    const fields = draftFields(draft);
-    fields.set(CSRF_FIELD, csrf);
-    setStatus({ kind: "sending" });
-    void sendAction(CREATE_KEY_ACTION, fields).then((answer) => {
-      switch (answer.outcome) {
-        case "created":
-          onCreated(answer.key, answer.secret);
-          return;
-        case "refused-form":
-          setStatus({ kind: "refused", problems: answer.problems });
-          return;
-        case "refused":
-          setStatus({ kind: "failed", message: answer.message });
-          return;
-        default:
-          setStatus({ kind: "failed", message: UNREACHABLE });
-      }
-    });
+    if (canSend(draft, status)) onSend(draftFields(draft));
   };
 
   return (
@@ -235,12 +231,39 @@ export function CreateKeyForm({
         )}
 
         <div className={CREATE_KEY_ACTIONS}>
-          <Dialog.Close className={DELETE_CANCEL}>Cancel</Dialog.Close>
+          <Dialog.Close className={DIALOG_CANCEL} disabled={status.kind === "sending"}>
+            Cancel
+          </Dialog.Close>
           <button className={CREATE_KEY_SUBMIT} type="submit" disabled={!canSend(draft, status)}>
             Create key
           </button>
         </div>
       </form>
+    </>
+  );
+}
+
+/**
+ * What the create-key dialog holds once the key is made (board 28e): its
+ * name, endpoints and expiry, the secret with Copy, the note that it is shown
+ * once, and Done. The secret came in the create answer and goes when the
+ * dialog closes.
+ */
+export function KeyResult({ keyRow, secret }: { keyRow: KeyRow; secret: string }) {
+  return (
+    <>
+      <Dialog.Title className={MODAL_TITLE}>Key created</Dialog.Title>
+      <p className={KEY_CREATED_SUMMARY}>{createdSummary(keyRow)}</p>
+      <div className={KEY_SECRET}>
+        <p className={KEY_SECRET_TEXT} data-secret>
+          {secret}
+        </p>
+        <CopySecret text={secret} autoFocus />
+      </div>
+      <Dialog.Description className={KEY_CREATED_NOTE}>Copy it now. You won't be able to see it again.</Dialog.Description>
+      <div className={KEY_CREATED_ACTIONS}>
+        <Dialog.Close className={KEY_DONE}>Done</Dialog.Close>
+      </div>
     </>
   );
 }
