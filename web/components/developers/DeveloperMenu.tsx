@@ -7,10 +7,15 @@
 // Base UI's dialog supplies the behaviour (ADR 0010), as the full-screen sheet
 // it is: the ☰ opens it, × and Escape close it, the focus stays inside while
 // it is open, and it returns to the ☰ when it closes.
+//
+// The sheet and the ☰ hide at `sm`, but CSS cannot close a dialog: widened
+// past `sm` while open, it would stay open, unseen, and keep the page from
+// scrolling. So the menu closes itself when `sm` starts to match (#196).
 
 import { Dialog } from "@base-ui/react/dialog";
-import type { ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { CloseIcon, MenuIcon } from "@/components/shared/MenuIcons";
+import { smMedia } from "@/lib/shared/breakpoint.ts";
 import {
   DEV_MENU_BAR,
   DEV_MENU_CLOSE,
@@ -34,8 +39,19 @@ export interface DeveloperMenuLink {
  * settings first among the links, and the account's email and Sign out as the foot.
  */
 export function DeveloperMenu({ name, links, children }: { name: ReactNode; links: readonly DeveloperMenuLink[]; children: ReactNode }) {
+  const [open, setOpen] = useState(false);
+  useEffect(() => {
+    if (!open) return;
+    const sm = smMedia();
+    const closeAtSm = (event: MediaQueryListEvent) => {
+      if (event.matches) setOpen(false);
+    };
+    sm.addEventListener("change", closeAtSm);
+    return () => sm.removeEventListener("change", closeAtSm);
+  }, [open]);
+
   return (
-    <Dialog.Root>
+    <Dialog.Root open={open} onOpenChange={setOpen}>
       <Dialog.Trigger className={DEV_MENU_TOGGLE} aria-label="Menu">
         <MenuIcon className={DEV_MENU_ICON} />
       </Dialog.Trigger>

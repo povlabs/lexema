@@ -174,3 +174,12 @@
   --default-font-family: var(--font-serif);
   --default-mono-font-family: var(--font-mono);
 }
+
+/* The `sm` breakpoint, where the developer site's ☰ menu gives way to the full
+   bar. Tailwind's default is 40rem; it is written here so the width has one
+   home: every `sm:` class reads it, and `static` keeps it on `:root` as a
+   variable, so web/lib/shared/breakpoint.ts reads the same width at run time
+   instead of typing a copy of it (#196). */
+@theme static {
+  --breakpoint-sm: 40rem;
+}
