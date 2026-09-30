@@ -530,9 +530,13 @@ CREATE TABLE report_opening (
 
 -- A key that may call the JSON API at api.lexema.fyi/v1 (src/api/keys.ts). Only the
 -- SHA-256 of the key is stored, never the key: it is shown once, when it is
--- created. The limits are the key's own (Huey, #148): requests a minute,
--- counted in api_key_minute, and units a day, recorded in api_key_usage. A
--- revoked key stays, so its usage keeps its owner.
+-- created. Its calls are recorded per day in api_key_usage, and its requests a
+-- minute are counted in api_key_minute. A revoked key stays, so its usage keeps
+-- its owner.
+--
+-- `per_minute_limit` is an admin key's own limit, set with the CLI. An owned
+-- key has none: its rate is its account's (#161), so the table CHECK below makes
+-- the limit present exactly when `owner_account_id` is NULL.
 --
 -- `owner_account_id` is the developer account that made the key in the
 -- dashboard (an owned key, src/api/ownedKeys.ts), or NULL for an admin key made
@@ -549,8 +553,7 @@ CREATE TABLE api_key (
   key_id           INTEGER PRIMARY KEY,
   key_hash         TEXT    NOT NULL UNIQUE CHECK (length(key_hash) = 64),
   label            TEXT    NOT NULL CHECK (length(label) BETWEEN 1 AND 200),
-  per_minute_limit INTEGER NOT NULL CHECK (per_minute_limit > 0),
-  daily_units      INTEGER NOT NULL CHECK (daily_units > 0),
+  per_minute_limit INTEGER CHECK (per_minute_limit > 0),  -- NULL for an owned key
   created_at       TEXT    NOT NULL,  -- ISO-8601
   revoked_at       TEXT,              -- ISO-8601; NULL while the key is live
   owner_account_id INTEGER REFERENCES developer_account(account_id),
@@ -561,7 +564,8 @@ CREATE TABLE api_key (
   last_used_at     TEXT,              -- ISO-8601; NULL until the key is first accepted
   endpoints        TEXT    CHECK (endpoints IS NULL OR (json_valid(endpoints) AND json_type(endpoints) = 'array'
                                                         AND json_array_length(endpoints) >= 1)),
-  expires_at       TEXT               -- ISO-8601; NULL for a key that never expires
+  expires_at       TEXT,              -- ISO-8601; NULL for a key that never expires
+  CHECK ((owner_account_id IS NULL) = (per_minute_limit IS NOT NULL))
 ) STRICT;
 
 CREATE INDEX api_key_by_owner ON api_key (owner_account_id);
@@ -576,11 +580,11 @@ CREATE TABLE api_key_minute (
   PRIMARY KEY (key_id, minute)
 ) STRICT;
 
--- A key's units in one UTC day, by the weights in src/api/units.ts.
+-- A key's calls in one UTC day, counted as src/api/calls.ts counts them.
 CREATE TABLE api_key_usage (
   key_id INTEGER NOT NULL REFERENCES api_key(key_id),
   day    TEXT    NOT NULL CHECK (day GLOB '[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]'),
-  units  INTEGER NOT NULL CHECK (units >= 0),
+  calls  INTEGER NOT NULL CHECK (calls >= 0),
   PRIMARY KEY (key_id, day)
 ) STRICT;
 

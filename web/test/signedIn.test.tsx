@@ -85,7 +85,7 @@ const key = (keyId: number, name: string, extra: Partial<OwnedKey> = {}): OwnedK
   ...extra,
 });
 
-/** Two live keys and a revoked one; units on three days of the window. */
+/** Two live keys and a revoked one; calls on three days of the window. */
 function sample() {
   const days = usageDays(NOW);
   const keys = [
@@ -97,10 +97,10 @@ function sample() {
     days,
     keys.map((each) => each.keyId),
     [
-      { key_id: 2, day: days[29], units: 1200 },
-      { key_id: 3, day: days[29], units: 40 },
-      { key_id: 2, day: days[10], units: 600 },
-      { key_id: 1, day: days[0], units: 17000 },
+      { key_id: 2, day: days[29], calls: 1200 },
+      { key_id: 3, day: days[29], calls: 40 },
+      { key_id: 2, day: days[10], calls: 600 },
+      { key_id: 1, day: days[0], calls: 17000 },
     ],
   );
   return { days, keys, view: dashboardView(profile, keys, usage, NOW), settings: settingsView(profile, keys) };
@@ -242,11 +242,11 @@ test("signed in, the docs, the pricing page and the 404 carry the same avatar; s
   }
 });
 
-test("the dashboard shows 30 days of units in total, revoked keys' too, today last, and no per-key rows", () => {
+test("the dashboard shows 30 days of calls in total, revoked keys' too, today last, and no per-key rows", () => {
   const { days, view } = sample();
   const html = renderToStaticMarkup(<Dashboard view={view} csrf={CSRF} made={3} />);
-  assert.match(html, /Last 30 days · 18,840 units/);
-  const bars = [...html.matchAll(/data-day="([^"]+)" data-units="(\d+)"/g)].map((match) => [match[1], Number(match[2])]);
+  assert.match(html, /Last 30 days · 18,840 calls/);
+  const bars = [...html.matchAll(/data-day="([^"]+)" data-calls="(\d+)"/g)].map((match) => [match[1], Number(match[2])]);
   const expected = days.map((day, i) => [day, ({ 0: 17000, 10: 600, 29: 1240 } as Record<number, number>)[i] ?? 0]);
   assert.deepEqual(bars, expected);
   assert.equal([...html.matchAll(/data-usage="/g)].length, 1, "one chart, the account's");
@@ -268,7 +268,7 @@ test("an account with no keys has no key table", () => {
   const view = dashboardView(profile, [], AccountUsage.of(usageDays(NOW), [], []), NOW);
   const html = renderToStaticMarkup(<Dashboard view={view} csrf={CSRF} made={0} />);
   assert.doesNotMatch(html, /<table/);
-  assert.match(html, /Last 30 days · 0 units/);
+  assert.match(html, /Last 30 days · 0 calls/);
   assert.equal(view.keys.length, 0);
 });
 

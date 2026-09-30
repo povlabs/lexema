@@ -19,7 +19,7 @@
 // `localhost`. So locally Google's callback is on `localhost`, which relays
 // the browser to the developer site with the same query (#185).
 
-import { API_PREFIX } from "@lexema/api/units.ts";
+import { API_PREFIX } from "@lexema/api/calls.ts";
 import type { FetchHandler } from "./rateLimit.ts";
 
 /** The sites one Worker serves, each on its own host. */

@@ -5,14 +5,14 @@
 //
 // Split from its routes' `page.tsx` so `web/test/developers.test.tsx` can
 // render it. It reads nothing from D1: what it states is `apiReference.ts`,
-// and the unit weights are the API's own map.
+// and how each endpoint counts calls is the API's own map.
 
 import { Fragment, type ReactNode } from "react";
-import { API_PREFIX, UNIT_WEIGHT, type Endpoint } from "@lexema/api/units.ts";
+import { API_PREFIX, CALL_BASIS, type Endpoint } from "@lexema/api/calls.ts";
 import { ORIGIN } from "@/worker/hosts.ts";
 import {
   API_BASE,
-  costText,
+  callText,
   ENDPOINT_REFERENCE,
   ENDPOINTS_IN_ORDER,
   ERRORS,
@@ -311,15 +311,15 @@ const GUIDE_TOPICS: Readonly<Record<Guide, () => ReactNode>> = {
       <Paragraph>{"Send the key in the `X-API-Key` header of every request. A request without a valid key is a `401`."}</Paragraph>
     </Topic>
   ),
-  "units-and-limits": () => (
-    <Topic page={{ kind: "guide", guide: "units-and-limits" }}>
-      <Paragraph>{"Each answer an endpoint gives, a `200` or a `404`, costs the units this table lists, counted per key per UTC day. Every other response costs none."}</Paragraph>
+  "calls-and-limits": () => (
+    <Topic page={{ kind: "guide", guide: "calls-and-limits" }}>
+      <Paragraph>{"Each answer an endpoint gives, a `200` or a `404`, counts the calls this table lists, per key per UTC day. Every other response counts none."}</Paragraph>
       <table className={DOCS_TABLE}>
         <thead>
           <tr>
             <th className={DOCS_TABLE_HEAD} scope="col">Method</th>
             <th className={DOCS_TABLE_HEAD} scope="col">Endpoint</th>
-            <th className={DOCS_TABLE_HEAD} scope="col">Units</th>
+            <th className={DOCS_TABLE_HEAD} scope="col">Calls</th>
           </tr>
         </thead>
         <tbody>
@@ -331,12 +331,12 @@ const GUIDE_TOPICS: Readonly<Record<Guide, () => ReactNode>> = {
                   {`${API_PREFIX}${endpoint}`}
                 </a>
               </td>
-              <td className={DOCS_TABLE_CELL}>{costText(UNIT_WEIGHT[endpoint])}</td>
+              <td className={DOCS_TABLE_CELL}>{callText(CALL_BASIS[endpoint])}</td>
             </tr>
           ))}
         </tbody>
       </table>
-      <Paragraph>{"Each key has its own number of requests per minute. Every request made with a valid key counts, refused ones included, and every response to it carries these headers. Past the limit, the answer is a `429` until the minute ends."}</Paragraph>
+      <Paragraph>{"Each key has its own number of calls per minute. Every request made with a valid key counts, refused ones included, and every response to it carries these headers. Past the limit, the answer is a `429` until the minute ends."}</Paragraph>
       <Rows rows={HEADERS.map((header) => ({ name: header.name, description: header.description }))} />
     </Topic>
   ),

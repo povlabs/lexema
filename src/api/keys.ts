@@ -1,12 +1,11 @@
 // API keys (#150): who may call the API, and with what limits.
 //
 // A key is shown once, when it is created, and stored only as its SHA-256, so
-// the table cannot give a key back. Each key carries its own per-minute
-// request limit and daily unit allowance (Huey, #148: the limit is stored on
-// the key, and counted in D1 rather than with the Worker's rate-limit binding).
-// An admin key is made and revoked with the CLI in src/api/keyCli.ts and has
-// no owner; an owned key is made by a developer account in the dashboard
-// (src/api/ownedKeys.ts). Both are this one kind of row, answered the same way.
+// the table cannot give a key back. An admin key is made and revoked with the
+// CLI in src/api/keyCli.ts, has no owner and carries its own per-minute limit
+// (Huey, #148). An owned key is made by a developer account in the dashboard
+// (src/api/ownedKeys.ts) and carries no limit: its rate is its account's
+// (#161). Both are this one kind of row, answered the same way.
 
 import type { LookupDatabase } from "../lookup/database.js";
 import { endpointsOfColumn, type EndpointScope } from "./keyAccess.js";
@@ -38,22 +37,43 @@ export const DISPLAY_PREFIX_LENGTH = API_KEY_PREFIX.length + 8;
 export const displayPrefix = (key: string): string => key.slice(0, DISPLAY_PREFIX_LENGTH);
 
 /**
- * The limits every key gets unless it is given its own: 60 requests a minute
- * and 20,000 units a day, the values the CLI is documented with (#163 R1.1).
- * A dashboard key always has these.
+ * An owned key's calls a minute until its account's plan sets its rate (#161):
+ * 60, the default Huey ruled for an account with no rate of its own.
  */
-export const DEFAULT_KEY_LIMITS = { perMinuteLimit: 60, dailyUnits: 20_000 } as const;
+export const OWNED_KEY_PER_MINUTE = 60;
 
-/** A key that may call the API, and its limits. */
+/**
+ * Who holds a key, and so where its per-minute limit comes from: an admin key
+ * carries its own, and an owned key takes its account's.
+ */
+export type KeyHolder = { kind: "admin"; perMinuteLimit: number } | { kind: "owned"; accountId: number };
+
+/** A key that may call the API. */
 export interface ApiKey {
   keyId: number;
   label: string;
-  /** Requests it may make in one minute. */
-  perMinuteLimit: number;
-  /** Units it may use in one day. Stored for plans; nothing enforces it yet. */
-  dailyUnits: number;
+  holder: KeyHolder;
   /** The endpoints it may call (#187). */
   endpoints: EndpointScope;
+}
+
+/** The calls a key may make in one minute. */
+export const perMinuteLimit = (key: ApiKey): number =>
+  key.holder.kind === "admin" ? key.holder.perMinuteLimit : OWNED_KEY_PER_MINUTE;
+
+interface KeyRow {
+  key_id: number;
+  label: string;
+  per_minute_limit: number | null;
+  owner_account_id: number | null;
+  endpoints: string | null;
+}
+
+/** A stored key's holder. The schema holds `per_minute_limit` exactly when there is no owner. */
+function holderOf(row: KeyRow): KeyHolder {
+  if (row.owner_account_id !== null) return { kind: "owned", accountId: row.owner_account_id };
+  if (row.per_minute_limit === null) throw new Error(`admin key ${row.key_id} has no per-minute limit`);
+  return { kind: "admin", perMinuteLimit: row.per_minute_limit };
 }
 
 /** Why a request's key was refused. A key both revoked and expired reads as revoked. */
@@ -69,7 +89,7 @@ export type Authentication = { outcome: "accepted"; key: ApiKey } | { outcome: "
  */
 export const ACCEPT_KEY_SQL = `UPDATE api_key SET last_used_at = ?
      WHERE key_hash = ? AND revoked_at IS NULL AND (expires_at IS NULL OR expires_at > ?)
-     RETURNING key_id, label, per_minute_limit, daily_units, endpoints`;
+     RETURNING key_id, label, per_minute_limit, owner_account_id, endpoints`;
 
 /** The key named by its hash: the unique index on `key_hash`. */
 export const KEY_BY_HASH_SQL = `SELECT revoked_at FROM api_key WHERE key_hash = ?`;
@@ -80,20 +100,11 @@ export async function authenticate(db: LookupDatabase, presented: string | null,
   if (key === "") return { outcome: "refused", refusal: "missing" };
   const hash = await hashApiKey(key);
   const at = new Date(now).toISOString();
-  const [row] = await db.all<{ key_id: number; label: string; per_minute_limit: number; daily_units: number; endpoints: string | null }>(
-    ACCEPT_KEY_SQL,
-    [at, hash, at],
-  );
+  const [row] = await db.all<KeyRow>(ACCEPT_KEY_SQL, [at, hash, at]);
   if (row !== undefined) {
     return {
       outcome: "accepted",
-      key: {
-        keyId: row.key_id,
-        label: row.label,
-        perMinuteLimit: row.per_minute_limit,
-        dailyUnits: row.daily_units,
-        endpoints: endpointsOfColumn(row.endpoints),
-      },
+      key: { keyId: row.key_id, label: row.label, holder: holderOf(row), endpoints: endpointsOfColumn(row.endpoints) },
     };
   }
   // Not accepted, yet stored: revoked, or else past its expiry.
@@ -102,11 +113,10 @@ export async function authenticate(db: LookupDatabase, presented: string | null,
   return { outcome: "refused", refusal: stored.revoked_at === null ? "expired" : "revoked" };
 }
 
-/** What a new key is given. */
+/** What a new admin key is given. */
 export interface KeyGrant {
   label: string;
   perMinuteLimit: number;
-  dailyUnits: number;
 }
 
 /** A key just made: the only time `key` exists in the clear. */
@@ -116,8 +126,8 @@ export interface NewKey {
   displayPrefix: string;
 }
 
-export const INSERT_KEY_SQL = `INSERT INTO api_key (key_hash, label, per_minute_limit, daily_units, created_at, display_prefix)
-     VALUES (?, ?, ?, ?, ?, ?) RETURNING key_id`;
+export const INSERT_KEY_SQL = `INSERT INTO api_key (key_hash, label, per_minute_limit, created_at, display_prefix)
+     VALUES (?, ?, ?, ?, ?) RETURNING key_id`;
 
 /** Store a new admin key, one with no owner, and return it. The row holds its hash. */
 export async function createKey(db: LookupDatabase, grant: KeyGrant, now: number): Promise<NewKey> {
@@ -126,7 +136,6 @@ export async function createKey(db: LookupDatabase, grant: KeyGrant, now: number
     await hashApiKey(key),
     grant.label,
     grant.perMinuteLimit,
-    grant.dailyUnits,
     new Date(now).toISOString(),
     displayPrefix(key),
   ]);

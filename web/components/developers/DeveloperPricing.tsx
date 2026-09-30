@@ -1,24 +1,25 @@
-// developers.lexema.fyi/pricing (#166, board 26): the two plans as the board
-// draws them, and what each call costs. Nothing on it takes a payment (#161):
-// Pro's button is disabled, and Enterprise writes to the contact address.
+// developers.lexema.fyi/pricing (#166, board 26): the two plans, and what
+// counts as a call. Nothing on it takes a payment (#161): Pro's button is
+// disabled, and Enterprise writes to the contact address.
 //
-// The cost table is the unit map (src/api/units.ts) grouped by cost; it
-// restates no number of its own.
+// The call table is read from the call map (src/api/calls.ts): any endpoint,
+// then each endpoint counted per word. It restates no count of its own.
 
 import { MAX_BATCH_WORDS } from "@/worker/api/endpoints.ts";
-import { COST_ROWS, costText } from "@/lib/developers/apiReference.ts";
+import { CALL_ROWS, callText } from "@/lib/developers/apiReference.ts";
 import { CONTACT_EMAIL, DeveloperPage } from "./DeveloperPage";
 import { CheckIcon } from "@/components/shared/MenuIcons";
 import type { SignedIn } from "@/lib/developers/signedIn.ts";
 import {
   BUTTON_PRIMARY,
   BUTTON_SECONDARY,
-  COST_ENDPOINTS,
-  COST_ROW,
-  COST_TABLE,
-  COST_UNITS,
-  COSTS,
-  COSTS_HEADING,
+  CALL_ANY,
+  CALL_COUNT,
+  CALL_ENDPOINT,
+  CALL_ROW,
+  CALL_TABLE,
+  CALLS,
+  CALLS_HEADING,
   DEV_HEADING,
   DEV_SHELL,
   PLAN_ACTION,
@@ -62,7 +63,7 @@ export function DeveloperPricing({ signedIn }: { signedIn?: SignedIn } = {}) {
             <p className={PLAN_PRICE}>
               $15<span className={PLAN_PERIOD}>/ month</span>
             </p>
-            <Features items={["50,000 units a day", "Up to 5 API keys", "All endpoints"]} />
+            <Features items={["50,000 calls a day", "Up to 5 API keys", "All endpoints"]} />
             <div className={PLAN_ACTION}>
               <button className={BUTTON_PRIMARY} type="button" disabled>
                 Coming soon
@@ -75,7 +76,7 @@ export function DeveloperPricing({ signedIn }: { signedIn?: SignedIn } = {}) {
               Enterprise
             </h2>
             <p className={PLAN_PRICE}>Contact us</p>
-            <Features items={["Units and keys to fit your use", `Batch sizes above ${MAX_BATCH_WORDS}`, "Invoicing"]} />
+            <Features items={["Calls and keys to fit your use", `Batch sizes above ${MAX_BATCH_WORDS}`, "Invoicing"]} />
             <div className={PLAN_ACTION}>
               <a className={BUTTON_SECONDARY} href={`mailto:${CONTACT_EMAIL}`}>
                 Contact us
@@ -84,24 +85,30 @@ export function DeveloperPricing({ signedIn }: { signedIn?: SignedIn } = {}) {
           </section>
         </div>
 
-        <section className={COSTS} aria-labelledby="costs">
-          <h2 className={COSTS_HEADING} id="costs">
-            What a call costs
+        <section className={CALLS} aria-labelledby="calls">
+          <h2 className={CALLS_HEADING} id="calls">
+            What counts as a call
           </h2>
-          <table className={COST_TABLE}>
+          <table className={CALL_TABLE}>
             <thead className="sr-only">
               <tr>
-                <th scope="col">Endpoints</th>
-                <th scope="col">Cost</th>
+                <th scope="col">Endpoint</th>
+                <th scope="col">Calls</th>
               </tr>
             </thead>
             <tbody>
-              {COST_ROWS.map((row) => (
-                <tr key={row.endpoints.join()} className={COST_ROW} data-cost-row="">
-                  <th className={COST_ENDPOINTS} scope="row">
-                    {row.endpoints.join(", ")}
-                  </th>
-                  <td className={COST_UNITS}>{costText(row.weight)}</td>
+              {CALL_ROWS.map((row) => (
+                <tr key={row.endpoint} className={CALL_ROW} data-call-row="">
+                  {row.endpoint === "any" ? (
+                    <th className={CALL_ANY} scope="row">
+                      Any endpoint
+                    </th>
+                  ) : (
+                    <th className={CALL_ENDPOINT} scope="row">
+                      {row.endpoint}
+                    </th>
+                  )}
+                  <td className={CALL_COUNT}>{callText(row.basis)}</td>
                 </tr>
               ))}
             </tbody>

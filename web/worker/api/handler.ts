@@ -8,14 +8,14 @@
 // A request goes: its `X-API-Key` (401 when missing, unknown, revoked or
 // expired), its key's minute counted in D1 (429 past the key's own limit), its
 // endpoint (403 when the key may not call it, #187) and method, and then the
-// endpoint's answer (./endpoints.ts), charged in units
-// (src/api/units.ts). Every response to a known key carries `RateLimit-Limit`,
+// endpoint's answer (./endpoints.ts), charged in calls
+// (src/api/calls.ts). Every response to a known key carries `RateLimit-Limit`,
 // `RateLimit-Remaining` and `RateLimit-Reset`, errors included.
 
 import { allows } from "@lexema/api/keyAccess.ts";
-import { authenticate, type ApiKey, type KeyRefusal } from "@lexema/api/keys.ts";
-import { endpointOf } from "@lexema/api/units.ts";
-import { chargeUnits, countRequest, type MinuteWindow } from "@lexema/api/usage.ts";
+import { authenticate, perMinuteLimit, type ApiKey, type KeyRefusal } from "@lexema/api/keys.ts";
+import { endpointOf } from "@lexema/api/calls.ts";
+import { chargeCalls, countRequest, type MinuteWindow } from "@lexema/api/usage.ts";
 import { fromD1 } from "@lexema/lookup/database.ts";
 import { error, type ApiContext, type ErrorJson } from "./answer.ts";
 import { ROUTES } from "./endpoints.ts";
@@ -47,7 +47,7 @@ export async function handleApi(request: Request, context: ApiContext): Promise<
     if (!window.admitted) {
       return json(
         429,
-        error("rate_limited", `This key may make ${key.perMinuteLimit} requests a minute. Retry after ${window.resetSeconds} s.`),
+        error("rate_limited", `This key may make ${perMinuteLimit(key)} calls a minute. Retry after ${window.resetSeconds} s.`),
         limits,
       );
     }
@@ -68,7 +68,7 @@ export async function handleApi(request: Request, context: ApiContext): Promise<
     }
 
     const answer = await route.answer(request, url, context);
-    if (answer.charge !== undefined) await chargeUnits(db, key, answer.charge, now);
+    if (answer.charge !== undefined) await chargeCalls(db, key, answer.charge, now);
     return json(answer.status, answer.body, limits);
   } catch (failure) {
     // The database's message names tables and releases: it goes to the log.

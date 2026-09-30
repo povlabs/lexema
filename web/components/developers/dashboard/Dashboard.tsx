@@ -18,7 +18,7 @@
 import { DeveloperPage } from "@/components/developers/DeveloperPage";
 import { CreateKeyControl, DashboardFlow, KeyTable } from "./DashboardFlow";
 import { DashboardTabs } from "./DashboardTabs";
-import { units, type DashboardView, type UsageRow } from "@/lib/developers/dashboardView.ts";
+import { callCount, type DashboardView, type UsageRow } from "@/lib/developers/dashboardView.ts";
 import {
   DASH_CREATE_BUTTON,
   DASH_FIRST_SECTION,
@@ -38,10 +38,10 @@ import {
 
 export { CREATE_KEY_ACTION, DELETE_ACCOUNT_ACTION, revokeKeyAction } from "@/lib/developers/dashboardActions.ts";
 
-/** 30 days of units as bars, oldest first; the last, today, in the accent. Each day is its own box, so the gap between bars is the board's at every width. */
+/** 30 days of calls as bars, oldest first; the last, today, in the accent. Each day is its own box, so the gap between bars is the board's at every width. */
 function UsageBars({ row }: { row: UsageRow }) {
   return (
-    <div className={USAGE_CHART} role="img" aria-label="Units per day, all keys, the last 30 days">
+    <div className={USAGE_CHART} role="img" aria-label="Calls per day, all keys, the last 30 days">
       {row.bars.map((bar, i) => (
         <svg key={bar.day} className={USAGE_DAY} viewBox="0 0 1 100" preserveAspectRatio="none" aria-hidden="true">
           <rect
@@ -51,7 +51,7 @@ function UsageBars({ row }: { row: UsageRow }) {
             width={1}
             height={bar.share * 100}
             data-day={bar.day}
-            data-units={bar.units}
+            data-calls={bar.calls}
           />
         </svg>
       ))}
@@ -88,7 +88,7 @@ export function Dashboard({ view, csrf, made }: { view: DashboardView; csrf: str
                 Usage
               </h2>
               <p className={DASH_USAGE_NOTE} data-usage-total={view.usage.total}>
-                Last 30 days · {units(view.usage.total)} units
+                Last 30 days · {callCount(view.usage.total)} calls
               </p>
             </div>
             <div className={USAGE_CARD} data-usage="total">

@@ -1,4 +1,4 @@
-// API keys, unit weights and the per-key counters (#150), over the real
+// API keys and the per-key counters (#150, #201), over the real
 // schema. The handler that uses them is web/test/api.test.ts.
 
 import assert from "node:assert/strict";
@@ -16,8 +16,7 @@ import {
   authenticate,
   hashApiKey,
 } from "../src/api/keys.js";
-import { UNIT_WEIGHT, unitCost } from "../src/api/units.js";
-import { CHARGE_UNITS_SQL, COUNT_MINUTE_SQL, SWEEP_MINUTES_SQL } from "../src/api/usage.js";
+import { CHARGE_CALLS_SQL, COUNT_MINUTE_SQL, SWEEP_MINUTES_SQL } from "../src/api/usage.js";
 import { fromNodeSqlite } from "../src/lookup/database.js";
 
 const SCHEMA = readFileSync(fileURLToPath(new URL("../src/db/schema.sql", import.meta.url)), "utf8");
@@ -28,21 +27,6 @@ function schemaDb(): DatabaseSync {
   db.exec(SCHEMA);
   return db;
 }
-
-test("every endpoint in the brief's table has its unit weight, and a batch is charged per word", () => {
-  assert.deepEqual(UNIT_WEIGHT, {
-    lookup: { per: "request", units: 2 },
-    lemmatize: { per: "request", units: 1 },
-    exists: { per: "request", units: 1 },
-    inflect: { per: "request", units: 2 },
-    suggest: { per: "request", units: 3 },
-    nearby: { per: "request", units: 5 },
-    random: { per: "request", units: 2 },
-    "lookup/batch": { per: "word", units: 1 },
-  });
-  assert.equal(unitCost({ endpoint: "lookup" }), 2);
-  assert.equal(unitCost({ endpoint: "lookup/batch", words: 37 }), 37);
-});
 
 test("every key, minute and usage read or write is on a primary key or an index", () => {
   const db = schemaDb();
@@ -67,9 +51,9 @@ test("every key, minute and usage read or write is on a primary key or an index"
   // foreign keys through their primary keys, and SQLite accepts an upsert's
   // conflict target only when a primary key or unique index backs it.
   for (const [sql, params] of [
-    [INSERT_KEY_SQL, ["0".repeat(64), "k", 1, 1, "t", "lx_00000000"]],
+    [INSERT_KEY_SQL, ["0".repeat(64), "k", 1, "t", "lx_00000000"]],
     [COUNT_MINUTE_SQL, [1, 100]],
-    [CHARGE_UNITS_SQL, [1, "2026-09-27", 2]],
+    [CHARGE_CALLS_SQL, [1, "2026-09-27", 2]],
   ] as const) {
     const plan = planOf(sql, [...params]);
     assert.ok(!plan.some((step) => /\bSCAN\b/.test(step)), `${sql}\n${plan.join("\n")}`);
@@ -81,7 +65,7 @@ test("the key CLI prints a new key once, stores only its hash, and revokes it", 
   const db = fromNodeSqlite(sqlite);
 
   const created = await runKeyCommand(
-    ["create", "--label", "learning app", "--per-minute", "60", "--daily-units", "20000"],
+    ["create", "--label", "learning app", "--per-minute", "60"],
     db,
     NOW,
   );
@@ -92,8 +76,9 @@ test("the key CLI prints a new key once, stores only its hash, and revokes it", 
   assert.equal(stored.length, 1);
   assert.equal(stored[0].key_hash, await hashApiKey(key));
   assert.ok(!Object.values(stored[0]).includes(key));
-  // An admin key: no owner, and its first characters kept to name it by.
+  // An admin key: no owner, its own limit, and its first characters kept to name it by.
   assert.equal(stored[0].owner_account_id, null);
+  assert.equal(stored[0].per_minute_limit, 60);
   assert.equal(stored[0].display_prefix, key.slice(0, 11));
   assert.equal((await authenticate(db, key, NOW)).outcome, "accepted");
 
@@ -101,8 +86,34 @@ test("the key CLI prints a new key once, stores only its hash, and revokes it", 
   assert.deepEqual(await authenticate(db, key, NOW), { outcome: "refused", refusal: "revoked" });
   assert.deepEqual(await runKeyCommand(["revoke", "2"], db, NOW), { out: "no key 2", status: 1 });
 
-  for (const args of [["create", "--label", "x", "--per-minute", "0", "--daily-units", "5"], ["create"], ["revoke"], ["list"]]) {
+  const refused = [
+    ["create", "--label", "x", "--per-minute", "0"],
+    ["create", "--label", "x", "--per-minute", "60", "--daily-units", "5"],
+    ["create"],
+    ["revoke"],
+    ["list"],
+  ];
+  for (const args of refused) {
     assert.equal((await runKeyCommand(args, db, NOW)).status, 1, args.join(" "));
   }
   assert.equal(sqlite.prepare("SELECT count(*) AS keys FROM api_key").get()?.keys, 1);
+});
+
+test("the schema refuses an owned key with a per-minute limit of its own, and an admin key without one", () => {
+  const db = schemaDb();
+  db.exec("INSERT INTO developer_account (account_id, created_at) VALUES (1, '2026-09-27T12:00:00.000Z')");
+  let n = 0;
+  const insert = (perMinuteLimit: number | null, owner: number | null) =>
+    db
+      .prepare(
+        `INSERT INTO api_key (key_hash, label, per_minute_limit, created_at, display_prefix, owner_account_id)
+         VALUES (?, 'k', ?, '2026-09-27T12:00:00.000Z', 'lx_00000000', ?)`,
+      )
+      .run(String(n++).padStart(64, "0"), perMinuteLimit, owner);
+
+  assert.throws(() => insert(60, 1), /CHECK constraint failed/);
+  assert.throws(() => insert(null, null), /CHECK constraint failed/);
+  insert(null, 1);
+  insert(60, null);
+  assert.equal(db.prepare("SELECT count(*) AS keys FROM api_key").get()?.keys, 2);
 });

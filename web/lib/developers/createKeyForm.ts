@@ -8,7 +8,7 @@
 
 import { ALL_ENDPOINTS, expiresAt, keyLifetime, onlyEndpoints, type EndpointScope, type KeyAccess, type KeyLifetime } from "@lexema/api/keyAccess.ts";
 import { KEY_NAME_MAX, keyName, type KeyName } from "@lexema/api/ownedKeys.ts";
-import { ENDPOINTS, type Endpoint } from "@lexema/api/units.ts";
+import { ENDPOINTS, type Endpoint } from "@lexema/api/calls.ts";
 
 /** The form's field carrying the key's name. */
 export const KEY_NAME_FIELD = "name";

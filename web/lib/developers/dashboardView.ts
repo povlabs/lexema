@@ -22,7 +22,7 @@ const MINUTE = 60_000;
 const HOUR = 60 * MINUTE;
 const DAY = 24 * HOUR;
 
-const ago = (count: number, unit: string): string => `${count} ${unit}${count === 1 ? "" : "s"} ago`;
+const ago = (count: number, span: string): string => `${count} ${span}${count === 1 ? "" : "s"} ago`;
 
 /** When a key was last used: `never`, `just now`, `2 minutes ago`, … and past 30 days its date. */
 export function lastUsed(iso: string | null, now: number): string {
@@ -35,13 +35,13 @@ export function lastUsed(iso: string | null, now: number): string {
   return shortDate(iso);
 }
 
-/** A count of units with its thousands grouped: `18,240`. */
-export const units = (count: number): string => count.toLocaleString("en-US");
+/** A count of calls with its thousands grouped: `18,240`. */
+export const callCount = (count: number): string => count.toLocaleString("en-US");
 
-/** One day's bar: its day, its units, and its height as a share of the tallest day, 0 to 1. */
+/** One day's bar: its day, its calls, and its height as a share of the tallest day, 0 to 1. */
 export interface UsageBar {
   day: string;
-  units: number;
+  calls: number;
   share: number;
 }
 
@@ -54,7 +54,7 @@ export interface UsageRow {
 function usageRow(days: readonly string[], perDay: readonly number[]): UsageRow {
   const tallest = Math.max(0, ...perDay);
   return {
-    bars: days.map((day, i) => ({ day, units: perDay[i], share: tallest === 0 ? 0 : perDay[i] / tallest })),
+    bars: days.map((day, i) => ({ day, calls: perDay[i], share: tallest === 0 ? 0 : perDay[i] / tallest })),
     total: perDay.reduce((sum, count) => sum + count, 0),
   };
 }
@@ -98,7 +98,7 @@ export interface DashboardView {
   signedIn: SignedIn;
   /** The live keys, oldest first. */
   keys: readonly KeyRow[];
-  /** Every key's units added up, revoked keys' too: their calls were made. */
+  /** Every key's calls added up, revoked keys' too: they were made. */
   usage: UsageRow;
 }
 
