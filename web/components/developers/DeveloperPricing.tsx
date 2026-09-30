@@ -11,13 +11,11 @@
 // The call table is read from the call map (src/api/calls.ts): any endpoint,
 // then each endpoint counted per word. It restates no count of its own.
 
-import { Button } from "@base-ui/react/button";
 import { PLAN_TERMS, type PlanId, type StripePlanId } from "@lexema/billing/plans.ts";
 import type { ReactNode } from "react";
 import { CALL_ROWS, callText } from "@/lib/developers/apiReference.ts";
-import { CHECKOUT_ACTION, PLAN_FIELD } from "@/lib/developers/billingActions.ts";
-import { CSRF_FIELD } from "@/lib/developers/dashboardActions.ts";
 import type { PostingVisitor } from "@/lib/developers/signedIn.ts";
+import { ChoosePlanForm } from "./BillingForms";
 import { CONTACT_EMAIL, DeveloperPage } from "./DeveloperPage";
 import { CheckIcon } from "@/components/shared/MenuIcons";
 import {
@@ -94,20 +92,6 @@ function PlanCard({ plan, price, lines, action }: { plan: PlanId; price: ReactNo
   );
 }
 
-/** Choose Starter or Pro: the plan, and signed in the session's CSRF token, posted to Checkout. */
-function ChooseForm({ plan, visitor }: { plan: StripePlanId; visitor: PostingVisitor | undefined }) {
-  const { name, featured } = PLAN_TERMS[plan];
-  return (
-    <form method="post" action={CHECKOUT_ACTION}>
-      <input type="hidden" name={PLAN_FIELD} value={plan} />
-      {visitor !== undefined && <input type="hidden" name={CSRF_FIELD} value={visitor.csrf} />}
-      <Button className={featured ? BUTTON_PRIMARY : BUTTON_SECONDARY} type="submit">
-        Choose {name}
-      </Button>
-    </form>
-  );
-}
-
 export function DeveloperPricing({ visitor }: { visitor?: PostingVisitor } = {}) {
   return (
     // Board 26 draws the bar with neither page marked.
@@ -127,7 +111,9 @@ export function DeveloperPricing({ visitor }: { visitor?: PostingVisitor } = {})
                 </>
               }
               lines={stripePlanLines(plan)}
-              action={<ChooseForm plan={plan} visitor={visitor} />}
+              action={
+                <ChoosePlanForm plan={plan} csrf={visitor?.csrf} className={PLAN_TERMS[plan].featured ? BUTTON_PRIMARY : BUTTON_SECONDARY} />
+              }
             />
           ))}
           <PlanCard

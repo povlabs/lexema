@@ -8,6 +8,7 @@ import { PROVIDER_NAME } from "@lexema/accounts/providers.ts";
 import { LIFETIME_LABEL, type EndpointScope } from "@lexema/api/keyAccess.ts";
 import type { OwnedKey } from "@lexema/api/ownedKeys.ts";
 import type { AccountUsage } from "@lexema/api/usage.ts";
+import { PLAN_TERMS, type PlanState, type Serving, type StripePlan } from "@lexema/billing/plans.ts";
 import { signedInOf, type SignedIn } from "./signedIn.ts";
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -93,6 +94,24 @@ export const keyRowOf = (key: OwnedKey, now: number): KeyRow => ({
 /** The account's keys that are not revoked, oldest first. */
 const liveKeys = (keys: readonly OwnedKey[]): OwnedKey[] => keys.filter((key) => key.revokedAt === null).sort((a, b) => a.keyId - b.keyId);
 
+/** The calls counted in the current billing period, against the plan's allowance (board 28i). */
+export interface PeriodUsage {
+  calls: number;
+  allowance: number;
+  /** `This period · 1,240,500 of 5,000,000 calls`. */
+  text: string;
+}
+
+/**
+ * The period's usage while a plan serves the account, from the account meter's
+ * count; with no serving plan, none, and the page draws no meter (#207).
+ */
+export function periodUsageOf(serving: Serving, calls: number): PeriodUsage | undefined {
+  if (!serving.serving) return undefined;
+  const allowance = serving.limits.callsPerPeriod;
+  return { calls, allowance, text: `This period · ${callCount(calls)} of ${callCount(allowance)} calls` };
+}
+
 /** Keys and usage, the dashboard's first tab, as the page lays it out. */
 export interface DashboardView {
   signedIn: SignedIn;
@@ -100,30 +119,86 @@ export interface DashboardView {
   keys: readonly KeyRow[];
   /** Every key's calls added up, revoked keys' too: they were made. */
   usage: UsageRow;
+  /** This billing period's calls, while a plan serves the account. */
+  period: PeriodUsage | undefined;
 }
 
-/** The dashboard for an account's profile, keys and usage at `now`. */
-export function dashboardView(profile: AccountProfile, keys: readonly OwnedKey[], usage: AccountUsage, now: number): DashboardView {
+/** The dashboard for an account's profile, keys, usage and period usage at `now`. */
+export function dashboardView(
+  profile: AccountProfile,
+  keys: readonly OwnedKey[],
+  usage: AccountUsage,
+  period: PeriodUsage | undefined,
+  now: number,
+): DashboardView {
   return {
     signedIn: signedInOf(profile),
     keys: liveKeys(keys).map((key) => keyRowOf(key, now)),
     usage: usageRow(usage.days, usage.total),
+    period,
   };
 }
 
-/** Settings, the dashboard's second tab (board 28g): the plan, and the account with Delete account. */
+/**
+ * The settings page's Plan section (board 28i), one arm per thing it can do:
+ * choose a plan, manage a Stripe plan's billing, or, on Enterprise, nothing.
+ */
+export type PlanSection =
+  | { readonly kind: "choose"; readonly title: string; readonly line: string }
+  /** `pastDue`: the line is the payment warning and Manage billing takes the accent. */
+  | { readonly kind: "manage"; readonly title: string; readonly line: string; readonly pastDue: boolean }
+  | { readonly kind: "enterprise"; readonly title: string; readonly line: string };
+
+const NO_PLAN_SECTION: PlanSection = { kind: "choose", title: "No plan yet", line: "Keys work once a plan is active." };
+
+const dayOfMs = (ms: number): string => shortDate(new Date(ms).toISOString());
+
+/** `Pro · $49 / month`. */
+const stripeTitle = (plan: StripePlan): string => `${PLAN_TERMS[plan.id].name} · $${PLAN_TERMS[plan.id].usdPerMonth} / month`;
+
+/**
+ * What the Plan section says for a plan state. An ended plan reads as no plan;
+ * Enterprise shows its own numbers, with no price and no Manage billing.
+ */
+export function planSectionOf(state: PlanState): PlanSection {
+  switch (state.kind) {
+    case "none":
+    case "ended":
+      return NO_PLAN_SECTION;
+    case "active": {
+      const { plan } = state;
+      if (plan.id === "enterprise") {
+        return {
+          kind: "enterprise",
+          title: PLAN_TERMS.enterprise.name,
+          line: `${callCount(plan.callsPerPeriod)} calls a month · ${callCount(plan.callsPerMinute)} calls a minute`,
+        };
+      }
+      const calls = callCount(PLAN_TERMS[plan.id].callsPerPeriod);
+      return { kind: "manage", title: stripeTitle(plan), line: `${calls} calls a month · Renews ${dayOfMs(state.period.end)}`, pastDue: false };
+    }
+    case "past-due":
+      return { kind: "manage", title: stripeTitle(state.plan), line: "Payment failed. Update your card to keep your keys working.", pastDue: true };
+    case "cancelling":
+      return { kind: "manage", title: stripeTitle(state.plan), line: `Cancelled · Ends ${dayOfMs(state.endsAt)}`, pastDue: false };
+  }
+}
+
+/** Settings, the dashboard's second tab (boards 28g and 28i): the plan, and the account with Delete account. */
 export interface SettingsView {
   signedIn: SignedIn;
+  plan: PlanSection;
   /** `Signed in with Google · ada@example.com`. */
   signedInWith: string;
   /** What the delete confirmation says, with the account's live key count (board 30). */
   deleteWarning: string;
 }
 
-/** The settings page for an account's profile and keys. */
-export function settingsView(profile: AccountProfile, keys: readonly OwnedKey[]): SettingsView {
+/** The settings page for an account's profile, keys and plan state. */
+export function settingsView(profile: AccountProfile, keys: readonly OwnedKey[], plan: PlanState): SettingsView {
   return {
     signedIn: signedInOf(profile),
+    plan: planSectionOf(plan),
     signedInWith: `Signed in with ${profile.providers.map((provider) => PROVIDER_NAME[provider]).join(" or ")} · ${profile.email}`,
     deleteWarning: deleteWarning(liveKeys(keys).length),
   };

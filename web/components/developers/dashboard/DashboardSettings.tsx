@@ -5,11 +5,17 @@
 // page says is worked out in `dashboardView.ts`; the wiring that reads the
 // session and D1 is `(developers)/developer-site/dashboard/settings/`.
 //
+// The Plan section is board 28i's (#207): No plan yet with Choose Starter and
+// Choose Pro, posting to Checkout; a Stripe plan with Manage billing, posting
+// to the billing portal, and its renewal, its end, or the payment warning;
+// Enterprise with its numbers and no button. What each says is `planSectionOf`.
+//
 // On a phone (below `sm`, board 28gm) the plan and account cards stack their
 // action under the text.
 
 import { DashboardTabs } from "./DashboardTabs";
-import type { SettingsView } from "@/lib/developers/dashboardView.ts";
+import type { PlanSection, SettingsView } from "@/lib/developers/dashboardView.ts";
+import { ChoosePlanForm, ManageBillingForm } from "@/components/developers/BillingForms";
 import { DeleteAccountControl } from "./DeleteAccountDialog";
 import { DeveloperPage } from "@/components/developers/DeveloperPage";
 import {
@@ -23,10 +29,34 @@ import {
   DASH_SECTION,
   DASH_SECTION_HEADING,
   DASH_SHELL,
+  PLAN_BUTTON_OUTLINE,
+  PLAN_BUTTON_PRIMARY,
+  PLAN_BUTTONS,
   PLAN_CARD,
-  PLAN_NONE,
-  PLAN_SOON,
+  PLAN_LINE,
+  PLAN_TITLE,
+  PLAN_WARNING,
 } from "@/components/shared/styles.ts";
+
+/** The Plan card for its section: the title and line, then what the account can do. */
+function PlanCard({ plan, csrf }: { plan: PlanSection; csrf: string }) {
+  const warning = plan.kind === "manage" && plan.pastDue;
+  return (
+    <div className={PLAN_CARD} data-plan-section={plan.kind}>
+      <div>
+        <p className={PLAN_TITLE}>{plan.title}</p>
+        <p className={warning ? PLAN_WARNING : PLAN_LINE}>{plan.line}</p>
+      </div>
+      {plan.kind === "choose" && (
+        <div className={PLAN_BUTTONS}>
+          <ChoosePlanForm plan="starter" csrf={csrf} className={PLAN_BUTTON_OUTLINE} />
+          <ChoosePlanForm plan="pro" csrf={csrf} className={PLAN_BUTTON_PRIMARY} />
+        </div>
+      )}
+      {plan.kind === "manage" && <ManageBillingForm csrf={csrf} className={warning ? PLAN_BUTTON_PRIMARY : PLAN_BUTTON_OUTLINE} />}
+    </div>
+  );
+}
 
 export function DashboardSettings({ view, csrf }: { view: SettingsView; csrf: string }) {
   return (
@@ -39,12 +69,7 @@ export function DashboardSettings({ view, csrf }: { view: SettingsView; csrf: st
           <h2 className={DASH_SECTION_HEADING} id="plan">
             Plan
           </h2>
-          <div className={PLAN_CARD}>
-            <p className={PLAN_NONE}>No plan yet</p>
-            <button className={PLAN_SOON} type="button" disabled>
-              Choose a plan — coming soon
-            </button>
-          </div>
+          <PlanCard plan={view.plan} csrf={csrf} />
         </section>
 
         <section className={DASH_SECTION} aria-labelledby="account">

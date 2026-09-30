@@ -23,10 +23,14 @@ export interface MeteringBindings {
   CALLS_300: RateLimit;
 }
 
-/** Metering over the Worker's bindings: an account's meter is the object named by its id. */
+/** An account's meter: the object named by its id. The dashboard reads its period count through it too (#207). */
+export const accountMeterOf = (meters: DurableObjectNamespace<AccountMeterObject>, accountId: number) =>
+  meters.get(meters.idFromName(String(accountId)));
+
+/** Metering over the Worker's bindings. */
 export function meteringOver(env: MeteringBindings): Metering {
   return {
-    admit: (accountId, admission) => env.ACCOUNT_METER.get(env.ACCOUNT_METER.idFromName(String(accountId))).admit(admission),
+    admit: (accountId, admission) => accountMeterOf(env.ACCOUNT_METER, accountId).admit(admission),
     binding: (name) => env[name],
   };
 }

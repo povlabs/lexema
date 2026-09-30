@@ -16,6 +16,7 @@ import type { AccountProfile } from "../../src/accounts/accounts.js";
 import { ALL_ENDPOINTS, onlyEndpoints } from "../../src/api/keyAccess.js";
 import type { OwnedKey } from "../../src/api/ownedKeys.js";
 import { AccountUsage, usageDays } from "../../src/api/usage.js";
+import { NO_PLAN } from "../../src/billing/plans.js";
 import { AccountMenuContent } from "@/components/developers/AccountMenu";
 import { CREATE_KEY_ACTION, Dashboard, DELETE_ACCOUNT_ACTION } from "@/components/developers/dashboard/Dashboard";
 import { DashboardSettings } from "@/components/developers/dashboard/DashboardSettings";
@@ -103,7 +104,7 @@ function sample() {
       { key_id: 1, day: days[0], calls: 17000 },
     ],
   );
-  return { days, keys, view: dashboardView(profile, keys, usage, NOW), settings: settingsView(profile, keys) };
+  return { days, keys, view: dashboardView(profile, keys, usage, undefined, NOW), settings: settingsView(profile, keys, NO_PLAN) };
 }
 
 test("the dashboard lists each live key, oldest first, with its name, prefix, endpoints, expiry, created, last used and Revoke", () => {
@@ -157,7 +158,7 @@ test("the dashboard is Keys and usage: the tab bar, API keys and Usage, and no p
   assert.ok(!html.includes(DELETE_ACCOUNT_ACTION), "nothing on the page deletes the account");
 });
 
-test("settings is the second tab: Plan with nothing to buy, then Account with Delete account and who is signed in (board 28g, #190)", () => {
+test("settings is the second tab: Plan, then Account with Delete account and who is signed in (board 28g, #190)", () => {
   const { settings } = sample();
   const html = renderToStaticMarkup(<DashboardSettings view={settings} csrf={CSRF} />);
   assert.match(html, /<h1[^>]*>Dashboard<\/h1>/);
@@ -168,7 +169,6 @@ test("settings is the second tab: Plan with nothing to buy, then Account with De
   const headings = [...html.matchAll(/<h2[^>]*>([^<]+)<\/h2>/g)].map((heading) => heading[1].trim());
   assert.deepEqual(headings, ["Plan", "Account"]);
   assert.match(html, />No plan yet</);
-  assert.match(html, /<button[^>]*type="button" disabled=""[^>]*>Choose a plan — coming soon<\/button>/);
   assert.match(html, /Signed in with Google · ada@example\.com/);
   // Delete account opens board 30's confirmation; the page posts nothing by itself.
   assert.match(html, /<button type="button"[^>]*aria-haspopup="dialog"[^>]*>Delete account<\/button>/);
@@ -265,7 +265,7 @@ test("Create key opens its dialog and makes nothing itself", () => {
 });
 
 test("an account with no keys has no key table", () => {
-  const view = dashboardView(profile, [], AccountUsage.of(usageDays(NOW), [], []), NOW);
+  const view = dashboardView(profile, [], AccountUsage.of(usageDays(NOW), [], []), undefined, NOW);
   const html = renderToStaticMarkup(<Dashboard view={view} csrf={CSRF} made={0} />);
   assert.doesNotMatch(html, /<table/);
   assert.match(html, /Last 30 days · 0 calls/);

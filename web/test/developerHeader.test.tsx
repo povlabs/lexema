@@ -33,6 +33,7 @@ mock.module(new URL("../components/developers/DeveloperMenu.tsx", import.meta.ur
 const { DashboardSettings } = await import("@/components/developers/dashboard/DashboardSettings");
 const { DeveloperDocs } = await import("@/components/developers/DeveloperDocs");
 const { settingsView } = await import("@/lib/developers/dashboardView.ts");
+const { NO_PLAN } = await import("@lexema/billing/plans.ts");
 
 /** The ☰ menu's links on a rendered page, each as [label, current]. */
 const menuOf = (html: string): [string, boolean][] => {
@@ -42,7 +43,7 @@ const menuOf = (html: string): [string, boolean][] => {
 };
 
 test("signed in on Settings, the ☰ menu marks Settings, not Dashboard, though the bar marks Dashboard (board 28g)", () => {
-  const view = settingsView({ email: "ada@example.com", name: "Ada Lovelace", providers: ["google"] }, []);
+  const view = settingsView({ email: "ada@example.com", name: "Ada Lovelace", providers: ["google"] }, [], NO_PLAN);
   const html = renderToStaticMarkup(<DashboardSettings view={view} csrf={"c".repeat(43)} />);
   assert.deepEqual(menuOf(html), [
     ["Dashboard", false],
