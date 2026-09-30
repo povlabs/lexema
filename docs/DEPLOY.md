@@ -111,7 +111,8 @@ alone, never from the top level or `env.production`:
 | `APP_DB` | `<REPLACE_ME>`, which the [Preview command](#the-preview-command) replaces with the branch's own app D1; `wrangler preview` refuses to run while it is there |
 | Rate limits | production's limits under their own `namespace_id`s, `CALLS_60` and `CALLS_300` included |
 | `ACCOUNT_METER` | the account meter's binding; each Preview gets its own Durable Object namespace and storage |
-| `EMAIL` | a `send_email` binding with `destination_address` set to Huey's verified address, so it can send nowhere else: an [account email](#turn-on-account-email) to anyone else fails and is logged |
+| `EMAIL` | a `send_email` binding with `destination_address` set to Huey's verified address, so it can send nowhere else |
+| `EMAIL_ONLY_TO` | Huey's verified address, the same as the binding's `destination_address`, so every [account email](#turn-on-account-email) goes to Huey whoever the account is |
 | Sign-in | off: both OAuth client ids are empty |
 | Billing | off: the Stripe test-mode price ids are set, but the [Preview command](#the-preview-command) sends no Stripe secret, so the billing routes and the webhook answer 503 |
 
