@@ -22,6 +22,7 @@
 import {
   AUTH_PATH,
   authSecret,
+  endSession,
   PENDING_COOKIE,
   SESSION_COOKIE,
   sessionAuth,
@@ -181,14 +182,23 @@ export function liveContext(env: SignInBindings): SignInContext {
 const callbackUri = (url: URL, provider: ProviderId): string =>
   provider === "google" ? googleCallbackUri(url) : `${url.origin}/sign-in/${provider}/callback`;
 
-/** better-auth for a sign-in with this provider from this URL, or `undefined` when the provider cannot be signed in with. */
-function signInFor(url: URL, id: ProviderId, context: SignInContext) {
+/** A sign-in that can run: the provider's client and the secret that signs its session. */
+interface Signing {
+  readonly provider: SignInProvider;
+  readonly secret: string;
+}
+
+/** What a sign-in with this provider from this URL runs with, or `undefined` when the provider cannot be signed in with. */
+function signingFor(url: URL, id: ProviderId, context: SignInContext): Signing | undefined {
   const client = context.providers[id];
   const secret = authSecret();
   if (client === undefined || secret === undefined) return undefined;
-  const provider: SignInProvider = { client, redirectURI: callbackUri(url, id) };
-  return signInAuth(requireDatabase(context).app, secret, url.origin, id, provider);
+  return { provider: { client, redirectURI: callbackUri(url, id) }, secret };
 }
+
+/** better-auth for one sign-in that can run. */
+const signInAuthFor = (url: URL, id: ProviderId, signing: Signing, context: SignInContext) =>
+  signInAuth(requireDatabase(context).app, signing.secret, url.origin, id, signing.provider);
 
 /** Answer one sign-in route. */
 export async function answerSignIn(request: Request, route: SignInRoute, context: SignInContext): Promise<Response> {
@@ -199,8 +209,9 @@ export async function answerSignIn(request: Request, route: SignInRoute, context
   try {
     switch (route.kind) {
       case "start": {
-        const auth = signInFor(url, route.provider, context);
-        if (auth === undefined) return unavailable(route.provider);
+        const signing = signingFor(url, route.provider, context);
+        if (signing === undefined) return unavailable(route.provider);
+        const auth = signInAuthFor(url, route.provider, signing, context);
         const started = await auth.api.signInSocial({
           body: { provider: route.provider, callbackURL: AFTER_SIGN_IN, disableRedirect: true },
           asResponse: true,
@@ -210,14 +221,15 @@ export async function answerSignIn(request: Request, route: SignInRoute, context
         return redirect(location, started.headers.getSetCookie());
       }
       case "callback": {
+        const signing = signingFor(url, route.provider, context);
+        if (signing === undefined) return unavailable(route.provider);
         const cookies = request.headers.get("cookie");
         const refuse = (refusal: SignInRefusal): Response => {
           const { status, body } = REFUSAL[refusal];
           return text(status, body, new Headers({ "set-cookie": clearedCookie(PENDING_COOKIE) }));
         };
         if (readCookie(cookies, PENDING_COOKIE) === undefined) return refuse("no-pending");
-        const auth = signInFor(url, route.provider, context);
-        if (auth === undefined) return unavailable(route.provider);
+        const auth = signInAuthFor(url, route.provider, signing, context);
         const finished = await auth.handler(new Request(`${url.origin}${AUTH_PATH}/callback/${route.provider}${url.search}`, { headers: request.headers }));
         const location = finished.headers.get("location");
         if (location === null) throw new Error(`better-auth answered ${finished.status} to a callback, with no redirect`);
@@ -242,7 +254,7 @@ export async function answerSignIn(request: Request, route: SignInRoute, context
         const db = requireDatabase(context);
         const secret = authSecret();
         if (secret !== undefined && readCookie(request.headers.get("cookie"), SESSION_COOKIE) !== undefined) {
-          await sessionAuth(db.app, secret, url.origin).api.signOut({ headers: request.headers });
+          await endSession(db.app, secret, url.origin, request.headers);
         }
         return redirect(AFTER_SIGN_OUT, [clearedCookie(SESSION_COOKIE)]);
       }

@@ -9,7 +9,7 @@ import { test } from "node:test";
 import { fileURLToPath } from "node:url";
 import { DatabaseSync } from "node:sqlite";
 import { applyAppMigrations } from "../../src/db/app/migrations.js";
-import type { ProviderProfile } from "../../src/accounts/providers.js";
+import type { ProviderProfile, ProviderRegistry } from "../../src/accounts/providers.js";
 import { fromNodeSqlite } from "../../src/lookup/database.js";
 import { apiNotFound } from "@/worker/api/handler.ts";
 import { CSRF_FIELD, csrfTokenOf, DELETE_CONFIRMATION, withDashboard } from "@/worker/dashboard.ts";
@@ -32,7 +32,7 @@ const env: LimitBindings & SignInBindings = {
   KEY_CREATE_LIMIT: allow,
 };
 
-function site() {
+function site(providers?: (stubs: { google: StubProvider; github: StubProvider }) => ProviderRegistry) {
   const sqlite = new DatabaseSync(":memory:");
   sqlite.exec(SCHEMA);
   applyAppMigrations(sqlite);
@@ -43,7 +43,7 @@ function site() {
     app: withRateLimits(
       withSignIn(
         withDashboard(async () => new Response("page"), () => ({ db, now: NOW })),
-        () => ({ providers: { google, github }, db, now: NOW }),
+        () => ({ providers: providers?.({ google, github }) ?? { google, github }, db, now: NOW }),
       ),
     ),
     api: async () => Response.json({}),
@@ -214,4 +214,29 @@ test("a session cookie with a forged signature, or one signed under another secr
   } finally {
     process.env.BETTER_AUTH_SECRET = secret;
   }
+});
+
+test("a sign-out whose session could not be deleted answers 503 and leaves the browser signed in, not a 303", async () => {
+  const { signIn, send, google, jar, sqlite, count, account } = site();
+  assert.equal((await signIn(google, ada)).status, 303);
+  const signedIn = await account();
+  // The database refuses the delete, as a failing D1 would.
+  sqlite.exec("CREATE TRIGGER no_delete BEFORE DELETE ON developer_session BEGIN SELECT RAISE(ABORT, 'database unavailable'); END");
+
+  const out = await send(`${DEVELOPERS}/sign-out`, { method: "POST", headers: { origin: DEVELOPERS } });
+  assert.deepEqual(await refusal(out), { status: 503, body: "Sign-in could not be finished. Try again later.", cookies: [] });
+  assert.ok(jar.has(SESSION_COOKIE));
+  assert.equal(count("developer_session"), 1);
+  assert.equal(await account(), signedIn);
+});
+
+test("a callback for a provider that is not available answers 503, with or without a pending sign-in", async () => {
+  const { start, send, google, github, jar, count } = site((stubs) => ({ google: undefined, github: stubs.github }));
+  const callback = google.consent(`https://accounts.google.com/o/oauth2/v2/auth?state=s&redirect_uri=${encodeURIComponent(`${DEVELOPERS}/sign-in/google/callback`)}`, ada);
+
+  assert.deepEqual(await refusal(await send(callback.toString())), { status: 503, body: "Sign-in with Google is not available.", cookies: [] });
+  await start(github);
+  assert.ok(jar.has(PENDING_COOKIE));
+  assert.deepEqual(await refusal(await send(callback.toString())), { status: 503, body: "Sign-in with Google is not available.", cookies: [] });
+  assert.deepEqual([count("developer_account"), count("developer_session")], [0, 0]);
 });

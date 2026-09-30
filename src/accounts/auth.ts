@@ -106,6 +106,19 @@ export function sessionAuth(db: AppDatabase, secret: string, origin: string) {
   return betterAuth(baseOptions(db, secret, origin));
 }
 
+/**
+ * End the session a request's signed session cookie names, or do nothing when
+ * it names no live one. It throws when the session could not be read or its
+ * row could not be deleted: better-auth's own sign-out logs a failed delete
+ * and goes on, which would clear the cookie and leave the session live.
+ */
+export async function endSession(db: AppDatabase, secret: string, origin: string, headers: Headers): Promise<void> {
+  const auth = sessionAuth(db, secret, origin);
+  const found = await auth.api.getSession({ headers });
+  if (found === null) return;
+  await auth.api.revokeSession({ headers, body: { token: found.session.token } });
+}
+
 /** A provider's client, and the callback URL it is registered with. */
 export interface SignInProvider {
   readonly client: ProviderCredentials;
