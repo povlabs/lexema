@@ -1,4 +1,5 @@
-// How one reading renders: a heading `1 · Sostantivo`, then *Definitions*, then
+// How one reading renders: a heading `1 · Sostantivo` (only `Sostantivo` for a
+// reading with no definition), then *Definitions*, then
 // *Forms* — no box around it, a thin rule before the next
 // (design-system-manifest.md § "The result").
 //
@@ -355,10 +356,14 @@ export function ReadingView({ entry }: { entry: PageReading }) {
       data-line={reading.ref.lineNo}
     >
       <h2 className={READING_HEADING} id={`reading-heading-${reading.recordId}`}>
-        <span className={READING_NUMBER}>{number}</span>
-        <span className={READING_DOT} aria-hidden="true">
-          ·
-        </span>
+        {number !== undefined && (
+          <>
+            <span className={READING_NUMBER}>{number}</span>
+            <span className={READING_DOT} aria-hidden="true">
+              ·
+            </span>
+          </>
+        )}
         <span lang="it">{reading.posTitle}</span>
         {grammar !== undefined && (
           // The dot travels with the grammar, so a wrapped heading never ends on it.

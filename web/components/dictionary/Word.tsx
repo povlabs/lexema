@@ -10,7 +10,7 @@ import { ExternalIcon } from "@/components/shared/icons";
 import { NEW_TAB } from "@/components/shared/ExternalLink";
 import { OneLine } from "./OneLine";
 import { ReadingView } from "./Reading";
-import { ReportDialog } from "./ReportDialog";
+import { ReportDialog, type ReportReading } from "./ReportDialog";
 import { sourcePageUrl } from "@/lib/dictionary/sourcePage.ts";
 import { WordList } from "./WordList";
 import type { WordLists, WordPage } from "@/lib/dictionary/wordPage.ts";
@@ -64,7 +64,7 @@ function JumpLinks({ page }: { page: WordPage }) {
         {page.readings.map(({ number, reading }) => (
           <li key={reading.recordId}>
             <a className={JUMP_LINK} href={`#reading-${reading.recordId}`}>
-              <span className={JUMP_NUMBER}>{number}</span>
+              {number !== undefined && <span className={JUMP_NUMBER}>{number}</span>}
               <span lang="it">{reading.posTitle}</span>
             </a>
           </li>
@@ -103,7 +103,8 @@ export interface FooterFacts {
   sourceWords: readonly string[];
   /** The word a report is about. */
   headword: string;
-  readings: readonly { number: number; reading: { recordId: number; posTitle: string } }[];
+  /** Each reading a report can name, with its number on the page; a word page leaves a reading with no definition unnumbered. */
+  readings: readonly { number: ReportReading["number"]; reading: { recordId: number; posTitle: string } }[];
 }
 
 /** *Source* to each Wiktionary page the readings come from; normally exactly one. */

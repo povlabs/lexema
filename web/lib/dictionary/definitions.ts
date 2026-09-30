@@ -65,6 +65,15 @@ export function definitionsOf(reading: Reading): { items: DefinitionItem[]; loos
   return { items, looseExamples };
 }
 
+/**
+ * Whether the reading has a definition to show. The one rule for it: a reading
+ * without one gets no number (wordPage.ts), so whatever `definitionsOf` stops
+ * counting as a definition changes the numbering too.
+ */
+export function hasDefinitions(reading: Reading): boolean {
+  return definitionsOf(reading).items.length > 0;
+}
+
 /** The labels the source put on a sense — `figurato`, `scuola` — as a definition shows them. */
 export function senseLabels(labels: readonly string[]): string[] {
   return labels.filter((label) => label !== "form-of");
