@@ -45,3 +45,12 @@ test("a write the table refuses is a rejected query, not a silent row", async ()
   );
   assert.deepEqual(await db.select().from(apiKey).all(), []);
 });
+
+test("a single-row read that finds no row is undefined, not a row of undefined fields", async () => {
+  const { db } = database();
+  assert.equal(await db.select().from(developerAccount).where(eq(developerAccount.accountId, 42)).get(), undefined);
+  assert.equal(
+    await db.query.developerAccount.findFirst({ where: eq(developerAccount.accountId, 42) }),
+    undefined,
+  );
+});

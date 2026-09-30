@@ -12,7 +12,8 @@ export type AppDatabase = SqliteRemoteDatabase<typeof schema>;
 /**
  * The proxy hands over one statement, its values and how its rows are wanted:
  * `run` for none, `get` for the first row, `all` and `values` for every row,
- * each row an array of column values in select order.
+ * each row an array of column values in select order. A `get` that finds no row
+ * hands over `undefined`: Drizzle maps any truthy value, `[]` included, to a row.
  */
 export function drizzleOverNodeSqlite(sqlite: DatabaseSync): AppDatabase {
   return drizzle(
@@ -24,7 +25,10 @@ export function drizzleOverNodeSqlite(sqlite: DatabaseSync): AppDatabase {
         return { rows: [] };
       }
       statement.setReturnArrays(true);
-      if (method === "get") return { rows: (statement.get(...values) ?? []) as unknown[] };
+      if (method === "get") {
+        const row = statement.get(...values) as unknown as unknown[] | undefined;
+        return { rows: row as unknown[] };
+      }
       return { rows: statement.all(...values) as unknown[] };
     },
     { schema },
