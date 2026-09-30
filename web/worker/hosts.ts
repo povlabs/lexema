@@ -111,6 +111,13 @@ function siteOf(url: URL): Site {
   return previewSiteOf(url.hostname) ?? "lexema";
 }
 
+/**
+ * Whether a URL is exactly `path` on the developer site's host, live, local or
+ * a Preview's. worker/stripeWebhook.ts reads its route this way, in front of
+ * `byHost`; any other spelling or host goes where `destinationOf` sends it.
+ */
+export const isDeveloperSitePath = (url: URL, path: string): boolean => siteOf(url) === "developers" && url.pathname === path;
+
 /** This URL's origin with the host of `site` on the local domain, keeping the port. */
 function localOrigin(url: URL, site: Site): string {
   const origin = new URL(url.origin);

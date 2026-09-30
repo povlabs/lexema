@@ -10,7 +10,9 @@
 // developer site's sign-in routes (worker/signIn.ts) and dashboard actions
 // (worker/dashboard.ts) are answered before vinext, since they set cookies,
 // change data and redirect rather than render, and so is a Preview's test
-// sign-in (worker/testSignIn.ts), which no other stage has. Around all of it,
+// sign-in (worker/testSignIn.ts), which no other stage has. In front of the
+// host routing, Stripe's webhook on the developer site (worker/stripeWebhook.ts)
+// is answered outside the per-visitor limits. Around all of it,
 // the stage (worker/stage.ts) adds what its responses carry: noindex on a
 // Preview. It also exports the account meter's Durable Object class
 // (worker/api/accountMeterObject.ts), which wrangler.jsonc binds as
@@ -24,6 +26,7 @@ import { byHost } from "./hosts.ts";
 import { withRateLimits } from "./rateLimit.ts";
 import { withSignIn } from "./signIn.ts";
 import { parseStage, withStage } from "./stage.ts";
+import { withStripeWebhook } from "./stripeWebhook.ts";
 import { withTestSignIn } from "./testSignIn.ts";
 
 export { AccountMeterObject } from "./api/accountMeterObject.ts";
@@ -34,12 +37,14 @@ const stage = parseStage(env.LEXEMA_STAGE);
 export default {
   fetch: withStage<Env>(
     stage,
-    byHost<Env>({
-      app: withRateLimits<Env>(
-        withTestSignIn<Env>(stage, withSignIn<Env>(withDashboard<Env>((request, env, ctx) => app.fetch(request, env, ctx)))),
-      ),
-      api: answerApi,
-      apiNotFound,
-    }),
+    withStripeWebhook<Env>(
+      byHost<Env>({
+        app: withRateLimits<Env>(
+          withTestSignIn<Env>(stage, withSignIn<Env>(withDashboard<Env>((request, env, ctx) => app.fetch(request, env, ctx)))),
+        ),
+        api: answerApi,
+        apiNotFound,
+      }),
+    ),
   ),
 } satisfies ExportedHandler<Env>;
