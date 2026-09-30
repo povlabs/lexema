@@ -9,6 +9,7 @@
 // Cloudflare bills a cache hit as a request, so it saved no request, and the
 // database reads it skipped are far inside the plan's included allowance.
 
+import { offered } from "@lexema/lookup/suggest.ts";
 import { suggestions } from "@/lib/dictionary/db";
 import type { SuggestAnswer } from "@/lib/dictionary/suggestAnswer.ts";
 
@@ -31,7 +32,7 @@ export async function GET(request: Request): Promise<Response> {
   const result = await suggestions(prefix);
   switch (result.outcome) {
     case "suggested":
-      return json({ outcome: "suggested", suggestions: result.suggestions }, 200, true);
+      return json({ outcome: "suggested", suggestions: offered(result) }, 200, true);
     case "rejected":
       return json({ outcome: "rejected", reason: result.rejection.reason, limit: result.rejection.limit }, 400, true);
     case "failed":

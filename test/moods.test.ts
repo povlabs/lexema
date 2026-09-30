@@ -51,12 +51,14 @@ test("mood-tagged and non-finite forms keep what the source states", () => {
 // verb Huey listed. The rule has to place every finite form of every one of
 // them, and leave only the source's own pronominal infinitive unplaced.
 const FIXTURE = new URL("../fixtures/dev-seed.jsonl", import.meta.url);
+// A form-of record is not a conjugation: `andati` the *Voce verbale* lists the
+// participle's own gender and number forms, which no mood places.
 interface FixtureForm { form: string; tags?: string[]; raw_tags?: string[] }
 const verbs = readFileSync(FIXTURE, "utf8")
   .trim()
   .split("\n")
-  .map((line) => JSON.parse(line) as { word: string; pos: string; forms?: FixtureForm[] })
-  .filter((record) => record.pos === "verb" && (record.forms?.length ?? 0) > 0);
+  .map((line) => JSON.parse(line) as { word: string; pos: string; tags?: string[]; forms?: FixtureForm[] })
+  .filter((record) => record.pos === "verb" && !(record.tags ?? []).includes("form-of") && (record.forms?.length ?? 0) > 0);
 
 test("it-moods/v1 places every finite form of every fixture verb", () => {
   const words = new Set(verbs.map((record) => record.word));

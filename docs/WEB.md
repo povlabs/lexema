@@ -378,7 +378,11 @@ contain, so it is a separate write over a release the import already made.
 
 The page ends with one *Source* link per distinct Italian Wiktionary page it
 shows. That is usually one, the headword's. `andavano` gets two, its own page
-and `andare`'s, because it shows its own reading and `andare`'s table. Each link
+and `andare`'s, because it shows its own reading and `andare`'s table. A
+searched expression's short page is the exception: `vado via` shows form lines
+from `vado`'s page but has one *Source*, to `andare via`'s page, never the
+searched word's
+([design law](../design-system-manifest.md#layout)). Each link
 is labelled *Source* and nothing more, with the page's word beside it when there
 are several.
 [ADR 0009](../.decisions/0009-two-licences-and-a-source-link.md) has each

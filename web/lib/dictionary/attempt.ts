@@ -13,8 +13,8 @@ import type { FoundResult, NotFoundResult, RejectedResult } from "@lexema/lookup
  * A lookup that reached the database, or the fact that it did not.
  *
  * A search that found nothing carries what the page offers instead
- * (src/lookup/nearby.ts): an accent, a spelling one edit away, the words that
- * begin with it, or nothing.
+ * (src/lookup/nearby.ts): an accent, a spelling one edit away, an expression
+ * it nearly spells, the words that begin with it, or nothing.
  *
  * The failure is a value rather than a thrown error so the page has to render
  * it. It carries no detail on purpose: the reason is a database message meant

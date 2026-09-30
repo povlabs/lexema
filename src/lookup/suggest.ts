@@ -6,10 +6,16 @@
 // This is not a lookup. It names spellings a reader might mean, and choosing
 // one runs the real lookup for it; nothing here reads a sense, a form or a
 // grammar claim, so nothing here can say what a word means.
+//
+// A prefix of several words also gets the typed words completed so that they
+// read as a multi-word headword (`vado v` → `vado via`, #214): the phrase rule
+// of src/lookup/phrase.ts, run only while the list has room left.
 
 import { IT_NORMALIZER_VERSION, normalizeItalianExact } from "../italian/normalize.js";
 import type { LookupDatabase } from "./database.js";
+import { prefixUpperBound } from "./keyRange.js";
 import { MAX_QUERY_LENGTH, readRelease } from "./lookup.js";
+import { phraseCompletions, type PhraseOffer } from "./phrase.js";
 
 /**
  * The shortest prefix answered, in characters of the normalized key. One letter
@@ -32,14 +38,23 @@ export interface SuggestOptions {
 }
 
 /**
- * A prefix the index was probed for, and what it held, in key order. `suggestions`
- * is empty when no headword starts with the prefix, which is an answer and
- * not a failure.
+ * A prefix the index was probed for, and what it held. `suggestions` are the
+ * headwords that begin with it, in key order; `phrases` follow them, the typed
+ * words completed so that they read as a multi-word headword, none already
+ * among `suggestions`. The two together are at most `SUGGESTION_LIMIT`
+ * (`offered`). Both are empty when nothing begins with the prefix, which is an
+ * answer and not a failure.
  */
 export interface Suggested {
   outcome: "suggested";
   prefix: { raw: string; key: string };
   suggestions: string[];
+  phrases: PhraseOffer[];
+}
+
+/** What the search field lists for an answer, in order: the headwords, then the completed phrases. */
+export function offered(answer: Suggested): string[] {
+  return [...answer.suggestions, ...answer.phrases.map((offer) => offer.phrase)];
 }
 
 /** A prefix outside the bounds, which is never sent to the index. */
@@ -63,28 +78,7 @@ export function isAskablePrefix(raw: string): boolean {
   return length >= MIN_PREFIX_LENGTH && raw.trim().length <= MAX_PREFIX_LENGTH;
 }
 
-/**
- * The least key greater than every key that starts with `key`, so that
- * `surface_key >= key AND surface_key < upper` is exactly the keys with that
- * prefix. SQLite compares TEXT byte by byte in UTF-8, which orders strings by
- * code point, so incrementing the last code point is the successor. The
- * surrogate range is skipped because a lone surrogate is not text, and a last
- * code point already at U+10FFFF has no successor, so it is dropped and the
- * one before it is incremented.
- */
-export function prefixUpperBound(key: string): string {
-  const points = [...key];
-  while (points.length > 0) {
-    const last = points.pop()!.codePointAt(0)!;
-    if (last < 0x10ffff) {
-      const next = last === 0xd7ff ? 0xe000 : last + 1;
-      return points.join("") + String.fromCodePoint(next);
-    }
-  }
-  // Every code point was U+10FFFF: no string is greater, so there is no bound.
-  // No normalized key reaches here, and a caller would rather fail than scan.
-  throw new Error("a prefix of U+10FFFF alone has no upper bound");
-}
+export { prefixUpperBound };
 
 /**
  * Headword spellings starting with a prefix, in alphabetical order of the
@@ -151,5 +145,13 @@ export async function suggest({ db, releaseId, prefix }: SuggestOptions): Promis
     // Enough spellings, or the prefix holds no more rows to read.
     if (suggestions.length === SUGGESTION_LIMIT || rows.length < scan) break;
   }
-  return { outcome: "suggested", prefix: { raw: prefix, key }, suggestions };
+  // Only while the list has room, and only for a prefix of several words:
+  // `phraseCompletions` reads nothing for one word.
+  const room = SUGGESTION_LIMIT - suggestions.length;
+  const listed = new Set(suggestions.map(normalizeItalianExact));
+  const phrases =
+    room > 0
+      ? (await phraseCompletions(db, releaseId, key, SUGGESTION_LIMIT)).filter((offer) => !listed.has(offer.phrase)).slice(0, room)
+      : [];
+  return { outcome: "suggested", prefix: { raw: prefix, key }, suggestions, phrases };
 }

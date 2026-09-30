@@ -27,8 +27,8 @@ import type { AppTables } from "../../src/db/app/database.js";
 import type { LookupDatabase } from "../../src/lookup/database.js";
 import { freshAppDatabase, readOnlyDictionary } from "../../test/databases.js";
 import { lookup } from "../../src/lookup/lookup.js";
-import { findNearby } from "../../src/lookup/nearby.js";
-import { suggest } from "../../src/lookup/suggest.js";
+import { findNearby, type Nearby } from "../../src/lookup/nearby.js";
+import { offered, suggest } from "../../src/lookup/suggest.js";
 import { loadFixturePages } from "../../src/source/rawPage.js";
 import { answerApi, apiNotFound, handleApi, type ApiBindings } from "@/worker/api/handler.ts";
 import { byHost, DEVELOPERS_SEGMENT } from "@/worker/hosts.ts";
@@ -144,6 +144,20 @@ test("every found result carries the release and an attribution with the word's 
   }
 });
 
+/** Every spelling `findNearby` offers, in the order the answer lists them. */
+function offeredBy(nearby: Nearby): string[] {
+  switch (nearby.kind) {
+    case "prefix":
+      return nearby.words;
+    case "none":
+      return [];
+    case "phrase":
+      return [nearby.best, ...nearby.others].map((offer) => offer.phrase);
+    default:
+      return [nearby.best, ...nearby.others, ...nearby.phrases.map((offer) => offer.phrase)];
+  }
+}
+
 test("a word not in the release is a 404 offering findNearby's spellings in its order, typo called edit", async () => {
   const { key } = await newKey();
   const cases: [string, string[]][] = [
@@ -151,14 +165,13 @@ test("a word not in the release is a 404 offering findNearby's spellings in its 
     ["mangare", ["edit"]],
     ["sal", ["prefix"]],
     ["qqqqqq", []],
+    ["tiro%20fouri", ["phrase"]],
   ];
   for (const [q, kinds] of cases) {
     const response = await call(`/v1/lookup?q=${q}`, key);
     assert.equal(response.status, 404, q);
     const body: Json = await response.json();
-    const nearby = await findNearby({ db: dictionary, releaseId: RELEASE, query: q });
-    const offered =
-      nearby.kind === "prefix" ? nearby.words : nearby.kind === "none" ? [] : [nearby.best, ...nearby.others];
+    const offered = offeredBy(await findNearby({ db: dictionary, releaseId: RELEASE, query: decodeURIComponent(q) }));
     assert.deepEqual(body.results, []);
     assert.equal(body.release_id, RELEASE);
     assert.deepEqual(
@@ -425,6 +438,38 @@ test("match=exact keeps headword matches, match=form keeps form matches, and any
   await assertRefused("q=solo&match=headword", "match");
 });
 
+test("an inflected expression answers its multi-word headword via phrase, which match=form keeps and match=exact does not", async () => {
+  assert.deepEqual(candidates(await lookupBody("q=vado%20via")), ["andare via phrase phrase"]);
+  assert.deepEqual(candidates(await lookupBody("q=tiro%20fuori")), ["tirare fuori phrase phrase"]);
+  assert.deepEqual(candidates(await lookupBody("q=sono%20andati%20via")), ["andare via phrase phrase"]);
+  assert.deepEqual(candidates(await lookupBody("q=volto%20le%20spalle")).sort(), [
+    "volgere le spalle phrase phrase",
+    "voltare le spalle phrase phrase",
+  ]);
+  const [result] = (await lookupBody("q=sono%20andati%20via")).results;
+  assert.deepEqual(result.match, { surface: "sono andati via", via: "phrase", grammar: [] });
+  assert.deepEqual(candidates(await lookupBody("q=vado%20via&match=form")), ["andare via phrase phrase"]);
+  assert.deepEqual(candidates(await lookupBody("q=vado%20via&match=exact")), []);
+  // `vada` is a real form of `andare`, so `vada via` is a result too.
+  assert.deepEqual(candidates(await lookupBody("q=vada%20via")), ["andare via phrase phrase"]);
+  const missing = await lookupWith("q=vado%20fuori");
+  assert.equal(missing.status, 404);
+  // A typo in one word is no result, and the query corrected as typed is a
+  // `phrase` suggestion (Huey's hand check of 2026-09-30).
+  for (const [q, word] of [
+    ["vadoo%20via", "vado via"],
+    ["vado%20vja", "vado via"],
+    ["tiro%20fuory", "tiro fuori"],
+  ]) {
+    const typo = await lookupWith(`q=${q}`);
+    assert.equal(typo.status, 404, q);
+    assert.deepEqual((await typo.json() as Json).suggestions, [{ word, kind: "phrase" }], q);
+  }
+  // `vado via` is no headword of its own, so it has no forms to inflect.
+  assert.equal((await ask("inflect?lemma=vado%20via")).status, 404);
+  assert.equal((await okBody("exists?q=vado%20via")).exists, true);
+});
+
 test("fields returns the named sections and the always-returned fields, and refuses an unknown name", async () => {
   const [sale] = (await lookupBody("q=sale&fields=definitions,pronunciation")).results;
   assert.deepEqual(Object.keys(sale).sort(), [
@@ -656,12 +701,18 @@ test("/inflect is a 404 for a word that heads no record, and a 400 for a lemma o
 });
 
 test("/suggest answers suggest()'s spellings, in its order and within its limit", async () => {
-  for (const q of ["sal", "a", "c", "qqq"]) {
-    const answer = await suggest({ db: dictionary, releaseId: RELEASE, prefix: q });
-    assert.equal(answer.outcome, "suggested");
+  for (const q of ["sal", "a", "c", "qqq", "vado%20v"]) {
+    const answer = await suggest({ db: dictionary, releaseId: RELEASE, prefix: decodeURIComponent(q) });
+    assert.ok(answer.outcome === "suggested");
     const body = await okBody(`suggest?q=${q}`);
-    assert.deepEqual(body.results.map((result: Json) => result.word), answer.suggestions, q);
+    assert.deepEqual(body.results.map((result: Json) => result.word), offered(answer), q);
   }
+  // A phrase's words have no page of their own: its attribution is the headword it reaches.
+  const [vado] = (await okBody("suggest?q=vado%20v")).results;
+  assert.equal(vado.word, "vado via");
+  assert.equal(vado.attribution.source_url, "https://it.wiktionary.org/wiki/andare_via");
+  const [nearby] = (await okBody("nearby?q=vadoo%20via")).results;
+  assert.deepEqual([nearby.word, nearby.kind, nearby.attribution.source_url], ["vado via", "phrase", "https://it.wiktionary.org/wiki/andare_via"]);
   await assertBadRequest("suggest?q=", "invalid_query");
 });
 
@@ -671,10 +722,10 @@ test("/nearby answers findNearby()'s spellings in its ranking, typo called edit"
     ["mangare", ["edit"]],
     ["sal", ["prefix"]],
     ["qqqqqq", []],
+    ["tiro%20fouri", ["phrase"]],
   ];
   for (const [q, kinds] of cases) {
-    const nearby = await findNearby({ db: dictionary, releaseId: RELEASE, query: q });
-    const offered = nearby.kind === "prefix" ? nearby.words : nearby.kind === "none" ? [] : [nearby.best, ...nearby.others];
+    const offered = offeredBy(await findNearby({ db: dictionary, releaseId: RELEASE, query: decodeURIComponent(q) }));
     const body = await okBody(`nearby?q=${q}`);
     assert.deepEqual(body.results.map((result: Json) => result.word), offered, q);
     assert.deepEqual([...new Set(body.results.slice(0, 1).map((result: Json) => result.kind))], kinds, q);

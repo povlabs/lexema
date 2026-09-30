@@ -132,7 +132,11 @@ const inflectRoute: Route = async (_request, url, { db, releaseId }) => {
   const result = await lookup({ db, releaseId, query: url.searchParams.get("lemma") ?? "" });
   if (result.outcome === "rejected") return queryRefusal("lemma", result.rejection);
   const charge = { endpoint: "inflect" } as const;
-  const lemmas = result.outcome === "found" ? result.readings.filter((reading) => reading.isAboutQuery && !isFormOfReading(reading)) : [];
+  // A phrase `lemma`'s words spell (`vado via`) is not a headword of its own.
+  const lemmas =
+    result.outcome === "found" && result.route.kind === "surface"
+      ? result.readings.filter((reading) => reading.isAboutQuery && !isFormOfReading(reading))
+      : [];
   if (lemmas.length === 0) {
     return { status: 404, body: error("unknown_lemma", `${result.query.raw} is not a headword of this release.`), charge };
   }
@@ -162,7 +166,11 @@ const suggestRoute: Route = async (_request, url, { db, releaseId }) => {
     const { rejection } = result;
     return queryRefusal("q", rejection.reason === "too-short" ? { reason: "empty" } : rejection);
   }
-  const results = result.suggestions.map((word) => ({ word, attribution: attributionOf(word) }));
+  // A phrase's words (`vado via`) have no page of their own: its source is the headword it reaches.
+  const results = [
+    ...result.suggestions.map((word) => ({ word, attribution: attributionOf(word) })),
+    ...result.phrases.map((offer) => ({ word: offer.phrase, attribution: attributionOf(offer.headwords[0]) })),
+  ];
   return { status: 200, body: { query: result.prefix.raw, release_id: releaseId, results }, charge: { endpoint: "suggest" } };
 };
 
@@ -172,7 +180,7 @@ const nearbyRoute: Route = async (_request, url, { db, releaseId }) => {
   const rejection = rejectionOf(query);
   if (rejection !== undefined) return queryRefusal("q", rejection);
   const nearby = await findNearby({ db, releaseId, query });
-  const results = suggestionsOf(nearby, query).map((suggestion) => ({ ...suggestion, attribution: attributionOf(suggestion.word) }));
+  const results = suggestionsOf(nearby, query).map(({ word, kind, page }) => ({ word, kind, attribution: attributionOf(page) }));
   return { status: 200, body: { query, release_id: releaseId, results }, charge: { endpoint: "nearby" } };
 };
 
