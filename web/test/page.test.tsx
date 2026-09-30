@@ -68,6 +68,7 @@ import {
   SHELL_CENTRED,
   SHELL_TOP,
   SITE_FOOTER_LINK,
+  SOURCE_LINE,
   SITE_FOOTER_NAME,
   TENSE_HEAD_SEARCHED,
   TOP_BAR,
@@ -404,10 +405,10 @@ test("a searched verb form is marked where it sits, in its lemma's table opened 
     assert.deepEqual(formLinks(reading).filter((link) => link.searched).map((link) => link.text), ["andavano"]);
     assert.match(indicativo, new RegExp(`<th scope="row" class="${esc(PERSON_SEARCHED)}" lang="it">loro</th>`));
     assert.match(indicativo, new RegExp(`<th scope="col" class="${esc(TENSE_HEAD_SEARCHED)}" lang="it">imperfetto</th>`));
-    // Two pages are shown, so each has its own Source link (ADR 0009).
+    // Two pages' content is shown, and still one Source, to the searched word's page (#281).
     assert.deepEqual(
       [...html.matchAll(/href="https:\/\/it\.wiktionary\.org\/wiki\/([^"]+)" target="_blank"/g)].map((match) => match[1]),
-      ["andavano", "andare"],
+      ["andavano"],
     );
 
     // One spelling in two cells marks both, and the tabs open on its mood.
@@ -658,8 +659,8 @@ test("an inflected expression opens a short page: its words, the expression's fi
       "correre via",
       "participio passato maschile singolare di volgere le spalle",
     ]);
-    // Two expressions, so a *Source* for each, naming its word.
-    assert.deepEqual(new Set(sourcePages(volto)), new Set(["voltare le spalle", "volgere le spalle"]));
+    // Two expressions, and still one *Source*: the first expression the lookup found (#281).
+    assert.deepEqual(sourcePages(volto), ["volgere le spalle"]);
 
     // An expression with no gloss (#250) has no meanings to copy: only the form line shows.
     const abitudine = await render(db, "faccio l'abitudine");
@@ -1059,6 +1060,41 @@ test("every word page ends with Source and Report a mistake together", async () 
       const line = source.slice(source.lastIndexOf("<footer"), source.indexOf("</footer>", source.lastIndexOf("<footer")));
       assert.match(textOf(line), /Source.*·.*Report a mistake$/, query);
       assert.match(line, /<button [^>]*>Report a mistake<\/button>/, `${query}: a button that opens the box`);
+    }
+  });
+});
+
+/** A page's footer line: *Source* and *Report a mistake*. */
+const sourceLine = (html: string): string => {
+  const start = html.lastIndexOf(`<footer class="${SOURCE_LINE}">`);
+  return html.slice(start, html.indexOf("</footer>", start));
+};
+
+test("a result page has one Source, with no word after it, to the page of the spelling in its title (#281)", async () => {
+  // macchina: a noun, and a form of macchinare whose table shows under it.
+  // The page of macchina holds both entries, so one link covers both readings.
+  const lines = (await readFile(join(REPO, "fixtures/macchina.jsonl"), "utf8")).trim().split("\n");
+  await withLines(lines, async ({ db }) => {
+    const html = await render(db, "macchina");
+    assert.deepEqual(headingsOf(html), ["1·Sostantivo·femminile", "2·Voce verbale"]);
+    assert.match(textOf(html), /Forms ofmacchinare/);
+    const line = sourceLine(html);
+    assert.equal(textOf(line), "Source·Report a mistake");
+    assert.deepEqual(sourcePages(html), ["macchina"]);
+    assert.equal(occurrencesOf(line, 'href="https://it.wiktionary.org/wiki/'), 1);
+    assert.match(line, /href="https:\/\/it\.wiktionary\.org\/wiki\/macchina" target="_blank"/);
+  });
+  // A searched expression: the title is what was typed, and the one link is
+  // the expression's page, as #214 built.
+  await withDevSeed(async ({ db }) => {
+    for (const [query, phrase] of [
+      ["vado via", "andare_via"],
+      ["tiro fuori", "tirare_fuori"],
+    ]) {
+      const line = sourceLine(await render(db, query));
+      assert.equal(textOf(line), "Source·Report a mistake", query);
+      assert.equal(occurrencesOf(line, 'href="https://it.wiktionary.org/wiki/'), 1, query);
+      assert.match(line, new RegExp(`href="https://it\\.wiktionary\\.org/wiki/${phrase}" target="_blank"`), query);
     }
   });
 });

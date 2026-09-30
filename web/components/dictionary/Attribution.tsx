@@ -4,7 +4,7 @@
 // `page.tsx`: the route file reaches D1 through `cloudflare:workers`, and this
 // file takes the release as a value, so `web/test/page.test.tsx` can render it.
 //
-// What is on this page and why is ADR 0009: each reading carries a small
+// What is on this page and why is ADR 0009: each result page carries one small
 // *Source* link and no credit, and this page carries the whole credit the
 // licence asks for. The wording follows the English draft in
 // docs/ATTRIBUTION_NOTICES.md. Two rules from that draft are load-bearing here:
