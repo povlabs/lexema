@@ -98,6 +98,9 @@ function previewSiteOf(hostname: string): Site | undefined {
   return SITES.find((site) => PREVIEW_DOMAIN[site] === domain);
 }
 
+/** Whether a host is a Preview's developer site: `<name>.developers-preview.lexema.fyi`. */
+export const isDeveloperPreviewHost = (hostname: string): boolean => previewSiteOf(hostname) === "developers";
+
 /** The site a URL's host names. Any other host is the dictionary's. */
 function siteOf(url: URL): Site {
   for (const domain of DOMAINS) {

@@ -16,6 +16,7 @@ import type { ReportAnswer } from "@/lib/dictionary/report.ts";
 import type { SuggestAnswer } from "@/lib/dictionary/suggestAnswer.ts";
 import { dashboardRouteOf } from "./dashboard.ts";
 import { signInRouteOf } from "./signIn.ts";
+import { isTestSignIn } from "./testSignIn.ts";
 
 /** The things a visitor can do that reach the database, start a sign-in, or make a key. */
 export type Limit = "search" | "suggest" | "report" | "report-open" | "sign-in" | "key-create";
@@ -79,6 +80,8 @@ export function limitOf(url: URL): Limit | undefined {
   // Starting a sign-in (Huey, #163 R1.2). Its path exists on the developer
   // site's host only (worker/signIn.ts); the callback is not counted.
   if (signInRouteOf(url)?.kind === "start") return "sign-in";
+  // The test sign-in, on a Preview's developer host only (worker/testSignIn.ts).
+  if (isTestSignIn(url)) return "sign-in";
   // Making a key (Huey, #163 R1.2); on the developer site only (worker/dashboard.ts).
   if (dashboardRouteOf(url)?.kind === "create-key") return "key-create";
   if ((url.searchParams.get("q") ?? "").trim() !== "") return "search";

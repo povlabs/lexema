@@ -115,13 +115,15 @@ export function cookie(name: string, value: string, maxAgeSeconds: number): stri
 /** A `Set-Cookie` value that removes the named cookie. */
 export const clearedCookie = (name: string): string => cookie(name, "", 0);
 
-function text(status: number, body: string, headers: Headers = new Headers()): Response {
+/** A plain-text answer that is never cached. */
+export function text(status: number, body: string, headers: Headers = new Headers()): Response {
   headers.set("content-type", "text/plain; charset=utf-8");
   headers.set("cache-control", "no-store");
   return new Response(body, { status, headers });
 }
 
-function redirect(location: string, cookies: readonly string[]): Response {
+/** A 303 to `location`, setting each of `cookies`. */
+export function redirect(location: string, cookies: readonly string[]): Response {
   const headers = new Headers({ location, "cache-control": "no-store" });
   for (const value of cookies) headers.append("set-cookie", value);
   return new Response(null, { status: 303, headers });
