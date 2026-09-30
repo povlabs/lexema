@@ -1,7 +1,7 @@
 ---
 id: 0012
 title: A release is seeded in one pass from the archive, and nothing Lexema writes is seeded
-status: amended-in-part by [0016](0016-page-shows-no-origin-marks.md)
+status: amended-in-part by [0016](0016-page-shows-no-origin-marks.md), [0019](0019-source-text-may-be-normalized.md)
 date: 2026-09-23
 tags: [stack, data]
 ---

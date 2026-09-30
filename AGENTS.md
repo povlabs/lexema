@@ -15,8 +15,10 @@ of its SHA-256, `it-0c432803`.
   [DEVELOPMENT.md](DEVELOPMENT.md)
   ([ADR 0002](.decisions/0002-pnpm-is-the-package-manager.md)).
 - Source-derived lexical data is read-only: keep it as imported, keep where each
-  fact came from, and return every valid candidate. Italian grammar enrichment is
-  deterministic and language-specific. AI generation, a product UI, or wider work
+  fact came from, and return every valid candidate. The one exception is a small,
+  rule-based rewrite for consistency that keeps `source_record_json`
+  byte-for-byte ([ADR 0019](.decisions/0019-source-text-may-be-normalized.md)).
+  Italian grammar enrichment is deterministic and language-specific. AI generation, a product UI, or wider work
   needs an explicit request.
 - Make invalid states unrepresentable. Domain logic belongs in domain objects.
 - Verify claims about the dataset, the platform, and dependencies in source or a
