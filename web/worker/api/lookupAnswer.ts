@@ -9,6 +9,9 @@
 // - `form_of`: the record the query's form-of record names as its lemma
 //   (`andare` for `andavano`). This is the one-call form-to-lemma answer: the
 //   lemma's own definitions and forms, with the query's place in its table.
+// - `phrase`: nothing spells the query, and it is a multi-word headword its
+//   words spell as their lemmas (`andare via` for `vado via`, #214). Its
+//   surface is the query as typed, and it has no place in any table.
 //
 // Nothing here ranks or places anew. Definitions are the page's list
 // (lib/dictionary/definitions.ts), a verb's forms are the page's conjugation
@@ -21,6 +24,7 @@
 
 import { normalizeItalianExact } from "@lexema/italian/normalize.ts";
 import { foldKey, type Nearby } from "@lexema/lookup/nearby.ts";
+import type { PhraseOffer } from "@lexema/lookup/phrase.ts";
 import { isFormOfReading, isVerbReading, searchedSpellings } from "@lexema/lookup/types.ts";
 import type {
   FoundResult,
@@ -55,16 +59,18 @@ import {
 } from "./lookupFilters.ts";
 
 /** How the query reached a candidate's record. */
-export type Via = "headword" | "form" | "form_of";
+export type Via = "headword" | "form" | "form_of" | "phrase";
 
 /**
  * One candidate: the record answered with, and how the query reached it. A
  * `form_of` candidate carries where its lemma's table spells the query, when
- * it does, and the form-of record it was reached through otherwise.
+ * it does, and the form-of record it was reached through otherwise. Nothing
+ * of a `phrase` candidate's table was searched, so it carries no hit.
  */
 export type Candidate =
   | { via: "headword" | "form"; reading: Reading; surface: string; hit: SearchedSpellings }
-  | { via: "form_of"; reading: Reading; surface: string; hit: SearchedSpellings | undefined; formOf: Reading };
+  | { via: "form_of"; reading: Reading; surface: string; hit: SearchedSpellings | undefined; formOf: Reading }
+  | { via: "phrase"; reading: Reading; surface: string; hit?: never };
 
 /** Finds the lemma a form-of record names, as a reading of its own. */
 export type LemmaReader = (lemma: LemmaTarget) => Promise<Reading | undefined>;
@@ -88,6 +94,7 @@ function surfaceOn(reading: Reading): string {
 
 /** Every candidate of a found lookup, in the lookup's order, each record once. */
 export async function candidatesOf(result: FoundResult, readLemma: LemmaReader): Promise<Candidate[]> {
+  if (result.route.kind === "phrase") return phraseCandidates(result);
   const candidates: Candidate[] = [];
   for (const reading of result.readings) {
     const lemmas = isFormOfReading(reading) ? lemmasOf(reading) : [];
@@ -114,6 +121,11 @@ export async function candidatesOf(result: FoundResult, readLemma: LemmaReader):
   }
   const seen = new Set<number>();
   return candidates.filter((candidate) => !seen.has(candidate.reading.recordId) && seen.add(candidate.reading.recordId));
+}
+
+/** Each record of the multi-word headwords the query's words spell, the query as typed its surface. */
+function phraseCandidates(result: FoundResult): Candidate[] {
+  return result.readings.map((reading) => ({ via: "phrase", reading, surface: result.query.raw.trim() }));
 }
 
 /** One place a matched form fills, in Italian labels: a cell of a conjugation or of a grid. */
@@ -328,6 +340,7 @@ function layoutOf(reading: Reading, hit: SearchedSpellings): Layout {
 
 /** Where the query sits in the candidate's forms. */
 function grammarOf(candidate: Candidate, hit: SearchedSpellings, layout: Layout): GrammarPlace[] {
+  if (candidate.via === "phrase") return [];
   if (candidate.via === "form_of" && candidate.hit === undefined) return statedPlaces(candidate.formOf);
   if (layout.conjugation !== undefined) return conjugationPlaces(candidate.reading, hit, layout.conjugation);
   return [
@@ -382,28 +395,52 @@ export function resultJson(candidate: Candidate, filters: LookupFilters): Result
   return shaped(result, filters);
 }
 
-/** What the not-found answer offers: `findNearby`'s spellings in its order, its `typo` called `edit`. */
-export type SuggestionKind = "accent" | "edit" | "prefix";
+/**
+ * What the not-found answer offers: `findNearby`'s spellings in its order, its
+ * `typo` called `edit`, and the query corrected so that it reads as a
+ * multi-word headword called `phrase`.
+ */
+export type SuggestionKind = "accent" | "edit" | "phrase" | "prefix";
+
+/**
+ * One offer, and the Wikizionario page its word comes from: its own for a
+ * spelling, and the first headword it reaches for a `phrase`, whose words
+ * (`vado via`) have no page of their own.
+ */
+export interface Suggestion {
+  word: string;
+  kind: SuggestionKind;
+  page: string;
+}
+
+const spelling = (word: string, kind: Exclude<SuggestionKind, "phrase">): Suggestion => ({ word, kind, page: word });
+
+const phraseSuggestions = (offers: readonly PhraseOffer[]): Suggestion[] =>
+  offers.map((offer) => ({ word: offer.phrase, kind: "phrase", page: offer.headwords[0] }));
 
 /**
  * `findNearby`'s offer as a list. After an accent match it also lists the
  * words that begin with the query (`others`), so each of those is told apart
  * by whether it is the query's letters with other accents, which is the test
- * `accent_fold` itself keys on.
+ * `accent_fold` itself keys on. The phrases follow an accent or a typo offer.
  */
-export function suggestionsOf(nearby: Nearby, query: string): { word: string; kind: SuggestionKind }[] {
+export function suggestionsOf(nearby: Nearby, query: string): Suggestion[] {
   switch (nearby.kind) {
     case "accent": {
       const folded = foldKey(normalizeItalianExact(query));
-      return [nearby.best, ...nearby.others].map((word) => ({
-        word,
-        kind: foldKey(normalizeItalianExact(word)) === folded ? "accent" : "prefix",
-      }));
+      return [
+        ...[nearby.best, ...nearby.others].map((word) =>
+          spelling(word, foldKey(normalizeItalianExact(word)) === folded ? "accent" : "prefix"),
+        ),
+        ...phraseSuggestions(nearby.phrases),
+      ];
     }
     case "typo":
-      return [nearby.best, ...nearby.others].map((word) => ({ word, kind: "edit" }));
+      return [...[nearby.best, ...nearby.others].map((word) => spelling(word, "edit")), ...phraseSuggestions(nearby.phrases)];
+    case "phrase":
+      return phraseSuggestions([nearby.best, ...nearby.others]);
     case "prefix":
-      return nearby.words.map((word) => ({ word, kind: "prefix" }));
+      return nearby.words.map((word) => spelling(word, "prefix"));
     case "none":
       return [];
   }
@@ -443,7 +480,7 @@ export function notFoundJson(result: NotFoundResult, nearby: Nearby): NotFoundJs
     query: result.query.raw,
     release_id: result.release.releaseId,
     results: [],
-    suggestions: suggestionsOf(nearby, result.query.raw),
+    suggestions: suggestionsOf(nearby, result.query.raw).map(({ word, kind }) => ({ word, kind })),
   };
 }
 

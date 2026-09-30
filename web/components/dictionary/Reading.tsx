@@ -46,7 +46,7 @@ import {
 } from "@/components/shared/styles.ts";
 
 /** A block: a small grey label over its content. */
-function Block({ id, label, children }: { id: string; label: ReactNode; children: ReactNode }) {
+export function Block({ id, label, children }: { id: string; label: ReactNode; children: ReactNode }) {
   return (
     <section className={BLOCK} aria-labelledby={id}>
       <h3 className={BLOCK_LABEL} id={id}>
@@ -174,7 +174,7 @@ function DefinitionText({ item, reading }: { item: DefinitionItem; reading: Read
   );
 }
 
-const definitionKey = (item: DefinitionItem): string =>
+export const definitionKey = (item: DefinitionItem): string =>
   item.from === "record" ? `sense-${item.sense.index}` : `page-${item.definition.ref.line}`;
 
 function Example({ text, className = EXAMPLE }: { text: string; className?: string }) {
@@ -184,6 +184,27 @@ function Example({ text, className = EXAMPLE }: { text: string; className?: stri
     </p>
   );
 }
+
+/**
+ * One definition: its labels, its text with each lemma linked, then its
+ * examples. On the `lead`, the definition that shows closed, only its first
+ * example shows until `+ more`; the others' examples fold with them. A
+ * searched expression's page folds its meanings the same way (Phrase.tsx).
+ */
+export function DefinitionContent({ item, reading, lead }: { item: DefinitionItem; reading: Reading; lead: boolean }) {
+  return (
+    <>
+      <DefinitionText item={item} reading={reading} />
+      {item.examples.map((text, j) => (
+        <Example key={j} text={text} className={lead && j > 0 ? EXAMPLE_EXTRA : EXAMPLE} />
+      ))}
+    </>
+  );
+}
+
+/** Whether the lead definition holds anything back for `+ more`: a second example, or a nested item's. */
+export const leadHoldsMore = (item: DefinitionItem): boolean =>
+  item.examples.length > 1 || nestedExamples(nestedItemsOf(item));
 
 /**
  * Closed, the first definition and its own first example, or none: an example
@@ -206,8 +227,7 @@ function Definitions({ reading }: { reading: Reading }) {
     );
   }
   const [first, ...rest] = items;
-  const more =
-    rest.length > 0 || first.examples.length > 1 || nestedExamples(nestedItemsOf(first)) || looseExamples.length > 0;
+  const more = rest.length > 0 || leadHoldsMore(first) || looseExamples.length > 0;
   const list = `definition-list-${reading.recordId}`;
   return (
     <Block id={`definitions-${reading.recordId}`} label="Definitions">
@@ -219,10 +239,7 @@ function Definitions({ reading }: { reading: Reading }) {
                 {i + 1}.
               </span>
               <div className={DEFINITION_BODY}>
-                <DefinitionText item={item} reading={reading} />
-                {item.examples.map((text, j) => (
-                  <Example key={j} text={text} className={i === 0 && j > 0 ? EXAMPLE_EXTRA : EXAMPLE} />
-                ))}
+                <DefinitionContent item={item} reading={reading} lead={i === 0} />
               </div>
             </li>
           ))}

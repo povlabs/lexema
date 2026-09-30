@@ -63,13 +63,83 @@ record's `forms[]`, so the verb's card still states its auxiliary. The test is
 the `form-role` = `auxiliary` grammar claim the importer writes for that tag,
 applied at query time in `SEARCH_SQL`.
 
+### A query of several words that nothing spells
+
+When the key matches nothing and has two to `MAX_PHRASE_WORDS` (12) words,
+`lookup()` reads it word by word (#214, rule `it-phrase/v1` in
+[`src/italian/phrase.ts`](../src/italian/phrase.ts), reads in
+[`src/lookup/phrase.ts`](../src/lookup/phrase.ts)):
+
+1. Each word stands for its lemmas: itself, and every word the `form_of`
+   edges on its headword records name (`vado` → `vado`, `andare`). A word
+   stands for itself even when no record heads it: `l'amore` heads nothing,
+   and `faccio l'amore` is still read as `fare l'amore`.
+2. An auxiliary (a word whose lemmas include `essere` or `avere`) followed by a
+   past participle stands for the participle's verb, and for nothing else. A
+   participle is a word, or one of its lemmas, that a verb record's `forms[]`
+   lists tagged `participle` and `past`: `andati` names `andato`, `andare`'s
+   past participle, so `sono andati via` is read as `andare via`.
+3. Every sequence of one lemma per place, joined by single spaces, is probed
+   as an exact headword key, at most `MAX_PHRASE_PROBES` (256) of them; a query
+   with more sequences is read as no phrase. Every sequence that is a
+   headword is a match, and only a record's headword counts.
+
+The readings are those headwords' records, and `route` says how they were
+reached: `{ kind: "surface" }` for every other `found`, or
+`{ kind: "phrase", phrases, forms }`. Each phrase is the headword `key`, its
+`word` as the source spells it, and the typed `words` with the lemma each
+stood for and the one word that stands for it (`inflected`: the participle of
+a compound tense). A single word is never read this way, and neither is a
+compound tense alone: `sono andati` is one place, so its verb is left to the
+exact lookup, which finds it in `andare`'s table. `exists()` answers the same
+way, so the two never disagree.
+
+`forms` are the form lines the page shows for a phrase match (`phraseForms`,
+[Huey's page-shape ruling](https://github.com/hueypov/lexema/issues/214#issuecomment-5906398940)).
+For each word whose lemma is not itself, the records it heads, and in each one
+every gloss of a sense whose `form_of` edge names that lemma, with the lemma
+replaced by the phrase (`phraseGloss`): `vado`'s "prima persona singolare del
+presente semplice indicativo di andare" becomes "… di andare via". Only the
+last place the gloss writes the lemma as a whole word is replaced, and a gloss
+that never writes it so is left out. One entry per record, in source order,
+with its `pos_title` and each line's own `SourceRef`. `vada via` gives `vada`'s
+five entries; `volto le spalle` gives one `volto` record with a line for
+*voltare le spalle* and one for *volgere le spalle*. A compound tense's
+participle also gives the glosses of its verb records that name the verb's past
+participle, the hop the match read it through: `fatte`'s records name `fatto`,
+not `fare`, so `hanno fatte fuori` gives `fatte`'s "participio passato plurale
+femminile di fatto" as "… di fare fuori". `fatte`'s adjective and noun records
+give none.
+
+Before its form lines, each record shows the meanings of the expression they
+name, the first time the page names it
+([Huey's ruling](https://github.com/hueypov/lexema/issues/214#issuecomment-5909303467)).
+They are the found result's own readings, the headword's records, read by the
+same `definitionsOf` the headword's page uses, so nothing is read or stored
+twice (`phrasePage`,
+[`web/lib/dictionary/phrasePage.ts`](../web/lib/dictionary/phrasePage.ts)). A
+headword with no gloss has none, and its lines stand alone: `faccio
+l'abitudine` shows only `faccio`'s form line for *fare l'abitudine*. A
+headword no form line names still shows its meanings, each of its records a
+reading of its own after the searched words' records. Only a headword with
+neither shows as a bare link.
+
+Closed, a reading shows each expression's first meaning and every form line,
+then the `+ more` every reading has; the other meanings are folded under the
+first until it opens. *Source* links each found headword's page, never the
+searched words': `vado via` has one, to *andare via*'s page
+([Huey's hand check](https://github.com/hueypov/lexema/issues/214#issuecomment-5910100974)).
+Each form line keeps its record's provenance pointer, which reaches `vado`'s
+page, and `/attribution` carries the full credit
+([ADR 0009](../.decisions/0009-two-licences-and-a-source-link.md)).
+
 ## Outcomes
 
 | `outcome` | When | Carries |
 | --- | --- | --- |
 | `rejected` | the query never reached the index | `query.raw`, `rejection` |
 | `not-found` | the index was probed, nothing matched | `query`, `release` |
-| `found` | at least one record matched | `query`, `release`, `readings` |
+| `found` | at least one record matched | `query`, `release`, `route`, `readings` |
 
 `found` and `not-found` are separate types, not one type with a flag. A
 `not-found` has no reading it can carry, and a `found`'s `readings` is
@@ -247,6 +317,51 @@ enough. `SUGGESTION_LIMIT` is 10.
 carry it, as the source spells it. A spelling found only in another record's
 `forms[]` is not suggested.
 
+**Expressions being typed** (#214,
+[Huey's hand check](https://github.com/hueypov/lexema/issues/214#issuecomment-5907869562)).
+A prefix of two to 12 words also gets `phrases`: `phraseCompletions()` in
+[`src/lookup/phrase.ts`](../src/lookup/phrase.ts) reads every word but the
+last as its lemmas, as a phrase match does (above), and each multi-word
+headword that begins with those lemmas, a space and the last word as typed is
+offered as the typed words completed. `vado v` reads `andare v`, reaches
+*andare via* and offers `vado via`, which opens that phrase's short page.
+`andare v` offers *andare via* already as a headword, so the sequence that is
+the typed words themselves is never probed again. Each offer carries the
+`headwords` it reaches, as the source spells them, and only those a search for
+the offer finds: every offer is read back the way `lookup()` reads it (see
+"Every offer is searchable", below). Phrases follow the
+headwords, none twice, and the two together stay within `SUGGESTION_LIMIT`
+(`offered()` is the list the field shows).
+
+What it costs, per keystroke. A prefix of one word, and a prefix whose own
+headwords already fill ten, read nothing more. Otherwise, after the prefix
+read:
+
+| Read | Index | Rows | Round trips |
+|---|---|---|---|
+| `WORD_LEMMAS_SQL`: the lemmas of every word but the last, sent as one JSON array | `lookup_form_headword_by_key`, one equality probe per word, then `form_of_edge_by_record` | a few per word | 1 |
+| `PAST_PARTICIPLE_SQL`, only for a word after an auxiliary (`sono andati v`) | `lookup_form_by_key`, then `grammar_claim_by_record` | a few per spelling | 1, its reads side by side |
+| `HEADWORD_PREFIX_SQL`: one range probe per lemma sequence other than the typed words, at most `MAX_PHRASE_PREFIX_PROBES` (16) | `lookup_form_headword_by_key` range, in key order, no sort | at most the room left in the list | 1, its reads side by side |
+| Only when some phrase is offered: `EXACT_KEY_SQL`, which of the offers the index spells exactly, sent as one JSON array, and `WORD_LEMMAS_SQL` again for the offers' words not read yet | `lookup_form_by_key`, one equality probe per offer; the lemma read as above | one per offer the index spells | 1, the two side by side |
+| `PAST_PARTICIPLE_SQL` again, only for an offer's word after an auxiliary not read yet | as above | a few per spelling | 1, its reads side by side |
+
+`vado v` costs four reads more than `vado`: two lemma reads, one range probe
+and one exact read. A prefix that completes nothing (`vado f`) costs one lemma
+read and its range probes, and reads nothing back. `test/phrase.test.ts`
+asserts those counts and each read's query plan.
+
+**Every offer is searchable.** Every phrase the field or "Did you mean"
+offers (see "When nothing is found") is read back before it
+is offered, by the same reading a search runs, and keeps only the headwords
+that search finds. A completion is built from the typed words and a
+headword's own, so the search could read it otherwise; an offer that would
+reach none of its headwords is dropped rather than shown. An offer the index
+spells exactly opens that entry, not a phrase match, so it keeps only the
+headword that is the offer itself: `aerei a reazion` offers `aerei a reazione`
+for *aerei a reazione*, not for *aereo a reazione*. `test/phrase.test.ts` searches
+every phrase offered for every multi-word headword in the fixture, said
+through each form of its first word.
+
 **Order.** Alphabetical by normalized key: the first words in the dictionary
 under what was typed. Huey's ruling, 2026-09-23: "it should show alphabetical
 order like the first 10, if i write a it should show words from letter a from
@@ -270,8 +385,9 @@ Huey rejected it for alphabetical. The measurements of both are in
 
 `findNearby()` in [`src/lookup/nearby.ts`](../src/lookup/nearby.ts) is what the
 page offers after `lookup()` answers `not-found` (board 24). The web layer calls
-it (`web/lib/dictionary/searchAttempt.ts`); `lookup()` itself is unchanged. It tries four
-steps, each only when the one before found nothing:
+it (`web/lib/dictionary/searchAttempt.ts`); `lookup()` itself is unchanged. It tries five
+steps, each only when the one before found nothing (step 4 also joins steps 2
+and 3):
 
 1. **Exact lookup**, which already failed.
 2. **Accent.** The query's key with its accents taken off (`foldKey`: NFD,
@@ -288,7 +404,36 @@ steps, each only when the one before found nothing:
    `AB`, `BA`, `bar`, `bau`, `bob`, none a better guess than the words that
    begin with it), nor keys over 30: their deletions are bound parameters, and
    D1 allows 100.
-4. **Words that begin with it:** `suggest()` for the query.
+4. **The query corrected so that it reads as an expression** (#214,
+   [Huey's updated ruling](https://github.com/hueypov/lexema/issues/214#issuecomment-5906146451)
+   and [hand check](https://github.com/hueypov/lexema/issues/214#issuecomment-5907869562)):
+   `nearPhrases()` in [`src/lookup/phrase.ts`](../src/lookup/phrase.ts), for a
+   query of two to 12 words, reads it as a phrase match does (above). What it
+   offers is the typed words corrected, never the headword: searching the
+   offer is a phrase match, which opens its short page. Each offer is a
+   `PhraseOffer`, the `phrase` to search and the `headwords` it reaches. The
+   corrections are:
+   - **one word misspelled:** that word replaced by a headword spelling one
+     edit from it (`oneEditSpellings`, the edits `withinOneEdit` counts), when
+     the query then reads as a headword. `vadoo via` and `vado vja` →
+     `vado via`, `tiro fouri` and `tiro fuory` → `tiro fuori`. `vadp via` →
+     `vada via` and `vado via`: both are one edit away, and neither is ranked.
+   - **the last word unfinished:** completed from a headword that begins with
+     the other words' lemmas, a space and the last word as typed, one range
+     probe per sequence, at most `MAX_PHRASE_PREFIX_PROBES` (16).
+     `tiro fuo` → `tiro fuori`.
+   - **only part of the query:** a run of two or more neighbouring words, not
+     all of them, that reads as a headword. `vado via adesso` → `vado via`.
+
+   They come in that order, each once, at most eight. The query's words and
+   every one-edit spelling of them are sent as one JSON array
+   (`WORD_LEMMAS_SQL`), and every lemma sequence as another
+   (`HEADWORD_SPELLING_SQL`), each probed through `json_each`. Every offer is
+   then read back as a search reads it and names only the headwords that
+   search finds ("Every offer is searchable", under Suggestions). This step runs
+   beside the accent step: after an accent or a one-edit match the corrections
+   follow the other offers as `phrases`; with neither, they are the offer.
+5. **Words that begin with it:** `suggest()` for the query.
 
 Candidates rank by fewest edits, then the most translation languages, then
 the most senses and forms, then a headword before a form, then shorter, then
@@ -299,12 +444,13 @@ The two scores are counted at seed time over the key's lemma records
 `richness` is senses plus forms. `mangiare` has 51 languages and `magnare`
 none, so `mangare` offers `mangiare` first. A key with no lemma record scores
 0 on both. Every probe is one indexed read on a primary key; nothing scores
-the word list per request.
+the word list per request. Expressions are not ranked: they keep step 4's order.
 
 | Answer | Case | Page |
 |---|---|---|
-| `{ kind: "accent", best, others }` | the same letters with an accent | "Did you mean città?", then other words that begin with the query |
-| `{ kind: "typo", best, others }` | one edit away | "Did you mean mangiare?", then other close spellings |
+| `{ kind: "accent", best, others, phrases }` | the same letters with an accent | "Did you mean città?", then other words that begin with the query, then the expressions |
+| `{ kind: "typo", best, others, phrases }` | one edit away | "Did you mean mangiare?", then other close spellings, then the expressions |
+| `{ kind: "phrase", best, others }` | the query corrected to read as an expression | "Did you mean vado via?", then other expressions |
 | `{ kind: "prefix", words }` | words that begin with it | the words that fit on one line, then `+ more` |
 | `{ kind: "none" }` | nothing | how to search instead |
 
