@@ -9,9 +9,6 @@
 // - `form_of`: the record the query's form-of record names as its lemma
 //   (`andare` for `andavano`). This is the one-call form-to-lemma answer: the
 //   lemma's own definitions and forms, with the query's place in its table.
-// - `phrase`: nothing spells the query, and it is a multi-word headword its
-//   words spell as their lemmas (`andare via` for `vado via`, #214). Its
-//   surface is the query as typed, and it has no place in any table.
 //
 // Nothing here ranks or places anew. Definitions are the page's list
 // (lib/dictionary/definitions.ts), a verb's forms are the page's conjugation
@@ -58,18 +55,16 @@ import {
 } from "./lookupFilters.ts";
 
 /** How the query reached a candidate's record. */
-export type Via = "headword" | "form" | "form_of" | "phrase";
+export type Via = "headword" | "form" | "form_of";
 
 /**
  * One candidate: the record answered with, and how the query reached it. A
  * `form_of` candidate carries where its lemma's table spells the query, when
- * it does, and the form-of record it was reached through otherwise. Nothing
- * of a `phrase` candidate's table was searched, so it carries no hit.
+ * it does, and the form-of record it was reached through otherwise.
  */
 export type Candidate =
   | { via: "headword" | "form"; reading: Reading; surface: string; hit: SearchedSpellings }
-  | { via: "form_of"; reading: Reading; surface: string; hit: SearchedSpellings | undefined; formOf: Reading }
-  | { via: "phrase"; reading: Reading; surface: string; hit?: never };
+  | { via: "form_of"; reading: Reading; surface: string; hit: SearchedSpellings | undefined; formOf: Reading };
 
 /** Finds the lemma a form-of record names, as a reading of its own. */
 export type LemmaReader = (lemma: LemmaTarget) => Promise<Reading | undefined>;
@@ -93,7 +88,6 @@ function surfaceOn(reading: Reading): string {
 
 /** Every candidate of a found lookup, in the lookup's order, each record once. */
 export async function candidatesOf(result: FoundResult, readLemma: LemmaReader): Promise<Candidate[]> {
-  if (result.route.kind === "phrase") return phraseCandidates(result);
   const candidates: Candidate[] = [];
   for (const reading of result.readings) {
     const lemmas = isFormOfReading(reading) ? lemmasOf(reading) : [];
@@ -120,11 +114,6 @@ export async function candidatesOf(result: FoundResult, readLemma: LemmaReader):
   }
   const seen = new Set<number>();
   return candidates.filter((candidate) => !seen.has(candidate.reading.recordId) && seen.add(candidate.reading.recordId));
-}
-
-/** Each record of the multi-word headwords the query's words spell, the query as typed its surface. */
-function phraseCandidates(result: FoundResult): Candidate[] {
-  return result.readings.map((reading) => ({ via: "phrase", reading, surface: result.query.raw.trim() }));
 }
 
 /** One place a matched form fills, in Italian labels: a cell of a conjugation or of a grid. */
@@ -339,7 +328,6 @@ function layoutOf(reading: Reading, hit: SearchedSpellings): Layout {
 
 /** Where the query sits in the candidate's forms. */
 function grammarOf(candidate: Candidate, hit: SearchedSpellings, layout: Layout): GrammarPlace[] {
-  if (candidate.via === "phrase") return [];
   if (candidate.via === "form_of" && candidate.hit === undefined) return statedPlaces(candidate.formOf);
   if (layout.conjugation !== undefined) return conjugationPlaces(candidate.reading, hit, layout.conjugation);
   return [
@@ -395,7 +383,7 @@ export function resultJson(candidate: Candidate, filters: LookupFilters): Result
 }
 
 /** What the not-found answer offers: `findNearby`'s spellings in its order, its `typo` called `edit`. */
-export type SuggestionKind = "accent" | "edit" | "prefix";
+export type SuggestionKind = "phrase" | "accent" | "edit" | "prefix";
 
 /**
  * `findNearby`'s offer as a list. After an accent match it also lists the
@@ -405,6 +393,8 @@ export type SuggestionKind = "accent" | "edit" | "prefix";
  */
 export function suggestionsOf(nearby: Nearby, query: string): { word: string; kind: SuggestionKind }[] {
   switch (nearby.kind) {
+    case "phrase":
+      return [nearby.best, ...nearby.others].map((word) => ({ word, kind: "phrase" }));
     case "accent": {
       const folded = foldKey(normalizeItalianExact(query));
       return [nearby.best, ...nearby.others].map((word) => ({

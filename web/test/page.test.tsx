@@ -253,7 +253,7 @@ test("every record the lookup returns is a reading, headed by its number and its
       assert.deepEqual(headingsOf(html), headings, query);
       // Nothing the lookup returned is dropped: every record is a reading.
       assert.deepEqual(
-        wordPage(query, readings, { kind: "surface" }).readings.map((entry) => entry.reading.recordId).sort((a, b) => a - b),
+        wordPage(query, readings).readings.map((entry) => entry.reading.recordId).sort((a, b) => a - b),
         readings.map((reading) => reading.recordId).sort((a, b) => a - b),
         query,
       );
@@ -439,7 +439,7 @@ test("etymology and synonyms come once after the readings: every synonym a searc
     assert.equal(patternsOf(html, />Etymology</g), 1);
     const synonyms = facts.slice(facts.indexOf('id="synonyms"'), facts.indexOf("</section>", facts.indexOf('id="synonyms"')));
     const words = [...synonyms.matchAll(new RegExp(`<a class="${esc(WORD_LINK)}" href="([^"]+)" lang="it">([^<]+)</a>`, "g"))];
-    assert.equal(words.length, wordPage("andare", await readingsFor(db, "andare"), { kind: "surface" }).wordFacts.synonyms.length, "every synonym is in the document");
+    assert.equal(words.length, wordPage("andare", await readingsFor(db, "andare")).wordFacts.synonyms.length, "every synonym is in the document");
     for (const [, href, word] of words) assert.equal(href, `/?q=${encodeURIComponent(textOf(word))}`);
     // The one control, last in the list so it ends what shows, open or closed.
     assert.match(synonyms, /<li[^>]*><div class="[^"]*"><button type="button"[^>]*aria-controls="synonyms-words" aria-expanded="false"[^>]*><span class="[^"]*">\+ more<\/span><span class="[^"]*">less<\/span><\/button><\/div><\/li><\/ul>$/);
@@ -561,39 +561,6 @@ test("a lemma the release has is linked where the gloss names it, every one of t
     const vadi = nth(await render(db, "vadi"), 1);
     assert.match(vadi, /forma antica di <a class="[^"]*" href="\/\?q=andare">andare<\/a>, come di <a class="[^"]*" href="\/\?q=salire">salire<\/a>/);
     assert.doesNotMatch(vadi, /Form of/);
-  });
-});
-
-test("an inflected expression is titled as searched, and each reading names the headword it is a form of", async () => {
-  await withDevSeed(async ({ db }) => {
-    for (const [query, headword] of [
-      ["vado via", "andare via"],
-      ["tiro fuori", "tirare fuori"],
-      ["sono andati via", "andare via"],
-    ]) {
-      const html = await render(db, query);
-      assert.match(html, new RegExp(`<h1 class="${esc(WORD_HEADING)}" lang="it">${esc(query)}</h1>`), query);
-      const reading = nth(html, 1);
-      assert.match(reading, new RegExp(`Form of <a class="[^"]*" href="/\\?q=${esc(encodeURIComponent(headword))}" lang="it">${esc(headword)}</a>\\.`), query);
-      // The headword's pronunciation is not the searched form's.
-      assert.doesNotMatch(html, /aria-label="Pronunciation"/, query);
-    }
-
-    // Every headword the lemmas spell is a reading, each naming its own.
-    const volto = await render(db, "volto le spalle");
-    assert.deepEqual(headingsOf(volto), ["1·Locuzione verbale", "2·Locuzione verbale"]);
-    assert.deepEqual(
-      [...volto.matchAll(/Form of <a [^>]*>([^<]*)<\/a>/g)].map((match) => match[1]).sort(),
-      ["volgere le spalle", "voltare le spalle"],
-    );
-
-    // A sequence that is no headword is still no entry.
-    assert.match(await render(db, "vado fuori"), /No entry for “<span lang="it">vado fuori<\/span>”/);
-
-    // The headword searched as written is its own page, with no such line.
-    const plain = await render(db, "andare via");
-    assert.match(plain, new RegExp(`<h1 class="${esc(WORD_HEADING)}" lang="it">andare via</h1>`));
-    assert.doesNotMatch(plain, /Form of/);
   });
 });
 
@@ -1025,6 +992,38 @@ test("a search that finds nothing offers, in order: an accent, one edit, words t
     assert.match(none, /No entry for “xqzt”/);
     assert.match(none, /Check the spelling, or search for the word’s base form: the infinitive of a verb, the singular of a noun\./);
     assert.doesNotMatch(none, /Did you mean|Suggestions/);
+  });
+});
+
+test("an inflected expression finds nothing and offers the expressions its words spell, each a search", async () => {
+  await withDevSeed(async ({ db }) => {
+    const heading = (query: string) => new RegExp(`<h1 class="${esc(NOT_FOUND_HEADING)}">No entry for “<span lang="it">${esc(query)}</span>”</h1>`);
+    const didYouMean = (word: string) =>
+      new RegExp(`Did you mean <a class="${esc(NOT_FOUND_LINK)}" href="/\\?q=${esc(encodeURIComponent(word))}" lang="it">${esc(word)}</a>\\?`);
+
+    for (const [query, headword] of [
+      ["vado via", "andare via"],
+      ["tiro fuori", "tirare fuori"],
+      ["sono andati via", "andare via"],
+    ]) {
+      const html = await render(db, query);
+      assert.match(html, heading(query), query);
+      assert.match(html, didYouMean(headword), query);
+      assert.doesNotMatch(textOf(html), /Other expressions/, query);
+    }
+
+    // Every headword an ambiguous word's lemmas spell is offered: the first
+    // sequence tried leads, and the other follows.
+    const volto = textOf(await render(db, "volto le spalle"));
+    assert.match(volto, /Did you mean (voltare|volgere) le spalle\?Other expressions(volgere|voltare) le spalle/);
+    assert.match(volto, /voltare le spalle/);
+    assert.match(volto, /volgere le spalle/);
+
+    // A lemma sequence that is no headword offers no expression.
+    assert.doesNotMatch(textOf(await render(db, "vado fuori")), /andare fuori|Other expressions/);
+
+    // The expression typed as written is its own page.
+    assert.match(await render(db, "andare via"), new RegExp(`<h1 class="${esc(WORD_HEADING)}" lang="it">andare via</h1>`));
   });
 });
 

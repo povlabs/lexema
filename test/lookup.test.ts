@@ -727,7 +727,7 @@ test("the result type cannot express a found with nothing found", () => {
   };
 
   // @ts-expect-error - `found` needs at least one reading
-  const emptyFound: FoundResult = { outcome: "found", query, release, route: { kind: "surface" }, readings: [] };
+  const emptyFound: FoundResult = { outcome: "found", query, release, readings: [] };
   // @ts-expect-error - `not-found` has no field a reading could go in
   const fullNotFound: NotFoundResult = { outcome: "not-found", query, release, readings: [] };
 

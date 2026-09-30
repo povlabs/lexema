@@ -63,41 +63,13 @@ record's `forms[]`, so the verb's card still states its auxiliary. The test is
 the `form-role` = `auxiliary` grammar claim the importer writes for that tag,
 applied at query time in `SEARCH_SQL`.
 
-### A query of several words that nothing spells
-
-When the key matches nothing and has two to `MAX_PHRASE_WORDS` (12) words,
-`lookup()` reads it word by word (#214, rule `it-phrase/v1` in
-[`src/italian/phrase.ts`](../src/italian/phrase.ts), reads in
-[`src/lookup/phrase.ts`](../src/lookup/phrase.ts)):
-
-1. Each word stands for its lemmas: itself when it is a headword, and every
-   word the `form_of` edges on its headword records name (`vado` → `vado`,
-   `andare`).
-2. An auxiliary (a word whose lemmas include `essere` or `avere`) followed by a
-   past participle stands for the participle's verb, and for nothing else. A
-   participle is a word, or one of its lemmas, that a verb record's `forms[]`
-   lists tagged `participle` and `past`: `andati` names `andato`, `andare`'s
-   past participle, so `sono andati via` is read as `andare via`.
-3. Every sequence of one lemma per place, joined by single spaces, is probed
-   as an exact headword key, at most `MAX_PHRASE_PROBES` (256) of them; a query
-   with more sequences is read as no phrase. Every sequence that is a
-   headword is a match, and only a record's headword counts.
-
-The readings are those headwords' records, and `route` says how they were
-reached: `{ kind: "surface" }` for every other `found`, or
-`{ kind: "phrase", phrases }`, each phrase the headword `key` and the typed
-`words` with the lemma each stood for. A single word is never read this way,
-and neither is a compound tense alone: `sono andati` is one place, so its verb
-is left to the exact lookup, which finds it in `andare`'s table. `exists()`
-answers the same way, so the two never disagree.
-
 ## Outcomes
 
 | `outcome` | When | Carries |
 | --- | --- | --- |
 | `rejected` | the query never reached the index | `query.raw`, `rejection` |
 | `not-found` | the index was probed, nothing matched | `query`, `release` |
-| `found` | at least one record matched | `query`, `release`, `route`, `readings` |
+| `found` | at least one record matched | `query`, `release`, `readings` |
 
 `found` and `not-found` are separate types, not one type with a flag. A
 `not-found` has no reading it can carry, and a `found`'s `readings` is
@@ -285,15 +257,37 @@ Huey rejected it for alphabetical. The measurements of both are in
 
 `findNearby()` in [`src/lookup/nearby.ts`](../src/lookup/nearby.ts) is what the
 page offers after `lookup()` answers `not-found` (board 24). The web layer calls
-it (`web/lib/dictionary/searchAttempt.ts`); `lookup()` itself is unchanged. It tries four
+it (`web/lib/dictionary/searchAttempt.ts`); `lookup()` itself is unchanged. It tries five
 steps, each only when the one before found nothing:
 
 1. **Exact lookup**, which already failed.
-2. **Accent.** The query's key with its accents taken off (`foldKey`: NFD,
+2. **An expression its words spell** (#214, rule `it-phrase/v1` in
+   [`src/italian/phrase.ts`](../src/italian/phrase.ts), reads in
+   [`src/lookup/phrase.ts`](../src/lookup/phrase.ts)). A key of two to
+   `MAX_PHRASE_WORDS` (12) words is read word by word:
+   - Each word stands for its lemmas: itself when it is a headword, and every
+     word the `form_of` edges on its headword records name (`vado` → `vado`,
+     `andare`).
+   - An auxiliary (a word whose lemmas include `essere` or `avere`) followed by
+     a past participle stands for the participle's verb, and for nothing else.
+     A participle is a word, or one of its lemmas, that a verb record's
+     `forms[]` lists tagged `participle` and `past`: `andati` names `andato`,
+     `andare`'s past participle, so `sono andati via` is read as `andare via`.
+   - Every sequence of one lemma per place, joined by single spaces, is probed
+     as an exact headword key, at most `MAX_PHRASE_PROBES` (256) of them; a
+     query with more sequences is read as no phrase. Only a record's headword
+     counts, and never the query's own key.
+
+   Every sequence that is a headword is offered, in the order the sequences
+   were tried, none left out (Huey's ruling on #214, 2026-09-30: a suggestion,
+   not a result). A single word is never read this way, and neither is a
+   compound tense alone: `sono andati` is one place, and its verb is a single
+   word.
+3. **Accent.** The query's key with its accents taken off (`foldKey`: NFD,
    combining marks removed) is probed in `accent_fold`, which holds every
    `surface_key` whose folded spelling differs from it. `citta` → `città`. An
    accented query also tries its unaccented spelling.
-3. **One edit** (a SymSpell deletion index). `typo_key` holds every distinct
+4. **One edit** (a SymSpell deletion index). `typo_key` holds every distinct
    lemma headword key (a record declaring no `form_of`) under itself and each
    spelling with one character left out. The query's own deletions and itself
    are probed in one `IN` query; every candidate is then checked with a true
@@ -303,7 +297,7 @@ steps, each only when the one before found nothing:
    `AB`, `BA`, `bar`, `bau`, `bob`, none a better guess than the words that
    begin with it), nor keys over 30: their deletions are bound parameters, and
    D1 allows 100.
-4. **Words that begin with it:** `suggest()` for the query.
+5. **Words that begin with it:** `suggest()` for the query.
 
 Candidates rank by fewest edits, then the most translation languages, then
 the most senses and forms, then a headword before a form, then shorter, then
@@ -318,6 +312,7 @@ the word list per request.
 
 | Answer | Case | Page |
 |---|---|---|
+| `{ kind: "phrase", best, others }` | an expression its words spell | "Did you mean andare via?", then the other expressions |
 | `{ kind: "accent", best, others }` | the same letters with an accent | "Did you mean città?", then other words that begin with the query |
 | `{ kind: "typo", best, others }` | one edit away | "Did you mean mangiare?", then other close spellings |
 | `{ kind: "prefix", words }` | words that begin with it | the words that fit on one line, then `+ more` |

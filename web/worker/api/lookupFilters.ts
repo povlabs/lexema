@@ -300,16 +300,8 @@ export const readPartOfSpeech = (params: URLSearchParams): ParameterReading<Part
 export const readGrammarNarrowing = (params: URLSearchParams): ParameterReading<GrammarNarrowing> =>
   reading(() => grammarNarrowing(params));
 
-/**
- * Whether `pos` and `match` keep a candidate of this part of speech, reached
- * this way. `exact` is the records `q` heads, so only `headword`; every other
- * route, a multi-word headword `q`'s words spell as their lemmas (`phrase`)
- * included, is a form of what `q` spells, so `form` keeps it.
- */
-export function admits(
-  filters: LookupFilters,
-  candidate: { pos: string; via: "headword" | "form" | "form_of" | "phrase" },
-): boolean {
+/** Whether `pos` and `match` keep a candidate of this part of speech, reached this way. */
+export function admits(filters: LookupFilters, candidate: { pos: string; via: "headword" | "form" | "form_of" }): boolean {
   if (filters.pos !== undefined && candidate.pos !== filters.pos) return false;
   if (filters.match === "exact") return candidate.via === "headword";
   if (filters.match === "form") return candidate.via !== "headword";

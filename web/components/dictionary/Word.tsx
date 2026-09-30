@@ -131,7 +131,7 @@ export function WordView({ page, siteKey }: { page: WordPage; siteKey?: string }
   return (
     <>
       <h1 className={WORD_HEADING} lang="it">
-        {page.heading}
+        {page.headword}
       </h1>
       <Pronunciation facts={page.wordFacts} />
       <JumpLinks page={page} />

@@ -132,11 +132,7 @@ const inflectRoute: Route = async (_request, url, { db, releaseId }) => {
   const result = await lookup({ db, releaseId, query: url.searchParams.get("lemma") ?? "" });
   if (result.outcome === "rejected") return queryRefusal("lemma", result.rejection);
   const charge = { endpoint: "inflect" } as const;
-  // A phrase `lemma`'s words spell (`vado via`) is not a headword of its own.
-  const lemmas =
-    result.outcome === "found" && result.route.kind === "surface"
-      ? result.readings.filter((reading) => reading.isAboutQuery && !isFormOfReading(reading))
-      : [];
+  const lemmas = result.outcome === "found" ? result.readings.filter((reading) => reading.isAboutQuery && !isFormOfReading(reading)) : [];
   if (lemmas.length === 0) {
     return { status: 404, body: error("unknown_lemma", `${result.query.raw} is not a headword of this release.`), charge };
   }

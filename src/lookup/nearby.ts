@@ -1,5 +1,6 @@
-// What a search that found nothing offers instead (#142, board 24): the same
-// letters with an accent (`citta` → `città`), a spelling one edit away
+// What a search that found nothing offers instead (#142, board 24): the
+// expression its words spell as their lemmas (`vado via` → `andare via`, #214),
+// the same letters with an accent (`citta` → `città`), a spelling one edit away
 // (`mangare` → `mangiare`), or the words that begin with what was typed
 // (`bab`). Each step runs only when the one before it found nothing, and each
 // is an indexed read: `accent_fold` and `typo_key` are written by the seed
@@ -11,6 +12,7 @@
 
 import { normalizeItalianExact } from "../italian/normalize.js";
 import type { LookupDatabase } from "./database.js";
+import { phraseHeadwords } from "./phrase.js";
 import { suggest } from "./suggest.js";
 
 /** A key with its accents taken off: `città` → `citta`. The query is folded the same way. */
@@ -92,9 +94,11 @@ export const TYPO_MIN_LENGTH = 4;
 
 /**
  * What the not-found page offers, one shape per case on board 24. A best guess
- * leads `accent` and `typo`; `others` follow it.
+ * leads `phrase`, `accent` and `typo`; `others` follow it. The `phrase` lead is
+ * the first lemma sequence tried, not a ranked guess.
  */
 export type Nearby =
+  | { kind: "phrase"; best: string; others: string[] }
   | { kind: "accent"; best: string; others: string[] }
   | { kind: "typo"; best: string; others: string[] }
   | { kind: "prefix"; words: string[] }
@@ -174,13 +178,30 @@ async function typoMatches(db: LookupDatabase, releaseId: string, key: string): 
 }
 
 /**
+ * Step 1: the multi-word headwords the query's words spell as their lemmas
+ * (src/lookup/phrase.ts), each as the source spells it.
+ */
+async function phraseOffers(db: LookupDatabase, releaseId: string, key: string): Promise<string[]> {
+  const keys = await phraseHeadwords(db, releaseId, key);
+  const surfaces = await surfacesFor(db, releaseId, keys);
+  return keys.flatMap((phrase) => {
+    const spelled = surfaces.get(phrase);
+    return spelled === undefined ? [] : [spelled.surface];
+  });
+}
+
+/**
  * What to offer for a query the exact lookup did not find, trying each step
- * only when the one before found nothing: accent, then one edit, then the
- * words that begin with it, then nothing.
+ * only when the one before found nothing: the expressions its words spell,
+ * then accent, then one edit, then the words that begin with it, then nothing.
  */
 export async function findNearby({ db, releaseId, query }: { db: LookupDatabase; releaseId: string; query: string }): Promise<Nearby> {
   const key = normalizeItalianExact(query);
   if (key === "") return { kind: "none" };
+
+  // Every expression the words spell is offered: they are headwords, not guesses.
+  const [phrase, ...morePhrases] = await phraseOffers(db, releaseId, key);
+  if (phrase !== undefined) return { kind: "phrase", best: phrase, others: morePhrases };
 
   const prefixWords = async (): Promise<string[]> => {
     const answer = await suggest({ db, releaseId, prefix: query });

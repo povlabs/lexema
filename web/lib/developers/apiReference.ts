@@ -440,7 +440,7 @@ export const ENDPOINT_REFERENCE: Readonly<Record<Endpoint, EndpointReference>> =
     title: "Look up a word",
     tagline: "Everything about a word",
     summary:
-      "Every candidate for q, in full: the record the word heads, the lemma it is a form of, and any record that lists it among its forms. When nothing spells q and it has several words, each word is read as its lemmas, and every multi-word headword those lemmas spell in order is a candidate with `match.via` `phrase`: `vado via` finds `andare via`.",
+      "Every candidate for q, in full: the record the word heads, the lemma it is a form of, and any record that lists it among its forms.",
     parameters: [
       Q,
       POS,
@@ -463,7 +463,7 @@ export const ENDPOINT_REFERENCE: Readonly<Record<Endpoint, EndpointReference>> =
     ],
     answers: [
       { status: "200", description: "The word is in the release. results holds every candidate the filters keep." },
-      { status: "404", description: "The word is not in the release. results is empty and suggestions lists close spellings." },
+      { status: "404", description: "The word is not in the release. results is empty and suggestions lists close spellings, and the expressions q's words spell (`phrase`: `vado via` suggests `andare via`)." },
     ],
     examples: [LOOKUP_EXAMPLE, LOOKUP_FILTERED_EXAMPLE, NOT_FOUND_EXAMPLE],
   },
@@ -565,7 +565,7 @@ export const ENDPOINT_REFERENCE: Readonly<Record<Endpoint, EndpointReference>> =
     title: "Find close spellings",
     tagline: "Did you mean",
     summary:
-      "Spellings close to `q`, in the not-found page's order: the same letters with accents (`accent`), one edit away (`edit`), or words that begin with `q` (`prefix`).",
+      "Spellings close to `q`, in the not-found page's order: the multi-word headwords its words spell as their lemmas (`phrase`), the same letters with accents (`accent`), one edit away (`edit`), or words that begin with `q` (`prefix`).",
     parameters: [Q],
     answers: [{ status: "200", description: "`results` holds the spellings, and is empty when none is close." }],
     examples: [{
@@ -664,7 +664,7 @@ export const POS_TEXT = [
 /** What each `match` keeps: every value the API takes, and none it does not. */
 const MATCH_MEANING: Readonly<Record<Match, string>> = {
   exact: "Only the records `q` heads.",
-  form: "Only the lemma `q` is a form of, any record that lists `q` among its forms, and a multi-word headword `q`'s words spell (`match.via` `phrase`).",
+  form: "Only the lemma `q` is a form of, and any record that lists `q` among its forms.",
   any: "Both. The default when `match` is absent.",
 };
 

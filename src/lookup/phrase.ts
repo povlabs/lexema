@@ -1,10 +1,12 @@
 // The multi-word headwords a query spells word by word (#214): what the index
 // says about each word, read for rule `it-phrase/v1` (src/italian/phrase.ts).
 //
-// Only ever run for a query the exact lookup found nothing for. Every read is
-// an indexed probe by key, and the lemma sequences are probed as exact
-// headword keys, so a sequence that is not a stored headword finds nothing:
-// no partial phrase, no ranking, no headword that is not in the release.
+// They are offered, never answered: a search that found nothing shows them as
+// "Did you mean andare via?" (src/lookup/nearby.ts; Huey's ruling on #214,
+// 2026-09-30). Every read is an indexed probe by key, and the lemma sequences
+// are probed as exact headword keys, so a sequence that is not a stored
+// headword finds nothing: no partial phrase, no ranking, no headword that is
+// not in the release.
 
 import {
   lemmaSequences,
@@ -14,7 +16,6 @@ import {
   type WordLemmas,
 } from "../italian/phrase.js";
 import type { LookupDatabase } from "./database.js";
-import type { PhraseMatch, PhraseWord } from "./types.js";
 
 /**
  * A word's lemmas: itself when it is a headword, and the word every form-of
@@ -92,14 +93,15 @@ async function headwordKeys(db: LookupDatabase, releaseId: string, keys: readonl
 }
 
 /**
- * Every multi-word headword the query's words spell, each with the words that
- * spelled it, in the order the lemma sequences were tried. Empty when the
- * query is one word, more than `MAX_PHRASE_WORDS`, more than
- * `MAX_PHRASE_PROBES` sequences, or spells no headword.
+ * Every multi-word headword the query's words spell, as keys, in the order the
+ * lemma sequences were tried. The query's own key is never one: a query that
+ * is a headword is the exact lookup's. Empty when the query is one word, more
+ * than `MAX_PHRASE_WORDS`, more than `MAX_PHRASE_PROBES` sequences, or spells
+ * no headword.
  *
  * `key` is the query as normalized for the index.
  */
-export async function phraseMatches(db: LookupDatabase, releaseId: string, key: string): Promise<PhraseMatch[]> {
+export async function phraseHeadwords(db: LookupDatabase, releaseId: string, key: string): Promise<string[]> {
   const typed = key.split(/\s+/).filter((word) => word !== "");
   if (typed.length < 2 || typed.length > MAX_PHRASE_WORDS) return [];
 
@@ -118,15 +120,7 @@ export async function phraseMatches(db: LookupDatabase, releaseId: string, key: 
   const sequences = lemmaSequences(slots);
   if (sequences === undefined || sequences.length === 0) return [];
 
-  const spelled = new Map<string, PhraseWord[]>();
-  for (const sequence of sequences) {
-    const phrase = sequence.join(" ");
-    if (!spelled.has(phrase)) spelled.set(phrase, slots.map((slot, i) => ({ typed: slot.typed, lemma: sequence[i] })));
-  }
-  const present = await headwordKeys(db, releaseId, [...spelled.keys()]);
-  return [...spelled].flatMap(([phrase, [first, second, ...rest]]) =>
-    present.has(phrase) && first !== undefined && second !== undefined
-      ? [{ key: phrase, words: [first, second, ...rest] }]
-      : [],
-  );
+  const spelled = [...new Set(sequences.map((sequence) => sequence.join(" ")))].filter((phrase) => phrase !== key);
+  const present = await headwordKeys(db, releaseId, spelled);
+  return spelled.filter((phrase) => present.has(phrase));
 }

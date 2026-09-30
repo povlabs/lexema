@@ -131,7 +131,7 @@ export function Outcome({ raw, attempt, siteKey }: { raw: string; attempt: Attem
   const query = raw.trim();
   if (attempt.outcome === "found") {
     return (
-      <WordView page={wordPage(attempt.query.raw.trim(), attempt.readings, attempt.route)} siteKey={siteKey} />
+      <WordView page={wordPage(attempt.query.raw.trim(), attempt.readings)} siteKey={siteKey} />
     );
   }
   if (attempt.outcome === "not-found") return <NotFound query={attempt.query.raw.trim()} nearby={attempt.nearby} />;
