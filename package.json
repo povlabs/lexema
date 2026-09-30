@@ -17,6 +17,7 @@
     "normalize:glosses": "tsx src/import/normalizeGlossesCli.ts",
     "db:generate": "drizzle-kit generate",
     "api-key": "tsx src/api/keyCli.ts",
+    "plan": "tsx src/billing/planCli.ts",
     "measure:recovery": "tsx src/import/measureRecovery.ts"
   },
   "devDependencies": {
@@ -27,7 +28,9 @@
   },
   "dependencies": {
     "@better-auth/drizzle-adapter": "1.7.6",
+    "@better-auth/stripe": "1.7.6",
     "better-auth": "1.7.6",
-    "drizzle-orm": "0.45.3"
+    "drizzle-orm": "0.45.3",
+    "stripe": "22.6.2"
   }
 }
