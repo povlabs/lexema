@@ -168,7 +168,7 @@ export function slotRuns(slots: readonly PhraseSlot[]): PhraseSlot[][] {
 
 // The page a searched expression opens is short (#214, Huey's page-shape ruling
 // of 2026-09-30): the searched words, and each form entry of the inflected word
-// with its lemma swapped for the expression. `vado`'s "1ª persona singolare del
+// with its lemma swapped for the expression. `vado`'s "prima persona singolare del
 // presente semplice indicativo di andare" reads "... di andare via" for `vado
 // via`. The source's own words stay as they are; only the lemma is replaced.
 

@@ -138,7 +138,7 @@ test("a participle that names the verb only through its past participle still ha
 
 test("the page's lines are the inflected word's form entries, each with its lemma swapped for the expression", async () => {
   assert.deepEqual(formLines(await found("vado via")), [
-    "vado: 1ª persona singolare del presente semplice indicativo di [andare via]",
+    "vado: prima persona singolare del presente semplice indicativo di [andare via]",
   ]);
   // `tiro` is also a noun; only the verb record's form entry names `tirare`.
   assert.deepEqual(formLines(await found("tiro fuori")), [

@@ -617,7 +617,7 @@ export interface PhraseMatch {
 /**
  * One form entry of a searched expression's inflected word, its lemma replaced
  * by the expression (`phraseGloss`, src/italian/phrase.ts): `vado`'s
- * "1ª persona singolare del presente semplice indicativo di andare" reads
+ * "prima persona singolare del presente semplice indicativo di andare" reads
  * "… di *andare via*" for `vado via`.
  */
 export interface PhraseDefinition extends PhraseGloss {

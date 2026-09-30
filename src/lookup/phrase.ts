@@ -460,7 +460,7 @@ export async function phraseMatches(db: LookupDatabase, releaseId: string, key: 
 /**
  * The form entries of the records a word heads that name a lemma: each gloss
  * of each sense whose `form_of` edge points at it. `vado` and `andare` give
- * "1ª persona singolare del presente semplice indicativo di andare". Exported
+ * "prima persona singolare del presente semplice indicativo di andare". Exported
  * so a test can assert the plan.
  */
 export const FORM_ENTRY_SQL = `SELECT DISTINCT r.record_id, r.word, r.pos_title, r.line_no, r.line_sha256,

@@ -98,7 +98,7 @@ way, so the two never disagree.
 [Huey's page-shape ruling](https://github.com/hueypov/lexema/issues/214#issuecomment-5906398940)).
 For each word whose lemma is not itself, the records it heads, and in each one
 every gloss of a sense whose `form_of` edge names that lemma, with the lemma
-replaced by the phrase (`phraseGloss`): `vado`'s "1ª persona singolare del
+replaced by the phrase (`phraseGloss`): `vado`'s "prima persona singolare del
 presente semplice indicativo di andare" becomes "… di andare via". Only the
 last place the gloss writes the lemma as a whole word is replaced, and a gloss
 that never writes it so is left out. One entry per record, in source order,

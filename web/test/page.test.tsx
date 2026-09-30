@@ -595,7 +595,7 @@ test("an inflected expression opens a short page: its words, the expression's fi
     ];
     const tirareFuori = ["levare fuori", "(figuratively) far raccontare", "(figuratively) esplicitare il proprio parere"];
     for (const [query, heading, meanings, forms] of [
-      ["vado via", "1·Voce verbale", andareVia, ["1ª persona singolare del presente semplice indicativo di andare via"]],
+      ["vado via", "1·Voce verbale", andareVia, ["prima persona singolare del presente semplice indicativo di andare via"]],
       ["tiro fuori", "1·Voce verbale", tirareFuori, ["prima persona singolare dell'indicativo presente di tirare fuori"]],
       ["sono andati via", "1·Voce verbale", andareVia, ["participio passato plurale maschile di andare via"]],
       // `vada` is a congiuntivo and an imperativo: the meanings once, then every form entry.
@@ -671,13 +671,12 @@ test("an inflected expression opens a short page: its words, the expression's fi
     // A participle whose records name the verb only through its past
     // participle: `fatte` names `fatto`, `fare`'s. The meanings, then the
     // verb record's line; *Source* is *fare fuori*'s page. *fare fuori*'s second
-    // sense is the source's missing-definition text, shown as its own page
-    // shows it (#250).
+    // sense is only the source's missing-definition placeholder, which no page
+    // shows (#255).
     const fatte = await render(db, "hanno fatte fuori");
     assert.deepEqual(headingsOf(fatte), ["1·Voce verbale"]);
     assert.deepEqual(definitionLines(fatte), [
       "uccidere un individuo",
-      "(colloquial) definizione mancante; se vuoi, aggiungila tu",
       "participio passato plurale femminile di fare fuori",
     ]);
     assert.deepEqual(closedLines(fatte), ["uccidere un individuo", "participio passato plurale femminile di fare fuori"]);
@@ -736,10 +735,11 @@ test("an expression no searched word has a form line for still shows its meaning
     // *fare fuori*'s own record, its meanings under *Definitions*.
     assert.deepEqual(headingsOf(html), ["1·Locuzione verbale"]);
     assert.match(html, />Definitions</);
-    assert.deepEqual(definitionLines(html), ["uccidere un individuo", "(colloquial) definizione mancante; se vuoi, aggiungila tu"]);
-    // Folded as every reading's definitions fold: the first, then `+ more`.
+    // Its second sense is only the missing-definition placeholder, so none shows (#255).
+    assert.deepEqual(definitionLines(html), ["uccidere un individuo"]);
+    // One meaning and no examples: nothing folds, as on any such reading.
     assert.deepEqual(closedLines(html), ["uccidere un individuo"]);
-    assert.equal(occurrencesOf(html, "+ more"), 1);
+    assert.equal(occurrencesOf(html, "+ more"), 0);
     assert.deepEqual(sourcePages(html), ["fare fuori"]);
     assert.match(textOf(html), /Report a mistake/);
   });
