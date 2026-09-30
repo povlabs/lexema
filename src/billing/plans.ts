@@ -11,6 +11,9 @@
 /** A plan bought through Stripe. */
 export type StripePlanId = "starter" | "pro";
 
+/** The plan a form names, or `undefined` for anything else: Checkout sells Starter and Pro only (#264). */
+export const stripePlanOf = (text: string | undefined): StripePlanId | undefined => (text === "starter" || text === "pro" ? text : undefined);
+
 /** Every plan. There is no free plan (Huey, #161). */
 export type PlanId = StripePlanId | "enterprise";
 

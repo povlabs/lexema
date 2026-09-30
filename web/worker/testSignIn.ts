@@ -1,6 +1,7 @@
 // The test sign-in on a Preview's developer site (#245, ADR 0018).
 //
-//   POST /sign-in/test-developer   sign in as the test developer, then /dashboard
+//   POST /sign-in/test-developer   sign in as the test developer, then /dashboard,
+//                                  or on to Checkout for a plan chosen before it
 //
 // A reviewer's capture of a Preview clicks one button on the sign-in page and
 // reaches the dashboard with no credential of its own. It signs in one fixed
@@ -18,7 +19,7 @@ import { authSecret } from "@lexema/accounts/auth.ts";
 import { signInTestDeveloper } from "@lexema/accounts/testDeveloper.ts";
 import { DEVELOPERS_SEGMENT, isDeveloperPreviewHost } from "./hosts.ts";
 import type { FetchHandler } from "./rateLimit.ts";
-import { AFTER_SIGN_IN, liveContext, redirect, text, type SignInBindings, type SignInContext } from "./signIn.ts";
+import { afterSignIn, liveContext, redirect, text, type SignInBindings, type SignInContext } from "./signIn.ts";
 import type { Stage } from "./stage.ts";
 
 /** Where the test sign-in is posted, on a Preview's developer host. */
@@ -44,7 +45,7 @@ export async function answerTestSignIn(request: Request, context: TestSignInCont
   if (secret === undefined || context.appDb === undefined) return text(503, "The test sign-in is not available.");
   try {
     const cookies = await signInTestDeveloper(context.appDb, secret, url.origin, request.headers, context.now);
-    return redirect(AFTER_SIGN_IN, cookies);
+    return redirect(afterSignIn(request.headers.get("cookie")), cookies);
   } catch (failure) {
     console.error("test sign-in failed", failure);
     return text(503, "Sign-in could not be finished. Try again later.");

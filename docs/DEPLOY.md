@@ -25,7 +25,7 @@ development, with the placeholder D1 that `pnpm run seed:dev` fills.
 | API rate | `CALLS_60` and `CALLS_300`, Rate Limiting bindings of 60 and 300 calls a minute per developer account, keyed by account id ([#261](https://github.com/hueypov/lexema/issues/261)) |
 | Account meter | the Durable Object class `AccountMeterObject`, bound as `ACCOUNT_METER`, SQLite-backed through the `v1-account-meter` migration: one per developer account, counting its calls and adding them to `api_key_usage` at most once a minute ([#261](https://github.com/hueypov/lexema/issues/261)) |
 | Sign-in | Google and GitHub, each on only once its client id and secret are set ([below](#turn-on-sign-in)) |
-| Billing | Stripe's webhook at `https://developers.lexema.fyi/auth/stripe/webhook`, on only once the Stripe secrets and price ids are set ([below](#turn-on-billing)) |
+| Billing | Checkout, the billing portal and Stripe's webhook at `https://developers.lexema.fyi/auth/stripe/webhook`, on only once the Stripe secrets and live price ids are set ([below](#turn-on-billing)) |
 | Workers Logs | on |
 
 `www` to the apex and HTTP to HTTPS are dashboard settings (a redirect rule and
@@ -112,7 +112,7 @@ alone, never from the top level or `env.production`:
 | `ACCOUNT_METER` | the account meter's binding; each Preview gets its own Durable Object namespace and storage |
 | `EMAIL` | a `send_email` binding with `destination_address` set to Huey's verified address, so it can send nowhere else |
 | Sign-in | off: both OAuth client ids are empty |
-| Billing | off: both Stripe price ids are empty and no Stripe secret is sent, so the webhook answers 503 |
+| Billing | off: the Stripe test-mode price ids are set, but the [Preview command](#the-preview-command) sends no Stripe secret, so the billing routes and the webhook answer 503 |
 
 `web/test/preview.test.ts` fails if a Preview's email can reach anyone else,
 if a Preview rate limit shares a production `namespace_id`, if a production
@@ -408,21 +408,56 @@ callback answers 503.
 
 Starter and Pro are paid through Stripe, on better-auth's Stripe plugin
 (`src/accounts/billing.ts`, [#262](https://github.com/hueypov/lexema/issues/262)).
-Its webhook keeps each account's `subscription` row in step with Stripe: for
-each event below it reads the subscription back from Stripe and writes it, so
-a late or repeated event ends in Stripe's current state. Until all four
-settings are set, and `BETTER_AUTH_SECRET` too, the webhook answers 503 and the
-log names what is missing.
+The developer site's billing routes (`web/worker/billing.ts`,
+[#264](https://github.com/hueypov/lexema/issues/264)) send a developer to
+Stripe Checkout and to Stripe's billing portal. Its webhook keeps each
+account's `subscription` row in step with Stripe: for each event below it
+reads the subscription back from Stripe and writes it, so a late or repeated
+event ends in Stripe's current state. Until all four settings are set, and
+`BETTER_AUTH_SECRET` too, the billing routes and the webhook answer 503 and
+the log names what is missing.
 
 | Setting | Kind | What it is |
 |---|---|---|
-| `STRIPE_SECRET_KEY` | Worker secret | the Stripe API key the plugin calls Stripe with |
+| `STRIPE_SECRET_KEY` | Worker secret | the Stripe API key the plugin calls Stripe with, `sk_test_…` or `sk_live_…` |
 | `STRIPE_WEBHOOK_SECRET` | Worker secret | the webhook endpoint's signing secret, `whsec_…` |
 | `STRIPE_PRICE_STARTER` | var | Starter's monthly price id, `price_…` |
 | `STRIPE_PRICE_PRO` | var | Pro's monthly price id, `price_…` |
 
-1. In Stripe, make the Starter and Pro products with their monthly prices
-   ($15 and $49). Put each price id in `env.production.vars` in
+Where each one lives:
+
+| Setting | Local | Previews | Production |
+|---|---|---|---|
+| Price ids | the top-level `vars` in `web/wrangler.jsonc`: Stripe test-mode prices, already set | `previews.vars`: the same test-mode prices, already set | `env.production.vars`: empty until the live-mode products exist at go-live |
+| `STRIPE_SECRET_KEY` | `web/.dev.vars`, the test-mode key | not sent, so billing is off | `wrangler secret put`, the live-mode key |
+| `STRIPE_WEBHOOK_SECRET` | `web/.dev.vars`, the secret `stripe listen` prints | not sent, so billing is off | `wrangler secret put`, the live endpoint's secret |
+
+The price ids are not secret. The test-mode ones in the repository are
+Starter's $15 price `price_1ULTI07wyoTIgVX6DFZ5TmY3` and Pro's $49 price
+`price_1ULTI17wyoTIgVX6QiH9muAe` (posted on
+[#161](https://github.com/hueypov/lexema/issues/161)). A price id set without
+the two secrets turns nothing on. A Preview gets a fresh deployment on every
+push, which keeps only the secrets the Preview command sends, and that is
+`BETTER_AUTH_SECRET` alone, so billing stays off on every Preview.
+
+### Locally, in test mode
+
+1. Put the test-mode secret key in `web/.dev.vars` as `STRIPE_SECRET_KEY`.
+2. Forward Stripe's test events to the local developer site with the Stripe
+   CLI, which prints the webhook signing secret it signs them with
+   ([Stripe CLI, `stripe listen`](https://docs.stripe.com/cli/listen)):
+
+   ```sh
+   stripe listen --forward-to http://developers.localhost:8790/auth/stripe/webhook
+   ```
+
+   Put that secret in `web/.dev.vars` as `STRIPE_WEBHOOK_SECRET`, and restart
+   the Worker.
+
+### In production, at go-live
+
+1. In Stripe's live mode, make the Starter and Pro products with their monthly
+   prices ($15 and $49). Put each price id in `env.production.vars` in
    `web/wrangler.jsonc`, as `STRIPE_PRICE_STARTER` and `STRIPE_PRICE_PRO`.
 2. Add a webhook endpoint at
    `https://developers.lexema.fyi/auth/stripe/webhook`, sending these six
@@ -444,9 +479,24 @@ log names what is missing.
    pnpm exec wrangler secret put STRIPE_WEBHOOK_SECRET --env production
    ```
 
-The webhook also needs the production app database, `APP_DB` (#19): without
-it, the webhook answers 503. It is the only `/auth` path the Worker answers,
-and only on the developer site; it is not counted by the per-visitor limits.
+### The billing portal
+
+Manage billing opens Stripe's customer portal, and choosing a plan while one
+already serves opens it too. Turn these on in the portal's settings (Stripe
+Dashboard, Settings, Billing, Customer portal), in test mode and again in live
+mode:
+
+- Payment methods: customers can update their payment method.
+- Invoice history: shown.
+- Subscriptions, switch plan: on, between the Starter and Pro products'
+  monthly prices.
+- Subscriptions, cancel: on, at the end of the billing period.
+
+Billing also needs the production app database, `APP_DB` (#19): without it,
+the billing routes and the webhook answer 503. Two `/auth` paths are answered,
+both the Stripe plugin's and only on the developer site: the webhook, which is
+not counted by the per-visitor limits, and `/auth/subscription/success`, where
+Checkout returns a paid developer before they land on `/dashboard/settings`.
 
 ## After a deploy
 

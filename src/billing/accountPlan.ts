@@ -26,6 +26,13 @@ export interface AccountPlan {
 }
 
 /**
+ * Where choosing Starter or Pro takes an account (#264): Checkout while no
+ * plan serves it, and the billing portal once one does, where a serving
+ * Stripe plan is switched or renewed rather than bought twice.
+ */
+export const choiceFor = (plan: AccountPlan): "checkout" | "portal" => (plan.serving.serving ? "portal" : "checkout");
+
+/**
  * The state a stored subscription row is in. The table's CHECKs refuse an
  * unknown status and a serving status with no period, so either here is an
  * error, not a state.

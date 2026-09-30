@@ -4,8 +4,10 @@
 // code exchange), links a second provider to an account by verified email,
 // and keeps sessions. It is built per request, over the app tables through
 // Drizzle (src/db/app), and web/worker/signIn.ts calls it from Lexema's own
-// routes. One of its endpoints is reachable: the Stripe plugin's webhook
-// (./billing.ts), on the developer site only (web/worker/stripeWebhook.ts).
+// routes. Two of its endpoints are reachable, both the Stripe plugin's
+// (./billing.ts) and on the developer site only: its webhook
+// (web/worker/stripeWebhook.ts) and the page Checkout returns to
+// (web/worker/billing.ts).
 //
 // What stays Lexema's is the account rule in ./accounts.ts: only a verified
 // email reaches an account, and each identity keeps the email it was linked
@@ -41,13 +43,20 @@ export const PENDING_COOKIE = `__Secure-${COOKIE_PREFIX}.state`;
 /** How long a sign-in lasts: 30 days, as it did before better-auth. */
 export const SESSION_LIFETIME_SECONDS = 30 * 24 * 60 * 60;
 /**
- * The path better-auth's endpoints sit under. One is routed: the Stripe
- * plugin's webhook, `STRIPE_WEBHOOK_PATH` (web/worker/stripeWebhook.ts).
- * web/worker/signIn.ts calls the rest directly.
+ * The path better-auth's endpoints sit under. Two are routed, both the Stripe
+ * plugin's: `STRIPE_WEBHOOK_PATH` and `CHECKOUT_RETURN_PATH`. web/worker/signIn.ts
+ * and web/worker/billing.ts call the rest directly.
  */
 export const AUTH_PATH = "/auth";
 /** The Stripe plugin's webhook, on the developer site (#262). */
 export const STRIPE_WEBHOOK_PATH = `${AUTH_PATH}/stripe/webhook`;
+/**
+ * Where Stripe sends the browser after a paid Checkout (#264). The plugin
+ * makes this Checkout's success URL itself, whatever it is asked for, then
+ * reads the subscription back from Stripe and redirects on to the URL it was
+ * asked for (web/worker/billing.ts).
+ */
+export const CHECKOUT_RETURN_PATH = `${AUTH_PATH}/subscription/success`;
 
 /**
  * `BETTER_AUTH_SECRET`, which signs the session cookie, or `undefined` when it
