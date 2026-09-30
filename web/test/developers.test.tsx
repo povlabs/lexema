@@ -26,7 +26,8 @@ import { API_PREFIX, ENDPOINTS } from "../../src/api/calls.js";
 import { seedSql } from "../../src/import/seedSql.js";
 import type { AppTables } from "../../src/db/app/database.js";
 import type { LookupDatabase } from "../../src/lookup/database.js";
-import { freshAppDatabase, readOnlyDictionary } from "../../test/databases.js";
+import { freshAppDatabase, readOnlyDictionary, subscribe } from "../../test/databases.js";
+import { runPlanCommand } from "../../src/billing/planCli.js";
 import { loadFixturePages } from "../../src/source/rawPage.js";
 import {
   API_BASE,
@@ -93,12 +94,22 @@ const metering = new TestMetering();
 
 const newKey = (perMinuteLimit = 1_000) => createKey(db, { label: "developers", perMinuteLimit }, NOW);
 
-/** A key a developer made in the dashboard, with this access. */
-async function ownedKey(access: KeyAccess): Promise<string> {
-  const identity = verifiedIdentity("github", { subject: "docs", verifiedEmail: "docs@example.com", name: undefined });
-  const name = keyName("docs");
+/** An account's plan in these tests: an active Starter over the period NOW falls in, or none, or an Enterprise plan of this many calls. */
+type DocsPlan = "starter" | "no plan" | { enterpriseCalls: number };
+
+/** A key a developer made in the dashboard, with this access, under the account `subject` names, on this plan. */
+async function ownedKey(access: KeyAccess, subject = "docs", plan: DocsPlan = "starter"): Promise<string> {
+  const identity = verifiedIdentity("github", { subject, verifiedEmail: `${subject}@example.com`, name: undefined });
+  const name = keyName(subject);
   assert.ok(identity !== undefined && name !== undefined);
-  const created = await createAccountKey(db, (await signInAccount(db, identity, NOW)).accountId, name, NOW, access);
+  const { accountId } = await signInAccount(db, identity, NOW);
+  if (plan === "starter") {
+    await subscribe(db, accountId, { plan: "starter", status: "active", periodStart: new Date("2026-09-10"), periodEnd: new Date("2026-10-10") });
+  } else if (plan !== "no plan") {
+    const args = ["enterprise", String(accountId), "--calls", String(plan.enterpriseCalls), "--per-minute", "60", "--from", "2026-09-01", "--until", "2026-10-01"];
+    assert.equal((await runPlanCommand(args, db, NOW)).status, 0);
+  }
+  const created = await createAccountKey(db, accountId, name, NOW, access);
   assert.ok(created.outcome === "created");
   return created.key;
 }
@@ -150,6 +161,10 @@ test("every error the docs list is one the API answers, with that status and cod
   const lookup = onlyEndpoints(["lookup"]);
   assert.ok(lookup !== undefined);
   const lookupOnly = await ownedKey({ endpoints: lookup, expiresAt: null });
+  const planless = await ownedKey({ endpoints: ALL_ENDPOINTS, expiresAt: null }, "planless", "no plan");
+  // A plan of 1 call a period, already spent.
+  const spent = await ownedKey({ endpoints: ALL_ENDPOINTS, expiresAt: null }, "spent", { enterpriseCalls: 1 });
+  assert.equal((await send("exists?q=sale", { key: spent })).status, 200);
   // The key is read and its minute counted; the lookup's own read then fails.
   const failing: LookupDatabase = { all: () => Promise.reject(new Error("D1 is down")) };
   t.mock.method(console, "error", () => {});
@@ -162,6 +177,8 @@ test("every error the docs list is one the API answers, with that status and cod
     invalid_key: () => send("lookup?q=sale", { key: "lx_not-a-key" }),
     revoked_key: () => send("lookup?q=sale", { key: revoked.key }),
     expired_key: () => send("lookup?q=sale", { key: expired }),
+    plan_required: () => send("lookup?q=sale", { key: planless }),
+    allowance_exceeded: () => send("exists?q=sale", { key: spent }),
     endpoint_not_allowed: () => send("exists?q=sale", { key: lookupOnly }),
     unknown_lemma: () => send("inflect?lemma=qqqqqq", { key }),
     not_found: () => send("nowhere", { key }),

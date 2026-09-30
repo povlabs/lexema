@@ -20,7 +20,7 @@ function storage() {
   const sqlite = new DatabaseSync(":memory:");
   const meter = () => AccountMeter.over(meterSqlOver(sqlite));
   const admit = (over: Partial<Admission> = {}) =>
-    meter().admit({ keyId: 1, calls: 1, periodStart: PERIOD, allowance: null, perMinute: null, now: NOW, ...over });
+    meter().admit({ keyId: 1, calls: 1, periodStart: PERIOD, allowance: 1_000_000, perMinute: null, now: NOW, ...over });
   /** Run the flush into a sink that keeps what it was sent. */
   const flush = async (now = NOW + FLUSH_EVERY_MS) => {
     const sent: UnsentCalls[] = [];
@@ -51,6 +51,27 @@ test("a new period start restarts the count; an older one counts in the current 
   admit({ calls: 5 });
   assert.deepEqual(admit({ calls: 1, periodStart: "2026-10-01T00:00:00.000Z" }).answer, { outcome: "admitted", periodCalls: 1 });
   assert.deepEqual(admit({ calls: 1, periodStart: PERIOD }).answer, { outcome: "admitted", periodCalls: 2 });
+});
+
+test("a meter left counting #261's stand-in month starts the plan's billing period at 0, even one that began before that month, and keeps its unsent calls", async () => {
+  const sqlite = new DatabaseSync(":memory:");
+  // The storage #261's meter left: 40 calls in the stand-in month of October, not yet sent to D1.
+  sqlite.exec(`CREATE TABLE meter_state (id INTEGER PRIMARY KEY, period_start TEXT NOT NULL, period_calls INTEGER NOT NULL,
+    minute INTEGER NOT NULL, minute_calls INTEGER NOT NULL, flush_due INTEGER) STRICT`);
+  sqlite.exec(`CREATE TABLE key_day (key_id INTEGER NOT NULL, day TEXT NOT NULL, calls INTEGER NOT NULL, sent INTEGER NOT NULL,
+    PRIMARY KEY (key_id, day)) STRICT`);
+  sqlite.exec(`INSERT INTO meter_state VALUES (1, '2026-10-01T00:00:00.000Z', 40, 0, 0, NULL)`);
+  sqlite.exec(`INSERT INTO key_day VALUES (1, '2026-10-02', 40, 0)`);
+  const meter = () => AccountMeter.over(meterSqlOver(sqlite));
+  const at = Date.parse("2026-10-02T12:00:00Z");
+
+  // A Stripe period that began on 15 September: earlier than the stand-in start, and still counted from 0.
+  const first = meter().admit({ keyId: 1, calls: 1, periodStart: "2026-09-15T00:00:00.000Z", allowance: 1_000_000, perMinute: null, now: at });
+  assert.deepEqual(first.answer, { outcome: "admitted", periodCalls: 1 });
+  assert.equal(first.flushAt, at + FLUSH_EVERY_MS);
+  const sent: UnsentCalls[] = [];
+  await meter().flush(async (rows) => void sent.push(...rows), at + FLUSH_EVERY_MS);
+  assert.deepEqual(sent, [{ keyId: 1, day: "2026-10-02", calls: 41 }]);
 });
 
 test("a call over the allowance or the meter's rate is refused and counts nothing", async () => {

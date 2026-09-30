@@ -6,21 +6,23 @@
 // per-visitor limits or the App Router, and the API never sets a cookie.
 //
 // A request goes: its `X-API-Key` (401 when missing, unknown, revoked or
-// expired), its endpoint (404 when there is none, 403 when the key may not
-// call it, #187) and method (405), the endpoint's reading of it (400 when it
-// cannot be read), then its calls counted toward the minute (429 past the
-// limit, ./keyLimits.ts), and then the endpoint's answer. A request refused
-// before its calls are counted costs nothing. Every response to a known key
-// carries its limit headers, errors included.
+// expired), its account's plan (402 when an owned key's account has none
+// serving, #263), its endpoint (404 when there is none, 403 when the key may
+// not call it, #187) and method (405), the endpoint's reading of it (400 when
+// it cannot be read), then its calls counted toward the minute and the billing
+// period (429 past either, ./keyLimits.ts), and then the endpoint's answer. A
+// request refused before its calls are counted costs nothing. Every response
+// to a key under limits carries its limit headers, errors included.
 
 import { allows } from "@lexema/api/keyAccess.ts";
 import { authenticate, type KeyRefusal } from "@lexema/api/keys.ts";
 import { callCost, endpointOf } from "@lexema/api/calls.ts";
 import { appTablesOverD1 } from "@lexema/db/app/database.ts";
 import { fromD1 } from "@lexema/lookup/database.ts";
+import { ORIGIN } from "../hosts.ts";
 import { error, type ApiContext, type ErrorJson } from "./answer.ts";
 import { ROUTES } from "./endpoints.ts";
-import { keyLimits, type LimitHeaders } from "./keyLimits.ts";
+import { keyStanding, type LimitHeaders } from "./keyLimits.ts";
 import { meteringOver, type MeteringBindings } from "./metering.ts";
 
 export type { ApiContext, ErrorJson } from "./answer.ts";
@@ -31,6 +33,9 @@ const REFUSAL: Record<KeyRefusal, ErrorJson> = {
   revoked: error("revoked_key", "This API key has been revoked."),
   expired: error("expired_key", "This API key has expired."),
 };
+
+/** An owned key whose account has no serving plan: none, ended, or cancelled past its end (#161, #263). */
+const PLAN_REQUIRED = error("plan_required", `This key's account has no active plan. Choose one at ${ORIGIN.developers}/pricing.`);
 
 function json(status: number, body: unknown, headers: Record<string, string> = {}): Response {
   return Response.json(body, { status, headers: { "cache-control": "no-store", ...headers } });
@@ -43,7 +48,9 @@ export async function handleApi(request: Request, context: ApiContext): Promise<
   try {
     const authentication = await authenticate(appDb, request.headers.get("x-api-key"), now);
     if (authentication.outcome === "refused") return json(401, REFUSAL[authentication.refusal]);
-    const limits = keyLimits(authentication.key, appDb, metering, now);
+    const standing = keyStanding(authentication.key, appDb, metering, now);
+    if (standing.outcome === "plan-required") return json(402, PLAN_REQUIRED);
+    const { limits } = standing;
     // Refused before its calls are counted: the headers say where the key stands, and nothing is spent.
     const refuse = async (status: number, body: ErrorJson, extra: Record<string, string> = {}) => {
       headers = await limits.uncounted();
@@ -65,7 +72,7 @@ export async function handleApi(request: Request, context: ApiContext): Promise<
 
     const admission = await limits.admit(callCost(reading.charge));
     headers = admission.headers;
-    if (!admission.admitted) return json(429, error("rate_limited", admission.message), headers);
+    if (!admission.admitted) return json(429, error(admission.refusal, admission.message), headers);
 
     const answer = await reading.answer(context);
     await limits.answered(reading.charge);

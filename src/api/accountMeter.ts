@@ -31,13 +31,10 @@ export interface Admission {
   keyId: number;
   /** The request's calls: 1, or 1 per word of a batch (src/api/calls.ts). */
   calls: number;
-  /**
-   * When the account's billing period began, ISO-8601. A later one than the meter holds starts the count again.
-   * Until #263 the Worker passes a stand-in instead, the UTC calendar month's start (`unplannedPeriodStart`).
-   */
+  /** When the account's billing period began, ISO-8601. A later one than the meter holds starts the count again. */
   periodStart: string;
-  /** The calls the period allows, or null while no plan sets one. */
-  allowance: number | null;
+  /** The calls the period allows: the plan's allowance (#263). */
+  allowance: number;
   /** The account's calls a minute when the meter counts its rate (an Enterprise rate), or null when a Rate Limiting binding does. */
   perMinute: number | null;
   now: number;
@@ -78,9 +75,16 @@ interface KeyDayRow extends Record<string, SqlValue> {
 }
 
 const SCHEMA = [
+  // Until plans were enforced (#263) every account was counted in a stand-in
+  // period, the UTC calendar month, kept in `meter_state`. A real billing
+  // period that began before that month's start would read as older and be
+  // counted into it, so the stand-in count is dropped once, and the first call
+  // in the plan's period starts it at 0. Unsent key-day calls are kept, and the
+  // next call arms their send again.
+  `DROP TABLE IF EXISTS meter_state`,
   // One row: the period's count, the current minute's count (used only when the
   // meter counts the rate), and when the pending send to D1 is due, if one is.
-  `CREATE TABLE IF NOT EXISTS meter_state (
+  `CREATE TABLE IF NOT EXISTS meter_period (
      id INTEGER PRIMARY KEY CHECK (id = 1),
      period_start TEXT NOT NULL,
      period_calls INTEGER NOT NULL CHECK (period_calls >= 0),
@@ -131,12 +135,12 @@ export class AccountMeter {
     const periodCalls = newPeriod ? 0 : state.period_calls;
     const minuteCalls = state === undefined || minute !== state.minute ? 0 : state.minute_calls;
 
-    if (allowance !== null && periodCalls + calls > allowance) return { answer: { outcome: "over-allowance", periodCalls }, flushAt: undefined };
+    if (periodCalls + calls > allowance) return { answer: { outcome: "over-allowance", periodCalls }, flushAt: undefined };
     if (perMinute !== null && minuteCalls + calls > perMinute) return { answer: { outcome: "over-rate", periodCalls }, flushAt: undefined };
 
     const flushAt = state?.flush_due == null ? now + FLUSH_EVERY_MS : undefined;
     this.sql(
-      `INSERT INTO meter_state (id, period_start, period_calls, minute, minute_calls, flush_due) VALUES (1, ?, ?, ?, ?, ?)
+      `INSERT INTO meter_period (id, period_start, period_calls, minute, minute_calls, flush_due) VALUES (1, ?, ?, ?, ?, ?)
        ON CONFLICT (id) DO UPDATE SET period_start = excluded.period_start, period_calls = excluded.period_calls,
          minute = excluded.minute, minute_calls = excluded.minute_calls, flush_due = excluded.flush_due`,
       period,
@@ -166,7 +170,7 @@ export class AccountMeter {
     const unsent = this.sql<KeyDayRow>(`SELECT key_id, day, calls, sent FROM key_day WHERE calls > sent ORDER BY key_id, day`).map(
       (row): UnsentCalls => ({ keyId: row.key_id, day: row.day, calls: row.calls - row.sent }),
     );
-    this.sql(`UPDATE meter_state SET flush_due = NULL`);
+    this.sql(`UPDATE meter_period SET flush_due = NULL`);
     if (unsent.length > 0) await sink(unsent);
     for (const { keyId, day, calls } of unsent) {
       this.sql(`UPDATE key_day SET sent = sent + ? WHERE key_id = ? AND day = ?`, calls, keyId, day);
@@ -181,11 +185,11 @@ export class AccountMeter {
     const state = this.state();
     if (state === undefined || state.flush_due !== null) return undefined;
     const at = now + FLUSH_EVERY_MS;
-    this.sql(`UPDATE meter_state SET flush_due = ?`, at);
+    this.sql(`UPDATE meter_period SET flush_due = ?`, at);
     return at;
   }
 
   private state(): StateRow | undefined {
-    return this.sql<StateRow>(`SELECT period_start, period_calls, minute, minute_calls, flush_due FROM meter_state WHERE id = 1`)[0];
+    return this.sql<StateRow>(`SELECT period_start, period_calls, minute, minute_calls, flush_due FROM meter_period WHERE id = 1`)[0];
   }
 }

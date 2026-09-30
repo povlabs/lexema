@@ -96,7 +96,8 @@ test("a key stored before its reads moved onto Drizzle authenticates in one read
   assert.deepEqual({ ...sqlite.prepare("SELECT * FROM api_key").get() }, { ...before, last_used_at: new Date(NOW).toISOString() });
   // Never used: the read, then the stamp.
   assert.equal(sent.length, 2, sent.join("\n"));
-  assert.match(sent[0], /^select .* from "api_key" where "api_key"."key_hash" = \?$/);
+  // One read: the key with its owner's plan rows (#263).
+  assert.match(sent[0], /^select .* from "api_key" left join "enterprise_plan" .* left join "subscription" .* where "api_key"."key_hash" = \?$/);
   assert.match(sent[1], /^update "api_key" set "last_used_at" = \? where /);
 
   // Within the minute the read is all; a minute on, the stamp again.

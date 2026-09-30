@@ -76,8 +76,9 @@ API key in the `X-API-Key` header. Keys live in the local app database,
 The CLI below makes admin keys, which belong to no developer account and carry
 their own per-minute limit; a key a developer makes for their own account is an
 owned key ([src/api/ownedKeys.ts](./src/api/ownedKeys.ts)), which carries none:
-its rate is its account's, 60 calls a minute until plans set it
-([#161](https://github.com/hueypov/lexema/issues/161)).
+its limits are its account's plan's, and without a serving plan it answers a 402
+`plan_required` ([#161](https://github.com/hueypov/lexema/issues/161)). Locally,
+give the account a plan with `pnpm run plan enterprise` (below).
 
 ```sh
 pnpm run api-key create --label "learning app" --per-minute 60
@@ -167,13 +168,21 @@ nothing, toward the minute or the day; a 401 carries no limit headers
   `RateLimit-Limit`, `RateLimit-Remaining` and `RateLimit-Reset`, and a 429
   `Retry-After` to the minute's end. Its answered calls are added to its D1 row
   for the day.
-- An owned key's minute is its account's, shared by all its keys and counted by
-  the `CALLS_60` Rate Limiting binding keyed by account id. Its answers carry
-  `RateLimit-Limit`, and a 429 `Retry-After: 60`. Its calls are counted by the
-  account meter, a Durable Object per account
+- An owned key is read with its account's plan state, in one read. With no
+  serving plan (none, ended, cancelled past its end, or an Enterprise period
+  past `--until`, Huey on [#222](https://github.com/hueypov/lexema/issues/222))
+  it answers 402 `plan_required`; past due still serves. Its minute is its
+  plan's rate, shared by all the account's keys and counted by the `CALLS_60`
+  (Starter) or `CALLS_300` (Pro) Rate Limiting binding keyed by account id, or,
+  for another Enterprise rate, by the account meter. Its answers carry
+  `RateLimit-Limit`, and a rate 429 `Retry-After: 60`. Its calls are counted
+  against the plan's allowance for the billing period by the account meter, a
+  Durable Object per account
   ([src/api/accountMeter.ts](./src/api/accountMeter.ts)), in one call per
-  request, and reach `api_key_usage` at most a minute later. Its `last_used_at`
-  is written at most once a minute.
+  request; the call past the allowance is a 429 `allowance_exceeded` naming the
+  period's end, with `Retry-After` in seconds to it. Calls reach
+  `api_key_usage` at most a minute later. Its `last_used_at` is written at most
+  once a minute.
 
 An API request is never counted against the site's per-visitor limits.
 
@@ -204,8 +213,9 @@ pnpm run plan end 3
 ```
 
 The number is the developer account's id. The period runs from the start of
-`--from` up to the start of `--until`, both UTC days, and nothing renews it:
-set the next period with `enterprise` again, which replaces the account's row.
+`--from` up to the start of `--until`, both UTC days, and nothing renews it: from
+`--until` on, the account's keys answer 402 until the next period is set with
+`enterprise` again, which replaces the account's row.
 An account whose Starter or Pro plan still serves is refused until that plan is
 cancelled in Stripe. Bad flags print the usage line and exit 1. Both commands
 write to the `APP_DB` in `SEED_STATE`, as `pnpm run api-key` does.

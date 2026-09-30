@@ -56,12 +56,12 @@ test("an Enterprise row is active over its period until it is ended", () => {
   assert.deepEqual(stateOfEnterprise({ ...enterprise, endedAt: CANCEL_AT }), { kind: "ended", plan });
 });
 
-test("serving: none and ended refuse; active, past due and cancelling before its end serve under the plan's limits", () => {
+test("serving: none, ended and an Enterprise period past its end refuse; active, past due and cancelling before its end serve under the plan's limits", () => {
   const now = Date.parse("2026-09-15T00:00:00Z");
   const endsAt = CANCEL_AT.getTime();
   const starter = { id: "starter" } as const;
   const enterprise = { id: "enterprise", callsPerPeriod: 20_000_000, callsPerMinute: 1000 } as const;
-  const starterServes = { serving: true, limits: { callsPerPeriod: 1_000_000, callsPerMinute: 60 }, resetsAt: period.end };
+  const starterServes = { serving: true, limits: { callsPerPeriod: 1_000_000, callsPerMinute: 60 }, period };
   const cases: [PlanState, number, unknown][] = [
     [{ kind: "none" }, now, { serving: false }],
     [{ kind: "ended", plan: starter }, now, { serving: false }],
@@ -69,8 +69,12 @@ test("serving: none and ended refuse; active, past due and cancelling before its
     [{ kind: "past-due", plan: starter, period }, now, starterServes],
     [{ kind: "cancelling", plan: starter, period, endsAt }, now, starterServes],
     [{ kind: "cancelling", plan: starter, period, endsAt }, endsAt, { serving: false }],
-    [{ kind: "active", plan: { id: "pro" }, period }, now, { serving: true, limits: { callsPerPeriod: 5_000_000, callsPerMinute: 300 }, resetsAt: period.end }],
-    [{ kind: "active", plan: enterprise, period }, now, { serving: true, limits: { callsPerPeriod: 20_000_000, callsPerMinute: 1000 }, resetsAt: period.end }],
+    [{ kind: "active", plan: { id: "pro" }, period }, now, { serving: true, limits: { callsPerPeriod: 5_000_000, callsPerMinute: 300 }, period }],
+    [{ kind: "active", plan: enterprise, period }, now, { serving: true, limits: { callsPerPeriod: 20_000_000, callsPerMinute: 1000 }, period }],
+    // An Enterprise period stops serving at its end (#222); a Stripe one is moved on by Stripe's renewal.
+    [{ kind: "active", plan: enterprise, period }, period.end - 1, { serving: true, limits: { callsPerPeriod: 20_000_000, callsPerMinute: 1000 }, period }],
+    [{ kind: "active", plan: enterprise, period }, period.end, { serving: false }],
+    [{ kind: "active", plan: starter, period }, period.end, starterServes],
   ];
   for (const [state, at, expected] of cases) assert.deepEqual(serving(state, at), expected, `${state.kind} at ${new Date(at).toISOString()}`);
 });
