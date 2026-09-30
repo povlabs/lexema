@@ -8,7 +8,9 @@
 // and the plugin verifies its `Stripe-Signature` (a missing, bad or stale one
 // answers 400). Its handlers and Lexema's sync (src/billing/subscriptionSync.ts)
 // then write the account's `subscription` row; a failed sync answers 400, so
-// Stripe retries. Every other `/auth/*` path, on every host, goes on to the
+// Stripe retries. A plan change the sync writes is then emailed to the account
+// through `EMAIL`, the `send_email` binding, once (#215,
+// src/billing/planNotice.ts); without the binding nothing is sent. Every other `/auth/*` path, on every host, goes on to the
 // host routing like any path, where only the developer site's Checkout return
 // (worker/billing.ts) answers one.
 //
@@ -18,24 +20,28 @@
 import { authSecret, billingAuth, STRIPE_WEBHOOK_PATH } from "@lexema/accounts/auth.ts";
 import { billingOf, type BillingSetup, type StripeSettings } from "@lexema/accounts/billing.ts";
 import { appTablesOverD1, type AppTables } from "@lexema/db/app/database.ts";
+import { accountMailOf, type EmailBinding } from "@lexema/email/send.ts";
 import { isDeveloperSitePath } from "./hosts.ts";
 import type { FetchHandler } from "./rateLimit.ts";
 import { text } from "./signIn.ts";
 
-/** The bindings the webhook reads: the app database and the Stripe settings. */
+/** The bindings the webhook reads: the app database, the Stripe settings and the email binding. */
 export interface StripeWebhookBindings extends StripeSettings {
   APP_DB?: D1Database;
+  EMAIL?: EmailBinding;
 }
 
 /** What the webhook runs against; the Worker's, or a test's. */
 export interface StripeWebhookContext {
   billing: BillingSetup;
   appDb: AppTables | undefined;
+  /** Where plan emails go out; none are sent without it. */
+  email?: EmailBinding;
 }
 
 /** The context the live Worker runs with: a Stripe client built from this request's env. */
 export function liveWebhookContext(env: StripeWebhookBindings): StripeWebhookContext {
-  return { billing: billingOf(env), appDb: env.APP_DB === undefined ? undefined : appTablesOverD1(env.APP_DB) };
+  return { billing: billingOf(env), appDb: env.APP_DB === undefined ? undefined : appTablesOverD1(env.APP_DB), email: env.EMAIL };
 }
 
 /** Answer one request to the webhook path. */
@@ -52,7 +58,7 @@ export async function answerStripeWebhook(request: Request, context: StripeWebho
     return text(503, "Billing is not available.");
   }
   const origin = new URL(request.url).origin;
-  const auth = billingAuth(context.appDb.app, secret, origin, context.billing.billing);
+  const auth = billingAuth(context.appDb.app, secret, origin, context.billing.billing, accountMailOf(context.email, origin));
   return auth.handler(new Request(`${origin}${STRIPE_WEBHOOK_PATH}`, request));
 }
 

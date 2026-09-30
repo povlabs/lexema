@@ -14,6 +14,7 @@ import type { ProviderProfile } from "../../src/accounts/providers.js";
 import { authenticate } from "../../src/api/keys.js";
 import { createAccountKey, keyName, listAccountKeys } from "../../src/api/ownedKeys.js";
 import { freshAppDatabase, readOnlyDictionary, subscribe } from "../../test/databases.js";
+import { StubEmail } from "../../test/stubEmail.js";
 import type { CreateKeyProblems } from "@/lib/developers/createKeyForm.ts";
 import {
   answerOf,
@@ -49,8 +50,8 @@ const env: LimitBindings & SignInBindings & DashboardBindings = {
   KEY_CREATE_LIMIT: allow,
 };
 
-/** The Worker over a fresh database; each browser keeps its own cookies. `limits` stand in for the rate limits. */
-function site({ limits = {}, billing = BILLING_OFF }: { limits?: Partial<LimitBindings>; billing?: BillingSetup } = {}) {
+/** The Worker over a fresh database; each browser keeps its own cookies. `limits` stand in for the rate limits, and `email` for the email binding. */
+function site({ limits = {}, billing = BILLING_OFF, email }: { limits?: Partial<LimitBindings>; billing?: BillingSetup; email?: StubEmail } = {}) {
   const { sqlite, appDb: db } = freshAppDatabase();
   const google = new StubProvider("google");
   const appSaw: Request[] = [];
@@ -62,7 +63,7 @@ function site({ limits = {}, billing = BILLING_OFF }: { limits?: Partial<LimitBi
             appSaw.push(request);
             return new Response("page", { headers: { "content-type": "text/html" } });
           },
-          () => ({ appDb: db, billing, now: NOW }),
+          () => ({ appDb: db, billing, email, now: NOW }),
         ),
         () => ({ providers: { google, github: undefined }, appDb: db, now: NOW }),
       ),
@@ -563,10 +564,11 @@ const seconds = (iso: string) => Date.parse(iso) / 1000;
 const SEPTEMBER = { periodStart: seconds("2026-09-15T00:00:00Z"), periodEnd: seconds("2026-10-15T00:00:00Z") };
 const LIVE_PRO = { status: "active", price: TEST_SETTINGS.STRIPE_PRICE_PRO, ...SEPTEMBER } as const;
 
-/** A site over the stubbed Stripe, billing on or off, and Ada signed in with a Pro subscription whose row says `rowStatus`. */
+/** A site over the stubbed Stripe and email, billing on or off, and Ada signed in with a Pro subscription whose row says `rowStatus`. */
 async function subscribed(rowStatus: "active" | "canceled", billingOn = true) {
   const stripe = new StubStripe();
-  const place = site({ billing: billingOn ? { outcome: "ready", billing: stripe.billing() } : BILLING_OFF });
+  const email = new StubEmail();
+  const place = site({ billing: billingOn ? { outcome: "ready", billing: stripe.billing() } : BILLING_OFF, email });
   const adas = await place.browser(ada);
   await subscribe(place.db, adas.accountId, {
     plan: "pro",
@@ -579,7 +581,7 @@ async function subscribed(rowStatus: "active" | "canceled", billingOn = true) {
   const deletedAt = () =>
     (place.sqlite.prepare("SELECT deleted_at FROM developer_account WHERE account_id = ?").get(adas.accountId) as { deleted_at: string | null }).deleted_at;
   const remove = () => adas.post("/dashboard/account/delete", { confirm: DELETE_CONFIRMATION });
-  return { ...place, stripe, adas, row, deletedAt, remove };
+  return { ...place, stripe, email, adas, row, deletedAt, remove };
 }
 
 test("deleting an account with a live subscription cancels it at Stripe at once, then deletes the account; deleting again cancels nothing more (#209)", async () => {
@@ -629,4 +631,31 @@ test("when Stripe fails, or billing is off, deleting an account with a live subs
     assert.deepEqual(row(), { status: "active", ended: 0 }, label);
     assert.equal(await adas.signedIn(), adas.accountId, label);
   }
+});
+
+test("deleting an account emails the person once, at the address it had, with a link to the developer site; a refused deletion sends nothing (#215)", async () => {
+  const { stripe, email, remove } = await subscribed("active");
+  stripe.set("sub_ada", "cus_ada", {}, LIVE_PRO);
+  assert.equal((await remove()).status, 200);
+  assert.deepEqual(
+    email.sent.map(({ to, subject }) => ({ to, subject })),
+    [{ to: "ada@example.com", subject: "Your Lexema account is deleted" }],
+  );
+  assert.ok(email.sent[0]?.text.includes(`${DEVELOPERS}${SETTINGS}`));
+
+  const refused = await subscribed("active", false);
+  refused.stripe.set("sub_ada", "cus_ada", {}, LIVE_PRO);
+  assert.equal((await refused.remove()).status, 503);
+  assert.deepEqual(refused.email.sent, []);
+});
+
+test("a failed deletion email is logged, and the account is still deleted (#215)", async () => {
+  const { email, adas, deletedAt, remove } = await subscribed("canceled");
+  email.failing = "E_DELIVERY_FAILED";
+  const deleted = await remove();
+  assert.equal(deleted.status, 200);
+  assert.deepEqual(await answerOf(deleted), { outcome: "signed-out", location: AFTER_SIGN_OUT });
+  assert.equal(deletedAt(), new Date(NOW).toISOString());
+  assert.equal(await adas.signedIn(), undefined);
+  assert.deepEqual(email.sent, []);
 });

@@ -2,7 +2,8 @@
 // Stripe, through the Worker's webhook route, the Stripe plugin and Lexema's
 // sync, over the real app migrations on `node:sqlite`. Every account here
 // starts its plan the way a developer does: the plugin starts a Checkout for
-// Pro, and Stripe then sends its events.
+// Pro, and Stripe then sends its events. The emails a plan change owes (#215)
+// go to a stub `EMAIL` binding.
 
 import assert from "node:assert/strict";
 import { test } from "node:test";
@@ -13,6 +14,7 @@ import { billingAuth, startSession } from "../../src/accounts/auth.js";
 import { billingOf, STRIPE_SETTINGS, type Billing, type StripeSettings } from "../../src/accounts/billing.js";
 import { developerAccount, subscription } from "../../src/db/app/schema.js";
 import { freshAppDatabase } from "../../test/databases.js";
+import { StubEmail } from "../../test/stubEmail.js";
 import { withStripeWebhook, type StripeWebhookContext } from "@/worker/stripeWebhook.ts";
 import { eventPayload, signatureOf, StubStripe, TEST_SETTINGS, type SubscriptionState } from "./stubStripe.ts";
 
@@ -33,8 +35,8 @@ type Signer = (payload: string, now: number) => Promise<string | null>;
 /** Everything a request the app would answer gets: the webhook route hands it on. */
 const APP_ANSWER = "app";
 
-/** An account that has started a Checkout for Pro through the plugin, and the Worker's webhook over it. */
-async function checkoutStarted() {
+/** An account that has started a Checkout for Pro through the plugin, and the Worker's webhook over it, with the email binding unless `emailOff`. */
+async function checkoutStarted({ emailOff = false }: { emailOff?: boolean } = {}) {
   const { sqlite, appDb } = freshAppDatabase();
   const stripe = new StubStripe();
   const billing: Billing = stripe.billing();
@@ -51,9 +53,10 @@ async function checkoutStarted() {
   const [checkout] = stripe.checkouts;
   assert.ok(checkout, "the plugin started a Checkout");
 
+  const email = new StubEmail();
   const worker = withStripeWebhook<object>(
     async () => new Response(APP_ANSWER, { status: 404 }),
-    (): StripeWebhookContext => ({ billing: { outcome: "ready", billing }, appDb }),
+    (): StripeWebhookContext => ({ billing: { outcome: "ready", billing }, appDb, email: emailOff ? undefined : email }),
   );
   let events = 0;
 
@@ -104,7 +107,7 @@ async function checkoutStarted() {
   const customerOf = async () =>
     (await appDb.app.select({ id: developerAccount.stripeCustomerId }).from(developerAccount).where(eq(developerAccount.id, accountId)))[0]?.id;
 
-  return { sqlite, worker, stripeHolds, send, completedCheckout, row, customerOf, checkout };
+  return { sqlite, worker, stripeHolds, send, completedCheckout, row, customerOf, checkout, email };
 }
 
 const date = (at: number | null | undefined) => (at == null ? null : new Date(at * 1000));
@@ -243,4 +246,80 @@ test("without every Stripe setting the webhook answers 503, and no other /auth p
     assert.equal(await answer.text(), APP_ANSWER, url);
   }
   assert.deepEqual(handed, elsewhere);
+});
+
+// Account emails (#215): each plan change the webhook writes is emailed once.
+
+test("the webhook emails each plan change once, to the account, with a link to settings on the developer site", async () => {
+  const site = await checkoutStarted();
+  const cancelAt = OCTOBER.periodEnd;
+  const steps: { type: Stripe.Event.Type; state: SubscriptionState; object: (sent: Stripe.Subscription) => object; subjects: string[] }[] = [
+    { type: "checkout.session.completed", state: ACTIVE_PRO, object: () => site.completedCheckout(), subjects: ["Welcome to Pro"] },
+    { type: "customer.subscription.created", state: ACTIVE_PRO, object: (sent) => sent, subjects: [] },
+    { type: "invoice.payment_failed", state: { ...ACTIVE_PRO, status: "past_due", ...OCTOBER }, object: invoice, subjects: ["Your Pro payment failed"] },
+    { type: "invoice.paid", state: { ...ACTIVE_PRO, ...OCTOBER }, object: invoice, subjects: [] },
+    {
+      type: "customer.subscription.updated",
+      state: { ...ACTIVE_PRO, ...OCTOBER, price: TEST_SETTINGS.STRIPE_PRICE_STARTER },
+      object: (sent) => sent,
+      subjects: ["Your plan is now Starter"],
+    },
+    {
+      type: "customer.subscription.updated",
+      state: { ...ACTIVE_PRO, ...OCTOBER, price: TEST_SETTINGS.STRIPE_PRICE_STARTER, cancelAt, canceledAt: seconds("2026-11-05T00:00:00Z") },
+      object: (sent) => sent,
+      subjects: ["Your Starter plan is cancelled"],
+    },
+    {
+      type: "customer.subscription.deleted",
+      state: { ...ACTIVE_PRO, ...OCTOBER, price: TEST_SETTINGS.STRIPE_PRICE_STARTER, status: "canceled", cancelAt, endedAt: cancelAt },
+      object: (sent) => sent,
+      subjects: ["Your Starter plan has ended"],
+    },
+  ];
+  for (const { type, state, object, subjects } of steps) {
+    const before = site.email.sent.length;
+    const sent = site.stripeHolds(state);
+    assert.equal((await site.send(type, object(sent))).status, 200, type);
+    assert.deepEqual(site.email.subjects().slice(before), subjects, type);
+  }
+  for (const message of site.email.sent) {
+    assert.equal(message.to, "dev@example.com");
+    assert.equal(message.from.email, "noreply@lexema.fyi");
+    assert.ok(message.text.includes(`${DEVELOPERS}/dashboard/settings`), message.subject);
+    assert.ok(message.html.includes(`href="${DEVELOPERS}/dashboard/settings"`), message.subject);
+  }
+  assert.match(site.email.sent.find(({ subject }) => subject === "Your Starter plan is cancelled")?.text ?? "", /until 30 November 2026/);
+});
+
+test("a replayed event, and a later event that finds nothing new, send nothing twice", async () => {
+  const site = await checkoutStarted();
+  site.stripeHolds(ACTIVE_PRO);
+  for (let replay = 0; replay < 3; replay += 1) assert.equal((await site.send("checkout.session.completed", site.completedCheckout())).status, 200);
+  const created = site.stripeHolds(ACTIVE_PRO);
+  assert.equal((await site.send("customer.subscription.created", created)).status, 200);
+  assert.equal((await site.send("invoice.paid", invoice())).status, 200);
+  assert.deepEqual(site.email.subjects(), ["Welcome to Pro"]);
+
+  const failed = site.stripeHolds({ ...ACTIVE_PRO, status: "past_due" });
+  await Promise.all([site.send("invoice.payment_failed", invoice()), site.send("customer.subscription.updated", failed)]);
+  assert.equal((await site.send("customer.subscription.updated", failed)).status, 200);
+  assert.deepEqual(site.email.subjects(), ["Welcome to Pro", "Your Pro payment failed"]);
+});
+
+test("an email that fails is logged, answers 200 and is not sent again; without the binding the webhook sends nothing", async () => {
+  const failing = await checkoutStarted();
+  failing.email.failing = "E_SENDER_DOMAIN_NOT_AVAILABLE";
+  failing.stripeHolds(ACTIVE_PRO);
+  assert.equal((await failing.send("checkout.session.completed", failing.completedCheckout())).status, 200);
+  assert.deepEqual(await failing.row(), rowOf(ACTIVE_PRO));
+  failing.email.failing = undefined;
+  assert.equal((await failing.send("checkout.session.completed", failing.completedCheckout())).status, 200);
+  assert.deepEqual(failing.email.sent, []);
+
+  const off = await checkoutStarted({ emailOff: true });
+  off.stripeHolds(ACTIVE_PRO);
+  assert.equal((await off.send("checkout.session.completed", off.completedCheckout())).status, 200);
+  assert.deepEqual(await off.row(), rowOf(ACTIVE_PRO));
+  assert.deepEqual(off.email.sent, []);
 });

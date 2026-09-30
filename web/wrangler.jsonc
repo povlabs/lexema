@@ -82,6 +82,12 @@
     "bindings": [{ "name": "ACCOUNT_METER", "class_name": "AccountMeterObject" }]
   },
   "migrations": [{ "tag": "v1-account-meter", "new_sqlite_classes": ["AccountMeterObject"] }],
+  // Account email through Cloudflare Email Service (#215): plan started,
+  // changed, payment failed, cancellation confirmed, plan ended and account
+  // deleted, each from noreply@lexema.fyi (src/email/). `wrangler dev`
+  // simulates this binding: it logs each email and sends nothing. Adding
+  // `"remote": true` would send real email from a laptop; nothing here does.
+  "send_email": [{ "name": "EMAIL" }],
   "vars": {
     // Where this Worker runs: local, preview or production (ADR 0018,
     // worker/stage.ts). Any other value refuses to boot.
@@ -206,6 +212,11 @@
         "bindings": [{ "name": "ACCOUNT_METER", "class_name": "AccountMeterObject" }]
       },
       "migrations": [{ "tag": "v1-account-meter", "new_sqlite_classes": ["AccountMeterObject"] }],
+      // Account email (#215), to any address, from lexema.fyi once Huey has
+      // onboarded it to Email Sending, which needs the Workers Paid plan
+      // (docs/DEPLOY.md). Until then every send fails, is logged, and changes
+      // nothing else.
+      "send_email": [{ "name": "EMAIL" }],
       "vars": {
         "LEXEMA_STAGE": "production",
         "LEXEMA_RELEASE": "it-dev",

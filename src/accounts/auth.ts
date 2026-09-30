@@ -28,6 +28,7 @@ import type { OAuth2Tokens, OAuth2UserInfo } from "better-auth/oauth2";
 import { github, google } from "better-auth/social-providers";
 import type { AppDatabase } from "../db/app/database.js";
 import { developerAccount, developerSession, providerIdentity, subscription, verification } from "../db/app/schema.js";
+import type { AccountMail } from "../email/send.js";
 import { verifiedIdentity, type VerifiedIdentity } from "./accounts.js";
 import { billingPlugin, type Billing } from "./billing.js";
 import { profileOf, type ProviderCredentials, type ProviderId } from "./providers.js";
@@ -130,10 +131,11 @@ export function sessionAuth(db: AppDatabase, secret: string, origin: string) {
  * better-auth over this database with the Stripe plugin added to the base
  * options: its verified webhook, and the Checkout and billing-portal endpoints
  * the billing routes call through `auth.api`. `billing` exists only once every
- * Stripe setting is set (./billing.ts).
+ * Stripe setting is set (./billing.ts). `mail` is where the webhook's plan
+ * emails go (#215); only the webhook sends any.
  */
-export function billingAuth(db: AppDatabase, secret: string, origin: string, billing: Billing) {
-  return betterAuth({ ...baseOptions(db, secret, origin), plugins: [billingPlugin(db, billing)] });
+export function billingAuth(db: AppDatabase, secret: string, origin: string, billing: Billing, mail?: AccountMail) {
+  return betterAuth({ ...baseOptions(db, secret, origin), plugins: [billingPlugin(db, billing, mail)] });
 }
 
 /**

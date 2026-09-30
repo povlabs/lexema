@@ -95,7 +95,8 @@ test("production serves Previews on the three preview-only domains, and has no D
     Object.values(PREVIEW_DOMAIN).map((pattern) => ({ pattern, custom_domain: true, previews_enabled: true, enabled: false })),
   );
   assert.deepEqual(production.d1_databases, []);
-  assert.deepEqual(production.send_email, []);
+  // Production's own email binding sends account email to any address (#215): the Preview's one-recipient binding is not what it gets.
+  assert.deepEqual(production.send_email, [{ name: "EMAIL" }]);
 });
 
 /**

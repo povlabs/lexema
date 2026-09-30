@@ -30,6 +30,7 @@ export default defineConfig({
       "@lexema/accounts": fileURLToPath(new URL("../src/accounts", import.meta.url)),
       "@lexema/db": fileURLToPath(new URL("../src/db", import.meta.url)),
       "@lexema/billing": fileURLToPath(new URL("../src/billing", import.meta.url)),
+      "@lexema/email": fileURLToPath(new URL("../src/email", import.meta.url)),
     },
   },
 });

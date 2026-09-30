@@ -13,11 +13,12 @@
 // at every sign-in, for the account menu (#190). It lives on the identity, so
 // the menu names the person as their first provider does.
 
-import { and, asc, eq, sql } from "drizzle-orm";
+import { and, asc, eq, isNull, sql } from "drizzle-orm";
 import { revokeAllAccountKeys } from "../api/ownedKeys.js";
 import { cancelSubscriptions, type SubscriptionCanceller } from "../billing/subscriptionCancel.js";
 import type { AppDatabase, AppTables } from "../db/app/database.js";
 import { developerAccount, developerSession, providerIdentity } from "../db/app/schema.js";
+import { sendAccountEmail, type AccountMail } from "../email/send.js";
 import { nameOf, PROVIDER_IDS, type ProviderId, type ProviderProfile } from "./providers.js";
 
 /** A person a provider vouched for, with an email it says is verified. */
@@ -126,6 +127,17 @@ export async function accountProfile(db: AppTables, accountId: number): Promise<
 }
 
 /**
+ * Stamp an account deleted if nothing has yet, answering the email it had.
+ * Only the first deletion gets a row back, so only it tells the person (#215).
+ */
+export const firstDeletionQuery = (db: AppDatabase, accountId: number, at: Date) =>
+  db
+    .update(developerAccount)
+    .set({ deletedAt: at })
+    .where(and(eq(developerAccount.id, accountId), isNull(developerAccount.deletedAt)))
+    .returning({ email: developerAccount.email });
+
+/**
  * Mark an account deleted, the first time only, and replace its email and
  * name with values that say nothing about the person. The email stays unique
  * and shaped like one, as better-auth's user needs, on a domain that cannot
@@ -174,27 +186,35 @@ export type AccountDeletion =
  * still bill is then answered `billing-off` and left as it was. A Stripe
  * failure throws before the account changes, so the developer can try again.
  *
- * The four statements that follow run as one batch, which is one transaction,
- * so a deletion that fails leaves the account exactly as it was, still signed
- * in and with its keys live, and one that succeeds leaves no session or
- * identity that could reach it. Running it again on a deleted account changes
- * nothing, calls Stripe for nothing already cancelled, and keeps the first
- * time. Answers the number of keys it revoked.
+ * The statements that follow run as one batch, which is one transaction, so
+ * a deletion that fails leaves the account exactly as it was, still signed in
+ * and with its keys live, and one that succeeds leaves no session or identity
+ * that could reach it. Running it again on a deleted account changes nothing,
+ * calls Stripe for nothing already cancelled, and keeps the first time.
+ *
+ * The first deletion then emails the person that their account is deleted,
+ * through `mail`, at the address it had (#215); a second sends nothing. A
+ * failed email is logged and changes nothing (src/email/send.ts). Answers the
+ * number of keys it revoked.
  */
 export async function deleteAccount(
   db: AppTables,
   accountId: number,
   now: number,
   stripe: SubscriptionCanceller | undefined,
+  mail?: AccountMail,
 ): Promise<AccountDeletion> {
   const cancelled = await cancelSubscriptions(db.app, stripe, accountId);
   if (cancelled.outcome === "billing-off") return cancelled;
-  const [marked, revoked] = await db.app.batch([
+  const [first, marked, revoked] = await db.app.batch([
+    firstDeletionQuery(db.app, accountId, new Date(now)),
     markAccountDeletedQuery(db.app, accountId, new Date(now).toISOString()),
     revokeAllAccountKeys(db.app, accountId, now),
     deleteAccountSessionsQuery(db.app, accountId),
     deleteAccountIdentitiesQuery(db.app, accountId),
   ]);
   if (marked.length === 0) return { outcome: "unknown" };
+  const [person] = first;
+  if (person !== undefined) await sendAccountEmail(mail, person.email, { kind: "account-deleted" });
   return { outcome: "deleted", revokedKeys: revoked.length };
 }
