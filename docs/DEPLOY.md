@@ -15,6 +15,7 @@ development, with the placeholder D1 that `pnpm run seed:dev` fills.
 |---|---|
 | Worker | `lexema-web` |
 | Address | the custom domains `lexema.fyi`, `developers.lexema.fyi` and `api.lexema.fyi` only, told apart by host (`web/worker/hosts.ts`) |
+| Stage | `LEXEMA_STAGE` is `production` ([below](#the-preview-only-domains)) |
 | `workers_dev`, `preview_urls` | both off |
 | D1 | none yet, so a search shows the failed-lookup state; attaching it is #19 |
 | Rate limits | 15 searches and 120 suggestions a minute per visitor ([#128](https://github.com/hueypov/lexema/issues/128)); 10 sign-in starts ([#165](https://github.com/hueypov/lexema/issues/165)) and 5 key creations ([#168](https://github.com/hueypov/lexema/issues/168)) a minute on the developer site |
@@ -39,7 +40,8 @@ production settings into `web/dist/server/wrangler.json`, and deploys that file.
 
 A deploy creates every custom domain its routes list. So a production deploy
 from `main` puts `lexema.fyi`, `developers.lexema.fyi` and `api.lexema.fyi`
-live. The API cannot look anything up there until production has a D1 (#19).
+live, and creates the three preview-only domains below. The API cannot look
+anything up there until production has a D1 (#19).
 
 To see what would go up without deploying, add `--dry-run`:
 
@@ -55,11 +57,51 @@ nothing else:
 env.SEARCH_LIMIT (15 requests/60s)         Rate Limit
 env.SUGGEST_LIMIT (120 requests/60s)       Rate Limit
 env.ASSETS                                 Assets
+env.LEXEMA_STAGE ("production")            Environment Variable
 env.LEXEMA_RELEASE ("it-dev")              Environment Variable
 ```
 
 The build warns that the top-level `DB` and `APP_DB` have no counterpart in
 `env.production`. That is expected: production has no D1 until #19.
+
+## The preview-only domains
+
+Each branch's Preview ([ADR 0018](../.decisions/0018-previews-on-workers-builds.md))
+answers the three sites one label below three domains that serve Previews and
+never production:
+
+| Site | Preview URL | One deployment |
+|---|---|---|
+| dictionary | `<name>.preview.lexema.fyi` | `<deployment-id>-<name>.preview.lexema.fyi` |
+| developer site | `<name>.developers-preview.lexema.fyi` | `<deployment-id>-<name>.developers-preview.lexema.fyi` |
+| API | `<name>.api-preview.lexema.fyi` | `<deployment-id>-<name>.api-preview.lexema.fyi` |
+
+They are the last three `routes` of `env.production`, each with
+`custom_domain: true`, `previews_enabled: true` and `enabled: false`, which is
+Cloudflare's setting for a domain that serves Previews only
+([Previews, custom domains](https://developers.cloudflare.com/workers/previews/custom-domains/)).
+So the production deploy [above](#deploy) is what creates them: run it once
+after this change lands, and Cloudflare adds a wildcard DNS record and
+certificate for each. The certificate can take a while after the first Preview.
+
+A Preview takes its settings from the `previews` block of `web/wrangler.jsonc`
+alone, never from the top level or `env.production`:
+
+| Setting | Preview |
+|---|---|
+| `LEXEMA_STAGE` | `preview`, so every response the Worker gives carries `X-Robots-Tag: noindex` (`web/worker/stage.ts`) |
+| `LEXEMA_RELEASE` | `it-0c432803` |
+| `DB` | the shared dictionary D1 `lexema-dictionary`, which code only reads |
+| `APP_DB` | `<REPLACE_ME>`, which the preview build replaces with the branch's own app D1; `wrangler preview` refuses to run while it is there |
+| Rate limits | production's limits under their own `namespace_id`s |
+| `EMAIL` | a `send_email` binding with `destination_address` set to Huey's verified address, so it can send nowhere else |
+| Sign-in | off: both OAuth client ids are empty |
+
+`web/test/preview.test.ts` fails if a Preview's email can reach anyone else,
+if a Preview rate limit shares a production `namespace_id`, if a production
+build carries any stage but `production`, or if the build drops the `previews`
+block. The Workers Builds settings that build and sweep Previews are written
+down here by #252.
 
 ## Turn on sign-in
 
