@@ -70,9 +70,10 @@ When the key matches nothing and has two to `MAX_PHRASE_WORDS` (12) words,
 [`src/italian/phrase.ts`](../src/italian/phrase.ts), reads in
 [`src/lookup/phrase.ts`](../src/lookup/phrase.ts)):
 
-1. Each word stands for its lemmas: itself when it is a headword, and every
-   word the `form_of` edges on its headword records name (`vado` → `vado`,
-   `andare`).
+1. Each word stands for its lemmas: itself, and every word the `form_of`
+   edges on its headword records name (`vado` → `vado`, `andare`). A word
+   stands for itself even when no record heads it: `l'amore` heads nothing,
+   and `faccio l'amore` is still read as `fare l'amore`.
 2. An auxiliary (a word whose lemmas include `essere` or `avere`) followed by a
    past participle stands for the participle's verb, and for nothing else. A
    participle is a word, or one of its lemmas, that a verb record's `forms[]`
@@ -286,7 +287,9 @@ offered as the typed words completed. `vado v` reads `andare v`, reaches
 *andare via* and offers `vado via`, which opens that phrase's short page.
 `andare v` offers *andare via* already as a headword, so the sequence that is
 the typed words themselves is never probed again. Each offer carries the
-`headwords` it reaches, as the source spells them. Phrases follow the
+`headwords` it reaches, as the source spells them, and only those a search for
+the offer finds: every offer is read back the way `lookup()` reads it (see
+"Every offer is searchable", below). Phrases follow the
 headwords, none twice, and the two together stay within `SUGGESTION_LIMIT`
 (`offered()` is the list the field shows).
 
@@ -299,9 +302,25 @@ read:
 | `WORD_LEMMAS_SQL`: the lemmas of every word but the last, sent as one JSON array | `lookup_form_headword_by_key`, one equality probe per word, then `form_of_edge_by_record` | a few per word | 1 |
 | `PAST_PARTICIPLE_SQL`, only for a word after an auxiliary (`sono andati v`) | `lookup_form_by_key`, then `grammar_claim_by_record` | a few per spelling | 1, its reads side by side |
 | `HEADWORD_PREFIX_SQL`: one range probe per lemma sequence other than the typed words, at most `MAX_PHRASE_PREFIX_PROBES` (16) | `lookup_form_headword_by_key` range, in key order, no sort | at most the room left in the list | 1, its reads side by side |
+| Only when some phrase is offered: `EXACT_KEY_SQL`, which of the offers the index spells exactly, sent as one JSON array, and `WORD_LEMMAS_SQL` again for the offers' words not read yet | `lookup_form_by_key`, one equality probe per offer; the lemma read as above | one per offer the index spells | 1, the two side by side |
+| `PAST_PARTICIPLE_SQL` again, only for an offer's word after an auxiliary not read yet | as above | a few per spelling | 1, its reads side by side |
 
-`vado v` costs two reads more than `vado`: one lemma read and one range probe.
-`test/phrase.test.ts` asserts that count and each read's query plan.
+`vado v` costs four reads more than `vado`: two lemma reads, one range probe
+and one exact read. A prefix that completes nothing (`vado f`) costs one lemma
+read and its range probes, and reads nothing back. `test/phrase.test.ts`
+asserts those counts and each read's query plan.
+
+**Every offer is searchable.** Every phrase the field or "Did you mean"
+offers (see "When nothing is found") is read back before it
+is offered, by the same reading a search runs, and keeps only the headwords
+that search finds. A completion is built from the typed words and a
+headword's own, so the search could read it otherwise; an offer that would
+reach none of its headwords is dropped rather than shown. An offer the index
+spells exactly opens that entry, not a phrase match, so it keeps only the
+headword that is the offer itself: `aerei a reazion` offers `aerei a reazione`
+for *aerei a reazione*, not for *aereo a reazione*. `test/phrase.test.ts` searches
+every phrase offered for every multi-word headword in the fixture, said
+through each form of its first word.
 
 **Order.** Alphabetical by normalized key: the first words in the dictionary
 under what was typed. Huey's ruling, 2026-09-23: "it should show alphabetical
@@ -369,7 +388,9 @@ and 3):
    They come in that order, each once, at most eight. The query's words and
    every one-edit spelling of them are sent as one JSON array
    (`WORD_LEMMAS_SQL`), and every lemma sequence as another
-   (`HEADWORD_SPELLING_SQL`), each probed through `json_each`. This step runs
+   (`HEADWORD_SPELLING_SQL`), each probed through `json_each`. Every offer is
+   then read back as a search reads it and names only the headwords that
+   search finds ("Every offer is searchable", under Suggestions). This step runs
    beside the accent step: after an accent or a one-edit match the corrections
    follow the other offers as `phrases`; with neither, they are the offer.
 5. **Words that begin with it:** `suggest()` for the query.

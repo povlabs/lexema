@@ -23,9 +23,10 @@ written to: no other state directory, and in `SEED_SQL` only its own
 database only when you mean to replace it. The fixture covers
 Huey's fifty required words, the words of the multi-word searches in
 [#214](https://github.com/hueypov/lexema/issues/214) (`andare via`, `tirare fuori`,
-`volgere le spalle`, `voltare le spalle`, the words that spell them, and `vada`
-for `vada via`), and their `form_of` closure: 113 source records across 70
-words, including `andare` for
+`volgere le spalle`, `voltare le spalle`, `fare l'amore`, `aereo a reazione`,
+`aerei a reazione`, the words that spell them, `vada` for `vada via` and
+`faccio` for `faccio l'amore`), and their `form_of` closure: 121 source records
+across 76 words, including `andare` for
 `andavano`. A missing required word or fixture
 target stops the run with that word's name.
 
