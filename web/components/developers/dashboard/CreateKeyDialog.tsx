@@ -27,7 +27,7 @@ import { useState, type FormEvent } from "react";
 import { CopySecret } from "./CopySecret";
 import { KEY_LIFETIMES, keyLifetime, LIFETIME_LABEL, type KeyLifetime } from "@lexema/api/keyAccess.ts";
 import { KEY_NAME_MAX } from "@lexema/api/ownedKeys.ts";
-import { ENDPOINTS, type Endpoint } from "@lexema/api/units.ts";
+import { ENDPOINTS, type Endpoint } from "@lexema/api/calls.ts";
 import {
   canSend,
   draftFields,

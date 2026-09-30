@@ -1,12 +1,12 @@
 // The pages of developers.lexema.fyi/docs (board 31, Huey's ruling on #177):
 // one page per sidebar item, in the sidebar's order. A guide page is one of a
-// closed set; an endpoint page exists for every endpoint of the unit map, so
+// closed set; an endpoint page exists for every endpoint of the call map, so
 // none goes without a page and no page names an endpoint the API lacks.
 //
 // Everything a page's URL, its place in the sidebar and its Previous / Next
 // depend on is read here; the markup is DeveloperDocs.tsx.
 
-import type { Endpoint } from "@lexema/api/units.ts";
+import type { Endpoint } from "@lexema/api/calls.ts";
 import { ENDPOINT_REFERENCE, ENDPOINTS_IN_ORDER } from "./apiReference.ts";
 
 /** Where the docs live on the developer site. */
@@ -19,7 +19,7 @@ export type DocsGroupName = "Getting started" | "Endpoints" | "Reference";
 const GUIDES = {
   introduction: { slug: undefined, group: "Getting started", label: "Introduction", title: "The Lexema API" },
   authentication: { slug: "authentication", group: "Getting started", label: "Authentication", title: "Authentication" },
-  "units-and-limits": { slug: "units-and-limits", group: "Getting started", label: "Units and limits", title: "Units and limits" },
+  "calls-and-limits": { slug: "calls-and-limits", group: "Getting started", label: "Calls and limits", title: "Calls and limits" },
   errors: { slug: "errors", group: "Getting started", label: "Errors", title: "Errors" },
   "grammar-values": { slug: "grammar-values", group: "Reference", label: "Grammar values", title: "Grammar values" },
   attribution: { slug: "attribution", group: "Reference", label: "Attribution", title: "Attribution" },
@@ -35,7 +35,7 @@ const endpointSlug = (endpoint: Endpoint): string => endpoint.replace("/", "-");
 
 /** Every page, in the sidebar's order. */
 export const DOCS_PAGES: readonly DocsPage[] = [
-  ...(["introduction", "authentication", "units-and-limits", "errors"] as const).map((guide): DocsPage => ({ kind: "guide", guide })),
+  ...(["introduction", "authentication", "calls-and-limits", "errors"] as const).map((guide): DocsPage => ({ kind: "guide", guide })),
   ...ENDPOINTS_IN_ORDER.map((endpoint): DocsPage => ({ kind: "endpoint", endpoint })),
   ...(["grammar-values", "attribution"] as const).map((guide): DocsPage => ({ kind: "guide", guide })),
 ];

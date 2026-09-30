@@ -2,7 +2,7 @@
 // its pages and their tests read one copy.
 //
 // Whatever the API already names is imported, never restated: the endpoints and
-// their unit weights (src/api/units.ts), the filter vocabularies
+// how each counts calls (src/api/calls.ts), the filter vocabularies
 // (web/worker/api/lookupFilters.ts), the batch and query bounds. Every example
 // response is what the handler answers for its request over the development
 // fixture, which holds lines of release it-0c432803; `id` numbers are the lines
@@ -11,7 +11,7 @@
 //
 // Text in backticks renders as code.
 
-import { API_PREFIX, UNIT_WEIGHT, type Endpoint, type UnitWeight } from "@lexema/api/units.ts";
+import { API_PREFIX, countedPerWord, ENDPOINTS, type CallBasis, type Endpoint, type EndpointCountedPer } from "@lexema/api/calls.ts";
 import { MAX_QUERY_LENGTH } from "@lexema/lookup/lookup.ts";
 import { SUGGESTION_LIMIT } from "@lexema/lookup/suggest.ts";
 import { MAX_BATCH_WORDS } from "@/worker/api/endpoints.ts";
@@ -433,7 +433,7 @@ export const NOT_FOUND_EXAMPLE: Example = {
   response: { query: "citta", release_id: RELEASE, results: [], suggestions: [{ word: "città", kind: "accent" }] },
 };
 
-/** Every endpoint, keyed as src/api/units.ts names it, so none goes undocumented. */
+/** Every endpoint, keyed as src/api/calls.ts names it, so none goes undocumented. */
 export const ENDPOINT_REFERENCE: Readonly<Record<Endpoint, EndpointReference>> = {
   lookup: {
     method: "GET",
@@ -649,11 +649,8 @@ export const ENDPOINT_REFERENCE: Readonly<Record<Endpoint, EndpointReference>> =
   },
 };
 
-/** The endpoints in the order the page lists them: the order of the unit map. */
-export const ENDPOINTS_IN_ORDER = Object.keys(UNIT_WEIGHT) as Endpoint[];
-
-/** A unit weight as the page writes it. */
-export const unitsText = (weight: UnitWeight): string => (weight.per === "word" ? `${weight.units} per word` : String(weight.units));
+/** The endpoints in the order the page lists them: the order of the call map. */
+export const ENDPOINTS_IN_ORDER: readonly Endpoint[] = ENDPOINTS;
 
 /** A list of values as the docs write it: each in backticks, comma separated. */
 const codeList = (values: readonly string[]) => values.map((value) => `\`${value}\``).join(", ");
@@ -714,14 +711,14 @@ export const ERRORS: readonly ErrorReference[] = [
   { status: 404, code: "unknown_lemma", when: "`/inflect`: `lemma` heads no record." },
   { status: 404, code: "not_found", when: "No endpoint at this path." },
   { status: 405, code: "method_not_allowed", when: "The endpoint takes another method, named in the `Allow` header." },
-  { status: 429, code: "rate_limited", when: "The key has used its requests for this minute." },
+  { status: 429, code: "rate_limited", when: "The key has used its calls for this minute." },
   { status: 503, code: "unavailable", when: "The request could not be answered. Try again later." },
 ];
 
 /** The rate-limit headers, and what each says. */
 export const HEADERS: readonly { name: string; description: string }[] = [
-  { name: "RateLimit-Limit", description: "The key's requests per minute." },
-  { name: "RateLimit-Remaining", description: "Requests left in this minute." },
+  { name: "RateLimit-Limit", description: "The key's calls per minute." },
+  { name: "RateLimit-Remaining", description: "Calls left in this minute." },
   { name: "RateLimit-Reset", description: "Seconds until this minute ends." },
   { name: "Retry-After", description: "On a `429` only: seconds until this minute ends." },
 ];
@@ -777,45 +774,19 @@ function oneLine(value: unknown): string {
   return members.length === 0 ? "{}" : `{ ${members.join(", ")} }`;
 }
 
-/** An endpoint's cost as the docs and the pricing page write it: `2 units`, `1 unit per word`. */
-export function costText(weight: UnitWeight): string {
-  return `${weight.units} ${weight.units === 1 ? "unit" : "units"}${weight.per === "word" ? " per word" : ""}`;
-}
-
-/** One row of the pricing page's cost table: every endpoint that costs the same. */
-export interface CostRow {
-  endpoints: readonly Endpoint[];
-  weight: UnitWeight;
-}
-
-/** Where each endpoint sits among those of its cost on the pricing page, as board 26 lists them. */
-const PRICING_ORDER: Readonly<Record<Endpoint, number>> = {
-  exists: 0,
-  lemmatize: 1,
-  lookup: 2,
-  inflect: 3,
-  random: 4,
-  suggest: 5,
-  nearby: 6,
-  "lookup/batch": 7,
-};
+/** How an endpoint counts calls, as the docs and the pricing page write it: `1 call`, `1 call per word`. */
+export const callText = (basis: CallBasis): string => (basis === "word" ? "1 call per word" : "1 call");
 
 /**
- * The unit map grouped by cost: endpoints charged per request from cheapest
- * up, then those charged per word. Each endpoint sits in exactly one row.
+ * One row of the pricing page's "What counts as a call" table (board 26): any
+ * endpoint at 1 call, then each endpoint counted per word on its own row.
  */
-export const COST_ROWS: readonly CostRow[] = (() => {
-  const rows = new Map<string, CostRow>();
-  const inPricingOrder = [...ENDPOINTS_IN_ORDER].sort((a, b) => PRICING_ORDER[a] - PRICING_ORDER[b]);
-  for (const endpoint of inPricingOrder) {
-    const weight = UNIT_WEIGHT[endpoint];
-    const key = `${weight.per} ${weight.units}`;
-    const row = rows.get(key);
-    rows.set(key, { weight, endpoints: [...(row?.endpoints ?? []), endpoint] });
-  }
-  const order = (row: CostRow) => (row.weight.per === "word" ? 1 : 0);
-  return [...rows.values()].sort((a, b) => order(a) - order(b) || a.weight.units - b.weight.units);
-})();
+export type CallRow = { endpoint: "any"; basis: "request" } | { endpoint: EndpointCountedPer<"word">; basis: "word" };
+
+export const CALL_ROWS: readonly CallRow[] = [
+  { endpoint: "any", basis: "request" },
+  ...ENDPOINTS.filter(countedPerWord).map((endpoint): CallRow => ({ endpoint, basis: "word" })),
+];
 
 /** The languages the docs print each request in. */
 export const LANGUAGES = ["curl", "JavaScript", "Python"] as const;

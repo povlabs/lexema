@@ -4,13 +4,13 @@
 // An owned key is an `api_key` row whose `owner_account_id` is the account; an
 // admin key, made with the CLI, has none and is never reached from here. Every
 // statement names the account, so one account can neither read nor revoke
-// another's keys. A dashboard key takes the default limits (#163 R1.1) and
-// there is no cap on how many an account holds. Its endpoints and expiry are
+// another's keys. A dashboard key carries no limit of its own, its rate being
+// its account's (#161), and there is no cap on how many an account holds. Its endpoints and expiry are
 // the developer's choice (#187, ./keyAccess.ts).
 
 import type { LookupDatabase, Statement } from "../lookup/database.js";
 import { endpointsColumn, endpointsOfColumn, OPEN_ACCESS, type EndpointScope, type KeyAccess } from "./keyAccess.js";
-import { DEFAULT_KEY_LIMITS, displayPrefix, generateApiKey, hashApiKey, type NewKey } from "./keys.js";
+import { displayPrefix, generateApiKey, hashApiKey, type NewKey } from "./keys.js";
 
 /** The longest name a key may have: the `label` check in src/db/schema.sql. */
 export const KEY_NAME_MAX = 200;
@@ -76,14 +76,14 @@ export async function listAccountKeys(db: LookupDatabase, accountId: number): Pr
  * between the check and the insert.
  */
 export const INSERT_OWNED_KEY_SQL = `INSERT INTO api_key
-       (key_hash, label, per_minute_limit, daily_units, created_at, display_prefix, endpoints, expires_at, owner_account_id)
-     SELECT ?, ?, ?, ?, ?, ?, ?, ?, account_id FROM developer_account WHERE account_id = ? AND deleted_at IS NULL
+       (key_hash, label, created_at, display_prefix, endpoints, expires_at, owner_account_id)
+     SELECT ?, ?, ?, ?, ?, ?, account_id FROM developer_account WHERE account_id = ? AND deleted_at IS NULL
      RETURNING key_id`;
 
 export type OwnedKeyCreation = ({ outcome: "created" } & NewKey) | { outcome: "refused"; refusal: "no-account" };
 
 /**
- * Make a named key for the account, with the default limits and the access
+ * Make a named key for the account, with no limit of its own and the access
  * asked for: every endpoint and no expiry unless told otherwise. The returned
  * `key` is the only time it exists in the clear.
  */
@@ -98,8 +98,6 @@ export async function createAccountKey(
   const [row] = await db.all<{ key_id: number }>(INSERT_OWNED_KEY_SQL, [
     await hashApiKey(key),
     name,
-    DEFAULT_KEY_LIMITS.perMinuteLimit,
-    DEFAULT_KEY_LIMITS.dailyUnits,
     new Date(now).toISOString(),
     displayPrefix(key),
     endpointsColumn(access.endpoints),

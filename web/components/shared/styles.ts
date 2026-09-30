@@ -110,11 +110,10 @@ export const SEARCH_SHORTCUT = `${TRAILING_BOX} ${KEY_NUDGE} px-1 font-sans text
  * The suggestion list under the field. No frame draws it, so it takes the
  * field's own parts: `surface-raised` with a hairline `border`, as wide as the
  * field, and the source's spellings in the serif the field is typed in. The
- * highlighted row is outlined in `accent` the way the searched form is outlined
- * in a paradigm box, and carries the field's own `ENTER` hint in words, so it is
- * never marked by colour alone. It is never taller than the room left under the
- * field — on a phone, the room above the open keyboard — and scrolls within
- * itself instead.
+ * highlighted row is outlined in `accent`, and carries the field's own `ENTER`
+ * hint in words, so it is never marked by colour alone. It is never taller than
+ * the room left under the field — on a phone, the room above the open keyboard —
+ * and scrolls within itself instead.
  */
 export const SUGGEST_POPUP =
   "max-h-[var(--available-height)] w-[var(--anchor-width)] max-w-[var(--available-width)] overflow-y-auto rounded-[4px] border border-border bg-surface-raised p-1 text-left";
@@ -500,12 +499,15 @@ export const PLAN_FEATURES = "m-0 mt-[0.78125rem] flex list-none flex-col p-0 pb
 export const PLAN_FEATURE = "flex h-[1.625rem] items-center gap-3 font-sans text-[0.875rem] text-text";
 export const PLAN_CHECK = "w-3 shrink-0 text-accent";
 export const PLAN_ACTION = "mt-auto flex";
-export const COSTS = "mt-[3.6875rem] max-w-[38.75rem]";
-export const COSTS_HEADING = "m-0 font-serif text-[1.5rem] leading-[1.3] font-normal text-text-strong";
-export const COST_TABLE = "mt-4 w-full border-collapse text-left";
-export const COST_ROW = "border-b border-border";
-export const COST_ENDPOINTS = "p-0 pt-2 pr-6 pb-[0.5625rem] font-mono text-[0.875rem] leading-5 font-normal text-text-strong";
-export const COST_UNITS = "p-0 pt-2 pb-[0.5625rem] text-right font-sans text-[0.875rem] leading-5 whitespace-nowrap text-text";
+// What counts as a call: `Any endpoint` in the sans, an endpoint's path in the mono.
+export const CALLS = "mt-[3.6875rem] max-w-[38.75rem]";
+export const CALLS_HEADING = "m-0 font-serif text-[1.5rem] leading-[1.3] font-normal text-text-strong";
+export const CALL_TABLE = "mt-4 w-full border-collapse text-left";
+export const CALL_ROW = "border-b border-border";
+const CALL_WHAT = "p-0 pt-2 pr-6 pb-[0.5625rem] text-[0.875rem] leading-5 font-normal text-text-strong";
+export const CALL_ANY = `${CALL_WHAT} font-sans`;
+export const CALL_ENDPOINT = `${CALL_WHAT} font-mono`;
+export const CALL_COUNT = "p-0 pt-2 pb-[0.5625rem] text-right font-sans text-[0.875rem] leading-5 whitespace-nowrap text-text";
 
 // Docs (boards 31, 31m and the open contents)
 

@@ -1,4 +1,4 @@
-// A key's per-minute count and its daily units, both in D1 (#150).
+// A key's per-minute count and its daily calls, both in D1 (#150).
 //
 // Huey ruled on #148 that the limit is stored on the key and counted here, not
 // with the Worker's rate-limit binding: the binding answers only `success`,
@@ -8,9 +8,9 @@
 // are exact, and a 429 says how long to wait.
 
 import type { LookupDatabase } from "../lookup/database.js";
-import type { ApiKey } from "./keys.js";
+import { perMinuteLimit, type ApiKey } from "./keys.js";
 import { listAccountKeys } from "./ownedKeys.js";
-import { unitCost, type Charge } from "./units.js";
+import { callCost, type Charge } from "./calls.js";
 
 const MINUTE_MS = 60_000;
 
@@ -74,19 +74,19 @@ export async function countRequest(db: LookupDatabase, key: ApiKey, now: number)
   if (row === undefined) throw new Error(`key ${key.keyId}'s minute was not counted`);
   // The first request of a minute is the one that finds the last minute over.
   if (row.requests === 1) await db.all(SWEEP_MINUTES_SQL, [key.keyId, minute]);
-  return new MinuteWindow(key.perMinuteLimit, row.requests, minute, now);
+  return new MinuteWindow(perMinuteLimit(key), row.requests, minute, now);
 }
 
-/** Add a request's units to its key's row for the day. */
-export const CHARGE_UNITS_SQL = `INSERT INTO api_key_usage (key_id, day, units) VALUES (?, ?, ?)
-     ON CONFLICT (key_id, day) DO UPDATE SET units = units + excluded.units
-     RETURNING units`;
+/** Add a request's calls to its key's row for the day. */
+export const CHARGE_CALLS_SQL = `INSERT INTO api_key_usage (key_id, day, calls) VALUES (?, ?, ?)
+     ON CONFLICT (key_id, day) DO UPDATE SET calls = calls + excluded.calls
+     RETURNING calls`;
 
-/** Charge an answered request to its key's day, and return the day's total. */
-export async function chargeUnits(db: LookupDatabase, key: ApiKey, charge: Charge, now: number): Promise<number> {
-  const [row] = await db.all<{ units: number }>(CHARGE_UNITS_SQL, [key.keyId, dayOf(now), unitCost(charge)]);
-  if (row === undefined) throw new Error(`key ${key.keyId}'s units were not recorded`);
-  return row.units;
+/** Charge an answered request's calls to its key's day, and return the day's total. */
+export async function chargeCalls(db: LookupDatabase, key: ApiKey, charge: Charge, now: number): Promise<number> {
+  const [row] = await db.all<{ calls: number }>(CHARGE_CALLS_SQL, [key.keyId, dayOf(now), callCost(charge)]);
+  if (row === undefined) throw new Error(`key ${key.keyId}'s calls were not recorded`);
+  return row.calls;
 }
 
 /** How many UTC days the usage view covers, today included. */
@@ -99,18 +99,18 @@ export const usageDays = (now: number): string[] =>
   Array.from({ length: USAGE_WINDOW_DAYS }, (_, i) => dayOf(now - (USAGE_WINDOW_DAYS - 1 - i) * DAY_MS));
 
 /** An account's recorded days in a window: each key's rows through `api_key_by_owner` and the usage primary key. */
-export const ACCOUNT_USAGE_SQL = `SELECT api_key_usage.key_id, api_key_usage.day, api_key_usage.units
+export const ACCOUNT_USAGE_SQL = `SELECT api_key_usage.key_id, api_key_usage.day, api_key_usage.calls
        FROM api_key JOIN api_key_usage ON api_key_usage.key_id = api_key.key_id
       WHERE api_key.owner_account_id = ? AND api_key_usage.day BETWEEN ? AND ?`;
 
-/** One key's units on each day of the window, in the window's order. */
+/** One key's calls on each day of the window, in the window's order. */
 export interface KeyUsage {
   keyId: number;
-  units: readonly number[];
+  calls: readonly number[];
 }
 
 /**
- * An account's units per UTC day over the last `USAGE_WINDOW_DAYS` days: per
+ * An account's calls per UTC day over the last `USAGE_WINDOW_DAYS` days: per
  * key, for every key it owns, live or revoked, and in total. A day with no row
  * is 0; nothing is charged for it.
  */
@@ -122,20 +122,20 @@ export class AccountUsage {
   ) {}
 
   /** Place the recorded rows on the window, reading a missing day as 0. */
-  static of(days: readonly string[], keyIds: readonly number[], rows: readonly { key_id: number; day: string; units: number }[]): AccountUsage {
+  static of(days: readonly string[], keyIds: readonly number[], rows: readonly { key_id: number; day: string; calls: number }[]): AccountUsage {
     const column = new Map(days.map((day, i) => [day, i]));
     const byKey = new Map(keyIds.map((keyId) => [keyId, days.map(() => 0)]));
     for (const row of rows) {
       const i = column.get(row.day);
-      const units = byKey.get(row.key_id);
-      if (i !== undefined && units !== undefined) units[i] += row.units;
+      const calls = byKey.get(row.key_id);
+      if (i !== undefined && calls !== undefined) calls[i] += row.calls;
     }
-    return new AccountUsage(days, keyIds.map((keyId) => ({ keyId, units: byKey.get(keyId) ?? [] })));
+    return new AccountUsage(days, keyIds.map((keyId) => ({ keyId, calls: byKey.get(keyId) ?? [] })));
   }
 
-  /** Every key's units added up, day by day. */
+  /** Every key's calls added up, day by day. */
   get total(): readonly number[] {
-    return this.days.map((_, i) => this.keys.reduce((sum, key) => sum + key.units[i], 0));
+    return this.days.map((_, i) => this.keys.reduce((sum, key) => sum + key.calls[i], 0));
   }
 }
 
@@ -143,7 +143,7 @@ export class AccountUsage {
 export async function accountUsage(db: LookupDatabase, accountId: number, now: number): Promise<AccountUsage> {
   const days = usageDays(now);
   const keys = await listAccountKeys(db, accountId);
-  const rows = await db.all<{ key_id: number; day: string; units: number }>(ACCOUNT_USAGE_SQL, [
+  const rows = await db.all<{ key_id: number; day: string; calls: number }>(ACCOUNT_USAGE_SQL, [
     accountId,
     days[0],
     days[days.length - 1],

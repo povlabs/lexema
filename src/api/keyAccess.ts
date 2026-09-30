@@ -6,7 +6,7 @@
 // Stored on the key's row as `endpoints` and `expires_at` (src/db/schema.sql),
 // both NULL for a key made before #187: every endpoint, never expiring.
 
-import { ENDPOINTS, type Endpoint } from "./units.js";
+import { ENDPOINTS, type Endpoint } from "./calls.js";
 
 /**
  * The endpoints a key may call: all of them, or only the listed ones. The list

@@ -1,5 +1,5 @@
 // The JSON API's core (#150): `/v1/lookup` behind a key, its per-key
-// minute limit and its daily units, over the development fixture seeded the
+// minute limit and its daily calls, over the development fixture seeded the
 // way `pnpm run seed:dev` seeds D1.
 //
 // `handleApi` is exercised as the Worker runs it, a Request in and a Response
@@ -16,9 +16,10 @@ import { DatabaseSync } from "node:sqlite";
 import { gzipSync } from "node:zlib";
 import { signInAccount, verifiedIdentity } from "../../src/accounts/accounts.js";
 import { ALL_ENDPOINTS, onlyEndpoints, type KeyAccess } from "../../src/api/keyAccess.js";
-import { ACCEPT_KEY_SQL, createKey, revokeKey } from "../../src/api/keys.js";
+import { runKeyCommand } from "../../src/api/keyCli.js";
+import { ACCEPT_KEY_SQL, createKey, hashApiKey, revokeKey } from "../../src/api/keys.js";
 import { createAccountKey, keyName, listAccountKeys } from "../../src/api/ownedKeys.js";
-import { UNIT_WEIGHT, type Endpoint } from "../../src/api/units.js";
+import type { Endpoint } from "../../src/api/calls.js";
 import { accountUsage, COUNT_MINUTE_SQL, SWEEP_MINUTES_SQL, USAGE_WINDOW_DAYS } from "../../src/api/usage.js";
 import { seedSql } from "../../src/import/seedSql.js";
 import { fromNodeSqlite, type LookupDatabase } from "../../src/lookup/database.js";
@@ -65,9 +66,9 @@ after(async () => {
   await rm(dir, { recursive: true, force: true });
 });
 
-/** A new key with these limits. */
+/** A new admin key with this per-minute limit. */
 const newKey = async (perMinuteLimit = 60, label = "test"): Promise<{ keyId: number; key: string }> =>
-  createKey(db, { label, perMinuteLimit, dailyUnits: 10_000 }, NOW);
+  createKey(db, { label, perMinuteLimit }, NOW);
 
 /** One API request, as the Worker hands it over. */
 const call = (path: string, key: string | undefined, now = NOW, method = "GET", over = db): Promise<Response> =>
@@ -80,9 +81,9 @@ const call = (path: string, key: string | undefined, now = NOW, method = "GET", 
 const limitHeaders = (response: Response) =>
   ["ratelimit-limit", "ratelimit-remaining", "ratelimit-reset", "retry-after"].map((name) => response.headers.get(name));
 
-/** Units the key has been charged, per day. */
-const unitsOf = (keyId: number) =>
-  sqlite.prepare("SELECT day, units FROM api_key_usage WHERE key_id = ? ORDER BY day").all(keyId).map((row) => ({ ...row }));
+/** Calls the key has been charged, per day. */
+const callsOf = (keyId: number) =>
+  sqlite.prepare("SELECT day, calls FROM api_key_usage WHERE key_id = ? ORDER BY day").all(keyId).map((row) => ({ ...row }));
 
 // Loose on purpose: each test reads the fields it asserts.
 type Json = any;
@@ -160,7 +161,7 @@ test("a word not in the release is a 404 offering findNearby's spellings in its 
   }
 });
 
-test("a /lookup refused before an answer costs no units: a bad q, a wrong method, a 429", async () => {
+test("a /lookup refused before an answer counts no calls: a bad q, a wrong method, a 429", async () => {
   const { keyId, key } = await newKey(4);
   for (const q of ["", "%20%20", "a".repeat(129)]) {
     const response = await call(`/v1/lookup?q=${q}`, key);
@@ -172,7 +173,7 @@ test("a /lookup refused before an answer costs no units: a bad q, a wrong method
   assert.equal(wrongMethod.status, 405);
   const overLimit = await call("/v1/lookup?q=casa", key);
   assert.equal(overLimit.status, 429);
-  assert.deepEqual(unitsOf(keyId), []);
+  assert.deepEqual(callsOf(keyId), []);
 });
 
 test("no key, an unknown key and a revoked key are each a 401; the key row holds a hash, never the key", async () => {
@@ -195,6 +196,28 @@ test("no key, an unknown key and a revoked key are each a 401; the key row holds
   assert.ok(!Object.values(row).some((value) => String(value).includes(key.slice(3))), "no column holds the key");
 });
 
+test("an admin key stored before #201, and one made by the CLI, both answer 200", async () => {
+  // The row an earlier CLI left, as it stands once seeded under this schema: no owner, its own limit, no access columns.
+  const earlier = "lx_" + "e".repeat(64);
+  sqlite
+    .prepare(
+      `INSERT INTO api_key (key_hash, label, per_minute_limit, created_at, display_prefix)
+       VALUES (?, 'earlier', 60, '2026-09-01T00:00:00.000Z', ?)`,
+    )
+    .run(await hashApiKey(earlier), earlier.slice(0, 11));
+
+  const created = await runKeyCommand(["create", "--label", "x", "--per-minute", "60"], db, NOW);
+  assert.equal(created.status, 0, created.out);
+  const cli = created.out.match(/lx_[0-9a-f]{64}/)?.[0];
+  assert.ok(cli !== undefined, created.out);
+
+  for (const key of [earlier, cli]) {
+    const response = await call("/v1/lookup?q=casa", key);
+    assert.equal(response.status, 200);
+    assert.equal(response.headers.get("ratelimit-limit"), "60");
+  }
+});
+
 test("a key past its own minute limit gets a 429 until the minute ends; another key is counted apart", async () => {
   const tight = await newKey(2, "tight");
   const roomy = await newKey(5, "roomy");
@@ -206,7 +229,10 @@ test("a key past its own minute limit gets a 429 until the minute ends; another 
   const refused = await call("/v1/lookup?q=casa", tight.key);
   assert.equal(refused.status, 429);
   assert.deepEqual(headers(refused), ["2", "0", "40", "40"]);
-  assert.equal(((await refused.json()) as Json).error.code, "rate_limited");
+  assert.deepEqual(((await refused.json()) as Json).error, {
+    code: "rate_limited",
+    message: "This key may make 2 calls a minute. Retry after 40 s.",
+  });
 
   const other = await call("/v1/lookup?q=", roomy.key);
   assert.equal(other.status, 400);
@@ -242,14 +268,14 @@ test("a 405, an unknown endpoint and a failed answer carry the key's limit heade
   assert.deepEqual(limitHeaders(await call("/v1/lookup?q=casa", undefined)), [null, null, null, null]);
 });
 
-test("each /lookup a key makes adds 2 units to its row for the day", async () => {
+test("each /lookup a key makes adds 1 call to its row for the day", async () => {
   const { keyId, key } = await newKey();
   await call("/v1/lookup?q=casa", key);
   await call("/v1/lookup?q=qqqqqq", key);
   await call("/v1/lookup?q=casa", key, Date.parse("2026-09-28T00:00:01Z"));
-  assert.deepEqual(unitsOf(keyId), [
-    { day: "2026-09-27", units: 4 },
-    { day: "2026-09-28", units: 2 },
+  assert.deepEqual(callsOf(keyId), [
+    { day: "2026-09-27", calls: 2 },
+    { day: "2026-09-28", calls: 1 },
   ]);
 });
 
@@ -477,7 +503,7 @@ test("every filter kind at once: each kept candidate is filtered, shaped and nar
   assert.deepEqual(salire.forms, { type: "conjugation", moods: { indicativo: { presente: { "lui, lei": ["sale"] } } } });
 });
 
-test("a filtered /lookup still costs 2 units and carries release_id, attribution and the limit headers; a refused one costs none", async () => {
+test("a filtered /lookup still counts 1 call and carries release_id, attribution and the limit headers; a refused one counts none", async () => {
   const { keyId, key } = await newKey(10);
   const response = await call("/v1/lookup?q=sale&pos=noun&fields=definitions&limit_definitions=1&number=plurale", key);
   assert.equal(response.status, 200);
@@ -493,7 +519,7 @@ test("a filtered /lookup still costs 2 units and carries release_id, attribution
   assert.equal(refused.status, 400);
   assert.equal(((await refused.json()) as Json).error.code, "invalid_parameter");
   assert.deepEqual(limitHeaders(refused), ["10", "8", "40", null]);
-  assert.deepEqual(unitsOf(keyId), [{ day: "2026-09-27", units: 2 }]);
+  assert.deepEqual(callsOf(keyId), [{ day: "2026-09-27", calls: 1 }]);
 });
 
 // The other endpoints (#152).
@@ -680,15 +706,16 @@ test("POST /lookup/batch takes up to 200 words and refuses more, none, a non-str
   assert.equal(get.headers.get("allow"), "POST");
 });
 
-test("each endpoint charges its weight from the unit map and answers with release_id, attribution and the limit headers", async () => {
+test("each endpoint counts 1 call and lookup/batch 1 per word, and each answers with release_id, attribution and the limit headers", async () => {
   const requests: [Endpoint, string, string?][] = [
+    ["lookup", "lookup?q=sale"],
     ["lemmatize", "lemmatize?q=sale"],
     ["exists", "exists?q=sale"],
     ["inflect", "inflect?lemma=andare&mood=congiuntivo"],
     ["suggest", "suggest?q=sal"],
     ["nearby", "nearby?q=mangare"],
     ["random", "random?pos=noun"],
-    ["lookup/batch", "lookup/batch", JSON.stringify({ q: ["sale", "casa", "qqqqqq"] })],
+    ["lookup/batch", "lookup/batch", JSON.stringify({ q: ["sale", "casa", "qqqqqq", "andare", "bello", "sala", "mangare"] })],
   ];
   for (const [endpoint, path, body] of requests) {
     const { keyId, key } = await newKey(10, endpoint);
@@ -704,12 +731,11 @@ test("each endpoint charges its weight from the unit map and answers with releas
       assert.equal(result.attribution.licence, "CC BY-SA 4.0", path);
       assert.match(result.attribution.source_url, /^https:\/\/it\.wiktionary\.org\/wiki\/./, path);
     }
-    const weight = UNIT_WEIGHT[endpoint];
-    assert.deepEqual(unitsOf(keyId), [{ day: "2026-09-27", units: weight.per === "word" ? weight.units * 3 : weight.units }], path);
+    assert.deepEqual(callsOf(keyId), [{ day: "2026-09-27", calls: endpoint === "lookup/batch" ? 7 : 1 }], path);
   }
 });
 
-test("a request an endpoint refuses before answering costs no units", async () => {
+test("a request an endpoint refuses before answering counts no calls", async () => {
   const { keyId, key } = await newKey(20, "refused");
   const refusedRequests: [string, string?][] = [
     ["lemmatize?q="],
@@ -721,10 +747,10 @@ test("a request an endpoint refuses before answering costs no units", async () =
     ["lookup/batch", JSON.stringify({ q: Array.from({ length: 201 }, () => "casa") })],
   ];
   for (const [path, body] of refusedRequests) assert.equal((await send(key, path, body)).status, 400, path);
-  assert.deepEqual(unitsOf(keyId), []);
+  assert.deepEqual(callsOf(keyId), []);
 });
 
-test("an owned key's calls stamp its last use, and the account's 30-day usage reads back exactly the units the API charged", async () => {
+test("an owned key's calls stamp its last use, and the account's 30-day usage reads back exactly the calls the API charged", async () => {
   const identity = verifiedIdentity("github", { subject: "usage-reader", verifiedEmail: "usage@example.com", name: undefined });
   assert.ok(identity !== undefined);
   const { accountId } = await signInAccount(db, identity, NOW);
@@ -757,19 +783,17 @@ test("an owned key's calls stamp its last use, and the account's 30-day usage re
   const [after] = await listAccountKeys(db, accountId);
   assert.equal(after.lastUsedAt, new Date(NOW).toISOString());
 
-  const charged = sqlite.prepare("SELECT day, units FROM api_key_usage WHERE key_id = ? ORDER BY day").all(created.keyId);
-  const lookup = UNIT_WEIGHT.lookup.units;
-  const today = lookup + UNIT_WEIGHT.nearby.units + 2 * UNIT_WEIGHT["lookup/batch"].units;
-  assert.deepEqual(charged.map((row) => ({ ...row })), [
-    { day: "2026-09-26", units: lookup },
-    { day: "2026-09-27", units: today },
+  // 1 call for the lookup yesterday; today 1 for the lookup, 1 for nearby and 2 for the batch's two words.
+  assert.deepEqual(callsOf(created.keyId), [
+    { day: "2026-09-26", calls: 1 },
+    { day: "2026-09-27", calls: 4 },
   ]);
 
   const usage = await accountUsage(db, accountId, NOW);
   const expected = Array<number>(USAGE_WINDOW_DAYS).fill(0);
-  expected[USAGE_WINDOW_DAYS - 2] = lookup;
-  expected[USAGE_WINDOW_DAYS - 1] = today;
-  assert.deepEqual(usage.keys, [{ keyId: created.keyId, units: expected }]);
+  expected[USAGE_WINDOW_DAYS - 2] = 1;
+  expected[USAGE_WINDOW_DAYS - 1] = 4;
+  assert.deepEqual(usage.keys, [{ keyId: created.keyId, calls: expected }]);
   assert.deepEqual(usage.total, expected);
 });
 
@@ -783,14 +807,14 @@ async function keyWith(subject: string, access: KeyAccess): Promise<{ keyId: num
   return created;
 }
 
-test("a key limited to some endpoints answers them, and every other endpoint is a 403 with the JSON error, costing no units", async () => {
+test("a key limited to some endpoints answers them, and every other endpoint is a 403 with the JSON error, counting no calls", async () => {
   const some = onlyEndpoints(["lookup", "exists"]);
   assert.ok(some !== undefined);
   const { keyId, key } = await keyWith("limited", { endpoints: some, expiresAt: null });
 
   for (const path of ["lookup?q=casa", "exists?q=casa"]) assert.equal((await send(key, path)).status, 200, path);
-  const allowed = unitsOf(keyId);
-  assert.deepEqual(allowed, [{ day: "2026-09-27", units: UNIT_WEIGHT.lookup.units + UNIT_WEIGHT.exists.units }]);
+  const allowed = callsOf(keyId);
+  assert.deepEqual(allowed, [{ day: "2026-09-27", calls: 2 }]);
 
   const others: [Endpoint, string, string?][] = [
     ["lemmatize", "lemmatize?q=sale"],
@@ -811,7 +835,7 @@ test("a key limited to some endpoints answers them, and every other endpoint is 
   }
   // A wrong method on a forbidden endpoint is refused the same way, and none of it was charged.
   assert.equal((await send(key, "lemmatize?q=sale", "{}")).status, 403);
-  assert.deepEqual(unitsOf(keyId), allowed);
+  assert.deepEqual(callsOf(keyId), allowed);
 
   // Every endpoint is open to a key made with All endpoints.
   const open = await keyWith("open", { endpoints: ALL_ENDPOINTS, expiresAt: null });
@@ -830,5 +854,5 @@ test("an expired key answers 401 expired_key from its expiry on, like a revoked 
     const json: Json = await response.json();
     assert.deepEqual(json.error, { code: "expired_key", message: "This API key has expired." });
   }
-  assert.deepEqual(unitsOf(keyId), [{ day: "2026-09-27", units: UNIT_WEIGHT.lookup.units }]);
+  assert.deepEqual(callsOf(keyId), [{ day: "2026-09-27", calls: 1 }]);
 });

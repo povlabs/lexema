@@ -17,7 +17,7 @@ import {
 } from "../src/accounts/accounts.js";
 import { createSession, sessionAccount } from "../src/accounts/sessions.js";
 import { ALL_ENDPOINTS, expiresAt, onlyEndpoints } from "../src/api/keyAccess.js";
-import { authenticate, createKey, DEFAULT_KEY_LIMITS, hashApiKey } from "../src/api/keys.js";
+import { authenticate, createKey, hashApiKey, type ApiKey } from "../src/api/keys.js";
 import {
   ACCOUNT_KEYS_SQL,
   createAccountKey,
@@ -31,7 +31,7 @@ import {
   revokeAccountKey,
   type KeyName,
 } from "../src/api/ownedKeys.js";
-import { ACCOUNT_USAGE_SQL, accountUsage, chargeUnits, USAGE_WINDOW_DAYS } from "../src/api/usage.js";
+import { ACCOUNT_USAGE_SQL, accountUsage, chargeCalls, USAGE_WINDOW_DAYS } from "../src/api/usage.js";
 import { fromNodeSqlite, type LookupDatabase } from "../src/lookup/database.js";
 
 const SCHEMA = readFileSync(fileURLToPath(new URL("../src/db/schema.sql", import.meta.url)), "utf8");
@@ -70,7 +70,7 @@ test("every owned-key, usage and deletion statement is on a primary key or an in
   const at = new Date(NOW).toISOString();
   const cases: [string, (string | number)[]][] = [
     [ACCOUNT_KEYS_SQL, [1]],
-    [INSERT_OWNED_KEY_SQL, ["0".repeat(64), "k", 1, 1, at, "lx_00000000", "[\"lookup\"]", at, 1]],
+    [INSERT_OWNED_KEY_SQL, ["0".repeat(64), "k", at, "lx_00000000", "[\"lookup\"]", at, 1]],
     [REVOKE_OWNED_KEY_SQL, [at, 1, 1]],
     [OWNED_KEY_SQL, [1, 1]],
     [REVOKE_ACCOUNT_KEYS_SQL, [at, 1]],
@@ -85,7 +85,7 @@ test("every owned-key, usage and deletion statement is on a primary key or an in
   }
 });
 
-test("a key made for an account is stored hashed with its owner, name, display prefix and the default limits; the secret comes back once", async () => {
+test("a key made for an account is stored hashed with its owner, name and display prefix, and no limit of its own; the secret comes back once", async () => {
   const sqlite = schemaDb();
   const db = fromNodeSqlite(sqlite);
   const ada = await account(db, "ada@example.com");
@@ -102,8 +102,7 @@ test("a key made for an account is stored hashed with its owner, name, display p
       key_id: created.keyId,
       key_hash: await hashApiKey(created.key),
       label: "learning app",
-      per_minute_limit: DEFAULT_KEY_LIMITS.perMinuteLimit,
-      daily_units: DEFAULT_KEY_LIMITS.dailyUnits,
+      per_minute_limit: null,
       created_at: new Date(NOW).toISOString(),
       revoked_at: null,
       owner_account_id: ada,
@@ -113,7 +112,6 @@ test("a key made for an account is stored hashed with its owner, name, display p
       expires_at: null,
     },
   );
-  assert.deepEqual(DEFAULT_KEY_LIMITS, { perMinuteLimit: 60, dailyUnits: 20_000 });
   assert.equal((await authenticate(db, created.key, NOW)).outcome, "accepted");
 });
 
@@ -140,7 +138,7 @@ test("an account lists only its own keys, newest first, with name, display prefi
   const bob = await account(db, "bob@example.com");
   const first = await ownedKey(db, ada, "first");
   await ownedKey(db, bob, "bob's");
-  await createKey(db, { label: "admin", perMinuteLimit: 60, dailyUnits: 20_000 }, NOW);
+  await createKey(db, { label: "admin", perMinuteLimit: 60 }, NOW);
   const second = await ownedKey(db, ada, "second", NOW + 1_000);
   await authenticate(db, first.key, NOW + 5_000);
   await revokeAccountKey(db, ada, second.keyId, NOW + 9_000);
@@ -177,7 +175,7 @@ test("revoking another account's key, an admin key or a missing key through the 
   const bob = await account(db, "bob@example.com");
   const adas = await ownedKey(db, ada, "ada's");
   const bobs = await ownedKey(db, bob, "bob's");
-  const admin = await createKey(db, { label: "admin", perMinuteLimit: 60, dailyUnits: 20_000 }, NOW);
+  const admin = await createKey(db, { label: "admin", perMinuteLimit: 60 }, NOW);
   const before = sqlite.prepare("SELECT * FROM api_key ORDER BY key_id").all();
 
   for (const keyId of [bobs.keyId, admin.keyId, 999]) {
@@ -215,13 +213,13 @@ test("usage covers the last 30 UTC days per key and in total, 0 where a key was 
   const a = await ownedKey(db, ada, "a");
   const b = await ownedKey(db, ada, "b");
   const bobs = await ownedKey(db, bob, "bob's");
-  const keyOf = (keyId: number) => ({ keyId, label: "", perMinuteLimit: 60, dailyUnits: 20_000, endpoints: ALL_ENDPOINTS });
+  const keyOf = (keyId: number): ApiKey => ({ keyId, label: "", holder: { kind: "owned", accountId: ada }, endpoints: ALL_ENDPOINTS });
 
-  await chargeUnits(db, keyOf(a.keyId), { endpoint: "lookup" }, NOW); // today: 2
-  await chargeUnits(db, keyOf(a.keyId), { endpoint: "nearby" }, NOW); // today: 5 more
-  await chargeUnits(db, keyOf(b.keyId), { endpoint: "exists" }, NOW - 29 * DAY); // the window's first day: 1
-  await chargeUnits(db, keyOf(b.keyId), { endpoint: "suggest" }, NOW - 30 * DAY); // the day before it: outside
-  await chargeUnits(db, keyOf(bobs.keyId), { endpoint: "lookup" }, NOW); // another account's
+  await chargeCalls(db, keyOf(a.keyId), { endpoint: "lookup" }, NOW); // today: 1
+  await chargeCalls(db, keyOf(a.keyId), { endpoint: "lookup/batch", words: 6 }, NOW); // today: 6 more
+  await chargeCalls(db, keyOf(b.keyId), { endpoint: "exists" }, NOW - 29 * DAY); // the window's first day: 1
+  await chargeCalls(db, keyOf(b.keyId), { endpoint: "suggest" }, NOW - 30 * DAY); // the day before it: outside
+  await chargeCalls(db, keyOf(bobs.keyId), { endpoint: "lookup" }, NOW); // another account's
   await revokeAccountKey(db, ada, b.keyId, NOW);
 
   const usage = await accountUsage(db, ada, NOW);
@@ -229,13 +227,13 @@ test("usage covers the last 30 UTC days per key and in total, 0 where a key was 
   assert.equal(usage.days[0], "2026-08-30");
   assert.equal(usage.days[USAGE_WINDOW_DAYS - 1], "2026-09-28");
   const zeros = Array<number>(USAGE_WINDOW_DAYS).fill(0);
-  const on = (i: number, units: number) => zeros.map((zero, day) => (day === i ? units : zero));
+  const on = (i: number, calls: number) => zeros.map((zero, day) => (day === i ? calls : zero));
   // Newest key first, as the key list orders them; the revoked key keeps its usage.
   assert.deepEqual(usage.keys, [
-    { keyId: b.keyId, units: on(0, 1) },
-    { keyId: a.keyId, units: on(USAGE_WINDOW_DAYS - 1, 7) },
+    { keyId: b.keyId, calls: on(0, 1) },
+    { keyId: a.keyId, calls: on(USAGE_WINDOW_DAYS - 1, 7) },
   ]);
-  assert.deepEqual(usage.total, on(0, 1).map((units, i) => units + on(USAGE_WINDOW_DAYS - 1, 7)[i]));
+  assert.deepEqual(usage.total, on(0, 1).map((calls, i) => calls + on(USAGE_WINDOW_DAYS - 1, 7)[i]));
 
   const empty = await accountUsage(db, await account(db, "cy@example.com"), NOW);
   assert.deepEqual([empty.days.length, empty.keys, empty.total], [USAGE_WINDOW_DAYS, [], zeros]);
@@ -252,7 +250,7 @@ test("deleting an account revokes its keys, removes its sessions and identities,
   const keys = [await ownedKey(db, ada, "one"), await ownedKey(db, ada, "two")];
   const bobs = await ownedKey(db, bob, "bob's");
   await revokeAccountKey(db, ada, keys[1].keyId, NOW - 1_000);
-  await chargeUnits(db, { keyId: keys[0].keyId, label: "", perMinuteLimit: 60, dailyUnits: 20_000, endpoints: ALL_ENDPOINTS }, { endpoint: "lookup" }, NOW);
+  await chargeCalls(db, { keyId: keys[0].keyId, label: "", holder: { kind: "owned", accountId: ada }, endpoints: ALL_ENDPOINTS }, { endpoint: "lookup" }, NOW);
   const session = await createSession(db, ada, NOW);
   const bobSession = await createSession(db, bob, NOW);
 
@@ -271,7 +269,7 @@ test("deleting an account revokes its keys, removes its sessions and identities,
   );
   // The earlier revocation keeps its own time.
   assert.equal((await listAccountKeys(db, ada))[0].revokedAt, new Date(NOW - 1_000).toISOString());
-  assert.equal((await accountUsage(db, ada, NOW)).total.at(-1), 2);
+  assert.equal((await accountUsage(db, ada, NOW)).total.at(-1), 1);
 
   // Nobody else is touched.
   assert.equal((await authenticate(db, bobs.key, NOW)).outcome, "accepted");
