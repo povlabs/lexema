@@ -185,9 +185,24 @@ the same one: `huey/foo_bar` previews as `huey-foo-bar-54d62606`, and
 `<deployment-id>-<name>.preview.lexema.fyi`
 ([Previews, URLs](https://developers.cloudflare.com/workers/previews/#urls)).
 Cloudflare does not say how long a deployment id is, so the limit assumes the
-longest, a 36-character UUID. Workers Builds comments the Preview URL on the
-pull request
-([GitHub integration](https://developers.cloudflare.com/workers/ci-cd/builds/git-integration/github-integration/#pull-request-comment)).
+longest, a 36-character UUID.
+
+### The preview comment
+
+Cloudflare's docs say Workers Builds comments the Preview URL on the pull
+request
+([GitHub integration](https://developers.cloudflare.com/workers/ci-cd/builds/git-integration/github-integration/#pull-request-comment)),
+but on this repository it posts no comment, only a check run named
+`Workers Builds: lexema-web` (#244). So
+[`preview-marker.yml`](../.github/workflows/preview-marker.yml) runs when that
+check run completes with `success` for a pull request's current head. It checks
+that the three sites answer, then keeps one comment on the pull request naming
+`https://<name>.preview.lexema.fyi/`,
+`https://<name>.developers-preview.lexema.fyi/` and
+`https://<name>.api-preview.lexema.fyi/`, each `@ <head sha>`, under the
+`<!-- preview-deploy:web -->`, `<!-- preview-deploy:developers -->` and
+`<!-- preview-deploy:api -->` anchors Fabrika's `review-ui render` reads. A build of an older commit changes nothing. It uses
+only `GITHUB_TOKEN`; the steps are `web/builds/previewMarkerCommand.ts`.
 
 ### The sweep
 
@@ -313,8 +328,8 @@ accepts this, since only reviewed build commands use it.
 
 **6. Check it works.**
 
-1. Push a branch and open a pull request. Workers Builds comments a Preview
-   URL on it. The build log shows `Preview <name> for branch <branch>`, then
+1. Push a branch and open a pull request. Once the build succeeds, the
+   [preview comment](#the-preview-comment) names its three sites. The build log shows `Preview <name> for branch <branch>`, then
    `app database: created lexema-preview-app-<name>`, the migrations,
    `BETTER_AUTH_SECRET: a new random one goes up with Preview <name>`, and
    `wrangler preview`.
