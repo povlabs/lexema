@@ -392,8 +392,6 @@ test("an inflected phrase being typed is suggested completed as typed", async ()
     ["tiro f", "tiro fuori", ["tirare fuori"]],
     ["sono andati v", "sono andati via", ["andare via"]],
     ["volto le s", "volto le spalle", ["volgere le spalle", "voltare le spalle"]],
-    // Criterion 8 on #214: `l'amore` heads no record.
-    ["faccio l'a", "faccio l'amore", ["fare l'amore"]],
   ] as const) {
     const answer = await suggested(prefix);
     assert.deepEqual(answer.phrases, [{ phrase, headwords }], prefix);
@@ -401,6 +399,17 @@ test("an inflected phrase being typed is suggested completed as typed", async ()
     // Choosing it searches it, and the search finds the headword.
     assert.deepEqual(words(await found(phrase)).sort(), [...headwords], prefix);
   }
+
+  // Criterion 8 on #214: `l'amore` and `l'abitudine` head no record, and each
+  // expression `faccio l'a` begins is offered, in key order.
+  const answer = await suggested("faccio l'a");
+  assert.deepEqual(answer.phrases, [
+    { phrase: "faccio l'abitudine", headwords: ["fare l'abitudine"] },
+    { phrase: "faccio l'amore", headwords: ["fare l'amore"] },
+  ]);
+  assert.deepEqual(offered(answer), ["faccio l'abitudine", "faccio l'amore"]);
+  assert.deepEqual(words(await found("faccio l'amore")), ["fare l'amore"]);
+  assert.deepEqual(words(await found("faccio l'abitudine")), ["fare l'abitudine"]);
 });
 
 test("a prefix whose lemmas begin no multi-word headword suggests no phrase", async () => {
@@ -443,7 +452,7 @@ test("every phrase offered finds each headword it names, for every multi-word he
       .prepare("SELECT DISTINCT surface_key FROM lookup_form WHERE release_id = ? AND origin = 'headword' AND surface_key LIKE '% %'")
       .all(RELEASE) as { surface_key: string }[]
   ).map((row) => row.surface_key);
-  assert.equal(headwords.length, 7, headwords.join(", "));
+  assert.equal(headwords.length, 8, headwords.join(", "));
   const formsOf = sqlite.prepare(
     `SELECT DISTINCT lf.surface_key FROM form_of_edge e
        JOIN lookup_form lf ON lf.record_id = e.record_id AND lf.origin = 'headword'

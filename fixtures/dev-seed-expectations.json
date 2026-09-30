@@ -1,6 +1,6 @@
 {
   "source": "it-extract.jsonl.gz",
-  "selection": "Huey's fifty required words, the multi-word search words of #214 (andare via, tirare fuori, volgere and voltare le spalle, fare l'amore, aereo and aerei a reazione, and the words that spell them), plus the archive's form_of closure",
+  "selection": "Huey's fifty required words, the multi-word search words of #214 (andare via, tirare fuori, volgere and voltare le spalle, fare l'amore, fare l'abitudine, aereo and aerei a reazione, and the words that spell them), plus the archive's form_of closure",
   "recordsByWord": {
     "acqua": {
       "recordCount": 1,
@@ -983,6 +983,16 @@
         {
           "pos": "noun",
           "keyCount": 8,
+          "forms": 0
+        }
+      ]
+    },
+    "fare l'abitudine": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "phrase",
+          "keyCount": 9,
           "forms": 0
         }
       ]

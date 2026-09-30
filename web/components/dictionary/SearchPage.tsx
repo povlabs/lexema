@@ -136,7 +136,7 @@ export function Outcome({ raw, attempt, siteKey }: { raw: string; attempt: Attem
     const searched = attempt.query.raw.trim();
     // A searched expression opens its own short page (#214), not the headword's entry.
     if (attempt.route.kind === "phrase") {
-      return <PhraseView page={phrasePage(searched, attempt.route)} siteKey={siteKey} />;
+      return <PhraseView page={phrasePage(searched, attempt.route, attempt.readings)} siteKey={siteKey} />;
     }
     return <WordView page={wordPage(searched, attempt.readings)} siteKey={siteKey} />;
   }

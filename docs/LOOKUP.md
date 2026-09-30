@@ -94,7 +94,7 @@ compound tense alone: `sono andati` is one place, so its verb is left to the
 exact lookup, which finds it in `andare`'s table. `exists()` answers the same
 way, so the two never disagree.
 
-`forms` is what the page shows for a phrase match (`phraseForms`,
+`forms` are the form lines the page shows for a phrase match (`phraseForms`,
 [Huey's page-shape ruling](https://github.com/hueypov/lexema/issues/214#issuecomment-5906398940)).
 For each word whose lemma is not itself, the records it heads, and in each one
 every gloss of a sense whose `form_of` edge names that lemma, with the lemma
@@ -105,6 +105,16 @@ that never writes it so is left out. One entry per record, in source order,
 with its `pos_title` and each line's own `SourceRef`. `vada via` gives `vada`'s
 five entries; `volto le spalle` gives one `volto` record with a line for
 *voltare le spalle* and one for *volgere le spalle*.
+
+Before its form lines, each record shows the meanings of the expression they
+name, the first time the page names it
+([Huey's ruling](https://github.com/hueypov/lexema/issues/214#issuecomment-5909303467)).
+They are the found result's own readings, the headword's records, read by the
+same `definitionsOf` the headword's page uses, so nothing is read or stored
+twice (`phrasePage`,
+[`web/lib/dictionary/phrasePage.ts`](../web/lib/dictionary/phrasePage.ts)). A
+headword with no gloss has none, and its lines stand alone: `faccio
+l'abitudine` shows only `faccio`'s form line for *fare l'abitudine*.
 
 ## Outcomes
 

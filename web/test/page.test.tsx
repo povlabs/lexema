@@ -571,14 +571,26 @@ test("a lemma the release has is linked where the gloss names it, every one of t
 const definitionLines = (html: string): string[] =>
   [...html.matchAll(/<li class="[^"]*" data-definition="\d+">(.*?)<\/li>/g)].map((match) => textOf(match[1]).replace(/^\d+\./, ""));
 
-test("an inflected expression opens a short page: its words, and each form entry with the lemma swapped for the expression", async () => {
+/** The words of the Wiktionary pages a page's *Source* links name, in order. */
+const sourcePages = (html: string): string[] =>
+  [...html.matchAll(/aria-label="Wiktionary page for ([^,]+), the source of this page/g)].map((match) => textOf(match[1]));
+
+test("an inflected expression opens a short page: its words, the expression's own meanings, then each form entry with the lemma swapped for the expression", async () => {
   await withDevSeed(async ({ db }) => {
-    for (const [query, heading, lines] of [
-      ["vado via", "1·Voce verbale", ["1ª persona singolare del presente semplice indicativo di andare via"]],
-      ["tiro fuori", "1·Voce verbale", ["prima persona singolare dell'indicativo presente di tirare fuori"]],
-      ["sono andati via", "1·Voce verbale", ["participio passato plurale maschile di andare via"]],
-      // `vada` is a congiuntivo and an imperativo: every form entry shows.
-      ["vada via", "1·Voce verbale", [
+    // *andare via*'s meanings as its own page writes them, labels and examples included.
+    const andareVia = [
+      "(familiare) lasciare un luogo: un'abitazione, una città, un posto qualsiasi",
+      "(figuratively) morire",
+      "(familiare) con riferimento ad un amore, d'affetto e/o passionale, significa lasciarsi" +
+        "\"Ne ricordo ancora la voce: ormai è andata via dal mio cuore\"",
+    ];
+    const tirareFuori = ["levare fuori", "(figuratively) far raccontare", "(figuratively) esplicitare il proprio parere"];
+    for (const [query, heading, meanings, forms] of [
+      ["vado via", "1·Voce verbale", andareVia, ["1ª persona singolare del presente semplice indicativo di andare via"]],
+      ["tiro fuori", "1·Voce verbale", tirareFuori, ["prima persona singolare dell'indicativo presente di tirare fuori"]],
+      ["sono andati via", "1·Voce verbale", andareVia, ["participio passato plurale maschile di andare via"]],
+      // `vada` is a congiuntivo and an imperativo: the meanings once, then every form entry.
+      ["vada via", "1·Voce verbale", andareVia, [
         "prima persona congiuntivo presente di andare via",
         "seconda persona congiuntivo presente di andare via",
         "terza persona congiuntivo presente di andare via",
@@ -589,31 +601,43 @@ test("an inflected expression opens a short page: its words, and each form entry
       const html = await render(db, query);
       assert.match(html, new RegExp(`<h1 class="${esc(WORD_HEADING)}" lang="it">${esc(query)}</h1>`), query);
       assert.deepEqual(headingsOf(html), [heading], query);
-      assert.deepEqual(definitionLines(html), lines, query);
-      // The expression in each line is a link to its own entry.
+      assert.deepEqual(definitionLines(html), [...meanings, ...forms], query);
+      // The expression in each form line is a link to its own entry.
       const phrase = query === "tiro fuori" ? "tirare fuori" : "andare via";
       assert.equal(
         occurrencesOf(html, `<a class="${GLOSS_LINK}" href="/?q=${encodeURIComponent(phrase)}" lang="it">${phrase}</a>`),
-        lines.length,
+        forms.length,
         query,
       );
-      // Nothing else of either word: no forms, no pronunciation, none of the expression's meanings.
+      // Every meaning and example shows: nothing waits for `+ more`.
+      assert.doesNotMatch(html, /\+ more/, query);
+      assert.doesNotMatch(html, /group-data-open/, query);
+      // Nothing else of either word: no forms, no pronunciation.
       assert.doesNotMatch(html, />Forms</, query);
       assert.doesNotMatch(html, /aria-label="Pronunciation"/, query);
       assert.doesNotMatch(html, /Form of/, query);
-      assert.doesNotMatch(html, /lasciare un luogo|levare fuori/, query);
+      // The page names the Wiktionary pages its lines come from: the searched word's, then the expression's.
+      assert.deepEqual(sourcePages(html), [query.split(" ")[query === "sono andati via" ? 1 : 0], phrase], query);
     }
 
-    // One word with a form entry for each of two expressions: one reading, both lines.
+    // One word with a form entry for each of two expressions: one reading,
+    // each expression's meanings before its own line.
     const volto = await render(db, "volto le spalle");
     assert.deepEqual(headingsOf(volto), ["1·Voce verbale"]);
     assert.deepEqual(definitionLines(volto), [
+      "particolrmente in un convegno, in un comitiva, non essere di fronte a qualcuno, ritenuto come comportamento disdicevole",
+      "(figuratively) lasciare qualcuno senza il proprio sostegno",
       "prima persona singolare del presente di voltare le spalle",
+      "correre via",
+      "disinteressarsi in modo intenzionale",
       "participio passato maschile singolare di volgere le spalle",
     ]);
 
-    // The page names the Wiktionary page its lines come from: the searched word's.
-    assert.match(await render(db, "vado via"), /Wiktionary page for vado, the source of this page/);
+    // An expression with no gloss (#250) has no meanings to copy: only the form line shows.
+    const abitudine = await render(db, "faccio l'abitudine");
+    assert.deepEqual(headingsOf(abitudine), ["1·Voce verbale"]);
+    assert.deepEqual(definitionLines(abitudine), ["prima persona singolare del presente semplice indicativo di fare l'abitudine"]);
+    assert.deepEqual(sourcePages(abitudine), ["faccio"]);
 
     // A typo in one word of an expression offers the typed words corrected,
     // not the headword, and the offer opens their short page (Huey's hand

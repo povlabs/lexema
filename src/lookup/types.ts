@@ -625,8 +625,8 @@ export interface PhraseDefinition extends PhraseGloss {
 /**
  * A record of a word the expression was searched with, and its form entries
  * that name a lemma of the expression's headword, each rewritten for that
- * headword. The short page a searched expression opens shows these and nothing
- * else (Huey's page-shape ruling on #214, 2026-09-30).
+ * headword. The short page a searched expression opens shows these, each after
+ * the headword's own meanings (Huey's page-shape rulings on #214, 2026-09-30).
  */
 export interface PhraseForm {
   recordId: number;

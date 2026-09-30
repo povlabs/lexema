@@ -122,8 +122,11 @@ function LinkedGloss({ text, lemmas }: { text: string; lemmas: readonly string[]
   return <>{parts}</>;
 }
 
-/** A definition's nested items; their examples show once the definitions are open. */
-function SubItems({ items }: { items: readonly RecoveredDefinition[] }) {
+/**
+ * A definition's nested items. Their examples take `exampleClass`: on a
+ * reading, shown once the definitions are open.
+ */
+function SubItems({ items, exampleClass }: { items: readonly RecoveredDefinition[]; exampleClass: string }) {
   if (items.length === 0) return null;
   return (
     <ul className={SUB_ITEMS}>
@@ -134,18 +137,26 @@ function SubItems({ items }: { items: readonly RecoveredDefinition[] }) {
             {item.text}
           </p>
           {item.examples.map((example) => (
-            <p key={example.ref.line} className={EXAMPLE_EXTRA}>
+            <p key={example.ref.line} className={exampleClass}>
               <span lang="it">{example.text}</span>
             </p>
           ))}
-          <SubItems items={item.items} />
+          <SubItems items={item.items} exampleClass={exampleClass} />
         </li>
       ))}
     </ul>
   );
 }
 
-function DefinitionText({ item, reading }: { item: DefinitionItem; reading: Reading }) {
+function DefinitionText({
+  item,
+  reading,
+  exampleClass = EXAMPLE_EXTRA,
+}: {
+  item: DefinitionItem;
+  reading: Reading;
+  exampleClass?: string;
+}) {
   if (item.from === "page") {
     const { definition } = item;
     return (
@@ -154,7 +165,7 @@ function DefinitionText({ item, reading }: { item: DefinitionItem; reading: Read
           {definition.labels.length > 0 && <span className={SENSE_LABEL}>({definition.labels.join(", ")}) </span>}
           {definition.text}
         </p>
-        <SubItems items={definition.items} />
+        <SubItems items={definition.items} exampleClass={exampleClass} />
       </>
     );
   }
@@ -169,12 +180,12 @@ function DefinitionText({ item, reading }: { item: DefinitionItem; reading: Read
           <LinkedGloss text={gloss.text} lemmas={lemmas} />
         </p>
       ))}
-      <SubItems items={sense.recoveredItems} />
+      <SubItems items={sense.recoveredItems} exampleClass={exampleClass} />
     </>
   );
 }
 
-const definitionKey = (item: DefinitionItem): string =>
+export const definitionKey = (item: DefinitionItem): string =>
   item.from === "record" ? `sense-${item.sense.index}` : `page-${item.definition.ref.line}`;
 
 function Example({ text, className = EXAMPLE }: { text: string; className?: string }) {
@@ -182,6 +193,23 @@ function Example({ text, className = EXAMPLE }: { text: string; className?: stri
     <p className={className}>
       <span lang="it">{text}</span>
     </p>
+  );
+}
+
+/**
+ * One definition as a reading writes it: its labels, its text with each lemma
+ * linked, and every example of it and of its nested items, none held back for
+ * `+ more`. A searched expression's page shows its headword's meanings so,
+ * before its form lines (Phrase.tsx).
+ */
+export function ShownDefinition({ item, reading }: { item: DefinitionItem; reading: Reading }) {
+  return (
+    <>
+      <DefinitionText item={item} reading={reading} exampleClass={EXAMPLE} />
+      {item.examples.map((text, j) => (
+        <Example key={j} text={text} />
+      ))}
+    </>
   );
 }
 
