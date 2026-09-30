@@ -26,10 +26,16 @@
 // does not offer, a name too long) is answered 400 with each problem by its
 // field, and no key is made.
 //
+// Deleting the account first cancels every Stripe subscription that may still
+// bill it, at once (#209, src/billing/subscriptionCancel.ts). When Stripe fails,
+// or billing is off while such a subscription exists, nothing is deleted and
+// the developer is asked to try again later; the cause stays in the log.
+//
 // The dashboard and its settings page (#190) are for a signed-in developer
 // only: without a session each answers 303 to sign-in.
 
 import { deleteAccount } from "@lexema/accounts/accounts.ts";
+import { billingOf, type BillingSetup, type StripeSettings } from "@lexema/accounts/billing.ts";
 import { csrfMatches, csrfToken } from "@lexema/accounts/csrf.ts";
 import { createAccountKey, listAccountKeys, revokeAccountKey } from "@lexema/api/ownedKeys.ts";
 import { appTablesOverD1, type AppTables } from "@lexema/db/app/database.ts";
@@ -72,8 +78,8 @@ export function dashboardRouteOf(url: URL): DashboardRoute | undefined {
   return undefined;
 }
 
-/** The bindings the actions read: the app database. */
-export interface DashboardBindings {
+/** The bindings the actions read: the app database and the Stripe settings. */
+export interface DashboardBindings extends StripeSettings {
   APP_DB?: D1Database;
 }
 
@@ -81,12 +87,14 @@ export interface DashboardBindings {
 export interface DashboardContext {
   /** The app database, where accounts and keys live. */
   appDb: AppTables | undefined;
+  /** Stripe, which deleting an account cancels its subscriptions through, or the settings that keep it off. */
+  billing: BillingSetup;
   now: number;
 }
 
 /** The context the live Worker runs with. */
 export function liveDashboardContext(env: DashboardBindings): DashboardContext {
-  return { appDb: env.APP_DB === undefined ? undefined : appTablesOverD1(env.APP_DB), now: Date.now() };
+  return { appDb: env.APP_DB === undefined ? undefined : appTablesOverD1(env.APP_DB), billing: billingOf(env), now: Date.now() };
 }
 
 /** The CSRF token a signed-in page puts in its forms, or `undefined` without a session cookie. */
@@ -179,13 +187,20 @@ export async function answerDashboard(request: Request, route: DashboardRoute, c
       }
       case "delete-account": {
         if (field(form, DELETE_CONFIRM_FIELD) !== DELETE_CONFIRMATION) return refuse(400, "Confirm the deletion first.");
-        await deleteAccount(db, accountId, context.now);
+        const stripe = context.billing.outcome === "ready" ? context.billing.billing.stripe.subscriptions : undefined;
+        const deleted = await deleteAccount(db, accountId, context.now, stripe);
+        if (deleted.outcome === "billing-off") {
+          const missing = context.billing.outcome === "missing" ? context.billing.missing : [];
+          console.error("account not deleted: billing is off and a subscription may still bill", { accountId, billable: deleted.billable, missing });
+          return refuse(503, UNREACHABLE);
+        }
         return json(200, { outcome: "signed-out", location: AFTER_SIGN_OUT }, [clearedCookie(SESSION_COOKIE)]);
       }
     }
   } catch (failure) {
-    // The database's message stays in the log. Nothing is half done: each
-    // action is one statement, and account deletion one transaction.
+    // Stripe's or the database's message stays in the log. Nothing is half
+    // done: each action is one statement, and account deletion one
+    // transaction after its subscriptions are cancelled.
     console.error("dashboard action failed", { route: route.kind }, failure);
     return refuse(503, UNREACHABLE);
   }

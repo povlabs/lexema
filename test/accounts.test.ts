@@ -71,7 +71,7 @@ test("an account's profile is its first email and every provider linked to it, a
   assert.deepEqual(await accountProfile(db, accountId), { email: "ada@example.com", name: undefined, providers: ["github"] });
   await signInAccount(db, identity("google", "g-1", "ada@example.com", "Ada Lovelace"), NOW);
   assert.deepEqual(await accountProfile(db, accountId), { email: "ada@example.com", name: "Ada Lovelace", providers: ["google", "github"] });
-  await deleteAccount(db, accountId, NOW);
+  await deleteAccount(db, accountId, NOW, undefined);
   assert.equal(await accountProfile(db, accountId), undefined);
 });
 
@@ -99,7 +99,7 @@ test("each sign-in refreshes the identity's name, and a name the provider drops 
   assert.equal((await accountProfile(db, accountId))?.name, undefined);
   // The account holds nothing personal: deleting it takes the names with the identities.
   await signInAccount(db, identity("google", "g-1", "ada@example.com", "Ada"), NOW);
-  await deleteAccount(db, accountId, NOW);
+  await deleteAccount(db, accountId, NOW, undefined);
   assert.equal((sqlite.prepare("SELECT count(*) AS n FROM provider_identity WHERE display_name IS NOT NULL").get() as { n: number }).n, 0);
 });
 
@@ -109,7 +109,7 @@ test("an account keeps the email it was made with; deleting it replaces its emai
   const { accountId } = await signInAccount(db, identity("google", "g-1", "Ada@Example.com", "Ada Lovelace"), NOW);
   const account = () => ({ ...sqlite.prepare("SELECT email, name, image, deleted_at FROM developer_account WHERE account_id = ?").get(accountId) });
   assert.deepEqual(account(), { email: "ada@example.com", name: "Ada Lovelace", image: null, deleted_at: null });
-  await deleteAccount(db, accountId, NOW);
+  await deleteAccount(db, accountId, NOW, undefined);
   assert.deepEqual(account(), { email: `deleted-${accountId}@deleted.invalid`, name: "", image: null, deleted_at: new Date(NOW).toISOString() });
   // The same email is free again, so signing in with it makes a new account.
   assert.deepEqual(await signInAccount(db, identity("google", "g-1", "ada@example.com"), NOW), { accountId: accountId + 1, match: "new" });
