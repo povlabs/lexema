@@ -97,36 +97,29 @@ function WordFactsView({ facts, lists }: { facts: WordFacts; lists: WordLists })
   );
 }
 
-/** What the footer needs of a result: the pages its content comes from, and the readings a report can name. */
+/** What the footer needs of a result: the page its content is credited to, and the readings a report can name. */
 export interface FooterFacts {
-  /** The word each Wiktionary page is named for; normally exactly one. */
-  sourceWords: readonly string[];
+  /** The word whose Wiktionary page the one *Source* link opens. */
+  sourceWord: string;
   /** The word a report is about. */
   headword: string;
   /** Each reading a report can name, with its number on the page; a word page leaves a reading with no definition unnumbered. */
   readings: readonly { number: ReportReading["number"]; reading: { recordId: number; posTitle: string } }[];
 }
 
-/** *Source* to each Wiktionary page the readings come from; normally exactly one. */
-export function SourceLinks({ page, siteKey }: { page: FooterFacts; siteKey: string | undefined }) {
-  const words = page.sourceWords;
+/** One *Source*, to the Wiktionary page of the page's word, then *Report a mistake* (ADR 0009, amended on #281). */
+export function SourceLine({ page, siteKey }: { page: FooterFacts; siteKey: string | undefined }) {
   return (
     <footer className={SOURCE_LINE}>
-      {words.map((word, i) => (
-        <span key={word} className="inline-flex items-center gap-3">
-          {i > 0 && <span aria-hidden="true">·</span>}
-          <a
-            className={SOURCE_LINK}
-            href={sourcePageUrl(word)}
-            {...NEW_TAB}
-            aria-label={`Wiktionary page for ${word}, the source of this page (opens in a new tab)`}
-          >
-            Source
-            {words.length > 1 && <span lang="it">{word}</span>}
-            <ExternalIcon className={ICON} />
-          </a>
-        </span>
-      ))}
+      <a
+        className={SOURCE_LINK}
+        href={sourcePageUrl(page.sourceWord)}
+        {...NEW_TAB}
+        aria-label={`Wiktionary page for ${page.sourceWord}, the source of this page (opens in a new tab)`}
+      >
+        Source
+        <ExternalIcon className={ICON} />
+      </a>
       <span aria-hidden="true">·</span>
       <ReportDialog
         word={page.headword}
@@ -151,7 +144,7 @@ export function WordView({ page, siteKey }: { page: WordPage; siteKey?: string }
         ))}
       </div>
       <WordFactsView facts={page.wordFacts} lists={page.wordLists} />
-      <SourceLinks page={page} siteKey={siteKey} />
+      <SourceLine page={page} siteKey={siteKey} />
     </>
   );
 }

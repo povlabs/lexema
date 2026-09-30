@@ -14,7 +14,7 @@ import type { PhraseLine, PhrasePage } from "@/lib/dictionary/phrasePage.ts";
 import { searchHref } from "./Forms";
 import { More, MoreBlock } from "./More";
 import { Block, DefinitionContent, definitionKey, leadHoldsMore } from "./Reading";
-import { SourceLinks } from "./Word";
+import { SourceLine } from "./Word";
 import {
   DEFINITION,
   DEFINITION_BODY,
@@ -141,7 +141,7 @@ export function PhraseView({ page, siteKey }: { page: PhrasePage; siteKey?: stri
           </p>
         ))}
       </div>
-      <SourceLinks page={page} siteKey={siteKey} />
+      <SourceLine page={page} siteKey={siteKey} />
     </>
   );
 }
