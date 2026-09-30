@@ -55,11 +55,11 @@ export interface PhrasePage {
    */
   unnamed: string[];
   /**
-   * The Wiktionary page *Source* links: the page of each headword the query
-   * spells, never the searched words' (Huey's hand check of 2026-09-30, 11:19Z
-   * on #214). One, unless the query spells two expressions.
+   * The word whose Wiktionary page the one *Source* link opens: the first
+   * headword the query spells, never the searched words' (Huey's hand check of
+   * 2026-09-30, 11:19Z on #214; one link per page, #281).
    */
-  sourceWords: [string, ...string[]];
+  sourceWord: string;
 }
 
 /**
@@ -108,11 +108,10 @@ export function phrasePage(
   });
   const readings = [...formed, ...own].map((entry, i) => ({ number: i + 1, ...entry }));
   const shown = new Set([...named, ...own.map(({ reading }) => reading.word)]);
-  const [first, ...others] = route.phrases;
   return {
     headword: query,
     readings,
     unnamed: route.phrases.map((phrase) => phrase.word).filter((word) => !shown.has(word)),
-    sourceWords: [first.word, ...new Set(others.map((phrase) => phrase.word).filter((word) => word !== first.word))],
+    sourceWord: route.phrases[0].word,
   };
 }

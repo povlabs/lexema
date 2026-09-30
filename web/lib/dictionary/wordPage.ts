@@ -70,10 +70,11 @@ export interface WordPage {
   /** `wordFacts`' synonyms, antonyms and derived words, as the page lists them. */
   wordLists: WordLists;
   /**
-   * Every Wiktionary page the readings and lemma tables on this page come from,
-   * once each, for the page's Source links (ADR 0009).
+   * The word whose Wiktionary page the one *Source* link opens: the spelling
+   * the page is about, its title. That page holds every entry for the
+   * spelling, so one link covers every reading (ADR 0009, amended on #281).
    */
-  sourceWords: string[];
+  sourceWord: string;
 }
 
 /**
@@ -139,8 +140,9 @@ export function wordPage(query: string, readings: readonly [Reading, ...Reading[
   const [first, ...rest] = entries;
   if (first === undefined) throw new Error("a found result renders at least one reading");
 
+  const headword = about[0]?.word ?? query;
   return {
-    headword: about[0]?.word ?? query,
+    headword,
     readings: [first, ...rest],
     wordFacts: placed.rest,
     wordLists: {
@@ -148,9 +150,7 @@ export function wordPage(query: string, readings: readonly [Reading, ...Reading[
       antonyms: relatedItems(placed.rest.antonyms),
       derived: relatedItems(placed.rest.derived),
     },
-    sourceWords: [
-      ...new Set(entries.flatMap((entry) => [entry.reading.word, ...entry.lemmaTables.map((table) => table.lemma.word)])),
-    ],
+    sourceWord: headword,
   };
 }
 

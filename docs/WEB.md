@@ -376,18 +376,18 @@ contain, so it is a separate write over a release the import already made.
 
 ## Why the source link is labelled the way it is
 
-The page ends with one *Source* link per distinct Italian Wiktionary page it
-shows. That is usually one, the headword's. `andavano` gets two, its own page
-and `andare`'s, because it shows its own reading and `andare`'s table. A
-searched expression's short page is the exception: `vado via` shows form lines
-from `vado`'s page but has one *Source*, to `andare via`'s page, never the
-searched word's
-([design law](../design-system-manifest.md#layout)). Each link
-is labelled *Source* and nothing more, with the page's word beside it when there
-are several.
-[ADR 0009](../.decisions/0009-two-licences-and-a-source-link.md) has each
-reading reach its Wiktionary page through one small link and keeps the credit
-itself on `/attribution`, which the site footer reaches from every page. Its accessible name is longer than its text —
+The page ends with exactly one *Source* link, labelled *Source* and nothing
+more. It opens the Italian Wiktionary page of the spelling in the page's title:
+`macchina` links to *macchina*'s page, which holds both the noun and the form of
+*macchinare*, and `andavano` links to *andavano*'s page though it also shows
+`andare`'s table. A searched expression's short page links to the expression's
+page instead: `vado via` links to `andare via`'s page, never the searched
+word's; a search that spells two expressions links to the first the lookup
+found ([design law](../design-system-manifest.md#layout)).
+[ADR 0009](../.decisions/0009-two-licences-and-a-source-link.md), as amended on
+[#281](https://github.com/hueypov/lexema/issues/281), keeps the credit itself on
+`/attribution`, which the site footer reaches from every page, and in each API
+result's `attribution` field. Its accessible name is longer than its text —
 "Wiktionary page for X, the source of this page (opens in a new tab)".
 
 Every link that leaves Lexema opens in a new tab (`target="_blank"
