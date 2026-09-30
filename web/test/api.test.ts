@@ -26,6 +26,7 @@ import { seedSql } from "../../src/import/seedSql.js";
 import type { AppTables } from "../../src/db/app/database.js";
 import type { LookupDatabase } from "../../src/lookup/database.js";
 import { freshAppDatabase, readOnlyDictionary } from "../../test/databases.js";
+import { drizzleOverNodeSqlite } from "../../src/db/app/nodeSqlite.js";
 import { lookup } from "../../src/lookup/lookup.js";
 import { findNearby, type Nearby } from "../../src/lookup/nearby.js";
 import { offered, suggest } from "../../src/lookup/suggest.js";
@@ -33,6 +34,8 @@ import { loadFixturePages } from "../../src/source/rawPage.js";
 import { answerApi, apiNotFound, handleApi, type ApiBindings } from "@/worker/api/handler.ts";
 import { byHost, DEVELOPERS_SEGMENT } from "@/worker/hosts.ts";
 import { withRateLimits, type LimitBindings } from "@/worker/rateLimit.ts";
+import { RATE_WINDOW_SECONDS } from "@/worker/api/keyLimits.ts";
+import { FakeRateLimit, TestMetering } from "./metering.ts";
 
 const REPO = fileURLToPath(new URL("../..", import.meta.url));
 const RELEASE = "it-api-test";
@@ -46,6 +49,8 @@ let dictionary: LookupDatabase;
 /** The app database: keys and usage. */
 let sqlite: DatabaseSync;
 let db: AppTables;
+/** Every owned key's account meter and rate binding. */
+const metering = new TestMetering();
 
 before(async () => {
   dir = await mkdtemp(join(tmpdir(), "lexema-api-"));
@@ -83,7 +88,7 @@ const newKey = async (perMinuteLimit = 60, label = "test"): Promise<{ keyId: num
 const call = (path: string, key: string | undefined, now = NOW, method = "GET", over = dictionary): Promise<Response> =>
   handleApi(
     new Request(`https://api.lexema.fyi${path}`, { method, headers: key === undefined ? {} : { "x-api-key": key } }),
-    { db: over, appDb: db, releaseId: RELEASE, now },
+    { db: over, appDb: db, releaseId: RELEASE, now, metering },
   );
 
 /** The per-key limit headers, in a fixed order. */
@@ -183,8 +188,8 @@ test("a word not in the release is a 404 offering findNearby's spellings in its 
   }
 });
 
-test("a /lookup refused before an answer counts no calls: a bad q, a wrong method, a 429", async () => {
-  const { keyId, key } = await newKey(4);
+test("a /lookup refused before an answer counts no calls, toward the day or the minute: a bad q, a wrong method, a 429", async () => {
+  const { keyId, key } = await newKey(1);
   for (const q of ["", "%20%20", "a".repeat(129)]) {
     const response = await call(`/v1/lookup?q=${q}`, key);
     assert.equal(response.status, 400);
@@ -193,9 +198,11 @@ test("a /lookup refused before an answer counts no calls: a bad q, a wrong metho
   }
   const wrongMethod = await call("/v1/lookup?q=casa", key, NOW, "POST");
   assert.equal(wrongMethod.status, 405);
+  // None of those spent the key's one call a minute.
+  assert.equal((await call("/v1/lookup?q=casa", key)).status, 200);
   const overLimit = await call("/v1/lookup?q=casa", key);
   assert.equal(overLimit.status, 429);
-  assert.deepEqual(callsOf(keyId), []);
+  assert.deepEqual(callsOf(keyId), [{ day: "2026-09-27", calls: 1 }]);
 });
 
 test("no key, an unknown key and a revoked key are each a 401; the key row holds a hash, never the key", async () => {
@@ -256,33 +263,52 @@ test("a key past its own minute limit gets a 429 until the minute ends; another 
     message: "This key may make 2 calls a minute. Retry after 40 s.",
   });
 
+  // A 400 counts nothing, and says so exactly.
   const other = await call("/v1/lookup?q=", roomy.key);
   assert.equal(other.status, 400);
-  assert.deepEqual(headers(other), ["5", "4", "40", null]);
+  assert.deepEqual(headers(other), ["5", "5", "40", null]);
 
   const nextMinute = await call("/v1/lookup?q=casa", tight.key, Date.parse("2026-09-27T12:01:05Z"));
   assert.equal(nextMinute.status, 200);
   assert.deepEqual(headers(nextMinute), ["2", "1", "55", null]);
 });
 
+test("an admin key's minute counts calls, a batch's words each one (#216), and a batch takes no more words than that minute", async () => {
+  const { key } = await newKey(5, "batches");
+  const batch = (words: string[]) => send(key, "lookup/batch", JSON.stringify({ q: words }));
+  const answered = await batch(["casa", "sale", "bello"]);
+  assert.equal(answered.status, 200);
+  assert.deepEqual(limitHeaders(answered), ["5", "2", "40", null]);
+  const refused = await batch(["casa", "sale", "bello"]);
+  assert.equal(refused.status, 429);
+  assert.deepEqual(limitHeaders(refused), ["5", "0", "40", "40"]);
+  // Six words could never fit a minute of five: unreadable, not a wait.
+  const tooMany = await send((await newKey(5, "wide")).key, "lookup/batch", JSON.stringify({ q: Array(6).fill("casa") }));
+  assert.equal(tooMany.status, 400);
+  assert.deepEqual(((await tooMany.json()) as Json).error, {
+    code: "invalid_body",
+    message: "q has 6 words; this key's limit is 5, its calls a minute.",
+  });
+});
+
 test("a 405, an unknown endpoint and a failed answer carry the key's limit headers; a 401 carries none", async (t) => {
   const { key } = await newKey(10);
   const wrongMethod = await call("/v1/lookup?q=casa", key, NOW, "POST");
   assert.equal(wrongMethod.status, 405);
-  assert.deepEqual(limitHeaders(wrongMethod), ["10", "9", "40", null]);
+  assert.deepEqual(limitHeaders(wrongMethod), ["10", "10", "40", null]);
 
   const unknown = await call("/v1/nowhere", key);
   assert.equal(unknown.status, 404);
   assert.equal(((await unknown.json()) as Json).error.code, "not_found");
-  assert.deepEqual(limitHeaders(unknown), ["10", "8", "40", null]);
+  assert.deepEqual(limitHeaders(unknown), ["10", "10", "40", null]);
 
-  // The key is read and its minute counted; the lookup's own read then fails.
+  // The key is read and its call counted; the lookup's own read then fails.
   const failing: LookupDatabase = { all: () => Promise.reject(new Error("D1 is down")) };
   t.mock.method(console, "error", () => {});
   const failed = await call("/v1/lookup?q=casa", key, NOW, "GET", failing);
   assert.equal(failed.status, 503);
   assert.equal(((await failed.json()) as Json).error.code, "unavailable");
-  assert.deepEqual(limitHeaders(failed), ["10", "7", "40", null]);
+  assert.deepEqual(limitHeaders(failed), ["10", "9", "40", null]);
 
   assert.deepEqual(limitHeaders(await call("/v1/lookup?q=casa", undefined)), [null, null, null, null]);
 });
@@ -296,6 +322,16 @@ test("each /lookup a key makes adds 1 call to its row for the day", async () => 
     { day: "2026-09-27", calls: 2 },
     { day: "2026-09-28", calls: 1 },
   ]);
+});
+
+/**
+ * The metering bindings of a Worker whose requests here never reach an owned
+ * key's meter: an admin key's or a refused one's. Any use of the namespace fails.
+ */
+const unmetered = () => ({
+  ACCOUNT_METER: {} as ApiBindings["ACCOUNT_METER"],
+  CALLS_60: new FakeRateLimit(60),
+  CALLS_300: new FakeRateLimit(300),
 });
 
 /** The binding's contract, as web/test/rateLimit.test.ts fakes it: every call counted. */
@@ -335,6 +371,7 @@ test("each host reaches its own site: lexema.fyi the pages as before, api.lexema
   };
   const env = {
     ...limits,
+    ...unmetered(),
     DB: d1Over(dictionarySqlite),
     APP_DB: d1Over(sqlite),
     LEXEMA_RELEASE: RELEASE,
@@ -383,7 +420,7 @@ test("each host reaches its own site: lexema.fyi the pages as before, api.lexema
 
 test("api.lexema.fyi answers a JSON 503 when the Worker has no D1 binding", async (t) => {
   t.mock.method(console, "error", () => {});
-  const response = await answerApi(new Request("https://api.lexema.fyi/v1/lookup?q=casa"), { LEXEMA_RELEASE: RELEASE });
+  const response = await answerApi(new Request("https://api.lexema.fyi/v1/lookup?q=casa"), { LEXEMA_RELEASE: RELEASE, ...unmetered() });
   assert.equal(response.status, 503);
   assert.match(response.headers.get("content-type") ?? "", /^application\/json/);
   assert.equal(((await response.json()) as Json).error.code, "unavailable");
@@ -583,7 +620,7 @@ test("a filtered /lookup still counts 1 call and carries release_id, attribution
   const refused = await call("/v1/lookup?q=sale&pos=nouns", key);
   assert.equal(refused.status, 400);
   assert.equal(((await refused.json()) as Json).error.code, "invalid_parameter");
-  assert.deepEqual(limitHeaders(refused), ["10", "8", "40", null]);
+  assert.deepEqual(limitHeaders(refused), ["10", "9", "40", null]);
   assert.deepEqual(callsOf(keyId), [{ day: "2026-09-27", calls: 1 }]);
 });
 
@@ -593,7 +630,7 @@ test("a filtered /lookup still counts 1 call and carries release_id, attribution
 const send = (key: string, path: string, body?: string): Promise<Response> =>
   handleApi(
     new Request(`https://api.lexema.fyi/v1/${path}`, { method: body === undefined ? "GET" : "POST", body, headers: { "x-api-key": key } }),
-    { db: dictionary, appDb: db, releaseId: RELEASE, now: NOW },
+    { db: dictionary, appDb: db, releaseId: RELEASE, now: NOW, metering },
   );
 
 let endpointKey: string | undefined;
@@ -763,10 +800,13 @@ test("POST /lookup/batch answers each word light: every candidate's lemma, or no
   );
 });
 
-test("POST /lookup/batch takes up to 200 words and refuses more, none, a non-string or a body that is not JSON", async () => {
+test("POST /lookup/batch takes up to the key's calls a minute in words and refuses more, none, a non-string or a body that is not JSON", async () => {
   const words = (count: number) => JSON.stringify({ q: Array.from({ length: count }, (_, i) => (i % 2 === 0 ? "casa" : "qqqqqq")) });
-  assert.equal((await okBody("lookup/batch", words(200))).results.filter((result: Json) => result.found === false).length, 100);
-  await assertBadRequest("lookup/batch", "invalid_body", words(201));
+  const { key } = await newKey(200, "batch-cap");
+  const full = await send(key, "lookup/batch", words(200));
+  assert.equal(full.status, 200);
+  assert.equal(((await full.json()) as Json).results.filter((result: Json) => result.found === false).length, 100);
+  assert.equal((await send((await newKey(200, "batch-over")).key, "lookup/batch", words(201))).status, 400);
   await assertBadRequest("lookup/batch", "invalid_body", words(0));
   await assertBadRequest("lookup/batch", "invalid_body", JSON.stringify({ q: ["casa", 3] }));
   await assertBadRequest("lookup/batch", "invalid_body", JSON.stringify({ q: ["casa", ""] }));
@@ -792,7 +832,7 @@ test("each endpoint counts 1 call and lookup/batch 1 per word, and each answers 
     const { keyId, key } = await newKey(10, endpoint);
     const response = await send(key, path, body);
     assert.equal(response.status, 200, path);
-    assert.deepEqual(limitHeaders(response), ["10", "9", "40", null], path);
+    assert.deepEqual(limitHeaders(response), ["10", endpoint === "lookup/batch" ? "3" : "9", "40", null], path);
     const json: Json = await response.json();
     assert.equal(json.release_id, RELEASE, path);
     const attributed = (json.results ?? [json]).filter((result: Json) => result.found !== false);
@@ -821,51 +861,114 @@ test("a request an endpoint refuses before answering counts no calls", async () 
   assert.deepEqual(callsOf(keyId), []);
 });
 
-test("an owned key's calls stamp its last use, and the account's 30-day usage reads back exactly the calls the API charged", async () => {
-  const identity = verifiedIdentity("github", { subject: "usage-reader", verifiedEmail: "usage@example.com", name: undefined });
-  assert.ok(identity !== undefined);
-  const { accountId } = await signInAccount(db, identity, NOW);
-  const name = keyName("dashboard");
-  assert.ok(name !== undefined);
-  const created = await createAccountKey(db, accountId, name, NOW);
-  assert.equal(created.outcome, "created");
-  const [before] = await listAccountKeys(db, accountId);
-  assert.equal(before.lastUsedAt, null);
+/** A developer account with one key made in the dashboard, in `appDb`. */
+async function accountWithKey(appDb: AppTables, subject: string): Promise<{ accountId: number; keyId: number; key: string }> {
+  const identity = verifiedIdentity("github", { subject, verifiedEmail: `${subject}@example.com`, name: undefined });
+  const name = keyName(subject);
+  assert.ok(identity !== undefined && name !== undefined);
+  const { accountId } = await signInAccount(appDb, identity, NOW);
+  const created = await createAccountKey(appDb, accountId, name, NOW);
+  assert.ok(created.outcome === "created");
+  return { accountId, keyId: created.keyId, key: created.key };
+}
+
+test("an owned key's call makes one meter call and writes to D1 only its last use, once a minute; the flush brings its calls to the 30-day usage", async () => {
+  const { sqlite: own } = freshAppDatabase();
+  // Every statement Drizzle sends to this app database.
+  const sent: string[] = [];
+  const watched = new Proxy(own, {
+    get: (target, property) => {
+      if (property === "prepare") return (sql: string) => (sent.push(sql), target.prepare(sql));
+      const value = Reflect.get(target, property, target);
+      return typeof value === "function" ? value.bind(target) : value;
+    },
+  });
+  const appDb: AppTables = { app: drizzleOverNodeSqlite(watched) };
+  const { accountId, keyId, key } = await accountWithKey(appDb, "usage-reader");
+  const meters = new TestMetering();
+  sent.length = 0;
 
   const yesterday = NOW - 24 * 60 * 60 * 1000;
-  const calls: [string, number, string?][] = [
+  const requests: [string, number, string?][] = [
     ["lookup?q=casa", yesterday],
     ["lookup?q=qqqqqq", NOW],
-    ["nearby?q=mangare", NOW],
-    ["lookup/batch", NOW, JSON.stringify({ q: ["sale", "casa"] })],
-    ["lookup?q=", NOW], // a 400: accepted, so it stamps the key, but charged nothing
+    ["nearby?q=mangare", NOW + 1_000],
+    ["lookup/batch", NOW + 2_000, JSON.stringify({ q: ["sale", "casa"] })],
+    ["lookup?q=", NOW + 3_000], // a 400: read before any call is counted
   ];
-  for (const [path, at, body] of calls) {
-    await handleApi(
-      new Request(`https://api.lexema.fyi/v1/${path}`, {
-        method: body === undefined ? "GET" : "POST",
-        headers: { "x-api-key": created.key, ...(body === undefined ? {} : { "content-type": "application/json" }) },
-        body,
-      }),
-      { db: dictionary, appDb: db, releaseId: RELEASE, now: at },
+  const meterCalls: number[] = [];
+  for (const [path, at, body] of requests) {
+    const before = meters.calls.length;
+    const response = await handleApi(
+      new Request(`https://api.lexema.fyi/v1/${path}`, { method: body === undefined ? "GET" : "POST", headers: { "x-api-key": key }, body }),
+      { db: dictionary, appDb, releaseId: RELEASE, now: at, metering: meters },
     );
+    assert.equal(response.headers.get("ratelimit-limit"), "60", path);
+    meterCalls.push(meters.calls.length - before);
   }
+  assert.deepEqual(meterCalls, [1, 1, 1, 1, 0]);
 
-  const [after] = await listAccountKeys(db, accountId);
-  assert.equal(after.lastUsedAt, new Date(NOW).toISOString());
+  // Yesterday's call and the first today each stamp the key's last use; nothing else is written.
+  const writes = sent.filter((sql) => !/^select /i.test(sql));
+  assert.deepEqual(
+    writes.map((sql) => sql.slice(0, 36)),
+    Array(2).fill('update "api_key" set "last_used_at" '),
+  );
+  const [listed] = await listAccountKeys(appDb, accountId);
+  assert.equal(listed.lastUsedAt, new Date(NOW).toISOString());
+  assert.deepEqual((await accountUsage(appDb, accountId, NOW)).total, Array(USAGE_WINDOW_DAYS).fill(0));
 
-  // 1 call for the lookup yesterday; today 1 for the lookup, 1 for nearby and 2 for the batch's two words.
-  assert.deepEqual(callsOf(created.keyId), [
-    { day: "2026-09-26", calls: 1 },
-    { day: "2026-09-27", calls: 4 },
-  ]);
-
-  const usage = await accountUsage(db, accountId, NOW);
+  // The meter's alarm: 1 call yesterday; today 1 for the lookup, 1 for nearby and 2 for the batch's two words.
+  sent.length = 0;
+  await meters.flush(appDb, NOW + 60_000);
+  assert.equal(sent.filter((sql) => /^insert into "api_key_usage"/.test(sql)).length, 1);
   const expected = Array<number>(USAGE_WINDOW_DAYS).fill(0);
   expected[USAGE_WINDOW_DAYS - 2] = 1;
   expected[USAGE_WINDOW_DAYS - 1] = 4;
-  assert.deepEqual(usage.keys, [{ keyId: created.keyId, calls: expected }]);
-  assert.deepEqual(usage.total, expected);
+  const usage = await accountUsage(appDb, accountId, NOW);
+  assert.deepEqual(usage.keys, [{ keyId, calls: expected }]);
+  own.close();
+});
+
+test("an account's keys share its 60 calls a minute, a batch's words each one: the call past it on either key is a 429 with Retry-After", async () => {
+  const meters = new TestMetering();
+  const ask = (key: string, path: string, body?: string, now = NOW) =>
+    handleApi(
+      new Request(`https://api.lexema.fyi/v1/${path}`, { method: body === undefined ? "GET" : "POST", headers: { "x-api-key": key }, body }),
+      { db: dictionary, appDb: db, releaseId: RELEASE, now, metering: meters },
+    );
+  const ada = await accountWithKey(db, "shared-rate");
+  const name = keyName("second");
+  assert.ok(name !== undefined);
+  const second = await createAccountKey(db, ada.accountId, name, NOW);
+  assert.ok(second.outcome === "created");
+  const other = await accountWithKey(db, "other-rate");
+
+  for (let i = 0; i < 30; i++) assert.equal((await ask(ada.key, "exists?q=casa")).status, 200);
+  const batch = await ask(second.key, "lookup/batch", JSON.stringify({ q: Array(30).fill("casa") }));
+  assert.equal(batch.status, 200);
+  const meterCallsBefore = meters.calls.length;
+
+  for (const key of [ada.key, second.key]) {
+    const refused = await ask(key, "exists?q=casa");
+    assert.equal(refused.status, 429);
+    assert.equal(refused.headers.get("retry-after"), String(RATE_WINDOW_SECONDS));
+    assert.equal(refused.headers.get("ratelimit-limit"), "60");
+    assert.equal(refused.headers.get("ratelimit-remaining"), null);
+    assert.deepEqual(((await refused.json()) as Json).error, {
+      code: "rate_limited",
+      message: "This key's account may make 60 calls a minute. Retry after 60 s.",
+    });
+  }
+  // A refused call never reached the meter, so it counted nothing there.
+  assert.equal(meters.calls.length, meterCallsBefore);
+  assert.equal(meters.calls.at(-1)?.admission.calls, 30);
+  // The binding counts by account id, so another account is not held back.
+  assert.equal((await ask(other.key, "exists?q=casa")).status, 200);
+  assert.deepEqual([...meters.bindings.CALLS_60.counts.keys()], [String(ada.accountId), String(other.accountId)]);
+  // A batch longer than the account's minute is unreadable, not a wait.
+  const wide = await ask(other.key, "lookup/batch", JSON.stringify({ q: Array(61).fill("casa") }));
+  assert.equal(wide.status, 400);
 });
 
 /** A key made in the dashboard with this access (#187), under its own account. */
@@ -883,9 +986,9 @@ test("a key limited to some endpoints answers them, and every other endpoint is 
   assert.ok(some !== undefined);
   const { keyId, key } = await keyWith("limited", { endpoints: some, expiresAt: null });
 
+  const metered = () => metering.calls.filter(({ admission }) => admission.keyId === keyId).length;
   for (const path of ["lookup?q=casa", "exists?q=casa"]) assert.equal((await send(key, path)).status, 200, path);
-  const allowed = callsOf(keyId);
-  assert.deepEqual(allowed, [{ day: "2026-09-27", calls: 2 }]);
+  assert.equal(metered(), 2);
 
   const others: [Endpoint, string, string?][] = [
     ["lemmatize", "lemmatize?q=sale"],
@@ -906,7 +1009,7 @@ test("a key limited to some endpoints answers them, and every other endpoint is 
   }
   // A wrong method on a forbidden endpoint is refused the same way, and none of it was charged.
   assert.equal((await send(key, "lemmatize?q=sale", "{}")).status, 403);
-  assert.deepEqual(callsOf(keyId), allowed);
+  assert.equal(metered(), 2);
 
   // Every endpoint is open to a key made with All endpoints.
   const open = await keyWith("open", { endpoints: ALL_ENDPOINTS, expiresAt: null });
@@ -925,7 +1028,7 @@ test("an expired key answers 401 expired_key from its expiry on, like a revoked 
     const json: Json = await response.json();
     assert.deepEqual(json.error, { code: "expired_key", message: "This API key has expired." });
   }
-  assert.deepEqual(callsOf(keyId), [{ day: "2026-09-27", calls: 1 }]);
+  assert.equal(metering.calls.filter(({ admission }) => admission.keyId === keyId).length, 1);
 });
 
 test("/v1/lookup leaves out Wikizionario's missing-field placeholders, as the page does (#255)", async () => {

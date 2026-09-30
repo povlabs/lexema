@@ -78,6 +78,15 @@ export function isAskablePrefix(raw: string): boolean {
   return length >= MIN_PREFIX_LENGTH && raw.trim().length <= MAX_PREFIX_LENGTH;
 }
 
+/** Why a prefix is not sent to the index, or undefined when it may be: the refusals `suggest` makes, read before any database. */
+export function prefixRejectionOf(prefix: string): PrefixRejected["rejection"] | undefined {
+  const length = [...normalizeItalianExact(prefix)].length;
+  if (length < MIN_PREFIX_LENGTH) return { reason: "too-short", length, limit: MIN_PREFIX_LENGTH };
+  const trimmed = prefix.trim().length;
+  if (trimmed > MAX_PREFIX_LENGTH) return { reason: "too-long", length: trimmed, limit: MAX_PREFIX_LENGTH };
+  return undefined;
+}
+
 export { prefixUpperBound };
 
 /**
@@ -116,15 +125,9 @@ export const SUGGEST_SQL = `SELECT surface
 export const FIRST_SCAN = 22;
 
 export async function suggest({ db, releaseId, prefix }: SuggestOptions): Promise<SuggestResult> {
+  const rejection = prefixRejectionOf(prefix);
+  if (rejection !== undefined) return { outcome: "rejected", prefix: { raw: prefix }, rejection };
   const key = normalizeItalianExact(prefix);
-  const length = [...key].length;
-  if (length < MIN_PREFIX_LENGTH) {
-    return { outcome: "rejected", prefix: { raw: prefix }, rejection: { reason: "too-short", length, limit: MIN_PREFIX_LENGTH } };
-  }
-  const trimmed = prefix.trim().length;
-  if (trimmed > MAX_PREFIX_LENGTH) {
-    return { outcome: "rejected", prefix: { raw: prefix }, rejection: { reason: "too-long", length: trimmed, limit: MAX_PREFIX_LENGTH } };
-  }
 
   // The same two refusals exact lookup makes, for the same reasons: a release
   // that is not complete is not servable, and keys built by another normalizer

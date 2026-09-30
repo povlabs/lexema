@@ -12,7 +12,9 @@
 // change data and redirect rather than render, and so is a Preview's test
 // sign-in (worker/testSignIn.ts), which no other stage has. Around all of it,
 // the stage (worker/stage.ts) adds what its responses carry: noindex on a
-// Preview.
+// Preview. It also exports the account meter's Durable Object class
+// (worker/api/accountMeterObject.ts), which wrangler.jsonc binds as
+// ACCOUNT_METER.
 
 import { env } from "cloudflare:workers";
 import app from "vinext/server/app-router-entry";
@@ -23,6 +25,8 @@ import { withRateLimits } from "./rateLimit.ts";
 import { withSignIn } from "./signIn.ts";
 import { parseStage, withStage } from "./stage.ts";
 import { withTestSignIn } from "./testSignIn.ts";
+
+export { AccountMeterObject } from "./api/accountMeterObject.ts";
 
 // Read at startup, so an unknown stage refuses to boot rather than serve.
 const stage = parseStage(env.LEXEMA_STAGE);
