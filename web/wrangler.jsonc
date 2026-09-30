@@ -106,8 +106,9 @@
         "database_id": "b07d3441-91c6-4f94-8ae3-fe8c7088f21d"
       },
       // This branch's own app database. The Workers Builds preview command
-      // creates lexema-preview-app-<branch>, applies the app migrations to it
-      // and writes its name and id here in the built config. `wrangler preview`
+      // (web/builds/previewCommand.ts) finds or creates
+      // lexema-preview-app-<name>, writes its name and id here in the built
+      // config and applies the app migrations to it. `wrangler preview`
       // refuses to run while <REPLACE_ME> is still here, so no Preview falls
       // back on another's. No migrations_dir: the build does not rebase paths
       // inside this block, so one here would name a folder that is not there.
