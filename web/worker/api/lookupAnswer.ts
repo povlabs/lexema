@@ -24,6 +24,7 @@
 
 import { normalizeItalianExact } from "@lexema/italian/normalize.ts";
 import { foldKey, type Nearby } from "@lexema/lookup/nearby.ts";
+import type { PhraseOffer } from "@lexema/lookup/phrase.ts";
 import { isFormOfReading, isVerbReading, searchedSpellings } from "@lexema/lookup/types.ts";
 import type {
   FoundResult,
@@ -396,13 +397,26 @@ export function resultJson(candidate: Candidate, filters: LookupFilters): Result
 
 /**
  * What the not-found answer offers: `findNearby`'s spellings in its order, its
- * `typo` called `edit`, and a multi-word headword the query nearly spells
- * called `phrase`.
+ * `typo` called `edit`, and the query corrected so that it reads as a
+ * multi-word headword called `phrase`.
  */
 export type SuggestionKind = "accent" | "edit" | "phrase" | "prefix";
 
-const phraseSuggestions = (phrases: readonly string[]) =>
-  phrases.map((word) => ({ word, kind: "phrase" as const }));
+/**
+ * One offer, and the Wikizionario page its word comes from: its own for a
+ * spelling, and the first headword it reaches for a `phrase`, whose words
+ * (`vado via`) have no page of their own.
+ */
+export interface Suggestion {
+  word: string;
+  kind: SuggestionKind;
+  page: string;
+}
+
+const spelling = (word: string, kind: Exclude<SuggestionKind, "phrase">): Suggestion => ({ word, kind, page: word });
+
+const phraseSuggestions = (offers: readonly PhraseOffer[]): Suggestion[] =>
+  offers.map((offer) => ({ word: offer.phrase, kind: "phrase", page: offer.headwords[0] }));
 
 /**
  * `findNearby`'s offer as a list. After an accent match it also lists the
@@ -410,27 +424,23 @@ const phraseSuggestions = (phrases: readonly string[]) =>
  * by whether it is the query's letters with other accents, which is the test
  * `accent_fold` itself keys on. The phrases follow an accent or a typo offer.
  */
-export function suggestionsOf(nearby: Nearby, query: string): { word: string; kind: SuggestionKind }[] {
+export function suggestionsOf(nearby: Nearby, query: string): Suggestion[] {
   switch (nearby.kind) {
     case "accent": {
       const folded = foldKey(normalizeItalianExact(query));
       return [
-        ...[nearby.best, ...nearby.others].map((word) => ({
-          word,
-          kind: foldKey(normalizeItalianExact(word)) === folded ? ("accent" as const) : ("prefix" as const),
-        })),
+        ...[nearby.best, ...nearby.others].map((word) =>
+          spelling(word, foldKey(normalizeItalianExact(word)) === folded ? "accent" : "prefix"),
+        ),
         ...phraseSuggestions(nearby.phrases),
       ];
     }
     case "typo":
-      return [
-        ...[nearby.best, ...nearby.others].map((word) => ({ word, kind: "edit" as const })),
-        ...phraseSuggestions(nearby.phrases),
-      ];
+      return [...[nearby.best, ...nearby.others].map((word) => spelling(word, "edit")), ...phraseSuggestions(nearby.phrases)];
     case "phrase":
       return phraseSuggestions([nearby.best, ...nearby.others]);
     case "prefix":
-      return nearby.words.map((word) => ({ word, kind: "prefix" }));
+      return nearby.words.map((word) => spelling(word, "prefix"));
     case "none":
       return [];
   }
@@ -470,7 +480,7 @@ export function notFoundJson(result: NotFoundResult, nearby: Nearby): NotFoundJs
     query: result.query.raw,
     release_id: result.release.releaseId,
     results: [],
-    suggestions: suggestionsOf(nearby, result.query.raw),
+    suggestions: suggestionsOf(nearby, result.query.raw).map(({ word, kind }) => ({ word, kind })),
   };
 }
 

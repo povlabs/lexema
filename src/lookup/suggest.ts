@@ -6,11 +6,16 @@
 // This is not a lookup. It names spellings a reader might mean, and choosing
 // one runs the real lookup for it; nothing here reads a sense, a form or a
 // grammar claim, so nothing here can say what a word means.
+//
+// A prefix of several words also gets the typed words completed so that they
+// read as a multi-word headword (`vado v` → `vado via`, #214): the phrase rule
+// of src/lookup/phrase.ts, run only while the list has room left.
 
 import { IT_NORMALIZER_VERSION, normalizeItalianExact } from "../italian/normalize.js";
 import type { LookupDatabase } from "./database.js";
 import { prefixUpperBound } from "./keyRange.js";
 import { MAX_QUERY_LENGTH, readRelease } from "./lookup.js";
+import { phraseCompletions, type PhraseOffer } from "./phrase.js";
 
 /**
  * The shortest prefix answered, in characters of the normalized key. One letter
@@ -33,14 +38,23 @@ export interface SuggestOptions {
 }
 
 /**
- * A prefix the index was probed for, and what it held, in key order. `suggestions`
- * is empty when no headword starts with the prefix, which is an answer and
- * not a failure.
+ * A prefix the index was probed for, and what it held. `suggestions` are the
+ * headwords that begin with it, in key order; `phrases` follow them, the typed
+ * words completed so that they read as a multi-word headword, none already
+ * among `suggestions`. The two together are at most `SUGGESTION_LIMIT`
+ * (`offered`). Both are empty when nothing begins with the prefix, which is an
+ * answer and not a failure.
  */
 export interface Suggested {
   outcome: "suggested";
   prefix: { raw: string; key: string };
   suggestions: string[];
+  phrases: PhraseOffer[];
+}
+
+/** What the search field lists for an answer, in order: the headwords, then the completed phrases. */
+export function offered(answer: Suggested): string[] {
+  return [...answer.suggestions, ...answer.phrases.map((offer) => offer.phrase)];
 }
 
 /** A prefix outside the bounds, which is never sent to the index. */
@@ -131,5 +145,13 @@ export async function suggest({ db, releaseId, prefix }: SuggestOptions): Promis
     // Enough spellings, or the prefix holds no more rows to read.
     if (suggestions.length === SUGGESTION_LIMIT || rows.length < scan) break;
   }
-  return { outcome: "suggested", prefix: { raw: prefix, key }, suggestions };
+  // Only while the list has room, and only for a prefix of several words:
+  // `phraseCompletions` reads nothing for one word.
+  const room = SUGGESTION_LIMIT - suggestions.length;
+  const listed = new Set(suggestions.map(normalizeItalianExact));
+  const phrases =
+    room > 0
+      ? (await phraseCompletions(db, releaseId, key, SUGGESTION_LIMIT)).filter((offer) => !listed.has(offer.phrase)).slice(0, room)
+      : [];
+  return { outcome: "suggested", prefix: { raw: prefix, key }, suggestions, phrases };
 }

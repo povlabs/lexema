@@ -26,7 +26,7 @@ import { seedSql } from "../../src/import/seedSql.js";
 import { fromNodeSqlite, type LookupDatabase } from "../../src/lookup/database.js";
 import { lookup } from "../../src/lookup/lookup.js";
 import { findNearby, type Nearby } from "../../src/lookup/nearby.js";
-import { suggest } from "../../src/lookup/suggest.js";
+import { offered, suggest } from "../../src/lookup/suggest.js";
 import { loadFixturePages } from "../../src/source/rawPage.js";
 import { answerApi, apiNotFound, handleApi, type ApiBindings } from "@/worker/api/handler.ts";
 import { byHost, DEVELOPERS_SEGMENT } from "@/worker/hosts.ts";
@@ -145,9 +145,9 @@ function offeredBy(nearby: Nearby): string[] {
     case "none":
       return [];
     case "phrase":
-      return [nearby.best, ...nearby.others];
+      return [nearby.best, ...nearby.others].map((offer) => offer.phrase);
     default:
-      return [nearby.best, ...nearby.others, ...nearby.phrases];
+      return [nearby.best, ...nearby.others, ...nearby.phrases.map((offer) => offer.phrase)];
   }
 }
 
@@ -436,11 +436,16 @@ test("an inflected expression answers its multi-word headword via phrase, which 
   assert.deepEqual(candidates(await lookupBody("q=vada%20via")), ["andare via phrase phrase"]);
   const missing = await lookupWith("q=vado%20fuori");
   assert.equal(missing.status, 404);
-  // A typo in one word is no result, and the expression is a `phrase` suggestion.
-  for (const q of ["vadoo%20via", "vado%20vja"]) {
+  // A typo in one word is no result, and the query corrected as typed is a
+  // `phrase` suggestion (Huey's hand check of 2026-09-30).
+  for (const [q, word] of [
+    ["vadoo%20via", "vado via"],
+    ["vado%20vja", "vado via"],
+    ["tiro%20fuory", "tiro fuori"],
+  ]) {
     const typo = await lookupWith(`q=${q}`);
     assert.equal(typo.status, 404, q);
-    assert.deepEqual((await typo.json() as Json).suggestions, [{ word: "andare via", kind: "phrase" }], q);
+    assert.deepEqual((await typo.json() as Json).suggestions, [{ word, kind: "phrase" }], q);
   }
   // `vado via` is no headword of its own, so it has no forms to inflect.
   assert.equal((await ask("inflect?lemma=vado%20via")).status, 404);
@@ -678,12 +683,18 @@ test("/inflect is a 404 for a word that heads no record, and a 400 for a lemma o
 });
 
 test("/suggest answers suggest()'s spellings, in its order and within its limit", async () => {
-  for (const q of ["sal", "a", "c", "qqq"]) {
-    const answer = await suggest({ db, releaseId: RELEASE, prefix: q });
-    assert.equal(answer.outcome, "suggested");
+  for (const q of ["sal", "a", "c", "qqq", "vado%20v"]) {
+    const answer = await suggest({ db, releaseId: RELEASE, prefix: decodeURIComponent(q) });
+    assert.ok(answer.outcome === "suggested");
     const body = await okBody(`suggest?q=${q}`);
-    assert.deepEqual(body.results.map((result: Json) => result.word), answer.suggestions, q);
+    assert.deepEqual(body.results.map((result: Json) => result.word), offered(answer), q);
   }
+  // A phrase's words have no page of their own: its attribution is the headword it reaches.
+  const [vado] = (await okBody("suggest?q=vado%20v")).results;
+  assert.equal(vado.word, "vado via");
+  assert.equal(vado.attribution.source_url, "https://it.wiktionary.org/wiki/andare_via");
+  const [nearby] = (await okBody("nearby?q=vadoo%20via")).results;
+  assert.deepEqual([nearby.word, nearby.kind, nearby.attribution.source_url], ["vado via", "phrase", "https://it.wiktionary.org/wiki/andare_via"]);
   await assertBadRequest("suggest?q=", "invalid_query");
 });
 

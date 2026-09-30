@@ -276,6 +276,33 @@ enough. `SUGGESTION_LIMIT` is 10.
 carry it, as the source spells it. A spelling found only in another record's
 `forms[]` is not suggested.
 
+**Expressions being typed** (#214,
+[Huey's hand check](https://github.com/hueypov/lexema/issues/214#issuecomment-5907869562)).
+A prefix of two to 12 words also gets `phrases`: `phraseCompletions()` in
+[`src/lookup/phrase.ts`](../src/lookup/phrase.ts) reads every word but the
+last as its lemmas, as a phrase match does (above), and each multi-word
+headword that begins with those lemmas, a space and the last word as typed is
+offered as the typed words completed. `vado v` reads `andare v`, reaches
+*andare via* and offers `vado via`, which opens that phrase's short page.
+`andare v` offers *andare via* already as a headword, so the sequence that is
+the typed words themselves is never probed again. Each offer carries the
+`headwords` it reaches, as the source spells them. Phrases follow the
+headwords, none twice, and the two together stay within `SUGGESTION_LIMIT`
+(`offered()` is the list the field shows).
+
+What it costs, per keystroke. A prefix of one word, and a prefix whose own
+headwords already fill ten, read nothing more. Otherwise, after the prefix
+read:
+
+| Read | Index | Rows | Round trips |
+|---|---|---|---|
+| `WORD_LEMMAS_SQL`: the lemmas of every word but the last, sent as one JSON array | `lookup_form_headword_by_key`, one equality probe per word, then `form_of_edge_by_record` | a few per word | 1 |
+| `PAST_PARTICIPLE_SQL`, only for a word after an auxiliary (`sono andati v`) | `lookup_form_by_key`, then `grammar_claim_by_record` | a few per spelling | 1, its reads side by side |
+| `HEADWORD_PREFIX_SQL`: one range probe per lemma sequence other than the typed words, at most `MAX_PHRASE_PREFIX_PROBES` (16) | `lookup_form_headword_by_key` range, in key order, no sort | at most the room left in the list | 1, its reads side by side |
+
+`vado v` costs two reads more than `vado`: one lemma read and one range probe.
+`test/phrase.test.ts` asserts that count and each read's query plan.
+
 **Order.** Alphabetical by normalized key: the first words in the dictionary
 under what was typed. Huey's ruling, 2026-09-23: "it should show alphabetical
 order like the first 10, if i write a it should show words from letter a from
@@ -318,27 +345,33 @@ and 3):
    `AB`, `BA`, `bar`, `bau`, `bob`, none a better guess than the words that
    begin with it), nor keys over 30: their deletions are bound parameters, and
    D1 allows 100.
-4. **Expressions it nearly spells** (#214,
-   [Huey's updated ruling](https://github.com/hueypov/lexema/issues/214#issuecomment-5906146451)):
+4. **The query corrected so that it reads as an expression** (#214,
+   [Huey's updated ruling](https://github.com/hueypov/lexema/issues/214#issuecomment-5906146451)
+   and [hand check](https://github.com/hueypov/lexema/issues/214#issuecomment-5907869562)):
    `nearPhrases()` in [`src/lookup/phrase.ts`](../src/lookup/phrase.ts), for a
-   query of two to 12 words, reads it as a phrase match does (above) and
-   offers the multi-word headwords it reaches off by one of:
-   - **one word misspelled:** that word stands for the lemmas of every headword
-     one edit from it (`oneEditSpellings`, the edits `withinOneEdit` counts,
-     sent as one JSON array and probed through `json_each`, so a form's
-     headword counts too: `vadp` reaches `vado`, and so `andare`); every other
-     word for its own. `tiro fouri` → `tirare fuori`, `vadp via` and
-     `vadoo via` → `andare via`, `vado vja` → `andare via`.
-   - **the last word unfinished:** every word but the last stands for its
-     lemmas, and a headword that begins with those lemmas, a space and the
-     last word as typed is offered, one range probe per sequence, at most
-     `MAX_PHRASE_PREFIX_PROBES` (16). `tiro fuo` → `tirare fuori`.
+   query of two to 12 words, reads it as a phrase match does (above). What it
+   offers is the typed words corrected, never the headword: searching the
+   offer is a phrase match, which opens its short page. Each offer is a
+   `PhraseOffer`, the `phrase` to search and the `headwords` it reaches. The
+   corrections are:
+   - **one word misspelled:** that word replaced by a headword spelling one
+     edit from it (`oneEditSpellings`, the edits `withinOneEdit` counts), when
+     the query then reads as a headword. `vadoo via` and `vado vja` →
+     `vado via`, `tiro fouri` and `tiro fuory` → `tiro fuori`. `vadp via` →
+     `vada via` and `vado via`: both are one edit away, and neither is ranked.
+   - **the last word unfinished:** completed from a headword that begins with
+     the other words' lemmas, a space and the last word as typed, one range
+     probe per sequence, at most `MAX_PHRASE_PREFIX_PROBES` (16).
+     `tiro fuo` → `tiro fuori`.
    - **only part of the query:** a run of two or more neighbouring words, not
-     all of them, spells a headword. `vado via adesso` → `andare via`.
+     all of them, that reads as a headword. `vado via adesso` → `vado via`.
 
-   They come in that order, each once, at most eight. This step runs beside the
-   accent step: after an accent or a one-edit match the expressions follow the
-   other offers as `phrases`; with neither, they are the offer.
+   They come in that order, each once, at most eight. The query's words and
+   every one-edit spelling of them are sent as one JSON array
+   (`WORD_LEMMAS_SQL`), and every lemma sequence as another
+   (`HEADWORD_SPELLING_SQL`), each probed through `json_each`. This step runs
+   beside the accent step: after an accent or a one-edit match the corrections
+   follow the other offers as `phrases`; with neither, they are the offer.
 5. **Words that begin with it:** `suggest()` for the query.
 
 Candidates rank by fewest edits, then the most translation languages, then
@@ -356,7 +389,7 @@ the word list per request. Expressions are not ranked: they keep step 4's order.
 |---|---|---|
 | `{ kind: "accent", best, others, phrases }` | the same letters with an accent | "Did you mean città?", then other words that begin with the query, then the expressions |
 | `{ kind: "typo", best, others, phrases }` | one edit away | "Did you mean mangiare?", then other close spellings, then the expressions |
-| `{ kind: "phrase", best, others }` | an expression it nearly spells | "Did you mean tirare fuori?", then other expressions |
+| `{ kind: "phrase", best, others }` | the query corrected to read as an expression | "Did you mean vado via?", then other expressions |
 | `{ kind: "prefix", words }` | words that begin with it | the words that fit on one line, then `+ more` |
 | `{ kind: "none" }` | nothing | how to search instead |
 

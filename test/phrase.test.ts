@@ -29,11 +29,12 @@ import { findNearby, withinOneEdit } from "../src/lookup/nearby.js";
 import {
   FORM_ENTRY_SQL,
   HEADWORD_PREFIX_SQL,
-  headwordKeySql,
-  NEAR_LEMMA_SQL,
+  HEADWORD_SPELLING_SQL,
   PAST_PARTICIPLE_SQL,
-  WORD_LEMMA_SQL,
+  WORD_LEMMAS_SQL,
 } from "../src/lookup/phrase.js";
+import { offered, suggest, SUGGEST_SQL, type Suggested } from "../src/lookup/suggest.js";
+import type { LookupDatabase } from "../src/lookup/database.js";
 import type { FoundResult, LookupResult } from "../src/lookup/types.js";
 
 const RELEASE = "it-phrase-test";
@@ -223,10 +224,9 @@ test("the lemma sequences are bounded", () => {
 
 test("every phrase query stays on indexes rather than scanning", () => {
   const plans = [
-    [WORD_LEMMA_SQL, [RELEASE, "vado", RELEASE, "vado"]],
+    [WORD_LEMMAS_SQL, [RELEASE, JSON.stringify(["vado", "via", ...oneEditSpellings("vadp")])]],
     [PAST_PARTICIPLE_SQL, [RELEASE, "andato"]],
-    [headwordKeySql(2), [RELEASE, "andare via", "tirare fuori"]],
-    [NEAR_LEMMA_SQL, [RELEASE, JSON.stringify(oneEditSpellings("vadp"))]],
+    [HEADWORD_SPELLING_SQL, [RELEASE, JSON.stringify(["andare via", "tirare fuori"])]],
     [HEADWORD_PREFIX_SQL, [RELEASE, "tirare fuo", "tirare fup", 8]],
     [FORM_ENTRY_SQL, [RELEASE, "vado", "andare"]],
   ] as const;
@@ -241,18 +241,29 @@ test("every phrase query stays on indexes rather than scanning", () => {
 
 const nearby = (query: string) => findNearby({ db: fromNodeSqlite(sqlite), releaseId: RELEASE, query });
 
-test("a phrase with one word misspelled is offered as Did you mean, not found", async () => {
-  for (const [query, phrase] of [
-    ["tiro fouri", "tirare fuori"],
-    // `vadp` is one edit from `vado`, which is a form of `andare`.
-    ["vadp via", "andare via"],
-    ["vadoo via", "andare via"],
+test("a phrase with one word misspelled is offered corrected as typed, not as its headword", async () => {
+  // Huey's hand check of 2026-09-30: "vadoo via" → "Did you mean vado via?".
+  for (const [query, phrase, headword] of [
+    ["tiro fouri", "tiro fuori", "tirare fuori"],
+    ["tiro fuory", "tiro fuori", "tirare fuori"],
+    ["vadoo via", "vado via", "andare via"],
     // `vja` is one edit from `via`.
-    ["vado vja", "andare via"],
+    ["vado vja", "vado via", "andare via"],
   ] as const) {
     assert.equal((await ask(query)).outcome, "not-found", query);
-    assert.deepEqual(await nearby(query), { kind: "phrase", best: phrase, others: [] }, query);
+    assert.deepEqual(await nearby(query), { kind: "phrase", best: { phrase, headwords: [headword] }, others: [] }, query);
+    // What is offered is a search that finds the headword: the phrase's short page.
+    const offer = await found(phrase);
+    assert.equal(offer.route.kind, "phrase", phrase);
+    assert.deepEqual(words(offer), [headword], phrase);
   }
+  // `vadp` is one edit from both `vada` and `vado`, forms of `andare`: each
+  // correction is offered, unranked, in the order the edits are tried.
+  assert.deepEqual(await nearby("vadp via"), {
+    kind: "phrase",
+    best: { phrase: "vada via", headwords: ["andare via"] },
+    others: [{ phrase: "vado via", headwords: ["andare via"] }],
+  });
 });
 
 test("a phrase the whole query is one edit from is offered once, as the typo", async () => {
@@ -260,15 +271,18 @@ test("a phrase the whole query is one edit from is offered once, as the typo", a
   assert.deepEqual(await nearby("tirre fuori"), { kind: "typo", best: "tirare fuori", others: [], phrases: [] });
 });
 
-test("a phrase whose last word is not finished is offered", async () => {
-  assert.deepEqual(await nearby("tiro fuo"), { kind: "phrase", best: "tirare fuori", others: [] });
-  const volto = await nearby("volto le");
-  assert.equal(volto.kind, "phrase");
-  assert.deepEqual(volto.kind === "phrase" && [volto.best, ...volto.others].sort(), ["volgere le spalle", "voltare le spalle"]);
+test("a phrase whose last word is not finished is offered completed as typed", async () => {
+  assert.deepEqual(await nearby("tiro fuo"), { kind: "phrase", best: { phrase: "tiro fuori", headwords: ["tirare fuori"] }, others: [] });
+  // One typed phrase reaching two headwords is one offer naming both.
+  assert.deepEqual(await nearby("volto le"), {
+    kind: "phrase",
+    best: { phrase: "volto le spalle", headwords: ["volgere le spalle", "voltare le spalle"] },
+    others: [],
+  });
 });
 
-test("a phrase that is only part of the query is offered", async () => {
-  assert.deepEqual(await nearby("vado via adesso"), { kind: "phrase", best: "andare via", others: [] });
+test("a phrase that is only part of the query is offered as those words", async () => {
+  assert.deepEqual(await nearby("vado via adesso"), { kind: "phrase", best: { phrase: "vado via", headwords: ["andare via"] }, others: [] });
 });
 
 test("a query that nearly spells no headword offers no phrase", async () => {
@@ -293,4 +307,85 @@ test("a query's parts are its runs of two or more slots, not all of them", () =>
     slotRuns([slot("a"), slot("b"), slot("c")]).map((run) => run.map((s) => s.typed).join(" ")),
     ["a b", "b c"],
   );
+});
+
+// The search field's suggestions while a query of several words is typed
+// (Huey's hand check of 2026-09-30 on #214). `/suggest` runs on every
+// keystroke, so what each prefix reads is asserted too.
+
+/** The database, with every statement it is asked recorded. */
+function recording(): { db: LookupDatabase; asked: string[] } {
+  const inner = fromNodeSqlite(sqlite);
+  const asked: string[] = [];
+  return {
+    asked,
+    db: {
+      all<T>(sql: string, params: Parameters<LookupDatabase["all"]>[1]): Promise<T[]> {
+        asked.push(sql);
+        return inner.all<T>(sql, params);
+      },
+    },
+  };
+}
+
+async function suggested(prefix: string): Promise<Suggested> {
+  const answer = await suggest({ db: fromNodeSqlite(sqlite), releaseId: RELEASE, prefix });
+  assert.ok(answer.outcome === "suggested", prefix);
+  return answer;
+}
+
+test("a headword of several words is suggested as its own prefix is typed", async () => {
+  const answer = await suggested("andare v");
+  assert.deepEqual(offered(answer), ["andare via"]);
+  // The field's own prefix read lists it; the phrase reading adds no second copy.
+  assert.deepEqual(answer.phrases, []);
+});
+
+test("an inflected phrase being typed is suggested completed as typed", async () => {
+  for (const [prefix, phrase, headwords] of [
+    ["vado v", "vado via", ["andare via"]],
+    ["vado vi", "vado via", ["andare via"]],
+    ["tiro f", "tiro fuori", ["tirare fuori"]],
+    ["sono andati v", "sono andati via", ["andare via"]],
+    ["volto le s", "volto le spalle", ["volgere le spalle", "voltare le spalle"]],
+  ] as const) {
+    const answer = await suggested(prefix);
+    assert.deepEqual(answer.phrases, [{ phrase, headwords }], prefix);
+    assert.deepEqual(offered(answer), [phrase], prefix);
+    // Choosing it searches it, and the search finds the headword.
+    assert.deepEqual(words(await found(phrase)).sort(), [...headwords], prefix);
+  }
+});
+
+test("a prefix whose lemmas begin no multi-word headword suggests no phrase", async () => {
+  for (const prefix of ["vado f", "tiro v", "sono v", "xyz v"]) {
+    assert.deepEqual((await suggested(prefix)).phrases, [], prefix);
+  }
+});
+
+test("a phrase suggestion costs one lemma read and a range probe per lemma sequence; one word costs nothing more", async () => {
+  const one = recording();
+  await suggest({ db: one.db, releaseId: RELEASE, prefix: "vado" });
+  assert.ok(!one.asked.includes(WORD_LEMMAS_SQL) && !one.asked.includes(HEADWORD_PREFIX_SQL), one.asked.join("\n---\n"));
+  assert.equal(one.asked.filter((sql) => sql === SUGGEST_SQL).length, 1);
+
+  const vado = recording();
+  await suggest({ db: vado.db, releaseId: RELEASE, prefix: "vado v" });
+  // `vado` reads as itself and as `andare`. Itself is the field's own prefix
+  // read already, so only `andare v` is probed.
+  assert.equal(vado.asked.filter((sql) => sql === WORD_LEMMAS_SQL).length, 1);
+  assert.equal(vado.asked.filter((sql) => sql === HEADWORD_PREFIX_SQL).length, 1);
+  // The release row, the field's own prefix read, and those two.
+  assert.equal(vado.asked.length, 4, vado.asked.join("\n---\n"));
+});
+
+test("the phrase prefix probe walks the headword index in key order, so LIMIT stops it early", () => {
+  const plan = (
+    sqlite.prepare(`EXPLAIN QUERY PLAN ${HEADWORD_PREFIX_SQL}`).all(RELEASE, "andare v", "andare w", 10) as { detail: string }[]
+  ).map((row) => row.detail);
+  assert.ok(
+    plan.some((step) => step.includes("lookup_form_headword_by_key") && /surface_key>\? AND surface_key<\?/.test(step)),
+    plan.join("\n"),
+  );
+  assert.ok(!plan.some((step) => /TEMP B-TREE/.test(step)), plan.join("\n"));
 });

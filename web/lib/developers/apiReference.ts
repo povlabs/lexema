@@ -463,7 +463,7 @@ export const ENDPOINT_REFERENCE: Readonly<Record<Endpoint, EndpointReference>> =
     ],
     answers: [
       { status: "200", description: "The word is in the release. results holds every candidate the filters keep." },
-      { status: "404", description: "The word is not in the release. results is empty and suggestions lists close spellings, as `/nearby` does: a multi-word headword the query nearly spells is kind `phrase`." },
+      { status: "404", description: "The word is not in the release. results is empty and suggestions lists close spellings, as `/nearby` does: the query corrected so that it spells a multi-word headword is kind `phrase` (`vadoo via` offers `vado via`)." },
     ],
     examples: [LOOKUP_EXAMPLE, LOOKUP_FILTERED_EXAMPLE, NOT_FOUND_EXAMPLE],
   },
@@ -547,7 +547,7 @@ export const ENDPOINT_REFERENCE: Readonly<Record<Endpoint, EndpointReference>> =
     method: "GET",
     title: "Suggest words",
     tagline: "Words that begin with a prefix",
-    summary: `Up to ${SUGGESTION_LIMIT} words that begin with \`q\`, as the search field suggests them.`,
+    summary: `Up to ${SUGGESTION_LIMIT} words that begin with \`q\`, as the search field suggests them. When \`q\` has several words, the words that begin with it are followed by \`q\` completed as a multi-word headword its words spell as their lemmas: \`vado v\` offers \`vado via\`, which finds \`andare via\`. Such a word's \`attribution\` is the headword's page.`,
     parameters: [{ name: "q", type: "string", required: true, description: `The beginning of a word, 1 to ${MAX_QUERY_LENGTH} characters.` }],
     answers: [{ status: "200", description: "`results` holds the words, and is empty when none begins with `q`." }],
     examples: [{
@@ -565,7 +565,7 @@ export const ENDPOINT_REFERENCE: Readonly<Record<Endpoint, EndpointReference>> =
     title: "Find close spellings",
     tagline: "Did you mean",
     summary:
-      "Spellings close to `q`, in the not-found page's order: the same letters with accents (`accent`), one edit away (`edit`), multi-word headwords `q`'s words nearly spell as their lemmas, with one word misspelled, the last word unfinished, or only some of the words (`phrase`: `tiro fouri` offers `tirare fuori`), or words that begin with `q` (`prefix`). Phrases also follow an `accent` or `edit` offer.",
+      "Spellings close to `q`, in the not-found page's order: the same letters with accents (`accent`), one edit away (`edit`), `q` corrected so that its words spell a multi-word headword as their lemmas, with one word misspelled, the last word unfinished, or only some of the words (`phrase`: `tiro fouri` offers `tiro fuori`, which finds `tirare fuori`), or words that begin with `q` (`prefix`). Phrases also follow an `accent` or `edit` offer. A `phrase`'s `attribution` is the page of the headword it finds.",
     parameters: [Q],
     answers: [{ status: "200", description: "`results` holds the spellings, and is empty when none is close." }],
     examples: [{

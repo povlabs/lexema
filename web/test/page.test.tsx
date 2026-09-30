@@ -615,11 +615,22 @@ test("an inflected expression opens a short page: its words, and each form entry
     // The page names the Wiktionary page its lines come from: the searched word's.
     assert.match(await render(db, "vado via"), /Wiktionary page for vado, the source of this page/);
 
-    // A typo in one word of an expression offers it.
-    for (const query of ["vadoo via", "vado vja"]) {
+    // A typo in one word of an expression offers the typed words corrected,
+    // not the headword, and the offer opens their short page (Huey's hand
+    // check of 2026-09-30).
+    for (const [query, corrected] of [
+      ["vadoo via", "vado via"],
+      ["vado vja", "vado via"],
+      ["tiro fuory", "tiro fuori"],
+    ]) {
       const offer = await render(db, query);
       assert.match(offer, new RegExp(`No entry for “<span lang="it">${esc(query)}</span>”`), query);
-      assert.match(offer, /Did you mean <a class="[^"]*" href="\/\?q=andare%20via" lang="it">andare via<\/a>\?/, query);
+      assert.match(
+        offer,
+        new RegExp(`Did you mean <a class="[^"]*" href="/\\?q=${esc(encodeURIComponent(corrected))}" lang="it">${esc(corrected)}</a>\\?`),
+        query,
+      );
+      assert.match(await render(db, corrected), new RegExp(`<h1 class="${esc(WORD_HEADING)}" lang="it">${esc(corrected)}</h1>`), corrected);
     }
 
     // A sequence that is no headword is still no entry, and nearly spells none.
@@ -630,8 +641,11 @@ test("an inflected expression opens a short page: its words, and each form entry
     // One word misspelled: no entry, and the expression is offered.
     const fouri = textOf(await render(db, "tiro fouri"));
     assert.match(fouri, /No entry for “tiro fouri”/);
-    assert.match(fouri, /Did you mean tirare fuori\?/);
-    assert.match(await render(db, "vadp via"), /Did you mean <a class="[^"]*" href="\/\?q=andare%20via" lang="it">andare via<\/a>\?/);
+    assert.match(fouri, /Did you mean tiro fuori\?/);
+    // `vadp` is one edit from `vada` and `vado`: each correction is offered.
+    const vadp = await render(db, "vadp via");
+    assert.match(vadp, /Did you mean <a class="[^"]*" href="\/\?q=vada%20via" lang="it">vada via<\/a>\?/);
+    assert.match(textOf(vadp), /Other expressions\s*vado via/);
 
     // The headword searched as written is its own full entry, meanings and all.
     const plain = await render(db, "andare via");
