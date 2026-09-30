@@ -29,7 +29,7 @@ export const MARKER = "<!-- preview-deploy -->";
 export const ACTIONS_BOT = "github-actions[bot]";
 
 /** A full commit SHA, as GitHub sends one. */
-const SHA = /^[0-9a-f]{40}$/;
+export const SHA = /^[0-9a-f]{40}$/;
 
 /**
  * One preview site as Fabrika names it, the domain it answers one label below
@@ -177,16 +177,24 @@ export interface MarkerSteps {
 export type MarkerOutcome =
   | { readonly kind: "ignored"; readonly reason: string }
   | { readonly kind: "stale"; readonly sha: string }
-  | { readonly kind: "announced"; readonly pullRequests: readonly { readonly number: number; readonly comment: "created" | "updated" | "unchanged" }[] };
+  | {
+      readonly kind: "announced";
+      readonly sha: string;
+      readonly pullRequests: readonly { readonly number: number; readonly comment: "created" | "updated" | "unchanged" }[];
+    };
+
+/** Whether an `X-Robots-Tag` value says `noindex`, as every preview-stage response's does (web/worker/stage.ts). */
+export function hasNoindex(robotsTag: string | undefined): boolean {
+  return (robotsTag ?? "").split(",").some((value) => value.trim().toLowerCase() === "noindex");
+}
 
 /** Whether `site` answered as its Preview does. */
 export function isReady(site: PreviewSite, answer: Answer): boolean {
-  const noindex = (answer.robotsTag ?? "").split(",").some((value) => value.trim().toLowerCase() === "noindex");
-  return noindex && answer.status === site.readyStatus;
+  return hasNoindex(answer.robotsTag) && answer.status === site.readyStatus;
 }
 
 /** An open pull request of this repository whose head is `sha` now. */
-function isHead(pull: PullRequest, sha: string, repository: string): boolean {
+export function isHead(pull: PullRequest, sha: string, repository: string): boolean {
   return pull.state === "open" && pull.headSha === sha && pull.headRepository === repository;
 }
 
@@ -266,7 +274,44 @@ export async function announcePreview(steps: MarkerSteps): Promise<MarkerOutcome
     log(`PR #${pull.number}: preview comment ${comment}`);
     announced.push({ number: pull.number, comment });
   }
-  return announced.length === 0 ? { kind: "stale", sha: build.sha } : { kind: "announced", pullRequests: announced };
+  return announced.length === 0 ? { kind: "stale", sha: build.sha } : { kind: "announced", sha: build.sha, pullRequests: announced };
+}
+
+// --- What the smoke job reads -----------------------------------------------------
+
+/**
+ * The commit a run announced and the pull requests it announced it on. The
+ * workflow's announce job writes it as its `announced` output, and the smoke
+ * job (web/builds/previewSmokeCommand.ts) reads it back.
+ */
+export interface AnnouncedHead {
+  readonly sha: string;
+  readonly pullRequests: readonly number[];
+}
+
+/** The `announced` output for an outcome, or none when nothing was announced. */
+export function announcedOutput(outcome: MarkerOutcome): string | undefined {
+  if (outcome.kind !== "announced") return undefined;
+  const head: AnnouncedHead = { sha: outcome.sha, pullRequests: outcome.pullRequests.map(({ number }) => number) };
+  return JSON.stringify(head);
+}
+
+/** Read the `announced` output back; anything but what `announcedOutput` writes is refused. */
+export function readAnnouncedOutput(text: string): AnnouncedHead {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(text);
+  } catch {
+    throw new Error(`the announce job's output is not JSON: ${JSON.stringify(text)}`);
+  }
+  if (!isRecord(parsed) || typeof parsed.sha !== "string" || !SHA.test(parsed.sha) || !Array.isArray(parsed.pullRequests)) {
+    throw new Error(`the announce job's output names no commit and pull requests: ${JSON.stringify(text)}`);
+  }
+  const pullRequests = parsed.pullRequests.filter((number): number is number => Number.isSafeInteger(number) && number > 0);
+  if (pullRequests.length === 0 || pullRequests.length !== parsed.pullRequests.length) {
+    throw new Error(`the announce job's output names no pull request: ${JSON.stringify(text)}`);
+  }
+  return { sha: parsed.sha, pullRequests };
 }
 
 // --- GitHub's REST API ----------------------------------------------------------
@@ -276,13 +321,16 @@ const PAGE_SIZE = 100;
 /** More comments than this on one pull request is not something to page through blind. */
 const MAX_PAGES = 20;
 
-/** The `GitHub` calls over REST with `token`, for `repository` (`owner/name`). */
-export function restGitHub(token: string, repository: string, fetchUrl: typeof fetch): GitHub {
+/** One REST call on a repository's endpoints: the parsed JSON, or a throw naming the status. */
+export type RestCall = (method: string, path: string, body?: unknown) => Promise<unknown>;
+
+/** REST calls with `token` under `https://api.github.com/repos/<repository>`. */
+export function restCall(token: string, repository: string, fetchUrl: typeof fetch): RestCall {
   if (token.trim() === "") throw new Error("GITHUB_TOKEN is not set");
   if (!/^[\w.-]+\/[\w.-]+$/.test(repository)) throw new Error(`not a repository: ${JSON.stringify(repository)}`);
   const base = `https://api.github.com/repos/${repository}`;
 
-  const call = async (method: string, path: string, body?: unknown): Promise<unknown> => {
+  return async (method, path, body) => {
     const response = await fetchUrl(`${base}${path}`, {
       method,
       headers: {
@@ -296,6 +344,11 @@ export function restGitHub(token: string, repository: string, fetchUrl: typeof f
     if (!response.ok) throw new Error(`GitHub ${method} ${path} answered ${response.status}`);
     return response.json();
   };
+}
+
+/** The `GitHub` calls over REST with `token`, for `repository` (`owner/name`). */
+export function restGitHub(token: string, repository: string, fetchUrl: typeof fetch): GitHub {
+  const call = restCall(token, repository, fetchUrl);
 
   return {
     repository,
