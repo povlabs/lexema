@@ -123,6 +123,71 @@ test("calls admitted while a send is on its way stay unsent and go with the next
   assert.deepEqual(await flush(), [{ keyId: 1, day: "2026-09-27", calls: 5 }]);
 });
 
+test("a give-back takes a failed request's calls off the period and off its key's unsent day, and a day left with none is removed (#289)", async () => {
+  const { meter, admit, flush } = storage();
+  const given = { keyId: 1, calls: 3, periodStart: PERIOD, now: NOW };
+  admit({ calls: 2 });
+  admit({ calls: 3 });
+  meter().giveBack(given);
+  assert.equal(meter().periodCalls(PERIOD), 2);
+  assert.deepEqual(await flush(), [{ keyId: 1, day: "2026-09-27", calls: 2 }]);
+
+  // Another key's only request fails: its day row goes, and the flush has nothing of it.
+  admit({ keyId: 2, calls: 4 });
+  meter().giveBack({ ...given, keyId: 2, calls: 4 });
+  assert.equal(meter().periodCalls(PERIOD), 2);
+  assert.deepEqual(await flush(), []);
+});
+
+test("a give-back after the day was partly sent to D1 takes back only the unsent calls, and D1 keeps the rest (#289)", async () => {
+  const { sqlite, appDb } = freshAppDatabase();
+  const identity = verifiedIdentity("github", { subject: "give-back", verifiedEmail: "give-back@example.com", name: undefined });
+  const name = keyName("give-back");
+  assert.ok(identity !== undefined && name !== undefined);
+  const { accountId } = await signInAccount(appDb, identity, NOW);
+  const created = await createAccountKey(appDb, accountId, name, NOW);
+  assert.ok(created.outcome === "created");
+  const keyId = created.keyId;
+
+  const { meter, admit } = storage();
+  // A batch of 3 is admitted and the alarm sends its day to D1; another call is admitted; then the batch's answer fails.
+  admit({ keyId, calls: 3 });
+  await meter().flush((rows) => addUsage(appDb, rows), NOW);
+  admit({ keyId, calls: 1 });
+  meter().giveBack({ keyId, calls: 3, periodStart: PERIOD, now: NOW });
+  // The period gives back all 3; the day only the 1 call not yet sent, and D1 keeps the 3 it has.
+  assert.equal(meter().periodCalls(PERIOD), 1);
+  const flushed = async (now: number) => {
+    const sent: UnsentCalls[] = [];
+    await meter().flush(async (rows) => void sent.push(...rows), now);
+    return sent;
+  };
+  assert.deepEqual(await flushed(NOW + FLUSH_EVERY_MS), []);
+  assert.equal((await accountUsage(appDb, accountId, NOW)).total.at(-1), 3);
+  // The row is still there, sent in full: a later call adds to it and sends only itself.
+  admit({ keyId, calls: 2 });
+  assert.deepEqual(await flushed(NOW + 2 * FLUSH_EVERY_MS), [{ keyId, day: "2026-09-27", calls: 2 }]);
+  sqlite.close();
+});
+
+test("a give-back never takes the period below 0, and one for a period other than the meter's changes nothing (#289)", async () => {
+  const { meter, admit, flush } = storage();
+  const next = "2026-10-01T00:00:00.000Z";
+  admit({ calls: 2 });
+  meter().giveBack({ keyId: 1, calls: 5, periodStart: PERIOD, now: NOW });
+  assert.equal(meter().periodCalls(PERIOD), 0);
+
+  // A renewal lands between an admission and its give-back: the new period and its day keep their calls.
+  admit({ calls: 3, periodStart: next });
+  meter().giveBack({ keyId: 1, calls: 3, periodStart: PERIOD, now: NOW });
+  assert.equal(meter().periodCalls(next), 3);
+  assert.deepEqual(await flush(), [{ keyId: 1, day: "2026-09-27", calls: 3 }]);
+  // Nor does a give-back for a period the meter has not reached.
+  meter().giveBack({ keyId: 1, calls: 3, periodStart: "2026-11-01T00:00:00.000Z", now: NOW });
+  assert.equal(meter().periodCalls(next), 3);
+  assert.throws(() => meter().giveBack({ keyId: 1, calls: 0, periodStart: next, now: NOW }), /at least 1 call/);
+});
+
 test("after a flush, the account's 30-day usage in D1 shows the calls made", async () => {
   const { sqlite, appDb } = freshAppDatabase();
   const identity = verifiedIdentity("github", { subject: "meter", verifiedEmail: "meter@example.com", name: undefined });

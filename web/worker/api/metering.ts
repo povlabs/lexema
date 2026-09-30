@@ -4,14 +4,16 @@
 // (./handler.ts) reaches them only through `Metering`, so a test stands in an
 // `AccountMeter` over `node:sqlite` and fake bindings.
 
-import type { Admission, MeterAnswer } from "@lexema/api/accountMeter.ts";
+import type { Admission, GiveBack, MeterAnswer } from "@lexema/api/accountMeter.ts";
 import type { RateBinding } from "@lexema/api/accountRate.ts";
 import type { AccountMeterObject } from "./accountMeterObject.ts";
 
 /** What the handler counts an owned key's calls with. */
 export interface Metering {
-  /** The account meter's one call for this request: it admits the calls and counts them, or refuses them and counts nothing. */
+  /** The account meter's call for this request: it admits the calls and counts them, or refuses them and counts nothing. */
   admit(accountId: number, admission: Admission): Promise<MeterAnswer>;
+  /** The meter's second call, made only when an admitted request's answer fails: it takes the calls back (#289). */
+  giveBack(accountId: number, given: GiveBack): Promise<void>;
   /** The Rate Limiting binding that counts a plan rate. */
   binding(name: RateBinding): RateLimit;
 }
@@ -31,6 +33,7 @@ export const accountMeterOf = (meters: DurableObjectNamespace<AccountMeterObject
 export function meteringOver(env: MeteringBindings): Metering {
   return {
     admit: (accountId, admission) => accountMeterOf(env.ACCOUNT_METER, accountId).admit(admission),
+    giveBack: (accountId, given) => accountMeterOf(env.ACCOUNT_METER, accountId).giveBack(given),
     binding: (name) => env[name],
   };
 }

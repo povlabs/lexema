@@ -15,7 +15,8 @@
 // window (#200 R1.5). Its calls are counted against the plan's allowance for
 // its billing period by the account meter, in the one call that admits them, so
 // nothing about it is written to D1 per call; a call over the allowance is a
-// 429 naming when the period resets.
+// 429 naming when the period resets. When an admitted request's answer fails,
+// a second meter call gives its calls back to the period (#289).
 
 import type { AdmissionOutcome } from "@lexema/api/accountMeter.ts";
 import { accountRate, rateKey } from "@lexema/api/accountRate.ts";
@@ -32,9 +33,13 @@ export type LimitHeaders = Record<string, string>;
 /** Which limit refused a read request's calls: the minute's rate, or the billing period's allowance. */
 export type LimitRefusal = "rate_limited" | "allowance_exceeded";
 
-/** A read request's calls, admitted or refused, and the headers its response carries. */
+/**
+ * A read request's calls, admitted or refused, and the headers its response
+ * carries. Only admitted calls can be given back, when the answer then fails
+ * (#289); the minute keeps them either way.
+ */
 export type Admission =
-  | { admitted: true; headers: LimitHeaders }
+  | { admitted: true; headers: LimitHeaders; giveBack(): Promise<void> }
   | { admitted: false; refusal: LimitRefusal; headers: LimitHeaders; message: string };
 
 /** One key's limits, for one request. */
@@ -73,7 +78,8 @@ function adminLimits(key: ApiKey, perMinute: number, db: AppTables, now: number)
     admit: async (calls) => {
       const window = await countMinute(db, key.keyId, perMinute, calls, now);
       return window.admitted
-        ? { admitted: true, headers: window.headers() }
+        ? // Charged to its day only once answered: a failed answer has nothing to give back.
+          { admitted: true, headers: window.headers(), giveBack: async () => {} }
         : {
             admitted: false,
             refusal: "rate_limited",
@@ -106,25 +112,33 @@ function ownedLimits(keyId: number, accountId: number, limits: PlanLimits, perio
     uncounted: async () => headers,
     admit: async (calls) => {
       if (rate.countedBy === "binding" && !(await withinRate(metering.binding(rate.binding), rateKey(accountId), calls))) return overRate;
+      const periodStart = new Date(period.start).toISOString();
       const answer = await metering.admit(accountId, {
         keyId,
         calls,
-        periodStart: new Date(period.start).toISOString(),
+        periodStart,
         allowance: limits.callsPerPeriod,
         perMinute: rate.countedBy === "meter" ? rate.perMinute : null,
         now,
       });
-      return outcomeOf(answer.outcome, headers, overRate, overAllowance);
+      const giveBack = () => metering.giveBack(accountId, { keyId, calls, periodStart, now });
+      return outcomeOf(answer.outcome, headers, giveBack, overRate, overAllowance);
     },
     // The meter counted the calls when it admitted them.
     answered: async () => {},
   };
 }
 
-function outcomeOf(outcome: AdmissionOutcome, headers: LimitHeaders, overRate: Admission, overAllowance: Admission): Admission {
+function outcomeOf(
+  outcome: AdmissionOutcome,
+  headers: LimitHeaders,
+  giveBack: () => Promise<void>,
+  overRate: Admission,
+  overAllowance: Admission,
+): Admission {
   switch (outcome) {
     case "admitted":
-      return { admitted: true, headers };
+      return { admitted: true, headers, giveBack };
     case "over-rate":
       return overRate;
     case "over-allowance":
