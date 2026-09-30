@@ -7,7 +7,9 @@
 // request and returns the count, so `RateLimit-Remaining` and `RateLimit-Reset`
 // are exact, and a 429 says how long to wait.
 
-import type { LookupDatabase } from "../lookup/database.js";
+import { and, between, eq, lt, sql } from "drizzle-orm";
+import type { AppDatabase, AppTables } from "../db/app/database.js";
+import { apiKey, apiKeyMinute, apiKeyUsage } from "../db/app/schema.js";
 import { perMinuteLimit, type ApiKey } from "./keys.js";
 import { listAccountKeys } from "./ownedKeys.js";
 import { callCost, type Charge } from "./calls.js";
@@ -60,31 +62,38 @@ export class MinuteWindow {
 }
 
 /** Count one request in its key's minute and return the new count: one row per key per minute. */
-export const COUNT_MINUTE_SQL = `INSERT INTO api_key_minute (key_id, minute, requests) VALUES (?, ?, 1)
-     ON CONFLICT (key_id, minute) DO UPDATE SET requests = requests + 1
-     RETURNING requests`;
+export const countMinuteQuery = (db: AppDatabase, keyId: number, minute: number) =>
+  db
+    .insert(apiKeyMinute)
+    .values({ keyId, minute, requests: 1 })
+    .onConflictDoUpdate({ target: [apiKeyMinute.keyId, apiKeyMinute.minute], set: { requests: sql`${apiKeyMinute.requests} + 1` } })
+    .returning({ requests: apiKeyMinute.requests });
 
 /** Drop the key's finished minutes, so the table holds at most one row per key. */
-export const SWEEP_MINUTES_SQL = `DELETE FROM api_key_minute WHERE key_id = ? AND minute < ?`;
+export const sweepMinutesQuery = (db: AppDatabase, keyId: number, minute: number) =>
+  db.delete(apiKeyMinute).where(and(eq(apiKeyMinute.keyId, keyId), lt(apiKeyMinute.minute, minute)));
 
 /** Count a request against its key's current minute. */
-export async function countRequest(db: LookupDatabase, key: ApiKey, now: number): Promise<MinuteWindow> {
+export async function countRequest(db: AppTables, key: ApiKey, now: number): Promise<MinuteWindow> {
   const minute = minuteOf(now);
-  const [row] = await db.all<{ requests: number }>(COUNT_MINUTE_SQL, [key.keyId, minute]);
+  const [row] = await countMinuteQuery(db.app, key.keyId, minute);
   if (row === undefined) throw new Error(`key ${key.keyId}'s minute was not counted`);
   // The first request of a minute is the one that finds the last minute over.
-  if (row.requests === 1) await db.all(SWEEP_MINUTES_SQL, [key.keyId, minute]);
+  if (row.requests === 1) await sweepMinutesQuery(db.app, key.keyId, minute);
   return new MinuteWindow(perMinuteLimit(key), row.requests, minute, now);
 }
 
 /** Add a request's calls to its key's row for the day. */
-export const CHARGE_CALLS_SQL = `INSERT INTO api_key_usage (key_id, day, calls) VALUES (?, ?, ?)
-     ON CONFLICT (key_id, day) DO UPDATE SET calls = calls + excluded.calls
-     RETURNING calls`;
+export const chargeCallsQuery = (db: AppDatabase, keyId: number, day: string, calls: number) =>
+  db
+    .insert(apiKeyUsage)
+    .values({ keyId, day, calls })
+    .onConflictDoUpdate({ target: [apiKeyUsage.keyId, apiKeyUsage.day], set: { calls: sql`${apiKeyUsage.calls} + excluded.calls` } })
+    .returning({ calls: apiKeyUsage.calls });
 
 /** Charge an answered request's calls to its key's day, and return the day's total. */
-export async function chargeCalls(db: LookupDatabase, key: ApiKey, charge: Charge, now: number): Promise<number> {
-  const [row] = await db.all<{ calls: number }>(CHARGE_CALLS_SQL, [key.keyId, dayOf(now), callCost(charge)]);
+export async function chargeCalls(db: AppTables, key: ApiKey, charge: Charge, now: number): Promise<number> {
+  const [row] = await chargeCallsQuery(db.app, key.keyId, dayOf(now), callCost(charge));
   if (row === undefined) throw new Error(`key ${key.keyId}'s calls were not recorded`);
   return row.calls;
 }
@@ -99,9 +108,12 @@ export const usageDays = (now: number): string[] =>
   Array.from({ length: USAGE_WINDOW_DAYS }, (_, i) => dayOf(now - (USAGE_WINDOW_DAYS - 1 - i) * DAY_MS));
 
 /** An account's recorded days in a window: each key's rows through `api_key_by_owner` and the usage primary key. */
-export const ACCOUNT_USAGE_SQL = `SELECT api_key_usage.key_id, api_key_usage.day, api_key_usage.calls
-       FROM api_key JOIN api_key_usage ON api_key_usage.key_id = api_key.key_id
-      WHERE api_key.owner_account_id = ? AND api_key_usage.day BETWEEN ? AND ?`;
+export const accountUsageQuery = (db: AppDatabase, accountId: number, first: string, last: string) =>
+  db
+    .select({ key_id: apiKeyUsage.keyId, day: apiKeyUsage.day, calls: apiKeyUsage.calls })
+    .from(apiKey)
+    .innerJoin(apiKeyUsage, eq(apiKeyUsage.keyId, apiKey.keyId))
+    .where(and(eq(apiKey.ownerAccountId, accountId), between(apiKeyUsage.day, first, last)));
 
 /** One key's calls on each day of the window, in the window's order. */
 export interface KeyUsage {
@@ -140,14 +152,10 @@ export class AccountUsage {
 }
 
 /** The account's usage for the window ending today, its keys in `listAccountKeys` order. */
-export async function accountUsage(db: LookupDatabase, accountId: number, now: number): Promise<AccountUsage> {
+export async function accountUsage(db: AppTables, accountId: number, now: number): Promise<AccountUsage> {
   const days = usageDays(now);
   const keys = await listAccountKeys(db, accountId);
-  const rows = await db.all<{ key_id: number; day: string; calls: number }>(ACCOUNT_USAGE_SQL, [
-    accountId,
-    days[0],
-    days[days.length - 1],
-  ]);
+  const rows = await accountUsageQuery(db.app, accountId, days[0], days[days.length - 1]);
   return AccountUsage.of(
     days,
     keys.map((key) => key.keyId),

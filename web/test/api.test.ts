@@ -18,12 +18,12 @@ import { applyAppMigrations } from "../../src/db/app/migrations.js";
 import { signInAccount, verifiedIdentity } from "../../src/accounts/accounts.js";
 import { ALL_ENDPOINTS, onlyEndpoints, type KeyAccess } from "../../src/api/keyAccess.js";
 import { runKeyCommand } from "../../src/api/keyCli.js";
-import { ACCEPT_KEY_SQL, createKey, hashApiKey, revokeKey } from "../../src/api/keys.js";
+import { createKey, hashApiKey, revokeKey } from "../../src/api/keys.js";
 import { createAccountKey, keyName, listAccountKeys } from "../../src/api/ownedKeys.js";
 import type { Endpoint } from "../../src/api/calls.js";
-import { accountUsage, COUNT_MINUTE_SQL, SWEEP_MINUTES_SQL, USAGE_WINDOW_DAYS } from "../../src/api/usage.js";
+import { accountUsage, USAGE_WINDOW_DAYS } from "../../src/api/usage.js";
 import { seedSql } from "../../src/import/seedSql.js";
-import { fromNodeSqlite, type LookupDatabase } from "../../src/lookup/database.js";
+import { fromNodeSqlite, type TransactionalDatabase } from "../../src/lookup/database.js";
 import { lookup } from "../../src/lookup/lookup.js";
 import { findNearby } from "../../src/lookup/nearby.js";
 import { suggest } from "../../src/lookup/suggest.js";
@@ -39,7 +39,7 @@ const NOW = Date.parse("2026-09-27T12:00:20Z");
 
 let dir: string;
 let sqlite: DatabaseSync;
-let db: LookupDatabase;
+let db: TransactionalDatabase;
 
 before(async () => {
   dir = await mkdtemp(join(tmpdir(), "lexema-api-"));
@@ -257,10 +257,7 @@ test("a 405, an unknown endpoint and a failed answer carry the key's limit heade
   assert.deepEqual(limitHeaders(unknown), ["10", "8", "40", null]);
 
   // The key is read and its minute counted; the lookup's own read then fails.
-  const counting = new Set([ACCEPT_KEY_SQL, COUNT_MINUTE_SQL, SWEEP_MINUTES_SQL]);
-  const failing: LookupDatabase = {
-    all: (sql, params) => (counting.has(sql) ? db.all(sql, params) : Promise.reject(new Error("D1 is down"))),
-  };
+  const failing: TransactionalDatabase = { ...db, all: () => Promise.reject(new Error("D1 is down")) };
   t.mock.method(console, "error", () => {});
   const failed = await call("/v1/lookup?q=casa", key, NOW, "GET", failing);
   assert.equal(failed.status, 503);
@@ -300,12 +297,19 @@ test("each host reaches its own site: lexema.fyi the pages as before, api.lexema
     SIGN_IN_LIMIT: new CountingRateLimit(),
     KEY_CREATE_LIMIT: new CountingRateLimit(),
   };
-  // D1's shape over the same database: prepare, bind, all.
+  // D1's shape over the same database: prepare, bind, and all, raw or run,
+  // which is how lookup and Drizzle reach it.
+  const bound = (sql: string, params: (string | number | null)[]) => ({
+    all: async () => ({ results: sqlite.prepare(sql).all(...params) }),
+    raw: async () => {
+      const statement = sqlite.prepare(sql);
+      statement.setReturnArrays(true);
+      return statement.all(...params);
+    },
+    run: async () => (sqlite.prepare(sql).run(...params), { success: true }),
+  });
   const d1 = {
-    prepare: (sql: string) => ({
-      bind: (...params: (string | number | null)[]) => ({ all: async () => ({ results: sqlite.prepare(sql).all(...params) }) }),
-      all: async () => ({ results: sqlite.prepare(sql).all() }),
-    }),
+    prepare: (sql: string) => ({ ...bound(sql, []), bind: (...params: (string | number | null)[]) => bound(sql, params) }),
   };
   const env = { ...limits, DB: d1 as unknown as D1Database, LEXEMA_RELEASE: RELEASE } satisfies ApiBindings & LimitBindings;
   const appSaw: Request[] = [];
