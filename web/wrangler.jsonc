@@ -68,6 +68,9 @@
     { "name": "KEY_CREATE_LIMIT", "namespace_id": "1681", "simple": { "limit": 5, "period": 60 } }
   ],
   "vars": {
+    // Where this Worker runs: local, preview or production (ADR 0018,
+    // worker/stage.ts). Any other value refuses to boot.
+    "LEXEMA_STAGE": "local",
     // Which imported release to serve. A deployment flips this to activate a
     // new one; doing that safely is #18.
     "LEXEMA_RELEASE": "it-dev",
@@ -82,6 +85,54 @@
     "GOOGLE_CLIENT_ID": "",
     "GITHUB_CLIENT_ID": ""
   },
+  // Every Worker Preview's settings (ADR 0018). A Preview takes its bindings
+  // from this block alone, never from the top level or env.production, and
+  // `wrangler preview` reads it from the built config. Wrangler copies it into
+  // env.production, so either build carries it.
+  "previews": {
+    "vars": {
+      "LEXEMA_STAGE": "preview",
+      "LEXEMA_RELEASE": "it-0c432803",
+      "TURNSTILE_SITE_KEY": "",
+      "GOOGLE_CLIENT_ID": "",
+      "GITHUB_CLIENT_ID": ""
+    },
+    "d1_databases": [
+      // The shared dictionary production and every Preview read, and code never
+      // writes (src/lookup/database.ts). Huey's upload, id posted on #172.
+      {
+        "binding": "DB",
+        "database_name": "lexema-dictionary",
+        "database_id": "b07d3441-91c6-4f94-8ae3-fe8c7088f21d"
+      },
+      // This branch's own app database. The Workers Builds preview command
+      // (web/builds/previewCommand.ts) finds or creates
+      // lexema-preview-app-<name>, writes its name and id here in the built
+      // config and applies the app migrations to it. `wrangler preview`
+      // refuses to run while <REPLACE_ME> is still here, so no Preview falls
+      // back on another's. No migrations_dir: the build does not rebase paths
+      // inside this block, so one here would name a folder that is not there.
+      {
+        "binding": "APP_DB",
+        "database_name": "lexema-preview-app",
+        "database_id": "<REPLACE_ME>"
+      }
+    ],
+    // The same limits as production, under their own namespace ids, so a
+    // Preview's traffic never counts against a production visitor.
+    // web/test/preview.test.ts fails if an id is shared.
+    "ratelimits": [
+      { "name": "SEARCH_LIMIT", "namespace_id": "91281", "simple": { "limit": 15, "period": 60 } },
+      { "name": "SUGGEST_LIMIT", "namespace_id": "91282", "simple": { "limit": 120, "period": 60 } },
+      { "name": "REPORT_LIMIT", "namespace_id": "91283", "simple": { "limit": 2, "period": 60 } },
+      { "name": "REPORT_OPEN_LIMIT", "namespace_id": "91284", "simple": { "limit": 10, "period": 60 } },
+      { "name": "SIGN_IN_LIMIT", "namespace_id": "91651", "simple": { "limit": 10, "period": 60 } },
+      { "name": "KEY_CREATE_LIMIT", "namespace_id": "91681", "simple": { "limit": 5, "period": 60 } }
+    ],
+    // Preview email sends to Huey's verified address and nowhere else:
+    // destination_address restricts the binding to that one recipient.
+    "send_email": [{ "name": "EMAIL", "destination_address": "itshuseyingulec@gmail.com" }]
+  },
   "env": {
     // What runs at https://lexema.fyi, https://developers.lexema.fyi and
     // https://api.lexema.fyi: one Worker, which tells the three apart by host
@@ -89,7 +140,9 @@
     // which `pnpm --filter @lexema/web run deploy:production` sets
     // (docs/DEPLOY.md). Only the custom domains serve it: no workers.dev
     // address and no preview URLs. No D1 binding until #19, so a search there
-    // answers with the failed-lookup state.
+    // answers with the failed-lookup state. The last three routes serve
+    // Previews only, never production (ADR 0018, Cloudflare's "Previews,
+    // custom domains"): a Preview answers one label below each.
     "production": {
       "name": "lexema-web",
       "workers_dev": false,
@@ -97,7 +150,10 @@
       "routes": [
         { "pattern": "lexema.fyi", "custom_domain": true },
         { "pattern": "developers.lexema.fyi", "custom_domain": true },
-        { "pattern": "api.lexema.fyi", "custom_domain": true }
+        { "pattern": "api.lexema.fyi", "custom_domain": true },
+        { "pattern": "preview.lexema.fyi", "custom_domain": true, "previews_enabled": true, "enabled": false },
+        { "pattern": "developers-preview.lexema.fyi", "custom_domain": true, "previews_enabled": true, "enabled": false },
+        { "pattern": "api-preview.lexema.fyi", "custom_domain": true, "previews_enabled": true, "enabled": false }
       ],
       // Empty on purpose. Wrangler warns at build that the top-level DB and
       // APP_DB have no counterpart here; that absence is what is live until #19.
@@ -111,6 +167,7 @@
         { "name": "KEY_CREATE_LIMIT", "namespace_id": "1681", "simple": { "limit": 5, "period": 60 } }
       ],
       "vars": {
+        "LEXEMA_STAGE": "production",
         "LEXEMA_RELEASE": "it-dev",
         "TURNSTILE_SITE_KEY": "",
         "GOOGLE_CLIENT_ID": "",

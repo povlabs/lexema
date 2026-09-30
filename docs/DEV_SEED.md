@@ -17,6 +17,7 @@ app tables in the local app database, `APP_DB`, and never in the dictionary
 | `SEED_SQL` | `.data/dev-sql` | directory for the SQL parts and `rejections.tsv` |
 | `SEED_STATE` | `.data/seed-state` | isolated Wrangler D1 persist directory, holding both `DB` and `APP_DB` |
 | `SEED_PART_BYTES` | `67108864` (64 MiB) | byte ceiling for one SQL part |
+| `SEED_REMOTE` | unset | a remote D1's name, such as `lexema-dictionary`; loads the dictionary there instead of locally, and refuses `SEED_STATE` beside it ([RUN_AN_IMPORT.md § Load a release into Cloudflare D1](RUN_AN_IMPORT.md#load-a-release-into-cloudflare-d1)) |
 | `RAW_PAGES` | the dump in the repository root if present, else `fixtures/` | where the recovered layer reads raw pages: a dump path, or `fixtures` |
 
 The demo's `web/.wrangler` directory is never touched. The seed clears only
@@ -96,9 +97,10 @@ the parts an earlier seed left in `SEED_SQL`.
 The fifty-word fixture is 1.9 MB of SQL, so it is one part, byte for byte the
 single file the seeder wrote before parts existed.
 
-After the last part, the seeder applies the app migrations to `APP_DB` and
-reads back both databases' tables: it stops if any app table is in `DB` or
-missing from `APP_DB`. It then counts the rows of every table the batches
+After the last part, the seeder reads back the dictionary's tables and stops
+if any app table is in `DB`. A local seed then applies the app migrations to
+`APP_DB` and stops if any app table is missing from it; a remote seed builds no
+app table. It then counts the rows of every table the batches
 wrote and checks them against the generated SQL. It then reads the one
 `source_release` row, which is written outside the batches, and checks that
 exactly one exists and that its status and line counts match what the run
@@ -136,7 +138,8 @@ recover definitions the extraction dropped
 ([ADR 0012](../.decisions/0012-archive-is-the-release-seed.md)): the dump the
 archive was built from, or the pages committed under `fixtures/`. This development fixture exists so a
 fresh clone can seed without `it-extract.jsonl.gz` or a data-repository checkout.
-Loading a complete release into deployed D1 remains #18.
+Loading a release into the shared remote dictionary D1 is in
+[RUN_AN_IMPORT.md § Load a release into Cloudflare D1](RUN_AN_IMPORT.md#load-a-release-into-cloudflare-d1).
 
 **A database seeded before recovered definitions existed must be reseeded.**
 Lookup reads the `raw_page` and `recovered_definition` tables for every reading,

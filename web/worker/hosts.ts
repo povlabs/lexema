@@ -14,6 +14,13 @@
 // the live Worker is reached only through its custom domains
 // (web/wrangler.jsonc), so those names are never answered in production.
 //
+// A Preview (ADR 0018) answers the same three sites on preview-only hosts:
+// `<name>.preview.lexema.fyi`, `<name>.developers-preview.lexema.fyi` and
+// `<name>.api-preview.lexema.fyi`, where `<name>` is the Preview's name or, for
+// one deployment, `<deployment-id>-<name>` (Cloudflare, "Previews, custom
+// domains"). Those domains are routes that serve Previews only
+// (web/wrangler.jsonc), so production is never asked for them.
+//
 // One local-only route: Google refuses a redirect URI on `developers.localhost`,
 // since a subdomain's top-level domain must be a public suffix, but accepts
 // `localhost`. So locally Google's callback is on `localhost`, which relays
@@ -34,6 +41,19 @@ export const ORIGIN: Readonly<Record<Site, string>> = {
 
 /** What each site's host puts in front of the domain. */
 const SUBDOMAIN: Readonly<Record<Site, string>> = { lexema: "", developers: "developers.", api: "api." };
+
+/**
+ * Each site's preview-only domain. A Preview answers one DNS label below it:
+ * its name, or `<deployment-id>-<name>` for one deployment.
+ */
+export const PREVIEW_DOMAIN: Readonly<Record<Site, string>> = {
+  lexema: "preview.lexema.fyi",
+  developers: "developers-preview.lexema.fyi",
+  api: "api-preview.lexema.fyi",
+};
+
+/** One DNS label: what a Preview's name, with or without its deployment id, is. */
+const PREVIEW_LABEL = /^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/;
 
 /** The domain local development answers under. */
 const LOCAL_DOMAIN = "localhost";
@@ -68,14 +88,24 @@ export type Destination =
   /** Nothing is here: answered as the named site answers a missing path. */
   | { to: "not-found"; site: "lexema" | "api" };
 
+const SITES = Object.keys(SUBDOMAIN) as Site[];
+
+/** The site a Preview host names, or none for a host that is not one. */
+function previewSiteOf(hostname: string): Site | undefined {
+  const dot = hostname.indexOf(".");
+  if (dot < 0 || !PREVIEW_LABEL.test(hostname.slice(0, dot))) return undefined;
+  const domain = hostname.slice(dot + 1);
+  return SITES.find((site) => PREVIEW_DOMAIN[site] === domain);
+}
+
 /** The site a URL's host names. Any other host is the dictionary's. */
 function siteOf(url: URL): Site {
   for (const domain of DOMAINS) {
-    for (const site of Object.keys(SUBDOMAIN) as Site[]) {
+    for (const site of SITES) {
       if (url.hostname === `${SUBDOMAIN[site]}${domain}`) return site;
     }
   }
-  return "lexema";
+  return previewSiteOf(url.hostname) ?? "lexema";
 }
 
 /** This URL's origin with the host of `site` on the local domain, keeping the port. */
