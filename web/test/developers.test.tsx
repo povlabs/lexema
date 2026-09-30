@@ -21,12 +21,11 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { applyAppMigrations } from "../../src/db/app/migrations.js";
 import { signInAccount, verifiedIdentity } from "../../src/accounts/accounts.js";
 import { ALL_ENDPOINTS, onlyEndpoints, type KeyAccess } from "../../src/api/keyAccess.js";
-import { ACCEPT_KEY_SQL, createKey, revokeKey } from "../../src/api/keys.js";
+import { createKey, revokeKey } from "../../src/api/keys.js";
 import { createAccountKey, keyName } from "../../src/api/ownedKeys.js";
 import { API_PREFIX, ENDPOINTS } from "../../src/api/calls.js";
-import { COUNT_MINUTE_SQL, SWEEP_MINUTES_SQL } from "../../src/api/usage.js";
 import { seedSql } from "../../src/import/seedSql.js";
-import { fromNodeSqlite, type LookupDatabase } from "../../src/lookup/database.js";
+import { fromNodeSqlite, type TransactionalDatabase } from "../../src/lookup/database.js";
 import { loadFixturePages } from "../../src/source/rawPage.js";
 import {
   API_BASE,
@@ -53,7 +52,7 @@ const NOW = Date.parse("2026-09-27T12:00:20Z");
 
 let dir: string;
 let sqlite: DatabaseSync;
-let db: LookupDatabase;
+let db: TransactionalDatabase;
 
 before(async () => {
   dir = await mkdtemp(join(tmpdir(), "lexema-developers-"));
@@ -140,10 +139,7 @@ test("every error the docs list is one the API answers, with that status and cod
   assert.ok(lookup !== undefined);
   const lookupOnly = await ownedKey({ endpoints: lookup, expiresAt: null });
   // The key is read and its minute counted; the lookup's own read then fails.
-  const counting = new Set([ACCEPT_KEY_SQL, COUNT_MINUTE_SQL, SWEEP_MINUTES_SQL]);
-  const failing: LookupDatabase = {
-    all: (sql, params) => (counting.has(sql) ? db.all(sql, params) : Promise.reject(new Error("D1 is down"))),
-  };
+  const failing: TransactionalDatabase = { ...db, all: () => Promise.reject(new Error("D1 is down")) };
   t.mock.method(console, "error", () => {});
 
   const earned: Record<string, () => Promise<Response>> = {

@@ -3,11 +3,12 @@
 // an endpoint (./endpoints.ts) owns only its answer.
 
 import type { Charge } from "@lexema/api/calls.ts";
-import type { LookupDatabase } from "@lexema/lookup/database.ts";
+import type { TransactionalDatabase } from "@lexema/lookup/database.ts";
 
 /** What one request needs from the Worker around it. */
 export interface ApiContext {
-  db: LookupDatabase;
+  /** The dictionary through its raw SQL, and the key and usage tables through Drizzle. */
+  db: TransactionalDatabase;
   /** The release this Worker serves. */
   releaseId: string;
   /** The server's clock, milliseconds since the epoch. */

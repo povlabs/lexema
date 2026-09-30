@@ -7,17 +7,18 @@ import test from "node:test";
 import { DatabaseSync } from "node:sqlite";
 import { fileURLToPath } from "node:url";
 import { applyAppMigrations } from "../src/db/app/migrations.js";
+import { drizzleOverNodeSqlite } from "../src/db/app/nodeSqlite.js";
 import { runKeyCommand } from "../src/api/keyCli.js";
 import {
-  ACCEPT_KEY_SQL,
-  INSERT_KEY_SQL,
-  KEY_BY_HASH_SQL,
-  KEY_BY_ID_SQL,
-  REVOKE_KEY_SQL,
+  acceptKeyQuery,
   authenticate,
   hashApiKey,
+  insertKeyQuery,
+  keyByHashQuery,
+  keyByIdQuery,
+  revokeKeyQuery,
 } from "../src/api/keys.js";
-import { CHARGE_CALLS_SQL, COUNT_MINUTE_SQL, SWEEP_MINUTES_SQL } from "../src/api/usage.js";
+import { chargeCallsQuery, countMinuteQuery, sweepMinutesQuery } from "../src/api/usage.js";
 import { fromNodeSqlite } from "../src/lookup/database.js";
 
 const SCHEMA = readFileSync(fileURLToPath(new URL("../src/db/schema.sql", import.meta.url)), "utf8");
@@ -30,36 +31,73 @@ function schemaDb(): DatabaseSync {
   return db;
 }
 
+/** A Drizzle statement, as SQL and the values it binds. */
+type Built = { toSQL(): { sql: string; params: unknown[] } };
+
 test("every key, minute and usage read or write is on a primary key or an index", () => {
   const db = schemaDb();
-  const planOf = (sql: string, params: (string | number)[]) =>
-    (db.prepare(`EXPLAIN QUERY PLAN ${sql}`).all(...params) as { detail: string }[]).map((row) => row.detail);
+  const app = fromNodeSqlite(db).app;
+  const at = new Date(NOW).toISOString();
+  const planOf = (statement: Built) => {
+    const { sql, params } = statement.toSQL();
+    return (db.prepare(`EXPLAIN QUERY PLAN ${sql}`).all(...(params as (string | number | null)[])) as { detail: string }[]).map(
+      (row) => row.detail,
+    );
+  };
 
   // Reads and updates: a SEARCH through the key's index, never a SCAN.
-  const searches: [string, (string | number)[], RegExp][] = [
-    [KEY_BY_HASH_SQL, ["0".repeat(64)], /SEARCH api_key USING (COVERING )?INDEX sqlite_autoindex_api_key_1 \(key_hash=\?\)/],
-    [ACCEPT_KEY_SQL, [new Date(NOW).toISOString(), "0".repeat(64), new Date(NOW).toISOString()], /SEARCH api_key USING INDEX sqlite_autoindex_api_key_1 \(key_hash=\?\)/],
-    [KEY_BY_ID_SQL, [1], /SEARCH api_key USING INTEGER PRIMARY KEY \(rowid=\?\)/],
-    [REVOKE_KEY_SQL, [new Date(NOW).toISOString(), 1], /SEARCH api_key USING INTEGER PRIMARY KEY \(rowid=\?\)/],
-    [SWEEP_MINUTES_SQL, [1, 100], /SEARCH api_key_minute USING (COVERING )?INDEX sqlite_autoindex_api_key_minute_1 \(key_id=\? AND minute<\?\)/],
+  const searches: [Built, RegExp][] = [
+    [keyByHashQuery(app, "0".repeat(64)), /SEARCH api_key USING (COVERING )?INDEX sqlite_autoindex_api_key_1 \(key_hash=\?\)/],
+    [acceptKeyQuery(app, "0".repeat(64), at), /SEARCH api_key USING INDEX sqlite_autoindex_api_key_1 \(key_hash=\?\)/],
+    [keyByIdQuery(app, 1), /SEARCH api_key USING INTEGER PRIMARY KEY \(rowid=\?\)/],
+    [revokeKeyQuery(app, 1, at), /SEARCH api_key USING INTEGER PRIMARY KEY \(rowid=\?\)/],
+    [sweepMinutesQuery(app, 1, 100), /SEARCH api_key_minute USING (COVERING )?INDEX sqlite_autoindex_api_key_minute_1 \(key_id=\? AND minute<\?\)/],
   ];
-  for (const [sql, params, expected] of searches) {
-    const plan = planOf(sql, params);
-    assert.ok(plan.some((step) => expected.test(step)), `${sql}\n${plan.join("\n")}`);
-    assert.ok(!plan.some((step) => /\bSCAN\b/.test(step)), `${sql}\n${plan.join("\n")}`);
+  for (const [statement, expected] of searches) {
+    const plan = planOf(statement);
+    assert.ok(plan.some((step) => expected.test(step)), `${statement.toSQL().sql}\n${plan.join("\n")}`);
+    assert.ok(!plan.some((step) => /\bSCAN\b/.test(step)), `${statement.toSQL().sql}\n${plan.join("\n")}`);
   }
 
   // Inserts and upserts scan nothing: a key's insert checks its counters'
   // foreign keys through their primary keys, and SQLite accepts an upsert's
   // conflict target only when a primary key or unique index backs it.
-  for (const [sql, params] of [
-    [INSERT_KEY_SQL, ["0".repeat(64), "k", 1, "t", "lx_00000000"]],
-    [COUNT_MINUTE_SQL, [1, 100]],
-    [CHARGE_CALLS_SQL, [1, "2026-09-27", 2]],
-  ] as const) {
-    const plan = planOf(sql, [...params]);
-    assert.ok(!plan.some((step) => /\bSCAN\b/.test(step)), `${sql}\n${plan.join("\n")}`);
+  for (const statement of [
+    insertKeyQuery(app, "0".repeat(64), { label: "k", perMinuteLimit: 1 }, "t", "lx_00000000"),
+    countMinuteQuery(app, 1, 100),
+    chargeCallsQuery(app, 1, "2026-09-27", 2),
+  ]) {
+    const plan = planOf(statement);
+    assert.ok(!plan.some((step) => /\bSCAN\b/.test(step)), `${statement.toSQL().sql}\n${plan.join("\n")}`);
   }
+});
+
+test("a key stored before its reads moved onto Drizzle still authenticates, in the one statement that stamps its use", async () => {
+  // The row as the raw INSERT of the slice before stored it: an admin key from
+  // before #187, with no endpoints or expiry of its own.
+  const sqlite = schemaDb();
+  const key = `lx_${"7f3a9c1d".repeat(8)}`;
+  sqlite
+    .prepare(
+      `INSERT INTO api_key (key_hash, label, per_minute_limit, created_at, display_prefix)
+       VALUES (?, 'learning app', 60, '2026-09-01T00:00:00.000Z', ?)`,
+    )
+    .run(await hashApiKey(key), key.slice(0, 11));
+  const before = { ...sqlite.prepare("SELECT * FROM api_key").get() };
+  // Every statement Drizzle sends, on its way to the database.
+  const sent: string[] = [];
+  const watched = new Proxy(sqlite, {
+    get: (target, property) =>
+      property === "prepare" ? (sql: string) => (sent.push(sql), target.prepare(sql)) : Reflect.get(target, property, target),
+  });
+
+  assert.deepEqual(await authenticate({ app: drizzleOverNodeSqlite(watched) }, key, NOW), {
+    outcome: "accepted",
+    key: { keyId: 1, label: "learning app", holder: { kind: "admin", perMinuteLimit: 60 }, endpoints: { kind: "all" } },
+  });
+  assert.deepEqual({ ...sqlite.prepare("SELECT * FROM api_key").get() }, { ...before, last_used_at: new Date(NOW).toISOString() });
+  assert.equal(sent.length, 1, sent.join("\n"));
+  assert.match(sent[0], /^update "api_key" set "last_used_at" = \? where .* returning /);
 });
 
 test("the key CLI prints a new key once, stores only its hash, and revokes it", async () => {

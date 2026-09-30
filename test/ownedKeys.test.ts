@@ -9,30 +9,30 @@ import { DatabaseSync } from "node:sqlite";
 import { fileURLToPath } from "node:url";
 import { applyAppMigrations } from "../src/db/app/migrations.js";
 import {
-  DELETE_ACCOUNT_IDENTITIES_SQL,
-  DELETE_ACCOUNT_SESSIONS_SQL,
-  MARK_ACCOUNT_DELETED_SQL,
   deleteAccount,
+  deleteAccountIdentitiesQuery,
+  deleteAccountSessionsQuery,
+  markAccountDeletedQuery,
   signInAccount,
   verifiedIdentity,
 } from "../src/accounts/accounts.js";
 import { ALL_ENDPOINTS, expiresAt, onlyEndpoints } from "../src/api/keyAccess.js";
 import { authenticate, createKey, hashApiKey, type ApiKey } from "../src/api/keys.js";
 import {
-  ACCOUNT_KEYS_SQL,
+  accountKeysQuery,
   createAccountKey,
-  INSERT_OWNED_KEY_SQL,
+  insertOwnedKeyQuery,
   KEY_NAME_MAX,
   keyName,
   listAccountKeys,
-  OWNED_KEY_SQL,
-  REVOKE_ACCOUNT_KEYS_SQL,
-  REVOKE_OWNED_KEY_SQL,
+  ownedKeyQuery,
   revokeAccountKey,
+  revokeAllAccountKeys,
+  revokeOwnedKeyQuery,
   type KeyName,
 } from "../src/api/ownedKeys.js";
-import { ACCOUNT_USAGE_SQL, accountUsage, chargeCalls, USAGE_WINDOW_DAYS } from "../src/api/usage.js";
-import { fromNodeSqlite, type LookupDatabase } from "../src/lookup/database.js";
+import { accountUsage, accountUsageQuery, chargeCalls, USAGE_WINDOW_DAYS } from "../src/api/usage.js";
+import { fromNodeSqlite, type TransactionalDatabase } from "../src/lookup/database.js";
 
 const SCHEMA = readFileSync(fileURLToPath(new URL("../src/db/schema.sql", import.meta.url)), "utf8");
 const NOW = Date.parse("2026-09-28T12:00:00Z");
@@ -52,7 +52,7 @@ const name = (text: string): KeyName => {
 };
 
 /** A new account signed in under this email. */
-async function account(db: LookupDatabase, email: string): Promise<number> {
+async function account(db: TransactionalDatabase, email: string): Promise<number> {
   const identity = verifiedIdentity("github", { subject: email, verifiedEmail: email, name: undefined });
   assert.ok(identity !== undefined);
   return (await signInAccount(db, identity, NOW)).accountId;
@@ -73,7 +73,7 @@ function signedIn(sqlite: DatabaseSync, accountId: number): string {
 const sessionAccount = (sqlite: DatabaseSync, token: string): number | undefined =>
   (sqlite.prepare("SELECT account_id FROM developer_session WHERE token = ?").get(token) as { account_id: number } | undefined)?.account_id;
 
-async function ownedKey(db: LookupDatabase, accountId: number, label: string, now = NOW) {
+async function ownedKey(db: TransactionalDatabase, accountId: number, label: string, now = NOW) {
   const created = await createAccountKey(db, accountId, name(label), now);
   assert.equal(created.outcome, "created");
   return created;
@@ -81,21 +81,27 @@ async function ownedKey(db: LookupDatabase, accountId: number, label: string, no
 
 test("every owned-key, usage and deletion statement is on a primary key or an index", () => {
   const db = schemaDb();
-  const planOf = (sql: string, params: (string | number)[]) =>
-    (db.prepare(`EXPLAIN QUERY PLAN ${sql}`).all(...params) as { detail: string }[]).map((row) => row.detail).join("\n");
+  const app = fromNodeSqlite(db).app;
+  const planOf = (sql: string, params: unknown[]) =>
+    (db.prepare(`EXPLAIN QUERY PLAN ${sql}`).all(...(params as (string | number | null)[])) as { detail: string }[])
+      .map((row) => row.detail)
+      .join("\n");
   const at = new Date(NOW).toISOString();
-  const cases: [string, (string | number)[]][] = [
-    [ACCOUNT_KEYS_SQL, [1]],
-    [INSERT_OWNED_KEY_SQL, ["0".repeat(64), "k", at, "lx_00000000", "[\"lookup\"]", at, 1]],
-    [REVOKE_OWNED_KEY_SQL, [at, 1, 1]],
-    [OWNED_KEY_SQL, [1, 1]],
-    [REVOKE_ACCOUNT_KEYS_SQL, [at, 1]],
-    [ACCOUNT_USAGE_SQL, [1, "2026-08-30", "2026-09-28"]],
-    [MARK_ACCOUNT_DELETED_SQL, [at, 1]],
-    [DELETE_ACCOUNT_SESSIONS_SQL, [1]],
-    [DELETE_ACCOUNT_IDENTITIES_SQL, [1]],
+  const lookup = onlyEndpoints(["lookup"]);
+  assert.ok(lookup !== undefined);
+  const statements = [
+    accountKeysQuery(app, 1),
+    insertOwnedKeyQuery(app, 1, { hash: "0".repeat(64), name: name("k"), createdAt: at, displayPrefix: "lx_00000000", access: { endpoints: lookup, expiresAt: at } }),
+    revokeOwnedKeyQuery(app, 1, 1, at),
+    ownedKeyQuery(app, 1, 1),
+    revokeAllAccountKeys(app, 1, NOW),
+    accountUsageQuery(app, 1, "2026-08-30", "2026-09-28"),
+    markAccountDeletedQuery(app, 1, at),
+    deleteAccountSessionsQuery(app, 1),
+    deleteAccountIdentitiesQuery(app, 1),
   ];
-  for (const [sql, params] of cases) {
+  for (const statement of statements) {
+    const { sql, params } = statement.toSQL();
     const plan = planOf(sql, params);
     assert.doesNotMatch(plan, /\bSCAN\b/, `${sql}\n${plan}`);
   }

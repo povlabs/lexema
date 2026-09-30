@@ -7,7 +7,9 @@
 // (src/api/ownedKeys.ts) and carries no limit: its rate is its account's
 // (#161). Both are this one kind of row, answered the same way.
 
-import type { LookupDatabase } from "../lookup/database.js";
+import { and, eq, gt, isNull, or } from "drizzle-orm";
+import type { AppDatabase, AppTables } from "../db/app/database.js";
+import { apiKey } from "../db/app/schema.js";
 import { endpointsOfColumn, type EndpointScope } from "./keyAccess.js";
 
 /** Every key starts with this, so a leaked one is recognisable as Lexema's. */
@@ -61,19 +63,28 @@ export interface ApiKey {
 export const perMinuteLimit = (key: ApiKey): number =>
   key.holder.kind === "admin" ? key.holder.perMinuteLimit : OWNED_KEY_PER_MINUTE;
 
+/** What a key is read with when it is accepted. */
+const KEY_COLUMNS = {
+  keyId: apiKey.keyId,
+  label: apiKey.label,
+  perMinuteLimit: apiKey.perMinuteLimit,
+  ownerAccountId: apiKey.ownerAccountId,
+  endpoints: apiKey.endpoints,
+};
+
 interface KeyRow {
-  key_id: number;
+  keyId: number;
   label: string;
-  per_minute_limit: number | null;
-  owner_account_id: number | null;
+  perMinuteLimit: number | null;
+  ownerAccountId: number | null;
   endpoints: string | null;
 }
 
 /** A stored key's holder. The schema holds `per_minute_limit` exactly when there is no owner. */
 function holderOf(row: KeyRow): KeyHolder {
-  if (row.owner_account_id !== null) return { kind: "owned", accountId: row.owner_account_id };
-  if (row.per_minute_limit === null) throw new Error(`admin key ${row.key_id} has no per-minute limit`);
-  return { kind: "admin", perMinuteLimit: row.per_minute_limit };
+  if (row.ownerAccountId !== null) return { kind: "owned", accountId: row.ownerAccountId };
+  if (row.perMinuteLimit === null) throw new Error(`admin key ${row.keyId} has no per-minute limit`);
+  return { kind: "admin", perMinuteLimit: row.perMinuteLimit };
 }
 
 /** Why a request's key was refused. A key both revoked and expired reads as revoked. */
@@ -87,30 +98,33 @@ export type Authentication = { outcome: "accepted"; key: ApiKey } | { outcome: "
  * expired: its `expires_at`, if it has one, is still ahead of now (#187). No
  * row means unknown, revoked or expired.
  */
-export const ACCEPT_KEY_SQL = `UPDATE api_key SET last_used_at = ?
-     WHERE key_hash = ? AND revoked_at IS NULL AND (expires_at IS NULL OR expires_at > ?)
-     RETURNING key_id, label, per_minute_limit, owner_account_id, endpoints`;
+export const acceptKeyQuery = (db: AppDatabase, hash: string, at: string) =>
+  db
+    .update(apiKey)
+    .set({ lastUsedAt: at })
+    .where(and(eq(apiKey.keyHash, hash), isNull(apiKey.revokedAt), or(isNull(apiKey.expiresAt), gt(apiKey.expiresAt, at))))
+    .returning(KEY_COLUMNS);
 
 /** The key named by its hash: the unique index on `key_hash`. */
-export const KEY_BY_HASH_SQL = `SELECT revoked_at FROM api_key WHERE key_hash = ?`;
+export const keyByHashQuery = (db: AppDatabase, hash: string) =>
+  db.select({ revokedAt: apiKey.revokedAt }).from(apiKey).where(eq(apiKey.keyHash, hash));
 
 /** The `X-API-Key` a request presented, checked against the stored hashes; an accepted key's `last_used_at` becomes `now`. */
-export async function authenticate(db: LookupDatabase, presented: string | null, now: number): Promise<Authentication> {
+export async function authenticate(db: AppTables, presented: string | null, now: number): Promise<Authentication> {
   const key = presented?.trim() ?? "";
   if (key === "") return { outcome: "refused", refusal: "missing" };
   const hash = await hashApiKey(key);
-  const at = new Date(now).toISOString();
-  const [row] = await db.all<KeyRow>(ACCEPT_KEY_SQL, [at, hash, at]);
+  const [row] = await acceptKeyQuery(db.app, hash, new Date(now).toISOString());
   if (row !== undefined) {
     return {
       outcome: "accepted",
-      key: { keyId: row.key_id, label: row.label, holder: holderOf(row), endpoints: endpointsOfColumn(row.endpoints) },
+      key: { keyId: row.keyId, label: row.label, holder: holderOf(row), endpoints: endpointsOfColumn(row.endpoints) },
     };
   }
   // Not accepted, yet stored: revoked, or else past its expiry.
-  const [stored] = await db.all<{ revoked_at: string | null }>(KEY_BY_HASH_SQL, [hash]);
+  const [stored] = await keyByHashQuery(db.app, hash);
   if (stored === undefined) return { outcome: "refused", refusal: "unknown" };
-  return { outcome: "refused", refusal: stored.revoked_at === null ? "expired" : "revoked" };
+  return { outcome: "refused", refusal: stored.revokedAt === null ? "expired" : "revoked" };
 }
 
 /** What a new admin key is given. */
@@ -126,30 +140,37 @@ export interface NewKey {
   displayPrefix: string;
 }
 
-export const INSERT_KEY_SQL = `INSERT INTO api_key (key_hash, label, per_minute_limit, created_at, display_prefix)
-     VALUES (?, ?, ?, ?, ?) RETURNING key_id`;
+/** A new admin key: no owner, and its own per-minute limit. */
+export const insertKeyQuery = (db: AppDatabase, hash: string, grant: KeyGrant, at: string, prefix: string) =>
+  db
+    .insert(apiKey)
+    .values({ keyHash: hash, label: grant.label, perMinuteLimit: grant.perMinuteLimit, createdAt: at, displayPrefix: prefix })
+    .returning({ keyId: apiKey.keyId });
 
 /** Store a new admin key, one with no owner, and return it. The row holds its hash. */
-export async function createKey(db: LookupDatabase, grant: KeyGrant, now: number): Promise<NewKey> {
+export async function createKey(db: AppTables, grant: KeyGrant, now: number): Promise<NewKey> {
   const key = generateApiKey();
-  const [row] = await db.all<{ key_id: number }>(INSERT_KEY_SQL, [
-    await hashApiKey(key),
-    grant.label,
-    grant.perMinuteLimit,
-    new Date(now).toISOString(),
-    displayPrefix(key),
-  ]);
+  const [row] = await insertKeyQuery(db.app, await hashApiKey(key), grant, new Date(now).toISOString(), displayPrefix(key));
   if (row === undefined) throw new Error("the new key was not stored");
-  return { keyId: row.key_id, key, displayPrefix: displayPrefix(key) };
+  return { keyId: row.keyId, key, displayPrefix: displayPrefix(key) };
 }
 
-export const REVOKE_KEY_SQL = `UPDATE api_key SET revoked_at = ? WHERE key_id = ? AND revoked_at IS NULL RETURNING key_id`;
-export const KEY_BY_ID_SQL = `SELECT revoked_at FROM api_key WHERE key_id = ?`;
+/** Revoke a live key by its id: its primary key. */
+export const revokeKeyQuery = (db: AppDatabase, keyId: number, at: string) =>
+  db
+    .update(apiKey)
+    .set({ revokedAt: at })
+    .where(and(eq(apiKey.keyId, keyId), isNull(apiKey.revokedAt)))
+    .returning({ keyId: apiKey.keyId });
+
+/** The key with this id: its primary key. */
+export const keyByIdQuery = (db: AppDatabase, keyId: number) =>
+  db.select({ revokedAt: apiKey.revokedAt }).from(apiKey).where(eq(apiKey.keyId, keyId));
 
 /** Revoke a key by its id. A revoked key stays stored, so its usage keeps its owner. */
-export async function revokeKey(db: LookupDatabase, keyId: number, now: number): Promise<"revoked" | "already-revoked" | "unknown"> {
-  const revoked = await db.all<{ key_id: number }>(REVOKE_KEY_SQL, [new Date(now).toISOString(), keyId]);
+export async function revokeKey(db: AppTables, keyId: number, now: number): Promise<"revoked" | "already-revoked" | "unknown"> {
+  const revoked = await revokeKeyQuery(db.app, keyId, new Date(now).toISOString());
   if (revoked.length > 0) return "revoked";
-  const [row] = await db.all<{ revoked_at: string | null }>(KEY_BY_ID_SQL, [keyId]);
+  const [row] = await keyByIdQuery(db.app, keyId);
   return row === undefined ? "unknown" : "already-revoked";
 }
