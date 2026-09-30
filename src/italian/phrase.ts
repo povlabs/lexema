@@ -1,0 +1,106 @@
+// How a multi-word query is read word by word, by rule `it-phrase/v1` (#214).
+//
+// A query the index has no entry for, and that has a space in it, may still be
+// an inflected multi-word headword: `vado via` is *andare via* said the way a
+// speaker says it. Each word stands for its lemmas — itself when it is a
+// headword, and every word its form-of records name — and each sequence of
+// those lemmas is a headword the index is then asked for, exactly.
+//
+// One Italian rule reads two words as one: an auxiliary and a past participle.
+// `sono andati` is a compound tense of *andare*, so it stands for *andare* and
+// never for *essere* followed by *andare*. The auxiliary is a word whose lemmas
+// include `essere` or `avere`; the participle is a word whose table entry is a
+// past participle of some verb. Nothing here reads a spelling: which words are
+// which comes from the source's own records (src/lookup/phrase.ts).
+//
+// This file is the rule and nothing else, free of the database, so a test can
+// hold it to its cases directly.
+
+export const IT_PHRASE_RULE = "it-phrase/v1";
+
+/** The two verbs Italian forms its compound tenses with. */
+export const AUXILIARIES: ReadonlySet<string> = new Set(["essere", "avere"]);
+
+/**
+ * The most lemma sequences one query is probed with. A word with several
+ * lemmas multiplies the sequences, and past this bound the query is read as
+ * no phrase at all rather than probed without end. Every query of up to four
+ * words with four lemmas each is under it.
+ */
+export const MAX_PHRASE_PROBES = 256;
+
+/**
+ * The most words a query is read as a phrase with. The longest multi-word
+ * headword in release `it-0c432803` has nine; a longer query cannot be one, and
+ * reading it word by word would cost a probe per word for nothing.
+ */
+export const MAX_PHRASE_WORDS = 12;
+
+/** One typed word, as the index reads it. */
+export interface WordLemmas {
+  /** The word as normalized for the index: `vado`. */
+  typed: string;
+  /** Itself when it is a headword, and every word its form-of records name. Empty when it is neither. */
+  lemmas: readonly string[];
+}
+
+/** One place in the sequence: a word, or an auxiliary with its participle, and what it may stand for. */
+export interface PhraseSlot {
+  /** The typed word, or the two typed words of a compound tense: `sono andati`. */
+  typed: string;
+  lemmas: readonly string[];
+}
+
+const isAuxiliary = (word: WordLemmas): boolean => word.lemmas.some((lemma) => AUXILIARIES.has(lemma));
+
+/**
+ * The words that follow an auxiliary, by index: the only words whose
+ * participle reading the rule needs, so the only ones a caller has to read it
+ * for.
+ */
+export function participleCandidates(words: readonly WordLemmas[]): number[] {
+  return words.flatMap((word, i) => (i + 1 < words.length && isAuxiliary(word) ? [i + 1] : []));
+}
+
+/**
+ * The slots a query's words fill, left to right. An auxiliary followed by a
+ * word that is a past participle becomes one slot standing for the verbs that
+ * participle belongs to; every other word is a slot of its own.
+ *
+ * `participleOf` gives, for a word index, the verbs whose tables list that word
+ * as their past participle; it is asked only about `participleCandidates`.
+ */
+export function phraseSlots(
+  words: readonly WordLemmas[],
+  participleOf: (index: number) => readonly string[],
+): PhraseSlot[] {
+  const slots: PhraseSlot[] = [];
+  for (let i = 0; i < words.length; i += 1) {
+    const word = words[i];
+    const next = words[i + 1];
+    if (next !== undefined && isAuxiliary(word)) {
+      const verbs = participleOf(i + 1);
+      if (verbs.length > 0) {
+        slots.push({ typed: `${word.typed} ${next.typed}`, lemmas: verbs });
+        i += 1;
+        continue;
+      }
+    }
+    slots.push({ typed: word.typed, lemmas: word.lemmas });
+  }
+  return slots;
+}
+
+/**
+ * Every lemma sequence the slots spell, one lemma per slot, in slot order and
+ * each slot's lemma order. `undefined` when there would be more than
+ * `MAX_PHRASE_PROBES`; empty when any slot stands for nothing.
+ */
+export function lemmaSequences(slots: readonly PhraseSlot[]): string[][] | undefined {
+  const count = slots.reduce((product, slot) => product * slot.lemmas.length, 1);
+  if (count > MAX_PHRASE_PROBES) return undefined;
+  return slots.reduce<string[][]>(
+    (sequences, slot) => sequences.flatMap((sequence) => slot.lemmas.map((lemma) => [...sequence, lemma])),
+    [[]],
+  );
+}

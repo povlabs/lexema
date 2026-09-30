@@ -5,9 +5,12 @@
 import { IT_NORMALIZER_VERSION, normalizeItalianExact } from "../italian/normalize.js";
 import { readingPartOfSpeech } from "./articles.js";
 import type { LookupDatabase } from "./database.js";
+import { phraseMatches } from "./phrase.js";
 import { readSourceRecord, type SourceRecordFields } from "./sourceRecord.js";
 import type {
   Evidence,
+  FoundResult,
+  FoundRoute,
   Grammar,
   GrammarClaim,
   InflectionOf,
@@ -15,6 +18,7 @@ import type {
   LemmaLink,
   LemmaListing,
   LookupResult,
+  PhraseMatch,
   QueryInfo,
   Reading,
   RecoveredDefinition,
@@ -135,9 +139,30 @@ export async function exists({ db, releaseId, query }: LookupOptions): Promise<E
   const prepared = await prepareQuery(db, releaseId, query);
   if (prepared.outcome === "rejected") return prepared;
   const [first] = await queryAll<HitRow>(db, `${SEARCH_SQL}\n      LIMIT 1`, releaseId, prepared.query.key);
-  return first === undefined
+  const word = first?.record_word ?? (await phraseHits(db, releaseId, prepared.query.key))?.hits[0].record_word;
+  return word === undefined
     ? { outcome: "absent", query: prepared.query, release: prepared.release }
-    : { outcome: "present", query: prepared.query, release: prepared.release, word: first.record_word };
+    : { outcome: "present", query: prepared.query, release: prepared.release, word };
+}
+
+/**
+ * The headword rows of every multi-word headword the query spells word by word
+ * (src/lookup/phrase.ts), or undefined when it spells none. Only a record's
+ * headword counts: a table entry spelling the phrase is not the phrase.
+ */
+async function phraseHits(
+  db: LookupDatabase,
+  releaseId: string,
+  key: string,
+): Promise<{ hits: [HitRow, ...HitRow[]]; phrases: [PhraseMatch, ...PhraseMatch[]] } | undefined> {
+  const [first, ...rest] = await phraseMatches(db, releaseId, key);
+  if (first === undefined) return undefined;
+  const phrases: [PhraseMatch, ...PhraseMatch[]] = [first, ...rest];
+  const rows = await Promise.all(phrases.map((phrase) => queryAll<HitRow>(db, SEARCH_SQL, releaseId, phrase.key)));
+  const [hit, ...more] = rows.flat().filter((row) => row.origin === "headword");
+  // `phraseMatches` answers only keys some record heads, so there is a row.
+  if (hit === undefined) throw new Error(`no headword row for phrase '${first.key}'`);
+  return { hits: [hit, ...more], phrases };
 }
 
 export async function lookup({ db, releaseId, query }: LookupOptions): Promise<LookupResult> {
@@ -147,7 +172,24 @@ export async function lookup({ db, releaseId, query }: LookupOptions): Promise<L
   const { key } = queryInfo;
 
   const hits = await queryAll<HitRow>(db, SEARCH_SQL, releaseId, key);
+  if (hits.length > 0) return found(db, releaseId, queryInfo, release, hits, { kind: "surface" });
 
+  // Nothing spells the query. A query of several words may still be a
+  // multi-word headword said the way a speaker says it (#214).
+  const phrase = await phraseHits(db, releaseId, key);
+  if (phrase === undefined) return { outcome: "not-found", query: queryInfo, release };
+  return found(db, releaseId, queryInfo, release, phrase.hits, { kind: "phrase", phrases: phrase.phrases });
+}
+
+/** The readings of a probe that matched, and how the query reached them. */
+async function found(
+  db: LookupDatabase,
+  releaseId: string,
+  queryInfo: QueryInfo,
+  release: ReleaseInfo,
+  hits: readonly HitRow[],
+  route: FoundRoute,
+): Promise<FoundResult> {
   // Group evidence by record. This is the step that keeps five lookup rows from
   // becoming five readings.
   const byRecord = new Map<number, HitRow[]>();
@@ -160,10 +202,6 @@ export async function lookup({ db, releaseId, query }: LookupOptions): Promise<L
   const groups = [...byRecord.values()]
     // Source order, so the result does not imply a ranking it has not earned.
     .sort((a, b) => a[0].line_no - b[0].line_no);
-
-  if (groups.length === 0) {
-    return { outcome: "not-found", query: queryInfo, release };
-  }
 
   // A record's forms are read once, whether it becomes a reading, a lemma's
   // listing, or both.
@@ -226,7 +264,7 @@ export async function lookup({ db, releaseId, query }: LookupOptions): Promise<L
   if (head === undefined) throw new Error("every match was a lemma of no reading");
   const readings: [Reading, ...Reading[]] = await Promise.all([build(head), ...tail.map(build)]);
 
-  return { outcome: "found", query: queryInfo, release, readings };
+  return { outcome: "found", query: queryInfo, release, route, readings };
 }
 
 /**

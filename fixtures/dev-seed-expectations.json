@@ -1,6 +1,6 @@
 {
   "source": "it-extract.jsonl.gz",
-  "selection": "Huey's fifty required words plus the archive's form_of closure (sola and solo)",
+  "selection": "Huey's fifty required words, the multi-word search words of #214 (andare via, tirare fuori, volgere and voltare le spalle and the words that spell them), plus the archive's form_of closure",
   "recordsByWord": {
     "acqua": {
       "recordCount": 1,
@@ -673,6 +673,236 @@
         {
           "pos": "noun",
           "keyCount": 15,
+          "forms": 0
+        }
+      ]
+    },
+    "andare via": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "phrase",
+          "keyCount": 9,
+          "forms": 0
+        }
+      ]
+    },
+    "andati": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 13,
+          "forms": 3
+        },
+        {
+          "pos": "verb",
+          "keyCount": 12,
+          "forms": 3
+        }
+      ]
+    },
+    "andato": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 15,
+          "forms": 3
+        },
+        {
+          "pos": "verb",
+          "keyCount": 14,
+          "forms": 3
+        }
+      ]
+    },
+    "fuori": {
+      "recordCount": 3,
+      "records": [
+        {
+          "pos": "adv",
+          "keyCount": 15,
+          "forms": 0
+        },
+        {
+          "pos": "intj",
+          "keyCount": 15,
+          "forms": 0
+        },
+        {
+          "pos": "prep",
+          "keyCount": 15,
+          "forms": 0
+        }
+      ]
+    },
+    "le": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "article",
+          "keyCount": 9,
+          "forms": 0
+        },
+        {
+          "pos": "pron",
+          "keyCount": 9,
+          "forms": 0
+        }
+      ]
+    },
+    "sono": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "noun",
+          "keyCount": 12,
+          "forms": 1
+        },
+        {
+          "pos": "verb",
+          "keyCount": 11,
+          "forms": 0
+        }
+      ]
+    },
+    "spalla": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "noun",
+          "keyCount": 15,
+          "forms": 1
+        }
+      ]
+    },
+    "spalle": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "noun",
+          "keyCount": 14,
+          "forms": 0
+        }
+      ]
+    },
+    "tirare": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "verb",
+          "keyCount": 17,
+          "forms": 95
+        }
+      ]
+    },
+    "tirare fuori": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "phrase",
+          "keyCount": 11,
+          "forms": 0
+        }
+      ]
+    },
+    "tiro": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "noun",
+          "keyCount": 17,
+          "forms": 1
+        },
+        {
+          "pos": "verb",
+          "keyCount": 16,
+          "forms": 0
+        }
+      ]
+    },
+    "via": {
+      "recordCount": 3,
+      "records": [
+        {
+          "pos": "adv",
+          "keyCount": 15,
+          "forms": 0
+        },
+        {
+          "pos": "intj",
+          "keyCount": 15,
+          "forms": 0
+        },
+        {
+          "pos": "noun",
+          "keyCount": 17,
+          "forms": 1
+        }
+      ]
+    },
+    "volgere": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "verb",
+          "keyCount": 18,
+          "forms": 94
+        },
+        {
+          "pos": "verb",
+          "keyCount": 18,
+          "forms": 94
+        }
+      ]
+    },
+    "volgere le spalle": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "phrase",
+          "keyCount": 11,
+          "forms": 0
+        }
+      ]
+    },
+    "voltare": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "verb",
+          "keyCount": 17,
+          "forms": 95
+        }
+      ]
+    },
+    "voltare le spalle": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "phrase",
+          "keyCount": 11,
+          "forms": 0
+        }
+      ]
+    },
+    "volto": {
+      "recordCount": 3,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 12,
+          "forms": 0
+        },
+        {
+          "pos": "noun",
+          "keyCount": 13,
+          "forms": 1
+        },
+        {
+          "pos": "verb",
+          "keyCount": 13,
           "forms": 0
         }
       ]

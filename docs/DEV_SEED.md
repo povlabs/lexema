@@ -21,8 +21,11 @@ The demo's `web/.wrangler` directory is never touched. The seed clears only
 written to: no other state directory, and in `SEED_SQL` only its own
 `part-NNN.sql` files and `rejections.tsv`. Point `SEED_STATE` at an existing
 database only when you mean to replace it. The fixture covers
-Huey's fifty required words and their `form_of` closure: 83 source records across
-52 words, including `andare` for `andavano`. A missing required word or fixture
+Huey's fifty required words, the words of the multi-word searches in
+[#214](https://github.com/hueypov/lexema/issues/214) (`andare via`, `tirare fuori`,
+`volgere le spalle`, `voltare le spalle` and the words that spell them), and their
+`form_of` closure: 112 source records across 69 words, including `andare` for
+`andavano`. A missing required word or fixture
 target stops the run with that word's name.
 
 ## What is emitted

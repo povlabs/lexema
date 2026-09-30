@@ -440,7 +440,7 @@ export const ENDPOINT_REFERENCE: Readonly<Record<Endpoint, EndpointReference>> =
     title: "Look up a word",
     tagline: "Everything about a word",
     summary:
-      "Every candidate for q, in full: the record the word heads, the lemma it is a form of, and any record that lists it among its forms.",
+      "Every candidate for q, in full: the record the word heads, the lemma it is a form of, and any record that lists it among its forms. When nothing spells q and it has several words, each word is read as its lemmas, and every multi-word headword those lemmas spell in order is a candidate with `match.via` `phrase`: `vado via` finds `andare via`.",
     parameters: [
       Q,
       POS,
@@ -664,7 +664,7 @@ export const POS_TEXT = [
 /** What each `match` keeps: every value the API takes, and none it does not. */
 const MATCH_MEANING: Readonly<Record<Match, string>> = {
   exact: "Only the records `q` heads.",
-  form: "Only the lemma `q` is a form of, and any record that lists `q` among its forms.",
+  form: "Only the lemma `q` is a form of, any record that lists `q` among its forms, and a multi-word headword `q`'s words spell (`match.via` `phrase`).",
   any: "Both. The default when `match` is absent.",
 };
 

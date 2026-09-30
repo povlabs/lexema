@@ -405,6 +405,25 @@ test("match=exact keeps headword matches, match=form keeps form matches, and any
   await assertRefused("q=solo&match=headword", "match");
 });
 
+test("an inflected expression answers its multi-word headword via phrase, which match=form keeps and match=exact does not", async () => {
+  assert.deepEqual(candidates(await lookupBody("q=vado%20via")), ["andare via phrase phrase"]);
+  assert.deepEqual(candidates(await lookupBody("q=tiro%20fuori")), ["tirare fuori phrase phrase"]);
+  assert.deepEqual(candidates(await lookupBody("q=sono%20andati%20via")), ["andare via phrase phrase"]);
+  assert.deepEqual(candidates(await lookupBody("q=volto%20le%20spalle")).sort(), [
+    "volgere le spalle phrase phrase",
+    "voltare le spalle phrase phrase",
+  ]);
+  const [result] = (await lookupBody("q=sono%20andati%20via")).results;
+  assert.deepEqual(result.match, { surface: "sono andati via", via: "phrase", grammar: [] });
+  assert.deepEqual(candidates(await lookupBody("q=vado%20via&match=form")), ["andare via phrase phrase"]);
+  assert.deepEqual(candidates(await lookupBody("q=vado%20via&match=exact")), []);
+  const missing = await lookupWith("q=vado%20fuori");
+  assert.equal(missing.status, 404);
+  // `vado via` is no headword of its own, so it has no forms to inflect.
+  assert.equal((await ask("inflect?lemma=vado%20via")).status, 404);
+  assert.equal((await okBody("exists?q=vado%20via")).exists, true);
+});
+
 test("fields returns the named sections and the always-returned fields, and refuses an unknown name", async () => {
   const [sale] = (await lookupBody("q=sale&fields=definitions,pronunciation")).results;
   assert.deepEqual(Object.keys(sale).sort(), [

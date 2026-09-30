@@ -63,13 +63,41 @@ record's `forms[]`, so the verb's card still states its auxiliary. The test is
 the `form-role` = `auxiliary` grammar claim the importer writes for that tag,
 applied at query time in `SEARCH_SQL`.
 
+### A query of several words that nothing spells
+
+When the key matches nothing and has two to `MAX_PHRASE_WORDS` (12) words,
+`lookup()` reads it word by word (#214, rule `it-phrase/v1` in
+[`src/italian/phrase.ts`](../src/italian/phrase.ts), reads in
+[`src/lookup/phrase.ts`](../src/lookup/phrase.ts)):
+
+1. Each word stands for its lemmas: itself when it is a headword, and every
+   word the `form_of` edges on its headword records name (`vado` → `vado`,
+   `andare`).
+2. An auxiliary (a word whose lemmas include `essere` or `avere`) followed by a
+   past participle stands for the participle's verb, and for nothing else. A
+   participle is a word, or one of its lemmas, that a verb record's `forms[]`
+   lists tagged `participle` and `past`: `andati` names `andato`, `andare`'s
+   past participle, so `sono andati via` is read as `andare via`.
+3. Every sequence of one lemma per place, joined by single spaces, is probed
+   as an exact headword key, at most `MAX_PHRASE_PROBES` (256) of them; a query
+   with more sequences is read as no phrase. Every sequence that is a
+   headword is a match, and only a record's headword counts.
+
+The readings are those headwords' records, and `route` says how they were
+reached: `{ kind: "surface" }` for every other `found`, or
+`{ kind: "phrase", phrases }`, each phrase the headword `key` and the typed
+`words` with the lemma each stood for. A single word is never read this way,
+and neither is a compound tense alone: `sono andati` is one place, so its verb
+is left to the exact lookup, which finds it in `andare`'s table. `exists()`
+answers the same way, so the two never disagree.
+
 ## Outcomes
 
 | `outcome` | When | Carries |
 | --- | --- | --- |
 | `rejected` | the query never reached the index | `query.raw`, `rejection` |
 | `not-found` | the index was probed, nothing matched | `query`, `release` |
-| `found` | at least one record matched | `query`, `release`, `readings` |
+| `found` | at least one record matched | `query`, `release`, `route`, `readings` |
 
 `found` and `not-found` are separate types, not one type with a flag. A
 `not-found` has no reading it can carry, and a `found`'s `readings` is

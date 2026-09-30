@@ -587,6 +587,34 @@ export interface RejectedResult {
   rejection: RejectedQuery;
 }
 
+/** One typed word of a phrase search, or an auxiliary and its participle, and the lemma it stood for. */
+export interface PhraseWord {
+  /** As normalized for the index: `vado`, or `sono andati` for a compound tense. */
+  typed: string;
+  /** The lemma the headword spells in its place: `andare`. */
+  lemma: string;
+}
+
+/**
+ * A multi-word headword a query reached word by word (#214, rule
+ * `it-phrase/v1` in src/italian/phrase.ts): `vado via` is *andare via*. The
+ * words are the searched form, recorded as a form match records its surface.
+ */
+export interface PhraseMatch {
+  /** The headword's key, which is the lemmas joined by single spaces: `andare via`. */
+  key: string;
+  words: [PhraseWord, PhraseWord, ...PhraseWord[]];
+}
+
+/**
+ * How a found query reached its readings. `surface`: the query itself is a
+ * headword or a listed form. `phrase`: it is none, and its words, each read as
+ * its lemmas, spell one or more multi-word headwords, which are the readings.
+ */
+export type FoundRoute =
+  | { kind: "surface" }
+  | { kind: "phrase"; phrases: [PhraseMatch, ...PhraseMatch[]] };
+
 /**
  * The index was probed and at least one record matched. The readings are a
  * non-empty tuple, so `found` with nothing found is not a state this type can
@@ -596,6 +624,7 @@ export interface FoundResult {
   outcome: "found";
   query: QueryInfo;
   release: ReleaseInfo;
+  route: FoundRoute;
   /**
    * Every record the query matches, in source order. Nothing is ranked away
    * and nothing is merged on matching spelling: `sale` is three records and
