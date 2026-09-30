@@ -18,7 +18,9 @@
 
 import { drizzleAdapter } from "@better-auth/drizzle-adapter";
 import { lte } from "drizzle-orm";
-import { betterAuth, type BetterAuthOptions } from "better-auth";
+import { betterAuth, type BetterAuthOptions, type BetterAuthPlugin } from "better-auth";
+import { createAuthEndpoint } from "better-auth/api";
+import { setSessionCookie } from "better-auth/cookies";
 import type { OAuth2Tokens, OAuth2UserInfo } from "better-auth/oauth2";
 import { github, google } from "better-auth/social-providers";
 import type { AppDatabase } from "../db/app/database.js";
@@ -189,16 +191,52 @@ export function signInAuth(db: AppDatabase, secret: string, origin: string, id: 
           before: async (account) => ({ data: { ...account, ...NO_CREDENTIALS, ...(vouched === undefined ? {} : { displayName: vouched.name ?? null }) } }),
         },
       },
-      session: {
-        create: {
-          before: async (session) => {
-            await endSession(db, secret, origin, headers);
-            return { data: { ...session, ipAddress: undefined, userAgent: undefined } };
-          },
-        },
-      },
+      session: sessionHooks(db, secret, origin, headers),
     },
   });
+}
+
+/**
+ * What better-auth does as it makes a session: end the one the request's
+ * cookie names first, so a new sign-in never leaves both live, and record
+ * neither the browser's address nor its user agent, which the table refuses.
+ */
+function sessionHooks(db: AppDatabase, secret: string, origin: string, headers: Headers) {
+  return {
+    create: {
+      before: async (session: Record<string, unknown>) => {
+        await endSession(db, secret, origin, headers);
+        return { data: { ...session, ipAddress: undefined, userAgent: undefined } };
+      },
+    },
+  };
+}
+
+/**
+ * Start a session for an account that is already signed in by other means,
+ * and answer the `Set-Cookie` values that carry it. better-auth's own code
+ * makes the session and its signed cookie, through an endpoint of its own
+ * that no router ever mounts (`serverOnly`), so the cookie is the one a
+ * provider's sign-in sets. The session the request's cookie names, if any,
+ * ends first, as it does for `signInAuth`.
+ */
+export async function startSession(db: AppDatabase, secret: string, origin: string, headers: Headers, accountId: number): Promise<string[]> {
+  const startFor = {
+    id: "lexema-start-session",
+    endpoints: {
+      startSession: createAuthEndpoint.serverOnly({ method: "POST" }, async (ctx) => {
+        const user = await ctx.context.internalAdapter.findUserById(String(accountId));
+        if (user === null) throw new Error(`no account ${accountId} to start a session for`);
+        const session = await ctx.context.internalAdapter.createSession(user.id);
+        await setSessionCookie(ctx, { session, user });
+        return ctx.json({ started: true });
+      }),
+    },
+  } satisfies BetterAuthPlugin;
+  const auth = betterAuth({ ...baseOptions(db, secret, origin), plugins: [startFor], databaseHooks: { session: sessionHooks(db, secret, origin, headers) } });
+  const started = await auth.api.startSession({ headers, asResponse: true });
+  if (!started.ok) throw new Error(`better-auth answered ${started.status} to starting a session`);
+  return started.headers.getSetCookie();
 }
 
 /**
