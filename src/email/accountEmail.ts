@@ -111,7 +111,6 @@ const TOKENS = {
   surface: "#121110",
   surfaceRaised: "#1A1917",
   border: "#2C2A26",
-  textMuted: "#8B8579",
   text: "#C4BEB2",
   textStrong: "#F4F0E6",
   accent: "#D2A85C",
@@ -120,8 +119,6 @@ const TOKENS = {
 /** The manifest's families, with the fallbacks an email client has when it loads no font. */
 const SERIF = "Spectral, Georgia, 'Times New Roman', serif";
 const SANS = "Inter, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif";
-
-const FOOTER = "You get this email because you have a Lexema developer account.";
 
 const escapeHtml = (text: string): string =>
   text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
@@ -144,7 +141,6 @@ ${paragraphs}
 <p style="margin:24px 0 0;font-family:${SANS};font-size:16px;"><a href="${escapeHtml(settingsUrl)}" style="color:${TOKENS.accent};">${escapeHtml(letter.linkLabel)}</a></p>
 </td></tr>
 </table>
-<p style="margin:16px 0 0;font-family:${SANS};font-size:13px;color:${TOKENS.textMuted};">${escapeHtml(FOOTER)}</p>
 </td></tr>
 </table>
 </body>
@@ -153,7 +149,7 @@ ${paragraphs}
 }
 
 function textOf(letter: Letter, settingsUrl: string): string {
-  return [letter.subject, ...letter.paragraphs, `${letter.linkLabel}: ${settingsUrl}`, "--", FOOTER].join("\n\n") + "\n";
+  return [letter.subject, ...letter.paragraphs, `${letter.linkLabel}: ${settingsUrl}`].join("\n\n") + "\n";
 }
 
 /** An email as it is sent, its one link going to `settingsUrl`: the developer site's /dashboard/settings. */

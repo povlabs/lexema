@@ -540,11 +540,17 @@ Every configuration binds Email Service as `EMAIL`, a `send_email` binding
 | Where | Binding | What it does |
 |---|---|---|
 | Local | `{ "name": "EMAIL" }` at the top level of `web/wrangler.jsonc` | `wrangler dev` simulates it: each email is logged in the terminal and sent nowhere ([local development](https://developers.cloudflare.com/email-service/local-development/sending/)). Adding `"remote": true` would send real email; do not commit that |
-| Previews | `previews.send_email`, with `destination_address` set to Huey's verified address | sends to Huey alone ([above](#the-preview-only-domains)); billing is off there, so only a deletion ever sends |
+| Previews | `previews.send_email`, with `destination_address` set to Huey's verified address, and the same address in the `EMAIL_ONLY_TO` var | sends to Huey alone ([above](#the-preview-only-domains)). Billing and OAuth are off there, so the only account is the test developer, `test-developer@example.com`, and only its deletion sends. The binding would refuse that address, so `EMAIL_ONLY_TO` sends every account email to Huey instead (`workerEmailOf` in `src/email/send.ts`) |
 | Production | `{ "name": "EMAIL" }` in `env.production` | sends to any address, which needs the Workers Paid plan ([pricing](https://developers.cloudflare.com/email-service/platform/pricing/)) |
 
-Tests hand in a stub binding (`test/stubEmail.ts`), so no test sends email, and
-CI holds nothing that could.
+Local development and production leave `EMAIL_ONLY_TO` empty, so each email
+goes to its own account. Tests hand in a stub binding (`test/stubEmail.ts`), so
+no test sends email, and CI holds nothing that could.
+
+To get a real account email on a Preview: open the Preview's developer site,
+sign in with the test sign-in, go to Settings and delete the account. The
+"Your Lexema account is deleted" email reaches Huey's inbox. Signing in with
+the test sign-in again makes a new test developer, so this can be repeated.
 
 ### Onboard lexema.fyi (Huey, once)
 

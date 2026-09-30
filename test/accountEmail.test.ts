@@ -10,13 +10,16 @@ import { deleteAccount, signInAccount, verifiedIdentity } from "../src/accounts/
 import { notePlanChange, noticeOf, planEmails, type WrittenSubscription } from "../src/billing/planNotice.js";
 import type { PlanState, StripeStatus } from "../src/billing/plans.js";
 import { composeEmail, type AccountEmail } from "../src/email/accountEmail.js";
-import { accountMailOf, emailAccount, SENDER } from "../src/email/send.js";
+import { TEST_DEVELOPER_PROFILE } from "../src/accounts/testDeveloper.js";
+import { accountMailOf, emailAccount, SENDER, workerEmailOf } from "../src/email/send.js";
 import { freshAppDatabase } from "./databases.js";
 import { StubEmail } from "./stubEmail.js";
 
 const NOW = Date.parse("2026-09-30T12:00:00Z");
 const PERIOD = { start: Date.parse("2026-09-30T00:00:00Z"), end: Date.parse("2026-10-30T00:00:00Z") };
 const SETTINGS = "https://developers.lexema.fyi/dashboard/settings";
+/** The one address a Preview's email binding may send to (web/wrangler.jsonc). */
+const HUEY = "itshuseyingulec@gmail.com";
 
 const active = (plan: "starter" | "pro"): PlanState => ({ kind: "active", plan: { id: plan }, period: PERIOD });
 const pastDue = (plan: "starter" | "pro"): PlanState => ({ kind: "past-due", plan: { id: plan }, period: PERIOD });
@@ -78,7 +81,12 @@ test("each email is English plain text and HTML that say the same, with one link
     assert.equal(html.split(`href="${SETTINGS}"`).length, 2, `${email.kind}: one settings link in the HTML`);
     assert.match(html, /<html lang="en">/, email.kind);
     // Every paragraph of the text is in the HTML.
-    for (const paragraph of text.split("\n\n").slice(1, -3)) assert.ok(html.includes(paragraph.replace(/'/g, "&#39;")), `${email.kind}: ${paragraph}`);
+    for (const paragraph of text.split("\n\n").slice(1, -1)) assert.ok(html.includes(paragraph.replace(/'/g, "&#39;")), `${email.kind}: ${paragraph}`);
+    // The message and nothing else: the settings link is the last thing in either.
+    assert.ok(text.endsWith(`${SETTINGS}\n`), `${email.kind}: the text ends at its link`);
+    // The HTML's text blocks are the name, the paragraphs and the link: no line beside them.
+    const paragraphs = text.split("\n\n").length - 2;
+    assert.equal(html.split("<p ").length - 1, paragraphs + 2, `${email.kind}: the HTML's text blocks`);
   }
   const welcome = composeEmail({ kind: "plan-started", plan: "pro" }, SETTINGS).text;
   assert.match(welcome, /Pro gives your keys 5,000,000 calls a month, up to 300 calls a minute\./);
@@ -87,7 +95,7 @@ test("each email is English plain text and HTML that say the same, with one link
 
 test("the HTML paints with the manifest's role tokens in hex and escapes what it is given", () => {
   const { html } = composeEmail({ kind: "plan-started", plan: "starter" }, "https://developers.lexema.fyi/dashboard/settings?a=1&b=<2>");
-  for (const token of ["#121110", "#1A1917", "#2C2A26", "#8B8579", "#C4BEB2", "#F4F0E6", "#D2A85C"]) assert.ok(html.includes(token), token);
+  for (const token of ["#121110", "#1A1917", "#2C2A26", "#C4BEB2", "#F4F0E6", "#D2A85C"]) assert.ok(html.includes(token), token);
   assert.doesNotMatch(html, /oklch/);
   assert.ok(html.includes('href="https://developers.lexema.fyi/dashboard/settings?a=1&amp;b=&lt;2&gt;"'));
 });
@@ -163,4 +171,30 @@ test("deleting an account emails the address it had once; deleting it again send
   failing.failing = "E_DELIVERY_FAILED";
   const deleted = await deleteAccount(other.appDb, other.accountId, NOW, undefined, accountMailOf(failing, "https://developers.lexema.fyi"));
   assert.deepEqual(deleted, { outcome: "deleted", revokedKeys: 0 });
+});
+
+test("on a Preview, deleting the test developer emails the binding's one address; each test sign-in after makes a new account to delete again", async () => {
+  const { appDb } = freshAppDatabase();
+  const email = new StubEmail();
+  const binding = workerEmailOf(email, HUEY);
+  assert.ok(binding !== undefined);
+  const mail = accountMailOf(binding, "https://preview-branch.developers-preview.lexema.fyi");
+  for (const [round, at] of [NOW, NOW + 60_000].entries()) {
+    const identity = verifiedIdentity("github", TEST_DEVELOPER_PROFILE);
+    assert.ok(identity !== undefined);
+    const { accountId } = await signInAccount(appDb, identity, at);
+    assert.deepEqual(await deleteAccount(appDb, accountId, at, undefined, mail), { outcome: "deleted", revokedKeys: 0 }, `round ${round}`);
+  }
+  assert.deepEqual(
+    email.sent.map(({ to, subject }) => ({ to, subject })),
+    Array(2).fill({ to: HUEY, subject: "Your Lexema account is deleted" }),
+  );
+  assert.equal(TEST_DEVELOPER_PROFILE.verifiedEmail, "test-developer@example.com");
+});
+
+test("with no one address, the Worker's binding is handed on as it is", () => {
+  const email = new StubEmail();
+  assert.equal(workerEmailOf(email, ""), email);
+  assert.equal(workerEmailOf(email, undefined), email);
+  assert.equal(workerEmailOf(undefined, HUEY), undefined);
 });

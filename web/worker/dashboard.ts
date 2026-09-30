@@ -41,7 +41,7 @@ import { billingOf, type BillingSetup, type StripeSettings } from "@lexema/accou
 import { csrfMatches, csrfToken } from "@lexema/accounts/csrf.ts";
 import { createAccountKey, listAccountKeys, revokeAccountKey } from "@lexema/api/ownedKeys.ts";
 import { appTablesOverD1, type AppTables } from "@lexema/db/app/database.ts";
-import { accountMailOf, type EmailBinding } from "@lexema/email/send.ts";
+import { accountMailOf, workerEmailOf, type EmailBinding } from "@lexema/email/send.ts";
 import { accessOf, defaultKeyName, draftOf, readDraft } from "@/lib/developers/createKeyForm.ts";
 import { CSRF_FIELD, DASHBOARD, DELETE_CONFIRM_FIELD, DELETE_CONFIRMATION, SETTINGS, UNREACHABLE, type ActionAnswer } from "@/lib/developers/dashboardActions.ts";
 import { keyRowOf } from "@/lib/developers/dashboardView.ts";
@@ -85,6 +85,8 @@ export function dashboardRouteOf(url: URL): DashboardRoute | undefined {
 export interface DashboardBindings extends StripeSettings {
   APP_DB?: D1Database;
   EMAIL?: EmailBinding;
+  /** The one address `EMAIL` may send to, on a Preview; empty elsewhere (`workerEmailOf`). */
+  EMAIL_ONLY_TO?: string;
 }
 
 /** What the actions run against; the Worker's, or a test's. */
@@ -100,7 +102,7 @@ export interface DashboardContext {
 
 /** The context the live Worker runs with. */
 export function liveDashboardContext(env: DashboardBindings): DashboardContext {
-  return { appDb: env.APP_DB === undefined ? undefined : appTablesOverD1(env.APP_DB), billing: billingOf(env), email: env.EMAIL, now: Date.now() };
+  return { appDb: env.APP_DB === undefined ? undefined : appTablesOverD1(env.APP_DB), billing: billingOf(env), email: workerEmailOf(env.EMAIL, env.EMAIL_ONLY_TO), now: Date.now() };
 }
 
 /** The CSRF token a signed-in page puts in its forms, or `undefined` without a session cookie. */

@@ -34,6 +34,20 @@ export interface EmailBinding {
   send(message: EmailMessage): Promise<unknown>;
 }
 
+/**
+ * The Worker's `EMAIL` binding as account email sends through it. Where
+ * `onlyTo` names an address, every message goes there, whoever it is about:
+ * that is a Preview, whose binding's `destination_address` allows Huey's
+ * verified address alone (web/wrangler.jsonc, `EMAIL_ONLY_TO`). A Preview's
+ * one account is the test developer, on `example.com`, so without this its
+ * deletion email would be refused instead of reaching him. Empty or absent, as
+ * in local development and production, each message goes to its account.
+ */
+export function workerEmailOf(binding: EmailBinding | undefined, onlyTo: string | undefined): EmailBinding | undefined {
+  if (binding === undefined || onlyTo === undefined || onlyTo === "") return binding;
+  return { send: (message) => binding.send({ ...message, to: onlyTo }) };
+}
+
 /** Where account emails go out, and the settings page their one link opens. */
 export interface AccountMail {
   readonly binding: EmailBinding;

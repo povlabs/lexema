@@ -20,7 +20,7 @@
 import { authSecret, billingAuth, STRIPE_WEBHOOK_PATH } from "@lexema/accounts/auth.ts";
 import { billingOf, type BillingSetup, type StripeSettings } from "@lexema/accounts/billing.ts";
 import { appTablesOverD1, type AppTables } from "@lexema/db/app/database.ts";
-import { accountMailOf, type EmailBinding } from "@lexema/email/send.ts";
+import { accountMailOf, workerEmailOf, type EmailBinding } from "@lexema/email/send.ts";
 import { isDeveloperSitePath } from "./hosts.ts";
 import type { FetchHandler } from "./rateLimit.ts";
 import { text } from "./signIn.ts";
@@ -29,6 +29,8 @@ import { text } from "./signIn.ts";
 export interface StripeWebhookBindings extends StripeSettings {
   APP_DB?: D1Database;
   EMAIL?: EmailBinding;
+  /** The one address `EMAIL` may send to, on a Preview; empty elsewhere (`workerEmailOf`). */
+  EMAIL_ONLY_TO?: string;
 }
 
 /** What the webhook runs against; the Worker's, or a test's. */
@@ -41,7 +43,7 @@ export interface StripeWebhookContext {
 
 /** The context the live Worker runs with: a Stripe client built from this request's env. */
 export function liveWebhookContext(env: StripeWebhookBindings): StripeWebhookContext {
-  return { billing: billingOf(env), appDb: env.APP_DB === undefined ? undefined : appTablesOverD1(env.APP_DB), email: env.EMAIL };
+  return { billing: billingOf(env), appDb: env.APP_DB === undefined ? undefined : appTablesOverD1(env.APP_DB), email: workerEmailOf(env.EMAIL, env.EMAIL_ONLY_TO) };
 }
 
 /** Answer one request to the webhook path. */
