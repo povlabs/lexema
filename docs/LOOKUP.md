@@ -183,15 +183,28 @@ lemma — `studentessa` for `studenti` — is still a reading.
 | `recordId` | the database's surrogate id, an artefact of one build — never publish it |
 | `ref` | the whole record: `jsonPointer` is `""` |
 | `word`, `pos`, `posTitle` | the record's own headword and part of speech, verbatim |
-| `wordFacts` | pronunciations, hyphenations, etymologies, synonyms, antonyms and derived words, read from the record's own line in `source_record_json`; one entry per distinct related spelling, every pointer kept |
+| `wordFacts` | pronunciations, hyphenations, etymologies, synonyms, antonyms and derived words, read from the record's own line in `source_record_json`; one entry per distinct related spelling, every pointer kept; Wikizionario's missing-field placeholder is taken out of the hyphenations and etymologies (below) |
 | `isAboutQuery` | `true` when at least one piece of evidence is a headword hit |
 | `evidence[]` | every occurrence of the surface on this record, in source order |
-| `senses[]` | source glosses, labels and `examples[].text`, the examples read from `source_record_json` |
+| `senses[]` | source glosses, labels and `examples[].text`, the examples read from `source_record_json`; a gloss loses the missing-field placeholder (below), and one that was only that is not returned |
 | `grammar` | claims split into `record`, `byForm` and `bySense` |
 | `lemmaLinks[]` | the reading's lemma: outgoing `form_of` edges this record declares, each candidate with its `listing` |
 | `inflections[]` | records declaring themselves forms of this one |
 | `reviews[]` | review verdicts on this record's claims |
 | `articles` | noun readings only: the singular articles `it-articles/v1` derives from the record's stated gender and number, plus the plural ones for the single plural form the source tags with the same gender |
+
+### The missing-field placeholder
+
+Where a page has no hyphenation, definition, etymology or references,
+Wikizionario prints a fixed request to add one, and the archive keeps it as the
+field's text: `→ Etimologia mancante. Se vuoi, aggiungila tu.`,
+`definizione mancante; se vuoi, aggiungila tu`. It is a template, not data, so
+`withoutPlaceholder` (`src/italian/placeholder.ts`) takes it out when a reading
+is read (#255). The joining punctuation and wikitext markup touching it go
+with it: a `''` quote run, the `**` list marker of its own line. What is left
+keeps its own pointer; a text left with only a bracketed label or punctuation
+is no text. The stored rows and
+`source_record_json` keep the sentence as imported.
 
 ### `SourceRef`
 

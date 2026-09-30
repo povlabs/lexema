@@ -3,7 +3,9 @@
 //
 // `source_record_json.raw_json` is the line exactly as the release wrote it, so
 // everything here is a copy of source text with the pointer it was read from —
-// nothing is cleaned, translated or completed. What the tables already hold
+// nothing is cleaned, translated or completed, except that Wikizionario's
+// missing-field placeholder is taken out of the hyphenation and the etymologies
+// (`withoutPlaceholder`, #255): it is a template, not data. What the tables already hold
 // (senses, glosses, forms, grammar) is not re-read here: this module owns only
 // the pronunciation, the hyphenation, the etymologies, the three related-word
 // lists and each sense's examples, which is the data half of #20.
@@ -12,6 +14,7 @@
 // checked for the shape it must have and skipped when it does not have it. A
 // field the source left out is an empty list, never a placeholder.
 
+import { withoutPlaceholder } from "../italian/placeholder.js";
 import type {
   Hyphenation,
   Pronunciation,
@@ -61,9 +64,10 @@ export function readSourceRecord(
     wordFacts: {
       pronunciations: pronunciations(parsed, ref),
       hyphenations: hyphenations(parsed, ref),
-      etymologies: arrayAt(parsed, "etymology_texts").flatMap((text, i) =>
-        nonEmptyString(text) ? [{ text, ref: ref(`/etymology_texts/${i}`) }] : [],
-      ),
+      etymologies: arrayAt(parsed, "etymology_texts").flatMap((text, i) => {
+        const real = typeof text === "string" ? withoutPlaceholder(text) : undefined;
+        return real === undefined ? [] : [{ text: real, ref: ref(`/etymology_texts/${i}`) }];
+      }),
       synonyms: relatedWords(parsed, "synonyms", ref),
       synonymList: synonymList(parsed, ref),
       antonyms: relatedWords(parsed, "antonyms", ref),
@@ -95,11 +99,18 @@ function pronunciations(record: Record<string, Json>, ref: (pointer: string) => 
   });
 }
 
-/** Every `hyphenations[].parts` with at least one part, parts verbatim. */
+/**
+ * Every `hyphenations[].parts` with at least one real part, parts verbatim. A
+ * part that is only the placeholder (`→ Divisione in sillabe mancante. …`)
+ * divides nothing, so an entry holding only that is left out.
+ */
 function hyphenations(record: Record<string, Json>, ref: (pointer: string) => SourceRef): Hyphenation[] {
   return arrayAt(record, "hyphenations").flatMap((entry, i) => {
     if (!isObject(entry)) return [];
-    const parts = arrayAt(entry, "parts").filter(nonEmptyString);
+    const parts = arrayAt(entry, "parts").flatMap((part) => {
+      const real = typeof part === "string" ? withoutPlaceholder(part) : undefined;
+      return real === undefined ? [] : [real];
+    });
     const [first, ...rest] = parts;
     return first === undefined ? [] : [{ parts: [first, ...rest], ref: ref(`/hyphenations/${i}/parts`) }];
   });

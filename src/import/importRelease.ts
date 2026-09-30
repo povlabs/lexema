@@ -11,6 +11,7 @@ import { open, type FileHandle } from "node:fs/promises";
 import { createInterface } from "node:readline";
 import { createGunzip } from "node:zlib";
 import { IT_NORMALIZER_VERSION, normalizeItalianExact } from "../italian/normalize.js";
+import { normalizeGloss } from "../italian/sourceTextNormalization.js";
 import {
   expectedFormDimensions,
   expectedRecordDimensions,
@@ -548,7 +549,8 @@ export function writeRecord(
 
     stringMembers(sense.glosses, `${sensePointer}/glosses`, reportMember).forEach(
       ({ index, text }) => {
-        statements.insertGloss.run(senseId, index, text, `${sensePointer}/glosses/${index}`);
+        // Stored normalized (ADR 0019); the raw line keeps the source's wording.
+        statements.insertGloss.run(senseId, index, normalizeGloss(text), `${sensePointer}/glosses/${index}`);
         rows.sense_gloss += 1;
       },
     );
