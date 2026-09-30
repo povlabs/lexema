@@ -4,8 +4,9 @@
 // then renders real pages: what it checks is what `DeveloperHeader` passes in.
 // The menu's own markup is web/test/signedIn.test.tsx.
 //
-// `mock.module` needs `--experimental-test-module-mocks`, so this file runs on
-// its own line of the `test` script, and imports the page only after the swap.
+// `mock.module` needs `--experimental-test-module-mocks`, which the `test`
+// script passes to every web test, and this file imports the page only after
+// the swap.
 
 import assert from "node:assert/strict";
 import { mock, test } from "node:test";

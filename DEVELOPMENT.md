@@ -25,11 +25,13 @@ all three on every push to `main` and every pull request
 ([ci.yml](./.github/workflows/ci.yml)). The web typecheck runs `wrangler types`
 first, which generates from `wrangler.jsonc` and needs no Cloudflare account.
 
-The `test` script enumerates its files by name. A new unit test runs only once its
-path is added to that list in [package.json](./package.json). Its last entry is the
-rendered-page test in `web/test/`, which renders the search page over an imported
-fixture release; it needs the web workspace's React, so it names that workspace's
-`tsconfig.json` and needs no archive and no database.
+The `test` script finds its files by pattern, so a new test needs no edit to
+[package.json](./package.json). It runs `test/*.test.ts`, then `web/test/*.test.ts`
+and `web/test/*.test.tsx`; Node expands the quoted patterns and does not look into
+subfolders. The web run uses the web workspace's `tsconfig.json`, because its tests
+render React pages, and passes `--experimental-test-module-mocks`, which
+`mock.module` needs. The integration test lives in `test/integration/`, so the
+pattern skips it and only `test:integration` runs it.
 
 ### Checks that need the dataset
 

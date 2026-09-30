@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { readFile } from "node:fs/promises";
-import { adaptFixture } from "../src/italian/adapter.js";
-import { collectFixtureRecords } from "../src/core/fixtureCollector.js";
-import type { ReleaseMetadata } from "../src/core/types.js";
+import { adaptFixture } from "../../src/italian/adapter.js";
+import { collectFixtureRecords } from "../../src/core/fixtureCollector.js";
+import type { ReleaseMetadata } from "../../src/core/types.js";
 
 const metadata: ReleaseMetadata = {
   releaseId: "it-local-integration",
