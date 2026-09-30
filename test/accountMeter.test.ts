@@ -170,6 +170,39 @@ test("a give-back after the day was partly sent to D1 takes back only the unsent
   sqlite.close();
 });
 
+test("a give-back while a send to D1 is on its way leaves that send's calls to D1, and the flush neither throws nor sends them twice (#289)", async () => {
+  const { meter, admit, flush } = storage();
+  admit({ keyId: 1, calls: 1 });
+  admit({ keyId: 1, calls: 2 });
+  admit({ keyId: 2, calls: 5 });
+  const sent: UnsentCalls[] = [];
+  await meter().flush(async (rows) => {
+    sent.push(...rows);
+    // The batch of 2's answer fails while its calls are on their way; another call is admitted meanwhile.
+    meter().giveBack({ keyId: 1, calls: 2, periodStart: PERIOD, now: NOW });
+    admit({ keyId: 1, calls: 1 });
+  }, NOW + FLUSH_EVERY_MS);
+  assert.deepEqual(sent, [
+    { keyId: 1, day: "2026-09-27", calls: 3 },
+    { keyId: 2, day: "2026-09-27", calls: 5 },
+  ]);
+  assert.equal(meter().periodCalls(PERIOD), 7);
+  // Only the call admitted during the send is left to send.
+  assert.deepEqual(await flush(NOW + 2 * FLUSH_EVERY_MS), [{ keyId: 1, day: "2026-09-27", calls: 1 }]);
+
+  // A give-back during a send takes calls no send carries, and a failed send leaves the rest to the next try.
+  admit({ keyId: 1, calls: 2 });
+  await assert.rejects(
+    meter().flush(async () => {
+      admit({ keyId: 1, calls: 4 });
+      meter().giveBack({ keyId: 1, calls: 4, periodStart: PERIOD, now: NOW });
+      throw new Error("D1 is down");
+    }, NOW + 3 * FLUSH_EVERY_MS),
+  );
+  assert.deepEqual(await flush(NOW + 4 * FLUSH_EVERY_MS), [{ keyId: 1, day: "2026-09-27", calls: 2 }]);
+  assert.deepEqual(await flush(NOW + 5 * FLUSH_EVERY_MS), []);
+});
+
 test("a give-back never takes the period below 0, and one for a period other than the meter's changes nothing (#289)", async () => {
   const { meter, admit, flush } = storage();
   const next = "2026-10-01T00:00:00.000Z";

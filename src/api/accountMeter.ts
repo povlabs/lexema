@@ -187,19 +187,27 @@ export class AccountMeter {
   }
 
   /**
-   * Send every key-day's calls D1 does not have yet, then mark them sent. Calls
-   * admitted while the send is on its way stay unsent and go with the next one.
-   * A failed send marks nothing, and the failure is thrown for the caller to
-   * arm the next try (`retryAt`).
+   * Send every key-day's calls D1 does not have yet. They are marked sent
+   * before the send goes out, so a give-back that lands while it is on its way
+   * leaves them to D1 and takes back only calls no send carries (#289). Calls
+   * admitted meanwhile stay unsent and go with the next send. A failed send
+   * unmarks what it marked, and the failure is thrown for the caller to arm the
+   * next try (`retryAt`).
    */
   async flush(sink: UsageSink, now: number): Promise<readonly UnsentCalls[]> {
     const unsent = this.sql<KeyDayRow>(`SELECT key_id, day, calls, sent FROM key_day WHERE calls > sent ORDER BY key_id, day`).map(
       (row): UnsentCalls => ({ keyId: row.key_id, day: row.day, calls: row.calls - row.sent }),
     );
     this.sql(`UPDATE meter_period SET flush_due = NULL`);
-    if (unsent.length > 0) await sink(unsent);
-    for (const { keyId, day, calls } of unsent) {
-      this.sql(`UPDATE key_day SET sent = sent + ? WHERE key_id = ? AND day = ?`, calls, keyId, day);
+    // Marked rows keep `sent > 0` until the send settles, so no give-back removes them and the unmark below keeps `sent >= 0`.
+    this.markSent(unsent, 1);
+    if (unsent.length > 0) {
+      try {
+        await sink(unsent);
+      } catch (failure) {
+        this.markSent(unsent, -1);
+        throw failure;
+      }
     }
     // A day that is over and that D1 has in full is never added to again.
     this.sql(`DELETE FROM key_day WHERE calls = sent AND day < ?`, dayOf(now));
@@ -224,6 +232,13 @@ export class AccountMeter {
     const at = now + FLUSH_EVERY_MS;
     this.sql(`UPDATE meter_period SET flush_due = ?`, at);
     return at;
+  }
+
+  /** Add these calls to their rows' `sent` (`sign` 1), or take them off again (`sign` -1). */
+  private markSent(rows: readonly UnsentCalls[], sign: 1 | -1): void {
+    for (const { keyId, day, calls } of rows) {
+      this.sql(`UPDATE key_day SET sent = sent + ? WHERE key_id = ? AND day = ?`, sign * calls, keyId, day);
+    }
   }
 
   private state(): StateRow | undefined {
