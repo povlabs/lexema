@@ -98,7 +98,13 @@
     // or GITHUB_CLIENT_SECRET, or an unset BETTER_AUTH_SECRET, which signs the
     // session cookie (#229), each set with `wrangler secret put`, never here.
     "GOOGLE_CLIENT_ID": "",
-    "GITHUB_CLIENT_ID": ""
+    "GITHUB_CLIENT_ID": "",
+    // Stripe billing's price ids for Starter and Pro (#262,
+    // worker/stripeWebhook.ts). Empty means billing is off and the webhook
+    // answers 503; so does an unset STRIPE_SECRET_KEY or STRIPE_WEBHOOK_SECRET,
+    // each set with `wrangler secret put`, never here (docs/DEPLOY.md).
+    "STRIPE_PRICE_STARTER": "",
+    "STRIPE_PRICE_PRO": ""
   },
   // Every Worker Preview's settings (ADR 0018). A Preview takes its bindings
   // from this block alone, never from the top level or env.production, and
@@ -110,7 +116,9 @@
       "LEXEMA_RELEASE": "it-0c432803",
       "TURNSTILE_SITE_KEY": "",
       "GOOGLE_CLIENT_ID": "",
-      "GITHUB_CLIENT_ID": ""
+      "GITHUB_CLIENT_ID": "",
+      "STRIPE_PRICE_STARTER": "",
+      "STRIPE_PRICE_PRO": ""
     },
     "d1_databases": [
       // The shared dictionary production and every Preview read, and code never
@@ -201,7 +209,9 @@
         "LEXEMA_RELEASE": "it-dev",
         "TURNSTILE_SITE_KEY": "",
         "GOOGLE_CLIENT_ID": "",
-        "GITHUB_CLIENT_ID": ""
+        "GITHUB_CLIENT_ID": "",
+        "STRIPE_PRICE_STARTER": "",
+        "STRIPE_PRICE_PRO": ""
       }
     }
   }
