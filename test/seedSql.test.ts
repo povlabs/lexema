@@ -239,8 +239,8 @@ test("the fifty-word dev seed is one part with the same rows", async () => {
     const report = await devSeed(join(dir, "sql"));
     assert.deepEqual(report.parts, [join(dir, "sql", "part-001.sql")]);
     assert.deepEqual(report.rows, {
-      source_record: 122, source_record_json: 122, lookup_form: 2613, accent_fold: 110, typo_key: 455, form_of_edge: 36,
-      sense: 346, sense_gloss: 345, sense_label: 140, grammar_claim: 10879,
+      source_record: 130, source_record_json: 130, lookup_form: 2628, accent_fold: 110, typo_key: 471, form_of_edge: 41,
+      sense: 359, sense_gloss: 358, sense_label: 151, grammar_claim: 10908,
       raw_page: 1, recovered_definition: 7, recovered_label: 6, recovered_example: 7,
       release_table_rows: 14,
     });

@@ -18,16 +18,25 @@ export type PhraseLine =
   | { kind: "meaning"; reading: Reading; item: DefinitionItem }
   | { kind: "form"; definition: PhraseDefinition };
 
-/** One record of a word the expression was searched with, numbered as a word page numbers its readings. */
+/** The record a numbered reading of the page shows: its heading, and where the source writes it. */
+export type PhraseRecord = Pick<PhraseForm, "recordId" | "word" | "posTitle" | "ref">;
+
+/**
+ * One numbered reading of the page, as a word page numbers its readings: a
+ * record of a word the expression was searched with, or, when no searched
+ * word has a form line naming the expression, a record of the expression
+ * itself.
+ */
 export interface PhraseEntry {
   /** 1-based. */
   number: number;
   /** The record, as the footer's report names it. */
-  reading: PhraseForm;
+  reading: PhraseRecord;
   /**
-   * For each expression the record's form entries name, in their order: the
-   * expression's meanings, the first time the page names it, then those form
-   * entries. Never empty, because every record has a form line.
+   * A searched word's record: for each expression its form entries name, in
+   * their order, the expression's meanings, the first time the page names
+   * it, then those form entries. The expression's own record: its meanings.
+   * Never empty.
    */
   lines: [PhraseLine, ...PhraseLine[]];
 }
@@ -37,9 +46,9 @@ export interface PhrasePage {
   headword: string;
   readings: PhraseEntry[];
   /**
-   * Each headword the query spells that no line names, because the source's
-   * form entries never write its lemma as a word. Linked on its own, so every
-   * headword the lookup found stays reachable.
+   * Each headword the query spells that no line names: no form line, and no
+   * gloss (#250) to show. Linked on its own, so every headword the lookup
+   * found stays reachable.
    */
   unnamed: string[];
   /**
@@ -52,7 +61,10 @@ export interface PhrasePage {
 /**
  * `headwords` are the found result's readings: the records of the expressions
  * the query spells. A headword with no gloss (#250) has no meanings to copy,
- * so its reading shows the form lines alone.
+ * so its reading shows the form lines alone. A headword no form line names —
+ * `hanno fatte fuori` when the participle's records never write *fare* —
+ * still shows its meanings, as readings of its own after the searched words'
+ * (Huey's ruling of 2026-09-30, 10:22Z on #214).
  */
 export function phrasePage(
   query: string,
@@ -80,14 +92,22 @@ export function phrasePage(
     if (head === undefined) throw new Error(`no line for record ${form.recordId}`);
     return [head, ...tail];
   };
-  const readings = route.forms.map((reading, i) => ({ number: i + 1, reading, lines: linesOf(reading) }));
+  const formed = route.forms.map((reading) => ({ reading, lines: linesOf(reading) }));
   const named = new Set(route.forms.flatMap((form) => form.definitions.map((definition) => definition.phrase)));
+  // Each headword no form line names, as its own reading of its meanings.
+  const own = headwords.flatMap((reading): Omit<PhraseEntry, "number">[] => {
+    if (named.has(reading.word)) return [];
+    const [head, ...tail] = definitionsOf(reading).items.map((item): PhraseLine => ({ kind: "meaning", reading, item }));
+    return head === undefined ? [] : [{ reading, lines: [head, ...tail] }];
+  });
+  const readings = [...formed, ...own].map((entry, i) => ({ number: i + 1, ...entry }));
+  const shown = new Set([...named, ...own.map(({ reading }) => reading.word)]);
   // The searched words' pages, then the page of each expression whose meanings show.
   const meaningPages = readings.flatMap(({ lines }) => lines.flatMap((line) => (line.kind === "meaning" ? [line.reading.word] : [])));
   return {
     headword: query,
     readings,
-    unnamed: route.phrases.map((phrase) => phrase.word).filter((word) => !named.has(word)),
+    unnamed: route.phrases.map((phrase) => phrase.word).filter((word) => !shown.has(word)),
     sourceWords: [...new Set([...route.forms.map((form) => form.word), ...meaningPages])],
   };
 }

@@ -104,7 +104,12 @@ last place the gloss writes the lemma as a whole word is replaced, and a gloss
 that never writes it so is left out. One entry per record, in source order,
 with its `pos_title` and each line's own `SourceRef`. `vada via` gives `vada`'s
 five entries; `volto le spalle` gives one `volto` record with a line for
-*voltare le spalle* and one for *volgere le spalle*.
+*voltare le spalle* and one for *volgere le spalle*. A compound tense's
+participle also gives the glosses of its verb records that name the verb's past
+participle, the hop the match read it through: `fatte`'s records name `fatto`,
+not `fare`, so `hanno fatte fuori` gives `fatte`'s "participio passato plurale
+femminile di fatto" as "… di fare fuori". `fatte`'s adjective and noun records
+give none.
 
 Before its form lines, each record shows the meanings of the expression they
 name, the first time the page names it
@@ -114,7 +119,10 @@ same `definitionsOf` the headword's page uses, so nothing is read or stored
 twice (`phrasePage`,
 [`web/lib/dictionary/phrasePage.ts`](../web/lib/dictionary/phrasePage.ts)). A
 headword with no gloss has none, and its lines stand alone: `faccio
-l'abitudine` shows only `faccio`'s form line for *fare l'abitudine*.
+l'abitudine` shows only `faccio`'s form line for *fare l'abitudine*. A
+headword no form line names still shows its meanings, each of its records a
+reading of its own after the searched words' records, and *Source* links its
+page. Only a headword with neither shows as a bare link.
 
 ## Outcomes
 

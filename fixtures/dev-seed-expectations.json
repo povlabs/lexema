@@ -1,6 +1,6 @@
 {
   "source": "it-extract.jsonl.gz",
-  "selection": "Huey's fifty required words, the multi-word search words of #214 (andare via, tirare fuori, volgere and voltare le spalle, fare l'amore, fare l'abitudine, aereo and aerei a reazione, and the words that spell them), plus the archive's form_of closure",
+  "selection": "Huey's fifty required words, the multi-word search words of #214 (andare via, tirare fuori, volgere and voltare le spalle, fare l'amore, fare l'abitudine, fare fuori, aereo and aerei a reazione, and the words that spell them), plus the archive's form_of closure",
   "recordsByWord": {
     "acqua": {
       "recordCount": 1,
@@ -993,6 +993,66 @@
         {
           "pos": "phrase",
           "keyCount": 9,
+          "forms": 0
+        }
+      ]
+    },
+    "fatto": {
+      "recordCount": 3,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 18,
+          "forms": 3
+        },
+        {
+          "pos": "noun",
+          "keyCount": 18,
+          "forms": 1
+        },
+        {
+          "pos": "verb",
+          "keyCount": 17,
+          "forms": 0
+        }
+      ]
+    },
+    "fatte": {
+      "recordCount": 3,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 13,
+          "forms": 3
+        },
+        {
+          "pos": "noun",
+          "keyCount": 12,
+          "forms": 0
+        },
+        {
+          "pos": "verb",
+          "keyCount": 12,
+          "forms": 0
+        }
+      ]
+    },
+    "hanno": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "verb",
+          "keyCount": 11,
+          "forms": 0
+        }
+      ]
+    },
+    "fare fuori": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "phrase",
+          "keyCount": 11,
           "forms": 0
         }
       ]

@@ -3,8 +3,9 @@
 // then each record of the inflected word as a reading, `1 · Voce verbale`,
 // whose definitions are the expression's own meanings, as its entry shows
 // them, then the word's form entries with the lemma replaced by the
-// expression, linked. Nothing else of either word shows: no forms, no
-// pronunciation. Then *Source*, as on every result.
+// expression, linked. An expression no form line names shows its meanings
+// as a reading of its own record. Nothing else of either word shows: no
+// forms, no pronunciation. Then *Source*, as on every result.
 
 import type { PhraseDefinition } from "@lexema/lookup/types.ts";
 import type { PhraseLine, PhrasePage } from "@/lib/dictionary/phrasePage.ts";

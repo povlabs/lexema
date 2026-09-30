@@ -32,6 +32,7 @@ import {
   HEADWORD_PREFIX_SQL,
   HEADWORD_SPELLING_SQL,
   nearPhrases,
+  PARTICIPLE_FORM_ENTRY_SQL,
   PAST_PARTICIPLE_SQL,
   WORD_LEMMAS_SQL,
   type PhraseOffer,
@@ -117,6 +118,22 @@ test("an auxiliary and a past participle stand for the participle's verb", async
   ]);
   // The participle's own form entry, not `essere`'s: `andati` the adjective names `andato`, so it has none.
   assert.deepEqual(formLines(result), ["andati: participio passato plurale maschile di [andare via]"]);
+});
+
+test("a participle that names the verb only through its past participle still has its form line", async () => {
+  // `fatte`'s records all name `fatto`, and `fatto` is `fare`'s past
+  // participle: the line comes through the same hop the rule reads it by.
+  const result = await found("hanno fatte fuori");
+  assert.deepEqual(words(result), ["fare fuori"]);
+  assert.deepEqual(result.route.kind === "phrase" && result.route.phrases, [
+    {
+      key: "fare fuori",
+      word: "fare fuori",
+      words: [{ typed: "hanno fatte", inflected: "fatte", lemma: "fare" }, { typed: "fuori", inflected: "fuori", lemma: "fuori" }],
+    },
+  ]);
+  // Only the verb record: `fatte` the adjective and the noun are not forms of `fare`.
+  assert.deepEqual(formLines(result), ["fatte: participio passato plurale femminile di [fare fuori]"]);
 });
 
 test("the page's lines are the inflected word's form entries, each with its lemma swapped for the expression", async () => {
@@ -252,6 +269,7 @@ test("every phrase query stays on indexes rather than scanning", () => {
     [HEADWORD_PREFIX_SQL, [RELEASE, "tirare fuo", "tirare fup", 8]],
     [EXACT_KEY_SQL, [RELEASE, JSON.stringify(["vado via", "aerei a reazione"])]],
     [FORM_ENTRY_SQL, [RELEASE, "vado", "andare"]],
+    [PARTICIPLE_FORM_ENTRY_SQL, [RELEASE, "fatte", "fare"]],
   ] as const;
   for (const [sql, params] of plans) {
     const plan = (sqlite.prepare(`EXPLAIN QUERY PLAN ${sql}`).all(...params) as { detail: string }[]).map((row) => row.detail);
@@ -452,7 +470,7 @@ test("every phrase offered finds each headword it names, for every multi-word he
       .prepare("SELECT DISTINCT surface_key FROM lookup_form WHERE release_id = ? AND origin = 'headword' AND surface_key LIKE '% %'")
       .all(RELEASE) as { surface_key: string }[]
   ).map((row) => row.surface_key);
-  assert.equal(headwords.length, 8, headwords.join(", "));
+  assert.equal(headwords.length, 9, headwords.join(", "));
   const formsOf = sqlite.prepare(
     `SELECT DISTINCT lf.surface_key FROM form_of_edge e
        JOIN lookup_form lf ON lf.record_id = e.record_id AND lf.origin = 'headword'

@@ -473,6 +473,40 @@ export const FORM_ENTRY_SQL = `SELECT DISTINCT r.record_id, r.word, r.pos_title,
       WHERE lf.release_id = ?1 AND lf.surface_key = ?2 AND lf.origin = 'headword'
         AND e.target_word_key = ?3`;
 
+/**
+ * The form entries of the verb records a compound tense's participle heads
+ * that name one of a verb's past participles: the same hop the rule reads the
+ * participle through (`PAST_PARTICIPLE_SQL`). `fatte` names `fatto`, not
+ * `fare`, and `fatto` is `fare`'s past participle, so `fatte` and `fare` give
+ * "participio passato plurale femminile di fatto". Only a verb record: the
+ * hop is a verb's, and `fatte` the adjective's "femminile plurale di fatto" is
+ * not a form of `fare`. Exported so a test can assert the plan.
+ */
+export const PARTICIPLE_FORM_ENTRY_SQL = `SELECT DISTINCT r.record_id, r.word, r.pos_title, r.line_no, r.line_sha256,
+            e.target_word AS lemma, s.sense_index, g.gloss_index, g.text, g.json_pointer
+       FROM lookup_form lf
+       JOIN source_record r ON r.record_id = lf.record_id AND r.pos = 'verb'
+       JOIN form_of_edge e ON e.record_id = lf.record_id
+       JOIN sense s ON s.record_id = e.record_id AND s.sense_index = e.sense_index
+       JOIN sense_gloss g ON g.sense_id = s.sense_id
+      WHERE lf.release_id = ?1 AND lf.surface_key = ?2 AND lf.origin = 'headword'
+        AND e.target_word_key IN (
+              SELECT pp.surface_key
+                FROM lookup_form hw
+                JOIN source_record v ON v.record_id = hw.record_id AND v.pos = 'verb'
+                JOIN lookup_form pp ON pp.record_id = hw.record_id AND pp.origin = 'embedded-form'
+               WHERE hw.release_id = ?1 AND hw.surface_key = ?3 AND hw.origin = 'headword'
+                 AND EXISTS (
+                       SELECT 1 FROM grammar_claim c
+                        WHERE c.record_id = pp.record_id
+                          AND c.scope = 'form' AND c.scope_index = pp.form_index
+                          AND c.status = 'stated' AND c.dimension = 'mood' AND c.value = 'participle')
+                 AND EXISTS (
+                       SELECT 1 FROM grammar_claim c
+                        WHERE c.record_id = pp.record_id
+                          AND c.scope = 'form' AND c.scope_index = pp.form_index
+                          AND c.status = 'stated' AND c.dimension = 'tense' AND c.value = 'past'))`;
+
 interface FormEntryRow {
   record_id: number;
   word: string;
@@ -493,12 +527,25 @@ interface FormEntryRow {
  * lemma, each gloss with the lemma replaced by the phrase (`phraseGloss`):
  * one entry per record, in source order. A gloss that never writes its lemma
  * as a word is left out, and so is a record left with none.
+ *
+ * A compound tense's participle may name the verb only through its past
+ * participle, as the rule read it: `hanno fatte fuori` is *fare fuori*, and
+ * `fatte`'s verb record says "participio passato plurale femminile di fatto",
+ * which reads "… di *fare fuori*" (`PARTICIPLE_FORM_ENTRY_SQL`).
  */
 export async function phraseForms(db: LookupDatabase, releaseId: string, phrases: readonly PhraseMatch[]): Promise<PhraseForm[]> {
+  const read = async (phrase: PhraseMatch, sql: string, word: PhraseWord) => ({
+    phrase,
+    rows: await db.all<FormEntryRow>(sql, [releaseId, word.inflected, word.lemma]),
+  });
   const reads = phrases.flatMap((phrase) =>
     phrase.words
       .filter((word) => word.inflected !== word.lemma)
-      .map(async (word) => ({ phrase, rows: await db.all<FormEntryRow>(FORM_ENTRY_SQL, [releaseId, word.inflected, word.lemma]) })),
+      .flatMap((word) => [
+        read(phrase, FORM_ENTRY_SQL, word),
+        // Only a compound tense's word, `hanno fatte`, was read as a participle.
+        ...(word.typed === word.inflected ? [] : [read(phrase, PARTICIPLE_FORM_ENTRY_SQL, word)]),
+      ]),
   );
   const lines: { row: FormEntryRow; definition: PhraseDefinition }[] = [];
   const seen = new Set<string>();

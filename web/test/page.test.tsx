@@ -38,6 +38,8 @@ import { Attribution } from "@/components/dictionary/Attribution";
 import { FirstLoad, Limited, Outcome, Pending, SearchPage, TRY_WORDS } from "@/components/dictionary/SearchPage";
 import { SiteFooter } from "@/components/dictionary/SiteFooter";
 import { SiteHeader } from "@/components/dictionary/SiteHeader";
+import { PhraseView } from "@/components/dictionary/Phrase";
+import { phrasePage } from "@/lib/dictionary/phrasePage.ts";
 import { wordPage } from "@/lib/dictionary/wordPage.ts";
 import { firstQuery, pageTitle } from "@/lib/dictionary/params";
 // The class strings the components carry, imported rather than copied, so a
@@ -639,6 +641,20 @@ test("an inflected expression opens a short page: its words, the expression's ow
     assert.deepEqual(definitionLines(abitudine), ["prima persona singolare del presente semplice indicativo di fare l'abitudine"]);
     assert.deepEqual(sourcePages(abitudine), ["faccio"]);
 
+    // A participle whose records name the verb only through its past
+    // participle: `fatte` names `fatto`, `fare`'s. The meanings, then the
+    // verb record's line; *Source* names both pages. *fare fuori*'s second
+    // sense is the source's missing-definition text, shown as its own page
+    // shows it (#250).
+    const fatte = await render(db, "hanno fatte fuori");
+    assert.deepEqual(headingsOf(fatte), ["1·Voce verbale"]);
+    assert.deepEqual(definitionLines(fatte), [
+      "uccidere un individuo",
+      "(colloquial) definizione mancante; se vuoi, aggiungila tu",
+      "participio passato plurale femminile di fare fuori",
+    ]);
+    assert.deepEqual(sourcePages(fatte), ["fatte", "fare fuori"]);
+
     // A typo in one word of an expression offers the typed words corrected,
     // not the headword, and the offer opens their short page (Huey's hand
     // check of 2026-09-30).
@@ -676,6 +692,25 @@ test("an inflected expression opens a short page: its words, the expression's ow
     assert.match(plain, new RegExp(`<h1 class="${esc(WORD_HEADING)}" lang="it">andare via</h1>`));
     assert.deepEqual(headingsOf(plain), ["1·Espressione"]);
     assert.match(plain, /lasciare un luogo/);
+  });
+});
+
+test("an expression no searched word has a form line for still shows its meanings and its Source", async () => {
+  await withDevSeed(async ({ db }) => {
+    // The lookup answer for `hanno fatte fuori`, with its form lines taken
+    // away: the page a participle whose records never write the verb gets.
+    const answer = await attempt(db, "hanno fatte fuori");
+    assert.ok(answer.outcome === "found" && answer.route.kind === "phrase");
+    const html = renderToStaticMarkup(
+      <PhraseView page={phrasePage("hanno fatte fuori", { ...answer.route, forms: [] }, answer.readings)} />,
+    );
+    assert.match(html, new RegExp(`<h1 class="${esc(WORD_HEADING)}" lang="it">hanno fatte fuori</h1>`));
+    // *fare fuori*'s own record, its meanings under *Definitions*.
+    assert.deepEqual(headingsOf(html), ["1·Locuzione verbale"]);
+    assert.match(html, />Definitions</);
+    assert.deepEqual(definitionLines(html), ["uccidere un individuo", "(colloquial) definizione mancante; se vuoi, aggiungila tu"]);
+    assert.deepEqual(sourcePages(html), ["fare fuori"]);
+    assert.match(textOf(html), /Report a mistake/);
   });
 });
 
