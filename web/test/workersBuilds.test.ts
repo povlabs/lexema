@@ -139,7 +139,7 @@ class FakeAccount {
     this.databases = [...databases];
   }
 
-  readonly wrangler: Wrangler = (args, input) => {
+  readonly wrangler: Wrangler = (args) => {
     this.calls.push([...args]);
     const line = args.join(" ");
     const ok = (stdout = ""): WranglerRun => ({ ok: true, stdout, stderr: "" });
@@ -161,12 +161,6 @@ class FakeAccount {
       }
       case "d1 migrations":
         return ok();
-      case "preview secret":
-        // Wrangler 4.135.0's own refusal for a Preview that has no deployment yet.
-        if (!this.previews.has(name)) return fail(`✘ [ERROR] The Preview "${name}" was not found. Please check the Preview name, or create it with \`wrangler preview\`.`);
-        if (args[2] === "list") return ok(JSON.stringify(this.secrets.has(name) ? [{ name: "BETTER_AUTH_SECRET", type: "secret_text" }] : []));
-        this.secrets.set(name, input ?? "");
-        return ok();
       case "preview delete":
         if (!this.previews.delete(name)) return fail(`✘ [ERROR] A request to the Cloudflare API failed.\n  Preview not found [code: 10025]`);
         return ok();
@@ -175,11 +169,16 @@ class FakeAccount {
     }
   };
 
-  /** `npx wrangler preview --name <name> --secrets-file <file>`: a deployment carrying `secrets`. */
+  /**
+   * `npx wrangler preview --name <name> --secrets-file <file>`: a deployment
+   * carrying `secrets`, and only those. Wrangler 4.135.0 sends no keep flag, so
+   * a secret the file leaves out is gone from the new deployment.
+   */
   deployPreview(name: string, secrets: Record<string, string>): void {
     this.previews.add(name);
     const secret = secrets.BETTER_AUTH_SECRET;
-    if (secret !== undefined) this.secrets.set(name, secret);
+    if (secret === undefined) this.secrets.delete(name);
+    else this.secrets.set(name, secret);
   }
 
   /** The calls, each as one line. */
@@ -259,16 +258,12 @@ test("the prepare step creates the app database, binds it, migrates it, and writ
     "wrangler d1 list",
     `write ${BUILT_CONFIG}`,
     "wrangler d1 migrations",
-    "wrangler preview secret",
     `write ${PREVIEW_SECRETS_FILE}`,
     `write ${PREVIEW_NAME_FILE}`,
   ]);
-  assert.deepEqual(account.lines.filter((line) => /migrations|^preview secret/.test(line)), [
+  assert.deepEqual(account.lines.filter((line) => /migrations|^preview/.test(line)), [
     `d1 migrations apply ${name.appDatabase} --remote --config /tmp/migrations/wrangler.json`,
-    `preview secret list --name ${name.value} --json --config ${BUILT_CONFIG}`,
   ]);
-  // The prepare step never deploys: `npx wrangler preview` is the command's own.
-  assert.equal(account.lines.some((line) => line === "preview" || line.startsWith("preview --")), false);
 
   // APP_DB on the branch's own database, DB left on the shared dictionary.
   const byBinding = Object.fromEntries((config.previews?.d1_databases ?? []).map((entry) => [entry.binding, entry]));
@@ -284,7 +279,7 @@ test("the prepare step creates the app database, binds it, migrates it, and writ
   assert.deepEqual(secrets, { BETTER_AUTH_SECRET: "random-secret" });
 });
 
-test("a second push to the same branch reuses the same app database and keeps the Preview's secret", () => {
+test("a second push to the same branch reuses the same app database and sends the Preview a fresh secret", () => {
   const account = new FakeAccount([{ name: DICTIONARY.name, uuid: DICTIONARY.id }]);
   const first = previewCommand(account, "huey/foo_bar");
   assert.equal(account.secrets.get(first.name.value), "random-secret");
@@ -297,20 +292,19 @@ test("a second push to the same branch reuses the same app database and keeps th
   assert.equal(account.lines.some((line) => line.startsWith("d1 create")), false);
   assert.equal(account.databases.filter((db) => db.name.startsWith(APP_DATABASE_PREFIX)).length, 1);
   assert.ok(account.lines.includes(`d1 migrations apply ${first.name.appDatabase} --remote --config /tmp/migrations/wrangler.json`));
-  assert.deepEqual(second.secrets, {});
-  assert.equal(asked, 0);
-  assert.equal(account.secrets.get(first.name.value), "random-secret");
+  // A deployment keeps only the secrets it is sent, so every push sends one.
+  assert.deepEqual(second.secrets, { BETTER_AUTH_SECRET: "secret-1" });
+  assert.equal(account.secrets.get(first.name.value), "secret-1");
+  const third = previewCommand(account, "huey/foo_bar", () => `secret-${++asked}`);
+  assert.deepEqual(third.secrets, { BETTER_AUTH_SECRET: "secret-2" });
+  assert.equal(account.secrets.get(first.name.value), "secret-2");
+  assert.equal(account.lines.some((line) => line.startsWith("preview")), false);
 });
 
-test("the prepare step stops before writing the name when the migrations or the secret list fail, and runs nowhere without a branch", () => {
+test("the prepare step stops before writing the name when the migrations fail, and runs nowhere without a branch", () => {
   const migrationsFail = new FakeAccount();
   migrationsFail.failing.push(/^d1 migrations apply/);
   assert.throws(() => prepare(migrationsFail, "huey/foo_bar"), /migrations apply failed/);
-
-  // An unreadable secret list is not "no secret": replacing one would sign everyone out.
-  const listFails = new FakeAccount();
-  listFails.failing.push(/^preview secret list/);
-  assert.throws(() => prepare(listFails, "huey/foo_bar"), /secret list failed/);
 
   assert.throws(() => prepare(new FakeAccount(), undefined), /WORKERS_CI_BRANCH/);
 });
