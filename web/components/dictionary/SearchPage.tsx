@@ -21,6 +21,7 @@ import { PhraseView } from "./Phrase";
 import { WordView } from "./Word";
 import { phrasePage } from "@/lib/dictionary/phrasePage.ts";
 import { wordPage } from "@/lib/dictionary/wordPage.ts";
+import { SITE_NAME, SITE_PRONUNCIATION, SITE_TAGLINE } from "@/lib/dictionary/params.ts";
 import {
   ERROR,
   HOME_NAME,
@@ -50,11 +51,11 @@ export function SearchPage({ raw, children }: { raw: string; children: ReactNode
   if (raw.trim() === "") {
     return (
       <main className={SHELL_CENTRED}>
-        <h1 className={HOME_NAME}>Lexema</h1>
+        <h1 className={HOME_NAME}>{SITE_NAME}</h1>
         <p className={HOME_PRONUNCIATION} aria-label="Pronunciation">
-          /lekˈsɛːma/
+          {SITE_PRONUNCIATION}
         </p>
-        <p className={HOME_TAGLINE}>a simple dictionary</p>
+        <p className={HOME_TAGLINE}>{SITE_TAGLINE}</p>
         <SearchField raw={raw} />
         {children}
       </main>

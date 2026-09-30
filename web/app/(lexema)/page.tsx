@@ -15,33 +15,47 @@ import { headers } from "next/headers";
 import { Suspense } from "react";
 import { SEARCH_LIMITED_HEADER } from "@/worker/rateLimit.ts";
 import { FirstLoad, Limited, Outcome, Pending, SearchPage } from "@/components/dictionary/SearchPage";
-import { firstQuery, pageTitle, type QueryParam } from "@/lib/dictionary/params";
+import type { Attempt } from "@/lib/dictionary/attempt.ts";
+import { cardOf, HOME_CARD, linkPreview } from "@/lib/dictionary/card.ts";
+import { firstQuery, pageTitle, type QueryParam, type TitleOutcome } from "@/lib/dictionary/params";
 import { wordPage } from "@/lib/dictionary/wordPage.ts";
-import { search, turnstile } from "@/lib/dictionary/db";
+import { search, servedRelease, turnstile } from "@/lib/dictionary/db";
+import { requestOrigin } from "@/lib/shared/requestOrigin.ts";
 
 interface PageProps {
   searchParams: { q?: QueryParam };
 }
 
+/** What the tab's title says about a lookup's answer. */
+function titleOutcome(attempt: Attempt): TitleOutcome {
+  if (attempt.outcome === "not-found") return "not-found";
+  if (attempt.outcome !== "found") return undefined;
+  // A searched expression's page is titled as typed (#214).
+  const searched = attempt.query.raw.trim();
+  return { found: attempt.route.kind === "phrase" ? searched : wordPage(searched, attempt.readings).headword };
+}
+
+/**
+ * The tab's title, and the tags a shared link's preview reads (#304): a word
+ * found is previewed with its own card, and everything else with the home card.
+ */
 export async function generateMetadata({ searchParams }: PageProps) {
   const raw = firstQuery(searchParams.q);
-  // A search over the visitor's limit is not run for its title either.
-  if (raw.trim() === "" || (await headers()).has(SEARCH_LIMITED_HEADER)) return { title: pageTitle(raw) };
-  // The same memoised search the result renders from (db.ts).
-  const attempt = await search(raw);
-  const outcome =
-    attempt.outcome === "found"
-      ? {
-          // A searched expression's page is titled as typed (#214).
-          found:
-            attempt.route.kind === "phrase"
-              ? attempt.query.raw.trim()
-              : wordPage(attempt.query.raw.trim(), attempt.readings).headword,
-        }
-      : attempt.outcome === "not-found"
-        ? ("not-found" as const)
-        : undefined;
-  return { title: pageTitle(raw, outcome) };
+  const requestHeaders = await headers();
+  // A search over the visitor's limit is not run for its title either. The
+  // same memoised search the result renders from (db.ts).
+  const attempt = raw.trim() === "" || requestHeaders.has(SEARCH_LIMITED_HEADER) ? undefined : await search(raw);
+  const title = pageTitle(raw, attempt === undefined ? undefined : titleOutcome(attempt));
+  return {
+    title,
+    ...linkPreview({
+      title,
+      card: attempt === undefined ? HOME_CARD : cardOf(attempt),
+      word: raw,
+      release: servedRelease(),
+      origin: requestOrigin(requestHeaders),
+    }),
+  };
 }
 
 /** The half that waits on D1, so the shell above it can flush before it does. */

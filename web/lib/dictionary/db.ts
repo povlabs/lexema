@@ -17,17 +17,22 @@ import { turnstileConfig, type TurnstileConfig } from "./report.ts";
  * releases and binding state, which is the operator's business and not the
  * reader's, so it is logged and nothing of it reaches the page.
  *
- * Memoised for the request with React's `cache`, so the tab title and the
- * result read one lookup, not two.
+ * Unmemoised, as a shared link's card runs it outside any page (worker/card.ts).
  */
-export const search = cache(async (query: string): Promise<Attempt> => {
+export async function searchOnce(query: string): Promise<Attempt> {
   try {
     return await searchAttempt(database(), env.LEXEMA_RELEASE, query);
   } catch (error) {
     console.error("lookup failed", error);
     return { outcome: "failed" };
   }
-});
+}
+
+/**
+ * `searchOnce`, memoised for the request with React's `cache`, so the tab
+ * title, the link preview's tags and the result read one lookup, not two.
+ */
+export const search = cache(searchOnce);
 
 /**
  * Suggestions for a prefix, or the fact that they could not be read.
