@@ -36,6 +36,7 @@ test("a placeholder behind a bracketed label is still no data", () => {
   assert.equal(withoutPlaceholder(`(autoveicoli)(${DEFINITION}`), undefined);
   assert.equal(withoutPlaceholder(`${DEFINITION} (ellissi)`), undefined);
   assert.equal(withoutPlaceholder(`${ETYMOLOGY}\n.`), undefined, "punctuation alone is not real text");
+  assert.equal(withoutPlaceholder(`(mineralogia)''${ETYMOLOGY}`), undefined, "italic markup before it is not real text");
 });
 
 test("real text beside a placeholder is kept, the joining punctuation trimmed", () => {
@@ -46,6 +47,9 @@ test("real text beside a placeholder is kept, the joining punctuation trimmed", 
   assert.equal(withoutPlaceholder(`Dal greco moystos.\n${ETYMOLOGY}`), "Dal greco moystos.", "the real text's own full stop stays");
   assert.equal(withoutPlaceholder(`dall'arabo\n${REFERENCES}`), "dall'arabo");
   assert.equal(withoutPlaceholder(`Verbo, ${ETYMOLOGY}`), "Verbo");
+  assert.equal(withoutPlaceholder(`inglese\n** ${REFERENCES}`), "inglese", "the placeholder line's list marker goes with it");
+  assert.equal(withoutPlaceholder(`*egiziano\n** ${REFERENCES}\n*spagnolo`), "*egiziano\n*spagnolo", "real list items keep their markers");
+  assert.equal(withoutPlaceholder(`un po' ${ETYMOLOGY}`), "un po'", "an elision's apostrophe is real text");
   assert.equal(withoutPlaceholder(`acronimo di Federazione Italiana Giuoco Calcio: ${DEFINITION}`), "acronimo di Federazione Italiana Giuoco Calcio");
   assert.equal(withoutPlaceholder(`${DEFINITION} colui che rapisce o ha già rapito`), "colui che rapisce o ha già rapito");
   assert.equal(withoutPlaceholder(`${DEFINITION}Il destinatario di un bene`), "Il destinatario di un bene");

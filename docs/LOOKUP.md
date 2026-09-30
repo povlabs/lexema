@@ -130,8 +130,10 @@ Wikizionario prints a fixed request to add one, and the archive keeps it as the
 field's text: `→ Etimologia mancante. Se vuoi, aggiungila tu.`,
 `definizione mancante; se vuoi, aggiungila tu`. It is a template, not data, so
 `withoutPlaceholder` (`src/italian/placeholder.ts`) takes it out when a reading
-is read (#255). What is left keeps its own pointer; a text left with only a
-bracketed label or punctuation is no text. The stored rows and
+is read (#255). The joining punctuation and wikitext markup touching it go
+with it: a `''` quote run, the `**` list marker of its own line. What is left
+keeps its own pointer; a text left with only a bracketed label or punctuation
+is no text. The stored rows and
 `source_record_json` keep the sentence as imported.
 
 ### `SourceRef`

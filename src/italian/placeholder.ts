@@ -26,10 +26,15 @@
  */
 const PLACEHOLDER = /(?:→\s*\p{L}[\p{L} ]*?|\p{L}+)\s+mancant[ei][.;]\s*[Ss]e vuoi,\s*aggiungil[aeio]\s+tu(?!\p{Ll})\.?/gu;
 
-/** Joining punctuation left dangling before a removed placeholder; a full stop ends real text and stays. */
-const JOINER_BEFORE = /[\s,;:(]+$/u;
-/** Joining punctuation left dangling after one. */
-const JOINER_AFTER = /^[\s,;:.)]+/u;
+/**
+ * Joining punctuation left dangling before a removed placeholder, with the
+ * wikitext markup that led into it: an italic or bold quote run (`''`) and
+ * the list marker of the placeholder's own line (`**`, `#`). A full stop ends
+ * real text and stays, and so does a single `'`, which is an elision (`po'`).
+ */
+const JOINER_BEFORE = /(?:[\s,;:(*#]|'{2,})+$/u;
+/** Joining punctuation left dangling after one, with a quote run that closed it. */
+const JOINER_AFTER = /^(?:[\s,;:.)]|'{2,})+/u;
 
 /**
  * Only bracketed labels, which the placeholder was prefixed with: `(tipografia)`,
