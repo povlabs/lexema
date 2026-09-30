@@ -104,7 +104,7 @@ function sample() {
       { key_id: 1, day: days[0], calls: 17000 },
     ],
   );
-  return { days, keys, view: dashboardView(profile, keys, usage, undefined, NOW), settings: settingsView(profile, keys, NO_PLAN) };
+  return { days, keys, view: dashboardView(profile, keys, usage, undefined, NOW), settings: settingsView(profile, keys, { state: NO_PLAN, serving: { serving: false } }) };
 }
 
 test("the dashboard lists each live key, oldest first, with its name, prefix, endpoints, expiry, created, last used and Revoke", () => {

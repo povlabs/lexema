@@ -19,9 +19,9 @@ const CSRF = "c".repeat(43);
 const profile: AccountProfile = { email: "ada@example.com", name: "Ada Lovelace", providers: ["google"] };
 const PERIOD: Period = { start: Date.parse("2026-09-29T00:00:00Z"), end: Date.parse("2026-10-29T00:00:00Z") };
 
-/** The Plan card as settings draws it for a state. */
-const planCard = (state: PlanState): string => {
-  const html = renderToStaticMarkup(<DashboardSettings view={settingsView(profile, [], state)} csrf={CSRF} />);
+/** The Plan card as settings draws it for a state at `now`, serving as `accountPlan` reads it. */
+const planCard = (state: PlanState, now = NOW): string => {
+  const html = renderToStaticMarkup(<DashboardSettings view={settingsView(profile, [], { state, serving: serving(state, now) })} csrf={CSRF} />);
   const card = /<div[^>]*data-plan-section="[^"]*"[^>]*>.*?(?=<section)/s.exec(html)?.[0];
   assert.ok(card !== undefined, "settings draws a Plan card");
   return card;
@@ -74,10 +74,40 @@ test("a cancelled plan says when it ends, with Manage billing", () => {
   assert.deepEqual(formsOf(card), manage(PLAN_BUTTON_OUTLINE));
 });
 
-test("Enterprise shows its own numbers, and no price and no button", () => {
-  const card = planCard({ kind: "active", plan: { id: "enterprise", callsPerPeriod: 20_000_000, callsPerMinute: 1_000 }, period: PERIOD });
-  assert.deepEqual(textOf(card), ["Enterprise", "20,000,000 calls a month · 1,000 calls a minute"]);
-  assert.doesNotMatch(card, /\$|<form|<button/);
+test("a cancelled plan at and past its end draws as no plan, with Choose Starter and Choose Pro posting to Checkout (#300)", () => {
+  const cancelled = { kind: "cancelling", plan: { id: "pro" }, period: PERIOD, endsAt: Date.parse("2026-10-20T00:00:00Z") } as const satisfies PlanState;
+  assert.deepEqual(textOf(planCard(cancelled, cancelled.endsAt - 1)), ["Pro · $49 / month", "Cancelled · Ends 20 Oct 2026"]);
+  assert.deepEqual(formsOf(planCard(cancelled, cancelled.endsAt - 1)), manage(PLAN_BUTTON_OUTLINE));
+  for (const now of [cancelled.endsAt, cancelled.endsAt + 1]) {
+    const card = planCard(cancelled, now);
+    assert.deepEqual(textOf(card), ["No plan yet", "Keys work once a plan is active."], String(now));
+    assert.deepEqual(formsOf(card), CHOOSE, String(now));
+  }
+});
+
+/** An Enterprise plan as `pnpm run plan enterprise … --until 2026-11-01` sets it: its period ends at the start of that UTC day. */
+const ENTERPRISE = {
+  kind: "active",
+  plan: { id: "enterprise", callsPerPeriod: 20_000_000, callsPerMinute: 1_000 },
+  period: { start: Date.parse("2026-10-01T00:00:00Z"), end: Date.parse("2026-11-01T00:00:00Z") },
+} as const satisfies PlanState;
+
+test("Enterprise shows its own numbers and the day it ends, and no price and no button", () => {
+  for (const now of [NOW, ENTERPRISE.period.end - 1]) {
+    const card = planCard(ENTERPRISE, now);
+    assert.deepEqual(textOf(card), ["Enterprise", "20,000,000 calls a month · 1,000 calls a minute · Ends 1 Nov 2026"], String(now));
+    assert.doesNotMatch(card, /\$|<form|<button/, String(now));
+  }
+});
+
+test("a lapsed Enterprise plan, at and past its end, draws exactly as an ended plan (#300)", () => {
+  const ended = planCard({ kind: "ended", plan: ENTERPRISE.plan });
+  for (const now of [ENTERPRISE.period.end, ENTERPRISE.period.end + 1]) {
+    const card = planCard(ENTERPRISE, now);
+    assert.equal(card, ended, String(now));
+    assert.deepEqual(textOf(card), ["No plan yet", "Keys work once a plan is active."], String(now));
+    assert.deepEqual(formsOf(card), CHOOSE, String(now));
+  }
 });
 
 /** The dashboard for a plan state and the meter's count. */

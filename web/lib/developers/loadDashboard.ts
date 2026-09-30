@@ -59,5 +59,5 @@ export interface LoadedSettings {
 export async function loadSettings(cookies: string | null): Promise<LoadedSettings> {
   const { db, now, accountId, csrf, profile, keys } = await signedInOwner(cookies);
   const plan = await accountPlan(db, accountId, now);
-  return { view: settingsView(profile, keys, plan.state), csrf };
+  return { view: settingsView(profile, keys, plan), csrf };
 }

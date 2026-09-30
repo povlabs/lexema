@@ -8,7 +8,8 @@ import { PROVIDER_NAME } from "@lexema/accounts/providers.ts";
 import { LIFETIME_LABEL, type EndpointScope } from "@lexema/api/keyAccess.ts";
 import type { OwnedKey } from "@lexema/api/ownedKeys.ts";
 import type { AccountUsage } from "@lexema/api/usage.ts";
-import { PLAN_TERMS, type PlanState, type Serving, type StripePlan } from "@lexema/billing/plans.ts";
+import type { AccountPlan } from "@lexema/billing/accountPlan.ts";
+import { PLAN_TERMS, type Serving, type StripePlan } from "@lexema/billing/plans.ts";
 import { signedInOf, type SignedIn } from "./signedIn.ts";
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -157,10 +158,15 @@ const dayOfMs = (ms: number): string => shortDate(new Date(ms).toISOString());
 const stripeTitle = (plan: StripePlan): string => `${PLAN_TERMS[plan.id].name} · $${PLAN_TERMS[plan.id].usdPerMonth} / month`;
 
 /**
- * What the Plan section says for a plan state. An ended plan reads as no plan;
- * Enterprise shows its own numbers, with no price and no Manage billing.
+ * What the Plan section says for an account's plan. A plan that no longer
+ * serves reads as no plan, whatever its state: `serving` in
+ * src/billing/plans.ts decides that, as it does for the API and the meter, so
+ * a lapsed Enterprise plan, or a cancelled one past its end, draws like an
+ * ended one (#300). Enterprise shows its own numbers and when it ends, with no
+ * price and no Manage billing.
  */
-export function planSectionOf(state: PlanState): PlanSection {
+export function planSectionOf({ state, serving }: AccountPlan): PlanSection {
+  if (!serving.serving) return NO_PLAN_SECTION;
   switch (state.kind) {
     case "none":
     case "ended":
@@ -168,11 +174,8 @@ export function planSectionOf(state: PlanState): PlanSection {
     case "active": {
       const { plan } = state;
       if (plan.id === "enterprise") {
-        return {
-          kind: "enterprise",
-          title: PLAN_TERMS.enterprise.name,
-          line: `${callCount(plan.callsPerPeriod)} calls a month · ${callCount(plan.callsPerMinute)} calls a minute`,
-        };
+        const numbers = `${callCount(plan.callsPerPeriod)} calls a month · ${callCount(plan.callsPerMinute)} calls a minute`;
+        return { kind: "enterprise", title: PLAN_TERMS.enterprise.name, line: `${numbers} · Ends ${dayOfMs(state.period.end)}` };
       }
       const calls = callCount(PLAN_TERMS[plan.id].callsPerPeriod);
       return { kind: "manage", title: stripeTitle(plan), line: `${calls} calls a month · Renews ${dayOfMs(state.period.end)}`, pastDue: false };
@@ -194,8 +197,8 @@ export interface SettingsView {
   deleteWarning: string;
 }
 
-/** The settings page for an account's profile, keys and plan state. */
-export function settingsView(profile: AccountProfile, keys: readonly OwnedKey[], plan: PlanState): SettingsView {
+/** The settings page for an account's profile, keys and plan, as `accountPlan` read it. */
+export function settingsView(profile: AccountProfile, keys: readonly OwnedKey[], plan: AccountPlan): SettingsView {
   return {
     signedIn: signedInOf(profile),
     plan: planSectionOf(plan),
