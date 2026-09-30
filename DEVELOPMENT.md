@@ -152,17 +152,30 @@ curl -i -H "X-API-Key: lx_…" -H "content-type: application/json" -d '{"q":["sa
 `/inflect` takes `/lookup`'s grammar filters and is a 404 `unknown_lemma` for a
 word that heads no record. `/random` takes `/lookup`'s `pos` and reads the
 `source_record_by_pos` index, so a database seeded before it needs
-`pnpm run seed:dev` again. `/lookup/batch` takes 1 to 200 words and answers one
-light result per candidate, or one `found: false` per word not in the release.
+`pnpm run seed:dev` again. `/lookup/batch` takes from 1 word up to the key's
+calls a minute and answers one light result per candidate, or one
+`found: false` per word not in the release.
 
-Each key has its own per-minute limit, counted in D1, and every answer
-to a known key carries `RateLimit-Limit`, `RateLimit-Remaining` and
-`RateLimit-Reset`; a 401 carries none. Past the limit the answer is a 429 with
-`Retry-After`. Each answered request, found (200) or not found (404), adds its
-calls to the key's row for the day: 1 call, or 1 per word for `/lookup/batch`
-([src/api/calls.ts](./src/api/calls.ts)). A
-request refused before an answer (a 400 bad `q`, parameter or body, a 405 or a 429) adds none. An
-API request is never counted against the site's per-visitor limits.
+The per-minute limit counts calls, as the day does: 1 per request, or 1 per word
+for `/lookup/batch` ([src/api/calls.ts](./src/api/calls.ts); Huey on
+[#216](https://github.com/hueypov/lexema/issues/216)). A request refused before
+its calls are counted (a 400 bad `q`, parameter or body, a 403, 404 or 405) counts
+nothing, toward the minute or the day; a 401 carries no limit headers
+([web/worker/api/keyLimits.ts](./web/worker/api/keyLimits.ts)).
+
+- An admin key's minute is a D1 row, so its answers carry exact
+  `RateLimit-Limit`, `RateLimit-Remaining` and `RateLimit-Reset`, and a 429
+  `Retry-After` to the minute's end. Its answered calls are added to its D1 row
+  for the day.
+- An owned key's minute is its account's, shared by all its keys and counted by
+  the `CALLS_60` Rate Limiting binding keyed by account id. Its answers carry
+  `RateLimit-Limit`, and a 429 `Retry-After: 60`. Its calls are counted by the
+  account meter, a Durable Object per account
+  ([src/api/accountMeter.ts](./src/api/accountMeter.ts)), in one call per
+  request, and reach `api_key_usage` at most a minute later. Its `last_used_at`
+  is written at most once a minute.
+
+An API request is never counted against the site's per-visitor limits.
 
 The reference a key holder reads is `developers.lexema.fyi/docs`, beside the
 landing page at `/` and `/pricing`; `lexema.fyi` links to that site from its

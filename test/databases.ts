@@ -2,6 +2,7 @@
 // 0018): the dictionary, which code only reads, and the app database.
 
 import { DatabaseSync } from "node:sqlite";
+import type { MeterSql, SqlValue } from "../src/api/accountMeter.js";
 import type { AppTables } from "../src/db/app/database.js";
 import { applyAppMigrations } from "../src/db/app/migrations.js";
 import { appTablesOverNodeSqlite } from "../src/db/app/nodeSqlite.js";
@@ -22,4 +23,9 @@ export function freshAppDatabase(): { sqlite: DatabaseSync; appDb: AppTables } {
   const sqlite = new DatabaseSync(":memory:");
   applyAppMigrations(sqlite);
   return { sqlite, appDb: appTablesOverNodeSqlite(sqlite) };
+}
+
+/** An account meter's storage over a `node:sqlite` database, as a Durable Object's `ctx.storage.sql` is (src/api/accountMeter.ts). */
+export function meterSqlOver(sqlite: DatabaseSync): MeterSql {
+  return <Row extends Record<string, SqlValue>>(query: string, ...bindings: SqlValue[]) => sqlite.prepare(query).all(...bindings) as Row[];
 }

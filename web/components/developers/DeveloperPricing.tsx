@@ -5,7 +5,6 @@
 // The call table is read from the call map (src/api/calls.ts): any endpoint,
 // then each endpoint counted per word. It restates no count of its own.
 
-import { MAX_BATCH_WORDS } from "@/worker/api/endpoints.ts";
 import { CALL_ROWS, callText } from "@/lib/developers/apiReference.ts";
 import { CONTACT_EMAIL, DeveloperPage } from "./DeveloperPage";
 import { CheckIcon } from "@/components/shared/MenuIcons";
@@ -76,7 +75,8 @@ export function DeveloperPricing({ signedIn }: { signedIn?: SignedIn } = {}) {
               Enterprise
             </h2>
             <p className={PLAN_PRICE}>Contact us</p>
-            <Features items={["Calls and keys to fit your use", `Batch sizes above ${MAX_BATCH_WORDS}`, "Invoicing"]} />
+            {/* The old batch cap, kept as drawn until the pricing slice redraws this card to Huey's ruling (issue 208). */}
+            <Features items={["Calls and keys to fit your use", "Batch sizes above 200", "Invoicing"]} />
             <div className={PLAN_ACTION}>
               <a className={BUTTON_SECONDARY} href={`mailto:${CONTACT_EMAIL}`}>
                 Contact us

@@ -7,7 +7,7 @@
 // (src/api/ownedKeys.ts) and carries no limit: its rate is its account's
 // (#161). Both are this one kind of row, answered the same way.
 
-import { and, eq, gt, isNull, or } from "drizzle-orm";
+import { and, eq, isNull, lte, or } from "drizzle-orm";
 import type { AppDatabase, AppTables } from "../db/app/database.js";
 import { apiKey } from "../db/app/schema.js";
 import { endpointsOfColumn, type EndpointScope } from "./keyAccess.js";
@@ -63,13 +63,16 @@ export interface ApiKey {
 export const perMinuteLimit = (key: ApiKey): number =>
   key.holder.kind === "admin" ? key.holder.perMinuteLimit : OWNED_KEY_PER_MINUTE;
 
-/** What a key is read with when it is accepted. */
+/** What a presented key is read with. */
 const KEY_COLUMNS = {
   keyId: apiKey.keyId,
   label: apiKey.label,
   perMinuteLimit: apiKey.perMinuteLimit,
   ownerAccountId: apiKey.ownerAccountId,
   endpoints: apiKey.endpoints,
+  revokedAt: apiKey.revokedAt,
+  expiresAt: apiKey.expiresAt,
+  lastUsedAt: apiKey.lastUsedAt,
 };
 
 interface KeyRow {
@@ -78,6 +81,9 @@ interface KeyRow {
   perMinuteLimit: number | null;
   ownerAccountId: number | null;
   endpoints: string | null;
+  revokedAt: string | null;
+  expiresAt: string | null;
+  lastUsedAt: string | null;
 }
 
 /** A stored key's holder. The schema holds `per_minute_limit` exactly when there is no owner. */
@@ -92,39 +98,48 @@ export type KeyRefusal = "missing" | "unknown" | "revoked" | "expired";
 
 export type Authentication = { outcome: "accepted"; key: ApiKey } | { outcome: "refused"; refusal: KeyRefusal };
 
+/** The key a presented one hashes to, through the unique index on `key_hash`. */
+export const keyByHashQuery = (db: AppDatabase, hash: string) => db.select(KEY_COLUMNS).from(apiKey).where(eq(apiKey.keyHash, hash));
+
+/** The least time between two stamps of a key's `last_used_at`. */
+export const LAST_USED_EVERY_MS = 60_000;
+
 /**
- * Accept a live key by its hash and stamp when it was used, in one statement
- * through the unique index on `key_hash`. A live key is neither revoked nor
- * expired: its `expires_at`, if it has one, is still ahead of now (#187). No
- * row means unknown, revoked or expired.
+ * Stamp a key's last use, unless it was stamped less than a minute ago: the
+ * condition is in the statement, so two requests at once stamp it once.
  */
-export const acceptKeyQuery = (db: AppDatabase, hash: string, at: string) =>
+export const stampLastUsedQuery = (db: AppDatabase, keyId: number, at: string, staleBefore: string) =>
   db
     .update(apiKey)
     .set({ lastUsedAt: at })
-    .where(and(eq(apiKey.keyHash, hash), isNull(apiKey.revokedAt), or(isNull(apiKey.expiresAt), gt(apiKey.expiresAt, at))))
-    .returning(KEY_COLUMNS);
+    .where(and(eq(apiKey.keyId, keyId), or(isNull(apiKey.lastUsedAt), lte(apiKey.lastUsedAt, staleBefore))));
 
-/** The key named by its hash: the unique index on `key_hash`. */
-export const keyByHashQuery = (db: AppDatabase, hash: string) =>
-  db.select({ revokedAt: apiKey.revokedAt }).from(apiKey).where(eq(apiKey.keyHash, hash));
+/** Whether a key last used at `lastUsedAt` is stamped again at `now`: at most once a minute. */
+export const lastUsedIsStale = (lastUsedAt: string | null, now: number): boolean =>
+  lastUsedAt === null || Date.parse(lastUsedAt) <= now - LAST_USED_EVERY_MS;
 
-/** The `X-API-Key` a request presented, checked against the stored hashes; an accepted key's `last_used_at` becomes `now`. */
+/**
+ * The `X-API-Key` a request presented, checked against the stored hashes in one
+ * read. A live key is neither revoked nor expired: its `expires_at`, if it has
+ * one, is still ahead of now (#187). An accepted key's `last_used_at` becomes
+ * `now` when it is more than a minute old, so a key's calls write it at most
+ * once a minute (#261).
+ */
 export async function authenticate(db: AppTables, presented: string | null, now: number): Promise<Authentication> {
   const key = presented?.trim() ?? "";
   if (key === "") return { outcome: "refused", refusal: "missing" };
-  const hash = await hashApiKey(key);
-  const [row] = await acceptKeyQuery(db.app, hash, new Date(now).toISOString());
-  if (row !== undefined) {
-    return {
-      outcome: "accepted",
-      key: { keyId: row.keyId, label: row.label, holder: holderOf(row), endpoints: endpointsOfColumn(row.endpoints) },
-    };
+  const [row] = await keyByHashQuery(db.app, await hashApiKey(key));
+  if (row === undefined) return { outcome: "refused", refusal: "unknown" };
+  const at = new Date(now).toISOString();
+  if (row.revokedAt !== null) return { outcome: "refused", refusal: "revoked" };
+  if (row.expiresAt !== null && row.expiresAt <= at) return { outcome: "refused", refusal: "expired" };
+  if (lastUsedIsStale(row.lastUsedAt, now)) {
+    await stampLastUsedQuery(db.app, row.keyId, at, new Date(now - LAST_USED_EVERY_MS).toISOString());
   }
-  // Not accepted, yet stored: revoked, or else past its expiry.
-  const [stored] = await keyByHashQuery(db.app, hash);
-  if (stored === undefined) return { outcome: "refused", refusal: "unknown" };
-  return { outcome: "refused", refusal: stored.revokedAt === null ? "expired" : "revoked" };
+  return {
+    outcome: "accepted",
+    key: { keyId: row.keyId, label: row.label, holder: holderOf(row), endpoints: endpointsOfColumn(row.endpoints) },
+  };
 }
 
 /** What a new admin key is given. */

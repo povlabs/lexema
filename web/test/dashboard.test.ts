@@ -25,6 +25,7 @@ import {
 } from "@/lib/developers/dashboardActions.ts";
 import { afterDelete, takeNotice, type NoticeStore } from "@/lib/developers/arrivalNotice.ts";
 import { apiNotFound, handleApi } from "@/worker/api/handler.ts";
+import { TestMetering } from "./metering.ts";
 import { CSRF_FIELD, csrfTokenOf, type DashboardBindings, DASHBOARD, DELETE_CONFIRMATION, SETTINGS, SIGN_IN_PAGE, withDashboard } from "@/worker/dashboard.ts";
 import { byHost } from "@/worker/hosts.ts";
 import { withRateLimits, type LimitBindings } from "@/worker/rateLimit.ts";
@@ -532,7 +533,7 @@ test("after delete-account every key the account owned answers 401 revoked_key, 
   dictionary.exec(SCHEMA);
   for (const key of secrets) {
     const request = new Request("https://api.lexema.fyi/v1/lookup?q=casa", { headers: { "x-api-key": key } });
-    const answer = await handleApi(request, { db: readOnlyDictionary(dictionary), appDb: db, releaseId: "it-dev", now: NOW });
+    const answer = await handleApi(request, { db: readOnlyDictionary(dictionary), appDb: db, releaseId: "it-dev", now: NOW, metering: new TestMetering() });
     assert.equal(answer.status, 401);
     assert.equal(((await answer.json()) as { error: { code: string } }).error.code, "revoked_key");
   }

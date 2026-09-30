@@ -65,8 +65,23 @@
     { "name": "SIGN_IN_LIMIT", "namespace_id": "1651", "simple": { "limit": 10, "period": 60 } },
     // - KEY_CREATE_LIMIT, 5 key creations a minute on developers.lexema.fyi
     //   (Huey, #163 R1.2; worker/dashboard.ts).
-    { "name": "KEY_CREATE_LIMIT", "namespace_id": "1681", "simple": { "limit": 5, "period": 60 } }
+    { "name": "KEY_CREATE_LIMIT", "namespace_id": "1681", "simple": { "limit": 5, "period": 60 } },
+    // - CALLS_60 and CALLS_300, an API account's calls a minute on the two plan
+    //   rates, keyed by account id and shared by all its keys (Huey on #161,
+    //   2026-09-29), each word of a batch one call (Huey on #216, 2026-09-30;
+    //   src/api/accountRate.ts). Any other rate is counted in the account meter.
+    { "name": "CALLS_60", "namespace_id": "2611", "simple": { "limit": 60, "period": 60 } },
+    { "name": "CALLS_300", "namespace_id": "2612", "simple": { "limit": 300, "period": 60 } }
   ],
+  // The account meter (#261): one SQLite-backed Durable Object per developer
+  // account, which counts its calls in its own storage and adds them to D1 at
+  // most once a minute (worker/api/accountMeterObject.ts, exported by
+  // worker/index.ts). Bindings are not inherited by environments, so
+  // env.production and previews repeat it.
+  "durable_objects": {
+    "bindings": [{ "name": "ACCOUNT_METER", "class_name": "AccountMeterObject" }]
+  },
+  "migrations": [{ "tag": "v1-account-meter", "new_sqlite_classes": ["AccountMeterObject"] }],
   "vars": {
     // Where this Worker runs: local, preview or production (ADR 0018,
     // worker/stage.ts). Any other value refuses to boot.
@@ -127,8 +142,17 @@
       { "name": "REPORT_LIMIT", "namespace_id": "91283", "simple": { "limit": 2, "period": 60 } },
       { "name": "REPORT_OPEN_LIMIT", "namespace_id": "91284", "simple": { "limit": 10, "period": 60 } },
       { "name": "SIGN_IN_LIMIT", "namespace_id": "91651", "simple": { "limit": 10, "period": 60 } },
-      { "name": "KEY_CREATE_LIMIT", "namespace_id": "91681", "simple": { "limit": 5, "period": 60 } }
+      { "name": "KEY_CREATE_LIMIT", "namespace_id": "91681", "simple": { "limit": 5, "period": 60 } },
+      { "name": "CALLS_60", "namespace_id": "92611", "simple": { "limit": 60, "period": 60 } },
+      { "name": "CALLS_300", "namespace_id": "92612", "simple": { "limit": 300, "period": 60 } }
     ],
+    // The account meter's binding, which a Preview needs to reach it. A class
+    // of this Worker bound without `script_name` gets its own namespace and
+    // storage in each Preview, so no Preview meters production's accounts
+    // (https://developers.cloudflare.com/workers/previews/resources/#durable-objects).
+    "durable_objects": {
+      "bindings": [{ "name": "ACCOUNT_METER", "class_name": "AccountMeterObject" }]
+    },
     // Preview email sends to Huey's verified address and nowhere else:
     // destination_address restricts the binding to that one recipient.
     "send_email": [{ "name": "EMAIL", "destination_address": "itshuseyingulec@gmail.com" }]
@@ -164,8 +188,14 @@
         { "name": "REPORT_LIMIT", "namespace_id": "1283", "simple": { "limit": 2, "period": 60 } },
         { "name": "REPORT_OPEN_LIMIT", "namespace_id": "1284", "simple": { "limit": 10, "period": 60 } },
         { "name": "SIGN_IN_LIMIT", "namespace_id": "1651", "simple": { "limit": 10, "period": 60 } },
-        { "name": "KEY_CREATE_LIMIT", "namespace_id": "1681", "simple": { "limit": 5, "period": 60 } }
+        { "name": "KEY_CREATE_LIMIT", "namespace_id": "1681", "simple": { "limit": 5, "period": 60 } },
+        { "name": "CALLS_60", "namespace_id": "2611", "simple": { "limit": 60, "period": 60 } },
+        { "name": "CALLS_300", "namespace_id": "2612", "simple": { "limit": 300, "period": 60 } }
       ],
+      "durable_objects": {
+        "bindings": [{ "name": "ACCOUNT_METER", "class_name": "AccountMeterObject" }]
+      },
+      "migrations": [{ "tag": "v1-account-meter", "new_sqlite_classes": ["AccountMeterObject"] }],
       "vars": {
         "LEXEMA_STAGE": "production",
         "LEXEMA_RELEASE": "it-dev",
