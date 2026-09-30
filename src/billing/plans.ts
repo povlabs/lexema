@@ -143,6 +143,17 @@ export const STRIPE_STATUSES = Object.keys(STATUS_KIND) as StripeStatus[];
 const isStripeStatus = (status: string): status is StripeStatus => Object.hasOwn(STATUS_KIND, status);
 
 /**
+ * The statuses after which Stripe never bills a subscription again (#209):
+ * cancelled, or expired before its first payment. Every other status can
+ * still bill, even one that serves nothing: an unpaid or paused subscription
+ * can be paid or resumed.
+ */
+export const FINAL_STATUSES = ["canceled", "incomplete_expired"] as const satisfies readonly StripeStatus[];
+
+/** Whether Stripe will never bill a subscription in this status again. */
+export const isFinalStatus = (status: string): boolean => (FINAL_STATUSES as readonly string[]).includes(status);
+
+/**
  * A subscription row's plan state, or why it has none: a status this code
  * does not know, or a serving status with no period, which the plugin writes
  * only once Checkout has completed.

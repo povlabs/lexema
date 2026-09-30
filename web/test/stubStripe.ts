@@ -1,13 +1,13 @@
 // Stripe for tests (#262): a stand-in for api.stripe.com at the level of
 // `fetch`, handed to a real stripe-node client, so the Stripe plugin's own
 // code and Lexema's sync run against it. It answers only the calls a Checkout,
-// its return, the billing portal and a webhook make, and refuses any other, so
-// a test can never reach Stripe.
+// its return, the billing portal, a webhook and an account deletion make, and
+// refuses any other, so a test can never reach Stripe.
 // Webhook payloads are signed with a test secret that exists nowhere else: CI
 // holds no Stripe secret.
 
 import Stripe from "stripe";
-import type { StripeSettings } from "../../src/accounts/billing.js";
+import { STRIPE_SETTINGS, type BillingSetup, type Billing, type StripeSettings } from "../../src/accounts/billing.js";
 
 export const TEST_SETTINGS = {
   STRIPE_SECRET_KEY: "sk_test_lexema_tests_only",
@@ -15,6 +15,9 @@ export const TEST_SETTINGS = {
   STRIPE_PRICE_STARTER: "price_starter_test",
   STRIPE_PRICE_PRO: "price_pro_test",
 } as const satisfies Required<StripeSettings>;
+
+/** Billing off: no Stripe setting is set, as in development. */
+export const BILLING_OFF = { outcome: "missing", missing: STRIPE_SETTINGS } as const satisfies BillingSetup;
 
 /** What a test sets a subscription to: Stripe's current state of it. */
 export interface SubscriptionState {
@@ -51,6 +54,10 @@ export interface StartedPortal {
 export class StubStripe {
   readonly checkouts: StartedCheckout[] = [];
   readonly portals: StartedPortal[] = [];
+  /** Each subscription cancelled at once (`DELETE /v1/subscriptions/<id>`), in order. */
+  readonly cancelled: string[] = [];
+  /** While set, Stripe answers every call with a server error, as during an outage. */
+  down = false;
   /** The subscription each Checkout made once it was paid, by Checkout id: `pay` sets it. */
   private readonly paid = new Map<string, string>();
   private readonly subscriptions = new Map<string, Stripe.Subscription>();
@@ -61,6 +68,7 @@ export class StubStripe {
     const request = new Request(input, init);
     const url = new URL(request.url);
     if (url.host !== "api.stripe.com") throw new Error(`the Stripe stub was asked for ${url.href}`);
+    if (this.down) return json({ error: { type: "api_error", message: "Stripe is down." } }, 500);
     const form = request.method === "POST" ? new URLSearchParams(await request.text()) : new URLSearchParams();
     const path = url.pathname;
     if (request.method === "GET" && path === "/v1/customers/search") return json({ object: "search_result", data: [], has_more: false, url: path });
@@ -116,14 +124,31 @@ export class StubStripe {
       return json({ object: "billing_portal.session", ...portal, return_url: portal.returnUrl });
     }
     const subscription = /^\/v1\/subscriptions\/([^/]+)$/.exec(path);
-    if (request.method === "GET" && subscription !== null) {
-      const found = this.subscriptions.get(subscription[1]);
-      return found === undefined
-        ? json({ error: { type: "invalid_request_error", message: `No such subscription: '${subscription[1]}'` } }, 404)
-        : json(found);
+    const found = subscription === null ? undefined : this.subscriptions.get(subscription[1]);
+    if (subscription !== null && found === undefined) {
+      return json({ error: { type: "invalid_request_error", code: "resource_missing", message: `No such subscription: '${subscription[1]}'` } }, 404);
+    }
+    if (request.method === "GET" && found !== undefined) return json(found);
+    if (request.method === "DELETE" && found !== undefined) {
+      // A second cancel of one subscription is refused, so a test sees it fail.
+      if (found.status === "canceled") return json({ error: { type: "invalid_request_error", message: "This subscription is already canceled." } }, 400);
+      this.cancelled.push(found.id);
+      const at = Math.floor(Date.now() / 1000);
+      const cancelled = { ...found, status: "canceled", canceled_at: at, ended_at: at } as Stripe.Subscription;
+      this.subscriptions.set(found.id, cancelled);
+      return json(cancelled);
     }
     throw new Error(`the Stripe stub has no answer for ${request.method} ${path}`);
   };
+
+  /** Billing on, over this stub, as the Worker builds it from every setting. */
+  billing(): Billing {
+    return {
+      stripe: this.client(),
+      webhookSecret: TEST_SETTINGS.STRIPE_WEBHOOK_SECRET,
+      prices: { starter: TEST_SETTINGS.STRIPE_PRICE_STARTER, pro: TEST_SETTINGS.STRIPE_PRICE_PRO },
+    };
+  }
 
   /** A Stripe client over this stub, as the Worker builds one. */
   client(): Stripe {

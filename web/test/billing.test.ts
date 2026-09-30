@@ -56,11 +56,7 @@ function site(billingSetting: (billing: Billing) => BillingContext["billing"] = 
   const { sqlite, appDb } = freshAppDatabase();
   const stripe = new StubStripe();
   const google = new StubProvider("google");
-  const billing: Billing = {
-    stripe: stripe.client(),
-    webhookSecret: TEST_SETTINGS.STRIPE_WEBHOOK_SECRET,
-    prices: { starter: TEST_SETTINGS.STRIPE_PRICE_STARTER, pro: TEST_SETTINGS.STRIPE_PRICE_PRO },
-  };
+  const billing: Billing = stripe.billing();
   const now = () => Date.now();
   const worker = withStripeWebhook<typeof env>(
     byHost({
