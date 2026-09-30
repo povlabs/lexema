@@ -143,3 +143,40 @@ A later release is not uploaded again in full. It goes into the same database
 as a diff; how is [#132](https://github.com/hueypov/lexema/issues/132)'s and
 [#18](https://github.com/hueypov/lexema/issues/18)'s. The seed cannot load a
 second release over the first, since it refuses a database with tables.
+
+## Update glosses in a seeded database
+
+The seed stores some source text rewritten by a fixed rule, a *source text
+normalization* ([ADR 0019](../.decisions/0019-source-text-may-be-normalized.md)).
+The first rewrites a gloss opening "1ª/2ª/3ª persona" as "prima/seconda/terza
+persona" ([#257](https://github.com/hueypov/lexema/issues/257)). A database
+seeded before a rule existed gets it from a one-off update, with no reseed:
+
+```sh
+pnpm run normalize:glosses
+```
+
+It picks its database the way the seed does: the local D1 under `SEED_STATE`
+(default `.data/seed-state`), or the remote D1 `SEED_REMOTE` names. It rewrites
+only `sense_gloss` rows the rule changes, never `source_record_json`, then reads
+the rows back and fails if any still needs the rule. It ends by printing
+`sense_gloss: <n> row(s) changed`. A second run changes 0 rows.
+
+For the full local seed:
+
+```sh
+SEED_STATE=.data/full-state pnpm run normalize:glosses
+```
+
+For the shared `lexema-dictionary`, from Huey's laptop, signed in to Wrangler
+as for the upload above:
+
+```sh
+SEED_REMOTE=lexema-dictionary pnpm run normalize:glosses
+```
+
+Put `CLOUDFLARE_ACCOUNT_ID=<account id>` first if Wrangler lists more than one
+account. On release `it-0c432803` the first run prints
+`sense_gloss: 177 row(s) changed`, and every later run prints 0. It writes
+through Wrangler from the laptop, never through the Worker's read-only
+binding.
