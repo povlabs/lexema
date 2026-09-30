@@ -9,7 +9,7 @@ import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
 import { unstable_readConfig } from "wrangler";
-import { BUILT_CONFIG, runPreviewCommand } from "@/builds/previewCommand.ts";
+import { BUILT_CONFIG, PREVIEW_COMMAND, PREVIEW_NAME_FILE, PREVIEW_SECRETS_FILE, preparePreview } from "@/builds/previewCommand.ts";
 import { type BuiltConfig, DICTIONARY, migrationsConfig, withAppDatabase } from "@/builds/previewConfig.ts";
 import { APP_DATABASE_PREFIX, PREVIEW_NAME_MAX, PreviewName } from "@/builds/previewName.ts";
 import { runProductionCommand } from "@/builds/productionCommand.ts";
@@ -18,6 +18,7 @@ import type { D1Database, Wrangler, WranglerRun } from "@/builds/wrangler.ts";
 
 const WRANGLER = fileURLToPath(new URL("../wrangler.jsonc", import.meta.url));
 const PACKAGE = fileURLToPath(new URL("../package.json", import.meta.url));
+const DEPLOY = fileURLToPath(new URL("../../docs/DEPLOY.md", import.meta.url));
 
 /** One DNS label, as RFC 1035 allows it. */
 const LABEL = /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/;
@@ -161,21 +162,25 @@ class FakeAccount {
       case "d1 migrations":
         return ok();
       case "preview secret":
+        // Wrangler 4.135.0's own refusal for a Preview that has no deployment yet.
+        if (!this.previews.has(name)) return fail(`✘ [ERROR] The Preview "${name}" was not found. Please check the Preview name, or create it with \`wrangler preview\`.`);
         if (args[2] === "list") return ok(JSON.stringify(this.secrets.has(name) ? [{ name: "BETTER_AUTH_SECRET", type: "secret_text" }] : []));
-        if (!this.previews.has(name)) return fail("There are currently no deployments for the Preview");
         this.secrets.set(name, input ?? "");
         return ok();
       case "preview delete":
         if (!this.previews.delete(name)) return fail(`✘ [ERROR] A request to the Cloudflare API failed.\n  Preview not found [code: 10025]`);
         return ok();
       default:
-        if (args[0] === "preview") {
-          this.previews.add(name);
-          return ok();
-        }
         throw new Error(`the fake account has no answer for wrangler ${line}`);
     }
   };
+
+  /** `npx wrangler preview --name <name> --secrets-file <file>`: a deployment carrying `secrets`. */
+  deployPreview(name: string, secrets: Record<string, string>): void {
+    this.previews.add(name);
+    const secret = secrets.BETTER_AUTH_SECRET;
+    if (secret !== undefined) this.secrets.set(name, secret);
+  }
 
   /** The calls, each as one line. */
   get lines(): string[] {
@@ -183,40 +188,67 @@ class FakeAccount {
   }
 }
 
-/** The preview command against `account`, keeping the built config it wrote. */
-function preview(account: FakeAccount, branch: string | undefined) {
-  const written: BuiltConfig[] = [];
+/** The prepare step against `account`, keeping every file it wrote. */
+function prepare(account: FakeAccount, branch: string | undefined, newSecret = () => "random-secret") {
+  const files = new Map<string, string>();
   const migrationConfigs: Record<string, unknown>[] = [];
   const order: string[] = [];
   const wrangler: Wrangler = (args, input) => {
     order.push(`wrangler ${args.slice(0, 2).join(" ")}`);
     return account.wrangler(args, input);
   };
-  const name = runPreviewCommand({
+  const name = preparePreview({
     branch,
     wrangler,
     build: () => order.push("build"),
     readBuiltConfig: builtConfig,
-    writeBuiltConfig: (config) => {
-      order.push("write config");
-      written.push(config);
+    writeFile: (path, content) => {
+      order.push(`write ${path}`);
+      files.set(path, content);
     },
     writeMigrationsConfig: (config) => {
       migrationConfigs.push(config);
       return "/tmp/migrations/wrangler.json";
     },
     migrationsDir: "/repo/src/db/app/migrations",
-    newSecret: () => "random-secret",
+    newSecret,
     log: () => {},
   });
-  return { name, written, migrationConfigs, order };
+  const config = JSON.parse(files.get(BUILT_CONFIG) ?? "null") as BuiltConfig;
+  const secrets = JSON.parse(files.get(PREVIEW_SECRETS_FILE) ?? "null") as Record<string, string>;
+  const appDatabaseId = config.previews?.d1_databases?.find((entry) => entry.binding === "APP_DB")?.database_id;
+  return { name, files, config, secrets, appDatabaseId, migrationConfigs, order };
+}
+
+/** The whole Preview command: the prepare step, then `wrangler preview` over what it wrote. */
+function previewCommand(account: FakeAccount, branch: string, newSecret?: () => string) {
+  const prepared = prepare(account, branch, newSecret);
+  account.deployPreview(prepared.files.get(PREVIEW_NAME_FILE) ?? "", prepared.secrets);
+  return prepared;
 }
 
 // --- The preview command ----------------------------------------------------
 
-test("the preview command creates the app database, binds it, migrates it, and only then runs wrangler preview", () => {
+test("the Preview command runs the prepare step, then invokes npx wrangler preview over the files it writes", () => {
+  assert.equal(
+    PREVIEW_COMMAND,
+    'pnpm run preview:prepare && npx wrangler preview --config dist/server/wrangler.json --name "$(cat dist/preview/name)" --secrets-file dist/preview/secrets.json',
+  );
+  // Workers Builds refuses a Preview command that does not invoke `npx wrangler preview` itself.
+  const [first, wranglerCall, ...rest] = PREVIEW_COMMAND.split(" && ");
+  assert.equal(first, "pnpm run preview:prepare");
+  assert.ok(wranglerCall.startsWith("npx wrangler preview "));
+  assert.deepEqual(rest, []);
+  for (const path of [BUILT_CONFIG, PREVIEW_NAME_FILE, PREVIEW_SECRETS_FILE]) assert.ok(wranglerCall.includes(path), path);
+  // Neither the Worker (dist/server) nor its assets (dist/client) upload the name or the secrets.
+  for (const path of [PREVIEW_NAME_FILE, PREVIEW_SECRETS_FILE]) assert.match(path, /^dist\/preview\//);
+  // docs/DEPLOY.md gives Huey this exact string to paste.
+  assert.ok(readFileSync(DEPLOY, "utf8").includes(`\`${PREVIEW_COMMAND}\``));
+});
+
+test("the prepare step creates the app database, binds it, migrates it, and writes the Preview's name and first secret", () => {
   const account = new FakeAccount([{ name: DICTIONARY.name, uuid: DICTIONARY.id }]);
-  const { name, written, migrationConfigs, order } = preview(account, "huey/foo_bar");
+  const { name, files, config, secrets, appDatabaseId, migrationConfigs, order } = prepare(account, "huey/foo_bar");
   const created = account.databases.find((db) => db.name === name.appDatabase);
   assert.ok(created);
 
@@ -225,52 +257,62 @@ test("the preview command creates the app database, binds it, migrates it, and o
     "wrangler d1 list",
     "wrangler d1 create",
     "wrangler d1 list",
-    "write config",
+    `write ${BUILT_CONFIG}`,
     "wrangler d1 migrations",
-    "wrangler preview --name",
     "wrangler preview secret",
-    "wrangler preview secret",
+    `write ${PREVIEW_SECRETS_FILE}`,
+    `write ${PREVIEW_NAME_FILE}`,
   ]);
-  assert.deepEqual(account.lines.filter((line) => /migrations|^preview --name/.test(line)), [
+  assert.deepEqual(account.lines.filter((line) => /migrations|^preview secret/.test(line)), [
     `d1 migrations apply ${name.appDatabase} --remote --config /tmp/migrations/wrangler.json`,
-    `preview --name ${name.value} --config ${BUILT_CONFIG}`,
+    `preview secret list --name ${name.value} --json --config ${BUILT_CONFIG}`,
   ]);
-  const [config] = written;
-  assert.equal(config.previews?.d1_databases?.find((entry) => entry.binding === "APP_DB")?.database_id, created.uuid);
+  // The prepare step never deploys: `npx wrangler preview` is the command's own.
+  assert.equal(account.lines.some((line) => line === "preview" || line.startsWith("preview --")), false);
+
+  // APP_DB on the branch's own database, DB left on the shared dictionary.
+  const byBinding = Object.fromEntries((config.previews?.d1_databases ?? []).map((entry) => [entry.binding, entry]));
+  assert.equal(appDatabaseId, created.uuid);
+  assert.equal(byBinding.APP_DB.database_name, name.appDatabase);
+  assert.deepEqual(byBinding.DB, { binding: "DB", database_name: DICTIONARY.name, database_id: DICTIONARY.id });
   assert.deepEqual(migrationConfigs, [migrationsConfig({ preview: name, id: created.uuid }, "/repo/src/db/app/migrations")]);
-  assert.equal(account.secrets.get(name.value), "random-secret");
+
+  // The Preview is named by the slug, never the raw branch.
+  assert.equal(files.get(PREVIEW_NAME_FILE), name.value);
+  assert.equal(name.value, PreviewName.ofBranch("huey/foo_bar").value);
+  assert.notEqual(name.value, "huey/foo_bar");
+  assert.deepEqual(secrets, { BETTER_AUTH_SECRET: "random-secret" });
 });
 
 test("a second push to the same branch reuses the same app database and keeps the Preview's secret", () => {
   const account = new FakeAccount([{ name: DICTIONARY.name, uuid: DICTIONARY.id }]);
-  const first = preview(account, "huey/foo_bar");
+  const first = previewCommand(account, "huey/foo_bar");
+  assert.equal(account.secrets.get(first.name.value), "random-secret");
   account.calls.length = 0;
+
   let asked = 0;
-  const second = runPreviewCommand({
-    ...{ branch: "huey/foo_bar", wrangler: account.wrangler, build: () => {}, readBuiltConfig: builtConfig },
-    writeBuiltConfig: (config) => {
-      const id = (bound: BuiltConfig) => bound.previews?.d1_databases?.find((entry) => entry.binding === "APP_DB")?.database_id;
-      assert.equal(id(config), id(first.written[0]));
-    },
-    writeMigrationsConfig: () => "/tmp/m.json",
-    migrationsDir: "/m",
-    newSecret: () => `secret-${++asked}`,
-    log: () => {},
-  });
-  assert.equal(second.value, first.name.value);
+  const second = previewCommand(account, "huey/foo_bar", () => `secret-${++asked}`);
+  assert.equal(second.name.value, first.name.value);
+  assert.equal(second.appDatabaseId, first.appDatabaseId);
   assert.equal(account.lines.some((line) => line.startsWith("d1 create")), false);
   assert.equal(account.databases.filter((db) => db.name.startsWith(APP_DATABASE_PREFIX)).length, 1);
-  assert.ok(account.lines.includes(`d1 migrations apply ${first.name.appDatabase} --remote --config /tmp/m.json`));
+  assert.ok(account.lines.includes(`d1 migrations apply ${first.name.appDatabase} --remote --config /tmp/migrations/wrangler.json`));
+  assert.deepEqual(second.secrets, {});
   assert.equal(asked, 0);
   assert.equal(account.secrets.get(first.name.value), "random-secret");
 });
 
-test("the preview command stops before wrangler preview when the migrations fail, and runs nowhere without a branch", () => {
-  const account = new FakeAccount();
-  account.failing.push(/^d1 migrations apply/);
-  assert.throws(() => preview(account, "huey/foo_bar"), /migrations apply failed/);
-  assert.equal(account.lines.some((line) => line.startsWith("preview")), false);
-  assert.throws(() => preview(new FakeAccount(), undefined), /WORKERS_CI_BRANCH/);
+test("the prepare step stops before writing the name when the migrations or the secret list fail, and runs nowhere without a branch", () => {
+  const migrationsFail = new FakeAccount();
+  migrationsFail.failing.push(/^d1 migrations apply/);
+  assert.throws(() => prepare(migrationsFail, "huey/foo_bar"), /migrations apply failed/);
+
+  // An unreadable secret list is not "no secret": replacing one would sign everyone out.
+  const listFails = new FakeAccount();
+  listFails.failing.push(/^preview secret list/);
+  assert.throws(() => prepare(listFails, "huey/foo_bar"), /secret list failed/);
+
+  assert.throws(() => prepare(new FakeAccount(), undefined), /WORKERS_CI_BRANCH/);
 });
 
 // --- The sweep ----------------------------------------------------------------
@@ -412,9 +454,10 @@ test("the production command runs the sweep, then deploys, and deploys even when
   );
 });
 
-test("the web package names both Workers Builds commands, and production deploys the production build", () => {
+test("the web package names the preview prepare step and the deploy command, and production deploys the production build", () => {
   const { scripts } = JSON.parse(readFileSync(PACKAGE, "utf8")) as { scripts: Record<string, string> };
-  assert.equal(scripts["preview:workers-builds"], "node builds/preview.ts");
+  assert.equal(scripts["preview:prepare"], "node builds/preview.ts");
+  assert.equal(scripts["preview:workers-builds"], undefined);
   assert.equal(scripts["deploy:workers-builds"], "node builds/production.ts");
   assert.equal(scripts["deploy:production"], "CLOUDFLARE_ENV=production vinext build && wrangler deploy --config dist/server/wrangler.json");
   const entry = readFileSync(fileURLToPath(new URL("../builds/production.ts", import.meta.url)), "utf8");

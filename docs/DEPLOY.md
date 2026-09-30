@@ -104,7 +104,7 @@ alone, never from the top level or `env.production`:
 | `LEXEMA_STAGE` | `preview`, so every response the Worker gives carries `X-Robots-Tag: noindex` (`web/worker/stage.ts`) |
 | `LEXEMA_RELEASE` | `it-0c432803` |
 | `DB` | the shared dictionary D1 `lexema-dictionary`, which code only reads |
-| `APP_DB` | `<REPLACE_ME>`, which the [preview command](#workers-builds) replaces with the branch's own app D1; `wrangler preview` refuses to run while it is there |
+| `APP_DB` | `<REPLACE_ME>`, which the [Preview command](#the-preview-command) replaces with the branch's own app D1; `wrangler preview` refuses to run while it is there |
 | Rate limits | production's limits under their own `namespace_id`s |
 | `EMAIL` | a `send_email` binding with `destination_address` set to Huey's verified address, so it can send nowhere else |
 | Sign-in | off: both OAuth client ids are empty |
@@ -118,15 +118,58 @@ block. The Workers Builds settings that build and sweep Previews are
 ## Workers Builds
 
 Cloudflare's Workers Builds is connected to this repository and runs one of two
-commands on every push. Both are `web` package scripts, in `web/builds/`:
+commands on every push, from `web/`. Their steps are in `web/builds/`:
 
 | Branch | Command | What it runs |
 |---|---|---|
 | `main` | `pnpm run deploy:workers-builds` | the [sweep](#the-sweep), then `deploy:production`: the production build and `wrangler deploy` |
-| any other | `pnpm run preview:workers-builds` | the production build; finds or creates the branch's app D1 `lexema-preview-app-<name>`; binds it as `APP_DB` in `web/dist/server/wrangler.json`, leaving `DB` on the shared dictionary; applies the app migrations to it; then `wrangler preview --name <name>`; on the Preview's first deployment, sets a random `BETTER_AUTH_SECRET` on it |
+| any other | the [Preview command](#the-preview-command) | `preview:prepare`, then `wrangler preview` |
+
+### The Preview command
+
+This is the exact string for the Preview command field:
+
+```sh
+pnpm run preview:prepare && npx wrangler preview --config dist/server/wrangler.json --name "$(cat dist/preview/name)" --secrets-file dist/preview/secrets.json
+```
+
+It has two steps, because Workers Builds refuses a custom Preview command that
+does not run `npx wrangler preview` itself
+([Build branches, existing Workers](https://developers.cloudflare.com/workers/ci-cd/builds/build-branches/#existing-workers-connected-to-builds)).
+
+1. `pnpm run preview:prepare` (`web/builds/preview.ts`) runs the production
+   build. It finds or creates the branch's app D1 `lexema-preview-app-<name>`
+   and binds it as `APP_DB` in `web/dist/server/wrangler.json`, leaving `DB` on
+   the shared dictionary. It applies the app migrations to it. Then it writes
+   the [Preview name](#the-preview-name) to `web/dist/preview/name`, and the
+   secrets for the deployment to `web/dist/preview/secrets.json`. That file holds
+   a new random `BETTER_AUTH_SECRET` on the Preview's first push, and nothing on
+   later pushes, which keep the one already there.
+2. `npx wrangler preview` deploys the Preview from that config, named by that
+   name, with those secrets. Without `--name`, Wrangler would name it after the
+   raw branch.
+
+The secret goes up with the deployment because `wrangler preview secret put`
+refuses a Preview that has no deployment yet. So nothing has to run after
+`npx wrangler preview`.
+
+`npx` runs the Wrangler pinned in `web/package.json`, 4.135.0, from
+`web/node_modules`, and downloads nothing
+([Builds configuration](https://developers.cloudflare.com/workers/ci-cd/builds/configuration/#build-settings):
+"Workers Builds will use the Wrangler version set in your `package.json`").
+The flags are Wrangler 4.135.0's (`wrangler preview --help`).
+
+Cloudflare's pages show a Preview command with arguments, such as
+`npx wrangler preview --env staging`
+([Builds configuration, Preview command](https://developers.cloudflare.com/workers/ci-cd/builds/configuration/#preview-command)),
+and `--name` to choose the name
+([Previews, get started](https://developers.cloudflare.com/workers/previews/get-started/#step-2-deploy-a-preview)).
+They say nothing about `&&` or `$(...)` in the field. If the dashboard refuses
+this string, that is why.
 
 Every later push to a branch reuses its app D1. `web/test/workersBuilds.test.ts`
-checks both commands against a fake account, with no network and no credential.
+checks the prepare step and the deploy command against a fake account, with no
+network and no credential.
 
 ### The Preview name
 
@@ -208,7 +251,7 @@ from; where a label is not in the docs, the step says what to look for.
    | Git branch (the production branch) | `main` |
    | Build command | `pnpm install --frozen-lockfile` |
    | Deploy command | `pnpm run deploy:workers-builds` |
-   | Preview command (the one for branches that are not `main`, whatever the page labels it) | `pnpm run preview:workers-builds` |
+   | Preview command (the one for branches that are not `main`, whatever the page labels it) | `pnpm run preview:prepare && npx wrangler preview --config dist/server/wrangler.json --name "$(cat dist/preview/name)" --secrets-file dist/preview/secrets.json` ([above](#the-preview-command)) |
    | Root directory | `web` |
    | API token | leave the default, **Create new token**, unless one already exists for Workers Builds; then select that one |
 
@@ -221,10 +264,16 @@ from; where a label is not in the docs, the step says what to look for.
 1. In the same Worker, go to **Settings**, **Build**, **Branch control**.
 2. Check that the production branch is `main`, and tick **Enable Preview
    Builds**.
-3. If the page shows a **Set up Worker Previews** banner, select **Set up**,
-   check that the Preview command reads `pnpm run preview:workers-builds`, and
-   select **Switch to Worker Previews**. It cannot be undone, and nothing here
-   needs the old model.
+3. If the page shows a **Set up Worker Previews** banner, select **Set up**.
+   Set the Preview command to the [Preview command](#the-preview-command) above,
+   exactly:
+
+   ```sh
+   pnpm run preview:prepare && npx wrangler preview --config dist/server/wrangler.json --name "$(cat dist/preview/name)" --secrets-file dist/preview/secrets.json
+   ```
+
+   Then select **Switch to Worker Previews**. It cannot be undone, and nothing
+   here needs the old model.
 
 **4. Add the build variables and the secret**
 ([Builds configuration](https://developers.cloudflare.com/workers/ci-cd/builds/configuration/#build-settings),
@@ -266,7 +315,8 @@ accepts this, since only reviewed build commands use it.
 
 1. Push a branch and open a pull request. Workers Builds comments a Preview
    URL on it. The build log shows `Preview <name> for branch <branch>`, then
-   `app database: created lexema-preview-app-<name>`, the migrations, and
+   `app database: created lexema-preview-app-<name>`, the migrations,
+   `BETTER_AUTH_SECRET: a new random one goes up with Preview <name>`, and
    `wrangler preview`.
 2. Push to the branch again. The log now says `app database: reusing`.
 3. Merge it. The `main` build log starts with `sweep:` lines, deletes that
