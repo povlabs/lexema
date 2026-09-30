@@ -22,6 +22,7 @@ import { DashboardSettings } from "@/components/developers/dashboard/DashboardSe
 import { DeveloperDocs } from "@/components/developers/DeveloperDocs";
 import { DeveloperMenuContent } from "@/components/developers/DeveloperMenu";
 import { developerMenuLinks, SignedInMenuActions, type DeveloperSection } from "@/components/developers/DeveloperPage";
+import { DeveloperNotFound } from "@/components/developers/DeveloperNotFound";
 import { DeveloperPricing } from "@/components/developers/DeveloperPricing";
 import { avatarInitial } from "@/lib/developers/signedIn.ts";
 import { CreateKeyForm, KeyResult } from "@/components/developers/dashboard/CreateKeyDialog";
@@ -220,17 +221,22 @@ test("the avatar's letter is the name's first, else the email's, as a capital", 
   assert.equal(avatarInitial({ email: "zoe@example.com", name: "élodie" }), "É");
 });
 
-test("signed in, the docs and the pricing page carry the same avatar; signed out, Sign in (#190)", () => {
+test("signed in, the docs, the pricing page and the 404 carry the same avatar; signed out, Sign in (#190, #171)", () => {
   const signedIn = { email: "ada@example.com", name: "Ada Lovelace" };
   const avatar = /aria-haspopup="menu"[^>]*aria-label="Account"/;
   for (const html of [
     renderToStaticMarkup(<DeveloperDocs page={{ kind: "guide", guide: "introduction" }} signedIn={signedIn} />),
     renderToStaticMarkup(<DeveloperPricing signedIn={signedIn} />),
+    renderToStaticMarkup(<DeveloperNotFound signedIn={signedIn} />),
   ]) {
     assert.match(html, avatar);
     assert.doesNotMatch(html, /Sign in</);
   }
-  for (const html of [renderToStaticMarkup(<DeveloperDocs page={{ kind: "guide", guide: "introduction" }} />), renderToStaticMarkup(<DeveloperPricing />)]) {
+  for (const html of [
+    renderToStaticMarkup(<DeveloperDocs page={{ kind: "guide", guide: "introduction" }} />),
+    renderToStaticMarkup(<DeveloperPricing />),
+    renderToStaticMarkup(<DeveloperNotFound />),
+  ]) {
     assert.doesNotMatch(html, avatar);
     assert.match(html, /Sign in</);
   }

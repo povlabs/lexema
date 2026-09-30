@@ -460,6 +460,35 @@ test("every docs sidebar link resolves to a page that renders, with that link ma
   }
 });
 
+test("a developer-site 404 is framed like its other pages: the bar and footer, not the dictionary's footer (#171)", async () => {
+  // Stubbed as in the sidebar test above: vinext's notFound, and no D1 binding, so no session is read.
+  const STUBS: Record<string, string> = {
+    "next/navigation": `export function notFound() { throw Object.assign(new Error("404"), { digest: "NEXT_HTTP_ERROR_FALLBACK;404" }); }`,
+    "next/headers": `export async function headers() { return new Headers(); }`,
+    "cloudflare:workers": `export const env = {};`,
+  };
+  const hooks = registerHooks({
+    resolve: (specifier, context, nextResolve) =>
+      specifier in STUBS ? { url: `data:text/javascript,${encodeURIComponent(STUBS[specifier])}`, shortCircuit: true } : nextResolve(specifier, context),
+  });
+  try {
+    const group = join(REPO, "web/app/(developers)/developer-site");
+    // A path no page matches lands on the group's catch-all, which is a 404, so the miss stays in this layout.
+    const missing = (await import(join(group, "[...missing]/page.tsx"))) as RouteModule;
+    await assert.rejects(Promise.resolve().then(() => missing.default({ params: Promise.resolve({}) })), {
+      digest: "NEXT_HTTP_ERROR_FALLBACK;404",
+    });
+    const boundary = (await import(join(group, "not-found.tsx"))) as { default: () => Promise<ReactElement> };
+    const html = renderToStaticMarkup(await boundary.default());
+    assert.match(html, /<nav aria-label="Developer site">/, "the developer bar");
+    assert.ok(html.includes(renderToStaticMarkup(<DeveloperFooter />)), "the developer footer");
+    assert.ok(!html.includes(renderToStaticMarkup(<SiteFooter />)), "no dictionary footer");
+    assert.match(html, /<h1[^>]*>Page not found<\/h1>/);
+  } finally {
+    hooks.deregister();
+  }
+});
+
 test("the landing page links to the docs, and each endpoint to its own docs page", () => {
   const html = renderToStaticMarkup(<DeveloperLanding />);
   assert.match(html, /href="\/docs">Read the docs</);

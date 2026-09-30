@@ -32,7 +32,7 @@ const MAY_IMPORT: Readonly<Record<Site, readonly Site[]>> = {
 };
 
 /** The files App Router gives a meaning to in `app/`, and the one stylesheet. */
-const ROUTE_FILES = new Set(["page.tsx", "layout.tsx", "route.ts", "globals.css"]);
+const ROUTE_FILES = new Set(["page.tsx", "layout.tsx", "not-found.tsx", "route.ts", "globals.css"]);
 
 /** Every file under a folder, as paths relative to web/. */
 async function filesUnder(dir: string): Promise<string[]> {
