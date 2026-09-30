@@ -382,8 +382,10 @@ more. It opens the Italian Wiktionary page of the spelling in the page's title:
 *macchinare*, and `andavano` links to *andavano*'s page though it also shows
 `andare`'s table. A searched expression's short page links to the expression's
 page instead: `vado via` links to `andare via`'s page, never the searched
-word's; a search that spells two expressions links to the first the lookup
-found ([design law](../design-system-manifest.md#layout)).
+word's; a search that spells two expressions links to the first one the page
+shows: `volto le spalle` links to *voltare le spalle*
+([#291](https://github.com/hueypov/lexema/issues/291);
+[design law](../design-system-manifest.md#layout)).
 [ADR 0009](../.decisions/0009-two-licences-and-a-source-link.md), as amended on
 [#281](https://github.com/hueypov/lexema/issues/281), keeps the credit itself on
 `/attribution`, which the site footer reaches from every page, and in each API
