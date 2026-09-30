@@ -3,7 +3,10 @@
 Put the Worker that serves https://lexema.fyi, https://developers.lexema.fyi
 and https://api.lexema.fyi live from this repository. Running it locally is
 [RUN_THE_SITE.md](RUN_THE_SITE.md); why the page works as it does is
-[WEB.md](WEB.md). Deploying is Huey's call.
+[WEB.md](WEB.md). A merge to `main` deploys production, and every other
+branch gets a Preview, both built by Cloudflare's Workers Builds
+([ADR 0018](../.decisions/0018-previews-on-workers-builds.md)). Huey sets that
+up once, as [Workers Builds](#workers-builds) says.
 
 ## What production is
 
@@ -27,6 +30,16 @@ Always Use HTTPS), not Worker settings, so they are not in the repository.
 
 ## Deploy
 
+A merge to `main` deploys production. Workers Builds runs the deploy command on
+every push to `main`: the [sweep](#the-sweep), then the production build and
+`wrangler deploy`, the same `deploy:production` script as a deploy by hand. A
+failed sweep never stops the deploy. The build log is under the Worker's
+**Deployments** tab, **View build history**
+([Builds](https://developers.cloudflare.com/workers/ci-cd/builds/#view-build-and-preview-url)).
+
+### Deploy by hand
+
+For emergencies only, such as Workers Builds being down: deploy from a laptop.
 Log in with `pnpm exec wrangler login` in `web/` first, as the account that owns
 `lexema.fyi`. Then, from the repository root:
 
@@ -80,8 +93,7 @@ They are the last three `routes` of `env.production`, each with
 `custom_domain: true`, `previews_enabled: true` and `enabled: false`, which is
 Cloudflare's setting for a domain that serves Previews only
 ([Previews, custom domains](https://developers.cloudflare.com/workers/previews/custom-domains/)).
-So the production deploy [above](#deploy) is what creates them: run it once
-after this change lands, and Cloudflare adds a wildcard DNS record and
+So the production deploy [above](#deploy) is what creates them, and Cloudflare adds a wildcard DNS record and
 certificate for each. The certificate can take a while after the first Preview.
 
 A Preview takes its settings from the `previews` block of `web/wrangler.jsonc`
@@ -92,7 +104,7 @@ alone, never from the top level or `env.production`:
 | `LEXEMA_STAGE` | `preview`, so every response the Worker gives carries `X-Robots-Tag: noindex` (`web/worker/stage.ts`) |
 | `LEXEMA_RELEASE` | `it-0c432803` |
 | `DB` | the shared dictionary D1 `lexema-dictionary`, which code only reads |
-| `APP_DB` | `<REPLACE_ME>`, which the preview build replaces with the branch's own app D1; `wrangler preview` refuses to run while it is there |
+| `APP_DB` | `<REPLACE_ME>`, which the [preview command](#workers-builds) replaces with the branch's own app D1; `wrangler preview` refuses to run while it is there |
 | Rate limits | production's limits under their own `namespace_id`s |
 | `EMAIL` | a `send_email` binding with `destination_address` set to Huey's verified address, so it can send nowhere else |
 | Sign-in | off: both OAuth client ids are empty |
@@ -100,8 +112,165 @@ alone, never from the top level or `env.production`:
 `web/test/preview.test.ts` fails if a Preview's email can reach anyone else,
 if a Preview rate limit shares a production `namespace_id`, if a production
 build carries any stage but `production`, or if the build drops the `previews`
-block. The Workers Builds settings that build and sweep Previews are written
-down here by #252.
+block. The Workers Builds settings that build and sweep Previews are
+[below](#workers-builds).
+
+## Workers Builds
+
+Cloudflare's Workers Builds is connected to this repository and runs one of two
+commands on every push. Both are `web` package scripts, in `web/builds/`:
+
+| Branch | Command | What it runs |
+|---|---|---|
+| `main` | `pnpm run deploy:workers-builds` | the [sweep](#the-sweep), then `deploy:production`: the production build and `wrangler deploy` |
+| any other | `pnpm run preview:workers-builds` | the production build; finds or creates the branch's app D1 `lexema-preview-app-<name>`; binds it as `APP_DB` in `web/dist/server/wrangler.json`, leaving `DB` on the shared dictionary; applies the app migrations to it; then `wrangler preview --name <name>`; on the Preview's first deployment, sets a random `BETTER_AUTH_SECRET` on it |
+
+Every later push to a branch reuses its app D1. `web/test/workersBuilds.test.ts`
+checks both commands against a fake account, with no network and no credential.
+
+### The Preview name
+
+`<name>` is made from the branch name by `web/builds/previewName.ts`, which the
+sweep also uses. A branch of at most 26 lowercase letters, digits and inner
+hyphens keeps its name: `huey-242-preview` previews as `huey-242-preview`. Any
+other branch keeps a cleaned-up start and ends with the first 8 hex digits of
+its own SHA-256, so two branches never share a name and one branch always gets
+the same one: `huey/foo_bar` previews as `huey-foo-bar-54d62606`, and
+`build/251-preview-adr-f7d91140` as `build-251-preview-d8c93941`.
+
+26 is what fits one DNS label (63 characters) in the deployment URL
+`<deployment-id>-<name>.preview.lexema.fyi`
+([Previews, URLs](https://developers.cloudflare.com/workers/previews/#urls)).
+Cloudflare does not say how long a deployment id is, so the limit assumes the
+longest, a 36-character UUID. Workers Builds comments the Preview URL on the
+pull request
+([GitHub integration](https://developers.cloudflare.com/workers/ci-cd/builds/git-integration/github-integration/#pull-request-comment)).
+
+### The sweep
+
+On each push to `main`, before the deploy, the sweep deletes the Preview and the
+app D1 of every branch with no open pull request. A merged pull request is
+cleaned up at its own merge; one closed without merging, at the next merge.
+
+- It reads the open pull requests' head branches from GitHub's REST API with
+  `GITHUB_PR_READ_TOKEN`, a read-only token kept as a Workers Builds build secret.
+- It looks only at D1 databases whose name starts with `lexema-preview-app-`, and
+  never at the shared dictionary `lexema-dictionary`.
+- It deletes the Preview first (`wrangler preview delete`), then its D1
+  (`wrangler d1 delete`). If the Preview cannot be deleted, its D1 stays, and the
+  next sweep tries again.
+- If the token is missing, or GitHub's list cannot be read, it deletes nothing.
+  The build log then says `sweep: deleting nothing` and why.
+
+A Preview made any other way, such as `wrangler preview` from a laptop, has no
+`lexema-preview-app-` D1, so the sweep never sees it. Delete it by hand with
+`pnpm exec wrangler preview delete --name <name>` in `web/`.
+
+### Set it up
+
+Do these once, in this order. Each Cloudflare step names the doc page it comes
+from; where a label is not in the docs, the step says what to look for.
+
+**1. Create the read-only GitHub token.**
+
+1. Open https://github.com/settings/personal-access-tokens/new (a fine-grained
+   token).
+2. **Token name**: `lexema-workers-builds-sweep`.
+3. **Resource owner**: `hueypov`.
+4. **Expiration**: pick a date and put a reminder in your calendar. When it
+   expires the sweep deletes nothing, and says `GitHub answered 401` in the build
+   log, until you make a new one; deploys carry on.
+5. **Repository access**: **Only select repositories**, then pick
+   `hueypov/lexema` and nothing else.
+6. **Permissions**: under the repository permissions, set **Pull requests** to
+   **Read-only** (on the newer page, select **Add permissions**, then **Pull
+   requests**). Add nothing else. GitHub adds **Metadata: Read-only** by itself,
+   which every token has.
+7. Select **Generate token** and copy it. GitHub shows it once.
+
+**2. Connect the repository to the Worker**
+([Builds, connect an existing Worker](https://developers.cloudflare.com/workers/ci-cd/builds/#connect-an-existing-worker)).
+
+1. Open https://dash.cloudflare.com/?to=/:account/workers-and-pages and select
+   the Worker `lexema-web`. If it is not there yet, [deploy by hand](#deploy-by-hand)
+   once first: Workers Builds needs the dashboard Worker's name to match `name` in
+   `web/wrangler.jsonc`.
+2. Select **Settings**, then **Builds**, then **Connect**.
+3. Pick your GitHub account and the repository `hueypov/lexema`. If Cloudflare
+   asks to install the **Cloudflare Workers and Pages** GitHub app, give it access
+   to `hueypov/lexema` only
+   ([GitHub integration, manage access](https://developers.cloudflare.com/workers/ci-cd/builds/git-integration/github-integration/#manage-access)).
+4. Fill in the build settings with exactly these values
+   ([Builds configuration](https://developers.cloudflare.com/workers/ci-cd/builds/configuration/#build-settings)):
+
+   | Setting | Value |
+   |---|---|
+   | Git branch (the production branch) | `main` |
+   | Build command | `pnpm install --frozen-lockfile` |
+   | Deploy command | `pnpm run deploy:workers-builds` |
+   | Preview command (the one for branches that are not `main`, whatever the page labels it) | `pnpm run preview:workers-builds` |
+   | Root directory | `web` |
+   | API token | leave the default, **Create new token**, unless one already exists for Workers Builds; then select that one |
+
+5. Save. Cloudflare may start a first build straight away; it can fail until
+   the steps below are done, and the next push retries.
+
+**3. Turn on preview builds**
+([Build branches, configure preview builds](https://developers.cloudflare.com/workers/ci-cd/builds/build-branches/#configure-preview-builds)).
+
+1. In the same Worker, go to **Settings**, **Build**, **Branch control**.
+2. Check that the production branch is `main`, and tick **Enable Preview
+   Builds**.
+3. If the page shows a **Set up Worker Previews** banner, select **Set up**,
+   check that the Preview command reads `pnpm run preview:workers-builds`, and
+   select **Switch to Worker Previews**. It cannot be undone, and nothing here
+   needs the old model.
+
+**4. Add the build variables and the secret**
+([Builds configuration](https://developers.cloudflare.com/workers/ci-cd/builds/configuration/#build-settings),
+[Build image](https://developers.cloudflare.com/workers/ci-cd/builds/build-image/)).
+
+In **Settings**, **Build**, find **Build variables and secrets** (the build
+image page calls it **Build Variables and Secrets**), and add:
+
+| Name | Value | Type |
+|---|---|---|
+| `GITHUB_PR_READ_TOKEN` | the token from step 1 | secret (choose the encrypt or secret option, so the value is hidden) |
+| `SKIP_DEPENDENCY_INSTALL` | `1` | plain text |
+| `PNPM_VERSION` | `10.13.1` | plain text |
+
+`SKIP_DEPENDENCY_INSTALL` stops the automatic install, so the build command's
+`pnpm install --frozen-lockfile` is the only one, from the root lockfile.
+`PNPM_VERSION` is the pnpm `package.json` names. These are build variables, not
+the Worker's own variables under **Variables & Secrets**, which the build never
+reads.
+
+**5. Give the Workers Builds API token D1 Edit**
+([Builds configuration, API token](https://developers.cloudflare.com/workers/ci-cd/builds/configuration/#api-token)).
+
+The token Workers Builds made in step 2 can edit Workers, KV and R2, but not D1,
+and both commands create, migrate or delete D1 databases.
+
+1. Open https://dash.cloudflare.com/profile/api-tokens (**My Profile**, **API
+   Tokens**).
+2. Find the token Workers Builds uses: it is the one the **API token** setting
+   in step 2 names. Select **Edit** on its row (under the three-dot menu if there
+   is no button).
+3. Under **Permissions**, add a row: **Account**, **D1**, **Edit**.
+4. Select **Continue to summary**, then **Update token**.
+
+That token can now edit every D1 on the account, the dictionary too. ADR 0018
+accepts this, since only reviewed build commands use it.
+
+**6. Check it works.**
+
+1. Push a branch and open a pull request. Workers Builds comments a Preview
+   URL on it. The build log shows `Preview <name> for branch <branch>`, then
+   `app database: created lexema-preview-app-<name>`, the migrations, and
+   `wrangler preview`.
+2. Push to the branch again. The log now says `app database: reusing`.
+3. Merge it. The `main` build log starts with `sweep:` lines, deletes that
+   branch's Preview and app D1, and then deploys production.
 
 ## Turn on sign-in
 
