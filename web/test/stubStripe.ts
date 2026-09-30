@@ -1,7 +1,8 @@
 // Stripe for tests (#262): a stand-in for api.stripe.com at the level of
 // `fetch`, handed to a real stripe-node client, so the Stripe plugin's own
-// code and Lexema's sync run against it. It answers only the calls a Checkout
-// and a webhook make, and refuses any other, so a test can never reach Stripe.
+// code and Lexema's sync run against it. It answers only the calls a Checkout,
+// its return, the billing portal and a webhook make, and refuses any other, so
+// a test can never reach Stripe.
 // Webhook payloads are signed with a test secret that exists nowhere else: CI
 // holds no Stripe secret.
 
@@ -31,14 +32,27 @@ export interface StartedCheckout {
   id: string;
   customer: string;
   clientReferenceId: string;
+  price: string;
+  successUrl: string;
+  cancelUrl: string;
   metadata: Record<string, string>;
   subscriptionMetadata: Record<string, string>;
 }
 
 const json = (body: unknown, status = 200) => Response.json(body, { status });
 
+/** A billing portal session the plugin asked Stripe for. */
+export interface StartedPortal {
+  customer: string;
+  returnUrl: string;
+  url: string;
+}
+
 export class StubStripe {
   readonly checkouts: StartedCheckout[] = [];
+  readonly portals: StartedPortal[] = [];
+  /** The subscription each Checkout made once it was paid, by Checkout id: `pay` sets it. */
+  private readonly paid = new Map<string, string>();
   private readonly subscriptions = new Map<string, Stripe.Subscription>();
   private customers = 0;
 
@@ -73,10 +87,33 @@ export class StubStripe {
         id,
         customer: form.get("customer") ?? "",
         clientReferenceId: form.get("client_reference_id") ?? "",
+        price: form.get("line_items[0][price]") ?? "",
+        successUrl: form.get("success_url") ?? "",
+        cancelUrl: form.get("cancel_url") ?? "",
         metadata: metadataOf("metadata"),
         subscriptionMetadata: metadataOf("subscription_data[metadata]"),
       });
       return json({ object: "checkout.session", id, url: `https://checkout.stripe.com/c/pay/${id}` });
+    }
+    const session = /^\/v1\/checkout\/sessions\/([^/]+)$/.exec(path);
+    const started = this.checkouts.find((checkout) => checkout.id === session?.[1]);
+    if (request.method === "GET" && started !== undefined) {
+      const subscription = this.paid.get(started.id) ?? null;
+      return json({
+        object: "checkout.session",
+        id: started.id,
+        mode: "subscription",
+        customer: started.customer,
+        client_reference_id: started.clientReferenceId,
+        metadata: started.metadata,
+        subscription,
+        payment_status: subscription === null ? "unpaid" : "paid",
+      });
+    }
+    if (request.method === "POST" && path === "/v1/billing_portal/sessions") {
+      const portal = { customer: form.get("customer") ?? "", returnUrl: form.get("return_url") ?? "", url: `https://billing.stripe.com/p/session/test_${this.portals.length + 1}` };
+      this.portals.push(portal);
+      return json({ object: "billing_portal.session", ...portal, return_url: portal.returnUrl });
     }
     const subscription = /^\/v1\/subscriptions\/([^/]+)$/.exec(path);
     if (request.method === "GET" && subscription !== null) {
@@ -91,6 +128,12 @@ export class StubStripe {
   /** A Stripe client over this stub, as the Worker builds one. */
   client(): Stripe {
     return new Stripe(TEST_SETTINGS.STRIPE_SECRET_KEY, { httpClient: Stripe.createFetchHttpClient(this.fetch) });
+  }
+
+  /** The developer pays Checkout `checkout`: Stripe now holds subscription `id` in `state`, made by that Checkout. */
+  pay(checkout: StartedCheckout, id: string, state: SubscriptionState): Stripe.Subscription {
+    this.paid.set(checkout.id, id);
+    return this.set(id, checkout.customer, checkout.subscriptionMetadata, state);
   }
 
   /** Set a subscription's current state at Stripe, and answer the object Stripe would send. */

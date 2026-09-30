@@ -7,8 +7,9 @@
 // and `lexema.fyi` and the developer site go to the App Router. On the way
 // there, the per-visitor limits (worker/rateLimit.ts) count every request that
 // could reach D1, in one place, before any route runs. Behind them, the
-// developer site's sign-in routes (worker/signIn.ts) and dashboard actions
-// (worker/dashboard.ts) are answered before vinext, since they set cookies,
+// developer site's sign-in routes (worker/signIn.ts), billing routes
+// (worker/billing.ts) and dashboard actions (worker/dashboard.ts) are
+// answered before vinext, since they set cookies,
 // change data and redirect rather than render, and so is a Preview's test
 // sign-in (worker/testSignIn.ts), which no other stage has. In front of the
 // host routing, Stripe's webhook on the developer site (worker/stripeWebhook.ts)
@@ -21,6 +22,7 @@
 import { env } from "cloudflare:workers";
 import app from "vinext/server/app-router-entry";
 import { answerApi, apiNotFound } from "./api/handler.ts";
+import { withBilling } from "./billing.ts";
 import { withDashboard } from "./dashboard.ts";
 import { byHost } from "./hosts.ts";
 import { withRateLimits } from "./rateLimit.ts";
@@ -40,7 +42,7 @@ export default {
     withStripeWebhook<Env>(
       byHost<Env>({
         app: withRateLimits<Env>(
-          withTestSignIn<Env>(stage, withSignIn<Env>(withDashboard<Env>((request, env, ctx) => app.fetch(request, env, ctx)))),
+          withTestSignIn<Env>(stage, withSignIn<Env>(withBilling<Env>(withDashboard<Env>((request, env, ctx) => app.fetch(request, env, ctx))))),
         ),
         api: answerApi,
         apiNotFound,

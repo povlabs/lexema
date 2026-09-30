@@ -9,7 +9,8 @@
 // answers 400). Its handlers and Lexema's sync (src/billing/subscriptionSync.ts)
 // then write the account's `subscription` row; a failed sync answers 400, so
 // Stripe retries. Every other `/auth/*` path, on every host, goes on to the
-// host routing like any path, where nothing answers it.
+// host routing like any path, where only the developer site's Checkout return
+// (worker/billing.ts) answers one.
 //
 // Without every Stripe setting (src/accounts/billing.ts), `BETTER_AUTH_SECRET`
 // or `APP_DB`, the route answers 503 and logs which is missing.

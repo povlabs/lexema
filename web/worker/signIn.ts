@@ -4,7 +4,8 @@
 // The routes, on the developer site's host only:
 //
 //   GET  /sign-in/<provider>           start: to the provider, with a pending-sign-in cookie
-//   GET  /sign-in/<provider>/callback  finish: a session cookie, then /dashboard
+//   GET  /sign-in/<provider>/callback  finish: a session cookie, then /dashboard,
+//                                      or on to Checkout for a plan chosen before it
 //   POST /sign-out                     end the session and clear its cookie
 //
 // worker/hosts.ts rewrites the developer site onto `/developer-site/…` and
@@ -38,7 +39,9 @@ import {
   type ProviderRegistry,
   type ProviderSettings,
 } from "@lexema/accounts/providers.ts";
+import { stripePlanOf } from "@lexema/billing/plans.ts";
 import { appTablesOverD1, type AppTables } from "@lexema/db/app/database.ts";
+import { CHECKOUT_ACTION } from "@/lib/developers/billingActions.ts";
 import { DEVELOPERS_SEGMENT, googleCallbackUri, ORIGIN } from "./hosts.ts";
 import type { FetchHandler } from "./rateLimit.ts";
 
@@ -46,6 +49,23 @@ export { PENDING_COOKIE, SESSION_COOKIE } from "@lexema/accounts/auth.ts";
 
 /** Where a finished sign-in lands. */
 export const AFTER_SIGN_IN = "/dashboard";
+
+/**
+ * The plan a signed-out visitor chose on the pricing page, kept while they
+ * sign in (#264): `starter` or `pro`, host-only like the session cookie.
+ * worker/billing.ts sets it and clears it.
+ */
+export const CHOSEN_PLAN_COOKIE = "__Secure-lexema.plan";
+/** How long a chosen plan waits for its sign-in: 15 minutes. */
+export const CHOSEN_PLAN_SECONDS = 15 * 60;
+
+/**
+ * Where a finished sign-in sends the browser: when a plan was chosen before
+ * it, a GET of the checkout action, which goes on to Checkout for that plan
+ * (worker/billing.ts); else the dashboard.
+ */
+export const afterSignIn = (cookieHeader: string | null): string =>
+  stripePlanOf(readCookie(cookieHeader, CHOSEN_PLAN_COOKIE)) === undefined ? AFTER_SIGN_IN : CHECKOUT_ACTION;
 /** Where a sign-out lands. */
 export const AFTER_SIGN_OUT = "/";
 
@@ -245,7 +265,7 @@ export async function answerSignIn(request: Request, route: SignInRoute, context
         const session = finished.headers.getSetCookie().filter((value) => value.startsWith(`${SESSION_COOKIE}=`));
         if (session.length !== 1) throw new Error("better-auth finished a callback with no session cookie");
         await sweepExpired(requireDatabase(context).app, context.now);
-        return redirect(AFTER_SIGN_IN, [clearedCookie(PENDING_COOKIE), ...session]);
+        return redirect(afterSignIn(cookies), [clearedCookie(PENDING_COOKIE), ...session]);
       }
       case "sign-out": {
         // A cross-site form could otherwise clear the cookie, even though
