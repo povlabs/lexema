@@ -2,9 +2,11 @@
 //
 // A query the index has no entry for, and that has a space in it, may still be
 // an inflected multi-word headword: `vado via` is *andare via* said the way a
-// speaker says it. Each word stands for its lemmas — itself when it is a
-// headword, and every word its form-of records name — and each sequence of
-// those lemmas is a headword the index is then asked for, exactly.
+// speaker says it. Each word stands for its lemmas — itself, and every word
+// its form-of records name — and each sequence of those lemmas is a headword
+// the index is then asked for, exactly. A word stands for itself even when no
+// record heads it: `l'amore` heads nothing, yet `faccio l'amore` is *fare
+// l'amore*.
 //
 // One Italian rule reads two words as one: an auxiliary and a past participle.
 // `sono andati` is a compound tense of *andare*, so it stands for *andare* and
@@ -40,7 +42,7 @@ export const MAX_PHRASE_WORDS = 12;
 export interface WordLemmas {
   /** The word as normalized for the index: `vado`. */
   typed: string;
-  /** Itself when it is a headword, and every word its form-of records name. Empty when it is neither. */
+  /** Itself first, whether or not a record heads it, then every word its form-of records name. */
   lemmas: readonly string[];
 }
 

@@ -1,6 +1,6 @@
 {
   "source": "it-extract.jsonl.gz",
-  "selection": "Huey's fifty required words, the multi-word search words of #214 (andare via, tirare fuori, volgere and voltare le spalle and the words that spell them), plus the archive's form_of closure",
+  "selection": "Huey's fifty required words, the multi-word search words of #214 (andare via, tirare fuori, volgere and voltare le spalle, fare l'amore, aereo and aerei a reazione, and the words that spell them), plus the archive's form_of closure",
   "recordsByWord": {
     "acqua": {
       "recordCount": 1,
@@ -913,6 +913,76 @@
         {
           "pos": "verb",
           "keyCount": 12,
+          "forms": 0
+        }
+      ]
+    },
+    "faccio": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "verb",
+          "keyCount": 12,
+          "forms": 0
+        }
+      ]
+    },
+    "fare l'amore": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "phrase",
+          "keyCount": 13,
+          "forms": 0
+        }
+      ]
+    },
+    "aereo": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 16,
+          "forms": 3
+        },
+        {
+          "pos": "noun",
+          "keyCount": 16,
+          "forms": 1
+        }
+      ]
+    },
+    "aerei": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 16,
+          "forms": 3
+        },
+        {
+          "pos": "noun",
+          "keyCount": 15,
+          "forms": 0
+        }
+      ]
+    },
+    "aereo a reazione": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "phrase",
+          "keyCount": 12,
+          "forms": 1
+        }
+      ]
+    },
+    "aerei a reazione": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "noun",
+          "keyCount": 8,
           "forms": 0
         }
       ]
