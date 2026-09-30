@@ -9,7 +9,6 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { gzipSync } from "node:zlib";
-import { applyAppMigrations } from "../src/db/app/migrations.js";
 import { seedSql } from "../src/import/seedSql.js";
 import { fromNodeSqlite } from "../src/lookup/database.js";
 import {
@@ -42,7 +41,6 @@ before(async () => {
   });
   sqlite = new DatabaseSync(":memory:");
   for (const part of parts) sqlite.exec(await readFile(part, "utf8"));
-  applyAppMigrations(sqlite);
 });
 
 after(async () => {

@@ -5,7 +5,9 @@
       "name": "web",
       // Covers fonts as well as app code. web/test/fixture.ts raises the UI
       // class; only test filenames are excluded. Route pixel-neutral edits
-      // with review-ui route instead of capturing them.
+      // with review-ui route instead of capturing them. seed:dev fills both
+      // local D1s in $state, the dictionary (DB) and the app database
+      // (APP_DB, ADR 0018), and wrangler dev serves both from it.
       "prefix": "web/",
       "mount": "/",
       "readyPath": "/",

@@ -9,11 +9,11 @@ import { redirect } from "next/navigation";
 import { csrfTokenOf, SIGN_IN_PAGE } from "@/worker/dashboard.ts";
 import { signedInAccount } from "@/worker/signIn.ts";
 import { dashboardView, settingsView, type DashboardView, type SettingsView } from "./dashboardView.ts";
-import { database } from "@/lib/shared/database.ts";
+import { appDatabase } from "@/lib/shared/database.ts";
 
 /** The signed-in account a dashboard page is for, with every key it owns, revoked ones too. */
 async function signedInOwner(cookies: string | null) {
-  const db = database();
+  const db = appDatabase();
   const now = Date.now();
   const accountId = await signedInAccount(cookies, db, now);
   const csrf = await csrfTokenOf(cookies);

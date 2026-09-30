@@ -255,3 +255,51 @@ export const apiKeyUsage = sqliteTable(
     check("api_key_usage_calls", sql`calls >= 0`),
   ],
 );
+
+// ---------------------------------------------------------------------------
+// Reader reports (#51)
+// ---------------------------------------------------------------------------
+
+/**
+ * A reader's report that something on a word page is wrong, as sent from the
+ * page's "Report a mistake" box (web/lib/dictionary/report.ts, its only
+ * writer). It is not a review: the dictionary's `claim_review` holds verdicts,
+ * and an unreviewed report cannot live there. A report changes nothing; it
+ * waits for a person (#12). It moved here from src/db/schema.sql with no change
+ * in shape (#240), since the dictionary database is never written (ADR 0018).
+ *
+ * No foreign key: a report names the release and record it was sent from, and
+ * has to outlive that release, which lives in another database. The visitor is
+ * stored as a SHA-256 of their rate-limit key, never as an address, and is kept
+ * only so the hourly allowance can be counted.
+ */
+export const readerReport = sqliteTable(
+  "reader_report",
+  {
+    reportId: integer("report_id").primaryKey(),
+    releaseId: text("release_id").notNull(),
+    word: text("word").notNull(),
+    recordId: integer("record_id"), // the reading the reader picked; NULL for none or "Not sure"
+    choice: text("choice", { enum: ["meaning", "example", "form", "synonym", "other"] }).notNull(),
+    details: text("details").notNull(),
+    visitorHash: text("visitor_hash").notNull(),
+    receivedAt: text("received_at").notNull(), // ISO-8601
+  },
+  (table) => [
+    index("reader_report_by_visitor").on(table.visitorHash, table.receivedAt),
+    check("reader_report_choice", sql`choice IN ('meaning', 'example', 'form', 'synonym', 'other')`),
+    check("reader_report_details", sql`length(details) BETWEEN 1 AND 2000`),
+  ],
+);
+
+/**
+ * One opening of the report box: a random token the server hands the box when
+ * it opens, and the server's own time. A report must carry one, and at least
+ * 3 s must have passed on the server's clock since it was issued, so the check
+ * never compares two clocks. Used once: deleted when its report is stored.
+ * Openings older than a day are swept when a new one is issued.
+ */
+export const reportOpening = sqliteTable("report_opening", {
+  token: text("token").primaryKey(),
+  openedAt: text("opened_at").notNull(), // ISO-8601, the server's clock
+});

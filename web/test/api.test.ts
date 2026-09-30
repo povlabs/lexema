@@ -3,7 +3,8 @@
 // way `pnpm run seed:dev` seeds D1.
 //
 // `handleApi` is exercised as the Worker runs it, a Request in and a Response
-// out; only the D1 binding is a local `node:sqlite` database.
+// out; only the two D1 bindings, the dictionary and the app database, are
+// local `node:sqlite` databases.
 
 import assert from "node:assert/strict";
 import { after, before, test } from "node:test";
@@ -14,7 +15,6 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { DatabaseSync } from "node:sqlite";
 import { gzipSync } from "node:zlib";
-import { applyAppMigrations } from "../../src/db/app/migrations.js";
 import { signInAccount, verifiedIdentity } from "../../src/accounts/accounts.js";
 import { ALL_ENDPOINTS, onlyEndpoints, type KeyAccess } from "../../src/api/keyAccess.js";
 import { runKeyCommand } from "../../src/api/keyCli.js";
@@ -23,7 +23,9 @@ import { createAccountKey, keyName, listAccountKeys } from "../../src/api/ownedK
 import type { Endpoint } from "../../src/api/calls.js";
 import { accountUsage, USAGE_WINDOW_DAYS } from "../../src/api/usage.js";
 import { seedSql } from "../../src/import/seedSql.js";
-import { fromNodeSqlite, type TransactionalDatabase } from "../../src/lookup/database.js";
+import type { AppTables } from "../../src/db/app/database.js";
+import type { LookupDatabase } from "../../src/lookup/database.js";
+import { freshAppDatabase, readOnlyDictionary } from "../../test/databases.js";
 import { lookup } from "../../src/lookup/lookup.js";
 import { findNearby } from "../../src/lookup/nearby.js";
 import { suggest } from "../../src/lookup/suggest.js";
@@ -38,8 +40,12 @@ const RELEASE = "it-api-test";
 const NOW = Date.parse("2026-09-27T12:00:20Z");
 
 let dir: string;
+/** The seeded dictionary, read-only as the Worker's `DB` is. */
+let dictionarySqlite: DatabaseSync;
+let dictionary: LookupDatabase;
+/** The app database: keys and usage. */
 let sqlite: DatabaseSync;
-let db: TransactionalDatabase;
+let db: AppTables;
 
 before(async () => {
   dir = await mkdtemp(join(tmpdir(), "lexema-api-"));
@@ -57,14 +63,15 @@ before(async () => {
       throw new Error(`fixture line rejected: ${JSON.stringify(rejection)}`);
     },
   });
-  sqlite = new DatabaseSync(":memory:");
-  for (const part of parts) sqlite.exec(await readFile(part, "utf8"));
-  applyAppMigrations(sqlite);
-  db = fromNodeSqlite(sqlite);
+  dictionarySqlite = new DatabaseSync(":memory:");
+  for (const part of parts) dictionarySqlite.exec(await readFile(part, "utf8"));
+  dictionary = readOnlyDictionary(dictionarySqlite);
+  ({ sqlite, appDb: db } = freshAppDatabase());
 });
 
 after(async () => {
   sqlite.close();
+  dictionarySqlite.close();
   await rm(dir, { recursive: true, force: true });
 });
 
@@ -73,10 +80,10 @@ const newKey = async (perMinuteLimit = 60, label = "test"): Promise<{ keyId: num
   createKey(db, { label, perMinuteLimit }, NOW);
 
 /** One API request, as the Worker hands it over. */
-const call = (path: string, key: string | undefined, now = NOW, method = "GET", over = db): Promise<Response> =>
+const call = (path: string, key: string | undefined, now = NOW, method = "GET", over = dictionary): Promise<Response> =>
   handleApi(
     new Request(`https://api.lexema.fyi${path}`, { method, headers: key === undefined ? {} : { "x-api-key": key } }),
-    { db: over, releaseId: RELEASE, now },
+    { db: over, appDb: db, releaseId: RELEASE, now },
   );
 
 /** The per-key limit headers, in a fixed order. */
@@ -107,7 +114,7 @@ test("a form answers with its lemma in one call: andavano is andare, at indicati
 test("sale answers every candidate the lookup returns: the salt noun, sala and salire", async () => {
   const { key } = await newKey();
   const body: Json = await (await call("/v1/lookup?q=sale", key)).json();
-  const found = await lookup({ db, releaseId: RELEASE, query: "sale" });
+  const found = await lookup({ db: dictionary, releaseId: RELEASE, query: "sale" });
   assert.equal(found.outcome, "found");
   assert.equal(body.results.length, found.readings.length);
   assert.deepEqual(
@@ -149,7 +156,7 @@ test("a word not in the release is a 404 offering findNearby's spellings in its 
     const response = await call(`/v1/lookup?q=${q}`, key);
     assert.equal(response.status, 404, q);
     const body: Json = await response.json();
-    const nearby = await findNearby({ db, releaseId: RELEASE, query: q });
+    const nearby = await findNearby({ db: dictionary, releaseId: RELEASE, query: q });
     const offered =
       nearby.kind === "prefix" ? nearby.words : nearby.kind === "none" ? [] : [nearby.best, ...nearby.others];
     assert.deepEqual(body.results, []);
@@ -257,7 +264,7 @@ test("a 405, an unknown endpoint and a failed answer carry the key's limit heade
   assert.deepEqual(limitHeaders(unknown), ["10", "8", "40", null]);
 
   // The key is read and its minute counted; the lookup's own read then fails.
-  const failing: TransactionalDatabase = { ...db, all: () => Promise.reject(new Error("D1 is down")) };
+  const failing: LookupDatabase = { all: () => Promise.reject(new Error("D1 is down")) };
   t.mock.method(console, "error", () => {});
   const failed = await call("/v1/lookup?q=casa", key, NOW, "GET", failing);
   assert.equal(failed.status, 503);
@@ -297,21 +304,28 @@ test("each host reaches its own site: lexema.fyi the pages as before, api.lexema
     SIGN_IN_LIMIT: new CountingRateLimit(),
     KEY_CREATE_LIMIT: new CountingRateLimit(),
   };
-  // D1's shape over the same database: prepare, bind, and all, raw or run,
-  // which is how lookup and Drizzle reach it.
-  const bound = (sql: string, params: (string | number | null)[]) => ({
-    all: async () => ({ results: sqlite.prepare(sql).all(...params) }),
-    raw: async () => {
-      const statement = sqlite.prepare(sql);
-      statement.setReturnArrays(true);
-      return statement.all(...params);
-    },
-    run: async () => (sqlite.prepare(sql).run(...params), { success: true }),
-  });
-  const d1 = {
-    prepare: (sql: string) => ({ ...bound(sql, []), bind: (...params: (string | number | null)[]) => bound(sql, params) }),
+  // D1's shape over each database: prepare, bind, and all, raw or run, which
+  // is how lookup and Drizzle reach it.
+  const d1Over = (over: DatabaseSync) => {
+    const bound = (sql: string, params: (string | number | null)[]) => ({
+      all: async () => ({ results: over.prepare(sql).all(...params) }),
+      raw: async () => {
+        const statement = over.prepare(sql);
+        statement.setReturnArrays(true);
+        return statement.all(...params);
+      },
+      run: async () => (over.prepare(sql).run(...params), { success: true }),
+    });
+    return {
+      prepare: (sql: string) => ({ ...bound(sql, []), bind: (...params: (string | number | null)[]) => bound(sql, params) }),
+    } as unknown as D1Database;
   };
-  const env = { ...limits, DB: d1 as unknown as D1Database, LEXEMA_RELEASE: RELEASE } satisfies ApiBindings & LimitBindings;
+  const env = {
+    ...limits,
+    DB: d1Over(dictionarySqlite),
+    APP_DB: d1Over(sqlite),
+    LEXEMA_RELEASE: RELEASE,
+  } satisfies ApiBindings & LimitBindings;
   const appSaw: Request[] = [];
   const worker = byHost<typeof env>({
     app: withRateLimits<typeof env>(async (request) => {
@@ -534,7 +548,7 @@ test("a filtered /lookup still counts 1 call and carries release_id, attribution
 const send = (key: string, path: string, body?: string): Promise<Response> =>
   handleApi(
     new Request(`https://api.lexema.fyi/v1/${path}`, { method: body === undefined ? "GET" : "POST", body, headers: { "x-api-key": key } }),
-    { db, releaseId: RELEASE, now: NOW },
+    { db: dictionary, appDb: db, releaseId: RELEASE, now: NOW },
   );
 
 let endpointKey: string | undefined;
@@ -643,7 +657,7 @@ test("/inflect is a 404 for a word that heads no record, and a 400 for a lemma o
 
 test("/suggest answers suggest()'s spellings, in its order and within its limit", async () => {
   for (const q of ["sal", "a", "c", "qqq"]) {
-    const answer = await suggest({ db, releaseId: RELEASE, prefix: q });
+    const answer = await suggest({ db: dictionary, releaseId: RELEASE, prefix: q });
     assert.equal(answer.outcome, "suggested");
     const body = await okBody(`suggest?q=${q}`);
     assert.deepEqual(body.results.map((result: Json) => result.word), answer.suggestions, q);
@@ -659,7 +673,7 @@ test("/nearby answers findNearby()'s spellings in its ranking, typo called edit"
     ["qqqqqq", []],
   ];
   for (const [q, kinds] of cases) {
-    const nearby = await findNearby({ db, releaseId: RELEASE, query: q });
+    const nearby = await findNearby({ db: dictionary, releaseId: RELEASE, query: q });
     const offered = nearby.kind === "prefix" ? nearby.words : nearby.kind === "none" ? [] : [nearby.best, ...nearby.others];
     const body = await okBody(`nearby?q=${q}`);
     assert.deepEqual(body.results.map((result: Json) => result.word), offered, q);
@@ -672,7 +686,7 @@ test("/random?pos=noun answers a noun headword, and pos takes /lookup's values",
   for (let draw = 0; draw < 5; draw++) {
     const [headword] = (await okBody("random?pos=noun")).results;
     assert.equal(headword.pos, "noun");
-    const record = sqlite
+    const record = dictionarySqlite
       .prepare("SELECT word, pos, pos_title FROM source_record WHERE release_id = ? AND line_no = ?")
       .get(RELEASE, Number(headword.id.split(":")[1]));
     assert.deepEqual({ ...record }, { word: headword.word, pos: "noun", pos_title: headword.pos_title });
@@ -782,7 +796,7 @@ test("an owned key's calls stamp its last use, and the account's 30-day usage re
         headers: { "x-api-key": created.key, ...(body === undefined ? {} : { "content-type": "application/json" }) },
         body,
       }),
-      { db, releaseId: RELEASE, now: at },
+      { db: dictionary, appDb: db, releaseId: RELEASE, now: at },
     );
   }
 

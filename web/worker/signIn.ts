@@ -38,7 +38,7 @@ import {
   type ProviderRegistry,
   type ProviderSettings,
 } from "@lexema/accounts/providers.ts";
-import { fromD1, type TransactionalDatabase } from "@lexema/lookup/database.ts";
+import { appTablesOverD1, type AppTables } from "@lexema/db/app/database.ts";
 import { DEVELOPERS_SEGMENT, googleCallbackUri, ORIGIN } from "./hosts.ts";
 import type { FetchHandler } from "./rateLimit.ts";
 
@@ -66,12 +66,12 @@ export function signInRouteOf(url: URL): SignInRoute | undefined {
 }
 
 /**
- * The bindings sign-in reads: the database and the providers' vars and
+ * The bindings sign-in reads: the app database and the providers' vars and
  * secrets. `BETTER_AUTH_SECRET` is a Worker secret too, read where the session
  * is (src/accounts/auth.ts).
  */
 export interface SignInBindings extends ProviderSettings {
-  DB?: D1Database;
+  APP_DB?: D1Database;
 }
 
 /**
@@ -99,7 +99,7 @@ export function readCookie(header: string | null, name: string): string | undefi
  * cookie, one better-auth did not sign or has no live session for, one that
  * has expired by `now`, or a deleted account.
  */
-export async function signedInAccount(cookieHeader: string | null, db: TransactionalDatabase, now: number): Promise<number | undefined> {
+export async function signedInAccount(cookieHeader: string | null, db: AppTables, now: number): Promise<number | undefined> {
   const secret = authSecret();
   if (secret === undefined || readCookie(cookieHeader, SESSION_COOKIE) === undefined) return undefined;
   const auth = sessionAuth(db.app, secret, ORIGIN.developers);
@@ -169,13 +169,14 @@ const unavailable = (provider: ProviderId): Response =>
 /** What sign-in runs against; the Worker's, or a test's. */
 export interface SignInContext {
   providers: ProviderRegistry;
-  db: TransactionalDatabase | undefined;
+  /** The app database, where accounts and sessions live. */
+  appDb: AppTables | undefined;
   now: number;
 }
 
 /** The context the live Worker runs with. */
 export function liveContext(env: SignInBindings): SignInContext {
-  return { providers: configuredProviders(env), db: env.DB === undefined ? undefined : fromD1(env.DB), now: Date.now() };
+  return { providers: configuredProviders(env), appDb: env.APP_DB === undefined ? undefined : appTablesOverD1(env.APP_DB), now: Date.now() };
 }
 
 /** The public URL the provider sends the browser back to. Google's differs locally (worker/hosts.ts). */
@@ -264,9 +265,9 @@ export async function answerSignIn(request: Request, route: SignInRoute, context
   }
 }
 
-function requireDatabase(context: SignInContext): TransactionalDatabase {
-  if (context.db === undefined) throw new Error("no D1 binding: this Worker has no DB");
-  return context.db;
+function requireDatabase(context: SignInContext): AppTables {
+  if (context.appDb === undefined) throw new Error("no D1 binding: this Worker has no APP_DB");
+  return context.appDb;
 }
 
 /** Answer the sign-in routes here, and hand every other request to the app. */

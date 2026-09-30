@@ -6,14 +6,14 @@ import { env } from "cloudflare:workers";
 import { accountProfile } from "@lexema/accounts/accounts.ts";
 import { headers } from "next/headers";
 import { signedInAccount } from "@/worker/signIn.ts";
-import { database } from "@/lib/shared/database.ts";
+import { appDatabase } from "@/lib/shared/database.ts";
 import { signedInOf, type SignedIn } from "./signedIn.ts";
 
 export async function signedInVisitor(): Promise<SignedIn | undefined> {
-  if (env.DB === undefined) return undefined;
+  if (env.APP_DB === undefined) return undefined;
   const cookies = (await headers()).get("cookie");
   try {
-    const db = database();
+    const db = appDatabase();
     const accountId = await signedInAccount(cookies, db, Date.now());
     const profile = accountId === undefined ? undefined : await accountProfile(db, accountId);
     return profile === undefined ? undefined : signedInOf(profile);

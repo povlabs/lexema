@@ -2,10 +2,8 @@
 // schema. The handler that uses them is web/test/api.test.ts.
 
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
 import test from "node:test";
 import { DatabaseSync } from "node:sqlite";
-import { fileURLToPath } from "node:url";
 import { applyAppMigrations } from "../src/db/app/migrations.js";
 import { drizzleOverNodeSqlite } from "../src/db/app/nodeSqlite.js";
 import { runKeyCommand } from "../src/api/keyCli.js";
@@ -19,14 +17,13 @@ import {
   revokeKeyQuery,
 } from "../src/api/keys.js";
 import { chargeCallsQuery, countMinuteQuery, sweepMinutesQuery } from "../src/api/usage.js";
-import { fromNodeSqlite } from "../src/lookup/database.js";
+import { appTablesOverNodeSqlite } from "../src/db/app/nodeSqlite.js";
 
-const SCHEMA = readFileSync(fileURLToPath(new URL("../src/db/schema.sql", import.meta.url)), "utf8");
 const NOW = Date.parse("2026-09-27T12:00:00Z");
 
-function schemaDb(): DatabaseSync {
+/** An app database: the app migrations over an empty one, as `APP_DB` is built. */
+function appDb(): DatabaseSync {
   const db = new DatabaseSync(":memory:");
-  db.exec(SCHEMA);
   applyAppMigrations(db);
   return db;
 }
@@ -35,8 +32,8 @@ function schemaDb(): DatabaseSync {
 type Built = { toSQL(): { sql: string; params: unknown[] } };
 
 test("every key, minute and usage read or write is on a primary key or an index", () => {
-  const db = schemaDb();
-  const app = fromNodeSqlite(db).app;
+  const db = appDb();
+  const app = appTablesOverNodeSqlite(db).app;
   const at = new Date(NOW).toISOString();
   const planOf = (statement: Built) => {
     const { sql, params } = statement.toSQL();
@@ -75,7 +72,7 @@ test("every key, minute and usage read or write is on a primary key or an index"
 test("a key stored before its reads moved onto Drizzle still authenticates, in the one statement that stamps its use", async () => {
   // The row as the raw INSERT of the slice before stored it: an admin key from
   // before #187, with no endpoints or expiry of its own.
-  const sqlite = schemaDb();
+  const sqlite = appDb();
   const key = `lx_${"7f3a9c1d".repeat(8)}`;
   sqlite
     .prepare(
@@ -101,8 +98,8 @@ test("a key stored before its reads moved onto Drizzle still authenticates, in t
 });
 
 test("the key CLI prints a new key once, stores only its hash, and revokes it", async () => {
-  const sqlite = schemaDb();
-  const db = fromNodeSqlite(sqlite);
+  const sqlite = appDb();
+  const db = appTablesOverNodeSqlite(sqlite);
 
   const created = await runKeyCommand(
     ["create", "--label", "learning app", "--per-minute", "60"],
@@ -140,7 +137,7 @@ test("the key CLI prints a new key once, stores only its hash, and revokes it", 
 });
 
 test("the schema refuses an owned key with a per-minute limit of its own, and an admin key without one", () => {
-  const db = schemaDb();
+  const db = appDb();
   db.exec(
     "INSERT INTO developer_account (account_id, name, email, email_verified, created_at, updated_at) VALUES (1, 'Ada', 'ada@example.com', 1, '2026-09-27T12:00:00.000Z', '2026-09-27T12:00:00.000Z')",
   );

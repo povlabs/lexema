@@ -3,10 +3,8 @@
 // trip through the Worker, on better-auth, is web/test/signIn.test.ts.
 
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
 import test from "node:test";
 import { DatabaseSync } from "node:sqlite";
-import { fileURLToPath } from "node:url";
 import { applyAppMigrations } from "../src/db/app/migrations.js";
 import {
   accountByEmailQuery,
@@ -20,14 +18,13 @@ import {
 } from "../src/accounts/accounts.js";
 import { csrfMatches, csrfToken } from "../src/accounts/csrf.js";
 import { profileOf } from "../src/accounts/providers.js";
-import { fromNodeSqlite } from "../src/lookup/database.js";
+import { appTablesOverNodeSqlite } from "../src/db/app/nodeSqlite.js";
 
-const SCHEMA = readFileSync(fileURLToPath(new URL("../src/db/schema.sql", import.meta.url)), "utf8");
 const NOW = Date.parse("2026-09-28T12:00:00Z");
 
-function schemaDb(): DatabaseSync {
+/** An app database: the app migrations over an empty one, as `APP_DB` is built. */
+function appDb(): DatabaseSync {
   const db = new DatabaseSync(":memory:");
-  db.exec(SCHEMA);
   applyAppMigrations(db);
   return db;
 }
@@ -39,8 +36,8 @@ const identity = (provider: "google" | "github", subject: string, email: string,
 };
 
 test("every account read is on a primary key or an index", () => {
-  const db = schemaDb();
-  const app = fromNodeSqlite(db).app;
+  const db = appDb();
+  const app = appTablesOverNodeSqlite(db).app;
   const planOf = (sql: string, params: unknown[]) =>
     (db.prepare(`EXPLAIN QUERY PLAN ${sql}`).all(...(params as (string | number | null)[])) as { detail: string }[])
       .map((row) => row.detail)
@@ -58,7 +55,7 @@ test("every account read is on a primary key or an index", () => {
 });
 
 test("an identity signs in to its own account first, then to the account its verified email already reaches", async () => {
-  const db = fromNodeSqlite(schemaDb());
+  const db = appTablesOverNodeSqlite(appDb());
   assert.deepEqual(await signInAccount(db, identity("google", "g-1", "Ada@Example.com"), NOW), { accountId: 1, match: "new" });
   assert.deepEqual(await signInAccount(db, identity("github", "7", "ada@example.com"), NOW), { accountId: 1, match: "email" });
   assert.deepEqual(await signInAccount(db, identity("google", "g-1", "ada@example.com"), NOW), { accountId: 1, match: "identity" });
@@ -68,8 +65,8 @@ test("an identity signs in to its own account first, then to the account its ver
 });
 
 test("an account's profile is its first email and every provider linked to it, and a deleted account has none", async () => {
-  const sqlite = schemaDb();
-  const db = fromNodeSqlite(sqlite);
+  const sqlite = appDb();
+  const db = appTablesOverNodeSqlite(sqlite);
   const { accountId } = await signInAccount(db, identity("github", "7", "ada@example.com"), NOW);
   assert.deepEqual(await accountProfile(db, accountId), { email: "ada@example.com", name: undefined, providers: ["github"] });
   await signInAccount(db, identity("google", "g-1", "ada@example.com", "Ada Lovelace"), NOW);
@@ -92,8 +89,8 @@ test("only a provider-verified email makes an identity, and a blank name is no n
 });
 
 test("each sign-in refreshes the identity's name, and a name the provider drops is dropped (#190)", async () => {
-  const sqlite = schemaDb();
-  const db = fromNodeSqlite(sqlite);
+  const sqlite = appDb();
+  const db = appTablesOverNodeSqlite(sqlite);
   const { accountId } = await signInAccount(db, identity("google", "g-1", "ada@example.com", "Ada"), NOW);
   assert.equal((await accountProfile(db, accountId))?.name, "Ada");
   await signInAccount(db, identity("google", "g-1", "ada@example.com", "Ada Lovelace"), NOW);
@@ -107,8 +104,8 @@ test("each sign-in refreshes the identity's name, and a name the provider drops 
 });
 
 test("an account keeps the email it was made with; deleting it replaces its email and name with nothing personal", async () => {
-  const sqlite = schemaDb();
-  const db = fromNodeSqlite(sqlite);
+  const sqlite = appDb();
+  const db = appTablesOverNodeSqlite(sqlite);
   const { accountId } = await signInAccount(db, identity("google", "g-1", "Ada@Example.com", "Ada Lovelace"), NOW);
   const account = () => ({ ...sqlite.prepare("SELECT email, name, image, deleted_at FROM developer_account WHERE account_id = ?").get(accountId) });
   assert.deepEqual(account(), { email: "ada@example.com", name: "Ada Lovelace", image: null, deleted_at: null });

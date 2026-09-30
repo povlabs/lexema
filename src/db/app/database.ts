@@ -1,7 +1,7 @@
-// The app tables through Drizzle, whichever database holds them (ADR 0017): a
-// Worker's D1 through drizzle-orm/d1, or a `node:sqlite` file through
-// ./nodeSqlite.ts. src/lookup/database.ts hands one out beside its raw SQL, so
-// a caller holding either adapter reaches the same database both ways.
+// The app tables through Drizzle (ADR 0017), in the app database: a Worker's
+// `APP_DB` D1 through drizzle-orm/d1, or a `node:sqlite` file through
+// ./nodeSqlite.ts. The dictionary is another database, `DB`, which code only
+// reads (src/lookup/database.ts, ADR 0018); nothing here reaches it.
 
 import { drizzle, type DrizzleD1Database } from "drizzle-orm/d1";
 import type { BaseSQLiteDatabase } from "drizzle-orm/sqlite-core";
@@ -17,7 +17,7 @@ import * as schema from "./schema.js";
  */
 export type AppDatabase = BaseSQLiteDatabase<"async", unknown, typeof schema> & Pick<DrizzleD1Database<typeof schema>, "batch">;
 
-/** A database that reaches the app tables through Drizzle: both adapters in src/lookup/database.ts. */
+/** The app database, reached through Drizzle. */
 export interface AppTables {
   readonly app: AppDatabase;
 }
@@ -25,4 +25,9 @@ export interface AppTables {
 /** Drizzle over a Worker's D1 binding. */
 export function drizzleOverD1(d1: unknown): AppDatabase {
   return drizzle(d1 as Parameters<typeof drizzle>[0], { schema });
+}
+
+/** The app database a Worker binds as `APP_DB`. */
+export function appTablesOverD1(d1: unknown): AppTables {
+  return { app: drizzleOverD1(d1) };
 }

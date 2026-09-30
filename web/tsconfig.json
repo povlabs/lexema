@@ -17,8 +17,9 @@
       "@lexema/italian/*": ["../src/italian/*"],
       "@lexema/source/*": ["../src/source/*"],
       "@lexema/api/*": ["../src/api/*"],
-      "@lexema/accounts/*": ["../src/accounts/*"]
+      "@lexema/accounts/*": ["../src/accounts/*"],
+      "@lexema/db/*": ["../src/db/*"]
     }
   },
-  "include": ["app", "components", "lib", "worker", "test", "vite.config.ts", "worker-configuration.d.ts", "../src/lookup", "../src/italian", "../src/api", "../src/accounts"]
+  "include": ["app", "components", "lib", "worker", "test", "vite.config.ts", "worker-configuration.d.ts", "../src/lookup", "../src/italian", "../src/api", "../src/accounts", "../src/db/app"]
 }

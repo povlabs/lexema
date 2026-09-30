@@ -1,5 +1,7 @@
-// The report store (#51), over a database seeded the way the page test seeds
-// one, so the table and the release it checks against are the real schema's.
+// The report store (#51), over a dictionary seeded the way the page test seeds
+// one and a fresh app database, so the tables and the release it checks
+// against are the real schema's. The dictionary is read-only, as the Worker's
+// `DB` is (ADR 0018): a report that wrote to it would fail here.
 //
 // The Worker's per-minute binding is web/test/rateLimit.test.ts; this file is
 // everything after it: what a report must carry, the honeypot, the timing
@@ -13,9 +15,9 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { DatabaseSync } from "node:sqlite";
 import { gzipSync } from "node:zlib";
-import { applyAppMigrations } from "../../src/db/app/migrations.js";
 import { seedSql } from "../../src/import/seedSql.js";
-import { fromNodeSqlite } from "../../src/lookup/database.js";
+import { appTablesOverNodeSqlite } from "../../src/db/app/nodeSqlite.js";
+import { freshAppDatabase, readOnlyDictionary } from "../../test/databases.js";
 import {
   REPORT_DETAILS_LIMIT,
   REPORT_MIN_OPEN_MS,
@@ -38,7 +40,13 @@ const REPO = fileURLToPath(new URL("../..", import.meta.url));
 const RELEASE = "it-report-test";
 const NOW = Date.parse("2026-09-27T12:00:00Z");
 
-async function withDatabase(run: (db: DatabaseSync) => Promise<void>): Promise<void> {
+/** The two databases a report touches: the dictionary it reads, and the app database it writes. */
+interface Databases {
+  dictionary: DatabaseSync;
+  app: DatabaseSync;
+}
+
+async function withDatabase(run: (db: Databases) => Promise<void>): Promise<void> {
   const dir = await mkdtemp(join(tmpdir(), "lexema-report-"));
   try {
     const archive = join(dir, "fixture.jsonl.gz");
@@ -54,11 +62,13 @@ async function withDatabase(run: (db: DatabaseSync) => Promise<void>): Promise<v
         throw new Error(`fixture line rejected: ${JSON.stringify(rejection)}`);
       },
     });
-    const db = new DatabaseSync(":memory:");
-    for (const part of parts) db.exec(await readFile(part, "utf8"));
-    applyAppMigrations(db);
-    await run(db);
-    db.close();
+    const dictionary = new DatabaseSync(":memory:");
+    for (const part of parts) dictionary.exec(await readFile(part, "utf8"));
+    readOnlyDictionary(dictionary);
+    const { sqlite: app } = freshAppDatabase();
+    await run({ dictionary, app });
+    dictionary.close();
+    app.close();
   } finally {
     await rm(dir, { recursive: true, force: true });
   }
@@ -76,10 +86,11 @@ const submission = (openToken: string, overrides: Partial<ReportSubmission> = {}
 });
 
 /** A box opened on the server's clock at `at`. */
-const opened = (db: DatabaseSync, at = NOW - 10_000): Promise<string> => openReport(fromNodeSqlite(db), at);
+const opened = (db: Databases, at = NOW - 10_000): Promise<string> => openReport(appTablesOverNodeSqlite(db.app), at);
 
-const context = (db: DatabaseSync, overrides: Partial<ReportContext> = {}): ReportContext => ({
-  db: fromNodeSqlite(db),
+const context = (db: Databases, overrides: Partial<ReportContext> = {}): ReportContext => ({
+  db: readOnlyDictionary(db.dictionary),
+  appDb: appTablesOverNodeSqlite(db.app),
   release: RELEASE,
   now: NOW,
   visitor: "v4:203.0.113.7",
@@ -87,8 +98,8 @@ const context = (db: DatabaseSync, overrides: Partial<ReportContext> = {}): Repo
   ...overrides,
 });
 
-const stored = (db: DatabaseSync) =>
-  db.prepare("SELECT release_id, word, record_id, choice, details, visitor_hash, received_at FROM reader_report ORDER BY report_id").all() as {
+const stored = (db: Databases) =>
+  db.app.prepare("SELECT release_id, word, record_id, choice, details, visitor_hash, received_at FROM reader_report ORDER BY report_id").all() as {
     release_id: string;
     word: string;
     record_id: number | null;
@@ -117,7 +128,7 @@ test("a report needs a choice and details, within the length limit; the reading 
 
 test("a valid report is stored for review, with the served release and a hash in place of the address", async () => {
   await withDatabase(async (db) => {
-    const [casa] = db.prepare("SELECT record_id FROM source_record WHERE word = 'casa' AND release_id = ?").all(RELEASE) as {
+    const [casa] = db.dictionary.prepare("SELECT record_id FROM source_record WHERE word = 'casa' AND release_id = ?").all(RELEASE) as {
       record_id: number;
     }[];
     assert.deepEqual(await receiveReport(submission(await opened(db), { recordId: casa.record_id }), context(db)), {
@@ -159,7 +170,7 @@ test("a report needs a token the server issued; each token stores one report", a
     // A day-old opening is swept when the next box opens.
     await opened(db, NOW - 2 * 24 * 60 * 60_000);
     await opened(db, NOW);
-    assert.equal((db.prepare("SELECT count(*) AS n FROM report_opening").get() as { n: number }).n, 1);
+    assert.equal((db.app.prepare("SELECT count(*) AS n FROM report_opening").get() as { n: number }).n, 1);
   });
 });
 

@@ -4,13 +4,9 @@
 // trips that succeed are web/test/signIn.test.ts.
 
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
 import { test } from "node:test";
-import { fileURLToPath } from "node:url";
-import { DatabaseSync } from "node:sqlite";
-import { applyAppMigrations } from "../../src/db/app/migrations.js";
 import type { ProviderProfile, ProviderRegistry } from "../../src/accounts/providers.js";
-import { fromNodeSqlite } from "../../src/lookup/database.js";
+import { freshAppDatabase } from "../../test/databases.js";
 import { apiNotFound } from "@/worker/api/handler.ts";
 import { CSRF_FIELD, csrfTokenOf, DELETE_CONFIRMATION, withDashboard } from "@/worker/dashboard.ts";
 import { byHost } from "@/worker/hosts.ts";
@@ -18,7 +14,6 @@ import { withRateLimits, type LimitBindings } from "@/worker/rateLimit.ts";
 import { PENDING_COOKIE, SESSION_COOKIE, signedInAccount, withSignIn, type SignInBindings } from "@/worker/signIn.ts";
 import { StubProvider } from "./stubProvider.ts";
 
-const SCHEMA = readFileSync(fileURLToPath(new URL("../../src/db/schema.sql", import.meta.url)), "utf8");
 const NOW = Date.now();
 const DEVELOPERS = "https://developers.lexema.fyi";
 
@@ -33,17 +28,14 @@ const env: LimitBindings & SignInBindings = {
 };
 
 function site(providers?: (stubs: { google: StubProvider; github: StubProvider }) => ProviderRegistry) {
-  const sqlite = new DatabaseSync(":memory:");
-  sqlite.exec(SCHEMA);
-  applyAppMigrations(sqlite);
-  const db = fromNodeSqlite(sqlite);
+  const { sqlite, appDb: db } = freshAppDatabase();
   const google = new StubProvider("google");
   const github = new StubProvider("github");
   const worker = byHost<typeof env>({
     app: withRateLimits(
       withSignIn(
-        withDashboard(async () => new Response("page"), () => ({ db, now: NOW })),
-        () => ({ providers: providers?.({ google, github }) ?? { google, github }, db, now: NOW }),
+        withDashboard(async () => new Response("page"), () => ({ appDb: db, now: NOW })),
+        () => ({ providers: providers?.({ google, github }) ?? { google, github }, appDb: db, now: NOW }),
       ),
     ),
     api: async () => Response.json({}),

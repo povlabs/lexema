@@ -289,7 +289,7 @@ test("the limits are the rulings, in the Wrangler configuration, the same in pro
   for (const { simple } of local.ratelimits) assert.equal(simple.period, RETRY_AFTER_SECONDS);
 });
 
-test("production is what is live: its three custom domains only, no D1, logs on; local keeps its D1", () => {
+test("production is what is live: its three custom domains only, no D1, logs on; local keeps its two D1s", () => {
   const production = read("production");
   assert.equal(production.name, "lexema-web");
   assert.equal(production.workers_dev, false);
@@ -308,7 +308,22 @@ test("production is what is live: its three custom domains only, no D1, logs on;
       binding,
       database_name,
     })),
-    [{ binding: "DB", database_name: "lexema" }],
+    [
+      { binding: "DB", database_name: "lexema" },
+      { binding: "APP_DB", database_name: "lexema-app" },
+    ],
   );
   assert.equal(local.observability?.enabled, true);
+});
+
+test("locally, the app database is its own D1, migrated from drizzle-kit's folder", () => {
+  const [dictionary, app] = read().d1_databases;
+  // One id would be one sqlite file, so the app tables would land in the dictionary.
+  assert.notEqual(app.database_id, dictionary.database_id);
+  assert.equal(dictionary.migrations_dir, undefined);
+  // Wrangler reads migrations_dir relative to the config file.
+  assert.equal(
+    fileURLToPath(new URL(`${app.migrations_dir}/`, new URL("../", import.meta.url))),
+    fileURLToPath(new URL("../../src/db/app/migrations/", import.meta.url)),
+  );
 });

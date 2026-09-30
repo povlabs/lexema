@@ -30,8 +30,12 @@ cd web && pnpm exec wrangler dev --config dist/server/wrangler.json \
 
 Then open <http://localhost:8790/?q=sale>.
 
-`pnpm run seed:dev` builds a development release and loads it into local D1. It
-drops the existing local D1 database first, so re-running it needs no cleanup.
+`pnpm run seed:dev` builds a development release and loads it into the local
+dictionary database, `DB`. It then applies the app migrations to the local app
+database, `APP_DB`, which holds accounts, keys, usage and reader reports
+([ADR 0018](../.decisions/0018-previews-on-workers-builds.md)). Both live in the
+same `--persist-to` directory. It drops that directory first, so re-running it
+needs no cleanup, and every local account, key and report goes with it.
 
 The seed streams the committed fifty-word fixture directly into generated D1
 SQL and applies that SQL to local D1. It does not cut a prefix, create a
@@ -169,6 +173,7 @@ network, and it sets a test-only `BETTER_AUTH_SECRET`.
 | zsh asks to correct `wrangler` to `.wrangler` | shell autocorrect; answer `n` or run from outside `web/` |
 | D1 looks empty after a seed | `--persist-to` was relative; pass the `.data/seed-state` path shown above |
 | Every search says the lookup failed | `web/dist/` holds a production build, which has no D1; run `pnpm --filter @lexema/web build` again |
+| Sign-in, the dashboard, API keys or the report box answer 503, and the log says `no such table` | the state was seeded before `APP_DB` existed (#240); run `pnpm run seed:dev` again, or migrate the app database alone ([DEVELOPMENT.md](../DEVELOPMENT.md#change-the-database-schema)) |
 | Seed stops with `part N of M failed` | one Wrangler run failed; the state directory is partial, so seed again into a fresh one ([RUN_AN_IMPORT.md § If a seed stops](RUN_AN_IMPORT.md#if-a-seed-stops)) |
 
 ## Not this page

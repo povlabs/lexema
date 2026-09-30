@@ -28,6 +28,7 @@ export default defineConfig({
       "@lexema/source": fileURLToPath(new URL("../src/source", import.meta.url)),
       "@lexema/api": fileURLToPath(new URL("../src/api", import.meta.url)),
       "@lexema/accounts": fileURLToPath(new URL("../src/accounts", import.meta.url)),
+      "@lexema/db": fileURLToPath(new URL("../src/db", import.meta.url)),
     },
   },
 });

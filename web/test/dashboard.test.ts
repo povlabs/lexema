@@ -8,11 +8,10 @@ import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
 import { DatabaseSync } from "node:sqlite";
-import { applyAppMigrations } from "../../src/db/app/migrations.js";
 import type { ProviderProfile } from "../../src/accounts/providers.js";
 import { authenticate } from "../../src/api/keys.js";
 import { createAccountKey, keyName, listAccountKeys } from "../../src/api/ownedKeys.js";
-import { fromNodeSqlite } from "../../src/lookup/database.js";
+import { freshAppDatabase, readOnlyDictionary } from "../../test/databases.js";
 import type { CreateKeyProblems } from "@/lib/developers/createKeyForm.ts";
 import {
   answerOf,
@@ -48,10 +47,7 @@ const env: LimitBindings & SignInBindings & DashboardBindings = {
 
 /** The Worker over a fresh database; each browser keeps its own cookies. `limits` stand in for the rate limits. */
 function site({ limits = {} }: { limits?: Partial<LimitBindings> } = {}) {
-  const sqlite = new DatabaseSync(":memory:");
-  sqlite.exec(SCHEMA);
-  applyAppMigrations(sqlite);
-  const db = fromNodeSqlite(sqlite);
+  const { sqlite, appDb: db } = freshAppDatabase();
   const google = new StubProvider("google");
   const appSaw: Request[] = [];
   const worker = byHost<typeof env>({
@@ -62,9 +58,9 @@ function site({ limits = {} }: { limits?: Partial<LimitBindings> } = {}) {
             appSaw.push(request);
             return new Response("page", { headers: { "content-type": "text/html" } });
           },
-          () => ({ db, now: NOW }),
+          () => ({ appDb: db, now: NOW }),
         ),
-        () => ({ providers: { google, github: undefined }, db, now: NOW }),
+        () => ({ providers: { google, github: undefined }, appDb: db, now: NOW }),
       ),
     ),
     api: async () => Response.json({}),
@@ -532,9 +528,11 @@ test("after delete-account every key the account owned answers 401 revoked_key, 
   assert.ok(!adas.jar.has(SESSION_COOKIE), "the session cookie is cleared");
   assert.equal(await signedInAccount(cookie, db, NOW), undefined);
 
+  const dictionary = new DatabaseSync(":memory:");
+  dictionary.exec(SCHEMA);
   for (const key of secrets) {
     const request = new Request("https://api.lexema.fyi/v1/lookup?q=casa", { headers: { "x-api-key": key } });
-    const answer = await handleApi(request, { db, releaseId: "it-dev", now: NOW });
+    const answer = await handleApi(request, { db: readOnlyDictionary(dictionary), appDb: db, releaseId: "it-dev", now: NOW });
     assert.equal(answer.status, 401);
     assert.equal(((await answer.json()) as { error: { code: string } }).error.code, "revoked_key");
   }

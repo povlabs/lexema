@@ -25,7 +25,7 @@ web/components/developers/dashboard/  the dashboard, its dialogs and toasts
 web/components/shared/   what both sites draw: links, icons and styles.ts, the one home of class strings
 web/lib/dictionary/      the query, the lookup attempt, the page's grammar, reports
 web/lib/developers/      the API reference, the docs pages, the dashboard's view and actions
-web/lib/shared/          what both sites call: the D1 binding and the search shortcut
+web/lib/shared/          what both sites call: the two D1 bindings and the search shortcut
 ```
 
 A dictionary file never imports from a `developers/` folder, nor the other way
@@ -44,7 +44,7 @@ web/components/dictionary/Reading.tsx      how one entry renders
 web/lib/dictionary/params.ts               the query as it arrives in the URL
 web/lib/dictionary/attempt.ts              a lookup, or the fact that it did not happen
 web/lib/dictionary/db.ts                   the lookup and the suggestions, read from D1
-web/lib/shared/database.ts                 the D1 binding
+web/lib/shared/database.ts                 the two D1 bindings: the dictionary, read-only, and the app database
 web/worker/index.ts                        the Worker's entry: the host, then the API or the rate limits and vinext
 web/worker/hosts.ts                        which of the three hosts a request is for, and where it goes
 web/worker/rateLimit.ts                    which requests are counted, and against whose count
@@ -77,6 +77,11 @@ helper — vinext offers no `getCloudflareContext()`:
 import { env } from "cloudflare:workers";
 const db = fromD1(env.DB);
 ```
+
+`env.DB` is the dictionary, and `fromD1` hands it out read-only: its one
+method takes a single `SELECT`, so a write neither type-checks nor runs.
+Accounts, keys, usage and reader reports are in the app database, `env.APP_DB`
+([ADR 0018](../.decisions/0018-previews-on-workers-builds.md)).
 
 The spike in #27 established that. `env.LEXEMA_RELEASE` picks which imported
 release is served; flipping it safely is #18.
@@ -333,7 +338,7 @@ the page says nothing about what it did not match.
 Every word page ends with `Source ↗ · Report a mistake` (#51). The link opens a
 small box: what is wrong, which reading (optional), and details, with no account
 and no email. `POST /report` (`web/app/(lexema)/report/route.ts`, `web/lib/dictionary/report.ts`)
-stores the report in `reader_report` and changes nothing on the page; a person
+stores the report in `reader_report`, in the app database, and changes nothing on the page; a person
 reviews it (#12) and may then write a `claim_review` row. A report is not stored
 in `claim_review` itself, because that table holds reviewed verdicts, not
 reports waiting for one.
