@@ -18,7 +18,7 @@ history. Where a board and this file disagree, this file wins and the board is f
 | The result page shows data only. It adds no note explaining missing, unplaced, derived or disputed data: an empty slot is a dash in its cell or simply absent, a form the page cannot place in a grid or table is not shown, and a disputed claim is not marked on the page (the review stays in the data). Where there is no data, the page shows nothing. | [README.md](./README.md); ruled by Huey on 2026-09-27 |
 | Every candidate a lookup returns is rendered. The interface may rank; it never drops. | [AGENTS.md](./AGENTS.md), the product rule |
 | A generated short explanation may appear in Italian and in English, labelled as generated. Its example sentence, and everything from the source, stays Italian. | [ADR 0008](./.decisions/0008-generated-explanations-are-labelled-and-reportable.md), amendment of 2026-09-21 |
-| One small *Source* link for each Wiktionary page whose content the result shows, usually one; no credit line on the search page. The full credit is on `/attribution`, linked from the footer. | [ADR 0009](./.decisions/0009-two-licences-and-a-source-link.md) |
+| One small *Source* link for each Wiktionary page whose content the result shows, usually one; a searched expression's short page has one, to the expression's page; no credit line on the search page. The full credit is on `/attribution`, linked from the footer. | [ADR 0009](./.decisions/0009-two-licences-and-a-source-link.md) |
 
 ## The page
 
