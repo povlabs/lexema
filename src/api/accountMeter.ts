@@ -180,6 +180,17 @@ export class AccountMeter {
     return unsent;
   }
 
+  /**
+   * The calls counted in the period that began at `periodStart` (ISO-8601), as
+   * the dashboard's meter shows them (#207). A meter still on an earlier period
+   * has counted none of this one; a later start than `periodStart`, read before
+   * a renewal reached the caller, is the period `admit` counts in.
+   */
+  periodCalls(periodStart: string): number {
+    const state = this.state();
+    return state === undefined || periodStart > state.period_start ? 0 : state.period_calls;
+  }
+
   /** After a failed send: the time to try again, when no send is already due. */
   retryAt(now: number): number | undefined {
     const state = this.state();

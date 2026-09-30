@@ -33,6 +33,11 @@ export class AccountMeterObject extends DurableObject<MeterEnv> {
     return answer;
   }
 
+  /** The calls counted in the period that began at `periodStart`, for the dashboard (#207). Reads only. */
+  async periodCalls(periodStart: string): Promise<number> {
+    return this.meter.periodCalls(periodStart);
+  }
+
   /** Add the unsent calls to D1; on a failure, try again a minute on. */
   async alarm(): Promise<void> {
     try {

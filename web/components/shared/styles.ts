@@ -736,15 +736,28 @@ export const USAGE_CHART = "flex h-full w-full items-end gap-[3px] sm:gap-1.5";
 export const USAGE_DAY = "block h-full min-w-0 flex-1";
 export const USAGE_BAR = "fill-border-strong";
 export const USAGE_BAR_TODAY = "fill-accent";
+/** This period's calls against the plan's allowance (board 28i): a 6 px track the width of the column, filled in the accent. */
+export const USAGE_METER = "mt-[1.125rem] sm:mt-4";
+export const USAGE_METER_TRACK = "block h-1.5 w-full overflow-hidden rounded-full bg-border";
+export const USAGE_METER_FILL = "block h-full rounded-full bg-accent";
 
 /** The plan and account cards: what they say on the left, the action on the right; on a phone, under it. */
 const ROW_CARD = "flex flex-col items-start rounded-[6px] border border-border bg-surface-raised sm:flex-row sm:items-center sm:justify-between sm:gap-6";
-export const PLAN_CARD = `${ROW_CARD} mt-4 gap-4 sm:mt-[1.125rem] px-4 pt-[1.125rem] pb-[1.1875rem] sm:h-[4.9375rem] sm:px-6 sm:py-0`;
+/** The Plan card (board 28i): its title and line on the left, its buttons on the right; on a phone, under them. */
+export const PLAN_CARD = `${ROW_CARD} mt-4 gap-4 sm:mt-[1.125rem] px-4 pt-[1.125rem] pb-[1.1875rem] sm:px-6 sm:py-5`;
 export const DASH_ROW_CARD = `${ROW_CARD} mt-4 sm:mt-[1.125rem] px-4 pt-[1.125rem] pb-[1.0625rem] sm:h-[4.875rem] sm:px-6 sm:py-0`;
-export const PLAN_NONE = "m-0 font-serif text-[1.375rem] leading-8 font-normal text-text-strong";
-/** "Choose a plan — coming soon": there is nothing to buy yet. */
-export const PLAN_SOON =
-  "inline-flex h-[2.3125rem] cursor-not-allowed items-center rounded-[4px] border border-border bg-surface px-4 font-sans text-[0.875rem] font-semibold whitespace-nowrap text-text-muted sm:h-[2.4375rem] sm:px-[1.1875rem]";
+/** `No plan yet`, `Pro · $49 / month`. */
+export const PLAN_TITLE = "m-0 font-serif text-[1.375rem] leading-8 font-normal text-text-strong";
+/** What the plan allows and when it renews or ends, under the title. */
+export const PLAN_LINE = "m-0 mt-[0.1875rem] font-sans text-[0.875rem] leading-5 text-text-muted";
+/** Past due: the payment warning in the line's place. */
+export const PLAN_WARNING = "m-0 mt-[0.1875rem] font-sans text-[0.875rem] leading-5 text-warning";
+export const PLAN_BUTTONS = "flex shrink-0 flex-wrap gap-4";
+const PLAN_BUTTON = `inline-flex h-[2.3125rem] cursor-pointer items-center justify-center rounded-[4px] border px-[1.1875rem] font-sans text-[0.875rem] font-semibold whitespace-nowrap no-underline ${FOCUS_RING}`;
+/** Choose Pro, and Manage billing when a payment failed: filled in the accent. */
+export const PLAN_BUTTON_PRIMARY = `${PLAN_BUTTON} border-accent bg-accent text-surface`;
+/** Choose Starter, and Manage billing otherwise: outlined. */
+export const PLAN_BUTTON_OUTLINE = `${PLAN_BUTTON} border-border-strong bg-transparent text-text-strong hover:border-text-muted`;
 /** The account card's words, 2.5 px under the card's middle on a wide screen (board 28). */
 export const ACCOUNT_TEXT = "sm:pt-[0.3125rem]";
 export const ACCOUNT_TITLE = "m-0 font-sans text-[0.9375rem] leading-5 font-semibold text-text-strong";

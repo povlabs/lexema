@@ -11,14 +11,19 @@
 // dialog (boards 28b and 28e), and the revoke confirmation (28d). Toasts say
 // what happened (28f) (DashboardFlow.tsx).
 //
+// While a plan serves the account, Usage's header reads "This period · N of M
+// calls" over Base UI's meter, filled in the accent (board 28i, #207); with no
+// plan it reads the last 30 days' total. The 30-day chart is under either.
+//
 // On a phone (below `sm`, board 28m) the key table becomes one card per key,
 // with no column heads: the name and Revoke, the prefix, then "Created … ·
 // Last used …", then its endpoints, then "Expires …" (#187).
 
+import { Meter } from "@base-ui/react/meter";
 import { DeveloperPage } from "@/components/developers/DeveloperPage";
 import { CreateKeyControl, DashboardFlow, KeyTable } from "./DashboardFlow";
 import { DashboardTabs } from "./DashboardTabs";
-import { callCount, type DashboardView, type UsageRow } from "@/lib/developers/dashboardView.ts";
+import { callCount, type DashboardView, type PeriodUsage, type UsageRow } from "@/lib/developers/dashboardView.ts";
 import {
   DASH_CREATE_BUTTON,
   DASH_FIRST_SECTION,
@@ -34,6 +39,9 @@ import {
   USAGE_CARD,
   USAGE_CHART,
   USAGE_DAY,
+  USAGE_METER,
+  USAGE_METER_FILL,
+  USAGE_METER_TRACK,
 } from "@/components/shared/styles.ts";
 
 export { CREATE_KEY_ACTION, DELETE_ACCOUNT_ACTION, revokeKeyAction } from "@/lib/developers/dashboardActions.ts";
@@ -56,6 +64,17 @@ function UsageBars({ row }: { row: UsageRow }) {
         </svg>
       ))}
     </div>
+  );
+}
+
+/** This period's calls against the allowance, named by the header's line. */
+function PeriodMeter({ period, labelledBy }: { period: PeriodUsage; labelledBy: string }) {
+  return (
+    <Meter.Root className={USAGE_METER} value={period.calls} max={period.allowance} aria-labelledby={labelledBy} aria-valuetext={period.text}>
+      <Meter.Track className={USAGE_METER_TRACK}>
+        <Meter.Indicator className={USAGE_METER_FILL} />
+      </Meter.Track>
+    </Meter.Root>
   );
 }
 
@@ -87,10 +106,17 @@ export function Dashboard({ view, csrf, made }: { view: DashboardView; csrf: str
               <h2 className={DASH_SECTION_HEADING} id="usage">
                 Usage
               </h2>
-              <p className={DASH_USAGE_NOTE} data-usage-total={view.usage.total}>
-                Last 30 days · {callCount(view.usage.total)} calls
-              </p>
+              {view.period === undefined ? (
+                <p className={DASH_USAGE_NOTE} data-usage-total={view.usage.total}>
+                  Last 30 days · {callCount(view.usage.total)} calls
+                </p>
+              ) : (
+                <p className={DASH_USAGE_NOTE} id="usage-period" data-period-calls={view.period.calls}>
+                  {view.period.text}
+                </p>
+              )}
             </div>
+            {view.period !== undefined && <PeriodMeter period={view.period} labelledBy="usage-period" />}
             <div className={USAGE_CARD} data-usage="total">
               <UsageBars row={view.usage} />
             </div>

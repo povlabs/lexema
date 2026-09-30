@@ -53,6 +53,20 @@ test("a new period start restarts the count; an older one counts in the current 
   assert.deepEqual(admit({ calls: 1, periodStart: PERIOD }).answer, { outcome: "admitted", periodCalls: 2 });
 });
 
+test("the dashboard reads the period's count: none before a call or for a period the meter has not reached, and the count admit keeps otherwise (#207)", () => {
+  const { meter, admit } = storage();
+  const next = "2026-10-01T00:00:00.000Z";
+  assert.equal(meter().periodCalls(PERIOD), 0);
+  admit({ calls: 5 });
+  assert.equal(meter().periodCalls(PERIOD), 5);
+  // Renewed, and no call yet in the new period: the old period's calls are not this one's.
+  assert.equal(meter().periodCalls(next), 0);
+  admit({ calls: 2, periodStart: next });
+  assert.equal(meter().periodCalls(next), 2);
+  // A caller that read the plan before the renewal sees the period admit counts in.
+  assert.equal(meter().periodCalls(PERIOD), 2);
+});
+
 test("a meter left counting #261's stand-in month starts the plan's billing period at 0, even one that began before that month, and keeps its unsent calls", async () => {
   const sqlite = new DatabaseSync(":memory:");
   // The storage #261's meter left: 40 calls in the stand-in month of October, not yet sent to D1.
