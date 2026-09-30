@@ -2,11 +2,13 @@
 // src/lookup/nearby.ts offers instead, in the order it tried them.
 //
 // A · words that begin with what was typed;
-// P · an expression the words spell as their base words, as "Did you mean
-//     andare via?" for `vado via` (#214), then any other it spells;
 // B · the same letters with an accent, as "Did you mean città?";
 // C · a spelling one edit away, as "Did you mean mangiare?";
+// P · an expression a query of several words nearly spells, as "Did you mean
+//     tirare fuori?" for `tiro fouri` (#214), then any other it spells;
 // D · nothing close, and a line on how to search instead.
+//
+// The expressions a query nearly spells also join the list after B or C.
 //
 // Every word offered is a link to its own search. The page says nothing about
 // how the offers were found.
@@ -18,13 +20,6 @@ import type { RelatedItem } from "@/lib/dictionary/relatedList.ts";
 import { NOT_FOUND_HEADING, NOT_FOUND_LEAD, NOT_FOUND_LINK, NOT_FOUND_TEXT } from "@/components/shared/styles.ts";
 
 const words = (list: readonly string[]): RelatedItem[] => list.map((word) => ({ kind: "word", word }));
-
-/** What the list after a best guess is called. */
-function otherLabel(kind: "phrase" | "accent" | "typo", query: string): string {
-  if (kind === "phrase") return "Other expressions";
-  if (kind === "accent") return `Other words that begin with “${query}”`;
-  return "Other close spellings";
-}
 
 function DidYouMean({ word }: { word: string }) {
   return (
@@ -52,14 +47,20 @@ export function NotFound({ query, nearby }: { query: string; nearby: Nearby }) {
           <WordList id="nearby" label="Suggestions" items={words(nearby.words)} />
         </>
       )}
-      {(nearby.kind === "phrase" || nearby.kind === "accent" || nearby.kind === "typo") && (
+      {(nearby.kind === "accent" || nearby.kind === "typo") && (
         <>
           <DidYouMean word={nearby.best} />
           <WordList
             id="nearby"
-            label={otherLabel(nearby.kind, query)}
-            items={words(nearby.others)}
+            label={nearby.kind === "accent" ? `Other words that begin with “${query}”` : "Other close spellings"}
+            items={words([...nearby.others, ...nearby.phrases])}
           />
+        </>
+      )}
+      {nearby.kind === "phrase" && (
+        <>
+          <DidYouMean word={nearby.best} />
+          <WordList id="nearby" label="Other expressions" items={words(nearby.others)} />
         </>
       )}
       {nearby.kind === "none" && (

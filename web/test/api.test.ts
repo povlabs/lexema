@@ -24,7 +24,7 @@ import { accountUsage, COUNT_MINUTE_SQL, SWEEP_MINUTES_SQL, USAGE_WINDOW_DAYS } 
 import { seedSql } from "../../src/import/seedSql.js";
 import { fromNodeSqlite, type LookupDatabase } from "../../src/lookup/database.js";
 import { lookup } from "../../src/lookup/lookup.js";
-import { findNearby } from "../../src/lookup/nearby.js";
+import { findNearby, type Nearby } from "../../src/lookup/nearby.js";
 import { suggest } from "../../src/lookup/suggest.js";
 import { loadFixturePages } from "../../src/source/rawPage.js";
 import { answerApi, apiNotFound, handleApi, type ApiBindings } from "@/worker/api/handler.ts";
@@ -135,6 +135,20 @@ test("every found result carries the release and an attribution with the word's 
   }
 });
 
+/** Every spelling `findNearby` offers, in the order the answer lists them. */
+function offeredBy(nearby: Nearby): string[] {
+  switch (nearby.kind) {
+    case "prefix":
+      return nearby.words;
+    case "none":
+      return [];
+    case "phrase":
+      return [nearby.best, ...nearby.others];
+    default:
+      return [nearby.best, ...nearby.others, ...nearby.phrases];
+  }
+}
+
 test("a word not in the release is a 404 offering findNearby's spellings in its order, typo called edit", async () => {
   const { key } = await newKey();
   const cases: [string, string[]][] = [
@@ -142,14 +156,13 @@ test("a word not in the release is a 404 offering findNearby's spellings in its 
     ["mangare", ["edit"]],
     ["sal", ["prefix"]],
     ["qqqqqq", []],
+    ["tiro%20fouri", ["phrase"]],
   ];
   for (const [q, kinds] of cases) {
     const response = await call(`/v1/lookup?q=${q}`, key);
     assert.equal(response.status, 404, q);
     const body: Json = await response.json();
-    const nearby = await findNearby({ db, releaseId: RELEASE, query: q });
-    const offered =
-      nearby.kind === "prefix" ? nearby.words : nearby.kind === "none" ? [] : [nearby.best, ...nearby.others];
+    const offered = offeredBy(await findNearby({ db, releaseId: RELEASE, query: decodeURIComponent(q) }));
     assert.deepEqual(body.results, []);
     assert.equal(body.release_id, RELEASE);
     assert.deepEqual(
@@ -405,6 +418,25 @@ test("match=exact keeps headword matches, match=form keeps form matches, and any
   await assertRefused("q=solo&match=headword", "match");
 });
 
+test("an inflected expression answers its multi-word headword via phrase, which match=form keeps and match=exact does not", async () => {
+  assert.deepEqual(candidates(await lookupBody("q=vado%20via")), ["andare via phrase phrase"]);
+  assert.deepEqual(candidates(await lookupBody("q=tiro%20fuori")), ["tirare fuori phrase phrase"]);
+  assert.deepEqual(candidates(await lookupBody("q=sono%20andati%20via")), ["andare via phrase phrase"]);
+  assert.deepEqual(candidates(await lookupBody("q=volto%20le%20spalle")).sort(), [
+    "volgere le spalle phrase phrase",
+    "voltare le spalle phrase phrase",
+  ]);
+  const [result] = (await lookupBody("q=sono%20andati%20via")).results;
+  assert.deepEqual(result.match, { surface: "sono andati via", via: "phrase", grammar: [] });
+  assert.deepEqual(candidates(await lookupBody("q=vado%20via&match=form")), ["andare via phrase phrase"]);
+  assert.deepEqual(candidates(await lookupBody("q=vado%20via&match=exact")), []);
+  const missing = await lookupWith("q=vado%20fuori");
+  assert.equal(missing.status, 404);
+  // `vado via` is no headword of its own, so it has no forms to inflect.
+  assert.equal((await ask("inflect?lemma=vado%20via")).status, 404);
+  assert.equal((await okBody("exists?q=vado%20via")).exists, true);
+});
+
 test("fields returns the named sections and the always-returned fields, and refuses an unknown name", async () => {
   const [sale] = (await lookupBody("q=sale&fields=definitions,pronunciation")).results;
   assert.deepEqual(Object.keys(sale).sort(), [
@@ -651,42 +683,15 @@ test("/nearby answers findNearby()'s spellings in its ranking, typo called edit"
     ["mangare", ["edit"]],
     ["sal", ["prefix"]],
     ["qqqqqq", []],
+    ["tiro%20fouri", ["phrase"]],
   ];
   for (const [q, kinds] of cases) {
-    const nearby = await findNearby({ db, releaseId: RELEASE, query: q });
-    const offered = nearby.kind === "prefix" ? nearby.words : nearby.kind === "none" ? [] : [nearby.best, ...nearby.others];
+    const offered = offeredBy(await findNearby({ db, releaseId: RELEASE, query: decodeURIComponent(q) }));
     const body = await okBody(`nearby?q=${q}`);
     assert.deepEqual(body.results.map((result: Json) => result.word), offered, q);
     assert.deepEqual([...new Set(body.results.slice(0, 1).map((result: Json) => result.kind))], kinds, q);
   }
   await assertBadRequest("nearby?q=", "invalid_query");
-});
-
-test("an inflected expression is a 404 whose suggestions are the headwords its words spell, kind phrase", async () => {
-  const suggestionsFor = async (q: string): Promise<string[]> => {
-    const response = await lookupWith(`q=${encodeURIComponent(q)}`);
-    assert.equal(response.status, 404, q);
-    const body: Json = await response.json();
-    assert.deepEqual(body.results, [], q);
-    return body.suggestions.map((suggestion: Json) => `${suggestion.word} ${suggestion.kind}`);
-  };
-  assert.deepEqual(await suggestionsFor("vado via"), ["andare via phrase"]);
-  assert.deepEqual(await suggestionsFor("tiro fuori"), ["tirare fuori phrase"]);
-  assert.deepEqual(await suggestionsFor("sono andati via"), ["andare via phrase"]);
-  // An ambiguous word tries each of its lemmas: every headword spelled is offered.
-  assert.deepEqual((await suggestionsFor("volto le spalle")).sort(), ["volgere le spalle phrase", "voltare le spalle phrase"]);
-  // /nearby offers the same.
-  assert.deepEqual(
-    (await okBody("nearby?q=vado%20via")).results.map((result: Json) => [result.word, result.kind]),
-    [["andare via", "phrase"]],
-  );
-  // A lemma sequence that is no headword is no phrase suggestion.
-  assert.ok(!(await suggestionsFor("vado fuori")).some((suggestion) => suggestion.endsWith(" phrase")));
-  // The headword typed as written is a result, never a suggestion of itself.
-  assert.deepEqual(candidates(await lookupBody("q=andare%20via")).map((c) => c.split(" ").at(-1)), ["headword"]);
-  // /exists and /inflect are unchanged: the expression is not what was typed.
-  assert.equal((await okBody("exists?q=vado%20via")).exists, false);
-  assert.equal((await ask("inflect?lemma=vado%20via")).status, 404);
 });
 
 test("/random?pos=noun answers a noun headword, and pos takes /lookup's values", async () => {

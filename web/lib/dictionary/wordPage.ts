@@ -12,6 +12,7 @@ import { isFormOfReading, isVerbReading } from "@lexema/lookup/types.ts";
 import { labelParts, readingsNamed, splitLabel } from "./readingLabels.ts";
 import { relatedItems, type RelatedItem } from "./relatedList.ts";
 import type {
+  FoundRoute,
   LemmaListing,
   LemmaTarget,
   Pronunciation,
@@ -47,6 +48,12 @@ export interface PageReading {
   etymologies: SourceText[];
   /** The synonym groups the source labels with this reading's part of speech. */
   synonyms: RelatedItem[];
+  /**
+   * True when the search reached this record as a multi-word headword its words
+   * spell (#214): `andare via` for `vado via`. The reading then names its
+   * headword, as a searched form's reading names its lemma.
+   */
+  reachedByPhrase: boolean;
 }
 
 /** The word lists no reading took, as they show: words, and the notes among them. */
@@ -57,6 +64,12 @@ export interface WordLists {
 }
 
 export interface WordPage {
+  /**
+   * What the page is titled: the headword, or the searched form when the
+   * search reached multi-word headwords word by word (`vado via`), as a
+   * searched verb form titles its own page (board 03).
+   */
+  heading: string;
   /** The headword as the source spells it, or the query when no record is about it. */
   headword: string;
   readings: [PageReading, ...PageReading[]];
@@ -114,7 +127,8 @@ function lemmaTablesOf(reading: Reading): LemmaTable[] {
   return [...tables.values()];
 }
 
-export function wordPage(query: string, readings: readonly [Reading, ...Reading[]]): WordPage {
+export function wordPage(query: string, readings: readonly [Reading, ...Reading[]], route: FoundRoute): WordPage {
+  const byPhrase = route.kind === "phrase";
   const ordered = pageOrder(readings);
   const about = ordered.filter((reading) => reading.isAboutQuery);
   const merged = mergeWordFacts(about);
@@ -126,14 +140,20 @@ export function wordPage(query: string, readings: readonly [Reading, ...Reading[
       lemmaTables: lemmaTablesOf(reading),
       etymologies: placed.etymologies.get(reading) ?? [],
       synonyms: relatedItems(placed.synonyms.get(reading) ?? []),
+      reachedByPhrase: byPhrase,
     }),
   );
   const [first, ...rest] = entries;
   if (first === undefined) throw new Error("a found result renders at least one reading");
+  const headword = about[0]?.word ?? query;
 
   return {
-    headword: about[0]?.word ?? query,
+    heading: byPhrase ? query : headword,
+    headword,
     readings: [first, ...rest],
+    // A page titled with the searched phrase shows the pronunciation the source
+    // records for the headword it reached, and none when the source has none
+    // (Huey's updated ruling on #214, 2026-09-30).
     wordFacts: placed.rest,
     wordLists: {
       synonyms: relatedItems(placed.rest.synonyms),

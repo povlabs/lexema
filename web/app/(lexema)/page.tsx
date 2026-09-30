@@ -31,7 +31,7 @@ export async function generateMetadata({ searchParams }: PageProps) {
   const attempt = await search(raw);
   const outcome =
     attempt.outcome === "found"
-      ? { found: wordPage(attempt.query.raw.trim(), attempt.readings).headword }
+      ? { found: wordPage(attempt.query.raw.trim(), attempt.readings, attempt.route).heading }
       : attempt.outcome === "not-found"
         ? ("not-found" as const)
         : undefined;

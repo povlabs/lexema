@@ -104,3 +104,60 @@ export function lemmaSequences(slots: readonly PhraseSlot[]): string[][] | undef
     [[]],
   );
 }
+
+// When a query of several words finds nothing, the "Did you mean" list also
+// offers the multi-word headwords this rule reaches from a query that is off
+// by a little (#214, Huey's updated ruling of 2026-09-30): one word misspelled,
+// a last word not finished, or a headword that is only part of the query. Each
+// is still an exact probe for a stored headword, so nothing is invented.
+
+/**
+ * The letters a misspelled word is corrected with: the Italian alphabet, the
+ * accented vowels Italian writes, and the apostrophe, all as the normalizer
+ * keys them (lower case, NFC, one straight apostrophe).
+ */
+export const ITALIAN_LETTERS: readonly string[] = [..."abcdefghijklmnopqrstuvwxyzàèéìíîòóùú'"];
+
+/**
+ * The longest word the misspelling reading corrects. Its spellings grow with
+ * its length times the alphabet; the single-word typo step stops at the same
+ * length (`TYPO_MAX_LENGTH`, src/lookup/nearby.ts).
+ */
+export const MAX_CORRECTED_WORD_LENGTH = 30;
+
+/**
+ * Every spelling one edit from a word: a character left out, two neighbours
+ * swapped, one replaced, or one inserted — the edits `withinOneEdit`
+ * (src/lookup/nearby.ts) counts. The word itself is never one. Empty for a
+ * word over `MAX_CORRECTED_WORD_LENGTH`.
+ */
+export function oneEditSpellings(word: string): string[] {
+  const chars = [...word];
+  if (chars.length > MAX_CORRECTED_WORD_LENGTH) return [];
+  const spelled = new Set<string>();
+  const spell = (...parts: readonly string[][]) => parts.flat().join("");
+  for (let i = 0; i <= chars.length; i += 1) {
+    const before = chars.slice(0, i);
+    for (const letter of ITALIAN_LETTERS) spelled.add(spell(before, [letter], chars.slice(i)));
+    if (i === chars.length) break;
+    spelled.add(spell(before, chars.slice(i + 1)));
+    for (const letter of ITALIAN_LETTERS) spelled.add(spell(before, [letter], chars.slice(i + 1)));
+    if (i + 1 < chars.length) spelled.add(spell(before, [chars[i + 1], chars[i]], chars.slice(i + 2)));
+  }
+  spelled.delete(word);
+  spelled.delete("");
+  return [...spelled];
+}
+
+/**
+ * Every run of at least two neighbouring slots that is not all of them, the
+ * longer runs first and each length left to right: the parts of a query a
+ * headword could be (`vado via` of `vado via subito`).
+ */
+export function slotRuns(slots: readonly PhraseSlot[]): PhraseSlot[][] {
+  const runs: PhraseSlot[][] = [];
+  for (let length = slots.length - 1; length >= 2; length -= 1) {
+    for (let from = 0; from + length <= slots.length; from += 1) runs.push(slots.slice(from, from + length));
+  }
+  return runs;
+}

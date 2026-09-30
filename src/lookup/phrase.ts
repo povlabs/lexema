@@ -1,21 +1,26 @@
 // The multi-word headwords a query spells word by word (#214): what the index
 // says about each word, read for rule `it-phrase/v1` (src/italian/phrase.ts).
 //
-// They are offered, never answered: a search that found nothing shows them as
-// "Did you mean andare via?" (src/lookup/nearby.ts; Huey's ruling on #214,
-// 2026-09-30). Every read is an indexed probe by key, and the lemma sequences
-// are probed as exact headword keys, so a sequence that is not a stored
-// headword finds nothing: no partial phrase, no ranking, no headword that is
-// not in the release.
+// Only ever run for a query the exact lookup found nothing for. Every read is
+// an indexed probe by key, and the lemma sequences are probed as exact
+// headword keys, so a sequence that is not a stored headword finds nothing:
+// no ranking, no headword that is not in the release. `phraseMatches` is the
+// lookup's answer; `nearPhrases` is what the "Did you mean" list of a search
+// that found nothing adds, the same reading off by a word.
 
 import {
   lemmaSequences,
   MAX_PHRASE_WORDS,
+  oneEditSpellings,
   participleCandidates,
   phraseSlots,
+  slotRuns,
+  type PhraseSlot,
   type WordLemmas,
 } from "../italian/phrase.js";
 import type { LookupDatabase } from "./database.js";
+import { prefixUpperBound } from "./keyRange.js";
+import type { PhraseMatch, PhraseWord } from "./types.js";
 
 /**
  * A word's lemmas: itself when it is a headword, and the word every form-of
@@ -92,35 +97,165 @@ async function headwordKeys(db: LookupDatabase, releaseId: string, keys: readonl
   return present;
 }
 
+/** Each typed word with its lemmas. */
+function readWords(db: LookupDatabase, releaseId: string, typed: readonly string[]): Promise<WordLemmas[]> {
+  return Promise.all(typed.map(async (word) => ({ typed: word, lemmas: await lemmasOf(db, releaseId, word) })));
+}
+
 /**
- * Every multi-word headword the query's words spell, as keys, in the order the
- * lemma sequences were tried. The query's own key is never one: a query that
- * is a headword is the exact lookup's. Empty when the query is one word, more
- * than `MAX_PHRASE_WORDS`, more than `MAX_PHRASE_PROBES` sequences, or spells
- * no headword.
- *
- * `key` is the query as normalized for the index.
+ * The slots the words fill (src/italian/phrase.ts), reading the participle
+ * verbs of each word that follows an auxiliary. `verbs` keeps what was read, by
+ * word, so a caller reading several variants of one query reads each once.
  */
-export async function phraseHeadwords(db: LookupDatabase, releaseId: string, key: string): Promise<string[]> {
+async function readSlots(
+  db: LookupDatabase,
+  releaseId: string,
+  words: readonly WordLemmas[],
+  verbs: Map<WordLemmas, Promise<string[]>>,
+): Promise<PhraseSlot[]> {
+  const participles = new Map(
+    await Promise.all(
+      participleCandidates(words).map(async (index) => {
+        const word = words[index];
+        if (!verbs.has(word)) verbs.set(word, participleVerbs(db, releaseId, word));
+        return [index, await verbs.get(word)!] as const;
+      }),
+    ),
+  );
+  return phraseSlots(words, (index) => participles.get(index) ?? []);
+}
+
+/** The distinct keys the slots' lemma sequences spell; none past `MAX_PHRASE_PROBES`. */
+function spelledKeys(slots: readonly PhraseSlot[]): string[] {
+  return [...new Set((lemmaSequences(slots) ?? []).map((sequence) => sequence.join(" ")))];
+}
+
+/**
+ * The lemmas of every headword one edit from a word, in one read: each
+ * spelling `oneEditSpellings` makes that some record heads, and every word
+ * the form-of edges on those records name — `vadp` reaches `vado`, and through
+ * it `andare`. The spellings are one JSON array, so the read binds two values
+ * however many there are. Exported so a test can assert the plan.
+ */
+export const NEAR_LEMMA_SQL = `SELECT lf.surface_key AS lemma
+       FROM lookup_form lf
+      WHERE lf.release_id = ?1 AND lf.origin = 'headword'
+        AND lf.surface_key IN (SELECT value FROM json_each(?2))
+     UNION
+     SELECT e.target_word_key AS lemma
+       FROM lookup_form lf
+       JOIN form_of_edge e ON e.record_id = lf.record_id
+      WHERE lf.release_id = ?1 AND lf.origin = 'headword'
+        AND lf.surface_key IN (SELECT value FROM json_each(?2))`;
+
+async function nearLemmasOf(db: LookupDatabase, releaseId: string, word: string): Promise<string[]> {
+  const spellings = oneEditSpellings(word);
+  if (spellings.length === 0) return [];
+  const rows = await db.all<{ lemma: string }>(NEAR_LEMMA_SQL, [releaseId, JSON.stringify(spellings)]);
+  return [...new Set(rows.map((row) => row.lemma))].sort();
+}
+
+/**
+ * The multi-word headwords that begin with a prefix, in key order, at most
+ * `limit`. The same range probe on `lookup_form_headword_by_key` as
+ * `SUGGEST_SQL` (src/lookup/suggest.ts). Exported so a test can assert the plan.
+ */
+export const HEADWORD_PREFIX_SQL = `SELECT DISTINCT surface_key
+       FROM lookup_form
+      WHERE release_id = ?1 AND origin = 'headword'
+        AND surface_key >= ?2 AND surface_key < ?3
+      ORDER BY surface_key
+      LIMIT ?4`;
+
+/**
+ * The most prefixes the unfinished-word reading probes for one query: each is
+ * a range read, so this bounds them far below the exact probes.
+ */
+export const MAX_PHRASE_PREFIX_PROBES = 16;
+
+async function headwordsBeginning(db: LookupDatabase, releaseId: string, prefix: string, limit: number): Promise<string[]> {
+  const rows = await db.all<{ surface_key: string }>(HEADWORD_PREFIX_SQL, [releaseId, prefix, prefixUpperBound(prefix), limit]);
+  return rows.map((row) => row.surface_key);
+}
+
+/**
+ * The multi-word headwords a query of several words nearly spells, for the
+ * "Did you mean" list of a search that found nothing (#214, Huey's updated
+ * ruling of 2026-09-30). The same reading as `phraseMatches`, off by one of:
+ *
+ * 1. one word misspelled: that word stands for the lemmas of the headwords one
+ *    edit from it, every other word for its own (`tiro fouri` → `tirare fuori`);
+ * 2. the last word not finished: every word before it stands for its lemmas,
+ *    and a headword that begins with those lemmas and then the last word as
+ *    typed is offered (`tiro fuo` → `tirare fuori`);
+ * 3. only part of the query: a run of neighbouring words spells a headword
+ *    (`vado via subito` → `andare via`).
+ *
+ * Keys, in that order and each once, at most `limit`, never the query's own.
+ * Every one is a stored headword. `key` is the query as normalized for the index.
+ */
+export async function nearPhrases(db: LookupDatabase, releaseId: string, key: string, limit: number): Promise<string[]> {
   const typed = key.split(/\s+/).filter((word) => word !== "");
   if (typed.length < 2 || typed.length > MAX_PHRASE_WORDS) return [];
 
-  const words = await Promise.all(
-    typed.map(async (word): Promise<WordLemmas> => ({ typed: word, lemmas: await lemmasOf(db, releaseId, word) })),
+  const words = await readWords(db, releaseId, typed);
+  const verbs = new Map<WordLemmas, Promise<string[]>>();
+  const slots = await readSlots(db, releaseId, words, verbs);
+
+  const misspelled = await Promise.all(
+    words.map(async (word, index) => {
+      const lemmas = await nearLemmasOf(db, releaseId, word.typed);
+      if (lemmas.length === 0) return [];
+      const corrected = words.map((other, i) => (i === index ? { typed: word.typed, lemmas } : other));
+      const correctedSlots = await readSlots(db, releaseId, corrected, verbs);
+      return correctedSlots.length < 2 ? [] : spelledKeys(correctedSlots);
+    }),
   );
-  const participles = new Map(
-    await Promise.all(
-      participleCandidates(words).map(async (index) => [index, await participleVerbs(db, releaseId, words[index])] as const),
-    ),
-  );
-  const slots = phraseSlots(words, (index) => participles.get(index) ?? []);
+
+  const leading = await readSlots(db, releaseId, words.slice(0, -1), verbs);
+  const heads = lemmaSequences(leading) ?? [];
+  const last = typed[typed.length - 1];
+  const prefixes = heads.length > MAX_PHRASE_PREFIX_PROBES ? [] : heads.map((head) => `${head.join(" ")} ${last}`);
+  const unfinished = await Promise.all(prefixes.map((prefix) => headwordsBeginning(db, releaseId, prefix, limit)));
+
+  const parts = slotRuns(slots).flatMap(spelledKeys);
+
+  const corrected = misspelled.flat();
+  const present = await headwordKeys(db, releaseId, [...new Set([...corrected, ...parts])]);
+  const stored = (phrase: string) => present.has(phrase);
+  const offered = [...corrected.filter(stored), ...unfinished.flat(), ...parts.filter(stored)];
+  return [...new Set(offered)].filter((phrase) => phrase !== key).slice(0, limit);
+}
+
+/**
+ * Every multi-word headword the query's words spell, each with the words that
+ * spelled it, in the order the lemma sequences were tried. Empty when the
+ * query is one word, more than `MAX_PHRASE_WORDS`, more than
+ * `MAX_PHRASE_PROBES` sequences, or spells no headword.
+ *
+ * `key` is the query as normalized for the index.
+ */
+export async function phraseMatches(db: LookupDatabase, releaseId: string, key: string): Promise<PhraseMatch[]> {
+  const typed = key.split(/\s+/).filter((word) => word !== "");
+  if (typed.length < 2 || typed.length > MAX_PHRASE_WORDS) return [];
+
+  const words = await readWords(db, releaseId, typed);
+  const slots = await readSlots(db, releaseId, words, new Map());
   // Only a multi-word headword: a compound tense alone (`sono andati`) is one
   // slot, and its verb is a single word the exact lookup answers for.
   if (slots.length < 2) return [];
   const sequences = lemmaSequences(slots);
   if (sequences === undefined || sequences.length === 0) return [];
 
-  const spelled = [...new Set(sequences.map((sequence) => sequence.join(" ")))].filter((phrase) => phrase !== key);
-  const present = await headwordKeys(db, releaseId, spelled);
-  return spelled.filter((phrase) => present.has(phrase));
+  const spelled = new Map<string, PhraseWord[]>();
+  for (const sequence of sequences) {
+    const phrase = sequence.join(" ");
+    if (!spelled.has(phrase)) spelled.set(phrase, slots.map((slot, i) => ({ typed: slot.typed, lemma: sequence[i] })));
+  }
+  const present = await headwordKeys(db, releaseId, [...spelled.keys()]);
+  return [...spelled].flatMap(([phrase, [first, second, ...rest]]) =>
+    present.has(phrase) && first !== undefined && second !== undefined
+      ? [{ key: phrase, words: [first, second, ...rest] }]
+      : [],
+  );
 }

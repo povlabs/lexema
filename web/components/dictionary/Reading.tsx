@@ -269,6 +269,25 @@ function LemmaLines({ reading }: { reading: Reading }) {
   );
 }
 
+/**
+ * The multi-word headword a phrase search reached, named and linked before its
+ * definitions, as a searched form's reading names its lemma: `vado via` is a
+ * form of *andare via* (#214).
+ */
+function PhraseLine({ entry }: { entry: PageReading }) {
+  if (!entry.reachedByPhrase) return null;
+  const { word } = entry.reading;
+  return (
+    <p className={FORM_OF_LINE}>
+      Form of{" "}
+      <a className={GLOSS_LINK} href={searchHref(word)} lang="it">
+        {word}
+      </a>
+      .
+    </p>
+  );
+}
+
 /** The reading's own forms, in the shape they have. */
 function OwnForms({ reading }: { reading: Reading }) {
   const id = `forms-${reading.recordId}`;
@@ -355,6 +374,7 @@ export function ReadingView({ entry }: { entry: PageReading }) {
           </span>
         )}
       </h2>
+      <PhraseLine entry={entry} />
       <Definitions reading={reading} />
       <LemmaLines reading={reading} />
       <OwnForms reading={reading} />
