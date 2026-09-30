@@ -876,3 +876,61 @@ test("an expired key answers 401 expired_key from its expiry on, like a revoked 
   }
   assert.deepEqual(callsOf(keyId), [{ day: "2026-09-27", calls: 1 }]);
 });
+
+test("/v1/lookup leaves out Wikizionario's missing-field placeholders, as the page does (#255)", async () => {
+  // The real archive lines in fixtures/placeholders.jsonl, seeded apart so the
+  // shared development dictionary above stays as every other test reads it.
+  const placeholderDir = await mkdtemp(join(tmpdir(), "lexema-api-placeholder-"));
+  const archive = join(placeholderDir, "placeholders.jsonl.gz");
+  await writeFile(archive, gzipSync(await readFile(join(REPO, "fixtures/placeholders.jsonl"))));
+  const { parts } = await seedSql({
+    input: archive,
+    outputDir: join(placeholderDir, "sql"),
+    schema: join(REPO, "src/db/schema.sql"),
+    releaseId: RELEASE,
+    archiveR2Key: `releases/${RELEASE}.jsonl.gz`,
+    license: "CC-BY-SA-4.0",
+    onRejection: (rejection) => {
+      throw new Error(`fixture line rejected: ${JSON.stringify(rejection)}`);
+    },
+  });
+  const placeholderSqlite = new DatabaseSync(":memory:");
+  try {
+    for (const part of parts) placeholderSqlite.exec(await readFile(part, "utf8"));
+    const over = readOnlyDictionary(placeholderSqlite);
+    const { key } = await newKey();
+    const results = async (word: string): Promise<Json[]> => {
+      const response = await call(`/v1/lookup?q=${encodeURIComponent(word)}`, key, NOW, "GET", over);
+      assert.equal(response.status, 200, word);
+      const body: Json = await response.json();
+      return body.results;
+    };
+    const one = async (word: string, pos: string): Promise<Json> => {
+      const result = (await results(word)).find((candidate: Json) => candidate.pos === pos);
+      assert.ok(result, `${word}: no ${pos} result`);
+      return result;
+    };
+
+    // Etymology: only the placeholder is none; beside real text, the real text.
+    assert.equal((await one("andare via", "phrase")).etymology, null);
+    assert.equal((await one("addì", "adv")).etymology, "(voce verbale) vedi addire");
+    assert.equal((await one("Plutone", "name")).etymology, "dal greco vagabondo");
+    assert.equal((await one("sbrisolona", "name")).etymology, "da sbrisola");
+
+    // Definitions: a placeholder-only gloss is no definition, its example still returned.
+    const bianca = await one("bianca", "noun");
+    assert.deepEqual(bianca.definitions.map((definition: Json) => definition.definition), ["sonno iniziale dei bachi da seta"]);
+    const piratato = await one("piratato", "adj");
+    assert.deepEqual(piratato.definitions, []);
+    assert.deepEqual(piratato.examples, ["è un cd pirataro"]);
+    assert.deepEqual((await one("rapitore", "adj")).definitions.map((definition: Json) => definition.definition), ["colui che rapisce o ha già rapito"]);
+    assert.deepEqual((await one("poco", "noun")).definitions.map((definition: Json) => definition.definition), ["mancante"]);
+
+    for (const word of ["andare via", "addì", "Plutone", "sbrisolona", "bianca", "piratato", "rapitore", "gendo"]) {
+      assert.doesNotMatch(JSON.stringify(await results(word)), /se vuoi, aggiungil/i, word);
+    }
+  } finally {
+    placeholderSqlite.close();
+    await rm(placeholderDir, { recursive: true, force: true });
+  }
+});

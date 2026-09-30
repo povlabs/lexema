@@ -1320,3 +1320,46 @@ test("the attribution page shows every open field as open, with nothing guessed 
     assert.match(textOf(html), /Where that extraction dropped a definition, Lexema reads it from the page itself/);
   });
 });
+
+test("Wikizionario's missing-field placeholders are not data: no Etymology block, no definition, the example kept (#255)", async () => {
+  const lines = (await readFile(join(REPO, "fixtures/placeholders.jsonl"), "utf8")).trim().split("\n");
+  await withLines(lines, async ({ db }) => {
+    // andare via: its only etymology is the placeholder, so no Etymology block renders.
+    const andareVia = await render(db, "andare via");
+    assert.equal(readingEtymology(nth(andareVia, 1)), undefined);
+    assert.doesNotMatch(andareVia, />Etymology</);
+
+    // addì: `(avverbio) → Etimologia mancante…` is gone; `(voce verbale) vedi addire` still finds its reading.
+    const addi = await render(db, "addì");
+    const verb = (await readingsFor(db, "addì")).find((reading) => reading.pos === "verb");
+    assert.ok(verb);
+    assert.equal(readingEtymology(readingById(addi, verb.recordId)), "Etymologyvedi addire");
+
+    // Plutone: one reading, so its etymology is the word's, after the reading;
+    // the real text after the placeholder is all of it.
+    const plutone = textOf(afterReadings(await render(db, "Plutone")));
+    assert.match(plutone, /Etymologydal greco vagabondo/);
+    assert.doesNotMatch(plutone, /Etimologia mancante/);
+
+    // bianca: the two placeholder senses, one behind `(tipografia)`, are no definitions.
+    const bianca = await render(db, "bianca");
+    const noun = (await readingsFor(db, "bianca")).find((reading) => reading.pos === "noun");
+    assert.ok(noun);
+    assert.equal(patternsOf(readingById(bianca, noun.recordId), /data-definition="/g), 1);
+
+    // piratato: its adjective's one sense is the placeholder; the sense's example stays reachable.
+    const piratato = await render(db, "piratato");
+    const adjective = (await readingsFor(db, "piratato")).find((reading) => reading.pos === "adj");
+    assert.ok(adjective);
+    const reading = readingById(piratato, adjective.recordId);
+    assert.equal(patternsOf(reading, /data-definition="/g), 0);
+    assert.match(textOf(reading), /è un cd pirataro/);
+
+    for (const html of [andareVia, addi, bianca, piratato, await render(db, "sbrisolona"), await render(db, "rapitore")]) {
+      assert.doesNotMatch(textOf(html), /mancant[ei][.;] se vuoi/i);
+      assert.doesNotMatch(textOf(html), /\(tipografia\)|\(avverbio\)/, "no label is left standing for a placeholder");
+    }
+    // A real gloss saying mancante stays.
+    assert.match(textOf(await render(db, "poco")), /mancante/);
+  });
+});
