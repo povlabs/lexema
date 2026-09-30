@@ -12,6 +12,7 @@ import { test } from "node:test";
 import {
   ACTIONS_BOT,
   type Answer,
+  announcedOutput,
   announcePreview,
   type GitHub,
   type IssueComment,
@@ -20,6 +21,7 @@ import {
   PREVIEW_SITES,
   PreviewAnnouncement,
   type PullRequest,
+  readAnnouncedOutput,
   readPreviewBuild,
   restGitHub,
 } from "@/builds/previewMarkerCommand.ts";
@@ -200,12 +202,12 @@ test("a site is up only when the Preview Worker itself answers, with the status 
 test("a successful build of the PR's head posts one comment, and the next build edits it in place", async () => {
   const github = new FakeGitHub(new Map([[269, pr269(BUILT_SHA)]]));
   const first = run(github, eventOf(BUILT));
-  assert.deepEqual(await first.outcome, { kind: "announced", pullRequests: [{ number: 269, comment: "created" }] });
+  assert.deepEqual(await first.outcome, { kind: "announced", sha: BUILT_SHA, pullRequests: [{ number: 269, comment: "created" }] });
   assert.deepEqual(first.probed, Object.keys(UP));
 
   github.pulls.set(269, pr269(LATER_SHA));
   const later = run(github, eventOf({ ...BUILT, head_sha: LATER_SHA }));
-  assert.deepEqual(await later.outcome, { kind: "announced", pullRequests: [{ number: 269, comment: "updated" }] });
+  assert.deepEqual(await later.outcome, { kind: "announced", sha: LATER_SHA, pullRequests: [{ number: 269, comment: "updated" }] });
   assert.deepEqual(github.writes, ["create #269", "update 1"]);
   assert.equal(github.stored.length, 1);
   assert.equal(fabrikaRead(github.stored[0].body, "web")?.sha, LATER_SHA);
@@ -213,6 +215,7 @@ test("a successful build of the PR's head posts one comment, and the next build 
   // The same build reported twice writes nothing the second time.
   assert.deepEqual(await run(github, eventOf({ ...BUILT, head_sha: LATER_SHA })).outcome, {
     kind: "announced",
+    sha: LATER_SHA,
     pullRequests: [{ number: 269, comment: "unchanged" }],
   });
   assert.equal(github.writes.length, 2);
@@ -256,8 +259,22 @@ test("a check run listing no PR finds it through the commit", async () => {
   const github = new FakeGitHub(new Map([[269, pr269(BUILT_SHA)]]), [269]);
   assert.deepEqual(await run(github, eventOf({ ...BUILT, pull_requests: [] })).outcome, {
     kind: "announced",
+    sha: BUILT_SHA,
     pullRequests: [{ number: 269, comment: "created" }],
   });
+});
+
+test("what a run announced is the smoke job's input, and nothing else reads as one", async () => {
+  const github = new FakeGitHub(new Map([[269, pr269(BUILT_SHA)]]));
+  const output = announcedOutput(await run(github, eventOf(BUILT)).outcome);
+  assert.equal(output, `{"sha":"${BUILT_SHA}","pullRequests":[269]}`);
+  assert.deepEqual(readAnnouncedOutput(output ?? ""), { sha: BUILT_SHA, pullRequests: [269] });
+
+  assert.equal(announcedOutput({ kind: "stale", sha: BUILT_SHA }), undefined);
+  assert.equal(announcedOutput({ kind: "ignored", reason: "not ours" }), undefined);
+  for (const bad of ["", "not json", `{"sha":"8be5dd3","pullRequests":[269]}`, `{"sha":"${BUILT_SHA}","pullRequests":[]}`, `{"sha":"${BUILT_SHA}","pullRequests":["269"]}`]) {
+    assert.throws(() => readAnnouncedOutput(bad), /announce job's output/, bad);
+  }
 });
 
 test("a Preview that never answers fails the run and writes nothing", async () => {
