@@ -21,6 +21,7 @@ import {
   type ReportAnswer,
   type ReportChoice,
 } from "@/lib/dictionary/report.ts";
+import type { PageReading } from "@/lib/dictionary/wordPage.ts";
 import {
   REPORT_BACKDROP,
   REPORT_CANCEL,
@@ -48,9 +49,14 @@ import {
 
 export interface ReportReading {
   recordId: number;
-  number: number;
+  /** The reading's number on the page; none for a reading with no definition. */
+  number: PageReading["number"];
   posTitle: string;
 }
+
+/** How the dialog names a reading: `1 · Sostantivo`, or `Sostantivo` when it has no number. */
+export const readingChoiceLabel = ({ number, posTitle }: ReportReading): string =>
+  number === undefined ? posTitle : `${number} · ${posTitle}`;
 
 type Status = "editing" | "sending" | ReturnType<typeof afterAnswer>["status"] | OpeningTrouble;
 
@@ -267,7 +273,7 @@ export function ReportDialog({ word, readings, siteKey }: { word: string; readin
                         checked={reading === entry.recordId}
                         onChange={() => setReading(entry.recordId)}
                       >
-                        {`${entry.number} · ${entry.posTitle}`}
+                        {readingChoiceLabel(entry)}
                       </Chip>
                     ))}
                     <label className={REPORT_CHIP}>

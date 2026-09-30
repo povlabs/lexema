@@ -64,7 +64,7 @@ function JumpLinks({ page }: { page: WordPage }) {
         {page.readings.map(({ number, reading }) => (
           <li key={reading.recordId}>
             <a className={JUMP_LINK} href={`#reading-${reading.recordId}`}>
-              <span className={JUMP_NUMBER}>{number}</span>
+              {number !== undefined && <span className={JUMP_NUMBER}>{number}</span>}
               <span lang="it">{reading.posTitle}</span>
             </a>
           </li>

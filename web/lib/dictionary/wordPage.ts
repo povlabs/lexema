@@ -9,6 +9,7 @@
 // tables are their lemmas'.
 
 import { isFormOfReading, isVerbReading } from "@lexema/lookup/types.ts";
+import { hasDefinitions } from "./definitions.ts";
 import { labelParts, readingsNamed, splitLabel } from "./readingLabels.ts";
 import { relatedItems, type RelatedItem } from "./relatedList.ts";
 import type {
@@ -34,8 +35,12 @@ export interface LemmaTable {
 }
 
 export interface PageReading {
-  /** 1-based, and the same number the jump links show. */
-  number: number;
+  /**
+   * 1-based among the readings that have a definition, and the same number the
+   * jump links and the report dialog show. A reading with no definition has
+   * none: its heading is its part of speech alone.
+   */
+  number: number | undefined;
   reading: Reading;
   /**
    * The verb lemmas whose tables list the query, one per distinct table. Two
@@ -119,9 +124,12 @@ export function wordPage(query: string, readings: readonly [Reading, ...Reading[
   const about = ordered.filter((reading) => reading.isAboutQuery);
   const merged = mergeWordFacts(about);
   const placed = placeWordFacts(about, merged);
+  // Readings with a definition number 1, 2, 3 among themselves, so the page
+  // never shows a gap (Huey, 2026-09-30, on #250).
+  let numbered = 0;
   const entries = ordered.map(
-    (reading, i): PageReading => ({
-      number: i + 1,
+    (reading): PageReading => ({
+      number: hasDefinitions(reading) ? ++numbered : undefined,
       reading,
       lemmaTables: lemmaTablesOf(reading),
       etymologies: placed.etymologies.get(reading) ?? [],

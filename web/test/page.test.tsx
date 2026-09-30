@@ -37,6 +37,7 @@ import { Attribution } from "@/components/dictionary/Attribution";
 import { FirstLoad, Limited, Outcome, Pending, SearchPage, TRY_WORDS } from "@/components/dictionary/SearchPage";
 import { SiteFooter } from "@/components/dictionary/SiteFooter";
 import { SiteHeader } from "@/components/dictionary/SiteHeader";
+import { readingChoiceLabel } from "@/components/dictionary/ReportDialog";
 import { wordPage } from "@/lib/dictionary/wordPage.ts";
 import { firstQuery, pageTitle } from "@/lib/dictionary/params";
 // The class strings the components carry, imported rather than copied, so a
@@ -1361,5 +1362,41 @@ test("Wikizionario's missing-field placeholders are not data: no Etymology block
     }
     // A real gloss saying mancante stays.
     assert.match(textOf(await render(db, "poco")), /mancante/);
+  });
+});
+
+test("a reading with no definition is its part of speech alone; the readings with one number 1, 2 among themselves (#250)", async () => {
+  const lines = (await readFile(join(REPO, "fixtures/no-definition.jsonl"), "utf8")).trim().split("\n");
+  await withLines(lines, async ({ db }) => {
+    // fare l'abitudine: its one sense is `no-gloss`. No number, no dot, no
+    // Definitions or Examples block; its synonym still shows.
+    const fare = await render(db, "fare l'abitudine");
+    assert.deepEqual(headingsOf(fare), ["Locuzione verbale"]);
+    assert.doesNotMatch(nth(fare, 1), /id="(?:definitions|examples)-/);
+    assert.match(textOf(afterReadings(fare)), /Synonymsabituarsi/);
+
+    // litigante: the noun between the adjective and the verb form has no
+    // definition; the two that do are 1 and 2, with no gap.
+    const litigante = await render(db, "litigante");
+    assert.deepEqual(headingsOf(litigante), ["1·Aggettivo·maschile e femminile, singolare", "Sostantivo", "2·Voce verbale"]);
+    assert.deepEqual(
+      readingsOfPage(litigante).map((reading) => patternsOf(reading, /data-definition="/g)),
+      [1, 0, 1],
+    );
+    const jumps = [...litigante.matchAll(new RegExp(`<a class="${esc(JUMP_LINK)}" href="#reading-\\d+">(.*?)</a>`, "g"))];
+    assert.deepEqual(
+      jumps.map((match) => textOf(match[1])),
+      ["1Aggettivo", "Sostantivo", "2Voce verbale"],
+    );
+    assert.deepEqual(
+      wordPage("litigante", await readingsFor(db, "litigante")).readings.map(({ number, reading }) =>
+        readingChoiceLabel({ number, recordId: reading.recordId, posTitle: reading.posTitle }),
+      ),
+      ["1 · Aggettivo", "Sostantivo", "2 · Voce verbale"],
+    );
+
+    for (const html of [fare, litigante]) {
+      assert.doesNotMatch(textOf(html), /no definition|definizione|mancante|not given|missing/i, "no note about the missing definition");
+    }
   });
 });
