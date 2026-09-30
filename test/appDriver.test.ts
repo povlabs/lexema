@@ -23,7 +23,7 @@ test("a Drizzle insert and select run through the proxy over DatabaseSync", asyn
     .insert(developerAccount)
     .values({ name: "Ada", email: "ada@example.com", emailVerified: true, createdAt: at, updatedAt: at })
     .returning();
-  assert.deepEqual(made, { id: 1, name: "Ada", email: "ada@example.com", emailVerified: true, image: null, createdAt: at, updatedAt: at, deletedAt: null });
+  assert.deepEqual(made, { id: 1, name: "Ada", email: "ada@example.com", emailVerified: true, image: null, createdAt: at, updatedAt: at, deletedAt: null, stripeCustomerId: null });
 
   const found = await db.select().from(developerAccount).where(eq(developerAccount.id, made.id)).get();
   assert.deepEqual(found, made);

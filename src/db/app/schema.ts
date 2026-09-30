@@ -44,6 +44,8 @@ const moment = customType<{ data: Date; driverData: string }>({
  * owner (#163 R1.4): `deleted_at` marks it, its email and name are replaced by
  * values that say nothing about the person, and it can own no new key.
  * `image` is better-auth's column for a provider's picture; Lexema keeps none.
+ * `stripe_customer_id` is the Stripe plugin's `user.stripeCustomerId`: the
+ * Stripe customer the account is billed as, NULL until Checkout makes one (#260).
  */
 export const developerAccount = sqliteTable(
   "developer_account",
@@ -56,6 +58,7 @@ export const developerAccount = sqliteTable(
     createdAt: moment("created_at").notNull(),
     updatedAt: moment("updated_at").notNull(),
     deletedAt: moment("deleted_at"), // NULL while the account is in use
+    stripeCustomerId: text("stripe_customer_id").unique(),
   },
   () => [
     check("developer_account_email", sql`email = lower(email) AND email LIKE '%_@_%'`),
@@ -253,6 +256,91 @@ export const apiKeyUsage = sqliteTable(
     primaryKey({ columns: [table.keyId, table.day] }),
     check("api_key_usage_day", sql`day GLOB '[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]'`),
     check("api_key_usage_calls", sql`calls >= 0`),
+  ],
+);
+
+// ---------------------------------------------------------------------------
+// Plans (#161, #260)
+// ---------------------------------------------------------------------------
+
+/**
+ * One Stripe subscription of one account: the `subscription` model of
+ * `@better-auth/stripe` 1.7.6, which reads and writes it (its `src/schema.ts`).
+ * As for better-auth's own tables, each property is the plugin's field name and
+ * each SQL name is ours. The plugin names the account in `reference_id` as
+ * text, so it holds the account id written as a whole number, and carries no
+ * foreign key. Times are its dates; `status` is Stripe's subscription status.
+ * What a row means for its account is `stateOfSubscription` in
+ * src/billing/plans.ts.
+ */
+export const subscription = sqliteTable(
+  "subscription",
+  {
+    id: integer("subscription_id").primaryKey(),
+    plan: text("plan", { enum: ["starter", "pro"] }).notNull(),
+    referenceId: text("reference_id").notNull(),
+    stripeCustomerId: text("stripe_customer_id"),
+    stripeSubscriptionId: text("stripe_subscription_id").unique(),
+    status: text("status", {
+      enum: ["incomplete", "incomplete_expired", "trialing", "active", "past_due", "canceled", "unpaid", "paused"],
+    })
+      .notNull()
+      .default("incomplete"),
+    periodStart: moment("period_start"),
+    periodEnd: moment("period_end"),
+    trialStart: moment("trial_start"),
+    trialEnd: moment("trial_end"),
+    cancelAtPeriodEnd: integer("cancel_at_period_end", { mode: "boolean" }).notNull().default(false),
+    cancelAt: moment("cancel_at"),
+    canceledAt: moment("canceled_at"),
+    endedAt: moment("ended_at"),
+    seats: integer("seats"),
+    billingInterval: text("billing_interval"),
+    stripeScheduleId: text("stripe_schedule_id"),
+  },
+  (table) => [
+    index("subscription_by_reference").on(table.referenceId),
+    check("subscription_plan", sql`plan IN ('starter', 'pro')`),
+    check(
+      "subscription_status",
+      sql`status IN ('incomplete', 'incomplete_expired', 'trialing', 'active', 'past_due', 'canceled', 'unpaid', 'paused')`,
+    ),
+    check("subscription_reference_id", sql`reference_id GLOB '[1-9]*' AND reference_id NOT GLOB '*[^0-9]*'`),
+    check("subscription_period", sql`period_start IS NULL OR period_end IS NULL OR period_start < period_end`),
+    // The plugin writes a serving status together with its period.
+    check(
+      "subscription_serving_period",
+      sql`status NOT IN ('active', 'trialing', 'past_due') OR (period_start IS NOT NULL AND period_end IS NOT NULL)`,
+    ),
+    check("subscription_seats", sql`seats IS NULL OR seats > 0`),
+  ],
+);
+
+/**
+ * An Enterprise plan Huey set by hand (`pnpm run plan`, src/billing/planCli.ts):
+ * the account's calls a billing period and calls a minute, and the period, from
+ * `period_start` up to `period_end`. `ended_at` is NULL while the plan is live.
+ * One row per account: setting a new period rewrites it. The Stripe plugin
+ * never reads or writes it.
+ */
+export const enterprisePlan = sqliteTable(
+  "enterprise_plan",
+  {
+    id: integer("enterprise_plan_id").primaryKey(),
+    accountId: integer("account_id")
+      .notNull()
+      .unique()
+      .references(() => developerAccount.id),
+    callsPerPeriod: integer("calls_per_period").notNull(),
+    callsPerMinute: integer("calls_per_minute").notNull(),
+    periodStart: moment("period_start").notNull(),
+    periodEnd: moment("period_end").notNull(),
+    endedAt: moment("ended_at"), // NULL while the plan is live
+  },
+  () => [
+    check("enterprise_plan_calls_per_period", sql`calls_per_period > 0`),
+    check("enterprise_plan_calls_per_minute", sql`calls_per_minute > 0`),
+    check("enterprise_plan_period", sql`period_start < period_end`),
   ],
 );
 
