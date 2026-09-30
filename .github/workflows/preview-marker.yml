@@ -53,6 +53,8 @@ jobs:
       - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
         with:
           node-version-file: .nvmrc
+          # package.json names pnpm, so setup-node would cache for it and fail: this job installs nothing.
+          package-manager-cache: false
       # Plain node strips the TypeScript types; the script needs no install.
       - name: Announce the Preview
         id: announce
@@ -77,6 +79,7 @@ jobs:
       - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
         with:
           node-version-file: .nvmrc
+          package-manager-cache: false
       - name: Smoke the Preview and report the check
         env:
           GITHUB_TOKEN: ${{ github.token }}
