@@ -65,10 +65,24 @@ The one run, for release `it-0c432803`:
    `source/` in `hueypov/lexema-data`. The Wiktionary dump beside it is read
    too when it is there, as for a local seed.
 2. Sign Wrangler in to the Cloudflare account, once:
-   `pnpm --dir web exec wrangler login`.
+   `pnpm --dir web exec wrangler login`. The account must be on Workers Paid:
+   the Free plan's per-database cap does not hold this release.
 3. From the repository root, run:
 
    ```sh
+   SEED_INPUT=it-extract.jsonl.gz \
+   SEED_SQL=.data/full-sql \
+   SEED_REMOTE=lexema-dictionary \
+   pnpm run seed:dev
+   ```
+
+   If `pnpm --dir web exec wrangler whoami` lists more than one account, put
+   the account id first. The seed runs Wrangler with `CI=1`, so Wrangler cannot
+   ask which account, and the run stops at `wrangler d1 list`, before anything
+   is written:
+
+   ```sh
+   CLOUDFLARE_ACCOUNT_ID=<account id> \
    SEED_INPUT=it-extract.jsonl.gz \
    SEED_SQL=.data/full-sql \
    SEED_REMOTE=lexema-dictionary \
@@ -81,8 +95,10 @@ With it, the seed:
 - finds `lexema-dictionary`, and creates it with `wrangler d1 create` when it
   is absent;
 - refuses the database if it already holds a table, before it reads the archive;
-- applies the same 64 MiB parts in order, 16 for this release, each with
-  `wrangler d1 execute lexema-dictionary --remote --file`;
+- applies the same 64 MiB parts in order, each with
+  `wrangler d1 execute lexema-dictionary --remote --file`. The
+  `seed SQL: <n> part(s)` line says how many; the count depends on whether the
+  Wiktionary dump was read;
 - runs the same row-count and `source_release` checks against the remote
   database, and only then marks the release `complete`.
 
@@ -106,7 +122,7 @@ binding use that id.
 ### If the upload stops
 
 A run that did not print the database id line did not finish. If it stopped
-before `part 1 of 16`, no part was loaded: fix the cause and run the same
+before the first `part 1 of` line, no part was loaded: fix the cause and run the same
 command again. Otherwise the remote database holds part of the release, or a
 release marked `failed`, and is not usable. The error
 names the failing part and the parts applied before it, or the tables and
