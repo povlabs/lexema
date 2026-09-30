@@ -37,11 +37,7 @@ const APP_ANSWER = "app";
 async function checkoutStarted() {
   const { sqlite, appDb } = freshAppDatabase();
   const stripe = new StubStripe();
-  const billing: Billing = {
-    stripe: stripe.client(),
-    webhookSecret: TEST_SETTINGS.STRIPE_WEBHOOK_SECRET,
-    prices: { starter: TEST_SETTINGS.STRIPE_PRICE_STARTER, pro: TEST_SETTINGS.STRIPE_PRICE_PRO },
-  };
+  const billing: Billing = stripe.billing();
   const secret = process.env.BETTER_AUTH_SECRET ?? "";
   const identity = verifiedIdentity("github", { subject: "4242", verifiedEmail: "dev@example.com", name: "Dev" });
   assert.ok(identity);

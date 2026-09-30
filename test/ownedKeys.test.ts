@@ -146,7 +146,7 @@ test("no key is made for an account that does not exist or was deleted", async (
   const sqlite = appDb();
   const db = appTablesOverNodeSqlite(sqlite);
   const ada = await account(db, "ada@example.com");
-  await deleteAccount(db, ada, NOW);
+  await deleteAccount(db, ada, NOW, undefined);
   for (const accountId of [ada, 99]) {
     assert.deepEqual(await createAccountKey(db, accountId, name("app"), NOW), { outcome: "refused", refusal: "no-account" });
   }
@@ -275,7 +275,7 @@ test("deleting an account revokes its keys, removes its sessions and identities,
   const session = signedIn(sqlite, ada);
   const bobSession = signedIn(sqlite, bob);
 
-  assert.deepEqual(await deleteAccount(db, ada, NOW), { outcome: "deleted", revokedKeys: 1 });
+  assert.deepEqual(await deleteAccount(db, ada, NOW, undefined), { outcome: "deleted", revokedKeys: 1 });
 
   for (const { key } of keys) assert.deepEqual(await authenticate(db, key, NOW), { outcome: "refused", refusal: "revoked" });
   assert.equal(sessionAccount(sqlite, session), undefined);
@@ -303,12 +303,12 @@ test("deleting an account revokes its keys, removes its sessions and identities,
   assert.deepEqual(await listAccountKeys(db, again.accountId), []);
 
   // Running it again finishes nothing new and keeps the first deletion's time.
-  assert.deepEqual(await deleteAccount(db, ada, NOW + DAY), { outcome: "deleted", revokedKeys: 0 });
+  assert.deepEqual(await deleteAccount(db, ada, NOW + DAY, undefined), { outcome: "deleted", revokedKeys: 0 });
   assert.equal(
     (sqlite.prepare("SELECT deleted_at FROM developer_account WHERE account_id = ?").get(ada) as { deleted_at: string }).deleted_at,
     new Date(NOW).toISOString(),
   );
-  assert.deepEqual(await deleteAccount(db, 99, NOW), { outcome: "unknown" });
+  assert.deepEqual(await deleteAccount(db, 99, NOW, undefined), { outcome: "unknown" });
 });
 
 test("a deletion that fails partway changes nothing: the account stays signed in with its keys live, and running it again finishes it", async () => {
@@ -320,7 +320,7 @@ test("a deletion that fails partway changes nothing: the account stays signed in
   // The last of the four statements fails, after the other three have run.
   sqlite.exec("CREATE TRIGGER identities_down BEFORE DELETE ON provider_identity BEGIN SELECT RAISE(ABORT, 'D1 is down'); END");
 
-  await assert.rejects(deleteAccount(db, ada, NOW), /D1 is down/);
+  await assert.rejects(deleteAccount(db, ada, NOW, undefined), /D1 is down/);
 
   assert.equal(sessionAccount(sqlite, session), ada);
   assert.equal((await authenticate(db, key, NOW)).outcome, "accepted");
@@ -328,7 +328,7 @@ test("a deletion that fails partway changes nothing: the account stays signed in
   assert.equal((await createAccountKey(db, ada, name("two"), NOW)).outcome, "created");
 
   sqlite.exec("DROP TRIGGER identities_down");
-  assert.deepEqual(await deleteAccount(db, ada, NOW), { outcome: "deleted", revokedKeys: 2 });
+  assert.deepEqual(await deleteAccount(db, ada, NOW, undefined), { outcome: "deleted", revokedKeys: 2 });
   assert.equal(sessionAccount(sqlite, session), undefined);
   assert.deepEqual(await authenticate(db, key, NOW), { outcome: "refused", refusal: "revoked" });
 });

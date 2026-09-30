@@ -8,10 +8,12 @@ import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
 import { DatabaseSync } from "node:sqlite";
+import { deleteAccount } from "../../src/accounts/accounts.js";
+import type { BillingSetup } from "../../src/accounts/billing.js";
 import type { ProviderProfile } from "../../src/accounts/providers.js";
 import { authenticate } from "../../src/api/keys.js";
 import { createAccountKey, keyName, listAccountKeys } from "../../src/api/ownedKeys.js";
-import { freshAppDatabase, readOnlyDictionary } from "../../test/databases.js";
+import { freshAppDatabase, readOnlyDictionary, subscribe } from "../../test/databases.js";
 import type { CreateKeyProblems } from "@/lib/developers/createKeyForm.ts";
 import {
   answerOf,
@@ -31,6 +33,7 @@ import { byHost } from "@/worker/hosts.ts";
 import { withRateLimits, type LimitBindings } from "@/worker/rateLimit.ts";
 import { AFTER_SIGN_OUT, SESSION_COOKIE, signedInAccount, withSignIn, type SignInBindings } from "@/worker/signIn.ts";
 import { StubProvider } from "./stubProvider.ts";
+import { BILLING_OFF, StubStripe, TEST_SETTINGS } from "./stubStripe.ts";
 
 const SCHEMA = readFileSync(fileURLToPath(new URL("../../src/db/schema.sql", import.meta.url)), "utf8");
 const NOW = Date.parse("2026-09-28T12:00:00Z");
@@ -47,7 +50,7 @@ const env: LimitBindings & SignInBindings & DashboardBindings = {
 };
 
 /** The Worker over a fresh database; each browser keeps its own cookies. `limits` stand in for the rate limits. */
-function site({ limits = {} }: { limits?: Partial<LimitBindings> } = {}) {
+function site({ limits = {}, billing = BILLING_OFF }: { limits?: Partial<LimitBindings>; billing?: BillingSetup } = {}) {
   const { sqlite, appDb: db } = freshAppDatabase();
   const google = new StubProvider("google");
   const appSaw: Request[] = [];
@@ -59,7 +62,7 @@ function site({ limits = {} }: { limits?: Partial<LimitBindings> } = {}) {
             appSaw.push(request);
             return new Response("page", { headers: { "content-type": "text/html" } });
           },
-          () => ({ appDb: db, now: NOW }),
+          () => ({ appDb: db, billing, now: NOW }),
         ),
         () => ({ providers: { google, github: undefined }, appDb: db, now: NOW }),
       ),
@@ -551,4 +554,79 @@ test("the dashboard actions exist on the developer site only", async () => {
     appSaw.map((request) => new URL(request.url).pathname),
     ["/dashboard/keys"],
   );
+});
+
+// Deleting an account stops Stripe billing it (#209): each case is a
+// signed-in developer with a Stripe subscription, over the stubbed Stripe.
+
+const seconds = (iso: string) => Date.parse(iso) / 1000;
+const SEPTEMBER = { periodStart: seconds("2026-09-15T00:00:00Z"), periodEnd: seconds("2026-10-15T00:00:00Z") };
+const LIVE_PRO = { status: "active", price: TEST_SETTINGS.STRIPE_PRICE_PRO, ...SEPTEMBER } as const;
+
+/** A site over the stubbed Stripe, billing on or off, and Ada signed in with a Pro subscription whose row says `rowStatus`. */
+async function subscribed(rowStatus: "active" | "canceled", billingOn = true) {
+  const stripe = new StubStripe();
+  const place = site({ billing: billingOn ? { outcome: "ready", billing: stripe.billing() } : BILLING_OFF });
+  const adas = await place.browser(ada);
+  await subscribe(place.db, adas.accountId, {
+    plan: "pro",
+    status: rowStatus,
+    periodStart: new Date(SEPTEMBER.periodStart * 1000),
+    periodEnd: new Date(SEPTEMBER.periodEnd * 1000),
+    stripeSubscriptionId: "sub_ada",
+  });
+  const row = () => ({ ...place.sqlite.prepare("SELECT status, ended_at IS NOT NULL AS ended FROM subscription").get() });
+  const deletedAt = () =>
+    (place.sqlite.prepare("SELECT deleted_at FROM developer_account WHERE account_id = ?").get(adas.accountId) as { deleted_at: string | null }).deleted_at;
+  const remove = () => adas.post("/dashboard/account/delete", { confirm: DELETE_CONFIRMATION });
+  return { ...place, stripe, adas, row, deletedAt, remove };
+}
+
+test("deleting an account with a live subscription cancels it at Stripe at once, then deletes the account; deleting again cancels nothing more (#209)", async () => {
+  const { db, stripe, adas, row, deletedAt, remove } = await subscribed("active");
+  stripe.set("sub_ada", "cus_ada", {}, LIVE_PRO);
+
+  const deleted = await remove();
+  assert.equal(deleted.status, 200);
+  assert.deepEqual(await answerOf(deleted), { outcome: "signed-out", location: AFTER_SIGN_OUT });
+  // `DELETE /v1/subscriptions/<id>` is Stripe's immediate cancel; a period-end cancel is an update the stub refuses.
+  assert.deepEqual(stripe.cancelled, ["sub_ada"]);
+  assert.deepEqual(row(), { status: "canceled", ended: 1 });
+  assert.equal(deletedAt(), new Date(NOW).toISOString());
+
+  assert.deepEqual(await deleteAccount(db, adas.accountId, NOW + 1_000, stripe.client().subscriptions), { outcome: "deleted", revokedKeys: 0 });
+  assert.deepEqual(stripe.cancelled, ["sub_ada"]);
+  assert.equal(deletedAt(), new Date(NOW).toISOString());
+});
+
+test("an account whose subscription Stripe already ended, or no longer has, is deleted with no cancel (#209)", async () => {
+  const cases: [string, (stripe: StubStripe) => void, "active" | "canceled"][] = [
+    ["already cancelled at Stripe, its row not yet synced", (stripe) => void stripe.set("sub_ada", "cus_ada", {}, { ...LIVE_PRO, status: "canceled" }), "active"],
+    ["missing at Stripe", () => {}, "active"],
+    // Stripe is down, so this deletion proves no Stripe call was made.
+    ["already cancelled in its row", (stripe) => void (stripe.down = true), "canceled"],
+  ];
+  for (const [label, atStripe, rowStatus] of cases) {
+    const { stripe, deletedAt, remove } = await subscribed(rowStatus);
+    atStripe(stripe);
+    assert.equal((await remove()).status, 200, label);
+    assert.deepEqual(stripe.cancelled, [], label);
+    assert.equal(deletedAt(), new Date(NOW).toISOString(), label);
+  }
+});
+
+test("when Stripe fails, or billing is off, deleting an account with a live subscription changes nothing and asks to try again (#209)", async () => {
+  for (const [label, billingOn] of [["Stripe is down", true], ["billing is off", false]] as const) {
+    const { stripe, adas, snapshot, row, remove } = await subscribed("active", billingOn);
+    stripe.set("sub_ada", "cus_ada", {}, LIVE_PRO);
+    stripe.down = true;
+    const before = snapshot();
+
+    const refused = await remove();
+    assert.equal(refused.status, 503, label);
+    assert.deepEqual(await answerOf(refused), { outcome: "refused", message: UNREACHABLE }, label);
+    assert.deepEqual(snapshot(), before, label);
+    assert.deepEqual(row(), { status: "active", ended: 0 }, label);
+    assert.equal(await adas.signedIn(), adas.accountId, label);
+  }
 });

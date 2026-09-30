@@ -33,6 +33,8 @@ export interface SeededSubscription {
   periodStart: Date | null;
   periodEnd: Date | null;
   cancelAt?: Date | null;
+  /** The subscription at Stripe the row is kept for, or none. */
+  stripeSubscriptionId?: string;
 }
 
 /** Give an account a Stripe plan the way the plugin's webhook would (src/db/app/schema.ts); no Stripe call is made. */

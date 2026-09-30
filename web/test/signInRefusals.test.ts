@@ -9,6 +9,7 @@ import type { ProviderProfile, ProviderRegistry } from "../../src/accounts/provi
 import { freshAppDatabase } from "../../test/databases.js";
 import { apiNotFound } from "@/worker/api/handler.ts";
 import { CSRF_FIELD, csrfTokenOf, DELETE_CONFIRMATION, withDashboard } from "@/worker/dashboard.ts";
+import { BILLING_OFF } from "./stubStripe.ts";
 import { byHost } from "@/worker/hosts.ts";
 import { withRateLimits, type LimitBindings } from "@/worker/rateLimit.ts";
 import { PENDING_COOKIE, SESSION_COOKIE, signedInAccount, withSignIn, type SignInBindings } from "@/worker/signIn.ts";
@@ -34,7 +35,7 @@ function site(providers?: (stubs: { google: StubProvider; github: StubProvider }
   const worker = byHost<typeof env>({
     app: withRateLimits(
       withSignIn(
-        withDashboard(async () => new Response("page"), () => ({ appDb: db, now: NOW })),
+        withDashboard(async () => new Response("page"), () => ({ appDb: db, billing: BILLING_OFF, now: NOW })),
         () => ({ providers: providers?.({ google, github }) ?? { google, github }, appDb: db, now: NOW }),
       ),
     ),

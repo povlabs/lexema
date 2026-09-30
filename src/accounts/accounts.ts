@@ -15,6 +15,7 @@
 
 import { and, asc, eq, sql } from "drizzle-orm";
 import { revokeAllAccountKeys } from "../api/ownedKeys.js";
+import { cancelSubscriptions, type SubscriptionCanceller } from "../billing/subscriptionCancel.js";
 import type { AppDatabase, AppTables } from "../db/app/database.js";
 import { developerAccount, developerSession, providerIdentity } from "../db/app/schema.js";
 import { nameOf, PROVIDER_IDS, type ProviderId, type ProviderProfile } from "./providers.js";
@@ -151,25 +152,43 @@ export const deleteAccountSessionsQuery = (db: AppDatabase, accountId: number) =
 export const deleteAccountIdentitiesQuery = (db: AppDatabase, accountId: number) =>
   db.delete(providerIdentity).where(eq(providerIdentity.userId, accountId));
 
+/** What deleting an account did. */
+export type AccountDeletion =
+  | { readonly outcome: "deleted"; readonly revokedKeys: number }
+  /** No account has this id. */
+  | { readonly outcome: "unknown" }
+  /** A subscription of the account may still bill and billing is off, so nothing changed. Never empty. */
+  | { readonly outcome: "billing-off"; readonly billable: readonly [string, ...string[]] };
+
 /**
- * Delete an account (#163 R1.4): revoke every key it owns, end its sessions
- * and unlink its provider identities. The row stays, marked deleted and with
- * nothing personal in it, so its revoked keys and their usage keep an owner;
- * signing in again with the same email makes a new account. This stays
- * Lexema's: better-auth's own `deleteUser` removes the row (ADR 0017).
+ * Delete an account (#163 R1.4): stop Stripe billing it, revoke every key it
+ * owns, end its sessions and unlink its provider identities. The row stays,
+ * marked deleted and with nothing personal in it, so its revoked keys and
+ * their usage keep an owner; signing in again with the same email makes a new
+ * account. This stays Lexema's: better-auth's own `deleteUser` removes the row
+ * (ADR 0017).
  *
- * The four statements run as one batch, which is one transaction, so a
- * deletion that fails leaves the account exactly as it was, still signed in and
- * with its keys live, and one that succeeds leaves no session or identity that could reach it. Running
- * it again on a deleted account changes nothing and keeps the first time.
- * Answers the number of keys it revoked, or `unknown` when there is no such
- * account.
+ * First every subscription Stripe may still bill is cancelled at once, not at
+ * the period's end (#209, src/billing/subscriptionCancel.ts). `stripe` is
+ * `undefined` while billing is off; an account with a subscription that may
+ * still bill is then answered `billing-off` and left as it was. A Stripe
+ * failure throws before the account changes, so the developer can try again.
+ *
+ * The four statements that follow run as one batch, which is one transaction,
+ * so a deletion that fails leaves the account exactly as it was, still signed
+ * in and with its keys live, and one that succeeds leaves no session or
+ * identity that could reach it. Running it again on a deleted account changes
+ * nothing, calls Stripe for nothing already cancelled, and keeps the first
+ * time. Answers the number of keys it revoked.
  */
 export async function deleteAccount(
   db: AppTables,
   accountId: number,
   now: number,
-): Promise<{ outcome: "deleted"; revokedKeys: number } | { outcome: "unknown" }> {
+  stripe: SubscriptionCanceller | undefined,
+): Promise<AccountDeletion> {
+  const cancelled = await cancelSubscriptions(db.app, stripe, accountId);
+  if (cancelled.outcome === "billing-off") return cancelled;
   const [marked, revoked] = await db.app.batch([
     markAccountDeletedQuery(db.app, accountId, new Date(now).toISOString()),
     revokeAllAccountKeys(db.app, accountId, now),
