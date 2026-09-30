@@ -586,6 +586,12 @@ const closedLines = (html: string): string[] =>
 const sourcePages = (html: string): string[] =>
   [...html.matchAll(/aria-label="Wiktionary page for ([^,]+), the source of this page/g)].map((match) => textOf(match[1]));
 
+/** A page's footer line: *Source* and *Report a mistake*. */
+const sourceLine = (html: string): string => {
+  const start = html.lastIndexOf(`<footer class="${SOURCE_LINE}">`);
+  return html.slice(start, html.indexOf("</footer>", start));
+};
+
 test("an inflected expression opens a short page: its words, the expression's first meaning, then each form entry with the lemma swapped for the expression; the other meanings wait for + more", async () => {
   await withDevSeed(async ({ db }) => {
     // *andare via*'s meanings as its own page writes them, labels and examples included.
@@ -659,8 +665,11 @@ test("an inflected expression opens a short page: its words, the expression's fi
       "correre via",
       "participio passato maschile singolare di volgere le spalle",
     ]);
-    // Two expressions, and still one *Source*: the first expression the lookup found (#281).
-    assert.deepEqual(sourcePages(volto), ["volgere le spalle"]);
+    // Two expressions, and still one *Source* (#281): the first the page shows,
+    // voltare le spalle, though the lookup found volgere le spalle first (#291).
+    assert.ok(textOf(volto).indexOf("voltare le spalle") < textOf(volto).indexOf("volgere le spalle"));
+    assert.deepEqual(sourcePages(volto), ["voltare le spalle"]);
+    assert.match(sourceLine(volto), /href="https:\/\/it\.wiktionary\.org\/wiki\/voltare_le_spalle" target="_blank"/);
 
     // An expression with no gloss (#250) has no meanings to copy: only the form line shows.
     const abitudine = await render(db, "faccio l'abitudine");
@@ -1063,12 +1072,6 @@ test("every word page ends with Source and Report a mistake together", async () 
     }
   });
 });
-
-/** A page's footer line: *Source* and *Report a mistake*. */
-const sourceLine = (html: string): string => {
-  const start = html.lastIndexOf(`<footer class="${SOURCE_LINE}">`);
-  return html.slice(start, html.indexOf("</footer>", start));
-};
 
 test("a result page has one Source, with no word after it, to the page of the spelling in its title (#281)", async () => {
   // macchina: a noun, and a form of macchinare whose table shows under it.
