@@ -7,6 +7,7 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 import { DatabaseSync } from "node:sqlite";
 import { fileURLToPath } from "node:url";
+import { applyAppMigrations } from "../src/db/app/migrations.js";
 import {
   ACCOUNT_IDENTITIES_SQL,
   accountProfile,
@@ -35,6 +36,7 @@ const NOW = Date.parse("2026-09-28T12:00:00Z");
 function schemaDb(): DatabaseSync {
   const db = new DatabaseSync(":memory:");
   db.exec(SCHEMA);
+  applyAppMigrations(db);
   return db;
 }
 

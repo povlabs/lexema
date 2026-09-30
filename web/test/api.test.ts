@@ -14,6 +14,7 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { DatabaseSync } from "node:sqlite";
 import { gzipSync } from "node:zlib";
+import { applyAppMigrations } from "../../src/db/app/migrations.js";
 import { signInAccount, verifiedIdentity } from "../../src/accounts/accounts.js";
 import { ALL_ENDPOINTS, onlyEndpoints, type KeyAccess } from "../../src/api/keyAccess.js";
 import { runKeyCommand } from "../../src/api/keyCli.js";
@@ -58,6 +59,7 @@ before(async () => {
   });
   sqlite = new DatabaseSync(":memory:");
   for (const part of parts) sqlite.exec(await readFile(part, "utf8"));
+  applyAppMigrations(sqlite);
   db = fromNodeSqlite(sqlite);
 });
 

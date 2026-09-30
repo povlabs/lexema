@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { DatabaseSync } from "node:sqlite";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
+import { applyAppMigrations } from "../src/db/app/migrations.js";
 
 const file = (name: string) => readFileSync(fileURLToPath(new URL(`../${name}`, import.meta.url)), "utf8");
 
@@ -19,6 +20,7 @@ function seededDatabase(): DatabaseSync {
   const db = new DatabaseSync(":memory:");
   db.exec("PRAGMA foreign_keys = ON");
   db.exec(file("src/db/schema.sql"));
+  applyAppMigrations(db);
   db.exec(`INSERT INTO source_release
     (release_id, source_name, archive_r2_key, archive_sha256, archive_bytes,
      normalizer, importer_version, schema_version)
