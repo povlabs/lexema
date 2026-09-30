@@ -180,7 +180,8 @@ export const verification = sqliteTable(
  * dashboard (an owned key, src/api/ownedKeys.ts), or NULL for an admin key made
  * with the CLI (src/api/keyCli.ts). `display_prefix` is the key's first
  * characters, stored so a key can be named without its secret (#167).
- * `last_used_at` is stamped each time the key is accepted.
+ * `last_used_at` is stamped when the key is accepted, at most once a minute
+ * (#261).
  *
  * `endpoints` and `expires_at` are what the key may reach and until when
  * (#187, src/api/keyAccess.ts). `endpoints` is NULL for every endpoint, or a
@@ -223,9 +224,11 @@ export const apiKey = sqliteTable(
 );
 
 /**
- * A key's requests in one minute, `minute` being whole minutes since the epoch.
- * One upsert counts a request and returns the count (src/api/usage.ts); the
- * key's finished minutes are deleted when its next minute starts.
+ * An admin key's calls in one minute, `minute` being whole minutes since the
+ * epoch; the `requests` column has held calls, a batch's words each one, since
+ * #216. One upsert counts a request's calls and returns the count
+ * (src/api/usage.ts); the key's finished minutes are deleted when its next
+ * minute starts. An owned key's minute is its account's, never counted here.
  */
 export const apiKeyMinute = sqliteTable(
   "api_key_minute",

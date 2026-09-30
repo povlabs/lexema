@@ -336,7 +336,7 @@ const GUIDE_TOPICS: Readonly<Record<Guide, () => ReactNode>> = {
           ))}
         </tbody>
       </table>
-      <Paragraph>{"Each key has its own number of calls per minute. Every request made with a valid key counts, refused ones included, and every response to it carries these headers. Past the limit, the answer is a `429` until the minute ends."}</Paragraph>
+      <Paragraph>{"Your account may make a number of calls a minute, shared by all its keys. Calls count toward the minute as they do toward the month, so a batch of 7 words is 7 calls, and a request refused before it is answered, a `400`, `403`, `404` or `405`, counts nothing. Every response to a valid key carries `RateLimit-Limit`. Past the limit, the answer is a `429` with `Retry-After`."}</Paragraph>
       <Rows rows={HEADERS.map((header) => ({ name: header.name, description: header.description }))} />
     </Topic>
   ),

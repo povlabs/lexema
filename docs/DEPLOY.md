@@ -22,6 +22,8 @@ development, with the placeholder D1 that `pnpm run seed:dev` fills.
 | `workers_dev`, `preview_urls` | both off |
 | D1 | none yet, so a search shows the failed-lookup state; attaching it is #19 |
 | Rate limits | 15 searches and 120 suggestions a minute per visitor ([#128](https://github.com/hueypov/lexema/issues/128)); 10 sign-in starts ([#165](https://github.com/hueypov/lexema/issues/165)) and 5 key creations ([#168](https://github.com/hueypov/lexema/issues/168)) a minute on the developer site |
+| API rate | `CALLS_60` and `CALLS_300`, Rate Limiting bindings of 60 and 300 calls a minute per developer account, keyed by account id ([#261](https://github.com/hueypov/lexema/issues/261)) |
+| Account meter | the Durable Object class `AccountMeterObject`, bound as `ACCOUNT_METER`, SQLite-backed through the `v1-account-meter` migration: one per developer account, counting its calls and adding them to `api_key_usage` at most once a minute ([#261](https://github.com/hueypov/lexema/issues/261)) |
 | Sign-in | Google and GitHub, each on only once its client id and secret are set ([below](#turn-on-sign-in)) |
 | Workers Logs | on |
 
@@ -105,7 +107,8 @@ alone, never from the top level or `env.production`:
 | `LEXEMA_RELEASE` | `it-0c432803` |
 | `DB` | the shared dictionary D1 `lexema-dictionary`, which code only reads |
 | `APP_DB` | `<REPLACE_ME>`, which the [Preview command](#the-preview-command) replaces with the branch's own app D1; `wrangler preview` refuses to run while it is there |
-| Rate limits | production's limits under their own `namespace_id`s |
+| Rate limits | production's limits under their own `namespace_id`s, `CALLS_60` and `CALLS_300` included |
+| `ACCOUNT_METER` | the account meter's binding; each Preview gets its own Durable Object namespace and storage |
 | `EMAIL` | a `send_email` binding with `destination_address` set to Huey's verified address, so it can send nowhere else |
 | Sign-in | off: both OAuth client ids are empty |
 

@@ -45,6 +45,7 @@ import { DeveloperFooter } from "@/components/developers/DeveloperPage";
 import { DeveloperPricing } from "@/components/developers/DeveloperPricing";
 import { SiteFooter } from "@/components/dictionary/SiteFooter";
 import { handleApi } from "@/worker/api/handler.ts";
+import { TestMetering } from "./metering.ts";
 import { destinationOf, ORIGIN } from "@/worker/hosts.ts";
 
 const REPO = fileURLToPath(new URL("../..", import.meta.url));
@@ -87,6 +88,9 @@ after(async () => {
   await rm(dir, { recursive: true, force: true });
 });
 
+/** Owned keys' account meters and rate bindings. */
+const metering = new TestMetering();
+
 const newKey = (perMinuteLimit = 1_000) => createKey(db, { label: "developers", perMinuteLimit }, NOW);
 
 /** A key a developer made in the dashboard, with this access. */
@@ -107,6 +111,7 @@ function send(path: string, init: { key?: string; method?: string; body?: string
     appDb: db,
     releaseId: RELEASE,
     now: NOW,
+    metering,
   });
 }
 
@@ -295,7 +300,7 @@ test("every JavaScript example, run, sends its example's request and gets its ex
   for (const [i, [name, , example]] of EXAMPLES.entries()) {
     let status = 0;
     const fetch = (async (input: string, init: RequestInit) => {
-      const response = await handleApi(new Request(input, init), { db: dictionary, appDb: db, releaseId: RELEASE, now: NOW });
+      const response = await handleApi(new Request(input, init), { db: dictionary, appDb: db, releaseId: RELEASE, now: NOW, metering });
       status = response.status;
       return response;
     }) as typeof globalThis.fetch;

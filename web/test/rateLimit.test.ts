@@ -23,17 +23,10 @@ import {
   withRateLimits,
   type LimitBindings,
 } from "@/worker/rateLimit.ts";
+import { RATE_BINDINGS } from "../../src/api/accountRate.js";
+import { RATE_WINDOW_SECONDS } from "@/worker/api/keyLimits.ts";
+import { FakeRateLimit } from "./metering.ts";
 
-/** The binding's contract: `limit` answers success until a key has used up its allowance. */
-class FakeRateLimit implements RateLimit {
-  readonly counts = new Map<string, number>();
-  constructor(readonly allowance: number) {}
-  async limit({ key }: RateLimitOptions): Promise<RateLimitOutcome> {
-    const count = (this.counts.get(key) ?? 0) + 1;
-    this.counts.set(key, count);
-    return { success: count <= this.allowance };
-  }
-}
 
 function harness() {
   const env = {
@@ -282,11 +275,26 @@ test("the limits are the rulings, in the Wrangler configuration, the same in pro
     { name: "REPORT_OPEN_LIMIT", namespace_id: "1284", simple: { limit: 10, period: 60 } },
     { name: "SIGN_IN_LIMIT", namespace_id: "1651", simple: { limit: 10, period: 60 } },
     { name: "KEY_CREATE_LIMIT", namespace_id: "1681", simple: { limit: 5, period: 60 } },
+    { name: "CALLS_60", namespace_id: "2611", simple: { limit: 60, period: 60 } },
+    { name: "CALLS_300", namespace_id: "2612", simple: { limit: 300, period: 60 } },
   ]);
   // Bindings are not inherited by an environment, so production repeats them.
   assert.deepEqual(production.ratelimits, local.ratelimits);
   // Retry-After is the window, which the code cannot read from the binding.
   for (const { simple } of local.ratelimits) assert.equal(simple.period, RETRY_AFTER_SECONDS);
+  assert.equal(RATE_WINDOW_SECONDS, RETRY_AFTER_SECONDS);
+  // Each plan rate's binding allows exactly the calls a minute the API counts it for.
+  for (const [perMinute, name] of Object.entries(RATE_BINDINGS)) {
+    const binding = local.ratelimits.find((entry: { name: string }) => entry.name === name);
+    assert.equal(binding?.simple.limit, Number(perMinute), name);
+  }
+});
+
+test("the account meter's Durable Object is bound, and migrated as a SQLite class, locally and in production", () => {
+  for (const config of [read(), read("production")]) {
+    assert.deepEqual(config.durable_objects.bindings, [{ name: "ACCOUNT_METER", class_name: "AccountMeterObject" }]);
+    assert.deepEqual(config.migrations, [{ tag: "v1-account-meter", new_sqlite_classes: ["AccountMeterObject"] }]);
+  }
 });
 
 test("production is what is live: its three custom domains only, no D1, logs on; local keeps its two D1s", () => {

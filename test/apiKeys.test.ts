@@ -8,15 +8,15 @@ import { applyAppMigrations } from "../src/db/app/migrations.js";
 import { drizzleOverNodeSqlite } from "../src/db/app/nodeSqlite.js";
 import { runKeyCommand } from "../src/api/keyCli.js";
 import {
-  acceptKeyQuery,
   authenticate,
   hashApiKey,
   insertKeyQuery,
   keyByHashQuery,
   keyByIdQuery,
   revokeKeyQuery,
+  stampLastUsedQuery,
 } from "../src/api/keys.js";
-import { chargeCallsQuery, countMinuteQuery, sweepMinutesQuery } from "../src/api/usage.js";
+import { chargeCallsQuery, countMinuteQuery, minuteCallsQuery, sweepMinutesQuery } from "../src/api/usage.js";
 import { appTablesOverNodeSqlite } from "../src/db/app/nodeSqlite.js";
 
 const NOW = Date.parse("2026-09-27T12:00:00Z");
@@ -45,9 +45,10 @@ test("every key, minute and usage read or write is on a primary key or an index"
   // Reads and updates: a SEARCH through the key's index, never a SCAN.
   const searches: [Built, RegExp][] = [
     [keyByHashQuery(app, "0".repeat(64)), /SEARCH api_key USING (COVERING )?INDEX sqlite_autoindex_api_key_1 \(key_hash=\?\)/],
-    [acceptKeyQuery(app, "0".repeat(64), at), /SEARCH api_key USING INDEX sqlite_autoindex_api_key_1 \(key_hash=\?\)/],
+    [stampLastUsedQuery(app, 1, at, at), /SEARCH api_key USING INTEGER PRIMARY KEY \(rowid=\?\)/],
     [keyByIdQuery(app, 1), /SEARCH api_key USING INTEGER PRIMARY KEY \(rowid=\?\)/],
     [revokeKeyQuery(app, 1, at), /SEARCH api_key USING INTEGER PRIMARY KEY \(rowid=\?\)/],
+    [minuteCallsQuery(app, 1, 100), /SEARCH api_key_minute USING (COVERING )?INDEX sqlite_autoindex_api_key_minute_1 \(key_id=\? AND minute=\?\)/],
     [sweepMinutesQuery(app, 1, 100), /SEARCH api_key_minute USING (COVERING )?INDEX sqlite_autoindex_api_key_minute_1 \(key_id=\? AND minute<\?\)/],
   ];
   for (const [statement, expected] of searches) {
@@ -61,7 +62,7 @@ test("every key, minute and usage read or write is on a primary key or an index"
   // conflict target only when a primary key or unique index backs it.
   for (const statement of [
     insertKeyQuery(app, "0".repeat(64), { label: "k", perMinuteLimit: 1 }, "t", "lx_00000000"),
-    countMinuteQuery(app, 1, 100),
+    countMinuteQuery(app, 1, 100, 3),
     chargeCallsQuery(app, 1, "2026-09-27", 2),
   ]) {
     const plan = planOf(statement);
@@ -69,7 +70,7 @@ test("every key, minute and usage read or write is on a primary key or an index"
   }
 });
 
-test("a key stored before its reads moved onto Drizzle still authenticates, in the one statement that stamps its use", async () => {
+test("a key stored before its reads moved onto Drizzle authenticates in one read, and stamps its use at most once a minute", async () => {
   // The row as the raw INSERT of the slice before stored it: an admin key from
   // before #187, with no endpoints or expiry of its own.
   const sqlite = appDb();
@@ -93,8 +94,21 @@ test("a key stored before its reads moved onto Drizzle still authenticates, in t
     key: { keyId: 1, label: "learning app", holder: { kind: "admin", perMinuteLimit: 60 }, endpoints: { kind: "all" } },
   });
   assert.deepEqual({ ...sqlite.prepare("SELECT * FROM api_key").get() }, { ...before, last_used_at: new Date(NOW).toISOString() });
-  assert.equal(sent.length, 1, sent.join("\n"));
-  assert.match(sent[0], /^update "api_key" set "last_used_at" = \? where .* returning /);
+  // Never used: the read, then the stamp.
+  assert.equal(sent.length, 2, sent.join("\n"));
+  assert.match(sent[0], /^select .* from "api_key" where "api_key"."key_hash" = \?$/);
+  assert.match(sent[1], /^update "api_key" set "last_used_at" = \? where /);
+
+  // Within the minute the read is all; a minute on, the stamp again.
+  const statements = async (at: number) => {
+    sent.length = 0;
+    assert.equal((await authenticate({ app: drizzleOverNodeSqlite(watched) }, key, at)).outcome, "accepted");
+    return sent.map((sql) => sql.split(" ")[0]);
+  };
+  assert.deepEqual(await statements(NOW + 59_999), ["select"]);
+  assert.equal(sqlite.prepare("SELECT last_used_at FROM api_key").get()?.last_used_at, new Date(NOW).toISOString());
+  assert.deepEqual(await statements(NOW + 60_000), ["select", "update"]);
+  assert.equal(sqlite.prepare("SELECT last_used_at FROM api_key").get()?.last_used_at, new Date(NOW + 60_000).toISOString());
 });
 
 test("the key CLI prints a new key once, stores only its hash, and revokes it", async () => {

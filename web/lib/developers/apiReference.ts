@@ -14,7 +14,6 @@
 import { API_PREFIX, countedPerWord, ENDPOINTS, type CallBasis, type Endpoint, type EndpointCountedPer } from "@lexema/api/calls.ts";
 import { MAX_QUERY_LENGTH } from "@lexema/lookup/lookup.ts";
 import { SUGGESTION_LIMIT } from "@lexema/lookup/suggest.ts";
-import { MAX_BATCH_WORDS } from "@/worker/api/endpoints.ts";
 import { SECTION_KEY } from "@/worker/api/lookupAnswer.ts";
 import { GRAMMAR_CODES, MATCHES, PARTS_OF_SPEECH, POS_ALIASES, SECTIONS, type Match } from "@/worker/api/lookupFilters.ts";
 import { ORIGIN } from "@/worker/hosts.ts";
@@ -597,14 +596,14 @@ export const ENDPOINT_REFERENCE: Readonly<Record<Endpoint, EndpointReference>> =
   "lookup/batch": {
     method: "POST",
     title: "Look up many words",
-    tagline: `Up to ${MAX_BATCH_WORDS} words at once`,
-    summary: `Up to ${MAX_BATCH_WORDS} words at once, each answered light: one entry per candidate with its lemma and part of speech, or one \`found: false\` entry for a word not in the release.`,
+    tagline: "Many words at once",
+    summary: "Up to as many words at once as the key may make calls in a minute, each answered light: one entry per candidate with its lemma and part of speech, or one `found: false` entry for a word not in the release.",
     parameters: [
       {
         name: "q",
         type: "string[]",
         required: true,
-        description: `In the JSON body, \`{"q": [...]}\`: 1 to ${MAX_BATCH_WORDS} words, each 1 to ${MAX_QUERY_LENGTH} characters.`,
+        description: `In the JSON body, \`{"q": [...]}\`: from 1 word up to the key's calls a minute, each 1 to ${MAX_QUERY_LENGTH} characters. Each word is a call, toward the minute as toward the month.`,
       },
     ],
     answers: [{ status: "200", description: "`results` holds the entries, word by word in the order sent." }],
@@ -702,7 +701,11 @@ export const ERRORS: readonly ErrorReference[] = [
     code: "invalid_parameter",
     when: "A parameter's value is not one it takes, or the parameter is sent empty or more than once.",
   },
-  { status: 400, code: "invalid_body", when: `The batch body is not \`{"q": [...]}\` with 1 to ${MAX_BATCH_WORDS} non-empty words.` },
+  {
+    status: 400,
+    code: "invalid_body",
+    when: "The batch body is not `{\"q\": [...]}` with at least 1 non-empty word and no more words than the key's calls a minute.",
+  },
   { status: 401, code: "missing_key", when: "No `X-API-Key` header." },
   { status: 401, code: "invalid_key", when: "The key is not one Lexema issued." },
   { status: 401, code: "revoked_key", when: "The key has been revoked." },
@@ -711,16 +714,14 @@ export const ERRORS: readonly ErrorReference[] = [
   { status: 404, code: "unknown_lemma", when: "`/inflect`: `lemma` heads no record." },
   { status: 404, code: "not_found", when: "No endpoint at this path." },
   { status: 405, code: "method_not_allowed", when: "The endpoint takes another method, named in the `Allow` header." },
-  { status: 429, code: "rate_limited", when: "The key has used its calls for this minute." },
+  { status: 429, code: "rate_limited", when: "The key's account has used its calls for this minute, across all its keys." },
   { status: 503, code: "unavailable", when: "The request could not be answered. Try again later." },
 ];
 
-/** The rate-limit headers, and what each says. */
+/** The rate-limit headers, and what each says (#200 R1.5, #261). */
 export const HEADERS: readonly { name: string; description: string }[] = [
-  { name: "RateLimit-Limit", description: "The key's calls per minute." },
-  { name: "RateLimit-Remaining", description: "Calls left in this minute." },
-  { name: "RateLimit-Reset", description: "Seconds until this minute ends." },
-  { name: "Retry-After", description: "On a `429` only: seconds until this minute ends." },
+  { name: "RateLimit-Limit", description: "The calls a minute the key's account may make, shared by all its keys." },
+  { name: "Retry-After", description: "On a `429` only: seconds to wait before trying again, 60." },
 ];
 
 /** The widest line the examples are printed to, in characters. */
