@@ -10,7 +10,7 @@
     "deploy:production": "CLOUDFLARE_ENV=production vinext build && wrangler deploy --config dist/server/wrangler.json",
     "deploy:workers-builds": "node builds/production.ts",
     "preview:prepare": "node builds/preview.ts",
-    "typecheck": "wrangler types && tsc --noEmit"
+    "typecheck": "wrangler types --env-file typecheck.env && tsc --noEmit"
   },
   "dependencies": {
     "@base-ui/react": "1.8.0",

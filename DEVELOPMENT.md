@@ -23,7 +23,9 @@ pnpm --filter @lexema/web typecheck   # the Worker's own tsc, over web/ and the
 `.nvmrc` pins Node 24 for CI; the checks also pass on Node 26. GitHub Actions runs
 all three on every push to `main` and every pull request
 ([ci.yml](./.github/workflows/ci.yml)). The web typecheck runs `wrangler types`
-first, which generates from `wrangler.jsonc` and needs no Cloudflare account.
+first, which generates from `wrangler.jsonc` and needs no Cloudflare account. It
+reads secrets from the empty [web/typecheck.env](./web/typecheck.env), never from a
+local `web/.dev.vars`, so it gives the same answer on a laptop as in CI.
 
 The `test` script finds its files by pattern, so a new test needs no edit to
 [package.json](./package.json). It runs `test/*.test.ts`, then `web/test/*.test.ts`
