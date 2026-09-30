@@ -119,7 +119,7 @@
     ],
     // The same limits as production, under their own namespace ids, so a
     // Preview's traffic never counts against a production visitor.
-    // web/test/rateLimit.test.ts fails if an id is shared.
+    // web/test/preview.test.ts fails if an id is shared.
     "ratelimits": [
       { "name": "SEARCH_LIMIT", "namespace_id": "91281", "simple": { "limit": 15, "period": 60 } },
       { "name": "SUGGEST_LIMIT", "namespace_id": "91282", "simple": { "limit": 120, "period": 60 } },
