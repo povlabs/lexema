@@ -688,7 +688,7 @@ export const GRAMMAR_VALUES = (Object.entries(GRAMMAR_CODES) as [string, Readonl
 );
 
 export interface ErrorReference {
-  status: 400 | 401 | 403 | 404 | 405 | 429 | 503;
+  status: 400 | 401 | 402 | 403 | 404 | 405 | 429 | 503;
   code: string;
   when: string;
 }
@@ -710,18 +710,27 @@ export const ERRORS: readonly ErrorReference[] = [
   { status: 401, code: "invalid_key", when: "The key is not one Lexema issued." },
   { status: 401, code: "revoked_key", when: "The key has been revoked." },
   { status: 401, code: "expired_key", when: "The key is past the expiry it was made with." },
+  { status: 402, code: "plan_required", when: "The key's account has no active plan: none yet, or one that has ended." },
   { status: 403, code: "endpoint_not_allowed", when: "The key is limited to other endpoints." },
   { status: 404, code: "unknown_lemma", when: "`/inflect`: `lemma` heads no record." },
   { status: 404, code: "not_found", when: "No endpoint at this path." },
   { status: 405, code: "method_not_allowed", when: "The endpoint takes another method, named in the `Allow` header." },
   { status: 429, code: "rate_limited", when: "The key's account has used its calls for this minute, across all its keys." },
+  {
+    status: 429,
+    code: "allowance_exceeded",
+    when: "The key's account has used its plan's calls for this billing period. The message names when they reset.",
+  },
   { status: 503, code: "unavailable", when: "The request could not be answered. Try again later." },
 ];
 
-/** The rate-limit headers, and what each says (#200 R1.5, #261). */
+/** The rate-limit headers, and what each says (#200 R1.5, #261, #263). */
 export const HEADERS: readonly { name: string; description: string }[] = [
   { name: "RateLimit-Limit", description: "The calls a minute the key's account may make, shared by all its keys." },
-  { name: "Retry-After", description: "On a `429` only: seconds to wait before trying again, 60." },
+  {
+    name: "Retry-After",
+    description: "On a `429` only: seconds to wait before trying again, 60 past the minute's limit, or until the billing period resets past its calls.",
+  },
 ];
 
 /** The widest line the examples are printed to, in characters. */

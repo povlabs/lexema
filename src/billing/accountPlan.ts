@@ -3,7 +3,7 @@
 // `subscription` rows; Lexema owns `enterprise_plan` (src/db/app/schema.ts).
 // What a row means is src/billing/plans.ts. No Stripe call is made here.
 
-import { and, eq, isNull, max, sql } from "drizzle-orm";
+import { and, eq, isNull, max, sql, type SQLWrapper } from "drizzle-orm";
 import type { AppDatabase, AppTables } from "../db/app/database.js";
 import { developerAccount, enterprisePlan, subscription } from "../db/app/schema.js";
 import {
@@ -11,6 +11,7 @@ import {
   serving,
   stateOfEnterprise,
   stateOfSubscription,
+  type EnterprisePlanRow,
   type Period,
   type PlanLimits,
   type PlanState,
@@ -36,29 +37,48 @@ function subscriptionState(row: SubscriptionRow): PlanState {
 }
 
 /** The id of the account's newest subscription row. The plugin names the account as text (`reference_id`). */
-const newestSubscriptionId = (db: AppDatabase, accountId: number) =>
+const newestSubscriptionId = (db: AppDatabase, accountId: number | SQLWrapper) =>
   db
     .select({ id: max(subscription.id) })
     .from(subscription)
-    .where(eq(subscription.referenceId, String(accountId)));
-
-/** The account's live Enterprise row and its newest subscription row, each or both absent, in one statement. */
-export const accountPlanQuery = (db: AppDatabase, accountId: number) =>
-  db
-    .select({ enterprise: enterprisePlan, subscription })
-    .from(developerAccount)
-    .leftJoin(enterprisePlan, and(eq(enterprisePlan.accountId, developerAccount.id), isNull(enterprisePlan.endedAt)))
-    .leftJoin(subscription, eq(subscription.id, sql`(${newestSubscriptionId(db, accountId)})`))
-    .where(eq(developerAccount.id, accountId));
+    .where(eq(subscription.referenceId, typeof accountId === "number" ? String(accountId) : sql`CAST(${accountId} AS TEXT)`));
 
 /**
- * An account's plan at `now`: its live Enterprise plan if it has one, else what
- * its newest subscription says, else none. One read.
+ * The join conditions that read an account's plan rows beside another row:
+ * its live Enterprise row, and its newest subscription row. `accountId` is the
+ * column that names the account, so the key read (src/api/keys.ts) reads a
+ * key's plan in its own statement.
  */
+export const planJoins = (db: AppDatabase, accountId: number | SQLWrapper) => ({
+  enterprise: and(eq(enterprisePlan.accountId, accountId), isNull(enterprisePlan.endedAt)),
+  subscription: eq(subscription.id, sql`(${newestSubscriptionId(db, accountId)})`),
+});
+
+/** An account's plan rows as one statement reads them, each absent when the account has none. */
+export interface PlanRows {
+  readonly enterprise: EnterprisePlanRow | null;
+  readonly subscription: SubscriptionRow | null;
+}
+
+/** The plan state an account's rows put it in: its live Enterprise plan if it has one, else what its newest subscription says, else none. */
+export const stateOfPlanRows = (rows: PlanRows): PlanState =>
+  rows.enterprise !== null ? stateOfEnterprise(rows.enterprise) : rows.subscription !== null ? subscriptionState(rows.subscription) : NO_PLAN;
+
+/** The account's live Enterprise row and its newest subscription row, each or both absent, in one statement. */
+export const accountPlanQuery = (db: AppDatabase, accountId: number) => {
+  const joins = planJoins(db, accountId);
+  return db
+    .select({ enterprise: enterprisePlan, subscription })
+    .from(developerAccount)
+    .leftJoin(enterprisePlan, joins.enterprise)
+    .leftJoin(subscription, joins.subscription)
+    .where(eq(developerAccount.id, accountId));
+};
+
+/** An account's plan at `now`. One read. */
 export async function accountPlan(db: AppTables, accountId: number, now: number): Promise<AccountPlan> {
   const [row] = await accountPlanQuery(db.app, accountId);
-  const state =
-    row?.enterprise != null ? stateOfEnterprise(row.enterprise) : row?.subscription != null ? subscriptionState(row.subscription) : NO_PLAN;
+  const state = row === undefined ? NO_PLAN : stateOfPlanRows(row);
   return { state, serving: serving(state, now) };
 }
 

@@ -49,11 +49,11 @@ test("accountPlan answers the live Enterprise plan first, else the newest subscr
   const enterprisePeriod = { start: Date.parse("2026-10-01T00:00:00Z"), end: Date.parse("2026-11-01T00:00:00Z") };
   assert.deepEqual(await accountPlan(appDb, 1, NOW), {
     state: { kind: "active", plan: { id: "starter" }, period },
-    serving: { serving: true, limits: { callsPerPeriod: 1_000_000, callsPerMinute: 60 }, resetsAt: period.end },
+    serving: { serving: true, limits: { callsPerPeriod: 1_000_000, callsPerMinute: 60 }, period },
   });
   assert.deepEqual(await accountPlan(appDb, 2, NOW), {
     state: { kind: "active", plan: enterprise, period: enterprisePeriod },
-    serving: { serving: true, limits: { callsPerPeriod: 20_000_000, callsPerMinute: 1000 }, resetsAt: enterprisePeriod.end },
+    serving: { serving: true, limits: { callsPerPeriod: 20_000_000, callsPerMinute: 1000 }, period: enterprisePeriod },
   });
   assert.deepEqual(await accountPlan(appDb, 3, NOW), { state: { kind: "ended", plan: { id: "pro" } }, serving: { serving: false } });
   assert.deepEqual(await accountPlan(appDb, 4, NOW), { state: { kind: "none" }, serving: { serving: false } });

@@ -5,6 +5,7 @@ import { DatabaseSync } from "node:sqlite";
 import type { MeterSql, SqlValue } from "../src/api/accountMeter.js";
 import type { AppTables } from "../src/db/app/database.js";
 import { applyAppMigrations } from "../src/db/app/migrations.js";
+import { subscription } from "../src/db/app/schema.js";
 import { appTablesOverNodeSqlite } from "../src/db/app/nodeSqlite.js";
 import { fromNodeSqlite, type LookupDatabase } from "../src/lookup/database.js";
 
@@ -24,6 +25,19 @@ export function freshAppDatabase(): { sqlite: DatabaseSync; appDb: AppTables } {
   applyAppMigrations(sqlite);
   return { sqlite, appDb: appTablesOverNodeSqlite(sqlite) };
 }
+
+/** The fields of a `subscription` row a test sets; the rest are the plugin's and stay empty. */
+export interface SeededSubscription {
+  plan: "starter" | "pro";
+  status: "active" | "trialing" | "past_due" | "canceled" | "unpaid" | "incomplete" | "incomplete_expired" | "paused";
+  periodStart: Date | null;
+  periodEnd: Date | null;
+  cancelAt?: Date | null;
+}
+
+/** Give an account a Stripe plan the way the plugin's webhook would (src/db/app/schema.ts); no Stripe call is made. */
+export const subscribe = (appDb: AppTables, accountId: number, row: SeededSubscription) =>
+  appDb.app.insert(subscription).values({ referenceId: String(accountId), cancelAt: null, ...row });
 
 /** An account meter's storage over a `node:sqlite` database, as a Durable Object's `ctx.storage.sql` is (src/api/accountMeter.ts). */
 export function meterSqlOver(sqlite: DatabaseSync): MeterSql {

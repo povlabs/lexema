@@ -308,7 +308,7 @@ const GUIDE_TOPICS: Readonly<Record<Guide, () => ReactNode>> = {
         with Google or GitHub to create a key on your dashboard. A key is shown once, when it is made; Lexema keeps only
         its SHA-256, so a lost key is revoked and replaced.
       </p>
-      <Paragraph>{"Send the key in the `X-API-Key` header of every request. A request without a valid key is a `401`."}</Paragraph>
+      <Paragraph>{"Send the key in the `X-API-Key` header of every request. A request without a valid key is a `401`, and one whose account has no active plan is a `402`."}</Paragraph>
     </Topic>
   ),
   "calls-and-limits": () => (
@@ -337,6 +337,7 @@ const GUIDE_TOPICS: Readonly<Record<Guide, () => ReactNode>> = {
         </tbody>
       </table>
       <Paragraph>{"Your account may make a number of calls a minute, shared by all its keys. Calls count toward the minute as they do toward the month, so a batch of 7 words is 7 calls, and a request refused before it is answered, a `400`, `403`, `404` or `405`, counts nothing. Every response to a valid key carries `RateLimit-Limit`. Past the limit, the answer is a `429` with `Retry-After`."}</Paragraph>
+      <Paragraph>{"Your plan also allows a number of calls each billing period. Past them, the answer is a `429` `allowance_exceeded` that names when the period resets, with `Retry-After` in seconds to it. A refused call does not count toward the period's calls. On Starter and Pro, and on an Enterprise rate of 60 or 300 calls a minute, it still counts toward the minute; on any other Enterprise rate, it counts toward neither."}</Paragraph>
       <Rows rows={HEADERS.map((header) => ({ name: header.name, description: header.description }))} />
     </Topic>
   ),

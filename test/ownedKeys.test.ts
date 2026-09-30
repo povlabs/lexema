@@ -30,6 +30,7 @@ import {
   type KeyName,
 } from "../src/api/ownedKeys.js";
 import { accountUsage, accountUsageQuery, chargeCalls, USAGE_WINDOW_DAYS } from "../src/api/usage.js";
+import { NO_PLAN } from "../src/billing/plans.js";
 import type { AppTables } from "../src/db/app/database.js";
 import { appTablesOverNodeSqlite } from "../src/db/app/nodeSqlite.js";
 
@@ -233,7 +234,7 @@ test("usage covers the last 30 UTC days per key and in total, 0 where a key was 
   const a = await ownedKey(db, ada, "a");
   const b = await ownedKey(db, ada, "b");
   const bobs = await ownedKey(db, bob, "bob's");
-  const keyOf = (keyId: number): ApiKey => ({ keyId, label: "", holder: { kind: "owned", accountId: ada }, endpoints: ALL_ENDPOINTS });
+  const keyOf = (keyId: number): ApiKey => ({ keyId, label: "", holder: { kind: "owned", accountId: ada, plan: NO_PLAN }, endpoints: ALL_ENDPOINTS });
 
   await chargeCalls(db, keyOf(a.keyId), { endpoint: "lookup" }, NOW); // today: 1
   await chargeCalls(db, keyOf(a.keyId), { endpoint: "lookup/batch", words: 6 }, NOW); // today: 6 more
@@ -270,7 +271,7 @@ test("deleting an account revokes its keys, removes its sessions and identities,
   const keys = [await ownedKey(db, ada, "one"), await ownedKey(db, ada, "two")];
   const bobs = await ownedKey(db, bob, "bob's");
   await revokeAccountKey(db, ada, keys[1].keyId, NOW - 1_000);
-  await chargeCalls(db, { keyId: keys[0].keyId, label: "", holder: { kind: "owned", accountId: ada }, endpoints: ALL_ENDPOINTS }, { endpoint: "lookup" }, NOW);
+  await chargeCalls(db, { keyId: keys[0].keyId, label: "", holder: { kind: "owned", accountId: ada, plan: NO_PLAN }, endpoints: ALL_ENDPOINTS }, { endpoint: "lookup" }, NOW);
   const session = signedIn(sqlite, ada);
   const bobSession = signedIn(sqlite, bob);
 

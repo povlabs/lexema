@@ -79,16 +79,25 @@ export type PlanState =
 
 export const NO_PLAN: PlanState = { kind: "none" };
 
-/** Whether an account's keys may call now, and if so under which limits and until when its count runs. */
+/**
+ * Whether an account's keys may call now, and if so under which limits and in
+ * which billing period their calls count: the allowance resets at `period.end`.
+ */
 export type Serving =
   | { readonly serving: false }
-  | { readonly serving: true; readonly limits: PlanLimits; readonly resetsAt: number };
+  | { readonly serving: true; readonly limits: PlanLimits; readonly period: Period };
 
-/** What a plan state lets an account's keys do at `now`. */
+/**
+ * What a plan state lets an account's keys do at `now`. Past due still serves
+ * (#200 R1.1), and a cancelling plan serves until `endsAt`. An Enterprise
+ * period is renewed by nothing, so it stops serving at its end until Huey sets
+ * the next one (Huey, #222); a Stripe period is moved on by Stripe's renewal.
+ */
 export function serving(state: PlanState, now: number): Serving {
   if (state.kind === "none" || state.kind === "ended") return { serving: false };
   if (state.kind === "cancelling" && now >= state.endsAt) return { serving: false };
-  return { serving: true, limits: limitsOf(state.plan), resetsAt: state.period.end };
+  if (state.plan.id === "enterprise" && now >= state.period.end) return { serving: false };
+  return { serving: true, limits: limitsOf(state.plan), period: state.period };
 }
 
 // ---------------------------------------------------------------------------
@@ -174,8 +183,8 @@ export interface EnterprisePlanRow extends PlanLimits {
 
 /**
  * The plan state an Enterprise row puts its account in: active over its period
- * while `endedAt` is unset, ended once it is. The period is read as stored;
- * what a period past its end does is the enforcement slice's (#222).
+ * while `endedAt` is unset, ended once it is. The period is read as stored,
+ * and `serving` stops it at its end (#222).
  */
 export function stateOfEnterprise(row: EnterprisePlanRow): PlanState {
   const plan: EnterprisePlan = { id: "enterprise", callsPerPeriod: row.callsPerPeriod, callsPerMinute: row.callsPerMinute };

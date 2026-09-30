@@ -25,7 +25,11 @@ import { accountUsage, USAGE_WINDOW_DAYS } from "../../src/api/usage.js";
 import { seedSql } from "../../src/import/seedSql.js";
 import type { AppTables } from "../../src/db/app/database.js";
 import type { LookupDatabase } from "../../src/lookup/database.js";
-import { freshAppDatabase, readOnlyDictionary } from "../../test/databases.js";
+import { freshAppDatabase, readOnlyDictionary, subscribe, type SeededSubscription } from "../../test/databases.js";
+import { runPlanCommand } from "../../src/billing/planCli.js";
+import { PLAN_TERMS } from "../../src/billing/plans.js";
+import { subscription } from "../../src/db/app/schema.js";
+import { eq } from "drizzle-orm";
 import { drizzleOverNodeSqlite } from "../../src/db/app/nodeSqlite.js";
 import { lookup } from "../../src/lookup/lookup.js";
 import { findNearby, type Nearby } from "../../src/lookup/nearby.js";
@@ -41,6 +45,11 @@ const REPO = fileURLToPath(new URL("../..", import.meta.url));
 const RELEASE = "it-api-test";
 /** 12:00:20 UTC: 40 seconds before the minute ends. */
 const NOW = Date.parse("2026-09-27T12:00:20Z");
+/** The billing period NOW falls in, as a Stripe subscription item holds it. */
+const PERIOD_START = new Date("2026-09-10T00:00:00Z");
+const PERIOD_END = new Date("2026-10-10T00:00:00Z");
+/** An active Starter plan over that period: what an owned key's account has unless a test says otherwise. */
+const STARTER: SeededSubscription = { plan: "starter", status: "active", periodStart: PERIOD_START, periodEnd: PERIOD_END };
 
 let dir: string;
 /** The seeded dictionary, read-only as the Worker's `DB` is. */
@@ -862,12 +871,18 @@ test("a request an endpoint refuses before answering counts no calls", async () 
 });
 
 /** A developer account with one key made in the dashboard, in `appDb`. */
-async function accountWithKey(appDb: AppTables, subject: string): Promise<{ accountId: number; keyId: number; key: string }> {
+async function accountWithKey(
+  appDb: AppTables,
+  subject: string,
+  plan: SeededSubscription | "no plan" = STARTER,
+  access?: KeyAccess,
+): Promise<{ accountId: number; keyId: number; key: string }> {
   const identity = verifiedIdentity("github", { subject, verifiedEmail: `${subject}@example.com`, name: undefined });
   const name = keyName(subject);
   assert.ok(identity !== undefined && name !== undefined);
   const { accountId } = await signInAccount(appDb, identity, NOW);
-  const created = await createAccountKey(appDb, accountId, name, NOW);
+  if (plan !== "no plan") await subscribe(appDb, accountId, plan);
+  const created = await createAccountKey(appDb, accountId, name, NOW, access);
   assert.ok(created.outcome === "created");
   return { accountId, keyId: created.keyId, key: created.key };
 }
@@ -971,15 +986,137 @@ test("an account's keys share its 60 calls a minute, a batch's words each one: t
   assert.equal(wide.status, 400);
 });
 
-/** A key made in the dashboard with this access (#187), under its own account. */
-async function keyWith(subject: string, access: KeyAccess): Promise<{ keyId: number; key: string }> {
-  const identity = verifiedIdentity("github", { subject, verifiedEmail: `${subject}@example.com`, name: undefined });
-  const name = keyName(subject);
-  assert.ok(identity !== undefined && name !== undefined);
-  const created = await createAccountKey(db, (await signInAccount(db, identity, NOW)).accountId, name, NOW, access);
-  assert.ok(created.outcome === "created");
-  return created;
+// Plans (#161, #263): each account's plan is a seeded row, as the Stripe
+// plugin's webhook or the Enterprise CLI writes it. No Stripe call is made.
+
+/** An Enterprise plan set with the CLI, as Huey sets one. */
+async function enterprise(appDb: AppTables, accountId: number, calls: number, perMinute: number, from: string, until: string) {
+  const args = ["enterprise", String(accountId), "--calls", String(calls), "--per-minute", String(perMinute), "--from", from, "--until", until];
+  const set = await runPlanCommand(args, appDb, NOW);
+  assert.equal(set.status, 0, set.out);
 }
+
+/** One request to an endpoint with its own metering and app database. */
+const requestOf =
+  (appDb: AppTables, meters: TestMetering) =>
+  (key: string, path: string, body?: string, now = NOW): Promise<Response> =>
+    handleApi(
+      new Request(`https://api.lexema.fyi/v1/${path}`, { method: body === undefined ? "GET" : "POST", headers: { "x-api-key": key }, body }),
+      { db: dictionary, appDb, releaseId: RELEASE, now, metering: meters },
+    );
+
+test("an owned key with no serving plan is a 402 plan_required, counting nothing; past due and cancelling before its end serve, and an admin key needs no plan", async () => {
+  const { sqlite: own, appDb } = freshAppDatabase();
+  const meters = new TestMetering();
+  const ask = requestOf(appDb, meters);
+  const day = 24 * 60 * 60 * 1000;
+  const admin = await createKey(appDb, { label: "admin", perMinuteLimit: 60 }, NOW);
+  // No plan row exists anywhere yet: the admin key is outside plans (#200 R1.2).
+  assert.equal((await ask(admin.key, "exists?q=casa")).status, 200);
+
+  const accounts: [string, SeededSubscription | "no plan", number][] = [
+    ["no plan", "no plan", 402],
+    ["ended", { ...STARTER, status: "canceled" }, 402],
+    ["unpaid", { ...STARTER, status: "unpaid" }, 402],
+    ["cancelled, past its end", { ...STARTER, cancelAt: new Date(NOW - 1_000) }, 402],
+    ["cancelled, before its end", { ...STARTER, cancelAt: new Date(NOW + day) }, 200],
+    ["past due", { ...STARTER, status: "past_due" }, 200],
+  ];
+  for (const [label, plan, status] of accounts) {
+    const { key } = await accountWithKey(appDb, label.replaceAll(/[^a-z]/g, "-"), plan);
+    const response = await ask(key, "exists?q=casa");
+    assert.equal(response.status, status, label);
+    if (status !== 402) continue;
+    assert.deepEqual(((await response.json()) as Json).error, {
+      code: "plan_required",
+      message: "This key's account has no active plan. Choose one at https://developers.lexema.fyi/pricing.",
+    });
+    assert.equal(response.headers.get("ratelimit-limit"), null, label);
+  }
+  // Only the two serving accounts reached their meters; a 402 counts nothing.
+  assert.equal(meters.calls.length, 2);
+
+  // Enterprise stops serving at its --until date (Huey, #222) until the next period is set.
+  const lapsing = await accountWithKey(appDb, "lapsing", "no plan");
+  await enterprise(appDb, lapsing.accountId, 1_000, 10, "2026-09-01", "2026-09-28");
+  assert.equal((await ask(lapsing.key, "exists?q=casa")).status, 200);
+  const lapsed = await ask(lapsing.key, "exists?q=casa", undefined, Date.parse("2026-09-28T00:00:00Z"));
+  assert.equal(lapsed.status, 402);
+  assert.equal(((await lapsed.json()) as Json).error.code, "plan_required");
+  await enterprise(appDb, lapsing.accountId, 1_000, 10, "2026-09-28", "2026-10-28");
+  assert.equal((await ask(lapsing.key, "exists?q=casa", undefined, Date.parse("2026-09-28T00:00:00Z"))).status, 200);
+  own.close();
+});
+
+test("with Starter's allowance lowered to 3, the call past it is a 429 allowance_exceeded naming the period's end, counting nothing, and the next period's first call answers 200", async (t) => {
+  // The table is a constant; lowering it here stands in for the million a real test cannot spend.
+  t.mock.property(PLAN_TERMS.starter as { callsPerPeriod: number }, "callsPerPeriod", 3);
+  const meters = new TestMetering();
+  const ask = requestOf(db, meters);
+  const { accountId, key } = await accountWithKey(db, "allowance");
+  assert.equal((await ask(key, "exists?q=casa")).status, 200);
+  assert.equal((await ask(key, "exists?q=casa")).status, 200);
+
+  const expected = {
+    code: "allowance_exceeded",
+    message: "This key's account has used its 3 calls for this billing period. They reset at 2026-10-10T00:00:00.000Z.",
+  };
+  // Seconds from 2026-09-27T12:00:20Z to 2026-10-10T00:00:00Z.
+  const retryAfter = String((PERIOD_END.getTime() - NOW) / 1000);
+  const batch = await ask(key, "lookup/batch", JSON.stringify({ q: ["casa", "sale"] }));
+  assert.equal(batch.status, 429);
+  assert.deepEqual(((await batch.json()) as Json).error, expected);
+  assert.equal(batch.headers.get("retry-after"), retryAfter);
+  // The refused batch counted nothing: the third call still fits, and the fourth does not.
+  assert.equal((await ask(key, "exists?q=casa")).status, 200);
+  const over = await ask(key, "exists?q=casa");
+  assert.equal(over.status, 429);
+  assert.deepEqual(((await over.json()) as Json).error, expected);
+  assert.equal(over.headers.get("retry-after"), retryAfter);
+  assert.equal(over.headers.get("ratelimit-limit"), "60");
+
+  // Stripe renews the plan: the row's period moves on, and the new period starts at 0.
+  await db.app
+    .update(subscription)
+    .set({ periodStart: PERIOD_END, periodEnd: new Date("2026-11-10T00:00:00Z") })
+    .where(eq(subscription.referenceId, String(accountId)));
+  assert.equal((await ask(key, "exists?q=casa", undefined, PERIOD_END.getTime() + 5_000)).status, 200);
+  assert.deepEqual(meters.calls.at(-1)?.admission.periodStart, PERIOD_END.toISOString());
+});
+
+test("the rate follows the plan: Pro 300 a minute on CALLS_300, Enterprise its own rate in the meter, each also its batch cap", async () => {
+  const meters = new TestMetering();
+  const ask = requestOf(db, meters);
+  const words = (count: number) => JSON.stringify({ q: Array(count).fill("casa") });
+
+  const pro = await accountWithKey(db, "pro-rate", { ...STARTER, plan: "pro" });
+  assert.equal((await ask(pro.key, "lookup/batch", words(301))).status, 400);
+  const full = await ask(pro.key, "lookup/batch", words(300));
+  assert.equal(full.status, 200);
+  assert.equal(full.headers.get("ratelimit-limit"), "300");
+  const refused = await ask(pro.key, "exists?q=casa");
+  assert.equal(refused.status, 429);
+  assert.equal(((await refused.json()) as Json).error.code, "rate_limited");
+  assert.deepEqual([...meters.bindings.CALLS_300.counts.keys()], [String(pro.accountId)]);
+
+  const custom = await accountWithKey(db, "enterprise-rate", "no plan");
+  await enterprise(db, custom.accountId, 1_000, 5, "2026-09-01", "2026-10-01");
+  assert.equal((await ask(custom.key, "lookup/batch", words(6))).status, 400);
+  for (let i = 0; i < 5; i++) assert.equal((await ask(custom.key, "exists?q=casa")).status, 200);
+  const sixth = await ask(custom.key, "exists?q=casa");
+  assert.equal(sixth.status, 429);
+  assert.equal(sixth.headers.get("ratelimit-limit"), "5");
+  assert.deepEqual(((await sixth.json()) as Json).error, {
+    code: "rate_limited",
+    message: "This key's account may make 5 calls a minute. Retry after 60 s.",
+  });
+  // Counted by the meter, which no binding stands in for; the next minute admits again.
+  assert.ok(!meters.bindings.CALLS_60.counts.has(String(custom.accountId)) && !meters.bindings.CALLS_300.counts.has(String(custom.accountId)));
+  assert.equal((await ask(custom.key, "exists?q=casa", undefined, NOW + 60_000)).status, 200);
+});
+
+/** A key made in the dashboard with this access (#187), under its own account. */
+const keyWith = (subject: string, access: KeyAccess): Promise<{ keyId: number; key: string }> => accountWithKey(db, subject, STARTER, access);
 
 test("a key limited to some endpoints answers them, and every other endpoint is a 403 with the JSON error, counting no calls", async () => {
   const some = onlyEndpoints(["lookup", "exists"]);

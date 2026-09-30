@@ -4,12 +4,14 @@
 // the table cannot give a key back. An admin key is made and revoked with the
 // CLI in src/api/keyCli.ts, has no owner and carries its own per-minute limit
 // (Huey, #148). An owned key is made by a developer account in the dashboard
-// (src/api/ownedKeys.ts) and carries no limit: its rate is its account's
-// (#161). Both are this one kind of row, answered the same way.
+// (src/api/ownedKeys.ts) and carries no limit: its limits are its account's
+// plan's (#161), read with the key. Both are this one kind of row.
 
 import { and, eq, isNull, lte, or } from "drizzle-orm";
 import type { AppDatabase, AppTables } from "../db/app/database.js";
-import { apiKey } from "../db/app/schema.js";
+import { apiKey, enterprisePlan, subscription } from "../db/app/schema.js";
+import { planJoins, stateOfPlanRows, type PlanRows } from "../billing/accountPlan.js";
+import type { PlanState } from "../billing/plans.js";
 import { endpointsOfColumn, type EndpointScope } from "./keyAccess.js";
 
 /** Every key starts with this, so a leaked one is recognisable as Lexema's. */
@@ -39,16 +41,11 @@ export const DISPLAY_PREFIX_LENGTH = API_KEY_PREFIX.length + 8;
 export const displayPrefix = (key: string): string => key.slice(0, DISPLAY_PREFIX_LENGTH);
 
 /**
- * An owned key's calls a minute until its account's plan sets its rate (#161):
- * 60, the default Huey ruled for an account with no rate of its own.
+ * Who holds a key, and so where its limits come from: an admin key carries its
+ * own per-minute limit and is outside plans (#200 R1.2), and an owned key takes
+ * its account's plan, read with the key (#263).
  */
-export const OWNED_KEY_PER_MINUTE = 60;
-
-/**
- * Who holds a key, and so where its per-minute limit comes from: an admin key
- * carries its own, and an owned key takes its account's.
- */
-export type KeyHolder = { kind: "admin"; perMinuteLimit: number } | { kind: "owned"; accountId: number };
+export type KeyHolder = { kind: "admin"; perMinuteLimit: number } | { kind: "owned"; accountId: number; plan: PlanState };
 
 /** A key that may call the API. */
 export interface ApiKey {
@@ -58,10 +55,6 @@ export interface ApiKey {
   /** The endpoints it may call (#187). */
   endpoints: EndpointScope;
 }
-
-/** The calls a key may make in one minute. */
-export const perMinuteLimit = (key: ApiKey): number =>
-  key.holder.kind === "admin" ? key.holder.perMinuteLimit : OWNED_KEY_PER_MINUTE;
 
 /** What a presented key is read with. */
 const KEY_COLUMNS = {
@@ -86,9 +79,12 @@ interface KeyRow {
   lastUsedAt: string | null;
 }
 
-/** A stored key's holder. The schema holds `per_minute_limit` exactly when there is no owner. */
-function holderOf(row: KeyRow): KeyHolder {
-  if (row.ownerAccountId !== null) return { kind: "owned", accountId: row.ownerAccountId };
+/**
+ * A stored key's holder. The schema holds `per_minute_limit` exactly when there
+ * is no owner, and an admin key's row joins no plan rows.
+ */
+function holderOf(row: KeyRow & PlanRows): KeyHolder {
+  if (row.ownerAccountId !== null) return { kind: "owned", accountId: row.ownerAccountId, plan: stateOfPlanRows(row) };
   if (row.perMinuteLimit === null) throw new Error(`admin key ${row.keyId} has no per-minute limit`);
   return { kind: "admin", perMinuteLimit: row.perMinuteLimit };
 }
@@ -98,8 +94,19 @@ export type KeyRefusal = "missing" | "unknown" | "revoked" | "expired";
 
 export type Authentication = { outcome: "accepted"; key: ApiKey } | { outcome: "refused"; refusal: KeyRefusal };
 
-/** The key a presented one hashes to, through the unique index on `key_hash`. */
-export const keyByHashQuery = (db: AppDatabase, hash: string) => db.select(KEY_COLUMNS).from(apiKey).where(eq(apiKey.keyHash, hash));
+/**
+ * The key a presented one hashes to, through the unique index on `key_hash`,
+ * with its owner's plan rows in the same read (#263): none for an admin key.
+ */
+export const keyByHashQuery = (db: AppDatabase, hash: string) => {
+  const joins = planJoins(db, apiKey.ownerAccountId);
+  return db
+    .select({ ...KEY_COLUMNS, enterprise: enterprisePlan, subscription })
+    .from(apiKey)
+    .leftJoin(enterprisePlan, joins.enterprise)
+    .leftJoin(subscription, joins.subscription)
+    .where(eq(apiKey.keyHash, hash));
+};
 
 /** The least time between two stamps of a key's `last_used_at`. */
 export const LAST_USED_EVERY_MS = 60_000;
@@ -120,7 +127,8 @@ export const lastUsedIsStale = (lastUsedAt: string | null, now: number): boolean
 
 /**
  * The `X-API-Key` a request presented, checked against the stored hashes in one
- * read. A live key is neither revoked nor expired: its `expires_at`, if it has
+ * read, which also reads an owned key's plan state (#263). A live key is neither
+ * revoked nor expired: its `expires_at`, if it has
  * one, is still ahead of now (#187). An accepted key's `last_used_at` becomes
  * `now` when it is more than a minute old, so a key's calls write it at most
  * once a minute (#261).
