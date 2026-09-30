@@ -207,6 +207,25 @@ that the three sites answer, then keeps one comment on the pull request naming
 `<!-- preview-deploy:api -->` anchors Fabrika's `review-ui render` reads. A build of an older commit changes nothing. It uses
 only `GITHUB_TOKEN`; the steps are `web/builds/previewMarkerCommand.ts`.
 
+### The preview smoke
+
+When the comment is written, the same workflow's smoke job asks the three sites
+it names for one thing each (#246):
+
+| Site | Request | Passes when |
+|---|---|---|
+| dictionary | `/?q=<word>` for sale, andare, andavano, casa, bello and studente | a 200 whose page shows a reading; a word it cannot find is a 200 too, with no reading |
+| developer site | `/` | a 200 |
+| API | `GET /v1/lookup?q=andare` with a key that does not exist | the API's own 401 `invalid_key`, which it gives only after looking the key up in the Preview's app D1 |
+
+Every response must also carry `X-Robots-Tag: noindex`. The result is the
+`preview smoke` check run on the pull request's head, with one row per request.
+A workflow that runs on `check_run` runs from `main`, so a job's own check
+would land on `main`'s commit; the smoke creates its check through the Checks
+API instead. If the head moves on during the smoke, it reports nothing, and the
+newer commit's run reports. It uses only `GITHUB_TOKEN` and holds no API key;
+the steps are `web/builds/previewSmokeCommand.ts`.
+
 ### The sweep
 
 On each push to `main`, before the deploy, the sweep deletes the Preview and the

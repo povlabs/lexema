@@ -311,7 +311,9 @@ CREATE TABLE sense (
 
 CREATE INDEX sense_by_record ON sense (record_id);
 
--- Glosses are copied source text, never a Lexema definition. 667 senses are
+-- Glosses are source text, never a Lexema definition: copied as written, except
+-- for the source text normalizations of ADR 0019 (`normalizeGloss`), which
+-- source_record_json never gets. 667 senses are
 -- tagged 'no-gloss' and simply have no rows here; `sala` sense 1 has a gloss that
 -- says the definition is missing. A non-empty gloss is not a usable definition.
 CREATE TABLE sense_gloss (

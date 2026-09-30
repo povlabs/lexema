@@ -170,6 +170,22 @@ answer differs, so a change to an answer changes the example with it. It also
 fails when a sidebar link reaches no page. The
 pricing page's "What counts as a call" table is read from the same call map the API charges by.
 
+### Look at a pull request's Preview
+
+Each pull request's branch gets a Preview with all three sites, and one comment
+on the pull request names their URLs at its head
+([docs/DEPLOY.md](./docs/DEPLOY.md#the-preview-comment)). The `preview smoke`
+check at that head says whether they answer
+([docs/DEPLOY.md](./docs/DEPLOY.md#the-preview-smoke)). Fabrika's
+`review-ui render` reads the comment and captures one site per run, named with
+`--app`:
+
+```sh
+fabrika review-ui render --pr <n> --app web --surface '/?q=andare'
+fabrika review-ui render --pr <n> --app developers --surface /docs
+fabrika review-ui render --pr <n> --app api --surface /v1/lookup
+```
+
 ### Sign in on a Preview
 
 A Preview's developer site, `<name>.developers-preview.lexema.fyi`
@@ -330,3 +346,4 @@ development is the only access until that lands.
 | [gitleaks.yml](./.github/workflows/gitleaks.yml) | a changed file carries a secret |
 | [leak-guard.yml](./.github/workflows/leak-guard.yml) | a changed doc or shell file carries a machine-local path |
 | [decisions-index.yml](./.github/workflows/decisions-index.yml) | two records share an ADR id, or a filename disagrees with its frontmatter |
+| [preview-marker.yml](./.github/workflows/preview-marker.yml) | its `preview smoke` check, at a pull request's head: one of the six known words does not resolve on the Preview, the developer site or the API does not answer, or a response lacks `X-Robots-Tag: noindex` |
