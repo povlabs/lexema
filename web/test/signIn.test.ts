@@ -3,14 +3,12 @@
 // local `node:sqlite` database over the real schema.
 
 import assert from "node:assert/strict";
-import { readdirSync, readFileSync } from "node:fs";
+import { readdirSync } from "node:fs";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
-import { DatabaseSync } from "node:sqlite";
-import { applyAppMigrations } from "../../src/db/app/migrations.js";
 import { accountProfile } from "../../src/accounts/accounts.js";
 import { configuredProviders, type ProviderProfile, type ProviderRegistry } from "../../src/accounts/providers.js";
-import { fromNodeSqlite } from "../../src/lookup/database.js";
+import { freshAppDatabase } from "../../test/databases.js";
 import { apiNotFound } from "@/worker/api/handler.ts";
 import { byHost } from "@/worker/hosts.ts";
 import { withRateLimits, type LimitBindings } from "@/worker/rateLimit.ts";
@@ -25,7 +23,6 @@ import {
 } from "@/worker/signIn.ts";
 import { StubProvider } from "./stubProvider.ts";
 
-const SCHEMA = readFileSync(fileURLToPath(new URL("../../src/db/schema.sql", import.meta.url)), "utf8");
 const NOW = Date.parse("2026-09-28T12:00:00Z");
 const DEVELOPERS = "https://developers.lexema.fyi";
 
@@ -52,10 +49,7 @@ function parseSetCookie(header: string) {
 
 /** The Worker as deployed, over a fresh database, with a browser's cookie jar. */
 function site(providers?: ProviderRegistry) {
-  const sqlite = new DatabaseSync(":memory:");
-  sqlite.exec(SCHEMA);
-  applyAppMigrations(sqlite);
-  const db = fromNodeSqlite(sqlite);
+  const { sqlite, appDb: db } = freshAppDatabase();
   const google = new StubProvider("google");
   const github = new StubProvider("github");
   const appSaw: string[] = [];
@@ -66,7 +60,7 @@ function site(providers?: ProviderRegistry) {
           appSaw.push(new URL(request.url).pathname);
           return new Response("page");
         },
-        () => ({ providers: providers ?? { google, github }, db, now: NOW }),
+        () => ({ providers: providers ?? { google, github }, appDb: db, now: NOW }),
       ),
     ),
     api: async () => Response.json({}),

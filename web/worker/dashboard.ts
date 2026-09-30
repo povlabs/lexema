@@ -32,7 +32,7 @@
 import { deleteAccount } from "@lexema/accounts/accounts.ts";
 import { csrfMatches, csrfToken } from "@lexema/accounts/csrf.ts";
 import { createAccountKey, listAccountKeys, revokeAccountKey } from "@lexema/api/ownedKeys.ts";
-import { fromD1, type TransactionalDatabase } from "@lexema/lookup/database.ts";
+import { appTablesOverD1, type AppTables } from "@lexema/db/app/database.ts";
 import { accessOf, defaultKeyName, draftOf, readDraft } from "@/lib/developers/createKeyForm.ts";
 import { CSRF_FIELD, DASHBOARD, DELETE_CONFIRM_FIELD, DELETE_CONFIRMATION, SETTINGS, UNREACHABLE, type ActionAnswer } from "@/lib/developers/dashboardActions.ts";
 import { keyRowOf } from "@/lib/developers/dashboardView.ts";
@@ -72,20 +72,21 @@ export function dashboardRouteOf(url: URL): DashboardRoute | undefined {
   return undefined;
 }
 
-/** The bindings the actions read: the database. */
+/** The bindings the actions read: the app database. */
 export interface DashboardBindings {
-  DB?: D1Database;
+  APP_DB?: D1Database;
 }
 
 /** What the actions run against; the Worker's, or a test's. */
 export interface DashboardContext {
-  db: TransactionalDatabase | undefined;
+  /** The app database, where accounts and keys live. */
+  appDb: AppTables | undefined;
   now: number;
 }
 
 /** The context the live Worker runs with. */
 export function liveDashboardContext(env: DashboardBindings): DashboardContext {
-  return { db: env.DB === undefined ? undefined : fromD1(env.DB), now: Date.now() };
+  return { appDb: env.APP_DB === undefined ? undefined : appTablesOverD1(env.APP_DB), now: Date.now() };
 }
 
 /** The CSRF token a signed-in page puts in its forms, or `undefined` without a session cookie. */
@@ -136,8 +137,8 @@ export async function answerDashboard(request: Request, route: DashboardRoute, c
   if (request.headers.get("origin") !== url.origin) return refuse(403, "This action must come from this site.");
 
   try {
-    const db = context.db;
-    if (db === undefined) throw new Error("no D1 binding: this Worker has no DB");
+    const db = context.appDb;
+    if (db === undefined) throw new Error("no D1 binding: this Worker has no APP_DB");
     const cookies = request.headers.get("cookie");
     const session = readCookie(cookies, SESSION_COOKIE);
     const accountId = await signedInAccount(cookies, db, context.now);
@@ -194,8 +195,8 @@ export async function answerDashboard(request: Request, route: DashboardRoute, c
 export async function openDashboardPage<E>(request: Request, context: DashboardContext, app: FetchHandler<E>, env: E, ctx: ExecutionContext): Promise<Response> {
   let accountId: number | undefined;
   try {
-    if (context.db === undefined) throw new Error("no D1 binding: this Worker has no DB");
-    accountId = await signedInAccount(request.headers.get("cookie"), context.db, context.now);
+    if (context.appDb === undefined) throw new Error("no D1 binding: this Worker has no APP_DB");
+    accountId = await signedInAccount(request.headers.get("cookie"), context.appDb, context.now);
   } catch (failure) {
     console.error("dashboard page failed", failure);
     return text(503, "The dashboard could not be opened. Try again later.");

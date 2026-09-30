@@ -38,7 +38,7 @@ import {
   type PhraseOffer,
 } from "../src/lookup/phrase.js";
 import { offered, suggest, SUGGEST_SQL, type Suggested } from "../src/lookup/suggest.js";
-import type { LookupDatabase } from "../src/lookup/database.js";
+import type { DictionaryRead, LookupDatabase } from "../src/lookup/database.js";
 import type { FoundResult, LookupResult } from "../src/lookup/types.js";
 
 const RELEASE = "it-phrase-test";
@@ -382,7 +382,7 @@ function recording(): { db: LookupDatabase; asked: string[] } {
   return {
     asked,
     db: {
-      all<T>(sql: string, params: Parameters<LookupDatabase["all"]>[1]): Promise<T[]> {
+      all<T>(sql: DictionaryRead, params: Parameters<LookupDatabase["all"]>[1]): Promise<T[]> {
         asked.push(sql);
         return inner.all<T>(sql, params);
       },

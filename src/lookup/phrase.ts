@@ -30,7 +30,7 @@ import {
   type PhraseSlot,
   type WordLemmas,
 } from "../italian/phrase.js";
-import type { LookupDatabase } from "./database.js";
+import type { DictionaryRead, LookupDatabase } from "./database.js";
 import { prefixUpperBound } from "./keyRange.js";
 import type { PhraseDefinition, PhraseForm, PhraseMatch, PhraseWord } from "./types.js";
 
@@ -534,7 +534,7 @@ interface FormEntryRow {
  * which reads "… di *fare fuori*" (`PARTICIPLE_FORM_ENTRY_SQL`).
  */
 export async function phraseForms(db: LookupDatabase, releaseId: string, phrases: readonly PhraseMatch[]): Promise<PhraseForm[]> {
-  const read = async (phrase: PhraseMatch, sql: string, word: PhraseWord) => ({
+  const read = async (phrase: PhraseMatch, sql: DictionaryRead, word: PhraseWord) => ({
     phrase,
     rows: await db.all<FormEntryRow>(sql, [releaseId, word.inflected, word.lemma]),
   });

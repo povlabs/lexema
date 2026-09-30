@@ -5,7 +5,7 @@
 
 import type { DatabaseSync, SQLInputValue } from "node:sqlite";
 import { drizzle } from "drizzle-orm/sqlite-proxy";
-import type { AppDatabase } from "./database.js";
+import type { AppDatabase, AppTables } from "./database.js";
 import * as schema from "./schema.js";
 
 type Method = "run" | "all" | "values" | "get";
@@ -48,4 +48,9 @@ export function drizzleOverNodeSqlite(sqlite: DatabaseSync): AppDatabase {
     },
     { schema },
   );
+}
+
+/** The app database in a `node:sqlite` file, for tests and local tools. */
+export function appTablesOverNodeSqlite(sqlite: DatabaseSync): AppTables {
+  return { app: drizzleOverNodeSqlite(sqlite) };
 }

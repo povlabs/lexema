@@ -2,8 +2,11 @@
 
 `pnpm run seed:dev` ([`src/import/seedDev.ts`](../src/import/seedDev.ts)) streams the
 committed fixture through the archive parser, writes D1 SQL in numbered parts, and
-applies them in order with Wrangler. The same path seeds a full release archive
-with `SEED_INPUT`.
+applies them in order with Wrangler to the local dictionary database, `DB`
+(`database_name` `lexema`). The same path seeds a full release archive with
+`SEED_INPUT`. It then runs `wrangler d1 migrations apply lexema-app` to build the
+app tables in the local app database, `APP_DB`, and never in the dictionary
+([ADR 0018](../.decisions/0018-previews-on-workers-builds.md)).
 
 ## Environment and paths
 
@@ -12,12 +15,13 @@ with `SEED_INPUT`.
 | `SEED_INPUT` | `fixtures/dev-seed.jsonl` | plain JSONL fixture; a `.jsonl.gz` archive is also accepted |
 | `SEED_RELEASE` | `it-dev` for the fixture; `it-` and the first 8 hex digits of the archive's SHA-256 for a `.jsonl.gz` | release id written |
 | `SEED_SQL` | `.data/dev-sql` | directory for the SQL parts and `rejections.tsv` |
-| `SEED_STATE` | `.data/seed-state` | isolated Wrangler D1 persist directory |
+| `SEED_STATE` | `.data/seed-state` | isolated Wrangler D1 persist directory, holding both `DB` and `APP_DB` |
 | `SEED_PART_BYTES` | `67108864` (64 MiB) | byte ceiling for one SQL part |
 | `RAW_PAGES` | the dump in the repository root if present, else `fixtures/` | where the recovered layer reads raw pages: a dump path, or `fixtures` |
 
 The demo's `web/.wrangler` directory is never touched. The seed clears only
-`SEED_STATE`, so repeated runs rebuild the same local database. Nothing else is
+`SEED_STATE`, so repeated runs rebuild the same two local databases, and drop
+every local account, key and reader report. Nothing else is
 written to: no other state directory, and in `SEED_SQL` only its own
 `part-NNN.sql` files and `rejections.tsv`. Point `SEED_STATE` at an existing
 database only when you mean to replace it. The fixture covers
@@ -92,7 +96,9 @@ the parts an earlier seed left in `SEED_SQL`.
 The fifty-word fixture is 1.9 MB of SQL, so it is one part, byte for byte the
 single file the seeder wrote before parts existed.
 
-After the last part, the seeder counts the rows of every table the batches
+After the last part, the seeder applies the app migrations to `APP_DB` and
+reads back both databases' tables: it stops if any app table is in `DB` or
+missing from `APP_DB`. It then counts the rows of every table the batches
 wrote and checks them against the generated SQL. It then reads the one
 `source_release` row, which is written outside the batches, and checks that
 exactly one exists and that its status and line counts match what the run

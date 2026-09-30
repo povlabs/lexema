@@ -3,10 +3,8 @@
 // actually charged is in web/test/api.test.ts.
 
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
 import test from "node:test";
 import { DatabaseSync } from "node:sqlite";
-import { fileURLToPath } from "node:url";
 import { applyAppMigrations } from "../src/db/app/migrations.js";
 import {
   deleteAccount,
@@ -32,15 +30,15 @@ import {
   type KeyName,
 } from "../src/api/ownedKeys.js";
 import { accountUsage, accountUsageQuery, chargeCalls, USAGE_WINDOW_DAYS } from "../src/api/usage.js";
-import { fromNodeSqlite, type TransactionalDatabase } from "../src/lookup/database.js";
+import type { AppTables } from "../src/db/app/database.js";
+import { appTablesOverNodeSqlite } from "../src/db/app/nodeSqlite.js";
 
-const SCHEMA = readFileSync(fileURLToPath(new URL("../src/db/schema.sql", import.meta.url)), "utf8");
 const NOW = Date.parse("2026-09-28T12:00:00Z");
 const DAY = 24 * 60 * 60 * 1000;
 
-function schemaDb(): DatabaseSync {
+/** An app database: the app migrations over an empty one, as `APP_DB` is built. */
+function appDb(): DatabaseSync {
   const db = new DatabaseSync(":memory:");
-  db.exec(SCHEMA);
   applyAppMigrations(db);
   return db;
 }
@@ -52,7 +50,7 @@ const name = (text: string): KeyName => {
 };
 
 /** A new account signed in under this email. */
-async function account(db: TransactionalDatabase, email: string): Promise<number> {
+async function account(db: AppTables, email: string): Promise<number> {
   const identity = verifiedIdentity("github", { subject: email, verifiedEmail: email, name: undefined });
   assert.ok(identity !== undefined);
   return (await signInAccount(db, identity, NOW)).accountId;
@@ -73,15 +71,15 @@ function signedIn(sqlite: DatabaseSync, accountId: number): string {
 const sessionAccount = (sqlite: DatabaseSync, token: string): number | undefined =>
   (sqlite.prepare("SELECT account_id FROM developer_session WHERE token = ?").get(token) as { account_id: number } | undefined)?.account_id;
 
-async function ownedKey(db: TransactionalDatabase, accountId: number, label: string, now = NOW) {
+async function ownedKey(db: AppTables, accountId: number, label: string, now = NOW) {
   const created = await createAccountKey(db, accountId, name(label), now);
   assert.equal(created.outcome, "created");
   return created;
 }
 
 test("every owned-key, usage and deletion statement is on a primary key or an index", () => {
-  const db = schemaDb();
-  const app = fromNodeSqlite(db).app;
+  const db = appDb();
+  const app = appTablesOverNodeSqlite(db).app;
   const planOf = (sql: string, params: unknown[]) =>
     (db.prepare(`EXPLAIN QUERY PLAN ${sql}`).all(...(params as (string | number | null)[])) as { detail: string }[])
       .map((row) => row.detail)
@@ -108,8 +106,8 @@ test("every owned-key, usage and deletion statement is on a primary key or an in
 });
 
 test("a key made for an account is stored hashed with its owner, name and display prefix, and no limit of its own; the secret comes back once", async () => {
-  const sqlite = schemaDb();
-  const db = fromNodeSqlite(sqlite);
+  const sqlite = appDb();
+  const db = appTablesOverNodeSqlite(sqlite);
   const ada = await account(db, "ada@example.com");
 
   const created = await ownedKey(db, ada, "  learning app  ");
@@ -144,8 +142,8 @@ test("a key name is trimmed and 1 to 200 characters; nothing else is a name", ()
 });
 
 test("no key is made for an account that does not exist or was deleted", async () => {
-  const sqlite = schemaDb();
-  const db = fromNodeSqlite(sqlite);
+  const sqlite = appDb();
+  const db = appTablesOverNodeSqlite(sqlite);
   const ada = await account(db, "ada@example.com");
   await deleteAccount(db, ada, NOW);
   for (const accountId of [ada, 99]) {
@@ -155,7 +153,7 @@ test("no key is made for an account that does not exist or was deleted", async (
 });
 
 test("an account lists only its own keys, newest first, with name, display prefix, created, last used and revoked", async () => {
-  const db = fromNodeSqlite(schemaDb());
+  const db = appTablesOverNodeSqlite(appDb());
   const ada = await account(db, "ada@example.com");
   const bob = await account(db, "bob@example.com");
   const first = await ownedKey(db, ada, "first");
@@ -191,8 +189,8 @@ test("an account lists only its own keys, newest first, with name, display prefi
 });
 
 test("revoking another account's key, an admin key or a missing key through the owned-key path is refused and changes nothing", async () => {
-  const sqlite = schemaDb();
-  const db = fromNodeSqlite(sqlite);
+  const sqlite = appDb();
+  const db = appTablesOverNodeSqlite(sqlite);
   const ada = await account(db, "ada@example.com");
   const bob = await account(db, "bob@example.com");
   const adas = await ownedKey(db, ada, "ada's");
@@ -212,8 +210,8 @@ test("revoking another account's key, an admin key or a missing key through the 
 });
 
 test("an accepted key's last use is stamped; a refused one is not", async () => {
-  const sqlite = schemaDb();
-  const db = fromNodeSqlite(sqlite);
+  const sqlite = appDb();
+  const db = appTablesOverNodeSqlite(sqlite);
   const ada = await account(db, "ada@example.com");
   const live = await ownedKey(db, ada, "live");
   const revoked = await ownedKey(db, ada, "revoked");
@@ -229,7 +227,7 @@ test("an accepted key's last use is stamped; a refused one is not", async () => 
 });
 
 test("usage covers the last 30 UTC days per key and in total, 0 where a key was not charged", async () => {
-  const db = fromNodeSqlite(schemaDb());
+  const db = appTablesOverNodeSqlite(appDb());
   const ada = await account(db, "ada@example.com");
   const bob = await account(db, "bob@example.com");
   const a = await ownedKey(db, ada, "a");
@@ -262,8 +260,8 @@ test("usage covers the last 30 UTC days per key and in total, 0 where a key was 
 });
 
 test("deleting an account revokes its keys, removes its sessions and identities, keeps its key and usage rows, and the next sign-in makes a new account", async () => {
-  const sqlite = schemaDb();
-  const db = fromNodeSqlite(sqlite);
+  const sqlite = appDb();
+  const db = appTablesOverNodeSqlite(sqlite);
   const ada = await account(db, "ada@example.com");
   const google = verifiedIdentity("google", { subject: "g-ada", verifiedEmail: "ada@example.com", name: undefined });
   assert.ok(google !== undefined);
@@ -313,8 +311,8 @@ test("deleting an account revokes its keys, removes its sessions and identities,
 });
 
 test("a deletion that fails partway changes nothing: the account stays signed in with its keys live, and running it again finishes it", async () => {
-  const sqlite = schemaDb();
-  const db = fromNodeSqlite(sqlite);
+  const sqlite = appDb();
+  const db = appTablesOverNodeSqlite(sqlite);
   const ada = await account(db, "ada@example.com");
   const { key } = await ownedKey(db, ada, "one");
   const session = signedIn(sqlite, ada);
@@ -335,8 +333,8 @@ test("a deletion that fails partway changes nothing: the account stays signed in
 });
 
 test("a key keeps the endpoints and expiry it was made with; a key made before #187 is every endpoint, never expiring", async () => {
-  const sqlite = schemaDb();
-  const db = fromNodeSqlite(sqlite);
+  const sqlite = appDb();
+  const db = appTablesOverNodeSqlite(sqlite);
   const ada = await account(db, "ada@example.com");
   const some = onlyEndpoints(["inflect", "lookup"]);
   assert.ok(some !== undefined);
@@ -370,8 +368,8 @@ test("a key keeps the endpoints and expiry it was made with; a key made before #
 });
 
 test("an expired key is refused as expired from its expiry on, and its last use is not stamped; a revoked one reads as revoked", async () => {
-  const sqlite = schemaDb();
-  const db = fromNodeSqlite(sqlite);
+  const sqlite = appDb();
+  const db = appTablesOverNodeSqlite(sqlite);
   const ada = await account(db, "ada@example.com");
   const access = { endpoints: ALL_ENDPOINTS, expiresAt: expiresAt("30-days", NOW) };
   const expiring = await createAccountKey(db, ada, name("expiring"), NOW, access);

@@ -58,8 +58,8 @@ env.ASSETS                                 Assets
 env.LEXEMA_RELEASE ("it-dev")              Environment Variable
 ```
 
-The build warns that the top-level `DB` has no counterpart in `env.production`.
-That is expected: production has no D1 until #19.
+The build warns that the top-level `DB` and `APP_DB` have no counterpart in
+`env.production`. That is expected: production has no D1 until #19.
 
 ## Turn on sign-in
 
@@ -97,7 +97,8 @@ the session cookie. None of them is in the repository.
    every var and secret under `nodejs_compat`. Replacing it signs every
    developer out.
 
-Sign-in also needs the production D1 (#19): without it, a callback answers 503.
+Sign-in also needs the production app database, `APP_DB` (#19): without it, a
+callback answers 503.
 
 ## After a deploy
 
