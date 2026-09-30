@@ -65,6 +65,7 @@ import {
   TENSE_HEAD_SEARCHED,
   TOP_BAR,
   WORD_LINK,
+  WORD_NOTE,
 } from "@/components/shared/styles.ts";
 import { FIXTURE_LINES } from "./fixture.js";
 
@@ -819,6 +820,35 @@ test("a word with one reading keeps its etymology and synonyms after the reading
     assert.doesNotMatch(casa, /id="etymology-\d+"|id="synonyms-\d+"/);
     assert.match(textOf(afterReadings(casa)), /Etymologydal latino casa/);
     assert.ok(synonymWords(afterReadings(casa), "synonyms").length > 0);
+  });
+});
+
+test("casa's note fragments are the note the source wrote, in place and read-only; its words and derived list are unchanged (#120)", async () => {
+  await withDevSeed(async ({ db }) => {
+    const html = afterReadings(await render(db, "casa"));
+    const readings = await readingsFor(db, "casa");
+    const fragments = ["(per es. palazzo d'abitazione", "(per es. rurale", "industriale)"];
+    const section = (id: string) => html.slice(html.indexOf(`id="${id}"`), html.indexOf("</section>", html.indexOf(`id="${id}"`)));
+    const synonyms = section("synonyms");
+    const links = synonymWords(html, "synonyms");
+
+    for (const fragment of fragments) assert.ok(!links.includes(fragment), `${fragment} is not a search`);
+    const notes = [...synonyms.matchAll(new RegExp(`<span class="${esc(WORD_NOTE)}" lang="it">([^<]+)</span>`, "g"))].map((m) => textOf(m[1]));
+    assert.deepEqual(notes, ["(per es. palazzo d'abitazione", "(per es. rurale, civile, industriale)"]);
+    // Each note sits where its first piece did: after the word before it.
+    const order = textOf(synonyms);
+    assert.ok(order.indexOf("edificio") < order.indexOf("(per es. palazzo") && order.indexOf("(per es. palazzo") < order.indexOf("scuola"));
+    assert.ok(order.indexOf("fabbricato") < order.indexOf("(per es. rurale") && order.indexOf("(per es. rurale") < order.indexOf("dimora"));
+
+    // Every other synonym is still a search, in order; `civile` is the note's.
+    const expected = readings[0].wordFacts.synonyms.map((word) => word.word).filter((word) => ![...fragments, "civile"].includes(word));
+    assert.deepEqual(links, expected);
+    // An ordinary list does not change: every derived word is a search, and no note.
+    assert.deepEqual(synonymWords(html, "derived"), readings[0].wordFacts.derived.map((word) => word.word));
+    assert.doesNotMatch(section("derived"), new RegExp(esc(WORD_NOTE)));
+
+    // The source record is unchanged: the lookup still carries each piece as imported.
+    for (const fragment of fragments) assert.ok(readings[0].wordFacts.synonyms.some((word) => word.word === fragment), fragment);
   });
 });
 

@@ -1,18 +1,20 @@
 "use client";
 
 // A run of related words — synonyms, antonyms, derived words, suggestions —
-// separated by `·`, each a search. Closed, the words that fit on one line, then
-// `+ more` right after the last of them; open, every word, then `less`
+// separated by `·`, each a search. A note the source wrote inside the list
+// (relatedList.ts) sits in the run where it came, as text, read-only. Closed,
+// the items that fit on one line, then `+ more` right after the last of them;
+// open, every item, then `less`
 // (More.tsx). Used after the readings and, where the source ties a synonym
 // group to one part of speech, inside a reading.
 //
-// Every word is in the HTML, and the list is Base UI's collapsible, open or
+// Every item is in the HTML, and the list is Base UI's collapsible, open or
 // closed. Which words fit on the line needs measuring: until that runs, the
 // first eight show.
 
 import { Collapsible } from "@base-ui/react/collapsible";
 import { useEffect, useRef, useState } from "react";
-import type { RelatedWord } from "@lexema/lookup/types.ts";
+import type { RelatedItem } from "@/lib/dictionary/relatedList.ts";
 import { searchHref } from "./Forms";
 import { More } from "./More";
 import {
@@ -27,6 +29,7 @@ import {
   WORD_LIST_ITEM_REST,
   WORD_LIST_MORE_UNNEEDED,
   WORD_MORE,
+  WORD_NOTE,
 } from "@/components/shared/styles.ts";
 
 /** How many words show closed before the list is measured, or with no script. */
@@ -38,7 +41,7 @@ export const WORD_LIST_SLICE = 8;
  * one, so the control always follows a word.
  */
 function wordsOnFirstLine(list: HTMLElement, more: HTMLElement): number {
-  const words = [...list.querySelectorAll<HTMLElement>(":scope > [data-word]")].map((word) =>
+  const words = [...list.querySelectorAll<HTMLElement>(":scope > [data-item]")].map((word) =>
     word.getBoundingClientRect(),
   );
   const [first] = words;
@@ -55,18 +58,18 @@ function wordsOnFirstLine(list: HTMLElement, more: HTMLElement): number {
 export function WordList({
   id,
   label,
-  words,
+  items,
   level = "h2",
 }: {
   id: string;
   label: string;
-  words: readonly Pick<RelatedWord, "word">[];
+  items: readonly RelatedItem[];
   /** `h3` inside a reading, `h2` after the readings. */
   level?: "h2" | "h3";
 }) {
   const list = useRef<HTMLUListElement>(null);
   const toggle = useRef<HTMLLIElement>(null);
-  const [shown, setShown] = useState(Math.min(WORD_LIST_SLICE, words.length));
+  const [shown, setShown] = useState(Math.min(WORD_LIST_SLICE, items.length));
 
   useEffect(() => {
     const element = list.current;
@@ -91,24 +94,34 @@ export function WordList({
       observer.disconnect();
       toggled.disconnect();
     };
-  }, [words.length]);
+  }, [items.length]);
 
-  if (words.length === 0) return null;
+  if (items.length === 0) return null;
   const Heading = level;
-  const cut = shown < words.length;
+  const cut = shown < items.length;
   return (
     <section className={level === "h2" ? WORD_BLOCK : BLOCK} aria-labelledby={id}>
       <Heading className={BLOCK_LABEL} id={id}>
         {label}
       </Heading>
       <Collapsible.Root className={WORD_LIST} id={`${id}-words`} render={<ul ref={list} />}>
-        {words.map(({ word }, i) => (
-          <li key={word} className={i < shown ? WORD_LIST_ITEM : WORD_LIST_ITEM_REST} data-word="">
-            <a className={WORD_LINK} href={searchHref(word)} lang="it">
-              {word}
-            </a>
-            {/* The dot trails its word, so a wrapped line never opens on one. */}
-            {i < words.length - 1 && (
+        {items.map((item, i) => (
+          <li
+            key={item.kind === "word" ? `word:${item.word}` : `note:${item.text}`}
+            className={i < shown ? WORD_LIST_ITEM : WORD_LIST_ITEM_REST}
+            data-item=""
+          >
+            {item.kind === "word" ? (
+              <a className={WORD_LINK} href={searchHref(item.word)} lang="it">
+                {item.word}
+              </a>
+            ) : (
+              <span className={WORD_NOTE} lang="it">
+                {item.text}
+              </span>
+            )}
+            {/* The dot trails its item, so a wrapped line never opens on one. */}
+            {i < items.length - 1 && (
               <span className={cut && i === shown - 1 ? WORD_DOT_BEFORE_REST : WORD_DOT} aria-hidden="true">
                 ·
               </span>

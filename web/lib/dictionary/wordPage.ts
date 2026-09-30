@@ -10,6 +10,7 @@
 
 import { isFormOfReading, isVerbReading } from "@lexema/lookup/types.ts";
 import { labelParts, readingsNamed, splitLabel } from "./readingLabels.ts";
+import { relatedItems, type RelatedItem } from "./relatedList.ts";
 import type {
   LemmaListing,
   LemmaTarget,
@@ -45,7 +46,14 @@ export interface PageReading {
   /** The etymologies the source ties to this reading, their bracket label dropped. */
   etymologies: SourceText[];
   /** The synonym groups the source labels with this reading's part of speech. */
-  synonyms: RelatedWord[];
+  synonyms: RelatedItem[];
+}
+
+/** The word lists no reading took, as they show: words, and the notes among them. */
+export interface WordLists {
+  synonyms: RelatedItem[];
+  antonyms: RelatedItem[];
+  derived: RelatedItem[];
 }
 
 export interface WordPage {
@@ -54,6 +62,8 @@ export interface WordPage {
   readings: [PageReading, ...PageReading[]];
   /** The facts about the word no reading took: shown once, after the readings. */
   wordFacts: WordFacts;
+  /** `wordFacts`' synonyms, antonyms and derived words, as the page lists them. */
+  wordLists: WordLists;
   /**
    * Every Wiktionary page the readings and lemma tables on this page come from,
    * once each, for the page's Source links (ADR 0009).
@@ -115,7 +125,7 @@ export function wordPage(query: string, readings: readonly [Reading, ...Reading[
       reading,
       lemmaTables: lemmaTablesOf(reading),
       etymologies: placed.etymologies.get(reading) ?? [],
-      synonyms: placed.synonyms.get(reading) ?? [],
+      synonyms: relatedItems(placed.synonyms.get(reading) ?? []),
     }),
   );
   const [first, ...rest] = entries;
@@ -125,6 +135,11 @@ export function wordPage(query: string, readings: readonly [Reading, ...Reading[
     headword: about[0]?.word ?? query,
     readings: [first, ...rest],
     wordFacts: placed.rest,
+    wordLists: {
+      synonyms: relatedItems(placed.rest.synonyms),
+      antonyms: relatedItems(placed.rest.antonyms),
+      derived: relatedItems(placed.rest.derived),
+    },
     sourceWords: [
       ...new Set(entries.flatMap((entry) => [entry.reading.word, ...entry.lemmaTables.map((table) => table.lemma.word)])),
     ],
