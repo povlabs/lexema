@@ -8,7 +8,9 @@
 // The Plan section is board 28i's (#207): No plan yet with Choose Starter and
 // Choose Pro, posting to Checkout; a Stripe plan with Manage billing, posting
 // to the billing portal, and its renewal, its end, or the payment warning;
-// Enterprise with its numbers and no button. What each says is `planSectionOf`.
+// Enterprise with its numbers, the day it ends, and no button. A plan that no
+// longer serves, such as a lapsed Enterprise plan, draws as No plan yet
+// (#300). What each says is `planSectionOf`.
 //
 // On a phone (below `sm`, board 28gm) the plan and account cards stack their
 // action under the text.

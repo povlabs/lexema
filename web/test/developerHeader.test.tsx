@@ -43,7 +43,7 @@ const menuOf = (html: string): [string, boolean][] => {
 };
 
 test("signed in on Settings, the ☰ menu marks Settings, not Dashboard, though the bar marks Dashboard (board 28g)", () => {
-  const view = settingsView({ email: "ada@example.com", name: "Ada Lovelace", providers: ["google"] }, [], NO_PLAN);
+  const view = settingsView({ email: "ada@example.com", name: "Ada Lovelace", providers: ["google"] }, [], { state: NO_PLAN, serving: { serving: false } });
   const html = renderToStaticMarkup(<DashboardSettings view={view} csrf={"c".repeat(43)} />);
   assert.deepEqual(menuOf(html), [
     ["Dashboard", false],
