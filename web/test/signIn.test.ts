@@ -7,6 +7,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
 import { DatabaseSync } from "node:sqlite";
+import { applyAppMigrations } from "../../src/db/app/migrations.js";
 import { accountProfile } from "../../src/accounts/accounts.js";
 import { configuredProviders, type ProviderProfile, type ProviderRegistry } from "../../src/accounts/providers.js";
 import { fromNodeSqlite } from "../../src/lookup/database.js";
@@ -53,6 +54,7 @@ function parseSetCookie(header: string) {
 function site(providers?: ProviderRegistry) {
   const sqlite = new DatabaseSync(":memory:");
   sqlite.exec(SCHEMA);
+  applyAppMigrations(sqlite);
   const db = fromNodeSqlite(sqlite);
   const google = new StubProvider("google");
   const github = new StubProvider("github");

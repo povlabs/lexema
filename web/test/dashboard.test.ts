@@ -8,6 +8,7 @@ import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
 import { DatabaseSync } from "node:sqlite";
+import { applyAppMigrations } from "../../src/db/app/migrations.js";
 import type { ProviderProfile } from "../../src/accounts/providers.js";
 import { authenticate } from "../../src/api/keys.js";
 import { createAccountKey, keyName, listAccountKeys } from "../../src/api/ownedKeys.js";
@@ -49,6 +50,7 @@ const env: LimitBindings & SignInBindings & DashboardBindings = {
 function site({ limits = {} }: { limits?: Partial<LimitBindings> } = {}) {
   const sqlite = new DatabaseSync(":memory:");
   sqlite.exec(SCHEMA);
+  applyAppMigrations(sqlite);
   const db = fromNodeSqlite(sqlite);
   const google = new StubProvider("google");
   const appSaw: Request[] = [];

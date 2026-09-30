@@ -5,6 +5,7 @@
 import { execFileSync } from "node:child_process";
 import { mkdir, rm, stat, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
+import { appMigrationFiles } from "../db/app/migrations.js";
 import { openRawPages } from "../source/wiktionaryDump.js";
 import { seedSql } from "./seedSql.js";
 import { applyParts, DEFAULT_PART_CEILING_BYTES, PartFailure } from "./sqlParts.js";
@@ -89,6 +90,12 @@ try {
   process.stderr.write(`seed stopped: ${error.message}\n`);
   process.stderr.write(`${persistTo} holds a partial database. Reseed into a fresh SEED_STATE (see docs/DEV_SEED.md).\n`);
   process.exit(1);
+}
+// The dictionary schema came with the first part; the app tables are Drizzle's
+// (src/db/app/schema.ts, ADR 0017) and follow as drizzle-kit's migrations.
+for (const migration of appMigrationFiles()) {
+  process.stderr.write(`app migration: ${migration}\n`);
+  wrangler(["--file", migration], false);
 }
 
 /**
