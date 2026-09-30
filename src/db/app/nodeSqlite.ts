@@ -4,10 +4,9 @@
 // 0017). For tests and local tools; the Worker reaches D1 through drizzle-orm/d1.
 
 import type { DatabaseSync, SQLInputValue } from "node:sqlite";
-import { drizzle, type SqliteRemoteDatabase } from "drizzle-orm/sqlite-proxy";
+import { drizzle } from "drizzle-orm/sqlite-proxy";
+import type { AppDatabase } from "./database.js";
 import * as schema from "./schema.js";
-
-export type AppDatabase = SqliteRemoteDatabase<typeof schema>;
 
 /**
  * The proxy hands over one statement, its values and how its rows are wanted:

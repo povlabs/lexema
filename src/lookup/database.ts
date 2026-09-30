@@ -1,6 +1,13 @@
 // The one database capability lookup needs, and the two adapters that provide
 // it: a Worker's D1 (async) and a local `node:sqlite` file (sync). One query
 // layer instead of two — see docs/LOOKUP_DESIGN.md.
+//
+// Each adapter also hands out the same database through Drizzle, for the app
+// tables better-auth reads and writes (src/db/app, ADR 0017).
+
+import type { DatabaseSync } from "node:sqlite";
+import { drizzleOverD1, type AppDatabase } from "../db/app/database.js";
+import { drizzleOverNodeSqlite } from "../db/app/nodeSqlite.js";
 
 /** A value bound to a `?`; `null` is SQL NULL. */
 export type SqlValue = string | number | null;
@@ -31,24 +38,21 @@ export interface TransactionalDatabase extends LookupDatabase {
    * When any statement fails, none of them has changed anything.
    */
   batch(statements: readonly Statement[]): Promise<unknown[][]>;
-}
-
-/** The shape of `node:sqlite`'s DatabaseSync that this adapter uses. */
-interface SyncSqlite {
-  prepare(sql: string): { all(...params: SqlValue[]): unknown[] };
-  exec(sql: string): void;
+  /** The same database through Drizzle, over the app tables. */
+  readonly app: AppDatabase;
 }
 
 /** Local SQLite, for the importer's output and for tests. */
-export function fromNodeSqlite(db: SyncSqlite): TransactionalDatabase {
+export function fromNodeSqlite(db: DatabaseSync): TransactionalDatabase {
   return {
+    app: drizzleOverNodeSqlite(db),
     all<T>(sql: string, params: readonly SqlValue[]): Promise<T[]> {
-      return Promise.resolve(db.prepare(sql).all(...params) as T[]);
+      return Promise.resolve(db.prepare(sql).all(...(params as SqlValue[])) as T[]);
     },
     batch(statements: readonly Statement[]): Promise<unknown[][]> {
       db.exec("BEGIN");
       try {
-        const rows = statements.map(({ sql, params }) => db.prepare(sql).all(...params));
+        const rows = statements.map(({ sql, params }) => db.prepare(sql).all(...(params as SqlValue[])));
         db.exec("COMMIT");
         return Promise.resolve(rows);
       } catch (failure) {
@@ -87,6 +91,7 @@ export function fromD1(db: D1Like): TransactionalDatabase {
     return params.length === 0 ? statement : statement.bind(...params);
   };
   return {
+    app: drizzleOverD1(db),
     async all<T>(sql: string, params: readonly SqlValue[]): Promise<T[]> {
       const { results } = await prepared(sql, params).all<T>();
       return results;

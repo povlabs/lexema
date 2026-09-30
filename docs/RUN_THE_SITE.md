@@ -108,18 +108,23 @@ or restart `wrangler dev` to reset the count. Why they are there is
 
 ## Sign in locally
 
-The developer site's sign-in (`web/worker/signIn.ts`) needs a real OAuth
-client, so it is off locally until you give it one: each provider's sign-in
-route answers 503 until both its client id and secret are set. Put the values
-in `web/.dev.vars`, which is gitignored and which `wrangler dev` reads, for
-either provider or both:
+The developer site's sign-in (`web/worker/signIn.ts`, on better-auth) needs a
+real OAuth client and a secret to sign sessions with, so it is off locally
+until you give it both: each provider's sign-in route answers 503 until its
+client id and secret are set and so is `BETTER_AUTH_SECRET`. Put the values in
+`web/.dev.vars`, which is gitignored and which `wrangler dev` reads, for either
+provider or both:
 
 ```sh
+BETTER_AUTH_SECRET=…
 GOOGLE_CLIENT_ID=…
 GOOGLE_CLIENT_SECRET=…
 GITHUB_CLIENT_ID=…
 GITHUB_CLIENT_SECRET=…
 ```
+
+Make the local `BETTER_AUTH_SECRET` with `openssl rand -base64 32`, and never
+reuse the production one. Changing it signs every local session out.
 
 For Google, add the authorized redirect URI
 `http://localhost:8790/sign-in/google/callback` to a Google OAuth client of type
@@ -143,17 +148,19 @@ or scheme rule on a callback URL; the one it asks is that the Worker's
 ([Redirect URLs](https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/authorizing-oauth-apps#redirect-urls)).
 
 Then start at <http://developers.localhost:8790/sign-in>. The page shows a
-provider without both values as a disabled button.
+provider without both values, or any provider while `BETTER_AUTH_SECRET` is
+unset, as a disabled button.
 
-The session cookie is `__Host-` prefixed and `Secure`, yet the local site is
+The session cookie is `__Secure-` prefixed and `Secure`, yet the local site is
 plain `http://`. It still sticks only because the browser treats
 `*.localhost` as a secure context
 ([MDN, potentially trustworthy origins](https://developer.mozilla.org/en-US/docs/Web/Security/Secure_Contexts#potentially_trustworthy_origins)).
 A browser that does not will drop the cookie, and you will not stay signed in.
 
 The tests need none of this: they sign in against a stub provider
-(`web/test/stubProvider.ts`), and Google's and GitHub's token and email calls
-run against a fake `fetch` (`test/accounts.test.ts`).
+(`web/test/stubProvider.ts`) that answers Google's and GitHub's token and user
+endpoints in place of `fetch`, so better-auth's own provider code runs with no
+network, and it sets a test-only `BETTER_AUTH_SECRET`.
 
 ## If it will not start
 

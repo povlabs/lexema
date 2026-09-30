@@ -13,7 +13,7 @@
 //                                      `confirm=delete-account`
 //
 // Every one needs a signed-in session, an `Origin` that is this site, and the
-// session's CSRF token in the form's `csrf` field (src/accounts/sessions.ts).
+// session's CSRF token in the form's `csrf` field (src/accounts/csrf.ts).
 // A request that fails any of those is refused before anything changes. Like
 // the sign-in routes (worker/signIn.ts), they sit under the developer-site
 // segment that worker/hosts.ts answers with a 404 on every other host.
@@ -30,7 +30,7 @@
 // only: without a session each answers 303 to sign-in.
 
 import { deleteAccount } from "@lexema/accounts/accounts.ts";
-import { csrfMatches, csrfToken, sessionAccount } from "@lexema/accounts/sessions.ts";
+import { csrfMatches, csrfToken } from "@lexema/accounts/csrf.ts";
 import { createAccountKey, listAccountKeys, revokeAccountKey } from "@lexema/api/ownedKeys.ts";
 import { fromD1, type TransactionalDatabase } from "@lexema/lookup/database.ts";
 import { accessOf, defaultKeyName, draftOf, readDraft } from "@/lib/developers/createKeyForm.ts";
@@ -138,8 +138,9 @@ export async function answerDashboard(request: Request, route: DashboardRoute, c
   try {
     const db = context.db;
     if (db === undefined) throw new Error("no D1 binding: this Worker has no DB");
-    const session = readCookie(request.headers.get("cookie"), SESSION_COOKIE);
-    const accountId = await sessionAccount(db, session, context.now);
+    const cookies = request.headers.get("cookie");
+    const session = readCookie(cookies, SESSION_COOKIE);
+    const accountId = await signedInAccount(cookies, db, context.now);
     if (session === undefined || accountId === undefined) return refuse(401, "Sign in first.");
     const form = await formOf(request);
     if (form === undefined || !(await csrfMatches(session, field(form, CSRF_FIELD)))) {
