@@ -61,7 +61,7 @@ reading changes with the word type.
 
 | Rule | What it means on the page |
 |---|---|
-| **A searched form is marked only in a conjugation.** | In a verb table the searched form is underlined in the accent colour, and its person and tense labels take the accent. A grid does not mark it; it is obvious there. |
+| **A searched form is marked only in a conjugation.** | In a verb table the searched form is underlined in the accent colour, and its person and tense labels take the accent. A grid does not mark it; it is obvious there. Ruled by Huey on 2026-09-23 ([#111](https://github.com/hueypov/lexema/issues/111)): marking stays with verbs, never a noun or adjective box. |
 | **A searched verb form leads to its lemma's table.** | Searching `andavano` shows its own reading, whose definition links to `andare`, and under it *Forms of andare*, opened where `andavano` sits. When one spelling fills two cells (`andassi`), both are marked. |
 | **Forms and synonyms are links.** | Every form in a conjugation table and every synonym links to its own search. No underline and no hover colour; the pointer cursor is the only cue. A cell holding several spellings links each one. |
 | **Groups follow the source's own vocabulary.** | Moods, then tenses, in the order the tag vocabulary lists them. A form that fits no cell, such as `mangiarsi (coniugazione)`, is not shown, and nothing says so. |

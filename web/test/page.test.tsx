@@ -322,6 +322,23 @@ test("a noun or adjective's forms are a gender by number grid with its article l
   });
 });
 
+test("a searched noun or adjective form, headword or inflected, is found but never marked in its grid (#111)", async () => {
+  await withDevSeed(async ({ db }) => {
+    // The lookup still returns the inflected form's own reading; only the mark is withheld.
+    const pages: Record<string, string[]> = {
+      studente: ["1·Sostantivo·maschile, singolare", "2·Voce verbale", "3·Sostantivo, forma flessa·maschile, plurale", "4·Sostantivo, forma flessa·femminile, singolare"],
+      studenti: ["1·Sostantivo, forma flessa·maschile, plurale", "2·Sostantivo, forma flessa·femminile, singolare"],
+      bella: ["1·Aggettivo, forma flessa·femminile, singolare", "2·Sostantivo, forma flessa·femminile, singolare"],
+    };
+    for (const [query, headings] of Object.entries(pages)) {
+      const html = await render(db, query);
+      assert.deepEqual(headingsOf(html), headings, query);
+      assert.ok(readingsOfPage(html).some((reading) => reading.includes('data-grid=""')), `${query} renders a grid`);
+      assert.doesNotMatch(html, /data-searched|your search/, `${query}: a grid marks nothing`);
+    }
+  });
+});
+
 test("an adjective's superlatives are a second grid, labelled superlativo", async () => {
   await withDevSeed(async ({ db }) => {
     const bella = nth(await render(db, "bello"), 4);
