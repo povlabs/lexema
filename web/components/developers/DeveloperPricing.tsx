@@ -1,14 +1,25 @@
-// developers.lexema.fyi/pricing (#166, board 26): the two plans, and what
-// counts as a call. Nothing on it takes a payment (#161): Pro's button is
-// disabled, and Enterprise writes to the contact address.
+// developers.lexema.fyi/pricing (#166, #208, boards 26 and 26m): three plans,
+// and what counts as a call. There is no free plan (#161).
+//
+// Starter's and Pro's numbers are the plan table's (src/billing/plans.ts), and
+// Pro, the table's featured plan, carries the "Most popular" tag and the accent
+// border. Their Choose buttons post the plan to Checkout (worker/billing.ts),
+// with the session's CSRF token when the visitor is signed in; signed out, the
+// route sends them through sign-in first and keeps the plan. Enterprise is
+// agreed per account, so its card writes to the contact address.
 //
 // The call table is read from the call map (src/api/calls.ts): any endpoint,
 // then each endpoint counted per word. It restates no count of its own.
 
+import { Button } from "@base-ui/react/button";
+import { PLAN_TERMS, type PlanId, type StripePlanId } from "@lexema/billing/plans.ts";
+import type { ReactNode } from "react";
 import { CALL_ROWS, callText } from "@/lib/developers/apiReference.ts";
+import { CHECKOUT_ACTION, PLAN_FIELD } from "@/lib/developers/billingActions.ts";
+import { CSRF_FIELD } from "@/lib/developers/dashboardActions.ts";
+import type { PostingVisitor } from "@/lib/developers/signedIn.ts";
 import { CONTACT_EMAIL, DeveloperPage } from "./DeveloperPage";
 import { CheckIcon } from "@/components/shared/MenuIcons";
-import type { SignedIn } from "@/lib/developers/signedIn.ts";
 import {
   BUTTON_PRIMARY,
   BUTTON_SECONDARY,
@@ -26,13 +37,30 @@ import {
   PLAN_FEATURE,
   PLAN_FEATURED,
   PLAN_FEATURES,
+  PLAN_HEAD,
   PLAN_NAME_FEATURED,
   PLAN_NAME_OTHER,
   PLAN_OTHER,
   PLAN_PERIOD,
   PLAN_PRICE,
+  PLAN_TAG,
   PLANS,
 } from "@/components/shared/styles.ts";
+
+/** The plans bought through Stripe, in the order the page shows them. */
+const STRIPE_PLANS = ["starter", "pro"] as const satisfies readonly StripePlanId[];
+
+const count = (n: number): string => n.toLocaleString("en-US");
+
+/** What a Starter or Pro card lists: the table's allowance and rate, then what every plan gets. */
+const stripePlanLines = (plan: StripePlanId): readonly string[] => [
+  `${count(PLAN_TERMS[plan].callsPerPeriod)} calls a month`,
+  `${count(PLAN_TERMS[plan].callsPerMinute)} calls a minute`,
+  "All endpoints",
+];
+
+/** What the Enterprise card lists: its numbers are agreed per account, so none is stated. */
+const ENTERPRISE_LINES = ["Custom calls a month", "Custom calls a minute", "Invoicing"] as const;
 
 function Features({ items }: { items: readonly string[] }) {
   return (
@@ -47,42 +75,71 @@ function Features({ items }: { items: readonly string[] }) {
   );
 }
 
-export function DeveloperPricing({ signedIn }: { signedIn?: SignedIn } = {}) {
+/** One plan's card: its name, and the featured plan's tag and border, from the plan table. */
+function PlanCard({ plan, price, lines, action }: { plan: PlanId; price: ReactNode; lines: readonly string[]; action: ReactNode }) {
+  const { name, featured } = PLAN_TERMS[plan];
+  const heading = `plan-${plan}`;
+  return (
+    <section className={featured ? PLAN_FEATURED : PLAN_OTHER} aria-labelledby={heading} data-plan={plan}>
+      <div className={PLAN_HEAD}>
+        <h2 className={featured ? PLAN_NAME_FEATURED : PLAN_NAME_OTHER} id={heading}>
+          {name}
+        </h2>
+        {featured && <span className={PLAN_TAG}>Most popular</span>}
+      </div>
+      <p className={PLAN_PRICE}>{price}</p>
+      <Features items={lines} />
+      <div className={PLAN_ACTION}>{action}</div>
+    </section>
+  );
+}
+
+/** Choose Starter or Pro: the plan, and signed in the session's CSRF token, posted to Checkout. */
+function ChooseForm({ plan, visitor }: { plan: StripePlanId; visitor: PostingVisitor | undefined }) {
+  const { name, featured } = PLAN_TERMS[plan];
+  return (
+    <form method="post" action={CHECKOUT_ACTION}>
+      <input type="hidden" name={PLAN_FIELD} value={plan} />
+      {visitor !== undefined && <input type="hidden" name={CSRF_FIELD} value={visitor.csrf} />}
+      <Button className={featured ? BUTTON_PRIMARY : BUTTON_SECONDARY} type="submit">
+        Choose {name}
+      </Button>
+    </form>
+  );
+}
+
+export function DeveloperPricing({ visitor }: { visitor?: PostingVisitor } = {}) {
   return (
     // Board 26 draws the bar with neither page marked.
-    <DeveloperPage signedIn={signedIn}>
+    <DeveloperPage signedIn={visitor?.signedIn}>
       <main className={DEV_SHELL}>
         <h1 className={DEV_HEADING}>Pricing</h1>
 
         <div className={PLANS}>
-          <section className={PLAN_FEATURED} aria-labelledby="plan-pro">
-            <h2 className={PLAN_NAME_FEATURED} id="plan-pro">
-              Pro
-            </h2>
-            <p className={PLAN_PRICE}>
-              $15<span className={PLAN_PERIOD}>/ month</span>
-            </p>
-            <Features items={["50,000 calls a day", "Up to 5 API keys", "All endpoints"]} />
-            <div className={PLAN_ACTION}>
-              <button className={BUTTON_PRIMARY} type="button" disabled>
-                Coming soon
-              </button>
-            </div>
-          </section>
-
-          <section className={PLAN_OTHER} aria-labelledby="plan-enterprise">
-            <h2 className={PLAN_NAME_OTHER} id="plan-enterprise">
-              Enterprise
-            </h2>
-            <p className={PLAN_PRICE}>Contact us</p>
-            {/* The old batch cap, kept as drawn until the pricing slice redraws this card to Huey's ruling (issue 208). */}
-            <Features items={["Calls and keys to fit your use", "Batch sizes above 200", "Invoicing"]} />
-            <div className={PLAN_ACTION}>
+          {STRIPE_PLANS.map((plan) => (
+            <PlanCard
+              key={plan}
+              plan={plan}
+              price={
+                <>
+                  ${PLAN_TERMS[plan].usdPerMonth}
+                  <span className={PLAN_PERIOD}>/ month</span>
+                </>
+              }
+              lines={stripePlanLines(plan)}
+              action={<ChooseForm plan={plan} visitor={visitor} />}
+            />
+          ))}
+          <PlanCard
+            plan="enterprise"
+            price="Contact us"
+            lines={ENTERPRISE_LINES}
+            action={
               <a className={BUTTON_SECONDARY} href={`mailto:${CONTACT_EMAIL}`}>
                 Contact us
               </a>
-            </div>
-          </section>
+            }
+          />
         </div>
 
         <section className={CALLS} aria-labelledby="calls">

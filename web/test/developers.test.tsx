@@ -28,6 +28,7 @@ import type { AppTables } from "../../src/db/app/database.js";
 import type { LookupDatabase } from "../../src/lookup/database.js";
 import { freshAppDatabase, readOnlyDictionary, subscribe } from "../../test/databases.js";
 import { runPlanCommand } from "../../src/billing/planCli.js";
+import { PLAN_TERMS } from "../../src/billing/plans.js";
 import { loadFixturePages } from "../../src/source/rawPage.js";
 import {
   API_BASE,
@@ -378,9 +379,55 @@ test("pricing's What counts as a call table is board 26's: any endpoint 1 call, 
     ["Any endpoint", "1 call"],
     ["lookup/batch", "1 call per word"],
   ]);
-  // No payment action (#161): no form, and the one plan button is disabled.
-  assert.doesNotMatch(html, /<form/);
-  assert.match(html, /<button[^>]*disabled=""[^>]*>Coming soon<\/button>/);
+});
+
+test("pricing shows Starter, Pro and Enterprise with the plan table's numbers, and Pro alone is Most popular (#208)", () => {
+  const cardsOf = (html: string) =>
+    [...html.matchAll(/<section[^>]*data-plan="([^"]+)"[^>]*>([\s\S]*?)<\/section>/g)].map(([, plan, body]) => ({
+      plan,
+      body,
+      lines: [...body.matchAll(/<li[^>]*>(?:<svg[\s\S]*?<\/svg>)?([^<]+)<\/li>/g)].map((line) => line[1]),
+    }));
+  const lines = (plan: "starter" | "pro") => [
+    `${PLAN_TERMS[plan].callsPerPeriod.toLocaleString("en-US")} calls a month`,
+    `${PLAN_TERMS[plan].callsPerMinute.toLocaleString("en-US")} calls a minute`,
+    "All endpoints",
+  ];
+
+  const signedOut = renderToStaticMarkup(<DeveloperPricing />);
+  const cards = cardsOf(signedOut);
+  assert.deepEqual(
+    cards.map(({ plan, lines }) => [plan, lines]),
+    [
+      ["starter", lines("starter")],
+      ["pro", lines("pro")],
+      ["enterprise", ["Custom calls a month", "Custom calls a minute", "Invoicing"]],
+    ],
+  );
+  assert.deepEqual(
+    cards.filter((card) => card.body.includes("Most popular")).map((card) => card.plan),
+    ["pro"],
+  );
+  // No free plan, no key cap and no rate per key (Huey, #161); no batch line (#216).
+  assert.doesNotMatch(signedOut, /free|per key|API keys|Batch sizes/i);
+
+  // Choose Pro posts plan=pro to Checkout; signed out, with no CSRF token, signed in with the session's.
+  const choose = (html: string, plan: string) =>
+    cardsOf(html)
+      .find((card) => card.plan === plan)
+      ?.body.match(/<form action="([^"]+)" method="post">([\s\S]*?)<\/form>/);
+  const hidden = (form: string) => Object.fromEntries([...form.matchAll(/<input type="hidden" name="([^"]+)" value="([^"]*)"\/>/g)].map((m) => [m[1], m[2]]));
+  const signedOutPro = choose(signedOut, "pro");
+  assert.equal(signedOutPro?.[1], "/billing/checkout");
+  assert.deepEqual(hidden(signedOutPro[2]), { plan: "pro" });
+  assert.match(signedOutPro[2], /<button[^>]*type="submit"[^>]*>Choose Pro<\/button>/);
+  const signedIn = renderToStaticMarkup(<DeveloperPricing visitor={{ signedIn: { email: "ada@example.com", name: undefined }, csrf: "the-token" }} />);
+  assert.deepEqual(hidden(choose(signedIn, "pro")?.[2] ?? ""), { plan: "pro", csrf: "the-token" });
+
+  // Enterprise has no form: Contact us writes to the contact address.
+  const enterprise = cards.find((card) => card.plan === "enterprise")?.body ?? "";
+  assert.doesNotMatch(enterprise, /<form/);
+  assert.match(enterprise, /<a [^>]*href="mailto:contact@lexema.fyi">Contact us<\/a>/);
 });
 
 test("every developer page carries the footer: lexema.fyi, Docs, Pricing and Contact by mail, and no Terms", () => {

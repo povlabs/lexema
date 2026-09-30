@@ -492,10 +492,15 @@ export const LANDING_ENDPOINT_TEXT = "font-sans text-[0.875rem] leading-[1.40625
 
 // Pricing (boards 26 and 26m)
 
-export const PLANS = "mt-[3.78125rem] grid gap-5 sm:mt-[3.90625rem] sm:grid-cols-2 sm:gap-6";
+/** Three cards side by side on a wide screen; stacked below `lg`, where three would squeeze their lines. */
+export const PLANS = "mt-[3.78125rem] grid gap-5 sm:mt-[3.90625rem] sm:gap-6 lg:grid-cols-3";
 const PLAN = "flex flex-col rounded-[6px] bg-surface-raised px-8 pt-[1.875rem] pb-[1.96875rem]";
-export const PLAN_FEATURED = `${PLAN} border border-accent`;
+/** The featured plan (Pro): a 2 px accent border, as board 26 draws it. */
+export const PLAN_FEATURED = `${PLAN} border-2 border-accent`;
 export const PLAN_OTHER = `${PLAN} border border-border`;
+/** The plan's name, and on the featured plan its "Most popular" tag beside it. */
+export const PLAN_HEAD = "flex h-5 items-center gap-3";
+export const PLAN_TAG = "rounded-full bg-accent px-2 font-sans text-[0.75rem] leading-5 font-semibold text-surface";
 export const PLAN_NAME_FEATURED = "m-0 font-sans text-[0.8125rem] leading-5 font-semibold text-accent";
 export const PLAN_NAME_OTHER = "m-0 font-sans text-[0.8125rem] leading-5 font-semibold text-text-muted";
 /** `$15 / month`: the period sits low, its foot below the price's. */

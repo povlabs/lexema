@@ -226,7 +226,7 @@ test("signed in, the docs, the pricing page and the 404 carry the same avatar; s
   const avatar = /aria-haspopup="menu"[^>]*aria-label="Account"/;
   for (const html of [
     renderToStaticMarkup(<DeveloperDocs page={{ kind: "guide", guide: "introduction" }} signedIn={signedIn} />),
-    renderToStaticMarkup(<DeveloperPricing signedIn={signedIn} />),
+    renderToStaticMarkup(<DeveloperPricing visitor={{ signedIn, csrf: "the-token" }} />),
     renderToStaticMarkup(<DeveloperNotFound signedIn={signedIn} />),
   ]) {
     assert.match(html, avatar);

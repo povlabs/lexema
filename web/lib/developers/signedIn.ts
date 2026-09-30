@@ -11,6 +11,12 @@ export interface SignedIn {
   readonly name: string | undefined;
 }
 
+/** A signed-in visitor on a page whose forms post (pricing, #208): who they are, and their session's CSRF token. */
+export interface PostingVisitor {
+  readonly signedIn: SignedIn;
+  readonly csrf: string;
+}
+
 /** Who an account's profile names. */
 export const signedInOf = (profile: AccountProfile): SignedIn => ({ email: profile.email, name: profile.name });
 
