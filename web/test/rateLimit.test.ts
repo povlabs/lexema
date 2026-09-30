@@ -294,7 +294,9 @@ test("production is what is live: its three custom domains only, no D1, logs on;
   assert.equal(production.name, "lexema-web");
   assert.equal(production.workers_dev, false);
   assert.equal(production.preview_urls, false);
-  assert.deepEqual(production.routes, [
+  // The preview-only domains serve no production traffic (web/test/preview.test.ts).
+  const live = production.routes?.filter((route: string | object) => typeof route !== "object" || !("previews_enabled" in route));
+  assert.deepEqual(live, [
     { pattern: "lexema.fyi", custom_domain: true },
     { pattern: "developers.lexema.fyi", custom_domain: true },
     { pattern: "api.lexema.fyi", custom_domain: true },

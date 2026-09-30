@@ -130,3 +130,50 @@ test("localhost relays Google's sign-in callback to developers.localhost with th
     path: `/${DEVELOPERS_SEGMENT}/sign-in/google/callback`,
   });
 });
+
+test("each preview host routes as its production host does, as a Preview URL and as a deployment URL (ADR 0018)", async () => {
+  const { app, api, send } = worker();
+  // A Preview answers at <name>.<domain>; one deployment of it at <deployment-id>-<name>.<domain>.
+  for (const name of ["huey-242-preview-stage", "a1b2c3d4-huey-242-preview-stage"]) {
+    const on = (domain: string, path: string) => to(`https://${name}.${domain}${path}`);
+    assert.deepEqual(on("preview.lexema.fyi", "/?q=casa"), { to: "site" }, name);
+    assert.deepEqual(on("preview.lexema.fyi", `/${DEVELOPERS_SEGMENT}`), { to: "not-found", site: "lexema" }, name);
+    assert.deepEqual(on("preview.lexema.fyi", "/api/v1/lookup"), { to: "not-found", site: "lexema" }, name);
+    assert.deepEqual(on("developers-preview.lexema.fyi", "/docs/"), { to: "developers", path: `/${DEVELOPERS_SEGMENT}/docs` }, name);
+    assert.deepEqual(on("developers-preview.lexema.fyi", "/.rsc"), { to: "developers", path: `/${DEVELOPERS_SEGMENT}.rsc` }, name);
+    assert.deepEqual(on("api-preview.lexema.fyi", "/v1/lookup?q=sale"), { to: "api" }, name);
+    assert.deepEqual(on("api-preview.lexema.fyi", "/"), { to: "not-found", site: "api" }, name);
+
+    await send(`https://${name}.developers-preview.lexema.fyi/docs?tab=keys`);
+    await send(`https://${name}.api-preview.lexema.fyi/v1/lookup?q=sale`);
+    const missing = await send(`https://${name}.api-preview.lexema.fyi/v2/lookup`);
+    assert.equal(missing.status, 404, name);
+    assert.equal(missing.headers.get("set-cookie"), null, name);
+  }
+  assert.deepEqual(app, [
+    `https://huey-242-preview-stage.developers-preview.lexema.fyi/${DEVELOPERS_SEGMENT}/docs?tab=keys`,
+    `https://a1b2c3d4-huey-242-preview-stage.developers-preview.lexema.fyi/${DEVELOPERS_SEGMENT}/docs?tab=keys`,
+  ]);
+  assert.deepEqual(api, [
+    "https://huey-242-preview-stage.api-preview.lexema.fyi/v1/lookup?q=sale",
+    "https://a1b2c3d4-huey-242-preview-stage.api-preview.lexema.fyi/v1/lookup?q=sale",
+  ]);
+});
+
+test("a preview domain names a site only one label below it", () => {
+  for (const url of [
+    // The bare domains serve no Preview.
+    "https://api-preview.lexema.fyi/v1/lookup",
+    "https://developers-preview.lexema.fyi/docs",
+    // Two labels below is not a Preview name.
+    "https://a.b.api-preview.lexema.fyi/v1/lookup",
+    "https://a.b.developers-preview.lexema.fyi/docs",
+    // A lookalike domain is not a preview domain.
+    "https://x.api-preview.lexema.fyi.example.com/v1/lookup",
+    "https://x.api-previews.lexema.fyi/v1/lookup",
+  ]) {
+    assert.deepEqual(to(url), { to: "site" }, url);
+  }
+  // `developers-preview` and `api-preview` end in `-preview`, not `.preview`, so neither reads as the dictionary's.
+  assert.deepEqual(to("https://x.api-preview.lexema.fyi/v1/lookup"), { to: "api" });
+});
