@@ -51,5 +51,79 @@ each case leaves is in [DEV_SEED.md § Failure states](DEV_SEED.md#failure-state
 Do not apply the remaining parts by hand: a part that failed may have applied
 some of its statements.
 
-Loading a complete release into deployed D1 remains a separate release
-operation.
+## Load a release into Cloudflare D1
+
+Production and every Preview read one shared dictionary D1,
+`lexema-dictionary`, and code never writes to it
+([ADR 0018](../.decisions/0018-previews-on-workers-builds.md)). A release goes
+into it once, from Huey's laptop, where the archive lives. It is not a workflow,
+since a workflow would need a Cloudflare token in GitHub.
+
+The one run, for release `it-0c432803`:
+
+1. Put `it-extract.jsonl.gz` in the repository root. Its durable copy is
+   `source/` in `hueypov/lexema-data`. The Wiktionary dump beside it is read
+   too when it is there, as for a local seed.
+2. Sign Wrangler in to the Cloudflare account, once:
+   `pnpm --dir web exec wrangler login`.
+3. From the repository root, run:
+
+   ```sh
+   SEED_INPUT=it-extract.jsonl.gz \
+   SEED_SQL=.data/full-sql \
+   SEED_REMOTE=lexema-dictionary \
+   pnpm run seed:dev
+   ```
+
+`SEED_REMOTE` names the remote D1; without it the seed stays local, as above.
+With it, the seed:
+
+- finds `lexema-dictionary`, and creates it with `wrangler d1 create` when it
+  is absent;
+- refuses the database if it already holds a table, before it reads the archive;
+- applies the same 64 MiB parts in order, 16 for this release, each with
+  `wrangler d1 execute lexema-dictionary --remote --file`;
+- runs the same row-count and `source_release` checks against the remote
+  database, and only then marks the release `complete`.
+
+It builds no app table there, and it never deletes or clears a database.
+`SEED_STATE` is refused beside `SEED_REMOTE`, since a remote seed keeps no
+local state.
+
+On success it ends by printing the loaded counts, including 560,357
+`source_record` and 1,273,490 `lookup_form` rows, then
+`source_release: 1 row, complete`, and last:
+
+```text
+remote D1 lexema-dictionary database id: <id>
+```
+
+Paste that line as a comment on
+[#172](https://github.com/hueypov/lexema/issues/172). Production's binding
+([#19](https://github.com/hueypov/lexema/issues/19)) and the Previews' `DB`
+binding use that id.
+
+### If the upload stops
+
+A run that did not print the database id line did not finish. If it stopped
+before `part 1 of 16`, no part was loaded: fix the cause and run the same
+command again. Otherwise the remote database holds part of the release, or a
+release marked `failed`, and is not usable. The error
+names the failing part and the parts applied before it, or the tables and
+release fields that differed.
+
+1. Read the error and fix the cause.
+2. Delete the database: `pnpm --dir web exec wrangler d1 delete lexema-dictionary`.
+   The seed never does this for you.
+3. Run the same command again. It creates the database afresh, with a new id;
+   paste that one on #172.
+
+Do not apply the remaining parts by hand, and do not run the seed again over
+the old database: it refuses a database that already holds tables.
+
+### Later releases
+
+A later release is not uploaded again in full. It goes into the same database
+as a diff; how is [#132](https://github.com/hueypov/lexema/issues/132)'s and
+[#18](https://github.com/hueypov/lexema/issues/18)'s. The seed cannot load a
+second release over the first, since it refuses a database with tables.
