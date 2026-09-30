@@ -66,6 +66,7 @@ export const SECTIONS = [
   "antonyms",
   "derived",
   "pronunciation",
+  "expressions",
 ] as const;
 export type Section = (typeof SECTIONS)[number];
 

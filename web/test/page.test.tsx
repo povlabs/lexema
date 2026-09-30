@@ -40,7 +40,7 @@ import { SiteHeader } from "@/components/dictionary/SiteHeader";
 import { readingChoiceLabel } from "@/components/dictionary/ReportDialog";
 import { PhraseView } from "@/components/dictionary/Phrase";
 import { phrasePage } from "@/lib/dictionary/phrasePage.ts";
-import { wordPage } from "@/lib/dictionary/wordPage.ts";
+import { EXPRESSION_FILTER_ABOVE, matchesExpression, wordPage } from "@/lib/dictionary/wordPage.ts";
 import { firstQuery, pageTitle } from "@/lib/dictionary/params";
 // The class strings the components carry, imported rather than copied, so a
 // restyle that changes one changes both together.
@@ -51,6 +51,13 @@ import {
   DEFINITION_NUMBER_CLOSED,
   DEFINITION_NUMBER_OPEN,
   EMPTY,
+  EXPRESSION_FILTER,
+  EXPRESSION_LINK,
+  EXPRESSION_MEANING,
+  EXPRESSION_PHRASE,
+  EXPRESSION_ROW,
+  EXPRESSION_ROW_EXTRA,
+  EXPRESSIONS_MORE,
   ERROR,
   EXAMPLE_EXTRA,
   FIELD_LABEL,
@@ -1619,5 +1626,109 @@ test("a reading with no definition is its part of speech alone; the readings wit
     for (const html of [fare, litigante]) {
       assert.doesNotMatch(textOf(html), /no definition|definizione|mancante|not given|missing/i, "no note about the missing definition");
     }
+  });
+});
+
+// --- Expressions (#213) -------------------------------------------------------
+
+/** The page's *Expressions* sections, each from its heading to the end of its section. */
+function expressionSections(html: string): string[] {
+  return [...html.matchAll(/<section[^>]*aria-labelledby="expressions-\d+"[^>]*>([\s\S]*?)<\/section>/g)].map((match) => match[1]);
+}
+
+/** A section's label, and its rows as [phrase, meaning], in order. */
+function expressionRows(section: string): { label: string; rows: [string, string | null][] } {
+  const label = textOf(/<h2[^>]*>([\s\S]*?)<\/h2>/.exec(section)?.[1] ?? "");
+  const rows = [...section.matchAll(/<li class="[^"]*" data-expression="">([\s\S]*?)<\/li>/g)].map((match): [string, string | null] => {
+    const meaning = new RegExp(`<p class="${esc(EXPRESSION_MEANING)}"[^>]*>([\\s\\S]*?)</p>`).exec(match[1]);
+    const phrase = textOf(match[1].replace(/<p[\s\S]*<\/p>/, ""));
+    return [phrase, meaning === null ? null : textOf(meaning[1])];
+  });
+  return { label, rows };
+}
+
+test("a word's expressions are the last word-level section before Source: labelled with no count, one row, then + more", async () => {
+  await withDevSeed(async ({ db }) => {
+    const html = await render(db, "casa");
+    const [section, ...others] = expressionSections(html);
+    assert.ok(section !== undefined);
+    assert.equal(others.length, 0);
+    const { label, rows } = expressionRows(section);
+    assert.equal(label, "Expressions");
+    // Each phrase casa's records list shows once.
+    const readings = await readingsFor(db, "casa");
+    assert.equal(rows.length, new Set(readings.flatMap((reading) => reading.wordFacts.expressions.map((row) => row.phrase))).size);
+    // Closed, the first row shows; the rest wait for `+ more`, which ends the section.
+    assert.equal(occurrencesOf(section, `class="${EXPRESSION_ROW}"`), 1);
+    assert.equal(occurrencesOf(section, `class="${EXPRESSION_ROW_EXTRA}"`), rows.length - 1);
+    assert.ok(section.includes(`<div class="${EXPRESSIONS_MORE}">`));
+    assert.match(textOf(section), /\+ moreless$/);
+    // Thirty rows or fewer: no filter box.
+    assert.ok(rows.length <= EXPRESSION_FILTER_ABOVE);
+    assert.ok(!section.includes("Find an expression"));
+    // Nothing between the section and the Source line.
+    const tail = html.slice(html.lastIndexOf('aria-labelledby="expressions-'));
+    assert.ok(!tail.slice(tail.indexOf("</section>") + "</section>".length, tail.indexOf(`<footer class="${SOURCE_LINE}"`)).includes("<section"));
+  });
+});
+
+test("a row is the phrase, then its meaning muted; a headword phrase links to its entry, another is plain", async () => {
+  await withDevSeed(async ({ db }) => {
+    const [section] = expressionSections(await render(db, "fare"));
+    assert.ok(section !== undefined);
+    const { rows } = expressionRows(section);
+    assert.deepEqual(rows[0], ["andare a fare in culo", "mandare al diavolo, mandare a quel paese"]);
+    // "fare l'amore" heads its own record in the fixture; "avere da fare" does not.
+    assert.ok(section.includes(`<a class="${EXPRESSION_LINK}" href="/?q=fare%20l&#x27;amore" lang="it">fare l&#x27;amore</a>`));
+    assert.ok(section.includes(`<span class="${EXPRESSION_PHRASE}" lang="it">avere da fare</span>`));
+    // A row with no meaning is the phrase alone.
+    assert.ok(rows.some(([, meaning]) => meaning === null), "fare lists a phrase with no sense");
+    // fare's two records repeat one list: each phrase once.
+    assert.equal(new Set(rows.map(([phrase]) => phrase)).size, rows.length);
+    // More than thirty rows: the filter box, shown once the list is open.
+    assert.ok(rows.length > EXPRESSION_FILTER_ABOVE);
+    assert.ok(section.includes(`<div class="${EXPRESSION_FILTER}">`));
+    assert.match(section, /placeholder="Find an expression"/);
+  });
+});
+
+test("Find an expression matches the phrase or the meaning, whatever the case", () => {
+  const row = { phrase: "andare a Canossa", meanings: ["umiliarsi, invocare un perdono mortificante"], hasEntry: false, refs: [] as never };
+  assert.ok(matchesExpression(row, "canossa"));
+  assert.ok(matchesExpression(row, "PERDONO"));
+  assert.ok(matchesExpression(row, "  "));
+  assert.ok(!matchesExpression(row, "bottega"));
+});
+
+test("a form's page shows its lemma's expressions as Expressions with <lemma>, after its own", async () => {
+  await withDevSeed(async ({ db }) => {
+    const sections = expressionSections(await render(db, "andavano")).map(expressionRows);
+    assert.deepEqual(sections.map(({ label }) => label), ["Expressions with andare"]);
+    assert.deepEqual(sections[0]?.rows[0], ["a lungo andare", "col trascorrere del tempo"]);
+  });
+  const lines = (await readFile(join(REPO, "fixtures/expressions.jsonl"), "utf8")).trim().split("\n");
+  await withLines(lines, async ({ db }) => {
+    const sections = expressionSections(await render(db, "stato")).map(expressionRows);
+    assert.deepEqual(sections.map(({ label }) => label), ["Expressions", "Expressions with stare"]);
+    assert.equal(sections[0]?.rows.length, 5);
+    assert.deepEqual(sections[0]?.rows[1], ["lo stato delle cose è questo!", null]);
+  });
+});
+
+test("a page with no expressions shows no section and says nothing about it (ADR 0016)", async () => {
+  await withFixture(async ({ db }) => {
+    const html = await render(db, "casa");
+    assert.equal(expressionSections(html).length, 0);
+    assert.ok(!textOf(html).includes("Expressions"));
+  });
+});
+
+test("a list of one row has no + more", async () => {
+  const lines = (await readFile(join(REPO, "fixtures/expressions.jsonl"), "utf8")).trim().split("\n");
+  await withLines(lines, async ({ db }) => {
+    const [section] = expressionSections(await render(db, "colore"));
+    assert.ok(section !== undefined);
+    assert.deepEqual(expressionRows(section).rows, [["di colore", null]]);
+    assert.ok(!section.includes(EXPRESSIONS_MORE));
   });
 });

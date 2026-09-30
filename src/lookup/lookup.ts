@@ -7,9 +7,11 @@ import { withoutPlaceholder } from "../italian/placeholder.js";
 import { readingPartOfSpeech } from "./articles.js";
 import type { DictionaryRead, LookupDatabase } from "./database.js";
 import { phraseForms, phraseMatches } from "./phrase.js";
+import { readExpressions } from "./expressions.js";
 import { readSourceRecord, type SourceRecordFields } from "./sourceRecord.js";
 import type {
   Evidence,
+  Expression,
   FoundResult,
   FoundRoute,
   Grammar,
@@ -255,12 +257,27 @@ async function found(
     return { forms: (await tableOf(group)).forms, evidence: [first, ...rest] };
   };
 
+  // A lemma's own expressions, read once per record however many links name it.
+  const lemmaExpressions = new Map<number, Promise<Expression[]>>();
+  const expressionsOf = (candidate: LemmaCandidate): Promise<Expression[]> => {
+    let expressions = lemmaExpressions.get(candidate.recordId);
+    if (expressions === undefined) {
+      expressions = readRecordExpressions(db, releaseId, candidate.recordId, (pointer) => ({ ...candidate.ref, jsonPointer: pointer }));
+      lemmaExpressions.set(candidate.recordId, expressions);
+    }
+    return expressions;
+  };
+
   const resolve = (links: DeclaredLink[]): Promise<LemmaLink[]> =>
     Promise.all(
       links.map(async (link): Promise<LemmaLink> => {
         if (link.kind === "dangling") return link;
         const candidates = await Promise.all(
-          link.candidates.map(async (candidate) => ({ ...candidate, listing: await listingOf(candidate.recordId) })),
+          link.candidates.map(async (candidate) => ({
+            ...candidate,
+            listing: await listingOf(candidate.recordId),
+            expressions: await expressionsOf(candidate),
+          })),
         );
         return { ...link, candidates };
       }),
@@ -463,7 +480,7 @@ async function buildReading(
     ref: ref(""),
     word: first.record_word,
     posTitle: record.posTitle,
-    wordFacts: source.wordFacts,
+    wordFacts: { ...source.wordFacts, expressions: await readExpressions(db, releaseId, source.expressionItems) },
     isAboutQuery: isAbout(group),
     evidence: evidenceOf(releaseId, group),
     senses: await readSenses(db, recordId, ref, source, recovered.underSense),
@@ -480,12 +497,24 @@ async function buildReading(
   };
 }
 
+/** A record's expressions, off its own archive line: a lemma's, which is not a reading. */
+async function readRecordExpressions(
+  db: LookupDatabase,
+  releaseId: string,
+  recordId: number,
+  ref: (pointer: string) => SourceRef,
+): Promise<Expression[]> {
+  const record = await readRecord(db, recordId);
+  return readExpressions(db, releaseId, readSourceRecord(record.rawJson, ref).expressionItems);
+}
+
 async function readRecord(
   db: LookupDatabase,
   recordId: number,
 ): Promise<{ posTitle: string; rawJson: string }> {
-  // The verbatim line is read here, once per returned reading, and never for a
-  // record the query did not match: the table is split off for exactly that.
+  // The verbatim line is read here, once per returned reading and once per
+  // lemma a reading names (for its expressions, #213), and never for any other
+  // record: the table is split off for exactly that.
   const row = await queryOne<{ pos_title: string; raw_json: string }>(
     db,
     `SELECT r.pos_title, j.raw_json

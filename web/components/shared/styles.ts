@@ -326,6 +326,36 @@ export const WORD_DOT = "font-sans text-[0.75rem] text-text-muted";
 export const WORD_DOT_BEFORE_REST = "hidden font-sans text-[0.75rem] text-text-muted group-data-open/words:inline";
 export const WORD_MORE = "inline";
 
+/**
+ * *Expressions* (#213; boards 10x–12x, 17x, E1–E6). Closed, one row, the
+ * meaning 16 px after its phrase on one baseline (layout A); open, every row,
+ * the phrases in a column about 190 px wide and the meanings lined up after it
+ * (layout B); on a phone each meaning under its phrase (E5). The block is Base
+ * UI's collapsible, `data-open` while open.
+ */
+export const EXPRESSIONS = "group/expressions";
+export const EXPRESSION_LIST = "m-0 flex list-none flex-col gap-4 p-0";
+const EXPRESSION_ROW_LAYOUT =
+  "gap-x-4 gap-y-1 max-sm:flex-col sm:items-baseline group-data-open/expressions:sm:grid-cols-[11.875rem_minmax(0,1fr)]";
+export const EXPRESSION_ROW = `flex ${EXPRESSION_ROW_LAYOUT} group-data-open/expressions:sm:grid`;
+/** A row past the first: in the document, shown once `+ more` is open. */
+export const EXPRESSION_ROW_EXTRA = `hidden ${EXPRESSION_ROW_LAYOUT} group-data-open/expressions:max-sm:flex group-data-open/expressions:sm:grid`;
+/** A row *Find an expression* does not match. */
+export const EXPRESSION_ROW_FILTERED = "hidden";
+const EXPRESSION_TEXT = "font-serif text-[1.0625rem] leading-snug";
+/** A phrase that is its own headword: bright, and a link to its entry. */
+export const EXPRESSION_LINK = `${EXPRESSION_TEXT} max-w-full shrink-0 cursor-pointer text-text-strong no-underline wrap-anywhere ${FOCUS_RING}`;
+/** A phrase with no entry of its own: dimmer, and plain text. */
+export const EXPRESSION_PHRASE = `${EXPRESSION_TEXT} max-w-full shrink-0 text-text wrap-anywhere`;
+export const EXPRESSION_MEANING = `${EXPRESSION_TEXT} m-0 min-w-0 max-w-[48rem] text-text-muted`;
+export const EXPRESSIONS_MORE = "mt-3 block";
+/** *Find an expression*, over a list longer than thirty rows, shown once it is open. */
+export const EXPRESSION_FILTER =
+  "relative mb-4 hidden h-9 w-full max-w-[22.5rem] items-center rounded-[4px] border border-border-strong bg-surface-raised focus-within:border-accent group-data-open/expressions:flex";
+export const EXPRESSION_FILTER_ICON = "pointer-events-none absolute left-3 size-4 text-text-muted";
+export const EXPRESSION_FILTER_INPUT =
+  "w-full min-w-0 bg-transparent py-2 pr-3 pl-9 font-sans text-[0.9rem] text-text-strong outline-none placeholder:text-text-muted [&::-webkit-search-cancel-button]:appearance-none";
+
 /** `Source ↗`, with the same space above and below it. */
 export const SOURCE_LINE = "mt-9 sm:mt-12 flex flex-wrap items-center gap-x-3 gap-y-1 font-sans text-[0.8rem] text-text-muted";
 export const SOURCE_LINK = `inline-flex items-center gap-1.5 text-text-muted no-underline hover:text-text ${FOCUS_RING}`;
