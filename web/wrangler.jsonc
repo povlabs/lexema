@@ -139,14 +139,20 @@
     // (worker/hosts.ts). Selected at build time with CLOUDFLARE_ENV=production,
     // which `pnpm --filter @lexema/web run deploy:production` sets
     // (docs/DEPLOY.md). Only the custom domains serve it: no workers.dev
-    // address and no preview URLs. No D1 binding until #19, so a search there
-    // answers with the failed-lookup state. The last three routes serve
-    // Previews only, never production (ADR 0018, Cloudflare's "Previews,
-    // custom domains"): a Preview answers one label below each.
+    // address. No D1 binding until #19, so a search there answers with the
+    // failed-lookup state. The last three routes serve Previews only, never
+    // production (ADR 0018, Cloudflare's "Previews, custom domains"): a
+    // Preview answers one label below each.
+    //
+    // preview_urls stays true (#272). Every deploy writes workers_dev and
+    // preview_urls to the Worker as two separate switches, so `false` turned
+    // Preview URLs off on each merge to main. Cloudflare configures production
+    // and Preview workers.dev URLs separately, so production stays off
+    // workers.dev (docs/DEPLOY.md, "What production is").
     "production": {
       "name": "lexema-web",
       "workers_dev": false,
-      "preview_urls": false,
+      "preview_urls": true,
       "routes": [
         { "pattern": "lexema.fyi", "custom_domain": true },
         { "pattern": "developers.lexema.fyi", "custom_domain": true },

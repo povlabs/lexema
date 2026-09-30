@@ -19,7 +19,8 @@ development, with the placeholder D1 that `pnpm run seed:dev` fills.
 | Worker | `lexema-web` |
 | Address | the custom domains `lexema.fyi`, `developers.lexema.fyi` and `api.lexema.fyi` only, told apart by host (`web/worker/hosts.ts`) |
 | Stage | `LEXEMA_STAGE` is `production` ([below](#the-preview-only-domains)) |
-| `workers_dev`, `preview_urls` | both off |
+| `workers_dev` | off: production has no `workers.dev` address |
+| `preview_urls` | on, so Previews keep their URLs ([below](#preview-urls-stay-on)) |
 | D1 | none yet, so a search shows the failed-lookup state; attaching it is #19 |
 | Rate limits | 15 searches and 120 suggestions a minute per visitor ([#128](https://github.com/hueypov/lexema/issues/128)); 10 sign-in starts ([#165](https://github.com/hueypov/lexema/issues/165)) and 5 key creations ([#168](https://github.com/hueypov/lexema/issues/168)) a minute on the developer site |
 | Sign-in | Google and GitHub, each on only once its client id and secret are set ([below](#turn-on-sign-in)) |
@@ -27,6 +28,22 @@ development, with the placeholder D1 that `pnpm run seed:dev` fills.
 
 `www` to the apex and HTTP to HTTPS are dashboard settings (a redirect rule and
 Always Use HTTPS), not Worker settings, so they are not in the repository.
+
+### Preview URLs stay on
+
+Every production deploy writes both settings to the Worker. Wrangler 4.135.0
+sends `workers_dev` and `preview_urls` as two separate switches, so
+`preview_urls: false` turned Preview URLs off on each merge to `main`
+([#272](https://github.com/hueypov/lexema/issues/272)). Cloudflare configures
+production and Preview `workers.dev` URLs separately, so `preview_urls` can be
+on while production stays off `workers.dev`
+([Previews, custom domains](https://developers.cloudflare.com/workers/previews/custom-domains/#enable-workersdev-preview-urls)).
+A Preview needs at least one host to get a URL; with this on, each Preview also
+answers at `<name>-lexema-web.<subdomain>.workers.dev`, which Cloudflare serves
+with `X-Robots-Tag: noindex`
+([Previews](https://developers.cloudflare.com/workers/previews/#urls)). That
+host is not one of the [preview-only domains](#the-preview-only-domains), so
+the Worker answers it as the dictionary (`web/worker/hosts.ts`).
 
 ## Deploy
 

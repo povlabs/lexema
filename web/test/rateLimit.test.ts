@@ -292,8 +292,10 @@ test("the limits are the rulings, in the Wrangler configuration, the same in pro
 test("production is what is live: its three custom domains only, no D1, logs on; local keeps its two D1s", () => {
   const production = read("production");
   assert.equal(production.name, "lexema-web");
+  // No production workers.dev address, but Preview URLs on (#272): every
+  // production deploy writes both, and `false` switched Previews' URLs off.
   assert.equal(production.workers_dev, false);
-  assert.equal(production.preview_urls, false);
+  assert.equal(production.preview_urls, true);
   // The preview-only domains serve no production traffic (web/test/preview.test.ts).
   const live = production.routes?.filter((route: string | object) => typeof route !== "object" || !("previews_enabled" in route));
   assert.deepEqual(live, [
