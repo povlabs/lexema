@@ -2,7 +2,8 @@
 // of 2026-09-30): `vado via` is titled as typed, and each record of `vado` is a
 // reading whose definitions are *andare via*'s own meanings, as imported, then
 // `vado`'s form entries with the lemma replaced by *andare via*, a link to that
-// entry. No forms and no pronunciation. What the form lines say is the
+// entry. Only each expression's first meaning shows until `+ more` opens the
+// rest. No forms and no pronunciation. What the form lines say is the
 // lookup's (`phraseForms`, src/lookup/phrase.ts); the meanings are the
 // headword's senses, read as its own page reads them (definitions.ts). This
 // file only orders and numbers them for the page.
@@ -13,9 +14,11 @@ import { definitionsOf, type DefinitionItem } from "./definitions.ts";
 /**
  * One numbered definition of a reading: a meaning of the expression's headword,
  * copied from the record that holds it, or a form line naming the expression.
+ * Every meaning but an expression's first is `folded`: it waits for `+ more`
+ * (Huey's hand check of 2026-09-30, 11:19Z on #214). A form line always shows.
  */
 export type PhraseLine =
-  | { kind: "meaning"; reading: Reading; item: DefinitionItem }
+  | { kind: "meaning"; reading: Reading; item: DefinitionItem; folded: boolean }
   | { kind: "form"; definition: PhraseDefinition };
 
 /** The record a numbered reading of the page shows: its heading, and where the source writes it. */
@@ -52,10 +55,11 @@ export interface PhrasePage {
    */
   unnamed: string[];
   /**
-   * The Wiktionary pages the lines come from: the searched words', for the
-   * form lines, then each expression's whose meanings show.
+   * The Wiktionary page *Source* links: the page of each headword the query
+   * spells, never the searched words' (Huey's hand check of 2026-09-30, 11:19Z
+   * on #214). One, unless the query spells two expressions.
    */
-  sourceWords: string[];
+  sourceWords: [string, ...string[]];
 }
 
 /**
@@ -71,10 +75,12 @@ export function phrasePage(
   route: Extract<FoundRoute, { kind: "phrase" }>,
   headwords: readonly Reading[],
 ): PhrasePage {
-  const meaningsOf = (phrase: string): PhraseLine[] =>
-    headwords
-      .filter((reading) => reading.word === phrase)
-      .flatMap((reading) => definitionsOf(reading).items.map((item): PhraseLine => ({ kind: "meaning", reading, item })));
+  // An expression's meanings, from each of its records: the first shows, the rest fold.
+  const meaningsFrom = (readings: readonly Reading[]): PhraseLine[] =>
+    readings
+      .flatMap((reading) => definitionsOf(reading).items.map((item) => ({ reading, item })))
+      .map(({ reading, item }, i): PhraseLine => ({ kind: "meaning", reading, item, folded: i > 0 }));
+  const meaningsOf = (phrase: string): PhraseLine[] => meaningsFrom(headwords.filter((reading) => reading.word === phrase));
   const defined = new Set<string>();
   const linesOf = (form: PhraseForm): [PhraseLine, ...PhraseLine[]] => {
     const lines: PhraseLine[] = [];
@@ -97,17 +103,16 @@ export function phrasePage(
   // Each headword no form line names, as its own reading of its meanings.
   const own = headwords.flatMap((reading): Omit<PhraseEntry, "number">[] => {
     if (named.has(reading.word)) return [];
-    const [head, ...tail] = definitionsOf(reading).items.map((item): PhraseLine => ({ kind: "meaning", reading, item }));
+    const [head, ...tail] = meaningsFrom([reading]);
     return head === undefined ? [] : [{ reading, lines: [head, ...tail] }];
   });
   const readings = [...formed, ...own].map((entry, i) => ({ number: i + 1, ...entry }));
   const shown = new Set([...named, ...own.map(({ reading }) => reading.word)]);
-  // The searched words' pages, then the page of each expression whose meanings show.
-  const meaningPages = readings.flatMap(({ lines }) => lines.flatMap((line) => (line.kind === "meaning" ? [line.reading.word] : [])));
+  const [first, ...others] = route.phrases;
   return {
     headword: query,
     readings,
     unnamed: route.phrases.map((phrase) => phrase.word).filter((word) => !shown.has(word)),
-    sourceWords: [...new Set([...route.forms.map((form) => form.word), ...meaningPages])],
+    sourceWords: [first.word, ...new Set(others.map((phrase) => phrase.word).filter((word) => word !== first.word))],
   };
 }

@@ -199,6 +199,12 @@ export const DEFINITION = "flex gap-4";
 /** A definition after the first: in the document, shown once the reading's `+ more` is open. */
 export const DEFINITION_EXTRA = "hidden gap-4 group-data-open/definitions:flex";
 export const DEFINITION_NUMBER = "w-5 shrink-0 pt-1 font-mono text-[0.85rem] text-text-muted";
+/**
+ * A searched expression's form line numbers what shows (Phrase.tsx): closed,
+ * it follows the first meaning; open, the folded meanings between them count.
+ */
+export const DEFINITION_NUMBER_CLOSED = "group-data-open/definitions:hidden";
+export const DEFINITION_NUMBER_OPEN = "hidden group-data-open/definitions:inline";
 export const DEFINITION_BODY = "min-w-0 flex-1";
 export const GLOSS = "m-0 max-w-[48rem] font-serif text-[1.2rem] leading-snug text-text-strong wrap-anywhere sm:text-[1.3rem]";
 export const SENSE_LABEL = "italic text-text-muted";

@@ -121,8 +121,17 @@ twice (`phrasePage`,
 headword with no gloss has none, and its lines stand alone: `faccio
 l'abitudine` shows only `faccio`'s form line for *fare l'abitudine*. A
 headword no form line names still shows its meanings, each of its records a
-reading of its own after the searched words' records, and *Source* links its
-page. Only a headword with neither shows as a bare link.
+reading of its own after the searched words' records. Only a headword with
+neither shows as a bare link.
+
+Closed, a reading shows each expression's first meaning and every form line,
+then the `+ more` every reading has; the other meanings are folded under the
+first until it opens. *Source* links each found headword's page, never the
+searched words': `vado via` has one, to *andare via*'s page
+([Huey's hand check](https://github.com/hueypov/lexema/issues/214#issuecomment-5910100974)).
+Each form line keeps its record's provenance pointer, which reaches `vado`'s
+page, and `/attribution` carries the full credit
+([ADR 0009](../.decisions/0009-two-licences-and-a-source-link.md)).
 
 ## Outcomes
 
