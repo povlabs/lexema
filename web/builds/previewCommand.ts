@@ -18,7 +18,7 @@ export const BUILT_CONFIG = "dist/server/wrangler.json";
  * Worker nor its assets upload it.
  */
 export const PREVIEW_NAME_FILE = "dist/preview/name";
-/** The secrets `wrangler preview --secrets-file` uploads with the deployment: JSON, `{}` when there are none. */
+/** The secrets `wrangler preview --secrets-file` uploads with the deployment, as JSON. */
 export const PREVIEW_SECRETS_FILE = "dist/preview/secrets.json";
 
 /** The exact Preview command in the Workers Builds settings, run from web/ (docs/DEPLOY.md). */
@@ -28,13 +28,6 @@ export const PREVIEW_COMMAND =
 
 /** The secret better-auth signs the session cookie with (web/worker/signIn.ts). */
 const AUTH_SECRET = "BETTER_AUTH_SECRET";
-
-/**
- * What Wrangler 4.135.0 says when `preview secret list` finds no Preview, or
- * one with no deployment yet (`previewNotFoundMessage`,
- * `noPreviewDeploymentListMessage` in wrangler-dist/cli.js).
- */
-const NO_DEPLOYMENT_YET = /The Preview "[^"]*" was not found|There are currently no deployments for the Preview/;
 
 export interface PreviewPrepareSteps {
   /** `WORKERS_CI_BRANCH`: the pushed branch. */
@@ -74,21 +67,6 @@ export function findOrCreateAppDatabase(wrangler: Wrangler, preview: PreviewName
 }
 
 /**
- * Whether the Preview's latest deployment carries the auth secret. A Preview
- * with no deployment yet carries none; any other failure stops the build
- * rather than replace a secret that may be there.
- */
-function hasAuthSecret(wrangler: Wrangler, preview: PreviewName): boolean {
-  const listed = wrangler(["preview", "secret", "list", "--name", preview.value, "--json", "--config", BUILT_CONFIG]);
-  if (!listed.ok) {
-    if (NO_DEPLOYMENT_YET.test(`${listed.stdout}\n${listed.stderr}`)) return false;
-    throw new Error("wrangler preview secret list failed");
-  }
-  const secrets = JSON.parse(listed.stdout) as { name: string }[];
-  return secrets.some(({ name }) => name === AUTH_SECRET);
-}
-
-/**
  * Prepare one branch's Preview for `wrangler preview`: build, give the branch
  * its own app database, migrate it, and write the built config, the Preview
  * name and the secrets file the Preview command reads. Returns the name.
@@ -108,15 +86,12 @@ export function preparePreview(steps: PreviewPrepareSteps): PreviewName {
   const migrations = steps.writeMigrationsConfig(migrationsConfig(database, steps.migrationsDir));
   required(wrangler(["d1", "migrations", "apply", preview.appDatabase, "--remote", "--config", migrations]), "wrangler d1 migrations apply");
 
-  // `preview secret put` refuses a Preview with no deployment (Wrangler
-  // 4.135.0), so a new secret rides in with the deployment itself, through
-  // `--secrets-file`, and only when the Preview lacks one: its first push.
-  const secrets: Record<string, string> = {};
-  if (!hasAuthSecret(wrangler, preview)) {
-    secrets[AUTH_SECRET] = steps.newSecret();
-    log(`${AUTH_SECRET}: a new random one goes up with Preview ${preview}`);
-  }
-  steps.writeFile(PREVIEW_SECRETS_FILE, `${JSON.stringify(secrets)}\n`);
+  // A Preview deployment keeps only the secrets it is sent (Wrangler 4.135.0
+  // sends no keep flag), and `preview secret put` refuses a Preview with no
+  // deployment. So every deployment carries a fresh secret through
+  // `--secrets-file`; a push signs the Preview's testers out.
+  steps.writeFile(PREVIEW_SECRETS_FILE, `${JSON.stringify({ [AUTH_SECRET]: steps.newSecret() })}\n`);
+  log(`${AUTH_SECRET}: a new random one goes up with Preview ${preview}`);
   steps.writeFile(PREVIEW_NAME_FILE, preview.value);
   return preview;
 }
