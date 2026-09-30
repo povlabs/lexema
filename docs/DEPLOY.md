@@ -143,15 +143,18 @@ does not run `npx wrangler preview` itself
    the shared dictionary. It applies the app migrations to it. Then it writes
    the [Preview name](#the-preview-name) to `web/dist/preview/name`, and the
    secrets for the deployment to `web/dist/preview/secrets.json`. That file holds
-   a new random `BETTER_AUTH_SECRET` on the Preview's first push, and nothing on
-   later pushes, which keep the one already there.
+   a new random `BETTER_AUTH_SECRET` on every push, the first and every later one.
 2. `npx wrangler preview` deploys the Preview from that config, named by that
    name, with those secrets. Without `--name`, Wrangler would name it after the
    raw branch.
 
-The secret goes up with the deployment because `wrangler preview secret put`
-refuses a Preview that has no deployment yet. So nothing has to run after
-`npx wrangler preview`.
+The secret is sent with every Preview deployment, because a deployment keeps
+only the secrets it is sent: Wrangler 4.135.0 has no flag to keep the last
+deployment's. A push that sent none would leave the Preview with no
+`BETTER_AUTH_SECRET`, and sign-in would break. It goes up with the deployment,
+not after it, because `wrangler preview secret put` refuses a Preview that has
+no deployment yet. So nothing has to run after `npx wrangler preview`. The cost
+is that each push signs the Preview's testers out.
 
 `npx` runs the Wrangler pinned in `web/package.json`, 4.135.0, from
 `web/node_modules`, and downloads nothing
@@ -333,7 +336,8 @@ accepts this, since only reviewed build commands use it.
    `app database: created lexema-preview-app-<name>`, the migrations,
    `BETTER_AUTH_SECRET: a new random one goes up with Preview <name>`, and
    `wrangler preview`.
-2. Push to the branch again. The log now says `app database: reusing`.
+2. Push to the branch again. The log now says `app database: reusing`, and
+   again `BETTER_AUTH_SECRET: a new random one goes up with Preview <name>`.
 3. Merge it. The `main` build log starts with `sweep:` lines, deletes that
    branch's Preview and app D1, and then deploys production.
 
