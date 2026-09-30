@@ -25,6 +25,7 @@ development, with the placeholder D1 that `pnpm run seed:dev` fills.
 | API rate | `CALLS_60` and `CALLS_300`, Rate Limiting bindings of 60 and 300 calls a minute per developer account, keyed by account id ([#261](https://github.com/hueypov/lexema/issues/261)) |
 | Account meter | the Durable Object class `AccountMeterObject`, bound as `ACCOUNT_METER`, SQLite-backed through the `v1-account-meter` migration: one per developer account, counting its calls and adding them to `api_key_usage` at most once a minute ([#261](https://github.com/hueypov/lexema/issues/261)) |
 | Sign-in | Google and GitHub, each on only once its client id and secret are set ([below](#turn-on-sign-in)) |
+| Billing | Stripe's webhook at `https://developers.lexema.fyi/auth/stripe/webhook`, on only once the Stripe secrets and price ids are set ([below](#turn-on-billing)) |
 | Workers Logs | on |
 
 `www` to the apex and HTTP to HTTPS are dashboard settings (a redirect rule and
@@ -111,6 +112,7 @@ alone, never from the top level or `env.production`:
 | `ACCOUNT_METER` | the account meter's binding; each Preview gets its own Durable Object namespace and storage |
 | `EMAIL` | a `send_email` binding with `destination_address` set to Huey's verified address, so it can send nowhere else |
 | Sign-in | off: both OAuth client ids are empty |
+| Billing | off: both Stripe price ids are empty and no Stripe secret is sent, so the webhook answers 503 |
 
 `web/test/preview.test.ts` fails if a Preview's email can reach anyone else,
 if a Preview rate limit shares a production `namespace_id`, if a production
@@ -401,6 +403,50 @@ the session cookie. None of them is in the repository.
 
 Sign-in also needs the production app database, `APP_DB` (#19): without it, a
 callback answers 503.
+
+## Turn on billing
+
+Starter and Pro are paid through Stripe, on better-auth's Stripe plugin
+(`src/accounts/billing.ts`, [#262](https://github.com/hueypov/lexema/issues/262)).
+Its webhook keeps each account's `subscription` row in step with Stripe: for
+each event below it reads the subscription back from Stripe and writes it, so
+a late or repeated event ends in Stripe's current state. Until all four
+settings are set, and `BETTER_AUTH_SECRET` too, the webhook answers 503 and the
+log names what is missing.
+
+| Setting | Kind | What it is |
+|---|---|---|
+| `STRIPE_SECRET_KEY` | Worker secret | the Stripe API key the plugin calls Stripe with |
+| `STRIPE_WEBHOOK_SECRET` | Worker secret | the webhook endpoint's signing secret, `whsec_…` |
+| `STRIPE_PRICE_STARTER` | var | Starter's monthly price id, `price_…` |
+| `STRIPE_PRICE_PRO` | var | Pro's monthly price id, `price_…` |
+
+1. In Stripe, make the Starter and Pro products with their monthly prices
+   ($15 and $49). Put each price id in `env.production.vars` in
+   `web/wrangler.jsonc`, as `STRIPE_PRICE_STARTER` and `STRIPE_PRICE_PRO`.
+2. Add a webhook endpoint at
+   `https://developers.lexema.fyi/auth/stripe/webhook`, sending these six
+   events:
+   - `checkout.session.completed`
+   - `customer.subscription.created`
+   - `customer.subscription.updated`
+   - `customer.subscription.deleted`
+   - `invoice.paid`
+   - `invoice.payment_failed`
+
+   Stripe sends each event with a `Stripe-Signature` header. A missing, wrong
+   or stale one answers 400, as does a sync that could not be written, and
+   Stripe retries.
+3. Set both secrets on the Worker, from `web/`:
+
+   ```sh
+   pnpm exec wrangler secret put STRIPE_SECRET_KEY --env production
+   pnpm exec wrangler secret put STRIPE_WEBHOOK_SECRET --env production
+   ```
+
+The webhook also needs the production app database, `APP_DB` (#19): without
+it, the webhook answers 503. It is the only `/auth` path the Worker answers,
+and only on the developer site; it is not counted by the per-visitor limits.
 
 ## After a deploy
 

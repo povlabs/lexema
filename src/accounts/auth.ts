@@ -4,7 +4,8 @@
 // code exchange), links a second provider to an account by verified email,
 // and keeps sessions. It is built per request, over the app tables through
 // Drizzle (src/db/app), and web/worker/signIn.ts calls it from Lexema's own
-// routes: none of its endpoints is reachable on any host.
+// routes. One of its endpoints is reachable: the Stripe plugin's webhook
+// (./billing.ts), on the developer site only (web/worker/stripeWebhook.ts).
 //
 // What stays Lexema's is the account rule in ./accounts.ts: only a verified
 // email reaches an account, and each identity keeps the email it was linked
@@ -24,8 +25,9 @@ import { setSessionCookie } from "better-auth/cookies";
 import type { OAuth2Tokens, OAuth2UserInfo } from "better-auth/oauth2";
 import { github, google } from "better-auth/social-providers";
 import type { AppDatabase } from "../db/app/database.js";
-import { developerAccount, developerSession, providerIdentity, verification } from "../db/app/schema.js";
+import { developerAccount, developerSession, providerIdentity, subscription, verification } from "../db/app/schema.js";
 import { verifiedIdentity, type VerifiedIdentity } from "./accounts.js";
+import { billingPlugin, type Billing } from "./billing.js";
 import { profileOf, type ProviderCredentials, type ProviderId } from "./providers.js";
 
 const COOKIE_PREFIX = "lexema";
@@ -38,8 +40,14 @@ export const SESSION_COOKIE = `__Secure-${COOKIE_PREFIX}.session_token`;
 export const PENDING_COOKIE = `__Secure-${COOKIE_PREFIX}.state`;
 /** How long a sign-in lasts: 30 days, as it did before better-auth. */
 export const SESSION_LIFETIME_SECONDS = 30 * 24 * 60 * 60;
-/** The path better-auth's endpoints would sit under. Nothing routes there; web/worker/signIn.ts calls them directly. */
+/**
+ * The path better-auth's endpoints sit under. One is routed: the Stripe
+ * plugin's webhook, `STRIPE_WEBHOOK_PATH` (web/worker/stripeWebhook.ts).
+ * web/worker/signIn.ts calls the rest directly.
+ */
 export const AUTH_PATH = "/auth";
+/** The Stripe plugin's webhook, on the developer site (#262). */
+export const STRIPE_WEBHOOK_PATH = `${AUTH_PATH}/stripe/webhook`;
 
 /**
  * `BETTER_AUTH_SECRET`, which signs the session cookie, or `undefined` when it
@@ -59,6 +67,7 @@ const TABLES = {
   provider_identity: providerIdentity,
   developer_session: developerSession,
   verification,
+  subscription,
 };
 
 /** Everything better-auth is told whatever the request: where its data lives and how its cookies and sessions behave. */
@@ -106,6 +115,16 @@ function baseOptions(db: AppDatabase, secret: string, origin: string) {
 /** better-auth over this database for reading and ending sessions: no provider, no sign-in. */
 export function sessionAuth(db: AppDatabase, secret: string, origin: string) {
   return betterAuth(baseOptions(db, secret, origin));
+}
+
+/**
+ * better-auth over this database with the Stripe plugin added to the base
+ * options: its verified webhook, and the Checkout and billing-portal endpoints
+ * the billing routes call through `auth.api`. `billing` exists only once every
+ * Stripe setting is set (./billing.ts).
+ */
+export function billingAuth(db: AppDatabase, secret: string, origin: string, billing: Billing) {
+  return betterAuth({ ...baseOptions(db, secret, origin), plugins: [billingPlugin(db, billing)] });
 }
 
 /**
