@@ -5,6 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { gzipSync } from "node:zlib";
+import { applyAppMigrations } from "../src/db/app/migrations.js";
 import { seedSql } from "../src/import/seedSql.js";
 import { fromNodeSqlite } from "../src/lookup/database.js";
 import { MAX_QUERY_LENGTH } from "../src/lookup/lookup.js";
@@ -85,6 +86,7 @@ async function withFixture(run: (db: DatabaseSync) => Promise<void>): Promise<vo
       },
     });
     for (const part of parts) db.exec(await readFile(part, "utf8"));
+    applyAppMigrations(db);
     await run(db);
   } finally {
     db.close();

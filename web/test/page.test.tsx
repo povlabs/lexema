@@ -26,6 +26,7 @@ import { fileURLToPath } from "node:url";
 import { DatabaseSync } from "node:sqlite";
 import { gzipSync } from "node:zlib";
 import { renderToStaticMarkup } from "react-dom/server";
+import { applyAppMigrations } from "../../src/db/app/migrations.js";
 import { seedSql } from "../../src/import/seedSql.js";
 import { loadFixturePages, type RawPageSource } from "../../src/source/rawPage.js";
 import { PUBLISHED_ARCHIVE_SHA256, sourceOf, type ArchiveFacts, type ReleaseSource } from "../../src/source/archiveFacts.js";
@@ -105,6 +106,7 @@ async function fixture(
   });
   const db = new DatabaseSync(":memory:");
   for (const part of parts) db.exec(await readFile(part, "utf8"));
+  applyAppMigrations(db);
   // No review comes from Lexema: the seed writes no `claim_review` row (#117).
   assert.deepEqual({ ...db.prepare("SELECT count(*) AS n FROM claim_review").get() }, { n: 0 });
   return { dir, db };

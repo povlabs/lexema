@@ -18,6 +18,7 @@ import { DatabaseSync } from "node:sqlite";
 import { gzipSync } from "node:zlib";
 import type { ReactElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
+import { applyAppMigrations } from "../../src/db/app/migrations.js";
 import { signInAccount, verifiedIdentity } from "../../src/accounts/accounts.js";
 import { ALL_ENDPOINTS, onlyEndpoints, type KeyAccess } from "../../src/api/keyAccess.js";
 import { ACCEPT_KEY_SQL, createKey, revokeKey } from "../../src/api/keys.js";
@@ -72,6 +73,7 @@ before(async () => {
   });
   sqlite = new DatabaseSync(":memory:");
   for (const part of parts) sqlite.exec(await readFile(part, "utf8"));
+  applyAppMigrations(sqlite);
   db = fromNodeSqlite(sqlite);
 });
 

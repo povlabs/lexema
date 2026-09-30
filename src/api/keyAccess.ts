@@ -3,7 +3,7 @@
 // on any other; a key past its expiry is refused like a revoked one
 // (web/worker/api/handler.ts, src/api/keys.ts).
 //
-// Stored on the key's row as `endpoints` and `expires_at` (src/db/schema.sql),
+// Stored on the key's row as `endpoints` and `expires_at` (src/db/app/schema.ts),
 // both NULL for a key made before #187: every endpoint, never expiring.
 
 import { ENDPOINTS, type Endpoint } from "./calls.js";

@@ -13,6 +13,7 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { DatabaseSync } from "node:sqlite";
 import { gzipSync } from "node:zlib";
+import { applyAppMigrations } from "../../src/db/app/migrations.js";
 import { seedSql } from "../../src/import/seedSql.js";
 import { fromNodeSqlite } from "../../src/lookup/database.js";
 import {
@@ -55,6 +56,7 @@ async function withDatabase(run: (db: DatabaseSync) => Promise<void>): Promise<v
     });
     const db = new DatabaseSync(":memory:");
     for (const part of parts) db.exec(await readFile(part, "utf8"));
+    applyAppMigrations(db);
     await run(db);
     db.close();
   } finally {

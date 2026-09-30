@@ -12,7 +12,7 @@ import type { LookupDatabase, Statement } from "../lookup/database.js";
 import { endpointsColumn, endpointsOfColumn, OPEN_ACCESS, type EndpointScope, type KeyAccess } from "./keyAccess.js";
 import { displayPrefix, generateApiKey, hashApiKey, type NewKey } from "./keys.js";
 
-/** The longest name a key may have: the `label` check in src/db/schema.sql. */
+/** The longest name a key may have: the `label` check in src/db/app/schema.ts. */
 export const KEY_NAME_MAX = 200;
 
 declare const keyNameBrand: unique symbol;

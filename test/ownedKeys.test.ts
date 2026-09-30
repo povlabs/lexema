@@ -7,6 +7,7 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 import { DatabaseSync } from "node:sqlite";
 import { fileURLToPath } from "node:url";
+import { applyAppMigrations } from "../src/db/app/migrations.js";
 import {
   DELETE_ACCOUNT_IDENTITIES_SQL,
   DELETE_ACCOUNT_SESSIONS_SQL,
@@ -41,6 +42,7 @@ const DAY = 24 * 60 * 60 * 1000;
 function schemaDb(): DatabaseSync {
   const db = new DatabaseSync(":memory:");
   db.exec(SCHEMA);
+  applyAppMigrations(db);
   return db;
 }
 
