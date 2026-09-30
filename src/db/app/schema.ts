@@ -347,6 +347,31 @@ export const enterprisePlan = sqliteTable(
   ],
 );
 
+/**
+ * What an account was last emailed about one Stripe subscription (#215): the
+ * plan state's kind and its plan (src/billing/planNotice.ts). The webhook
+ * compares Stripe's current state with this row and emails only the change.
+ * Moving the row from the state it was read in is what claims an email, so a
+ * replayed or concurrent event finds nothing left to send. No row means the
+ * account was never told of this subscription. The Stripe plugin never reads or
+ * writes it.
+ */
+export const planNotice = sqliteTable(
+  "plan_notice",
+  {
+    stripeSubscriptionId: text("stripe_subscription_id").primaryKey(),
+    accountId: integer("account_id")
+      .notNull()
+      .references(() => developerAccount.id),
+    plan: text("plan", { enum: ["starter", "pro"] }).notNull(),
+    state: text("state", { enum: ["active", "past-due", "cancelling", "ended"] }).notNull(),
+  },
+  () => [
+    check("plan_notice_plan", sql`plan IN ('starter', 'pro')`),
+    check("plan_notice_state", sql`state IN ('active', 'past-due', 'cancelling', 'ended')`),
+  ],
+);
+
 // ---------------------------------------------------------------------------
 // Reader reports (#51)
 // ---------------------------------------------------------------------------

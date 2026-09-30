@@ -82,6 +82,12 @@
     "bindings": [{ "name": "ACCOUNT_METER", "class_name": "AccountMeterObject" }]
   },
   "migrations": [{ "tag": "v1-account-meter", "new_sqlite_classes": ["AccountMeterObject"] }],
+  // Account email through Cloudflare Email Service (#215): plan started,
+  // changed, payment failed, cancellation confirmed, plan ended and account
+  // deleted, each from noreply@lexema.fyi (src/email/). `wrangler dev`
+  // simulates this binding: it logs each email and sends nothing. Adding
+  // `"remote": true` would send real email from a laptop; nothing here does.
+  "send_email": [{ "name": "EMAIL" }],
   "vars": {
     // Where this Worker runs: local, preview or production (ADR 0018,
     // worker/stage.ts). Any other value refuses to boot.
@@ -105,7 +111,11 @@
     // and webhook answer 503, until STRIPE_SECRET_KEY and STRIPE_WEBHOOK_SECRET
     // are set too, as secrets, never here (docs/DEPLOY.md).
     "STRIPE_PRICE_STARTER": "price_1ULTI07wyoTIgVX6DFZ5TmY3",
-    "STRIPE_PRICE_PRO": "price_1ULTI17wyoTIgVX6QiH9muAe"
+    "STRIPE_PRICE_PRO": "price_1ULTI17wyoTIgVX6QiH9muAe",
+    // The one address EMAIL may send to, where its binding allows only one:
+    // every account email then goes there, whoever it is about
+    // (src/email/send.ts, workerEmailOf). Empty means each goes to its account.
+    "EMAIL_ONLY_TO": ""
   },
   // Every Worker Preview's settings (ADR 0018). A Preview takes its bindings
   // from this block alone, never from the top level or env.production, and
@@ -120,7 +130,11 @@
       "GITHUB_CLIENT_ID": "",
       // The same Stripe test-mode prices as local development.
       "STRIPE_PRICE_STARTER": "price_1ULTI07wyoTIgVX6DFZ5TmY3",
-      "STRIPE_PRICE_PRO": "price_1ULTI17wyoTIgVX6QiH9muAe"
+      "STRIPE_PRICE_PRO": "price_1ULTI17wyoTIgVX6QiH9muAe",
+      // The send_email binding's destination_address below. A Preview's one
+      // account is the test developer, on example.com, which that binding
+      // refuses; so every account email here goes to Huey instead (#215).
+      "EMAIL_ONLY_TO": "itshuseyingulec@gmail.com"
     },
     "d1_databases": [
       // The shared dictionary production and every Preview read, and code never
@@ -206,6 +220,11 @@
         "bindings": [{ "name": "ACCOUNT_METER", "class_name": "AccountMeterObject" }]
       },
       "migrations": [{ "tag": "v1-account-meter", "new_sqlite_classes": ["AccountMeterObject"] }],
+      // Account email (#215), to any address, from lexema.fyi once Huey has
+      // onboarded it to Email Sending, which needs the Workers Paid plan
+      // (docs/DEPLOY.md). Until then every send fails, is logged, and changes
+      // nothing else.
+      "send_email": [{ "name": "EMAIL" }],
       "vars": {
         "LEXEMA_STAGE": "production",
         "LEXEMA_RELEASE": "it-dev",
@@ -214,7 +233,8 @@
         "GITHUB_CLIENT_ID": "",
         // Empty until live-mode Stripe prices exist at go-live (docs/DEPLOY.md).
         "STRIPE_PRICE_STARTER": "",
-        "STRIPE_PRICE_PRO": ""
+        "STRIPE_PRICE_PRO": "",
+        "EMAIL_ONLY_TO": ""
       }
     }
   }

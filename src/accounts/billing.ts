@@ -5,7 +5,9 @@
 // event handlers and owns the `subscription` table (src/db/app/schema.ts).
 // Lexema adds `syncSubscription` (src/billing/subscriptionSync.ts) as its
 // `onEvent`, which reads each subscription back from Stripe so the row ends in
-// Stripe's current state whatever order events arrive in (#200 R2.1).
+// Stripe's current state whatever order events arrive in (#200 R2.1). Once
+// the row is written, the plan change it made is emailed to the account, once
+// (#215, src/billing/planNotice.ts).
 //
 // The plugin is configured only when every setting below is set: the two
 // secrets and the two plans' price ids. `billingOf` builds the one value the
@@ -13,7 +15,9 @@
 
 import { stripe as stripePlugin } from "@better-auth/stripe";
 import Stripe from "stripe";
+import { notePlanChange } from "../billing/planNotice.js";
 import { syncSubscription, type PlanPrices } from "../billing/subscriptionSync.js";
+import { emailAccount, type AccountMail } from "../email/send.js";
 
 /** The Worker secrets and vars Stripe billing is configured from. */
 export interface StripeSettings {
@@ -72,9 +76,10 @@ export function billingOf(settings: StripeSettings, fetchFn?: typeof fetch): Bil
  * The Stripe plugin over this database. A customer is made at Checkout, not
  * at sign-up. The plugin's `subscription` model and `user.stripeCustomerId`
  * are the Drizzle table and column of the same field names, so the mapping
- * names only the table.
+ * names only the table. `mail` sends the emails a plan change owes; without
+ * it they are recorded as owed and sent nowhere (src/email/send.ts).
  */
-export function billingPlugin(db: Parameters<typeof syncSubscription>[0], billing: Billing) {
+export function billingPlugin(db: Parameters<typeof syncSubscription>[0], billing: Billing, mail: AccountMail | undefined) {
   return stripePlugin({
     stripeClient: billing.stripe,
     stripeWebhookSecret: billing.webhookSecret,
@@ -94,6 +99,7 @@ export function billingPlugin(db: Parameters<typeof syncSubscription>[0], billin
       if (synced.outcome === "not-a-plan" || synced.outcome === "no-row") {
         console.warn("stripe event changed no subscription", { event: event.type, ...synced });
       }
+      if (synced.outcome === "written") await emailAccount(db, mail, synced.accountId, await notePlanChange(db, synced));
     },
   });
 }

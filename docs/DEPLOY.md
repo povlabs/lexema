@@ -26,6 +26,7 @@ development, with the placeholder D1 that `pnpm run seed:dev` fills.
 | Account meter | the Durable Object class `AccountMeterObject`, bound as `ACCOUNT_METER`, SQLite-backed through the `v1-account-meter` migration: one per developer account, counting its calls and adding them to `api_key_usage` at most once a minute ([#261](https://github.com/hueypov/lexema/issues/261)) |
 | Sign-in | Google and GitHub, each on only once its client id and secret are set ([below](#turn-on-sign-in)) |
 | Billing | Checkout, the billing portal and Stripe's webhook at `https://developers.lexema.fyi/auth/stripe/webhook`, on only once the Stripe secrets and live price ids are set ([below](#turn-on-billing)) |
+| Account email | `EMAIL`, a `send_email` binding with no restriction, sending from `noreply@lexema.fyi` once `lexema.fyi` is onboarded to Email Sending ([below](#turn-on-account-email)) |
 | Workers Logs | on |
 
 `www` to the apex and HTTP to HTTPS are dashboard settings (a redirect rule and
@@ -111,6 +112,7 @@ alone, never from the top level or `env.production`:
 | Rate limits | production's limits under their own `namespace_id`s, `CALLS_60` and `CALLS_300` included |
 | `ACCOUNT_METER` | the account meter's binding; each Preview gets its own Durable Object namespace and storage |
 | `EMAIL` | a `send_email` binding with `destination_address` set to Huey's verified address, so it can send nowhere else |
+| `EMAIL_ONLY_TO` | Huey's verified address, the same as the binding's `destination_address`, so every [account email](#turn-on-account-email) goes to Huey whoever the account is |
 | Sign-in | off: both OAuth client ids are empty |
 | Billing | off: the Stripe test-mode price ids are set, but the [Preview command](#the-preview-command) sends no Stripe secret, so the billing routes and the webhook answer 503 |
 
@@ -497,6 +499,77 @@ the billing routes and the webhook answer 503. Two `/auth` paths are answered,
 both the Stripe plugin's and only on the developer site: the webhook, which is
 not counted by the per-visitor limits, and `/auth/subscription/success`, where
 Checkout returns a paid developer before they land on `/dashboard/settings`.
+
+## Turn on account email
+
+The developer site emails a developer about their account through Cloudflare
+Email Service ([#215](https://github.com/hueypov/lexema/issues/215)), from
+`noreply@lexema.fyi`. Each email is plain text and HTML, in English, with one
+link to `/dashboard/settings` (`src/email/accountEmail.ts`):
+
+| Email | Sent when |
+|---|---|
+| Welcome to Starter or Pro | Stripe's webhook finds a plan serving that did not |
+| Your plan is now Starter or Pro | a serving plan moved between the two |
+| Your plan's payment failed | the plan fell past due |
+| Your plan is cancelled | the plan was cancelled; it names the day it ends |
+| Your plan has ended | the plan stopped serving |
+| Your Lexema account is deleted | the developer deleted their account |
+
+Each is sent once per change. The plan emails are sent by the webhook
+(`web/worker/stripeWebhook.ts`) after it writes the subscription's row: it
+compares Stripe's current state with the `plan_notice` row, which holds what
+the account was last emailed about, and moving that row is what claims the
+email (`src/billing/planNotice.ts`). So a replayed or late event, or two
+arriving at once, send nothing twice. The deletion email is sent by the
+account's first deletion only (`deleteAccount` in `src/accounts/accounts.ts`).
+A send that fails is logged as `account email failed` with Email Service's
+code, never the address, and is not tried again: the webhook still answers 200
+and the deletion still happens.
+
+Stripe sends the rest, from its own settings: receipts, invoices, expiring-card
+and upcoming-renewal emails. Turn those on in the Stripe Dashboard, in test
+mode and again in live mode, and leave Stripe's own failed-payment email off,
+as the one above replaces it.
+
+### The binding
+
+Every configuration binds Email Service as `EMAIL`, a `send_email` binding
+([Workers API](https://developers.cloudflare.com/email-service/api/send-emails/workers-api/),
+[send bindings](https://developers.cloudflare.com/email-service/configuration/send-bindings/)):
+
+| Where | Binding | What it does |
+|---|---|---|
+| Local | `{ "name": "EMAIL" }` at the top level of `web/wrangler.jsonc` | `wrangler dev` simulates it: each email is logged in the terminal and sent nowhere ([local development](https://developers.cloudflare.com/email-service/local-development/sending/)). Adding `"remote": true` would send real email; do not commit that |
+| Previews | `previews.send_email`, with `destination_address` set to Huey's verified address, and the same address in the `EMAIL_ONLY_TO` var | sends to Huey alone ([above](#the-preview-only-domains)). Billing and OAuth are off there, so the only account is the test developer, `test-developer@example.com`, and only its deletion sends. The binding would refuse that address, so `EMAIL_ONLY_TO` sends every account email to Huey instead (`workerEmailOf` in `src/email/send.ts`) |
+| Production | `{ "name": "EMAIL" }` in `env.production` | sends to any address, which needs the Workers Paid plan ([pricing](https://developers.cloudflare.com/email-service/platform/pricing/)) |
+
+Local development and production leave `EMAIL_ONLY_TO` empty, so each email
+goes to its own account. Tests hand in a stub binding (`test/stubEmail.ts`), so
+no test sends email, and CI holds nothing that could.
+
+To get a real account email on a Preview: open the Preview's developer site,
+sign in with the test sign-in, go to Settings and delete the account. The
+"Your Lexema account is deleted" email reaches Huey's inbox. Signing in with
+the test sign-in again makes a new test developer, so this can be repeated.
+
+### Onboard lexema.fyi (Huey, once)
+
+Email Service sends only from a domain onboarded to Email Sending
+([domain configuration](https://developers.cloudflare.com/email-service/configuration/domains/)):
+
+1. In the Cloudflare dashboard, go to **Compute**, **Email Service**, **Email
+   Sending**.
+2. Select **Onboard Domain** and choose `lexema.fyi`.
+3. Review the records Cloudflare adds: MX, SPF and DKIM records on the
+   `cf-bounce` subdomain, for bounces and authentication, and a DMARC record on
+   `_dmarc.lexema.fyi`. Select **Done**.
+
+DNS usually takes 5 to 15 minutes on Cloudflare's own DNS. Until the domain is
+onboarded, every send fails with `E_SENDER_DOMAIN_NOT_AVAILABLE` or
+`E_SENDER_NOT_VERIFIED`, which Workers Logs shows as `account email failed`;
+nothing else breaks. Once it is, the **Email Sending** page's logs show each
+email sent.
 
 ## After a deploy
 

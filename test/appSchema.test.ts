@@ -7,7 +7,8 @@
 // reader-report tables moved off the dictionary into the app database (#240,
 // ADR 0018), also with no change in shape
 // (fixtures/report-tables-before-app-db.sql). The plan tables came with #260:
-// the Stripe plugin's `subscription` and Lexema's `enterprise_plan`.
+// the Stripe plugin's `subscription` and Lexema's `enterprise_plan`, and
+// `plan_notice` with #215.
 
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
@@ -25,8 +26,8 @@ const KEY_TABLES = ["api_key", "api_key_minute", "api_key_usage"] as const;
 const AUTH_TABLES = ["developer_account", "provider_identity", "developer_session", "verification"] as const;
 /** The reader-report tables, unchanged since their move (#240). */
 const REPORT_TABLES = ["reader_report", "report_opening"] as const;
-/** The plan tables (#260). */
-const PLAN_TABLES = ["subscription", "enterprise_plan"] as const;
+/** The plan tables (#260), and what each account was last emailed about its plan (#215). */
+const PLAN_TABLES = ["subscription", "enterprise_plan", "plan_notice"] as const;
 const APP_TABLES = [...AUTH_TABLES, ...KEY_TABLES, ...REPORT_TABLES, ...PLAN_TABLES] as const;
 
 type Row = Record<string, unknown>;
@@ -212,6 +213,7 @@ test("the migrations build only the app tables and their indexes", () => {
     "index sqlite_autoindex_api_key_1",
     "index sqlite_autoindex_api_key_minute_1",
     "index sqlite_autoindex_api_key_usage_1",
+    "index sqlite_autoindex_plan_notice_1",
     "index sqlite_autoindex_report_opening_1",
     "index subscription_by_reference",
     "index subscription_stripe_subscription_id_unique",
@@ -221,7 +223,7 @@ test("the migrations build only the app tables and their indexes", () => {
   ]);
 });
 
-test("the plan tables are STRICT and refuse an unknown plan or status, a zero allowance and a period ending before it starts", () => {
+test("the plan tables are STRICT and refuse an unknown plan, status or notice, a zero allowance and a period ending before it starts", () => {
   const db = migrated();
   for (const table of PLAN_TABLES) assert.equal(shape(db, table).table[0]?.strict, 1, table);
   const at = "2026-09-30T12:00:00.000Z";
@@ -229,6 +231,8 @@ test("the plan tables are STRICT and refuse an unknown plan or status, a zero al
   const period = "'2026-10-01T00:00:00.000Z', '2026-11-01T00:00:00.000Z'";
   const subscription = (plan: string, status: string) =>
     `INSERT INTO subscription (plan, reference_id, status, period_start, period_end) VALUES ('${plan}', '1', '${status}', ${period})`;
+  const notice = (plan: string, state: string) =>
+    `INSERT INTO plan_notice (stripe_subscription_id, account_id, plan, state) VALUES ('sub_${plan}_${state}', 1, '${plan}', '${state}')`;
   const enterprise = (calls: number, perMinute: number, periodSql: string) =>
     `INSERT INTO enterprise_plan (account_id, calls_per_period, calls_per_minute, period_start, period_end) VALUES (1, ${calls}, ${perMinute}, ${periodSql})`;
   const refused: [string, string][] = [
@@ -237,9 +241,12 @@ test("the plan tables are STRICT and refuse an unknown plan or status, a zero al
     ["a zero allowance", enterprise(0, 1000, period)],
     ["a zero rate", enterprise(20_000_000, 0, period)],
     ["an end before its start", enterprise(20_000_000, 1000, "'2026-11-01T00:00:00.000Z', '2026-10-01T00:00:00.000Z'")],
+    ["a notice of an unknown plan", notice("enterprise", "active")],
+    ["a notice of a state no email is about", notice("pro", "none")],
   ];
   for (const [what, sql] of refused) assert.throws(() => db.exec(sql), /CHECK constraint failed/, what);
   // Every status the plan code reads is one the table stores, and a valid Enterprise row is stored.
   for (const status of STRIPE_STATUSES) db.exec(subscription("starter", status));
   db.exec(enterprise(20_000_000, 1000, period));
+  for (const state of ["active", "past-due", "cancelling", "ended"]) db.exec(notice("starter", state));
 });

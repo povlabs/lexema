@@ -85,6 +85,11 @@ test("Preview email is restricted to Huey's verified address, on every send_emai
     assert.equal(binding.destination_address, PREVIEW_EMAIL_TO, binding.name);
     assert.equal(binding.allowed_destination_addresses, undefined, binding.name);
   }
+  // Account email is sent to that address, whoever it is about, since the test developer's is on example.com (#215).
+  assert.equal(previews().vars?.EMAIL_ONLY_TO, PREVIEW_EMAIL_TO);
+  // Local development and production send each account email to its own account.
+  assert.equal(read().vars.EMAIL_ONLY_TO, "");
+  assert.equal(read("production").vars.EMAIL_ONLY_TO, "");
 });
 
 test("production serves Previews on the three preview-only domains, and has no D1 of its own", () => {
@@ -95,7 +100,8 @@ test("production serves Previews on the three preview-only domains, and has no D
     Object.values(PREVIEW_DOMAIN).map((pattern) => ({ pattern, custom_domain: true, previews_enabled: true, enabled: false })),
   );
   assert.deepEqual(production.d1_databases, []);
-  assert.deepEqual(production.send_email, []);
+  // Production's own email binding sends account email to any address (#215): the Preview's one-recipient binding is not what it gets.
+  assert.deepEqual(production.send_email, [{ name: "EMAIL" }]);
 });
 
 /**
