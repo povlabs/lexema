@@ -18,14 +18,19 @@ function database() {
 
 test("a Drizzle insert and select run through the proxy over DatabaseSync", async () => {
   const { sqlite, db } = database();
-  const [made] = await db.insert(developerAccount).values({ createdAt: "2026-09-30T12:00:00.000Z" }).returning();
-  assert.deepEqual(made, { accountId: 1, createdAt: "2026-09-30T12:00:00.000Z", deletedAt: null });
+  const at = new Date("2026-09-30T12:00:00.000Z");
+  const [made] = await db
+    .insert(developerAccount)
+    .values({ name: "Ada", email: "ada@example.com", emailVerified: true, createdAt: at, updatedAt: at })
+    .returning();
+  assert.deepEqual(made, { id: 1, name: "Ada", email: "ada@example.com", emailVerified: true, image: null, createdAt: at, updatedAt: at, deletedAt: null });
 
-  const found = await db.select().from(developerAccount).where(eq(developerAccount.accountId, made.accountId)).get();
+  const found = await db.select().from(developerAccount).where(eq(developerAccount.id, made.id)).get();
   assert.deepEqual(found, made);
+  // A moment is stored as ISO-8601 text, like every other time in these tables.
   assert.deepEqual(
-    { ...sqlite.prepare("SELECT account_id, created_at, deleted_at FROM developer_account").get() },
-    { account_id: 1, created_at: "2026-09-30T12:00:00.000Z", deleted_at: null },
+    { ...sqlite.prepare("SELECT account_id, email_verified, created_at, deleted_at FROM developer_account").get() },
+    { account_id: 1, email_verified: 1, created_at: "2026-09-30T12:00:00.000Z", deleted_at: null },
   );
 });
 
@@ -48,9 +53,9 @@ test("a write the table refuses is a rejected query, not a silent row", async ()
 
 test("a single-row read that finds no row is undefined, not a row of undefined fields", async () => {
   const { db } = database();
-  assert.equal(await db.select().from(developerAccount).where(eq(developerAccount.accountId, 42)).get(), undefined);
+  assert.equal(await db.select().from(developerAccount).where(eq(developerAccount.id, 42)).get(), undefined);
   assert.equal(
-    await db.query.developerAccount.findFirst({ where: eq(developerAccount.accountId, 42) }),
+    await db.query.developerAccount.findFirst({ where: eq(developerAccount.id, 42) }),
     undefined,
   );
 });

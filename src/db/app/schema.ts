@@ -1,87 +1,160 @@
 // The developer app's own tables (#159, #165, #150): accounts, provider
 // identities, sessions, API keys and their usage. They moved here from
-// src/db/schema.sql under ADR 0017 (#228), unchanged; that file keeps the
-// dictionary tables. drizzle-kit generates the migrations in ./migrations from
-// this file (DEVELOPMENT.md).
+// src/db/schema.sql under ADR 0017 (#228); that file keeps the dictionary
+// tables. drizzle-kit generates the migrations in ./migrations from this file
+// (DEVELOPMENT.md).
 //
-// Every table is STRICT, which Drizzle cannot declare: the generated migration
-// is edited by hand to say so, and test/appSchema.test.ts holds each table to
-// the shape schema.sql gave it.
+// The account, identity and session tables, and `verification`, are
+// better-auth's (#229): `pnpm dlx auth@1.7.6 generate --adapter drizzle
+// --dialect sqlite` wrote their columns, and they are brought in here under
+// Lexema's table and column names. Each property is better-auth's field name,
+// so better-auth's Drizzle adapter reads and writes them with no field mapping
+// (src/accounts/auth.ts); the SQL names are ours, so the raw SQL of the key and
+// deletion code reads them as before.
+//
+// Every table is STRICT, which Drizzle cannot declare: the generated migrations
+// are edited by hand to say so, and test/appSchema.test.ts holds each table to
+// its shape.
 
 import { sql } from "drizzle-orm";
-import { check, index, integer, primaryKey, sqliteTable, text, unique } from "drizzle-orm/sqlite-core";
-
-// ---------------------------------------------------------------------------
-// Developer accounts (#159, #165)
-// ---------------------------------------------------------------------------
+import { check, customType, index, integer, primaryKey, sqliteTable, text, unique } from "drizzle-orm/sqlite-core";
 
 /**
- * A person signed in to developers.lexema.fyi (src/accounts/accounts.ts). It
- * holds no name and no email of its own: who it is lives in its provider
- * identities, so deleting those leaves a row with nothing personal in it.
- * A deleted account keeps that row, so its revoked keys and their usage keep
- * an owner (#163 R1.4); `deleted_at` marks it, and it can own no new key.
+ * A moment, stored as ISO-8601 text like every other time in these tables and
+ * read back as a `Date`, which is how better-auth hands times over.
  */
-export const developerAccount = sqliteTable("developer_account", {
-  accountId: integer("account_id").primaryKey(),
-  createdAt: text("created_at").notNull(), // ISO-8601
-  deletedAt: text("deleted_at"), // ISO-8601; NULL while the account is in use
+const moment = customType<{ data: Date; driverData: string }>({
+  dataType: () => "text",
+  toDriver: (value) => value.toISOString(),
+  fromDriver: (value) => new Date(value),
 });
 
+// ---------------------------------------------------------------------------
+// Developer accounts, sign-in and sessions (#159, #165, #229)
+// ---------------------------------------------------------------------------
+
 /**
- * A Google or GitHub account signed in with, linked to one developer account.
- * `provider_user_id` is the provider's own stable id for the person (Google's
- * `sub`, GitHub's numeric user id), so a changed email still signs in to the
- * same account. `email` is the verified address as it was when the identity was
- * linked, lowercased; a second provider's identity with the same email links to
- * the same account. Only verified emails are ever stored. `display_name` is the
- * name the provider gives the person (Google's `name`, GitHub's `name` or else
- * its `login`), refreshed at each sign-in; NULL when it gives none (#190).
+ * A person signed in to developers.lexema.fyi: better-auth's user. It carries
+ * the verified email it was made with, which a second provider's sign-in links
+ * by, and the name the first provider gave. Who the account menu names lives in
+ * its provider identities (src/accounts/accounts.ts).
+ *
+ * A deleted account keeps its row, so its revoked keys and their usage keep an
+ * owner (#163 R1.4): `deleted_at` marks it, its email and name are replaced by
+ * values that say nothing about the person, and it can own no new key.
+ * `image` is better-auth's column for a provider's picture; Lexema keeps none.
  */
-export const providerIdentity = sqliteTable(
-  "provider_identity",
+export const developerAccount = sqliteTable(
+  "developer_account",
   {
-    identityId: integer("identity_id").primaryKey(),
-    accountId: integer("account_id")
-      .notNull()
-      .references(() => developerAccount.accountId),
-    provider: text("provider", { enum: ["google", "github"] }).notNull(),
-    providerUserId: text("provider_user_id").notNull(),
-    email: text("email").notNull(),
-    displayName: text("display_name"),
-    linkedAt: text("linked_at").notNull(), // ISO-8601
+    id: integer("account_id").primaryKey(),
+    name: text("name").notNull(),
+    email: text("email").notNull().unique(),
+    emailVerified: integer("email_verified", { mode: "boolean" }).notNull(),
+    image: text("image"),
+    createdAt: moment("created_at").notNull(),
+    updatedAt: moment("updated_at").notNull(),
+    deletedAt: moment("deleted_at"), // NULL while the account is in use
   },
-  (table) => [
-    unique("provider_identity_provider_user").on(table.provider, table.providerUserId),
-    index("provider_identity_by_email").on(table.email),
-    index("provider_identity_by_account").on(table.accountId),
-    check("provider_identity_provider", sql`provider IN ('google', 'github')`),
-    check("provider_identity_provider_user_id", sql`length(provider_user_id) > 0`),
-    check("provider_identity_email", sql`email = lower(email) AND email LIKE '%_@_%'`),
-    check("provider_identity_display_name", sql`display_name IS NULL OR length(trim(display_name)) > 0`),
+  () => [
+    check("developer_account_email", sql`email = lower(email) AND email LIKE '%_@_%'`),
+    check("developer_account_email_verified", sql`email_verified = 1`),
+    check("developer_account_image", sql`image IS NULL`),
   ],
 );
 
 /**
- * A signed-in browser. The cookie carries a random id; only its SHA-256 is
- * stored, so the table cannot sign anyone in (src/accounts/sessions.ts).
- * Sign-out deletes the row; expired rows are swept when a session is made.
+ * A Google or GitHub account signed in with, linked to one developer account:
+ * better-auth's account. `provider_user_id` is the provider's own stable id for
+ * the person (Google's `sub`, GitHub's numeric user id), so a changed email
+ * still signs in to the same account. `email` is the verified address as it was
+ * when the identity was linked, lowercased. `display_name` is the name the
+ * provider gives the person (Google's `name`, GitHub's `name` or else its
+ * `login`), refreshed at each sign-in; NULL when it gives none (#190).
+ *
+ * better-auth's columns for a provider's tokens and a password stay empty:
+ * Lexema calls no provider after sign-in and has no passwords.
+ */
+export const providerIdentity = sqliteTable(
+  "provider_identity",
+  {
+    id: integer("identity_id").primaryKey(),
+    userId: integer("account_id")
+      .notNull()
+      .references(() => developerAccount.id),
+    providerId: text("provider", { enum: ["google", "github"] }).notNull(),
+    accountId: text("provider_user_id").notNull(),
+    email: text("email").notNull(),
+    displayName: text("display_name"),
+    createdAt: moment("linked_at").notNull(),
+    updatedAt: moment("updated_at").notNull(),
+    accessToken: text("access_token"),
+    refreshToken: text("refresh_token"),
+    idToken: text("id_token"),
+    accessTokenExpiresAt: moment("access_token_expires_at"),
+    refreshTokenExpiresAt: moment("refresh_token_expires_at"),
+    scope: text("scope"),
+    password: text("password"),
+  },
+  (table) => [
+    unique("provider_identity_provider_user").on(table.providerId, table.accountId),
+    index("provider_identity_by_account").on(table.userId),
+    check("provider_identity_provider", sql`provider IN ('google', 'github')`),
+    check("provider_identity_provider_user_id", sql`length(provider_user_id) > 0`),
+    check("provider_identity_email", sql`email = lower(email) AND email LIKE '%_@_%'`),
+    check("provider_identity_display_name", sql`display_name IS NULL OR length(trim(display_name)) > 0`),
+    check(
+      "provider_identity_no_credentials",
+      sql`access_token IS NULL AND refresh_token IS NULL AND id_token IS NULL AND access_token_expires_at IS NULL AND refresh_token_expires_at IS NULL AND scope IS NULL AND password IS NULL`,
+    ),
+  ],
+);
+
+/**
+ * A signed-in browser: better-auth's session. The cookie carries `token`,
+ * signed with `BETTER_AUTH_SECRET`, so the token alone signs nobody in (ADR
+ * 0017). Sign-out and account deletion delete the row; expired rows are swept
+ * when a sign-in finishes. better-auth's columns for the browser's address and
+ * user agent stay empty: a session records neither.
  */
 export const developerSession = sqliteTable(
   "developer_session",
   {
-    sessionHash: text("session_hash").primaryKey(),
-    accountId: integer("account_id")
+    id: integer("session_id").primaryKey(),
+    token: text("token").notNull().unique(),
+    userId: integer("account_id")
       .notNull()
-      .references(() => developerAccount.accountId),
-    createdAt: text("created_at").notNull(), // ISO-8601
-    expiresAt: text("expires_at").notNull(), // ISO-8601
+      .references(() => developerAccount.id),
+    expiresAt: moment("expires_at").notNull(),
+    createdAt: moment("created_at").notNull(),
+    updatedAt: moment("updated_at").notNull(),
+    ipAddress: text("ip_address"),
+    userAgent: text("user_agent"),
   },
   (table) => [
     index("developer_session_by_expiry").on(table.expiresAt),
-    index("developer_session_by_account").on(table.accountId),
-    check("developer_session_hash", sql`length(session_hash) = 64`),
+    index("developer_session_by_account").on(table.userId),
+    check("developer_session_client", sql`ip_address IS NULL AND user_agent IS NULL`),
   ],
+);
+
+/**
+ * A sign-in on its way to a provider: better-auth's verification value, keyed
+ * by the OAuth `state` and holding the PKCE verifier. The callback deletes it;
+ * one that never comes back expires after ten minutes and is swept when a
+ * sign-in finishes.
+ */
+export const verification = sqliteTable(
+  "verification",
+  {
+    id: integer("verification_id").primaryKey(),
+    identifier: text("identifier").notNull(),
+    value: text("value").notNull(),
+    expiresAt: moment("expires_at").notNull(),
+    createdAt: moment("created_at").notNull(),
+    updatedAt: moment("updated_at").notNull(),
+  },
+  (table) => [index("verification_by_identifier").on(table.identifier), index("verification_by_expiry").on(table.expiresAt)],
 );
 
 // ---------------------------------------------------------------------------
@@ -120,7 +193,7 @@ export const apiKey = sqliteTable(
     perMinuteLimit: integer("per_minute_limit"), // NULL for an owned key
     createdAt: text("created_at").notNull(), // ISO-8601
     revokedAt: text("revoked_at"), // ISO-8601; NULL while the key is live
-    ownerAccountId: integer("owner_account_id").references(() => developerAccount.accountId),
+    ownerAccountId: integer("owner_account_id").references(() => developerAccount.id),
     displayPrefix: text("display_prefix").notNull(),
     lastUsedAt: text("last_used_at"), // ISO-8601; NULL until the key is first accepted
     endpoints: text("endpoints"),

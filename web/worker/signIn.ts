@@ -1,4 +1,5 @@
-// Sign-in, sign-out and the session cookie on developers.lexema.fyi (#165).
+// Sign-in, sign-out and the session cookie on developers.lexema.fyi (#165),
+// on better-auth (ADR 0017, #229).
 //
 // The routes, on the developer site's host only:
 //
@@ -8,15 +9,26 @@
 //
 // worker/hosts.ts rewrites the developer site onto `/developer-site/…` and
 // answers that segment with a 404 on every other host, so these routes and
-// their cookies never exist on `lexema.fyi` or `api.lexema.fyi`. Each cookie
-// is `__Host-` prefixed: the browser then refuses it unless it is Secure, on
-// path `/` and carries no `Domain`, so it is bound to this one host.
+// their cookies never exist on `lexema.fyi` or `api.lexema.fyi`. better-auth
+// is reached from here alone, through `auth.api` and `auth.handler`, never
+// mounted on a path of its own. Its cookies are `__Secure-` prefixed and carry
+// no `Domain`, so they are bound to this one host (src/accounts/auth.ts).
 //
-// The flow and the account it reaches are src/accounts/; this file is the
-// wiring to requests, cookies and the Worker's bindings. The sign-in pages
-// read `availableProviders` and `signedInAccount`.
+// The flow and the account it reaches are better-auth's, held to Lexema's
+// rules in src/accounts/; this file is the wiring to requests, cookies and the
+// Worker's bindings, and it answers each refusal as it did before better-auth.
+// The sign-in pages read `availableProviders` and `signedInAccount`.
 
-import { signInAccount } from "@lexema/accounts/accounts.ts";
+import {
+  AUTH_PATH,
+  authSecret,
+  PENDING_COOKIE,
+  SESSION_COOKIE,
+  sessionAuth,
+  signInAuth,
+  sweepExpired,
+  type SignInProvider,
+} from "@lexema/accounts/auth.ts";
 import {
   configuredProviders,
   isProviderId,
@@ -25,18 +37,11 @@ import {
   type ProviderRegistry,
   type ProviderSettings,
 } from "@lexema/accounts/providers.ts";
-import { createSession, endSession, SESSION_LIFETIME_MS, sessionAccount } from "@lexema/accounts/sessions.ts";
-import { beginSignIn, finishSignIn, readPending, writePending, type SignInRefusal } from "@lexema/accounts/signIn.ts";
-import { fromD1, type LookupDatabase } from "@lexema/lookup/database.ts";
-import { DEVELOPERS_SEGMENT, googleCallbackUri } from "./hosts.ts";
+import { fromD1, type TransactionalDatabase } from "@lexema/lookup/database.ts";
+import { DEVELOPERS_SEGMENT, googleCallbackUri, ORIGIN } from "./hosts.ts";
 import type { FetchHandler } from "./rateLimit.ts";
 
-/** The session cookie: the session's token. */
-export const SESSION_COOKIE = "__Host-lexema-session";
-/** The pending sign-in, between leaving for the provider and coming back. */
-export const PENDING_COOKIE = "__Host-lexema-sign-in";
-/** How long a pending sign-in may take: ten minutes at the provider. */
-const PENDING_SECONDS = 10 * 60;
+export { PENDING_COOKIE, SESSION_COOKIE } from "@lexema/accounts/auth.ts";
 
 /** Where a finished sign-in lands. */
 export const AFTER_SIGN_IN = "/dashboard";
@@ -59,15 +64,24 @@ export function signInRouteOf(url: URL): SignInRoute | undefined {
   return callback === "callback" ? { kind: "callback", provider } : undefined;
 }
 
-/** The bindings sign-in reads: the database, and the providers' vars and secrets. */
+/**
+ * The bindings sign-in reads: the database and the providers' vars and
+ * secrets. `BETTER_AUTH_SECRET` is a Worker secret too, read where the session
+ * is (src/accounts/auth.ts).
+ */
 export interface SignInBindings extends ProviderSettings {
   DB?: D1Database;
 }
 
-/** Which providers can be signed in with: those whose client id and secret are both set. */
+/**
+ * Which providers can be signed in with: those whose client id and secret are
+ * both set, while `BETTER_AUTH_SECRET` is, since without it no session could
+ * be signed.
+ */
 export function availableProviders(settings: ProviderSettings): Readonly<Record<ProviderId, boolean>> {
   const providers = configuredProviders(settings);
-  return { google: providers.google !== undefined, github: providers.github !== undefined };
+  const signs = authSecret() !== undefined;
+  return { google: signs && providers.google !== undefined, github: signs && providers.github !== undefined };
 }
 
 /** A `Cookie` header's value for one name. */
@@ -79,9 +93,18 @@ export function readCookie(header: string | null, name: string): string | undefi
   return undefined;
 }
 
-/** The account a request's session cookie is signed in to, or `undefined`. */
-export function signedInAccount(cookieHeader: string | null, db: LookupDatabase, now: number): Promise<number | undefined> {
-  return sessionAccount(db, readCookie(cookieHeader, SESSION_COOKIE), now);
+/**
+ * The account a request's session cookie is signed in to, or `undefined`: no
+ * cookie, one better-auth did not sign or has no live session for, one that
+ * has expired by `now`, or a deleted account.
+ */
+export async function signedInAccount(cookieHeader: string | null, db: TransactionalDatabase, now: number): Promise<number | undefined> {
+  const secret = authSecret();
+  if (secret === undefined || readCookie(cookieHeader, SESSION_COOKIE) === undefined) return undefined;
+  const auth = sessionAuth(db.app, secret, ORIGIN.developers);
+  const found = await auth.api.getSession({ headers: new Headers({ cookie: cookieHeader ?? "" }) });
+  if (found === null || found.session.expiresAt.getTime() <= now || found.user.deletedAt) return undefined;
+  return Number(found.user.id);
 }
 
 /** A host-only cookie: HttpOnly, Secure, SameSite=Lax, path `/`, no `Domain`. */
@@ -97,11 +120,23 @@ function text(status: number, body: string, headers: Headers = new Headers()): R
   return new Response(body, { status, headers });
 }
 
-function redirect(location: string, cookies: string[]): Response {
+function redirect(location: string, cookies: readonly string[]): Response {
   const headers = new Headers({ location, "cache-control": "no-store" });
   for (const value of cookies) headers.append("set-cookie", value);
   return new Response(null, { status: 303, headers });
 }
+
+/**
+ * Why a callback signs nobody in.
+ *
+ * - `no-pending`: the browser holds no pending sign-in (it expired, or the
+ *   callback was not started here).
+ * - `state`: the callback's `state` is not the pending one.
+ * - `cancelled`: the provider sent back an error, such as the person declining.
+ * - `refused`: the provider would not redeem the code, as for a wrong verifier.
+ * - `unverified-email`: the provider vouches for no verified email.
+ */
+export type SignInRefusal = "no-pending" | "state" | "cancelled" | "refused" | "unverified-email";
 
 /** What a refused callback says, and with which status. */
 const REFUSAL: Readonly<Record<SignInRefusal, { status: number; body: string }>> = {
@@ -112,13 +147,28 @@ const REFUSAL: Readonly<Record<SignInRefusal, { status: number; body: string }>>
   "unverified-email": { status: 403, body: "Sign-in needs an email address the provider has verified." },
 };
 
+/**
+ * The refusal an error from better-auth's callback is, or `undefined` for one
+ * that is not a refusal but a failure (the database, or a provider that could
+ * not be read), answered as one. better-auth checks the state, then the
+ * provider's own `error`, then redeems the code, then reads the person, as the
+ * flow before it did.
+ */
+function refusalOf(error: string, callback: URLSearchParams): SignInRefusal | undefined {
+  if (error.startsWith("state_")) return "state";
+  if (error === callback.get("error") || error === "no_code") return "cancelled";
+  if (error === "invalid_code") return "refused";
+  if (error === "email_not_found") return "unverified-email";
+  return undefined;
+}
+
 const unavailable = (provider: ProviderId): Response =>
   text(503, `Sign-in with ${PROVIDER_NAME[provider]} is not available.`);
 
 /** What sign-in runs against; the Worker's, or a test's. */
 export interface SignInContext {
   providers: ProviderRegistry;
-  db: LookupDatabase | undefined;
+  db: TransactionalDatabase | undefined;
   now: number;
 }
 
@@ -131,6 +181,15 @@ export function liveContext(env: SignInBindings): SignInContext {
 const callbackUri = (url: URL, provider: ProviderId): string =>
   provider === "google" ? googleCallbackUri(url) : `${url.origin}/sign-in/${provider}/callback`;
 
+/** better-auth for a sign-in with this provider from this URL, or `undefined` when the provider cannot be signed in with. */
+function signInFor(url: URL, id: ProviderId, context: SignInContext) {
+  const client = context.providers[id];
+  const secret = authSecret();
+  if (client === undefined || secret === undefined) return undefined;
+  const provider: SignInProvider = { client, redirectURI: callbackUri(url, id) };
+  return signInAuth(requireDatabase(context).app, secret, url.origin, id, provider);
+}
+
 /** Answer one sign-in route. */
 export async function answerSignIn(request: Request, route: SignInRoute, context: SignInContext): Promise<Response> {
   const url = new URL(request.url);
@@ -140,51 +199,62 @@ export async function answerSignIn(request: Request, route: SignInRoute, context
   try {
     switch (route.kind) {
       case "start": {
-        const provider = context.providers[route.provider];
-        if (provider === undefined) return unavailable(route.provider);
-        const { pending, location } = await beginSignIn(provider, callbackUri(url, route.provider));
-        return redirect(location.toString(), [cookie(PENDING_COOKIE, writePending(pending), PENDING_SECONDS)]);
+        const auth = signInFor(url, route.provider, context);
+        if (auth === undefined) return unavailable(route.provider);
+        const started = await auth.api.signInSocial({
+          body: { provider: route.provider, callbackURL: AFTER_SIGN_IN, disableRedirect: true },
+          asResponse: true,
+        });
+        const { url: location } = (await started.json()) as { url?: unknown };
+        if (!started.ok || typeof location !== "string") throw new Error(`better-auth answered ${started.status} to a sign-in start`);
+        return redirect(location, started.headers.getSetCookie());
       }
       case "callback": {
-        const provider = context.providers[route.provider];
-        if (provider === undefined) return unavailable(route.provider);
         const cookies = request.headers.get("cookie");
-        const outcome = await finishSignIn(
-          provider,
-          readPending(readCookie(cookies, PENDING_COOKIE)),
-          url.searchParams,
-          callbackUri(url, route.provider),
-        );
-        if (outcome.outcome === "refused") {
-          const { status, body } = REFUSAL[outcome.refusal];
+        const refuse = (refusal: SignInRefusal): Response => {
+          const { status, body } = REFUSAL[refusal];
           return text(status, body, new Headers({ "set-cookie": clearedCookie(PENDING_COOKIE) }));
+        };
+        if (readCookie(cookies, PENDING_COOKIE) === undefined) return refuse("no-pending");
+        const auth = signInFor(url, route.provider, context);
+        if (auth === undefined) return unavailable(route.provider);
+        const finished = await auth.handler(new Request(`${url.origin}${AUTH_PATH}/callback/${route.provider}${url.search}`, { headers: request.headers }));
+        const location = finished.headers.get("location");
+        if (location === null) throw new Error(`better-auth answered ${finished.status} to a callback, with no redirect`);
+        const error = new URL(location, url).searchParams.get("error");
+        if (error !== null) {
+          const refusal = refusalOf(error, url.searchParams);
+          if (refusal === undefined) throw new Error(`better-auth could not finish a callback: ${error}`);
+          return refuse(refusal);
         }
-        const db = requireDatabase(context);
-        await endSession(db, readCookie(cookies, SESSION_COOKIE));
-        const { accountId } = await signInAccount(db, outcome.identity, context.now);
-        const session = await createSession(db, accountId, context.now);
-        return redirect(AFTER_SIGN_IN, [
-          clearedCookie(PENDING_COOKIE),
-          cookie(SESSION_COOKIE, session.token, SESSION_LIFETIME_MS / 1000),
-        ]);
+        const session = finished.headers.getSetCookie().filter((value) => value.startsWith(`${SESSION_COOKIE}=`));
+        if (session.length !== 1) throw new Error("better-auth finished a callback with no session cookie");
+        // The browser's earlier session, if it had one, ends with this sign-in.
+        if (readCookie(cookies, SESSION_COOKIE) !== undefined) await auth.api.signOut({ headers: request.headers });
+        await sweepExpired(requireDatabase(context).app, context.now);
+        return redirect(AFTER_SIGN_IN, [clearedCookie(PENDING_COOKIE), ...session]);
       }
       case "sign-out": {
         // A cross-site form could otherwise clear the cookie, even though
         // SameSite=Lax keeps the cookie itself from being sent with it.
         const origin = request.headers.get("origin");
         if (origin !== null && origin !== url.origin) return text(403, "Sign-out must come from this site.");
-        await endSession(requireDatabase(context), readCookie(request.headers.get("cookie"), SESSION_COOKIE));
+        const db = requireDatabase(context);
+        const secret = authSecret();
+        if (secret !== undefined && readCookie(request.headers.get("cookie"), SESSION_COOKIE) !== undefined) {
+          await sessionAuth(db.app, secret, url.origin).api.signOut({ headers: request.headers });
+        }
         return redirect(AFTER_SIGN_OUT, [clearedCookie(SESSION_COOKIE)]);
       }
     }
   } catch (failure) {
-    // A provider's or the database's message stays in the log.
+    // A provider's, better-auth's or the database's message stays in the log.
     console.error("sign-in failed", { route: route.kind }, failure);
     return text(503, "Sign-in could not be finished. Try again later.");
   }
 }
 
-function requireDatabase(context: SignInContext): LookupDatabase {
+function requireDatabase(context: SignInContext): TransactionalDatabase {
   if (context.db === undefined) throw new Error("no D1 binding: this Worker has no DB");
   return context.db;
 }

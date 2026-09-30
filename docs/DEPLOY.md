@@ -63,9 +63,11 @@ That is expected: production has no D1 until #19.
 
 ## Turn on sign-in
 
-The developer site signs in with Google and GitHub (`web/worker/signIn.ts`).
-A provider stays unavailable, and its sign-in route answers 503, until both its
-client id and its secret are set. Neither is in the repository.
+The developer site signs in with Google and GitHub, on better-auth
+(`web/worker/signIn.ts`, [ADR 0017](../.decisions/0017-better-auth-and-drizzle-own-accounts.md)).
+A provider stays unavailable, and its sign-in route answers 503, until its
+client id and its secret are set, and so is `BETTER_AUTH_SECRET`, which signs
+the session cookie. None of them is in the repository.
 
 1. Create a Google OAuth client of type *Web application* in the Google Cloud
    console, with the authorized redirect URI
@@ -84,6 +86,16 @@ client id and its secret are set. Neither is in the repository.
    pnpm exec wrangler secret put GOOGLE_CLIENT_SECRET --env production
    pnpm exec wrangler secret put GITHUB_CLIENT_SECRET --env production
    ```
+
+5. Make the session secret and set it the same way:
+
+   ```sh
+   openssl rand -base64 32 | pnpm exec wrangler secret put BETTER_AUTH_SECRET --env production
+   ```
+
+   The Worker reads it from `process.env`, where the Workers runtime puts
+   every var and secret under `nodejs_compat`. Replacing it signs every
+   developer out.
 
 Sign-in also needs the production D1 (#19): without it, a callback answers 503.
 

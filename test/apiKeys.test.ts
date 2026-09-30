@@ -103,7 +103,9 @@ test("the key CLI prints a new key once, stores only its hash, and revokes it", 
 
 test("the schema refuses an owned key with a per-minute limit of its own, and an admin key without one", () => {
   const db = schemaDb();
-  db.exec("INSERT INTO developer_account (account_id, created_at) VALUES (1, '2026-09-27T12:00:00.000Z')");
+  db.exec(
+    "INSERT INTO developer_account (account_id, name, email, email_verified, created_at, updated_at) VALUES (1, 'Ada', 'ada@example.com', 1, '2026-09-27T12:00:00.000Z', '2026-09-27T12:00:00.000Z')",
+  );
   let n = 0;
   const insert = (perMinuteLimit: number | null, owner: number | null) =>
     db
