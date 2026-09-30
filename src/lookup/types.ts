@@ -98,7 +98,7 @@ export interface Pronunciation {
   ref: SourceRef;
 }
 
-/** One `hyphenations[].parts`, never empty. */
+/** One `hyphenations[].parts`, never empty and never only the missing-hyphenation placeholder (#255). */
 export interface Hyphenation {
   parts: [string, ...string[]];
   ref: SourceRef;
@@ -134,6 +134,7 @@ export interface SynonymEntry {
 export interface WordFacts {
   pronunciations: Pronunciation[];
   hyphenations: Hyphenation[];
+  /** `etymology_texts`, with Wikizionario's "Etimologia/Riferimenti mancante/i" placeholder taken out (#255). */
   etymologies: SourceText[];
   synonyms: RelatedWord[];
   /** The same synonyms uncollapsed, in source order, each with its `raw_tags`. */
@@ -149,9 +150,11 @@ export interface Sense {
   /** `senses[].examples[].text`, verbatim and in source order. */
   examples: SourceText[];
   /**
-   * Copied source text, never a Lexema definition. May be empty: 667 senses
-   * carry no gloss at all, and a non-empty gloss is still not proof of a usable
-   * one — `casa` has two that say nothing.
+   * Copied source text, never a Lexema definition, with Wikizionario's
+   * "definizione mancante; se vuoi, aggiungila tu" taken out (#255): a gloss
+   * that was only that is not here. May be empty: 667 senses carry no gloss at
+   * all, and a non-empty gloss is still not proof of a usable one — `casa` has
+   * two that say nothing.
    */
   glosses: { text: string; ref: SourceRef }[];
   /** The source's own vocabulary: 'figuratively', 'form-of', 'scuola'. */

@@ -3,6 +3,7 @@
 // two mistakes the data invites, is in docs/LOOKUP_DESIGN.md.
 
 import { IT_NORMALIZER_VERSION, normalizeItalianExact } from "../italian/normalize.js";
+import { withoutPlaceholder } from "../italian/placeholder.js";
 import { readingPartOfSpeech } from "./articles.js";
 import type { DictionaryRead, LookupDatabase } from "./database.js";
 import { readSourceRecord, type SourceRecordFields } from "./sourceRecord.js";
@@ -488,10 +489,14 @@ async function readSenses(
       ORDER BY s.sense_index, g.gloss_index`, recordId,
   );
 
+  // Wikizionario's "definizione mancante; se vuoi, aggiungila tu" is a template,
+  // not a gloss (#255): a gloss that is only that, label and all, is no gloss,
+  // so its sense reads as one that says nothing.
   for (const row of glossRows) {
     const sense = ensure(row.sense_index, row.sense_pointer);
-    if (row.text !== null && row.json_pointer !== null) {
-      sense.glosses.push({ text: row.text, ref: ref(row.json_pointer) });
+    const text = row.text === null ? undefined : withoutPlaceholder(row.text);
+    if (text !== undefined && row.json_pointer !== null) {
+      sense.glosses.push({ text, ref: ref(row.json_pointer) });
     }
   }
 
