@@ -15,7 +15,13 @@
 // 3. Cloudflare Turnstile, verified before storing when both its keys are
 //    configured (`turnstileConfig`); with either missing it is off.
 // 4. Nothing automatic: a stored report changes nothing on the page.
+//
+// Reports and openings live in the app database (`APP_DB`); the dictionary is
+// only read, to check the reading a report names (ADR 0018).
 
+import { and, count, eq, gt, lt } from "drizzle-orm";
+import type { AppTables } from "@lexema/db/app/database.ts";
+import { readerReport, reportOpening } from "@lexema/db/app/schema.ts";
 import type { LookupDatabase } from "@lexema/lookup/database.ts";
 
 export const REPORT_CHOICES = ["meaning", "example", "form", "synonym", "other"] as const;
@@ -101,7 +107,10 @@ export function readSubmission(body: unknown): ReportSubmission | { reason: Repo
 
 /** What receiving a report needs from the Worker around it. */
 export interface ReportContext {
+  /** The dictionary, read to check the reading a report names. */
   db: LookupDatabase;
+  /** The app database, where reports and openings are stored. */
+  appDb: AppTables;
   /** The release the Worker serves; the page's own, never the client's word for it. */
   release: string;
   /** The server's clock, milliseconds since the epoch. */
@@ -121,14 +130,16 @@ export async function visitorHash(visitor: string): Promise<string> {
 /** Check, count and store one report. The only writer of `reader_report`. */
 export async function receiveReport(submission: ReportSubmission, context: ReportContext): Promise<ReportAnswer> {
   const { db, now } = context;
+  const { app } = context.appDb;
   // Dropped quietly: a filled honeypot.
   if (submission.website !== "") return { outcome: "sent" };
-  const [opening] = await db.all<{ opened_at: string }>("SELECT opened_at FROM report_opening WHERE token = ?", [
-    submission.openToken,
-  ]);
+  const [opening] = await app
+    .select({ openedAt: reportOpening.openedAt })
+    .from(reportOpening)
+    .where(eq(reportOpening.token, submission.openToken));
   if (opening === undefined) return { outcome: "rejected", reason: "expired" };
   // Dropped quietly: a box sent faster than a person can, on the server's clock.
-  if (now - Date.parse(opening.opened_at) < REPORT_MIN_OPEN_MS) return { outcome: "sent" };
+  if (now - Date.parse(opening.openedAt) < REPORT_MIN_OPEN_MS) return { outcome: "sent" };
 
   if (context.verifyChallenge !== undefined && !(await context.verifyChallenge(submission.challenge))) {
     return { outcome: "rejected", reason: "challenge" };
@@ -136,10 +147,10 @@ export async function receiveReport(submission: ReportSubmission, context: Repor
 
   const visitor = await visitorHash(context.visitor);
   const since = new Date(now - HOUR_MS).toISOString();
-  const [{ sent }] = await db.all<{ sent: number }>(
-    "SELECT count(*) AS sent FROM reader_report WHERE visitor_hash = ? AND received_at > ?",
-    [visitor, since],
-  );
+  const [{ sent }] = await app
+    .select({ sent: count() })
+    .from(readerReport)
+    .where(and(eq(readerReport.visitorHash, visitor), gt(readerReport.receivedAt, since)));
   if (sent >= REPORTS_PER_HOUR) return { outcome: "limited" };
 
   if (submission.recordId !== undefined) {
@@ -150,20 +161,19 @@ export async function receiveReport(submission: ReportSubmission, context: Repor
     if (found.length === 0) return { outcome: "rejected", reason: "reading" };
   }
 
-  await db.all(
-    `INSERT INTO reader_report (release_id, word, record_id, choice, details, visitor_hash, received_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING report_id`,
-    [
-      context.release,
-      submission.word,
-      submission.recordId ?? null,
-      submission.choice,
-      submission.details,
-      visitor,
-      new Date(now).toISOString(),
-    ],
-  );
-  await db.all("DELETE FROM report_opening WHERE token = ? RETURNING token", [submission.openToken]);
+  // Stored and its opening used up together, so a token opens one report.
+  await app.batch([
+    app.insert(readerReport).values({
+      releaseId: context.release,
+      word: submission.word,
+      recordId: submission.recordId ?? null,
+      choice: submission.choice,
+      details: submission.details,
+      visitorHash: visitor,
+      receivedAt: new Date(now).toISOString(),
+    }),
+    app.delete(reportOpening).where(eq(reportOpening.token, submission.openToken)),
+  ]);
   return { outcome: "sent" };
 }
 
@@ -173,10 +183,12 @@ const DAY_MS = 24 * HOUR_MS;
  * Issue the token a box carries when it sends: a random value and the server's
  * time, stored until its report is stored. Openings older than a day are swept.
  */
-export async function openReport(db: LookupDatabase, now: number): Promise<string> {
-  await db.all("DELETE FROM report_opening WHERE opened_at < ? RETURNING token", [new Date(now - DAY_MS).toISOString()]);
+export async function openReport({ app }: AppTables, now: number): Promise<string> {
   const token = crypto.randomUUID();
-  await db.all("INSERT INTO report_opening (token, opened_at) VALUES (?, ?) RETURNING token", [token, new Date(now).toISOString()]);
+  await app.batch([
+    app.delete(reportOpening).where(lt(reportOpening.openedAt, new Date(now - DAY_MS).toISOString())),
+    app.insert(reportOpening).values({ token, openedAt: new Date(now).toISOString() }),
+  ]);
   return token;
 }
 

@@ -7,7 +7,7 @@
 
 import { visitorKey } from "@/worker/rateLimit.ts";
 import { servedRelease, turnstile } from "@/lib/dictionary/db";
-import { database } from "@/lib/shared/database.ts";
+import { appDatabase, database } from "@/lib/shared/database.ts";
 import { readSubmission, receiveReport, REPORT_STATUS, verifyTurnstile, type ReportAnswer } from "@/lib/dictionary/report.ts";
 
 const answer = (body: ReportAnswer): Response =>
@@ -29,6 +29,7 @@ export async function POST(request: Request): Promise<Response> {
     return answer(
       await receiveReport(submission, {
         db: database(),
+        appDb: appDatabase(),
         release: servedRelease(),
         now: Date.now(),
         visitor: visitorKey(ip),

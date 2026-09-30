@@ -1,11 +1,14 @@
 // Build the committed development fixture (or a release archive) directly into
 // D1 SQL. There is deliberately no SQLite staging database and no review pass.
 // The SQL is written as numbered parts and applied in order (see sqlParts.ts).
+// The dictionary goes into the local `DB`; the app tables are migrated into
+// the local `APP_DB`, never into the dictionary (ADR 0018).
 
 import { execFileSync } from "node:child_process";
 import { mkdir, rm, stat, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
-import { appMigrationFiles } from "../db/app/migrations.js";
+import { getTableName } from "drizzle-orm";
+import * as appSchema from "../db/app/schema.js";
 import { openRawPages } from "../source/wiktionaryDump.js";
 import { seedSql } from "./seedSql.js";
 import { applyParts, DEFAULT_PART_CEILING_BYTES, PartFailure } from "./sqlParts.js";
@@ -31,12 +34,17 @@ const requiredWords = [
   "tavolo", "vado", "vedere", "venire", "vivere", "zaino",
 ] as const;
 
-const wrangler = (args: readonly string[], capture: boolean): string =>
+/** The two local databases, by their `database_name` in web/wrangler.jsonc. */
+const DICTIONARY = "lexema";
+const APP = "lexema-app";
+
+const d1 = (args: readonly string[], capture: boolean): string =>
   execFileSync(
     "pnpm",
-    ["exec", "wrangler", "d1", "execute", "lexema", "--local", "--persist-to", persistTo, ...args, "--yes"],
+    ["exec", "wrangler", "d1", ...args, "--local", "--persist-to", persistTo],
     { cwd: resolve("web"), stdio: capture ? ["ignore", "pipe", "inherit"] : "inherit", env: { ...process.env, CI: "1" }, encoding: "utf8" },
   ) ?? "";
+const wrangler = (args: readonly string[], capture: boolean): string => d1(["execute", DICTIONARY, ...args, "--yes"], capture);
 
 await mkdir(resolve(".data"), { recursive: true });
 await rm(persistTo, { recursive: true, force: true });
@@ -91,12 +99,25 @@ try {
   process.stderr.write(`${persistTo} holds a partial database. Reseed into a fresh SEED_STATE (see docs/DEV_SEED.md).\n`);
   process.exit(1);
 }
-// The dictionary schema came with the first part; the app tables are Drizzle's
-// (src/db/app/schema.ts, ADR 0017) and follow as drizzle-kit's migrations.
-for (const migration of appMigrationFiles()) {
-  process.stderr.write(`app migration: ${migration}\n`);
-  wrangler(["--file", migration], false);
-}
+// The dictionary schema came with the first part. The app tables are Drizzle's
+// (src/db/app/schema.ts, ADR 0017) and go to their own database, through
+// drizzle-kit's migrations and the `migrations_dir` web/wrangler.jsonc names.
+process.stderr.write(`app migrations: into ${APP}\n`);
+d1(["migrations", "apply", APP], false);
+const appTables = Object.values(appSchema).map((table) => getTableName(table));
+const tablesIn = (database: string): Set<string> => {
+  const [answer] = JSON.parse(
+    d1(["execute", database, "--json", "--command", "SELECT name FROM sqlite_schema WHERE type = 'table'"], true),
+  ) as [{ results: { name: string }[] }];
+  return new Set(answer.results.map(({ name }) => name));
+};
+const dictionaryHas = tablesIn(DICTIONARY);
+const inDictionary = appTables.filter((table) => dictionaryHas.has(table));
+if (inDictionary.length > 0) throw new Error(`app tables in the dictionary database: ${inDictionary.join(", ")}`);
+const appHas = tablesIn(APP);
+const missing = appTables.filter((table) => !appHas.has(table));
+if (missing.length > 0) throw new Error(`app tables missing from ${APP}: ${missing.join(", ")}`);
+process.stderr.write(`  ${APP}: ${appTables.length} app table(s), none in ${DICTIONARY}\n`);
 
 /**
  * Mark the loaded release `failed` and stop. The SQL leaves the release

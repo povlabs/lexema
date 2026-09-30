@@ -18,14 +18,15 @@ import { DatabaseSync } from "node:sqlite";
 import { gzipSync } from "node:zlib";
 import type { ReactElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { applyAppMigrations } from "../../src/db/app/migrations.js";
 import { signInAccount, verifiedIdentity } from "../../src/accounts/accounts.js";
 import { ALL_ENDPOINTS, onlyEndpoints, type KeyAccess } from "../../src/api/keyAccess.js";
 import { createKey, revokeKey } from "../../src/api/keys.js";
 import { createAccountKey, keyName } from "../../src/api/ownedKeys.js";
 import { API_PREFIX, ENDPOINTS } from "../../src/api/calls.js";
 import { seedSql } from "../../src/import/seedSql.js";
-import { fromNodeSqlite, type TransactionalDatabase } from "../../src/lookup/database.js";
+import type { AppTables } from "../../src/db/app/database.js";
+import type { LookupDatabase } from "../../src/lookup/database.js";
+import { freshAppDatabase, readOnlyDictionary } from "../../test/databases.js";
 import { loadFixturePages } from "../../src/source/rawPage.js";
 import {
   API_BASE,
@@ -51,8 +52,12 @@ const RELEASE = "it-0c432803";
 const NOW = Date.parse("2026-09-27T12:00:20Z");
 
 let dir: string;
+/** The seeded dictionary, read-only as the Worker's `DB` is. */
+let dictionarySqlite: DatabaseSync;
+let dictionary: LookupDatabase;
+/** The app database: accounts and keys. */
 let sqlite: DatabaseSync;
-let db: TransactionalDatabase;
+let db: AppTables;
 
 before(async () => {
   dir = await mkdtemp(join(tmpdir(), "lexema-developers-"));
@@ -70,14 +75,15 @@ before(async () => {
       throw new Error(`fixture line rejected: ${JSON.stringify(rejection)}`);
     },
   });
-  sqlite = new DatabaseSync(":memory:");
-  for (const part of parts) sqlite.exec(await readFile(part, "utf8"));
-  applyAppMigrations(sqlite);
-  db = fromNodeSqlite(sqlite);
+  dictionarySqlite = new DatabaseSync(":memory:");
+  for (const part of parts) dictionarySqlite.exec(await readFile(part, "utf8"));
+  dictionary = readOnlyDictionary(dictionarySqlite);
+  ({ sqlite, appDb: db } = freshAppDatabase());
 });
 
 after(async () => {
   sqlite.close();
+  dictionarySqlite.close();
   await rm(dir, { recursive: true, force: true });
 });
 
@@ -94,10 +100,11 @@ async function ownedKey(access: KeyAccess): Promise<string> {
 }
 
 /** One request as the Worker hands it to the API. */
-function send(path: string, init: { key?: string; method?: string; body?: string } = {}, over = db): Promise<Response> {
+function send(path: string, init: { key?: string; method?: string; body?: string } = {}, over = dictionary): Promise<Response> {
   const headers: Record<string, string> = init.key === undefined ? {} : { "x-api-key": init.key };
   return handleApi(new Request(`${API_BASE}/${path}`, { method: init.method ?? "GET", body: init.body, headers }), {
     db: over,
+    appDb: db,
     releaseId: RELEASE,
     now: NOW,
   });
@@ -139,7 +146,7 @@ test("every error the docs list is one the API answers, with that status and cod
   assert.ok(lookup !== undefined);
   const lookupOnly = await ownedKey({ endpoints: lookup, expiresAt: null });
   // The key is read and its minute counted; the lookup's own read then fails.
-  const failing: TransactionalDatabase = { ...db, all: () => Promise.reject(new Error("D1 is down")) };
+  const failing: LookupDatabase = { all: () => Promise.reject(new Error("D1 is down")) };
   t.mock.method(console, "error", () => {});
 
   const earned: Record<string, () => Promise<Response>> = {
@@ -288,7 +295,7 @@ test("every JavaScript example, run, sends its example's request and gets its ex
   for (const [i, [name, , example]] of EXAMPLES.entries()) {
     let status = 0;
     const fetch = (async (input: string, init: RequestInit) => {
-      const response = await handleApi(new Request(input, init), { db, releaseId: RELEASE, now: NOW });
+      const response = await handleApi(new Request(input, init), { db: dictionary, appDb: db, releaseId: RELEASE, now: NOW });
       status = response.status;
       return response;
     }) as typeof globalThis.fetch;

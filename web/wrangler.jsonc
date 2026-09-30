@@ -14,14 +14,26 @@
   // Workers Logs, so every rate-limit block (logged as which limit, never the
   // address) can be read when the numbers are tuned (#128).
   "observability": { "enabled": true },
+  // Two databases (ADR 0018). DB is the dictionary, which code only reads
+  // (src/lookup/database.ts); APP_DB holds accounts, keys, usage and reader
+  // reports. Both ids are local-only placeholders: `--local` keys each
+  // miniflare sqlite file off its database_id, which can be any uuid, so no
+  // Cloudflare account is touched. Production has no D1 binding yet; attaching
+  // the real ones is #19.
   "d1_databases": [
     {
       "binding": "DB",
       "database_name": "lexema",
-      // Local-only placeholder. `--local` keys the miniflare sqlite file off
-      // database_id, which can be any uuid; no Cloudflare account is touched.
-      // Production has no D1 binding yet; attaching the real one is #19.
       "database_id": "00000000-0000-4000-8000-000000000002"
+    },
+    {
+      "binding": "APP_DB",
+      "database_name": "lexema-app",
+      "database_id": "00000000-0000-4000-8000-000000000003",
+      // drizzle-kit's migrations (src/db/app/schema.ts), applied with
+      // `wrangler d1 migrations apply lexema-app --local`; `pnpm run seed:dev`
+      // runs it.
+      "migrations_dir": "../src/db/app/migrations"
     }
   ],
   // Per-visitor limits, checked in worker/index.ts before the database is
@@ -87,8 +99,8 @@
         { "pattern": "developers.lexema.fyi", "custom_domain": true },
         { "pattern": "api.lexema.fyi", "custom_domain": true }
       ],
-      // Empty on purpose. Wrangler warns at build that the top-level DB has no
-      // counterpart here; that absence is what is live until #19.
+      // Empty on purpose. Wrangler warns at build that the top-level DB and
+      // APP_DB have no counterpart here; that absence is what is live until #19.
       "d1_databases": [],
       "ratelimits": [
         { "name": "SEARCH_LIMIT", "namespace_id": "1281", "simple": { "limit": 15, "period": 60 } },

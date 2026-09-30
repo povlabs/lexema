@@ -4,7 +4,7 @@
 
 import { IT_NORMALIZER_VERSION, normalizeItalianExact } from "../italian/normalize.js";
 import { readingPartOfSpeech } from "./articles.js";
-import type { LookupDatabase } from "./database.js";
+import type { DictionaryRead, LookupDatabase } from "./database.js";
 import { readSourceRecord, type SourceRecordFields } from "./sourceRecord.js";
 import type {
   Evidence,
@@ -67,13 +67,13 @@ function compareSourcePointers(a: string, b: string): number {
 
 // Both drivers type columns loosely, so a row shape is asserted here rather
 // than at every call site.
-function queryAll<T>(db: LookupDatabase, sql: string, ...params: (string | number)[]): Promise<T[]> {
+function queryAll<T>(db: LookupDatabase, sql: DictionaryRead, ...params: (string | number)[]): Promise<T[]> {
   return db.all<T>(sql, params);
 }
 
 // D1 has no `get`, so "one row" is "the first of all rows". The queries that use
 // this are all primary-key reads, so there is never more than one.
-async function queryOne<T>(db: LookupDatabase, sql: string, ...params: (string | number)[]): Promise<T | undefined> {
+async function queryOne<T>(db: LookupDatabase, sql: DictionaryRead, ...params: (string | number)[]): Promise<T | undefined> {
   return (await db.all<T>(sql, params))[0];
 }
 

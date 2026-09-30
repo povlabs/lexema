@@ -1,11 +1,11 @@
-// `pnpm run api-key`: create and revoke API keys in the local D1 (#150).
+// `pnpm run api-key`: create and revoke API keys in the local app database (#150).
 //
 //   pnpm run api-key create --label "learning app" --per-minute 60
 //   pnpm run api-key revoke 3
 //
 // `create` prints the key once; only its hash is stored, so it cannot be shown
 // again. It also prints the key's id, which is what `revoke` takes. The
-// database is the local D1 the dev seed writes (`SEED_STATE`, default
+// database is the local `APP_DB` the dev seed migrates (`SEED_STATE`, default
 // `.data/seed-state`), reached through Wrangler as the seed reaches it. A key
 // made here is an admin key: it has no owner, no developer account sees it, and
 // its per-minute limit is its own.
@@ -90,10 +90,10 @@ function sqlLiteral(value: unknown): string {
 }
 
 /**
- * The local D1 through Wrangler, as src/import/seedDev.ts reaches it, with
- * Drizzle over it. Wrangler answers each row as an object in select order, and
- * Drizzle wants it as an array in that order; no key statement selects two
- * columns of one name. The CLI runs no batch.
+ * The local app database through Wrangler, as src/import/seedDev.ts reaches
+ * it, with Drizzle over it. Wrangler answers each row as an object in select
+ * order, and Drizzle wants it as an array in that order; no key statement
+ * selects two columns of one name. The CLI runs no batch.
  */
 function localD1(persistTo: string): AppTables {
   const execute = (sql: string, params: readonly unknown[]): Record<string, unknown>[] => {
@@ -102,7 +102,7 @@ function localD1(persistTo: string): AppTables {
     if (next !== params.length) throw new Error(`the statement takes ${next} parameter(s), was given ${params.length}`);
     const output = execFileSync(
       "pnpm",
-      ["exec", "wrangler", "d1", "execute", "lexema", "--local", "--persist-to", persistTo, "--json", "--command", command],
+      ["exec", "wrangler", "d1", "execute", "lexema-app", "--local", "--persist-to", persistTo, "--json", "--command", command],
       { cwd: resolve("web"), stdio: ["ignore", "pipe", "inherit"], env: { ...process.env, CI: "1" }, encoding: "utf8" },
     );
     const [answer] = JSON.parse(output) as [{ results: Record<string, unknown>[] }];

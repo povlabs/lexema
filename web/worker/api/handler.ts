@@ -16,6 +16,7 @@ import { allows } from "@lexema/api/keyAccess.ts";
 import { authenticate, perMinuteLimit, type ApiKey, type KeyRefusal } from "@lexema/api/keys.ts";
 import { endpointOf } from "@lexema/api/calls.ts";
 import { chargeCalls, countRequest, type MinuteWindow } from "@lexema/api/usage.ts";
+import { appTablesOverD1 } from "@lexema/db/app/database.ts";
 import { fromD1 } from "@lexema/lookup/database.ts";
 import { error, type ApiContext, type ErrorJson } from "./answer.ts";
 import { ROUTES } from "./endpoints.ts";
@@ -35,14 +36,14 @@ function json(status: number, body: unknown, headers: Record<string, string> = {
 
 /** Answer one API request. */
 export async function handleApi(request: Request, context: ApiContext): Promise<Response> {
-  const { db, now } = context;
+  const { appDb, now } = context;
   let window: MinuteWindow | undefined;
   try {
-    const authentication = await authenticate(db, request.headers.get("x-api-key"), now);
+    const authentication = await authenticate(appDb, request.headers.get("x-api-key"), now);
     if (authentication.outcome === "refused") return json(401, REFUSAL[authentication.refusal]);
     const key: ApiKey = authentication.key;
 
-    window = await countRequest(db, key, now);
+    window = await countRequest(appDb, key, now);
     const limits = window.headers();
     if (!window.admitted) {
       return json(
@@ -68,7 +69,7 @@ export async function handleApi(request: Request, context: ApiContext): Promise<
     }
 
     const answer = await route.answer(request, url, context);
-    if (answer.charge !== undefined) await chargeCalls(db, key, answer.charge, now);
+    if (answer.charge !== undefined) await chargeCalls(appDb, key, answer.charge, now);
     return json(answer.status, answer.body, limits);
   } catch (failure) {
     // The database's message names tables and releases: it goes to the log.
@@ -77,22 +78,24 @@ export async function handleApi(request: Request, context: ApiContext): Promise<
   }
 }
 
-/** The bindings the API reads. */
+/** The bindings the API reads: the dictionary, and the app database its keys and usage live in. */
 export interface ApiBindings {
   DB?: D1Database;
+  APP_DB?: D1Database;
   LEXEMA_RELEASE: string;
 }
 
 /**
- * Answer a request `api.lexema.fyi` routed to the API. A Worker with no D1
- * binding answers 503, as a failed read does.
+ * Answer a request `api.lexema.fyi` routed to the API. A Worker missing either
+ * D1 binding answers 503, as a failed read does.
  */
 export function answerApi<E extends ApiBindings>(request: Request, env: E): Promise<Response> {
-  if (env.DB === undefined) {
-    console.error("api request failed", new Error("no D1 binding: this Worker has no DB"));
+  if (env.DB === undefined || env.APP_DB === undefined) {
+    const missing = env.DB === undefined ? "DB" : "APP_DB";
+    console.error("api request failed", new Error(`no D1 binding: this Worker has no ${missing}`));
     return Promise.resolve(json(503, error("unavailable", "The request could not be answered. Try again later.")));
   }
-  return handleApi(request, { db: fromD1(env.DB), releaseId: env.LEXEMA_RELEASE, now: Date.now() });
+  return handleApi(request, { db: fromD1(env.DB), appDb: appTablesOverD1(env.APP_DB), releaseId: env.LEXEMA_RELEASE, now: Date.now() });
 }
 
 /** The API host's answer to a path outside `/v1/`: the error an unknown endpoint gets, without a key. */

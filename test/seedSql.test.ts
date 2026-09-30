@@ -8,7 +8,6 @@ import { mkdtemp, readdir, readFile, rm, stat, writeFile } from "node:fs/promise
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { createHash } from "node:crypto";
-import { applyAppMigrations } from "../src/db/app/migrations.js";
 import { seedSql } from "../src/import/seedSql.js";
 import { ARCHIVE_FACTS, archiveFactsFor } from "../src/source/archiveFacts.js";
 import { loadFixturePages } from "../src/source/rawPage.js";
@@ -51,7 +50,6 @@ async function fixture(lines: readonly string[]) {
 function openSeed(parts: readonly string[], database: string): DatabaseSync {
   const db = new DatabaseSync(database);
   for (const part of parts) db.exec(readFileSync(part, "utf8"));
-  applyAppMigrations(db);
   return db;
 }
 
@@ -470,7 +468,6 @@ test("the schema refuses a dump without its basis, and an id that is not a dump'
   const db = new DatabaseSync(":memory:");
   try {
     db.exec(readFileSync(resolve("src/db/schema.sql"), "utf8"));
-    applyAppMigrations(db);
     const insert = (dump: string | null, basis: string | null) =>
       db.prepare(
         `INSERT INTO source_release (release_id, source_name, upstream_release, upstream_release_basis,
