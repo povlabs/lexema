@@ -56,11 +56,15 @@ export interface PhrasePage {
   unnamed: string[];
   /**
    * The word whose Wiktionary page the one *Source* link opens: the first
-   * headword the query spells, never the searched words' (Huey's hand check of
-   * 2026-09-30, 11:19Z on #214; one link per page, #281).
+   * expression the page shows, in display order, never the searched words'
+   * (Huey's hand check of 2026-09-30, 11:19Z on #214; one link per page, #281;
+   * display order, #291).
    */
   sourceWord: string;
 }
+
+/** The expression a line is about: the headword a meaning is copied from, or the one a form line names. */
+const phraseOf = (line: PhraseLine): string => (line.kind === "meaning" ? line.reading.word : line.definition.phrase);
 
 /**
  * `headwords` are the found result's readings: the records of the expressions
@@ -108,10 +112,14 @@ export function phrasePage(
   });
   const readings = [...formed, ...own].map((entry, i) => ({ number: i + 1, ...entry }));
   const shown = new Set([...named, ...own.map(({ reading }) => reading.word)]);
+  const unnamed = route.phrases.map((phrase) => phrase.word).filter((word) => !shown.has(word));
+  // Readings show before the unnamed headwords, so the first expression shown
+  // is the first reading's first line, else the first unnamed headword.
+  const [first] = readings;
   return {
     headword: query,
     readings,
-    unnamed: route.phrases.map((phrase) => phrase.word).filter((word) => !shown.has(word)),
-    sourceWord: route.phrases[0].word,
+    unnamed,
+    sourceWord: first === undefined ? route.phrases[0].word : phraseOf(first.lines[0]),
   };
 }

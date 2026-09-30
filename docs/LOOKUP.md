@@ -126,7 +126,7 @@ neither shows as a bare link.
 
 Closed, a reading shows each expression's first meaning and every form line,
 then the `+ more` every reading has; the other meanings are folded under the
-first until it opens. The one *Source* links the first found headword's page, never the
+first until it opens. The one *Source* links the page of the first headword shown, never the
 searched words': `vado via` links to *andare via*'s page
 ([Huey's hand check](https://github.com/hueypov/lexema/issues/214#issuecomment-5910100974)).
 Each form line keeps its record's provenance pointer, which reaches `vado`'s
