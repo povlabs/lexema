@@ -186,6 +186,28 @@ fabrika review-ui render --pr <n> --app developers --surface /docs
 fabrika review-ui render --pr <n> --app api --surface /v1/lookup
 ```
 
+### Sign in on a Preview
+
+A Preview's developer site, `<name>.developers-preview.lexema.fyi`
+([ADR 0018](./.decisions/0018-previews-on-workers-builds.md)), has one more
+button on `/sign-in`: *Sign in as test developer*. It posts to
+`/sign-in/test-developer`, which signs in one fixed account, the test
+developer, in that Preview's own `APP_DB` and goes to `/dashboard`
+([web/worker/testSignIn.ts](./web/worker/testSignIn.ts),
+[src/accounts/testDeveloper.ts](./src/accounts/testDeveloper.ts)
+([#245](https://github.com/hueypov/lexema/issues/245))). It needs no provider
+and no credential, only the `BETTER_AUTH_SECRET` the preview command sets on
+the Preview ([DEPLOY.md](./docs/DEPLOY.md)). On the `production` and `local`
+stages, and on every other host, the route is a 404 and the page has no
+button.
+
+A reviewer captures the signed-in dashboard with:
+
+```sh
+fabrika review-ui render --pr <n> --app developers --out signed-in --surface /sign-in \
+  --interact '/sign-in#signed-in=click:role=button[name="Sign in as test developer"];expect:role=heading[name="Dashboard"]'
+```
+
 ### Change the database schema
 
 There are two databases, each with its own schema and its own Worker binding
