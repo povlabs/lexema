@@ -9,7 +9,7 @@
     "start": "wrangler dev --config dist/server/wrangler.json --persist-to \"$PWD/.wrangler/state\"",
     "deploy:production": "CLOUDFLARE_ENV=production vinext build && wrangler deploy --config dist/server/wrangler.json",
     "deploy:workers-builds": "node builds/production.ts",
-    "preview:workers-builds": "node builds/preview.ts",
+    "preview:prepare": "node builds/preview.ts",
     "typecheck": "wrangler types && tsc --noEmit"
   },
   "dependencies": {
