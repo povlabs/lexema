@@ -1,0 +1,50 @@
+name: preview-marker
+
+# Keeps one comment on each pull request naming its Preview's three sites at
+# its head (ADR 0018, #244), in the blocks Fabrika's `review-ui render` reads.
+# Workers Builds reports each build only as a `Workers Builds: lexema-web`
+# check run from the Cloudflare app, so this runs when a check run completes.
+# The steps are web/builds/previewMarkerCommand.ts's: it acts only on that
+# app's successful run for an open pull request's current head, and a run for
+# an older commit changes nothing.
+#
+# `check_run` workflows run from the default branch, so this reads `main`'s
+# code, never the pull request's. It holds `GITHUB_TOKEN` alone and calls no
+# Cloudflare API: ADR 0018 keeps every Cloudflare credential out of GitHub.
+
+on:
+  check_run:
+    types: [completed]
+
+permissions: {}
+
+# One run per branch at a time; a newer build's run waits rather than races.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.check_run.check_suite.head_branch || github.event.check_run.head_sha }}
+  cancel-in-progress: false
+
+jobs:
+  announce:
+    name: announce the Preview
+    # Every CI job's check run completes too; only Workers Builds' own starts a runner.
+    if: >-
+      github.event.check_run.app.slug == 'cloudflare-workers-and-pages' &&
+      github.event.check_run.name == 'Workers Builds: lexema-web' &&
+      github.event.check_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version-file: .nvmrc
+      # Plain node strips the TypeScript types; the script needs no install.
+      - name: Announce the Preview
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node web/builds/previewMarker.ts
