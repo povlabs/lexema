@@ -31,7 +31,10 @@ export interface Admission {
   keyId: number;
   /** The request's calls: 1, or 1 per word of a batch (src/api/calls.ts). */
   calls: number;
-  /** When the account's billing period began, ISO-8601. A later one than the meter holds starts the count again. */
+  /**
+   * When the account's billing period began, ISO-8601. A later one than the meter holds starts the count again.
+   * Until #263 the Worker passes a stand-in instead, the UTC calendar month's start (`unplannedPeriodStart`).
+   */
   periodStart: string;
   /** The calls the period allows, or null while no plan sets one. */
   allowance: number | null;

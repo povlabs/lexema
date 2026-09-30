@@ -43,8 +43,9 @@ export interface KeyLimits {
 export const RATE_WINDOW_SECONDS = 60;
 
 /**
- * The billing period an owned key's calls are counted in until plans set one:
- * the UTC calendar month. The enforcement slice (#263) passes the plan's.
+ * A stand-in period an owned key's calls are counted in until plans set one:
+ * the UTC calendar month, which is not a billing period. The enforcement slice
+ * (#263) passes the plan's billing period instead.
  */
 export function unplannedPeriodStart(now: number): string {
   const date = new Date(now);
