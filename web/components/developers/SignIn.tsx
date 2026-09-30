@@ -1,10 +1,14 @@
 // developers.lexema.fyi/sign-in (#169, board 27): Google and GitHub, nothing
 // else. A provider whose client id and secret are not both set is a disabled
-// button, so the page never offers a sign-in that answers 503. No Terms line
+// button, so the page never offers a sign-in that answers 503. On a Preview's
+// developer host, one more button signs in as the test developer (#245,
+// worker/testSignIn.ts); nowhere else does the page show it. No Terms line
 // until the terms exist (#162, #163 R1.7). The page's wiring, which reads the
 // session and the providers, is `(developers)/developer-site/sign-in/page.tsx`.
 
+import { Button } from "@base-ui/react/button";
 import { PROVIDER_IDS, PROVIDER_NAME, type ProviderId } from "@lexema/accounts/providers.ts";
+import { TEST_SIGN_IN } from "@/worker/testSignIn.ts";
 import { DeveloperPage } from "./DeveloperPage";
 import { GitHubIcon } from "@/components/shared/icons";
 import {
@@ -34,7 +38,14 @@ function ProviderMark({ provider }: { provider: ProviderId }) {
   }
 }
 
-export function SignIn({ available }: { available: Readonly<Record<ProviderId, boolean>> }) {
+export function SignIn({
+  available,
+  testSignIn = false,
+}: {
+  available: Readonly<Record<ProviderId, boolean>>;
+  /** Whether this is a Preview's developer host, where the test developer can sign in. */
+  testSignIn?: boolean;
+}) {
   return (
     <DeveloperPage>
       <main className={SIGN_IN_SHELL}>
@@ -57,6 +68,15 @@ export function SignIn({ available }: { available: Readonly<Record<ProviderId, b
                 )}
               </li>
             ))}
+            {testSignIn ? (
+              <li>
+                <form method="post" action={TEST_SIGN_IN}>
+                  <Button className={SIGN_IN_PROVIDER} type="submit">
+                    Sign in as test developer
+                  </Button>
+                </form>
+              </li>
+            ) : null}
           </ul>
         </div>
       </main>

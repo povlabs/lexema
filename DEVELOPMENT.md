@@ -25,11 +25,13 @@ all three on every push to `main` and every pull request
 ([ci.yml](./.github/workflows/ci.yml)). The web typecheck runs `wrangler types`
 first, which generates from `wrangler.jsonc` and needs no Cloudflare account.
 
-The `test` script enumerates its files by name. A new unit test runs only once its
-path is added to that list in [package.json](./package.json). Its last entry is the
-rendered-page test in `web/test/`, which renders the search page over an imported
-fixture release; it needs the web workspace's React, so it names that workspace's
-`tsconfig.json` and needs no archive and no database.
+The `test` script finds its files by pattern, so a new test needs no edit to
+[package.json](./package.json). It runs `test/*.test.ts`, then `web/test/*.test.ts`
+and `web/test/*.test.tsx`; Node expands the quoted patterns and does not look into
+subfolders. The web run uses the web workspace's `tsconfig.json`, because its tests
+render React pages, and passes `--experimental-test-module-mocks`, which
+`mock.module` needs. The integration test lives in `test/integration/`, so the
+pattern skips it and only `test:integration` runs it.
 
 ### Checks that need the dataset
 
@@ -170,6 +172,44 @@ answer differs, so a change to an answer changes the example with it. It also
 fails when a sidebar link reaches no page. The
 pricing page's "What counts as a call" table is read from the same call map the API charges by.
 
+### Look at a pull request's Preview
+
+Each pull request's branch gets a Preview with all three sites, and one comment
+on the pull request names their URLs at its head
+([docs/DEPLOY.md](./docs/DEPLOY.md#the-preview-comment)). The `preview smoke`
+check at that head says whether they answer
+([docs/DEPLOY.md](./docs/DEPLOY.md#the-preview-smoke)). Fabrika's
+`review-ui render` reads the comment and captures one site per run, named with
+`--app`:
+
+```sh
+fabrika review-ui render --pr <n> --app web --surface '/?q=andare'
+fabrika review-ui render --pr <n> --app developers --surface /docs
+fabrika review-ui render --pr <n> --app api --surface /v1/lookup
+```
+
+### Sign in on a Preview
+
+A Preview's developer site, `<name>.developers-preview.lexema.fyi`
+([ADR 0018](./.decisions/0018-previews-on-workers-builds.md)), has one more
+button on `/sign-in`: *Sign in as test developer*. It posts to
+`/sign-in/test-developer`, which signs in one fixed account, the test
+developer, in that Preview's own `APP_DB` and goes to `/dashboard`
+([web/worker/testSignIn.ts](./web/worker/testSignIn.ts),
+[src/accounts/testDeveloper.ts](./src/accounts/testDeveloper.ts)
+([#245](https://github.com/hueypov/lexema/issues/245))). It needs no provider
+and no credential, only the `BETTER_AUTH_SECRET` the preview command sets on
+the Preview ([DEPLOY.md](./docs/DEPLOY.md)). On the `production` and `local`
+stages, and on every other host, the route is a 404 and the page has no
+button.
+
+A reviewer captures the signed-in dashboard with:
+
+```sh
+fabrika review-ui render --pr <n> --app developers --out signed-in --surface /sign-in \
+  --interact '/sign-in#signed-in=click:role=button[name="Sign in as test developer"];expect:role=heading[name="Dashboard"]'
+```
+
 ### Change the database schema
 
 There are two databases, each with its own schema and its own Worker binding
@@ -308,3 +348,4 @@ development is the only access until that lands.
 | [gitleaks.yml](./.github/workflows/gitleaks.yml) | a changed file carries a secret |
 | [leak-guard.yml](./.github/workflows/leak-guard.yml) | a changed doc or shell file carries a machine-local path |
 | [decisions-index.yml](./.github/workflows/decisions-index.yml) | two records share an ADR id, or a filename disagrees with its frontmatter |
+| [preview-marker.yml](./.github/workflows/preview-marker.yml) | its `preview smoke` check, at a pull request's head: one of the six known words does not resolve on the Preview, the developer site or the API does not answer, or a response lacks `X-Robots-Tag: noindex` |

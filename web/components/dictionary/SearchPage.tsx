@@ -17,7 +17,9 @@ import type { Attempt } from "@/lib/dictionary/attempt.ts";
 import { SearchField } from "./SearchField";
 import { SiteHeader } from "./SiteHeader";
 import { NotFound } from "./NotFound";
+import { PhraseView } from "./Phrase";
 import { WordView } from "./Word";
+import { phrasePage } from "@/lib/dictionary/phrasePage.ts";
 import { wordPage } from "@/lib/dictionary/wordPage.ts";
 import {
   ERROR,
@@ -122,7 +124,8 @@ export function Limited({ raw }: { raw: string }) {
  * collapsed into one blank page: asked badly, the lookup itself failed, asked
  * and not found, asked and found.
  *
- * The page has one `h1` in every state: the headword when a word was found,
+ * The page has one `h1` in every state: the headword when a word was found
+ * (the search as typed when it was an expression, Phrase.tsx),
  * `No entry for "<query>"` when none was (NotFound.tsx), and otherwise a
  * heading a screen reader can land on, visually hidden because the message
  * under it says the same thing.
@@ -130,9 +133,12 @@ export function Limited({ raw }: { raw: string }) {
 export function Outcome({ raw, attempt, siteKey }: { raw: string; attempt: Attempt; siteKey?: string }) {
   const query = raw.trim();
   if (attempt.outcome === "found") {
-    return (
-      <WordView page={wordPage(attempt.query.raw.trim(), attempt.readings)} siteKey={siteKey} />
-    );
+    const searched = attempt.query.raw.trim();
+    // A searched expression opens its own short page (#214), not the headword's entry.
+    if (attempt.route.kind === "phrase") {
+      return <PhraseView page={phrasePage(searched, attempt.route, attempt.readings)} siteKey={siteKey} />;
+    }
+    return <WordView page={wordPage(searched, attempt.readings)} siteKey={siteKey} />;
   }
   if (attempt.outcome === "not-found") return <NotFound query={attempt.query.raw.trim()} nearby={attempt.nearby} />;
   return (

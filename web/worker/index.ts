@@ -9,8 +9,10 @@
 // could reach D1, in one place, before any route runs. Behind them, the
 // developer site's sign-in routes (worker/signIn.ts) and dashboard actions
 // (worker/dashboard.ts) are answered before vinext, since they set cookies,
-// change data and redirect rather than render. Around all of it, the stage
-// (worker/stage.ts) adds what its responses carry: noindex on a Preview.
+// change data and redirect rather than render, and so is a Preview's test
+// sign-in (worker/testSignIn.ts), which no other stage has. Around all of it,
+// the stage (worker/stage.ts) adds what its responses carry: noindex on a
+// Preview.
 
 import { env } from "cloudflare:workers";
 import app from "vinext/server/app-router-entry";
@@ -20,6 +22,7 @@ import { byHost } from "./hosts.ts";
 import { withRateLimits } from "./rateLimit.ts";
 import { withSignIn } from "./signIn.ts";
 import { parseStage, withStage } from "./stage.ts";
+import { withTestSignIn } from "./testSignIn.ts";
 
 // Read at startup, so an unknown stage refuses to boot rather than serve.
 const stage = parseStage(env.LEXEMA_STAGE);
@@ -28,7 +31,9 @@ export default {
   fetch: withStage<Env>(
     stage,
     byHost<Env>({
-      app: withRateLimits<Env>(withSignIn<Env>(withDashboard<Env>((request, env, ctx) => app.fetch(request, env, ctx)))),
+      app: withRateLimits<Env>(
+        withTestSignIn<Env>(stage, withSignIn<Env>(withDashboard<Env>((request, env, ctx) => app.fetch(request, env, ctx)))),
+      ),
       api: answerApi,
       apiNotFound,
     }),

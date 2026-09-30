@@ -10,7 +10,7 @@ import { ExternalIcon } from "@/components/shared/icons";
 import { NEW_TAB } from "@/components/shared/ExternalLink";
 import { OneLine } from "./OneLine";
 import { ReadingView } from "./Reading";
-import { ReportDialog } from "./ReportDialog";
+import { ReportDialog, type ReportReading } from "./ReportDialog";
 import { sourcePageUrl } from "@/lib/dictionary/sourcePage.ts";
 import { WordList } from "./WordList";
 import type { WordLists, WordPage } from "@/lib/dictionary/wordPage.ts";
@@ -97,8 +97,18 @@ function WordFactsView({ facts, lists }: { facts: WordFacts; lists: WordLists })
   );
 }
 
+/** What the footer needs of a result: the pages its content comes from, and the readings a report can name. */
+export interface FooterFacts {
+  /** The word each Wiktionary page is named for; normally exactly one. */
+  sourceWords: readonly string[];
+  /** The word a report is about. */
+  headword: string;
+  /** Each reading a report can name, with its number on the page; a word page leaves a reading with no definition unnumbered. */
+  readings: readonly { number: ReportReading["number"]; reading: { recordId: number; posTitle: string } }[];
+}
+
 /** *Source* to each Wiktionary page the readings come from; normally exactly one. */
-function SourceLinks({ page, siteKey }: { page: WordPage; siteKey: string | undefined }) {
+export function SourceLinks({ page, siteKey }: { page: FooterFacts; siteKey: string | undefined }) {
   const words = page.sourceWords;
   return (
     <footer className={SOURCE_LINE}>

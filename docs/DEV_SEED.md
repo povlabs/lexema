@@ -26,8 +26,15 @@ every local account, key and reader report. Nothing else is
 written to: no other state directory, and in `SEED_SQL` only its own
 `part-NNN.sql` files and `rejections.tsv`. Point `SEED_STATE` at an existing
 database only when you mean to replace it. The fixture covers
-Huey's fifty required words and their `form_of` closure: 83 source records across
-52 words, including `andare` for `andavano`. A missing required word or fixture
+Huey's fifty required words, the words of the multi-word searches in
+[#214](https://github.com/hueypov/lexema/issues/214) (`andare via`, `tirare fuori`,
+`volgere le spalle`, `voltare le spalle`, `fare l'amore`, `aereo a reazione`,
+`aerei a reazione`, the words that spell them, `vada` for `vada via` and
+`faccio` for `faccio l'amore`, `fare fuori` with `hanno` and `fatte` for
+`hanno fatte fuori`, and `fare l'abitudine`, a headword with no
+gloss), and their `form_of` closure: 130 source records
+across 81 words, including `andare` for
+`andavano`. A missing required word or fixture
 target stops the run with that word's name.
 
 ## What is emitted

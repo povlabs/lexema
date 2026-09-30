@@ -38,18 +38,24 @@ import { FirstLoad, Limited, Outcome, Pending, SearchPage, TRY_WORDS } from "@/c
 import { SiteFooter } from "@/components/dictionary/SiteFooter";
 import { SiteHeader } from "@/components/dictionary/SiteHeader";
 import { readingChoiceLabel } from "@/components/dictionary/ReportDialog";
+import { PhraseView } from "@/components/dictionary/Phrase";
+import { phrasePage } from "@/lib/dictionary/phrasePage.ts";
 import { wordPage } from "@/lib/dictionary/wordPage.ts";
 import { firstQuery, pageTitle } from "@/lib/dictionary/params";
 // The class strings the components carry, imported rather than copied, so a
 // restyle that changes one changes both together.
 import {
   CODE_IDENTITY,
+  DEFINITION,
   DEFINITION_EXTRA,
+  DEFINITION_NUMBER_CLOSED,
+  DEFINITION_NUMBER_OPEN,
   EMPTY,
   ERROR,
   EXAMPLE_EXTRA,
   FIELD_LABEL,
   FIELD_VALUE,
+  GLOSS_LINK,
   JUMP_LINK,
   LINK,
   NON_FINITE_LABEL_SEARCHED,
@@ -65,6 +71,7 @@ import {
   SITE_FOOTER_NAME,
   TENSE_HEAD_SEARCHED,
   TOP_BAR,
+  WORD_HEADING,
   WORD_LINK,
   WORD_NOTE,
 } from "@/components/shared/styles.ts";
@@ -561,6 +568,181 @@ test("a lemma the release has is linked where the gloss names it, every one of t
     const vadi = nth(await render(db, "vadi"), 1);
     assert.match(vadi, /forma antica di <a class="[^"]*" href="\/\?q=andare">andare<\/a>, come di <a class="[^"]*" href="\/\?q=salire">salire<\/a>/);
     assert.doesNotMatch(vadi, /Form of/);
+  });
+});
+
+/** The definition lines of a page, as text, in page order. */
+const definitionLines = (html: string): string[] =>
+  [...html.matchAll(/<li class="[^"]*" data-definition="\d+">(.*?)<\/li>/g)].map((match) => textOf(match[1]).replace(/^(\d+\.)+/, ""));
+
+/** The definition lines that show before `+ more` opens: a folded one carries `DEFINITION_EXTRA`. */
+const closedLines = (html: string): string[] =>
+  [...html.matchAll(new RegExp(`<li class="${esc(DEFINITION)}" data-definition="\\d+">(.*?)</li>`, "g"))].map((match) =>
+    textOf(match[1]).replace(/^(\d+\.)+/, ""),
+  );
+
+/** The words of the Wiktionary pages a page's *Source* links name, in order. */
+const sourcePages = (html: string): string[] =>
+  [...html.matchAll(/aria-label="Wiktionary page for ([^,]+), the source of this page/g)].map((match) => textOf(match[1]));
+
+test("an inflected expression opens a short page: its words, the expression's first meaning, then each form entry with the lemma swapped for the expression; the other meanings wait for + more", async () => {
+  await withDevSeed(async ({ db }) => {
+    // *andare via*'s meanings as its own page writes them, labels and examples included.
+    const andareVia = [
+      "(familiare) lasciare un luogo: un'abitazione, una città, un posto qualsiasi",
+      "(figuratively) morire",
+      "(familiare) con riferimento ad un amore, d'affetto e/o passionale, significa lasciarsi" +
+        "\"Ne ricordo ancora la voce: ormai è andata via dal mio cuore\"",
+    ];
+    const tirareFuori = ["levare fuori", "(figuratively) far raccontare", "(figuratively) esplicitare il proprio parere"];
+    for (const [query, heading, meanings, forms] of [
+      ["vado via", "1·Voce verbale", andareVia, ["prima persona singolare del presente semplice indicativo di andare via"]],
+      ["tiro fuori", "1·Voce verbale", tirareFuori, ["prima persona singolare dell'indicativo presente di tirare fuori"]],
+      ["sono andati via", "1·Voce verbale", andareVia, ["participio passato plurale maschile di andare via"]],
+      // `vada` is a congiuntivo and an imperativo: the meanings once, then every form entry.
+      ["vada via", "1·Voce verbale", andareVia, [
+        "prima persona congiuntivo presente di andare via",
+        "seconda persona congiuntivo presente di andare via",
+        "terza persona congiuntivo presente di andare via",
+        "terza persona singolare dell'imperativo di andare via",
+        "seconda persona singolare dell'imperativo di andare via",
+      ]],
+    ] as const) {
+      const html = await render(db, query);
+      assert.match(html, new RegExp(`<h1 class="${esc(WORD_HEADING)}" lang="it">${esc(query)}</h1>`), query);
+      assert.deepEqual(headingsOf(html), [heading], query);
+      assert.deepEqual(definitionLines(html), [...meanings, ...forms], query);
+      // The expression in each form line is a link to its own entry.
+      const phrase = query === "tiro fuori" ? "tirare fuori" : "andare via";
+      assert.equal(
+        occurrencesOf(html, `<a class="${GLOSS_LINK}" href="/?q=${encodeURIComponent(phrase)}" lang="it">${phrase}</a>`),
+        forms.length,
+        query,
+      );
+      // Closed, the first meaning, then the form lines, then the one `+ more`;
+      // the other meanings are in the page, folded under the first.
+      assert.deepEqual(closedLines(html), [meanings[0], ...forms], query);
+      assert.equal(occurrencesOf(html, "+ more"), 1, query);
+      assert.ok(html.indexOf("+ more") > html.lastIndexOf(forms[forms.length - 1]), query);
+      // The first form line counts what shows: `2.` closed, after the folded meanings open.
+      assert.match(
+        html,
+        new RegExp(`<span class="${esc(DEFINITION_NUMBER_CLOSED)}">2\\.</span><span class="${esc(DEFINITION_NUMBER_OPEN)}">${meanings.length + 1}\\.</span>`),
+        query,
+      );
+      // Nothing else of either word: no forms, no pronunciation.
+      assert.doesNotMatch(html, />Forms</, query);
+      assert.doesNotMatch(html, /aria-label="Pronunciation"/, query);
+      assert.doesNotMatch(html, /Form of/, query);
+      // One *Source*, to the expression's page, never the searched word's.
+      assert.deepEqual(sourcePages(html), [phrase], query);
+      assert.match(textOf(html), /Source\s*·\s*Report a mistake/, query);
+    }
+
+    // One word with a form entry for each of two expressions: one reading,
+    // each expression's meanings before its own line, and closed, each
+    // expression's first meaning.
+    const volto = await render(db, "volto le spalle");
+    assert.deepEqual(headingsOf(volto), ["1·Voce verbale"]);
+    assert.deepEqual(definitionLines(volto), [
+      "particolrmente in un convegno, in un comitiva, non essere di fronte a qualcuno, ritenuto come comportamento disdicevole",
+      "(figuratively) lasciare qualcuno senza il proprio sostegno",
+      "prima persona singolare del presente di voltare le spalle",
+      "correre via",
+      "disinteressarsi in modo intenzionale",
+      "participio passato maschile singolare di volgere le spalle",
+    ]);
+    assert.deepEqual(closedLines(volto), [
+      "particolrmente in un convegno, in un comitiva, non essere di fronte a qualcuno, ritenuto come comportamento disdicevole",
+      "prima persona singolare del presente di voltare le spalle",
+      "correre via",
+      "participio passato maschile singolare di volgere le spalle",
+    ]);
+    // Two expressions, so a *Source* for each, naming its word.
+    assert.deepEqual(new Set(sourcePages(volto)), new Set(["voltare le spalle", "volgere le spalle"]));
+
+    // An expression with no gloss (#250) has no meanings to copy: only the form line shows.
+    const abitudine = await render(db, "faccio l'abitudine");
+    assert.deepEqual(headingsOf(abitudine), ["1·Voce verbale"]);
+    assert.deepEqual(definitionLines(abitudine), ["prima persona singolare del presente semplice indicativo di fare l'abitudine"]);
+    assert.deepEqual(sourcePages(abitudine), ["fare l'abitudine"]);
+    // Nothing folded, so no `+ more`.
+    assert.doesNotMatch(abitudine, /\+ more/);
+
+    // A participle whose records name the verb only through its past
+    // participle: `fatte` names `fatto`, `fare`'s. The meanings, then the
+    // verb record's line; *Source* is *fare fuori*'s page. *fare fuori*'s second
+    // sense is only the source's missing-definition placeholder, which no page
+    // shows (#255).
+    const fatte = await render(db, "hanno fatte fuori");
+    assert.deepEqual(headingsOf(fatte), ["1·Voce verbale"]);
+    assert.deepEqual(definitionLines(fatte), [
+      "uccidere un individuo",
+      "participio passato plurale femminile di fare fuori",
+    ]);
+    assert.deepEqual(closedLines(fatte), ["uccidere un individuo", "participio passato plurale femminile di fare fuori"]);
+    assert.deepEqual(sourcePages(fatte), ["fare fuori"]);
+
+    // A typo in one word of an expression offers the typed words corrected,
+    // not the headword, and the offer opens their short page (Huey's hand
+    // check of 2026-09-30).
+    for (const [query, corrected] of [
+      ["vadoo via", "vado via"],
+      ["vado vja", "vado via"],
+      ["tiro fuory", "tiro fuori"],
+    ]) {
+      const offer = await render(db, query);
+      assert.match(offer, new RegExp(`No entry for “<span lang="it">${esc(query)}</span>”`), query);
+      assert.match(
+        offer,
+        new RegExp(`Did you mean <a class="[^"]*" href="/\\?q=${esc(encodeURIComponent(corrected))}" lang="it">${esc(corrected)}</a>\\?`),
+        query,
+      );
+      assert.match(await render(db, corrected), new RegExp(`<h1 class="${esc(WORD_HEADING)}" lang="it">${esc(corrected)}</h1>`), corrected);
+    }
+
+    // A sequence that is no headword is still no entry, and nearly spells none.
+    const fuori = await render(db, "vado fuori");
+    assert.match(fuori, /No entry for “<span lang="it">vado fuori<\/span>”/);
+    assert.doesNotMatch(fuori, /Did you mean/);
+
+    // One word misspelled: no entry, and the expression is offered.
+    const fouri = textOf(await render(db, "tiro fouri"));
+    assert.match(fouri, /No entry for “tiro fouri”/);
+    assert.match(fouri, /Did you mean tiro fuori\?/);
+    // `vadp` is one edit from `vada` and `vado`: each correction is offered.
+    const vadp = await render(db, "vadp via");
+    assert.match(vadp, /Did you mean <a class="[^"]*" href="\/\?q=vada%20via" lang="it">vada via<\/a>\?/);
+    assert.match(textOf(vadp), /Other expressions\s*vado via/);
+
+    // The headword searched as written is its own full entry, meanings and all.
+    const plain = await render(db, "andare via");
+    assert.match(plain, new RegExp(`<h1 class="${esc(WORD_HEADING)}" lang="it">andare via</h1>`));
+    assert.deepEqual(headingsOf(plain), ["1·Espressione"]);
+    assert.match(plain, /lasciare un luogo/);
+  });
+});
+
+test("an expression no searched word has a form line for still shows its meanings and its Source", async () => {
+  await withDevSeed(async ({ db }) => {
+    // The lookup answer for `hanno fatte fuori`, with its form lines taken
+    // away: the page a participle whose records never write the verb gets.
+    const answer = await attempt(db, "hanno fatte fuori");
+    assert.ok(answer.outcome === "found" && answer.route.kind === "phrase");
+    const html = renderToStaticMarkup(
+      <PhraseView page={phrasePage("hanno fatte fuori", { ...answer.route, forms: [] }, answer.readings)} />,
+    );
+    assert.match(html, new RegExp(`<h1 class="${esc(WORD_HEADING)}" lang="it">hanno fatte fuori</h1>`));
+    // *fare fuori*'s own record, its meanings under *Definitions*.
+    assert.deepEqual(headingsOf(html), ["1·Locuzione verbale"]);
+    assert.match(html, />Definitions</);
+    // Its second sense is only the missing-definition placeholder, so none shows (#255).
+    assert.deepEqual(definitionLines(html), ["uccidere un individuo"]);
+    // One meaning and no examples: nothing folds, as on any such reading.
+    assert.deepEqual(closedLines(html), ["uccidere un individuo"]);
+    assert.equal(occurrencesOf(html, "+ more"), 0);
+    assert.deepEqual(sourcePages(html), ["fare fuori"]);
+    assert.match(textOf(html), /Report a mistake/);
   });
 });
 

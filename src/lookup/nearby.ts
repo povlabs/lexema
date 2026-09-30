@@ -6,11 +6,17 @@
 // (src/import/seedSql.ts), and the prefix list is the search field's own
 // `suggest`. Nothing here scores the whole word list per request.
 //
+// A query of several words also gets itself corrected so that it reads as a
+// multi-word headword (`vadoo via` → `vado via`, which opens *andare via*'s
+// short page; #214, src/lookup/phrase.ts). These join the "Did you mean" list
+// after an accent or a typo match, and lead it when there is neither.
+//
 // This is not a lookup. It names spellings a reader might mean; following one
 // runs the real lookup for it.
 
 import { normalizeItalianExact } from "../italian/normalize.js";
 import type { LookupDatabase } from "./database.js";
+import { nearPhrases, type PhraseOffer } from "./phrase.js";
 import { suggest } from "./suggest.js";
 
 /** A key with its accents taken off: `città` → `citta`. The query is folded the same way. */
@@ -92,11 +98,15 @@ export const TYPO_MIN_LENGTH = 4;
 
 /**
  * What the not-found page offers, one shape per case on board 24. A best guess
- * leads `accent` and `typo`; `others` follow it.
+ * leads `accent`, `typo` and `phrase`; `others` follow it. `phrases` are the
+ * query corrected so that it reads as a multi-word headword, which join the
+ * list after an accent or a typo match; with neither, they are the `phrase`
+ * offer itself. Each is offered as its `phrase`, the words to search.
  */
 export type Nearby =
-  | { kind: "accent"; best: string; others: string[] }
-  | { kind: "typo"; best: string; others: string[] }
+  | { kind: "accent"; best: string; others: string[]; phrases: PhraseOffer[] }
+  | { kind: "typo"; best: string; others: string[]; phrases: PhraseOffer[] }
+  | { kind: "phrase"; best: PhraseOffer; others: PhraseOffer[] }
   | { kind: "prefix"; words: string[] }
   | { kind: "none" };
 
@@ -176,7 +186,8 @@ async function typoMatches(db: LookupDatabase, releaseId: string, key: string): 
 /**
  * What to offer for a query the exact lookup did not find, trying each step
  * only when the one before found nothing: accent, then one edit, then the
- * words that begin with it, then nothing.
+ * query corrected to read as an expression, then the words that begin with
+ * it, then nothing. The corrected queries also join an accent or a typo offer.
  */
 export async function findNearby({ db, releaseId, query }: { db: LookupDatabase; releaseId: string; query: string }): Promise<Nearby> {
   const key = normalizeItalianExact(query);
@@ -186,19 +197,27 @@ export async function findNearby({ db, releaseId, query }: { db: LookupDatabase;
     const answer = await suggest({ db, releaseId, prefix: query });
     return answer.outcome === "suggested" ? answer.suggestions : [];
   };
+  const [accent, phrases] = await Promise.all([accentMatches(db, releaseId, key), nearPhrases(db, releaseId, key, NEARBY_LIMIT)]);
+  const phrasesBesides = (shown: readonly string[]) => {
+    const keys = new Set(shown.map(normalizeItalianExact));
+    return phrases.filter((offer) => !keys.has(offer.phrase));
+  };
 
-  const accent = await accentMatches(db, releaseId, key);
   if (accent.length > 0) {
     const [best, ...rest] = accent;
-    const others = [...rest.map((c) => c.surface), ...(await prefixWords()).filter((w) => w !== best.surface)];
-    return { kind: "accent", best: best.surface, others: [...new Set(others)].slice(0, NEARBY_LIMIT) };
+    const others = [...new Set([...rest.map((c) => c.surface), ...(await prefixWords()).filter((w) => w !== best.surface)])].slice(0, NEARBY_LIMIT);
+    return { kind: "accent", best: best.surface, others, phrases: phrasesBesides([best.surface, ...others]) };
   }
 
   const typo = await typoMatches(db, releaseId, key);
   if (typo.length > 0) {
     const [best, ...rest] = typo;
-    return { kind: "typo", best: best.surface, others: rest.map((c) => c.surface).slice(0, NEARBY_LIMIT) };
+    const others = rest.map((c) => c.surface).slice(0, NEARBY_LIMIT);
+    return { kind: "typo", best: best.surface, others, phrases: phrasesBesides([best.surface, ...others]) };
   }
+
+  const [phrase, ...morePhrases] = phrases;
+  if (phrase !== undefined) return { kind: "phrase", best: phrase, others: morePhrases };
 
   const words = await prefixWords();
   return words.length > 0 ? { kind: "prefix", words } : { kind: "none" };
