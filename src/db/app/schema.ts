@@ -9,8 +9,9 @@
 // --dialect sqlite` wrote their columns, and they are brought in here under
 // Lexema's table and column names. Each property is better-auth's field name,
 // so better-auth's Drizzle adapter reads and writes them with no field mapping
-// (src/accounts/auth.ts); the SQL names are ours, so the raw SQL of the key and
-// deletion code reads them as before.
+// (src/accounts/auth.ts); the SQL names are ours. Lexema's own key, usage and
+// account code queries these tables through Drizzle too (src/api,
+// src/accounts/accounts.ts).
 //
 // Every table is STRICT, which Drizzle cannot declare: the generated migrations
 // are edited by hand to say so, and test/appSchema.test.ts holds each table to

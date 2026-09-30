@@ -8,7 +8,9 @@
 // its account's (#161), and there is no cap on how many an account holds. Its endpoints and expiry are
 // the developer's choice (#187, ./keyAccess.ts).
 
-import type { LookupDatabase, Statement } from "../lookup/database.js";
+import { and, desc, eq, isNull, sql } from "drizzle-orm";
+import type { AppDatabase, AppTables } from "../db/app/database.js";
+import { apiKey, developerAccount } from "../db/app/schema.js";
 import { endpointsColumn, endpointsOfColumn, OPEN_ACCESS, type EndpointScope, type KeyAccess } from "./keyAccess.js";
 import { displayPrefix, generateApiKey, hashApiKey, type NewKey } from "./keys.js";
 
@@ -43,42 +45,65 @@ export interface OwnedKey {
 }
 
 /** An account's keys, newest first, through `api_key_by_owner`. */
-export const ACCOUNT_KEYS_SQL = `SELECT key_id, label, display_prefix, created_at, last_used_at, revoked_at, endpoints, expires_at
-       FROM api_key WHERE owner_account_id = ? ORDER BY key_id DESC`;
+export const accountKeysQuery = (db: AppDatabase, accountId: number) =>
+  db
+    .select({
+      keyId: apiKey.keyId,
+      name: apiKey.label,
+      displayPrefix: apiKey.displayPrefix,
+      createdAt: apiKey.createdAt,
+      lastUsedAt: apiKey.lastUsedAt,
+      revokedAt: apiKey.revokedAt,
+      endpoints: apiKey.endpoints,
+      expiresAt: apiKey.expiresAt,
+    })
+    .from(apiKey)
+    .where(eq(apiKey.ownerAccountId, accountId))
+    .orderBy(desc(apiKey.keyId));
 
 /** Every key the account owns, live and revoked. */
-export async function listAccountKeys(db: LookupDatabase, accountId: number): Promise<OwnedKey[]> {
-  const rows = await db.all<{
-    key_id: number;
-    label: string;
-    display_prefix: string;
-    created_at: string;
-    last_used_at: string | null;
-    revoked_at: string | null;
-    endpoints: string | null;
-    expires_at: string | null;
-  }>(ACCOUNT_KEYS_SQL, [accountId]);
-  return rows.map((row) => ({
-    keyId: row.key_id,
-    name: row.label,
-    displayPrefix: row.display_prefix,
-    createdAt: row.created_at,
-    lastUsedAt: row.last_used_at,
-    revokedAt: row.revoked_at,
-    endpoints: endpointsOfColumn(row.endpoints),
-    expiresAt: row.expires_at,
-  }));
+export async function listAccountKeys(db: AppTables, accountId: number): Promise<OwnedKey[]> {
+  const rows = await accountKeysQuery(db.app, accountId);
+  return rows.map((row) => ({ ...row, endpoints: endpointsOfColumn(row.endpoints) }));
+}
+
+/** What a new owned key is stored with, beside its owner. */
+interface OwnedKeyRow {
+  hash: string;
+  name: KeyName;
+  createdAt: string;
+  displayPrefix: string;
+  access: KeyAccess;
 }
 
 /**
  * A new key owned by the account, stored only if the account exists and is
  * not deleted: the row comes from the account's own, so no read can go stale
- * between the check and the insert.
+ * between the check and the insert. Drizzle's insert-select names every
+ * column, in the table's order.
  */
-export const INSERT_OWNED_KEY_SQL = `INSERT INTO api_key
-       (key_hash, label, created_at, display_prefix, endpoints, expires_at, owner_account_id)
-     SELECT ?, ?, ?, ?, ?, ?, account_id FROM developer_account WHERE account_id = ? AND deleted_at IS NULL
-     RETURNING key_id`;
+export const insertOwnedKeyQuery = (db: AppDatabase, accountId: number, row: OwnedKeyRow) =>
+  db
+    .insert(apiKey)
+    .select(
+      db
+        .select({
+          keyId: sql<number | null>`null`.as("key_id"),
+          keyHash: sql<string>`${row.hash}`.as("key_hash"),
+          label: sql<string>`${row.name}`.as("label"),
+          perMinuteLimit: sql<number | null>`null`.as("per_minute_limit"),
+          createdAt: sql<string>`${row.createdAt}`.as("created_at"),
+          revokedAt: sql<string | null>`null`.as("revoked_at"),
+          ownerAccountId: developerAccount.id,
+          displayPrefix: sql<string>`${row.displayPrefix}`.as("display_prefix"),
+          lastUsedAt: sql<string | null>`null`.as("last_used_at"),
+          endpoints: sql<string | null>`${endpointsColumn(row.access.endpoints)}`.as("endpoints"),
+          expiresAt: sql<string | null>`${row.access.expiresAt}`.as("expires_at"),
+        })
+        .from(developerAccount)
+        .where(and(eq(developerAccount.id, accountId), isNull(developerAccount.deletedAt))),
+    )
+    .returning({ keyId: apiKey.keyId });
 
 export type OwnedKeyCreation = ({ outcome: "created" } & NewKey) | { outcome: "refused"; refusal: "no-account" };
 
@@ -88,30 +113,38 @@ export type OwnedKeyCreation = ({ outcome: "created" } & NewKey) | { outcome: "r
  * `key` is the only time it exists in the clear.
  */
 export async function createAccountKey(
-  db: LookupDatabase,
+  db: AppTables,
   accountId: number,
   name: KeyName,
   now: number,
   access: KeyAccess = OPEN_ACCESS,
 ): Promise<OwnedKeyCreation> {
   const key = generateApiKey();
-  const [row] = await db.all<{ key_id: number }>(INSERT_OWNED_KEY_SQL, [
-    await hashApiKey(key),
+  const [row] = await insertOwnedKeyQuery(db.app, accountId, {
+    hash: await hashApiKey(key),
     name,
-    new Date(now).toISOString(),
-    displayPrefix(key),
-    endpointsColumn(access.endpoints),
-    access.expiresAt,
-    accountId,
-  ]);
+    createdAt: new Date(now).toISOString(),
+    displayPrefix: displayPrefix(key),
+    access,
+  });
   if (row === undefined) return { outcome: "refused", refusal: "no-account" };
-  return { outcome: "created", keyId: row.key_id, key, displayPrefix: displayPrefix(key) };
+  return { outcome: "created", keyId: row.keyId, key, displayPrefix: displayPrefix(key) };
 }
 
 /** Revoke one live key, only when the account owns it. */
-export const REVOKE_OWNED_KEY_SQL = `UPDATE api_key SET revoked_at = ?
-     WHERE key_id = ? AND owner_account_id = ? AND revoked_at IS NULL RETURNING key_id`;
-export const OWNED_KEY_SQL = `SELECT revoked_at FROM api_key WHERE key_id = ? AND owner_account_id = ?`;
+export const revokeOwnedKeyQuery = (db: AppDatabase, accountId: number, keyId: number, at: string) =>
+  db
+    .update(apiKey)
+    .set({ revokedAt: at })
+    .where(and(eq(apiKey.keyId, keyId), eq(apiKey.ownerAccountId, accountId), isNull(apiKey.revokedAt)))
+    .returning({ keyId: apiKey.keyId });
+
+/** The account's key with this id, if it owns one. */
+export const ownedKeyQuery = (db: AppDatabase, accountId: number, keyId: number) =>
+  db
+    .select({ revokedAt: apiKey.revokedAt })
+    .from(apiKey)
+    .where(and(eq(apiKey.keyId, keyId), eq(apiKey.ownerAccountId, accountId)));
 
 /**
  * - `revoked`: the key was live and is revoked now.
@@ -123,22 +156,21 @@ export const OWNED_KEY_SQL = `SELECT revoked_at FROM api_key WHERE key_id = ? AN
 export type OwnedKeyRevocation = "revoked" | "already-revoked" | "not-yours";
 
 /** Revoke one of the account's own keys. Any other key is refused and left as it was. */
-export async function revokeAccountKey(db: LookupDatabase, accountId: number, keyId: number, now: number): Promise<OwnedKeyRevocation> {
-  const revoked = await db.all<{ key_id: number }>(REVOKE_OWNED_KEY_SQL, [new Date(now).toISOString(), keyId, accountId]);
+export async function revokeAccountKey(db: AppTables, accountId: number, keyId: number, now: number): Promise<OwnedKeyRevocation> {
+  const revoked = await revokeOwnedKeyQuery(db.app, accountId, keyId, new Date(now).toISOString());
   if (revoked.length > 0) return "revoked";
-  const [row] = await db.all<{ revoked_at: string | null }>(OWNED_KEY_SQL, [keyId, accountId]);
+  const [row] = await ownedKeyQuery(db.app, accountId, keyId);
   return row === undefined ? "not-yours" : "already-revoked";
 }
 
-/** Revoke every live key the account owns. */
-export const REVOKE_ACCOUNT_KEYS_SQL = `UPDATE api_key SET revoked_at = ?
-     WHERE owner_account_id = ? AND revoked_at IS NULL RETURNING key_id`;
-
 /**
- * The statement that revokes all the account's live keys, answering one row
- * per key it revoked. A statement rather than a call, so account deletion
- * (src/accounts/accounts.ts) runs it in the same transaction as the rest.
+ * The statement that revokes every live key the account owns, answering one
+ * row per key it revoked. A statement rather than a call, so account deletion
+ * (src/accounts/accounts.ts) runs it in the same batch as the rest.
  */
-export function revokeAllAccountKeys(accountId: number, now: number): Statement {
-  return { sql: REVOKE_ACCOUNT_KEYS_SQL, params: [new Date(now).toISOString(), accountId] };
-}
+export const revokeAllAccountKeys = (db: AppDatabase, accountId: number, now: number) =>
+  db
+    .update(apiKey)
+    .set({ revokedAt: new Date(now).toISOString() })
+    .where(and(eq(apiKey.ownerAccountId, accountId), isNull(apiKey.revokedAt)))
+    .returning({ keyId: apiKey.keyId });

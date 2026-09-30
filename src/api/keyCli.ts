@@ -13,7 +13,9 @@
 import { execFileSync } from "node:child_process";
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
-import type { LookupDatabase, SqlValue } from "../lookup/database.js";
+import { drizzle } from "drizzle-orm/sqlite-proxy";
+import type { AppTables } from "../db/app/database.js";
+import * as schema from "../db/app/schema.js";
 import { createKey, revokeKey } from "./keys.js";
 
 const USAGE = `usage:
@@ -45,7 +47,7 @@ function flags(args: readonly string[], names: readonly string[]): Map<string, s
 }
 
 /** Run one command against a database. */
-export async function runKeyCommand(args: readonly string[], db: LookupDatabase, now: number): Promise<CommandResult> {
+export async function runKeyCommand(args: readonly string[], db: AppTables, now: number): Promise<CommandResult> {
   const [command, ...rest] = args;
   if (command === "create") {
     const given = flags(rest, ["label", "per-minute"]);
@@ -77,31 +79,44 @@ export async function runKeyCommand(args: readonly string[], db: LookupDatabase,
 }
 
 /** A value written into SQL as a literal, for Wrangler's `--command`, which binds no parameters. */
-function sqlLiteral(value: SqlValue): string {
+function sqlLiteral(value: unknown): string {
   if (value === null) return "NULL";
   if (typeof value === "number") {
     if (!Number.isFinite(value)) throw new Error(`not a finite number: ${value}`);
     return String(value);
   }
+  if (typeof value !== "string") throw new Error(`not a value a key statement binds: ${String(value)}`);
   return `'${value.replace(/'/g, "''")}'`;
 }
 
-/** The local D1 through Wrangler, as src/import/seedDev.ts reaches it. */
-function localD1(persistTo: string): LookupDatabase {
-  return {
-    async all<T>(sql: string, params: readonly SqlValue[]): Promise<T[]> {
-      let next = 0;
-      const command = sql.replace(/\?/g, () => sqlLiteral(params[next++]));
-      if (next !== params.length) throw new Error(`the statement takes ${next} parameter(s), was given ${params.length}`);
-      const output = execFileSync(
-        "pnpm",
-        ["exec", "wrangler", "d1", "execute", "lexema", "--local", "--persist-to", persistTo, "--json", "--command", command],
-        { cwd: resolve("web"), stdio: ["ignore", "pipe", "inherit"], env: { ...process.env, CI: "1" }, encoding: "utf8" },
-      );
-      const [answer] = JSON.parse(output) as [{ results: T[] }];
-      return answer.results;
-    },
+/**
+ * The local D1 through Wrangler, as src/import/seedDev.ts reaches it, with
+ * Drizzle over it. Wrangler answers each row as an object in select order, and
+ * Drizzle wants it as an array in that order; no key statement selects two
+ * columns of one name. The CLI runs no batch.
+ */
+function localD1(persistTo: string): AppTables {
+  const execute = (sql: string, params: readonly unknown[]): Record<string, unknown>[] => {
+    let next = 0;
+    const command = sql.replace(/\?/g, () => sqlLiteral(params[next++]));
+    if (next !== params.length) throw new Error(`the statement takes ${next} parameter(s), was given ${params.length}`);
+    const output = execFileSync(
+      "pnpm",
+      ["exec", "wrangler", "d1", "execute", "lexema", "--local", "--persist-to", persistTo, "--json", "--command", command],
+      { cwd: resolve("web"), stdio: ["ignore", "pipe", "inherit"], env: { ...process.env, CI: "1" }, encoding: "utf8" },
+    );
+    const [answer] = JSON.parse(output) as [{ results: Record<string, unknown>[] }];
+    return answer.results;
   };
+  const app = drizzle(
+    async (sql, params, method) => {
+      const rows = execute(sql, params).map((row) => Object.values(row));
+      if (method === "run") return { rows: [] };
+      return { rows: method === "get" ? (rows[0] as unknown[]) : rows };
+    },
+    { schema },
+  );
+  return { app };
 }
 
 if (process.argv[1] !== undefined && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {

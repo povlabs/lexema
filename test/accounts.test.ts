@@ -9,11 +9,11 @@ import { DatabaseSync } from "node:sqlite";
 import { fileURLToPath } from "node:url";
 import { applyAppMigrations } from "../src/db/app/migrations.js";
 import {
-  ACCOUNT_BY_EMAIL_SQL,
-  ACCOUNT_IDENTITIES_SQL,
+  accountByEmailQuery,
+  accountIdentitiesQuery,
   accountProfile,
   deleteAccount,
-  REFRESH_IDENTITY_SQL,
+  refreshIdentityQuery,
   signInAccount,
   verifiedIdentity,
   type VerifiedIdentity,
@@ -40,15 +40,18 @@ const identity = (provider: "google" | "github", subject: string, email: string,
 
 test("every account read is on a primary key or an index", () => {
   const db = schemaDb();
-  const planOf = (sql: string, params: (string | number | null)[]) =>
-    (db.prepare(`EXPLAIN QUERY PLAN ${sql}`).all(...params) as { detail: string }[]).map((row) => row.detail).join("\n");
-  const at = new Date(NOW).toISOString();
-  const cases: [string, (string | number | null)[], RegExp][] = [
-    [REFRESH_IDENTITY_SQL, [null, at, "google", "x"], /SEARCH provider_identity USING INDEX provider_identity_provider_user/],
-    [ACCOUNT_BY_EMAIL_SQL, ["a@b.c"], /SEARCH developer_account USING (COVERING )?INDEX developer_account_email_unique/],
-    [ACCOUNT_IDENTITIES_SQL, [1], /SEARCH provider_identity USING INDEX provider_identity_by_account/],
+  const app = fromNodeSqlite(db).app;
+  const planOf = (sql: string, params: unknown[]) =>
+    (db.prepare(`EXPLAIN QUERY PLAN ${sql}`).all(...(params as (string | number | null)[])) as { detail: string }[])
+      .map((row) => row.detail)
+      .join("\n");
+  const cases: [{ toSQL(): { sql: string; params: unknown[] } }, RegExp][] = [
+    [refreshIdentityQuery(app, identity("google", "x", "a@b.c"), new Date(NOW)), /SEARCH provider_identity USING INDEX provider_identity_provider_user/],
+    [accountByEmailQuery(app, "a@b.c"), /SEARCH developer_account USING (COVERING )?INDEX developer_account_email_unique/],
+    [accountIdentitiesQuery(app, 1), /SEARCH provider_identity USING INDEX provider_identity_by_account/],
   ];
-  for (const [sql, params, expected] of cases) {
+  for (const [statement, expected] of cases) {
+    const { sql, params } = statement.toSQL();
     const plan = planOf(sql, params);
     assert.match(plan, expected, `${sql}\n${plan}`);
   }

@@ -13,8 +13,10 @@
 // at every sign-in, for the account menu (#190). It lives on the identity, so
 // the menu names the person as their first provider does.
 
+import { and, asc, eq, sql } from "drizzle-orm";
 import { revokeAllAccountKeys } from "../api/ownedKeys.js";
-import type { LookupDatabase, TransactionalDatabase } from "../lookup/database.js";
+import type { AppDatabase, AppTables } from "../db/app/database.js";
+import { developerAccount, developerSession, providerIdentity } from "../db/app/schema.js";
 import { nameOf, PROVIDER_IDS, type ProviderId, type ProviderProfile } from "./providers.js";
 
 /** A person a provider vouched for, with an email it says is verified. */
@@ -35,47 +37,72 @@ export function verifiedIdentity(provider: ProviderId, profile: ProviderProfile)
 }
 
 /** A known identity's account, with its name refreshed to what the provider gives now. */
-export const REFRESH_IDENTITY_SQL = `UPDATE provider_identity SET display_name = ?, updated_at = ?
-       WHERE provider = ? AND provider_user_id = ? RETURNING account_id`;
+export const refreshIdentityQuery = (db: AppDatabase, identity: VerifiedIdentity, at: Date) =>
+  db
+    .update(providerIdentity)
+    .set({ displayName: identity.name ?? null, updatedAt: at })
+    .where(and(eq(providerIdentity.providerId, identity.provider), eq(providerIdentity.accountId, identity.subject)))
+    .returning({ accountId: providerIdentity.userId });
+
 /** The account an email belongs to: better-auth's link by email. A deleted account's email is no longer the person's. */
-export const ACCOUNT_BY_EMAIL_SQL = `SELECT account_id FROM developer_account WHERE email = ?`;
-export const INSERT_ACCOUNT_SQL = `INSERT INTO developer_account (name, email, email_verified, created_at, updated_at)
-     VALUES (?, ?, 1, ?, ?) RETURNING account_id`;
-export const INSERT_IDENTITY_SQL = `INSERT INTO provider_identity (account_id, provider, provider_user_id, email, display_name, linked_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?)`;
+export const accountByEmailQuery = (db: AppDatabase, email: string) =>
+  db.select({ accountId: developerAccount.id }).from(developerAccount).where(eq(developerAccount.email, email));
+
+/** A new account under the identity's verified email. */
+export const insertAccountQuery = (db: AppDatabase, identity: VerifiedIdentity, at: Date) =>
+  db
+    .insert(developerAccount)
+    .values({ name: identity.name ?? "", email: identity.email, emailVerified: true, createdAt: at, updatedAt: at })
+    .returning({ accountId: developerAccount.id });
+
+/** The identity, linked to the account. */
+export const insertIdentityQuery = (db: AppDatabase, accountId: number, identity: VerifiedIdentity, at: Date) =>
+  db.insert(providerIdentity).values({
+    userId: accountId,
+    providerId: identity.provider,
+    accountId: identity.subject,
+    email: identity.email,
+    displayName: identity.name ?? null,
+    createdAt: at,
+    updatedAt: at,
+  });
 
 /** How a sign-in reached its account. */
 export type AccountMatch = "identity" | "email" | "new";
 
 /** The account this identity signs in to, linking or creating as needed; a known identity's name is refreshed. */
 export async function signInAccount(
-  db: LookupDatabase,
+  db: AppTables,
   identity: VerifiedIdentity,
   now: number,
 ): Promise<{ accountId: number; match: AccountMatch }> {
-  const displayName = identity.name ?? null;
-  const at = new Date(now).toISOString();
-  const [known] = await db.all<{ account_id: number }>(REFRESH_IDENTITY_SQL, [displayName, at, identity.provider, identity.subject]);
-  if (known !== undefined) return { accountId: known.account_id, match: "identity" };
+  const at = new Date(now);
+  const [known] = await refreshIdentityQuery(db.app, identity, at);
+  if (known !== undefined) return { accountId: known.accountId, match: "identity" };
 
-  const [sameEmail] = await db.all<{ account_id: number }>(ACCOUNT_BY_EMAIL_SQL, [identity.email]);
+  const [sameEmail] = await accountByEmailQuery(db.app, identity.email);
   let accountId: number;
   let match: AccountMatch;
   if (sameEmail !== undefined) {
-    accountId = sameEmail.account_id;
+    accountId = sameEmail.accountId;
     match = "email";
   } else {
-    const [created] = await db.all<{ account_id: number }>(INSERT_ACCOUNT_SQL, [identity.name ?? "", identity.email, at, at]);
+    const [created] = await insertAccountQuery(db.app, identity, at);
     if (created === undefined) throw new Error("the new account was not stored");
-    accountId = created.account_id;
+    accountId = created.accountId;
     match = "new";
   }
-  await db.all(INSERT_IDENTITY_SQL, [accountId, identity.provider, identity.subject, identity.email, displayName, at, at]);
+  await insertIdentityQuery(db.app, accountId, identity, at);
   return { accountId, match };
 }
 
-export const ACCOUNT_IDENTITIES_SQL = `SELECT provider, email, display_name FROM provider_identity
-       WHERE account_id = ? ORDER BY identity_id`;
+/** An account's identities, in the order they were linked, through `provider_identity_by_account`. */
+export const accountIdentitiesQuery = (db: AppDatabase, accountId: number) =>
+  db
+    .select({ provider: providerIdentity.providerId, email: providerIdentity.email, displayName: providerIdentity.displayName })
+    .from(providerIdentity)
+    .where(eq(providerIdentity.userId, accountId))
+    .orderBy(asc(providerIdentity.id));
 
 /** Who an account is, as the dashboard names it: a name, an email and the providers it signs in with. */
 export interface AccountProfile {
@@ -88,12 +115,12 @@ export interface AccountProfile {
 }
 
 /** The account's profile, or `undefined` when it has no identity: deleted, or never signed in. */
-export async function accountProfile(db: LookupDatabase, accountId: number): Promise<AccountProfile | undefined> {
-  const rows = await db.all<{ provider: ProviderId; email: string; display_name: string | null }>(ACCOUNT_IDENTITIES_SQL, [accountId]);
+export async function accountProfile(db: AppTables, accountId: number): Promise<AccountProfile | undefined> {
+  const rows = await accountIdentitiesQuery(db.app, accountId);
   const [first] = rows;
   if (first === undefined) return undefined;
   const linked = PROVIDER_IDS.filter((provider) => rows.some((row) => row.provider === provider));
-  const name = rows.find((row) => row.display_name !== null)?.display_name ?? undefined;
+  const name = rows.find((row) => row.displayName !== null)?.displayName ?? undefined;
   return { email: first.email, name, providers: linked as [ProviderId, ...ProviderId[]] };
 }
 
@@ -103,12 +130,26 @@ export async function accountProfile(db: LookupDatabase, accountId: number): Pro
  * and shaped like one, as better-auth's user needs, on a domain that cannot
  * exist (RFC 2606).
  */
-export const MARK_ACCOUNT_DELETED_SQL = `UPDATE developer_account
-     SET deleted_at = coalesce(deleted_at, ?1), updated_at = coalesce(deleted_at, ?1),
-         email = 'deleted-' || account_id || '@deleted.invalid', name = '', image = NULL
-     WHERE account_id = ?2 RETURNING account_id`;
-export const DELETE_ACCOUNT_SESSIONS_SQL = `DELETE FROM developer_session WHERE account_id = ?`;
-export const DELETE_ACCOUNT_IDENTITIES_SQL = `DELETE FROM provider_identity WHERE account_id = ?`;
+export const markAccountDeletedQuery = (db: AppDatabase, accountId: number, at: string) =>
+  db
+    .update(developerAccount)
+    .set({
+      deletedAt: sql`coalesce(${developerAccount.deletedAt}, ${at})`,
+      updatedAt: sql`coalesce(${developerAccount.deletedAt}, ${at})`,
+      email: sql`'deleted-' || ${developerAccount.id} || '@deleted.invalid'`,
+      name: "",
+      image: null,
+    })
+    .where(eq(developerAccount.id, accountId))
+    .returning({ accountId: developerAccount.id });
+
+/** End every session of the account. */
+export const deleteAccountSessionsQuery = (db: AppDatabase, accountId: number) =>
+  db.delete(developerSession).where(eq(developerSession.userId, accountId));
+
+/** Unlink every provider identity of the account. */
+export const deleteAccountIdentitiesQuery = (db: AppDatabase, accountId: number) =>
+  db.delete(providerIdentity).where(eq(providerIdentity.userId, accountId));
 
 /**
  * Delete an account (#163 R1.4): revoke every key it owns, end its sessions
@@ -117,23 +158,23 @@ export const DELETE_ACCOUNT_IDENTITIES_SQL = `DELETE FROM provider_identity WHER
  * signing in again with the same email makes a new account. This stays
  * Lexema's: better-auth's own `deleteUser` removes the row (ADR 0017).
  *
- * The four statements run as one transaction, so a deletion that fails leaves
- * the account exactly as it was, still signed in and with its keys live, and
- * one that succeeds leaves no session or identity that could reach it. Running
+ * The four statements run as one batch, which is one transaction, so a
+ * deletion that fails leaves the account exactly as it was, still signed in and
+ * with its keys live, and one that succeeds leaves no session or identity that could reach it. Running
  * it again on a deleted account changes nothing and keeps the first time.
  * Answers the number of keys it revoked, or `unknown` when there is no such
  * account.
  */
 export async function deleteAccount(
-  db: TransactionalDatabase,
+  db: AppTables,
   accountId: number,
   now: number,
 ): Promise<{ outcome: "deleted"; revokedKeys: number } | { outcome: "unknown" }> {
-  const [marked = [], revoked = []] = await db.batch([
-    { sql: MARK_ACCOUNT_DELETED_SQL, params: [new Date(now).toISOString(), accountId] },
-    revokeAllAccountKeys(accountId, now),
-    { sql: DELETE_ACCOUNT_SESSIONS_SQL, params: [accountId] },
-    { sql: DELETE_ACCOUNT_IDENTITIES_SQL, params: [accountId] },
+  const [marked, revoked] = await db.app.batch([
+    markAccountDeletedQuery(db.app, accountId, new Date(now).toISOString()),
+    revokeAllAccountKeys(db.app, accountId, now),
+    deleteAccountSessionsQuery(db.app, accountId),
+    deleteAccountIdentitiesQuery(db.app, accountId),
   ]);
   if (marked.length === 0) return { outcome: "unknown" };
   return { outcome: "deleted", revokedKeys: revoked.length };
