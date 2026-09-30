@@ -124,7 +124,7 @@ test("a stub sign-in round trip ends with a host-only session cookie: HttpOnly, 
   assert.ok(session !== undefined && session.value !== "");
   for (const attribute of ["httponly", "secure", "samesite=lax", "path=/"]) assert.ok(session.attributes.includes(attribute), attribute);
   assert.ok(!session.attributes.some((attribute) => attribute.startsWith("domain")), "host-only: no Domain");
-  assert.ok(SESSION_COOKIE.startsWith("__Host-"));
+  assert.ok(SESSION_COOKIE.startsWith("__Secure-"));
   assert.ok(!jar.has(PENDING_COOKIE), "the pending sign-in is cleared");
 
   assert.equal(typeof (await account()), "number");

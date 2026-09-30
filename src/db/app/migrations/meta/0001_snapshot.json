@@ -1,0 +1,706 @@
+{
+  "version": "6",
+  "dialect": "sqlite",
+  "id": "1e403f67-d667-4afd-8a75-f9bc93927143",
+  "prevId": "dce7389a-1da1-4097-9ead-4820461ccf60",
+  "tables": {
+    "api_key": {
+      "name": "api_key",
+      "columns": {
+        "key_id": {
+          "name": "key_id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "key_hash": {
+          "name": "key_hash",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "label": {
+          "name": "label",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "per_minute_limit": {
+          "name": "per_minute_limit",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "revoked_at": {
+          "name": "revoked_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "owner_account_id": {
+          "name": "owner_account_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "display_prefix": {
+          "name": "display_prefix",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "last_used_at": {
+          "name": "last_used_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "endpoints": {
+          "name": "endpoints",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "expires_at": {
+          "name": "expires_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "api_key_key_hash_unique": {
+          "name": "api_key_key_hash_unique",
+          "columns": [
+            "key_hash"
+          ],
+          "isUnique": true
+        },
+        "api_key_by_owner": {
+          "name": "api_key_by_owner",
+          "columns": [
+            "owner_account_id"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "api_key_owner_account_id_developer_account_account_id_fk": {
+          "name": "api_key_owner_account_id_developer_account_account_id_fk",
+          "tableFrom": "api_key",
+          "tableTo": "developer_account",
+          "columnsFrom": [
+            "owner_account_id"
+          ],
+          "columnsTo": [
+            "account_id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "api_key_hash": {
+          "name": "api_key_hash",
+          "value": "length(key_hash) = 64"
+        },
+        "api_key_label": {
+          "name": "api_key_label",
+          "value": "length(label) BETWEEN 1 AND 200"
+        },
+        "api_key_per_minute_limit": {
+          "name": "api_key_per_minute_limit",
+          "value": "per_minute_limit > 0"
+        },
+        "api_key_display_prefix": {
+          "name": "api_key_display_prefix",
+          "value": "length(display_prefix) = 11 AND display_prefix GLOB 'lx_*' AND substr(display_prefix, 4) NOT GLOB '*[^0-9a-f]*'"
+        },
+        "api_key_endpoints": {
+          "name": "api_key_endpoints",
+          "value": "endpoints IS NULL OR (json_valid(endpoints) AND json_type(endpoints) = 'array' AND json_array_length(endpoints) >= 1)"
+        },
+        "api_key_owned_or_limited": {
+          "name": "api_key_owned_or_limited",
+          "value": "(owner_account_id IS NULL) = (per_minute_limit IS NOT NULL)"
+        }
+      }
+    },
+    "api_key_minute": {
+      "name": "api_key_minute",
+      "columns": {
+        "key_id": {
+          "name": "key_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "minute": {
+          "name": "minute",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "requests": {
+          "name": "requests",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "api_key_minute_key_id_api_key_key_id_fk": {
+          "name": "api_key_minute_key_id_api_key_key_id_fk",
+          "tableFrom": "api_key_minute",
+          "tableTo": "api_key",
+          "columnsFrom": [
+            "key_id"
+          ],
+          "columnsTo": [
+            "key_id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "api_key_minute_key_id_minute_pk": {
+          "columns": [
+            "key_id",
+            "minute"
+          ],
+          "name": "api_key_minute_key_id_minute_pk"
+        }
+      },
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "api_key_minute_requests": {
+          "name": "api_key_minute_requests",
+          "value": "requests > 0"
+        }
+      }
+    },
+    "api_key_usage": {
+      "name": "api_key_usage",
+      "columns": {
+        "key_id": {
+          "name": "key_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "day": {
+          "name": "day",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "calls": {
+          "name": "calls",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "api_key_usage_key_id_api_key_key_id_fk": {
+          "name": "api_key_usage_key_id_api_key_key_id_fk",
+          "tableFrom": "api_key_usage",
+          "tableTo": "api_key",
+          "columnsFrom": [
+            "key_id"
+          ],
+          "columnsTo": [
+            "key_id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "api_key_usage_key_id_day_pk": {
+          "columns": [
+            "key_id",
+            "day"
+          ],
+          "name": "api_key_usage_key_id_day_pk"
+        }
+      },
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "api_key_usage_day": {
+          "name": "api_key_usage_day",
+          "value": "day GLOB '[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]'"
+        },
+        "api_key_usage_calls": {
+          "name": "api_key_usage_calls",
+          "value": "calls >= 0"
+        }
+      }
+    },
+    "developer_account": {
+      "name": "developer_account",
+      "columns": {
+        "account_id": {
+          "name": "account_id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "email": {
+          "name": "email",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "email_verified": {
+          "name": "email_verified",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "image": {
+          "name": "image",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "deleted_at": {
+          "name": "deleted_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "developer_account_email_unique": {
+          "name": "developer_account_email_unique",
+          "columns": [
+            "email"
+          ],
+          "isUnique": true
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "developer_account_email": {
+          "name": "developer_account_email",
+          "value": "email = lower(email) AND email LIKE '%_@_%'"
+        },
+        "developer_account_email_verified": {
+          "name": "developer_account_email_verified",
+          "value": "email_verified = 1"
+        },
+        "developer_account_image": {
+          "name": "developer_account_image",
+          "value": "image IS NULL"
+        }
+      }
+    },
+    "developer_session": {
+      "name": "developer_session",
+      "columns": {
+        "session_id": {
+          "name": "session_id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "token": {
+          "name": "token",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "account_id": {
+          "name": "account_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "expires_at": {
+          "name": "expires_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "ip_address": {
+          "name": "ip_address",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "user_agent": {
+          "name": "user_agent",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "developer_session_token_unique": {
+          "name": "developer_session_token_unique",
+          "columns": [
+            "token"
+          ],
+          "isUnique": true
+        },
+        "developer_session_by_expiry": {
+          "name": "developer_session_by_expiry",
+          "columns": [
+            "expires_at"
+          ],
+          "isUnique": false
+        },
+        "developer_session_by_account": {
+          "name": "developer_session_by_account",
+          "columns": [
+            "account_id"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "developer_session_account_id_developer_account_account_id_fk": {
+          "name": "developer_session_account_id_developer_account_account_id_fk",
+          "tableFrom": "developer_session",
+          "tableTo": "developer_account",
+          "columnsFrom": [
+            "account_id"
+          ],
+          "columnsTo": [
+            "account_id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "developer_session_client": {
+          "name": "developer_session_client",
+          "value": "ip_address IS NULL AND user_agent IS NULL"
+        }
+      }
+    },
+    "provider_identity": {
+      "name": "provider_identity",
+      "columns": {
+        "identity_id": {
+          "name": "identity_id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "account_id": {
+          "name": "account_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "provider": {
+          "name": "provider",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "provider_user_id": {
+          "name": "provider_user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "email": {
+          "name": "email",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "display_name": {
+          "name": "display_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "linked_at": {
+          "name": "linked_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "access_token": {
+          "name": "access_token",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "refresh_token": {
+          "name": "refresh_token",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "id_token": {
+          "name": "id_token",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "access_token_expires_at": {
+          "name": "access_token_expires_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "refresh_token_expires_at": {
+          "name": "refresh_token_expires_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "scope": {
+          "name": "scope",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "password": {
+          "name": "password",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "provider_identity_by_account": {
+          "name": "provider_identity_by_account",
+          "columns": [
+            "account_id"
+          ],
+          "isUnique": false
+        },
+        "provider_identity_provider_user": {
+          "name": "provider_identity_provider_user",
+          "columns": [
+            "provider",
+            "provider_user_id"
+          ],
+          "isUnique": true
+        }
+      },
+      "foreignKeys": {
+        "provider_identity_account_id_developer_account_account_id_fk": {
+          "name": "provider_identity_account_id_developer_account_account_id_fk",
+          "tableFrom": "provider_identity",
+          "tableTo": "developer_account",
+          "columnsFrom": [
+            "account_id"
+          ],
+          "columnsTo": [
+            "account_id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "provider_identity_provider": {
+          "name": "provider_identity_provider",
+          "value": "provider IN ('google', 'github')"
+        },
+        "provider_identity_provider_user_id": {
+          "name": "provider_identity_provider_user_id",
+          "value": "length(provider_user_id) > 0"
+        },
+        "provider_identity_email": {
+          "name": "provider_identity_email",
+          "value": "email = lower(email) AND email LIKE '%_@_%'"
+        },
+        "provider_identity_display_name": {
+          "name": "provider_identity_display_name",
+          "value": "display_name IS NULL OR length(trim(display_name)) > 0"
+        },
+        "provider_identity_no_credentials": {
+          "name": "provider_identity_no_credentials",
+          "value": "access_token IS NULL AND refresh_token IS NULL AND id_token IS NULL AND access_token_expires_at IS NULL AND refresh_token_expires_at IS NULL AND scope IS NULL AND password IS NULL"
+        }
+      }
+    },
+    "verification": {
+      "name": "verification",
+      "columns": {
+        "verification_id": {
+          "name": "verification_id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "identifier": {
+          "name": "identifier",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "value": {
+          "name": "value",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "expires_at": {
+          "name": "expires_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "verification_by_identifier": {
+          "name": "verification_by_identifier",
+          "columns": [
+            "identifier"
+          ],
+          "isUnique": false
+        },
+        "verification_by_expiry": {
+          "name": "verification_by_expiry",
+          "columns": [
+            "expires_at"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    }
+  },
+  "views": {},
+  "enums": {},
+  "_meta": {
+    "schemas": {},
+    "tables": {},
+    "columns": {}
+  },
+  "internal": {
+    "indexes": {}
+  }
+}

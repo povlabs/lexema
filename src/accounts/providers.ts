@@ -1,11 +1,11 @@
 // The sign-in providers: Google and GitHub, and nothing else (Huey, #159).
 //
-// Each sits behind `OAuthProvider`, the two steps of the authorization-code
-// flow that differ between them: where to send the browser, and how to turn
-// the code it comes back with into a person. The flow itself (state, PKCE,
-// which account the person is) is src/accounts/signIn.ts and does not know
-// which provider it is talking to, so tests run a stub provider and CI needs
-// no secrets.
+// better-auth runs the OAuth flow with each (src/accounts/auth.ts, ADR 0017):
+// its own Google and GitHub code builds the consent URL, redeems the code with
+// PKCE and reads the person back. What stays here is Lexema's side of that:
+// which providers there are, the client each is registered as, and how the
+// person a provider describes becomes a `ProviderProfile`, the one shape the
+// account rules in ./accounts.ts read.
 //
 // A provider is available only when both its client id and secret are
 // configured (`providerCredentials`); the Worker reads them from its vars and
@@ -19,21 +19,6 @@ export const isProviderId = (value: string): value is ProviderId => (PROVIDER_ID
 
 /** Each provider's name, as a person reads it. */
 export const PROVIDER_NAME: Readonly<Record<ProviderId, string>> = { google: "Google", github: "GitHub" };
-
-/** Where the provider sends the browser back, and what it must bind the code to. */
-export interface AuthorizationRequest {
-  state: string;
-  /** The PKCE S256 challenge. */
-  codeChallenge: string;
-  redirectUri: string;
-}
-
-/** A code the provider handed back, with the verifier only this browser holds. */
-export interface CodeGrant {
-  code: string;
-  codeVerifier: string;
-  redirectUri: string;
-}
 
 /**
  * The person the provider vouched for: its own stable id for them, their
@@ -53,21 +38,43 @@ export function nameOf(value: unknown): string | undefined {
   return name === "" ? undefined : name;
 }
 
-/** A code exchanged: the person, or the provider's refusal (a bad code or verifier). */
-export type Exchange = { outcome: "profile"; profile: ProviderProfile } | { outcome: "refused" };
+/**
+ * What better-auth's provider code reads back about a person: the user it
+ * makes of them, with the email it found and whether the provider verified it,
+ * and the provider's own record of them.
+ */
+export interface ProviderUserInfo {
+  user: { email?: string | null; emailVerified: boolean };
+  data: object;
+}
 
-export interface OAuthProvider {
-  readonly id: ProviderId;
-  /** The provider's consent page for this request. */
-  authorizationUrl(request: AuthorizationRequest): URL;
-  /** Redeem a code. Throws only when the provider could not be asked at all. */
-  exchange(grant: CodeGrant): Promise<Exchange>;
+/**
+ * The profile a provider's answer proves. Google's comes from its ID token:
+ * `sub`, and `name` for the account menu
+ * (https://developers.google.com/identity/openid-connect/openid-connect).
+ * GitHub's from `/user`: the numeric `id`, and its `name` or, since GitHub
+ * leaves that null for anyone who never set one, its `login` (#190). The email
+ * is the one better-auth's provider code chose, and counts only when that code
+ * found it verified (GitHub's `/user/emails`, Google's `email_verified`).
+ */
+export function profileOf(provider: ProviderId, info: ProviderUserInfo): ProviderProfile {
+  const data = info.data as Readonly<Record<string, unknown>>;
+  const subject = provider === "google" ? data.sub : data.id;
+  const name = provider === "google" ? nameOf(data.name) : (nameOf(data.name) ?? nameOf(data.login));
+  const email = info.user.email;
+  return {
+    subject: typeof subject === "string" || typeof subject === "number" ? String(subject) : "",
+    verifiedEmail: info.user.emailVerified === true && typeof email === "string" ? email : undefined,
+    name,
+  };
 }
 
 /** A provider's OAuth client, as registered with it. */
 export interface ProviderCredentials {
   clientId: string;
   clientSecret: string;
+  /** Where its consent page is: the provider's own unless set, as a stand-in provider in tests sets it. */
+  authorizationEndpoint?: string;
 }
 
 /** The Worker vars and secrets the providers are configured from. */
@@ -90,137 +97,10 @@ export function providerCredentials(id: ProviderId, settings: ProviderSettings):
   return clientId === "" || clientSecret === "" ? undefined : { clientId, clientSecret };
 }
 
-/** `fetch`, or a stand-in for it. */
-export type Fetch = (input: string, init?: RequestInit) => Promise<Response>;
+/** Each provider's client, or `undefined` for one that is not configured. */
+export type ProviderRegistry = Readonly<Record<ProviderId, ProviderCredentials | undefined>>;
 
-// A wrapper, so `fetch` never runs with a `this` the Workers runtime refuses ("Illegal invocation").
-const globalFetch: Fetch = (input, init) => fetch(input, init);
-
-/** The token endpoint's answer: a token, or a refusal it gave in words (a 4xx, or GitHub's 200 with `error`). */
-async function accessToken(fetcher: Fetch, url: string, body: Record<string, string>): Promise<string | undefined> {
-  const response = await fetcher(url, {
-    method: "POST",
-    headers: { accept: "application/json", "content-type": "application/x-www-form-urlencoded" },
-    body: new URLSearchParams(body).toString(),
-  });
-  if (response.status >= 400 && response.status < 500) return undefined;
-  if (!response.ok) throw new Error(`token endpoint answered ${response.status}`);
-  const answer = (await response.json()) as { access_token?: unknown };
-  return typeof answer.access_token === "string" && answer.access_token !== "" ? answer.access_token : undefined;
-}
-
-async function readJson(fetcher: Fetch, url: string, headers: Record<string, string>): Promise<unknown> {
-  const response = await fetcher(url, { headers });
-  if (!response.ok) throw new Error(`${url} answered ${response.status}`);
-  return response.json();
-}
-
-/**
- * Google, over OpenID Connect: the `openid email profile` scopes, then the
- * userinfo endpoint's `sub`, `email`, `email_verified` and, for the account
- * menu (#190), `name`
- * (https://developers.google.com/identity/openid-connect/openid-connect).
- * The userinfo answer comes straight from Google over TLS with the token just
- * issued, so no ID token signature needs checking.
- */
-export function googleProvider(credentials: ProviderCredentials, fetcher: Fetch = globalFetch): OAuthProvider {
-  return {
-    id: "google",
-    authorizationUrl({ state, codeChallenge, redirectUri }) {
-      const url = new URL("https://accounts.google.com/o/oauth2/v2/auth");
-      url.search = new URLSearchParams({
-        client_id: credentials.clientId,
-        redirect_uri: redirectUri,
-        response_type: "code",
-        scope: "openid email profile",
-        state,
-        code_challenge: codeChallenge,
-        code_challenge_method: "S256",
-      }).toString();
-      return url;
-    },
-    async exchange({ code, codeVerifier, redirectUri }) {
-      const token = await accessToken(fetcher, "https://oauth2.googleapis.com/token", {
-        client_id: credentials.clientId,
-        client_secret: credentials.clientSecret,
-        code,
-        code_verifier: codeVerifier,
-        grant_type: "authorization_code",
-        redirect_uri: redirectUri,
-      });
-      if (token === undefined) return { outcome: "refused" };
-      const user = (await readJson(fetcher, "https://openidconnect.googleapis.com/v1/userinfo", {
-        authorization: `Bearer ${token}`,
-      })) as { sub?: unknown; email?: unknown; email_verified?: unknown; name?: unknown };
-      if (typeof user.sub !== "string" || user.sub === "") throw new Error("Google's userinfo carried no sub");
-      const verifiedEmail = user.email_verified === true && typeof user.email === "string" ? user.email : undefined;
-      return { outcome: "profile", profile: { subject: user.sub, verifiedEmail, name: nameOf(user.name) } };
-    },
-  };
-}
-
-const GITHUB_HEADERS = {
-  accept: "application/vnd.github+json",
-  "x-github-api-version": "2022-11-28",
-  // GitHub refuses a REST request without one.
-  "user-agent": "lexema",
-};
-
-/**
- * GitHub, over OAuth 2.0 with PKCE: the numeric user id from `/user`, its
- * `name`, or, since GitHub leaves that null for anyone who never set one, its
- * `login` (#190), and the primary email from `/user/emails` when GitHub marks
- * it verified
- * (https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/authorizing-oauth-apps,
- * https://docs.github.com/en/rest/users/emails). The `user:email` scope is what
- * lets `/user/emails` answer.
- */
-export function githubProvider(credentials: ProviderCredentials, fetcher: Fetch = globalFetch): OAuthProvider {
-  return {
-    id: "github",
-    authorizationUrl({ state, codeChallenge, redirectUri }) {
-      const url = new URL("https://github.com/login/oauth/authorize");
-      url.search = new URLSearchParams({
-        client_id: credentials.clientId,
-        redirect_uri: redirectUri,
-        scope: "user:email",
-        state,
-        code_challenge: codeChallenge,
-        code_challenge_method: "S256",
-      }).toString();
-      return url;
-    },
-    async exchange({ code, codeVerifier, redirectUri }) {
-      const token = await accessToken(fetcher, "https://github.com/login/oauth/access_token", {
-        client_id: credentials.clientId,
-        client_secret: credentials.clientSecret,
-        code,
-        code_verifier: codeVerifier,
-        redirect_uri: redirectUri,
-      });
-      if (token === undefined) return { outcome: "refused" };
-      const headers = { ...GITHUB_HEADERS, authorization: `Bearer ${token}` };
-      const user = (await readJson(fetcher, "https://api.github.com/user", headers)) as { id?: unknown; name?: unknown; login?: unknown };
-      if (typeof user.id !== "number") throw new Error("GitHub's /user carried no id");
-      const emails = (await readJson(fetcher, "https://api.github.com/user/emails", headers)) as unknown;
-      const primary = Array.isArray(emails)
-        ? (emails as { email?: unknown; primary?: unknown; verified?: unknown }[]).find((entry) => entry.primary === true)
-        : undefined;
-      const verifiedEmail = primary?.verified === true && typeof primary.email === "string" ? primary.email : undefined;
-      return { outcome: "profile", profile: { subject: String(user.id), verifiedEmail, name: nameOf(user.name) ?? nameOf(user.login) } };
-    },
-  };
-}
-
-/** Each provider, or `undefined` for one that is not configured. */
-export type ProviderRegistry = Readonly<Record<ProviderId, OAuthProvider | undefined>>;
-
-/** The live providers for these settings. */
-export function configuredProviders(settings: ProviderSettings, fetcher: Fetch = globalFetch): ProviderRegistry {
-  const google = providerCredentials("google", settings);
-  const github = providerCredentials("github", settings);
-  return {
-    google: google === undefined ? undefined : googleProvider(google, fetcher),
-    github: github === undefined ? undefined : githubProvider(github, fetcher),
-  };
+/** The configured providers for these settings. */
+export function configuredProviders(settings: ProviderSettings): ProviderRegistry {
+  return { google: providerCredentials("google", settings), github: providerCredentials("github", settings) };
 }

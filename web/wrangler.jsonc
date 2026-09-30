@@ -65,7 +65,8 @@
     "TURNSTILE_SITE_KEY": "",
     // The sign-in providers' OAuth client ids (#165). Empty means that
     // provider is unavailable; so does an unset secret, GOOGLE_CLIENT_SECRET
-    // or GITHUB_CLIENT_SECRET, set with `wrangler secret put`, never here.
+    // or GITHUB_CLIENT_SECRET, or an unset BETTER_AUTH_SECRET, which signs the
+    // session cookie (#229), each set with `wrangler secret put`, never here.
     "GOOGLE_CLIENT_ID": "",
     "GITHUB_CLIENT_ID": ""
   },

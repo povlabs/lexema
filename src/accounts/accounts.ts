@@ -5,11 +5,13 @@
 // with Google and then GitHub under one email reaches one account. The first
 // sign-in under an email nobody has used makes the account. Only a verified
 // email ever reaches here: `verifiedIdentity` is the one way to build the
-// value this module takes.
+// value this module takes. better-auth carries out those rules at every live
+// sign-in (./auth.ts, ADR 0017); `signInAccount` below is the same rule for a
+// tool or test that needs an account without a browser.
 //
 // Each identity also keeps the name its provider gives the person, refreshed
-// at every sign-in, for the account menu (#190). It lives on the identity and
-// not the account, so deleting the identities still empties the account.
+// at every sign-in, for the account menu (#190). It lives on the identity, so
+// the menu names the person as their first provider does.
 
 import { revokeAllAccountKeys } from "../api/ownedKeys.js";
 import type { LookupDatabase, TransactionalDatabase } from "../lookup/database.js";
@@ -33,13 +35,14 @@ export function verifiedIdentity(provider: ProviderId, profile: ProviderProfile)
 }
 
 /** A known identity's account, with its name refreshed to what the provider gives now. */
-export const REFRESH_IDENTITY_SQL = `UPDATE provider_identity SET display_name = ?
+export const REFRESH_IDENTITY_SQL = `UPDATE provider_identity SET display_name = ?, updated_at = ?
        WHERE provider = ? AND provider_user_id = ? RETURNING account_id`;
-export const IDENTITY_BY_EMAIL_SQL = `SELECT account_id FROM provider_identity
-       WHERE email = ? ORDER BY identity_id LIMIT 1`;
-export const INSERT_ACCOUNT_SQL = `INSERT INTO developer_account (created_at) VALUES (?) RETURNING account_id`;
-export const INSERT_IDENTITY_SQL = `INSERT INTO provider_identity (account_id, provider, provider_user_id, email, display_name, linked_at)
-     VALUES (?, ?, ?, ?, ?, ?)`;
+/** The account an email belongs to: better-auth's link by email. A deleted account's email is no longer the person's. */
+export const ACCOUNT_BY_EMAIL_SQL = `SELECT account_id FROM developer_account WHERE email = ?`;
+export const INSERT_ACCOUNT_SQL = `INSERT INTO developer_account (name, email, email_verified, created_at, updated_at)
+     VALUES (?, ?, 1, ?, ?) RETURNING account_id`;
+export const INSERT_IDENTITY_SQL = `INSERT INTO provider_identity (account_id, provider, provider_user_id, email, display_name, linked_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`;
 
 /** How a sign-in reached its account. */
 export type AccountMatch = "identity" | "email" | "new";
@@ -51,23 +54,23 @@ export async function signInAccount(
   now: number,
 ): Promise<{ accountId: number; match: AccountMatch }> {
   const displayName = identity.name ?? null;
-  const [known] = await db.all<{ account_id: number }>(REFRESH_IDENTITY_SQL, [displayName, identity.provider, identity.subject]);
+  const at = new Date(now).toISOString();
+  const [known] = await db.all<{ account_id: number }>(REFRESH_IDENTITY_SQL, [displayName, at, identity.provider, identity.subject]);
   if (known !== undefined) return { accountId: known.account_id, match: "identity" };
 
-  const at = new Date(now).toISOString();
-  const [sameEmail] = await db.all<{ account_id: number }>(IDENTITY_BY_EMAIL_SQL, [identity.email]);
+  const [sameEmail] = await db.all<{ account_id: number }>(ACCOUNT_BY_EMAIL_SQL, [identity.email]);
   let accountId: number;
   let match: AccountMatch;
   if (sameEmail !== undefined) {
     accountId = sameEmail.account_id;
     match = "email";
   } else {
-    const [created] = await db.all<{ account_id: number }>(INSERT_ACCOUNT_SQL, [at]);
+    const [created] = await db.all<{ account_id: number }>(INSERT_ACCOUNT_SQL, [identity.name ?? "", identity.email, at, at]);
     if (created === undefined) throw new Error("the new account was not stored");
     accountId = created.account_id;
     match = "new";
   }
-  await db.all(INSERT_IDENTITY_SQL, [accountId, identity.provider, identity.subject, identity.email, displayName, at]);
+  await db.all(INSERT_IDENTITY_SQL, [accountId, identity.provider, identity.subject, identity.email, displayName, at, at]);
   return { accountId, match };
 }
 
@@ -94,8 +97,16 @@ export async function accountProfile(db: LookupDatabase, accountId: number): Pro
   return { email: first.email, name, providers: linked as [ProviderId, ...ProviderId[]] };
 }
 
-export const MARK_ACCOUNT_DELETED_SQL = `UPDATE developer_account SET deleted_at = coalesce(deleted_at, ?)
-     WHERE account_id = ? RETURNING account_id`;
+/**
+ * Mark an account deleted, the first time only, and replace its email and
+ * name with values that say nothing about the person. The email stays unique
+ * and shaped like one, as better-auth's user needs, on a domain that cannot
+ * exist (RFC 2606).
+ */
+export const MARK_ACCOUNT_DELETED_SQL = `UPDATE developer_account
+     SET deleted_at = coalesce(deleted_at, ?1), updated_at = coalesce(deleted_at, ?1),
+         email = 'deleted-' || account_id || '@deleted.invalid', name = '', image = NULL
+     WHERE account_id = ?2 RETURNING account_id`;
 export const DELETE_ACCOUNT_SESSIONS_SQL = `DELETE FROM developer_session WHERE account_id = ?`;
 export const DELETE_ACCOUNT_IDENTITIES_SQL = `DELETE FROM provider_identity WHERE account_id = ?`;
 
@@ -103,7 +114,8 @@ export const DELETE_ACCOUNT_IDENTITIES_SQL = `DELETE FROM provider_identity WHER
  * Delete an account (#163 R1.4): revoke every key it owns, end its sessions
  * and unlink its provider identities. The row stays, marked deleted and with
  * nothing personal in it, so its revoked keys and their usage keep an owner;
- * signing in again with the same email makes a new account.
+ * signing in again with the same email makes a new account. This stays
+ * Lexema's: better-auth's own `deleteUser` removes the row (ADR 0017).
  *
  * The four statements run as one transaction, so a deletion that fails leaves
  * the account exactly as it was, still signed in and with its keys live, and

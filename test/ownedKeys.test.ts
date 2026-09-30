@@ -16,7 +16,6 @@ import {
   signInAccount,
   verifiedIdentity,
 } from "../src/accounts/accounts.js";
-import { createSession, sessionAccount } from "../src/accounts/sessions.js";
 import { ALL_ENDPOINTS, expiresAt, onlyEndpoints } from "../src/api/keyAccess.js";
 import { authenticate, createKey, hashApiKey, type ApiKey } from "../src/api/keys.js";
 import {
@@ -58,6 +57,21 @@ async function account(db: LookupDatabase, email: string): Promise<number> {
   assert.ok(identity !== undefined);
   return (await signInAccount(db, identity, NOW)).accountId;
 }
+
+/** A signed-in browser of this account, as better-auth stores one: a session row under a token. */
+let sessions = 0;
+function signedIn(sqlite: DatabaseSync, accountId: number): string {
+  const token = `session-${++sessions}`;
+  const at = new Date(NOW).toISOString();
+  sqlite
+    .prepare("INSERT INTO developer_session (token, account_id, expires_at, created_at, updated_at) VALUES (?, ?, ?, ?, ?)")
+    .run(token, accountId, new Date(NOW + 30 * DAY).toISOString(), at, at);
+  return token;
+}
+
+/** The account a session token still signs in to, or `undefined` once its row is gone. */
+const sessionAccount = (sqlite: DatabaseSync, token: string): number | undefined =>
+  (sqlite.prepare("SELECT account_id FROM developer_session WHERE token = ?").get(token) as { account_id: number } | undefined)?.account_id;
 
 async function ownedKey(db: LookupDatabase, accountId: number, label: string, now = NOW) {
   const created = await createAccountKey(db, accountId, name(label), now);
@@ -253,13 +267,13 @@ test("deleting an account revokes its keys, removes its sessions and identities,
   const bobs = await ownedKey(db, bob, "bob's");
   await revokeAccountKey(db, ada, keys[1].keyId, NOW - 1_000);
   await chargeCalls(db, { keyId: keys[0].keyId, label: "", holder: { kind: "owned", accountId: ada }, endpoints: ALL_ENDPOINTS }, { endpoint: "lookup" }, NOW);
-  const session = await createSession(db, ada, NOW);
-  const bobSession = await createSession(db, bob, NOW);
+  const session = signedIn(sqlite, ada);
+  const bobSession = signedIn(sqlite, bob);
 
   assert.deepEqual(await deleteAccount(db, ada, NOW), { outcome: "deleted", revokedKeys: 1 });
 
   for (const { key } of keys) assert.deepEqual(await authenticate(db, key, NOW), { outcome: "refused", refusal: "revoked" });
-  assert.equal(await sessionAccount(db, session.token, NOW), undefined);
+  assert.equal(sessionAccount(sqlite, session), undefined);
   const count = (sql: string, ...params: number[]) => (sqlite.prepare(sql).get(...params) as { n: number }).n;
   assert.equal(count("SELECT count(*) AS n FROM provider_identity WHERE account_id = ?", ada), 0);
   assert.equal(count("SELECT count(*) AS n FROM developer_session WHERE account_id = ?", ada), 0);
@@ -275,7 +289,7 @@ test("deleting an account revokes its keys, removes its sessions and identities,
 
   // Nobody else is touched.
   assert.equal((await authenticate(db, bobs.key, NOW)).outcome, "accepted");
-  assert.equal(await sessionAccount(db, bobSession.token, NOW), bob);
+  assert.equal(sessionAccount(sqlite, bobSession), bob);
 
   // Either provider under the same email now makes a new, empty account.
   const again = await signInAccount(db, google, NOW + DAY);
@@ -297,20 +311,20 @@ test("a deletion that fails partway changes nothing: the account stays signed in
   const db = fromNodeSqlite(sqlite);
   const ada = await account(db, "ada@example.com");
   const { key } = await ownedKey(db, ada, "one");
-  const session = await createSession(db, ada, NOW);
+  const session = signedIn(sqlite, ada);
   // The last of the four statements fails, after the other three have run.
   sqlite.exec("CREATE TRIGGER identities_down BEFORE DELETE ON provider_identity BEGIN SELECT RAISE(ABORT, 'D1 is down'); END");
 
   await assert.rejects(deleteAccount(db, ada, NOW), /D1 is down/);
 
-  assert.equal(await sessionAccount(db, session.token, NOW), ada);
+  assert.equal(sessionAccount(sqlite, session), ada);
   assert.equal((await authenticate(db, key, NOW)).outcome, "accepted");
   assert.equal((sqlite.prepare("SELECT deleted_at FROM developer_account WHERE account_id = ?").get(ada) as { deleted_at: null }).deleted_at, null);
   assert.equal((await createAccountKey(db, ada, name("two"), NOW)).outcome, "created");
 
   sqlite.exec("DROP TRIGGER identities_down");
   assert.deepEqual(await deleteAccount(db, ada, NOW), { outcome: "deleted", revokedKeys: 2 });
-  assert.equal(await sessionAccount(db, session.token, NOW), undefined);
+  assert.equal(sessionAccount(sqlite, session), undefined);
   assert.deepEqual(await authenticate(db, key, NOW), { outcome: "refused", refusal: "revoked" });
 });
 
