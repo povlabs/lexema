@@ -5,12 +5,12 @@
   "type": "module",
   "packageManager": "pnpm@10.13.1",
   "engines": {
-    "node": ">=20"
+    "node": ">=21"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "test": "node --import tsx --test test/normalize.test.ts test/sourceTextNormalization.test.ts test/placeholder.test.ts test/tags.test.ts test/articles.test.ts test/moods.test.ts test/candidateResolver.test.ts test/usageExamples.test.ts test/record-identity.test.ts test/import.test.ts test/lookup.test.ts test/phrase.test.ts test/suggest.test.ts test/nearby.test.ts test/seedSql.test.ts test/seedLoad.test.ts test/recovery.test.ts test/wiktionaryDump.test.ts test/archiveFacts.test.ts test/apiKeys.test.ts test/random.test.ts test/accounts.test.ts test/ownedKeys.test.ts test/keyAccess.test.ts test/appSchema.test.ts test/plans.test.ts test/accountPlan.test.ts test/appDriver.test.ts test/dictionaryReadOnly.test.ts && TSX_TSCONFIG_PATH=web/tsconfig.json node --import tsx --test web/test/page.test.tsx web/test/tokens.test.ts web/test/layout.test.ts web/test/rateLimit.test.ts web/test/report.test.ts web/test/searchShortcut.test.ts web/test/api.test.ts web/test/hosts.test.ts web/test/stage.test.ts web/test/preview.test.ts web/test/workersBuilds.test.ts web/test/previewMarker.test.ts web/test/previewSmoke.test.ts web/test/developers.test.tsx web/test/signIn.test.ts web/test/signInRefusals.test.ts web/test/testSignIn.test.tsx web/test/dashboard.test.ts web/test/signedIn.test.tsx web/test/createKeyForm.test.ts web/test/keyFlow.test.ts web/test/breakpoint.test.ts web/test/relatedList.test.ts && TSX_TSCONFIG_PATH=web/tsconfig.json node --import tsx --experimental-test-module-mocks --test web/test/developerHeader.test.tsx",
-    "test:integration": "node --import tsx --test test/adapter-fixtures.test.ts",
+    "test": "node --import tsx --test 'test/*.test.ts' && TSX_TSCONFIG_PATH=web/tsconfig.json node --import tsx --experimental-test-module-mocks --test 'web/test/*.test.ts' 'web/test/*.test.tsx'",
+    "test:integration": "node --import tsx --test test/integration/adapter-fixtures.test.ts",
     "test:definition-loss": "python3 tools/definition_loss.py verify && python3 test/definition-loss.py",
     "validate": "tsx src/cli.ts validate",
     "seed:dev": "tsx src/import/seedDev.ts",

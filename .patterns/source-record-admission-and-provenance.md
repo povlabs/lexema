@@ -38,7 +38,7 @@ check the claim. A form whose grammar cannot be mapped safely is kept as an
 
 The integration test pins the memory shape: streaming the real file accepts more
 than 500,000 Italian records while retaining fewer than 500 at peak
-(`test/adapter-fixtures.test.ts`).
+(`test/integration/adapter-fixtures.test.ts`).
 
 ## When this applies
 
