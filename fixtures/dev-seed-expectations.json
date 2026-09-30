@@ -906,6 +906,16 @@
           "forms": 0
         }
       ]
+    },
+    "vada": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "verb",
+          "keyCount": 12,
+          "forms": 0
+        }
+      ]
     }
   }
 }

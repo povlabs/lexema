@@ -17,6 +17,7 @@ import {
   MAX_PHRASE_PROBES,
   oneEditSpellings,
   participleCandidates,
+  phraseGloss,
   phraseSlots,
   slotRuns,
   type WordLemmas,
@@ -26,6 +27,7 @@ import { fromNodeSqlite } from "../src/lookup/database.js";
 import { exists, lookup } from "../src/lookup/lookup.js";
 import { findNearby, withinOneEdit } from "../src/lookup/nearby.js";
 import {
+  FORM_ENTRY_SQL,
   HEADWORD_PREFIX_SQL,
   headwordKeySql,
   NEAR_LEMMA_SQL,
@@ -73,13 +75,25 @@ async function found(query: string): Promise<FoundResult> {
 
 const words = (result: FoundResult): string[] => result.readings.map((reading) => reading.word);
 
+/** A phrase route's form entries as `word: line` text, the expression in brackets. */
+const formLines = (result: FoundResult): string[] =>
+  result.route.kind === "phrase"
+    ? result.route.forms.flatMap((form) =>
+        form.definitions.map((line) => `${form.word}: ${line.before}[${line.phrase}]${line.after}`),
+      )
+    : [];
+
 test("an inflected expression finds the multi-word headword its lemmas spell", async () => {
   const vado = await found("vado via");
   assert.deepEqual(words(vado), ["andare via"]);
-  assert.deepEqual(vado.route, {
-    kind: "phrase",
-    phrases: [{ key: "andare via", words: [{ typed: "vado", lemma: "andare" }, { typed: "via", lemma: "via" }] }],
-  });
+  assert.equal(vado.route.kind, "phrase");
+  assert.deepEqual(vado.route.kind === "phrase" && vado.route.phrases, [
+    {
+      key: "andare via",
+      word: "andare via",
+      words: [{ typed: "vado", inflected: "vado", lemma: "andare" }, { typed: "via", inflected: "via", lemma: "via" }],
+    },
+  ]);
 
   const tiro = await found("tiro fuori");
   assert.deepEqual(words(tiro), ["tirare fuori"]);
@@ -90,10 +104,63 @@ test("an inflected expression finds the multi-word headword its lemmas spell", a
 test("an auxiliary and a past participle stand for the participle's verb", async () => {
   const result = await found("sono andati via");
   assert.deepEqual(words(result), ["andare via"]);
-  assert.deepEqual(result.route, {
-    kind: "phrase",
-    phrases: [{ key: "andare via", words: [{ typed: "sono andati", lemma: "andare" }, { typed: "via", lemma: "via" }] }],
+  assert.deepEqual(result.route.kind === "phrase" && result.route.phrases, [
+    {
+      key: "andare via",
+      word: "andare via",
+      words: [{ typed: "sono andati", inflected: "andati", lemma: "andare" }, { typed: "via", inflected: "via", lemma: "via" }],
+    },
+  ]);
+  // The participle's own form entry, not `essere`'s: `andati` the adjective names `andato`, so it has none.
+  assert.deepEqual(formLines(result), ["andati: participio passato plurale maschile di [andare via]"]);
+});
+
+test("the page's lines are the inflected word's form entries, each with its lemma swapped for the expression", async () => {
+  assert.deepEqual(formLines(await found("vado via")), [
+    "vado: 1ª persona singolare del presente semplice indicativo di [andare via]",
+  ]);
+  // `tiro` is also a noun; only the verb record's form entry names `tirare`.
+  assert.deepEqual(formLines(await found("tiro fuori")), [
+    "tiro: prima persona singolare dell'indicativo presente di [tirare fuori]",
+  ]);
+  // `vada` is a real form, a congiuntivo and an imperativo: every entry shows.
+  const vada = await found("vada via");
+  assert.deepEqual(words(vada), ["andare via"]);
+  assert.deepEqual(formLines(vada), [
+    "vada: prima persona congiuntivo presente di [andare via]",
+    "vada: seconda persona congiuntivo presente di [andare via]",
+    "vada: terza persona congiuntivo presente di [andare via]",
+    "vada: terza persona singolare dell'imperativo di [andare via]",
+    "vada: seconda persona singolare dell'imperativo di [andare via]",
+  ]);
+  // One record, two lemmas, two expressions: one entry, each line naming its own.
+  const volto = await found("volto le spalle");
+  assert.equal(volto.route.kind === "phrase" && volto.route.forms.length, 1);
+  assert.deepEqual(formLines(volto), [
+    "volto: prima persona singolare del presente di [voltare le spalle]",
+    "volto: participio passato maschile singolare di [volgere le spalle]",
+  ]);
+  // Each line keeps where its gloss is in the source.
+  const { route } = await found("vado via");
+  const [form] = route.kind === "phrase" ? route.forms : [];
+  assert.equal(form?.posTitle, "Voce verbale");
+  assert.equal(form?.definitions[0].ref.jsonPointer, "/senses/0/glosses/0");
+  assert.equal(form?.definitions[0].ref.releaseId, RELEASE);
+});
+
+test("a gloss swaps only its lemma written as a whole word, the last place it is", () => {
+  assert.deepEqual(phraseGloss("1ª persona singolare del presente di andare", "andare", "andare via"), {
+    before: "1ª persona singolare del presente di ",
+    phrase: "andare via",
+    after: "",
   });
+  assert.deepEqual(phraseGloss("riandare, poi andare (raro)", "andare", "andare via"), {
+    before: "riandare, poi ",
+    phrase: "andare via",
+    after: " (raro)",
+  });
+  assert.equal(phraseGloss("terza persona singolare imperativo divolare", "volare", "volare via"), undefined);
+  assert.equal(phraseGloss("anything", "", "x"), undefined);
 });
 
 test("a word with several lemmas tries each, and every headword they spell is a reading", async () => {
@@ -136,19 +203,19 @@ test("the rule collapses only an auxiliary followed by a participle", () => {
   assert.deepEqual(participleCandidates([sono, andati, via]), [1]);
   assert.deepEqual(
     phraseSlots([sono, andati, via], (index) => (index === 1 ? ["andare"] : [])),
-    [{ typed: "sono andati", lemmas: ["andare"] }, { typed: "via", lemmas: ["via"] }],
+    [{ typed: "sono andati", inflected: "andati", lemmas: ["andare"] }, { typed: "via", inflected: "via", lemmas: ["via"] }],
   );
   // No participle after the auxiliary: every word is its own slot, `essere` included.
   assert.deepEqual(
     phraseSlots([sono, via], () => []),
-    [{ typed: "sono", lemmas: ["essere", "sono"] }, { typed: "via", lemmas: ["via"] }],
+    [{ typed: "sono", inflected: "sono", lemmas: ["essere", "sono"] }, { typed: "via", inflected: "via", lemmas: ["via"] }],
   );
   // A final auxiliary has nothing to join.
   assert.deepEqual(participleCandidates([via, sono]), []);
 });
 
 test("the lemma sequences are bounded", () => {
-  const slot = (n: number) => ({ typed: "x", lemmas: Array.from({ length: n }, (_, i) => `l${i}`) });
+  const slot = (n: number) => ({ typed: "x", inflected: "x", lemmas: Array.from({ length: n }, (_, i) => `l${i}`) });
   assert.equal(lemmaSequences([slot(16), slot(16)])?.length, MAX_PHRASE_PROBES);
   assert.equal(lemmaSequences([slot(16), slot(16), slot(2)]), undefined);
   assert.deepEqual(lemmaSequences([slot(2), slot(0)]), []);
@@ -161,11 +228,12 @@ test("every phrase query stays on indexes rather than scanning", () => {
     [headwordKeySql(2), [RELEASE, "andare via", "tirare fuori"]],
     [NEAR_LEMMA_SQL, [RELEASE, JSON.stringify(oneEditSpellings("vadp"))]],
     [HEADWORD_PREFIX_SQL, [RELEASE, "tirare fuo", "tirare fup", 8]],
+    [FORM_ENTRY_SQL, [RELEASE, "vado", "andare"]],
   ] as const;
   for (const [sql, params] of plans) {
     const plan = (sqlite.prepare(`EXPLAIN QUERY PLAN ${sql}`).all(...params) as { detail: string }[]).map((row) => row.detail);
     assert.ok(
-      !plan.some((step) => /SCAN (lookup_form|form_of_edge|grammar_claim|source_record|lf|hw|e|g|r)\b/.test(step)),
+      !plan.some((step) => /SCAN (lookup_form|form_of_edge|grammar_claim|source_record|sense|sense_gloss|lf|hw|e|g|r|s)\b/.test(step)),
       `phrase query degraded to a scan:\n${plan.join("\n")}`,
     );
   }
@@ -178,6 +246,9 @@ test("a phrase with one word misspelled is offered as Did you mean, not found", 
     ["tiro fouri", "tirare fuori"],
     // `vadp` is one edit from `vado`, which is a form of `andare`.
     ["vadp via", "andare via"],
+    ["vadoo via", "andare via"],
+    // `vja` is one edit from `via`.
+    ["vado vja", "andare via"],
   ] as const) {
     assert.equal((await ask(query)).outcome, "not-found", query);
     assert.deepEqual(await nearby(query), { kind: "phrase", best: phrase, others: [] }, query);
@@ -216,7 +287,7 @@ test("a word's one-edit spellings are every edit withinOneEdit counts, never the
 });
 
 test("a query's parts are its runs of two or more slots, not all of them", () => {
-  const slot = (typed: string) => ({ typed, lemmas: [typed] });
+  const slot = (typed: string) => ({ typed, inflected: typed, lemmas: [typed] });
   assert.deepEqual(slotRuns([slot("a"), slot("b")]), []);
   assert.deepEqual(
     slotRuns([slot("a"), slot("b"), slot("c")]).map((run) => run.map((s) => s.typed).join(" ")),

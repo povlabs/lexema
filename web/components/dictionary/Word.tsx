@@ -97,8 +97,17 @@ function WordFactsView({ facts, lists }: { facts: WordFacts; lists: WordLists })
   );
 }
 
+/** What the footer needs of a result: the pages its content comes from, and the readings a report can name. */
+export interface FooterFacts {
+  /** The word each Wiktionary page is named for; normally exactly one. */
+  sourceWords: readonly string[];
+  /** The word a report is about. */
+  headword: string;
+  readings: readonly { number: number; reading: { recordId: number; posTitle: string } }[];
+}
+
 /** *Source* to each Wiktionary page the readings come from; normally exactly one. */
-function SourceLinks({ page, siteKey }: { page: WordPage; siteKey: string | undefined }) {
+export function SourceLinks({ page, siteKey }: { page: FooterFacts; siteKey: string | undefined }) {
   const words = page.sourceWords;
   return (
     <footer className={SOURCE_LINE}>
@@ -131,7 +140,7 @@ export function WordView({ page, siteKey }: { page: WordPage; siteKey?: string }
   return (
     <>
       <h1 className={WORD_HEADING} lang="it">
-        {page.heading}
+        {page.headword}
       </h1>
       <Pronunciation facts={page.wordFacts} />
       <JumpLinks page={page} />

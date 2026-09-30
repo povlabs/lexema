@@ -85,11 +85,25 @@ When the key matches nothing and has two to `MAX_PHRASE_WORDS` (12) words,
 
 The readings are those headwords' records, and `route` says how they were
 reached: `{ kind: "surface" }` for every other `found`, or
-`{ kind: "phrase", phrases }`, each phrase the headword `key` and the typed
-`words` with the lemma each stood for. A single word is never read this way,
-and neither is a compound tense alone: `sono andati` is one place, so its verb
-is left to the exact lookup, which finds it in `andare`'s table. `exists()`
-answers the same way, so the two never disagree.
+`{ kind: "phrase", phrases, forms }`. Each phrase is the headword `key`, its
+`word` as the source spells it, and the typed `words` with the lemma each
+stood for and the one word that stands for it (`inflected`: the participle of
+a compound tense). A single word is never read this way, and neither is a
+compound tense alone: `sono andati` is one place, so its verb is left to the
+exact lookup, which finds it in `andare`'s table. `exists()` answers the same
+way, so the two never disagree.
+
+`forms` is what the page shows for a phrase match (`phraseForms`,
+[Huey's page-shape ruling](https://github.com/hueypov/lexema/issues/214#issuecomment-5906398940)).
+For each word whose lemma is not itself, the records it heads, and in each one
+every gloss of a sense whose `form_of` edge names that lemma, with the lemma
+replaced by the phrase (`phraseGloss`): `vado`'s "1ª persona singolare del
+presente semplice indicativo di andare" becomes "… di andare via". Only the
+last place the gloss writes the lemma as a whole word is replaced, and a gloss
+that never writes it so is left out. One entry per record, in source order,
+with its `pos_title` and each line's own `SourceRef`. `vada via` gives `vada`'s
+five entries; `volto le spalle` gives one `volto` record with a line for
+*voltare le spalle* and one for *volgere le spalle*.
 
 ## Outcomes
 
@@ -313,7 +327,8 @@ and 3):
      one edit from it (`oneEditSpellings`, the edits `withinOneEdit` counts,
      sent as one JSON array and probed through `json_each`, so a form's
      headword counts too: `vadp` reaches `vado`, and so `andare`); every other
-     word for its own. `tiro fouri` → `tirare fuori`, `vadp via` → `andare via`.
+     word for its own. `tiro fouri` → `tirare fuori`, `vadp via` and
+     `vadoo via` → `andare via`, `vado vja` → `andare via`.
    - **the last word unfinished:** every word but the last stands for its
      lemmas, and a headword that begins with those lemmas, a space and the
      last word as typed is offered, one range probe per sequence, at most

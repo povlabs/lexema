@@ -13,6 +13,7 @@ import {
   MAX_PHRASE_WORDS,
   oneEditSpellings,
   participleCandidates,
+  phraseGloss,
   phraseSlots,
   slotRuns,
   type PhraseSlot,
@@ -20,7 +21,7 @@ import {
 } from "../italian/phrase.js";
 import type { LookupDatabase } from "./database.js";
 import { prefixUpperBound } from "./keyRange.js";
-import type { PhraseMatch, PhraseWord } from "./types.js";
+import type { PhraseDefinition, PhraseForm, PhraseMatch, PhraseWord } from "./types.js";
 
 /**
  * A word's lemmas: itself when it is a headword, and the word every form-of
@@ -227,6 +228,9 @@ export async function nearPhrases(db: LookupDatabase, releaseId: string, key: st
   return [...new Set(offered)].filter((phrase) => phrase !== key).slice(0, limit);
 }
 
+/** A multi-word headword the query spells, before its record is read for how the source spells it. */
+export type PhraseProbe = Omit<PhraseMatch, "word">;
+
 /**
  * Every multi-word headword the query's words spell, each with the words that
  * spelled it, in the order the lemma sequences were tried. Empty when the
@@ -235,7 +239,7 @@ export async function nearPhrases(db: LookupDatabase, releaseId: string, key: st
  *
  * `key` is the query as normalized for the index.
  */
-export async function phraseMatches(db: LookupDatabase, releaseId: string, key: string): Promise<PhraseMatch[]> {
+export async function phraseMatches(db: LookupDatabase, releaseId: string, key: string): Promise<PhraseProbe[]> {
   const typed = key.split(/\s+/).filter((word) => word !== "");
   if (typed.length < 2 || typed.length > MAX_PHRASE_WORDS) return [];
 
@@ -250,7 +254,7 @@ export async function phraseMatches(db: LookupDatabase, releaseId: string, key: 
   const spelled = new Map<string, PhraseWord[]>();
   for (const sequence of sequences) {
     const phrase = sequence.join(" ");
-    if (!spelled.has(phrase)) spelled.set(phrase, slots.map((slot, i) => ({ typed: slot.typed, lemma: sequence[i] })));
+    if (!spelled.has(phrase)) spelled.set(phrase, slots.map((slot, i) => ({ typed: slot.typed, inflected: slot.inflected, lemma: sequence[i] })));
   }
   const present = await headwordKeys(db, releaseId, [...spelled.keys()]);
   return [...spelled].flatMap(([phrase, [first, second, ...rest]]) =>
@@ -258,4 +262,81 @@ export async function phraseMatches(db: LookupDatabase, releaseId: string, key: 
       ? [{ key: phrase, words: [first, second, ...rest] }]
       : [],
   );
+}
+
+/**
+ * The form entries of the records a word heads that name a lemma: each gloss
+ * of each sense whose `form_of` edge points at it. `vado` and `andare` give
+ * "1ª persona singolare del presente semplice indicativo di andare". Exported
+ * so a test can assert the plan.
+ */
+export const FORM_ENTRY_SQL = `SELECT DISTINCT r.record_id, r.word, r.pos_title, r.line_no, r.line_sha256,
+            e.target_word AS lemma, s.sense_index, g.gloss_index, g.text, g.json_pointer
+       FROM lookup_form lf
+       JOIN source_record r ON r.record_id = lf.record_id
+       JOIN form_of_edge e ON e.record_id = lf.record_id
+       JOIN sense s ON s.record_id = e.record_id AND s.sense_index = e.sense_index
+       JOIN sense_gloss g ON g.sense_id = s.sense_id
+      WHERE lf.release_id = ?1 AND lf.surface_key = ?2 AND lf.origin = 'headword'
+        AND e.target_word_key = ?3`;
+
+interface FormEntryRow {
+  record_id: number;
+  word: string;
+  pos_title: string;
+  line_no: number;
+  line_sha256: string;
+  lemma: string;
+  sense_index: number;
+  gloss_index: number;
+  text: string;
+  json_pointer: string;
+}
+
+/**
+ * What the short page of a searched expression shows (Huey's page-shape ruling
+ * on #214, 2026-09-30). For each word of each phrase that stands for a lemma
+ * other than itself, the form entries of the records it heads that name that
+ * lemma, each gloss with the lemma replaced by the phrase (`phraseGloss`):
+ * one entry per record, in source order. A gloss that never writes its lemma
+ * as a word is left out, and so is a record left with none.
+ */
+export async function phraseForms(db: LookupDatabase, releaseId: string, phrases: readonly PhraseMatch[]): Promise<PhraseForm[]> {
+  const reads = phrases.flatMap((phrase) =>
+    phrase.words
+      .filter((word) => word.inflected !== word.lemma)
+      .map(async (word) => ({ phrase, rows: await db.all<FormEntryRow>(FORM_ENTRY_SQL, [releaseId, word.inflected, word.lemma]) })),
+  );
+  const lines: { row: FormEntryRow; definition: PhraseDefinition }[] = [];
+  const seen = new Set<string>();
+  for (const { phrase, rows } of await Promise.all(reads)) {
+    for (const row of rows) {
+      const once = `${row.record_id} ${row.json_pointer} ${phrase.key}`;
+      const swapped = phraseGloss(row.text, row.lemma, phrase.word);
+      if (swapped === undefined || seen.has(once)) continue;
+      seen.add(once);
+      const ref = { releaseId, lineNo: row.line_no, jsonPointer: row.json_pointer, lineSha256: row.line_sha256 };
+      lines.push({ row, definition: { ...swapped, ref } });
+    }
+  }
+  lines.sort(
+    (a, b) => a.row.line_no - b.row.line_no || a.row.sense_index - b.row.sense_index || a.row.gloss_index - b.row.gloss_index,
+  );
+
+  const byRecord = new Map<number, PhraseForm>();
+  for (const { row, definition } of lines) {
+    const form = byRecord.get(row.record_id);
+    if (form !== undefined) {
+      form.definitions.push(definition);
+      continue;
+    }
+    byRecord.set(row.record_id, {
+      recordId: row.record_id,
+      word: row.word,
+      posTitle: row.pos_title,
+      ref: { releaseId, lineNo: row.line_no, jsonPointer: "", lineSha256: row.line_sha256 },
+      definitions: [definition],
+    });
+  }
+  return [...byRecord.values()];
 }

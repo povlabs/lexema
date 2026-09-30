@@ -430,8 +430,16 @@ test("an inflected expression answers its multi-word headword via phrase, which 
   assert.deepEqual(result.match, { surface: "sono andati via", via: "phrase", grammar: [] });
   assert.deepEqual(candidates(await lookupBody("q=vado%20via&match=form")), ["andare via phrase phrase"]);
   assert.deepEqual(candidates(await lookupBody("q=vado%20via&match=exact")), []);
+  // `vada` is a real form of `andare`, so `vada via` is a result too.
+  assert.deepEqual(candidates(await lookupBody("q=vada%20via")), ["andare via phrase phrase"]);
   const missing = await lookupWith("q=vado%20fuori");
   assert.equal(missing.status, 404);
+  // A typo in one word is no result, and the expression is a `phrase` suggestion.
+  for (const q of ["vadoo%20via", "vado%20vja"]) {
+    const typo = await lookupWith(`q=${q}`);
+    assert.equal(typo.status, 404, q);
+    assert.deepEqual((await typo.json() as Json).suggestions, [{ word: "andare via", kind: "phrase" }], q);
+  }
   // `vado via` is no headword of its own, so it has no forms to inflect.
   assert.equal((await ask("inflect?lemma=vado%20via")).status, 404);
   assert.equal((await okBody("exists?q=vado%20via")).exists, true);

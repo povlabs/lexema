@@ -48,6 +48,8 @@ export interface WordLemmas {
 export interface PhraseSlot {
   /** The typed word, or the two typed words of a compound tense: `sono andati`. */
   typed: string;
+  /** The one typed word that stands for the lemmas: the word itself, or a compound tense's participle, `andati`. */
+  inflected: string;
   lemmas: readonly string[];
 }
 
@@ -81,12 +83,12 @@ export function phraseSlots(
     if (next !== undefined && isAuxiliary(word)) {
       const verbs = participleOf(i + 1);
       if (verbs.length > 0) {
-        slots.push({ typed: `${word.typed} ${next.typed}`, lemmas: verbs });
+        slots.push({ typed: `${word.typed} ${next.typed}`, inflected: next.typed, lemmas: verbs });
         i += 1;
         continue;
       }
     }
-    slots.push({ typed: word.typed, lemmas: word.lemmas });
+    slots.push({ typed: word.typed, inflected: word.typed, lemmas: word.lemmas });
   }
   return slots;
 }
@@ -160,4 +162,37 @@ export function slotRuns(slots: readonly PhraseSlot[]): PhraseSlot[][] {
     for (let from = 0; from + length <= slots.length; from += 1) runs.push(slots.slice(from, from + length));
   }
   return runs;
+}
+
+// The page a searched expression opens is short (#214, Huey's page-shape ruling
+// of 2026-09-30): the searched words, and each form entry of the inflected word
+// with its lemma swapped for the expression. `vado`'s "1ª persona singolare del
+// presente semplice indicativo di andare" reads "... di andare via" for `vado
+// via`. The source's own words stay as they are; only the lemma is replaced.
+
+/** A form entry's definition with its lemma replaced by the expression. */
+export interface PhraseGloss {
+  /** The gloss up to where it writes the lemma. */
+  before: string;
+  /** The expression, written where the lemma was. */
+  phrase: string;
+  /** The gloss after the lemma. */
+  after: string;
+}
+
+const isLetter = (char: string | undefined): boolean => char !== undefined && /\p{L}/u.test(char);
+
+/**
+ * The gloss with the last place it writes the lemma as a whole word replaced
+ * by the expression, or `undefined` when it never writes it so. The whole-word
+ * test keeps `andare` from matching inside `riandare`.
+ */
+export function phraseGloss(gloss: string, lemma: string, phrase: string): PhraseGloss | undefined {
+  if (lemma === "") return undefined;
+  let at = gloss.lastIndexOf(lemma);
+  while (at !== -1 && (isLetter(gloss[at - 1]) || isLetter(gloss[at + lemma.length]))) {
+    at = at === 0 ? -1 : gloss.lastIndexOf(lemma, at - 1);
+  }
+  if (at === -1) return undefined;
+  return { before: gloss.slice(0, at), phrase, after: gloss.slice(at + lemma.length) };
 }

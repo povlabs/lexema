@@ -3,6 +3,7 @@
 // nullable field. The reasoning is in docs/LOOKUP_DESIGN.md.
 
 import type { ArticleDisplay } from "../core/types.js";
+import type { PhraseGloss } from "../italian/phrase.js";
 
 /** One article as `it-articles/v1` produced it, re-exported for the page. */
 export type { ArticleDisplay };
@@ -591,6 +592,8 @@ export interface RejectedResult {
 export interface PhraseWord {
   /** As normalized for the index: `vado`, or `sono andati` for a compound tense. */
   typed: string;
+  /** The one typed word whose records name the lemma: `vado`, or the participle `andati` of `sono andati`. */
+  inflected: string;
   /** The lemma the headword spells in its place: `andare`. */
   lemma: string;
 }
@@ -603,17 +606,49 @@ export interface PhraseWord {
 export interface PhraseMatch {
   /** The headword's key, which is the lemmas joined by single spaces: `andare via`. */
   key: string;
+  /** The headword as the source spells it. */
+  word: string;
   words: [PhraseWord, PhraseWord, ...PhraseWord[]];
+}
+
+/**
+ * One form entry of a searched expression's inflected word, its lemma replaced
+ * by the expression (`phraseGloss`, src/italian/phrase.ts): `vado`'s
+ * "1ª persona singolare del presente semplice indicativo di andare" reads
+ * "… di *andare via*" for `vado via`.
+ */
+export interface PhraseDefinition extends PhraseGloss {
+  /** The gloss the line is built from, where the source writes it. */
+  ref: SourceRef;
+}
+
+/**
+ * A record of a word the expression was searched with, and its form entries
+ * that name a lemma of the expression's headword, each rewritten for that
+ * headword. The short page a searched expression opens shows these and nothing
+ * else (Huey's page-shape ruling on #214, 2026-09-30).
+ */
+export interface PhraseForm {
+  recordId: number;
+  /** The inflected word as the source spells it: `vado`. */
+  word: string;
+  /** The record's own part-of-speech title, verbatim: `Voce verbale`. */
+  posTitle: string;
+  /** The record itself. */
+  ref: SourceRef;
+  definitions: [PhraseDefinition, ...PhraseDefinition[]];
 }
 
 /**
  * How a found query reached its readings. `surface`: the query itself is a
  * headword or a listed form. `phrase`: it is none, and its words, each read as
  * its lemmas, spell one or more multi-word headwords, which are the readings.
+ * `forms` are the searched words' form entries rewritten for those headwords,
+ * in source order.
  */
 export type FoundRoute =
   | { kind: "surface" }
-  | { kind: "phrase"; phrases: [PhraseMatch, ...PhraseMatch[]] };
+  | { kind: "phrase"; phrases: [PhraseMatch, ...PhraseMatch[]]; forms: PhraseForm[] };
 
 /**
  * The index was probed and at least one record matched. The readings are a

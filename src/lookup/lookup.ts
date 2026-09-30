@@ -5,7 +5,7 @@
 import { IT_NORMALIZER_VERSION, normalizeItalianExact } from "../italian/normalize.js";
 import { readingPartOfSpeech } from "./articles.js";
 import type { LookupDatabase } from "./database.js";
-import { phraseMatches } from "./phrase.js";
+import { phraseForms, phraseMatches } from "./phrase.js";
 import { readSourceRecord, type SourceRecordFields } from "./sourceRecord.js";
 import type {
   Evidence,
@@ -155,14 +155,24 @@ async function phraseHits(
   releaseId: string,
   key: string,
 ): Promise<{ hits: [HitRow, ...HitRow[]]; phrases: [PhraseMatch, ...PhraseMatch[]] } | undefined> {
-  const [first, ...rest] = await phraseMatches(db, releaseId, key);
+  const probes = await phraseMatches(db, releaseId, key);
+  const read = await Promise.all(
+    probes.map(async (probe) => {
+      const [head, ...others] = (await queryAll<HitRow>(db, SEARCH_SQL, releaseId, probe.key)).filter(
+        (row) => row.origin === "headword",
+      );
+      // `phraseMatches` answers only keys some record heads, so there is a row.
+      if (head === undefined) throw new Error(`no headword row for phrase '${probe.key}'`);
+      const rows: [HitRow, ...HitRow[]] = [head, ...others];
+      return { rows, phrase: { ...probe, word: head.record_word } };
+    }),
+  );
+  const [first, ...rest] = read;
   if (first === undefined) return undefined;
-  const phrases: [PhraseMatch, ...PhraseMatch[]] = [first, ...rest];
-  const rows = await Promise.all(phrases.map((phrase) => queryAll<HitRow>(db, SEARCH_SQL, releaseId, phrase.key)));
-  const [hit, ...more] = rows.flat().filter((row) => row.origin === "headword");
-  // `phraseMatches` answers only keys some record heads, so there is a row.
-  if (hit === undefined) throw new Error(`no headword row for phrase '${first.key}'`);
-  return { hits: [hit, ...more], phrases };
+  return {
+    hits: [...first.rows, ...rest.flatMap(({ rows }) => rows)],
+    phrases: [first.phrase, ...rest.map(({ phrase }) => phrase)],
+  };
 }
 
 export async function lookup({ db, releaseId, query }: LookupOptions): Promise<LookupResult> {
@@ -178,7 +188,8 @@ export async function lookup({ db, releaseId, query }: LookupOptions): Promise<L
   // multi-word headword said the way a speaker says it (#214).
   const phrase = await phraseHits(db, releaseId, key);
   if (phrase === undefined) return { outcome: "not-found", query: queryInfo, release };
-  return found(db, releaseId, queryInfo, release, phrase.hits, { kind: "phrase", phrases: phrase.phrases });
+  const forms = await phraseForms(db, releaseId, phrase.phrases);
+  return found(db, releaseId, queryInfo, release, phrase.hits, { kind: "phrase", phrases: phrase.phrases, forms });
 }
 
 /** The readings of a probe that matched, and how the query reached them. */

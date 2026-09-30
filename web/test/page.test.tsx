@@ -49,6 +49,7 @@ import {
   EXAMPLE_EXTRA,
   FIELD_LABEL,
   FIELD_VALUE,
+  GLOSS_LINK,
   JUMP_LINK,
   LINK,
   NON_FINITE_LABEL_SEARCHED,
@@ -253,7 +254,7 @@ test("every record the lookup returns is a reading, headed by its number and its
       assert.deepEqual(headingsOf(html), headings, query);
       // Nothing the lookup returned is dropped: every record is a reading.
       assert.deepEqual(
-        wordPage(query, readings, { kind: "surface" }).readings.map((entry) => entry.reading.recordId).sort((a, b) => a - b),
+        wordPage(query, readings).readings.map((entry) => entry.reading.recordId).sort((a, b) => a - b),
         readings.map((reading) => reading.recordId).sort((a, b) => a - b),
         query,
       );
@@ -439,7 +440,7 @@ test("etymology and synonyms come once after the readings: every synonym a searc
     assert.equal(patternsOf(html, />Etymology</g), 1);
     const synonyms = facts.slice(facts.indexOf('id="synonyms"'), facts.indexOf("</section>", facts.indexOf('id="synonyms"')));
     const words = [...synonyms.matchAll(new RegExp(`<a class="${esc(WORD_LINK)}" href="([^"]+)" lang="it">([^<]+)</a>`, "g"))];
-    assert.equal(words.length, wordPage("andare", await readingsFor(db, "andare"), { kind: "surface" }).wordFacts.synonyms.length, "every synonym is in the document");
+    assert.equal(words.length, wordPage("andare", await readingsFor(db, "andare")).wordFacts.synonyms.length, "every synonym is in the document");
     for (const [, href, word] of words) assert.equal(href, `/?q=${encodeURIComponent(textOf(word))}`);
     // The one control, last in the list so it ends what shows, open or closed.
     assert.match(synonyms, /<li[^>]*><div class="[^"]*"><button type="button"[^>]*aria-controls="synonyms-words" aria-expanded="false"[^>]*><span class="[^"]*">\+ more<\/span><span class="[^"]*">less<\/span><\/button><\/div><\/li><\/ul>$/);
@@ -564,35 +565,60 @@ test("a lemma the release has is linked where the gloss names it, every one of t
   });
 });
 
-test("an inflected expression is titled as searched, and each reading names the headword it is a form of", async () => {
+/** The definition lines of a page, as text, in page order. */
+const definitionLines = (html: string): string[] =>
+  [...html.matchAll(/<li class="[^"]*" data-definition="\d+">(.*?)<\/li>/g)].map((match) => textOf(match[1]).replace(/^\d+\./, ""));
+
+test("an inflected expression opens a short page: its words, and each form entry with the lemma swapped for the expression", async () => {
   await withDevSeed(async ({ db }) => {
-    for (const [query, headword] of [
-      ["vado via", "andare via"],
-      ["tiro fuori", "tirare fuori"],
-      ["sono andati via", "andare via"],
-    ]) {
+    for (const [query, heading, lines] of [
+      ["vado via", "1·Voce verbale", ["1ª persona singolare del presente semplice indicativo di andare via"]],
+      ["tiro fuori", "1·Voce verbale", ["prima persona singolare dell'indicativo presente di tirare fuori"]],
+      ["sono andati via", "1·Voce verbale", ["participio passato plurale maschile di andare via"]],
+      // `vada` is a congiuntivo and an imperativo: every form entry shows.
+      ["vada via", "1·Voce verbale", [
+        "prima persona congiuntivo presente di andare via",
+        "seconda persona congiuntivo presente di andare via",
+        "terza persona congiuntivo presente di andare via",
+        "terza persona singolare dell'imperativo di andare via",
+        "seconda persona singolare dell'imperativo di andare via",
+      ]],
+    ] as const) {
       const html = await render(db, query);
       assert.match(html, new RegExp(`<h1 class="${esc(WORD_HEADING)}" lang="it">${esc(query)}</h1>`), query);
-      const reading = nth(html, 1);
-      assert.match(reading, new RegExp(`Form of <a class="[^"]*" href="/\\?q=${esc(encodeURIComponent(headword))}" lang="it">${esc(headword)}</a>\\.`), query);
-      // The source records no pronunciation for these phrases, so none shows.
+      assert.deepEqual(headingsOf(html), [heading], query);
+      assert.deepEqual(definitionLines(html), lines, query);
+      // The expression in each line is a link to its own entry.
+      const phrase = query === "tiro fuori" ? "tirare fuori" : "andare via";
+      assert.equal(
+        occurrencesOf(html, `<a class="${GLOSS_LINK}" href="/?q=${encodeURIComponent(phrase)}" lang="it">${phrase}</a>`),
+        lines.length,
+        query,
+      );
+      // Nothing else of either word: no forms, no pronunciation, none of the expression's meanings.
+      assert.doesNotMatch(html, />Forms</, query);
       assert.doesNotMatch(html, /aria-label="Pronunciation"/, query);
+      assert.doesNotMatch(html, /Form of/, query);
+      assert.doesNotMatch(html, /lasciare un luogo|levare fuori/, query);
     }
 
-    // A pronunciation the source records for the headword reached does show.
-    const andare = await readingsFor(db, "andare");
-    const reached = wordPage("vado", andare, { kind: "phrase", phrases: [{ key: "andare x", words: [{ typed: "vado", lemma: "andare" }, { typed: "x", lemma: "x" }] }] });
-    assert.equal(reached.heading, "vado");
-    assert.deepEqual(reached.wordFacts.pronunciations, wordPage("andare", andare, { kind: "surface" }).wordFacts.pronunciations);
-    assert.ok(reached.wordFacts.pronunciations.length > 0);
-
-    // Every headword the lemmas spell is a reading, each naming its own.
+    // One word with a form entry for each of two expressions: one reading, both lines.
     const volto = await render(db, "volto le spalle");
-    assert.deepEqual(headingsOf(volto), ["1·Locuzione verbale", "2·Locuzione verbale"]);
-    assert.deepEqual(
-      [...volto.matchAll(/Form of <a [^>]*>([^<]*)<\/a>/g)].map((match) => match[1]).sort(),
-      ["volgere le spalle", "voltare le spalle"],
-    );
+    assert.deepEqual(headingsOf(volto), ["1·Voce verbale"]);
+    assert.deepEqual(definitionLines(volto), [
+      "prima persona singolare del presente di voltare le spalle",
+      "participio passato maschile singolare di volgere le spalle",
+    ]);
+
+    // The page names the Wiktionary page its lines come from: the searched word's.
+    assert.match(await render(db, "vado via"), /Wiktionary page for vado, the source of this page/);
+
+    // A typo in one word of an expression offers it.
+    for (const query of ["vadoo via", "vado vja"]) {
+      const offer = await render(db, query);
+      assert.match(offer, new RegExp(`No entry for “<span lang="it">${esc(query)}</span>”`), query);
+      assert.match(offer, /Did you mean <a class="[^"]*" href="\/\?q=andare%20via" lang="it">andare via<\/a>\?/, query);
+    }
 
     // A sequence that is no headword is still no entry, and nearly spells none.
     const fuori = await render(db, "vado fuori");
@@ -605,10 +631,11 @@ test("an inflected expression is titled as searched, and each reading names the 
     assert.match(fouri, /Did you mean tirare fuori\?/);
     assert.match(await render(db, "vadp via"), /Did you mean <a class="[^"]*" href="\/\?q=andare%20via" lang="it">andare via<\/a>\?/);
 
-    // The headword searched as written is its own page, with no such line.
+    // The headword searched as written is its own full entry, meanings and all.
     const plain = await render(db, "andare via");
     assert.match(plain, new RegExp(`<h1 class="${esc(WORD_HEADING)}" lang="it">andare via</h1>`));
-    assert.doesNotMatch(plain, /Form of/);
+    assert.deepEqual(headingsOf(plain), ["1·Espressione"]);
+    assert.match(plain, /lasciare un luogo/);
   });
 });
 
