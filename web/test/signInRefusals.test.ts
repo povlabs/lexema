@@ -230,6 +230,23 @@ test("a sign-out whose session could not be deleted answers 503 and leaves the b
   assert.equal(await account(), signedIn);
 });
 
+test("a sign-in whose earlier session could not be deleted answers 503 and makes no new session, not a 303", async () => {
+  const { signIn, google, jar, sqlite, count, account } = site();
+  assert.equal((await signIn(google, ada)).status, 303);
+  const signedIn = await account();
+  const earlier = jar.get(SESSION_COOKIE);
+  // The database refuses the delete, as a failing D1 would.
+  sqlite.exec("CREATE TRIGGER no_delete BEFORE DELETE ON developer_session BEGIN SELECT RAISE(ABORT, 'database unavailable'); END");
+
+  const again = await signIn(google, ada);
+  assert.equal(again.status, 503);
+  assert.equal(await again.text(), "Sign-in could not be finished. Try again later.");
+  assert.ok(!again.headers.getSetCookie().some((value) => value.startsWith(`${SESSION_COOKIE}=`)));
+  assert.equal(jar.get(SESSION_COOKIE), earlier);
+  assert.equal(count("developer_session"), 1);
+  assert.equal(await account(), signedIn);
+});
+
 test("a callback for a provider that is not available answers 503, with or without a pending sign-in", async () => {
   const { start, send, google, github, jar, count } = site((stubs) => ({ google: undefined, github: stubs.github }));
   const callback = google.consent(`https://accounts.google.com/o/oauth2/v2/auth?state=s&redirect_uri=${encodeURIComponent(`${DEVELOPERS}/sign-in/google/callback`)}`, ada);

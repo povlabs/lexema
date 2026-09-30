@@ -196,9 +196,9 @@ function signingFor(url: URL, id: ProviderId, context: SignInContext): Signing |
   return { provider: { client, redirectURI: callbackUri(url, id) }, secret };
 }
 
-/** better-auth for one sign-in that can run. */
-const signInAuthFor = (url: URL, id: ProviderId, signing: Signing, context: SignInContext) =>
-  signInAuth(requireDatabase(context).app, signing.secret, url.origin, id, signing.provider);
+/** better-auth for one sign-in that can run, from this request. */
+const signInAuthFor = (request: Request, url: URL, id: ProviderId, signing: Signing, context: SignInContext) =>
+  signInAuth(requireDatabase(context).app, signing.secret, url.origin, id, signing.provider, request.headers);
 
 /** Answer one sign-in route. */
 export async function answerSignIn(request: Request, route: SignInRoute, context: SignInContext): Promise<Response> {
@@ -211,7 +211,7 @@ export async function answerSignIn(request: Request, route: SignInRoute, context
       case "start": {
         const signing = signingFor(url, route.provider, context);
         if (signing === undefined) return unavailable(route.provider);
-        const auth = signInAuthFor(url, route.provider, signing, context);
+        const auth = signInAuthFor(request, url, route.provider, signing, context);
         const started = await auth.api.signInSocial({
           body: { provider: route.provider, callbackURL: AFTER_SIGN_IN, disableRedirect: true },
           asResponse: true,
@@ -229,7 +229,7 @@ export async function answerSignIn(request: Request, route: SignInRoute, context
           return text(status, body, new Headers({ "set-cookie": clearedCookie(PENDING_COOKIE) }));
         };
         if (readCookie(cookies, PENDING_COOKIE) === undefined) return refuse("no-pending");
-        const auth = signInAuthFor(url, route.provider, signing, context);
+        const auth = signInAuthFor(request, url, route.provider, signing, context);
         const finished = await auth.handler(new Request(`${url.origin}${AUTH_PATH}/callback/${route.provider}${url.search}`, { headers: request.headers }));
         const location = finished.headers.get("location");
         if (location === null) throw new Error(`better-auth answered ${finished.status} to a callback, with no redirect`);
@@ -241,8 +241,6 @@ export async function answerSignIn(request: Request, route: SignInRoute, context
         }
         const session = finished.headers.getSetCookie().filter((value) => value.startsWith(`${SESSION_COOKIE}=`));
         if (session.length !== 1) throw new Error("better-auth finished a callback with no session cookie");
-        // The browser's earlier session, if it had one, ends with this sign-in.
-        if (readCookie(cookies, SESSION_COOKIE) !== undefined) await auth.api.signOut({ headers: request.headers });
         await sweepExpired(requireDatabase(context).app, context.now);
         return redirect(AFTER_SIGN_IN, [clearedCookie(PENDING_COOKIE), ...session]);
       }

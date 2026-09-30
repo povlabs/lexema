@@ -146,8 +146,12 @@ const NO_CREDENTIALS = {
  * With one, that identity is what the hooks write: the lowercased email on the
  * account and identity it makes, the provider's name on the identity at every
  * sign-in, and nothing else.
+ *
+ * The session the request's cookie names, if any, ends before the new one is
+ * made, through `endSession`: when it cannot be ended the sign-in fails and
+ * makes no new session, rather than leave both live.
  */
-export function signInAuth(db: AppDatabase, secret: string, origin: string, id: ProviderId, provider: SignInProvider) {
+export function signInAuth(db: AppDatabase, secret: string, origin: string, id: ProviderId, provider: SignInProvider, headers: Headers) {
   let vouched: VerifiedIdentity | undefined;
   const options = {
     clientId: provider.client.clientId,
@@ -186,7 +190,12 @@ export function signInAuth(db: AppDatabase, secret: string, origin: string, id: 
         },
       },
       session: {
-        create: { before: async (session) => ({ data: { ...session, ipAddress: undefined, userAgent: undefined } }) },
+        create: {
+          before: async (session) => {
+            await endSession(db, secret, origin, headers);
+            return { data: { ...session, ipAddress: undefined, userAgent: undefined } };
+          },
+        },
       },
     },
   });
