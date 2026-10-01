@@ -1,0 +1,4 @@
+{
+  "enabledPlugins": { "fabrika@kampus": true },
+  "permissions": { "allow": ["Bash(fabrika build *)", "Bash(fabrika lane *)"] }
+}
