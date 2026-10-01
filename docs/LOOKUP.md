@@ -191,7 +191,7 @@ lemma — `studentessa` for `studenti` — is still a reading.
 | `lemmaLinks[]` | the reading's lemma: outgoing `form_of` edges this record declares, each candidate with its `listing` and its own `expressions` |
 | `inflections[]` | records declaring themselves forms of this one |
 | `reviews[]` | review verdicts on this record's claims |
-| `articles` | noun readings only: the singular articles `it-articles/v1` derives from the record's stated gender and number, plus the plural ones for the single plural form the source tags with the same gender |
+| `articles` | noun readings only: the articles `it-articles/v2` derives from the record's one stated gender and one stated number, plus the plural ones for the single plural form the source tags with the same gender; or, when withheld, the first reason (`ArticleWithholding` in `src/lookup/types.ts`) |
 
 ### `expressions`
 

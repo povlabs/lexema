@@ -3,9 +3,10 @@
 // nullable field. The reasoning is in docs/LOOKUP_DESIGN.md.
 
 import type { ArticleDisplay } from "../core/types.js";
+import type { SurfaceWithholding } from "../italian/articles.js";
 import type { PhraseGloss } from "../italian/phrase.js";
 
-/** One article as `it-articles/v1` produced it, re-exported for the page. */
+/** One article as `it-articles/v2` produced it, re-exported for the page. */
 export type { ArticleDisplay };
 
 /**
@@ -365,16 +366,22 @@ export interface Review {
  *
  * Each case is the *first* thing that stopped the rule, so at most one is ever
  * true at a time: a surface the rule refuses can only be reported once gender
- * and number were both usable, because `generateItalianArticles` checks them
- * first (`src/italian/articles.ts`).
+ * and number were both usable, because the rule is only asked about a surface
+ * with one gender and one number (`articlesFor`, `src/italian/articles.ts`).
+ * `cause` is the rule's own reason for refusing that surface.
+ *
+ * A record that states two genders (`psichiatra`) or two numbers (`khmer`)
+ * is withheld rather than given the articles of whichever came first.
  */
 export type ArticleWithholding =
   | { reason: "no-gender-or-number-stated" }
   | { reason: "gender-not-stated" }
   | { reason: "number-not-stated" }
+  | { reason: "more-than-one-gender-stated"; statedGenders: [string, string, ...string[]] }
+  | { reason: "more-than-one-number-stated"; statedNumbers: [string, string, ...string[]] }
   | { reason: "gender-is-not-masculine-or-feminine"; statedGender: string }
   | { reason: "number-is-not-singular-or-plural"; statedNumber: string }
-  | { reason: "surface-not-handled"; surface: string };
+  | { reason: "surface-not-handled"; surface: string; cause: SurfaceWithholding };
 
 /**
  * The articles Lexema derived for a noun reading, or the reason it derived none.
@@ -453,7 +460,7 @@ interface ReadingFacts {
 interface NounPartOfSpeech {
   pos: "noun";
   /**
-   * Articles for this reading, derived by `it-articles/v1` from the gender and
+   * Articles for this reading, derived by `it-articles/v2` from the gender and
    * number the source states — or the reason there are none. Nothing here comes
    * from the release: the source carries no article field at all.
    */

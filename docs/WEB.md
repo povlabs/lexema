@@ -252,7 +252,7 @@ inflecting phrase names its record's own gender and number after its part of
 speech in the reading's heading (`1 · Aggettivo · maschile, singolare`), only
 what the record states and nothing when it states neither, and shows a
 gender-and-number grid; its article lines are rule
-`it-articles/v1` (`src/italian/articles.ts`) applied to each spelling. A form
+`it-articles/v2` (`src/italian/articles.ts`) applied to each spelling. A form
 that states a number but no gender takes the record's gender only when the
 record states exactly one; otherwise it takes no cell. A verb shows
 a conjugation with mood tabs; which mood a form goes in is rule `it-moods/v1`

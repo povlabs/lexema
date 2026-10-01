@@ -95,7 +95,7 @@ export interface ArticleDisplay {
   gender: "masculine" | "feminine";
   number: "singular" | "plural";
   sourceType: "lexema-deterministic";
-  rule: "it-articles/v1";
+  rule: "it-articles/v2";
 }
 
 export interface UsageExample {
