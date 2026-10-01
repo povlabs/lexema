@@ -1,7 +1,7 @@
 ---
 id: 0013
 title: The site is public at lexema.fyi, and every search is rate-limited per visitor before it can reach the database
-status: amended-in-part by [0018](0018-previews-on-workers-builds.md)
+status: amended-in-part by [0018](0018-previews-on-workers-builds.md), [0020](0020-production-answers-three-hosts.md)
 date: 2026-09-24
 tags: [stack, hosting]
 ---
@@ -37,7 +37,7 @@ This record amends ADR 0004 in part, its *Access* line. It amends ADR 0009 in pa
 
 **`lexema.fyi` serves the site publicly, and every request that can run a lookup passes two per-visitor limits before it can reach the database.**
 
-- **What is public.** The Worker `lexema-web` answers on `lexema.fyi` only. `workers.dev` and preview URLs are off. `www.lexema.fyi` redirects to the apex, and HTTP redirects to HTTPS. `pnpm --filter @lexema/web run deploy:production` deploys it ([docs/DEPLOY.md](../docs/DEPLOY.md)). *Amended by [ADR 0018](0018-previews-on-workers-builds.md): Worker Previews on their preview-only hosts, and how production is deployed, are 0018's; the production hosts, redirects and the rest of this record stand.*
+- **What is public.** The Worker `lexema-web` answers on `lexema.fyi` only. `workers.dev` and preview URLs are off. `www.lexema.fyi` redirects to the apex, and HTTP redirects to HTTPS. `pnpm --filter @lexema/web run deploy:production` deploys it ([docs/DEPLOY.md](../docs/DEPLOY.md)). *Amended by [ADR 0018](0018-previews-on-workers-builds.md): Worker Previews on their preview-only hosts, and how production is deployed, are 0018's; the redirects and the rest of this record stand. Amended by [ADR 0020](0020-production-answers-three-hosts.md), from [#159](https://github.com/hueypov/lexema/issues/159) and [#164](https://github.com/hueypov/lexema/issues/164): production answers on `lexema.fyi`, `developers.lexema.fyi` and `api.lexema.fyi`, and the API host is limited per key, not by the per-visitor limits below.*
 - **No lawyer's review.** Publishing, the site or its data, needs no legal review. Compliance means meeting the licence's own terms, checked as above, and any change to what is published or how it is credited is checked against them again.
 - **The published source is the 1 July 2026 snapshot.** The archive `it-0c432803` is published as extracted from `itwiktionary-20260701`. The dump is inferred, not recorded by kaikki: it is the last dump before the build, and the page match is consistent with it, not proof of it. The repository's records say so.
 - **The attribution page stays short.** Huey ruled that `/attribution` should be as clear as possible. It names the source, the 1 July 2026 Italian Wiktionary dump, linked to its Wikimedia page, and links the kaikki.org download the file came from. Dates, checksums, release ids and the evidence stay in the repository, not on the page.
