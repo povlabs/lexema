@@ -18,7 +18,10 @@ import { Resvg } from "@cf-wasm/resvg/node";
 import { satori, type Font } from "@cf-wasm/satori/node";
 import { seedSql } from "../../src/import/seedSql.js";
 import { fromNodeSqlite } from "../../src/lookup/database.js";
+import { servedVersion, versionToken } from "../../src/lookup/served.js";
 import { loadFixturePages } from "../../src/source/rawPage.js";
+import { chooseChanges, planApply } from "../../src/update/apply.js";
+import { diffAgainstMaster } from "../../src/update/diff.js";
 import type { Attempt } from "@/lib/dictionary/attempt.ts";
 import {
   cardAddressOf,
@@ -40,10 +43,20 @@ import { oklchToHex, paletteOf } from "@/worker/card/palette.ts";
 const REPO = fileURLToPath(new URL("../..", import.meta.url));
 const WEB = fileURLToPath(new URL("..", import.meta.url));
 const RELEASE = "it-card-test";
+/** The fixture's served version: its release, with no change applied. */
+const VERSION = versionToken({ release: RELEASE, lastChange: null });
 
 let dir: string;
+/** The seed's SQL, so a test that applies a change can start from its own copy. */
+let seed: string[];
 let sqlite: DatabaseSync;
 let ink: CardInk;
+
+function seeded(): DatabaseSync {
+  const db = new DatabaseSync(":memory:");
+  for (const part of seed) db.exec(part);
+  return db;
+}
 
 before(async () => {
   dir = await mkdtemp(join(tmpdir(), "lexema-card-"));
@@ -61,8 +74,8 @@ before(async () => {
       throw new Error(`fixture line rejected: ${JSON.stringify(rejection)}`);
     },
   });
-  sqlite = new DatabaseSync(":memory:");
-  for (const part of parts) sqlite.exec(await readFile(part, "utf8"));
+  seed = await Promise.all(parts.map((part) => readFile(part, "utf8")));
+  sqlite = seeded();
 
   const face = async (name: string, file: string, weight: 400 | 600, style: "normal" | "italic"): Promise<Font> => {
     const bytes = await readFile(join(WEB, "fonts/card", file));
@@ -172,16 +185,25 @@ test("an unknown word and a failed lookup get the home card", async () => {
   assert.deepEqual(cardOf({ outcome: "failed" }), HOME_CARD);
 });
 
-test("a card's address carries the drawing, the release and the word, and reads back", () => {
-  const path = cardPath({ release: "it-0c432803", word: "vado via" });
-  assert.equal(path, `/card/${CARD_DRAWING}/it-0c432803.png?word=vado+via`);
+test("a card's address carries the drawing, the served version and the word, and reads back", () => {
+  const version = versionToken({ release: "it-0c432803", lastChange: "chg-0123456789ab" });
+  assert.equal(version, "it-0c432803.chg-0123456789ab");
+  assert.equal(versionToken({ release: "it-0c432803", lastChange: null }), "it-0c432803.0");
+  const path = cardPath({ version, word: "vado via" });
+  assert.equal(path, `/card/${CARD_DRAWING}/it-0c432803.chg-0123456789ab.png?word=vado+via`);
   assert.deepEqual(cardAddressOf(new URL(path, "https://lexema.fyi")), {
     drawing: CARD_DRAWING,
-    release: "it-0c432803",
+    version,
     word: "vado via",
   });
-  assert.equal(cardPath({ release: "it-0c432803", word: undefined }), `/card/${CARD_DRAWING}/it-0c432803.png`);
-  assert.equal(cardAddressOf(new URL("https://lexema.fyi/card/1/it-0c432803.png?word=%20%20"))?.word, undefined);
+  assert.equal(cardPath({ version, word: undefined }), `/card/${CARD_DRAWING}/it-0c432803.chg-0123456789ab.png`);
+  assert.equal(cardAddressOf(new URL("https://lexema.fyi/card/1/it-0c432803.0.png?word=%20%20"))?.word, undefined);
+  // An address from before the version was in it is still a card's, to be sent on.
+  assert.deepEqual(cardAddressOf(new URL("https://lexema.fyi/card/1/it-0c432803.png?word=casa")), {
+    drawing: CARD_DRAWING,
+    version: "it-0c432803",
+    word: "casa",
+  });
   for (const other of ["/", "/card", "/card/1.png", "/card/1/a/b.png", "/card/1/it-dev.jpg", "/cards/1/it-dev.png"]) {
     assert.equal(cardAddressOf(new URL(other, "https://lexema.fyi")), undefined, other);
   }
@@ -196,17 +218,17 @@ test("a result page's preview tags: title, description, a 1200×630 PNG on the p
     partOfSpeech: "Aggettivo",
     meaning: "che desta impressione di piacere e gradimento",
   };
-  const tags = linkPreview({ title: "Bello — Lexema", card, word: " bello ", release: "it-0c432803", origin: "https://x.preview.lexema.fyi" });
+  const tags = linkPreview({ title: "Bello — Lexema", card, word: " bello ", version: "it-0c432803.0", origin: "https://x.preview.lexema.fyi" });
   assert.equal(tags.description, "che desta impressione di piacere e gradimento");
   assert.equal(tags.openGraph.title, "Bello — Lexema");
   assert.deepEqual(tags.openGraph.images, [
-    { url: "https://x.preview.lexema.fyi/card/1/it-0c432803.png?word=bello", width: 1200, height: 630, type: "image/png" },
+    { url: "https://x.preview.lexema.fyi/card/1/it-0c432803.0.png?word=bello", width: 1200, height: 630, type: "image/png" },
   ]);
   assert.equal(tags.twitter.card, "summary_large_image");
 
   // The home page, an unknown word and a limited search all name the one home card.
-  const home = linkPreview({ title: "Lexema — a simple dictionary", card: HOME_CARD, word: "zzzqqq", release: "it-0c432803", origin: "https://lexema.fyi" });
-  assert.equal(home.openGraph.images[0].url, "https://lexema.fyi/card/1/it-0c432803.png");
+  const home = linkPreview({ title: "Lexema — a simple dictionary", card: HOME_CARD, word: "zzzqqq", version: "it-0c432803.0", origin: "https://lexema.fyi" });
+  assert.equal(home.openGraph.images[0].url, "https://lexema.fyi/card/1/it-0c432803.0.png");
   assert.equal(home.description, "a simple dictionary");
 });
 
@@ -310,10 +332,16 @@ class Recorder {
   readonly pending: Promise<unknown>[] = [];
   admitting = true;
   failing = false;
+  /** The served version the desk reads; undefined when the read fails. */
+  version: string | undefined = VERSION;
+  versionReads = 0;
 
-  desk(release = RELEASE): CardDesk {
+  desk(): CardDesk {
     return {
-      release,
+      version: async () => {
+        this.versionReads += 1;
+        return this.version;
+      },
       cache: {
         match: async (key: RequestInfo | URL) => this.kept.get(new Request(key).url)?.clone(),
         put: async (key: RequestInfo | URL, response: Response) => {
@@ -338,7 +366,7 @@ const get = (path: string, method = "GET") => new Request(new URL(path, "https:/
 
 test("a card is drawn once: the second request is answered from the cache, with no lookup", async () => {
   const recorder = new Recorder();
-  const path = cardPath({ release: RELEASE, word: "bello" });
+  const path = cardPath({ version: VERSION, word: "bello" });
   const first = await answerCard(get(path), recorder.desk());
   assert.equal(first?.status, 200);
   assert.equal(first?.headers.get("content-type"), "image/png");
@@ -354,20 +382,114 @@ test("a card is drawn once: the second request is answered from the cache, with 
   assert.equal((recorder.drawn[0] as WordCard).headword, "bello");
 });
 
-test("a card of another release or drawing is sent on to the current one", async () => {
+test("a card of another version or drawing is sent on to the current one", async () => {
   const recorder = new Recorder();
-  for (const path of ["/card/1/it-old.png?word=casa", "/card/0/it-card-test.png?word=casa"]) {
+  for (const path of [
+    // Another release, another last change, the release alone (an address from
+    // before the version was in it), and another drawing.
+    "/card/1/it-old.0.png?word=casa",
+    "/card/1/it-card-test.chg-0123456789ab.png?word=casa",
+    "/card/1/it-card-test.png?word=casa",
+    `/card/0/${VERSION}.png?word=casa`,
+  ]) {
     const response = await answerCard(get(path), recorder.desk());
     assert.equal(response?.status, 302, path);
-    assert.equal(response?.headers.get("location"), cardPath({ release: RELEASE, word: "casa" }));
+    assert.equal(response?.headers.get("location"), cardPath({ version: VERSION, word: "casa" }));
+    assert.equal(response?.headers.get("cache-control"), "no-store");
   }
   assert.deepEqual(recorder.looked, []);
+  assert.equal(recorder.versionReads, 4, "every request reads the served version");
+});
+
+test("after the version moves, the old address is sent on and the card kept under it is never answered", async () => {
+  const recorder = new Recorder();
+  const before = cardPath({ version: VERSION, word: "bello" });
+  await answerCard(get(before), recorder.desk());
+  await Promise.all(recorder.pending);
+  assert.equal(recorder.kept.size, 1);
+
+  recorder.version = versionToken({ release: RELEASE, lastChange: "chg-0123456789ab" });
+  const after = cardPath({ version: recorder.version, word: "bello" });
+  assert.notEqual(after, before);
+  const old = await answerCard(get(before), recorder.desk());
+  assert.equal(old?.status, 302);
+  assert.equal(old?.headers.get("location"), after);
+
+  const current = await answerCard(get(after), recorder.desk());
+  assert.equal(current?.headers.get(CARD_SOURCE_HEADER), "miss", "drawn afresh, not the card kept under the old address");
+  assert.deepEqual(recorder.looked, ["bello", "bello"]);
+});
+
+test("when the served version cannot be read, a card is the home card, not kept, with no lookup", async () => {
+  const recorder = new Recorder();
+  recorder.version = undefined;
+  for (const path of [cardPath({ version: VERSION, word: "bello" }), "/card/1/it-card-test.png?word=bello"]) {
+    const response = await answerCard(get(path), recorder.desk());
+    assert.equal(response?.status, 200, path);
+    assert.equal(response?.headers.get(CARD_SOURCE_HEADER), "unkept");
+    assert.equal(response?.headers.get("cache-control"), "no-store");
+  }
+  assert.deepEqual(recorder.drawn, [HOME_CARD, HOME_CARD]);
+  assert.deepEqual(recorder.looked, []);
+  assert.equal(recorder.kept.size, 0);
+});
+
+// An apply (#18), over the fixture: a later release that rewrites bello's first meaning.
+
+test("an apply that changes a word's first meaning moves its card's address, and every other card's", async () => {
+  const db = seeded();
+  try {
+    const lines = (await readFile(join(REPO, "fixtures/dev-seed.jsonl"), "utf8")).trimEnd().split("\n");
+    const at = lines.findIndex((line) => {
+      const record = JSON.parse(line) as { word: string; pos: string };
+      return record.word === "bello" && record.pos === "adj";
+    });
+    const bello = JSON.parse(lines[at]) as { senses: { glosses: string[] }[] };
+    bello.senses[0].glosses = ["gradevole a vedersi"];
+    lines[at] = JSON.stringify(bello);
+    const later = join(dir, "later.jsonl.gz");
+    await writeFile(later, gzipSync(Buffer.from(`${lines.join("\n")}\n`, "utf8")));
+
+    const lookups = fromNodeSqlite(db);
+    const reader = { query: <Row,>(sql: string) => db.prepare(sql).all() as Row[] };
+    const version = async () => versionToken(await servedVersion(lookups, RELEASE));
+    const card = async (word: string) => cardOf(await searchAttempt(lookups, RELEASE, word));
+    const address = async (word: string) => cardPath({ version: await version(), word });
+
+    assert.equal(await version(), VERSION);
+    const belloBefore = await address("bello");
+    const casaBefore = await address("casa");
+    const casaCard = await card("casa");
+    assert.equal(((await card("bello")) as WordCard).meaning, "che desta impressione di piacere e gradimento");
+
+    const found = await diffAgainstMaster(reader, later);
+    const changed = found.diff.changes.filter((change) => change.kind === "changed" && change.word === "bello");
+    assert.equal(changed.length, 1, "the one change is bello's");
+    const plan = await planApply(reader, found, chooseChanges(found, [changed[0].id]), {
+      schema: await readFile(join(REPO, "src/db/schema.sql"), "utf8"),
+      appliedAt: "2026-10-01T12:00:00Z",
+    });
+    db.exec("BEGIN");
+    db.exec(plan.sql);
+    db.exec("COMMIT");
+
+    // bello's card now says the new meaning, under a new address.
+    assert.equal(((await card("bello")) as WordCard).meaning, "gradevole a vedersi");
+    assert.equal(await version(), versionToken({ release: RELEASE, lastChange: changed[0].id }));
+    assert.notEqual(await address("bello"), belloBefore);
+    // casa's card is the same, and its address moves too: the route cannot tell
+    // an untouched word without the lookup its cache exists to skip (worker/card.ts).
+    assert.deepEqual(await card("casa"), casaCard);
+    assert.notEqual(await address("casa"), casaBefore);
+  } finally {
+    db.close();
+  }
 });
 
 test("the home card needs no lookup and no search allowance", async () => {
   const recorder = new Recorder();
   recorder.admitting = false;
-  const response = await answerCard(get(cardPath({ release: RELEASE, word: undefined })), recorder.desk());
+  const response = await answerCard(get(cardPath({ version: VERSION, word: undefined })), recorder.desk());
   assert.equal(response?.headers.get(CARD_SOURCE_HEADER), "miss");
   assert.deepEqual(recorder.drawn, [HOME_CARD]);
   assert.deepEqual(recorder.looked, []);
@@ -376,7 +498,7 @@ test("the home card needs no lookup and no search allowance", async () => {
 test("over the search limit, or with the lookup failing, a word gets the home card, not kept", async () => {
   const limited = new Recorder();
   limited.admitting = false;
-  const response = await answerCard(get(cardPath({ release: RELEASE, word: "bello" })), limited.desk());
+  const response = await answerCard(get(cardPath({ version: VERSION, word: "bello" })), limited.desk());
   assert.equal(response?.status, 200);
   assert.equal(response?.headers.get(CARD_SOURCE_HEADER), "unkept");
   assert.equal(response?.headers.get("cache-control"), "no-store");
@@ -386,7 +508,7 @@ test("over the search limit, or with the lookup failing, a word gets the home ca
 
   const failing = new Recorder();
   failing.failing = true;
-  const failed = await answerCard(get(cardPath({ release: RELEASE, word: "bello" })), failing.desk());
+  const failed = await answerCard(get(cardPath({ version: VERSION, word: "bello" })), failing.desk());
   assert.equal(failed?.headers.get(CARD_SOURCE_HEADER), "unkept");
   assert.deepEqual(failing.drawn, [HOME_CARD]);
   assert.equal(failing.kept.size, 0);
@@ -394,7 +516,7 @@ test("over the search limit, or with the lookup failing, a word gets the home ca
 
 test("an unknown word's card is the home card, kept like any other", async () => {
   const recorder = new Recorder();
-  const response = await answerCard(get(cardPath({ release: RELEASE, word: "zzzqqq" })), recorder.desk());
+  const response = await answerCard(get(cardPath({ version: VERSION, word: "zzzqqq" })), recorder.desk());
   assert.equal(response?.headers.get(CARD_SOURCE_HEADER), "miss");
   assert.deepEqual(recorder.drawn, [HOME_CARD]);
 });
@@ -402,6 +524,6 @@ test("an unknown word's card is the home card, kept like any other", async () =>
 test("anything but a card's address goes on to the app; a card refuses anything but GET and HEAD", async () => {
   const recorder = new Recorder();
   assert.equal(await answerCard(get("/?q=casa"), recorder.desk()), undefined);
-  const post = await answerCard(get(cardPath({ release: RELEASE, word: "casa" }), "POST"), recorder.desk());
+  const post = await answerCard(get(cardPath({ version: VERSION, word: "casa" }), "POST"), recorder.desk());
   assert.equal(post?.status, 405);
 });

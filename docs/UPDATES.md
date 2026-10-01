@@ -149,6 +149,16 @@ So a lookup reads the master either before an apply or after it, and an apply
 that stops partway leaves the master as it was. `test/update.test.ts` breaks a
 statement after the records are written and checks every row is back.
 
+## Caches move with an apply
+
+`LEXEMA_RELEASE` stays the same through an apply, so nothing a reader's browser
+or Cloudflare keeps may be keyed on it alone. A shared link's card and the
+search field's suggestions are keyed on the **served version** instead: the
+release and the last change applied to it
+([`servedVersion`](../src/lookup/served.ts), one row read). An apply moves it,
+and so every card's address and every suggestion request's address
+([#368](https://github.com/hueypov/lexema/issues/368)).
+
 ## An older master
 
 A master seeded before #18 has none of `feed_release`, `applied_change` or the

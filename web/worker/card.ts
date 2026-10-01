@@ -1,13 +1,24 @@
-// A shared link's card (#304): `GET /card/<drawing>/<release>.png?word=casa`
+// A shared link's card (#304): `GET /card/<drawing>/<version>.png?word=casa`
 // on lexema.fyi answers the 1200×630 PNG a result page names as its
 // `og:image` (app/(lexema)/page.tsx).
 //
-// A card is drawn about once per release. The address carries the release
-// and the drawing (lib/dictionary/card.ts), so a new release or a new drawing
-// is a new address, and a drawn card is kept in Cloudflare's cache for a year:
-// the next request for it is answered from there, marked `x-lexema-card: hit`,
-// with no lookup and no drawing. A request for another release's or drawing's
-// card is sent on to the current one.
+// A card is drawn about once per served version. The address carries the
+// drawing and the served version (lib/dictionary/card.ts): the release, and
+// the last change applied to it (src/lookup/served.ts). A release activation
+// or rollback moves the release, and an apply (#18) moves the last change, so
+// whatever can change what a card shows gives it a new address. That is why a
+// drawn card may be kept in Cloudflare's cache, and in any browser or crawler,
+// for a year: the next request for it is answered from there, marked
+// `x-lexema-card: hit`, with no lookup and no drawing.
+//
+// Every request reads the served version first, one row of D1 (#368). A
+// request for another version's or drawing's card, or for an address from
+// before the version was in it, is sent on to the current one, so a card kept
+// under an old address is never answered for the current one. An apply moves
+// every card's address, not only the changed words': whether a word's card
+// changed is known only from its lookup, since a new record can put another
+// reading first, and the point of the cache is to skip that lookup. When the
+// version cannot be read the answer is the home card, never cached.
 //
 // Drawing a word's card runs the lookup its page runs (searchAttempt.ts), once,
 // and counts against the visitor's search limit as that page does
@@ -19,7 +30,7 @@ import { cardAddressOf, cardOf, cardPath, CARD_DRAWING, HOME_CARD, type Card } f
 import type { Attempt } from "@/lib/dictionary/attempt.ts";
 import type { FetchHandler } from "./rateLimit.ts";
 
-/** How long a drawn card is kept: a year, since its address changes when it would. */
+/** How long a drawn card is kept: a year, since its address changes whenever the card could. */
 const KEPT_SECONDS = 365 * 24 * 60 * 60;
 
 /** Says where a card came from: `hit` (cache), `miss` (drawn and kept), `unkept` (drawn, not kept). */
@@ -27,8 +38,8 @@ export const CARD_SOURCE_HEADER = "x-lexema-card";
 
 /** What answering a card needs; the Worker's own, or a test's. */
 export interface CardDesk {
-  /** The release this Worker serves. */
-  release: string;
+  /** The served version's token, read now; undefined when it could not be read. */
+  version: () => Promise<string | undefined>;
   /** Where drawn cards are kept: Cloudflare's cache in the Worker. */
   cache: Pick<Cache, "match" | "put">;
   /** Whether this visitor may run one more search now. */
@@ -59,8 +70,10 @@ export async function answerCard(request: Request, desk: CardDesk): Promise<Resp
     return new Response("Method Not Allowed", { status: 405, headers: { allow: "GET, HEAD" } });
   }
 
-  const current = cardPath({ release: desk.release, word: address.word });
-  if (address.drawing !== CARD_DRAWING || address.release !== desk.release) {
+  const version = await desk.version();
+  if (version === undefined) return png(await desk.draw(HOME_CARD), false);
+  const current = cardPath({ version, word: address.word });
+  if (address.drawing !== CARD_DRAWING || address.version !== version) {
     return new Response(null, { status: 302, headers: { location: current, "cache-control": "no-store" } });
   }
 
