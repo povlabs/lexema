@@ -17,6 +17,7 @@
     "seed:dev": "tsx src/import/seedDev.ts",
     "normalize:glosses": "tsx src/import/normalizeGlossesCli.ts",
     "db:generate": "drizzle-kit generate",
+    "db:check-d1": "tsx src/db/app/sampleRowsCli.ts",
     "api-key": "tsx src/api/keyCli.ts",
     "plan": "tsx src/billing/planCli.ts",
     "report": "tsx src/readerReport/reportCli.ts",

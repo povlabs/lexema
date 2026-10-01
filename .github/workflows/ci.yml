@@ -42,6 +42,9 @@ jobs:
       # migration to APP_DB. Wrangler exits non-zero on any refused statement.
       - run: pnpm run seed:dev
       # A CHECK runs only when a row is written, and D1's GLOB pattern limit
-      # is met there, not at CREATE TABLE (#167). Writing one key checks
-      # api_key's constraints on D1.
+      # is met there, not at CREATE TABLE (#167). This writes one valid row to
+      # every table the app migrations create, in a throwaway local D1 of its
+      # own, and fails when a table has no row or D1 refuses one (#330).
+      - run: pnpm run db:check-d1
+      # The key CLI's own write, through the same path a person runs.
       - run: pnpm run api-key create --label ci --per-minute 1
