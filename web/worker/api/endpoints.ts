@@ -186,7 +186,8 @@ const inflectRoute: Route = async (_request, url) => {
 const suggestRoute: Route = async (_request, url) => {
   const q = url.searchParams.get("q") ?? "";
   const rejection = prefixRejectionOf(q);
-  if (rejection !== undefined) return queryRefusal("q", rejection.reason === "too-short" ? { reason: "empty" } : rejection);
+  if (rejection?.reason === "too-short") return refused("invalid_query", `Send at least ${rejection.limit} characters as q.`);
+  if (rejection !== undefined) return queryRefusal("q", rejection);
   return read({ endpoint: "suggest" }, async ({ db, releaseId }) => {
     const result = await suggest({ db, releaseId, prefix: q });
     if (result.outcome === "rejected") throw unreadable("q", q);

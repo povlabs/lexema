@@ -779,7 +779,7 @@ test("/inflect is a 404 for a word that heads no record, and a 400 for a lemma o
 });
 
 test("/suggest answers suggest()'s spellings, in its order and within its limit", async () => {
-  for (const q of ["sal", "a", "c", "qqq", "vado%20v"]) {
+  for (const q of ["sal", "an", "ca", "qqq", "vado%20v"]) {
     const answer = await suggest({ db: dictionary, releaseId: RELEASE, prefix: decodeURIComponent(q) });
     assert.ok(answer.outcome === "suggested");
     const body = await okBody(`suggest?q=${q}`);
@@ -792,6 +792,8 @@ test("/suggest answers suggest()'s spellings, in its order and within its limit"
   const [nearby] = (await okBody("nearby?q=vadoo%20via")).results;
   assert.deepEqual([nearby.word, nearby.kind, nearby.attribution.source_url], ["vado via", "phrase", "https://it.wiktionary.org/wiki/andare_via"]);
   await assertBadRequest("suggest?q=", "invalid_query");
+  // One letter is under the minimum (#387), refused as an empty q is.
+  await assertBadRequest("suggest?q=a", "invalid_query");
 });
 
 test("/nearby answers findNearby()'s spellings in its ranking, typo called edit", async () => {

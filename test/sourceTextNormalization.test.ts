@@ -101,11 +101,11 @@ test("the one-off update rewrites a database seeded before the rule, once, and r
     for (const [stored, source] of [[EXPECTED[0], VADO], [EXPECTED[1], FATE], [EXPECTED[2], FARA]]) update.run(source, stored);
     assert.deepEqual(glosses(db).slice(0, 3), [VADO, FATE, FARA]);
 
-    assert.deepEqual(normalizeStoredGlosses(sql), { candidates: 3, changed: 3 });
+    assert.deepEqual(normalizeStoredGlosses(sql), { rule: "gloss-person-ordinal/v1", candidates: 3, changed: 3 });
     assert.deepEqual(glosses(db), EXPECTED);
     assert.deepEqual(rawLines(db), LINES);
 
-    assert.deepEqual(normalizeStoredGlosses(sql), { candidates: 0, changed: 0 });
+    assert.deepEqual(normalizeStoredGlosses(sql), { rule: "gloss-person-ordinal/v1", candidates: 0, changed: 0 });
     assert.deepEqual(glosses(db), EXPECTED);
   } finally { db.close(); await rm(dir, { recursive: true, force: true }); }
 });

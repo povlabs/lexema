@@ -39,6 +39,7 @@ The files a change to the search page most often starts from:
 web/app/(lexema)/page.tsx                  reads the query, runs the lookup, streams the answer
 web/components/dictionary/SearchPage.tsx   the shell, and the five states a query can be in
 web/components/dictionary/SearchField.tsx  the search form, and the suggestion list under it
+web/lib/dictionary/suggestionAsker.ts      when the field asks for suggestions, and when it answers itself
 web/app/(lexema)/suggest/route.ts          GET /suggest, the list's JSON
 web/components/dictionary/Reading.tsx      how one entry renders
 web/lib/dictionary/params.ts               the query as it arrives in the URL
@@ -129,9 +130,14 @@ and without JavaScript Enter searches as it always did.
 Base UI's Autocomplete owns the combobox: focus stays in the field, the arrow
 keys move a highlight, Enter on a highlighted row opens that word, Enter with
 none searches what was typed, and Escape closes the list. A polite live region
-says how many suggestions opened. The field waits 150 ms after a keystroke
-before asking, and a newer keystroke aborts the older request, so a slow answer
-for `ca` is never drawn over the list for `cas`.
+says how many suggestions opened. The field asks from two letters, waits 250 ms
+after a keystroke before asking, and a newer keystroke aborts the older
+request, so a slow answer for `ca` is never drawn over the list for `cas`. An
+answer with fewer than ten suggestions is every word under its prefix, so a
+longer one-word prefix that starts with it is answered from that list in the
+browser, exactly as the server would answer it, and sends no request
+([LOOKUP.md](LOOKUP.md#suggestions), #387). `SuggestionAsker` in
+`web/lib/dictionary/suggestionAsker.ts` decides when to ask.
 
 The `×` empties the field and puts the cursor back in it; the result on the
 page stays until a new search is sent. It is still a link to the empty home
@@ -255,7 +261,7 @@ inflecting phrase names its record's own gender and number after its part of
 speech in the reading's heading (`1 · Aggettivo · maschile, singolare`), only
 what the record states and nothing when it states neither, and shows a
 gender-and-number grid; its article lines are rule
-`it-articles/v2` (`src/italian/articles.ts`) applied to each spelling. A form
+`it-articles/v3` (`src/italian/articles.ts`) applied to each spelling, the headword's with the record's own IPA. A form
 that states a number but no gender takes the record's gender only when the
 record states exactly one; otherwise it takes no cell. A verb shows
 a conjugation with mood tabs; which mood a form goes in is rule `it-moods/v1`

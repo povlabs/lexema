@@ -760,7 +760,7 @@ test("the reading type cannot express articles apart from a noun", () => {
         gender: "feminine",
         number: "singular",
         sourceType: "lexema-deterministic",
-        rule: "it-articles/v2",
+        rule: "it-articles/v3",
       },
     ],
   };

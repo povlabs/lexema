@@ -168,6 +168,8 @@ CREATE TABLE source_record_json (
 
 -- One row per searchable surface occurrence: the record's own `word`, plus every
 -- `forms[].form` it embeds. ~560k headword rows and ~713k embedded-form rows.
+-- A form ADR 0019's `normalizeFormSurface` drops, the empty plural template
+-- (#342), has no row here and no form claims; source_record_json keeps it.
 --
 -- `origin` is the load-bearing column. It says what the row's record actually
 -- claims about the surface:

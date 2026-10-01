@@ -288,6 +288,8 @@ test("the webhook emails each plan change once, to the account, with a link to s
     assert.equal(message.from.email, "noreply@lexema.fyi");
     assert.ok(message.text.includes(`${DEVELOPERS}/dashboard/settings`), message.subject);
     assert.ok(message.html.includes(`href="${DEVELOPERS}/dashboard/settings"`), message.subject);
+    // The header's icon is on the dictionary's site, not the developer site's (#383).
+    assert.ok(message.html.includes('src="https://lexema.fyi/icon-192.png"'), message.subject);
   }
   assert.match(site.email.sent.find(({ subject }) => subject === "Your Starter plan is cancelled")?.text ?? "", /until 30 November 2026/);
 });
