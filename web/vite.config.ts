@@ -11,7 +11,12 @@ export default defineConfig({
     // reports/2026-09-21-base-ui-tailwind-on-vinext.md ran `tailwindcss()`
     // first, then vinext, then the Cloudflare environment.
     tailwindcss(),
-    vinext(),
+    vinext({
+      nextConfig: {
+        // #337: every User-Agent gets the title and meta tags in <head>, not streamed after the footer; the page already waits for its lookup (#115), so streaming them gains nothing.
+        htmlLimitedBots: /.*/,
+      },
+    }),
     cloudflare({ viteEnvironment: { name: "rsc", childEnvironments: ["ssr"] } }),
   ],
   resolve: {
