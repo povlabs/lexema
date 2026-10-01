@@ -26,6 +26,7 @@
     "bench:lookup": "tsx src/bench/lookupBenchCli.ts"
   },
   "devDependencies": {
+    "@kampus/fabrika-cli": "catalog:",
     "@types/node": "catalog:node22",
     "drizzle-kit": "catalog:",
     "lefthook": "catalog:",

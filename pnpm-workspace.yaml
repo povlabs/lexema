@@ -7,7 +7,11 @@ onlyBuiltDependencies:
   - esbuild
   - workerd
 ignoredBuiltDependencies:
+  # fabrika-cli's postinstall downloads a browser for `review-ui render`;
+  # msgpackr-extract ships prebuilt binaries. Neither needs its script here.
+  - '@kampus/fabrika-cli'
   - lefthook
+  - msgpackr-extract
 
 # Every dependency's version lives here, once; each package.json names it as
 # `catalog:`. Add a new dependency here first, then reference it.
@@ -18,6 +22,8 @@ catalog:
   better-auth: 1.7.6
   drizzle-kit: 0.31.11
   drizzle-orm: 0.45.3
+  # Agent tooling: the `fabrika` CLI. The copy on PATH hands each call to this one.
+  '@kampus/fabrika-cli': 0.9.0
   # Git hooks (ADR 0022). The binary comes from a platform package, so the
   # package's own postinstall stays off; `prepare` runs `lefthook install`.
   lefthook: 2.1.15
