@@ -62,8 +62,9 @@ list yields "nothing to scan", and the scanner never runs. Rule 1 and rule 2 exi
 keep "empty" and "unreadable" on different exit codes.
 
 Rule 4 is the one a careful reader still gets wrong, because the YAML never shows
-the `-e`. The tail of `gitleaks.yml` records the scanner's status into `code=$?` and
-branches on it to print a specific remediation. With `-e` inherited from the runner,
-an exit 3 aborts the step before that line, so the step is red for the right reason
-and the message is dead code. The gate is still fail-closed; only the explanation is
-lost, which is why it is filed as a follow-up ([#43](https://github.com/hueypov/lexema/issues/43)) rather than a bug in the verdict.
+the `-e`. The tail of `gitleaks.yml` once ran the scanner bare, then read
+`code=$?` and branched on it to print a specific remediation. With `-e` inherited
+from the runner, an exit 3 aborted the step before that line, so the step was red for
+the right reason and the message was dead code. The gate stayed fail-closed; only the
+explanation was lost ([#43](https://github.com/hueypov/lexema/issues/43)). It now
+reads the status inside an `if`, so every exit reaches its `case` arm.
