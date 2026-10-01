@@ -103,9 +103,23 @@ through `applied_change`, one replacement after another
 ([src/lookup/served.ts](../src/lookup/served.ts)). Each keeps the ref of the
 line it was written about, so a reader can still check it there.
 
-A recovered definition placed under a sense keeps its sense index. If the
-later record moved its senses about, the definition sits under whichever sense
-now has that index.
+The seed recovered a definition only when its record did not carry it, so a
+lookup asks that again of the record that replaced it, by the seed's own rule
+(`carries` in [src/italian/recovery.ts](../src/italian/recovery.ts),
+[#370](https://github.com/hueypov/lexema/issues/370)):
+
+- A recovered definition the replacing record carries as a gloss is not shown
+  again: the record shows it as a sense.
+- A sense index names a sense of the record the definition was written for, and
+  the later record may hold its senses in another order. So a definition listed
+  under a sense goes under the one sense of the replacing record whose glosses
+  carry that old sense's glosses. When no sense does, or more than one, it goes
+  to the top of the list.
+- An item listed under a recovered definition that is no longer shown goes
+  under the one sense that carries that definition's text, or to the top.
+
+The rules live in [src/lookup/recovered.ts](../src/lookup/recovered.ts). A
+record never replaced reads its rows as the seed stored them.
 
 ## Serving a master of several releases
 
