@@ -7,6 +7,7 @@
 // carries as a gloss is not recovered a second time.
 
 import type { RawPage } from "../source/rawPage.js";
+import { readHeadwordLine } from "./furniture.js";
 import {
   readItalianSections,
   type LeadIn,
@@ -157,6 +158,19 @@ function sectionFor(sections: readonly PageSection[], posTitle: string): RecordR
 const asGloss = (text: string): string => text.replace(/\s+/g, " ").trim().replace(/\s*:$/, "");
 
 /**
+ * A record gloss as the renderer prints the `#` line it was read from. On a
+ * line, `{{Pn|w=…}}` prints the headword, and the extraction prints it with
+ * its `( approfondimento)` link: `# {{Pn|w=filetto (araldica)}} detto di:` is
+ * the gloss `filetto ( approfondimento) detto di:` (#399). So a gloss whose
+ * link leads a definition (`readHeadwordLine`) is read without the link. Any
+ * other gloss is its own text.
+ */
+function asLinePrints(gloss: string, word: string): string {
+  const line = readHeadwordLine(gloss, word);
+  return line?.kind === "lead" ? `${word} ${line.prose}` : gloss;
+}
+
+/**
  * Whether a `#` line may read as `text`, in the form `asGloss` gives. A line
  * known whole must equal it. A line with gaps may, when its known parts sit in
  * `text` in order, the first at its start and the last at its end: a gap can
@@ -179,7 +193,8 @@ function mayRead(line: SenseLineText, text: string): boolean {
 /**
  * Where a lead-in is kept. One recovered already is found by its page line.
  * One on a `#` line is a record sense only by text identity, checked on both
- * sides: exactly one sense has a gloss equal to the line's text, and no other
+ * sides: exactly one sense has a gloss that, read as the line prints it
+ * (`asLinePrints`), equals the line's text, and no other
  * `#` line of the section has that text. A gloss that quotes the line, a sense
  * in the line's place, or a text two lines or two senses share places nothing.
  * Anything else leaves the item at the top of the list, and `measure:recovery`
@@ -198,7 +213,9 @@ function placeUnder(
   const text = asGloss(leadIn.text);
   const lines = section.senseLines.filter((line) => mayRead(line.text, text));
   if (lines.length !== 1) return null;
-  const equal = new Set(record.glosses.filter((gloss) => asGloss(gloss.text) === text).map((gloss) => gloss.senseIndex));
+  const equal = new Set(
+    record.glosses.filter((gloss) => asGloss(asLinePrints(gloss.text, record.word)) === text).map((gloss) => gloss.senseIndex),
+  );
   if (equal.size !== 1) return null;
   const [senseIndex] = equal;
   return { in: "sense", senseIndex };
