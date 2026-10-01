@@ -23,7 +23,7 @@
 // - A form that takes no cell is not shown: the page shows data, never a note
 //   on what it could not place (Huey, 2026-09-27, on #142).
 //
-// Each spelling's articles are `it-articles/v1` (src/italian/articles.ts),
+// Each spelling's articles are `it-articles/v2` (src/italian/articles.ts),
 // applied to it with the cell's gender and number, exactly as it stands; a cell
 // with two spellings (`oli`, `olii`) gives each its own line. Where the rule refuses (a phrase, a spelling it does not handle) the
 // cell has no article line.

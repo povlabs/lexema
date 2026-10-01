@@ -1,13 +1,17 @@
 // Which articles a reading gets, and which silence stopped it when it gets none.
 //
-// The rule is `it-articles/v1` in src/italian/articles.ts and it is used exactly
+// The rule is `it-articles/v2` in src/italian/articles.ts and it is used exactly
 // as it stands: nothing here derives an article, and nothing here widens what
 // that rule accepts. What this module owns is the step before and the step
 // after — reading the gender and number the *source stated about the record*,
 // and turning the rule's refusal into the one thing that blocked it, so a page
 // can say it in a sentence instead of showing an empty section.
+//
+// It runs once per reading, never once per query: `readingPartOfSpeech` is
+// called with one record's own word and claims (src/lookup/lookup.ts), so two
+// records spelled alike each get the articles of their own gender and number.
 
-import { generateItalianArticles } from "../italian/articles.js";
+import { articlesFor, type ArticleGender, type ArticleNumber } from "../italian/articles.js";
 import type {
   ArticleWithholding,
   GrammarClaim,
@@ -17,26 +21,19 @@ import type {
   SourceForm,
 } from "./types.js";
 
-/** The two values `it-articles/v1` can make an article agree with. */
-const AGREEING_GENDERS = ["masculine", "feminine"] as const;
-const AGREEING_NUMBERS = ["singular", "plural"] as const;
+/** The two values `it-articles/v2` can make an article agree with. */
+const AGREEING_GENDERS = ["masculine", "feminine"] as const satisfies readonly ArticleGender[];
+const AGREEING_NUMBERS = ["singular", "plural"] as const satisfies readonly ArticleNumber[];
 
-type AgreeingGender = (typeof AGREEING_GENDERS)[number];
-type AgreeingNumber = (typeof AGREEING_NUMBERS)[number];
-
-/** What the source stated for one dimension of the record itself, if anything. */
-function statedValue(claims: readonly GrammarClaim[], dimension: string): string | undefined {
-  for (const claim of claims) {
-    if (claim.status === "stated" && claim.dimension === dimension) return claim.value;
-  }
-  return undefined;
-}
-
-/** Every value the source stated for one dimension, in source order. */
+/** Every distinct value the source stated for one dimension, in source order. */
 function statedValues(claims: readonly GrammarClaim[], dimension: string): string[] {
-  return claims.flatMap((claim) =>
-    claim.status === "stated" && claim.dimension === dimension ? [claim.value] : [],
-  );
+  const values: string[] = [];
+  for (const claim of claims) {
+    if (claim.status === "stated" && claim.dimension === dimension && !values.includes(claim.value)) {
+      values.push(claim.value);
+    }
+  }
+  return values;
 }
 
 /**
@@ -69,7 +66,7 @@ export function readingPartOfSpeech(
  * reading the record's gender onto it would be an inference the source did not
  * make, so `sali` gets no article here.
  */
-function pluralSurface(gender: AgreeingGender, forms: readonly SourceForm[]): string | undefined {
+function pluralSurface(gender: ArticleGender, forms: readonly SourceForm[]): string | undefined {
   const spellings = new Set(
     forms
       .filter((form) => {
@@ -82,56 +79,56 @@ function pluralSurface(gender: AgreeingGender, forms: readonly SourceForm[]): st
   return spellings.size === 1 ? [...spellings][0] : undefined;
 }
 
+/** The one agreement the record states, or the first silence or excess that stops it. */
+function agreementOf(
+  claims: readonly GrammarClaim[],
+): { gender: ArticleGender; number: ArticleNumber } | { withholding: ArticleWithholding } {
+  const [gender, ...otherGenders] = statedValues(claims, "gender");
+  const [number, ...otherNumbers] = statedValues(claims, "number");
+  if (gender === undefined && number === undefined) return { withholding: { reason: "no-gender-or-number-stated" } };
+  if (gender === undefined) return { withholding: { reason: "gender-not-stated" } };
+  if (otherGenders.length > 0) {
+    return { withholding: { reason: "more-than-one-gender-stated", statedGenders: [gender, ...otherGenders] as [string, string, ...string[]] } };
+  }
+  const agreeingGender = AGREEING_GENDERS.find((value) => value === gender);
+  if (agreeingGender === undefined) {
+    return { withholding: { reason: "gender-is-not-masculine-or-feminine", statedGender: gender } };
+  }
+  if (number === undefined) return { withholding: { reason: "number-not-stated" } };
+  if (otherNumbers.length > 0) {
+    return { withholding: { reason: "more-than-one-number-stated", statedNumbers: [number, ...otherNumbers] as [string, string, ...string[]] } };
+  }
+  // `invariable` is a number the importer states (src/import/grammarPolicy.ts)
+  // and not one an article agrees with: `città` is `la città` and `le città`,
+  // and choosing one would claim a number the source did not state.
+  const agreeingNumber = AGREEING_NUMBERS.find((value) => value === number);
+  if (agreeingNumber === undefined) {
+    return { withholding: { reason: "number-is-not-singular-or-plural", statedNumber: number } };
+  }
+  return { gender: agreeingGender, number: agreeingNumber };
+}
+
 /** The articles for one noun reading, or the reason there are none. */
 function deriveArticles(
   surface: string,
   claims: readonly GrammarClaim[],
   forms: readonly SourceForm[],
 ): ReadingArticles {
-  const gender = statedValue(claims, "gender");
-  const number = statedValue(claims, "number");
-  // `invariable` is a number the importer states (src/import/grammarPolicy.ts)
-  // and not one an article agrees with, so it reaches the rule as no number at
-  // all — the same reading src/italian/tags.ts takes.
-  const agreeingGender = AGREEING_GENDERS.find((value): value is AgreeingGender => value === gender);
-  const agreeingNumber = AGREEING_NUMBERS.find((value): value is AgreeingNumber => value === number);
+  const agreement = agreementOf(claims);
+  if ("withholding" in agreement) return { status: "withheld", withholding: agreement.withholding };
 
-  const { articles } = generateItalianArticles(surface, agreeingGender, agreeingNumber);
+  const { gender, number } = agreement;
+  const own = articlesFor(surface, gender, number);
+  if (own.status === "withheld") {
+    return { status: "withheld", withholding: { reason: "surface-not-handled", surface, cause: own.cause } };
+  }
+
   // A singular noun's plural gets its articles from the same rule, applied to
   // the plural spelling the source itself filed — never to one built here.
-  const plural =
-    agreeingGender !== undefined && agreeingNumber === "singular"
-      ? pluralSurface(agreeingGender, forms)
-      : undefined;
-  if (articles.length > 0 && plural !== undefined) {
-    articles.push(...generateItalianArticles(plural, agreeingGender, "plural").articles);
-  }
-  const [first, ...rest] = articles;
-  if (first !== undefined) return { status: "derived", articles: [first, ...rest] };
-
+  const plural = number === "singular" ? pluralSurface(gender, forms) : undefined;
+  const pluralArticles = plural === undefined ? undefined : articlesFor(plural, gender, "plural");
   return {
-    status: "withheld",
-    withholding: whyWithheld(surface, gender, number, agreeingGender, agreeingNumber),
+    status: "derived",
+    articles: pluralArticles?.status === "derived" ? [...own.articles, ...pluralArticles.articles] : own.articles,
   };
-}
-
-/** The first thing that stopped the rule, in the source's own terms. */
-function whyWithheld(
-  surface: string,
-  gender: string | undefined,
-  number: string | undefined,
-  agreeingGender: AgreeingGender | undefined,
-  agreeingNumber: AgreeingNumber | undefined,
-): ArticleWithholding {
-  if (gender === undefined && number === undefined) return { reason: "no-gender-or-number-stated" };
-  if (gender === undefined) return { reason: "gender-not-stated" };
-  if (agreeingGender === undefined) {
-    return { reason: "gender-is-not-masculine-or-feminine", statedGender: gender };
-  }
-  if (number === undefined) return { reason: "number-not-stated" };
-  if (agreeingNumber === undefined) {
-    return { reason: "number-is-not-singular-or-plural", statedNumber: number };
-  }
-  // Both dimensions agree, so the rule read the surface itself and refused it.
-  return { reason: "surface-not-handled", surface };
 }

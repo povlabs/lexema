@@ -1,4 +1,4 @@
-import { generateItalianArticles } from "./articles.js";
+import { generateItalianArticles, type ArticleResult } from "./articles.js";
 import { IT_NORMALIZER_VERSION, normalizeItalianExact } from "./normalize.js";
 import { isQualifyingUsageExample } from "./examples.js";
 import { hasExplicitNounGrammar, hasUsefulVerbClassification, mapItalianTags } from "./tags.js";
@@ -64,7 +64,7 @@ function candidateFromGroup(query: string, target: RecordEnvelope, evidence: Sou
   if (matchingClassified) ownForms.forms.push({ surface: query, grammar, provenance: matchingProvenance });
   else ownForms.unclassifiedForms.push({ surface: query, reason: "query-form-grammar-unclassified", tags: [], rawTags: grammar.rawTags, provenance: matchingProvenance });
 
-  const articleResult = target.record.pos === "noun" ? generateItalianArticles(query, grammar.gender, grammar.number) : { articles: [] };
+  const articleResult: ArticleResult | undefined = target.record.pos === "noun" ? generateItalianArticles(query, grammar.gender, grammar.number) : undefined;
   const examples = sourceExamples(query, target, metadata);
   const sourceFragments = grammar.unknownTags.length > 0 ? [{ kind: "unknown-tags" as const, text: grammar.unknownTags.join(", "), provenance: matchingProvenance }] : [];
   const conjugationIllustrations = target.record.pos === "verb" && hasUsefulVerbClassification(grammar)
@@ -81,7 +81,7 @@ function candidateFromGroup(query: string, target: RecordEnvelope, evidence: Sou
       usageExamples: examples.examples,
       conjugationIllustrations,
       sourceFragments,
-      languageData: { it: { forms: ownForms.forms, unclassifiedForms: ownForms.unclassifiedForms, articles: articleResult.articles, articleWithheldReasons: articleResult.withheldReason ? [articleResult.withheldReason] : [] } },
+      languageData: { it: { forms: ownForms.forms, unclassifiedForms: ownForms.unclassifiedForms, articles: articleResult?.articles ?? [], articleWithheldReasons: articleResult?.withheldReason ? [articleResult.withheldReason] : [] } },
       provenance: { source: metadata.source, datasetRelease: metadata.releaseId, sourceRecordOrdinal: target.ordinal, license: metadata.license, upstreamReference: target.record.title ?? target.record.word },
       evidence,
     },

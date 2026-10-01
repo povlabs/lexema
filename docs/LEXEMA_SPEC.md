@@ -155,9 +155,9 @@ Support:
 
 - definite: `il`, `lo`, `l'`, `la`, `i`, `gli`, `le`;
 - indefinite: `un`, `uno`, `una`, `un'`;
-- partitive: `del`, `dello`, `dell'`, `della`, `dei`, `degli`, `delle`.
+- partitive, plural only: `dei`, `degli`, `delle`. The singular partitive (`del pane`) goes with mass nouns, and the source never says a noun is one.
 
-Article classes include ordinary consonants, vowels, `s` + consonant, `z`, `ps`, `gn`, `x`, `y`, and future explicit phonetic/lexeme overrides for uncommon or borrowed forms. There is no Italian indefinite plural article; plural indefinite-style output uses partitives where requested.
+Article classes are ordinary consonants, vowels, and `s` + consonant, `z`, `x`, `gn`, `ps`, `pn` (the `lo` group). An initial whose sound the spelling does not settle — `h`, `j`, `w`, `y`, `i` before a vowel, a cluster Italian spelling does not use — is withheld, as are composites and acronyms. The one lexeme exception is `dei`/`dèi` (`gli dei`). There is no Italian indefinite plural article; plural indefinite-style output uses partitives, labelled partitive. The rules and their references are in [reports/2026-10-01-italian-articles.md](../reports/2026-10-01-italian-articles.md).
 
 A generated display form is deterministic and labelled accordingly:
 
@@ -169,7 +169,7 @@ A generated display form is deterministic and labelled accordingly:
   "article": "lo",
   "displayForm": "lo studente",
   "sourceType": "lexema-deterministic",
-  "rule": "it-articles/v1"
+  "rule": "it-articles/v2"
 }
 ```
 
