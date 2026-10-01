@@ -5,8 +5,11 @@
 // front of that entry. worker/hosts.ts reads each request's host: the API's
 // host goes to the API (worker/api/handler.ts), against its key's own limits,
 // and `lexema.fyi` and the developer site go to the App Router. On the way
-// there, the per-visitor limits (worker/rateLimit.ts) count every request that
-// could reach D1, in one place, before any route runs. Behind them, the
+// there, the per-visitor limits (worker/rateLimit.ts) count, in one place and
+// before any route runs, the requests listed there: searches, suggestions and
+// reports, and on the developer site sign-in starts, key creations and the
+// billing routes. Other requests that read or write D1, such as a dashboard
+// page or revoking a key, are not counted. Behind them, the
 // developer site's sign-in routes (worker/signIn.ts), billing routes
 // (worker/billing.ts) and dashboard actions (worker/dashboard.ts) are
 // answered before vinext, since they set cookies,

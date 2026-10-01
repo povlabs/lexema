@@ -66,6 +66,10 @@
     // - KEY_CREATE_LIMIT, 5 key creations a minute on developers.lexema.fyi
     //   (Huey, #163 R1.2; worker/dashboard.ts).
     { "name": "KEY_CREATE_LIMIT", "namespace_id": "1681", "simple": { "limit": 5, "period": 60 } },
+    // - BILLING_LIMIT, 5 billing requests a minute on developers.lexema.fyi:
+    //   Checkout, the billing portal and Checkout's return, each of which can
+    //   call Stripe (Huey on #296, 2026-10-01; worker/billing.ts).
+    { "name": "BILLING_LIMIT", "namespace_id": "2961", "simple": { "limit": 5, "period": 60 } },
     // - CALLS_60 and CALLS_300, an API account's calls a minute on the two plan
     //   rates, keyed by account id and shared by all its keys (Huey on #161,
     //   2026-09-29), each word of a batch one call (Huey on #216, 2026-09-30;
@@ -167,6 +171,7 @@
       { "name": "REPORT_OPEN_LIMIT", "namespace_id": "91284", "simple": { "limit": 10, "period": 60 } },
       { "name": "SIGN_IN_LIMIT", "namespace_id": "91651", "simple": { "limit": 10, "period": 60 } },
       { "name": "KEY_CREATE_LIMIT", "namespace_id": "91681", "simple": { "limit": 5, "period": 60 } },
+      { "name": "BILLING_LIMIT", "namespace_id": "92961", "simple": { "limit": 5, "period": 60 } },
       { "name": "CALLS_60", "namespace_id": "92611", "simple": { "limit": 60, "period": 60 } },
       { "name": "CALLS_300", "namespace_id": "92612", "simple": { "limit": 300, "period": 60 } }
     ],
@@ -213,6 +218,7 @@
         { "name": "REPORT_OPEN_LIMIT", "namespace_id": "1284", "simple": { "limit": 10, "period": 60 } },
         { "name": "SIGN_IN_LIMIT", "namespace_id": "1651", "simple": { "limit": 10, "period": 60 } },
         { "name": "KEY_CREATE_LIMIT", "namespace_id": "1681", "simple": { "limit": 5, "period": 60 } },
+        { "name": "BILLING_LIMIT", "namespace_id": "2961", "simple": { "limit": 5, "period": 60 } },
         { "name": "CALLS_60", "namespace_id": "2611", "simple": { "limit": 60, "period": 60 } },
         { "name": "CALLS_300", "namespace_id": "2612", "simple": { "limit": 300, "period": 60 } }
       ],

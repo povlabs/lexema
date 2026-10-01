@@ -15,6 +15,7 @@ import { fileURLToPath } from "node:url";
 import { unstable_readConfig } from "wrangler";
 import { shownFor } from "@/components/dictionary/SearchField";
 import type { SuggestAnswer } from "@/lib/dictionary/suggestAnswer.ts";
+import { withBilling, type BillingBindings, type BillingContext } from "@/worker/billing.ts";
 import {
   RETRY_AFTER_SECONDS,
   SEARCH_LIMITED_HEADER,
@@ -36,6 +37,7 @@ function harness() {
     REPORT_OPEN_LIMIT: new FakeRateLimit(10),
     SIGN_IN_LIMIT: new FakeRateLimit(10),
     KEY_CREATE_LIMIT: new FakeRateLimit(5),
+    BILLING_LIMIT: new FakeRateLimit(5),
   } satisfies LimitBindings;
   const seen: Request[] = [];
   const worker = withRateLimits<LimitBindings>(async (request) => {
@@ -189,6 +191,71 @@ test("five key creations a minute go through, and the sixth is a 429 the app nev
   assert.equal(env.SIGN_IN_LIMIT.counts.size, 0);
 });
 
+// worker/hosts.ts hands a developers.lexema.fyi request on under the developer-site segment.
+const developerSite = (path: string) => new URL(`https://developers.lexema.fyi/developer-site${path}`);
+
+/** The billing limit's count after one request to `path` on the developer site, with `limitOf`'s answer for it. */
+async function billingCount(path: string, method: "GET" | "POST") {
+  const { env, fetch } = harness();
+  await fetch(`/developer-site${path}`, "203.0.113.7", {}, method, "https://developers.lexema.fyi");
+  return { limit: limitOf(developerSite(path)), count: env.BILLING_LIMIT.counts.get("v4:203.0.113.7") };
+}
+
+test("POST /billing/checkout counts against the billing limit", async () => {
+  assert.deepEqual(await billingCount("/billing/checkout", "POST"), { limit: "billing", count: 1 });
+});
+
+test("GET /billing/checkout, where a sign-in that kept a plan lands, counts against the billing limit", async () => {
+  assert.deepEqual(await billingCount("/billing/checkout", "GET"), { limit: "billing", count: 1 });
+});
+
+test("POST /billing/portal counts against the billing limit", async () => {
+  assert.deepEqual(await billingCount("/billing/portal", "POST"), { limit: "billing", count: 1 });
+});
+
+test("GET /auth/subscription/success, Checkout's return, counts against the billing limit", async () => {
+  assert.deepEqual(await billingCount("/auth/subscription/success?session_id=cs_1", "GET"), { limit: "billing", count: 1 });
+});
+
+test("five billing requests a minute reach the billing routes, and the sixth is a 429 they never see", async () => {
+  let reached = 0;
+  const env = {
+    SEARCH_LIMIT: new FakeRateLimit(15),
+    SUGGEST_LIMIT: new FakeRateLimit(120),
+    REPORT_LIMIT: new FakeRateLimit(2),
+    REPORT_OPEN_LIMIT: new FakeRateLimit(10),
+    SIGN_IN_LIMIT: new FakeRateLimit(10),
+    KEY_CREATE_LIMIT: new FakeRateLimit(5),
+    BILLING_LIMIT: new FakeRateLimit(5),
+  } satisfies LimitBindings;
+  // The billing routes as the Worker runs them; a route reached counts once.
+  const contextOf = (): BillingContext => {
+    reached += 1;
+    return { billing: { outcome: "missing", missing: ["STRIPE_SECRET_KEY"] }, appDb: undefined, now: 0 };
+  };
+  const worker = withRateLimits<LimitBindings & BillingBindings>(withBilling(async () => new Response("page"), contextOf));
+  // Without an Origin a billing POST is refused before Stripe; that is enough to see it was reached.
+  const post = (path: string, ip = "203.0.113.7") =>
+    worker(new Request(developerSite(path), { method: "POST", headers: { "cf-connecting-ip": ip } }), env, {} as ExecutionContext);
+
+  const logged = await warnings(async () => {
+    for (const path of ["/billing/checkout", "/billing/portal", "/billing/checkout", "/billing/portal", "/billing/checkout"]) {
+      assert.equal((await post(path)).status, 403);
+    }
+    const blocked = await post("/billing/checkout");
+    assert.equal(blocked.status, 429);
+    assert.equal(blocked.headers.get("retry-after"), String(RETRY_AFTER_SECONDS));
+    assert.equal(blocked.headers.get("cache-control"), "no-store");
+    assert.equal(blocked.headers.get("content-type"), "text/plain; charset=utf-8");
+    assert.equal(await blocked.text(), "Too many billing requests. Try again in a minute.");
+  });
+  assert.equal(reached, 5);
+  assert.deepEqual(logged, [["rate limited", { limit: "billing" }]]);
+  // Another visitor is not held back, and billing does not use up making keys.
+  assert.equal((await post("/billing/portal", "198.51.100.2")).status, 403);
+  assert.equal(env.KEY_CREATE_LIMIT.counts.size, 0);
+});
+
 test("searches and suggestions are counted apart", async () => {
   // The blocks these provoke are logged; the log is checked elsewhere.
   await warnings(async () => {
@@ -275,6 +342,7 @@ test("the limits are the rulings, in the Wrangler configuration, the same in pro
     { name: "REPORT_OPEN_LIMIT", namespace_id: "1284", simple: { limit: 10, period: 60 } },
     { name: "SIGN_IN_LIMIT", namespace_id: "1651", simple: { limit: 10, period: 60 } },
     { name: "KEY_CREATE_LIMIT", namespace_id: "1681", simple: { limit: 5, period: 60 } },
+    { name: "BILLING_LIMIT", namespace_id: "2961", simple: { limit: 5, period: 60 } },
     { name: "CALLS_60", namespace_id: "2611", simple: { limit: 60, period: 60 } },
     { name: "CALLS_300", namespace_id: "2612", simple: { limit: 300, period: 60 } },
   ]);

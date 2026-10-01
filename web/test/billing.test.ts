@@ -42,6 +42,7 @@ const env: LimitBindings & SignInBindings = {
   REPORT_OPEN_LIMIT: allow,
   SIGN_IN_LIMIT: allow,
   KEY_CREATE_LIMIT: allow,
+  BILLING_LIMIT: allow,
 };
 
 /** Only the `name=value` of a `Set-Cookie`, and whether it removes the cookie. */

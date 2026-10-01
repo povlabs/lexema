@@ -48,6 +48,7 @@ const env: LimitBindings & SignInBindings & DashboardBindings = {
   REPORT_OPEN_LIMIT: allow,
   SIGN_IN_LIMIT: allow,
   KEY_CREATE_LIMIT: allow,
+  BILLING_LIMIT: allow,
 };
 
 /** The Worker over a fresh database; each browser keeps its own cookies. `limits` stand in for the rate limits, and `email` for the email binding. */
