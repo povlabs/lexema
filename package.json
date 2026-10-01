@@ -21,7 +21,8 @@
     "report": "tsx src/readerReport/reportCli.ts",
     "measure:recovery": "tsx src/import/measureRecovery.ts",
     "measure:quality": "tsx src/import/measureQuality.ts",
-    "measure:section-language": "tsx src/import/measureSectionLanguage.ts"
+    "measure:section-language": "tsx src/import/measureSectionLanguage.ts",
+    "bench:lookup": "tsx src/bench/lookupBenchCli.ts"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
