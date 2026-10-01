@@ -58,8 +58,11 @@ jobs:
           done
           printf 'Scanning %d changed file(s):\n' "${#changed[@]}"
           printf '  %s\n' "${changed[@]}"
-          ./gitleaks dir "$staging" --config=.gitleaks.toml --no-banner --redact --exit-code 3
-          code=$?
+          if ./gitleaks dir "$staging" --config=.gitleaks.toml --no-banner --redact --exit-code 3; then
+            code=0
+          else
+            code=$?
+          fi
           case "$code" in
             0) echo "gitleaks: clean."; exit 0 ;;
             3) echo "::error::gitleaks found a secret in a file this PR adds or edits. Remove it, rotate it, never allowlist a real secret."; exit 1 ;;
