@@ -105,7 +105,7 @@ alone, never from the top level or `env.production`:
 
 | Setting | Preview |
 |---|---|
-| `LEXEMA_STAGE` | `preview`, so every response the Worker gives carries `X-Robots-Tag: noindex` (`web/worker/stage.ts`) |
+| `LEXEMA_STAGE` | `preview`, so every response the Worker gives carries `X-Robots-Tag: noindex` (`web/worker/stage.ts`); static assets, which never reach the Worker, get it from `web/public/_headers` |
 | `LEXEMA_RELEASE` | `it-0c432803` |
 | `DB` | the shared dictionary D1 `lexema-dictionary`, which code only reads |
 | `APP_DB` | `<REPLACE_ME>`, which the [Preview command](#the-preview-command) replaces with the branch's own app D1; `wrangler preview` refuses to run while it is there |
