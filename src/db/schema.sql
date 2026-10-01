@@ -653,7 +653,10 @@ CREATE TABLE applied_change (
   applied_at         TEXT    NOT NULL,  -- ISO-8601
 
   CHECK ((kind = 'new') = (replaced_record_id IS NULL)),
-  CHECK (substr(change_id, 1, 4) = CASE kind WHEN 'new' THEN 'new-' ELSE 'chg-' END),
+  -- No CASE here: wrangler's statement splitter closes a CASE only on an END
+  -- followed by whitespace or ';', so `END)` swallows every later statement.
+  CHECK ((kind = 'new' AND substr(change_id, 1, 4) = 'new-')
+      OR (kind = 'changed' AND substr(change_id, 1, 4) = 'chg-')),
   CHECK (replaced_record_id <> record_id),
   -- The record the change wrote is a record of the release it came from.
   FOREIGN KEY (record_id, release_id) REFERENCES source_record(record_id, release_id)

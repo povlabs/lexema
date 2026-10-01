@@ -158,7 +158,7 @@ export function reportMarkdown(report: DiffReport): string {
     `| Unchanged records | ${counts.unchanged} |`,
     "",
     "Choose changes by id: `pnpm run update:apply <archive> <id> <id> ...`. A lost word is never removed,",
-    "and an ambiguous group cannot be applied ([the runbook](docs/UPDATE_THE_DICTIONARY.md)).",
+    "and an ambiguous group cannot be applied (the runbook: `docs/UPDATE_THE_DICTIONARY.md` in the repository).",
     "",
     "## New words",
     "",

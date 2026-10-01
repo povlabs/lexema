@@ -70,14 +70,16 @@ takes about five minutes on a laptop against a local copy ([the September measur
 
 ## 3. Choose
 
-Read the Markdown report. Its groups are:
+Read the Markdown report. The diff first matches every later record that is
+the same as a master record of its word and part of speech. The groups sort
+what is left unmatched:
 
 | Group | What it is | Can be applied |
 |---|---|---|
-| New words | a word and part of speech the master does not hold | yes |
-| Changed or fixed senses | one record on each side, senses differ | yes |
-| Other changes, senses the same | one record on each side, another field differs | yes |
-| Lost words | a master record the later file has no record of its word and part of speech for | no: reported, never removed |
+| New words | a later record whose word and part of speech has no unmatched master record left: a new word, or a new homograph of one the master holds | yes |
+| Changed or fixed senses | one unmatched record on each side, senses differ | yes |
+| Other changes, senses the same | one unmatched record on each side, another field differs | yes |
+| Lost words | a master record whose word and part of speech has no unmatched later record left: a word the later file dropped, or one homograph of it | no: reported, never removed |
 | Ambiguous groups | several unmatched records of one word and part of speech | no: no pairing is guessed |
 
 Write down the ids of the changes to take: `new-…` and `chg-…`, twelve hex
