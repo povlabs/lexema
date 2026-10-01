@@ -386,6 +386,11 @@ INSERT INTO grammar_value (dimension, value) VALUES
 --
 --   absent        -> NO ROW. The source says nothing and nothing was expected.
 --   'stated'      -> the source gave a tag the importer maps to a known value.
+--                    One exception: the gloss grammar stamp rule
+--                    (`it-gloss-stamp/v1`, src/import/grammarPolicy.ts, #317)
+--                    states gender and number from a noun or adjective gloss
+--                    that is a whole stamp line, like `casa ( approfondimento)
+--                    f sing`, when the record has no gender tag.
 --   'unclassified'-> the source gave text the importer cannot map. The literal
 --                    text is kept; no value is guessed. e.g. raw_tags 'pl.: case'
 --                    on `casa`, 'lui/lei' on a `salire` form.
@@ -412,8 +417,9 @@ CREATE TABLE grammar_claim (
   scope       TEXT NOT NULL CHECK (scope IN ('record', 'sense', 'form')),
   scope_index INTEGER CHECK (scope_index IS NULL OR scope_index >= 0),
 
-  -- For 'stated'/'unclassified': the exact tag. For 'missing': the container
-  -- that should have carried it ('' for the whole record).
+  -- For 'stated'/'unclassified': the exact tag, or for a gloss grammar stamp
+  -- the gloss that carried it (`/senses/0/glosses/0`). For 'missing': the
+  -- container that should have carried it ('' for the whole record).
   json_pointer TEXT NOT NULL,
 
   status TEXT NOT NULL CHECK (status IN ('stated', 'unclassified', 'missing')),
@@ -422,7 +428,8 @@ CREATE TABLE grammar_claim (
   value     TEXT,
 
   -- The literal source text behind the claim, kept so an 'unclassified' row is
-  -- still usable evidence and a 'stated' row can be audited against its tag.
+  -- still usable evidence and a 'stated' row can be audited against its tag,
+  -- or against the stamp (`f sing`) for a gloss grammar stamp.
   source_text TEXT,
 
   CHECK ((scope = 'record') = (scope_index IS NULL)),

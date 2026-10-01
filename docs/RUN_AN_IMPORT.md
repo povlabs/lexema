@@ -153,7 +153,7 @@ The first rewrites a gloss opening "1ª/2ª/3ª persona" as "prima/seconda/terza
 persona" ([#257](https://github.com/hueypov/lexema/issues/257)). The second,
 rule `it-gloss-stamp/v1`
 ([#317](https://github.com/hueypov/lexema/issues/317)), takes a gender and
-number stamp off the end of a noun's gloss (`casa ( approfondimento) f sing`)
+number stamp off the end of a noun or adjective gloss (`casa ( approfondimento) f sing`)
 and states it as the record's gender and number. A database seeded before a
 rule existed gets it from a one-off update, with no reseed:
 

@@ -32,7 +32,10 @@ with no winner.
 collapsing any two of these would be a lie:
 
 - **no claim at all** — the dimension was never expected here.
-- **`stated`** — the source gave a tag that maps to a known value.
+- **`stated`** — the source gave a tag that maps to a known value. The one
+  exception is a gloss grammar stamp (`casa ( approfondimento) f sing`), which
+  rule `it-gloss-stamp/v1` reads as gender and number
+  ([`grammarPolicy.ts`](../src/import/grammarPolicy.ts)).
 - **`unclassified`** — the source gave text we will not guess at. `essi/esse`
   obviously means third person; mapping it is #4's job, with tests.
 - **`missing`** — we looked and the source said nothing. `casa` states neither

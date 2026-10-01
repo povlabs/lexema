@@ -274,7 +274,7 @@ all; the three represented states are:
 
 | `status` | Meaning | Also carries |
 | --- | --- | --- |
-| `stated` | the source gave a tag that maps to a known value | `dimension`, `value`, `sourceText` |
+| `stated` | the source gave a tag that maps to a known value, or a gloss grammar stamp (`f sing`) that rule `it-gloss-stamp/v1` reads, in which case `pointer` names the gloss ([`grammarPolicy.ts`](../src/import/grammarPolicy.ts)) | `dimension`, `value`, `sourceText` |
 | `unclassified` | the source gave text that is not mapped | `sourceText` |
 | `missing` | the dimension was checked and the source said nothing | `dimension` |
 

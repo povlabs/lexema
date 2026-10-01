@@ -87,7 +87,7 @@ Four different things, kept apart.
 | state | how it looks | example |
 | --- | --- | --- |
 | **absent** | no `grammar_claim` row | nothing expected a `person` on a noun |
-| **`stated`** | dimension + value + the literal tag | `città` `/tags/0` → gender = feminine |
+| **`stated`** | dimension + value + the literal tag, or the stamp of a gloss grammar stamp ([`grammarPolicy.ts`](../src/import/grammarPolicy.ts)) | `città` `/tags/0` → gender = feminine; `casa` `/senses/0/glosses/0` `f sing` → gender = feminine |
 | **`unclassified`** | literal text kept, no dimension, no value guessed | `salire` `/forms/6/raw_tags/0` = `lui/lei` |
 | **`missing`** | dimension named, value NULL, pointer at the container that should have carried it | `casa` has no gender tag anywhere |
 
@@ -139,7 +139,7 @@ Edges declared by the `sale` records, expanded:
 
 The `sala` edge is ambiguous too — `sala` is a noun record *and* a verb record. Part of speech narrows it to one here, but the schema stores no choice.
 
-Line 21653's gloss says *terza persona singolare, modo indicativo, tempo presente del verbo salire*. The mood is in that prose only. The matching embedded form at `salire` `/forms/6` carries `singular`, `third-person`, `present` as `stated` rows, raw tag `lui/lei` as `unclassified`, and mood as `missing`. Prose and structured tags are different kinds of evidence and are not mixed.
+Line 21653's gloss says *terza persona singolare, modo indicativo, tempo presente del verbo salire*. The mood is in that prose only. The matching embedded form at `salire` `/forms/6` carries `singular`, `third-person`, `present` as `stated` rows, raw tag `lui/lei` as `unclassified`, and mood as `missing`. Prose and structured tags are different kinds of evidence and are not mixed. The one exception is a gloss that is a whole gloss grammar stamp, like `casa ( approfondimento) f sing`, which rule `it-gloss-stamp/v1` reads as gender and number ([`grammarPolicy.ts`](../src/import/grammarPolicy.ts)); a prose gloss like this one is never read.
 
 ## `studenti` — the container is not the lemma
 
