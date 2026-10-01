@@ -121,8 +121,59 @@ export function chooseChanges(found: MasterDiff, texts: readonly string[]): Appl
 
 const json = (values: readonly unknown[]): string => literal(JSON.stringify(values));
 
-/** Rows of one table, as INSERT statements of at most `CHUNK` rows each. */
-const CHUNK = 200;
+/**
+ * The most bytes one INSERT holds, the seed's own bound (src/import/seedSql.ts):
+ * D1 refuses a statement over 100 KB with SQLITE_TOOBIG, locally and remotely.
+ * A record's stored line can be tens of kilobytes, so a count of rows is no bound.
+ */
+const MAX_STATEMENT_BYTES = 64 * 1024;
+
+/** `tuples` of one table as INSERT statements of at most `MAX_STATEMENT_BYTES` each; a tuple bigger than that stands alone. */
+export function boundedInserts(table: TableName, tuples: readonly string[]): string[] {
+  const head = `INSERT INTO ${table} (${COLUMNS[table]}) VALUES\n  `;
+  const statements: string[] = [];
+  let batch: string[] = [];
+  let bytes = Buffer.byteLength(head);
+  for (const tuple of tuples) {
+    const size = Buffer.byteLength(tuple) + 4;
+    if (batch.length > 0 && bytes + size > MAX_STATEMENT_BYTES) {
+      statements.push(`${head}${batch.join(",\n  ")};`);
+      batch = [];
+      bytes = Buffer.byteLength(head);
+    }
+    batch.push(tuple);
+    bytes += size;
+  }
+  if (batch.length > 0) statements.push(`${head}${batch.join(",\n  ")};`);
+  return statements;
+}
+
+/**
+ * `values` in runs whose bytes, as `sizeOf` counts them, stay at most
+ * `maxBytes`: for statements that name every value of a run and must stay
+ * under D1's 100 KB statement limit. A value bigger than that stands alone.
+ */
+function inRuns<Value>(
+  values: readonly Value[],
+  maxBytes = 32 * 1024,
+  sizeOf: (value: Value) => number = (value) => Buffer.byteLength(JSON.stringify(value)) + 1,
+): Value[][] {
+  const runs: Value[][] = [];
+  let run: Value[] = [];
+  let bytes = 2;
+  for (const value of values) {
+    const size = sizeOf(value);
+    if (run.length > 0 && bytes + size > maxBytes) {
+      runs.push(run);
+      run = [];
+      bytes = 2;
+    }
+    run.push(value);
+    bytes += size;
+  }
+  if (run.length > 0) runs.push(run);
+  return runs;
+}
 
 class Inserts {
   private readonly tuples = new Map<TableName, string[]>();
@@ -140,17 +191,12 @@ class Inserts {
   }
 
   sql(table: TableName): string[] {
-    const tuples = this.tuples.get(table) ?? [];
-    const statements: string[] = [];
-    for (let start = 0; start < tuples.length; start += CHUNK) {
-      statements.push(`INSERT INTO ${table} (${COLUMNS[table]}) VALUES\n  ${tuples.slice(start, start + CHUNK).join(",\n  ")};`);
-    }
-    return statements;
+    return boundedInserts(table, this.tuples.get(table) ?? []);
   }
 }
 
 /** A row of `lookup_form` as the nearby indexes need it. */
-interface KeyRow {
+export interface KeyRow {
   recordId: number;
   key: string;
   headword: boolean;
@@ -232,6 +278,9 @@ export async function planApply(
       pos: archiveRecord.record.pos,
       posTitle: archiveRecord.record.pos_title,
       reportMember: () => {},
+      // A feed is read without its raw pages, so the section-language rule
+      // cannot judge it (ADR 0023).
+      hidden: false,
     });
     newLemmas.push(archiveRecord.record);
     planned.push({ change, recordId: id });
@@ -303,20 +352,17 @@ export async function planApply(
     );
   }
   for (const table of APPLIED_TABLES.slice(0, -2)) sql.push(...inserts.sql(table));
-  sql.push(
-    `INSERT INTO applied_change (change_id, release_id, kind, record_id, replaced_record_id, applied_at) VALUES\n  ${planned
-      .map(({ change, recordId: id }) =>
-        `(${[change.id, feed.releaseId, change.kind, id, change.kind === "changed" ? change.master.recordId : null, appliedAt].map(literal).join(",")})`,
-      )
-      .join(",\n  ")};`,
+  const appliedTuples = planned.map(({ change, recordId: id }) =>
+    `(${[change.id, feed.releaseId, change.kind, id, change.kind === "changed" ? change.master.recordId : null, appliedAt].map(literal).join(",")})`,
   );
+  for (const run of inRuns(appliedTuples)) {
+    sql.push(`INSERT INTO applied_change (change_id, release_id, kind, record_id, replaced_record_id, applied_at) VALUES\n  ${run.join(",\n  ")};`);
+  }
   sql.push(...nearby.deletes);
   const accentRows = nearby.accent.map((row) => [feed.releaseId, row.foldKey, row.surfaceKey, row.headword, row.languages, row.richness]);
   const typoRows = nearby.typo.map((row) => [feed.releaseId, row.deletionKey, row.surfaceKey, row.languages, row.richness]);
   for (const [table, tuples] of [["accent_fold", accentRows], ["typo_key", typoRows]] as const) {
-    for (let start = 0; start < tuples.length; start += CHUNK) {
-      sql.push(`INSERT INTO ${table} (${COLUMNS[table]}) VALUES\n  ${tuples.slice(start, start + CHUNK).map((values) => tupleOf(table, values)).join(",\n  ")};`);
-    }
+    sql.push(...boundedInserts(table, tuples.map((values) => tupleOf(table, values))));
   }
   sql.push(
     `INSERT INTO release_table_rows (release_id, table_name, rows) VALUES\n  ${APPLIED_TABLES.map(
@@ -344,10 +390,12 @@ const sameTypo = (a: TypoKeyRow, b: TypoKeyRow): boolean =>
  * The `accent_fold` and `typo_key` rows of `keys` as the seed would write them
  * for the master after the apply, against the rows the master holds now: the
  * rows that differ are deleted, whatever release wrote them, and the rows
- * wanted are written under the later release. A row already right is left in
- * its own release.
+ * wanted are returned for the caller to write: an apply writes them under the
+ * later release. A row already right is left in its own release. Hiding
+ * records (src/import/hideRecords.ts) reads it too, with the hidden records as
+ * `retired` and nothing new, and writes them under the master's release.
  */
-function nearbyEdits(
+export function nearbyEdits(
   reader: MasterReader,
   served: readonly string[],
   keys: readonly string[],
@@ -356,13 +404,19 @@ function nearbyEdits(
   newLemmas: readonly ArchiveRecord["record"][],
 ): { deletes: string[]; accent: AccentFoldRow[]; typo: TypoKeyRow[]; replaced: number } {
   const inServed = `IN (SELECT value FROM json_each(${json(served)}))`;
-  const inKeys = `IN (SELECT value FROM json_each(${json(keys)}))`;
+  // The reads name every key, so they run over a few hundred keys at a time:
+  // one statement naming them all would pass D1's 100 KB limit.
+  const runs = inRuns(keys, 16 * 1024);
+  const inKeys = (run: readonly string[]): string => `IN (SELECT value FROM json_each(${json(run)}))`;
 
   // After the apply: every row spelling a key, but a retired record's, and the new ones.
-  const kept: KeyRow[] = select<{ record_id: number; surface_key: string; origin: string }>(
-    reader,
-    `SELECT record_id, surface_key, origin FROM lookup_form WHERE release_id ${inServed} AND surface_key ${inKeys}`,
-  )
+  const kept: KeyRow[] = runs
+    .flatMap((run) =>
+      select<{ record_id: number; surface_key: string; origin: string }>(
+        reader,
+        `SELECT record_id, surface_key, origin FROM lookup_form WHERE release_id ${inServed} AND surface_key ${inKeys(run)}`,
+      ),
+    )
     .filter((row) => !retired.has(row.record_id))
     .map((row) => ({ recordId: row.record_id, key: row.surface_key, headword: row.origin === "headword" }));
   const headed = new Map<string, boolean>();
@@ -389,17 +443,24 @@ function nearbyEdits(
     return score === undefined ? [] : typoKeyRowsOf(key, score);
   });
 
-  const heldAccent = select<{ release_id: string; fold_key: string; surface_key: string; headword: 0 | 1; languages: number; richness: number }>(
-    reader,
-    `SELECT release_id, fold_key, surface_key, headword, languages, richness FROM accent_fold
-      WHERE release_id ${inServed} AND fold_key IN (SELECT value FROM json_each(${json([...new Set(keys.map(foldKey))])}))
-        AND surface_key ${inKeys}`,
-  ).filter((row) => wantedKeys.has(row.surface_key));
-  const heldTypo = select<{ release_id: string; deletion_key: string; surface_key: string; languages: number; richness: number }>(
-    reader,
-    `SELECT release_id, deletion_key, surface_key, languages, richness FROM typo_key
-      WHERE release_id ${inServed} AND deletion_key IN (SELECT value FROM json_each(${json([...new Set(keys.flatMap(deletionKeys))])}))
-        AND surface_key ${inKeys}`,
+  const heldAccent = runs
+    .flatMap((run) =>
+      select<{ release_id: string; fold_key: string; surface_key: string; headword: 0 | 1; languages: number; richness: number }>(
+        reader,
+        `SELECT release_id, fold_key, surface_key, headword, languages, richness FROM accent_fold
+          WHERE release_id ${inServed} AND fold_key IN (SELECT value FROM json_each(${json([...new Set(run.map(foldKey))])}))
+            AND surface_key ${inKeys(run)}`,
+      ),
+    )
+    .filter((row) => wantedKeys.has(row.surface_key));
+  // A key has a deletion key per character, so these runs are counted in deletion keys.
+  const heldTypo = inRuns(keys, 32 * 1024, (key) => Buffer.byteLength(JSON.stringify(deletionKeys(key))) + Buffer.byteLength(JSON.stringify(key))).flatMap((run) =>
+    select<{ release_id: string; deletion_key: string; surface_key: string; languages: number; richness: number }>(
+      reader,
+      `SELECT release_id, deletion_key, surface_key, languages, richness FROM typo_key
+        WHERE release_id ${inServed} AND deletion_key IN (SELECT value FROM json_each(${json([...new Set(run.flatMap(deletionKeys))])}))
+          AND surface_key ${inKeys(run)}`,
+    ),
   );
 
   const deletes: string[] = [];

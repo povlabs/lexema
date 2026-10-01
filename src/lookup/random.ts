@@ -14,6 +14,10 @@
 // later release replaced is answered with the record that replaced it, which
 // has its word and part of speech; a word only a later release added is not
 // drawn, since its line numbers count in another file.
+//
+// A record no search reaches is passed over for the next one that a search
+// does: a hidden record (ADR 0023) has no headword row, so the pick walks past
+// it, and a draw past the last such record wraps to the first.
 
 import type { DictionaryRead, LookupDatabase } from "./database.js";
 import { readRelease } from "./lookup.js";
@@ -40,16 +44,23 @@ export const RANDOM_BOUNDS_BY_POS_SQL = `SELECT
 /** Whether a change applied from a later release replaced the record. */
 const REPLACED = "EXISTS (SELECT 1 FROM applied_change a WHERE a.replaced_record_id = source_record.record_id)";
 
-/** The first record at or after the drawn line. */
+/**
+ * Whether a search reaches the record: by its own headword row, or, once a
+ * change replaced it and took that row away, through the record that replaced
+ * it. A hidden record has neither, so it is never drawn.
+ */
+const REACHED = `(EXISTS (SELECT 1 FROM lookup_form lf WHERE lf.record_id = source_record.record_id AND lf.origin = 'headword') OR ${REPLACED})`;
+
+/** The first record a search reaches at or after the drawn line. */
 export const RANDOM_PICK_SQL = `SELECT record_id, release_id, line_no, word, pos, pos_title, ${REPLACED} AS replaced
        FROM source_record
-      WHERE release_id = ?1 AND line_no >= ?2
+      WHERE release_id = ?1 AND line_no >= ?2 AND ${REACHED}
       ORDER BY line_no
       LIMIT 1`;
 
 export const RANDOM_PICK_BY_POS_SQL = `SELECT record_id, release_id, line_no, word, pos, pos_title, ${REPLACED} AS replaced
        FROM source_record
-      WHERE release_id = ?1 AND pos = ?2 AND line_no >= ?3
+      WHERE release_id = ?1 AND pos = ?2 AND line_no >= ?3 AND ${REACHED}
       ORDER BY line_no
       LIMIT 1`;
 
@@ -103,9 +114,12 @@ export async function randomHeadword({ db, releaseId, pos, random = Math.random 
   if (bounds?.low == null || bounds.high == null) return undefined;
 
   const line = bounds.low + Math.floor(random() * (bounds.high - bounds.low + 1));
-  const [drawn] = await db.all<DrawnRow>(pos === undefined ? RANDOM_PICK_SQL : RANDOM_PICK_BY_POS_SQL, [...scope, line]);
-  // `high` is a line of the scope, so a line drawn at or below it always finds one.
-  if (drawn === undefined) throw new Error(`no record at or after line ${line} of '${releaseId}'`);
+  const pick = (from: number) => db.all<DrawnRow>(pos === undefined ? RANDOM_PICK_SQL : RANDOM_PICK_BY_POS_SQL, [...scope, from]);
+  // Past the last record a search reaches, the draw wraps to the first.
+  const [ahead] = await pick(line);
+  const [drawn] = ahead !== undefined ? [ahead] : await pick(bounds.low);
+  // No record of the scope is one a search reaches.
+  if (drawn === undefined) return undefined;
   const [row] = drawn.replaced === 0 ? [drawn] : await db.all<RecordRow>(CURRENT_RECORD_SQL, [drawn.record_id]);
   if (row === undefined) throw new Error(`record ${drawn.record_id} has no current record`);
   return { releaseId: row.release_id, lineNo: row.line_no, word: row.word, pos: row.pos, posTitle: row.pos_title };

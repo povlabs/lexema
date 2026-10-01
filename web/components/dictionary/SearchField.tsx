@@ -29,7 +29,7 @@ import { useEffect, useRef, useState, type MouseEvent } from "react";
 import { SearchIcon } from "@/components/shared/icons";
 import { isApple, isSearchShortcut, shortcutApplies, shortcutLabel } from "@/lib/shared/searchShortcut.ts";
 import type { SuggestAnswer } from "@/lib/dictionary/suggestAnswer.ts";
-import { fetchSuggestions, SuggestionAsker } from "@/lib/dictionary/suggestionAsker.ts";
+import { suggestionsAt, SuggestionAsker } from "@/lib/dictionary/suggestionAsker.ts";
 import {
   SEARCH_CLEAR,
   SEARCH_FIELD,
@@ -95,8 +95,11 @@ function statusOf(shown: Shown | null): string {
  * `×` that clears a query or, before one, the `ENTER` hint. No label above it
  * and no button beside it — Enter submits — and its accessible name is on the
  * input itself, so a screen reader still hears what it is for.
+ *
+ * `version` is the served version's token: every suggestion request names it,
+ * so the browser never reuses an answer across an apply or a release flip.
  */
-export function SearchField({ raw }: { raw: string }) {
+export function SearchField({ raw, version }: { raw: string; version: string }) {
   const asked = raw.trim() !== "";
   const [value, setValue] = useState(raw);
   const [open, setOpen] = useState(false);
@@ -139,7 +142,7 @@ export function SearchField({ raw }: { raw: string }) {
     return () => document.removeEventListener("keydown", onKey);
   }, []);
   const [asker] = useState(
-    () => new SuggestionAsker(fetchSuggestions, (answer) => setShown(answer === null ? null : shownFor(answer)), DEBOUNCE_MS),
+    () => new SuggestionAsker(suggestionsAt(version), (answer) => setShown(answer === null ? null : shownFor(answer)), DEBOUNCE_MS),
   );
   const cancel = () => asker.cancel();
   useEffect(() => cancel, []);

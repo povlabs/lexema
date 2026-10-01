@@ -57,6 +57,16 @@ records; for the fifty-word fixture that is `casa`'s seven definitions and seven
 examples. How the lines are chosen, and how much the extraction loses, is in
 [the measurement](../reports/2026-09-23-recovered-definitions-full-release.md).
 
+From the same raw pages the seed hides another language's entries filed as
+Italian ([#382](https://github.com/hueypov/lexema/issues/382),
+[ADR 0023](../.decisions/0023-foreign-records-are-hidden-not-deleted.md)): a
+record the section-language rule finds in another language is seeded whole but
+gets no `lookup_form` or `form_of_edge` rows, and a `hidden_record` row names the
+rule and the page line. The rule needs every record of a title before it judges
+one, so the seed first reads the archive's titles in a pass of their own. The
+run prints `hidden records (section-language/v1): <n>`; with the dump it is 23
+for `it-0c432803`, and with the pages under `fixtures/` it is 0.
+
 The raw pages come from `itwiktionary-20260701-pages-articles.xml.bz2`, the
 Italian Wiktionary dump the archive was built from, when it sits in the
 repository root beside `it-extract.jsonl.gz`. It is gitignored; its durable copy,

@@ -319,9 +319,33 @@ test("a `#` line the renderer cannot print whole is told apart from a lead-in by
   assert.deepEqual(placed("# attributo {{Vd|x}} a:", "attributo vedi x a:", ARALDICO), [null]);
 });
 
+test("filetto: the items below `{{Pn|w=…}} detto di:` sit under the sense the extraction glosses with the headword's link", () => {
+  // Archive line 40204, verbatim, and its page from the 2026-07-01 dump. The
+  // line prints `filetto detto di:`; the record glosses it `filetto (
+  // approfondimento) detto di:`, the link `{{Pn|w=…}}` adds (#399).
+  const record = recordText(JSON.parse(readFileSync(resolve("fixtures/filetto.jsonl"), "utf8")));
+  const recovery = matched(recoverDefinitions(record, page("filetto")));
+  const under = { in: "sense", senseIndex: 6 };
+  assert.equal(record.glosses[6].text, "filetto ( approfondimento) detto di:");
+  assert.deepEqual(
+    recovery.recovered.map((definition) => [definition.route, definition.ref.line, definition.listedUnder]),
+    [
+      ["lead-in-item", 11, under],
+      ["lead-in-item", 12, under],
+      ["lead-in-item", 13, under],
+    ],
+  );
+  assert.deepEqual(recovery.recovered[0].leadIn, {
+    ref: { wiki: RAW_PAGE_WIKI, title: "filetto", revisionId: 4045314, line: 10 },
+    text: "filetto detto di:",
+    on: "sense-line",
+  });
+});
+
 test("a lead-in is placed only under the one sense whose gloss is its text, wherever that sense sits", () => {
   // filetto, revision 4045314: the record glosses `{{Pn|w=…}} detto di:` as
-  // `filetto ( approfondimento) detto di:`, which is not the line's text.
+  // `filetto ( approfondimento) detto di:`, which reads as the line's text
+  // once the link is dropped.
   const filetto = dumpLines("filetto", 4045314, [
     "{{-sost-|it}}",
     "# [[diminutivo]] di [[filo]]",
@@ -334,15 +358,19 @@ test("a lead-in is placed only under the one sense whose gloss is its text, wher
       (definition) => definition.listedUnder,
     );
   const glosses = ["diminutivo di filo", "filetto ( approfondimento) detto di:", "ognuna delle quattro sezioni o parti dei pesci"];
-  // One sense for each `#` line, but its gloss is not the lead-in's text:
-  // place alone places nothing, and the item stays at the top of the list.
-  assert.deepEqual(placed(senses(...glosses)), [null]);
-  // A sense the page does not show as a `#` line: the lead-in is the one
-  // sense whose gloss is its text, or nowhere.
+  assert.deepEqual(placed(senses(...glosses)), [{ in: "sense", senseIndex: 1 }]);
+  // A sense the page does not show as a `#` line moves nothing: the lead-in is
+  // the one sense whose gloss is its text, by text, never by place.
+  assert.deepEqual(placed(senses("aggiunto", ...glosses)), [{ in: "sense", senseIndex: 2 }]);
   assert.deepEqual(placed(senses("aggiunto", "diminutivo di filo", "filetto detto di:", "ognuna delle quattro sezioni")), [
     { in: "sense", senseIndex: 2 },
   ]);
-  assert.deepEqual(placed(senses("aggiunto", ...glosses)), [null]);
+  // A sense in the lead-in's place whose gloss is not its text places nothing.
+  assert.deepEqual(placed(senses("diminutivo di filo", "filetto ( approfondimento) detto altro:", "ognuna")), [null]);
+  // The link is dropped only after the record's own headword, and only once.
+  assert.deepEqual(placed(senses("diminutivo di filo", "filo ( approfondimento) detto di:", "ognuna")), [null]);
+  // A gloss with the link and one without, both reading as the line: neither is its sense.
+  assert.deepEqual(placed(senses("diminutivo di filo", "filetto ( approfondimento) detto di:", "filetto detto di:")), [null]);
 });
 
 test("an item that defines itself in full still sits in the list its lead-in opens: layout, not wording", () => {

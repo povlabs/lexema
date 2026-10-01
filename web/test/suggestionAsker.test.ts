@@ -17,7 +17,7 @@ import { offered, suggest } from "../../src/lookup/suggest.js";
 import { readOnlyDictionary } from "../../test/databases.js";
 import { DEBOUNCE_MS } from "@/components/dictionary/SearchField";
 import type { SuggestAnswer } from "@/lib/dictionary/suggestAnswer.ts";
-import { SuggestionAsker, type SuggestRequest } from "@/lib/dictionary/suggestionAsker.ts";
+import { suggestPath, SuggestionAsker, type SuggestRequest } from "@/lib/dictionary/suggestionAsker.ts";
 
 const REPO = fileURLToPath(new URL("../..", import.meta.url));
 const RELEASE = "it-asker-test";
@@ -145,5 +145,17 @@ test("a full answer is asked again for a longer prefix", async () => {
     assert.deepEqual(shown, full);
   } finally {
     mock.timers.reset();
+  }
+});
+
+test("a suggestion request names the served version, so a browser keeps each version's answers apart (#368)", () => {
+  const before = suggestPath("vado v", "it-0c432803.0");
+  const after = suggestPath("vado v", "it-0c432803.chg-0123456789ab");
+  assert.notEqual(after, before);
+  for (const [path, version] of [[before, "it-0c432803.0"], [after, "it-0c432803.chg-0123456789ab"]] as const) {
+    const url = new URL(path, "https://lexema.fyi");
+    assert.equal(url.pathname, "/suggest");
+    assert.equal(url.searchParams.get("q"), "vado v", "the route reads the prefix as typed");
+    assert.equal(url.searchParams.get("v"), version);
   }
 });

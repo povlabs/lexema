@@ -103,9 +103,23 @@ through `applied_change`, one replacement after another
 ([src/lookup/served.ts](../src/lookup/served.ts)). Each keeps the ref of the
 line it was written about, so a reader can still check it there.
 
-A recovered definition placed under a sense keeps its sense index. If the
-later record moved its senses about, the definition sits under whichever sense
-now has that index.
+The seed recovered a definition only when its record did not carry it, so a
+lookup asks that again of the record that replaced it, by the seed's own rule
+(`carries` in [src/italian/recovery.ts](../src/italian/recovery.ts),
+[#370](https://github.com/hueypov/lexema/issues/370)):
+
+- A recovered definition the replacing record carries as a gloss is not shown
+  again: the record shows it as a sense.
+- A sense index names a sense of the record the definition was written for, and
+  the later record may hold its senses in another order. So a definition listed
+  under a sense goes under the one sense of the replacing record whose glosses
+  carry that old sense's glosses. When no sense does, or more than one, it goes
+  to the top of the list.
+- An item listed under a recovered definition that is no longer shown goes
+  under the one sense that carries that definition's text, or to the top.
+
+The rules live in [src/lookup/recovered.ts](../src/lookup/recovered.ts). A
+record never replaced reads its rows as the seed stored them.
 
 ## Serving a master of several releases
 
@@ -134,6 +148,16 @@ your DB will return to its original state" and serves no query while it runs.
 So a lookup reads the master either before an apply or after it, and an apply
 that stops partway leaves the master as it was. `test/update.test.ts` breaks a
 statement after the records are written and checks every row is back.
+
+## Caches move with an apply
+
+`LEXEMA_RELEASE` stays the same through an apply, so nothing a reader's browser
+or Cloudflare keeps may be keyed on it alone. A shared link's card and the
+search field's suggestions are keyed on the **served version** instead: the
+release and the last change applied to it
+([`servedVersion`](../src/lookup/served.ts), one row read). An apply moves it,
+and so every card's address and every suggestion request's address
+([#368](https://github.com/hueypov/lexema/issues/368)).
 
 ## An older master
 

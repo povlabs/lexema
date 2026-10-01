@@ -1,0 +1,74 @@
+<!-- it.wiktionary.org/wiki/filetto revision 4045314 (2025-09-12T09:43:59Z), CC BY-SA 4.0. Saved verbatim. -->
+== {{-it-}} ==
+{{-sost-|it}} 
+{{Pn}} ''m'' {{Linkp|filetti}} 
+# [[diminutivo]] di [[filo]] 
+# decoro a filo impresso sul bordo di un libro (spesso in oro)
+# {{Est}} decorazioni di una [[divisa]] militare
+# {{Term|meccanica|it}} {{Term|tecnologia|it}} {{Term|ingegneria|it}} [[sporgenza]] elicoidale da un corpo cilindrico che forma la [[vite]] o, in negativo, il [[bullone]], per i meccanismi da unire o far scorrere
+# parte pregiata del [[taglio]] di carne bovina (o suina) aderente al costato; parti di carne o di pesci privati della pelle e delle ossa (o lische)
+# {{Term|anatomia|it}} [[frenulo]]
+# {{Term|araldica|it}} {{Pn|w=filetto (araldica)}} detto di:
+#*linea di partizione leggermente ingrossata e dotata di smalto proprio, utilizzata soprattutto per separare due campi dello stesso smalto,
+#*pezze onorevoli lunghe (palo, fascia, banda, sbarra) notevolmente ridotte in ampiezza,
+#*banda ridotta a un quinto della larghezza ordinaria, secondo una parte degli araldisti
+# {{Term|familiare|it}} [[parte]] della [[polpa]] di una [[verdura]], [[ben]] [[disposta]] sul [[piatto]], appunto [[tagliata]] in modo da darle un'[[uniforme]] [[forma]] [[allungata]] ed [[intatta]]
+#* ''i '''filetti''' di [[melanzane]] [[sott'olio]] devono essere [[conservate]] anche con [[peperoncino]] ed [[aglio]]''
+# {{Est}} [[ognuna]] delle [[quattro]] [[sezioni]] o [[parti]] dei [[pesci]], in genere di [[pesce azzurro]], pressoché [[intatte]] [[longitudinalmente]], oppure delle [[tre]] [[parti]] qualora si consideri la [[ventresca]]
+[[File:Filet de bœuf.jpg|thumb|filetto di manzo con [[purè]] di patate]]
+
+{{-verb form-|it}}
+{{Pn}}
+#prima persona singolare dell'indicativo presente di [[filettare]]
+
+{{-sill-}}
+; fi | lét | to
+
+{{-etim-}}
+derivato da [[filo]]
+
+{{-sin-}}
+*[[orlo]], [[bordatura]]; [[cordoncino]]
+*{{Term|meccanica|it}} ''(di vite)'' [[panetto]]
+*[[scanalatura]]
+*''(tipografia)'' [[trattino]]
+*[[tria]]
+*{{Term|popolare|it}} [[frenulo]], [[frenello]]
+*taglio di carne
+
+{{-rel-}}
+* [[controfiletto]], [[filetto in croce]]
+
+{{-alter-}}
+*[[filettino]]
+
+{{-trad-}}
+{{Trad1|}}
+:*{{fr}}: [[filet]] ''m''
+:*{{en}}: [[fillet]]  
+:*{{de}}: [[Filet]]
+{{Trad2}}
+
+{{Trad1|{{Term|araldica|it}} termine araldico (per la banda ridotta)}}
+:*{{fr}}: [[filet]], [[estrez]], [[cotice]]
+:*{{en}}: [[riband]]
+:*{{oc}}:  [[fielat]], [[fielet]]
+:*{{nl}}: [[zeer smalle schuinstreep]]
+:*{{pt}}:  [[filete]]
+:*{{es}}:  [[filete]]
+:*{{de}}:  [[Schrägfaden]]
+{{Trad2}}
+
+{{Trad1|prima persona singolare dell'indicativo presente di filettare}}
+:* {{en}}
+{{Trad2}}
+
+{{-ref-}}
+*{{Fonte|sin-co}}
+*{{Fonte|writen}}
+* {{Term|araldica|it}}  ''Vocabolario Araldico Ufficiale, a cura di Antonio Manno – edito a Roma nel 1907''
+* {{Term|araldica|it}}  ''Dizionario araldico, di Piero Guelfi Camajani - edito a Milano nel 1940''
+* {{Term|araldica|it}}  ''[http://www.heraldica.org/shell/translatf.pl Traduttore di Heraldica.org]''
+
+== Altri progetti ==
+{{Interprogetto|w=Filetto (araldica)|etichetta=Filetto (araldica)}}

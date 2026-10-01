@@ -15,7 +15,7 @@ import {
   SEARCH_SQL,
   lookup,
 } from "../src/lookup/lookup.js";
-import { fromNodeSqlite } from "../src/lookup/database.js";
+import { fromNodeSqlite, type DictionaryRead, type LookupDatabase, type SqlValue } from "../src/lookup/database.js";
 import type {
   FoundResult,
   LookupResult,
@@ -813,6 +813,51 @@ test("refuses to serve a release that is not complete", async () => {
     // Answering "no results" would be a different, false claim from "this
     // release is not servable".
     await assert.rejects(() => ask(db, "sale"), /no complete release/);
+  });
+});
+
+/**
+ * The dictionary as D1 answers it, where every statement waits on the network.
+ * The statements a lookup sends while it waits go out together, so the number
+ * of times the queue is answered is the number of round trips one after
+ * another: what a reader waits for, whatever the statement count.
+ */
+function countingRoundTrips(sqlite: DatabaseSync): { db: LookupDatabase; roundTrips: () => number } {
+  const inner = fromNodeSqlite(sqlite);
+  let queued: (() => void)[] = [];
+  let roundTrips = 0;
+  const answer = () => {
+    const now = queued;
+    queued = [];
+    roundTrips += 1;
+    for (const send of now) send();
+  };
+  return {
+    db: {
+      all: <T,>(sql: DictionaryRead, params: readonly SqlValue[]) =>
+        new Promise<T[]>((resolve, reject) => {
+          // A macrotask: every statement the lookup can send before it next
+          // waits has been queued by then.
+          if (queued.length === 0) setImmediate(answer);
+          queued.push(() => inner.all<T>(sql, params).then(resolve, reject));
+        }),
+    },
+    roundTrips: () => roundTrips,
+  };
+}
+
+test("a lookup the index spells waits on the database at most four times in a row, however many readings it builds (#385)", async () => {
+  await withFixture(async (sqlite) => {
+    // sale: three readings, two lemma links, a lemma listed by its table.
+    // studente: four readings, inflections, an ambiguous edge. On D1 each
+    // round trip is network time, so a reading's reads go out together and
+    // only a read that needs another's rows waits for it.
+    for (const query of ["sale", "studente", "casa", "andavano"]) {
+      const { db, roundTrips } = countingRoundTrips(sqlite);
+      const plain = await ask(sqlite, query);
+      assert.deepEqual(await lookup({ db, releaseId: RELEASE, query }), plain, `${query}: the same answer`);
+      assert.ok(roundTrips() <= 4, `${query}: ${roundTrips()} round trips`);
+    }
   });
 });
 

@@ -1,4 +1,4 @@
-// `pnpm run update:diff` and `pnpm run update:apply` (#18): compare a later
+// `pnpm run update:diff`, `update:select` and `update:apply` (#18, #377): compare a later
 // kaikki archive with the master, and apply the changes a person chose. Both
 // pick their database the way the seed does: the local D1 under `SEED_STATE`
 // (default `.data/seed-state`), or the remote D1 `SEED_REMOTE` names. Both
@@ -7,7 +7,13 @@
 //
 //   pnpm run update:upgrade
 //   pnpm run update:diff <archive> [--out <dir>]
+//   pnpm run update:select <archive> --pages <dump> [--out <dir>]
 //   pnpm run update:apply <archive> <change id> [<change id> ...] [--out <dir>]
+//   pnpm run update:apply <archive> --ids <file> [--out <dir>]
+//
+// `update:select` sorts the diff's changes by the rule of #377
+// (src/update/selection.ts) and writes the ids it takes to a file that
+// `update:apply --ids` reads.
 //
 // `update:upgrade` gives a dictionary seeded before #18 the tables and views
 // lookups now read (src/update/masterUpgrade.ts), and nothing else. Run it on
@@ -21,14 +27,19 @@ import { ApplyRefused, checkApplied, chooseChanges, planApply } from "./apply.js
 import { diffAgainstMaster, reportMarkdown, reportOf } from "./diff.js";
 import { readMasterRelease, type MasterReader } from "./master.js";
 import { masterUpgradeSql } from "./masterUpgrade.js";
+import { selectChanges, selectionIds, selectionMarkdown, withFeedDump } from "./select.js";
 
 const USAGE = `usage:
   pnpm run update:upgrade [--out <dir>]
   pnpm run update:diff <archive> [--out <dir>]
+  pnpm run update:select <archive> --pages <dump the archive was built from> [--out <dir>]
   pnpm run update:apply <archive> <change id> [<change id> ...] [--out <dir>]
+  pnpm run update:apply <archive> --ids <file of change ids> [--out <dir>]
 The database is the local D1 under SEED_STATE (default .data/seed-state), or the remote D1 SEED_REMOTE names.`;
 
 const SCHEMA = resolve("src/db/schema.sql");
+/** The dump's language headings, which #29's rule reads (src/italian/sectionLanguage.ts). */
+const LANGUAGES = resolve("fixtures/section-language/regressions.json");
 
 /** The master through Wrangler: each SELECT is one `d1 execute --command`. */
 export function masterReaderOf(target: SeedTarget): MasterReader {
@@ -40,22 +51,38 @@ export function masterReaderOf(target: SeedTarget): MasterReader {
   };
 }
 
-/** The positional arguments and the output directory, or what is wrong with the arguments. */
-function readArguments(args: readonly string[]): { positional: string[]; out: string } | string {
-  const positional: string[] = [];
-  let out = resolve(".data/updates");
+/** The options a command takes, each with a path after it. */
+const PATH_OPTIONS = { "--out": "out", "--ids": "ids", "--pages": "pages" } as const;
+
+interface Arguments {
+  positional: string[];
+  out: string;
+  /** A file of change ids, for `update:apply`. */
+  ids?: string;
+  /** The dump the later archive was built from, for `update:select`. */
+  pages?: string;
+}
+
+/** The positional arguments and the options, or what is wrong with the arguments. */
+function readArguments(args: readonly string[]): Arguments | string {
+  const read: Arguments = { positional: [], out: resolve(".data/updates") };
   for (let i = 0; i < args.length; i += 1) {
-    if (args[i] === "--out") {
-      if (args[i + 1] === undefined) return "--out needs a directory";
-      out = resolve(args[i + 1]);
+    if (Object.hasOwn(PATH_OPTIONS, args[i])) {
+      if (args[i + 1] === undefined) return `${args[i]} needs a path`;
+      read[PATH_OPTIONS[args[i] as keyof typeof PATH_OPTIONS]] = resolve(args[i + 1]);
       i += 1;
     } else if (args[i].startsWith("--")) {
       return `unknown argument ${args[i]}`;
     } else {
-      positional.push(args[i]);
+      read.positional.push(args[i]);
     }
   }
-  return { positional, out };
+  return read;
+}
+
+/** The change ids in a file: whitespace between them, and `#` to the end of a line a comment. */
+export function idsInFile(text: string): string[] {
+  return text.split("\n").flatMap((line) => line.replace(/#.*$/, "").split(/\s+/).filter((id) => id !== ""));
 }
 
 const log = (line: string): void => {
@@ -83,11 +110,37 @@ async function diffCommand(target: SeedTarget, args: readonly string[]): Promise
   };
 }
 
+async function selectCommand(target: SeedTarget, args: readonly string[]): Promise<CommandResult> {
+  const read = readArguments(args);
+  if (typeof read === "string") return usageError(read, USAGE);
+  if (read.positional.length !== 1) return usageError("update:select takes one archive and no change ids", USAGE);
+  if (read.pages === undefined) return usageError("update:select needs --pages, the dump the archive was built from", USAGE);
+  const archive = resolve(read.positional[0]);
+  const reader = masterReaderOf(target);
+  log(`reading the master in ${target.dictionary}, ${archive} and ${read.pages}; nothing is written to the database`);
+  const found = await diffAgainstMaster(reader, archive);
+  const selection = await withFeedDump(found.feed, read.pages, LANGUAGES, (pages) => selectChanges(reader, found, pages));
+  await mkdir(read.out, { recursive: true });
+  const base = join(read.out, `selection-${selection.master.releaseId}-${selection.feed.releaseId}`);
+  await writeFile(`${base}.md`, `${selectionMarkdown(selection)}\n`);
+  await writeFile(`${base}.json`, `${JSON.stringify(selection, null, 2)}\n`);
+  await writeFile(`${base}.ids`, selectionIds(selection));
+  return {
+    out:
+      `${selection.feed.releaseId} against ${selection.master.releaseId} by ${selection.rule}: ` +
+      `${selection.taken.length} taken, ${selection.skipped.length} new or changed skipped\n` +
+      `report: ${base}.md\n        ${base}.json\nids:    ${base}.ids`,
+    status: 0,
+  };
+}
+
 async function applyCommand(target: SeedTarget, args: readonly string[]): Promise<CommandResult> {
   const read = readArguments(args);
   if (typeof read === "string") return usageError(read, USAGE);
-  const [given, ...ids] = read.positional;
-  if (given === undefined) return usageError("name the later archive, then the change ids", USAGE);
+  const [given, ...named] = read.positional;
+  if (given === undefined) return usageError("name the later archive, then the change ids or --ids <file>", USAGE);
+  if (read.ids !== undefined && named.length > 0) return usageError("give the change ids or --ids <file>, not both", USAGE);
+  const ids = read.ids === undefined ? named : idsInFile(await readFile(read.ids, "utf8"));
   const archive = resolve(given);
   const reader = masterReaderOf(target);
   log(`reading the master in ${target.dictionary} and ${archive}`);
@@ -151,7 +204,7 @@ async function upgradeCommand(target: SeedTarget, args: readonly string[]): Prom
   return { out: `${target.dictionary} (master ${master.releaseId}) has the tables and views for applied changes; no row was written`, status: 0 };
 }
 
-const COMMANDS = { upgrade: upgradeCommand, diff: diffCommand, apply: applyCommand } as const;
+const COMMANDS = { upgrade: upgradeCommand, diff: diffCommand, select: selectCommand, apply: applyCommand } as const;
 
 export async function main(argv: readonly string[]): Promise<CommandResult> {
   const [command, ...args] = argv;

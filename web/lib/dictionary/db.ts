@@ -1,7 +1,9 @@
-// The dictionary's reads of D1: the lookup, the suggestions and the report
-// box's keys. How server code reaches D1 at all is lib/shared/database.ts.
+// The dictionary's reads of D1: the lookup, the suggestions, the served
+// version and the report box's keys. How server code reaches D1 at all is
+// lib/shared/database.ts.
 import { env } from "cloudflare:workers";
 import { cache } from "react";
+import { servedVersion as readServedVersion, versionToken } from "@lexema/lookup/served.ts";
 import { suggest, type SuggestResult } from "@lexema/lookup/suggest.ts";
 import { database } from "@/lib/shared/database.ts";
 import type { Attempt } from "./attempt.ts";
@@ -66,3 +68,26 @@ export function turnstile(): TurnstileConfig | undefined {
 
 /** The release this Worker serves. */
 export const servedRelease = (): string => env.LEXEMA_RELEASE;
+
+/**
+ * The served version's token (src/lookup/served.ts), or undefined when it
+ * could not be read. One D1 read of one row. Unmemoised, for the card route
+ * (worker/card.ts), which must tell an unread version from a read one.
+ */
+export async function servedVersionOnce(): Promise<string | undefined> {
+  try {
+    return versionToken(await readServedVersion(database(), env.LEXEMA_RELEASE));
+  } catch (error) {
+    console.error("served version failed", error);
+    return undefined;
+  }
+}
+
+/**
+ * The token a page names its card and its suggestions by, memoised for the
+ * request. When the version cannot be read the page still renders, naming the
+ * release alone: no read version ever matches that token, so the card route
+ * sends its card on to the current address, and a suggestion answer kept
+ * under it is newer than anything kept before.
+ */
+export const servedVersion = cache(async (): Promise<string> => (await servedVersionOnce()) ?? env.LEXEMA_RELEASE);

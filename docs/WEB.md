@@ -122,7 +122,11 @@ is the one request the page makes while a reader reads. (The other client parts
 fetch nothing until asked: the mood tabs, the measuring of the etymology line and the word lists, and the
 report box, which posts only when opened and sent.) The route returns JSON rather than a rendered page, so an
 answer costs the prefix query and nothing else. The browser keeps an answer
-five minutes, so a reader retyping a prefix sends no request. There is no edge
+five minutes, so a reader retyping a prefix sends no request. The request names
+the served version, `/suggest?q=ca&v=it-0c432803.0`: the release and the last
+change applied to it, which the page reads in one row
+([`servedVersion`](../src/lookup/served.ts)). A release flip or an apply moves
+it, so no answer kept from before one is reused after it. There is no edge
 cache: Cloudflare bills a cache hit as a request, so it would save none. Everything else above still
 holds: the server renders the field as a plain `<input name="q">` in a GET form,
 and without JavaScript Enter searches as it always did.

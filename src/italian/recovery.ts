@@ -7,6 +7,7 @@
 // carries as a gloss is not recovered a second time.
 
 import type { RawPage } from "../source/rawPage.js";
+import { readHeadwordLine } from "./furniture.js";
 import {
   readItalianSections,
   type LeadIn,
@@ -41,19 +42,34 @@ export interface RecordExample {
   text: string;
 }
 
+const strings = (value: unknown): string[] =>
+  Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : [];
+
+/**
+ * Every `senses[].glosses[]` string of a record's `senses`, as its archive line
+ * holds them: a sense that is not an object, or glosses that are not strings,
+ * give none.
+ */
+export function recordGlosses(senses: unknown): RecordGloss[] {
+  if (!Array.isArray(senses)) return [];
+  return senses.flatMap((sense: unknown, senseIndex) =>
+    typeof sense === "object" && sense !== null
+      ? strings((sense as { glosses?: unknown }).glosses).map((text) => ({ senseIndex, text }))
+      : [],
+  );
+}
+
 /** Every string leaf of the record `recovery` reads, whatever else it holds. */
 export function recordText(record: {
   word: string;
   pos_title: string;
   senses: readonly { glosses?: unknown; examples?: unknown }[];
 }): RecordText {
-  const strings = (value: unknown): string[] =>
-    Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : [];
   return {
     word: record.word,
     posTitle: record.pos_title,
     senseCount: record.senses.length,
-    glosses: record.senses.flatMap((sense, senseIndex) => strings(sense.glosses).map((text) => ({ senseIndex, text }))),
+    glosses: recordGlosses(record.senses),
     examples: record.senses.flatMap((sense, i) =>
       Array.isArray(sense.examples)
         ? sense.examples.flatMap((example: unknown, j) =>
@@ -126,9 +142,10 @@ const comparable = (text: string): string => text.toLowerCase().replace(/\s+/g, 
  * templates differently, so the test is the longest clause of the page text,
  * cut to 40 characters, found inside the carried string — the probe
  * `tools/definition_loss.py verify` uses. A clause under 12 characters proves
- * nothing and matches nothing.
+ * nothing and matches nothing. The lookup asks the same question of a record
+ * that replaced the one a definition was recovered for (src/lookup/recovered.ts).
  */
-function carries(carried: string, text: string): boolean {
+export function carries(carried: string, text: string): boolean {
   const clauses = comparable(text).split(/[,;:]/).map((clause) => clause.trim());
   const probe = clauses.reduce((longest, clause) => (clause.length > longest.length ? clause : longest), "").slice(0, 40);
   if (probe.length < 12) return comparable(carried) === comparable(text);
@@ -157,6 +174,19 @@ function sectionFor(sections: readonly PageSection[], posTitle: string): RecordR
 const asGloss = (text: string): string => text.replace(/\s+/g, " ").trim().replace(/\s*:$/, "");
 
 /**
+ * A record gloss as the renderer prints the `#` line it was read from. On a
+ * line, `{{Pn|w=…}}` prints the headword, and the extraction prints it with
+ * its `( approfondimento)` link: `# {{Pn|w=filetto (araldica)}} detto di:` is
+ * the gloss `filetto ( approfondimento) detto di:` (#399). So a gloss whose
+ * link leads a definition (`readHeadwordLine`) is read without the link. Any
+ * other gloss is its own text.
+ */
+function asLinePrints(gloss: string, word: string): string {
+  const line = readHeadwordLine(gloss, word);
+  return line?.kind === "lead" ? `${word} ${line.prose}` : gloss;
+}
+
+/**
  * Whether a `#` line may read as `text`, in the form `asGloss` gives. A line
  * known whole must equal it. A line with gaps may, when its known parts sit in
  * `text` in order, the first at its start and the last at its end: a gap can
@@ -179,7 +209,8 @@ function mayRead(line: SenseLineText, text: string): boolean {
 /**
  * Where a lead-in is kept. One recovered already is found by its page line.
  * One on a `#` line is a record sense only by text identity, checked on both
- * sides: exactly one sense has a gloss equal to the line's text, and no other
+ * sides: exactly one sense has a gloss that, read as the line prints it
+ * (`asLinePrints`), equals the line's text, and no other
  * `#` line of the section has that text. A gloss that quotes the line, a sense
  * in the line's place, or a text two lines or two senses share places nothing.
  * Anything else leaves the item at the top of the list, and `measure:recovery`
@@ -198,7 +229,9 @@ function placeUnder(
   const text = asGloss(leadIn.text);
   const lines = section.senseLines.filter((line) => mayRead(line.text, text));
   if (lines.length !== 1) return null;
-  const equal = new Set(record.glosses.filter((gloss) => asGloss(gloss.text) === text).map((gloss) => gloss.senseIndex));
+  const equal = new Set(
+    record.glosses.filter((gloss) => asGloss(asLinePrints(gloss.text, record.word)) === text).map((gloss) => gloss.senseIndex),
+  );
   if (equal.size !== 1) return null;
   const [senseIndex] = equal;
   return { in: "sense", senseIndex };

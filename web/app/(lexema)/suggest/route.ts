@@ -1,4 +1,4 @@
-// `GET /suggest?q=<prefix>`: the search field's suggestions, as JSON.
+// `GET /suggest?q=<prefix>&v=<version>`: the search field's suggestions, as JSON.
 //
 // A route handler rather than a page, so an answer costs the prefix query and
 // nothing else — no React render, no layout, no fonts. The body is
@@ -15,9 +15,15 @@ import type { SuggestAnswer } from "@/lib/dictionary/suggestAnswer.ts";
 
 /**
  * How long a browser may reuse an answer, so retyping a prefix sends no request.
- * A release is immutable, so the only way an answer goes stale is the served
- * release changing; five minutes of an old suggestion is harmless, because
- * choosing one runs the real lookup.
+ *
+ * The browser keeps answers by address, and the address names the served
+ * version (#368): `v` is the token of the release and the last change applied
+ * to it (src/lookup/served.ts), which the page reads and the search field
+ * sends (lib/dictionary/suggestionAsker.ts). An activation, a rollback or an
+ * apply moves it, so a page rendered after one asks new addresses and no
+ * answer kept from before is reused. The route itself reads only `q` and
+ * answers from the data served now; an old `v` from a tab opened before the
+ * change gets that newer answer, and nothing older is kept under the new one.
  */
 const MAX_AGE_SECONDS = 300;
 

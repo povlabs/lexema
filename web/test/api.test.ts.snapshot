@@ -1,0 +1,913 @@
+exports[`bello's whole /lookup answer is the one the snapshot holds (#385) 1`] = `
+{
+  "query": "bello",
+  "release_id": "it-api-test",
+  "results": [
+    {
+      "id": "it-api-test:65",
+      "word": "bello",
+      "pos": "adj",
+      "pos_title": "Aggettivo",
+      "match": {
+        "surface": "bello",
+        "via": "headword",
+        "grammar": [
+          {
+            "gender": "maschile",
+            "number": "singolare"
+          }
+        ]
+      },
+      "pronunciations": [
+        {
+          "ipa": "/ˈbɛllo/",
+          "note": null
+        }
+      ],
+      "definitions": [
+        {
+          "definition": "che desta impressione di piacere e gradimento",
+          "labels": [],
+          "examples": [],
+          "items": []
+        },
+        {
+          "definition": "che corrisponde ai canoni della bellezza",
+          "labels": [],
+          "examples": [],
+          "items": []
+        },
+        {
+          "definition": "gradito, con tratti somatici e quindi estetici apprezzati",
+          "labels": [
+            "broadly"
+          ],
+          "examples": [
+            "\\"Ha una faccia bella. Una domanda: ma è anche saggio?\\""
+          ],
+          "items": []
+        },
+        {
+          "definition": "sereno",
+          "labels": [],
+          "examples": [
+            "Oggi il tempo è bello"
+          ],
+          "items": []
+        },
+        {
+          "definition": "che suscita sentimenti positivi ed entusiasmo",
+          "labels": [
+            "figuratively"
+          ],
+          "examples": [
+            "è bello vedere tanti giovani ballare assieme"
+          ],
+          "items": []
+        },
+        {
+          "definition": "agevole, che porta con sé un puro sentire",
+          "labels": [
+            "familiare"
+          ],
+          "examples": [
+            "anche qua è bello"
+          ],
+          "items": []
+        }
+      ],
+      "examples": [],
+      "forms": {
+        "type": "gender_number",
+        "grid": {
+          "maschile": {
+            "singolare": [
+              "bello"
+            ],
+            "plurale": [
+              "belli"
+            ]
+          },
+          "femminile": {
+            "singolare": [
+              "bella"
+            ],
+            "plurale": [
+              "belle"
+            ]
+          }
+        },
+        "superlativo": null
+      },
+      "etymology": "dal latino bĕllus ossia \\"carino, grazioso\\"",
+      "synonyms": [
+        "affascinante",
+        "aggraziato",
+        "appariscente",
+        "armonico",
+        "armonioso",
+        "attraente",
+        "avvenente",
+        "ben fatto",
+        "benfatto",
+        "carino",
+        "delizioso",
+        "elegante",
+        "equilibrato",
+        "gradevole",
+        "grazioso",
+        "incantevole",
+        "leggiadro",
+        "magnifico",
+        "notevole",
+        "piacente",
+        "piacevole",
+        "proporzionato",
+        "ben proporzionato",
+        "scultoreo",
+        "seducente",
+        "splendido",
+        "stupendo",
+        "vistoso",
+        "ameno",
+        "pittoresco",
+        "buono",
+        "generoso",
+        "nobile",
+        "dignitoso",
+        "illustre",
+        "glorioso",
+        "calmo",
+        "chiaro",
+        "limpido",
+        "luminoso",
+        "puro",
+        "sereno",
+        "soleggiato",
+        "mite",
+        "temperato",
+        "divertente",
+        "felice",
+        "lieto",
+        "ammirevole",
+        "appropriato",
+        "corretto",
+        "decoroso",
+        "misurato",
+        "abbondante",
+        "grandioso",
+        "ingente",
+        "imponente",
+        "sontuoso",
+        "pregevole",
+        "mirabile",
+        "cospicuo",
+        "fusto",
+        "adone",
+        "apollo",
+        "amato",
+        "amico",
+        "innamorato",
+        "amante",
+        "ragazzo",
+        "fidanzato",
+        "moroso",
+        "venusto",
+        "grande"
+      ],
+      "antonyms": [
+        "brutto",
+        "deforme",
+        "mostruoso",
+        "orrendo",
+        "sgradevole",
+        "sproporzionato",
+        "cupo",
+        "triste",
+        "buio",
+        "nuvoloso",
+        "piovoso",
+        "tempestoso",
+        "cattivo",
+        "disonesto",
+        "indecoroso",
+        "indegno",
+        "scorretto",
+        "orrido",
+        "orribile",
+        "meschino",
+        "misero",
+        "vile",
+        "ignobile",
+        "abietto",
+        "squallido",
+        "repellente",
+        "sgraziato",
+        "goffo",
+        "racchio",
+        "piccolo",
+        "scarso",
+        "lieve",
+        "modesto",
+        "disarmonico",
+        "squilibrato",
+        "nuvolo",
+        "bruttezza",
+        "disarmonia",
+        "maltempo",
+        "mostro"
+      ],
+      "derived": [
+        "bellezza",
+        "belletto",
+        "bellimbusto",
+        "bellino",
+        "belloccio",
+        "bellona",
+        "bellone",
+        "bellore",
+        "bellosguardo",
+        "bellospirito",
+        "bellumore",
+        "belluria",
+        "bel paese",
+        "belpaese",
+        "beltà",
+        "imbellettarsi"
+      ],
+      "expressions": [
+        {
+          "phrase": "bel bello",
+          "meaning": "tranquillamente, piano piano",
+          "has_entry": false
+        },
+        {
+          "phrase": "farsi bello",
+          "meaning": "vestirsi elegantemente; (senso figurato) vantarsi, pavoneggiarsi",
+          "has_entry": false
+        },
+        {
+          "phrase": "sul più bello",
+          "meaning": "nel momento conclusivo",
+          "has_entry": false
+        },
+        {
+          "phrase": "in bello",
+          "meaning": "migliore",
+          "has_entry": false
+        },
+        {
+          "phrase": "bello e dannato",
+          "meaning": "espressione gergale, utilizzata soprattutto dalla parte femminile, a descrivere una tipologia di ragazzo che vuole affascinare e da cui qualcuna è attratta: spesso però, com'è evidente, è utilizzata in senso dispregiativo",
+          "has_entry": false
+        }
+      ],
+      "attribution": {
+        "licence": "CC BY-SA 4.0",
+        "licence_url": "https://creativecommons.org/licenses/by-sa/4.0/",
+        "source": "Wikizionario",
+        "source_url": "https://it.wiktionary.org/wiki/bello"
+      }
+    },
+    {
+      "id": "it-api-test:66",
+      "word": "bello",
+      "pos": "noun",
+      "pos_title": "Sostantivo",
+      "match": {
+        "surface": "bello",
+        "via": "headword",
+        "grammar": [
+          {
+            "gender": "maschile",
+            "number": "singolare"
+          }
+        ]
+      },
+      "pronunciations": [
+        {
+          "ipa": "/ˈbɛllo/",
+          "note": null
+        }
+      ],
+      "definitions": [
+        {
+          "definition": "categoria positiva dell'estetica; fin dall'antichità ha rappresentato uno dei tre generi supremi di valori, assieme al vero e al bene",
+          "labels": [],
+          "examples": [],
+          "items": []
+        },
+        {
+          "definition": "condizione climatica buona",
+          "labels": [],
+          "examples": [
+            "domani riprenderà il bello?"
+          ],
+          "items": []
+        }
+      ],
+      "examples": [],
+      "forms": {
+        "type": "gender_number",
+        "grid": {
+          "maschile": {
+            "singolare": [
+              "bello"
+            ],
+            "plurale": []
+          }
+        },
+        "superlativo": null
+      },
+      "etymology": "dal latino bĕllus ossia \\"carino, grazioso\\"",
+      "synonyms": [
+        "affascinante",
+        "aggraziato",
+        "appariscente",
+        "armonico",
+        "armonioso",
+        "attraente",
+        "avvenente",
+        "ben fatto",
+        "benfatto",
+        "carino",
+        "delizioso",
+        "elegante",
+        "equilibrato",
+        "gradevole",
+        "grazioso",
+        "incantevole",
+        "leggiadro",
+        "magnifico",
+        "notevole",
+        "piacente",
+        "piacevole",
+        "proporzionato",
+        "ben proporzionato",
+        "scultoreo",
+        "seducente",
+        "splendido",
+        "stupendo",
+        "vistoso",
+        "ameno",
+        "pittoresco",
+        "buono",
+        "generoso",
+        "nobile",
+        "dignitoso",
+        "illustre",
+        "glorioso",
+        "calmo",
+        "chiaro",
+        "limpido",
+        "luminoso",
+        "puro",
+        "sereno",
+        "soleggiato",
+        "mite",
+        "temperato",
+        "divertente",
+        "felice",
+        "lieto",
+        "ammirevole",
+        "appropriato",
+        "corretto",
+        "decoroso",
+        "misurato",
+        "abbondante",
+        "grandioso",
+        "ingente",
+        "imponente",
+        "sontuoso",
+        "pregevole",
+        "mirabile",
+        "cospicuo",
+        "fusto",
+        "adone",
+        "apollo",
+        "amato",
+        "amico",
+        "innamorato",
+        "amante",
+        "ragazzo",
+        "fidanzato",
+        "moroso",
+        "venusto",
+        "grande"
+      ],
+      "antonyms": [
+        "brutto",
+        "deforme",
+        "mostruoso",
+        "orrendo",
+        "sgradevole",
+        "sproporzionato",
+        "cupo",
+        "triste",
+        "buio",
+        "nuvoloso",
+        "piovoso",
+        "tempestoso",
+        "cattivo",
+        "disonesto",
+        "indecoroso",
+        "indegno",
+        "scorretto",
+        "orrido",
+        "orribile",
+        "meschino",
+        "misero",
+        "vile",
+        "ignobile",
+        "abietto",
+        "squallido",
+        "repellente",
+        "sgraziato",
+        "goffo",
+        "racchio",
+        "piccolo",
+        "scarso",
+        "lieve",
+        "modesto",
+        "disarmonico",
+        "squilibrato",
+        "nuvolo",
+        "bruttezza",
+        "disarmonia",
+        "maltempo",
+        "mostro"
+      ],
+      "derived": [
+        "bellezza",
+        "belletto",
+        "bellimbusto",
+        "bellino",
+        "belloccio",
+        "bellona",
+        "bellone",
+        "bellore",
+        "bellosguardo",
+        "bellospirito",
+        "bellumore",
+        "belluria",
+        "bel paese",
+        "belpaese",
+        "beltà",
+        "imbellettarsi"
+      ],
+      "expressions": [
+        {
+          "phrase": "bel bello",
+          "meaning": "tranquillamente, piano piano",
+          "has_entry": false
+        },
+        {
+          "phrase": "farsi bello",
+          "meaning": "vestirsi elegantemente; (senso figurato) vantarsi, pavoneggiarsi",
+          "has_entry": false
+        },
+        {
+          "phrase": "sul più bello",
+          "meaning": "nel momento conclusivo",
+          "has_entry": false
+        },
+        {
+          "phrase": "in bello",
+          "meaning": "migliore",
+          "has_entry": false
+        },
+        {
+          "phrase": "bello e dannato",
+          "meaning": "espressione gergale, utilizzata soprattutto dalla parte femminile, a descrivere una tipologia di ragazzo che vuole affascinare e da cui qualcuna è attratta: spesso però, com'è evidente, è utilizzata in senso dispregiativo",
+          "has_entry": false
+        }
+      ],
+      "attribution": {
+        "licence": "CC BY-SA 4.0",
+        "licence_url": "https://creativecommons.org/licenses/by-sa/4.0/",
+        "source": "Wikizionario",
+        "source_url": "https://it.wiktionary.org/wiki/bello"
+      }
+    },
+    {
+      "id": "it-api-test:67",
+      "word": "bello",
+      "pos": "noun",
+      "pos_title": "Sostantivo",
+      "match": {
+        "surface": "bello",
+        "via": "headword",
+        "grammar": [
+          {
+            "gender": "maschile",
+            "number": "singolare"
+          }
+        ]
+      },
+      "pronunciations": [
+        {
+          "ipa": "/ˈbɛllo/",
+          "note": null
+        }
+      ],
+      "definitions": [
+        {
+          "definition": "individuo di particolare fascino",
+          "labels": [],
+          "examples": [],
+          "items": []
+        }
+      ],
+      "examples": [],
+      "forms": {
+        "type": "gender_number",
+        "grid": {
+          "maschile": {
+            "singolare": [
+              "bello"
+            ],
+            "plurale": [
+              "belli"
+            ]
+          }
+        },
+        "superlativo": null
+      },
+      "etymology": "dal latino bĕllus ossia \\"carino, grazioso\\"",
+      "synonyms": [
+        "affascinante",
+        "aggraziato",
+        "appariscente",
+        "armonico",
+        "armonioso",
+        "attraente",
+        "avvenente",
+        "ben fatto",
+        "benfatto",
+        "carino",
+        "delizioso",
+        "elegante",
+        "equilibrato",
+        "gradevole",
+        "grazioso",
+        "incantevole",
+        "leggiadro",
+        "magnifico",
+        "notevole",
+        "piacente",
+        "piacevole",
+        "proporzionato",
+        "ben proporzionato",
+        "scultoreo",
+        "seducente",
+        "splendido",
+        "stupendo",
+        "vistoso",
+        "ameno",
+        "pittoresco",
+        "buono",
+        "generoso",
+        "nobile",
+        "dignitoso",
+        "illustre",
+        "glorioso",
+        "calmo",
+        "chiaro",
+        "limpido",
+        "luminoso",
+        "puro",
+        "sereno",
+        "soleggiato",
+        "mite",
+        "temperato",
+        "divertente",
+        "felice",
+        "lieto",
+        "ammirevole",
+        "appropriato",
+        "corretto",
+        "decoroso",
+        "misurato",
+        "abbondante",
+        "grandioso",
+        "ingente",
+        "imponente",
+        "sontuoso",
+        "pregevole",
+        "mirabile",
+        "cospicuo",
+        "fusto",
+        "adone",
+        "apollo",
+        "amato",
+        "amico",
+        "innamorato",
+        "amante",
+        "ragazzo",
+        "fidanzato",
+        "moroso",
+        "venusto",
+        "grande"
+      ],
+      "antonyms": [
+        "brutto",
+        "deforme",
+        "mostruoso",
+        "orrendo",
+        "sgradevole",
+        "sproporzionato",
+        "cupo",
+        "triste",
+        "buio",
+        "nuvoloso",
+        "piovoso",
+        "tempestoso",
+        "cattivo",
+        "disonesto",
+        "indecoroso",
+        "indegno",
+        "scorretto",
+        "orrido",
+        "orribile",
+        "meschino",
+        "misero",
+        "vile",
+        "ignobile",
+        "abietto",
+        "squallido",
+        "repellente",
+        "sgraziato",
+        "goffo",
+        "racchio",
+        "piccolo",
+        "scarso",
+        "lieve",
+        "modesto",
+        "disarmonico",
+        "squilibrato",
+        "nuvolo",
+        "bruttezza",
+        "disarmonia",
+        "maltempo",
+        "mostro"
+      ],
+      "derived": [
+        "bellezza",
+        "belletto",
+        "bellimbusto",
+        "bellino",
+        "belloccio",
+        "bellona",
+        "bellone",
+        "bellore",
+        "bellosguardo",
+        "bellospirito",
+        "bellumore",
+        "belluria",
+        "bel paese",
+        "belpaese",
+        "beltà",
+        "imbellettarsi"
+      ],
+      "expressions": [
+        {
+          "phrase": "bel bello",
+          "meaning": "tranquillamente, piano piano",
+          "has_entry": false
+        },
+        {
+          "phrase": "farsi bello",
+          "meaning": "vestirsi elegantemente; (senso figurato) vantarsi, pavoneggiarsi",
+          "has_entry": false
+        },
+        {
+          "phrase": "sul più bello",
+          "meaning": "nel momento conclusivo",
+          "has_entry": false
+        },
+        {
+          "phrase": "in bello",
+          "meaning": "migliore",
+          "has_entry": false
+        },
+        {
+          "phrase": "bello e dannato",
+          "meaning": "espressione gergale, utilizzata soprattutto dalla parte femminile, a descrivere una tipologia di ragazzo che vuole affascinare e da cui qualcuna è attratta: spesso però, com'è evidente, è utilizzata in senso dispregiativo",
+          "has_entry": false
+        }
+      ],
+      "attribution": {
+        "licence": "CC BY-SA 4.0",
+        "licence_url": "https://creativecommons.org/licenses/by-sa/4.0/",
+        "source": "Wikizionario",
+        "source_url": "https://it.wiktionary.org/wiki/bello"
+      }
+    },
+    {
+      "id": "it-api-test:96",
+      "word": "bella",
+      "pos": "adj",
+      "pos_title": "Aggettivo, forma flessa",
+      "match": {
+        "surface": "bello",
+        "via": "form",
+        "grammar": [
+          {
+            "gender": "maschile",
+            "number": "singolare"
+          }
+        ]
+      },
+      "pronunciations": [
+        {
+          "ipa": "/ˈbɛlla/",
+          "note": null
+        }
+      ],
+      "definitions": [
+        {
+          "definition": "femminile singolare di bello",
+          "labels": [],
+          "examples": [],
+          "items": []
+        }
+      ],
+      "examples": [],
+      "forms": {
+        "type": "gender_number",
+        "grid": {
+          "maschile": {
+            "singolare": [
+              "bello"
+            ],
+            "plurale": [
+              "belli"
+            ]
+          },
+          "femminile": {
+            "singolare": [
+              "bella"
+            ],
+            "plurale": [
+              "belle"
+            ]
+          }
+        },
+        "superlativo": {
+          "maschile": {
+            "singolare": [
+              "bellissimo"
+            ],
+            "plurale": [
+              "bellissimi"
+            ]
+          },
+          "femminile": {
+            "singolare": [
+              "bellissima"
+            ],
+            "plurale": [
+              "bellissime"
+            ]
+          }
+        }
+      },
+      "etymology": "vedi bello",
+      "synonyms": [
+        "stupenda",
+        "splendida",
+        "magnifica",
+        "incantevole",
+        "avvenente",
+        "affascinante",
+        "attraente",
+        "seducente",
+        "appariscente",
+        "notevole",
+        "vistosa",
+        "piacente",
+        "aggraziata",
+        "graziosa",
+        "carina",
+        "piacevole",
+        "gradevole",
+        "deliziosa",
+        "amena",
+        "leggiadra",
+        "elegante",
+        "armoniosa",
+        "equilibrata",
+        "ben fatta",
+        "ben proporzionata",
+        "armonica",
+        "scultorea",
+        "buona",
+        "generosa",
+        "nobile",
+        "dignitosa",
+        "illustre",
+        "gloriosa",
+        "luminosa",
+        "soleggiata",
+        "limpida",
+        "chiara",
+        "serena",
+        "mite",
+        "temperata",
+        "grandiosa",
+        "grande",
+        "ingente",
+        "abbondante",
+        "imponente",
+        "sontuosa",
+        "pregevole",
+        "mirabile",
+        "cospicua",
+        "fusta",
+        "amante",
+        "compagna",
+        "fidanzata",
+        "innamorata",
+        "ragazza",
+        "amata",
+        "donna amata",
+        "amica",
+        "angelo",
+        "bellezza",
+        "diva",
+        "divina",
+        "donna fatale",
+        "fata",
+        "maliarda",
+        "sirena",
+        "venere",
+        "bella copia",
+        "compilazione finale",
+        "compilazione definitiva",
+        "redazione finale",
+        "redazione definitiva",
+        "partita finale",
+        "partita decisiva",
+        "spareggio"
+      ],
+      "antonyms": [
+        "brutta",
+        "sgradevole",
+        "orrenda",
+        "orrida",
+        "orribile",
+        "mostruosa",
+        "cattiva",
+        "meschina",
+        "misera",
+        "triste",
+        "vile",
+        "ignobile",
+        "abietta",
+        "squallida",
+        "piccola",
+        "scarsa",
+        "lieve",
+        "modesta",
+        "mostra"
+      ],
+      "derived": [
+        "belladonna"
+      ],
+      "expressions": [
+        {
+          "phrase": "oh bella !",
+          "meaning": "espressione che indica stupore",
+          "has_entry": false
+        },
+        {
+          "phrase": "scamparla bella",
+          "meaning": null,
+          "has_entry": false
+        },
+        {
+          "phrase": "a bella posta",
+          "meaning": null,
+          "has_entry": false
+        },
+        {
+          "phrase": "alla bella e meglio",
+          "meaning": null,
+          "has_entry": false
+        },
+        {
+          "phrase": "fare la bella vita",
+          "meaning": "spassarsela",
+          "has_entry": false
+        }
+      ],
+      "attribution": {
+        "licence": "CC BY-SA 4.0",
+        "licence_url": "https://creativecommons.org/licenses/by-sa/4.0/",
+        "source": "Wikizionario",
+        "source_url": "https://it.wiktionary.org/wiki/bella"
+      }
+    }
+  ]
+}
+`;

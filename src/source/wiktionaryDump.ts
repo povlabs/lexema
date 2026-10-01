@@ -29,6 +29,21 @@ export const ARCHIVE_DUMP: Readonly<DumpIdentity & { file: string; url: string }
   sha1: "2bdd444236f7dcd26fee3652dbd641c31d0d9651",
 };
 
+/**
+ * Every dump a release Lexema reads was built from, by its id: the master's,
+ * and the dump each feed's build log names (src/source/archiveFacts.ts). A
+ * feed's selection judges the feed's records on its own dump (#377).
+ */
+export const KNOWN_DUMPS: Readonly<Record<string, DumpIdentity & { file: string; url: string }>> = {
+  "itwiktionary-20260701": ARCHIVE_DUMP,
+  "itwiktionary-20260901": {
+    file: "itwiktionary-20260901-pages-articles.xml.bz2",
+    url: "https://dumps.wikimedia.org/itwiktionary/20260901/itwiktionary-20260901-pages-articles.xml.bz2",
+    bytes: 71_291_038,
+    sha1: "c72d2411b1de9df8e8b3d62af0efa24862c59f68",
+  },
+};
+
 /** The main namespace: dictionary entries. Every other namespace is skipped. */
 const MAIN_NAMESPACE = 0;
 

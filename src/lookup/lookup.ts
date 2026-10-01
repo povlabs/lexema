@@ -4,10 +4,12 @@
 
 import { IT_NORMALIZER_VERSION, normalizeItalianExact } from "../italian/normalize.js";
 import { shownGloss } from "../italian/headwordEcho.js";
+import { recordGlosses, type RecordGloss } from "../italian/recovery.js";
 import { readingPartOfSpeech } from "./articles.js";
 import type { DictionaryRead, LookupDatabase } from "./database.js";
 import { phraseForms, phraseMatches } from "./phrase.js";
 import { readExpressions } from "./expressions.js";
+import { placeRecovered, type RecoveredOfRecord, type StoredRecovered } from "./recovered.js";
 import { lineageOf, servedBy } from "./served.js";
 import { readSourceRecord, type SourceRecordFields } from "./sourceRecord.js";
 import type {
@@ -98,22 +100,36 @@ export function rejectionOf(query: string): RejectedQuery | undefined {
   return undefined;
 }
 
-/** A query that passed every check and names a servable release: ready to probe the index. */
-interface ReadyQuery {
+/** A query that passed every check and names a servable release, with what its probe of the index read. */
+interface ProbedQuery<T> {
   outcome: "ready";
   query: QueryInfo;
   release: ReleaseInfo;
+  probed: T;
 }
 
 /**
- * The checks every probe of the index makes first: a query that is not empty
- * and not too long, a complete release, and that release's own normalizer.
+ * The checks every probe of the index makes first — a query that is not empty
+ * and not too long, a complete release, and that release's own normalizer —
+ * and the probe itself. The probe needs only the key, so it is sent beside the
+ * release read rather than after it: one wait on the database, not two (#385).
+ * Its rows count only once the release has passed; a release that fails
+ * throws its own error, whatever the probe answered.
  */
-async function prepareQuery(db: LookupDatabase, releaseId: string, query: string): Promise<RejectedResult | ReadyQuery> {
+async function probeQuery<T>(
+  db: LookupDatabase,
+  releaseId: string,
+  query: string,
+  probe: (key: string) => Promise<T>,
+): Promise<RejectedResult | ProbedQuery<T>> {
   const rejection = rejectionOf(query);
   if (rejection !== undefined) return { outcome: "rejected", query: { raw: query }, rejection };
+  const probing = probe(keyOf(query));
+  // Settled here so a probe that fails while the release check throws is not
+  // an unhandled rejection; it is still awaited, and thrown, below.
+  probing.catch(() => undefined);
   const release = await servableRelease(db, releaseId);
-  return { outcome: "ready", query: queryInfoOf(query, release), release };
+  return { outcome: "ready", query: queryInfoOf(query, release), release, probed: await probing };
 }
 
 /**
@@ -141,8 +157,11 @@ export async function servableRelease(db: LookupDatabase, releaseId: string): Pr
 
 /** A query `rejectionOf` accepts, keyed for the index by the release's normalizer. */
 export function queryInfoOf(query: string, release: ReleaseInfo): QueryInfo {
-  return { raw: query, key: normalizeItalianExact(query.trim()), normalizer: release.normalizer };
+  return { raw: query, key: keyOf(query), normalizer: release.normalizer };
 }
+
+/** The index key of a query `rejectionOf` accepts. */
+const keyOf = (query: string): string => normalizeItalianExact(query.trim());
 
 /**
  * Whether a lookup of the query would find anything, read without building a
@@ -156,9 +175,9 @@ export type ExistsResult =
   | { outcome: "present"; query: QueryInfo; release: ReleaseInfo; word: string };
 
 export async function exists({ db, releaseId, query }: LookupOptions): Promise<ExistsResult> {
-  const prepared = await prepareQuery(db, releaseId, query);
+  const prepared = await probeQuery(db, releaseId, query, (key) => queryAll<HitRow>(db, `${SEARCH_SQL}\n      LIMIT 1`, releaseId, key));
   if (prepared.outcome === "rejected") return prepared;
-  const [first] = await queryAll<HitRow>(db, `${SEARCH_SQL}\n      LIMIT 1`, releaseId, prepared.query.key);
+  const [first] = prepared.probed;
   const word = first?.record_word ?? (await phraseHits(db, releaseId, prepared.query.key))?.hits[0].record_word;
   return word === undefined
     ? { outcome: "absent", query: prepared.query, release: prepared.release }
@@ -196,12 +215,11 @@ async function phraseHits(
 }
 
 export async function lookup({ db, releaseId, query }: LookupOptions): Promise<LookupResult> {
-  const prepared = await prepareQuery(db, releaseId, query);
+  const prepared = await probeQuery(db, releaseId, query, (key) => queryAll<HitRow>(db, SEARCH_SQL, releaseId, key));
   if (prepared.outcome === "rejected") return prepared;
-  const { release, query: queryInfo } = prepared;
+  const { release, query: queryInfo, probed: hits } = prepared;
   const { key } = queryInfo;
 
-  const hits = await queryAll<HitRow>(db, SEARCH_SQL, releaseId, key);
   if (hits.length > 0) return found(db, releaseId, queryInfo, release, hits, { kind: "surface" });
 
   // Nothing spells the query. A query of several words may still be a
@@ -234,17 +252,34 @@ async function found(
     // Source order, so the result does not imply a ranking it has not earned.
     .sort((a, b) => a[0].line_no - b[0].line_no);
 
-  // A record's forms are read once, whether it becomes a reading, a lemma's
-  // listing, or both.
-  const tables = new Map<number, Promise<RecordTable>>();
-  const tableOf = (group: HitRow[]): Promise<RecordTable> => {
-    const recordId = group[0].record_id;
-    let table = tables.get(recordId);
-    if (table === undefined) {
-      table = readTable(db, recordId, refOn(group[0]));
-      tables.set(recordId, table);
-    }
+  // Every record's forms are read now, beside its lemma links: a record kept
+  // as a reading shows them, and a record taken out as a reading's lemma is
+  // listed by them, so none is read for nothing (#385).
+  const tables = new Map(
+    groups.map((group) => {
+      const table = readTable(db, group[0].record_id, refOn(group[0]));
+      // Awaited by the reading or listing that shows it; marked handled so a
+      // lookup that fails before then does not also leave it unhandled.
+      table.catch(() => undefined);
+      return [group[0].record_id, table] as const;
+    }),
+  );
+  const tableOf = (group: readonly HitRow[]): Promise<RecordTable> => {
+    const table = tables.get(group[0].record_id);
+    if (table === undefined) throw new Error(`record ${group[0].record_id} matched nothing this lookup grouped`);
     return table;
+  };
+
+  // A record's verbatim line, read once whether it is a reading, a lemma a
+  // link names, or both.
+  const records = new Map<number, Promise<RecordLine>>();
+  const recordOf = (recordId: number): Promise<RecordLine> => {
+    let record = records.get(recordId);
+    if (record === undefined) {
+      record = readRecord(db, recordId);
+      records.set(recordId, record);
+    }
+    return record;
   };
 
   const declared = new Map(
@@ -279,7 +314,7 @@ async function found(
   const expressionsOf = (candidate: LemmaCandidate): Promise<Expression[]> => {
     let expressions = lemmaExpressions.get(candidate.recordId);
     if (expressions === undefined) {
-      expressions = readRecordExpressions(db, releaseId, candidate.recordId, (pointer) => ({ ...candidate.ref, jsonPointer: pointer }));
+      expressions = readRecordExpressions(db, releaseId, recordOf(candidate.recordId), (pointer) => ({ ...candidate.ref, jsonPointer: pointer }));
       lemmaExpressions.set(candidate.recordId, expressions);
     }
     return expressions;
@@ -290,19 +325,22 @@ async function found(
       links.map(async (link): Promise<LemmaLink> => {
         if (link.kind === "dangling") return link;
         const candidates = await Promise.all(
-          link.candidates.map(async (candidate) => ({
-            ...candidate,
-            listing: await listingOf(candidate.recordId),
-            expressions: await expressionsOf(candidate),
-          })),
+          link.candidates.map(async (candidate) => {
+            const [listing, expressions] = await Promise.all([listingOf(candidate.recordId), expressionsOf(candidate)]);
+            return { ...candidate, listing, expressions };
+          }),
         );
         return { ...link, candidates };
       }),
     );
 
   const kept = groups.filter((group) => isAbout(group) || !lemmaIds.has(group[0].record_id));
-  const build = async (group: HitRow[]): Promise<Reading> =>
-    buildReading(db, releaseId, group, await tableOf(group), await resolve(declared.get(group[0].record_id) ?? []));
+  const build = (group: HitRow[]): Promise<Reading> =>
+    buildReading(db, releaseId, group, {
+      table: tableOf(group),
+      record: recordOf(group[0].record_id),
+      lemmaLinks: resolve(declared.get(group[0].record_id) ?? []),
+    });
 
   // A lemma is only ever taken out on behalf of a reading about the query, so
   // at least one group is kept; the tuple is what `found` requires.
@@ -474,46 +512,65 @@ async function readTable(
   recordId: number,
   ref: (pointer: string) => SourceRef,
 ): Promise<RecordTable> {
-  // Read before the forms: a form's claims are the ones this grouped by index,
-  // so the two must be one read rather than two.
-  const grammar = await readGrammar(db, recordId, ref);
-  return { grammar, forms: await readForms(db, recordId, ref, grammar) };
+  // A form's claims are the ones the grammar groups by index, so the grammar is
+  // one read joined to the forms here, not read again per form. Neither read
+  // needs the other's rows, so both are sent at once.
+  const [grammar, forms] = await Promise.all([readGrammar(db, recordId, ref), readFormRows(db, recordId)]);
+  return { grammar, forms: formsOf(forms, ref, grammar) };
+}
+
+/** The reads one reading is built from that the lookup started before it. */
+interface ReadingInputs {
+  table: Promise<RecordTable>;
+  record: Promise<RecordLine>;
+  lemmaLinks: Promise<LemmaLink[]>;
 }
 
 async function buildReading(
   db: LookupDatabase,
   releaseId: string,
   group: HitRow[],
-  { grammar, forms }: RecordTable,
-  lemmaLinks: LemmaLink[],
+  inputs: ReadingInputs,
 ): Promise<Reading> {
   const first = group[0];
   const recordId = first.record_id;
-  const record = await readRecord(db, recordId);
   const ref = refOn(first);
-  const source = readSourceRecord(record.rawJson, ref);
-  const recovered = await readRecovered(db, recordId);
+  // Each read waits only on the ones it needs, and the rest go to the database
+  // together: on D1 every wait is a network round trip (#385).
+  const source = inputs.record.then((record) => readSourceRecord(record.rawJson, ref));
+  const [{ grammar, forms }, lemmaLinks, record, fields, expressions, recovered, senseRows, inflections, reviews] =
+    await Promise.all([
+      inputs.table,
+      inputs.lemmaLinks,
+      inputs.record,
+      source,
+      source.then((fields) => readExpressions(db, releaseId, fields.expressionItems)),
+      readRecovered(db, recordId, inputs.record),
+      readSenseRows(db, recordId),
+      readInflections(db, releaseId, recordId),
+      readReviews(db, recordId),
+    ]);
 
   return {
     recordId,
     ref: ref(""),
     word: first.record_word,
     posTitle: record.posTitle,
-    wordFacts: { ...source.wordFacts, expressions: await readExpressions(db, releaseId, source.expressionItems) },
+    wordFacts: { ...fields.wordFacts, expressions },
     isAboutQuery: isAbout(group),
     evidence: evidenceOf(group),
-    senses: await readSenses(db, recordId, first.record_word, ref, source, recovered.underSense),
+    senses: sensesOf(senseRows, first.record_word, ref, fields, recovered.underSense),
     forms,
     grammar,
     lemmaLinks,
-    inflections: await readInflections(db, releaseId, recordId),
-    reviews: await readReviews(db, recordId),
+    inflections,
+    reviews,
     recovered: recovered.topLevel,
     // Derived, not read: the release carries no article field. The headword, the
     // grammar the source stated about the record and the record's own IPA are
     // the only inputs, and a reading that is not a noun comes back carrying no
     // articles at all.
-    ...readingPartOfSpeech(first.record_pos, first.record_word, grammar.record, forms, source.wordFacts.pronunciations),
+    ...readingPartOfSpeech(first.record_pos, first.record_word, grammar.record, forms, fields.wordFacts.pronunciations),
   };
 }
 
@@ -521,20 +578,22 @@ async function buildReading(
 async function readRecordExpressions(
   db: LookupDatabase,
   releaseId: string,
-  recordId: number,
+  record: Promise<RecordLine>,
   ref: (pointer: string) => SourceRef,
 ): Promise<Expression[]> {
-  const record = await readRecord(db, recordId);
-  return readExpressions(db, releaseId, readSourceRecord(record.rawJson, ref).expressionItems);
+  return readExpressions(db, releaseId, readSourceRecord((await record).rawJson, ref).expressionItems);
 }
 
-async function readRecord(
-  db: LookupDatabase,
-  recordId: number,
-): Promise<{ posTitle: string; rawJson: string }> {
-  // The verbatim line is read here, once per returned reading and once per
-  // lemma a reading names (for its expressions, #213), and never for any other
-  // record: the table is split off for exactly that.
+/** A record's section title and its verbatim archive line. */
+interface RecordLine {
+  posTitle: string;
+  rawJson: string;
+}
+
+async function readRecord(db: LookupDatabase, recordId: number): Promise<RecordLine> {
+  // The verbatim line is read here, once per record that is a returned reading
+  // or a lemma a reading names (for its expressions, #213), and never for any
+  // other record: the table is split off for exactly that.
   const row = await queryOne<{ pos_title: string; raw_json: string }>(
     db,
     `SELECT r.pos_title, j.raw_json
@@ -547,14 +606,45 @@ async function readRecord(
   return { posTitle: row.pos_title, rawJson: row.raw_json };
 }
 
-async function readSenses(
-  db: LookupDatabase,
-  recordId: number,
+/** A record's senses as the database holds them: each gloss, and each label. */
+interface SenseRows {
+  glosses: { sense_index: number; sense_pointer: string; text: string | null; json_pointer: string | null }[];
+  labels: { sense_index: number; sense_pointer: string; kind: "tag" | "raw_tag"; label: string; json_pointer: string }[];
+}
+
+/** Both reads of a record's senses, sent at once: neither needs the other's rows. */
+async function readSenseRows(db: LookupDatabase, recordId: number): Promise<SenseRows> {
+  const [glosses, labels] = await Promise.all([
+    // A sense with no gloss still gets a row, because "this sense exists and
+    // says nothing" is a fact worth showing rather than a sense to drop.
+    queryAll<SenseRows["glosses"][number]>(
+      db,
+      `SELECT s.sense_index, s.json_pointer AS sense_pointer, g.text, g.json_pointer
+       FROM sense s
+       LEFT JOIN sense_gloss g ON g.sense_id = s.sense_id
+      WHERE s.record_id = ?
+      ORDER BY s.sense_index, g.gloss_index`, recordId,
+    ),
+    queryAll<SenseRows["labels"][number]>(
+      db,
+      `SELECT s.sense_index, s.json_pointer AS sense_pointer, l.kind, l.label, l.json_pointer
+       FROM sense s
+       JOIN sense_label l ON l.sense_id = s.sense_id
+      WHERE s.record_id = ?
+      ORDER BY s.sense_index, l.kind, l.label_index`, recordId,
+    ),
+  ]);
+  return { glosses, labels };
+}
+
+/** A record's senses, built from its rows, its headword, its archive line and its recovered items. */
+function sensesOf(
+  rows: SenseRows,
   word: string,
   ref: (pointer: string) => SourceRef,
   source: SourceRecordFields,
   recoveredItems: ReadonlyMap<number, RecoveredDefinition[]>,
-): Promise<Sense[]> {
+): Sense[] {
   const senses = new Map<number, Sense>();
   const ensure = (index: number, pointer: string): Sense => {
     let sense = senses.get(index);
@@ -572,27 +662,11 @@ async function readSenses(
     return sense;
   };
 
-  // A sense with no gloss still gets a row, because "this sense exists and says
-  // nothing" is a fact worth showing rather than a sense to drop.
-  const glossRows = await queryAll<{
-    sense_index: number;
-    sense_pointer: string;
-    text: string | null;
-    json_pointer: string | null;
-  }>(
-    db,
-    `SELECT s.sense_index, s.json_pointer AS sense_pointer, g.text, g.json_pointer
-       FROM sense s
-       LEFT JOIN sense_gloss g ON g.sense_id = s.sense_id
-      WHERE s.record_id = ?
-      ORDER BY s.sense_index, g.gloss_index`, recordId,
-  );
-
   // Wikizionario's "definizione mancante; se vuoi, aggiungila tu" is a template,
   // not a gloss (#255), and a gloss that only repeats the headword (`presina`)
   // says nothing (#395): a gloss that is only one of those is no gloss, so its
   // sense reads as one that says nothing.
-  for (const row of glossRows) {
+  for (const row of rows.glosses) {
     const sense = ensure(row.sense_index, row.sense_pointer);
     const text = row.text === null ? undefined : shownGloss(row.text, word);
     if (text !== undefined && row.json_pointer !== null) {
@@ -600,22 +674,7 @@ async function readSenses(
     }
   }
 
-  const labelRows = await queryAll<{
-    sense_index: number;
-    sense_pointer: string;
-    kind: "tag" | "raw_tag";
-    label: string;
-    json_pointer: string;
-  }>(
-    db,
-    `SELECT s.sense_index, s.json_pointer AS sense_pointer, l.kind, l.label, l.json_pointer
-       FROM sense s
-       JOIN sense_label l ON l.sense_id = s.sense_id
-      WHERE s.record_id = ?
-      ORDER BY s.sense_index, l.kind, l.label_index`, recordId,
-  );
-
-  for (const row of labelRows) {
+  for (const row of rows.labels) {
     ensure(row.sense_index, row.sense_pointer).labels.push({
       kind: row.kind,
       label: row.label,
@@ -634,6 +693,16 @@ export const RECORD_FORM_SQL = `SELECT form_index, surface, json_pointer, form_s
        FROM lookup_form
       WHERE record_id = ? AND origin = 'embedded-form'`;
 
+/** One of the record's own `forms[]` entries, as `RECORD_FORM_SQL` returns it. */
+interface FormRow {
+  form_index: number;
+  surface: string;
+  json_pointer: string;
+  form_source: string | null;
+}
+
+const readFormRows = (db: LookupDatabase, recordId: number): Promise<FormRow[]> => queryAll<FormRow>(db, RECORD_FORM_SQL, recordId);
+
 /**
  * Every form the record lists, in the order the source wrote them.
  *
@@ -642,19 +711,7 @@ export const RECORD_FORM_SQL = `SELECT form_index, surface, json_pointer, form_s
  * grouped by index on `grammar.byForm`, so the two are joined in memory instead
  * of read twice.
  */
-async function readForms(
-  db: LookupDatabase,
-  recordId: number,
-  ref: (pointer: string) => SourceRef,
-  grammar: Grammar,
-): Promise<SourceForm[]> {
-  const rows = await queryAll<{
-    form_index: number;
-    surface: string;
-    json_pointer: string;
-    form_source: string | null;
-  }>(db, RECORD_FORM_SQL, recordId);
-
+function formsOf(rows: readonly FormRow[], ref: (pointer: string) => SourceRef, grammar: Grammar): SourceForm[] {
   return rows
     .map((row) => ({
       index: row.form_index,
@@ -977,7 +1034,7 @@ async function readReviews(db: LookupDatabase, recordId: number): Promise<Review
  * The recovered layer's definitions for one record, with their labels and
  * examples. Exported so a test can hold the query to its plan.
  */
-export const RECOVERED_SQL: DictionaryRead = `SELECT d.recovered_id, d.route, d.term, d.page_line, d.text, d.held_as_example,
+export const RECOVERED_SQL: DictionaryRead = `SELECT d.recovered_id, d.record_id, d.route, d.term, d.page_line, d.text, d.held_as_example,
             d.lead_in_sense_index, d.lead_in_recovered_id, p.wiki, p.title, p.revision_id,
             h.release_id, h.line_no, h.line_sha256
        FROM recovered_definition d
@@ -986,22 +1043,16 @@ export const RECOVERED_SQL: DictionaryRead = `SELECT d.recovered_id, d.route, d.
       WHERE d.record_id IN (${lineageOf("?1")})
       ORDER BY d.record_id, d.definition_index`;
 
-/** A record's recovered definitions, placed where the page lists them. */
-interface RecoveredOfRecord {
-  /** At the top of the section's list, after the record's senses. */
-  topLevel: RecoveredDefinition[];
-  /** Items of the list a sense the record carries opens, by sense index. */
-  underSense: Map<number, RecoveredDefinition[]>;
-}
-
 /**
  * The recovered definitions of a record and of every record it replaced: a
  * change applied from a later release leaves them on the record they were
- * recovered for, and the page reads them for the record that replaced it.
+ * recovered for, and the page reads them for the record that replaced it,
+ * checked against its own line (`placeRecovered`).
  */
-async function readRecovered(db: LookupDatabase, recordId: number): Promise<RecoveredOfRecord> {
+async function readRecovered(db: LookupDatabase, recordId: number, record: Promise<RecordLine>): Promise<RecoveredOfRecord> {
   const rows = await queryAll<{
     recovered_id: number;
+    record_id: number;
     route: RecoveredRoute["route"];
     term: string | null;
     page_line: number;
@@ -1016,25 +1067,42 @@ async function readRecovered(db: LookupDatabase, recordId: number): Promise<Reco
     line_no: number;
     line_sha256: string;
   }>(db, RECOVERED_SQL, recordId);
-  const placed: RecoveredOfRecord = { topLevel: [], underSense: new Map() };
-  if (rows.length === 0) return placed;
+  if (rows.length === 0) return { topLevel: [], underSense: new Map() };
 
   const ids = rows.map((row) => row.recovered_id);
   const marks = ids.map(() => "?").join(",");
-  const labels = await queryAll<{ recovered_id: number; label: string }>(
-    db,
-    `SELECT recovered_id, label FROM recovered_label WHERE recovered_id IN (${marks}) ORDER BY recovered_id, label_index`,
-    ...ids,
-  );
-  const examples = await queryAll<{ recovered_id: number; page_line: number; text: string }>(
-    db,
-    `SELECT recovered_id, page_line, text FROM recovered_example WHERE recovered_id IN (${marks}) ORDER BY recovered_id, example_index`,
-    ...ids,
-  );
+  // A lead-in sense of a replaced record is found again by its glosses, so
+  // that record's line is read, and only when some row needs it.
+  const replaced = [
+    ...new Set(rows.filter((row) => row.record_id !== recordId && row.lead_in_sense_index !== null).map((row) => row.record_id)),
+  ];
+  const [labels, examples, replacedLines, served] = await Promise.all([
+    queryAll<{ recovered_id: number; label: string }>(
+      db,
+      `SELECT recovered_id, label FROM recovered_label WHERE recovered_id IN (${marks}) ORDER BY recovered_id, label_index`,
+      ...ids,
+    ),
+    queryAll<{ recovered_id: number; page_line: number; text: string }>(
+      db,
+      `SELECT recovered_id, page_line, text FROM recovered_example WHERE recovered_id IN (${marks}) ORDER BY recovered_id, example_index`,
+      ...ids,
+    ),
+    replaced.length === 0
+      ? []
+      : queryAll<{ record_id: number; raw_json: string }>(
+          db,
+          `SELECT record_id, raw_json FROM source_record_json WHERE record_id IN (${replaced.map(() => "?").join(",")})`,
+          ...replaced,
+        ),
+    record,
+  ]);
+  const glossesOf = (rawJson: string): RecordGloss[] => {
+    const parsed: unknown = JSON.parse(rawJson);
+    return recordGlosses(typeof parsed === "object" && parsed !== null ? (parsed as { senses?: unknown }).senses : undefined);
+  };
+  const replacedGlosses = new Map(replacedLines.map((line) => [line.record_id, glossesOf(line.raw_json)]));
 
-  // Rows come in page order, and the schema holds a lead-in's id below its
-  // items', so every recovered lead-in is placed before its first item.
-  const byId = new Map<number, RecoveredDefinition>();
+  const stored: StoredRecovered[] = [];
   for (const row of rows) {
     const at = (line: number) => ({ wiki: row.wiki, title: row.title, revisionId: row.revision_id, line });
     // The schema ties `term` to the sub-term route, so a null here is a
@@ -1054,18 +1122,17 @@ async function readRecovered(db: LookupDatabase, recordId: number): Promise<Reco
       heldAsExample: row.held_as_example === null ? null : refOn(row)(row.held_as_example),
       items: [],
     };
-    byId.set(row.recovered_id, definition);
-    if (row.lead_in_recovered_id !== null) {
-      const leadIn = byId.get(row.lead_in_recovered_id);
-      if (leadIn === undefined) throw new Error(`recovered ${row.recovered_id} names lead-in ${row.lead_in_recovered_id}, not read before it`);
-      leadIn.items.push(definition);
-    } else if (row.lead_in_sense_index !== null) {
-      const items = placed.underSense.get(row.lead_in_sense_index) ?? [];
-      items.push(definition);
-      placed.underSense.set(row.lead_in_sense_index, items);
+    const id = row.recovered_id;
+    const recovered = row.lead_in_recovered_id === null ? null : { in: "recovered" as const, id: row.lead_in_recovered_id };
+    const sense = row.lead_in_sense_index;
+    if (row.record_id === recordId) {
+      stored.push({ id, definition, writtenFor: "served", leadIn: recovered ?? (sense === null ? null : { in: "sense", senseIndex: sense }) });
     } else {
-      placed.topLevel.push(definition);
+      const old = sense === null ? undefined : replacedGlosses.get(row.record_id);
+      if (sense !== null && old === undefined) throw new Error(`record ${row.record_id} vanished mid-lookup`);
+      const glosses = (old ?? []).filter((gloss) => gloss.senseIndex === sense).map((gloss) => gloss.text);
+      stored.push({ id, definition, writtenFor: "replaced", leadIn: recovered ?? (sense === null ? null : { in: "sense", glosses }) });
     }
   }
-  return placed;
+  return placeRecovered(stored, glossesOf(served.rawJson));
 }

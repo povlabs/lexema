@@ -1,5 +1,6 @@
 // What a card is drawn with inside the Worker: the faces and colours, bundled
-// once per isolate, Cloudflare's cache, the search limit and the page's lookup.
+// once per isolate, Cloudflare's cache, the search limit, the served version
+// and the page's lookup.
 // worker/card.ts decides what to answer; this file only supplies it.
 
 // The workerd builds by name: the bare package names resolve to the Node
@@ -8,7 +9,7 @@
 import { Resvg } from "@cf-wasm/resvg/workerd";
 import { satori, type Font } from "@cf-wasm/satori/workerd";
 import stylesheet from "../../app/globals.css?raw";
-import { searchOnce } from "@/lib/dictionary/db.ts";
+import { searchOnce, servedVersionOnce } from "@/lib/dictionary/db.ts";
 import { visitorKey, type LimitBindings } from "../rateLimit.ts";
 import type { CardDesk } from "../card.ts";
 import { drawCard } from "./draw.tsx";
@@ -30,13 +31,11 @@ const FONTS: Font[] = [
 
 const PALETTE = paletteOf(stylesheet);
 
-export interface CardEnv extends Pick<LimitBindings, "SEARCH_LIMIT"> {
-  LEXEMA_RELEASE: string;
-}
+export type CardEnv = Pick<LimitBindings, "SEARCH_LIMIT">;
 
 export function workerDesk(env: CardEnv, request: Request, ctx: ExecutionContext): CardDesk {
   return {
-    release: env.LEXEMA_RELEASE,
+    version: servedVersionOnce,
     // The DOM library's CacheStorage type, which tsconfig also loads, hides
     // the Workers runtime's own `caches.default`.
     cache: (caches as unknown as { default: Cache }).default,
