@@ -566,6 +566,13 @@ test("every result carries its record's expressions as the page lists them, and 
   assert.deepEqual(Object.keys(only).sort(), ["attribution", "expressions", "id", "match", "pos", "pos_title", "word"]);
 });
 
+// The lookup's reads may change order and grouping (#385); the answer they
+// build may not. Regenerate only for a change that means to alter it:
+// `--test-update-snapshots` on this file.
+test("bello's whole /lookup answer is the one the snapshot holds (#385)", async (t) => {
+  t.assert.snapshot(await lookupBody("q=bello"));
+});
+
 test("pos, match and fields refuse a name every object inherits", async () => {
   for (const inherited of ["constructor", "toString", "__proto__", "hasOwnProperty"]) {
     await assertRefused(`q=sale&pos=${inherited}`, "pos");
