@@ -21,7 +21,7 @@ import { authenticate, type KeyRefusal } from "@lexema/api/keys.ts";
 import { callCost, endpointOf } from "@lexema/api/calls.ts";
 import { appTablesOverD1 } from "@lexema/db/app/database.ts";
 import { fromD1 } from "@lexema/lookup/database.ts";
-import { ORIGIN } from "../hosts.ts";
+import { originsOf, type SiteOrigins } from "../hosts.ts";
 import { error, type ApiContext, type ErrorJson } from "./answer.ts";
 import { ROUTES } from "./endpoints.ts";
 import { keyStanding, type LimitHeaders } from "./keyLimits.ts";
@@ -36,8 +36,13 @@ const REFUSAL: Record<KeyRefusal, ErrorJson> = {
   expired: error("expired_key", "This API key has expired."),
 };
 
-/** An owned key whose account has no serving plan: none, ended, or cancelled past its end (#161, #263). */
-const PLAN_REQUIRED = error("plan_required", `This key's account has no active plan. Choose one at ${ORIGIN.developers}/pricing.`);
+/**
+ * An owned key whose account has no serving plan: none, ended, or cancelled
+ * past its end (#161, #263). It names the pricing page on the developer site
+ * beside the API host it was asked on (#266).
+ */
+const planRequired = (origins: SiteOrigins): ErrorJson =>
+  error("plan_required", `This key's account has no active plan. Choose one at ${origins.developers}/pricing.`);
 
 function json(status: number, body: unknown, headers: Record<string, string> = {}): Response {
   return Response.json(body, { status, headers: { "cache-control": "no-store", ...headers } });
@@ -47,11 +52,12 @@ function json(status: number, body: unknown, headers: Record<string, string> = {
 export async function handleApi(request: Request, context: ApiContext): Promise<Response> {
   const { appDb, now, metering } = context;
   let headers: LimitHeaders = {};
+  const url = new URL(request.url);
   try {
     const authentication = await authenticate(appDb, request.headers.get("x-api-key"), now);
     if (authentication.outcome === "refused") return json(401, REFUSAL[authentication.refusal]);
     const standing = keyStanding(authentication.key, appDb, metering, now);
-    if (standing.outcome === "plan-required") return json(402, PLAN_REQUIRED);
+    if (standing.outcome === "plan-required") return json(402, planRequired(originsOf(url.hostname)));
     const { limits } = standing;
     // Refused before its calls are counted: the headers say where the key stands, and nothing is spent.
     const refuse = async (status: number, body: ErrorJson, extra: Record<string, string> = {}) => {
@@ -59,7 +65,6 @@ export async function handleApi(request: Request, context: ApiContext): Promise<
       return json(status, body, { ...headers, ...extra });
     };
 
-    const url = new URL(request.url);
     const endpoint = endpointOf(url.pathname);
     if (endpoint === undefined) return refuse(404, error("not_found", `There is no endpoint at ${url.pathname}.`));
     if (!allows(authentication.key.endpoints, endpoint)) {

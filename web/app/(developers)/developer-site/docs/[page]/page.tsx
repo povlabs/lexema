@@ -6,6 +6,7 @@
 import { notFound } from "next/navigation";
 import { DeveloperDocs } from "@/components/developers/DeveloperDocs";
 import { signedInVisitor } from "@/lib/developers/visitor.ts";
+import { siteOrigins } from "@/lib/shared/siteOrigins.ts";
 import { DOCS_PAGES, pageAt, slugOf, titleOf } from "@/lib/developers/docsPages.ts";
 
 interface PageProps {
@@ -29,5 +30,5 @@ export async function generateMetadata({ params }: PageProps) {
 export default async function Page({ params }: PageProps) {
   const page = pageAt((await params).page);
   if (page === undefined) notFound();
-  return <DeveloperDocs page={page} signedIn={await signedInVisitor()} />;
+  return <DeveloperDocs page={page} signedIn={await signedInVisitor()} origins={await siteOrigins()} />;
 }

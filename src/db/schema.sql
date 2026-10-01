@@ -458,7 +458,8 @@ CREATE UNIQUE INDEX grammar_claim_identity
 
 -- A note about one imported claim, written by review rather than by import.
 -- Reviews never edit source_record or source_record_json: the download stays
--- verbatim and a disputed claim stays visible with its dispute attached.
+-- verbatim, and a review is data stored beside the claim it judges. The result
+-- page does not show reviews (data-only ruling, 2026-09-27; see docs/WEB.md).
 --
 -- The worked case is `studente` line 37884, a verb record calling the word a
 -- present participle of `studiare`. Italian Wiktionary's rendered `studiare`
@@ -535,6 +536,8 @@ CREATE TABLE raw_page (
 --   'sub-term'           -> opened by a bold sub-term, then prose
 --                           (`#*'''liceo classico''', indirizzo...`); `term` holds it.
 --   'lead-in-item'       -> an item of a list a definition opens with a colon.
+--   'wrapped-prose'      -> the prose line right after a `#` line that carries
+--                           only page controls and labels (`verde`).
 CREATE TABLE recovered_definition (
   recovered_id     INTEGER PRIMARY KEY,
   record_id        INTEGER NOT NULL REFERENCES source_record(record_id) ON DELETE CASCADE,
@@ -542,7 +545,7 @@ CREATE TABLE recovered_definition (
   page_id          INTEGER NOT NULL,
   definition_index INTEGER NOT NULL CHECK (definition_index >= 0),
 
-  route TEXT NOT NULL CHECK (route IN ('below-page-control', 'sub-term', 'lead-in-item')),
+  route TEXT NOT NULL CHECK (route IN ('below-page-control', 'sub-term', 'lead-in-item', 'wrapped-prose')),
   term  TEXT,
 
   page_line INTEGER NOT NULL CHECK (page_line > 0),  -- 1-based line in the revision

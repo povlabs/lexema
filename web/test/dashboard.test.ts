@@ -8,6 +8,8 @@ import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
 import { DatabaseSync } from "node:sqlite";
+import { createElement, isValidElement, type ReactNode } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
 import { deleteAccount } from "../../src/accounts/accounts.js";
 import type { BillingSetup } from "../../src/accounts/billing.js";
 import type { ProviderProfile } from "../../src/accounts/providers.js";
@@ -27,10 +29,13 @@ import {
   type ActionAnswer,
 } from "@/lib/developers/dashboardActions.ts";
 import { afterDelete, takeNotice, type NoticeStore } from "@/lib/developers/arrivalNotice.ts";
+import { sessionVisitor } from "@/lib/developers/sessionVisitor.ts";
+import { ArrivalToast } from "@/components/developers/dashboard/ArrivalToast";
+import { DeveloperLanding } from "@/components/developers/DeveloperLanding";
 import { apiNotFound, handleApi } from "@/worker/api/handler.ts";
 import { TestMetering } from "./metering.ts";
 import { CSRF_FIELD, csrfTokenOf, type DashboardBindings, DASHBOARD, DELETE_CONFIRMATION, SETTINGS, SIGN_IN_PAGE, withDashboard } from "@/worker/dashboard.ts";
-import { byHost } from "@/worker/hosts.ts";
+import { byHost, ORIGIN } from "@/worker/hosts.ts";
 import { withRateLimits, type LimitBindings } from "@/worker/rateLimit.ts";
 import { AFTER_SIGN_OUT, SESSION_COOKIE, signedInAccount, withSignIn, type SignInBindings } from "@/worker/signIn.ts";
 import { StubProvider } from "./stubProvider.ts";
@@ -92,7 +97,7 @@ function site({ limits = {}, billing = BILLING_OFF, email }: { limits?: Partial<
     const start = await send(`${DEVELOPERS}/sign-in/google`);
     const back = await send(google.consent(start.headers.get("location") ?? "", profile).toString());
     assert.equal(back.status, 303);
-    const accountId = await signedInAccount(cookie(), db, NOW);
+    const accountId = await signedInAccount(cookie(), db, NOW, ORIGIN);
     assert.ok(accountId !== undefined);
     const csrf = await csrfTokenOf(cookie());
     assert.ok(csrf !== undefined);
@@ -104,7 +109,16 @@ function site({ limits = {}, billing = BILLING_OFF, email }: { limits?: Partial<
       if (!body.has(CSRF_FIELD)) body.set(CSRF_FIELD, csrf);
       return send(`${DEVELOPERS}${path}`, { method: "POST", headers, body });
     };
-    return { jar, send, post, accountId, csrf, signedIn: () => signedInAccount(cookie(), db, NOW) };
+    return {
+      jar,
+      send,
+      post,
+      accountId,
+      csrf,
+      signedIn: () => signedInAccount(cookie(), db, NOW, ORIGIN),
+      /** Who a public page reads this browser as, for its account menu (#193). */
+      visitor: () => sessionVisitor(cookie(), db, NOW, ORIGIN),
+    };
   }
 
   /** Every row an action could change, to prove one changed nothing. */
@@ -353,11 +367,19 @@ function tabStorage(): NoticeStore & { readonly items: Map<string, string> } {
   };
 }
 
-test("Delete account on the settings page lands on the landing page, which says \u201cYour account was deleted.\u201d once (#190)", async () => {
+/** Whether an element, or any child it is given, is one of `component`. */
+function holds(node: ReactNode, component: unknown): boolean {
+  if (Array.isArray(node)) return node.some((child) => holds(child, component));
+  if (!isValidElement<{ children?: ReactNode }>(node)) return false;
+  return node.type === component || holds(node.props.children, component);
+}
+
+test("Delete account on the settings page lands on the landing page, signed out, which says \u201cYour account was deleted.\u201d once (#190, #193)", async () => {
   const { browser } = site();
   const adas = await browser(ada);
   const tab = tabStorage();
   const went: string[] = [];
+  assert.deepEqual(await adas.visitor(), { email: "ada@example.com", name: "Ada Lovelace" }, "signed in, the landing page names Ada");
 
   // A refusal stays on the page with its reason, and leaves nothing for the next one.
   const refused = await sendAction(DELETE_ACCOUNT_ACTION, formOf(adas.csrf), scripted(adas.send));
@@ -369,6 +391,15 @@ test("Delete account on the settings page lands on the landing page, which says 
   assert.equal(afterDelete(deleted, tab, (location) => went.push(location)), undefined);
   assert.deepEqual(went, ["/"], "the browser goes to developers.lexema.fyi/");
   assert.equal(await adas.signedIn(), undefined);
+
+  // The landing page reads the ended session as no one: it renders signed out, and still hosts the toast.
+  const visitor = await adas.visitor();
+  assert.equal(visitor, undefined);
+  const html = renderToStaticMarkup(createElement(DeveloperLanding, { signedIn: visitor, origins: ORIGIN }));
+  assert.match(html, /<h1[^>]*>The Lexema API<\/h1>/);
+  assert.match(html, /Sign in</);
+  assert.doesNotMatch(html, /aria-label="Account"/);
+  assert.ok(holds(DeveloperLanding({ signedIn: visitor, origins: ORIGIN }), ArrivalToast), "the landing page hosts the arrival toast");
 
   // The landing page takes the notice as it opens: one toast, in board 28f's success style, and none on a reload.
   assert.deepEqual(takeNotice(tab), { tone: "success", message: "Your account was deleted." });
@@ -532,7 +563,7 @@ test("after delete-account every key the account owned answers 401 revoked_key, 
   assert.equal(deleted.status, 200);
   assert.deepEqual(await answerOf(deleted), { outcome: "signed-out", location: AFTER_SIGN_OUT });
   assert.ok(!adas.jar.has(SESSION_COOKIE), "the session cookie is cleared");
-  assert.equal(await signedInAccount(cookie, db, NOW), undefined);
+  assert.equal(await signedInAccount(cookie, db, NOW, ORIGIN), undefined);
 
   const dictionary = new DatabaseSync(":memory:");
   dictionary.exec(SCHEMA);

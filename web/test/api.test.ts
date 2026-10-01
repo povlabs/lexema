@@ -1080,6 +1080,27 @@ test("an owned key with no serving plan is a 402 plan_required, counting nothing
   own.close();
 });
 
+test("plan_required names the pricing page beside the API host asked: a Preview's own, and the live one live and locally (#266)", async () => {
+  const { sqlite: own, appDb } = freshAppDatabase();
+  const { key } = await accountWithKey(appDb, "planless", "no plan");
+  const messageOn = async (origin: string): Promise<string> => {
+    const response = await handleApi(new Request(`${origin}/v1/exists?q=casa`, { headers: { "x-api-key": key } }), {
+      db: dictionary,
+      appDb,
+      releaseId: RELEASE,
+      now: NOW,
+      metering: new TestMetering(),
+    });
+    assert.equal(response.status, 402, origin);
+    return ((await response.json()) as Json).error.message;
+  };
+  const choose = (developers: string) => `This key's account has no active plan. Choose one at ${developers}/pricing.`;
+  assert.equal(await messageOn("https://huey-266.api-preview.lexema.fyi"), choose("https://huey-266.developers-preview.lexema.fyi"));
+  assert.equal(await messageOn("https://api.lexema.fyi"), choose("https://developers.lexema.fyi"));
+  assert.equal(await messageOn("http://api.localhost:8787"), choose("https://developers.lexema.fyi"));
+  own.close();
+});
+
 test("with Starter's allowance lowered to 3, the call past it is a 429 allowance_exceeded naming the period's end, counting nothing, and the next period's first call answers 200", async (t) => {
   // The table is a constant; lowering it here stands in for the million a real test cannot spend.
   t.mock.property(PLAN_TERMS.starter as { callsPerPeriod: number }, "callsPerPeriod", 3);

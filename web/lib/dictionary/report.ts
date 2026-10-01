@@ -153,12 +153,14 @@ export async function receiveReport(submission: ReportSubmission, context: Repor
     .where(and(eq(readerReport.visitorHash, visitor), gt(readerReport.receivedAt, since)));
   if (sent >= REPORTS_PER_HOUR) return { outcome: "limited" };
 
+  // The reading is kept by its source line, which a re-seed cannot renumber (#12).
+  let line: { lineNo: number; lineSha256: string } | undefined;
   if (submission.recordId !== undefined) {
-    const found = await db.all<{ found: number }>(
-      "SELECT 1 AS found FROM source_record WHERE record_id = ? AND release_id = ?",
+    [line] = await db.all<{ lineNo: number; lineSha256: string }>(
+      "SELECT line_no AS lineNo, line_sha256 AS lineSha256 FROM source_record WHERE record_id = ? AND release_id = ?",
       [submission.recordId, context.release],
     );
-    if (found.length === 0) return { outcome: "rejected", reason: "reading" };
+    if (line === undefined) return { outcome: "rejected", reason: "reading" };
   }
 
   // Stored and its opening used up together, so a token opens one report.
@@ -167,6 +169,8 @@ export async function receiveReport(submission: ReportSubmission, context: Repor
       releaseId: context.release,
       word: submission.word,
       recordId: submission.recordId ?? null,
+      lineNo: line?.lineNo ?? null,
+      lineSha256: line?.lineSha256 ?? null,
       choice: submission.choice,
       details: submission.details,
       visitorHash: visitor,

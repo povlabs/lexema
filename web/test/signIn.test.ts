@@ -10,7 +10,7 @@ import { accountProfile } from "../../src/accounts/accounts.js";
 import { configuredProviders, type ProviderProfile, type ProviderRegistry } from "../../src/accounts/providers.js";
 import { freshAppDatabase } from "../../test/databases.js";
 import { apiNotFound } from "@/worker/api/handler.ts";
-import { byHost } from "@/worker/hosts.ts";
+import { byHost, ORIGIN } from "@/worker/hosts.ts";
 import { withRateLimits, type LimitBindings } from "@/worker/rateLimit.ts";
 import {
   AFTER_SIGN_IN,
@@ -92,7 +92,7 @@ function site(providers?: ProviderRegistry) {
   }
 
   const count = (table: string) => (sqlite.prepare(`SELECT count(*) AS n FROM ${table}`).get() as { n: number }).n;
-  const account = () => signedInAccount(cookieHeader(), db, NOW);
+  const account = () => signedInAccount(cookieHeader(), db, NOW, ORIGIN);
   return { sqlite, db, jar, send, signIn, google, github, appSaw, count, account };
 }
 
@@ -235,7 +235,7 @@ test("sign-out deletes the session and clears the cookie; the old cookie no long
   assert.ok(cleared.attributes.includes("max-age=0"));
   assert.ok(!jar.has(SESSION_COOKIE));
   assert.equal(count("developer_session"), 0);
-  assert.equal(await signedInAccount(oldCookie, db, NOW), undefined);
+  assert.equal(await signedInAccount(oldCookie, db, NOW, ORIGIN), undefined);
 });
 
 test("the sign-in routes exist on the developer site only, and nothing else sets a cookie", async () => {

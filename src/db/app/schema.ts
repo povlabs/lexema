@@ -388,6 +388,17 @@ export const planNotice = sqliteTable(
  * has to outlive that release, which lives in another database. The visitor is
  * stored as a SHA-256 of their rate-limit key, never as an address, and is kept
  * only so the hourly allowance can be counted.
+ *
+ * A reading is named by its source line, `line_no` and `line_sha256`, copied
+ * from `source_record` when the report arrives (#12). `record_id` is a number
+ * one database build gave the record, and a re-seed of the same release may
+ * number it differently, so the line is what a reviewer follows. A report sent
+ * before #12 kept the line has `record_id` alone.
+ *
+ * `outcome`, `reviewed_at` and `reviewed_by` are a person's answer, all three
+ * written together by `pnpm run report answer` (src/readerReport/). Until then
+ * all three are NULL and the report is waiting. Nothing shows any of it on a
+ * page or in an API answer.
  */
 export const readerReport = sqliteTable(
   "reader_report",
@@ -396,15 +407,28 @@ export const readerReport = sqliteTable(
     releaseId: text("release_id").notNull(),
     word: text("word").notNull(),
     recordId: integer("record_id"), // the reading the reader picked; NULL for none or "Not sure"
+    lineNo: integer("line_no"), // that reading's source line in the release; NULL with no reading
+    lineSha256: text("line_sha256"), // that line's digest, as source_record holds it
     choice: text("choice", { enum: ["meaning", "example", "form", "synonym", "other"] }).notNull(),
     details: text("details").notNull(),
     visitorHash: text("visitor_hash").notNull(),
     receivedAt: text("received_at").notNull(), // ISO-8601
+    outcome: text("outcome"), // what the person who looked found or did; NULL while waiting
+    reviewedAt: text("reviewed_at"), // ISO-8601
+    reviewedBy: text("reviewed_by"),
   },
   (table) => [
     index("reader_report_by_visitor").on(table.visitorHash, table.receivedAt),
     check("reader_report_choice", sql`choice IN ('meaning', 'example', 'form', 'synonym', 'other')`),
     check("reader_report_details", sql`length(details) BETWEEN 1 AND 2000`),
+    check(
+      "reader_report_line",
+      sql`(line_no IS NULL AND line_sha256 IS NULL) OR (line_no IS NOT NULL AND line_sha256 IS NOT NULL AND record_id IS NOT NULL AND line_no > 0 AND length(line_sha256) = 64)`,
+    ),
+    check(
+      "reader_report_review",
+      sql`(outcome IS NULL AND reviewed_at IS NULL AND reviewed_by IS NULL) OR (outcome IS NOT NULL AND reviewed_at IS NOT NULL AND reviewed_by IS NOT NULL AND length(outcome) BETWEEN 1 AND 2000 AND length(reviewed_by) > 0)`,
+    ),
   ],
 );
 

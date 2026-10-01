@@ -8,6 +8,7 @@
 
 import { Button } from "@base-ui/react/button";
 import { PROVIDER_IDS, PROVIDER_NAME, type ProviderId } from "@lexema/accounts/providers.ts";
+import type { SiteOrigins } from "@/worker/hosts.ts";
 import { TEST_SIGN_IN } from "@/worker/testSignIn.ts";
 import { DeveloperPage } from "./DeveloperPage";
 import { GitHubIcon } from "@/components/shared/icons";
@@ -41,13 +42,15 @@ function ProviderMark({ provider }: { provider: ProviderId }) {
 export function SignIn({
   available,
   testSignIn = false,
+  origins,
 }: {
   available: Readonly<Record<ProviderId, boolean>>;
   /** Whether this is a Preview's developer host, where the test developer can sign in. */
   testSignIn?: boolean;
+  origins: SiteOrigins;
 }) {
   return (
-    <DeveloperPage>
+    <DeveloperPage origins={origins}>
       <main className={SIGN_IN_SHELL}>
         <div className={SIGN_IN_CARD}>
           <h1 className={SIGN_IN_HEADING}>Sign in</h1>

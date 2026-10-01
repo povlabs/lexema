@@ -9,9 +9,9 @@
 
 import { Fragment, type ReactNode } from "react";
 import { API_PREFIX, CALL_BASIS, type Endpoint } from "@lexema/api/calls.ts";
-import { ORIGIN } from "@/worker/hosts.ts";
+import type { SiteOrigins } from "@/worker/hosts.ts";
 import {
-  API_BASE,
+  apiBaseOf,
   callText,
   ENDPOINT_REFERENCE,
   ENDPOINTS_IN_ORDER,
@@ -167,11 +167,11 @@ function Subheading({ id, children }: { id?: string; children: string }) {
 const PANEL_WIDTH = 56;
 
 /** Examples as the code panel prints them. */
-const panelOf = (examples: readonly Example[]) =>
+const panelOf = (examples: readonly Example[], origins: SiteOrigins) =>
   examples.map((example) => ({
     status: example.status,
     label: example.label,
-    requests: requestsOf(example),
+    requests: requestsOf(example, origins),
     response: formatJson(example.response, PANEL_WIDTH),
   }));
 
@@ -245,16 +245,16 @@ function Answers({ answers }: { answers: readonly { status: string; description:
   );
 }
 
-function EndpointTopic({ endpoint }: { endpoint: Endpoint }) {
+function EndpointTopic({ endpoint, origins }: { endpoint: Endpoint; origins: SiteOrigins }) {
   const reference = ENDPOINT_REFERENCE[endpoint];
   return (
     <Topic
       page={{ kind: "endpoint", endpoint }}
-      code={<CodePanel examples={panelOf(reference.examples)} languages={LANGUAGES} />}
+      code={<CodePanel examples={panelOf(reference.examples, origins)} languages={LANGUAGES} />}
     >
       <p className={DOCS_ENDPOINT}>
         <span className={DOCS_METHOD}>{reference.method}</span>
-        <span className={DOCS_URL}>{`${API_BASE}/${endpoint}`}</span>
+        <span className={DOCS_URL}>{`${apiBaseOf(origins)}/${endpoint}`}</span>
       </p>
       <Paragraph>{reference.summary}</Paragraph>
       <Subheading>{reference.method === "POST" ? "Body" : "Query parameters"}</Subheading>
@@ -292,10 +292,10 @@ function GrammarValues() {
 }
 
 /** Each guide page's topic. */
-const GUIDE_TOPICS: Readonly<Record<Guide, () => ReactNode>> = {
-  introduction: () => (
+const GUIDE_TOPICS: Readonly<Record<Guide, (origins: SiteOrigins) => ReactNode>> = {
+  introduction: (origins) => (
     <Topic page={{ kind: "guide", guide: "introduction" }}>
-      <Paragraph>{`A JSON API over Lexema's Italian dictionary. Every endpoint is under \`${API_BASE}\`, takes an API key, and answers JSON.`}</Paragraph>
+      <Paragraph>{`A JSON API over Lexema's Italian dictionary. Every endpoint is under \`${apiBaseOf(origins)}\`, takes an API key, and answers JSON.`}</Paragraph>
       <Paragraph>{"Each parameter is sent at most once. `release_id` names the release every answer was read from. Grammar values are Italian labels; the English codes are read as the same."}</Paragraph>
     </Topic>
   ),
@@ -368,12 +368,12 @@ const GUIDE_TOPICS: Readonly<Record<Guide, () => ReactNode>> = {
       <GrammarValues />
     </Topic>
   ),
-  attribution: () => (
+  attribution: (origins) => (
     <Topic page={{ kind: "guide", guide: "attribution" }}>
       <Paragraph>{"The API's text comes from Wikizionario, the Italian Wiktionary, under CC BY-SA 4.0. Every result carries `attribution`: `licence`, `licence_url`, `source`, and `source_url`, the word's Wikizionario page."}</Paragraph>
       <p className={DOCS_PARAGRAPH}>
         <Text>{"Where you show or pass on that text, credit it with the source and its page, name the licence with its link, and share what you adapt from it under the same licence. "}</Text>
-        <a className={LINK} href={`${ORIGIN.lexema}/attribution`}>
+        <a className={LINK} href={`${origins.lexema}/attribution`}>
           Sources and licences
         </a>
         {" has the full credit; "}
@@ -401,10 +401,10 @@ const groupsFor = (current: DocsPage): DocsGroup[] =>
   }));
 
 /** One page of the docs. */
-export function DeveloperDocs({ page, signedIn }: { page: DocsPage; signedIn?: SignedIn }) {
+export function DeveloperDocs({ page, signedIn, origins }: { page: DocsPage; signedIn?: SignedIn; origins: SiteOrigins }) {
   const groups = groupsFor(page);
   return (
-    <DeveloperPage current="docs" wide signedIn={signedIn}>
+    <DeveloperPage current="docs" wide signedIn={signedIn} origins={origins}>
       <div className={DOCS_LAYOUT}>
         <aside className={DOCS_SIDEBAR}>
           <div className={DOCS_SIDEBAR_INNER}>
@@ -416,7 +416,7 @@ export function DeveloperDocs({ page, signedIn }: { page: DocsPage; signedIn?: S
           <DocsNav groups={groups} label="Docs contents" />
         </DocsContents>
         <main className={DOCS_MAIN}>
-          {page.kind === "guide" ? GUIDE_TOPICS[page.guide]() : <EndpointTopic endpoint={page.endpoint} />}
+          {page.kind === "guide" ? GUIDE_TOPICS[page.guide](origins) : <EndpointTopic endpoint={page.endpoint} origins={origins} />}
         </main>
       </div>
     </DeveloperPage>

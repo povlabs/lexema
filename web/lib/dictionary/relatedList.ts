@@ -73,22 +73,27 @@ export function relatedItems(words: readonly RelatedWord[]): RelatedItem[] {
     }
   }
 
-  const noteOf = new Map<string, string>();
+  // Every entry that is a piece of a note, and the note each run's first piece
+  // stands for. Only the first piece places its note: a later piece's spelling
+  // can be listed on its own earlier, and placing the note there would show it
+  // ahead of words the note comes after (#226).
+  const pieces = new Set<string>();
+  const noteAt = new Map<string, string>();
   for (const entries of lists.values()) {
     entries.sort((a, b) => a.index - b.index);
     for (const [start, end] of noteRuns(entries.map((entry) => entry.word))) {
       const run = entries.slice(start, end);
-      const text = run.map((entry) => entry.word).join(", ");
-      for (const entry of run) noteOf.set(entry.key, text);
+      for (const entry of run) pieces.add(entry.key);
+      noteAt.set(run[0].key, run.map((entry) => entry.word).join(", "));
     }
   }
 
   const items: RelatedItem[] = [];
   const shownNotes = new Set<string>();
   for (const { word, refs } of words) {
-    if (refs.some((ref) => !noteOf.has(refKey(ref)))) items.push({ kind: "word", word });
+    if (refs.some((ref) => !pieces.has(refKey(ref)))) items.push({ kind: "word", word });
     for (const ref of refs) {
-      const text = noteOf.get(refKey(ref));
+      const text = noteAt.get(refKey(ref));
       if (text === undefined || shownNotes.has(text)) continue;
       shownNotes.add(text);
       items.push({ kind: "note", text });

@@ -31,7 +31,7 @@ import { runPlanCommand } from "../../src/billing/planCli.js";
 import { PLAN_TERMS } from "../../src/billing/plans.js";
 import { loadFixturePages } from "../../src/source/rawPage.js";
 import {
-  API_BASE,
+  apiBaseOf,
   ENDPOINT_REFERENCE,
   ENDPOINTS_IN_ORDER,
   ERRORS,
@@ -48,11 +48,13 @@ import { DeveloperPricing } from "@/components/developers/DeveloperPricing";
 import { SiteFooter } from "@/components/dictionary/SiteFooter";
 import { handleApi } from "@/worker/api/handler.ts";
 import { TestMetering } from "./metering.ts";
-import { destinationOf, ORIGIN } from "@/worker/hosts.ts";
+import { destinationOf, ORIGIN, originsOf } from "@/worker/hosts.ts";
 
 const REPO = fileURLToPath(new URL("../..", import.meta.url));
 const RELEASE = "it-0c432803";
 const NOW = Date.parse("2026-09-27T12:00:20Z");
+/** Where the docs, rendered for the live hosts, say every endpoint lives. */
+const API_BASE = apiBaseOf(ORIGIN);
 
 let dir: string;
 /** The seeded dictionary, read-only as the Worker's `DB` is. */
@@ -212,7 +214,7 @@ function codeBlocks(html: string, attribute: string): { value: string; code: str
 }
 
 /** Every page of the docs, in the sidebar's order. */
-const docs = () => DOCS_PAGES.map((page) => renderToStaticMarkup(<DeveloperDocs page={page} />)).join("\n");
+const docs = () => DOCS_PAGES.map((page) => renderToStaticMarkup(<DeveloperDocs page={page} origins={ORIGIN} />)).join("\n");
 
 test("the docs print each example's status and response as the reference states them", () => {
   const printed = codeBlocks(docs(), "data-response").map(({ value, code }) => ({
@@ -236,7 +238,7 @@ test("the docs name every endpoint of the call map with the calls it counts, eve
     assert.ok(text.includes(` ${API_PREFIX}${endpoint} ${calls} `), `${endpoint}: ${calls}`);
   }
   // The filters #148 names for /lookup, each a parameter row of its topic.
-  const lookup = textOf(renderToStaticMarkup(<DeveloperDocs page={{ kind: "endpoint", endpoint: "lookup" }} />));
+  const lookup = textOf(renderToStaticMarkup(<DeveloperDocs page={{ kind: "endpoint", endpoint: "lookup" }} origins={ORIGIN} />));
   for (const filter of ["pos", "match", "fields", "limit_definitions", "mood", "tense", "person", "gender", "number"]) {
     assert.match(lookup, new RegExp(` ${filter} (string|integer) `), filter);
   }
@@ -256,7 +258,7 @@ async function acceptedBy(path: string, parameter: string, key: string): Promise
 
 test("the Grammar values page lists every value the API takes for pos, match and fields, and each ... links there", async () => {
   const { key } = await newKey();
-  const reference = renderToStaticMarkup(<DeveloperDocs page={{ kind: "guide", guide: "grammar-values" }} />);
+  const reference = renderToStaticMarkup(<DeveloperDocs page={{ kind: "guide", guide: "grammar-values" }} origins={ORIGIN} />);
   /** The values a section of the page names, as code or as a row's name, from its heading to the next. */
   const named = (id: string): Set<string> => {
     const start = reference.indexOf(`id="${id}"`);
@@ -282,7 +284,7 @@ test("the Grammar values page lists every value the API takes for pos, match and
 
   // Where a row names part of a list and then `...`, the `...` links to the whole list.
   for (const endpoint of ["lookup", "random"] as const) {
-    const html = renderToStaticMarkup(<DeveloperDocs page={{ kind: "endpoint", endpoint }} />);
+    const html = renderToStaticMarkup(<DeveloperDocs page={{ kind: "endpoint", endpoint }} origins={ORIGIN} />);
     for (const parameter of ENDPOINT_REFERENCE[endpoint].parameters.filter((each) => each.continued !== undefined)) {
       const href = `/docs/grammar-values#${parameter.continued}`;
       assert.ok(html.includes(`href="${href}"`), `${endpoint} ${parameter.name}`);
@@ -355,7 +357,7 @@ test("every Python example sends its example's method, path, query and body", ()
 
 test("a guide page renders no code column, and each endpoint page its request and response", () => {
   for (const page of DOCS_PAGES) {
-    const html = renderToStaticMarkup(<DeveloperDocs page={page} />);
+    const html = renderToStaticMarkup(<DeveloperDocs page={page} origins={ORIGIN} />);
     const name = pathOf(page);
     const column = html.includes(`class="${DOCS_CODE}"`);
     if (page.kind === "guide") {
@@ -370,7 +372,7 @@ test("a guide page renders no code column, and each endpoint page its request an
 });
 
 test("pricing's What counts as a call table is board 26's: any endpoint 1 call, lookup/batch 1 call per word", () => {
-  const html = renderToStaticMarkup(<DeveloperPricing />);
+  const html = renderToStaticMarkup(<DeveloperPricing origins={ORIGIN} />);
   assert.match(html, /<h2[^>]*>What counts as a call<\/h2>/);
   const rows = [...html.matchAll(/<tr[^>]*data-call-row=""[^>]*><th[^>]*>([^<]+)<\/th><td[^>]*>([^<]+)<\/td><\/tr>/g)].map(
     (match) => [match[1], match[2]],
@@ -394,7 +396,7 @@ test("pricing shows Starter, Pro and Enterprise with the plan table's numbers, a
     "All endpoints",
   ];
 
-  const signedOut = renderToStaticMarkup(<DeveloperPricing />);
+  const signedOut = renderToStaticMarkup(<DeveloperPricing origins={ORIGIN} />);
   const cards = cardsOf(signedOut);
   assert.deepEqual(
     cards.map(({ plan, lines }) => [plan, lines]),
@@ -421,7 +423,7 @@ test("pricing shows Starter, Pro and Enterprise with the plan table's numbers, a
   assert.equal(signedOutPro?.[1], "/billing/checkout");
   assert.deepEqual(hidden(signedOutPro[2]), { plan: "pro" });
   assert.match(signedOutPro[2], /<button[^>]*type="submit"[^>]*>Choose Pro<\/button>/);
-  const signedIn = renderToStaticMarkup(<DeveloperPricing visitor={{ signedIn: { email: "ada@example.com", name: undefined }, csrf: "the-token" }} />);
+  const signedIn = renderToStaticMarkup(<DeveloperPricing visitor={{ signedIn: { email: "ada@example.com", name: undefined }, csrf: "the-token" }} origins={ORIGIN} />);
   assert.deepEqual(hidden(choose(signedIn, "pro")?.[2] ?? ""), { plan: "pro", csrf: "the-token" });
 
   // Enterprise has no form: Contact us writes to the contact address.
@@ -431,7 +433,7 @@ test("pricing shows Starter, Pro and Enterprise with the plan table's numbers, a
 });
 
 test("every developer page carries the footer: lexema.fyi, Docs, Pricing and Contact by mail, and no Terms", () => {
-  const footer = renderToStaticMarkup(<DeveloperFooter />);
+  const footer = renderToStaticMarkup(<DeveloperFooter origins={ORIGIN} />);
   const links = [...footer.matchAll(/<a class="[^"]*" href="([^"]+)">([^<]+)<\/a>/g)].map((match) => [match[2], match[1]]);
   assert.deepEqual(links, [
     ["Lexema Developers", "/"],
@@ -440,18 +442,55 @@ test("every developer page carries the footer: lexema.fyi, Docs, Pricing and Con
     ["Pricing", "/pricing"],
     ["Contact", "mailto:contact@lexema.fyi"],
   ]);
-  const docsPages = DOCS_PAGES.map((page) => <DeveloperDocs page={page} />);
-  for (const page of [<DeveloperLanding />, ...docsPages, <DeveloperPricing />]) {
+  const docsPages = DOCS_PAGES.map((page) => <DeveloperDocs page={page} origins={ORIGIN} />);
+  for (const page of [<DeveloperLanding origins={ORIGIN} />, ...docsPages, <DeveloperPricing origins={ORIGIN} />]) {
     const html = renderToStaticMarkup(page);
-    assert.ok(html.includes(renderToStaticMarkup(<DeveloperFooter wide={html.includes('aria-label="Docs"')} />)));
+    assert.ok(html.includes(renderToStaticMarkup(<DeveloperFooter wide={html.includes('aria-label="Docs"')} origins={ORIGIN} />)));
     assert.doesNotMatch(html, /Terms/);
   }
 });
 
 test("lexema.fyi keeps no /developers route, and its footer links to the developer site", async () => {
   await assert.rejects(access(join(REPO, "web/app/(lexema)/developers")), { code: "ENOENT" });
-  const footer = renderToStaticMarkup(<SiteFooter />);
+  const footer = renderToStaticMarkup(<SiteFooter origins={ORIGIN} />);
   assert.match(footer, /<a class="[^"]*" href="https:\/\/developers\.lexema\.fyi">Developers<\/a>/);
+});
+
+test("rendered for a Preview, every link to another site and every API address names that Preview's sibling host (#266)", () => {
+  const name = "huey-266-preview-links";
+  const preview = originsOf(`${name}.developers-preview.lexema.fyi`);
+  const pages = [
+    <SiteFooter origins={preview} />,
+    <DeveloperLanding origins={preview} />,
+    <DeveloperPricing origins={preview} />,
+    ...DOCS_PAGES.map((page) => <DeveloperDocs page={page} origins={preview} />),
+  ];
+  const html = pages.map((page) => renderToStaticMarkup(page)).join("\n");
+  const hosts = new Set([...html.matchAll(/https?:\/\/([a-z0-9.-]*lexema\.fyi)/g)].map((match) => match[1]));
+  assert.deepEqual([...hosts].sort(), [`${name}.api-preview.lexema.fyi`, `${name}.developers-preview.lexema.fyi`, `${name}.preview.lexema.fyi`]);
+
+  assert.match(renderToStaticMarkup(<SiteFooter origins={preview} />), new RegExp(`href="https://${name}\\.developers-preview\\.lexema\\.fyi">Developers</a>`));
+  assert.match(renderToStaticMarkup(<DeveloperFooter origins={preview} />), new RegExp(`href="https://${name}\\.preview\\.lexema\\.fyi">lexema\\.fyi</a>`));
+  const attribution = renderToStaticMarkup(<DeveloperDocs page={{ kind: "guide", guide: "attribution" }} origins={preview} />);
+  assert.match(attribution, new RegExp(`href="https://${name}\\.preview\\.lexema\\.fyi/attribution"`));
+  const lookup = renderToStaticMarkup(<DeveloperDocs page={{ kind: "endpoint", endpoint: "lookup" }} origins={preview} />);
+  assert.ok(lookup.includes(`https://${name}.api-preview.lexema.fyi/v1/lookup`), "the endpoint's address and its examples");
+  assert.ok(renderToStaticMarkup(<DeveloperLanding origins={preview} />).includes(`GET https://${name}.api-preview.lexema.fyi/v1/lookup`));
+});
+
+test("rendered for the live and local hosts, every link to another site and every API address is the live one (#266)", () => {
+  for (const hostname of ["developers.lexema.fyi", "developers.localhost"]) {
+    const origins = originsOf(hostname);
+    const pages = [
+      <SiteFooter origins={origins} />,
+      <DeveloperLanding origins={origins} />,
+      <DeveloperPricing origins={origins} />,
+      ...DOCS_PAGES.map((page) => <DeveloperDocs page={page} origins={origins} />),
+    ];
+    const html = pages.map((page) => renderToStaticMarkup(page)).join("\n");
+    const hosts = new Set([...html.matchAll(/https?:\/\/([a-z0-9.-]*lexema\.fyi)/g)].map((match) => match[1]));
+    assert.deepEqual([...hosts].sort(), ["api.lexema.fyi", "developers.lexema.fyi", "lexema.fyi"], hostname);
+  }
 });
 
 /**
@@ -499,7 +538,7 @@ test("every docs sidebar link resolves to a page that renders, with that link ma
   try {
     const links = new Set(
       DOCS_PAGES.flatMap((page) => {
-        const html = renderToStaticMarkup(<DeveloperDocs page={page} />);
+        const html = renderToStaticMarkup(<DeveloperDocs page={page} origins={ORIGIN} />);
         const start = html.indexOf('<nav aria-label="Docs">');
         const sidebar = html.slice(start, html.indexOf("</nav>", start));
         return [...sidebar.matchAll(/<a [^>]*href="([^"]+)"/g)].map((match) => match[1]);
@@ -552,8 +591,8 @@ test("a developer-site 404 is framed like its other pages: the bar and footer, n
     const boundary = (await import(join(group, "not-found.tsx"))) as { default: () => Promise<ReactElement> };
     const html = renderToStaticMarkup(await boundary.default());
     assert.match(html, /<nav aria-label="Developer site">/, "the developer bar");
-    assert.ok(html.includes(renderToStaticMarkup(<DeveloperFooter />)), "the developer footer");
-    assert.ok(!html.includes(renderToStaticMarkup(<SiteFooter />)), "no dictionary footer");
+    assert.ok(html.includes(renderToStaticMarkup(<DeveloperFooter origins={ORIGIN} />)), "the developer footer");
+    assert.ok(!html.includes(renderToStaticMarkup(<SiteFooter origins={ORIGIN} />)), "no dictionary footer");
     assert.match(html, /<h1[^>]*>Page not found<\/h1>/);
   } finally {
     hooks.deregister();
@@ -561,13 +600,13 @@ test("a developer-site 404 is framed like its other pages: the bar and footer, n
 });
 
 test("the landing page links to the docs, and each endpoint to its own docs page", () => {
-  const html = renderToStaticMarkup(<DeveloperLanding />);
+  const html = renderToStaticMarkup(<DeveloperLanding origins={ORIGIN} />);
   assert.match(html, /href="\/docs">Read the docs</);
   for (const endpoint of ENDPOINTS_IN_ORDER) assert.ok(html.includes(`href="${endpointPath(endpoint)}"`), endpoint);
 });
 
 test("an endpoint's code panels are Base UI tabs, the first of each selected, and the phone contents bar is a closed collapsible holding the pages (#189)", () => {
-  const html = renderToStaticMarkup(<DeveloperDocs page={{ kind: "endpoint", endpoint: "lookup" }} />);
+  const html = renderToStaticMarkup(<DeveloperDocs page={{ kind: "endpoint", endpoint: "lookup" }} origins={ORIGIN} />);
   const tabsIn = (label: string) => {
     const list = new RegExp(`<div[^>]*role="tablist" aria-label="${label}"[^>]*>(.*?)</div>`).exec(html)?.[1] ?? "";
     return [...list.matchAll(/<button[^>]*role="tab" aria-selected="(true|false)"[^>]*>([^<]+)<\/button>/g)].map((tab) => [tab[2], tab[1] === "true"]);

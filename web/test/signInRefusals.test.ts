@@ -10,7 +10,7 @@ import { freshAppDatabase } from "../../test/databases.js";
 import { apiNotFound } from "@/worker/api/handler.ts";
 import { CSRF_FIELD, csrfTokenOf, DELETE_CONFIRMATION, withDashboard } from "@/worker/dashboard.ts";
 import { BILLING_OFF } from "./stubStripe.ts";
-import { byHost } from "@/worker/hosts.ts";
+import { byHost, ORIGIN } from "@/worker/hosts.ts";
 import { withRateLimits, type LimitBindings } from "@/worker/rateLimit.ts";
 import { PENDING_COOKIE, SESSION_COOKIE, signedInAccount, withSignIn, type SignInBindings } from "@/worker/signIn.ts";
 import { StubProvider } from "./stubProvider.ts";
@@ -68,7 +68,7 @@ function site(providers?: (stubs: { google: StubProvider; github: StubProvider }
 
   const signIn = async (provider: StubProvider, profile: ProviderProfile) => send(provider.consent(await start(provider), profile).toString());
   const count = (table: string) => (sqlite.prepare(`SELECT count(*) AS n FROM ${table}`).get() as { n: number }).n;
-  const account = () => signedInAccount(cookieHeader(), db, NOW);
+  const account = () => signedInAccount(cookieHeader(), db, NOW, ORIGIN);
   return { sqlite, db, jar, send, start, signIn, google, github, count, account, cookieHeader };
 }
 
@@ -195,8 +195,8 @@ test("a session cookie with a forged signature, or one signed under another secr
   assert.equal((await signIn(google, ada)).status, 303);
   const value = decodeURIComponent(jar.get(SESSION_COOKIE) ?? "");
   const [token] = value.split(".");
-  assert.equal(await signedInAccount(`${SESSION_COOKIE}=${encodeURIComponent(`${token}.forged`)}`, db, NOW), undefined);
-  assert.equal(await signedInAccount(`${SESSION_COOKIE}=${token}`, db, NOW), undefined);
+  assert.equal(await signedInAccount(`${SESSION_COOKIE}=${encodeURIComponent(`${token}.forged`)}`, db, NOW, ORIGIN), undefined);
+  assert.equal(await signedInAccount(`${SESSION_COOKIE}=${token}`, db, NOW, ORIGIN), undefined);
   assert.equal(typeof (await account()), "number");
 
   const secret = process.env.BETTER_AUTH_SECRET;
