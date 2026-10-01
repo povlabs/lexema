@@ -6,6 +6,21 @@
 // raw line in `source_record_json` never passes through here. This is not the
 // search normalization in normalize.ts, which only builds lookup keys.
 
+/**
+ * Each source text normalization's name and version, as the seed and the
+ * one-off update report it. The id says which rule stored a value, so a row
+ * can be traced to the rule that changed it. Changing what a rule matches or
+ * writes is a new version, never an edit of the old one.
+ */
+export const SOURCE_TEXT_RULES = {
+  /** #257: `normalizeGloss`. */
+  personOrdinalGloss: "gloss-person-ordinal/v1",
+  /** #342: `normalizeFormSurface`. */
+  pluralPlaceholderForm: "form-plural-placeholder/v1",
+} as const;
+
+export type SourceTextRuleId = (typeof SOURCE_TEXT_RULES)[keyof typeof SOURCE_TEXT_RULES];
+
 const ORDINAL_PERSON = /^([123])ª(?= persona(?!\p{L}))/u;
 const ORDINAL_WORD = { "1": "prima", "2": "seconda", "3": "terza" } as const;
 

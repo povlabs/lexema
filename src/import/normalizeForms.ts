@@ -4,11 +4,13 @@
 // row and the form claims about it. `source_record_json` keeps the entry.
 
 import { normalizeItalianExact } from "../italian/normalize.js";
-import { PLURAL_PLACEHOLDER_FORM, normalizeFormSurface } from "../italian/sourceTextNormalization.js";
+import { PLURAL_PLACEHOLDER_FORM, SOURCE_TEXT_RULES, normalizeFormSurface } from "../italian/sourceTextNormalization.js";
 import type { DictionarySql } from "./normalizeGlosses.js";
 
 /** What the update found and did. */
 export interface FormNormalizationReport {
+  /** The rule this update applies, name and version. */
+  readonly rule: typeof SOURCE_TEXT_RULES.pluralPlaceholderForm;
   /** `lookup_form` rows removed by this run; 0 on a database already normalized. */
   readonly forms: number;
   /** Form-scoped `grammar_claim` rows removed with them. */
@@ -53,7 +55,8 @@ const claimsOf = (ids: string): string =>
  */
 export function normalizeStoredForms(db: DictionarySql): FormNormalizationReport {
   const forms = dropped(db);
-  if (forms.length === 0) return { forms: 0, claims: 0 };
+  const rule = SOURCE_TEXT_RULES.pluralPlaceholderForm;
+  if (forms.length === 0) return { rule, forms: 0, claims: 0 };
 
   const ids = forms.map(({ lookup_id }) => lookup_id).join(",");
   const [{ n: claims }] = db.query<{ n: number }>(`SELECT count(*) AS n FROM ${claimsOf(ids)}`);
@@ -69,5 +72,5 @@ export function normalizeStoredForms(db: DictionarySql): FormNormalizationReport
   if (left.length > 0) {
     throw new Error(`${left.length} dropped form(s) still stored after the update: lookup_id ${left.map(({ lookup_id }) => lookup_id).join(", ")}`);
   }
-  return { forms: forms.length, claims };
+  return { rule, forms: forms.length, claims };
 }

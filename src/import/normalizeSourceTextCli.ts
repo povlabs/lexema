@@ -35,7 +35,7 @@ const where = process.env.SEED_REMOTE === undefined
   : `remote D1 ${target.dictionary}`;
 process.stderr.write(`normalizing source text in ${where}\n`);
 const glosses = normalizeStoredGlosses(dictionary);
-process.stderr.write(`sense_gloss: ${glosses.changed} row(s) changed, ${glosses.candidates} candidate(s) read\n`);
+process.stderr.write(`${glosses.rule}: sense_gloss: ${glosses.changed} row(s) changed, ${glosses.candidates} candidate(s) read\n`);
 const forms = normalizeStoredForms(dictionary);
-process.stderr.write(`lookup_form: ${forms.forms} row(s) removed, grammar_claim: ${forms.claims} row(s) removed\n`);
+process.stderr.write(`${forms.rule}: lookup_form: ${forms.forms} row(s) removed, grammar_claim: ${forms.claims} row(s) removed\n`);
 process.stdout.write(JSON.stringify({ database: where, glosses, forms }) + "\n");

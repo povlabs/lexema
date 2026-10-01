@@ -165,8 +165,10 @@ It picks its database the way the seed does: the local D1 under `SEED_STATE`
 only the `sense_gloss` rows a rule changes, and removes only the `lookup_form`
 rows of a dropped form with the `grammar_claim` rows about that form. It never
 touches `source_record_json`. It reads the rows back and fails if any still
-needs a rule, then prints `sense_gloss: <n> row(s) changed` and
-`lookup_form: <n> row(s) removed, grammar_claim: <n> row(s) removed`. A second
+needs a rule. It prints one line per rule, led by the rule's name and
+version: `gloss-person-ordinal/v1: sense_gloss: <n> row(s) changed` and
+`form-plural-placeholder/v1: lookup_form: <n> row(s) removed, grammar_claim: <n> row(s) removed`.
+The seed prints the same ids on its `source text rules:` line. A second
 run changes 0 rows.
 
 For the full local seed:
@@ -184,7 +186,7 @@ SEED_REMOTE=lexema-dictionary pnpm run normalize:source-text
 
 Put `CLOUDFLARE_ACCOUNT_ID=<account id>` first if Wrangler lists more than one
 account. On release `it-0c432803`, a database seeded before both rules prints
-`sense_gloss: 177 row(s) changed` and
-`lookup_form: 110 row(s) removed, grammar_claim: 111 row(s) removed` on the
+`gloss-person-ordinal/v1: sense_gloss: 177 row(s) changed` and
+`form-plural-placeholder/v1: lookup_form: 110 row(s) removed, grammar_claim: 111 row(s) removed` on the
 first run, and 0 on every later run. It writes through Wrangler from the
 laptop, never through the Worker's read-only binding.

@@ -3,7 +3,7 @@
 // seed now writes normalized, with the same `normalizeGloss`, and touches no
 // other table: `source_record_json` keeps the source's wording.
 
-import { NORMALIZABLE_GLOSS_GLOB, normalizeGloss } from "../italian/sourceTextNormalization.js";
+import { NORMALIZABLE_GLOSS_GLOB, SOURCE_TEXT_RULES, normalizeGloss } from "../italian/sourceTextNormalization.js";
 
 /** What the update needs from a dictionary database: read rows, run statements. */
 export interface DictionarySql {
@@ -13,6 +13,8 @@ export interface DictionarySql {
 
 /** What the update found and did. */
 export interface GlossNormalizationReport {
+  /** The rule this update applies, name and version. */
+  readonly rule: typeof SOURCE_TEXT_RULES.personOrdinalGloss;
   /** Rows the GLOB selected, whether or not they needed a change. */
   readonly candidates: number;
   /** Rows rewritten by this run; 0 on a database already normalized. */
@@ -59,5 +61,5 @@ export function normalizeStoredGlosses(db: DictionarySql): GlossNormalizationRep
       `${after.rows.length} gloss(es) still need normalizing after the update: gloss_id ${after.rows.map(({ glossId }) => glossId).join(", ")}`,
     );
   }
-  return { candidates: before.candidates, changed: before.rows.length };
+  return { rule: SOURCE_TEXT_RULES.personOrdinalGloss, candidates: before.candidates, changed: before.rows.length };
 }

@@ -11,7 +11,7 @@ import { join, resolve } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { normalizeStoredForms } from "../src/import/normalizeForms.js";
 import type { DictionarySql } from "../src/import/normalizeGlosses.js";
-import { seedSql } from "../src/import/seedSql.js";
+import { type SeedSqlReport, seedSql } from "../src/import/seedSql.js";
 import { PLURAL_PLACEHOLDER_FORM, normalizeFormSurface } from "../src/italian/sourceTextNormalization.js";
 import { fromNodeSqlite } from "../src/lookup/database.js";
 import { lookup } from "../src/lookup/lookup.js";
@@ -42,7 +42,7 @@ test("only the exact template is no form; every other surface is kept as written
   }
 });
 
-async function seeded(run: (db: DatabaseSync) => Promise<void>): Promise<void> {
+async function seeded(run: (db: DatabaseSync, report: SeedSqlReport) => Promise<void>): Promise<void> {
   const dir = await mkdtemp(join(tmpdir(), "lexema-placeholder-form-"));
   try {
     const input = join(dir, "fixture.jsonl");
@@ -57,7 +57,7 @@ async function seeded(run: (db: DatabaseSync) => Promise<void>): Promise<void> {
     const db = new DatabaseSync(":memory:");
     try {
       for (const part of report.parts) db.exec(readFileSync(part, "utf8"));
-      await run(db);
+      await run(db, report);
     } finally {
       db.close();
     }
@@ -92,7 +92,8 @@ async function assertNoPlaceholderForm(db: DatabaseSync): Promise<void> {
 }
 
 test("the seed writes no row for the template and keeps every real form", async () => {
-  await seeded(async (db) => {
+  await seeded(async (db, report) => {
+    assert.ok(report.sourceTextRules.includes("form-plural-placeholder/v1"), "the seed reports the rule it wrote under");
     const claims = db.prepare("SELECT count(*) AS n FROM grammar_claim WHERE scope = 'form' AND scope_index = 0 AND record_id IN (SELECT record_id FROM source_record WHERE word IN ('mioplastica', 'pittore'))").get() as { n: number };
     assert.equal(claims.n, 0, "no claim about the template");
     await assertNoPlaceholderForm(db);
@@ -116,8 +117,8 @@ test("the one-off update removes what an older seed wrote for the template, once
     const before = await lookup({ db: fromNodeSqlite(db), releaseId: RELEASE, query: PLURAL_PLACEHOLDER_FORM });
     assert.ok(before.outcome === "found" && before.readings.length === 2, "the older seed's rows make the template searchable");
 
-    assert.deepEqual(normalizeStoredForms(sql), { forms: 2, claims: 2 });
-    assert.deepEqual(normalizeStoredForms(sql), { forms: 0, claims: 0 });
+    assert.deepEqual(normalizeStoredForms(sql), { rule: "form-plural-placeholder/v1", forms: 2, claims: 2 });
+    assert.deepEqual(normalizeStoredForms(sql), { rule: "form-plural-placeholder/v1", forms: 0, claims: 0 });
     await assertNoPlaceholderForm(db);
   });
 });
