@@ -13,26 +13,26 @@
     "typecheck": "wrangler types --env-file typecheck.env && tsc --noEmit"
   },
   "dependencies": {
-    "@base-ui/react": "1.8.0",
-    "@cf-wasm/resvg": "0.4.0",
-    "@cf-wasm/satori": "0.4.2",
-    "@vinext/cloudflare": "1.0.0-beta.8",
-    "react": "19.3.0",
-    "react-dom": "19.3.0",
-    "react-server-dom-webpack": "19.3.0",
-    "vinext": "1.0.0-beta.10"
+    "@base-ui/react": "catalog:",
+    "@cf-wasm/resvg": "catalog:",
+    "@cf-wasm/satori": "catalog:",
+    "@vinext/cloudflare": "catalog:",
+    "react": "catalog:",
+    "react-dom": "catalog:",
+    "react-server-dom-webpack": "catalog:",
+    "vinext": "catalog:"
   },
   "devDependencies": {
-    "@cloudflare/vite-plugin": "1.56.0",
-    "@tailwindcss/vite": "4.3.3",
-    "@types/node": "26.6.1",
-    "@types/react": "19.3.0",
-    "@types/react-dom": "19.3.0",
-    "@vitejs/plugin-react": "6.1.1",
-    "@vitejs/plugin-rsc": "0.5.35",
-    "tailwindcss": "4.3.3",
-    "typescript": "5.9.3",
-    "vite": "8.3.0",
-    "wrangler": "4.135.0"
+    "@cloudflare/vite-plugin": "catalog:",
+    "@tailwindcss/vite": "catalog:",
+    "@types/node": "catalog:",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
+    "@vitejs/plugin-react": "catalog:",
+    "@vitejs/plugin-rsc": "catalog:",
+    "tailwindcss": "catalog:",
+    "typescript": "catalog:",
+    "vite": "catalog:",
+    "wrangler": "catalog:"
   }
 }
