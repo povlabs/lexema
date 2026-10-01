@@ -199,10 +199,14 @@ in its cell, with no note
 record states no gender, no number and no forms, so nothing can be placed in a
 grid and its reading has no *Forms* block.
 
-**Definitions that define nothing.** `casa`'s two glosses are page furniture and
-`sala` carries the source's own *"definizione mancante"*. Both are shown
-verbatim when they are all a reading has. When definitions recovered from the
-raw page stand in for them, as for `casa`, the furniture is left out.
+**Definitions that define nothing.** `casa`'s two glosses are page furniture.
+They are shown verbatim when they are all a reading has. When definitions
+recovered from the raw page stand in for them, as for `casa`, the furniture is
+left out. `sala` carries Wikizionario's placeholder *"definizione mancante; se
+vuoi, aggiungila tu"*, which is a template, not data: the lookup treats a gloss
+that is only that as no definition (#255). A reading with no definition shows
+its part-of-speech label alone, with no number, and the readings that have one
+number 1, 2, 3 among themselves (#250).
 
 **Definitions the extraction dropped or misfiled.** Where the raw Wiktionary page states a
 definition the record does not carry as a definition (#28) — absent, or filed
