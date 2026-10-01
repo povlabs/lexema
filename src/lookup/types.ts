@@ -226,7 +226,8 @@ export interface RecoveredExample {
 export type RecoveredRoute =
   | { route: "below-page-control" }
   | { route: "sub-term"; term: string }
-  | { route: "lead-in-item" };
+  | { route: "lead-in-item" }
+  | { route: "wrapped-prose" };
 
 /**
  * A definition the raw page states and the extraction dropped (#28), read back
