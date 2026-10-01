@@ -78,8 +78,11 @@ export const SEARCH_LIMITED_HEADER = "x-lexema-search-limited";
  * spelling of the page's path that vinext normalizes back to `/` gets past the
  * limit. The home page without a query and static assets are never counted;
  * assets do not even reach the Worker.
+ *
+ * Only a POST to the keys path makes a key, so only a POST counts against the
+ * key limit; any other method is a 405 that makes nothing (worker/dashboard.ts).
  */
-export function limitOf(url: URL): Limit | undefined {
+export function limitOf(url: URL, method: string): Limit | undefined {
   if (url.pathname === "/suggest") return "suggest";
   // A report's hourly allowance is counted over stored reports (lib/dictionary/report.ts);
   // this binding only stops a burst before the database is touched.
@@ -92,7 +95,7 @@ export function limitOf(url: URL): Limit | undefined {
   // The test sign-in, on a Preview's developer host only (worker/testSignIn.ts).
   if (isTestSignIn(url)) return "sign-in";
   // Making a key (Huey, #163 R1.2); on the developer site only (worker/dashboard.ts).
-  if (dashboardRouteOf(url)?.kind === "create-key") return "key-create";
+  if (method === "POST" && dashboardRouteOf(url)?.kind === "create-key") return "key-create";
   // Every billing route, Checkout, the portal and Checkout's return, each of
   // which can call Stripe (Huey, #296); on the developer site only (worker/billing.ts).
   if (billingRouteOf(url) !== undefined) return "billing";
@@ -163,7 +166,7 @@ export type FetchHandler<E> = (request: Request, env: E, ctx: ExecutionContext) 
  */
 export function withRateLimits<E extends LimitBindings>(app: FetchHandler<E>): FetchHandler<E> {
   return async (request, env, ctx) => {
-    const limit = limitOf(new URL(request.url));
+    const limit = limitOf(new URL(request.url), request.method);
     const admitted =
       limit === undefined ||
       (await env[BINDING[limit]].limit({ key: visitorKey(request.headers.get("cf-connecting-ip")) })).success;
