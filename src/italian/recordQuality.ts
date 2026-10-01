@@ -7,14 +7,17 @@
 // (src/import/measureQuality.ts) runs against the whole release. It reads the
 // source and never edits it; nothing here becomes a claim on a page.
 
+import { storedGlosses } from "../import/importRelease.js";
 import { isFurnitureSense, splitSenses, type SenseShape, type SenseSplit } from "./furniture.js";
+import { readGloss, type GlossReading } from "./headwordEcho.js";
 import { placeItalianVerbForm, type VerbSlot } from "./moods.js";
-import { withoutPlaceholder } from "./placeholder.js";
 
 /** The parts of an archive record the measurement reads. Leaves stay `unknown`, as the archive parser leaves them. */
 export interface QualityRecord {
   word: string;
   pos: string;
+  /** Read by the gloss grammar stamp rule, which decides what a stamped gloss is stored as (#317). */
+  tags?: unknown;
   forms: readonly { form?: unknown; tags?: unknown; raw_tags?: unknown }[];
   senses: readonly { glosses?: unknown; examples?: unknown; form_of: readonly { word?: unknown }[] }[];
 }
@@ -23,73 +26,108 @@ const strings = (value: unknown): string[] =>
   Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : [];
 
 /**
- * What one sense holds, read the way the word page reads it.
+ * What one sense holds, read the way the word page reads it (`PageSenses`),
+ * strongest first: a record's kind is the first of these any of its senses has.
  *
- * - `meaning` — at least one gloss that is real text and not the headword line.
- * - `form-of` — the sense has a gloss, is not furniture, and names the word it
- *   inflects (`plurale di casa`).
- * - `furniture` — every gloss is the headword line the page hides
+ * - `meaning` — the page shows at least one gloss that is not the headword line.
+ * - `form-of` — the page shows a gloss, the sense is not furniture, and it
+ *   names the word it inflects (`plurale di casa`).
+ * - `furniture` — every gloss shown is the headword line the page hides
  *   (`casa ( approfondimento) f sing`), with nothing after the stamp. A
  *   headword line that goes on to state something (`palo ( approfondimento)
  *   pezza onorevole…`) is a definition, which the seed stores without the
  *   lead (#325), so it counts as `meaning` or `form-of`.
- * - `placeholder` — every gloss is Wikizionario's "definizione mancante"
- *   sentence and nothing else (#255).
- * - `no-gloss` — no gloss text at all.
+ * - `headword-echo` — the page shows no gloss, and one stored gloss is the
+ *   headword and nothing more: `presina`, which is what the seed stores for
+ *   `presina f` (#317, #395).
+ * - `placeholder` — the page shows no gloss, and every stored gloss is
+ *   Wikizionario's "definizione mancante" sentence and nothing else (#255).
+ * - `no-gloss` — the dictionary stores no gloss text: the source gives none,
+ *   or gives only a gender and number stamp, which the seed stores as grammar
+ *   claims and not as a gloss (`m sing`, #317).
  */
-export type SenseKind = "meaning" | "form-of" | "furniture" | "placeholder" | "no-gloss";
+export const SENSE_KINDS = ["meaning", "form-of", "furniture", "headword-echo", "placeholder", "no-gloss"] as const;
+export type SenseKind = (typeof SENSE_KINDS)[number];
 
-/** A sense's glosses as the page holds them: the placeholder taken out, and a gloss with nothing real left dropped. */
-export function pageGlosses(sense: QualityRecord["senses"][number]): string[] {
-  return strings(sense.glosses).flatMap((text) => withoutPlaceholder(text) ?? []);
-}
+/**
+ * A record's senses as the word page reads them. The page never sees the
+ * archive's gloss: it reads the text the seed stored (`storedGlosses`, which
+ * applies the gloss grammar stamp rule and ADR 0019's source text
+ * normalizations) through the filter a lookup applies (`readGloss`), and
+ * numbers senses by `splitSenses`. This reads a record through those same
+ * three, so what it counts is what the page shows.
+ */
+export class PageSenses {
+  private constructor(
+    private readonly word: string,
+    /** Each sense: what a lookup makes of each stored gloss with text in it, and whether the sense names the word it inflects. */
+    private readonly senses: readonly { readonly readings: readonly GlossReading[]; readonly formOf: boolean }[],
+  ) {}
 
-/** A sense in the shape the page's rule (`splitSenses`) reads. */
-function pageShape(sense: QualityRecord["senses"][number], opensRecoveredList: boolean): SenseShape {
-  return { glosses: pageGlosses(sense), opensRecoveredList };
+  static of(record: QualityRecord): PageSenses {
+    const stored = storedGlosses(record);
+    return new PageSenses(
+      record.word,
+      record.senses.map((sense, index) => ({
+        readings: stored[index].filter((text) => text.trim() !== "").map((text) => readGloss(text, record.word)),
+        formOf: sense.form_of.length > 0,
+      })),
+    );
+  }
+
+  /** The glosses the page holds for the sense at `index`, in order. */
+  glosses(index: number): string[] {
+    return this.senses[index].readings.flatMap((reading) => ("shown" in reading ? [reading.shown] : []));
+  }
+
+  /** The sense at `index` in the shape the page's rule (`splitSenses`) reads. */
+  private shape(index: number, opensRecoveredList: boolean): SenseShape {
+    return { glosses: this.glosses(index), opensRecoveredList };
+  }
+
+  /** What each sense holds, in source order. */
+  get kinds(): SenseKind[] {
+    return this.senses.map(({ readings, formOf }, index) => {
+      const shape = this.shape(index, false);
+      if (shape.glosses.length > 0) {
+        // The furniture question comes before the form-of one because the
+        // page's rule never reads `form_of`: a headword line with a `form_of`
+        // pointer is hidden all the same.
+        if (isFurnitureSense(shape, this.word)) return "furniture";
+        return formOf ? "form-of" : "meaning";
+      }
+      // The page shows no sense without a gloss, a form-of one included. The
+      // sense is named for why its glosses are hidden, the strongest reason
+      // first. A reason is a sense kind of the same name, so a filter added
+      // to `readGloss` does not compile here until it is a kind too.
+      const hidden: readonly SenseKind[] = readings.flatMap((reading) => ("hidden" in reading ? [reading.hidden] : []));
+      return SENSE_KINDS.find((kind) => hidden.includes(kind)) ?? "no-gloss";
+    });
+  }
+
+  /**
+   * The senses, by index, split by the page's own rule (`splitSenses`, which
+   * web/lib/dictionary/definitions.ts calls too). `opensRecoveredList` names
+   * the senses a recovered list hangs under.
+   */
+  split(recovered: number, opensRecoveredList: ReadonlySet<number> = new Set()): SenseSplit<number> {
+    return splitSenses(this.senses.map((_, index) => index), this.word, recovered, (index) =>
+      this.shape(index, opensRecoveredList.has(index)),
+    );
+  }
+
+  /** How many definitions the word page numbers: the numbered senses plus the recovered definitions. */
+  definitionsShown(recovered: number, opensRecoveredList: ReadonlySet<number> = new Set()): number {
+    return this.split(recovered, opensRecoveredList).numbered.length + recovered;
+  }
 }
 
 /**
- * What one sense holds. The furniture question comes before the form-of one
- * because the page's rule never reads `form_of`: a headword line with a
- * `form_of` pointer is hidden all the same.
+ * Whether any sense carries a gloss string with text in it, as the archive
+ * writes it — the test this file exists to look past.
  */
-export function senseKind(sense: QualityRecord["senses"][number], word: string): SenseKind {
-  // The page shows no sense without a gloss, a form-of one included.
-  if (!strings(sense.glosses).some((text) => text.trim() !== "")) return "no-gloss";
-  const shape = pageShape(sense, false);
-  if (shape.glosses.length === 0) return "placeholder";
-  if (isFurnitureSense(shape, word)) return "furniture";
-  return sense.form_of.length > 0 ? "form-of" : "meaning";
-}
-
-/** Whether any sense carries a gloss string with text in it — the test this file exists to look past. */
 export function hasGlossText(record: QualityRecord): boolean {
   return record.senses.some((sense) => strings(sense.glosses).some((text) => text.trim() !== ""));
-}
-
-/**
- * A record's senses, by index, split by the page's own rule
- * (`splitSenses`, which web/lib/dictionary/definitions.ts calls too).
- * `opensRecoveredList` names the senses a recovered list hangs under.
- */
-export function splitRecordSenses(
-  record: QualityRecord,
-  recovered: number,
-  opensRecoveredList: ReadonlySet<number> = new Set(),
-): SenseSplit<number> {
-  return splitSenses(record.senses.map((_, index) => index), record.word, recovered, (index) =>
-    pageShape(record.senses[index], opensRecoveredList.has(index)),
-  );
-}
-
-/** How many definitions the word page numbers for a record: its numbered senses plus the recovered definitions. */
-export function definitionsShown(
-  record: QualityRecord,
-  recovered: number,
-  opensRecoveredList: ReadonlySet<number> = new Set(),
-): number {
-  return splitRecordSenses(record, recovered, opensRecoveredList).numbered.length + recovered;
 }
 
 /**

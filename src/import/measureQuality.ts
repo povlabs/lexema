@@ -31,10 +31,9 @@ import {
   isFormOf,
   isThin,
   moodAgreement,
-  pageGlosses,
+  PageSenses,
   rawTextNames,
-  senseKind,
-  splitRecordSenses,
+  SENSE_KINDS,
   targetResolution,
   type DuplicateRelation,
   type MoodAgreement,
@@ -134,8 +133,7 @@ const sampleKey = (stratum: Stratum, lineSha256: string): string =>
 
 const { pages, described } = await openRawPages();
 
-const SENSE_KINDS: readonly SenseKind[] = ["meaning", "form-of", "furniture", "placeholder", "no-gloss"];
-/** A record's kind is its strongest sense's, in this order. */
+/** A record's kind is its strongest sense's, in `SENSE_KINDS` order. */
 const recordKind = (kinds: readonly SenseKind[]): SenseKind | "no-sense" =>
   SENSE_KINDS.find((kind) => kinds.includes(kind)) ?? "no-sense";
 
@@ -249,13 +247,15 @@ const second = await parseArchive({
   onRecord: ({ lineNo, lineSha256, record }) => {
     const word = record.word;
 
-    // Definitions, as the page shows them.
-    const kinds = record.senses.map((sense) => senseKind(sense, word));
+    // Definitions, as the page shows them: read from the stored gloss text,
+    // through the lookup's filter, never from the archive's glosses (#400).
+    const senses = PageSenses.of(record);
+    const kinds = senses.kinds;
     const page = pages.page(word);
     const recovery = page === undefined ? undefined : recoverDefinitions(recordText(record), page);
     const recovered = recovery?.outcome === "matched" ? recovery.recovered : [];
     const opensList = new Set(recovered.flatMap((definition) => (definition.listedUnder?.in === "sense" ? [definition.listedUnder.senseIndex] : [])));
-    const split = splitRecordSenses(record, recovered.length, opensList);
+    const split = senses.split(recovered.length, opensList);
     const shown = split.numbered.length + recovered.length;
     const glossText = hasGlossText(record);
     definitions.records += 1;
@@ -277,14 +277,15 @@ const second = await parseArchive({
           : "hiddenAndNothingShown";
       definitions.furnitureRecords[treatment] += 1;
       for (const index of split.furniture) {
-        for (const gloss of pageGlosses(record.senses[index])) {
+        for (const gloss of senses.glosses(index)) {
           const row: FurnitureGloss = { line: lineNo, word, pos: record.pos, gloss, page: treatment, recovered: recovered.length };
           furnitureGlosses.push(row);
         }
       }
     }
+    // Read off the archive's glosses: the stored text no longer has the lead.
     record.senses.forEach((sense, index) => {
-      for (const gloss of pageGlosses(sense)) {
+      for (const gloss of strings(sense.glosses)) {
         if (readHeadwordLine(gloss, word)?.kind !== "lead") continue;
         headwordLeads.push({ line: lineNo, word, gloss, numbered: split.numbered.includes(index) });
       }

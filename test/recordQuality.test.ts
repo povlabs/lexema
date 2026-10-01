@@ -4,26 +4,38 @@
 // from fixtures/dev-seed.jsonl, the rest from fixtures/quality-regressions.jsonl
 // (archive lines 196 `gallo`, 43791 `palo`, 139668 `vogare`, 140523 `voga`,
 // 226888 `raccontavo`, 429722 `rifritto`, 56392 `balzana`). No case needs `it-extract.jsonl.gz`.
+//
+// The cases for #400 — the measurement reads the gloss text the page shows,
+// not the archive's — use fixtures/headword-echo.jsonl (archive lines 31614
+// `asciugatoio`, 31642 `presina`, 31786 `sci di fondo`, 43510 `dm`, 53318
+// `sci`, verbatim) and fixtures/gloss-stamps.jsonl, whose records are not whole
+// lines: they are cut down to the fields the stamp rule reads, glosses as
+// written (test/glossGrammarStamp.test.ts).
 
 import assert from "node:assert/strict";
 import test from "node:test";
 import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join, resolve } from "node:path";
+import { DatabaseSync } from "node:sqlite";
+import { gzipSync } from "node:zlib";
+import { seedSql } from "../src/import/seedSql.js";
 import {
-  definitionsShown,
   duplicateForms,
   glossMood,
   hasGlossText,
   moodAgreement,
+  PageSenses,
   rawTextNames,
-  senseKind,
-  splitRecordSenses,
   targetResolution,
   type QualityRecord,
 } from "../src/italian/recordQuality.js";
-import { isFurnitureGloss, readHeadwordLine } from "../src/italian/furniture.js";
+import { isFurnitureGloss, readHeadwordLine, splitSenses } from "../src/italian/furniture.js";
 import { recordText, recoverDefinitions } from "../src/italian/recovery.js";
+import { lookup } from "../src/lookup/lookup.js";
 import { readSavedPage } from "../src/source/rawPage.js";
+import { readOnlyDictionary } from "./databases.js";
 
 interface ArchiveLine extends QualityRecord {
   pos_title: string;
@@ -52,7 +64,7 @@ const one = (word: string, pos: string) => {
   assert.equal(found.length, 1, `expected one ${pos} record of ${word}`);
   return found[0];
 };
-const kinds = (record: ArchiveLine) => record.senses.map((sense) => senseKind(sense, record.word));
+const kinds = (record: ArchiveLine) => PageSenses.of(record).kinds;
 const tables = (word: string) => all(word, "verb").filter((record) => record.forms.length > 0).map((record) => record.forms);
 const firstGloss = (record: ArchiveLine) => record.senses[0].glosses?.[0] ?? "";
 
@@ -61,13 +73,13 @@ test("casa: a non-empty gloss array with no meaning in it; the page shows the fu
   assert.equal(hasGlossText(casa), true);
   assert.deepEqual(kinds(casa), ["furniture", "furniture"]);
   // With nothing else to show, the page shows the two headword lines verbatim.
-  assert.equal(definitionsShown(casa, 0), 2);
+  assert.equal(PageSenses.of(casa).definitionsShown(0), 2);
   const page = readSavedPage(readFileSync(resolve("fixtures/upstream-pages/casa.wikitext"), "utf8"), "casa.wikitext");
   const recovery = recoverDefinitions(recordText(casa), page);
   assert.equal(recovery.outcome, "matched");
   const recovered = recovery.outcome === "matched" ? recovery.recovered.length : 0;
   // The seven recovered definitions replace them: the furniture is hidden.
-  assert.equal(definitionsShown(casa, recovered), 7);
+  assert.equal(PageSenses.of(casa).definitionsShown(recovered), 7);
 });
 
 test("casa: its one raw tag names number, not gender", () => {
@@ -116,11 +128,11 @@ test("palo: a headword line that goes on to state a heraldic meaning is numbered
   const palo = one("palo", "noun");
   const heraldic = palo.senses.findIndex((sense) => (sense.glosses?.[0] ?? "").startsWith("palo ( approfondimento) pezza onorevole"));
   assert.notEqual(heraldic, -1);
-  assert.equal(senseKind(palo.senses[heraldic], "palo"), "meaning");
-  const split = splitRecordSenses(palo, 0);
+  assert.equal(kinds(palo)[heraldic], "meaning");
+  const split = PageSenses.of(palo).split(0);
   assert.deepEqual(split.furniture, []);
   assert.ok(split.numbered.includes(heraldic));
-  assert.equal(definitionsShown(palo, 0), kinds(palo).filter((kind) => kind === "meaning").length);
+  assert.equal(PageSenses.of(palo).definitionsShown(0), kinds(palo).filter((kind) => kind === "meaning").length);
 });
 
 test("balzana: a headword-led definition with a form_of pointer is numbered like any other", () => {
@@ -129,17 +141,118 @@ test("balzana: a headword-led definition with a form_of pointer is numbered like
   assert.ok((balzana.senses[heraldic].glosses?.[0] ?? "").startsWith("balzana ( approfondimento) partizione orizzontale"));
   assert.deepEqual(balzana.senses[heraldic].form_of, [{ word: "troncato" }]);
   assert.deepEqual(kinds(balzana), ["form-of", "form-of", "form-of"]);
-  const split = splitRecordSenses(balzana, 0);
+  const split = PageSenses.of(balzana).split(0);
   assert.deepEqual(split.furniture, []);
   assert.deepEqual(split.numbered, [0, 1, 2]);
-  assert.equal(definitionsShown(balzana, 0), 3);
+  assert.equal(PageSenses.of(balzana).definitionsShown(0), 3);
 });
 
 test("rifritto: a gloss array holding only the missing-definition placeholder shows nothing", () => {
   const rifritto = one("rifritto", "noun");
   assert.equal(hasGlossText(rifritto), true);
   assert.deepEqual(kinds(rifritto), ["placeholder"]);
-  assert.equal(definitionsShown(rifritto, 0), 0);
+  assert.equal(PageSenses.of(rifritto).definitionsShown(0), 0);
+});
+
+const ECHO_FIXTURE = "fixtures/headword-echo.jsonl";
+const STAMP_FIXTURE = "fixtures/gloss-stamps.jsonl";
+const from = (file: string, word: string) => {
+  const found = read(file).filter((record) => record.word === word);
+  assert.equal(found.length, 1, `expected one record of ${word} in ${file}`);
+  return found[0];
+};
+const glossesOf = (record: ArchiveLine) => record.senses.map((sense) => sense.glosses ?? []);
+
+test("presina: stored without its stamp, its one gloss only repeats the headword, so the record shows nothing (#400)", () => {
+  const presina = from(ECHO_FIXTURE, "presina");
+  assert.deepEqual(glossesOf(presina), [["presina f"]]);
+  assert.equal(hasGlossText(presina), true);
+  assert.deepEqual(kinds(presina), ["headword-echo"]);
+  assert.equal(PageSenses.of(presina).definitionsShown(0), 0);
+  // An echo as the archive writes it, behind punctuation, with no stamp to lift.
+  assert.deepEqual(kinds(from(ECHO_FIXTURE, "sci di fondo")), ["headword-echo"]);
+});
+
+test("an ordinary meaning is a meaning, beside an echo or with the headword inside it (#400)", () => {
+  const dm = from(ECHO_FIXTURE, "dm");
+  assert.deepEqual(glossesOf(dm), [["domani"], ["DM"]]);
+  assert.deepEqual(kinds(dm), ["meaning", "headword-echo"]);
+  assert.equal(PageSenses.of(dm).definitionsShown(0), 1);
+  const sci = from(ECHO_FIXTURE, "sci");
+  assert.equal(glossesOf(sci)[1][0], "sport associato all'attività di andare sugli sci");
+  assert.deepEqual(kinds(sci), ["meaning", "meaning"]);
+  assert.equal(PageSenses.of(sci).definitionsShown(0), 2);
+});
+
+test("a gloss the seed takes a stamp off is read as stored: a placeholder, a headword line, or no gloss at all (#400)", () => {
+  const pescante = from(STAMP_FIXTURE, "pescante");
+  assert.deepEqual(glossesOf(pescante), [["definizione mancante; se vuoi, aggiungila tu m sing"]]);
+  assert.deepEqual(kinds(pescante), ["placeholder"]);
+  // The stamp is the whole gloss, so the seed stores no gloss for the sense.
+  const pettinatore = from(STAMP_FIXTURE, "Pettinatore");
+  assert.deepEqual(glossesOf(pettinatore), [["m sing"]]);
+  assert.equal(hasGlossText(pettinatore), true);
+  assert.deepEqual(kinds(pettinatore), ["no-gloss"]);
+  assert.equal(PageSenses.of(pettinatore).definitionsShown(0), 0);
+  // The headword line stays furniture, and the page holds it without the stamp.
+  const pianoforte = from(STAMP_FIXTURE, "pianoforte");
+  assert.deepEqual(kinds(pianoforte), ["furniture"]);
+  assert.deepEqual(PageSenses.of(pianoforte).glosses(0), ["pianoforte ( approfondimento)"]);
+});
+
+/** `file`'s lines seeded as a release, the way test/headwordEcho.test.ts stands one up. */
+async function withSeeded(file: string, run: (db: DatabaseSync) => Promise<void>): Promise<void> {
+  const release = "it-0c432803";
+  const dir = await mkdtemp(join(tmpdir(), "lexema-record-quality-"));
+  const archive = join(dir, "fixture.jsonl.gz");
+  await writeFile(archive, gzipSync(await readFile(file)));
+  const { parts } = await seedSql({
+    input: archive,
+    outputDir: join(dir, "sql"),
+    schema: "src/db/schema.sql",
+    releaseId: release,
+    archiveR2Key: `releases/${release}.jsonl.gz`,
+    license: "CC-BY-SA-4.0",
+    onRejection: (rejection) => {
+      throw new Error(`fixture line rejected: ${JSON.stringify(rejection)}`);
+    },
+  });
+  const db = new DatabaseSync(":memory:");
+  try {
+    for (const part of parts) db.exec(await readFile(part, "utf8"));
+    await run(db);
+  } finally {
+    db.close();
+    await rm(dir, { recursive: true, force: true });
+  }
+}
+
+test("the measurement reads every sense as a lookup of the seeded record does, and numbers as many definitions as the page (#400)", async () => {
+  for (const file of [ECHO_FIXTURE, STAMP_FIXTURE]) {
+    const fixture = read(file);
+    assert.ok(fixture.length > 0, file);
+    await withSeeded(file, async (db) => {
+      for (const record of fixture) {
+        const result = await lookup({ db: readOnlyDictionary(db), releaseId: "it-0c432803", query: record.word });
+        assert.ok(result.outcome === "found", `${record.word}: expected a found result, got ${result.outcome}`);
+        const readings = result.readings.filter((reading) => reading.word === record.word);
+        assert.equal(readings.length, 1, `${record.word}: one reading of the record`);
+        const [reading] = readings;
+        const measured = PageSenses.of(record);
+        assert.deepEqual(
+          record.senses.map((_, index) => measured.glosses(index)),
+          reading.senses.map((sense) => sense.glosses.map((gloss) => gloss.text)),
+          `${record.word}: the glosses the page holds`,
+        );
+        // The page's count, as web/lib/dictionary/definitions.ts takes it.
+        const numbered = splitSenses(reading.senses, reading.word, reading.recovered.length, (sense) => ({
+          glosses: sense.glosses.map((gloss) => gloss.text),
+          opensRecoveredList: sense.recoveredItems.length > 0,
+        })).numbered.length;
+        assert.equal(measured.definitionsShown(reading.recovered.length), numbered + reading.recovered.length, `${record.word}: definitions shown`);
+      }
+    });
+  }
 });
 
 test("parlerei: the conditional its gloss names is the one it-moods/v1 reads off parlare's table", () => {
