@@ -172,6 +172,14 @@ That test proves the plan's shape, not its timing.
 
 Query 2a in `src/db/queries.sql` has the same shape and the same problem.
 
+A `SEARCH` can cost as much as a scan. When a join holds the `servedBy` list,
+SQLite may start from it and probe an index on `release_id` alone, which walks
+every row of the release. The two inflection queries did this after #18: about
+two million rows read per record, and 35 s for `bello` (#381). They now pin their
+join order with `CROSS JOIN`, starting from the record.
+[servedPlan.test.ts](../test/servedPlan.test.ts) reds any exported `servedBy`
+statement that probes `lookup_form` or `form_of_edge` on that prefix alone.
+
 ## Not in scope
 
 Prefix suggestions are covered in [LOOKUP.md § Suggestions](LOOKUP.md#suggestions)

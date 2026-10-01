@@ -817,11 +817,17 @@ async function readLemmaLinks(
  * Incoming edges: the records that declare themselves forms of the word this
  * record spells. Exported alongside the candidate query below so a test can
  * assert the plan as well as the rows.
+ *
+ * Both queries start from this record's headword row, and `CROSS JOIN` is what
+ * holds them there: it is SQLite's way to fix the join order. Left free, the
+ * planner starts from the `servedBy` list instead and walks every row of the
+ * release on the `release_id` prefix alone, about two million rows per record
+ * on `it-0c432803` (#381).
  */
 export const INFLECTION_SQL: DictionaryRead = `SELECT f.record_id, f.release_id, f.line_no, f.line_sha256, f.word, f.pos,
             e.json_pointer, e.target_word
        FROM lookup_form lf
-       JOIN form_of_edge e
+       CROSS JOIN form_of_edge e
          ON e.release_id IN (${servedBy("?2")}) AND e.target_word_key = lf.surface_key
        JOIN source_record f ON f.record_id = e.record_id
       WHERE lf.record_id = ?1 AND lf.origin = 'headword' AND lf.release_id IN (${servedBy("?2")})
@@ -834,7 +840,7 @@ export const INFLECTION_SQL: DictionaryRead = `SELECT f.record_id, f.release_id,
  */
 export const INFLECTION_CANDIDATE_SQL: DictionaryRead = `SELECT t.record_id, t.release_id, t.line_no, t.line_sha256, t.word, t.pos
        FROM lookup_form self
-       JOIN lookup_form other
+       CROSS JOIN lookup_form other
          ON other.release_id IN (${servedBy("?2")})
         AND other.surface_key = self.surface_key
         AND other.origin = 'headword'
