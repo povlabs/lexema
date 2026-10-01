@@ -3,6 +3,7 @@
 // target owns the Wrangler arguments that reach it, so a command can never mix
 // `--local` with a remote database or the other way round.
 
+import { execFileSync } from "node:child_process";
 import { rm } from "node:fs/promises";
 import { resolve } from "node:path";
 import { getTableName } from "drizzle-orm";
@@ -14,6 +15,15 @@ import * as appSchema from "../db/app/schema.js";
  * lets a test build the whole command plan with no network and no credential.
  */
 export type Wrangler = (args: readonly string[], capture: boolean) => string;
+
+/** The real `wrangler`, run from web/, where its config lives. CI=1 keeps it from prompting. */
+export const webWrangler: Wrangler = (args, capture) =>
+  execFileSync("pnpm", ["exec", "wrangler", ...args], {
+    cwd: resolve("web"),
+    stdio: capture ? ["ignore", "pipe", "inherit"] : "inherit",
+    env: { ...process.env, CI: "1" },
+    encoding: "utf8",
+  }) ?? "";
 
 /** The two local databases, by their `database_name` in web/wrangler.jsonc. */
 export const LOCAL_DICTIONARY = "lexema";

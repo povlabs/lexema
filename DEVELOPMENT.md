@@ -30,11 +30,15 @@ local `web/.dev.vars`, so it gives the same answer on a laptop as in CI.
 The unit tests run both schemas on Node's built-in SQLite, which accepts some SQL
 that Cloudflare D1 refuses: D1 rejected a long `GLOB` in a `CHECK` that every
 test passed ([#167](https://github.com/hueypov/lexema/issues/167)). So CI's `d1`
-job runs `pnpm run seed:dev` into a fresh local D1 and then
-`pnpm run api-key create`, the same two commands as in
+job runs `pnpm run seed:dev` into a fresh local D1, then `pnpm run db:check-d1`,
+then `pnpm run api-key create`, as in
 [call the JSON API](#call-the-json-api). A `CHECK` runs only when a row is
-written, so a constraint on a table the seed and that key leave empty is not
-tried on D1 ([#179](https://github.com/hueypov/lexema/issues/179)).
+written, so `db:check-d1` builds the app database in a throwaway local D1 and
+writes one valid row to every table the app migrations create
+([src/db/app/sampleRows.ts](./src/db/app/sampleRows.ts),
+[#330](https://github.com/hueypov/lexema/issues/330)). It fails when D1 refuses
+a row, or when a migration creates a table with no row there; a new app table
+needs one, which `test/sampleRows.test.ts` also checks on Node's SQLite.
 
 The `test` script finds its files by pattern, so a new test needs no edit to
 [package.json](./package.json). It runs `test/*.test.ts`, then `web/test/*.test.ts`
@@ -354,7 +358,11 @@ pnpm run db:generate --name <what-changed>
 Commit the new SQL file and the updated `meta/` beside it. Drizzle cannot
 declare `STRICT`, so add it by hand to any table a migration creates, as the
 first migration does. `pnpm exec drizzle-kit generate` on an unchanged schema
-writes nothing, so a new file means the schema moved.
+writes nothing, so a new file means the schema moved. A new table, or a new
+`CHECK`, needs a valid row in
+[src/db/app/sampleRows.ts](./src/db/app/sampleRows.ts) that runs it; the
+typecheck fails on a table with none. `pnpm run db:check-d1` writes those rows
+to a throwaway local D1, as CI's `d1` job does.
 
 `pnpm run seed:dev` loads `schema.sql` into the local `DB` and applies every
 app migration to the local `APP_DB` with `wrangler d1 migrations apply
@@ -495,7 +503,7 @@ development is the only access until that lands.
 
 | Workflow | Fails when |
 |---|---|
-| [ci.yml](./.github/workflows/ci.yml) | the root typecheck, a unit test, or the `@lexema/web` typecheck fails; or, in its `d1` job, local D1 refuses a statement of `pnpm run seed:dev` or of writing one API key |
+| [ci.yml](./.github/workflows/ci.yml) | the root typecheck, a unit test, or the `@lexema/web` typecheck fails; or, in its `d1` job, local D1 refuses a statement of `pnpm run seed:dev`, a sample row of `pnpm run db:check-d1` or writing one API key, or an app table has no sample row |
 | [gitleaks.yml](./.github/workflows/gitleaks.yml) | a changed file carries a secret |
 | [leak-guard.yml](./.github/workflows/leak-guard.yml) | a changed doc or shell file carries a machine-local path |
 | [decisions-index.yml](./.github/workflows/decisions-index.yml) | two records share an ADR id, or a filename disagrees with its frontmatter |

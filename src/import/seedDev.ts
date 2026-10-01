@@ -5,13 +5,12 @@
 // the local `APP_DB`, never into the dictionary (ADR 0018). `SEED_REMOTE`
 // loads the dictionary into a named remote D1 instead (seedTarget.ts).
 
-import { execFileSync } from "node:child_process";
 import { mkdir, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { openRawPages } from "../source/wiktionaryDump.js";
 import { type LoadedRows, loadSeed, SeedStopped } from "./seedLoad.js";
 import { seedSql } from "./seedSql.js";
-import { seedTargetFrom, type Wrangler } from "./seedTarget.js";
+import { seedTargetFrom, webWrangler } from "./seedTarget.js";
 import { DEFAULT_PART_CEILING_BYTES } from "./sqlParts.js";
 
 const input = resolve(process.env.SEED_INPUT ?? "fixtures/dev-seed.jsonl");
@@ -34,16 +33,8 @@ const requiredWords = [
   "tavolo", "vado", "vedere", "venire", "vivere", "zaino",
 ] as const;
 
-// `wrangler` from web/, where its config lives. CI=1 keeps it from prompting.
-const wrangler: Wrangler = (args, capture) =>
-  execFileSync("pnpm", ["exec", "wrangler", ...args], {
-    cwd: resolve("web"),
-    stdio: capture ? ["ignore", "pipe", "inherit"] : "inherit",
-    env: { ...process.env, CI: "1" },
-    encoding: "utf8",
-  }) ?? "";
 // Local by default; `SEED_REMOTE=<name>` loads a remote D1 instead (ADR 0018).
-const target = seedTargetFrom(process.env, wrangler, resolve(".data/seed-state"));
+const target = seedTargetFrom(process.env, webWrangler, resolve(".data/seed-state"));
 
 await mkdir(resolve(".data"), { recursive: true });
 // Before the SQL is generated, so a remote database that already holds tables

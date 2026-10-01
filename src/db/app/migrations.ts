@@ -6,6 +6,7 @@
 // through applyAppMigrations.
 
 import { readFileSync } from "node:fs";
+import { DatabaseSync } from "node:sqlite";
 import { fileURLToPath } from "node:url";
 
 const FOLDER = new URL("./migrations/", import.meta.url);
@@ -29,4 +30,18 @@ export function appMigrationFiles(): readonly string[] {
  */
 export function applyAppMigrations(db: { exec(sql: string): void }): void {
   for (const path of appMigrationFiles()) db.exec(readFileSync(path, "utf8"));
+}
+
+/** The tables the migrations create, read back from an in-memory database they built. */
+export function tablesTheMigrationsCreate(): readonly string[] {
+  const db = new DatabaseSync(":memory:");
+  try {
+    applyAppMigrations(db);
+    return db
+      .prepare("SELECT name FROM sqlite_schema WHERE type = 'table' AND name NOT LIKE 'sqlite~_%' ESCAPE '~'")
+      .all()
+      .map(({ name }) => String(name));
+  } finally {
+    db.close();
+  }
 }
