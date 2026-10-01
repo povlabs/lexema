@@ -22,11 +22,13 @@ Two kinds of number are kept apart throughout:
   is malformed.
 - Raw pages: `itwiktionary-20260701-pages-articles.xml.bz2`, the dump the archive
   was built from ([its identity](2026-09-23-recovered-definitions-full-release.md#the-input-the-dump-the-archive-was-built-from)).
-  Read only for the recovered layer and to ask whether a page exists.
+  Read only for the recovered layer, to ask whether a page exists, and to ask
+  whether a dangling target's page has an Italian part-of-speech section.
 - Code: [`src/italian/recordQuality.ts`](../src/italian/recordQuality.ts) names what
   a sense holds and runs the other checks;
   [`src/import/measureQuality.ts`](../src/import/measureQuality.ts) streams the
-  archive twice and writes `artifacts/quality-measure.json`.
+  archive twice (`draw` reads it a third time, for the drawn words) and writes
+  `artifacts/quality-measure.json`.
 - The word page's rule for which senses it numbers now lives in
   [`src/italian/furniture.ts`](../src/italian/furniture.ts) as `splitSenses`. The
   page and this measurement both call it on every sense, so the furniture class
@@ -52,7 +54,7 @@ record fell in two strata.
 
 | Stratum | Rule | Population |
 | --- | --- | ---: |
-| common | headword is one of the 1,000 most frequent tokens in the archive's own usage sentences | 1,682 |
+| common | headword is among the 1,000 most frequent example-sentence tokens that are also headwords (tokens are lower-cased letter runs of `senses[].examples[].text`; non-headword tokens such as `dell` or `po` are dropped before the cut) | 1,682 |
 | noun | noun record, not a form-of record | 37,151 |
 | verb | verb record, not a form-of record | 7,865 |
 | adjective | adjective record, not a form-of record | 14,961 |
@@ -80,7 +82,9 @@ record fell in two strata.
 
 Each sense was read the way the word page reads it: Wikizionario's "definizione
 mancante" sentence taken out (#255), headword lines hidden when anything else is
-there (the furniture rule), and recovered definitions added (#28).
+there (the furniture rule), and recovered definitions added (#28). Each record
+is counted once, under the first row of this table that one of its senses
+matches.
 
 | What a record's strongest sense holds | Records |
 | --- | ---: |
@@ -172,8 +176,10 @@ makes "non-empty" overstate; on this sample, "shows a definition" overstates
 The words mean:
 
 - **missing**: the importer expects the field ([`grammarPolicy.ts`](../src/import/grammarPolicy.ts)) and no structural tag states it.
-- **unclassified**: no structural tag states it, and a free-text `raw_tags` entry
-  names it. The importer keeps that text verbatim and does not map it.
+  For gender and number that means the record's own `tags`; for a verb mood, the
+  row's `tags`. Sense-level `tags` are not read.
+- **unclassified**: no structural tag states it, and a free-text `raw_tags` entry,
+  the record's or any sense's, names it. The importer keeps that text verbatim and does not map it.
   `rawTextNames` ([`recordQuality.ts`](../src/italian/recordQuality.ts)) decides
   "names it": a gender or number stamp or word (`f.sing.`, `s.m.inv.`, `msing`,
   `solo maschile`, `pl.: case`). Register and field labels such as `diritto`,
@@ -236,22 +242,27 @@ gender (4,474 of 37,151), so no article can be generated for it.**
 ### Verb mood on conjugation rows
 
 Denominator: `forms[]` rows of verb lemma records that the importer owes a mood,
-because they state person, number or tense and no mood. That is 487,492 of
-545,270 rows.
+because they state person, number or tense, no mood, and are not an auxiliary
+row. That is 487,492 of 545,270 rows.
 
 - No row states indicative, subjunctive or conditional structurally, so all
   487,492 are **missing** a structural mood.
 - Rule `it-moods/v1` reads one from the tags and the pronoun for **487,460** of
   them. It leaves **32** unplaced.
 
-The importer also owes a mood to 69,947 rows on form-of verb records. Of those,
-69,737 are a participle's gender and number forms (`accentuata`, `accentuati`).
-They are no cell of any table, and expecting a mood of them is a policy artefact,
+The importer also owes a mood to 69,947 rows on form-of verb records.
+`it-moods/v1` places 210 of them and leaves 69,737 unplaced. Those are a
+participle's gender and number forms. A separate read, not in the script's
+output, found that 69,722 sit on a record whose gloss says
+`participio`, and the rest on participle forms whose gloss does not (`accentuata`,
+`informicolito`), bar one row on `vendesi`. A participle's gender and number
+forms are no cell of any table, and expecting a mood of them is a policy artefact,
 not a gap in the data.
 
 ### Form-of targets
 
-Denominator: 608,726 `form_of` edges.
+Denominator: 608,726 `form_of` edges. "Same part of speech" counts only the
+records whose part of speech is the pointing record's.
 
 | Target word is carried by | Any part of speech | Same part of speech |
 | --- | ---: | ---: |
@@ -279,25 +290,28 @@ no record.** 9,064 distinct target words are dangling.
   each say "… di raccontare".
 
 Ambiguous targets are mostly one word split over two records. 579 verb words have
-two or more verb lemma records. Reading their record tags, 549 of those are split
-by transitivity: `chiudere` is one transitive and one intransitive record, each
-with its own copy of the table. 413
-noun words have two or more noun records, as `bello` does. `bella` the noun points
+two or more verb lemma records. A separate read of their record `tags`, not in
+the script's output, found 537 with one record tagged `transitive` and another
+tagged `intransitive`: `chiudere` is one transitive and one intransitive record,
+each with its own copy of the table. 413 noun words have two or more noun lemma
+records, as `bello` does. `bella` the noun points
 at `bello`, and nothing says which.
 
 ### Mood named in a verb form's gloss, against the target's table
 
 Denominator: 576,990 verb form-of senses. Of these, 147 name no single mood. The
 check reads the mood a form-of gloss names in prose (`… del condizionale presente
-di parlare`). It then asks the target's own conjugation table where `it-moods/v1`
-places that spelling. Prose is read here only to measure. No claim is made from it.
+di parlare`). It then takes the sense's first `form_of` target, and asks that
+word's conjugation table where `it-moods/v1` places the headword's spelling. The
+table is the `forms` of every verb lemma record of the target word, read together. Prose is read here only to measure. No claim is made from it.
 
 | Answer | Senses |
 | --- | ---: |
 | the table lists the spelling under that mood (corroborated) | 247,453 |
 | the table lists it, never under that mood (elsewhere) | 4,377 |
+| the table lists it, and `it-moods/v1` places none of its rows (unplaced) | 0 |
 | the table does not list it (unlisted; **unsupported**) | 15,499 |
-| no table: the target has no record (282,587) or a record with no `forms` (26,927) | 309,514 |
+| no table: the target has no record (282,587), or has records and none is a verb lemma with a `forms` table (26,927) | 309,514 |
 
 - **`parlerei`**: the gloss says condizionale, and `it-moods/v1` places it there.
   Corroborated.
@@ -336,8 +350,8 @@ places that spelling. Prose is read here only to measure. No claim is made from 
 
 ### Duplicate embedded forms
 
-Denominator: the 80,931 records with a `forms` table. A spelling listed twice in
-one record falls in one of three cases:
+Denominator: the 80,931 records with a `forms` table. A spelling listed two or
+more times in one record falls in one of three cases:
 
 | Relation | Records | Groups | Example |
 | --- | ---: | ---: | --- |
