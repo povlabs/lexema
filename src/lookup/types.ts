@@ -186,7 +186,8 @@ export interface Sense {
   /**
    * Copied source text, never a Lexema definition, with Wikizionario's
    * "definizione mancante; se vuoi, aggiungila tu" taken out (#255): a gloss
-   * that was only that is not here. May be empty: 667 senses carry no gloss at
+   * that was only that is not here, and neither is one that only repeats the
+   * headword, as `presina` does (#395). May be empty: 667 senses carry no gloss at
    * all, and a non-empty gloss is still not proof of a usable one — `casa` has
    * two that say nothing.
    */

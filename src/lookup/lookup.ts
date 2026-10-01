@@ -3,7 +3,7 @@
 // two mistakes the data invites, is in docs/LOOKUP_DESIGN.md.
 
 import { IT_NORMALIZER_VERSION, normalizeItalianExact } from "../italian/normalize.js";
-import { withoutPlaceholder } from "../italian/placeholder.js";
+import { shownGloss } from "../italian/headwordEcho.js";
 import { recordGlosses, type RecordGloss } from "../italian/recovery.js";
 import { readPluralGloss, type PluralGlossGender } from "../italian/pluralGloss.js";
 import { readingPartOfSpeech } from "./articles.js";
@@ -563,7 +563,7 @@ async function buildReading(
     wordFacts: { ...fields.wordFacts, expressions },
     isAboutQuery: isAbout(group),
     evidence: evidenceOf(group),
-    senses: sensesOf(senseRows, ref, fields, recovered.underSense),
+    senses: sensesOf(senseRows, first.record_word, ref, fields, recovered.underSense),
     forms,
     grammar,
     lemmaLinks,
@@ -641,9 +641,10 @@ async function readSenseRows(db: LookupDatabase, recordId: number): Promise<Sens
   return { glosses, labels };
 }
 
-/** A record's senses, built from its rows, its archive line and its recovered items. */
+/** A record's senses, built from its rows, its headword, its archive line and its recovered items. */
 function sensesOf(
   rows: SenseRows,
+  word: string,
   ref: (pointer: string) => SourceRef,
   source: SourceRecordFields,
   recoveredItems: ReadonlyMap<number, RecoveredDefinition[]>,
@@ -666,11 +667,12 @@ function sensesOf(
   };
 
   // Wikizionario's "definizione mancante; se vuoi, aggiungila tu" is a template,
-  // not a gloss (#255): a gloss that is only that, label and all, is no gloss,
-  // so its sense reads as one that says nothing.
+  // not a gloss (#255), and a gloss that only repeats the headword (`presina`)
+  // says nothing (#395): a gloss that is only one of those is no gloss, so its
+  // sense reads as one that says nothing.
   for (const row of rows.glosses) {
     const sense = ensure(row.sense_index, row.sense_pointer);
-    const text = row.text === null ? undefined : withoutPlaceholder(row.text);
+    const text = row.text === null ? undefined : shownGloss(row.text, word);
     if (text !== undefined && row.json_pointer !== null) {
       sense.glosses.push({ text, ref: ref(row.json_pointer) });
     }

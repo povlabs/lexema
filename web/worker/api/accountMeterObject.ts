@@ -10,6 +10,7 @@ import { DurableObject } from "cloudflare:workers";
 import { AccountMeter, type Admission, type GiveBack, type MeterAnswer, type SqlValue } from "@lexema/api/accountMeter.ts";
 import { addUsage } from "@lexema/api/usage.ts";
 import { appTablesOverD1 } from "@lexema/db/app/database.ts";
+import { log } from "@lexema/log/requestLog.ts";
 
 /** What the object reads from the Worker's bindings: the app database it flushes to. */
 interface MeterEnv {
@@ -51,7 +52,7 @@ export class AccountMeterObject extends DurableObject<MeterEnv> {
       const db = appTablesOverD1(this.env.APP_DB);
       await this.meter.flush((rows) => addUsage(db, rows), Date.now());
     } catch (failure) {
-      console.error("account meter flush failed", failure);
+      log.error("account meter flush failed", {}, failure);
       const at = this.meter.retryAt(Date.now());
       if (at !== undefined) await this.ctx.storage.setAlarm(at);
     }

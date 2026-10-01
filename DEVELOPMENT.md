@@ -460,6 +460,7 @@ src/
 ├── db/             # the dictionary schema and lookup queries as SQL; app/ holds the Drizzle app tables
 ├── import/         # the streaming importer, the SQL export and the dev seed
 ├── italian/        # the Italian adapter: normalize, tags, articles, examples
+├── log/            # the Worker's log: every line names its request id
 ├── lookup/         # exact surface lookup over the master: a release and the changes applied to it
 ├── readerReport/   # readers' reports as a person reviews them; `pnpm run report`
 ├── source/         # gzip JSONL streaming and provenance refs

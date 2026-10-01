@@ -18,6 +18,7 @@
 // which limit a request counts against, whose count it is, and what a blocked
 // request is answered with.
 
+import { log } from "@lexema/log/requestLog.ts";
 import type { ReportAnswer } from "@/lib/dictionary/report.ts";
 import type { SuggestAnswer } from "@/lib/dictionary/suggestAnswer.ts";
 import { billingRouteOf } from "./billing.ts";
@@ -175,7 +176,7 @@ export function withRateLimits<E extends LimitBindings>(app: FetchHandler<E>): F
       return app(request.headers.has(SEARCH_LIMITED_HEADER) ? marked(request, false) : request, env, ctx);
     }
 
-    console.warn("rate limited", { limit });
+    log.warn("rate limited", { limit });
     if (limit === "suggest") {
       const body: SuggestAnswer = { outcome: "limited" };
       return Response.json(body, { status: 429, headers: tooManyHeaders() });

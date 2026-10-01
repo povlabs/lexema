@@ -41,6 +41,7 @@ import {
 } from "@lexema/accounts/providers.ts";
 import { stripePlanOf } from "@lexema/billing/plans.ts";
 import { appTablesOverD1, type AppTables } from "@lexema/db/app/database.ts";
+import { log } from "@lexema/log/requestLog.ts";
 import { CHECKOUT_ACTION } from "@/lib/developers/billingActions.ts";
 import { DEVELOPERS_SEGMENT, googleCallbackUri, type SiteOrigins } from "./hosts.ts";
 import type { FetchHandler } from "./rateLimit.ts";
@@ -283,7 +284,7 @@ export async function answerSignIn(request: Request, route: SignInRoute, context
     }
   } catch (failure) {
     // A provider's, better-auth's or the database's message stays in the log.
-    console.error("sign-in failed", { route: route.kind }, failure);
+    log.error("sign-in failed", { route: route.kind }, failure);
     return text(503, "Sign-in could not be finished. Try again later.");
   }
 }
