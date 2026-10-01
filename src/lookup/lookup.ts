@@ -3,7 +3,7 @@
 // two mistakes the data invites, is in docs/LOOKUP_DESIGN.md.
 
 import { IT_NORMALIZER_VERSION, normalizeItalianExact } from "../italian/normalize.js";
-import { withoutPlaceholder } from "../italian/placeholder.js";
+import { shownGloss } from "../italian/headwordEcho.js";
 import { readingPartOfSpeech } from "./articles.js";
 import type { DictionaryRead, LookupDatabase } from "./database.js";
 import { phraseForms, phraseMatches } from "./phrase.js";
@@ -502,7 +502,7 @@ async function buildReading(
     wordFacts: { ...source.wordFacts, expressions: await readExpressions(db, releaseId, source.expressionItems) },
     isAboutQuery: isAbout(group),
     evidence: evidenceOf(group),
-    senses: await readSenses(db, recordId, ref, source, recovered.underSense),
+    senses: await readSenses(db, recordId, first.record_word, ref, source, recovered.underSense),
     forms,
     grammar,
     lemmaLinks,
@@ -550,6 +550,7 @@ async function readRecord(
 async function readSenses(
   db: LookupDatabase,
   recordId: number,
+  word: string,
   ref: (pointer: string) => SourceRef,
   source: SourceRecordFields,
   recoveredItems: ReadonlyMap<number, RecoveredDefinition[]>,
@@ -588,11 +589,12 @@ async function readSenses(
   );
 
   // Wikizionario's "definizione mancante; se vuoi, aggiungila tu" is a template,
-  // not a gloss (#255): a gloss that is only that, label and all, is no gloss,
-  // so its sense reads as one that says nothing.
+  // not a gloss (#255), and a gloss that only repeats the headword (`presina`)
+  // says nothing (#395): a gloss that is only one of those is no gloss, so its
+  // sense reads as one that says nothing.
   for (const row of glossRows) {
     const sense = ensure(row.sense_index, row.sense_pointer);
-    const text = row.text === null ? undefined : withoutPlaceholder(row.text);
+    const text = row.text === null ? undefined : shownGloss(row.text, word);
     if (text !== undefined && row.json_pointer !== null) {
       sense.glosses.push({ text, ref: ref(row.json_pointer) });
     }

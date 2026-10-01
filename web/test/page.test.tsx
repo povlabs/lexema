@@ -876,6 +876,25 @@ test("no example becomes unreachable: nested items', hidden furniture's and glos
   });
 });
 
+test("a meaning that only repeats the headword is not shown, and a reading left with none reads like any reading with none (#395)", async () => {
+  const lines = (await readFile(join(REPO, "fixtures/headword-echo.jsonl"), "utf8")).trim().split("\n");
+  await withLines(lines, async ({ db }) => {
+    // presina's one gloss is `presina f`; with the stamp off it is the headword.
+    const presina = await render(db, "presina");
+    assert.deepEqual(headingsOf(presina), ["Sostantivo·femminile"], "no number: the reading has no definition");
+    assert.deepEqual(definitionLines(presina), []);
+    const reading = nth(presina, 1);
+    assert.doesNotMatch(reading, /id="definitions-\d+"/, "no Definitions block");
+    assert.doesNotMatch(textOf(reading), /no definition|gives no|mancante/i);
+
+    // A meaning that names the headword stays.
+    assert.deepEqual(definitionLines(await render(db, "sci")), [
+      "lunga lamina, un tempo di legno e oggigiorno di metallo e plastica: agganciandone uno a ciascuno dei piedi mediante appositi scarponi e attacchi, viene adoperato come pattino per scivolare sulla neve",
+      "sport associato all'attività di andare sugli sci",
+    ]);
+  });
+});
+
 /** The dev seed plus the real lines of the words `fixtures/word-facts-placement.jsonl` holds. */
 async function withPlacementWords(run: (f: Fixture) => Promise<void>): Promise<void> {
   const lines = async (file: string) => (await readFile(join(REPO, file), "utf8")).trim().split("\n");

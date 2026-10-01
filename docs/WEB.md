@@ -216,7 +216,12 @@ give a definition (`palo ( approfondimento) pezza onorevole…`), the seed store
 the definition after the link and the page numbers it like any other (#325).
 `sala` carries Wikizionario's placeholder *"definizione mancante; se
 vuoi, aggiungila tu"*, which is a template, not data: the lookup treats a gloss
-that is only that as no definition (#255). A reading with no definition shows
+that is only that as no definition (#255). A gloss that only repeats the
+headword says nothing either: `presina`'s one gloss is `presina f`, and once its
+gender stamp is lifted (#317) it reads `presina`. The lookup treats a gloss equal
+to the headword, ignoring case, accents, apostrophes and the punctuation around
+it, as no definition too (#395); one that only contains the headword (`sci`'s
+`sport associato all'attività di andare sugli sci`) stays. A reading with no definition shows
 its part-of-speech label alone, with no number, and the readings that have one
 number 1, 2, 3 among themselves (#250).
 
