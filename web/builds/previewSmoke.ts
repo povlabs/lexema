@@ -24,7 +24,12 @@ try {
     github: restSmokeGitHub(process.env.GITHUB_TOKEN ?? "", repository, fetch),
     fetchPage: async (url, headers) => {
       const response = await fetch(url, { headers, redirect: "manual", signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS) });
-      return { status: response.status, robotsTag: response.headers.get("x-robots-tag") ?? undefined, body: await response.text() };
+      return {
+        status: response.status,
+        robotsTag: response.headers.get("x-robots-tag") ?? undefined,
+        contentType: response.headers.get("content-type") ?? undefined,
+        body: await response.text(),
+      };
     },
     attempts: ATTEMPTS,
     wait: () => sleep(WAIT_MS),

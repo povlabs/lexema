@@ -217,13 +217,14 @@ only `GITHUB_TOKEN`; the steps are `web/builds/previewMarkerCommand.ts`.
 ### The preview smoke
 
 When the comment is written, the same workflow's smoke job asks the three sites
-it names for one thing each (#246):
+it names for one thing each (#246), and each of them for the site icon (#383):
 
 | Site | Request | Passes when |
 |---|---|---|
 | dictionary | `/?q=<word>` for sale, andare, andavano, casa, bello and studente | a 200 whose page shows a reading; a word it cannot find is a 200 too, with no reading |
 | developer site | `/` | a 200 |
 | API | `GET /v1/lookup?q=andare` with a key that does not exist | the API's own 401 `invalid_key`, which it gives only after looking the key up in the Preview's app D1 |
+| all three | `/favicon.ico` and `/apple-touch-icon.png` | a 200 with `image/vnd.microsoft.icon` (or `image/x-icon`) and `image/png`; both are static assets, served before the Worker runs |
 
 Every response must also carry `X-Robots-Tag: noindex`. The result is the
 `preview smoke` check run on the pull request's head, with one row per request.

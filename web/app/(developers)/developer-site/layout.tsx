@@ -7,8 +7,9 @@
 import type { ReactNode } from "react";
 import "@/app/globals.css";
 import { BODY } from "@/components/shared/styles.ts";
+import { SITE_ICON_METADATA } from "@/lib/shared/siteIcons.ts";
 
-export const metadata = { title: "Lexema API" };
+export const metadata = { title: "Lexema API", ...SITE_ICON_METADATA };
 
 export default function DevelopersLayout({ children }: { children: ReactNode }) {
   return (

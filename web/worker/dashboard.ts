@@ -196,7 +196,7 @@ export async function answerDashboard(request: Request, route: DashboardRoute, c
       case "delete-account": {
         if (field(form, DELETE_CONFIRM_FIELD) !== DELETE_CONFIRMATION) return refuse(400, "Confirm the deletion first.");
         const stripe = context.billing.outcome === "ready" ? context.billing.billing.stripe.subscriptions : undefined;
-        const deleted = await deleteAccount(db, accountId, context.now, stripe, accountMailOf(context.email, url.origin));
+        const deleted = await deleteAccount(db, accountId, context.now, stripe, accountMailOf(context.email, { developers: url.origin, lexema: originsOf(url.hostname).lexema }));
         if (deleted.outcome === "billing-off") {
           const missing = context.billing.outcome === "missing" ? context.billing.missing : [];
           console.error("account not deleted: billing is off and a subscription may still bill", { accountId, billable: deleted.billable, missing });
