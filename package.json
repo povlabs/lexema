@@ -24,16 +24,16 @@
     "measure:section-language": "tsx src/import/measureSectionLanguage.ts"
   },
   "devDependencies": {
-    "@types/node": "^22.0.0",
-    "drizzle-kit": "0.31.11",
-    "tsx": "^4.0.0",
-    "typescript": "^5.0.0"
+    "@types/node": "catalog:node22",
+    "drizzle-kit": "catalog:",
+    "tsx": "catalog:",
+    "typescript": "catalog:"
   },
   "dependencies": {
-    "@better-auth/drizzle-adapter": "1.7.6",
-    "@better-auth/stripe": "1.7.6",
-    "better-auth": "1.7.6",
-    "drizzle-orm": "0.45.3",
-    "stripe": "22.6.2"
+    "@better-auth/drizzle-adapter": "catalog:",
+    "@better-auth/stripe": "catalog:",
+    "better-auth": "catalog:",
+    "drizzle-orm": "catalog:",
+    "stripe": "catalog:"
   }
 }

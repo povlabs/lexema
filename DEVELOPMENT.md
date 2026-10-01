@@ -35,6 +35,14 @@ render React pages, and passes `--experimental-test-module-mocks`, which
 `mock.module` needs. The integration test lives in `test/integration/`, so the
 pattern skips it and only `test:integration` runs it.
 
+### Adding a dependency
+
+Every dependency's version lives once, in the `catalog:` block of
+[pnpm-workspace.yaml](./pnpm-workspace.yaml). A new dependency goes into the
+catalog first; its `package.json` entry is then `"catalog:"`, never a version.
+`fabrika guard catalog-guard check` reds a manifest that pins one. The one named catalog, `node22`, keeps the root's `@types/node` on Node
+22 while the Worker uses 26.
+
 ### Checks that need the dataset
 
 ```sh
@@ -365,7 +373,7 @@ through [src/db/app/nodeSqlite.ts](./src/db/app/nodeSqlite.ts), which drives
 | App tables | Drizzle ORM + drizzle-kit | The developer app's tables and their migrations, pinned exactly; the dictionary stays raw SQL ([ADR 0017](./.decisions/0017-better-auth-and-drizzle-own-accounts.md)). |
 | Sign-in | better-auth + its Drizzle adapter | Google and GitHub sign-in, account linking and sessions on the developer site, pinned exactly, wired by hand in [src/accounts/auth.ts](./src/accounts/auth.ts); keys, account deletion and the CSRF token stay Lexema's ([ADR 0017](./.decisions/0017-better-auth-and-drizzle-own-accounts.md)). |
 | Billing | `@better-auth/stripe` + `stripe` | Stripe Checkout, the billing portal and the `subscription` rows on better-auth, pinned exactly; the plan catalogue, plan states and Enterprise stay Lexema's in [src/billing/](./src/billing) ([#161](https://github.com/hueypov/lexema/issues/161)). |
-| Package manager | pnpm 10 | `pnpm-lock.yaml` is the only lockfile ([ADR 0002](./.decisions/0002-pnpm-is-the-package-manager.md)). |
+| Package manager | pnpm 10 | `pnpm-lock.yaml` is the only lockfile, and every version sits in the workspace catalog ([ADR 0002](./.decisions/0002-pnpm-is-the-package-manager.md)). |
 
 ## Layout
 
