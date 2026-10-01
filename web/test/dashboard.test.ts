@@ -665,15 +665,16 @@ test("when Stripe fails, or billing is off, deleting an account with a live subs
   }
 });
 
-test("deleting an account emails the person once, at the address it had, with a link to the developer site; a refused deletion sends nothing (#215)", async () => {
+test("deleting an account emails the person once, at the address it had, with no link to settings; a refused deletion sends nothing (#215)", async () => {
   const { stripe, email, remove } = await subscribed("active");
   stripe.set("sub_ada", "cus_ada", {}, LIVE_PRO);
   assert.equal((await remove()).status, 200);
   assert.deepEqual(
     email.sent.map(({ to, subject }) => ({ to, subject })),
-    [{ to: "ada@example.com", subject: "Your Lexema account is deleted" }],
+    [{ to: "ada@example.com", subject: "Your Lexema account has been deleted" }],
   );
-  assert.ok(email.sent[0]?.text.includes(`${DEVELOPERS}${SETTINGS}`));
+  // The deleted email has nothing to do in settings, so it carries no link (#367).
+  assert.ok(!email.sent[0]?.text.includes(`${DEVELOPERS}${SETTINGS}`));
 
   const refused = await subscribed("active", false);
   refused.stripe.set("sub_ada", "cus_ada", {}, LIVE_PRO);
