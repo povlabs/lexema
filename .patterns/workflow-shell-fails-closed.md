@@ -22,7 +22,7 @@ if [ "${#changed[@]}" -eq 0 ]; then
   echo "No changed files — nothing to scan."
   exit 0
 fi
-pnpm dlx @kampus/fabrika-cli@0.7.1 guard leak-guard scan "${changed[@]}"
+pnpm exec fabrika guard leak-guard scan "${changed[@]}"
 ```
 
 Four rules, each visible above:

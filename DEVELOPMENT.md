@@ -398,8 +398,10 @@ The repository pins `@kampus/fabrika-cli` as a root devDependency, through the
 catalog in [pnpm-workspace.yaml](./pnpm-workspace.yaml). `pnpm exec fabrika`
 runs that pinned copy. Agents call `fabrika` from PATH, the global install
 (`pnpm add -g @kampus/fabrika-cli`), and that copy hands every call to the
-pinned one in `node_modules`, so both run the same version. To move the
-version, change the catalog entry and run `pnpm install`.
+pinned one in `node_modules`, so both run the same version. The
+`leak-guard` and `decisions-index` workflows install dependencies and run
+`pnpm exec fabrika` too, so CI runs that version as well. To move the version,
+change the catalog entry and run `pnpm install`.
 
 The committed Claude Code settings live in
 [.claude/settings.json](./.claude/settings.json). They turn on the Fabrika

@@ -25,6 +25,10 @@ jobs:
       - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
         with:
           node-version-file: .nvmrc
+          cache: pnpm
+      # Installs the fabrika version the pnpm-workspace.yaml catalog pins, so
+      # CI runs the same guard a local `pnpm exec fabrika` runs.
+      - run: pnpm install --frozen-lockfile
 
       - name: Scan PR diff
         env:
@@ -45,4 +49,4 @@ jobs:
           fi
           printf 'Scanning %d changed file(s):\n' "${#changed[@]}"
           printf '  %s\n' "${changed[@]}"
-          pnpm dlx @kampus/fabrika-cli@0.8.0 guard leak-guard scan "${changed[@]}"
+          pnpm exec fabrika guard leak-guard scan "${changed[@]}"
