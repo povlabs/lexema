@@ -1,8 +1,10 @@
-# How to run the search page locally
+# How to run the site
 
-Get the Italian search page answering queries on your own machine. Why it is
-built this way is [WEB.md](WEB.md); the seed's exact numbers are
-[DEV_SEED.md](DEV_SEED.md). This page is the operation.
+Get the Italian search page answering queries on your own machine, and keep the
+live site running: its health check, what it logs, how to roll it back, and the
+checks to run right after go-live. Why it is built this way is
+[WEB.md](WEB.md); the seed's exact numbers are [DEV_SEED.md](DEV_SEED.md);
+deploying is [DEPLOY.md](DEPLOY.md). This page is the operation.
 
 ## Before you start
 
@@ -11,7 +13,8 @@ built this way is [WEB.md](WEB.md); the seed's exact numbers are
 - A few hundred MB free under `.data/`.
 - About two minutes, most of it the seed.
 
-Nothing here touches a Cloudflare account. `wrangler dev` runs the Worker on
+Nothing up to [Check it is healthy](#check-it-is-healthy) touches a Cloudflare
+account. `wrangler dev` runs the Worker on
 workerd locally, and local D1 state is kept in `.data/`, not `web/.wrangler/`.
 The full Italian archive is maintained at
 [`source/it-extract.jsonl.gz`](https://github.com/hueypov/lexema-data/blob/main/source/it-extract.jsonl.gz).
@@ -176,7 +179,174 @@ network, and it sets a test-only `BETTER_AUTH_SECRET`.
 | Sign-in, the dashboard, API keys or the report box answer 503, and the log says `no such table` | the state was seeded before `APP_DB` existed (#240); run `pnpm run seed:dev` again, or migrate the app database alone ([DEVELOPMENT.md](../DEVELOPMENT.md#change-the-database-schema)) |
 | Seed stops with `part N of M failed` | one Wrangler run failed; the state directory is partial, so seed again into a fresh one ([RUN_AN_IMPORT.md § If a seed stops](RUN_AN_IMPORT.md#if-a-seed-stops)) |
 
+## Check it is healthy
+
+Every host answers `GET /health` (`web/worker/health.ts`):
+
+```sh
+curl -s https://lexema.fyi/health
+curl -s https://developers.lexema.fyi/health
+curl -s https://api.lexema.fyi/health
+```
+
+Each answers JSON with three fields:
+
+| Field | Holds |
+|---|---|
+| `ok` | `true` when every database checked answered |
+| `release` | the release `LEXEMA_RELEASE` serves |
+| `d1` | each database's state: `ok`, `unbound` (no binding) or `failed`. `lexema.fyi` checks the dictionary, `dictionary`; the developer site and the API also check the app database, `app` |
+
+A healthy host answers 200, for example
+`{"ok":true,"release":"it-0c432803","d1":{"dictionary":"ok","app":"ok"}}`.
+Any other state answers 503 with the same body, so a monitor that reads only the
+status still sees it. The cause of a `failed` is in the log, never in the body.
+
+Each check is `SELECT 1`, which reads no table. `/health` is answered before the
+per-visitor limits, so a monitor is never counted as a visitor and never gets a
+429, even with a `q` on it. Locally it is `http://localhost:8790/health`, and
+the same path on `developers.localhost` and `api.localhost`.
+
+## What is logged
+
+The Worker writes to Workers Logs
+([web/wrangler.jsonc](../web/wrangler.jsonc), `observability`). Read it in the
+Cloudflare dashboard: **Workers & Pages**, `lexema-web`, **Observability**.
+
+What it writes:
+
+- **Errors.** A short message, a few fields saying what failed (which route,
+  which database, which kind of email), and the error. A database error names
+  tables, not the words searched.
+- **Rate-limit blocks.** Which limit, such as `rate limited { limit: 'search' }`,
+  never the address.
+- **A request id on every line.** `requestId` is the request's `cf-ray`, the id
+  Cloudflare gives each request. A failure nothing else answered is answered
+  500 with that id in its `x-request-id` header, so a reader's report can be
+  matched to the log. In the dashboard, filter on `requestId`.
+
+What it never writes: a search string, a query string, an IP address, an email
+address or an API key. To keep it that way, invocation logs are off
+(`"invocation_logs": false`). Cloudflare writes one per request, with
+[the method and the full URL](https://developers.cloudflare.com/workers/observability/logs/workers-logs/#invocation-logs),
+query included, and the request's headers, which
+[are redacted only for cookies and auth-like names](https://developers.cloudflare.com/workers/runtime-apis/handlers/tail/#tailrequest),
+so `cf-connecting-ip`, the visitor's address, would sit beside the search
+string. `web/test/health.test.ts` fails if production turns them back on.
+
+How long it is kept: Workers Logs keeps 7 days on the Workers Paid plan and 3
+days on Workers Free
+([Workers Logs, pricing](https://developers.cloudflare.com/workers/observability/logs/workers-logs/#pricing)),
+then Cloudflare deletes it. We keep nothing longer: there is no Logpush, no Tail
+Worker and no export, and `wrangler tail` only shows lines as they happen.
+
+## Roll back
+
+### The Worker
+
+Every deploy is a new version, and a rollback makes an earlier one live on all
+three hosts at once
+([Rollbacks](https://developers.cloudflare.com/workers/versions-and-deployments/rollbacks/)).
+From the repository root, list the recent deployments and pick the version
+before the bad one:
+
+```sh
+pnpm --dir web exec wrangler deployments list --name lexema-web
+```
+
+Then roll back to it:
+
+```sh
+pnpm --dir web exec wrangler rollback <version-id> --name lexema-web --message "<why>"
+```
+
+Or in the dashboard: **Workers & Pages**, `lexema-web`, **Deployments**, the
+three dots on the version, **Rollback**.
+
+Then check `/health` on all three hosts, as above. A rollback changes code and
+settings only: D1, secrets and the account meter's data stay as they are. It is
+refused across a Durable Object migration. The next merge to `main` deploys
+again, so revert the bad commit on `main` before anything else merges.
+
+### A dictionary change
+
+A dictionary change is an apply of [UPDATE_THE_DICTIONARY.md](UPDATE_THE_DICTIONARY.md)
+(#18). It writes the shared dictionary, `lexema-dictionary`, and nothing else.
+Undo it with D1 Time Travel, which restores the database to a moment before the
+apply.
+
+Use the bookmark you kept before the apply (step 4 of that page). Without one,
+get the bookmark for a time before it:
+
+```sh
+pnpm --dir web exec wrangler d1 time-travel info lexema-dictionary --timestamp="2026-10-02T09:00:00+00:00"
+```
+
+Restore:
+
+```sh
+pnpm --dir web exec wrangler d1 time-travel restore lexema-dictionary --bookmark=<bookmark>
+```
+
+It asks to confirm, overwrites the database in place and cancels queries in
+flight, so a few lookups fail while it runs. It prints the bookmark to undo the
+restore itself; keep it. Then search a word the apply changed: it shows the
+older release's senses again, and its share card moves back with it.
+
+Time Travel is always on and costs nothing extra: no charge for the history or
+for a restore. It reaches back 30 days on Workers Paid, 7 on Workers Free
+([Time Travel](https://developers.cloudflare.com/d1/reference/time-travel/)).
+
+Never restore the app database, `APP_DB`, to undo a dictionary change: it would
+take back every account, key and report written since.
+
+## Smoke-test right after go-live
+
+Run these as soon as production serves the dictionary (#19). Each row is one
+check; *Huey* marks the ones only Huey can run.
+
+| Check | Do | Passes when |
+|---|---|---|
+| Health | `curl -s` each `/health` above | 200, `"ok":true`, the live release, every database `ok` |
+| Found | <https://lexema.fyi/?q=andare> | the verb, its forms grouped by tense |
+| Not found | <https://lexema.fyi/?q=citta> | `No entry for "citta"`, offering `città` |
+| Ambiguous | <https://lexema.fyi/?q=sale> | several entries; the link to `sala` searches it and shows both the noun and the verb, without picking one |
+| Missing data | <https://lexema.fyi/?q=casa> | one entry; what the source does not give, such as its forms, is missing, not filled in |
+| Disputed | <https://lexema.fyi/?q=studente> | every reading as the source states it, and no note about a dispute ([WEB.md](WEB.md#why-a-disputed-claim-is-a-row-and-not-a-code-path)) |
+| Share card | the `og:image` of `?q=casa`, below | 200, `image/png`, the word's card |
+| Sign-in (Huey) | <https://developers.lexema.fyi/sign-in>, with Google and with GitHub | back on the dashboard, signed in |
+| API key (Huey) | on the dashboard, create a key named `smoke` | the key is shown once; copy it |
+| API lookup | `/v1/lookup`, below | 200 with `casa`'s entry |
+| API batch | `/v1/lookup/batch`, below | 200, `results` for `sale` then `casa` |
+| Checkout (Huey) | upgrade to Starter in Stripe live mode ([DEPLOY.md](DEPLOY.md#in-production-at-go-live)) | back on the dashboard on Starter; then cancel in the billing portal |
+| Flood guard | 16 searches in a minute, below | fifteen 200s, then a 429 with `retry-after: 60` |
+
+Then revoke the `smoke` key on the dashboard.
+
+The share card's address is in the page:
+
+```sh
+curl -s "https://lexema.fyi/?q=casa" | grep -o 'og:image" content="[^"]*'
+curl -sI "<that address>" | grep -iE '^HTTP|content-type'
+```
+
+The API, with the key from the dashboard:
+
+```sh
+KEY=<the smoke key>
+curl -s -H "X-API-Key: $KEY" "https://api.lexema.fyi/v1/lookup?q=casa"
+curl -s -H "X-API-Key: $KEY" -H "content-type: application/json" \
+  -d '{"q":["sale","casa"]}' https://api.lexema.fyi/v1/lookup/batch
+```
+
+The flood guard, from one machine. It uses up your own searches for a minute:
+
+```sh
+for i in $(seq 16); do curl -s -o /dev/null -w "%{http_code}\n" "https://lexema.fyi/?q=casa"; done
+```
+
 ## Not this page
 
 Deploying is [DEPLOY.md](DEPLOY.md); attaching D1 in production is #19. Flipping
-which imported release is served is #18.
+which imported release is served is #18. What a reader should know about the
+data's gaps is [KNOWN_LIMITATIONS.md](KNOWN_LIMITATIONS.md).

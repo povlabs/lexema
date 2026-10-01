@@ -5,6 +5,7 @@ import { env } from "cloudflare:workers";
 import { cache } from "react";
 import { servedVersion as readServedVersion, versionToken } from "@lexema/lookup/served.ts";
 import { suggest, type SuggestResult } from "@lexema/lookup/suggest.ts";
+import { log } from "@lexema/log/requestLog.ts";
 import { database } from "@/lib/shared/database.ts";
 import type { Attempt } from "./attempt.ts";
 import { searchAttempt } from "./searchAttempt.ts";
@@ -25,7 +26,7 @@ export async function searchOnce(query: string): Promise<Attempt> {
   try {
     return await searchAttempt(database(), env.LEXEMA_RELEASE, query);
   } catch (error) {
-    console.error("lookup failed", error);
+    log.error("lookup failed", {}, error);
     return { outcome: "failed" };
   }
 }
@@ -48,7 +49,7 @@ export async function suggestions(prefix: string): Promise<SuggestResult | { out
   try {
     return await suggest({ db: database(), releaseId: env.LEXEMA_RELEASE, prefix });
   } catch (error) {
-    console.error("suggest failed", error);
+    log.error("suggest failed", {}, error);
     return { outcome: "failed" };
   }
 }
@@ -62,7 +63,7 @@ export function turnstile(): TurnstileConfig | undefined {
   return turnstileConfig(
     env.TURNSTILE_SITE_KEY,
     (env as { TURNSTILE_SECRET_KEY?: string }).TURNSTILE_SECRET_KEY,
-    (message) => console.warn(message),
+    (message) => log.warn(message),
   );
 }
 
@@ -78,7 +79,7 @@ export async function servedVersionOnce(): Promise<string | undefined> {
   try {
     return versionToken(await readServedVersion(database(), env.LEXEMA_RELEASE));
   } catch (error) {
-    console.error("served version failed", error);
+    log.error("served version failed", {}, error);
     return undefined;
   }
 }

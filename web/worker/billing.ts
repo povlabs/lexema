@@ -35,6 +35,7 @@ import { csrfMatches } from "@lexema/accounts/csrf.ts";
 import { accountPlan, choiceFor } from "@lexema/billing/accountPlan.ts";
 import { stripePlanOf, type StripePlanId } from "@lexema/billing/plans.ts";
 import { appTablesOverD1, type AppTables } from "@lexema/db/app/database.ts";
+import { log } from "@lexema/log/requestLog.ts";
 import { CHECKOUT_ACTION, PLAN_FIELD, PORTAL_ACTION, PRICING } from "@/lib/developers/billingActions.ts";
 import { CSRF_FIELD, SETTINGS } from "@/lib/developers/dashboardActions.ts";
 import { DEVELOPERS_SEGMENT, originsOf } from "./hosts.ts";
@@ -173,7 +174,7 @@ export async function answerBilling(request: Request, route: BillingRoute, conte
 
   const ready = readyOf(context);
   if (!("billing" in ready)) {
-    console.error("billing is off", { route: route.kind, missing: ready });
+    log.error("billing is off", { route: route.kind, missing: ready });
     return text(503, "Billing is not available.");
   }
 
@@ -211,7 +212,7 @@ export async function answerBilling(request: Request, route: BillingRoute, conte
     return await toCheckout(url, ready, session, plan);
   } catch (failure) {
     // Stripe's, the plugin's or the database's message stays in the log.
-    console.error("billing failed", { route: route.kind }, failure);
+    log.error("billing failed", { route: route.kind }, failure);
     return text(503, "Billing could not be reached. Try again later.");
   }
 }

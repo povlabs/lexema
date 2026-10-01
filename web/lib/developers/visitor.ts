@@ -5,6 +5,7 @@
 // session is still the public page, signed out, with the failure in the log.
 import { env } from "cloudflare:workers";
 import { headers } from "next/headers";
+import { log } from "@lexema/log/requestLog.ts";
 import { csrfTokenOf } from "@/worker/dashboard.ts";
 import type { SiteOrigins } from "@/worker/hosts.ts";
 import { appDatabase } from "@/lib/shared/database.ts";
@@ -29,7 +30,7 @@ async function visitorOf(cookies: string | null, origins: SiteOrigins): Promise<
   try {
     return await sessionVisitor(cookies, appDatabase(), Date.now(), origins);
   } catch (failure) {
-    console.error("the visitor's session could not be read", failure);
+    log.error("the visitor's session could not be read", {}, failure);
     return undefined;
   }
 }
