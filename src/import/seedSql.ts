@@ -21,6 +21,7 @@ import { HiddenLayer, readTitles, type HiddenSummary } from "./hiddenLayer.js";
 import { RawPageRows } from "./rawPageRows.js";
 import { RecoveredLayer, type RecoverySummary } from "./recoveredLayer.js";
 import { normalizeItalianExact } from "../italian/normalize.js";
+import { SOURCE_TEXT_RULES, type SourceTextRuleId } from "../italian/sourceTextNormalization.js";
 import { deletionKeys, foldKey } from "../lookup/nearby.js";
 import { clearParts, SqlPartWriter } from "./sqlParts.js";
 
@@ -353,6 +354,8 @@ export interface SeedSqlReport extends ArchiveParseReport {
   hidden: HiddenSummary;
   /** The facts recorded for this archive's checksum, or none. */
   archiveFacts: ArchiveFacts | undefined;
+  /** The source text normalization rules (ADR 0019) the structured rows were written under. */
+  sourceTextRules: readonly SourceTextRuleId[];
 }
 
 export async function seedSql(options: SeedSqlOptions): Promise<SeedSqlReport> {
@@ -482,6 +485,7 @@ export async function seedSql(options: SeedSqlOptions): Promise<SeedSqlReport> {
       recovery: recovered.summary,
       hidden: hidden.summary,
       archiveFacts: facts,
+      sourceTextRules: Object.values(SOURCE_TEXT_RULES),
     };
   } finally {
     await rm(work, { recursive: true, force: true });

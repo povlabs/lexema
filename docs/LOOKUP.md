@@ -191,7 +191,7 @@ lemma — `studentessa` for `studenti` — is still a reading.
 | `lemmaLinks[]` | the reading's lemma: outgoing `form_of` edges this record declares, each candidate with its `listing` and its own `expressions` |
 | `inflections[]` | records declaring themselves forms of this one |
 | `reviews[]` | review verdicts on this record's claims |
-| `articles` | noun readings only: the articles `it-articles/v2` derives from the record's one stated gender and one stated number, plus the plural ones for the single plural form the source tags with the same gender; or, when withheld, the first reason (`ArticleWithholding` in `src/lookup/types.ts`) |
+| `articles` | noun readings only: the articles `it-articles/v3` derives from the record's one stated gender and one stated number, and from the record's own IPA where the headword's spelling leaves its first sound open, plus the plural ones for the single plural form the source tags with the same gender; or, when withheld, the first reason (`ArticleWithholding` in `src/lookup/types.ts`) |
 
 ### `expressions`
 
@@ -274,7 +274,7 @@ all; the three represented states are:
 
 | `status` | Meaning | Also carries |
 | --- | --- | --- |
-| `stated` | the source gave a tag that maps to a known value | `dimension`, `value`, `sourceText` |
+| `stated` | the source gave a tag that maps to a known value, or a gloss grammar stamp (`f sing`) that rule `it-gloss-stamp/v1` reads, in which case `pointer` names the gloss ([`grammarPolicy.ts`](../src/import/grammarPolicy.ts)) | `dimension`, `value`, `sourceText` |
 | `unclassified` | the source gave text that is not mapped | `sourceText` |
 | `missing` | the dimension was checked and the source said nothing | `dimension` |
 

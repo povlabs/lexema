@@ -77,6 +77,7 @@ process.stderr.write(
     : `archive facts: ${report.archiveFacts.sourceUrl}, downloaded ${report.archiveFacts.retrievedAt}, ` +
         `dump ${report.archiveFacts.dump.id} (${report.archiveFacts.dump.basis})\n`,
 );
+process.stderr.write(`source text rules: ${report.sourceTextRules.join(", ")}\n`);
 const { recovery } = report;
 process.stderr.write(
   `recovered layer: ${recovery.definitions} definition(s) and ${recovery.examples} example(s) for ` +

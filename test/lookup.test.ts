@@ -90,7 +90,8 @@ const LINES = [
   JSON.stringify({ word: "bello", pos: "noun", pos_title: "Sostantivo", lang_code: "it", tags: ["invariable", "masculine"] }),
   JSON.stringify({ word: "bello", pos: "noun", pos_title: "Sostantivo", lang_code: "it", tags: ["masculine", "singular"] }),
 
-  // No gender, no number, definitions that define nothing.
+  // No tags: gender and number only from the gloss stamp (#317); definitions
+  // that define nothing.
   JSON.stringify({
     word: "casa", pos: "noun", pos_title: "Sostantivo", lang_code: "it",
     senses: [{ glosses: ["casa ( approfondimento) f sing"], raw_tags: ["pl.: case"] }],
@@ -574,12 +575,14 @@ test("keeps stated, unclassified and missing grammar apart in the result", async
   await withFixture(async (db) => {
     const [casa] = found(await ask(db, "casa"));
     const record = casa.grammar.record;
-    // The source states nothing about `casa`'s gender or number, and we looked.
+    // `casa` has no gender or number tag. Its gender and number are stated
+    // only by the stamp at the end of its gloss (#317), so the claims point at
+    // that gloss and nothing is left missing. (A record the stamp leaves a
+    // dimension missing for is in test/glossGrammarStamp.test.ts.)
     assert.deepEqual(
-      record.filter((c) => c.status === "missing").map((c) => c.status === "missing" && c.dimension).sort(),
-      ["gender", "number"],
+      record.map((c) => (c.status === "stated" ? `${c.dimension}=${c.value} ${c.ref.jsonPointer}` : c.status)),
+      ["gender=feminine /senses/0/glosses/0", "number=singular /senses/0/glosses/0"],
     );
-    assert.equal(record.filter((c) => c.status === "stated").length, 0);
 
     // Its plural is written in prose on the sense, kept verbatim rather than
     // parsed into number=plural.
@@ -757,7 +760,7 @@ test("the reading type cannot express articles apart from a noun", () => {
         gender: "feminine",
         number: "singular",
         sourceType: "lexema-deterministic",
-        rule: "it-articles/v2",
+        rule: "it-articles/v3",
       },
     ],
   };

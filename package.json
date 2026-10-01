@@ -15,7 +15,7 @@
     "test:definition-loss": "python3 tools/definition_loss.py verify && python3 test/definition-loss.py",
     "validate": "tsx src/cli.ts validate",
     "seed:dev": "tsx src/import/seedDev.ts",
-    "normalize:glosses": "tsx src/import/normalizeGlossesCli.ts",
+    "normalize:source-text": "tsx src/import/normalizeSourceTextCli.ts",
     "hide:records": "tsx src/import/hideRecordsCli.ts",
     "update:upgrade": "tsx src/update/updateCli.ts upgrade",
     "update:diff": "tsx src/update/updateCli.ts diff",

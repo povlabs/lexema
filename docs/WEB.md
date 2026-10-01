@@ -204,8 +204,9 @@ shows both, instead of picking one, because picking one would invent a fact.
 **Grammar the source never stated.** A form the source does not give is a dash
 in its cell, with no note
 ([design-system-manifest.md § "The result"](../design-system-manifest.md#the-result)). `casa`'s
-record states no gender, no number and no forms, so nothing can be placed in a
-grid and its reading has no *Forms* block.
+record has no tags and no forms. Its gender and number come only from its gloss
+grammar stamp (`f sing`, #317), and with no forms nothing can be placed in a
+grid, so its reading has no *Forms* block.
 
 **Definitions that define nothing.** `casa`'s two glosses are page furniture.
 They are shown verbatim when they are all a reading has. When definitions
@@ -260,7 +261,7 @@ inflecting phrase names its record's own gender and number after its part of
 speech in the reading's heading (`1 · Aggettivo · maschile, singolare`), only
 what the record states and nothing when it states neither, and shows a
 gender-and-number grid; its article lines are rule
-`it-articles/v2` (`src/italian/articles.ts`) applied to each spelling. A form
+`it-articles/v3` (`src/italian/articles.ts`) applied to each spelling, the headword's with the record's own IPA. A form
 that states a number but no gender takes the record's gender only when the
 record states exactly one; otherwise it takes no cell. A verb shows
 a conjugation with mood tabs; which mood a form goes in is rule `it-moods/v1`
