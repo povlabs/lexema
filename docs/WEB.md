@@ -345,7 +345,12 @@ and no email. `POST /report` (`web/app/(lexema)/report/route.ts`, `web/lib/dicti
 stores the report in `reader_report`, in the app database, and changes nothing on the page; a person
 reviews it (#12) and may then write a `claim_review` row. A report is not stored
 in `claim_review` itself, because that table holds reviewed verdicts, not
-reports waiting for one.
+reports waiting for one. A report on a reading keeps that reading's source line
+and its digest, so a re-seed cannot point it at another record
+([docs/RECORD_IDENTITY.md](./RECORD_IDENTITY.md#a-readers-report-names-a-line)).
+The person's answer is stored on the report, with `pnpm run report answer`
+([DEVELOPMENT.md](../DEVELOPMENT.md#review-a-readers-report)); no page and no
+API answer reads a report or its answer.
 
 Spam is kept out in four layers, as ruled on #51: the `REPORT_LIMIT` Worker
 binding stops a burst (2 a minute) before D1 is touched, and the ruled 5 reports

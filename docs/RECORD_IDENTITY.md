@@ -101,6 +101,12 @@ One known limit: grammar prose that hides in a *sense* `raw_tags`, like `casa` `
 
 `claim_review` attaches a note to one exact claim, by pointer, written by review rather than by import. A `disputed` row labels the claim; it never deletes or corrects it. The table is the shape only — who reviews, on what evidence, and how a verdict is reached is [#12](https://github.com/hueypov/lexema/issues/12) and is not decided here.
 
+### A reader's report names a line
+
+A reader's report ([#51](https://github.com/hueypov/lexema/issues/51)) is not a claim review and is not stored beside one: it lives in `reader_report` in the app database, which no dictionary seed touches ([ADR 0018](../.decisions/0018-previews-on-workers-builds.md)). Re-seeding the dictionary therefore never deletes a report.
+
+A report that names a reading keeps that reading's `release_id`, `line_no` and `line_sha256`, copied from `source_record` when it arrives ([#12](https://github.com/hueypov/lexema/issues/12)). It keeps the `record_id` too, but only as the number that one build gave the record: the importer numbers records in the order it admits lines, so a re-seed of the same release under a changed admission rule numbers them differently, and following the old `record_id` would land on another record. A review finds the reading by `(release_id, line_no)` and checks `line_sha256` against the line it finds ([src/readerReport/readerReport.ts](../src/readerReport/readerReport.ts)). It answers one of three things, and never guesses past them: the line is there with that digest, and this is its record now; the line is there with another digest, so it is not what the reader saw; or this dictionary does not hold that line of that release. A report sent before #12 kept only its `record_id`, and says so.
+
 ---
 
 # Worked examples
@@ -226,5 +232,5 @@ Its `pl.: case` sits in `sense_label` as a raw tag and in `grammar_claim` as `un
 - **Normalization.** `it-normalize/v1` does not touch accents. Whether a search for `citta` should also find `città` is undecided. Any accent-folded discovery must use a separately versioned approximate key; the accent-preserving exact key and form-of matching remain unchanged.
 - **Composite surfaces.** `studente/studentessa` and `avere o essere` are stored whole and will not match a search for their parts. Splitting them needs a rule nobody has validated.
 - **Expected-dimension policy.** Which dimensions get a `missing` row for which part of speech is [#10](https://github.com/hueypov/lexema/issues/10)'s call.
-- **Review workflow.** `claim_review` is a shape with no rows seeded. [#12](https://github.com/hueypov/lexema/issues/12) owns the rest.
+- **Review workflow.** `claim_review` is a shape with no rows seeded. A reader's report is reviewed beside it, not in it: a person reads the report and records an outcome on the report itself (`pnpm run report`, [#12](https://github.com/hueypov/lexema/issues/12)).
 - **Search beyond exact match.** No full-text index here. First release is exact word search.

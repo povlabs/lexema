@@ -222,6 +222,28 @@ An account whose Starter or Pro plan still serves is refused until that plan is
 cancelled in Stripe. Bad flags print the usage line and exit 1. Both commands
 write to the `APP_DB` in `SEED_STATE`, as `pnpm run api-key` does.
 
+### Review a reader's report
+
+A report sent from a word page's *Report a mistake* box waits in
+`reader_report` until a person looks
+([#12](https://github.com/hueypov/lexema/issues/12),
+[src/readerReport/](./src/readerReport)):
+
+```sh
+pnpm run report list
+pnpm run report list --all
+pnpm run report answer 3 --outcome "Fixed upstream in Wiktionary." --by huey
+```
+
+`list` prints the waiting reports, oldest first, or every report with `--all`:
+what the reader picked and said, and where its reading is in the local
+dictionary, found by its source line
+([docs/RECORD_IDENTITY.md](./docs/RECORD_IDENTITY.md#a-readers-report-names-a-line)).
+`answer` records what the person found or did, once; a second answer is
+refused. Neither changes the dictionary or anything a reader sees: a fix is
+made by hand, elsewhere. Both read the `APP_DB` and the dictionary in
+`SEED_STATE`, as `pnpm run plan` does.
+
 ### Look at a pull request's Preview
 
 Each pull request's branch gets a Preview with all three sites, and one comment
@@ -355,6 +377,7 @@ src/
 ├── import/         # the streaming importer, the SQL export and the dev seed
 ├── italian/        # the Italian adapter: normalize, tags, articles, examples
 ├── lookup/         # exact surface lookup over a complete release
+├── readerReport/   # readers' reports as a person reviews them; `pnpm run report`
 └── source/         # gzip JSONL streaming and provenance refs
 web/                # the @lexema/web workspace: the Worker and the search page
 test/               # unit tests, plus the dataset-backed adapter test
