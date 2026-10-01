@@ -2,9 +2,11 @@
 // so one meaning reads one way across the dictionary. The seed applies them to
 // the structured rows, and a one-off update applies the same function to a
 // database seeded before a rule existed (src/import/normalizeGlosses.ts,
-// src/import/normalizeForms.ts). The
+// src/import/normalizeForms.ts, src/import/headwordLeadUpdate.ts). The
 // raw line in `source_record_json` never passes through here. This is not the
 // search normalization in normalize.ts, which only builds lookup keys.
+
+import { readHeadwordLine } from "./furniture.js";
 
 /**
  * Each source text normalization's name and version, as the seed and the
@@ -17,6 +19,8 @@ export const SOURCE_TEXT_RULES = {
   personOrdinalGloss: "gloss-person-ordinal/v1",
   /** #342: `normalizeFormSurface`. */
   pluralPlaceholderForm: "form-plural-placeholder/v1",
+  /** #325: `withoutHeadwordLead`. */
+  headwordLeadGloss: "gloss-headword-lead/v1",
 } as const;
 
 export type SourceTextRuleId = (typeof SOURCE_TEXT_RULES)[keyof typeof SOURCE_TEXT_RULES];
@@ -40,6 +44,26 @@ export function normalizeGloss(text: string): string {
  * `normalizeGloss` decide, so the rule is written once.
  */
 export const NORMALIZABLE_GLOSS_GLOB = "[123]ª persona*";
+
+/**
+ * A gloss of `word`'s record as Lexema stores it. #325: where the headword and
+ * its `( approfondimento)` link lead a definition (`palo ( approfondimento)
+ * pezza onorevole…`), the gloss is the definition alone, so the page numbers it
+ * like any other; 12 glosses in 11 records of release `it-0c432803`. A bare
+ * headword line, stamps and all, stays as written for the page to hide
+ * (`readHeadwordLine` in furniture.ts), and so does any gloss of another word.
+ */
+export function withoutHeadwordLead(word: string, text: string): string {
+  const line = readHeadwordLine(text, word);
+  return line?.kind === "lead" ? line.prose : text;
+}
+
+/**
+ * A SQLite GLOB that matches every stored gloss `withoutHeadwordLead` would
+ * change, and more. The one-off update reads only these rows and lets the rule
+ * decide.
+ */
+export const HEADWORD_LEAD_GLOSS_GLOB = "* ( approfondimento)*";
 
 /**
  * Wikizionario's empty plural template: where an editor never filled in a

@@ -21,6 +21,7 @@
 import { createHash } from "node:crypto";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
+import { readHeadwordLine } from "../italian/furniture.js";
 import { placeItalianVerbForm } from "../italian/moods.js";
 import {
   duplicateForms,
@@ -133,7 +134,7 @@ const sampleKey = (stratum: Stratum, lineSha256: string): string =>
 
 const { pages, described } = await openRawPages();
 
-const SENSE_KINDS: readonly SenseKind[] = ["meaning", "form-of", "furniture", "furniture-with-prose", "placeholder", "no-gloss"];
+const SENSE_KINDS: readonly SenseKind[] = ["meaning", "form-of", "furniture", "placeholder", "no-gloss"];
 /** A record's kind is its strongest sense's, in this order. */
 const recordKind = (kinds: readonly SenseKind[]): SenseKind | "no-sense" =>
   SENSE_KINDS.find((kind) => kinds.includes(kind)) ?? "no-sense";
@@ -163,8 +164,16 @@ interface FurnitureGloss {
   page: keyof typeof definitions.furnitureRecords;
   recovered: number;
 }
-const furnitureWithProse: FurnitureGloss[] = [];
 const furnitureGlosses: FurnitureGloss[] = [];
+/** A gloss the headword line leads, which rule `gloss-headword-lead/v1` stores as its prose alone (#325). */
+interface HeadwordLeadGloss {
+  line: number;
+  word: string;
+  gloss: string;
+  /** Whether the page numbers the sense it belongs to. */
+  numbered: boolean;
+}
+const headwordLeads: HeadwordLeadGloss[] = [];
 
 /**
  * - `unclassified` — no structural tag states it, and a raw tag names it in
@@ -271,10 +280,15 @@ const second = await parseArchive({
         for (const gloss of pageGlosses(record.senses[index])) {
           const row: FurnitureGloss = { line: lineNo, word, pos: record.pos, gloss, page: treatment, recovered: recovered.length };
           furnitureGlosses.push(row);
-          if (kinds[index] === "furniture-with-prose") furnitureWithProse.push(row);
         }
       }
     }
+    record.senses.forEach((sense, index) => {
+      for (const gloss of pageGlosses(sense)) {
+        if (readHeadwordLine(gloss, word)?.kind !== "lead") continue;
+        headwordLeads.push({ line: lineNo, word, gloss, numbered: split.numbered.includes(index) });
+      }
+    });
 
     // Gender and number, where the importer expects them.
     const formOf = isFormOf(record);
@@ -512,7 +526,7 @@ const result = {
   strata: stratumSize,
   definitions,
   furnitureGlosses,
-  furnitureWithProse,
+  headwordLeads,
   grammar: Object.fromEntries(grammar),
   verbForms,
   targets,
@@ -538,7 +552,9 @@ line(`definitions: ${definitions.withGlossText} records with gloss text; ${defin
   `${definitions.meaningOnlyThroughRecovery} have a meaning only through the recovered layer; ${definitions.glossTextButNoMeaning} have gloss text and no meaning at all`);
 line(`  record kinds: ${JSON.stringify(definitions.byRecordKind)}`);
 line(`  senses: ${JSON.stringify(definitions.senses)}; records holding one: ${JSON.stringify(definitions.recordsWithSense)}`);
-line(`  furniture glosses ${furnitureGlosses.length} in ${new Set(furnitureGlosses.map((row) => row.line)).size} records, ${furnitureWithProse.length} of them go on to state something`);
+line(`  furniture glosses ${furnitureGlosses.length} in ${new Set(furnitureGlosses.map((row) => row.line)).size} records; ` +
+  `headword-led definitions ${headwordLeads.length} in ${new Set(headwordLeads.map((row) => row.line)).size} records, ` +
+  `${headwordLeads.filter((row) => row.numbered).length} of them numbered`);
 line(`dangling targets ${dangling.targets}: no raw page ${JSON.stringify(dangling.noPage)}; a raw page ${JSON.stringify(dangling.page)}`);
 line(`form-of edges ${targets.edges}: any part of speech ${JSON.stringify(targets.anyPos)}; same ${JSON.stringify(targets.samePos)}`);
 for (const [kind, tally] of Object.entries(verbForms)) {

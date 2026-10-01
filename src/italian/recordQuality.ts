@@ -29,29 +29,15 @@ const strings = (value: unknown): string[] =>
  * - `form-of` — the sense has a gloss, is not furniture, and names the word it
  *   inflects (`plurale di casa`).
  * - `furniture` — every gloss is the headword line the page hides
- *   (`casa ( approfondimento) f sing`), with nothing after the stamp.
- * - `furniture-with-prose` — every gloss starts as that headword line, and at
- *   least one goes on to state something: `palo ( approfondimento) pezza
- *   onorevole…`. The page rule hides it all the same.
+ *   (`casa ( approfondimento) f sing`), with nothing after the stamp. A
+ *   headword line that goes on to state something (`palo ( approfondimento)
+ *   pezza onorevole…`) is a definition, which the seed stores without the
+ *   lead (#325), so it counts as `meaning` or `form-of`.
  * - `placeholder` — every gloss is Wikizionario's "definizione mancante"
  *   sentence and nothing else (#255).
  * - `no-gloss` — no gloss text at all.
  */
-export type SenseKind = "meaning" | "form-of" | "furniture" | "furniture-with-prose" | "placeholder" | "no-gloss";
-
-/** Gender and number stamps a headword line carries after `( approfondimento)`. */
-const STAMP = /^(?:m|f|n|s|e|sing|pl|inv|invar|pron|loc)\.?$/u;
-
-/** Whether a gloss the page rule calls furniture goes on to say something past the headword and stamps. */
-function furnitureStatesSomething(text: string, word: string): boolean {
-  const marker = `${word} ( approfondimento)`;
-  if (!text.startsWith(marker)) return false;
-  return text
-    .slice(marker.length)
-    .split(/[\s,;:()]+/u)
-    .filter((token) => token !== "")
-    .some((token) => !STAMP.test(token));
-}
+export type SenseKind = "meaning" | "form-of" | "furniture" | "placeholder" | "no-gloss";
 
 /** A sense's glosses as the page holds them: the placeholder taken out, and a gloss with nothing real left dropped. */
 export function pageGlosses(sense: QualityRecord["senses"][number]): string[] {
@@ -65,17 +51,15 @@ function pageShape(sense: QualityRecord["senses"][number], opensRecoveredList: b
 
 /**
  * What one sense holds. The furniture question comes before the form-of one
- * because the page's rule never reads `form_of`: `balzana`'s heraldic sense is
- * a headword line with a stray `form_of` pointer, and the page hides it.
+ * because the page's rule never reads `form_of`: a headword line with a
+ * `form_of` pointer is hidden all the same.
  */
 export function senseKind(sense: QualityRecord["senses"][number], word: string): SenseKind {
   // The page shows no sense without a gloss, a form-of one included.
   if (!strings(sense.glosses).some((text) => text.trim() !== "")) return "no-gloss";
   const shape = pageShape(sense, false);
   if (shape.glosses.length === 0) return "placeholder";
-  if (isFurnitureSense(shape, word)) {
-    return shape.glosses.some((text) => furnitureStatesSomething(text, word)) ? "furniture-with-prose" : "furniture";
-  }
+  if (isFurnitureSense(shape, word)) return "furniture";
   return sense.form_of.length > 0 ? "form-of" : "meaning";
 }
 

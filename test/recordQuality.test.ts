@@ -21,6 +21,7 @@ import {
   targetResolution,
   type QualityRecord,
 } from "../src/italian/recordQuality.js";
+import { isFurnitureGloss, readHeadwordLine } from "../src/italian/furniture.js";
 import { recordText, recoverDefinitions } from "../src/italian/recovery.js";
 import { readSavedPage } from "../src/source/rawPage.js";
 
@@ -88,28 +89,50 @@ test("raw text names gender or number only through a stamp or a grammar word", (
   for (const label of ["diritto", "scuola", "familiare", "forestierismo", "simg", "s", "km"]) assert.deepEqual(names(label), [], label);
 });
 
-test("palo: the page rule hides a headword line that goes on to state a heraldic meaning", () => {
+test("a headword line is furniture only when nothing but gender and number stamps follows the link (#325)", () => {
+  // Bare, as `verde` (line 112) and `console steel guitar` (605581) have it.
+  assert.deepEqual(readHeadwordLine("verde ( approfondimento)", "verde"), { kind: "bare" });
+  assert.equal(isFurnitureGloss("verde ( approfondimento)", "verde"), true);
+  // A stamp only, as `casa` (1) and `pianoforte` (41076) have it, and `punta`'s (41179) lone colon.
+  for (const [word, gloss] of [["casa", "casa ( approfondimento) f sing"], ["pianoforte", "pianoforte ( approfondimento) m sing"], ["punta", "punta ( approfondimento):"], ["case", "case ( approfondimento) f pl"]]) {
+    assert.deepEqual(readHeadwordLine(gloss, word), { kind: "bare" }, gloss);
+    assert.equal(isFurnitureGloss(gloss, word), true, gloss);
+  }
+  assert.equal(isFurnitureGloss("casa ( citazioni)", "casa"), true);
+  // Prose after the link: a definition the link leads, never furniture.
+  const palo = one("palo", "noun").senses[2].glosses?.[0] ?? "";
+  assert.deepEqual(readHeadwordLine(palo, "palo"), {
+    kind: "lead",
+    prose: "pezza onorevole (di primo ordine) che occupa verticalmente la parte centrale dello scudo ed è delimitata da due linee verticali parallele",
+  });
+  assert.equal(isFurnitureGloss(palo, "palo"), false);
+  assert.deepEqual(readHeadwordLine("orlo ( approfondimento) vedi orlatura", "orlo"), { kind: "lead", prose: "vedi orlatura" });
+  // Another word's link, or no link at all, is no headword line of this record.
+  assert.equal(readHeadwordLine("casa ( approfondimento) f sing", "caso"), undefined);
+  assert.equal(readHeadwordLine("edificio", "casa"), undefined);
+});
+
+test("palo: a headword line that goes on to state a heraldic meaning is numbered as a definition", () => {
   const palo = one("palo", "noun");
   const heraldic = palo.senses.findIndex((sense) => (sense.glosses?.[0] ?? "").startsWith("palo ( approfondimento) pezza onorevole"));
   assert.notEqual(heraldic, -1);
-  assert.equal(senseKind(palo.senses[heraldic], "palo"), "furniture-with-prose");
-  // The record has other meanings, so that sense is not counted among the definitions shown.
-  const shown = definitionsShown(palo, 0);
-  assert.equal(shown, kinds(palo).filter((kind) => kind === "meaning").length);
+  assert.equal(senseKind(palo.senses[heraldic], "palo"), "meaning");
+  const split = splitRecordSenses(palo, 0);
+  assert.deepEqual(split.furniture, []);
+  assert.ok(split.numbered.includes(heraldic));
+  assert.equal(definitionsShown(palo, 0), kinds(palo).filter((kind) => kind === "meaning").length);
 });
 
-test("balzana: a headword line with a stray form_of pointer is furniture all the same, as the page reads it", () => {
+test("balzana: a headword-led definition with a form_of pointer is numbered like any other", () => {
   const balzana = one("balzana", "noun");
   const heraldic = 1;
   assert.ok((balzana.senses[heraldic].glosses?.[0] ?? "").startsWith("balzana ( approfondimento) partizione orizzontale"));
   assert.deepEqual(balzana.senses[heraldic].form_of, [{ word: "troncato" }]);
-  // The page's rule never reads form_of, so neither does the measurement.
-  assert.deepEqual(kinds(balzana), ["form-of", "furniture-with-prose", "form-of"]);
+  assert.deepEqual(kinds(balzana), ["form-of", "form-of", "form-of"]);
   const split = splitRecordSenses(balzana, 0);
-  assert.deepEqual(split.furniture, [heraldic]);
-  assert.equal(split.furnitureHidden, true);
-  assert.deepEqual(split.numbered, [0, 2]);
-  assert.equal(definitionsShown(balzana, 0), 2);
+  assert.deepEqual(split.furniture, []);
+  assert.deepEqual(split.numbered, [0, 1, 2]);
+  assert.equal(definitionsShown(balzana, 0), 3);
 });
 
 test("rifritto: a gloss array holding only the missing-definition placeholder shows nothing", () => {

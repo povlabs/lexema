@@ -86,7 +86,7 @@ function plan(db: DictionarySql): Plan {
     if (record === undefined) continue;
     const lift = glossStampLiftOf(record);
 
-    for (const { pointer, stored } of stampedGlossRows(lift)) {
+    for (const { pointer, stored } of stampedGlossRows(lift, record.word)) {
       const row = glosses.find((gloss) => gloss.record_id === recordId && gloss.json_pointer === pointer);
       if (row === undefined || row.text === stored) continue;
       const where = `WHERE gloss_id = ${row.gloss_id} AND text = ${quoted(row.text)}`;

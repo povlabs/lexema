@@ -11,7 +11,7 @@ import { open, type FileHandle } from "node:fs/promises";
 import { createInterface } from "node:readline";
 import { createGunzip } from "node:zlib";
 import { IT_NORMALIZER_VERSION, normalizeItalianExact } from "../italian/normalize.js";
-import { normalizeFormSurface, normalizeGloss } from "../italian/sourceTextNormalization.js";
+import { normalizeFormSurface, normalizeGloss, withoutHeadwordLead } from "../italian/sourceTextNormalization.js";
 import {
   expectedFormDimensions,
   expectedRecordDimensions,
@@ -303,17 +303,17 @@ export function glossStampLiftOf(record: ArchiveRecord["record"]): GlossStampLif
  * its stamp taken off when the record's lift takes it, then the source text
  * normalizations (ADR 0019). The raw line keeps the source's wording.
  */
-export function storedGlossText(lift: GlossStampLift, pointer: string, text: string): string | undefined {
-  return asStored(lift.storedGloss(pointer, text));
+export function storedGlossText(lift: GlossStampLift, word: string, pointer: string, text: string): string | undefined {
+  return asStored(word, lift.storedGloss(pointer, text));
 }
 
 /** Each gloss the lift takes, with the text `storedGlossText` stores for it. */
-export function stampedGlossRows(lift: GlossStampLift): { pointer: string; stored: string | undefined }[] {
-  return lift.trimmed().map(({ pointer, kept }) => ({ pointer, stored: asStored(kept) }));
+export function stampedGlossRows(lift: GlossStampLift, word: string): { pointer: string; stored: string | undefined }[] {
+  return lift.trimmed().map(({ pointer, kept }) => ({ pointer, stored: asStored(word, kept) }));
 }
 
-const asStored = (kept: string | undefined): string | undefined =>
-  kept === undefined ? undefined : normalizeGloss(kept);
+const asStored = (word: string, kept: string | undefined): string | undefined =>
+  kept === undefined ? undefined : normalizeGloss(withoutHeadwordLead(word, kept));
 
 /** What an open file would have to keep for two reads of it to be the same bytes. */
 const identityOf = (stats: Stats): string =>
@@ -606,7 +606,7 @@ export function writeRecord(
     stringMembers(sense.glosses, `${sensePointer}/glosses`, reportMember).forEach(
       ({ index, text }) => {
         const pointer = `${sensePointer}/glosses/${index}`;
-        const stored = storedGlossText(stampLift, pointer, text);
+        const stored = storedGlossText(stampLift, record.word, pointer, text);
         if (stored === undefined) return;
         statements.insertGloss.run(senseId, index, stored, pointer);
         rows.sense_gloss += 1;
