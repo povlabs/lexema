@@ -8,7 +8,8 @@
 // ADR 0018), also with no change in shape
 // (fixtures/report-tables-before-app-db.sql). The plan tables came with #260:
 // the Stripe plugin's `subscription` and Lexema's `enterprise_plan`, and
-// `plan_notice` with #215.
+// `plan_notice` with #215. `reader_report` then gained the reading's source
+// line and a person's answer (#12); every column it had stays as it was.
 
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
@@ -16,7 +17,7 @@ import test from "node:test";
 import { DatabaseSync } from "node:sqlite";
 import { fileURLToPath } from "node:url";
 import { STRIPE_STATUSES } from "../src/billing/plans.js";
-import { applyAppMigrations } from "../src/db/app/migrations.js";
+import { appMigrationFiles, applyAppMigrations } from "../src/db/app/migrations.js";
 
 const file = (path: string) => readFileSync(fileURLToPath(new URL(`../${path}`, import.meta.url)), "utf8");
 
@@ -24,7 +25,7 @@ const file = (path: string) => readFileSync(fileURLToPath(new URL(`../${path}`, 
 const KEY_TABLES = ["api_key", "api_key_minute", "api_key_usage"] as const;
 /** better-auth's tables, under Lexema's names (#229). */
 const AUTH_TABLES = ["developer_account", "provider_identity", "developer_session", "verification"] as const;
-/** The reader-report tables, unchanged since their move (#240). */
+/** The reader-report tables, moved in #240; `reader_report` widened by #12. */
 const REPORT_TABLES = ["reader_report", "report_opening"] as const;
 /** The plan tables (#260), and what each account was last emailed about its plan (#215). */
 const PLAN_TABLES = ["subscription", "enterprise_plan", "plan_notice"] as const;
@@ -114,10 +115,47 @@ test("the migrations build every key table in the shape schema.sql gave it", () 
   for (const table of KEY_TABLES) assert.deepEqual(shape(db, table), shape(reference, table), table);
 });
 
-test("the migrations build both reader-report tables in the shape schema.sql gave them", () => {
+/** The columns #12 added to `reader_report`. */
+const REPORT_REVIEW_COLUMNS = ["line_no", "line_sha256", "outcome", "reviewed_at", "reviewed_by"];
+
+test("the migrations build report_opening in the shape schema.sql gave it, and reader_report in that shape plus a source line and an answer", () => {
   const reference = before("fixtures/report-tables-before-app-db.sql");
   const db = migrated();
-  for (const table of REPORT_TABLES) assert.deepEqual(shape(db, table), shape(reference, table), table);
+  assert.deepEqual(shape(db, "report_opening"), shape(reference, "report_opening"));
+  const now = shape(db, "reader_report");
+  const then = shape(reference, "reader_report");
+  const added = (column: Row) => REPORT_REVIEW_COLUMNS.includes(String(column.name));
+  const withoutPosition = ({ cid: _cid, ...column }: Row) => column;
+  assert.deepEqual(now.columns.filter((column) => !added(column)).map(withoutPosition), then.columns.map(withoutPosition));
+  assert.deepEqual(
+    now.columns.filter(added).map((column: Row) => `${String(column.name)} ${String(column.type)}${column.notnull ? " NOT NULL" : ""}`),
+    ["line_no INTEGER", "line_sha256 TEXT", "outcome TEXT", "reviewed_at TEXT", "reviewed_by TEXT"],
+  );
+  assert.deepEqual(now.table, then.table.map((table) => ({ ...table, ncol: Number(table.ncol) + REPORT_REVIEW_COLUMNS.length })));
+  // An index names its columns by position too, and the new columns moved the later ones along.
+  const indexesByName = (indexes: typeof now.indexes) =>
+    indexes.map((index) => ({ ...index, columns: index.columns.map(withoutPosition) }));
+  assert.deepEqual(indexesByName(now.indexes), indexesByName(then.indexes));
+  assert.deepEqual(now.foreignKeys, then.foreignKeys);
+  // The old checks stand, and two more: a line comes with its reading and digest, and an answer comes whole.
+  assert.deepEqual(now.checks.filter((check) => then.checks.includes(check)), then.checks);
+  assert.equal(now.checks.length, then.checks.length + 2);
+});
+
+test("the migration that adds a report's line and answer keeps every report already stored, waiting", () => {
+  const db = new DatabaseSync(":memory:");
+  const files = appMigrationFiles();
+  const widening = files.findIndex((path) => path.endsWith("_reader_report_review.sql"));
+  assert.ok(widening > 0, "the widening migration is in the journal");
+  for (const path of files.slice(0, widening)) db.exec(readFileSync(path, "utf8"));
+  db.exec(`INSERT INTO reader_report (release_id, word, record_id, choice, details, visitor_hash, received_at)
+    VALUES ('it-0c432803', 'sale', 21652, 'meaning', 'Sent before #12.', 'h', '2026-09-30T12:00:00.000Z'),
+           ('it-0c432803', 'casa', NULL, 'form', 'No reading.', 'h', '2026-09-30T12:01:00.000Z')`);
+  for (const path of files.slice(widening)) db.exec(readFileSync(path, "utf8"));
+  assert.deepEqual(rows(db, "SELECT report_id, word, record_id, line_no, details, outcome FROM reader_report ORDER BY report_id"), [
+    { report_id: 1, word: "sale", record_id: 21652, line_no: null, details: "Sent before #12.", outcome: null },
+    { report_id: 2, word: "casa", record_id: null, line_no: null, details: "No reading.", outcome: null },
+  ]);
 });
 
 test("better-auth's tables are STRICT, keep Lexema's names for the columns other code reads, and are what an owned key's owner is", () => {

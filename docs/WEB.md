@@ -99,14 +99,16 @@ that comes back already holds the answer. Two things follow, and each was the
 point rather than a side effect: the page works before any JavaScript loads, and
 a result is shareable by copying the address bar.
 
-The loading state is a `Suspense` boundary around the D1 read, and nothing else.
-The shell — heading, form, the query still in the box — flushes as soon as the
-request is understood, and `Pending` stands in the result's place until the read
-answers. It needs no client JavaScript and cannot disagree with the result,
-because it is the same render. Against local D1 the read usually finishes before
-the first flush, so a reader does not see it; it was
-[shown to exist](../reports/2026-09-21-web-page-measurements.md#other-states) by
-slowing the read down and watching the first flush arrive without it.
+There is no loading state on the page
+([#115](https://github.com/hueypov/lexema/issues/115)). The HTML waits for the
+D1 read and carries the result in place, so it is visible with JavaScript off.
+The page used to wrap the read in a `Suspense` boundary that flushed a
+*Searching for …* line first. React sends the finished result after that line,
+hidden, and only an inline script swaps it in, so without JavaScript a reader saw
+the loading line and never the result. While the read runs, the browser shows
+its own page-loading indicator instead. The search form, the home page and every
+link are plain HTML and work without JavaScript; the suggestion list, the mood
+tabs and `+ more` need it.
 
 The cost is that a server component here has no way to set a response status, so
 even the failed-lookup page returns 200. The state the reader needs is on the
@@ -345,7 +347,12 @@ and no email. `POST /report` (`web/app/(lexema)/report/route.ts`, `web/lib/dicti
 stores the report in `reader_report`, in the app database, and changes nothing on the page; a person
 reviews it (#12) and may then write a `claim_review` row. A report is not stored
 in `claim_review` itself, because that table holds reviewed verdicts, not
-reports waiting for one.
+reports waiting for one. A report on a reading keeps that reading's source line
+and its digest, so a re-seed cannot point it at another record
+([docs/RECORD_IDENTITY.md](./RECORD_IDENTITY.md#a-readers-report-names-a-line)).
+The person's answer is stored on the report, with `pnpm run report answer`
+([DEVELOPMENT.md](../DEVELOPMENT.md#review-a-readers-report)); no page and no
+API answer reads a report or its answer.
 
 Spam is kept out in four layers, as ruled on #51: the `REPORT_LIMIT` Worker
 binding stops a burst (2 a minute) before D1 is touched, and the ruled 5 reports

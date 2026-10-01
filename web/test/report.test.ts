@@ -99,11 +99,18 @@ const context = (db: Databases, overrides: Partial<ReportContext> = {}): ReportC
 });
 
 const stored = (db: Databases) =>
-  db.app.prepare("SELECT release_id, word, record_id, choice, details, visitor_hash, received_at FROM reader_report ORDER BY report_id").all() as {
+  db.app
+    .prepare(
+      "SELECT release_id, word, record_id, line_no, line_sha256, choice, details, visitor_hash, received_at, outcome FROM reader_report ORDER BY report_id",
+    )
+    .all() as {
     release_id: string;
     word: string;
     record_id: number | null;
+    line_no: number | null;
+    line_sha256: string | null;
     choice: string;
+    outcome: string | null;
     details: string;
     visitor_hash: string;
     received_at: string;
@@ -126,17 +133,21 @@ test("a report needs a choice and details, within the length limit; the reading 
   assert.equal(read.website, "");
 });
 
-test("a valid report is stored for review, with the served release and a hash in place of the address", async () => {
+test("a valid report is stored for review, with the served release, the reading's source line and a hash in place of the address", async () => {
   await withDatabase(async (db) => {
-    const [casa] = db.dictionary.prepare("SELECT record_id FROM source_record WHERE word = 'casa' AND release_id = ?").all(RELEASE) as {
-      record_id: number;
-    }[];
+    const [casa] = db.dictionary
+      .prepare("SELECT record_id, line_no, line_sha256 FROM source_record WHERE word = 'casa' AND release_id = ?")
+      .all(RELEASE) as { record_id: number; line_no: number; line_sha256: string }[];
     assert.deepEqual(await receiveReport(submission(await opened(db), { recordId: casa.record_id }), context(db)), {
       outcome: "sent",
     });
     const [row] = stored(db);
     assert.equal(row.release_id, RELEASE);
     assert.equal(row.record_id, casa.record_id);
+    // The line, not the build's record number, is what a review follows after a re-seed (#12).
+    assert.equal(row.line_no, casa.line_no);
+    assert.equal(row.line_sha256, casa.line_sha256);
+    assert.equal(row.outcome, null, "a report arrives waiting");
     assert.equal(row.choice, "form");
     assert.equal(row.details, "The plural should be case.");
     assert.equal(row.received_at, new Date(NOW).toISOString());

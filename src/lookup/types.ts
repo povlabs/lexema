@@ -347,8 +347,8 @@ export interface InflectionOf {
 }
 
 /**
- * A review verdict on one claim. Review never edits the source: a disputed
- * claim stays visible with its dispute attached.
+ * A review verdict on one claim. Review never edits the source: a verdict is
+ * data stored beside the claim, and the result page does not show it.
  */
 export interface Review {
   /** The claim under review, not the whole record. */
