@@ -1,0 +1,34 @@
+<!-- it.wiktionary.org/wiki/pantomima revision 3994400 (2024-08-29T19:25:42Z), CC BY-SA 4.0. Saved verbatim. -->
+== {{-it-}} ==
+{{-sost-|it}}
+{{Pn|w}} '' f sing'' {{Linkp|pantomime}}
+# {{Term|teatro|it}} rappresentazione scenica muta sorta in Grecia antica e derivata dal mimo, dove l’azione è affidata solo al gesto, all’espressione del volto, ai movimenti del corpo e alla  danza, a volte anche con accompagnamento musicale
+#{{Fig}} 
+Susseguirsi di gesti vivaci e concitati, per comunicare agli altri senza che i presenti se ne accorgano.
+'Vidi nello specchio tutta la P. alle mie spalle'
+
+{{-sill-}}
+;  pan | to | mì | ma
+
+{{-pron-}}
+{{IPA|/pantoˈmima/}}
+
+{{-etim-}}
+dal [[francese]] ''[[pantomime]]''
+
+{{-var-}}
+* {{Term|popolare|it}} [[pantomina]]
+
+{{-trad-}}
+{{Trad1|{{Term|teatro|it}}}}
+:* {{en}}: [[pantomime]], dumb show
+{{Trad2}}
+
+{{Trad1| {{Fig}} [[messinscena]]}}
+:* {{en}}:  [[pretence]], [[sham]], [[show]]
+{{Trad2}}
+
+{{-ref-}}
+* {{Fonte|hoep}}
+* {{Fonte|trec}}
+*{{Fonte|dizit}}

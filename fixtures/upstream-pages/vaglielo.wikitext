@@ -1,0 +1,27 @@
+<!-- it.wiktionary.org/wiki/vaglielo revision 3449851 (2018-08-23T06:34:40Z), CC BY-SA 4.0. Saved verbatim. -->
+== {{-it-}} ==
+{{-verb-|it}}
+{{Intransitivo|it}}
+{{Pn}} <!-- aggiungi prima del template {{Pn}} il template {{Transitivo|it}} se il verbo è transitivo, {{Intransitivo|it}} se il verbo è intransitivo, {{Riflessivo|it}} se il verbo è riflessivo, {{Inpr|it}} se il verbo è intransitivo pronominale. Se invece vuoi aggiungere la coniugazione del verbo, inserisci "|c" al {{Pn}}, così: {{Pn|c}} -->
+
+# <!-- inserire qui la definizione -->
+Verbo imperativo composto da [[andare]] e [[glielo]].
+
+{{-sill-}} 
+; va | glie |lo
+
+<!-- altri template utili:
+{{-pron-}} per la pronuncia
+{{-etim-}} per l'etimologia
+{{-sin-}} per i sinonimi
+{{-ant-}} per i contrari
+{{-rel-}} per i termini correlati
+{{-prov-}} per i proverbi e i modi di dire -->
+
+{{-trad-}}
+{{Trad1|}}
+:*{{en}}: go tell him
+{{Trad2}}
+
+{{-ref-}}
+* {{Noref|it}} <!-- se conosci la fonte, cancella questa riga e sostituiscila con il template:fonte -->
