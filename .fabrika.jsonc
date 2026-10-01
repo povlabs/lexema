@@ -1,5 +1,37 @@
 {
   "$schema": "./.fabrika.schema.json",
+  // A diff under these roots owes a governance verdict. Same set as
+  // .github/CODEOWNERS; must include this file, or fabrika refuses to load.
+  "governedRoots": [
+    ".decisions/",
+    ".claude/",
+    ".github/",
+    ".fabrika.jsonc",
+    "AGENTS.md",
+    "design-system-manifest.md",
+    "lefthook.yml"
+  ],
+  // Who may clear a spent repair round. Fabrika 0.8.0 ignores this key and
+  // reads CODEOWNERS plus write access instead; kept to match Fabrika's repo.
+  "capClearAuthors": ["@hueypov"],
+  // Names that mean something only here; the portability guard keeps them out
+  // of Fabrika's own shipped text.
+  "portability": { "repoNames": ["lexema", "hueypov", "website-v2"] },
+  // At most two claimed issue lanes at once; `lane open` and `lane emit`
+  // refuse a third.
+  "laneConcurrencyCap": 2,
+  // Epic runs: merge main into the assembly branch before the tail review and
+  // before each child is dispatched off it.
+  "assemblyRefresh": { "onReview": "on", "onDispatch": "on" },
+  // Epic runs: replay a colliding child onto the assembly tip and send it back
+  // for one review round, instead of refusing the merge.
+  "assemblyReplay": { "onCollision": "on" },
+  // Epic runs: count machinery laps apart from the repair budget. Read when a
+  // lane is emitted, so lanes already on disk keep the old count.
+  "machineryLaps": { "onEmit": "on" },
+  // If CODEOWNERS cannot be read, refuse. Nothing in Fabrika 0.8.0 reads this
+  // key; it is set strict so it cannot drift if it is wired up again.
+  "unreadableCodeowners": "refuse",
   "uiSurfaces": [
     {
       "name": "web",
@@ -22,7 +54,18 @@
     { "command": ["pnpm", "--filter", "@lexema/web", "typecheck"] },
     { "command": ["pnpm", "test"] }
   ],
+  // `build check` runs lefthook's own validator on any diff that touches
+  // lefthook.yml, so a hooks-only change can go green.
+  "configValidators": [
+    { "command": ["pnpm", "exec", "lefthook", "validate"], "reads": ["lefthook.yml"] }
+  ],
+  // The main-went-red alarm mentions Huey.
+  "ci": { "mainAlarm": { "mention": ["@hueypov"] } },
   "uiCapture": {
     "viewport": { "width": 1440, "height": 900 }
-  }
+  },
+  // Every park names its cause (#350). A park with no cause is refused
+  // instead of recorded, because an uncaused park routes to Huey. A park
+  // whose cause routes to the driver is cleared by the driver, not by Huey.
+  "parkCause": { "uncaused": "refuse", "driverRouted": "clear" }
 }

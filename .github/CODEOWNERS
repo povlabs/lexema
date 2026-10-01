@@ -1,7 +1,20 @@
 # Huey owns the files that set Lexema's rules. Fabrika reads this list to know
-# who may approve an epic's plan and changes to these files.
+# who may approve an epic's plan and changes to these files. The first block
+# matches `governedRoots` in .fabrika.jsonc.
 /.decisions/                @hueypov
+/.claude/                   @hueypov
+/.github/                   @hueypov
+/.fabrika.jsonc             @hueypov
 /AGENTS.md                  @hueypov
 /design-system-manifest.md  @hueypov
-/.fabrika.jsonc             @hueypov
-/.github/                   @hueypov
+**/lefthook*                @hueypov
+**/.lefthook*               @hueypov
+
+# Fabrika's control-plane list is fixed in fabrika-cli and names its own
+# paths. Lexema has none of these yet. The rows keep `fabrika guard
+# codeowners-cp check` green (#338) and cover the paths if they ever appear.
+/.claude-plugin/                @hueypov
+/packages/ci-required/          @hueypov
+/packages/fabrika-cli/src/ci/   @hueypov
+/biome.jsonc                    @hueypov
+/biome-plugins/                 @hueypov
