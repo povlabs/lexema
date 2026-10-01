@@ -1,7 +1,7 @@
 ---
 id: 0014
 title: Agent work may run in any harness, never with the builder reviewing its own work
-status: amended-in-part by [0021](0021-agents-post-as-one-account.md)
+status: amended-in-part by [0021](0021-agents-post-as-one-account.md), [0022](0022-lefthook-sets-up-agent-worktrees.md)
 date: 2026-09-27
 supersedes: 0007
 tags: [process, agents, tooling]
@@ -42,3 +42,4 @@ no vocabulary impact
 ## Amendments
 
 - **The reviewer posts as `hueypov` (2026-10-01).** [0021](0021-agents-post-as-one-account.md) replaces the `nothueypov` account in the first binding constraint: every agent posts as `hueypov`. The reviewer still runs apart from the builder, as a separate agent.
+- **"The checkout" means one worktree (2026-10-02).** Since [0022](0022-lefthook-sets-up-agent-worktrees.md), each agent works in its own git worktree. In the third binding constraint, "the checkout" now means one worktree: one agent that can change files owns each worktree at a time. Read-only agents may still run together.
