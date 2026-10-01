@@ -59,6 +59,16 @@ export const ARCHIVE_FACTS: ArchiveFactsCatalog = {
       "reports/2026-09-23-recovered-definitions-full-release.md: every Italian record has a page of its exact title in that dump",
     ],
   },
+  // `it-extract.jsonl.gz` of kaikki's 28 September 2026 build, 43,612,281
+  // bytes, release `it-78385b62`: the first feed of the master (#18, #377).
+  "78385b6229d19ed990ada6f6f33930585701c3bdc146fb1c849818df72a3e8d4": {
+    sourceUrl: "https://kaikki.org/dictionary/downloads/it/it-extract.jsonl.gz",
+    retrievedAt: "2026-10-01T15:02:07Z",
+    dump: { id: "itwiktionary-20260901", basis: "recorded" },
+    evidence: [
+      "reports/2026-10-01-update-diff-september.md: the download, its headers and the dump its build log names",
+    ],
+  },
 };
 
 /** The facts recorded for the archive with this SHA-256, or none. */
