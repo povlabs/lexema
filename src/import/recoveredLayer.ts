@@ -7,18 +7,17 @@
 // record's own rows are written by `writeRecord` first and are not touched here.
 
 import { recordText, recoverDefinitions } from "../italian/recovery.js";
-import type { RawPage, RawPageSource } from "../source/rawPage.js";
+import type { RawPageSource } from "../source/rawPage.js";
 import type { ImportStatement } from "./importRelease.js";
+import type { RawPageRows } from "./rawPageRows.js";
 
 export interface RecoveredLayerStatements {
-  insertPage: ImportStatement;
   insertDefinition: ImportStatement;
   insertLabel: ImportStatement;
   insertExample: ImportStatement;
 }
 
 export interface RecoveredLayerRows {
-  raw_page: number;
   recovered_definition: number;
   recovered_label: number;
   recovered_example: number;
@@ -41,12 +40,12 @@ export interface RecoverySummary {
 }
 
 export class RecoveredLayer {
-  private readonly pageIds = new Map<string, number>();
   private nextRecoveredId = 1;
   readonly summary: RecoverySummary;
 
   constructor(
     private readonly pages: RawPageSource,
+    private readonly pageRows: RawPageRows,
     private readonly statements: RecoveredLayerStatements,
     private readonly rows: RecoveredLayerRows,
   ) {
@@ -76,7 +75,7 @@ export class RecoveredLayer {
     if (recovery.loss === "partial") this.summary.partialLoss += 1;
     if (recovery.recovered.length === 0) return;
 
-    const pageId = this.pageId(releaseId, page);
+    const pageId = this.pageRows.idOf(releaseId, page);
     // Ids follow page order, so a lead-in recovered for this record has the
     // id its place in `recovered` gives it, lower than any item in its list.
     const firstId = this.nextRecoveredId;
@@ -110,16 +109,5 @@ export class RecoveredLayer {
         this.summary.examples += 1;
       });
     });
-  }
-
-  /** The page's row, written the first time a definition is recovered from it. */
-  private pageId(releaseId: string, page: RawPage): number {
-    const held = this.pageIds.get(page.title);
-    if (held !== undefined) return held;
-    const pageId = this.pageIds.size + 1;
-    this.statements.insertPage.run(pageId, releaseId, page.wiki, page.title, page.revisionId, page.timestamp);
-    this.rows.raw_page += 1;
-    this.pageIds.set(page.title, pageId);
-    return pageId;
   }
 }

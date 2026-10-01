@@ -24,6 +24,7 @@
 // The rule reads page structure only. Which codes are languages comes from the
 // dump itself (`LanguageHeadings`), not from a list written here.
 
+import { readFile } from "node:fs/promises";
 import type { RawPage, RawPageRef } from "../source/rawPage.js";
 import { LANGUAGE_HEADING, POS_TITLE_BY_TEMPLATE } from "./wikitext.js";
 
@@ -48,6 +49,19 @@ export class LanguageHeadings {
   list(): string[] {
     return [...this.codes].sort();
   }
+}
+
+/**
+ * The codes stored as `languageHeadings` in a JSON file, which
+ * `fixtures/section-language/regressions.json` is: the dump's, kept there so a
+ * seed reads them without walking the whole dump.
+ */
+export async function readLanguageHeadings(path: string): Promise<LanguageHeadings> {
+  const { languageHeadings } = JSON.parse(await readFile(path, "utf8")) as { languageHeadings?: unknown };
+  if (!Array.isArray(languageHeadings) || languageHeadings.length === 0 || !languageHeadings.every((code) => typeof code === "string")) {
+    throw new Error(`${path}: languageHeadings is not a list of language codes`);
+  }
+  return LanguageHeadings.fromList(languageHeadings);
 }
 
 /** The codes of every `== {{-xx-}} ==` heading on one page. */
@@ -163,4 +177,44 @@ export function readItalianPosBlocks(page: RawPage, languages: LanguageHeadings)
 export function alignRecords(blocks: readonly PosBlock[], posTitles: readonly string[]): readonly PosBlock[] | null {
   if (blocks.length !== posTitles.length) return null;
   return blocks.every((block, index) => block.posTitle === posTitles[index]) ? blocks : null;
+}
+
+/**
+ * The rule's name and version, stored on every record it hides (#382). A
+ * change to what `blockLanguage` or `readItalianPosBlocks` decides is a new
+ * version, so a stored verdict always names the rule that made it.
+ */
+export const SECTION_LANGUAGE_RULE = "section-language/v1" as const;
+
+/** One Italian record of a title, where the archive has it. */
+export interface TitleRecord {
+  /** 1-based line in the archive. */
+  lineNo: number;
+  posTitle: string;
+}
+
+/** A record the rule finds in another language, and the page line that says so. */
+export interface ForeignRecord {
+  lineNo: number;
+  /** The language the page names: `nl`, `en`. */
+  code: string;
+  because: "language-line" | "late-heading";
+  /** The language line, or the heading that names the language. */
+  ref: RawPageRef;
+}
+
+/**
+ * The records of one title the rule finds in another language. `records` are
+ * every Italian record of the title, in archive order. A title whose records
+ * do not line up with its page's blocks yields none: no block can be told
+ * apart as one record's (`alignRecords`).
+ */
+export function foreignRecordsOf(page: RawPage, languages: LanguageHeadings, records: readonly TitleRecord[]): ForeignRecord[] {
+  const blocks = alignRecords(readItalianPosBlocks(page, languages), records.map((record) => record.posTitle));
+  if (blocks === null) return [];
+  return blocks.flatMap((block, index): ForeignRecord[] => {
+    const verdict = blockLanguage(block);
+    if (verdict.language === "it") return [];
+    return [{ lineNo: records[index].lineNo, code: verdict.code, because: verdict.because, ref: { ...block.ref, line: verdict.line } }];
+  });
 }

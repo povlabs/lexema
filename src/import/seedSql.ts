@@ -16,6 +16,9 @@ import {
 } from "./importRelease.js";
 import { archiveFactsFor, type ArchiveFacts, type ArchiveFactsCatalog } from "../source/archiveFacts.js";
 import type { RawPageSource } from "../source/rawPage.js";
+import type { LanguageHeadings } from "../italian/sectionLanguage.js";
+import { HiddenLayer, readTitles, type HiddenSummary } from "./hiddenLayer.js";
+import { RawPageRows } from "./rawPageRows.js";
 import { RecoveredLayer, type RecoverySummary } from "./recoveredLayer.js";
 import { normalizeItalianExact } from "../italian/normalize.js";
 import { SOURCE_TEXT_RULES, type SourceTextRuleId } from "../italian/sourceTextNormalization.js";
@@ -37,6 +40,7 @@ const TABLE_ORDER = [
   "recovered_definition",
   "recovered_label",
   "recovered_example",
+  "hidden_record",
   "release_table_rows",
 ] as const;
 
@@ -60,6 +64,7 @@ export const COLUMNS: Record<TableName, string> = {
   recovered_definition: "recovered_id,record_id,release_id,page_id,definition_index,route,term,page_line,wikitext,text,held_as_example,lead_in_sense_index,lead_in_recovered_id",
   recovered_label: "recovered_id,label_index,label",
   recovered_example: "recovered_id,example_index,page_line,wikitext,text",
+  hidden_record: "record_id,release_id,page_id,rule,because,language,page_line",
   release_table_rows: "release_id,table_name,rows",
 };
 
@@ -102,6 +107,7 @@ class SqlBatchWriter {
     recovered_definition: 0,
     recovered_label: 0,
     recovered_example: 0,
+    hidden_record: 0,
     release_table_rows: 0,
   };
 
@@ -321,6 +327,13 @@ export interface SeedSqlOptions {
    */
   rawPages?: RawPageSource;
   /**
+   * The language codes the dump heads sections with
+   * (`fixtures/section-language/regressions.json`). With `rawPages`, the seed
+   * hides every record the section-language rule finds in another language
+   * (src/import/hiddenLayer.ts, ADR 0023); without either, it hides none.
+   */
+  languageHeadings?: LanguageHeadings;
+  /**
    * Leave the release `importing` at the end of the SQL instead of writing its
    * final status. The counters are still written. A caller that verifies the
    * loaded database sets the final status itself once every check passes, so
@@ -337,6 +350,8 @@ export interface SeedSqlReport extends ArchiveParseReport {
   parts: readonly string[];
   /** What the recovered layer took from the raw pages. */
   recovery: RecoverySummary;
+  /** What the section-language rule hid. */
+  hidden: HiddenSummary;
   /** The facts recorded for this archive's checksum, or none. */
   archiveFacts: ArchiveFacts | undefined;
   /** The source text normalization rules (ADR 0019) the structured rows were written under. */
@@ -366,16 +381,23 @@ export async function seedSql(options: SeedSqlOptions): Promise<SeedSqlReport> {
       lookupRow.run(...values);
     },
   };
+  const pageRows = new RawPageRows(writer.statement("raw_page"), writer.counts);
   const recovered = new RecoveredLayer(
     options.rawPages ?? { page: () => undefined, size: 0 },
+    pageRows,
     {
-      insertPage: writer.statement("raw_page"),
       insertDefinition: writer.statement("recovered_definition"),
       insertLabel: writer.statement("recovered_label"),
       insertExample: writer.statement("recovered_example"),
     },
     writer.counts,
   );
+  // The rule needs every record of a title before it judges one, so the titles
+  // are read in a pass of their own first.
+  const judge = options.rawPages !== undefined && options.languageHeadings !== undefined
+    ? { pages: options.rawPages, languages: options.languageHeadings, titles: (await readTitles(options.input)).titles }
+    : undefined;
+  const hidden = new HiddenLayer(judge, pageRows, writer.statement("hidden_record"), writer.counts);
   const required = new Set(options.requiredWords ?? []);
   const seenWords = new Set<string>();
   const targets = new Set<string>();
@@ -391,12 +413,17 @@ export async function seedSql(options: SeedSqlOptions): Promise<SeedSqlReport> {
       },
       onRecord: async (archiveRecord, reportMember) => {
         seenWords.add(archiveRecord.record.word);
-        addLemmaRecord(lemmaKeys, archiveRecord.record);
-        archiveRecord.record.senses.forEach((sense) =>
-          sense.form_of.forEach((target) => {
-            if (typeof target.word === "string") targets.add(target.word);
-          }),
-        );
+        // A hidden record leads no search to its spelling and declares no
+        // edge, so it adds nothing to the nearby indexes or the closure.
+        const isHidden = hidden.hides(archiveRecord.releaseId, archiveRecord.recordId, archiveRecord.lineNo, archiveRecord.record.word);
+        if (!isHidden) {
+          addLemmaRecord(lemmaKeys, archiveRecord.record);
+          archiveRecord.record.senses.forEach((sense) =>
+            sense.form_of.forEach((target) => {
+              if (typeof target.word === "string") targets.add(target.word);
+            }),
+          );
+        }
         writeRecord(statements, writer.counts, {
           recordId: archiveRecord.recordId,
           releaseId: archiveRecord.releaseId,
@@ -407,6 +434,7 @@ export async function seedSql(options: SeedSqlOptions): Promise<SeedSqlReport> {
           pos: archiveRecord.record.pos,
           posTitle: archiveRecord.record.pos_title,
           reportMember,
+          hidden: isHidden,
         });
         recovered.add(archiveRecord.releaseId, archiveRecord.recordId, archiveRecord.record);
         if (writer.hasFullBatch()) await writer.flush();
@@ -455,6 +483,7 @@ export async function seedSql(options: SeedSqlOptions): Promise<SeedSqlReport> {
       statements: TABLE_ORDER.slice(0, -1).reduce((sum, table) => sum + writer.counts[table], 0),
       parts: partPaths,
       recovery: recovered.summary,
+      hidden: hidden.summary,
       archiveFacts: facts,
       sourceTextRules: Object.values(SOURCE_TEXT_RULES),
     };
