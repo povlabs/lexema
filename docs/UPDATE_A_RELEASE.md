@@ -95,7 +95,10 @@ Huey's laptop, signed in to Wrangler as for the first upload. Put
    pnpm --dir web exec wrangler rollback <version id> --name lexema-web --message "roll back to <old release id>"
    ```
 
-   That version names the old release, so it serves it at once, with no build.
+   That version names the old release, so it serves it at once, with no build:
+   a rollback makes that version the active deployment straight away. It does
+   not change the database, which is why step 1 comes first
+   ([Cloudflare, Rollbacks](https://developers.cloudflare.com/workers/configuration/versions-and-deployments/rollbacks/)).
 
 3. **Revert the pull request from step 5** on `main`. Otherwise the next merge
    deploys the new release again.

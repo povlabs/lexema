@@ -216,7 +216,10 @@ release a deployment serves is configuration, reviewed like any change to
 `web/wrangler.jsonc`, and a Preview can serve the new release from the shared
 database before production does. The old release stays `complete` until it is
 retired, so the previous Worker version answers from it the moment
-`wrangler rollback` puts it back, with no build.
+`wrangler rollback` puts it back, with no build. A rollback makes the chosen
+version the active deployment at once and leaves bound resources such as D1 as
+they are, which is why the old release must still read `complete`
+([Cloudflare, Rollbacks](https://developers.cloudflare.com/workers/configuration/versions-and-deployments/rollbacks/)).
 
 **Caches.** A share card is kept under an address that names its release
 (`web/worker/card.ts`), so a new release is a new card. The search field's
