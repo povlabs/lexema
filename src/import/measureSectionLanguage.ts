@@ -7,9 +7,11 @@
 // up with its part-of-speech block. Every record any signal points at is a
 // candidate, and every candidate must carry a hand label in
 // `fixtures/section-language/labels.json` before a rate is printed: no number
-// here comes from a record nobody read. Two signals are structural (the rule's
-// two halves, each on its own, and the translation box); two read only the
-// record's text, and exist to test how much the structural ones miss.
+// here comes from a record nobody read. Six signals: four read the page's
+// structure (the rule itself, a bare language line above the block, a heading
+// naming another language anywhere, and the translation box above it); two
+// read only the record's text, and exist to test how much the structural ones
+// miss.
 //
 // Needs the archive and the dump in the repository root; both are gitignored
 // and absent in CI. Run with `RAW_PAGES=<path>` to name another copy of the dump.

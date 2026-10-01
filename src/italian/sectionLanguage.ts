@@ -35,14 +35,7 @@ import { LANGUAGE_HEADING, POS_TITLE_BY_TEMPLATE } from "./wikitext.js";
 export class LanguageHeadings {
   private constructor(private readonly codes: ReadonlySet<string>) {}
 
-  /** The codes heading a language section on any of `pages`. */
-  static of(pages: Iterable<RawPage>): LanguageHeadings {
-    const codes = new Set<string>();
-    for (const page of pages) for (const code of headingCodes(page)) codes.add(code);
-    return new LanguageHeadings(codes);
-  }
-
-  /** Codes already read off the pages, as `list()` wrote them. */
+  /** The codes `headingCodes` read off a set of pages, or that `list()` wrote. */
   static fromList(codes: Iterable<string>): LanguageHeadings {
     return new LanguageHeadings(new Set(codes));
   }
