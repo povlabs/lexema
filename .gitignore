@@ -35,3 +35,5 @@ web/.next/
 
 # Fabrika lane ledgers (local state)
 .fabrika/
+
+.claude/settings.local.json

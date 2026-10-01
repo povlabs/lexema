@@ -384,6 +384,19 @@ Drizzle queries run under `node --test`
 through [src/db/app/nodeSqlite.ts](./src/db/app/nodeSqlite.ts), which drives
 `node:sqlite` with `drizzle-orm/sqlite-proxy`.
 
+### Run agents with Fabrika
+
+Agents call `fabrika` from PATH: the global install,
+`pnpm add -g @kampus/fabrika-cli`. This repository does not depend on it, so
+there is no local copy to run through `pnpm exec`.
+
+The committed Claude Code settings live in
+[.claude/settings.json](./.claude/settings.json). They turn on the Fabrika
+plugin and allow `fabrika build` and `fabrika lane` commands without a prompt.
+They set no hooks
+([#344](https://github.com/hueypov/lexema/issues/344#issuecomment-5929722588)).
+Your own settings go in `.claude/settings.local.json`, which Git ignores.
+
 ## Stack
 
 | Layer | Choice | What it does for Lexema |
