@@ -1,0 +1,1234 @@
+{
+  "rule": "it-quality-sample/v1",
+  "archiveSha256": "0c432803c672aceccd48787eb64807c5366fdbd6796715c9a99e31c0024d5dcf",
+  "perStratum": 25,
+  "commonTokens": 1000,
+  "population": {
+    "common": 1682,
+    "noun": 37151,
+    "verb": 7865,
+    "adjective": 14961,
+    "inflection": 485444,
+    "ambiguous": 35902,
+    "accented": 33018,
+    "thin": 28349
+  },
+  "strata": {
+    "common": [
+      {
+        "line": 1298,
+        "word": "acqua",
+        "pos": "noun",
+        "lineSha256": "e6933c130c4815442c2571ee92f920c79bb577f40d2de0d7d70ba9271ddb9029"
+      },
+      {
+        "line": 2351,
+        "word": "sei",
+        "pos": "adj",
+        "lineSha256": "4ca482c94bc0a456c97eca461ee00c6d06ae61d9e4dc6e422bb96aae133fe7b5"
+      },
+      {
+        "line": 2598,
+        "word": "amico",
+        "pos": "noun",
+        "lineSha256": "33c4ce80d69d876b74cb9b24da04148e06b15ff4d74e16ac1cd5190e12832976"
+      },
+      {
+        "line": 16369,
+        "word": "chiesa",
+        "pos": "noun",
+        "lineSha256": "a9f61d083924765235971d01b5adb28cd0df3765fac39fd63561d2b20b7f438d"
+      },
+      {
+        "line": 16456,
+        "word": "oggetto",
+        "pos": "noun",
+        "lineSha256": "a6bc3e31164701775edf78d0f405012545513d75723b6cc918c822759ac08ab0"
+      },
+      {
+        "line": 17389,
+        "word": "pace",
+        "pos": "noun",
+        "lineSha256": "f80591b420eefbb01d84ecc336830866764b9910c6e25aeae42824a962e5ba6e"
+      },
+      {
+        "line": 18068,
+        "word": "stile",
+        "pos": "noun",
+        "lineSha256": "c7aa265f2e16621fa4d6eeca0fc49d7dacc783f318ab153618f8c30144c22bf2"
+      },
+      {
+        "line": 20909,
+        "word": "pure",
+        "pos": "conj",
+        "lineSha256": "489e1d8599dc9f644b574a89124643725d9c78051842d61836ed0e3702066962"
+      },
+      {
+        "line": 21877,
+        "word": "se",
+        "pos": "conj",
+        "lineSha256": "32996cdee0ca3f405469fa6a747a5b47bc3c3ba5ef714b9483bd172f0d73b955"
+      },
+      {
+        "line": 29016,
+        "word": "ma",
+        "pos": "intj",
+        "lineSha256": "1bcf1eec910a78c5321f5aa6077d7e6af90faa8356e778f0d52dac12cb71e25b"
+      },
+      {
+        "line": 30217,
+        "word": "corso",
+        "pos": "verb",
+        "lineSha256": "baecb60eb182320929f35f11cdf6ff726d5ae11d07214aeb306ec31e51f3ea79"
+      },
+      {
+        "line": 32278,
+        "word": "io",
+        "pos": "pron",
+        "lineSha256": "a56a8e8c9c188be11350da155bf529c60bfd4569c89ac4474c26787cf35c37ff"
+      },
+      {
+        "line": 33206,
+        "word": "vedere",
+        "pos": "verb",
+        "lineSha256": "56a530735b465638f9c4d9fc66ead56c64600d22c62e751a5d100933bf40ea75"
+      },
+      {
+        "line": 39093,
+        "word": "basta",
+        "pos": "intj",
+        "lineSha256": "f2c6794881373b6e6929a91785970da52fa787a9345f0db4df0a124a3b4c9e3a"
+      },
+      {
+        "line": 39412,
+        "word": "diritto",
+        "pos": "adv",
+        "lineSha256": "91cff5aac70087e6c589d44abf46ac1bbb8052d871757a0e8f0ce8b8a5c01805"
+      },
+      {
+        "line": 41037,
+        "word": "nostro",
+        "pos": "pron",
+        "lineSha256": "55228248465597887a14caea65edd6b41ccdbf4d9d8ed9831ce779006db82f6a"
+      },
+      {
+        "line": 50860,
+        "word": "altrui",
+        "pos": "adj",
+        "lineSha256": "c9e9ad53fe273b4920609ad4a4035c386b2e55f48bee6138ae59ac7fc77c0186"
+      },
+      {
+        "line": 51831,
+        "word": "misura",
+        "pos": "verb",
+        "lineSha256": "66d3ae7c778165f0cf6c6a10ba764547b12f39abec026d34fe69a2b0f007f808"
+      },
+      {
+        "line": 56352,
+        "word": "avvenuta",
+        "pos": "adj",
+        "lineSha256": "57f8881aedf963aca58cc22e6f41537491edd8e7566e230c7cf5dbeacac9f704"
+      },
+      {
+        "line": 56627,
+        "word": "oltre",
+        "pos": "prep",
+        "lineSha256": "5eeaecdd904a675343aa5471b893b08b4af62d3a74c65d26ac3b1f4be5495370"
+      },
+      {
+        "line": 61833,
+        "word": "amicizia",
+        "pos": "noun",
+        "lineSha256": "f13619cad030070e726f73b82c388abf02c953c4f2ba54907ed3c0c51e7689c9"
+      },
+      {
+        "line": 72382,
+        "word": "punti",
+        "pos": "noun",
+        "lineSha256": "e4f741d35562cfc076be725a2b73519708238d3d78106abf68437b03e24a0211"
+      },
+      {
+        "line": 113871,
+        "word": "basso",
+        "pos": "noun",
+        "lineSha256": "3315e76e66441192d14d5270cabea6910115ccb419a46d139d01238b6a8ce67d"
+      },
+      {
+        "line": 119681,
+        "word": "carica",
+        "pos": "noun",
+        "lineSha256": "93009d92addc71b808fcb6d6292fbe85aa7b3a402e43590817f895b5ccd23d20"
+      },
+      {
+        "line": 135529,
+        "word": "consiglio",
+        "pos": "noun",
+        "lineSha256": "13210e0ad5e7c658bb039d7f005c827b3ed54751516b0237dccbd1fa322ad7b9"
+      }
+    ],
+    "noun": [
+      {
+        "line": 40549,
+        "word": "procinto",
+        "pos": "noun",
+        "lineSha256": "64d700821817de946592f2e767ecef85746d6ec5750da053acc6f63c12293baf"
+      },
+      {
+        "line": 51459,
+        "word": "magagna",
+        "pos": "noun",
+        "lineSha256": "0ae598f8de6683f0be205b5f69a115bb13b3ba8c497dd9196a637f5b03fbaa12"
+      },
+      {
+        "line": 51919,
+        "word": "nasale",
+        "pos": "noun",
+        "lineSha256": "12157e721ef7fa53a7f12e7f4bace627142b7ecba6b877119ac9714defad1362"
+      },
+      {
+        "line": 55776,
+        "word": "zimbello",
+        "pos": "noun",
+        "lineSha256": "ae26b5a4aad6ce5b78ea8e8eb2dd4866e2df2d09b0fbde994a322e92eda01e13"
+      },
+      {
+        "line": 63542,
+        "word": "dittatura",
+        "pos": "noun",
+        "lineSha256": "4b672faad5d951fd1371c9e1b3eba460b8b82d0764070e690fa2c41aa8475c07"
+      },
+      {
+        "line": 69707,
+        "word": "bruciata",
+        "pos": "noun",
+        "lineSha256": "7588b83f5dbb55acc438b69c1b2ea50b83244b5c2648b7daf10253a76da6dec8"
+      },
+      {
+        "line": 74045,
+        "word": "patriota",
+        "pos": "noun",
+        "lineSha256": "48c981d36052d9df9aacf1a072135af98e8e404b63435cb2275901794c5d6864"
+      },
+      {
+        "line": 75548,
+        "word": "vestema",
+        "pos": "noun",
+        "lineSha256": "b4b9dd43e0e37346c3e5f549bebbe86e1c9bd56f830256fe762fa1af9d8a5a75"
+      },
+      {
+        "line": 81682,
+        "word": "stringatezza",
+        "pos": "noun",
+        "lineSha256": "bd745e6ca959204b638394282d309476bbd419cf86a11affe41cba5eb636eb45"
+      },
+      {
+        "line": 111974,
+        "word": "ambrotipia",
+        "pos": "noun",
+        "lineSha256": "e4fc8c03f60e27f18cdf1b5917906f5dd47d7f566135236c3b1f572ff4c633e3"
+      },
+      {
+        "line": 115588,
+        "word": "ottenebrazione",
+        "pos": "noun",
+        "lineSha256": "dacc46b4fe32f64c60b651340d0a3948af08cc44dcf924e77d85fdbedc16a75a"
+      },
+      {
+        "line": 135737,
+        "word": "sedizione",
+        "pos": "noun",
+        "lineSha256": "0899847181d84ead0d6a7558434969d767270dab2c1d3b1d0ae6d3879f50cf05"
+      },
+      {
+        "line": 408285,
+        "word": "abbuffata",
+        "pos": "noun",
+        "lineSha256": "0bfb6d8ff483413fc11e1b3db2842ba65666a17d2029792e3302531040edbfff"
+      },
+      {
+        "line": 420526,
+        "word": "wop",
+        "pos": "noun",
+        "lineSha256": "4eb947d562b34d4661184af7f67e9ce5a1ca08a1b51c29625359014627265a77"
+      },
+      {
+        "line": 422067,
+        "word": "elastoplasticità",
+        "pos": "noun",
+        "lineSha256": "205dd9e1d78f8b8e8e03f101eead6581045c9fcba471f4c6b85b5756a5646db4"
+      },
+      {
+        "line": 422428,
+        "word": "tireocita",
+        "pos": "noun",
+        "lineSha256": "e315f71830b773b9fc551e39c1eb4453b229d492fdf87abbeac92235134b9ac7"
+      },
+      {
+        "line": 429722,
+        "word": "rifritto",
+        "pos": "noun",
+        "lineSha256": "8fb5ec435e775d4ad56f6c62ff7f0d93fe63ac3abf5ab96f89bcbe568046cdc4"
+      },
+      {
+        "line": 448688,
+        "word": "oligocene",
+        "pos": "noun",
+        "lineSha256": "c9a853d3c2ca23cbdbd3ff72411f14d57d934eec2e56e88983ba0627cdc8874d"
+      },
+      {
+        "line": 458361,
+        "word": "Super-io",
+        "pos": "noun",
+        "lineSha256": "874a916242b251022c09c87588d57128885039e5943d7d1e63476a2c1f81696a"
+      },
+      {
+        "line": 458949,
+        "word": "trisolfuro",
+        "pos": "noun",
+        "lineSha256": "e64a395e3ddf701464bc6d1c5fbcacd754e4f101c1eb3e5ab5880ffee1a1ddef"
+      },
+      {
+        "line": 465256,
+        "word": "micidio",
+        "pos": "noun",
+        "lineSha256": "1d301e33ea0a197971240fa30c264549685a18434179c3f1bd588892c40cacc3"
+      },
+      {
+        "line": 465380,
+        "word": "Uccelli",
+        "pos": "noun",
+        "lineSha256": "4063353c69780a1149a3b469d899deafb8f7b84a7437221e7fcba0cfd3c69efd"
+      },
+      {
+        "line": 537371,
+        "word": "aracnidismo",
+        "pos": "noun",
+        "lineSha256": "03e7a02c99f771f409a36cf4e368c45c5305224b9359dd0abab27b5c8a4b900c"
+      },
+      {
+        "line": 548264,
+        "word": "bacarozzo",
+        "pos": "noun",
+        "lineSha256": "6fa82a9ce35cca115a2f1e18262940856c499f1bffaacc0b04e06b08fd538c18"
+      },
+      {
+        "line": 606272,
+        "word": "minibasket",
+        "pos": "noun",
+        "lineSha256": "c8043d6b893a4f135e6430ebecae4fa49988d833b54e49c86c8b72bba7b16556"
+      }
+    ],
+    "verb": [
+      {
+        "line": 37648,
+        "word": "abboccare",
+        "pos": "verb",
+        "lineSha256": "f47d088b3cc02bc28ed5d13f7bebae57efcaee566a84e63d059c3664da097190"
+      },
+      {
+        "line": 39330,
+        "word": "comprendere",
+        "pos": "verb",
+        "lineSha256": "7b3b93bd66239640f3f8a5e81aefc89dc64f8ab9152b03b4a505258315d60b11"
+      },
+      {
+        "line": 39394,
+        "word": "ammettere",
+        "pos": "verb",
+        "lineSha256": "2250869532fec6e7b61d7b07bdf68d87c0a4619d56730c023fd66449c70e6d55"
+      },
+      {
+        "line": 40751,
+        "word": "carpire",
+        "pos": "verb",
+        "lineSha256": "1999561a8db5521327d32ce275f3d48e4760cdd05a3449dbd859974e3e8b314d"
+      },
+      {
+        "line": 47556,
+        "word": "affogare",
+        "pos": "verb",
+        "lineSha256": "498f3aa6d80484193a13b6d1daafc8a94aad17e35d59f82a8babc1bbe2e33d73"
+      },
+      {
+        "line": 48955,
+        "word": "pestare",
+        "pos": "verb",
+        "lineSha256": "e8d93adf213698297309cb27c0f179ea25329a27795e6b568c8f7678e88e82f1"
+      },
+      {
+        "line": 58678,
+        "word": "piluccare",
+        "pos": "verb",
+        "lineSha256": "ab9c7a849188dd33bccbca27ee63b4e126f8777a5d755696ad4797aa2c2adae2"
+      },
+      {
+        "line": 83299,
+        "word": "nitrire",
+        "pos": "verb",
+        "lineSha256": "ff3be1ae4d51b3a62b08389a23fb24f9052cbc5c8585ce90558f7b458980d8d8"
+      },
+      {
+        "line": 106272,
+        "word": "crivellare",
+        "pos": "verb",
+        "lineSha256": "ca8e016fd773a097e66e1d39387f3f9de78701f954090bbc80d8030fec56375a"
+      },
+      {
+        "line": 134019,
+        "word": "aizzare",
+        "pos": "verb",
+        "lineSha256": "94aaa9442564d1fe15544ac6b14a92dbaca7bd3b79b7e864873c02c9a61a9591"
+      },
+      {
+        "line": 137762,
+        "word": "spegnere",
+        "pos": "verb",
+        "lineSha256": "5eb0e7bef7c47630a7577544b14fd6e16a8ac6434066d9ccdaaf633b595f58c8"
+      },
+      {
+        "line": 138671,
+        "word": "massaggiare",
+        "pos": "verb",
+        "lineSha256": "560c0c4a6b6d7695c238766e2c58bc28308e807ad71c34d85c3d165943728ef0"
+      },
+      {
+        "line": 403846,
+        "word": "disanimare",
+        "pos": "verb",
+        "lineSha256": "ab9e7ad3fe6b461746332507176251f354b8a4b7bc576e828fb47268f5f25e01"
+      },
+      {
+        "line": 404762,
+        "word": "stralciare",
+        "pos": "verb",
+        "lineSha256": "1dda8b1a84d3d243f7bb376d55ab5585039ff836f76a4d708b766d69e75c27f7"
+      },
+      {
+        "line": 407778,
+        "word": "comperare",
+        "pos": "verb",
+        "lineSha256": "499ad314cbf5c46318a62fc6477e1c07309de1354a2588f7aa0c1bcfbd35ff31"
+      },
+      {
+        "line": 420832,
+        "word": "trasfigurare",
+        "pos": "verb",
+        "lineSha256": "c77084947d23f6d2d7b93a1fe65ec2334152de78f2e05fb29c834cdc01c72501"
+      },
+      {
+        "line": 422402,
+        "word": "annegare",
+        "pos": "verb",
+        "lineSha256": "bcada269a2301022263cee30144f3ca00a95e63298cdba70a53f687598bd1731"
+      },
+      {
+        "line": 446906,
+        "word": "infettare",
+        "pos": "verb",
+        "lineSha256": "80e8c669d0bcfc8a06786605a6f2679d652eccd40f753790f979432783b64c7f"
+      },
+      {
+        "line": 459305,
+        "word": "contorcere",
+        "pos": "verb",
+        "lineSha256": "849f798aaed787fa31cf4df944e009e658ff519b38dac30b467e47d5094456dd"
+      },
+      {
+        "line": 465381,
+        "word": "bucare",
+        "pos": "verb",
+        "lineSha256": "7df9de7d6857b15ee432234d6402fe0279946cda932e95973a4e35a76d6e4e1e"
+      },
+      {
+        "line": 484415,
+        "word": "disobbligare",
+        "pos": "verb",
+        "lineSha256": "86f670aa2462f52d328e4b079f5bebc9d82b43764c866dfcbd9c155c391a4e43"
+      },
+      {
+        "line": 540840,
+        "word": "degassare",
+        "pos": "verb",
+        "lineSha256": "63e3d0a2fea435980d869b332c3b9b351b3907b5a96c68f5fd74b19237217fce"
+      },
+      {
+        "line": 544291,
+        "word": "dipartire",
+        "pos": "verb",
+        "lineSha256": "358e3c91a656022b4307b4a10df281b9dc82863253f56570b4583d4455336d43"
+      },
+      {
+        "line": 544648,
+        "word": "ergersi",
+        "pos": "verb",
+        "lineSha256": "9d42b30f0cb3e545d8a4c7d646eaad294ce6a7a777f771662f3b878016a65c9d"
+      },
+      {
+        "line": 602816,
+        "word": "gemitare",
+        "pos": "verb",
+        "lineSha256": "5fc612f48961ad468e3083bfddf87a452cabbdc7f264dd43ff25931c0c148ffa"
+      }
+    ],
+    "adjective": [
+      {
+        "line": 32950,
+        "word": "sordo",
+        "pos": "adj",
+        "lineSha256": "457939446d62e93565e84fd6f9f1a9da8b8aeb570ee27513682efca912cc538e"
+      },
+      {
+        "line": 33716,
+        "word": "scalzo",
+        "pos": "adj",
+        "lineSha256": "53419d33ae00303dd3128ef7015ed7ef004f570576131e8fb34f45ef4d0b336a"
+      },
+      {
+        "line": 54561,
+        "word": "tampone",
+        "pos": "adj",
+        "lineSha256": "0ec0fba314902c3e8f47ffd46396022566811cb4f8e03979ba664413c85545ef"
+      },
+      {
+        "line": 55480,
+        "word": "tetratomico",
+        "pos": "adj",
+        "lineSha256": "db36ea0e170115b796ada0eddbd9e817e8386c0fc0cd1ca6db1c97b77a846c13"
+      },
+      {
+        "line": 64322,
+        "word": "ligneo",
+        "pos": "adj",
+        "lineSha256": "c00c99d7f2a6294b5da36112f920395ac33ee20088d48b749c9920d7e3216a1c"
+      },
+      {
+        "line": 72338,
+        "word": "babbaccione",
+        "pos": "adj",
+        "lineSha256": "601a1120a803ce937e094e6b92c4fa11759b22470fcebf01c2d233e341aeadb0"
+      },
+      {
+        "line": 107831,
+        "word": "baggiano",
+        "pos": "adj",
+        "lineSha256": "bf6a740a04c0fa0723903280327aa137be7e82c4fab02efc0ac5b169f3b287a7"
+      },
+      {
+        "line": 109005,
+        "word": "foriero",
+        "pos": "adj",
+        "lineSha256": "f68c721392030a0e89e423298e9f731039f8795882f1235c717910cc28ff7134"
+      },
+      {
+        "line": 133298,
+        "word": "diesel",
+        "pos": "adj",
+        "lineSha256": "c9ddb47fd2eaa368b13598c39d49d99b74781e8d1d4e934d980234c0b15cd5dd"
+      },
+      {
+        "line": 134433,
+        "word": "pieficcato",
+        "pos": "adj",
+        "lineSha256": "bb6b8d9fde77d278fd5fd7fa3f58c1ed6599d3e8d9dc0f7f3a91ce39c8867236"
+      },
+      {
+        "line": 173846,
+        "word": "fermano",
+        "pos": "adj",
+        "lineSha256": "c0c54490aca68b406b59ba0b563ebf43a5cb055147659f7bf9e97e1c29c4e17d"
+      },
+      {
+        "line": 247532,
+        "word": "guasto",
+        "pos": "adj",
+        "lineSha256": "7c2999692c815a5405b6ec4f0d3f933b5c83e5243136cb53b66b02fb26988056"
+      },
+      {
+        "line": 404428,
+        "word": "metallotermico",
+        "pos": "adj",
+        "lineSha256": "decf494f7cea4c972bcc75d3381f52116ee42420b00b108e44f8462df1e47f5e"
+      },
+      {
+        "line": 413923,
+        "word": "rancido",
+        "pos": "adj",
+        "lineSha256": "a80355a84ca42cc2266d34bd92949284c3307585d5955a48da5bcf66d9d7ff6b"
+      },
+      {
+        "line": 416813,
+        "word": "motociclistico",
+        "pos": "adj",
+        "lineSha256": "f8b54b320ca78d209b61fd91116d7c9532ab0cc860cc96d681eb30011958b235"
+      },
+      {
+        "line": 430876,
+        "word": "risposto",
+        "pos": "adj",
+        "lineSha256": "447d5536faefdfc85abb0b0dc5c8ac0112db7ee30dd10e624c81c911b561cbe1"
+      },
+      {
+        "line": 442007,
+        "word": "prescolare",
+        "pos": "adj",
+        "lineSha256": "f6b05f8f69856d3739b7fc0b48caa8d9d969aee220a078e56d8c18ab23846204"
+      },
+      {
+        "line": 450085,
+        "word": "cistercense",
+        "pos": "adj",
+        "lineSha256": "db617a2158f493f8f34b521ce14766cbc0b214fc0d495ea8aaf6cf77d71c2a69"
+      },
+      {
+        "line": 459043,
+        "word": "elettrorefrattario",
+        "pos": "adj",
+        "lineSha256": "35861b7f8821c5cc8b72512eb3a553998807652a817e16a14b17610120ce867a"
+      },
+      {
+        "line": 459145,
+        "word": "incombustibile",
+        "pos": "adj",
+        "lineSha256": "ce838c2d71aa3dadaa52662bb90806e873dd9df4ef170688f4b275d2de9f896b"
+      },
+      {
+        "line": 598082,
+        "word": "pasquale",
+        "pos": "adj",
+        "lineSha256": "04cd014f796407c2215d097ce0bb63e1dbd04547895d97fedd2bd19ca1292e99"
+      },
+      {
+        "line": 600344,
+        "word": "egotista",
+        "pos": "adj",
+        "lineSha256": "b4802e19016dbae35372a298d24fe497a240cd57896f39d537e5b31dfcc99628"
+      },
+      {
+        "line": 600544,
+        "word": "orchestrale",
+        "pos": "adj",
+        "lineSha256": "8dc03e492fdd3c92a68ebb8797c295d1f7223558ae03f4b8cbfabae3efd0fb32"
+      },
+      {
+        "line": 604755,
+        "word": "bersaniano",
+        "pos": "adj",
+        "lineSha256": "0cf5b58cccf3dc945b3c2f57cbc26d399250f157317703a9914f66f92419bdf6"
+      },
+      {
+        "line": 798233,
+        "word": "stromale",
+        "pos": "adj",
+        "lineSha256": "0777d5a86dcf5220020afdf713f109e45a27e376f55e7bf01f550b233143a187"
+      }
+    ],
+    "inflection": [
+      {
+        "line": 171066,
+        "word": "accottimiamo",
+        "pos": "verb",
+        "lineSha256": "a8e213d6a48d549cecc390c8d9d091cc3e79223d37a1f32adaac9ce95794ffb0"
+      },
+      {
+        "line": 183115,
+        "word": "perdonasti",
+        "pos": "verb",
+        "lineSha256": "2e68598b9997b4118d9f00483fea0579ded9f973c53961dafb216c9f61e406fc"
+      },
+      {
+        "line": 189802,
+        "word": "cornificato",
+        "pos": "verb",
+        "lineSha256": "e9fa2d2d053dc8f40429b501c6983c5d7822ceba48800863ef2a4fc73684747d"
+      },
+      {
+        "line": 235312,
+        "word": "climatizzano",
+        "pos": "verb",
+        "lineSha256": "c9d5119fd292ffc75880ec193d7586b05672f9f863fe588a811f6492bab0f681"
+      },
+      {
+        "line": 268684,
+        "word": "rollaste",
+        "pos": "verb",
+        "lineSha256": "9f7d9c2e927552d7f041183eb38707bdcb26b60a4a5ba6e5eaa9d51a894f533a"
+      },
+      {
+        "line": 277512,
+        "word": "disumanarono",
+        "pos": "verb",
+        "lineSha256": "0f660dbdd527a9969d90b82a5a625c3de11d46bd4bdc937d95c09e14abaada88"
+      },
+      {
+        "line": 282872,
+        "word": "giunteremmo",
+        "pos": "verb",
+        "lineSha256": "47178d1c911ebad14620028dc3ef2efdb454a1ddc312a49f180341156fedaabe"
+      },
+      {
+        "line": 321196,
+        "word": "rinquadrassero",
+        "pos": "verb",
+        "lineSha256": "c2f823bac69642da5e91d3c9645a7826f6923fba467747706f977a91ce675a5f"
+      },
+      {
+        "line": 325915,
+        "word": "spiumerai",
+        "pos": "verb",
+        "lineSha256": "1a40541bc1c1148832f6f48d4692531c5da9ade5127cb9921bce1870ef91502b"
+      },
+      {
+        "line": 339816,
+        "word": "impalcai",
+        "pos": "verb",
+        "lineSha256": "4f14902fb4b2bcecc7058d0fea312cb3c21b3160b38cf7e69e5ad86dcd248b5b"
+      },
+      {
+        "line": 348453,
+        "word": "spiaggiata",
+        "pos": "verb",
+        "lineSha256": "15419a2dd68006a045d2540078e37e1624ca35c153135f0713421d0565a9d884"
+      },
+      {
+        "line": 369470,
+        "word": "servissi",
+        "pos": "verb",
+        "lineSha256": "bce8ad8c81c1076b04441283a2550355a1ab13bcb2d6ceb45da9d087a7bcc59c"
+      },
+      {
+        "line": 371965,
+        "word": "deglutì",
+        "pos": "verb",
+        "lineSha256": "99fdfbb76a6d356abc7f67cff6e0faae185ad2665650b0e35db617d09d83e1cb"
+      },
+      {
+        "line": 383407,
+        "word": "attutivi",
+        "pos": "verb",
+        "lineSha256": "a22f9564148a8331b5ef829a8a142cced3ac3a17c9af1aaf7c5d24b74278d43a"
+      },
+      {
+        "line": 410626,
+        "word": "ripropongano",
+        "pos": "verb",
+        "lineSha256": "2a33db70e991ba5fd89e947bb1be11f20e70d1c61aac78022eb80316faca0a88"
+      },
+      {
+        "line": 453472,
+        "word": "capitalistici",
+        "pos": "adj",
+        "lineSha256": "24889f29cd8a37ebec2404256c1c1f1d430fd898a4c94578652d64f1e052623d"
+      },
+      {
+        "line": 536339,
+        "word": "vedi",
+        "pos": "verb",
+        "lineSha256": "a48e66f5979c45a8f7e897c554b48427d17a057f44edc1a03d1bd0bd391cbd00"
+      },
+      {
+        "line": 650445,
+        "word": "disapparati",
+        "pos": "verb",
+        "lineSha256": "6405e1c093f7e9db9d8d2dc99a432286a9c8fc11adc8399231dee4c7bfb62e07"
+      },
+      {
+        "line": 667414,
+        "word": "telepilota",
+        "pos": "verb",
+        "lineSha256": "282992cc0b0dff3d3024c91c5ed6f5c2a3809555e499e51572a9bd3ea1b84b74"
+      },
+      {
+        "line": 677563,
+        "word": "schidionano",
+        "pos": "verb",
+        "lineSha256": "7b4a0fac7f4e0a78264390cdfc68aefbbd6132ad2d82959911360689e4d7e585"
+      },
+      {
+        "line": 690828,
+        "word": "susurrava",
+        "pos": "verb",
+        "lineSha256": "8700292404038eec8fa7dd177974c6a4f5e53b483367e83175b5535bc68673dd"
+      },
+      {
+        "line": 729130,
+        "word": "paradosserò",
+        "pos": "verb",
+        "lineSha256": "912fdc484c2640bcba6bb83070f9f5521a19b986b000b3eeac319f646983988e"
+      },
+      {
+        "line": 749351,
+        "word": "disnerverebbe",
+        "pos": "verb",
+        "lineSha256": "90c3db1aff46a72c54581c0b1722a90eacd9c4726c3c6831fb9ee23da992cf72"
+      },
+      {
+        "line": 789873,
+        "word": "incaci",
+        "pos": "verb",
+        "lineSha256": "c1209598590b45210163568d15b9ddefc0d16ba2223f3152d30465ac9eeb4b1c"
+      },
+      {
+        "line": 795931,
+        "word": "scovaccino",
+        "pos": "verb",
+        "lineSha256": "32ff2f5e1b157893637850805a5ed5b799c1595e473ab52e97c7a3e7c17ad765"
+      }
+    ],
+    "ambiguous": [
+      {
+        "line": 8167,
+        "word": "attestato",
+        "pos": "noun",
+        "lineSha256": "a9ae173c206de0ffc3f3c7ae6448aa261961b44cb2acfb08b616ab16d0b5d2af"
+      },
+      {
+        "line": 17430,
+        "word": "yiddish",
+        "pos": "adj",
+        "lineSha256": "742d6813eff8ef6b2e84e36988683932bfde26e60f182bb20681b0c80e367702"
+      },
+      {
+        "line": 18133,
+        "word": "degradante",
+        "pos": "verb",
+        "lineSha256": "7a3c49bb6c7706dda87b49c6cdca103904a37cf61c83dfeb19f3e2f2f02a7688"
+      },
+      {
+        "line": 18173,
+        "word": "voluta",
+        "pos": "verb",
+        "lineSha256": "4461532cc12fa2ff8f4b074f069075fd42265793c0ba39c4a211912bf692f623"
+      },
+      {
+        "line": 18175,
+        "word": "voluta",
+        "pos": "verb",
+        "lineSha256": "4461532cc12fa2ff8f4b074f069075fd42265793c0ba39c4a211912bf692f623"
+      },
+      {
+        "line": 33484,
+        "word": "vacillante",
+        "pos": "verb",
+        "lineSha256": "88f10f683fc9c3060b64996d781e89e535044f9985229e6524651852c822e193"
+      },
+      {
+        "line": 42550,
+        "word": "modello",
+        "pos": "noun",
+        "lineSha256": "bd5cc21a5334f8288870b36e75b950b295f50562bf791556f971478eea94d22c"
+      },
+      {
+        "line": 47161,
+        "word": "babbuasso",
+        "pos": "adj",
+        "lineSha256": "0085edfe67835c0763cc75d72ceb0865b0ce81f398e6da87f490c68690b2c912"
+      },
+      {
+        "line": 53975,
+        "word": "scuro",
+        "pos": "noun",
+        "lineSha256": "b3cc04b1bf8c87e83c4b45bd7473314e0fda10e5d90f2dd765b935ee45dfe4d0"
+      },
+      {
+        "line": 55119,
+        "word": "toscana",
+        "pos": "adj",
+        "lineSha256": "a55182459558c05c89deda18ead9c09b0be96565cc0c8361f1f307bfbc62bf04"
+      },
+      {
+        "line": 61853,
+        "word": "giochi",
+        "pos": "verb",
+        "lineSha256": "27d53db155ae1cd98ad9c7c1345c71988d0f553d080a0c7205ea88b73de0dcaa"
+      },
+      {
+        "line": 72825,
+        "word": "brut",
+        "pos": "adj",
+        "lineSha256": "454bef11df7392c549656bb10372352ceb666461c1c2fd553d4d2803d994f10d"
+      },
+      {
+        "line": 81014,
+        "word": "calcolatrici",
+        "pos": "adj",
+        "lineSha256": "0a6373737cc55382f41cff7b78136dd3d5b7f2c08c82031758cbf57eb5d7f47c"
+      },
+      {
+        "line": 87626,
+        "word": "esercenti",
+        "pos": "noun",
+        "lineSha256": "21f6934af00972e954b7461d649e9e6883742d7a9897eea927cf43fed7e39df1"
+      },
+      {
+        "line": 102415,
+        "word": "precorrere",
+        "pos": "verb",
+        "lineSha256": "d8c59de1b1b6a11867b6b4614ae68a76faf46ad4d2970be60f6ea8a2dd997ead"
+      },
+      {
+        "line": 199008,
+        "word": "rievocata",
+        "pos": "verb",
+        "lineSha256": "f8b42990815722a4dc1a88869de4f88fd0eb52c97d38d5441292d0246e57aa56"
+      },
+      {
+        "line": 214644,
+        "word": "vagheggiato",
+        "pos": "verb",
+        "lineSha256": "514f942e3cb153909139e8b90d6e7a3d191010d7abf455ae60ae4ffeec0aa969"
+      },
+      {
+        "line": 238731,
+        "word": "corredo",
+        "pos": "verb",
+        "lineSha256": "f36f83956577e771f3233f16b2e074e8ef785d1cbf18befb99a4348ebe61b65a"
+      },
+      {
+        "line": 246681,
+        "word": "attenuati",
+        "pos": "adj",
+        "lineSha256": "5392d94bfa97cd575c3832e24c14adb70b18249a48b90acc95aaabc7f47d7a13"
+      },
+      {
+        "line": 367333,
+        "word": "rigermoglio",
+        "pos": "verb",
+        "lineSha256": "1819974185d4ab4db712385359dcb79c48dc909961383075137f921b4e03cee4"
+      },
+      {
+        "line": 397176,
+        "word": "balzati",
+        "pos": "verb",
+        "lineSha256": "f8d0c30639f2462462544a4f3a72f289e3d6e994a9ac25e6d47e9f36123d0a2b"
+      },
+      {
+        "line": 419937,
+        "word": "galileiano",
+        "pos": "noun",
+        "lineSha256": "e8b3759d923619bd58a957b76707ce9238aba4a58c145afb6283fcd7bdc76085"
+      },
+      {
+        "line": 431171,
+        "word": "pervase",
+        "pos": "verb",
+        "lineSha256": "9855c417194b5569e1bd06f06814525cdb9e6ab3e1bbde0b08a91f59cf83f5f0"
+      },
+      {
+        "line": 442033,
+        "word": "studiosi",
+        "pos": "adj",
+        "lineSha256": "16bdf5c2a85dc491ba4765061106bb27bb7dbd1ac1fe78d57afacff579050d94"
+      },
+      {
+        "line": 464257,
+        "word": "battagliare",
+        "pos": "verb",
+        "lineSha256": "75a8fbde9b4d4987074db195e82a58c8b4daa0c86a93d101a0b7edb6db42a2c4"
+      }
+    ],
+    "accented": [
+      {
+        "line": 43260,
+        "word": "accappà",
+        "pos": "verb",
+        "lineSha256": "5ed694312848115410bc170600ade24b3a1edfc2981946f17f8219f397639e47"
+      },
+      {
+        "line": 50354,
+        "word": "incapacità",
+        "pos": "noun",
+        "lineSha256": "17df993cbf69bd2b90170e066016663ac9ec46acb29000ffc3b39324bed271b1"
+      },
+      {
+        "line": 149096,
+        "word": "inquinerò",
+        "pos": "verb",
+        "lineSha256": "265a2fffe00b0bcd8a8133f3d9bda445f6b6c09103f3b703efcc422db8e9e8c7"
+      },
+      {
+        "line": 156025,
+        "word": "assidererà",
+        "pos": "verb",
+        "lineSha256": "6274b2e5272b6c06cbf1b022311c5b51e7c2ba56805bd4caf113626774a0fbd8"
+      },
+      {
+        "line": 160670,
+        "word": "filtrò",
+        "pos": "verb",
+        "lineSha256": "28a25ece99d05166f8bbf339f901e1343a8b09a85eb382652cf1c945804390f3"
+      },
+      {
+        "line": 175599,
+        "word": "nomerò",
+        "pos": "verb",
+        "lineSha256": "1bb177b878700b1d8a47dd4118e66b915941ce3bf3b88c5c7bd1e9f7b5268ffe"
+      },
+      {
+        "line": 214128,
+        "word": "taccheggerò",
+        "pos": "verb",
+        "lineSha256": "13064d924c9cc437951f96694096fa757ecd1b11b66735cd5e8af68d05dd6c78"
+      },
+      {
+        "line": 218447,
+        "word": "clorurerò",
+        "pos": "verb",
+        "lineSha256": "b46dde005995612757891ed6d14a6090ab159e3cc89b5c481825fd1c18f916c0"
+      },
+      {
+        "line": 229061,
+        "word": "riposerò",
+        "pos": "verb",
+        "lineSha256": "7150bd2b5a19cf9e91593d7533237a8adaefcfc17760a0b9a22afc021774466a"
+      },
+      {
+        "line": 229437,
+        "word": "intervisterà",
+        "pos": "verb",
+        "lineSha256": "ba7d9d9eebe3f5b728a3c1f002728d0d9bbb1592ac4c623d80f68f7f079dfc70"
+      },
+      {
+        "line": 260004,
+        "word": "rasserenò",
+        "pos": "verb",
+        "lineSha256": "307e9396229d02a2e31f386a05cdd90733a443b8d366d03c792c37069bed0a5a"
+      },
+      {
+        "line": 299943,
+        "word": "gallonerò",
+        "pos": "verb",
+        "lineSha256": "7e363878126c55c907e40f9e0dce0f51d273bfdb5c115e377f819536c56ce1c0"
+      },
+      {
+        "line": 334851,
+        "word": "mantecò",
+        "pos": "verb",
+        "lineSha256": "cd6e60573e3dd8da766cc893ae1f79483e7bc8a4d2a6238a9f3fd9c9793ffc98"
+      },
+      {
+        "line": 350826,
+        "word": "sguanciò",
+        "pos": "verb",
+        "lineSha256": "f6da933b240908b1c88942810b0e72ba461606c9246e4e7cdcd05daff7ba1b55"
+      },
+      {
+        "line": 366160,
+        "word": "impaniò",
+        "pos": "verb",
+        "lineSha256": "87d953bbbb9319c7166808393c7f2b626af9fe5d0e828436a497747c8175aff2"
+      },
+      {
+        "line": 381050,
+        "word": "insospettirà",
+        "pos": "verb",
+        "lineSha256": "8cdf4a0f77c3728fd28868173f50c1abe3c3706ddb818a99d8ede7855231a667"
+      },
+      {
+        "line": 391388,
+        "word": "abortì",
+        "pos": "verb",
+        "lineSha256": "aa7f128e852ab06caa556743f791e48cbe96b99eb6203f43725a1516a7b12419"
+      },
+      {
+        "line": 434999,
+        "word": "correrò",
+        "pos": "verb",
+        "lineSha256": "5053a3269b65355377b70e5f7d8a749a4ea62899e85f0282f9dc5ef5fc526fdc"
+      },
+      {
+        "line": 480002,
+        "word": "teletrasmetterà",
+        "pos": "verb",
+        "lineSha256": "3b2c6544a93764ec212839932fd0a620a01075543f6743d061c8464159c916a5"
+      },
+      {
+        "line": 715496,
+        "word": "stutò",
+        "pos": "verb",
+        "lineSha256": "2cf425862233a667290e57307dbc90ba00a6faeac7c011877ef56ee464c5877a"
+      },
+      {
+        "line": 728544,
+        "word": "dissembrerò",
+        "pos": "verb",
+        "lineSha256": "025e1e27aa2b90024de01691bccfa4e880747a51a2ae796ae68426bd8d2fd620"
+      },
+      {
+        "line": 729566,
+        "word": "rincoronerò",
+        "pos": "verb",
+        "lineSha256": "b97ef290977de78c2e5c68cac31b8958ce9882a4b17f9357a97f0eb9f5c46a92"
+      },
+      {
+        "line": 734801,
+        "word": "rinoverà",
+        "pos": "verb",
+        "lineSha256": "98135e06b99c3effd1f6ea000d36a380a0c896916bd2ca0d16ea3bffaa66b358"
+      },
+      {
+        "line": 788323,
+        "word": "rassimiglierò",
+        "pos": "verb",
+        "lineSha256": "1acbadf2268876b177facb0aab40940e7180dacb33057552d8fde952e31aa48f"
+      },
+      {
+        "line": 788327,
+        "word": "riappariglierò",
+        "pos": "verb",
+        "lineSha256": "3724bfe05c40ab8c383eb225aafa0b44b514989781f83588426866ac2d335fe3"
+      }
+    ],
+    "thin": [
+      {
+        "line": 22531,
+        "word": "sportsman",
+        "pos": "noun",
+        "lineSha256": "02be4d47d22e1731e4d9605d11308fe12df16a90cd2afcb7daa6159e1ad086de"
+      },
+      {
+        "line": 30705,
+        "word": "Lecce",
+        "pos": "name",
+        "lineSha256": "dba484d48ae66270adeff6d3d41c2bd73a12713911bb07c62226622a6f32def8"
+      },
+      {
+        "line": 34621,
+        "word": "Aristide",
+        "pos": "name",
+        "lineSha256": "1234b2c75943b61fc33f93f0c57bd5f1303b1b71b10f44429d66e046b292b847"
+      },
+      {
+        "line": 34759,
+        "word": "Bononio",
+        "pos": "name",
+        "lineSha256": "33f2932a855dd638e2e8c097eaa58f805daea87d534831487e576e383f19ff89"
+      },
+      {
+        "line": 37108,
+        "word": "Pietruccia",
+        "pos": "name",
+        "lineSha256": "810723e9ea3a554c896d5e339ec0ecb85efc2c9d591a205e11d6e5e091aa602c"
+      },
+      {
+        "line": 37531,
+        "word": "Zoe",
+        "pos": "name",
+        "lineSha256": "b98a33c082539b9f3d818adb33a5e078ccda2bfc4558f311b2494a2249492b49"
+      },
+      {
+        "line": 44399,
+        "word": "consolle",
+        "pos": "noun",
+        "lineSha256": "54e8da3c57b50d439341f7441159fc65253614b0c099c4190946a3a847dac386"
+      },
+      {
+        "line": 132756,
+        "word": "capo di Sicilia",
+        "pos": "phrase",
+        "lineSha256": "dae9c1caf827b6a0d154d1339c3bd7338c43ba283b197deff00c39f2198f89ee"
+      },
+      {
+        "line": 133723,
+        "word": "allacciato in giro",
+        "pos": "adj",
+        "lineSha256": "cc1229c15ce38a62d0332513f47cc72857487baa4ad91c5d40d4fd351374374d"
+      },
+      {
+        "line": 139029,
+        "word": "sbramatura",
+        "pos": "noun",
+        "lineSha256": "9b21e2194d92ae5961122d734ec2db7f60b7abf48522d34edaeea7d52d7853ea"
+      },
+      {
+        "line": 404394,
+        "word": "elettroforno",
+        "pos": "noun",
+        "lineSha256": "e2114d96acd91f705ae3f09bb91ceccc6676259799d172496497c523d7959fd7"
+      },
+      {
+        "line": 413342,
+        "word": "duodenectomia",
+        "pos": "noun",
+        "lineSha256": "fbf7430e13a4c678e350a1a0585cb7291e3d33966e95474c80f1d509b66aabba"
+      },
+      {
+        "line": 420429,
+        "word": "contrattabile",
+        "pos": "adj",
+        "lineSha256": "f59b99ad097dfcad64cec6666f935e86f72ce3c14a8cf6c7da0978b665b78158"
+      },
+      {
+        "line": 450273,
+        "word": "propulsione spaziale",
+        "pos": "phrase",
+        "lineSha256": "0f88e4aeb28116902f3ede6664def21fa7e202900a91df7fa832b6714c548ede"
+      },
+      {
+        "line": 450906,
+        "word": "guanosintrifosfato",
+        "pos": "noun",
+        "lineSha256": "517d00e8d46e5fea610f69b50334523b3670c003fd7ec1ea946abc4a4d647e4a"
+      },
+      {
+        "line": 458007,
+        "word": "benzopirene",
+        "pos": "noun",
+        "lineSha256": "7cf2f5b1fb74a6f34b2c74f79532bcafef0f12d967f93a0f04f221422c518e63"
+      },
+      {
+        "line": 463829,
+        "word": "allantiasi",
+        "pos": "noun",
+        "lineSha256": "13ca417a2bd3cfda79534684da80cb22cd2bf7a8666ec5feaa16dbcd3c237c62"
+      },
+      {
+        "line": 465968,
+        "word": "perturbabile",
+        "pos": "adj",
+        "lineSha256": "994fb737fc1ff18c6b6a97d2793061d788aa2b4cf025ee40ac9df231c09af36a"
+      },
+      {
+        "line": 541178,
+        "word": "Psicodidi",
+        "pos": "noun",
+        "lineSha256": "22aeb4db5956870b082457b249efea1c3b70c3ed23814325d1a3ea0d51339cce"
+      },
+      {
+        "line": 547422,
+        "word": "acconciatore",
+        "pos": "noun",
+        "lineSha256": "11ccc6c8c614ab576e8201e07bdfcf3e608eb95bac48bd2d988d3d45c1398f34"
+      },
+      {
+        "line": 598163,
+        "word": "decennali",
+        "pos": "adj",
+        "lineSha256": "da0da3dd170d276703271f5e1d449d9d15515c07ac64631c088749dbeeb0230e"
+      },
+      {
+        "line": 608800,
+        "word": "wai",
+        "pos": "noun",
+        "lineSha256": "7079c28246468a47e2914f6f14f3be5171f00692d456badb60e58ae364e36d03"
+      },
+      {
+        "line": 615218,
+        "word": "Croton",
+        "pos": "noun",
+        "lineSha256": "86fd0716a64df164b17863cbe7cd9c09609869ae4e5faa8abf9eb381e1050c6c"
+      },
+      {
+        "line": 624597,
+        "word": "Valenza",
+        "pos": "name",
+        "lineSha256": "cb76eae5955f85d5fe0e7ccc888e22a56935aac692d01ea657157a53e46cd706"
+      },
+      {
+        "line": 625783,
+        "word": "Trenton",
+        "pos": "name",
+        "lineSha256": "46e8cd055a957ccc9b2bebf04d8c1cbb1522d441fe66e77b2af3b84156c9b744"
+      }
+    ]
+  }
+}

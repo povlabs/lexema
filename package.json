@@ -20,6 +20,7 @@
     "plan": "tsx src/billing/planCli.ts",
     "report": "tsx src/readerReport/reportCli.ts",
     "measure:recovery": "tsx src/import/measureRecovery.ts",
+    "measure:quality": "tsx src/import/measureQuality.ts",
     "measure:section-language": "tsx src/import/measureSectionLanguage.ts"
   },
   "devDependencies": {
