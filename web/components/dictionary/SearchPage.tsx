@@ -45,8 +45,11 @@ export { pageOrder } from "@/lib/dictionary/wordPage.ts";
  * page below it" (design-system-manifest.md § "The page"). Which state this is
  * is read off the query itself; the form is the same one in both, so a result
  * stays shareable by its URL and moving the bar is layout, not a second route.
+ *
+ * `version` is the served version's token, which the field's suggestion
+ * requests name (SearchField.tsx).
  */
-export function SearchPage({ raw, children }: { raw: string; children: ReactNode }) {
+export function SearchPage({ raw, version, children }: { raw: string; version: string; children: ReactNode }) {
   if (raw.trim() === "") {
     return (
       <main className={SHELL_CENTRED}>
@@ -55,7 +58,7 @@ export function SearchPage({ raw, children }: { raw: string; children: ReactNode
           {SITE_PRONUNCIATION}
         </p>
         <p className={HOME_TAGLINE}>{SITE_TAGLINE}</p>
-        <SearchField raw={raw} />
+        <SearchField raw={raw} version={version} />
         {children}
       </main>
     );
@@ -64,7 +67,7 @@ export function SearchPage({ raw, children }: { raw: string; children: ReactNode
     <>
       <SiteHeader />
       <main className={SHELL_TOP}>
-        <SearchField raw={raw} />
+        <SearchField raw={raw} version={version} />
         {children}
       </main>
     </>

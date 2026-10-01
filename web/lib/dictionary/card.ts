@@ -86,8 +86,8 @@ export function cardOf(attempt: Attempt): Card {
 
 /**
  * Bumped when the drawing changes, so a card cached under the old drawing is
- * never served for the new one. The release in the address does the same for
- * the data.
+ * never served for the new one. The served version in the address does the
+ * same for the data.
  */
 export const CARD_DRAWING = "1";
 
@@ -95,36 +95,42 @@ const CARD_PREFIX = "/card/";
 const CARD_SUFFIX = ".png";
 const WORD_PARAM = "word";
 
-/** A card's address, as one release draws it: the home card, or a word's. */
+/** A card's address, as one served version draws it: the home card, or a word's. */
 export interface CardAddress {
-  release: string;
+  /**
+   * The served version's token (`versionToken` in src/lookup/served.ts): the
+   * release and the last change applied to it, so an activation, a rollback
+   * and an apply each give every card a new address (#368).
+   */
+  version: string;
   /** The search as typed, trimmed; absent for the home card. */
   word: string | undefined;
 }
 
-/** `/card/1/it-0c432803.png?word=casa`: the drawing, the release, and the word. */
-export function cardPath({ release, word }: CardAddress): string {
-  const path = `${CARD_PREFIX}${CARD_DRAWING}/${encodeURIComponent(release)}${CARD_SUFFIX}`;
+/** `/card/1/it-0c432803.0.png?word=casa`: the drawing, the served version, and the word. */
+export function cardPath({ version, word }: CardAddress): string {
+  const path = `${CARD_PREFIX}${CARD_DRAWING}/${encodeURIComponent(version)}${CARD_SUFFIX}`;
   return word === undefined ? path : `${path}?${new URLSearchParams({ [WORD_PARAM]: word })}`;
 }
 
 /**
  * The card a URL asks for, or none when it is not a card's address. A card
- * of another drawing or release is still a card: the Worker sends it on to
- * the current one.
+ * of another drawing or version is still a card, and so is an address from
+ * before the version was in it, which named the release alone: the Worker
+ * sends each on to the current one.
  */
 export function cardAddressOf(url: URL): (CardAddress & { drawing: string }) | undefined {
   if (!url.pathname.startsWith(CARD_PREFIX) || !url.pathname.endsWith(CARD_SUFFIX)) return undefined;
   const parts = url.pathname.slice(CARD_PREFIX.length, -CARD_SUFFIX.length).split("/");
   if (parts.length !== 2 || parts.some((part) => part === "")) return undefined;
-  let release: string;
+  let version: string;
   try {
-    release = decodeURIComponent(parts[1]);
+    version = decodeURIComponent(parts[1]);
   } catch {
     return undefined;
   }
   const word = (url.searchParams.get(WORD_PARAM) ?? "").trim();
-  return { drawing: parts[0], release, word: word === "" ? undefined : word };
+  return { drawing: parts[0], version, word: word === "" ? undefined : word };
 }
 
 /** A link preview's line of text: the first meaning, else the meta line, else what Lexema is. */
@@ -140,16 +146,17 @@ export function cardDescription(card: Card): string {
  * `origin` is the host the page was asked on, so a Preview's page names a
  * Preview's card.
  */
-export function linkPreview({ title, card, word, release, origin }: {
+export function linkPreview({ title, card, word, version, origin }: {
   title: string;
   card: Card;
   /** The search as typed; a word card's address carries it. */
   word: string;
-  release: string;
+  /** The served version's token, as `CardAddress` names it. */
+  version: string;
   origin: string;
 }) {
   const description = cardDescription(card);
-  const path = cardPath({ release, word: card.kind === "word" ? word.trim() : undefined });
+  const path = cardPath({ version, word: card.kind === "word" ? word.trim() : undefined });
   return {
     description,
     openGraph: {

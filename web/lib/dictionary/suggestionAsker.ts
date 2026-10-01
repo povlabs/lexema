@@ -15,11 +15,21 @@ import type { SuggestAnswer } from "@/lib/dictionary/suggestAnswer.ts";
 /** One request for a prefix's suggestions. */
 export type SuggestRequest = (prefix: string, signal: AbortSignal) => Promise<SuggestAnswer>;
 
-/** `GET /suggest?q=`, as the page sends it. */
-export const fetchSuggestions: SuggestRequest = async (prefix, signal) => {
-  const response = await fetch(`/suggest?q=${encodeURIComponent(prefix)}`, { signal });
-  return (await response.json()) as SuggestAnswer;
-};
+/**
+ * `/suggest?q=ca&v=it-0c432803.0`: a prefix's suggestions, as the served
+ * version `version` answers them. The route reads only `q`; `v` is there so a
+ * browser keeps each version's answers apart (#368).
+ */
+export const suggestPath = (prefix: string, version: string): string =>
+  `/suggest?${new URLSearchParams({ q: prefix, v: version })}`;
+
+/** `GET /suggest`, as a page of the served version `version` sends it. */
+export const suggestionsAt =
+  (version: string): SuggestRequest =>
+  async (prefix, signal) => {
+    const response = await fetch(suggestPath(prefix, version), { signal });
+    return (await response.json()) as SuggestAnswer;
+  };
 
 export class SuggestionAsker {
   private timer: ReturnType<typeof setTimeout> | undefined;
