@@ -18,7 +18,8 @@
     "db:generate": "drizzle-kit generate",
     "api-key": "tsx src/api/keyCli.ts",
     "plan": "tsx src/billing/planCli.ts",
-    "measure:recovery": "tsx src/import/measureRecovery.ts"
+    "measure:recovery": "tsx src/import/measureRecovery.ts",
+    "measure:section-language": "tsx src/import/measureSectionLanguage.ts"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
