@@ -9,7 +9,9 @@
 // text and the HTML are both made from that letter, so they never say
 // different things. The HTML is Pencil board M1 (`QDY3h` in lexema-design.pen,
 // #367): a white card on a light grey page, laid out in tables with inline
-// styles, since an email client reads no stylesheet. It carries no image.
+// styles, since an email client reads no stylesheet. Its one image is the site
+// icon left of the "Lexema" wordmark (#383), loaded from the dictionary's site;
+// with images off the wordmark still reads, since it is text.
 
 import { PLAN_TERMS, type StripePlanId } from "../billing/plans.js";
 
@@ -47,6 +49,14 @@ interface Letter {
   /** Whether there is something to do in settings, so the email carries the Open Settings button. */
   readonly button: boolean;
   readonly note: string;
+}
+
+/** The two absolute URLs an email carries. */
+export interface EmailLinks {
+  /** The developer site's /dashboard/settings, which the Open Settings button opens. */
+  readonly settings: string;
+  /** The site icon the card's header shows, an https URL on the dictionary's site. */
+  readonly icon: string;
 }
 
 /** An email as it is sent: its subject, its plain text and its HTML. */
@@ -169,7 +179,18 @@ function buttonHtml(settingsUrl: string): string {
 </tr></table>`;
 }
 
-function htmlOf(letter: Letter, settingsUrl: string): string {
+/** The icon's size in the header, in CSS pixels, beside the 22px wordmark. */
+const ICON_SIZE = 32;
+
+/** The card's header: the site icon, then the wordmark as text. */
+function headerHtml(iconUrl: string): string {
+  return `<table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 0 20px;"><tr>
+<td style="padding:0 10px 0 0;vertical-align:middle;"><img src="${escapeHtml(iconUrl)}" alt="Lexema" width="${ICON_SIZE}" height="${ICON_SIZE}" style="display:block;width:${ICON_SIZE}px;height:${ICON_SIZE}px;border:0;outline:none;text-decoration:none;"></td>
+<td style="vertical-align:middle;"><p style="margin:0;font-family:${SERIF};font-size:22px;font-weight:400;line-height:28px;color:${COLOURS.textStrong};">Lexema</p></td>
+</tr></table>`;
+}
+
+function htmlOf(letter: Letter, links: EmailLinks): string {
   const facts = letter.facts
     .map((fact) => `<li style="margin:0 0 6px;padding:0;font-family:${SANS};font-size:14px;line-height:20px;color:${COLOURS.text};">${escapeHtml(fact)}</li>`)
     .join("\n");
@@ -181,7 +202,7 @@ function htmlOf(letter: Letter, settingsUrl: string): string {
 <tr><td align="center" style="padding:40px 16px;">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;">
 <tr><td style="background:${COLOURS.card};border-radius:8px;padding:40px 44px;">
-<p style="margin:0 0 20px;font-family:${SERIF};font-size:22px;font-weight:400;line-height:28px;color:${COLOURS.textStrong};">Lexema</p>
+${headerHtml(links.icon)}
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td style="border-top:1px solid ${COLOURS.rule};font-size:0;line-height:0;height:1px;">&nbsp;</td></tr></table>
 <h1 style="margin:24px 0 16px;font-family:${SANS};font-size:22px;font-weight:600;line-height:28px;color:${COLOURS.textStrong};">${escapeHtml(letter.headline)}</h1>
 <p style="margin:0 0 20px;font-family:${SANS};font-size:15px;line-height:22px;color:${COLOURS.text};">${escapeHtml(letter.lead)}</p>
@@ -190,7 +211,7 @@ function htmlOf(letter: Letter, settingsUrl: string): string {
 ${facts}
 </ul>
 </td></tr></table>
-${letter.button ? buttonHtml(settingsUrl) : ""}
+${letter.button ? buttonHtml(links.settings) : ""}
 <p style="margin:0;font-family:${SANS};font-size:14px;line-height:20px;color:${COLOURS.textMuted};">${escapeHtml(letter.note)}</p>
 </td></tr>
 <tr><td style="padding:20px 44px 0;">
@@ -218,8 +239,8 @@ function textOf(letter: Letter, settingsUrl: string): string {
   );
 }
 
-/** An email as it is sent, its button going to `settingsUrl`: the developer site's /dashboard/settings. */
-export function composeEmail(email: AccountEmail, settingsUrl: string): ComposedEmail {
+/** An email as it is sent, its button going to `links.settings` and its header showing `links.icon`. */
+export function composeEmail(email: AccountEmail, links: EmailLinks): ComposedEmail {
   const letter = letterOf(email);
-  return { subject: letter.subject, text: textOf(letter, settingsUrl), html: htmlOf(letter, settingsUrl) };
+  return { subject: letter.subject, text: textOf(letter, links.settings), html: htmlOf(letter, links) };
 }

@@ -517,4 +517,4 @@ development is the only access until that lands.
 | [gitleaks.yml](./.github/workflows/gitleaks.yml) | a changed file carries a secret |
 | [leak-guard.yml](./.github/workflows/leak-guard.yml) | a changed doc or shell file carries a machine-local path |
 | [decisions-index.yml](./.github/workflows/decisions-index.yml) | two records share an ADR id, or a filename disagrees with its frontmatter |
-| [preview-marker.yml](./.github/workflows/preview-marker.yml) | its `preview smoke` check, at a pull request's head: one of the six known words does not resolve on the Preview, the developer site or the API does not answer, or a response lacks `X-Robots-Tag: noindex` |
+| [preview-marker.yml](./.github/workflows/preview-marker.yml) | its `preview smoke` check, at a pull request's head: one of the six known words does not resolve on the Preview, the developer site or the API does not answer, a site does not serve `/favicon.ico` or `/apple-touch-icon.png` with its image type, or a response lacks `X-Robots-Tag: noindex` |

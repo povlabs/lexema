@@ -24,7 +24,11 @@
 //   Preview's app database, so the answer says the API Worker is up and reaches
 //   its D1. The key is a fixed string that names no key, not a secret; a real
 //   key would be one, and this job holds none;
-// - every response carries `X-Robots-Tag: noindex` (web/worker/stage.ts).
+// - each of the three sites serves the site icon (#383): `/favicon.ico` and
+//   `/apple-touch-icon.png` are a 200 with an icon's and a PNG's content type.
+//   They are static assets, answered before the Worker runs, on every host;
+// - every response carries `X-Robots-Tag: noindex` (web/worker/stage.ts), the
+//   icons' from web/public/_headers.
 
 import { type GitHub, hasNoindex, isHead, PreviewAnnouncement, type PreviewSite, restCall, restGitHub, SHA } from "./previewMarkerCommand.ts";
 
@@ -41,8 +45,20 @@ export const UNKNOWN_KEY = "preview-smoke-no-such-key";
 export interface Page {
   readonly status: number;
   readonly robotsTag: string | undefined;
+  readonly contentType: string | undefined;
   readonly body: string;
 }
+
+/**
+ * The icon files every site must serve (#383, web/lib/shared/siteIcons.ts),
+ * and the content types each may carry, without parameters. Cloudflare's
+ * static assets answer `.ico` as `image/vnd.microsoft.icon` (wrangler dev,
+ * 2026-10-01); `image/x-icon` is the older name for the same type.
+ */
+export const SMOKE_ICONS = [
+  { path: "/favicon.ico", contentTypes: ["image/vnd.microsoft.icon", "image/x-icon"] },
+  { path: "/apple-touch-icon.png", contentTypes: ["image/png"] },
+] as const;
 
 /** A reading on the dictionary's page: only a found word renders one. */
 const READING = /<article\b[^>]*\bdata-record="/;
@@ -78,8 +94,8 @@ export class SmokeProbe {
   readonly url: string;
   readonly headers: Readonly<Record<string, string>>;
   private readonly status: number;
-  /** What the body must say, as the problems when it does not. */
-  private readonly bodyProblems: (body: string) => readonly string[];
+  /** What the answer must carry beyond its status and noindex, as the problems when it does not. */
+  private readonly answerProblems: (page: Page) => readonly string[];
 
   // Plain `node` strips types and cannot run parameter properties, so the fields are assigned.
   private constructor(
@@ -87,20 +103,20 @@ export class SmokeProbe {
     url: string,
     headers: Readonly<Record<string, string>>,
     status: number,
-    bodyProblems: (body: string) => readonly string[],
+    answerProblems: (page: Page) => readonly string[],
   ) {
     this.app = app;
     this.url = url;
     this.headers = headers;
     this.status = status;
-    this.bodyProblems = bodyProblems;
+    this.answerProblems = answerProblems;
   }
 
   /** The dictionary's page for `word`: a reading shown without JavaScript, and its link-preview tags in `<head>`. */
   static word(siteUrl: string, word: string): SmokeProbe {
     const url = new URL(siteUrl);
     url.searchParams.set("q", word);
-    return new SmokeProbe("web", url.href, {}, 200, (body) => {
+    return new SmokeProbe("web", url.href, {}, 200, ({ body }) => {
       const reading = readingProblem(body, word);
       return [...(reading === undefined ? [] : [reading]), ...headProblems(body, word)];
     });
@@ -115,7 +131,7 @@ export class SmokeProbe {
   static api(siteUrl: string): SmokeProbe {
     const url = new URL("/v1/lookup", siteUrl);
     url.searchParams.set("q", "andare");
-    return new SmokeProbe("api", url.href, { "x-api-key": UNKNOWN_KEY }, 401, (body) => {
+    return new SmokeProbe("api", url.href, { "x-api-key": UNKNOWN_KEY }, 401, ({ body }) => {
       let code: unknown;
       try {
         const parsed: unknown = JSON.parse(body);
@@ -127,24 +143,39 @@ export class SmokeProbe {
     });
   }
 
+  /** One of the site icon files on any of the three sites (#383). */
+  static icon(app: PreviewSite["app"], siteUrl: string, icon: (typeof SMOKE_ICONS)[number]): SmokeProbe {
+    return new SmokeProbe(app, new URL(icon.path, siteUrl).href, {}, 200, ({ contentType }) => {
+      const type = contentType?.split(";")[0].trim().toLowerCase();
+      const allowed: readonly string[] = icon.contentTypes;
+      return type !== undefined && allowed.includes(type) ? [] : [`Content-Type is ${contentType === undefined ? "missing" : JSON.stringify(contentType)}, not ${icon.contentTypes.join(" or ")}`];
+    });
+  }
+
   /** Everything wrong with `page` as this probe's answer; none when it is right. */
   problems(page: Page): readonly string[] {
     const problems: string[] = [];
     if (page.status !== this.status) problems.push(`answered ${page.status}, not ${this.status}`);
     if (!hasNoindex(page.robotsTag)) problems.push(`X-Robots-Tag is ${page.robotsTag === undefined ? "missing" : JSON.stringify(page.robotsTag)}, not noindex`);
-    problems.push(...this.bodyProblems(page.body));
+    problems.push(...this.answerProblems(page));
     return problems;
   }
 }
 
-/** Every probe for one announced Preview: each word on the dictionary, the landing page, the API. */
+/** Every probe for one announced Preview: each word on the dictionary, the landing page, the API, then each site's icons. */
 export function probesOf(announcement: PreviewAnnouncement): readonly SmokeProbe[] {
   const url = (app: PreviewSite["app"]) => {
     const site = announcement.sites.find(({ site }) => site.app === app);
     if (site === undefined) throw new Error(`the announcement names no ${app} site`);
     return site.url;
   };
-  return [...SMOKE_WORDS.map((word) => SmokeProbe.word(url("web"), word)), SmokeProbe.landing(url("developers")), SmokeProbe.api(url("api"))];
+  const apps = ["web", "developers", "api"] as const;
+  return [
+    ...SMOKE_WORDS.map((word) => SmokeProbe.word(url("web"), word)),
+    SmokeProbe.landing(url("developers")),
+    SmokeProbe.api(url("api")),
+    ...apps.flatMap((app) => SMOKE_ICONS.map((icon) => SmokeProbe.icon(app, url(app), icon))),
+  ];
 }
 
 /** What one probe found: passed when it lists no problem. */

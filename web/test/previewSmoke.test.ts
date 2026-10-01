@@ -14,6 +14,7 @@ import {
   probesOf,
   restSmokeGitHub,
   SMOKE_CHECK,
+  SMOKE_ICONS,
   SMOKE_WORDS,
   type SmokeGitHub,
   smokePreview,
@@ -40,12 +41,14 @@ const head = (word: string) =>
 const found = (word: string): Page => ({
   status: 200,
   robotsTag: "noindex",
+  contentType: "text/html; charset=utf-8",
   body: `${head(word)}<body><article class="scroll-mt-6 mt-7" id="reading-1011" aria-labelledby="reading-heading-1011" data-record="1011" data-line="2344">`,
 });
 /** A word the dictionary does not have: still a 200, with no reading. */
 const notFound = (word: string): Page => ({
   status: 200,
   robotsTag: "noindex",
+  contentType: "text/html; charset=utf-8",
   body: `<title>No entry for "${word}" — Lexema</title><h1>No entry for “<span lang="it">${word}</span>”</h1>`,
 });
 /**
@@ -56,10 +59,24 @@ const notFound = (word: string): Page => ({
 const hiddenFound = (word: string): Page => ({
   status: 200,
   robotsTag: "noindex",
+  contentType: "text/html; charset=utf-8",
   body: `${head(word)}<body><main><!--$?--><template id="B:0"></template><p class="my-6 font-sans text-[0.95rem] text-text-muted" role="status">Searching for <q lang="it">${word}</q> …</p><!--/$--></main><div hidden id="S:0"><h1 lang="it">${word}</h1><article class="scroll-mt-6 mt-7" id="reading-1" aria-labelledby="reading-heading-1" data-record="1" data-line="1"></article></div><script>$RC("B:0","S:0")</script>`,
 });
-const LANDING: Page = { status: 200, robotsTag: "noindex", body: "<title>Lexema API</title>" };
-const REFUSED: Page = { status: 401, robotsTag: "noindex", body: '{"error":{"code":"invalid_key","message":"This API key is not valid."}}' };
+const LANDING: Page = { status: 200, robotsTag: "noindex", contentType: "text/html; charset=utf-8", body: "<title>Lexema API</title>" };
+const REFUSED: Page = { status: 401, robotsTag: "noindex", contentType: "application/json", body: '{"error":{"code":"invalid_key","message":"This API key is not valid."}}' };
+/** The icons as wrangler dev served them on all three local hosts on 2026-10-01 (#383). */
+const FAVICON: Page = { status: 200, robotsTag: "noindex", contentType: "image/vnd.microsoft.icon", body: "" };
+const TOUCH_ICON: Page = { status: 200, robotsTag: "noindex", contentType: "image/png", body: "" };
+const SITES = { web: WEB, developers: DEVELOPERS, api: API } as const;
+const FAVICON_URL = (site: string) => new URL("/favicon.ico", site).href;
+const TOUCH_ICON_URL = (site: string) => new URL("/apple-touch-icon.png", site).href;
+/** Each site's icon URLs, in the order the smoke asks them. */
+const ICON_URLS = Object.entries(SITES).flatMap(([app, site]) => [
+  [app, FAVICON_URL(site)],
+  [app, TOUCH_ICON_URL(site)],
+]);
+/** How many requests the smoke makes: each word, the landing page, the API, and two icons on each site. */
+const REQUESTS = SMOKE_WORDS.length + 2 + ICON_URLS.length;
 
 const wordUrl = (word: string) => `${WEB}?q=${word}`;
 const LOOKUP = `${API}v1/lookup?q=andare`;
@@ -69,6 +86,12 @@ const UP: Record<string, Page> = {
   ...Object.fromEntries(SMOKE_WORDS.map((word) => [wordUrl(word), found(word)])),
   [DEVELOPERS]: LANDING,
   [LOOKUP]: REFUSED,
+  ...Object.fromEntries(
+    Object.values(SITES).flatMap((site) => [
+      [FAVICON_URL(site), FAVICON],
+      [TOUCH_ICON_URL(site), TOUCH_ICON],
+    ]),
+  ),
 };
 
 class FakeGitHub implements SmokeGitHub {
@@ -121,17 +144,22 @@ async function smoke(github: FakeGitHub, pages: Record<string, Page | Error> = U
 
 // --- What it asks -----------------------------------------------------------------
 
-test("it asks the announced sites: the six words on the dictionary, the developer landing page, the API", () => {
+test("it asks the announced sites: the six words on the dictionary, the developer landing page, the API, and each site's icons", () => {
   const probes = probesOf(PreviewAnnouncement.of(BRANCH, SHA));
   assert.deepEqual(
     probes.map(({ app, url }) => [app, url]),
-    [...SMOKE_WORDS.map((word) => ["web", wordUrl(word)]), ["developers", DEVELOPERS], ["api", LOOKUP]],
+    [...SMOKE_WORDS.map((word) => ["web", wordUrl(word)]), ["developers", DEVELOPERS], ["api", LOOKUP], ...ICON_URLS],
+  );
+  assert.deepEqual(
+    SMOKE_ICONS.map(({ path }) => path),
+    ["/favicon.ico", "/apple-touch-icon.png"],
   );
   assert.deepEqual(SMOKE_WORDS, ["sale", "andare", "andavano", "casa", "bello", "studente"]);
   // The API is sent a key no Preview holds: never a real one.
-  assert.deepEqual(probes.at(-1)?.headers, { "x-api-key": UNKNOWN_KEY });
+  const api = probes.find(({ url }) => url === LOOKUP);
+  assert.deepEqual(api?.headers, { "x-api-key": UNKNOWN_KEY });
   assert.doesNotMatch(UNKNOWN_KEY, /^lx_[0-9a-f]{64}$/);
-  for (const probe of probes.slice(0, -1)) assert.deepEqual(probe.headers, {});
+  for (const probe of probes.filter((probe) => probe !== api)) assert.deepEqual(probe.headers, {});
 });
 
 // --- When it passes and fails ------------------------------------------------------
@@ -140,14 +168,14 @@ test("a working Preview reports one successful check at the head, with a row per
   const github = new FakeGitHub(pr269());
   const { outcome, asked } = await smoke(github);
   assert.deepEqual(outcome, { kind: "reported", checks: [{ number: 269, conclusion: "success" }] });
-  assert.equal(asked.length, SMOKE_WORDS.length + 2);
+  assert.equal(asked.length, REQUESTS);
   assert.equal(github.checks.length, 1);
   const [check] = github.checks;
   assert.equal(check.headSha, SHA);
   assert.equal(check.conclusion, "success");
-  assert.equal(check.title, "All 8 preview requests answered");
+  assert.equal(check.title, `All ${REQUESTS} preview requests answered`);
   assert.match(check.summary, /Preview `build-245-preview-e48bab4a` @ 8be5dd31adde7c3155860e89e1b8e8d5990394ff/);
-  assert.equal(check.summary.split("\n").filter((line) => line.endsWith("| pass |")).length, 8);
+  assert.equal(check.summary.split("\n").filter((line) => line.endsWith("| pass |")).length, REQUESTS);
   assert.equal(check.detailsUrl, "https://github.com/hueypov/lexema/actions/runs/1");
 });
 
@@ -157,7 +185,7 @@ test("any of the six words that does not resolve fails the check, naming the wor
     await smoke(github, { ...UP, [wordUrl(word)]: notFound(word) });
     const [check] = github.checks;
     assert.equal(check.conclusion, "failure", word);
-    assert.equal(check.title, "1 of 8 preview requests failed");
+    assert.equal(check.title, `1 of ${REQUESTS} preview requests failed`);
     assert.match(check.summary, new RegExp(`\\*\\*fail\\*\\*: no reading for "${word}" on the page`));
   }
 });
@@ -168,7 +196,7 @@ test("a reading sent hidden for a script to show fails the check, naming the wor
     await smoke(github, { ...UP, [wordUrl(word)]: hiddenFound(word) });
     const [check] = github.checks;
     assert.equal(check.conclusion, "failure", word);
-    assert.equal(check.title, "1 of 8 preview requests failed");
+    assert.equal(check.title, `1 of ${REQUESTS} preview requests failed`);
     assert.match(check.summary, new RegExp(`\\*\\*fail\\*\\*: the reading for "${word}" is sent hidden, for a script to show`));
   }
   // A hidden segment after a reading the page already shows does not hide it.
@@ -194,7 +222,7 @@ test("a word page whose <title> or og:title is not before </head> fails the chec
     await smoke(github, { ...UP, [wordUrl("casa")]: { ...shown, body } });
     const [check] = github.checks;
     assert.equal(check.conclusion, "failure", body);
-    assert.equal(check.title, "1 of 8 preview requests failed");
+    assert.equal(check.title, `1 of ${REQUESTS} preview requests failed`);
     assert.ok(check.summary.includes(`**fail**: ${problems.join("; ")} |`), check.summary);
   }
   // Both tags before </head> pass, whatever follows.
@@ -222,17 +250,45 @@ test("a response without noindex fails the check, on any of the three sites", as
 test("the landing page and the API must give their own answers", async () => {
   const wrong: Record<string, Page>[] = [
     // Cloudflare's own answer for a name with no Preview.
-    { [DEVELOPERS]: { status: 404, robotsTag: undefined, body: "" } },
+    { [DEVELOPERS]: { status: 404, robotsTag: undefined, contentType: undefined, body: "" } },
     // The API let an unknown key through, or refused it for another reason.
-    { [LOOKUP]: { status: 200, robotsTag: "noindex", body: "{}" } },
-    { [LOOKUP]: { status: 401, robotsTag: "noindex", body: '{"error":{"code":"missing_key","message":"…"}}' } },
-    { [LOOKUP]: { status: 401, robotsTag: "noindex", body: "<html>" } },
+    { [LOOKUP]: { status: 200, robotsTag: "noindex", contentType: "application/json", body: "{}" } },
+    { [LOOKUP]: { status: 401, robotsTag: "noindex", contentType: "application/json", body: '{"error":{"code":"missing_key","message":"…"}}' } },
+    { [LOOKUP]: { status: 401, robotsTag: "noindex", contentType: "text/html; charset=utf-8", body: "<html>" } },
   ];
   for (const pages of wrong) {
     const github = new FakeGitHub(pr269());
     await smoke(github, { ...UP, ...pages });
     assert.equal(github.checks[0].conclusion, "failure", JSON.stringify(pages));
   }
+});
+
+test("each site must serve the favicon and the touch icon: a 200 with an icon's and a PNG's content type, and noindex (#383)", async () => {
+  for (const site of Object.values(SITES)) {
+    const wrong: [string, Page, RegExp][] = [
+      // The Worker's own 404, which a request for a missing asset falls through to.
+      [FAVICON_URL(site), { status: 404, robotsTag: "noindex", contentType: "text/plain; charset=utf-8", body: "Not Found" }, /answered 404, not 200/],
+      [FAVICON_URL(site), { ...FAVICON, contentType: "text/html; charset=utf-8" }, /Content-Type is "text\/html; charset=utf-8", not image\/vnd\.microsoft\.icon or image\/x-icon/],
+      [TOUCH_ICON_URL(site), { ...TOUCH_ICON, contentType: undefined }, /Content-Type is missing, not image\/png/],
+      [TOUCH_ICON_URL(site), { ...TOUCH_ICON, robotsTag: undefined }, /X-Robots-Tag is missing, not noindex/],
+    ];
+    for (const [url, page, problem] of wrong) {
+      const github = new FakeGitHub(pr269());
+      await smoke(github, { ...UP, [url]: page });
+      const [check] = github.checks;
+      assert.equal(check.conclusion, "failure", url);
+      assert.equal(check.title, `1 of ${REQUESTS} preview requests failed`);
+      assert.match(check.summary, problem, url);
+    }
+  }
+  // The older name for the icon type, and a parameter after a type, still pass.
+  const github = new FakeGitHub(pr269());
+  await smoke(github, {
+    ...UP,
+    [FAVICON_URL(API)]: { ...FAVICON, contentType: "image/x-icon" },
+    [TOUCH_ICON_URL(WEB)]: { ...TOUCH_ICON, contentType: "image/png; charset=binary" },
+  });
+  assert.equal(github.checks[0].conclusion, "success");
 });
 
 test("a request with no answer, or a 5xx, is asked again; a wrong answer is not", async () => {
