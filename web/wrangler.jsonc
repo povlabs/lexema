@@ -14,15 +14,6 @@
   // Workers Logs, so every rate-limit block (logged as which limit, never the
   // address) can be read when the numbers are tuned (#128).
   "observability": { "enabled": true },
-  // Smart Placement (#385): Cloudflare may run the Worker near D1 instead of
-  // near the reader, when its own timing says that is faster. A page waits on
-  // D1 several times in a row, so each wait is shorter there. On every plan
-  // and billed nothing of its own: a Worker pays for requests and CPU time,
-  // not where it runs (https://developers.cloudflare.com/workers/configuration/placement/,
-  // https://developers.cloudflare.com/workers/platform/pricing/). Top-level
-  // placement applies to Previews and to env.production alike
-  // (https://developers.cloudflare.com/workers/previews/configuration/).
-  "placement": { "mode": "smart" },
   // Two databases (ADR 0018). DB is the dictionary, which code only reads
   // (src/lookup/database.ts); APP_DB holds accounts, keys, usage and reader
   // reports. Both ids are local-only placeholders: `--local` keys each
