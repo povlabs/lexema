@@ -39,5 +39,27 @@ the same bytes for 400 and 600, so it is stored once and declared
 
 To replace a face with a newer release, see [REFRESH.md](REFRESH.md).
 
+## The card's faces, in `card/`
+
+A shared link's card ([#304](https://github.com/hueypov/lexema/issues/304)) is
+drawn inside the Worker by Satori, which reads TrueType, OpenType and WOFF but not
+WOFF2 ([`../worker/card/draw.tsx`](../worker/card/draw.tsx)). So `card/` holds the
+same families again as whole `.woff` files, one per weight and style a card sets:
+Spectral 400 and 400 italic, Inter 400 and 600, IBM Plex Mono 400. They are whole
+fonts, not the two ranges above, because a card is one picture and the Worker
+cannot fetch a range on demand; IBM Plex Mono, which sets a card's pronunciation,
+carries `ɛ`, `ˈ` and `ː`.
+
+They came from the same Google Fonts CSS API on 2026-10-01, asked with a
+`User-Agent` old enough to be answered in `woff` (Firefox 30), and are untouched
+after download. The requests, verbatim:
+
+- `https://fonts.googleapis.com/css2?family=Spectral:ital,wght@0,400;1,400&family=Inter:wght@400;600&family=IBM+Plex+Mono:wght@400&display=swap`
+
+Each file keeps its `.woff` name with `.bin` after it: `@cloudflare/vite-plugin`
+bundles a `.bin` import as a Data module, the file's bytes, and has no rule for
+`.woff` ([`../worker/card/desk.ts`](../worker/card/desk.ts)). They are never served
+to a browser.
+
 Licences: Spectral and IBM Plex Mono are under the SIL Open Font License 1.1,
 Inter under the SIL Open Font License 1.1.

@@ -18,14 +18,18 @@
 // host routing, Stripe's webhook on the developer site (worker/stripeWebhook.ts)
 // is answered outside the per-visitor limits. Around all of it,
 // the stage (worker/stage.ts) adds what its responses carry: noindex on a
-// Preview. It also exports the account meter's Durable Object class
-// (worker/api/accountMeterObject.ts), which wrangler.jsonc binds as
-// ACCOUNT_METER.
+// Preview. A shared link's card (worker/card.ts) is answered in front of the
+// per-visitor limits: one served from Cloudflare's cache reaches no database,
+// and one it draws counts as a search itself. It also exports the account
+// meter's Durable Object class (worker/api/accountMeterObject.ts), which
+// wrangler.jsonc binds as ACCOUNT_METER.
 
 import { env } from "cloudflare:workers";
 import app from "vinext/server/app-router-entry";
 import { answerApi, apiNotFound } from "./api/handler.ts";
 import { withBilling } from "./billing.ts";
+import { withCards } from "./card.ts";
+import { workerDesk } from "./card/desk.ts";
 import { withDashboard } from "./dashboard.ts";
 import { byHost } from "./hosts.ts";
 import { withRateLimits } from "./rateLimit.ts";
@@ -44,8 +48,11 @@ export default {
     stage,
     withStripeWebhook<Env>(
       byHost<Env>({
-        app: withRateLimits<Env>(
-          withTestSignIn<Env>(stage, withSignIn<Env>(withBilling<Env>(withDashboard<Env>((request, env, ctx) => app.fetch(request, env, ctx))))),
+        app: withCards<Env>(
+          workerDesk,
+          withRateLimits<Env>(
+            withTestSignIn<Env>(stage, withSignIn<Env>(withBilling<Env>(withDashboard<Env>((request, env, ctx) => app.fetch(request, env, ctx))))),
+          ),
         ),
         api: answerApi,
         apiNotFound,

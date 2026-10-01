@@ -21,6 +21,15 @@ export function firstQuery(value: QueryParam): string {
   return Array.isArray(value) ? (value[0] ?? "") : value;
 }
 
+/**
+ * What the site calls itself, how that is said, and what it is: the home page
+ * shows all three (SearchPage.tsx), the tab's title the first and the last, and
+ * a shared link's home card all three again (web/worker/card/draw.tsx).
+ */
+export const SITE_NAME = "Lexema";
+export const SITE_PRONUNCIATION = "/lekˈsɛːma/";
+export const SITE_TAGLINE = "a simple dictionary";
+
 /** What the title knows about the answer: the headword found, or that nothing was. */
 export type TitleOutcome = { found: string } | "not-found" | undefined;
 
@@ -38,7 +47,7 @@ const capitalised = (word: string): string => {
  */
 export function pageTitle(query: string, outcome?: TitleOutcome): string {
   const q = query.trim();
-  if (q === "") return "Lexema — a simple dictionary";
-  if (outcome === "not-found") return `No entry for "${q}" — Lexema`;
-  return `${capitalised(outcome?.found ?? q)} — Lexema`;
+  if (q === "") return `${SITE_NAME} — ${SITE_TAGLINE}`;
+  if (outcome === "not-found") return `No entry for "${q}" — ${SITE_NAME}`;
+  return `${capitalised(outcome?.found ?? q)} — ${SITE_NAME}`;
 }

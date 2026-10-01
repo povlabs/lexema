@@ -191,11 +191,21 @@ const both = (labels: readonly string[]): string =>
 export function headingGrammar(reading: Reading): string | undefined {
   if (!inflects(reading)) return undefined;
   const claims = reading.grammar.record;
-  const genders = gendersOf(claims).map((gender) => GENDER_LABEL[gender]);
   const numbers = [
     ...numbersOf(claims).map((number) => NUMBER_LABEL[number]),
     ...(statedValues(claims, "number").includes("invariable") ? ["invariabile"] : []),
   ];
-  const parts = [both(genders), both(numbers)].filter((part) => part !== "");
+  const parts = [headingGender(reading) ?? "", both(numbers)].filter((part) => part !== "");
   return parts.length === 0 ? undefined : parts.join(", ");
+}
+
+/**
+ * The gender half of that heading, alone: `maschile`, `maschile e femminile`,
+ * or nothing when the heading shows none. A shared link's card shows it
+ * (web/lib/dictionary/card.ts), so the two never disagree.
+ */
+export function headingGender(reading: Reading): string | undefined {
+  if (!inflects(reading)) return undefined;
+  const genders = gendersOf(reading.grammar.record).map((gender) => GENDER_LABEL[gender]);
+  return genders.length === 0 ? undefined : both(genders);
 }
