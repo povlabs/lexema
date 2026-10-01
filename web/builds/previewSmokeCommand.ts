@@ -15,7 +15,9 @@
 //   says nothing. The reading must be visible as sent, since the smoke runs no
 //   script (#115): React streams a result that is not ready at the first flush
 //   as a hidden `<div hidden id="S:…">` after the page, for a script to swap in,
-//   so a reading only in such a segment is one a reader without JavaScript never sees;
+//   so a reading only in such a segment is one a reader without JavaScript never sees.
+//   Its `<title>` and `og:title` must sit before `</head>`: a link previewer reads
+//   the raw head, and metadata streamed after the footer gives it no card (#337);
 // - the developer site answers its landing page, `/`, with a 200;
 // - the API answers `GET /v1/lookup?q=andare` sent with a key that does not
 //   exist with its own 401 `invalid_key`. Refusing that key takes a read of the
@@ -56,14 +58,28 @@ function readingProblem(body: string, word: string): string | undefined {
   return undefined;
 }
 
+/** The tags a link previewer needs in the raw `<head>` (#337, #304). */
+const HEAD_TAGS = [
+  { name: "<title>", pattern: /<title\b[^>]*>/ },
+  { name: "og:title", pattern: /<meta\b[^>]*\bproperty="og:title"/ },
+] as const;
+
+/** Each tag a link previewer needs that a found word's page does not send before `</head>`. */
+function headProblems(body: string, word: string): readonly string[] {
+  const end = body.indexOf("</head>");
+  if (end === -1) return [`the page for "${word}" has no </head>`];
+  const head = body.slice(0, end);
+  return HEAD_TAGS.filter(({ pattern }) => !pattern.test(head)).map(({ name }) => `the page for "${word}" has no ${name} before </head>`);
+}
+
 /** One request the smoke makes, and what its answer must be. */
 export class SmokeProbe {
   readonly app: PreviewSite["app"];
   readonly url: string;
   readonly headers: Readonly<Record<string, string>>;
   private readonly status: number;
-  /** What the body must say, as a problem when it does not. */
-  private readonly bodyProblem: (body: string) => string | undefined;
+  /** What the body must say, as the problems when it does not. */
+  private readonly bodyProblems: (body: string) => readonly string[];
 
   // Plain `node` strips types and cannot run parameter properties, so the fields are assigned.
   private constructor(
@@ -71,25 +87,28 @@ export class SmokeProbe {
     url: string,
     headers: Readonly<Record<string, string>>,
     status: number,
-    bodyProblem: (body: string) => string | undefined,
+    bodyProblems: (body: string) => readonly string[],
   ) {
     this.app = app;
     this.url = url;
     this.headers = headers;
     this.status = status;
-    this.bodyProblem = bodyProblem;
+    this.bodyProblems = bodyProblems;
   }
 
-  /** The dictionary's page for `word`, which must show a reading without JavaScript. */
+  /** The dictionary's page for `word`: a reading shown without JavaScript, and its link-preview tags in `<head>`. */
   static word(siteUrl: string, word: string): SmokeProbe {
     const url = new URL(siteUrl);
     url.searchParams.set("q", word);
-    return new SmokeProbe("web", url.href, {}, 200, (body) => readingProblem(body, word));
+    return new SmokeProbe("web", url.href, {}, 200, (body) => {
+      const reading = readingProblem(body, word);
+      return [...(reading === undefined ? [] : [reading]), ...headProblems(body, word)];
+    });
   }
 
   /** The developer site's landing page. */
   static landing(siteUrl: string): SmokeProbe {
-    return new SmokeProbe("developers", new URL("/", siteUrl).href, {}, 200, () => undefined);
+    return new SmokeProbe("developers", new URL("/", siteUrl).href, {}, 200, () => []);
   }
 
   /** The API's lookup, refusing a key it does not have. */
@@ -102,9 +121,9 @@ export class SmokeProbe {
         const parsed: unknown = JSON.parse(body);
         code = typeof parsed === "object" && parsed !== null && "error" in parsed ? (parsed.error as { code?: unknown }).code : undefined;
       } catch {
-        return "the body is not JSON";
+        return ["the body is not JSON"];
       }
-      return code === "invalid_key" ? undefined : `the error is ${JSON.stringify(code)}, not "invalid_key"`;
+      return code === "invalid_key" ? [] : [`the error is ${JSON.stringify(code)}, not "invalid_key"`];
     });
   }
 
@@ -113,8 +132,7 @@ export class SmokeProbe {
     const problems: string[] = [];
     if (page.status !== this.status) problems.push(`answered ${page.status}, not ${this.status}`);
     if (!hasNoindex(page.robotsTag)) problems.push(`X-Robots-Tag is ${page.robotsTag === undefined ? "missing" : JSON.stringify(page.robotsTag)}, not noindex`);
-    const body = this.bodyProblem(page.body);
-    if (body !== undefined) problems.push(body);
+    problems.push(...this.bodyProblems(page.body));
     return problems;
   }
 }

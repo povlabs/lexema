@@ -28,11 +28,19 @@ const WEB = "https://build-245-preview-e48bab4a.preview.lexema.fyi/";
 const DEVELOPERS = "https://build-245-preview-e48bab4a.developers-preview.lexema.fyi/";
 const API = "https://build-245-preview-e48bab4a.api-preview.lexema.fyi/";
 
-/** A found word's page: its title and a reading article, as the Preview renders them. */
+/** A word's page title, as `generateMetadata` writes it. */
+const title = (word: string) => `${word[0].toUpperCase()}${word.slice(1)} — Lexema`;
+/**
+ * A found word's `<head>`, its title and link-preview tags inside it, cut from
+ * what https://lexema.fyi/?q=casa sent a `Discordbot/2.0` User-Agent on 2026-10-01 (#337).
+ */
+const head = (word: string) =>
+  `<head><meta charSet="utf-8"/><title>${title(word)}</title><meta name="description" content="a simple dictionary"/><meta property="og:title" content="${title(word)}"/></head>`;
+/** A found word's page: its head and a reading article, as the Preview renders them. */
 const found = (word: string): Page => ({
   status: 200,
   robotsTag: "noindex",
-  body: `<title>${word[0].toUpperCase()}${word.slice(1)} — Lexema</title><article class="scroll-mt-6 mt-7" id="reading-1011" aria-labelledby="reading-heading-1011" data-record="1011" data-line="2344">`,
+  body: `${head(word)}<body><article class="scroll-mt-6 mt-7" id="reading-1011" aria-labelledby="reading-heading-1011" data-record="1011" data-line="2344">`,
 });
 /** A word the dictionary does not have: still a 200, with no reading. */
 const notFound = (word: string): Page => ({
@@ -48,7 +56,7 @@ const notFound = (word: string): Page => ({
 const hiddenFound = (word: string): Page => ({
   status: 200,
   robotsTag: "noindex",
-  body: `<title>${word[0].toUpperCase()}${word.slice(1)} — Lexema</title><main><!--$?--><template id="B:0"></template><p class="my-6 font-sans text-[0.95rem] text-text-muted" role="status">Searching for <q lang="it">${word}</q> …</p><!--/$--></main><div hidden id="S:0"><h1 lang="it">${word}</h1><article class="scroll-mt-6 mt-7" id="reading-1" aria-labelledby="reading-heading-1" data-record="1" data-line="1"></article></div><script>$RC("B:0","S:0")</script>`,
+  body: `${head(word)}<body><main><!--$?--><template id="B:0"></template><p class="my-6 font-sans text-[0.95rem] text-text-muted" role="status">Searching for <q lang="it">${word}</q> …</p><!--/$--></main><div hidden id="S:0"><h1 lang="it">${word}</h1><article class="scroll-mt-6 mt-7" id="reading-1" aria-labelledby="reading-heading-1" data-record="1" data-line="1"></article></div><script>$RC("B:0","S:0")</script>`,
 });
 const LANDING: Page = { status: 200, robotsTag: "noindex", body: "<title>Lexema API</title>" };
 const REFUSED: Page = { status: 401, robotsTag: "noindex", body: '{"error":{"code":"invalid_key","message":"This API key is not valid."}}' };
@@ -167,6 +175,31 @@ test("a reading sent hidden for a script to show fails the check, naming the wor
   const github = new FakeGitHub(pr269());
   const shown = found("casa");
   await smoke(github, { ...UP, [wordUrl("casa")]: { ...shown, body: `${shown.body}<div hidden id="S:0"></div>` } });
+  assert.equal(github.checks[0].conclusion, "success");
+});
+
+test("a word page whose <title> or og:title is not before </head> fails the check, naming the word and tag (#337)", async () => {
+  const shown = found("casa");
+  const reading = shown.body.slice(shown.body.indexOf("<body>"));
+  // As https://lexema.fyi/?q=casa sent a `curl/8` User-Agent on 2026-10-01: the tags streamed after the footer.
+  const streamed = `<head><meta charSet="utf-8"/></head>${reading}<footer></footer><div hidden id="S:0"><title>${title("casa")}</title><meta property="og:title" content="${title("casa")}"/></div>`;
+  const cases = [
+    { body: streamed, problems: ["<title>", "og:title"].map((tag) => `the page for "casa" has no ${tag} before </head>`) },
+    { body: shown.body.replace(/<meta property="og:title"[^>]*>/, ""), problems: ['the page for "casa" has no og:title before </head>'] },
+    { body: shown.body.replace(/<title>[^<]*<\/title>/, ""), problems: ['the page for "casa" has no <title> before </head>'] },
+    { body: shown.body.replace("</head>", ""), problems: ['the page for "casa" has no </head>'] },
+  ];
+  for (const { body, problems } of cases) {
+    const github = new FakeGitHub(pr269());
+    await smoke(github, { ...UP, [wordUrl("casa")]: { ...shown, body } });
+    const [check] = github.checks;
+    assert.equal(check.conclusion, "failure", body);
+    assert.equal(check.title, "1 of 8 preview requests failed");
+    assert.ok(check.summary.includes(`**fail**: ${problems.join("; ")} |`), check.summary);
+  }
+  // Both tags before </head> pass, whatever follows.
+  const github = new FakeGitHub(pr269());
+  await smoke(github, { ...UP, [wordUrl("casa")]: shown });
   assert.equal(github.checks[0].conclusion, "success");
 });
 
