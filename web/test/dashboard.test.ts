@@ -665,7 +665,7 @@ test("when Stripe fails, or billing is off, deleting an account with a live subs
   }
 });
 
-test("deleting an account emails the person once, at the address it had, with a link to the developer site; a refused deletion sends nothing (#215)", async () => {
+test("deleting an account emails the person once, at the address it had, with no link to settings; a refused deletion sends nothing (#215)", async () => {
   const { stripe, email, remove } = await subscribed("active");
   stripe.set("sub_ada", "cus_ada", {}, LIVE_PRO);
   assert.equal((await remove()).status, 200);
