@@ -126,6 +126,20 @@ It is async because D1 is. A synchronous interface would have forced the Worker
 side to fake it, and faking it is how you end up with two query layers that
 drift apart.
 
+## Round trips, not statements, are the cost on D1
+
+Every statement on D1 is a network round trip from the Worker, and D1's own
+insights put each lookup read at about 1 ms or less (#385), so what a reader
+waits for is the round trips one after another. A lookup sends every read that
+needs no other read's rows at once, and waits only where a read needs
+another's rows. One lookup waits four times in a row, however many readings it
+builds: the release beside the search; every matched record's lemma links,
+grammar and forms; each kept reading's line, senses, recovered definitions,
+inflections and reviews, and each lemma's line; then what needs one of those
+first: expressions, an inflection's candidates, a recovered definition's labels
+and examples. `test/lookup.test.ts` holds the four; a change that adds an
+`await` between two independent reads fails it.
+
 ## Accents are meaning
 
 Normalization folds case, whitespace and three apostrophe variants (U+2019,
