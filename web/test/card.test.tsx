@@ -114,10 +114,11 @@ test("a feminine noun's card says femminile, as its page's heading does", async 
   assert.equal(card.pronunciation, "/ˈskwɔla/");
 });
 
-test("a word whose page shows no gender has none on its card", async () => {
-  // casa's Italian record states no gender, in the fixture as in it-0c432803.
+test("a gender stated only by a gloss stamp is on the card, and a word whose page shows no gender has none", async () => {
+  // casa's Italian record has no gender tag, in the fixture as in it-0c432803;
+  // its gloss `casa ( approfondimento) f sing` states it (#317).
   const casa = await wordCard("casa");
-  assert.equal(casa.gender, undefined);
+  assert.equal(casa.gender, "femminile");
   assert.equal(casa.pronunciation, "/ˈkaza/");
   assert.equal(casa.partOfSpeech, "Sostantivo");
   assert.match(casa.meaning ?? "", /^edificio costruito per essere utilizzato come abitazione/);

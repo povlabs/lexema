@@ -204,8 +204,9 @@ shows both, instead of picking one, because picking one would invent a fact.
 **Grammar the source never stated.** A form the source does not give is a dash
 in its cell, with no note
 ([design-system-manifest.md § "The result"](../design-system-manifest.md#the-result)). `casa`'s
-record states no gender, no number and no forms, so nothing can be placed in a
-grid and its reading has no *Forms* block.
+record has no tags and no forms. Its gender and number come only from its gloss
+grammar stamp (`f sing`, #317), and with no forms nothing can be placed in a
+grid, so its reading has no *Forms* block.
 
 **Definitions that define nothing.** `casa`'s two glosses are page furniture.
 They are shown verbatim when they are all a reading has. When definitions

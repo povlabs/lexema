@@ -1,11 +1,14 @@
 // `pnpm run normalize:source-text`: the one-off updates of an already seeded
 // dictionary, one per source text normalization (ADR 0019): the glosses
-// (normalizeGlosses.ts, #257) and the forms (normalizeForms.ts, #342). It picks its database the way the seed
-// does: the local D1 under `SEED_STATE` (default `.data/seed-state`), or the
-// remote D1 `SEED_REMOTE` names. See docs/RUN_AN_IMPORT.md.
+// (normalizeGlosses.ts, #257), the forms (normalizeForms.ts, #342) and the
+// gloss grammar stamps (glossStampUpdate.ts, #317). It picks its database the
+// way the seed does: the local D1 under `SEED_STATE` (default
+// `.data/seed-state`), or the remote D1 `SEED_REMOTE` names. See
+// docs/RUN_AN_IMPORT.md.
 
 import { execFileSync } from "node:child_process";
 import { resolve } from "node:path";
+import { liftStoredGlossStamps } from "./glossStampUpdate.js";
 import { normalizeStoredForms } from "./normalizeForms.js";
 import { type DictionarySql, normalizeStoredGlosses } from "./normalizeGlosses.js";
 import { seedTargetFrom, type Wrangler } from "./seedTarget.js";
@@ -38,4 +41,9 @@ const glosses = normalizeStoredGlosses(dictionary);
 process.stderr.write(`${glosses.rule}: sense_gloss: ${glosses.changed} row(s) changed, ${glosses.candidates} candidate(s) read\n`);
 const forms = normalizeStoredForms(dictionary);
 process.stderr.write(`${forms.rule}: lookup_form: ${forms.forms} row(s) removed, grammar_claim: ${forms.claims} row(s) removed\n`);
-process.stdout.write(JSON.stringify({ database: where, glosses, forms }) + "\n");
+const glossStamps = liftStoredGlossStamps(dictionary);
+process.stderr.write(
+  `${glossStamps.rule}: sense_gloss: ${glossStamps.changed.sense_gloss} row(s) changed, ` +
+    `grammar_claim: ${glossStamps.changed.grammar_claim} row(s) changed, ${glossStamps.candidates} candidate record(s) read\n`,
+);
+process.stdout.write(JSON.stringify({ database: where, glosses, forms, glossStamps }) + "\n");

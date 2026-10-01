@@ -69,7 +69,7 @@ test("casa: a non-empty gloss array with no meaning in it; the page shows the fu
   assert.equal(definitionsShown(casa, recovered), 7);
 });
 
-test("casa: its one raw tag names number, not gender, so its gender is missing rather than unclassified", () => {
+test("casa: its one raw tag names number, not gender", () => {
   const casa = one("casa", "noun");
   const raw = casa.senses.flatMap((sense) => sense.raw_tags ?? []);
   assert.deepEqual(raw, ["pl.: case"]);

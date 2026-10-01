@@ -4,7 +4,8 @@
 // reports/2026-09-18-dataset-spot-check.md with the same shapes the real file
 // answers them with: the same number of direct records per query, the same
 // number of records embedding the query in their own tables, and the same
-// silences — `casa` with no gender or number, a verb table with no mood, an
+// silences — `casa` with no tags and no forms (its gender and number come only
+// from its gloss grammar stamp, #317), a verb table with no mood, an
 // edge naming a word that three records spell.
 //
 // It is not a copy of those lines. Glosses are shortened, and a conjugation
@@ -74,7 +75,8 @@ const imperativeForms = (pairs: [string, string][]): Form[] =>
 
 export const FIXTURE_LINES: string[] = [
   // casa — 1 direct, 0 embedded. Two glosses that define nothing, no tags at
-  // all, no forms: the entry the whole "visibly silent" argument rests on.
+  // all, no forms. Its gender and number come only from the `f sing` stamp
+  // ending its first gloss (#317).
   record({
     word: "casa", pos: "noun", pos_title: "Sostantivo",
     senses: [
