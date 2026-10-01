@@ -43,7 +43,7 @@ test("the rule changes exactly the 9 release glosses, and leaves the 7 lookalike
   const changed = RELEASE_LINES.map(recordOf).flatMap((record) => {
     const lift = glossStampLiftOf(record);
     const claims = lift.claims();
-    return stampedGlossRows(lift).map(({ pointer, stored }) => {
+    return stampedGlossRows(lift, record.word).map(({ pointer, stored }) => {
       const at = claims.filter((claim) => claim.pointer === pointer);
       return {
         word: record.word, pointer, stored,
@@ -197,7 +197,7 @@ test("the one-off update brings a database seeded before the rule to the seed's 
       const lift = glossStampLiftOf(record);
       if (lift.glossCount === 0) continue;
       const { record_id: recordId } = db.prepare("SELECT record_id FROM source_record WHERE word = ?").get(record.word) as { record_id: number };
-      for (const { pointer } of stampedGlossRows(lift)) {
+      for (const { pointer } of stampedGlossRows(lift, record.word)) {
         const [, sense, , gloss] = pointer.split("/").slice(1);
         const text = (record.senses[Number(sense)].glosses as string[])[Number(gloss)];
         const senseId = recordId * 1000 + Number(sense);

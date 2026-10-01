@@ -211,7 +211,10 @@ grid, so its reading has no *Forms* block.
 **Definitions that define nothing.** `casa`'s two glosses are page furniture.
 They are shown verbatim when they are all a reading has. When definitions
 recovered from the raw page stand in for them, as for `casa`, the furniture is
-left out. `sala` carries Wikizionario's placeholder *"definizione mancante; se
+left out. Only a bare headword line is furniture: where the line goes on to
+give a definition (`palo ( approfondimento) pezza onorevole…`), the seed stores
+the definition after the link and the page numbers it like any other (#325).
+`sala` carries Wikizionario's placeholder *"definizione mancante; se
 vuoi, aggiungila tu"*, which is a template, not data: the lookup treats a gloss
 that is only that as no definition (#255). A reading with no definition shows
 its part-of-speech label alone, with no number, and the readings that have one

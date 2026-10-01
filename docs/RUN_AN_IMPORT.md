@@ -157,8 +157,12 @@ a forms table ([#342](https://github.com/hueypov/lexema/issues/342)). A third,
 rule `it-gloss-stamp/v1`
 ([#317](https://github.com/hueypov/lexema/issues/317)), takes a gender and
 number stamp off the end of a noun or adjective gloss (`casa ( approfondimento) f sing`)
-and states it as the record's gender and number. A database seeded before a
-rule existed gets it from a one-off update, with no reseed:
+and states it as the record's gender and number. A fourth, rule
+`gloss-headword-lead/v1` ([#325](https://github.com/hueypov/lexema/issues/325)),
+stores a gloss the headword line leads (`palo ( approfondimento) pezza
+onorevole…`) as the definition after the link; a bare headword line stays as
+written. A database seeded before a rule existed gets it from a one-off update,
+with no reseed:
 
 ```sh
 pnpm run normalize:source-text
@@ -173,10 +177,11 @@ drops the stamped gloss, adds the stated `grammar_claim` rows, and removes the
 `missing` gender and number rows they answer. It never touches
 `source_record_json`. It reads the rows back and fails if any still needs a
 rule. It prints one line per rule, led by the rule's name and version:
+`gloss-headword-lead/v1: sense_gloss: <n> row(s) changed`,
 `gloss-person-ordinal/v1: sense_gloss: <n> row(s) changed`,
 `form-plural-placeholder/v1: lookup_form: <n> row(s) removed, grammar_claim: <n> row(s) removed`
 and `it-gloss-stamp/v1: sense_gloss: <n> row(s) changed, grammar_claim: <n> row(s) changed`.
-The seed prints the first two ids on its `source text rules:` line; the stamp
+The seed prints the first three ids on its `source text rules:` line; the stamp
 rule is the importer's grammar policy
 ([grammarPolicy.ts](../src/import/grammarPolicy.ts)). A second run changes 0
 rows.

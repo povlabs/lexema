@@ -8,10 +8,42 @@
 // and the quality measurement (src/italian/recordQuality.ts) both call
 // `splitSenses` here, so the size the measurement reports is the size of the
 // class the page hides.
+//
+// On a few pages the line goes on to give a definition: `palo ( approfondimento)
+// pezza onorevole…` (#325). That is no headword line but a definition the link
+// leads, and rule `gloss-headword-lead/v1` (sourceTextNormalization.ts) stores
+// its prose alone.
 
-/** Whether `text`, a gloss of `word`'s record, is that headword line. */
+/**
+ * A gloss that opens with the headword and its `approfondimento` or
+ * `citazioni` link.
+ *
+ * - `bare` — the headword line: `casa ( citazioni)`, or `casa (
+ *   approfondimento)` followed by nothing but gender and number stamps and
+ *   punctuation (`f sing`, `:`).
+ * - `lead` — the link leads a definition: `palo ( approfondimento) pezza
+ *   onorevole…`, whose `prose` is the text after the link.
+ */
+export type HeadwordLine =
+  | { readonly kind: "bare" }
+  | { readonly kind: "lead"; readonly prose: string };
+
+/** A gender or number stamp as Wikizionario writes it after the link. */
+const STAMP = /^(?:m|f|sing|pl)$/u;
+
+/** `text`, a gloss of `word`'s record, read as a headword line; undefined when it does not open with one. */
+export function readHeadwordLine(text: string, word: string): HeadwordLine | undefined {
+  if (text === `${word} ( citazioni)`) return { kind: "bare" };
+  const link = `${word} ( approfondimento)`;
+  if (!text.startsWith(link)) return undefined;
+  const rest = text.slice(link.length);
+  const stampsOnly = rest.split(/[\s,;:.()]+/u).every((token) => token === "" || STAMP.test(token));
+  return stampsOnly ? { kind: "bare" } : { kind: "lead", prose: rest.trimStart() };
+}
+
+/** Whether `text`, a gloss of `word`'s record, is the headword line and nothing more. */
 export function isFurnitureGloss(text: string, word: string): boolean {
-  return text === `${word} ( citazioni)` || text.startsWith(`${word} ( approfondimento)`);
+  return readHeadwordLine(text, word)?.kind === "bare";
 }
 
 /**
