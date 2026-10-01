@@ -8,12 +8,14 @@
 // Where the spelling does not settle the sound the article depends on, the
 // rule reads that sound from the record's own IPA when every transcription
 // agrees on it (src/italian/spokenInitial.ts), and otherwise withholds rather
-// than guesses. Given no IPA, it answers exactly as `it-articles/v2` did.
+// than guesses. The /k/ it presumes for `ch` before `e`/`i` stands only while
+// no transcription is heard opening otherwise. Given no IPA, it answers
+// exactly as `it-articles/v2` did.
 
 import type { ArticleDisplay } from "../core/types.js";
-import { isVowelSound, type SpokenInitial } from "./spokenInitial.js";
+import { isVowelSound, type SpokenInitial, type SpokenOpening } from "./spokenInitial.js";
 
-export { spokenInitial, type SpokenInitial } from "./spokenInitial.js";
+export { spokenOpening, type SpokenInitial, type SpokenOpening } from "./spokenInitial.js";
 
 export type ArticleGender = ArticleDisplay["gender"];
 export type ArticleNumber = ArticleDisplay["number"];
@@ -32,6 +34,8 @@ export type ArticleNumber = ArticleDisplay["number"];
  *   before `a`, `o`, `u`) or a letter outside the Italian alphabet — and the
  *   record's IPA does not fix it either: there is none, its transcriptions
  *   disagree, or the sound it gives is one the references assign no article.
+ *   A `ch` before `e`/`i` is withheld too when a transcription opens on a
+ *   sound other than /k/ and the transcriptions do not all agree on it.
  * - `irregular-surface`: a spelling whose articles are a listed exception, in
  *   an agreement the exception does not cover.
  */
@@ -87,7 +91,7 @@ function spelledWord(surface: string): SurfaceWithholding | undefined {
  */
 type SpelledInitial =
   | { reading: "settled"; group: Initial }
-  | { reading: "presumed"; group: Initial }
+  | { reading: "presumed"; group: Initial; sound: string }
   | { reading: "open" };
 
 function spelledInitial(surface: string): SpelledInitial {
@@ -98,7 +102,7 @@ function spelledInitial(surface: string): SpelledInitial {
   if (new RegExp(`^[${VOWEL}]`, "u").test(value)) return { reading: "settled", group: "vowel" };
   // s + consonant, z, x, gn, ps, and pn by the norm the reference states.
   if (/^(?:s[bcdfghjklmnpqrstvwxz]|z|x|gn|ps|pn)/u.test(value)) return { reading: "settled", group: "lo" };
-  if (/^ch[eèéiì]/u.test(value)) return { reading: "presumed", group: "il" };
+  if (/^ch[eèéiì]/u.test(value)) return { reading: "presumed", group: "il", sound: "k" };
   const ordinary = new RegExp(`^(?:[bcdfgklmnprstv][${VOWEL}]|[bcdfgptv][lr]|gh[eèéiì]|qu)`, "u");
   if (ordinary.test(value)) return { reading: "settled", group: "il" };
   return { reading: "open" };
@@ -130,13 +134,16 @@ function spokenGroup({ sound, next }: SpokenInitial): Initial | undefined {
 /**
  * The initial's group: the spelling's, where it settles one; otherwise the
  * record's agreed IPA, where there is one; otherwise the spelling's presumed
- * /k/ for `ch` before `e`/`i`, or nothing.
+ * /k/ for `ch` before `e`/`i`, unless a transcription was heard opening on
+ * another sound; otherwise nothing.
  */
-function initialOf(surface: string, spoken: SpokenInitial | undefined): Initial | undefined {
+function initialOf(surface: string, spoken: SpokenOpening | undefined): Initial | undefined {
   const spelled = spelledInitial(surface);
   if (spelled.reading === "settled") return spelled.group;
-  if (spoken !== undefined) return spokenGroup(spoken);
-  return spelled.reading === "presumed" ? spelled.group : undefined;
+  if (spoken?.reading === "agreed") return spokenGroup(spoken.initial);
+  if (spelled.reading === "open") return undefined;
+  const heard = spoken?.heard ?? new Set<string>();
+  return [...heard].every((sound) => sound === spelled.sound) ? spelled.group : undefined;
 }
 
 function display(
@@ -166,14 +173,14 @@ function display(
  * source never says whether a noun is one.
  *
  * `spoken` is the opening the spelled word's own record gives in IPA
- * (`spokenInitial`). Pass it only for the spelling that record is about: a
+ * (`spokenOpening`). Pass it only for the spelling that record is about: a
  * plural form the record lists is spelled, and may be said, otherwise.
  */
 export function articlesFor(
   surface: string,
   gender: ArticleGender,
   number: ArticleNumber,
-  spoken?: SpokenInitial,
+  spoken?: SpokenOpening,
 ): SurfaceArticles {
   const notAWord = spelledWord(surface);
   if (notAWord !== undefined) return { status: "withheld", cause: notAWord };
@@ -213,7 +220,7 @@ export function generateItalianArticles(
   surface: string,
   gender?: ArticleGender,
   number?: ArticleNumber,
-  spoken?: SpokenInitial,
+  spoken?: SpokenOpening,
 ): ArticleResult {
   if (!gender || !number) return { articles: [], withheldReason: "missing-or-ambiguous-gender-number" };
   const result = articlesFor(surface, gender, number, spoken);

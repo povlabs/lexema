@@ -32,7 +32,7 @@
 
 import { isAdjectiveReading, isNounReading } from "@lexema/lookup/types.ts";
 import type { GrammarClaim, Reading, SourceForm } from "@lexema/lookup/types.ts";
-import { generateItalianArticles, spokenInitial, type SpokenInitial } from "@lexema/italian/articles.ts";
+import { generateItalianArticles, spokenOpening, type SpokenOpening } from "@lexema/italian/articles.ts";
 
 export const GENDERS = ["masculine", "feminine"] as const;
 export type Gender = (typeof GENDERS)[number];
@@ -101,7 +101,7 @@ const degreesOf = (form: SourceForm): string[] =>
   statedValues(form.claims, "degree").filter((degree) => degree !== "positive");
 
 /** Definite, then indefinite (singular) or partitive (plural): the grid's article line. */
-function articleLine(surface: string, gender: Gender, number: GrammaticalNumber, spoken: SpokenInitial | undefined): string[] {
+function articleLine(surface: string, gender: Gender, number: GrammaticalNumber, spoken: SpokenOpening | undefined): string[] {
   const { articles } = generateItalianArticles(surface, gender, number, spoken);
   const second = number === "singular" ? "indefinite" : "partitive";
   return (["definite", second] as const).flatMap((kind) =>
@@ -129,8 +129,8 @@ class GridBuilder {
     return this.cells.size;
   }
 
-  /** `spoken` is the opening the record's IPA gives its headword, if it agrees on one. */
-  build(spoken?: SpokenInitial): Grid | undefined {
+  /** `spoken` is what the record's IPA says about its headword's opening. */
+  build(spoken?: SpokenOpening): Grid | undefined {
     const rows = GENDERS.flatMap((gender): GridRow[] => {
       if (!NUMBERS.some((number) => this.cells.has(`${gender} ${number}`))) return [];
       const cell = (number: GrammaticalNumber): GridCell => {
@@ -180,7 +180,7 @@ export function agreementOf(reading: Reading): Agreement {
     for (const gender of genders) target.put(gender, number, form, form.surface);
   }
 
-  const spoken = spokenInitial(reading.wordFacts.pronunciations.map((sound) => sound.ipa));
+  const spoken = spokenOpening(reading.wordFacts.pronunciations.map((sound) => sound.ipa));
   return { grid: plain.build(spoken), superlative: superlative.build() };
 }
 

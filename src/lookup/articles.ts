@@ -12,7 +12,7 @@
 // called with one record's own word and claims (src/lookup/lookup.ts), so two
 // records spelled alike each get the articles of their own gender and number.
 
-import { articlesFor, spokenInitial, type ArticleGender, type ArticleNumber } from "../italian/articles.js";
+import { articlesFor, spokenOpening, type ArticleGender, type ArticleNumber } from "../italian/articles.js";
 import type {
   ArticleWithholding,
   GrammarClaim,
@@ -126,7 +126,7 @@ function deriveArticles(
   if ("withholding" in agreement) return { status: "withheld", withholding: agreement.withholding };
 
   const { gender, number } = agreement;
-  const own = articlesFor(surface, gender, number, spokenInitial(pronunciations.map((sound) => sound.ipa)));
+  const own = articlesFor(surface, gender, number, spokenOpening(pronunciations.map((sound) => sound.ipa)));
   if (own.status === "withheld") {
     return { status: "withheld", withholding: { reason: "surface-not-handled", surface, cause: own.cause } };
   }

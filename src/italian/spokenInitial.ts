@@ -10,7 +10,8 @@
 //
 // Nothing here guesses. A transcription that opens on an optional sound
 // (`/(h)ikikoˈmɔri/`) or on nothing readable has no first sound, and a record
-// whose transcriptions do not all open the same way has no spoken initial.
+// whose transcriptions do not all open the same way has no spoken initial:
+// only the first sounds that were heard, for the rule to weigh.
 
 declare const fromRecordIpa: unique symbol;
 
@@ -19,7 +20,7 @@ export type FollowingSound = "vowel" | "end" | { consonant: string };
 
 /**
  * The opening every IPA on one record agrees on. It is minted only by
- * `spokenInitial`, from the record's own transcriptions, so an article can
+ * `spokenOpening`, from the record's own transcriptions, so an article can
  * never rest on a sound Lexema supplied.
  */
 export type SpokenInitial = {
@@ -101,18 +102,26 @@ const sameNext = (a: FollowingSound, b: FollowingSound): boolean =>
   typeof a === "string" || typeof b === "string" ? a === b : a.consonant === b.consonant;
 
 /**
- * The opening every transcription on a record agrees on, or `undefined` when
- * the record has none, one cannot be read, or two open differently.
+ * What a record's IPA says about its word's opening. `agreed` when every
+ * transcription is read and opens the same way. Otherwise `unsettled`, with
+ * the first sound of each transcription that could be read: none when the
+ * record has no IPA or none of it reads, several when they disagree.
  */
-export function spokenInitial(ipas: readonly string[]): SpokenInitial | undefined {
+export type SpokenOpening =
+  | { readonly reading: "agreed"; readonly initial: SpokenInitial }
+  | { readonly reading: "unsettled"; readonly heard: ReadonlySet<string> };
+
+/** What the record's own transcriptions say about its word's opening. */
+export function spokenOpening(ipas: readonly string[]): SpokenOpening {
   const openings = ipas.flatMap(transcriptions).map(opening);
-  if (openings.length === 0) return undefined;
-  const [first, ...rest] = openings;
-  if (first === undefined) return undefined;
-  for (const other of rest) {
-    if (other === undefined || other.sound !== first.sound || !sameNext(other.next, first.next)) return undefined;
-  }
-  return first as SpokenInitial;
+  const read = openings.filter((each) => each !== undefined);
+  const [first] = read;
+  const agreed =
+    first !== undefined &&
+    read.length === openings.length &&
+    read.every((other) => other.sound === first.sound && sameNext(other.next, first.next));
+  if (agreed) return { reading: "agreed", initial: first as SpokenInitial };
+  return { reading: "unsettled", heard: new Set(read.map((each) => each.sound)) };
 }
 
 /** Whether a sound is a vowel, for the article rule. */

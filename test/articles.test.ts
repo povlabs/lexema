@@ -3,7 +3,7 @@
 
 import assert from "node:assert/strict";
 import test from "node:test";
-import { articlesFor, generateItalianArticles, spokenInitial, type ArticleGender, type ArticleNumber } from "../src/italian/articles.js";
+import { articlesFor, generateItalianArticles, spokenOpening, type ArticleGender, type ArticleNumber } from "../src/italian/articles.js";
 import { readingPartOfSpeech } from "../src/lookup/articles.js";
 import type { GrammarClaim, Pronunciation, ReadingArticles, SourceForm, SourceRef } from "../src/lookup/types.js";
 
@@ -105,10 +105,10 @@ test("an initial whose sound the spelling does not settle is withheld", () => {
 // release it-0c432803, style and all, except where a case says otherwise.
 
 const spokenDisplays = (surface: string, gender: ArticleGender, number: ArticleNumber, ipas: string[]) =>
-  generateItalianArticles(surface, gender, number, spokenInitial(ipas)).articles.map((article) => article.displayForm);
+  generateItalianArticles(surface, gender, number, spokenOpening(ipas)).articles.map((article) => article.displayForm);
 
 const spokenCause = (surface: string, gender: ArticleGender, number: ArticleNumber, ipas: string[]) => {
-  const result = articlesFor(surface, gender, number, spokenInitial(ipas));
+  const result = articlesFor(surface, gender, number, spokenOpening(ipas));
   return result.status === "withheld" ? result.cause : undefined;
 };
 
@@ -157,11 +157,25 @@ test("ch before e or i takes the IPA's sound when the record has one", () => {
   assert.deepEqual(spokenDisplays("chef", "masculine", "singular", ["/ʃɛf/"]), ["lo chef", "uno chef"]);
   assert.deepEqual(spokenDisplays("chic", "masculine", "singular", ["/ˈʃik/"]), ["lo chic", "uno chic"]);
   assert.deepEqual(spokenDisplays("chela", "feminine", "singular", ["/ˈkɛla/"]), ["la chela", "una chela"]);
-  // With no IPA, or IPA that disagrees, the spelling's Italian /k/ stands, as in v2.
+  // With no IPA, or IPA that opens on /k/ every time it is read, the spelling's
+  // Italian /k/ stands, as in v2.
   assert.deepEqual(spokenDisplays("chilo", "masculine", "singular", []), ["il chilo", "un chilo"]);
   assert.deepEqual(spokenDisplays("chiasmo", "masculine", "singular", ["/ˈkjazmo/", "/kiˈazmo/"]), ["il chiasmo", "un chiasmo"]);
+  assert.deepEqual(spokenDisplays("chilo", "masculine", "singular", ["/ˈkilo/", "["]), ["il chilo", "un chilo"]);
   // An IPA that is not /k/ and gives no article withholds rather than falls back (made up).
   assert.equal(spokenCause("cheque", "masculine", "singular", ["/ˈhɛk/"]), "initial-sound-not-settled");
+
+});
+
+test("ch before e or i is withheld when its transcriptions disagree and one is not /k/", () => {
+  // Made up: the source reads it /ʃ/ at least once, so the presumed /k/ is contradicted.
+  assert.equal(spokenCause("chef", "masculine", "singular", ["/ʃɛf/", "/kɛf/"]), "initial-sound-not-settled");
+  assert.equal(spokenCause("chef", "masculine", "singular", ["/ʃɛf/, /ˈkɛf/"]), "initial-sound-not-settled");
+  assert.equal(spokenCause("chef", "masculine", "plural", ["/ʃɛf/", "/kɛf/"]), "initial-sound-not-settled");
+  // One /ʃ/ beside one that cannot be read is no agreement on /k/ either.
+  assert.equal(spokenCause("chef", "masculine", "singular", ["/ʃɛf/", "["]), "initial-sound-not-settled");
+  // /tʃ/ and /k/ disagree too: neither stands for the record.
+  assert.equal(spokenCause("chimes", "masculine", "plural", ["/tʃajmz/", "/kimes/"]), "initial-sound-not-settled");
 });
 
 test("an initial the spelling settles ignores the IPA", () => {
