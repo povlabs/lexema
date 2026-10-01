@@ -27,6 +27,15 @@ first, which generates from `wrangler.jsonc` and needs no Cloudflare account. It
 reads secrets from the empty [web/typecheck.env](./web/typecheck.env), never from a
 local `web/.dev.vars`, so it gives the same answer on a laptop as in CI.
 
+The unit tests run both schemas on Node's built-in SQLite, which accepts some SQL
+that Cloudflare D1 refuses: D1 rejected a long `GLOB` in a `CHECK` that every
+test passed ([#167](https://github.com/hueypov/lexema/issues/167)). So CI's `d1`
+job runs `pnpm run seed:dev` into a fresh local D1 and then
+`pnpm run api-key create`, the same two commands as in
+[call the JSON API](#call-the-json-api). A `CHECK` runs only when a row is
+written, so a constraint on a table the seed and that key leave empty is not
+tried on D1 ([#179](https://github.com/hueypov/lexema/issues/179)).
+
 The `test` script finds its files by pattern, so a new test needs no edit to
 [package.json](./package.json). It runs `test/*.test.ts`, then `web/test/*.test.ts`
 and `web/test/*.test.tsx`; Node expands the quoted patterns and does not look into
@@ -402,7 +411,7 @@ development is the only access until that lands.
 
 | Workflow | Fails when |
 |---|---|
-| [ci.yml](./.github/workflows/ci.yml) | the root typecheck, a unit test, or the `@lexema/web` typecheck fails |
+| [ci.yml](./.github/workflows/ci.yml) | the root typecheck, a unit test, or the `@lexema/web` typecheck fails; or, in its `d1` job, local D1 refuses a statement of `pnpm run seed:dev` or of writing one API key |
 | [gitleaks.yml](./.github/workflows/gitleaks.yml) | a changed file carries a secret |
 | [leak-guard.yml](./.github/workflows/leak-guard.yml) | a changed doc or shell file carries a machine-local path |
 | [decisions-index.yml](./.github/workflows/decisions-index.yml) | two records share an ADR id, or a filename disagrees with its frontmatter |
