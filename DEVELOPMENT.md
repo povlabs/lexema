@@ -277,6 +277,16 @@ made by hand, elsewhere. Both read the `APP_DB` and the dictionary in
 `SEED_STATE`, as `pnpm run plan` does, so a local `pnpm run seed:dev` drops
 every report and its answer with it. A remote seed leaves reports alone.
 
+### Manage a database's releases
+
+`pnpm run release list` prints every release in the local dictionary under
+`SEED_STATE` (default `.data/seed-state`), or in the remote one `SEED_REMOTE`
+names, with its status. `pnpm run release retire|restore|abandon|discard <id>`
+moves one release; each refuses a move its status does not allow, and a
+release `web/wrangler.jsonc` serves is never taken away. Seeding a new release
+beside the served one, putting it live and rolling it back is
+[UPDATE_A_RELEASE.md](./docs/UPDATE_A_RELEASE.md).
+
 ### Look at a pull request's Preview
 
 Each pull request's branch gets a Preview with all three sites, and one comment

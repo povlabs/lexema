@@ -16,6 +16,7 @@
     "validate": "tsx src/cli.ts validate",
     "seed:dev": "tsx src/import/seedDev.ts",
     "normalize:glosses": "tsx src/import/normalizeGlossesCli.ts",
+    "release": "tsx src/import/releaseCli.ts",
     "db:generate": "drizzle-kit generate",
     "api-key": "tsx src/api/keyCli.ts",
     "plan": "tsx src/billing/planCli.ts",

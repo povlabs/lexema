@@ -61,6 +61,13 @@ export interface ArchiveRecord {
 export interface ArchiveParseOptions {
   input: string;
   releaseId?: string;
+  /**
+   * The highest `record_id` already in the database the records go to; this
+   * run's ids follow it in line order. 0, the default, for an empty database.
+   * A release seeded beside another needs it, since `record_id` is unique
+   * across releases.
+   */
+  recordIdBase?: number;
   onRejection: (rejection: Rejection) => void;
   /** Called after the complete archive checksum is known and before records flow. */
   onStart?: (metadata: {
@@ -374,7 +381,7 @@ export async function parseArchive(options: ArchiveParseOptions): Promise<Archiv
         continue;
       }
       admitted += 1;
-      const recordId = admitted;
+      const recordId = (options.recordIdBase ?? 0) + admitted;
       await options.onRecord({
         releaseId,
         recordId,

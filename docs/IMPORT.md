@@ -168,12 +168,74 @@ total. Moving it to R2 and keeping D1 as the index is the original proposal in
 it. That decision is #3's, not this importer's; the schema already keeps the raw
 JSON in its own table so either answer is a small change.
 
+## Releases side by side
+
+A new release replaces the served one without the site going down
+([#18](https://github.com/hueypov/lexema/issues/18)). The procedure is
+[UPDATE_A_RELEASE.md](UPDATE_A_RELEASE.md); this is why it has that shape.
+
+**Every row belongs to one release.** `source_record`, the lookup rows and the
+nearby indexes all carry `release_id`, and the rest hang off a record. So a
+second release can sit in the same database as the first without touching a
+row of it. With `SEED_BESIDE=1` the seed writes no schema and gives its
+records, raw pages and recovered definitions ids after the highest ones
+already there, since those ids are unique across releases. A release's ids are
+still one unbroken run in line order, so one archive seeded after the same
+ids gives the same rows.
+
+**`status` decides what may be served, and the deployment decides what is.**
+Every lookup reads only a `complete` release and refuses any other
+([LOOKUP_DESIGN.md](LOOKUP_DESIGN.md)). Which complete release a site serves is
+its `LEXEMA_RELEASE`, read once per request, so one lookup is answered from one
+release however many the database holds. The moves between statuses are
+[`src/import/releaseLifecycle.ts`](../src/import/releaseLifecycle.ts):
+
+| From | Move | To | By |
+|---|---|---|---|
+| `importing` | seed verified | `complete`, or `partial` for a `--limit` run | `seed:dev` |
+| `importing` | a check failed | `failed` | `seed:dev` |
+| `importing` | abandon, after a seed stopped unmarked | `failed` | `pnpm run release` |
+| `complete` | retire | `superseded`, no longer servable, rows kept | `pnpm run release` |
+| `superseded` | restore | `complete` | `pnpm run release` |
+| `failed`, `partial` | discard | rows deleted | `pnpm run release` |
+
+The CHECK on `status` already listed all five states, so a database seeded
+before this needed no change. A release a `LEXEMA_RELEASE` in
+`web/wrangler.jsonc` names is never retired, abandoned or discarded. A
+superseded release is never discarded: it is what a late rollback restores,
+and its claim reviews would go with its records.
+
+**Checks count what the run added.** Beside other releases a table's total is
+not the new release's count, so the load reads every count before the first
+part and checks the difference. It also checks that every release already
+there kept its status. A seed under a release id the database already holds is
+refused before any part, so a failed check can only ever mark the new release.
+
+**Activation is a deploy, and rollback is the previous Worker version.** The
+release a deployment serves is configuration, reviewed like any change to
+`web/wrangler.jsonc`, and a Preview can serve the new release from the shared
+database before production does. The old release stays `complete` until it is
+retired, so the previous Worker version answers from it the moment
+`wrangler rollback` puts it back, with no build.
+
+**Caches.** A share card is kept under an address that names its release
+(`web/worker/card.ts`), so a new release is a new card. The search field's
+suggestions are kept by the browser for five minutes under an address that
+does not name one, so for up to five minutes after an activation a browser can
+offer an old release's suggestion; choosing it runs the lookup on the new one.
+
+These releases are full seeds. [ADR 0018](../.decisions/0018-previews-on-workers-builds.md)
+records Huey's ruling that later releases apply as diffs, the direction
+[#132](https://github.com/hueypov/lexema/issues/132) takes; how a diff becomes
+a release is not decided, and any shape it takes still ends in a release whose
+status moves as above.
+
 ## What this does not do
 
 The parser does not upload to D1 or R2 itself. `seed:dev` streams the committed
 fifty-word fixture (or an explicitly supplied archive) into generated SQL and
-loads local D1; getting a full release onto Cloudflare, activating it and
-rolling it back is #18. The source archive is maintained at
+loads local D1, or a remote D1 with `SEED_REMOTE`; putting a new release live
+and rolling it back is [UPDATE_A_RELEASE.md](UPDATE_A_RELEASE.md). The source archive is maintained at
 [`source/it-extract.jsonl.gz`](https://github.com/hueypov/lexema-data/blob/main/source/it-extract.jsonl.gz),
 and a local root copy remains gitignored. A full release seeds into local D1
 in parts ([RUN_AN_IMPORT.md § Run it](RUN_AN_IMPORT.md#run-it)).

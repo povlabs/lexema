@@ -19,6 +19,7 @@ import { RecoveredLayer, type RecoverySummary } from "./recoveredLayer.js";
 import { normalizeItalianExact } from "../italian/normalize.js";
 import { deletionKeys, foldKey } from "../lookup/nearby.js";
 import { clearParts, SqlPartWriter } from "./sqlParts.js";
+import type { IdBases } from "./seedPlacement.js";
 
 const TABLE_ORDER = [
   "source_record",
@@ -39,6 +40,9 @@ const TABLE_ORDER = [
 ] as const;
 
 type TableName = (typeof TABLE_ORDER)[number];
+
+/** Every table a seed writes rows to, in the order it writes them. */
+export const SEEDED_TABLES: readonly TableName[] = TABLE_ORDER;
 
 type RowCounts = Record<TableName, number>;
 
@@ -258,6 +262,12 @@ export interface SeedSqlOptions {
    * nothing short of a verified load is ever marked servable.
    */
   leaveImporting?: boolean;
+  /**
+   * Seed beside the releases a database already holds (seedPlacement.ts): the
+   * SQL carries no schema, and its surrogate ids follow these. Absent, the
+   * first part creates the schema in an empty database.
+   */
+  beside?: IdBases;
 }
 
 export interface SeedSqlReport extends ArchiveParseReport {
@@ -304,6 +314,7 @@ export async function seedSql(options: SeedSqlOptions): Promise<SeedSqlReport> {
       insertExample: writer.statement("recovered_example"),
     },
     writer.counts,
+    options.beside,
   );
   const required = new Set(options.requiredWords ?? []);
   const seenWords = new Set<string>();
@@ -314,6 +325,7 @@ export async function seedSql(options: SeedSqlOptions): Promise<SeedSqlReport> {
     const report = await parseArchive({
       input: options.input,
       releaseId: options.releaseId,
+      recordIdBase: options.beside?.record,
       onRejection: (rejection) => options.onRejection?.(rejection),
       onStart: (metadata) => {
         start = metadata;
@@ -360,7 +372,9 @@ export async function seedSql(options: SeedSqlOptions): Promise<SeedSqlReport> {
       }
     }
 
-    const schemaSql = await readFile(options.schema, "utf8");
+    // Beside other releases the schema is already there, and running it again
+    // would fail on its first CREATE TABLE.
+    const schemaSql = options.beside === undefined ? await readFile(options.schema, "utf8") : "";
     const releaseId = start.releaseId;
     const facts = archiveFactsFor(start.archiveSha256, options.archiveFacts);
     const dump = facts?.dump;

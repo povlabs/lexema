@@ -84,7 +84,8 @@ Accounts, keys, usage and reader reports are in the app database, `env.APP_DB`
 ([ADR 0018](../.decisions/0018-previews-on-workers-builds.md)).
 
 The spike in #27 established that. `env.LEXEMA_RELEASE` picks which imported
-release is served; flipping it safely is #18.
+release is served; changing it is a deploy, and
+[UPDATE_A_RELEASE.md](UPDATE_A_RELEASE.md) is how to do that safely.
 
 ## Why a server component and no client fetching
 

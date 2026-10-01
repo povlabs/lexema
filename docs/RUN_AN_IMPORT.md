@@ -139,10 +139,12 @@ the old database: it refuses a database that already holds tables.
 
 ### Later releases
 
-A later release is not uploaded again in full. It goes into the same database
-as a diff; how is [#132](https://github.com/hueypov/lexema/issues/132)'s and
-[#18](https://github.com/hueypov/lexema/issues/18)'s. The seed cannot load a
-second release over the first, since it refuses a database with tables.
+A later release goes into the same database beside the served one, with
+`SEED_BESIDE=1`, and goes live by a deploy. The steps, the rollback and the
+recovery from a stopped seed are [UPDATE_A_RELEASE.md](UPDATE_A_RELEASE.md).
+Without `SEED_BESIDE=1` the seed still refuses a database with tables. A stopped
+seed beside a served release is never fixed by deleting the database, which
+holds the served release too.
 
 ## Update glosses in a seeded database
 

@@ -218,10 +218,11 @@ test("without SEED_REMOTE the seed stays local; with it, SEED_STATE is refused",
 test("a local seed aims every command at the persist directory and migrates the app database there", async () => {
   await withParts(2, async (parts) => {
     const { wrangler, calls } = recordingWrangler();
-    const target = new LocalSeedTarget(wrangler, "/tmp/lexema-state");
+    const target = new LocalSeedTarget(wrangler, join(parts[0], "..", "lexema-state"));
+    await target.prepare();
     await loadSeed(target, reportFor(parts), silent);
     for (const call of calls) {
-      assert.deepEqual(call.slice(-3), ["--local", "--persist-to", "/tmp/lexema-state"], call.join(" "));
+      assert.deepEqual(call.slice(-3), ["--local", "--persist-to", target.persistTo], call.join(" "));
       assert.ok(!call.includes("--remote"), call.join(" "));
     }
     assert.ok(calls.some((call) => call[1] === "migrations" && call[3] === "lexema-app"));

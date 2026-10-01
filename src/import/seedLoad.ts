@@ -43,7 +43,18 @@ export async function loadSeed(
   report: SeedReport,
   log: (line: string) => void,
 ): Promise<LoadedRows> {
-  log(`loading ${target.described}`);
+  const { placement } = target;
+  const others = placement.kind === "beside" ? placement.releases : [];
+  // A release id names one archive's bytes, so a second seed under it is
+  // refused before anything is written, and the release already there is not
+  // touched, let alone marked failed.
+  if (others.some(({ releaseId }) => releaseId === report.releaseId)) {
+    throw new SeedStopped(
+      `release ${report.releaseId} is already in ${target.described}`,
+      "Nothing was written. Name the new release differently with SEED_RELEASE, or discard the old one first (docs/UPDATE_A_RELEASE.md).",
+    );
+  }
+  log(`loading ${target.described}` + (others.length > 0 ? `, beside ${others.map(({ releaseId, status }) => `${releaseId} (${status})`).join(", ")}` : ""));
   try {
     await applyParts(report.parts, async (part, index, total) => {
       log(`part ${index} of ${total}: ${part} (${(await stat(part)).size} bytes)`);
@@ -51,7 +62,7 @@ export async function loadSeed(
     });
   } catch (error: unknown) {
     if (!(error instanceof PartFailure)) throw error;
-    throw new SeedStopped(error.message, target.afterStop());
+    throw new SeedStopped(error.message, target.afterStop(report.releaseId));
   }
 
   const appTables = Object.values(appSchema).map((table) => getTableName(table));
@@ -71,19 +82,31 @@ export async function loadSeed(
    */
   const failVerification = (message: string): never => {
     target.execute(["--command", `UPDATE source_release SET status = 'failed' WHERE release_id = ${release}`], true);
-    throw new SeedStopped(`${message}; release ${report.releaseId} marked failed`, target.afterStop());
+    throw new SeedStopped(`${message}; release ${report.releaseId} marked failed`, target.afterStop(report.releaseId));
   };
 
-  // Read the loaded row counts back and hold them against what was generated.
+  // Read the loaded row counts back and hold what this run added against
+  // what was generated. Beside other releases, what it added is the count now
+  // less the count before it; in an empty database the two are the same.
   const tables = Object.keys(report.rows);
+  const before = placement.kind === "beside" ? placement.rowsBefore : {};
   const [counted] = JSON.parse(
     target.execute(["--json", "--command", `SELECT ${tables.map((table) => `(SELECT count(*) FROM ${table}) AS ${table}`).join(", ")}`], true),
   ) as [{ results: [LoadedRows] }];
-  const loaded = counted.results[0];
+  const loaded = Object.fromEntries(tables.map((table) => [table, counted.results[0][table] - (before[table] ?? 0)]));
   log(`loaded release ${report.releaseId}:`);
   for (const table of tables) log(`  ${table}: ${loaded[table]}`);
   const mismatched = tables.filter((table) => loaded[table] !== report.rows[table]);
   if (mismatched.length > 0) failVerification(`loaded row counts differ from the generated SQL: ${mismatched.join(", ")}`);
+
+  // The releases already there must read as they did: the run wrote only its own.
+  if (others.length > 0) {
+    const [now] = JSON.parse(
+      target.execute(["--json", "--command", "SELECT release_id, status FROM source_release ORDER BY release_id"], true),
+    ) as [{ results: { release_id: string; status: string }[] }];
+    const moved = others.filter(({ releaseId, status }) => !now.results.some((row) => row.release_id === releaseId && row.status === status));
+    if (moved.length > 0) failVerification(`releases already there changed during the seed: ${moved.map(({ releaseId }) => releaseId).join(", ")}`);
+  }
 
   // `source_release` is written as one row outside the batched tables, so a
   // count would say little. Hold the row itself against the run: exactly one,

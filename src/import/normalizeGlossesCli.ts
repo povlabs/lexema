@@ -5,8 +5,8 @@
 
 import { execFileSync } from "node:child_process";
 import { resolve } from "node:path";
-import { type DictionarySql, normalizeStoredGlosses } from "./normalizeGlosses.js";
-import { seedTargetFrom, type Wrangler } from "./seedTarget.js";
+import { normalizeStoredGlosses } from "./normalizeGlosses.js";
+import { dictionarySql, seedTargetFrom, type Wrangler } from "./seedTarget.js";
 
 // `wrangler` from web/, where its config lives. CI=1 keeps it from prompting.
 const wrangler: Wrangler = (args, capture) =>
@@ -18,15 +18,7 @@ const wrangler: Wrangler = (args, capture) =>
   }) ?? "";
 const target = seedTargetFrom(process.env, wrangler, resolve(".data/seed-state"));
 
-const dictionary: DictionarySql = {
-  query<Row>(sql: string): Row[] {
-    const answers = JSON.parse(target.execute(["--json", "--command", sql], true)) as { results: Row[] }[];
-    return answers.at(-1)?.results ?? [];
-  },
-  run(sql: string): void {
-    target.execute(["--json", "--command", sql], true);
-  },
-};
+const dictionary = dictionarySql(target);
 
 const where = process.env.SEED_REMOTE === undefined
   ? `local D1 ${target.dictionary} in ${resolve(process.env.SEED_STATE ?? ".data/seed-state")}`

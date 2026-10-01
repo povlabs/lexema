@@ -40,16 +40,24 @@ export interface RecoverySummary {
   unrendered: number;
 }
 
+/** The highest `page_id` and `recovered_id` already in the database; this layer's ids follow them. */
+export interface RecoveredIdBases {
+  readonly page: number;
+  readonly recovered: number;
+}
+
 export class RecoveredLayer {
   private readonly pageIds = new Map<string, number>();
-  private nextRecoveredId = 1;
+  private nextRecoveredId: number;
   readonly summary: RecoverySummary;
 
   constructor(
     private readonly pages: RawPageSource,
     private readonly statements: RecoveredLayerStatements,
     private readonly rows: RecoveredLayerRows,
+    private readonly bases: RecoveredIdBases = { page: 0, recovered: 0 },
   ) {
+    this.nextRecoveredId = bases.recovered + 1;
     this.summary = {
       rawPages: pages.size,
       recordsWithAPage: 0,
@@ -116,7 +124,7 @@ export class RecoveredLayer {
   private pageId(releaseId: string, page: RawPage): number {
     const held = this.pageIds.get(page.title);
     if (held !== undefined) return held;
-    const pageId = this.pageIds.size + 1;
+    const pageId = this.bases.page + this.pageIds.size + 1;
     this.statements.insertPage.run(pageId, releaseId, page.wiki, page.title, page.revisionId, page.timestamp);
     this.rows.raw_page += 1;
     this.pageIds.set(page.title, pageId);

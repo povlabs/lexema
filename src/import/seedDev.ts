@@ -46,9 +46,10 @@ const wrangler: Wrangler = (args, capture) =>
 const target = seedTargetFrom(process.env, wrangler, resolve(".data/seed-state"));
 
 await mkdir(resolve(".data"), { recursive: true });
-// Before the SQL is generated, so a remote database that already holds tables
-// is refused before a release is read.
-await target.prepare();
+// Before the SQL is generated, so a database the seed may not load is refused
+// before a release is read. Beside other releases (`SEED_BESIDE=1`), the SQL
+// carries no schema and its ids follow theirs.
+const placement = await target.prepare();
 const rawPages = await openRawPages();
 process.stderr.write(`raw pages: ${rawPages.pages.size} from ${rawPages.described}\n`);
 const rejectionLines: string[] = [];
@@ -68,6 +69,7 @@ const report = await seedSql({
   partCeilingBytes,
   // Marked servable below, only after the loaded database is verified.
   leaveImporting: true,
+  beside: placement.kind === "beside" ? placement.bases : undefined,
 });
 const rejectionPath = join(outputDir, "rejections.tsv");
 await writeFile(rejectionPath, rejectionLines.length > 0 ? `${rejectionLines.join("\n")}\n` : "");
