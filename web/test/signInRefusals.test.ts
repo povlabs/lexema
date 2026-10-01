@@ -26,6 +26,7 @@ const env: LimitBindings & SignInBindings = {
   REPORT_OPEN_LIMIT: allow,
   SIGN_IN_LIMIT: allow,
   KEY_CREATE_LIMIT: allow,
+  BILLING_LIMIT: allow,
 };
 
 function site(providers?: (stubs: { google: StubProvider; github: StubProvider }) => ProviderRegistry) {

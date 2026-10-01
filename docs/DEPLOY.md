@@ -21,7 +21,7 @@ development, with the placeholder D1 that `pnpm run seed:dev` fills.
 | Stage | `LEXEMA_STAGE` is `production` ([below](#the-preview-only-domains)) |
 | `workers_dev`, `preview_urls` | both off |
 | D1 | none yet, so a search shows the failed-lookup state; attaching it is #19 |
-| Rate limits | 15 searches and 120 suggestions a minute per visitor ([#128](https://github.com/hueypov/lexema/issues/128)); 10 sign-in starts ([#165](https://github.com/hueypov/lexema/issues/165)) and 5 key creations ([#168](https://github.com/hueypov/lexema/issues/168)) a minute on the developer site |
+| Rate limits | 15 searches and 120 suggestions a minute per visitor ([#128](https://github.com/hueypov/lexema/issues/128)); 10 sign-in starts ([#165](https://github.com/hueypov/lexema/issues/165)), 5 key creations ([#168](https://github.com/hueypov/lexema/issues/168)) and 5 billing requests ([#296](https://github.com/hueypov/lexema/issues/296)) a minute on the developer site |
 | API rate | `CALLS_60` and `CALLS_300`, Rate Limiting bindings of 60 and 300 calls a minute per developer account, keyed by account id ([#261](https://github.com/hueypov/lexema/issues/261)) |
 | Account meter | the Durable Object class `AccountMeterObject`, bound as `ACCOUNT_METER`, SQLite-backed through the `v1-account-meter` migration: one per developer account, counting its calls and adding them to `api_key_usage` at most once a minute ([#261](https://github.com/hueypov/lexema/issues/261)) |
 | Sign-in | Google and GitHub, each on only once its client id and secret are set ([below](#turn-on-sign-in)) |

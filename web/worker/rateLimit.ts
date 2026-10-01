@@ -1,4 +1,10 @@
-// Per-visitor rate limits on the requests that reach the database (#128).
+// Per-visitor rate limits on the requests worth counting before they run (#128).
+//
+// Not every request that reaches D1 is counted: a dashboard page, a key
+// revoke or a sign-in callback is not. What is counted is what `Limit`
+// names: searches, suggestions, reports and opening the report box on
+// lexema.fyi, and on the developer site sign-in starts, key creations and the
+// billing routes, each of which can call Stripe (#296).
 //
 // The check sits in front of vinext rather than inside a page, because it has
 // to decide the response's status and a streamed page cannot: by the time a
@@ -7,19 +13,20 @@
 // reaches the code that queries D1.
 //
 // The limits themselves (15 searches and 120 suggestions a minute, 10 sign-in
-// starts and 5 key creations a minute on the developer site, and why) are the `ratelimits`
-// bindings in web/wrangler.jsonc. This module decides
+// starts, 5 key creations and 5 billing requests a minute on the developer
+// site, and why) are the `ratelimits` bindings in web/wrangler.jsonc. This module decides
 // which limit a request counts against, whose count it is, and what a blocked
 // request is answered with.
 
 import type { ReportAnswer } from "@/lib/dictionary/report.ts";
 import type { SuggestAnswer } from "@/lib/dictionary/suggestAnswer.ts";
+import { billingRouteOf } from "./billing.ts";
 import { dashboardRouteOf } from "./dashboard.ts";
 import { signInRouteOf } from "./signIn.ts";
 import { isTestSignIn } from "./testSignIn.ts";
 
-/** The things a visitor can do that reach the database, start a sign-in, or make a key. */
-export type Limit = "search" | "suggest" | "report" | "report-open" | "sign-in" | "key-create";
+/** The things a visitor can do that are counted: the database, a sign-in, a key, or Stripe. */
+export type Limit = "search" | "suggest" | "report" | "report-open" | "sign-in" | "key-create" | "billing";
 
 /** The bindings this module counts with, one per limit, as wrangler.jsonc names them. */
 export interface LimitBindings {
@@ -29,6 +36,7 @@ export interface LimitBindings {
   REPORT_OPEN_LIMIT: RateLimit;
   SIGN_IN_LIMIT: RateLimit;
   KEY_CREATE_LIMIT: RateLimit;
+  BILLING_LIMIT: RateLimit;
 }
 
 const BINDING = {
@@ -38,6 +46,7 @@ const BINDING = {
   "report-open": "REPORT_OPEN_LIMIT",
   "sign-in": "SIGN_IN_LIMIT",
   "key-create": "KEY_CREATE_LIMIT",
+  billing: "BILLING_LIMIT",
 } as const satisfies Record<
   Limit,
   keyof LimitBindings
@@ -84,6 +93,9 @@ export function limitOf(url: URL): Limit | undefined {
   if (isTestSignIn(url)) return "sign-in";
   // Making a key (Huey, #163 R1.2); on the developer site only (worker/dashboard.ts).
   if (dashboardRouteOf(url)?.kind === "create-key") return "key-create";
+  // Every billing route, Checkout, the portal and Checkout's return, each of
+  // which can call Stripe (Huey, #296); on the developer site only (worker/billing.ts).
+  if (billingRouteOf(url) !== undefined) return "billing";
   if ((url.searchParams.get("q") ?? "").trim() !== "") return "search";
   return undefined;
 }
@@ -178,6 +190,11 @@ export function withRateLimits<E extends LimitBindings>(app: FetchHandler<E>): F
       const headers = tooManyHeaders();
       headers.set("content-type", "text/plain; charset=utf-8");
       return new Response("Too many keys made. Try again in a minute.", { status: 429, headers });
+    }
+    if (limit === "billing") {
+      const headers = tooManyHeaders();
+      headers.set("content-type", "text/plain; charset=utf-8");
+      return new Response("Too many billing requests. Try again in a minute.", { status: 429, headers });
     }
     const page = await app(marked(request, true), env, ctx);
     const headers = new Headers(page.headers);
