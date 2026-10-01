@@ -9,9 +9,10 @@
 // puts the credit on that page, so all four reach it until the other three
 // pages are written — a link to a page that does not exist would be worse.
 // A fifth, Developers, is the one way from the dictionary to the developer
-// site (#159): `lexema.fyi/developers` is gone, with no redirect.
+// site (#159): `lexema.fyi/developers` is gone, with no redirect. It is on the
+// host `origins` names, so a Preview's footer stays on that Preview (#266).
 
-import { ORIGIN } from "@/worker/hosts.ts";
+import type { SiteOrigins } from "@/worker/hosts.ts";
 import {
   SITE_FOOTER,
   SITE_FOOTER_INNER,
@@ -20,15 +21,16 @@ import {
   SITE_FOOTER_NAME,
 } from "@/components/shared/styles.ts";
 
-const LINKS = [
-  { label: "Attribution", href: "/attribution" },
-  { label: "About the data", href: "/attribution#changed" },
-  { label: "Licence", href: "/attribution#licence" },
-  { label: "Contact", href: "/attribution" },
-  { label: "Developers", href: ORIGIN.developers },
-] as const;
+const linksOf = (origins: SiteOrigins) =>
+  [
+    { label: "Attribution", href: "/attribution" },
+    { label: "About the data", href: "/attribution#changed" },
+    { label: "Licence", href: "/attribution#licence" },
+    { label: "Contact", href: "/attribution" },
+    { label: "Developers", href: origins.developers },
+  ] as const;
 
-export function SiteFooter() {
+export function SiteFooter({ origins }: { origins: SiteOrigins }) {
   return (
     <footer className={SITE_FOOTER}>
       <div className={SITE_FOOTER_INNER}>
@@ -37,7 +39,7 @@ export function SiteFooter() {
         </a>
         <nav aria-label="Site">
           <ul className={SITE_FOOTER_LINKS}>
-            {LINKS.map((link) => (
+            {linksOf(origins).map((link) => (
               <li key={link.label}>
                 <a className={SITE_FOOTER_LINK} href={link.href}>
                   {link.label}

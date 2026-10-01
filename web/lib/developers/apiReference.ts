@@ -16,10 +16,10 @@ import { MAX_QUERY_LENGTH } from "@lexema/lookup/lookup.ts";
 import { SUGGESTION_LIMIT } from "@lexema/lookup/suggest.ts";
 import { SECTION_KEY } from "@/worker/api/lookupAnswer.ts";
 import { GRAMMAR_CODES, MATCHES, PARTS_OF_SPEECH, POS_ALIASES, SECTIONS, type Match } from "@/worker/api/lookupFilters.ts";
-import { ORIGIN } from "@/worker/hosts.ts";
+import type { SiteOrigins } from "@/worker/hosts.ts";
 
-export const API_ORIGIN = ORIGIN.api;
-export const API_BASE = `${API_ORIGIN}${API_PREFIX.slice(0, -1)}`;
+/** Where every endpoint lives, on the API host the page names (#266): `https://api.lexema.fyi/v1` live. */
+export const apiBaseOf = (origins: SiteOrigins): string => `${origins.api}${API_PREFIX.slice(0, -1)}`;
 
 /** A key as the examples write it. */
 export const EXAMPLE_KEY = "lx_…";
@@ -797,7 +797,7 @@ const WIDTH = 76;
  * query as `-G` with one `--data-urlencode` per parameter, a body as `-d`,
  * then the address.
  */
-export function curlOf(example: Example): string {
+export function curlOf(example: Example, origins: SiteOrigins): string {
   const [path, query = ""] = example.path.split("?");
   const parameters = [...new URLSearchParams(query)];
   const lines = [`curl ${parameters.length > 0 ? "-G " : ""}-H "X-API-Key: ${EXAMPLE_KEY}" \\`];
@@ -805,7 +805,7 @@ export function curlOf(example: Example): string {
     lines.push(`  -H "content-type: application/json" \\`, `  -d '${JSON.stringify(example.body)}' \\`);
   }
   for (const [name, value] of parameters) lines.push(`  --data-urlencode "${name}=${value}" \\`);
-  lines.push(`  "${API_BASE}/${path}"`);
+  lines.push(`  "${apiBaseOf(origins)}/${path}"`);
   return lines.join("\n");
 }
 
@@ -860,7 +860,7 @@ export type Language = (typeof LANGUAGES)[number];
 
 /** An example's query, as name and value pairs. */
 const queryOf = (example: Example): [string, string][] => [...new URLSearchParams(example.path.split("?")[1] ?? "")];
-const urlOf = (example: Example): string => `${API_BASE}/${example.path.split("?")[0]}`;
+const urlOf = (example: Example, origins: SiteOrigins): string => `${apiBaseOf(origins)}/${example.path.split("?")[0]}`;
 /** Pairs as a one-line object literal both JavaScript and Python read. */
 const objectOf = (pairs: [string, string][]): string =>
   `{ ${pairs.map(([name, value]) => `${JSON.stringify(name)}: ${JSON.stringify(value)}`).join(", ")} }`;
@@ -869,11 +869,11 @@ const objectOf = (pairs: [string, string][]): string =>
  * The request an example sends, as JavaScript: `fetch`, then the answer's
  * JSON. It is the same request `curlOf` prints.
  */
-export function javascriptOf(example: Example): string {
+export function javascriptOf(example: Example, origins: SiteOrigins): string {
   const query = queryOf(example);
   const lines: string[] = [];
   if (query.length > 0) lines.push(`const params = new URLSearchParams(${objectOf(query)});`);
-  const url = query.length > 0 ? `\`${urlOf(example)}?\${params}\`` : JSON.stringify(urlOf(example));
+  const url = query.length > 0 ? `\`${urlOf(example, origins)}?\${params}\`` : JSON.stringify(urlOf(example, origins));
   lines.push(`const response = await fetch(${url}, {`);
   if (example.body !== undefined) lines.push(`  method: "POST",`);
   if (example.body === undefined) {
@@ -887,10 +887,10 @@ export function javascriptOf(example: Example): string {
 }
 
 /** The request an example sends, as Python with `requests`. */
-export function pythonOf(example: Example): string {
+export function pythonOf(example: Example, origins: SiteOrigins): string {
   const query = queryOf(example);
   const method = example.body === undefined ? "get" : "post";
-  const lines = [`import requests`, ``, `response = requests.${method}(`, `    ${JSON.stringify(urlOf(example))},`];
+  const lines = [`import requests`, ``, `response = requests.${method}(`, `    ${JSON.stringify(urlOf(example, origins))},`];
   if (query.length > 0) lines.push(`    params=${objectOf(query)},`);
   if (example.body !== undefined) lines.push(`    json=${oneLine(example.body)},`);
   lines.push(`    headers={ "X-API-Key": ${JSON.stringify(EXAMPLE_KEY)} },`, `)`, `data = response.json()`);
@@ -898,8 +898,8 @@ export function pythonOf(example: Example): string {
 }
 
 /** An example's request in every language the docs print. */
-export const requestsOf = (example: Example): Readonly<Record<Language, string>> => ({
-  curl: curlOf(example),
-  JavaScript: javascriptOf(example),
-  Python: pythonOf(example),
+export const requestsOf = (example: Example, origins: SiteOrigins): Readonly<Record<Language, string>> => ({
+  curl: curlOf(example, origins),
+  JavaScript: javascriptOf(example, origins),
+  Python: pythonOf(example, origins),
 });

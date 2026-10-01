@@ -34,19 +34,20 @@ import { SignIn, signInStart } from "@/components/developers/SignIn";
 import { EMPTY_DRAFT, type CreateKeyDraft } from "@/lib/developers/createKeyForm.ts";
 import { CREATE_KEY_HINT, CREATE_KEY_PROBLEM } from "@/components/shared/styles.ts";
 import { DASHBOARD, SETTINGS } from "@/worker/dashboard.ts";
+import { ORIGIN } from "@/worker/hosts.ts";
 
 const NOW = Date.parse("2026-09-28T12:00:00Z");
 const CSRF = "c".repeat(43);
 
 test("the sign-in page offers Google and GitHub, disables one that is not configured, and has no Terms line", () => {
-  const both = renderToStaticMarkup(<SignIn available={{ google: true, github: true }} />);
+  const both = renderToStaticMarkup(<SignIn available={{ google: true, github: true }} origins={ORIGIN} />);
   assert.match(both, /<h1[^>]*>Sign in<\/h1>/);
   assert.ok(both.includes(`href="${signInStart("google")}"`) && both.includes(`href="${signInStart("github")}"`));
   assert.match(both, /Continue with Google/);
   assert.match(both, /Continue with GitHub/);
   assert.doesNotMatch(both, /Terms/);
 
-  const githubOnly = renderToStaticMarkup(<SignIn available={{ google: false, github: true }} />);
+  const githubOnly = renderToStaticMarkup(<SignIn available={{ google: false, github: true }} origins={ORIGIN} />);
   assert.ok(!githubOnly.includes(`href="${signInStart("google")}"`), "an unconfigured provider is not a link");
   assert.match(githubOnly, /<button[^>]*disabled=""[^>]*>(?:(?!<\/button>).)*Continue with Google<\/button>/);
   assert.ok(githubOnly.includes(`href="${signInStart("github")}"`));
@@ -109,7 +110,7 @@ function sample() {
 
 test("the dashboard lists each live key, oldest first, with its name, prefix, endpoints, expiry, created, last used and Revoke", () => {
   const { keys, view } = sample();
-  const html = renderToStaticMarkup(<Dashboard view={view} csrf={CSRF} made={3} />);
+  const html = renderToStaticMarkup(<Dashboard view={view} csrf={CSRF} made={3} origins={ORIGIN} />);
 
   const rows = [...html.matchAll(/<tr[^>]*data-key-id="(\d+)"/g)].map((match) => Number(match[1]));
   assert.deepEqual(rows, [2, 3], "board 28 lists live keys only, oldest first");
@@ -147,7 +148,7 @@ const tabsOf = (html: string) => {
 
 test("the dashboard is Keys and usage: the tab bar, API keys and Usage, and no plan or account (#190)", () => {
   const { view } = sample();
-  const html = renderToStaticMarkup(<Dashboard view={view} csrf={CSRF} made={3} />);
+  const html = renderToStaticMarkup(<Dashboard view={view} csrf={CSRF} made={3} origins={ORIGIN} />);
   assert.deepEqual(tabsOf(html), [
     [DASHBOARD, true, "Keys and usage"],
     [SETTINGS, false, "Settings"],
@@ -160,7 +161,7 @@ test("the dashboard is Keys and usage: the tab bar, API keys and Usage, and no p
 
 test("settings is the second tab: Plan, then Account with Delete account and who is signed in (board 28g, #190)", () => {
   const { settings } = sample();
-  const html = renderToStaticMarkup(<DashboardSettings view={settings} csrf={CSRF} />);
+  const html = renderToStaticMarkup(<DashboardSettings view={settings} csrf={CSRF} origins={ORIGIN} />);
   assert.match(html, /<h1[^>]*>Dashboard<\/h1>/);
   assert.deepEqual(tabsOf(html), [
     [DASHBOARD, false, "Keys and usage"],
@@ -183,7 +184,7 @@ test("settings is the second tab: Plan, then Account with Delete account and who
 
 test("signed in, the bar ends with the avatar, and the ☰ menu names Dashboard, Settings, Docs and Pricing (boards 28, j6UaW, #190)", () => {
   const { view } = sample();
-  const html = renderToStaticMarkup(<Dashboard view={view} csrf={CSRF} made={3} />);
+  const html = renderToStaticMarkup(<Dashboard view={view} csrf={CSRF} made={3} origins={ORIGIN} />);
   // The avatar is Base UI's menu trigger, closed, with the name's initial; no menu is drawn until it opens.
   assert.match(html, /<button[^>]*aria-haspopup="menu"[^>]*aria-expanded="false"[^>]*aria-label="Account"[^>]*><span[^>]*><span[^>]*>A<\/span><\/span><\/button>/);
   assert.doesNotMatch(html, /role="menu"/);
@@ -225,17 +226,17 @@ test("signed in, the docs, the pricing page and the 404 carry the same avatar; s
   const signedIn = { email: "ada@example.com", name: "Ada Lovelace" };
   const avatar = /aria-haspopup="menu"[^>]*aria-label="Account"/;
   for (const html of [
-    renderToStaticMarkup(<DeveloperDocs page={{ kind: "guide", guide: "introduction" }} signedIn={signedIn} />),
-    renderToStaticMarkup(<DeveloperPricing visitor={{ signedIn, csrf: "the-token" }} />),
-    renderToStaticMarkup(<DeveloperNotFound signedIn={signedIn} />),
+    renderToStaticMarkup(<DeveloperDocs page={{ kind: "guide", guide: "introduction" }} signedIn={signedIn} origins={ORIGIN} />),
+    renderToStaticMarkup(<DeveloperPricing visitor={{ signedIn, csrf: "the-token" }} origins={ORIGIN} />),
+    renderToStaticMarkup(<DeveloperNotFound signedIn={signedIn} origins={ORIGIN} />),
   ]) {
     assert.match(html, avatar);
     assert.doesNotMatch(html, /Sign in</);
   }
   for (const html of [
-    renderToStaticMarkup(<DeveloperDocs page={{ kind: "guide", guide: "introduction" }} />),
-    renderToStaticMarkup(<DeveloperPricing />),
-    renderToStaticMarkup(<DeveloperNotFound />),
+    renderToStaticMarkup(<DeveloperDocs page={{ kind: "guide", guide: "introduction" }} origins={ORIGIN} />),
+    renderToStaticMarkup(<DeveloperPricing origins={ORIGIN} />),
+    renderToStaticMarkup(<DeveloperNotFound origins={ORIGIN} />),
   ]) {
     assert.doesNotMatch(html, avatar);
     assert.match(html, /Sign in</);
@@ -244,7 +245,7 @@ test("signed in, the docs, the pricing page and the 404 carry the same avatar; s
 
 test("the dashboard shows 30 days of calls in total, revoked keys' too, today last, and no per-key rows", () => {
   const { days, view } = sample();
-  const html = renderToStaticMarkup(<Dashboard view={view} csrf={CSRF} made={3} />);
+  const html = renderToStaticMarkup(<Dashboard view={view} csrf={CSRF} made={3} origins={ORIGIN} />);
   assert.match(html, /Last 30 days · 18,840 calls/);
   const bars = [...html.matchAll(/data-day="([^"]+)" data-calls="(\d+)"/g)].map((match) => [match[1], Number(match[2])]);
   const expected = days.map((day, i) => [day, ({ 0: 17000, 10: 600, 29: 1240 } as Record<number, number>)[i] ?? 0]);
@@ -254,7 +255,7 @@ test("the dashboard shows 30 days of calls in total, revoked keys' too, today la
 
 test("Create key opens its dialog and makes nothing itself", () => {
   const { view } = sample();
-  const html = renderToStaticMarkup(<Dashboard view={view} csrf={CSRF} made={3} />);
+  const html = renderToStaticMarkup(<Dashboard view={view} csrf={CSRF} made={3} origins={ORIGIN} />);
   // The only form is Sign out's, which the account menu submits (the ☰ menu a phone shows instead holds its own, drawn once open): every dashboard action is sent from the page.
   assert.deepEqual([...html.matchAll(/<form[^>]*action="([^"]+)"/g)].map((form) => form[1]), ["/sign-out"]);
   assert.ok(!html.includes(CREATE_KEY_ACTION), "nothing on the page posts a key by itself");
@@ -266,7 +267,7 @@ test("Create key opens its dialog and makes nothing itself", () => {
 
 test("an account with no keys has no key table", () => {
   const view = dashboardView(profile, [], AccountUsage.of(usageDays(NOW), [], []), undefined, NOW);
-  const html = renderToStaticMarkup(<Dashboard view={view} csrf={CSRF} made={0} />);
+  const html = renderToStaticMarkup(<Dashboard view={view} csrf={CSRF} made={0} origins={ORIGIN} />);
   assert.doesNotMatch(html, /<table/);
   assert.match(html, /Last 30 days · 0 calls/);
   assert.equal(view.keys.length, 0);
