@@ -1,0 +1,1020 @@
+{
+  "about": "Hand labels for every record measure:section-language names as a candidate (#29). 'other' means the record is another language's entry tagged lang_code it; 'italian' means it is an Italian entry. Each was decided by reading the block on the page in the 2026-07-01 dump.",
+  "labelled": "2026-10-01",
+  "records": {
+    "2140": {
+      "word": "bacca",
+      "posTitle": "Sostantivo",
+      "label": "italian",
+      "note": "a further Italian block after the translation box, defined in Italian"
+    },
+    "3168": {
+      "word": "la",
+      "posTitle": "Sostantivo",
+      "label": "italian",
+      "note": "Italian entry defined in Italian; one usage label names another language"
+    },
+    "3959": {
+      "word": "ana",
+      "posTitle": "Sostantivo",
+      "label": "italian",
+      "note": "a further Italian block after the translation box, defined in Italian"
+    },
+    "6151": {
+      "word": "hatefulness",
+      "posTitle": "Sostantivo",
+      "label": "other",
+      "note": "English word; the block lists Italian equivalents, and the page has no Italian entry for it"
+    },
+    "6842": {
+      "word": "inaccurate",
+      "posTitle": "Aggettivo, forma flessa",
+      "label": "italian",
+      "note": "Italian inflected form ('plurale di …'); the heading's language argument is a slip"
+    },
+    "7065": {
+      "word": "intact",
+      "posTitle": "Aggettivo",
+      "label": "other",
+      "note": "English word; the block lists Italian equivalents, and the page has no Italian entry for it"
+    },
+    "7105": {
+      "word": "disgusting",
+      "posTitle": "Sostantivo",
+      "label": "other",
+      "note": "English word; the block lists Italian equivalents, and the page has no Italian entry for it"
+    },
+    "7201": {
+      "word": "disoriented",
+      "posTitle": "Aggettivo",
+      "label": "other",
+      "note": "English word; the block lists Italian equivalents, and the page has no Italian entry for it"
+    },
+    "7237": {
+      "word": "jack",
+      "posTitle": "Verbo",
+      "label": "other",
+      "note": "English verb after the Italian entry's translation box; example is 'to jack up'"
+    },
+    "7663": {
+      "word": "boxer",
+      "posTitle": "Sostantivo",
+      "label": "italian",
+      "note": "Italian entry for a word Italian uses, defined in Italian prose; the heading's language marks the word's origin"
+    },
+    "8750": {
+      "word": "redimere",
+      "posTitle": "Verbo",
+      "label": "other",
+      "note": "Latin verb after the Italian entry's translation box; lists Italian equivalents"
+    },
+    "9979": {
+      "word": "crew",
+      "posTitle": "Sostantivo",
+      "label": "italian",
+      "note": "Italian entry for a word Italian uses, defined in Italian prose; the heading's language marks the word's origin"
+    },
+    "10002": {
+      "word": "cross",
+      "posTitle": "Sostantivo",
+      "label": "italian",
+      "note": "Italian entry defined in Italian; one usage label names another language"
+    },
+    "10656": {
+      "word": "eminent",
+      "posTitle": "Aggettivo",
+      "label": "other",
+      "note": "English word; the block lists Italian equivalents, and the page has no Italian entry for it"
+    },
+    "11803": {
+      "word": "goal",
+      "posTitle": "Sostantivo",
+      "label": "italian",
+      "note": "Italian entry defined in Italian; one usage label names another language"
+    },
+    "12351": {
+      "word": "magistrate",
+      "posTitle": "Sostantivo, forma flessa",
+      "label": "italian",
+      "note": "Italian inflected form ('plurale di …'); the heading's language argument is a slip"
+    },
+    "12662": {
+      "word": "meeting",
+      "posTitle": "Sostantivo",
+      "label": "italian",
+      "note": "Italian entry for a word Italian uses, defined in Italian prose; the heading's language marks the word's origin"
+    },
+    "12763": {
+      "word": "mischievous",
+      "posTitle": "Aggettivo",
+      "label": "other",
+      "note": "English word; the block lists Italian equivalents, and the page has no Italian entry for it"
+    },
+    "14767": {
+      "word": "canilia",
+      "posTitle": "Sostantivo",
+      "label": "other",
+      "note": "Sicilian word; the definition calls it an archaic form of Sicilian canigghia"
+    },
+    "16047": {
+      "word": "curie",
+      "posTitle": "Sostantivo",
+      "label": "other",
+      "note": "Dutch entry: bare {{-nl-}} line, Dutch audio, references name olandese"
+    },
+    "17981": {
+      "word": "Livio",
+      "posTitle": "Nome proprio",
+      "label": "italian",
+      "note": "Italian entry whose only gloss repeats the headword or points at another section"
+    },
+    "18183": {
+      "word": "Etna",
+      "posTitle": "Sostantivo",
+      "label": "other",
+      "note": "English noun after the Italian entry's translation box; gloss repeats the headword"
+    },
+    "19432": {
+      "word": "not",
+      "posTitle": "Sostantivo",
+      "label": "italian",
+      "note": "Italian entry for a word Italian uses, defined in Italian prose; the heading's language marks the word's origin"
+    },
+    "21287": {
+      "word": "rejoicing",
+      "posTitle": "Sostantivo",
+      "label": "other",
+      "note": "English word; the block lists Italian equivalents, and the page has no Italian entry for it"
+    },
+    "21404": {
+      "word": "ridicule",
+      "posTitle": "Aggettivo",
+      "label": "other",
+      "note": "English word; the block lists Italian equivalents, and the page has no Italian entry for it"
+    },
+    "21405": {
+      "word": "ridicule",
+      "posTitle": "Verbo",
+      "label": "other",
+      "note": "English word; the block lists Italian equivalents, and the page has no Italian entry for it"
+    },
+    "21596": {
+      "word": "rustic",
+      "posTitle": "Aggettivo",
+      "label": "other",
+      "note": "English word; the block lists Italian equivalents, and the page has no Italian entry for it"
+    },
+    "21597": {
+      "word": "rustic",
+      "posTitle": "Sostantivo",
+      "label": "other",
+      "note": "English word; the block lists Italian equivalents, and the page has no Italian entry for it"
+    },
+    "21746": {
+      "word": "saving",
+      "posTitle": "Aggettivo",
+      "label": "other",
+      "note": "English word; the block lists Italian equivalents, and the page has no Italian entry for it"
+    },
+    "21747": {
+      "word": "saving",
+      "posTitle": "Preposizione",
+      "label": "other",
+      "note": "English word; the block lists Italian equivalents, and the page has no Italian entry for it"
+    },
+    "21748": {
+      "word": "saving",
+      "posTitle": "Sostantivo",
+      "label": "other",
+      "note": "English word; the block lists Italian equivalents, and the page has no Italian entry for it"
+    },
+    "21902": {
+      "word": "seasoned",
+      "posTitle": "Aggettivo",
+      "label": "other",
+      "note": "English word; the block lists Italian equivalents, and the page has no Italian entry for it"
+    },
+    "22640": {
+      "word": "stole",
+      "posTitle": "Sostantivo, forma flessa",
+      "label": "italian",
+      "note": "Italian inflected form ('plurale di …'); the heading's language argument is a slip"
+    },
+    "23551": {
+      "word": "unscrupulous",
+      "posTitle": "Aggettivo",
+      "label": "other",
+      "note": "English word; the block lists Italian equivalents, and the page has no Italian entry for it"
+    },
+    "24283": {
+      "word": "potenza",
+      "posTitle": "Sostantivo",
+      "label": "italian",
+      "note": "Italian entry defined in Italian; one usage label names another language"
+    },
+    "24392": {
+      "word": "cracker",
+      "posTitle": "Sostantivo",
+      "label": "italian",
+      "note": "Italian entry defined in Italian; one usage label names another language"
+    },
+    "28735": {
+      "word": "facundia",
+      "posTitle": "Sostantivo",
+      "label": "other",
+      "note": "Latin word; the block lists Italian equivalents (facondia, eloquenza)"
+    },
+    "30879": {
+      "word": "Ernesto",
+      "posTitle": "Nome proprio",
+      "label": "italian",
+      "note": "Italian entry whose only gloss repeats the headword or points at another section"
+    },
+    "31201": {
+      "word": "ladino fassano",
+      "posTitle": "Sostantivo",
+      "label": "italian",
+      "note": "Italian entry whose only gloss repeats the headword or points at another section"
+    },
+    "31786": {
+      "word": "sci di fondo",
+      "posTitle": "Sostantivo",
+      "label": "italian",
+      "note": "Italian entry whose only gloss repeats the headword or points at another section"
+    },
+    "31788": {
+      "word": "sci alpino",
+      "posTitle": "Sostantivo",
+      "label": "italian",
+      "note": "Italian entry whose only gloss repeats the headword or points at another section"
+    },
+    "31831": {
+      "word": "danza su ghiaccio",
+      "posTitle": "Sostantivo",
+      "label": "italian",
+      "note": "Italian entry whose only gloss repeats the headword or points at another section"
+    },
+    "31905": {
+      "word": "latinismo",
+      "posTitle": "Sostantivo",
+      "label": "other",
+      "note": "Spanish and Interlingua entries below bare {{-es-}} and {{-ia-}} lines"
+    },
+    "31906": {
+      "word": "latinismo",
+      "posTitle": "Sostantivo",
+      "label": "other",
+      "note": "Spanish and Interlingua entries below bare {{-es-}} and {{-ia-}} lines"
+    },
+    "38389": {
+      "word": "v",
+      "posTitle": "Abbreviazione in uso nelle chat",
+      "label": "italian",
+      "note": "a further Italian block after the translation box, defined in Italian"
+    },
+    "39600": {
+      "word": "punk",
+      "posTitle": "Sostantivo",
+      "label": "italian",
+      "note": "Italian entry defined in Italian; one usage label names another language"
+    },
+    "41242": {
+      "word": "versorio",
+      "posTitle": "Sostantivo",
+      "label": "other",
+      "note": "Veronese/Venetian entry below a bare {{-vec-}} line"
+    },
+    "41793": {
+      "word": "manicula",
+      "posTitle": "Sostantivo",
+      "label": "italian",
+      "note": "Italian entry defined in Italian; the heading's language argument is a slip or marks origin"
+    },
+    "43282": {
+      "word": "pantofolaio",
+      "posTitle": "Sostantivo",
+      "label": "italian",
+      "note": "a further Italian block after the translation box, defined in Italian"
+    },
+    "45556": {
+      "word": "arteria",
+      "posTitle": "Sostantivo",
+      "label": "other",
+      "note": "Latin entry headed {{-sost-|it}} after the translation box; {{Term|anatomia|la}}, references name latino"
+    },
+    "47157": {
+      "word": "coggin test",
+      "posTitle": "Sostantivo",
+      "label": "italian",
+      "note": "Italian entry whose only gloss repeats the headword or points at another section"
+    },
+    "47406": {
+      "word": "alluminato",
+      "posTitle": "Aggettivo",
+      "label": "italian",
+      "note": "a further Italian block after the translation box, defined in Italian"
+    },
+    "47407": {
+      "word": "alluminato",
+      "posTitle": "Voce verbale",
+      "label": "italian",
+      "note": "a further Italian block after the translation box, defined in Italian"
+    },
+    "48586": {
+      "word": "incrociare",
+      "posTitle": "Verbo",
+      "label": "italian",
+      "note": "Italian entry defined in Italian; one usage label names another language"
+    },
+    "51281": {
+      "word": "listello",
+      "posTitle": "Sostantivo",
+      "label": "italian",
+      "note": "Italian entry defined in Italian; one usage label names another language"
+    },
+    "51400": {
+      "word": "macroglossia",
+      "posTitle": "Sostantivo",
+      "label": "italian",
+      "note": "Italian entry whose only gloss repeats the headword or points at another section"
+    },
+    "51531": {
+      "word": "malanga",
+      "posTitle": "Sostantivo",
+      "label": "italian",
+      "note": "Italian entry whose only gloss repeats the headword or points at another section"
+    },
+    "51815": {
+      "word": "mire",
+      "posTitle": "Sostantivo",
+      "label": "other",
+      "note": "English entries pasted after the translation box with no language heading (en.wiktionary layout, translated)"
+    },
+    "51816": {
+      "word": "mire",
+      "posTitle": "Sostantivo",
+      "label": "other",
+      "note": "English entries pasted after the translation box with no language heading (en.wiktionary layout, translated)"
+    },
+    "52340": {
+      "word": "pizzicato",
+      "posTitle": "Aggettivo",
+      "label": "other",
+      "note": "English entries after the Italian entry's translation box; one is written in English"
+    },
+    "52341": {
+      "word": "pizzicato",
+      "posTitle": "Avverbio",
+      "label": "other",
+      "note": "English entries after the Italian entry's translation box; one is written in English"
+    },
+    "52342": {
+      "word": "pizzicato",
+      "posTitle": "Sostantivo",
+      "label": "other",
+      "note": "English entries after the Italian entry's translation box; one is written in English"
+    },
+    "52991": {
+      "word": "ridotto",
+      "posTitle": "Sostantivo",
+      "label": "other",
+      "note": "English entry below a bare {{-en-}} line, written in English"
+    },
+    "53469": {
+      "word": "impune",
+      "posTitle": "Aggettivo",
+      "label": "italian",
+      "note": "Italian entry defined in Italian; one usage label names another language"
+    },
+    "53478": {
+      "word": "in vitro",
+      "posTitle": "Aggettivo",
+      "label": "italian",
+      "note": "Italian entry whose only gloss repeats the headword or points at another section"
+    },
+    "53624": {
+      "word": "infertile",
+      "posTitle": "Aggettivo",
+      "label": "other",
+      "note": "English adjective after the Italian entry's translation box; {{Term|medicina|en}}"
+    },
+    "54317": {
+      "word": "stabilito",
+      "posTitle": "Sostantivo",
+      "label": "italian",
+      "note": "Italian noun after the translation box, its one definition drafted in English"
+    },
+    "55593": {
+      "word": "virgolettato",
+      "posTitle": "Sostantivo",
+      "label": "italian",
+      "note": "Italian noun after the translation box, defined in English (copied from en.wiktionary's Italian entry)"
+    },
+    "55773": {
+      "word": "zimarra",
+      "posTitle": "Sostantivo",
+      "label": "other",
+      "note": "English entry below a bare {{-en-}} line, written in English"
+    },
+    "57446": {
+      "word": "desiderate",
+      "posTitle": "Voce verbale",
+      "label": "other",
+      "note": "Latin verb form after the Italian entry's translation box (imperativo di dēsīderō)"
+    },
+    "58883": {
+      "word": "insensate",
+      "posTitle": "Aggettivo",
+      "label": "other",
+      "note": "English adjective after the Italian entry's translation box; lists Italian equivalents"
+    },
+    "60524": {
+      "word": "puri",
+      "posTitle": "Sostantivo",
+      "label": "other",
+      "note": "English entry pasted after the translation box with no language heading, written in English"
+    },
+    "62044": {
+      "word": "zoologia",
+      "posTitle": "Sostantivo",
+      "label": "italian",
+      "note": "Italian entry defined in Italian; one usage label names another language"
+    },
+    "67415": {
+      "word": "dolmen",
+      "posTitle": "Sostantivo",
+      "label": "other",
+      "note": "English noun after the Italian entry's translation box; gloss repeats the headword"
+    },
+    "70593": {
+      "word": "parvenu",
+      "posTitle": "Sostantivo",
+      "label": "italian",
+      "note": "Italian entry for a word Italian uses, defined in Italian prose; the heading's language marks the word's origin"
+    },
+    "72044": {
+      "word": "ouverture",
+      "posTitle": "Sostantivo",
+      "label": "italian",
+      "note": "Italian entry for a word Italian uses, defined in Italian prose; the heading's language marks the word's origin"
+    },
+    "75579": {
+      "word": "jena",
+      "posTitle": "Sostantivo",
+      "label": "italian",
+      "note": "Italian entry: an old spelling of iena; the topic label names Sicilian"
+    },
+    "82956": {
+      "word": "grafica",
+      "posTitle": "Sostantivo",
+      "label": "italian",
+      "note": "Italian entry defined in Italian; one usage label names another language"
+    },
+    "101975": {
+      "word": "sushi",
+      "posTitle": "Sostantivo",
+      "label": "italian",
+      "note": "Italian entry for a word Italian uses, defined in Italian prose; the heading's language marks the word's origin"
+    },
+    "109098": {
+      "word": "evincere",
+      "posTitle": "Verbo",
+      "label": "italian",
+      "note": "Italian entry defined in Italian; one usage label names another language"
+    },
+    "109733": {
+      "word": "newton",
+      "posTitle": "Sostantivo",
+      "label": "italian",
+      "note": "Italian entry for a word Italian uses, defined in Italian prose; the heading's language marks the word's origin"
+    },
+    "109739": {
+      "word": "watt",
+      "posTitle": "Sostantivo",
+      "label": "italian",
+      "note": "Italian entry for a word Italian uses, defined in Italian prose; the heading's language marks the word's origin"
+    },
+    "113330": {
+      "word": "algofilia",
+      "posTitle": "Sostantivo",
+      "label": "italian",
+      "note": "Italian entry defined in Italian; one usage label names another language"
+    },
+    "114117": {
+      "word": "squamoso",
+      "posTitle": "Aggettivo, forma flessa",
+      "label": "italian",
+      "note": "Italian entry defined in Italian; one usage label names another language"
+    },
+    "114392": {
+      "word": "Wikipedia",
+      "posTitle": "Nome proprio",
+      "label": "italian",
+      "note": "Italian entry for a word Italian uses, defined in Italian prose; the heading's language marks the word's origin"
+    },
+    "114707": {
+      "word": "superbe",
+      "posTitle": "Avverbio",
+      "label": "other",
+      "note": "Latin adverb after the Italian entry's translation box; references name Latin"
+    },
+    "115300": {
+      "word": "machete",
+      "posTitle": "Sostantivo",
+      "label": "other",
+      "note": "English noun after the Italian entry's translation box; gloss is the Italian equivalent"
+    },
+    "116922": {
+      "word": "inquartata",
+      "posTitle": "Sostantivo",
+      "label": "italian",
+      "note": "a further Italian block after the translation box, defined in Italian"
+    },
+    "116924": {
+      "word": "inquartato",
+      "posTitle": "Voce verbale",
+      "label": "italian",
+      "note": "a further Italian block after the translation box, defined in Italian"
+    },
+    "120937": {
+      "word": "baseball",
+      "posTitle": "Sostantivo",
+      "label": "italian",
+      "note": "Italian entry for a word Italian uses, defined in Italian prose; the heading's language marks the word's origin"
+    },
+    "121600": {
+      "word": "verbena",
+      "posTitle": "Sostantivo",
+      "label": "other",
+      "note": "English noun after the Italian entry's translation box; gloss repeats the headword"
+    },
+    "122216": {
+      "word": "porpora",
+      "posTitle": "Aggettivo",
+      "label": "italian",
+      "note": "Italian entry defined in Italian; the heading's language argument is a slip or marks origin"
+    },
+    "123129": {
+      "word": "Aalborg",
+      "posTitle": "Nome proprio",
+      "label": "italian",
+      "note": "Italian entry defined in Italian; one usage label names another language"
+    },
+    "123148": {
+      "word": "Aberdeen",
+      "posTitle": "Nome proprio",
+      "label": "italian",
+      "note": "Italian entry for a word Italian uses, defined in Italian prose; the heading's language marks the word's origin"
+    },
+    "125141": {
+      "word": "rebus",
+      "posTitle": "Sostantivo",
+      "label": "italian",
+      "note": "Italian entry defined in Italian; one usage label names another language"
+    },
+    "125190": {
+      "word": "covata",
+      "posTitle": "Sostantivo",
+      "label": "italian",
+      "note": "Italian entry defined in Italian; the heading's language argument is a slip or marks origin"
+    },
+    "126529": {
+      "word": "sene",
+      "posTitle": "Sostantivo",
+      "label": "italian",
+      "note": "Italian entry defined in Italian; the heading's language argument is a slip or marks origin"
+    },
+    "127618": {
+      "word": "smog",
+      "posTitle": "Sostantivo",
+      "label": "italian",
+      "note": "Italian entry defined in Italian; one usage label names another language"
+    },
+    "127623": {
+      "word": "fast food",
+      "posTitle": "Locuzione nominale",
+      "label": "italian",
+      "note": "Italian entry for a word Italian uses, defined in Italian prose; the heading's language marks the word's origin"
+    },
+    "130735": {
+      "word": "nosologia",
+      "posTitle": "Sostantivo",
+      "label": "italian",
+      "note": "Italian entry defined in Italian; one usage label names another language"
+    },
+    "133299": {
+      "word": "diesel",
+      "posTitle": "Sostantivo",
+      "label": "italian",
+      "note": "Italian entry defined in Italian; one usage label names another language"
+    },
+    "134617": {
+      "word": "honeste vivere",
+      "posTitle": "Locuzione nominale",
+      "label": "italian",
+      "note": "Italian entry for a word Italian uses, defined in Italian prose; the heading's language marks the word's origin"
+    },
+    "135083": {
+      "word": "fastuchera",
+      "posTitle": "Sostantivo",
+      "label": "other",
+      "note": "Sicilian word ({{-sost-|scn}}); Italian for a pistachio field is not this word"
+    },
+    "135505": {
+      "word": "otalgia",
+      "posTitle": "Sostantivo",
+      "label": "other",
+      "note": "English noun after the Italian entry's translation box; gloss repeats the headword"
+    },
+    "135796": {
+      "word": "grazia",
+      "posTitle": "Verbo",
+      "label": "italian",
+      "note": "Italian inflected form ('plurale di …'); the heading's language argument is a slip"
+    },
+    "135811": {
+      "word": "capitano di guerra",
+      "posTitle": "Locuzione nominale",
+      "label": "italian",
+      "note": "Italian entry defined in Italian; one usage label names another language"
+    },
+    "237275": {
+      "word": "crosta",
+      "posTitle": "Sostantivo",
+      "label": "italian",
+      "note": "Italian entry defined in Italian; one usage label names another language"
+    },
+    "260139": {
+      "word": "libido",
+      "posTitle": "Sostantivo",
+      "label": "italian",
+      "note": "Italian entry for a word Italian uses, defined in Italian prose; the heading's language marks the word's origin"
+    },
+    "306738": {
+      "word": "debordante",
+      "posTitle": "Aggettivo",
+      "label": "italian",
+      "note": "Italian entry defined in Italian; the heading's language argument is a slip or marks origin"
+    },
+    "370433": {
+      "word": "riparti",
+      "posTitle": "Sostantivo",
+      "label": "italian",
+      "note": "a further Italian block after the translation box, defined in Italian"
+    },
+    "393313": {
+      "word": "rincoglionite",
+      "posTitle": "Voce verbale",
+      "label": "italian",
+      "note": "a further Italian block after the translation box, defined in Italian"
+    },
+    "399259": {
+      "word": "tonfano",
+      "posTitle": "Voce verbale",
+      "label": "italian",
+      "note": "a further Italian block after the translation box, defined in Italian"
+    },
+    "412290": {
+      "word": "eczema",
+      "posTitle": "Sostantivo",
+      "label": "other",
+      "note": "English entry under a second Italian heading; {{Term|medicina|en}}, gloss repeats the headword"
+    },
+    "412854": {
+      "word": "praesidium",
+      "posTitle": "Sostantivo",
+      "label": "italian",
+      "note": "Italian entry for a word Italian uses, defined in Italian prose; the heading's language marks the word's origin"
+    },
+    "412889": {
+      "word": "labrador",
+      "posTitle": "Sostantivo",
+      "label": "other",
+      "note": "English noun after the Italian entry's translation box; gloss is the Italian equivalent"
+    },
+    "419579": {
+      "word": "hikikomori",
+      "posTitle": "Sostantivo",
+      "label": "italian",
+      "note": "Italian entry for a word Italian uses, defined in Italian prose; the heading's language marks the word's origin"
+    },
+    "419922": {
+      "word": "TTL",
+      "posTitle": "Acronimo / Abbreviazione",
+      "label": "italian",
+      "note": "Italian entry for a word Italian uses, defined in Italian prose; the heading's language marks the word's origin"
+    },
+    "439369": {
+      "word": "kilobit",
+      "posTitle": "Sostantivo",
+      "label": "italian",
+      "note": "Italian entry defined in Italian; one usage label names another language"
+    },
+    "449554": {
+      "word": "scapecchiare",
+      "posTitle": "Verbo",
+      "label": "italian",
+      "note": "a further Italian block after the translation box, defined in Italian"
+    },
+    "450874": {
+      "word": "ambrosia",
+      "posTitle": "Sostantivo",
+      "label": "other",
+      "note": "English noun after the Italian entry's translation box; gloss repeats the headword"
+    },
+    "452084": {
+      "word": "avvicinamento",
+      "posTitle": "Sostantivo",
+      "label": "italian",
+      "note": "Italian entry defined in Italian; one usage label names another language"
+    },
+    "455667": {
+      "word": "America del Sud",
+      "posTitle": "Nome proprio",
+      "label": "italian",
+      "note": "Italian entry whose only gloss repeats the headword or points at another section"
+    },
+    "458823": {
+      "word": "mmHg",
+      "posTitle": "Sostantivo",
+      "label": "italian",
+      "note": "Italian entry for a word Italian uses, defined in Italian prose; the heading's language marks the word's origin"
+    },
+    "459178": {
+      "word": "velocità asintotica",
+      "posTitle": "Locuzione nominale",
+      "label": "italian",
+      "note": "Italian physics term defined in Italian; heading marked {{-loc nom-|int}}"
+    },
+    "459179": {
+      "word": "velocità assoluta",
+      "posTitle": "Locuzione nominale",
+      "label": "italian",
+      "note": "Italian physics term defined in Italian; heading marked {{-loc nom-|int}}"
+    },
+    "459180": {
+      "word": "velocità del suono",
+      "posTitle": "Locuzione nominale",
+      "label": "italian",
+      "note": "Italian physics term defined in Italian; heading marked {{-loc nom-|int}}"
+    },
+    "459198": {
+      "word": "massa atomica relativa",
+      "posTitle": "Locuzione nominale",
+      "label": "italian",
+      "note": "Italian physics term defined in Italian; heading marked {{-loc nom-|int}}"
+    },
+    "459199": {
+      "word": "massa monoisotopica",
+      "posTitle": "Locuzione nominale",
+      "label": "italian",
+      "note": "Italian physics term defined in Italian; heading marked {{-loc nom-|int}}"
+    },
+    "459429": {
+      "word": "velocità media",
+      "posTitle": "Locuzione nominale",
+      "label": "italian",
+      "note": "Italian physics term defined in Italian; heading marked {{-loc nom-|int}}"
+    },
+    "459430": {
+      "word": "velocità istantanea",
+      "posTitle": "Locuzione nominale",
+      "label": "italian",
+      "note": "Italian physics term defined in Italian; heading marked {{-loc nom-|int}}"
+    },
+    "459431": {
+      "word": "velocità di caduta",
+      "posTitle": "Locuzione nominale",
+      "label": "italian",
+      "note": "Italian physics term defined in Italian; heading marked {{-loc nom-|int}}"
+    },
+    "460676": {
+      "word": "Ostia",
+      "posTitle": "Sostantivo",
+      "label": "other",
+      "note": "Latin noun after the Italian entry's translation box; references name Latin"
+    },
+    "461406": {
+      "word": "IA",
+      "posTitle": "Acronimo / Abbreviazione",
+      "label": "italian",
+      "note": "Italian entry for a word Italian uses, defined in Italian prose; the heading's language marks the word's origin"
+    },
+    "463478": {
+      "word": "Assunzione di Maria",
+      "posTitle": "Sostantivo",
+      "label": "italian",
+      "note": "Italian entry defined in Italian; one usage label names another language"
+    },
+    "493020": {
+      "word": "coniugare",
+      "posTitle": "Verbo",
+      "label": "italian",
+      "note": "Italian entry defined in Italian; one usage label names another language"
+    },
+    "505173": {
+      "word": "vossia",
+      "posTitle": "Pronome",
+      "label": "italian",
+      "note": "Italian entry defined in Italian; the heading's language argument is a slip or marks origin"
+    },
+    "520783": {
+      "word": "bianchire",
+      "posTitle": "Verbo",
+      "label": "italian",
+      "note": "Italian entry defined in Italian; one usage label names another language"
+    },
+    "522590": {
+      "word": "binare",
+      "posTitle": "Verbo",
+      "label": "italian",
+      "note": "Italian entry defined in Italian; one usage label names another language"
+    },
+    "538280": {
+      "word": "coscrivere",
+      "posTitle": "Verbo",
+      "label": "italian",
+      "note": "Italian entry defined in Italian; one usage label names another language"
+    },
+    "540826": {
+      "word": "defilare",
+      "posTitle": "Verbo",
+      "label": "italian",
+      "note": "Italian entry defined in Italian; one usage label names another language"
+    },
+    "548384": {
+      "word": "scollacciato",
+      "posTitle": "Aggettivo",
+      "label": "italian",
+      "note": "Italian entry defined in Italian; one usage label names another language"
+    },
+    "557507": {
+      "word": "extreme",
+      "posTitle": "Aggettivo",
+      "label": "other",
+      "note": "English word; the block lists Italian equivalents, and the page has no Italian entry for it"
+    },
+    "557508": {
+      "word": "extreme",
+      "posTitle": "Sostantivo",
+      "label": "other",
+      "note": "English word; the block lists Italian equivalents, and the page has no Italian entry for it"
+    },
+    "567025": {
+      "word": "sand-stone",
+      "posTitle": "Sostantivo",
+      "label": "other",
+      "note": "English word; the block lists Italian equivalents, and the page has no Italian entry for it"
+    },
+    "571709": {
+      "word": "bellicose",
+      "posTitle": "Aggettivo, forma flessa",
+      "label": "italian",
+      "note": "Italian inflected form ('plurale di …'); the heading's language argument is a slip"
+    },
+    "571714": {
+      "word": "bellicosi",
+      "posTitle": "Aggettivo, forma flessa",
+      "label": "italian",
+      "note": "Italian inflected form ('plurale di …'); the heading's language argument is a slip"
+    },
+    "571715": {
+      "word": "bellicosa",
+      "posTitle": "Aggettivo, forma flessa",
+      "label": "italian",
+      "note": "Italian inflected form ('plurale di …'); the heading's language argument is a slip"
+    },
+    "576040": {
+      "word": "conserve",
+      "posTitle": "Sostantivo",
+      "label": "italian",
+      "note": "Italian inflected form ('plurale di …'); the heading's language argument is a slip"
+    },
+    "579322": {
+      "word": "proroghe",
+      "posTitle": "Sostantivo",
+      "label": "italian",
+      "note": "Italian inflected form ('plurale di …'); the heading's language argument is a slip"
+    },
+    "583604": {
+      "word": "esacordale",
+      "posTitle": "Aggettivo",
+      "label": "italian",
+      "note": "Italian entry defined in Italian; the heading's language argument is a slip or marks origin"
+    },
+    "584244": {
+      "word": "epigone",
+      "posTitle": "Sostantivo",
+      "label": "italian",
+      "note": "Italian inflected form ('plurale di …'); the heading's language argument is a slip"
+    },
+    "584249": {
+      "word": "epigona",
+      "posTitle": "Sostantivo",
+      "label": "italian",
+      "note": "Italian inflected form ('plurale di …'); the heading's language argument is a slip"
+    },
+    "588342": {
+      "word": "burbere",
+      "posTitle": "Sostantivo, forma flessa",
+      "label": "italian",
+      "note": "Italian entry whose only gloss repeats the headword or points at another section"
+    },
+    "592160": {
+      "word": "kakiemon",
+      "posTitle": "Sostantivo",
+      "label": "italian",
+      "note": "Italian entry for a word Italian uses, defined in Italian prose; the heading's language marks the word's origin"
+    },
+    "593527": {
+      "word": "civilized",
+      "posTitle": "Aggettivo",
+      "label": "other",
+      "note": "English word; the block lists Italian equivalents, and the page has no Italian entry for it"
+    },
+    "595414": {
+      "word": "API",
+      "posTitle": "Sostantivo",
+      "label": "italian",
+      "note": "Italian entry for a word Italian uses, defined in Italian prose; the heading's language marks the word's origin"
+    },
+    "598979": {
+      "word": "benefirma",
+      "posTitle": "Sostantivo",
+      "label": "italian",
+      "note": "Italian entry whose only gloss repeats the headword or points at another section"
+    },
+    "602282": {
+      "word": "chiarori",
+      "posTitle": "Sostantivo, forma flessa",
+      "label": "italian",
+      "note": "Italian inflected form ('plurale di …'); the heading's language argument is a slip"
+    },
+    "602532": {
+      "word": "giromanica",
+      "posTitle": "Sostantivo",
+      "label": "italian",
+      "note": "Italian entry defined in Italian; one usage label names another language"
+    },
+    "604840": {
+      "word": "trowel",
+      "posTitle": "Sostantivo",
+      "label": "other",
+      "note": "English word; the block lists Italian equivalents, and the page has no Italian entry for it"
+    },
+    "605433": {
+      "word": "Pan",
+      "posTitle": "Nome proprio",
+      "label": "italian",
+      "note": "Italian entry defined in Italian; one usage label names another language"
+    },
+    "610208": {
+      "word": "renminbi",
+      "posTitle": "Sostantivo",
+      "label": "italian",
+      "note": "Italian entry for a word Italian uses, defined in Italian prose; the heading's language marks the word's origin"
+    },
+    "610988": {
+      "word": "prestidigitatore",
+      "posTitle": "Sostantivo",
+      "label": "italian",
+      "note": "Italian entry whose only gloss repeats the headword or points at another section"
+    },
+    "611042": {
+      "word": "VHS",
+      "posTitle": "Acronimo / Abbreviazione",
+      "label": "italian",
+      "note": "Italian entry defined in Italian; one usage label names another language"
+    },
+    "615116": {
+      "word": "plance",
+      "posTitle": "Sostantivo, forma flessa",
+      "label": "italian",
+      "note": "Italian inflected form ('plurale di …'); the heading's language argument is a slip"
+    },
+    "619201": {
+      "word": "Aarhus",
+      "posTitle": "Nome proprio",
+      "label": "italian",
+      "note": "Italian entry defined in Italian; one usage label names another language"
+    },
+    "620376": {
+      "word": "anzitempo",
+      "posTitle": "Avverbio",
+      "label": "italian",
+      "note": "Italian entry defined in Italian; the heading's language argument is a slip or marks origin"
+    },
+    "621647": {
+      "word": "Ovomaltina",
+      "posTitle": "Sostantivo",
+      "label": "italian",
+      "note": "Italian entry for a word Italian uses, defined in Italian prose; the heading's language marks the word's origin"
+    },
+    "624575": {
+      "word": "all’erta",
+      "posTitle": "Locuzione aggettivale",
+      "label": "italian",
+      "note": "Italian entry whose only gloss repeats the headword or points at another section"
+    }
+  }
+}
