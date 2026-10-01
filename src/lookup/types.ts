@@ -6,7 +6,7 @@ import type { ArticleDisplay } from "../core/types.js";
 import type { SurfaceWithholding } from "../italian/articles.js";
 import type { PhraseGloss } from "../italian/phrase.js";
 
-/** One article as `it-articles/v2` produced it, re-exported for the page. */
+/** One article as `it-articles/v3` produced it, re-exported for the page. */
 export type { ArticleDisplay };
 
 /**
@@ -460,9 +460,10 @@ interface ReadingFacts {
 interface NounPartOfSpeech {
   pos: "noun";
   /**
-   * Articles for this reading, derived by `it-articles/v2` from the gender and
-   * number the source states — or the reason there are none. Nothing here comes
-   * from the release: the source carries no article field at all.
+   * Articles for this reading, derived by `it-articles/v3` from the gender and
+   * number the source states, and the record's own IPA where the spelling
+   * leaves the first sound open — or the reason there are none. Nothing here
+   * comes from the release: the source carries no article field at all.
    */
   articles: ReadingArticles;
 }

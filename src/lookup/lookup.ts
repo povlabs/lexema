@@ -564,10 +564,11 @@ async function buildReading(
     inflections,
     reviews,
     recovered: recovered.topLevel,
-    // Derived, not read: the release carries no article field. The headword and
-    // the grammar the source stated about the record are the only inputs, and a
-    // reading that is not a noun comes back carrying no articles at all.
-    ...readingPartOfSpeech(first.record_pos, first.record_word, grammar.record, forms),
+    // Derived, not read: the release carries no article field. The headword, the
+    // grammar the source stated about the record and the record's own IPA are
+    // the only inputs, and a reading that is not a noun comes back carrying no
+    // articles at all.
+    ...readingPartOfSpeech(first.record_pos, first.record_word, grammar.record, forms, fields.wordFacts.pronunciations),
   };
 }
 
