@@ -3,7 +3,7 @@
 // now verifies. Every record is a verbatim archive line: the twelve's words
 // from fixtures/dev-seed.jsonl, the rest from fixtures/quality-regressions.jsonl
 // (archive lines 196 `gallo`, 43791 `palo`, 139668 `vogare`, 140523 `voga`,
-// 226888 `raccontavo`, 429722 `rifritto`). No case needs `it-extract.jsonl.gz`.
+// 226888 `raccontavo`, 429722 `rifritto`, 56392 `balzana`). No case needs `it-extract.jsonl.gz`.
 
 import assert from "node:assert/strict";
 import test from "node:test";
@@ -17,6 +17,7 @@ import {
   moodAgreement,
   rawTextNames,
   senseKind,
+  splitRecordSenses,
   targetResolution,
   type QualityRecord,
 } from "../src/italian/recordQuality.js";
@@ -59,13 +60,13 @@ test("casa: a non-empty gloss array with no meaning in it; the page shows the fu
   assert.equal(hasGlossText(casa), true);
   assert.deepEqual(kinds(casa), ["furniture", "furniture"]);
   // With nothing else to show, the page shows the two headword lines verbatim.
-  assert.equal(definitionsShown(kinds(casa), 0), 2);
+  assert.equal(definitionsShown(casa, 0), 2);
   const page = readSavedPage(readFileSync(resolve("fixtures/upstream-pages/casa.wikitext"), "utf8"), "casa.wikitext");
   const recovery = recoverDefinitions(recordText(casa), page);
   assert.equal(recovery.outcome, "matched");
   const recovered = recovery.outcome === "matched" ? recovery.recovered.length : 0;
   // The seven recovered definitions replace them: the furniture is hidden.
-  assert.equal(definitionsShown(kinds(casa), recovered), 7);
+  assert.equal(definitionsShown(casa, recovered), 7);
 });
 
 test("casa: its one raw tag names number, not gender, so its gender is missing rather than unclassified", () => {
@@ -93,15 +94,29 @@ test("palo: the page rule hides a headword line that goes on to state a heraldic
   assert.notEqual(heraldic, -1);
   assert.equal(senseKind(palo.senses[heraldic], "palo"), "furniture-with-prose");
   // The record has other meanings, so that sense is not counted among the definitions shown.
-  const shown = definitionsShown(kinds(palo), 0);
+  const shown = definitionsShown(palo, 0);
   assert.equal(shown, kinds(palo).filter((kind) => kind === "meaning").length);
+});
+
+test("balzana: a headword line with a stray form_of pointer is furniture all the same, as the page reads it", () => {
+  const balzana = one("balzana", "noun");
+  const heraldic = 1;
+  assert.ok((balzana.senses[heraldic].glosses?.[0] ?? "").startsWith("balzana ( approfondimento) partizione orizzontale"));
+  assert.deepEqual(balzana.senses[heraldic].form_of, [{ word: "troncato" }]);
+  // The page's rule never reads form_of, so neither does the measurement.
+  assert.deepEqual(kinds(balzana), ["form-of", "furniture-with-prose", "form-of"]);
+  const split = splitRecordSenses(balzana, 0);
+  assert.deepEqual(split.furniture, [heraldic]);
+  assert.equal(split.furnitureHidden, true);
+  assert.deepEqual(split.numbered, [0, 2]);
+  assert.equal(definitionsShown(balzana, 0), 2);
 });
 
 test("rifritto: a gloss array holding only the missing-definition placeholder shows nothing", () => {
   const rifritto = one("rifritto", "noun");
   assert.equal(hasGlossText(rifritto), true);
   assert.deepEqual(kinds(rifritto), ["placeholder"]);
-  assert.equal(definitionsShown(kinds(rifritto), 0), 0);
+  assert.equal(definitionsShown(rifritto, 0), 0);
 });
 
 test("parlerei: the conditional its gloss names is the one it-moods/v1 reads off parlare's table", () => {

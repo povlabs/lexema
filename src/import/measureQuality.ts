@@ -23,7 +23,6 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { placeItalianVerbForm } from "../italian/moods.js";
 import {
-  definitionsShown,
   duplicateForms,
   glossMood,
   hasAccent,
@@ -31,8 +30,10 @@ import {
   isFormOf,
   isThin,
   moodAgreement,
+  pageGlosses,
   rawTextNames,
   senseKind,
+  splitRecordSenses,
   targetResolution,
   type DuplicateRelation,
   type MoodAgreement,
@@ -149,6 +150,8 @@ const definitions = {
   glossTextButNoMeaning: 0,
   byRecordKind: counts([...SENSE_KINDS, "no-sense"] as const),
   senses: counts(SENSE_KINDS),
+  /** Records holding at least one sense of each kind. */
+  recordsWithSense: counts(SENSE_KINDS),
   /** Records with a furniture sense, by what the page then does with it. */
   furnitureRecords: { hiddenBehindOthers: 0, shownBecauseNothingElse: 0, hiddenAndNothingShown: 0 },
 };
@@ -243,7 +246,8 @@ const second = await parseArchive({
     const recovery = page === undefined ? undefined : recoverDefinitions(recordText(record), page);
     const recovered = recovery?.outcome === "matched" ? recovery.recovered : [];
     const opensList = new Set(recovered.flatMap((definition) => (definition.listedUnder?.in === "sense" ? [definition.listedUnder.senseIndex] : [])));
-    const shown = definitionsShown(kinds, recovered.length, opensList);
+    const split = splitRecordSenses(record, recovered.length, opensList);
+    const shown = split.numbered.length + recovered.length;
     const glossText = hasGlossText(record);
     definitions.records += 1;
     if (glossText) definitions.withGlossText += 1;
@@ -254,18 +258,17 @@ const second = await parseArchive({
     if (glossText && !ownMeaning && recovered.length === 0) definitions.glossTextButNoMeaning += 1;
     definitions.byRecordKind[recordKind(kinds)] += 1;
     for (const kind of kinds) definitions.senses[kind] += 1;
-    const furnitureAt = kinds.flatMap((kind, index) =>
-      (kind === "furniture" || kind === "furniture-with-prose") && !opensList.has(index) ? [index] : [],
-    );
-    if (furnitureAt.length > 0) {
-      // The page's own test (definitions.ts): furniture is hidden when the
-      // reading has anything else — a recovered definition, or any sense that
-      // is not furniture, a glossless one included.
-      const hasOwn = recovered.length > 0 || kinds.some((_, index) => !furnitureAt.includes(index));
-      const treatment: FurnitureGloss["page"] = !hasOwn ? "shownBecauseNothingElse" : shown > 0 ? "hiddenBehindOthers" : "hiddenAndNothingShown";
+    for (const kind of new Set(kinds)) definitions.recordsWithSense[kind] += 1;
+    if (split.furniture.length > 0) {
+      // What the page does with the furniture, by the split it renders from.
+      const treatment: FurnitureGloss["page"] = !split.furnitureHidden
+        ? "shownBecauseNothingElse"
+        : shown > 0
+          ? "hiddenBehindOthers"
+          : "hiddenAndNothingShown";
       definitions.furnitureRecords[treatment] += 1;
-      for (const index of furnitureAt) {
-        for (const gloss of strings(record.senses[index].glosses)) {
+      for (const index of split.furniture) {
+        for (const gloss of pageGlosses(record.senses[index])) {
           const row: FurnitureGloss = { line: lineNo, word, pos: record.pos, gloss, page: treatment, recovered: recovered.length };
           furnitureGlosses.push(row);
           if (kinds[index] === "furniture-with-prose") furnitureWithProse.push(row);
@@ -534,7 +537,8 @@ line(`definitions: ${definitions.withGlossText} records with gloss text; ${defin
   `(${definitions.glossTextButNothingShown} of them have gloss text); ` +
   `${definitions.meaningOnlyThroughRecovery} have a meaning only through the recovered layer; ${definitions.glossTextButNoMeaning} have gloss text and no meaning at all`);
 line(`  record kinds: ${JSON.stringify(definitions.byRecordKind)}`);
-line(`  furniture glosses ${furnitureGlosses.length}, ${furnitureWithProse.length} of them go on to state something`);
+line(`  senses: ${JSON.stringify(definitions.senses)}; records holding one: ${JSON.stringify(definitions.recordsWithSense)}`);
+line(`  furniture glosses ${furnitureGlosses.length} in ${new Set(furnitureGlosses.map((row) => row.line)).size} records, ${furnitureWithProse.length} of them go on to state something`);
 line(`dangling targets ${dangling.targets}: no raw page ${JSON.stringify(dangling.noPage)}; a raw page ${JSON.stringify(dangling.page)}`);
 line(`form-of edges ${targets.edges}: any part of speech ${JSON.stringify(targets.anyPos)}; same ${JSON.stringify(targets.samePos)}`);
 for (const [kind, tally] of Object.entries(verbForms)) {

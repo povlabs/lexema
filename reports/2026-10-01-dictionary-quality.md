@@ -27,9 +27,10 @@ Two kinds of number are kept apart throughout:
   a sense holds and runs the other checks;
   [`src/import/measureQuality.ts`](../src/import/measureQuality.ts) streams the
   archive twice and writes `artifacts/quality-measure.json`.
-- The word page's furniture rule now lives in
-  [`src/italian/furniture.ts`](../src/italian/furniture.ts), so the page and this
-  measurement read one rule.
+- The word page's rule for which senses it numbers now lives in
+  [`src/italian/furniture.ts`](../src/italian/furniture.ts) as `splitSenses`. The
+  page and this measurement both call it on every sense, so the furniture class
+  measured here is the class the page hides.
 
 Re-run, with both files in the repository root (about 45 seconds):
 
@@ -93,8 +94,8 @@ there (the furniture rule), and recovered definitions added (#28).
 
 - **559,690** records have a non-empty gloss array (99.88%).
 - **553,413** show at least one definition on the page (98.76%).
-- The gap is **6,279** records with gloss text and nothing to show. Nearly all of it
-  is the placeholder. The other 667 records have no gloss at all; Wiktionary has no
+- **6,279** records have gloss text and show nothing. Nearly all of them hold only
+  the placeholder. The other 667 records have no gloss at all; Wiktionary has no
   definition for 665 of them ([definition-loss report](2026-09-18-definition-loss.md#what-is-not-the-cause)),
   and the recovered layer reads one back for two.
 - **10** records have a meaning only through the recovered layer, `casa` among them.
@@ -102,15 +103,18 @@ there (the furniture rule), and recovered definitions added (#28).
 ### How big the furniture class really is
 
 The page refuses a gloss of `word` that is `word ( citazioni)` or starts with
-`word ( approfondimento)` (`isFurnitureGloss`). That rule matches **21 glosses in
-17 records**, out of 560,357. It is the smallest of the "non-empty but not a
-definition" classes. The placeholder covers 9,362 senses in 6,282 records, which
-`withoutPlaceholder` already drops.
+`word ( approfondimento)` (`isFurnitureGloss`). It calls a sense furniture when
+every gloss is one of those and no recovered list hangs under it. Nothing else
+about the sense counts, a `form_of` pointer included. That rule matches **22
+glosses in 18 records**, out of 560,357. It is the smallest of the "non-empty but
+not a definition" classes. The placeholder covers 9,362 senses in 8,538 records,
+which `withoutPlaceholder` already drops; in 6,282 of those records no sense says
+more.
 
-Ten of the 21 are bare headword lines, in `casa`, `verde`, `pianoforte`, `punta`,
+Ten of the 22 are bare headword lines, in `casa`, `verde`, `pianoforte`, `punta`,
 `manuale`, `lap steel guitar` and `console steel guitar`. Hiding them is right.
 
-The other eleven start as a headword line and go on to say something. Read by hand:
+The other twelve start as a headword line and go on to say something. Read by hand:
 
 | Record (archive line) | What follows the marker | Page today |
 | --- | --- | --- |
@@ -118,6 +122,7 @@ The other eleven start as a headword line and go on to say something. Read by ha
 | `palo` (43791) | *pezza onorevole … che occupa verticalmente la parte centrale dello scudo…* | hidden |
 | `banda` (45622) | *pezza onorevole … andamento diagonale…* | hidden |
 | `biglietto` (47955) | *piccolo rettangolo posto in verticale…* | hidden |
+| `balzana` (56392) | *partizione orizzontale a metà, dello scudo…*; the sense also carries a stray `form_of` to `troncato` | hidden |
 | `fascia` (78801) | *pezza onorevole … orizzontalmente…* | hidden |
 | `cinta` (110548) | *bordura larga la metà del normale…* | hidden |
 | `sbarra` (122502), two glosses | the heraldic bar, and the gymnastics bar | hidden |
@@ -125,8 +130,8 @@ The other eleven start as a headword line and go on to say something. Read by ha
 | `orlo` (52120) | *vedi orlatura*, a cross-reference | hidden |
 | `filetto` (40204) | *detto di:*, a lead-in to three recovered items | hidden; its items show |
 
-So **the rule hides a real definition in 7 records (8 glosses)**, plus `orlo`'s
-cross-reference. Of those seven, only `banda` gets anything from the recovered
+So **the rule hides a real definition in 8 records (9 glosses)**, plus `orlo`'s
+cross-reference. Of those eight, only `banda` gets anything from the recovered
 layer (one definition), and whether that is the hidden one was not checked. This
 is a defect in the page rule, not in the data.
 
@@ -330,9 +335,9 @@ should show each spelling once per cell.
 
 [`test/recordQuality.test.ts`](../test/recordQuality.test.ts) runs in CI. It reads
 verbatim archive lines: the spot check's words from
-[`fixtures/dev-seed.jsonl`](../fixtures/dev-seed.jsonl), and six more from
+[`fixtures/dev-seed.jsonl`](../fixtures/dev-seed.jsonl), and seven more from
 [`fixtures/quality-regressions.jsonl`](../fixtures/quality-regressions.jsonl)
-(archive lines 196, 43791, 139668, 140523, 226888, 429722).
+(archive lines 196, 43791, 56392, 139668, 140523, 226888, 429722).
 
 | Case | What it pins |
 | --- | --- |
@@ -343,6 +348,7 @@ verbatim archive lines: the spot check's words from
 | `sale` | three records, a meaning and two form-of pointers; `sala` resolves only within its part of speech |
 | duplicate embedded forms | `studente`'s `studenti` (subsumed), `gallo`'s `galli` (identical), `studiare`'s `studi` (distinct cells) |
 | `palo` | the furniture rule hides a headword line that states a heraldic meaning |
+| `balzana` | a headword line with a stray `form_of` is furniture all the same, as the page reads it |
 | `rifritto` | a gloss array holding only the placeholder shows nothing |
 | `voga` | the gloss's congiuntivo cell is `voghi` in `vogare`'s table |
 | `raccontavo` | a form-of record whose lemma, `raccontare`, has no record |
@@ -371,7 +377,7 @@ verbatim archive lines: the spot check's words from
 
 ## Follow-up
 
-- The furniture rule hiding real definitions (`palo`, `banda`, `sbarra`, …) is a
+- The furniture rule hiding real definitions (`palo`, `banda`, `sbarra`, `balzana`, …) is a
   page defect with a clear fix: hide a headword line only when nothing but stamps
   follows the marker ([#325](https://github.com/hueypov/lexema/issues/325)).
 - The 104 lemma pages the extraction skips (`raccontare`, `fornire`, `dipendere`)
