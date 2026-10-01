@@ -15,7 +15,7 @@
 import { and, eq, isNull } from "drizzle-orm";
 import type { AppDatabase } from "../db/app/database.js";
 import { developerAccount } from "../db/app/schema.js";
-import { composeEmail, type AccountEmail } from "./accountEmail.js";
+import { composeEmail, type AccountEmail, type EmailLinks } from "./accountEmail.js";
 
 /** The address every account email is from. */
 export const SENDER = { email: "noreply@lexema.fyi", name: "Lexema" } as const;
@@ -48,19 +48,35 @@ export function workerEmailOf(binding: EmailBinding | undefined, onlyTo: string 
   return { send: (message) => binding.send({ ...message, to: onlyTo }) };
 }
 
-/** Where account emails go out, and the settings page their one link opens. */
+/** Where account emails go out, and the URLs they carry. */
 export interface AccountMail {
   readonly binding: EmailBinding;
-  /** The developer site's /dashboard/settings, on the host the request came to. */
-  readonly settingsUrl: string;
+  readonly links: EmailLinks;
 }
 
 /** The path of the dashboard's settings page on the developer site (web/lib/developers/dashboardActions.ts). */
 const SETTINGS_PATH = "/dashboard/settings";
 
-/** Account email over this binding, linking to settings on `origin`; `undefined` while the Worker has no binding. */
-export const accountMailOf = (binding: EmailBinding | undefined, origin: string): AccountMail | undefined =>
-  binding === undefined ? undefined : { binding, settingsUrl: `${origin}${SETTINGS_PATH}` };
+/**
+ * The site icon the header shows: the 192px one, drawn at 32px so it stays
+ * sharp on a dense screen. It is a static asset of the web app
+ * (web/lib/shared/siteIcons.ts, `ICON_PATH.icon192`), served on every host.
+ */
+export const EMAIL_ICON_PATH = "/icon-192.png";
+
+/** The sites an email's links point at, as the request that sends it names them. */
+export interface MailOrigins {
+  /** The developer site, where settings is: the host the request came to. */
+  readonly developers: string;
+  /** The dictionary's site, which serves the icon: https://lexema.fyi live, a Preview's own on a Preview. */
+  readonly lexema: string;
+}
+
+/** Account email over this binding, linking to settings and the icon on `origins`; `undefined` while the Worker has no binding. */
+export const accountMailOf = (binding: EmailBinding | undefined, origins: MailOrigins): AccountMail | undefined =>
+  binding === undefined
+    ? undefined
+    : { binding, links: { settings: `${origins.developers}${SETTINGS_PATH}`, icon: `${origins.lexema}${EMAIL_ICON_PATH}` } };
 
 /** What sending one email did. */
 export type Sent = "sent" | "mail-off" | "failed";
@@ -79,7 +95,7 @@ export async function sendAccountEmail(mail: AccountMail | undefined, to: string
     return "mail-off";
   }
   try {
-    await mail.binding.send({ to, from: SENDER, ...composeEmail(email, mail.settingsUrl) });
+    await mail.binding.send({ to, from: SENDER, ...composeEmail(email, mail.links) });
     return "sent";
   } catch (failure) {
     console.error("account email failed", { kind: email.kind, code: codeOf(failure) }, failure);

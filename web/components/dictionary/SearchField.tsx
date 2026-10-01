@@ -21,14 +21,15 @@
 // staying in the input while arrow keys move a highlight through the list,
 // Enter on a highlighted row choosing it, Enter with nothing highlighted
 // submitting the form as typed, and Escape closing the list. What this file
-// owns is where the suggestions come from and when.
+// owns is drawing the suggestions; when they are asked for, and when a list
+// already here answers instead, is web/lib/dictionary/suggestionAsker.ts.
 
 import { Autocomplete } from "@base-ui/react/autocomplete";
 import { useEffect, useRef, useState, type MouseEvent } from "react";
-import { isAskablePrefix } from "@lexema/lookup/suggest.ts";
 import { SearchIcon } from "@/components/shared/icons";
 import { isApple, isSearchShortcut, shortcutApplies, shortcutLabel } from "@/lib/shared/searchShortcut.ts";
 import type { SuggestAnswer } from "@/lib/dictionary/suggestAnswer.ts";
+import { fetchSuggestions, SuggestionAsker } from "@/lib/dictionary/suggestionAsker.ts";
 import {
   SEARCH_CLEAR,
   SEARCH_FIELD,
@@ -46,12 +47,13 @@ import {
 } from "@/components/shared/styles.ts";
 
 /**
- * How long the field waits after a keystroke before asking. Shorter than the
+ * How long the field waits after a keystroke before asking. Longer than the
  * gap between keys of someone typing a word in one go, so a word typed
  * steadily asks once rather than once a letter; short enough that the list
- * follows a pause without seeming to lag behind it.
+ * follows a pause without seeming to lag behind it. 250 ms is Huey's call of
+ * 2026-10-01 (#387); it was 150.
  */
-export const DEBOUNCE_MS = 150;
+export const DEBOUNCE_MS = 250;
 
 /** What the list is showing: suggestions for some prefix, or that none could be read. */
 export type Shown = { kind: "suggested"; suggestions: string[] } | { kind: "failed" };
@@ -136,39 +138,11 @@ export function SearchField({ raw }: { raw: string }) {
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
   }, []);
-  const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
-  // The one request whose answer may still be shown. A newer keystroke aborts
-  // it, so an answer for `ca` that arrives after the reader typed `cas` is
-  // dropped rather than drawn over the list for `cas`.
-  const inFlight = useRef<AbortController | null>(null);
-
-  const cancel = () => {
-    clearTimeout(timer.current);
-    inFlight.current?.abort();
-    inFlight.current = null;
-  };
+  const [asker] = useState(
+    () => new SuggestionAsker(fetchSuggestions, (answer) => setShown(answer === null ? null : shownFor(answer)), DEBOUNCE_MS),
+  );
+  const cancel = () => asker.cancel();
   useEffect(() => cancel, []);
-
-  const ask = (prefix: string) => {
-    cancel();
-    if (!isAskablePrefix(prefix)) {
-      setShown(null);
-      return;
-    }
-    const request = new AbortController();
-    inFlight.current = request;
-    timer.current = setTimeout(async () => {
-      try {
-        const response = await fetch(`/suggest?q=${encodeURIComponent(prefix)}`, { signal: request.signal });
-        const answer = (await response.json()) as SuggestAnswer;
-        if (request.signal.aborted) return;
-        setShown(shownFor(answer));
-      } catch {
-        if (request.signal.aborted) return;
-        setShown({ kind: "failed" });
-      }
-    }, DEBOUNCE_MS);
-  };
 
   const suggestions = shown?.kind === "suggested" ? shown.suggestions : [];
 
@@ -198,7 +172,7 @@ export function SearchField({ raw }: { raw: string }) {
           cancel();
           return;
         }
-        ask(next);
+        asker.ask(next);
       }}
       items={suggestions}
       // The server already ordered and bounded the list; filtering it again on

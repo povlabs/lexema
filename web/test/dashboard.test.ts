@@ -675,6 +675,8 @@ test("deleting an account emails the person once, at the address it had, with no
   );
   // The deleted email has nothing to do in settings, so it carries no link (#367).
   assert.ok(!email.sent[0]?.text.includes(`${DEVELOPERS}${SETTINGS}`));
+  // Its header still shows the site icon, from the dictionary's site (#383).
+  assert.ok(email.sent[0]?.html.includes('src="https://lexema.fyi/icon-192.png"'));
 
   const refused = await subscribed("active", false);
   refused.stripe.set("sub_ada", "cus_ada", {}, LIVE_PRO);

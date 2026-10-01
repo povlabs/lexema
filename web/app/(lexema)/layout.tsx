@@ -2,9 +2,10 @@ import type { ReactNode } from "react";
 import "@/app/globals.css";
 import { SiteFooter } from "@/components/dictionary/SiteFooter";
 import { BODY } from "@/components/shared/styles.ts";
+import { SITE_ICON_METADATA } from "@/lib/shared/siteIcons.ts";
 import { siteOrigins } from "@/lib/shared/siteOrigins.ts";
 
-export const metadata = { title: "Lexema" };
+export const metadata = { title: "Lexema", ...SITE_ICON_METADATA };
 
 export default async function RootLayout({ children }: { children: ReactNode }) {
   return (
