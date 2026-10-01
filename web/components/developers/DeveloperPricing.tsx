@@ -15,6 +15,7 @@ import { PLAN_TERMS, type PlanId, type StripePlanId } from "@lexema/billing/plan
 import type { ReactNode } from "react";
 import { CALL_ROWS, callText } from "@/lib/developers/apiReference.ts";
 import type { PostingVisitor } from "@/lib/developers/signedIn.ts";
+import type { SiteOrigins } from "@/worker/hosts.ts";
 import { ChoosePlanForm } from "./BillingForms";
 import { CONTACT_EMAIL, DeveloperPage } from "./DeveloperPage";
 import { CheckIcon } from "@/components/shared/MenuIcons";
@@ -92,10 +93,10 @@ function PlanCard({ plan, price, lines, action }: { plan: PlanId; price: ReactNo
   );
 }
 
-export function DeveloperPricing({ visitor }: { visitor?: PostingVisitor } = {}) {
+export function DeveloperPricing({ visitor, origins }: { visitor?: PostingVisitor; origins: SiteOrigins }) {
   return (
     // Board 26 draws the bar with neither page marked.
-    <DeveloperPage signedIn={visitor?.signedIn}>
+    <DeveloperPage signedIn={visitor?.signedIn} origins={origins}>
       <main className={DEV_SHELL}>
         <h1 className={DEV_HEADING}>Pricing</h1>
 

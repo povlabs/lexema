@@ -42,7 +42,7 @@ import {
 import { stripePlanOf } from "@lexema/billing/plans.ts";
 import { appTablesOverD1, type AppTables } from "@lexema/db/app/database.ts";
 import { CHECKOUT_ACTION } from "@/lib/developers/billingActions.ts";
-import { DEVELOPERS_SEGMENT, googleCallbackUri, ORIGIN } from "./hosts.ts";
+import { DEVELOPERS_SEGMENT, googleCallbackUri, type SiteOrigins } from "./hosts.ts";
 import type { FetchHandler } from "./rateLimit.ts";
 
 export { PENDING_COOKIE, SESSION_COOKIE } from "@lexema/accounts/auth.ts";
@@ -117,12 +117,13 @@ export function readCookie(header: string | null, name: string): string | undefi
 /**
  * The account a request's session cookie is signed in to, or `undefined`: no
  * cookie, one better-auth did not sign or has no live session for, one that
- * has expired by `now`, or a deleted account.
+ * has expired by `now`, or a deleted account. better-auth is given the
+ * developer site's address as the request's host names it (`originsOf`, #266).
  */
-export async function signedInAccount(cookieHeader: string | null, db: AppTables, now: number): Promise<number | undefined> {
+export async function signedInAccount(cookieHeader: string | null, db: AppTables, now: number, origins: SiteOrigins): Promise<number | undefined> {
   const secret = authSecret();
   if (secret === undefined || readCookie(cookieHeader, SESSION_COOKIE) === undefined) return undefined;
-  const auth = sessionAuth(db.app, secret, ORIGIN.developers);
+  const auth = sessionAuth(db.app, secret, origins.developers);
   const found = await auth.api.getSession({ headers: new Headers({ cookie: cookieHeader ?? "" }) });
   if (found === null || found.session.expiresAt.getTime() <= now || found.user.deletedAt) return undefined;
   return Number(found.user.id);

@@ -19,7 +19,8 @@
     "api-key": "tsx src/api/keyCli.ts",
     "plan": "tsx src/billing/planCli.ts",
     "report": "tsx src/readerReport/reportCli.ts",
-    "measure:recovery": "tsx src/import/measureRecovery.ts"
+    "measure:recovery": "tsx src/import/measureRecovery.ts",
+    "measure:section-language": "tsx src/import/measureSectionLanguage.ts"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",

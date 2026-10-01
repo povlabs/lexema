@@ -37,7 +37,7 @@ import { stripePlanOf, type StripePlanId } from "@lexema/billing/plans.ts";
 import { appTablesOverD1, type AppTables } from "@lexema/db/app/database.ts";
 import { CHECKOUT_ACTION, PLAN_FIELD, PORTAL_ACTION, PRICING } from "@/lib/developers/billingActions.ts";
 import { CSRF_FIELD, SETTINGS } from "@/lib/developers/dashboardActions.ts";
-import { DEVELOPERS_SEGMENT } from "./hosts.ts";
+import { DEVELOPERS_SEGMENT, originsOf } from "./hosts.ts";
 import type { FetchHandler } from "./rateLimit.ts";
 import {
   CHOSEN_PLAN_COOKIE,
@@ -130,7 +130,7 @@ interface Session {
 async function sessionOf(request: Request, ready: Ready): Promise<Session | undefined> {
   const cookies = request.headers.get("cookie");
   const cookie = readCookie(cookies, SESSION_COOKIE);
-  const accountId = await signedInAccount(cookies, ready.appDb, ready.now);
+  const accountId = await signedInAccount(cookies, ready.appDb, ready.now, originsOf(new URL(request.url).hostname));
   if (cookie === undefined || accountId === undefined) return undefined;
   return { accountId, cookie, headers: new Headers({ cookie: cookies ?? "" }) };
 }

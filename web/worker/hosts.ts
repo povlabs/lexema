@@ -21,6 +21,11 @@
 // domains"). Those domains are routes that serve Previews only
 // (web/wrangler.jsonc), so production is never asked for them.
 //
+// The pages link the three sites to each other, and those links follow the
+// host a request came in on (#266): a Preview's pages name its sibling hosts,
+// under the same `<name>` label, so following one stays on that Preview. Every
+// other host, live and local alike, names the live sites.
+//
 // One local-only route: Google refuses a redirect URI on `developers.localhost`,
 // since a subdomain's top-level domain must be a public suffix, but accepts
 // `localhost`. So locally Google's callback is on `localhost`, which relays
@@ -32,8 +37,11 @@ import type { FetchHandler } from "./rateLimit.ts";
 /** The sites one Worker serves, each on its own host. */
 export type Site = "lexema" | "developers" | "api";
 
+/** Each site's address, as the pages of one request name it. */
+export type SiteOrigins = Readonly<Record<Site, string>>;
+
 /** Each site's live address. */
-export const ORIGIN: Readonly<Record<Site, string>> = {
+export const ORIGIN: SiteOrigins = {
   lexema: "https://lexema.fyi",
   developers: "https://developers.lexema.fyi",
   api: "https://api.lexema.fyi",
@@ -90,12 +98,35 @@ export type Destination =
 
 const SITES = Object.keys(SUBDOMAIN) as Site[];
 
-/** The site a Preview host names, or none for a host that is not one. */
-function previewSiteOf(hostname: string): Site | undefined {
+/** A Preview host, read: the label naming the Preview, and which of its sites it is. */
+interface PreviewHost {
+  label: string;
+  site: Site;
+}
+
+/** The Preview a host belongs to, or none for a host that is not one. */
+function previewOf(hostname: string): PreviewHost | undefined {
   const dot = hostname.indexOf(".");
-  if (dot < 0 || !PREVIEW_LABEL.test(hostname.slice(0, dot))) return undefined;
+  const label = hostname.slice(0, dot);
+  if (dot < 0 || !PREVIEW_LABEL.test(label)) return undefined;
   const domain = hostname.slice(dot + 1);
-  return SITES.find((site) => PREVIEW_DOMAIN[site] === domain);
+  const site = SITES.find((candidate) => PREVIEW_DOMAIN[candidate] === domain);
+  return site === undefined ? undefined : { label, site };
+}
+
+/** The site a Preview host names, or none for a host that is not one. */
+const previewSiteOf = (hostname: string): Site | undefined => previewOf(hostname)?.site;
+
+/**
+ * The three sites' addresses as a page asked on `hostname` names them (#266).
+ * On a Preview they are its siblings, under the same label; on any other host
+ * they are the live ones.
+ */
+export function originsOf(hostname: string): SiteOrigins {
+  const preview = previewOf(hostname);
+  if (preview === undefined) return ORIGIN;
+  const sibling = (site: Site) => `https://${preview.label}.${PREVIEW_DOMAIN[site]}`;
+  return { lexema: sibling("lexema"), developers: sibling("developers"), api: sibling("api") };
 }
 
 /** Whether a host is a Preview's developer site: `<name>.developers-preview.lexema.fyi`. */

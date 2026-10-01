@@ -30,7 +30,7 @@ import { afterDelete, takeNotice, type NoticeStore } from "@/lib/developers/arri
 import { apiNotFound, handleApi } from "@/worker/api/handler.ts";
 import { TestMetering } from "./metering.ts";
 import { CSRF_FIELD, csrfTokenOf, type DashboardBindings, DASHBOARD, DELETE_CONFIRMATION, SETTINGS, SIGN_IN_PAGE, withDashboard } from "@/worker/dashboard.ts";
-import { byHost } from "@/worker/hosts.ts";
+import { byHost, ORIGIN } from "@/worker/hosts.ts";
 import { withRateLimits, type LimitBindings } from "@/worker/rateLimit.ts";
 import { AFTER_SIGN_OUT, SESSION_COOKIE, signedInAccount, withSignIn, type SignInBindings } from "@/worker/signIn.ts";
 import { StubProvider } from "./stubProvider.ts";
@@ -92,7 +92,7 @@ function site({ limits = {}, billing = BILLING_OFF, email }: { limits?: Partial<
     const start = await send(`${DEVELOPERS}/sign-in/google`);
     const back = await send(google.consent(start.headers.get("location") ?? "", profile).toString());
     assert.equal(back.status, 303);
-    const accountId = await signedInAccount(cookie(), db, NOW);
+    const accountId = await signedInAccount(cookie(), db, NOW, ORIGIN);
     assert.ok(accountId !== undefined);
     const csrf = await csrfTokenOf(cookie());
     assert.ok(csrf !== undefined);
@@ -104,7 +104,7 @@ function site({ limits = {}, billing = BILLING_OFF, email }: { limits?: Partial<
       if (!body.has(CSRF_FIELD)) body.set(CSRF_FIELD, csrf);
       return send(`${DEVELOPERS}${path}`, { method: "POST", headers, body });
     };
-    return { jar, send, post, accountId, csrf, signedIn: () => signedInAccount(cookie(), db, NOW) };
+    return { jar, send, post, accountId, csrf, signedIn: () => signedInAccount(cookie(), db, NOW, ORIGIN) };
   }
 
   /** Every row an action could change, to prove one changed nothing. */
@@ -532,7 +532,7 @@ test("after delete-account every key the account owned answers 401 revoked_key, 
   assert.equal(deleted.status, 200);
   assert.deepEqual(await answerOf(deleted), { outcome: "signed-out", location: AFTER_SIGN_OUT });
   assert.ok(!adas.jar.has(SESSION_COOKIE), "the session cookie is cleared");
-  assert.equal(await signedInAccount(cookie, db, NOW), undefined);
+  assert.equal(await signedInAccount(cookie, db, NOW, ORIGIN), undefined);
 
   const dictionary = new DatabaseSync(":memory:");
   dictionary.exec(SCHEMA);

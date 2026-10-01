@@ -4,8 +4,9 @@
 // the excerpt's lines are laid out as board 25 draws them.
 
 import { API_PREFIX } from "@lexema/api/calls.ts";
+import type { SiteOrigins } from "@/worker/hosts.ts";
 import {
-  API_BASE,
+  apiBaseOf,
   ENDPOINT_REFERENCE,
   ENDPOINTS_IN_ORDER,
   LOOKUP_FILTERED_EXAMPLE,
@@ -72,9 +73,9 @@ const FEATURES = [
   { heading: "Close matches", text: "A typo or a missing accent returns what it probably was." },
 ] as const;
 
-export function DeveloperLanding() {
+export function DeveloperLanding({ origins }: { origins: SiteOrigins }) {
   return (
-    <DeveloperPage>
+    <DeveloperPage origins={origins}>
       <main className={DEV_SHELL}>
         <h1 className={LANDING_HEADING}>The Lexema API</h1>
         <p className={LANDING_LEAD}>
@@ -91,7 +92,7 @@ export function DeveloperLanding() {
 
         <pre className={LANDING_CODE}>
           <code>
-            <span className={LANDING_CODE_STRONG}>{`GET ${API_BASE}/lookup?q=${WORD}`}</span>
+            <span className={LANDING_CODE_STRONG}>{`GET ${apiBaseOf(origins)}/lookup?q=${WORD}`}</span>
             {"\n"}
             <span className={LANDING_CODE_MUTED}>{`X-API-Key: ${LANDING_KEY}`}</span>
             {"\n\n"}

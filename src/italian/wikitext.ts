@@ -36,7 +36,7 @@ import type { RawPage, RawPageRef } from "../source/rawPage.js";
 // --- Page layout ------------------------------------------------------------
 
 /** `== {{-it-}} ==` opens the Italian section; any other `== {{-xx-}} ==` closes it. */
-const LANGUAGE_HEADING = /^==\s*\{\{-([A-Za-z-]+)-\}\}\s*==\s*$/;
+export const LANGUAGE_HEADING = /^==\s*\{\{-([A-Za-z-]+)-\}\}\s*==\s*$/;
 /** `{{-sost-|it}}`: a part-of-speech heading inside the Italian section. */
 const POS_HEADING = /^\{\{-([a-z][a-z \-]*?)-\|it\}\}\s*$/;
 /** Any other `{{-sill-}}`-style heading ends the list above it. */

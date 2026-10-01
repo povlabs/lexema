@@ -36,6 +36,7 @@ import { searchAttempt } from "@/lib/dictionary/searchAttempt.ts";
 import { Attribution } from "@/components/dictionary/Attribution";
 import { FirstLoad, Limited, Outcome, Pending, SearchPage, TRY_WORDS } from "@/components/dictionary/SearchPage";
 import { SiteFooter } from "@/components/dictionary/SiteFooter";
+import { ORIGIN } from "@/worker/hosts.ts";
 import { SiteHeader } from "@/components/dictionary/SiteHeader";
 import { readingChoiceLabel } from "@/components/dictionary/ReportDialog";
 import { PhraseView } from "@/components/dictionary/Phrase";
@@ -1319,7 +1320,7 @@ test("the field is a combobox in both states, and still a plain named input for 
 });
 
 test("every page reaches the attribution page from the footer's four links, and the developer site from a fifth", async () => {
-  const footer = renderToStaticMarkup(<SiteFooter />);
+  const footer = renderToStaticMarkup(<SiteFooter origins={ORIGIN} />);
   const links = [...footer.matchAll(new RegExp(`<a class="${esc(SITE_FOOTER_LINK)}" href="([^"]+)">([^<]+)</a>`, "g"))];
   assert.deepEqual(links.map((match) => match[2]), ["Attribution", "About the data", "Licence", "Contact", "Developers"]);
   for (const [, href] of links.slice(0, 4)) assert.match(href, /^\/attribution(#|$)/);
@@ -1331,7 +1332,7 @@ test("every page reaches the attribution page from the footer's four links, and 
   // The layout imports globals.css, which Node cannot load, so that it carries
   // this footer is asserted on the file.
   const layout = await readFile(join(REPO, "web/app/(lexema)/layout.tsx"), "utf8");
-  assert.match(layout, /<SiteFooter \/>/);
+  assert.match(layout, /<SiteFooter origins=\{await siteOrigins\(\)\} \/>/);
 });
 
 test("the search page carries no credit line, no licence name and no contributor text", async () => {
