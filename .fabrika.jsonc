@@ -11,9 +11,6 @@
     "design-system-manifest.md",
     "lefthook.yml"
   ],
-  // Who may clear a spent repair round. Fabrika 0.8.0 ignores this key and
-  // reads CODEOWNERS plus write access instead; kept to match Fabrika's repo.
-  "capClearAuthors": ["@hueypov"],
   // Names that mean something only here; the portability guard keeps them out
   // of Fabrika's own shipped text.
   "portability": { "repoNames": ["lexema", "hueypov", "website-v2"] },
@@ -29,7 +26,7 @@
   // Epic runs: count machinery laps apart from the repair budget. Read when a
   // lane is emitted, so lanes already on disk keep the old count.
   "machineryLaps": { "onEmit": "on" },
-  // If CODEOWNERS cannot be read, refuse. Nothing in Fabrika 0.8.0 reads this
+  // If CODEOWNERS cannot be read, refuse. Nothing in Fabrika 0.9.0 reads this
   // key; it is set strict so it cannot drift if it is wired up again.
   "unreadableCodeowners": "refuse",
   "uiSurfaces": [
