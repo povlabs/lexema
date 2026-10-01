@@ -85,8 +85,6 @@ colo MXP.
 | suggest | `vado v` | 0 words, 1 phrase | 6 | 0 | 0.0 | 35 | 1.59 | 312 |
 | suggest | `xqz` | 0 words, 0 phrases | 2 | 0 | 0.0 | 2 | 0.40 | 130 |
 
-What it says:
-
 The first row is one indexed statement, added by the desk as a baseline.
 
 What it says:
@@ -97,7 +95,7 @@ What it says:
 - **Autocomplete is cheap.** Every one-word prefix runs 2 statements and reads
   23 rows, about 0.5 ms of SQL. A phrase prefix (`vado v`) runs 6.
 - **The cost is the statement count.** A word runs 11 to 45 statements, about
-  9 to 15 per reading, and lookup awaits many of them in turn: `casa`'s 15
+  9 to 18 per reading, and lookup awaits many of them in turn: `casa`'s 15
   statements took about 17 round trips' worth of wall time. The one search
   near a limit is the template sentence `inserisci qui voce al plurale`
   ([#342](https://github.com/hueypov/lexema/issues/342)): 993 statements, 7
@@ -108,7 +106,9 @@ What it says:
 
 Statement counts and rows read are identical to the read-only figures in
 [an earlier comment on #3](https://github.com/hueypov/lexema/issues/3#issuecomment-5933139971),
-taken the same day by the same method, and the SQL times agree within a few ms.
+taken the same day by the same method. The SQL times are close but not
+identical: `avere` took 68 ms here against 79 ms there, and the template
+sentence 243 ms against 261 ms.
 
 ## Two releases at once
 
