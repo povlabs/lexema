@@ -19,6 +19,8 @@ import { readFile, readdir } from "node:fs/promises";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { Oklch } from "./oklch.ts";
+
 /** The folders the page's code lives in: routes, components and their logic. */
 const ROOTS = ["../app", "../components", "../lib"].map((dir) => fileURLToPath(new URL(dir, import.meta.url)));
 
@@ -114,4 +116,41 @@ test("the role tokens are declared once, in globals.css, and nowhere else", asyn
     ROLES.length,
     "exactly nine colour roles are declared: no tenth role, and no scale step",
   );
+});
+
+// The design file's colour and font variables, exported from Pencil. The `.pen`
+// file is encrypted and CI cannot read it, so this snapshot stands in for it;
+// design-system-manifest.md says when to re-export it. Huey ruled that the
+// stylesheet must match the design file, so a drift on either side fails here
+// (https://github.com/hueypov/lexema/issues/103#issuecomment-5926547670).
+const DESIGN: Record<string, string> = JSON.parse(
+  await readFile(fileURLToPath(new URL("./fixtures/design-variables.json", import.meta.url)), "utf8"),
+);
+
+/** The value of one custom property in globals.css, or a failure naming it. */
+function declared(css: string, property: string): string {
+  const match = new RegExp(`^ {2}--${property}: (.+);$`, "m").exec(css);
+  assert.ok(match, `--${property} is declared in globals.css`);
+  return match[1];
+}
+
+test("each colour role in globals.css paints the design file's hex", async () => {
+  const css = await readFile(fileURLToPath(new URL("../app/globals.css", import.meta.url)), "utf8");
+  const roles = [...css.matchAll(/^ {2}--color-([a-z-]+):/gm)].map(([, role]) => role);
+  assert.equal(roles.length, 9, "nine colour roles to compare");
+
+  for (const role of roles) {
+    assert.ok(role in DESIGN, `the design file has a variable for role ${role}`);
+    const value = declared(css, `color-${role}`);
+    assert.equal(Oklch.parse(value).toHex(), DESIGN[role], `--color-${role}: ${value}`);
+  }
+});
+
+test("each font role in globals.css leads with the design file's family", async () => {
+  const css = await readFile(fileURLToPath(new URL("../app/globals.css", import.meta.url)), "utf8");
+  for (const role of ["serif", "sans", "mono"]) {
+    const value = declared(css, `font-${role}`);
+    const primary = value.split(",")[0].trim().replace(/^"(.*)"$/, "$1");
+    assert.equal(primary, DESIGN[role], `--font-${role}: ${value}`);
+  }
 });
