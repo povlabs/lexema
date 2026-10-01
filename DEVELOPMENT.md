@@ -397,6 +397,14 @@ They set no hooks
 ([#344](https://github.com/hueypov/lexema/issues/344#issuecomment-5929722588)).
 Your own settings go in `.claude/settings.local.json`, which Git ignores.
 
+A park must name its cause. [.fabrika.jsonc](./.fabrika.jsonc) sets
+`parkCause.uncaused` to `refuse`, so a `BLOCKED` without `--cause` is
+refused with exit 52 and never lands on the lane. It sets
+`parkCause.driverRouted` to `clear`, so `fabrika recipe unpark` clears a
+park whose cause is the driver's without asking Huey
+([#350](https://github.com/hueypov/lexema/issues/350)). `fabrika lane
+report --help` lists the causes.
+
 ### Git hooks and new worktrees
 
 `pnpm install` in the main checkout installs the git hooks through lefthook

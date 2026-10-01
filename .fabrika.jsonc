@@ -24,5 +24,9 @@
   ],
   "uiCapture": {
     "viewport": { "width": 1440, "height": 900 }
-  }
+  },
+  // Every park names its cause (#350). A park with no cause is refused
+  // instead of recorded, because an uncaused park routes to Huey. A park
+  // whose cause routes to the driver is cleared by the driver, not by Huey.
+  "parkCause": { "uncaused": "refuse", "driverRouted": "clear" }
 }
