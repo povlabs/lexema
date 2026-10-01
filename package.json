@@ -19,6 +19,7 @@
     "hide:records": "tsx src/import/hideRecordsCli.ts",
     "update:upgrade": "tsx src/update/updateCli.ts upgrade",
     "update:diff": "tsx src/update/updateCli.ts diff",
+    "update:select": "tsx src/update/updateCli.ts select",
     "update:apply": "tsx src/update/updateCli.ts apply",
     "db:generate": "drizzle-kit generate",
     "db:check-d1": "tsx src/db/app/sampleRowsCli.ts",

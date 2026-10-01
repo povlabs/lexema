@@ -141,7 +141,8 @@ many readings it builds: the release beside the search; every matched record's
 lemma links, grammar and forms; each kept reading's line, senses, recovered
 definitions, inflections and reviews, and each lemma's line; then what needs one
 of those first: expressions, an inflection's candidates, a recovered
-definition's labels and examples. A phrase lookup waits on its own probes and
+definition's labels and examples, and the line of a record it was recovered
+for that a change replaced. A phrase lookup waits on its own probes and
 forms before those four. `test/lookup.test.ts` holds the four for `sale`,
 `studente`, `casa` and `andavano`, so an added `await` fails it only when it
 puts one of those words past four.

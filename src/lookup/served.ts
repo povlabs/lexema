@@ -4,7 +4,7 @@
 // `LEXEMA_RELEASE` names the master, and every serving read keys on the
 // releases it serves (`served_release` in src/db/schema.sql), never on that one
 // release_id alone, so a record a change wrote is found beside the records it
-// did not touch.
+// did not touch. What a cache keys on is the served version below.
 
 import type { DictionaryRead, LookupDatabase, SqlValue } from "./database.js";
 
@@ -42,6 +42,41 @@ export const SERVED_RELEASES_SQL: DictionaryRead = `SELECT release_id FROM serve
 export async function servedReleases(db: LookupDatabase, masterId: string): Promise<string[]> {
   return (await db.all<{ release_id: string }>(SERVED_RELEASES_SQL, [masterId])).map((row) => row.release_id);
 }
+
+/**
+ * What a reader is served, as of now: the master `LEXEMA_RELEASE` names, and
+ * the last change applied to it (#368). A release activation or rollback moves
+ * the release, and an apply moves the last change, so a cache keyed on this
+ * version is never answered from data an apply or a flip has since replaced.
+ *
+ * The last change stands for every change before it because changes are only
+ * ever added, one apply at a time, and each change's id names its content
+ * (src/update/changes.ts).
+ */
+export interface ServedVersion {
+  release: string;
+  /** The change applied last, or `null` before the first apply. */
+  lastChange: string | null;
+}
+
+/**
+ * The newest `applied_change` row. Rows are only ever added, so the highest
+ * rowid is the last one written; SQLite reads it off the end of the table, so
+ * D1 counts one row read however many changes there are.
+ */
+export const LAST_CHANGE_SQL: DictionaryRead = `SELECT change_id FROM applied_change ORDER BY rowid DESC LIMIT 1`;
+
+/** The version the master `release` serves now. */
+export async function servedVersion(db: LookupDatabase, release: string): Promise<ServedVersion> {
+  const [last] = await db.all<{ change_id: string }>(LAST_CHANGE_SQL, []);
+  return { release, lastChange: last?.change_id ?? null };
+}
+
+/**
+ * `it-0c432803.0` before the first apply, `it-0c432803.chg-0123456789ab`
+ * after one: the version as an address names it.
+ */
+export const versionToken = ({ release, lastChange }: ServedVersion): string => `${release}.${lastChange ?? "0"}`;
 
 /**
  * A range read in key order, over every release a master serves: `sql` reads

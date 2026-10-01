@@ -463,7 +463,7 @@ src/
 ├── lookup/         # exact surface lookup over the master: a release and the changes applied to it
 ├── readerReport/   # readers' reports as a person reviews them; `pnpm run report`
 ├── source/         # gzip JSONL streaming and provenance refs
-└── update/         # a later release against the master; `pnpm run update:diff`, `pnpm run update:apply`
+└── update/         # a later release against the master; `pnpm run update:diff`, `update:select`, `update:apply`
 web/                # the @lexema/web workspace: the Worker and the search page
 test/               # unit tests, plus the dataset-backed adapter test
 fixtures/           # the checked forms and the local release metadata

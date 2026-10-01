@@ -87,6 +87,8 @@ import { FIXTURE_LINES } from "./fixture.js";
 
 const REPO = fileURLToPath(new URL("../..", import.meta.url));
 const RELEASE = "it-page-test";
+/** The served version's token a page hands its search field. */
+const VERSION = `${RELEASE}.0`;
 
 interface Fixture {
   dir: string;
@@ -167,7 +169,7 @@ async function attempt(db: DatabaseSync, query: string): Promise<Attempt> {
 async function render(db: DatabaseSync, query: string): Promise<string> {
   const answer = await attempt(db, query);
   return renderToStaticMarkup(
-    <SearchPage raw={query}>
+    <SearchPage raw={query} version={VERSION}>
       <Outcome raw={query} attempt={answer} />
     </SearchPage>,
   );
@@ -799,7 +801,7 @@ async function renderChanged(db: DatabaseSync, query: string, change: (readings:
   if (answer.outcome !== "found") throw new Error("unreachable");
   change(answer.readings);
   return renderToStaticMarkup(
-    <SearchPage raw={query}>
+    <SearchPage raw={query} version={VERSION}>
       <Outcome raw={query} attempt={answer} />
     </SearchPage>,
   );
@@ -1272,7 +1274,7 @@ test("each spelling of a cell has its own article line", async () => {
 
 test("the home page is the name, the field and the Try chips, centred", async () => {
   const home = renderToStaticMarkup(
-    <SearchPage raw="">
+    <SearchPage raw="" version={VERSION}>
       <FirstLoad />
     </SearchPage>,
   );
@@ -1303,7 +1305,7 @@ test("a results page has the top bar and one bordered field with a clear control
 
 test("the field is a combobox in both states, and still a plain named input for the GET form", async () => {
   const home = renderToStaticMarkup(
-    <SearchPage raw="">
+    <SearchPage raw="" version={VERSION}>
       <FirstLoad />
     </SearchPage>,
   );
@@ -1388,7 +1390,7 @@ test("a repeated query parameter is searched, not thrown on", async () => {
 
 test("renders the states that are not an answer: rejected, failed, not found", async () => {
   const failed = renderToStaticMarkup(
-    <SearchPage raw="sale">
+    <SearchPage raw="sale" version={VERSION}>
       <Outcome raw="sale" attempt={{ outcome: "failed" }} />
     </SearchPage>,
   );
@@ -1407,7 +1409,7 @@ test("renders the states that are not an answer: rejected, failed, not found", a
 
 test("a search over the limit says so plainly, under the same field, and claims nothing about the word", () => {
   const html = renderToStaticMarkup(
-    <SearchPage raw="sale">
+    <SearchPage raw="sale" version={VERSION}>
       <Limited raw="sale" />
     </SearchPage>,
   );
