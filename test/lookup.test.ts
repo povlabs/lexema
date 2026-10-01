@@ -843,7 +843,7 @@ function countingRoundTrips(sqlite: DatabaseSync): { db: LookupDatabase; roundTr
   };
 }
 
-test("a lookup waits on the database at most four times in a row, however many readings it builds (#385)", async () => {
+test("a lookup the index spells waits on the database at most four times in a row, however many readings it builds (#385)", async () => {
   await withFixture(async (sqlite) => {
     // sale: three readings, two lemma links, a lemma listed by its table.
     // studente: four readings, inflections, an ambiguous edge. On D1 each
