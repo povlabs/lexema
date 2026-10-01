@@ -14,7 +14,7 @@ import { freshAppDatabase } from "../../test/databases.js";
 import { SignIn } from "@/components/developers/SignIn";
 import { SIGN_IN_PROVIDER } from "@/components/shared/styles.ts";
 import { apiNotFound } from "@/worker/api/handler.ts";
-import { byHost } from "@/worker/hosts.ts";
+import { byHost, ORIGIN, originsOf } from "@/worker/hosts.ts";
 import { limitOf, withRateLimits, type LimitBindings } from "@/worker/rateLimit.ts";
 import { AFTER_SIGN_IN, SESSION_COOKIE, signedInAccount, withSignIn, type SignInBindings } from "@/worker/signIn.ts";
 import type { Stage } from "@/worker/stage.ts";
@@ -22,6 +22,8 @@ import { offersTestSignIn, TEST_SIGN_IN, withTestSignIn } from "@/worker/testSig
 
 const NOW = Date.parse("2026-09-30T12:00:00Z");
 const PREVIEW_DEVELOPERS = "https://huey-245-test-sign-in.developers-preview.lexema.fyi";
+/** The sites as that Preview's pages name them. */
+const PREVIEW_ORIGINS = originsOf(new URL(PREVIEW_DEVELOPERS).hostname);
 
 const allow: RateLimit = { limit: async () => ({ success: true }) };
 const env: LimitBindings & SignInBindings = {
@@ -116,7 +118,7 @@ test("on a Preview's developer host the test sign-in signs the test developer in
   for (const attribute of ["httponly", "secure", "samesite=lax", "path=/"]) assert.ok(session.attributes.includes(attribute), attribute);
   assert.ok(!session.attributes.some((attribute) => attribute.startsWith("domain")), "host-only: no Domain");
 
-  const accountId = await signedInAccount(session.cookie, appDb, NOW);
+  const accountId = await signedInAccount(session.cookie, appDb, NOW, PREVIEW_ORIGINS);
   assert.equal(typeof accountId, "number");
   assert.deepEqual(await accountProfile(appDb, accountId ?? 0), {
     email: TEST_DEVELOPER_PROFILE.verifiedEmail,
@@ -127,8 +129,8 @@ test("on a Preview's developer host the test sign-in signs the test developer in
   // Again, from the same browser: the same account, and the first session ends.
   const again = await send(`${PREVIEW_DEVELOPERS}${TEST_SIGN_IN}`, post(PREVIEW_DEVELOPERS, session.cookie));
   assert.equal(again.status, 303);
-  assert.equal(await signedInAccount(sessionOf(again).cookie, appDb, NOW), accountId);
-  assert.equal(await signedInAccount(session.cookie, appDb, NOW), undefined);
+  assert.equal(await signedInAccount(sessionOf(again).cookie, appDb, NOW, PREVIEW_ORIGINS), accountId);
+  assert.equal(await signedInAccount(session.cookie, appDb, NOW, PREVIEW_ORIGINS), undefined);
   assert.equal(count("developer_account"), 1);
   assert.equal(count("provider_identity"), 1);
   assert.equal(count("developer_session"), 1);
@@ -163,14 +165,14 @@ test("the sign-in page shows the test sign-in button on a Preview's developer ho
   }
 
   const available = { google: true, github: true };
-  const offered = renderToStaticMarkup(<SignIn available={available} testSignIn />);
+  const offered = renderToStaticMarkup(<SignIn available={available} testSignIn origins={PREVIEW_ORIGINS} />);
   // Base UI's Button, in the providers' own style, submitting a form POST.
   assert.ok(
     offered.includes(
       `<form action="${TEST_SIGN_IN}" method="post"><button type="submit" tabindex="0" class="${SIGN_IN_PROVIDER}">Sign in as test developer</button></form>`,
     ),
   );
-  for (const markup of [renderToStaticMarkup(<SignIn available={available} />), renderToStaticMarkup(<SignIn available={available} testSignIn={false} />)]) {
+  for (const markup of [renderToStaticMarkup(<SignIn available={available} origins={ORIGIN} />), renderToStaticMarkup(<SignIn available={available} testSignIn={false} origins={ORIGIN} />)]) {
     assert.doesNotMatch(markup, /test developer/);
     assert.ok(!markup.includes(TEST_SIGN_IN));
   }

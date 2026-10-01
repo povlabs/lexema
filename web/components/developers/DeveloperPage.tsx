@@ -16,7 +16,7 @@
 
 import type { ReactNode } from "react";
 import { SIGN_IN_PAGE } from "@/worker/dashboard.ts";
-import { ORIGIN } from "@/worker/hosts.ts";
+import type { SiteOrigins } from "@/worker/hosts.ts";
 import { AccountMenu } from "./AccountMenu";
 import { DASHBOARD, SETTINGS } from "@/lib/developers/dashboardActions.ts";
 import { DeveloperMenu, type DeveloperMenuLink } from "./DeveloperMenu";
@@ -87,9 +87,12 @@ export const developerMenuLinks = (signedIn: SignedIn | undefined, current: Deve
 /** The bar has no Settings: on the settings page it marks the dashboard, as board 28g draws it. */
 const barSection = (current: DeveloperSection | undefined): DeveloperSection | undefined => (current === "settings" ? "dashboard" : current);
 
-/** The footer's links: the dictionary, the two public pages, and the contact address. No Terms until #162. */
-export const DEVELOPER_FOOTER_LINKS: readonly { label: string; href: string }[] = [
-  { label: "lexema.fyi", href: ORIGIN.lexema },
+/**
+ * The footer's links: the dictionary, the two public pages, and the contact
+ * address. No Terms until #162. The dictionary is on the host `origins` names (#266).
+ */
+export const developerFooterLinks = (origins: SiteOrigins): readonly { label: string; href: string }[] => [
+  { label: "lexema.fyi", href: origins.lexema },
   { label: "Docs", href: "/docs" },
   { label: "Pricing", href: "/pricing" },
   { label: "Contact", href: `mailto:${CONTACT_EMAIL}` },
@@ -174,7 +177,7 @@ function DeveloperHeader({ current, wide, signedIn }: { current?: DeveloperSecti
   );
 }
 
-export function DeveloperFooter({ wide = false }: { wide?: boolean }) {
+export function DeveloperFooter({ wide = false, origins }: { wide?: boolean; origins: SiteOrigins }) {
   return (
     <footer className={DEV_FOOTER}>
       <div className={wide ? DEV_FOOTER_INNER_WIDE : DEV_FOOTER_INNER}>
@@ -183,7 +186,7 @@ export function DeveloperFooter({ wide = false }: { wide?: boolean }) {
         </a>
         <nav aria-label="Site">
           <ul className={DEV_FOOTER_LINKS}>
-            {DEVELOPER_FOOTER_LINKS.map((link) => (
+            {developerFooterLinks(origins).map((link) => (
               <li key={link.label}>
                 <a className={DEV_FOOTER_LINK} href={link.href}>
                   {link.label}
@@ -202,6 +205,7 @@ export function DeveloperPage({
   current,
   wide = false,
   signedIn,
+  origins,
   children,
 }: {
   /** The page the bar marks as the one being read. */
@@ -210,13 +214,15 @@ export function DeveloperPage({
   wide?: boolean;
   /** Signed in: the bar names the dashboard and carries the account menu. */
   signedIn?: SignedIn;
+  /** The sites' addresses as this request's host names them: the footer links the dictionary. */
+  origins: SiteOrigins;
   children: ReactNode;
 }) {
   return (
     <>
       <DeveloperHeader current={current} wide={wide} signedIn={signedIn} />
       {children}
-      <DeveloperFooter wide={wide} />
+      <DeveloperFooter wide={wide} origins={origins} />
     </>
   );
 }

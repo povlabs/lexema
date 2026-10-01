@@ -45,7 +45,7 @@ import { accountMailOf, workerEmailOf, type EmailBinding } from "@lexema/email/s
 import { accessOf, defaultKeyName, draftOf, readDraft } from "@/lib/developers/createKeyForm.ts";
 import { CSRF_FIELD, DASHBOARD, DELETE_CONFIRM_FIELD, DELETE_CONFIRMATION, SETTINGS, UNREACHABLE, type ActionAnswer } from "@/lib/developers/dashboardActions.ts";
 import { keyRowOf } from "@/lib/developers/dashboardView.ts";
-import { DEVELOPERS_SEGMENT } from "./hosts.ts";
+import { DEVELOPERS_SEGMENT, originsOf } from "./hosts.ts";
 import type { FetchHandler } from "./rateLimit.ts";
 import { AFTER_SIGN_OUT, clearedCookie, readCookie, SESSION_COOKIE, signedInAccount } from "./signIn.ts";
 
@@ -157,7 +157,7 @@ export async function answerDashboard(request: Request, route: DashboardRoute, c
     if (db === undefined) throw new Error("no D1 binding: this Worker has no APP_DB");
     const cookies = request.headers.get("cookie");
     const session = readCookie(cookies, SESSION_COOKIE);
-    const accountId = await signedInAccount(cookies, db, context.now);
+    const accountId = await signedInAccount(cookies, db, context.now, originsOf(url.hostname));
     if (session === undefined || accountId === undefined) return refuse(401, "Sign in first.");
     const form = await formOf(request);
     if (form === undefined || !(await csrfMatches(session, field(form, CSRF_FIELD)))) {
@@ -219,7 +219,7 @@ export async function openDashboardPage<E>(request: Request, context: DashboardC
   let accountId: number | undefined;
   try {
     if (context.appDb === undefined) throw new Error("no D1 binding: this Worker has no APP_DB");
-    accountId = await signedInAccount(request.headers.get("cookie"), context.appDb, context.now);
+    accountId = await signedInAccount(request.headers.get("cookie"), context.appDb, context.now, originsOf(new URL(request.url).hostname));
   } catch (failure) {
     console.error("dashboard page failed", failure);
     return text(503, "The dashboard could not be opened. Try again later.");

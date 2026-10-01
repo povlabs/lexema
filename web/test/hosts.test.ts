@@ -5,7 +5,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { apiNotFound } from "@/worker/api/handler.ts";
-import { byHost, destinationOf, DEVELOPERS_SEGMENT } from "@/worker/hosts.ts";
+import { byHost, destinationOf, DEVELOPERS_SEGMENT, ORIGIN, originsOf } from "@/worker/hosts.ts";
 
 const to = (url: string) => destinationOf(new URL(url));
 
@@ -176,4 +176,35 @@ test("a preview domain names a site only one label below it", () => {
   }
   // `developers-preview` and `api-preview` end in `-preview`, not `.preview`, so neither reads as the dictionary's.
   assert.deepEqual(to("https://x.api-preview.lexema.fyi/v1/lookup"), { to: "api" });
+});
+
+test("a Preview's pages name its sibling hosts, under the same label, from each of its three hosts (#266)", () => {
+  for (const name of ["huey-266-preview-links", "a1b2c3d4-huey-266-preview-links"]) {
+    const siblings = {
+      lexema: `https://${name}.preview.lexema.fyi`,
+      developers: `https://${name}.developers-preview.lexema.fyi`,
+      api: `https://${name}.api-preview.lexema.fyi`,
+    };
+    for (const domain of ["preview.lexema.fyi", "developers-preview.lexema.fyi", "api-preview.lexema.fyi"]) {
+      assert.deepEqual(originsOf(`${name}.${domain}`), siblings, `${name}.${domain}`);
+    }
+  }
+});
+
+test("live and local hosts, and any host not a Preview's, name the live sites (#266)", () => {
+  for (const hostname of [
+    "lexema.fyi",
+    "developers.lexema.fyi",
+    "api.lexema.fyi",
+    "localhost",
+    "developers.localhost",
+    "api.localhost",
+    "",
+    "developers-preview.lexema.fyi",
+    "a.b.developers-preview.lexema.fyi",
+    "x.api-preview.lexema.fyi.example.com",
+  ]) {
+    assert.deepEqual(originsOf(hostname), ORIGIN, hostname);
+  }
+  assert.deepEqual(ORIGIN, { lexema: "https://lexema.fyi", developers: "https://developers.lexema.fyi", api: "https://api.lexema.fyi" });
 });

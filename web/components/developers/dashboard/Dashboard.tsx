@@ -20,6 +20,7 @@
 // Last used …", then its endpoints, then "Expires …" (#187).
 
 import { Meter } from "@base-ui/react/meter";
+import type { SiteOrigins } from "@/worker/hosts.ts";
 import { DeveloperPage } from "@/components/developers/DeveloperPage";
 import { CreateKeyControl, DashboardFlow, KeyTable } from "./DashboardFlow";
 import { DashboardTabs } from "./DashboardTabs";
@@ -83,10 +84,10 @@ function PeriodMeter({ period, labelledBy }: { period: PeriodUsage; labelledBy: 
  * `made` counts every key the account has made, revoked ones too, for the
  * create dialog's default name.
  */
-export function Dashboard({ view, csrf, made }: { view: DashboardView; csrf: string; made: number }) {
+export function Dashboard({ view, csrf, made, origins }: { view: DashboardView; csrf: string; made: number; origins: SiteOrigins }) {
   return (
     <DashboardFlow keys={view.keys} made={made} csrf={csrf}>
-      <DeveloperPage current="dashboard" signedIn={view.signedIn}>
+      <DeveloperPage current="dashboard" signedIn={view.signedIn} origins={origins}>
         <main className={DASH_SHELL}>
           <h1 className={DASH_HEADING}>Dashboard</h1>
           <DashboardTabs current="keys" />

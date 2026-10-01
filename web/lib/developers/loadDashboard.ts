@@ -15,15 +15,16 @@ import type { Serving } from "@lexema/billing/plans.ts";
 import { redirect } from "next/navigation";
 import { accountMeterOf } from "@/worker/api/metering.ts";
 import { csrfTokenOf, SIGN_IN_PAGE } from "@/worker/dashboard.ts";
+import type { SiteOrigins } from "@/worker/hosts.ts";
 import { signedInAccount } from "@/worker/signIn.ts";
 import { dashboardView, periodUsageOf, settingsView, type DashboardView, type PeriodUsage, type SettingsView } from "./dashboardView.ts";
 import { appDatabase } from "@/lib/shared/database.ts";
 
 /** The signed-in account a dashboard page is for, with every key it owns, revoked ones too. */
-async function signedInOwner(cookies: string | null) {
+async function signedInOwner(cookies: string | null, origins: SiteOrigins) {
   const db = appDatabase();
   const now = Date.now();
-  const accountId = await signedInAccount(cookies, db, now);
+  const accountId = await signedInAccount(cookies, db, now, origins);
   const csrf = await csrfTokenOf(cookies);
   const profile: AccountProfile | undefined = accountId === undefined ? undefined : await accountProfile(db, accountId);
   if (accountId === undefined || csrf === undefined || profile === undefined) redirect(SIGN_IN_PAGE);
@@ -44,8 +45,8 @@ async function periodUsage(accountId: number, serving: Serving): Promise<PeriodU
   return periodUsageOf(serving, await meter.periodCalls(new Date(serving.period.start).toISOString()));
 }
 
-export async function loadDashboard(cookies: string | null): Promise<LoadedDashboard> {
-  const { db, now, accountId, csrf, profile, keys } = await signedInOwner(cookies);
+export async function loadDashboard(cookies: string | null, origins: SiteOrigins): Promise<LoadedDashboard> {
+  const { db, now, accountId, csrf, profile, keys } = await signedInOwner(cookies, origins);
   const [usage, plan] = await Promise.all([accountUsage(db, accountId, now), accountPlan(db, accountId, now)]);
   const period = await periodUsage(accountId, plan.serving);
   return { view: dashboardView(profile, keys, usage, period, now), csrf, keys };
@@ -56,8 +57,8 @@ export interface LoadedSettings {
   csrf: string;
 }
 
-export async function loadSettings(cookies: string | null): Promise<LoadedSettings> {
-  const { db, now, accountId, csrf, profile, keys } = await signedInOwner(cookies);
+export async function loadSettings(cookies: string | null, origins: SiteOrigins): Promise<LoadedSettings> {
+  const { db, now, accountId, csrf, profile, keys } = await signedInOwner(cookies, origins);
   const plan = await accountPlan(db, accountId, now);
   return { view: settingsView(profile, keys, plan), csrf };
 }
