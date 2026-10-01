@@ -60,6 +60,14 @@ test("a spelling that is a note's piece in one place and a word in another stays
   ]);
 });
 
+test("a note shows where its first piece is, not where a word it holds is listed on its own earlier", () => {
+  assert.deepEqual(relatedItems(list(["civile", "x", "(rurale", "civile", "industriale)"])), [
+    { kind: "word", word: "civile" },
+    { kind: "word", word: "x" },
+    { kind: "note", text: "(rurale, civile, industriale)" },
+  ]);
+});
+
 test("an ordinary list is unchanged: every entry a word, in order", () => {
   const words = ["andare", "recarsi", "muoversi (di luogo)"];
   assert.deepEqual(
