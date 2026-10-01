@@ -11,7 +11,7 @@ import { open, type FileHandle } from "node:fs/promises";
 import { createInterface } from "node:readline";
 import { createGunzip } from "node:zlib";
 import { IT_NORMALIZER_VERSION, normalizeItalianExact } from "../italian/normalize.js";
-import { normalizeGloss } from "../italian/sourceTextNormalization.js";
+import { normalizeFormSurface, normalizeGloss } from "../italian/sourceTextNormalization.js";
 import {
   expectedFormDimensions,
   expectedRecordDimensions,
@@ -457,10 +457,13 @@ export function writeRecord(
   const { recordId, releaseId, record, reportMember } = ctx;
 
   // Read once, before either pass over forms[], so a form whose surface is not
-  // a string is reported exactly once however many passes look at it.
-  const formSurfaces = record.forms.map((form, formIndex) =>
-    stringLeaf(form.form, `/forms/${formIndex}/form`, reportMember),
-  );
+  // a string is reported exactly once however many passes look at it. A surface
+  // the source text normalization says is no form (ADR 0019, #342) is not a
+  // refusal, so it is not reported, but it gets no row either.
+  const formSurfaces = record.forms.map((form, formIndex) => {
+    const surface = stringLeaf(form.form, `/forms/${formIndex}/form`, reportMember);
+    return surface === null ? null : normalizeFormSurface(surface) ?? null;
+  });
 
   statements.insertRecord.run(
     recordId,

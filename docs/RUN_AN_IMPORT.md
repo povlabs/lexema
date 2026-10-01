@@ -145,39 +145,46 @@ applied to the same database: the steps are
 is [UPDATES.md](UPDATES.md). The seed cannot load a second release over the
 first, since it refuses a database with tables.
 
-## Update glosses in a seeded database
+## Normalize source text in a seeded database
 
 The seed stores some source text rewritten by a fixed rule, a *source text
 normalization* ([ADR 0019](../.decisions/0019-source-text-may-be-normalized.md)).
-The first rewrites a gloss opening "1ª/2ª/3ª persona" as "prima/seconda/terza
-persona" ([#257](https://github.com/hueypov/lexema/issues/257)). A database
+One rewrites a gloss opening "1ª/2ª/3ª persona" as "prima/seconda/terza
+persona" ([#257](https://github.com/hueypov/lexema/issues/257)). Another drops
+a `forms[]` entry spelled exactly "inserisci qui voce al plurale",
+Wikizionario's empty plural template, so it is no searchable form and no row in
+a forms table ([#342](https://github.com/hueypov/lexema/issues/342)). A database
 seeded before a rule existed gets it from a one-off update, with no reseed:
 
 ```sh
-pnpm run normalize:glosses
+pnpm run normalize:source-text
 ```
 
 It picks its database the way the seed does: the local D1 under `SEED_STATE`
 (default `.data/seed-state`), or the remote D1 `SEED_REMOTE` names. It rewrites
-only `sense_gloss` rows the rule changes, never `source_record_json`, then reads
-the rows back and fails if any still needs the rule. It ends by printing
-`sense_gloss: <n> row(s) changed`. A second run changes 0 rows.
+only the `sense_gloss` rows a rule changes, and removes only the `lookup_form`
+rows of a dropped form with the `grammar_claim` rows about that form. It never
+touches `source_record_json`. It reads the rows back and fails if any still
+needs a rule, then prints `sense_gloss: <n> row(s) changed` and
+`lookup_form: <n> row(s) removed, grammar_claim: <n> row(s) removed`. A second
+run changes 0 rows.
 
 For the full local seed:
 
 ```sh
-SEED_STATE=.data/full-state pnpm run normalize:glosses
+SEED_STATE=.data/full-state pnpm run normalize:source-text
 ```
 
 For the shared `lexema-dictionary`, from Huey's laptop, signed in to Wrangler
 as for the upload above:
 
 ```sh
-SEED_REMOTE=lexema-dictionary pnpm run normalize:glosses
+SEED_REMOTE=lexema-dictionary pnpm run normalize:source-text
 ```
 
 Put `CLOUDFLARE_ACCOUNT_ID=<account id>` first if Wrangler lists more than one
-account. On release `it-0c432803` the first run prints
-`sense_gloss: 177 row(s) changed`, and every later run prints 0. It writes
-through Wrangler from the laptop, never through the Worker's read-only
-binding.
+account. On release `it-0c432803`, a database seeded before both rules prints
+`sense_gloss: 177 row(s) changed` and
+`lookup_form: 110 row(s) removed, grammar_claim: 111 row(s) removed` on the
+first run, and 0 on every later run. It writes through Wrangler from the
+laptop, never through the Worker's read-only binding.

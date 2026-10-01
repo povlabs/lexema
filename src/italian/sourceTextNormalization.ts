@@ -1,7 +1,8 @@
 // Source text normalization (ADR 0019): fixed rewrites of source-derived text,
 // so one meaning reads one way across the dictionary. The seed applies them to
 // the structured rows, and a one-off update applies the same function to a
-// database seeded before a rule existed (src/import/normalizeGlosses.ts). The
+// database seeded before a rule existed (src/import/normalizeGlosses.ts,
+// src/import/normalizeForms.ts). The
 // raw line in `source_record_json` never passes through here. This is not the
 // search normalization in normalize.ts, which only builds lookup keys.
 
@@ -24,3 +25,21 @@ export function normalizeGloss(text: string): string {
  * `normalizeGloss` decide, so the rule is written once.
  */
 export const NORMALIZABLE_GLOSS_GLOB = "[123]ª persona*";
+
+/**
+ * Wikizionario's empty plural template: where an editor never filled in a
+ * noun's plural, the page keeps the template's prompt and the extraction lists
+ * it as the plural form. In release `it-0c432803`, 110 Italian records carry it,
+ * each once, always tagged `plural`.
+ */
+export const PLURAL_PLACEHOLDER_FORM = "inserisci qui voce al plurale";
+
+/**
+ * A `forms[].form` as Lexema stores it, or undefined when the entry is no form
+ * at all. #342: the plural template is a prompt, not a spelling, so it gets no
+ * lookup row and no form claims. Only the exact text matches; any other form,
+ * however it reads, is kept as written.
+ */
+export function normalizeFormSurface(surface: string): string | undefined {
+  return surface === PLURAL_PLACEHOLDER_FORM ? undefined : surface;
+}
