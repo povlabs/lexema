@@ -20,6 +20,14 @@
 //   cell.
 // - Only nouns, adjectives and phrases get a grid. A proper name, a prefix or
 //   any other part of speech gets none, and no generated articles.
+// - A noun whose own record gives no plural — no plural headword, no plural
+//   form, not invariable — takes the plural of a noun record that glosses
+//   itself "plurale di <word>" (`it-plural-gloss/v1`, #145): `case` fills
+//   casa's femminile plurale, and `casetta`, "diminutivo di casa", fills
+//   nothing. It goes in the gender the gloss names (`femminile plurale di`),
+//   else every gender that record's tags state, else the noun's own gender
+//   when it states exactly one; otherwise it takes no cell. A record's own
+//   plural always wins, so this never adds a second one.
 // - A form that takes no cell is not shown: the page shows data, never a note
 //   on what it could not place (Huey, 2026-09-27, on #142).
 //
@@ -31,7 +39,7 @@
 // cell has no article line.
 
 import { isAdjectiveReading, isNounReading } from "@lexema/lookup/types.ts";
-import type { GrammarClaim, Reading, SourceForm } from "@lexema/lookup/types.ts";
+import type { GrammarClaim, InflectionOf, PluralDeclaration, Reading, SourceForm } from "@lexema/lookup/types.ts";
 import { generateItalianArticles, spokenOpening, type SpokenOpening } from "@lexema/italian/articles.ts";
 
 export const GENDERS = ["masculine", "feminine"] as const;
@@ -51,6 +59,8 @@ export interface Spelling {
   surface: string;
   headword: boolean;
   forms: SourceForm[];
+  /** The records that gloss themselves this word's plural and spell it: `case` for casa. */
+  declaredBy: InflectionOf[];
 }
 
 export interface GridCell {
@@ -109,19 +119,28 @@ function articleLine(surface: string, gender: Gender, number: GrammaticalNumber,
   );
 }
 
+/** Where a spelling in a cell comes from. */
+type Entry =
+  | { kind: "headword" }
+  | { kind: "form"; form: SourceForm }
+  | { kind: "declared-plural"; record: InflectionOf };
+
+const HEADWORD: Entry = { kind: "headword" };
+
 class GridBuilder {
   private readonly cells = new Map<string, Spelling[]>();
 
-  put(gender: Gender, number: GrammaticalNumber, entry: SourceForm | "headword", surface: string): void {
+  put(gender: Gender, number: GrammaticalNumber, entry: Entry, surface: string): void {
     const key = `${gender} ${number}`;
     const spellings = this.cells.get(key) ?? [];
     let spelling = spellings.find((existing) => existing.surface === surface);
     if (spelling === undefined) {
-      spelling = { surface, headword: false, forms: [] };
+      spelling = { surface, headword: false, forms: [], declaredBy: [] };
       spellings.push(spelling);
     }
-    if (entry === "headword") spelling.headword = true;
-    else spelling.forms.push(entry);
+    if (entry.kind === "headword") spelling.headword = true;
+    else if (entry.kind === "form") spelling.forms.push(entry.form);
+    else spelling.declaredBy.push(entry.record);
     this.cells.set(key, spellings);
   }
 
@@ -154,6 +173,28 @@ function inflects(reading: Reading): boolean {
   return phrase || isNounReading(reading) || isAdjectiveReading(reading);
 }
 
+/**
+ * Whether the record gives its own plural: it states the number plural or
+ * invariable, or lists a plain form that states plural, placed or not
+ * (`fine` lists `fini` with no gender, which still is its plural).
+ */
+function givesPlural(reading: Reading): boolean {
+  const numbers = statedValues(reading.grammar.record, "number");
+  if (numbers.includes("plural") || numbers.includes("invariable")) return true;
+  return reading.forms.some((form) => degreesOf(form).length === 0 && numberOf(form.claims) === "plural");
+}
+
+/**
+ * The genders a declared plural goes in: the one its gloss names, else the ones
+ * its record's tags state, else the noun's own when it states exactly one.
+ */
+function pluralGenders(plural: PluralDeclaration, nounGenders: readonly Gender[]): readonly Gender[] {
+  if (plural.glossGender !== undefined) return [plural.glossGender];
+  const tagged = gendersOf(plural.recordGenders);
+  if (tagged.length > 0) return tagged;
+  return nounGenders.length === 1 ? nounGenders : [];
+}
+
 export function agreementOf(reading: Reading): Agreement {
   if (!inflects(reading)) return { grid: undefined, superlative: undefined };
   const plain = new GridBuilder();
@@ -167,7 +208,7 @@ export function agreementOf(reading: Reading): Agreement {
     : reading.forms.length > 0 ? stated
     : [];
   for (const number of headwordNumbers) {
-    for (const gender of recordGenders) plain.put(gender, number, "headword", reading.word);
+    for (const gender of recordGenders) plain.put(gender, number, HEADWORD, reading.word);
   }
 
   for (const form of reading.forms) {
@@ -177,7 +218,16 @@ export function agreementOf(reading: Reading): Agreement {
     const genders = own.length > 0 ? own : recordGenders.length === 1 ? recordGenders : [];
     const number = numberOf(form.claims);
     if (target === undefined || genders.length === 0 || number === undefined) continue;
-    for (const gender of genders) target.put(gender, number, form, form.surface);
+    for (const gender of genders) target.put(gender, number, { kind: "form", form }, form.surface);
+  }
+
+  if (isNounReading(reading) && !givesPlural(reading)) {
+    for (const record of reading.inflections) {
+      if (record.plural === undefined || record.pos !== "noun") continue;
+      for (const gender of pluralGenders(record.plural, recordGenders)) {
+        plain.put(gender, "plural", { kind: "declared-plural", record }, record.word);
+      }
+    }
   }
 
   const spoken = spokenOpening(reading.wordFacts.pronunciations.map((sound) => sound.ipa));

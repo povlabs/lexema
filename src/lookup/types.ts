@@ -55,6 +55,9 @@ export type GrammarClaim =
   | { status: "unclassified"; sourceText: string; ref: SourceRef }
   | { status: "missing"; dimension: string; ref: SourceRef };
 
+/** A claim the source states, with its value. */
+export type StatedClaim = Extract<GrammarClaim, { status: "stated" }>;
+
 /** Grammar claims, split by what they are about. */
 export interface Grammar {
   /** About the record itself. */
@@ -345,6 +348,26 @@ export interface InflectionOf {
    * lemma of `word`.
    */
   targetCandidates: LemmaCandidate[];
+  /**
+   * Where the declaring record says it is this reading's plural: `case` glosses
+   * "plurale di casa" (`it-plural-gloss/v1`, src/italian/pluralGloss.ts).
+   * Absent for every other gloss: `casetta` says "diminutivo di casa".
+   */
+  plural: PluralDeclaration | undefined;
+}
+
+/**
+ * A record's gloss saying it is the plural of a word, and the genders that
+ * record states. The gloss is the first one on the first edge's sense that
+ * reads so.
+ */
+export interface PluralDeclaration {
+  /** The gloss that says it, as stored: `plurale di casa` at `/senses/0/glosses/0`. */
+  gloss: SourceText;
+  /** The gender the gloss names: `femminile plurale di …`. Undefined for a bare `plurale di …`. */
+  glossGender: "masculine" | "feminine" | undefined;
+  /** The declaring record's own stated gender claims, from its tags; empty when it states none. */
+  recordGenders: StatedClaim[];
 }
 
 /**

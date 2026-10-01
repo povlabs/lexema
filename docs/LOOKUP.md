@@ -313,9 +313,20 @@ shows the lemma's whole table from it.
 | `ref` | the edge on that record |
 | `targetWord` | the word the edge names, verbatim |
 | `targetCandidates[]` | every headword record `targetWord` resolves to, this reading included |
+| `plural` | where the declaring record glosses itself this reading's plural, or `undefined` |
 
 More than one candidate means the source did not choose, and the reading must
 not be rendered as *the* lemma of `word`.
+
+`plural` is read by rule `it-plural-gloss/v1`
+([`pluralGloss.ts`](../src/italian/pluralGloss.ts)): the first gloss of an
+edge's sense opens with `plurale di`, `femminile plurale di`, `maschile plurale
+di`, `plurale femminile di` or `plurale maschile di`, then this reading's word,
+then nothing that continues the word. `case` ("plurale di casa") carries one for
+`casa`; `casetta` ("diminutivo di casa") does not. It holds the `gloss` with its
+ref, the `glossGender` the opening names, if any, and `recordGenders`, the
+declaring record's own stated gender claims. Where the page puts that spelling
+is the grid's rule ([`genderGrid.ts`](../web/lib/dictionary/genderGrid.ts)).
 
 ### `Review`
 
@@ -325,7 +336,8 @@ replaces it.
 
 ## Exported SQL
 
-`SEARCH_SQL`, `LEMMA_LINK_SQL`, `INFLECTION_SQL` and `INFLECTION_CANDIDATE_SQL` are exported
+`SEARCH_SQL`, `LEMMA_LINK_SQL`, `INFLECTION_SQL`, `INFLECTION_CANDIDATE_SQL` and
+`INFLECTION_GENDER_SQL` are exported
 so tests can assert their query plans. See
 [the design notes](LOOKUP_DESIGN.md#the-view-that-costs-four-orders-of-magnitude).
 

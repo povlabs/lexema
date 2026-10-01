@@ -342,6 +342,23 @@ test("a noun or adjective's forms are a gender by number grid with its article l
   });
 });
 
+test("casa takes its plural from `case`, which glosses itself plurale di casa, and never from the diminutive casetta (#145)", async () => {
+  await withDevSeed(async ({ db }) => {
+    // The real lines: `casa` lists no forms, `case` says "plurale di casa",
+    // `casetta` says "diminutivo di casa". All three are in the dev seed.
+    const casa = nth(await render(db, "casa"), 1);
+    assert.deepEqual(gridRows(casa), [
+      ["", "singolare", "plurale"],
+      ["femminile", "casala casa·una casa", "casele case·delle case"],
+    ]);
+    assert.doesNotMatch(textOf(casa.slice(casa.indexOf('data-grid=""'))), /casett/);
+    // The cell keeps where `case` came from: the declaring record's own line.
+    const declaring = (await readingsFor(db, "case")).filter((reading) => reading.word === "case");
+    assert.equal(declaring.length, 1);
+    assert.match(casa, new RegExp(`<span data-line="${declaring[0].ref.lineNo}">case</span>`));
+  });
+});
+
 test("a searched noun or adjective form, headword or inflected, is found but never marked in its grid (#111)", async () => {
   await withDevSeed(async ({ db }) => {
     // The lookup still returns the inflected form's own reading; only the mark is withheld.
