@@ -153,11 +153,14 @@ export async function receiveReport(submission: ReportSubmission, context: Repor
     .where(and(eq(readerReport.visitorHash, visitor), gt(readerReport.receivedAt, since)));
   if (sent >= REPORTS_PER_HOUR) return { outcome: "limited" };
 
-  // The reading is kept by its source line, which a re-seed cannot renumber (#12).
-  let line: { lineNo: number; lineSha256: string } | undefined;
+  // The reading is kept by its source line, which a re-seed cannot renumber
+  // (#12), in the release that line counts in: the master's own, or the later
+  // one a change brought the record from (#18).
+  let line: { releaseId: string; lineNo: number; lineSha256: string } | undefined;
   if (submission.recordId !== undefined) {
-    [line] = await db.all<{ lineNo: number; lineSha256: string }>(
-      "SELECT line_no AS lineNo, line_sha256 AS lineSha256 FROM source_record WHERE record_id = ? AND release_id = ?",
+    [line] = await db.all<{ releaseId: string; lineNo: number; lineSha256: string }>(
+      `SELECT release_id AS releaseId, line_no AS lineNo, line_sha256 AS lineSha256 FROM served_record
+        WHERE record_id = ?1 AND master_release_id = ?2`,
       [submission.recordId, context.release],
     );
     if (line === undefined) return { outcome: "rejected", reason: "reading" };
@@ -166,7 +169,7 @@ export async function receiveReport(submission: ReportSubmission, context: Repor
   // Stored and its opening used up together, so a token opens one report.
   await app.batch([
     app.insert(readerReport).values({
-      releaseId: context.release,
+      releaseId: line?.releaseId ?? context.release,
       word: submission.word,
       recordId: submission.recordId ?? null,
       lineNo: line?.lineNo ?? null,

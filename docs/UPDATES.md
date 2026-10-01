@@ -1,0 +1,154 @@
+# Why a later release is applied as chosen changes
+
+The dictionary database is the **master**: the release it was seeded from,
+plus the changes chosen from later kaikki releases. A later release is a
+**feed**, never a replacement. Huey ruled this on 2026-10-01
+([#18](https://github.com/hueypov/lexema/issues/18#issuecomment-5933489252)),
+keeping [ADR 0018](../.decisions/0018-previews-on-workers-builds.md)'s line
+that later releases apply as diffs, not full re-imports.
+
+This page explains the design. The steps to run are in
+[UPDATE_THE_DICTIONARY.md](UPDATE_THE_DICTIONARY.md).
+
+## Why not re-import
+
+A re-import would replace every row the master holds, and the master holds rows
+no kaikki release has: the recovered definitions read off raw Wiktionary pages
+(`raw_page`, `recovered_*`, [#28](https://github.com/hueypov/lexema/issues/28)),
+the notes in `claim_review`, and any layer added later. Each of them hangs off a
+source record by `record_id`, with `ON DELETE CASCADE`
+([src/db/schema.sql](../src/db/schema.sql)). Deleting or replacing a record
+would delete them with it, without a word.
+
+So the master is never rebuilt. A later file is compared with it, a person
+picks the changes worth taking, and only those are written.
+
+## Matching records across two files
+
+Neither file carries a stable id. `line_no` moves whenever a line is added
+above it, and `record_id` is an artefact of one database build
+([RECORD_IDENTITY.md](RECORD_IDENTITY.md#identity)). The diff therefore matches
+by content, inside each `(word, pos)` group
+([src/update/changes.ts](../src/update/changes.ts)):
+
+1. A later line byte for byte equal to a master line is the same record.
+2. A later line with the same content in another key order is the same record
+   too. Content is the line's JSON with every object's keys sorted
+   ([src/update/content.ts](../src/update/content.ts)).
+3. What is left in the group decides the change:
+   - only later records: each is **new**;
+   - only master records: each is **lost**;
+   - one on each side: the record **changed**;
+   - anything else, such as two `sale` nouns on each side: the group is
+     **ambiguous**. The schema notes groups of up to five records. Pairing them
+     by likeness would be a guess, so the diff names the group and offers no
+     change for it.
+
+A changed record is filed by what changed: **changed or fixed senses** when its
+`senses` differ, **other changes** when only other fields do. The split keeps
+the report readable. kaikki's build of 28 September 2026 added
+`etymology_links` to almost every record, which makes almost every record
+"changed" while its senses stay the same.
+
+## Change ids
+
+Each change has an id: `new-`, `chg-` or `lost-`, then twelve hex digits of a
+digest of its kind, word, part of speech and the digests of the lines it
+changes. The same master and the same later file give the same ids on every run
+and in any line order, so a person can choose from a report and apply later.
+The apply runs the diff again and applies only ids the new run finds. An id
+whose master record or file has moved since is refused.
+
+Two changes with one id hold byte-identical lines and could never be chosen
+apart. Their group is reported as ambiguous instead.
+
+## What an apply writes
+
+The apply is one SQL file, run once
+([src/update/apply.ts](../src/update/apply.ts)):
+
+- **The record.** Each chosen line goes through `writeRecord`, the seed's own
+  import path ([src/import/importRelease.ts](../src/import/importRelease.ts)),
+  with the source text normalizations of
+  [ADR 0019](../.decisions/0019-source-text-may-be-normalized.md). It is a new
+  record of the later release: `source_record.release_id` names that release,
+  `line_no` is its line there, and `source_record_json` holds the line byte for
+  byte. Every child row reaches it by `record_id`, and the index rows that
+  carry a release name the same one.
+- **The release.** The later release gets its `source_release` row the first
+  time a change is applied from it, with its id and checksum as a seed would
+  name them, and status `partial`: the checksum names the whole archive, and
+  only chosen records landed. `feed_release` ties it to the master, and
+  `release_table_rows` adds up what each apply wrote under it.
+- **The change.** `applied_change` records each change under its id, with the
+  record it wrote and, for a changed record, the record it replaced.
+- **The retired record.** The record a changed record replaces loses its
+  `lookup_form` and `form_of_edge` rows, so no search reaches it. Everything
+  else of it stays: its line, its senses, its claims, and the rows written by
+  hand beside it.
+- **The nearby indexes.** `accent_fold` and `typo_key` are recomputed with the
+  seed's own rules for every key the written and retired records spell. A row
+  that changes is replaced, and the new one is written under the later release.
+  A row already right stays in the release that wrote it.
+
+Nothing else is written. No record is deleted, and no row of `raw_page`,
+`recovered_*` or `claim_review` is touched.
+
+## Rows written by hand follow the record that replaced theirs
+
+A recovered definition or a review stays on the record it was written for.
+That record is retired, not deleted, so the row keeps its record and every
+foreign key it had. A lookup reads these rows for the record that replaced it
+through `applied_change`, one replacement after another
+([src/lookup/served.ts](../src/lookup/served.ts)). Each keeps the ref of the
+line it was written about, so a reader can still check it there.
+
+A recovered definition placed under a sense keeps its sense index. If the
+later record moved its senses about, the definition sits under whichever sense
+now has that index.
+
+## Serving a master of several releases
+
+`LEXEMA_RELEASE` still names one release: the master's own. The releases a
+master serves are a view, `served_release`: its own complete release, and every
+feed of it. Every serving read keys on that view instead of on one
+`release_id`, so a record a change wrote is found beside the records it did not
+touch, and an edge from one release finds its lemma in another. Each value a
+lookup returns carries the ref of its own record: a fixed word answers with the
+later release's id and line, and its neighbours still with the master's.
+
+The two prefix reads, for the search field and for phrase completions, walk an
+index in key order and stop at their limit. An `IN` over several releases would
+sort the whole range first, so they run once per served release and merge
+([`inKeyOrder`](../src/lookup/served.ts)).
+
+A random pick draws a line of the master's own release. A record a change
+replaced is answered with the record that replaced it. A word only a later
+release added is not drawn, since its line numbers count in another file.
+
+## A lookup never sees half an apply
+
+`wrangler d1 execute --file` runs a file as one unit: locally as one D1 batch,
+remotely through D1's import, which says "if the execution fails to complete,
+your DB will return to its original state" and serves no query while it runs.
+So a lookup reads the master either before an apply or after it, and an apply
+that stops partway leaves the master as it was. `test/update.test.ts` breaks a
+statement after the records are written and checks every row is back.
+
+## An older master
+
+A master seeded before #18 has none of `feed_release`, `applied_change` or the
+views that read them. The diff reads such a master as it is. The apply's SQL
+starts by creating the tables if they are absent and replacing the views, read
+out of `schema.sql` itself ([src/update/masterUpgrade.ts](../src/update/masterUpgrade.ts)),
+so a fresh seed and an upgraded master have the same shape.
+
+## What this does not do
+
+- **Remove a lost word.** A lost word is reported and never deleted. Whether a
+  chosen removal may ever delete a record is not ruled.
+- **Apply an ambiguous group.** It has no change id.
+- **Recover definitions for an applied record.** The recovered layer is written
+  by the seed from raw pages. An applied record gets the rows of its own line.
+  The definitions recovered for the record it replaced are still read.
+- **Check on a schedule.** A diff is run by hand, now and then.

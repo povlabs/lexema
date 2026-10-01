@@ -327,7 +327,14 @@ There are two databases, each with its own schema and its own Worker binding
 
 - **The dictionary**, bound as `DB`, is raw SQL in
   [src/db/schema.sql](./src/db/schema.sql): the release tables, plus
-  `claim_review`, which cascades from `source_record`. Code only reads it:
+  `claim_review`, which cascades from `source_record`, and `feed_release` and
+  `applied_change`, which record the changes applied from a later release
+  ([docs/UPDATES.md](./docs/UPDATES.md)). Lookups read the view
+  `served_release` over them, so a local dictionary seeded before
+  [#18](https://github.com/hueypov/lexema/issues/18) needs
+  `pnpm run update:upgrade` once, or a fresh seed; it reads them out of
+  `schema.sql` (`src/update/masterUpgrade.ts`). Any other change to
+  `schema.sql` needs a reseed or an update of its own. Code only reads it:
   [src/lookup/database.ts](./src/lookup/database.ts) hands it out as a
   `LookupDatabase`, whose one method takes a single `SELECT`, so a write does
   not type-check and is refused again at run time
@@ -453,9 +460,10 @@ src/
 ├── db/             # the dictionary schema and lookup queries as SQL; app/ holds the Drizzle app tables
 ├── import/         # the streaming importer, the SQL export and the dev seed
 ├── italian/        # the Italian adapter: normalize, tags, articles, examples
-├── lookup/         # exact surface lookup over a complete release
+├── lookup/         # exact surface lookup over the master: a release and the changes applied to it
 ├── readerReport/   # readers' reports as a person reviews them; `pnpm run report`
-└── source/         # gzip JSONL streaming and provenance refs
+├── source/         # gzip JSONL streaming and provenance refs
+└── update/         # a later release against the master; `pnpm run update:diff`, `pnpm run update:apply`
 web/                # the @lexema/web workspace: the Worker and the search page
 test/               # unit tests, plus the dataset-backed adapter test
 fixtures/           # the checked forms and the local release metadata

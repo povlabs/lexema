@@ -255,13 +255,22 @@ function readItalianRecord(parsed: JsonObject): KaikkiRecord {
  * here, so the two would disagree about how long a prefix is.
  */
 export function admitsRecord(line: string): boolean {
+  return italianRecordOf(line) !== undefined;
+}
+
+/**
+ * One source line as the import reads it, or undefined when the import would
+ * not admit it: the same admission test as the import loop. A line stored in
+ * `source_record_json` is read back through here, so a record already in the
+ * dictionary is seen exactly as the seed saw it.
+ */
+export function italianRecordOf(line: string): ArchiveRecord["record"] | undefined {
   try {
     const parsed = parseLine(line);
-    if (parsed.lang_code !== "it") return false;
-    readItalianRecord(parsed);
-    return true;
+    if (parsed.lang_code !== "it") return undefined;
+    return readItalianRecord(parsed);
   } catch (error) {
-    if (error instanceof MalformedLine) return false;
+    if (error instanceof MalformedLine) return undefined;
     throw error;
   }
 }

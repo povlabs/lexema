@@ -10,6 +10,7 @@ import type { DatabaseSync, StatementSync } from "node:sqlite";
 import { seedSql } from "../import/seedSql.js";
 import { fromNodeSqlite } from "../lookup/database.js";
 import { LEMMA_LINK_SQL, SEARCH_SQL, lookup } from "../lookup/lookup.js";
+import { servedBy } from "../lookup/served.js";
 
 /**
  * `LEMMA_LINK_SQL` as it read before it was inlined: the same columns, with the
@@ -18,16 +19,15 @@ import { LEMMA_LINK_SQL, SEARCH_SQL, lookup } from "../lookup/lookup.js";
  */
 export const LEMMA_LINK_VIA_VIEW_SQL = `SELECT e.edge_id, e.json_pointer, e.target_word,
             t.record_id   AS candidate_record_id,
+            t.release_id  AS candidate_release_id,
             t.line_no     AS candidate_line_no,
             t.line_sha256 AS candidate_line_sha256,
             t.pos         AS candidate_pos,
             t.word        AS candidate_word
        FROM form_of_edge e
-       JOIN source_release rel
-         ON rel.release_id = e.release_id AND rel.status = 'complete'
        LEFT JOIN form_of_candidate c ON c.edge_id = e.edge_id
        LEFT JOIN source_record t ON t.record_id = c.candidate_record_id
-      WHERE e.record_id = ?
+      WHERE e.record_id = ?1 AND e.release_id IN (${servedBy("?2")})
       ORDER BY e.edge_id, t.line_no`;
 
 /**
@@ -37,7 +37,7 @@ export const LEMMA_LINK_VIA_VIEW_SQL = `SELECT e.edge_id, e.json_pointer, e.targ
  */
 const READING_COUNT_SQL = `SELECT lf.surface_key AS key, min(lf.surface) AS surface, count(DISTINCT lf.record_id) AS readings
        FROM lookup_form lf
-      WHERE lf.release_id = ?
+      WHERE lf.release_id IN (${servedBy("?1")})
         AND NOT EXISTS (
               SELECT 1 FROM grammar_claim g
                WHERE g.record_id = lf.record_id
@@ -57,6 +57,8 @@ export const PROBE_RANKS = [
 
 /** A word to look up, and the records a lookup of it reads lemma links for. */
 export interface Probe {
+  /** The master the lookup reads. */
+  releaseId: string;
   label: string;
   word: string;
   key: string;
@@ -84,7 +86,7 @@ export function chooseProbes(db: DatabaseSync, releaseId: string): Probe[] {
       throw new Error(`'${surface}' ranked at ${readings} reading(s), but the search finds ${records.length}`);
     }
     const withEdges = records.filter((id) => (edges.get(id) as { has: number }).has === 1).length;
-    probes.push({ label, word: surface, key, records, withEdges });
+    probes.push({ releaseId, label, word: surface, key, records, withEdges });
   }
   return probes;
 }
@@ -97,13 +99,13 @@ export class FormsDisagree extends Error {
   }
 }
 
-const rowsOf = (statement: StatementSync, recordId: number): string =>
-  JSON.stringify(statement.all(recordId).map((row) => ({ ...row })));
+const rowsOf = (statement: StatementSync, recordId: number, releaseId: string): string =>
+  JSON.stringify(statement.all(recordId, releaseId).map((row) => ({ ...row })));
 
 /** Whether each form's query plan materialises a view. */
 export function materialises(db: DatabaseSync): { view: boolean; inlined: boolean } {
   const plan = (sql: string) =>
-    (db.prepare(`EXPLAIN QUERY PLAN ${sql}`).all(1) as { detail: string }[]).some((row) => row.detail.includes("MATERIALIZE"));
+    (db.prepare(`EXPLAIN QUERY PLAN ${sql}`).all(1, "") as { detail: string }[]).some((row) => row.detail.includes("MATERIALIZE"));
   return { view: plan(LEMMA_LINK_VIA_VIEW_SQL), inlined: plan(LEMMA_LINK_SQL) };
 }
 
@@ -113,7 +115,7 @@ export function assertFormsAgree(db: DatabaseSync, probes: readonly Probe[], via
   const inlined = db.prepare(LEMMA_LINK_SQL);
   for (const probe of probes) {
     for (const recordId of probe.records) {
-      if (rowsOf(view, recordId) !== rowsOf(inlined, recordId)) throw new FormsDisagree(probe.word, recordId);
+      if (rowsOf(view, recordId, probe.releaseId) !== rowsOf(inlined, recordId, probe.releaseId)) throw new FormsDisagree(probe.word, recordId);
     }
   }
 }
@@ -149,7 +151,7 @@ export async function timeProbe(db: DatabaseSync, releaseId: string, probe: Prob
   const view = db.prepare(LEMMA_LINK_VIA_VIEW_SQL);
   const inlined = db.prepare(LEMMA_LINK_SQL);
   const each = (statement: StatementSync) => () => {
-    for (const recordId of probe.records) statement.all(recordId);
+    for (const recordId of probe.records) statement.all(recordId, releaseId);
   };
   const reader = fromNodeSqlite(db);
   return {

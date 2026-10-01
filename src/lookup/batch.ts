@@ -15,14 +15,17 @@
 // names it, a form-of reading answered with its lemmas of its own part of
 // speech (`lemmasOfPartOfSpeech`), each record once.
 
-import type { LookupDatabase } from "./database.js";
+import type { DictionaryRead, LookupDatabase } from "./database.js";
 import { queryInfoOf, rejectionOf, servableRelease } from "./lookup.js";
 import { phraseMatchesOf } from "./phrase.js";
+import { servedBy } from "./served.js";
 import { lemmasOfPartOfSpeech, type QueryInfo, type RejectedResult, type ReleaseInfo } from "./types.js";
 
-/** One record a word is answered with: where it is in the release, its headword and its part of speech. */
+/** One record a word is answered with: where it is in its release, its headword and its part of speech. */
 export interface CandidateRecord {
   recordId: number;
+  /** The record's own release, which `lineNo` counts in: the master's, or a feed's (src/lookup/served.ts). */
+  releaseId: string;
   lineNo: number;
   word: string;
   pos: string;
@@ -48,13 +51,11 @@ export interface BatchLookup {
  * keys are one JSON array, so the read binds two values however many words a
  * batch sends. Exported so a test can assert the plan.
  */
-export const BATCH_SEARCH_SQL = `SELECT lf.surface_key, r.record_id, r.line_no, r.word, r.pos, r.pos_title,
+export const BATCH_SEARCH_SQL: DictionaryRead = `SELECT lf.surface_key, r.record_id, r.release_id, r.line_no, r.word, r.pos, r.pos_title,
             MAX(lf.origin = 'headword') AS is_about
        FROM lookup_form lf
        JOIN source_record r ON r.record_id = lf.record_id
-       JOIN source_release rel
-         ON rel.release_id = lf.release_id AND rel.status = 'complete'
-      WHERE lf.release_id = ?1 AND lf.surface_key IN (SELECT value FROM json_each(?2))
+      WHERE lf.release_id IN (${servedBy("?1")}) AND lf.surface_key IN (SELECT value FROM json_each(?2))
         AND NOT EXISTS (
               SELECT 1 FROM grammar_claim g
                WHERE g.record_id = lf.record_id
@@ -69,26 +70,26 @@ export const BATCH_SEARCH_SQL = `SELECT lf.surface_key, r.record_id, r.line_no, 
  * order, each with every headword record its target word names, or none when
  * it dangles. Exported so a test can assert the plan.
  */
-export const BATCH_LEMMA_LINK_SQL = `SELECT e.record_id, e.edge_id,
+export const BATCH_LEMMA_LINK_SQL: DictionaryRead = `SELECT e.record_id, e.edge_id,
             t.record_id   AS candidate_record_id,
+            t.release_id  AS candidate_release_id,
             t.line_no     AS candidate_line_no,
             t.word        AS candidate_word,
             t.pos         AS candidate_pos,
             t.pos_title   AS candidate_pos_title
        FROM form_of_edge e
-       JOIN source_release rel
-         ON rel.release_id = e.release_id AND rel.status = 'complete'
        LEFT JOIN lookup_form lf
-         ON lf.release_id = e.release_id
+         ON lf.release_id IN (${servedBy("?2")})
         AND lf.surface_key = e.target_word_key
         AND lf.origin = 'headword'
        LEFT JOIN source_record t ON t.record_id = lf.record_id
-      WHERE e.record_id IN (SELECT value FROM json_each(?1))
+      WHERE e.record_id IN (SELECT value FROM json_each(?1)) AND e.release_id IN (${servedBy("?2")})
       ORDER BY e.record_id, e.edge_id, t.line_no`;
 
 interface HitRow {
   surface_key: string;
   record_id: number;
+  release_id: string;
   line_no: number;
   word: string;
   pos: string;
@@ -100,6 +101,7 @@ interface LinkRow {
   record_id: number;
   edge_id: number;
   candidate_record_id: number | null;
+  candidate_release_id: string | null;
   candidate_line_no: number | null;
   candidate_word: string | null;
   candidate_pos: string | null;
@@ -117,6 +119,7 @@ type LightLink = { kind: "dangling" } | { kind: "candidates"; candidates: Candid
 
 const recordOf = (row: HitRow): CandidateRecord => ({
   recordId: row.record_id,
+  releaseId: row.release_id,
   lineNo: row.line_no,
   word: row.word,
   pos: row.pos,
@@ -136,11 +139,11 @@ async function search(db: LookupDatabase, releaseId: string, keys: readonly stri
 }
 
 /** Every `form_of` edge the records declare, by record, in one read. */
-async function linksOf(db: LookupDatabase, recordIds: readonly number[]): Promise<Map<number, LightLink[]>> {
+async function linksOf(db: LookupDatabase, releaseId: string, recordIds: readonly number[]): Promise<Map<number, LightLink[]>> {
   const byRecord = new Map<number, LightLink[]>();
   if (recordIds.length === 0) return byRecord;
   const byEdge = new Map<number, LightLink>();
-  for (const row of await db.all<LinkRow>(BATCH_LEMMA_LINK_SQL, [JSON.stringify(recordIds)])) {
+  for (const row of await db.all<LinkRow>(BATCH_LEMMA_LINK_SQL, [JSON.stringify(recordIds), releaseId])) {
     let link = byEdge.get(row.edge_id);
     if (link === undefined) {
       link = row.candidate_record_id === null ? { kind: "dangling" } : { kind: "candidates", candidates: [] };
@@ -150,6 +153,7 @@ async function linksOf(db: LookupDatabase, recordIds: readonly number[]): Promis
     if (link.kind === "candidates" && row.candidate_record_id !== null) {
       link.candidates.push({
         recordId: row.candidate_record_id,
+        releaseId: row.candidate_release_id as string,
         lineNo: row.candidate_line_no as number,
         word: row.candidate_word as string,
         pos: row.candidate_pos as string,
@@ -219,7 +223,7 @@ export async function lookupBatch({
   // A word nothing spells may still be a multi-word headword said the way a
   // speaker says it (#214). Each headword it reaches is a candidate as it is.
   const unspelled = keys.filter((key) => !spelled.has(key));
-  const [links, phrases] = await Promise.all([linksOf(db, aboutIds), phraseMatchesOf(db, releaseId, unspelled)]);
+  const [links, phrases] = await Promise.all([linksOf(db, releaseId, aboutIds), phraseMatchesOf(db, releaseId, unspelled)]);
   const probeKeys = [...new Set([...phrases.values()].flatMap((probes) => probes.map((probe) => probe.key)))];
   const headwords = await search(db, releaseId, probeKeys);
 

@@ -12,13 +12,13 @@ import {
   MAX_PREFIX_LENGTH,
   MIN_PREFIX_LENGTH,
   SUGGESTION_LIMIT,
-  SUGGEST_SQL,
   FIRST_SCAN,
   type SuggestResult,
   isAskablePrefix,
   prefixUpperBound,
   suggest,
 } from "../src/lookup/suggest.js";
+import { HEADWORD_PREFIX_SQL } from "../src/lookup/keyRange.js";
 
 // Each line is here for one rule of the order or one bound. The shapes are the
 // release's: a verb beside records that are only its forms, one spelling
@@ -219,7 +219,7 @@ test("the upper bound is the least key past every key with the prefix", () => {
 test("the prefix query is a range probe on the headword index, not a scan", async () => {
   await withFixture(async (db) => {
     const plan = (
-      db.prepare(`EXPLAIN QUERY PLAN ${SUGGEST_SQL}`).all(RELEASE, "cas", "cat", 10) as { detail: string }[]
+      db.prepare(`EXPLAIN QUERY PLAN ${HEADWORD_PREFIX_SQL}`).all(RELEASE, "cas", "cat", 10) as { detail: string }[]
     ).map((row) => row.detail);
     assert.ok(!plan.some((step) => /SCAN (lookup_form|lf|sense|s|form_of_edge|e)\b/.test(step)), plan.join("\n"));
     assert.ok(

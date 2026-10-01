@@ -17,7 +17,7 @@ await lookup({ db: fromNodeSqlite(sqlite), releaseId, query: "sale" });
 | Option | Type | Meaning |
 | --- | --- | --- |
 | `db` | `LookupDatabase` | a driver from `src/lookup/database.ts` |
-| `releaseId` | `string` | the release to read; must be `complete` |
+| `releaseId` | `string` | the master to read: its `complete` release, which serves the changes applied from later releases with it ([UPDATES.md](UPDATES.md)) |
 | `query` | `string` | the surface as typed |
 
 Returns `Promise<LookupResult>`. Types are in
@@ -237,7 +237,7 @@ is no text. The stored rows and
 
 | Field | Holds |
 | --- | --- |
-| `releaseId` | the release these coordinates are in; line numbers mean nothing outside one |
+| `releaseId` | the release these coordinates are in, the record's own: the master's, or the later release a change brought it from; line numbers mean nothing outside one |
 | `lineNo` | 1-based physical line in that release's `.jsonl.gz` |
 | `jsonPointer` | RFC 6901 pointer into that line; `""` is the whole record |
 | `lineSha256` | sha256 of the line's bytes, so the claim is checkable against the archive |
@@ -407,8 +407,11 @@ An earlier version of this branch ranked by definition and length instead;
 Huey rejected it for alphabetical. The measurements of both are in
 [the autocomplete measurements](../reports/2026-09-23-autocomplete-measurements.md).
 
-`SUGGEST_SQL` is exported so a test can assert it stays a range probe on
-`lookup_form_headword_by_key` with no sort step.
+`HEADWORD_PREFIX_SQL` in `src/lookup/keyRange.ts` is exported so a test can
+assert it stays a range probe on `lookup_form_headword_by_key` with no sort
+step. It reads one release, so a master with changes applied from a later
+release runs it once per release and merges the rows in key order
+([UPDATES.md](UPDATES.md#serving-a-master-of-several-releases)).
 
 ## When nothing is found
 

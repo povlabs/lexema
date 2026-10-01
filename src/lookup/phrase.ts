@@ -31,7 +31,8 @@ import {
   type WordLemmas,
 } from "../italian/phrase.js";
 import type { DictionaryRead, LookupDatabase } from "./database.js";
-import { prefixUpperBound } from "./keyRange.js";
+import { HEADWORD_PREFIX_SQL, prefixUpperBound } from "./keyRange.js";
+import { inKeyOrder, servedBy, servedReleases } from "./served.js";
 import type { PhraseDefinition, PhraseForm, PhraseMatch, PhraseWord } from "./types.js";
 
 /**
@@ -41,15 +42,15 @@ import type { PhraseDefinition, PhraseForm, PhraseMatch, PhraseWord } from "./ty
  * spellings are one JSON array, so the read binds two values however many
  * there are. Exported so a test can assert the plan.
  */
-export const WORD_LEMMAS_SQL = `SELECT lf.surface_key AS word, lf.surface_key AS lemma
+export const WORD_LEMMAS_SQL: DictionaryRead = `SELECT lf.surface_key AS word, lf.surface_key AS lemma
        FROM lookup_form lf
-      WHERE lf.release_id = ?1 AND lf.origin = 'headword'
+      WHERE lf.release_id IN (${servedBy("?1")}) AND lf.origin = 'headword'
         AND lf.surface_key IN (SELECT value FROM json_each(?2))
      UNION
      SELECT lf.surface_key AS word, e.target_word_key AS lemma
        FROM lookup_form lf
        JOIN form_of_edge e ON e.record_id = lf.record_id
-      WHERE lf.release_id = ?1 AND lf.origin = 'headword'
+      WHERE lf.release_id IN (${servedBy("?1")}) AND lf.origin = 'headword'
         AND lf.surface_key IN (SELECT value FROM json_each(?2))`;
 
 /**
@@ -57,11 +58,11 @@ export const WORD_LEMMAS_SQL = `SELECT lf.surface_key AS word, lf.surface_key AS
  * `forms[]` entry of a verb record the source tags both `participle` and
  * `past`. `andato` is `andare`'s. Exported so a test can assert the plan.
  */
-export const PAST_PARTICIPLE_SQL = `SELECT DISTINCT hw.surface_key AS verb
+export const PAST_PARTICIPLE_SQL: DictionaryRead = `SELECT DISTINCT hw.surface_key AS verb
        FROM lookup_form lf
        JOIN source_record r ON r.record_id = lf.record_id AND r.pos = 'verb'
        JOIN lookup_form hw ON hw.record_id = lf.record_id AND hw.origin = 'headword'
-      WHERE lf.release_id = ? AND lf.surface_key = ? AND lf.origin = 'embedded-form'
+      WHERE lf.release_id IN (${servedBy("?1")}) AND lf.surface_key = ?2 AND lf.origin = 'embedded-form'
         AND EXISTS (
               SELECT 1 FROM grammar_claim g
                WHERE g.record_id = lf.record_id
@@ -78,23 +79,10 @@ export const PAST_PARTICIPLE_SQL = `SELECT DISTINCT hw.surface_key AS verb
  * are one JSON array, so this is one read however many lemma sequences are
  * probed. Exported so a test can assert the plan.
  */
-export const HEADWORD_SPELLING_SQL = `SELECT surface_key, surface
+export const HEADWORD_SPELLING_SQL: DictionaryRead = `SELECT surface_key, surface
        FROM lookup_form
-      WHERE release_id = ?1 AND origin = 'headword'
+      WHERE release_id IN (${servedBy("?1")}) AND origin = 'headword'
         AND surface_key IN (SELECT value FROM json_each(?2))`;
-
-/**
- * The headwords that begin with a prefix, with how the source spells each, in
- * key order, at most `limit` rows. The same range probe on
- * `lookup_form_headword_by_key` as `SUGGEST_SQL` (src/lookup/suggest.ts).
- * Exported so a test can assert the plan.
- */
-export const HEADWORD_PREFIX_SQL = `SELECT surface_key, surface
-       FROM lookup_form
-      WHERE release_id = ?1 AND origin = 'headword'
-        AND surface_key >= ?2 AND surface_key < ?3
-      ORDER BY surface_key
-      LIMIT ?4`;
 
 /**
  * Which of the keys the exact lookup answers for: a key `SEARCH_SQL`
@@ -103,9 +91,9 @@ export const HEADWORD_PREFIX_SQL = `SELECT surface_key, surface
  * array, so this is one read however many phrases are offered. Exported so a
  * test can assert the plan.
  */
-export const EXACT_KEY_SQL = `SELECT DISTINCT lf.surface_key
+export const EXACT_KEY_SQL: DictionaryRead = `SELECT DISTINCT lf.surface_key
        FROM lookup_form lf
-      WHERE lf.release_id = ?1
+      WHERE lf.release_id IN (${servedBy("?1")})
         AND lf.surface_key IN (SELECT value FROM json_each(?2))
         AND NOT EXISTS (
               SELECT 1 FROM grammar_claim g
@@ -145,11 +133,22 @@ const splitWords = (key: string): string[] => key.split(/\s+/).filter((word) => 
 class PhraseReader {
   private readonly words = new Map<string, ReadWord>();
   private readonly participles = new Map<string, Promise<string[]>>();
+  private served: Promise<readonly string[]> | undefined;
 
+  /** `served` is the master's releases when the caller has read them already. */
   constructor(
     readonly db: LookupDatabase,
     readonly releaseId: string,
-  ) {}
+    served?: readonly string[],
+  ) {
+    this.served = served === undefined ? undefined : Promise.resolve(served);
+  }
+
+  /** The releases the master serves, read once (src/lookup/served.ts). */
+  releases(): Promise<readonly string[]> {
+    this.served ??= servedReleases(this.db, this.releaseId);
+    return this.served;
+  }
 
   /** Reads every spelling not read yet, all in one statement (`WORD_LEMMAS_SQL`). */
   async read(spellings: readonly string[]): Promise<void> {
@@ -328,15 +327,17 @@ async function completions(
   const heads = keysOf(lemmaSequences(slots) ?? []).filter((head) => !(besidesTyped && head === typed));
   const stored = new Map<string, string>();
   if (heads.length > MAX_PHRASE_PREFIX_PROBES) return { candidates: [], stored };
+  const releases = heads.length === 0 ? [] : await reader.releases();
   const read = await Promise.all(
     heads.map(async (head) => {
       const prefix = `${head} ${last}`;
-      const rows = await reader.db.all<{ surface_key: string; surface: string }>(HEADWORD_PREFIX_SQL, [
-        reader.releaseId,
-        prefix,
-        prefixUpperBound(prefix),
+      const rows = await inKeyOrder<{ surface_key: string; surface: string }>(
+        reader.db,
+        releases,
+        HEADWORD_PREFIX_SQL,
+        [prefix, prefixUpperBound(prefix)],
         limit,
-      ]);
+      );
       return rows.map((row) => {
         if (!stored.has(row.surface_key)) stored.set(row.surface_key, row.surface);
         return { phrase: `${typed} ${row.surface_key.slice(head.length + 1)}`, keys: [row.surface_key] };
@@ -411,13 +412,20 @@ export async function nearPhrases(db: LookupDatabase, releaseId: string, key: st
  * probed: the field's own prefix read already lists what begins with them
  * (`andare v` → `andare via`).
  *
- * `key` is the prefix as normalized for the index. A prefix of one word reads
- * nothing.
+ * `key` is the prefix as normalized for the index, and `served` the releases
+ * the master serves, which the field has read already. A prefix of one word
+ * reads nothing.
  */
-export async function phraseCompletions(db: LookupDatabase, releaseId: string, key: string, limit: number): Promise<PhraseOffer[]> {
+export async function phraseCompletions(
+  db: LookupDatabase,
+  releaseId: string,
+  served: readonly string[],
+  key: string,
+  limit: number,
+): Promise<PhraseOffer[]> {
   const typed = splitWords(key);
   if (typed.length < 2 || typed.length > MAX_PHRASE_WORDS || limit <= 0) return [];
-  const reader = new PhraseReader(db, releaseId);
+  const reader = new PhraseReader(db, releaseId, served);
   const leading = typed.slice(0, -1);
   await reader.read(leading);
   const { candidates, stored } = await completions(reader, leading, typed[typed.length - 1], limit, true);
@@ -492,14 +500,14 @@ export async function phraseMatchesOf(
  * "prima persona singolare del presente semplice indicativo di andare". Exported
  * so a test can assert the plan.
  */
-export const FORM_ENTRY_SQL = `SELECT DISTINCT r.record_id, r.word, r.pos_title, r.line_no, r.line_sha256,
+export const FORM_ENTRY_SQL: DictionaryRead = `SELECT DISTINCT r.record_id, r.release_id, r.word, r.pos_title, r.line_no, r.line_sha256,
             e.target_word AS lemma, s.sense_index, g.gloss_index, g.text, g.json_pointer
        FROM lookup_form lf
        JOIN source_record r ON r.record_id = lf.record_id
        JOIN form_of_edge e ON e.record_id = lf.record_id
        JOIN sense s ON s.record_id = e.record_id AND s.sense_index = e.sense_index
        JOIN sense_gloss g ON g.sense_id = s.sense_id
-      WHERE lf.release_id = ?1 AND lf.surface_key = ?2 AND lf.origin = 'headword'
+      WHERE lf.release_id IN (${servedBy("?1")}) AND lf.surface_key = ?2 AND lf.origin = 'headword'
         AND e.target_word_key = ?3`;
 
 /**
@@ -511,20 +519,20 @@ export const FORM_ENTRY_SQL = `SELECT DISTINCT r.record_id, r.word, r.pos_title,
  * hop is a verb's, and `fatte` the adjective's "femminile plurale di fatto" is
  * not a form of `fare`. Exported so a test can assert the plan.
  */
-export const PARTICIPLE_FORM_ENTRY_SQL = `SELECT DISTINCT r.record_id, r.word, r.pos_title, r.line_no, r.line_sha256,
+export const PARTICIPLE_FORM_ENTRY_SQL: DictionaryRead = `SELECT DISTINCT r.record_id, r.release_id, r.word, r.pos_title, r.line_no, r.line_sha256,
             e.target_word AS lemma, s.sense_index, g.gloss_index, g.text, g.json_pointer
        FROM lookup_form lf
        JOIN source_record r ON r.record_id = lf.record_id AND r.pos = 'verb'
        JOIN form_of_edge e ON e.record_id = lf.record_id
        JOIN sense s ON s.record_id = e.record_id AND s.sense_index = e.sense_index
        JOIN sense_gloss g ON g.sense_id = s.sense_id
-      WHERE lf.release_id = ?1 AND lf.surface_key = ?2 AND lf.origin = 'headword'
+      WHERE lf.release_id IN (${servedBy("?1")}) AND lf.surface_key = ?2 AND lf.origin = 'headword'
         AND e.target_word_key IN (
               SELECT pp.surface_key
                 FROM lookup_form hw
                 JOIN source_record v ON v.record_id = hw.record_id AND v.pos = 'verb'
                 JOIN lookup_form pp ON pp.record_id = hw.record_id AND pp.origin = 'embedded-form'
-               WHERE hw.release_id = ?1 AND hw.surface_key = ?3 AND hw.origin = 'headword'
+               WHERE hw.release_id IN (${servedBy("?1")}) AND hw.surface_key = ?3 AND hw.origin = 'headword'
                  AND EXISTS (
                        SELECT 1 FROM grammar_claim c
                         WHERE c.record_id = pp.record_id
@@ -538,6 +546,7 @@ export const PARTICIPLE_FORM_ENTRY_SQL = `SELECT DISTINCT r.record_id, r.word, r
 
 interface FormEntryRow {
   record_id: number;
+  release_id: string;
   word: string;
   pos_title: string;
   line_no: number;
@@ -584,7 +593,7 @@ export async function phraseForms(db: LookupDatabase, releaseId: string, phrases
       const swapped = phraseGloss(row.text, row.lemma, phrase.word);
       if (swapped === undefined || seen.has(once)) continue;
       seen.add(once);
-      const ref = { releaseId, lineNo: row.line_no, jsonPointer: row.json_pointer, lineSha256: row.line_sha256 };
+      const ref = { releaseId: row.release_id, lineNo: row.line_no, jsonPointer: row.json_pointer, lineSha256: row.line_sha256 };
       lines.push({ row, definition: { ...swapped, ref } });
     }
   }
@@ -603,7 +612,7 @@ export async function phraseForms(db: LookupDatabase, releaseId: string, phrases
       recordId: row.record_id,
       word: row.word,
       posTitle: row.pos_title,
-      ref: { releaseId, lineNo: row.line_no, jsonPointer: "", lineSha256: row.line_sha256 },
+      ref: { releaseId: row.release_id, lineNo: row.line_no, jsonPointer: "", lineSha256: row.line_sha256 },
       definitions: [definition],
     });
   }

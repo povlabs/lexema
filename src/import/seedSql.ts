@@ -9,6 +9,7 @@ import {
   parseArchive,
   writeRecord,
   type ArchiveParseReport,
+  type ArchiveRecord,
   type ImportStatement,
   type ImportStatements,
   type Rejection,
@@ -38,11 +39,12 @@ const TABLE_ORDER = [
   "release_table_rows",
 ] as const;
 
-type TableName = (typeof TABLE_ORDER)[number];
+export type TableName = (typeof TABLE_ORDER)[number];
 
 type RowCounts = Record<TableName, number>;
 
-const COLUMNS: Record<TableName, string> = {
+/** The columns each table's INSERT names, in the order its statement binds them. */
+export const COLUMNS: Record<TableName, string> = {
   source_record: "record_id,release_id,line_no,line_sha256,word,pos,pos_title,lang_code",
   source_record_json: "record_id,raw_json",
   lookup_form: "record_id,release_id,origin,surface,surface_key,json_pointer,form_index,form_source",
@@ -60,12 +62,23 @@ const COLUMNS: Record<TableName, string> = {
   release_table_rows: "release_id,table_name,rows",
 };
 
-const literal = (value: unknown): string => {
+/** A value as an SQL literal: the seed SQL binds nothing, so every value is written out. */
+export const literal = (value: unknown): string => {
   if (value === null || value === undefined) return "NULL";
   if (typeof value === "number") return Number.isFinite(value) ? String(value) : "NULL";
   if (typeof value === "bigint") return String(value);
   return `'${String(value).replaceAll("'", "''")}'`;
 };
+
+/**
+ * One row of `table` as the VALUES tuple its INSERT takes, in `COLUMNS`
+ * order. `writeRecord` binds a record without its `lang_code`, which the
+ * import admits only as `it`, so that column is added here.
+ */
+export function tupleOf(table: TableName, values: readonly unknown[]): string {
+  const row = table === "source_record" ? [...values, "it"] : values;
+  return `(${row.map(literal).join(",")})`;
+}
 
 class SqlBatchWriter {
   private readonly rows = new Map<TableName, string[]>();
@@ -96,8 +109,7 @@ class SqlBatchWriter {
   statement(table: Exclude<TableName, "release_table_rows">): ImportStatement {
     return {
       run: (...values: unknown[]) => {
-        const rowValues = table === "source_record" ? [...values, "it"] : values;
-        const tuple = `(${rowValues.map(literal).join(",")})`;
+        const tuple = tupleOf(table, values);
         const pending = this.rows.get(table) ?? [];
         const used = this.bytes.get(table) ?? 0;
         pending.push(tuple);
@@ -193,6 +205,63 @@ function translationLanguages(translations: unknown): string[] {
 }
 
 /**
+ * How common a spelling is, as far as the source can say: the distinct
+ * languages its lemma records translate into, and their senses plus forms.
+ * `accent_fold` and `typo_key` carry it, and src/lookup/nearby.ts ranks by it.
+ */
+export interface LemmaScore {
+  languages: Set<string>;
+  richness: number;
+}
+
+/**
+ * Add one record to the score of the key its headword spells, when it is a
+ * lemma record: one that declares itself a form of nothing. A form-of record
+ * adds nothing, so an inflected spelling never leads to itself.
+ */
+export function addLemmaRecord(scores: Map<string, LemmaScore>, record: ArchiveRecord["record"]): void {
+  if (!record.senses.every((sense) => sense.form_of.length === 0)) return;
+  const key = normalizeItalianExact(record.word);
+  const score = scores.get(key) ?? { languages: new Set<string>(), richness: 0 };
+  for (const language of translationLanguages(record.translations)) score.languages.add(language);
+  score.richness += record.senses.length + record.forms.length;
+  scores.set(key, score);
+}
+
+/** One `accent_fold` row, without its release. */
+export interface AccentFoldRow {
+  foldKey: string;
+  surfaceKey: string;
+  headword: 0 | 1;
+  languages: number;
+  richness: number;
+}
+
+/** One `typo_key` row, without its release. */
+export interface TypoKeyRow {
+  deletionKey: string;
+  surfaceKey: string;
+  languages: number;
+  richness: number;
+}
+
+/**
+ * The `accent_fold` row of a searchable key, or none when folding its accents
+ * changes nothing: the exact lookup already finds an unaccented key.
+ * `headword` is whether some record heads the key.
+ */
+export function accentFoldRowOf(key: string, headword: boolean, score: LemmaScore | undefined): AccentFoldRow | undefined {
+  const folded = foldKey(key);
+  if (folded === key) return undefined;
+  return { foldKey: folded, surfaceKey: key, headword: headword ? 1 : 0, languages: score?.languages.size ?? 0, richness: score?.richness ?? 0 };
+}
+
+/** The `typo_key` rows of a lemma headword key: itself and each spelling of it one character short. */
+export function typoKeyRowsOf(key: string, score: LemmaScore): TypoKeyRow[] {
+  return deletionKeys(key).map((deletion) => ({ deletionKey: deletion, surfaceKey: key, languages: score.languages.size, richness: score.richness }));
+}
+
+/**
  * The two indexes a search that found nothing reads (src/lookup/nearby.ts):
  * accent-folded keys, and the lemma headwords' single-deletion keys.
  */
@@ -200,21 +269,20 @@ async function writeNearbyIndexes(
   writer: SqlBatchWriter,
   releaseId: string,
   keys: ReadonlyMap<string, boolean>,
-  lemmaKeys: ReadonlyMap<string, { languages: ReadonlySet<string>; richness: number }>,
+  lemmaKeys: ReadonlyMap<string, LemmaScore>,
 ): Promise<void> {
   const fold = writer.statement("accent_fold");
   for (const [key, headword] of keys) {
-    const folded = foldKey(key);
-    if (folded === key) continue;
-    const score = lemmaKeys.get(key);
-    fold.run(releaseId, folded, key, headword ? 1 : 0, score?.languages.size ?? 0, score?.richness ?? 0);
+    const row = accentFoldRowOf(key, headword, lemmaKeys.get(key));
+    if (row === undefined) continue;
+    fold.run(releaseId, row.foldKey, row.surfaceKey, row.headword, row.languages, row.richness);
     writer.counts.accent_fold += 1;
     if (writer.hasFullBatch()) await writer.flush();
   }
   const typo = writer.statement("typo_key");
   for (const [key, score] of lemmaKeys) {
-    for (const deletion of deletionKeys(key)) {
-      typo.run(releaseId, deletion, key, score.languages.size, score.richness);
+    for (const row of typoKeyRowsOf(key, score)) {
+      typo.run(releaseId, row.deletionKey, row.surfaceKey, row.languages, row.richness);
       writer.counts.typo_key += 1;
     }
     if (writer.hasFullBatch()) await writer.flush();
@@ -286,7 +354,7 @@ export async function seedSql(options: SeedSqlOptions): Promise<SeedSqlReport> {
   const keys = new Map<string, boolean>();
   // A lemma headword key, and how common it is: the distinct languages its
   // lemma records translate into, and their senses plus forms.
-  const lemmaKeys = new Map<string, { languages: Set<string>; richness: number }>();
+  const lemmaKeys = new Map<string, LemmaScore>();
   const lookupRow = statements.insertLookup;
   statements.insertLookup = {
     run: (...values: unknown[]) => {
@@ -320,13 +388,7 @@ export async function seedSql(options: SeedSqlOptions): Promise<SeedSqlReport> {
       },
       onRecord: async (archiveRecord, reportMember) => {
         seenWords.add(archiveRecord.record.word);
-        if (archiveRecord.record.senses.every((sense) => sense.form_of.length === 0)) {
-          const key = normalizeItalianExact(archiveRecord.record.word);
-          const score = lemmaKeys.get(key) ?? { languages: new Set<string>(), richness: 0 };
-          for (const language of translationLanguages(archiveRecord.record.translations)) score.languages.add(language);
-          score.richness += archiveRecord.record.senses.length + archiveRecord.record.forms.length;
-          lemmaKeys.set(key, score);
-        }
+        addLemmaRecord(lemmaKeys, archiveRecord.record);
         archiveRecord.record.senses.forEach((sense) =>
           sense.form_of.forEach((target) => {
             if (typeof target.word === "string") targets.add(target.word);

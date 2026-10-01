@@ -43,7 +43,7 @@ function seededDatabase(): DatabaseSync {
 
 /** Bind only the parameters a given reference query actually names. */
 function run(db: DatabaseSync, sql: string, recordId: number) {
-  const available: Record<string, string | number> = { release: "test", key: "form", record_id: recordId };
+  const available: Record<string, string | number> = { master: "test", key: "form", record_id: recordId };
   const bound = Object.fromEntries(
     Object.entries(available).filter(([name]) => sql.includes(`:${name}`)),
   );

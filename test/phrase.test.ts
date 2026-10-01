@@ -29,7 +29,6 @@ import { findNearby, withinOneEdit } from "../src/lookup/nearby.js";
 import {
   EXACT_KEY_SQL,
   FORM_ENTRY_SQL,
-  HEADWORD_PREFIX_SQL,
   HEADWORD_SPELLING_SQL,
   nearPhrases,
   PARTICIPLE_FORM_ENTRY_SQL,
@@ -37,7 +36,8 @@ import {
   WORD_LEMMAS_SQL,
   type PhraseOffer,
 } from "../src/lookup/phrase.js";
-import { offered, suggest, SUGGEST_SQL, type Suggested } from "../src/lookup/suggest.js";
+import { offered, suggest, type Suggested } from "../src/lookup/suggest.js";
+import { HEADWORD_PREFIX_SQL } from "../src/lookup/keyRange.js";
 import type { DictionaryRead, LookupDatabase } from "../src/lookup/database.js";
 import type { FoundResult, LookupResult } from "../src/lookup/types.js";
 
@@ -439,8 +439,9 @@ test("a prefix whose lemmas begin no multi-word headword suggests no phrase", as
 test("a phrase suggestion costs two lemma reads, a range probe per lemma sequence and one exact read; one word costs nothing more", async () => {
   const one = recording();
   await suggest({ db: one.db, releaseId: RELEASE, prefix: "vado" });
-  assert.ok(!one.asked.includes(WORD_LEMMAS_SQL) && !one.asked.includes(HEADWORD_PREFIX_SQL), one.asked.join("\n---\n"));
-  assert.equal(one.asked.filter((sql) => sql === SUGGEST_SQL).length, 1);
+  // The field's own prefix read, and no phrase read.
+  assert.ok(!one.asked.includes(WORD_LEMMAS_SQL), one.asked.join("\n---\n"));
+  assert.equal(one.asked.filter((sql) => sql === HEADWORD_PREFIX_SQL).length, 1);
 
   const vado = recording();
   await suggest({ db: vado.db, releaseId: RELEASE, prefix: "vado v" });
@@ -449,10 +450,12 @@ test("a phrase suggestion costs two lemma reads, a range probe per lemma sequenc
   // read back the way its search reads it: `via`'s lemmas, and whether the
   // index spells `vado via` exactly.
   assert.equal(vado.asked.filter((sql) => sql === WORD_LEMMAS_SQL).length, 2);
-  assert.equal(vado.asked.filter((sql) => sql === HEADWORD_PREFIX_SQL).length, 1);
+  // The field's own prefix read, and the one completion probe.
+  assert.equal(vado.asked.filter((sql) => sql === HEADWORD_PREFIX_SQL).length, 2);
   assert.equal(vado.asked.filter((sql) => sql === EXACT_KEY_SQL).length, 1);
-  // The release row, the field's own prefix read, and those four.
-  assert.equal(vado.asked.length, 6, vado.asked.join("\n---\n"));
+  // The release row, the releases the master serves (src/lookup/served.ts), the
+  // field's own prefix read, and those four.
+  assert.equal(vado.asked.length, 7, vado.asked.join("\n---\n"));
 
   // A prefix that completes nothing reads nothing back.
   const none = recording();
