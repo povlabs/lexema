@@ -1,11 +1,11 @@
-// Rule `it-articles/v2` and the lookup layer around it. The grammar each case
+// Rule `it-articles/v3` and the lookup layer around it. The grammar each case
 // follows is cited in reports/2026-10-01-italian-articles.md.
 
 import assert from "node:assert/strict";
 import test from "node:test";
-import { articlesFor, generateItalianArticles, type ArticleGender, type ArticleNumber } from "../src/italian/articles.js";
+import { articlesFor, generateItalianArticles, spokenOpening, type ArticleGender, type ArticleNumber } from "../src/italian/articles.js";
 import { readingPartOfSpeech } from "../src/lookup/articles.js";
-import type { GrammarClaim, ReadingArticles, SourceForm, SourceRef } from "../src/lookup/types.js";
+import type { GrammarClaim, Pronunciation, ReadingArticles, SourceForm, SourceRef } from "../src/lookup/types.js";
 
 const displays = (surface: string, gender: ArticleGender, number: ArticleNumber) =>
   generateItalianArticles(surface, gender, number).articles.map((article) => article.displayForm);
@@ -100,6 +100,90 @@ test("an initial whose sound the spelling does not settle is withheld", () => {
   assert.equal(cause("hotel", "masculine", "plural"), "initial-sound-not-settled");
 });
 
+// The record's own IPA, where the spelling leaves the first sound open (#341).
+// Each transcription below is the one the source writes for that word in
+// release it-0c432803, style and all, except where a case says otherwise.
+
+const spokenDisplays = (surface: string, gender: ArticleGender, number: ArticleNumber, ipas: string[]) =>
+  generateItalianArticles(surface, gender, number, spokenOpening(ipas)).articles.map((article) => article.displayForm);
+
+const spokenCause = (surface: string, gender: ArticleGender, number: ArticleNumber, ipas: string[]) => {
+  const result = articlesFor(surface, gender, number, spokenOpening(ipas));
+  return result.status === "withheld" ? result.cause : undefined;
+};
+
+test("an IPA that settles the first sound gives the article it implies", () => {
+  assert.deepEqual(spokenDisplays("hotel", "masculine", "singular", ["/oˈtɛl/"]), ["l'hotel", "un hotel"]);
+  assert.deepEqual(spokenDisplays("hotel", "masculine", "plural", ["/oˈtɛl/"]), ["gli hotel", "degli hotel"]);
+  assert.deepEqual(spokenDisplays("hostess", "feminine", "singular", ["/ˈɔstes/"]), ["l'hostess", "un'hostess"]);
+  assert.deepEqual(spokenDisplays("io", "masculine", "singular", ["/ˈio/"]), ["l'io", "un io"]);
+  // Semivowel /j/ takes lo, and its feminine la and una (una iattura).
+  assert.deepEqual(spokenDisplays("yogurt", "masculine", "singular", ["/ˈjɔɡurt/"]), ["lo yogurt", "uno yogurt"]);
+  assert.deepEqual(spokenDisplays("ione", "masculine", "singular", ["/ˈjone/"]), ["lo ione", "uno ione"]);
+  assert.deepEqual(spokenDisplays("iena", "feminine", "singular", ["/ˈjɛna/"]), ["la iena", "una iena"]);
+  assert.deepEqual(spokenDisplays("yoghurt", "masculine", "singular", ["/'jɔ:.gurt/"]), ["lo yoghurt", "uno yoghurt"]);
+  // An ordinary consonant takes il, alone or before l or r.
+  assert.deepEqual(spokenDisplays("water", "masculine", "singular", ["/ˈvater/"]), ["il water", "un water"]);
+  assert.deepEqual(spokenDisplays("jeans", "masculine", "plural", ["/ˈd͡ʒins/"]), ["i jeans", "dei jeans"]);
+  assert.deepEqual(spokenDisplays("thriller", "masculine", "singular", ["/ˈtriller/"]), ["il thriller", "un thriller"]);
+  // /ts/ is the sound of ‹z›: lo.
+  assert.deepEqual(spokenDisplays("tsunami", "masculine", "singular", ["/tsuˈnami/"]), ["lo tsunami", "uno tsunami"]);
+  // Two transcriptions that open the same way agree, in one string or two.
+  assert.deepEqual(spokenDisplays("jazz", "masculine", "singular", ["/ˈd͡ʒɛts/, /ˈd͡ʒɛz//"]), ["il jazz", "un jazz"]);
+  assert.deepEqual(spokenDisplays("würstel", "masculine", "singular", ["/ˈvurstel/", "/ˈvyrstel/"]), ["il würstel", "un würstel"]);
+});
+
+test("a missing IPA, or IPA that disagrees, still withholds", () => {
+  assert.equal(spokenCause("hotel", "masculine", "singular", []), "initial-sound-not-settled");
+  // `iato` is written both ways in the source: a vowel /i/ and a semivowel /j/.
+  assert.equal(spokenCause("iato", "masculine", "singular", ["/iˈa.to/", "/ˈja.to/"]), "initial-sound-not-settled");
+  // Two in one string, one with /h/ and one without.
+  assert.equal(spokenCause("hertz", "masculine", "singular", ["ɛrts/, /ˈhɛrts"]), "initial-sound-not-settled");
+  assert.equal(spokenCause("hora", "feminine", "singular", ["[ho'ra]", "[ora]"]), "initial-sound-not-settled");
+  // An optional sound, or nothing readable, settles nothing.
+  assert.equal(spokenCause("hikikomori", "masculine", "singular", ["/(h)ikikoˈmɔri/"]), "initial-sound-not-settled");
+  assert.equal(spokenCause("jena", "feminine", "singular", ["["]), "initial-sound-not-settled");
+});
+
+test("an IPA that agrees on a sound the references give no article still withholds", () => {
+  // /h/ is not an Italian sound; /w/ takes l' "a rigore" but il by usage (il web).
+  assert.equal(spokenCause("hobby", "masculine", "singular", ["/ˈhobbi/"]), "initial-sound-not-settled");
+  assert.equal(spokenCause("web", "masculine", "singular", ["/ˈwɛb/"]), "initial-sound-not-settled");
+  assert.equal(spokenCause("pterodattilo", "masculine", "singular", ["/pteroˈdattilo/"]), "initial-sound-not-settled");
+});
+
+test("ch before e or i takes the IPA's sound when the record has one", () => {
+  // Read /ʃ/, a loan is not given il.
+  assert.deepEqual(spokenDisplays("chef", "masculine", "singular", ["/ʃɛf/"]), ["lo chef", "uno chef"]);
+  assert.deepEqual(spokenDisplays("chic", "masculine", "singular", ["/ˈʃik/"]), ["lo chic", "uno chic"]);
+  assert.deepEqual(spokenDisplays("chela", "feminine", "singular", ["/ˈkɛla/"]), ["la chela", "una chela"]);
+  // With no IPA, or IPA that opens on /k/ every time it is read, the spelling's
+  // Italian /k/ stands, as in v2.
+  assert.deepEqual(spokenDisplays("chilo", "masculine", "singular", []), ["il chilo", "un chilo"]);
+  assert.deepEqual(spokenDisplays("chiasmo", "masculine", "singular", ["/ˈkjazmo/", "/kiˈazmo/"]), ["il chiasmo", "un chiasmo"]);
+  assert.deepEqual(spokenDisplays("chilo", "masculine", "singular", ["/ˈkilo/", "["]), ["il chilo", "un chilo"]);
+  // An IPA that is not /k/ and gives no article withholds rather than falls back (made up).
+  assert.equal(spokenCause("cheque", "masculine", "singular", ["/ˈhɛk/"]), "initial-sound-not-settled");
+
+});
+
+test("ch before e or i is withheld when its transcriptions disagree and one is not /k/", () => {
+  // Made up: the source reads it /ʃ/ at least once, so the presumed /k/ is contradicted.
+  assert.equal(spokenCause("chef", "masculine", "singular", ["/ʃɛf/", "/kɛf/"]), "initial-sound-not-settled");
+  assert.equal(spokenCause("chef", "masculine", "singular", ["/ʃɛf/, /ˈkɛf/"]), "initial-sound-not-settled");
+  assert.equal(spokenCause("chef", "masculine", "plural", ["/ʃɛf/", "/kɛf/"]), "initial-sound-not-settled");
+  // One /ʃ/ beside one that cannot be read is no agreement on /k/ either.
+  assert.equal(spokenCause("chef", "masculine", "singular", ["/ʃɛf/", "["]), "initial-sound-not-settled");
+  // /tʃ/ and /k/ disagree too: neither stands for the record.
+  assert.equal(spokenCause("chimes", "masculine", "plural", ["/tʃajmz/", "/kimes/"]), "initial-sound-not-settled");
+});
+
+test("an initial the spelling settles ignores the IPA", () => {
+  // Made up: the spelling's reading stands whatever the IPA says.
+  assert.deepEqual(spokenDisplays("casa", "feminine", "singular", ["/ˈhasa/"]), ["la casa", "una casa"]);
+  assert.deepEqual(spokenDisplays("uomo", "masculine", "singular", ["/ˈwɔmo/"]), ["l'uomo", "un uomo"]);
+});
+
 test("an apostrophe, hyphen, space or slash makes a composite, which is withheld", () => {
   for (const surface of ["'ndrangheta", "’ndrangheta", "po'", "e-mail", "città-stato", "spina dorsale", "studente/studentessa"]) {
     assert.equal(cause(surface, "feminine", "singular"), "composite-surface", surface);
@@ -129,7 +213,7 @@ test("every derived article names its rule, agreement and kind", () => {
     gender: "masculine",
     number: "singular",
     sourceType: "lexema-deterministic",
-    rule: "it-articles/v2",
+    rule: "it-articles/v3",
   });
   assert.equal(indefinite?.kind, "indefinite");
 });
@@ -237,6 +321,27 @@ test("a surface the rule refuses carries the rule's own cause", () => {
   assert.deepEqual(withheld(articlesOf("hotel", agreeing)), { reason: "surface-not-handled", surface: "hotel", cause: "initial-sound-not-settled" });
   assert.deepEqual(withheld(articlesOf("knock-out", agreeing)), { reason: "surface-not-handled", surface: "knock-out", cause: "composite-surface" });
   assert.deepEqual(withheld(articlesOf("mms", agreeing)), { reason: "surface-not-handled", surface: "mms", cause: "not-a-spelled-word" });
+});
+
+test("a reading's own IPA reaches its headword's articles, never its plural form's", () => {
+  const pronunciation = (ipa: string): Pronunciation => ({ ipa, note: null, ref: ref("/sounds/0/ipa") });
+  const agreeing = [stated("gender", "masculine"), stated("number", "singular")];
+  const hotel = articlesOf("hotel", agreeing, [
+    form(0, "hotels", [stated("gender", "masculine", "/forms/0/tags/0"), stated("number", "plural", "/forms/0/tags/1")]),
+  ]);
+  assert.equal(hotel.status, "withheld");
+  const spoken = readingPartOfSpeech("noun", "hotel", agreeing, [
+    form(0, "hotels", [stated("gender", "masculine", "/forms/0/tags/0"), stated("number", "plural", "/forms/0/tags/1")]),
+  ], [pronunciation("/oˈtɛl/")]).articles as ReadingArticles;
+  // `hotels` is spelled, and may be said, otherwise: it gets no article from the headword's IPA.
+  assert.deepEqual(spoken.status === "derived" && spoken.articles.map((a) => a.displayForm), ["l'hotel", "un hotel"]);
+
+  const iato = readingPartOfSpeech("noun", "iato", agreeing, [], [pronunciation("/iˈa.to/"), pronunciation("/ˈja.to/")]);
+  assert.deepEqual(withheld(iato.articles as ReadingArticles), {
+    reason: "surface-not-handled",
+    surface: "iato",
+    cause: "initial-sound-not-settled",
+  });
 });
 
 test("a part of speech other than noun carries no articles", () => {

@@ -1,27 +1,29 @@
 // Which articles a reading gets, and which silence stopped it when it gets none.
 //
-// The rule is `it-articles/v2` in src/italian/articles.ts and it is used exactly
+// The rule is `it-articles/v3` in src/italian/articles.ts and it is used exactly
 // as it stands: nothing here derives an article, and nothing here widens what
 // that rule accepts. What this module owns is the step before and the step
 // after — reading the gender and number the *source stated about the record*,
-// and turning the rule's refusal into the one thing that blocked it, so a page
-// can say it in a sentence instead of showing an empty section.
+// and the IPA it wrote for the record's own word, and turning the rule's
+// refusal into the one thing that blocked it, so a page can say it in a
+// sentence instead of showing an empty section.
 //
 // It runs once per reading, never once per query: `readingPartOfSpeech` is
 // called with one record's own word and claims (src/lookup/lookup.ts), so two
 // records spelled alike each get the articles of their own gender and number.
 
-import { articlesFor, type ArticleGender, type ArticleNumber } from "../italian/articles.js";
+import { articlesFor, spokenOpening, type ArticleGender, type ArticleNumber } from "../italian/articles.js";
 import type {
   ArticleWithholding,
   GrammarClaim,
   NonNounPos,
+  Pronunciation,
   ReadingArticles,
   ReadingPartOfSpeech,
   SourceForm,
 } from "./types.js";
 
-/** The two values `it-articles/v2` can make an article agree with. */
+/** The two values `it-articles/v3` can make an article agree with. */
 const AGREEING_GENDERS = ["masculine", "feminine"] as const satisfies readonly ArticleGender[];
 const AGREEING_NUMBERS = ["singular", "plural"] as const satisfies readonly ArticleNumber[];
 
@@ -46,15 +48,20 @@ function statedValues(claims: readonly GrammarClaim[], dimension: string): strin
  * `surface` is the record's own headword and never a row of its forms table:
  * `studente` lists `studente/studentessa`, which is a pair the source wrote,
  * not a word an article goes in front of.
+ *
+ * `pronunciations` are the record's own `sounds[].ipa`. They say how `surface`
+ * is said, and so reach its articles only: a plural form's are read from its
+ * spelling alone.
  */
 export function readingPartOfSpeech(
   pos: string,
   surface: string,
   claims: readonly GrammarClaim[],
   forms: readonly SourceForm[] = [],
+  pronunciations: readonly Pronunciation[] = [],
 ): ReadingPartOfSpeech {
   if (pos !== "noun") return { pos: pos as NonNounPos };
-  return { pos, articles: deriveArticles(surface, claims, forms) };
+  return { pos, articles: deriveArticles(surface, claims, forms, pronunciations) };
 }
 
 /**
@@ -113,12 +120,13 @@ function deriveArticles(
   surface: string,
   claims: readonly GrammarClaim[],
   forms: readonly SourceForm[],
+  pronunciations: readonly Pronunciation[],
 ): ReadingArticles {
   const agreement = agreementOf(claims);
   if ("withholding" in agreement) return { status: "withheld", withholding: agreement.withholding };
 
   const { gender, number } = agreement;
-  const own = articlesFor(surface, gender, number);
+  const own = articlesFor(surface, gender, number, spokenOpening(pronunciations.map((sound) => sound.ipa)));
   if (own.status === "withheld") {
     return { status: "withheld", withholding: { reason: "surface-not-handled", surface, cause: own.cause } };
   }

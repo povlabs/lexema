@@ -23,14 +23,16 @@
 // - A form that takes no cell is not shown: the page shows data, never a note
 //   on what it could not place (Huey, 2026-09-27, on #142).
 //
-// Each spelling's articles are `it-articles/v2` (src/italian/articles.ts),
+// Each spelling's articles are `it-articles/v3` (src/italian/articles.ts),
 // applied to it with the cell's gender and number, exactly as it stands; a cell
-// with two spellings (`oli`, `olii`) gives each its own line. Where the rule refuses (a phrase, a spelling it does not handle) the
+// with two spellings (`oli`, `olii`) gives each its own line. The headword's
+// spelling also passes the rule the record's own IPA (`hotel` /oˈtɛl/ is
+// `l'hotel`); a form's spelling does not, since the IPA is the headword's. Where the rule refuses (a phrase, a spelling it does not handle) the
 // cell has no article line.
 
 import { isAdjectiveReading, isNounReading } from "@lexema/lookup/types.ts";
 import type { GrammarClaim, Reading, SourceForm } from "@lexema/lookup/types.ts";
-import { generateItalianArticles } from "@lexema/italian/articles.ts";
+import { generateItalianArticles, spokenOpening, type SpokenOpening } from "@lexema/italian/articles.ts";
 
 export const GENDERS = ["masculine", "feminine"] as const;
 export type Gender = (typeof GENDERS)[number];
@@ -99,8 +101,8 @@ const degreesOf = (form: SourceForm): string[] =>
   statedValues(form.claims, "degree").filter((degree) => degree !== "positive");
 
 /** Definite, then indefinite (singular) or partitive (plural): the grid's article line. */
-function articleLine(surface: string, gender: Gender, number: GrammaticalNumber): string[] {
-  const { articles } = generateItalianArticles(surface, gender, number);
+function articleLine(surface: string, gender: Gender, number: GrammaticalNumber, spoken: SpokenOpening | undefined): string[] {
+  const { articles } = generateItalianArticles(surface, gender, number, spoken);
   const second = number === "singular" ? "indefinite" : "partitive";
   return (["definite", second] as const).flatMap((kind) =>
     articles.filter((article) => article.kind === kind).map((article) => article.displayForm),
@@ -127,13 +129,17 @@ class GridBuilder {
     return this.cells.size;
   }
 
-  build(): Grid | undefined {
+  /** `spoken` is what the record's IPA says about its headword's opening. */
+  build(spoken?: SpokenOpening): Grid | undefined {
     const rows = GENDERS.flatMap((gender): GridRow[] => {
       if (!NUMBERS.some((number) => this.cells.has(`${gender} ${number}`))) return [];
       const cell = (number: GrammaticalNumber): GridCell => {
         const spellings = this.cells.get(`${gender} ${number}`) ?? [];
         return {
-          spellings: spellings.map((spelling) => ({ ...spelling, articles: articleLine(spelling.surface, gender, number) })),
+          spellings: spellings.map((spelling) => ({
+            ...spelling,
+            articles: articleLine(spelling.surface, gender, number, spelling.headword ? spoken : undefined),
+          })),
         };
       };
       return [{ gender, cells: [cell("singular"), cell("plural")] }];
@@ -174,7 +180,8 @@ export function agreementOf(reading: Reading): Agreement {
     for (const gender of genders) target.put(gender, number, form, form.surface);
   }
 
-  return { grid: plain.build(), superlative: superlative.build() };
+  const spoken = spokenOpening(reading.wordFacts.pronunciations.map((sound) => sound.ipa));
+  return { grid: plain.build(spoken), superlative: superlative.build() };
 }
 
 /** Two labels as Italian joins them: `maschile e femminile`. */
