@@ -134,8 +134,7 @@ export const TRY_CHIP = `rounded-[3px] border border-border bg-surface-raised px
 
 const MESSAGE = "my-6 font-sans text-[0.95rem]";
 
-/** The loading line, and every place the page says the source is silent. */
-export const PENDING = `${MESSAGE} text-text-muted`;
+/** Every place the page says the source is silent. */
 export const EMPTY = `${MESSAGE} text-text-muted`;
 /** A lookup that could not run, or a query the page refused. */
 export const ERROR = `${MESSAGE} text-warning`;
