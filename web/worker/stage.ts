@@ -25,7 +25,8 @@ export function parseStage(value: unknown): Stage {
 /**
  * The `X-Robots-Tag` a stage's responses carry, or none. Previews are public,
  * and Cloudflare adds no noindex on a custom-domain Preview URL, so every
- * response on the `preview` stage says it itself (ADR 0018).
+ * response on the `preview` stage says it itself (ADR 0018). Static assets
+ * never reach the Worker; web/public/_headers gives them the same tag.
  */
 export function robotsTagOf(stage: Stage): string | undefined {
   return stage === "preview" ? "noindex" : undefined;

@@ -1,0 +1,20 @@
+# Headers Cloudflare adds to static assets, which are answered before the
+# Worker runs (web/wrangler.jsonc, `assets`), so worker/stage.ts never sees
+# them. Vite copies this file into dist/client, and vinext then writes no
+# _headers of its own, so its cache rule is repeated here
+# (web/test/assetHeaders.test.ts, #265).
+
+# Content-hashed assets are cached for a year, on every host.
+/_next/static/*
+  Cache-Control: public, max-age=31536000, immutable
+
+# Every response on a Preview carries noindex (ADR 0018). A placeholder
+# matches one DNS label: the Preview's name, or `<deployment-id>-<name>`.
+https://:name.preview.lexema.fyi/*
+  X-Robots-Tag: noindex
+
+https://:name.developers-preview.lexema.fyi/*
+  X-Robots-Tag: noindex
+
+https://:name.api-preview.lexema.fyi/*
+  X-Robots-Tag: noindex
