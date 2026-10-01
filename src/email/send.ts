@@ -15,6 +15,7 @@
 import { and, eq, isNull } from "drizzle-orm";
 import type { AppDatabase } from "../db/app/database.js";
 import { developerAccount } from "../db/app/schema.js";
+import { log } from "../log/requestLog.js";
 import { composeEmail, type AccountEmail, type EmailLinks } from "./accountEmail.js";
 
 /** The address every account email is from. */
@@ -91,14 +92,14 @@ const codeOf = (failure: unknown): string | undefined =>
  */
 export async function sendAccountEmail(mail: AccountMail | undefined, to: string, email: AccountEmail): Promise<Sent> {
   if (mail === undefined) {
-    console.info("account email not sent: no EMAIL binding", { kind: email.kind });
+    log.info("account email not sent: no EMAIL binding", { kind: email.kind });
     return "mail-off";
   }
   try {
     await mail.binding.send({ to, from: SENDER, ...composeEmail(email, mail.links) });
     return "sent";
   } catch (failure) {
-    console.error("account email failed", { kind: email.kind, code: codeOf(failure) }, failure);
+    log.error("account email failed", { kind: email.kind, code: codeOf(failure) }, failure);
     return "failed";
   }
 }
@@ -121,7 +122,7 @@ export async function emailAccount(db: AppDatabase, mail: AccountMail | undefine
   try {
     to = (await liveAccountEmailQuery(db, accountId))[0]?.email;
   } catch (failure) {
-    console.error("account email failed: its address could not be read", { kinds: emails.map((email) => email.kind) }, failure);
+    log.error("account email failed: its address could not be read", { kinds: emails.map((email) => email.kind) }, failure);
     return emails.map(() => "failed");
   }
   if (to === undefined) return [];

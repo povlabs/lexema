@@ -21,6 +21,7 @@ import { authenticate, type KeyRefusal } from "@lexema/api/keys.ts";
 import { callCost, endpointOf } from "@lexema/api/calls.ts";
 import { appTablesOverD1 } from "@lexema/db/app/database.ts";
 import { fromD1 } from "@lexema/lookup/database.ts";
+import { log } from "@lexema/log/requestLog.ts";
 import { originsOf, type SiteOrigins } from "../hosts.ts";
 import { error, type ApiContext, type ErrorJson } from "./answer.ts";
 import { ROUTES } from "./endpoints.ts";
@@ -83,14 +84,14 @@ export async function handleApi(request: Request, context: ApiContext): Promise<
 
     const answer = await reading.answer(context).catch(async (failure: unknown) => {
       // Counted, and not answered: its calls go back to the period (#289). A failed give-back is logged, and the answer is the same 503.
-      await admission.giveBack().catch((lost: unknown) => console.error("api give-back failed", lost));
+      await admission.giveBack().catch((lost: unknown) => log.error("api give-back failed", {}, lost));
       throw failure;
     });
     await limits.answered(reading.charge);
     return json(answer.status, answer.body, headers);
   } catch (failure) {
     // The database's message names tables and releases: it goes to the log.
-    console.error("api request failed", failure);
+    log.error("api request failed", {}, failure);
     return json(503, error("unavailable", "The request could not be answered. Try again later."), headers);
   }
 }
@@ -109,7 +110,7 @@ export interface ApiBindings extends MeteringBindings {
 export function answerApi<E extends ApiBindings>(request: Request, env: E): Promise<Response> {
   if (env.DB === undefined || env.APP_DB === undefined) {
     const missing = env.DB === undefined ? "DB" : "APP_DB";
-    console.error("api request failed", new Error(`no D1 binding: this Worker has no ${missing}`));
+    log.error("api request failed", {}, new Error(`no D1 binding: this Worker has no ${missing}`));
     return Promise.resolve(json(503, error("unavailable", "The request could not be answered. Try again later.")));
   }
   return handleApi(request, {

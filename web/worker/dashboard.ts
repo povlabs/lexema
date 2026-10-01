@@ -42,6 +42,7 @@ import { csrfMatches, csrfToken } from "@lexema/accounts/csrf.ts";
 import { createAccountKey, listAccountKeys, revokeAccountKey } from "@lexema/api/ownedKeys.ts";
 import { appTablesOverD1, type AppTables } from "@lexema/db/app/database.ts";
 import { accountMailOf, workerEmailOf, type EmailBinding } from "@lexema/email/send.ts";
+import { log } from "@lexema/log/requestLog.ts";
 import { accessOf, defaultKeyName, draftOf, readDraft } from "@/lib/developers/createKeyForm.ts";
 import { CSRF_FIELD, DASHBOARD, DELETE_CONFIRM_FIELD, DELETE_CONFIRMATION, SETTINGS, UNREACHABLE, type ActionAnswer } from "@/lib/developers/dashboardActions.ts";
 import { keyRowOf } from "@/lib/developers/dashboardView.ts";
@@ -199,7 +200,7 @@ export async function answerDashboard(request: Request, route: DashboardRoute, c
         const deleted = await deleteAccount(db, accountId, context.now, stripe, accountMailOf(context.email, { developers: url.origin, lexema: originsOf(url.hostname).lexema }));
         if (deleted.outcome === "billing-off") {
           const missing = context.billing.outcome === "missing" ? context.billing.missing : [];
-          console.error("account not deleted: billing is off and a subscription may still bill", { accountId, billable: deleted.billable, missing });
+          log.error("account not deleted: billing is off and a subscription may still bill", { accountId, billable: deleted.billable, missing });
           return refuse(503, UNREACHABLE);
         }
         return json(200, { outcome: "signed-out", location: AFTER_SIGN_OUT }, [clearedCookie(SESSION_COOKIE)]);
@@ -209,7 +210,7 @@ export async function answerDashboard(request: Request, route: DashboardRoute, c
     // Stripe's or the database's message stays in the log. Nothing is half
     // done: each action is one statement, and account deletion one
     // transaction after its subscriptions are cancelled.
-    console.error("dashboard action failed", { route: route.kind }, failure);
+    log.error("dashboard action failed", { route: route.kind }, failure);
     return refuse(503, UNREACHABLE);
   }
 }
@@ -221,7 +222,7 @@ export async function openDashboardPage<E>(request: Request, context: DashboardC
     if (context.appDb === undefined) throw new Error("no D1 binding: this Worker has no APP_DB");
     accountId = await signedInAccount(request.headers.get("cookie"), context.appDb, context.now, originsOf(new URL(request.url).hostname));
   } catch (failure) {
-    console.error("dashboard page failed", failure);
+    log.error("dashboard page failed", {}, failure);
     return text(503, "The dashboard could not be opened. Try again later.");
   }
   if (accountId === undefined) return seeOther(SIGN_IN_PAGE);

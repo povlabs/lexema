@@ -5,6 +5,7 @@
 // honeypot, the timing check and the store are lib/dictionary/report.ts; this file is the
 // wiring to the request and the Worker's bindings.
 
+import { log } from "@lexema/log/requestLog.ts";
 import { visitorKey } from "@/worker/rateLimit.ts";
 import { servedRelease, turnstile } from "@/lib/dictionary/db";
 import { appDatabase, database } from "@/lib/shared/database.ts";
@@ -38,7 +39,7 @@ export async function POST(request: Request): Promise<Response> {
     );
   } catch (error) {
     // The reason stays in the Worker's log, as for a failed lookup.
-    console.error("report failed", error);
+    log.error("report failed", {}, error);
     return answer({ outcome: "failed" });
   }
 }
