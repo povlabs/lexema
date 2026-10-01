@@ -8,6 +8,7 @@
     "node": ">=21"
   },
   "scripts": {
+    "prepare": "sh tools/install-git-hooks.sh",
     "typecheck": "tsc --noEmit",
     "test": "node --import tsx --test 'test/*.test.ts' && TSX_TSCONFIG_PATH=web/tsconfig.json node --import tsx --experimental-test-module-mocks --test 'web/test/*.test.ts' 'web/test/*.test.tsx'",
     "test:integration": "node --import tsx --test test/integration/adapter-fixtures.test.ts",
@@ -27,6 +28,7 @@
   "devDependencies": {
     "@types/node": "catalog:node22",
     "drizzle-kit": "catalog:",
+    "lefthook": "catalog:",
     "tsx": "catalog:",
     "typescript": "catalog:"
   },

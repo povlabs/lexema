@@ -397,6 +397,14 @@ They set no hooks
 ([#344](https://github.com/hueypov/lexema/issues/344#issuecomment-5929722588)).
 Your own settings go in `.claude/settings.local.json`, which Git ignores.
 
+### Git hooks and new worktrees
+
+`pnpm install` in the main checkout installs the git hooks through lefthook
+([lefthook.yml](./lefthook.yml), [ADR 0022](./.decisions/0022-lefthook-sets-up-agent-worktrees.md)).
+After that, `git worktree add` sets the new tree up by itself: it links
+`it-extract.jsonl.gz` from the main checkout and runs
+`pnpm install --frozen-lockfile`. A branch switch runs nothing.
+
 ## Stack
 
 | Layer | Choice | What it does for Lexema |
