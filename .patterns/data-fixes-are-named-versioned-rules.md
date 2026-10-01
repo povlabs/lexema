@@ -22,7 +22,8 @@ A data fix is never an edit of rows by hand. It is a rule
    } as const;
    ```
 
-   `it-gloss-stamp/v1` and `section-language/v1` sit beside the code they name.
+   `it-gloss-stamp/v1`, `section-language/v1` and `form-of-foreign-lemma/v1`
+   sit beside the code they name.
    Changing what a rule matches or writes is a new version, never an edit of the
    old one.
 2. **One function, two callers.** The seed applies the rule as it writes rows.

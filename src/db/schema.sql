@@ -619,31 +619,50 @@ CREATE TABLE recovered_example (
 
 
 -- ---------------------------------------------------------------------------
--- Hidden records (#382, ADR 0023)
+-- Hidden records (#382, #389, ADR 0023)
 -- ---------------------------------------------------------------------------
 
--- A record the archive tags Italian that its raw page shows is another
--- language's entry, filed under the page's Italian heading: `curie`'s Dutch
+-- A record the archive tags Italian that a hiding rule finds is another
+-- language's. `section-language/v1` reads it off the raw page: another
+-- language's entry filed under the page's Italian heading, `curie`'s Dutch
 -- noun, `dolmen`'s English one (src/italian/sectionLanguage.ts,
--- reports/2026-10-01-non-italian-sections.md). The record is kept whole, its
--- archive line in source_record_json included, but it has no lookup_form and no
--- form_of_edge rows, so no search reaches it and a form-of edge naming its
--- word finds no record. This row says why, and where the page says so.
+-- reports/2026-10-01-non-italian-sections.md). `form-of-foreign-lemma/v1` reads
+-- it off the archive: a form-of record whose targets are only another
+-- language's words, one of which lists it among its forms, `zapateros` of
+-- `zapatero` [es] (src/italian/formOfForeignLemma.ts). The record is kept
+-- whole, its archive line in source_record_json included, but it has no
+-- lookup_form and no form_of_edge rows, so no search reaches it and a form-of
+-- edge naming its word finds no record. This row says why, and where.
 CREATE TABLE hidden_record (
   record_id  INTEGER PRIMARY KEY REFERENCES source_record(record_id) ON DELETE CASCADE,
   release_id TEXT    NOT NULL,
-  page_id    INTEGER NOT NULL,
+  -- section-language/v1: the page revision the verdict was read from.
+  page_id    INTEGER,
 
-  -- The rule and its version (`SECTION_LANGUAGE_RULE`).
-  rule       TEXT    NOT NULL CHECK (rule = 'section-language/v1'),
-  -- 'language-line' -> a bare `{{-nl-}}` line stands above the block.
-  -- 'late-heading'  -> the block's heading names another language,
-  --                    `{{-sost-|en}}`, below the Italian translation box.
-  because    TEXT    NOT NULL CHECK (because IN ('language-line', 'late-heading')),
-  -- The language code the page names: 'nl', 'en', 'la'.
+  -- The rule and its version (`SECTION_LANGUAGE_RULE`, `FORM_OF_FOREIGN_LEMMA_RULE`).
+  rule       TEXT    NOT NULL CHECK (rule IN ('section-language/v1', 'form-of-foreign-lemma/v1')),
+  -- 'language-line'    -> a bare `{{-nl-}}` line stands above the block.
+  -- 'late-heading'     -> the block's heading names another language,
+  --                       `{{-sost-|en}}`, below the Italian translation box.
+  -- 'lemma-lists-form' -> the form-of target's record in another language
+  --                       lists this record's word among its forms.
+  because    TEXT    NOT NULL CHECK (because IN ('language-line', 'late-heading', 'lemma-lists-form')),
+  -- The language code the page or the target's record names: 'nl', 'en', 'es'.
   language   TEXT    NOT NULL CHECK (language <> 'it' AND language <> ''),
-  -- The 1-based line of the revision that names it.
-  page_line  INTEGER NOT NULL CHECK (page_line > 0),
+  -- section-language/v1: the 1-based line of the revision that names it.
+  page_line  INTEGER CHECK (page_line > 0),
+  -- form-of-foreign-lemma/v1: the 1-based archive line of the other
+  -- language's record that lists the word. That record is not seeded.
+  lemma_line INTEGER CHECK (lemma_line > 0),
+
+  -- Each rule states its reasons and its own evidence, and no other.
+  CHECK (
+    (rule = 'section-language/v1' AND because IN ('language-line', 'late-heading')
+      AND page_id IS NOT NULL AND page_line IS NOT NULL AND lemma_line IS NULL)
+    OR
+    (rule = 'form-of-foreign-lemma/v1' AND because = 'lemma-lists-form'
+      AND page_id IS NULL AND page_line IS NULL AND lemma_line IS NOT NULL)
+  ),
 
   FOREIGN KEY (record_id, release_id)
     REFERENCES source_record(record_id, release_id) ON DELETE CASCADE,

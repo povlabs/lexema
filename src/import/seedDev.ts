@@ -85,12 +85,13 @@ process.stderr.write(
     `${recovery.partialLoss} missing some), from ${recovery.recordsWithAPage} record(s) with a raw page ` +
     `of ${recovery.rawPages}; ${recovery.unrendered} line(s) not rendered\n`,
 );
-const { hidden } = report;
+const { sectionLanguage, formOfForeignLemma } = report.hidden;
 process.stderr.write(
-  hidden.ran
-    ? `hidden records (${hidden.rule}): ${hidden.hidden} (${hidden.languageLine} by a language line, ${hidden.lateHeading} by a late heading)\n`
-    : `hidden records (${hidden.rule}): not judged, no raw pages\n`,
+  sectionLanguage.ran
+    ? `hidden records (${sectionLanguage.rule}): ${sectionLanguage.hidden} (${sectionLanguage.languageLine} by a language line, ${sectionLanguage.lateHeading} by a late heading)\n`
+    : `hidden records (${sectionLanguage.rule}): not judged, no raw pages\n`,
 );
+process.stderr.write(`hidden records (${formOfForeignLemma.rule}): ${formOfForeignLemma.hidden}\n`);
 let loaded: LoadedRows;
 try {
   loaded = await loadSeed(target, report, (line) => process.stderr.write(`${line}\n`));

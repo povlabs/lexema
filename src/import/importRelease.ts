@@ -71,6 +71,12 @@ export interface ArchiveParseOptions {
     archiveBytes: number;
   }) => void | Promise<void>;
   onRecord: (record: ArchiveRecord, reportMember: ReportMember) => void | Promise<void>;
+  /**
+   * Called for each well-formed line in another language, as parsed, before
+   * its `other-language` rejection. Only a rule that reads such a line as
+   * evidence about an Italian one needs it (src/italian/formOfForeignLemma.ts).
+   */
+  onOtherLanguage?: (lineNo: number, parsed: Readonly<Record<string, unknown>>) => void;
   /** Stop after this many admitted records. For tests only. */
   limit?: number;
   onProgress?: (admitted: number) => void;
@@ -407,6 +413,7 @@ export async function parseArchive(options: ArchiveParseOptions): Promise<Archiv
       try {
         const parsed = parseLine(line);
         if (parsed.lang_code !== "it") {
+          options.onOtherLanguage?.(linesRead, parsed);
           skippedOtherLanguage += 1;
           options.onRejection({
             kind: "other-language",

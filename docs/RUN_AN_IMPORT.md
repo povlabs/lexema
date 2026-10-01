@@ -210,11 +210,15 @@ through the Worker's read-only binding.
 
 ## Hide another language's records in a seeded database
 
-The seed hides a record its raw page shows is another language's entry, filed
-under the page's Italian heading
-([ADR 0023](../.decisions/0023-foreign-records-are-hidden-not-deleted.md),
-[#382](https://github.com/hueypov/lexema/issues/382)). A database seeded before
-that gets the same records hidden by a one-off update, with no reseed:
+The seed hides a record the archive tags Italian that is another language's, by
+two rules ([ADR 0023](../.decisions/0023-foreign-records-are-hidden-not-deleted.md)):
+`section-language/v1` reads it off the raw page, where another language's entry
+sits under the Italian heading
+([#382](https://github.com/hueypov/lexema/issues/382)), and
+`form-of-foreign-lemma/v1` reads it off the archive, where a foreign record lists
+the word among its forms ([#389](https://github.com/hueypov/lexema/issues/389)).
+A database seeded before either gets the same records hidden by a one-off
+update, with no reseed:
 
 ```sh
 pnpm run hide:records
@@ -230,7 +234,8 @@ database the way the seed does: the local D1 under `SEED_STATE` (default
 It writes one SQL file under `.data/updates/` and runs it as one transaction:
 each record gets its `hidden_record` row and loses its `lookup_form` and
 `form_of_edge` rows, and the nearby rows of the words they spelled are
-recomputed. `source_record_json` is not touched. It then reads the records back
+recomputed. A `hidden_record` table written before #389 is rebuilt first in the
+same transaction, every row kept, and the run says so. `source_record_json` is not touched. It then reads the records back
 and fails if one is not hidden. It takes about a minute.
 
 For the shared `lexema-dictionary`, from Huey's laptop, signed in to Wrangler
@@ -241,7 +246,9 @@ SEED_REMOTE=lexema-dictionary pnpm run hide:records
 ```
 
 Put `CLOUDFLARE_ACCOUNT_ID=<account id>` first if Wrangler lists more than one
-account. On release `it-0c432803` the first run prints
-`23 record(s) the rule finds; 0 already hidden; hidden now: 23`, one line per
-record, and `rows deleted: lookup_form 23, form_of_edge 2`. Every later run
-prints `23 already hidden; nothing to hide`.
+account. On release `it-0c432803` the rules find 30 records:
+`30 record(s) the rules find (form-of-foreign-lemma/v1 7, section-language/v1 23)`.
+On a database #382's run already updated, the run hides the 7, rebuilds the
+table, and prints `23 already hidden; hidden now: 7`, one line per record, and
+`rows deleted: lookup_form 7, form_of_edge 7`. On one seeded before #382 it
+hides all 30. Every later run prints `30 already hidden; nothing to hide`.
