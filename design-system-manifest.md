@@ -107,6 +107,10 @@ for a role, never a value.
 | `accent` | `#D2A85C` | reading numbers, links, the `+ more` control, the searched form in a conjugation |
 | `warning` | `#D9704F` | no use on the result page, which marks no dispute |
 
+When a colour changes in Pencil, re-export the design file's variables to
+[`web/test/fixtures/design-variables.json`](web/test/fixtures/design-variables.json);
+`web/test/tokens.test.ts` fails until the stylesheet matches that snapshot.
+
 Three families, served from this repository: **Spectral** for the headword,
 definitions, examples, etymology and synonyms; **Inter** for labels, controls and
 grammar labels; **IBM Plex Mono** for forms, articles and pronunciation. The dark
