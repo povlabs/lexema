@@ -164,9 +164,10 @@ D1's maximum database size is 10 GB on Workers Paid and 500 MB on Free
 
 The single biggest object is the verbatim JSON, at 417 MiB — about a third of the
 total. Moving it to R2 and keeping D1 as the index is the original proposal in
-[LEXEMA_SPEC.md](LEXEMA_SPEC.md), and these numbers are what #3 needs to decide
-it. That decision is #3's, not this importer's; the schema already keeps the raw
-JSON in its own table so either answer is a small change.
+[LEXEMA_SPEC.md](LEXEMA_SPEC.md). #3 measured it on real D1 and recommends
+keeping the JSON in D1: one release is 1.49 GB there and two fit in about
+3.0 GB ([D1 viability report](../reports/2026-10-01-d1-viability.md)). The
+schema keeps the raw JSON in its own table, so moving it later is a small change.
 
 ## What this does not do
 
