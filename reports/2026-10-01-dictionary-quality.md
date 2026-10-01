@@ -359,7 +359,8 @@ verbatim archive lines: the spot check's words from
 
 - The furniture rule hiding real definitions (`palo`, `banda`, `sbarra`, …) is a
   page defect with a clear fix: hide a headword line only when nothing but stamps
-  follows the marker.
+  follows the marker ([#325](https://github.com/hueypov/lexema/issues/325)).
 - The 104 lemma pages the extraction skips (`raccontare`, `fornire`, `dipendere`)
   are missing records, not missing fields. Whether to recover whole records from
-  raw pages is a data decision, like [#28](https://github.com/hueypov/lexema/issues/28) was.
+  raw pages is a data decision, like [#28](https://github.com/hueypov/lexema/issues/28) was
+  ([#326](https://github.com/hueypov/lexema/issues/326)).
