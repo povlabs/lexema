@@ -23,7 +23,7 @@ CREATE TABLE `api_key` (
 	CONSTRAINT "api_key_hash" CHECK(length(key_hash) = 64),
 	CONSTRAINT "api_key_label" CHECK(length(label) BETWEEN 1 AND 200),
 	CONSTRAINT "api_key_per_minute_limit" CHECK(per_minute_limit > 0),
-	CONSTRAINT "api_key_display_prefix" CHECK(length(display_prefix) = 11 AND display_prefix GLOB 'lx_[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]'),
+	CONSTRAINT "api_key_display_prefix" CHECK(length(display_prefix) = 11 AND display_prefix GLOB 'lx_*' AND substr(display_prefix, 4) NOT GLOB '*[^0-9a-f]*'),
 	CONSTRAINT "api_key_endpoints" CHECK(endpoints IS NULL OR (json_valid(endpoints) AND json_type(endpoints) = 'array' AND json_array_length(endpoints) >= 1)),
 	CONSTRAINT "api_key_owned_or_limited" CHECK((owner_account_id IS NULL) = (per_minute_limit IS NOT NULL))
 ) STRICT;
