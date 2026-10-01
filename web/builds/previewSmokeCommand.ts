@@ -12,7 +12,10 @@
 // - the dictionary finds every word in `SMOKE_WORDS`: `/?q=<word>` is a 200
 //   whose page holds a reading (`data-record`, web/components/dictionary/Reading.tsx).
 //   A word it cannot find is a 200 too, with no reading, so the status alone
-//   says nothing;
+//   says nothing. The reading must be visible as sent, since the smoke runs no
+//   script (#115): React streams a result that is not ready at the first flush
+//   as a hidden `<div hidden id="S:…">` after the page, for a script to swap in,
+//   so a reading only in such a segment is one a reader without JavaScript never sees;
 // - the developer site answers its landing page, `/`, with a 200;
 // - the API answers `GET /v1/lookup?q=andare` sent with a key that does not
 //   exist with its own 401 `invalid_key`. Refusing that key takes a read of the
@@ -41,6 +44,17 @@ export interface Page {
 
 /** A reading on the dictionary's page: only a found word renders one. */
 const READING = /<article\b[^>]*\bdata-record="/;
+/** Where React's streamed, hidden segments begin: after everything the first flush showed. */
+const HIDDEN_SEGMENT = /<div hidden id="S:/;
+
+/** What is wrong with a found word's page, as sent and with no script run; nothing when it shows a reading. */
+function readingProblem(body: string, word: string): string | undefined {
+  const reading = READING.exec(body);
+  if (reading === null) return `no reading for "${word}" on the page`;
+  const hidden = HIDDEN_SEGMENT.exec(body);
+  if (hidden !== null && hidden.index < reading.index) return `the reading for "${word}" is sent hidden, for a script to show`;
+  return undefined;
+}
 
 /** One request the smoke makes, and what its answer must be. */
 export class SmokeProbe {
@@ -66,13 +80,11 @@ export class SmokeProbe {
     this.bodyProblem = bodyProblem;
   }
 
-  /** The dictionary's page for `word`, which must show a reading. */
+  /** The dictionary's page for `word`, which must show a reading without JavaScript. */
   static word(siteUrl: string, word: string): SmokeProbe {
     const url = new URL(siteUrl);
     url.searchParams.set("q", word);
-    return new SmokeProbe("web", url.href, {}, 200, (body) =>
-      READING.test(body) ? undefined : `no reading for "${word}" on the page`,
-    );
+    return new SmokeProbe("web", url.href, {}, 200, (body) => readingProblem(body, word));
   }
 
   /** The developer site's landing page. */
