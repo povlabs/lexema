@@ -349,17 +349,22 @@ export interface InflectionOf {
    */
   targetCandidates: LemmaCandidate[];
   /**
-   * Where the declaring record says it is this reading's plural: `case` glosses
-   * "plurale di casa" (`it-plural-gloss/v1`, src/italian/pluralGloss.ts).
-   * Absent for every other gloss: `casetta` says "diminutivo di casa".
+   * Where the declaring record says it is the plural of this reading's word:
+   * `case` glosses "plurale di casa" (`it-plural-gloss/v1`,
+   * src/italian/pluralGloss.ts). Absent for every other gloss: `casetta` says
+   * "diminutivo di casa".
+   *
+   * The gloss names a word, like the edge, so every candidate carries the same
+   * one: `temi` says it on both noun records of `tema`. Whose plural it is
+   * stays as open as `targetCandidates` leaves it (`namesOneRecordOf`).
    */
   plural: PluralDeclaration | undefined;
 }
 
 /**
  * A record's gloss saying it is the plural of a word, and the genders that
- * record states. The gloss is the first one on the first edge's sense that
- * reads so.
+ * record states. The gloss is the first one of the first sense, in source
+ * order, whose edge lands here and reads so.
  */
 export interface PluralDeclaration {
   /** The gloss that says it, as stored: `plurale di casa` at `/senses/0/glosses/0`. */
@@ -581,6 +586,18 @@ export function lemmasOfPartOfSpeech<C extends { readonly pos: string }>(
   const all = links.flatMap((link) => (link.kind === "candidates" ? link.candidates : []));
   const same = all.filter((lemma) => lemma.pos === pos);
   return same.length > 0 ? same : all;
+}
+
+/**
+ * Whether an incoming edge can mean one record alone among those of part of
+ * speech `pos`: its target word resolves to exactly one such record, which is
+ * then the reading carrying the link. `case` names `casa`, one noun record.
+ * `temi` names `tema`, a masculine noun record and a feminine one, so the edge
+ * settles on neither. It is `lemmasOfPartOfSpeech` seen from the other end:
+ * a candidate of another part of speech (`tema` the verb form) does not count.
+ */
+export function namesOneRecordOf(pos: string, inflection: Pick<InflectionOf, "targetCandidates">): boolean {
+  return inflection.targetCandidates.filter((candidate) => candidate.pos === pos).length === 1;
 }
 
 /**

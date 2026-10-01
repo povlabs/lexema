@@ -964,14 +964,21 @@ async function readInflections(
 
   if (rows.length === 0) return [];
 
-  // The edges whose sense glosses "plurale di <word>". Rows arrive in edge
-  // order per record, so a record keeps its first such gloss.
-  const pluralGlosses = new Map<number, { gloss: SourceText; gender: PluralGlossGender | undefined }>();
+  // The edges whose sense glosses "plurale di <word>". A record keeps the one
+  // on its first such edge in source order, which the rows' pointer-as-text
+  // order is not (`compareSourcePointers`).
+  const pluralGlosses = new Map<number, { edge: string; gloss: SourceText; gender: PluralGlossGender | undefined }>();
   for (const row of rows) {
-    if (row.gloss === null || row.gloss_pointer === null || pluralGlosses.has(row.record_id)) continue;
+    if (row.gloss === null || row.gloss_pointer === null) continue;
+    const kept = pluralGlosses.get(row.record_id);
+    if (kept !== undefined && compareSourcePointers(kept.edge, row.json_pointer) <= 0) continue;
     const plural = readPluralGloss(row.gloss, word);
     if (plural === undefined) continue;
-    pluralGlosses.set(row.record_id, { gloss: { text: row.gloss, ref: lineRef(row, row.gloss_pointer) }, gender: plural.gender });
+    pluralGlosses.set(row.record_id, {
+      edge: row.json_pointer,
+      gloss: { text: row.gloss, ref: lineRef(row, row.gloss_pointer) },
+      gender: plural.gender,
+    });
   }
 
   // One extra read, not one per edge: every incoming edge on this record

@@ -65,6 +65,12 @@ The forward side always carries a list, even a list of one, rather than having a
 special unambiguous case. Both directions then read the same way, and a caller
 that handles the ambiguous case handles every case.
 
+A gloss that names a word is as unresolved as the edge beside it. `temi` says
+"plurale di tema", and `tema` is a masculine noun record and a feminine one, so
+both carry that gloss in `plural` and the page gives `temi` to neither from it.
+A declared plural fills a cell only where one noun record spells the word
+(`namesOneRecordOf`, #145).
+
 ## Two outcomes, two types
 
 `found` and `not-found` were one type with an `outcome` flag and a plain
@@ -142,7 +148,9 @@ lemma links, grammar and forms; each kept reading's line, senses, recovered
 definitions, inflections and reviews, and each lemma's line; then what needs one
 of those first: expressions, an inflection's candidates, a recovered
 definition's labels and examples, and the line of a record it was recovered
-for that a change replaced. A phrase lookup waits on its own probes and
+for that a change replaced. When a record glosses itself the reading's plural,
+the declaring records' stated genders are read in that fourth wait too, beside
+the candidates (#145). A phrase lookup waits on its own probes and
 forms before those four. `test/lookup.test.ts` holds the four for `sale`,
 `studente`, `casa` and `andavano`, so an added `await` fails it only when it
 puts one of those words past four.
@@ -196,16 +204,18 @@ runs, the machine and what the figures do and do not show are in
 
 Identical rows is why a rows-only test sails straight past this. So there is a
 test asserting the query plan contains no `MATERIALIZE` and still uses
-`form_of_edge_by_record`, and the same assertion on both inflection queries.
+`form_of_edge_by_record`, and the same assertion on the three inflection
+queries: the edges, their candidates, and the declaring records' genders.
 That test proves the plan's shape, not its timing.
 
 Query 2a in `src/db/queries.sql` has the same shape and the same problem.
 
 A `SEARCH` can cost as much as a scan. When a join holds the `servedBy` list,
 SQLite may start from it and probe an index on `release_id` alone, which walks
-every row of the release. The two inflection queries did this after #18: about
-two million rows read per record, and 35 s for `bello` (#381). They now pin their
-join order with `CROSS JOIN`, starting from the record.
+every row of the release. The edge and candidate queries did this after #18:
+about two million rows read per record, and 35 s for `bello` (#381). They now
+pin their join order with `CROSS JOIN`, starting from the record, and the
+gender query added since (#145) is written the same way.
 [servedPlan.test.ts](../test/servedPlan.test.ts) reds any exported `servedBy`
 statement that probes `lookup_form` or `form_of_edge` on that prefix alone.
 

@@ -27,7 +27,11 @@
 //   nothing. It goes in the gender the gloss names (`femminile plurale di`),
 //   else every gender that record's tags state, else the noun's own gender
 //   when it states exactly one; otherwise it takes no cell. A record's own
-//   plural always wins, so this never adds a second one.
+//   plural always wins, so this never adds a second one. The gloss names a
+//   word, not a record, so it fills a cell only when one noun record spells
+//   that word: `temi` says "plurale di tema", `tema` is a masculine noun and a
+//   feminine one, and neither takes `temi` from it (the masculine lists its
+//   own).
 // - A form that takes no cell is not shown: the page shows data, never a note
 //   on what it could not place (Huey, 2026-09-27, on #142).
 //
@@ -38,7 +42,7 @@
 // `l'hotel`); a form's spelling does not, since the IPA is the headword's. Where the rule refuses (a phrase, a spelling it does not handle) the
 // cell has no article line.
 
-import { isAdjectiveReading, isNounReading } from "@lexema/lookup/types.ts";
+import { isAdjectiveReading, isNounReading, namesOneRecordOf } from "@lexema/lookup/types.ts";
 import type { GrammarClaim, InflectionOf, PluralDeclaration, Reading, SourceForm } from "@lexema/lookup/types.ts";
 import { generateItalianArticles, spokenOpening, type SpokenOpening } from "@lexema/italian/articles.ts";
 
@@ -223,7 +227,7 @@ export function agreementOf(reading: Reading): Agreement {
 
   if (isNounReading(reading) && !givesPlural(reading)) {
     for (const record of reading.inflections) {
-      if (record.plural === undefined || record.pos !== "noun") continue;
+      if (record.plural === undefined || record.pos !== "noun" || !namesOneRecordOf(record.pos, record)) continue;
       for (const gender of pluralGenders(record.plural, recordGenders)) {
         plain.put(gender, "plural", { kind: "declared-plural", record }, record.word);
       }

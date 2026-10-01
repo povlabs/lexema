@@ -359,6 +359,43 @@ test("casa takes its plural from `case`, which glosses itself plurale di casa, a
   });
 });
 
+test("a plural gloss that could mean two noun records of a word fills neither one's cell (#145)", async () => {
+  // Whole lines of it-0c432803, fixtures/declared-plural.jsonl: `temi` says
+  // "plurale di tema", `rose` "plurale di rosa" and `colli` "plurale di colle",
+  // and each of those words is two noun records.
+  const text = await readFile(join(REPO, "fixtures/declared-plural.jsonl"), "utf8");
+  await withLines(text.trimEnd().split("\n"), async ({ db }) => {
+    const head = ["", "singolare", "plurale"];
+    // The masculine `tema` lists `temi` itself. The feminine one, "paura", lists no plural.
+    const tema = await render(db, "tema");
+    assert.deepEqual(headingsOf(tema).slice(0, 2), ["1·Sostantivo·maschile, singolare", "2·Sostantivo·femminile, singolare"]);
+    assert.deepEqual(gridRows(nth(tema, 1)), [head, ["maschile", "temail tema·un tema", "temii temi·dei temi"]]);
+    assert.deepEqual(gridRows(nth(tema, 2)), [head, ["femminile", "temala tema·una tema", "—"]]);
+    // The feminine `rosa` lists `rose` itself. The masculine one, the colour, lists no plural.
+    const rosa = await render(db, "rosa");
+    assert.deepEqual(headingsOf(rosa), ["1·Sostantivo·femminile", "2·Sostantivo·maschile"]);
+    assert.deepEqual(gridRows(nth(rosa, 1)), [head, ["femminile", "rosala rosa·una rosa", "rosele rose·delle rose"]]);
+    assert.deepEqual(gridRows(nth(rosa, 2)), [head, ["maschile", "rosail rosa·un rosa", "—"]]);
+    // The masculine `colle` lists `colli` itself. The form record, "plurale di colla", has no grid.
+    const colle = await render(db, "colle");
+    assert.deepEqual(headingsOf(colle), ["1·Sostantivo·maschile, singolare", "2·Sostantivo, forma flessa·femminile"]);
+    assert.deepEqual(gridRows(nth(colle, 1)), [head, ["maschile", "colleil colle·un colle", "collii colli·dei colli"]]);
+    assert.doesNotMatch(nth(colle, 2), /data-grid|colli/);
+    // No cell on the three pages comes from a declaring record.
+    assert.equal(occurrencesOf(tema + rosa + colle, "<span data-line="), 0);
+
+    // `altruista` is an adjective and one noun, so its two plural records can
+    // mean that noun alone, each in the gender its own tags state.
+    const altruista = await render(db, "altruista");
+    assert.deepEqual(headingsOf(altruista).slice(0, 2), ["1·Aggettivo·maschile e femminile, singolare", "2·Sostantivo·maschile"]);
+    assert.deepEqual(gridRows(nth(altruista, 2)), [
+      head,
+      ["maschile", "altruistal'altruista·un altruista", "altruistigli altruisti·degli altruisti"],
+      ["femminile", "—", "altruistele altruiste·delle altruiste"],
+    ]);
+  });
+});
+
 test("a searched noun or adjective form, headword or inflected, is found but never marked in its grid (#111)", async () => {
   await withDevSeed(async ({ db }) => {
     // The lookup still returns the inflected form's own reading; only the mark is withheld.

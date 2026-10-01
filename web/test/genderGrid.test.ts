@@ -53,12 +53,17 @@ test("a form's spelling does not take the headword's IPA", () => {
 
 const lineOf = (lineNo: number, jsonPointer: string): SourceRef => ({ ...ref(jsonPointer), lineNo });
 
-/** A record pointing at the noun, with what the lookup read off its gloss and tags. */
+/**
+ * A record pointing at the noun, with what the lookup read off its gloss and
+ * tags. `candidates` is the part of speech of every record the named word
+ * resolves to: the noun itself, unless a test says the word is more records.
+ */
 function declaring(
   word: string,
   lineNo: number,
   plural: { glossGender?: "masculine" | "feminine"; tags?: ("masculine" | "feminine")[] } | undefined,
   pos = "noun",
+  candidates: string[] = ["noun"],
 ): InflectionOf {
   return {
     recordId: lineNo,
@@ -66,7 +71,7 @@ function declaring(
     pos,
     refs: [lineOf(lineNo, "/senses/0/form_of/0/word")],
     targetWord: "x",
-    targetCandidates: [],
+    targetCandidates: candidates.map((candidatePos, i) => ({ recordId: 1000 + i, word: "x", pos: candidatePos, ref: lineOf(1000 + i, "/word") })),
     plural:
       plural === undefined
         ? undefined
@@ -130,6 +135,16 @@ test("only a noun record's plural gloss fills a cell: a diminutive or another pa
   // A verb or an adjective reading takes none either.
   const adjective = { ...nounOf("bello", ["masculine"], [declaring("belli", 5, {})]), pos: "adj" } as unknown as Reading;
   assert.deepEqual(placed(adjective).filter((cell) => cell.includes("@5")), []);
+});
+
+test("a declared plural fills a cell only when one noun record spells the word it names", () => {
+  // `temi` says "plurale di tema", and `tema` is two noun records: neither takes it.
+  const temi = declaring("temi", 7, { tags: ["masculine"] }, "noun", ["noun", "noun", "verb"]);
+  assert.deepEqual(placed(nounOf("tema", ["feminine"], [temi])), []);
+  assert.deepEqual(placed(nounOf("tema", ["masculine"], [temi])), []);
+  // A record of another part of speech spelling the word does not make it two.
+  const altruiste = declaring("altruiste", 8, { tags: ["feminine"] }, "noun", ["adj", "noun"]);
+  assert.deepEqual(placed(nounOf("altruista", ["masculine"], [altruiste])), ["feminine plural: altruiste@8"]);
 });
 
 test("a record's own plural always wins, and a declared plural changes no other cell", () => {

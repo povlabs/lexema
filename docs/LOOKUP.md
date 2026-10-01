@@ -313,7 +313,7 @@ shows the lemma's whole table from it.
 | `ref` | the edge on that record |
 | `targetWord` | the word the edge names, verbatim |
 | `targetCandidates[]` | every headword record `targetWord` resolves to, this reading included |
-| `plural` | where the declaring record glosses itself this reading's plural, or `undefined` |
+| `plural` | where the declaring record glosses itself the plural of this reading's word, or `undefined` |
 
 More than one candidate means the source did not choose, and the reading must
 not be rendered as *the* lemma of `word`.
@@ -325,8 +325,14 @@ di`, `plurale femminile di` or `plurale maschile di`, then this reading's word,
 then nothing that continues the word. `case` ("plurale di casa") carries one for
 `casa`; `casetta` ("diminutivo di casa") does not. It holds the `gloss` with its
 ref, the `glossGender` the opening names, if any, and `recordGenders`, the
-declaring record's own stated gender claims. Where the page puts that spelling
-is the grid's rule ([`genderGrid.ts`](../web/lib/dictionary/genderGrid.ts)).
+declaring record's own stated gender claims.
+
+The gloss names a word, as the edge does, so every candidate carries the same
+`plural`: `temi` ("plurale di tema") gives one to both noun records of `tema`.
+It is this reading's plural only when `targetCandidates` holds one record of the
+reading's part of speech, which `namesOneRecordOf` answers. Where the page puts
+that spelling, and that it shows none when the candidates leave it open, is the
+grid's rule ([`genderGrid.ts`](../web/lib/dictionary/genderGrid.ts)).
 
 ### `Review`
 
