@@ -20,6 +20,8 @@ Fabrika's own repository solved this with lefthook. [kamp-us/phoenix ADR 0068](h
 
 Huey asked for this on [#346](https://github.com/hueypov/lexema/issues/346), split out of [#344](https://github.com/hueypov/lexema/issues/344).
 
+This record amends [0014](0014-agent-work-runs-in-any-harness.md) in part: "the checkout" in its one-writer constraint now means one worktree, so there is one writer per worktree. Everything else in 0014 stands.
+
 ## Decision
 
 **lefthook manages git hooks, installed by `pnpm install`, and its `post-checkout` sets up a new linked worktree.**
