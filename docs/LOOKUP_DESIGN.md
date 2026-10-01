@@ -38,8 +38,9 @@ collapsing any two of these would be a lie:
   ([`grammarPolicy.ts`](../src/import/grammarPolicy.ts)).
 - **`unclassified`** — the source gave text we will not guess at. `essi/esse`
   obviously means third person; mapping it is #4's job, with tests.
-- **`missing`** — we looked and the source said nothing. `casa` states neither
-  gender nor number.
+- **`missing`** — we looked and the source said nothing. `varicella` (line
+  1128) has no tags and no gloss grammar stamp, so it states neither gender
+  nor number.
 
 Lemma links are a union for the same reason. A `dangling` edge stays visible,
 because dropping it would turn "points somewhere we cannot follow" into "points

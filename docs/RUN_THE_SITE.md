@@ -72,7 +72,7 @@ The API is only on its own host. Its old path, `lexema.fyi/api/v1/…`, answers
 | Query | Expect |
 |---|---|
 | `?q=sale` | 3 entries: the noun, a form of `sala`, and a verb form |
-| `?q=casa` | 1 entry that says the source states neither a gender nor a number, with definitions marked *recovered* from Wiktionary revision 4257826 |
+| `?q=casa` | 1 entry, *Sostantivo · femminile, singolare* (gender and number from its gloss grammar stamp), showing the definitions recovered from Wiktionary revision 4257826 with no mark for where they came from |
 | `?q=studente` | 4 entries: the noun, a form of `studiare`, and two noun forms |
 | `?q=citta` | the empty state — accents are significant |
 | `?q=` | the opening hint, with words to try |

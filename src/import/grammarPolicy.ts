@@ -96,8 +96,9 @@ export function mapRawTag(rawTag: string): MappedTag {
 /**
  * Dimensions expected on a record itself, given its part of speech. A dimension
  * expected here and absent from the tags becomes a 'missing' row, which is how
- * `casa` (no gender tag at all) reads differently from a word the source simply
- * never had an opinion about.
+ * `varicella` (no tags, no gloss grammar stamp) reads differently from a word
+ * the source simply never had an opinion about. A dimension a gloss grammar
+ * stamp states (`casa`, via `GlossStampLift`) is `stated`, not missing.
  */
 export function expectedRecordDimensions(pos: string): readonly string[] {
   // Nominals are the only pos where the source reliably states gender and

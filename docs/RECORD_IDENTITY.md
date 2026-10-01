@@ -89,7 +89,7 @@ Four different things, kept apart.
 | **absent** | no `grammar_claim` row | nothing expected a `person` on a noun |
 | **`stated`** | dimension + value + the literal tag, or the stamp of a gloss grammar stamp ([`grammarPolicy.ts`](../src/import/grammarPolicy.ts)) | `città` `/tags/0` → gender = feminine; `casa` `/senses/0/glosses/0` `f sing` → gender = feminine |
 | **`unclassified`** | literal text kept, no dimension, no value guessed | `salire` `/forms/6/raw_tags/0` = `lui/lei` |
-| **`missing`** | dimension named, value NULL, pointer at the container that should have carried it | `casa` has no gender tag anywhere |
+| **`missing`** | dimension named, value NULL, pointer at the container that should have carried it | `varicella` (line 1128) has no tags and no gloss grammar stamp |
 
 `grammar_value` is a seeded table and `grammar_claim` references it with a composite foreign key. An unmapped tag therefore *cannot* enter as a newly invented value — it has to land as `unclassified`. Widening the vocabulary is an `INSERT` in a migration somebody has to read.
 
@@ -216,14 +216,21 @@ This does not prove no historical or regional verb use exists. It records that t
 
 ## Also worth seeing: `casa` and `città`
 
-`casa` (line 1) is the clearest `missing` case. The record has no `tags` at all:
+`casa` (line 1) has no `tags` at all. Its gender and number come only from the gloss grammar stamp at the end of its first gloss, which rule `it-gloss-stamp/v1` reads ([`grammarPolicy.ts`](../src/import/grammarPolicy.ts)):
+
+| scope | pointer | status | dimension | value | source text |
+| --- | --- | --- | --- | --- | --- |
+| record | `/senses/0/glosses/0` | `stated` | gender | feminine | `f sing` |
+| record | `/senses/0/glosses/0` | `stated` | number | singular | `f sing` |
+
+Its `pl.: case` sits in `sense_label` as a raw tag and in `grammar_claim` as `unclassified`, unparsed in both. Meanwhile line 8864, `case`, carries feminine and plural tags and an edge to `casa`.
+
+The clearest `missing` case is now `varicella` (line 1128): a noun with no `tags`, no `forms` and no stamp in its one gloss, so both rows point at the record and carry no value:
 
 | scope | pointer | status | dimension | value |
 | --- | --- | --- | --- | --- |
 | record | `""` | `missing` | gender | |
 | record | `""` | `missing` | number | |
-
-Its `pl.: case` sits in `sense_label` as a raw tag and in `grammar_claim` as `unclassified`, unparsed in both. Meanwhile line 8864, `case`, does carry feminine and plural tags and an edge to `casa` — the relation exists even though `casa`'s own entry has nothing.
 
 `città` (line 31998) is `stated` on both dimensions — gender feminine, number invariable — and still cannot get an article, because `invariable` is not a number an article agrees with. That is a question for the article rule, not a gap in the data.
 

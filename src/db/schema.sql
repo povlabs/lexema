@@ -395,8 +395,9 @@ INSERT INTO grammar_value (dimension, value) VALUES
 --                    text is kept; no value is guessed. e.g. raw_tags 'pl.: case'
 --                    on `casa`, 'lui/lei' on a `salire` form.
 --   'missing'     -> the importer looked for a dimension it expects here and the
---                    source gave nothing. e.g. `casa` at line 1 has no `tags` at
---                    all, so both gender and number are missing, and no form in
+--                    source gave nothing. e.g. `varicella` at line 1128 has no
+--                    `tags` and no gloss grammar stamp, so both gender and
+--                    number are missing, and no form in
 --                    this entire file carries a structural mood — `parlerei` at
 --                    line 37 /forms/53 is tagged only 'present', with the
 --                    conditional stated in prose on a different record.

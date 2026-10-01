@@ -90,7 +90,8 @@ const LINES = [
   JSON.stringify({ word: "bello", pos: "noun", pos_title: "Sostantivo", lang_code: "it", tags: ["invariable", "masculine"] }),
   JSON.stringify({ word: "bello", pos: "noun", pos_title: "Sostantivo", lang_code: "it", tags: ["masculine", "singular"] }),
 
-  // No gender, no number, definitions that define nothing.
+  // No tags: gender and number only from the gloss stamp (#317); definitions
+  // that define nothing.
   JSON.stringify({
     word: "casa", pos: "noun", pos_title: "Sostantivo", lang_code: "it",
     senses: [{ glosses: ["casa ( approfondimento) f sing"], raw_tags: ["pl.: case"] }],

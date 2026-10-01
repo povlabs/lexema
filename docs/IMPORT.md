@@ -124,10 +124,10 @@ unvalidated guess in the database wearing a `stated` label.
 **`missing` is recorded where a dimension was expected and not found.** Two
 narrow cases:
 
-- Nouns, adjectives and names are expected to state gender and number. `casa`
-  states neither, so it gets two `missing` rows. That is a different fact from a
-  word nobody expected a gender from, and the difference is what lets the site
-  say "the source does not say" instead of showing nothing.
+- Nouns, adjectives and names are expected to state gender and number.
+  `varicella` (line 1128) states neither, so it gets two `missing` rows. That is
+  a different fact from a word nobody expected a gender from, and the difference
+  is what lets the site say "the source does not say" instead of showing nothing.
 - A verb form already inflected for person, number or tense is expected to state
   a mood. None in this file does — `parlerei` is tagged only `present`, with
   "conditional" written in prose on a separate record — so 592,277 `missing`

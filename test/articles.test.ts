@@ -198,11 +198,11 @@ test("a singular reading adds the articles of the one plural the source tags wit
   assert.deepEqual(dio.status === "derived" && dio.articles.map((a) => a.displayForm), ["il dio", "un dio", "gli dèi", "degli dèi"]);
 });
 
-test("sparse casa gets no gender: the reason names what the source left out", () => {
-  // The source's `casa` record has no tags at all; its gender is only in gloss prose.
-  assert.deepEqual(withheld(articlesOf("casa", [missing("gender"), missing("number")])), { reason: "no-gender-or-number-stated" });
-  assert.deepEqual(withheld(articlesOf("casa", [stated("number", "singular")])), { reason: "gender-not-stated" });
-  assert.deepEqual(withheld(articlesOf("casa", [stated("gender", "feminine")])), { reason: "number-not-stated" });
+test("sparse varicella gets no gender: the reason names what the source left out", () => {
+  // The source's `varicella` record (line 1128) has no tags and no gloss grammar stamp.
+  assert.deepEqual(withheld(articlesOf("varicella", [missing("gender"), missing("number")])), { reason: "no-gender-or-number-stated" });
+  assert.deepEqual(withheld(articlesOf("varicella", [stated("number", "singular")])), { reason: "gender-not-stated" });
+  assert.deepEqual(withheld(articlesOf("varicella", [stated("gender", "feminine")])), { reason: "number-not-stated" });
 });
 
 test("invariable città is withheld rather than given a number", () => {
