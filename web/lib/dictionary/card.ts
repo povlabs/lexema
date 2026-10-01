@@ -2,11 +2,11 @@
 // Slack or iMessage shows for a link to a result page. Board S1 in
 // lexema-design.pen draws two cards.
 //
-// - A word card: the headword, a meta line `/ˈkaza/ · femminile · Sostantivo`,
+// - A word card: the headword, a meta line `/ˈbɛllo/ · maschile · Aggettivo`,
 //   and the first meaning. Each part of the meta line shows only when the page
 //   has it, and in the page's own words: the first pronunciation under the
-//   headword, the gender the first reading's heading shows (genderGrid.ts), and
-//   that reading's part of speech.
+//   headword, the gender the first numbered reading's heading shows
+//   (genderGrid.ts), and that reading's part of speech.
 // - The home card, for everything else: the home page, a word Lexema does not
 //   have, a search over the visitor's limit, and a lookup that failed.
 //
@@ -69,7 +69,10 @@ export function cardOf(attempt: Attempt): Card {
     };
   }
   const page = wordPage(searched, attempt.readings);
-  const { reading } = page.readings[0];
+  // The reading the page's first meaning sits under: the first one numbered,
+  // since a reading with no definition has no number. A page with none
+  // numbered falls back to its first reading.
+  const { reading } = page.readings.find((entry) => entry.number !== undefined) ?? page.readings[0];
   const [meaning] = definitionsOf(reading).items;
   return {
     kind: "word",

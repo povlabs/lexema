@@ -33,7 +33,11 @@ const COLUMN = CARD_WIDTH - 2 * INSET_X;
  * The headword's sizes, largest first. It takes the largest whose one line
  * fits the column: `casa` at 128px, `precipitevolissimevolmente` at 72px, as
  * the board draws them. Past the last step a word wraps rather than shrink
- * further; no Italian headword the release holds gets there.
+ * further. No Italian headword in it-0c432803 gets there: measured through
+ * this Satori over Spectral 400 (2026-10-01), the widest of the 439 with 24 or
+ * more characters is `memoria a sola lettura cancellabile e programmabile`, at
+ * 1018.5px of the 1040px column at 44px. A shorter one cannot get there: the
+ * widest Latin glyph, `W`, is 0.98em, so 23 of them are 993px at 44px.
  */
 export const HEADWORD_SIZES = [128, 96, 72, 56, 44] as const;
 

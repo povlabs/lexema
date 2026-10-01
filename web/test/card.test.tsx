@@ -127,6 +127,24 @@ test("a word whose page shows no gender has none on its card", async () => {
   assert.equal(dormire.gender, undefined);
 });
 
+test("a page whose first reading has no definition: the card speaks for its first numbered reading", async () => {
+  // fuori's Interiezione reading has no definition, so the page gives it no
+  // number. Put first, it opens the page; the page's first meaning is still the
+  // Avverbio's, and so is the card's.
+  const found = await attempt("fuori");
+  assert.equal(found.outcome, "found");
+  if (found.outcome !== "found") return;
+  const bare = found.readings.find((reading) => reading.posTitle === "Interiezione");
+  assert.ok(bare, "fuori has an Interiezione reading");
+  const rest = found.readings.filter((reading) => reading !== bare);
+  const card = cardOf({ ...found, readings: [bare, ...rest] });
+  const usual = await wordCard("fuori");
+  assert.equal(card.kind, "word");
+  assert.equal(usual.partOfSpeech, "Avverbio");
+  assert.deepEqual(card, usual);
+  assert.ok(usual.meaning !== undefined, "the Avverbio reading has a meaning");
+});
+
 test("the card's gender is exactly the gender its reading's heading opens with", async () => {
   for (const word of ["bello", "bella", "scuola", "casa", "khmer", "fine", "sale", "studente", "andare"]) {
     const found = await attempt(word);

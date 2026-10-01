@@ -19,7 +19,7 @@ import plexMono from "../../fonts/card/IBMPlexMono-400-normal.woff.bin";
 import spectralItalic from "../../fonts/card/Spectral-400-italic.woff.bin";
 import spectralRegular from "../../fonts/card/Spectral-400-normal.woff.bin";
 
-/** The three families, in the weights and styles a card sets (web/fonts/card/README.md). */
+/** The three families, in the weights and styles a card sets (web/fonts/README.md § "The card's faces, in `card/`"). */
 const FONTS: Font[] = [
   { name: "Spectral", data: spectralRegular, weight: 400, style: "normal" },
   { name: "Spectral", data: spectralItalic, weight: 400, style: "italic" },
