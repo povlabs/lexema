@@ -9,12 +9,19 @@
 // The draw is uniform over line numbers, not over records: a record that
 // follows a long run of other parts of speech is more likely than one that
 // follows its own kind. That is the price of a pick that reads two rows.
+//
+// The lines are the master's own release's (#18). A record a change from a
+// later release replaced is answered with the record that replaced it, which
+// has its word and part of speech; a word only a later release added is not
+// drawn, since its line numbers count in another file.
 
-import type { LookupDatabase } from "./database.js";
+import type { DictionaryRead, LookupDatabase } from "./database.js";
 import { readRelease } from "./lookup.js";
 
 /** One source record, by the identity lookup gives it. */
 export interface RandomHeadword {
+  /** The release whose file `lineNo` counts in: the master's, or the feed a change came from. */
+  releaseId: string;
   lineNo: number;
   word: string;
   pos: string;
@@ -30,18 +37,49 @@ export const RANDOM_BOUNDS_BY_POS_SQL = `SELECT
          (SELECT min(line_no) FROM source_record WHERE release_id = ?1 AND pos = ?2) AS low,
          (SELECT max(line_no) FROM source_record WHERE release_id = ?1 AND pos = ?2) AS high`;
 
+/** Whether a change applied from a later release replaced the record. */
+const REPLACED = "EXISTS (SELECT 1 FROM applied_change a WHERE a.replaced_record_id = source_record.record_id)";
+
 /** The first record at or after the drawn line. */
-export const RANDOM_PICK_SQL = `SELECT line_no, word, pos, pos_title
+export const RANDOM_PICK_SQL = `SELECT record_id, release_id, line_no, word, pos, pos_title, ${REPLACED} AS replaced
        FROM source_record
       WHERE release_id = ?1 AND line_no >= ?2
       ORDER BY line_no
       LIMIT 1`;
 
-export const RANDOM_PICK_BY_POS_SQL = `SELECT line_no, word, pos, pos_title
+export const RANDOM_PICK_BY_POS_SQL = `SELECT record_id, release_id, line_no, word, pos, pos_title, ${REPLACED} AS replaced
        FROM source_record
       WHERE release_id = ?1 AND pos = ?2 AND line_no >= ?3
       ORDER BY line_no
       LIMIT 1`;
+
+/**
+ * The record that stands for the drawn one now: itself, or the last of the
+ * records that replaced it, one change after another (`applied_change`).
+ * Exported so a test can assert the plan.
+ */
+export const CURRENT_RECORD_SQL: DictionaryRead = `SELECT r.record_id, r.release_id, r.line_no, r.word, r.pos, r.pos_title
+       FROM source_record r
+      WHERE r.record_id IN (
+              WITH RECURSIVE version(record_id) AS (
+                SELECT ?1
+                UNION ALL
+                SELECT a.record_id FROM applied_change a JOIN version v ON a.replaced_record_id = v.record_id)
+              SELECT record_id FROM version)
+        AND NOT EXISTS (SELECT 1 FROM applied_change a WHERE a.replaced_record_id = r.record_id)`;
+
+interface RecordRow {
+  record_id: number;
+  release_id: string;
+  line_no: number;
+  word: string;
+  pos: string;
+  pos_title: string;
+}
+
+interface DrawnRow extends RecordRow {
+  replaced: number;
+}
 
 export interface RandomOptions {
   db: LookupDatabase;
@@ -65,11 +103,10 @@ export async function randomHeadword({ db, releaseId, pos, random = Math.random 
   if (bounds?.low == null || bounds.high == null) return undefined;
 
   const line = bounds.low + Math.floor(random() * (bounds.high - bounds.low + 1));
-  const [row] = await db.all<{ line_no: number; word: string; pos: string; pos_title: string }>(
-    pos === undefined ? RANDOM_PICK_SQL : RANDOM_PICK_BY_POS_SQL,
-    [...scope, line],
-  );
+  const [drawn] = await db.all<DrawnRow>(pos === undefined ? RANDOM_PICK_SQL : RANDOM_PICK_BY_POS_SQL, [...scope, line]);
   // `high` is a line of the scope, so a line drawn at or below it always finds one.
-  if (row === undefined) throw new Error(`no record at or after line ${line} of '${releaseId}'`);
-  return { lineNo: row.line_no, word: row.word, pos: row.pos, posTitle: row.pos_title };
+  if (drawn === undefined) throw new Error(`no record at or after line ${line} of '${releaseId}'`);
+  const [row] = drawn.replaced === 0 ? [drawn] : await db.all<RecordRow>(CURRENT_RECORD_SQL, [drawn.record_id]);
+  if (row === undefined) throw new Error(`record ${drawn.record_id} has no current record`);
+  return { releaseId: row.release_id, lineNo: row.line_no, word: row.word, pos: row.pos, posTitle: row.pos_title };
 }

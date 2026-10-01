@@ -63,11 +63,13 @@ CREATE TABLE source_release (
   license          TEXT,                    -- SPDX-ish string as found upstream
   attribution      TEXT,
 
-  -- A half-imported release must never be served. Lookup queries filter on
-  -- status = 'complete'. Direct table reads are import diagnostics only.
-  -- 'partial' is a run that finished cleanly but stopped before the end of the
-  -- archive (a --limit smoke run): the checksum above describes the whole file
-  -- while only a prefix of it landed, so it is never 'complete'.
+  -- A half-imported release must never be served. Lookup queries read only the
+  -- releases `served_release` names: a 'complete' one, and the feed releases
+  -- it takes changes from. Direct table reads are import diagnostics only.
+  -- 'partial' is a release only part of whose archive landed, though the
+  -- checksum above describes the whole file, so it is never 'complete'. Either
+  -- a seed run stopped early (a --limit smoke run), or the release is a feed
+  -- (`feed_release`) whose chosen changes alone were applied.
   status           TEXT NOT NULL DEFAULT 'importing'
                    CHECK (status IN ('importing', 'partial', 'complete', 'failed', 'superseded')),
 
@@ -606,13 +608,97 @@ CREATE TABLE recovered_example (
 
 
 -- ---------------------------------------------------------------------------
+-- Changes applied from a later release (#18)
+-- ---------------------------------------------------------------------------
+
+-- The dictionary database is the master: the release it was seeded from, plus
+-- the changes chosen from later kaikki releases. A later release is a feed,
+-- never a replacement. Only the records of the changes chosen from it are
+-- written, each as a record of its own release, through the same import path
+-- as a seed. Nothing else is written, and no row of the master is deleted
+-- except the index rows of a record a change takes over from (below).
+-- docs/UPDATES.md explains the design; docs/UPDATE_THE_DICTIONARY.md is the
+-- runbook. An older master gets these tables and views from the apply itself
+-- (src/update/masterUpgrade.ts), which reads them out of this file.
+
+-- A later release changes were applied from, and the master it feeds. Its
+-- `source_release` row is 'partial': its checksum names the whole archive, and
+-- only the chosen records landed.
+CREATE TABLE feed_release (
+  release_id        TEXT PRIMARY KEY REFERENCES source_release(release_id),
+  master_release_id TEXT NOT NULL REFERENCES source_release(release_id),
+  CHECK (release_id <> master_release_id)
+) STRICT;
+
+-- One change applied to the master, under the id the diff report gave it.
+--
+--   'new'     -> the feed's record of a (word, pos) the master did not hold.
+--   'changed' -> the feed's record of a (word, pos) the master held one record
+--                of, with different content. The master's record is retired:
+--                its lookup_form and form_of_edge rows go, so no search reaches
+--                it, and every other row of it stays. The rows written by hand
+--                beside it (recovered_*, claim_review) stay attached to it, and
+--                a lookup reads them through this row for the record that
+--                replaced it.
+--
+-- A lost record is reported, never applied: removing one is not ruled (#18).
+CREATE TABLE applied_change (
+  -- 'new-' or 'chg-' and twelve hex digits: src/update/changes.ts.
+  change_id          TEXT    PRIMARY KEY
+                     CHECK (length(change_id) = 16 AND substr(change_id, 5) NOT GLOB '*[^0-9a-f]*'),
+  release_id         TEXT    NOT NULL REFERENCES feed_release(release_id),
+  kind               TEXT    NOT NULL CHECK (kind IN ('new', 'changed')),
+  record_id          INTEGER NOT NULL UNIQUE,
+  replaced_record_id INTEGER UNIQUE REFERENCES source_record(record_id),
+  applied_at         TEXT    NOT NULL,  -- ISO-8601
+
+  CHECK ((kind = 'new') = (replaced_record_id IS NULL)),
+  CHECK (substr(change_id, 1, 4) = CASE kind WHEN 'new' THEN 'new-' ELSE 'chg-' END),
+  CHECK (replaced_record_id <> record_id),
+  -- The record the change wrote is a record of the release it came from.
+  FOREIGN KEY (record_id, release_id) REFERENCES source_record(record_id, release_id)
+) STRICT;
+
+
+-- ---------------------------------------------------------------------------
 -- Views
 -- ---------------------------------------------------------------------------
 
+-- The releases a master serves rows from, keyed by the master: the 'complete'
+-- release it was seeded from, and every feed of it. `LEXEMA_RELEASE` names the
+-- master. Every serving read keys on this view rather than on one release_id,
+-- so the record a change wrote is found beside the records it did not touch.
+CREATE VIEW served_release AS
+SELECT m.release_id AS master_release_id, m.release_id
+FROM source_release m
+WHERE m.status = 'complete'
+UNION ALL
+SELECT f.master_release_id, f.release_id
+FROM feed_release f
+JOIN source_release m ON m.release_id = f.master_release_id AND m.status = 'complete'
+JOIN source_release fr ON fr.release_id = f.release_id AND fr.status = 'partial';
+
+-- The records a master serves: those of its served releases that no applied
+-- change took over from. The diff compares a later release with exactly these.
+CREATE VIEW served_record AS
+SELECT
+  s.master_release_id,
+  r.record_id,
+  r.release_id,
+  r.line_no,
+  r.line_sha256,
+  r.word,
+  r.pos,
+  r.pos_title
+FROM source_record r
+JOIN served_release s ON s.release_id = r.release_id
+WHERE NOT EXISTS (SELECT 1 FROM applied_change a WHERE a.replaced_record_id = r.record_id);
+
 -- Every candidate record a form_of edge could mean, one row per candidate. An
 -- ambiguous edge produces several rows; a dangling edge produces none. Callers
--- must retain every candidate rather than selecting a winner. Only complete
--- releases are visible; query 2a also retains dangling edges.
+-- must retain every candidate rather than selecting a winner. Only served
+-- releases are visible, and an edge finds candidates in every release of its
+-- own master; query 2a also retains dangling edges.
 CREATE VIEW form_of_candidate AS
 SELECT
   e.edge_id,
@@ -620,22 +706,25 @@ SELECT
   e.json_pointer     AS edge_pointer,
   e.target_word,
   t.record_id        AS candidate_record_id,
+  t.release_id       AS candidate_release_id,
   t.line_no          AS candidate_line_no,
   t.pos              AS candidate_pos
 FROM form_of_edge e
-JOIN source_release rel
-  ON rel.release_id = e.release_id AND rel.status = 'complete'
+JOIN served_release se ON se.release_id = e.release_id
+JOIN served_release sc ON sc.master_release_id = se.master_release_id
 JOIN lookup_form lf
-  ON lf.release_id = e.release_id
+  ON lf.release_id = sc.release_id
  AND lf.surface_key = e.target_word_key
  AND lf.origin = 'headword'
 JOIN source_record t
   ON t.record_id = lf.record_id;
 
 -- Search results, flattened. `is_headword_hit` tells a caller whether the record
--- is about the surface or merely mentions it.
+-- is about the surface or merely mentions it. `release_id` is the record's own
+-- release, which its `line_no` counts in.
 CREATE VIEW surface_hit AS
 SELECT
+  s.master_release_id,
   lf.release_id,
   lf.surface_key,
   lf.surface,
@@ -649,5 +738,4 @@ SELECT
   (lf.origin = 'headword') AS is_headword_hit
 FROM lookup_form lf
 JOIN source_record r ON r.record_id = lf.record_id
-JOIN source_release rel
-  ON rel.release_id = lf.release_id AND rel.status = 'complete';
+JOIN served_release s ON s.release_id = lf.release_id;

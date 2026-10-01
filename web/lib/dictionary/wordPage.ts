@@ -260,7 +260,7 @@ function mergeWordFacts(readings: readonly Reading[]): WordFacts {
 const onlyReading = (named: readonly Reading[]): Reading | undefined => (named.length === 1 ? named[0] : undefined);
 
 /** A source position, the key an occurrence is placed by. */
-const refKey = (ref: SourceRef): string => `${ref.lineNo}\u0000${ref.jsonPointer}`;
+const refKey = (ref: SourceRef): string => `${ref.releaseId}\u0000${ref.lineNo}\u0000${ref.jsonPointer}`;
 
 /**
  * Etymologies and synonym groups the source ties to one part of speech, moved

@@ -1,0 +1,431 @@
+// Updates from a later kaikki release (#18): the diff against the master, and
+// the apply of the changes a person chose. Each test seeds a master from one
+// small archive through the seed's own SQL, writes beside it the rows a person
+// or the recovered layer writes by hand, and compares a later archive with it.
+
+import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { DatabaseSync } from "node:sqlite";
+import test from "node:test";
+import { gzipSync } from "node:zlib";
+import { seedSql } from "../src/import/seedSql.js";
+import { fromNodeSqlite } from "../src/lookup/database.js";
+import { lookup } from "../src/lookup/lookup.js";
+import { findNearby } from "../src/lookup/nearby.js";
+import { randomHeadword } from "../src/lookup/random.js";
+import { suggest } from "../src/lookup/suggest.js";
+import type { FoundResult, LookupResult, Reading } from "../src/lookup/types.js";
+import { ApplyRefused, checkApplied, chooseChanges, planApply, type ApplyPlan } from "../src/update/apply.js";
+import type { Change } from "../src/update/changes.js";
+import { diffAgainstMaster, reportMarkdown, reportOf, type MasterDiff } from "../src/update/diff.js";
+import type { MasterReader } from "../src/update/master.js";
+import { masterUpgradeSql, SERVING_VIEWS, UPDATE_TABLES } from "../src/update/masterUpgrade.js";
+
+const MASTER = "it-master";
+const SCHEMA = "src/db/schema.sql";
+
+const record = (fields: Record<string, unknown>): string => JSON.stringify({ lang_code: "it", ...fields });
+
+// The master's file. `casa` lost its definitions to the extraction, as the real
+// July file did, and `andare` says little; the later file fixes both.
+const CASA_JULY = record({
+  word: "casa", pos: "noun", pos_title: "Sostantivo", tags: ["feminine", "singular"],
+  forms: [{ form: "case", tags: ["feminine", "plural"] }],
+  senses: [{ glosses: ["casa ( approfondimento) f sing"] }],
+});
+const CANE = record({ word: "cane", pos: "noun", pos_title: "Sostantivo", tags: ["masculine", "singular"], senses: [{ glosses: ["mammifero domestico"] }] });
+const GATTO = { word: "gatto", pos: "noun", pos_title: "Sostantivo", lang_code: "it", senses: [{ glosses: ["felino domestico"] }] };
+const SALA = record({ word: "sala", pos: "noun", pos_title: "Sostantivo", senses: [{ glosses: ["stanza ampia"] }] });
+const SALE_SALT = record({ word: "sale", pos: "noun", pos_title: "Sostantivo", senses: [{ glosses: ["cloruro di sodio"] }] });
+const SALE_PLURAL = record({
+  word: "sale", pos: "noun", pos_title: "Sostantivo, forma flessa",
+  senses: [{ glosses: ["plurale di sala"], tags: ["form-of"], form_of: [{ word: "sala" }] }],
+});
+const BELLO = record({ word: "bello", pos: "adj", pos_title: "Aggettivo", senses: [{ glosses: ["gradevole a vedersi"] }] });
+const ANDARE_JULY = record({ word: "andare", pos: "verb", pos_title: "Verbo", senses: [{ glosses: ["muoversi"] }] });
+const VADO = record({
+  word: "vado", pos: "verb", pos_title: "Voce verbale",
+  senses: [{ glosses: ["prima persona singolare del presente indicativo di andare"], tags: ["form-of"], form_of: [{ word: "andare" }] }],
+});
+
+const MASTER_LINES = [CASA_JULY, CANE, JSON.stringify(GATTO), SALA, SALE_SALT, SALE_PLURAL, BELLO, ANDARE_JULY, VADO];
+
+// The later file, in another order, so no line number agrees with the master's.
+const CASA_FIXED = record({
+  word: "casa", pos: "noun", pos_title: "Sostantivo", tags: ["feminine", "singular"],
+  forms: [{ form: "case", tags: ["feminine", "plural"] }],
+  senses: [{ glosses: ["edificio adibito ad abitazione"] }, { glosses: ["famiglia"] }],
+});
+const ANDARE_FIXED = record({ word: "andare", pos: "verb", pos_title: "Verbo", senses: [{ glosses: ["muoversi"] }, { glosses: ["funzionare"] }] });
+// The same content as the master's `gatto`, its keys in another order.
+const GATTO_REORDERED = JSON.stringify({ senses: GATTO.senses, lang_code: "it", pos_title: GATTO.pos_title, pos: GATTO.pos, word: GATTO.word });
+const BELLO_TRANSLATED = record({ word: "bello", pos: "adj", pos_title: "Aggettivo", senses: [{ glosses: ["gradevole a vedersi"] }], translations: [{ lang_code: "en", word: "beautiful" }] });
+const CITTA = record({ word: "città", pos: "noun", pos_title: "Sostantivo", tags: ["feminine", "invariable"], senses: [{ glosses: ["centro abitato"] }] });
+const ZAINO = record({ word: "zaino", pos: "noun", pos_title: "Sostantivo", senses: [{ glosses: ["sacca da portare sulle spalle"] }] });
+// A gloss ADR 0019's first rule rewrites: the stored row reads "prima", the line keeps "1ª".
+const VENGO = record({
+  word: "vengo", pos: "verb", pos_title: "Voce verbale",
+  senses: [{ glosses: ["1ª persona singolare del presente indicativo di venire"], tags: ["form-of"], form_of: [{ word: "venire" }] }],
+});
+// Both `sale` records changed: two against two, which the diff will not pair.
+const SALE_SALT_LATER = record({ word: "sale", pos: "noun", pos_title: "Sostantivo", senses: [{ glosses: ["cloruro di sodio"], tags: ["uncountable"] }] });
+const SALE_PLURAL_LATER = record({
+  word: "sale", pos: "noun", pos_title: "Sostantivo, forma flessa",
+  senses: [{ glosses: ["plurale di sala"], tags: ["form-of", "plural"], form_of: [{ word: "sala" }] }],
+});
+
+const LATER_LINES = [ZAINO, VADO, CITTA, BELLO_TRANSLATED, SALE_PLURAL_LATER, GATTO_REORDERED, ANDARE_FIXED, CANE, CASA_FIXED, SALE_SALT_LATER, VENGO];
+
+const LATER_SHA = createHash("sha256").update(gzipSync(Buffer.from(`${LATER_LINES.join("\n")}\n`, "utf8"))).digest("hex");
+
+interface Desk {
+  dir: string;
+  db: DatabaseSync;
+  later: string;
+}
+
+/** A master seeded from `MASTER_LINES`, with rows written by hand beside `casa`, and the later archive on disk. */
+async function desk(): Promise<Desk> {
+  const dir = await mkdtemp(join(tmpdir(), "lexema-update-"));
+  const archive = join(dir, "master.jsonl.gz");
+  await writeFile(archive, gzipSync(Buffer.from(`${MASTER_LINES.join("\n")}\n`, "utf8")));
+  const { parts } = await seedSql({
+    input: archive,
+    outputDir: join(dir, "sql"),
+    schema: SCHEMA,
+    releaseId: MASTER,
+    license: "CC-BY-SA-4.0",
+    onRejection: (rejection) => {
+      throw new Error(`fixture line rejected: ${JSON.stringify(rejection)}`);
+    },
+  });
+  const db = new DatabaseSync(":memory:");
+  for (const part of parts) db.exec(await readFile(part, "utf8"));
+  // What the recovered layer and a review write: a definition read off the
+  // raw page, listed under the record's first sense, and a note on its gloss.
+  db.exec(`
+    INSERT INTO raw_page (page_id, release_id, wiki, title, revision_id, revision_timestamp)
+      VALUES (1, '${MASTER}', 'it.wiktionary.org', 'casa', 123, '2026-07-01T00:00:00Z');
+    INSERT INTO recovered_definition (recovered_id, record_id, release_id, page_id, definition_index, route, term, page_line, wikitext, text, held_as_example, lead_in_sense_index, lead_in_recovered_id)
+      VALUES (1, 1, '${MASTER}', 1, 0, 'below-page-control', NULL, 7, '#* edificio', 'edificio', NULL, 0, NULL);
+    INSERT INTO recovered_label (recovered_id, label_index, label) VALUES (1, 0, 'architettura');
+    INSERT INTO recovered_example (recovered_id, example_index, page_line, wikitext, text) VALUES (1, 0, 8, '#*: una casa', 'una casa');
+    INSERT INTO claim_review (record_id, json_pointer, status, note, evidence_url, reviewed_at, reviewed_by)
+      VALUES (1, '/senses/0/glosses/0', 'disputed', 'furniture, not a definition', 'https://it.wiktionary.org/wiki/casa', '2026-09-30T00:00:00Z', 'huey');
+  `);
+  const later = join(dir, "later.jsonl.gz");
+  await writeFile(later, gzipSync(Buffer.from(`${LATER_LINES.join("\n")}\n`, "utf8")));
+  return { dir, db, later };
+}
+
+async function withDesk(run: (desk: Desk) => Promise<void>): Promise<void> {
+  const held = await desk();
+  try {
+    await run(held);
+  } finally {
+    held.db.close();
+    await rm(held.dir, { recursive: true, force: true });
+  }
+}
+
+const readerOf = (db: DatabaseSync): MasterReader => ({ query: <Row>(sql: string) => db.prepare(sql).all() as Row[] });
+
+/**
+ * Run an apply's SQL the way `wrangler d1 execute --file` does: as one
+ * transaction, D1 batch or D1 import, so a statement that fails undoes the
+ * statements before it.
+ */
+function execute(db: DatabaseSync, sql: string): void {
+  db.exec("BEGIN");
+  try {
+    db.exec(sql);
+    db.exec("COMMIT");
+  } catch (error) {
+    db.exec("ROLLBACK");
+    throw error;
+  }
+}
+
+/** Every row of every table, and the schema: what "the master as it was" means. */
+function dump(db: DatabaseSync): string {
+  const tables = db.prepare("SELECT name, sql FROM sqlite_schema WHERE name NOT LIKE 'sqlite_%' ORDER BY name").all() as { name: string; sql: string | null }[];
+  return JSON.stringify(
+    tables.map(({ name, sql }) => ({
+      name,
+      sql,
+      rows: sql?.startsWith("CREATE TABLE")
+        ? (db.prepare(`SELECT * FROM ${name}`).all() as object[]).map((row) => JSON.stringify(row)).sort()
+        : [],
+    })),
+  );
+}
+
+/** The rows written by hand beside the records. */
+function handRows(db: DatabaseSync): string {
+  return JSON.stringify(
+    ["raw_page", "recovered_definition", "recovered_label", "recovered_example", "claim_review"].map((table) =>
+      (db.prepare(`SELECT * FROM ${table}`).all() as object[]).map((row) => ({ ...row })),
+    ),
+  );
+}
+
+async function diffed(db: DatabaseSync, later: string): Promise<MasterDiff> {
+  return diffAgainstMaster(readerOf(db), later);
+}
+
+const changeOf = (found: MasterDiff, kind: Change["kind"], word: string): Change => {
+  const change = found.diff.changes.find((candidate) => candidate.kind === kind && candidate.word === word);
+  assert.ok(change !== undefined, `no ${kind} change for ${word}`);
+  return change;
+};
+
+async function applied(db: DatabaseSync, later: string, words: readonly [Change["kind"], string][]): Promise<ApplyPlan> {
+  const found = await diffed(db, later);
+  const plan = await planApply(readerOf(db), found, chooseChanges(found, words.map(([kind, word]) => changeOf(found, kind, word).id)), {
+    schema: await readFile(SCHEMA, "utf8"),
+    appliedAt: "2026-10-01T12:00:00Z",
+  });
+  execute(db, plan.sql);
+  return plan;
+}
+
+const ask = (db: DatabaseSync, query: string): Promise<LookupResult> => lookup({ db: fromNodeSqlite(db), releaseId: MASTER, query });
+
+function readings(result: LookupResult): Reading[] {
+  assert.equal(result.outcome, "found", JSON.stringify(result).slice(0, 200));
+  return (result as FoundResult).readings;
+}
+
+const glosses = (reading: Reading): string[] => reading.senses.flatMap((sense) => sense.glosses.map((gloss) => gloss.text));
+
+test("the diff groups what a later release would change, by word and part of speech, and writes nothing", async () => {
+  await withDesk(async ({ db, later }) => {
+    const before = dump(db);
+    db.exec("PRAGMA query_only = ON");
+    const found = await diffed(db, later);
+    const report = await reportOf(found);
+    db.exec("PRAGMA query_only = OFF");
+    assert.equal(dump(db), before);
+
+    const words = (changes: readonly { word: string; pos: string }[]) => changes.map(({ word, pos }) => `${word} ${pos}`);
+    assert.deepEqual(words(report.new), ["città noun", "vengo verb", "zaino noun"]);
+    assert.deepEqual(words(report.changedSenses), ["andare verb", "casa noun"]);
+    assert.deepEqual(words(report.changedElsewhere), ["bello adj"]);
+    assert.deepEqual(report.changedElsewhere[0].fields, ["translations"]);
+    assert.deepEqual(words(report.lost), ["sala noun"]);
+    assert.deepEqual(words(report.ambiguous), ["sale noun"]);
+    // `cane` is byte for byte the same, `gatto` the same content in another
+    // key order, and `vado` unchanged.
+    assert.deepEqual(report.counts, { new: 3, changedSenses: 2, changedElsewhere: 1, lost: 1, ambiguous: 1, unchanged: 3 });
+    assert.equal(report.feed.releaseId, `it-${LATER_SHA.slice(0, 8)}`);
+    assert.equal(report.feed.archiveSha256, LATER_SHA);
+
+    const markdown = reportMarkdown(report);
+    for (const heading of ["## New words", "## Changed or fixed senses", "## Lost words", "## Ambiguous groups", "## Other changes, senses the same"]) {
+      assert.ok(markdown.includes(heading), heading);
+    }
+    for (const change of found.diff.changes) assert.ok(markdown.includes(change.id), change.id);
+  });
+});
+
+test("records are matched by content, never by line number, and a change keeps its id from run to run", async () => {
+  await withDesk(async ({ db, dir, later }) => {
+    const first = await diffed(db, later);
+    const again = await diffed(db, later);
+    const ids = (found: MasterDiff) => found.diff.changes.map((change) => change.id).sort();
+    assert.deepEqual(ids(again), ids(first));
+    // The same records in yet another order: every line number moves, no id does.
+    const shuffled = join(dir, "shuffled.jsonl.gz");
+    await writeFile(shuffled, gzipSync(Buffer.from(`${[...LATER_LINES].reverse().join("\n")}\n`, "utf8")));
+    const moved = await diffed(db, shuffled);
+    assert.deepEqual(ids(moved), ids(first));
+    assert.notDeepEqual(
+      moved.diff.changes.map((change) => change.kind === "lost" ? 0 : change.feed.lineNo),
+      first.diff.changes.map((change) => change.kind === "lost" ? 0 : change.feed.lineNo),
+    );
+    for (const id of ids(first)) assert.match(id, /^(new|chg|lost)-[0-9a-f]{12}$/);
+  });
+});
+
+test("an apply writes only the chosen changes, each row naming the release it came from", async () => {
+  await withDesk(async ({ db, later }) => {
+    const untouched = () =>
+      JSON.stringify(
+        db.prepare(`SELECT r.*, j.raw_json FROM source_record r JOIN source_record_json j USING (record_id) WHERE r.word IN ('bello', 'sala', 'sale', 'cane', 'gatto', 'vado') ORDER BY record_id`).all(),
+      );
+    const before = untouched();
+    const plan = await applied(db, later, [["changed", "casa"], ["new", "città"]]);
+    assert.equal(untouched(), before);
+    assert.deepEqual(checkApplied(readerOf(db), plan), { missing: [], differing: [] });
+
+    const feed = `it-${LATER_SHA.slice(0, 8)}`;
+    assert.deepEqual(
+      { ...db.prepare("SELECT release_id, archive_sha256, status, lines_read, admitted FROM source_release WHERE release_id = ?").get(feed) },
+      { release_id: feed, archive_sha256: LATER_SHA, status: "partial", lines_read: LATER_LINES.length, admitted: LATER_LINES.length },
+    );
+    // The two new records are the later release's, and every row of theirs says so.
+    const written = db.prepare("SELECT record_id, release_id, word FROM source_record WHERE record_id > ? ORDER BY record_id").all(MASTER_LINES.length) as { record_id: number; release_id: string; word: string }[];
+    // In the later file's line order: città is its line 3, casa its line 9.
+    assert.deepEqual(written.map(({ release_id, word }) => `${release_id} ${word}`), [`${feed} città`, `${feed} casa`]);
+    for (const table of ["lookup_form", "form_of_edge"]) {
+      const releases = db.prepare(`SELECT DISTINCT release_id FROM ${table} WHERE record_id > ?`).all(MASTER_LINES.length) as { release_id: string }[];
+      for (const { release_id } of releases) assert.equal(release_id, feed, table);
+    }
+    // The rows of the records not chosen keep their old release.
+    const kept = db.prepare("SELECT DISTINCT release_id FROM lookup_form WHERE record_id <= ?").all(MASTER_LINES.length) as { release_id: string }[];
+    assert.deepEqual(kept.map(({ release_id }) => release_id), [MASTER]);
+    // The changes are recorded under their ids, the casa change with the record it took over from.
+    const changes = db.prepare("SELECT kind, replaced_record_id FROM applied_change ORDER BY kind").all().map((row) => ({ ...row }));
+    assert.deepEqual(changes, [{ kind: "changed", replaced_record_id: 1 }, { kind: "new", replaced_record_id: null }]);
+    // The changes not chosen are not there: zaino is still unknown, bello still the master's.
+    assert.equal((await ask(db, "zaino")).outcome, "not-found");
+    const [bello] = readings(await ask(db, "bello"));
+    assert.equal(bello.ref.releaseId, MASTER);
+  });
+});
+
+test("an applied record is the later release's line byte for byte, built by the seed's import path", async () => {
+  await withDesk(async ({ db, later }) => {
+    await applied(db, later, [["new", "vengo"], ["changed", "casa"]]);
+    const stored = (word: string) =>
+      (db.prepare("SELECT j.raw_json FROM source_record r JOIN source_record_json j USING (record_id) WHERE r.word = ? AND r.release_id <> ?").get(word, MASTER) as { raw_json: string }).raw_json;
+    assert.equal(stored("vengo"), VENGO);
+    assert.equal(stored("casa"), CASA_FIXED);
+    // ADR 0019's rewrite reaches the stored gloss, never the line.
+    const [gloss] = db.prepare("SELECT g.text FROM sense_gloss g JOIN sense s USING (sense_id) JOIN source_record r USING (record_id) WHERE r.word = 'vengo'").all() as { text: string }[];
+    assert.equal(gloss.text, "prima persona singolare del presente indicativo di venire");
+    // The same rows a seed of the later file writes for the line, but for the record id.
+    const line = createHash("sha256").update(VENGO, "utf8").digest("hex");
+    assert.deepEqual({ ...db.prepare("SELECT line_sha256, pos_title FROM source_record WHERE word = 'vengo'").get() }, { line_sha256: line, pos_title: "Voce verbale" });
+    assert.equal((db.prepare("SELECT count(*) AS n FROM form_of_edge e JOIN source_record r USING (record_id) WHERE r.word = 'vengo'").get() as { n: number }).n, 1);
+  });
+});
+
+test("an apply never deletes or changes a row written by hand, and the record that replaced it still reads them", async () => {
+  await withDesk(async ({ db, later }) => {
+    const before = handRows(db);
+    await applied(db, later, [["changed", "casa"]]);
+    assert.equal(handRows(db), before);
+    // Still attached to the record they were written for, which is still there.
+    assert.equal((db.prepare("SELECT word FROM source_record WHERE record_id = 1").get() as { word: string }).word, "casa");
+    assert.deepEqual(db.prepare("PRAGMA foreign_key_check").all(), []);
+
+    const [casa] = readings(await ask(db, "casa"));
+    assert.deepEqual(glosses(casa), ["edificio adibito ad abitazione", "famiglia"]);
+    assert.notEqual(casa.ref.releaseId, MASTER);
+    // The recovered definition sits under the first sense, as it did.
+    assert.deepEqual(casa.senses[0].recoveredItems.map((item) => item.text), ["edificio"]);
+    assert.deepEqual(casa.senses[0].recoveredItems[0].labels, ["architettura"]);
+    // The review names the line it was written about: the master's.
+    assert.equal(casa.reviews.length, 1);
+    assert.deepEqual({ releaseId: casa.reviews[0].ref.releaseId, lineNo: casa.reviews[0].ref.lineNo }, { releaseId: MASTER, lineNo: 1 });
+  });
+});
+
+test("a lost word and an id the diff does not find are refused, and nothing is written", async () => {
+  await withDesk(async ({ db, later }) => {
+    const found = await diffed(db, later);
+    const lost = changeOf(found, "lost", "sala").id;
+    assert.throws(() => chooseChanges(found, [lost]), (error: unknown) => error instanceof ApplyRefused && /lost word/.test(error.message));
+    assert.throws(() => chooseChanges(found, ["chg-000000000000"]), (error: unknown) => error instanceof ApplyRefused && /not a change this diff finds/.test(error.message));
+    assert.throws(() => chooseChanges(found, ["casa"]), (error: unknown) => error instanceof ApplyRefused && /not a change id/.test(error.message));
+    assert.throws(() => chooseChanges(found, []), ApplyRefused);
+    // An ambiguous group has no id to choose.
+    assert.ok(!found.diff.changes.some((change) => change.word === "sale"));
+    assert.equal((await ask(db, "sala")).outcome, "found");
+  });
+});
+
+test("lookups serve the master as a whole: a fixed word from the later release beside words still from the first", async () => {
+  await withDesk(async ({ db, later }) => {
+    await applied(db, later, [["changed", "andare"], ["new", "città"]]);
+    const feed = `it-${LATER_SHA.slice(0, 8)}`;
+    const [andare] = readings(await ask(db, "andare"));
+    assert.deepEqual(glosses(andare), ["muoversi", "funzionare"]);
+    assert.equal(andare.ref.releaseId, feed);
+    // `vado` is still the master's, and its lemma is the later release's `andare`.
+    const [vado] = readings(await ask(db, "vado"));
+    assert.equal(vado.ref.releaseId, MASTER);
+    const [link] = vado.lemmaLinks;
+    assert.ok(link.kind === "candidates");
+    assert.deepEqual(link.candidates.map((candidate) => candidate.ref.releaseId), [feed]);
+    // And `andare` lists `vado` as its form, from the master's line.
+    assert.deepEqual(andare.inflections.map((inflection) => [inflection.word, inflection.refs[0].releaseId]), [["vado", MASTER]]);
+    // One record per reading: the retired `andare` is not found beside its successor.
+    assert.equal(readings(await ask(db, "andare")).length, 1);
+
+    // The other reads see the new word too: suggestions in key order across both releases, the accent index, a random pick.
+    const typed = await suggest({ db: fromNodeSqlite(db), releaseId: MASTER, prefix: "c" });
+    assert.ok(typed.outcome === "suggested");
+    assert.deepEqual(typed.suggestions, ["cane", "casa", "città"]);
+    assert.deepEqual(await findNearby({ db: fromNodeSqlite(db), releaseId: MASTER, query: "citta" }), { kind: "accent", best: "città", others: [], phrases: [] });
+    const lines = (db.prepare("SELECT min(line_no) AS low, max(line_no) AS high FROM source_record WHERE release_id = ?").get(MASTER) as { low: number; high: number });
+    const andareLine = MASTER_LINES.indexOf(ANDARE_JULY) + 1;
+    const picked = await randomHeadword({ db: fromNodeSqlite(db), releaseId: MASTER, pos: undefined, random: () => (andareLine - lines.low + 0.5) / (lines.high - lines.low + 1) });
+    assert.deepEqual({ word: picked?.word, releaseId: picked?.releaseId }, { word: "andare", releaseId: feed });
+  });
+});
+
+test("an apply that stops partway leaves the master as it was before it started", async () => {
+  await withDesk(async ({ db, later }) => {
+    const found = await diffed(db, later);
+    const before = dump(db);
+    const plan = await planApply(readerOf(db), found, chooseChanges(found, [changeOf(found, "changed", "casa").id, changeOf(found, "new", "città").id]), {
+      schema: await readFile(SCHEMA, "utf8"),
+      appliedAt: "2026-10-01T12:00:00Z",
+    });
+    // Planning reads; it writes nothing.
+    assert.equal(dump(db), before);
+    // A statement that fails after the records, the retirement and the index
+    // rows were written: the transaction takes every one of them back.
+    const cut = plan.sql.indexOf("INSERT INTO release_table_rows");
+    assert.ok(cut > plan.sql.indexOf("INSERT INTO source_record ") && cut > plan.sql.indexOf("DELETE FROM lookup_form"));
+    const broken = `${plan.sql.slice(0, cut)}INSERT INTO no_such_table VALUES (1);\n${plan.sql.slice(cut)}`;
+    assert.throws(() => execute(db, broken), /no such table/);
+    assert.equal(dump(db), before);
+    // The whole plan is one file, run once: there is no second statement to stop between.
+    execute(db, plan.sql);
+    assert.deepEqual(checkApplied(readerOf(db), plan), { missing: [], differing: [] });
+  });
+});
+
+test("a second apply from the same release adds to it, and the diff then reads the master as changed", async () => {
+  await withDesk(async ({ db, later }) => {
+    await applied(db, later, [["changed", "casa"]]);
+    const again = await diffed(db, later);
+    // casa now matches its line; what was not chosen is still on offer.
+    assert.ok(!again.diff.changes.some((change) => change.word === "casa"));
+    assert.ok(again.diff.changes.some((change) => change.word === "città"));
+    await applied(db, later, [["new", "zaino"]]);
+    const feed = `it-${LATER_SHA.slice(0, 8)}`;
+    assert.equal((db.prepare("SELECT count(*) AS n FROM source_release WHERE release_id = ?").get(feed) as { n: number }).n, 1);
+    assert.equal((db.prepare("SELECT rows FROM release_table_rows WHERE release_id = ? AND table_name = 'source_record'").get(feed) as { rows: number }).rows, 2);
+    assert.equal(readings(await ask(db, "zaino"))[0].ref.releaseId, feed);
+  });
+});
+
+test("an apply brings a master seeded before #18 up to the schema, and the upgrade is safe to run twice", async () => {
+  const fresh = new DatabaseSync(":memory:");
+  fresh.exec(await readFile(SCHEMA, "utf8"));
+  const schemaOf = (db: DatabaseSync) => JSON.stringify(db.prepare("SELECT type, name, sql FROM sqlite_schema ORDER BY name").all());
+  const old = new DatabaseSync(":memory:");
+  old.exec(await readFile(SCHEMA, "utf8"));
+  for (const view of [...SERVING_VIEWS].reverse()) old.exec(`DROP VIEW ${view}`);
+  for (const table of [...UPDATE_TABLES].reverse()) old.exec(`DROP TABLE ${table}`);
+  const upgrade = masterUpgradeSql(await readFile(SCHEMA, "utf8"));
+  old.exec(upgrade);
+  assert.equal(schemaOf(old).replaceAll("CREATE TABLE IF NOT EXISTS", "CREATE TABLE"), schemaOf(fresh));
+  old.exec(upgrade);
+  assert.equal(schemaOf(old).replaceAll("CREATE TABLE IF NOT EXISTS", "CREATE TABLE"), schemaOf(fresh));
+
+  // A seeded master without them: the diff reads it, and the apply adds them.
+  await withDesk(async ({ db, later }) => {
+    for (const view of [...SERVING_VIEWS].reverse()) db.exec(`DROP VIEW ${view}`);
+    for (const table of [...UPDATE_TABLES].reverse()) db.exec(`DROP TABLE ${table}`);
+    await applied(db, later, [["changed", "casa"]]);
+    assert.equal(readings(await ask(db, "casa"))[0].senses.length, 2);
+  });
+});

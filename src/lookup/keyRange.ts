@@ -1,7 +1,26 @@
-// The key range a prefix covers, for the range probes on
-// `lookup_form_headword_by_key` (src/lookup/suggest.ts, src/lookup/phrase.ts).
-// A module of its own so both can import it: suggest.ts imports lookup.ts,
-// which imports phrase.ts.
+// The key range a prefix covers, and the range probe on
+// `lookup_form_headword_by_key` that reads it (src/lookup/suggest.ts,
+// src/lookup/phrase.ts). A module of its own so both can import it:
+// suggest.ts imports lookup.ts, which imports phrase.ts.
+
+import type { DictionaryRead } from "./database.js";
+
+/**
+ * The headwords of one release that begin with a prefix, with how the source
+ * spells each, in key order, at most `?4` rows: `surface_key >= ?2 AND
+ * surface_key < ?3`, the bounds `prefixUpperBound` gives. The probe walks
+ * `lookup_form_headword_by_key` in key order, so the rows come back sorted and
+ * `LIMIT` stops the walk early; `test/suggest.test.ts` and
+ * `test/phrase.test.ts` assert the plan. It reads one release: a master that
+ * serves several runs it once for each and merges them (`inKeyOrder` in
+ * src/lookup/served.ts).
+ */
+export const HEADWORD_PREFIX_SQL: DictionaryRead = `SELECT surface_key, surface
+       FROM lookup_form
+      WHERE release_id = ?1 AND origin = 'headword'
+        AND surface_key >= ?2 AND surface_key < ?3
+      ORDER BY surface_key
+      LIMIT ?4`;
 
 /**
  * The least key greater than every key that starts with `key`, so that

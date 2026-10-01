@@ -13,9 +13,10 @@
 
 import { IT_NORMALIZER_VERSION, normalizeItalianExact } from "../italian/normalize.js";
 import type { LookupDatabase } from "./database.js";
-import { prefixUpperBound } from "./keyRange.js";
+import { HEADWORD_PREFIX_SQL, prefixUpperBound } from "./keyRange.js";
 import { MAX_QUERY_LENGTH, readRelease } from "./lookup.js";
 import { phraseCompletions, type PhraseOffer } from "./phrase.js";
+import { inKeyOrder, servedReleases } from "./served.js";
 
 /**
  * The shortest prefix answered, in characters of the normalized key. One letter
@@ -89,30 +90,22 @@ export function prefixRejectionOf(prefix: string): PrefixRejected["rejection"] |
 
 export { prefixUpperBound };
 
-/**
- * Headword spellings starting with a prefix, in alphabetical order of the
- * normalized key: the first words in the dictionary under what was typed.
- * Huey's ruling, 2026-09-23: "it should show alphabetical order like the first
- * 10, if i write a it should show words from letter a from database".
- *
- * The range probe walks `lookup_form_headword_by_key` in key order, so the rows
- * come back already sorted and `LIMIT` stops the scan early; `test/suggest.test.ts`
- * asserts the plan. Only headwords are read: an embedded form is a spelling
- * inside another record's table, and every form a reader could pick has a
- * lookup of its own.
- *
- * One spelling can head several records (`sale` heads three), so more rows are
- * read than are returned and repeats are dropped in order. `suggest()` starts
- * with `FIRST_SCAN` rows and, only when a full read still holds fewer than ten
- * distinct spellings, reads again with twice as many, so ten are always found
- * when ten exist, however many records one spelling heads.
- */
-export const SUGGEST_SQL = `SELECT surface
-       FROM lookup_form
-      WHERE release_id = ?1 AND origin = 'headword'
-        AND surface_key >= ?2 AND surface_key < ?3
-      ORDER BY surface_key
-      LIMIT ?4`;
+// Headword spellings starting with a prefix, in alphabetical order of the
+// normalized key: the first words in the dictionary under what was typed.
+// Huey's ruling, 2026-09-23: "it should show alphabetical order like the first
+// 10, if i write a it should show words from letter a from database".
+//
+// The read is `HEADWORD_PREFIX_SQL` (src/lookup/keyRange.ts), a range probe in
+// key order that `LIMIT` stops early, once for each release the master serves
+// and merged in key order. Only headwords are read: an embedded form is a
+// spelling inside another record's table, and every form a reader could pick
+// has a lookup of its own.
+//
+// One spelling can head several records (`sale` heads three), so more rows are
+// read than are returned and repeats are dropped in order. `suggest()` starts
+// with `FIRST_SCAN` rows and, only when a full read still holds fewer than ten
+// distinct spellings, reads again with twice as many, so ten are always found
+// when ten exist, however many records one spelling heads.
 
 /**
  * Rows read on the first pass: the fewest that answer every prefix in one
@@ -141,9 +134,10 @@ export async function suggest({ db, releaseId, prefix }: SuggestOptions): Promis
   }
 
   const upper = prefixUpperBound(key);
+  const releases = await servedReleases(db, releaseId);
   let suggestions: string[] = [];
   for (let scan = FIRST_SCAN; ; scan *= 2) {
-    const rows = await db.all<{ surface: string }>(SUGGEST_SQL, [releaseId, key, upper, scan]);
+    const rows = await inKeyOrder<{ surface_key: string; surface: string }>(db, releases, HEADWORD_PREFIX_SQL, [key, upper], scan);
     suggestions = [...new Set(rows.map((row) => row.surface))].slice(0, SUGGESTION_LIMIT);
     // Enough spellings, or the prefix holds no more rows to read.
     if (suggestions.length === SUGGESTION_LIMIT || rows.length < scan) break;
@@ -154,7 +148,7 @@ export async function suggest({ db, releaseId, prefix }: SuggestOptions): Promis
   const listed = new Set(suggestions.map(normalizeItalianExact));
   const phrases =
     room > 0
-      ? (await phraseCompletions(db, releaseId, key, SUGGESTION_LIMIT)).filter((offer) => !listed.has(offer.phrase)).slice(0, room)
+      ? (await phraseCompletions(db, releaseId, releases, key, SUGGESTION_LIMIT)).filter((offer) => !listed.has(offer.phrase)).slice(0, room)
       : [];
   return { outcome: "suggested", prefix: { raw: prefix, key }, suggestions, phrases };
 }

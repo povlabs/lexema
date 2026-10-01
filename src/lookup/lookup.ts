@@ -8,6 +8,7 @@ import { readingPartOfSpeech } from "./articles.js";
 import type { DictionaryRead, LookupDatabase } from "./database.js";
 import { phraseForms, phraseMatches } from "./phrase.js";
 import { readExpressions } from "./expressions.js";
+import { lineageOf, servedBy } from "./served.js";
 import { readSourceRecord, type SourceRecordFields } from "./sourceRecord.js";
 import type {
   Evidence,
@@ -42,6 +43,11 @@ export const MAX_QUERY_LENGTH = 128;
 
 export interface LookupOptions {
   db: LookupDatabase;
+  /**
+   * The master the lookup reads: the release the dictionary was seeded from,
+   * which names it with every change applied from a later release
+   * (src/lookup/served.ts). Each value's own ref names the release it is in.
+   */
   releaseId: string;
   query: string;
 }
@@ -235,7 +241,7 @@ async function found(
     const recordId = group[0].record_id;
     let table = tables.get(recordId);
     if (table === undefined) {
-      table = readTable(db, recordId, refOn(releaseId, group[0]));
+      table = readTable(db, recordId, refOn(group[0]));
       tables.set(recordId, table);
     }
     return table;
@@ -245,7 +251,7 @@ async function found(
     await Promise.all(
       groups.map(async (group) => {
         const recordId = group[0].record_id;
-        return [recordId, await readLemmaLinks(db, releaseId, recordId, refOn(releaseId, group[0]))] as const;
+        return [recordId, await readLemmaLinks(db, releaseId, recordId, refOn(group[0]))] as const;
       }),
     ),
   );
@@ -263,7 +269,7 @@ async function found(
   const listingOf = async (recordId: number): Promise<LemmaListing | undefined> => {
     const group = byRecord.get(recordId);
     if (group === undefined) return undefined;
-    const [first, ...rest] = evidenceOf(releaseId, group).filter((occurrence) => occurrence.origin === "embedded-form");
+    const [first, ...rest] = evidenceOf(group).filter((occurrence) => occurrence.origin === "embedded-form");
     if (first === undefined) return undefined;
     return { forms: (await tableOf(group)).forms, evidence: [first, ...rest] };
   };
@@ -324,14 +330,12 @@ async function found(
  * `surface_hit` view because the view does not carry `form_index`, which is
  * how a claim names its form. Exported so a test can assert the plan.
  */
-export const SEARCH_SQL = `SELECT r.record_id, r.line_no, r.line_sha256, r.word AS record_word, r.pos AS record_pos,
+export const SEARCH_SQL: DictionaryRead = `SELECT r.record_id, r.release_id, r.line_no, r.line_sha256, r.word AS record_word, r.pos AS record_pos,
             lf.origin, lf.json_pointer, lf.form_source, lf.surface,
             (lf.origin = 'headword') AS is_headword_hit
        FROM lookup_form lf
        JOIN source_record r ON r.record_id = lf.record_id
-       JOIN source_release rel
-         ON rel.release_id = lf.release_id AND rel.status = 'complete'
-      WHERE lf.release_id = ? AND lf.surface_key = ?
+      WHERE lf.release_id IN (${servedBy("?1")}) AND lf.surface_key = ?2
         AND NOT EXISTS (
               SELECT 1 FROM grammar_claim g
                WHERE g.record_id = lf.record_id
@@ -344,6 +348,8 @@ export const SEARCH_SQL = `SELECT r.record_id, r.line_no, r.line_sha256, r.word 
 
 interface HitRow {
   record_id: number;
+  /** The record's own release, which `line_no` counts in: the master's, or a feed's. */
+  release_id: string;
   line_no: number;
   line_sha256: string;
   record_word: string;
@@ -438,15 +444,17 @@ const candidateIds = (link: DeclaredLink): number[] =>
 
 /**
  * Refs on one record. Every value read off it shares the record's release,
- * line and digest, so a ref is the pointer plus those three.
+ * line and digest, so a ref is the pointer plus those three. The release is
+ * the record's own, which in a master with changes applied is not always the
+ * one the lookup was asked for.
  */
-function refOn(releaseId: string, hit: HitRow): (pointer: string) => SourceRef {
-  return (pointer) => ({ releaseId, lineNo: hit.line_no, jsonPointer: pointer, lineSha256: hit.line_sha256 });
+function refOn(record: { release_id: string; line_no: number; line_sha256: string }): (pointer: string) => SourceRef {
+  return (pointer) => ({ releaseId: record.release_id, lineNo: record.line_no, jsonPointer: pointer, lineSha256: record.line_sha256 });
 }
 
 /** Every occurrence of the surface on one record: headword hit first, then the forms table in its own order. */
-function evidenceOf(releaseId: string, group: readonly HitRow[]): Evidence[] {
-  const ref = refOn(releaseId, group[0]);
+function evidenceOf(group: readonly HitRow[]): Evidence[] {
+  const ref = refOn(group[0]);
   return [...group]
     .sort(
       (a, b) =>
@@ -482,9 +490,9 @@ async function buildReading(
   const first = group[0];
   const recordId = first.record_id;
   const record = await readRecord(db, recordId);
-  const ref = refOn(releaseId, first);
+  const ref = refOn(first);
   const source = readSourceRecord(record.rawJson, ref);
-  const recovered = await readRecovered(db, recordId, ref);
+  const recovered = await readRecovered(db, recordId);
 
   return {
     recordId,
@@ -493,13 +501,13 @@ async function buildReading(
     posTitle: record.posTitle,
     wordFacts: { ...source.wordFacts, expressions: await readExpressions(db, releaseId, source.expressionItems) },
     isAboutQuery: isAbout(group),
-    evidence: evidenceOf(releaseId, group),
+    evidence: evidenceOf(group),
     senses: await readSenses(db, recordId, ref, source, recovered.underSense),
     forms,
     grammar,
     lemmaLinks,
     inflections: await readInflections(db, releaseId, recordId),
-    reviews: await readReviews(db, recordId, ref),
+    reviews: await readReviews(db, recordId),
     recovered: recovered.topLevel,
     // Derived, not read: the release carries no article field. The headword and
     // the grammar the source stated about the record are the only inputs, and a
@@ -732,21 +740,20 @@ async function readGrammar(
  * the regression a rows-only test sails past. See
  * docs/LOOKUP_DESIGN.md#the-view-that-costs-four-orders-of-magnitude.
  */
-export const LEMMA_LINK_SQL = `SELECT e.edge_id, e.json_pointer, e.target_word,
+export const LEMMA_LINK_SQL: DictionaryRead = `SELECT e.edge_id, e.json_pointer, e.target_word,
             t.record_id   AS candidate_record_id,
+            t.release_id  AS candidate_release_id,
             t.line_no     AS candidate_line_no,
             t.line_sha256 AS candidate_line_sha256,
             t.pos         AS candidate_pos,
             t.word        AS candidate_word
        FROM form_of_edge e
-       JOIN source_release rel
-         ON rel.release_id = e.release_id AND rel.status = 'complete'
        LEFT JOIN lookup_form lf
-         ON lf.release_id = e.release_id
+         ON lf.release_id IN (${servedBy("?2")})
         AND lf.surface_key = e.target_word_key
         AND lf.origin = 'headword'
        LEFT JOIN source_record t ON t.record_id = lf.record_id
-      WHERE e.record_id = ?
+      WHERE e.record_id = ?1 AND e.release_id IN (${servedBy("?2")})
       ORDER BY e.edge_id, t.line_no`;
 
 async function readLemmaLinks(
@@ -763,13 +770,14 @@ async function readLemmaLinks(
     json_pointer: string;
     target_word: string;
     candidate_record_id: number | null;
+    candidate_release_id: string | null;
     candidate_line_no: number | null;
     candidate_line_sha256: string | null;
     candidate_pos: string | null;
     candidate_word: string | null;
   }>(
     db,
-    LEMMA_LINK_SQL, recordId,
+    LEMMA_LINK_SQL, recordId, releaseId,
   );
 
   const byEdge = new Map<number, DeclaredLink>();
@@ -788,7 +796,7 @@ async function readLemmaLinks(
       word: row.candidate_word as string,
       pos: row.candidate_pos as string,
       // A candidate is a headword record, so its spelling is its own `/word`.
-      ref: headwordRef(releaseId, row.candidate_line_no as number, row.candidate_line_sha256 as string),
+      ref: headwordRef(row.candidate_release_id as string, row.candidate_line_no as number, row.candidate_line_sha256 as string),
     };
     if (existing !== undefined && existing.kind === "candidates") {
       existing.candidates.push(candidate);
@@ -810,15 +818,13 @@ async function readLemmaLinks(
  * record spells. Exported alongside the candidate query below so a test can
  * assert the plan as well as the rows.
  */
-export const INFLECTION_SQL = `SELECT f.record_id, f.line_no, f.line_sha256, f.word, f.pos,
+export const INFLECTION_SQL: DictionaryRead = `SELECT f.record_id, f.release_id, f.line_no, f.line_sha256, f.word, f.pos,
             e.json_pointer, e.target_word
        FROM lookup_form lf
-       JOIN source_release rel
-         ON rel.release_id = lf.release_id AND rel.status = 'complete'
        JOIN form_of_edge e
-         ON e.release_id = lf.release_id AND e.target_word_key = lf.surface_key
+         ON e.release_id IN (${servedBy("?2")}) AND e.target_word_key = lf.surface_key
        JOIN source_record f ON f.record_id = e.record_id
-      WHERE lf.record_id = ? AND lf.origin = 'headword'
+      WHERE lf.record_id = ?1 AND lf.origin = 'headword' AND lf.release_id IN (${servedBy("?2")})
       ORDER BY f.line_no, e.json_pointer`;
 
 /**
@@ -826,14 +832,14 @@ export const INFLECTION_SQL = `SELECT f.record_id, f.line_no, f.line_sha256, f.w
  * incoming edge matches on the target word key, so it lands on all of them at
  * once; this is the set the source left unresolved.
  */
-export const INFLECTION_CANDIDATE_SQL = `SELECT t.record_id, t.line_no, t.line_sha256, t.word, t.pos
+export const INFLECTION_CANDIDATE_SQL: DictionaryRead = `SELECT t.record_id, t.release_id, t.line_no, t.line_sha256, t.word, t.pos
        FROM lookup_form self
        JOIN lookup_form other
-         ON other.release_id = self.release_id
+         ON other.release_id IN (${servedBy("?2")})
         AND other.surface_key = self.surface_key
         AND other.origin = 'headword'
        JOIN source_record t ON t.record_id = other.record_id
-      WHERE self.record_id = ? AND self.origin = 'headword'
+      WHERE self.record_id = ?1 AND self.origin = 'headword'
       ORDER BY t.line_no, t.record_id`;
 
 /** The `/word` field of a headword record, which is where its spelling is. */
@@ -848,13 +854,14 @@ async function readInflections(
 ): Promise<InflectionOf[]> {
   const rows = await queryAll<{
     record_id: number;
+    release_id: string;
     line_no: number;
     line_sha256: string;
     word: string;
     pos: string;
     json_pointer: string;
     target_word: string;
-  }>(db, INFLECTION_SQL, recordId);
+  }>(db, INFLECTION_SQL, recordId, releaseId);
 
   if (rows.length === 0) return [];
 
@@ -862,17 +869,18 @@ async function readInflections(
   // matched the same surface key, so they all resolve to the same candidate set.
   const candidates = await queryAll<{
     record_id: number;
+    release_id: string;
     line_no: number;
     line_sha256: string;
     word: string;
     pos: string;
-  }>(db, INFLECTION_CANDIDATE_SQL, recordId);
+  }>(db, INFLECTION_CANDIDATE_SQL, recordId, releaseId);
 
   const targetCandidates = candidates.map((row) => ({
     recordId: row.record_id,
     word: row.word,
     pos: row.pos,
-    ref: headwordRef(releaseId, row.line_no, row.line_sha256),
+    ref: headwordRef(row.release_id, row.line_no, row.line_sha256),
   }));
 
   // One row per declaring *record*, not per edge: `casetta` says it is a form
@@ -884,7 +892,7 @@ async function readInflections(
     // The edge lives on the declaring record, so the ref carries that record's
     // line, not this reading's.
     const edge: SourceRef = {
-      releaseId,
+      releaseId: row.release_id,
       lineNo: row.line_no,
       jsonPointer: row.json_pointer,
       lineSha256: row.line_sha256,
@@ -915,11 +923,19 @@ async function readInflections(
   );
 }
 
-async function readReviews(
-  db: LookupDatabase,
-  recordId: number,
-  ref: (pointer: string) => SourceRef,
-): Promise<Review[]> {
+/**
+ * The reviews of a record and of every record it replaced (src/lookup/served.ts).
+ * A review stays on the record it was written for, so its ref names that
+ * record's line. Exported so a test can hold the query to its plan.
+ */
+export const REVIEW_SQL: DictionaryRead = `SELECT v.json_pointer, v.status, v.note, v.evidence_url, v.reviewed_at, v.reviewed_by,
+            h.release_id, h.line_no, h.line_sha256
+       FROM claim_review v
+       JOIN source_record h ON h.record_id = v.record_id
+      WHERE v.record_id IN (${lineageOf("?1")})
+      ORDER BY v.json_pointer, v.reviewed_at`;
+
+async function readReviews(db: LookupDatabase, recordId: number): Promise<Review[]> {
   const rows = await queryAll<{
     json_pointer: string;
     status: "disputed" | "corroborated";
@@ -927,17 +943,14 @@ async function readReviews(
     evidence_url: string;
     reviewed_at: string;
     reviewed_by: string;
-  }>(
-    db,
-    `SELECT json_pointer, status, note, evidence_url, reviewed_at, reviewed_by
-       FROM claim_review
-      WHERE record_id = ?
-      ORDER BY json_pointer, reviewed_at`, recordId,
-  );
+    release_id: string;
+    line_no: number;
+    line_sha256: string;
+  }>(db, REVIEW_SQL, recordId);
 
   return rows
     .map((row) => ({
-      ref: ref(row.json_pointer),
+      ref: refOn(row)(row.json_pointer),
       status: row.status,
       note: row.note,
       evidenceUrl: row.evidence_url,
@@ -955,12 +968,14 @@ async function readReviews(
  * The recovered layer's definitions for one record, with their labels and
  * examples. Exported so a test can hold the query to its plan.
  */
-export const RECOVERED_SQL = `SELECT d.recovered_id, d.route, d.term, d.page_line, d.text, d.held_as_example,
-            d.lead_in_sense_index, d.lead_in_recovered_id, p.wiki, p.title, p.revision_id
+export const RECOVERED_SQL: DictionaryRead = `SELECT d.recovered_id, d.route, d.term, d.page_line, d.text, d.held_as_example,
+            d.lead_in_sense_index, d.lead_in_recovered_id, p.wiki, p.title, p.revision_id,
+            h.release_id, h.line_no, h.line_sha256
        FROM recovered_definition d
        JOIN raw_page p ON p.page_id = d.page_id
-      WHERE d.record_id = ?
-      ORDER BY d.definition_index`;
+       JOIN source_record h ON h.record_id = d.record_id
+      WHERE d.record_id IN (${lineageOf("?1")})
+      ORDER BY d.record_id, d.definition_index`;
 
 /** A record's recovered definitions, placed where the page lists them. */
 interface RecoveredOfRecord {
@@ -970,11 +985,12 @@ interface RecoveredOfRecord {
   underSense: Map<number, RecoveredDefinition[]>;
 }
 
-async function readRecovered(
-  db: LookupDatabase,
-  recordId: number,
-  ref: (pointer: string) => SourceRef,
-): Promise<RecoveredOfRecord> {
+/**
+ * The recovered definitions of a record and of every record it replaced: a
+ * change applied from a later release leaves them on the record they were
+ * recovered for, and the page reads them for the record that replaced it.
+ */
+async function readRecovered(db: LookupDatabase, recordId: number): Promise<RecoveredOfRecord> {
   const rows = await queryAll<{
     recovered_id: number;
     route: RecoveredRoute["route"];
@@ -987,6 +1003,9 @@ async function readRecovered(
     wiki: string;
     title: string;
     revision_id: number;
+    release_id: string;
+    line_no: number;
+    line_sha256: string;
   }>(db, RECOVERED_SQL, recordId);
   const placed: RecoveredOfRecord = { topLevel: [], underSense: new Map() };
   if (rows.length === 0) return placed;
@@ -1022,7 +1041,8 @@ async function readRecovered(
       examples: examples
         .filter((example) => example.recovered_id === row.recovered_id)
         .map((example) => ({ text: example.text, ref: at(example.page_line) })),
-      heldAsExample: row.held_as_example === null ? null : ref(row.held_as_example),
+      // The pointer is into the record it was recovered for, which may be one this replaced.
+      heldAsExample: row.held_as_example === null ? null : refOn(row)(row.held_as_example),
       items: [],
     };
     byId.set(row.recovered_id, definition);

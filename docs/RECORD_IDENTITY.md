@@ -25,6 +25,8 @@ Nothing else is stable. The file carries no id field, and `(word, pos)` is not u
 
 `source_record.record_id` is a surrogate integer so the child tables index cheaply. It is an artefact of one database build. It must never appear in a URL or an API response.
 
+A dictionary with changes applied from a later release holds records of more than one release ([UPDATES.md](UPDATES.md)). Each is still identified by its own `(release_id, line_no)`, and a record a change replaced keeps its own.
+
 ### Pointers
 
 A JSON pointer is RFC 6901, rooted at the single JSON object on that line. `""` is the whole record; `/senses/0/glosses/0` is one gloss; `/forms/53/tags/0` is one tag.
@@ -64,7 +66,7 @@ The ambiguity is symmetric. Because the three edges naming `studente` match *any
 
 ## Serving boundary and import validation
 
-Both serving views and every query in `queries.sql` return rows only for `complete` releases. Direct base-table reads are import diagnostics, not serving reads. `test/record-identity.test.ts` runs in `pnpm test` and in CI: it loads `schema.sql` into an in-memory SQLite database with foreign keys on and exercises every reference query in `queries.sql`. Importing, partial, failed and superseded releases return nothing; a complete release retains multiple candidates and dangling edges. `partial` is a run that ended early on `--limit`: it read the archive cleanly but only to a point, so its checksum describes more of the file than its rows do and it is never promoted.
+Both serving views and every query in `queries.sql` return rows only for served releases (`served_release`): a `complete` release, and the later releases changes were applied from to it ([UPDATES.md](UPDATES.md)). Direct base-table reads are import diagnostics, not serving reads. `test/record-identity.test.ts` runs in `pnpm test` and in CI: it loads `schema.sql` into an in-memory SQLite database with foreign keys on and exercises every reference query in `queries.sql`. Importing, partial, failed and superseded releases return nothing on their own; a complete release retains multiple candidates and dangling edges. `partial` is a release only part of whose archive landed, so its checksum describes more of the file than its rows do and it is never promoted: a run that ended early on `--limit`, or a later release only chosen changes were applied from. Only the second is served, and only through `feed_release`, as part of the complete release it feeds.
 
 Foreign keys alone do not prove a release is ready. Before promotion, the importer must validate one verbatim raw JSON row per source record, every stored pointer against that JSON (including the value it cites), and exactly one headword row per record matching `/word`. It must also check full input consumption and expected embedded-form coverage. The schema does not enforce these coverage checks; promotion without them is invalid importer behavior.
 

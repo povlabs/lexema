@@ -2,9 +2,12 @@
 --
 -- These exist so the importer (#10) and lookup (#13) build against one shape.
 -- They are reference SQL, not a migration: nothing here runs at deploy time.
--- Bind parameters are :release and :key, where :key is the query text with the
--- release's normalizer already applied. All reads require a complete release.
--- Direct base-table reads are for import diagnostics, not serving.
+-- Bind parameters are :master and :key. :master is the release the dictionary
+-- was seeded from, which names it with the changes applied from later releases
+-- (#18); :key is the query text with the release's normalizer already applied.
+-- All reads require a served release (`served_release` in schema.sql): the
+-- complete release, or a feed of it. Direct base-table reads are for import
+-- diagnostics, not serving.
 --
 -- Where a query orders by json_pointer it orders by pointer *text*, which puts
 -- '/forms/10/form' before '/forms/2/form'. SQLite has no numeric-aware
@@ -22,10 +25,10 @@
 -- not label its `word` as the lemma of the query. `studenti` shows why: three of
 -- its five hits sit inside `studente`, `studentessa` and `studentesse`.
 SELECT
-  record_id, line_no, record_word, record_pos,
+  record_id, release_id, line_no, record_word, record_pos,
   origin, json_pointer, form_source, surface, is_headword_hit
 FROM surface_hit
-WHERE release_id = :release
+WHERE master_release_id = :master
   AND surface_key = :key
 ORDER BY is_headword_hit DESC, line_no, json_pointer;
 
@@ -38,7 +41,7 @@ ORDER BY is_headword_hit DESC, line_no, json_pointer;
 -- two, and nothing in the source chooses between them.
 SELECT
   edge_id, edge_pointer, target_word,
-  candidate_record_id, candidate_line_no, candidate_pos
+  candidate_record_id, candidate_release_id, candidate_line_no, candidate_pos
 FROM form_of_candidate
 WHERE from_record_id = :record_id
 ORDER BY edge_id, candidate_line_no;
@@ -49,9 +52,9 @@ ORDER BY edge_id, candidate_line_no;
 -- candidate_record_id NULL instead of vanishing.
 SELECT
   e.edge_id, e.json_pointer AS edge_pointer, e.target_word,
-  c.candidate_record_id, c.candidate_line_no, c.candidate_pos
+  c.candidate_record_id, c.candidate_release_id, c.candidate_line_no, c.candidate_pos
 FROM form_of_edge e
-JOIN source_release rel ON rel.release_id = e.release_id AND rel.status = 'complete'
+JOIN served_release s ON s.release_id = e.release_id
 LEFT JOIN form_of_candidate c ON c.edge_id = e.edge_id
 WHERE e.record_id = :record_id
 ORDER BY e.edge_id, c.candidate_line_no;
@@ -63,15 +66,17 @@ ORDER BY e.edge_id, c.candidate_line_no;
 -- three `bello` records, so each of them lists the same inflected entries. The
 -- ambiguity is symmetric and is not hidden on either side.
 SELECT
-  e.record_id AS from_record_id,
-  f.line_no   AS from_line_no,
-  f.word      AS from_word,
-  f.pos       AS from_pos,
+  e.record_id  AS from_record_id,
+  f.release_id AS from_release_id,
+  f.line_no    AS from_line_no,
+  f.word       AS from_word,
+  f.pos        AS from_pos,
   e.json_pointer AS edge_pointer
 FROM lookup_form lf
-JOIN source_release rel ON rel.release_id = lf.release_id AND rel.status = 'complete'
+JOIN served_release sl ON sl.release_id = lf.release_id
+JOIN served_release se ON se.master_release_id = sl.master_release_id
 JOIN form_of_edge e
-  ON e.release_id = lf.release_id
+  ON e.release_id = se.release_id
  AND e.target_word_key = lf.surface_key
 JOIN source_record f ON f.record_id = e.record_id
 WHERE lf.record_id = :record_id
@@ -88,7 +93,7 @@ SELECT
   g.json_pointer AS gloss_pointer
 FROM sense s
 JOIN source_record r ON r.record_id = s.record_id
-JOIN source_release rel ON rel.release_id = r.release_id AND rel.status = 'complete'
+JOIN served_release rel ON rel.release_id = r.release_id
 LEFT JOIN sense_gloss g ON g.sense_id = s.sense_id
 WHERE s.record_id = :record_id
 ORDER BY s.sense_index, g.gloss_index;
@@ -97,7 +102,7 @@ SELECT
   s.sense_index, l.kind, l.label, l.json_pointer
 FROM sense s
 JOIN source_record r ON r.record_id = s.record_id
-JOIN source_release rel ON rel.release_id = r.release_id AND rel.status = 'complete'
+JOIN served_release rel ON rel.release_id = r.release_id
 JOIN sense_label l ON l.sense_id = s.sense_id
 WHERE s.record_id = :record_id
 ORDER BY s.sense_index, l.kind, l.label_index;
@@ -112,8 +117,7 @@ SELECT
 FROM grammar_claim
 WHERE record_id = :record_id
   AND record_id IN (SELECT r.record_id FROM source_record r
-    JOIN source_release rel ON rel.release_id = r.release_id
-    WHERE rel.status = 'complete')
+    JOIN served_release rel ON rel.release_id = r.release_id)
 ORDER BY scope, scope_index, json_pointer;
 
 
@@ -123,8 +127,7 @@ SELECT json_pointer, status, note, evidence_url, reviewed_at, reviewed_by
 FROM claim_review
 WHERE record_id = :record_id
   AND record_id IN (SELECT r.record_id FROM source_record r
-    JOIN source_release rel ON rel.release_id = r.release_id
-    WHERE rel.status = 'complete')
+    JOIN served_release rel ON rel.release_id = r.release_id)
 ORDER BY json_pointer, reviewed_at;
 
 
@@ -133,5 +136,4 @@ SELECT j.raw_json
 FROM source_record_json j
 WHERE j.record_id = :record_id
   AND j.record_id IN (SELECT r.record_id FROM source_record r
-    JOIN source_release rel ON rel.release_id = r.release_id
-    WHERE rel.status = 'complete');
+    JOIN served_release rel ON rel.release_id = r.release_id);

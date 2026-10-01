@@ -16,13 +16,19 @@ import * as appSchema from "../db/app/schema.js";
  */
 export type Wrangler = (args: readonly string[], capture: boolean) => string;
 
-/** The real `wrangler`, run from web/, where its config lives. CI=1 keeps it from prompting. */
+/**
+ * The real `wrangler`, run from web/, where its config lives. CI=1 keeps it
+ * from prompting. A captured answer may be large: the diff of a later release
+ * reads the master's records fifty thousand at a time (src/update/master.ts),
+ * well past Node's default 1 MiB.
+ */
 export const webWrangler: Wrangler = (args, capture) =>
   execFileSync("pnpm", ["exec", "wrangler", ...args], {
     cwd: resolve("web"),
     stdio: capture ? ["ignore", "pipe", "inherit"] : "inherit",
     env: { ...process.env, CI: "1" },
     encoding: "utf8",
+    maxBuffer: 1024 * 1024 * 1024,
   }) ?? "";
 
 /** The two local databases, by their `database_name` in web/wrangler.jsonc. */

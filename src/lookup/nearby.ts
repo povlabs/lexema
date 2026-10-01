@@ -17,6 +17,7 @@
 import { normalizeItalianExact } from "../italian/normalize.js";
 import type { LookupDatabase } from "./database.js";
 import { nearPhrases, type PhraseOffer } from "./phrase.js";
+import { servedBy } from "./served.js";
 import { suggest } from "./suggest.js";
 
 /** A key with its accents taken off: `città` → `citta`. The query is folded the same way. */
@@ -118,7 +119,7 @@ async function surfacesFor(db: LookupDatabase, releaseId: string, keys: readonly
   if (keys.length === 0) return new Map();
   const rows = await db.all<{ surface_key: string; surface: string; origin: string }>(
     `SELECT surface_key, surface, origin FROM lookup_form
-      WHERE release_id = ?1 AND surface_key IN (${placeholders(keys.length, 2)})
+      WHERE release_id IN (${servedBy("?1")}) AND surface_key IN (${placeholders(keys.length, 2)})
       ORDER BY origin = 'headword' DESC, lookup_id`,
     [releaseId, ...keys],
   );
@@ -154,7 +155,7 @@ async function candidatesFor(
 async function accentMatches(db: LookupDatabase, releaseId: string, key: string): Promise<Candidate[]> {
   const folded = foldKey(key);
   const rows = await db.all<{ surface_key: string; languages: number; richness: number }>(
-    "SELECT surface_key, languages, richness FROM accent_fold WHERE release_id = ?1 AND fold_key = ?2",
+    `SELECT surface_key, languages, richness FROM accent_fold WHERE release_id IN (${servedBy("?1")}) AND fold_key = ?2`,
     [releaseId, folded],
   );
   const keys = new Map<string, Found>(
@@ -172,7 +173,7 @@ async function typoMatches(db: LookupDatabase, releaseId: string, key: string): 
   if (length < TYPO_MIN_LENGTH || length > TYPO_MAX_LENGTH) return [];
   const probes = deletionKeys(key);
   const rows = await db.all<{ surface_key: string; languages: number; richness: number }>(
-    `SELECT DISTINCT surface_key, languages, richness FROM typo_key WHERE release_id = ?1 AND deletion_key IN (${placeholders(probes.length, 2)})`,
+    `SELECT DISTINCT surface_key, languages, richness FROM typo_key WHERE release_id IN (${servedBy("?1")}) AND deletion_key IN (${placeholders(probes.length, 2)})`,
     [releaseId, ...probes],
   );
   const keys = new Map<string, Found>(

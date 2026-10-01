@@ -222,7 +222,7 @@ const randomRoute: Route = async (_request, url) => {
         ? []
         : [
             {
-              id: `${releaseId}:${picked.lineNo}`,
+              id: `${picked.releaseId}:${picked.lineNo}`,
               word: picked.word,
               pos: picked.pos,
               pos_title: picked.posTitle,
@@ -281,7 +281,7 @@ const batchRoute: Route = async (request, _url, { batchWords: most }) => {
       return answer.candidates.map((candidate) => ({
         query: word,
         found: true,
-        id: `${releaseId}:${candidate.lineNo}`,
+        id: `${candidate.releaseId}:${candidate.lineNo}`,
         lemma: candidate.word,
         pos: candidate.pos,
         pos_title: candidate.posTitle,

@@ -10,6 +10,7 @@
 
 import { normalizeItalianExact } from "../italian/normalize.js";
 import type { DictionaryRead, LookupDatabase } from "./database.js";
+import { servedBy } from "./served.js";
 import type { Expression, ExpressionItem } from "./types.js";
 
 /**
@@ -54,7 +55,7 @@ export function expressionMeaning(expression: Pick<Expression, "meanings">): str
  */
 export const HEADWORD_KEY_SQL: DictionaryRead = `SELECT DISTINCT surface_key
        FROM lookup_form
-      WHERE release_id = ?1 AND origin = 'headword'
+      WHERE release_id IN (${servedBy("?1")}) AND origin = 'headword'
         AND surface_key IN (SELECT value FROM json_each(?2))`;
 
 /**
