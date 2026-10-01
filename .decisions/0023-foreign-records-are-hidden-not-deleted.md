@@ -1,0 +1,51 @@
+---
+id: 0023
+title: A record its page shows is another language's entry is hidden from readers, and kept
+status: accepted
+date: 2026-10-01
+tags: [data, provenance]
+---
+
+# 0023 — A record its page shows is another language's entry is hidden from readers, and kept
+
+**What this decides:** When a fixed rule reading the raw Wiktionary page finds that a record the archive tags Italian is another language's entry, the seed keeps the record whole and hides it: no search, suggestion, page, random pick or API lookup reaches it. This amends [ADR 0012](0012-archive-is-the-release-seed.md) in part, which allowed raw pages only for recovering definitions.
+
+## Context
+
+Wiktextract gives a record the language of the `== {{-xx-}} ==` heading it sits under and reads nothing else, so another language's entry written under a page's Italian heading comes out as Italian. `curie` carries a Dutch noun, `dolmen` an English one. [The investigation for #29](../reports/2026-10-01-non-italian-sections.md) counted 52 such records in release `it-0c432803` and gave a rule, `blockLanguage` in [`src/italian/sectionLanguage.ts`](../src/italian/sectionLanguage.ts), that finds 23 of them with no false positive: a block is another language when a bare language line such as `{{-nl-}}` stands above it, or when its heading names another language and it comes after the Italian entry's translation box. It reads page structure only.
+
+Huey ruled on 2026-10-01 on [#29](https://github.com/hueypov/lexema/issues/29#issuecomment-5936092738): "yes, fix it with the rule this issue proposes, as a deterministic rule under ADR 0019 (raw `source_record_json` kept byte-for-byte; the rule is named and versioned; counts from release it-0c432803 in the PR)". His refined ruling on [#326](https://github.com/hueypov/lexema/issues/326#issuecomment-5936395029) says foreign records filed as Italian are hidden "via #29's rule", while an Italian entry whose form-of target has no Italian record keeps its entry and shows "its form-of text without a dead link". [#382](https://github.com/hueypov/lexema/issues/382) asks for the records to be hidden from pages, search, suggestions and the API, with the raw record kept.
+
+[ADR 0012](0012-archive-is-the-release-seed.md) binds the seeder to read "raw Wiktionary pages only to recover dropped definitions. Any other seed-time input is a new decision." Reading the page to judge a record's language is that second use, so it needs this record.
+
+## Decision
+
+**A record the section-language rule finds in another language is hidden, never deleted and never edited.**
+
+- **The rule is fixed and versioned.** It is `section-language/v1`: `blockLanguage` over the blocks `readItalianPosBlocks` reads, applied only where a title's records line up one to one with its page's blocks (`foreignRecordsOf`). The language codes come from the dump's own `== {{-xx-}} ==` headings, stored in [`fixtures/section-language/regressions.json`](../fixtures/section-language/regressions.json). No word list and no judgement of content. A change to what the rule decides is a new version and its own issue, with its counts.
+- **Raw pages may be read for it.** The seed reads the raw page beside the archive to apply the rule, as it already does to recover definitions. Every hidden record names the page revision and line the verdict was read from.
+- **Hidden means reached by nothing a reader asks.** The record is seeded with every row but its `lookup_form` and `form_of_edge` rows, so no search, suggestion, nearby offer, page or `/v1/lookup` answer reaches it, and a random pick passes over it. Its `hidden_record` row states the rule, the reason, the language and the page line.
+- **The record is kept.** `source_record_json` keeps the archive line byte for byte, and the record's senses, glosses and grammar rows stay, so a hide can be audited and reversed.
+- **A form-of edge naming a hidden word shows its text with no link.** When no Italian record is left for the word, the edge is one with no candidate, and the page shows the gloss as text, as it already does for any word the release has no entry for.
+- **A seeded dictionary gets the same through a one-off update.** `pnpm run hide:records` hides in a seeded dictionary what a fresh seed would, can be run twice with no further effect, and reports what it changed. Like ADR 0019's updates, it runs from Huey's laptop through Wrangler, never through the Worker's read-only binding.
+- **The page says nothing about it.** A hidden record is absent, with no note, as [ADR 0016](0016-page-shows-no-origin-marks.md) requires.
+
+**Binding constraints.**
+
+- A hidden record's `source_record_json` row is never changed, and no row of it is deleted but its `lookup_form` and `form_of_edge` rows.
+- Every hidden record has a `hidden_record` row naming the rule version and the raw page revision and line it was judged on.
+- Only a fixed, versioned rule reading page structure hides a record. A record is not hidden by hand or by a judgement of its content.
+- The seed and the one-off update hide the same records for the same archive and dump.
+
+## Consequences
+
+- In release `it-0c432803` the rule hides 23 records on 20 titles: 6 by a language line and 17 by a late heading. They lose 23 `lookup_form` and 2 `form_of_edge` rows. Every hidden word keeps an Italian record of its own, so no form-of edge in the release is left pointing at nothing because of a hide.
+- 29 records the investigation labelled foreign stay visible, since no structural rule finds them. Among them are whole pages written as Italian, such as `hatefulness`, and the `zapateros`, `testvérek` and `skirmishes` named in #326, whose pages carry only an Italian heading.
+- A record a change from a later release writes (`pnpm run update:apply`) is not judged, because a feed is read without its raw pages. A foreign record written that way is visible until a later rule or update judges it.
+- Lookup reads stay as they were: a hidden record is unreachable because its search rows are absent, the same way a [retired record](../.glossary/TERMS.md) is. Only the random pick needed a change, since it draws by line number.
+
+## Rejected
+
+- **Deleting the record.** It loses the source line and cannot be undone without a reseed.
+- **Hiding every record any structural signal points at.** That is 119 records, 67 of them Italian entries such as `sushi`, `baseball` and `bellicose` ([report §4](../reports/2026-10-01-non-italian-sections.md#4-recommendation)).
+- **Keeping the search rows and filtering every read.** Every lookup, suggestion, phrase, batch and nearby query would have to carry the filter and stay in step with it. Removing the rows reuses the retired-record shape that every read already respects.

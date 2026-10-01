@@ -447,6 +447,12 @@ interface RecordContext {
   posTitle: string;
   /** Where a leaf of this record that is not a string goes. */
   reportMember: ReportMember;
+  /**
+   * A hidden record (src/import/hiddenLayer.ts) gets every row but its
+   * `lookup_form` and `form_of_edge` rows, so nothing a reader asks reaches it.
+   * Its leaves are read all the same, so a refused one is still reported.
+   */
+  hidden: boolean;
 }
 
 export function writeRecord(
@@ -478,17 +484,19 @@ export function writeRecord(
   statements.insertJson.run(recordId, ctx.line);
   rows.source_record_json += 1;
 
-  statements.insertLookup.run(
-    recordId,
-    releaseId,
-    "headword",
-    ctx.word,
-    normalizeItalianExact(ctx.word),
-    "/word",
-    null,
-    null,
-  );
-  rows.lookup_form += 1;
+  if (!ctx.hidden) {
+    statements.insertLookup.run(
+      recordId,
+      releaseId,
+      "headword",
+      ctx.word,
+      normalizeItalianExact(ctx.word),
+      "/word",
+      null,
+      null,
+    );
+    rows.lookup_form += 1;
+  }
 
   record.forms.forEach((form, formIndex) => {
     // Read the leaf before deciding whether to write the row. A form whose
@@ -496,7 +504,7 @@ export function writeRecord(
     // reads is a refusal nobody can count or locate.
     const source = stringLeaf(form.source, `/forms/${formIndex}/source`, reportMember);
     const surface = formSurfaces[formIndex];
-    if (surface === null) return;
+    if (surface === null || ctx.hidden) return;
     statements.insertLookup.run(
       recordId,
       releaseId,
@@ -598,7 +606,7 @@ export function writeRecord(
     sense.form_of.forEach((target, formOfIndex) => {
       const pointer = `${sensePointer}/form_of/${formOfIndex}/word`;
       const word = stringLeaf(target.word, pointer, reportMember);
-      if (word === null) return;
+      if (word === null || ctx.hidden) return;
       statements.insertEdge.run(
         recordId,
         releaseId,

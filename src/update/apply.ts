@@ -150,7 +150,7 @@ class Inserts {
 }
 
 /** A row of `lookup_form` as the nearby indexes need it. */
-interface KeyRow {
+export interface KeyRow {
   recordId: number;
   key: string;
   headword: boolean;
@@ -232,6 +232,9 @@ export async function planApply(
       pos: archiveRecord.record.pos,
       posTitle: archiveRecord.record.pos_title,
       reportMember: () => {},
+      // A feed is read without its raw pages, so the section-language rule
+      // cannot judge it (ADR 0023).
+      hidden: false,
     });
     newLemmas.push(archiveRecord.record);
     planned.push({ change, recordId: id });
@@ -344,10 +347,12 @@ const sameTypo = (a: TypoKeyRow, b: TypoKeyRow): boolean =>
  * The `accent_fold` and `typo_key` rows of `keys` as the seed would write them
  * for the master after the apply, against the rows the master holds now: the
  * rows that differ are deleted, whatever release wrote them, and the rows
- * wanted are written under the later release. A row already right is left in
- * its own release.
+ * wanted are returned for the caller to write: an apply writes them under the
+ * later release. A row already right is left in its own release. Hiding
+ * records (src/import/hideRecords.ts) reads it too, with the hidden records as
+ * `retired` and nothing new, and writes them under the master's release.
  */
-function nearbyEdits(
+export function nearbyEdits(
   reader: MasterReader,
   served: readonly string[],
   keys: readonly string[],

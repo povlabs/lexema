@@ -16,6 +16,7 @@
     "validate": "tsx src/cli.ts validate",
     "seed:dev": "tsx src/import/seedDev.ts",
     "normalize:glosses": "tsx src/import/normalizeGlossesCli.ts",
+    "hide:records": "tsx src/import/hideRecordsCli.ts",
     "update:upgrade": "tsx src/update/updateCli.ts upgrade",
     "update:diff": "tsx src/update/updateCli.ts diff",
     "update:apply": "tsx src/update/updateCli.ts apply",

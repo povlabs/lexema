@@ -518,7 +518,8 @@ CREATE INDEX claim_review_by_record ON claim_review (record_id);
 -- from, so a reader can always tell the two apart. The text is Wiktionary's own
 -- words, under the same licence as the archive.
 
--- One revision of one raw page that at least one recovered row was read from.
+-- One revision of one raw page that at least one recovered row, or a
+-- hidden_record row, was read from.
 CREATE TABLE raw_page (
   page_id     INTEGER PRIMARY KEY,
   release_id  TEXT    NOT NULL REFERENCES source_release(release_id) ON DELETE CASCADE,
@@ -604,6 +605,40 @@ CREATE TABLE recovered_example (
   wikitext      TEXT    NOT NULL,
   text          TEXT    NOT NULL,
   PRIMARY KEY (recovered_id, example_index)
+) STRICT;
+
+
+-- ---------------------------------------------------------------------------
+-- Hidden records (#382, ADR 0023)
+-- ---------------------------------------------------------------------------
+
+-- A record the archive tags Italian that its raw page shows is another
+-- language's entry, filed under the page's Italian heading: `curie`'s Dutch
+-- noun, `dolmen`'s English one (src/italian/sectionLanguage.ts,
+-- reports/2026-10-01-non-italian-sections.md). The record is kept whole, its
+-- archive line in source_record_json included, but it has no lookup_form and no
+-- form_of_edge rows, so no search reaches it and a form-of edge naming its
+-- word finds no record. This row says why, and where the page says so.
+CREATE TABLE hidden_record (
+  record_id  INTEGER PRIMARY KEY REFERENCES source_record(record_id) ON DELETE CASCADE,
+  release_id TEXT    NOT NULL,
+  page_id    INTEGER NOT NULL,
+
+  -- The rule and its version (`SECTION_LANGUAGE_RULE`).
+  rule       TEXT    NOT NULL CHECK (rule = 'section-language/v1'),
+  -- 'language-line' -> a bare `{{-nl-}}` line stands above the block.
+  -- 'late-heading'  -> the block's heading names another language,
+  --                    `{{-sost-|en}}`, below the Italian translation box.
+  because    TEXT    NOT NULL CHECK (because IN ('language-line', 'late-heading')),
+  -- The language code the page names: 'nl', 'en', 'la'.
+  language   TEXT    NOT NULL CHECK (language <> 'it' AND language <> ''),
+  -- The 1-based line of the revision that names it.
+  page_line  INTEGER NOT NULL CHECK (page_line > 0),
+
+  FOREIGN KEY (record_id, release_id)
+    REFERENCES source_record(record_id, release_id) ON DELETE CASCADE,
+  FOREIGN KEY (page_id, release_id)
+    REFERENCES raw_page(page_id, release_id) ON DELETE CASCADE
 ) STRICT;
 
 

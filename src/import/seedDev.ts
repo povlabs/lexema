@@ -8,6 +8,7 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { openRawPages } from "../source/wiktionaryDump.js";
+import { readLanguageHeadings } from "../italian/sectionLanguage.js";
 import { type LoadedRows, loadSeed, SeedStopped } from "./seedLoad.js";
 import { seedSql } from "./seedSql.js";
 import { seedTargetFrom, webWrangler } from "./seedTarget.js";
@@ -55,6 +56,10 @@ const report = await seedSql({
   // else the pages committed under fixtures/ (#28). A word without a page is
   // seeded as it always was.
   rawPages: rawPages.pages,
+  // The dump's language headings, checked against the dump by
+  // `pnpm run measure:section-language`; with the raw pages they let the seed
+  // hide another language's entries filed as Italian (ADR 0023).
+  languageHeadings: await readLanguageHeadings(resolve("fixtures/section-language/regressions.json")),
   onRejection: ({ lineNo, kind, reason }) => rejectionLines.push(`${lineNo}\t${kind}\t${reason}`),
   partCeilingBytes,
   // Marked servable below, only after the loaded database is verified.
@@ -78,6 +83,12 @@ process.stderr.write(
     `${recovery.fullLoss + recovery.partialLoss} record(s) (${recovery.fullLoss} with no definition of their own, ` +
     `${recovery.partialLoss} missing some), from ${recovery.recordsWithAPage} record(s) with a raw page ` +
     `of ${recovery.rawPages}; ${recovery.unrendered} line(s) not rendered\n`,
+);
+const { hidden } = report;
+process.stderr.write(
+  hidden.ran
+    ? `hidden records (${hidden.rule}): ${hidden.hidden} (${hidden.languageLine} by a language line, ${hidden.lateHeading} by a late heading)\n`
+    : `hidden records (${hidden.rule}): not judged, no raw pages\n`,
 );
 let loaded: LoadedRows;
 try {
