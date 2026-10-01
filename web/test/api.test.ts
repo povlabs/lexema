@@ -367,7 +367,8 @@ test("each host reaches its own site: lexema.fyi the pages as before, api.lexema
     BILLING_LIMIT: new CountingRateLimit(),
   };
   // D1's shape over each database: prepare, bind, and all, raw or run, which
-  // is how lookup and Drizzle reach it.
+  // is how lookup and Drizzle reach it, and batch, which is how lookup sends
+  // the reads of one turn together (src/lookup/database.ts).
   const d1Over = (over: DatabaseSync) => {
     const bound = (sql: string, params: (string | number | null)[]) => ({
       all: async () => ({ results: over.prepare(sql).all(...params) }),
@@ -380,6 +381,7 @@ test("each host reaches its own site: lexema.fyi the pages as before, api.lexema
     });
     return {
       prepare: (sql: string) => ({ ...bound(sql, []), bind: (...params: (string | number | null)[]) => bound(sql, params) }),
+      batch: (statements: { all: () => Promise<unknown> }[]) => Promise.all(statements.map((statement) => statement.all())),
     } as unknown as D1Database;
   };
   const env = {
