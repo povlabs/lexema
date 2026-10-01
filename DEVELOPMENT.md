@@ -386,9 +386,12 @@ through [src/db/app/nodeSqlite.ts](./src/db/app/nodeSqlite.ts), which drives
 
 ### Run agents with Fabrika
 
-Agents call `fabrika` from PATH: the global install,
-`pnpm add -g @kampus/fabrika-cli`. This repository does not depend on it, so
-there is no local copy to run through `pnpm exec`.
+The repository pins `@kampus/fabrika-cli` as a root devDependency, through the
+catalog in [pnpm-workspace.yaml](./pnpm-workspace.yaml). `pnpm exec fabrika`
+runs that pinned copy. Agents call `fabrika` from PATH, the global install
+(`pnpm add -g @kampus/fabrika-cli`), and that copy hands every call to the
+pinned one in `node_modules`, so both run the same version. To move the
+version, change the catalog entry and run `pnpm install`.
 
 The committed Claude Code settings live in
 [.claude/settings.json](./.claude/settings.json). They turn on the Fabrika
