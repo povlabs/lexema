@@ -140,6 +140,14 @@ first: expressions, an inflection's candidates, a recovered definition's labels
 and examples. `test/lookup.test.ts` holds the four; a change that adds an
 `await` between two independent reads fails it.
 
+Sending them at once is not enough on its own. Sent as one call each, the
+hundred-odd reads of `bello` answered no faster than when they waited on each
+other (#385). So `fromD1` sends every statement queued before the caller next
+waits as one `batch()` call, and each of the four waits is one call to D1.
+Smart Placement, which runs the Worker near D1 instead of near the reader, was
+tried on a Preview in the same change and left out: it placed nothing there
+and timed the same.
+
 ## Accents are meaning
 
 Normalization folds case, whitespace and three apostrophe variants (U+2019,
