@@ -5,17 +5,22 @@
 // everything here is a copy of source text with the pointer it was read from —
 // nothing is cleaned, translated or completed, except that Wikizionario's
 // missing-field placeholder is taken out of the hyphenation and the etymologies
-// (`withoutPlaceholder`, #255): it is a template, not data. What the tables already hold
+// (`withoutPlaceholder`, #255), because it is a template, not data, and that an
+// expression's phrase is tidied by the item rules of src/italian/expressions.ts
+// (ADR 0019). What the tables already hold
 // (senses, glosses, forms, grammar) is not re-read here: this module owns only
 // the pronunciation, the hyphenation, the etymologies, the three related-word
-// lists and each sense's examples, which is the data half of #20.
+// lists and each sense's examples, which is the data half of #20, and the
+// `proverbs[]` items a page lists as *Expressions* (#213).
 //
 // The line is untrusted JSON as far as the type system knows, so every field is
 // checked for the shape it must have and skipped when it does not have it. A
 // field the source left out is an empty list, never a placeholder.
 
+import { expressionPhrase } from "../italian/expressions.js";
 import { withoutPlaceholder } from "../italian/placeholder.js";
 import type {
+  ExpressionItem,
   Hyphenation,
   Pronunciation,
   RelatedWord,
@@ -27,7 +32,10 @@ import type {
 
 /** What one archive line gives a reading beyond the lookup tables. */
 export interface SourceRecordFields {
-  wordFacts: WordFacts;
+  /** Every word fact but the expressions, which need the index to say which phrases are headwords. */
+  wordFacts: Omit<WordFacts, "expressions">;
+  /** `proverbs[]`, one per item that gives a row, in source order. */
+  expressionItems: ExpressionItem[];
   /** Each sense's examples, keyed by the sense's index in `senses[]`. */
   examplesBySense: Map<number, SourceText[]>;
 }
@@ -57,7 +65,7 @@ export function readSourceRecord(
 ): SourceRecordFields {
   const parsed: Json = JSON.parse(rawJson);
   if (!isObject(parsed)) {
-    return { wordFacts: emptyWordFacts(), examplesBySense: new Map() };
+    return { wordFacts: emptyWordFacts(), expressionItems: [], examplesBySense: new Map() };
   }
 
   return {
@@ -73,11 +81,12 @@ export function readSourceRecord(
       antonyms: relatedWords(parsed, "antonyms", ref),
       derived: relatedWords(parsed, "derived", ref),
     },
+    expressionItems: expressionItems(parsed, ref),
     examplesBySense: examples(parsed, ref),
   };
 }
 
-export function emptyWordFacts(): WordFacts {
+export function emptyWordFacts(): Omit<WordFacts, "expressions"> {
   return { pronunciations: [], hyphenations: [], etymologies: [], synonyms: [], synonymList: [], antonyms: [], derived: [] };
 }
 
@@ -147,6 +156,19 @@ function synonymList(record: Record<string, Json>, ref: (pointer: string) => Sou
       ? [{ word: entry.word, rawTags: arrayAt(entry, "raw_tags").filter(nonEmptyString), ref: ref(`/synonyms/${i}/word`) }]
       : [],
   );
+}
+
+/**
+ * Every `proverbs[]` item with a `word` that gives a row: its phrase under the
+ * item rules, its `sense` verbatim. An item whose word has no letters gives none.
+ */
+function expressionItems(record: Record<string, Json>, ref: (pointer: string) => SourceRef): ExpressionItem[] {
+  return arrayAt(record, "proverbs").flatMap((item, i) => {
+    if (!isObject(item) || !nonEmptyString(item.word)) return [];
+    const phrase = expressionPhrase(item.word);
+    if (phrase === undefined) return [];
+    return [{ phrase, meaning: nonEmptyString(item.sense) ? item.sense : null, ref: ref(`/proverbs/${i}`) }];
+  });
 }
 
 /** `senses[i].examples[j].text`, by sense index, in source order. */

@@ -23,6 +23,7 @@
 // narrow what each carries; they never reorder them.
 
 import { normalizeItalianExact } from "@lexema/italian/normalize.ts";
+import { expressionMeaning } from "@lexema/lookup/expressions.ts";
 import { foldKey, type Nearby } from "@lexema/lookup/nearby.ts";
 import type { PhraseOffer } from "@lexema/lookup/phrase.ts";
 import { isFormOfReading, isVerbReading, searchedSpellings } from "@lexema/lookup/types.ts";
@@ -301,6 +302,18 @@ export interface SectionsJson {
   synonyms: string[];
   antonyms: string[];
   derived: string[];
+  expressions: ExpressionJson[];
+}
+
+/**
+ * One row of the record's *Expressions*, as the page lists it (#213): the
+ * phrase under the four rules of ADR 0019, its meanings joined by "; " or
+ * null, and whether the phrase is an Italian headword of its own.
+ */
+export interface ExpressionJson {
+  phrase: string;
+  meaning: string | null;
+  has_entry: boolean;
 }
 
 /** One result: every section, or the ones `fields` named. */
@@ -316,6 +329,7 @@ export const SECTION_KEY: Record<Section, keyof SectionsJson> = {
   antonyms: "antonyms",
   derived: "derived",
   pronunciation: "pronunciations",
+  expressions: "expressions",
 };
 
 /** A result with only the sections `fields` names, and its definitions capped at `limit_definitions`. */
@@ -390,6 +404,11 @@ export function resultJson(candidate: Candidate, filters: LookupFilters): Result
     synonyms: facts.synonyms.map((word) => word.word),
     antonyms: facts.antonyms.map((word) => word.word),
     derived: facts.derived.map((word) => word.word),
+    expressions: facts.expressions.map((expression) => ({
+      phrase: expression.phrase,
+      meaning: expressionMeaning(expression),
+      has_entry: expression.hasEntry,
+    })),
     attribution: attributionOf(reading.word),
   };
   return shaped(result, filters);

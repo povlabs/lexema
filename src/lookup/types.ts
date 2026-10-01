@@ -128,6 +128,33 @@ export interface SynonymEntry {
 }
 
 /**
+ * One `proverbs[]` item that gives a row: its phrase under the item rules of
+ * src/italian/expressions.ts, and its `sense` verbatim when it has one.
+ */
+export interface ExpressionItem {
+  phrase: string;
+  meaning: string | null;
+  /** The item: `/proverbs/3`. */
+  ref: SourceRef;
+}
+
+/**
+ * One row of an *Expressions* list (#213): a phrase once, with every distinct
+ * meaning the source gives it, in source order. The same phrase listed twice
+ * with two meanings is one row (`pancia`'s "mettere su pancia"); listed twice
+ * with one meaning, or on every record of a headword, it is still one row.
+ * Every item it came from keeps its pointer.
+ */
+export interface Expression {
+  phrase: string;
+  /** Distinct, in source order; empty when no item gave one. */
+  meanings: string[];
+  /** Whether the phrase is itself an Italian headword, so a page links it to its entry. */
+  hasEntry: boolean;
+  refs: [SourceRef, ...SourceRef[]];
+}
+
+/**
  * What the source says about the *headword* rather than about one record of
  * it: read from `source_record_json`, where it is repeated on each record the
  * headword has. A page shows it once per word, not once per reading.
@@ -142,6 +169,8 @@ export interface WordFacts {
   synonymList: SynonymEntry[];
   antonyms: RelatedWord[];
   derived: RelatedWord[];
+  /** `proverbs[]`, one row per phrase (src/lookup/expressions.ts). */
+  expressions: Expression[];
 }
 
 export interface Sense {
@@ -269,6 +298,11 @@ export interface LemmaListing {
  */
 export interface LemmaTarget extends LemmaCandidate {
   listing: LemmaListing | undefined;
+  /**
+   * The lemma record's own expressions, so a form's page can show them under
+   * *Expressions with andare* without the lemma being a reading (#213).
+   */
+  expressions: Expression[];
 }
 
 /**

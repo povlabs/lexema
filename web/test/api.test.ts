@@ -40,6 +40,7 @@ import { byHost, DEVELOPERS_SEGMENT } from "@/worker/hosts.ts";
 import { withRateLimits, type LimitBindings } from "@/worker/rateLimit.ts";
 import { RATE_WINDOW_SECONDS } from "@/worker/api/keyLimits.ts";
 import { FakeRateLimit, TestMetering } from "./metering.ts";
+import { wordPage } from "@/lib/dictionary/wordPage.ts";
 
 const REPO = fileURLToPath(new URL("../..", import.meta.url));
 const RELEASE = "it-api-test";
@@ -535,6 +536,34 @@ test("fields returns the named sections and the always-returned fields, and refu
   assert.deepEqual(sale.definitions, full.definitions);
   await assertRefused("q=sale&fields=definitions,meaning", "fields");
   await assertRefused("q=sale&fields=", "fields");
+});
+
+test("every result carries its record's expressions as the page lists them, and fields=expressions selects them (#213)", async () => {
+  const { results } = await lookupBody("q=fare");
+  const [noun, verb] = results as { word: string; expressions: { phrase: string; meaning: string | null; has_entry: boolean }[] }[];
+  assert.ok(noun !== undefined && verb !== undefined);
+  // The source lists one list on both records, and each result carries it.
+  assert.deepEqual(noun.expressions, verb.expressions);
+  assert.deepEqual(noun.expressions[0], {
+    phrase: "andare a fare in culo",
+    meaning: "mandare al diavolo, mandare a quel paese",
+    has_entry: false,
+  });
+  // has_entry: the phrase heads a record, the same test the page's link uses.
+  assert.equal(noun.expressions.find((row) => row.phrase === "fare l'amore")?.has_entry, true);
+  // No meaning is null, as the API's other absent values are.
+  assert.ok(noun.expressions.some((row) => row.meaning === null));
+  // The order is the page's.
+  const found = await lookup({ db: dictionary, releaseId: RELEASE, query: "fare" });
+  assert.ok(found.outcome === "found");
+  const page = wordPage("fare", found.readings);
+  assert.deepEqual(
+    noun.expressions.map((row) => row.phrase),
+    page.expressionSections[0]?.expressions.map((row) => row.phrase),
+  );
+
+  const [only] = (await lookupBody("q=fare&fields=expressions")).results;
+  assert.deepEqual(Object.keys(only).sort(), ["attribution", "expressions", "id", "match", "pos", "pos_title", "word"]);
 });
 
 test("pos, match and fields refuse a name every object inherits", async () => {

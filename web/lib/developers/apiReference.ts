@@ -109,6 +109,59 @@ const AGREEMENT_GRAMMAR: readonly Parameter[] = [
   { name: "number", type: "string", required: false, description: "Only the grid's column of this number." },
 ];
 
+/** `andare`'s expressions, which the source lists on both its records, in its order. */
+const ANDARE_EXPRESSIONS = [
+  { phrase: "a lungo andare", meaning: "col trascorrere del tempo", has_entry: false },
+  { phrase: "andare a bottega", meaning: "andare ad imparare un lavoro presso un artigiano", has_entry: false },
+  { phrase: "andare a catafascio", meaning: "andare in rovina", has_entry: false },
+  { phrase: "andare a Canossa", meaning: "umiliarsi, invocare un perdono mortificante", has_entry: false },
+  { phrase: "andare a dama", meaning: "damare, segnare un punto, arrivare con una pedina sull'ultima linea ella scacchiera", has_entry: false },
+  { phrase: "andare addosso", meaning: "(di veicoli o natanti) cozzare contro qualcosa", has_entry: false },
+  { phrase: "andare a fare in culo", meaning: "mandare qualcuno al diavolo", has_entry: false },
+  { phrase: "andare a farsi benedire", meaning: "offendere ingiuriosamente chi ci assilla", has_entry: false },
+  { phrase: "andare a fondo", meaning: "(di proposito) non avere successo", has_entry: false },
+  { phrase: "andare a genio", meaning: null, has_entry: false },
+  { phrase: "andare a ingrassare i vermi", meaning: "morire", has_entry: false },
+  { phrase: "andare a monte", meaning: "(di piano) non avere successo", has_entry: false },
+  { phrase: "andare a parare", meaning: "avvicinarsi a una determinata caratteristica", has_entry: false },
+  { phrase: "andare a rogito", meaning: "stipulare un contratto", has_entry: false },
+  { phrase: "andare a ruota", meaning: "conseguire un successo di poco inferiore a quello di un altro,", has_entry: false },
+  { phrase: "andare a spasso", meaning: "fare due passi, andare a passeggio", has_entry: false },
+  { phrase: "andare a tempo", meaning: "ballare, cantare o suonare correttamente", has_entry: false },
+  { phrase: "andare a trovare", meaning: "visitare", has_entry: false },
+  { phrase: "andare a zonzo", meaning: "andare in giro senza una meta precisa", has_entry: false },
+  { phrase: "andare al diavolo", meaning: "offesa ingiuriosa pronunciata contro chi ci assilla", has_entry: false },
+  { phrase: "andare alla deriva", meaning: "andare alla malora", has_entry: false },
+  { phrase: "andare alla radice", meaning: "cercare il vero motivo", has_entry: false },
+  { phrase: "andare alle urne", meaning: "sottoporre a votazione", has_entry: false },
+  { phrase: "andare all’altare", meaning: "sposarsi", has_entry: false },
+  { phrase: "andare all'aria", meaning: "non avere successo", has_entry: false },
+  { phrase: "andare avanti", meaning: "(militare) entrare nello spazio nemico per occuparlo", has_entry: false },
+  { phrase: "andare bene", meaning: "(di azienda) essere molto produttiva", has_entry: false },
+  { phrase: "andare di conserva", meaning: "andare d'accordo", has_entry: false },
+  { phrase: "andare di lusso", meaning: "(familiare) avere un risultato superiore alle previsioni", has_entry: false },
+  { phrase: "andare di traverso", meaning: "compiere un'azione dagli esiti negativi", has_entry: false },
+  { phrase: "andare di corpo", meaning: "cacare", has_entry: false },
+  { phrase: "andare di moda", meaning: "fare tendenza", has_entry: false },
+  { phrase: "andare in briciole", meaning: "rompersi", has_entry: false },
+  { phrase: "andare in camporella", meaning: "andare ad intrattenere un rapporto amoroso epidermico e in un posto appartato fuori dalla città, in un praticello", has_entry: false },
+  { phrase: "andare in cenere", meaning: "(di edificio) essere demolito dalle fiamme", has_entry: false },
+  { phrase: "andare in collera", meaning: "adirarsi violentemente", has_entry: false },
+  { phrase: "andare in estasi", meaning: "(di persona) essere estasiato", has_entry: false },
+  { phrase: "andare in fumo", meaning: "svanire, dissolversi", has_entry: false },
+  { phrase: "andare in giro", meaning: "andare a zonzo senza meta", has_entry: false },
+  { phrase: "andare in piazza", meaning: "partecipare a manifestazioni pubbliche", has_entry: false },
+  { phrase: "andare in rovina", meaning: "(di qualcuno) affrontare tracollo finanziario", has_entry: false },
+  { phrase: "andare in tilt", meaning: "essere turbato, andare in confusione", has_entry: false },
+  { phrase: "andare in visibilio", meaning: "strabiliarsi, trasecolare; andare in estasi", has_entry: false },
+  { phrase: "andare liscio", meaning: "andare avanti senza trovare intralci", has_entry: false },
+  { phrase: "andare nel pallone", meaning: "impallarsi, impacciarsi", has_entry: false },
+  { phrase: "andare oltre", meaning: "avere una prospettiva più ampia di quello solita", has_entry: false },
+  { phrase: "andare per il sottile", meaning: "operare con accuratezza o sensibilità", has_entry: false },
+  { phrase: "andare sotto", meaning: "avere più uscite che entrate", has_entry: false },
+  { phrase: "non andare per il sottile", meaning: "comportarsi in modo privo di tatto", has_entry: false },
+];
+
 /** `/lookup` unfiltered: every candidate for `andare`, with every section. */
 export const LOOKUP_EXAMPLE: Example = {
   path: "lookup?q=andare",
@@ -176,6 +229,7 @@ export const LOOKUP_EXAMPLE: Example = {
           "disgustare",
         ],
         derived: ["andato", "riandare", "andarsene"],
+        expressions: ANDARE_EXPRESSIONS,
         attribution: ATTRIBUTION("andare"),
       },
       {
@@ -371,6 +425,7 @@ export const LOOKUP_EXAMPLE: Example = {
           "disgustare",
         ],
         derived: ["andato", "riandare", "andarsene"],
+        expressions: ANDARE_EXPRESSIONS,
         attribution: ATTRIBUTION("andare"),
       },
     ],
@@ -679,6 +734,7 @@ export const FIELDS_TEXT = [
   ...SECTIONS.filter((section) => SECTION_KEY[section] !== section).map(
     (section) => `\`${section}\` returns \`${SECTION_KEY[section]}\`.`,
   ),
+  "`expressions` lists the phrases the source gives with the record's word, one each, in the page's order: each is `{ phrase, meaning, has_entry }`, where `meaning` joins the source's meanings for the phrase with `; ` and is `null` when it gives none, and `has_entry` is `true` when the phrase is an Italian headword of its own.",
   "The rest of a result is always returned.",
 ].join(" ");
 

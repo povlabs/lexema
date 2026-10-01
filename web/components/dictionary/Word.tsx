@@ -1,19 +1,20 @@
 // One word's page: the headword with its pronunciation, jump links when there
 // are three readings or more, the readings in source order, then the facts
-// about the word once, then *Source* (design-system-manifest.md § "The result").
+// about the word once, its expressions last among them, then *Source* (design-system-manifest.md § "The result").
 //
 // Which records are readings and which lemma tables they carry is
 // `wordPage.ts`; this file only lays the answer out.
 
 import type { WordFacts } from "@lexema/lookup/types.ts";
 import { ExternalIcon } from "@/components/shared/icons";
+import { Expressions } from "./Expressions";
 import { NEW_TAB } from "@/components/shared/ExternalLink";
 import { OneLine } from "./OneLine";
 import { ReadingView } from "./Reading";
 import { ReportDialog, type ReportReading } from "./ReportDialog";
 import { sourcePageUrl } from "@/lib/dictionary/sourcePage.ts";
 import { WordList } from "./WordList";
-import type { WordLists, WordPage } from "@/lib/dictionary/wordPage.ts";
+import type { ExpressionSection, WordLists, WordPage } from "@/lib/dictionary/wordPage.ts";
 import {
   BLOCK_LABEL,
   WORD_BLOCK,
@@ -75,8 +76,17 @@ function JumpLinks({ page }: { page: WordPage }) {
 }
 
 
-function WordFactsView({ facts, lists }: { facts: WordFacts; lists: WordLists }) {
-  const any = facts.etymologies.length + lists.synonyms.length + lists.antonyms.length + lists.derived.length > 0;
+function WordFactsView({
+  facts,
+  lists,
+  expressions,
+}: {
+  facts: WordFacts;
+  lists: WordLists;
+  expressions: readonly ExpressionSection[];
+}) {
+  const any =
+    facts.etymologies.length + lists.synonyms.length + lists.antonyms.length + lists.derived.length + expressions.length > 0;
   if (!any) return null;
   return (
     <div className={WORD_FACTS}>
@@ -93,6 +103,9 @@ function WordFactsView({ facts, lists }: { facts: WordFacts; lists: WordLists })
       <WordList id="synonyms" label="Synonyms" items={lists.synonyms} />
       <WordList id="antonyms" label="Antonyms" items={lists.antonyms} />
       <WordList id="derived" label="Derived words" items={lists.derived} />
+      {expressions.map((section, i) => (
+        <Expressions key={section.kind === "own" ? "own" : `lemma:${section.lemma}`} section={section} id={`expressions-${i}`} />
+      ))}
     </div>
   );
 }
@@ -143,7 +156,7 @@ export function WordView({ page, siteKey }: { page: WordPage; siteKey?: string }
           <ReadingView key={entry.reading.recordId} entry={entry} />
         ))}
       </div>
-      <WordFactsView facts={page.wordFacts} lists={page.wordLists} />
+      <WordFactsView facts={page.wordFacts} lists={page.wordLists} expressions={page.expressionSections} />
       <SourceLine page={page} siteKey={siteKey} />
     </>
   );

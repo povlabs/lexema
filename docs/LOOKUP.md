@@ -183,15 +183,42 @@ lemma — `studentessa` for `studenti` — is still a reading.
 | `recordId` | the database's surrogate id, an artefact of one build — never publish it |
 | `ref` | the whole record: `jsonPointer` is `""` |
 | `word`, `pos`, `posTitle` | the record's own headword and part of speech, verbatim |
-| `wordFacts` | pronunciations, hyphenations, etymologies, synonyms, antonyms and derived words, read from the record's own line in `source_record_json`; one entry per distinct related spelling, every pointer kept; Wikizionario's missing-field placeholder is taken out of the hyphenations and etymologies (below) |
+| `wordFacts` | pronunciations, hyphenations, etymologies, synonyms, antonyms, derived words and `expressions` (below), read from the record's own line in `source_record_json`; one entry per distinct related spelling, every pointer kept; Wikizionario's missing-field placeholder is taken out of the hyphenations and etymologies (below) |
 | `isAboutQuery` | `true` when at least one piece of evidence is a headword hit |
 | `evidence[]` | every occurrence of the surface on this record, in source order |
 | `senses[]` | source glosses, labels and `examples[].text`, the examples read from `source_record_json`; a gloss loses the missing-field placeholder (below), and one that was only that is not returned |
 | `grammar` | claims split into `record`, `byForm` and `bySense` |
-| `lemmaLinks[]` | the reading's lemma: outgoing `form_of` edges this record declares, each candidate with its `listing` |
+| `lemmaLinks[]` | the reading's lemma: outgoing `form_of` edges this record declares, each candidate with its `listing` and its own `expressions` |
 | `inflections[]` | records declaring themselves forms of this one |
 | `reviews[]` | review verdicts on this record's claims |
 | `articles` | noun readings only: the singular articles `it-articles/v1` derives from the record's stated gender and number, plus the plural ones for the single plural form the source tags with the same gender |
+
+### `expressions`
+
+`wordFacts.expressions` is the record's `proverbs[]`, one row per phrase, in
+source order ([#213](https://github.com/hueypov/lexema/issues/213)). Each row
+holds:
+
+| Field | Holds |
+| --- | --- |
+| `phrase` | the item's `word`, under the four rules below |
+| `meanings` | each distinct `sense` given for the phrase, verbatim, in source order; empty when none is |
+| `hasEntry` | `true` when the phrase is an Italian headword: its normalized key is a headword row of `lookup_form`, so a search for it opens that entry |
+| `refs` | every `/proverbs/<i>` item the row came from |
+
+The four rules are source text normalizations
+([ADR 0019](../.decisions/0019-source-text-may-be-normalized.md)) applied as the
+line is read; `source_record_json` is not changed.
+
+1. A phrase opening with `...` or `…` loses the dots: `...in bello` is `in bello`.
+2. A phrase with no letter at all gives no row: the lone `:` on `battaglia` and `affare`.
+3. A phrase wrapped in round brackets loses them: `(di secondo piano)` is `di secondo piano`.
+4. The same phrase listed more than once is one row, its meanings joined in
+   source order: `pancia`'s `mettere su pancia` has `oziare` and `ingrassare`.
+
+The HTTP API's `/v1/lookup` returns each result's rows as `expressions`, each
+`{ phrase, meaning, has_entry }`, with the meanings joined by `"; "` and `meaning`
+`null` when there is none (`web/worker/api/lookupAnswer.ts`).
 
 ### The missing-field placeholder
 
@@ -260,7 +287,9 @@ all; the three represented states are:
 
 `candidates[]` is never narrowed to one. More than one entry means the source
 did not choose. Each candidate is `recordId`, `word`, `pos`, a `ref` to its
-own `/word`, and `listing`.
+own `/word`, `listing`, and `expressions`: the lemma record's own
+[expressions](#expressions), so a form's page can show them (andavano shows
+*Expressions with andare*).
 
 `listing` is where the candidate's own table spells the query: its whole
 `forms[]` and the `evidence[]` rows the key hit, never empty. It is `undefined`

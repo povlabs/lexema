@@ -8,11 +8,14 @@
 // nothing is counted twice: the readings are the lookup's records, and the
 // tables are their lemmas'.
 
+import { normalizeItalianExact } from "@lexema/italian/normalize.ts";
+import { mergeExpressions } from "@lexema/lookup/expressions.ts";
 import { isFormOfReading, isVerbReading } from "@lexema/lookup/types.ts";
 import { hasDefinitions } from "./definitions.ts";
 import { labelParts, readingsNamed, splitLabel } from "./readingLabels.ts";
 import { relatedItems, type RelatedItem } from "./relatedList.ts";
 import type {
+  Expression,
   LemmaListing,
   LemmaTarget,
   Pronunciation,
@@ -61,6 +64,28 @@ export interface WordLists {
   derived: RelatedItem[];
 }
 
+/**
+ * One *Expressions* section (#213): the entry's own, or, on a form's page, one
+ * per lemma it is a form of, *Expressions with andare*. A section with no row
+ * is not a value this holds, so a page with none shows none (ADR 0016).
+ */
+export type ExpressionSection =
+  | { kind: "own"; expressions: [Expression, ...Expression[]] }
+  | { kind: "lemma"; lemma: string; expressions: [Expression, ...Expression[]] };
+
+/** A list longer than this gets the *Find an expression* box once it is open (Huey, 2026-10-01, on #213). */
+export const EXPRESSION_FILTER_ABOVE = 30;
+
+/** Whether a section lists enough rows to be filtered. */
+export const takesFilter = (section: ExpressionSection): boolean => section.expressions.length > EXPRESSION_FILTER_ABOVE;
+
+/** Whether a row answers what was typed in *Find an expression*: its phrase or its meaning holds it. */
+export function matchesExpression(expression: Expression, typed: string): boolean {
+  const wanted = normalizeItalianExact(typed);
+  if (wanted === "") return true;
+  return [expression.phrase, ...expression.meanings].some((text) => normalizeItalianExact(text).includes(wanted));
+}
+
 export interface WordPage {
   /** The headword as the source spells it, or the query when no record is about it. */
   headword: string;
@@ -69,6 +94,8 @@ export interface WordPage {
   wordFacts: WordFacts;
   /** `wordFacts`' synonyms, antonyms and derived words, as the page lists them. */
   wordLists: WordLists;
+  /** The entry's own expressions, then its lemmas', each once; the last of the word's facts. */
+  expressionSections: ExpressionSection[];
   /**
    * The word whose Wiktionary page the one *Source* link opens: the spelling
    * the page is about, its title. That page holds every entry for the
@@ -150,8 +177,42 @@ export function wordPage(query: string, readings: readonly [Reading, ...Reading[
       antonyms: relatedItems(placed.rest.antonyms),
       derived: relatedItems(placed.rest.derived),
     },
+    expressionSections: expressionSections(headword, about),
     sourceWord: headword,
   };
+}
+
+const nonEmpty = <T>(items: T[]): [T, ...T[]] | undefined => {
+  const [first, ...rest] = items;
+  return first === undefined ? undefined : [first, ...rest];
+};
+
+/**
+ * The entry's own list, every reading about the word merged, since the source
+ * repeats one list on each of them; then one list per word the readings say
+ * they are a form of, in page order, every record of that word merged
+ * (`andavano`: *Expressions with andare*; `stato`: its own, then *with stare*).
+ */
+function expressionSections(headword: string, about: readonly Reading[]): ExpressionSection[] {
+  const sections: ExpressionSection[] = [];
+  const own = nonEmpty(mergeExpressions(about.map((reading) => reading.wordFacts.expressions)));
+  if (own !== undefined) sections.push({ kind: "own", expressions: own });
+
+  const byLemma = new Map<string, Expression[][]>();
+  for (const reading of about.filter(isFormOfReading)) {
+    for (const link of reading.lemmaLinks) {
+      if (link.kind !== "candidates") continue;
+      for (const lemma of link.candidates) {
+        if (lemma.word === headword) continue;
+        byLemma.set(lemma.word, [...(byLemma.get(lemma.word) ?? []), lemma.expressions]);
+      }
+    }
+  }
+  for (const [lemma, lists] of byLemma) {
+    const expressions = nonEmpty(mergeExpressions(lists));
+    if (expressions !== undefined) sections.push({ kind: "lemma", lemma, expressions });
+  }
+  return sections;
 }
 
 /**
@@ -187,6 +248,7 @@ function mergeWordFacts(readings: readonly Reading[]): WordFacts {
     synonymList: all((facts) => facts.synonymList),
     antonyms: related((facts) => facts.antonyms),
     derived: related((facts) => facts.derived),
+    expressions: mergeExpressions(readings.map((reading) => reading.wordFacts.expressions)),
   };
 }
 
