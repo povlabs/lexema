@@ -7,6 +7,15 @@
 // Italian reader, and they are still recorded as 'unclassified' here — reading
 // them is exactly the mapping #4 exists to establish and test. Guessing now
 // would put an unvalidated claim in the database wearing a 'stated' label.
+//
+// One exception, ruled by Huey on #317: the gloss grammar stamp rule
+// (`it-gloss-stamp/v1`, `GlossStampLift` below). A noun or adjective with no
+// gender tag whose gloss is a whole stamp line, like `casa ( approfondimento)
+// f sing`, states its gender and number from that stamp. The stamp is the
+// page's own grammar mark, flattened into a gloss by the extraction, not prose:
+// the rule matches the whole gloss against one fixed shape and reads nothing else.
+
+import { readGlossGrammarStamp, type GlossGrammarStamp } from "../italian/glossGrammarStamp.js";
 
 /** A structural tag mapped to the schema's closed vocabulary. */
 const STRUCTURAL_TAGS = new Map<string, { dimension: string; value: string }>(
@@ -121,4 +130,91 @@ export function expectedFormDimensions(
     statedDimensions.has("number") ||
     statedDimensions.has("tense");
   return inflected && !statedDimensions.has("mood") ? ["mood"] : [];
+}
+
+/** A stated claim the stamp rule lifts off a gloss, pointing at that gloss. */
+export interface StampClaim {
+  readonly pointer: string;
+  readonly dimension: "gender" | "number";
+  readonly value: string;
+  /** The stamp as the source wrote it (`f sing`), the same on both claims. */
+  readonly sourceText: string;
+}
+
+/** What the stamp rule reads of a record: its headword, pos, record tags and every gloss by pointer. */
+export interface StampableRecord {
+  readonly word: string;
+  readonly pos: string;
+  readonly tags: readonly string[];
+  readonly glosses: readonly { readonly pointer: string; readonly text: string }[];
+}
+
+/**
+ * The gloss grammar stamp rule (`it-gloss-stamp/v1`, #317) applied to one
+ * record: which glosses carry a stamp it lifts, the stated claims that gives,
+ * and the gloss text stored once the stamp is taken off (ADR 0019).
+ *
+ * It lifts nothing unless every reading agrees: the record is a noun or an
+ * adjective, it has no gender tag of its own, its stamps name one gender and
+ * at most one number, and no number tag says otherwise. A record the rule
+ * leaves alone keeps every gloss as written.
+ */
+export class GlossStampLift {
+  static readonly NONE = new GlossStampLift(new Map());
+
+  private constructor(private readonly stamps: ReadonlyMap<string, GlossGrammarStamp>) {}
+
+  static of(record: StampableRecord): GlossStampLift {
+    if (record.pos !== "noun" && record.pos !== "adj") return GlossStampLift.NONE;
+    const tagged = record.tags.map(mapStructuralTag).flatMap((tag) => (tag.status === "stated" ? [tag] : []));
+    if (tagged.some((tag) => tag.dimension === "gender")) return GlossStampLift.NONE;
+
+    const stamps = new Map<string, GlossGrammarStamp>();
+    for (const { pointer, text } of record.glosses) {
+      const stamp = readGlossGrammarStamp(record.word, text);
+      if (stamp !== undefined) stamps.set(pointer, stamp);
+    }
+    const genders = new Set([...stamps.values()].map((stamp) => stamp.gender));
+    const numbers = new Set([...stamps.values()].flatMap((stamp) => stamp.number ?? []));
+    const taggedNumbers = tagged.filter((tag) => tag.dimension === "number").map((tag) => tag.value);
+    const agrees =
+      genders.size === 1 &&
+      numbers.size <= 1 &&
+      [...numbers].every((number) => taggedNumbers.every((tag) => tag === number));
+    return agrees ? new GlossStampLift(stamps) : GlossStampLift.NONE;
+  }
+
+  /** How many glosses the rule takes. */
+  get glossCount(): number {
+    return this.stamps.size;
+  }
+
+  /**
+   * The text stored for the gloss at `pointer`: as written, or with its stamp
+   * taken off; undefined when the stamp was the whole gloss, so the sense
+   * keeps no gloss row for it.
+   */
+  storedGloss(pointer: string, text: string): string | undefined {
+    const stamp = this.stamps.get(pointer);
+    return stamp === undefined ? text : GlossStampLift.kept(stamp);
+  }
+
+  /** Every gloss the rule takes, with what `storedGloss` keeps of it. */
+  trimmed(): { pointer: string; kept: string | undefined }[] {
+    return [...this.stamps].map(([pointer, stamp]) => ({ pointer, kept: GlossStampLift.kept(stamp) }));
+  }
+
+  private static kept(stamp: GlossGrammarStamp): string | undefined {
+    return stamp.rest === "" ? undefined : stamp.rest;
+  }
+
+  /** The stated claims, in gloss order: gender, then number when the stamp has one. */
+  claims(): StampClaim[] {
+    return [...this.stamps].flatMap(([pointer, stamp]): StampClaim[] => [
+      { pointer, dimension: "gender", value: stamp.gender, sourceText: stamp.sourceText },
+      ...(stamp.number === undefined
+        ? []
+        : [{ pointer, dimension: "number" as const, value: stamp.number, sourceText: stamp.sourceText }]),
+    ]);
+  }
 }

@@ -150,18 +150,27 @@ first, since it refuses a database with tables.
 The seed stores some source text rewritten by a fixed rule, a *source text
 normalization* ([ADR 0019](../.decisions/0019-source-text-may-be-normalized.md)).
 The first rewrites a gloss opening "1ª/2ª/3ª persona" as "prima/seconda/terza
-persona" ([#257](https://github.com/hueypov/lexema/issues/257)). A database
-seeded before a rule existed gets it from a one-off update, with no reseed:
+persona" ([#257](https://github.com/hueypov/lexema/issues/257)). The second,
+rule `it-gloss-stamp/v1`
+([#317](https://github.com/hueypov/lexema/issues/317)), takes a gender and
+number stamp off the end of a noun's gloss (`casa ( approfondimento) f sing`)
+and states it as the record's gender and number. A database seeded before a
+rule existed gets it from a one-off update, with no reseed:
 
 ```sh
 pnpm run normalize:glosses
 ```
 
 It picks its database the way the seed does: the local D1 under `SEED_STATE`
-(default `.data/seed-state`), or the remote D1 `SEED_REMOTE` names. It rewrites
-only `sense_gloss` rows the rule changes, never `source_record_json`, then reads
-the rows back and fails if any still needs the rule. It ends by printing
-`sense_gloss: <n> row(s) changed`. A second run changes 0 rows.
+(default `.data/seed-state`), or the remote D1 `SEED_REMOTE` names. It changes
+only the rows the rules change, never `source_record_json`, then reads the rows
+back and fails if any still needs a rule. The first rule touches `sense_gloss`
+only. The stamp rule reads each candidate record's raw line the way the seed
+does, trims or drops the stamped gloss, adds the stated `grammar_claim` rows,
+and removes the `missing` gender and number rows they answer. It prints one
+line per rule, `sense_gloss: <n> row(s) changed` and
+`it-gloss-stamp/v1: sense_gloss <n> row(s) changed, grammar_claim <n> row(s) changed`.
+A second run changes 0 rows.
 
 For the full local seed:
 
@@ -177,7 +186,9 @@ SEED_REMOTE=lexema-dictionary pnpm run normalize:glosses
 ```
 
 Put `CLOUDFLARE_ACCOUNT_ID=<account id>` first if Wrangler lists more than one
-account. On release `it-0c432803` the first run prints
-`sense_gloss: 177 row(s) changed`, and every later run prints 0. It writes
+account. On release `it-0c432803` a database seeded before both rules gets
+`sense_gloss: 177 row(s) changed` from the first, and 9 `sense_gloss` and 30
+`grammar_claim` rows changed from the stamp rule (8 nouns: 16 stated claims
+added, 14 `missing` rows removed). Every later run prints 0. It writes
 through Wrangler from the laptop, never through the Worker's read-only
 binding.

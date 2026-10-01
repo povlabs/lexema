@@ -249,9 +249,9 @@ test("every record the lookup returns is a reading, headed by its number and its
   await withDevSeed(async ({ db }) => {
     const expected: Record<string, string[]> = {
       // After a grid reading's part of speech, the gender and number its
-      // record states: none for casa, whose record states neither, and never
-      // on a verb or a Voce verbale.
-      casa: ["1·Sostantivo"],
+      // record states, and never on a verb or a Voce verbale. casa states
+      // them only in its gloss stamp `f sing` (#317).
+      casa: ["1·Sostantivo·femminile, singolare"],
       andare: ["1·Sostantivo·maschile", "2·Verbo"],
       andavano: ["1·Voce verbale"],
       bello: [
@@ -310,10 +310,12 @@ test("casa shows the definitions its raw page states, with no mark for where the
     assert.doesNotMatch(textOf(reading), /\( citazioni\)|\( approfondimento\)/);
   });
   // Without the raw page, the furniture is all the record says, so it shows
-  // verbatim rather than leaving the reading silent.
+  // rather than leaving the reading silent: as stored, its gender stamp moved
+  // into the heading (#317).
   await withDevSeed(async ({ db }) => {
     const reading = nth(await render(db, "casa"), 1);
-    assert.match(textOf(reading), /casa \( approfondimento\) f sing/);
+    assert.match(textOf(reading), /casa \( approfondimento\)/);
+    assert.doesNotMatch(textOf(reading), /f sing/);
     assert.match(textOf(reading), /casa \( citazioni\)/);
   });
 });

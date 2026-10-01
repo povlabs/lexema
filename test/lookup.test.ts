@@ -574,12 +574,14 @@ test("keeps stated, unclassified and missing grammar apart in the result", async
   await withFixture(async (db) => {
     const [casa] = found(await ask(db, "casa"));
     const record = casa.grammar.record;
-    // The source states nothing about `casa`'s gender or number, and we looked.
+    // `casa` has no gender or number tag. Its gender and number are stated
+    // only by the stamp at the end of its gloss (#317), so the claims point at
+    // that gloss and nothing is left missing. (A record the stamp leaves a
+    // dimension missing for is in test/glossGrammarStamp.test.ts.)
     assert.deepEqual(
-      record.filter((c) => c.status === "missing").map((c) => c.status === "missing" && c.dimension).sort(),
-      ["gender", "number"],
+      record.map((c) => (c.status === "stated" ? `${c.dimension}=${c.value} ${c.ref.jsonPointer}` : c.status)),
+      ["gender=feminine /senses/0/glosses/0", "number=singular /senses/0/glosses/0"],
     );
-    assert.equal(record.filter((c) => c.status === "stated").length, 0);
 
     // Its plural is written in prose on the sense, kept verbatim rather than
     // parsed into number=plural.

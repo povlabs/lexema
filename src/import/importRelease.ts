@@ -15,8 +15,10 @@ import { normalizeGloss } from "../italian/sourceTextNormalization.js";
 import {
   expectedFormDimensions,
   expectedRecordDimensions,
+  GlossStampLift,
   mapRawTag,
   mapStructuralTag,
+  type StampClaim,
 } from "./grammarPolicy.js";
 
 export const IMPORTER_VERSION = "it-import/v1" as const;
@@ -275,6 +277,44 @@ export function italianRecordOf(line: string): ArchiveRecord["record"] | undefin
   }
 }
 
+/**
+ * The gloss grammar stamp rule (#317) over one admitted record, reading its
+ * tags and glosses the way `writeRecord` stores them. Refused leaves are
+ * reported where the import writes them, never here, so this reads quietly.
+ * The seed and the one-off update (glossStampUpdate.ts) both start here.
+ */
+export function glossStampLiftOf(record: ArchiveRecord["record"]): GlossStampLift {
+  const quiet: ReportMember = () => {};
+  return GlossStampLift.of({
+    word: record.word,
+    pos: record.pos,
+    tags: stringMembers(record.tags, "/tags", quiet).map(({ text }) => text),
+    glosses: record.senses.flatMap((sense, senseIndex) =>
+      stringMembers(sense.glosses, `/senses/${senseIndex}/glosses`, quiet).map(({ index, text }) => ({
+        pointer: `/senses/${senseIndex}/glosses/${index}`,
+        text,
+      })),
+    ),
+  });
+}
+
+/**
+ * A gloss as the structured rows store it, or undefined when it keeps no row:
+ * its stamp taken off when the record's lift takes it, then the source text
+ * normalizations (ADR 0019). The raw line keeps the source's wording.
+ */
+export function storedGlossText(lift: GlossStampLift, pointer: string, text: string): string | undefined {
+  return asStored(lift.storedGloss(pointer, text));
+}
+
+/** Each gloss the lift takes, with the text `storedGlossText` stores for it. */
+export function stampedGlossRows(lift: GlossStampLift): { pointer: string; stored: string | undefined }[] {
+  return lift.trimmed().map(({ pointer, kept }) => ({ pointer, stored: asStored(kept) }));
+}
+
+const asStored = (kept: string | undefined): string | undefined =>
+  kept === undefined ? undefined : normalizeGloss(kept);
+
 /** What an open file would have to keep for two reads of it to be the same bytes. */
 const identityOf = (stats: Stats): string =>
   `${stats.dev}:${stats.ino}:${stats.size}:${stats.mtimeMs}`;
@@ -510,6 +550,8 @@ export function writeRecord(
     rows.lookup_form += 1;
   });
 
+  const stampLift = glossStampLiftOf(record);
+
   writeClaims(statements, rows, {
     recordId,
     scope: "record",
@@ -519,6 +561,7 @@ export function writeRecord(
     rawTagsPointer: "/raw_tags",
     tags: stringMembers(record.tags, "/tags", reportMember),
     rawTags: stringMembers(record.raw_tags, "/raw_tags", reportMember),
+    lifted: stampLift.claims(),
     expected: expectedRecordDimensions(ctx.pos),
   });
 
@@ -544,6 +587,7 @@ export function writeRecord(
       rawTagsPointer: `/forms/${formIndex}/raw_tags`,
       tags,
       rawTags,
+      lifted: [],
       expected: expectedFormDimensions(ctx.pos, stated),
     });
   });
@@ -558,8 +602,10 @@ export function writeRecord(
 
     stringMembers(sense.glosses, `${sensePointer}/glosses`, reportMember).forEach(
       ({ index, text }) => {
-        // Stored normalized (ADR 0019); the raw line keeps the source's wording.
-        statements.insertGloss.run(senseId, index, normalizeGloss(text), `${sensePointer}/glosses/${index}`);
+        const pointer = `${sensePointer}/glosses/${index}`;
+        const stored = storedGlossText(stampLift, pointer, text);
+        if (stored === undefined) return;
+        statements.insertGloss.run(senseId, index, stored, pointer);
         rows.sense_gloss += 1;
       },
     );
@@ -624,6 +670,8 @@ interface ClaimScope {
   /** String members only, each still carrying its source index. */
   tags: readonly StringMember[];
   rawTags: readonly StringMember[];
+  /** Stated claims the gloss grammar stamp rule lifts (#317); record scope only. */
+  lifted: readonly StampClaim[];
   expected: readonly string[];
 }
 
@@ -661,6 +709,15 @@ function writeClaims(
     );
     rows.grammar_claim += 1;
   });
+
+  for (const claim of scope.lifted) {
+    stated.add(claim.dimension);
+    statements.insertClaim.run(
+      scope.recordId, scope.scope, scope.scopeIndex, claim.pointer,
+      "stated", claim.dimension, claim.value, claim.sourceText,
+    );
+    rows.grammar_claim += 1;
+  }
 
   // A dimension we looked for and did not find. This is what separates `casa`,
   // whose gender the source simply never states, from a record nobody expected
