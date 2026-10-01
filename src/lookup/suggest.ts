@@ -19,12 +19,13 @@ import { phraseCompletions, type PhraseOffer } from "./phrase.js";
 import { inKeyOrder, servedReleases } from "./served.js";
 
 /**
- * The shortest prefix answered, in characters of the normalized key. One letter
- * is enough: Huey's ruling is that typing `a` lists the first words under `a`.
- * The query walks the index in key order and stops after a handful of rows, so
- * a one-letter prefix costs no more than a long one.
+ * The shortest prefix answered, in characters of the normalized key. Two
+ * letters, Huey's call of 2026-10-01 (#387): a single letter is not worth a
+ * request. It was one letter before; the query was never the cost, since it
+ * walks the index in key order and stops after a handful of rows, so the
+ * bound exists to cut requests, not reads.
  */
-export const MIN_PREFIX_LENGTH = 1;
+export const MIN_PREFIX_LENGTH = 2;
 
 /** The longest prefix answered: the same bound exact lookup puts on a query. */
 export const MAX_PREFIX_LENGTH = MAX_QUERY_LENGTH;
@@ -89,6 +90,49 @@ export function prefixRejectionOf(prefix: string): PrefixRejected["rejection"] |
 }
 
 export { prefixUpperBound };
+
+/** Whether a normalized key has several words, which is when `suggest` adds phrases. */
+const hasSeveralWords = (key: string): boolean => /\s/.test(key);
+
+/**
+ * An answer that holds every suggestion for its prefix, so a longer prefix can
+ * be answered from it without asking (#387).
+ *
+ * An answer holds everything when it is shorter than `SUGGESTION_LIMIT`: the
+ * read only stops short of ten once the prefix has no rows left. And it holds
+ * only headwords when the prefix is one word, since phrases are added only for
+ * several. A longer one-word prefix then gets exactly the headwords of this
+ * list whose key starts with its key, in this list's order: its rows are a
+ * slice of this prefix's rows, read in the same key order, and a headword's key
+ * is `normalizeItalianExact` of its spelling (src/import/importRelease.ts). A
+ * full list, or a prefix of several words, cannot be built, so it can never
+ * answer for the server.
+ */
+export class CompleteSuggestions {
+  private constructor(
+    private readonly key: string,
+    private readonly offered: readonly string[],
+  ) {}
+
+  /** `offered` as the whole answer for `prefix`, or undefined when it may not be the whole answer. */
+  static of(prefix: string, offered: readonly string[]): CompleteSuggestions | undefined {
+    const key = normalizeItalianExact(prefix);
+    if (prefixRejectionOf(prefix) !== undefined || offered.length >= SUGGESTION_LIMIT || hasSeveralWords(key)) return undefined;
+    return new CompleteSuggestions(key, offered);
+  }
+
+  /**
+   * What `suggest` offers for `prefix`, or undefined when only the server can
+   * say: a prefix it would refuse, one that does not start with this answer's
+   * prefix, or one of several words, which may also be offered phrases.
+   */
+  narrow(prefix: string): string[] | undefined {
+    if (prefixRejectionOf(prefix) !== undefined) return undefined;
+    const key = normalizeItalianExact(prefix);
+    if (!key.startsWith(this.key) || hasSeveralWords(key)) return undefined;
+    return this.offered.filter((word) => normalizeItalianExact(word).startsWith(key));
+  }
+}
 
 // Headword spellings starting with a prefix, in alphabetical order of the
 // normalized key: the first words in the dictionary under what was typed.

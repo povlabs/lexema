@@ -330,17 +330,29 @@ alphabetical order. The search field shows them as a list while a reader types
 (#15); choosing one runs `lookup()` for it.
 
 ```ts
-await suggest({ db: fromD1(env.DB), releaseId, prefix: "a" });
-// { outcome: "suggested", prefix: { raw: "a", key: "a" },
-//   suggestions: ["a", …the first ten headwords under a] }
+await suggest({ db: fromD1(env.DB), releaseId, prefix: "ca" });
+// { outcome: "suggested", prefix: { raw: "ca", key: "ca" },
+//   suggestions: ["ca", …the first ten headwords under ca] }
 ```
 
 **Query handling** is `normalizeItalianExact`, as above: case and apostrophes
 fold, accents stay. `citt` suggests `città`; `citta` does not.
 
-**Bounds.** An empty prefix, or one over `MAX_PREFIX_LENGTH` (the 128 of
-`MAX_QUERY_LENGTH`), is `rejected` without reaching the index. One letter is
-enough. `SUGGESTION_LIMIT` is 10.
+**Bounds.** A prefix under `MIN_PREFIX_LENGTH` (2) characters of the
+normalized key, or one over `MAX_PREFIX_LENGTH` (the 128 of
+`MAX_QUERY_LENGTH`), is `rejected` without reaching the index. Two letters is
+Huey's call of 2026-10-01 (#387), to cut requests; one letter was enough
+before. `SUGGESTION_LIMIT` is 10.
+
+**A complete answer answers longer prefixes** (#387). An answer for a prefix of
+one word with fewer than `SUGGESTION_LIMIT` spellings is every headword under
+it, and it has no phrases. So a longer prefix of one word that starts with it
+gets exactly that list's spellings whose `normalizeItalianExact` key starts
+with the longer key, in the same order. `CompleteSuggestions` in
+`src/lookup/suggest.ts` holds such an answer and narrows it; the search field
+uses it to answer without a request. A full answer, or a prefix of several
+words, is never narrowed. `test/suggest.test.ts` checks the narrowed list
+against `suggest()` for every longer prefix of the fixture's headwords.
 
 **What is suggested.** Headwords only, each spelling once however many records
 carry it, as the source spells it. A spelling found only in another record's
@@ -395,7 +407,7 @@ through each form of its first word.
 under what was typed. Huey's ruling, 2026-09-23: "it should show alphabetical
 order like the first 10, if i write a it should show words from letter a from
 database". The rows come back from `lookup_form_headword_by_key` already in key
-order, so nothing is sorted and the walk stops after a few rows; a one-letter
+order, so nothing is sorted and the walk stops after a few rows; a short
 prefix costs what a long one does.
 
 Keys compare by code point, so an accented letter sorts after every unaccented

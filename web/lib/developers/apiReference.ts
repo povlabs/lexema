@@ -13,7 +13,7 @@
 
 import { API_PREFIX, countedPerWord, ENDPOINTS, type CallBasis, type Endpoint, type EndpointCountedPer } from "@lexema/api/calls.ts";
 import { MAX_QUERY_LENGTH } from "@lexema/lookup/lookup.ts";
-import { SUGGESTION_LIMIT } from "@lexema/lookup/suggest.ts";
+import { MIN_PREFIX_LENGTH, SUGGESTION_LIMIT } from "@lexema/lookup/suggest.ts";
 import { SECTION_KEY } from "@/worker/api/lookupAnswer.ts";
 import { GRAMMAR_CODES, MATCHES, PARTS_OF_SPEECH, POS_ALIASES, SECTIONS, type Match } from "@/worker/api/lookupFilters.ts";
 import type { SiteOrigins } from "@/worker/hosts.ts";
@@ -602,7 +602,7 @@ export const ENDPOINT_REFERENCE: Readonly<Record<Endpoint, EndpointReference>> =
     title: "Suggest words",
     tagline: "Words that begin with a prefix",
     summary: `Up to ${SUGGESTION_LIMIT} words that begin with \`q\`, as the search field suggests them. When \`q\` has several words, the words that begin with it are followed by \`q\` completed as a multi-word headword its words spell as their lemmas: \`vado v\` offers \`vado via\`, which finds \`andare via\`. Such a word's \`attribution\` is the headword's page.`,
-    parameters: [{ name: "q", type: "string", required: true, description: `The beginning of a word, 1 to ${MAX_QUERY_LENGTH} characters.` }],
+    parameters: [{ name: "q", type: "string", required: true, description: `The beginning of a word, ${MIN_PREFIX_LENGTH} to ${MAX_QUERY_LENGTH} characters.` }],
     answers: [{ status: "200", description: "`results` holds the words, and is empty when none begins with `q`." }],
     examples: [{
       path: "suggest?q=sal",
@@ -751,7 +751,11 @@ export interface ErrorReference {
 
 /** Every `error.code` the API answers with. */
 export const ERRORS: readonly ErrorReference[] = [
-  { status: 400, code: "invalid_query", when: "`q` or `lemma` is missing, empty, or too long." },
+  {
+    status: 400,
+    code: "invalid_query",
+    when: `\`q\` or \`lemma\` is missing, empty, or too long; on \`/suggest\`, \`q\` is shorter than ${MIN_PREFIX_LENGTH} characters.`,
+  },
   {
     status: 400,
     code: "invalid_parameter",

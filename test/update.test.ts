@@ -360,9 +360,12 @@ test("lookups serve the master as a whole: a fixed word from the later release b
     assert.equal(readings(await ask(db, "andare")).length, 1);
 
     // The other reads see the new word too: suggestions in key order across both releases, the accent index, a random pick.
-    const typed = await suggest({ db: fromNodeSqlite(db), releaseId: MASTER, prefix: "c" });
-    assert.ok(typed.outcome === "suggested");
-    assert.deepEqual(typed.suggestions, ["cane", "casa", "città"]);
+    // A prefix is two letters at least (#387), so the master's `ca` and the later release's `ci` are two asks.
+    for (const [prefix, words] of [["ca", ["cane", "casa"]], ["ci", ["città"]]] as const) {
+      const typed = await suggest({ db: fromNodeSqlite(db), releaseId: MASTER, prefix });
+      assert.ok(typed.outcome === "suggested");
+      assert.deepEqual(typed.suggestions, words);
+    }
     assert.deepEqual(await findNearby({ db: fromNodeSqlite(db), releaseId: MASTER, query: "citta" }), { kind: "accent", best: "città", others: [], phrases: [] });
     const lines = (db.prepare("SELECT min(line_no) AS low, max(line_no) AS high FROM source_record WHERE release_id = ?").get(MASTER) as { low: number; high: number });
     const andareLine = MASTER_LINES.indexOf(ANDARE_JULY) + 1;

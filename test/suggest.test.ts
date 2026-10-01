@@ -13,12 +13,15 @@ import {
   MIN_PREFIX_LENGTH,
   SUGGESTION_LIMIT,
   FIRST_SCAN,
+  CompleteSuggestions,
+  offered,
   type SuggestResult,
   isAskablePrefix,
   prefixUpperBound,
   suggest,
 } from "../src/lookup/suggest.js";
 import { HEADWORD_PREFIX_SQL } from "../src/lookup/keyRange.js";
+import { normalizeItalianExact } from "../src/italian/normalize.js";
 
 // Each line is here for one rule of the order or one bound. The shapes are the
 // release's: a verb beside records that are only its forms, one spelling
@@ -109,9 +112,11 @@ test("suggestions come in alphabetical order of the key", async () => {
   });
 });
 
-test("a single letter lists the first words under it", async () => {
+test("two letters list the first words under them, and one letter is refused", async () => {
   await withFixture(async (db) => {
-    assert.deepEqual(await spellings(db, "c"), ["casa", "casacca", "casetta", "casette", "cittadino", "città"]);
+    assert.deepEqual(await spellings(db, "ca"), ["casa", "casacca", "casetta", "casette"]);
+    // Huey's call of 2026-10-01 (#387): a single letter is not worth a request.
+    assert.deepEqual(await ask(db, "c"), { outcome: "rejected", prefix: { raw: "c" }, rejection: { reason: "too-short", length: 1, limit: 2 } });
   });
 });
 
@@ -176,9 +181,80 @@ test("an answer holds at most ten suggestions", async () => {
   });
 });
 
+/**
+ * Every prefix of every headword in the fixture that the server answers, each
+ * also as a reader might type it: in capitals, with its accents decomposed,
+ * with a typographic apostrophe, with a trailing space, and run on past every
+ * headword.
+ */
+function typedPrefixes(): string[] {
+  const keys = new Set(LINES.map((line) => normalizeItalianExact((JSON.parse(line) as { word: string }).word)));
+  const prefixes = new Set<string>();
+  for (const key of keys) {
+    const points = [...key];
+    for (let end = MIN_PREFIX_LENGTH; end <= points.length; end++) prefixes.add(points.slice(0, end).join(""));
+  }
+  const typed = [...prefixes].flatMap((prefix) => [
+    prefix,
+    prefix.toLocaleUpperCase("it-IT"),
+    prefix.normalize("NFD"),
+    prefix.replace(/'/g, "’"),
+    `${prefix} `,
+    `${prefix}x`,
+  ]);
+  return [...new Set(typed)].filter(isAskablePrefix);
+}
+
+test("a complete answer narrowed in the browser is what the server answers for the longer prefix", async () => {
+  await withFixture(async (db) => {
+    const typed = typedPrefixes();
+    const server = new Map<string, string[]>();
+    for (const prefix of typed) {
+      const answer = await ask(db, prefix);
+      assert.ok(answer.outcome === "suggested", prefix);
+      server.set(prefix, offered(answer));
+    }
+    let narrowed = 0;
+    for (const shorter of typed) {
+      const complete = CompleteSuggestions.of(shorter, server.get(shorter)!);
+      // A full answer may be missing words, so it never answers for the server.
+      assert.equal(complete === undefined, server.get(shorter)!.length === SUGGESTION_LIMIT, shorter);
+      if (complete === undefined) continue;
+      for (const longer of typed) {
+        const local = complete.narrow(longer);
+        const startsWithShorter = normalizeItalianExact(longer).startsWith(normalizeItalianExact(shorter));
+        assert.equal(local !== undefined, startsWithShorter, `${shorter} → ${longer}`);
+        if (local === undefined) continue;
+        assert.deepEqual(local, server.get(longer), `${shorter} → ${longer}`);
+        narrowed += 1;
+      }
+    }
+    // Not vacuous: thousands of pairs are compared, `ca` → `CASETT` and `un'a` → `UN’AM` among them.
+    assert.ok(narrowed > 1000, String(narrowed));
+    assert.deepEqual(CompleteSuggestions.of("ca", server.get("ca")!)?.narrow("CASETT"), ["casetta", "casette"]);
+    assert.deepEqual(CompleteSuggestions.of("un'a", server.get("un'a")!)?.narrow("UN’AM"), ["un’amica"]);
+    assert.deepEqual(CompleteSuggestions.of("cit", server.get("cit")!)?.narrow("città"), ["città"]);
+  });
+});
+
+test("a complete answer never answers a prefix of several words, a refused one, or another prefix", () => {
+  const and = CompleteSuggestions.of("and", ["anda", "andai", "Andalusia", "andammo", "andare"])!;
+  // Several words may also be offered phrases (`vado v` → `vado via`), which only the server reads.
+  assert.equal(and.narrow("andare v"), undefined);
+  assert.equal(and.narrow("a"), undefined);
+  assert.equal(and.narrow(`and${"a".repeat(MAX_PREFIX_LENGTH)}`), undefined);
+  assert.equal(and.narrow("an"), undefined);
+  assert.equal(and.narrow("sal"), undefined);
+  assert.deepEqual(and.narrow("and"), ["anda", "andai", "Andalusia", "andammo", "andare"]);
+  // A prefix of several words, or a full list, is never kept as complete.
+  assert.equal(CompleteSuggestions.of("vado v", ["vado via"]), undefined);
+  assert.equal(CompleteSuggestions.of("zeta", Array.from({ length: SUGGESTION_LIMIT }, (_, i) => `zeta${i}`)), undefined);
+  assert.equal(CompleteSuggestions.of("a", ["a"]), undefined);
+});
+
 test("a prefix outside the bounds is refused without asking the index", async () => {
   await withFixture(async (db) => {
-    for (const short of ["", " "]) {
+    for (const short of ["", " ", "a", " c ", "è"]) {
       const result = await ask(db, short);
       assert.equal(result.outcome, "rejected", short);
       assert.equal(result.outcome === "rejected" && result.rejection.reason, "too-short", short);
@@ -195,9 +271,10 @@ test("a prefix outside the bounds is refused without asking the index", async ()
 });
 
 test("the field and the server agree on which prefixes can be asked", () => {
-  assert.equal(MIN_PREFIX_LENGTH, 1);
-  for (const short of ["", " "]) assert.equal(isAskablePrefix(short), false, short);
-  for (const askable of ["a", " a ", "è", "io", " ca ", "città"]) assert.equal(isAskablePrefix(askable), true, askable);
+  assert.equal(MIN_PREFIX_LENGTH, 2);
+  // Counted in characters of the normalized key: a decomposed `è` is one, and a trailing space is none.
+  for (const short of ["", " ", "a", " a ", "è ", "è"]) assert.equal(isAskablePrefix(short), false, short);
+  for (const askable of ["io", " ca ", "èr", "èr", "un'", "città"]) assert.equal(isAskablePrefix(askable), true, askable);
   assert.equal(isAskablePrefix("a".repeat(MAX_PREFIX_LENGTH + 1)), false);
 });
 
