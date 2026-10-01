@@ -341,7 +341,8 @@ test("an apply never deletes or changes a row written by hand, and the record th
 
 // `corona` as a master holds it: two senses, and four definitions recovered
 // from its page. The later release carries one of them as a sense of its own,
-// and lists the old two in the other order.
+// and lists the old two in the other order: old sense 1 first, then the new
+// sense, then old sense 0.
 const CORONA_JULY = record({
   word: "corona", pos: "noun", pos_title: "Sostantivo",
   senses: [{ glosses: ["insieme di persone o cose disposte in cerchio intorno a:"] }, { glosses: ["ornamento circolare che si porta sul capo"] }],
@@ -349,9 +350,9 @@ const CORONA_JULY = record({
 const CORONA_FIXED = record({
   word: "corona", pos: "noun", pos_title: "Sostantivo",
   senses: [
+    { glosses: ["ornamento circolare che si porta sul capo"] },
     { glosses: ["dinastia regnante di uno stato"] },
     { glosses: ["insieme di persone o cose disposte in cerchio intorno a:"] },
-    { glosses: ["ornamento circolare che si porta sul capo"] },
   ],
 });
 const CORONA_HAND = `
@@ -383,18 +384,18 @@ test("a recovered definition the replacing record carries is shown once, and the
     const [corona] = readings(await ask(db, "corona"));
     assert.notEqual(corona.ref.releaseId, MASTER);
     assert.deepEqual(glosses(corona), [
+      "ornamento circolare che si porta sul capo",
       "dinastia regnante di uno stato",
       "insieme di persone o cose disposte in cerchio intorno a:",
-      "ornamento circolare che si porta sul capo",
     ]);
     // `dinastia regnante di uno stato` is a sense now, and is not recovered again.
     const shown = [...glosses(corona), ...everyRecovered(corona).map((item) => item.text)];
     assert.equal(shown.filter((text) => text === "dinastia regnante di uno stato").length, 1);
-    // Its item follows it to the sense that carries it; the item of the old
-    // first sense follows that sense to its new place, the second; the rest
-    // stays at the top of the list.
+    // Its item follows it to the sense that carries it, the second; the item
+    // of the old first sense follows that sense to its new place, the third;
+    // the rest stays at the top of the list.
     assert.deepEqual(recoveredOf(corona), {
-      underSense: [["la corona dei Savoia"], ["un oggetto posto al centro"], []],
+      underSense: [[], ["la corona dei Savoia"], ["un oggetto posto al centro"]],
       topLevel: ["premio dato al vincitore di una gara"],
     });
   }, CORONA_DESK);
