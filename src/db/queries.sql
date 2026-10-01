@@ -117,8 +117,8 @@ WHERE record_id = :record_id
 ORDER BY scope, scope_index, json_pointer;
 
 
--- 6. Review notes attached to a record. A 'disputed' row means the source claim
--- is shown with a warning, never removed or rewritten.
+-- 6. Review notes attached to a record. A 'disputed' row leaves the source claim
+-- as imported, never removed or rewritten; the result page does not show it.
 SELECT json_pointer, status, note, evidence_url, reviewed_at, reviewed_by
 FROM claim_review
 WHERE record_id = :record_id

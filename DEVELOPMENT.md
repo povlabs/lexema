@@ -49,6 +49,21 @@ download from kaikki.org is a different snapshot, so do not substitute one and
 assume the numbers still hold. A missing file fails these two commands and nothing
 else.
 
+### Time exact lookup
+
+```sh
+pnpm run bench:lookup
+```
+
+This needs no dataset. It writes a seeded synthetic archive at two sizes, seeds
+each through the seed's own SQL generator into a scratch SQLite file, and times
+lemma-link resolution through the `form_of_candidate` view against the inlined
+join lookup uses. It stops without timing if the two return different rows.
+`--records`, `--seed`, `--iterations` and `--warmups` change the run; setting
+`SEED_INPUT` (and optionally `SEED_RELEASE`), as for `pnpm run seed:dev`, times
+a real archive instead. Why the two forms differ is in
+[the lookup design](./docs/LOOKUP_DESIGN.md#the-view-that-costs-four-orders-of-magnitude).
+
 ### Run the search page
 
 The page answers from a seeded local D1. `pnpm run seed:dev` seeds it from the
@@ -372,6 +387,7 @@ through [src/db/app/nodeSqlite.ts](./src/db/app/nodeSqlite.ts), which drives
 ```
 src/
 ├── api/            # API keys, call counts and per-key counters; `pnpm run api-key`
+├── bench/          # the exact-lookup benchmark and its synthetic corpus; `pnpm run bench:lookup`
 ├── billing/        # plans, plan states and the Enterprise plan; `pnpm run plan`
 ├── cli.ts          # `pnpm run validate` — streams the file, writes the report
 ├── core/           # dataset-independent: record types, candidate resolver, report
@@ -419,7 +435,10 @@ without it, the seed reads the pages committed under `fixtures/`
 not repaired. About fifty records are another language's entry tagged Italian;
 `pnpm run measure:section-language` counts them over the same dump
 ([the measurement](./reports/2026-10-01-non-italian-sections.md)), and nothing
-filters them yet. Source identity, licensing, and
+filters them yet. How the whole release reads past those, field by field and on
+a hand-labelled sample, is in
+[the quality measurement](./reports/2026-10-01-dictionary-quality.md);
+`pnpm run measure:quality` re-runs it. Source identity, licensing, and
 attribution need review before any dictionary content is redistributed; local
 development is the only access until that lands.
 

@@ -34,7 +34,7 @@ import type { Reading } from "../../src/lookup/types.js";
 import type { Attempt } from "@/lib/dictionary/attempt.ts";
 import { searchAttempt } from "@/lib/dictionary/searchAttempt.ts";
 import { Attribution } from "@/components/dictionary/Attribution";
-import { FirstLoad, Limited, Outcome, Pending, SearchPage, TRY_WORDS } from "@/components/dictionary/SearchPage";
+import { FirstLoad, Limited, Outcome, SearchPage, TRY_WORDS } from "@/components/dictionary/SearchPage";
 import { SiteFooter } from "@/components/dictionary/SiteFooter";
 import { ORIGIN } from "@/worker/hosts.ts";
 import { SiteHeader } from "@/components/dictionary/SiteHeader";
@@ -70,7 +70,6 @@ import {
   NOT_FOUND_HEADING,
   NOT_FOUND_LINK,
   OPEN_MARK,
-  PENDING,
   PERSON_SEARCHED,
   READING,
   SHELL_CENTRED,
@@ -1375,14 +1374,7 @@ test("a repeated query parameter is searched, not thrown on", async () => {
   });
 });
 
-test("renders the states that are not an answer: loading, rejected, failed, not found", async () => {
-  const loading = renderToStaticMarkup(
-    <SearchPage raw="sale">
-      <Pending raw="sale" />
-    </SearchPage>,
-  );
-  assert.match(loading, exact(`<p class="${PENDING}" role="status">Searching for <q lang="it">sale</q>`));
-
+test("renders the states that are not an answer: rejected, failed, not found", async () => {
   const failed = renderToStaticMarkup(
     <SearchPage raw="sale">
       <Outcome raw="sale" attempt={{ outcome: "failed" }} />

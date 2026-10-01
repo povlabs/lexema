@@ -40,6 +40,16 @@ const notFound = (word: string): Page => ({
   robotsTag: "noindex",
   body: `<title>No entry for "${word}" — Lexema</title><h1>No entry for “<span lang="it">${word}</span>”</h1>`,
 });
+/**
+ * A found word's page as the Preview of PR #328 sent it on 2026-10-01, before
+ * #115: the loading line in the result's place, and the reading after the page
+ * in a hidden segment that only a script shows.
+ */
+const hiddenFound = (word: string): Page => ({
+  status: 200,
+  robotsTag: "noindex",
+  body: `<title>${word[0].toUpperCase()}${word.slice(1)} — Lexema</title><main><!--$?--><template id="B:0"></template><p class="my-6 font-sans text-[0.95rem] text-text-muted" role="status">Searching for <q lang="it">${word}</q> …</p><!--/$--></main><div hidden id="S:0"><h1 lang="it">${word}</h1><article class="scroll-mt-6 mt-7" id="reading-1" aria-labelledby="reading-heading-1" data-record="1" data-line="1"></article></div><script>$RC("B:0","S:0")</script>`,
+});
 const LANDING: Page = { status: 200, robotsTag: "noindex", body: "<title>Lexema API</title>" };
 const REFUSED: Page = { status: 401, robotsTag: "noindex", body: '{"error":{"code":"invalid_key","message":"This API key is not valid."}}' };
 
@@ -142,6 +152,22 @@ test("any of the six words that does not resolve fails the check, naming the wor
     assert.equal(check.title, "1 of 8 preview requests failed");
     assert.match(check.summary, new RegExp(`\\*\\*fail\\*\\*: no reading for "${word}" on the page`));
   }
+});
+
+test("a reading sent hidden for a script to show fails the check, naming the word (#115)", async () => {
+  for (const word of SMOKE_WORDS) {
+    const github = new FakeGitHub(pr269());
+    await smoke(github, { ...UP, [wordUrl(word)]: hiddenFound(word) });
+    const [check] = github.checks;
+    assert.equal(check.conclusion, "failure", word);
+    assert.equal(check.title, "1 of 8 preview requests failed");
+    assert.match(check.summary, new RegExp(`\\*\\*fail\\*\\*: the reading for "${word}" is sent hidden, for a script to show`));
+  }
+  // A hidden segment after a reading the page already shows does not hide it.
+  const github = new FakeGitHub(pr269());
+  const shown = found("casa");
+  await smoke(github, { ...UP, [wordUrl("casa")]: { ...shown, body: `${shown.body}<div hidden id="S:0"></div>` } });
+  assert.equal(github.checks[0].conclusion, "success");
 });
 
 test("a response without noindex fails the check, on any of the three sites", async () => {

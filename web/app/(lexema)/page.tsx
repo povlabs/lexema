@@ -4,17 +4,21 @@
 // JavaScript loads and a result is shareable by copying the address bar.
 //
 // The markup itself is in SearchPage.tsx, which knows nothing about D1. This
-// file is the wiring: read the query, run the lookup, and put the two together
-// behind a streaming boundary so the page can say it is searching.
+// file is the wiring: read the query, run the lookup, and put the two together.
+//
+// There is no streaming boundary around the lookup (#115). React would flush a
+// loading line in the result's place and send the result later, hidden, for an
+// inline script to swap in; with JavaScript off that script never runs and the
+// reader sees only the loading line. So the HTML waits for the lookup and
+// carries the result in place, visible with or without JavaScript.
 //
 // A search over the visitor's limit is decided before this runs, in
 // worker/rateLimit.ts, which marks the request; a marked request renders the
 // "too many searches" state and never reaches `search`.
 
 import { headers } from "next/headers";
-import { Suspense } from "react";
 import { SEARCH_LIMITED_HEADER } from "@/worker/rateLimit.ts";
-import { FirstLoad, Limited, Outcome, Pending, SearchPage } from "@/components/dictionary/SearchPage";
+import { FirstLoad, Limited, Outcome, SearchPage } from "@/components/dictionary/SearchPage";
 import type { Attempt } from "@/lib/dictionary/attempt.ts";
 import { cardOf, HOME_CARD, linkPreview } from "@/lib/dictionary/card.ts";
 import { firstQuery, pageTitle, type QueryParam, type TitleOutcome } from "@/lib/dictionary/params";
@@ -58,11 +62,6 @@ export async function generateMetadata({ searchParams }: PageProps) {
   };
 }
 
-/** The half that waits on D1, so the shell above it can flush before it does. */
-async function Results({ raw }: { raw: string }) {
-  return <Outcome raw={raw} attempt={await search(raw)} siteKey={turnstile()?.siteKey} />;
-}
-
 export default async function Page({ searchParams }: PageProps) {
   const raw = firstQuery(searchParams.q);
   const limited = (await headers()).has(SEARCH_LIMITED_HEADER);
@@ -74,13 +73,7 @@ export default async function Page({ searchParams }: PageProps) {
       ) : limited ? (
         <Limited raw={raw} />
       ) : (
-        // The loading state a server-rendered page can honestly have: React
-        // streams `Pending` in the result's place and replaces it when the
-        // lookup answers. No client fetching, and nothing to get wrong if
-        // JavaScript never arrives.
-        <Suspense fallback={<Pending raw={raw} />}>
-          <Results raw={raw} />
-        </Suspense>
+        <Outcome raw={raw} attempt={await search(raw)} siteKey={turnstile()?.siteKey} />
       )}
     </SearchPage>
   );

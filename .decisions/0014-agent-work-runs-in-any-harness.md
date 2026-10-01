@@ -1,7 +1,7 @@
 ---
 id: 0014
 title: Agent work may run in any harness, never with the builder reviewing its own work
-status: accepted
+status: amended-in-part by [0021](0021-agents-post-as-one-account.md)
 date: 2026-09-27
 supersedes: 0007
 tags: [process, agents, tooling]
@@ -38,3 +38,7 @@ Huey can drive the pipeline from any session, and a harness outage no longer blo
 ## Records
 
 no vocabulary impact
+
+## Amendments
+
+- **The reviewer posts as `hueypov` (2026-10-01).** [0021](0021-agents-post-as-one-account.md) replaces the `nothueypov` account in the first binding constraint: every agent posts as `hueypov`. The reviewer still runs apart from the builder, as a separate agent.

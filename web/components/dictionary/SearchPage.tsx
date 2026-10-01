@@ -27,7 +27,6 @@ import {
   HOME_NAME,
   HOME_PRONUNCIATION,
   HOME_TAGLINE,
-  PENDING,
   SHELL_CENTRED,
   SHELL_TOP,
   TRY_CHIP,
@@ -86,18 +85,6 @@ export function FirstLoad() {
         </a>
       ))}
     </nav>
-  );
-}
-
-/**
- * The lookup is running: the fallback of the streaming boundary in `page.tsx`.
- * No client JavaScript, and nothing that pretends to know the answer yet.
- */
-export function Pending({ raw }: { raw: string }) {
-  return (
-    <p className={PENDING} role="status">
-      Searching for <q lang="it">{raw.trim()}</q> …
-    </p>
   );
 }
 
