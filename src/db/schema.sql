@@ -458,7 +458,8 @@ CREATE UNIQUE INDEX grammar_claim_identity
 
 -- A note about one imported claim, written by review rather than by import.
 -- Reviews never edit source_record or source_record_json: the download stays
--- verbatim and a disputed claim stays visible with its dispute attached.
+-- verbatim, and a review is data stored beside the claim it judges. The result
+-- page does not show reviews (data-only ruling, 2026-09-27; see docs/WEB.md).
 --
 -- The worked case is `studente` line 37884, a verb record calling the word a
 -- present participle of `studiare`. Italian Wiktionary's rendered `studiare`
