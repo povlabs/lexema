@@ -8,6 +8,8 @@ import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
 import { DatabaseSync } from "node:sqlite";
+import { createElement, isValidElement, type ReactNode } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
 import { deleteAccount } from "../../src/accounts/accounts.js";
 import type { BillingSetup } from "../../src/accounts/billing.js";
 import type { ProviderProfile } from "../../src/accounts/providers.js";
@@ -27,6 +29,9 @@ import {
   type ActionAnswer,
 } from "@/lib/developers/dashboardActions.ts";
 import { afterDelete, takeNotice, type NoticeStore } from "@/lib/developers/arrivalNotice.ts";
+import { sessionVisitor } from "@/lib/developers/sessionVisitor.ts";
+import { ArrivalToast } from "@/components/developers/dashboard/ArrivalToast";
+import { DeveloperLanding } from "@/components/developers/DeveloperLanding";
 import { apiNotFound, handleApi } from "@/worker/api/handler.ts";
 import { TestMetering } from "./metering.ts";
 import { CSRF_FIELD, csrfTokenOf, type DashboardBindings, DASHBOARD, DELETE_CONFIRMATION, SETTINGS, SIGN_IN_PAGE, withDashboard } from "@/worker/dashboard.ts";
@@ -104,7 +109,16 @@ function site({ limits = {}, billing = BILLING_OFF, email }: { limits?: Partial<
       if (!body.has(CSRF_FIELD)) body.set(CSRF_FIELD, csrf);
       return send(`${DEVELOPERS}${path}`, { method: "POST", headers, body });
     };
-    return { jar, send, post, accountId, csrf, signedIn: () => signedInAccount(cookie(), db, NOW, ORIGIN) };
+    return {
+      jar,
+      send,
+      post,
+      accountId,
+      csrf,
+      signedIn: () => signedInAccount(cookie(), db, NOW, ORIGIN),
+      /** Who a public page reads this browser as, for its account menu (#193). */
+      visitor: () => sessionVisitor(cookie(), db, NOW, ORIGIN),
+    };
   }
 
   /** Every row an action could change, to prove one changed nothing. */
@@ -353,11 +367,19 @@ function tabStorage(): NoticeStore & { readonly items: Map<string, string> } {
   };
 }
 
-test("Delete account on the settings page lands on the landing page, which says \u201cYour account was deleted.\u201d once (#190)", async () => {
+/** Whether an element, or any child it is given, is one of `component`. */
+function holds(node: ReactNode, component: unknown): boolean {
+  if (Array.isArray(node)) return node.some((child) => holds(child, component));
+  if (!isValidElement<{ children?: ReactNode }>(node)) return false;
+  return node.type === component || holds(node.props.children, component);
+}
+
+test("Delete account on the settings page lands on the landing page, signed out, which says \u201cYour account was deleted.\u201d once (#190, #193)", async () => {
   const { browser } = site();
   const adas = await browser(ada);
   const tab = tabStorage();
   const went: string[] = [];
+  assert.deepEqual(await adas.visitor(), { email: "ada@example.com", name: "Ada Lovelace" }, "signed in, the landing page names Ada");
 
   // A refusal stays on the page with its reason, and leaves nothing for the next one.
   const refused = await sendAction(DELETE_ACCOUNT_ACTION, formOf(adas.csrf), scripted(adas.send));
@@ -369,6 +391,15 @@ test("Delete account on the settings page lands on the landing page, which says 
   assert.equal(afterDelete(deleted, tab, (location) => went.push(location)), undefined);
   assert.deepEqual(went, ["/"], "the browser goes to developers.lexema.fyi/");
   assert.equal(await adas.signedIn(), undefined);
+
+  // The landing page reads the ended session as no one: it renders signed out, and still hosts the toast.
+  const visitor = await adas.visitor();
+  assert.equal(visitor, undefined);
+  const html = renderToStaticMarkup(createElement(DeveloperLanding, { signedIn: visitor, origins: ORIGIN }));
+  assert.match(html, /<h1[^>]*>The Lexema API<\/h1>/);
+  assert.match(html, /Sign in</);
+  assert.doesNotMatch(html, /aria-label="Account"/);
+  assert.ok(holds(DeveloperLanding({ signedIn: visitor, origins: ORIGIN }), ArrivalToast), "the landing page hosts the arrival toast");
 
   // The landing page takes the notice as it opens: one toast, in board 28f's success style, and none on a reload.
   assert.deepEqual(takeNotice(tab), { tone: "success", message: "Your account was deleted." });

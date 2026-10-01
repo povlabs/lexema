@@ -21,6 +21,7 @@ import { AccountMenuContent } from "@/components/developers/AccountMenu";
 import { CREATE_KEY_ACTION, Dashboard, DELETE_ACCOUNT_ACTION } from "@/components/developers/dashboard/Dashboard";
 import { DashboardSettings } from "@/components/developers/dashboard/DashboardSettings";
 import { DeveloperDocs } from "@/components/developers/DeveloperDocs";
+import { DeveloperLanding } from "@/components/developers/DeveloperLanding";
 import { DeveloperMenuContent } from "@/components/developers/DeveloperMenu";
 import { developerMenuLinks, SignedInMenuActions, type DeveloperSection } from "@/components/developers/DeveloperPage";
 import { DeveloperNotFound } from "@/components/developers/DeveloperNotFound";
@@ -222,10 +223,11 @@ test("the avatar's letter is the name's first, else the email's, as a capital", 
   assert.equal(avatarInitial({ email: "zoe@example.com", name: "élodie" }), "É");
 });
 
-test("signed in, the docs, the pricing page and the 404 carry the same avatar; signed out, Sign in (#190, #171)", () => {
+test("signed in, the landing page, the docs, the pricing page and the 404 carry the same avatar; signed out, Sign in (#190, #171, #193)", () => {
   const signedIn = { email: "ada@example.com", name: "Ada Lovelace" };
   const avatar = /aria-haspopup="menu"[^>]*aria-label="Account"/;
   for (const html of [
+    renderToStaticMarkup(<DeveloperLanding signedIn={signedIn} origins={ORIGIN} />),
     renderToStaticMarkup(<DeveloperDocs page={{ kind: "guide", guide: "introduction" }} signedIn={signedIn} origins={ORIGIN} />),
     renderToStaticMarkup(<DeveloperPricing visitor={{ signedIn, csrf: "the-token" }} origins={ORIGIN} />),
     renderToStaticMarkup(<DeveloperNotFound signedIn={signedIn} origins={ORIGIN} />),
@@ -234,6 +236,7 @@ test("signed in, the docs, the pricing page and the 404 carry the same avatar; s
     assert.doesNotMatch(html, /Sign in</);
   }
   for (const html of [
+    renderToStaticMarkup(<DeveloperLanding origins={ORIGIN} />),
     renderToStaticMarkup(<DeveloperDocs page={{ kind: "guide", guide: "introduction" }} origins={ORIGIN} />),
     renderToStaticMarkup(<DeveloperPricing origins={ORIGIN} />),
     renderToStaticMarkup(<DeveloperNotFound origins={ORIGIN} />),
