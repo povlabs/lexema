@@ -19,6 +19,7 @@ import { DashboardTabs } from "./DashboardTabs";
 import type { PlanSection, SettingsView } from "@/lib/developers/dashboardView.ts";
 import { ChoosePlanForm, ManageBillingForm } from "@/components/developers/BillingForms";
 import { DeleteAccountControl } from "./DeleteAccountDialog";
+import type { SiteOrigins } from "@/worker/hosts.ts";
 import { DeveloperPage } from "@/components/developers/DeveloperPage";
 import {
   ACCOUNT_DETAIL,
@@ -60,9 +61,9 @@ function PlanCard({ plan, csrf }: { plan: PlanSection; csrf: string }) {
   );
 }
 
-export function DashboardSettings({ view, csrf }: { view: SettingsView; csrf: string }) {
+export function DashboardSettings({ view, csrf, origins }: { view: SettingsView; csrf: string; origins: SiteOrigins }) {
   return (
-    <DeveloperPage current="settings" signedIn={view.signedIn}>
+    <DeveloperPage current="settings" signedIn={view.signedIn} origins={origins}>
       <main className={DASH_SHELL}>
         <h1 className={DASH_HEADING}>Dashboard</h1>
         <DashboardTabs current="settings" />

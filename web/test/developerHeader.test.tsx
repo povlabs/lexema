@@ -34,6 +34,7 @@ const { DashboardSettings } = await import("@/components/developers/dashboard/Da
 const { DeveloperDocs } = await import("@/components/developers/DeveloperDocs");
 const { settingsView } = await import("@/lib/developers/dashboardView.ts");
 const { NO_PLAN } = await import("@lexema/billing/plans.ts");
+const { ORIGIN } = await import("@/worker/hosts.ts");
 
 /** The ☰ menu's links on a rendered page, each as [label, current]. */
 const menuOf = (html: string): [string, boolean][] => {
@@ -44,7 +45,7 @@ const menuOf = (html: string): [string, boolean][] => {
 
 test("signed in on Settings, the ☰ menu marks Settings, not Dashboard, though the bar marks Dashboard (board 28g)", () => {
   const view = settingsView({ email: "ada@example.com", name: "Ada Lovelace", providers: ["google"] }, [], { state: NO_PLAN, serving: { serving: false } });
-  const html = renderToStaticMarkup(<DashboardSettings view={view} csrf={"c".repeat(43)} />);
+  const html = renderToStaticMarkup(<DashboardSettings view={view} csrf={"c".repeat(43)} origins={ORIGIN} />);
   assert.deepEqual(menuOf(html), [
     ["Dashboard", false],
     ["Settings", true],
@@ -55,7 +56,7 @@ test("signed in on Settings, the ☰ menu marks Settings, not Dashboard, though 
 });
 
 test("signed out on the docs, the ☰ menu marks Docs", () => {
-  const html = renderToStaticMarkup(<DeveloperDocs page={{ kind: "guide", guide: "grammar-values" }} />);
+  const html = renderToStaticMarkup(<DeveloperDocs page={{ kind: "guide", guide: "grammar-values" }} origins={ORIGIN} />);
   assert.deepEqual(menuOf(html), [
     ["Docs", true],
     ["Pricing", false],

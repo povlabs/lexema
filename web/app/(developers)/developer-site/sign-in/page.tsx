@@ -9,7 +9,9 @@ import { DASHBOARD } from "@/worker/dashboard.ts";
 import { availableProviders, signedInAccount } from "@/worker/signIn.ts";
 import { parseStage } from "@/worker/stage.ts";
 import { offersTestSignIn } from "@/worker/testSignIn.ts";
+import { originsOf } from "@/worker/hosts.ts";
 import { appDatabase } from "@/lib/shared/database.ts";
+import { hostnameOf } from "@/lib/shared/siteOrigins.ts";
 import { SignIn } from "@/components/developers/SignIn";
 
 export const metadata = { title: "Sign in — Lexema API" };
@@ -17,9 +19,10 @@ export const metadata = { title: "Sign in — Lexema API" };
 export default async function Page() {
   const requestHeaders = await headers();
   const cookies = requestHeaders.get("cookie");
+  const hostname = hostnameOf(requestHeaders.get("host"));
+  const origins = originsOf(hostname);
   // Without a database nobody can be signed in; the page still offers sign-in.
-  const accountId = env.APP_DB === undefined ? undefined : await signedInAccount(cookies, appDatabase(), Date.now());
+  const accountId = env.APP_DB === undefined ? undefined : await signedInAccount(cookies, appDatabase(), Date.now(), origins);
   if (accountId !== undefined) redirect(DASHBOARD);
-  const hostname = (requestHeaders.get("host") ?? "").split(":")[0];
-  return <SignIn available={availableProviders(env)} testSignIn={offersTestSignIn(parseStage(env.LEXEMA_STAGE), hostname)} />;
+  return <SignIn available={availableProviders(env)} testSignIn={offersTestSignIn(parseStage(env.LEXEMA_STAGE), hostname)} origins={origins} />;
 }

@@ -13,6 +13,7 @@ import { dashboardView, periodUsageOf, settingsView } from "@/lib/developers/das
 import { CHECKOUT_ACTION, PORTAL_ACTION } from "@/lib/developers/billingActions.ts";
 import { CSRF_FIELD } from "@/lib/developers/dashboardActions.ts";
 import { PLAN_BUTTON_OUTLINE, PLAN_BUTTON_PRIMARY, PLAN_WARNING } from "@/components/shared/styles.ts";
+import { ORIGIN } from "@/worker/hosts.ts";
 
 const NOW = Date.parse("2026-10-05T12:00:00Z");
 const CSRF = "c".repeat(43);
@@ -21,7 +22,7 @@ const PERIOD: Period = { start: Date.parse("2026-09-29T00:00:00Z"), end: Date.pa
 
 /** The Plan card as settings draws it for a state at `now`, serving as `accountPlan` reads it. */
 const planCard = (state: PlanState, now = NOW): string => {
-  const html = renderToStaticMarkup(<DashboardSettings view={settingsView(profile, [], { state, serving: serving(state, now) })} csrf={CSRF} />);
+  const html = renderToStaticMarkup(<DashboardSettings view={settingsView(profile, [], { state, serving: serving(state, now) })} csrf={CSRF} origins={ORIGIN} />);
   const card = /<div[^>]*data-plan-section="[^"]*"[^>]*>.*?(?=<section)/s.exec(html)?.[0];
   assert.ok(card !== undefined, "settings draws a Plan card");
   return card;
@@ -113,7 +114,7 @@ test("a lapsed Enterprise plan, at and past its end, draws exactly as an ended p
 /** The dashboard for a plan state and the meter's count. */
 const dashboardFor = (state: PlanState, calls: number): string => {
   const view = dashboardView(profile, [], AccountUsage.of(usageDays(NOW), [], []), periodUsageOf(serving(state, NOW), calls), NOW);
-  return renderToStaticMarkup(<Dashboard view={view} csrf={CSRF} made={0} />);
+  return renderToStaticMarkup(<Dashboard view={view} csrf={CSRF} made={0} origins={ORIGIN} />);
 };
 
 test("with Pro serving, Usage reads This period · 1,240,500 of 5,000,000 calls over a meter at that value, and the chart stays", () => {

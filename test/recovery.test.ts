@@ -485,3 +485,76 @@ test("an italic quotation with its author in brackets is a quotation, even in a 
   ]);
   assert.deepEqual(recovered("paturnie", "Sostantivo", paturnie), []);
 });
+
+// A `#` line the page wrapped onto the next physical line, outside the list
+// (reports/2026-09-18-definition-loss.md, "A second, separate loss route").
+
+test("pantomima: a partial loss — the figurative sense's definition sits on the line after its `#`, and comes back with that line's label", () => {
+  // Archive line 421114: the theatre sense only.
+  const record = recordText(JSON.parse(readFileSync(resolve("fixtures/pantomima.jsonl"), "utf8")));
+  assert.equal(record.senseCount, 1);
+  const recovery = matched(recoverDefinitions(record, page("pantomima")));
+  assert.equal(recovery.loss, "partial");
+  const text = "Susseguirsi di gesti vivaci e concitati, per comunicare agli altri senza che i presenti se ne accorgano.";
+  assert.deepEqual(
+    recovery.recovered.map((definition) => [definition.route, definition.ref, definition.labels, definition.text, definition.wikitext]),
+    [["wrapped-prose", { wiki: RAW_PAGE_WIKI, title: "pantomima", revisionId: 3994400, line: 6 }, ["figurato"], text, text]],
+  );
+  // Only the one line right after the `#` line: the quoted line below it is not read.
+  assert.equal(recovery.recovered.some((definition) => definition.text.includes("Vidi nello specchio")), false);
+});
+
+test("vaglielo: a full loss — the record's one sense has no gloss, and the page's definition is the line after its empty `#`", () => {
+  // Archive line 140524: `"senses": [{"tags": ["no-gloss"]}]`.
+  const vaglielo: RecordText = { word: "vaglielo", posTitle: "Verbo", senseCount: 1, glosses: [], examples: [] };
+  const recovery = matched(recoverDefinitions(vaglielo, page("vaglielo")));
+  assert.equal(recovery.loss, "full");
+  assert.deepEqual(
+    recovery.recovered.map((definition) => [definition.route, definition.ref.line, definition.labels, definition.text]),
+    [["wrapped-prose", 7, [], "Verbo imperativo composto da andare e glielo."]],
+  );
+});
+
+test("verde: the heraldic sense's wrapped definition is read under its `#` line, with that line's labels", () => {
+  const wrapped = readItalianSections(page("verde")).flatMap((section) =>
+    section.senseLines.flatMap((line) =>
+      line.below.map((definition) => [section.posTemplate, line.kind, line.ref.line, definition.route, definition.ref.line, definition.labels, definition.text]),
+    ),
+  );
+  assert.deepEqual(wrapped, [
+    [
+      "sost",
+      "page-control",
+      30,
+      "wrapped-prose",
+      31,
+      ["colore", "araldica"],
+      "smalto araldico di colore verde intenso. Nella rappresentazione monocromatica è simbolizzato da linee parallele inclinate di 45° gradi che vanno dall'angolo in alto a sinistra a quello in basso a destra",
+    ],
+  ]);
+  // The page has two noun sections, so a noun record still matches neither.
+  assert.deepEqual(recoverDefinitions({ word: "verde", posTitle: "Sostantivo", ...senses(), examples: [] }, page("verde")), {
+    outcome: "ambiguous-section",
+    sections: 2,
+  });
+});
+
+test("the line after a `#` that states a meaning, after {{Nodef}}, or a picture after a bare label, is not a definition", () => {
+  // melone, revision 4040279: a usage sentence after a sense the record glosses.
+  const melone = dumpLines("melone", 4040279, [
+    "{{-sost-|it}}",
+    "# {{Term|gastronomia|it}} [[frutto]] del melone",
+    "In estate è un rinfrescante il melone",
+  ]);
+  assert.deepEqual(recovered("melone", "Sostantivo", melone), []);
+  // malaccorto, revision 4039970: the page says it has no definition.
+  const malaccorto = dumpLines("malaccorto", 4039970, ["{{-agg-|it}}", "# {{Nodef|it}}", "Nel loro essere malaccorti furono ridicoli"]);
+  assert.deepEqual(recovered("malaccorto", "Aggettivo", malaccorto), []);
+  // papaya, revision 4004516: a picture after a bare label.
+  const papaya = dumpLines("papaya", 4004516, [
+    "{{-sost-|it}}",
+    "#{{Term|botanica|it}}",
+    "[[File:Carica papaya 001.JPG|thumb|una pianta di papaya [[w:Carica papaya|Carica papaya]]]]",
+  ]);
+  assert.deepEqual(recovered("papaya", "Sostantivo", papaya), []);
+});

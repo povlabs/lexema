@@ -391,7 +391,10 @@ seven. With the dump the archive was built from in the repository root
 counts the loss exactly ([the measurement](./reports/2026-09-23-recovered-definitions-full-release.md));
 without it, the seed reads the pages committed under `fixtures/`
 ([the development seed](./docs/DEV_SEED.md)). Losses with no structural mark are
-not repaired. How the whole release reads past those three, field by field and on
+not repaired. About fifty records are another language's entry tagged Italian;
+`pnpm run measure:section-language` counts them over the same dump
+([the measurement](./reports/2026-10-01-non-italian-sections.md)), and nothing
+filters them yet. How the whole release reads past those, field by field and on
 a hand-labelled sample, is in
 [the quality measurement](./reports/2026-10-01-dictionary-quality.md);
 `pnpm run measure:quality` re-runs it. Source identity, licensing, and

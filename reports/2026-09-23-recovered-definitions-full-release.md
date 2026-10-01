@@ -1,5 +1,10 @@
 # Definitions the extraction drops, counted exactly over the whole release
 
+> **Extended, 2026-10-01.** [Phase three](2026-10-01-wrapped-prose-recovery.md) adds a
+> fourth route, a definition wrapped onto the line after its `#`. It recovers 4 more
+> definitions, so the totals are 9 full losses, 443 partial and 893 definitions. Every
+> other count below is unchanged.
+
 Measurement for [issue #28](https://github.com/hueypov/lexema/issues/28), phase two, run
 2026-09-23. [Phase one](2026-09-23-recovered-definitions.md) counted the loss over the
 2,210 raw pages committed under `fixtures/` and projected it onto the release from a

@@ -22,7 +22,7 @@ import { CHECKOUT_ACTION, PORTAL_ACTION, PRICING } from "@/lib/developers/billin
 import { SETTINGS } from "@/lib/developers/dashboardActions.ts";
 import { apiNotFound, handleApi } from "@/worker/api/handler.ts";
 import { withBilling, type BillingContext } from "@/worker/billing.ts";
-import { byHost } from "@/worker/hosts.ts";
+import { byHost, ORIGIN } from "@/worker/hosts.ts";
 import { withRateLimits, type LimitBindings } from "@/worker/rateLimit.ts";
 import { CHOSEN_PLAN_COOKIE, SESSION_COOKIE, signedInAccount, withSignIn, type SignInBindings } from "@/worker/signIn.ts";
 import { withStripeWebhook } from "@/worker/stripeWebhook.ts";
@@ -104,7 +104,7 @@ function site(billingSetting: (billing: Billing) => BillingContext["billing"] = 
   const fromStripe = (url: string, init: RequestInit) => worker(new Request(url, init), env, {} as ExecutionContext);
 
   const account = async () => {
-    const id = await signedInAccount(cookieHeader(), appDb, now());
+    const id = await signedInAccount(cookieHeader(), appDb, now(), ORIGIN);
     assert.ok(id !== undefined, "signed in");
     return id;
   };

@@ -18,7 +18,10 @@
 //                page control; opened by a bold sub-term that a comma, colon
 //                or bracket marks off from the prose defining it
 //                (`#*'''liceo classico''', indirizzo…`); or an item of a list a
-//                definition introduces with a colon.
+//                definition introduces with a colon. Also the prose line right
+//                after a page control, outside the list: the page wrapped the
+//                `#` item's definition onto the next physical line, where no
+//                list reader looks (`verde`'s heraldic sense).
 //   example      a line whose visible text is all italic, below a definition;
 //                a closing attribution in brackets does not count.
 //
@@ -33,7 +36,7 @@ import type { RawPage, RawPageRef } from "../source/rawPage.js";
 // --- Page layout ------------------------------------------------------------
 
 /** `== {{-it-}} ==` opens the Italian section; any other `== {{-xx-}} ==` closes it. */
-const LANGUAGE_HEADING = /^==\s*\{\{-([A-Za-z-]+)-\}\}\s*==\s*$/;
+export const LANGUAGE_HEADING = /^==\s*\{\{-([A-Za-z-]+)-\}\}\s*==\s*$/;
 /** `{{-sost-|it}}`: a part-of-speech heading inside the Italian section. */
 const POS_HEADING = /^\{\{-([a-z][a-z \-]*?)-\|it\}\}\s*$/;
 /** Any other `{{-sill-}}`-style heading ends the list above it. */
@@ -298,6 +301,14 @@ function boldSubTerm(runs: readonly Run[]): string | undefined {
 
 // --- The list as a tree -----------------------------------------------------
 
+/** A physical line of the page, outside the list. */
+interface ProseLine {
+  /** 1-based line in the revision's wikitext. */
+  line: number;
+  /** The line exactly as the page has it. */
+  wikitext: string;
+}
+
 interface ListLine {
   /** 1-based line in the revision's wikitext. */
   line: number;
@@ -305,8 +316,22 @@ interface ListLine {
   body: string;
   /** The line exactly as the page has it. */
   wikitext: string;
+  /**
+   * The line right after it, when that line is prose outside the list: a
+   * `#` item the page wrapped onto the next physical line. Null otherwise.
+   */
+  wrapped: ProseLine | null;
   children: ListLine[];
 }
+
+/**
+ * A physical line that may carry the rest of the list item above it: it opens
+ * with no list, heading, table, tag or indent mark, is not a behaviour switch
+ * like `__NOTOC__`, and shows prose outside italics. A picture or a category
+ * link shows none.
+ */
+const continuesItem = (line: string): boolean =>
+  /^[^#*:;={|!<\s_]/.test(line) && hasPlainProse(line) && !isWhollyItalic(line);
 
 /** Build the list under one part-of-speech heading into a tree by marker depth. */
 function listTree(lines: readonly Omit<ListLine, "children">[]): ListLine[] {
@@ -338,7 +363,14 @@ export type DefinitionRoute =
   /** Opened by a bold sub-term and then plain prose; `term` is that sub-term. */
   | { route: "sub-term"; term: string }
   /** An item of the list a definition introduces with a closing colon. */
-  | { route: "lead-in-item" };
+  | { route: "lead-in-item" }
+  /**
+   * The prose line right after a `#` line that carries only page controls and
+   * usage labels: the page wrapped that item's definition onto the next
+   * physical line (`verde`: `# {{Term|araldica|it}} {{Pn|w=…}}`, then
+   * `[[smalto|smalto araldico]] di colore verde intenso…`).
+   */
+  | { route: "wrapped-prose" };
 
 /**
  * The line whose closing colon opens the list a definition is an item of:
@@ -441,9 +473,10 @@ class SectionReader {
 
   /**
    * A line below `#` that the structure has already marked as a definition.
-   * `leadIn` is the colon-ended line whose list it is in, if any.
+   * `leadIn` is the colon-ended line whose list it is in, if any. `labels` are
+   * printed on another line of the same item and come first.
    */
-  definition(node: ListLine, route: DefinitionRoute, leadIn: LeadIn | null): PageDefinition[] {
+  definition(node: ListLine, route: DefinitionRoute, leadIn: LeadIn | null, labels: readonly string[] = []): PageDefinition[] {
     const rendered = renderInline(node.body, this.page.title);
     if (rendered.rendered && (opensQuotation(rendered.text) || endsAsUtterance(rendered.text))) return [];
     if (!rendered.rendered) {
@@ -453,7 +486,7 @@ class SectionReader {
     const definition: PageDefinition = {
       ...route,
       text: rendered.text,
-      labels: rendered.labels,
+      labels: [...labels, ...rendered.labels],
       ref: this.ref(node.line),
       wikitext: node.wikitext,
       examples: [],
@@ -508,7 +541,22 @@ class SectionReader {
         ? this.definition(child, { route: "below-page-control" }, null)
         : [],
     );
-    return { kind: "page-control", ref, wikitext: node.wikitext, text, below };
+    return { kind: "page-control", ref, wikitext: node.wikitext, text, below: [...this.wrapped(node), ...below] };
+  }
+
+  /**
+   * The definition a page control's item wrapped onto the next physical line.
+   * The usage labels on the `#` line label it: they open the same item. Only
+   * a page control's item is read this way. After a `#` line that states a
+   * meaning, the next line is the rest of a gloss the record already holds,
+   * or a note, and after `{{Nodef}}` the page says it has no definition.
+   */
+  wrapped(node: ListLine): PageDefinition[] {
+    if (node.wrapped === null) return [];
+    const { line, wikitext } = node.wrapped;
+    const { labels } = expandTemplates(node.body, this.page.title, () => " ");
+    const prose: ListLine = { line, marker: "", body: wikitext, wikitext, wrapped: null, children: [] };
+    return this.definition(prose, { route: "wrapped-prose" }, null, labels);
   }
 }
 
@@ -521,7 +569,11 @@ export function readItalianSections(page: RawPage): PageSection[] {
   const sections: { posTemplate: string; list: Omit<ListLine, "children">[] }[] = [];
   let inItalian = false;
   let current: (typeof sections)[number] | undefined;
+  /** The `#` line on the physical line just read, which the next line may continue. */
+  let open: Omit<ListLine, "children"> | undefined;
   lines.forEach((raw, index) => {
+    const before = open;
+    open = undefined;
     const line = raw.replace(/\s+$/, "");
     const language = LANGUAGE_HEADING.exec(line);
     if (language !== null) {
@@ -540,9 +592,14 @@ export function readItalianSections(page: RawPage): PageSection[] {
       current = undefined;
       return;
     }
+    if (current === undefined) return;
     const item = LIST_LINE.exec(line);
-    if (current !== undefined && item !== null) {
-      current.list.push({ line: index + 1, marker: item[1], body: item[2], wikitext: raw });
+    if (item !== null) {
+      const entry: Omit<ListLine, "children"> = { line: index + 1, marker: item[1], body: item[2], wikitext: raw, wrapped: null };
+      current.list.push(entry);
+      if (isSenseMarker(entry.marker)) open = entry;
+    } else if (before !== undefined && continuesItem(line)) {
+      before.wrapped = { line: index + 1, wikitext: raw };
     }
   });
 

@@ -6,7 +6,8 @@
 // there is one, for the account menu (#190).
 import { DeveloperNotFound } from "@/components/developers/DeveloperNotFound";
 import { signedInVisitor } from "@/lib/developers/visitor.ts";
+import { siteOrigins } from "@/lib/shared/siteOrigins.ts";
 
 export default async function NotFound() {
-  return <DeveloperNotFound signedIn={await signedInVisitor()} />;
+  return <DeveloperNotFound signedIn={await signedInVisitor()} origins={await siteOrigins()} />;
 }

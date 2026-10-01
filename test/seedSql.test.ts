@@ -306,6 +306,30 @@ test("the recovered layer sits beside casa's record and leaves every source row 
   } finally { await rm(dir, { recursive: true, force: true }); }
 });
 
+test("a definition the page wrapped onto the line after its `#` is stored with its route, label and page line", async () => {
+  const { dir, input, outputDir } = await fixture([readFileSync(resolve("fixtures/pantomima.jsonl"), "utf8").trimEnd()]);
+  try {
+    const report = await seedSql({ input, outputDir, schema: resolve("src/db/schema.sql"), rawPages });
+    const db = openSeed(report.parts, ":memory:");
+    try {
+      const rows = db.prepare(
+        `SELECT d.route, d.page_line, d.text, p.title, p.revision_id, l.label
+           FROM recovered_definition d JOIN raw_page p USING (page_id) LEFT JOIN recovered_label l USING (recovered_id)`,
+      ).all();
+      assert.deepEqual(rows.map((row) => ({ ...row })), [
+        {
+          route: "wrapped-prose",
+          page_line: 6,
+          text: "Susseguirsi di gesti vivaci e concitati, per comunicare agli altri senza che i presenti se ne accorgano.",
+          title: "pantomima",
+          revision_id: 3994400,
+          label: "figurato",
+        },
+      ]);
+    } finally { db.close(); }
+  } finally { await rm(dir, { recursive: true, force: true }); }
+});
+
 test("a reseed replaces the parts an earlier, larger seed left", async () => {
   const dir = await mkdtemp(join(tmpdir(), "lexema-seed-"));
   const outputDir = join(dir, "sql");
