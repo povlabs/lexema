@@ -8,7 +8,7 @@ tags: [data, provenance]
 
 # 0023 — A record its page shows is another language's entry is hidden from readers, and kept
 
-**What this decides:** When a fixed rule reading the raw Wiktionary page finds that a record the archive tags Italian is another language's entry, the seed keeps the record whole and hides it: no search, suggestion, page, random pick or API lookup reaches it. This amends [ADR 0012](0012-archive-is-the-release-seed.md) in part, which allowed raw pages only for recovering definitions.
+**What this decides:** When a fixed rule reading the raw Wiktionary page finds that a record the archive tags Italian is another language's entry, the seed keeps the record whole and hides it: no search, suggestion, page, random pick or API lookup reaches it. This amends [ADR 0012](0012-archive-is-the-release-seed.md) in part, which allowed raw pages only for recovering definitions and read the archive only once.
 
 ## Context
 
@@ -24,6 +24,7 @@ Huey ruled on 2026-10-01 on [#29](https://github.com/hueypov/lexema/issues/29#is
 
 - **The rule is fixed and versioned.** It is `section-language/v1`: `blockLanguage` over the blocks `readItalianPosBlocks` reads, applied only where a title's records line up one to one with its page's blocks (`foreignRecordsOf`). The language codes come from the dump's own `== {{-xx-}} ==` headings, stored in [`fixtures/section-language/regressions.json`](../fixtures/section-language/regressions.json). No word list and no judgement of content. A change to what the rule decides is a new version and its own issue, with its counts.
 - **Raw pages may be read for it.** The seed reads the raw page beside the archive to apply the rule, as it already does to recover definitions. Every hidden record names the page revision and line the verdict was read from.
+- **The seed reads the archive's titles in a first pass of their own.** The rule lines up all of a title's records with its page's blocks before it judges any one of them, so the seed must know every title before its seeding pass reaches the first record. When raw pages are given, it reads the archive once for the titles (`readTitles` in [`src/import/hiddenLayer.ts`](../src/import/hiddenLayer.ts)), then once to seed. This amends ADR 0012's rule that the archive is read once, in one pass: the seeding pass is still one streaming read, and the first pass keeps only each Italian record's title, line number and part-of-speech heading.
 - **Hidden means reached by nothing a reader asks.** The record is seeded with every row but its `lookup_form` and `form_of_edge` rows, so no search, suggestion, nearby offer, page or `/v1/lookup` answer reaches it, and a random pick passes over it. Its `hidden_record` row states the rule, the reason, the language and the page line.
 - **The record is kept.** `source_record_json` keeps the archive line byte for byte, and the record's senses, glosses and grammar rows stay, so a hide can be audited and reversed.
 - **A form-of edge naming a hidden word shows its text with no link.** When no Italian record is left for the word, the edge is one with no candidate, and the page shows the gloss as text, as it already does for any word the release has no entry for.
