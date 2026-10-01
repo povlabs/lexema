@@ -151,20 +151,19 @@ Resolving lemma links inlines the `form_of_candidate` view's join instead of
 
 SQLite cannot push `record_id = ?` through a LEFT JOIN onto a view, so it
 materialises the whole thing first — every edge against every lookup row — and
-then discards nearly all of it. At release scale that is seconds against
-fractions of a millisecond, for identical rows, and the gap widens as the
+then discards nearly all of it. At release scale that is about a second against
+a few hundredths of a millisecond, for identical rows. The gap widens as the
 release grows.
 
-Those are measured numbers, but **they are not measured on this branch**. They
-come from the lookup benchmark on `huey/37-lookup-bench` (PR #38), whose
-`pnpm run bench:lookup` captured 6722.0 ms through the view against 0.03 ms
-inlined, at a 560,357-record corpus, on 2026-09-19 — a ratio of about 2 × 10⁵,
-so four orders of magnitude is the floor rather than the figure. At the smaller
-140,000-record corpus the same pair is 981.1 ms against 0.03 ms, which is the
-sense in which the gap widens with the release. The branch, the command and
-what the figures do and do not show are recorded in
-[the lookup measurements](../reports/2026-09-21-lookup-measurements.md#the-timing-claim-is-not-from-this-report).
-Nothing on this branch runs that harness.
+`pnpm run bench:lookup` measures it. On the real release `it-0c432803`, a
+reading that declares a form-of edge costs 996 ms through the view and 0.022 ms
+inlined. That is a ratio of about 4.6 × 10⁴. A reading with no edge costs the
+same both ways. On the benchmark's synthetic corpus, the view's cost per reading
+goes from about 280 ms at 140,000 records to about 1,300 ms at 560,000. The
+inlined cost stays under 0.06 ms at both sizes. So the view's cost follows the
+size of the release, and the inlined join's cost follows the readings. The
+runs, the machine and what the figures do and do not show are in
+[the lookup benchmark](../reports/2026-10-01-lookup-benchmark.md).
 
 Identical rows is why a rows-only test sails straight past this. So there is a
 test asserting the query plan contains no `MATERIALIZE` and still uses
