@@ -11,8 +11,10 @@
 // not call it, #187) and method (405), the endpoint's reading of it (400 when
 // it cannot be read), then its calls counted toward the minute and the billing
 // period (429 past either, ./keyLimits.ts), and then the endpoint's answer. A
-// request refused before its calls are counted costs nothing. Every response
-// to a key under limits carries its limit headers, errors included.
+// request refused before its calls are counted costs nothing. A request whose
+// answer then fails with 503 does not count toward the billing period: its
+// calls are given back, though the minute keeps them (#289). Every response to
+// a key under limits carries its limit headers, errors included.
 
 import { allows } from "@lexema/api/keyAccess.ts";
 import { authenticate, type KeyRefusal } from "@lexema/api/keys.ts";
@@ -74,7 +76,11 @@ export async function handleApi(request: Request, context: ApiContext): Promise<
     headers = admission.headers;
     if (!admission.admitted) return json(429, error(admission.refusal, admission.message), headers);
 
-    const answer = await reading.answer(context);
+    const answer = await reading.answer(context).catch(async (failure: unknown) => {
+      // Counted, and not answered: its calls go back to the period (#289). A failed give-back is logged, and the answer is the same 503.
+      await admission.giveBack().catch((lost: unknown) => console.error("api give-back failed", lost));
+      throw failure;
+    });
     await limits.answered(reading.charge);
     return json(answer.status, answer.body, headers);
   } catch (failure) {

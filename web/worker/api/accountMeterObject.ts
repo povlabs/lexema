@@ -1,12 +1,13 @@
 // The account meter's Durable Object (#261): one per developer account, named
 // by its id, SQLite-backed, around the pure `AccountMeter`
-// (src/api/accountMeter.ts). Its one method is the one call each API request
-// makes; its alarm adds the calls D1 does not have yet to `api_key_usage`, at
+// (src/api/accountMeter.ts). `admit` is the one call each API request makes,
+// and `giveBack` the second one a request makes only when its answer fails
+// (#289); its alarm adds the calls D1 does not have yet to `api_key_usage`, at
 // most once a minute. web/worker/index.ts exports it, and web/wrangler.jsonc
 // binds it as ACCOUNT_METER with its `new_sqlite_classes` migration.
 
 import { DurableObject } from "cloudflare:workers";
-import { AccountMeter, type Admission, type MeterAnswer, type SqlValue } from "@lexema/api/accountMeter.ts";
+import { AccountMeter, type Admission, type GiveBack, type MeterAnswer, type SqlValue } from "@lexema/api/accountMeter.ts";
 import { addUsage } from "@lexema/api/usage.ts";
 import { appTablesOverD1 } from "@lexema/db/app/database.ts";
 
@@ -31,6 +32,11 @@ export class AccountMeterObject extends DurableObject<MeterEnv> {
     const { answer, flushAt } = this.meter.admit(admission);
     if (flushAt !== undefined) await this.ctx.storage.setAlarm(flushAt);
     return answer;
+  }
+
+  /** Take back the calls of an admitted request whose answer failed (#289). */
+  async giveBack(given: GiveBack): Promise<void> {
+    this.meter.giveBack(given);
   }
 
   /** The calls counted in the period that began at `periodStart`, for the dashboard (#207). Reads only. */

@@ -301,7 +301,7 @@ test("an admin key's minute counts calls, a batch's words each one (#216), and a
 });
 
 test("a 405, an unknown endpoint and a failed answer carry the key's limit headers; a 401 carries none", async (t) => {
-  const { key } = await newKey(10);
+  const { keyId, key } = await newKey(10);
   const wrongMethod = await call("/v1/lookup?q=casa", key, NOW, "POST");
   assert.equal(wrongMethod.status, 405);
   assert.deepEqual(limitHeaders(wrongMethod), ["10", "10", "40", null]);
@@ -318,6 +318,8 @@ test("a 405, an unknown endpoint and a failed answer carry the key's limit heade
   assert.equal(failed.status, 503);
   assert.equal(((await failed.json()) as Json).error.code, "unavailable");
   assert.deepEqual(limitHeaders(failed), ["10", "9", "40", null]);
+  // An admin key is charged to its D1 day only once answered: the failed answer cost it nothing (#289).
+  assert.deepEqual(callsOf(keyId), []);
 
   assert.deepEqual(limitHeaders(await call("/v1/lookup?q=casa", undefined)), [null, null, null, null]);
 });
@@ -1082,6 +1084,67 @@ test("with Starter's allowance lowered to 3, the call past it is a 429 allowance
     .where(eq(subscription.referenceId, String(accountId)));
   assert.equal((await ask(key, "exists?q=casa", undefined, PERIOD_END.getTime() + 5_000)).status, 200);
   assert.deepEqual(meters.calls.at(-1)?.admission.periodStart, PERIOD_END.toISOString());
+});
+
+/** The same key's request, answered over a dictionary whose every read fails. */
+const failingRequestOf =
+  (appDb: AppTables, meters: TestMetering) =>
+  (key: string, path: string, body?: string): Promise<Response> =>
+    handleApi(
+      new Request(`https://api.lexema.fyi/v1/${path}`, { method: body === undefined ? "GET" : "POST", headers: { "x-api-key": key }, body }),
+      { db: { all: () => Promise.reject(new Error("D1 is down")) }, appDb, releaseId: RELEASE, now: NOW, metering: meters },
+    );
+
+test("an owned key's request whose answer fails is a 503 that gives its calls back to the period, so the rest of the allowance still fits (#289)", async (t) => {
+  t.mock.property(PLAN_TERMS.starter as { callsPerPeriod: number }, "callsPerPeriod", 3);
+  t.mock.method(console, "error", () => {});
+  const meters = new TestMetering();
+  const ask = requestOf(db, meters);
+  const { accountId, key } = await accountWithKey(db, "gives-back");
+  const period = PERIOD_START.toISOString();
+  const pair = JSON.stringify({ q: ["casa", "sale"] });
+
+  // An answered request makes its one meter call, as before, and gives nothing back.
+  const answered = await ask(key, "exists?q=casa");
+  assert.equal(answered.status, 200);
+  assert.deepEqual([meters.calls.length, meters.givenBack.length], [1, 0]);
+  const before = meters.periodCalls(accountId, period);
+  assert.equal(before, 1);
+
+  const failed = await failingRequestOf(db, meters)(key, "lookup/batch", pair);
+  assert.equal(failed.status, 503);
+  assert.deepEqual(((await failed.json()) as Json).error, { code: "unavailable", message: "The request could not be answered. Try again later." });
+  assert.deepEqual(limitHeaders(failed), limitHeaders(answered));
+  assert.equal(meters.periodCalls(accountId, period), before);
+  assert.deepEqual(
+    meters.givenBack.map(({ given }) => given.calls),
+    [2],
+  );
+
+  // The two calls left are exactly the batch's; the call after them is over the allowance.
+  assert.equal((await ask(key, "lookup/batch", pair)).status, 200);
+  const over = await ask(key, "exists?q=casa");
+  assert.equal(over.status, 429);
+  assert.equal(((await over.json()) as Json).error.code, "allowance_exceeded");
+});
+
+test("when the give-back itself fails, the answer is the same 503 and the failure is logged (#289)", async (t) => {
+  const errors = t.mock.method(console, "error", () => {});
+  class UnreachableGiveBack extends TestMetering {
+    override async giveBack(): Promise<void> {
+      throw new Error("the meter is unreachable");
+    }
+  }
+  const meters = new UnreachableGiveBack();
+  const { key } = await accountWithKey(db, "give-back-fails");
+  const failed = await failingRequestOf(db, meters)(key, "exists?q=casa");
+  assert.equal(failed.status, 503);
+  assert.deepEqual(((await failed.json()) as Json).error, { code: "unavailable", message: "The request could not be answered. Try again later." });
+  assert.equal(failed.headers.get("ratelimit-limit"), "60");
+  assert.deepEqual(
+    errors.mock.calls.map((call) => call.arguments[0]),
+    ["api give-back failed", "api request failed"],
+  );
 });
 
 test("the rate follows the plan: Pro 300 a minute on CALLS_300, Enterprise its own rate in the meter, each also its batch cap", async () => {

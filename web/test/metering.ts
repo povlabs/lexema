@@ -4,7 +4,7 @@
 // the rate bindings are fakes with the binding's contract.
 
 import { DatabaseSync } from "node:sqlite";
-import { AccountMeter, type Admission, type MeterAnswer, type UnsentCalls } from "../../src/api/accountMeter.js";
+import { AccountMeter, type Admission, type GiveBack, type MeterAnswer, type UnsentCalls } from "../../src/api/accountMeter.js";
 import type { RateBinding } from "../../src/api/accountRate.js";
 import { addUsage } from "../../src/api/usage.js";
 import type { AppTables } from "../../src/db/app/database.js";
@@ -26,11 +26,23 @@ export class TestMetering implements Metering {
   readonly bindings: Record<RateBinding, FakeRateLimit> = { CALLS_60: new FakeRateLimit(60), CALLS_300: new FakeRateLimit(300) };
   /** Every call a request made to an account's meter, in order. */
   readonly calls: { accountId: number; admission: Admission }[] = [];
+  /** Every give-back a request made to an account's meter, in order (#289). */
+  readonly givenBack: { accountId: number; given: GiveBack }[] = [];
   private readonly storage = new Map<number, DatabaseSync>();
 
   async admit(accountId: number, admission: Admission): Promise<MeterAnswer> {
     this.calls.push({ accountId, admission });
     return this.meterOf(accountId).admit(admission).answer;
+  }
+
+  async giveBack(accountId: number, given: GiveBack): Promise<void> {
+    this.givenBack.push({ accountId, given });
+    this.meterOf(accountId).giveBack(given);
+  }
+
+  /** The calls the account's meter counts in the period that began at `periodStart`, as the dashboard reads them. */
+  periodCalls(accountId: number, periodStart: string): number {
+    return this.meterOf(accountId).periodCalls(periodStart);
   }
 
   binding(name: RateBinding): RateLimit {

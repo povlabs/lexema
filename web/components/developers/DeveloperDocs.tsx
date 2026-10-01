@@ -337,7 +337,7 @@ const GUIDE_TOPICS: Readonly<Record<Guide, () => ReactNode>> = {
         </tbody>
       </table>
       <Paragraph>{"Your account may make a number of calls a minute, shared by all its keys. Calls count toward the minute as they do toward the month, so a batch of 7 words is 7 calls, and a request refused before it is answered, a `400`, `403`, `404` or `405`, counts nothing. Every response to a valid key carries `RateLimit-Limit`. Past the limit, the answer is a `429` with `Retry-After`."}</Paragraph>
-      <Paragraph>{"Your plan also allows a number of calls each billing period. Past them, the answer is a `429` `allowance_exceeded` that names when the period resets, with `Retry-After` in seconds to it. A refused call does not count toward the period's calls. On Starter and Pro, and on an Enterprise rate of 60 or 300 calls a minute, it still counts toward the minute; on any other Enterprise rate, it counts toward neither."}</Paragraph>
+      <Paragraph>{"Your plan also allows a number of calls each billing period. Past them, the answer is a `429` `allowance_exceeded` that names when the period resets, with `Retry-After` in seconds to it. A refused call does not count toward the period's calls. On Starter and Pro, and on an Enterprise rate of 60 or 300 calls a minute, it still counts toward the minute; on any other Enterprise rate, it counts toward neither. A call that fails with a `503` does not count toward the period's calls either, but it does count toward the minute."}</Paragraph>
       <Rows rows={HEADERS.map((header) => ({ name: header.name, description: header.description }))} />
     </Topic>
   ),

@@ -6,9 +6,10 @@
 // request and drops its memory (#200 R2.2), so nothing here is kept in memory:
 // every admitted call is written to the object's own SQLite storage in the
 // request that made it, and a meter built again over that storage, as after
-// hibernation, holds every call. At most once a minute the key-day totals not
-// yet sent are added to `api_key_usage` in D1, so the dashboard's 30-day chart
-// stays a D1 read at most a minute behind.
+// hibernation, holds every call. A call whose answer then fails is given back
+// (#289). At most once a minute the key-day totals not yet sent are added to
+// `api_key_usage` in D1, so the dashboard's 30-day chart stays a D1 read at
+// most a minute behind.
 //
 // This class takes its storage as a plain SQL function, so it runs the same
 // over a Durable Object's `ctx.storage.sql` and over `node:sqlite` in tests.
@@ -39,6 +40,12 @@ export interface Admission {
   perMinute: number | null;
   now: number;
 }
+
+/**
+ * An admitted request's calls, given back because its answer then failed
+ * (#289): the key, calls, period start and time the admission named.
+ */
+export type GiveBack = Pick<Admission, "keyId" | "calls" | "periodStart" | "now">;
 
 /** Whether the meter admitted a request's calls, or which limit refused them. */
 export type AdmissionOutcome = "admitted" | "over-allowance" | "over-rate";
@@ -161,19 +168,46 @@ export class AccountMeter {
   }
 
   /**
-   * Send every key-day's calls D1 does not have yet, then mark them sent. Calls
-   * admitted while the send is on its way stay unsent and go with the next one.
-   * A failed send marks nothing, and the failure is thrown for the caller to
-   * arm the next try (`retryAt`).
+   * Take back the calls of an admitted request whose answer failed (#289): off
+   * the period, never below 0, and off its key's day. D1 keeps what it was
+   * already sent, so only the day's unsent calls come back, and a day left with
+   * none is removed. A give-back for any period but the one the meter holds,
+   * as after a renewal, changes nothing. The minute keeps its calls, as a Rate
+   * Limiting binding's does.
+   */
+  giveBack(given: GiveBack): void {
+    const { keyId, calls, periodStart, now } = given;
+    if (!Number.isInteger(calls) || calls < 1) throw new Error(`a request counts at least 1 call, not ${calls}`);
+    if (this.state()?.period_start !== periodStart) return;
+    this.sql(`UPDATE meter_period SET period_calls = max(0, period_calls - ?)`, calls);
+    const day = dayOf(now);
+    // Deleted first: a row brought to 0 calls would break `calls > 0`. Any row left keeps `sent <= calls`.
+    this.sql(`DELETE FROM key_day WHERE key_id = ? AND day = ? AND sent = 0 AND calls <= ?`, keyId, day, calls);
+    this.sql(`UPDATE key_day SET calls = calls - min(?, calls - sent) WHERE key_id = ? AND day = ?`, calls, keyId, day);
+  }
+
+  /**
+   * Send every key-day's calls D1 does not have yet. They are marked sent
+   * before the send goes out, so a give-back that lands while it is on its way
+   * leaves them to D1 and takes back only calls no send carries (#289). Calls
+   * admitted meanwhile stay unsent and go with the next send. A failed send
+   * unmarks what it marked, and the failure is thrown for the caller to arm the
+   * next try (`retryAt`).
    */
   async flush(sink: UsageSink, now: number): Promise<readonly UnsentCalls[]> {
     const unsent = this.sql<KeyDayRow>(`SELECT key_id, day, calls, sent FROM key_day WHERE calls > sent ORDER BY key_id, day`).map(
       (row): UnsentCalls => ({ keyId: row.key_id, day: row.day, calls: row.calls - row.sent }),
     );
     this.sql(`UPDATE meter_period SET flush_due = NULL`);
-    if (unsent.length > 0) await sink(unsent);
-    for (const { keyId, day, calls } of unsent) {
-      this.sql(`UPDATE key_day SET sent = sent + ? WHERE key_id = ? AND day = ?`, calls, keyId, day);
+    // Marked rows keep `sent > 0` until the send settles, so no give-back removes them and the unmark below keeps `sent >= 0`.
+    this.markSent(unsent, 1);
+    if (unsent.length > 0) {
+      try {
+        await sink(unsent);
+      } catch (failure) {
+        this.markSent(unsent, -1);
+        throw failure;
+      }
     }
     // A day that is over and that D1 has in full is never added to again.
     this.sql(`DELETE FROM key_day WHERE calls = sent AND day < ?`, dayOf(now));
@@ -198,6 +232,13 @@ export class AccountMeter {
     const at = now + FLUSH_EVERY_MS;
     this.sql(`UPDATE meter_period SET flush_due = ?`, at);
     return at;
+  }
+
+  /** Add these calls to their rows' `sent` (`sign` 1), or take them off again (`sign` -1). */
+  private markSent(rows: readonly UnsentCalls[], sign: 1 | -1): void {
+    for (const { keyId, day, calls } of rows) {
+      this.sql(`UPDATE key_day SET sent = sent + ? WHERE key_id = ? AND day = ?`, sign * calls, keyId, day);
+    }
   }
 
   private state(): StateRow | undefined {
