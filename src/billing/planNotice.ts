@@ -42,19 +42,21 @@ const told = (notice: PlanNotice): notice is Exclude<PlanNotice, { state: "none"
  * - plan ended: a plan that served no longer does.
  *
  * A move back, such as a failed payment paid or a cancellation withdrawn, owes
- * nothing: Stripe's own receipt covers it.
+ * nothing: Stripe's own receipt covers it. Each email is dated `on`, the
+ * moment the change was noted, and a plan that renews says when.
  */
-export function planEmails(before: PlanNotice, after: PlanState): AccountEmail[] {
+export function planEmails(before: PlanNotice, after: PlanState, on: number): AccountEmail[] {
   const now = noticeOf(after);
   if (!told(now)) return [];
   const serving = told(before) && before.state !== "ended";
-  if (now.state === "ended") return serving ? [{ kind: "plan-ended", plan: now.plan }] : [];
+  if (now.state === "ended") return serving ? [{ kind: "plan-ended", plan: now.plan, on }] : [];
+  const renewsOn = after.kind === "active" ? after.period.end : null;
   const emails: AccountEmail[] = [];
-  if (!serving) emails.push({ kind: "plan-started", plan: now.plan });
-  else if (before.plan !== now.plan) emails.push({ kind: "plan-changed", from: before.plan, to: now.plan });
-  if (now.state === "past-due" && before.state !== "past-due") emails.push({ kind: "payment-failed", plan: now.plan });
+  if (!serving) emails.push({ kind: "plan-started", plan: now.plan, on, renewsOn });
+  else if (before.plan !== now.plan) emails.push({ kind: "plan-changed", from: before.plan, to: now.plan, on, renewsOn });
+  if (now.state === "past-due" && before.state !== "past-due") emails.push({ kind: "payment-failed", plan: now.plan, on });
   if (after.kind === "cancelling" && before.state !== "cancelling") {
-    emails.push({ kind: "cancellation-confirmed", plan: now.plan, endsAt: after.endsAt });
+    emails.push({ kind: "cancellation-confirmed", plan: now.plan, on, endsAt: after.endsAt });
   }
   return emails;
 }
@@ -80,8 +82,9 @@ export interface WrittenSubscription {
  * none when the account was already told, including by a sync running at the
  * same time. Throws when the database fails, so the webhook answers 400 and
  * Stripe retries; the notice has not moved, so the retry owes the same emails.
+ * `now` dates the emails; it decides nothing about which are owed.
  */
-export async function notePlanChange(db: AppDatabase, written: WrittenSubscription): Promise<AccountEmail[]> {
+export async function notePlanChange(db: AppDatabase, written: WrittenSubscription, now: number): Promise<AccountEmail[]> {
   const { accountId, snapshot } = written;
   const reading = stateOfSubscription(snapshot);
   if (reading.outcome !== "state") throw new Error(`a synced subscription with no plan state: ${reading.outcome} (${reading.status})`);
@@ -100,7 +103,7 @@ export async function notePlanChange(db: AppDatabase, written: WrittenSubscripti
             .set({ plan: after.plan, state: after.state })
             .where(and(eq(planNotice.stripeSubscriptionId, id), eq(planNotice.plan, row.plan), eq(planNotice.state, row.state)))
             .returning({ id: planNotice.stripeSubscriptionId });
-    if (moved.length > 0) return planEmails(before, reading.state);
+    if (moved.length > 0) return planEmails(before, reading.state, now);
   }
   throw new Error(`the plan notice of ${id} kept moving under this sync`);
 }

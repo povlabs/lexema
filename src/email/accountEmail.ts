@@ -3,37 +3,50 @@
 // upcoming-renewal emails itself; these six are Lexema's, sent from
 // `noreply@lexema.fyi` through Cloudflare Email Service (./send.ts).
 //
-// Each email is written once, as a letter: a subject, a few paragraphs and one
-// link to the dashboard's settings. The plain text and the HTML are both made
-// from that letter, so they never say different things. The HTML paints with
-// the dark scheme's role tokens as design-system-manifest.md gives them in hex,
-// since an email client reads no stylesheet and no oklch.
+// Each email is written once, as a letter: a headline, one lead sentence with
+// the day it happened, two to four short facts, a button to the dashboard's
+// settings when there is something to do there, and a short note. The plain
+// text and the HTML are both made from that letter, so they never say
+// different things. The HTML is Pencil board M1 (`QDY3h` in lexema-design.pen,
+// #367): a white card on a light grey page, laid out in tables with inline
+// styles, since an email client reads no stylesheet. It carries no image.
 
 import { PLAN_TERMS, type StripePlanId } from "../billing/plans.js";
 
-/** One email to an account, carrying only what its words need. */
+/**
+ * One email to an account, carrying only what its words need. Every day is in
+ * milliseconds since the epoch: `on` is the day the email is about, the day
+ * Lexema learnt of the change or deleted the account.
+ */
 export type AccountEmail =
-  /** A Starter or Pro plan started serving: "Welcome to Pro". */
-  | { readonly kind: "plan-started"; readonly plan: StripePlanId }
-  /** A serving plan moved between Starter and Pro. */
-  | { readonly kind: "plan-changed"; readonly from: StripePlanId; readonly to: StripePlanId }
+  /** A Starter or Pro plan started serving. `renewsOn` is the day it renews, or `null` when it is not set to renew. */
+  | { readonly kind: "plan-started"; readonly plan: StripePlanId; readonly on: number; readonly renewsOn: number | null }
+  /** A serving plan moved between Starter and Pro. `renewsOn` as for a plan started. */
+  | { readonly kind: "plan-changed"; readonly from: StripePlanId; readonly to: StripePlanId; readonly on: number; readonly renewsOn: number | null }
   /** A renewal payment failed; the plan still serves while Stripe retries. */
-  | { readonly kind: "payment-failed"; readonly plan: StripePlanId }
-  /** The plan was cancelled and serves until `endsAt`, in milliseconds since the epoch. */
-  | { readonly kind: "cancellation-confirmed"; readonly plan: StripePlanId; readonly endsAt: number }
+  | { readonly kind: "payment-failed"; readonly plan: StripePlanId; readonly on: number }
+  /** The plan was cancelled and serves until `endsAt`. */
+  | { readonly kind: "cancellation-confirmed"; readonly plan: StripePlanId; readonly on: number; readonly endsAt: number }
   /** The plan stopped serving. */
-  | { readonly kind: "plan-ended"; readonly plan: StripePlanId }
+  | { readonly kind: "plan-ended"; readonly plan: StripePlanId; readonly on: number }
   /** The account was deleted. */
-  | { readonly kind: "account-deleted" };
+  | { readonly kind: "account-deleted"; readonly on: number };
 
 export type AccountEmailKind = AccountEmail["kind"];
+
+/** Two to four short facts: the most the fact box holds, and the least worth a box. */
+type Facts = readonly [string, string] | readonly [string, string, string] | readonly [string, string, string, string];
 
 /** What an email says, before it is laid out as text or HTML. */
 interface Letter {
   readonly subject: string;
-  readonly paragraphs: readonly string[];
-  /** The words of the one link, which goes to the dashboard's settings. */
-  readonly linkLabel: string;
+  readonly headline: string;
+  /** One plain sentence saying what happened and on which day. */
+  readonly lead: string;
+  readonly facts: Facts;
+  /** Whether there is something to do in settings, so the email carries the Open Settings button. */
+  readonly button: boolean;
+  readonly note: string;
 }
 
 /** An email as it is sent: its subject, its plain text and its HTML. */
@@ -47,73 +60,100 @@ const planName = (plan: StripePlanId): string => PLAN_TERMS[plan].name;
 
 const count = (n: number): string => n.toLocaleString("en-US");
 
-/** A date as the settings page reads one, in UTC: 30 October 2026. */
+/** A day as the settings page reads one, in UTC: 30 October 2026. */
 const dayOf = (at: number): string => new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" }).format(at);
 
-/** What a plan lets an account's keys do, in one sentence. */
-const allowance = (plan: StripePlanId): string =>
-  `${planName(plan)} gives your keys ${count(PLAN_TERMS[plan].callsPerPeriod)} calls a month, up to ${count(PLAN_TERMS[plan].callsPerMinute)} calls a minute.`;
+const price = (plan: StripePlanId): string => `$${PLAN_TERMS[plan].usdPerMonth}`;
 
-const SETTINGS_LABEL = "Open your settings";
+const callsPerMonth = (plan: StripePlanId): string => `${count(PLAN_TERMS[plan].callsPerPeriod)} calls per month`;
+
+const callsPerMinute = (plan: StripePlanId): string => `${count(PLAN_TERMS[plan].callsPerMinute)} calls per minute`;
+
+const BUTTON_LABEL = "Open Settings";
+
+const FOOTER = ["Lexema · a simple dictionary · lexema.fyi", "You're receiving this because of your Lexema developer account."] as const;
 
 function letterOf(email: AccountEmail): Letter {
   switch (email.kind) {
-    case "plan-started":
+    case "plan-started": {
+      const name = planName(email.plan);
+      const limits = [callsPerMonth(email.plan), callsPerMinute(email.plan)] as const;
       return {
-        subject: `Welcome to ${planName(email.plan)}`,
-        paragraphs: [`Your ${planName(email.plan)} plan is active.`, allowance(email.plan), "Stripe emails your receipts and invoices."],
-        linkLabel: SETTINGS_LABEL,
+        subject: `Your ${name} plan is active`,
+        headline: `Your ${name} plan is active`,
+        lead: `Thanks for subscribing. Your ${name} plan started on ${dayOf(email.on)}.`,
+        facts: email.renewsOn === null ? limits : [...limits, `Renews on ${dayOf(email.renewsOn)} for ${price(email.plan)}`],
+        button: true,
+        note: "You can change or cancel your plan at any time in Settings.",
       };
-    case "plan-changed":
+    }
+    case "plan-changed": {
+      const limits = [callsPerMonth(email.to), callsPerMinute(email.to), `${price(email.to)} a month`] as const;
       return {
         subject: `Your plan is now ${planName(email.to)}`,
-        paragraphs: [`Your plan changed from ${planName(email.from)} to ${planName(email.to)}.`, allowance(email.to)],
-        linkLabel: SETTINGS_LABEL,
+        headline: `Your plan is now ${planName(email.to)}`,
+        lead: `Your plan changed from ${planName(email.from)} to ${planName(email.to)} on ${dayOf(email.on)}.`,
+        facts: email.renewsOn === null ? limits : [...limits, `Renews on ${dayOf(email.renewsOn)}`],
+        button: true,
+        note: "Stripe emails your receipts and invoices.",
       };
+    }
     case "payment-failed":
       return {
         subject: `Your ${planName(email.plan)} payment failed`,
-        paragraphs: [
-          `Stripe could not take the payment for your ${planName(email.plan)} plan. Your keys keep working while Stripe tries again.`,
-          "Update your payment method from your settings, with Manage billing.",
-        ],
-        linkLabel: "Update your payment method",
+        headline: "Your payment failed",
+        lead: `Stripe could not take the payment for your ${planName(email.plan)} plan on ${dayOf(email.on)}.`,
+        facts: ["Your API keys keep working for now.", "Stripe will try the payment again.", `${planName(email.plan)} is ${price(email.plan)} a month.`],
+        button: true,
+        note: "To update your payment method, open Settings and choose Manage billing.",
       };
     case "cancellation-confirmed":
       return {
         subject: `Your ${planName(email.plan)} plan is cancelled`,
-        paragraphs: [
-          `Your ${planName(email.plan)} plan is cancelled. Your keys keep working until ${dayOf(email.endsAt)}, and then the plan ends.`,
-          "You will not be charged again. You can choose a plan again from your settings at any time.",
-        ],
-        linkLabel: SETTINGS_LABEL,
+        headline: `Your ${planName(email.plan)} plan is cancelled`,
+        lead: `Your ${planName(email.plan)} plan was cancelled on ${dayOf(email.on)}.`,
+        facts: [`Your API keys keep working until ${dayOf(email.endsAt)}.`, "Then the plan ends.", "You won't be charged again."],
+        button: true,
+        note: "You can choose a plan again in Settings at any time.",
       };
     case "plan-ended":
       return {
         subject: `Your ${planName(email.plan)} plan has ended`,
-        paragraphs: [`Your ${planName(email.plan)} plan has ended, so your keys no longer answer.`, "Choose a plan from your settings to use them again."],
-        linkLabel: "Choose a plan",
+        headline: `Your ${planName(email.plan)} plan has ended`,
+        lead: `Your ${planName(email.plan)} plan ended on ${dayOf(email.on)}.`,
+        facts: ["Your API keys no longer answer calls.", "Choosing a plan makes them work again."],
+        button: true,
+        note: "You can choose Starter or Pro in Settings at any time.",
       };
     case "account-deleted":
       return {
-        subject: "Your Lexema account is deleted",
-        paragraphs: [
-          "Your Lexema developer account is deleted. Its keys are revoked, it is signed out everywhere, and any Starter or Pro plan it had is cancelled.",
+        subject: "Your Lexema account has been deleted",
+        headline: "Your account has been deleted",
+        lead: `We deleted your Lexema developer account on ${dayOf(email.on)}, as requested.`,
+        facts: [
+          "All API keys are revoked.",
+          "You are signed out on every device.",
+          "Any Starter or Pro plan is cancelled. You won't be charged again.",
           "Signing in again with this email makes a new account.",
         ],
-        linkLabel: "Sign in again",
+        button: false,
+        note: "If you didn't ask for this, contact us through lexema.fyi.",
       };
   }
 }
 
-/** The dark scheme's role tokens, in the hex of design-system-manifest.md. */
-const TOKENS = {
-  surface: "#121110",
-  surfaceRaised: "#1A1917",
-  border: "#2C2A26",
-  text: "#C4BEB2",
-  textStrong: "#F4F0E6",
-  accent: "#D2A85C",
+/** Board M1's colours. The page and fact box are #367's; the rest are read off the board. */
+const COLOURS = {
+  page: "#ECEAE6",
+  card: "#FFFFFF",
+  factBox: "#F6F4F0",
+  rule: "#E4E1DB",
+  textStrong: "#141312",
+  text: "#2E2C29",
+  textMuted: "#6E6A62",
+  footer: "#8B8579",
+  button: "#141312",
+  buttonText: "#FFFFFF",
 } as const;
 
 /** The manifest's families, with the fallbacks an email client has when it loads no font. */
@@ -123,22 +163,39 @@ const SANS = "Inter, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif";
 const escapeHtml = (text: string): string =>
   text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
 
+function buttonHtml(settingsUrl: string): string {
+  return `<table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 0 20px;"><tr>
+<td style="background:${COLOURS.button};border-radius:6px;"><a href="${escapeHtml(settingsUrl)}" style="display:inline-block;padding:11px 20px;font-family:${SANS};font-size:14px;font-weight:600;line-height:18px;color:${COLOURS.buttonText};text-decoration:none;border-radius:6px;">${BUTTON_LABEL}</a></td>
+</tr></table>`;
+}
+
 function htmlOf(letter: Letter, settingsUrl: string): string {
-  const paragraphs = letter.paragraphs
-    .map((paragraph) => `<p style="margin:0 0 16px;font-family:${SANS};font-size:16px;line-height:1.6;color:${TOKENS.text};">${escapeHtml(paragraph)}</p>`)
+  const facts = letter.facts
+    .map((fact) => `<li style="margin:0 0 6px;padding:0;font-family:${SANS};font-size:14px;line-height:20px;color:${COLOURS.text};">${escapeHtml(fact)}</li>`)
     .join("\n");
   return `<!doctype html>
 <html lang="en">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><meta name="color-scheme" content="dark"><title>${escapeHtml(letter.subject)}</title></head>
-<body style="margin:0;padding:0;background:${TOKENS.surface};">
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${TOKENS.surface};">
-<tr><td align="center" style="padding:32px 16px;">
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:${TOKENS.surfaceRaised};border:1px solid ${TOKENS.border};">
-<tr><td style="padding:32px;">
-<p style="margin:0 0 24px;font-family:${SERIF};font-size:20px;font-weight:700;color:${TOKENS.textStrong};">Lexema</p>
-<h1 style="margin:0 0 16px;font-family:${SERIF};font-size:24px;font-weight:600;line-height:1.3;color:${TOKENS.textStrong};">${escapeHtml(letter.subject)}</h1>
-${paragraphs}
-<p style="margin:24px 0 0;font-family:${SANS};font-size:16px;"><a href="${escapeHtml(settingsUrl)}" style="color:${TOKENS.accent};">${escapeHtml(letter.linkLabel)}</a></p>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><meta name="color-scheme" content="light"><title>${escapeHtml(letter.subject)}</title></head>
+<body style="margin:0;padding:0;background:${COLOURS.page};">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${COLOURS.page};">
+<tr><td align="center" style="padding:40px 16px;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;">
+<tr><td style="background:${COLOURS.card};border-radius:8px;padding:40px 44px;">
+<p style="margin:0 0 20px;font-family:${SERIF};font-size:22px;font-weight:400;line-height:28px;color:${COLOURS.textStrong};">Lexema</p>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td style="border-top:1px solid ${COLOURS.rule};font-size:0;line-height:0;height:1px;">&nbsp;</td></tr></table>
+<h1 style="margin:24px 0 16px;font-family:${SANS};font-size:22px;font-weight:600;line-height:28px;color:${COLOURS.textStrong};">${escapeHtml(letter.headline)}</h1>
+<p style="margin:0 0 20px;font-family:${SANS};font-size:15px;line-height:22px;color:${COLOURS.text};">${escapeHtml(letter.lead)}</p>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 20px;"><tr><td style="background:${COLOURS.factBox};border-radius:6px;padding:16px 20px 10px;">
+<ul style="margin:0;padding:0 0 0 18px;">
+${facts}
+</ul>
+</td></tr></table>
+${letter.button ? buttonHtml(settingsUrl) : ""}
+<p style="margin:0;font-family:${SANS};font-size:14px;line-height:20px;color:${COLOURS.textMuted};">${escapeHtml(letter.note)}</p>
+</td></tr>
+<tr><td style="padding:20px 44px 0;">
+<p style="margin:0 0 4px;font-family:${SANS};font-size:12px;line-height:18px;color:${COLOURS.footer};">${escapeHtml(FOOTER[0])}</p>
+<p style="margin:0;font-family:${SANS};font-size:12px;line-height:18px;color:${COLOURS.footer};">${escapeHtml(FOOTER[1])}</p>
 </td></tr>
 </table>
 </td></tr>
@@ -149,10 +206,19 @@ ${paragraphs}
 }
 
 function textOf(letter: Letter, settingsUrl: string): string {
-  return [letter.subject, ...letter.paragraphs, `${letter.linkLabel}: ${settingsUrl}`].join("\n\n") + "\n";
+  return (
+    [
+      letter.headline,
+      letter.lead,
+      letter.facts.map((fact) => `- ${fact}`).join("\n"),
+      ...(letter.button ? [`${BUTTON_LABEL}: ${settingsUrl}`] : []),
+      letter.note,
+      `--\n${FOOTER.join("\n")}`,
+    ].join("\n\n") + "\n"
+  );
 }
 
-/** An email as it is sent, its one link going to `settingsUrl`: the developer site's /dashboard/settings. */
+/** An email as it is sent, its button going to `settingsUrl`: the developer site's /dashboard/settings. */
 export function composeEmail(email: AccountEmail, settingsUrl: string): ComposedEmail {
   const letter = letterOf(email);
   return { subject: letter.subject, text: textOf(letter, settingsUrl), html: htmlOf(letter, settingsUrl) };

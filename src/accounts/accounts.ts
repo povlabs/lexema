@@ -215,6 +215,6 @@ export async function deleteAccount(
   ]);
   if (marked.length === 0) return { outcome: "unknown" };
   const [person] = first;
-  if (person !== undefined) await sendAccountEmail(mail, person.email, { kind: "account-deleted" });
+  if (person !== undefined) await sendAccountEmail(mail, person.email, { kind: "account-deleted", on: now });
   return { outcome: "deleted", revokedKeys: revoked.length };
 }

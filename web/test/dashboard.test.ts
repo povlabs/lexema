@@ -671,9 +671,10 @@ test("deleting an account emails the person once, at the address it had, with a 
   assert.equal((await remove()).status, 200);
   assert.deepEqual(
     email.sent.map(({ to, subject }) => ({ to, subject })),
-    [{ to: "ada@example.com", subject: "Your Lexema account is deleted" }],
+    [{ to: "ada@example.com", subject: "Your Lexema account has been deleted" }],
   );
-  assert.ok(email.sent[0]?.text.includes(`${DEVELOPERS}${SETTINGS}`));
+  // The deleted email has nothing to do in settings, so it carries no link (#367).
+  assert.ok(!email.sent[0]?.text.includes(`${DEVELOPERS}${SETTINGS}`));
 
   const refused = await subscribed("active", false);
   refused.stripe.set("sub_ada", "cus_ada", {}, LIVE_PRO);

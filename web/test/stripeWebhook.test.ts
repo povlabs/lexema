@@ -254,7 +254,7 @@ test("the webhook emails each plan change once, to the account, with a link to s
   const site = await checkoutStarted();
   const cancelAt = OCTOBER.periodEnd;
   const steps: { type: Stripe.Event.Type; state: SubscriptionState; object: (sent: Stripe.Subscription) => object; subjects: string[] }[] = [
-    { type: "checkout.session.completed", state: ACTIVE_PRO, object: () => site.completedCheckout(), subjects: ["Welcome to Pro"] },
+    { type: "checkout.session.completed", state: ACTIVE_PRO, object: () => site.completedCheckout(), subjects: ["Your Pro plan is active"] },
     { type: "customer.subscription.created", state: ACTIVE_PRO, object: (sent) => sent, subjects: [] },
     { type: "invoice.payment_failed", state: { ...ACTIVE_PRO, status: "past_due", ...OCTOBER }, object: invoice, subjects: ["Your Pro payment failed"] },
     { type: "invoice.paid", state: { ...ACTIVE_PRO, ...OCTOBER }, object: invoice, subjects: [] },
@@ -299,12 +299,12 @@ test("a replayed event, and a later event that finds nothing new, send nothing t
   const created = site.stripeHolds(ACTIVE_PRO);
   assert.equal((await site.send("customer.subscription.created", created)).status, 200);
   assert.equal((await site.send("invoice.paid", invoice())).status, 200);
-  assert.deepEqual(site.email.subjects(), ["Welcome to Pro"]);
+  assert.deepEqual(site.email.subjects(), ["Your Pro plan is active"]);
 
   const failed = site.stripeHolds({ ...ACTIVE_PRO, status: "past_due" });
   await Promise.all([site.send("invoice.payment_failed", invoice()), site.send("customer.subscription.updated", failed)]);
   assert.equal((await site.send("customer.subscription.updated", failed)).status, 200);
-  assert.deepEqual(site.email.subjects(), ["Welcome to Pro", "Your Pro payment failed"]);
+  assert.deepEqual(site.email.subjects(), ["Your Pro plan is active", "Your Pro payment failed"]);
 });
 
 test("an email that fails is logged, answers 200 and is not sent again; without the binding the webhook sends nothing", async () => {
