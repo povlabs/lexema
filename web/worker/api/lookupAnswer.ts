@@ -26,7 +26,7 @@ import { normalizeItalianExact } from "@lexema/italian/normalize.ts";
 import { expressionMeaning } from "@lexema/lookup/expressions.ts";
 import { foldKey, type Nearby } from "@lexema/lookup/nearby.ts";
 import type { PhraseOffer } from "@lexema/lookup/phrase.ts";
-import { isFormOfReading, isVerbReading, searchedSpellings } from "@lexema/lookup/types.ts";
+import { isFormOfReading, isVerbReading, lemmasOfPartOfSpeech, searchedSpellings } from "@lexema/lookup/types.ts";
 import type {
   FoundResult,
   LemmaTarget,
@@ -76,18 +76,6 @@ export type Candidate =
 /** Finds the lemma a form-of record names, as a reading of its own. */
 export type LemmaReader = (lemma: LemmaTarget) => Promise<Reading | undefined>;
 
-/**
- * The lemmas a form-of reading names that are of its own part of speech:
- * `andavano` the verb names `andare`, which is a noun record and a verb
- * record, and the verb is its lemma. When no candidate shares the part of
- * speech, every candidate stays, because the source did not say which.
- */
-function lemmasOf(reading: Reading): LemmaTarget[] {
-  const all = reading.lemmaLinks.flatMap((link) => (link.kind === "candidates" ? link.candidates : []));
-  const same = all.filter((lemma) => lemma.pos === (reading.pos as string));
-  return same.length > 0 ? same : all;
-}
-
 /** The first spelling of the query the reading carries, as the source spells it. */
 function surfaceOn(reading: Reading): string {
   return reading.evidence[0]?.surface ?? reading.word;
@@ -98,7 +86,7 @@ export async function candidatesOf(result: FoundResult, readLemma: LemmaReader):
   if (result.route.kind === "phrase") return phraseCandidates(result);
   const candidates: Candidate[] = [];
   for (const reading of result.readings) {
-    const lemmas = isFormOfReading(reading) ? lemmasOf(reading) : [];
+    const lemmas = isFormOfReading(reading) ? lemmasOfPartOfSpeech(reading.pos, reading.lemmaLinks) : [];
     if (lemmas.length === 0) {
       candidates.push({
         via: reading.isAboutQuery ? "headword" : "form",

@@ -3,8 +3,9 @@
 // and the charge are the handler's (./handler.ts), and every cost is
 // src/api/calls.ts's.
 //
-// None of them ranks or places anew. `/lookup`, `/lemmatize`, `/inflect` and
-// `/lookup/batch` read `lookup()` and its candidates (./lookupAnswer.ts);
+// None of them ranks or places anew. `/lookup`, `/lemmatize` and `/inflect`
+// read `lookup()` and its candidates (./lookupAnswer.ts); `/lookup/batch` reads
+// the same candidates light, for all its words at once (`lookupBatch`, #335);
 // `/exists` reads the first row of lookup's own search; `/suggest` and
 // `/nearby` are the search field's `suggest()` and the not-found page's
 // `findNearby()`; `/random` is one keyed pick over an index.
@@ -14,6 +15,7 @@
 // handler admits them, and then answered, found (200) or not (404).
 
 import type { Endpoint } from "@lexema/api/calls.ts";
+import { lookupBatch } from "@lexema/lookup/batch.ts";
 import type { LookupDatabase } from "@lexema/lookup/database.ts";
 import { exists, lookup, MAX_QUERY_LENGTH, rejectionOf } from "@lexema/lookup/lookup.ts";
 import { findNearby } from "@lexema/lookup/nearby.ts";
@@ -48,8 +50,8 @@ function queryRefusal(parameter: string, rejection: RejectedQuery): Reading {
 const unreadable = (parameter: string, value: string): Error => new Error(`${parameter} ${JSON.stringify(value)} was read and then refused`);
 
 /**
- * The lookups of one request, each word read once: a batch that names a word
- * twice, or a lemma several candidates share, costs one lookup.
+ * The lookups of one request, each word read once: a lemma several candidates
+ * share costs one lookup.
  */
 class Lookups {
   private readonly results = new Map<string, Promise<LookupResult>>();
@@ -271,23 +273,22 @@ const batchRoute: Route = async (request, _url, { batchWords: most }) => {
   const sent = batchWords(body, most);
   if (!sent.ok) return refused("invalid_body", sent.message);
   return read({ endpoint: "lookup/batch", words: sent.words.length }, async ({ db, releaseId }) => {
-    const lookups = new Lookups(db, releaseId);
-    const perWord = await Promise.all(
-      sent.words.map(async (word): Promise<LightJson[]> => {
-        const result = await lookups.of(word);
-        if (result.outcome !== "found") return [{ query: word, found: false, lemma: null, pos: null, pos_title: null }];
-        return (await candidatesOf(result, lookups.lemma)).map(({ reading }) => ({
-          query: word,
-          found: true,
-          id: idOf(reading),
-          lemma: reading.word,
-          pos: reading.pos,
-          pos_title: reading.posTitle,
-          attribution: attributionOf(reading.word),
-        }));
-      }),
-    );
-    return { status: 200, body: { release_id: releaseId, results: perWord.flat() } };
+    const { answers } = await lookupBatch({ db, releaseId, queries: sent.words });
+    const results = answers.flatMap((answer, at): LightJson[] => {
+      const word = sent.words[at];
+      if (answer.outcome === "rejected") throw unreadable(`q[${at}]`, word);
+      if (answer.outcome === "not-found") return [{ query: word, found: false, lemma: null, pos: null, pos_title: null }];
+      return answer.candidates.map((candidate) => ({
+        query: word,
+        found: true,
+        id: `${releaseId}:${candidate.lineNo}`,
+        lemma: candidate.word,
+        pos: candidate.pos,
+        pos_title: candidate.posTitle,
+        attribution: attributionOf(candidate.word),
+      }));
+    });
+    return { status: 200, body: { release_id: releaseId, results } };
   });
 };
 
