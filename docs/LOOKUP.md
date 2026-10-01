@@ -287,7 +287,9 @@ all; the three represented states are:
 
 `candidates[]` is never narrowed to one. More than one entry means the source
 did not choose. Each candidate is `recordId`, `word`, `pos`, a `ref` to its
-own `/word`, and `listing`.
+own `/word`, `listing`, and `expressions`: the lemma record's own
+[expressions](#expressions), so a form's page can show them (andavano shows
+*Expressions with andare*).
 
 `listing` is where the candidate's own table spells the query: its whole
 `forms[]` and the `evidence[]` rows the key hit, never empty. It is `undefined`

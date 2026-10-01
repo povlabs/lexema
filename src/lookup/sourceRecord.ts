@@ -5,13 +5,13 @@
 // everything here is a copy of source text with the pointer it was read from —
 // nothing is cleaned, translated or completed, except that Wikizionario's
 // missing-field placeholder is taken out of the hyphenation and the etymologies
-// (`withoutPlaceholder`, #255): it is a template, not data, and that an
-// expression's phrase takes the item rules below. What the tables already hold
+// (`withoutPlaceholder`, #255), because it is a template, not data, and that an
+// expression's phrase is tidied by the item rules of src/italian/expressions.ts
+// (ADR 0019). What the tables already hold
 // (senses, glosses, forms, grammar) is not re-read here: this module owns only
 // the pronunciation, the hyphenation, the etymologies, the three related-word
 // lists and each sense's examples, which is the data half of #20, and the
-// `proverbs[]` items a page lists as *Expressions* (#213), whose phrases pass
-// the item rules of src/italian/expressions.ts (ADR 0019).
+// `proverbs[]` items a page lists as *Expressions* (#213).
 //
 // The line is untrusted JSON as far as the type system knows, so every field is
 // checked for the shape it must have and skipped when it does not have it. A
