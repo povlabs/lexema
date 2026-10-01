@@ -1,0 +1,1151 @@
+exports[`bello's whole page is the page the snapshot holds (#385) 1`] = `
+<header class="border-b border-border">
+<div class="mx-auto w-full max-w-[75rem] px-4 sm:px-6 flex h-16 items-center">
+<a class="font-serif text-xl text-text-strong no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent" href="/">Lexema</a>
+</div>
+</header>
+<main class="mx-auto w-full max-w-[75rem] px-4 sm:px-6 flex-1 pt-6 pb-4">
+<form class="w-full max-w-[40rem]" role="search" action="/" method="get">
+<div data-list-empty="" role="group" class="relative flex w-full items-center rounded-[4px] border border-border-strong bg-surface-raised focus-within:border-accent">
+<svg class="pointer-events-none absolute left-4 size-4 text-text-muted" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+<circle cx="7" cy="7" r="4.75">
+</circle>
+<path d="m10.5 10.5 3.5 3.5" stroke-linecap="round">
+</path>
+</svg>
+<input data-list-empty="" autoComplete="off" spellCheck="false" autoCorrect="off" autoCapitalize="none" role="combobox" aria-expanded="false" aria-haspopup="listbox" aria-autocomplete="list" id="q" type="search" aria-label="Search an Italian word" placeholder="Search an Italian word" lang="it" enterKeyHint="search" class="w-full min-w-0 bg-transparent py-3 pr-24 pl-11 font-serif text-lg text-text-strong outline-none placeholder:font-sans placeholder:text-base placeholder:text-text-muted [&amp;::-webkit-search-cancel-button]:appearance-none" name="q" value="bello"/>
+<div class="pointer-events-none absolute inset-y-0 right-3 flex items-center gap-1.5">
+<a class="flex h-7 items-center leading-none pointer-events-auto w-7 justify-center font-sans text-lg text-text-muted no-underline hover:text-text focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent" href="/" aria-label="Clear search">×</a>
+</div>
+</div>
+</form>
+<div role="status" aria-live="polite" aria-atomic="true" class="sr-only">
+</div>
+<input id="base-ui-_R_6_-hidden-input" style="clip-path:inset(50%);overflow:hidden;white-space:nowrap;border:0;padding:0;width:1px;height:1px;margin:-1px;position:fixed;top:0;left:0" tabindex="-1" aria-hidden="true" value="bello"/>
+<h1 class="m-0 mt-12 font-serif text-[3.25rem] leading-none font-normal break-words text-text-strong sm:mt-16 sm:text-[4.5rem]" lang="it">bello</h1>
+<p class="m-0 mt-4 font-mono text-base text-text-muted sm:mt-6 sm:text-lg" aria-label="Pronunciation">
+<span>/ˈbɛllo/</span>
+</p>
+<nav aria-label="Readings">
+<ul class="m-0 mt-4 flex list-none flex-wrap gap-x-5 gap-y-1 p-0">
+<li>
+<a class="font-sans text-[0.85rem] text-text no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent" href="#reading-65">
+<span class="mr-1.5 text-accent">1</span>
+<span lang="it">Aggettivo</span>
+</a>
+</li>
+<li>
+<a class="font-sans text-[0.85rem] text-text no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent" href="#reading-66">
+<span class="mr-1.5 text-accent">2</span>
+<span lang="it">Sostantivo</span>
+</a>
+</li>
+<li>
+<a class="font-sans text-[0.85rem] text-text no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent" href="#reading-67">
+<span class="mr-1.5 text-accent">3</span>
+<span lang="it">Sostantivo</span>
+</a>
+</li>
+<li>
+<a class="font-sans text-[0.85rem] text-text no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent" href="#reading-96">
+<span class="mr-1.5 text-accent">4</span>
+<span lang="it">Aggettivo, forma flessa</span>
+</a>
+</li>
+</ul>
+</nav>
+<div class="mt-7 sm:mt-10">
+<article class="scroll-mt-6 mt-7 border-t border-border pt-7 first:mt-0 first:border-t-0 first:pt-0 sm:mt-10 sm:pt-10" id="reading-65" aria-labelledby="reading-heading-65" data-record="65" data-line="65">
+<h2 class="m-0 flex flex-wrap items-baseline gap-x-2.5 gap-y-1 font-sans text-[0.95rem] font-semibold text-text-strong" id="reading-heading-65">
+<span class="font-normal text-accent">1</span>
+<span class="font-normal text-text-muted" aria-hidden="true">·</span>
+<span lang="it">Aggettivo</span>
+<span class="inline-flex items-baseline gap-2.5">
+<span class="font-normal text-text-muted" aria-hidden="true">·</span>
+<span class="font-normal text-text-muted" lang="it">maschile, singolare</span>
+</span>
+</h2>
+<section class="mt-[1.375rem] sm:mt-7" aria-labelledby="definitions-65">
+<h3 class="m-0 mb-3 font-sans text-[0.8rem] font-normal text-text-muted" id="definitions-65">Definitions</h3>
+<div data-closed="" class="group/definitions">
+<ol class="m-0 flex list-none flex-col gap-4 p-0" id="definition-list-65">
+<li class="flex gap-4" data-definition="1">
+<span class="w-5 shrink-0 pt-1 font-mono text-[0.85rem] text-text-muted" aria-hidden="true">1.</span>
+<div class="min-w-0 flex-1">
+<p class="m-0 max-w-[48rem] font-serif text-[1.2rem] leading-snug text-text-strong wrap-anywhere sm:text-[1.3rem]" lang="it">che desta impressione di piacere e gradimento</p>
+</div>
+</li>
+<li class="hidden gap-4 group-data-open/definitions:flex" data-definition="2">
+<span class="w-5 shrink-0 pt-1 font-mono text-[0.85rem] text-text-muted" aria-hidden="true">2.</span>
+<div class="min-w-0 flex-1">
+<p class="m-0 max-w-[48rem] font-serif text-[1.2rem] leading-snug text-text-strong wrap-anywhere sm:text-[1.3rem]" lang="it">che corrisponde ai canoni della bellezza</p>
+</div>
+</li>
+<li class="hidden gap-4 group-data-open/definitions:flex" data-definition="3">
+<span class="w-5 shrink-0 pt-1 font-mono text-[0.85rem] text-text-muted" aria-hidden="true">3.</span>
+<div class="min-w-0 flex-1">
+<p class="m-0 max-w-[48rem] font-serif text-[1.2rem] leading-snug text-text-strong wrap-anywhere sm:text-[1.3rem]" lang="it">
+<span class="italic text-text-muted">(broadly) </span>gradito, con tratti somatici e quindi estetici apprezzati</p>
+<p class="m-0 mt-2 max-w-[48rem] font-serif text-[1.05rem] italic text-text-muted">
+<span lang="it">&quot;Ha una faccia bella. Una domanda: ma è anche saggio?&quot;</span>
+</p>
+</div>
+</li>
+<li class="hidden gap-4 group-data-open/definitions:flex" data-definition="4">
+<span class="w-5 shrink-0 pt-1 font-mono text-[0.85rem] text-text-muted" aria-hidden="true">4.</span>
+<div class="min-w-0 flex-1">
+<p class="m-0 max-w-[48rem] font-serif text-[1.2rem] leading-snug text-text-strong wrap-anywhere sm:text-[1.3rem]" lang="it">sereno</p>
+<p class="m-0 mt-2 max-w-[48rem] font-serif text-[1.05rem] italic text-text-muted">
+<span lang="it">Oggi il tempo è bello</span>
+</p>
+</div>
+</li>
+<li class="hidden gap-4 group-data-open/definitions:flex" data-definition="5">
+<span class="w-5 shrink-0 pt-1 font-mono text-[0.85rem] text-text-muted" aria-hidden="true">5.</span>
+<div class="min-w-0 flex-1">
+<p class="m-0 max-w-[48rem] font-serif text-[1.2rem] leading-snug text-text-strong wrap-anywhere sm:text-[1.3rem]" lang="it">
+<span class="italic text-text-muted">(figuratively) </span>che suscita sentimenti positivi ed entusiasmo</p>
+<p class="m-0 mt-2 max-w-[48rem] font-serif text-[1.05rem] italic text-text-muted">
+<span lang="it">è bello vedere tanti giovani ballare assieme</span>
+</p>
+</div>
+</li>
+<li class="hidden gap-4 group-data-open/definitions:flex" data-definition="6">
+<span class="w-5 shrink-0 pt-1 font-mono text-[0.85rem] text-text-muted" aria-hidden="true">6.</span>
+<div class="min-w-0 flex-1">
+<p class="m-0 max-w-[48rem] font-serif text-[1.2rem] leading-snug text-text-strong wrap-anywhere sm:text-[1.3rem]" lang="it">
+<span class="italic text-text-muted">(familiare) </span>agevole, che porta con sé un puro sentire</p>
+<p class="m-0 mt-2 max-w-[48rem] font-serif text-[1.05rem] italic text-text-muted">
+<span lang="it">anche qua è bello</span>
+</p>
+</div>
+</li>
+</ol>
+<div class="mt-2 ml-9 block">
+<button type="button" tabindex="0" aria-disabled="false" aria-controls="definition-list-65" aria-expanded="false" class="group inline cursor-pointer font-sans text-[0.8rem] text-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent">
+<span class="group-data-panel-open:hidden">+ more</span>
+<span class="hidden group-data-panel-open:inline">less</span>
+</button>
+</div>
+</div>
+</section>
+<section class="mt-[1.375rem] sm:mt-7" aria-labelledby="forms-65">
+<h3 class="m-0 mb-3 font-sans text-[0.8rem] font-normal text-text-muted" id="forms-65">Forms</h3>
+<div class="grid grid-cols-2 gap-x-6 sm:grid-cols-[7rem_15rem_15rem]" role="table" aria-label="Forms of bello" data-grid="">
+<div role="row" class="contents">
+<span class="max-sm:hidden" role="columnheader">
+</span>
+<span class="pb-3 font-sans text-[0.75rem] text-text-muted" role="columnheader" lang="it">singolare</span>
+<span class="pb-3 font-sans text-[0.75rem] text-text-muted" role="columnheader" lang="it">plurale</span>
+</div>
+<div role="row" class="contents">
+<span class="pt-1 font-sans text-[0.75rem] text-text-muted max-sm:col-span-2 max-sm:pt-0 max-sm:pb-1.5 max-sm:font-semibold" role="rowheader" lang="it">maschile</span>
+<div class="min-w-0 pb-4" role="cell">
+<div class="[&amp;+&amp;]:mt-2">
+<p class="m-0 font-mono text-[1.05rem] text-text-strong wrap-anywhere" lang="it">
+<span data-headword="">bello</span>
+</p>
+<p class="m-0 mt-1 font-mono text-[0.75rem] text-text-muted" lang="it">
+<span>
+<span class="max-sm:block">il bello</span>
+</span>
+<span>
+<span class="px-2 max-sm:hidden" aria-hidden="true">·</span>
+<span class="max-sm:block">un bello</span>
+</span>
+</p>
+</div>
+</div>
+<div class="min-w-0 pb-4" role="cell">
+<div class="[&amp;+&amp;]:mt-2">
+<p class="m-0 font-mono text-[1.05rem] text-text-strong wrap-anywhere" lang="it">
+<span data-form="0">belli</span>
+</p>
+<p class="m-0 mt-1 font-mono text-[0.75rem] text-text-muted" lang="it">
+<span>
+<span class="max-sm:block">i belli</span>
+</span>
+<span>
+<span class="px-2 max-sm:hidden" aria-hidden="true">·</span>
+<span class="max-sm:block">dei belli</span>
+</span>
+</p>
+</div>
+</div>
+</div>
+<div role="row" class="contents">
+<span class="pt-1 font-sans text-[0.75rem] text-text-muted max-sm:col-span-2 max-sm:pt-0 max-sm:pb-1.5 max-sm:font-semibold" role="rowheader" lang="it">femminile</span>
+<div class="min-w-0 pb-4" role="cell">
+<div class="[&amp;+&amp;]:mt-2">
+<p class="m-0 font-mono text-[1.05rem] text-text-strong wrap-anywhere" lang="it">
+<span data-form="1">bella</span>
+</p>
+<p class="m-0 mt-1 font-mono text-[0.75rem] text-text-muted" lang="it">
+<span>
+<span class="max-sm:block">la bella</span>
+</span>
+<span>
+<span class="px-2 max-sm:hidden" aria-hidden="true">·</span>
+<span class="max-sm:block">una bella</span>
+</span>
+</p>
+</div>
+</div>
+<div class="min-w-0 pb-4" role="cell">
+<div class="[&amp;+&amp;]:mt-2">
+<p class="m-0 font-mono text-[1.05rem] text-text-strong wrap-anywhere" lang="it">
+<span data-form="2">belle</span>
+</p>
+<p class="m-0 mt-1 font-mono text-[0.75rem] text-text-muted" lang="it">
+<span>
+<span class="max-sm:block">le belle</span>
+</span>
+<span>
+<span class="px-2 max-sm:hidden" aria-hidden="true">·</span>
+<span class="max-sm:block">delle belle</span>
+</span>
+</p>
+</div>
+</div>
+</div>
+</div>
+</section>
+</article>
+<article class="scroll-mt-6 mt-7 border-t border-border pt-7 first:mt-0 first:border-t-0 first:pt-0 sm:mt-10 sm:pt-10" id="reading-66" aria-labelledby="reading-heading-66" data-record="66" data-line="66">
+<h2 class="m-0 flex flex-wrap items-baseline gap-x-2.5 gap-y-1 font-sans text-[0.95rem] font-semibold text-text-strong" id="reading-heading-66">
+<span class="font-normal text-accent">2</span>
+<span class="font-normal text-text-muted" aria-hidden="true">·</span>
+<span lang="it">Sostantivo</span>
+<span class="inline-flex items-baseline gap-2.5">
+<span class="font-normal text-text-muted" aria-hidden="true">·</span>
+<span class="font-normal text-text-muted" lang="it">maschile, invariabile</span>
+</span>
+</h2>
+<section class="mt-[1.375rem] sm:mt-7" aria-labelledby="definitions-66">
+<h3 class="m-0 mb-3 font-sans text-[0.8rem] font-normal text-text-muted" id="definitions-66">Definitions</h3>
+<div data-closed="" class="group/definitions">
+<ol class="m-0 flex list-none flex-col gap-4 p-0" id="definition-list-66">
+<li class="flex gap-4" data-definition="1">
+<span class="w-5 shrink-0 pt-1 font-mono text-[0.85rem] text-text-muted" aria-hidden="true">1.</span>
+<div class="min-w-0 flex-1">
+<p class="m-0 max-w-[48rem] font-serif text-[1.2rem] leading-snug text-text-strong wrap-anywhere sm:text-[1.3rem]" lang="it">categoria positiva dell&#x27;estetica; fin dall&#x27;antichità ha rappresentato uno dei tre generi supremi di valori, assieme al vero e al bene</p>
+</div>
+</li>
+<li class="hidden gap-4 group-data-open/definitions:flex" data-definition="2">
+<span class="w-5 shrink-0 pt-1 font-mono text-[0.85rem] text-text-muted" aria-hidden="true">2.</span>
+<div class="min-w-0 flex-1">
+<p class="m-0 max-w-[48rem] font-serif text-[1.2rem] leading-snug text-text-strong wrap-anywhere sm:text-[1.3rem]" lang="it">condizione climatica buona</p>
+<p class="m-0 mt-2 max-w-[48rem] font-serif text-[1.05rem] italic text-text-muted">
+<span lang="it">domani riprenderà il bello?</span>
+</p>
+</div>
+</li>
+</ol>
+<div class="mt-2 ml-9 block">
+<button type="button" tabindex="0" aria-disabled="false" aria-controls="definition-list-66" aria-expanded="false" class="group inline cursor-pointer font-sans text-[0.8rem] text-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent">
+<span class="group-data-panel-open:hidden">+ more</span>
+<span class="hidden group-data-panel-open:inline">less</span>
+</button>
+</div>
+</div>
+</section>
+<section class="mt-[1.375rem] sm:mt-7" aria-labelledby="forms-66">
+<h3 class="m-0 mb-3 font-sans text-[0.8rem] font-normal text-text-muted" id="forms-66">Forms</h3>
+<div class="grid grid-cols-2 gap-x-6 sm:grid-cols-[7rem_15rem_15rem]" role="table" aria-label="Forms of bello" data-grid="">
+<div role="row" class="contents">
+<span class="max-sm:hidden" role="columnheader">
+</span>
+<span class="pb-3 font-sans text-[0.75rem] text-text-muted" role="columnheader" lang="it">singolare</span>
+<span class="pb-3 font-sans text-[0.75rem] text-text-muted" role="columnheader" lang="it">plurale</span>
+</div>
+<div role="row" class="contents">
+<span class="pt-1 font-sans text-[0.75rem] text-text-muted max-sm:col-span-2 max-sm:pt-0 max-sm:pb-1.5 max-sm:font-semibold" role="rowheader" lang="it">maschile</span>
+<div class="min-w-0 pb-4" role="cell">
+<div class="[&amp;+&amp;]:mt-2">
+<p class="m-0 font-mono text-[1.05rem] text-text-strong wrap-anywhere" lang="it">
+<span data-headword="">bello</span>
+</p>
+<p class="m-0 mt-1 font-mono text-[0.75rem] text-text-muted" lang="it">
+<span>
+<span class="max-sm:block">il bello</span>
+</span>
+<span>
+<span class="px-2 max-sm:hidden" aria-hidden="true">·</span>
+<span class="max-sm:block">un bello</span>
+</span>
+</p>
+</div>
+</div>
+<div class="min-w-0 pb-4" role="cell">
+<span class="font-mono text-text-muted" aria-hidden="true">—</span>
+</div>
+</div>
+</div>
+</section>
+</article>
+<article class="scroll-mt-6 mt-7 border-t border-border pt-7 first:mt-0 first:border-t-0 first:pt-0 sm:mt-10 sm:pt-10" id="reading-67" aria-labelledby="reading-heading-67" data-record="67" data-line="67">
+<h2 class="m-0 flex flex-wrap items-baseline gap-x-2.5 gap-y-1 font-sans text-[0.95rem] font-semibold text-text-strong" id="reading-heading-67">
+<span class="font-normal text-accent">3</span>
+<span class="font-normal text-text-muted" aria-hidden="true">·</span>
+<span lang="it">Sostantivo</span>
+<span class="inline-flex items-baseline gap-2.5">
+<span class="font-normal text-text-muted" aria-hidden="true">·</span>
+<span class="font-normal text-text-muted" lang="it">maschile, singolare</span>
+</span>
+</h2>
+<section class="mt-[1.375rem] sm:mt-7" aria-labelledby="definitions-67">
+<h3 class="m-0 mb-3 font-sans text-[0.8rem] font-normal text-text-muted" id="definitions-67">Definitions</h3>
+<div data-closed="" class="group/definitions">
+<ol class="m-0 flex list-none flex-col gap-4 p-0" id="definition-list-67">
+<li class="flex gap-4" data-definition="1">
+<span class="w-5 shrink-0 pt-1 font-mono text-[0.85rem] text-text-muted" aria-hidden="true">1.</span>
+<div class="min-w-0 flex-1">
+<p class="m-0 max-w-[48rem] font-serif text-[1.2rem] leading-snug text-text-strong wrap-anywhere sm:text-[1.3rem]" lang="it">individuo di particolare fascino</p>
+</div>
+</li>
+</ol>
+</div>
+</section>
+<section class="mt-[1.375rem] sm:mt-7" aria-labelledby="forms-67">
+<h3 class="m-0 mb-3 font-sans text-[0.8rem] font-normal text-text-muted" id="forms-67">Forms</h3>
+<div class="grid grid-cols-2 gap-x-6 sm:grid-cols-[7rem_15rem_15rem]" role="table" aria-label="Forms of bello" data-grid="">
+<div role="row" class="contents">
+<span class="max-sm:hidden" role="columnheader">
+</span>
+<span class="pb-3 font-sans text-[0.75rem] text-text-muted" role="columnheader" lang="it">singolare</span>
+<span class="pb-3 font-sans text-[0.75rem] text-text-muted" role="columnheader" lang="it">plurale</span>
+</div>
+<div role="row" class="contents">
+<span class="pt-1 font-sans text-[0.75rem] text-text-muted max-sm:col-span-2 max-sm:pt-0 max-sm:pb-1.5 max-sm:font-semibold" role="rowheader" lang="it">maschile</span>
+<div class="min-w-0 pb-4" role="cell">
+<div class="[&amp;+&amp;]:mt-2">
+<p class="m-0 font-mono text-[1.05rem] text-text-strong wrap-anywhere" lang="it">
+<span data-headword="">bello</span>
+</p>
+<p class="m-0 mt-1 font-mono text-[0.75rem] text-text-muted" lang="it">
+<span>
+<span class="max-sm:block">il bello</span>
+</span>
+<span>
+<span class="px-2 max-sm:hidden" aria-hidden="true">·</span>
+<span class="max-sm:block">un bello</span>
+</span>
+</p>
+</div>
+</div>
+<div class="min-w-0 pb-4" role="cell">
+<div class="[&amp;+&amp;]:mt-2">
+<p class="m-0 font-mono text-[1.05rem] text-text-strong wrap-anywhere" lang="it">
+<span data-form="0">belli</span>
+</p>
+<p class="m-0 mt-1 font-mono text-[0.75rem] text-text-muted" lang="it">
+<span>
+<span class="max-sm:block">i belli</span>
+</span>
+<span>
+<span class="px-2 max-sm:hidden" aria-hidden="true">·</span>
+<span class="max-sm:block">dei belli</span>
+</span>
+</p>
+</div>
+</div>
+</div>
+</div>
+</section>
+</article>
+<article class="scroll-mt-6 mt-7 border-t border-border pt-7 first:mt-0 first:border-t-0 first:pt-0 sm:mt-10 sm:pt-10" id="reading-96" aria-labelledby="reading-heading-96" data-record="96" data-line="96">
+<h2 class="m-0 flex flex-wrap items-baseline gap-x-2.5 gap-y-1 font-sans text-[0.95rem] font-semibold text-text-strong" id="reading-heading-96">
+<span class="font-normal text-accent">4</span>
+<span class="font-normal text-text-muted" aria-hidden="true">·</span>
+<span lang="it">Aggettivo, forma flessa</span>
+<span class="inline-flex items-baseline gap-2.5">
+<span class="font-normal text-text-muted" aria-hidden="true">·</span>
+<span class="font-normal text-text-muted" lang="it">femminile, singolare</span>
+</span>
+</h2>
+<section class="mt-[1.375rem] sm:mt-7" aria-labelledby="definitions-96">
+<h3 class="m-0 mb-3 font-sans text-[0.8rem] font-normal text-text-muted" id="definitions-96">Definitions</h3>
+<div data-closed="" class="group/definitions">
+<ol class="m-0 flex list-none flex-col gap-4 p-0" id="definition-list-96">
+<li class="flex gap-4" data-definition="1">
+<span class="w-5 shrink-0 pt-1 font-mono text-[0.85rem] text-text-muted" aria-hidden="true">1.</span>
+<div class="min-w-0 flex-1">
+<p class="m-0 max-w-[48rem] font-serif text-[1.2rem] leading-snug text-text-strong wrap-anywhere sm:text-[1.3rem]" lang="it">femminile singolare di <a class="text-accent no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent" href="/?q=bello">bello</a>
+</p>
+</div>
+</li>
+</ol>
+</div>
+</section>
+<section class="mt-[1.375rem] sm:mt-7" aria-labelledby="forms-96">
+<h3 class="m-0 mb-3 font-sans text-[0.8rem] font-normal text-text-muted" id="forms-96">Forms</h3>
+<div class="grid grid-cols-2 gap-x-6 sm:grid-cols-[7rem_15rem_15rem]" role="table" aria-label="Forms of bella" data-grid="">
+<div role="row" class="contents">
+<span class="max-sm:hidden" role="columnheader">
+</span>
+<span class="pb-3 font-sans text-[0.75rem] text-text-muted" role="columnheader" lang="it">singolare</span>
+<span class="pb-3 font-sans text-[0.75rem] text-text-muted" role="columnheader" lang="it">plurale</span>
+</div>
+<div role="row" class="contents">
+<span class="pt-1 font-sans text-[0.75rem] text-text-muted max-sm:col-span-2 max-sm:pt-0 max-sm:pb-1.5 max-sm:font-semibold" role="rowheader" lang="it">maschile</span>
+<div class="min-w-0 pb-4" role="cell">
+<div class="[&amp;+&amp;]:mt-2">
+<p class="m-0 font-mono text-[1.05rem] text-text-strong wrap-anywhere" lang="it">
+<span data-form="0">bello</span>
+</p>
+<p class="m-0 mt-1 font-mono text-[0.75rem] text-text-muted" lang="it">
+<span>
+<span class="max-sm:block">il bello</span>
+</span>
+<span>
+<span class="px-2 max-sm:hidden" aria-hidden="true">·</span>
+<span class="max-sm:block">un bello</span>
+</span>
+</p>
+</div>
+</div>
+<div class="min-w-0 pb-4" role="cell">
+<div class="[&amp;+&amp;]:mt-2">
+<p class="m-0 font-mono text-[1.05rem] text-text-strong wrap-anywhere" lang="it">
+<span data-form="1">belli</span>
+</p>
+<p class="m-0 mt-1 font-mono text-[0.75rem] text-text-muted" lang="it">
+<span>
+<span class="max-sm:block">i belli</span>
+</span>
+<span>
+<span class="px-2 max-sm:hidden" aria-hidden="true">·</span>
+<span class="max-sm:block">dei belli</span>
+</span>
+</p>
+</div>
+</div>
+</div>
+<div role="row" class="contents">
+<span class="pt-1 font-sans text-[0.75rem] text-text-muted max-sm:col-span-2 max-sm:pt-0 max-sm:pb-1.5 max-sm:font-semibold" role="rowheader" lang="it">femminile</span>
+<div class="min-w-0 pb-4" role="cell">
+<div class="[&amp;+&amp;]:mt-2">
+<p class="m-0 font-mono text-[1.05rem] text-text-strong wrap-anywhere" lang="it">
+<span data-headword="">bella</span>
+</p>
+<p class="m-0 mt-1 font-mono text-[0.75rem] text-text-muted" lang="it">
+<span>
+<span class="max-sm:block">la bella</span>
+</span>
+<span>
+<span class="px-2 max-sm:hidden" aria-hidden="true">·</span>
+<span class="max-sm:block">una bella</span>
+</span>
+</p>
+</div>
+</div>
+<div class="min-w-0 pb-4" role="cell">
+<div class="[&amp;+&amp;]:mt-2">
+<p class="m-0 font-mono text-[1.05rem] text-text-strong wrap-anywhere" lang="it">
+<span data-form="2">belle</span>
+</p>
+<p class="m-0 mt-1 font-mono text-[0.75rem] text-text-muted" lang="it">
+<span>
+<span class="max-sm:block">le belle</span>
+</span>
+<span>
+<span class="px-2 max-sm:hidden" aria-hidden="true">·</span>
+<span class="max-sm:block">delle belle</span>
+</span>
+</p>
+</div>
+</div>
+</div>
+</div>
+<p class="m-0 mt-4 mb-3 font-sans text-[0.75rem] font-semibold text-text-muted" lang="it">superlativo</p>
+<div class="grid grid-cols-2 gap-x-6 sm:grid-cols-[7rem_15rem_15rem]" role="table" aria-label="superlativo" data-grid="">
+<div role="row" class="contents">
+<span class="max-sm:hidden" role="columnheader">
+</span>
+<span class="pb-3 font-sans text-[0.75rem] text-text-muted" role="columnheader" lang="it">singolare</span>
+<span class="pb-3 font-sans text-[0.75rem] text-text-muted" role="columnheader" lang="it">plurale</span>
+</div>
+<div role="row" class="contents">
+<span class="pt-1 font-sans text-[0.75rem] text-text-muted max-sm:col-span-2 max-sm:pt-0 max-sm:pb-1.5 max-sm:font-semibold" role="rowheader" lang="it">maschile</span>
+<div class="min-w-0 pb-4" role="cell">
+<div class="[&amp;+&amp;]:mt-2">
+<p class="m-0 font-mono text-[1.05rem] text-text-strong wrap-anywhere" lang="it">
+<span data-form="3">bellissimo</span>
+</p>
+<p class="m-0 mt-1 font-mono text-[0.75rem] text-text-muted" lang="it">
+<span>
+<span class="max-sm:block">il bellissimo</span>
+</span>
+<span>
+<span class="px-2 max-sm:hidden" aria-hidden="true">·</span>
+<span class="max-sm:block">un bellissimo</span>
+</span>
+</p>
+</div>
+</div>
+<div class="min-w-0 pb-4" role="cell">
+<div class="[&amp;+&amp;]:mt-2">
+<p class="m-0 font-mono text-[1.05rem] text-text-strong wrap-anywhere" lang="it">
+<span data-form="4">bellissimi</span>
+</p>
+<p class="m-0 mt-1 font-mono text-[0.75rem] text-text-muted" lang="it">
+<span>
+<span class="max-sm:block">i bellissimi</span>
+</span>
+<span>
+<span class="px-2 max-sm:hidden" aria-hidden="true">·</span>
+<span class="max-sm:block">dei bellissimi</span>
+</span>
+</p>
+</div>
+</div>
+</div>
+<div role="row" class="contents">
+<span class="pt-1 font-sans text-[0.75rem] text-text-muted max-sm:col-span-2 max-sm:pt-0 max-sm:pb-1.5 max-sm:font-semibold" role="rowheader" lang="it">femminile</span>
+<div class="min-w-0 pb-4" role="cell">
+<div class="[&amp;+&amp;]:mt-2">
+<p class="m-0 font-mono text-[1.05rem] text-text-strong wrap-anywhere" lang="it">
+<span data-form="5">bellissima</span>
+</p>
+<p class="m-0 mt-1 font-mono text-[0.75rem] text-text-muted" lang="it">
+<span>
+<span class="max-sm:block">la bellissima</span>
+</span>
+<span>
+<span class="px-2 max-sm:hidden" aria-hidden="true">·</span>
+<span class="max-sm:block">una bellissima</span>
+</span>
+</p>
+</div>
+</div>
+<div class="min-w-0 pb-4" role="cell">
+<div class="[&amp;+&amp;]:mt-2">
+<p class="m-0 font-mono text-[1.05rem] text-text-strong wrap-anywhere" lang="it">
+<span data-form="6">bellissime</span>
+</p>
+<p class="m-0 mt-1 font-mono text-[0.75rem] text-text-muted" lang="it">
+<span>
+<span class="max-sm:block">le bellissime</span>
+</span>
+<span>
+<span class="px-2 max-sm:hidden" aria-hidden="true">·</span>
+<span class="max-sm:block">delle bellissime</span>
+</span>
+</p>
+</div>
+</div>
+</div>
+</div>
+</section>
+</article>
+</div>
+<div class="mt-7 border-t border-border pt-7 sm:mt-10 sm:pt-10">
+<section class="mt-6 first:mt-0 sm:mt-8" aria-labelledby="etymology">
+<h2 class="m-0 mb-3 font-sans text-[0.8rem] font-normal text-text-muted" id="etymology">Etymology</h2>
+<div data-closed="" data-one-line="" class="group/line flex max-w-[48rem] items-baseline gap-1.5 [&amp;+&amp;]:mt-3 data-open:block">
+<p id="_R_66q_" class="m-0 max-w-[48rem] font-serif text-[1.1rem] text-text min-w-0 truncate group-data-open/line:inline group-data-open/line:whitespace-normal" lang="it">dal latino bĕllus ossia &quot;carino, grazioso&quot;</p>
+<div class="inline shrink-0 group-data-open/line:ml-1.5">
+<button type="button" tabindex="0" aria-disabled="false" aria-controls="_R_66q_" aria-expanded="false" class="group inline cursor-pointer font-sans text-[0.8rem] text-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent">
+<span class="group-data-panel-open:hidden">+ more</span>
+<span class="hidden group-data-panel-open:inline">less</span>
+</button>
+</div>
+</div>
+</section>
+<section class="mt-6 first:mt-0 sm:mt-8" aria-labelledby="synonyms">
+<h2 class="m-0 mb-3 font-sans text-[0.8rem] font-normal text-text-muted" id="synonyms">Synonyms</h2>
+<ul data-closed="" id="synonyms-words" class="group/words m-0 flex list-none flex-wrap items-baseline gap-x-3 gap-y-2 p-0">
+<li class="flex items-baseline gap-3" data-item="">
+<a class="cursor-pointer font-serif text-[1.1rem] text-text-strong no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent" href="/?q=affascinante" lang="it">affascinante</a>
+<span class="font-sans text-[0.75rem] text-text-muted" aria-hidden="true">·</span>
+</li>
+<li class="flex items-baseline gap-3" data-item="">
+<a class="cursor-pointer font-serif text-[1.1rem] text-text-strong no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent" href="/?q=aggraziato" lang="it">aggraziato</a>
+<span class="font-sans text-[0.75rem] text-text-muted" aria-hidden="true">·</span>
+</li>
+<li class="flex items-baseline gap-3" data-item="">
+<a class="cursor-pointer font-serif text-[1.1rem] text-text-strong no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent" href="/?q=appariscente" lang="it">appariscente</a>
+<span class="font-sans text-[0.75rem] text-text-muted" aria-hidden="true">·</span>
+</li>
+<li class="flex items-baseline gap-3" data-item="">
+<a class="cursor-pointer font-serif text-[1.1rem] text-text-strong no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent" href="/?q=armonico" lang="it">armonico</a>
+<span class="font-sans text-[0.75rem] text-text-muted" aria-hidden="true">·</span>
+</li>
+<li class="flex items-baseline gap-3" data-item="">
+<a class="cursor-pointer font-serif text-[1.1rem] text-text-strong no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent" href="/?q=armonioso" lang="it">armonioso</a>
+<span class="font-sans text-[0.75rem] text-text-muted" aria-hidden="true">·</span>
+</li>
+<li class="flex items-baseline gap-3" data-item="">
+<a class="cursor-pointer font-serif text-[1.1rem] text-text-strong no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent" href="/?q=attraente" lang="it">attraente</a>
+<span class="font-sans text-[0.75rem] text-text-muted" aria-hidden="true">·</span>
+</li>
+<li class="flex items-baseline gap-3" data-item="">
+<a class="cursor-pointer font-serif text-[1.1rem] text-text-strong no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent" href="/?q=avvenente" lang="it">avvenente</a>
+<span class="font-sans text-[0.75rem] text-text-muted" aria-hidden="true">·</span>
+</li>
+<li class="flex items-baseline gap-3" data-item="">
+<a class="cursor-pointer font-serif text-[1.1rem] text-text-strong no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent" href="/?q=ben%20fatto" lang="it">ben fatto</a>
+<span class="hidden font-sans text-[0.75rem] text-text-muted group-data-open/words:inline" aria-hidden="true">·</span>
+</li>
+<li class="hidden items-baseline gap-3 group-data-open/words:flex group-data-measuring/words:flex" data-item="">
+<a class="cursor-pointer font-serif text-[1.1rem] text-text-strong no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent" href="/?q=benfatto" lang="it">benfatto</a>
+<span class="font-sans text-[0.75rem] text-text-muted" aria-hidden="true">·</span>
+</li>
+<li class="hidden items-baseline gap-3 group-data-open/words:flex group-data-measuring/words:flex" data-item="">
+<a class="cursor-pointer font-serif text-[1.1rem] text-text-strong no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent" href="/?q=carino" lang="it">carino</a>
+<span class="font-sans text-[0.75rem] text-text-muted" aria-hidden="true">·</span>
+</li>
+<li class="hidden items-baseline gap-3 group-data-open/words:flex group-data-measuring/words:flex" data-item="">
+<a class="cursor-pointer font-serif text-[1.1rem] text-text-strong no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent" href="/?q=delizioso" lang="it">delizioso</a>
+<span class="font-sans text-[0.75rem] text-text-muted" aria-hidden="true">·</span>
+</li>
+<li class="hidden items-baseline gap-3 group-data-open/words:flex group-data-measuring/words:flex" data-item="">
+<a class="cursor-pointer font-serif text-[1.1rem] text-text-strong no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent" href="/?q=elegante" lang="it">elegante</a>
+<span class="font-sans text-[0.75rem] text-text-muted" aria-hidden="true">·</span>
+</li>
+<li class="hidden items-baseline gap-3 group-data-open/words:flex group-data-measuring/words:flex" data-item="">
+<a class="cursor-pointer font-serif text-[1.1rem] text-text-strong no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent" href="/?q=equilibrato" lang="it">equilibrato</a>
+<span class="font-sans text-[0.75rem] text-text-muted" aria-hidden="true">·</span>
+</li>
+<li class="hidden items-baseline gap-3 group-data-open/words:flex group-data-measuring/words:flex" data-item="">
+<a class="cursor-pointer font-serif text-[1.1rem] text-text-strong no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent" href="/?q=gradevole" lang="it">gradevole</a>
+<span class="font-sans text-[0.75rem] text-text-muted" aria-hidden="true">·</span>
+</li>
+<li class="hidden items-baseline gap-3 group-data-open/words:flex group-data-measuring/words:flex" data-item="">
+<a class="cursor-pointer font-serif text-[1.1rem] text-text-strong no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent" href="/?q=grazioso" lang="it">grazioso</a>
+<span class="font-sans text-[0.75rem] text-text-muted" aria-hidden="true">·</span>
+</li>
+<li class="hidden items-baseline gap-3 group-data-open/words:flex group-data-measuring/words:flex" data-item="">
+<a class="cursor-pointer font-serif text-[1.1rem] text-text-strong no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent" href="/?q=incantevole" lang="it">incantevole</a>
+<span class="font-sans text-[0.75rem] text-text-muted" aria-hidden="true">·</span>
+</li>
+<li class="hidden items-baseline gap-3 group-data-open/words:flex group-data-measuring/words:flex" data-item="">
+<a class="cursor-pointer font-serif text-[1.1rem] text-text-strong no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent" href="/?q=leggiadro" lang="it">leggiadro</a>
+<span class="font-sans text-[0.75rem] text-text-muted" aria-hidden="true">·</span>
+</li>
+<li class="hidden items-baseline gap-3 group-data-open/words:flex group-data-measuring/words:flex" data-item="">
+<a class="cursor-pointer font-serif text-[1.1rem] text-text-strong no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent" href="/?q=magnifico" lang="it">magnifico</a>
+<span class="font-sans text-[0.75rem] text-text-muted" aria-hidden="true">·</span>
+</li>
+<li class="hidden items-baseline gap-3 group-data-open/words:flex group-data-measuring/words:flex" data-item="">
+<a class="cursor-pointer font-serif text-[1.1rem] text-text-strong no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent" href="/?q=notevole" lang="it">notevole</a>
+<span class="font-sans text-[0.75rem] text-text-muted" aria-hidden="true">·</span>
+</li>
+<li class="hidden items-baseline gap-3 group-data-open/words:flex group-data-measuring/words:flex" data-item="">
+<a class="cursor-pointer font-serif text-[1.1rem] text-text-strong no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent" href="/?q=piacente" lang="it">piacente</a>
+<span class="font-sans text-[0.75rem] text-text-muted" aria-hidden="true">·</span>
+</li>
+<li class="hidden items-baseline gap-3 group-data-open/words:flex group-data-measuring/words:flex" data-item="">
+<a class="cursor-pointer font-serif text-[1.1rem] text-text-strong no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent" href="/?q=piacevole" lang="it">piacevole</a>
+<span class="font-sans text-[0.75rem] text-text-muted" aria-hidden="true">·</span>
+</li>
+<li class="hidden items-baseline gap-3 group-data-open/words:flex group-data-measuring/words:flex" data-item="">
+<a class="cursor-pointer font-serif text-[1.1rem] text-text-strong no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent" href="/?q=proporzionato" lang="it">proporzionato</a>
+<span class="font-sans text-[0.75rem] text-text-muted" aria-hidden="true">·</span>
+</li>
+<li class="hidden items-baseline gap-3 group-data-open/words:flex group-data-measuring/words:flex" data-item="">
+<a class="cursor-pointer font-serif text-[1.1rem] text-text-strong no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent" href="/?q=ben%20proporzionato" lang="it">ben proporzionato</a>
+<span class="font-sans text-[0.75rem] text-text-muted" aria-hidden="true">·</span>
+</li>
+<li class="hidden items-baseline gap-3 group-data-open/words:flex group-data-measuring/words:flex" data-item="">
+<a class="cursor-pointer font-serif text-[1.1rem] text-text-strong no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent" href="/?q=scultoreo" lang="it">scultoreo</a>
+<span class="font-sans text-[0.75rem] text-text-muted" aria-hidden="true">·</span>
+</li>
+<li class="hidden items-baseline gap-3 group-data-open/words:flex group-data-measuring/words:flex" data-item="">
+<a class="cursor-pointer font-serif text-[1.1rem] text-text-strong no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent" href="/?q=seducente" lang="it">seducente</a>
+<span class="font-sans text-[0.75rem] text-text-muted" aria-hidden="true">·</span>
+</li>
+<li class="hidden items-baseline gap-3 group-data-open/words:flex group-data-measuring/words:flex" data-item="">
+<a class="cursor-pointer font-serif text-[1.1rem] text-text-strong no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent" href="/?q=splendido" lang="it">splendido</a>
+<span class="font-sans text-[0.75rem] text-text-muted" aria-hidden="true">·</span>
+</li>
+<li class="hidden items-baseline gap-3 group-data-open/words:flex group-data-measuring/words:flex" data-item="">
+<a class="cursor-pointer font-serif text-[1.1rem] text-text-strong no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent" href="/?q=stupendo" lang="it">stupendo</a>
+<span class="font-sans text-[0.75rem] text-text-muted" aria-hidden="true">·</span>
+</li>
+<li class="hidden items-baseline gap-3 group-data-open/words:flex group-data-measuring/words:flex" data-item="">
+<a class="cursor-pointer font-serif text-[1.1rem] text-text-strong no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent" href="/?q=vistoso" lang="it">vistoso</a>
+<span class="font-sans text-[0.75rem] text-text-muted" aria-hidden="true">·</span>
+</li>
+<li class="hidden items-baseline gap-3 group-data-open/words:flex group-data-measuring/words:flex" data-item="">
+<a class="cursor-pointer font-serif text-[1.1rem] text-text-strong no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent" href="/?q=ameno" lang="it">ameno</a>
+<span class="font-sans text-[0.75rem] text-text-muted" aria-hidden="true">·</span>
+</li>
+<li class="hidden items-baseline gap-3 group-data-open/words:flex group-data-measuring/words:flex" data-item="">
+<a class="cursor-pointer font-serif text-[1.1rem] text-text-strong no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent" href="/?q=pittoresco" lang="it">pittoresco</a>
+<span class="font-sans text-[0.75rem] text-text-muted" aria-hidden="true">·</span>
+</li>
+<li class="hidden items-baseline gap-3 group-data-open/words:flex group-data-measuring/words:flex" data-item="">
+<a class="cursor-pointer font-serif text-[1.1rem] text-text-strong no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent" href="/?q=buono" lang="it">buono</a>
+<span class="font-sans text-[0.75rem] text-text-muted" aria-hidden="true">·</span>
+</li>
+<li class="hidden items-baseline gap-3 group-data-open/words:flex group-data-measuring/words:flex" data-item="">
+<a class="cursor-pointer font-serif text-[1.1rem] text-text-strong no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent" href="/?q=generoso" lang="it">generoso</a>
+<span class="font-sans text-[0.75rem] text-text-muted" aria-hidden="true">·</span>
+</li>
+<li class="hidden items-baseline gap-3 group-data-open/words:flex group-data-measuring/words:flex" data-item="">
+<a class="cursor-pointer font-serif text-[1.1rem] text-text-strong no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent" href="/?q=nobile" lang="it">nobile</a>
+<span class="font-sans text-[0.75rem] text-text-muted" aria-hidden="true">·</span>
+</li>
+<li class="hidden items-baseline gap-3 group-data-open/words:flex group-data-measuring/words:flex" data-item="">
+<a class="cursor-pointer font-serif text-[1.1rem] text-text-strong no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent" href="/?q=dignitoso" lang="it">dignitoso</a>
+<span class="font-sans text-[0.75rem] text-text-muted" aria-hidden="true">·</span>
+</li>
+<li class="hidden items-baseline gap-3 group-data-open/words:flex group-data-measuring/words:flex" data-item="">
+<a class="cursor-pointer font-serif text-[1.1rem] text-text-strong no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent" href="/?q=illustre" lang="it">illustre</a>
+<span class="font-sans text-[0.75rem] text-text-muted" aria-hidden="true">·</span>
+</li>
+<li class="hidden items-baseline gap-3 group-data-open/words:flex group-data-measuring/words:flex" data-item="">
+<a class="cursor-pointer font-serif text-[1.1rem] text-text-strong no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent" href="/?q=glorioso" lang="it">glorioso</a>
+<span class="font-sans text-[0.75rem] text-text-muted" aria-hidden="true">·</span>
+</li>
+<li class="hidden items-baseline gap-3 group-data-open/words:flex group-data-measuring/words:flex" data-item="">
+<a class="cursor-pointer font-serif text-[1.1rem] text-text-strong no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent" href="/?q=calmo" lang="it">calmo</a>
+<span class="font-sans text-[0.75rem] text-text-muted" aria-hidden="true">·</span>
+</li>
+<li class="hidden items-baseline gap-3 group-data-open/words:flex group-data-measuring/words:flex" data-item="">
+<a class="cursor-pointer font-serif text-[1.1rem] text-text-strong no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent" href="/?q=chiaro" lang="it">chiaro</a>
+<span class="font-sans text-[0.75rem] text-text-muted" aria-hidden="true">·</span>
+</li>
+<li class="hidden items-baseline gap-3 group-data-open/words:flex group-data-measuring/words:flex" data-item="">
+<a class="cursor-pointer font-serif text-[1.1rem] text-text-strong no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent" href="/?q=limpido" lang="it">limpido</a>
+<span class="font-sans text-[0.75rem] text-text-muted" aria-hidden="true">·</span>
+</li>
+<li class="hidden items-baseline gap-3 group-data-open/words:flex group-data-measuring/words:flex" data-item="">
+<a class="cursor-pointer font-serif text-[1.1rem] text-text-strong no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent" href="/?q=luminoso" lang="it">luminoso</a>
+<span class="font-sans text-[0.75rem] text-text-muted" aria-hidden="true">·</span>
+</li>
+<li class="hidden items-baseline gap-3 group-data-open/words:flex group-data-measuring/words:flex" data-item="">
+<a class="cursor-pointer font-serif text-[1.1rem] text-text-strong no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent" href="/?q=puro" lang="it">puro</a>
+<span class="font-sans text-[0.75rem] text-text-muted" aria-hidden="true">·</span>
+</li>
+<li class="hidden items-baseline gap-3 group-data-open/words:flex group-data-measuring/words:flex" data-item="">
+<a class="cursor-pointer font-serif text-[1.1rem] text-text-strong no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent" href="/?q=sereno" lang="it">sereno</a>
+<span class="font-sans text-[0.75rem] text-text-muted" aria-hidden="true">·</span>
+</li>
+<li class="hidden items-baseline gap-3 group-data-open/words:flex group-data-measuring/words:flex" data-item="">
+<a class="cursor-pointer font-serif text-[1.1rem] text-text-strong no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent" href="/?q=soleggiato" lang="it">soleggiato</a>
+<span class="font-sans text-[0.75rem] text-text-muted" aria-hidden="true">·</span>
+</li>
+<li class="hidden items-baseline gap-3 group-data-open/words:flex group-data-measuring/words:flex" data-item="">
+<a class="cursor-pointer font-serif text-[1.1rem] text-text-strong no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent" href="/?q=mite" lang="it">mite</a>
+<span class="font-sans text-[0.75rem] text-text-muted" aria-hidden="true">·</span>
+</li>
+<li class="hidden items-baseline gap-3 group-data-open/words:flex group-data-measuring/words:flex" data-item="">
+<a class="cursor-pointer font-serif text-[1.1rem] text-text-strong no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent" href="/?q=temperato" lang="it">temperato</a>
+<span class="font-sans text-[0.75rem] text-text-muted" aria-hidden="true">·</span>
+</li>
+<li class="hidden items-baseline gap-3 group-data-open/words:flex group-data-measuring/words:flex" data-item="">
+<a class="cursor-pointer font-serif text-[1.1rem] text-text-strong no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent" href="/?q=divertente" lang="it">divertente</a>
+<span class="font-sans text-[0.75rem] text-text-muted" aria-hidden="true">·</span>
+</li>
+<li class="hidden items-baseline gap-3 group-data-open/words:flex group-data-measuring/words:flex" data-item="">
+<a class="cursor-pointer font-serif text-[1.1rem] text-text-strong no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent" href="/?q=felice" lang="it">felice</a>
+<span class="font-sans text-[0.75rem] text-text-muted" aria-hidden="true">·</span>
+</li>
+<li class="hidden items-baseline gap-3 group-data-open/words:flex group-data-measuring/words:flex" data-item="">
+<a class="cursor-pointer font-serif text-[1.1rem] text-text-strong no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent" href="/?q=lieto" lang="it">lieto</a>
+<span class="font-sans text-[0.75rem] text-text-muted" aria-hidden="true">·</span>
+</li>
+<li class="hidden items-baseline gap-3 group-data-open/words:flex group-data-measuring/words:flex" data-item="">
+<a class="cursor-pointer font-serif text-[1.1rem] text-text-strong no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent" href="/?q=ammirevole" lang="it">ammirevole</a>
+<span class="font-sans text-[0.75rem] text-text-muted" aria-hidden="true">·</span>
+</li>
+<li class="hidden items-baseline gap-3 group-data-open/words:flex group-data-measuring/words:flex" data-item="">
+<a class="cursor-pointer font-serif text-[1.1rem] text-text-strong no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent" href="/?q=appropriato" lang="it">appropriato</a>
+<span class="font-sans text-[0.75rem] text-text-muted" aria-hidden="true">·</span>
+</li>
+<li class="hidden items-baseline gap-3 group-data-open/words:flex group-data-measuring/words:flex" data-item="">
+<a class="cursor-pointer font-serif text-[1.1rem] text-text-strong no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent" href="/?q=corretto" lang="it">corretto</a>
+<span class="font-sans text-[0.75rem] text-text-muted" aria-hidden="true">·</span>
+</li>
+<li class="hidden items-baseline gap-3 group-data-open/words:flex group-data-measuring/words:flex" data-item="">
+<a class="cursor-pointer font-serif text-[1.1rem] text-text-strong no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent" href="/?q=decoroso" lang="it">decoroso</a>
+<span class="font-sans text-[0.75rem] text-text-muted" aria-hidden="true">·</span>
+</li>
+<li class="hidden items-baseline gap-3 group-data-open/words:flex group-data-measuring/words:flex" data-item="">
+<a class="cursor-pointer font-serif text-[1.1rem] text-text-strong no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent" href="/?q=misurato" lang="it">misurato</a>
+<span class="font-sans text-[0.75rem] text-text-muted" aria-hidden="true">·</span>
+</li>
+<li class="hidden items-baseline gap-3 group-data-open/words:flex group-data-measuring/words:flex" data-item="">
+<a class="cursor-pointer font-serif text-[1.1rem] text-text-strong no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent" href="/?q=abbondante" lang="it">abbondante</a>
+<span class="font-sans text-[0.75rem] text-text-muted" aria-hidden="true">·</span>
+</li>
+<li class="hidden items-baseline gap-3 group-data-open/words:flex group-data-measuring/words:flex" data-item="">
+<a class="cursor-pointer font-serif text-[1.1rem] text-text-strong no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent" href="/?q=grandioso" lang="it">grandioso</a>
+<span class="font-sans text-[0.75rem] text-text-muted" aria-hidden="true">·</span>
+</li>
+<li class="hidden items-baseline gap-3 group-data-open/words:flex group-data-measuring/words:flex" data-item="">
+<a class="cursor-pointer font-serif text-[1.1rem] text-text-strong no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent" href="/?q=ingente" lang="it">ingente</a>
+<span class="font-sans text-[0.75rem] text-text-muted" aria-hidden="true">·</span>
+</li>
+<li class="hidden items-baseline gap-3 group-data-open/words:flex group-data-measuring/words:flex" data-item="">
+<a class="cursor-pointer font-serif text-[1.1rem] text-text-strong no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent" href="/?q=imponente" lang="it">imponente</a>
+<span class="font-sans text-[0.75rem] text-text-muted" aria-hidden="true">·</span>
+</li>
+<li class="hidden items-baseline gap-3 group-data-open/words:flex group-data-measuring/words:flex" data-item="">
+<a class="cursor-pointer font-serif text-[1.1rem] text-text-strong no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent" href="/?q=sontuoso" lang="it">sontuoso</a>
+<span class="font-sans text-[0.75rem] text-text-muted" aria-hidden="true">·</span>
+</li>
+<li class="hidden items-baseline gap-3 group-data-open/words:flex group-data-measuring/words:flex" data-item="">
+<a class="cursor-pointer font-serif text-[1.1rem] text-text-strong no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent" href="/?q=pregevole" lang="it">pregevole</a>
+<span class="font-sans text-[0.75rem] text-text-muted" aria-hidden="true">·</span>
+</li>
+<li class="hidden items-baseline gap-3 group-data-open/words:flex group-data-measuring/words:flex" data-item="">
+<a class="cursor-pointer font-serif text-[1.1rem] text-text-strong no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent" href="/?q=mirabile" lang="it">mirabile</a>
+<span class="font-sans text-[0.75rem] text-text-muted" aria-hidden="true">·</span>
+</li>
+<li class="hidden items-baseline gap-3 group-data-open/words:flex group-data-measuring/words:flex" data-item="">
+<a class="cursor-pointer font-serif text-[1.1rem] text-text-strong no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent" href="/?q=cospicuo" lang="it">cospicuo</a>
+<span class="font-sans text-[0.75rem] text-text-muted" aria-hidden="true">·</span>
+</li>
+<li class="hidden items-baseline gap-3 group-data-open/words:flex group-data-measuring/words:flex" data-item="">
+<a class="cursor-pointer font-serif text-[1.1rem] text-text-strong no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent" href="/?q=fusto" lang="it">fusto</a>
+<span class="font-sans text-[0.75rem] text-text-muted" aria-hidden="true">·</span>
+</li>
+<li class="hidden items-baseline gap-3 group-data-open/words:flex group-data-measuring/words:flex" data-item="">
+<a class="cursor-pointer font-serif text-[1.1rem] text-text-strong no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent" href="/?q=adone" lang="it">adone</a>
+<span class="font-sans text-[0.75rem] text-text-muted" aria-hidden="true">·</span>
+</li>
+<li class="hidden items-baseline gap-3 group-data-open/words:flex group-data-measuring/words:flex" data-item="">
+<a class="cursor-pointer font-serif text-[1.1rem] text-text-strong no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent" href="/?q=apollo" lang="it">apollo</a>
+<span class="font-sans text-[0.75rem] text-text-muted" aria-hidden="true">·</span>
+</li>
+<li class="hidden items-baseline gap-3 group-data-open/words:flex group-data-measuring/words:flex" data-item="">
+<a class="cursor-pointer font-serif text-[1.1rem] text-text-strong no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent" href="/?q=amato" lang="it">amato</a>
+<span class="font-sans text-[0.75rem] text-text-muted" aria-hidden="true">·</span>
+</li>
+<li class="hidden items-baseline gap-3 group-data-open/words:flex group-data-measuring/words:flex" data-item="">
+<a class="cursor-pointer font-serif text-[1.1rem] text-text-strong no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent" href="/?q=amico" lang="it">amico</a>
+<span class="font-sans text-[0.75rem] text-text-muted" aria-hidden="true">·</span>
+</li>
+<li class="hidden items-baseline gap-3 group-data-open/words:flex group-data-measuring/words:flex" data-item="">
+<a class="cursor-pointer font-serif text-[1.1rem] text-text-strong no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent" href="/?q=innamorato" lang="it">innamorato</a>
+<span class="font-sans text-[0.75rem] text-text-muted" aria-hidden="true">·</span>
+</li>
+<li class="hidden items-baseline gap-3 group-data-open/words:flex group-data-measuring/words:flex" data-item="">
+<a class="cursor-pointer font-serif text-[1.1rem] text-text-strong no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent" href="/?q=amante" lang="it">amante</a>
+<span class="font-sans text-[0.75rem] text-text-muted" aria-hidden="true">·</span>
+</li>
+<li class="hidden items-baseline gap-3 group-data-open/words:flex group-data-measuring/words:flex" data-item="">
+<a class="cursor-pointer font-serif text-[1.1rem] text-text-strong no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent" href="/?q=ragazzo" lang="it">ragazzo</a>
+<span class="font-sans text-[0.75rem] text-text-muted" aria-hidden="true">·</span>
+</li>
+<li class="hidden items-baseline gap-3 group-data-open/words:flex group-data-measuring/words:flex" data-item="">
+<a class="cursor-pointer font-serif text-[1.1rem] text-text-strong no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent" href="/?q=fidanzato" lang="it">fidanzato</a>
+<span class="font-sans text-[0.75rem] text-text-muted" aria-hidden="true">·</span>
+</li>
+<li class="hidden items-baseline gap-3 group-data-open/words:flex group-data-measuring/words:flex" data-item="">
+<a class="cursor-pointer font-serif text-[1.1rem] text-text-strong no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent" href="/?q=moroso" lang="it">moroso</a>
+<span class="font-sans text-[0.75rem] text-text-muted" aria-hidden="true">·</span>
+</li>
+<li class="hidden items-baseline gap-3 group-data-open/words:flex group-data-measuring/words:flex" data-item="">
+<a class="cursor-pointer font-serif text-[1.1rem] text-text-strong no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent" href="/?q=venusto" lang="it">venusto</a>
+<span class="font-sans text-[0.75rem] text-text-muted" aria-hidden="true">·</span>
+</li>
+<li class="hidden items-baseline gap-3 group-data-open/words:flex group-data-measuring/words:flex" data-item="">
+<a class="cursor-pointer font-serif text-[1.1rem] text-text-strong no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent" href="/?q=grande" lang="it">grande</a>
+</li>
+<li class="flex items-baseline gap-3">
+<div class="inline">
+<button type="button" tabindex="0" aria-disabled="false" aria-controls="synonyms-words" aria-expanded="false" class="group inline cursor-pointer font-sans text-[0.8rem] text-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent">
+<span class="group-data-panel-open:hidden">+ more</span>
+<span class="hidden group-data-panel-open:inline">less</span>
+</button>
+</div>
+</li>
+</ul>
+</section>
+<section class="mt-6 first:mt-0 sm:mt-8" aria-labelledby="antonyms">
+<h2 class="m-0 mb-3 font-sans text-[0.8rem] font-normal text-text-muted" id="antonyms">Antonyms</h2>
+<ul data-closed="" id="antonyms-words" class="group/words m-0 flex list-none flex-wrap items-baseline gap-x-3 gap-y-2 p-0">
+<li class="flex items-baseline gap-3" data-item="">
+<a class="cursor-pointer font-serif text-[1.1rem] text-text-strong no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent" href="/?q=brutto" lang="it">brutto</a>
+<span class="font-sans text-[0.75rem] text-text-muted" aria-hidden="true">·</span>
+</li>
+<li class="flex items-baseline gap-3" data-item="">
+<a class="cursor-pointer font-serif text-[1.1rem] text-text-strong no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent" href="/?q=deforme" lang="it">deforme</a>
+<span class="font-sans text-[0.75rem] text-text-muted" aria-hidden="true">·</span>
+</li>
+<li class="flex items-baseline gap-3" data-item="">
+<a class="cursor-pointer font-serif text-[1.1rem] text-text-strong no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent" href="/?q=mostruoso" lang="it">mostruoso</a>
+<span class="font-sans text-[0.75rem] text-text-muted" aria-hidden="true">·</span>
+</li>
+<li class="flex items-baseline gap-3" data-item="">
+<a class="cursor-pointer font-serif text-[1.1rem] text-text-strong no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent" href="/?q=orrendo" lang="it">orrendo</a>
+<span class="font-sans text-[0.75rem] text-text-muted" aria-hidden="true">·</span>
+</li>
+<li class="flex items-baseline gap-3" data-item="">
+<a class="cursor-pointer font-serif text-[1.1rem] text-text-strong no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent" href="/?q=sgradevole" lang="it">sgradevole</a>
+<span class="font-sans text-[0.75rem] text-text-muted" aria-hidden="true">·</span>
+</li>
+<li class="flex items-baseline gap-3" data-item="">
+<a class="cursor-pointer font-serif text-[1.1rem] text-text-strong no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent" href="/?q=sproporzionato" lang="it">sproporzionato</a>
+<span class="font-sans text-[0.75rem] text-text-muted" aria-hidden="true">·</span>
+</li>
+<li class="flex items-baseline gap-3" data-item="">
+<a class="cursor-pointer font-serif text-[1.1rem] text-text-strong no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent" href="/?q=cupo" lang="it">cupo</a>
+<span class="font-sans text-[0.75rem] text-text-muted" aria-hidden="true">·</span>
+</li>
+<li class="flex items-baseline gap-3" data-item="">
+<a class="cursor-pointer font-serif text-[1.1rem] text-text-strong no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent" href="/?q=triste" lang="it">triste</a>
+<span class="hidden font-sans text-[0.75rem] text-text-muted group-data-open/words:inline" aria-hidden="true">·</span>
+</li>
+<li class="hidden items-baseline gap-3 group-data-open/words:flex group-data-measuring/words:flex" data-item="">
+<a class="cursor-pointer font-serif text-[1.1rem] text-text-strong no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent" href="/?q=buio" lang="it">buio</a>
+<span class="font-sans text-[0.75rem] text-text-muted" aria-hidden="true">·</span>
+</li>
+<li class="hidden items-baseline gap-3 group-data-open/words:flex group-data-measuring/words:flex" data-item="">
+<a class="cursor-pointer font-serif text-[1.1rem] text-text-strong no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent" href="/?q=nuvoloso" lang="it">nuvoloso</a>
+<span class="font-sans text-[0.75rem] text-text-muted" aria-hidden="true">·</span>
+</li>
+<li class="hidden items-baseline gap-3 group-data-open/words:flex group-data-measuring/words:flex" data-item="">
+<a class="cursor-pointer font-serif text-[1.1rem] text-text-strong no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent" href="/?q=piovoso" lang="it">piovoso</a>
+<span class="font-sans text-[0.75rem] text-text-muted" aria-hidden="true">·</span>
+</li>
+<li class="hidden items-baseline gap-3 group-data-open/words:flex group-data-measuring/words:flex" data-item="">
+<a class="cursor-pointer font-serif text-[1.1rem] text-text-strong no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent" href="/?q=tempestoso" lang="it">tempestoso</a>
+<span class="font-sans text-[0.75rem] text-text-muted" aria-hidden="true">·</span>
+</li>
+<li class="hidden items-baseline gap-3 group-data-open/words:flex group-data-measuring/words:flex" data-item="">
+<a class="cursor-pointer font-serif text-[1.1rem] text-text-strong no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent" href="/?q=cattivo" lang="it">cattivo</a>
+<span class="font-sans text-[0.75rem] text-text-muted" aria-hidden="true">·</span>
+</li>
+<li class="hidden items-baseline gap-3 group-data-open/words:flex group-data-measuring/words:flex" data-item="">
+<a class="cursor-pointer font-serif text-[1.1rem] text-text-strong no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent" href="/?q=disonesto" lang="it">disonesto</a>
+<span class="font-sans text-[0.75rem] text-text-muted" aria-hidden="true">·</span>
+</li>
+<li class="hidden items-baseline gap-3 group-data-open/words:flex group-data-measuring/words:flex" data-item="">
+<a class="cursor-pointer font-serif text-[1.1rem] text-text-strong no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent" href="/?q=indecoroso" lang="it">indecoroso</a>
+<span class="font-sans text-[0.75rem] text-text-muted" aria-hidden="true">·</span>
+</li>
+<li class="hidden items-baseline gap-3 group-data-open/words:flex group-data-measuring/words:flex" data-item="">
+<a class="cursor-pointer font-serif text-[1.1rem] text-text-strong no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent" href="/?q=indegno" lang="it">indegno</a>
+<span class="font-sans text-[0.75rem] text-text-muted" aria-hidden="true">·</span>
+</li>
+<li class="hidden items-baseline gap-3 group-data-open/words:flex group-data-measuring/words:flex" data-item="">
+<a class="cursor-pointer font-serif text-[1.1rem] text-text-strong no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent" href="/?q=scorretto" lang="it">scorretto</a>
+<span class="font-sans text-[0.75rem] text-text-muted" aria-hidden="true">·</span>
+</li>
+<li class="hidden items-baseline gap-3 group-data-open/words:flex group-data-measuring/words:flex" data-item="">
+<a class="cursor-pointer font-serif text-[1.1rem] text-text-strong no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent" href="/?q=orrido" lang="it">orrido</a>
+<span class="font-sans text-[0.75rem] text-text-muted" aria-hidden="true">·</span>
+</li>
+<li class="hidden items-baseline gap-3 group-data-open/words:flex group-data-measuring/words:flex" data-item="">
+<a class="cursor-pointer font-serif text-[1.1rem] text-text-strong no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent" href="/?q=orribile" lang="it">orribile</a>
+<span class="font-sans text-[0.75rem] text-text-muted" aria-hidden="true">·</span>
+</li>
+<li class="hidden items-baseline gap-3 group-data-open/words:flex group-data-measuring/words:flex" data-item="">
+<a class="cursor-pointer font-serif text-[1.1rem] text-text-strong no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent" href="/?q=meschino" lang="it">meschino</a>
+<span class="font-sans text-[0.75rem] text-text-muted" aria-hidden="true">·</span>
+</li>
+<li class="hidden items-baseline gap-3 group-data-open/words:flex group-data-measuring/words:flex" data-item="">
+<a class="cursor-pointer font-serif text-[1.1rem] text-text-strong no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent" href="/?q=misero" lang="it">misero</a>
+<span class="font-sans text-[0.75rem] text-text-muted" aria-hidden="true">·</span>
+</li>
+<li class="hidden items-baseline gap-3 group-data-open/words:flex group-data-measuring/words:flex" data-item="">
+<a class="cursor-pointer font-serif text-[1.1rem] text-text-strong no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent" href="/?q=vile" lang="it">vile</a>
+<span class="font-sans text-[0.75rem] text-text-muted" aria-hidden="true">·</span>
+</li>
+<li class="hidden items-baseline gap-3 group-data-open/words:flex group-data-measuring/words:flex" data-item="">
+<a class="cursor-pointer font-serif text-[1.1rem] text-text-strong no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent" href="/?q=ignobile" lang="it">ignobile</a>
+<span class="font-sans text-[0.75rem] text-text-muted" aria-hidden="true">·</span>
+</li>
+<li class="hidden items-baseline gap-3 group-data-open/words:flex group-data-measuring/words:flex" data-item="">
+<a class="cursor-pointer font-serif text-[1.1rem] text-text-strong no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent" href="/?q=abietto" lang="it">abietto</a>
+<span class="font-sans text-[0.75rem] text-text-muted" aria-hidden="true">·</span>
+</li>
+<li class="hidden items-baseline gap-3 group-data-open/words:flex group-data-measuring/words:flex" data-item="">
+<a class="cursor-pointer font-serif text-[1.1rem] text-text-strong no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent" href="/?q=squallido" lang="it">squallido</a>
+<span class="font-sans text-[0.75rem] text-text-muted" aria-hidden="true">·</span>
+</li>
+<li class="hidden items-baseline gap-3 group-data-open/words:flex group-data-measuring/words:flex" data-item="">
+<a class="cursor-pointer font-serif text-[1.1rem] text-text-strong no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent" href="/?q=repellente" lang="it">repellente</a>
+<span class="font-sans text-[0.75rem] text-text-muted" aria-hidden="true">·</span>
+</li>
+<li class="hidden items-baseline gap-3 group-data-open/words:flex group-data-measuring/words:flex" data-item="">
+<a class="cursor-pointer font-serif text-[1.1rem] text-text-strong no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent" href="/?q=sgraziato" lang="it">sgraziato</a>
+<span class="font-sans text-[0.75rem] text-text-muted" aria-hidden="true">·</span>
+</li>
+<li class="hidden items-baseline gap-3 group-data-open/words:flex group-data-measuring/words:flex" data-item="">
+<a class="cursor-pointer font-serif text-[1.1rem] text-text-strong no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent" href="/?q=goffo" lang="it">goffo</a>
+<span class="font-sans text-[0.75rem] text-text-muted" aria-hidden="true">·</span>
+</li>
+<li class="hidden items-baseline gap-3 group-data-open/words:flex group-data-measuring/words:flex" data-item="">
+<a class="cursor-pointer font-serif text-[1.1rem] text-text-strong no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent" href="/?q=racchio" lang="it">racchio</a>
+<span class="font-sans text-[0.75rem] text-text-muted" aria-hidden="true">·</span>
+</li>
+<li class="hidden items-baseline gap-3 group-data-open/words:flex group-data-measuring/words:flex" data-item="">
+<a class="cursor-pointer font-serif text-[1.1rem] text-text-strong no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent" href="/?q=piccolo" lang="it">piccolo</a>
+<span class="font-sans text-[0.75rem] text-text-muted" aria-hidden="true">·</span>
+</li>
+<li class="hidden items-baseline gap-3 group-data-open/words:flex group-data-measuring/words:flex" data-item="">
+<a class="cursor-pointer font-serif text-[1.1rem] text-text-strong no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent" href="/?q=scarso" lang="it">scarso</a>
+<span class="font-sans text-[0.75rem] text-text-muted" aria-hidden="true">·</span>
+</li>
+<li class="hidden items-baseline gap-3 group-data-open/words:flex group-data-measuring/words:flex" data-item="">
+<a class="cursor-pointer font-serif text-[1.1rem] text-text-strong no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent" href="/?q=lieve" lang="it">lieve</a>
+<span class="font-sans text-[0.75rem] text-text-muted" aria-hidden="true">·</span>
+</li>
+<li class="hidden items-baseline gap-3 group-data-open/words:flex group-data-measuring/words:flex" data-item="">
+<a class="cursor-pointer font-serif text-[1.1rem] text-text-strong no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent" href="/?q=modesto" lang="it">modesto</a>
+<span class="font-sans text-[0.75rem] text-text-muted" aria-hidden="true">·</span>
+</li>
+<li class="hidden items-baseline gap-3 group-data-open/words:flex group-data-measuring/words:flex" data-item="">
+<a class="cursor-pointer font-serif text-[1.1rem] text-text-strong no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent" href="/?q=disarmonico" lang="it">disarmonico</a>
+<span class="font-sans text-[0.75rem] text-text-muted" aria-hidden="true">·</span>
+</li>
+<li class="hidden items-baseline gap-3 group-data-open/words:flex group-data-measuring/words:flex" data-item="">
+<a class="cursor-pointer font-serif text-[1.1rem] text-text-strong no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent" href="/?q=squilibrato" lang="it">squilibrato</a>
+<span class="font-sans text-[0.75rem] text-text-muted" aria-hidden="true">·</span>
+</li>
+<li class="hidden items-baseline gap-3 group-data-open/words:flex group-data-measuring/words:flex" data-item="">
+<a class="cursor-pointer font-serif text-[1.1rem] text-text-strong no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent" href="/?q=nuvolo" lang="it">nuvolo</a>
+<span class="font-sans text-[0.75rem] text-text-muted" aria-hidden="true">·</span>
+</li>
+<li class="hidden items-baseline gap-3 group-data-open/words:flex group-data-measuring/words:flex" data-item="">
+<a class="cursor-pointer font-serif text-[1.1rem] text-text-strong no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent" href="/?q=bruttezza" lang="it">bruttezza</a>
+<span class="font-sans text-[0.75rem] text-text-muted" aria-hidden="true">·</span>
+</li>
+<li class="hidden items-baseline gap-3 group-data-open/words:flex group-data-measuring/words:flex" data-item="">
+<a class="cursor-pointer font-serif text-[1.1rem] text-text-strong no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent" href="/?q=disarmonia" lang="it">disarmonia</a>
+<span class="font-sans text-[0.75rem] text-text-muted" aria-hidden="true">·</span>
+</li>
+<li class="hidden items-baseline gap-3 group-data-open/words:flex group-data-measuring/words:flex" data-item="">
+<a class="cursor-pointer font-serif text-[1.1rem] text-text-strong no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent" href="/?q=maltempo" lang="it">maltempo</a>
+<span class="font-sans text-[0.75rem] text-text-muted" aria-hidden="true">·</span>
+</li>
+<li class="hidden items-baseline gap-3 group-data-open/words:flex group-data-measuring/words:flex" data-item="">
+<a class="cursor-pointer font-serif text-[1.1rem] text-text-strong no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent" href="/?q=mostro" lang="it">mostro</a>
+</li>
+<li class="flex items-baseline gap-3">
+<div class="inline">
+<button type="button" tabindex="0" aria-disabled="false" aria-controls="antonyms-words" aria-expanded="false" class="group inline cursor-pointer font-sans text-[0.8rem] text-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent">
+<span class="group-data-panel-open:hidden">+ more</span>
+<span class="hidden group-data-panel-open:inline">less</span>
+</button>
+</div>
+</li>
+</ul>
+</section>
+<section class="mt-6 first:mt-0 sm:mt-8" aria-labelledby="derived">
+<h2 class="m-0 mb-3 font-sans text-[0.8rem] font-normal text-text-muted" id="derived">Derived words</h2>
+<ul data-closed="" id="derived-words" class="group/words m-0 flex list-none flex-wrap items-baseline gap-x-3 gap-y-2 p-0">
+<li class="flex items-baseline gap-3" data-item="">
+<a class="cursor-pointer font-serif text-[1.1rem] text-text-strong no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent" href="/?q=bellezza" lang="it">bellezza</a>
+<span class="font-sans text-[0.75rem] text-text-muted" aria-hidden="true">·</span>
+</li>
+<li class="flex items-baseline gap-3" data-item="">
+<a class="cursor-pointer font-serif text-[1.1rem] text-text-strong no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent" href="/?q=belletto" lang="it">belletto</a>
+<span class="font-sans text-[0.75rem] text-text-muted" aria-hidden="true">·</span>
+</li>
+<li class="flex items-baseline gap-3" data-item="">
+<a class="cursor-pointer font-serif text-[1.1rem] text-text-strong no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent" href="/?q=bellimbusto" lang="it">bellimbusto</a>
+<span class="font-sans text-[0.75rem] text-text-muted" aria-hidden="true">·</span>
+</li>
+<li class="flex items-baseline gap-3" data-item="">
+<a class="cursor-pointer font-serif text-[1.1rem] text-text-strong no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent" href="/?q=bellino" lang="it">bellino</a>
+<span class="font-sans text-[0.75rem] text-text-muted" aria-hidden="true">·</span>
+</li>
+<li class="flex items-baseline gap-3" data-item="">
+<a class="cursor-pointer font-serif text-[1.1rem] text-text-strong no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent" href="/?q=belloccio" lang="it">belloccio</a>
+<span class="font-sans text-[0.75rem] text-text-muted" aria-hidden="true">·</span>
+</li>
+<li class="flex items-baseline gap-3" data-item="">
+<a class="cursor-pointer font-serif text-[1.1rem] text-text-strong no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent" href="/?q=bellona" lang="it">bellona</a>
+<span class="font-sans text-[0.75rem] text-text-muted" aria-hidden="true">·</span>
+</li>
+<li class="flex items-baseline gap-3" data-item="">
+<a class="cursor-pointer font-serif text-[1.1rem] text-text-strong no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent" href="/?q=bellone" lang="it">bellone</a>
+<span class="font-sans text-[0.75rem] text-text-muted" aria-hidden="true">·</span>
+</li>
+<li class="flex items-baseline gap-3" data-item="">
+<a class="cursor-pointer font-serif text-[1.1rem] text-text-strong no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent" href="/?q=bellore" lang="it">bellore</a>
+<span class="hidden font-sans text-[0.75rem] text-text-muted group-data-open/words:inline" aria-hidden="true">·</span>
+</li>
+<li class="hidden items-baseline gap-3 group-data-open/words:flex group-data-measuring/words:flex" data-item="">
+<a class="cursor-pointer font-serif text-[1.1rem] text-text-strong no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent" href="/?q=bellosguardo" lang="it">bellosguardo</a>
+<span class="font-sans text-[0.75rem] text-text-muted" aria-hidden="true">·</span>
+</li>
+<li class="hidden items-baseline gap-3 group-data-open/words:flex group-data-measuring/words:flex" data-item="">
+<a class="cursor-pointer font-serif text-[1.1rem] text-text-strong no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent" href="/?q=bellospirito" lang="it">bellospirito</a>
+<span class="font-sans text-[0.75rem] text-text-muted" aria-hidden="true">·</span>
+</li>
+<li class="hidden items-baseline gap-3 group-data-open/words:flex group-data-measuring/words:flex" data-item="">
+<a class="cursor-pointer font-serif text-[1.1rem] text-text-strong no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent" href="/?q=bellumore" lang="it">bellumore</a>
+<span class="font-sans text-[0.75rem] text-text-muted" aria-hidden="true">·</span>
+</li>
+<li class="hidden items-baseline gap-3 group-data-open/words:flex group-data-measuring/words:flex" data-item="">
+<a class="cursor-pointer font-serif text-[1.1rem] text-text-strong no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent" href="/?q=belluria" lang="it">belluria</a>
+<span class="font-sans text-[0.75rem] text-text-muted" aria-hidden="true">·</span>
+</li>
+<li class="hidden items-baseline gap-3 group-data-open/words:flex group-data-measuring/words:flex" data-item="">
+<a class="cursor-pointer font-serif text-[1.1rem] text-text-strong no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent" href="/?q=bel%20paese" lang="it">bel paese</a>
+<span class="font-sans text-[0.75rem] text-text-muted" aria-hidden="true">·</span>
+</li>
+<li class="hidden items-baseline gap-3 group-data-open/words:flex group-data-measuring/words:flex" data-item="">
+<a class="cursor-pointer font-serif text-[1.1rem] text-text-strong no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent" href="/?q=belpaese" lang="it">belpaese</a>
+<span class="font-sans text-[0.75rem] text-text-muted" aria-hidden="true">·</span>
+</li>
+<li class="hidden items-baseline gap-3 group-data-open/words:flex group-data-measuring/words:flex" data-item="">
+<a class="cursor-pointer font-serif text-[1.1rem] text-text-strong no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent" href="/?q=belt%C3%A0" lang="it">beltà</a>
+<span class="font-sans text-[0.75rem] text-text-muted" aria-hidden="true">·</span>
+</li>
+<li class="hidden items-baseline gap-3 group-data-open/words:flex group-data-measuring/words:flex" data-item="">
+<a class="cursor-pointer font-serif text-[1.1rem] text-text-strong no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent" href="/?q=imbellettarsi" lang="it">imbellettarsi</a>
+</li>
+<li class="flex items-baseline gap-3">
+<div class="inline">
+<button type="button" tabindex="0" aria-disabled="false" aria-controls="derived-words" aria-expanded="false" class="group inline cursor-pointer font-sans text-[0.8rem] text-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent">
+<span class="group-data-panel-open:hidden">+ more</span>
+<span class="hidden group-data-panel-open:inline">less</span>
+</button>
+</div>
+</li>
+</ul>
+</section>
+<section class="mt-6 first:mt-0 sm:mt-8" aria-labelledby="expressions-0">
+<h2 class="m-0 mb-3 font-sans text-[0.8rem] font-normal text-text-muted" id="expressions-0">Expressions</h2>
+<div data-closed="" class="group/expressions">
+<ul class="m-0 flex list-none flex-col gap-4 p-0" id="expressions-0-list">
+<li class="flex gap-x-4 gap-y-1 max-sm:flex-col sm:items-baseline group-data-open/expressions:sm:grid-cols-[11.875rem_minmax(0,1fr)] group-data-open/expressions:sm:grid" data-expression="">
+<span class="font-serif text-[1.0625rem] leading-snug max-w-full shrink-0 text-text wrap-anywhere" lang="it">bel bello</span>
+<p class="font-serif text-[1.0625rem] leading-snug m-0 min-w-0 max-w-[48rem] text-text-muted" lang="it">tranquillamente, piano piano</p>
+</li>
+<li class="hidden gap-x-4 gap-y-1 max-sm:flex-col sm:items-baseline group-data-open/expressions:sm:grid-cols-[11.875rem_minmax(0,1fr)] group-data-open/expressions:max-sm:flex group-data-open/expressions:sm:grid" data-expression="">
+<span class="font-serif text-[1.0625rem] leading-snug max-w-full shrink-0 text-text wrap-anywhere" lang="it">farsi bello</span>
+<p class="font-serif text-[1.0625rem] leading-snug m-0 min-w-0 max-w-[48rem] text-text-muted" lang="it">vestirsi elegantemente; (senso figurato) vantarsi, pavoneggiarsi</p>
+</li>
+<li class="hidden gap-x-4 gap-y-1 max-sm:flex-col sm:items-baseline group-data-open/expressions:sm:grid-cols-[11.875rem_minmax(0,1fr)] group-data-open/expressions:max-sm:flex group-data-open/expressions:sm:grid" data-expression="">
+<span class="font-serif text-[1.0625rem] leading-snug max-w-full shrink-0 text-text wrap-anywhere" lang="it">sul più bello</span>
+<p class="font-serif text-[1.0625rem] leading-snug m-0 min-w-0 max-w-[48rem] text-text-muted" lang="it">nel momento conclusivo</p>
+</li>
+<li class="hidden gap-x-4 gap-y-1 max-sm:flex-col sm:items-baseline group-data-open/expressions:sm:grid-cols-[11.875rem_minmax(0,1fr)] group-data-open/expressions:max-sm:flex group-data-open/expressions:sm:grid" data-expression="">
+<span class="font-serif text-[1.0625rem] leading-snug max-w-full shrink-0 text-text wrap-anywhere" lang="it">in bello</span>
+<p class="font-serif text-[1.0625rem] leading-snug m-0 min-w-0 max-w-[48rem] text-text-muted" lang="it">migliore</p>
+</li>
+<li class="hidden gap-x-4 gap-y-1 max-sm:flex-col sm:items-baseline group-data-open/expressions:sm:grid-cols-[11.875rem_minmax(0,1fr)] group-data-open/expressions:max-sm:flex group-data-open/expressions:sm:grid" data-expression="">
+<span class="font-serif text-[1.0625rem] leading-snug max-w-full shrink-0 text-text wrap-anywhere" lang="it">bello e dannato</span>
+<p class="font-serif text-[1.0625rem] leading-snug m-0 min-w-0 max-w-[48rem] text-text-muted" lang="it">espressione gergale, utilizzata soprattutto dalla parte femminile, a descrivere una tipologia di ragazzo che vuole affascinare e da cui qualcuna è attratta: spesso però, com&#x27;è evidente, è utilizzata in senso dispregiativo</p>
+</li>
+</ul>
+<div class="mt-3 block">
+<button type="button" tabindex="0" aria-disabled="false" aria-controls="expressions-0-list" aria-expanded="false" class="group inline cursor-pointer font-sans text-[0.8rem] text-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent">
+<span class="group-data-panel-open:hidden">+ more</span>
+<span class="hidden group-data-panel-open:inline">less</span>
+</button>
+</div>
+</div>
+</section>
+</div>
+<footer class="mt-9 sm:mt-12 flex flex-wrap items-center gap-x-3 gap-y-1 font-sans text-[0.8rem] text-text-muted">
+<a class="inline-flex items-center gap-1.5 text-text-muted no-underline hover:text-text focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent" href="https://it.wiktionary.org/wiki/bello" target="_blank" rel="noopener noreferrer" aria-label="Wiktionary page for bello, the source of this page (opens in a new tab)">Source<svg class="size-3.5" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+<path d="M9.5 2.5h4v4M13.5 2.5 7.5 8.5M12 9.5V13a.5.5 0 0 1-.5.5h-8A.5.5 0 0 1 3 13V5a.5.5 0 0 1 .5-.5H7" stroke-linecap="round" stroke-linejoin="round">
+</path>
+</svg>
+</a>
+<span aria-hidden="true">·</span>
+<button type="button" tabindex="0" data-base-ui-click-trigger="" id="base-ui-_R_fva_" aria-haspopup="dialog" aria-expanded="false" class="cursor-pointer border-0 bg-transparent p-0 font-sans text-[0.8rem] text-text-muted hover:text-text focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent">Report a mistake</button>
+</footer>
+</main>
+`;

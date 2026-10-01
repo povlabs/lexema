@@ -130,6 +130,30 @@ It is async because D1 is. A synchronous interface would have forced the Worker
 side to fake it, and faking it is how you end up with two query layers that
 drift apart.
 
+## Round trips, not statements, are the cost on D1
+
+Every statement on D1 is a network round trip from the Worker, and D1's own
+insights put each lookup read at about 1 ms or less (#385), so what a reader
+waits for is the round trips one after another. A lookup sends every read that
+needs no other read's rows at once, and waits only where a read needs
+another's rows. A lookup the index spells waits four times in a row, however
+many readings it builds: the release beside the search; every matched record's
+lemma links, grammar and forms; each kept reading's line, senses, recovered
+definitions, inflections and reviews, and each lemma's line; then what needs one
+of those first: expressions, an inflection's candidates, a recovered
+definition's labels and examples. A phrase lookup waits on its own probes and
+forms before those four. `test/lookup.test.ts` holds the four for `sale`,
+`studente`, `casa` and `andavano`, so an added `await` fails it only when it
+puts one of those words past four.
+
+Sending them at once is not enough on its own. Sent as one call each, the
+hundred-odd reads of `bello` answered no faster than when they waited on each
+other (#385). So `fromD1` sends every statement queued before the caller next
+waits as one `batch()` call, and each wait is one call to D1.
+Smart Placement, which runs the Worker near D1 instead of near the reader, was
+tried on a Preview in the same change and left out: it placed nothing there
+and timed the same.
+
 ## Accents are meaning
 
 Normalization folds case, whitespace and three apostrophe variants (U+2019,

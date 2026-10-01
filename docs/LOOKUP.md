@@ -38,6 +38,13 @@ interface LookupDatabase {
 | `fromD1(db)` | a Worker's `env.DB` | the website |
 | `fromNodeSqlite(db)` | a `node:sqlite` `DatabaseSync` | local runs and tests |
 
+`fromD1` sends every statement queued before its caller next waits as one
+`batch()` call, so a statement's promise settles with the rest of its batch,
+and a statement D1 refuses fails every statement sent with it. Make one
+adapter per request; one shared across requests would mix their reads in one
+batch. Why it batches is in
+[the design notes](LOOKUP_DESIGN.md#round-trips-not-statements-are-the-cost-on-d1).
+
 ## Query handling
 
 Applied in this order, by `normalizeItalianExact`:

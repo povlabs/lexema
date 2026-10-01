@@ -87,6 +87,7 @@ test("the D1 adapter refuses every write before D1 sees it", async () => {
       prepared.push(sql);
       return statement;
     },
+    batch: async (statements) => statements.map(() => ({ results: [] })),
   });
   for (const sql of WRITES) {
     await assert.rejects(reader.all(sql as DictionaryRead, []), DictionaryWriteRefused, sql);

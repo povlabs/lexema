@@ -59,27 +59,63 @@ export function fromNodeSqlite(db: DatabaseSync): LookupDatabase {
 }
 
 /** The slice of Cloudflare's D1Database this adapter uses. */
-interface D1Like {
+export interface D1Like {
   prepare(sql: string): D1StatementLike;
+  batch(statements: D1StatementLike[]): Promise<{ results: unknown[] }[]>;
 }
-interface D1StatementLike {
+export interface D1StatementLike {
   bind(...params: SqlValue[]): D1StatementLike;
   all<T>(): Promise<{ results: T[] }>;
 }
 
+/** A statement waiting for the next call to D1, and who is waiting on its rows. */
+interface Queued {
+  statement: D1StatementLike;
+  resolve: (rows: unknown[]) => void;
+  reject: (failure: unknown) => void;
+}
+
 /**
  * Cloudflare D1, reached from a Worker as `env.DB`, read-only.
+ *
+ * Every statement sent before the caller next waits goes to D1 as one call
+ * (#385). A lookup sends dozens of reads that need nothing from each other;
+ * sent one call each, D1 answered `bello` slower than when they waited on each
+ * other, and as one `batch()` they cost one round trip
+ * (https://developers.cloudflare.com/d1/worker-api/d1-database/#batch). The
+ * call goes out on the next macrotask, once the caller's promise chains have
+ * queued all they can. A batch is one transaction, so a statement that fails
+ * fails every statement sent with it; each is a read, so none is half-written.
+ * One adapter is made per request (web/lib/shared/database.ts), so a batch
+ * never mixes two requests' reads.
  *
  * `bind()` is skipped when there are no parameters: D1 rejects a `bind()` call
  * with zero arguments on some statements, and binding nothing is meaningless
  * anyway.
  */
 export function fromD1(db: D1Like): LookupDatabase {
+  let queued: Queued[] = [];
+
+  const send = async (): Promise<void> => {
+    const sent = queued;
+    queued = [];
+    try {
+      const answers =
+        sent.length === 1 ? [await sent[0].statement.all<unknown>()] : await db.batch(sent.map((entry) => entry.statement));
+      sent.forEach((entry, index) => entry.resolve(answers[index].results));
+    } catch (failure) {
+      for (const entry of sent) entry.reject(failure);
+    }
+  };
+
   return {
-    async all<T>(sql: DictionaryRead, params: readonly SqlValue[]): Promise<T[]> {
-      const statement = db.prepare(readOnly(sql));
-      const { results } = await (params.length === 0 ? statement : statement.bind(...params)).all<T>();
-      return results;
+    all<T>(sql: DictionaryRead, params: readonly SqlValue[]): Promise<T[]> {
+      return new Promise<T[]>((resolve, reject) => {
+        const prepared = db.prepare(readOnly(sql));
+        const statement = params.length === 0 ? prepared : prepared.bind(...params);
+        if (queued.length === 0) setTimeout(send, 0);
+        queued.push({ statement, resolve: resolve as (rows: unknown[]) => void, reject });
+      });
     },
   };
 }

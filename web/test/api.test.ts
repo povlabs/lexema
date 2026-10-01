@@ -367,7 +367,8 @@ test("each host reaches its own site: lexema.fyi the pages as before, api.lexema
     BILLING_LIMIT: new CountingRateLimit(),
   };
   // D1's shape over each database: prepare, bind, and all, raw or run, which
-  // is how lookup and Drizzle reach it.
+  // is how lookup and Drizzle reach it, and batch, which is how lookup sends
+  // the reads of one turn together (src/lookup/database.ts).
   const d1Over = (over: DatabaseSync) => {
     const bound = (sql: string, params: (string | number | null)[]) => ({
       all: async () => ({ results: over.prepare(sql).all(...params) }),
@@ -380,6 +381,7 @@ test("each host reaches its own site: lexema.fyi the pages as before, api.lexema
     });
     return {
       prepare: (sql: string) => ({ ...bound(sql, []), bind: (...params: (string | number | null)[]) => bound(sql, params) }),
+      batch: (statements: { all: () => Promise<unknown> }[]) => Promise.all(statements.map((statement) => statement.all())),
     } as unknown as D1Database;
   };
   const env = {
@@ -564,6 +566,13 @@ test("every result carries its record's expressions as the page lists them, and 
 
   const [only] = (await lookupBody("q=fare&fields=expressions")).results;
   assert.deepEqual(Object.keys(only).sort(), ["attribution", "expressions", "id", "match", "pos", "pos_title", "word"]);
+});
+
+// The lookup's reads may change order and grouping (#385); the answer they
+// build may not. Regenerate only for a change that means to alter it:
+// `--test-update-snapshots` on this file.
+test("bello's whole /lookup answer is the one the snapshot holds (#385)", async (t) => {
+  t.assert.snapshot(await lookupBody("q=bello"));
 });
 
 test("pos, match and fields refuse a name every object inherits", async () => {

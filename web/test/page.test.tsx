@@ -1082,6 +1082,16 @@ test("every word page ends with Source and Report a mistake together", async () 
   });
 });
 
+// The lookup's reads may change order and grouping (#385); the page they build
+// may not. The snapshot is the whole page, one tag per line so a change reads
+// as a diff. Regenerate it only for a change that means to alter the page:
+// `--test-update-snapshots` on this file.
+test("bello's whole page is the page the snapshot holds (#385)", async (t) => {
+  await withDevSeedAndPages(async ({ db }) => {
+    t.assert.snapshot((await render(db, "bello")).replaceAll("><", ">\n<"), { serializers: [(html) => html] });
+  });
+});
+
 test("a result page has one Source, with no word after it, to the page of the spelling in its title (#281)", async () => {
   // macchina: a noun, and a form of macchinare whose table shows under it.
   // The page of macchina holds both entries, so one link covers both readings.
