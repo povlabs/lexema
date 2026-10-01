@@ -193,7 +193,7 @@ lemma — `studentessa` for `studenti` — is still a reading.
 | `wordFacts` | pronunciations, hyphenations, etymologies, synonyms, antonyms, derived words and `expressions` (below), read from the record's own line in `source_record_json`; one entry per distinct related spelling, every pointer kept; Wikizionario's missing-field placeholder is taken out of the hyphenations and etymologies (below) |
 | `isAboutQuery` | `true` when at least one piece of evidence is a headword hit |
 | `evidence[]` | every occurrence of the surface on this record, in source order |
-| `senses[]` | source glosses, labels and `examples[].text`, the examples read from `source_record_json`; a gloss loses the missing-field placeholder (below), and one that was only that is not returned |
+| `senses[]` | source glosses, labels and `examples[].text`, the examples read from `source_record_json`; a gloss loses the missing-field placeholder (below), and one that was only that is not returned; nor is a gloss that only repeats the headword (`presina`), compared ignoring case, accents, apostrophes and surrounding punctuation (`isHeadwordEcho` in `src/italian/headwordEcho.ts`, #395) |
 | `grammar` | claims split into `record`, `byForm` and `bySense` |
 | `lemmaLinks[]` | the reading's lemma: outgoing `form_of` edges this record declares, each candidate with its `listing` and its own `expressions` |
 | `inflections[]` | records declaring themselves forms of this one |
