@@ -242,7 +242,8 @@ dictionary, found by its source line
 `answer` records what the person found or did, once; a second answer is
 refused. Neither changes the dictionary or anything a reader sees: a fix is
 made by hand, elsewhere. Both read the `APP_DB` and the dictionary in
-`SEED_STATE`, as `pnpm run plan` does.
+`SEED_STATE`, as `pnpm run plan` does, so a local `pnpm run seed:dev` drops
+every report and its answer with it. A remote seed leaves reports alone.
 
 ### Look at a pull request's Preview
 
@@ -343,9 +344,10 @@ migrations apply the same way, one command, keeping what is there.
 A test that needs the app database builds it through `applyAppMigrations` in
 [src/db/app/migrations.ts](./src/db/app/migrations.ts), and its dictionary
 separately from `schema.sql` ([test/databases.ts](./test/databases.ts)).
-[test/appSchema.test.ts](./test/appSchema.test.ts) holds the key and report
-tables to the shape they had in `schema.sql` and better-auth's tables to their
-columns, and
+[test/appSchema.test.ts](./test/appSchema.test.ts) holds the key tables and
+`report_opening` to the shape they had in `schema.sql`, `reader_report` to that
+shape plus the five columns #12 added (`line_no`, `line_sha256`, `outcome`,
+`reviewed_at`, `reviewed_by`), and better-auth's tables to their columns, and
 Drizzle queries run under `node --test`
 through [src/db/app/nodeSqlite.ts](./src/db/app/nodeSqlite.ts), which drives
 `node:sqlite` with `drizzle-orm/sqlite-proxy`.
