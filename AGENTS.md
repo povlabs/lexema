@@ -40,9 +40,10 @@ of its SHA-256, `it-0c432803`.
 - A pull request merges when every required verdict is PASS at its head, and only
   the `shipper` merges. `ready-for:human` holds it for Huey
   ([ADR 0006](.decisions/0006-codex-review-is-the-merge-gate.md)).
-- All mutation happens in this one checkout: no worktrees, no sibling clones, one
-  writer at a time. Check `git branch --show-current` before editing, and leave
-  the branch where you found it.
+- An agent lane works in its own linked worktree, which sets itself up
+  ([ADR 0022](.decisions/0022-lefthook-sets-up-agent-worktrees.md)). No sibling
+  clones, and one writer per worktree. Check `git branch --show-current` before
+  editing, and leave the main checkout's branch where you found it.
 - Use the definitions in [.glossary/TERMS.md](.glossary/TERMS.md) and
   [.glossary/LANGUAGE.md](.glossary/LANGUAGE.md) when naming or changing a
   concept. Technical identifiers and prose are English; source text stays Italian.
