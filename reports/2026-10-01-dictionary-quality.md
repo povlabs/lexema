@@ -95,7 +95,7 @@ there (the furniture rule), and recovered definitions added (#28).
 - **559,690** records have a non-empty gloss array (99.88%).
 - **553,413** show at least one definition on the page (98.76%).
 - **6,279** records have gloss text and show nothing. Nearly all of them hold only
-  the placeholder. The other 667 records have no gloss at all; Wiktionary has no
+  the placeholder. Apart from those, 667 records have no gloss at all; Wiktionary has no
   definition for 665 of them ([definition-loss report](2026-09-18-definition-loss.md#what-is-not-the-cause)),
   and the recovered layer reads one back for two.
 - **10** records have a meaning only through the recovered layer, `casa` among them.
@@ -192,8 +192,25 @@ have their meaning only through recovery.
 ### Gender and number
 
 Denominator: records whose part of speech the importer expects gender and number
-on (noun, adjective, proper name). "Both" means masculine and feminine both stated.
-That is common gender (`cantante`), not a dispute.
+on (noun, adjective, proper name). One proper-name form-of record, which states
+one gender and one number, is left out of the table.
+
+"Both" counts records whose own tags state two or more values of one dimension.
+It means a different thing on each dimension:
+
+- **Gender.** Every one is masculine and feminine together. That is common gender
+  (`cantante`).
+- **Number.** Two or three of `singular`, `plural` and `invariable`, in 147
+  records. 94 of them have `invariable` beside `singular` or `plural` (`verde`);
+  `crudeltà` and `logo` carry all three. The other 53 have `singular` and
+  `plural`. The ones read by hand (`khmer`, `barmaid`, `ingegnere`, `cialtrone`,
+  `avventuriere`, `molle`) are one spelling used in both numbers. Either the word
+  does not change (`khmer`), or it is a homograph across genders: `cialtrone` is
+  masculine singular, and also the feminine plural of `cialtrona`.
+
+Neither is counted as disputed. Both values come from the one tag list, and they
+do not contradict each other. Not all 53 `singular`-and-`plural` records were read
+by hand.
 
 The two "Missing" columns split on whether the record carries raw text about
 something else.
