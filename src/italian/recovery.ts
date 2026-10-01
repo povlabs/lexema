@@ -42,19 +42,34 @@ export interface RecordExample {
   text: string;
 }
 
+const strings = (value: unknown): string[] =>
+  Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : [];
+
+/**
+ * Every `senses[].glosses[]` string of a record's `senses`, as its archive line
+ * holds them: a sense that is not an object, or glosses that are not strings,
+ * give none.
+ */
+export function recordGlosses(senses: unknown): RecordGloss[] {
+  if (!Array.isArray(senses)) return [];
+  return senses.flatMap((sense: unknown, senseIndex) =>
+    typeof sense === "object" && sense !== null
+      ? strings((sense as { glosses?: unknown }).glosses).map((text) => ({ senseIndex, text }))
+      : [],
+  );
+}
+
 /** Every string leaf of the record `recovery` reads, whatever else it holds. */
 export function recordText(record: {
   word: string;
   pos_title: string;
   senses: readonly { glosses?: unknown; examples?: unknown }[];
 }): RecordText {
-  const strings = (value: unknown): string[] =>
-    Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : [];
   return {
     word: record.word,
     posTitle: record.pos_title,
     senseCount: record.senses.length,
-    glosses: record.senses.flatMap((sense, senseIndex) => strings(sense.glosses).map((text) => ({ senseIndex, text }))),
+    glosses: recordGlosses(record.senses),
     examples: record.senses.flatMap((sense, i) =>
       Array.isArray(sense.examples)
         ? sense.examples.flatMap((example: unknown, j) =>
@@ -127,9 +142,10 @@ const comparable = (text: string): string => text.toLowerCase().replace(/\s+/g, 
  * templates differently, so the test is the longest clause of the page text,
  * cut to 40 characters, found inside the carried string — the probe
  * `tools/definition_loss.py verify` uses. A clause under 12 characters proves
- * nothing and matches nothing.
+ * nothing and matches nothing. The lookup asks the same question of a record
+ * that replaced the one a definition was recovered for (src/lookup/recovered.ts).
  */
-function carries(carried: string, text: string): boolean {
+export function carries(carried: string, text: string): boolean {
   const clauses = comparable(text).split(/[,;:]/).map((clause) => clause.trim());
   const probe = clauses.reduce((longest, clause) => (clause.length > longest.length ? clause : longest), "").slice(0, 40);
   if (probe.length < 12) return comparable(carried) === comparable(text);

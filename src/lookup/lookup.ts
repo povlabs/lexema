@@ -4,10 +4,12 @@
 
 import { IT_NORMALIZER_VERSION, normalizeItalianExact } from "../italian/normalize.js";
 import { withoutPlaceholder } from "../italian/placeholder.js";
+import { recordGlosses, type RecordGloss } from "../italian/recovery.js";
 import { readingPartOfSpeech } from "./articles.js";
 import type { DictionaryRead, LookupDatabase } from "./database.js";
 import { phraseForms, phraseMatches } from "./phrase.js";
 import { readExpressions } from "./expressions.js";
+import { placeRecovered, type RecoveredOfRecord, type StoredRecovered } from "./recovered.js";
 import { lineageOf, servedBy } from "./served.js";
 import { readSourceRecord, type SourceRecordFields } from "./sourceRecord.js";
 import type {
@@ -543,7 +545,7 @@ async function buildReading(
       inputs.record,
       source,
       source.then((fields) => readExpressions(db, releaseId, fields.expressionItems)),
-      readRecovered(db, recordId),
+      readRecovered(db, recordId, inputs.record),
       readSenseRows(db, recordId),
       readInflections(db, releaseId, recordId),
       readReviews(db, recordId),
@@ -1030,7 +1032,7 @@ async function readReviews(db: LookupDatabase, recordId: number): Promise<Review
  * The recovered layer's definitions for one record, with their labels and
  * examples. Exported so a test can hold the query to its plan.
  */
-export const RECOVERED_SQL: DictionaryRead = `SELECT d.recovered_id, d.route, d.term, d.page_line, d.text, d.held_as_example,
+export const RECOVERED_SQL: DictionaryRead = `SELECT d.recovered_id, d.record_id, d.route, d.term, d.page_line, d.text, d.held_as_example,
             d.lead_in_sense_index, d.lead_in_recovered_id, p.wiki, p.title, p.revision_id,
             h.release_id, h.line_no, h.line_sha256
        FROM recovered_definition d
@@ -1039,22 +1041,16 @@ export const RECOVERED_SQL: DictionaryRead = `SELECT d.recovered_id, d.route, d.
       WHERE d.record_id IN (${lineageOf("?1")})
       ORDER BY d.record_id, d.definition_index`;
 
-/** A record's recovered definitions, placed where the page lists them. */
-interface RecoveredOfRecord {
-  /** At the top of the section's list, after the record's senses. */
-  topLevel: RecoveredDefinition[];
-  /** Items of the list a sense the record carries opens, by sense index. */
-  underSense: Map<number, RecoveredDefinition[]>;
-}
-
 /**
  * The recovered definitions of a record and of every record it replaced: a
  * change applied from a later release leaves them on the record they were
- * recovered for, and the page reads them for the record that replaced it.
+ * recovered for, and the page reads them for the record that replaced it,
+ * checked against its own line (`placeRecovered`).
  */
-async function readRecovered(db: LookupDatabase, recordId: number): Promise<RecoveredOfRecord> {
+async function readRecovered(db: LookupDatabase, recordId: number, record: Promise<RecordLine>): Promise<RecoveredOfRecord> {
   const rows = await queryAll<{
     recovered_id: number;
+    record_id: number;
     route: RecoveredRoute["route"];
     term: string | null;
     page_line: number;
@@ -1069,12 +1065,16 @@ async function readRecovered(db: LookupDatabase, recordId: number): Promise<Reco
     line_no: number;
     line_sha256: string;
   }>(db, RECOVERED_SQL, recordId);
-  const placed: RecoveredOfRecord = { topLevel: [], underSense: new Map() };
-  if (rows.length === 0) return placed;
+  if (rows.length === 0) return { topLevel: [], underSense: new Map() };
 
   const ids = rows.map((row) => row.recovered_id);
   const marks = ids.map(() => "?").join(",");
-  const [labels, examples] = await Promise.all([
+  // A lead-in sense of a replaced record is found again by its glosses, so
+  // that record's line is read, and only when some row needs it.
+  const replaced = [
+    ...new Set(rows.filter((row) => row.record_id !== recordId && row.lead_in_sense_index !== null).map((row) => row.record_id)),
+  ];
+  const [labels, examples, replacedLines, served] = await Promise.all([
     queryAll<{ recovered_id: number; label: string }>(
       db,
       `SELECT recovered_id, label FROM recovered_label WHERE recovered_id IN (${marks}) ORDER BY recovered_id, label_index`,
@@ -1085,11 +1085,22 @@ async function readRecovered(db: LookupDatabase, recordId: number): Promise<Reco
       `SELECT recovered_id, page_line, text FROM recovered_example WHERE recovered_id IN (${marks}) ORDER BY recovered_id, example_index`,
       ...ids,
     ),
+    replaced.length === 0
+      ? []
+      : queryAll<{ record_id: number; raw_json: string }>(
+          db,
+          `SELECT record_id, raw_json FROM source_record_json WHERE record_id IN (${replaced.map(() => "?").join(",")})`,
+          ...replaced,
+        ),
+    record,
   ]);
+  const glossesOf = (rawJson: string): RecordGloss[] => {
+    const parsed: unknown = JSON.parse(rawJson);
+    return recordGlosses(typeof parsed === "object" && parsed !== null ? (parsed as { senses?: unknown }).senses : undefined);
+  };
+  const replacedGlosses = new Map(replacedLines.map((line) => [line.record_id, glossesOf(line.raw_json)]));
 
-  // Rows come in page order, and the schema holds a lead-in's id below its
-  // items', so every recovered lead-in is placed before its first item.
-  const byId = new Map<number, RecoveredDefinition>();
+  const stored: StoredRecovered[] = [];
   for (const row of rows) {
     const at = (line: number) => ({ wiki: row.wiki, title: row.title, revisionId: row.revision_id, line });
     // The schema ties `term` to the sub-term route, so a null here is a
@@ -1109,18 +1120,17 @@ async function readRecovered(db: LookupDatabase, recordId: number): Promise<Reco
       heldAsExample: row.held_as_example === null ? null : refOn(row)(row.held_as_example),
       items: [],
     };
-    byId.set(row.recovered_id, definition);
-    if (row.lead_in_recovered_id !== null) {
-      const leadIn = byId.get(row.lead_in_recovered_id);
-      if (leadIn === undefined) throw new Error(`recovered ${row.recovered_id} names lead-in ${row.lead_in_recovered_id}, not read before it`);
-      leadIn.items.push(definition);
-    } else if (row.lead_in_sense_index !== null) {
-      const items = placed.underSense.get(row.lead_in_sense_index) ?? [];
-      items.push(definition);
-      placed.underSense.set(row.lead_in_sense_index, items);
+    const id = row.recovered_id;
+    const recovered = row.lead_in_recovered_id === null ? null : { in: "recovered" as const, id: row.lead_in_recovered_id };
+    const sense = row.lead_in_sense_index;
+    if (row.record_id === recordId) {
+      stored.push({ id, definition, writtenFor: "served", leadIn: recovered ?? (sense === null ? null : { in: "sense", senseIndex: sense }) });
     } else {
-      placed.topLevel.push(definition);
+      const old = sense === null ? undefined : replacedGlosses.get(row.record_id);
+      if (sense !== null && old === undefined) throw new Error(`record ${row.record_id} vanished mid-lookup`);
+      const glosses = (old ?? []).filter((gloss) => gloss.senseIndex === sense).map((gloss) => gloss.text);
+      stored.push({ id, definition, writtenFor: "replaced", leadIn: recovered ?? (sense === null ? null : { in: "sense", glosses }) });
     }
   }
-  return placed;
+  return placeRecovered(stored, glossesOf(served.rawJson));
 }

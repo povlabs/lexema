@@ -17,7 +17,7 @@ import { lookup } from "../src/lookup/lookup.js";
 import { findNearby } from "../src/lookup/nearby.js";
 import { randomHeadword } from "../src/lookup/random.js";
 import { suggest } from "../src/lookup/suggest.js";
-import type { FoundResult, LookupResult, Reading } from "../src/lookup/types.js";
+import { everyRecovered, type FoundResult, type LookupResult, type Reading } from "../src/lookup/types.js";
 import { ApplyRefused, checkApplied, chooseChanges, planApply, type ApplyPlan } from "../src/update/apply.js";
 import type { Change } from "../src/update/changes.js";
 import { diffAgainstMaster, reportMarkdown, reportOf, type MasterDiff } from "../src/update/diff.js";
@@ -87,11 +87,33 @@ interface Desk {
   later: string;
 }
 
-/** A master seeded from `MASTER_LINES`, with rows written by hand beside `casa`, and the later archive on disk. */
-async function desk(): Promise<Desk> {
+/** What a desk is seeded from: the master's lines, the rows written by hand beside them, and the later lines. */
+interface DeskFiles {
+  master: readonly string[];
+  hand: string;
+  later: readonly string[];
+}
+
+// What the recovered layer and a review write: a definition read off the raw
+// page, listed under the record's first sense, and a note on its gloss.
+const CASA_HAND = `
+    INSERT INTO raw_page (page_id, release_id, wiki, title, revision_id, revision_timestamp)
+      VALUES (1, '${MASTER}', 'it.wiktionary.org', 'casa', 123, '2026-07-01T00:00:00Z');
+    INSERT INTO recovered_definition (recovered_id, record_id, release_id, page_id, definition_index, route, term, page_line, wikitext, text, held_as_example, lead_in_sense_index, lead_in_recovered_id)
+      VALUES (1, 1, '${MASTER}', 1, 0, 'below-page-control', NULL, 7, '#* edificio', 'edificio', NULL, 0, NULL);
+    INSERT INTO recovered_label (recovered_id, label_index, label) VALUES (1, 0, 'architettura');
+    INSERT INTO recovered_example (recovered_id, example_index, page_line, wikitext, text) VALUES (1, 0, 8, '#*: una casa', 'una casa');
+    INSERT INTO claim_review (record_id, json_pointer, status, note, evidence_url, reviewed_at, reviewed_by)
+      VALUES (1, '/senses/0/glosses/0', 'disputed', 'furniture, not a definition', 'https://it.wiktionary.org/wiki/casa', '2026-09-30T00:00:00Z', 'huey');
+  `;
+
+const CASA_DESK: DeskFiles = { master: MASTER_LINES, hand: CASA_HAND, later: LATER_LINES };
+
+/** A master seeded from `files.master`, with `files.hand` written beside it, and the later archive on disk. */
+async function desk(files: DeskFiles): Promise<Desk> {
   const dir = await mkdtemp(join(tmpdir(), "lexema-update-"));
   const archive = join(dir, "master.jsonl.gz");
-  await writeFile(archive, gzipSync(Buffer.from(`${MASTER_LINES.join("\n")}\n`, "utf8")));
+  await writeFile(archive, gzipSync(Buffer.from(`${files.master.join("\n")}\n`, "utf8")));
   const { parts } = await seedSql({
     input: archive,
     outputDir: join(dir, "sql"),
@@ -104,25 +126,14 @@ async function desk(): Promise<Desk> {
   });
   const db = new DatabaseSync(":memory:");
   for (const part of parts) db.exec(await readFile(part, "utf8"));
-  // What the recovered layer and a review write: a definition read off the
-  // raw page, listed under the record's first sense, and a note on its gloss.
-  db.exec(`
-    INSERT INTO raw_page (page_id, release_id, wiki, title, revision_id, revision_timestamp)
-      VALUES (1, '${MASTER}', 'it.wiktionary.org', 'casa', 123, '2026-07-01T00:00:00Z');
-    INSERT INTO recovered_definition (recovered_id, record_id, release_id, page_id, definition_index, route, term, page_line, wikitext, text, held_as_example, lead_in_sense_index, lead_in_recovered_id)
-      VALUES (1, 1, '${MASTER}', 1, 0, 'below-page-control', NULL, 7, '#* edificio', 'edificio', NULL, 0, NULL);
-    INSERT INTO recovered_label (recovered_id, label_index, label) VALUES (1, 0, 'architettura');
-    INSERT INTO recovered_example (recovered_id, example_index, page_line, wikitext, text) VALUES (1, 0, 8, '#*: una casa', 'una casa');
-    INSERT INTO claim_review (record_id, json_pointer, status, note, evidence_url, reviewed_at, reviewed_by)
-      VALUES (1, '/senses/0/glosses/0', 'disputed', 'furniture, not a definition', 'https://it.wiktionary.org/wiki/casa', '2026-09-30T00:00:00Z', 'huey');
-  `);
+  db.exec(files.hand);
   const later = join(dir, "later.jsonl.gz");
-  await writeFile(later, gzipSync(Buffer.from(`${LATER_LINES.join("\n")}\n`, "utf8")));
+  await writeFile(later, gzipSync(Buffer.from(`${files.later.join("\n")}\n`, "utf8")));
   return { dir, db, later };
 }
 
-async function withDesk(run: (desk: Desk) => Promise<void>): Promise<void> {
-  const held = await desk();
+async function withDesk(run: (desk: Desk) => Promise<void>, files: DeskFiles = CASA_DESK): Promise<void> {
+  const held = await desk(files);
   try {
     await run(held);
   } finally {
@@ -316,13 +327,78 @@ test("an apply never deletes or changes a row written by hand, and the record th
     const [casa] = readings(await ask(db, "casa"));
     assert.deepEqual(glosses(casa), ["edificio adibito ad abitazione", "famiglia"]);
     assert.notEqual(casa.ref.releaseId, MASTER);
-    // The recovered definition sits under the first sense, as it did.
-    assert.deepEqual(casa.senses[0].recoveredItems.map((item) => item.text), ["edificio"]);
-    assert.deepEqual(casa.senses[0].recoveredItems[0].labels, ["architettura"]);
+    // The recovered definition is still read. The sense it was listed under,
+    // `casa ( approfondimento) f sing`, is not a sense of the record now, so it
+    // moves to the top of the list (#370).
+    assert.deepEqual(casa.senses.map((sense) => sense.recoveredItems.length), [0, 0]);
+    assert.deepEqual(casa.recovered.map((item) => item.text), ["edificio"]);
+    assert.deepEqual(casa.recovered[0].labels, ["architettura"]);
     // The review names the line it was written about: the master's.
     assert.equal(casa.reviews.length, 1);
     assert.deepEqual({ releaseId: casa.reviews[0].ref.releaseId, lineNo: casa.reviews[0].ref.lineNo }, { releaseId: MASTER, lineNo: 1 });
   });
+});
+
+// `corona` as a master holds it: two senses, and four definitions recovered
+// from its page. The later release carries one of them as a sense of its own,
+// and lists the old two in the other order: old sense 1 first, then the new
+// sense, then old sense 0.
+const CORONA_JULY = record({
+  word: "corona", pos: "noun", pos_title: "Sostantivo",
+  senses: [{ glosses: ["insieme di persone o cose disposte in cerchio intorno a:"] }, { glosses: ["ornamento circolare che si porta sul capo"] }],
+});
+const CORONA_FIXED = record({
+  word: "corona", pos: "noun", pos_title: "Sostantivo",
+  senses: [
+    { glosses: ["ornamento circolare che si porta sul capo"] },
+    { glosses: ["dinastia regnante di uno stato"] },
+    { glosses: ["insieme di persone o cose disposte in cerchio intorno a:"] },
+  ],
+});
+const CORONA_HAND = `
+    INSERT INTO raw_page (page_id, release_id, wiki, title, revision_id, revision_timestamp)
+      VALUES (1, '${MASTER}', 'it.wiktionary.org', 'corona', 456, '2026-07-01T00:00:00Z');
+    INSERT INTO recovered_definition (recovered_id, record_id, release_id, page_id, definition_index, route, term, page_line, wikitext, text, held_as_example, lead_in_sense_index, lead_in_recovered_id) VALUES
+      (1, 1, '${MASTER}', 1, 0, 'below-page-control', NULL, 5, '#* dinastia regnante di uno stato:', 'dinastia regnante di uno stato', NULL, NULL, NULL),
+      (2, 1, '${MASTER}', 1, 1, 'lead-in-item', NULL, 6, '#*# la corona dei Savoia', 'la corona dei Savoia', NULL, NULL, 1),
+      (3, 1, '${MASTER}', 1, 2, 'lead-in-item', NULL, 8, '#* un oggetto posto al centro', 'un oggetto posto al centro', NULL, 0, NULL),
+      (4, 1, '${MASTER}', 1, 3, 'below-page-control', NULL, 10, '#* premio dato al vincitore di una gara', 'premio dato al vincitore di una gara', NULL, NULL, NULL);
+  `;
+const CORONA_DESK: DeskFiles = { master: [CORONA_JULY, CANE], hand: CORONA_HAND, later: [CORONA_FIXED, CANE] };
+
+test("a recovered definition the replacing record carries is shown once, and the rest follow its senses by text", async () => {
+  await withDesk(async ({ db, later }) => {
+    const recoveredOf = (reading: Reading) => ({
+      underSense: reading.senses.map((sense) => sense.recoveredItems.map((item) => item.text)),
+      topLevel: reading.recovered.map((item) => item.text),
+    });
+    // The master's own record reads its rows as they were stored.
+    const [before] = readings(await ask(db, "corona"));
+    assert.deepEqual(recoveredOf(before), {
+      underSense: [["un oggetto posto al centro"], []],
+      topLevel: ["dinastia regnante di uno stato", "premio dato al vincitore di una gara"],
+    });
+    assert.deepEqual(before.recovered[0].items.map((item) => item.text), ["la corona dei Savoia"]);
+
+    await applied(db, later, [["changed", "corona"]]);
+    const [corona] = readings(await ask(db, "corona"));
+    assert.notEqual(corona.ref.releaseId, MASTER);
+    assert.deepEqual(glosses(corona), [
+      "ornamento circolare che si porta sul capo",
+      "dinastia regnante di uno stato",
+      "insieme di persone o cose disposte in cerchio intorno a:",
+    ]);
+    // `dinastia regnante di uno stato` is a sense now, and is not recovered again.
+    const shown = [...glosses(corona), ...everyRecovered(corona).map((item) => item.text)];
+    assert.equal(shown.filter((text) => text === "dinastia regnante di uno stato").length, 1);
+    // Its item follows it to the sense that carries it, the second; the item
+    // of the old first sense follows that sense to its new place, the third;
+    // the rest stays at the top of the list.
+    assert.deepEqual(recoveredOf(corona), {
+      underSense: [[], ["la corona dei Savoia"], ["un oggetto posto al centro"]],
+      topLevel: ["premio dato al vincitore di una gara"],
+    });
+  }, CORONA_DESK);
 });
 
 test("a lost word and an id the diff does not find are refused, and nothing is written", async () => {
