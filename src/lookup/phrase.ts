@@ -437,23 +437,52 @@ export type PhraseProbe = Omit<PhraseMatch, "word">;
  * `key` is the query as normalized for the index.
  */
 export async function phraseMatches(db: LookupDatabase, releaseId: string, key: string): Promise<PhraseProbe[]> {
-  // Only a multi-word headword: a compound tense alone (`sono andati`) is one
-  // place, and its verb is a single word the exact lookup answers for.
-  const reading = await new PhraseReader(db, releaseId).reading(splitWords(key));
-  if (reading === undefined) return [];
+  return (await phraseMatchesOf(db, releaseId, [key])).get(key) ?? [];
+}
 
-  const spelled = new Map<string, PhraseWord[]>();
-  for (const sequence of reading.sequences) {
-    const phrase = sequence.join(" ");
-    if (!spelled.has(phrase)) {
-      spelled.set(phrase, reading.slots.map((slot, i) => ({ typed: slot.typed, inflected: slot.inflected, lemma: sequence[i] })));
+/**
+ * `phraseMatches` for many keys at once, each key's answer exactly what it
+ * would be alone. One reader serves them all, so every key's words are one
+ * read and every lemma sequence one headword read: a batch (src/lookup/batch.ts)
+ * costs about what one query does.
+ */
+export async function phraseMatchesOf(
+  db: LookupDatabase,
+  releaseId: string,
+  keys: readonly string[],
+): Promise<Map<string, PhraseProbe[]>> {
+  const reader = new PhraseReader(db, releaseId);
+  // Only a multi-word headword: a compound tense alone (`sono andati`) is one
+  // place, and its verb is a single word the exact lookup answers for. A key
+  // `reading` refuses for its length is never read.
+  const phrased = [...new Set(keys)]
+    .map((key) => ({ key, typed: splitWords(key) }))
+    .filter(({ typed }) => typed.length >= 2 && typed.length <= MAX_PHRASE_WORDS);
+  await reader.read(phrased.flatMap(({ typed }) => typed));
+
+  const spelledOf = new Map<string, Map<string, PhraseWord[]>>();
+  for (const { key, reading } of await Promise.all(phrased.map(async ({ key, typed }) => ({ key, reading: await reader.reading(typed) })))) {
+    if (reading === undefined) continue;
+    const spelled = new Map<string, PhraseWord[]>();
+    for (const sequence of reading.sequences) {
+      const phrase = sequence.join(" ");
+      if (!spelled.has(phrase)) {
+        spelled.set(phrase, reading.slots.map((slot, i) => ({ typed: slot.typed, inflected: slot.inflected, lemma: sequence[i] })));
+      }
     }
+    spelledOf.set(key, spelled);
   }
-  const present = await headwordSpellings(db, releaseId, [...spelled.keys()]);
-  return [...spelled].flatMap(([phrase, [first, second, ...rest]]) =>
-    present.has(phrase) && first !== undefined && second !== undefined
-      ? [{ key: phrase, words: [first, second, ...rest] }]
-      : [],
+
+  const present = await headwordSpellings(db, releaseId, [...spelledOf.values()].flatMap((spelled) => [...spelled.keys()]));
+  return new Map(
+    keys.map((key) => [
+      key,
+      [...(spelledOf.get(key) ?? [])].flatMap(([phrase, [first, second, ...rest]]): PhraseProbe[] =>
+        present.has(phrase) && first !== undefined && second !== undefined
+          ? [{ key: phrase, words: [first, second, ...rest] }]
+          : [],
+      ),
+    ]),
   );
 }
 

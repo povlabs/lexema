@@ -106,8 +106,15 @@ interface ReadyQuery {
 async function prepareQuery(db: LookupDatabase, releaseId: string, query: string): Promise<RejectedResult | ReadyQuery> {
   const rejection = rejectionOf(query);
   if (rejection !== undefined) return { outcome: "rejected", query: { raw: query }, rejection };
-  const trimmed = query.trim();
+  const release = await servableRelease(db, releaseId);
+  return { outcome: "ready", query: queryInfoOf(query, release), release };
+}
 
+/**
+ * The release a lookup may probe: complete, and built by this build's own
+ * normalizer. A batch of words reads it once (src/lookup/batch.ts).
+ */
+export async function servableRelease(db: LookupDatabase, releaseId: string): Promise<ReleaseInfo> {
   const release = await readRelease(db, releaseId);
   if (release === undefined) {
     // A release that is absent, still importing, failed or superseded is not
@@ -123,8 +130,12 @@ async function prepareQuery(db: LookupDatabase, releaseId: string, query: string
       `release '${releaseId}' was built with normalizer '${release.normalizer}', this build has '${IT_NORMALIZER_VERSION}'`,
     );
   }
-  const key = normalizeItalianExact(trimmed);
-  return { outcome: "ready", query: { raw: query, key, normalizer: release.normalizer }, release };
+  return release;
+}
+
+/** A query `rejectionOf` accepts, keyed for the index by the release's normalizer. */
+export function queryInfoOf(query: string, release: ReleaseInfo): QueryInfo {
+  return { raw: query, key: normalizeItalianExact(query.trim()), normalizer: release.normalizer };
 }
 
 /**

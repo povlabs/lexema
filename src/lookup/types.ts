@@ -541,6 +541,25 @@ export function isFormOfReading(reading: Reading): boolean {
 }
 
 /**
+ * The lemmas a form-of record of part of speech `pos` names that are of its
+ * own part of speech: `andavano` the verb names `andare`, which is a noun
+ * record and a verb record, and the verb is its lemma. When no candidate
+ * shares the part of speech, every candidate stays, because the source did not
+ * say which. A dangling link names none.
+ *
+ * Generic over the candidate, so a full reading's links and the light links a
+ * batch reads (src/lookup/batch.ts) go through the one rule.
+ */
+export function lemmasOfPartOfSpeech<C extends { readonly pos: string }>(
+  pos: string,
+  links: readonly ({ readonly kind: "dangling" } | { readonly kind: "candidates"; readonly candidates: readonly C[] })[],
+): C[] {
+  const all = links.flatMap((link) => (link.kind === "candidates" ? link.candidates : []));
+  const same = all.filter((lemma) => lemma.pos === pos);
+  return same.length > 0 ? same : all;
+}
+
+/**
  * Every spelling on this reading the query actually hit, in the two shapes a
  * record spells a word in: its own headword, and its `forms[]` entries.
  *
