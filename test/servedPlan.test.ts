@@ -63,8 +63,12 @@ test("no served-release lookup probes lookup_form or form_of_edge on the release
     assert.ok(statements.has(name), `${name} is no longer an exported servedBy statement`);
   }
 
-  for (const [name, sql] of statements) {
-    const plan = (sqlite.prepare(`EXPLAIN QUERY PLAN ${sql}`).all() as { detail: string }[]).map((row) => row.detail);
-    assert.ok(!plan.some(prefixOnly), `${name} probes on the release_id prefix alone:\n${plan.join("\n")}`);
-  }
+  // Every offender at once, each with the step that walks the release.
+  const offenders = [...statements].flatMap(([name, sql]) =>
+    (sqlite.prepare(`EXPLAIN QUERY PLAN ${sql}`).all() as { detail: string }[])
+      .map((row) => row.detail)
+      .filter(prefixOnly)
+      .map((step) => `${name}: ${step}`),
+  );
+  assert.deepEqual(offenders, []);
 });
