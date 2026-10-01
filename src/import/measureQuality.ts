@@ -31,6 +31,7 @@ import {
   isFormOf,
   isThin,
   moodAgreement,
+  rawTextNames,
   senseKind,
   targetResolution,
   type DuplicateRelation,
@@ -65,9 +66,7 @@ const add = <K>(map: Map<K, number>, key: K, by = 1) => map.set(key, (map.get(ke
 const counts = <K extends string>(keys: readonly K[]): Record<K, number> =>
   Object.fromEntries(keys.map((key) => [key, 0])) as Record<K, number>;
 
-// ---------------------------------------------------------------------------
 // Pass 1: what every later count is measured against.
-// ---------------------------------------------------------------------------
 
 const recordsByWord = new Map<string, number>();
 const recordsByWordAndPos = new Map<string, number>();
@@ -129,9 +128,7 @@ function strataOf(record: ArchiveRecord["record"]): Stratum[] {
 const sampleKey = (stratum: Stratum, lineSha256: string): string =>
   createHash("sha256").update(`${SAMPLE_RULE}\n${stratum}\n${lineSha256}`).digest("hex");
 
-// ---------------------------------------------------------------------------
 // Pass 2: the counts.
-// ---------------------------------------------------------------------------
 
 const { pages, described } = await openRawPages();
 
@@ -166,10 +163,17 @@ interface FurnitureGloss {
 const furnitureWithProse: FurnitureGloss[] = [];
 const furnitureGlosses: FurnitureGloss[] = [];
 
-type GrammarState = "stated" | "stated-twice" | "missing-unclassified-text-beside" | "missing";
+/**
+ * - `unclassified` — no structural tag states it, and a raw tag names it in
+ *   prose (`rawTextNames`).
+ * - `missing-other-raw-text` — no tag states it and no raw tag names it, though
+ *   the record carries raw tags about something else (`diritto`).
+ */
+type GrammarState = "stated" | "stated-twice" | "unclassified" | "missing-other-raw-text" | "missing";
+const GRAMMAR_STATES: readonly GrammarState[] = ["stated", "stated-twice", "unclassified", "missing-other-raw-text", "missing"];
 const grammar = new Map<string, Record<GrammarState, number>>();
 const grammarCell = (key: string) => {
-  if (!grammar.has(key)) grammar.set(key, counts(["stated", "stated-twice", "missing-unclassified-text-beside", "missing"] as const));
+  if (!grammar.has(key)) grammar.set(key, counts(GRAMMAR_STATES));
   return grammar.get(key)!;
 };
 
@@ -272,8 +276,8 @@ const second = await parseArchive({
     // Gender and number, where the importer expects them.
     const formOf = isFormOf(record);
     const recordTags = strings(record.tags);
-    const unclassifiedBeside =
-      strings(record.raw_tags).length > 0 || record.senses.some((sense) => strings(sense.raw_tags).length > 0);
+    const rawTexts = [...strings(record.raw_tags), ...record.senses.flatMap((sense) => strings(sense.raw_tags))];
+    const rawNames = new Set<string>(rawTexts.flatMap((text) => [...rawTextNames(text)]));
     for (const dimension of expectedRecordDimensions(record.pos)) {
       const values = new Set(
         recordTags.flatMap((tag) => {
@@ -284,7 +288,8 @@ const second = await parseArchive({
       const cell = grammarCell(`${record.pos} ${formOf ? "form-of" : "lemma"} ${dimension}`);
       if (values.size === 1) cell.stated += 1;
       else if (values.size > 1) cell["stated-twice"] += 1;
-      else if (unclassifiedBeside) cell["missing-unclassified-text-beside"] += 1;
+      else if (rawNames.has(dimension)) cell.unclassified += 1;
+      else if (rawTexts.length > 0) cell["missing-other-raw-text"] += 1;
       else cell.missing += 1;
     }
 
@@ -387,9 +392,7 @@ const second = await parseArchive({
 
 if (second.archiveSha256 !== first.archiveSha256) throw new Error("the archive changed between the two passes");
 
-// ---------------------------------------------------------------------------
 // The sample: drawn, or read back and scored.
-// ---------------------------------------------------------------------------
 
 const line = (text: string) => process.stdout.write(`${text}\n`);
 
@@ -500,6 +503,7 @@ for (const [key, n] of lemmasByWordAndPos) if (n > 1) splitLemmas[key.split("\u0
 const result = {
   archiveSha256: first.archiveSha256,
   italianRecords: first.admitted,
+  linesNotAdmitted: { otherLanguage: first.skippedOtherLanguage, malformed: first.malformed, malformedMembers: first.malformedMembers },
   rawPageInput: described,
   commonWords: [...commonWords],
   strata: stratumSize,
@@ -524,7 +528,8 @@ const result = {
 await mkdir(resolve(output, ".."), { recursive: true });
 await writeFile(output, `${JSON.stringify(result, null, 2)}\n`);
 
-line(`archive ${first.archiveSha256.slice(0, 12)}…, ${first.admitted} Italian records, raw pages from ${described}`);
+line(`archive ${first.archiveSha256.slice(0, 12)}…, ${first.admitted} Italian records of ${first.linesRead} lines ` +
+  `(${first.skippedOtherLanguage} another language, ${first.malformed} malformed, ${first.malformedMembers} malformed members), raw pages from ${described}`);
 line(`definitions: ${definitions.withGlossText} records with gloss text; ${definitions.shownNothing} show no definition ` +
   `(${definitions.glossTextButNothingShown} of them have gloss text); ` +
   `${definitions.meaningOnlyThroughRecovery} have a meaning only through the recovered layer; ${definitions.glossTextButNoMeaning} have gloss text and no meaning at all`);

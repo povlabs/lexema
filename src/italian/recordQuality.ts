@@ -26,7 +26,7 @@ const strings = (value: unknown): string[] =>
  * What one sense holds, read the way the word page reads it.
  *
  * - `meaning` — at least one gloss that is real text and not the headword line.
- * - `form-of` — the sense names the word it inflects (`plurale di casa`).
+ * - `form-of` — the sense has a gloss and names the word it inflects (`plurale di casa`).
  * - `furniture` — every gloss is the headword line the page hides
  *   (`casa ( approfondimento) f sing`), with nothing after the stamp.
  * - `furniture-with-prose` — every gloss starts as that headword line, and at
@@ -53,9 +53,10 @@ function furnitureStatesSomething(text: string, word: string): boolean {
 }
 
 export function senseKind(sense: QualityRecord["senses"][number], word: string): SenseKind {
-  if (sense.form_of.length > 0) return "form-of";
   const glosses = strings(sense.glosses).filter((text) => text.trim() !== "");
+  // The page shows no sense without a gloss, a form-of one included.
   if (glosses.length === 0) return "no-gloss";
+  if (sense.form_of.length > 0) return "form-of";
   const real = glosses.flatMap((text) => withoutPlaceholder(text) ?? []);
   if (real.length === 0) return "placeholder";
   if (!real.every((text) => isFurnitureGloss(text, word))) return "meaning";
@@ -208,6 +209,35 @@ export type TargetResolution = "resolved" | "ambiguous" | "dangling";
 
 export function targetResolution(recordsWithWord: number): TargetResolution {
   return recordsWithWord === 0 ? "dangling" : recordsWithWord === 1 ? "resolved" : "ambiguous";
+}
+
+/** The two record-level dimensions a raw tag can name in prose. */
+export type RawTextDimension = "gender" | "number";
+
+const GENDER_WORDS = new Set(["m", "f", "mf", "fm", "maschile", "femminile", "masculine", "feminine", "neutro", "neuter"]);
+const NUMBER_WORDS = new Set([
+  "sing", "sg", "singolare", "singular", "pl", "plur", "plurale", "plurali",
+  "inv", "invar", "invariabile", "indeclinabile",
+]);
+/** A gender stamp run into a number stamp: `msing`, `fpl`, `finv`, `ms`. */
+const RUN_TOGETHER = /^(?:m|f|mf)(?:s|sing|pl|inv)$/u;
+
+/**
+ * Which of gender and number one `raw_tags` entry names, read as the stamps
+ * and words Wikizionario writes them in: `f.sing.` names both, `solo maschile`
+ * names gender, `pl.: case` names number, `diritto` and `forestierismo` name
+ * neither. A misspelt stamp (`simg`, `fsin`) and a bare `s` name nothing, so a
+ * count built on this is a floor. This reads prose to measure, never to claim:
+ * the importer still records every raw tag as unclassified
+ * (src/import/grammarPolicy.ts).
+ */
+export function rawTextNames(text: string): Set<RawTextDimension> {
+  const named = new Set<RawTextDimension>();
+  for (const token of text.toLocaleLowerCase("it-IT").split(/[^\p{L}]+/u)) {
+    if (GENDER_WORDS.has(token) || RUN_TOGETHER.test(token)) named.add("gender");
+    if (NUMBER_WORDS.has(token) || RUN_TOGETHER.test(token)) named.add("number");
+  }
+  return named;
 }
 
 /** Whether a word carries an accented letter: `città`, `perché`. */

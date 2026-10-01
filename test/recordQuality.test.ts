@@ -15,6 +15,7 @@ import {
   glossMood,
   hasGlossText,
   moodAgreement,
+  rawTextNames,
   senseKind,
   targetResolution,
   type QualityRecord,
@@ -24,7 +25,7 @@ import { readSavedPage } from "../src/source/rawPage.js";
 
 interface ArchiveLine extends QualityRecord {
   pos_title: string;
-  senses: (QualityRecord["senses"][number] & { glosses?: string[] })[];
+  senses: (QualityRecord["senses"][number] & { glosses?: string[]; raw_tags?: string[] })[];
 }
 
 /** Lines as the archive parser admits them: `forms` and every sense's `form_of` always arrays. */
@@ -65,6 +66,25 @@ test("casa: a non-empty gloss array with no meaning in it; the page shows the fu
   const recovered = recovery.outcome === "matched" ? recovery.recovered.length : 0;
   // The seven recovered definitions replace them: the furniture is hidden.
   assert.equal(definitionsShown(kinds(casa), recovered), 7);
+});
+
+test("casa: its one raw tag names number, not gender, so its gender is missing rather than unclassified", () => {
+  const casa = one("casa", "noun");
+  const raw = casa.senses.flatMap((sense) => sense.raw_tags ?? []);
+  assert.deepEqual(raw, ["pl.: case"]);
+  assert.deepEqual([...rawTextNames(raw[0])], ["number"]);
+});
+
+test("raw text names gender or number only through a stamp or a grammar word", () => {
+  const names = (text: string) => [...rawTextNames(text)].sort();
+  assert.deepEqual(names("f.sing."), ["gender", "number"]);
+  assert.deepEqual(names("s.m.inv."), ["gender", "number"]);
+  assert.deepEqual(names("msing"), ["gender", "number"]);
+  assert.deepEqual(names("m/f"), ["gender"]);
+  assert.deepEqual(names("solo maschile"), ["gender"]);
+  assert.deepEqual(names("soltanto plurali"), ["number"]);
+  // Register and field labels name neither, and neither does a misspelt stamp.
+  for (const label of ["diritto", "scuola", "familiare", "forestierismo", "simg", "s", "km"]) assert.deepEqual(names(label), [], label);
 });
 
 test("palo: the page rule hides a headword line that goes on to state a heraldic meaning", () => {

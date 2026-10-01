@@ -18,7 +18,8 @@ Two kinds of number are kept apart throughout:
 
 - Release `it-0c432803`: `it-extract.jsonl.gz`, SHA-256
   `0c432803c672aceccd48787eb64807c5366fdbd6796715c9a99e31c0024d5dcf`, 560,357
-  Italian records.
+  Italian records of 799,600 lines. The other 239,243 are another language; none
+  is malformed.
 - Raw pages: `itwiktionary-20260701-pages-articles.xml.bz2`, the dump the archive
   was built from ([its identity](2026-09-23-recovered-definitions-full-release.md#the-input-the-dump-the-archive-was-built-from)).
   Read only for the recovered layer and to ask whether a page exists.
@@ -91,11 +92,12 @@ there (the furniture rule), and recovered definitions added (#28).
 | **All Italian records** | **560,357** |
 
 - **559,690** records have a non-empty gloss array (99.88%).
-- **553,411** show at least one definition on the page (98.76%).
+- **553,413** show at least one definition on the page (98.76%).
 - The gap is **6,279** records with gloss text and nothing to show. Nearly all of it
   is the placeholder. The other 667 records have no gloss at all; Wiktionary has no
-  definition for them ([definition-loss report](2026-09-18-definition-loss.md#what-is-not-the-cause)).
-- **8** records have a meaning only through the recovered layer, `casa` among them.
+  definition for 665 of them ([definition-loss report](2026-09-18-definition-loss.md#what-is-not-the-cause)),
+  and the recovered layer reads one back for two.
+- **10** records have a meaning only through the recovered layer, `casa` among them.
 
 ### How big the furniture class really is
 
@@ -165,17 +167,22 @@ makes "non-empty" overstate; on this sample, "shows a definition" overstates
 The words mean:
 
 - **missing**: the importer expects the field ([`grammarPolicy.ts`](../src/import/grammarPolicy.ts)) and no structural tag states it.
-- **unclassified**: the only evidence is free text (`raw_tags`), which the importer
-  keeps verbatim and does not map.
+- **unclassified**: no structural tag states it, and a free-text `raw_tags` entry
+  names it. The importer keeps that text verbatim and does not map it.
+  `rawTextNames` ([`recordQuality.ts`](../src/italian/recordQuality.ts)) decides
+  "names it": a gender or number stamp or word (`f.sing.`, `s.m.inv.`, `msing`,
+  `solo maschile`, `pl.: case`). Register and field labels such as `diritto`,
+  `scuola` or `forestierismo` name neither, so a record carrying only those is
+  missing, not unclassified.
 - **disputed**: two parts of the source state different values for one fact.
 - **unsupported**: a claim the source's other evidence does not back. Its target
   has no record, or the target's table does not list it.
 
 ### Definitions
 
-Denominator: all 560,357 records. 553,411 show one. 6,946 show none: 6,279
-placeholder-only and 667 with no gloss. 8 records have their meaning only through
-recovery.
+Denominator: all 560,357 records. 553,413 show one. 6,944 show none: 6,279
+with gloss text, nearly all placeholder-only, and 665 with no gloss. 10 records
+have their meaning only through recovery.
 
 ### Gender and number
 
@@ -183,22 +190,26 @@ Denominator: records whose part of speech the importer expects gender and number
 on (noun, adjective, proper name). "Both" means masculine and feminine both stated.
 That is common gender (`cantante`), not a dispute.
 
-| Records | Dimension | Denominator | Stated, one value | Both | Missing, raw text beside it | Missing |
-| --- | --- | ---: | ---: | ---: | ---: | ---: |
-| noun lemmas | gender | 37,151 | 31,169 | 1,508 | 690 | 3,784 |
-| noun lemmas | number | 37,151 | 27,442 | 92 | 1,779 | 7,838 |
-| adjective lemmas | gender | 14,961 | 9,129 | 3,053 | 209 | 2,570 |
-| adjective lemmas | number | 14,961 | 11,054 | 26 | 325 | 3,556 |
-| proper-name lemmas | gender | 4,837 | 3,732 | 96 | 26 | 983 |
-| proper-name lemmas | number | 4,837 | 210 | 3 | 45 | 4,579 |
-| noun form-of | gender | 15,734 | 14,852 | 348 | 13 | 521 |
-| noun form-of | number | 15,734 | 11,758 | 12 | 53 | 3,911 |
-| adjective form-of | gender | 15,527 | 12,092 | 2,865 | 16 | 554 |
-| adjective form-of | number | 15,527 | 12,127 | 14 | 49 | 3,337 |
+The two "Missing" columns split on whether the record carries raw text about
+something else.
 
-`casa` is one of the 690 noun lemmas with no gender tag and raw text beside it:
-its only plural is the sense raw tag `pl.: case`. **1 noun lemma in 8 has no
-structural gender (4,474 of 37,151), so no article can be generated for it.**
+| Records | Dimension | Denominator | Stated, one value | Both | Unclassified | Missing, other raw text | Missing, no raw text |
+| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| noun lemmas | gender | 37,151 | 31,169 | 1,508 | 64 | 626 | 3,784 |
+| noun lemmas | number | 37,151 | 27,442 | 92 | 170 | 1,609 | 7,838 |
+| adjective lemmas | gender | 14,961 | 9,129 | 3,053 | 21 | 188 | 2,570 |
+| adjective lemmas | number | 14,961 | 11,054 | 26 | 64 | 261 | 3,556 |
+| proper-name lemmas | gender | 4,837 | 3,732 | 96 | 2 | 24 | 983 |
+| proper-name lemmas | number | 4,837 | 210 | 3 | 0 | 45 | 4,579 |
+| noun form-of | gender | 15,734 | 14,852 | 348 | 7 | 6 | 521 |
+| noun form-of | number | 15,734 | 11,758 | 12 | 11 | 42 | 3,911 |
+| adjective form-of | gender | 15,527 | 12,092 | 2,865 | 10 | 6 | 554 |
+| adjective form-of | number | 15,527 | 12,127 | 14 | 27 | 22 | 3,337 |
+
+Unclassified is small: 64 noun lemmas have a gender only in free text. `casa` is
+not one of them. Its one raw tag, `pl.: case`, names its plural, so its number is
+unclassified and its gender is missing. **1 noun lemma in 8 has no structural
+gender (4,474 of 37,151), so no article can be generated for it.**
 
 ### Verb mood on conjugation rows
 
@@ -325,7 +336,7 @@ verbatim archive lines: the spot check's words from
 
 | Case | What it pins |
 | --- | --- |
-| `casa` | a non-empty gloss array of two headword lines; the page shows them only until the raw page's seven definitions are recovered |
+| `casa` | a non-empty gloss array of two headword lines; the page shows them only until the raw page's seven definitions are recovered. Its raw tag `pl.: case` names number, not gender |
 | `parlerei` | the condizionale its gloss names is where `it-moods/v1` places it in `parlare`'s table |
 | `studente` | the verb record's present participle is unlisted; `studiare`'s table gives `studiante` |
 | `bella` | the noun's target `bello` is three records, two of them nouns: ambiguous |
@@ -349,6 +360,9 @@ verbatim archive lines: the spot check's words from
   The borderline calls are the three "says nothing" records above.
 - **Prose read to measure.** `glossMood` takes the one mood word a gloss names. A
   gloss naming two, or none, is not compared (147 senses).
+- **Unclassified is a floor.** `rawTextNames` reads stamps and grammar words as
+  written. A misspelt stamp (`simg`, `fsin`) or a bare `s` names nothing, so its
+  record counts as missing.
 - **The disputes are a floor.** Only 24 "elsewhere" answers were read by hand. A
   mismatch inside the 4,353 participle homographs, or among the 835 unlisted, is
   not counted.
