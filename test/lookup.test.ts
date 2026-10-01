@@ -896,6 +896,8 @@ test("both inflection queries stay on indexes rather than scanning", async () =>
         !plan.some((step) => /MATERIALIZE|SCAN lookup_form|SCAN form_of_edge/.test(step)),
         `${name} query degraded to a scan:\n${plan.join("\n")}`,
       );
+      // It starts from this record's own row, not from the served releases (#381).
+      assert.match(plan[0], /USING INDEX lookup_form_by_record \(record_id=\?\)$/, `${name} query:\n${plan.join("\n")}`);
     }
   });
 });
