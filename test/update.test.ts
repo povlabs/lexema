@@ -354,6 +354,8 @@ test("lookups serve the master as a whole: a fixed word from the later release b
     assert.deepEqual(link.candidates.map((candidate) => candidate.ref.releaseId), [feed]);
     // And `andare` lists `vado` as its form, from the master's line.
     assert.deepEqual(andare.inflections.map((inflection) => [inflection.word, inflection.refs[0].releaseId]), [["vado", MASTER]]);
+    // Its candidate set is the later release's `andare`, found from the master's edge.
+    assert.deepEqual(andare.inflections[0].targetCandidates.map((candidate) => candidate.ref.releaseId), [feed]);
     // One record per reading: the retired `andare` is not found beside its successor.
     assert.equal(readings(await ask(db, "andare")).length, 1);
 
