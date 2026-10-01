@@ -14,6 +14,7 @@ import {
 import { ArrivalToast } from "@/components/developers/dashboard/ArrivalToast";
 import { DeveloperPage, SIGN_IN_PATH } from "./DeveloperPage";
 import { DOCS_PATH, endpointPath } from "@/lib/developers/docsPages.ts";
+import type { SignedIn } from "@/lib/developers/signedIn.ts";
 import {
   BUTTON_PRIMARY,
   BUTTON_SECONDARY,
@@ -73,9 +74,9 @@ const FEATURES = [
   { heading: "Close matches", text: "A typo or a missing accent returns what it probably was." },
 ] as const;
 
-export function DeveloperLanding({ origins }: { origins: SiteOrigins }) {
+export function DeveloperLanding({ signedIn, origins }: { signedIn?: SignedIn; origins: SiteOrigins }) {
   return (
-    <DeveloperPage origins={origins}>
+    <DeveloperPage signedIn={signedIn} origins={origins}>
       <main className={DEV_SHELL}>
         <h1 className={LANDING_HEADING}>The Lexema API</h1>
         <p className={LANDING_LEAD}>
