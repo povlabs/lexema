@@ -85,6 +85,25 @@ what is left unmatched:
 Write down the ids of the changes to take: `new-…` and `chg-…`, twelve hex
 digits each.
 
+Or let Huey's rule of 2026-10-01 choose
+([#377](https://github.com/hueypov/lexema/issues/377),
+[src/update/selection.ts](../src/update/selection.ts)): new Italian words with
+a real gloss, and changed senses only where they fill an empty, placeholder or
+headword-line gloss or add a sense. It judges each later record with the
+language rule of [#29](https://github.com/hueypov/lexema/issues/29), so it needs
+the Wiktionary dump the later file was built from, the one its build log names.
+Fetch it from `dumps.wikimedia.org`; it is checked against the size and SHA-1
+in `KNOWN_DUMPS` ([src/source/wiktionaryDump.ts](../src/source/wiktionaryDump.ts)).
+
+```sh
+SEED_REMOTE=lexema-dictionary pnpm run update:select <path to the later .jsonl.gz> --pages <path to its dump .xml.bz2>
+```
+
+It writes nothing to the database. Beside the report it writes
+`selection-<master>-<later>.md`, the count and ten examples of every bucket,
+the same as `.json`, and `selection-<master>-<later>.ids`, the ids it takes,
+one per line. Pass that file to the apply with `--ids`.
+
 ## 4. Apply
 
 Before the shared dictionary, note where to go back to if needed:
@@ -100,7 +119,10 @@ Then apply, naming the same file and the chosen ids:
 
 ```sh
 SEED_REMOTE=lexema-dictionary pnpm run update:apply <path to the later .jsonl.gz> <id> <id> ...
+SEED_REMOTE=lexema-dictionary pnpm run update:apply <path to the later .jsonl.gz> --ids <file of ids>
 ```
+
+An ids file holds one id per line; a `#` starts a comment.
 
 It runs the diff again and refuses, writing nothing, if any id is not a change
 that diff finds, names a lost word, or is not an id at all. Otherwise it writes
