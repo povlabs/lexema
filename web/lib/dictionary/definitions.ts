@@ -2,6 +2,7 @@
 // in order, each with its examples. The page renders them (Reading.tsx) and the
 // API returns them (web/worker/api/lookupAnswer.ts), so both read one list.
 
+import { isFurnitureGloss } from "@lexema/italian/furniture.ts";
 import { everyRecovered } from "@lexema/lookup/types.ts";
 import type { Reading, RecoveredDefinition, Sense } from "@lexema/lookup/types.ts";
 
@@ -14,7 +15,7 @@ function isEntryFurniture(sense: Sense, word: string): boolean {
   return (
     sense.glosses.length > 0 &&
     sense.recoveredItems.length === 0 &&
-    sense.glosses.every(({ text }) => text === `${word} ( citazioni)` || text.startsWith(`${word} ( approfondimento)`))
+    sense.glosses.every(({ text }) => isFurnitureGloss(text, word))
   );
 }
 

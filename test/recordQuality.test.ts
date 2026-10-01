@@ -1,0 +1,164 @@
+// Regression cases for the quality measurement (#17), one per finding the
+// twelve-word spot check left open and reports/2026-10-01-dictionary-quality.md
+// now verifies. Every record is a verbatim archive line: the twelve's words
+// from fixtures/dev-seed.jsonl, the rest from fixtures/quality-regressions.jsonl
+// (archive lines 196 `gallo`, 43791 `palo`, 139668 `vogare`, 140523 `voga`,
+// 226888 `raccontavo`, 429722 `rifritto`). No case needs `it-extract.jsonl.gz`.
+
+import assert from "node:assert/strict";
+import test from "node:test";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+import {
+  definitionsShown,
+  duplicateForms,
+  glossMood,
+  hasGlossText,
+  moodAgreement,
+  senseKind,
+  targetResolution,
+  type QualityRecord,
+} from "../src/italian/recordQuality.js";
+import { recordText, recoverDefinitions } from "../src/italian/recovery.js";
+import { readSavedPage } from "../src/source/rawPage.js";
+
+interface ArchiveLine extends QualityRecord {
+  pos_title: string;
+  senses: (QualityRecord["senses"][number] & { glosses?: string[] })[];
+}
+
+/** Lines as the archive parser admits them: `forms` and every sense's `form_of` always arrays. */
+function read(file: string): ArchiveLine[] {
+  return readFileSync(resolve(file), "utf8")
+    .trim()
+    .split("\n")
+    .map((line) => {
+      const record = JSON.parse(line);
+      return {
+        ...record,
+        forms: record.forms ?? [],
+        senses: (record.senses ?? []).map((sense: object & { form_of?: unknown[] }) => ({ ...sense, form_of: sense.form_of ?? [] })),
+      };
+    });
+}
+
+const records = [...read("fixtures/dev-seed.jsonl"), ...read("fixtures/quality-regressions.jsonl")];
+const all = (word: string, pos?: string) => records.filter((record) => record.word === word && (pos === undefined || record.pos === pos));
+const one = (word: string, pos: string) => {
+  const found = all(word, pos);
+  assert.equal(found.length, 1, `expected one ${pos} record of ${word}`);
+  return found[0];
+};
+const kinds = (record: ArchiveLine) => record.senses.map((sense) => senseKind(sense, record.word));
+const tables = (word: string) => all(word, "verb").filter((record) => record.forms.length > 0).map((record) => record.forms);
+const firstGloss = (record: ArchiveLine) => record.senses[0].glosses?.[0] ?? "";
+
+test("casa: a non-empty gloss array with no meaning in it; the page shows the furniture only until the raw page is read", () => {
+  const casa = one("casa", "noun");
+  assert.equal(hasGlossText(casa), true);
+  assert.deepEqual(kinds(casa), ["furniture", "furniture"]);
+  // With nothing else to show, the page shows the two headword lines verbatim.
+  assert.equal(definitionsShown(kinds(casa), 0), 2);
+  const page = readSavedPage(readFileSync(resolve("fixtures/upstream-pages/casa.wikitext"), "utf8"), "casa.wikitext");
+  const recovery = recoverDefinitions(recordText(casa), page);
+  assert.equal(recovery.outcome, "matched");
+  const recovered = recovery.outcome === "matched" ? recovery.recovered.length : 0;
+  // The seven recovered definitions replace them: the furniture is hidden.
+  assert.equal(definitionsShown(kinds(casa), recovered), 7);
+});
+
+test("palo: the page rule hides a headword line that goes on to state a heraldic meaning", () => {
+  const palo = one("palo", "noun");
+  const heraldic = palo.senses.findIndex((sense) => (sense.glosses?.[0] ?? "").startsWith("palo ( approfondimento) pezza onorevole"));
+  assert.notEqual(heraldic, -1);
+  assert.equal(senseKind(palo.senses[heraldic], "palo"), "furniture-with-prose");
+  // The record has other meanings, so that sense is not counted among the definitions shown.
+  const shown = definitionsShown(kinds(palo), 0);
+  assert.equal(shown, kinds(palo).filter((kind) => kind === "meaning").length);
+});
+
+test("rifritto: a gloss array holding only the missing-definition placeholder shows nothing", () => {
+  const rifritto = one("rifritto", "noun");
+  assert.equal(hasGlossText(rifritto), true);
+  assert.deepEqual(kinds(rifritto), ["placeholder"]);
+  assert.equal(definitionsShown(kinds(rifritto), 0), 0);
+});
+
+test("parlerei: the conditional its gloss names is the one it-moods/v1 reads off parlare's table", () => {
+  const parlerei = one("parlerei", "verb");
+  assert.equal(glossMood(firstGloss(parlerei)), "condizionale");
+  assert.equal(moodAgreement("parlerei", "condizionale", tables("parlare")), "corroborated");
+});
+
+test("studente: the verb record's present participle is not in studiare's table, which gives studiante", () => {
+  const verb = one("studente", "verb");
+  assert.equal(glossMood(firstGloss(verb)), "participio");
+  assert.equal(moodAgreement("studente", "participio", tables("studiare")), "unlisted");
+  const participle = tables("studiare")
+    .flat()
+    .find((form) => JSON.stringify(form.tags) === JSON.stringify(["present", "participle"]));
+  assert.equal(participle?.form, "studiante");
+});
+
+test("voga: the gloss calls it a congiuntivo the target's own table spells voghi", () => {
+  const voga = one("voga", "verb");
+  // Its third sense; the first two, indicativo and imperativo, are in the table as stated.
+  const gloss = voga.senses[2].glosses?.[0] ?? "";
+  assert.equal(gloss, "terza persona singolare del congiuntivo presente di vogare");
+  assert.equal(glossMood(gloss), "congiuntivo");
+  assert.equal(moodAgreement("voga", "congiuntivo", tables("vogare")), "elsewhere");
+  const cell = tables("vogare")
+    .flat()
+    .find((form) => JSON.stringify(form.tags) === '["present"]' && JSON.stringify(form.raw_tags) === '["che lui/che lei"]');
+  assert.equal(cell?.form, "voghi");
+});
+
+test("bella: the noun points at bello, which two noun records carry", () => {
+  const noun = one("bella", "noun");
+  const target = noun.senses[0].form_of[0].word;
+  assert.equal(target, "bello");
+  assert.equal(targetResolution(all("bello").length), "ambiguous");
+  assert.equal(targetResolution(all("bello", "noun").length), "ambiguous");
+});
+
+test("sale: three records, each a reading of its own; the plural of sala resolves only within its part of speech", () => {
+  assert.deepEqual(
+    all("sale").map((record) => [record.pos, [...new Set(kinds(record))]]),
+    [
+      ["noun", ["meaning"]],
+      ["noun", ["form-of"]],
+      ["verb", ["form-of"]],
+    ],
+  );
+  // `sala` is a noun and a form of salare, so the bare word is two records.
+  assert.equal(targetResolution(all("sala").length), "ambiguous");
+  assert.equal(targetResolution(all("sala", "noun").length), "resolved");
+  assert.equal(targetResolution(all("salire", "verb").length), "resolved");
+});
+
+test("raccontavo: a form-of record whose lemma has no record at all", () => {
+  const raccontavo = one("raccontavo", "verb");
+  assert.equal(raccontavo.senses[0].form_of[0].word, "raccontare");
+  assert.equal(targetResolution(all("raccontare").length), "dangling");
+});
+
+test("duplicate embedded forms: studente lists studenti twice, gallo lists galli twice the same way, a verb's studi is three cells", () => {
+  assert.deepEqual(
+    duplicateForms(one("studente", "noun").forms).map(({ surface, indexes, relation }) => [surface, indexes, relation]),
+    [["studenti", [0, 3], "subsumed"]],
+  );
+  assert.deepEqual(
+    duplicateForms(one("gallo", "noun").forms).map(({ surface, relation }) => [surface, relation]),
+    [["galli", "identical"]],
+  );
+  const studi = duplicateForms(tables("studiare")[0]).find(({ surface }) => surface === "studi");
+  assert.equal(studi?.relation, "distinct");
+});
+
+test("glossMood reads one mood word, and refuses a gloss that names none or two", () => {
+  assert.equal(glossMood("terza persona plurale dell'imperfetto indicativo di andare"), "indicativo");
+  assert.equal(glossMood("plurale di studente"), undefined);
+  assert.equal(glossMood("indicativo o congiuntivo"), undefined);
+  // A mood word inside another word is not that mood.
+  assert.equal(glossMood("participiale"), undefined);
+});
