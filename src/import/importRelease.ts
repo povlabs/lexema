@@ -719,9 +719,9 @@ function writeClaims(
     rows.grammar_claim += 1;
   }
 
-  // A dimension we looked for and did not find. This is what separates `casa`,
-  // whose gender the source simply never states, from a record nobody expected
-  // a gender from.
+  // A dimension we looked for and did not find. This is what separates
+  // `varicella`, whose gender the source simply never states, from a record
+  // nobody expected a gender from.
   for (const dimension of scope.expected) {
     if (stated.has(dimension)) continue;
     statements.insertClaim.run(

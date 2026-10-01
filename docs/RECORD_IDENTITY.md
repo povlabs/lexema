@@ -87,7 +87,7 @@ Four different things, kept apart.
 | state | how it looks | example |
 | --- | --- | --- |
 | **absent** | no `grammar_claim` row | nothing expected a `person` on a noun |
-| **`stated`** | dimension + value + the literal tag, or the stamp of a gloss grammar stamp ([`grammarPolicy.ts`](../src/import/grammarPolicy.ts)) | `città` `/tags/0` → gender = feminine; `casa` `/senses/0/glosses/0` `f sing` → gender = feminine |
+| **`stated`** | dimension + value + the literal tag or a gloss grammar stamp ([`grammarPolicy.ts`](../src/import/grammarPolicy.ts)) | `città` `/tags/0` → gender = feminine; `casa` `/senses/0/glosses/0` `f sing` → gender = feminine |
 | **`unclassified`** | literal text kept, no dimension, no value guessed | `salire` `/forms/6/raw_tags/0` = `lui/lei` |
 | **`missing`** | dimension named, value NULL, pointer at the container that should have carried it | `varicella` (line 1128) has no tags and no gloss grammar stamp |
 
