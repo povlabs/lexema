@@ -71,7 +71,7 @@ async function warnings(body: () => Promise<void>): Promise<unknown[][]> {
 }
 
 test("a search is any request with a non-empty q, and /suggest is a suggestion", () => {
-  const of = (path: string) => limitOf(new URL(`https://lexema.fyi${path}`));
+  const of = (path: string) => limitOf(new URL(`https://lexema.fyi${path}`), "GET");
   assert.equal(of("/?q=casa"), "search");
   assert.equal(of("/?q=casa&q=sale"), "search");
   assert.equal(of("/index.rsc?q=casa"), "search");
@@ -191,6 +191,23 @@ test("five key creations a minute go through, and the sixth is a 429 the app nev
   assert.equal(env.SIGN_IN_LIMIT.counts.size, 0);
 });
 
+test("opening the keys path with a GET makes no key and is never counted against the key limit", async () => {
+  const { env, seen, fetch } = harness();
+  const open = () => fetch("/developer-site/dashboard/keys", "203.0.113.7", {}, "GET", "https://developers.lexema.fyi");
+  for (let i = 0; i < 10; i++) assert.equal((await open()).status, 200);
+  assert.equal(seen.length, 10);
+  assert.equal(env.KEY_CREATE_LIMIT.counts.size, 0);
+  assert.equal(limitOf(new URL("https://developers.lexema.fyi/developer-site/dashboard/keys"), "GET"), undefined);
+  assert.equal(limitOf(new URL("https://developers.lexema.fyi/developer-site/dashboard/keys"), "HEAD"), undefined);
+  assert.equal(limitOf(new URL("https://developers.lexema.fyi/developer-site/dashboard/keys"), "POST"), "key-create");
+  // The GETs left all five creations: five POSTs go through, and the sixth is a 429.
+  const create = () => fetch("/developer-site/dashboard/keys", "203.0.113.7", {}, "POST", "https://developers.lexema.fyi");
+  await warnings(async () => {
+    for (let i = 0; i < 5; i++) assert.equal((await create()).status, 200);
+    assert.equal((await create()).status, 429);
+  });
+});
+
 // worker/hosts.ts hands a developers.lexema.fyi request on under the developer-site segment.
 const developerSite = (path: string) => new URL(`https://developers.lexema.fyi/developer-site${path}`);
 
@@ -198,7 +215,7 @@ const developerSite = (path: string) => new URL(`https://developers.lexema.fyi/d
 async function billingCount(path: string, method: "GET" | "POST") {
   const { env, fetch } = harness();
   await fetch(`/developer-site${path}`, "203.0.113.7", {}, method, "https://developers.lexema.fyi");
-  return { limit: limitOf(developerSite(path)), count: env.BILLING_LIMIT.counts.get("v4:203.0.113.7") };
+  return { limit: limitOf(developerSite(path), method), count: env.BILLING_LIMIT.counts.get("v4:203.0.113.7") };
 }
 
 test("POST /billing/checkout counts against the billing limit", async () => {

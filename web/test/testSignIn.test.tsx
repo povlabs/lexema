@@ -151,8 +151,8 @@ test("the test sign-in takes a POST from its own site only", async () => {
 });
 
 test("the test sign-in counts against the sign-in limit", () => {
-  assert.equal(limitOf(new URL(`${PREVIEW_DEVELOPERS}/developer-site${TEST_SIGN_IN}`)), "sign-in");
-  assert.equal(limitOf(new URL(`https://developers.lexema.fyi/developer-site${TEST_SIGN_IN}`)), undefined);
+  assert.equal(limitOf(new URL(`${PREVIEW_DEVELOPERS}/developer-site${TEST_SIGN_IN}`), "POST"), "sign-in");
+  assert.equal(limitOf(new URL(`https://developers.lexema.fyi/developer-site${TEST_SIGN_IN}`), "POST"), undefined);
 });
 
 test("the sign-in page shows the test sign-in button on a Preview's developer host only", () => {
