@@ -1,10 +1,14 @@
 // The local app database, `APP_DB`, reached through Wrangler as
 // src/import/seedDev.ts reaches it, with Drizzle over it, for the CLIs that
-// change it by hand (`pnpm run api-key`, `pnpm run plan`).
+// change it by hand (`pnpm run api-key`, `pnpm run plan`, `pnpm run report`).
+// `pnpm run report` also reads the local dictionary, `DB`, the same way and
+// only through `readOnly` (ADR 0018).
 
 import { execFileSync } from "node:child_process";
 import { resolve } from "node:path";
 import { drizzle } from "drizzle-orm/sqlite-proxy";
+import { LOCAL_APP, LOCAL_DICTIONARY } from "../import/seedTarget.js";
+import { readOnly, type LookupDatabase } from "../lookup/database.js";
 import type { AppTables } from "./app/database.js";
 import * as schema from "./app/schema.js";
 
@@ -20,24 +24,32 @@ function sqlLiteral(value: unknown): string {
 }
 
 /**
- * The local app database whose state is at `persistTo`. Wrangler answers each
- * row as an object in select order, and Drizzle wants it as an array in that
- * order, so no CLI statement selects two columns of one name. The CLIs run no
- * batch.
+ * Run one statement on the local database `name` whose state is at
+ * `persistTo`, and answer its rows. Wrangler answers each row as an object in
+ * select order.
  */
-export function localD1(persistTo: string): AppTables {
-  const execute = (sql: string, params: readonly unknown[]): Record<string, unknown>[] => {
+function executor(persistTo: string, name: string) {
+  return (sql: string, params: readonly unknown[]): Record<string, unknown>[] => {
     let next = 0;
     const command = sql.replace(/\?/g, () => sqlLiteral(params[next++]));
     if (next !== params.length) throw new Error(`the statement takes ${next} parameter(s), was given ${params.length}`);
     const output = execFileSync(
       "pnpm",
-      ["exec", "wrangler", "d1", "execute", "lexema-app", "--local", "--persist-to", persistTo, "--json", "--command", command],
+      ["exec", "wrangler", "d1", "execute", name, "--local", "--persist-to", persistTo, "--json", "--command", command],
       { cwd: resolve("web"), stdio: ["ignore", "pipe", "inherit"], env: { ...process.env, CI: "1" }, encoding: "utf8" },
     );
     const [answer] = JSON.parse(output) as [{ results: Record<string, unknown>[] }];
     return answer.results;
   };
+}
+
+/**
+ * The local app database whose state is at `persistTo`. Drizzle wants each
+ * row as an array in select order, so no CLI statement selects two columns of
+ * one name. The CLIs run no batch.
+ */
+export function localD1(persistTo: string): AppTables {
+  const execute = executor(persistTo, LOCAL_APP);
   const app = drizzle(
     async (sql, params, method) => {
       const rows = execute(sql, params).map((row) => Object.values(row));
@@ -49,5 +61,18 @@ export function localD1(persistTo: string): AppTables {
   return { app };
 }
 
+/** The local dictionary whose state is at `persistTo`, read one SELECT at a time. */
+export function localDictionary(persistTo: string): LookupDatabase {
+  const execute = executor(persistTo, LOCAL_DICTIONARY);
+  return {
+    all: <T>(sql: string, params: readonly unknown[]) => Promise.resolve(execute(readOnly(sql), params) as T[]),
+  };
+}
+
+const seedState = (): string => resolve(process.env.SEED_STATE ?? ".data/seed-state");
+
 /** The local app database the CLIs write: the one in `SEED_STATE`, default `.data/seed-state`, which `pnpm run seed:dev` migrates. */
-export const seededAppDatabase = (): AppTables => localD1(resolve(process.env.SEED_STATE ?? ".data/seed-state"));
+export const seededAppDatabase = (): AppTables => localD1(seedState());
+
+/** The local dictionary `pnpm run seed:dev` loads, in the same `SEED_STATE`. */
+export const seededDictionary = (): LookupDatabase => localDictionary(seedState());

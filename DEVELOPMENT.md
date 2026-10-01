@@ -222,6 +222,29 @@ An account whose Starter or Pro plan still serves is refused until that plan is
 cancelled in Stripe. Bad flags print the usage line and exit 1. Both commands
 write to the `APP_DB` in `SEED_STATE`, as `pnpm run api-key` does.
 
+### Review a reader's report
+
+A report sent from a word page's *Report a mistake* box waits in
+`reader_report` until a person looks
+([#12](https://github.com/hueypov/lexema/issues/12),
+[src/readerReport/](./src/readerReport)):
+
+```sh
+pnpm run report list
+pnpm run report list --all
+pnpm run report answer 3 --outcome "Fixed upstream in Wiktionary." --by huey
+```
+
+`list` prints the waiting reports, oldest first, or every report with `--all`:
+what the reader picked and said, and where its reading is in the local
+dictionary, found by its source line
+([docs/RECORD_IDENTITY.md](./docs/RECORD_IDENTITY.md#a-readers-report-names-a-line)).
+`answer` records what the person found or did, once; a second answer is
+refused. Neither changes the dictionary or anything a reader sees: a fix is
+made by hand, elsewhere. Both read the `APP_DB` and the dictionary in
+`SEED_STATE`, as `pnpm run plan` does, so a local `pnpm run seed:dev` drops
+every report and its answer with it. A remote seed leaves reports alone.
+
 ### Look at a pull request's Preview
 
 Each pull request's branch gets a Preview with all three sites, and one comment
@@ -321,9 +344,10 @@ migrations apply the same way, one command, keeping what is there.
 A test that needs the app database builds it through `applyAppMigrations` in
 [src/db/app/migrations.ts](./src/db/app/migrations.ts), and its dictionary
 separately from `schema.sql` ([test/databases.ts](./test/databases.ts)).
-[test/appSchema.test.ts](./test/appSchema.test.ts) holds the key and report
-tables to the shape they had in `schema.sql` and better-auth's tables to their
-columns, and
+[test/appSchema.test.ts](./test/appSchema.test.ts) holds the key tables and
+`report_opening` to the shape they had in `schema.sql`, `reader_report` to that
+shape plus the five columns #12 added (`line_no`, `line_sha256`, `outcome`,
+`reviewed_at`, `reviewed_by`), and better-auth's tables to their columns, and
 Drizzle queries run under `node --test`
 through [src/db/app/nodeSqlite.ts](./src/db/app/nodeSqlite.ts), which drives
 `node:sqlite` with `drizzle-orm/sqlite-proxy`.
@@ -355,6 +379,7 @@ src/
 ├── import/         # the streaming importer, the SQL export and the dev seed
 ├── italian/        # the Italian adapter: normalize, tags, articles, examples
 ├── lookup/         # exact surface lookup over a complete release
+├── readerReport/   # readers' reports as a person reviews them; `pnpm run report`
 └── source/         # gzip JSONL streaming and provenance refs
 web/                # the @lexema/web workspace: the Worker and the search page
 test/               # unit tests, plus the dataset-backed adapter test

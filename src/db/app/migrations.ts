@@ -15,7 +15,7 @@ interface Journal {
 }
 
 /** The absolute path of each migration's SQL, oldest first. */
-function appMigrationFiles(): readonly string[] {
+export function appMigrationFiles(): readonly string[] {
   const journal = JSON.parse(readFileSync(new URL("meta/_journal.json", FOLDER), "utf8")) as Journal;
   return [...journal.entries]
     .sort((a, b) => a.idx - b.idx)

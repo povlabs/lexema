@@ -18,6 +18,7 @@
     "db:generate": "drizzle-kit generate",
     "api-key": "tsx src/api/keyCli.ts",
     "plan": "tsx src/billing/planCli.ts",
+    "report": "tsx src/readerReport/reportCli.ts",
     "measure:recovery": "tsx src/import/measureRecovery.ts",
     "measure:section-language": "tsx src/import/measureSectionLanguage.ts"
   },
