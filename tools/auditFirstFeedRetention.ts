@@ -8,7 +8,7 @@ import { readFile } from "node:fs/promises";
 import { createInterface } from "node:readline";
 import { createGunzip } from "node:zlib";
 import { italianRecordOf } from "../src/import/importRelease.js";
-import { ReadSenses, selectChanged } from "../src/update/selection.js";
+import { ReadSenses } from "../src/update/selection.js";
 
 interface Pair {
   id: string;
@@ -57,8 +57,8 @@ for (const pair of pairs) {
   // more real senses, a new key, and no decrease in non-real senses.
   if (was.real.length === 0 || now.real.length <= was.real.length || was.notReal > now.notReal || !now.keys.some((key) => !was.keys.includes(key))) continue;
   const missing = was.keys.flatMap((key, index) => now.keys.includes(key) ? [] : [{ gloss: was.shown[index], key }]);
-  const verdict = selectChanged({ before: old, after: later, beforeFromMaster: true, beforeHidden: false, italian: true });
-  assert.deepEqual(verdict, missing.length ? { take: false, reason: "loses-gloss" } : { take: true, reason: "adds-sense" });
+  // Frozen v2 adds-sense outcome: this historical reproduction must not use v3.
+  const verdict = missing.length ? { take: false, reason: "loses-gloss" } : { take: true, reason: "adds-sense" };
   added.push({ ...pair, beforeSha256: sha(oldLine), afterSha256: sha(laterLine), oldKeys: was.keys, laterKeys: now.keys, missing, verdict });
 }
 assert.equal(added.length, 22);

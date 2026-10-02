@@ -1,6 +1,5 @@
 // The rule that picks which changes of a later release a simple dictionary
-// takes (#377): new Italian words with a real gloss, and changed records only
-// where the later senses fix or add something.
+// takes (ADR 0025): unchanged new-word eligibility and authoritative newer definitions.
 
 import assert from "node:assert/strict";
 import test from "node:test";
@@ -58,7 +57,6 @@ const changed = (before: Sense[], after: Sense[], over: Partial<ChangedCandidate
   selectChanged({
     before: record("casa", before),
     after: record("casa", after),
-    beforeFromMaster: true,
     beforeHidden: false,
     italian: true,
     ...over,
@@ -75,7 +73,7 @@ test("a placeholder sense beside real ones that becomes real is a fix", () => {
     take: true,
     reason: "fills-gloss",
   });
-  // The retention guard must not change the existing fills-gloss route.
+  // Keep the existing fills-gloss classification while trusting newer wording.
   assert.deepEqual(changed(
     [{ glosses: ["edificio"] }, { glosses: [PLACEHOLDER] }, { glosses: [FURNITURE] }],
     [{ glosses: ["abitazione"] }, { glosses: ["famiglia"] }],
@@ -90,37 +88,39 @@ test("a later record with a sense we do not have adds it", () => {
   });
 });
 
-test("adding senses never selects an adds-sense replacement that loses an old key", async () => {
+test("newer definitions are taken even when an old key is absent", async () => {
   // Verbatim deprimente: it-0c432803:412862 and it-78385b62:413315.
   const before = italianRecordOf((await readFile("fixtures/first-feed-retention-before.jsonl", "utf8")).trimEnd());
   const after = italianRecordOf((await readFile("fixtures/first-feed-retention-after.jsonl", "utf8")).trimEnd());
   assert.ok(before && after);
   const original = JSON.stringify({ before, after });
-  assert.deepEqual(selectChanged({ before, after, beforeFromMaster: true, beforeHidden: false, italian: true }), { take: false, reason: "loses-gloss" });
+  assert.deepEqual(selectChanged({ before, after, beforeHidden: false, italian: true }), { take: true, reason: "adds-sense" });
   assert.equal(JSON.stringify({ before, after }), original);
 });
 
 test("a later record with more senses, all of them glosses we have, adds nothing", () => {
   assert.deepEqual(changed([{ glosses: ["edificio"] }], [{ glosses: ["edificio"] }, { glosses: ["Edificio."] }]), { take: false, reason: "no-new-gloss" });
+  // Duplicate additions cannot conceal a removed older definition.
+  assert.deepEqual(changed([{ glosses: ["edificio"] }, { glosses: ["famiglia"] }], [{ glosses: ["edificio"] }, { glosses: ["edificio"] }, { glosses: ["edificio"] }]), { take: true, reason: "replaces-definitions" });
 });
 
-test("a rewording, a layout change, or a change outside the glosses is skipped", () => {
-  assert.deepEqual(changed([{ glosses: ["edificio"] }], [{ glosses: ["costruzione"] }]), { take: false, reason: "rewording" });
+test("a rewording is taken; layout and non-definition changes stay skipped", () => {
+  assert.deepEqual(changed([{ glosses: ["edificio"] }], [{ glosses: ["costruzione"] }]), { take: true, reason: "replaces-definitions" });
   assert.deepEqual(changed([{ glosses: ["edificio, abitazione"] }], [{ glosses: ["Edificio; abitazione."] }]), { take: false, reason: "formatting-only" });
   assert.deepEqual(changed([{ glosses: ["edificio"] }], [{ glosses: ["edificio"] }]), { take: false, reason: "glosses-same" });
 });
 
-test("a later record with fewer real senses is skipped: nothing is removed", () => {
-  assert.deepEqual(changed([{ glosses: ["edificio"] }, { glosses: ["famiglia"] }], [{ glosses: ["edificio e famiglia"] }]), { take: false, reason: "fewer-senses" });
+test("a matched later record can remove definitions", () => {
+  assert.deepEqual(changed([{ glosses: ["edificio"] }, { glosses: ["famiglia"] }], [{ glosses: ["edificio e famiglia"] }]), { take: true, reason: "removes-definitions" });
 });
 
-test("a later record with no real gloss never replaces ours", () => {
-  assert.deepEqual(changed([{ glosses: ["edificio"] }], [{ glosses: [PLACEHOLDER] }]), { take: false, reason: "no-real-gloss" });
+test("a matched record can remove all real definitions without inventing text", () => {
+  assert.deepEqual(changed([{ glosses: ["edificio"] }], [{ glosses: [PLACEHOLDER] }]), { take: true, reason: "removes-definitions" });
+  assert.deepEqual(changed([{ glosses: ["edificio"] }], []), { take: true, reason: "removes-definitions" });
 });
 
-test("an earlier applied change, a hidden record or a non-Italian later record is left alone", () => {
+test("a hidden record or a non-Italian later record is left alone", () => {
   const fix: [Sense[], Sense[]] = [[{ glosses: [FURNITURE] }], [{ glosses: ["edificio"] }]];
-  assert.deepEqual(changed(...fix, { beforeFromMaster: false }), { take: false, reason: "earlier-applied" });
   assert.deepEqual(changed(...fix, { beforeHidden: true }), { take: false, reason: "master-hidden" });
   assert.deepEqual(changed(...fix, { italian: false }), { take: false, reason: "not-italian" });
 });

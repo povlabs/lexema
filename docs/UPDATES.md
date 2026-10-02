@@ -1,7 +1,7 @@
-# Why a later release is applied as chosen changes
+# Why a later release is applied as selected changes
 
 The dictionary database is the **master**: the release it was seeded from,
-plus the changes chosen from later kaikki releases. A later release is a
+plus selected changes from later kaikki releases. A later release is a
 **feed**, never a replacement. Huey ruled this on 2026-10-01
 ([#18](https://github.com/hueypov/lexema/issues/18#issuecomment-5933489252)),
 keeping [ADR 0018](../.decisions/0018-previews-on-workers-builds.md)'s line
@@ -20,8 +20,39 @@ source record by `record_id`, with `ON DELETE CASCADE`
 ([src/db/schema.sql](../src/db/schema.sql)). Deleting or replacing a record
 would delete them with it, without a word.
 
-So the master is never rebuilt. A later file is compared with it, a person
-picks the changes worth taking, and only those are written.
+So the master is never rebuilt. A later file is compared with its currently
+served records, and a deterministic selection is applied automatically through
+`update:auto`, under [ADR 0025](../.decisions/0025-newer-source-definitions-are-authoritative.md).
+Newer source definitions are trusted, including corrections, rewordings and
+removals of some or all definitions in a matched record. Retired records stay
+stored; a missing whole word/part-of-speech record is still not applied.
+Accuracy investigation follows a user report, not routine per-word review.
+
+## Selection and source ordering
+
+`feed-selection/v3` keeps the existing new-word and raw-gloss interpretation.
+For changed definitions it permits replacements of earlier-applied records and
+requires neither old gloss-key containment nor increasing sense counts.
+`fills-gloss` and `adds-sense` remain descriptive reasons; rewritten definitions
+use `replaces-definitions`, and reduced or empty real definitions use
+`removes-definitions`. Formatting-only, unchanged-gloss and duplicate-gloss
+additions still stay skipped, as do non-definition changes.
+
+Source ordering is checked against checksum-bound dump dates in
+[src/source/archiveFacts.ts](../src/source/archiveFacts.ts), not hash order,
+line numbers or download time. A feed must be later than the seed and every
+already applied feed. Remaining eligible changes from the identical latest
+feed are allowed; an older feed, unknown facts, or a different archive from the
+same dump is refused. Only two real archives currently have these facts.
+The July dump's recorded catalog entry has an explicitly inferred basis; it
+is not a revision identity. New archives need evidenced catalog facts and a
+verified language dump before automatic selection can run.
+
+The automatic operation emits aggregate counts and the existing executable
+apply SQL, not an old/new word-review report. Optional `update:diff` and
+`update:select` diagnostics remain available; inspecting them is not an
+accuracy gate. Operator authorization to invoke a shared write is separate
+from source authority.
 
 ## Matching records across two files
 
@@ -55,7 +86,7 @@ the report readable. kaikki's build of 28 September 2026 added
 Each change has an id: `new-`, `chg-` or `lost-`, then twelve hex digits of a
 digest of its kind, word, part of speech and the digests of the lines it
 changes. The same master and the same later file give the same ids on every run
-and in any line order, so a person can choose from a report and apply later.
+and in any line order, so selection and apply agree on the same changes.
 The apply runs the diff again and applies only ids the new run finds. An id
 whose master record or file has moved since is refused.
 
@@ -175,4 +206,5 @@ so a fresh seed and an upgraded master have the same shape.
 - **Recover definitions for an applied record.** The recovered layer is written
   by the seed from raw pages. An applied record gets the rows of its own line.
   The definitions recovered for the record it replaced are still read.
-- **Check on a schedule.** A diff is run by hand, now and then.
+- **Check on a schedule.** An operator invokes the update; no scheduled fetch service is built.
+- **Replay saved SQL as a no-op.** Re-run the supported operation, which re-diffs. Stale SQL is not a supported idempotent interface.

@@ -1,8 +1,8 @@
 // The selection of a later release's changes by the rule in selection.ts
-// (#377): it runs the diff, reads every candidate's lines, judges the new and
+// (ADR 0025): it runs the diff, reads every candidate's lines, judges the new and
 // changed records on the later release's own dump with #29's language rule,
 // and sorts every change into a bucket. It writes nothing to the database; the
-// ids it takes go to `pnpm run update:apply --ids`, which runs the diff again.
+// ids it takes feed automatic apply, or `update:apply --ids` after a fresh diff.
 
 import { readLanguageHeadings, type LanguageHeadings } from "../italian/sectionLanguage.js";
 import type { RawPage } from "../source/rawPage.js";
@@ -11,9 +11,10 @@ import { findForeignRecords, readRulePass, type TitleRecords } from "../import/h
 import { italianRecordOf, type ArchiveRecord } from "../import/importRelease.js";
 import { normalizeItalianExact } from "../italian/normalize.js";
 import type { QualityRecord } from "../italian/recordQuality.js";
-import { archiveFactsFor } from "../source/archiveFacts.js";
+import { ARCHIVE_FACTS, type ArchiveFactsCatalog, archiveFactsFor } from "../source/archiveFacts.js";
 import { KNOWN_DUMPS, VerifiedDump } from "../source/wiktionaryDump.js";
 import type { AmbiguousGroup, Change, ChangeId } from "./changes.js";
+import { verifyFeedOrdering } from "./ordering.js";
 import { reportOf, type MasterDiff, type ReportedLine } from "./diff.js";
 import { feedLines } from "./feed.js";
 import { select, type MasterReader } from "./master.js";
@@ -59,20 +60,16 @@ export interface Selection {
   ambiguous: { word: string; pos: string; shape: AmbiguousShape; master: ReportedLine[]; feed: ReportedLine[] }[];
 }
 
-const TAKE_REASONS: readonly TakeReason[] = ["new-word", "fills-gloss", "adds-sense"];
+const TAKE_REASONS: readonly TakeReason[] = ["new-word", "fills-gloss", "adds-sense", "replaces-definitions", "removes-definitions"];
 const SKIP_REASONS: readonly SkipReason[] = [
   "not-italian",
   "no-real-gloss",
   "form-of-target-missing",
   "form-of-target-not-italian",
-  "earlier-applied",
   "master-hidden",
   "glosses-same",
   "formatting-only",
-  "rewording",
-  "fewer-senses",
   "no-new-gloss",
-  "loses-gloss",
 ];
 const SHAPES: readonly AmbiguousShape[] = ["more-later-records", "more-of-ours", "as-many-each-side"];
 
@@ -137,7 +134,8 @@ const recordOf = (line: string, what: string): QualityRecord => {
  * Sort every change of `found` by the rule. `judge` holds the pages of the
  * dump the later release was built from (`withFeedDump`). Nothing is written.
  */
-export async function selectChanges(reader: MasterReader, found: MasterDiff, judge: FeedPages): Promise<Selection> {
+export async function selectChanges(reader: MasterReader, found: MasterDiff, judge: FeedPages, catalog: ArchiveFactsCatalog = ARCHIVE_FACTS): Promise<Selection> {
+  verifyFeedOrdering(found, catalog);
   const { master, feed } = found;
   const report = await reportOf(found);
   const byId = new Map<string, Change>(found.diff.changes.map((change) => [change.id, change]));
@@ -213,7 +211,6 @@ export async function selectChanges(reader: MasterReader, found: MasterDiff, jud
       selectChanged({
         before,
         after: record,
-        beforeFromMaster: change.master.releaseId === master.releaseId,
         beforeHidden: hiddenIds.has(change.master.recordId),
         italian: !foreign.has(change.feed.lineNo),
       }),
@@ -274,19 +271,17 @@ const senses = (glosses: readonly string[] | undefined): string =>
 const MEANING: Readonly<Record<TakeReason | SkipReason, string>> = {
   "new-word": "a new Italian word with a real gloss",
   "fills-gloss": "ours shows no real gloss, or a placeholder or headword-line sense, and the later record a real one",
-  "adds-sense": "the later record has more real senses, retains every old real-gloss key and adds a new one",
+  "adds-sense": "the later record has more real senses and a new gloss key",
+  "replaces-definitions": "the later record corrects or rewrites definition text",
+  "removes-definitions": "the matched later record removes some or all real definitions",
   "not-italian": "the page puts the record under another language (section-language/v1, on the later release's dump)",
   "no-real-gloss": "no sense of the later record has a real gloss",
   "form-of-target-missing": "a form-of whose target no Italian headword of the dictionary or of this selection has",
   "form-of-target-not-italian": "a form-of whose target only a record hidden as another language has",
-  "earlier-applied": "the record it would replace came from an earlier apply",
   "master-hidden": "the record it would replace is hidden as another language",
   "glosses-same": "the real glosses are the same; only examples, tags or links differ",
   "formatting-only": "the real glosses differ only in case, punctuation, spacing or order",
-  rewording: "as many real senses, other wording",
-  "fewer-senses": "fewer real senses than ours; nothing is removed",
   "no-new-gloss": "more real senses, every one a gloss we already have",
-  "loses-gloss": "an adds-sense replacement has at least one old real-gloss key absent",
 };
 
 const SHAPE_MEANING: Readonly<Record<AmbiguousShape, string>> = {

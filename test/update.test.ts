@@ -12,6 +12,10 @@ import { DatabaseSync } from "node:sqlite";
 import test from "node:test";
 import { gzipSync } from "node:zlib";
 import { seedSql } from "../src/import/seedSql.js";
+import type { ArchiveFactsCatalog } from "../src/source/archiveFacts.js";
+import { LanguageHeadings } from "../src/italian/sectionLanguage.js";
+import { automaticPlan } from "../src/update/automatic.js";
+import { servedVersion, lineageOf } from "../src/lookup/served.js";
 import { fromNodeSqlite } from "../src/lookup/database.js";
 import { lookup } from "../src/lookup/lookup.js";
 import { findNearby } from "../src/lookup/nearby.js";
@@ -187,6 +191,12 @@ async function diffed(db: DatabaseSync, later: string): Promise<MasterDiff> {
   return diffAgainstMaster(readerOf(db), later);
 }
 
+// Synthetic dated catalogs describe these fixture archives, not real releases.
+function fixtureCatalog(found: MasterDiff): ArchiveFactsCatalog {
+  const fact = (id: `itwiktionary-${string}`) => ({ sourceUrl: "https://example.org/fixture", retrievedAt: "2026-10-01T00:00:00Z", dump: { id, basis: "recorded" as const }, evidence: ["synthetic update fixture"] });
+  return { [found.master.archiveSha256]: fact("itwiktionary-20260701"), [found.feed.archiveSha256]: fact("itwiktionary-20260901") };
+}
+
 const changeOf = (found: MasterDiff, kind: Change["kind"], word: string): Change => {
   const change = found.diff.changes.find((candidate) => candidate.kind === kind && candidate.word === word);
   assert.ok(change !== undefined, `no ${kind} change for ${word}`);
@@ -198,6 +208,7 @@ async function applied(db: DatabaseSync, later: string, words: readonly [Change[
   const plan = await planApply(readerOf(db), found, chooseChanges(found, words.map(([kind, word]) => changeOf(found, kind, word).id)), {
     schema: await readFile(SCHEMA, "utf8"),
     appliedAt: "2026-10-01T12:00:00Z",
+    catalog: fixtureCatalog(found),
   });
   execute(db, plan.sql);
   return plan;
@@ -457,6 +468,7 @@ test("an apply that stops partway leaves the master as it was before it started"
     const plan = await planApply(readerOf(db), found, chooseChanges(found, [changeOf(found, "changed", "casa").id, changeOf(found, "new", "città").id]), {
       schema: await readFile(SCHEMA, "utf8"),
       appliedAt: "2026-10-01T12:00:00Z",
+      catalog: fixtureCatalog(found),
     });
     // Planning reads; it writes nothing.
     assert.equal(dump(db), before);
@@ -508,5 +520,96 @@ test("an apply brings a master seeded before #18 up to the schema, and the upgra
     for (const table of [...UPDATE_TABLES].reverse()) db.exec(`DROP TABLE ${table}`);
     await applied(db, later, [["changed", "casa"]]);
     assert.equal(readings(await ask(db, "casa"))[0].senses.length, 2);
+  });
+});
+
+// Synthetic releases exercise sequential corrections/removal, not upstream extraction.
+test("automatic updates follow A→B→C, retain source and hand rows, move indexes/caches, and repeat without writes", async () => {
+  const corrected = record({ word: "casa", pos: "noun", pos_title: "Sostantivo", forms: [{ form: "casette", tags: ["plural"] }], senses: [{ glosses: ["abitazione corretta"] }, { glosses: ["nucleo familiare"] }] });
+  const removed = record({ word: "casa", pos: "noun", pos_title: "Sostantivo", forms: [], senses: [] });
+  await withDesk(async ({ db, later, dir }) => {
+    const reader = readerOf(db);
+    const schema = await readFile(SCHEMA, "utf8");
+    const pages = { dump: "itwiktionary-20260901", pages: [], languages: LanguageHeadings.fromList(["it", "en"]) };
+    const foundB = await diffed(db, later);
+    const catalog: Record<string, ArchiveFactsCatalog[string]> = { ...fixtureCatalog(foundB) };
+    const beforeHand = handRows(db);
+    const versionA = await servedVersion(fromNodeSqlite(db), MASTER);
+    const planB = await automaticPlan(reader, foundB, pages, { schema, appliedAt: "2026-10-01T12:00:00Z", catalog });
+    assert.ok(planB);
+    assert.deepEqual(planB.changes.map(({ change }) => change.word).sort(), ["casa", "città"]);
+    // A partial prior application may leave eligible records from this same feed.
+    const casaChange = chooseChanges(foundB, [changeOf(foundB, "changed", "casa").id]);
+    const partial = await planApply(reader, foundB, casaChange, { schema, appliedAt: "2026-10-01T12:00:00Z", catalog });
+    execute(db, partial.sql);
+    const casaB = readings(await ask(db, "casa"))[0];
+    assert.deepEqual(glosses(casaB), ["abitazione corretta", "nucleo familiare"]);
+    assert.equal((await ask(db, "casette")).outcome, "found");
+    const versionB = await servedVersion(fromNodeSqlite(db), MASTER);
+    assert.notDeepEqual(versionB, versionA);
+    const remaining = await automaticPlan(reader, await diffed(db, later), pages, { schema, appliedAt: "2026-10-01T13:00:00Z", catalog });
+    assert.ok(remaining);
+    assert.deepEqual(remaining.changes.map(({ change }) => change.word), ["città"]);
+    execute(db, remaining.sql);
+    assert.deepEqual(checkApplied(reader, remaining), { missing: [], differing: [] });
+
+    const versionBeforeC = await servedVersion(fromNodeSqlite(db), MASTER);
+    const next = join(dir, "next.jsonl.gz");
+    await writeFile(next, gzipSync(Buffer.from(`${[removed, CANE, CITTA, SALE_SALT, SALE_PLURAL].join("\n")}\n`)));
+    const foundC = await diffed(db, next);
+    catalog[foundC.feed.archiveSha256] = { ...catalog[foundB.feed.archiveSha256], dump: { id: "itwiktionary-20261001", basis: "recorded" } };
+    const planC = await automaticPlan(reader, foundC, { ...pages, dump: "itwiktionary-20261001" }, { schema, appliedAt: "2026-10-02T12:00:00Z", catalog });
+    assert.ok(planC);
+    assert.deepEqual(planC.changes.map(({ change }) => change.word), ["casa"]);
+    execute(db, planC.sql);
+    assert.deepEqual(checkApplied(reader, planC), { missing: [], differing: [] });
+    const casaC = readings(await ask(db, "casa"))[0];
+    assert.deepEqual(glosses(casaC), []);
+    assert.equal(casaC.ref.releaseId, foundC.feed.releaseId);
+    assert.equal(casaC.ref.lineNo, 1);
+    assert.deepEqual({ ...db.prepare("SELECT upstream_release, upstream_release_basis, archive_sha256 FROM source_release WHERE release_id = ?").get(foundC.feed.releaseId) }, { upstream_release: "itwiktionary-20261001", upstream_release_basis: "recorded", archive_sha256: foundC.feed.archiveSha256 });
+    assert.deepEqual(casaC.recovered.map((item) => item.text), ["edificio"]);
+    assert.equal(casaC.reviews[0].ref.releaseId, MASTER);
+    assert.equal(handRows(db), beforeHand);
+    const raw = db.prepare("SELECT raw_json FROM source_record_json j JOIN source_record r USING (record_id) WHERE r.word = 'casa' ORDER BY record_id").all().map((row) => row.raw_json);
+    assert.deepEqual(raw, [CASA_FIXED, corrected, removed]);
+    const ids = db.prepare(`SELECT record_id FROM (${lineageOf("?1")}) ORDER BY record_id`).all(casaC.recordId).map((row) => row.record_id);
+    assert.deepEqual(ids, [1, partial.changes[0].recordId, planC.changes[0].recordId]);
+    assert.equal(db.prepare("SELECT count(*) AS n FROM sense WHERE record_id IN (?,?)").get(1, partial.changes[0].recordId)?.n, 4);
+    assert.equal(db.prepare("SELECT count(*) AS n FROM lookup_form WHERE surface_key = 'casette'").get()?.n, 0);
+    assert.equal(db.prepare("SELECT count(*) AS n FROM accent_fold WHERE surface_key = 'casette'").get()?.n, 0);
+    assert.equal(db.prepare("SELECT count(*) AS n FROM typo_key WHERE surface_key = 'casette'").get()?.n, 0);
+    assert.equal(db.prepare("SELECT count(*) AS n FROM lookup_form WHERE record_id IN (?,?)").get(1, partial.changes[0].recordId)?.n, 0);
+    assert.deepEqual(db.prepare("PRAGMA foreign_key_check").all(), []);
+    const versionC = await servedVersion(fromNodeSqlite(db), MASTER);
+    assert.notDeepEqual(versionC, versionBeforeC);
+    const stable = dump(db);
+    assert.equal(await automaticPlan(reader, await diffed(db, next), { ...pages, dump: "itwiktionary-20261001" }, { schema, appliedAt: "2026-10-02T13:00:00Z", catalog }), null);
+    assert.equal(dump(db), stable);
+    assert.throws(() => execute(db, planC.sql));
+    assert.equal(dump(db), stable, "replaying stale SQL fails atomically, not a supported no-op");
+    assert.throws(() => chooseChanges(foundC, ["chg-000000000000"]), /not a change/);
+    const refreshed = await diffed(db, next);
+    assert.throws(() => chooseChanges(refreshed, planC.changes.map(({ change }) => change.id)), /not a change/);
+    assert.equal(dump(db), stable);
+    await assert.rejects(planApply(reader, foundC, [planC.changes[0].change, planC.changes[0].change], { schema, appliedAt: "2026-10-02T13:00:00Z", catalog }), /duplicate changes/);
+    await assert.rejects(automaticPlan(reader, await diffed(db, later), pages, { schema, appliedAt: "2026-10-02T13:00:00Z", catalog }), /not a newer dump/);
+    assert.equal(dump(db), stable);
+  }, { master: [CASA_FIXED, CANE, SALA, SALE_SALT, SALE_PLURAL], hand: CASA_HAND, later: [corrected, CANE, CITTA, SALE_SALT_LATER, SALE_PLURAL_LATER, VENGO] });
+});
+
+test("selection refuses unknown, invalid, same-dump and regressive source ordering before writes", async () => {
+  await withDesk(async ({ db, later }) => {
+    const found = await diffed(db, later);
+    const catalog = fixtureCatalog(found);
+    const pages = { dump: "itwiktionary-20260901", pages: [], languages: LanguageHeadings.fromList(["it"]) };
+    const schema = await readFile(SCHEMA, "utf8");
+    const before = dump(db);
+    for (const [dumpId, expected] of [["itwiktionary-20260701", /not a newer dump/], ["itwiktionary-20260601", /not a newer dump/], ["itwiktionary-20260230", /invalid dump date/]] as const) {
+      const altered: ArchiveFactsCatalog = { ...catalog, [found.feed.archiveSha256]: { ...catalog[found.feed.archiveSha256], dump: { id: dumpId, basis: "recorded" } } };
+      await assert.rejects(automaticPlan(readerOf(db), found, pages, { schema, appliedAt: "2026-10-01T12:00:00Z", catalog: altered }), expected);
+    }
+    await assert.rejects(automaticPlan(readerOf(db), found, pages, { schema, appliedAt: "2026-10-01T12:00:00Z", catalog: {} }), /no dated dump facts/);
+    assert.equal(dump(db), before);
   });
 });
