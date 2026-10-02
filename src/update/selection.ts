@@ -12,14 +12,19 @@
 //   (never removed), ambiguous groups (no pairing is guessed), and any record
 //   an earlier apply already wrote.
 //
-// "Real gloss" is the word page's own reading (src/italian/recordQuality.ts):
-// a sense whose glosses, once the "definizione mancante" placeholder (#255) is
-// taken out, are neither empty nor only the headword line (furniture).
+// "Real gloss" is this rule's own reading of the source's glosses: a sense
+// whose glosses, once the "definizione mancante" placeholder (#255) is taken
+// out, are neither empty nor only the headword line (furniture). It is fixed
+// with the rule's version, and it is not all the word page hides: the page
+// reads the stored text, and drops a gloss that only repeats the headword
+// (`PageSenses` in src/italian/recordQuality.ts; #422).
 // Nothing here reads a database or a file; the caller hands in what the page,
 // the dump and the master say.
 
+import { isFurnitureSense } from "../italian/furniture.js";
 import { normalizeItalianExact } from "../italian/normalize.js";
-import { pageGlosses, senseKind, type QualityRecord } from "../italian/recordQuality.js";
+import { withoutPlaceholder } from "../italian/placeholder.js";
+import type { QualityRecord } from "../italian/recordQuality.js";
 
 /** The rule's name and version, written into every selection it makes. */
 export const SELECTION_RULE = "feed-selection/v1" as const;
@@ -63,27 +68,34 @@ export type Verdict = { take: true; reason: TakeReason } | { take: false; reason
 const take = (reason: TakeReason): Verdict => ({ take: true, reason });
 const skip = (reason: SkipReason): Verdict => ({ take: false, reason });
 
-/** A record's senses as the word page reads them. */
+type SourceSense = QualityRecord["senses"][number];
+
+/** A sense's gloss strings as the source writes them. */
+const sourceGlosses = (sense: SourceSense): string[] =>
+  Array.isArray(sense.glosses) ? sense.glosses.filter((item): item is string => typeof item === "string") : [];
+
+/** A sense's glosses with the placeholder taken out, and a gloss with nothing real left dropped. */
+const realGlosses = (sense: SourceSense): string[] => sourceGlosses(sense).flatMap((text) => withoutPlaceholder(text) ?? []);
+
+/** A record's senses as `feed-selection/v1` reads them. */
 export class ReadSenses {
   private constructor(
     /** Senses with a real gloss (a meaning or a form-of), in order. */
-    readonly real: readonly QualityRecord["senses"][number][],
+    readonly real: readonly SourceSense[],
     /** Senses with gloss text that is not real: the placeholder, or the headword line alone. */
     readonly notReal: number,
-    /** The real senses' glosses as the page shows them. */
+    /** The real senses' glosses, the placeholder taken out. */
     readonly shown: readonly string[],
   ) {}
 
   static of(record: QualityRecord): ReadSenses {
-    const real = record.senses.filter((sense) => {
-      const kind = senseKind(sense, record.word);
-      return kind === "meaning" || kind === "form-of";
-    });
-    const notReal = record.senses.filter((sense) => {
-      const kind = senseKind(sense, record.word);
-      return kind === "placeholder" || kind === "furniture";
-    }).length;
-    return new ReadSenses(real, notReal, real.map((sense) => pageGlosses(sense).join("\n")));
+    const isReal = (sense: SourceSense): boolean => {
+      const glosses = realGlosses(sense);
+      return glosses.length > 0 && !isFurnitureSense({ glosses, opensRecoveredList: false }, record.word);
+    };
+    const real = record.senses.filter(isReal);
+    const notReal = record.senses.filter((sense) => sourceGlosses(sense).some((text) => text.trim() !== "") && !isReal(sense)).length;
+    return new ReadSenses(real, notReal, real.map((sense) => realGlosses(sense).join("\n")));
   }
 
   /**

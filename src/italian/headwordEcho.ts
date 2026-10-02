@@ -35,11 +35,29 @@ export function isHeadwordEcho(gloss: string, word: string): boolean {
 }
 
 /**
+ * What a lookup makes of one stored gloss: the text it shows, or why it shows
+ * none. `placeholder` is a gloss with nothing real left once the missing-field
+ * placeholder is out (#255); `headword-echo` is one that is only the headword
+ * (#395). The quality measurement names a sense by these reasons
+ * (recordQuality.ts), so a new one is added here, never beside this.
+ */
+export type GlossReading =
+  | { readonly shown: string }
+  | { readonly hidden: "placeholder" | "headword-echo" };
+
+/** A stored gloss of `word`'s record, as a lookup reads it. */
+export function readGloss(text: string, word: string): GlossReading {
+  const real = withoutPlaceholder(text);
+  if (real === undefined) return { hidden: "placeholder" };
+  return isHeadwordEcho(real, word) ? { hidden: "headword-echo" } : { shown: real };
+}
+
+/**
  * A stored gloss of `word`'s record as a lookup shows it, or undefined when
  * it shows nothing: the placeholder taken out (#255), and a gloss that is only
  * the headword dropped (#395).
  */
 export function shownGloss(text: string, word: string): string | undefined {
-  const real = withoutPlaceholder(text);
-  return real === undefined || isHeadwordEcho(real, word) ? undefined : real;
+  const reading = readGloss(text, word);
+  return "shown" in reading ? reading.shown : undefined;
 }
