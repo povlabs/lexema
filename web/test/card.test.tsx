@@ -17,6 +17,10 @@ import { gzipSync } from "node:zlib";
 import { Resvg } from "@cf-wasm/resvg/node";
 import { satori, type Font } from "@cf-wasm/satori/node";
 import { seedSql } from "../../src/import/seedSql.js";
+import { planHide } from "../../src/import/hideRecords.js";
+import { findHiddenRecords, readRulePass } from "../../src/import/hiddenLayer.js";
+import { LanguageHeadings } from "../../src/italian/sectionLanguage.js";
+import { suggestPath } from "@/lib/dictionary/suggestionAsker.ts";
 import { fromNodeSqlite } from "../../src/lookup/database.js";
 import { servedVersion, versionToken } from "../../src/lookup/served.js";
 import { loadFixturePages } from "../../src/source/rawPage.js";
@@ -531,4 +535,57 @@ test("anything but a card's address goes on to the app; a card refuses anything 
   assert.equal(await answerCard(get("/?q=casa"), recorder.desk()), undefined);
   const post = await answerCard(get(cardPath({ version: VERSION, word: "casa" }), "POST"), recorder.desk());
   assert.equal(post?.status, 405);
+});
+
+test("live hide and serving-code deployments move card and suggestion keys, redirecting old cards", async () => {
+  const lines = (await readFile(join(REPO, "fixtures/form-of-foreign-lemma/archive-lines.jsonl"), "utf8")).trimEnd().split("\n");
+  const actual = join(dir, "hide-actual.jsonl.gz");
+  const old = join(dir, "hide-old.jsonl.gz");
+  await writeFile(actual, gzipSync(`${lines.join("\n")}\n`));
+  // Before the foreign-lemma rule: the master has the same Italian records,
+  // but its seeding pass had no foreign forms to judge them by.
+  await writeFile(old, gzipSync(`${lines.map((line) => {
+    const record = JSON.parse(line);
+    return record.lang_code === "it" ? line : JSON.stringify({ ...record, forms: [] });
+  }).join("\n")}\n`));
+  const seeded = await seedSql({ input: old, outputDir: join(dir, "cache-hide"), schema: join(REPO, "src/db/schema.sql"), releaseId: RELEASE });
+  const db = new DatabaseSync(":memory:");
+  try {
+    for (const part of seeded.parts) db.exec(await readFile(part, "utf8"));
+    // Also prove compatibility with a master predating the new version table.
+    db.exec("DROP TABLE hide_version");
+    const lookups = fromNodeSqlite(db);
+    const version = async (code: string, release = RELEASE) => versionToken(await servedVersion(lookups, release), code);
+    const before = await version("deployment-a");
+    const activated = await version("deployment-a", "it-activated");
+    assert.notEqual(cardPath({ version: before, word: "zapateros" }), cardPath({ version: activated, word: "zapateros" }));
+    assert.notEqual(suggestPath("za", before), suggestPath("za", activated));
+    assert.equal(await version("deployment-a"), before, "rolling the release binding back restores its address");
+    const unchangedDataDeploy = await version("deployment-b");
+    assert.notEqual(cardPath({ version: before, word: "zapateros" }), cardPath({ version: unchangedDataDeploy, word: "zapateros" }), "a deploy alone changes the card key");
+    assert.notEqual(suggestPath("za", before), suggestPath("za", unchangedDataDeploy), "a deploy alone changes the suggestion key");
+    const found = await findHiddenRecords([], await readRulePass(actual), LanguageHeadings.fromList([]));
+    const plan = planHide({ query: <Row,>(sql: string) => db.prepare(sql).all() as Row[] }, found, await readFile(join(REPO, "src/db/schema.sql"), "utf8"));
+    assert.ok(plan.hides.length > 0);
+    db.exec("BEGIN");
+    db.exec(plan.sql);
+    db.exec("COMMIT");
+    const afterHide = await version("deployment-a");
+    const afterDeploy = await version("deployment-b");
+    const recorder = new Recorder();
+    for (const [previous, current] of [[before, afterHide], [afterHide, afterDeploy]]) {
+      const previousCard = cardPath({ version: previous, word: "zapateros" });
+      const currentCard = cardPath({ version: current, word: "zapateros" });
+      assert.notEqual(currentCard, previousCard);
+      assert.notEqual(suggestPath("za", current), suggestPath("za", previous));
+      recorder.version = current;
+      const response = await answerCard(get(previousCard), recorder.desk());
+      assert.equal(response?.status, 302);
+      assert.equal(response?.headers.get("location"), currentCard);
+      assert.equal(response?.headers.get("cache-control"), "no-store");
+    }
+    assert.deepEqual(recorder.looked, [], "old addresses redirect before lookup or cache use");
+  } finally {
+    db.close();
+  }
 });

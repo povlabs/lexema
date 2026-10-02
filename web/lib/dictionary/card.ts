@@ -99,8 +99,8 @@ const WORD_PARAM = "word";
 export interface CardAddress {
   /**
    * The served version's token (`versionToken` in src/lookup/served.ts): the
-   * release and the last change applied to it, so an activation, a rollback
-   * and an apply each give every card a new address (#368).
+   * release, last applied change, live-hide revision and Worker version id,
+   * so data updates and serving-code deploys move every card's address.
    */
   version: string;
   /** The search as typed, trimmed; absent for the home card. */

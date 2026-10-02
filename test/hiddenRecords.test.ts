@@ -22,6 +22,7 @@ import { lookup } from "../src/lookup/lookup.js";
 import { findNearby } from "../src/lookup/nearby.js";
 import { randomHeadword } from "../src/lookup/random.js";
 import { suggest } from "../src/lookup/suggest.js";
+import { servedVersion, versionToken } from "../src/lookup/served.js";
 import { RAW_PAGE_WIKI, rawPageSource, type RawPage } from "../src/source/rawPage.js";
 import type { MasterReader } from "../src/update/master.js";
 
@@ -259,22 +260,55 @@ test("the one-off update brings a dictionary seeded before both rules to what a 
   const { db: before } = await seed("before", false, archiveBefore389);
   try {
     // A master seeded before #382 has no hidden_record table.
-    before.exec("DROP TABLE hidden_record");
+    before.exec("DROP TABLE hidden_record; DROP TABLE hide_version");
     const reader = readerOf(before);
     const found = await foundInArchive();
     const schema = await readFile(SCHEMA, "utf8");
+    // Put recovery/provenance rows beside a record about to be hidden.
+    const id = recordIdAt(before, found[0].lineNo);
+    before.exec(`
+      INSERT INTO raw_page VALUES (1, '${RELEASE}', 'it.wiktionary.org', 'kept-test-page', 1, '2026-07-01T00:00:00Z');
+      INSERT INTO recovered_definition VALUES (1, ${id}, '${RELEASE}', 1, 0, 'below-page-control', NULL, 7, '#* testo', 'testo', NULL, 0, NULL);
+      INSERT INTO recovered_label VALUES (1, 0, 'figurato');
+      INSERT INTO recovered_example VALUES (1, 0, 8, '#*: esempio', 'esempio');
+      INSERT INTO claim_review (record_id, json_pointer, status, note, evidence_url, reviewed_at, reviewed_by)
+        VALUES (${id}, '/senses/0/glosses/0', 'disputed', 'kept note', 'https://example.org', '2026-07-01T00:00:00Z', 'test');
+    `);
+    const preservedTables = ['source_record_json', 'source_record', 'sense', 'sense_gloss', 'raw_page', 'recovered_definition', 'recovered_label', 'recovered_example', 'claim_review'];
+    const snapshot = () => preservedTables.map((table) => before.prepare(`SELECT * FROM ${table} ORDER BY rowid`).all());
+    const preserved = snapshot();
+    assert.ok(preserved.every((rows) => rows.length > 0));
     const plan = planHide(reader, found, schema);
     assert.deepEqual({ hides: plan.hides.length, table: plan.table }, { hides: 4, table: "create" });
     assert.ok(plan.removed.lookup_form > 0 && plan.removed.form_of_edge === 1, JSON.stringify(plan.removed));
     const lines = before.prepare("SELECT raw_json FROM source_record_json ORDER BY record_id").all();
+    const version = async () => versionToken(await servedVersion(fromNodeSqlite(before), RELEASE));
+    const original = await version();
+    before.exec("BEGIN");
+    assert.throws(() => before.exec(`${plan.sql}\nINSERT INTO missing_table VALUES (1);`), /missing_table/);
+    before.exec("ROLLBACK");
+    assert.equal(await version(), original, "a failed transaction publishes no identity");
+    before.exec("BEGIN");
     before.exec(plan.sql);
+    before.exec("COMMIT");
+    const hiddenVersion = await version();
+    assert.notEqual(hiddenVersion, original, "a committed nonempty hide moves the identity");
     assert.deepEqual(unhidden(reader, plan), []);
     assert.deepEqual(hiddenRows(before), EXPECTED_HIDDEN());
     assert.deepEqual(servingRows(before), servingRows(seeded));
     assert.deepEqual(before.prepare("SELECT raw_json FROM source_record_json ORDER BY record_id").all(), lines);
+    // The hide adds only the evidence pages its own rule requires.
+    const newPages = before.prepare("SELECT page_id FROM raw_page WHERE page_id > 1").all();
+    assert.ok(newPages.length > 0);
+    const after = snapshot();
+    const pageIndex = preservedTables.indexOf('raw_page');
+    after[pageIndex] = after[pageIndex].filter((row) => row.page_id === 1);
+    assert.deepEqual(after, preserved);
 
     const again = planHide(reader, found, schema);
     assert.deepEqual({ hides: again.hides.length, alreadyHidden: again.alreadyHidden, sql: again.sql }, { hides: 0, alreadyHidden: 4, sql: "" });
+    before.exec(again.sql);
+    assert.equal(await version(), hiddenVersion, "an empty hide moves nothing");
   } finally {
     before.close();
   }
