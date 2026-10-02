@@ -21,6 +21,7 @@ import { authSecret, billingAuth, STRIPE_WEBHOOK_PATH } from "@lexema/accounts/a
 import { billingOf, type BillingSetup, type StripeSettings } from "@lexema/accounts/billing.ts";
 import { appTablesOverD1, type AppTables } from "@lexema/db/app/database.ts";
 import { accountMailOf, workerEmailOf, type EmailBinding } from "@lexema/email/send.ts";
+import { log } from "@lexema/log/requestLog.ts";
 import { isDeveloperSitePath, originsOf } from "./hosts.ts";
 import type { FetchHandler } from "./rateLimit.ts";
 import { text } from "./signIn.ts";
@@ -56,7 +57,7 @@ export async function answerStripeWebhook(request: Request, context: StripeWebho
     ...(context.appDb === undefined ? ["APP_DB"] : []),
   ];
   if (context.billing.outcome === "missing" || secret === undefined || context.appDb === undefined) {
-    console.error("stripe webhook is off", { missing });
+    log.error("stripe webhook is off", { missing });
     return text(503, "Billing is not available.");
   }
   const url = new URL(request.url);

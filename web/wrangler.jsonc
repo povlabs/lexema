@@ -12,8 +12,13 @@
     "binding": "ASSETS"
   },
   // Workers Logs, so every rate-limit block (logged as which limit, never the
-  // address) can be read when the numbers are tuned (#128).
-  "observability": { "enabled": true },
+  // address) can be read when the numbers are tuned (#128), and every error
+  // with its request id (#413). Invocation logs are off: Cloudflare writes one
+  // per request with its full URL, the query and so the search string with
+  // it, beside the request's headers, the visitor's address among them
+  // (docs/RUN_THE_SITE.md, "What is logged"). Environments and Previews
+  // inherit this block; web/test/health.test.ts checks production does.
+  "observability": { "enabled": true, "logs": { "enabled": true, "invocation_logs": false } },
   // Two databases (ADR 0018). DB is the dictionary, which code only reads
   // (src/lookup/database.ts); APP_DB holds accounts, keys, usage and reader
   // reports. Both ids are local-only placeholders: `--local` keys each

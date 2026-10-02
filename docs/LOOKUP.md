@@ -193,7 +193,7 @@ lemma — `studentessa` for `studenti` — is still a reading.
 | `wordFacts` | pronunciations, hyphenations, etymologies, synonyms, antonyms, derived words and `expressions` (below), read from the record's own line in `source_record_json`; one entry per distinct related spelling, every pointer kept; Wikizionario's missing-field placeholder is taken out of the hyphenations and etymologies (below) |
 | `isAboutQuery` | `true` when at least one piece of evidence is a headword hit |
 | `evidence[]` | every occurrence of the surface on this record, in source order |
-| `senses[]` | source glosses, labels and `examples[].text`, the examples read from `source_record_json`; a gloss loses the missing-field placeholder (below), and one that was only that is not returned |
+| `senses[]` | source glosses, labels and `examples[].text`, the examples read from `source_record_json`; a gloss loses the missing-field placeholder (below), and one that was only that is not returned; nor is a gloss that only repeats the headword (`presina`), compared ignoring case, accents, apostrophes and surrounding punctuation (`isHeadwordEcho` in `src/italian/headwordEcho.ts`, #395) |
 | `grammar` | claims split into `record`, `byForm` and `bySense` |
 | `lemmaLinks[]` | the reading's lemma: outgoing `form_of` edges this record declares, each candidate with its `listing` and its own `expressions` |
 | `inflections[]` | records declaring themselves forms of this one |
@@ -313,9 +313,26 @@ shows the lemma's whole table from it.
 | `ref` | the edge on that record |
 | `targetWord` | the word the edge names, verbatim |
 | `targetCandidates[]` | every headword record `targetWord` resolves to, this reading included |
+| `plural` | where the declaring record glosses itself the plural of this reading's word, or `undefined` |
 
 More than one candidate means the source did not choose, and the reading must
 not be rendered as *the* lemma of `word`.
+
+`plural` is read by rule `it-plural-gloss/v1`
+([`pluralGloss.ts`](../src/italian/pluralGloss.ts)): the first gloss of an
+edge's sense opens with `plurale di`, `femminile plurale di`, `maschile plurale
+di`, `plurale femminile di` or `plurale maschile di`, then this reading's word,
+then nothing that continues the word. `case` ("plurale di casa") carries one for
+`casa`; `casetta` ("diminutivo di casa") does not. It holds the `gloss` with its
+ref, the `glossGender` the opening names, if any, and `recordGenders`, the
+declaring record's own stated gender claims.
+
+The gloss names a word, as the edge does, so every candidate carries the same
+`plural`: `temi` ("plurale di tema") gives one to both noun records of `tema`.
+It is this reading's plural only when `targetCandidates` holds one record of the
+reading's part of speech, which `namesOneRecordOf` answers. Where the page puts
+that spelling, and that it shows none when the candidates leave it open, is the
+grid's rule ([`genderGrid.ts`](../web/lib/dictionary/genderGrid.ts)).
 
 ### `Review`
 
@@ -325,7 +342,8 @@ replaces it.
 
 ## Exported SQL
 
-`SEARCH_SQL`, `LEMMA_LINK_SQL`, `INFLECTION_SQL` and `INFLECTION_CANDIDATE_SQL` are exported
+`SEARCH_SQL`, `LEMMA_LINK_SQL`, `INFLECTION_SQL`, `INFLECTION_CANDIDATE_SQL` and
+`INFLECTION_GENDER_SQL` are exported
 so tests can assert their query plans. See
 [the design notes](LOOKUP_DESIGN.md#the-view-that-costs-four-orders-of-magnitude).
 

@@ -55,6 +55,9 @@ export type GrammarClaim =
   | { status: "unclassified"; sourceText: string; ref: SourceRef }
   | { status: "missing"; dimension: string; ref: SourceRef };
 
+/** A claim the source states, with its value. */
+export type StatedClaim = Extract<GrammarClaim, { status: "stated" }>;
+
 /** Grammar claims, split by what they are about. */
 export interface Grammar {
   /** About the record itself. */
@@ -183,7 +186,8 @@ export interface Sense {
   /**
    * Copied source text, never a Lexema definition, with Wikizionario's
    * "definizione mancante; se vuoi, aggiungila tu" taken out (#255): a gloss
-   * that was only that is not here. May be empty: 667 senses carry no gloss at
+   * that was only that is not here, and neither is one that only repeats the
+   * headword, as `presina` does (#395). May be empty: 667 senses carry no gloss at
    * all, and a non-empty gloss is still not proof of a usable one — `casa` has
    * two that say nothing.
    */
@@ -345,6 +349,31 @@ export interface InflectionOf {
    * lemma of `word`.
    */
   targetCandidates: LemmaCandidate[];
+  /**
+   * Where the declaring record says it is the plural of this reading's word:
+   * `case` glosses "plurale di casa" (`it-plural-gloss/v1`,
+   * src/italian/pluralGloss.ts). Absent for every other gloss: `casetta` says
+   * "diminutivo di casa".
+   *
+   * The gloss names a word, like the edge, so every candidate carries the same
+   * one: `temi` says it on both noun records of `tema`. Whose plural it is
+   * stays as open as `targetCandidates` leaves it (`namesOneRecordOf`).
+   */
+  plural: PluralDeclaration | undefined;
+}
+
+/**
+ * A record's gloss saying it is the plural of a word, and the genders that
+ * record states. The gloss is the first one of the first sense, in source
+ * order, whose edge lands here and reads so.
+ */
+export interface PluralDeclaration {
+  /** The gloss that says it, as stored: `plurale di casa` at `/senses/0/glosses/0`. */
+  gloss: SourceText;
+  /** The gender the gloss names: `femminile plurale di …`. Undefined for a bare `plurale di …`. */
+  glossGender: "masculine" | "feminine" | undefined;
+  /** The declaring record's own stated gender claims, from its tags; empty when it states none. */
+  recordGenders: StatedClaim[];
 }
 
 /**
@@ -558,6 +587,18 @@ export function lemmasOfPartOfSpeech<C extends { readonly pos: string }>(
   const all = links.flatMap((link) => (link.kind === "candidates" ? link.candidates : []));
   const same = all.filter((lemma) => lemma.pos === pos);
   return same.length > 0 ? same : all;
+}
+
+/**
+ * Whether an incoming edge can mean one record alone among those of part of
+ * speech `pos`: its target word resolves to exactly one such record, which is
+ * then the reading carrying the link. `case` names `casa`, one noun record.
+ * `temi` names `tema`, a masculine noun record and a feminine one, so the edge
+ * settles on neither. It is `lemmasOfPartOfSpeech` seen from the other end:
+ * a candidate of another part of speech (`tema` the verb form) does not count.
+ */
+export function namesOneRecordOf(pos: string, inflection: Pick<InflectionOf, "targetCandidates">): boolean {
+  return inflection.targetCandidates.filter((candidate) => candidate.pos === pos).length === 1;
 }
 
 /**

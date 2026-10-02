@@ -133,7 +133,7 @@ export function originsOf(hostname: string): SiteOrigins {
 export const isDeveloperPreviewHost = (hostname: string): boolean => previewSiteOf(hostname) === "developers";
 
 /** The site a URL's host names. Any other host is the dictionary's. */
-function siteOf(url: URL): Site {
+export function siteOf(url: URL): Site {
   for (const domain of DOMAINS) {
     for (const site of SITES) {
       if (url.hostname === `${SUBDOMAIN[site]}${domain}`) return site;

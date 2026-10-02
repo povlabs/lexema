@@ -18,7 +18,10 @@
 // host routing, Stripe's webhook on the developer site (worker/stripeWebhook.ts)
 // is answered outside the per-visitor limits. Around all of it,
 // the stage (worker/stage.ts) adds what its responses carry: noindex on a
-// Preview. A shared link's card (worker/card.ts) is answered in front of the
+// Preview. Inside the stage, every request runs under its own id, and anything
+// thrown past the handlers is logged and answered 500 (worker/requestLog.ts).
+// The health check (worker/health.ts) is answered next, on every host and in
+// front of the per-visitor limits, so a monitor is never counted as a visitor. A shared link's card (worker/card.ts) is answered in front of the
 // per-visitor limits: one served from Cloudflare's cache reaches no database,
 // and one it draws counts as a search itself. It also exports the account
 // meter's Durable Object class (worker/api/accountMeterObject.ts), which
@@ -31,8 +34,10 @@ import { withBilling } from "./billing.ts";
 import { withCards } from "./card.ts";
 import { workerDesk } from "./card/desk.ts";
 import { withDashboard } from "./dashboard.ts";
+import { withHealth } from "./health.ts";
 import { byHost } from "./hosts.ts";
 import { withRateLimits } from "./rateLimit.ts";
+import { withRequestLog } from "./requestLog.ts";
 import { withSignIn } from "./signIn.ts";
 import { parseStage, withStage } from "./stage.ts";
 import { withStripeWebhook } from "./stripeWebhook.ts";
@@ -46,17 +51,21 @@ const stage = parseStage(env.LEXEMA_STAGE);
 export default {
   fetch: withStage<Env>(
     stage,
-    withStripeWebhook<Env>(
-      byHost<Env>({
-        app: withCards<Env>(
-          workerDesk,
-          withRateLimits<Env>(
-            withTestSignIn<Env>(stage, withSignIn<Env>(withBilling<Env>(withDashboard<Env>((request, env, ctx) => app.fetch(request, env, ctx))))),
-          ),
+    withRequestLog<Env>(
+      withHealth<Env>(
+        withStripeWebhook<Env>(
+          byHost<Env>({
+            app: withCards<Env>(
+              workerDesk,
+              withRateLimits<Env>(
+                withTestSignIn<Env>(stage, withSignIn<Env>(withBilling<Env>(withDashboard<Env>((request, env, ctx) => app.fetch(request, env, ctx))))),
+              ),
+            ),
+            api: answerApi,
+            apiNotFound,
+          }),
         ),
-        api: answerApi,
-        apiNotFound,
-      }),
+      ),
     ),
   ),
 } satisfies ExportedHandler<Env>;

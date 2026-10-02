@@ -284,12 +284,24 @@ export function italianRecordOf(line: string): ArchiveRecord["record"] | undefin
 }
 
 /**
+ * The parts of an admitted record its stored gloss text is read from: the
+ * gloss grammar stamp rule reads the headword, the part of speech, the record
+ * tags and every gloss.
+ */
+export interface GlossSource {
+  readonly word: string;
+  readonly pos: string;
+  readonly tags?: unknown;
+  readonly senses: readonly { readonly glosses?: unknown }[];
+}
+
+/**
  * The gloss grammar stamp rule (#317) over one admitted record, reading its
  * tags and glosses the way `writeRecord` stores them. Refused leaves are
  * reported where the import writes them, never here, so this reads quietly.
  * The seed and the one-off update (glossStampUpdate.ts) both start here.
  */
-export function glossStampLiftOf(record: ArchiveRecord["record"]): GlossStampLift {
+export function glossStampLiftOf(record: GlossSource): GlossStampLift {
   const quiet: ReportMember = () => {};
   return GlossStampLift.of({
     word: record.word,
@@ -320,6 +332,47 @@ export function stampedGlossRows(lift: GlossStampLift, word: string): { pointer:
 
 const asStored = (word: string, kept: string | undefined): string | undefined =>
   kept === undefined ? undefined : normalizeGloss(withoutHeadwordLead(word, kept));
+
+/** One `sense_gloss` row: the gloss's index and pointer in the source, and the text stored for it. */
+interface StoredGloss {
+  index: number;
+  pointer: string;
+  text: string;
+}
+
+/**
+ * The gloss rows of the sense at `senseIndex`, in source order: each string
+ * gloss as `storedGlossText` stores it, and no row for a gloss that keeps none.
+ * `writeRecord` writes these and `storedGlosses` reads them, so the two cannot
+ * hold different text.
+ */
+function storedSenseGlosses(
+  lift: GlossStampLift,
+  word: string,
+  glosses: unknown,
+  senseIndex: number,
+  report: ReportMember,
+): StoredGloss[] {
+  return stringMembers(glosses, `/senses/${senseIndex}/glosses`, report).flatMap(({ index, text }) => {
+    const pointer = `/senses/${senseIndex}/glosses/${index}`;
+    const stored = storedGlossText(lift, word, pointer, text);
+    return stored === undefined ? [] : [{ index, pointer, text: stored }];
+  });
+}
+
+/**
+ * Every sense's gloss text as the seed stores it, sense by sense in source
+ * order: what a lookup reads back from `sense_gloss`. The quality measurement
+ * reads a record through this (src/italian/recordQuality.ts), so it counts the
+ * text the page is given and not the archive's. It reads quietly, like
+ * `glossStampLiftOf`.
+ */
+export function storedGlosses(record: GlossSource): string[][] {
+  const lift = glossStampLiftOf(record);
+  return record.senses.map((sense, senseIndex) =>
+    storedSenseGlosses(lift, record.word, sense.glosses, senseIndex, () => {}).map(({ text }) => text),
+  );
+}
 
 /** What an open file would have to keep for two reads of it to be the same bytes. */
 const identityOf = (stats: Stats): string =>
@@ -618,12 +671,9 @@ export function writeRecord(
 
     const sensePointer = `/senses/${senseIndex}`;
 
-    stringMembers(sense.glosses, `${sensePointer}/glosses`, reportMember).forEach(
-      ({ index, text }) => {
-        const pointer = `${sensePointer}/glosses/${index}`;
-        const stored = storedGlossText(stampLift, record.word, pointer, text);
-        if (stored === undefined) return;
-        statements.insertGloss.run(senseId, index, stored, pointer);
+    storedSenseGlosses(stampLift, record.word, sense.glosses, senseIndex, reportMember).forEach(
+      ({ index, pointer, text }) => {
+        statements.insertGloss.run(senseId, index, text, pointer);
         rows.sense_gloss += 1;
       },
     );

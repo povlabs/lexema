@@ -27,7 +27,7 @@ development, with the placeholder D1 that `pnpm run seed:dev` fills.
 | Sign-in | Google and GitHub, each on only once its client id and secret are set ([below](#turn-on-sign-in)) |
 | Billing | Checkout, the billing portal and Stripe's webhook at `https://developers.lexema.fyi/auth/stripe/webhook`, on only once the Stripe secrets and live price ids are set ([below](#turn-on-billing)) |
 | Account email | `EMAIL`, a `send_email` binding with no restriction, sending from `noreply@lexema.fyi` once `lexema.fyi` is onboarded to Email Sending ([below](#turn-on-account-email)) |
-| Workers Logs | on |
+| Workers Logs | on, without invocation logs; what is logged and for how long is [RUN_THE_SITE.md](RUN_THE_SITE.md#what-is-logged) |
 
 `www` to the apex and HTTP to HTTPS are dashboard settings (a redirect rule and
 Always Use HTTPS), not Worker settings, so they are not in the repository.

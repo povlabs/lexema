@@ -78,6 +78,11 @@ function GridCellView({ cell }: { cell: GridCell }) {
             <span
               data-form={spelling.forms.length > 0 ? spelling.forms.map((form) => form.index).join(" ") : undefined}
               data-headword={spelling.headword ? "" : undefined}
+              data-line={
+                spelling.declaredBy.length > 0
+                  ? spelling.declaredBy.map((record) => record.refs[0].lineNo).join(" ")
+                  : undefined
+              }
             >
               {spelling.surface}
             </span>

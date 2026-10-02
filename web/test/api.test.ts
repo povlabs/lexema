@@ -1350,3 +1350,46 @@ test("/v1/lookup leaves out Wikizionario's missing-field placeholders, as the pa
     await rm(placeholderDir, { recursive: true, force: true });
   }
 });
+
+test("/v1/lookup leaves out a meaning that only repeats the headword, as the page does (#395)", async () => {
+  const echoDir = await mkdtemp(join(tmpdir(), "lexema-api-headword-echo-"));
+  const archive = join(echoDir, "headword-echo.jsonl.gz");
+  await writeFile(archive, gzipSync(await readFile(join(REPO, "fixtures/headword-echo.jsonl"))));
+  const { parts } = await seedSql({
+    input: archive,
+    outputDir: join(echoDir, "sql"),
+    schema: join(REPO, "src/db/schema.sql"),
+    releaseId: RELEASE,
+    archiveR2Key: `releases/${RELEASE}.jsonl.gz`,
+    license: "CC-BY-SA-4.0",
+    onRejection: (rejection) => {
+      throw new Error(`fixture line rejected: ${JSON.stringify(rejection)}`);
+    },
+  });
+  const echoSqlite = new DatabaseSync(":memory:");
+  try {
+    for (const part of parts) echoSqlite.exec(await readFile(part, "utf8"));
+    const over = readOnlyDictionary(echoSqlite);
+    const { key } = await newKey();
+    const definitions = async (word: string): Promise<string[]> => {
+      const response = await call(`/v1/lookup?q=${encodeURIComponent(word)}`, key, NOW, "GET", over);
+      assert.equal(response.status, 200, word);
+      const body: Json = await response.json();
+      assert.equal(body.results.length, 1, word);
+      return body.results[0].definitions.map((definition: Json) => definition.definition);
+    };
+
+    assert.deepEqual(await definitions("presina"), []);
+    assert.deepEqual(await definitions("asciugatoio"), []);
+    assert.deepEqual(await definitions("sci di fondo"), []);
+    assert.deepEqual(await definitions("dm"), ["domani"]);
+    // A meaning that names the headword is still a meaning.
+    assert.deepEqual(await definitions("sci"), [
+      "lunga lamina, un tempo di legno e oggigiorno di metallo e plastica: agganciandone uno a ciascuno dei piedi mediante appositi scarponi e attacchi, viene adoperato come pattino per scivolare sulla neve",
+      "sport associato all'attività di andare sugli sci",
+    ]);
+  } finally {
+    echoSqlite.close();
+    await rm(echoDir, { recursive: true, force: true });
+  }
+});
