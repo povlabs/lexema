@@ -194,7 +194,7 @@ async function executeApply(target: SeedTarget, reader: MasterReader, plan: Appl
       out:
         `the apply ran, but the master does not read back as planned: ` +
         JSON.stringify(check) +
-        `\nsee "If an apply reads back wrong" in docs/UPDATE_THE_DICTIONARY.md`,
+        `\nsee "If an apply stops" in docs/UPDATE_THE_DICTIONARY.md`,
       status: 1,
     };
   }
