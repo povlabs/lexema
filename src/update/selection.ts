@@ -1,16 +1,8 @@
-// Which changes of a later release a simple dictionary takes (#377). Huey's
-// rule of 2026-10-01: take what clearly helps a reader and skip the rest.
-//
-// - A new word is taken when the page says it is Italian, it has at least one
-//   real gloss, and it is not a form-of record pointing at a word the
-//   dictionary has no Italian headword for.
-// - A record whose senses changed is taken only for a real fix: a missing,
-//   placeholder or headword-line gloss is filled, or the later record adds
-//   real senses while retaining every old real-gloss key and adding a new one.
-//   A rewording, punctuation or a layout change is skipped.
-// - Everything else is skipped: records whose senses are the same, lost words
-//   (never removed), ambiguous groups (no pairing is guessed), and any record
-//   an earlier apply already wrote.
+// feed-selection/v3 implements ADR 0025: safely matched newer definitions
+// replace older ones, including corrections and removals. Matching and source
+// ordering are checked by callers. New-word eligibility and the raw-gloss
+// interpretation below are unchanged; formatting and non-definition changes
+// remain skipped.
 //
 // "Real gloss" is this rule's own reading of the source's glosses: a sense
 // whose glosses, once the "definizione mancante" placeholder (#255) is taken
@@ -27,43 +19,21 @@ import { withoutPlaceholder } from "../italian/placeholder.js";
 import type { QualityRecord } from "../italian/recordQuality.js";
 
 /** The rule's name and version, written into every selection it makes. */
-export const SELECTION_RULE = "feed-selection/v2" as const;
+export const SELECTION_RULE = "feed-selection/v3" as const;
 
 /** Why a change is taken. */
-export type TakeReason =
-  /** A new Italian word with a real gloss. */
-  | "new-word"
-  /** Our record shows no real gloss, or a placeholder or headword-line sense became a real one. */
-  | "fills-gloss"
-  /** More real senses, retaining every old real-gloss key and adding a new one. */
-  | "adds-sense";
+export type TakeReason = "new-word" | "fills-gloss" | "adds-sense" | "replaces-definitions" | "removes-definitions";
 
 /** Why a change is skipped. */
 export type SkipReason =
-  /** The page puts the record under another language (#29's rule, section-language/v1). */
   | "not-italian"
-  /** No sense of the later record has a real gloss. */
   | "no-real-gloss"
-  /** A form-of record whose target no record of the dictionary or of this selection heads. */
   | "form-of-target-missing"
-  /** A form-of record whose target only a record hidden as another language heads. */
   | "form-of-target-not-italian"
-  /** The record it would replace came from an earlier apply, which is never touched. */
-  | "earlier-applied"
-  /** The record it would replace is hidden as another language. */
   | "master-hidden"
-  /** The real glosses read the same; only examples, tags or links in the senses differ. */
   | "glosses-same"
-  /** The real glosses differ only in case, punctuation or spacing. */
   | "formatting-only"
-  /** As many real senses or fewer, with other wording. */
-  | "rewording"
-  /** The later record has fewer real senses: nothing is ever removed. */
-  | "fewer-senses"
-  /** More real senses, every one a gloss we already have. */
-  | "no-new-gloss"
-  /** An adds-sense replacement with at least one old real-gloss key absent. */
-  | "loses-gloss";
+  | "no-new-gloss";
 
 export type Verdict = { take: true; reason: TakeReason } | { take: false; reason: SkipReason };
 
@@ -79,7 +49,7 @@ const sourceGlosses = (sense: SourceSense): string[] =>
 /** A sense's glosses with the placeholder taken out, and a gloss with nothing real left dropped. */
 const realGlosses = (sense: SourceSense): string[] => sourceGlosses(sense).flatMap((text) => withoutPlaceholder(text) ?? []);
 
-/** A record's senses as `feed-selection/v2` reads them. */
+/** A record's senses as `feed-selection/v3` reads them. */
 export class ReadSenses {
   private constructor(
     /** Senses with a real gloss (a meaning or a form-of), in order. */
@@ -102,7 +72,7 @@ export class ReadSenses {
 
   /**
    * The real senses' glosses with case, punctuation and spacing taken out:
-   * two senses with the same key say the same in another layout.
+   * two glosses with the same key differ only in layout, not a semantic verdict.
    */
   get keys(): string[] {
     return this.shown.map((text) => normalizeItalianExact(text).replace(/[^\p{L}\p{N}]+/gu, " ").trim());
@@ -139,8 +109,6 @@ export function selectNew({ record, italian }: NewCandidate, targetOf: (word: st
 export interface ChangedCandidate {
   before: QualityRecord;
   after: QualityRecord;
-  /** Whether `before` is a record of the master's own release, not one an earlier apply wrote. */
-  beforeFromMaster: boolean;
   /** Whether `before` is hidden as another language. */
   beforeHidden: boolean;
   /** Whether #29's rule, run on the later release's dump, keeps `after` Italian. */
@@ -151,23 +119,23 @@ const sameList = (a: readonly string[], b: readonly string[]): boolean => a.leng
 const sorted = (items: readonly string[]): string[] => [...items].sort();
 
 /** The verdict on a record whose senses changed. */
-export function selectChanged({ before, after, beforeFromMaster, beforeHidden, italian }: ChangedCandidate): Verdict {
-  if (!beforeFromMaster) return skip("earlier-applied");
+export function selectChanged({ before, after, beforeHidden, italian }: ChangedCandidate): Verdict {
   if (beforeHidden) return skip("master-hidden");
   if (!italian) return skip("not-italian");
   const was = ReadSenses.of(before);
   const now = ReadSenses.of(after);
+  if (now.real.length < was.real.length) return take("removes-definitions");
   if (now.real.length === 0) return skip("no-real-gloss");
   if (was.real.length === 0) return take("fills-gloss");
   if (now.real.length > was.real.length) {
     const held = new Set(was.keys);
-    if (!now.keys.some((key) => !held.has(key))) return skip("no-new-gloss");
+    if (!now.keys.some((key) => !held.has(key))) {
+      const later = new Set(now.keys);
+      return was.keys.every((key) => later.has(key)) ? skip("no-new-gloss") : take("replaces-definitions");
+    }
     if (was.notReal > now.notReal) return take("fills-gloss");
-    const later = new Set(now.keys);
-    if (!was.keys.every((key) => later.has(key))) return skip("loses-gloss");
     return take("adds-sense");
   }
-  if (now.real.length < was.real.length) return skip("fewer-senses");
   if (sameList(sorted(was.keys), sorted(now.keys))) return skip(sameList(was.shown, now.shown) ? "glosses-same" : "formatting-only");
-  return skip("rewording");
+  return take("replaces-definitions");
 }

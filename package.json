@@ -17,6 +17,7 @@
     "seed:dev": "tsx src/import/seedDev.ts",
     "normalize:source-text": "tsx src/import/normalizeSourceTextCli.ts",
     "hide:records": "tsx src/import/hideRecordsCli.ts",
+    "update:auto": "tsx src/update/updateCli.ts auto",
     "update:upgrade": "tsx src/update/updateCli.ts upgrade",
     "update:diff": "tsx src/update/updateCli.ts diff",
     "update:select": "tsx src/update/updateCli.ts select",

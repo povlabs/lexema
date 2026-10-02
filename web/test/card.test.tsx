@@ -468,6 +468,11 @@ test("an apply that changes a word's first meaning moves its card's address, and
     const plan = await planApply(reader, found, chooseChanges(found, [changed[0].id]), {
       schema: await readFile(join(REPO, "src/db/schema.sql"), "utf8"),
       appliedAt: "2026-10-01T12:00:00Z",
+      // Synthetic archive dates for this cache-lifecycle fixture, not upstream facts.
+      catalog: {
+        [found.master.archiveSha256]: { sourceUrl: "https://example.org/master", retrievedAt: "2026-07-01T00:00:00Z", dump: { id: "itwiktionary-20260701", basis: "recorded" }, evidence: ["synthetic card fixture"] },
+        [found.feed.archiveSha256]: { sourceUrl: "https://example.org/feed", retrievedAt: "2026-09-01T00:00:00Z", dump: { id: "itwiktionary-20260901", basis: "recorded" }, evidence: ["synthetic card fixture"] },
+      },
     });
     db.exec("BEGIN");
     db.exec(plan.sql);

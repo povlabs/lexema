@@ -1,17 +1,18 @@
-// `pnpm run update:diff`, `update:select` and `update:apply` (#18, #377): compare a later
-// kaikki archive with the master, and apply the changes a person chose. Both
+// Update operations compare a later archive with the currently served master.
+// update:auto selects and applies eligible definitions under ADR 0025. All
 // pick their database the way the seed does: the local D1 under `SEED_STATE`
-// (default `.data/seed-state`), or the remote D1 `SEED_REMOTE` names. Both
+// (default `.data/seed-state`), or the remote D1 `SEED_REMOTE` names. All
 // run from the laptop, through Wrangler, never through the Worker's read-only
 // dictionary binding (ADR 0018). docs/UPDATE_THE_DICTIONARY.md is the runbook.
 //
+//   pnpm run update:auto <archive> --pages <dump> [--out <dir>]
 //   pnpm run update:upgrade
 //   pnpm run update:diff <archive> [--out <dir>]
 //   pnpm run update:select <archive> --pages <dump> [--out <dir>]
 //   pnpm run update:apply <archive> <change id> [<change id> ...] [--out <dir>]
 //   pnpm run update:apply <archive> --ids <file> [--out <dir>]
 //
-// `update:select` sorts the diff's changes by the rule of #377
+// `update:select` sorts the diff's changes by feed-selection/v3
 // (src/update/selection.ts) and writes the ids it takes to a file that
 // `update:apply --ids` reads.
 //
@@ -23,13 +24,15 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { finish, isMain, usageError, type CommandResult } from "../commandLine.js";
 import { seedTargetFrom, webWrangler, type SeedTarget } from "../import/seedTarget.js";
-import { ApplyRefused, checkApplied, chooseChanges, planApply } from "./apply.js";
+import { ApplyRefused, checkApplied, chooseChanges, planApply, type ApplyPlan } from "./apply.js";
 import { diffAgainstMaster, reportMarkdown, reportOf } from "./diff.js";
 import { readMasterRelease, type MasterReader } from "./master.js";
 import { masterUpgradeSql } from "./masterUpgrade.js";
+import { automaticPlan } from "./automatic.js";
 import { selectChanges, selectionIds, selectionMarkdown, withFeedDump } from "./select.js";
 
 const USAGE = `usage:
+  pnpm run update:auto <archive> --pages <dump the archive was built from> [--out <dir>]
   pnpm run update:upgrade [--out <dir>]
   pnpm run update:diff <archive> [--out <dir>]
   pnpm run update:select <archive> --pages <dump the archive was built from> [--out <dir>]
@@ -155,8 +158,25 @@ async function applyCommand(target: SeedTarget, args: readonly string[]): Promis
     if (error instanceof ApplyRefused) return { out: error.message, status: 1 };
     throw error;
   }
-  await mkdir(read.out, { recursive: true });
-  const file = join(read.out, `apply-${plan.masterReleaseId}-${plan.feedReleaseId}-${Date.now()}.sql`);
+  return executeApply(target, reader, plan, read.out, false);
+}
+
+async function automaticCommand(target: SeedTarget, args: readonly string[]): Promise<CommandResult> {
+  const read = readArguments(args);
+  if (typeof read === "string") return usageError(read, USAGE);
+  if (read.positional.length !== 1 || read.pages === undefined || read.ids !== undefined) return usageError("update:auto takes one archive, --pages and no change ids", USAGE);
+  const reader = masterReaderOf(target);
+  const found = await diffAgainstMaster(reader, resolve(read.positional[0]));
+  const plan = await withFeedDump(found.feed, read.pages, LANGUAGES, async (pages) => automaticPlan(reader, found, pages, {
+    schema: await readFile(SCHEMA, "utf8"), appliedAt: new Date().toISOString(),
+  }));
+  if (plan === null) return { out: `${found.feed.releaseId}: no eligible changes; nothing written`, status: 0 };
+  return executeApply(target, reader, plan, read.out, true);
+}
+
+async function executeApply(target: SeedTarget, reader: MasterReader, plan: ApplyPlan, out: string, aggregate: boolean): Promise<CommandResult> {
+  await mkdir(out, { recursive: true });
+  const file = join(out, `apply-${plan.masterReleaseId}-${plan.feedReleaseId}-${Date.now()}.sql`);
   await writeFile(file, plan.sql);
   log(`applying ${plan.changes.length} change(s) as one transaction: ${file}`);
   // One file, one transaction: if any statement fails, D1 leaves the master as it was.
@@ -184,7 +204,7 @@ async function applyCommand(target: SeedTarget, args: readonly string[]): Promis
   );
   const rows = Object.entries(plan.rows).map(([table, count]) => `  ${table}: ${count}`);
   return {
-    out: [`applied ${plan.changes.length} change(s) from ${plan.feedReleaseId} to ${plan.masterReleaseId}:`, ...lines, "rows written:", ...rows].join("\n"),
+    out: [`applied ${plan.changes.length} change(s) from ${plan.feedReleaseId} to ${plan.masterReleaseId}:`, ...(aggregate ? [] : lines), "rows written:", ...rows].join("\n"),
     status: 0,
   };
 }
@@ -204,7 +224,7 @@ async function upgradeCommand(target: SeedTarget, args: readonly string[]): Prom
   return { out: `${target.dictionary} (master ${master.releaseId}) has the tables and views for applied changes; no row was written`, status: 0 };
 }
 
-const COMMANDS = { upgrade: upgradeCommand, diff: diffCommand, select: selectCommand, apply: applyCommand } as const;
+const COMMANDS = { auto: automaticCommand, upgrade: upgradeCommand, diff: diffCommand, select: selectCommand, apply: applyCommand } as const;
 
 export async function main(argv: readonly string[]): Promise<CommandResult> {
   const [command, ...args] = argv;

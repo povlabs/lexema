@@ -17,6 +17,7 @@ import { boundedInserts, chooseChanges } from "../src/update/apply.js";
 import { diffAgainstMaster } from "../src/update/diff.js";
 import type { MasterReader } from "../src/update/master.js";
 import { selectChanges, selectionIds, selectionMarkdown } from "../src/update/select.js";
+import type { ArchiveFactsCatalog } from "../src/source/archiveFacts.js";
 import { idsInFile } from "../src/update/updateCli.js";
 
 // Synthetic archive/page payloads isolate bucket delivery, not source extraction.
@@ -33,7 +34,7 @@ const MASTER_LINES = [
 const LATER_LINES = [
   // Fixed: ours shows only the headword line.
   record({ word: "casa", senses: [{ glosses: ["edificio adibito ad abitazione"] }] }),
-  // Adds-sense: retained versus lost old gloss. Output must distinguish them.
+  // Both add senses, including replacement of an old gloss.
   record({ word: "grumo", senses: [{ glosses: ["Ammasso!"] }, { glosses: ["coagulo"] }] }),
   record({ word: "deprimente", pos: "adj", senses: [{ glosses: ["che deprime"] }, { glosses: ["triste"] }, { glosses: ["avvilente"] }] }),
   // Reworded.
@@ -70,38 +71,41 @@ test("every change lands in one bucket, and the taken ids are ones the apply acc
     await writeFile(later, gzipSync(Buffer.from(`${LATER_LINES.join("\n")}\n`, "utf8")));
 
     const found = await diffAgainstMaster(readerOf(db), later);
-    const selection = await selectChanges(readerOf(db), found, { dump: "itwiktionary-test", pages: PAGES, languages: LanguageHeadings.fromList(["it", "en"]) });
+    const catalog: ArchiveFactsCatalog = {
+      [found.master.archiveSha256]: { sourceUrl: "https://example.org/master", retrievedAt: "2026-07-01T00:00:00Z", dump: { id: "itwiktionary-20260701", basis: "recorded" }, evidence: ["synthetic fixture"] },
+      [found.feed.archiveSha256]: { sourceUrl: "https://example.org/feed", retrievedAt: "2026-09-01T00:00:00Z", dump: { id: "itwiktionary-20260901", basis: "recorded" }, evidence: ["synthetic fixture"] },
+    };
+    const selection = await selectChanges(readerOf(db), found, { dump: "itwiktionary-test", pages: PAGES, languages: LanguageHeadings.fromList(["it", "en"]) }, catalog);
 
     const verdicts = Object.fromEntries([...selection.taken, ...selection.skipped].map((entry) => [entry.word, entry.reason]));
     assert.deepEqual(verdicts, {
       antifurti: "new-word",
       antifurto: "new-word",
       casa: "fills-gloss",
-      cane: "rewording",
+      cane: "replaces-definitions",
       grumo: "adds-sense",
-      deprimente: "loses-gloss",
+      deprimente: "adds-sense",
       sali: "form-of-target-missing",
       skirmish: "not-italian",
       zufolo: "no-real-gloss",
     });
-    assert.deepEqual(selection.taken.map((entry) => entry.word), ["antifurti", "antifurto", "casa", "grumo"]);
+    assert.deepEqual(selection.taken.map((entry) => entry.word), ["antifurti", "antifurto", "cane", "casa", "deprimente", "grumo"]);
     assert.deepEqual(selection.lost.map((entry) => entry.word), ["sala"]);
     assert.equal(selection.counts.taken["new-word"], 2);
-    assert.equal(selection.counts.skipped.rewording, 1);
+    assert.equal(selection.counts.taken["replaces-definitions"], 1);
 
     // The ids file reads back to the taken ids, and the apply chooses every one of them.
     const ids = idsInFile(selectionIds(selection));
     assert.deepEqual(ids, selection.taken.map((entry) => entry.id));
-    assert.equal(chooseChanges(found, ids).length, 4);
-    assert.ok(!ids.includes(selection.skipped.find((entry) => entry.word === "deprimente")!.id));
+    assert.equal(chooseChanges(found, ids).length, 6);
+    assert.ok(ids.includes(selection.taken.find((entry) => entry.word === "deprimente")!.id));
 
     const markdown = selectionMarkdown(selection);
     assert.match(markdown, /\| Applied \| new-word \| 2 \|/);
     assert.match(markdown, /### fills-gloss \(1\)/);
-    assert.match(markdown, /Rule `feed-selection\/v2`/);
-    assert.match(markdown, /### loses-gloss \(1\)/);
-    assert.match(markdown, /retains every old real-gloss key and adds a new one/);
-    assert.match(markdown, /an adds-sense replacement has at least one old real-gloss key absent/i);
+    assert.match(markdown, /Rule `feed-selection\/v3`/);
+    assert.match(markdown, /### adds-sense \(2\)/);
+    assert.match(markdown, /### replaces-definitions \(1\)/);
     assert.match(markdown, /\| lost-[0-9a-f]{12} \| sala \| noun \| it-master:3 \|/);
   } finally {
     db.close();
