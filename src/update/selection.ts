@@ -4,10 +4,10 @@
 // - A new word is taken when the page says it is Italian, it has at least one
 //   real gloss, and it is not a form-of record pointing at a word the
 //   dictionary has no Italian headword for.
-// - A record whose senses changed is taken only for a real fix: ours shows no
-//   real gloss and the later one does, or the later one has more real senses,
-//   one of them a gloss we do not have. A rewording, punctuation or a layout
-//   change is skipped.
+// - A record whose senses changed is taken only for a real fix: a missing,
+//   placeholder or headword-line gloss is filled, or the later record adds
+//   real senses while retaining every old real-gloss key and adding a new one.
+//   A rewording, punctuation or a layout change is skipped.
 // - Everything else is skipped: records whose senses are the same, lost words
 //   (never removed), ambiguous groups (no pairing is guessed), and any record
 //   an earlier apply already wrote.
@@ -27,7 +27,7 @@ import { withoutPlaceholder } from "../italian/placeholder.js";
 import type { QualityRecord } from "../italian/recordQuality.js";
 
 /** The rule's name and version, written into every selection it makes. */
-export const SELECTION_RULE = "feed-selection/v1" as const;
+export const SELECTION_RULE = "feed-selection/v2" as const;
 
 /** Why a change is taken. */
 export type TakeReason =
@@ -35,7 +35,7 @@ export type TakeReason =
   | "new-word"
   /** Our record shows no real gloss, or a placeholder or headword-line sense became a real one. */
   | "fills-gloss"
-  /** The later record has more real senses, one of them a gloss we do not have. */
+  /** More real senses, retaining every old real-gloss key and adding a new one. */
   | "adds-sense";
 
 /** Why a change is skipped. */
@@ -61,7 +61,9 @@ export type SkipReason =
   /** The later record has fewer real senses: nothing is ever removed. */
   | "fewer-senses"
   /** More real senses, every one a gloss we already have. */
-  | "no-new-gloss";
+  | "no-new-gloss"
+  /** An adds-sense replacement with at least one old real-gloss key absent. */
+  | "loses-gloss";
 
 export type Verdict = { take: true; reason: TakeReason } | { take: false; reason: SkipReason };
 
@@ -77,7 +79,7 @@ const sourceGlosses = (sense: SourceSense): string[] =>
 /** A sense's glosses with the placeholder taken out, and a gloss with nothing real left dropped. */
 const realGlosses = (sense: SourceSense): string[] => sourceGlosses(sense).flatMap((text) => withoutPlaceholder(text) ?? []);
 
-/** A record's senses as `feed-selection/v1` reads them. */
+/** A record's senses as `feed-selection/v2` reads them. */
 export class ReadSenses {
   private constructor(
     /** Senses with a real gloss (a meaning or a form-of), in order. */
@@ -160,7 +162,10 @@ export function selectChanged({ before, after, beforeFromMaster, beforeHidden, i
   if (now.real.length > was.real.length) {
     const held = new Set(was.keys);
     if (!now.keys.some((key) => !held.has(key))) return skip("no-new-gloss");
-    return take(was.notReal > now.notReal ? "fills-gloss" : "adds-sense");
+    if (was.notReal > now.notReal) return take("fills-gloss");
+    const later = new Set(now.keys);
+    if (!was.keys.every((key) => later.has(key))) return skip("loses-gloss");
+    return take("adds-sense");
   }
   if (now.real.length < was.real.length) return skip("fewer-senses");
   if (sameList(sorted(was.keys), sorted(now.keys))) return skip(sameList(was.shown, now.shown) ? "glosses-same" : "formatting-only");

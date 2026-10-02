@@ -1,0 +1,488 @@
+[
+  {
+    "id": "chg-b722d7b37d69",
+    "word": "baciare",
+    "pos": "verb",
+    "beforeLine": 3080,
+    "afterLine": 3089,
+    "retiredRecordId": 1231,
+    "laterRecordId": 560364
+  },
+  {
+    "id": "chg-bc7a9e5c4cbf",
+    "word": "carminio",
+    "pos": "noun",
+    "beforeLine": 7574,
+    "afterLine": 7649,
+    "retiredRecordId": 1682,
+    "laterRecordId": 560367
+  },
+  {
+    "id": "chg-6f0b5dda3e59",
+    "word": "cucina",
+    "pos": "noun",
+    "beforeLine": 31618,
+    "afterLine": 31886,
+    "retiredRecordId": 5167,
+    "laterRecordId": 560392
+  },
+  {
+    "id": "chg-d0e1f783ab59",
+    "word": "semirimorchio",
+    "pos": "noun",
+    "beforeLine": 37663,
+    "afterLine": 37934,
+    "retiredRecordId": 9205,
+    "laterRecordId": 560393
+  },
+  {
+    "id": "chg-aa4efde12d7e",
+    "word": "centrale",
+    "pos": "noun",
+    "beforeLine": 39494,
+    "afterLine": 39770,
+    "retiredRecordId": 10044,
+    "laterRecordId": 560394
+  },
+  {
+    "id": "chg-f504de92110f",
+    "word": "grembiule",
+    "pos": "noun",
+    "beforeLine": 40209,
+    "afterLine": 40486,
+    "retiredRecordId": 10440,
+    "laterRecordId": 560395
+  },
+  {
+    "id": "chg-b6d933196529",
+    "word": "legno",
+    "pos": "noun",
+    "beforeLine": 42270,
+    "afterLine": 42550,
+    "retiredRecordId": 11392,
+    "laterRecordId": 560396
+  },
+  {
+    "id": "chg-719f8db26ebb",
+    "word": "aristocrazia",
+    "pos": "noun",
+    "beforeLine": 47606,
+    "afterLine": 47889,
+    "retiredRecordId": 13645,
+    "laterRecordId": 560397
+  },
+  {
+    "id": "chg-4431111ade51",
+    "word": "commuoversi",
+    "pos": "verb",
+    "beforeLine": 48027,
+    "afterLine": 48310,
+    "retiredRecordId": 13928,
+    "laterRecordId": 560398
+  },
+  {
+    "id": "chg-ec99b7f55d16",
+    "word": "felicitarsi",
+    "pos": "verb",
+    "beforeLine": 48452,
+    "afterLine": 48735,
+    "retiredRecordId": 14289,
+    "laterRecordId": 560399
+  },
+  {
+    "id": "chg-4aa885e4ac68",
+    "word": "resistere",
+    "pos": "verb",
+    "beforeLine": 49191,
+    "afterLine": 49474,
+    "retiredRecordId": 14933,
+    "laterRecordId": 560400
+  },
+  {
+    "id": "chg-c8b0df7cff17",
+    "word": "podere",
+    "pos": "noun",
+    "beforeLine": 52356,
+    "afterLine": 52648,
+    "retiredRecordId": 17729,
+    "laterRecordId": 560402
+  },
+  {
+    "id": "chg-7c9d53eee076",
+    "word": "rigore",
+    "pos": "noun",
+    "beforeLine": 53019,
+    "afterLine": 53314,
+    "retiredRecordId": 18304,
+    "laterRecordId": 560403
+  },
+  {
+    "id": "chg-ecd05a1dc1d2",
+    "word": "inerente",
+    "pos": "adj",
+    "beforeLine": 53608,
+    "afterLine": 53906,
+    "retiredRecordId": 18828,
+    "laterRecordId": 560404
+  },
+  {
+    "id": "chg-81c50acd95fa",
+    "word": "stufato",
+    "pos": "adj",
+    "beforeLine": 54447,
+    "afterLine": 54746,
+    "retiredRecordId": 19592,
+    "laterRecordId": 560405
+  },
+  {
+    "id": "chg-64fae35a666f",
+    "word": "stufato",
+    "pos": "noun",
+    "beforeLine": 54448,
+    "afterLine": 54747,
+    "retiredRecordId": 19593,
+    "laterRecordId": 560406
+  },
+  {
+    "id": "chg-7aa4934c9c7d",
+    "word": "perimetro",
+    "pos": "noun",
+    "beforeLine": 62146,
+    "afterLine": 62453,
+    "retiredRecordId": 25567,
+    "laterRecordId": 560407
+  },
+  {
+    "id": "chg-7b0325838ef5",
+    "word": "panno",
+    "pos": "noun",
+    "beforeLine": 64966,
+    "afterLine": 65273,
+    "retiredRecordId": 26395,
+    "laterRecordId": 560409
+  },
+  {
+    "id": "chg-0b4ff8e922c2",
+    "word": "sfregiare",
+    "pos": "verb",
+    "beforeLine": 80164,
+    "afterLine": 80485,
+    "retiredRecordId": 29417,
+    "laterRecordId": 560412
+  },
+  {
+    "id": "chg-95e42f4e376b",
+    "word": "SUV",
+    "pos": "abbrev",
+    "beforeLine": 83148,
+    "afterLine": 83470,
+    "retiredRecordId": 30534,
+    "laterRecordId": 560414
+  },
+  {
+    "id": "chg-bfa7a284f481",
+    "word": "schizzo",
+    "pos": "noun",
+    "beforeLine": 107571,
+    "afterLine": 107908,
+    "retiredRecordId": 42993,
+    "laterRecordId": 560417
+  },
+  {
+    "id": "chg-acfa954d20a0",
+    "word": "stregua",
+    "pos": "noun",
+    "beforeLine": 109809,
+    "afterLine": 110149,
+    "retiredRecordId": 43994,
+    "laterRecordId": 560418
+  },
+  {
+    "id": "chg-5e7203197062",
+    "word": "camper",
+    "pos": "noun",
+    "beforeLine": 129605,
+    "afterLine": 129966,
+    "retiredRecordId": 53432,
+    "laterRecordId": 560419
+  },
+  {
+    "id": "chg-b33cdddd08ae",
+    "word": "striminzito",
+    "pos": "adj",
+    "beforeLine": 139452,
+    "afterLine": 139843,
+    "retiredRecordId": 59237,
+    "laterRecordId": 560421
+  },
+  {
+    "id": "chg-0638c984cc8a",
+    "word": "spiffero",
+    "pos": "noun",
+    "beforeLine": 168480,
+    "afterLine": 168876,
+    "retiredRecordId": 86935,
+    "laterRecordId": 560423
+  },
+  {
+    "id": "chg-8f81733e20b3",
+    "word": "stecca",
+    "pos": "noun",
+    "beforeLine": 202600,
+    "afterLine": 203011,
+    "retiredRecordId": 120316,
+    "laterRecordId": 560425
+  },
+  {
+    "id": "chg-f542ddcc81b1",
+    "word": "adorno",
+    "pos": "adj",
+    "beforeLine": 218776,
+    "afterLine": 219187,
+    "retiredRecordId": 136253,
+    "laterRecordId": 560426
+  },
+  {
+    "id": "chg-4b9dbce9153f",
+    "word": "distillato",
+    "pos": "noun",
+    "beforeLine": 249317,
+    "afterLine": 249741,
+    "retiredRecordId": 166386,
+    "laterRecordId": 560432
+  },
+  {
+    "id": "chg-d457578dfc70",
+    "word": "sciancato",
+    "pos": "adj",
+    "beforeLine": 335755,
+    "afterLine": 336189,
+    "retiredRecordId": 252474,
+    "laterRecordId": 560435
+  },
+  {
+    "id": "chg-cee4490076c3",
+    "word": "sgrammaticato",
+    "pos": "adj",
+    "beforeLine": 335880,
+    "afterLine": 336314,
+    "retiredRecordId": 252599,
+    "laterRecordId": 560436
+  },
+  {
+    "id": "chg-2423b3a93cfb",
+    "word": "indolenzito",
+    "pos": "adj",
+    "beforeLine": 392402,
+    "afterLine": 392840,
+    "retiredRecordId": 308874,
+    "laterRecordId": 560440
+  },
+  {
+    "id": "chg-f6d9da14cdd4",
+    "word": "deprimente",
+    "pos": "adj",
+    "beforeLine": 412862,
+    "afterLine": 413315,
+    "retiredRecordId": 325468,
+    "laterRecordId": 560442
+  },
+  {
+    "id": "chg-0bea0ca4af52",
+    "word": "tripletta",
+    "pos": "noun",
+    "beforeLine": 417641,
+    "afterLine": 418101,
+    "retiredRecordId": 329586,
+    "laterRecordId": 560445
+  },
+  {
+    "id": "chg-d59d7ae8a93f",
+    "word": "pressurizzazione",
+    "pos": "noun",
+    "beforeLine": 417898,
+    "afterLine": 418358,
+    "retiredRecordId": 329814,
+    "laterRecordId": 560446
+  },
+  {
+    "id": "chg-bba45a840513",
+    "word": "incongruenza",
+    "pos": "noun",
+    "beforeLine": 419511,
+    "afterLine": 419973,
+    "retiredRecordId": 331133,
+    "laterRecordId": 560447
+  },
+  {
+    "id": "chg-b3c79ea48ba8",
+    "word": "scommettitore",
+    "pos": "adj",
+    "beforeLine": 433328,
+    "afterLine": 433799,
+    "retiredRecordId": 341629,
+    "laterRecordId": 560449
+  },
+  {
+    "id": "chg-ef8c8bf05160",
+    "word": "donatore",
+    "pos": "noun",
+    "beforeLine": 446967,
+    "afterLine": 447439,
+    "retiredRecordId": 354102,
+    "laterRecordId": 560450
+  },
+  {
+    "id": "chg-0f53b9a6ed0c",
+    "word": "indubitabile",
+    "pos": "adj",
+    "beforeLine": 447386,
+    "afterLine": 447859,
+    "retiredRecordId": 354500,
+    "laterRecordId": 560451
+  },
+  {
+    "id": "chg-cb61915d011c",
+    "word": "cananeo",
+    "pos": "adj",
+    "beforeLine": 458060,
+    "afterLine": 458535,
+    "retiredRecordId": 361565,
+    "laterRecordId": 560453
+  },
+  {
+    "id": "chg-c66213aa6720",
+    "word": "storicoletterario",
+    "pos": "adj",
+    "beforeLine": 458076,
+    "afterLine": 458551,
+    "retiredRecordId": 361581,
+    "laterRecordId": 560454
+  },
+  {
+    "id": "chg-81bb58b7b49a",
+    "word": "banderuola",
+    "pos": "noun",
+    "beforeLine": 462470,
+    "afterLine": 462949,
+    "retiredRecordId": 365372,
+    "laterRecordId": 560457
+  },
+  {
+    "id": "chg-0b59fa010a89",
+    "word": "scaraventare",
+    "pos": "verb",
+    "beforeLine": 463018,
+    "afterLine": 463497,
+    "retiredRecordId": 365621,
+    "laterRecordId": 560458
+  },
+  {
+    "id": "chg-aef5500baf0c",
+    "word": "grumo",
+    "pos": "noun",
+    "beforeLine": 494932,
+    "afterLine": 495418,
+    "retiredRecordId": 375028,
+    "laterRecordId": 560461
+  },
+  {
+    "id": "chg-f914a14f184b",
+    "word": "-genesi",
+    "pos": "suffix",
+    "beforeLine": 548813,
+    "afterLine": 549300,
+    "retiredRecordId": 380297,
+    "laterRecordId": 560462
+  },
+  {
+    "id": "chg-8b35114b884d",
+    "word": "eresiarca",
+    "pos": "noun",
+    "beforeLine": 550928,
+    "afterLine": 551415,
+    "retiredRecordId": 380854,
+    "laterRecordId": 560463
+  },
+  {
+    "id": "chg-3346884aca86",
+    "word": "scontrosit\u00e0",
+    "pos": "noun",
+    "beforeLine": 550950,
+    "afterLine": 551438,
+    "retiredRecordId": 380872,
+    "laterRecordId": 560464
+  },
+  {
+    "id": "chg-671244243223",
+    "word": "beghina",
+    "pos": "noun",
+    "beforeLine": 579586,
+    "afterLine": 580083,
+    "retiredRecordId": 383259,
+    "laterRecordId": 560465
+  },
+  {
+    "id": "chg-111756b35842",
+    "word": "bign\u00e8",
+    "pos": "noun",
+    "beforeLine": 600981,
+    "afterLine": 601510,
+    "retiredRecordId": 388399,
+    "laterRecordId": 560467
+  },
+  {
+    "id": "chg-89742cf07824",
+    "word": "canasta",
+    "pos": "noun",
+    "beforeLine": 602041,
+    "afterLine": 602570,
+    "retiredRecordId": 388844,
+    "laterRecordId": 560468
+  },
+  {
+    "id": "chg-c0ced4881997",
+    "word": "toboga",
+    "pos": "noun",
+    "beforeLine": 603056,
+    "afterLine": 603585,
+    "retiredRecordId": 389107,
+    "laterRecordId": 560469
+  },
+  {
+    "id": "chg-cba0446a180d",
+    "word": "placcare",
+    "pos": "verb",
+    "beforeLine": 605721,
+    "afterLine": 606253,
+    "retiredRecordId": 389464,
+    "laterRecordId": 560470
+  },
+  {
+    "id": "chg-42a9b56afdcb",
+    "word": "MB",
+    "pos": "symbol",
+    "beforeLine": 610145,
+    "afterLine": 610678,
+    "retiredRecordId": 390127,
+    "laterRecordId": 560471
+  },
+  {
+    "id": "chg-8623f6bb8fbd",
+    "word": "in sospeso",
+    "pos": "adv_phrase",
+    "beforeLine": 624746,
+    "afterLine": 625273,
+    "retiredRecordId": 394215,
+    "laterRecordId": 560475
+  },
+  {
+    "id": "chg-770d4b273425",
+    "word": "irriguardoso",
+    "pos": "adj",
+    "beforeLine": 798227,
+    "afterLine": 798764,
+    "retiredRecordId": 560277,
+    "laterRecordId": 560479
+  }
+]

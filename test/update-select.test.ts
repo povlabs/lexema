@@ -19,17 +19,23 @@ import type { MasterReader } from "../src/update/master.js";
 import { selectChanges, selectionIds, selectionMarkdown } from "../src/update/select.js";
 import { idsInFile } from "../src/update/updateCli.js";
 
+// Synthetic archive/page payloads isolate bucket delivery, not source extraction.
 const record = (fields: Record<string, unknown>): string => JSON.stringify({ lang_code: "it", pos: "noun", pos_title: "Sostantivo", ...fields });
 
 const MASTER_LINES = [
   record({ word: "casa", senses: [{ glosses: ["casa ( approfondimento) f sing"] }] }),
   record({ word: "cane", senses: [{ glosses: ["mammifero domestico"] }] }),
   record({ word: "sala", senses: [{ glosses: ["stanza ampia"] }] }),
+  record({ word: "grumo", senses: [{ glosses: ["ammasso"] }] }),
+  record({ word: "deprimente", pos: "adj", senses: [{ glosses: ["che deprime"] }, { glosses: ["che provoca debolezza"] }] }),
 ];
 
 const LATER_LINES = [
   // Fixed: ours shows only the headword line.
   record({ word: "casa", senses: [{ glosses: ["edificio adibito ad abitazione"] }] }),
+  // Adds-sense: retained versus lost old gloss. Output must distinguish them.
+  record({ word: "grumo", senses: [{ glosses: ["Ammasso!"] }, { glosses: ["coagulo"] }] }),
+  record({ word: "deprimente", pos: "adj", senses: [{ glosses: ["che deprime"] }, { glosses: ["triste"] }, { glosses: ["avvilente"] }] }),
   // Reworded.
   record({ word: "cane", senses: [{ glosses: ["animale domestico"] }] }),
   // New, and a form-of of it: taken together.
@@ -72,11 +78,13 @@ test("every change lands in one bucket, and the taken ids are ones the apply acc
       antifurto: "new-word",
       casa: "fills-gloss",
       cane: "rewording",
+      grumo: "adds-sense",
+      deprimente: "loses-gloss",
       sali: "form-of-target-missing",
       skirmish: "not-italian",
       zufolo: "no-real-gloss",
     });
-    assert.deepEqual(selection.taken.map((entry) => entry.word), ["antifurti", "antifurto", "casa"]);
+    assert.deepEqual(selection.taken.map((entry) => entry.word), ["antifurti", "antifurto", "casa", "grumo"]);
     assert.deepEqual(selection.lost.map((entry) => entry.word), ["sala"]);
     assert.equal(selection.counts.taken["new-word"], 2);
     assert.equal(selection.counts.skipped.rewording, 1);
@@ -84,11 +92,16 @@ test("every change lands in one bucket, and the taken ids are ones the apply acc
     // The ids file reads back to the taken ids, and the apply chooses every one of them.
     const ids = idsInFile(selectionIds(selection));
     assert.deepEqual(ids, selection.taken.map((entry) => entry.id));
-    assert.equal(chooseChanges(found, ids).length, 3);
+    assert.equal(chooseChanges(found, ids).length, 4);
+    assert.ok(!ids.includes(selection.skipped.find((entry) => entry.word === "deprimente")!.id));
 
     const markdown = selectionMarkdown(selection);
     assert.match(markdown, /\| Applied \| new-word \| 2 \|/);
     assert.match(markdown, /### fills-gloss \(1\)/);
+    assert.match(markdown, /Rule `feed-selection\/v2`/);
+    assert.match(markdown, /### loses-gloss \(1\)/);
+    assert.match(markdown, /retains every old real-gloss key and adds a new one/);
+    assert.match(markdown, /an adds-sense replacement has at least one old real-gloss key absent/i);
     assert.match(markdown, /\| lost-[0-9a-f]{12} \| sala \| noun \| it-master:3 \|/);
   } finally {
     db.close();

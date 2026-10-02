@@ -72,6 +72,7 @@ const SKIP_REASONS: readonly SkipReason[] = [
   "rewording",
   "fewer-senses",
   "no-new-gloss",
+  "loses-gloss",
 ];
 const SHAPES: readonly AmbiguousShape[] = ["more-later-records", "more-of-ours", "as-many-each-side"];
 
@@ -273,7 +274,7 @@ const senses = (glosses: readonly string[] | undefined): string =>
 const MEANING: Readonly<Record<TakeReason | SkipReason, string>> = {
   "new-word": "a new Italian word with a real gloss",
   "fills-gloss": "ours shows no real gloss, or a placeholder or headword-line sense, and the later record a real one",
-  "adds-sense": "the later record has more real senses, one of them a gloss we do not have",
+  "adds-sense": "the later record has more real senses, retains every old real-gloss key and adds a new one",
   "not-italian": "the page puts the record under another language (section-language/v1, on the later release's dump)",
   "no-real-gloss": "no sense of the later record has a real gloss",
   "form-of-target-missing": "a form-of whose target no Italian headword of the dictionary or of this selection has",
@@ -285,6 +286,7 @@ const MEANING: Readonly<Record<TakeReason | SkipReason, string>> = {
   rewording: "as many real senses, other wording",
   "fewer-senses": "fewer real senses than ours; nothing is removed",
   "no-new-gloss": "more real senses, every one a gloss we already have",
+  "loses-gloss": "an adds-sense replacement has at least one old real-gloss key absent",
 };
 
 const SHAPE_MEANING: Readonly<Record<AmbiguousShape, string>> = {
