@@ -6,6 +6,9 @@
   // Lexema's own entry: it checks the rate limits below, then hands the request
   // to vinext's App Router entry (worker/index.ts).
   "main": "worker/index.ts",
+  // Each uploaded Worker version gets a new id, used by cards and suggestions.
+  // This binding is non-inheritable, so production and previews repeat it.
+  "version_metadata": { "binding": "LEXEMA_VERSION" },
   "assets": {
     "directory": "dist/client",
     "not_found_handling": "none",
@@ -131,6 +134,7 @@
   // `wrangler preview` reads it from the built config. Wrangler copies it into
   // env.production, so either build carries it.
   "previews": {
+    "version_metadata": { "binding": "LEXEMA_VERSION" },
     "vars": {
       "LEXEMA_STAGE": "preview",
       "LEXEMA_RELEASE": "it-0c432803",
@@ -203,6 +207,7 @@
     // custom domains"): a Preview answers one label below each.
     "production": {
       "name": "lexema-web",
+      "version_metadata": { "binding": "LEXEMA_VERSION" },
       "workers_dev": false,
       "preview_urls": false,
       "routes": [

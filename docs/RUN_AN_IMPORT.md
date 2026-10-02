@@ -218,7 +218,9 @@ sits under the Italian heading
 `form-of-foreign-lemma/v1` reads it off the archive, where a foreign record lists
 the word among its forms ([#389](https://github.com/hueypov/lexema/issues/389)).
 A database seeded before either gets the same records hidden by a one-off
-update, with no reseed:
+update, with no reseed. Before a live hide, deploy the reader described in
+[Card and suggestion cache identity](DEPLOY.md#card-and-suggestion-cache-identity),
+which also explains compatibility with older masters and cache verification:
 
 ```sh
 pnpm run hide:records

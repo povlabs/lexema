@@ -44,6 +44,11 @@ test("each configuration names its own stage: local at the top level, preview fo
   assert.equal(parseStage(read("production").vars.LEXEMA_STAGE), "production");
   assert.equal(parseStage(previews().vars?.LEXEMA_STAGE), "preview");
   assert.deepEqual(previews("production"), previews());
+  // Version metadata is not inherited: a missing binding would leave this
+  // environment unable to name deployment-specific cache identities.
+  for (const config of [read(), read("production"), previews()]) {
+    assert.deepEqual(config.version_metadata, { binding: "LEXEMA_VERSION" });
+  }
 });
 
 test("a Preview has every var production has, serves the current release and signs in with no provider", () => {

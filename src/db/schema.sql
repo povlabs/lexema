@@ -27,6 +27,14 @@
 -- Release
 -- ---------------------------------------------------------------------------
 
+-- Live-hide cache revision. A nonempty hide increments it in the same
+-- transaction as its serving-index changes. Older masters acquire this table
+-- on their first live hide; an absent table or row means revision zero.
+CREATE TABLE hide_version (
+  singleton INTEGER PRIMARY KEY CHECK (singleton = 1),
+  revision INTEGER NOT NULL CHECK (revision > 0)
+);
+
 -- One row per imported source file. The file itself is kept byte-for-byte in R2;
 -- this row pins which bytes, so line_no below means something exact.
 CREATE TABLE source_release (
