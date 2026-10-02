@@ -57,7 +57,8 @@
   // `build check` runs lefthook's own validator on any diff that touches
   // lefthook.yml, so a hooks-only change can go green.
   "configValidators": [
-    { "command": ["pnpm", "exec", "lefthook", "validate"], "reads": ["lefthook.yml"] }
+    { "command": ["pnpm", "exec", "lefthook", "validate"], "reads": ["lefthook.yml"] },
+    { "command": ["pnpm", "exec", "fabrika", "status", "settings", "--json"], "reads": [".fabrika.jsonc"] }
   ],
   // The main-went-red alarm mentions Huey.
   "ci": { "mainAlarm": { "mention": ["@hueypov"] } },
