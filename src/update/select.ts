@@ -7,7 +7,7 @@
 import { readLanguageHeadings, type LanguageHeadings } from "../italian/sectionLanguage.js";
 import type { RawPage } from "../source/rawPage.js";
 import type { FeedArchive } from "./feed.js";
-import { findForeignRecords, readTitles, type TitleRecords } from "../import/hiddenLayer.js";
+import { findForeignRecords, readRulePass, type TitleRecords } from "../import/hiddenLayer.js";
 import { italianRecordOf, type ArchiveRecord } from "../import/importRelease.js";
 import { normalizeItalianExact } from "../italian/normalize.js";
 import type { QualityRecord } from "../italian/recordQuality.js";
@@ -111,13 +111,19 @@ export async function withFeedDump<Result>(feed: FeedArchive, path: string, lang
   }
 }
 
-/** The lines of the feed records of the titles `wanted` names that #29's rule finds in another language. */
+/**
+ * The lines of the feed records of the titles `wanted` names that #29's rule
+ * (section-language/v1) finds in another language. `form-of-foreign-lemma/v1`
+ * is not applied here: a record it hides points at a lemma with no Italian
+ * record in the feed, so unless the master heads that lemma `selectNew`
+ * already skips it as `form-of-target-missing`.
+ */
 async function foreignLines(feed: FeedArchive, judge: FeedPages, wanted: ReadonlySet<string>): Promise<Set<number>> {
-  const { titles, archiveSha256 } = await readTitles(feed.path);
+  const { titles, archiveSha256 } = await readRulePass(feed.path);
   if (archiveSha256 !== feed.archiveSha256) throw new Error(`${feed.path} changed since it was read`);
   const judged: TitleRecords = new Map([...titles].filter(([title]) => wanted.has(title)));
   const records = await findForeignRecords(judge.pages, judged, judge.languages);
-  return new Set(records.map(({ foreign }) => foreign.lineNo));
+  return new Set(records.map(({ lineNo }) => lineNo));
 }
 
 const recordOf = (line: string, what: string): QualityRecord => {

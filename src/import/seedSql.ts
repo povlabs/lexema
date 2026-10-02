@@ -17,7 +17,7 @@ import {
 import { archiveFactsFor, type ArchiveFacts, type ArchiveFactsCatalog } from "../source/archiveFacts.js";
 import type { RawPageSource } from "../source/rawPage.js";
 import type { LanguageHeadings } from "../italian/sectionLanguage.js";
-import { HiddenLayer, readTitles, type HiddenSummary } from "./hiddenLayer.js";
+import { HiddenLayer, readRulePass, type HiddenSummary } from "./hiddenLayer.js";
 import { RawPageRows } from "./rawPageRows.js";
 import { RecoveredLayer, type RecoverySummary } from "./recoveredLayer.js";
 import { normalizeItalianExact } from "../italian/normalize.js";
@@ -64,7 +64,7 @@ export const COLUMNS: Record<TableName, string> = {
   recovered_definition: "recovered_id,record_id,release_id,page_id,definition_index,route,term,page_line,wikitext,text,held_as_example,lead_in_sense_index,lead_in_recovered_id",
   recovered_label: "recovered_id,label_index,label",
   recovered_example: "recovered_id,example_index,page_line,wikitext,text",
-  hidden_record: "record_id,release_id,page_id,rule,because,language,page_line",
+  hidden_record: "record_id,release_id,page_id,rule,because,language,page_line,lemma_line",
   release_table_rows: "release_id,table_name,rows",
 };
 
@@ -330,7 +330,8 @@ export interface SeedSqlOptions {
    * The language codes the dump heads sections with
    * (`fixtures/section-language/regressions.json`). With `rawPages`, the seed
    * hides every record the section-language rule finds in another language
-   * (src/import/hiddenLayer.ts, ADR 0023); without either, it hides none.
+   * (src/import/hiddenLayer.ts, ADR 0023); without either, only
+   * `form-of-foreign-lemma/v1`, which reads the archive alone, hides.
    */
   languageHeadings?: LanguageHeadings;
   /**
@@ -350,7 +351,7 @@ export interface SeedSqlReport extends ArchiveParseReport {
   parts: readonly string[];
   /** What the recovered layer took from the raw pages. */
   recovery: RecoverySummary;
-  /** What the section-language rule hid. */
+  /** What each hiding rule hid. */
   hidden: HiddenSummary;
   /** The facts recorded for this archive's checksum, or none. */
   archiveFacts: ArchiveFacts | undefined;
@@ -392,12 +393,13 @@ export async function seedSql(options: SeedSqlOptions): Promise<SeedSqlReport> {
     },
     writer.counts,
   );
-  // The rule needs every record of a title before it judges one, so the titles
-  // are read in a pass of their own first.
+  // The hiding rules need every record of a title, and every other-language
+  // record, before they judge one, so the archive is read in a pass of its own
+  // first.
   const judge = options.rawPages !== undefined && options.languageHeadings !== undefined
-    ? { pages: options.rawPages, languages: options.languageHeadings, titles: (await readTitles(options.input)).titles }
+    ? { pages: options.rawPages, languages: options.languageHeadings }
     : undefined;
-  const hidden = new HiddenLayer(judge, pageRows, writer.statement("hidden_record"), writer.counts);
+  const hidden = new HiddenLayer(judge, await readRulePass(options.input), pageRows, writer.statement("hidden_record"), writer.counts);
   const required = new Set(options.requiredWords ?? []);
   const seenWords = new Set<string>();
   const targets = new Set<string>();

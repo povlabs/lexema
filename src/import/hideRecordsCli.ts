@@ -1,6 +1,7 @@
 // `pnpm run hide:records`: the one-off update that hides, in an already seeded
-// dictionary, the records the section-language rule finds in another language
-// (hideRecords.ts, ADR 0023). It picks its database the way the seed does: the
+// dictionary, the records the hiding rules find in another language:
+// `section-language/v1` and `form-of-foreign-lemma/v1` (hideRecords.ts,
+// ADR 0023). It picks its database the way the seed does: the
 // local D1 under `SEED_STATE` (default `.data/seed-state`), or the remote D1
 // `SEED_REMOTE` names. It reads the archive the master was seeded from
 // (`SEED_INPUT`, default `it-extract.jsonl.gz`) and the dump that archive was
@@ -10,11 +11,11 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { finish, isMain, type CommandResult } from "../commandLine.js";
-import { readLanguageHeadings } from "../italian/sectionLanguage.js";
+import { readLanguageHeadings, SECTION_LANGUAGE_RULE } from "../italian/sectionLanguage.js";
 import { ARCHIVE_DUMP, VerifiedDump } from "../source/wiktionaryDump.js";
 import { readMasterRelease } from "../update/master.js";
 import { masterReaderOf } from "../update/updateCli.js";
-import { findForeignRecords, readTitles } from "./hiddenLayer.js";
+import { findHiddenRecords, readRulePass } from "./hiddenLayer.js";
 import { planHide, unhidden } from "./hideRecords.js";
 import { seedTargetFrom, webWrangler } from "./seedTarget.js";
 
@@ -30,7 +31,8 @@ export async function main(env: NodeJS.ProcessEnv = process.env): Promise<Comman
   const master = readMasterRelease(reader);
   log(`reading ${archive} and ${dumpPath} for the master ${master.releaseId} in ${target.dictionary}`);
 
-  const { titles, archiveSha256 } = await readTitles(archive);
+  const pass = await readRulePass(archive);
+  const { archiveSha256 } = pass;
   if (archiveSha256 !== master.archiveSha256) {
     return { out: `${archive} has SHA-256 ${archiveSha256}; the master ${master.releaseId} was seeded from ${master.archiveSha256}. Nothing was written.`, status: 1 };
   }
@@ -38,13 +40,14 @@ export async function main(env: NodeJS.ProcessEnv = process.env): Promise<Comman
   const dump = await VerifiedDump.open(dumpPath, ARCHIVE_DUMP);
   let found;
   try {
-    found = await findForeignRecords(dump.pages(), titles, languages);
+    found = await findHiddenRecords(dump.pages(), pass, languages);
   } finally {
     await dump.close();
   }
 
   const plan = planHide(reader, found, await readFile(resolve("src/db/schema.sql"), "utf8"));
-  const summary = `${found.length} record(s) the rule finds; ${plan.alreadyHidden} already hidden`;
+  const byRule = [...new Set(found.map((record) => record.rule))].sort().map((rule) => `${rule} ${found.filter((record) => record.rule === rule).length}`);
+  const summary = `${found.length} record(s) the rules find (${byRule.join(", ")}); ${plan.alreadyHidden} already hidden`;
   if (plan.sql === "") return { out: `${summary}; nothing to hide in ${target.dictionary}`, status: 0 };
 
   const out = resolve(".data/updates");
@@ -63,8 +66,11 @@ export async function main(env: NodeJS.ProcessEnv = process.env): Promise<Comman
   return {
     out: [
       `${summary}; hidden now: ${plan.hides.length}`,
-      ...plan.hides.map(({ recordId, found: { word, foreign } }) =>
-        `  ${word} line ${foreign.lineNo} (record ${recordId}): ${foreign.code}, ${foreign.because} at line ${foreign.ref.line} of revision ${foreign.ref.revisionId}`),
+      ...(plan.table === "none" ? [] : [`hidden_record table: ${plan.table === "create" ? "created" : "rebuilt for form-of-foreign-lemma/v1, every row kept"}`]),
+      ...plan.hides.map(({ recordId, found: record }) =>
+        record.rule === SECTION_LANGUAGE_RULE
+          ? `  ${record.word} line ${record.lineNo} (record ${recordId}): ${record.rule}, ${record.foreign.code}, ${record.foreign.because} at line ${record.foreign.ref.line} of revision ${record.foreign.ref.revisionId}`
+          : `  ${record.word} line ${record.lineNo} (record ${recordId}): ${record.rule}, ${record.form.code}, ${record.form.lemma} at archive line ${record.form.lemmaLine} lists it`),
       `rows deleted: lookup_form ${plan.removed.lookup_form}, form_of_edge ${plan.removed.form_of_edge}; ` +
         `nearby index rows replaced: ${plan.replacedIndexRows}`,
     ].join("\n"),
