@@ -625,10 +625,13 @@ export function readRuledVerbSections(page: RawPage): { ref: RawPageRef; wikitex
   let italian = false;
   let current: (typeof sections)[number] | undefined;
   let hasPos = false;
+  let hasLanguageHeading = false;
+  const hasStandardLanguageHeading = page.wikitext.split("\n").some((line) => /^==[^=]/.test(line.trim()));
   for (const [index, raw] of page.wikitext.split("\n").entries()) {
     const line = raw.trim();
     const language = LANGUAGE_HEADING.exec(line) ?? /^\{\{-([A-Za-z-]+)-\}\}$/.exec(line);
     if (language !== null || /^==[^=].*[^=]==$/.test(line)) {
+      hasLanguageHeading = true;
       italian = language?.[1].toLowerCase() === "it";
       current = undefined;
       hasPos = false;
@@ -637,7 +640,7 @@ export function readRuledVerbSections(page: RawPage): { ref: RawPageRef; wikitex
     const pos = POS_HEADING.exec(line);
     if (pos !== null) {
       // A language-qualified POS can state Italian even when the language heading is absent (fornire).
-      italian = true;
+      if (!hasLanguageHeading && pos[1] === "verb") italian = true;
       hasPos = true;
       current = undefined;
       continue;
@@ -650,7 +653,7 @@ export function readRuledVerbSections(page: RawPage): { ref: RawPageRef; wikitex
       continue;
     }
     // The explicit Italian verb heading with no language section is itself unreadable by the extraction.
-    if (italian && transitivity && hasPos && !page.wikitext.split("\n").some((text) => LANGUAGE_HEADING.test(text.trim()))) {
+    if (italian && transitivity && hasPos && !hasStandardLanguageHeading) {
       current = { line: index + 1, wikitext: raw, handwritten: false, list: [], prose: [] };
       sections.push(current);
       hasPos = false;

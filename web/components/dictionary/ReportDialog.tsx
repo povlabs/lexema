@@ -48,7 +48,8 @@ import {
 } from "@/components/shared/styles.ts";
 
 export interface ReportReading {
-  recordId: number;
+  recordId?: number;
+  entryId?: number;
   /** The reading's number on the page; none for a reading with no definition. */
   number: PageReading["number"];
   posTitle: string;
@@ -127,7 +128,7 @@ function Chip({ name, value, checked, onChange, children }: { name: string; valu
 export function ReportDialog({ word, readings, siteKey }: { word: string; readings: readonly ReportReading[]; siteKey?: string }) {
   const [open, setOpen] = useState(false);
   const [choice, setChoice] = useState<ReportChoice | undefined>(undefined);
-  const [reading, setReading] = useState<number | "unsure" | undefined>(undefined);
+  const [reading, setReading] = useState<number | string | undefined>(undefined);
   const [details, setDetails] = useState("");
   const [status, setStatus] = useState<Status>("editing");
   const [token, setToken] = useState<string | undefined>(undefined);
@@ -267,11 +268,11 @@ export function ReportDialog({ word, readings, siteKey }: { word: string; readin
                   <div className={REPORT_CHIPS}>
                     {readings.map((entry) => (
                       <Chip
-                        key={entry.recordId}
+                        key={entry.recordId ?? `page-${entry.entryId}`}
                         name="reading"
-                        value={String(entry.recordId)}
-                        checked={reading === entry.recordId}
-                        onChange={() => setReading(entry.recordId)}
+                        value={String(entry.recordId ?? `page-${entry.entryId}`)}
+                        checked={reading === (entry.recordId ?? `page-${entry.entryId}`)}
+                        onChange={() => setReading(entry.recordId ?? `page-${entry.entryId}`)}
                       >
                         {readingChoiceLabel(entry)}
                       </Chip>

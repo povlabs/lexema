@@ -1,0 +1,45 @@
+<!-- it.wiktionary.org/wiki/dipendere revision 3972165 (2024-02-11T15:45:17Z), CC BY-SA 4.0. Saved verbatim. -->
+== {{-it-}} == 
+{{Intransitivo|it}}
+{{Pn|c}} 
+# {{Nodef|it}}
+# {{Fig}} {{Nodef|it}}
+# {{Term|familiare|it}} esprime una [[condizione]] [[necessaria]]
+#* '''''dipende''' da [[cosa]] si [[chiede]] e [[come]]
+
+{{-sill-}}
+; di | pèn | de | re
+
+{{-pron-}}
+{{IPA|/diˈpɛndere/}}
+
+{{-etim-}}
+deriva dal [[latino]] ''[[dependēre]]'' cioè "pendere da, [[dipendere]]"
+
+{{-sin-}}
+*[[derivare]], [[discendere]], essere causato, essere determinato, [[originarsi]]. [[procedere]] [[provenire]], [[risalire]], [[scaturire]], trarre origine,   [[procedere]]
+*{{Term|raro|it}} [[conseguire]]
+*essere alle dipendenze, essere soggetto, essere sottoposto, [[obbedire]] [[soggiacere]],[[sottostare]],  [[subire]], [[subordinare]], 
+
+{{-ant-}}
+*[[causare]], [[determinare]]
+*essere indipendente, essere libero, essere autonomo, essere emancipato 
+
+{{-trad-}}
+{{Trad1|}}
+:*{{en}}:to [[depend on]]
+:*{{fr}}: [[dépendre]]
+:*{{es}}: [[depender]]
+:*{{de}}: [[abhängen von]]
+:*{{nl}}: [[afhankelijk zijn]]]
+:*{{pap}}: [[dependé]]
+:*{{es}}: [[depender]]
+:*{{ro}}: a [[depinde]]
+{{Trad2}}
+
+{{-ref-}}
+* {{Fonte|sabco}}
+*{{Fonte|sin-co}}
+* {{Fonte|trec}}
+* {{Fonte|dizit}}
+*AA.VV., ''Dizionario sinonimi e contrari'', Marioti, 2006, pagina 179

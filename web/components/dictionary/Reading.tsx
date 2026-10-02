@@ -1,3 +1,4 @@
+import { entryKey } from "@lexema/lookup/types.ts";
 // How one reading renders: a heading `1 · Sostantivo` (only `Sostantivo` for a
 // reading with no definition), then *Definitions*, then
 // *Forms* — no box around it, a thin rule before the next
@@ -220,7 +221,7 @@ function Definitions({ reading }: { reading: Reading }) {
     // Nothing to define, but the source's examples are still shown.
     if (looseExamples.length === 0) return null;
     return (
-      <Block id={`examples-${reading.recordId}`} label="Examples">
+      <Block id={`examples-${entryKey(reading)}`} label="Examples">
         {looseExamples.map((text, i) => (
           <Example key={i} text={text} />
         ))}
@@ -229,9 +230,9 @@ function Definitions({ reading }: { reading: Reading }) {
   }
   const [first, ...rest] = items;
   const more = rest.length > 0 || leadHoldsMore(first) || looseExamples.length > 0;
-  const list = `definition-list-${reading.recordId}`;
+  const list = `definition-list-${entryKey(reading)}`;
   return (
-    <Block id={`definitions-${reading.recordId}`} label="Definitions">
+    <Block id={`definitions-${entryKey(reading)}`} label="Definitions">
       <MoreBlock className={DEFINITIONS_GROUP}>
         <ol className={DEFINITIONS} id={list}>
           {items.map((item, i) => (
@@ -289,7 +290,7 @@ function LemmaLines({ reading }: { reading: Reading }) {
 
 /** The reading's own forms, in the shape they have. */
 function OwnForms({ reading }: { reading: Reading }) {
-  const id = `forms-${reading.recordId}`;
+  const id = `forms-${entryKey(reading)}`;
   if (isVerbReading(reading)) {
     if (reading.forms.length === 0) return null;
     const searched = searchedSpellings(reading);
@@ -321,8 +322,8 @@ function LemmaForms({ entry }: { entry: PageReading }) {
         const searched = searchedSpellings(listing);
         return (
           <Block
-            key={lemma.recordId}
-            id={`lemma-forms-${entry.reading.recordId}-${lemma.recordId}`}
+            key={entryKey(lemma)}
+            id={`lemma-forms-${entryKey(entry.reading)}-${entryKey(lemma)}`}
             label={
               <>
                 Forms of
@@ -350,12 +351,12 @@ export function ReadingView({ entry }: { entry: PageReading }) {
   return (
     <article
       className={READING}
-      id={`reading-${reading.recordId}`}
-      aria-labelledby={`reading-heading-${reading.recordId}`}
+      id={`reading-${entryKey(reading)}`}
+      aria-labelledby={`reading-heading-${entryKey(reading)}`}
       data-record={reading.recordId}
       data-line={reading.ref.lineNo}
     >
-      <h2 className={READING_HEADING} id={`reading-heading-${reading.recordId}`}>
+      <h2 className={READING_HEADING} id={`reading-heading-${entryKey(reading)}`}>
         {number !== undefined && (
           <>
             <span className={READING_NUMBER}>{number}</span>
@@ -382,13 +383,13 @@ export function ReadingView({ entry }: { entry: PageReading }) {
       <OwnForms reading={reading} />
       <LemmaForms entry={entry} />
       {entry.etymologies.length > 0 && (
-        <Block id={`etymology-${reading.recordId}`} label="Etymology">
+        <Block id={`etymology-${entryKey(reading)}`} label="Etymology">
           {entry.etymologies.map((etymology) => (
             <OneLine key={etymology.ref.jsonPointer} text={etymology.text} lang="it" />
           ))}
         </Block>
       )}
-      <WordList id={`synonyms-${reading.recordId}`} label="Synonyms" items={entry.synonyms} level="h3" />
+      <WordList id={`synonyms-${entryKey(reading)}`} label="Synonyms" items={entry.synonyms} level="h3" />
     </article>
   );
 }

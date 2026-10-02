@@ -26,7 +26,7 @@ import { normalizeItalianExact } from "@lexema/italian/normalize.ts";
 import { expressionMeaning } from "@lexema/lookup/expressions.ts";
 import { foldKey, type Nearby } from "@lexema/lookup/nearby.ts";
 import type { PhraseOffer } from "@lexema/lookup/phrase.ts";
-import { isFormOfReading, isVerbReading, lemmasOfPartOfSpeech, searchedSpellings } from "@lexema/lookup/types.ts";
+import { entryKey, isFormOfReading, isVerbReading, lemmasOfPartOfSpeech, searchedSpellings } from "@lexema/lookup/types.ts";
 import type {
   FoundResult,
   LemmaTarget,
@@ -108,8 +108,8 @@ export async function candidatesOf(result: FoundResult, readLemma: LemmaReader):
       });
     }
   }
-  const seen = new Set<number>();
-  return candidates.filter((candidate) => !seen.has(candidate.reading.recordId) && seen.add(candidate.reading.recordId));
+  const seen = new Set<string>();
+  return candidates.filter((candidate) => !seen.has(entryKey(candidate.reading)) && seen.add(entryKey(candidate.reading)));
 }
 
 /** Each record of the multi-word headwords the query's words spell, the query as typed its surface. */
@@ -270,7 +270,7 @@ export const attributionOf = (word: string): AttributionJson => ({
 
 /** What every result carries, whatever `fields` asks for. */
 export interface ResultCoreJson {
-  /** The record's identity: its release and its line in that release's archive. */
+  /** Archive release/line, or release/page revision for a page-only entry. */
   id: string;
   word: string;
   pos: string;
@@ -501,7 +501,7 @@ export interface LemmaJson {
   attribution: AttributionJson;
 }
 
-export const idOf = (reading: Reading): string => `${reading.ref.releaseId}:${reading.ref.lineNo}`;
+export const idOf = (reading: Reading): string => `${reading.ref.releaseId}:${reading.recordId === undefined ? `page:${reading.ref.revisionId}` : reading.ref.lineNo}`;
 
 export function lemmaJson(candidate: Candidate): LemmaJson {
   const { reading } = candidate;

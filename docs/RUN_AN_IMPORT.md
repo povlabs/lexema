@@ -252,3 +252,9 @@ On a database #382's run already updated, the run hides the 7, rebuilds the
 table, and prints `23 already hidden; hidden now: 7`, one line per record, and
 `rows deleted: lookup_form 7, form_of_edge 7`. On one seeded before #382 it
 hides all 30. Every later run prints `30 already hidden; nothing to hide`.
+
+## Page-only entries
+
+The seed also applies ADR 0024 to dangling form targets with a ruled Italian
+page layout. See [page-only entry seed and readers](PAGE_ENTRIES.md) for the
+local reproduction and the operational rollout boundary.

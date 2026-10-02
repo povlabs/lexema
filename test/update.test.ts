@@ -573,6 +573,7 @@ test("automatic updates follow A→B→C, retain source and hand rows, move inde
     assert.equal(handRows(db), beforeHand);
     const raw = db.prepare("SELECT raw_json FROM source_record_json j JOIN source_record r USING (record_id) WHERE r.word = 'casa' ORDER BY record_id").all().map((row) => row.raw_json);
     assert.deepEqual(raw, [CASA_FIXED, corrected, removed]);
+    assert.ok(casaC.recordId !== undefined);
     const ids = db.prepare(`SELECT record_id FROM (${lineageOf("?1")}) ORDER BY record_id`).all(casaC.recordId).map((row) => row.record_id);
     assert.deepEqual(ids, [1, partial.changes[0].recordId, planC.changes[0].recordId]);
     assert.equal(db.prepare("SELECT count(*) AS n FROM sense WHERE record_id IN (?,?)").get(1, partial.changes[0].recordId)?.n, 4);

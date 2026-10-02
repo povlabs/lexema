@@ -1,3 +1,4 @@
+import { entryKey } from "@lexema/lookup/types.ts";
 // The short page of a searched expression (#214, Huey's page-shape rulings of
 // 2026-09-30; design-system-manifest.md § "The result"): the search as typed,
 // then each record of the inflected word as a reading, `1 · Voce verbale`,
@@ -84,7 +85,7 @@ function LineNumber({ lines, index }: { lines: readonly PhraseLine[]; index: num
 
 const lineKey = (line: PhraseLine): string =>
   line.kind === "meaning"
-    ? `meaning-${line.reading.recordId}-${definitionKey(line.item)}`
+    ? `meaning-${entryKey(line.reading)}-${definitionKey(line.item)}`
     : `form-${line.definition.ref.jsonPointer}-${line.definition.phrase}`;
 
 export function PhraseView({ page, siteKey }: { page: PhrasePage; siteKey?: string }) {
@@ -96,23 +97,23 @@ export function PhraseView({ page, siteKey }: { page: PhrasePage; siteKey?: stri
       <div className={READINGS}>
         {page.readings.map(({ number, reading, lines }) => (
           <article
-            key={reading.recordId}
+            key={entryKey(reading)}
             className={READING}
-            id={`reading-${reading.recordId}`}
-            aria-labelledby={`reading-heading-${reading.recordId}`}
+            id={`reading-${entryKey(reading)}`}
+            aria-labelledby={`reading-heading-${entryKey(reading)}`}
             data-record={reading.recordId}
             data-line={reading.ref.lineNo}
           >
-            <h2 className={READING_HEADING} id={`reading-heading-${reading.recordId}`}>
+            <h2 className={READING_HEADING} id={`reading-heading-${entryKey(reading)}`}>
               <span className={READING_NUMBER}>{number}</span>
               <span className={READING_DOT} aria-hidden="true">
                 ·
               </span>
               <span lang="it">{reading.posTitle}</span>
             </h2>
-            <Block id={`definitions-${reading.recordId}`} label="Definitions">
+            <Block id={`definitions-${entryKey(reading)}`} label="Definitions">
               <MoreBlock className={DEFINITIONS_GROUP}>
-                <ol className={DEFINITIONS} id={`definition-list-${reading.recordId}`}>
+                <ol className={DEFINITIONS} id={`definition-list-${entryKey(reading)}`}>
                   {lines.map((line, i) => (
                     <li
                       key={lineKey(line)}
@@ -130,7 +131,7 @@ export function PhraseView({ page, siteKey }: { page: PhrasePage; siteKey?: stri
                     </li>
                   ))}
                 </ol>
-                {holdsMore(lines) && <More className={DEFINITIONS_MORE} controls={`definition-list-${reading.recordId}`} />}
+                {holdsMore(lines) && <More className={DEFINITIONS_MORE} controls={`definition-list-${entryKey(reading)}`} />}
               </MoreBlock>
             </Block>
           </article>

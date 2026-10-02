@@ -1,9 +1,10 @@
-import type { DictionaryRead, LookupDatabase } from "./database.js";
-import { queryAll } from "./database.js";
+import type { DictionaryRead, LookupDatabase, SqlValue } from "./database.js";
 import { readingPartOfSpeech } from "./articles.js";
 import { servedBy } from "./served.js";
 import { normalizeItalianExact } from "../italian/normalize.js";
 import { type LemmaCandidate, type Reading, type RecoveredDefinition, type PageEntryRef, type RecoveredRoute } from "./types.js";
+
+const queryAll = <T>(db: LookupDatabase, sql: DictionaryRead, ...params: SqlValue[]): Promise<T[]> => db.all<T>(sql, params);
 
 interface EntryRow {
   entry_id: number;

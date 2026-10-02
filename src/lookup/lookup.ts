@@ -225,12 +225,12 @@ export async function lookup({ db, releaseId, query }: LookupOptions): Promise<L
   const { release, query: queryInfo, probed: hits } = prepared;
   const { key } = queryInfo;
 
-  const pages = await pageEntryReadings(db, releaseId, key);
+  const pageReadings = pageEntryReadings(db, releaseId, key);
   if (hits.length > 0) {
-    const result = await found(db, releaseId, queryInfo, release, hits, { kind: "surface" });
+    const [result, pages] = await Promise.all([found(db, releaseId, queryInfo, release, hits, { kind: "surface" }), pageReadings]);
     return { ...result, readings: [...result.readings, ...pages] };
   }
-  const [page, ...otherPages] = pages;
+  const [page, ...otherPages] = await pageReadings;
   if (page !== undefined) return { outcome: "found", query: queryInfo, release, route: { kind: "surface" }, readings: [page, ...otherPages] };
 
   // Nothing spells the query. A query of several words may still be a

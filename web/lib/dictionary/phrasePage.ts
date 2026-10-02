@@ -8,7 +8,7 @@
 // headword's senses, read as its own page reads them (definitions.ts). This
 // file only orders and numbers them for the page.
 
-import type { FoundRoute, PhraseDefinition, PhraseForm, Reading } from "@lexema/lookup/types.ts";
+import type { EntryIdentity, FoundRoute, PhraseDefinition, PhraseForm, Reading } from "@lexema/lookup/types.ts";
 import { definitionsOf, type DefinitionItem } from "./definitions.ts";
 
 /**
@@ -22,7 +22,7 @@ export type PhraseLine =
   | { kind: "form"; definition: PhraseDefinition };
 
 /** The record a numbered reading of the page shows: its heading, and where the source writes it. */
-export type PhraseRecord = Pick<PhraseForm, "recordId" | "word" | "posTitle" | "ref">;
+export type PhraseRecord = EntryIdentity & { word: string; posTitle: string };
 
 /**
  * One numbered reading of the page, as a word page numbers its readings: a

@@ -1,3 +1,4 @@
+import { entryKey } from "@lexema/lookup/types.ts";
 // One word's page: the headword with its pronunciation, jump links when there
 // are three readings or more, the readings in source order, then the facts
 // about the word once, its expressions last among them, then *Source* (design-system-manifest.md § "The result").
@@ -63,8 +64,8 @@ function JumpLinks({ page }: { page: WordPage }) {
     <nav aria-label="Readings">
       <ul className={JUMP_LINKS}>
         {page.readings.map(({ number, reading }) => (
-          <li key={reading.recordId}>
-            <a className={JUMP_LINK} href={`#reading-${reading.recordId}`}>
+          <li key={entryKey(reading)}>
+            <a className={JUMP_LINK} href={`#reading-${entryKey(reading)}`}>
               {number !== undefined && <span className={JUMP_NUMBER}>{number}</span>}
               <span lang="it">{reading.posTitle}</span>
             </a>
@@ -117,7 +118,7 @@ export interface FooterFacts {
   /** The word a report is about. */
   headword: string;
   /** Each reading a report can name, with its number on the page; a word page leaves a reading with no definition unnumbered. */
-  readings: readonly { number: ReportReading["number"]; reading: { recordId: number; posTitle: string } }[];
+  readings: readonly { number: ReportReading["number"]; reading: { recordId?: number; entryId?: number; posTitle: string } }[];
 }
 
 /** One *Source*, to the Wiktionary page of the page's word, then *Report a mistake* (ADR 0009, amended on #281). */
@@ -136,7 +137,7 @@ export function SourceLine({ page, siteKey }: { page: FooterFacts; siteKey: stri
       <span aria-hidden="true">·</span>
       <ReportDialog
         word={page.headword}
-        readings={page.readings.map(({ number, reading }) => ({ number, recordId: reading.recordId, posTitle: reading.posTitle }))}
+        readings={page.readings.map(({ number, reading }) => ({ number, recordId: reading.recordId, entryId: reading.entryId, posTitle: reading.posTitle }))}
         siteKey={siteKey}
       />
     </footer>
@@ -153,7 +154,7 @@ export function WordView({ page, siteKey }: { page: WordPage; siteKey?: string }
       <JumpLinks page={page} />
       <div className={READINGS}>
         {page.readings.map((entry) => (
-          <ReadingView key={entry.reading.recordId} entry={entry} />
+          <ReadingView key={entryKey(entry.reading)} entry={entry} />
         ))}
       </div>
       <WordFactsView facts={page.wordFacts} lists={page.wordLists} expressions={page.expressionSections} />
