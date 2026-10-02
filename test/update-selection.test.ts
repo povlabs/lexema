@@ -4,10 +4,13 @@
 
 import assert from "node:assert/strict";
 import test from "node:test";
+import { readFile } from "node:fs/promises";
+import { italianRecordOf } from "../src/import/importRelease.js";
 import type { QualityRecord } from "../src/italian/recordQuality.js";
 import { selectChanged, selectNew, type ChangedCandidate, type TargetStatus } from "../src/update/selection.js";
 import { idsInFile } from "../src/update/updateCli.js";
 
+// Synthetic senses isolate comparison boundaries, not archive payloads.
 type Sense = { glosses: string[]; form_of?: { word: string }[] };
 
 const record = (word: string, senses: Sense[]): QualityRecord => ({
@@ -72,10 +75,29 @@ test("a placeholder sense beside real ones that becomes real is a fix", () => {
     take: true,
     reason: "fills-gloss",
   });
+  // The retention guard must not change the existing fills-gloss route.
+  assert.deepEqual(changed(
+    [{ glosses: ["edificio"] }, { glosses: [PLACEHOLDER] }, { glosses: [FURNITURE] }],
+    [{ glosses: ["abitazione"] }, { glosses: ["famiglia"] }],
+  ), { take: true, reason: "fills-gloss" });
 });
 
 test("a later record with a sense we do not have adds it", () => {
   assert.deepEqual(changed([{ glosses: ["edificio"] }], [{ glosses: ["edificio"] }, { glosses: ["famiglia"] }]), { take: true, reason: "adds-sense" });
+  assert.deepEqual(changed([{ glosses: ["edificio,   abitazione"] }], [{ glosses: ["EDIFICIO; abitazione!"] }, { glosses: ["famiglia"] }]), {
+    take: true,
+    reason: "adds-sense",
+  });
+});
+
+test("adding senses never selects an adds-sense replacement that loses an old key", async () => {
+  // Verbatim deprimente: it-0c432803:412862 and it-78385b62:413315.
+  const before = italianRecordOf((await readFile("fixtures/first-feed-retention-before.jsonl", "utf8")).trimEnd());
+  const after = italianRecordOf((await readFile("fixtures/first-feed-retention-after.jsonl", "utf8")).trimEnd());
+  assert.ok(before && after);
+  const original = JSON.stringify({ before, after });
+  assert.deepEqual(selectChanged({ before, after, beforeFromMaster: true, beforeHidden: false, italian: true }), { take: false, reason: "loses-gloss" });
+  assert.equal(JSON.stringify({ before, after }), original);
 });
 
 test("a later record with more senses, all of them glosses we have, adds nothing", () => {

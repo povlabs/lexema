@@ -1,0 +1,566 @@
+{
+  "changedIdsVerified": 54,
+  "originalAddsSense": 22,
+  "affected": 4,
+  "retained": 18,
+  "records": [
+    {
+      "id": "chg-6f0b5dda3e59",
+      "word": "cucina",
+      "pos": "noun",
+      "beforeLine": 31618,
+      "afterLine": 31886,
+      "retiredRecordId": 5167,
+      "laterRecordId": 560392,
+      "beforeSha256": "d4c429e681062c4d8c623715f3bdb207fe729fe7ee018e293683cfb5d3eae51d",
+      "afterSha256": "4689804e1c0a706c313a75a52c577f679db9d9889413bc880c9eb9ee04c87ea5",
+      "oldKeys": [
+        "insieme di pratiche e tradizioni legate alla cottura e più in generale alla preparazione di cibi e bevande",
+        "luogo o stanza adibito a al cucinare",
+        "attrezzatura a fornelli per cucinare i cibi"
+      ],
+      "laterKeys": [
+        "insieme di pratiche e tradizioni legate alla cottura e più in generale alla preparazione di cibi e bevande",
+        "luogo o stanza adibito a al cucinare",
+        "fornello",
+        "attrezzatura a fornelli per cucinare i cibi"
+      ],
+      "missing": [],
+      "verdict": {
+        "take": true,
+        "reason": "adds-sense"
+      }
+    },
+    {
+      "id": "chg-aa4efde12d7e",
+      "word": "centrale",
+      "pos": "noun",
+      "beforeLine": 39494,
+      "afterLine": 39770,
+      "retiredRecordId": 10044,
+      "laterRecordId": 560394,
+      "beforeSha256": "1a1838548107b312d233c5f7d8065a84773880ede0f983fd2accb5ec05cf323e",
+      "afterSha256": "3708f06db8851456b5c50da3bf61a5071056f51386f18811969a30fd2160e41a",
+      "oldKeys": [
+        "impianto di produzione e raccolta di beni e servizi da cui parte la distribuzione"
+      ],
+      "laterKeys": [
+        "impianto di produzione e raccolta di beni e servizi da cui parte la distribuzione",
+        "centro di smistamento"
+      ],
+      "missing": [],
+      "verdict": {
+        "take": true,
+        "reason": "adds-sense"
+      }
+    },
+    {
+      "id": "chg-b6d933196529",
+      "word": "legno",
+      "pos": "noun",
+      "beforeLine": 42270,
+      "afterLine": 42550,
+      "retiredRecordId": 11392,
+      "laterRecordId": 560396,
+      "beforeSha256": "31f4ccf45c3e8940917f565e22c61ad91e5b1d2141416a20d09b1dee1f4a0e8d",
+      "afterSha256": "4de24d29642f9ba30241a596158571f29acd721c03220b4db03ad67d58de9037",
+      "oldKeys": [
+        "materiale ricavato dal fusto delle piante ed utilizzato per fabbricare mobili case parti di attrezzi armi pavimenti imballaggi oggetti vari e come materiale per riscaldare e cucinare",
+        "pezzo bastone di legno",
+        "imbarcazione costruita in legno",
+        "strumento a fiato"
+      ],
+      "laterKeys": [
+        "materiale ricavato dal fusto delle piante ed utilizzato per fabbricare mobili case parti di attrezzi armi pavimenti imballaggi oggetti vari e come materiale per riscaldare e cucinare",
+        "pezzo bastone di legno",
+        "imbarcazione costruita in legno",
+        "strumento a fiato",
+        "mazza da golf"
+      ],
+      "missing": [],
+      "verdict": {
+        "take": true,
+        "reason": "adds-sense"
+      }
+    },
+    {
+      "id": "chg-719f8db26ebb",
+      "word": "aristocrazia",
+      "pos": "noun",
+      "beforeLine": 47606,
+      "afterLine": 47889,
+      "retiredRecordId": 13645,
+      "laterRecordId": 560397,
+      "beforeSha256": "b971a799f5e3af3ccad993ae2fd7679bfccdb55fec990f98e2c63624e4709e73",
+      "afterSha256": "22d21a9ebefb00e3382c8e520d37b9237380d6dd16befad16c4a99772e1eb4a8",
+      "oldKeys": [
+        "forma di governo dove il potere supremo è nelle mani di poche persone meritevoli"
+      ],
+      "laterKeys": [
+        "forma di governo dove il potere supremo è nelle mani di poche persone meritevoli",
+        "classe privilegiata per discendenza",
+        "superiorità intellettuale o morale",
+        "signorilità nelle maniere e nei tratti del viso"
+      ],
+      "missing": [],
+      "verdict": {
+        "take": true,
+        "reason": "adds-sense"
+      }
+    },
+    {
+      "id": "chg-4aa885e4ac68",
+      "word": "resistere",
+      "pos": "verb",
+      "beforeLine": 49191,
+      "afterLine": 49474,
+      "retiredRecordId": 14933,
+      "laterRecordId": 560400,
+      "beforeSha256": "c2733b210eaf29f18a626af39cb11a43635276d018fe53a1fef0e0c3dc8f828c",
+      "afterSha256": "dfd87f3938343ba51ae66293974f89f77e49e51cfb70e2c4fee2722ae6b3677f",
+      "oldKeys": [
+        "preservare le qualita di un oggetto"
+      ],
+      "laterKeys": [
+        "affermarsi o resistere di fronte a qualcosa opporre resistenza o opporsi",
+        "sopportare uscirne indenne",
+        "conservarne inalterate nel tempo le proprietà le caratteristiche e il valore"
+      ],
+      "missing": [
+        {
+          "gloss": "preservare le qualita di un oggetto",
+          "key": "preservare le qualita di un oggetto"
+        }
+      ],
+      "verdict": {
+        "take": false,
+        "reason": "loses-gloss"
+      }
+    },
+    {
+      "id": "chg-ecd05a1dc1d2",
+      "word": "inerente",
+      "pos": "adj",
+      "beforeLine": 53608,
+      "afterLine": 53906,
+      "retiredRecordId": 18828,
+      "laterRecordId": 560404,
+      "beforeSha256": "a9486db7cc1eabad206684e14af78fb7d510fe7e5e998542f79b9238bce2fb5e",
+      "afterSha256": "3babb9b8fa4c42d26d365f4db4dad389801414b43b76af1652c815dc4f137c77",
+      "oldKeys": [
+        "che riguarda qualcosa"
+      ],
+      "laterKeys": [
+        "che è insito in qualcosa",
+        "che si riferisce"
+      ],
+      "missing": [
+        {
+          "gloss": "che riguarda qualcosa",
+          "key": "che riguarda qualcosa"
+        }
+      ],
+      "verdict": {
+        "take": false,
+        "reason": "loses-gloss"
+      }
+    },
+    {
+      "id": "chg-7aa4934c9c7d",
+      "word": "perimetro",
+      "pos": "noun",
+      "beforeLine": 62146,
+      "afterLine": 62453,
+      "retiredRecordId": 25567,
+      "laterRecordId": 560407,
+      "beforeSha256": "be3efc72e1031181704449718c923acaf6dff6951742131545688e3f3c4a62c7",
+      "afterSha256": "2c685f2a92bcc98eb6275a9cbfd7493591f11b038b010e49c710183c04930841",
+      "oldKeys": [
+        "il luogo geometrico formato dall unione dei lati di un poligono o la misura della sua lunghezza",
+        "il percorso intorno a un edificio o una recinzione"
+      ],
+      "laterKeys": [
+        "il luogo geometrico formato dall unione dei lati di un poligono o la misura della sua lunghezza",
+        "il percorso intorno a un edificio o una recinzione",
+        "apparecchio per la misurazione del campo visivo"
+      ],
+      "missing": [],
+      "verdict": {
+        "take": true,
+        "reason": "adds-sense"
+      }
+    },
+    {
+      "id": "chg-7b0325838ef5",
+      "word": "panno",
+      "pos": "noun",
+      "beforeLine": 64966,
+      "afterLine": 65273,
+      "retiredRecordId": 26395,
+      "laterRecordId": 560409,
+      "beforeSha256": "bf9db2bf47891a347b9dca00e5488892fab1d4a47129cd61fec64e48893ec640",
+      "afterSha256": "89c3bdbfcd4d2fee8eace158d1cad1b9c63392e58972e5c95b0199b5051c12e9",
+      "oldKeys": [
+        "pezzo di un tessuto morbido destinato a pulire superfici od oggetti",
+        "al plurale indica i vestiti"
+      ],
+      "laterKeys": [
+        "pezzo di un tessuto morbido destinato a pulire superfici od oggetti",
+        "straccio",
+        "al plurale indica i vestiti"
+      ],
+      "missing": [],
+      "verdict": {
+        "take": true,
+        "reason": "adds-sense"
+      }
+    },
+    {
+      "id": "chg-95e42f4e376b",
+      "word": "SUV",
+      "pos": "abbrev",
+      "beforeLine": 83148,
+      "afterLine": 83470,
+      "retiredRecordId": 30534,
+      "laterRecordId": 560414,
+      "beforeSha256": "79ef05acf64ffcc8951c74ab0eb156a8f41191fddc7192beee145d719f3d73ab",
+      "afterSha256": "55aecd2c9a690c9400d953ca52d19fcbbefd4b195329c0849769e75fb538f926",
+      "oldKeys": [
+        "grosso automezzo a quattro ruote motrici con somiglianze esteriori con un piccolo autocarro ma con le stesse prestazioni di un fuoristrada",
+        "suv sportivo sono normali suv ma con la particolarità di essere assai simili ai mezzi della parigi dakar cioè quindi molto larghi non troppo alti e con un design appunto più aerodinamico",
+        "suv compatte di dimensioni più ridotte con ciò non mancando in prestazioni",
+        "compact suv come per esempio l hummer hx sono appunto fuoristrada con un evidente struttura come un unico corpo di meccanica studio ingegneristico e design semi muscle ma in modo sobrio pur quando sportivo con questa qualità quindi anche per la carrozzeria",
+        "suv crossover ancora abbastanza o molto accattivante nelle linee appunto con un pianale non troppo rialzato e più o meno simile ad una consueta familiare ma sportiva o comunque potente"
+      ],
+      "laterKeys": [
+        "grosso automezzo a quattro ruote motrici con somiglianze esteriori con un piccolo autocarro ma con le stesse prestazioni di un fuoristrada",
+        "suv sportivo sono normali suv ma con la particolarità di essere assai simili ai mezzi della parigi dakar cioè quindi molto larghi non troppo alti e con un design appunto più aerodinamico",
+        "suv compatte di dimensioni più ridotte con ciò non mancando in prestazioni",
+        "compact suv come per esempio l hummer hx sono appunto fuoristrada con un evidente struttura come un unico corpo di meccanica studio ingegneristico e design semi muscle ma in modo sobrio pur quando sportivo con questa qualità quindi anche per la carrozzeria",
+        "suv crossover ancora abbastanza o molto accattivante nelle linee appunto con un pianale non troppo rialzato e più o meno simile ad una consueta familiare ma sportiva o comunque potente",
+        "hyper suv super suv sono con prestazioni da vel max oltre i km h 300 e prezzi che oscillano tra gli 290 000 00 e gli oltre 300 000 00"
+      ],
+      "missing": [],
+      "verdict": {
+        "take": true,
+        "reason": "adds-sense"
+      }
+    },
+    {
+      "id": "chg-bfa7a284f481",
+      "word": "schizzo",
+      "pos": "noun",
+      "beforeLine": 107571,
+      "afterLine": 107908,
+      "retiredRecordId": 42993,
+      "laterRecordId": 560417,
+      "beforeSha256": "cbc956f179ee1ca5648a3cdb7544409154ce37a102f14a3aaa4a7f0f1a713dd0",
+      "afterSha256": "560483e3f019f6e7152a969de72c297af456a2aae6ea5fd81f8240d634784b26",
+      "oldKeys": [
+        "disegno di un primo esemplare"
+      ],
+      "laterKeys": [
+        "macchia che si forma quando un liquido o una sostanza colpisce qualcosa schizzando",
+        "disegno di un primo esemplare"
+      ],
+      "missing": [],
+      "verdict": {
+        "take": true,
+        "reason": "adds-sense"
+      }
+    },
+    {
+      "id": "chg-acfa954d20a0",
+      "word": "stregua",
+      "pos": "noun",
+      "beforeLine": 109809,
+      "afterLine": 110149,
+      "retiredRecordId": 43994,
+      "laterRecordId": 560418,
+      "beforeSha256": "4363865dedae9b4cd42979e296b0f1aa1c15c7ea18c5f9400965bf6bb0b89fa0",
+      "afterSha256": "afd89d2e6ea2db61904db69a995975f44c98b8a4571852b7b7445e68010dac12",
+      "oldKeys": [
+        "quota che spetta ad ognuno di una spesa comune da dividere in più parti"
+      ],
+      "laterKeys": [
+        "quota che spetta ad ognuno di una spesa comune da dividere in più parti",
+        "modo manièra"
+      ],
+      "missing": [],
+      "verdict": {
+        "take": true,
+        "reason": "adds-sense"
+      }
+    },
+    {
+      "id": "chg-5e7203197062",
+      "word": "camper",
+      "pos": "noun",
+      "beforeLine": 129605,
+      "afterLine": 129966,
+      "retiredRecordId": 53432,
+      "laterRecordId": 560419,
+      "beforeSha256": "f8a326b7f3ab166523a83871ef20dd28ecb58904891b7f82c50f042c52c59402",
+      "afterSha256": "416ec4297c2c9ab4ec9676b38e3a78a53a3ffe0d798506dd1891b641573481d6",
+      "oldKeys": [
+        "più correttamente autocaravan è un mezzo di trasporto classificato dal codice della strada tra gli autoveicoli allestito permanentemente in modo da permettere il soggiorno dei suoi occupanti dotato di motore e sistema di guida autonomi"
+      ],
+      "laterKeys": [
+        "più correttamente autocaravan è un mezzo di trasporto classificato dal codice della strada tra gli autoveicoli allestito permanentemente in modo da permettere il soggiorno dei suoi occupanti dotato di motore e sistema di guida autonomi",
+        "un camper van di lusso conferisce a questo mezzo un design futuristico e di alta qualità"
+      ],
+      "missing": [],
+      "verdict": {
+        "take": true,
+        "reason": "adds-sense"
+      }
+    },
+    {
+      "id": "chg-b33cdddd08ae",
+      "word": "striminzito",
+      "pos": "adj",
+      "beforeLine": 139452,
+      "afterLine": 139843,
+      "retiredRecordId": 59237,
+      "laterRecordId": 560421,
+      "beforeSha256": "763cf31b846ed4303f26e282aae81d5b641ebfc3b0869abbe251c394e5989de3",
+      "afterSha256": "134c037a3fa035dc92219b75ea7e7bfb39f396057eac990957ca8a264f97924f",
+      "oldKeys": [
+        "che è misero"
+      ],
+      "laterKeys": [
+        "di persona che è molto esile",
+        "che è misero"
+      ],
+      "missing": [],
+      "verdict": {
+        "take": true,
+        "reason": "adds-sense"
+      }
+    },
+    {
+      "id": "chg-8f81733e20b3",
+      "word": "stecca",
+      "pos": "noun",
+      "beforeLine": 202600,
+      "afterLine": 203011,
+      "retiredRecordId": 120316,
+      "laterRecordId": 560425,
+      "beforeSha256": "1b3474283849acaa05e8a148eb614b155a6a68829f0d486b1894d4071d2eadfe",
+      "afterSha256": "6ad8ca582188c18daed5c0316842542b492821c253a9a4c6e603a13503a2f5a5",
+      "oldKeys": [
+        "piccola asta allungata particolarmente di legno",
+        "confezione unica con 10 pacchetti di sigarette"
+      ],
+      "laterKeys": [
+        "piccola asta allungata particolarmente di legno",
+        "confezione unica con 10 pacchetti di sigarette",
+        "stonatura"
+      ],
+      "missing": [],
+      "verdict": {
+        "take": true,
+        "reason": "adds-sense"
+      }
+    },
+    {
+      "id": "chg-f6d9da14cdd4",
+      "word": "deprimente",
+      "pos": "adj",
+      "beforeLine": 412862,
+      "afterLine": 413315,
+      "retiredRecordId": 325468,
+      "laterRecordId": 560442,
+      "beforeSha256": "ae9196b2e4f2deb780b8a27a0d0247c8e0cbf4813f0106e729880f7a0b52230f",
+      "afterSha256": "4e25f4616193c6031dbe14d84f1c1e380ecdfd568abcc5856ac0b8c09901e7d6",
+      "oldKeys": [
+        "che provoca debolezza"
+      ],
+      "laterKeys": [
+        "di individuo che suscita avvilimento a chi lo sente o chi le sta accanto",
+        "che fa cadere le braccia",
+        "di farmaco che ha un effetto sedativo sul sistema nervoso"
+      ],
+      "missing": [
+        {
+          "gloss": "che provoca debolezza",
+          "key": "che provoca debolezza"
+        }
+      ],
+      "verdict": {
+        "take": false,
+        "reason": "loses-gloss"
+      }
+    },
+    {
+      "id": "chg-0bea0ca4af52",
+      "word": "tripletta",
+      "pos": "noun",
+      "beforeLine": 417641,
+      "afterLine": 418101,
+      "retiredRecordId": 329586,
+      "laterRecordId": 560445,
+      "beforeSha256": "24cb0c1736ca31e4522bec0d8dd2c78c9780e2ecf5ab266d4bbd5b2cab87018e",
+      "afterSha256": "985691bc3f0aefa92bfe7a6389bca883f7e5e1ad7ba901ee1693ff36ff5466be",
+      "oldKeys": [
+        "fucile da caccia a tre canne",
+        "sequenza di tre nucleotidi lungo una molecola di dna che codifica un determinato aminoacido"
+      ],
+      "laterKeys": [
+        "fucile da caccia a tre canne",
+        "sequenza di tre nucleotidi lungo una molecola di dna che codifica un determinato aminoacido",
+        "tre gol segnati da un giocatore nel corso di una partita"
+      ],
+      "missing": [],
+      "verdict": {
+        "take": true,
+        "reason": "adds-sense"
+      }
+    },
+    {
+      "id": "chg-d59d7ae8a93f",
+      "word": "pressurizzazione",
+      "pos": "noun",
+      "beforeLine": 417898,
+      "afterLine": 418358,
+      "retiredRecordId": 329814,
+      "laterRecordId": 560446,
+      "beforeSha256": "adf93a64be84a5b1076dab785b435482317ce16af53d92666da5535e2bae7a8e",
+      "afterSha256": "272d1e44a9ac592694f210a8aa020ea493b6e5c1bb1094b94bd1279c5024330f",
+      "oldKeys": [
+        "applicazione di una pressione prossima a quella del livello del mare nella cabina di un aeromobile per rendere quest ultima abitabile dal personale e dai passeggeri"
+      ],
+      "laterKeys": [
+        "pressione che supera la pressione atmosferica normale",
+        "applicazione di una pressione prossima a quella del livello del mare nella cabina di un aeromobile a motore per rendere quest ultima abitabile dal personale e dai passeggeri"
+      ],
+      "missing": [
+        {
+          "gloss": "applicazione di una pressione prossima a quella del livello del mare nella cabina di un aeromobile, per rendere quest'ultima abitabile dal personale e dai passeggeri",
+          "key": "applicazione di una pressione prossima a quella del livello del mare nella cabina di un aeromobile per rendere quest ultima abitabile dal personale e dai passeggeri"
+        }
+      ],
+      "verdict": {
+        "take": false,
+        "reason": "loses-gloss"
+      }
+    },
+    {
+      "id": "chg-ef8c8bf05160",
+      "word": "donatore",
+      "pos": "noun",
+      "beforeLine": 446967,
+      "afterLine": 447439,
+      "retiredRecordId": 354102,
+      "laterRecordId": 560450,
+      "beforeSha256": "be7c67b6649fc38b97e20a5047cf18bbdeeefdd57fde588b2e1e150a88a3910a",
+      "afterSha256": "861c0b1c2c7ca44ded6d850deb0f1a333da5facf6e032381e7322eb8cca0d2a5",
+      "oldKeys": [
+        "chi dona",
+        "specie chimica in grado di donare elettroni ad un altra specie chimica durante una reazione"
+      ],
+      "laterKeys": [
+        "chi dona",
+        "persona dal cui corpo viene prelevato un organo o un tessuto a scopo di trapianto",
+        "specie chimica in grado di donare elettroni ad un altra specie chimica durante una reazione"
+      ],
+      "missing": [],
+      "verdict": {
+        "take": true,
+        "reason": "adds-sense"
+      }
+    },
+    {
+      "id": "chg-c66213aa6720",
+      "word": "storicoletterario",
+      "pos": "adj",
+      "beforeLine": 458076,
+      "afterLine": 458551,
+      "retiredRecordId": 361581,
+      "laterRecordId": 560454,
+      "beforeSha256": "2d78564896cbaee9621e3a8f252cd7f9b0e71b633841e40597fc64afd46d8730",
+      "afterSha256": "ee0b836a493cb5a1e70df389f897b5116617021114c04f75b25e871bb3059806",
+      "oldKeys": [
+        "che riguarda la storia della letteratura"
+      ],
+      "laterKeys": [
+        "che riguarda la storia della letteratura",
+        "che riguarda la letteratura e la storia"
+      ],
+      "missing": [],
+      "verdict": {
+        "take": true,
+        "reason": "adds-sense"
+      }
+    },
+    {
+      "id": "chg-aef5500baf0c",
+      "word": "grumo",
+      "pos": "noun",
+      "beforeLine": 494932,
+      "afterLine": 495418,
+      "retiredRecordId": 375028,
+      "laterRecordId": 560461,
+      "beforeSha256": "06d6ced6b2c9a23f11701679cb8f3a12f8d19754ba41e5adec4058fc7a4c2f20",
+      "afterSha256": "56ba1609db8a9746d38b802f07722c5e35e47f7b439c33e2c492b75996c26d23",
+      "oldKeys": [
+        "piccolo accumulo di materia"
+      ],
+      "laterKeys": [
+        "piccolo accumulo di materia",
+        "coagulo di sangue"
+      ],
+      "missing": [],
+      "verdict": {
+        "take": true,
+        "reason": "adds-sense"
+      }
+    },
+    {
+      "id": "chg-671244243223",
+      "word": "beghina",
+      "pos": "noun",
+      "beforeLine": 579586,
+      "afterLine": 580083,
+      "retiredRecordId": 383259,
+      "laterRecordId": 560465,
+      "beforeSha256": "ccee6f106477a6f5c46c9b3b52c6d7528b28c1b463b8152516ee9c625f0afb32",
+      "afterSha256": "b87396d7829b4dc401f0b393dc8818bd44e4a11b8b2fa7f5decde17e665cb7fa",
+      "oldKeys": [
+        "donna seguace di un movimento spirituale e caritativo sorto nell xii sec e tutt ora esistente in belgio e in olanda caratterizzato in comunità"
+      ],
+      "laterKeys": [
+        "donna seguace di un movimento spirituale e caritativo sorto nell xii sec e tutt ora esistente in belgio e in olanda caratterizzato in comunità",
+        "donna che esibisce superficialmente e solo formalmente religiosità bigotta"
+      ],
+      "missing": [],
+      "verdict": {
+        "take": true,
+        "reason": "adds-sense"
+      }
+    },
+    {
+      "id": "chg-42a9b56afdcb",
+      "word": "MB",
+      "pos": "symbol",
+      "beforeLine": 610145,
+      "afterLine": 610678,
+      "retiredRecordId": 390127,
+      "laterRecordId": 560471,
+      "beforeSha256": "84531b5a5e892eca254f016d02e9d459707babbcb54e027b3eb4447905001c21",
+      "afterSha256": "6949c54954ff4a0afff5962acfc2f165c9eda201cbf6a08e16af334cf427c0a6",
+      "oldKeys": [
+        "sigla automobilistica e burocratica della provincia di monza e della brianza"
+      ],
+      "laterKeys": [
+        "sigla automobilistica e burocratica della provincia di monza e della brianza",
+        "sigla di metabolismo basale"
+      ],
+      "missing": [],
+      "verdict": {
+        "take": true,
+        "reason": "adds-sense"
+      }
+    }
+  ]
+}
