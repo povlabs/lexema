@@ -5,6 +5,7 @@
 import { IT_NORMALIZER_VERSION, normalizeItalianExact } from "../italian/normalize.js";
 import { shownGloss } from "../italian/headwordEcho.js";
 import { recordGlosses, type RecordGloss } from "../italian/recovery.js";
+import { readPluralGloss, type PluralGlossGender } from "../italian/pluralGloss.js";
 import { readingPartOfSpeech } from "./articles.js";
 import type { DictionaryRead, LookupDatabase } from "./database.js";
 import { phraseForms, phraseMatches } from "./phrase.js";
@@ -25,6 +26,7 @@ import type {
   LemmaListing,
   LookupResult,
   PhraseMatch,
+  PluralDeclaration,
   QueryInfo,
   Reading,
   RecoveredDefinition,
@@ -37,6 +39,8 @@ import type {
   Sense,
   SourceForm,
   SourceRef,
+  SourceText,
+  StatedClaim,
 } from "./types.js";
 
 /** Longest surface we will look up, so a pathological query cannot become a
@@ -547,7 +551,7 @@ async function buildReading(
       source.then((fields) => readExpressions(db, releaseId, fields.expressionItems)),
       readRecovered(db, recordId, inputs.record),
       readSenseRows(db, recordId),
-      readInflections(db, releaseId, recordId),
+      readInflections(db, releaseId, recordId, first.record_word),
       readReviews(db, recordId),
     ]);
 
@@ -885,11 +889,13 @@ async function readLemmaLinks(
  * on `it-0c432803` (#381).
  */
 export const INFLECTION_SQL: DictionaryRead = `SELECT f.record_id, f.release_id, f.line_no, f.line_sha256, f.word, f.pos,
-            e.json_pointer, e.target_word
+            e.json_pointer, e.target_word, g.text AS gloss, g.json_pointer AS gloss_pointer
        FROM lookup_form lf
        CROSS JOIN form_of_edge e
          ON e.release_id IN (${servedBy("?2")}) AND e.target_word_key = lf.surface_key
        JOIN source_record f ON f.record_id = e.record_id
+       LEFT JOIN sense s ON s.record_id = e.record_id AND s.sense_index = e.sense_index
+       LEFT JOIN sense_gloss g ON g.sense_id = s.sense_id AND g.gloss_index = 0
       WHERE lf.record_id = ?1 AND lf.origin = 'headword' AND lf.release_id IN (${servedBy("?2")})
       ORDER BY f.line_no, e.json_pointer`;
 
@@ -908,15 +914,42 @@ export const INFLECTION_CANDIDATE_SQL: DictionaryRead = `SELECT t.record_id, t.r
       WHERE self.record_id = ?1 AND self.origin = 'headword'
       ORDER BY t.line_no, t.record_id`;
 
+/**
+ * The stated genders of every record declaring itself a form of the word this
+ * record spells, read off the same edges as `INFLECTION_SQL` and in the same
+ * join order. Sent only when one of those records glosses itself this word's
+ * plural, and beside the candidate read, so it adds no round trip.
+ */
+export const INFLECTION_GENDER_SQL: DictionaryRead = `SELECT DISTINCT c.record_id, c.value, c.source_text, c.json_pointer,
+            f.release_id, f.line_no, f.line_sha256
+       FROM lookup_form lf
+       CROSS JOIN form_of_edge e
+         ON e.release_id IN (${servedBy("?2")}) AND e.target_word_key = lf.surface_key
+       JOIN source_record f ON f.record_id = e.record_id
+       JOIN grammar_claim c
+         ON c.record_id = e.record_id AND c.scope = 'record' AND c.status = 'stated' AND c.dimension = 'gender'
+      WHERE lf.record_id = ?1 AND lf.origin = 'headword' AND lf.release_id IN (${servedBy("?2")})
+      ORDER BY c.record_id, c.json_pointer`;
+
 /** The `/word` field of a headword record, which is where its spelling is. */
 function headwordRef(releaseId: string, lineNo: number, lineSha256: string): SourceRef {
   return { releaseId, lineNo, jsonPointer: "/word", lineSha256 };
 }
 
+/** A pointer into the line a row names. */
+const lineRef = (row: { release_id: string; line_no: number; line_sha256: string }, jsonPointer: string): SourceRef => ({
+  releaseId: row.release_id,
+  lineNo: row.line_no,
+  jsonPointer,
+  lineSha256: row.line_sha256,
+});
+
+/** `word` is the reading's own headword, which a plural gloss has to name. */
 async function readInflections(
   db: LookupDatabase,
   releaseId: string,
   recordId: number,
+  word: string,
 ): Promise<InflectionOf[]> {
   const rows = await queryAll<{
     record_id: number;
@@ -927,20 +960,53 @@ async function readInflections(
     pos: string;
     json_pointer: string;
     target_word: string;
+    gloss: string | null;
+    gloss_pointer: string | null;
   }>(db, INFLECTION_SQL, recordId, releaseId);
 
   if (rows.length === 0) return [];
 
+  // The edges whose sense glosses "plurale di <word>". A record keeps the one
+  // on its first such edge in source order, which the rows' pointer-as-text
+  // order is not (`compareSourcePointers`).
+  const pluralGlosses = new Map<number, { edge: string; gloss: SourceText; gender: PluralGlossGender | undefined }>();
+  for (const row of rows) {
+    if (row.gloss === null || row.gloss_pointer === null) continue;
+    const kept = pluralGlosses.get(row.record_id);
+    if (kept !== undefined && compareSourcePointers(kept.edge, row.json_pointer) <= 0) continue;
+    const plural = readPluralGloss(row.gloss, word);
+    if (plural === undefined) continue;
+    pluralGlosses.set(row.record_id, {
+      edge: row.json_pointer,
+      gloss: { text: row.gloss, ref: lineRef(row, row.gloss_pointer) },
+      gender: plural.gender,
+    });
+  }
+
   // One extra read, not one per edge: every incoming edge on this record
   // matched the same surface key, so they all resolve to the same candidate set.
-  const candidates = await queryAll<{
-    record_id: number;
-    release_id: string;
-    line_no: number;
-    line_sha256: string;
-    word: string;
-    pos: string;
-  }>(db, INFLECTION_CANDIDATE_SQL, recordId, releaseId);
+  // The genders go beside it, and only when a plural needs them.
+  const [candidates, genderRows] = await Promise.all([
+    queryAll<{
+      record_id: number;
+      release_id: string;
+      line_no: number;
+      line_sha256: string;
+      word: string;
+      pos: string;
+    }>(db, INFLECTION_CANDIDATE_SQL, recordId, releaseId),
+    pluralGlosses.size === 0
+      ? Promise.resolve([])
+      : queryAll<{
+          record_id: number;
+          value: string;
+          source_text: string;
+          json_pointer: string;
+          release_id: string;
+          line_no: number;
+          line_sha256: string;
+        }>(db, INFLECTION_GENDER_SQL, recordId, releaseId),
+  ]);
 
   const targetCandidates = candidates.map((row) => ({
     recordId: row.record_id,
@@ -948,6 +1014,22 @@ async function readInflections(
     pos: row.pos,
     ref: headwordRef(row.release_id, row.line_no, row.line_sha256),
   }));
+
+  const recordGenders = new Map<number, StatedClaim[]>();
+  for (const row of genderRows) {
+    const claims = recordGenders.get(row.record_id) ?? [];
+    claims.push({ status: "stated", dimension: "gender", value: row.value, sourceText: row.source_text, ref: lineRef(row, row.json_pointer) });
+    recordGenders.set(row.record_id, claims);
+  }
+  for (const claims of recordGenders.values()) {
+    claims.sort((a, b) => compareSourcePointers(a.ref.jsonPointer, b.ref.jsonPointer));
+  }
+
+  const pluralOf = (declaring: number): PluralDeclaration | undefined => {
+    const plural = pluralGlosses.get(declaring);
+    if (plural === undefined) return undefined;
+    return { gloss: plural.gloss, glossGender: plural.gender, recordGenders: recordGenders.get(declaring) ?? [] };
+  };
 
   // One row per declaring *record*, not per edge: `casetta` says it is a form
   // of `casa` on two of its senses, and that is one record pointing here twice,
@@ -957,12 +1039,7 @@ async function readInflections(
   for (const row of rows) {
     // The edge lives on the declaring record, so the ref carries that record's
     // line, not this reading's.
-    const edge: SourceRef = {
-      releaseId: row.release_id,
-      lineNo: row.line_no,
-      jsonPointer: row.json_pointer,
-      lineSha256: row.line_sha256,
-    };
+    const edge = lineRef(row, row.json_pointer);
     const existing = byRecord.get(row.record_id);
     if (existing) {
       existing.refs.push(edge);
@@ -975,6 +1052,7 @@ async function readInflections(
       refs: [edge],
       targetWord: row.target_word,
       targetCandidates,
+      plural: pluralOf(row.record_id),
     });
   }
 

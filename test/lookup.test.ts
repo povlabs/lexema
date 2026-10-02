@@ -9,6 +9,7 @@ import { gzipSync } from "node:zlib";
 import { seedSql } from "../src/import/seedSql.js";
 import {
   INFLECTION_CANDIDATE_SQL,
+  INFLECTION_GENDER_SQL,
   INFLECTION_SQL,
   LEMMA_LINK_SQL,
   MAX_QUERY_LENGTH,
@@ -924,7 +925,7 @@ test("resolving lemma links never materialises the candidate view", async () => 
   });
 });
 
-test("both inflection queries stay on indexes rather than scanning", async () => {
+test("the inflection queries stay on indexes rather than scanning", async () => {
   await withFixture(async (db) => {
     // The candidate set costs one extra read per reading, so it has to stay an
     // index probe — a scan here reintroduces the cost the lemma-link query was
@@ -932,6 +933,7 @@ test("both inflection queries stay on indexes rather than scanning", async () =>
     for (const [name, sql] of [
       ["inflection", INFLECTION_SQL],
       ["inflection candidate", INFLECTION_CANDIDATE_SQL],
+      ["inflection gender", INFLECTION_GENDER_SQL],
     ] as const) {
       const plan = (
         db.prepare(`EXPLAIN QUERY PLAN ${sql}`).all(1) as { detail: string }[]
