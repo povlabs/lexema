@@ -806,3 +806,53 @@ SELECT
 FROM lookup_form lf
 JOIN source_record r ON r.record_id = lf.record_id
 JOIN served_release s ON s.release_id = lf.release_id;
+
+-- Page-only entries (ADR 0024). These never name an archive record or line.
+CREATE TABLE recovered_entry (
+  entry_id INTEGER PRIMARY KEY,
+  release_id TEXT NOT NULL REFERENCES source_release(release_id),
+  page_id INTEGER NOT NULL,
+  word TEXT NOT NULL,
+  word_key TEXT NOT NULL,
+  pos TEXT NOT NULL CHECK (pos = 'verb'),
+  pos_title TEXT NOT NULL CHECK (pos_title = 'Verbo'),
+  rule TEXT NOT NULL CHECK (rule = 'italian-page-entry/v1'),
+  page_line INTEGER NOT NULL CHECK (page_line > 0),
+  wikitext TEXT NOT NULL,
+  UNIQUE (release_id, word),
+  FOREIGN KEY (page_id, release_id) REFERENCES raw_page(page_id, release_id)
+) STRICT;
+CREATE INDEX recovered_entry_by_key ON recovered_entry (release_id, word_key);
+
+CREATE TABLE entry_definition (
+  entry_id INTEGER NOT NULL REFERENCES recovered_entry(entry_id),
+  definition_index INTEGER NOT NULL CHECK (definition_index >= 0),
+  route TEXT NOT NULL CHECK (route IN ('sense-line', 'numbered-prose', 'below-page-control', 'sub-term', 'lead-in-item', 'wrapped-prose')),
+  term TEXT,
+  page_line INTEGER NOT NULL CHECK (page_line > 0),
+  wikitext TEXT NOT NULL,
+  text TEXT NOT NULL CHECK (text <> ''),
+  lead_in_index INTEGER,
+  CHECK ((route = 'sub-term') = (term IS NOT NULL)),
+  CHECK (lead_in_index < definition_index),
+  PRIMARY KEY (entry_id, definition_index),
+  FOREIGN KEY (entry_id, lead_in_index) REFERENCES entry_definition(entry_id, definition_index)
+) STRICT;
+CREATE TABLE entry_label (
+  entry_id INTEGER NOT NULL,
+  definition_index INTEGER NOT NULL,
+  label_index INTEGER NOT NULL CHECK (label_index >= 0),
+  label TEXT NOT NULL,
+  PRIMARY KEY (entry_id, definition_index, label_index),
+  FOREIGN KEY (entry_id, definition_index) REFERENCES entry_definition(entry_id, definition_index)
+) STRICT;
+CREATE TABLE entry_example (
+  entry_id INTEGER NOT NULL,
+  definition_index INTEGER NOT NULL,
+  example_index INTEGER NOT NULL CHECK (example_index >= 0),
+  page_line INTEGER NOT NULL CHECK (page_line > 0),
+  wikitext TEXT NOT NULL,
+  text TEXT NOT NULL,
+  PRIMARY KEY (entry_id, definition_index, example_index),
+  FOREIGN KEY (entry_id, definition_index) REFERENCES entry_definition(entry_id, definition_index)
+) STRICT;

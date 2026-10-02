@@ -9,6 +9,7 @@ import { readPluralGloss, type PluralGlossGender } from "../italian/pluralGloss.
 import { readingPartOfSpeech } from "./articles.js";
 import type { DictionaryRead, LookupDatabase } from "./database.js";
 import { phraseForms, phraseMatches } from "./phrase.js";
+import { pageEntryReadings, pageEntryCandidates } from "./pageEntry.js";
 import { readExpressions } from "./expressions.js";
 import { placeRecovered, type RecoveredOfRecord, type StoredRecovered } from "./recovered.js";
 import { lineageOf, servedBy } from "./served.js";
@@ -182,7 +183,7 @@ export async function exists({ db, releaseId, query }: LookupOptions): Promise<E
   const prepared = await probeQuery(db, releaseId, query, (key) => queryAll<HitRow>(db, `${SEARCH_SQL}\n      LIMIT 1`, releaseId, key));
   if (prepared.outcome === "rejected") return prepared;
   const [first] = prepared.probed;
-  const word = first?.record_word ?? (await phraseHits(db, releaseId, prepared.query.key))?.hits[0].record_word;
+  const word = first?.record_word ?? (await pageEntryCandidates(db, releaseId, prepared.query.key))[0]?.word ?? (await phraseHits(db, releaseId, prepared.query.key))?.hits[0].record_word;
   return word === undefined
     ? { outcome: "absent", query: prepared.query, release: prepared.release }
     : { outcome: "present", query: prepared.query, release: prepared.release, word };
@@ -224,7 +225,13 @@ export async function lookup({ db, releaseId, query }: LookupOptions): Promise<L
   const { release, query: queryInfo, probed: hits } = prepared;
   const { key } = queryInfo;
 
-  if (hits.length > 0) return found(db, releaseId, queryInfo, release, hits, { kind: "surface" });
+  const pages = await pageEntryReadings(db, releaseId, key);
+  if (hits.length > 0) {
+    const result = await found(db, releaseId, queryInfo, release, hits, { kind: "surface" });
+    return { ...result, readings: [...result.readings, ...pages] };
+  }
+  const [page, ...otherPages] = pages;
+  if (page !== undefined) return { outcome: "found", query: queryInfo, release, route: { kind: "surface" }, readings: [page, ...otherPages] };
 
   // Nothing spells the query. A query of several words may still be a
   // multi-word headword said the way a speaker says it (#214).
@@ -316,6 +323,7 @@ async function found(
   // A lemma's own expressions, read once per record however many links name it.
   const lemmaExpressions = new Map<number, Promise<Expression[]>>();
   const expressionsOf = (candidate: LemmaCandidate): Promise<Expression[]> => {
+    if (candidate.recordId === undefined) return Promise.resolve([]);
     let expressions = lemmaExpressions.get(candidate.recordId);
     if (expressions === undefined) {
       expressions = readRecordExpressions(db, releaseId, recordOf(candidate.recordId), (pointer) => ({ ...candidate.ref, jsonPointer: pointer }));
@@ -327,10 +335,14 @@ async function found(
   const resolve = (links: DeclaredLink[]): Promise<LemmaLink[]> =>
     Promise.all(
       links.map(async (link): Promise<LemmaLink> => {
-        if (link.kind === "dangling") return link;
+        if (link.kind === "dangling") {
+          const pages = await pageEntryCandidates(db, releaseId, link.targetWord);
+          if (pages.length === 0) return link;
+          return { ...link, kind: "candidates", candidates: pages.map((page) => ({ ...page, listing: undefined, expressions: [] })) };
+        }
         const candidates = await Promise.all(
           link.candidates.map(async (candidate) => {
-            const [listing, expressions] = await Promise.all([listingOf(candidate.recordId), expressionsOf(candidate)]);
+            const [listing, expressions] = await Promise.all([candidate.recordId === undefined ? undefined : listingOf(candidate.recordId), expressionsOf(candidate)]);
             return { ...candidate, listing, expressions };
           }),
         );
@@ -482,7 +494,7 @@ type DeclaredLink =
 const isAbout = (group: readonly HitRow[]): boolean => group.some((hit) => hit.origin === "headword");
 
 const candidateIds = (link: DeclaredLink): number[] =>
-  link.kind === "candidates" ? link.candidates.map((candidate) => candidate.recordId) : [];
+  link.kind === "candidates" ? link.candidates.flatMap((candidate) => candidate.recordId ?? []) : [];
 
 /**
  * Refs on one record. Every value read off it shares the record's release,

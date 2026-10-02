@@ -229,6 +229,8 @@ export interface RecoveredExample {
 
 /** Which page structure marked the line a definition (`src/italian/wikitext.ts`). */
 export type RecoveredRoute =
+  | { route: "sense-line" }
+  | { route: "numbered-prose" }
   | { route: "below-page-control" }
   | { route: "sub-term"; term: string }
   | { route: "lead-in-item" }
@@ -269,12 +271,27 @@ export function everyRecovered(reading: Pick<Reading, "senses" | "recovered">): 
 }
 
 /** A record the source names as the target of a form_of edge. */
-export interface LemmaCandidate {
-  recordId: number;
+export type EntryIdentity =
+  | { recordId: number; entryId?: never; ref: SourceRef }
+  | { entryId: number; recordId?: never; ref: PageEntryRef };
+
+export interface PageEntryRef {
+  releaseId: string;
+  wiki: string;
+  title: string;
+  revisionId: number;
+  timestamp: string;
+  line: number;
+  wikitext: string;
+  lineNo?: never;
+  lineSha256?: never;
+  jsonPointer?: never;
+}
+
+export type LemmaCandidate = EntryIdentity & {
   word: string;
   pos: string;
-  /** The candidate's own headword field, where `word` was read from. */
-  ref: SourceRef;
+
 }
 
 /**
@@ -302,7 +319,7 @@ export interface LemmaListing {
  * spells the query, and is absent when its table does not — `sala` the verb
  * record, for `sale`, lists no `sale`.
  */
-export interface LemmaTarget extends LemmaCandidate {
+export type LemmaTarget = LemmaCandidate & {
   listing: LemmaListing | undefined;
   /**
    * The lemma record's own expressions, so a form's page can show them under
@@ -437,10 +454,7 @@ declare const nonNounPos: unique symbol;
 export type NonNounPos = string & { readonly [nonNounPos]: true };
 
 /** What every reading carries, whatever part of speech it is. */
-interface ReadingFacts {
-  recordId: number;
-  /** The whole record, as a pointer: every ref below shares its line. */
-  ref: SourceRef;
+type ReadingFacts = EntryIdentity & {
   /** The record's own headword, verbatim. */
   word: string;
   posTitle: string;
@@ -513,6 +527,11 @@ export type OtherReading = ReadingFacts & OtherPartOfSpeech;
 
 /** One source record that matched the query. */
 export type Reading = NounReading | OtherReading;
+
+/** Stable within one seeded database, without conflating page entries with source records. */
+export function entryKey(entry: EntryIdentity): string {
+  return entry.recordId === undefined ? `page-${entry.entryId}` : String(entry.recordId);
+}
 
 /**
  * Whether this reading is a noun — and so whether it carries articles.

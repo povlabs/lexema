@@ -358,6 +358,8 @@ const isSenseMarker = (marker: string): boolean => /^#+$/.test(marker);
 
 /** Why the structure marks a line below `#` as a definition. */
 export type DefinitionRoute =
+  | { route: "sense-line" }
+  | { route: "numbered-prose" }
   /** One level below a `#` line that carries only the headword and its grammar. */
   | { route: "below-page-control" }
   /** Opened by a bold sub-term and then plain prose; `term` is that sub-term. */
@@ -614,5 +616,71 @@ export function readItalianSections(page: RawPage): PageSection[] {
       senseLines,
       unrendered: reader.unrendered,
     };
+  });
+}
+
+/** The three verb layouts ruled in ADR 0024, without changing record-backed recovery. */
+export function readRuledVerbSections(page: RawPage): { ref: RawPageRef; wikitext: string; definitions: PageDefinition[] }[] {
+  const sections: { line: number; wikitext: string; handwritten: boolean; list: Omit<ListLine, "children">[]; prose: ProseLine[] }[] = [];
+  let italian = false;
+  let current: (typeof sections)[number] | undefined;
+  let hasPos = false;
+  for (const [index, raw] of page.wikitext.split("\n").entries()) {
+    const line = raw.trim();
+    const language = LANGUAGE_HEADING.exec(line) ?? /^\{\{-([A-Za-z-]+)-\}\}$/.exec(line);
+    if (language !== null || /^==[^=].*[^=]==$/.test(line)) {
+      italian = language?.[1].toLowerCase() === "it";
+      current = undefined;
+      hasPos = false;
+      continue;
+    }
+    const pos = POS_HEADING.exec(line);
+    if (pos !== null) {
+      // A language-qualified POS can state Italian even when the language heading is absent (fornire).
+      italian = true;
+      hasPos = true;
+      current = undefined;
+      continue;
+    }
+    const transitivity = /^\{\{(?:Transitivo|Intransitivo)\|it\}\}$/.test(line);
+    const handwritten = line === "'''''Verbo'''''";
+    if (italian && ((transitivity && !hasPos) || handwritten)) {
+      current = { line: index + 1, wikitext: raw, handwritten, list: [], prose: [] };
+      sections.push(current);
+      continue;
+    }
+    // The explicit Italian verb heading with no language section is itself unreadable by the extraction.
+    if (italian && transitivity && hasPos && !page.wikitext.split("\n").some((text) => LANGUAGE_HEADING.test(text.trim()))) {
+      current = { line: index + 1, wikitext: raw, handwritten: false, list: [], prose: [] };
+      sections.push(current);
+      hasPos = false;
+      continue;
+    }
+    if (OTHER_HEADING.test(line) || /^={3,}/.test(line)) {
+      current = undefined;
+      continue;
+    }
+    if (current === undefined) continue;
+    const item = LIST_LINE.exec(raw);
+    if (item !== null) current.list.push({ line: index + 1, marker: item[1], body: item[2], wikitext: raw, wrapped: null });
+    else if (current.handwritten && line !== "") current.prose.push({ line: index + 1, wikitext: raw });
+  }
+  return sections.map((section) => {
+    const reader = new SectionReader(page);
+    const definitions = listTree(section.list).flatMap((node) => {
+      if (!isSenseMarker(node.marker)) return [];
+      if (NO_DEFINITION.test(node.body)) return [];
+      if (hasPlainProse(node.body)) return reader.definition(node, { route: "sense-line" }, null);
+      return reader.senseLine(node).below;
+    });
+    for (const prose of section.prose) {
+      // Bold ordinal markers delimit meanings; the bracketed etymology is not a definition.
+      const numbered = [...prose.wikitext.matchAll(/'''\d+\.'''\s*([\s\S]*?)(?='''\d+\.'''|$)/g)];
+      for (const match of numbered) {
+        const body = match[1].replace(/\s*\[[^\]]*\]\.?\s*$/, "").trim();
+        definitions.push(...reader.definition({ ...prose, marker: "", body, wrapped: null, children: [] }, { route: "numbered-prose" }, null));
+      }
+    }
+    return { ref: reader.ref(section.line), wikitext: section.wikitext, definitions: definitions.filter((definition) => definition.text !== "") };
   });
 }
