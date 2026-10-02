@@ -118,7 +118,7 @@ removal over the joined gloss strings. Accents are not semantically matched.
 
 ## Recovery boundary
 
-The separately approved, source-backed proposal is in
+The source-backed proposal requiring separate approval is in
 [the recovery proposal](2026-10-02-first-feed-recovery-proposal.md).
 No targeted recovery operation exists; deferred implementation is filed as
 [#427](https://github.com/hueypov/lexema/issues/427), linked to #414.
