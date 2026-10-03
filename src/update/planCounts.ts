@@ -1,13 +1,13 @@
-// What a plan of one of the four dictionary write commands would do, counted
-// (#455): `update:upgrade`, `update:auto`, `hide:records` and
-// `normalize:source-text` each build one SQL file, and a plan-only run returns
-// these counts without running it. A change declaration states the counts a
+// What a plan of one of the five dictionary write commands would do, counted
+// (#455): `update:upgrade`, `update:auto`, `hide:records`,
+// `normalize:source-text` and `correct:records` each build one SQL file, and a
+// plan-only run returns these counts without running it. A change declaration states the counts a
 // change expects (src/update/declaration.ts); the deploy compares the two and
 // stops on any difference or on a hard limit (#446).
 
 import { select, type MasterReader } from "./master.js";
 
-/** Every table the four commands write a row of or delete one from. */
+/** Every table the five commands write a row of or delete one from. */
 export const COUNTED_TABLES = [
   "source_release",
   "feed_release",
@@ -26,6 +26,8 @@ export const COUNTED_TABLES = [
   "raw_page",
   "hidden_record",
   "hide_version",
+  "corrected_claim",
+  "correction_version",
 ] as const;
 
 export type CountedTable = (typeof COUNTED_TABLES)[number];

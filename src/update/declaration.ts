@@ -16,8 +16,8 @@ import { type CountDifference, type CountedTable, isCountedTable, PlanCounts } f
 /** The directory, from the repository root, that holds every change declaration. */
 export const DECLARATIONS_DIR = "dictionary-changes";
 
-/** The four commands that write the dictionary. */
-export const DECLARED_COMMANDS = ["update:upgrade", "update:auto", "hide:records", "normalize:source-text"] as const;
+/** The five commands that write the dictionary. */
+export const DECLARED_COMMANDS = ["update:upgrade", "update:auto", "hide:records", "normalize:source-text", "correct:records"] as const;
 export type DeclaredCommand = (typeof DECLARED_COMMANDS)[number];
 
 /** A release id: `it-` and the first eight hex digits of its archive's SHA-256. */
@@ -45,7 +45,13 @@ export type DeclaredChange =
   | Declared<"update:auto", { readonly feedRelease: ReleaseId }>
   /** The release the master was seeded from, whose archive the rules read, and the rules. */
   | Declared<"hide:records", { readonly archive: ReleaseId; readonly rules: typeof HIDING_RULES }>
-  | Declared<"normalize:source-text", { readonly rules: typeof SOURCE_TEXT_UPDATE_RULES }>;
+  | Declared<"normalize:source-text", { readonly rules: typeof SOURCE_TEXT_UPDATE_RULES }>
+  /**
+   * No inputs: it writes the committed list (src/italian/curatedCorrections.ts)
+   * as it stands at the deploy's commit, and the expected counts pin what that
+   * list writes.
+   */
+  | Declared<"correct:records", Record<string, never>>;
 
 export type ChangeDeclaration = DeclaredChange & { readonly expected: PlanCounts };
 
@@ -168,6 +174,10 @@ function changeOf(file: string, value: Record<string, unknown>, reasons: string[
       reasons.push(...unknownKeys(inputs, ["rules"], "inputs of normalize:source-text"));
       const rules = ruleSet(inputs.rules, SOURCE_TEXT_UPDATE_RULES, "inputs.rules", reasons);
       return rules === undefined ? undefined : { file, command, inputs: { rules } };
+    }
+    case "correct:records": {
+      reasons.push(...unknownKeys(inputs, [], "inputs of correct:records"));
+      return { file, command, inputs: {} };
     }
   }
 }

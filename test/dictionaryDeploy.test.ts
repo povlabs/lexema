@@ -23,6 +23,8 @@ import { fromNodeSqlite } from "../src/lookup/database.js";
 import { lookup } from "../src/lookup/lookup.js";
 import { parseChange } from "../src/update/declaration.js";
 import { masterReaderOf } from "../src/update/updateCli.js";
+import { correctedClaimValues } from "../src/import/correctedLayer.js";
+import { atFixtureLines, correctionFixtureLines } from "./correctionFixture.js";
 import { localD1, type LocalD1 } from "./localD1.js";
 
 const RELEASE = "it-test";
@@ -309,6 +311,47 @@ test("a word-lookup mismatch turns the run red and names the bookmark and the re
     if (outcome.kind === "red") assert.deepEqual(outcome.reasons, ["word lookup: inesistentissimo: not-found, not found with a reading"]);
     assert.ok(deploySummary(outcome, "lexema-dictionary").includes(restoreCommand("lexema-dictionary", "bookmark-1")));
   });
+});
+
+test("a correct:records declaration whose counts match is applied with no fetched file, reads back and goes green; one whose counts differ stops red before any write", async () => {
+  const lines = [...LINES, ...FILLERS, ...(await correctionFixtureLines())];
+  const corrections = atFixtureLines(lines, RELEASE).slice(0, 2);
+  const rows = corrections.reduce((sum, correction) => sum + correctedClaimValues(correction).length, 0);
+  const counts = { records: { added: 0, changed: 2, removed: 0 }, written: { corrected_claim: rows, correction_version: 1 }, deleted: {} };
+  const CORRECT = { command: "correct:records" };
+
+  await withWorld(async (world) => {
+    const base = world.production();
+    const wrong = await world.commit({ "dictionary-changes/2026-10-correct.json": declaration(CORRECT, { ...counts, written: { corrected_claim: rows + 1, correction_version: 1 } }) });
+    const before = world.d1.sha256();
+    const refused = await deployDictionary(world.deps(wrong, { corrections }));
+    assert.equal(refused.kind, "red");
+    if (refused.kind === "red") {
+      assert.equal(refused.written, false);
+      assert.deepEqual(refused.reasons, [`dictionary-changes/2026-10-correct.json: written.corrected_claim is ${rows} in the plan, ${rows + 1} declared`]);
+    }
+    assert.deepEqual(writes(world.d1), []);
+    assert.equal(world.d1.sha256(), before);
+    assert.equal(world.production(), base);
+  }, lines);
+
+  await withWorld(async (world) => {
+    const head = await world.commit({ "dictionary-changes/2026-10-correct.json": declaration(CORRECT, counts) });
+    const deps = world.deps(head, { corrections });
+    const outcome = await deployDictionary(deps);
+
+    assert.equal(outcome.kind, "green", deploySummary(outcome, "lexema-dictionary"));
+    assert.deepEqual(deps.steps, [...DEPLOY_STEPS]);
+    assert.equal(writes(world.d1).length, 1, "the corrections ran as one file, and the read-back step's `unwritten` found them all");
+    const db = world.d1.open();
+    try {
+      assert.equal((db.prepare("SELECT count(*) AS n FROM corrected_claim").get() as { n: number }).n, rows);
+    } finally {
+      db.close();
+    }
+    assert.equal(world.production(), head);
+    if (outcome.kind === "green") assert.deepEqual(outcome.changes.map(({ command, ran, counts: planned }) => [command, ran, planned.toJSON()]), [["correct:records", true, counts]]);
+  }, lines);
 });
 
 /** An archive and a dump, and the catalogs that name them, for a release made up for the test. */
