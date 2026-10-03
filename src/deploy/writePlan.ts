@@ -9,7 +9,7 @@ import { resolve } from "node:path";
 import { planCorrections, unwritten } from "../import/correctRecords.js";
 import { readRulePass, findHiddenRecords } from "../import/hiddenLayer.js";
 import { planHide, unhidden } from "../import/hideRecords.js";
-import { danglingTitles, findPageEntries, planPageEntries, unloaded } from "../import/loadPageEntries.js";
+import { archiveWords, findPageEntries, planPageEntries, unloaded } from "../import/loadPageEntries.js";
 import { planSourceText } from "../import/normalizeSourceText.js";
 import { CURATED_CORRECTIONS, type CuratedCorrection } from "../italian/curatedCorrections.js";
 import { readLanguageHeadings } from "../italian/sectionLanguage.js";
@@ -148,7 +148,7 @@ export async function planWrite(ready: ReadyChange, reader: MasterReader, applie
     const dump = await openMasterDump(files.dump, change.inputs.archive, sha256, catalog, dumps);
     let found;
     try {
-      found = await findPageEntries(dump.pages(), danglingTitles(reader));
+      found = await findPageEntries(dump.pages(), await archiveWords(files.archive));
     } finally {
       await dump.close();
     }

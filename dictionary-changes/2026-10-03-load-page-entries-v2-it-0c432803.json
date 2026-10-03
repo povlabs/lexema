@@ -1,0 +1,17 @@
+{
+  "command": "load:page-entries",
+  "inputs": { "archive": "it-0c432803", "rules": ["italian-page-entry/v1", "italian-page-entry/v2"] },
+  "expected": {
+    "records": { "added": 0, "changed": 0, "removed": 0 },
+    "written": {
+      "raw_page": 172,
+      "recovered_entry": 189,
+      "entry_definition": 219,
+      "entry_label": 129,
+      "entry_example": 21,
+      "accent_fold": 5,
+      "typo_key": 1878
+    },
+    "deleted": { "accent_fold": 1, "typo_key": 100 }
+  }
+}

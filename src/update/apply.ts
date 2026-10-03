@@ -35,6 +35,7 @@ import {
   COLUMNS,
   accentFoldRowOf,
   addLemmaRecord,
+  addPageEntryScore,
   literal,
   tupleOf,
   typoKeyRowsOf,
@@ -463,6 +464,10 @@ const sameTypo = (a: TypoKeyRow, b: TypoKeyRow): boolean =>
  * later release. A row already right is left in its own release. Hiding
  * records (src/import/hideRecords.ts) reads it too, with the hidden records as
  * `retired` and nothing new, and writes them under the master's release.
+ * `pages` are the definitions of the page-only entries (ADR 0024) heading
+ * each key: a page-only entry heads its key and adds its definitions to the
+ * key's rank, as the seed counts it. The load of page-only entries
+ * (src/import/loadPageEntries.ts) passes them.
  */
 export function nearbyEdits(
   reader: MasterReader,
@@ -471,6 +476,7 @@ export function nearbyEdits(
   retired: ReadonlySet<number>,
   newKeys: readonly KeyRow[],
   newLemmas: readonly ArchiveRecord["record"][],
+  pages: ReadonlyMap<string, number> = new Map(),
 ): NearbyEdits {
   const inServed = `IN (SELECT value FROM json_each(${json(served)}))`;
   // The reads name every key, so they run over a few hundred keys at a time:
@@ -500,6 +506,10 @@ export function nearbyEdits(
     addLemmaRecord(scores, record);
   }
   for (const record of newLemmas) addLemmaRecord(scores, record);
+  for (const [key, definitions] of pages) {
+    headed.set(key, true);
+    addPageEntryScore(scores, key, definitions);
+  }
   const wantedKeys = new Set(keys);
 
   const accent = keys.flatMap((key) => {

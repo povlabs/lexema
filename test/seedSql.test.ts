@@ -237,15 +237,16 @@ test("the fifty-word dev seed is one part with the same rows", async () => {
     const report = await devSeed(join(dir, "sql"));
     assert.deepEqual(report.parts, [join(dir, "sql", "part-001.sql")]);
     assert.deepEqual(report.rows, {
-      source_record: 130, source_record_json: 130, lookup_form: 2628, accent_fold: 112, typo_key: 2682, form_of_edge: 41,
+      source_record: 130, source_record_json: 130, lookup_form: 2628, accent_fold: 112, typo_key: 2700, form_of_edge: 41,
       sense: 359, sense_gloss: 358, sense_label: 151, grammar_claim: 10908,
-      raw_page: 244, recovered_definition: 7, recovered_label: 6, recovered_example: 7, hidden_record: 0,
+      raw_page: 246, recovered_definition: 7, recovered_label: 6, recovered_example: 7, hidden_record: 0,
       // The curated corrections are keyed to it-0c432803's lines, not the fixture's.
       corrected_claim: 0,
       // Every fixture page whose title the fifty-word archive has no record for
-      // is a page-only candidate (ADR 0028): 243 of them recover.
-      recovered_entry: 512, entry_definition: 829, entry_label: 454, entry_example: 154,
-      corrected_definition: 0,
+      // is a page-only candidate (ADR 0028): 245 of them recover, `grufolare`
+      // and `tremare` among them, whose curated definition corrections apply.
+      recovered_entry: 516, entry_definition: 837, entry_label: 461, entry_example: 154,
+      corrected_definition: 2,
       release_table_rows: 21,
     });
     // Seven of the fixture's records have a raw page under fixtures/; `casa` is
@@ -293,7 +294,7 @@ test("the recovered layer sits beside casa's record and leaves every source row 
     const bareDb = openSeed(without.parts, ":memory:");
     try {
       const layer = ["raw_page", "recovered_definition", "recovered_label", "recovered_example", "release_table_rows",
-        "recovered_entry", "entry_definition", "entry_label", "entry_example"];
+        "recovered_entry", "entry_definition", "entry_label", "entry_example", "corrected_definition"];
       // A page-only entry is searchable, so it adds its own nearby keys and changes no other.
       const nearby = ["accent_fold", "typo_key"];
       const source = (dump: Record<string, unknown[]>) =>

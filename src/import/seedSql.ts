@@ -258,6 +258,18 @@ export function addLemmaRecord(scores: Map<string, LemmaScore>, record: ArchiveR
   scores.set(key, score);
 }
 
+/**
+ * Add a word's page-only entries (ADR 0024, ADR 0028) to its key's score:
+ * their definitions, beside any lemma record of the key. A page whose title
+ * differs from a record's only in case shares that record's key, so the two
+ * rank it together and neither replaces the other.
+ */
+export function addPageEntryScore(scores: Map<string, LemmaScore>, key: string, definitions: number): void {
+  const score = scores.get(key) ?? { languages: new Set<string>(), richness: 0 };
+  score.richness += definitions;
+  scores.set(key, score);
+}
+
 /** One `accent_fold` row, without its release. */
 export interface AccentFoldRow {
   foldKey: string;
@@ -510,8 +522,7 @@ export async function seedSql(options: SeedSqlOptions): Promise<SeedSqlReport> {
       }
       seenWords.add(title);
       keys.set(key, true);
-      const richness = result.entries.reduce((sum, entry) => sum + entry.definitions.length, 0);
-      lemmaKeys.set(key, { languages: new Set(), richness });
+      addPageEntryScore(lemmaKeys, key, result.entries.reduce((sum, entry) => sum + entry.definitions.length, 0));
       if (writer.hasFullBatch()) await writer.flush();
     }
     await writeNearbyIndexes(writer, start.releaseId, keys, lemmaKeys);
