@@ -54,8 +54,9 @@ Four rules, each visible above:
 ## When this applies
 
 Every `run:` block that produces a verdict: today the scan step of
-[`secrets.yml`](../.github/workflows/secrets.yml) and the `gate` step of
-[`dictionary-deploy.yml`](../.github/workflows/dictionary-deploy.yml). An install step that only
+[`secrets.yml`](../.github/workflows/secrets.yml), the `gate` step of
+[`dictionary-deploy.yml`](../.github/workflows/dictionary-deploy.yml) and the
+`ci-required` job of [`ci.yml`](../.github/workflows/ci.yml). An install step that only
 fetches a pinned binary may keep `set -euo pipefail`, because any failure there is
 the right red and nothing after it needs the status. Adapted from phoenix's
 [shell shape](https://github.com/kamp-us/phoenix/blob/main/.patterns/skill-script-shell-shape.md)

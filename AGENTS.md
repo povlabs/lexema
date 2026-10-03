@@ -83,4 +83,4 @@ govern or resolving conflicting guidance. Record new decisions with `/adr`.
 
 There is no committed ADR index. Filenames plus frontmatter are the discovery
 contract, and CI reds a duplicate id or a filename that disagrees with its
-frontmatter ([decisions-index.yml](.github/workflows/decisions-index.yml)).
+frontmatter (the `validate the ADR corpus` job of [ci.yml](.github/workflows/ci.yml)).
