@@ -545,11 +545,11 @@ request's own code.
 
 | Name | Kind | Where | What it is |
 |---|---|---|---|
-| `dictionary-deploy` | GitHub environment | repository **Settings**, **Environments** | holds the two secrets and the variable below; its deployment branches are `main` only, so a run on any other branch never receives them. Both jobs name it |
+| `dictionary-deploy` | GitHub environment | repository **Settings**, **Environments** | holds the two secrets and the variable below; its deployment branches are `main` only, so a run on any other branch never receives them. The `deploy` and `plan` jobs name it; the `gate` job takes no environment and no secret |
 | `CLOUDFLARE_D1_TOKEN` | environment secret | `dictionary-deploy` | a Cloudflare API token with one permission, **Account**, **D1**, **Edit**. Wrangler reads it as `CLOUDFLARE_API_TOKEN`. The only Cloudflare credential in GitHub that can write; the other one is the [pull request plan check](#the-pull-request-plan-check)'s read-only token |
 | `CLOUDFLARE_ACCOUNT_ID` | environment variable | `dictionary-deploy` | the Cloudflare account id that owns `lexema-dictionary`; not secret |
 | `LEXEMA_DATA_READ_TOKEN` | environment secret | `dictionary-deploy` | a fine-grained GitHub token for `hueypov/lexema-data` only, **Contents** read-only. The run reads archives and dumps with it, as `LEXEMA_DATA_TOKEN`. The monthly release job's write token is a different one, and this workflow never receives it |
-| `GITHUB_TOKEN` | built in | the `deploy` job, `contents: write` | pushes `production`. A push that is not a fast-forward is refused |
+| `GITHUB_TOKEN` | built in | the `gate` and `deploy` jobs, `contents: write` | pushes `production`. A push that is not a fast-forward is refused |
 | `production` | branch | this repository | the commit whose dictionary changes are in place. Workers Builds deploys it ([Workers Builds](#workers-builds)) |
 | Git branch (the production branch) | Workers Builds setting | the Worker's **Settings**, **Build**, **Branch control** | `production` |
 
@@ -642,7 +642,8 @@ running.
      request once the earlier ones are deployed.
 
 It writes nothing: no bookmark, no SQL file run on the dictionary, no branch
-moved. Its job has `contents: read` and no other permission. It runs only for
+moved. Its job has `contents: read`, and `actions: read` to read this
+workflow's run on the previous head, and no other permission. It runs only for
 this repository's own branches: a fork's pull request never runs it, and
 `pull_request` gives a fork's run no secret anyway. The deploy still holds
 every declaration to `expected` at merge, so a count that went stale between
@@ -787,7 +788,7 @@ are the same bytes, so they stay.
 | `dictionary-release` | GitHub environment | repository **Settings**, **Environments** | holds the secret below; its deployment branches are `main` only, so a run on any other branch never receives it. Only the `prepare` job names it |
 | `LEXEMA_DATA_WRITE_TOKEN` | environment secret | `dictionary-release` | a fine-grained GitHub token for `hueypov/lexema-data` only, **Contents** read and write. The only token that writes that repository; no other workflow reads it |
 | `GITHUB_TOKEN` | built in | `prepare`: `contents: write`, `pull-requests: read`; `pull-request`: `contents: write`, `pull-requests: write` | pushes `release/<release id>`, reads whether a pull request was opened from it, and opens the pull request |
-| `plan` job grant | `permissions` in the workflow | `contents: write` | GitHub checks every job of the called dictionary deploy against it when it loads the workflow, so it covers the deploy job's `contents: write`. That job runs only on a push, never here; the plan job asks for `contents: read` |
+| `plan` job grant | `permissions` in the workflow | `contents: write` | GitHub checks every job of the called dictionary deploy against it when it loads the workflow, so it covers the `gate` and `deploy` jobs' `contents: write`. Those jobs run only on a push, never here; the plan job asks for `contents: read` |
 | Allow GitHub Actions to create and approve pull requests | repository setting | **Settings**, **Actions**, **General**, **Workflow permissions** | on, or GitHub refuses the pull request |
 | Schedule | `on.schedule` in the workflow | `17 6 5 * *` | 06:17 UTC on the 5th of each month |
 

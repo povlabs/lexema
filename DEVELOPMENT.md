@@ -21,18 +21,20 @@ pnpm --filter @lexema/web typecheck   # the Worker's own tsc, over web/ and the
 ```
 
 `.nvmrc` pins Node 24 for CI; the checks also pass on Node 26. GitHub Actions runs
-all three on every push to `main` and every pull request
-([ci.yml](./.github/workflows/ci.yml)). The web typecheck runs `wrangler types`
+all three on a pull request or a push to `main` that changes more than Markdown
+([ci.yml](./.github/workflows/ci.yml); [CI gates](#ci-gates) names the Markdown
+files that still count). The web typecheck runs `wrangler types`
 first, which generates from `wrangler.jsonc` and needs no Cloudflare account. It
 reads secrets from the empty [web/typecheck.env](./web/typecheck.env), never from a
 local `web/.dev.vars`, so it gives the same answer on a laptop as in CI.
 
 The unit tests run both schemas on Node's built-in SQLite, which accepts some SQL
 that Cloudflare D1 refuses: D1 rejected a long `GLOB` in a `CHECK` that every
-test passed ([#167](https://github.com/hueypov/lexema/issues/167)). So CI's `d1`
-job runs `pnpm run seed:dev` into a fresh local D1, then `pnpm run db:check-d1`,
-then `pnpm run api-key create`, as in
-[call the JSON API](#call-the-json-api). A `CHECK` runs only when a row is
+test passed ([#167](https://github.com/hueypov/lexema/issues/167)). So the `d1`
+job of [d1.yml](./.github/workflows/d1.yml) runs `pnpm run seed:dev` into a fresh
+local D1, then `pnpm run db:check-d1`, then `pnpm run api-key create`, as in
+[call the JSON API](#call-the-json-api). It runs only on a change to what those
+commands read; [CI gates](#ci-gates) lists the paths. A `CHECK` runs only when a row is
 written, so `db:check-d1` builds the app database in a throwaway local D1 and
 writes one valid row to every table the app migrations create
 ([src/db/app/sampleRows.ts](./src/db/app/sampleRows.ts),
@@ -371,7 +373,8 @@ writes nothing, so a new file means the schema moved. A new table, or a new
 `CHECK`, needs a valid row in
 [src/db/app/sampleRows.ts](./src/db/app/sampleRows.ts) that runs it; the
 typecheck fails on a table with none. `pnpm run db:check-d1` writes those rows
-to a throwaway local D1, as CI's `d1` job does.
+to a throwaway local D1, as the `d1` job of
+[d1.yml](./.github/workflows/d1.yml) does.
 
 `pnpm run seed:dev` loads `schema.sql` into the local `DB` and applies every
 app migration to the local `APP_DB` with `wrangler d1 migrations apply
@@ -408,8 +411,9 @@ catalog in [pnpm-workspace.yaml](./pnpm-workspace.yaml). `pnpm exec fabrika`
 runs that pinned copy. Agents call `fabrika` from PATH, the global install
 (`pnpm add -g @kampus/fabrika-cli`), and that copy hands every call to the
 pinned one in `node_modules`, so both run the same version. The
-`leak-guard` and `decisions-index` workflows install dependencies and run
-`pnpm exec fabrika` too, so CI runs that version as well. To move the version,
+[secrets](./.github/workflows/secrets.yml) and
+[decisions-index](./.github/workflows/decisions-index.yml) workflows install
+dependencies and run `pnpm exec fabrika` too, so CI runs that version as well. To move the version,
 change the catalog entry and run `pnpm install`.
 
 The committed Claude Code settings live in
@@ -524,7 +528,7 @@ cancelled. The "Runs on" column says which changes start a run.
 | Workflow | Runs on | Fails when |
 |---|---|---|
 | [ci.yml](./.github/workflows/ci.yml) | a pull request or a push to `main` that changes any file but Markdown (`docs/DEPLOY.md` and `docs/UPDATE_THE_DICTIONARY.md` still count, since a unit test reads them) | the root typecheck, a unit test, or the `@lexema/web` typecheck fails |
-| [d1.yml](./.github/workflows/d1.yml) | a pull request or a push to `main` that changes `src/db/` or any source the seed, the sample-row check or the key CLI imports (`src/import/`, `src/source/`, `src/italian/`, `src/lookup/`, `src/billing/`, `src/api/`, `src/core/`, `src/commandLine.ts`), `fixtures/`, `web/wrangler.jsonc`, the dependencies, or the workflow | local D1 refuses a statement of `pnpm run seed:dev`, a sample row of `pnpm run db:check-d1` or writing one API key, or an app table has no sample row |
+| [d1.yml](./.github/workflows/d1.yml) | a pull request or a push to `main` that changes `src/db/` or any source the seed, the sample-row check or the key CLI imports (`src/import/`, `src/source/`, `src/italian/`, `src/lookup/`, `src/billing/`, `src/api/`, `src/core/`, `src/commandLine.ts`), `fixtures/`, `drizzle.config.ts`, `web/wrangler.jsonc`, `.nvmrc`, the dependencies (`package.json`, `web/package.json`, `pnpm-lock.yaml`, `pnpm-workspace.yaml`), or the workflow | local D1 refuses a statement of `pnpm run seed:dev`, a sample row of `pnpm run db:check-d1` or writing one API key, or an app table has no sample row |
 | [secrets.yml](./.github/workflows/secrets.yml) | every pull request | a changed file carries a secret (gitleaks), or a changed doc or shell file carries a machine-local path (leak-guard) |
 | [decisions-index.yml](./.github/workflows/decisions-index.yml) | a pull request or a push to `main` that changes `.decisions/`, the workflow, `.fabrika.jsonc` or `pnpm-workspace.yaml` | two records share an ADR id, or a filename disagrees with its frontmatter |
 | [dictionary-deploy.yml](./.github/workflows/dictionary-deploy.yml) | every push to `main`; its `gate` job fast-forwards `production` by itself when `production..main` changes nothing under `dictionary-changes/`, and starts the `deploy` job otherwise | on a push to `main`: a change declaration's archive or dump fails its checksum, its plan differs from the declared counts or crosses a hard limit, its write does not read back, or a word of the fixed list is not found; `production` then stays where it is ([docs/DEPLOY.md](./docs/DEPLOY.md#the-dictionary-deploy)) |
