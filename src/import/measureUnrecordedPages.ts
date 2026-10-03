@@ -1,12 +1,13 @@
 // Read-only, whole-dump measurement for epic #471 (#474): every main-namespace
 // page with Italian `#` definitions and no Italian archive record, grouped by
 // how the page is laid out. The layout detectors live here only; they change
-// no production rule. `src/italian/pageEntry.ts` (rule v1) is called only to
-// say which counted pages it already recovers.
+// no production rule. `src/italian/pageEntry.ts` is called only to say which
+// pages rule v1 alone, and the production rule the seed runs (v1, then v2),
+// recover, so the detector's count and the rule's count can be compared.
 import { writeFile } from "node:fs/promises";
 import { parseArgs } from "node:util";
 import { isMain } from "../commandLine.js";
-import { recoverUnderRuleV1, PAGE_ENTRY_RULE } from "../italian/pageEntry.js";
+import { recoverPageEntry, recoverUnderRuleV1, PAGE_ENTRY_RULE, PAGE_ENTRY_RULE_V2 } from "../italian/pageEntry.js";
 import { POS_TITLE_BY_TEMPLATE } from "../italian/wikitext.js";
 import { PUBLISHED_ARCHIVE_SHA256 } from "../source/archiveFacts.js";
 import type { RawPage } from "../source/rawPage.js";
@@ -199,31 +200,48 @@ async function main(): Promise<void> {
     throw new Error("measurement requires the verified, complete it-0c432803 archive");
   }
   const dump = await VerifiedDump.open(values.dump, ARCHIVE_DUMP);
+  /** What the production rule does with a page: its outcome, and the entries it writes. */
+  type Production = { outcome: string; entries: number };
+  const productionOf = (page: RawPage): Production => {
+    const result = recoverPageEntry(page, words);
+    return { outcome: result.outcome, entries: result.outcome === "recovered" ? result.entries.length : 0 };
+  };
   const titles: {
     title: string; revisionId: number; timestamp: string; group: LayoutGroup; heading: LanguageHeading;
-    sections: PosSection[]; unplaced: number; readAs: string[]; ruleV1: string;
+    sections: PosSection[]; unplaced: number; readAs: string[]; ruleV1: string; production: Production;
   }[] = [];
+  /** Pages the production rule recovers that the detector does not count. */
+  const outside: { title: string; revisionId: number; entries: number }[] = [];
   let mainPages = 0;
   try {
     for await (const page of dump.pages()) {
       mainPages += 1;
       if (words.has(page.title)) continue;
       const layout = readPageLayout(page);
-      if (layout === undefined) continue;
+      const production = productionOf(page);
+      if (layout === undefined) {
+        if (production.outcome === "recovered") outside.push({ title: page.title, revisionId: page.revisionId, entries: production.entries });
+        continue;
+      }
       titles.push({
         title: page.title, revisionId: page.revisionId, timestamp: page.timestamp, group: layout.group,
         heading: layout.heading, sections: layout.sections, unplaced: layout.unplaced, readAs: layout.readAs,
-        ruleV1: recoverUnderRuleV1(page, words).outcome,
+        ruleV1: recoverUnderRuleV1(page, words).outcome, production,
       });
     }
   } finally { await dump.close(); }
-  titles.sort((a, b) => (a.title < b.title ? -1 : a.title > b.title ? 1 : 0));
-  const groups: Record<string, { pages: number; readWithPos: number }> = {};
+  const byTitle = <T extends { title: string }>(a: T, b: T): number => (a.title < b.title ? -1 : a.title > b.title ? 1 : 0);
+  titles.sort(byTitle);
+  outside.sort(byTitle);
+  const groups: Record<string, { pages: number; readWithPos: number; recoveredPages: number; recoveredEntries: number }> = {};
   for (const item of titles) {
-    const group = (groups[item.group] ??= { pages: 0, readWithPos: 0 });
+    const group = (groups[item.group] ??= { pages: 0, readWithPos: 0, recoveredPages: 0, recoveredEntries: 0 });
     group.pages += 1;
     if (item.readAs.length > 0) group.readWithPos += 1;
+    if (item.production.outcome === "recovered") group.recoveredPages += 1;
+    group.recoveredEntries += item.production.entries;
   }
+  const recovered = titles.filter((item) => item.production.outcome === "recovered");
   const ordered = Object.fromEntries(Object.entries(groups).sort(([a, x], [b, y]) => y.pages - x.pages || (a < b ? -1 : 1)));
   const output = {
     release: `it-${archive.archiveSha256.slice(0, 8)}`, archiveSha256: archive.archiveSha256,
@@ -233,6 +251,13 @@ async function main(): Promise<void> {
     severalPartsOfSpeech: titles.filter((item) => item.sections.length > 1).length,
     noPartOfSpeechSignal: titles.filter((item) => item.sections.length === 0).length,
     recoveredByRuleV1: { rule: PAGE_ENTRY_RULE, pages: titles.filter((item) => item.ruleV1 === "recovered").length },
+    recoveredByProductionRule: {
+      rules: [PAGE_ENTRY_RULE, PAGE_ENTRY_RULE_V2],
+      pages: recovered.length + outside.length,
+      entries: recovered.reduce((sum, item) => sum + item.production.entries, 0) + outside.reduce((sum, item) => sum + item.entries, 0),
+      counted: { pages: recovered.length, entries: recovered.reduce((sum, item) => sum + item.production.entries, 0) },
+      notCounted: { pages: outside.length, entries: outside.reduce((sum, item) => sum + item.entries, 0), titles: outside },
+    },
     groups: ordered, titles,
   };
   await writeFile(values.out, JSON.stringify(output, null, 2) + "\n");

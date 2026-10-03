@@ -73,6 +73,75 @@ gives one entry per section is the open question for the ADR child of #471.
 (`beige perlato`, `oro perlato`). The rest include `motteggio`, `denunziare`,
 `tardamente` and place names (`Misurata`, `Natanya`).
 
+## What the production rule recovers
+
+Added for [#477](https://github.com/hueypov/lexema/issues/477). The
+production rule is the one the seed runs: `italian-page-entry/v1`, then
+`italian-page-entry/v2` for the pages v1 does not recover
+([ADR 0028](../.decisions/0028-recovered-pages-any-part-of-speech.md)). The
+command runs it over every main-namespace page with no Italian archive record,
+not only the 245 counted ones.
+
+**185 pages, 202 entries.** 184 of the pages are among the 245 counted above
+and give 201 entries. The other one is `dismagare`, which rule v1 recovers but
+the detector does not count (see the cross-checks). A page gives one entry per
+part-of-speech section. 14 entries are v1's and 188 are v2's.
+
+| Layout | Pages | Pages recovered | Entries |
+|---|---:|---:|---:|
+| No language heading; `{{-sost-\|it}}` template | 86 | 85 | 85 |
+| Bare `{{-it-}}` line; `{{-sost-\|it}}` template | 42 | 42 | 42 |
+| No part-of-speech signal | 42 | 0 | 0 |
+| `== {{-it-}} ==`; template with stray spaces | 21 | 21 | 21 |
+| Copied from English Wiktionary (`{{Trasfen}}`) | 17 | 0 | 0 |
+| Several part-of-speech sections | 16 | 16 | 33 |
+| Bare `{{-it-}}` line; bare `{{-sost-}}` template | 8 | 8 | 8 |
+| `== {{-it-}} ==`; verb label, no part-of-speech heading | 6 | 6 | 6 |
+| Broken `{{-it-}}` heading; `{{-sost-\|it}}` template | 4 | 4 | 4 |
+| `== {{-it-}} ==`; template the detector's table did not know | 2 | 2 | 2 |
+| Bare `{{-it-}}` line; English heading | 1 | 0 | 0 |
+| Not counted by the detector | — | 1 | 1 |
+| **Total** | **245** | **185** | **202** |
+
+The detector reads 192 pages with a stated part of speech, and the rule
+recovers 184 of the counted pages. The difference has three parts:
+
+- The rule recovers 9 fewer English Wiktionary copies. ADR 0028 admits none.
+- It recovers 1 fewer page in the no-heading group: `Aglio` states the
+  section but no definition the rule reads (`no-definition`).
+- It recovers 2 more in the unknown-template group, whose two templates ADR
+  0028 added to the table.
+
+The JSON gives each counted title a `production` field (the rule's outcome and
+its entry count), each group `recoveredPages` and `recoveredEntries`, and the
+totals and uncounted titles under `recoveredByProductionRule`.
+
+### The local seed
+
+A local seed of `it-0c432803` on the same dump loaded exactly these 185 pages
+and 202 `recovered_entry` rows, each joined to its `raw_page` row (revision id
+as in the JSON) with a line number. Every one has at least one definition, and
+no word among them has an archive record. The command was the full-release one
+in [RUN_AN_IMPORT.md](../docs/RUN_AN_IMPORT.md), with `RAW_PAGES` naming the
+dump, run under `/usr/bin/time -l` on an Apple M1 Pro with 16 GB and Node
+v26.2.0:
+
+| Run | Wall time | Peak, process tree | Peak, seeder's Node | `time -l` maximum resident |
+|---|---:|---:|---:|---:|
+| 1 | 535 s | 3.0 GB | — | 2.5 GB |
+| 2 | 531 s | 4.0 GB | 2.9 GB | 2.9 GB |
+
+The tree peak is the summed resident size of the seed's processes, sampled
+every 0.25 s; it varies between runs because Wrangler's `workerd` processes
+overlap. The seeder's Node holds the whole dump's pages in memory, read once.
+
+Both runs stop at the last of 17 SQL parts unless the `corrected_claim`
+evidence check is shortened, because D1 refuses its 52-byte GLOB pattern
+([#489](https://github.com/hueypov/lexema/issues/489)). The runs above used
+that local, uncommitted change; it touches no `recovered_entry` row. Without it,
+the same seed stopped at part 17 after 732 s, before the `recovered_entry`
+rows, which are in that part.
+
 ## The detector
 
 The detector reads layout only, never the definition text. It is in
@@ -118,7 +187,8 @@ pnpm exec tsx src/import/measureUnrecordedPages.ts \
   --out reports/2026-10-03-unrecorded-page-layouts.json
 ```
 
-The script refuses an archive whose SHA-256 is not `it-0c432803`, and a dump
+The same command writes the production rule's counts. The script refuses an
+archive whose SHA-256 is not `it-0c432803`, and a dump
 whose size or SHA-1 does not match. Titles are sorted by code unit, so the
 output does not depend on the machine's locale. This measurement performed no
 shared write.

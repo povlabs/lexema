@@ -169,8 +169,8 @@ test("isolated seed finds page entries and resolves real form records without in
     const options = { input, outputDir: join(dir, "sql"),
       schema: resolve("src/db/schema.sql"), releaseId: "it-page-entry-test" };
     // The comparison seed has precisely the same originals, without page recovery.
-    const baseline = await seedSql({ ...options, rawPages: { size: pages.size - 2, page: (title) =>
-      title === "raccontare" || title === "fornire" ? undefined : pages.page(title) } });
+    const baseline = await seedSql({ ...options, rawPages: rawPageSource([...pages.titles()]
+      .filter((title) => title !== "raccontare" && title !== "fornire").map(page)) });
     assert.ok(baseline.rows.recovered_definition > 0);
     const before = new DatabaseSync(":memory:");
     try {
@@ -216,7 +216,8 @@ test("isolated seed finds page entries and resolves real form records without in
       }
       assert.deepEqual(db.prepare("PRAGMA foreign_key_check").all(), []);
       const stored = db.prepare(`SELECT p.title, p.revision_id, p.revision_timestamp, d.page_line, d.wikitext
-        FROM entry_definition d JOIN recovered_entry e USING (entry_id) JOIN raw_page p USING (page_id)`).all();
+        FROM entry_definition d JOIN recovered_entry e USING (entry_id) JOIN raw_page p USING (page_id)
+        WHERE p.title IN ('raccontare', 'fornire')`).all();
       assert.equal(stored.length, 3);
       for (const row of stored) {
         const source = page(String(row.title));
@@ -230,8 +231,9 @@ test("isolated seed finds page entries and resolves real form records without in
   } finally { db.close(); await rm(dir, { recursive: true, force: true }); }
 });
 
-test("the seed writes one rule-v2 row per section of a page a form names, beside the v1 rows", async () => {
+test("the seed recovers every raw page no Italian record spells, not only the pages a form names", async () => {
   // Archive line 93815: `lunga`, a form of `lungo`, which has no Italian record.
+  // No line names `mastoide` (Sostantivo) or `finora` (Avverbio); `casa` has a record.
   const dir = await mkdtemp(join(tmpdir(), "lexema-page-entry-"));
   const db = new DatabaseSync(":memory:");
   try {
@@ -239,15 +241,28 @@ test("the seed writes one rule-v2 row per section of a page a form names, beside
     await writeFile(input, (await readFile(resolve("fixtures/dev-seed.jsonl"), "utf8"))
       + (await readFile(resolve("fixtures/page-entry-forms.jsonl"), "utf8"))
       + (await readFile(resolve("fixtures/page-entry-v2-forms.jsonl"), "utf8")));
-    const seeded = await seedSql({ input, outputDir: join(dir, "sql"), schema: resolve("src/db/schema.sql"), releaseId: "it-page-entry-test", rawPages: pages });
+    const source = rawPageSource(["casa", "fornire", "raccontare", "lungo", "mastoide", "finora"].map(page));
+    const seeded = await seedSql({ input, outputDir: join(dir, "sql"), schema: resolve("src/db/schema.sql"), releaseId: "it-page-entry-test", rawPages: source });
     for (const part of seeded.parts) db.exec(await readFile(part, "utf8"));
+    const named = db.prepare("SELECT DISTINCT target_word FROM form_of_edge WHERE target_word IN ('mastoide', 'finora')").all();
+    assert.deepEqual(named, [], "no form names the two pages");
     const rows = db.prepare("SELECT word, pos, pos_title, rule, page_line FROM recovered_entry ORDER BY word, page_line").all().map((row) => ({ ...row }));
     assert.deepEqual(rows, [
+      { word: "finora", pos: "adv", pos_title: "Avverbio", rule: PAGE_ENTRY_RULE_V2, page_line: 3 },
       { word: "fornire", pos: "verb", pos_title: "Verbo", rule: PAGE_ENTRY_RULE, page_line: 2 },
       { word: "lungo", pos: "adj", pos_title: "Aggettivo", rule: PAGE_ENTRY_RULE_V2, page_line: 2 },
       { word: "lungo", pos: "prep", pos_title: "Preposizione", rule: PAGE_ENTRY_RULE_V2, page_line: 11 },
+      { word: "mastoide", pos: "noun", pos_title: "Sostantivo", rule: PAGE_ENTRY_RULE_V2, page_line: 1 },
       { word: "raccontare", pos: "verb", pos_title: "Verbo", rule: PAGE_ENTRY_RULE, page_line: 2 },
     ]);
+    // Each entry names the revision it was read from, and keeps its line verbatim.
+    const evidence = db.prepare(`SELECT p.title, p.revision_id, e.page_line, e.wikitext
+      FROM recovered_entry e JOIN raw_page p USING (page_id)`).all();
+    for (const row of evidence) {
+      const read = page(String(row.title));
+      assert.equal(row.revision_id, read.revisionId);
+      assert.equal(row.wikitext, read.wikitext.split("\n")[Number(row.page_line) - 1]);
+    }
     assert.deepEqual(db.prepare("PRAGMA foreign_key_check").all(), []);
   } finally { db.close(); await rm(dir, { recursive: true, force: true }); }
 });
@@ -258,7 +273,8 @@ test("a dictionary seeded before the page-entry tables answers as it did, and ne
   const old = new DatabaseSync(":memory:");
   try {
     const releaseId = "it-page-entry-test";
-    const seeded = await seedSql({ input: resolve("fixtures/dev-seed.jsonl"), outputDir: join(dir, "sql"), schema: resolve("src/db/schema.sql"), releaseId, rawPages: pages });
+    // Only `casa`'s page, which its record already heads: no page-only entry.
+    const seeded = await seedSql({ input: resolve("fixtures/dev-seed.jsonl"), outputDir: join(dir, "sql"), schema: resolve("src/db/schema.sql"), releaseId, rawPages: rawPageSource([page("casa")]) });
     for (const part of seeded.parts) {
       const sql = await readFile(part, "utf8");
       empty.exec(sql);
