@@ -31,7 +31,7 @@ import { PAGE_ENTRY_CORRECTION_TABLES, PAGE_ENTRY_INDEXES } from "../update/mast
 import { PlanCounts } from "../update/planCounts.js";
 import { correctedDefinitionValues } from "./correctedDefinitions.js";
 import { entryDefinitionsOf, pageEntryRows } from "./pageEntryRows.js";
-import { accentFoldRowOf, COLUMNS, literal, tupleOf, typoKeyRowsOf, type AccentFoldRow, type TypoKeyRow } from "./seedSql.js";
+import { accentFoldRowOf, COLUMNS, literal, pageEntryScore, tupleOf, typoKeyRowsOf, type AccentFoldRow, type TypoKeyRow } from "./seedSql.js";
 
 /** The rules the load reads pages by; a declaration names them all. */
 export const PAGE_ENTRY_RULES = [PAGE_ENTRY_RULE] as const;
@@ -147,7 +147,7 @@ interface NearbyRows {
 function nearbyRows(reader: MasterReader, served: readonly string[], entries: readonly RecoveredEntry[]): NearbyRows {
   const wanted = entries.map((entry) => {
     const key = normalizeItalianExact(entry.page.title);
-    const score = { languages: new Set<string>(), richness: entry.definitions.length };
+    const score = pageEntryScore(entry.definitions.length);
     const accent = accentFoldRowOf(key, true, score);
     return { key, accent: accent === undefined ? [] : [accent], typo: typoKeyRowsOf(key, score) };
   });

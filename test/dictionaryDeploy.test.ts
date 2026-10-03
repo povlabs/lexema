@@ -762,19 +762,25 @@ test("the workflow reads lexema-data only with the read-only token, and every jo
   }
 });
 
-test("the pull request plan check gets only the D1 read-only token, in its own environment, never on a fork, and only plans", async () => {
+test("the pull request plan check gets only the read-only tokens, in its own environment, never on a fork, and only plans", async () => {
   const yaml = await readFile(resolve(".github/workflows/dictionary-plan.yml"), "utf8");
   const on = yaml.slice(yaml.indexOf("\non:\n"), yaml.indexOf("\njobs:\n"));
   assert.match(on, /^ {2}pull_request:$/m);
   const code = yaml.split("\n").filter((line) => !/^\s*#/.test(line)).join("\n");
-  assert.doesNotMatch(code, /pull_request_target|workflow_run|LEXEMA_DATA|CLOUDFLARE_D1_TOKEN/);
-  assert.deepEqual([...new Set(yaml.match(/secrets\.[A-Z0-9_]+/g))], ["secrets.CLOUDFLARE_D1_READ_TOKEN"]);
+  assert.doesNotMatch(code, /pull_request_target|workflow_run|LEXEMA_DATA_WRITE_TOKEN|CLOUDFLARE_D1_TOKEN/);
+  assert.deepEqual([...new Set(yaml.match(/secrets\.[A-Z0-9_]+/g))].sort(), ["secrets.CLOUDFLARE_D1_READ_TOKEN", "secrets.LEXEMA_DATA_READ_TOKEN"]);
+  // The lexema-data read-only token reaches the plan step alone (#498).
+  assert.deepEqual(code.match(/.*LEXEMA_DATA.*/g)?.map((line) => line.trim()), ["LEXEMA_DATA_TOKEN: ${{ secrets.LEXEMA_DATA_READ_TOKEN }}"]);
+  assert.match(code, /- run: pnpm run deploy:dictionary --plan-only --added-since HEAD\^1\n {8}env:\n(?: {10}\S.*\n)* {10}LEXEMA_DATA_TOKEN: /);
+  assert.match(code, /persist-credentials: false/);
   assert.match(yaml, /^permissions: \{\}$/m);
   const jobs = jobsOf(yaml);
   assert.deepEqual([...jobs.keys()], ["plan"]);
   const plan = jobs.get("plan") ?? "";
   assert.match(plan, /^ {4}if: github\.event\.pull_request\.head\.repo\.full_name == github\.repository$/m);
   assert.match(plan, /^ {4}environment: dictionary-plan$/m);
+  // At least the deploy's own plan job's limit, since it may download an archive and a dump.
+  assert.ok(Number(/^ {4}timeout-minutes: (\d+)$/m.exec(plan)?.[1]) >= 60, plan);
   // `contents: read` and nothing else: no write, no deployment, no pull request comment.
   assert.match(plan, /^ {4}permissions:\n {6}contents: read\n {4}env:/m);
   const runs = [...plan.matchAll(/- run: (.*)/g)].map(([, command]) => command);

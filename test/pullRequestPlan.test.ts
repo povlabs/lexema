@@ -1,7 +1,7 @@
 // The pull request plan check (#494): which declarations a pull request adds,
 // which of them it plans, how their counts are held to `expected`, and the
 // declaration it prints when they differ. Plans here are stand-ins, so no
-// test needs a dictionary or a Cloudflare token; dictionaryDeploy.test.ts
+// test needs a dictionary, a Cloudflare token or a GitHub token; dictionaryDeploy.test.ts
 // runs the check through the command line against a local D1.
 
 import assert from "node:assert/strict";
@@ -12,7 +12,8 @@ import { dirname, join } from "node:path";
 import test from "node:test";
 import { gitIn } from "../src/deploy/pending.js";
 import type { PlanOnlyAnswer } from "../src/deploy/dictionaryDeploy.js";
-import { addedDeclarations, declarationWith, planPullRequest, pullRequestPlanReport } from "../src/deploy/pullRequestPlan.js";
+import { main as deployMain } from "../src/deploy/deployCli.js";
+import { addedDeclarations, declarationWith, planPullRequest, type PullRequestPlanner, pullRequestPlanReport } from "../src/deploy/pullRequestPlan.js";
 import { type DeclarationDraft, type DeclaredChange, DeclarationRefused, HIDING_RULES, parseDeclaration, parseDraft } from "../src/update/declaration.js";
 import { PlanCounts } from "../src/update/planCounts.js";
 import { PAGE_ENTRY_RULES } from "../src/import/loadPageEntries.js";
@@ -29,10 +30,10 @@ function answerOf(change: DeclaredChange, counts: object = COUNTS, dictionaryRec
   return { command: change.command, counts: planned, dictionaryRecords, limitBreaches: planned.limitBreaches(dictionaryRecords), rebuilds };
 }
 
-/** A stand-in for the plan-only entry that records each change it is asked to plan. */
-function planner(counts: object = COUNTS, dictionaryRecords = 1000): { plan: (change: DeclaredChange) => Promise<PlanOnlyAnswer>; planned: string[] } {
+/** A stand-in for the plan-only entry, by default holding a `hueypov/lexema-data` token, that records each change it is asked to plan. */
+function planner(counts: object = COUNTS, dictionaryRecords = 1000, hasDataToken = true): PullRequestPlanner & { planned: string[] } {
   const planned: string[] = [];
-  return { planned, plan: async (change) => (planned.push(change.file), answerOf(change, counts, dictionaryRecords)) };
+  return { planned, hasDataToken, plan: async (change) => (planned.push(change.file), answerOf(change, counts, dictionaryRecords)) };
 }
 
 const drafts = (files: Record<string, string>): DeclarationDraft[] => Object.entries(files).map(([file, text]) => parseDraft(file, text));
@@ -89,11 +90,11 @@ test("the declarations a pull request adds are its new top-level .json files und
 });
 
 test("a declaration whose counts match expected passes, and nothing else is planned", async () => {
-  const { plan, planned } = planner();
-  const outcomes = await planPullRequest(drafts({ "dictionary-changes/fix.json": correction(COUNTS) }), plan);
+  const stub = planner();
+  const outcomes = await planPullRequest(drafts({ "dictionary-changes/fix.json": correction(COUNTS) }), stub);
   const report = pullRequestPlanReport(outcomes, "lexema-dictionary");
   assert.equal(report.green, true);
-  assert.deepEqual(planned, ["dictionary-changes/fix.json"]);
+  assert.deepEqual(stub.planned, ["dictionary-changes/fix.json"]);
   assert.match(report.markdown, /## Dictionary plan check: green/);
   assert.match(report.markdown, /The plan's counts match `expected`\./);
   assert.match(report.markdown, /against `lexema-dictionary`\. Nothing was written\./);
@@ -101,7 +102,7 @@ test("a declaration whose counts match expected passes, and nothing else is plan
 
 test("a count that differs is red, names each difference and prints the declaration with the plan's counts", async () => {
   const declared = { records: { added: 0, changed: 1, removed: 0 }, written: { corrected_claim: 3 } };
-  const outcomes = await planPullRequest(drafts({ "dictionary-changes/fix.json": correction(declared) }), planner().plan);
+  const outcomes = await planPullRequest(drafts({ "dictionary-changes/fix.json": correction(declared) }), planner());
   const report = pullRequestPlanReport(outcomes, "lexema-dictionary");
   assert.equal(report.green, false);
   assert.match(report.markdown, /## Dictionary plan check: red/);
@@ -111,12 +112,12 @@ test("a count that differs is red, names each difference and prints the declarat
   assert.ok(printed !== undefined, report.markdown);
   assert.deepEqual(JSON.parse(printed), { command: "correct:records", inputs: {}, expected: COUNTS });
   // What it prints is a declaration whose counts the same plan matches.
-  const fixed = await planPullRequest(drafts({ "dictionary-changes/fix.json": printed }), planner().plan);
+  const fixed = await planPullRequest(drafts({ "dictionary-changes/fix.json": printed }), planner());
   assert.equal(pullRequestPlanReport(fixed, "lexema-dictionary").green, true);
 });
 
 test("a declaration with no expected is red and prints the expected to put in it", async () => {
-  const outcomes = await planPullRequest(drafts({ "dictionary-changes/fix.json": correction() }), planner().plan);
+  const outcomes = await planPullRequest(drafts({ "dictionary-changes/fix.json": correction() }), planner());
   const report = pullRequestPlanReport(outcomes, "lexema-dictionary");
   assert.equal(report.green, false);
   assert.match(report.markdown, /It has no `expected` yet\./);
@@ -132,7 +133,10 @@ test("an upgrade that rebuilds tables names each one with its rows (#511)", asyn
     { table: "hidden_record", rows: 30 },
   ] as const;
   const upgrade = JSON.stringify({ command: "update:upgrade", expected: none });
-  const outcomes = await planPullRequest(drafts({ "dictionary-changes/upgrade.json": upgrade }), async (change) => answerOf(change, none, 1000, rebuilds));
+  const outcomes = await planPullRequest(drafts({ "dictionary-changes/upgrade.json": upgrade }), {
+    hasDataToken: false,
+    plan: async (change) => answerOf(change, none, 1000, rebuilds),
+  });
   const report = pullRequestPlanReport(outcomes, "lexema-dictionary");
   assert.equal(report.green, true, report.markdown);
   assert.ok(
@@ -151,13 +155,13 @@ test("an upgrade that rebuilds tables names each one with its rows (#511)", asyn
     report.markdown,
   );
   // A plan that rebuilds nothing prints no table.
-  const plain = pullRequestPlanReport(await planPullRequest(drafts({ "dictionary-changes/fix.json": correction(COUNTS) }), planner().plan), "lexema-dictionary");
+  const plain = pullRequestPlanReport(await planPullRequest(drafts({ "dictionary-changes/fix.json": correction(COUNTS) }), planner()), "lexema-dictionary");
   assert.doesNotMatch(plain.markdown, /rebuilds these tables/);
 });
 
 test("a plan that crosses a hard limit is red and names it, even when expected matches", async () => {
   const removing = { records: { added: 0, changed: 0, removed: 150 }, written: {}, deleted: {} };
-  const outcomes = await planPullRequest(drafts({ "dictionary-changes/fix.json": correction(removing) }), planner(removing).plan);
+  const outcomes = await planPullRequest(drafts({ "dictionary-changes/fix.json": correction(removing) }), planner(removing));
   const report = pullRequestPlanReport(outcomes, "lexema-dictionary");
   assert.equal(report.green, false);
   assert.match(report.markdown, /The plan's counts match `expected`\./);
@@ -166,9 +170,9 @@ test("a plan that crosses a hard limit is red and names it, even when expected m
 });
 
 test("only the first declaration is planned; a later one is refused, naming the earlier ones", async () => {
-  const { plan, planned } = planner();
-  const outcomes = await planPullRequest(drafts({ "dictionary-changes/a.json": correction(COUNTS), "dictionary-changes/b.json": correction(COUNTS) }), plan);
-  assert.deepEqual(planned, ["dictionary-changes/a.json"]);
+  const stub = planner();
+  const outcomes = await planPullRequest(drafts({ "dictionary-changes/a.json": correction(COUNTS), "dictionary-changes/b.json": correction(COUNTS) }), stub);
+  assert.deepEqual(stub.planned, ["dictionary-changes/a.json"]);
   assert.deepEqual(outcomes.map(({ kind }) => kind), ["planned", "after-earlier"]);
   const report = pullRequestPlanReport(outcomes, "lexema-dictionary");
   assert.equal(report.green, false);
@@ -176,29 +180,81 @@ test("only the first declaration is planned; a later one is refused, naming the 
   assert.match(report.markdown, /its own pull request/);
 });
 
-test("update:auto, hide:records and load:page-entries are not planned and do not fail the pull request", async () => {
-  const { plan, planned } = planner();
-  const outcomes = await planPullRequest(drafts({ "dictionary-changes/it-78385b62.json": AUTO, "dictionary-changes/hide.json": HIDE, "dictionary-changes/load.json": LOAD }), plan);
-  assert.deepEqual(planned, []);
-  assert.deepEqual(outcomes.map(({ kind }) => kind), ["not-planned", "not-planned", "not-planned"]);
-  const report = pullRequestPlanReport(outcomes, "lexema-dictionary");
-  assert.equal(report.green, true);
-  assert.match(report.markdown, /Not planned here: `update:auto` reads an archive and a dump from `hueypov\/lexema-data`/);
-  assert.match(report.markdown, /Not planned here: `hide:records` reads/);
-  assert.match(report.markdown, /Not planned here: `load:page-entries` reads/);
-  assert.match(report.markdown, /This does not fail the pull request\./);
-});
+const DATA_READING = { "update:auto": AUTO, "hide:records": HIDE, "load:page-entries": LOAD } as const;
 
-test("a declaration after one that reads an archive is refused, since its counts would ignore that write", async () => {
-  const { plan, planned } = planner();
-  const outcomes = await planPullRequest(drafts({ "dictionary-changes/a.json": AUTO, "dictionary-changes/b.json": correction(COUNTS) }), plan);
-  assert.deepEqual(planned, []);
-  assert.deepEqual(outcomes.map(({ kind }) => kind), ["not-planned", "after-earlier"]);
+for (const [command, text] of Object.entries(DATA_READING)) {
+  const { inputs } = JSON.parse(text) as { inputs: object };
+  const declaration = (expected?: object): string => JSON.stringify({ command, inputs, ...(expected === undefined ? {} : { expected }) });
+
+  test(`a first ${command} is planned like any other command and passes on matching counts`, async () => {
+    const stub = planner();
+    const outcomes = await planPullRequest(drafts({ "dictionary-changes/first.json": text }), stub);
+    assert.deepEqual(stub.planned, ["dictionary-changes/first.json"]);
+    assert.deepEqual(outcomes.map(({ kind }) => kind), ["planned"]);
+    const report = pullRequestPlanReport(outcomes, "lexema-dictionary");
+    assert.equal(report.green, true, report.markdown);
+    assert.ok(report.markdown.includes(`### \`dictionary-changes/first.json\` (\`${command}\`)\n\nThe plan's counts match \`expected\`.`), report.markdown);
+  });
+
+  test(`a first ${command} whose counts differ or are missing is red and prints the expected to put in it`, async () => {
+    const differing = { records: { added: 0, changed: 1, removed: 0 }, written: { corrected_claim: 3, correction_version: 1 }, deleted: {} };
+    for (const declared of [declaration(differing), declaration()]) {
+      const report = pullRequestPlanReport(await planPullRequest(drafts({ "dictionary-changes/first.json": declared }), planner()), "lexema-dictionary");
+      assert.equal(report.green, false, report.markdown);
+      const printed = /```json\n([\s\S]*?)\n```/.exec(report.markdown)?.[1] ?? assert.fail(report.markdown);
+      assert.deepEqual(JSON.parse(printed), { command, inputs, expected: COUNTS });
+    }
+  });
+
+  test(`a ${command} after an earlier declaration is refused and not planned`, async () => {
+    const stub = planner();
+    const outcomes = await planPullRequest(drafts({ "dictionary-changes/a.json": correction(COUNTS), "dictionary-changes/b.json": text }), stub);
+    assert.deepEqual(stub.planned, ["dictionary-changes/a.json"]);
+    assert.deepEqual(outcomes.map(({ kind }) => kind), ["planned", "after-earlier"]);
+    const report = pullRequestPlanReport(outcomes, "lexema-dictionary");
+    assert.equal(report.green, false);
+    assert.ok(report.markdown.includes(`### \`dictionary-changes/b.json\` (\`${command}\`)\n\nNot planned: it comes after \`dictionary-changes/a.json\``), report.markdown);
+  });
+
+  test(`a first ${command} with no lexema-data token is red and names the secret to add`, async () => {
+    const stub = planner(COUNTS, 1000, false);
+    const outcomes = await planPullRequest(drafts({ "dictionary-changes/first.json": text }), stub);
+    assert.deepEqual(stub.planned, []);
+    assert.deepEqual(outcomes.map(({ kind }) => kind), ["no-data-token"]);
+    const report = pullRequestPlanReport(outcomes, "lexema-dictionary");
+    assert.equal(report.green, false);
+    assert.ok(report.markdown.includes(`Not planned: \`${command}\` reads an archive and a dump from \`hueypov/lexema-data\`, and this run was given no token for it.`), report.markdown);
+    assert.match(report.markdown, /Add the environment secret `LEXEMA_DATA_READ_TOKEN` to the `dictionary-plan` environment/);
+  });
+}
+
+test("a declaration after a data-reading one is refused, since its counts would ignore that write", async () => {
+  const stub = planner();
+  const outcomes = await planPullRequest(drafts({ "dictionary-changes/a.json": AUTO, "dictionary-changes/b.json": correction(COUNTS) }), stub);
+  assert.deepEqual(stub.planned, ["dictionary-changes/a.json"]);
+  assert.deepEqual(outcomes.map(({ kind }) => kind), ["planned", "after-earlier"]);
   assert.equal(pullRequestPlanReport(outcomes, "lexema-dictionary").green, false);
 });
 
+test("through the command line, an unset or empty LEXEMA_DATA_TOKEN makes a first hide:records red before any read", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "lexema-pr-plan-"));
+  try {
+    git(dir, "init", "--initial-branch=main");
+    const base = await commit(dir, { "dictionary-changes/README.md": "# Change declarations\n" });
+    await commit(dir, { "dictionary-changes/hide.json": HIDE });
+    for (const token of [{}, { LEXEMA_DATA_TOKEN: "" }]) {
+      const result = await deployMain(["--plan-only", "--added-since", base], { SEED_REMOTE: "lexema-dictionary", ...token }, () => assert.fail("no wrangler call"), gitIn(dir));
+      assert.equal(result.status, 1, result.out);
+      assert.match(result.out, /## Dictionary plan check: red/);
+      assert.match(result.out, /Add the environment secret `LEXEMA_DATA_READ_TOKEN` to the `dictionary-plan` environment/);
+    }
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
 test("a pull request that adds no declaration passes with nothing to plan", async () => {
-  const report = pullRequestPlanReport(await planPullRequest([], planner().plan), "lexema-dictionary");
+  const report = pullRequestPlanReport(await planPullRequest([], planner()), "lexema-dictionary");
   assert.equal(report.green, true);
   assert.match(report.markdown, /adds no change declaration, so there is nothing to plan/);
 });

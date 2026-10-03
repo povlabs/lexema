@@ -1,6 +1,6 @@
-// The curated corrections (#420, #449): the committed list, checked against the
-// archive lines it names, and the layer the seed writes from it, read back
-// through `lookup()`. Every record is a verbatim archive line, from
+// The curated corrections (#420, #449, #483): the committed list, checked
+// against the archive lines it names, and the layer the seed writes from it,
+// read back through `lookup()`. Every record is a verbatim archive line, from
 // fixtures/curated-corrections.jsonl (test/correctionFixture.ts lists them).
 
 import assert from "node:assert/strict";
@@ -10,31 +10,35 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { gzipSync } from "node:zlib";
-import { CURATED_CORRECTIONS, correctedFacts, evidenceUrl, recordCorrections, type CuratedCorrection } from "../src/italian/curatedCorrections.js";
+import { CURATED_CORRECTIONS, correctedFacts, evidenceUrl, HAND_CORRECTIONS, recordCorrections, type CuratedCorrection } from "../src/italian/curatedCorrections.js";
 import { readPluralGloss } from "../src/italian/pluralGloss.js";
+import { PLURAL_GLOSS_EVIDENCE } from "../src/italian/pluralGlossEvidence.js";
+import { glossLemma, pluralGlossCorrections } from "../src/italian/pluralGlossNumber.js";
 import { seedSql, type SeedSqlReport } from "../src/import/seedSql.js";
 import { fromNodeSqlite } from "../src/lookup/database.js";
 import { lookup } from "../src/lookup/lookup.js";
 import { isNounReading, type Reading } from "../src/lookup/types.js";
-import { atFixtureLines, correctionFixtureLines } from "./correctionFixture.js";
+import { atFixtureLines, correctionFixtureLines, fixtureCorrections } from "./correctionFixture.js";
 
 const RELEASE = "it-curated";
-const RECORDS = recordCorrections(CURATED_CORRECTIONS);
+const HAND = recordCorrections(HAND_CORRECTIONS);
 
 /** What a record's line holds at an RFC 6901 pointer. */
 function at(line: string, pointer: string): unknown {
   let value: unknown = JSON.parse(line);
-  for (const key of pointer.split("/").slice(1)) value = (value as Record<string, unknown>)[key];
+  for (const key of pointer.split("/").slice(1)) value = (value as Record<string, unknown> | undefined)?.[key];
   return value;
 }
 
 test("each entry names its record's line exactly, and the source text it overrides is on that line", async () => {
   const lines = await correctionFixtureLines();
-  const keyed = atFixtureLines(lines, RELEASE);
-  assert.equal(keyed.length, 20);
+  const listed = fixtureCorrections();
+  const keyed = atFixtureLines(lines, RELEASE, listed);
+  // The twenty hand entries, and five of the rule's (#483).
+  assert.equal(keyed.length, 25);
   for (const [i, correction] of keyed.entries()) {
     const line = lines[correction.record.lineNo - 1];
-    const archive = RECORDS[i].record;
+    const archive = listed[i].record;
     assert.equal(archive.releaseId, "it-0c432803");
     assert.equal(at(line, "/word"), correction.record.word);
     assert.equal(at(line, "/pos"), correction.record.pos);
@@ -47,7 +51,12 @@ test("each entry names its record's line exactly, and the source text it overrid
         assert.notEqual(fact.overrides.text, fact.value, `${archive.word} ${fact.dimension}`);
       } else {
         // A gloss is overridden only where it reads as the plural of the word its edge names, and the fact is not plural.
-        assert.notEqual(readPluralGloss(fact.overrides.text, at(line, "/senses/0/form_of/0/word") as string), undefined);
+        // With no edge (`mima`), the word the gloss names has to be a page the correction cites, so the gloss is
+        // checked against its evidence and not only against itself.
+        const edge = at(line, "/senses/0/form_of/0/word") as string | undefined;
+        const named = edge ?? glossLemma(fact.overrides.text) ?? "";
+        if (edge === undefined) assert.ok(correction.evidence.some((evidence) => evidence.title === named), `${archive.word}: cites ${named}`);
+        assert.notEqual(readPluralGloss(fact.overrides.text, named), undefined, archive.word);
         assert.equal(`${fact.dimension} ${fact.value}`, "number singular");
       }
     }
@@ -57,8 +66,8 @@ test("each entry names its record's line exactly, and the source text it overrid
   }
 });
 
-test("the list corrects the twelve cases Huey ruled wrong, and of the fourteen he ruled right only the number of the plurals tagged singular", () => {
-  const words = RECORDS.map((correction) => correction.record.word);
+test("the hand entries correct the twelve cases Huey ruled wrong, and of the fourteen he ruled right only the number of the plurals tagged singular", () => {
+  const words = HAND.map((correction) => correction.record.word);
   // Huey's ruling on #420, 2026-10-03: eight declaring records and four nouns' own gender.
   assert.deepEqual(words.slice(0, 12).sort(), [
     "ammaliatrice", "amorevolezze", "congiuntivi", "fiaschetteria", "fissazione", "giocatrici",
@@ -70,9 +79,20 @@ test("the list corrects the twelve cases Huey ruled wrong, and of the fourteen h
     "altruiste", "anfitrioni", "australiane", "costruttrici", "fiaschetterie", "finanziatrici", "fissazioni",
     "mitre", "mosse", "nozioni", "portatrici", "ricoverati", "rimbalzi", "scolare",
   ];
-  for (const correction of RECORDS.filter((entry) => right.includes(entry.record.word))) {
+  for (const correction of HAND.filter((entry) => right.includes(entry.record.word))) {
     // The number their gloss already says, so their noun's page does not move.
     assert.deepEqual(correctedFacts(correction).map((fact) => [fact.dimension, fact.value]), [["number", "plural"]], correction.record.word);
+  }
+});
+
+test("the committed list is the hand entries, then what the rule makes of its pinned evidence, and the two never name one record (#483)", () => {
+  const made = pluralGlossCorrections(PLURAL_GLOSS_EVIDENCE, HAND);
+  assert.deepEqual(CURATED_CORRECTIONS, [...HAND_CORRECTIONS, ...made]);
+  assert.equal(made.length, 156);
+  const hand = new Set(HAND.map((correction) => `${correction.record.releaseId}:${correction.record.lineNo}`));
+  for (const correction of made) {
+    assert.equal(correction.rule, "it-plural-gloss-number/v1");
+    assert.ok(!hand.has(`${correction.record.releaseId}:${correction.record.lineNo}`), correction.record.word);
   }
 });
 
@@ -120,14 +140,19 @@ test("the seed writes each correction beside its record and leaves the source ro
   const corrections = atFixtureLines(lines, RELEASE);
   await withSeed([], async (plain) => {
     await withSeed(corrections, async ({ db, report }) => {
-      assert.deepEqual(report.corrections, { keyed: 20, applied: 20, unapplied: [] });
-      // One row per fact: congiuntivi and maniaci set two.
-      assert.equal(report.rows.corrected_claim, 22);
-      assert.deepEqual(rows(db, "SELECT r.word, c.dimension, c.value, c.correction_id FROM corrected_claim c JOIN source_record r USING (record_id) WHERE r.word IN ('congiuntivi', 'ammaliatrice', 'costruttrici') ORDER BY r.word, c.dimension"), [
-        { word: "ammaliatrice", dimension: "number", value: "singular", correction_id: `${RELEASE}:33` },
-        { word: "congiuntivi", dimension: "gender", value: "masculine", correction_id: `${RELEASE}:34` },
-        { word: "congiuntivi", dimension: "number", value: "plural", correction_id: `${RELEASE}:34` },
-        { word: "costruttrici", dimension: "number", value: "plural", correction_id: `${RELEASE}:31` },
+      assert.deepEqual(report.corrections, { keyed: 25, applied: 25, unapplied: [] });
+      // One row per fact: congiuntivi, maniaci, and the rule's curve and agostiniani set two.
+      assert.equal(report.rows.corrected_claim, 29);
+      assert.deepEqual(rows(db, "SELECT r.word, r.pos, c.dimension, c.value, c.correction_id FROM corrected_claim c JOIN source_record r USING (record_id) WHERE r.word IN ('congiuntivi', 'ammaliatrice', 'costruttrici', 'agostiniani', 'curve', 'mima') ORDER BY r.word, c.dimension"), [
+        { word: "agostiniani", pos: "noun", dimension: "gender", value: "masculine", correction_id: `${RELEASE}:50` },
+        { word: "agostiniani", pos: "noun", dimension: "number", value: "plural", correction_id: `${RELEASE}:50` },
+        { word: "ammaliatrice", pos: "noun", dimension: "number", value: "singular", correction_id: `${RELEASE}:33` },
+        { word: "congiuntivi", pos: "noun", dimension: "gender", value: "masculine", correction_id: `${RELEASE}:34` },
+        { word: "congiuntivi", pos: "noun", dimension: "number", value: "plural", correction_id: `${RELEASE}:34` },
+        { word: "costruttrici", pos: "noun", dimension: "number", value: "plural", correction_id: `${RELEASE}:31` },
+        { word: "curve", pos: "adj", dimension: "gender", value: "feminine", correction_id: `${RELEASE}:43` },
+        { word: "curve", pos: "adj", dimension: "number", value: "plural", correction_id: `${RELEASE}:43` },
+        { word: "mima", pos: "noun", dimension: "number", value: "singular", correction_id: `${RELEASE}:48` },
       ]);
       // The archive lines byte for byte, and the source's own claims, as a seed without the list writes them.
       assert.deepEqual(rows(db, "SELECT raw_json FROM source_record_json ORDER BY record_id").map((row) => (row as { raw_json: string }).raw_json), lines);
@@ -184,6 +209,19 @@ test("a correction stands in for the record's own claim, keeps it, and costs no 
         assert.ok(reading.articles.status === "derived", word);
         assert.deepEqual(reading.articles.articles.map((article) => article.displayForm), expected);
       }
+
+      // The rule's corrections read the same way (#483): agostiniani is masculine plural, `gli agostiniani`.
+      const claimsOf = (reading: Reading, dimension: string): string[][] =>
+        reading.grammar.record.flatMap((claim) => (claim.status !== "unclassified" && claim.status !== "missing" && claim.dimension === dimension ? [[claim.status, claim.value]] : []));
+      const agostiniani = (await ask("agostiniani")).find((reading) => reading.recordId === 50);
+      assert.ok(agostiniani !== undefined && isNounReading(agostiniani));
+      assert.deepEqual([claimsOf(agostiniani, "gender"), claimsOf(agostiniani, "number")], [[["corrected", "masculine"]], [["corrected", "plural"]]]);
+      assert.ok(agostiniani.articles.status === "derived");
+      assert.deepEqual(agostiniani.articles.articles.map((article) => article.displayForm), ["gli agostiniani", "degli agostiniani"]);
+      const [curve] = await ask("curve");
+      assert.deepEqual([curve.recordId, claimsOf(curve, "gender"), claimsOf(curve, "number")], [43, [["corrected", "feminine"]], [["corrected", "plural"]]]);
+      const mima = (await ask("mima")).find((reading) => reading.recordId === 48);
+      assert.deepEqual(mima === undefined ? undefined : [claimsOf(mima, "gender"), claimsOf(mima, "number")], [[["stated", "feminine"]], [["corrected", "singular"]]]);
     });
   });
 });
@@ -195,7 +233,7 @@ test("a correction is written only on the line with the digest it names", async 
   const elsewhere = { ...rest[0], record: { ...rest[0].record, releaseId: "it-another" } };
   await withSeed([moved, elsewhere, ...rest.slice(1)], async ({ db, report }) => {
     assert.deepEqual(report.corrections.unapplied, [{ id: `${RELEASE}:${first.record.lineNo}`, reason: "line-digest-differs" }]);
-    assert.equal(report.corrections.keyed, 19);
+    assert.equal(report.corrections.keyed, 24);
     assert.deepEqual(rows(db, `SELECT count(*) AS n FROM corrected_claim c JOIN source_record r USING (record_id) WHERE r.word IN ('${first.record.word}', '${rest[0].record.word}')`), [{ n: 0 }]);
   });
 });
