@@ -51,6 +51,7 @@ import { feedLines } from "./feed.js";
 import { readLines, select, type MasterReader } from "./master.js";
 import { verifyFeedOrdering } from "./ordering.js";
 import { masterUpgradeSql } from "./masterUpgrade.js";
+import { PlanCounts } from "./planCounts.js";
 
 /** The licence a kaikki release is published under, as the seed records it (src/import/seedDev.ts). */
 const LICENSE = "CC-BY-SA-4.0";
@@ -99,6 +100,8 @@ export interface ApplyPlan {
   rows: Record<AppliedTable, number>;
   /** `accent_fold` and `typo_key` rows of other releases the apply replaces. */
   replacedIndexRows: number;
+  /** What the SQL writes and deletes: a `changed` change changes the record it retires. */
+  counts: PlanCounts;
   sql: string;
 }
 
@@ -302,7 +305,10 @@ export async function planApply(
         `SELECT record_id, surface_key, origin FROM lookup_form WHERE record_id IN (SELECT value FROM json_each(${json(retired)}))`,
       );
   const keys = [...new Set([...newKeys.map((row) => row.key), ...retiredKeys.map((row) => row.surface_key)])].sort();
-  const nearby = keys.length === 0 ? { deletes: [], accent: [], typo: [], replaced: 0 } : nearbyEdits(reader, served, keys, new Set(retired), newKeys, newLemmas);
+  const nearby = keys.length === 0 ? NO_NEARBY_EDITS : nearbyEdits(reader, served, keys, new Set(retired), newKeys, newLemmas);
+  const [{ n: retiredEdges }] = retired.length === 0
+    ? [{ n: 0 }]
+    : select<{ n: number }>(reader, `SELECT count(*) AS n FROM form_of_edge WHERE record_id IN (SELECT value FROM json_each(${json(retired)}))`);
 
   const writtenAccent = nearby.accent.length;
   const writtenTypo = nearby.typo.length;
@@ -382,10 +388,31 @@ export async function planApply(
     changes: planned,
     retired,
     rows: counts,
-    replacedIndexRows: nearby.replaced,
+    replacedIndexRows: nearby.replaced.accent_fold + nearby.replaced.typo_key,
+    counts: new PlanCounts(
+      { added: chosen.filter((change) => change.kind === "new").length, changed: retired.length, removed: 0 },
+      {
+        ...counts,
+        ...(known.length === 0 ? { source_release: 1, feed_release: 1 } : {}),
+        applied_change: appliedTuples.length,
+        release_table_rows: APPLIED_TABLES.length,
+      },
+      { lookup_form: retiredKeys.length, form_of_edge: retiredEdges, ...nearby.replaced },
+    ),
     sql: `${sql.join("\n")}\n`,
   };
 }
+
+/** The nearby index rows that differ from what the seed would write: the deletes, the rows wanted, and the rows deleted by table. */
+export interface NearbyEdits {
+  deletes: string[];
+  accent: AccentFoldRow[];
+  typo: TypoKeyRow[];
+  replaced: { accent_fold: number; typo_key: number };
+}
+
+/** Nothing to recompute: no key moved. */
+export const NO_NEARBY_EDITS: NearbyEdits = { deletes: [], accent: [], typo: [], replaced: { accent_fold: 0, typo_key: 0 } };
 
 const sameAccent = (a: AccentFoldRow, b: AccentFoldRow): boolean =>
   a.foldKey === b.foldKey && a.surfaceKey === b.surfaceKey && a.headword === b.headword && a.languages === b.languages && a.richness === b.richness;
@@ -409,7 +436,7 @@ export function nearbyEdits(
   retired: ReadonlySet<number>,
   newKeys: readonly KeyRow[],
   newLemmas: readonly ArchiveRecord["record"][],
-): { deletes: string[]; accent: AccentFoldRow[]; typo: TypoKeyRow[]; replaced: number } {
+): NearbyEdits {
   const inServed = `IN (SELECT value FROM json_each(${json(served)}))`;
   // The reads name every key, so they run over a few hundred keys at a time:
   // one statement naming them all would pass D1's 100 KB limit.
@@ -491,7 +518,7 @@ export function nearbyEdits(
     deletes,
     accent: accent.filter((wanted) => !keptAccent.some((held) => sameAccent(wanted, { foldKey: held.fold_key, surfaceKey: held.surface_key, headword: held.headword, languages: held.languages, richness: held.richness }))),
     typo: typo.filter((wanted) => !keptTypo.some((held) => sameTypo(wanted, { deletionKey: held.deletion_key, surfaceKey: held.surface_key, languages: held.languages, richness: held.richness }))),
-    replaced: deletes.length,
+    replaced: { accent_fold: heldAccent.length - keptAccent.length, typo_key: heldTypo.length - keptTypo.length },
   };
 }
 

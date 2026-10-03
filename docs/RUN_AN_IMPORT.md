@@ -169,7 +169,10 @@ pnpm run normalize:source-text
 ```
 
 It picks its database the way the seed does: the local D1 under `SEED_STATE`
-(default `.data/seed-state`), or the remote D1 `SEED_REMOTE` names. It rewrites
+(default `.data/seed-state`), or the remote D1 `SEED_REMOTE` names. It plans
+every rule into one SQL file under `.data/updates/` and runs that file in one
+step, so a run that stops leaves the database as it was; a later rule reads the
+glosses an earlier one rewrites from the plan. It rewrites
 only the `sense_gloss` rows a rule changes, and removes only the `lookup_form`
 rows of a dropped form with the `grammar_claim` rows about that form. The stamp
 rule reads each candidate record's raw line the way the seed does, trims or
@@ -184,7 +187,10 @@ and `it-gloss-stamp/v1: sense_gloss: <n> row(s) changed, grammar_claim: <n> row(
 The seed prints the first three ids on its `source text rules:` line; the stamp
 rule is the importer's grammar policy
 ([grammarPolicy.ts](../src/import/grammarPolicy.ts)). A second run changes 0
-rows.
+rows. `pnpm run normalize:source-text --plan-only` is a plan-only run: it
+writes the file and prints its counts as JSON, and runs nothing on the
+database. `hide:records`, `update:auto` and `update:upgrade` take the same flag
+([src/update/planOnly.ts](../src/update/planOnly.ts)).
 
 For the full local seed:
 

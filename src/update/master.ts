@@ -4,7 +4,7 @@
 
 import { readOnly } from "../lookup/database.js";
 import type { MasterRecord } from "./changes.js";
-import { UPGRADE_NAMES } from "./masterUpgrade.js";
+import { masterUpgradeSql, UPGRADE_NAMES } from "./masterUpgrade.js";
 
 /**
  * A dictionary database the update reads: one statement in, its rows out.
@@ -56,6 +56,19 @@ export function missingUpgrade(reader: MasterReader): string[] {
   const names = UPGRADE_NAMES.map((name) => `'${name}'`).join(", ");
   const present = new Set(select<{ name: string }>(reader, `SELECT name FROM sqlite_schema WHERE name IN (${names})`).map((row) => row.name));
   return UPGRADE_NAMES.filter((name) => !present.has(name));
+}
+
+/** What `update:upgrade` would do: the names it adds, and its SQL, which writes no row. */
+export interface UpgradePlan {
+  missing: string[];
+  /** Empty when the master has every table and view already. */
+  sql: string;
+}
+
+/** Plan the upgrade of the master `reader` reads, from schema.sql's text; it writes nothing. */
+export function planUpgrade(reader: MasterReader, schema: string): UpgradePlan {
+  const missing = missingUpgrade(reader);
+  return { missing, sql: missing.length === 0 ? "" : masterUpgradeSql(schema) };
 }
 
 /** The master without its records: its release, whether it has the update tables yet, and its feeds. */
