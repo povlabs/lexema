@@ -35,7 +35,7 @@ import { finish, isMain, usageError, type CommandResult } from "../commandLine.j
 import { seedTargetFrom, webWrangler, type SeedTarget, type Wrangler } from "../import/seedTarget.js";
 import { ApplyRefused, checkApplied, chooseChanges, planApply, type ApplyPlan } from "./apply.js";
 import { diffAgainstMaster, reportMarkdown, reportOf } from "./diff.js";
-import { planUpgrade, readMasterRelease, upgradeShortfall, type MasterReader } from "./master.js";
+import { planUpgrade, readMasterRelease, rebuildsOf, upgradeShortfall, type MasterReader } from "./master.js";
 import { automaticPlan } from "./automatic.js";
 import { PlanCounts } from "./planCounts.js";
 import { planOnlyAnswer, planOnlyFlag, planOnlyRun } from "./planOnly.js";
@@ -248,8 +248,15 @@ async function upgradeCommand(target: SeedTarget, args: readonly string[]): Prom
   const schema = await readFile(SCHEMA, "utf8");
   const upgrade = planUpgrade(reader, schema);
   const { missing, changed, sql } = upgrade;
-  // The upgrade adds no row and drops none: its counts are none, and what it adds or rebuilds is named beside them.
-  if (planOnly) return planOnlyAnswer(planOnlyRun("update:upgrade", PlanCounts.NONE, reader), sql, read.out, `upgrade-${master.releaseId}`, { adds: missing, rebuildsFor: changed });
+  // The upgrade adds no row and loses none: its counts are none, and what it adds or rebuilds is named beside them,
+  // each table a rebuild drops with the rows it holds.
+  if (planOnly) {
+    return planOnlyAnswer(planOnlyRun("update:upgrade", PlanCounts.NONE, reader), sql, read.out, `upgrade-${master.releaseId}`, {
+      adds: missing,
+      rebuildsFor: changed,
+      rebuilds: rebuildsOf(upgrade),
+    });
+  }
   if (sql === "") return { out: `${target.dictionary} (master ${master.releaseId}) already has every table and view the upgrade adds, as schema.sql defines it; nothing to do`, status: 0 };
   await mkdir(read.out, { recursive: true });
   const file = join(read.out, `upgrade-${master.releaseId}-${Date.now()}.sql`);

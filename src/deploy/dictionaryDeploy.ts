@@ -27,7 +27,7 @@
 import { mkdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { checkPlan, passes, type ChangeDeclaration, type DeclaredChange } from "../update/declaration.js";
-import { planUpgrade, upgradeShortfall, type MasterReader } from "../update/master.js";
+import { planUpgrade, type Rebuild, upgradeShortfall, type MasterReader } from "../update/master.js";
 import type { PlanCounts } from "../update/planCounts.js";
 import { D1Batch } from "./d1Batch.js";
 import { type DataFetcher, type DumpCatalog, fetchVerified, filesFor } from "./dataFiles.js";
@@ -80,16 +80,17 @@ export interface DeployedChange {
 }
 
 /**
- * What the upgrade step did: the tables, indexes and views it created, and the
- * page-entry definitions that differed from schema.sql's, for which it rebuilt
- * the page-entry tables. Both are empty when it ran nothing.
+ * What the upgrade step did: the tables, indexes and views it created, the
+ * definitions that differed from schema.sql's, and the tables it rebuilt for
+ * them, keeping their rows. All are empty when it ran nothing.
  */
 export interface UpgradeDone {
   readonly added: readonly string[];
+  readonly changed: readonly string[];
   readonly rebuilt: readonly string[];
 }
 
-const NO_UPGRADE: UpgradeDone = { added: [], rebuilt: [] };
+const NO_UPGRADE: UpgradeDone = { added: [], changed: [], rebuilt: [] };
 
 /**
  * How a run ended. A red run that wrote holds the bookmark it wrote after, so
@@ -158,7 +159,7 @@ export async function deployDictionary(deps: DeployDeps): Promise<DeployOutcome>
       );
       if (upgrade.sql !== "") {
         await run(upgrade.sql, "upgrade");
-        upgraded = { added: upgrade.missing, rebuilt: upgrade.changed };
+        upgraded = { added: upgrade.missing, changed: upgrade.changed, rebuilt: upgrade.kept.map(({ name }) => name) };
         const shortfall = upgradeShortfall(deps.reader, schema, upgrade);
         if (shortfall.length > 0) return red(shortfall);
       }
@@ -205,12 +206,14 @@ export async function deployDictionary(deps: DeployDeps): Promise<DeployOutcome>
   }
 }
 
-/** What a plan-only run of one change found: its counts and the hard limits they cross. */
+/** What a plan-only run of one change found: its counts, the hard limits they cross, and the tables it rebuilds. */
 export interface PlanOnlyAnswer {
   readonly command: DeclaredChange["command"];
   readonly counts: PlanCounts;
   readonly dictionaryRecords: number;
   readonly limitBreaches: readonly string[];
+  /** The tables `update:upgrade` drops and creates again, with the rows each holds; empty for every other command. */
+  readonly rebuilds: readonly Rebuild[];
 }
 
 /**
@@ -220,8 +223,8 @@ export interface PlanOnlyAnswer {
  */
 export async function planOnly(change: DeclaredChange, deps: Pick<DeployDeps, "reader" | "fetcher" | "workDir" | "catalog" | "dumps" | "corrections" | "now">): Promise<PlanOnlyAnswer> {
   const [{ ready }] = await readyAll([change], deps);
-  const { run } = await planWrite(ready, deps.reader, (deps.now ?? (() => new Date().toISOString()))(), deps);
-  return { command: run.command, counts: run.counts, dictionaryRecords: run.dictionaryRecords, limitBreaches: run.counts.limitBreaches(run.dictionaryRecords) };
+  const { run, rebuilds = [] } = await planWrite(ready, deps.reader, (deps.now ?? (() => new Date().toISOString()))(), deps);
+  return { command: run.command, counts: run.counts, dictionaryRecords: run.dictionaryRecords, limitBreaches: run.counts.limitBreaches(run.dictionaryRecords), rebuilds };
 }
 
 /** The command that restores the dictionary to `bookmark`, run from the repository root. */
@@ -238,9 +241,9 @@ const changesTable = (changes: readonly DeployedChange[]): string[] =>
 
 const named = (names: readonly string[]): string => names.map((name) => `\`${name}\``).join(", ");
 
-const upgradeLine = ({ added, rebuilt }: UpgradeDone): string[] => [
+const upgradeLine = ({ added, changed, rebuilt }: UpgradeDone): string[] => [
   ...(added.length === 0 ? [] : ["", `The upgrade ran first and added ${named(added)}.`]),
-  ...(rebuilt.length === 0 ? [] : ["", `The upgrade ran first and rebuilt the page-entry tables, keeping their rows, for the changed definition of ${named(rebuilt)}.`]),
+  ...(rebuilt.length === 0 ? [] : ["", `The upgrade ran first and rebuilt ${named(rebuilt)}, keeping their rows, for the changed definition of ${named(changed)}.`]),
 ];
 
 /** The run's summary, as Markdown for the GitHub job summary. */

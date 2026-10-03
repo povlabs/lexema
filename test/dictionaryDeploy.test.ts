@@ -353,14 +353,14 @@ test("a dictionary without the page-entry tables gets the upgrade as its own bat
     assert.match(ddlSql, /CREATE TABLE IF NOT EXISTS corrected_definition\b/);
     assert.doesNotMatch(ddlSql, /\b(INSERT|UPDATE|DELETE)\b/);
     assert.doesNotMatch(dataSql, /\bCREATE\b/);
-    if (outcome.kind === "green") assert.deepEqual(outcome.upgraded, { added: [...PAGE_ENTRY_UPGRADE_TABLES, ...PAGE_ENTRY_INDEXES], rebuilt: [] });
+    if (outcome.kind === "green") assert.deepEqual(outcome.upgraded, { added: [...PAGE_ENTRY_UPGRADE_TABLES, ...PAGE_ENTRY_INDEXES], changed: [], rebuilt: [] });
     assert.match(deploySummary(outcome, "lexema-dictionary"), /The upgrade ran first and added `recovered_entry`/);
 
     // The next run finds nothing missing and runs no DDL.
     const next = await world.commit({ "dictionary-changes/2026-10-normalize-again.json": declaration(NORMALIZE, { records: { added: 0, changed: 0, removed: 0 } }) });
     const again = await deployDictionary(world.deps(next));
     assert.equal(again.kind, "green", deploySummary(again, "lexema-dictionary"));
-    if (again.kind === "green") assert.deepEqual(again.upgraded, { added: [], rebuilt: [] });
+    if (again.kind === "green") assert.deepEqual(again.upgraded, { added: [], changed: [], rebuilt: [] });
     assert.equal(writes(world.d1).length, 2);
   });
 });
@@ -417,8 +417,11 @@ test("a dictionary holding an older definition of a page-entry table gets schema
 
     assert.equal(outcome.kind, "green", deploySummary(outcome, "lexema-dictionary"));
     assert.deepEqual(deps.steps, [...DEPLOY_STEPS]);
-    if (outcome.kind === "green") assert.deepEqual(outcome.upgraded, { added: [], rebuilt: ["recovered_entry", "corrected_definition"] });
-    assert.match(deploySummary(outcome, "lexema-dictionary"), /rebuilt the page-entry tables, keeping their rows, for the changed definition of `recovered_entry`, `corrected_definition`/);
+    if (outcome.kind === "green") assert.deepEqual(outcome.upgraded, { added: [], changed: ["recovered_entry", "corrected_definition"], rebuilt: PAGE_ENTRY_UPGRADE_TABLES });
+    assert.match(
+      deploySummary(outcome, "lexema-dictionary"),
+      /rebuilt `recovered_entry`, `entry_definition`, `entry_label`, `entry_example`, `corrected_definition`, keeping their rows, for the changed definition of `recovered_entry`, `corrected_definition`/,
+    );
     const [ddl, data, ...rest] = writes(world.d1);
     assert.deepEqual(rest, []);
     assert.match(commandSql(ddl), /CREATE TABLE upgrade_kept_recovered_entry AS SELECT \* FROM recovered_entry;/);
@@ -444,7 +447,7 @@ test("a dictionary holding an older definition of a page-entry table gets schema
     const next = await world.commit({ "dictionary-changes/2026-10-normalize-again.json": declaration(NORMALIZE, { records: { added: 0, changed: 0, removed: 0 } }) });
     const again = await deployDictionary(world.deps(next));
     assert.equal(again.kind, "green", deploySummary(again, "lexema-dictionary"));
-    if (again.kind === "green") assert.deepEqual(again.upgraded, { added: [], rebuilt: [] });
+    if (again.kind === "green") assert.deepEqual(again.upgraded, { added: [], changed: [], rebuilt: [] });
     assert.equal(writes(world.d1).length, 2);
   });
 });
@@ -500,7 +503,7 @@ test("a batch D1 refuses after an earlier batch landed still reports the write, 
     assert.equal(outcome.kind, "red");
     if (outcome.kind === "red") {
       assert.equal(outcome.written, true);
-      assert.deepEqual(outcome.upgraded, { added: [...PAGE_ENTRY_UPGRADE_TABLES, ...PAGE_ENTRY_INDEXES], rebuilt: [] });
+      assert.deepEqual(outcome.upgraded, { added: [...PAGE_ENTRY_UPGRADE_TABLES, ...PAGE_ENTRY_INDEXES], changed: [], rebuilt: [] });
     }
     assert.equal(writes(world.d1).length, 1, "only the upgrade reached the dictionary");
     const summary = deploySummary(outcome, "lexema-dictionary");

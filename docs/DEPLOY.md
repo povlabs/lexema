@@ -454,16 +454,21 @@ upload of a release
    no declaration's SQL carries DDL
    ([#507](https://github.com/hueypov/lexema/issues/507)). It does so when
    the dictionary lacks a table, index or view the upgrade creates, or when
-   it stores a page-entry table, `corrected_definition` or their index with a
-   definition other than [schema.sql](../src/db/schema.sql)'s. Comments and
-   spacing do not count. For a changed definition the upgrade rebuilds those
-   five tables with their rows: it copies the rows aside, drops the tables,
-   creates them from schema.sql and copies the rows back by the columns both
+   it stores a rebuilt table or its index with a definition other than
+   [schema.sql](../src/db/schema.sql)'s. Comments and spacing do not count.
+   The rebuilt tables come in three groups (`REBUILT_GROUPS`): the four
+   page-entry tables with `corrected_definition`; `recovered_definition` with
+   `recovered_label` and `recovered_example`; and `hidden_record`. For a
+   changed definition the upgrade rebuilds that table's group with its rows:
+   it copies the rows aside, drops the group's tables, creates them and their
+   indexes from schema.sql and copies the rows back by the columns both
    definitions share. A row the new definition refuses stops the batch, and
    D1 rolls it back whole. After the batch the run checks that nothing is
    missing, nothing differs and every rebuilt table holds as many rows as
    before. So a change to those tables in schema.sql reaches the shared
-   dictionary on the next deploy.
+   dictionary on the next deploy. The
+   [pull request plan check](#the-pull-request-plan-check) and
+   `update:upgrade --plan-only` name each table a rebuild drops, with its rows.
 4. For each declaration it runs the command's plan, without writing, and holds
    its counts to the declared ones and to the hard limits: more than 100
    records removed, or more than 5% of the records changed or removed. Any
@@ -509,7 +514,8 @@ a declaration's command and inputs, with no counts:
 ```
 
 Its job summary and its `counts` output are the plan-only answer: the counts,
-the dictionary's size and any hard limit they cross. The
+the dictionary's size, any hard limit they cross and, for `update:upgrade`,
+each table a rebuild drops with its rows (`rebuilds`). The
 [monthly release](#the-monthly-release) takes a new declaration's counts from
 it. It also passes the input `release`: the archive facts and dump of a kaikki
 release `main` does not record yet. The plan reads them as data, still runs
@@ -609,6 +615,9 @@ request's merge commit ([src/deploy/](../src/deploy/pullRequestPlan.ts)):
      printing the whole declaration file with the plan's counts as
      `expected`. Copy it into the file and push;
    - the plan crosses a hard limit: red, naming the limit;
+   - an `update:upgrade` that rebuilds tables
+     ([the deploy's step 3](#the-dictionary-deploy)): a table of each
+     table it drops and copies back, with its rows;
    - `update:auto`, `hide:records` or `load:page-entries`: not planned, since
      they read an archive and a dump from `hueypov/lexema-data` and this run
      gets no token for it.
