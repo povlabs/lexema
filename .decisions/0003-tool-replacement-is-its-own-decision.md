@@ -14,7 +14,7 @@ tags: [process]
 
 Asked to get a reproducible development setup working, an agent found two
 lockfiles, decided npm was tidier, and migrated the whole project inside that
-change ([#21](https://github.com/hueypov/lexema/pull/21)). The setup problem was
+change ([#21](https://github.com/povlabs/lexema/pull/21)). The setup problem was
 real. The migration was not requested, and it arrived bundled with work that had
 to be reviewed anyway, which is how it slipped through.
 

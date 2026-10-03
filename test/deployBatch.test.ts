@@ -11,7 +11,7 @@ import { overlongPatterns, sqlPatterns } from "../src/db/d1PatternLimit.js";
 import { commandArgument, D1Batch, D1BatchRefused, QUERY_API_LIMIT, type D1Executor } from "../src/deploy/d1Batch.js";
 import type { DeployTarget } from "../src/deploy/dictionaryDeploy.js";
 import { webWrangler } from "../src/import/seedTarget.js";
-import { masterUpgradeSql } from "../src/update/masterUpgrade.js";
+import { columnsOf, createStatement, masterUpgradeSql, REBUILT_TABLES, rebuildSql } from "../src/update/masterUpgrade.js";
 
 /** A DeployTarget that records each `execute` call and answers it as Wrangler would on success. */
 function recording(): DeployTarget & { calls: string[][] } {
@@ -116,11 +116,21 @@ test("a batch holding a LIKE or GLOB pattern over 50 bytes is refused before any
 });
 
 // test/d1PatternLimit.test.ts holds schema.sql to the limit. The deploy also
-// runs the upgrade's DDL itself, and every CREATE a data plan writes is a
-// statement of schema.sql (createStatement); D1Batch refuses anything else.
+// runs the upgrade's DDL itself, every CREATE a statement of schema.sql
+// (createStatement); no data plan writes a CREATE (#509).
 test("every LIKE and GLOB pattern in the upgrade the deploy runs is within D1's limit", async () => {
-  const upgrade = masterUpgradeSql(await readFile("src/db/schema.sql", "utf8"));
-  assert.ok(sqlPatterns(upgrade).some(({ pattern }) => pattern.includes("wiktionary.org")), "the upgrade creates corrected_definition, with its evidence_url CHECK");
+  const schema = await readFile("src/db/schema.sql", "utf8");
+  const upgrade = masterUpgradeSql(schema);
+  const evidence = (sql: string, table: string) => {
+    const statement = sql.slice(sql.indexOf(`CREATE TABLE IF NOT EXISTS ${table} `));
+    return sqlPatterns(statement.slice(0, statement.indexOf(") STRICT;"))).filter(({ pattern }) => pattern.includes("wiktionary.org"));
+  };
+  assert.equal(evidence(upgrade, "corrected_definition").length, 1, "the upgrade creates corrected_definition, with its evidence_url CHECK");
+  assert.equal(evidence(upgrade, "corrected_claim").length, 1, "the upgrade creates corrected_claim, with its evidence_url CHECK split in two GLOBs (#489)");
   assert.deepEqual(overlongPatterns(upgrade), []);
   assert.equal(D1Batch.of(upgrade).route, "command");
+  // A rebuild runs the same statements, beside its copies.
+  const rebuild = rebuildSql(schema, [...REBUILT_TABLES, "hidden_record" as const].map((name) => ({ name, columns: columnsOf(createStatement(schema, "TABLE", name)) })));
+  assert.deepEqual(overlongPatterns(rebuild), []);
+  assert.equal(D1Batch.of(rebuild).route, "command");
 });

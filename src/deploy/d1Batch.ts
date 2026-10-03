@@ -23,28 +23,15 @@
 // before anything is sent.
 
 import { writeFile } from "node:fs/promises";
-import { overlongPatterns } from "../db/d1PatternLimit.js";
+import { commandArgument, D1SqlRefused, patternLimitRefusal, type D1Executor } from "../db/d1Command.js";
+
+export { commandArgument, type D1Executor };
 
 /** The largest batch, in UTF-8 bytes, sent through the query API rather than imported. */
 export const QUERY_API_LIMIT = 100_000;
 
-/** `wrangler d1 execute` aimed at the dictionary, as `DeployTarget` gives it. */
-export interface D1Executor {
-  execute(args: readonly string[], capture: boolean): string;
-}
-
-/**
- * `--command` and its SQL as the one argument Wrangler parses whole. As two
- * arguments, Wrangler's yargs-parser takes the next one as the option's value
- * only when it does not start with `-`, so SQL that opens with a `--` comment,
- * as every deploy batch does, is read as an unknown flag and nothing is sent
- * (wrangler 4.135.0, #507). Joined by `=`, the parser splits at the first `=`
- * and keeps the rest, newlines and later `=` included.
- */
-export const commandArgument = (sql: string): string => `--command=${sql}`;
-
 /** A batch D1 would refuse before running it. */
-export class D1BatchRefused extends Error {}
+export class D1BatchRefused extends D1SqlRefused {}
 
 /** SQL D1 can run as one transaction: every LIKE and GLOB pattern in it within D1's limit. */
 export class D1Batch {
@@ -55,13 +42,8 @@ export class D1Batch {
 
   /** `sql` as a batch, or `D1BatchRefused` naming every pattern D1 would refuse. */
   static of(sql: string): D1Batch {
-    const overlong = overlongPatterns(sql);
-    if (overlong.length > 0) {
-      throw new D1BatchRefused(
-        `D1 refuses a LIKE or GLOB pattern over 50 bytes, and this SQL holds ${overlong.length}: ` +
-          overlong.map(({ operator, pattern, bytes }) => `${operator} '${pattern}' (${bytes} bytes)`).join(", "),
-      );
-    }
+    const refusal = patternLimitRefusal(sql);
+    if (refusal !== undefined) throw new D1BatchRefused(refusal);
     return new D1Batch(sql, Buffer.byteLength(sql, "utf8"));
   }
 

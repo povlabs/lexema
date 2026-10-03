@@ -16,7 +16,7 @@ tags: [process, agents]
 
 That prefix is refused by Claude Code's auto-mode check, so a reviewer lane either parks or routes around the refusal ([kamp-us/phoenix#10308](https://github.com/kamp-us/phoenix/issues/10308)). Fabrika's own repository runs with one account: its verdicts are posted by the pull request author's account ([kamp-us/phoenix#10300](https://github.com/kamp-us/phoenix/pull/10300)).
 
-Huey ruled on 2026-10-01, recorded on [#333](https://github.com/hueypov/lexema/issues/333): every agent role posts as `hueypov`, the reviewer is still a different agent from the builder, never fixes what it finds and never merges, and only the separate account goes.
+Huey ruled on 2026-10-01, recorded on [#333](https://github.com/povlabs/lexema/issues/333): every agent role posts as `hueypov`, the reviewer is still a different agent from the builder, never fixes what it finds and never merges, and only the separate account goes.
 
 What made the review worth having was never the account. 0005's own evidence is four pull requests their authors had called finished, each failed by a reviewer that had not written them. That is independence of the agent, and it survives one account.
 
@@ -46,3 +46,7 @@ This was already true before this record. Builders and the shipper have always p
 - Reviewer lanes run under auto mode without a refused prefix, so they no longer park on it.
 - A comment's author no longer shows which role wrote it; every one reads `hueypov`.
 - Huey's control-plane sign-off is protected by a rule agents follow, not by a check fabrika runs. Separating them by check would need a second account for Huey's sign-off or a fabrika change, and neither is decided here.
+
+## Amendments
+
+- **[#532](https://github.com/povlabs/lexema/issues/532) — CODEOWNERS is narrower (2026-10-03).** Huey ruled "yes let the shipper merge" for pull requests that change decision records ([ADR 0006](0006-codex-review-is-the-merge-gate.md), #532 amendment). So `.decisions/`, `AGENTS.md`, `.fabrika.jsonc` and `design-system-manifest.md` left [.github/CODEOWNERS](../.github/CODEOWNERS), and `ship cp-approval` no longer holds them. The roster above still names `@hueypov` alone, and his `control-plane-self-approval` marker is still needed only for the paths CODEOWNERS keeps: Fabrika's fixed control-plane paths (`.github/`, `.claude/`, lefthook files and the fabrika-cli list). Every binding constraint above is unchanged.

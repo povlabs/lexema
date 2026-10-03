@@ -24,7 +24,7 @@ const LINKS = { settings: SETTINGS, icon: ICON };
 /** The live sites, as a request to developers.lexema.fyi names them. */
 const LIVE = { developers: "https://developers.lexema.fyi", lexema: "https://lexema.fyi" };
 /** The one address a Preview's email binding may send to (web/wrangler.jsonc). */
-const HUEY = "itshuseyingulec@gmail.com";
+const HUEY = "hueypov@gmail.com";
 
 const active = (plan: "starter" | "pro"): PlanState => ({ kind: "active", plan: { id: plan }, period: PERIOD });
 const pastDue = (plan: "starter" | "pro"): PlanState => ({ kind: "past-due", plan: { id: plan }, period: PERIOD });

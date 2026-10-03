@@ -1,6 +1,6 @@
 # Licensing and attribution for published Lexema content
 
-Research done on 2026-09-18 for [issue #6](https://github.com/hueypov/lexema/issues/6).
+Research done on 2026-09-18 for [issue #6](https://github.com/povlabs/lexema/issues/6).
 
 **This is not legal advice. Nobody who wrote this is a lawyer.** It quotes primary sources and links
 them so a human — or a real lawyer — can check the reasoning. Items that need Huey's call are marked
@@ -63,13 +63,13 @@ So the local snapshot was **most likely** extracted from the `itwiktionary-20260
 **[UNPROVEN]** This is arithmetic on dates, not evidence. kaikki could have re-run an older dump.
 So `20260701` is recorded as `inferred`, never as a fact kaikki stated.
 
-For [#28](https://github.com/hueypov/lexema/issues/28), that dump was downloaded on 2026-09-23 to
+For [#28](https://github.com/povlabs/lexema/issues/28), that dump was downloaded on 2026-09-23 to
 recover the definitions the extraction drops (SHA-1 `2bdd444236f7dcd26fee3652dbd641c31d0d9651`,
 matching Wikimedia's `dumpstatus.json`). Every one of the archive's 560,357 Italian records has a
 page of its exact title in it, and its newest revision is 2026-07-03. That is consistent with the
 inference, not proof of it ([the measurement](../reports/2026-09-23-recovered-definitions-full-release.md)).
 
-**Recorded since ([#133](https://github.com/hueypov/lexema/issues/133)).** Huey ruled that Lexema
+**Recorded since ([#133](https://github.com/povlabs/lexema/issues/133)).** Huey ruled that Lexema
 keeps this archive and states its source as the 1 July 2026 dump (ADR 0013, PR #130). The facts
 live in [`src/source/archiveFacts.ts`](../src/source/archiveFacts.ts), keyed by the SHA-256 above:
 the download URL and time from §1.1, and the dump `itwiktionary-20260701` with basis `inferred`
@@ -295,7 +295,7 @@ is looking at. If space is tight, shorten the sentence — do not move it.
 
 **If a result is a form that resolved to a different lemma** (`case` → `casa`), the notice must name
 and link **the page the text came from**, not the queried form. This is the same defect as issue
-[#16](https://github.com/hueypov/lexema/issues/16); the licence turns it from a quality bug into a
+[#16](https://github.com/povlabs/lexema/issues/16); the licence turns it from a quality bug into a
 compliance bug.
 
 ### 3.2 The public attribution page
@@ -337,8 +337,10 @@ The importer, the site, the API, the Italian adapter, the article rules **as cod
 ShareAlike attaches to Adapted Material — adaptations of the licensed text — not to software that
 processes it. Our code contains no Wiktionary text (the checked-in fixtures do; see §4.4).
 
-**[HUEY]** Pick the code licence — proprietary, MIT, AGPL, whatever fits the business. It is a free
-choice, unconstrained by the source. Recommendation: decide it when the repo goes public, not now.
+**Decided (Huey, 2026-10-03, when the repo went public):** "all rights reserved for now". The code is
+proprietary: published for reading, with no reuse licence. See [`LICENSE`](../LICENSE). Upstream-derived
+material keeps CC BY-SA 4.0 (§4.2, §4.4). A more open licence can be chosen later; an open licence
+could not be taken back.
 
 ### 4.2 Dictionary data — conditional duties and proposed CC BY-SA policy
 
@@ -370,7 +372,7 @@ What it **does** mean:
 
 - We cannot put the published data behind terms of service that forbid reuse, scraping of the
   displayed content, or redistribution. That is "additional or different terms" under 2(a)(5)(C) and
-  3(b)(3). **This directly constrains issue [#9](https://github.com/hueypov/lexema/issues/9)'s access
+  3(b)(3). **This directly constrains issue [#9](https://github.com/povlabs/lexema/issues/9)'s access
   model** — rate limits and API keys that protect the service are fine (they restrict *access to our
   service*, not the *licensed rights* in material already received); a clause saying "you may not
   redistribute the definitions you obtained" is not.
@@ -380,7 +382,7 @@ content. This is a product decision with a licence consequence, not a research q
 
 ### 4.3 Our review records — the interesting case
 
-Issue [#12](https://github.com/hueypov/lexema/issues/12) will produce records like "the source says
+Issue [#12](https://github.com/povlabs/lexema/issues/12) will produce records like "the source says
 `studente` is a verb form; we reviewed this and marked the claim disputed." Split them in two:
 
 | Kind of record | Example | Licence | Why |
@@ -464,7 +466,7 @@ So: some files need named-author credit, some need ShareAlike, some need nothing
 5. **IPA transcriptions are text**, not media. They come under the CC BY-SA 4.0 text licence like
    everything else.
 
-This is a direct constraint on issue [#20](https://github.com/hueypov/lexema/issues/20).
+This is a direct constraint on issue [#20](https://github.com/povlabs/lexema/issues/20).
 
 ### 5.2 Images — none present
 
@@ -550,7 +552,7 @@ the live page, which may have changed since.
 We must therefore retain, per served item, enough to name the release, locate the exact source value
 inside it, and build the source and history URLs — which means the word **of the record the text came
 from**, not the word the user typed. That last one is issue
-[#16](https://github.com/hueypov/lexema/issues/16), which the licence turns from a quality bug into a
+[#16](https://github.com/povlabs/lexema/issues/16), which the licence turns from a quality bug into a
 compliance bug. The field list is
 [Per-record metadata to retain](ATTRIBUTION_NOTICES.md#per-record-metadata-to-retain).
 
@@ -582,7 +584,7 @@ Licensor." We are not in a position to grant or withhold anything.
 
 **Decided since.** Huey ruled on the open decisions below on 2026-09-21, and the ruling is
 ADR 0009, `.decisions/0009-two-licences-and-a-source-link.md`, landing on
-[PR #55](https://github.com/hueypov/lexema/pull/55): two licences, one *Source* link per result, an attribution page, no audio at launch, open site terms, and a lawyer before public launch.
+[PR #55](https://github.com/povlabs/lexema/pull/55): two licences, one *Source* link per result, an attribution page, no audio at launch, open site terms, and a lawyer before public launch.
 Read this table as the history that led there, not as the current policy. The numbers are kept
 because other issues cite them.
 

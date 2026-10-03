@@ -8,18 +8,19 @@
 // built from (`RAW_PAGES`, default the dump in the repository root), both
 // checked before anything is written. See docs/RUN_AN_IMPORT.md.
 // `--plan-only` prints the plan's counts as JSON and writes nothing to the
-// database (src/update/planOnly.ts).
+// database (src/update/planOnly.ts). On a dictionary `update:upgrade` has not
+// given the tables it writes into, it plans but refuses to write.
 
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { finish, flags, isMain, usageError, type CommandResult } from "../commandLine.js";
 import { planOnlyAnswer, planOnlyFlag, planOnlyRun } from "../update/planOnly.js";
 import { readLanguageHeadings, SECTION_LANGUAGE_RULE } from "../italian/sectionLanguage.js";
-import { ARCHIVE_DUMP, VerifiedDump } from "../source/wiktionaryDump.js";
-import { readMasterRelease } from "../update/master.js";
+import { ARCHIVE_DUMP, type DumpIdentity, VerifiedDump } from "../source/wiktionaryDump.js";
+import { readMasterRelease, upgradeFirst } from "../update/master.js";
 import { masterReaderOf } from "../update/updateCli.js";
 import { findHiddenRecords, readRulePass } from "./hiddenLayer.js";
-import { planHide, unhidden } from "./hideRecords.js";
+import { missingForHide, planHide, unhidden } from "./hideRecords.js";
 import { seedTargetFrom, webWrangler, type Wrangler } from "./seedTarget.js";
 
 const USAGE = "usage: pnpm run hide:records [--out <dir>] [--plan-only]";
@@ -28,7 +29,12 @@ const log = (line: string): void => {
   process.stderr.write(`${line}\n`);
 };
 
-export async function main(env: NodeJS.ProcessEnv = process.env, args: readonly string[] = [], wrangler: Wrangler = webWrangler): Promise<CommandResult> {
+export async function main(
+  env: NodeJS.ProcessEnv = process.env,
+  args: readonly string[] = [],
+  wrangler: Wrangler = webWrangler,
+  dumpIdentity: DumpIdentity = ARCHIVE_DUMP,
+): Promise<CommandResult> {
   const { planOnly, rest } = planOnlyFlag(args);
   const options = flags(rest, ["out"]);
   if (typeof options === "string") return usageError(options, USAGE);
@@ -45,7 +51,7 @@ export async function main(env: NodeJS.ProcessEnv = process.env, args: readonly 
     return { out: `${archive} has SHA-256 ${archiveSha256}; the master ${master.releaseId} was seeded from ${master.archiveSha256}. Nothing was written.`, status: 1 };
   }
   const languages = await readLanguageHeadings(resolve("fixtures/section-language/regressions.json"));
-  const dump = await VerifiedDump.open(dumpPath, ARCHIVE_DUMP);
+  const dump = await VerifiedDump.open(dumpPath, dumpIdentity);
   let found;
   try {
     found = await findHiddenRecords(dump.pages(), pass, languages);
@@ -53,7 +59,7 @@ export async function main(env: NodeJS.ProcessEnv = process.env, args: readonly 
     await dump.close();
   }
 
-  const plan = planHide(reader, found, await readFile(resolve("src/db/schema.sql"), "utf8"));
+  const plan = planHide(reader, found);
   const byRule = [...new Set(found.map((record) => record.rule))].sort().map((rule) => `${rule} ${found.filter((record) => record.rule === rule).length}`);
   const summary = `${found.length} record(s) the rules find (${byRule.join(", ")}); ${plan.alreadyHidden} already hidden`;
   const out = resolve(options.get("out") ?? ".data/updates");
@@ -64,6 +70,8 @@ export async function main(env: NodeJS.ProcessEnv = process.env, args: readonly 
     });
   }
   if (plan.sql === "") return { out: `${summary}; nothing to hide in ${target.dictionary}`, status: 0 };
+  const needed = missingForHide(reader);
+  if (needed.length > 0) return { out: upgradeFirst(target.dictionary, needed), status: 1 };
 
   await mkdir(out, { recursive: true });
   const file = join(out, `hide-${plan.masterReleaseId}-${Date.now()}.sql`);
@@ -80,7 +88,6 @@ export async function main(env: NodeJS.ProcessEnv = process.env, args: readonly 
   return {
     out: [
       `${summary}; hidden now: ${plan.hides.length}`,
-      ...(plan.table === "none" ? [] : [`hidden_record table: ${plan.table === "create" ? "created" : "rebuilt for form-of-foreign-lemma/v1, every row kept"}`]),
       ...plan.hides.map(({ recordId, found: record }) =>
         record.rule === SECTION_LANGUAGE_RULE
           ? `  ${record.word} line ${record.lineNo} (record ${recordId}): ${record.rule}, ${record.foreign.code}, ${record.foreign.because} at line ${record.foreign.ref.line} of revision ${record.foreign.ref.revisionId}`

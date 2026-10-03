@@ -1,0 +1,9 @@
+{
+  "command": "correct:records",
+  "inputs": {},
+  "expected": {
+    "records": { "added": 0, "changed": 39, "removed": 0 },
+    "written": { "corrected_claim": 49, "correction_version": 1 },
+    "deleted": {}
+  }
+}

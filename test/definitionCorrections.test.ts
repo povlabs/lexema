@@ -30,6 +30,7 @@ import { servedVersion, versionToken } from "../src/lookup/served.js";
 import type { RecoveredDefinition } from "../src/lookup/types.js";
 import { loadFixturePages, rawPageSource, type RawPage, type RawPageSource } from "../src/source/rawPage.js";
 import type { MasterReader } from "../src/update/master.js";
+import { masterUpgradeSql } from "../src/update/masterUpgrade.js";
 import { PlanCounts } from "../src/update/planCounts.js";
 
 const RELEASE = "it-definition-corrections";
@@ -224,7 +225,7 @@ test("correct:records writes the corrections into a master seeded before them, o
     const versionBefore = versionToken(await servedVersion(fromNodeSqlite(before), RELEASE));
 
     const reader = readerOf(before);
-    const plan = planCorrections(reader, DEFINITIONS, schema);
+    const plan = planCorrections(reader, DEFINITIONS);
     const entryOf = (word: string) => (before.prepare("SELECT entry_id FROM recovered_entry WHERE word = ?").get(word) as { entry_id: number }).entry_id;
     assert.deepEqual(plan.definitions.map(describeDefinition), [
       `  page:3906191:0 grufolare (entry ${entryOf("grufolare")}): written`,
@@ -232,6 +233,10 @@ test("correct:records writes the corrections into a master seeded before them, o
     ]);
     // A definition entry changes no record; its rows are what the counts name.
     assert.deepEqual(plan.counts.toJSON(), { records: { added: 0, changed: 0, removed: 0 }, written: { corrected_definition: 2, correction_version: 1 }, deleted: {} });
+    // The SQL creates nothing (#509): the upgrade gives the master the tables, and the plan is the same after it.
+    assert.doesNotMatch(plan.sql, /\b(CREATE|DROP|ALTER)\b/);
+    execute(before, masterUpgradeSql(schema));
+    assert.equal(planCorrections(reader, DEFINITIONS).sql, plan.sql);
     execute(before, plan.sql);
     assert.deepEqual(unwritten(reader, plan), []);
 
@@ -241,14 +246,14 @@ test("correct:records writes the corrections into a master seeded before them, o
     assert.deepEqual(await lookupOf("grufolare"), [[correctionOf("grufolare").text, []]]);
     assert.equal(versionToken(await servedVersion(fromNodeSqlite(before), RELEASE)), `${versionBefore}.fix-1`);
 
-    const again = planCorrections(reader, DEFINITIONS, schema);
+    const again = planCorrections(reader, DEFINITIONS);
     assert.equal(again.sql, "");
     assert.deepEqual(again.definitions.map((entry) => entry.state), ["already", "already"]);
     assert.equal(again.counts, PlanCounts.NONE);
 
     // A held row that differs is replaced: the counts name the row deleted and the row written.
     before.exec(`UPDATE corrected_definition SET text = 'altro' WHERE entry_id = ${entryOf("tremare")}`);
-    const rewrite = planCorrections(reader, DEFINITIONS, schema);
+    const rewrite = planCorrections(reader, DEFINITIONS);
     assert.deepEqual(rewrite.definitions.map((entry) => entry.state), ["already", "write"]);
     assert.deepEqual(rewrite.counts.toJSON(), {
       records: { added: 0, changed: 0, removed: 0 },
@@ -264,7 +269,6 @@ test("correct:records writes the corrections into a master seeded before them, o
 });
 
 test("correct:records reports, and never writes, a correction the master's entry does not match", async () => {
-  const schema = await readFile(SCHEMA, "utf8");
   const later = rawPageSource([{ ...page("grufolare"), revisionId: 4100000 }, page("tremare")]);
   const { db } = await seeded([], later);
   try {
@@ -272,7 +276,7 @@ test("correct:records reports, and never writes, a correction the master's entry
     const old = await seeded([]);
     try {
       old.db.exec("DROP TABLE corrected_definition; DROP TABLE entry_example; DROP TABLE entry_label; DROP TABLE entry_definition; DROP TABLE recovered_entry;");
-      const none = planCorrections(readerOf(old.db), DEFINITIONS, schema);
+      const none = planCorrections(readerOf(old.db), DEFINITIONS);
       assert.equal(none.sql, "");
       assert.deepEqual(none.definitions.map(describeDefinition), [
         "  page:3906191:0 grufolare: not written; the master holds no page-only entry of grufolare",
@@ -282,7 +286,7 @@ test("correct:records reports, and never writes, a correction the master's entry
       old.db.close();
     }
 
-    const plan = planCorrections(readerOf(db), DEFINITIONS, schema);
+    const plan = planCorrections(readerOf(db), DEFINITIONS);
     assert.deepEqual(plan.definitions.map((entry) => (entry.state === "not-in-master" ? entry.why : entry.state)), ["revision-differs", "write"]);
     assert.match(describeDefinition(plan.definitions[0]), /another revision than 3906191/);
     execute(db, plan.sql);

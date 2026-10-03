@@ -6,7 +6,7 @@
 // same dump gives every entry the page its record was extracted from, so the
 // recovered layer can pick up the definitions the conversion dropped. It is read
 // once, at seed time, to match the archive; it is not a feed of new dumps
-// (ADR 0012). The durable copy is `source/` in `hueypov/lexema-data`.
+// (ADR 0012). The durable copy is `source/` in `povlabs/lexema-data`.
 //
 // The file is bz2-compressed MediaWiki export XML, about 830 MB unpacked. It is
 // checked against its published size and SHA-1 before any page is read, then

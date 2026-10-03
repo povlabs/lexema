@@ -1,7 +1,7 @@
 # Italian pages with definitions and no record, by layout
 
-Read-only measurement for [#474](https://github.com/hueypov/lexema/issues/474),
-part of epic [#471](https://github.com/hueypov/lexema/issues/471), 2026-10-03.
+Read-only measurement for [#474](https://github.com/povlabs/lexema/issues/474),
+part of epic [#471](https://github.com/povlabs/lexema/issues/471), 2026-10-03.
 It widens [the 2026-10-02 measurement](2026-10-02-page-entry-recovery.md) from
 form-of targets to the whole dump. It changes no production rule.
 
@@ -75,7 +75,7 @@ gives one entry per section is the open question for the ADR child of #471.
 
 ## What the production rule recovers
 
-Added for [#477](https://github.com/hueypov/lexema/issues/477). The
+Added for [#477](https://github.com/povlabs/lexema/issues/477). The
 production rule is the one the seed runs: `italian-page-entry/v1`, then
 `italian-page-entry/v2` for the pages v1 does not recover
 ([ADR 0028](../.decisions/0028-recovered-pages-any-part-of-speech.md)). The
@@ -137,7 +137,7 @@ overlap. The seeder's Node holds the whole dump's pages in memory, read once.
 
 Both runs stop at the last of 17 SQL parts unless the `corrected_claim`
 evidence check is shortened, because D1 refuses its 52-byte GLOB pattern
-([#489](https://github.com/hueypov/lexema/issues/489)). The runs above used
+([#489](https://github.com/povlabs/lexema/issues/489)). The runs above used
 that local, uncommitted change; it touches no `recovered_entry` row. Without it,
 the same seed stopped at part 17 after 732 s, before the `recovered_entry`
 rows, which are in that part.

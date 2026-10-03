@@ -1,14 +1,14 @@
 # Why `casa` has no definition
 
-Investigation for [issue #11](https://github.com/hueypov/lexema/issues/11), run 2026-09-18.
+Investigation for [issue #11](https://github.com/povlabs/lexema/issues/11), run 2026-09-18.
 
 > **Supersession.** This report supersedes the nested-markup diagnosis in
 > [the source research](2026-09-18-source-research.md), which could only call that cause
 > plausible and unproven; that report and
 > [the dataset spot check](2026-09-18-dataset-spot-check.md) are this one's inputs and stay
 > current on everything else. Nothing supersedes this report. The repair it recommends is
-> [issue #28](https://github.com/hueypov/lexema/issues/28), and the separate language-tag
-> finding is [issue #29](https://github.com/hueypov/lexema/issues/29).
+> [issue #28](https://github.com/povlabs/lexema/issues/28), and the separate language-tag
+> finding is [issue #29](https://github.com/povlabs/lexema/issues/29).
 
 To replay the regression cases, re-run the classification and re-derive the rate, follow
 [how to measure definition loss](../docs/MEASURE_DEFINITION_LOSS.md).

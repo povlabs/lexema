@@ -1,6 +1,6 @@
 # Autocomplete measurements, 2026-09-23
 
-Measurement for [#15](https://github.com/hueypov/lexema/issues/15): what the
+Measurement for [#15](https://github.com/povlabs/lexema/issues/15): what the
 suggestion query returns and costs on the full release. It describes this
 machine and this release; a different archive gives different rows. The rule
 being measured is in [LOOKUP.md § Suggestions](../docs/LOOKUP.md#suggestions).

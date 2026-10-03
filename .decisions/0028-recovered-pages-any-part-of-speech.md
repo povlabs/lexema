@@ -14,9 +14,9 @@ tags: [data, provenance]
 
 ADR 0024 recovers an entry from the raw page when the archive has no Italian record for a real Italian page. Its rule reads three layouts only, all verbs: `{{Transitivo|it}}` or `{{Intransitivo|it}}` where a part-of-speech heading would be, and a hand-written `'''''Verbo'''''`. Rule `italian-page-entry/v1` in [`src/italian/pageEntry.ts`](../src/italian/pageEntry.ts) also refuses a page with more than one part-of-speech section as `ambiguous-layout`.
 
-Epic [#471](https://github.com/hueypov/lexema/issues/471) found many more such pages. The measurement for [#474](https://github.com/hueypov/lexema/issues/474), [Italian pages with definitions and no record, by layout](../reports/2026-10-03-unrecorded-page-layouts.md), counts 245 pages in dump `itwiktionary-20260701` with Italian `#` definitions and no Italian record in release `it-0c432803`. Its fixed detector reads 192 of them with a part of speech the layout states. Rule `italian-page-entry/v1` recovers 13. Of the 245, 19 pages have several Italian part-of-speech sections, and 42 have no part-of-speech signal at all, `motteggio` among them.
+Epic [#471](https://github.com/povlabs/lexema/issues/471) found many more such pages. The measurement for [#474](https://github.com/povlabs/lexema/issues/474), [Italian pages with definitions and no record, by layout](../reports/2026-10-03-unrecorded-page-layouts.md), counts 245 pages in dump `itwiktionary-20260701` with Italian `#` definitions and no Italian record in release `it-0c432803`. Its fixed detector reads 192 of them with a part of speech the layout states. Rule `italian-page-entry/v1` recovers 13. Of the 245, 19 pages have several Italian part-of-speech sections, and 42 have no part-of-speech signal at all, `motteggio` among them.
 
-Huey ruled on 2026-10-03, recorded in [his ruling on #475](https://github.com/hueypov/lexema/issues/475#issuecomment-5969563963). Asked "Widen it?" about these pages, he answered:
+Huey ruled on 2026-10-03, recorded in [his ruling on #475](https://github.com/povlabs/lexema/issues/475#issuecomment-5969563963). Asked "Widen it?" about these pages, he answered:
 
 > yes widen it
 
@@ -24,7 +24,7 @@ Then asked "a page with several parts of speech (say noun + adjective) gives one
 
 > yes to both
 
-That ruling left three of the report's groups open. Huey answered them the same day, recorded in [his answer on #475](https://github.com/hueypov/lexema/issues/475#issuecomment-5969974580). He was asked:
+That ruling left three of the report's groups open. Huey answered them the same day, recorded in [his answer on #475](https://github.com/povlabs/lexema/issues/475#issuecomment-5969974580). He was asked:
 
 > 1. 17 pages copied from English Wiktionary, often with English definitions. My rec: keep out. Picking out the Italian ones would mean judging the text.
 > 2. 2 pages using rare templates: "verbal phrase" (`{{-loc veb-|it}}`) and "pronoun" (`{{-pron-|it}}`). My rec: admit. Both map cleanly to a part of speech.
@@ -76,7 +76,7 @@ Everything else in ADR 0024 stands, as amended by [ADR 0026](0026-recovered-entr
 
 ## Consequences
 
-- Up to 185 pages in the July dump can get an entry, against 13 today: the report's 192, less the 9 English Wiktionary copies, plus the 2 template pages. Words such as `mastoide`, `talora`, `lungo`, `piacione`, `piangere sul latte versato` and `tantundem` become findable. The rule is [#476](https://github.com/hueypov/lexema/issues/476), and the seed's candidate set is [#477](https://github.com/hueypov/lexema/issues/477).
+- Up to 185 pages in the July dump can get an entry, against 13 today: the report's 192, less the 9 English Wiktionary copies, plus the 2 template pages. Words such as `mastoide`, `talora`, `lungo`, `piacione`, `piangere sul latte versato` and `tantundem` become findable. The rule is [#476](https://github.com/povlabs/lexema/issues/476), and the seed's candidate set is [#477](https://github.com/povlabs/lexema/issues/477).
 - A word recovered from one page can have several entries, one per part of speech, as words seeded from the archive already do.
 - The rule needs a way to tell a `{{Trasfen}}` page apart, and to read `loc veb` and `pron` as the parts of speech above.
 - The 17 English Wiktionary copies, `follare`, `mezz'ora` and `volerci` among them, stay unfindable until the archive or a later decision gives them an entry.

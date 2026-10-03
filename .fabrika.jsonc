@@ -1,7 +1,8 @@
 {
   "$schema": "./.fabrika.schema.json",
-  // A diff under these roots owes a governance verdict. Same set as
-  // .github/CODEOWNERS; must include this file, or fabrika refuses to load.
+  // A diff under these roots owes a governance verdict. Wider than
+  // .github/CODEOWNERS since #532: CODEOWNERS keeps only the paths that need
+  // Huey's sign-off. Must include this file, or fabrika refuses to load.
   "governedRoots": [
     ".decisions/",
     ".claude/",
@@ -13,7 +14,7 @@
   ],
   // Names that mean something only here; the portability guard keeps them out
   // of Fabrika's own shipped text.
-  "portability": { "repoNames": ["lexema", "hueypov", "website-v2"] },
+  "portability": { "repoNames": ["lexema", "hueypov", "povlabs"] },
   // At most two claimed issue lanes at once; `lane open` and `lane emit`
   // refuse a third.
   "laneConcurrencyCap": 2,

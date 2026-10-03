@@ -102,7 +102,7 @@ exact lookup, which finds it in `andare`'s table. `exists()` answers the same
 way, so the two never disagree.
 
 `forms` are the form lines the page shows for a phrase match (`phraseForms`,
-[Huey's page-shape ruling](https://github.com/hueypov/lexema/issues/214#issuecomment-5906398940)).
+[Huey's page-shape ruling](https://github.com/povlabs/lexema/issues/214#issuecomment-5906398940)).
 For each word whose lemma is not itself, the records it heads, and in each one
 every gloss of a sense whose `form_of` edge names that lemma, with the lemma
 replaced by the phrase (`phraseGloss`): `vado`'s "prima persona singolare del
@@ -120,7 +120,7 @@ give none.
 
 Before its form lines, each record shows the meanings of the expression they
 name, the first time the page names it
-([Huey's ruling](https://github.com/hueypov/lexema/issues/214#issuecomment-5909303467)).
+([Huey's ruling](https://github.com/povlabs/lexema/issues/214#issuecomment-5909303467)).
 They are the found result's own readings, the headword's records, read by the
 same `definitionsOf` the headword's page uses, so nothing is read or stored
 twice (`phrasePage`,
@@ -135,7 +135,7 @@ Closed, a reading shows each expression's first meaning and every form line,
 then the `+ more` every reading has; the other meanings are folded under the
 first until it opens. The one *Source* links the page of the first headword shown, never the
 searched words': `vado via` links to *andare via*'s page
-([Huey's hand check](https://github.com/hueypov/lexema/issues/214#issuecomment-5910100974)).
+([Huey's hand check](https://github.com/povlabs/lexema/issues/214#issuecomment-5910100974)).
 Each form line keeps its record's provenance pointer, which reaches `vado`'s
 page, and `/attribution` carries the full credit
 ([ADR 0009](../.decisions/0009-two-licences-and-a-source-link.md)).
@@ -203,7 +203,7 @@ lemma — `studentessa` for `studenti` — is still a reading.
 ### `expressions`
 
 `wordFacts.expressions` is the record's `proverbs[]`, one row per phrase, in
-source order ([#213](https://github.com/hueypov/lexema/issues/213)). Each row
+source order ([#213](https://github.com/povlabs/lexema/issues/213)). Each row
 holds:
 
 | Field | Holds |
@@ -398,7 +398,7 @@ carry it, as the source spells it. A spelling found only in another record's
 `forms[]` is not suggested.
 
 **Expressions being typed** (#214,
-[Huey's hand check](https://github.com/hueypov/lexema/issues/214#issuecomment-5907869562)).
+[Huey's hand check](https://github.com/povlabs/lexema/issues/214#issuecomment-5907869562)).
 A prefix of two to 12 words also gets `phrases`: `phraseCompletions()` in
 [`src/lookup/phrase.ts`](../src/lookup/phrase.ts) reads every word but the
 last as its lemmas, as a phrase match does (above), and each multi-word
@@ -496,8 +496,8 @@ and 3):
    begin with it), nor keys over 30: their deletions are bound parameters, and
    D1 allows 100.
 4. **The query corrected so that it reads as an expression** (#214,
-   [Huey's updated ruling](https://github.com/hueypov/lexema/issues/214#issuecomment-5906146451)
-   and [hand check](https://github.com/hueypov/lexema/issues/214#issuecomment-5907869562)):
+   [Huey's updated ruling](https://github.com/povlabs/lexema/issues/214#issuecomment-5906146451)
+   and [hand check](https://github.com/povlabs/lexema/issues/214#issuecomment-5907869562)):
    `nearPhrases()` in [`src/lookup/phrase.ts`](../src/lookup/phrase.ts), for a
    query of two to 12 words, reads it as a phrase match does (above). What it
    offers is the typed words corrected, never the headword: searching the
