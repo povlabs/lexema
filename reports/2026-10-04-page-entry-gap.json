@@ -1,0 +1,153 @@
+{
+  "archive": {
+    "path": "it-extract.jsonl.gz",
+    "sha256": "0c432803c672aceccd48787eb64807c5366fdbd6796715c9a99e31c0024d5dcf"
+  },
+  "feed": {
+    "releaseId": "it-78385b62",
+    "sha256": "78385b6229d19ed990ada6f6f33930585701c3bdc146fb1c849818df72a3e8d4",
+    "applied": 268
+  },
+  "found": 203,
+  "local": {
+    "records": {
+      "added": 0,
+      "changed": 0,
+      "removed": 0
+    },
+    "written": {
+      "accent_fold": 5,
+      "typo_key": 1878,
+      "raw_page": 172,
+      "recovered_entry": 189,
+      "entry_definition": 219,
+      "entry_label": 129,
+      "entry_example": 21
+    },
+    "deleted": {
+      "accent_fold": 1,
+      "typo_key": 100
+    }
+  },
+  "shared": {
+    "records": {
+      "added": 0,
+      "changed": 0,
+      "removed": 0
+    },
+    "written": {
+      "accent_fold": 5,
+      "typo_key": 1827,
+      "raw_page": 169,
+      "recovered_entry": 186,
+      "entry_definition": 216,
+      "entry_label": 128,
+      "entry_example": 21
+    },
+    "deleted": {
+      "accent_fold": 1,
+      "typo_key": 100
+    }
+  },
+  "localWithoutSkipped": {
+    "records": {
+      "added": 0,
+      "changed": 0,
+      "removed": 0
+    },
+    "written": {
+      "accent_fold": 5,
+      "typo_key": 1827,
+      "raw_page": 169,
+      "recovered_entry": 186,
+      "entry_definition": 216,
+      "entry_label": 128,
+      "entry_example": 21
+    },
+    "deleted": {
+      "accent_fold": 1,
+      "typo_key": 100
+    }
+  },
+  "gapIsTheSkipped": true,
+  "skipped": [
+    {
+      "title": "antico nordico",
+      "revision": 3909947,
+      "line": 2,
+      "rule": "italian-page-entry/v2",
+      "pos": "phrase",
+      "state": "spelled-by-a-record",
+      "definitions": [
+        "variante imprecisa di norreno, antica lingua scandinava, progenitrice delle moderne lingue nordiche"
+      ],
+      "labels": 1,
+      "typoKeys": 15,
+      "records": [
+        {
+          "record_id": 560443,
+          "release_id": "it-78385b62",
+          "pos": "phrase",
+          "hidden": 0,
+          "replaced": 0,
+          "changeId": "new-d570bc0e2af1",
+          "glosses": [
+            "variante imprecisa di norreno, antica lingua scandinava, progenitrice delle moderne lingue nordiche"
+          ]
+        }
+      ]
+    },
+    {
+      "title": "orecchioni",
+      "revision": 3578655,
+      "line": 2,
+      "rule": "italian-page-entry/v2",
+      "pos": "noun",
+      "state": "spelled-by-a-record",
+      "definitions": [
+        "nome comune della parotite, infiammazione delle parotidi causata dal virus specifico"
+      ],
+      "labels": 0,
+      "typoKeys": 10,
+      "records": [
+        {
+          "record_id": 560401,
+          "release_id": "it-78385b62",
+          "pos": "noun",
+          "hidden": 0,
+          "replaced": 0,
+          "changeId": "new-17534afb3882",
+          "glosses": [
+            "nome comune della parotite, infiammazione delle parotidi causata dal virus specifico"
+          ]
+        }
+      ]
+    },
+    {
+      "title": "piangere sul latte versato",
+      "revision": 4060155,
+      "line": 2,
+      "rule": "italian-page-entry/v2",
+      "pos": "phrase",
+      "state": "spelled-by-a-record",
+      "definitions": [
+        "lamentarsi di qualcosa in ritardo"
+      ],
+      "labels": 0,
+      "typoKeys": 26,
+      "records": [
+        {
+          "record_id": 560476,
+          "release_id": "it-78385b62",
+          "pos": "phrase",
+          "hidden": 0,
+          "replaced": 0,
+          "changeId": "new-bf896a4781b2",
+          "glosses": [
+            "lamentarsi di qualcosa in ritardo"
+          ]
+        }
+      ]
+    }
+  ]
+}
