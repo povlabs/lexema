@@ -974,6 +974,51 @@ test("a real plural tagged singular is plural on its own page, and its noun's pa
   for (const noun of nouns) assert.deepEqual(readingsBesides(after[noun], ...corrected), readingsBesides(before[noun], ...corrected), noun);
 });
 
+test("the plural-gloss rule's corrections render as plain data: plural nouns and adjectives read plurale with their gender's articles, a wrong-gloss noun reads singolare (#483)", async () => {
+  const words = ["agostiniani", "guerriglieri", "curve", "competitive", "mima", "mimo"];
+  const pages = async (corrected: boolean): Promise<Record<string, string>> => {
+    let read: Record<string, string> = {};
+    await withCorrectionLines(corrected, async ({ db }) => {
+      read = Object.fromEntries(await Promise.all(words.map(async (word) => [word, await render(db, word)] as const)));
+    });
+    return read;
+  };
+  const [before, after] = [await pages(false), await pages(true)];
+
+  // `agostiniani` [noun] is tagged feminine singular: `l'agostiniani`, in the femminile singolare.
+  assert.deepEqual(headingsOf(before.agostiniani), ["1·Sostantivo·maschile, singolare", "2·Sostantivo·femminile, singolare"]);
+  assert.deepEqual(gridRows(nth(before.agostiniani, 2))[2], ["femminile", "agostinianil'agostiniani·un'agostinianiagostinianal'agostiniana·un'agostiniana", "agostinianele agostiniane·delle agostiniane"]);
+  // Corrected to masculine plural, as en.wiktionary states it: `gli agostiniani`.
+  assert.deepEqual(headingsOf(after.agostiniani), ["1·Sostantivo·maschile, singolare", "2·Sostantivo·maschile, plurale"]);
+  assert.deepEqual(gridRows(nth(after.agostiniani, 2)), [
+    HEAD,
+    ["maschile", "agostinianol'agostiniano·un agostiniano", "agostinianigli agostiniani·degli agostiniani"],
+    ["femminile", "agostinianal'agostiniana·un'agostiniana", "agostinianele agostiniane·delle agostiniane"],
+  ]);
+  // A number-only correction keeps the tagged gender: `i guerriglieri`, never `il guerriglieri`.
+  assert.deepEqual(headingsOf(before.guerriglieri), ["1·Sostantivo, forma flessa·maschile, singolare"]);
+  assert.deepEqual(headingsOf(after.guerriglieri), ["1·Sostantivo, forma flessa·maschile, plurale"]);
+  assert.deepEqual(gridRows(nth(after.guerriglieri, 1))[1], ["maschile", "guerriglieroil guerrigliero·un guerrigliero", "guerriglierii guerriglieri·dei guerriglieri"]);
+
+  // Adjectives: `curve` tagged masculine singular, `competitive` feminine singular; each heading now says plurale.
+  assert.deepEqual(headingsOf(before.curve), ["1·Aggettivo, forma flessa·maschile, singolare"]);
+  assert.deepEqual(headingsOf(after.curve), ["1·Aggettivo, forma flessa·femminile, plurale"]);
+  assert.deepEqual(gridRows(nth(after.curve, 1)), [HEAD, ["maschile", "curvoil curvo·un curvo", "curvii curvi·dei curvi"], ["femminile", "curvala curva·una curva", "curvele curve·delle curve"]]);
+  assert.deepEqual(headingsOf(before.competitive), ["1·Aggettivo, forma flessa·femminile, singolare"]);
+  assert.deepEqual(headingsOf(after.competitive), ["1·Aggettivo, forma flessa·femminile, plurale"]);
+  assert.deepEqual(gridRows(nth(after.competitive, 1))[2], ["femminile", "competitivala competitiva·una competitiva", "competitivele competitive·delle competitive"]);
+
+  // `mima` says "femminile plurale di mimo" and is mimo's femminile singolare: it stays singolare, beside mimo.
+  assert.deepEqual(headingsOf(after.mima), ["1·Sostantivo·maschile, singolare", "2·Sostantivo·femminile, singolare"]);
+  assert.deepEqual(gridRows(nth(after.mimo, 1))[2], ["femminile", "mimala mima·una mima", "mimele mime·delle mime"]);
+  assert.equal(after.mima, before.mima);
+
+  // The page shows the corrected facts as data, and nothing about the correction (ADR 0016).
+  for (const page of Object.values(after)) {
+    assert.doesNotMatch(page, /wiktionary\.org\/w\/index\.php|oldid|it-page-test:\d|corrett|corrected|correction|it-plural-gloss/i);
+  }
+});
+
 test("a record that states both numbers fills both columns and names both in its heading; a proper name names neither", async () => {
   await withFixture(async ({ db }) => {
     const khmer = nth(await render(db, "khmer"), 1);

@@ -18,6 +18,13 @@
 // each one's number to plural, checked against Wiktionary the same way. Their
 // gloss already says plural, so their noun's page does not move.
 //
+// Those 20 were checked one by one. A scan found 292 such "plurale di" records
+// tagged singular (#483), and Huey ruled to correct the rest by one rule, only
+// where en.wiktionary confirms (ADR 0027's 2026-10-03 amendment). Rule
+// `it-plural-gloss-number/v1` (pluralGlossNumber.ts) makes those entries from
+// pinned revisions (pluralGlossEvidence.ts); they follow the hand entries in
+// `CURATED_CORRECTIONS` and travel the same layer.
+//
 // A correction is a layer beside the record, never an edit of it. It names one
 // record by release, archive line and line digest, and the record's line in
 // `source_record_json` stays byte for byte. The seed writes it as a
@@ -43,6 +50,9 @@
 // reads its wording in place of the page's (src/lookup/pageEntry.ts). An entry
 // recovered from another revision, or no longer recovered at all, does not get
 // it: the seed and the run report it instead (ADR 0025).
+
+import { PLURAL_GLOSS_EVIDENCE } from "./pluralGlossEvidence.js";
+import { pluralGlossCorrections } from "./pluralGlossNumber.js";
 
 /** The dimensions a correction can set, and the values each takes. */
 export interface CorrectableValues {
@@ -205,8 +215,8 @@ const firstGloss = (text: string): OverriddenText => ({ pointer: "/senses/0/glos
 /** A real plural whose record is tagged singular at `/tags/<index>` (#449). */
 const plural = (index: number): CorrectedFacts => ({ number: { overrides: tag(index, "singular"), value: "plural" } });
 
-/** The committed list. Add an entry only with its evidence, and only on a ruling. */
-export const CURATED_CORRECTIONS: readonly CuratedCorrection[] = [
+/** The entries written by hand. Add an entry only with its evidence, and only on a ruling. */
+export const HAND_CORRECTIONS: readonly CuratedCorrection[] = [
   {
     record: { releaseId: IT, lineNo: 17564, lineSha256: "79650fc40a3d288aa01b50197e66dcb4fa6d0a81fa2065bdf3a01d156e6dc8cd", word: "fiaschetteria", pos: "noun" },
     facts: { gender: { overrides: tag(0, "masculine"), value: "feminine" } },
@@ -390,4 +400,14 @@ export const CURATED_CORRECTIONS: readonly CuratedCorrection[] = [
       { wiki: "it.wiktionary.org", title: "tremare", revisionId: 4002473, shows: "{{Trad1|fare movimenti avanti e indietro in rapida successione}}; ''(per freddo, febbre)'' [[rabbrividire]]" },
     ],
   },
+];
+
+/**
+ * The committed list: the hand entries, then the corrections rule
+ * `it-plural-gloss-number/v1` makes from its pinned evidence (#483), in archive
+ * order. A record a hand entry names is never also corrected by the rule.
+ */
+export const CURATED_CORRECTIONS: readonly CuratedCorrection[] = [
+  ...HAND_CORRECTIONS,
+  ...pluralGlossCorrections(PLURAL_GLOSS_EVIDENCE, recordCorrections(HAND_CORRECTIONS)),
 ];
