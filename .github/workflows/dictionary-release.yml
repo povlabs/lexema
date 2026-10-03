@@ -32,6 +32,8 @@ jobs:
     permissions:
       # Pushes the release branch with GITHUB_TOKEN.
       contents: write
+      # Reads whether a pull request was opened from a release branch that exists.
+      pull-requests: read
     outputs:
       release: ${{ steps.prepare.outputs.release }}
       candidate: ${{ steps.prepare.outputs.candidate }}
@@ -49,12 +51,17 @@ jobs:
         run: pnpm run release:monthly prepare
         env:
           LEXEMA_DATA_WRITE_TOKEN: ${{ secrets.LEXEMA_DATA_WRITE_TOKEN }}
+          GITHUB_TOKEN: ${{ github.token }}
 
   plan:
     needs: prepare
     if: needs.prepare.outputs.release != ''
+    # GitHub checks every job of the called workflow against this grant when it
+    # loads the file, before any `if` runs, so the grant covers the deploy job's
+    # `contents: write` too (actions/runner#4151). That job never runs here: it
+    # runs only on a push. The plan job asks for `contents: read` and gets that.
     permissions:
-      contents: read
+      contents: write
     uses: ./.github/workflows/dictionary-deploy.yml
     with:
       change: ${{ needs.prepare.outputs.change }}
@@ -83,3 +90,18 @@ jobs:
           RELEASE: ${{ needs.prepare.outputs.candidate }}
           PLAN: ${{ needs.plan.outputs.counts }}
           GITHUB_TOKEN: ${{ github.token }}
+
+  # When `plan` or `pull-request` stops red, `prepare` has already pushed the
+  # release branch and stored the release's files. Says which branch, and how
+  # to finish the release.
+  stranded:
+    needs: [prepare, plan, pull-request]
+    if: failure() && needs.prepare.outputs.release != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions: {}
+    steps:
+      - run: |
+          echo "::error::release/$RELEASE is pushed, but no pull request was opened from it. Select \"Re-run failed jobs\" on this run to open it. See docs/DEPLOY.md, \"When a run stops after prepare\"."
+        env:
+          RELEASE: ${{ needs.prepare.outputs.release }}

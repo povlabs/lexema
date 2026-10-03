@@ -6,8 +6,9 @@
 // 1. Read kaikki's Italian build log and the dump it names. Unless that dump is
 //    later than every `ARCHIVE_FACTS` entry's, stop: nothing is written.
 // 2. Download the archive. Its release id names the branch the pull request
-//    comes from; when that branch exists, a pull request was opened for the
-//    release already, and nothing is written.
+//    comes from. When that branch exists and a pull request was opened from
+//    it, nothing is written. When it exists with no pull request, an earlier
+//    run stopped red after pushing it, and this run stops red too, naming it.
 // 3. Read the build log again, and stop if it names another dump: kaikki
 //    rebuilt meanwhile, so the archive's dump is not known.
 // 4. Read the dump's size and SHA-1 from Wikimedia, download it and check it.
@@ -17,7 +18,8 @@
 //    branch `release/<release id>` and push it.
 //
 // `openReleasePullRequest`, given the plan-only run's answer: add the change
-// declaration with those counts to the branch and open the pull request.
+// declaration with those counts to the branch and open the pull request. A
+// re-run of a failed try replaces the declaration that try pushed.
 //
 // Neither step holds the Cloudflare token: the plan-only run does, in the
 // dictionary deploy workflow's own job.
@@ -62,6 +64,36 @@ export const releaseChange = (candidate: ReleaseCandidate): { command: "update:a
   inputs: { feedRelease: candidate.releaseId },
 });
 
+/**
+ * Why a release branch with no pull request stops the run: an earlier run
+ * stored the release and pushed its branch, then stopped red before the pull
+ * request opened. Re-running that run's failed jobs reuses what it stored; a
+ * fresh run would download the archive again, and its headers would not match
+ * the stored ones.
+ */
+export const strandedBranch = (branch: string): string =>
+  `the branch ${branch} exists, but no pull request was ever opened from it: the run that pushed it stopped red after its prepare job. Open that run and select "Re-run failed jobs"; docs/DEPLOY.md, "When a run stops after prepare", says what to do when it cannot be re-run`;
+
+/** The headers every GitHub API call here sends. */
+const githubHeaders = (token: string): Record<string, string> => ({
+  Accept: "application/vnd.github+json",
+  Authorization: `Bearer ${token}`,
+  "X-GitHub-Api-Version": "2022-11-28",
+});
+
+/** The URL of a pull request ever opened from `branch` in `repository` (`owner/name`), open or closed, or `undefined`. */
+export async function pullRequestFrom(fetchImpl: typeof fetch, repository: string, token: string, branch: string): Promise<string | undefined> {
+  const [owner] = repository.split("/");
+  const url = `https://api.github.com/repos/${repository}/pulls?head=${encodeURIComponent(`${owner}:${branch}`)}&state=all&per_page=1`;
+  const response = await fetchImpl(url, { headers: githubHeaders(token) });
+  const answer = (await response.json().catch(() => undefined)) as unknown;
+  if (response.status !== 200 || !Array.isArray(answer)) throw new ReleaseRefused([`GitHub answered ${response.status} to listing the pull requests from ${branch}`]);
+  const [first] = answer as { html_url?: unknown }[];
+  if (first === undefined) return undefined;
+  if (typeof first.html_url !== "string") throw new ReleaseRefused([`GitHub listed a pull request from ${branch} with no URL`]);
+  return first.html_url;
+}
+
 /** What `prepareRelease` reads, writes and is told through. */
 export interface PrepareDeps {
   readonly fetch: typeof fetch;
@@ -73,6 +105,8 @@ export interface PrepareDeps {
   readonly workDir: string;
   /** Store files in `hueypov/lexema-data` as one commit. */
   readonly store: (files: readonly StoredFile[], message: string) => Promise<StoreOutcome>;
+  /** The URL of a pull request ever opened from `branch`, open or closed, or `undefined` when none was. */
+  readonly pullRequestFrom: (branch: string) => Promise<string | undefined>;
   readonly now?: () => Date;
   readonly catalog?: ArchiveFactsCatalog;
   readonly dumps?: Readonly<Record<string, KnownDump>>;
@@ -125,7 +159,9 @@ export async function prepareRelease(deps: PrepareDeps): Promise<PrepareOutcome>
   const releaseId: ReleaseId = `it-${archiveSha256.slice(0, 8)}`;
   const branch = releaseBranch(releaseId);
   if (deps.git.run(["ls-remote", "--heads", "origin", `refs/heads/${branch}`]).trim() !== "") {
-    return { kind: "none", reason: `${releaseId} is new, but the branch ${branch} exists, so its pull request was opened already` };
+    const opened = await deps.pullRequestFrom(branch);
+    if (opened === undefined) throw new ReleaseRefused([strandedBranch(branch)]);
+    return { kind: "none", reason: `${releaseId} is new, but its pull request ${opened} was opened already from ${branch}` };
   }
 
   const log = await (await ok(deps.fetch, KAIKKI_BUILD_LOG_URL)).text();
@@ -242,23 +278,41 @@ export interface OpenDeps {
   readonly token: string;
 }
 
+/**
+ * The release branch's head when an earlier try of the same run already pushed
+ * a declaration onto `facts`, the commit `prepare` pushed, and then failed to
+ * open the pull request. That head is replaced, since a re-run plan may count
+ * differently. `undefined` when the branch is still at `facts`. Anything else
+ * on the branch is refused: it is not this run's.
+ */
+function earlierDeclaration(git: Git, branch: string, facts: string, path: string): string | undefined {
+  let head = git.run(["ls-remote", "origin", `refs/heads/${branch}`]).split("\t")[0]?.trim() ?? "";
+  if (head === facts) return undefined;
+  if (head !== "") {
+    git.run(["fetch", "--quiet", "origin", `refs/heads/${branch}`]);
+    head = git.run(["rev-parse", "FETCH_HEAD"]).trim();
+    const parent = git.run(["rev-parse", `${head}^`]).trim();
+    const changed = git.run(["diff", "--name-only", facts, head]).trim();
+    if (parent === facts && changed === path) return head;
+  }
+  throw new ReleaseRefused([`${branch} is at ${head === "" ? "no commit" : head}, not at ${facts} or one declaration on it, so this run does not own it`]);
+}
+
 /** Add the declaration with the plan-only counts to the release branch and open the pull request. Returns its URL. */
 export async function openReleasePullRequest(candidate: ReleaseCandidate, planAnswer: string, deps: OpenDeps): Promise<string> {
   const declared = declarationFor(candidate, planAnswer);
   const branch = releaseBranch(candidate.releaseId);
   await mkdir(join(deps.root, DECLARATIONS_DIR), { recursive: true });
   await writeFile(join(deps.root, declared.path), declared.text);
+  const facts = deps.git.run(["rev-parse", "HEAD"]).trim();
+  const lease = earlierDeclaration(deps.git, branch, facts, declared.path);
   deps.git.run(["add", "--", declared.path]);
   deps.git.run([...RELEASE_COMMITTER, "commit", "--quiet", "-m", `feat(update): declare the update:auto of kaikki release ${candidate.releaseId}`]);
-  deps.git.run(["push", "--quiet", "origin", `HEAD:refs/heads/${branch}`]);
+  deps.git.run(["push", "--quiet", ...(lease === undefined ? [] : [`--force-with-lease=refs/heads/${branch}:${lease}`]), "origin", `HEAD:refs/heads/${branch}`]);
 
   const response = await deps.fetch(`https://api.github.com/repos/${deps.repository}/pulls`, {
     method: "POST",
-    headers: {
-      Accept: "application/vnd.github+json",
-      Authorization: `Bearer ${deps.token}`,
-      "X-GitHub-Api-Version": "2022-11-28",
-    },
+    headers: githubHeaders(deps.token),
     body: JSON.stringify({
       title: `feat(update): kaikki Italian release ${candidate.releaseId} from ${candidate.dumpId}`,
       head: branch,

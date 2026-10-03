@@ -15,7 +15,7 @@ import { main as deployMain } from "../src/deploy/deployCli.js";
 import { gitIn } from "../src/deploy/pending.js";
 import { LANGUAGES } from "../src/deploy/writePlan.js";
 import { storeFiles, StoreRefused } from "../src/release/dataStore.js";
-import { declarationFor, openReleasePullRequest, prepareRelease, releasePullRequestBody, type PrepareDeps } from "../src/release/monthlyRelease.js";
+import { declarationFor, openReleasePullRequest, prepareRelease, pullRequestFrom, releasePullRequestBody, type PrepareDeps } from "../src/release/monthlyRelease.js";
 import { main as releaseMain } from "../src/release/releaseCli.js";
 import {
   checkRelease,
@@ -93,6 +93,8 @@ interface Network {
   asked: string[];
   pulls: { url: string; body: Record<string, unknown> }[];
   pullStatus: number;
+  /** The pull requests GitHub lists from any branch, by URL. */
+  opened?: string[];
 }
 
 function fakeFetch(network: Network): typeof fetch {
@@ -106,6 +108,9 @@ function fakeFetch(network: Network): typeof fetch {
     }
     if (url.endsWith("/dumpstatus.json")) return new Response(JSON.stringify(network.status));
     if (url.endsWith("-pages-articles.xml.bz2")) return new Response(new Uint8Array(network.dump));
+    if (url.includes("/pulls?") && init?.method === undefined) {
+      return new Response(JSON.stringify((network.opened ?? []).map((html_url) => ({ html_url }))));
+    }
     if (url.endsWith("/pulls")) {
       network.pulls.push({ url, body: JSON.parse(String(init?.body)) as Record<string, unknown> });
       return new Response(JSON.stringify({ html_url: "https://github.com/hueypov/lexema/pull/999" }), { status: network.pullStatus });
@@ -164,6 +169,7 @@ async function withWorld(run: (world: World) => Promise<void>): Promise<void> {
         root: work,
         workDir: join(dir, `downloads-${clones}`),
         store: (files, message) => storeFiles(pathToFileURL(data).href, join(dir, `data-clone-${clones++}`), files, message),
+        pullRequestFrom: (branch) => pullRequestFrom(fakeFetch(network), "hueypov/lexema", "a-token", branch),
         now: () => new Date("2026-11-05T06:17:42.123Z"),
         ...extra,
       }),
@@ -307,13 +313,70 @@ test("a new release is stored in lexema-data and its facts pushed on release/<id
     assert.equal(git(world.origin, "show", `${branch}:src/source/archiveFacts.ts`), withArchiveFacts(ARCHIVE_FACTS_TEXT, candidate).trim());
     assert.equal(git(world.origin, "show", `${branch}:src/source/wiktionaryDump.ts`), withKnownDump(KNOWN_DUMPS_TEXT, candidate).trim());
 
-    // The next month, kaikki still serves the same release: its branch stands, so nothing is written.
+    // The next month, kaikki still serves the same release: its branch stands
+    // and its pull request was opened, so nothing is written.
     git(world.work, "checkout", "--quiet", "main");
     const dataHead = git(world.data, "rev-parse", "main");
+    world.network.opened = ["https://github.com/hueypov/lexema/pull/999"];
     const again = await prepareRelease(world.deps());
     assert.equal(again.kind, "none");
-    assert.match(again.kind === "none" ? again.reason : "", /branch release\/it-[0-9a-f]{8} exists/);
+    assert.match(again.kind === "none" ? again.reason : "", /pull request https:\/\/github\.com\/hueypov\/lexema\/pull\/999 was opened already from release\/it-[0-9a-f]{8}/);
     assert.equal(git(world.data, "rev-parse", "main"), dataHead);
+  });
+});
+
+test("a release branch with no pull request from it stops the run red, naming the branch, and never reads as opened", async () => {
+  await withWorld(async (world) => {
+    const outcome = await prepareRelease(world.deps());
+    assert.ok(outcome.kind === "prepared");
+    // The run that pushed it stopped before the pull request opened.
+    git(world.work, "checkout", "--quiet", "main");
+    const dataHead = git(world.data, "rev-parse", "main");
+    await assert.rejects(
+      prepareRelease(world.deps()),
+      (error: unknown) => error instanceof ReleaseRefused && error.message.includes(`the branch ${outcome.branch} exists, but no pull request was ever opened from it`) && /Re-run failed jobs/.test(error.message),
+    );
+    assert.equal(git(world.data, "rev-parse", "main"), dataHead);
+    assert.ok(world.network.asked.some((url) => url.startsWith("https://api.github.com/repos/hueypov/lexema/pulls?head=hueypov%3Arelease%2Fit-") && url.includes("state=all")));
+  });
+});
+
+test("re-running a pull-request job that pushed its declaration and then failed replaces that declaration and opens the pull request", async () => {
+  await withWorld(async (world) => {
+    const outcome = await prepareRelease(world.deps());
+    assert.ok(outcome.kind === "prepared");
+    const tryAt = (name: string) => {
+      const checkout = join(world.dir, name);
+      git(world.dir, "clone", "--quiet", world.origin, checkout);
+      git(checkout, "checkout", "--quiet", "--detach", outcome.commit);
+      return { fetch: fakeFetch(world.network), git: gitIn(checkout), root: checkout, repository: "hueypov/lexema", token: "a-token" };
+    };
+
+    // The first try pushes its declaration, then GitHub refuses the pull request.
+    world.network.pullStatus = 403;
+    await assert.rejects(openReleasePullRequest(outcome.candidate, planAnswer(), tryAt("try-1")), /GitHub answered 403/);
+    const first = git(world.origin, "rev-parse", `refs/heads/${outcome.branch}`);
+    assert.equal(git(world.origin, "rev-parse", `${first}^`), outcome.commit);
+
+    // The re-run starts again from prepare's commit, with a plan that may count differently.
+    world.network.pullStatus = 201;
+    assert.equal(await openReleasePullRequest(outcome.candidate, planAnswer(1), tryAt("try-2")), "https://github.com/hueypov/lexema/pull/999");
+    const second = git(world.origin, "rev-parse", `refs/heads/${outcome.branch}`);
+    assert.notEqual(second, first);
+    assert.equal(git(world.origin, "rev-parse", `${second}^`), outcome.commit);
+    const path = `dictionary-changes/${RELEASE_ID}.json`;
+    assert.equal(parseDeclaration(path, git(world.origin, "show", `${second}:${path}`)).expected.records.removed, 1);
+
+    // A branch moved by anything else is not this run's, and is left alone.
+    const other = join(world.dir, "other");
+    git(world.dir, "clone", "--quiet", "--branch", outcome.branch, world.origin, other);
+    await writeFile(join(other, "README.md"), "someone else\n");
+    git(other, "add", "README.md");
+    git(other, "commit", "--quiet", "-m", "other");
+    git(other, "push", "--quiet", "origin", `HEAD:refs/heads/${outcome.branch}`);
+    const moved = git(world.origin, "rev-parse", `refs/heads/${outcome.branch}`);
+    await assert.rejects(openReleasePullRequest(outcome.candidate, planAnswer(), tryAt("try-3")), /so this run does not own it/);
+    assert.equal(git(world.origin, "rev-parse", `refs/heads/${outcome.branch}`), moved);
   });
 });
 
@@ -461,7 +524,7 @@ test("only the monthly release workflow's prepare job reads the lexema-data writ
   const workflows = resolve(".github/workflows");
   const yaml = await readFile(join(workflows, "dictionary-release.yml"), "utf8");
   const jobs = jobsOf(yaml);
-  assert.deepEqual([...jobs.keys()], ["prepare", "plan", "pull-request"]);
+  assert.deepEqual([...jobs.keys()], ["prepare", "plan", "pull-request", "stranded"]);
   assert.deepEqual([...new Set(yaml.match(/secrets\.[A-Z0-9_]+/g))], ["secrets.LEXEMA_DATA_WRITE_TOKEN"]);
   const holders = [...jobs].filter(([, block]) => block.includes("secrets.LEXEMA_DATA_WRITE_TOKEN")).map(([id]) => id);
   assert.deepEqual(holders, ["prepare"]);
@@ -480,4 +543,41 @@ test("only the monthly release workflow's prepare job reads the lexema-data writ
     if ((await readFile(join(workflows, file), "utf8")).includes("LEXEMA_DATA_WRITE_TOKEN")) readers.push(file);
   }
   assert.deepEqual(readers, ["dictionary-release.yml"]);
+});
+
+/** A job block's `permissions:` grant, scope by scope; `{}` and a missing block grant nothing. */
+function permissionsOf(block: string): Map<string, "read" | "write"> {
+  const grant = new Map<string, "read" | "write">();
+  const lines = block.split("\n");
+  const start = lines.findIndex((line) => /^ {4}permissions:/.test(line));
+  if (start === -1 || /^ {4}permissions: \{\}\s*$/.test(lines[start])) return grant;
+  assert.match(lines[start], /^ {4}permissions:\s*$/, "a job's permissions are a block of scopes or {}");
+  for (const line of lines.slice(start + 1)) {
+    if (/^ {6}#/.test(line)) continue;
+    const scope = /^ {6}([\w-]+): (read|write)\s*$/.exec(line);
+    if (scope === null) break;
+    grant.set(scope[1], scope[2] as "read" | "write");
+  }
+  return grant;
+}
+
+test("the release workflow's plan job grants every permission a job of the dictionary deploy asks for, so GitHub loads it", async () => {
+  // GitHub checks each job of a called workflow against the caller job's
+  // grant when it loads the file, before any `if` (actions/runner#4151).
+  const workflows = resolve(".github/workflows");
+  const release = jobsOf(await readFile(join(workflows, "dictionary-release.yml"), "utf8"));
+  const deploy = jobsOf(await readFile(join(workflows, "dictionary-deploy.yml"), "utf8"));
+  const granted = permissionsOf(release.get("plan") ?? "");
+  const rank = { read: 1, write: 2 } as const;
+  assert.deepEqual([...deploy.keys()], ["deploy", "plan"]);
+  for (const [job, block] of deploy) {
+    for (const [scope, level] of permissionsOf(block)) {
+      assert.ok((rank[granted.get(scope) as keyof typeof rank] ?? 0) >= rank[level], `dictionary-deploy.yml's ${job} job asks for ${scope}: ${level}, which the release workflow's plan job does not grant`);
+    }
+  }
+  assert.equal(permissionsOf(deploy.get("deploy") ?? "").get("contents"), "write");
+
+  // The job that names the branch a red run leaves runs only after prepare pushed one.
+  assert.match(release.get("stranded") ?? "", /^ {4}if: failure\(\) && needs\.prepare\.outputs\.release != ''$/m);
+  assert.match(release.get("stranded") ?? "", /Re-run failed jobs/);
 });

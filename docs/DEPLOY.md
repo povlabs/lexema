@@ -565,9 +565,10 @@ release, and nothing otherwise. Its steps are `pnpm run release:monthly`
    later than the dump of every [`ARCHIVE_FACTS`](../src/source/archiveFacts.ts)
    entry, the order `update:auto` itself requires. When it is not new, the run
    ends green: no download, nothing stored, no pull request. Otherwise it
-   downloads the archive. When the branch `release/<release id>` exists, a
-   pull request was opened for that release already, and the run ends the
-   same way. It then reads the dump's size and SHA-1 from Wikimedia's
+   downloads the archive. When the branch `release/<release id>` exists and a
+   pull request was opened from it, open or closed, the run ends the same
+   way. When it exists with no pull request, the run stops red: see
+   [When a run stops after prepare](#when-a-run-stops-after-prepare). It then reads the dump's size and SHA-1 from Wikimedia's
    `dumpstatus.json`, downloads the dump and checks it, and stores in
    `hueypov/lexema-data`, as one commit:
 
@@ -596,8 +597,9 @@ release, and nothing otherwise. Its steps are `pnpm run release:monthly`
 Merging the pull request deploys the release through
 [the dictionary deploy](#the-dictionary-deploy), which plans it again and stops
 red when the counts differ. Closing it skips the release: its branch stays, so
-a later run does not open it again. Delete the branch to have the next run
-offer the release again.
+a later run does not open it again. To have the next run offer the release
+again, delete the branch and the release's `.headers` and `.log` files, as
+[When a run stops after prepare](#when-a-run-stops-after-prepare) describes.
 
 GitHub starts no workflow for a branch pushed or a pull request opened with
 `GITHUB_TOKEN`, so the release pull request's checks do not start by
@@ -607,13 +609,35 @@ Preview.
 A stop at any step is a red run, and GitHub's failed-run email is the alert.
 No agent runs this workflow or holds its token.
 
+### When a run stops after prepare
+
+When `plan` or `pull-request` stops red, `prepare` has already stored the
+release in `hueypov/lexema-data` and pushed `release/<release id>`. The run's
+`stranded` job names that branch in an error. To finish the release:
+
+1. Fix what stopped the run, such as the pull request setting under
+   [Set up the monthly release](#set-up-the-monthly-release).
+2. Open the red run and select **Re-run failed jobs**. The re-run keeps what
+   `prepare` stored, plans again, and opens the pull request. When the earlier
+   try pushed its declaration and then failed, the re-run replaces it.
+
+Do not start a new run instead. While the branch has no pull request, every
+new run stops red at `prepare` and names the branch again.
+
+GitHub re-runs a run only within 30 days of it. After that, delete
+`release/<release id>`, and delete `source/<release id>.headers` and
+`source/<release id>.log` from `hueypov/lexema-data`. A new run then downloads
+the release again and stores those two files fresh. The archive and the dump
+are the same bytes, so they stay.
+
 ### What the monthly release reads
 
 | Name | Kind | Where | What it is |
 |---|---|---|---|
 | `dictionary-release` | GitHub environment | repository **Settings**, **Environments** | holds the secret below; its deployment branches are `main` only, so a run on any other branch never receives it. Only the `prepare` job names it |
 | `LEXEMA_DATA_WRITE_TOKEN` | environment secret | `dictionary-release` | a fine-grained GitHub token for `hueypov/lexema-data` only, **Contents** read and write. The only token that writes that repository; no other workflow reads it |
-| `GITHUB_TOKEN` | built in | `prepare`: `contents: write`; `pull-request`: `contents: write`, `pull-requests: write` | pushes `release/<release id>` and opens the pull request |
+| `GITHUB_TOKEN` | built in | `prepare`: `contents: write`, `pull-requests: read`; `pull-request`: `contents: write`, `pull-requests: write` | pushes `release/<release id>`, reads whether a pull request was opened from it, and opens the pull request |
+| `plan` job grant | `permissions` in the workflow | `contents: write` | GitHub checks every job of the called dictionary deploy against it when it loads the workflow, so it covers the deploy job's `contents: write`. That job runs only on a push, never here; the plan job asks for `contents: read` |
 | Allow GitHub Actions to create and approve pull requests | repository setting | **Settings**, **Actions**, **General**, **Workflow permissions** | on, or GitHub refuses the pull request |
 | Schedule | `on.schedule` in the workflow | `17 6 5 * *` | 06:17 UTC on the 5th of each month |
 

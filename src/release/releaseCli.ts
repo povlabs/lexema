@@ -17,13 +17,13 @@ import { type CommandResult, finish, flags, isMain, usageError } from "../comman
 import { gitIn } from "../deploy/pending.js";
 import { DeclarationRefused } from "../update/declaration.js";
 import { DATA_REPOSITORY_URL, storeFiles, StoreRefused, tokenEnvironment } from "./dataStore.js";
-import { openReleasePullRequest, prepareRelease, releaseChange } from "./monthlyRelease.js";
+import { openReleasePullRequest, prepareRelease, pullRequestFrom, releaseChange } from "./monthlyRelease.js";
 import { ReleaseCandidate, ReleaseRefused } from "./releaseCandidate.js";
 
 const USAGE = `usage:
   pnpm run release:monthly prepare
   pnpm run release:monthly open --release '<release candidate>' --plan '<plan-only answer>'
-Both run only in the monthly release workflow on main. prepare needs LEXEMA_DATA_WRITE_TOKEN; open needs GITHUB_TOKEN and GITHUB_REPOSITORY.`;
+Both run only in the monthly release workflow on main. Both need GITHUB_TOKEN and GITHUB_REPOSITORY; prepare also needs LEXEMA_DATA_WRITE_TOKEN.`;
 
 /** A refusal the steps name, as the command's answer; anything else is a fault and throws. */
 function refusal(error: unknown): CommandResult {
@@ -43,6 +43,8 @@ async function summary(env: NodeJS.ProcessEnv, text: string): Promise<void> {
 async function prepareCommand(env: NodeJS.ProcessEnv, fetchImpl: typeof fetch): Promise<CommandResult> {
   const token = env.LEXEMA_DATA_WRITE_TOKEN;
   if (token === undefined || token === "") return usageError("LEXEMA_DATA_WRITE_TOKEN is not set, so nothing can be stored in hueypov/lexema-data", USAGE);
+  const { GITHUB_TOKEN: githubToken, GITHUB_REPOSITORY: repository } = env;
+  if (githubToken === undefined || githubToken === "" || repository === undefined) return usageError("prepare needs GITHUB_TOKEN and GITHUB_REPOSITORY", USAGE);
   const workDir = await mkdtemp(join(env.RUNNER_TEMP ?? tmpdir(), "lexema-release-"));
   let outcome;
   try {
@@ -52,6 +54,7 @@ async function prepareCommand(env: NodeJS.ProcessEnv, fetchImpl: typeof fetch): 
       root: process.cwd(),
       workDir: join(workDir, "downloads"),
       store: (files, message) => storeFiles(DATA_REPOSITORY_URL, join(workDir, "lexema-data"), files, message, tokenEnvironment(token)),
+      pullRequestFrom: (branch) => pullRequestFrom(fetchImpl, repository, githubToken, branch),
       onStep: (line) => process.stderr.write(`${line}\n`),
     });
   } catch (error: unknown) {
