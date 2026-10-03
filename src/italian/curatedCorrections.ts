@@ -24,9 +24,10 @@
 // the record's own en.wiktionary page confirms them. A real singular noun whose
 // gloss wrongly says "plurale di" may instead be confirmed by its lemma's
 // it.wiktionary table of forms (`{{Tabs}}`); six of those fifteen cite only that
-// page. Rule
-// `it-plural-gloss-number/v1` (pluralGlossNumber.ts) makes those entries from
-// pinned revisions (pluralGlossEvidence.ts); they follow the hand entries in
+// page. A real singular adjective with that wrong gloss is confirmed by its own
+// en.wiktionary page only (#516). Rule `it-plural-gloss-number/v3`
+// (pluralGlossNumber.ts) makes those entries from pinned revisions
+// (pluralGlossEvidence.ts); they follow the hand entries in
 // `CURATED_CORRECTIONS` and travel the same layer.
 //
 // A correction is a layer beside the record, never an edit of it. It names one
@@ -408,7 +409,7 @@ export const HAND_CORRECTIONS: readonly CuratedCorrection[] = [
 
 /**
  * The committed list: the hand entries, then the corrections rule
- * `it-plural-gloss-number/v1` makes from its pinned evidence (#483), in archive
+ * `it-plural-gloss-number/v3` makes from its pinned evidence (#483, #516), in archive
  * order. A record a hand entry names is never also corrected by the rule.
  */
 export const CURATED_CORRECTIONS: readonly CuratedCorrection[] = [

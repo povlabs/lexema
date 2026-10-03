@@ -1,4 +1,4 @@
-// Rule `it-plural-gloss-number/v1` (#483): the scan of "plurale di" records
+// Rule `it-plural-gloss-number` (v1 #483, v3 #516): the scan of "plurale di" records
 // tagged singular, judged against pinned Wiktionary revisions. The scanned
 // records and pages are src/italian/pluralGlossEvidence.ts, which
 // `pnpm run measure:plural-gloss` writes from the archive; the lines checked
@@ -10,7 +10,7 @@ import { createHash } from "node:crypto";
 import test from "node:test";
 import { HAND_CORRECTIONS, recordCorrections } from "../src/italian/curatedCorrections.js";
 import { PLURAL_GLOSS_EVIDENCE } from "../src/italian/pluralGlossEvidence.js";
-import { judgeAll, PLURAL_GLOSS_NUMBER_RULE, scanRecord, type Verdict } from "../src/italian/pluralGlossNumber.js";
+import { judge, judgeAll, PageIndex, PLURAL_GLOSS_NUMBER_RULE, scanRecord, type ScannedRecord, type Verdict } from "../src/italian/pluralGlossNumber.js";
 import { enBlocks, enExcerpt, isPinned, itExcerpt, tabsPlaces, templatesOn } from "../src/italian/wiktionaryEvidence.js";
 import { correctionFixtureLines } from "./correctionFixture.js";
 
@@ -52,10 +52,10 @@ test("every scanned record of it-0c432803 falls in one class, and the counts are
     "plural and gender noun": 8,
     "plural and gender adj": 16,
     "singular noun": 15,
+    "singular adj": 37,
     "already-corrected noun": 13,
     "not-italian noun": 5,
     "not-italian adj": 3,
-    "singular-adjective adj": 37,
     "other-lemma noun": 8,
     "other-lemma adj": 17,
     "no-section-for-pos noun": 16,
@@ -104,7 +104,7 @@ test("each real plural cites the one en.wiktionary revision pinned for its word,
 });
 
 test("the fifteen singular nouns glossed \"plurale di\" are set singular over their gloss, each citing the revision that names it a singular", () => {
-  const singulars = VERDICTS.flatMap((verdict) => (verdict.kind === "singular" ? [verdict] : []));
+  const singulars = VERDICTS.flatMap((verdict) => (verdict.kind === "singular" && verdict.record.pos === "noun" ? [verdict] : []));
   assert.deepEqual(singulars.map((verdict) => verdict.record.word).sort(), [
     "bucaniera", "cantiniera", "condensa", "giornalaia", "giostraia", "mima", "misantropa", "nevrotica",
     "sbruffona", "sicaria", "smacchiatrice", "sociologa", "superstiziosa", "tuttologa", "virtuosa",
@@ -128,6 +128,65 @@ test("the fifteen singular nouns glossed \"plurale di\" are set singular over th
   ]);
 });
 
+test("the 37 singular adjectives glossed \"plurale di\" are set singular over their gloss, each citing its own en.wiktionary revision (#516)", () => {
+  const pages = new Map(PLURAL_GLOSS_EVIDENCE.pages.map((page) => [`${page.wiki}:${page.title}`, page]));
+  const singulars = VERDICTS.flatMap((verdict) => (verdict.kind === "singular" && verdict.record.pos === "adj" ? [verdict] : []));
+  assert.deepEqual(singulars.map((verdict) => `${verdict.record.lineNo} ${verdict.record.word}`), [
+    "97 rosa", "45589 fitta", "52779 rapida", "201735 stanca", "229294 sistemata", "403399 cosmetica", "425109 tarchiata",
+    "425110 atticciata", "427566 bruna", "439479 fosca", "441845 pietosa", "447094 devota", "447899 plantigrada",
+    "447929 etiopica", "448684 sanguinaria", "449249 sudafricana", "449259 smemorata", "449319 superstiziosa",
+    "449354 espressiva", "451448 nevrotica", "451492 atmosferica", "452450 precaria", "455653 carrellata", "459486 benevola",
+    "463417 strepitosa", "545194 severa", "547491 epicurea", "548888 neoclassica", "585981 indaffarata", "587101 riottosa",
+    "589811 asettica", "589842 spettacolosa", "600597 scarlatta", "600758 misantropa", "605182 copernicana",
+    "614285 fossilifera", "627548 melmosa",
+  ]);
+  for (const { record, correction } of singulars) {
+    assert.equal(correction.rule, PLURAL_GLOSS_NUMBER_RULE);
+    assert.deepEqual(correction.record, { releaseId: "it-0c432803", lineNo: record.lineNo, lineSha256: record.lineSha256, word: record.word, pos: "adj" });
+    assert.deepEqual(correction.facts, { number: { overrides: { pointer: "/senses/0/glosses/0", text: record.firstGloss }, value: "singular" } });
+    // One revision, the word's own en.wiktionary page; no lemma page counts for an adjective.
+    assert.equal(correction.evidence.length, 1, record.word);
+    const [evidence] = correction.evidence;
+    const page = pages.get(`en.wiktionary.org:${record.word}`);
+    assert.ok(isPinned(page), record.word);
+    assert.deepEqual([evidence.wiki, evidence.title, evidence.revisionId], ["en.wiktionary.org", record.word, page.revisionId]);
+    for (const shown of evidence.shows.split("; ")) {
+      assert.match(shown, /^={3,}(Adjective|Participle)={3,} /, record.word);
+      assert.ok(page.lines.some((line) => shown.endsWith(line)), `${record.word}: ${shown}`);
+    }
+  }
+  const rosa = verdictOf("rosa", "adj");
+  assert.equal(outcome(rosa), "singular");
+  assert.deepEqual(rosa.kind === "singular" ? rosa.correction.evidence : [], [
+    { wiki: "en.wiktionary.org", title: "rosa", revisionId: 93016003, shows: "====Participle==== {{head|it|past participle form|g=f-s}} # {{feminine singular of|it|roso}}" },
+  ]);
+});
+
+test("every correction v1 made is unchanged: the same records, facts and evidence (#516)", () => {
+  const v1 = VERDICTS.flatMap((verdict) =>
+    verdict.kind === "excluded" || (verdict.kind === "singular" && verdict.record.pos === "adj")
+      ? []
+      : [{ record: verdict.correction.record, facts: verdict.correction.facts, evidence: verdict.correction.evidence }],
+  );
+  assert.equal(v1.length, 156);
+  // The digest of the 156 corrections rule v1 made on main at 2e0e37f, the same JSON hashed the same way.
+  assert.equal(sha256(JSON.stringify(v1)), "321efebbb743d92fb0a01ec20faa6144d64e27924123f0929a836ba08d34a885");
+});
+
+test("an adjective whose own page names it both a singular and a plural of the gloss's lemma is left alone, with a reason", () => {
+  const record: ScannedRecord = {
+    lineNo: 1, lineSha256: "0".repeat(64), word: "prova", pos: "adj", langCode: "it", tags: ["feminine", "singular"], firstGloss: "plurale di provo",
+  };
+  const judged = (head: string): Verdict =>
+    judge(record, "it-0c432803", new PageIndex([{
+      wiki: "en.wiktionary.org", title: "prova", revisionId: 1,
+      lines: ["===Adjective===", head, "# {{feminine singular of|it|provo}}", "# {{feminine plural of|it|provo}}"],
+    }]), new Set());
+  // A plural head, and a head that says singular: neither may meet a singular statement.
+  assert.equal(outcome(judged("{{head|it|adjective form}}")), "sources-disagree");
+  assert.equal(outcome(judged("{{head|it|adjective form|g=f-s}}")), "sources-disagree");
+});
+
 test("the rule leaves alone what a hand entry corrects, other languages' records, and what en.wiktionary does not confirm", () => {
   const excluded = (reason: string): string[] =>
     VERDICTS.flatMap((verdict) => (verdict.kind === "excluded" && verdict.reason === reason ? [verdict.record.word] : [])).sort();
@@ -141,7 +200,6 @@ test("the rule leaves alone what a hand entry corrects, other languages' records
   // A noun record whose page files the plural under Adjective only.
   assert.equal(outcome(verdictOf("virtuosi", "noun")), "no-section-for-pos");
   assert.equal(outcome(verdictOf("marmocchie", "noun")), "no-en-page");
-  assert.equal(outcome(verdictOf("rosa", "adj")), "singular-adjective");
 });
 
 test("a page is read through its templates, and only its Italian section counts", () => {

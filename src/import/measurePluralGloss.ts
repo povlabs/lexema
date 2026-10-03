@@ -1,5 +1,5 @@
 // `pnpm run measure:plural-gloss` — the evidence fetch of rule
-// `it-plural-gloss-number/v1` (src/italian/pluralGlossNumber.ts, #483), and the
+// `it-plural-gloss-number` (src/italian/pluralGlossNumber.ts, #483), and the
 // counts it gives.
 //
 // 1. It scans the archive (`--archive`, default it-extract.jsonl.gz) for the
@@ -137,14 +137,14 @@ function moduleText(evidence: PluralGlossEvidence): string {
 const CLASSES: readonly { heading: string; holds: (verdict: Verdict) => boolean }[] = [
   { heading: "Corrected: number only", holds: (verdict) => verdict.kind === "plural" && !verdict.genderCorrected },
   { heading: "Corrected: number and gender", holds: (verdict) => verdict.kind === "plural" && verdict.genderCorrected },
-  { heading: "Corrected: wrong-gloss singular noun", holds: (verdict) => verdict.kind === "singular" },
+  { heading: "Corrected: wrong-gloss singular", holds: (verdict) => verdict.kind === "singular" },
   { heading: "Already corrected by hand (#420, #449)", holds: (verdict) => verdict.kind === "excluded" && verdict.reason === "already-corrected" },
   { heading: "Not an Italian record", holds: (verdict) => verdict.kind === "excluded" && verdict.reason === "not-italian" },
   {
     heading: "No en.wiktionary confirmation",
     holds: (verdict) => verdict.kind === "excluded" && ["no-en-page", "no-italian-entry", "no-section-for-pos", "no-plural-statement"].includes(verdict.reason),
   },
-  { heading: "Other, with a named reason", holds: (verdict) => verdict.kind === "excluded" && ["other-lemma", "sources-disagree", "singular-adjective"].includes(verdict.reason) },
+  { heading: "Other, with a named reason", holds: (verdict) => verdict.kind === "excluded" && ["other-lemma", "sources-disagree"].includes(verdict.reason) },
 ];
 
 function report(verdicts: readonly Verdict[]): string {

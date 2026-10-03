@@ -322,14 +322,15 @@ Add one declaration per pull request: the check counts only the first
 declaration a pull request adds.
 
 Deploy the Worker that reads corrections before the first such declaration. On
-`it-0c432803` the first run prints `written now: 176` and one line per entry,
-202 rows in all: the 20 hand entries write 22 (`congiuntivi` and `maniaci` set
-gender and number), and the 156 that rule `it-plural-gloss-number/v1` makes
-([#483](https://github.com/hueypov/lexema/issues/483)) write 180 (24 set
+`it-0c432803` the first run prints `written now: 213` and one line per entry,
+239 rows in all: the 20 hand entries write 22 (`congiuntivi` and `maniaci` set
+gender and number), and the 193 that rule `it-plural-gloss-number/v3` makes
+([#483](https://github.com/hueypov/lexema/issues/483),
+[#516](https://github.com/hueypov/lexema/issues/516)) write 217 (24 set
 gender and number). On a master that already holds the 20 hand entries of
 [#420](https://github.com/hueypov/lexema/issues/420) and
 [#449](https://github.com/hueypov/lexema/issues/449), it prints
-`written now: 156` and `already written` for the 20. Every later run prints
+`written now: 193` and `already written` for the 20. Every later run prints
 `nothing to write` and `already written` for each. Before a master holds
 page-only entries, the two definition corrections print `not written; the master holds no page-only entry`.
 [Loading the entries](PAGE_ENTRIES.md#load-them-into-a-seeded-dictionary)
