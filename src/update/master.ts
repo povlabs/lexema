@@ -7,6 +7,7 @@ import type { MasterRecord } from "./changes.js";
 import {
   createStatement,
   definitionOf,
+  HIDDEN_RECORD_SINCE_389,
   type KeptTable,
   masterUpgradeSql,
   REBUILT_NAMES,
@@ -39,7 +40,7 @@ export interface MasterState {
   archiveSha256: string;
   /**
    * Whether the database has the tables changes are recorded in. A master
-   * seeded before #18 has not; the first apply adds them (masterUpgrade.ts).
+   * seeded before #18 has not until `update:upgrade` adds them (masterUpgrade.ts).
    */
   upgraded: boolean;
   feeds: FeedRelease[];
@@ -70,6 +71,17 @@ export function missingUpgrade(reader: MasterReader): string[] {
 }
 
 /**
+ * Whether the master's `hidden_record` is #382's, without the column
+ * `form-of-foreign-lemma/v1` added (#389). Its stored definition then differs
+ * from schema.sql's, so `changedUpgrade` lists it and the upgrade rebuilds it;
+ * a master without the table has nothing to rebuild.
+ */
+export function hiddenRecordBefore389(reader: MasterReader): boolean {
+  const columns = select<{ name: string }>(reader, "SELECT name FROM pragma_table_info('hidden_record')").map((row) => row.name);
+  return columns.length > 0 && !columns.includes(HIDDEN_RECORD_SINCE_389);
+}
+
+/**
  * The rebuilt tables and indexes the master has whose stored definition is not
  * schema.sql's (`definitionOf`), in creation order. Any one listed makes the
  * upgrade rebuild its group (`rebuildSql`).
@@ -82,6 +94,22 @@ export function changedUpgrade(reader: MasterReader, schema: string): string[] {
     return sql !== undefined && definitionOf(sql) !== definitionOf(createStatement(schema, rebuiltKind(name), name));
   });
 }
+
+/**
+ * The upgrade names among `names` the master lacks, or holds as the upgrade
+ * still rebuilds them (`hidden_record` from before #389), in the order of
+ * `names`. A command whose SQL writes into them refuses to write while any is
+ * listed: its SQL holds no DDL, and `update:upgrade` is what clears them.
+ */
+export function upgradeNeededFor(reader: MasterReader, names: readonly string[]): string[] {
+  const needed = new Set(missingUpgrade(reader));
+  if (names.includes("hidden_record") && hiddenRecordBefore389(reader)) needed.add("hidden_record");
+  return names.filter((name) => needed.has(name));
+}
+
+/** Why a command does not write into `dictionary` while the upgrade has `needed` to do: it names the command that does it. */
+export const upgradeFirst = (dictionary: string, needed: readonly string[]): string =>
+  `${dictionary} needs pnpm run update:upgrade first, for ${needed.join(", ")}. Nothing was written.`;
 
 /** Those of `tables` the master has, with their columns and row counts. */
 function keptTables(reader: MasterReader, tables: readonly RebuiltTable[]): KeptTable[] {
@@ -136,7 +164,9 @@ export function upgradeShortfall(after: MasterReader, schema: string, plan: Pick
   const rows = new Map(keptTables(after, plan.kept.map((table) => table.name)).map((table) => [table.name, table.rows]));
   return [
     ...missingUpgrade(after).map((name) => `the upgrade did not add ${name}`),
-    ...changedUpgrade(after, schema).map((name) => `the upgrade left ${name} unlike schema.sql's definition`),
+    ...changedUpgrade(after, schema).map((name) =>
+      name === "hidden_record" && hiddenRecordBefore389(after) ? `the upgrade left hidden_record without its ${HIDDEN_RECORD_SINCE_389} column` : `the upgrade left ${name} unlike schema.sql's definition`,
+    ),
     ...plan.kept
       .filter((table) => rows.get(table.name) !== table.rows)
       .map((table) => `the upgrade left ${rows.get(table.name) ?? 0} row(s) in ${table.name}, which held ${table.rows}`),

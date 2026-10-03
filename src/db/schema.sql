@@ -29,7 +29,8 @@
 
 -- Live-hide cache revision. A nonempty hide increments it in the same
 -- transaction as its serving-index changes. Older masters acquire this table
--- on their first live hide; an absent table or row means revision zero.
+-- from `update:upgrade` (src/update/masterUpgrade.ts), which a hide waits for;
+-- an absent table or row means revision zero.
 CREATE TABLE hide_version (
   singleton INTEGER PRIMARY KEY CHECK (singleton = 1),
   revision INTEGER NOT NULL CHECK (revision > 0)
@@ -714,7 +715,9 @@ CREATE TABLE corrected_claim (
 
 -- Live-correction cache revision, like hide_version: a nonempty
 -- `correct:records` transaction increments it, so card and suggestion
--- addresses move with the corrected facts. Absent means revision zero.
+-- addresses move with the corrected facts. Older masters acquire this table
+-- from `update:upgrade`, which `correct:records` waits for; absent means
+-- revision zero.
 CREATE TABLE correction_version (
   singleton INTEGER PRIMARY KEY CHECK (singleton = 1),
   revision INTEGER NOT NULL CHECK (revision > 0)
@@ -913,7 +916,7 @@ CREATE TABLE entry_example (
 -- at its place is the line and text the list quotes. A layer beside the entry,
 -- never an edit of it: entry_definition keeps the page's own words, and a
 -- lookup reads `text` in their place. Absent on a master seeded before it until
--- `correct:records` writes it.
+-- `update:upgrade` creates it; a lookup reads an absent one as empty.
 CREATE TABLE corrected_definition (
   entry_id         INTEGER NOT NULL,
   definition_index INTEGER NOT NULL,

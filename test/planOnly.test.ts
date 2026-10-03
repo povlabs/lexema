@@ -212,3 +212,45 @@ test("correct:records --plan-only counts what the list writes and leaves the loc
     await rm(dir, { recursive: true, force: true });
   }
 });
+
+test("correct:records on a dictionary without its tables plans the same counts but refuses to write until update:upgrade ran (#509)", async () => {
+  const lines = await correctionFixtureLines();
+  const corrections = atFixtureLines(lines, RELEASE);
+  const dir = await mkdtemp(join(tmpdir(), "lexema-plan-only-correct-upgrade-"));
+  const input = join(dir, "fixture.jsonl");
+  await writeFile(input, `${lines.join("\n")}\n`);
+  const report = await seedSql({
+    input, outputDir: join(dir, "sql"), schema: resolve("src/db/schema.sql"), releaseId: RELEASE,
+    requiredWords: [], validateFixtureClosure: false, corrections: [],
+  });
+  const db = new DatabaseSync(":memory:");
+  try {
+    for (const part of report.parts) db.exec(await readFile(part, "utf8"));
+    // A dictionary seeded before #420.
+    db.exec("DROP TABLE corrected_claim; DROP TABLE correction_version;");
+    const d1 = localD1(dir, db);
+    const run = async (...args: string[]) => correctMain({ SEED_STATE: d1.persistTo }, [...args, "--out", join(dir, "out")], d1.wrangler, corrections);
+
+    const before = d1.sha256();
+    const planned = JSON.parse((await run("--plan-only")).out);
+    assert.deepEqual(planned.counts, { records: { added: 0, changed: 25, removed: 0 }, written: { corrected_claim: 29, correction_version: 1 }, deleted: {} });
+    const refused = await run();
+    assert.deepEqual(refused, {
+      out: `${d1.target.dictionary} needs pnpm run update:upgrade first, for correction_version, corrected_claim. Nothing was written.`,
+      status: 1,
+    });
+    assert.equal(d1.sha256(), before);
+    assert.deepEqual(writes(d1), []);
+
+    assert.equal((await updateMain(["upgrade", "--out", join(dir, "out")], d1.wrangler, { SEED_STATE: d1.persistTo })).status, 0);
+    const upgraded = JSON.parse((await run("--plan-only")).out);
+    assert.deepEqual(upgraded.counts, planned.counts);
+    const written = await run();
+    assert.equal(written.status, 0, written.out);
+    assert.equal(writes(d1).length, 2, "the upgrade, then the corrections");
+    assert.doesNotMatch(await readFile(writes(d1)[1][1], "utf8"), /\b(CREATE|DROP|ALTER)\b/);
+  } finally {
+    db.close();
+    await rm(dir, { recursive: true, force: true });
+  }
+});

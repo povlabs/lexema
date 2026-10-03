@@ -22,15 +22,17 @@ import { findNearby } from "../src/lookup/nearby.js";
 import { randomHeadword } from "../src/lookup/random.js";
 import { suggest } from "../src/lookup/suggest.js";
 import { everyRecovered, type FoundResult, type LookupResult, type Reading } from "../src/lookup/types.js";
-import { ApplyRefused, checkApplied, chooseChanges, planApply, type ApplyPlan } from "../src/update/apply.js";
+import { ApplyRefused, checkApplied, chooseChanges, missingForApply, planApply, type ApplyPlan } from "../src/update/apply.js";
 import type { Change } from "../src/update/changes.js";
 import { diffAgainstMaster, reportMarkdown, reportOf, type MasterDiff } from "../src/update/diff.js";
 import { changedUpgrade, missingUpgrade, planUpgrade, rebuildsOf, upgradeShortfall, type MasterReader } from "../src/update/master.js";
 import { overlongPatterns, sqlPatterns } from "../src/db/d1PatternLimit.js";
 import {
   columnsOf,
+  CORRECTION_TABLES,
   createStatement,
   definitionOf,
+  HIDE_TABLES,
   masterUpgradeSql,
   rebuildSql,
   PAGE_ENTRY_CORRECTION_TABLES,
@@ -44,7 +46,7 @@ import {
 } from "../src/update/masterUpgrade.js";
 import { COUNTED_TABLES } from "../src/update/planCounts.js";
 import { planOnlyRun } from "../src/update/planOnly.js";
-import { masterReaderOf } from "../src/update/updateCli.js";
+import { executeApply, main as updateMain, masterReaderOf } from "../src/update/updateCli.js";
 import { localD1 } from "./localD1.js";
 import { planCorrections } from "../src/import/correctRecords.js";
 import type { CuratedCorrection } from "../src/italian/curatedCorrections.js";
@@ -227,7 +229,6 @@ const changeOf = (found: MasterDiff, kind: Change["kind"], word: string): Change
 async function applied(db: DatabaseSync, later: string, words: readonly [Change["kind"], string][]): Promise<ApplyPlan> {
   const found = await diffed(db, later);
   const plan = await planApply(readerOf(db), found, chooseChanges(found, words.map(([kind, word]) => changeOf(found, kind, word).id)), {
-    schema: await readFile(SCHEMA, "utf8"),
     appliedAt: "2026-10-01T12:00:00Z",
     catalog: fixtureCatalog(found),
   });
@@ -487,7 +488,6 @@ test("an apply that stops partway leaves the master as it was before it started"
     const found = await diffed(db, later);
     const before = dump(db);
     const plan = await planApply(readerOf(db), found, chooseChanges(found, [changeOf(found, "changed", "casa").id, changeOf(found, "new", "città").id]), {
-      schema: await readFile(SCHEMA, "utf8"),
       appliedAt: "2026-10-01T12:00:00Z",
       catalog: fixtureCatalog(found),
     });
@@ -521,15 +521,16 @@ test("a second apply from the same release adds to it, and the diff then reads t
   });
 });
 
-test("an apply brings a master seeded before #18 up to the schema, and the upgrade is safe to run twice", async () => {
+test("the upgrade brings a master seeded before #18 up to the schema and is safe to run twice, and an apply waits for it", async () => {
   const fresh = new DatabaseSync(":memory:");
   fresh.exec(await readFile(SCHEMA, "utf8"));
   const schemaOf = (db: DatabaseSync) => JSON.stringify(db.prepare("SELECT type, name, sql FROM sqlite_schema ORDER BY name").all());
   const old = new DatabaseSync(":memory:");
   old.exec(await readFile(SCHEMA, "utf8"));
   for (const view of [...SERVING_VIEWS].reverse()) old.exec(`DROP VIEW ${view}`);
-  for (const table of [...UPDATE_TABLES, ...PAGE_ENTRY_TABLES, ...PAGE_ENTRY_CORRECTION_TABLES].reverse()) old.exec(`DROP TABLE ${table}`);
+  for (const table of [...UPDATE_TABLES, ...PAGE_ENTRY_TABLES, ...PAGE_ENTRY_CORRECTION_TABLES, ...CORRECTION_TABLES, ...HIDE_TABLES].reverse()) old.exec(`DROP TABLE ${table}`);
   assert.deepEqual(missingUpgrade(readerOf(old)), [...UPGRADE_NAMES]);
+  assert.deepEqual(UPGRADE_NAMES.filter((name) => [...CORRECTION_TABLES, ...HIDE_TABLES].includes(name as never)), ["correction_version", "corrected_claim", "hide_version", "hidden_record"]);
   const upgrade = masterUpgradeSql(await readFile(SCHEMA, "utf8"));
   const asFresh = (db: DatabaseSync) => schemaOf(db).replaceAll("CREATE TABLE IF NOT EXISTS", "CREATE TABLE").replaceAll("CREATE INDEX IF NOT EXISTS", "CREATE INDEX");
   old.exec(upgrade);
@@ -538,12 +539,39 @@ test("an apply brings a master seeded before #18 up to the schema, and the upgra
   old.exec(upgrade);
   assert.equal(asFresh(old), schemaOf(fresh));
 
-  // A seeded master without them: the diff reads it, and the apply adds them.
-  await withDesk(async ({ db, later }) => {
+  // A seeded master without them: the diff reads it and the apply plans, but
+  // the apply carries no DDL (#509), so it refuses to write until the upgrade ran.
+  await withDesk(async ({ db, later, dir }) => {
     for (const view of [...SERVING_VIEWS].reverse()) db.exec(`DROP VIEW ${view}`);
     for (const table of [...UPDATE_TABLES].reverse()) db.exec(`DROP TABLE ${table}`);
-    await applied(db, later, [["changed", "casa"]]);
-    assert.equal(readings(await ask(db, "casa"))[0].senses.length, 2);
+    const d1 = localD1(dir, db);
+    const reader = masterReaderOf(d1.target);
+    const found = await diffAgainstMaster(reader, later);
+    const plan = await planApply(reader, found, chooseChanges(found, [changeOf(found, "changed", "casa").id]), {
+      appliedAt: "2026-10-01T12:00:00Z",
+      catalog: fixtureCatalog(found),
+    });
+    assert.doesNotMatch(plan.sql, /\b(CREATE|DROP|ALTER)\b/);
+    assert.deepEqual(missingForApply(reader), [...UPDATE_TABLES, ...SERVING_VIEWS]);
+    const before = d1.sha256();
+    const refused = await executeApply(d1.target, reader, plan, join(dir, "out"), false);
+    assert.deepEqual(refused, {
+      out: `${d1.target.dictionary} needs pnpm run update:upgrade first, for ${[...UPDATE_TABLES, ...SERVING_VIEWS].join(", ")}. Nothing was written.`,
+      status: 1,
+    });
+    assert.equal(d1.sha256(), before);
+    assert.ok(d1.calls.every((call) => call[0] === "--json"), "every call reads");
+
+    assert.equal((await updateMain(["upgrade", "--out", join(dir, "out")], d1.wrangler, { SEED_STATE: d1.persistTo })).status, 0);
+    assert.deepEqual(missingForApply(reader), []);
+    const written = await executeApply(d1.target, reader, plan, join(dir, "out"), false);
+    assert.equal(written.status, 0, written.out);
+    const upgraded = d1.open();
+    try {
+      assert.equal(readings(await ask(upgraded, "casa"))[0].senses.length, 2);
+    } finally {
+      upgraded.close();
+    }
   });
 });
 
@@ -711,19 +739,19 @@ test("automatic updates follow A→B→C, retain source and hand rows, move inde
     const catalog: Record<string, ArchiveFactsCatalog[string]> = { ...fixtureCatalog(foundB) };
     const beforeHand = handRows(db);
     const versionA = await servedVersion(fromNodeSqlite(db), MASTER);
-    const planB = await automaticPlan(reader, foundB, pages, { schema, appliedAt: "2026-10-01T12:00:00Z", catalog });
+    const planB = await automaticPlan(reader, foundB, pages, { appliedAt: "2026-10-01T12:00:00Z", catalog });
     assert.ok(planB);
     assert.deepEqual(planB.changes.map(({ change }) => change.word).sort(), ["casa", "città"]);
     // A partial prior application may leave eligible records from this same feed.
     const casaChange = chooseChanges(foundB, [changeOf(foundB, "changed", "casa").id]);
-    const partial = await planApply(reader, foundB, casaChange, { schema, appliedAt: "2026-10-01T12:00:00Z", catalog });
+    const partial = await planApply(reader, foundB, casaChange, { appliedAt: "2026-10-01T12:00:00Z", catalog });
     execute(db, partial.sql);
     const casaB = readings(await ask(db, "casa"))[0];
     assert.deepEqual(glosses(casaB), ["abitazione corretta", "nucleo familiare"]);
     assert.equal((await ask(db, "casette")).outcome, "found");
     const versionB = await servedVersion(fromNodeSqlite(db), MASTER);
     assert.notDeepEqual(versionB, versionA);
-    const remaining = await automaticPlan(reader, await diffed(db, later), pages, { schema, appliedAt: "2026-10-01T13:00:00Z", catalog });
+    const remaining = await automaticPlan(reader, await diffed(db, later), pages, { appliedAt: "2026-10-01T13:00:00Z", catalog });
     assert.ok(remaining);
     assert.deepEqual(remaining.changes.map(({ change }) => change.word), ["città"]);
     execute(db, remaining.sql);
@@ -734,7 +762,7 @@ test("automatic updates follow A→B→C, retain source and hand rows, move inde
     await writeFile(next, gzipSync(Buffer.from(`${[removed, CANE, CITTA, SALE_SALT, SALE_PLURAL].join("\n")}\n`)));
     const foundC = await diffed(db, next);
     catalog[foundC.feed.archiveSha256] = { ...catalog[foundB.feed.archiveSha256], dump: { id: "itwiktionary-20261001", basis: "recorded" } };
-    const planC = await automaticPlan(reader, foundC, { ...pages, dump: "itwiktionary-20261001" }, { schema, appliedAt: "2026-10-02T12:00:00Z", catalog });
+    const planC = await automaticPlan(reader, foundC, { ...pages, dump: "itwiktionary-20261001" }, { appliedAt: "2026-10-02T12:00:00Z", catalog });
     assert.ok(planC);
     assert.deepEqual(planC.changes.map(({ change }) => change.word), ["casa"]);
     execute(db, planC.sql);
@@ -761,7 +789,7 @@ test("automatic updates follow A→B→C, retain source and hand rows, move inde
     const versionC = await servedVersion(fromNodeSqlite(db), MASTER);
     assert.notDeepEqual(versionC, versionBeforeC);
     const stable = dump(db);
-    assert.equal(await automaticPlan(reader, await diffed(db, next), { ...pages, dump: "itwiktionary-20261001" }, { schema, appliedAt: "2026-10-02T13:00:00Z", catalog }), null);
+    assert.equal(await automaticPlan(reader, await diffed(db, next), { ...pages, dump: "itwiktionary-20261001" }, { appliedAt: "2026-10-02T13:00:00Z", catalog }), null);
     assert.equal(dump(db), stable);
     assert.throws(() => execute(db, planC.sql));
     assert.equal(dump(db), stable, "replaying stale SQL fails atomically, not a supported no-op");
@@ -769,8 +797,8 @@ test("automatic updates follow A→B→C, retain source and hand rows, move inde
     const refreshed = await diffed(db, next);
     assert.throws(() => chooseChanges(refreshed, planC.changes.map(({ change }) => change.id)), /not a change/);
     assert.equal(dump(db), stable);
-    await assert.rejects(planApply(reader, foundC, [planC.changes[0].change, planC.changes[0].change], { schema, appliedAt: "2026-10-02T13:00:00Z", catalog }), /duplicate changes/);
-    await assert.rejects(automaticPlan(reader, await diffed(db, later), pages, { schema, appliedAt: "2026-10-02T13:00:00Z", catalog }), /not a newer dump/);
+    await assert.rejects(planApply(reader, foundC, [planC.changes[0].change, planC.changes[0].change], { appliedAt: "2026-10-02T13:00:00Z", catalog }), /duplicate changes/);
+    await assert.rejects(automaticPlan(reader, await diffed(db, later), pages, { appliedAt: "2026-10-02T13:00:00Z", catalog }), /not a newer dump/);
     assert.equal(dump(db), stable);
   }, { master: [CASA_FIXED, CANE, SALA, SALE_SALT, SALE_PLURAL], hand: CASA_HAND, later: [corrected, CANE, CITTA, SALE_SALT_LATER, SALE_PLURAL_LATER, VENGO] });
 });
@@ -784,9 +812,9 @@ test("selection refuses unknown, invalid, same-dump and regressive source orderi
     const before = dump(db);
     for (const [dumpId, expected] of [["itwiktionary-20260701", /not a newer dump/], ["itwiktionary-20260601", /not a newer dump/], ["itwiktionary-20260230", /invalid dump date/]] as const) {
       const altered: ArchiveFactsCatalog = { ...catalog, [found.feed.archiveSha256]: { ...catalog[found.feed.archiveSha256], dump: { id: dumpId, basis: "recorded" } } };
-      await assert.rejects(automaticPlan(readerOf(db), found, pages, { schema, appliedAt: "2026-10-01T12:00:00Z", catalog: altered }), expected);
+      await assert.rejects(automaticPlan(readerOf(db), found, pages, { appliedAt: "2026-10-01T12:00:00Z", catalog: altered }), expected);
     }
-    await assert.rejects(automaticPlan(readerOf(db), found, pages, { schema, appliedAt: "2026-10-01T12:00:00Z", catalog: {} }), /no dated dump facts/);
+    await assert.rejects(automaticPlan(readerOf(db), found, pages, { appliedAt: "2026-10-01T12:00:00Z", catalog: {} }), /no dated dump facts/);
     assert.equal(dump(db), before);
   });
 });
@@ -798,7 +826,7 @@ test("update:auto's plan-only run returns its counts and leaves a local D1 byte-
     const before = d1.sha256();
     const found = await diffAgainstMaster(reader, later);
     const pages = { dump: "itwiktionary-20260901", pages: [], languages: LanguageHeadings.fromList(["it", "en"]) };
-    const plan = await automaticPlan(reader, found, pages, { schema: await readFile(SCHEMA, "utf8"), appliedAt: "2026-10-01T12:00:00Z", catalog: fixtureCatalog(found) });
+    const plan = await automaticPlan(reader, found, pages, { appliedAt: "2026-10-01T12:00:00Z", catalog: fixtureCatalog(found) });
     assert.ok(plan);
     const run = planOnlyRun("update:auto", plan.counts, reader);
     assert.deepEqual(run.counts.records, { added: 2, changed: 2, removed: 0 });
@@ -817,6 +845,27 @@ test("update:auto's plan-only run returns its counts and leaves a local D1 byte-
   });
 });
 
+test("an update:auto apply holds no DDL and leaves the schema, the serving views' stored SQL included, as it was (#509)", async () => {
+  await withDesk(async ({ db, later }) => {
+    const reader = readerOf(db);
+    const found = await diffAgainstMaster(reader, later);
+    const pages = { dump: "itwiktionary-20260901", pages: [], languages: LanguageHeadings.fromList(["it", "en"]) };
+    const plan = await automaticPlan(reader, found, pages, { appliedAt: "2026-10-01T12:00:00Z", catalog: fixtureCatalog(found) });
+    assert.ok(plan);
+    assert.deepEqual(missingForApply(reader), []);
+    assert.doesNotMatch(plan.sql, /\b(CREATE|DROP|ALTER)\b/);
+    const views = () => db.prepare("SELECT name, sql FROM sqlite_schema WHERE type = 'view' ORDER BY name").all().map((row) => ({ ...row }));
+    // SQLite moves schema_version on every schema change, a view dropped and created again included.
+    const schemaVersion = () => (db.prepare("PRAGMA schema_version").get() as { schema_version: number }).schema_version;
+    const [heldViews, heldVersion] = [views(), schemaVersion()];
+    assert.deepEqual(heldViews.map(({ name }) => name), [...SERVING_VIEWS].sort());
+    execute(db, plan.sql);
+    assert.deepEqual(checkApplied(reader, plan), { missing: [], differing: [] });
+    assert.deepEqual(views(), heldViews);
+    assert.equal(schemaVersion(), heldVersion);
+  });
+});
+
 test("a curated correction stays on the record a change retires, and the apply reports it rather than carry it over (#420)", async () => {
   await withDesk(async ({ db, later }) => {
     const [{ record_id: casaId }] = db.prepare(`SELECT record_id FROM source_record WHERE release_id = '${MASTER}' AND line_no = 1`).all() as { record_id: number }[];
@@ -827,7 +876,7 @@ test("a curated correction stays on the record a change retires, and the apply r
       evidence: [{ wiki: "it.wiktionary.org", title: "casa", revisionId: 1, shows: "synthetic" }],
     };
     const schema = await readFile(SCHEMA, "utf8");
-    execute(db, planCorrections(readerOf(db), [casa], schema).sql);
+    execute(db, planCorrections(readerOf(db), [casa]).sql);
     const genders = async (): Promise<string[]> =>
       readings(await ask(db, "casa")).flatMap((reading) =>
         reading.grammar.record.flatMap((claim) => (claim.status !== "unclassified" && claim.status !== "missing" && claim.dimension === "gender" ? [`${claim.status} ${claim.value}`] : [])),
@@ -841,7 +890,7 @@ test("a curated correction stays on the record a change retires, and the apply r
     assert.deepEqual(await genders(), ["stated feminine"]);
     // The correction stays on the retired record, and a later run reports it instead of writing it.
     assert.deepEqual(db.prepare("SELECT record_id FROM corrected_claim").all().map((row) => ({ ...row })), [{ record_id: casaId }]);
-    const again = planCorrections(readerOf(db), [casa], schema);
+    const again = planCorrections(readerOf(db), [casa]);
     assert.equal(again.sql, "");
     assert.deepEqual(again.entries.map((entry) => entry.state), ["retired"]);
   });

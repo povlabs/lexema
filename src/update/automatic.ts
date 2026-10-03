@@ -9,9 +9,9 @@ export async function automaticPlan(
   reader: MasterReader,
   found: MasterDiff,
   pages: FeedPages,
-  { schema, appliedAt, catalog = ARCHIVE_FACTS }: { schema: string; appliedAt: string; catalog?: ArchiveFactsCatalog },
+  { appliedAt, catalog = ARCHIVE_FACTS }: { appliedAt: string; catalog?: ArchiveFactsCatalog },
 ): Promise<ApplyPlan | null> {
   const selection = await selectChanges(reader, found, pages, catalog);
   if (selection.taken.length === 0) return null;
-  return planApply(reader, found, chooseChanges(found, selection.taken.map(({ id }) => id)), { schema, appliedAt, catalog });
+  return planApply(reader, found, chooseChanges(found, selection.taken.map(({ id }) => id)), { appliedAt, catalog });
 }

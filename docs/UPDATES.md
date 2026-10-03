@@ -231,10 +231,13 @@ and so every card's address and every suggestion request's address
 ## An older master
 
 A master seeded before #18 has none of `feed_release`, `applied_change` or the
-views that read them. The diff reads such a master as it is. The apply's SQL
-starts by creating the tables if they are absent and replacing the views, read
+views that read them. The diff and the apply's plan read such a master as it
+is. The apply's SQL holds no DDL
+([#509](https://github.com/povlabs/lexema/issues/509)), so the apply refuses
+to write until `pnpm run update:upgrade` has created the tables and views, read
 out of `schema.sql` itself ([src/update/masterUpgrade.ts](../src/update/masterUpgrade.ts)),
-so a fresh seed and an upgraded master have the same shape.
+so a fresh seed and an upgraded master have the same shape. The dictionary
+deploy runs the upgrade before any declaration.
 
 ## What this does not do
 

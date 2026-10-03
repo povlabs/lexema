@@ -47,12 +47,14 @@ run:
 pnpm run update:upgrade
 ```
 
-This adds the update tables and views, and the empty page-entry tables (#403),
-without writing records. It also rebuilds the page-entry tables, rows kept,
-when one is stored with a definition other than schema.sql's
-([DEPLOY.md](DEPLOY.md#the-dictionary-deploy), step 3). It names what it adds
-or rebuilds for; running it again changes nothing. The first apply also upgrades, but lookups need the views before any
-change is applied. Lookups do not need the page-entry tables
+This adds the update tables and views, the empty page-entry tables (#403),
+and the tables `correct:records` and `hide:records` write, without writing
+records. It also rebuilds the page-entry tables, rows kept, when one is stored
+with a definition other than schema.sql's, and a `hidden_record` from before
+#389 ([DEPLOY.md](DEPLOY.md#the-dictionary-deploy), step 3). It names what it
+adds or rebuilds for; running it again changes nothing. No apply upgrades:
+`update:apply` and `update:auto` carry no DDL and refuse to write until the
+upgrade has run (#509). Lookups do not need the page-entry tables
 ([a dictionary without them](PAGE_ENTRIES.md#a-dictionary-without-the-tables)).
 `pnpm run load:page-entries` fills them; its deploy order, restore route and
 cache movement are in

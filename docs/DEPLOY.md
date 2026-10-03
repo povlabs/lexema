@@ -53,14 +53,15 @@ combined with the data identity read now.
 A nonempty `hide:records` transaction increments the singleton `hide_version`
 revision alongside its serving-index changes. An empty plan writes nothing; a
 failed transaction publishes neither the hide nor its revision. A master seeded
-before this mechanism reads as revision zero until its first nonempty hide creates
-the table in that same transaction. Deploy this reader before running a live hide;
+before this mechanism reads as revision zero. `update:upgrade` creates the table,
+and the hide refuses to write until it has. Deploy this reader before running a live hide;
 an older Worker cannot use the new revision. The operator's procedure remains
 [Hiding records](RUN_AN_IMPORT.md#hide-another-languages-records-in-a-seeded-database).
 
 A nonempty `correct:records` transaction does the same with the singleton
 `correction_version`, which adds `.fix-N` to the address, and an absent table
-reads as zero. Deploy this reader before running it live, too. The procedure is
+reads as zero. `update:upgrade` creates it, with `corrected_claim`, before the
+command writes. Deploy this reader before running it live, too. The procedure is
 [Write the curated corrections](RUN_AN_IMPORT.md#write-the-curated-corrections-into-a-seeded-database).
 
 Old card requests reaching the Worker still redirect to the current address with
@@ -456,10 +457,16 @@ upload of a release
    The run then runs the upgrade's DDL
    ([`update:upgrade`](../src/update/masterUpgrade.ts)) as its own batch, so
    no declaration's SQL carries DDL
-   ([#507](https://github.com/povlabs/lexema/issues/507)). It does so when
+   ([#507](https://github.com/povlabs/lexema/issues/507),
+   [#509](https://github.com/povlabs/lexema/issues/509)). The upgrade
+   creates the tables every write command writes into, `corrected_claim`,
+   `correction_version`, `hidden_record` and `hide_version` among them, so a
+   feed apply, a correction or a hide changes no schema. It does so when
    the dictionary lacks a table, index or view the upgrade creates, or when
    it stores a rebuilt table or its index with a definition other than
-   [schema.sql](../src/db/schema.sql)'s. Comments and spacing do not count.
+   [schema.sql](../src/db/schema.sql)'s, such as a `hidden_record` from
+   before [#389](https://github.com/povlabs/lexema/issues/389), without
+   `lemma_line`. Comments and spacing do not count.
    The rebuilt tables come in three groups (`REBUILT_GROUPS`): the four
    page-entry tables with `corrected_definition`; `recovered_definition` with
    `recovered_label` and `recovered_example`; and `hidden_record`. For a
