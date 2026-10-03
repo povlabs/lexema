@@ -8,8 +8,15 @@
 // Every form in a conjugation links to its own search; grid forms do not.
 
 import type { ReactNode } from "react";
-import type { SourceForm } from "@lexema/lookup/types.ts";
-import type { Conjugation, MoodTable, NonFinite, Person, Tense } from "@/lib/dictionary/conjugation.ts";
+import {
+  isSourceForm,
+  type Conjugation,
+  type MoodTable,
+  type NonFinite,
+  type Person,
+  type TableForm,
+  type Tense,
+} from "@/lib/dictionary/conjugation.ts";
 import { GENDER_LABEL, NUMBER_LABEL, NUMBERS, type Grid, type GridCell } from "@/lib/dictionary/genderGrid.ts";
 import { More, MoreBlock, MorePanel } from "./More";
 import { MoodTabs } from "./MoodTabs";
@@ -54,6 +61,9 @@ import {
 
 export const searchHref = (word: string): string => `/?q=${encodeURIComponent(word)}`;
 
+/** A form's place in the source, which no other form in a table shares. */
+const formKey = ({ ref }: TableForm): string => `${ref.releaseId}\u0000${ref.lineNo}\u0000${ref.jsonPointer}`;
+
 function Dash() {
   return (
     <span className={DASH} aria-hidden="true">
@@ -79,8 +89,11 @@ function GridCellView({ cell }: { cell: GridCell }) {
               data-form={spelling.forms.length > 0 ? spelling.forms.map((form) => form.index).join(" ") : undefined}
               data-headword={spelling.headword ? "" : undefined}
               data-line={
-                spelling.declaredBy.length > 0
-                  ? spelling.declaredBy.map((record) => record.refs[0].lineNo).join(" ")
+                spelling.declaredBy.length + spelling.declaredForms.length > 0
+                  ? [
+                      ...spelling.declaredBy.map((record) => record.refs[0].lineNo),
+                      ...spelling.declaredForms.map((form) => form.ref.lineNo),
+                    ].join(" ")
                   : undefined
               }
             >
@@ -144,13 +157,18 @@ export function SuperlativeGrid({ grid }: { grid: Grid }) {
 }
 
 /** One spelling, linked to its search, carrying every source entry that spells it here. */
-function FormLink({ forms, searched }: { forms: readonly SourceForm[]; searched: boolean }) {
+function FormLink({ forms, searched }: { forms: readonly TableForm[]; searched: boolean }) {
+  // A record's own entry is named by its index in `forms[]`; a declared
+  // lemma's form is a record of its own, named by its line.
+  const own = forms.filter(isSourceForm);
+  const declared = forms.filter((form) => !isSourceForm(form));
   return (
     <a
       className={searched ? FORM_LINK_SEARCHED : FORM_LINK}
       href={searchHref(forms[0].surface)}
       lang="it"
-      data-form={forms.map((form) => form.index).join(" ")}
+      data-form={own.length > 0 ? own.map((form) => form.index).join(" ") : undefined}
+      data-line={declared.length > 0 ? declared.map((form) => form.ref.lineNo).join(" ") : undefined}
       data-searched={searched ? "" : undefined}
     >
       {forms[0].surface}
@@ -163,8 +181,8 @@ function FormLink({ forms, searched }: { forms: readonly SourceForm[]; searched:
  * A spelling the source files twice in the slot (`abbisognare` repeats its
  * whole table) shows once and keeps both entries.
  */
-function FormLinks({ forms, searched }: { forms: readonly SourceForm[]; searched: (form: SourceForm) => boolean }) {
-  const spellings: SourceForm[][] = [];
+function FormLinks({ forms, searched }: { forms: readonly TableForm[]; searched: (form: TableForm) => boolean }) {
+  const spellings: TableForm[][] = [];
   for (const form of forms) {
     const same = spellings.find((group) => group[0].surface === form.surface);
     if (same === undefined) spellings.push([form]);
@@ -173,7 +191,7 @@ function FormLinks({ forms, searched }: { forms: readonly SourceForm[]; searched
   return (
     <>
       {spellings.map((group, i) => (
-        <span key={group[0].index}>
+        <span key={formKey(group[0])}>
           {i > 0 && <span className={CELL_SEPARATOR}>, </span>}
           <FormLink forms={group} searched={group.some(searched)} />
         </span>
@@ -188,7 +206,7 @@ const NON_FINITE_SHOWN: NonFinite["label"][] = ["gerundio", "participio", "ausil
  * Gerundio · participio · ausiliare, and any other non-finite form the source
  * lists (`participio presente`). A slot the source leaves empty is a dash.
  */
-function NonFiniteLine({ items, searched }: { items: readonly NonFinite[]; searched: (form: SourceForm) => boolean }) {
+function NonFiniteLine({ items, searched }: { items: readonly NonFinite<TableForm>[]; searched: (form: TableForm) => boolean }) {
   const labels = [...new Set([...items.map((item) => item.label), ...NON_FINITE_SHOWN])].sort(
     (a, b) => ORDER.indexOf(a) - ORDER.indexOf(b),
   );
@@ -227,11 +245,11 @@ function TenseTables({
   tenses,
   searched,
 }: {
-  table: MoodTable;
-  tenses: readonly Tense[];
-  searched: (form: SourceForm) => boolean;
+  table: MoodTable<TableForm>;
+  tenses: readonly Tense<TableForm>[];
+  searched: (form: TableForm) => boolean;
 }) {
-  const pairs: Tense[][] = [];
+  const pairs: Tense<TableForm>[][] = [];
   for (let i = 0; i < tenses.length; i += 2) pairs.push(tenses.slice(i, i + 2));
   return (
     <div className={TENSE_PAIRS}>
@@ -286,7 +304,7 @@ function TenseTables({
  * *Tempi semplici*, *Tempi composti* (board f9vHId) — and `less` ends them;
  * closed, the simple tenses need no name.
  */
-function MoodPanelView({ table, searched }: { table: MoodTable; searched: (form: SourceForm) => boolean }) {
+function MoodPanelView({ table, searched }: { table: MoodTable<TableForm>; searched: (form: TableForm) => boolean }) {
   return (
     <MoreBlock className={MOOD_PANEL} open={table.compoundSearched}>
       {table.simple.length > 0 && (
@@ -319,11 +337,11 @@ export function ConjugationView({
   searchedPointers,
   word,
 }: {
-  conjugation: Conjugation;
+  conjugation: Conjugation<TableForm>;
   searchedPointers: ReadonlySet<string>;
   word: string;
 }): ReactNode {
-  const searched = (form: SourceForm) => searchedPointers.has(form.ref.jsonPointer);
+  const searched = (form: TableForm) => searchedPointers.has(form.ref.jsonPointer);
   return (
     <>
       <NonFiniteLine items={conjugation.nonFinite} searched={searched} />
