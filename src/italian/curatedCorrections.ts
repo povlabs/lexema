@@ -19,8 +19,12 @@
 // gloss already says plural, so their noun's page does not move.
 //
 // Those 20 were checked one by one. A scan found 292 such "plurale di" records
-// tagged singular (#483), and Huey ruled to correct the rest by one rule, only
-// where en.wiktionary confirms (ADR 0027's 2026-10-03 amendment). Rule
+// tagged singular (#483), and Huey ruled to correct the rest by one rule (ADR
+// 0027's 2026-10-03 amendment). A plural's number and gender change only where
+// the record's own en.wiktionary page confirms them. A real singular noun whose
+// gloss wrongly says "plurale di" may instead be confirmed by its lemma's
+// it.wiktionary table of forms (`{{Tabs}}`); six of those fifteen cite only that
+// page. Rule
 // `it-plural-gloss-number/v1` (pluralGlossNumber.ts) makes those entries from
 // pinned revisions (pluralGlossEvidence.ts); they follow the hand entries in
 // `CURATED_CORRECTIONS` and travel the same layer.
