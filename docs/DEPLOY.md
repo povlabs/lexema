@@ -429,16 +429,33 @@ accepts this, since only reviewed build commands use it.
    log starts with `sweep:` lines, deletes that branch's Preview and app D1,
    and then deploys production.
 
+## CI runners
+
+Every GitHub Actions job here runs on a GitHub-hosted `ubuntu-latest` runner.
+`povlabs/lexema` is a public repository, so those minutes are free
+([GitHub Actions billing](https://docs.github.com/en/billing/managing-billing-for-your-products/managing-billing-for-github-actions/about-billing-for-github-actions)).
+Do not use a self-hosted runner on this repository: a pull request from a fork
+can run code on it
+([self-hosted runner security](https://docs.github.com/en/actions/hosting-your-own-runners/managing-self-hosted-runners/about-self-hosted-runners#self-hosted-runner-security)).
+Which change starts which workflow is in
+[DEVELOPMENT.md](../DEVELOPMENT.md#ci-gates).
+
 ## The dictionary deploy
 
 [`dictionary-deploy.yml`](../.github/workflows/dictionary-deploy.yml) runs on
-every push to `main`, one run at a time. It writes every declared change to
+every push to `main`, its `deploy` job one run at a time. It writes every declared change to
 the shared dictionary D1 `lexema-dictionary`, and it is the only thing that
 moves `production`
 ([ADR 0018](../.decisions/0018-previews-on-workers-builds.md)). One write to
 `lexema-dictionary` still runs from Huey's laptop, outside it: the one-time
 upload of a release
-([RUN_AN_IMPORT.md](RUN_AN_IMPORT.md#load-a-release-into-cloudflare-d1)). Its steps are
+([RUN_AN_IMPORT.md](RUN_AN_IMPORT.md#load-a-release-into-cloudflare-d1)).
+
+Most pushes declare nothing. So the workflow's first job, `gate`, reads
+`production..<the run's commit>` with no install and no secret. When that range
+adds or changes nothing under `dictionary-changes/`, `gate` fast-forwards
+`production` itself and the run ends in seconds; a commit `production` already
+holds needs nothing. Otherwise it starts the `deploy` job, whose steps are
 `pnpm run deploy:dictionary` ([src/deploy/](../src/deploy/dictionaryDeploy.ts)):
 
 1. It reads the [change declarations](../dictionary-changes/README.md) added in
@@ -545,10 +562,10 @@ request's own code.
 
 | Name | Kind | Where | What it is |
 |---|---|---|---|
-| `dictionary-deploy` | GitHub environment | repository **Settings**, **Environments** | holds the two secrets and the variable below; its deployment branches are `main` only, so a run on any other branch never receives them. Both jobs name it |
+| `dictionary-deploy` | GitHub environment | repository **Settings**, **Environments** | holds the secret and the variable below; its deployment branches are `main` only, so a run on any other branch never receives them. The `deploy` and `plan` jobs name it; the `gate` job takes no environment and no secret |
 | `CLOUDFLARE_D1_TOKEN` | environment secret | `dictionary-deploy` | a Cloudflare API token with one permission, **Account**, **D1**, **Edit**. Wrangler reads it as `CLOUDFLARE_API_TOKEN`. The only Cloudflare credential in GitHub that can write; the other one is the [pull request plan check](#the-pull-request-plan-check)'s read-only token |
 | `CLOUDFLARE_ACCOUNT_ID` | environment variable | `dictionary-deploy` | the Cloudflare account id that owns `lexema-dictionary`; not secret |
-| `GITHUB_TOKEN` | built in | the `deploy` job, `contents: write` | pushes `production`. A push that is not a fast-forward is refused |
+| `GITHUB_TOKEN` | built in | the `gate` and `deploy` jobs, `contents: write` | pushes `production`. A push that is not a fast-forward is refused |
 | `production` | branch | this repository | the commit whose dictionary changes are in place. Workers Builds deploys it ([Workers Builds](#workers-builds)) |
 | Git branch (the production branch) | Workers Builds setting | the Worker's **Settings**, **Build**, **Branch control** | `production` |
 
@@ -605,7 +622,12 @@ a new declaration its `expected` counts, so one pull request carries a change
 and its declaration
 ([ADR 0018](../.decisions/0018-previews-on-workers-builds.md), #494, #498). It runs
 `pnpm run deploy:dictionary --plan-only --added-since HEAD^1` on the pull
-request's merge commit ([src/deploy/](../src/deploy/pullRequestPlan.ts)):
+request's merge commit ([src/deploy/](../src/deploy/pullRequestPlan.ts)). A
+later push to the pull request plans again when that push itself changes
+`dictionary-changes/`, or when the plan on the previous head did not conclude
+success (red, cancelled, unfinished or unreadable). Otherwise it skips, and its
+green carries the previous green forward. A newer push cancels a plan still
+running.
 
 1. It reads the declarations the pull request adds, in path order, the order
    the deploy takes them from the one commit a pull request lands as. A
@@ -630,7 +652,8 @@ request's merge commit ([src/deploy/](../src/deploy/pullRequestPlan.ts)):
      request once the earlier ones are deployed.
 
 It writes nothing: no bookmark, no SQL file run on the dictionary, no branch
-moved. Its job has `contents: read` and no other permission. It runs only for
+moved. Its job has `contents: read`, and `actions: read` to read this
+workflow's run on the previous head, and no other permission. It runs only for
 this repository's own branches: a fork's pull request never runs it, and
 `pull_request` gives a fork's run no secret anyway. The deploy still holds
 every declaration to `expected` at merge, so a count that went stale between
@@ -765,7 +788,7 @@ are the same bytes, so they stay.
 | `dictionary-release` | GitHub environment | repository **Settings**, **Environments** | holds the secret below; its deployment branches are `main` only, so a run on any other branch never receives it. Only the `prepare` job names it |
 | `LEXEMA_DATA_WRITE_TOKEN` | environment secret | `dictionary-release` | a fine-grained GitHub token for `povlabs/lexema-data` only, **Contents** read and write. The only token that writes that repository; no other workflow reads it |
 | `GITHUB_TOKEN` | built in | `prepare`: `contents: write`, `pull-requests: read`; `pull-request`: `contents: write`, `pull-requests: write` | pushes `release/<release id>`, reads whether a pull request was opened from it, and opens the pull request |
-| `plan` job grant | `permissions` in the workflow | `contents: write` | GitHub checks every job of the called dictionary deploy against it when it loads the workflow, so it covers the deploy job's `contents: write`. That job runs only on a push, never here; the plan job asks for `contents: read` |
+| `plan` job grant | `permissions` in the workflow | `contents: write` | GitHub checks every job of the called dictionary deploy against it when it loads the workflow, so it covers the `gate` and `deploy` jobs' `contents: write`. Those jobs run only on a push, never here; the plan job asks for `contents: read` |
 | Allow GitHub Actions to create and approve pull requests | repository setting | **Settings**, **Actions**, **General**, **Workflow permissions** | on, or GitHub refuses the pull request |
 | Schedule | `on.schedule` in the workflow | `17 6 5 * *` | 06:17 UTC on the 5th of each month |
 

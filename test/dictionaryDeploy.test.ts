@@ -813,11 +813,15 @@ test("the workflow reads the public lexema-data with no token, and every job giv
   assert.deepEqual([...new Set(yaml.match(/secrets\.[A-Z0-9_]+/g))].sort(), ["secrets.CLOUDFLARE_D1_TOKEN"]);
   assert.doesNotMatch(yaml, /LEXEMA_DATA/);
   const jobs = jobsOf(yaml);
-  assert.deepEqual([...jobs.keys()], ["deploy", "plan"]);
+  assert.deepEqual([...jobs.keys()], ["gate", "deploy", "plan"]);
   for (const [id, block] of jobs) {
     if (block.includes("secrets.CLOUDFLARE_D1_TOKEN")) assert.match(block, /^ {4}environment: dictionary-deploy$/m, id);
   }
-  assert.match(jobs.get("deploy") ?? "", /if: github\.event_name == 'push'/);
+  // The gate only fast-forwards `production` when nothing is declared (#521):
+  // no secret, no environment, no install, and the deploy waits on its answer.
+  assert.doesNotMatch(jobs.get("gate") ?? "", /secrets\.|environment:|pnpm/);
+  assert.match(jobs.get("deploy") ?? "", /^ {4}needs: gate$/m);
+  assert.match(jobs.get("deploy") ?? "", /if: github\.event_name == 'push' && needs\.gate\.outputs\.deploy == 'true'/);
   assert.match(jobs.get("plan") ?? "", /--plan-only/);
   assert.doesNotMatch(jobs.get("plan") ?? "", /contents: write/);
 
@@ -847,8 +851,9 @@ test("the pull request plan check gets only the D1 read-only token, in its own e
   assert.match(plan, /^ {4}environment: dictionary-plan$/m);
   // At least the deploy's own plan job's limit, since it may download an archive and a dump.
   assert.ok(Number(/^ {4}timeout-minutes: (\d+)$/m.exec(plan)?.[1]) >= 60, plan);
-  // `contents: read` and nothing else: no write, no deployment, no pull request comment.
-  assert.match(plan, /^ {4}permissions:\n {6}contents: read\n {4}env:/m);
+  // Two reads and nothing else: the tree, and the plan's own earlier runs that
+  // decide a skip (#521). No write, no deployment, no pull request comment.
+  assert.match(plan, /^ {4}permissions:\n {6}contents: read\n(?: {6}#.*\n)* {6}actions: read\n {4}env:/m);
   const runs = [...plan.matchAll(/- run: (.*)/g)].map(([, command]) => command);
   assert.deepEqual(runs.filter((command) => command.includes("deploy:dictionary")), ["pnpm run deploy:dictionary --plan-only --added-since HEAD^1"]);
 });

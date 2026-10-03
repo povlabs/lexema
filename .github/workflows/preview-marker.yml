@@ -33,11 +33,16 @@ concurrency:
 jobs:
   announce:
     name: announce the Preview
-    # Every CI job's check run completes too; only Workers Builds' own starts a runner.
+    # `on:` cannot filter by check name, so every completed check run starts a
+    # workflow run; only Workers Builds' own successful build of a pull
+    # request's branch starts a runner. `main` and `production` builds belong
+    # to no pull request, so they would only find nothing to announce (#521).
     if: >-
       github.event.check_run.app.slug == 'cloudflare-workers-and-pages' &&
       github.event.check_run.name == 'Workers Builds: lexema-web' &&
-      github.event.check_run.conclusion == 'success'
+      github.event.check_run.conclusion == 'success' &&
+      github.event.check_run.check_suite.head_branch != 'main' &&
+      github.event.check_run.check_suite.head_branch != 'production'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:

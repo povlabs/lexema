@@ -5,25 +5,33 @@ step under `.github/workflows/` that scans something and reports clean or red.
 
 ## The shape
 
-The scan step in [`leak-guard.yml`](../.github/workflows/leak-guard.yml) is the
+The scan step in [`secrets.yml`](../.github/workflows/secrets.yml) is the
 reference. It reads the changed-file list, refuses when that read fails, treats an
-empty list as a fact, and only then hands the list to the scanner:
+empty list as a fact, and only then hands the list to the scanners:
 
 ```sh
 set -uo pipefail
 git fetch --no-tags origin "$BASE_REF"
-if ! diff_out="$(git diff --name-only --diff-filter=ACMR "origin/$BASE_REF...HEAD")"; then
+list="$RUNNER_TEMP/changed"
+if ! git diff -z --name-only --diff-filter=ACMR "origin/$BASE_REF...HEAD" > "$list"; then
   echo "::error::could not diff origin/$BASE_REF...HEAD — refusing to report clean over nothing."
   exit 1
 fi
 changed=()
-while IFS= read -r f; do [ -n "$f" ] && changed+=("$f"); done <<< "$diff_out"
+while IFS= read -r -d '' f; do if [ -n "$f" ]; then changed+=("$f"); fi; done < "$list"
 if [ "${#changed[@]}" -eq 0 ]; then
   echo "No changed files — nothing to scan."
   exit 0
 fi
-pnpm exec fabrika guard leak-guard scan "${changed[@]}"
+failed=0
+if ! pnpm exec fabrika guard leak-guard scan "${changed[@]}"; then failed=1; fi
+exit "$failed"
 ```
+
+The list is NUL-delimited (`-z`), so a path with a non-ASCII letter, such as
+`purità.wikitext`, reaches the scanners as itself rather than as Git's quoted
+octal escape (#520). Two scans in one step each set `failed` and the step exits
+on it last, so one scan's red never skips the other.
 
 Four rules, each visible above:
 
@@ -45,9 +53,9 @@ Four rules, each visible above:
 
 ## When this applies
 
-Every `run:` block that produces a verdict: today the scan steps of
-[`leak-guard.yml`](../.github/workflows/leak-guard.yml) and
-[`gitleaks.yml`](../.github/workflows/gitleaks.yml). An install step that only
+Every `run:` block that produces a verdict: today the scan step of
+[`secrets.yml`](../.github/workflows/secrets.yml) and the `gate` step of
+[`dictionary-deploy.yml`](../.github/workflows/dictionary-deploy.yml). An install step that only
 fetches a pinned binary may keep `set -euo pipefail`, because any failure there is
 the right red and nothing after it needs the status. Adapted from phoenix's
 [shell shape](https://github.com/kamp-us/phoenix/blob/main/.patterns/skill-script-shell-shape.md)
@@ -62,7 +70,7 @@ list yields "nothing to scan", and the scanner never runs. Rule 1 and rule 2 exi
 keep "empty" and "unreadable" on different exit codes.
 
 Rule 4 is the one a careful reader still gets wrong, because the YAML never shows
-the `-e`. The tail of `gitleaks.yml` once ran the scanner bare, then read
+the `-e`. The gitleaks scan, then in its own `gitleaks.yml`, once ran the scanner bare, then read
 `code=$?` and branched on it to print a specific remediation. With `-e` inherited
 from the runner, an exit 3 aborted the step before that line, so the step was red for
 the right reason and the message was dead code. The gate stayed fail-closed; only the
