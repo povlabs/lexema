@@ -1,0 +1,101 @@
+name: Dictionary deploy
+
+# Applies the change declarations a merge to `main` adds to the shared
+# dictionary D1, then fast-forwards `production`, which Workers Builds deploys
+# the site from (ADR 0018, #456). The steps are src/deploy/dictionaryDeploy.ts;
+# docs/DEPLOY.md lists every secret, variable and setting read here. No agent
+# runs this workflow or holds its Cloudflare token.
+#
+# The plan-only entry (`workflow_dispatch`, or `workflow_call` from the monthly
+# release workflow) plans one change and writes nothing.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      change:
+        description: 'The change to plan, as JSON: {"command": ..., "inputs": {...}}'
+        required: true
+        type: string
+  workflow_call:
+    inputs:
+      change:
+        description: 'The change to plan, as JSON: {"command": ..., "inputs": {...}}'
+        required: true
+        type: string
+    outputs:
+      counts:
+        description: The plan-only run's answer, as JSON
+        value: ${{ jobs.plan.outputs.counts }}
+
+permissions: {}
+
+jobs:
+  deploy:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    # The environment is restricted to `main`, so a run on any other branch
+    # never receives its secrets.
+    environment: dictionary-deploy
+    # One run at a time, never cancelled half way: the next run's range starts
+    # where `production` is left.
+    concurrency:
+      group: dictionary-deploy
+      cancel-in-progress: false
+    permissions:
+      # Pushes `production` with GITHUB_TOKEN.
+      contents: write
+    env:
+      WRANGLER_SEND_METRICS: "false"
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          # The run reads `production..main`.
+          fetch-depth: 0
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run deploy:dictionary
+        env:
+          SEED_REMOTE: lexema-dictionary
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_D1_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+          LEXEMA_DATA_TOKEN: ${{ secrets.LEXEMA_DATA_READ_TOKEN }}
+
+  plan:
+    if: github.event_name != 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    environment: dictionary-deploy
+    concurrency:
+      group: dictionary-plan
+      cancel-in-progress: false
+    permissions:
+      contents: read
+    outputs:
+      counts: ${{ steps.plan.outputs.counts }}
+    env:
+      WRANGLER_SEND_METRICS: "false"
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - id: plan
+        run: pnpm run deploy:dictionary --plan-only --change "$CHANGE"
+        env:
+          CHANGE: ${{ inputs.change }}
+          SEED_REMOTE: lexema-dictionary
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_D1_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+          LEXEMA_DATA_TOKEN: ${{ secrets.LEXEMA_DATA_READ_TOKEN }}
