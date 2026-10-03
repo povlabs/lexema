@@ -36,7 +36,7 @@ This record amends [ADR 0012](0012-archive-is-the-release-seed.md) in part. Its 
 - No mark of a correction on the page.
 - A correction is never carried onto a record that replaces the corrected one; the update reports it.
 - No definition wording Lexema writes lands without Huey's approval of the exact wording on its PR.
-- No AI-generated fact or wording enters through this layer.
+- No AI-generated fact enters this layer. Wording an agent drafts enters only after Huey approves it on the PR (#450).
 
 ## Consequences
 
