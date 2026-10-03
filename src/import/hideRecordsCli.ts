@@ -16,7 +16,7 @@ import { join, resolve } from "node:path";
 import { finish, flags, isMain, usageError, type CommandResult } from "../commandLine.js";
 import { planOnlyAnswer, planOnlyFlag, planOnlyRun } from "../update/planOnly.js";
 import { readLanguageHeadings, SECTION_LANGUAGE_RULE } from "../italian/sectionLanguage.js";
-import { ARCHIVE_DUMP, VerifiedDump } from "../source/wiktionaryDump.js";
+import { ARCHIVE_DUMP, type DumpIdentity, VerifiedDump } from "../source/wiktionaryDump.js";
 import { readMasterRelease, upgradeFirst } from "../update/master.js";
 import { masterReaderOf } from "../update/updateCli.js";
 import { findHiddenRecords, readRulePass } from "./hiddenLayer.js";
@@ -29,7 +29,12 @@ const log = (line: string): void => {
   process.stderr.write(`${line}\n`);
 };
 
-export async function main(env: NodeJS.ProcessEnv = process.env, args: readonly string[] = [], wrangler: Wrangler = webWrangler): Promise<CommandResult> {
+export async function main(
+  env: NodeJS.ProcessEnv = process.env,
+  args: readonly string[] = [],
+  wrangler: Wrangler = webWrangler,
+  dumpIdentity: DumpIdentity = ARCHIVE_DUMP,
+): Promise<CommandResult> {
   const { planOnly, rest } = planOnlyFlag(args);
   const options = flags(rest, ["out"]);
   if (typeof options === "string") return usageError(options, USAGE);
@@ -46,7 +51,7 @@ export async function main(env: NodeJS.ProcessEnv = process.env, args: readonly 
     return { out: `${archive} has SHA-256 ${archiveSha256}; the master ${master.releaseId} was seeded from ${master.archiveSha256}. Nothing was written.`, status: 1 };
   }
   const languages = await readLanguageHeadings(resolve("fixtures/section-language/regressions.json"));
-  const dump = await VerifiedDump.open(dumpPath, ARCHIVE_DUMP);
+  const dump = await VerifiedDump.open(dumpPath, dumpIdentity);
   let found;
   try {
     found = await findHiddenRecords(dump.pages(), pass, languages);

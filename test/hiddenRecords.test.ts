@@ -7,6 +7,7 @@
 // or `it-extract.jsonl.gz`.
 
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -15,6 +16,7 @@ import { after, before, test } from "node:test";
 import { gzipSync } from "node:zlib";
 import { findForeignRecords, findHiddenRecords, readRulePass } from "../src/import/hiddenLayer.js";
 import { missingForHide, planHide, unhidden } from "../src/import/hideRecords.js";
+import { main as hideMain } from "../src/import/hideRecordsCli.js";
 import { seedSql, type SeedSqlReport } from "../src/import/seedSql.js";
 import { readLanguageHeadings } from "../src/italian/sectionLanguage.js";
 import { fromNodeSqlite } from "../src/lookup/database.js";
@@ -29,7 +31,7 @@ import { createStatement, masterUpgradeSql } from "../src/update/masterUpgrade.j
 import { overlongPatterns } from "../src/db/d1PatternLimit.js";
 import { COUNTED_TABLES } from "../src/update/planCounts.js";
 import { planOnlyRun } from "../src/update/planOnly.js";
-import { masterReaderOf } from "../src/update/updateCli.js";
+import { main as updateMain, masterReaderOf } from "../src/update/updateCli.js";
 import { localD1 } from "./localD1.js";
 
 const RELEASE = "it-hidden-test";
@@ -473,3 +475,61 @@ test("the update refuses a master whose record at a found line is another word",
     db.close();
   }
 });
+
+const escapeXml = (text: string): string => text.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;");
+
+/** PAGES as a `pages-articles` export, and the identity its bytes are. */
+async function dumpOfPages(path: string) {
+  const xml = PAGES.map((page) => `  <page>\n    <title>${escapeXml(page.title)}</title>\n    <ns>0</ns>\n    <revision>\n      <id>${page.revisionId}</id>\n      <timestamp>${page.timestamp}</timestamp>\n      <text xml:space="preserve">${escapeXml(page.wikitext)}</text>\n    </revision>\n  </page>`).join("\n");
+  const bytes = Buffer.from(`<mediawiki>\n${xml}\n</mediawiki>\n`);
+  await writeFile(path, bytes);
+  return { bytes: bytes.length, sha1: createHash("sha1").update(bytes).digest("hex") };
+}
+
+const fileWrites = (calls: string[][]): string[][] => calls.filter((call) => call[0] === "--file");
+
+for (const { slug, name, needed, unready } of [
+  { slug: "cli-missing", name: "without hidden_record or hide_version", needed: "hide_version, hidden_record", unready: (db: DatabaseSync) => db.exec("DROP TABLE hidden_record; DROP TABLE hide_version") },
+  {
+    slug: "cli-before-389",
+    name: "with a hidden_record written before form-of-foreign-lemma/v1",
+    needed: "hidden_record",
+    unready: (db: DatabaseSync) => db.exec(`DROP TABLE hidden_record; ${HIDDEN_RECORD_BEFORE_389}`),
+  },
+]) {
+  test(`hide:records on a dictionary ${name} refuses to write until update:upgrade ran (#509)`, async () => {
+    const { db } = await seed(slug, false);
+    const d1Dir = await mkdtemp(join(dir, "cli-"));
+    try {
+      unready(db);
+      const d1 = localD1(d1Dir, db);
+      const dumpPath = join(d1Dir, "dump.xml");
+      const identity = await dumpOfPages(dumpPath);
+      const env = { SEED_STATE: d1.persistTo, SEED_INPUT: archive, RAW_PAGES: dumpPath };
+      const run = () => hideMain(env, ["--out", join(d1Dir, "out")], d1.wrangler, identity);
+
+      const before = d1.sha256();
+      assert.deepEqual(await run(), {
+        out: `${d1.target.dictionary} needs pnpm run update:upgrade first, for ${needed}. Nothing was written.`,
+        status: 1,
+      });
+      assert.equal(d1.sha256(), before);
+      assert.deepEqual(fileWrites(d1.calls), []);
+
+      assert.equal((await updateMain(["upgrade", "--out", join(d1Dir, "out")], d1.wrangler, { SEED_STATE: d1.persistTo })).status, 0);
+      const written = await run();
+      assert.equal(written.status, 0, written.out);
+      const files = fileWrites(d1.calls);
+      assert.equal(files.length, 2, "the upgrade, then the hide");
+      assert.doesNotMatch(await readFile(files[1][1], "utf8"), /\b(CREATE|DROP|ALTER)\b/);
+      const after = d1.open();
+      try {
+        assert.deepEqual(hiddenRows(after).map(({ line_no, rule }) => [line_no, rule]), EXPECTED_HIDDEN().map(({ line_no, rule }) => [line_no, rule]));
+      } finally {
+        after.close();
+      }
+    } finally {
+      db.close();
+    }
+  });
+}

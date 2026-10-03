@@ -226,7 +226,7 @@ const changeOf = (found: MasterDiff, kind: Change["kind"], word: string): Change
 async function applied(db: DatabaseSync, later: string, words: readonly [Change["kind"], string][]): Promise<ApplyPlan> {
   const found = await diffed(db, later);
   const plan = await planApply(readerOf(db), found, chooseChanges(found, words.map(([kind, word]) => changeOf(found, kind, word).id)), {
-        appliedAt: "2026-10-01T12:00:00Z",
+    appliedAt: "2026-10-01T12:00:00Z",
     catalog: fixtureCatalog(found),
   });
   execute(db, plan.sql);
@@ -485,7 +485,7 @@ test("an apply that stops partway leaves the master as it was before it started"
     const found = await diffed(db, later);
     const before = dump(db);
     const plan = await planApply(readerOf(db), found, chooseChanges(found, [changeOf(found, "changed", "casa").id, changeOf(found, "new", "città").id]), {
-            appliedAt: "2026-10-01T12:00:00Z",
+      appliedAt: "2026-10-01T12:00:00Z",
       catalog: fixtureCatalog(found),
     });
     // Planning reads; it writes nothing.

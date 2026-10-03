@@ -127,9 +127,9 @@ export async function dictionaryTables(db: LookupDatabase): Promise<DictionaryTa
 /** The version the master `release` serves now, including committed live hides and corrections. */
 export async function servedVersion(db: LookupDatabase, release: string): Promise<ServedVersion> {
   const [last, tables] = await Promise.all([db.all<{ change_id: string }>(LAST_CHANGE_SQL, []), dictionaryTables(db)]);
-  // An old master has neither table until its first nonempty hide or
-  // correction run. Do not suppress other database failures: an unread
-  // version must not hit a cache.
+  // An old master has neither table until `update:upgrade` creates them; an
+  // absent one reads as revision zero. Do not suppress other database
+  // failures: an unread version must not hit a cache.
   const revisionOf = async (present: boolean, sql: DictionaryRead): Promise<number> =>
     present ? ((await db.all<{ revision: number }>(sql, []))[0]?.revision ?? 0) : 0;
   const [hideRevision, correctionRevision] = await Promise.all([

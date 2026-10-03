@@ -347,7 +347,7 @@ test("applying a feed's new record that spells a page-only entry's key keeps the
     assert.deepEqual(diffed.diff.changes.map((change) => [change.kind, change.word]), [["new", "racconta"]]);
     const chosen = chooseChanges(diffed, diffed.diff.changes.map((change) => change.id));
     const plan = await planApply(reader, diffed, chosen, {
-            appliedAt: "2026-10-03T00:00:00Z",
+      appliedAt: "2026-10-03T00:00:00Z",
       catalog: fixtureCatalog(diffed.master.archiveSha256, diffed.feed.archiveSha256),
     });
     execute(db, plan.sql);
