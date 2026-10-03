@@ -769,7 +769,8 @@ function formsOf(rows: readonly FormRow[], ref: (pointer: string) => SourceRef, 
  * A record's curated corrections (#420), read for that record alone. Unlike the
  * rows `lineageOf` reads, a correction does not pass to a record that replaced
  * it: the newer source may state the fact differently, and the update reports
- * the correction instead (src/update/apply.ts). Exported so a test can name it.
+ * the correction instead (src/update/apply.ts). Exported so a test can assert the
+ * plan: `readGrammar` runs it once per record.
  */
 export const CORRECTED_CLAIM_SQL: DictionaryRead = `SELECT record_id, dimension, value, correction_id, evidence_url
        FROM corrected_claim
