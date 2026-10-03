@@ -36,6 +36,7 @@ import {
   accentFoldRowOf,
   addLemmaRecord,
   literal,
+  pageEntryScore,
   tupleOf,
   typoKeyRowsOf,
   type AccentFoldRow,
@@ -500,6 +501,12 @@ export function nearbyEdits(
     addLemmaRecord(scores, record);
   }
   for (const record of newLemmas) addLemmaRecord(scores, record);
+  // A served page-only entry (ADR 0024) heads its word's key with its own
+  // score, as the seed ranks it, though no record spells the key (#501).
+  for (const entry of pageEntriesOf(reader, inServed, runs.map(inKeys))) {
+    headed.set(entry.word_key, true);
+    scores.set(entry.word_key, pageEntryScore(entry.definitions));
+  }
   const wantedKeys = new Set(keys);
 
   const accent = keys.flatMap((key) => {
@@ -555,6 +562,24 @@ export function nearbyEdits(
     typo: typo.filter((wanted) => !keptTypo.some((held) => sameTypo(wanted, { deletionKey: held.deletion_key, surfaceKey: held.surface_key, languages: held.languages, richness: held.richness }))),
     replaced: { accent_fold: heldAccent.length - keptAccent.length, typo_key: heldTypo.length - keptTypo.length },
   };
+}
+
+/**
+ * The served page-only entries whose word key is in one of `keyRuns`, with
+ * their definition counts, in entry order: the seed's order, so a later entry
+ * of one key wins as it does there. None in a dictionary the upgrade has not
+ * given the page-entry tables.
+ */
+function pageEntriesOf(reader: MasterReader, inServed: string, keyRuns: readonly string[]): { word_key: string; definitions: number }[] {
+  const tables = select<{ name: string }>(reader, "SELECT name FROM sqlite_schema WHERE type = 'table' AND name IN ('recovered_entry', 'entry_definition')");
+  if (tables.length < 2) return [];
+  return keyRuns.flatMap((inKeys) =>
+    select<{ entry_id: number; word_key: string; definitions: number }>(
+      reader,
+      `SELECT e.entry_id, e.word_key, (SELECT count(*) FROM entry_definition d WHERE d.entry_id = e.entry_id) AS definitions
+         FROM recovered_entry e WHERE e.release_id ${inServed} AND e.word_key ${inKeys}`,
+    ),
+  ).sort((a, b) => a.entry_id - b.entry_id);
 }
 
 /** What a read back of the master found after the apply ran, against the plan. */
