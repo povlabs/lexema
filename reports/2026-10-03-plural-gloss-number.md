@@ -100,7 +100,9 @@ So the rule corrects **156 records** (141 real plurals, 24 of them in gender
 too, and 15 wrong-gloss singular nouns), writing 180 `corrected_claim` rows.
 The [change declaration](../dictionary-changes/2026-10-03-correct-plural-gloss-records.json)
 writes them to the shared dictionary through the dictionary deploy, after the
-merge; no agent writes it.
+merge; no agent writes it. The pull request plan check found the shared
+dictionary holding none of the 20 hand entries yet, so the declaration writes
+all 176 corrections, 202 rows.
 
 #483's diagnosis read 201 of the 212 real plurals as confirmed. The rule
 confirms 141 because it holds to what the ruling asks: the template has to be in
