@@ -21,6 +21,8 @@ import { HiddenLayer, readRulePass, type HiddenSummary } from "./hiddenLayer.js"
 import { RawPageRows } from "./rawPageRows.js";
 import { recoverPageEntry, PAGE_ENTRY_RULE } from "../italian/pageEntry.js";
 import { RecoveredLayer, type RecoverySummary } from "./recoveredLayer.js";
+import { CorrectedLayer, type CorrectionSummary } from "./correctedLayer.js";
+import { CURATED_CORRECTIONS, type CuratedCorrection } from "../italian/curatedCorrections.js";
 import { normalizeItalianExact } from "../italian/normalize.js";
 import { SOURCE_TEXT_RULES, type SourceTextRuleId } from "../italian/sourceTextNormalization.js";
 import { deletionKeys, foldKey } from "../lookup/nearby.js";
@@ -42,6 +44,7 @@ const TABLE_ORDER = [
   "recovered_label",
   "recovered_example",
   "hidden_record",
+  "corrected_claim",
   "recovered_entry",
   "entry_definition",
   "entry_label",
@@ -70,6 +73,7 @@ export const COLUMNS: Record<TableName, string> = {
   recovered_label: "recovered_id,label_index,label",
   recovered_example: "recovered_id,example_index,page_line,wikitext,text",
   hidden_record: "record_id,release_id,page_id,rule,because,language,page_line,lemma_line",
+  corrected_claim: "record_id,release_id,dimension,value,correction_id,evidence_url",
   recovered_entry: "entry_id,release_id,page_id,word,word_key,pos,pos_title,rule,page_line,wikitext",
   entry_definition: "entry_id,definition_index,route,term,page_line,wikitext,text,lead_in_index",
   entry_label: "entry_id,definition_index,label_index,label",
@@ -117,6 +121,7 @@ class SqlBatchWriter {
     recovered_label: 0,
     recovered_example: 0,
     hidden_record: 0,
+    corrected_claim: 0,
     recovered_entry: 0,
     entry_definition: 0,
     entry_label: 0,
@@ -348,6 +353,12 @@ export interface SeedSqlOptions {
    */
   languageHeadings?: LanguageHeadings;
   /**
+   * The curated corrections to write beside the records they name (#420);
+   * the committed list unless a test passes its own. Only entries keyed to
+   * the seeded release, at a line with the digest they name, are written.
+   */
+  corrections?: readonly CuratedCorrection[];
+  /**
    * Leave the release `importing` at the end of the SQL instead of writing its
    * final status. The counters are still written. A caller that verifies the
    * loaded database sets the final status itself once every check passes, so
@@ -366,6 +377,8 @@ export interface SeedSqlReport extends ArchiveParseReport {
   recovery: RecoverySummary;
   /** What each hiding rule hid. */
   hidden: HiddenSummary;
+  /** Which curated corrections were written. */
+  corrections: CorrectionSummary;
   /** The facts recorded for this archive's checksum, or none. */
   archiveFacts: ArchiveFacts | undefined;
   /** The source text normalization rules (ADR 0019) the structured rows were written under. */
@@ -413,6 +426,7 @@ export async function seedSql(options: SeedSqlOptions): Promise<SeedSqlReport> {
     ? { pages: options.rawPages, languages: options.languageHeadings }
     : undefined;
   const hidden = new HiddenLayer(judge, await readRulePass(options.input), pageRows, writer.statement("hidden_record"), writer.counts);
+  const corrected = new CorrectedLayer(options.corrections ?? CURATED_CORRECTIONS, writer.statement("corrected_claim"), writer.counts);
   const required = new Set(options.requiredWords ?? []);
   const seenWords = new Set<string>();
   const targets = new Set<string>();
@@ -452,6 +466,7 @@ export async function seedSql(options: SeedSqlOptions): Promise<SeedSqlReport> {
           hidden: isHidden,
         });
         recovered.add(archiveRecord.releaseId, archiveRecord.recordId, archiveRecord.record);
+        corrected.add(archiveRecord);
         if (writer.hasFullBatch()) await writer.flush();
       },
     });
@@ -529,6 +544,7 @@ export async function seedSql(options: SeedSqlOptions): Promise<SeedSqlReport> {
       parts: partPaths,
       recovery: recovered.summary,
       hidden: hidden.summary,
+      corrections: corrected.summary,
       archiveFacts: facts,
       sourceTextRules: Object.values(SOURCE_TEXT_RULES),
     };

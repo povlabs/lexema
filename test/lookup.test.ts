@@ -9,7 +9,8 @@ import { gzipSync } from "node:zlib";
 import { seedSql } from "../src/import/seedSql.js";
 import {
   INFLECTION_CANDIDATE_SQL,
-  INFLECTION_GENDER_SQL,
+  INFLECTION_CORRECTION_SQL,
+  INFLECTION_GRAMMAR_SQL,
   INFLECTION_SQL,
   LEMMA_LINK_SQL,
   MAX_QUERY_LENGTH,
@@ -683,7 +684,7 @@ test("every ref names the release, the line, the field and the line's digest", a
       ...bella.senses.map((s) => s.ref),
       ...bella.senses.flatMap((s) => s.glosses.map((g) => g.ref)),
       ...bella.senses.flatMap((s) => s.labels.map((l) => l.ref)),
-      ...bella.grammar.record.map((c) => c.ref),
+      ...bella.grammar.record.flatMap((c) => (c.status === "corrected" ? c.replaces.map((stated) => stated.ref) : [c.ref])),
       ...[...bella.grammar.bySense.values()].flat().map((c) => c.ref),
       forward.ref,
       ...(forward.kind === "candidates" ? forward.candidates.map((c) => c.ref) : []),
@@ -935,7 +936,8 @@ test("the inflection queries stay on indexes rather than scanning", async () => 
     for (const [name, sql] of [
       ["inflection", INFLECTION_SQL],
       ["inflection candidate", INFLECTION_CANDIDATE_SQL],
-      ["inflection gender", INFLECTION_GENDER_SQL],
+      ["inflection grammar", INFLECTION_GRAMMAR_SQL],
+      ["inflection correction", INFLECTION_CORRECTION_SQL],
     ] as const) {
       const plan = (
         db.prepare(`EXPLAIN QUERY PLAN ${sql}`).all(1) as { detail: string }[]

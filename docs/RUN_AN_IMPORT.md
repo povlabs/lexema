@@ -255,6 +255,51 @@ table, and prints `23 already hidden; hidden now: 7`, one line per record, and
 `rows deleted: lookup_form 7, form_of_edge 7`. On one seeded before #382 it
 hides all 30. Every later run prints `30 already hidden; nothing to hide`.
 
+## Write the curated corrections into a seeded database
+
+A curated correction sets right a gender or number the source states wrongly,
+checked by hand against a cited Wiktionary revision
+([#420](https://github.com/hueypov/lexema/issues/420)). The committed list is
+[`src/italian/curatedCorrections.ts`](../src/italian/curatedCorrections.ts):
+each entry names its record by release, archive line and line digest, the
+source text it overrides, and its evidence. The seed writes each entry keyed to
+its release as `corrected_claim` rows beside the record. A database seeded
+before an entry gets it by a one-off update, with no reseed and no archive:
+
+```sh
+pnpm run correct:records
+```
+
+It picks its database the way the seed does: the local D1 under `SEED_STATE`
+(default `.data/seed-state`), or the remote D1 `SEED_REMOTE` names. It writes
+one SQL file under `.data/updates/` and runs it as one transaction: it creates
+`corrected_claim` and `correction_version` when the master lacks them, writes
+each entry's rows, and increments the correction revision, so card and
+suggestion addresses move ([cache identity](DEPLOY.md#card-and-suggestion-cache-identity)).
+`source_record_json` and `grammar_claim` are not touched. It then reads the rows
+back and fails if one differs. It prints one line per entry: written, already
+written, or why not. An entry is not written when the master holds no record at
+its line, when that record's digest is not the one the entry names, or when a
+later release's change replaced the record: a correction never passes to a
+replacing record, whose source may say something else, so the run names the
+change and the replacing record to check against the entry's evidence.
+`update:apply` and `update:auto` print the same for a correction on a record
+they retire.
+
+For the shared `lexema-dictionary`, from Huey's laptop, signed in to Wrangler
+as for the upload above, once the Worker that reads corrections is deployed:
+
+```sh
+SEED_REMOTE=lexema-dictionary pnpm run correct:records
+```
+
+Put `CLOUDFLARE_ACCOUNT_ID=<account id>` first if Wrangler lists more than one
+account. On `it-0c432803` the first run prints `written now: 12` and one line
+per entry, 14 rows in all (`congiuntivi` and `maniaci` set gender and number).
+Every later run prints `nothing to write` and `already written` for each. An
+older Worker serves the master as before, since it never reads the new tables;
+the deployed one reads no correction from a master without them.
+
 ## Page-only entries
 
 The seed also stores page-only entries for dangling form targets with a ruled

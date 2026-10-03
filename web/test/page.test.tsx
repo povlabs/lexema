@@ -27,6 +27,8 @@ import { DatabaseSync } from "node:sqlite";
 import { gzipSync } from "node:zlib";
 import { renderToStaticMarkup } from "react-dom/server";
 import { seedSql } from "../../src/import/seedSql.js";
+import type { CuratedCorrection } from "../../src/italian/curatedCorrections.js";
+import { atFixtureLines, correctionFixtureLines } from "../../test/correctionFixture.js";
 import { loadFixturePages, type RawPageSource } from "../../src/source/rawPage.js";
 import { PUBLISHED_ARCHIVE_SHA256, sourceOf, type ArchiveFacts, type ReleaseSource } from "../../src/source/archiveFacts.js";
 import { fromNodeSqlite } from "../../src/lookup/database.js";
@@ -101,6 +103,7 @@ async function fixture(
   lines: readonly string[],
   rawPages?: RawPageSource,
   facts?: ArchiveFacts,
+  corrections?: readonly CuratedCorrection[],
 ): Promise<Fixture> {
   const dir = await mkdtemp(join(tmpdir(), "lexema-page-"));
   const archive = join(dir, "fixture.jsonl.gz");
@@ -119,6 +122,7 @@ async function fixture(
       facts === undefined ? undefined : { [createHash("sha256").update(bytes).digest("hex")]: facts },
     license: "CC-BY-SA-4.0",
     rawPages,
+    corrections,
     onRejection: (rejection) => {
       throw new Error(`fixture line rejected: ${JSON.stringify(rejection)}`);
     },
@@ -135,8 +139,9 @@ async function withLines(
   run: (f: Fixture) => Promise<void>,
   rawPages?: RawPageSource,
   facts?: ArchiveFacts,
+  corrections?: readonly CuratedCorrection[],
 ): Promise<void> {
-  const f = await fixture(lines, rawPages, facts);
+  const f = await fixture(lines, rawPages, facts, corrections);
   try {
     await run(f);
   } finally {
@@ -844,6 +849,85 @@ test("identical lemma tables show once; tables that differ each show", async () 
     assert.match(textOf(punsi), /pungesti/);
     assert.match(textOf(punsi), /pungisti/);
   });
+});
+
+// Curated corrections (#420) ----------------------------------------------------
+
+/** fixtures/curated-corrections.jsonl, seeded with the committed list keyed to its lines, or with none. */
+async function withCorrectionLines(corrected: boolean, run: (f: Fixture) => Promise<void>): Promise<void> {
+  const lines = await correctionFixtureLines();
+  return withLines(lines, run, undefined, undefined, corrected ? atFixtureLines(lines, RELEASE) : []);
+}
+
+/** The grid of a page's first reading, keyed by the word searched. */
+async function gridsOf(db: DatabaseSync, words: readonly string[]): Promise<Record<string, string[][]>> {
+  return Object.fromEntries(await Promise.all(words.map(async (word) => [word, gridRows(nth(await render(db, word), 1))] as const)));
+}
+
+const HEAD = ["", "singolare", "plurale"];
+
+test("the eight declared spellings the source states wrongly render in the cell their corrected gender and number name (#420)", async () => {
+  await withCorrectionLines(true, async ({ db }) => {
+    assert.deepEqual(
+      await gridsOf(db, ["ammaliatore", "romantico", "sudafricano", "amorevolezza", "congiuntivo", "giocatrice", "maniaco", "predatrice"]),
+      {
+        // "plurale di ammaliatore", and its femminile singolare: never `le ammaliatrice`.
+        ammaliatore: [HEAD, ["maschile", "ammaliatorel'ammaliatore·un ammaliatore", "—"], ["femminile", "ammaliatricel'ammaliatrice·un'ammaliatrice", "—"]],
+        // The noun records of romantico and sudafricano state no gender, so their headword takes no cell.
+        romantico: [HEAD, ["femminile", "romanticala romantica·una romantica", "—"]],
+        sudafricano: [HEAD, ["femminile", "sudafricanala sudafricana·una sudafricana", "—"]],
+        // Tagged masculine: never `gli amorevolezze`.
+        amorevolezza: [HEAD, ["femminile", "amorevolezzal'amorevolezza·un'amorevolezza", "amorevolezzele amorevolezze·delle amorevolezze"]],
+        // Tagged feminine singular: the maschile plurale.
+        congiuntivo: [HEAD, ["maschile", "congiuntivoil congiuntivo·un congiuntivo", "congiuntivii congiuntivi·dei congiuntivi"]],
+        giocatrice: [HEAD, ["femminile", "giocatricela giocatrice·una giocatrice", "giocatricile giocatrici·delle giocatrici"]],
+        maniaco: [HEAD, ["maschile", "maniacoil maniaco·un maniaco", "maniacii maniaci·dei maniaci"]],
+        predatrice: [HEAD, ["femminile", "—", "predatricile predatrici·delle predatrici"]],
+      },
+    );
+    // A corrected record's own page says the corrected gender and number too.
+    assert.deepEqual(headingsOf(await render(db, "congiuntivi")), ["1·Sostantivo, forma flessa·maschile, plurale"]);
+    assert.deepEqual(gridRows(nth(await render(db, "maniaci"), 1))[1], ["maschile", "maniacoil maniaco·un maniaco", "maniacii maniaci·dei maniaci"]);
+  });
+});
+
+test("a noun tagged with the wrong gender loses the row it made, and its plural stays where it was (#420)", async () => {
+  const words = ["fissazione", "nozione", "fiaschetteria", "rimbalzo"];
+  await withCorrectionLines(false, async ({ db }) => {
+    // As the source states it: `il fissazione` in a maschile row of its own.
+    assert.deepEqual((await gridsOf(db, words)).fissazione, [
+      HEAD,
+      ["maschile", "fissazioneil fissazione·un fissazione", "—"],
+      ["femminile", "—", "fissazionile fissazioni·delle fissazioni"],
+    ]);
+  });
+  await withCorrectionLines(true, async ({ db }) => {
+    assert.deepEqual(await gridsOf(db, words), {
+      fissazione: [HEAD, ["femminile", "fissazionela fissazione·una fissazione", "fissazionile fissazioni·delle fissazioni"]],
+      nozione: [HEAD, ["femminile", "nozionela nozione·una nozione", "nozionile nozioni·delle nozioni"]],
+      fiaschetteria: [HEAD, ["femminile", "fiaschetteriala fiaschetteria·una fiaschetteria", "fiaschetteriele fiaschetterie·delle fiaschetterie"]],
+      rimbalzo: [HEAD, ["maschile", "rimbalzoil rimbalzo·un rimbalzo", "rimbalzii rimbalzi·dei rimbalzi"]],
+    });
+    assert.deepEqual(headingsOf(await render(db, "fissazione")), ["1·Sostantivo·femminile, singolare"]);
+  });
+});
+
+test("a declared plural the source states rightly renders exactly as it did, and a correction leaves no mark on the page (#420)", async () => {
+  const pages = async (corrected: boolean): Promise<Record<string, string>> => {
+    let read: Record<string, string> = {};
+    await withCorrectionLines(corrected, async ({ db }) => {
+      read = Object.fromEntries(await Promise.all(["costruttrice", "fissazione", "ammaliatore"].map(async (word) => [word, await render(db, word)] as const)));
+    });
+    return read;
+  };
+  const [before, after] = [await pages(false), await pages(true)];
+  // `costruttrici` says "plurale di costruttrice" and is right: nothing about its page moves.
+  assert.equal(after.costruttrice, before.costruttrice);
+  assert.deepEqual(gridRows(nth(after.costruttrice, 1)), [HEAD, ["femminile", "—", "costruttricile costruttrici·delle costruttrici"]]);
+  // The page shows the corrected fact as data, and nothing about the correction (ADR 0016).
+  for (const page of Object.values(after)) {
+    assert.doesNotMatch(page, /wiktionary\.org\/w\/index\.php|oldid|it-page-test:\d|corrett|corrected|correction/i);
+  }
 });
 
 test("a record that states both numbers fills both columns and names both in its heading; a proper name names neither", async () => {

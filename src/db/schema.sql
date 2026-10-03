@@ -680,6 +680,46 @@ CREATE TABLE hidden_record (
 
 
 -- ---------------------------------------------------------------------------
+-- Curated corrections (#420)
+-- ---------------------------------------------------------------------------
+
+-- A fact the source states wrongly, set right by hand: `fissazione` is tagged
+-- masculine and is feminine; `ammaliatrice` glosses itself "plurale di
+-- ammaliatore" and is its feminine singular. The committed list
+-- (src/italian/curatedCorrections.ts) names each record by release, archive
+-- line and line digest, the source text it overrides and the Wiktionary
+-- revision that settles it. This is a layer beside the record, never an edit
+-- of it: source_record_json and grammar_claim stay as imported, and a lookup
+-- reads this row in place of the record's own claims in its dimension.
+--
+-- A row stays on the record it was written for. Unlike the rows read through
+-- `lineageOf`, a record that replaced it (applied_change) does not inherit it:
+-- the newer source may say something else, so the update reports it instead.
+CREATE TABLE corrected_claim (
+  record_id     INTEGER NOT NULL REFERENCES source_record(record_id) ON DELETE CASCADE,
+  release_id    TEXT    NOT NULL,
+  dimension     TEXT    NOT NULL CHECK (dimension IN ('gender', 'number')),
+  value         TEXT    NOT NULL,
+  -- The list entry it was written from: release id and archive line, `it-0c432803:449969`.
+  correction_id TEXT    NOT NULL,
+  -- The first revision the entry cites, as a permanent link.
+  evidence_url  TEXT    NOT NULL CHECK (evidence_url GLOB 'https://*.wiktionary.org/w/index.php?title=*&oldid=*'),
+  PRIMARY KEY (record_id, dimension),
+  FOREIGN KEY (dimension, value) REFERENCES grammar_value(dimension, value),
+  FOREIGN KEY (record_id, release_id)
+    REFERENCES source_record(record_id, release_id) ON DELETE CASCADE
+) STRICT;
+
+-- Live-correction cache revision, like hide_version: a nonempty
+-- `correct:records` transaction increments it, so card and suggestion
+-- addresses move with the corrected facts. Absent means revision zero.
+CREATE TABLE correction_version (
+  singleton INTEGER PRIMARY KEY CHECK (singleton = 1),
+  revision INTEGER NOT NULL CHECK (revision > 0)
+);
+
+
+-- ---------------------------------------------------------------------------
 -- Changes applied from a later release (#18)
 -- ---------------------------------------------------------------------------
 

@@ -81,7 +81,7 @@ const told = (link: InflectionOf): unknown[] =>
         link.plural.gloss.text,
         link.plural.gloss.ref.jsonPointer,
         link.plural.glossGender,
-        link.plural.recordGenders.map((claim) => `${claim.value} ${claim.ref.jsonPointer}`),
+        link.plural.recordGenders.map((claim) => `${claim.value} ${claim.status === "stated" ? claim.ref.jsonPointer : claim.correction.id}`),
       ];
 
 test("a declared plural carries its gloss, the gender the gloss names, and the declaring record's own genders", async () => {
@@ -114,6 +114,8 @@ test("a declared plural carries its gloss, the gender the gloss names, and the d
       assert.equal(at(lines, { ...plural.gloss.ref, jsonPointer: "/word" }), link.word);
       assert.equal(plural.recordGenders.length, 1);
       for (const claim of plural.recordGenders) {
+        // No correction is keyed to this fixture's release.
+        assert.ok(claim.status === "stated");
         assert.equal(at(lines, claim.ref), claim.value);
         assert.equal(claim.ref.lineNo, plural.gloss.ref.lineNo);
       }

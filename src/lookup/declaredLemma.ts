@@ -136,7 +136,7 @@ export async function declaredLemma(
       const plural = readPluralGloss(row.gloss, row.target_word);
       if (plural === undefined) continue;
       const recordGenders = genders.get(row.record_id) ?? [];
-      plurals[row.pos].push({ ...form, plural: { gloss, glossGender: plural.gender, recordGenders } });
+      plurals[row.pos].push({ ...form, plural: { gloss, glossGender: plural.gender, recordGenders, correctedNumber: undefined } });
     }
     if (!words.has(row.pos)) words.set(row.pos, row.target_word);
   }
