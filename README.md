@@ -25,8 +25,8 @@ disputed information. Dictionary quality can improve separately from the website
 
 ## Work tracking
 
-[GitHub milestones](https://github.com/hueypov/lexema/milestones) hold the goals.
-[Issues](https://github.com/hueypov/lexema/issues) hold tasks and decisions.
+[GitHub milestones](https://github.com/povlabs/lexema/milestones) hold the goals.
+[Issues](https://github.com/povlabs/lexema/issues) hold tasks and decisions.
 Changes go through linked pull requests.
 
 ## Developing on this?
