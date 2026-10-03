@@ -525,8 +525,8 @@ a file of up to 100 MB:
 | a dump | `source/<its KNOWN_DUMPS file>`, such as `source/itwiktionary-20260901-pages-articles.xml.bz2` |
 
 A declaration of `update:auto` reads its feed release's archive and the dump
-its `ARCHIVE_FACTS` entry names; `hide:records` reads the master's archive and
-its dump. `update:upgrade`, `normalize:source-text` and `correct:records` read
+its `ARCHIVE_FACTS` entry names; `hide:records` and `load:page-entries` read
+the master's archive and its dump. `update:upgrade`, `normalize:source-text` and `correct:records` read
 none: `correct:records` writes the committed list of curated corrections.
 
 ### Set up the dictionary deploy

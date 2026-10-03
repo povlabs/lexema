@@ -1,0 +1,16 @@
+{
+  "command": "load:page-entries",
+  "inputs": { "archive": "it-0c432803", "rules": ["italian-page-entry/v1"] },
+  "expected": {
+    "records": { "added": 0, "changed": 0, "removed": 0 },
+    "written": {
+      "raw_page": 14,
+      "recovered_entry": 14,
+      "entry_definition": 19,
+      "entry_label": 7,
+      "entry_example": 4,
+      "corrected_definition": 2,
+      "typo_key": 129
+    }
+  }
+}

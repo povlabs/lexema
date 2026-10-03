@@ -190,8 +190,8 @@ rule is the importer's grammar policy
 ([grammarPolicy.ts](../src/import/grammarPolicy.ts)). A second run changes 0
 rows. `pnpm run normalize:source-text --plan-only` is a plan-only run: it
 writes the file and prints its counts as JSON, and runs nothing on the
-database. `hide:records`, `correct:records`, `update:auto` and `update:upgrade`
-take the same flag
+database. `hide:records`, `correct:records`, `load:page-entries`, `update:auto`
+and `update:upgrade` take the same flag
 ([src/update/planOnly.ts](../src/update/planOnly.ts)).
 
 For the full local seed:
@@ -324,10 +324,11 @@ On a master that already holds #420's twelve, it prints `written now: 8`, for
 the plurals tagged singular of
 [#449](https://github.com/hueypov/lexema/issues/449), and `already written` for
 the twelve. Every later run prints `nothing to write` and `already written` for
-each. Until the shared dictionary holds page-only entries
-([#440](https://github.com/hueypov/lexema/issues/440)), the two definition
-corrections print `not written; the master holds no page-only entry`; a later
-declaration writes them once those entries are loaded. An
+each. Before a master holds page-only entries, the two definition corrections
+print `not written; the master holds no page-only entry`.
+[Loading the entries](PAGE_ENTRIES.md#load-them-into-a-seeded-dictionary)
+writes them with the entries, as a seed does, so a run after the load prints
+`already written` for both. An
 older Worker serves the master as before, since it never reads the new tables;
 the deployed one reads no correction from a master without them.
 
@@ -354,3 +355,7 @@ Italian page layout (ADR 0024). What it stores is in
 
 3. Search for `raccontare` or `fornire`, or for the forms `racconto` and
    `fornito`, which lead to them.
+
+A database seeded before these entries gets them from
+`pnpm run load:page-entries`, with no reseed
+([load them into a seeded dictionary](PAGE_ENTRIES.md#load-them-into-a-seeded-dictionary)).

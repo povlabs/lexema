@@ -45,6 +45,9 @@ without writing records. It names what it adds; running it again changes
 nothing. The first apply also upgrades, but lookups need the views before any
 change is applied. Lookups do not need the page-entry tables
 ([a dictionary without them](PAGE_ENTRIES.md#a-dictionary-without-the-tables)).
+`pnpm run load:page-entries` fills them; its deploy order, restore route and
+cache movement are in
+[load them into a seeded dictionary](PAGE_ENTRIES.md#load-them-into-a-seeded-dictionary).
 
 ## 1. Keep a restore point
 
