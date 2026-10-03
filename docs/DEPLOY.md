@@ -529,8 +529,8 @@ a file of up to 100 MB:
 | a dump | `source/<its KNOWN_DUMPS file>`, such as `source/itwiktionary-20260901-pages-articles.xml.bz2` |
 
 A declaration of `update:auto` reads its feed release's archive and the dump
-its `ARCHIVE_FACTS` entry names; `hide:records` reads the master's archive and
-its dump. `update:upgrade`, `normalize:source-text` and `correct:records` read
+its `ARCHIVE_FACTS` entry names; `hide:records` and `load:page-entries` read
+the master's archive and its dump. `update:upgrade`, `normalize:source-text` and `correct:records` read
 none: `correct:records` writes the committed list of curated corrections.
 
 ### Set up the dictionary deploy
@@ -588,8 +588,9 @@ request's merge commit ([src/deploy/](../src/deploy/pullRequestPlan.ts)):
      printing the whole declaration file with the plan's counts as
      `expected`. Copy it into the file and push;
    - the plan crosses a hard limit: red, naming the limit;
-   - `update:auto` or `hide:records`: not planned, since they read an archive
-     and a dump from `hueypov/lexema-data` and this run gets no token for it.
+   - `update:auto`, `hide:records` or `load:page-entries`: not planned, since
+     they read an archive and a dump from `hueypov/lexema-data` and this run
+     gets no token for it.
      This does not fail the pull request. The monthly release gives an
      `update:auto` its counts;
    - any declaration after the first: red. Its counts depend on what the

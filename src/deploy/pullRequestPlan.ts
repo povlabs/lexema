@@ -9,10 +9,11 @@
 // A plan reads the dictionary as it is now, so only the first declaration a
 // pull request adds is planned: a later one's counts depend on what the earlier
 // ones write, which a run that writes nothing cannot see. A later declaration
-// is refused, naming the earlier ones. `update:auto` and `hide:records` read an
-// archive and a dump from `hueypov/lexema-data`, whose token a pull request run
-// is not given, so they are not planned here; the monthly release finds their
-// counts.
+// is refused, naming the earlier ones. `update:auto`, `hide:records` and
+// `load:page-entries` read an archive and a dump from `hueypov/lexema-data`,
+// whose token a pull request run is not given, so they are not planned here;
+// their counts come from a plan-only run that has those files, such as the
+// monthly release's for `update:auto`.
 
 import { checkPlan, type DeclarationDraft, type DeclaredChange, DECLARATIONS_DIR, isDeclarationPath, parseDraft, passes, type PlanCheck } from "../update/declaration.js";
 import type { PlanCounts } from "../update/planCounts.js";
