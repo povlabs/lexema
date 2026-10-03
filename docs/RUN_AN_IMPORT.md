@@ -348,8 +348,11 @@ the deployed one reads no correction from a master without them.
 The seed also stores page-only entries: it reads every raw page whose title no
 Italian record spells, whether or not a form names it, and keeps the pages with
 a ruled Italian layout (ADR 0024, ADR 0028). On the full release and the July
-dump that is 185 pages and 202 entries
-([measurement](../reports/2026-10-03-unrecorded-page-layouts.md#what-the-production-rule-recovers)).
+dump that is 186 pages and 203 entries
+([page-only entries](PAGE_ENTRIES.md)): the 185 pages and 202 entries of the
+[measurement](../reports/2026-10-03-unrecorded-page-layouts.md#what-the-production-rule-recovers),
+which predates [#495](https://github.com/povlabs/lexema/issues/495), and
+`Aglio`, which the rule reads since #495.
 A small fixture has records for few words, so every committed page under
 `fixtures/` it lacks a record for can become a page-only entry. What the seed
 stores is in [page-only entries](PAGE_ENTRIES.md). To see them in a disposable

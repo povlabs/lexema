@@ -121,12 +121,18 @@ On `it-0c432803`, rule v1 alone loaded the 14 entries of the
 [measurement](../reports/2026-10-02-page-entry-recovery.md) and
 `grufolare`'s and `tremare`'s corrected definitions
 ([its declaration](../dictionary-changes/2026-10-03-load-page-entries-it-0c432803.json)).
-Both rules read 203 entries on 186 pages: those 14, and 189 more on 172 pages
-([its declaration](../dictionary-changes/2026-10-03-load-page-entries-v2-it-0c432803.json)).
-The pages are the 185 of the
+A local seed under both rules reads 203 entries on 186 pages: those 14, and
+189 more on 172 pages. The pages are the 185 of the
 [layout measurement](../reports/2026-10-03-unrecorded-page-layouts.md) and
 `Aglio`, whose one definition holds a `{{taxon}}` the rule reads since
 [#495](https://github.com/povlabs/lexema/issues/495).
+On the shared dictionary, which holds rule v1's 14 already, the plan check
+counts 186 entries on 169 pages to write
+([its declaration](../dictionary-changes/2026-10-03-load-page-entries-v2-it-0c432803.json),
+[plan run](https://github.com/povlabs/lexema/actions/runs/37157579692)).
+That is three entries, each of one definition, fewer than the local seed
+reads. Which three, and why, is
+[#539](https://github.com/povlabs/lexema/issues/539).
 
 ### On the shared dictionary
 

@@ -4,13 +4,13 @@
   "expected": {
     "records": { "added": 0, "changed": 0, "removed": 0 },
     "written": {
-      "raw_page": 172,
-      "recovered_entry": 189,
-      "entry_definition": 219,
-      "entry_label": 129,
+      "raw_page": 169,
+      "recovered_entry": 186,
+      "entry_definition": 216,
+      "entry_label": 128,
       "entry_example": 21,
       "accent_fold": 5,
-      "typo_key": 1878
+      "typo_key": 1827
     },
     "deleted": { "accent_fold": 1, "typo_key": 100 }
   }
