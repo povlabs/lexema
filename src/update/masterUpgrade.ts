@@ -1,6 +1,7 @@
 // The tables and views a master needs before a change can be applied to it
-// (#18), and the page-entry tables lookups read (ADR 0024, #403), for a
-// dictionary seeded before they existed. They are read out of
+// (#18), and the page-entry tables lookups read (ADR 0024, #403) with their
+// definition corrections (#450), for a dictionary seeded before they existed.
+// The dictionary deploy runs this as its own step before any data (#507). They are read out of
 // src/db/schema.sql rather than written a second time, so a fresh seed and an
 // upgraded master cannot drift apart. The statements are safe to run again:
 // the tables are created only when absent, and the views are replaced.
@@ -18,6 +19,13 @@ export const UPDATE_TABLES = ["feed_release", "applied_change"] as const;
  */
 export { PAGE_ENTRY_TABLES };
 
+/**
+ * The table a curated definition correction is written to (#450). It points at
+ * `entry_definition`, so it follows the page-entry tables. The upgrade creates
+ * it so that a load of page-only entries carries no DDL (#507).
+ */
+export const PAGE_ENTRY_CORRECTION_TABLES = ["corrected_definition"] as const;
+
 /** The indexes on the page-entry tables. */
 export const PAGE_ENTRY_INDEXES = ["recovered_entry_by_key"] as const;
 
@@ -25,7 +33,7 @@ export const PAGE_ENTRY_INDEXES = ["recovered_entry_by_key"] as const;
 export const SERVING_VIEWS = ["served_release", "served_record", "form_of_candidate", "surface_hit"] as const;
 
 /** Every table, index and view the upgrade creates, by its sqlite_schema name. */
-export const UPGRADE_NAMES: readonly string[] = [...UPDATE_TABLES, ...PAGE_ENTRY_TABLES, ...PAGE_ENTRY_INDEXES, ...SERVING_VIEWS];
+export const UPGRADE_NAMES: readonly string[] = [...UPDATE_TABLES, ...PAGE_ENTRY_TABLES, ...PAGE_ENTRY_CORRECTION_TABLES, ...PAGE_ENTRY_INDEXES, ...SERVING_VIEWS];
 
 /** The text of a statement up to the semicolon that ends it, without trailing comments. */
 function statementFrom(schema: string, start: number): string {
@@ -52,7 +60,7 @@ export function createStatement(schema: string, kind: "TABLE" | "VIEW" | "INDEX"
  * leaves an up-to-date one as it is. It adds no row and changes none.
  */
 export function masterUpgradeSql(schema: string): string {
-  const tables = [...UPDATE_TABLES, ...PAGE_ENTRY_TABLES].map((name) =>
+  const tables = [...UPDATE_TABLES, ...PAGE_ENTRY_TABLES, ...PAGE_ENTRY_CORRECTION_TABLES].map((name) =>
     createStatement(schema, "TABLE", name).replace(/^CREATE TABLE /, "CREATE TABLE IF NOT EXISTS "),
   );
   const indexes = PAGE_ENTRY_INDEXES.map((name) =>

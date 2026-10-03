@@ -26,7 +26,7 @@ import { ApplyRefused, checkApplied, chooseChanges, planApply, type ApplyPlan } 
 import type { Change } from "../src/update/changes.js";
 import { diffAgainstMaster, reportMarkdown, reportOf, type MasterDiff } from "../src/update/diff.js";
 import { missingUpgrade, type MasterReader } from "../src/update/master.js";
-import { masterUpgradeSql, PAGE_ENTRY_INDEXES, PAGE_ENTRY_TABLES, SERVING_VIEWS, UPDATE_TABLES, UPGRADE_NAMES } from "../src/update/masterUpgrade.js";
+import { masterUpgradeSql, PAGE_ENTRY_CORRECTION_TABLES, PAGE_ENTRY_INDEXES, PAGE_ENTRY_TABLES, SERVING_VIEWS, UPDATE_TABLES, UPGRADE_NAMES } from "../src/update/masterUpgrade.js";
 import { COUNTED_TABLES } from "../src/update/planCounts.js";
 import { planOnlyRun } from "../src/update/planOnly.js";
 import { masterReaderOf } from "../src/update/updateCli.js";
@@ -513,7 +513,7 @@ test("an apply brings a master seeded before #18 up to the schema, and the upgra
   const old = new DatabaseSync(":memory:");
   old.exec(await readFile(SCHEMA, "utf8"));
   for (const view of [...SERVING_VIEWS].reverse()) old.exec(`DROP VIEW ${view}`);
-  for (const table of [...PAGE_ENTRY_TABLES, ...UPDATE_TABLES].reverse()) old.exec(`DROP TABLE ${table}`);
+  for (const table of [...UPDATE_TABLES, ...PAGE_ENTRY_TABLES, ...PAGE_ENTRY_CORRECTION_TABLES].reverse()) old.exec(`DROP TABLE ${table}`);
   assert.deepEqual(missingUpgrade(readerOf(old)), [...UPGRADE_NAMES]);
   const upgrade = masterUpgradeSql(await readFile(SCHEMA, "utf8"));
   const asFresh = (db: DatabaseSync) => schemaOf(db).replaceAll("CREATE TABLE IF NOT EXISTS", "CREATE TABLE").replaceAll("CREATE INDEX IF NOT EXISTS", "CREATE INDEX");
@@ -534,8 +534,8 @@ test("an apply brings a master seeded before #18 up to the schema, and the upgra
 
 test("the upgrade gives a master seeded before #403 its page-entry tables, empty, and lookups answer the same", async () => {
   await withDesk(async ({ db }) => {
-    for (const table of [...PAGE_ENTRY_TABLES].reverse()) db.exec(`DROP TABLE ${table}`);
-    assert.deepEqual(missingUpgrade(readerOf(db)), [...PAGE_ENTRY_TABLES, ...PAGE_ENTRY_INDEXES]);
+    for (const table of [...PAGE_ENTRY_TABLES, ...PAGE_ENTRY_CORRECTION_TABLES].reverse()) db.exec(`DROP TABLE ${table}`);
+    assert.deepEqual(missingUpgrade(readerOf(db)), [...PAGE_ENTRY_TABLES, ...PAGE_ENTRY_CORRECTION_TABLES, ...PAGE_ENTRY_INDEXES]);
     const casa = await ask(db, "casa");
     assert.equal(casa.outcome, "found");
     const written = () => (db.prepare("SELECT total_changes() AS n").get() as { n: number }).n;
@@ -543,7 +543,7 @@ test("the upgrade gives a master seeded before #403 its page-entry tables, empty
     execute(db, masterUpgradeSql(await readFile(SCHEMA, "utf8")));
     assert.equal(written(), before, "the upgrade writes no row");
     assert.deepEqual(missingUpgrade(readerOf(db)), []);
-    for (const table of PAGE_ENTRY_TABLES) assert.equal((db.prepare(`SELECT count(*) AS n FROM ${table}`).get() as { n: number }).n, 0);
+    for (const table of [...PAGE_ENTRY_TABLES, ...PAGE_ENTRY_CORRECTION_TABLES]) assert.equal((db.prepare(`SELECT count(*) AS n FROM ${table}`).get() as { n: number }).n, 0);
     assert.deepEqual(await ask(db, "casa"), casa);
   });
 });

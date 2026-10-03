@@ -7,29 +7,35 @@
 //    (dataFiles.ts). A file that is not what it must be stops the run here.
 // 3. Record a D1 Time Travel bookmark, the restore point, and tell it to the
 //    log at once, before anything is written.
-// 4. For each declaration, oldest first: plan it, hold the plan's counts to
-//    the declared ones and to the hard limits, run its file, read it back.
-// 5. Look up a fixed word list in the dictionary written (wordCheck.ts).
-// 6. Fast-forward `production` to `head`, which deploys the site.
+// 4. Run the upgrade (src/update/masterUpgrade.ts) when the dictionary lacks a
+//    table, index or view it creates: DDL as its own batch, before any data,
+//    so no declaration's SQL carries DDL (#507).
+// 5. For each declaration, oldest first: plan it, hold the plan's counts to
+//    the declared ones and to the hard limits, run its SQL, read it back.
+// 6. Look up a fixed word list in the dictionary written (wordCheck.ts).
+// 7. Fast-forward `production` to `head`, which deploys the site.
 //
-// Any stop is red and leaves `production` where it is. Once something was
-// written, a red run names the bookmark and the command that restores it; it
-// never restores by itself (ADR 0018). The YAML only wires the credentials.
+// Each batch goes to D1 as one transaction (d1Batch.ts). Any stop is red and
+// leaves `production` where it is. Once a batch was run, a red run names the
+// bookmark and the command that restores it; it never restores by itself (ADR
+// 0018). A batch D1 refused wrote nothing, so it alone does not count as a
+// write. The YAML only wires the credentials.
 
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { checkPlan, passes, type ChangeDeclaration, type DeclaredChange } from "../update/declaration.js";
-import type { MasterReader } from "../update/master.js";
+import { missingUpgrade, planUpgrade, type MasterReader } from "../update/master.js";
 import type { PlanCounts } from "../update/planCounts.js";
+import { D1Batch } from "./d1Batch.js";
 import { type DataFetcher, type DumpCatalog, fetchVerified, filesFor } from "./dataFiles.js";
 import { advanceProduction, deployRange, type Git } from "./pending.js";
-import { type ReadyChange, planWrite, readyChange } from "./writePlan.js";
+import { type ReadyChange, planWrite, readyChange, SCHEMA } from "./writePlan.js";
 import { lookUpWords, WORD_LIST } from "./wordCheck.js";
 import type { ArchiveFactsCatalog } from "../source/archiveFacts.js";
 import type { CuratedCorrection } from "../italian/curatedCorrections.js";
 
 /** The steps of a run, in the order a run that writes takes them. */
-export const DEPLOY_STEPS = ["pending", "fetch", "bookmark", "plan", "apply", "read-back", "word-lookup", "production"] as const;
+export const DEPLOY_STEPS = ["pending", "fetch", "bookmark", "upgrade", "plan", "apply", "read-back", "word-lookup", "production"] as const;
 export type DeployStep = (typeof DEPLOY_STEPS)[number];
 
 /** The dictionary a run writes: its name, and `wrangler d1 execute` aimed at it. */
@@ -70,12 +76,16 @@ export interface DeployedChange {
   readonly ran: boolean;
 }
 
-/** How a run ended. A red run that wrote holds the bookmark it wrote after, so its restore can always be named. */
+/**
+ * How a run ended. `upgraded` names what the upgrade step created, empty when
+ * it ran nothing. A red run that wrote holds the bookmark it wrote after, so
+ * its restore can always be named.
+ */
 export type DeployOutcome =
-  | { readonly kind: "green"; readonly production: string; readonly bookmark: string | null; readonly changes: readonly DeployedChange[] }
+  | { readonly kind: "green"; readonly production: string; readonly bookmark: string | null; readonly upgraded: readonly string[]; readonly changes: readonly DeployedChange[] }
   | { readonly kind: "deployed-already"; readonly production: string; readonly head: string }
-  | { readonly kind: "red"; readonly written: false; readonly reasons: readonly string[]; readonly bookmark: string | null; readonly changes: readonly DeployedChange[] }
-  | { readonly kind: "red"; readonly written: true; readonly reasons: readonly string[]; readonly bookmark: string; readonly changes: readonly DeployedChange[] };
+  | { readonly kind: "red"; readonly written: false; readonly reasons: readonly string[]; readonly bookmark: string | null; readonly upgraded: readonly string[]; readonly changes: readonly DeployedChange[] }
+  | { readonly kind: "red"; readonly written: true; readonly reasons: readonly string[]; readonly bookmark: string; readonly upgraded: readonly string[]; readonly changes: readonly DeployedChange[] };
 
 const messageOf = (error: unknown): string => (error instanceof Error ? error.message : String(error));
 
@@ -99,9 +109,20 @@ export async function deployDictionary(deps: DeployDeps): Promise<DeployOutcome>
   const now = deps.now ?? (() => new Date().toISOString());
   const changes: DeployedChange[] = [];
   let bookmark: string | null = null;
+  let upgraded: readonly string[] = [];
+  // Set only once D1 answered a batch without error: a batch it refused rolled back whole.
   let written = false;
   const red = (reasons: readonly string[]): DeployOutcome =>
-    written && bookmark !== null ? { kind: "red", written, reasons, bookmark, changes } : { kind: "red", written: false, reasons, bookmark, changes };
+    written && bookmark !== null
+      ? { kind: "red", written, reasons, bookmark, upgraded, changes }
+      : { kind: "red", written: false, reasons, bookmark, upgraded, changes };
+  /** Run `sql` as one batch, its file (when it is imported) named after `name`. */
+  const run = async (sql: string, name: string): Promise<void> => {
+    const batch = D1Batch.of(sql);
+    await mkdir(deps.workDir, { recursive: true });
+    await batch.run(deps.target, join(deps.workDir, `${name.replaceAll("/", "-")}.sql`));
+    written = true;
+  };
 
   try {
     step("pending", deps.head);
@@ -114,6 +135,15 @@ export async function deployDictionary(deps: DeployDeps): Promise<DeployOutcome>
       step("bookmark", deps.target.dictionary);
       bookmark = deps.bookmark();
       deps.onBookmark?.(bookmark);
+
+      const upgrade = planUpgrade(deps.reader, await readFile(SCHEMA, "utf8"));
+      step("upgrade", upgrade.missing.length === 0 ? "nothing missing" : upgrade.missing.join(", "));
+      if (upgrade.sql !== "") {
+        await run(upgrade.sql, "upgrade");
+        upgraded = upgrade.missing;
+        const still = missingUpgrade(deps.reader);
+        if (still.length > 0) return red(still.map((name) => `the upgrade did not add ${name}`));
+      }
 
       for (const { change: declaration, ready: change } of ready) {
         step("plan", declaration.file);
@@ -129,11 +159,7 @@ export async function deployDictionary(deps: DeployDeps): Promise<DeployOutcome>
         }
         if (plan.sql !== "") {
           step("apply", declaration.file);
-          await mkdir(deps.workDir, { recursive: true });
-          const file = join(deps.workDir, `${declaration.file.replaceAll("/", "-")}.sql`);
-          await writeFile(file, plan.sql);
-          written = true;
-          deps.target.execute(["--file", file], false);
+          await run(plan.sql, declaration.file);
         }
         changes.push({ ...taken, ran: plan.sql !== "" });
         step("read-back", declaration.file);
@@ -155,7 +181,7 @@ export async function deployDictionary(deps: DeployDeps): Promise<DeployOutcome>
           "A re-run plans the same declarations again, so restore the bookmark first when something was written.",
       ]);
     }
-    return { kind: "green", production: range.head, bookmark, changes };
+    return { kind: "green", production: range.head, bookmark, upgraded, changes };
   } catch (error: unknown) {
     return red([messageOf(error)]);
   }
@@ -192,6 +218,9 @@ const changesTable = (changes: readonly DeployedChange[]): string[] =>
     ? []
     : ["", "| Declaration | Command | Added | Changed | Removed | Written |", "|---|---|---|---|---|---|", ...changes.map(countsLine)];
 
+const upgradeLine = (upgraded: readonly string[]): string[] =>
+  upgraded.length === 0 ? [] : ["", `The upgrade ran first and added ${upgraded.map((name) => `\`${name}\``).join(", ")}.`];
+
 /** The run's summary, as Markdown for the GitHub job summary. */
 export function deploySummary(outcome: DeployOutcome, dictionary: string): string {
   switch (outcome.kind) {
@@ -204,6 +233,7 @@ export function deploySummary(outcome: DeployOutcome, dictionary: string): strin
         outcome.changes.length === 0
           ? `No change declaration was added, so nothing was written to \`${dictionary}\`.`
           : `Applied ${outcome.changes.length} change declaration(s) to \`${dictionary}\`. Bookmark before the first write: \`${outcome.bookmark}\`.`,
+        ...upgradeLine(outcome.upgraded),
         ...changesTable(outcome.changes),
         "",
         `\`production\` is now \`${outcome.production}\`, so the site deploys.`,
@@ -214,6 +244,7 @@ export function deploySummary(outcome: DeployOutcome, dictionary: string): strin
         "## Dictionary deploy: red",
         "",
         ...outcome.reasons.map((reason) => `- ${reason}`),
+        ...upgradeLine(outcome.upgraded),
         ...changesTable(outcome.changes),
         "",
         "`production` did not move, so the site stays at its last green commit.",

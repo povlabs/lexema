@@ -152,7 +152,7 @@ export async function planWrite(ready: ReadyChange, reader: MasterReader, applie
     } finally {
       await dump.close();
     }
-    const plan = planPageEntries(reader, found, schema, corrections);
+    const plan = planPageEntries(reader, found, corrections);
     return {
       run: planOnlyRun(change.command, plan.counts, reader),
       sql: plan.sql,

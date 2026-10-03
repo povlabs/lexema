@@ -22,6 +22,7 @@ import { PLURAL_PLACEHOLDER_FORM } from "../src/italian/sourceTextNormalization.
 import { fromNodeSqlite } from "../src/lookup/database.js";
 import { lookup } from "../src/lookup/lookup.js";
 import { parseChange } from "../src/update/declaration.js";
+import { PAGE_ENTRY_CORRECTION_TABLES, PAGE_ENTRY_INDEXES, PAGE_ENTRY_TABLES } from "../src/update/masterUpgrade.js";
 import { masterReaderOf } from "../src/update/updateCli.js";
 import { correctedClaimValues } from "../src/import/correctedLayer.js";
 import { atFixtureLines, correctionFixtureLines } from "./correctionFixture.js";
@@ -135,7 +136,7 @@ async function withWorld(run: (world: World) => Promise<void>, lines: readonly s
           target: d1.target,
           reader: masterReaderOf(d1.target),
           bookmark: () => {
-            bookmarks.push(d1.calls.filter((call) => call[0] === "--file").length);
+            bookmarks.push(writes(d1).length);
             return `bookmark-${bookmarks.length}`;
           },
           fetcher: async (path) => assert.fail(`nothing should be fetched, asked for ${path}`),
@@ -156,7 +157,8 @@ async function withWorld(run: (world: World) => Promise<void>, lines: readonly s
   }
 }
 
-const writes = (d1: LocalD1): string[][] => d1.calls.filter((call) => call[0] === "--file");
+/** The calls that write: an import, or a query-API batch (src/deploy/d1Batch.ts). Reads carry --json first. */
+const writes = (d1: LocalD1): string[][] => d1.calls.filter((call) => call[0] === "--file" || call[0] === "--command");
 
 const glosses = (d1: LocalD1): string[] => {
   const db = d1.open();
@@ -178,7 +180,7 @@ test("a push adding one declaration records a bookmark, plans, applies, reads ba
     assert.equal(outcome.kind, "green", deploySummary(outcome, "lexema"));
     assert.deepEqual(deps.steps, [...DEPLOY_STEPS]);
     assert.deepEqual(deps.bookmarks, [0], "one bookmark, taken before any write");
-    assert.equal(writes(world.d1).length, 1, "the change ran as one file");
+    assert.equal(writes(world.d1).length, 1, "the change ran as one batch");
     const after = glosses(world.d1);
     assert.ok(after.includes(VADO_STORED) && after.includes(FATE_STORED), after.join("\n"));
     assert.ok(!after.includes(VADO_SOURCE) && !after.includes(FATE_SOURCE), after.join("\n"));
@@ -191,7 +193,7 @@ test("a push adding one declaration records a bookmark, plans, applies, reads ba
   });
 });
 
-test("the run logs the bookmark and its restore command as soon as it is taken, before the first --file call", async () => {
+test("the run logs the bookmark and its restore command as soon as it is taken, before the first write", async () => {
   await withWorld(async (world) => {
     const head = await world.commit({ "dictionary-changes/2026-10-normalize.json": declaration(NORMALIZE) });
     const log: { line: string; writesBefore: number }[] = [];
@@ -240,7 +242,7 @@ test("a plan whose counts differ from the declaration stops red before any write
     const outcome = await deployDictionary(deps);
 
     assert.equal(outcome.kind, "red");
-    assert.deepEqual(deps.steps, ["pending", "fetch", "bookmark", "plan"]);
+    assert.deepEqual(deps.steps, ["pending", "fetch", "bookmark", "upgrade", "plan"]);
     assert.deepEqual(writes(world.d1), []);
     assert.equal(world.d1.sha256(), before);
     assert.equal(world.production(), base);
@@ -276,12 +278,12 @@ test("a read-back mismatch turns the run red, names the bookmark and the restore
     const head = await world.commit({ "dictionary-changes/2026-10-normalize.json": declaration(NORMALIZE) });
     // A file that is accepted and does not land: what a read-back is for.
     const lost: string[][] = [];
-    const target = { dictionary: "lexema-dictionary", execute: (args: readonly string[], capture: boolean) => (args[0] === "--file" ? (lost.push([...args]), "") : world.d1.target.execute(args, capture)) };
+    const target = { dictionary: "lexema-dictionary", execute: (args: readonly string[], capture: boolean) => (args[0] === "--json" ? world.d1.target.execute(args, capture) : (lost.push([...args]), "")) };
     const deps = world.deps(head, { target });
     const outcome = await deployDictionary(deps);
 
     assert.equal(outcome.kind, "red");
-    assert.deepEqual(deps.steps, ["pending", "fetch", "bookmark", "plan", "apply", "read-back"]);
+    assert.deepEqual(deps.steps, ["pending", "fetch", "bookmark", "upgrade", "plan", "apply", "read-back"]);
     assert.equal(lost.length, 1);
     assert.deepEqual(deps.bookmarks, [0], "one bookmark, and no restore");
     assert.ok(world.d1.calls.every((call) => call[0] === "--json"), "after the read-back only reads reached the dictionary");
@@ -306,10 +308,111 @@ test("a word-lookup mismatch turns the run red and names the bookmark and the re
     const outcome = await deployDictionary(deps);
 
     assert.equal(outcome.kind, "red");
-    assert.deepEqual(deps.steps, ["pending", "fetch", "bookmark", "plan", "apply", "read-back", "word-lookup"]);
+    assert.deepEqual(deps.steps, ["pending", "fetch", "bookmark", "upgrade", "plan", "apply", "read-back", "word-lookup"]);
     assert.equal(world.production(), base);
     if (outcome.kind === "red") assert.deepEqual(outcome.reasons, ["word lookup: inesistentissimo: not-found, not found with a reading"]);
     assert.ok(deploySummary(outcome, "lexema-dictionary").includes(restoreCommand("lexema-dictionary", "bookmark-1")));
+  });
+});
+
+/** The tables the upgrade creates for page-only entries, in the order a drop needs. */
+const PAGE_ENTRY_UPGRADE_TABLES = [...PAGE_ENTRY_TABLES, ...PAGE_ENTRY_CORRECTION_TABLES];
+
+/** Leave the dictionary as the live one was before #507: without the page-entry tables and `corrected_definition`. */
+function withoutPageEntryTables(d1: LocalD1): void {
+  const db = d1.open();
+  try {
+    for (const table of [...PAGE_ENTRY_UPGRADE_TABLES].reverse()) db.exec(`DROP TABLE ${table}`);
+  } finally {
+    db.close();
+  }
+}
+
+test("a dictionary without the page-entry tables gets the upgrade as its own batch, before any data, and the run goes green", async () => {
+  await withWorld(async (world) => {
+    withoutPageEntryTables(world.d1);
+    const head = await world.commit({ "dictionary-changes/2026-10-normalize.json": declaration(NORMALIZE) });
+    const deps = world.deps(head);
+    const outcome = await deployDictionary(deps);
+
+    assert.equal(outcome.kind, "green", deploySummary(outcome, "lexema-dictionary"));
+    assert.deepEqual(deps.steps, [...DEPLOY_STEPS]);
+    const [ddl, data, ...rest] = writes(world.d1);
+    assert.deepEqual(rest, []);
+    assert.deepEqual([ddl[0], data[0]], ["--command", "--command"], "both batches are small, so both go through the query API");
+    assert.match(ddl[1], /CREATE TABLE IF NOT EXISTS recovered_entry\b/);
+    assert.match(ddl[1], /CREATE TABLE IF NOT EXISTS corrected_definition\b/);
+    assert.doesNotMatch(ddl[1], /\b(INSERT|UPDATE|DELETE)\b/);
+    assert.doesNotMatch(data[1], /\bCREATE\b/);
+    if (outcome.kind === "green") assert.deepEqual(outcome.upgraded, [...PAGE_ENTRY_UPGRADE_TABLES, ...PAGE_ENTRY_INDEXES]);
+    assert.match(deploySummary(outcome, "lexema-dictionary"), /The upgrade ran first and added `recovered_entry`/);
+
+    // The next run finds nothing missing and runs no DDL.
+    const next = await world.commit({ "dictionary-changes/2026-10-normalize-again.json": declaration(NORMALIZE, { records: { added: 0, changed: 0, removed: 0 } }) });
+    const again = await deployDictionary(world.deps(next));
+    assert.equal(again.kind, "green", deploySummary(again, "lexema-dictionary"));
+    if (again.kind === "green") assert.deepEqual(again.upgraded, []);
+    assert.equal(writes(world.d1).length, 2);
+  });
+});
+
+test("a first batch D1 refuses leaves the run red with nothing written, and the summary names no restore", async () => {
+  await withWorld(async (world) => {
+    const base = world.production();
+    const head = await world.commit({ "dictionary-changes/2026-10-normalize.json": declaration(NORMALIZE) });
+    const before = world.d1.sha256();
+    // What the live run met (#507): D1 rolled the batch back and Wrangler exited non-zero.
+    const refused: string[][] = [];
+    const target = {
+      dictionary: "lexema-dictionary",
+      execute: (args: readonly string[], capture: boolean) => {
+        if (args[0] === "--json") return world.d1.target.execute(args, capture);
+        refused.push([...args]);
+        throw new Error('{"D1_RESET_DO":true}');
+      },
+    };
+    const deps = world.deps(head, { target });
+    const outcome = await deployDictionary(deps);
+
+    assert.equal(outcome.kind, "red");
+    assert.deepEqual(deps.steps, ["pending", "fetch", "bookmark", "upgrade", "plan", "apply"]);
+    assert.equal(refused.length, 1);
+    assert.equal(world.d1.sha256(), before);
+    assert.equal(world.production(), base);
+    if (outcome.kind === "red") {
+      assert.equal(outcome.written, false);
+      assert.deepEqual(outcome.reasons, ['{"D1_RESET_DO":true}']);
+    }
+    const summary = deploySummary(outcome, "lexema-dictionary");
+    assert.match(summary, /Nothing was written to `lexema-dictionary`/);
+    assert.doesNotMatch(summary, /Something was written/);
+    assert.doesNotMatch(summary, /time-travel restore/);
+  });
+});
+
+test("a batch D1 refuses after an earlier batch landed still reports the write, with the restore command", async () => {
+  await withWorld(async (world) => {
+    withoutPageEntryTables(world.d1);
+    const head = await world.commit({ "dictionary-changes/2026-10-normalize.json": declaration(NORMALIZE) });
+    let sent = 0;
+    const target = {
+      dictionary: "lexema-dictionary",
+      execute: (args: readonly string[], capture: boolean) => {
+        if (args[0] !== "--json" && ++sent > 1) throw new Error('{"D1_RESET_DO":true}');
+        return world.d1.target.execute(args, capture);
+      },
+    };
+    const outcome = await deployDictionary(world.deps(head, { target }));
+
+    assert.equal(outcome.kind, "red");
+    if (outcome.kind === "red") {
+      assert.equal(outcome.written, true);
+      assert.deepEqual(outcome.upgraded, [...PAGE_ENTRY_UPGRADE_TABLES, ...PAGE_ENTRY_INDEXES]);
+    }
+    assert.equal(writes(world.d1).length, 1, "only the upgrade reached the dictionary");
+    const summary = deploySummary(outcome, "lexema-dictionary");
+    assert.match(summary, /Something was written to `lexema-dictionary`/);
+    assert.ok(summary.includes(restoreCommand("lexema-dictionary", "bookmark-1")), summary);
   });
 });
 
@@ -342,7 +445,7 @@ test("a correct:records declaration whose counts match is applied with no fetche
 
     assert.equal(outcome.kind, "green", deploySummary(outcome, "lexema-dictionary"));
     assert.deepEqual(deps.steps, [...DEPLOY_STEPS]);
-    assert.equal(writes(world.d1).length, 1, "the corrections ran as one file, and the read-back step's `unwritten` found them all");
+    assert.equal(writes(world.d1).length, 1, "the corrections ran as one batch, and the read-back step's `unwritten` found them all");
     const db = world.d1.open();
     try {
       assert.equal((db.prepare("SELECT count(*) AS n FROM corrected_claim").get() as { n: number }).n, rows);

@@ -33,18 +33,21 @@ export function localD1(dir: string, seeded: DatabaseSync): LocalD1 {
     const own = rest.slice(0, rest.indexOf("--yes"));
     calls.push(own);
     const db = new DatabaseSync(file);
-    try {
-      if (own[0] === "--file") {
-        db.exec("BEGIN");
-        try {
-          db.exec(readFileSync(own[1], "utf8"));
-          db.exec("COMMIT");
-        } catch (error) {
-          db.exec("ROLLBACK");
-          throw error;
-        }
-        return "";
+    // An import and a query-API batch are each one transaction on D1 (src/deploy/d1Batch.ts).
+    const transaction = (sql: string): string => {
+      db.exec("BEGIN");
+      try {
+        db.exec(sql);
+        db.exec("COMMIT");
+      } catch (error) {
+        db.exec("ROLLBACK");
+        throw error;
       }
+      return "";
+    };
+    try {
+      if (own[0] === "--file") return transaction(readFileSync(own[1], "utf8"));
+      if (own[0] === "--command") return transaction(own[1]);
       if (own[0] === "--json" && own[1] === "--command") return JSON.stringify([{ results: db.prepare(own[2]).all() }]);
       throw new Error(`unexpected d1 execute: ${own.join(" ")}`);
     } finally {

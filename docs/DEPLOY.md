@@ -449,11 +449,21 @@ upload of a release
    written, its log gets the line
    `bookmark: <bookmark> (restore with: <the restore command below>)`, so a run
    killed mid-write still names it. The summary names it again at the end.
+   When the dictionary lacks a table, index or view of
+   [`update:upgrade`](../src/update/masterUpgrade.ts), the page-entry tables
+   and `corrected_definition` included, the run then runs the upgrade's DDL as
+   its own batch, so no declaration's SQL carries DDL
+   ([#507](https://github.com/hueypov/lexema/issues/507)).
 4. For each declaration it runs the command's plan, without writing, and holds
    its counts to the declared ones and to the hard limits: more than 100
    records removed, or more than 5% of the records changed or removed. Any
    difference stops the run before that change is written. Otherwise it runs
-   the plan's SQL file, then reads the changed rows back.
+   the plan's SQL as one transaction, then reads the changed rows back.
+   SQL of at most 100,000 bytes goes through D1's query API
+   (`wrangler d1 execute --command`), and larger SQL through an import
+   (`--file`) ([d1Batch.ts](../src/deploy/d1Batch.ts)). SQL holding a `LIKE`
+   or `GLOB` pattern over 50 bytes, which D1 refuses, stops the run before it
+   is sent.
 5. It looks up `casa`, `andare`, `raccontare`, `bello`, `studente` and
    `andavano` in the dictionary with the site's own lookup. Each must be found.
 6. It fast-forwards `production` to the run's commit with `GITHUB_TOKEN`, and
@@ -463,6 +473,7 @@ A stop at any step is a red run, and `production` stays where it was, so the
 site stays at its last green commit. GitHub's failed-run email is the alert.
 The run's summary says why it stopped. When something was written, it names
 the bookmark and the exact restore command; the run never restores by itself.
+A batch D1 refused rolled back whole, so it alone counts as nothing written.
 Huey runs it from the repository root:
 
 ```sh

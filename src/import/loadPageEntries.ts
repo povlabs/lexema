@@ -4,9 +4,11 @@
 // from, its `recovered_entry`, `entry_definition`, `entry_label` and
 // `entry_example` rows (pageEntryRows.ts), the `corrected_definition` rows the
 // curated list gives it (correctedDefinitions.ts), and the `accent_fold` and
-// `typo_key` rows of its word's key. It creates the four tables, and
-// `corrected_definition`, when the dictionary lacks them. No record is touched,
-// `source_record_json` least of all, and no applied change or hide is undone.
+// `typo_key` rows of its word's key. It writes rows only: the four tables and
+// `corrected_definition` come from `update:upgrade` (src/update/masterUpgrade.ts),
+// which the dictionary deploy runs as its own step before any data (#507). No
+// record is touched, `source_record_json` least of all, and no applied change
+// or hide is undone.
 //
 // Which titles get an entry is the seed's rule, read off the dictionary as it
 // stands: a word a served record points at with `form_of`, which no record of
@@ -14,7 +16,7 @@
 // Italian verb (`recoverPageEntry`). A title a record spells, hidden or
 // replaced included, gets none, as in the seed.
 //
-// The SQL is one file, run as one transaction, like a hide
+// The SQL is one batch, run as one transaction, like a hide
 // (src/import/hideRecords.ts). An entry the dictionary already holds is left
 // alone, so a second run plans nothing.
 
@@ -25,7 +27,7 @@ import { deletionKeys, foldKey } from "../lookup/nearby.js";
 import { PAGE_ENTRY_TABLES } from "../lookup/served.js";
 import type { RawPage } from "../source/rawPage.js";
 import { missingUpgrade, readMasterRelease, select, type MasterReader } from "../update/master.js";
-import { createStatement, PAGE_ENTRY_INDEXES } from "../update/masterUpgrade.js";
+import { PAGE_ENTRY_CORRECTION_TABLES, PAGE_ENTRY_INDEXES } from "../update/masterUpgrade.js";
 import { PlanCounts } from "../update/planCounts.js";
 import { correctedDefinitionValues } from "./correctedDefinitions.js";
 import { entryDefinitionsOf, pageEntryRows } from "./pageEntryRows.js";
@@ -71,6 +73,18 @@ function inserts(table: keyof typeof COLUMNS, tuples: readonly (readonly unknown
   return statements;
 }
 
+/**
+ * What the upgrade creates for the load to write into. A plan reads a
+ * dictionary without them as one holding no entry yet, so a plan-only run
+ * counts the same before the upgrade as after it. The load's SQL needs them:
+ * the deploy runs the upgrade first, and `load:page-entries` refuses to write
+ * without them.
+ */
+const PAGE_ENTRY_UPGRADE: readonly string[] = [...PAGE_ENTRY_TABLES, ...PAGE_ENTRY_CORRECTION_TABLES, ...PAGE_ENTRY_INDEXES];
+
+/** The upgrade names the load writes into that the dictionary lacks: run `update:upgrade` before the load's SQL while any is listed. */
+export const missingForLoad = (reader: MasterReader): string[] => missingUpgrade(reader).filter((name) => PAGE_ENTRY_UPGRADE.includes(name));
+
 /** Which of `names` the dictionary has. */
 const tablesIn = (reader: MasterReader, names: readonly string[]): Set<string> =>
   new Set(select<{ name: string }>(reader, `SELECT name FROM sqlite_schema WHERE type = 'table' AND name IN (SELECT value FROM json_each(${json(names)}))`).map((row) => row.name));
@@ -82,9 +96,7 @@ const tablesIn = (reader: MasterReader, names: readonly string[]): Set<string> =
  * a hidden record spells is still listed here; `planPageEntries` drops it.
  */
 export function danglingTitles(reader: MasterReader): Set<string> {
-  // The load creates the page-entry tables itself; the served views it reads come from the upgrade.
-  const own: readonly string[] = [...PAGE_ENTRY_TABLES, ...PAGE_ENTRY_INDEXES];
-  const missing = missingUpgrade(reader).filter((name) => !own.includes(name));
+  const missing = missingUpgrade(reader).filter((name) => !PAGE_ENTRY_UPGRADE.includes(name));
   if (missing.length > 0) throw new Error(`the dictionary lacks ${missing.join(", ")}; run pnpm run update:upgrade first`);
   const master = readMasterRelease(reader);
   // Naming the releases lets the probe use lookup_form_headword_by_key, which leads with release_id.
@@ -179,14 +191,15 @@ function nearbyRows(reader: MasterReader, served: readonly string[], entries: re
 /**
  * Plan loading `found`, the entries the rule read off the master's dump for
  * the dictionary's dangling titles. It reads the dictionary; it writes
- * nothing. `schema` is src/db/schema.sql, whose tables an older dictionary
- * gets. Throws when the dictionary holds some page-entry tables but not all,
- * or holds a title's page or entry from another revision than the one read.
+ * nothing. Its SQL holds no DDL: it writes into the tables `update:upgrade`
+ * creates (`missingForLoad`). Throws when the dictionary holds some page-entry
+ * tables but not all, or holds a title's page or entry from another revision
+ * than the one read.
  */
-export function planPageEntries(reader: MasterReader, found: readonly RecoveredEntry[], schema: string, corrections: readonly CuratedCorrection[]): PageEntryPlan {
+export function planPageEntries(reader: MasterReader, found: readonly RecoveredEntry[], corrections: readonly CuratedCorrection[]): PageEntryPlan {
   const master = readMasterRelease(reader);
   const release = literal(master.releaseId);
-  const tables = tablesIn(reader, [...PAGE_ENTRY_TABLES, "corrected_definition"]);
+  const tables = tablesIn(reader, PAGE_ENTRY_TABLES);
   const pageTables = PAGE_ENTRY_TABLES.filter((name) => tables.has(name));
   if (pageTables.length > 0 && pageTables.length < PAGE_ENTRY_TABLES.length) {
     throw new Error(`the dictionary has ${pageTables.join(", ")} but not every page-entry table (${PAGE_ENTRY_TABLES.join(", ")})`);
@@ -246,13 +259,10 @@ export function planPageEntries(reader: MasterReader, found: readonly RecoveredE
       .map((correction) => ({ id: correctionId(correction), entryId, title: entry.page.title, values: [entryId, correction.replaces.index, ...correctedDefinitionValues(correction)] })),
   );
   const nearby = nearbyRows(reader, [master.releaseId, ...master.feeds.map((feed) => feed.releaseId)], writes.map(({ entry }) => entry));
-  const ifAbsent = (kind: "TABLE" | "INDEX", name: string): string => createStatement(schema, kind, name).replace(`CREATE ${kind} `, `CREATE ${kind} IF NOT EXISTS `);
   const all = <Table extends "entry_definition" | "entry_label" | "entry_example">(table: Table) => rows.flatMap((entry) => entry[table]);
 
   const sql = [
     `-- Generated by src/import/loadPageEntries.ts: ${writes.length} page-only entr${writes.length === 1 ? "y" : "ies"} of ${master.releaseId} by ${PAGE_ENTRY_RULE}: ${writes.map(({ entry }) => entry.page.title).join(", ")}.`,
-    ...(hasEntries ? [] : [...PAGE_ENTRY_TABLES.map((name) => ifAbsent("TABLE", name)), ...PAGE_ENTRY_INDEXES.map((name) => ifAbsent("INDEX", name))]),
-    ...(correctionRows.length === 0 || tables.has("corrected_definition") ? [] : [ifAbsent("TABLE", "corrected_definition")]),
     ...inserts("raw_page", newPages),
     ...inserts("recovered_entry", rows.map((entry) => entry.recovered_entry)),
     ...inserts("entry_definition", all("entry_definition")),
