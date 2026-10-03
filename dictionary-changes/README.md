@@ -30,6 +30,9 @@ cannot read as one, naming the file.
 (`--plan-only`, [src/update/planOnly.ts](../src/update/planOnly.ts)). A table
 left out of `written` or `deleted` is expected to have no row.
 
+The [monthly release](../docs/DEPLOY.md#the-monthly-release) writes one
+`<release id>.json` here, an `update:auto` of the new kaikki release.
+
 After a merge to `main`, the [dictionary deploy](../docs/DEPLOY.md#the-dictionary-deploy)
 applies every declaration the merge adds, in the order their commits reached
 `main`, and stops red when a plan's counts differ from `expected`. Changing or

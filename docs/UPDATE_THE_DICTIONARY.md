@@ -11,7 +11,9 @@ history routinely. Investigate accuracy when a user reports a problem.
 - Keep the later archive and the Wiktionary dump its build log names. Fetch
   using [REFETCH_A_RELEASE.md](REFETCH_A_RELEASE.md), preserving headers,
   checksum and build log. A release id is a hash, not a date. A changed
-  download timestamp alone does not establish newer source content.
+  download timestamp alone does not establish newer source content. Once a
+  month, [the monthly release](DEPLOY.md#the-monthly-release) does this in CI
+  and opens a pull request with the release's facts and change declaration.
 - Ensure checksum-bound archive facts exist in
   [archiveFacts.ts](../src/source/archiveFacts.ts) and the dump's size and SHA-1
   in [KNOWN_DUMPS](../src/source/wiktionaryDump.ts). Unknown ordering, regressive

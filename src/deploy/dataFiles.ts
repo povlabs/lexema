@@ -129,7 +129,8 @@ export function lexemaDataFetcher(token: string, fetchImpl: typeof fetch = fetch
   };
 }
 
-async function sha256Of(path: string): Promise<string> {
+/** The lowercase hex SHA-256 of the file at `path`, read as a stream. */
+export async function sha256Of(path: string): Promise<string> {
   const hash = createHash("sha256");
   for await (const chunk of createReadStream(path)) hash.update(chunk as Buffer);
   return hash.digest("hex");
