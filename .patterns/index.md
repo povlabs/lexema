@@ -21,7 +21,7 @@ workflows already show the same shape; each doc cites the workflow here that doe
 
 | Pattern | Topic / scope | Read when |
 |---|---|---|
-| [repo-wide-gates-run-on-main.md](./repo-wide-gates-run-on-main.md) | Which trigger set a workflow carries, decided by the scope its guard scans | Adding a CI workflow, or changing an existing one's triggers or concurrency block |
+| [repo-wide-gates-run-on-main.md](./repo-wide-gates-run-on-main.md) | Which trigger set a workflow carries, decided by the scope its guard scans | Adding a CI workflow or a gated job in `ci.yml`, or changing a workflow's triggers, path sets or concurrency block |
 | [workflow-shell-fails-closed.md](./workflow-shell-fails-closed.md) | The shape of a run: block whose exit status is a verdict | Writing or editing a shell step that scans something and reports clean or red |
 
 ## Dictionary database
