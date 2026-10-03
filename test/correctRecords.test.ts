@@ -88,12 +88,12 @@ test("a master seeded before the corrections gets what a seed now writes, once, 
     const reader = readerOf(before);
     const schema = await readFile(SCHEMA, "utf8");
     const plan = planCorrections(reader, corrections, schema);
-    assert.deepEqual(plan.entries.map((entry) => entry.state), Array(12).fill("write"));
+    assert.deepEqual(plan.entries.map((entry) => entry.state), Array(20).fill("write"));
     execute(before, plan.sql);
     assert.deepEqual(unwritten(reader, plan), []);
 
     assert.deepEqual(correctedRows(before), correctedRows(fresh));
-    assert.equal(correctedRows(before).length, 14);
+    assert.equal(correctedRows(before).length, 22);
     assert.deepEqual(all(before, "SELECT * FROM source_record_json ORDER BY record_id"), rawBefore);
     assert.deepEqual(all(before, "SELECT * FROM grammar_claim ORDER BY claim_id"), claimsBefore);
     assert.deepEqual(await genderOf(before, "fissazione"), ["corrected feminine"]);
@@ -104,9 +104,28 @@ test("a master seeded before the corrections gets what a seed now writes, once, 
     // A second run plans nothing.
     const again = planCorrections(reader, corrections, schema);
     assert.equal(again.sql, "");
-    assert.deepEqual(again.entries.map((entry) => entry.state), Array(12).fill("already"));
+    assert.deepEqual(again.entries.map((entry) => entry.state), Array(20).fill("already"));
   } finally {
     before.close();
+    fresh.close();
+  }
+});
+
+test("a master that holds #420's twelve gets #449's eight and leaves the twelve as written", async () => {
+  const corrections = atFixtureLines(await correctionFixtureLines(), RELEASE);
+  const db = await seeded(corrections.slice(0, 12));
+  const fresh = await seeded(corrections);
+  try {
+    const reader = readerOf(db);
+    const versionBefore = versionToken(await servedVersion(fromNodeSqlite(db), RELEASE));
+    const plan = planCorrections(reader, corrections, await readFile(SCHEMA, "utf8"));
+    assert.deepEqual(plan.entries.map((entry) => entry.state), [...Array(12).fill("already"), ...Array(8).fill("write")]);
+    execute(db, plan.sql);
+    assert.deepEqual(unwritten(reader, plan), []);
+    assert.deepEqual(correctedRows(db), correctedRows(fresh));
+    assert.notEqual(versionToken(await servedVersion(fromNodeSqlite(db), RELEASE)), versionBefore);
+  } finally {
+    db.close();
     fresh.close();
   }
 });
