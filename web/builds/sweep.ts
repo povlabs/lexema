@@ -3,10 +3,10 @@
 // request. A merged pull request is cleaned up at its own merge; one closed
 // without merging, at the next merge.
 //
-// Which branches still have an open pull request is read from GitHub with
-// `GITHUB_PR_READ_TOKEN`, a fine-grained read-only token kept as a Workers
-// Builds build secret: the build itself sees no pull request state (#238 R3.2).
-// When that list cannot be read, nothing is deleted.
+// Which branches still have an open pull request is read from GitHub's REST
+// API: the build itself sees no pull request state (#238 R3.2). The repository
+// is public, so no token is needed; `GITHUB_PR_READ_TOKEN` is sent when set
+// (#527). When that list cannot be read, nothing is deleted.
 //
 // What exists is read from the account's D1 databases: the preview command
 // creates `lexema-preview-app-<name>` before it runs `wrangler preview --name
@@ -98,7 +98,7 @@ export function selectForSweep(databases: readonly D1Database[], open: OpenBranc
 
 export interface SweepSteps {
   readonly wrangler: Wrangler;
-  /** `GITHUB_PR_READ_TOKEN`. */
+  /** `GITHUB_PR_READ_TOKEN`, optional on the public repository (#527). */
   readonly token: string | undefined;
   readonly fetchPage: typeof fetch;
   log(line: string): void;

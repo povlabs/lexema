@@ -295,14 +295,16 @@ and the app D1 of every branch with no open pull request. A merged pull request
 is cleaned up at the production build that follows its merge; one closed
 without merging, at the next production build.
 
-- It reads the open pull requests' head branches from GitHub's REST API with
-  `GITHUB_PR_READ_TOKEN`, a read-only token kept as a Workers Builds build secret.
+- It reads the open pull requests' head branches from GitHub's REST API. The
+  repository is public, so no token is needed; `GITHUB_PR_READ_TOKEN`, if set as
+  a Workers Builds build secret, is sent with the request (#527).
 - It looks only at D1 databases whose name starts with `lexema-preview-app-`, and
   never at the shared dictionary `lexema-dictionary`.
 - It deletes the Preview first (`wrangler preview delete`), then its D1
   (`wrangler d1 delete`). If the Preview cannot be deleted, its D1 stays, and the
   next sweep tries again.
-- If the token is missing, or GitHub's list cannot be read, it deletes nothing.
+- If GitHub's list cannot be read (a refused or failed request, or a malformed
+  answer), it deletes nothing.
   The build log then says `sweep: deleting nothing` and why.
 
 A Preview made any other way, such as `wrangler preview` from a laptop, has no
@@ -314,12 +316,14 @@ A Preview made any other way, such as `wrangler preview` from a laptop, has no
 Do these once, in this order. Each Cloudflare step names the doc page it comes
 from; where a label is not in the docs, the step says what to look for.
 
-**1. Create the read-only GitHub token.**
+**1. Create the read-only GitHub token (optional).** `povlabs/lexema` is public,
+so the sweep reads open pull requests without a token (#527). A token only
+raises GitHub's rate limit for anonymous reads.
 
 1. Open https://github.com/settings/personal-access-tokens/new (a fine-grained
    token).
 2. **Token name**: `lexema-workers-builds-sweep`.
-3. **Resource owner**: `hueypov`.
+3. **Resource owner**: `povlabs`.
 4. **Expiration**: pick a date and put a reminder in your calendar. When it
    expires the sweep deletes nothing, and says `GitHub answered 401` in the build
    log, until you make a new one; deploys carry on.
@@ -539,8 +543,8 @@ request's own code.
 
 ### Where the archives are
 
-The run reads `povlabs/lexema-data` through GitHub's contents API, which serves
-a file of up to 100 MB:
+The run reads the public `povlabs/lexema-data` from raw.githubusercontent.com,
+with no token and no API rate limit, and checks every file's checksum (#527):
 
 | File | Path in `povlabs/lexema-data` |
 |---|---|
@@ -761,7 +765,7 @@ No agent does any of them.
 
 1. **The write token.** Open
    https://github.com/settings/personal-access-tokens/new. **Token name**:
-   `lexema-monthly-release-data`. **Resource owner**: `hueypov`. **Repository
+   `lexema-monthly-release-data`. **Resource owner**: `povlabs`. **Repository
    access**: **Only select repositories**, `povlabs/lexema-data` alone.
    **Permissions**: **Contents**, **Read and write**, and nothing else.
    Generate it and copy it. When it expires, the run stops before it stores

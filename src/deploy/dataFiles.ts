@@ -118,25 +118,14 @@ function releaseFiles(releaseId: ReleaseId, catalog: ArchiveFactsCatalog, dumps:
 export type DataFetcher = (path: string, to: string) => Promise<void>;
 
 /**
- * The data repository's files. With no token, the public repository is read
- * from raw.githubusercontent.com, which has no API rate limit (#527). With a
- * token, GitHub's contents API is used, whose raw media type serves a file of
- * up to 100 MB; the largest here, a dump, is about 71 MB. Either way the file
- * is checked against its catalog entry before it is used.
+ * The public data repository's files, read from raw.githubusercontent.com
+ * with no token and no API rate limit (#527). The caller checks each file
+ * against its catalog entry before it is used (`fetchVerified`).
  */
-export function lexemaDataFetcher(token: string | null, fetchImpl: typeof fetch = fetch): DataFetcher {
+export function lexemaDataFetcher(fetchImpl: typeof fetch = fetch): DataFetcher {
   return async (path, to) => {
     const encoded = path.split("/").map(encodeURIComponent).join("/");
-    const response =
-      token === null
-        ? await fetchImpl(`https://raw.githubusercontent.com/${DATA_REPOSITORY}/main/${encoded}`)
-        : await fetchImpl(`https://api.github.com/repos/${DATA_REPOSITORY}/contents/${encoded}`, {
-            headers: {
-              Accept: "application/vnd.github.raw+json",
-              Authorization: `Bearer ${token}`,
-              "X-GitHub-Api-Version": "2022-11-28",
-            },
-          });
+    const response = await fetchImpl(`https://raw.githubusercontent.com/${DATA_REPOSITORY}/main/${encoded}`);
     if (!response.ok || response.body === null) throw new DataRefused([`${DATA_REPOSITORY} answered ${response.status} for ${path}`]);
     await mkdir(dirname(to), { recursive: true });
     await pipeline(Readable.fromWeb(response.body as WebReadableStream<Uint8Array>), createWriteStream(to));

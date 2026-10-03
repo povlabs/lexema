@@ -42,7 +42,7 @@ const USAGE = `usage:
   pnpm run deploy:dictionary
   pnpm run deploy:dictionary --plan-only --change '<{"command": ..., "inputs": {...}}>' [--release '<release candidate>']
   pnpm run deploy:dictionary --plan-only --added-since <base commit>
-The run needs GITHUB_ACTIONS, GITHUB_REF refs/heads/main, GITHUB_SHA and SEED_REMOTE (LEXEMA_DATA_TOKEN is optional: povlabs/lexema-data is public).`;
+The run needs GITHUB_ACTIONS, GITHUB_REF refs/heads/main, GITHUB_SHA and SEED_REMOTE. povlabs/lexema-data is public and is read without a token.`;
 
 /** A Time Travel bookmark of `dictionary` as it is now, through Wrangler. */
 export function bookmarkOf(wrangler: Wrangler, dictionary: string): string {
@@ -64,15 +64,9 @@ export function deployLog(write: (line: string) => void, dictionary: string): Pi
   };
 }
 
-/** The optional `povlabs/lexema-data` token the run was given, or null when it is unset or empty. */
-function dataTokenOf(env: NodeJS.ProcessEnv): string | null {
-  const token = env.LEXEMA_DATA_TOKEN;
-  return token === undefined || token === "" ? null : token;
-}
-
-/** The data repository's fetcher: the public repository needs no token, and one is used when given (#527). */
-function fetcherFrom(env: NodeJS.ProcessEnv): DataFetcher {
-  return lexemaDataFetcher(dataTokenOf(env));
+/** The data repository's fetcher: the public repository needs no token (#527). */
+function fetcherFrom(): DataFetcher {
+  return lexemaDataFetcher();
 }
 
 /**
@@ -91,7 +85,7 @@ async function pullRequestPlanCommand(base: string, env: NodeJS.ProcessEnv, wran
   }
   const target = seedTargetFrom(env, wrangler, resolve(".data/seed-state"));
   const reader = masterReaderOf(target);
-  const fetcher = fetcherFrom(env);
+  const fetcher = fetcherFrom();
   const outcomes = await planPullRequest(declarations, {
     plan: async (change) => planOnly(change, { reader, fetcher, workDir: await mkdtemp(join(env.RUNNER_TEMP ?? tmpdir(), "lexema-plan-")) }),
   });
@@ -125,7 +119,7 @@ async function planOnlyCommand(args: readonly string[], env: NodeJS.ProcessEnv, 
   const answer = await planOnly(change, {
     ...catalogs,
     reader: masterReaderOf(target),
-    fetcher: fetcherFrom(env),
+    fetcher: fetcherFrom(),
     workDir: await mkdtemp(join(env.RUNNER_TEMP ?? tmpdir(), "lexema-plan-")),
   });
   const out = JSON.stringify({ ...answer, planOnly: true });
@@ -149,7 +143,7 @@ async function deployCommand(env: NodeJS.ProcessEnv, wrangler: Wrangler): Promis
     target,
     reader: masterReaderOf(target),
     bookmark: () => bookmarkOf(wrangler, target.dictionary),
-    fetcher: fetcherFrom(env),
+    fetcher: fetcherFrom(),
     workDir: await mkdtemp(join(env.RUNNER_TEMP ?? tmpdir(), "lexema-deploy-")),
     ...deployLog((line) => process.stderr.write(line), target.dictionary),
   });

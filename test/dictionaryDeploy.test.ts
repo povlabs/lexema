@@ -620,21 +620,18 @@ test("the master's archive is read from source/it-extract.jsonl.gz, and a feed's
   assert.equal(filesFor(parseChange("test", JSON.stringify(NORMALIZE))), null);
 });
 
-test("a file is read from lexema-data's contents API with the token it is given, raw", async () => {
+test("a file is read from the public lexema-data on raw.githubusercontent.com, with no token", async () => {
   const dir = await mkdtemp(join(tmpdir(), "lexema-fetch-"));
   try {
-    const asked: { url: string; headers: Record<string, string> }[] = [];
-    const fake = (async (url: string, init: { headers: Record<string, string> }) => {
-      asked.push({ url, headers: init.headers });
+    const asked: { url: string; init: unknown }[] = [];
+    const fake = (async (url: string, init?: unknown) => {
+      asked.push({ url, init });
       return url.endsWith("missing.bz2") ? new Response("no", { status: 404 }) : new Response("the bytes");
     }) as unknown as typeof fetch;
-    const fetcher = lexemaDataFetcher("read-only-token", fake);
+    const fetcher = lexemaDataFetcher(fake);
     await fetcher("source/it-78385b62.jsonl.gz", join(dir, "a", "archive"));
     assert.equal(await readFile(join(dir, "a", "archive"), "utf8"), "the bytes");
-    assert.deepEqual(asked[0], {
-      url: "https://api.github.com/repos/povlabs/lexema-data/contents/source/it-78385b62.jsonl.gz",
-      headers: { Accept: "application/vnd.github.raw+json", Authorization: "Bearer read-only-token", "X-GitHub-Api-Version": "2022-11-28" },
-    });
+    assert.deepEqual(asked[0], { url: "https://raw.githubusercontent.com/povlabs/lexema-data/main/source/it-78385b62.jsonl.gz", init: undefined });
     await assert.rejects(fetcher("source/missing.bz2", join(dir, "b")), (error: unknown) => error instanceof DataRefused && /answered 404/.test(error.message));
   } finally {
     await rm(dir, { recursive: true, force: true });

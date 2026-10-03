@@ -151,7 +151,7 @@ for (const [command, text] of Object.entries(DATA_READING)) {
   const { inputs } = JSON.parse(text) as { inputs: object };
   const declaration = (expected?: object): string => JSON.stringify({ command, inputs, ...(expected === undefined ? {} : { expected }) });
 
-  test(`a first ${command} is planned like any other command and passes on matching counts`, async () => {
+  test(`a first ${command} is planned with no lexema-data token, like any other command, and passes on matching counts`, async () => {
     const stub = planner();
     const outcomes = await planPullRequest(drafts({ "dictionary-changes/first.json": text }), stub);
     assert.deepEqual(stub.planned, ["dictionary-changes/first.json"]);

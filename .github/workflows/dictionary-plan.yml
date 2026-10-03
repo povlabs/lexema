@@ -6,8 +6,7 @@ name: Dictionary plan
 # the counts to put in it. It only ever runs the plan-only entry, so it writes
 # nothing, records no bookmark and moves no branch. `update:auto`,
 # `hide:records` and `load:page-entries` read an archive and a dump from
-# povlabs/lexema-data, so the plan step also gets a read-only token for that
-# repository (#498). The steps
+# povlabs/lexema-data, which is public and read without a token (#527). The steps
 # are src/deploy/pullRequestPlan.ts; docs/DEPLOY.md lists the environment,
 # secrets and variable read here (ADR 0018). The deploy still holds every
 # declaration to `expected` at merge.
@@ -28,8 +27,8 @@ jobs:
     # As long as the deploy's own plan job: the run may download an archive
     # and a dump.
     timeout-minutes: 60
-    # Holds the D1 read-only token and a povlabs/lexema-data read-only token;
-    # never the D1 Edit token or a token that writes povlabs/lexema-data.
+    # Holds the D1 read-only token only; never the D1 Edit token or a token
+    # that writes povlabs/lexema-data.
     environment: dictionary-plan
     concurrency:
       group: dictionary-plan-${{ github.event.pull_request.number }}

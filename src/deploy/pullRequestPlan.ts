@@ -10,9 +10,8 @@
 // pull request adds is planned: a later one's counts depend on what the earlier
 // ones write, which a run that writes nothing cannot see. A later declaration
 // is refused, naming the earlier ones. `update:auto`, `hide:records` and
-// `load:page-entries` read an archive and a dump from `povlabs/lexema-data`, so
-// the workflow also passes a read-only token for it (#498); a run without one
-// is red, naming the secret.
+// `load:page-entries` read an archive and a dump from `povlabs/lexema-data`,
+// which is public and read without a token (#527).
 
 import { checkPlan, type DeclarationDraft, type DeclaredChange, DECLARATIONS_DIR, isDeclarationPath, parseDraft, passes, type PlanCheck } from "../update/declaration.js";
 import type { PlanCounts } from "../update/planCounts.js";
