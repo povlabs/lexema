@@ -5,7 +5,8 @@
 //    write nothing and fast-forward `production`.
 // 2. Fetch the archive and dump each one reads and check their checksums
 //    (dataFiles.ts). A file that is not what it must be stops the run here.
-// 3. Record a D1 Time Travel bookmark: the restore point.
+// 3. Record a D1 Time Travel bookmark, the restore point, and tell it to the
+//    log at once, before anything is written.
 // 4. For each declaration, oldest first: plan it, hold the plan's counts to
 //    the declared ones and to the hard limits, run its file, read it back.
 // 5. Look up a fixed word list in the dictionary written (wordCheck.ts).
@@ -54,6 +55,8 @@ export interface DeployDeps {
   readonly now?: () => string;
   /** Told each step as it starts. */
   readonly onStep?: (step: DeployStep, detail: string) => void;
+  /** Told the bookmark as soon as it is taken, before anything is written, so a run killed mid-apply still names its restore point. */
+  readonly onBookmark?: (bookmark: string) => void;
 }
 
 /** One declaration the run took up: its counts, and whether its file ran. */
@@ -107,6 +110,7 @@ export async function deployDictionary(deps: DeployDeps): Promise<DeployOutcome>
 
       step("bookmark", deps.target.dictionary);
       bookmark = deps.bookmark();
+      deps.onBookmark?.(bookmark);
 
       for (const { change: declaration, ready: change } of ready) {
         step("plan", declaration.file);

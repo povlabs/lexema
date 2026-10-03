@@ -11,7 +11,7 @@ import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import test from "node:test";
-import { main as deployMain } from "../src/deploy/deployCli.js";
+import { deployLog, main as deployMain } from "../src/deploy/deployCli.js";
 import { type DataFetcher, DataRefused, fetchVerified, filesFor, lexemaDataFetcher } from "../src/deploy/dataFiles.js";
 import { DEPLOY_STEPS, deployDictionary, deploySummary, type DeployDeps, type DeployStep, planOnly, restoreCommand } from "../src/deploy/dictionaryDeploy.js";
 import { gitIn, PRODUCTION_BRANCH } from "../src/deploy/pending.js";
@@ -186,6 +186,23 @@ test("a push adding one declaration records a bookmark, plans, applies, reads ba
       assert.deepEqual(outcome.changes.map(({ file, ran, counts }) => [file, ran, counts.toJSON()]), [["dictionary-changes/2026-10-normalize.json", true, NORMALIZE_COUNTS]]);
     }
     assert.match(deploySummary(outcome, "lexema-dictionary"), /`production` is now/);
+  });
+});
+
+test("the run logs the bookmark and its restore command as soon as it is taken, before the first --file call", async () => {
+  await withWorld(async (world) => {
+    const head = await world.commit({ "dictionary-changes/2026-10-normalize.json": declaration(NORMALIZE) });
+    const log: { line: string; writesBefore: number }[] = [];
+    const deps = world.deps(head, deployLog((line) => log.push({ line, writesBefore: writes(world.d1).length }), "lexema-dictionary"));
+    const outcome = await deployDictionary(deps);
+
+    assert.equal(outcome.kind, "green", deploySummary(outcome, "lexema-dictionary"));
+    const bookmarkLines = log.filter(({ line }) => line.startsWith("bookmark: bookmark-1 "));
+    assert.equal(bookmarkLines.length, 1, log.map(({ line }) => line).join(""));
+    assert.equal(bookmarkLines[0]?.writesBefore, 0, "logged before any write");
+    assert.ok(bookmarkLines[0]?.line.includes(restoreCommand("lexema-dictionary", "bookmark-1")), bookmarkLines[0]?.line);
+    assert.ok(log.findIndex(({ line }) => line.startsWith("bookmark: ")) < log.findIndex(({ line }) => line.startsWith("apply: ")), "logged before the apply step");
+    assert.equal(writes(world.d1).length, 1);
   });
 });
 

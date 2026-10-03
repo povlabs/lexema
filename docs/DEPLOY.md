@@ -434,8 +434,10 @@ dictionary D1 `lexema-dictionary` and the only thing that moves `production`
    dump's size and SHA-1 against
    [`KNOWN_DUMPS`](../src/source/wiktionaryDump.ts). A file that does not match
    stops the run.
-3. It records a D1 Time Travel bookmark, the restore point, in its log and
-   summary.
+3. It records a D1 Time Travel bookmark, the restore point. Before anything is
+   written, its log gets the line
+   `bookmark: <bookmark> (restore with: <the restore command below>)`, so a run
+   killed mid-write still names it. The summary names it again at the end.
 4. For each declaration it runs the command's plan, without writing, and holds
    its counts to the declared ones and to the hard limits: more than 100
    records removed, or more than 5% of the records changed or removed. Any

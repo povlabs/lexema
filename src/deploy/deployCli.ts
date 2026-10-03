@@ -21,7 +21,7 @@ import { seedTargetFrom, webWrangler, type Wrangler } from "../import/seedTarget
 import { DeclarationRefused, parseChange } from "../update/declaration.js";
 import { masterReaderOf } from "../update/updateCli.js";
 import { type DataFetcher, lexemaDataFetcher } from "./dataFiles.js";
-import { deployDictionary, deploySummary, planOnly } from "./dictionaryDeploy.js";
+import { type DeployDeps, deployDictionary, deploySummary, planOnly, restoreCommand } from "./dictionaryDeploy.js";
 import { gitIn } from "./pending.js";
 
 const USAGE = `usage:
@@ -34,6 +34,19 @@ export function bookmarkOf(wrangler: Wrangler, dictionary: string): string {
   const answer = JSON.parse(wrangler(["d1", "time-travel", "info", dictionary, "--json"], true)) as { bookmark?: unknown };
   if (typeof answer.bookmark !== "string" || answer.bookmark === "") throw new Error(`wrangler d1 time-travel info ${dictionary} gave no bookmark`);
   return answer.bookmark;
+}
+
+/**
+ * What the run writes to its log: each step as it starts, and the bookmark
+ * with its restore command the moment it is taken, before the first write. A
+ * job killed mid-apply writes no summary, so the log is where its restore
+ * point survives.
+ */
+export function deployLog(write: (line: string) => void, dictionary: string): Pick<DeployDeps, "onStep" | "onBookmark"> {
+  return {
+    onStep: (step, detail) => write(`${step}: ${detail}\n`),
+    onBookmark: (bookmark) => write(`bookmark: ${bookmark} (restore with: ${restoreCommand(dictionary, bookmark)})\n`),
+  };
 }
 
 /** The data repository's fetcher, or a fetcher that refuses when no token was given. */
@@ -86,7 +99,7 @@ async function deployCommand(env: NodeJS.ProcessEnv, wrangler: Wrangler): Promis
     bookmark: () => bookmarkOf(wrangler, target.dictionary),
     fetcher: fetcherFrom(env),
     workDir: await mkdtemp(join(env.RUNNER_TEMP ?? tmpdir(), "lexema-deploy-")),
-    onStep: (step, detail) => process.stderr.write(`${step}: ${detail}\n`),
+    ...deployLog((line) => process.stderr.write(line), target.dictionary),
   });
   const summary = deploySummary(outcome, target.dictionary);
   if (env.GITHUB_STEP_SUMMARY !== undefined) await appendFile(env.GITHUB_STEP_SUMMARY, summary);
