@@ -2,7 +2,12 @@
 
 A page-only entry is an Italian word the archive has no record for, read from
 its Wiktionary page by the rules of
-[ADR 0024](../.decisions/0024-italian-pages-the-extraction-skips-are-recovered.md).
+[ADR 0024](../.decisions/0024-italian-pages-the-extraction-skips-are-recovered.md)
+and [ADR 0028](../.decisions/0028-recovered-pages-any-part-of-speech.md).
+Rule `italian-page-entry/v1` reads ADR 0024's three verb layouts. Rule
+`italian-page-entry/v2` reads ADR 0028's measured layouts, for any part of
+speech the layout states; a page v1 recovers keeps its v1 entry
+([pageEntry.ts](../src/italian/pageEntry.ts)).
 To build one in a local seed, see
 [run an archive seed](RUN_AN_IMPORT.md#page-only-entries).
 
@@ -14,13 +19,18 @@ To build one in a local seed, see
 - An entry holds its word, its part of speech, its definitions, and their labels
   and examples. Each fact keeps the page revision, its 1-based page line and that
   line's wikitext, verbatim.
+- A page gives one entry per Italian part-of-speech section. Each entry records
+  the rule that read it.
 - No inflection table, pronunciation or etymology is recovered.
 
 ## Identity
 
 - A page-only entry has an `entryId`, never a `recordId`; a reading is exactly
   one of the two (`EntryIdentity` in [types.ts](../src/lookup/types.ts)).
-- API ids are `<release>:page:<revisionId>`. Archive ids stay `<release>:<lineNo>`.
+- API ids are `<release>:page:<revisionId>:<pageLine>`, where `pageLine` is the
+  1-based line that states the entry's part of speech. A page gives one entry
+  per such line, so `lungo` gives two ids. Archive ids stay `<release>:<lineNo>`
+  (`publicEntryId` in [types.ts](../src/lookup/types.ts)).
 - A report names a source record or the word. A page-only entry is not offered
   as a reading to report, so its report is about the word.
 

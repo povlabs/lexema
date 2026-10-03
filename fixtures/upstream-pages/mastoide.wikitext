@@ -1,0 +1,22 @@
+<!-- it.wiktionary.org/wiki/mastoide revision 3928854 (2023-03-23T09:45:11Z), CC BY-SA 4.0. Saved verbatim. -->
+{{-sost-|it}}
+{{Pn}} ''f sing'' {{Linkp|mastoidi}}
+# {{Term|anatomia|it}} [[prominenza]] [[tondeggiante]] dell'[[osso]] [[temporale]], [[posta]] [[dietro]] il [[padiglione]] dell'[[orecchio]]
+
+{{-sill-}}
+; ma | stòi | de
+
+{{-etim-}}
+dal greco ''[[μαστοειδής]]''m n cioè "simile a mammella", formato da  ''[[μαστός]]'' cioè "[[mammella]]" e  fa ''[[-ειδής]]''cioè "[[-oide]]"
+
+{{-rel-}}
+* [[clavicola]], [[sterno]], [[sternocleidomastoideo]]
+
+{{-trad-}}
+{{Trad1|}}
+:* {{en}}:
+{{Trad2}}
+
+{{-ref-}}
+* {{Fonte|trec}}
+* {{Fonte|hoep}}

@@ -1,0 +1,32 @@
+<!-- it.wiktionary.org/wiki/motteggio revision 4014868 (2025-02-06T21:25:32Z), CC BY-SA 4.0. Saved verbatim. -->
+== {{-it-}} ==
+{{Pn}} '' m sing'' {{Linkp|motteggi}}
+# battuta arguta, talvolta pungente e sarcastica anche se detta in modo scherzoso
+
+{{-sill-}}
+; mot | tég | gio
+
+{{-pron-}}
+{{IPA|/motˈtedd͡ʒo/}}
+
+{{-etim-}}
+{{Noetim|it}}
+
+{{-sin-}}
+*[[battuta]], [[barzelletta]], [[beffa]], [[burla]], [[canzonatura]], [[derisione]], [[dileggio]], [[frecciata]], [[frizzo]], [[irrisione]], presa in giro, presa per il culo, [[punzecchiatura]], [[scherno]]
+*[[arguzia]], [[facezia]], [[lazzo]], [[lepidezza]], [[scherzo]], [[spiritosaggine]]           
+
+
+{{-ant-}}
+*[[complimento]],  [[elogio]], [[lode]]
+
+{{-trad-}}
+{{Trad1|}}
+:* {{en}}:
+{{Trad2}}
+
+{{-ref-}}
+* {{Fonte|dizit}}
+* {{Fonte|sabco}}
+* {{Fonte|desan|M}}
+* {{Fonte|sin-co}}

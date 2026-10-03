@@ -6,7 +6,7 @@
 import { writeFile } from "node:fs/promises";
 import { parseArgs } from "node:util";
 import { isMain } from "../commandLine.js";
-import { recoverPageEntry, PAGE_ENTRY_RULE } from "../italian/pageEntry.js";
+import { recoverUnderRuleV1, PAGE_ENTRY_RULE } from "../italian/pageEntry.js";
 import { POS_TITLE_BY_TEMPLATE } from "../italian/wikitext.js";
 import { PUBLISHED_ARCHIVE_SHA256 } from "../source/archiveFacts.js";
 import type { RawPage } from "../source/rawPage.js";
@@ -213,7 +213,7 @@ async function main(): Promise<void> {
       titles.push({
         title: page.title, revisionId: page.revisionId, timestamp: page.timestamp, group: layout.group,
         heading: layout.heading, sections: layout.sections, unplaced: layout.unplaced, readAs: layout.readAs,
-        ruleV1: recoverPageEntry(page, words).outcome,
+        ruleV1: recoverUnderRuleV1(page, words).outcome,
       });
     }
   } finally { await dump.close(); }

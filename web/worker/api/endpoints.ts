@@ -21,7 +21,7 @@ import { exists, lookup, MAX_QUERY_LENGTH, rejectionOf } from "@lexema/lookup/lo
 import { findNearby } from "@lexema/lookup/nearby.ts";
 import { randomHeadword } from "@lexema/lookup/random.ts";
 import { prefixRejectionOf, suggest } from "@lexema/lookup/suggest.ts";
-import { entryKey, isFormOfReading, type LemmaTarget, type LookupResult, type RejectedQuery } from "@lexema/lookup/types.ts";
+import { entryKey, isFormOfReading, publicEntryId, type LemmaTarget, type LookupResult, type RejectedQuery } from "@lexema/lookup/types.ts";
 import { error, read, refused, type Reading, type Route } from "./answer.ts";
 import {
   attributionOf,
@@ -282,7 +282,7 @@ const batchRoute: Route = async (request, _url, { batchWords: most }) => {
       return answer.candidates.map((candidate) => ({
         query: word,
         found: true,
-        id: `${candidate.releaseId}:${candidate.recordId === undefined ? `page:${candidate.revisionId}` : candidate.lineNo}`,
+        id: publicEntryId(candidate),
         lemma: candidate.word,
         pos: candidate.pos,
         pos_title: candidate.posTitle,

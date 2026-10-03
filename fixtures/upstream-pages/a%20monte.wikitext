@@ -1,0 +1,24 @@
+<!-- it.wiktionary.org/wiki/a monte revision 4040642 (2025-07-29T13:10:52Z), CC BY-SA 4.0. Saved verbatim. -->
+== {{-it-}} ==
+{{-loc  avv-|it}}
+{{Pn}}
+#nella parte  parte superiore di un [[monte]] 
+#{{Fig}} indietro nel [[passato]]
+
+{{-sill-}}
+; a - món | te
+
+{{-etim-}}
+formato da [[monte]]
+
+
+{{-sill-}}
+* {{Fig}} [[all'origine]] 
+
+{{-trad-}}
+{{Trad1|}}
+:*{{en}}:
+{{Trad2}}
+
+{{-ref-}}
+*{{Fonte|dem}}

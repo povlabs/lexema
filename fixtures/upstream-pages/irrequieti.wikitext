@@ -1,0 +1,9 @@
+<!-- it.wiktionary.org/wiki/irrequieti revision 2980547 (2017-05-08T05:34:41Z), CC BY-SA 4.0. Saved verbatim. -->
+{{-it-}}
+
+===Adjective===
+'''irrequieti''' ''m''
+
+# forma plurale di [[irrequieto]]
+
+{{Noetim|it}}

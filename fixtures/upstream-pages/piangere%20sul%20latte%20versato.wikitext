@@ -1,0 +1,20 @@
+<!-- it.wiktionary.org/wiki/piangere sul latte versato revision 4060155 (2026-02-03T10:18:06Z), CC BY-SA 4.0. Saved verbatim. -->
+== {{-it-}} ==
+{{-loc veb-|it}}
+{{Pn}}
+#[[lamentarsi]] di qualcosa in ritardo
+
+{{-sill-}}
+; piàn || ge | re
+
+{{-etim-}}
+formato da [[piangere]], [[latte]] e [[versato]]
+
+
+{{-trad-}}
+{{Trad1|}}
+:*{{en}}:
+{{Trad2}}
+
+{{-ref-}}
+*{{Fonte|dem}}

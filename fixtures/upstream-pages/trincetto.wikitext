@@ -1,0 +1,11 @@
+<!-- it.wiktionary.org/wiki/trincetto revision 3147373 (2017-05-13T15:38:39Z), CC BY-SA 4.0. Saved verbatim. -->
+{{-it-}} 
+{{-sost-}} 
+
+''' trincetto ''' ''m''
+
+# Strumento che il calzolaio usa per tagliare e rifilare cuoio e pelli; è costituito, in genere, da una lunga lama d'acciaio che ad un'estrenità è tagliata in tralice e affilata . 
+{{-trad-}}
+:*{{en}}:[[cutter]]
+
+{{Noetim|it}}

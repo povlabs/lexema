@@ -22,7 +22,7 @@ import { dictionaryTables, servedBy, type DictionaryTables } from "./served.js";
 import { lemmasOfPartOfSpeech, type QueryInfo, type RejectedResult, type ReleaseInfo } from "./types.js";
 
 /** One record a word is answered with: where it is in its release, its headword and its part of speech. */
-export type CandidateRecord = ({ recordId: number; entryId?: never; lineNo: number } | { entryId: number; revisionId: number; recordId?: never; lineNo?: never }) & {
+export type CandidateRecord = ({ recordId: number; entryId?: never; lineNo: number } | { entryId: number; revisionId: number; pageLine: number; recordId?: never; lineNo?: never }) & {
   /** The record's own release, which `lineNo` counts in: the master's, or a feed's (src/lookup/served.ts). */
   releaseId: string;
   word: string;
@@ -50,7 +50,7 @@ export interface BatchLookup {
  * batch sends. This one reads the archive records alone, for a dictionary
  * without the page-entry tables. Exported so a test can assert the plan.
  */
-export const BATCH_ARCHIVE_SEARCH_SQL: DictionaryRead = `SELECT lf.surface_key, r.record_id, NULL AS entry_id, NULL AS revision_id, r.release_id, r.line_no, r.word, r.pos, r.pos_title,
+export const BATCH_ARCHIVE_SEARCH_SQL: DictionaryRead = `SELECT lf.surface_key, r.record_id, NULL AS entry_id, NULL AS revision_id, NULL AS page_line, r.release_id, r.line_no, r.word, r.pos, r.pos_title,
             MAX(lf.origin = 'headword') AS is_about
        FROM lookup_form lf
        JOIN source_record r ON r.record_id = lf.record_id
@@ -66,7 +66,7 @@ export const BATCH_ARCHIVE_SEARCH_SQL: DictionaryRead = `SELECT lf.surface_key, 
 /** `BATCH_ARCHIVE_SEARCH_SQL`, and the page-only entries each key heads. */
 export const BATCH_SEARCH_SQL: DictionaryRead = `${BATCH_ARCHIVE_SEARCH_SQL}
       UNION ALL
-     SELECT e.word_key, NULL, e.entry_id, p.revision_id, e.release_id, NULL, e.word, e.pos, e.pos_title, 1
+     SELECT e.word_key, NULL, e.entry_id, p.revision_id, e.page_line, e.release_id, NULL, e.word, e.pos, e.pos_title, 1
        FROM recovered_entry e JOIN raw_page p ON p.page_id = e.page_id
       WHERE e.release_id IN (${servedBy("?1")}) AND e.word_key IN (SELECT value FROM json_each(?2))
         AND NOT EXISTS (SELECT 1 FROM lookup_form lf WHERE lf.release_id IN (${servedBy("?1")})
@@ -83,6 +83,7 @@ export const BATCH_ARCHIVE_LEMMA_LINK_SQL: DictionaryRead = `SELECT e.record_id,
             t.record_id   AS candidate_record_id,
             NULL          AS candidate_entry_id,
             NULL          AS candidate_revision_id,
+            NULL          AS candidate_page_line,
             t.release_id  AS candidate_release_id,
             t.line_no     AS candidate_line_no,
             t.word        AS candidate_word,
@@ -102,6 +103,7 @@ export const BATCH_LEMMA_LINK_SQL: DictionaryRead = `SELECT e.record_id, e.edge_
             t.record_id   AS candidate_record_id,
             p.entry_id AS candidate_entry_id,
             page.revision_id AS candidate_revision_id,
+            p.page_line   AS candidate_page_line,
             COALESCE(t.release_id, p.release_id) AS candidate_release_id,
             t.line_no     AS candidate_line_no,
             COALESCE(t.word, p.word) AS candidate_word,
@@ -126,6 +128,7 @@ interface HitRow {
   record_id: number | null;
   entry_id: number | null;
   revision_id: number | null;
+  page_line: number | null;
   release_id: string;
   line_no: number | null;
   word: string;
@@ -140,6 +143,7 @@ interface LinkRow {
   candidate_record_id: number | null;
   candidate_entry_id: number | null;
   candidate_revision_id: number | null;
+  candidate_page_line: number | null;
   candidate_release_id: string | null;
   candidate_line_no: number | null;
   candidate_word: string | null;
@@ -157,7 +161,7 @@ interface Match {
 type LightLink = { kind: "dangling" } | { kind: "candidates"; candidates: CandidateRecord[] };
 
 const recordOf = (row: HitRow): CandidateRecord => ({
-  ...(row.record_id === null ? { entryId: row.entry_id as number, revisionId: row.revision_id as number } : { recordId: row.record_id, lineNo: row.line_no as number }),
+  ...(row.record_id === null ? { entryId: row.entry_id as number, revisionId: row.revision_id as number, pageLine: row.page_line as number } : { recordId: row.record_id, lineNo: row.line_no as number }),
   releaseId: row.release_id,
   word: row.word,
   pos: row.pos,
@@ -201,7 +205,7 @@ async function linksOf(db: LookupDatabase, reads: BatchReads, releaseId: string,
     }
     if (link.kind === "candidates" && (row.candidate_record_id !== null || row.candidate_entry_id !== null)) {
       link.candidates.push({
-        ...(row.candidate_record_id === null ? { entryId: row.candidate_entry_id as number, revisionId: row.candidate_revision_id as number } : { recordId: row.candidate_record_id, lineNo: row.candidate_line_no as number }),
+        ...(row.candidate_record_id === null ? { entryId: row.candidate_entry_id as number, revisionId: row.candidate_revision_id as number, pageLine: row.candidate_page_line as number } : { recordId: row.candidate_record_id, lineNo: row.candidate_line_no as number }),
         releaseId: row.candidate_release_id as string,
         word: row.candidate_word as string,
         pos: row.candidate_pos as string,
