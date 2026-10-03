@@ -6,7 +6,7 @@
 // then fast-forwards `production` to `head`.
 
 import { execFileSync, spawnSync } from "node:child_process";
-import { DECLARATIONS_DIR, parseDeclaration, type ChangeDeclaration } from "../update/declaration.js";
+import { DECLARATIONS_DIR, isDeclarationPath, parseDeclaration, type ChangeDeclaration } from "../update/declaration.js";
 
 /** The branch Workers Builds deploys the site from. */
 export const PRODUCTION_BRANCH = "production";
@@ -61,7 +61,7 @@ export function deployRange(git: Git, head: string): DeployRange {
   const added = git
     .run(["log", "--reverse", "--first-parent", "--diff-merges=first-parent", "--diff-filter=A", "--name-only", "--format=", `${production}..${tip}`, "--", DECLARATIONS_DIR])
     .split("\n")
-    .filter((path) => path.startsWith(`${DECLARATIONS_DIR}/`) && path.endsWith(".json") && !path.slice(DECLARATIONS_DIR.length + 1).includes("/"));
+    .filter(isDeclarationPath);
   const paths = [...new Set(added)].filter((path) => git.test(["cat-file", "-e", `${tip}:${path}`]));
   const declarations = paths.map((path) => parseDeclaration(path, git.run(["show", `${tip}:${path}`])));
   return { kind: "pending", production, head: tip, declarations };

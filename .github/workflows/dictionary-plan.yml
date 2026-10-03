@@ -1,0 +1,52 @@
+name: Dictionary plan
+
+# The pull request plan check (#494): plans each change declaration a pull
+# request adds with the pull request's own code against the shared dictionary
+# D1, and holds it to its `expected` counts. Red prints the declaration with
+# the counts to put in it. It only ever runs the plan-only entry, so it writes
+# nothing, records no bookmark and moves no branch. The steps are
+# src/deploy/pullRequestPlan.ts; docs/DEPLOY.md lists the environment, secret
+# and variable read here (ADR 0018). The deploy still holds every declaration
+# to `expected` at merge.
+
+on:
+  # `pull_request`, never `pull_request_target`: a fork's run gets no secret.
+  pull_request:
+    paths:
+      - "dictionary-changes/**"
+
+permissions: {}
+
+jobs:
+  plan:
+    # Only this repository's own branches; a fork's pull request never runs it.
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    # Holds only the D1 read-only token; never the D1 Edit token or a
+    # hueypov/lexema-data token.
+    environment: dictionary-plan
+    concurrency:
+      group: dictionary-plan-${{ github.event.pull_request.number }}
+      cancel-in-progress: true
+    permissions:
+      contents: read
+    env:
+      WRANGLER_SEND_METRICS: "false"
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          # The merge commit and its first parent, the base it is planned past.
+          fetch-depth: 2
+          persist-credentials: false
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run deploy:dictionary --plan-only --added-since HEAD^1
+        env:
+          SEED_REMOTE: lexema-dictionary
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_D1_READ_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
