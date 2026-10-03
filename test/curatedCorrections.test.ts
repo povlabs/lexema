@@ -10,7 +10,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { gzipSync } from "node:zlib";
-import { CURATED_CORRECTIONS, correctedFacts, evidenceUrl, type CuratedCorrection } from "../src/italian/curatedCorrections.js";
+import { CURATED_CORRECTIONS, correctedFacts, evidenceUrl, recordCorrections, type CuratedCorrection } from "../src/italian/curatedCorrections.js";
 import { readPluralGloss } from "../src/italian/pluralGloss.js";
 import { seedSql, type SeedSqlReport } from "../src/import/seedSql.js";
 import { fromNodeSqlite } from "../src/lookup/database.js";
@@ -19,6 +19,7 @@ import { isNounReading, type Reading } from "../src/lookup/types.js";
 import { atFixtureLines, correctionFixtureLines } from "./correctionFixture.js";
 
 const RELEASE = "it-curated";
+const RECORDS = recordCorrections(CURATED_CORRECTIONS);
 
 /** What a record's line holds at an RFC 6901 pointer. */
 function at(line: string, pointer: string): unknown {
@@ -33,7 +34,7 @@ test("each entry names its record's line exactly, and the source text it overrid
   assert.equal(keyed.length, 20);
   for (const [i, correction] of keyed.entries()) {
     const line = lines[correction.record.lineNo - 1];
-    const archive = CURATED_CORRECTIONS[i].record;
+    const archive = RECORDS[i].record;
     assert.equal(archive.releaseId, "it-0c432803");
     assert.equal(at(line, "/word"), correction.record.word);
     assert.equal(at(line, "/pos"), correction.record.pos);
@@ -57,7 +58,7 @@ test("each entry names its record's line exactly, and the source text it overrid
 });
 
 test("the list corrects the twelve cases Huey ruled wrong, and of the fourteen he ruled right only the number of the plurals tagged singular", () => {
-  const words = CURATED_CORRECTIONS.map((correction) => correction.record.word);
+  const words = RECORDS.map((correction) => correction.record.word);
   // Huey's ruling on #420, 2026-10-03: eight declaring records and four nouns' own gender.
   assert.deepEqual(words.slice(0, 12).sort(), [
     "ammaliatrice", "amorevolezze", "congiuntivi", "fiaschetteria", "fissazione", "giocatrici",
@@ -69,7 +70,7 @@ test("the list corrects the twelve cases Huey ruled wrong, and of the fourteen h
     "altruiste", "anfitrioni", "australiane", "costruttrici", "fiaschetterie", "finanziatrici", "fissazioni",
     "mitre", "mosse", "nozioni", "portatrici", "ricoverati", "rimbalzi", "scolare",
   ];
-  for (const correction of CURATED_CORRECTIONS.filter((entry) => right.includes(entry.record.word))) {
+  for (const correction of RECORDS.filter((entry) => right.includes(entry.record.word))) {
     // The number their gloss already says, so their noun's page does not move.
     assert.deepEqual(correctedFacts(correction).map((fact) => [fact.dimension, fact.value]), [["number", "plural"]], correction.record.word);
   }

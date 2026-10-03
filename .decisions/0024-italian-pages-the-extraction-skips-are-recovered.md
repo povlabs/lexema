@@ -1,7 +1,7 @@
 ---
 id: 0024
 title: An Italian page the extraction cannot read gets its entry from the raw page, beside the archive
-status: amended-in-part by [0026](0026-recovered-entries-carry-what-the-word-page-shows.md)
+status: amended-in-part by [0008](0008-generated-explanations-are-labelled-and-reportable.md), [0026](0026-recovered-entries-carry-what-the-word-page-shows.md)
 date: 2026-10-01
 tags: [data, provenance]
 ---

@@ -1,5 +1,5 @@
 // `pnpm run correct:records`: the one-off update that writes the curated
-// corrections (src/italian/curatedCorrections.ts, #420) into an already seeded
+// corrections (src/italian/curatedCorrections.ts, #420, #450) into an already seeded
 // dictionary (correctRecords.ts). It picks its database the way the seed does:
 // the local D1 under `SEED_STATE` (default `.data/seed-state`), or the remote
 // D1 `SEED_REMOTE` names. The dictionary deploy workflow writes the shared
@@ -14,7 +14,7 @@ import { finish, flags, isMain, usageError, type CommandResult } from "../comman
 import { CURATED_CORRECTIONS, type CuratedCorrection } from "../italian/curatedCorrections.js";
 import { planOnlyAnswer, planOnlyFlag, planOnlyRun } from "../update/planOnly.js";
 import { masterReaderOf } from "../update/updateCli.js";
-import { describeEntry, planCorrections, unwritten } from "./correctRecords.js";
+import { describeDefinition, describeEntry, planCorrections, unwritten } from "./correctRecords.js";
 import { seedTargetFrom, webWrangler, type Wrangler } from "./seedTarget.js";
 
 const USAGE = "usage: pnpm run correct:records [--out <dir>] [--plan-only]";
@@ -36,14 +36,14 @@ export async function main(
   const reader = masterReaderOf(target);
   const plan = planCorrections(reader, corrections, await readFile(resolve("src/db/schema.sql"), "utf8"));
   log(`planning ${corrections.length} curated correction(s) for the master ${plan.masterReleaseId} in ${target.dictionary}`);
-  const lines = plan.entries.map(describeEntry);
+  const lines = [...plan.entries.map(describeEntry), ...plan.definitions.map(describeDefinition)];
   const out = resolve(options.get("out") ?? ".data/updates");
   if (planOnly) {
     return planOnlyAnswer(planOnlyRun("correct:records", plan.counts, reader), plan.sql, out, `correct-${plan.masterReleaseId}`, {
       entries: lines.map((line) => line.trim()),
     });
   }
-  const writes = plan.entries.filter((entry) => entry.state === "write").length;
+  const writes = [...plan.entries, ...plan.definitions].filter((entry) => entry.state === "write").length;
   if (plan.sql === "") return { out: [`nothing to write in ${target.dictionary}`, ...lines].join("\n"), status: 0 };
 
   await mkdir(out, { recursive: true });

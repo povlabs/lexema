@@ -76,11 +76,11 @@ export const PAGE_ENTRY_TABLES = ["recovered_entry", "entry_definition", "entry_
 
 /**
  * Which of the tables an older master may lack it has: `hide_version` (#408),
- * the page-entry tables (#403) and the curated-correction tables (#420).
- * Presence is read from the schema, never inferred from a failed read, so an
- * error on a table that exists still fails.
+ * the page-entry tables (#403) and the curated-correction tables (#420,
+ * #450). Presence is read from the schema, never inferred from a failed read,
+ * so an error on a table that exists still fails.
  */
-export const OPTIONAL_TABLES_SQL: DictionaryRead = `SELECT name FROM sqlite_schema WHERE type = 'table' AND name IN (${["hide_version", "corrected_claim", "correction_version", ...PAGE_ENTRY_TABLES].map((name) => `'${name}'`).join(", ")})`;
+export const OPTIONAL_TABLES_SQL: DictionaryRead = `SELECT name FROM sqlite_schema WHERE type = 'table' AND name IN (${["hide_version", "corrected_claim", "correction_version", ...PAGE_ENTRY_TABLES, "corrected_definition"].map((name) => `'${name}'`).join(", ")})`;
 export const HIDE_VERSION_SQL: DictionaryRead = `SELECT revision FROM hide_version WHERE singleton = 1`;
 export const CORRECTION_VERSION_SQL: DictionaryRead = `SELECT revision FROM correction_version WHERE singleton = 1`;
 
@@ -90,6 +90,11 @@ export interface DictionaryTables {
   hideVersion: boolean;
   /** All four page-entry tables; absent on a master seeded before #403. */
   pageEntries: boolean;
+  /**
+   * `corrected_definition`, with every page-entry table it corrects; absent
+   * on a master seeded before #450 until `correct:records` writes it.
+   */
+  definitionCorrections: boolean;
   /** `corrected_claim`; absent on a master seeded before #420 until `correct:records` writes it. */
   corrections: boolean;
   /** `correction_version`; absent on a master seeded before #420 until its first `correct:records` run. */
@@ -108,9 +113,12 @@ export async function dictionaryTables(db: LookupDatabase): Promise<DictionaryTa
   if (pages.length > 0 && pages.length < PAGE_ENTRY_TABLES.length) {
     throw new Error(`the dictionary has ${pages.join(", ")} but not every page-entry table (${PAGE_ENTRY_TABLES.join(", ")})`);
   }
+  const pageEntries = pages.length === PAGE_ENTRY_TABLES.length;
   return {
     hideVersion: present.has("hide_version"),
-    pageEntries: pages.length === PAGE_ENTRY_TABLES.length,
+    pageEntries,
+    // Read only beside the entries it corrects.
+    definitionCorrections: pageEntries && present.has("corrected_definition"),
     corrections: present.has("corrected_claim"),
     correctionVersion: present.has("correction_version"),
   };

@@ -59,9 +59,13 @@ export type GrammarClaim =
 /** A claim the source states, with its value. */
 export type StatedClaim = Extract<GrammarClaim, { status: "stated" }>;
 
-/** Where a corrected claim came from: an entry of the curated list and the revision it cites. */
+/** Where a corrected claim or definition came from: an entry of the curated list and the revision it cites. */
 export interface CorrectionRef {
-  /** The list entry, by release and archive line: `it-0c432803:449969` (src/italian/curatedCorrections.ts). */
+  /**
+   * The list entry (src/italian/curatedCorrections.ts): a record's by release
+   * and archive line, `it-0c432803:449969`; a definition's by page revision and
+   * place, `page:3906191:0`.
+   */
   id: string;
   /** A permanent link to the Wiktionary revision that settles the fact. */
   evidenceUrl: string;
@@ -298,8 +302,17 @@ export type RecoveredRoute =
  * record stays as imported, and this carries its own ref.
  */
 export type RecoveredDefinition = RecoveredRoute & {
-  /** Wiktionary's own words, templates printed, links as their labels. */
+  /**
+   * Wiktionary's own words, templates printed, links as their labels; or,
+   * where `correction` is set, the curated correction's wording in their place.
+   */
   text: string;
+  /**
+   * The curated correction (#450) whose wording `text` is, with the page's
+   * own words it stands in for; null when `text` is the page's. Only a
+   * page-only entry's definition is ever corrected.
+   */
+  correction: (CorrectionRef & { replaces: string }) | null;
   /** Usage labels the line's templates print: `architettura`, `figurato`. */
   labels: string[];
   ref: RecoveredRef;
