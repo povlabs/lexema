@@ -389,6 +389,15 @@ The person's answer is stored on the report, with `pnpm run report answer`
 ([DEVELOPMENT.md](../DEVELOPMENT.md#review-a-readers-report)); no page and no
 API answer reads a report or its answer.
 
+A search that finds nothing ends with `Report a missing word` (#441), which
+opens the same box on the trimmed query, through the same `POST /report` and
+spam layers. There the box asks no "what is wrong" and offers no reading: it
+sends `missing`, a sixth `choice` the word page never offers, and the report is
+stored with the query as its `word`, no `record_id` or source line, and the
+served release. Its details are optional and may be stored empty; every other
+report still needs some. `reader_report` CHECKs refuse a `missing` report that
+names a record, and empty details on any other report.
+
 Spam is kept out in four layers, as ruled on #51: the `REPORT_LIMIT` Worker
 binding stops a burst (2 a minute) before D1 is touched, and the ruled 5 reports
 an hour is counted over the stored rows, because the binding has no hourly

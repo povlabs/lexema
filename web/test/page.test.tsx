@@ -40,6 +40,7 @@ import { ORIGIN } from "@/worker/hosts.ts";
 import { SiteHeader } from "@/components/dictionary/SiteHeader";
 import { readingChoiceLabel } from "@/components/dictionary/ReportDialog";
 import { reportReadings } from "@/lib/dictionary/report.ts";
+import { NotFound } from "@/components/dictionary/NotFound";
 import { PhraseView } from "@/components/dictionary/Phrase";
 import { phrasePage } from "@/lib/dictionary/phrasePage.ts";
 import { EXPRESSION_FILTER_ABOVE, matchesExpression, wordPage } from "@/lib/dictionary/wordPage.ts";
@@ -1320,6 +1321,42 @@ test("a search that finds nothing offers, in order: an accent, one edit, words t
     assert.match(none, /No entry for “xqzt”/);
     assert.match(none, /Check the spelling, or search for the word’s base form: the infinitive of a verb, the singular of a noun\./);
     assert.doesNotMatch(none, /Did you mean|Suggestions/);
+  });
+});
+
+test("every not-found page ends with one Report a missing word, below the offers, in the word page's footer row", async () => {
+  await withDevSeed(async ({ db }) => {
+    for (const [query, kind] of [
+      ["stud", "prefix"],
+      ["citta", "accent"],
+      ["mangare", "typo"],
+      ["vadoo via", "phrase"],
+      ["xqzt", "none"],
+    ] as const) {
+      const answer = await attempt(db, query);
+      assert.ok(answer.outcome === "not-found" && answer.nearby.kind === kind, `${query} is a not-found page of kind ${kind}`);
+      const html = await render(db, query);
+      assert.equal(occurrencesOf(html, `<footer class="${SOURCE_LINE}">`), 1, query);
+      const line = sourceLine(html);
+      // The footer row holds the one link and nothing else: no Source, no note.
+      assert.equal(textOf(line), "Report a missing word", query);
+      assert.match(line, /<button [^>]*>Report a missing word<\/button>/, `${query}: a button that opens the box`);
+      assert.equal(occurrencesOf(html, "Report a missing word"), 1, query);
+      assert.doesNotMatch(html, /Report a mistake/, query);
+      // Below the heading and every offer.
+      const footer = html.indexOf(`<footer class="${SOURCE_LINE}">`);
+      assert.ok(footer > html.indexOf(NOT_FOUND_HEADING), query);
+      if (kind !== "none") assert.ok(footer > html.lastIndexOf('id="nearby'), query);
+    }
+  });
+});
+
+test("the not-found page is handed the Turnstile site key, as a word page is", async () => {
+  await withDevSeed(async ({ db }) => {
+    const element = Outcome({ raw: "xqzt", attempt: await attempt(db, "xqzt"), siteKey: "site-key" });
+    assert.equal(element.type, NotFound);
+    assert.equal((element.props as { siteKey?: string }).siteKey, "site-key");
+    assert.equal((element.props as { query?: string }).query, "xqzt");
   });
 });
 
