@@ -1,35 +1,118 @@
 name: CI
 
-# The typecheck and the unit tests read the whole tree, so this runs on the
-# merged result as well as on the pull request (.patterns/repo-wide-gates-run-on-main.md).
-# A change to Markdown alone checks nothing here, so it does not start a run.
-# The Markdown files a unit test reads are the exception, and each is listed
-# under both triggers: docs/DEPLOY.md (web/test/workersBuilds.test.ts) and
-# docs/UPDATE_THE_DICTIONARY.md (test/update-cli-guidance.test.ts reads each
-# docs/*.md that src/ names in a recovery hint). A test that reads another
-# Markdown file adds it here.
+# The repo-wide gates, in one workflow so one job can need them all
+# (.patterns/repo-wide-gates-run-on-main.md). The typecheck, the unit tests, the
+# local D1 build and the ADR corpus check read the whole tree, so this runs on
+# the merged result (`push: main`) as well as on the pull request, and on each
+# merge queue entry (#535).
+#
+# No trigger carries a `paths` filter. The `changes` job reads which files the
+# change touches and says which gated job it needs; a job it does not need is
+# skipped. `ci-required` always runs and fails when `changes` failed or when a
+# needed job did not succeed, so the merge queue can require it even on a
+# Markdown-only pull request. A required check that never runs would hold a
+# pull request forever.
 
 on:
   push:
     branches: [main]
-    paths:
-      - "**"
-      - "!**/*.md"
-      - "docs/DEPLOY.md"
-      - "docs/UPDATE_THE_DICTIONARY.md"
   pull_request:
-    paths:
-      - "**"
-      - "!**/*.md"
-      - "docs/DEPLOY.md"
-      - "docs/UPDATE_THE_DICTIONARY.md"
+  merge_group:
+
+permissions:
+  contents: read
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
+  # Which gated jobs this change needs. Each path set is what that job reads; a
+  # job that starts reading another file adds it here in the same change.
+  #   ci  (`check`, `test-web`): any file but Markdown, save the Markdown a unit
+  #       test reads: docs/DEPLOY.md (web/test/workersBuilds.test.ts) and
+  #       docs/UPDATE_THE_DICTIONARY.md (test/update-cli-guidance.test.ts reads
+  #       each docs/*.md that src/ names in a recovery hint).
+  #   d1  (`d1`): the schemas and app migrations (src/db/), every source
+  #       directory that `seed:dev`, `db:check-d1` and `api-key` import,
+  #       transitively, the fixture it seeds, the local D1 bindings, the
+  #       dependencies and the Node version (#521).
+  #   adr (`validate the ADR corpus`): the corpus, and the guard's version and
+  #       config.
+  # This file is in every set, since it defines every job.
+  # It never installs dependencies: it needs only the commit graph.
+  changes:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      ci: ${{ steps.classify.outputs.ci }}
+      d1: ${{ steps.classify.outputs.d1 }}
+      adr: ${{ steps.classify.outputs.adr }}
+    steps:
+      # Full history, so both ends of every range are present. The sparse
+      # checkout fetches no file contents beyond .github/ and the root files.
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          fetch-depth: 0
+          sparse-checkout: .github
+          persist-credentials: false
+      - id: classify
+        env:
+          EVENT: ${{ github.event_name }}
+          PR_BASE: ${{ github.event.pull_request.base.sha }}
+          PR_HEAD: ${{ github.event.pull_request.head.sha }}
+          QUEUE_BASE: ${{ github.event.merge_group.base_sha }}
+          QUEUE_HEAD: ${{ github.event.merge_group.head_sha }}
+          PUSH_BEFORE: ${{ github.event.before }}
+          PUSH_AFTER: ${{ github.sha }}
+        run: |
+          set -uo pipefail
+          # A range it cannot read marks every gated job as needed, never none.
+          every() {
+            echo "::warning::$1 — marking every gated job as needed."
+            printf 'ci=true\nd1=true\nadr=true\n' >> "$GITHUB_OUTPUT"
+            exit 0
+          }
+          case "$EVENT" in
+            pull_request) base="$PR_BASE"; head="$PR_HEAD" ;;
+            merge_group) base="$QUEUE_BASE"; head="$QUEUE_HEAD" ;;
+            push) base="$PUSH_BEFORE"; head="$PUSH_AFTER" ;;
+            *) every "event ${EVENT} names no range" ;;
+          esac
+          if [ -z "$base" ] || [ -z "$head" ]; then every "empty range '${base}...${head}'"; fi
+          # A push that creates the branch names an all-zero `before`, which is no commit.
+          if ! git cat-file -e "${base}^{commit}" || ! git cat-file -e "${head}^{commit}"; then
+            every "range ${base}...${head} names a commit this checkout lacks"
+          fi
+          # NUL-delimited, so a path such as `purità.wikitext` arrives as itself.
+          # --no-renames lists both sides of a rename, as a deletion and an addition.
+          list="$RUNNER_TEMP/changed"
+          if ! git diff -z --no-renames --name-only "${base}...${head}" > "$list"; then
+            every "could not diff ${base}...${head}"
+          fi
+          ci=false d1=false adr=false
+          while IFS= read -r -d '' f; do
+            case "$f" in
+              docs/DEPLOY.md | docs/UPDATE_THE_DICTIONARY.md) ci=true ;;
+              *.md) ;;
+              *) ci=true ;;
+            esac
+            case "$f" in
+              src/db/* | src/import/* | src/source/* | src/italian/* | src/lookup/* | \
+              src/billing/* | src/api/* | src/core/* | src/commandLine.ts | fixtures/* | \
+              drizzle.config.ts | web/wrangler.jsonc | package.json | web/package.json | \
+              pnpm-lock.yaml | pnpm-workspace.yaml | .nvmrc | .github/workflows/ci.yml) d1=true ;;
+            esac
+            case "$f" in
+              .decisions/* | .fabrika.jsonc | pnpm-workspace.yaml | .github/workflows/ci.yml) adr=true ;;
+            esac
+          done < "$list"
+          echo "range ${base}...${head}: ci=${ci} d1=${d1} adr=${adr}"
+          printf 'ci=%s\nd1=%s\nadr=%s\n' "$ci" "$d1" "$adr" >> "$GITHUB_OUTPUT"
+
   check:
+    needs: changes
+    if: needs.changes.outputs.ci == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
@@ -49,6 +132,8 @@ jobs:
       - run: pnpm --filter @lexema/web typecheck
 
   test-web:
+    needs: changes
+    if: needs.changes.outputs.ci == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
@@ -59,3 +144,97 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm run test:web
+
+  # The unit tests run the schemas on node:sqlite, which accepts SQL that D1
+  # refuses (#179). This builds both databases in a throwaway local D1 from the
+  # committed fixture, so it needs no Cloudflare secret and no dataset. Both land
+  # in the seed's default .data/seed-state, inside this checkout.
+  d1:
+    needs: changes
+    if: needs.changes.outputs.d1 == 'true'
+    runs-on: ubuntu-latest
+    env:
+      WRANGLER_SEND_METRICS: "false"
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      # Applies src/db/schema.sql and the fixture's rows to DB, and every app
+      # migration to APP_DB. Wrangler exits non-zero on any refused statement.
+      - run: pnpm run seed:dev
+      # A CHECK runs only when a row is written, and D1's GLOB pattern limit
+      # is met there, not at CREATE TABLE (#167). This writes one valid row to
+      # every table the app migrations create, in a throwaway local D1 of its
+      # own, and fails when a table has no row or D1 refuses one (#330).
+      - run: pnpm run db:check-d1
+      # The key CLI's own write, through the same path a person runs.
+      - run: pnpm run api-key create --label ci --per-minute 1
+
+  # The .decisions/ corpus holds no duplicate ADR number and no
+  # filename/frontmatter mismatch. Two branches can mint the same number without
+  # seeing each other.
+  validate:
+    name: validate the ADR corpus
+    needs: changes
+    if: needs.changes.outputs.adr == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      # Installs the fabrika version the pnpm-workspace.yaml catalog pins, so
+      # CI runs the same guard a local `pnpm exec fabrika` runs.
+      - run: pnpm install --frozen-lockfile
+      - name: Validate
+        env:
+          FABRIKA_GLOBAL_WARNING_DISABLED: "1"
+        run: pnpm exec fabrika guard decisions-index validate
+
+  # The one context the merge queue requires for this workflow. A skipped job
+  # passes a required check, so this never skips: it reads each gated job's
+  # result against what `changes` said the change needs. An output other than
+  # `false` counts as needed.
+  ci-required:
+    if: always()
+    needs: [changes, check, test-web, d1, validate]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - env:
+          CHANGES: ${{ needs.changes.result }}
+          NEED_CI: ${{ needs.changes.outputs.ci }}
+          NEED_D1: ${{ needs.changes.outputs.d1 }}
+          NEED_ADR: ${{ needs.changes.outputs.adr }}
+          CHECK: ${{ needs.check.result }}
+          TEST_WEB: ${{ needs.test-web.result }}
+          D1: ${{ needs.d1.result }}
+          VALIDATE: ${{ needs.validate.result }}
+        run: |
+          set -u
+          if [ "$CHANGES" != success ]; then
+            echo "::error::changes concluded ${CHANGES}, so which jobs this change needs is unknown."
+            exit 1
+          fi
+          failed=0
+          gate() {
+            if [ "$2" = false ]; then
+              echo "$1: not needed (${3})."
+            elif [ "$3" = success ]; then
+              echo "$1: needed, success."
+            else
+              echo "::error::$1 was needed and concluded ${3}."
+              failed=1
+            fi
+          }
+          gate check "$NEED_CI" "$CHECK"
+          gate test-web "$NEED_CI" "$TEST_WEB"
+          gate d1 "$NEED_D1" "$D1"
+          gate "validate the ADR corpus" "$NEED_ADR" "$VALIDATE"
+          exit "$failed"
