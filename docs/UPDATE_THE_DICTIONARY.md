@@ -32,9 +32,9 @@ history routinely. Investigate accuracy when a user reports a problem.
   [pull request plan check](DEPLOY.md#the-pull-request-plan-check) plans the
   declaration with the pull request's own code and a D1 read-only token, the
   other Cloudflare key ADR 0018 allows, and gives or checks its `expected`
-  counts; no one starts a plan by hand. It does not plan `update:auto` or
-  `hide:records`, which read files from `hueypov/lexema-data`: the monthly
-  release gives an `update:auto` its counts.
+  counts; no one starts a plan by hand. For `update:auto` and
+  `hide:records`, which read files from `hueypov/lexema-data`, it also reads
+  them with a read-only token for that repository.
 - Agents never hold the Cloudflare key, run the deploy workflow, or write the
   shared dictionary. An agent runs these commands against the local D1 only.
 

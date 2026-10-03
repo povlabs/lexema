@@ -37,8 +37,8 @@ with no `expected`, or with the counts you expect. The
 plans it with the pull request's own code: green when the counts match, red
 otherwise, printing the declaration with the plan's counts to copy in. Add
 one declaration per pull request, since the check counts only the first.
-`update:auto` and `hide:records` read files the check cannot fetch, so it
-does not plan them and does not fail for them.
+This holds for `update:auto` and `hide:records` too: the check reads their
+archive and dump from `hueypov/lexema-data` with a read-only token.
 
 The [monthly release](../docs/DEPLOY.md#the-monthly-release) writes one
 `<release id>.json` here, an `update:auto` of the new kaikki release.

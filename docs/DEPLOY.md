@@ -572,7 +572,7 @@ No agent does any of them.
 pull request that adds or changes a file under `dictionary-changes/`. It gives
 a new declaration its `expected` counts, so one pull request carries a change
 and its declaration
-([ADR 0018](../.decisions/0018-previews-on-workers-builds.md), #494). It runs
+([ADR 0018](../.decisions/0018-previews-on-workers-builds.md), #494, #498). It runs
 `pnpm run deploy:dictionary --plan-only --added-since HEAD^1` on the pull
 request's merge commit ([src/deploy/](../src/deploy/pullRequestPlan.ts)):
 
@@ -581,17 +581,19 @@ request's merge commit ([src/deploy/](../src/deploy/pullRequestPlan.ts)):
    declaration may leave `expected` out until this check gives it.
 2. It plans the first one with the pull request's own code against
    `lexema-dictionary`, and holds the counts to `expected` and to the hard
-   limits, as the deploy will.
+   limits, as the deploy will. This includes `update:auto` and `hide:records`:
+   their plan downloads an archive and a dump from `hueypov/lexema-data` with
+   the read-only `LEXEMA_DATA_READ_TOKEN`, as the deploy does
+   ([Where the archives are](#where-the-archives-are)).
 3. Its job summary says, for each declaration:
    - the counts match `expected`: green;
    - they differ, or `expected` is missing: red, naming each difference and
      printing the whole declaration file with the plan's counts as
      `expected`. Copy it into the file and push;
    - the plan crosses a hard limit: red, naming the limit;
-   - `update:auto` or `hide:records`: not planned, since they read an archive
-     and a dump from `hueypov/lexema-data` and this run gets no token for it.
-     This does not fail the pull request. The monthly release gives an
-     `update:auto` its counts;
+   - `update:auto` or `hide:records` first, and the run has no
+     `hueypov/lexema-data` token: red, naming the `LEXEMA_DATA_READ_TOKEN`
+     secret of `dictionary-plan` to add;
    - any declaration after the first: red. Its counts depend on what the
      earlier ones write, and this run writes nothing. Put it in its own pull
      request once the earlier ones are deployed.
@@ -605,8 +607,9 @@ the check and the merge stops the deploy red.
 
 | Name | Kind | Where | What it is |
 |---|---|---|---|
-| `dictionary-plan` | GitHub environment | repository **Settings**, **Environments** | holds the secret and the variable below, and no other token. Only this job names it |
+| `dictionary-plan` | GitHub environment | repository **Settings**, **Environments** | holds the two secrets and the variable below, and no other token. Only this job names it |
 | `CLOUDFLARE_D1_READ_TOKEN` | environment secret | `dictionary-plan` | a Cloudflare API token with one permission, **Account**, **D1**, **Read**. Wrangler reads it as `CLOUDFLARE_API_TOKEN` |
+| `LEXEMA_DATA_READ_TOKEN` | environment secret | `dictionary-plan` | a fine-grained GitHub token for `hueypov/lexema-data` only, **Contents** read-only. Only the plan step gets it, as `LEXEMA_DATA_TOKEN`, to read archives and dumps. It may be the same token as `dictionary-deploy`'s. Never the monthly release's write token |
 | `CLOUDFLARE_ACCOUNT_ID` | environment variable | `dictionary-plan` | the same account id as in `dictionary-deploy`; not secret |
 
 `SEED_REMOTE=lexema-dictionary` is set in the workflow itself.
@@ -643,9 +646,18 @@ check goes red on every pull request that adds a declaration.
    Add no required reviewer, or every check waits for one.
 3. **The secret and the variable.** In `dictionary-plan`, add the environment
    secret `CLOUDFLARE_D1_READ_TOKEN` (step 1) and the environment variable
-   `CLOUDFLARE_ACCOUNT_ID`, the same account id `dictionary-deploy` has. Add
-   no other secret: not `CLOUDFLARE_D1_TOKEN` and not
-   `LEXEMA_DATA_READ_TOKEN`.
+   `CLOUDFLARE_ACCOUNT_ID`, the same account id `dictionary-deploy` has.
+4. **The read-only `lexema-data` token.** In `dictionary-plan`, add the
+   environment secret `LEXEMA_DATA_READ_TOKEN`: a fine-grained GitHub token
+   for `hueypov/lexema-data` only, **Contents**, **Read-only**, and nothing
+   else. You may reuse the deploy's token
+   ([Set up the dictionary deploy](#set-up-the-dictionary-deploy), step 2),
+   or make a new one the same way, named `lexema-dictionary-plan-data`. Until
+   it is added, the check goes red on a pull request whose first declaration
+   is `update:auto` or `hide:records`.
+
+Add no other secret to `dictionary-plan`: never `CLOUDFLARE_D1_TOKEN` and
+never `LEXEMA_DATA_WRITE_TOKEN`.
 
 ## The monthly release
 

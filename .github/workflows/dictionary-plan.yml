@@ -4,10 +4,12 @@ name: Dictionary plan
 # request adds with the pull request's own code against the shared dictionary
 # D1, and holds it to its `expected` counts. Red prints the declaration with
 # the counts to put in it. It only ever runs the plan-only entry, so it writes
-# nothing, records no bookmark and moves no branch. The steps are
-# src/deploy/pullRequestPlan.ts; docs/DEPLOY.md lists the environment, secret
-# and variable read here (ADR 0018). The deploy still holds every declaration
-# to `expected` at merge.
+# nothing, records no bookmark and moves no branch. `update:auto` and
+# `hide:records` read an archive and a dump from hueypov/lexema-data, so the
+# plan step also gets a read-only token for that repository (#498). The steps
+# are src/deploy/pullRequestPlan.ts; docs/DEPLOY.md lists the environment,
+# secrets and variable read here (ADR 0018). The deploy still holds every
+# declaration to `expected` at merge.
 
 on:
   # `pull_request`, never `pull_request_target`: a fork's run gets no secret.
@@ -22,9 +24,11 @@ jobs:
     # Only this repository's own branches; a fork's pull request never runs it.
     if: github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
-    timeout-minutes: 30
-    # Holds only the D1 read-only token; never the D1 Edit token or a
-    # hueypov/lexema-data token.
+    # As long as the deploy's own plan job: the run may download an archive
+    # and a dump.
+    timeout-minutes: 60
+    # Holds the D1 read-only token and a hueypov/lexema-data read-only token;
+    # never the D1 Edit token or a token that writes hueypov/lexema-data.
     environment: dictionary-plan
     concurrency:
       group: dictionary-plan-${{ github.event.pull_request.number }}
@@ -50,3 +54,4 @@ jobs:
           SEED_REMOTE: lexema-dictionary
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_D1_READ_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+          LEXEMA_DATA_TOKEN: ${{ secrets.LEXEMA_DATA_READ_TOKEN }}

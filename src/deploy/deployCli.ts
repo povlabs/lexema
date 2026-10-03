@@ -64,10 +64,16 @@ export function deployLog(write: (line: string) => void, dictionary: string): Pi
   };
 }
 
+/** The `hueypov/lexema-data` token the run was given, or null when it is unset or empty. */
+function dataTokenOf(env: NodeJS.ProcessEnv): string | null {
+  const token = env.LEXEMA_DATA_TOKEN;
+  return token === undefined || token === "" ? null : token;
+}
+
 /** The data repository's fetcher, or a fetcher that refuses when no token was given. */
 function fetcherFrom(env: NodeJS.ProcessEnv): DataFetcher {
-  const token = env.LEXEMA_DATA_TOKEN;
-  if (token !== undefined && token !== "") return lexemaDataFetcher(token);
+  const token = dataTokenOf(env);
+  if (token !== null) return lexemaDataFetcher(token);
   return async (path) => {
     throw new Error(`LEXEMA_DATA_TOKEN is not set, so ${path} cannot be read from hueypov/lexema-data`);
   };
@@ -77,7 +83,8 @@ function fetcherFrom(env: NodeJS.ProcessEnv): DataFetcher {
  * `--plan-only --added-since <base>`: the pull request plan check (#494).
  * Plans the declaration the checked-out commit adds past `base` and holds it
  * to `expected` (pullRequestPlan.ts). Red when a count differs, `expected` is
- * missing, a hard limit is crossed or a later declaration cannot be counted.
+ * missing, a hard limit is crossed, a later declaration cannot be counted, or
+ * a declaration that reads data files finds no `LEXEMA_DATA_TOKEN`.
  */
 async function pullRequestPlanCommand(base: string, env: NodeJS.ProcessEnv, wrangler: Wrangler, git: Git): Promise<CommandResult> {
   let declarations;
@@ -90,9 +97,10 @@ async function pullRequestPlanCommand(base: string, env: NodeJS.ProcessEnv, wran
   const target = seedTargetFrom(env, wrangler, resolve(".data/seed-state"));
   const reader = masterReaderOf(target);
   const fetcher = fetcherFrom(env);
-  const outcomes = await planPullRequest(declarations, async (change) =>
-    planOnly(change, { reader, fetcher, workDir: await mkdtemp(join(env.RUNNER_TEMP ?? tmpdir(), "lexema-plan-")) }),
-  );
+  const outcomes = await planPullRequest(declarations, {
+    plan: async (change) => planOnly(change, { reader, fetcher, workDir: await mkdtemp(join(env.RUNNER_TEMP ?? tmpdir(), "lexema-plan-")) }),
+    hasDataToken: dataTokenOf(env) !== null,
+  });
   const { markdown, green } = pullRequestPlanReport(outcomes, target.dictionary);
   if (env.GITHUB_STEP_SUMMARY !== undefined) await appendFile(env.GITHUB_STEP_SUMMARY, markdown);
   return { out: markdown, status: green ? 0 : 1 };
