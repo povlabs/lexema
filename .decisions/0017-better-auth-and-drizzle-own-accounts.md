@@ -12,9 +12,9 @@ tags: [stack, accounts]
 
 ## Context
 
-The developer site at `developers.lexema.fyi` ([#159](https://github.com/hueypov/lexema/issues/159), [#165](https://github.com/hueypov/lexema/issues/165)) was built by hand: OAuth with PKCE, sessions, account linking and deletion in `src/accounts/`, and every app table as raw SQL in `src/db/schema.sql`. Huey ruled on 2026-09-29, on epic [#220](https://github.com/hueypov/lexema/issues/220), to switch to better-auth and to use Drizzle for the app tables only, so Lexema and the coming Italian-learning app share one maintained auth stack. Stripe ([#161](https://github.com/hueypov/lexema/issues/161)) is paused and is re-planned on top of this.
+The developer site at `developers.lexema.fyi` ([#159](https://github.com/povlabs/lexema/issues/159), [#165](https://github.com/povlabs/lexema/issues/165)) was built by hand: OAuth with PKCE, sessions, account linking and deletion in `src/accounts/`, and every app table as raw SQL in `src/db/schema.sql`. Huey ruled on 2026-09-29, on epic [#220](https://github.com/povlabs/lexema/issues/220), to switch to better-auth and to use Drizzle for the app tables only, so Lexema and the coming Italian-learning app share one maintained auth stack. Stripe ([#161](https://github.com/povlabs/lexema/issues/161)) is paused and is re-planned on top of this.
 
-[ADR 0003](0003-tool-replacement-is-its-own-decision.md) makes replacing a tool its own decision, so the swap is recorded here before any code moves. The facts below were settled from evidence in grilling session [#225](https://github.com/hueypov/lexema/issues/225), whose answers are mirrored on [#220](https://github.com/hueypov/lexema/issues/220#issuecomment-5900100875) (R1.1 to R1.5). Huey accepted the session change that follows from it on 2026-09-30 ([comment](https://github.com/hueypov/lexema/issues/220#issuecomment-5905419140)).
+[ADR 0003](0003-tool-replacement-is-its-own-decision.md) makes replacing a tool its own decision, so the swap is recorded here before any code moves. The facts below were settled from evidence in grilling session [#225](https://github.com/povlabs/lexema/issues/225), whose answers are mirrored on [#220](https://github.com/povlabs/lexema/issues/220#issuecomment-5900100875) (R1.1 to R1.5). Huey accepted the session change that follows from it on 2026-09-30 ([comment](https://github.com/povlabs/lexema/issues/220#issuecomment-5905419140)).
 
 This record adds to [ADR 0004](0004-cloudflare-workers-d1-vinext.md) and changes none of it. The site is still a Worker on D1, and 0004's rule that a beta stack is pinned exactly is applied here to four new packages.
 
@@ -40,14 +40,14 @@ The schema CLI is the `auth` package at 1.7.6, run through `pnpm dlx`. `@better-
 **What stays ours, and why.**
 
 - **API keys** (#225 R1.1). better-auth's API-key plugin (`@better-auth/api-key` 1.7.6) does not fit, so keys stay a thin layer of ours on Drizzle, owned by the better-auth user:
-  - It deletes an expired key when that key is verified, and sweeps expired keys from its other routes ([`verify-api-key.ts` L81-112](https://github.com/better-auth/better-auth/blob/v1.7.6/packages/api-key/src/routes/verify-api-key.ts), [`routes/index.ts` L100-130](https://github.com/better-auth/better-auth/blob/v1.7.6/packages/api-key/src/routes/index.ts)). [#163](https://github.com/hueypov/lexema/issues/163) R1.4 needs revoked keys and their usage to keep an owner, and [#187](https://github.com/hueypov/lexema/issues/187) needs an expired key refused and listed.
+  - It deletes an expired key when that key is verified, and sweeps expired keys from its other routes ([`verify-api-key.ts` L81-112](https://github.com/better-auth/better-auth/blob/v1.7.6/packages/api-key/src/routes/verify-api-key.ts), [`routes/index.ts` L100-130](https://github.com/better-auth/better-auth/blob/v1.7.6/packages/api-key/src/routes/index.ts)). [#163](https://github.com/povlabs/lexema/issues/163) R1.4 needs revoked keys and their usage to keep an owner, and [#187](https://github.com/povlabs/lexema/issues/187) needs an expired key refused and listed.
   - It writes to D1 on every verify (verify-api-key.ts L165-222, L285-310). #161 aims for no write per call.
   - It rate-limits per key only ([`rate-limit.ts`](https://github.com/better-auth/better-auth/blob/v1.7.6/packages/api-key/src/rate-limit.ts)). #161 ruled a per-account rate.
   - It requires an owner (`referenceId`, [`schema.ts`](https://github.com/better-auth/better-auth/blob/v1.7.6/packages/api-key/src/schema.ts)), so it has no ownerless admin key.
 - **Account deletion** (#225 R1.5). better-auth's `deleteUser` removes the user row (`internal-adapter.ts` L427-462). #163 R1.4 needs that row kept, so revoked keys and their usage still have an owner. Our deletion keeps the row with nothing personal in it, and deletes sessions and identities and revokes keys.
 - **The per-form CSRF token** (#225 R1.5). It stays derived from the session cookie, as today. better-auth's own Origin check runs on top of it.
 - **The per-visitor limits** (#225 R1.5). The Worker's rate-limit bindings (`SIGN_IN_LIMIT`, `KEY_CREATE_LIMIT`) keep the limits. better-auth's limiter keeps its counts in memory per isolate or writes to the database on every request, so it is off.
-- **The public sign-in URLs** (#225 R1.5). `GET /sign-in/<provider>`, its callback and `POST /sign-out` keep their paths and call better-auth. The social providers take a `redirectURI`, so the registered callback URLs and the local Google relay ([#185](https://github.com/hueypov/lexema/issues/185)) stay.
+- **The public sign-in URLs** (#225 R1.5). `GET /sign-in/<provider>`, its callback and `POST /sign-out` keep their paths and call better-auth. The social providers take a `redirectURI`, so the registered callback URLs and the local Google relay ([#185](https://github.com/povlabs/lexema/issues/185)) stay.
 
 **Not used.**
 
@@ -55,7 +55,7 @@ The schema CLI is the `auth` package at 1.7.6, run through `pnpm dlx`. `@better-
 - better-auth's rate limiter, for the reason above.
 - Email and password sign-in. Google and GitHub stay the only ways in.
 
-**Billing.** `@better-auth/stripe` is the base [#161](https://github.com/hueypov/lexema/issues/161) is re-planned on (#225 R1.2). It provides Checkout, the billing Portal, the `subscription` table and the verified webhook. Four things stay ours, because the plugin does none of them: metering usage, the per-account rate, setting the Enterprise plan by hand, and cancelling the subscription when an account is deleted. Nothing Stripe is built under #220.
+**Billing.** `@better-auth/stripe` is the base [#161](https://github.com/povlabs/lexema/issues/161) is re-planned on (#225 R1.2). It provides Checkout, the billing Portal, the `subscription` table and the verified webhook. Four things stay ours, because the plugin does none of them: metering usage, the per-account rate, setting the Enterprise plan by hand, and cancelling the subscription when an account is deleted. Nothing Stripe is built under #220.
 
 **What this supersedes.** The hand-built OAuth, session and account-linking parts of the #159/#165 design:
 
@@ -75,10 +75,10 @@ The schema CLI is the `auth` package at 1.7.6, run through `pnpm dlx`. `@better-
 
 - **The session token is stored.** better-auth keeps the session token itself in the session row ([`internal-adapter.ts` L513](https://github.com/better-auth/better-auth/blob/v1.7.6/packages/better-auth/src/db/internal-adapter.ts)) and signs the cookie with a `BETTER_AUTH_SECRET`. Today only the token's SHA-256 is stored (`src/accounts/sessions.ts`). Huey accepted this on 2026-09-30. Production gains a `BETTER_AUTH_SECRET` Worker secret.
 - **The session cookie is renamed.** `__Host-lexema-session` becomes better-auth's `__Secure-<prefix>.session_token`. It stays host-only on `developers.lexema.fyi`, HttpOnly and SameSite=Lax.
-- **Local data is re-made, not migrated.** Local accounts and keys are made again after `pnpm run seed:dev`, which already rebuilds the local database. Production has no D1 yet ([#19](https://github.com/hueypov/lexema/issues/19)), so nothing there moves.
+- **Local data is re-made, not migrated.** Local accounts and keys are made again after `pnpm run seed:dev`, which already rebuilds the local database. Production has no D1 yet ([#19](https://github.com/povlabs/lexema/issues/19)), so nothing there moves.
 - **Tests change shape, not meaning.** drizzle-orm 0.45.3 has no `node:sqlite` driver, so tests reach Drizzle through `drizzle-orm/sqlite-proxy` over `node:sqlite` and stay on `node --test`. The OAuth stub becomes a fetch-level stub of Google's and GitHub's endpoints, still with no secrets in CI.
 - **Two schema tools.** The app tables and the dictionary are defined in different places. That is the price of leaving the tuned dictionary SQL alone.
 
 ## Records
 
-This ADR changes what a **session** stores. The glossary rows for **developer account**, **provider identity** and **session** in [.glossary/TERMS.md](../.glossary/TERMS.md) are updated by [#229](https://github.com/hueypov/lexema/issues/229), which makes the change in code, so the glossary never describes behaviour that has not landed.
+This ADR changes what a **session** stores. The glossary rows for **developer account**, **provider identity** and **session** in [.glossary/TERMS.md](../.glossary/TERMS.md) are updated by [#229](https://github.com/povlabs/lexema/issues/229), which makes the change in code, so the glossary never describes behaviour that has not landed.

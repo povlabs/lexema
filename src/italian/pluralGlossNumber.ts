@@ -7,11 +7,11 @@
 // `la costruttrici` before #449.
 //
 // Huey ruled on 2026-10-03
-// (https://github.com/hueypov/lexema/issues/483#issuecomment-5970891514) to fix
+// (https://github.com/povlabs/lexema/issues/483#issuecomment-5970891514) to fix
 // them with one rule, not by hand, and only where en.wiktionary confirms. For
 // the wrong-gloss singular nouns he later accepted the lemma's it.wiktionary
 // table of forms too
-// (https://github.com/hueypov/lexema/issues/483#issuecomment-5971809939). This
+// (https://github.com/povlabs/lexema/issues/483#issuecomment-5971809939). This
 // file is that rule; `it-plural-gloss-number/v1` is what follows, and v2 widens
 // it below. It judges each record from
 // two things only, the record's own line and pinned Wiktionary revisions
@@ -45,7 +45,7 @@
 //   en.wiktionary confirmation.
 //
 // Huey ruled again on 2026-10-03
-// (https://github.com/hueypov/lexema/issues/515#issuecomment-5971932437, "yes to
+// (https://github.com/povlabs/lexema/issues/515#issuecomment-5971932437, "yes to
 // all 3") that two more kinds of en.wiktionary statement confirm a plural. They
 // make `it-plural-gloss-number/v2`, which corrects every record v1 corrects,
 // identically, and judges a v1 exclusion again only where one of them can apply:

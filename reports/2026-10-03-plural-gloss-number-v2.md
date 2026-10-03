@@ -1,9 +1,9 @@
 # "Plurale di" records tagged singular, rule v2 — 2026-10-03
 
-Issue [#515](https://github.com/hueypov/lexema/issues/515). Release
+Issue [#515](https://github.com/povlabs/lexema/issues/515). Release
 `it-0c432803`. Rule `it-plural-gloss-number/v2`
 ([src/italian/pluralGlossNumber.ts](../src/italian/pluralGlossNumber.ts)), on
-Huey's [ruling](https://github.com/hueypov/lexema/issues/515#issuecomment-5971932437)
+Huey's [ruling](https://github.com/povlabs/lexema/issues/515#issuecomment-5971932437)
 of 2026-10-03 ("yes to all 3"), recorded in
 [ADR 0027](../.decisions/0027-curated-corrections-are-cited-exceptions.md)'s
 amendment. It builds on v1 and its report,
@@ -59,7 +59,7 @@ evidence (`test/pluralGlossNumber.test.ts`).
 | Already corrected by hand (#420, #449) | 13 | 0 | 13 |
 | Not an Italian record | 5 | 3 | 8 |
 | No en.wiktionary confirmation: `no-en-page` 10, `no-italian-entry` 2, `no-section-for-pos` 15, `no-plural-statement` 2 | 14 | 15 | 29 |
-| Other: `singular-adjective` 37 ([#516](https://github.com/hueypov/lexema/issues/516)), `other-lemma` 10 | 7 | 40 | 47 |
+| Other: `singular-adjective` 37 ([#516](https://github.com/povlabs/lexema/issues/516)), `other-lemma` 10 | 7 | 40 | 47 |
 | **All** | 115 | 177 | 292 |
 
 So v2 corrects **195 records**, 39 more than v1, writing 229

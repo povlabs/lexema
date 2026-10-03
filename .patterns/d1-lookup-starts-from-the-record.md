@@ -60,8 +60,8 @@ A probe on the `release_id` prefix alone is still reported as `SEARCH ... USING
 INDEX`, so a "no SCAN" test lets it through. But one release has about two million
 `lookup_form` rows, and that probe walks all of them for each record: preview
 result pages took about 35 seconds for common words before the fix
-([#381](https://github.com/hueypov/lexema/issues/381),
-[#384](https://github.com/hueypov/lexema/pull/384)). Rows-only tests cannot see
+([#381](https://github.com/povlabs/lexema/issues/381),
+[#384](https://github.com/povlabs/lexema/pull/384)). Rows-only tests cannot see
 it either, because the slow plan returns the same rows. Left free, the planner
 starts from the small `served_release` list instead of the one record, which is
 why the join order is fixed by hand.

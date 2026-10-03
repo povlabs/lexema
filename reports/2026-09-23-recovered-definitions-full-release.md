@@ -5,7 +5,7 @@
 > definitions, so the totals are 9 full losses, 443 partial and 893 definitions. Every
 > other count below is unchanged.
 
-Measurement for [issue #28](https://github.com/hueypov/lexema/issues/28), phase two, run
+Measurement for [issue #28](https://github.com/povlabs/lexema/issues/28), phase two, run
 2026-09-23. [Phase one](2026-09-23-recovered-definitions.md) counted the loss over the
 2,210 raw pages committed under `fixtures/` and projected it onto the release from a
 random sample. This report runs the same recovery over every Italian record in the
@@ -36,7 +36,7 @@ only to recover dropped definitions; the dump is not chased).
 | SHA-256 | `0e4232980291ec93de2a9885d89517c857a01c77c328557e129feca1779da38d` |
 | Main-namespace pages | 758,429 |
 | Newest revision in it | 2026-07-03T03:15:23Z |
-| Durable copy | `source/` in `hueypov/lexema-data`, beside the archive |
+| Durable copy | `source/` in `povlabs/lexema-data`, beside the archive |
 
 Why this dump: the archive was written on 2026-07-16
 ([gzip header time](../docs/LICENSING.md#11-what-we-can-prove)), and Wiktextract builds
@@ -75,7 +75,7 @@ attaches to them. By route: 17 below a page control, 561 sub-terms, 311 lead-in 
 **335 of the 889 sit in a list a definition opens with a colon**: 311 lead-in items and
 24 sub-terms. **332 are placed inside that definition**, and the page shows them nested
 there, not numbered as definitions of their own
-([#123](https://github.com/hueypov/lexema/issues/123), counted by `measure:recovery` on
+([#123](https://github.com/povlabs/lexema/issues/123), counted by `measure:recovery` on
 2026-09-23 and in a full seed). For 327 the definition that opens the list is a sense
 the record carries (`accollato`'s `attributo araldico che si applica a:`). For 5 it is
 itself a recovered definition (`lap steel guitar`, `pianoforte`).
@@ -213,7 +213,7 @@ them as numbered definitions of their own reads oddly. Huey ruled on 2026-09-23,
 among nest, flat, join into one line and drop: **"nest"**. Each item is stored with the
 definition whose colon opens its list, and the page shows it nested inside that
 definition, worded exactly as recovered and still marked *recovered*
-([#123](https://github.com/hueypov/lexema/issues/123)). The rule is the page's layout, so
+([#123](https://github.com/povlabs/lexema/issues/123)). The rule is the page's layout, so
 the items that define themselves in full nest too.
 
 **This first said 53 and 7, and that was wrong.** The documentation review of the pull

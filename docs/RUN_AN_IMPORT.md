@@ -63,7 +63,7 @@ changes a merge declares.
 The one run, for release `it-0c432803`:
 
 1. Put `it-extract.jsonl.gz` in the repository root. Its durable copy is
-   `source/` in `hueypov/lexema-data`. The Wiktionary dump beside it is read
+   `source/` in `povlabs/lexema-data`. The Wiktionary dump beside it is read
    too when it is there, as for a local seed.
 2. Sign Wrangler in to the Cloudflare account, once:
    `pnpm --dir web exec wrangler login`. The account must be on Workers Paid:
@@ -116,8 +116,8 @@ remote D1 lexema-dictionary database id: <id>
 ```
 
 Paste that line as a comment on
-[#172](https://github.com/hueypov/lexema/issues/172). Production's binding
-([#19](https://github.com/hueypov/lexema/issues/19)) and the Previews' `DB`
+[#172](https://github.com/povlabs/lexema/issues/172). Production's binding
+([#19](https://github.com/povlabs/lexema/issues/19)) and the Previews' `DB`
 binding use that id.
 
 ### If the upload stops
@@ -151,15 +151,15 @@ first, since it refuses a database with tables.
 The seed stores some source text rewritten by a fixed rule, a *source text
 normalization* ([ADR 0019](../.decisions/0019-source-text-may-be-normalized.md)).
 One rewrites a gloss opening "1ª/2ª/3ª persona" as "prima/seconda/terza
-persona" ([#257](https://github.com/hueypov/lexema/issues/257)). Another drops
+persona" ([#257](https://github.com/povlabs/lexema/issues/257)). Another drops
 a `forms[]` entry spelled exactly "inserisci qui voce al plurale",
 Wikizionario's empty plural template, so it is no searchable form and no row in
-a forms table ([#342](https://github.com/hueypov/lexema/issues/342)). A third,
+a forms table ([#342](https://github.com/povlabs/lexema/issues/342)). A third,
 rule `it-gloss-stamp/v1`
-([#317](https://github.com/hueypov/lexema/issues/317)), takes a gender and
+([#317](https://github.com/povlabs/lexema/issues/317)), takes a gender and
 number stamp off the end of a noun or adjective gloss (`casa ( approfondimento) f sing`)
 and states it as the record's gender and number. A fourth, rule
-`gloss-headword-lead/v1` ([#325](https://github.com/hueypov/lexema/issues/325)),
+`gloss-headword-lead/v1` ([#325](https://github.com/povlabs/lexema/issues/325)),
 stores a gloss the headword line leads (`palo ( approfondimento) pezza
 onorevole…`) as the definition after the link; a bare headword line stays as
 written. A database seeded before a rule existed gets it from a one-off update,
@@ -218,9 +218,9 @@ The seed hides a record the archive tags Italian that is another language's, by
 two rules ([ADR 0023](../.decisions/0023-foreign-records-are-hidden-not-deleted.md)):
 `section-language/v1` reads it off the raw page, where another language's entry
 sits under the Italian heading
-([#382](https://github.com/hueypov/lexema/issues/382)), and
+([#382](https://github.com/povlabs/lexema/issues/382)), and
 `form-of-foreign-lemma/v1` reads it off the archive, where a foreign record lists
-the word among its forms ([#389](https://github.com/hueypov/lexema/issues/389)).
+the word among its forms ([#389](https://github.com/povlabs/lexema/issues/389)).
 A database seeded before either gets the same records hidden by a one-off
 update, with no reseed. Before a live hide, deploy the reader described in
 [Card and suggestion cache identity](DEPLOY.md#card-and-suggestion-cache-identity),
@@ -260,7 +260,7 @@ hides all 30. Every later run prints `30 already hidden; nothing to hide`.
 
 A curated correction sets right a gender or number the source states wrongly,
 checked by hand against a cited Wiktionary revision
-([#420](https://github.com/hueypov/lexema/issues/420)). The committed list is
+([#420](https://github.com/povlabs/lexema/issues/420)). The committed list is
 [`src/italian/curatedCorrections.ts`](../src/italian/curatedCorrections.ts):
 each entry names its record by release, archive line and line digest, the
 source text it overrides, and its evidence. The seed writes each entry keyed to
@@ -290,7 +290,7 @@ its counts as JSON, with one line per entry under `entries`, and runs nothing
 on the database.
 
 The same run writes definition corrections: a page-only entry's definition the
-page states wrongly ([#450](https://github.com/hueypov/lexema/issues/450),
+page states wrongly ([#450](https://github.com/povlabs/lexema/issues/450),
 [page-only entries](PAGE_ENTRIES.md#corrected-definitions)). Each is one
 `corrected_definition` row, created with its table when the master lacks it.
 `entry_definition` is not touched. It is written only to the master's entry of
@@ -325,11 +325,11 @@ Deploy the Worker that reads corrections before the first such declaration. On
 `it-0c432803` the first run prints `written now: 215` and one line per entry,
 251 rows in all: the 20 hand entries write 22 (`congiuntivi` and `maniaci` set
 gender and number), and the 195 that rule `it-plural-gloss-number/v2` makes
-([#483](https://github.com/hueypov/lexema/issues/483),
-[#515](https://github.com/hueypov/lexema/issues/515)) write 229 (34 set
+([#483](https://github.com/povlabs/lexema/issues/483),
+[#515](https://github.com/povlabs/lexema/issues/515)) write 229 (34 set
 gender and number). On a master that already holds the 20 hand entries of
-[#420](https://github.com/hueypov/lexema/issues/420) and
-[#449](https://github.com/hueypov/lexema/issues/449) and the 156 v1 made, it
+[#420](https://github.com/povlabs/lexema/issues/420) and
+[#449](https://github.com/povlabs/lexema/issues/449) and the 156 v1 made, it
 prints `written now: 39` and `already written` for the 176. Every later run prints
 `nothing to write` and `already written` for each. Before a master holds
 page-only entries, the two definition corrections print `not written; the master holds no page-only entry`.

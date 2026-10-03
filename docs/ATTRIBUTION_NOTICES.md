@@ -91,7 +91,7 @@ metadata, and **must not be published with guessed values.**
 > - Scaricato da: [`{sourceUrl}`]({sourceUrl})
 
 This section says where the data came from and nothing else, by Huey's ruling on
-[#133](https://github.com/hueypov/lexema/issues/133): no release id, download date, build date,
+[#133](https://github.com/povlabs/lexema/issues/133): no release id, download date, build date,
 checksum or counts. For the July archive the dump is inferred, not recorded by kaikki; that basis
 and its evidence are kept in [`src/source/archiveFacts.ts`](../src/source/archiveFacts.ts) and
 [LICENSING.md §1.3](LICENSING.md#13-the-one-reasonable-inference--and-its-limit), not on the page.
@@ -181,7 +181,7 @@ that produces every value above.
 | --- | --- | --- |
 | `releaseId` | release metadata | Ties text to a described snapshot |
 | record ordinal + JSON pointer | already in `ProvenanceRef` | Locates the exact source value |
-| `word` **of the record the text came from** | the record | Builds the source and history URL. Must be the record's own `word`, not the query — this is issue [#16](https://github.com/hueypov/lexema/issues/16). |
+| `word` **of the record the text came from** | the record | Builds the source and history URL. Must be the record's own `word`, not the query — this is issue [#16](https://github.com/povlabs/lexema/issues/16). |
 | `lang_code` | the record | Distinguishes the `it` from the `la` record on the same page |
 | `recordHash` | already optional in `ProvenanceRef` | Detects drift between releases |
 

@@ -4,13 +4,13 @@
 // `pnpm run report` also reads the local dictionary, `DB`, the same way and
 // only through `readOnly` (ADR 0018).
 
-import { execFileSync } from "node:child_process";
 import { resolve } from "node:path";
 import { drizzle } from "drizzle-orm/sqlite-proxy";
-import { LOCAL_APP, LOCAL_DICTIONARY } from "../import/seedTarget.js";
+import { LOCAL_APP, LOCAL_DICTIONARY, webWrangler } from "../import/seedTarget.js";
 import { readOnly, type LookupDatabase } from "../lookup/database.js";
 import type { AppTables } from "./app/database.js";
 import * as schema from "./app/schema.js";
+import { readD1, type D1Executor } from "./d1Command.js";
 
 /** A value written into SQL as a literal, for Wrangler's `--command`, which binds no parameters. */
 function sqlLiteral(value: unknown): string {
@@ -29,17 +29,14 @@ function sqlLiteral(value: unknown): string {
  * select order.
  */
 function executor(persistTo: string, name: string) {
+  const database: D1Executor = {
+    execute: (args, capture) => webWrangler(["d1", "execute", name, "--local", "--persist-to", persistTo, ...args], capture),
+  };
   return (sql: string, params: readonly unknown[]): Record<string, unknown>[] => {
     let next = 0;
     const command = sql.replace(/\?/g, () => sqlLiteral(params[next++]));
     if (next !== params.length) throw new Error(`the statement takes ${next} parameter(s), was given ${params.length}`);
-    const output = execFileSync(
-      "pnpm",
-      ["exec", "wrangler", "d1", "execute", name, "--local", "--persist-to", persistTo, "--json", "--command", command],
-      { cwd: resolve("web"), stdio: ["ignore", "pipe", "inherit"], env: { ...process.env, CI: "1" }, encoding: "utf8" },
-    );
-    const [answer] = JSON.parse(output) as [{ results: Record<string, unknown>[] }];
-    return answer.results;
+    return readD1<Record<string, unknown>>(database, command)[0] ?? [];
   };
 }
 

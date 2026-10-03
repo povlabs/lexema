@@ -46,7 +46,7 @@
   ],
   // Per-visitor limits, checked in worker/index.ts before the database is
   // touched. Rulings by Huey on 2026-09-24 in #128
-  // (https://github.com/hueypov/lexema/issues/128):
+  // (https://github.com/povlabs/lexema/issues/128):
   // - SEARCH_LIMIT, 15 searches a minute. 30 was rejected ("nobody can write
   //   that with a keyboard"); 15 leaves room for a reader clicking through
   //   links in bursts, and keeps one address scraping 560k words to ~26 days.

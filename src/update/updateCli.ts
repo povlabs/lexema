@@ -32,6 +32,7 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { finish, isMain, usageError, type CommandResult } from "../commandLine.js";
+import { readD1, type D1Executor } from "../db/d1Command.js";
 import { seedTargetFrom, webWrangler, type SeedTarget, type Wrangler } from "../import/seedTarget.js";
 import { ApplyRefused, checkApplied, chooseChanges, planApply, type ApplyPlan } from "./apply.js";
 import { diffAgainstMaster, reportMarkdown, reportOf } from "./diff.js";
@@ -54,12 +55,11 @@ const SCHEMA = resolve("src/db/schema.sql");
 /** The dump's language headings, which #29's rule reads (src/italian/sectionLanguage.ts). */
 const LANGUAGES = resolve("fixtures/section-language/regressions.json");
 
-/** The master through Wrangler: each SELECT is one `d1 execute --command`. */
-export function masterReaderOf(target: SeedTarget): MasterReader {
+/** The master through Wrangler: each query is one `D1Command` read, answering its last statement's rows. */
+export function masterReaderOf(target: D1Executor): MasterReader {
   return {
     query<Row>(sql: string): Row[] {
-      const answers = JSON.parse(target.execute(["--json", "--command", sql], true)) as { results: Row[] }[];
-      return answers.at(-1)?.results ?? [];
+      return readD1<Row>(target, sql).at(-1) ?? [];
     },
   };
 }

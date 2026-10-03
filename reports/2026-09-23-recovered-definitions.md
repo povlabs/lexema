@@ -8,7 +8,7 @@
 > usage sentences and quotations as definitions; that is fixed, and this report's own
 > 37 definitions over the fixtures are unchanged by the fix. The sections below are kept as they were measured.
 
-Measurement for [issue #28](https://github.com/hueypov/lexema/issues/28), run 2026-09-23.
+Measurement for [issue #28](https://github.com/povlabs/lexema/issues/28), run 2026-09-23.
 It follows [why `casa` has no definition](2026-09-18-definition-loss.md), which named the
 cause; this report counts full and partial loss with the parser that now recovers it, and
 says what the count means for the whole release.

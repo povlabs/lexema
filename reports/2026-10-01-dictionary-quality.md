@@ -1,6 +1,6 @@
 # Dictionary quality past the twelve words, 2026-10-01
 
-Measurement for [#17](https://github.com/hueypov/lexema/issues/17). The
+Measurement for [#17](https://github.com/povlabs/lexema/issues/17). The
 [spot check](2026-09-18-dataset-spot-check.md) read twelve hand-picked words. This
 report asks how the whole release reads: whether a record shows a definition at
 all, whether that definition is any use, and which grammar fields are stated,
@@ -410,8 +410,8 @@ verbatim archive lines: the spot check's words from
 
 - The furniture rule hiding real definitions (`palo`, `banda`, `sbarra`, `balzana`, …) is a
   page defect with a clear fix: hide a headword line only when nothing but stamps
-  follows the marker ([#325](https://github.com/hueypov/lexema/issues/325)).
+  follows the marker ([#325](https://github.com/povlabs/lexema/issues/325)).
 - The 104 lemma pages the extraction skips (`raccontare`, `fornire`, `dipendere`)
   are missing records, not missing fields. Whether to recover whole records from
-  raw pages is a data decision, like [#28](https://github.com/hueypov/lexema/issues/28) was
-  ([#326](https://github.com/hueypov/lexema/issues/326)).
+  raw pages is a data decision, like [#28](https://github.com/povlabs/lexema/issues/28) was
+  ([#326](https://github.com/povlabs/lexema/issues/326)).
