@@ -13,10 +13,12 @@ import { after, before, test } from "node:test";
 import { gzipSync } from "node:zlib";
 import { seedSql } from "../src/import/seedSql.js";
 import { fromNodeSqlite } from "../src/lookup/database.js";
-import { DECLARED_LEMMA_GENDER_SQL, DECLARED_LEMMA_SQL, declaredLemma } from "../src/lookup/declaredLemma.js";
+import { DECLARED_LEMMA_CORRECTION_SQL, DECLARED_LEMMA_GENDER_SQL, DECLARED_LEMMA_SQL, declaredLemma } from "../src/lookup/declaredLemma.js";
+import type { LookupDatabase } from "../src/lookup/database.js";
+import { DECLARED_CORRECTION_LINES, declaredCorrections } from "./declaredCorrectionFixture.js";
 import { exists, lookup } from "../src/lookup/lookup.js";
 import { lookupBatch } from "../src/lookup/batch.js";
-import type { DeclaredLemmaResult, NotFoundResult } from "../src/lookup/types.js";
+import type { DeclaredLemmaResult, NotFoundResult, PluralDeclaration } from "../src/lookup/types.js";
 
 const RELEASE = "it-declared-test";
 
@@ -149,4 +151,111 @@ test("both probes read form_of_edge_by_target on its whole key, and walk no tabl
     assert.ok(plan.includes("SEARCH d USING INTEGER PRIMARY KEY (rowid=?)"), `${name}: ${plan.join(" | ")}`);
     assert.deepEqual(plan.filter((step) => /^SCAN (e|d|s|g|c)$/.test(step)), [], name);
   }
+});
+
+// Curated corrections of a declared lemma's plural records (#470), on the
+// made-up lines of test/declaredCorrectionFixture.ts. Where the page puts each
+// one is web/test/page.test.tsx's.
+
+const CORRECTION_RELEASE = "it-declared-correction-test";
+
+/** Those lines seeded with their test-only corrections, or with none. */
+async function seededCorrections(corrected: boolean): Promise<DatabaseSync> {
+  const work = await mkdtemp(join(tmpdir(), "lexema-declared-corrected-"));
+  try {
+    const archive = join(work, "archive.jsonl.gz");
+    await writeFile(archive, gzipSync(`${DECLARED_CORRECTION_LINES.join("\n")}\n`));
+    const { parts } = await seedSql({
+      input: archive,
+      outputDir: join(work, "sql"),
+      schema: "src/db/schema.sql",
+      releaseId: CORRECTION_RELEASE,
+      corrections: corrected ? declaredCorrections(DECLARED_CORRECTION_LINES, CORRECTION_RELEASE) : [],
+    });
+    const db = new DatabaseSync(":memory:");
+    for (const part of parts) db.exec(await readFile(part, "utf8"));
+    return db;
+  } finally {
+    await rm(work, { recursive: true, force: true });
+  }
+}
+
+/** The one plural a made-up lemma's one reading places. */
+async function onlyPlural(db: LookupDatabase, query: string): Promise<PluralDeclaration> {
+  const result = await lookup({ db, releaseId: CORRECTION_RELEASE, query });
+  assert.ok(result.outcome === "not-found", `${query}: ${result.outcome}`);
+  const declared = await declaredLemma(db, CORRECTION_RELEASE, result);
+  assert.ok(declared !== undefined, query);
+  const [reading, ...rest] = declared.readings;
+  assert.ok(reading.pos === "noun" && rest.length === 0, query);
+  assert.equal(reading.forms.length, 1, query);
+  return reading.forms[0].plural;
+}
+
+const claimsOf = (claims: readonly { status: string; dimension: string; value: string }[]): string[] =>
+  claims.map(({ status, dimension, value }) => `${status} ${dimension} ${value}`);
+
+test("a curated correction of a declared plural's record stands in for its tags, and keeps what it replaces (#470)", async () => {
+  const seeded = await seededCorrections(true);
+  try {
+    const db = fromNodeSqlite(seeded);
+    const gattolini = await onlyPlural(db, "gattolino");
+    assert.deepEqual(claimsOf(gattolini.recordGenders), ["corrected gender masculine"]);
+    const [gender] = gattolini.recordGenders;
+    assert.ok(gender.status === "corrected");
+    assert.equal(gender.correction.id, `${CORRECTION_RELEASE}:1`);
+    assert.deepEqual(claimsOf(gender.replaces), ["stated gender feminine"]);
+    assert.equal(gattolini.correctedNumber, undefined);
+
+    const volpatrice = await onlyPlural(db, "volpatore");
+    assert.deepEqual(claimsOf(volpatrice.recordGenders), ["stated gender feminine"]);
+    assert.equal(volpatrice.correctedNumber?.value, "singular");
+    assert.equal(volpatrice.correctedNumber?.correction.id, `${CORRECTION_RELEASE}:2`);
+    assert.deepEqual(claimsOf(volpatrice.correctedNumber?.replaces ?? []), ["stated number plural"]);
+  } finally {
+    seeded.close();
+  }
+});
+
+test("with no correction, a declared plural keeps its stated tags (#470)", async () => {
+  const seeded = await seededCorrections(false);
+  try {
+    const db = fromNodeSqlite(seeded);
+    for (const query of ["gattolino", "volpatore"]) {
+      const plural = await onlyPlural(db, query);
+      assert.deepEqual(claimsOf(plural.recordGenders), ["stated gender feminine"], query);
+      assert.equal(plural.correctedNumber, undefined, query);
+    }
+  } finally {
+    seeded.close();
+  }
+});
+
+test("a master with no corrected_claim table still answers the probe, and never reads that table (#470)", async () => {
+  const seeded = await seededCorrections(true);
+  try {
+    seeded.exec("DROP TABLE corrected_claim");
+    const read = fromNodeSqlite(seeded);
+    const statements: string[] = [];
+    const db: LookupDatabase = {
+      all: (sql, params) => {
+        statements.push(sql);
+        return read.all(sql, params);
+      },
+    };
+    const gattolini = await onlyPlural(db, "gattolino");
+    assert.deepEqual(claimsOf(gattolini.recordGenders), ["stated gender feminine"]);
+    assert.ok(!statements.includes(DECLARED_LEMMA_CORRECTION_SQL));
+    assert.deepEqual(statements.filter((sql) => /\b(FROM|JOIN)\s+corrected_claim\b/.test(sql)), []);
+  } finally {
+    seeded.close();
+  }
+});
+
+test("the correction read starts from form_of_edge_by_target on its whole key, and walks no table (#470)", () => {
+  const plan = (sqlite.prepare(`EXPLAIN QUERY PLAN ${DECLARED_LEMMA_CORRECTION_SQL}`).all(RELEASE, "verbalizzare") as { detail: string }[]).map((row) => row.detail);
+  // The first step; `served_release`'s own steps follow it, under its aliases.
+  assert.equal(plan[0], "SEARCH e USING INDEX form_of_edge_by_target (release_id=? AND target_word_key=?)");
+  assert.ok(plan.some((step) => /^SEARCH k USING /.test(step)), plan.join(" | "));
+  assert.deepEqual(plan.filter((step) => /^SCAN (e|k)$/.test(step)), [], plan.join(" | "));
 });

@@ -16,11 +16,13 @@ import { main as deployMain } from "../src/deploy/deployCli.js";
 import { addedDeclarations, declarationWith, planPullRequest, type PullRequestPlanner, pullRequestPlanReport } from "../src/deploy/pullRequestPlan.js";
 import { type DeclarationDraft, type DeclaredChange, DeclarationRefused, HIDING_RULES, parseDeclaration, parseDraft } from "../src/update/declaration.js";
 import { PlanCounts } from "../src/update/planCounts.js";
+import { PAGE_ENTRY_RULES } from "../src/import/loadPageEntries.js";
 
 const COUNTS = { records: { added: 0, changed: 2, removed: 0 }, written: { corrected_claim: 3, correction_version: 1 }, deleted: {} };
 const correction = (expected?: object): string => JSON.stringify({ command: "correct:records", ...(expected === undefined ? {} : { expected }) });
 const AUTO = JSON.stringify({ command: "update:auto", inputs: { feedRelease: "it-78385b62" }, expected: COUNTS });
 const HIDE = JSON.stringify({ command: "hide:records", inputs: { archive: "it-0c432803", rules: [...HIDING_RULES] }, expected: COUNTS });
+const LOAD = JSON.stringify({ command: "load:page-entries", inputs: { archive: "it-0c432803", rules: [...PAGE_ENTRY_RULES] }, expected: COUNTS });
 
 /** A plan-only answer of `counts` on a dictionary of `dictionaryRecords` records. */
 function answerOf(change: DeclaredChange, counts: object = COUNTS, dictionaryRecords = 1000): PlanOnlyAnswer {
@@ -143,7 +145,7 @@ test("only the first declaration is planned; a later one is refused, naming the 
   assert.match(report.markdown, /its own pull request/);
 });
 
-const DATA_READING = { "update:auto": AUTO, "hide:records": HIDE } as const;
+const DATA_READING = { "update:auto": AUTO, "hide:records": HIDE, "load:page-entries": LOAD } as const;
 
 for (const [command, text] of Object.entries(DATA_READING)) {
   const { inputs } = JSON.parse(text) as { inputs: object };

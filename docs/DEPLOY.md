@@ -449,11 +449,31 @@ upload of a release
    written, its log gets the line
    `bookmark: <bookmark> (restore with: <the restore command below>)`, so a run
    killed mid-write still names it. The summary names it again at the end.
+   The run then runs the upgrade's DDL
+   ([`update:upgrade`](../src/update/masterUpgrade.ts)) as its own batch, so
+   no declaration's SQL carries DDL
+   ([#507](https://github.com/hueypov/lexema/issues/507)). It does so when
+   the dictionary lacks a table, index or view the upgrade creates, or when
+   it stores a page-entry table, `corrected_definition` or their index with a
+   definition other than [schema.sql](../src/db/schema.sql)'s. Comments and
+   spacing do not count. For a changed definition the upgrade rebuilds those
+   five tables with their rows: it copies the rows aside, drops the tables,
+   creates them from schema.sql and copies the rows back by the columns both
+   definitions share. A row the new definition refuses stops the batch, and
+   D1 rolls it back whole. After the batch the run checks that nothing is
+   missing, nothing differs and every rebuilt table holds as many rows as
+   before. So a change to those tables in schema.sql reaches the shared
+   dictionary on the next deploy.
 4. For each declaration it runs the command's plan, without writing, and holds
    its counts to the declared ones and to the hard limits: more than 100
    records removed, or more than 5% of the records changed or removed. Any
    difference stops the run before that change is written. Otherwise it runs
-   the plan's SQL file, then reads the changed rows back.
+   the plan's SQL as one transaction, then reads the changed rows back.
+   SQL of at most 100,000 bytes goes through D1's query API
+   (`wrangler d1 execute --command=<sql>`), and larger SQL through an import
+   (`--file`) ([d1Batch.ts](../src/deploy/d1Batch.ts)). SQL holding a `LIKE`
+   or `GLOB` pattern over 50 bytes, which D1 refuses, stops the run before it
+   is sent.
 5. It looks up `casa`, `andare`, `raccontare`, `bello`, `studente` and
    `andavano` in the dictionary with the site's own lookup. Each must be found.
 6. It fast-forwards `production` to the run's commit with `GITHUB_TOKEN`, and
@@ -463,6 +483,7 @@ A stop at any step is a red run, and `production` stays where it was, so the
 site stays at its last green commit. GitHub's failed-run email is the alert.
 The run's summary says why it stopped. When something was written, it names
 the bookmark and the exact restore command; the run never restores by itself.
+A batch D1 refused rolled back whole, so it alone counts as nothing written.
 Huey runs it from the repository root:
 
 ```sh
@@ -529,8 +550,8 @@ a file of up to 100 MB:
 | a dump | `source/<its KNOWN_DUMPS file>`, such as `source/itwiktionary-20260901-pages-articles.xml.bz2` |
 
 A declaration of `update:auto` reads its feed release's archive and the dump
-its `ARCHIVE_FACTS` entry names; `hide:records` reads the master's archive and
-its dump. `update:upgrade`, `normalize:source-text` and `correct:records` read
+its `ARCHIVE_FACTS` entry names; `hide:records` and `load:page-entries` read
+the master's archive and its dump. `update:upgrade`, `normalize:source-text` and `correct:records` read
 none: `correct:records` writes the committed list of curated corrections.
 
 ### Set up the dictionary deploy
@@ -581,8 +602,8 @@ request's merge commit ([src/deploy/](../src/deploy/pullRequestPlan.ts)):
    declaration may leave `expected` out until this check gives it.
 2. It plans the first one with the pull request's own code against
    `lexema-dictionary`, and holds the counts to `expected` and to the hard
-   limits, as the deploy will. This includes `update:auto` and `hide:records`:
-   their plan downloads an archive and a dump from `hueypov/lexema-data` with
+   limits, as the deploy will. This includes `update:auto`, `hide:records`
+   and `load:page-entries`: their plan downloads an archive and a dump from `hueypov/lexema-data` with
    the read-only `LEXEMA_DATA_READ_TOKEN`, as the deploy does
    ([Where the archives are](#where-the-archives-are)).
 3. Its job summary says, for each declaration:
@@ -591,9 +612,9 @@ request's merge commit ([src/deploy/](../src/deploy/pullRequestPlan.ts)):
      printing the whole declaration file with the plan's counts as
      `expected`. Copy it into the file and push;
    - the plan crosses a hard limit: red, naming the limit;
-   - `update:auto` or `hide:records` first, and the run has no
-     `hueypov/lexema-data` token: red, naming the `LEXEMA_DATA_READ_TOKEN`
-     secret of `dictionary-plan` to add;
+   - `update:auto`, `hide:records` or `load:page-entries` first, and the run
+     has no `hueypov/lexema-data` token: red, naming the
+     `LEXEMA_DATA_READ_TOKEN` secret of `dictionary-plan` to add;
    - any declaration after the first: red. Its counts depend on what the
      earlier ones write, and this run writes nothing. Put it in its own pull
      request once the earlier ones are deployed.
@@ -654,7 +675,7 @@ check goes red on every pull request that adds a declaration.
    ([Set up the dictionary deploy](#set-up-the-dictionary-deploy), step 2),
    or make a new one the same way, named `lexema-dictionary-plan-data`. Until
    it is added, the check goes red on a pull request whose first declaration
-   is `update:auto` or `hide:records`.
+   is `update:auto`, `hide:records` or `load:page-entries`.
 
 Add no other secret to `dictionary-plan`: never `CLOUDFLARE_D1_TOKEN` and
 never `LEXEMA_DATA_WRITE_TOKEN`.

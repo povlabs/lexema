@@ -11,6 +11,7 @@ import { basename } from "node:path";
 import { FORM_OF_FOREIGN_LEMMA_RULE } from "../italian/formOfForeignLemma.js";
 import { SECTION_LANGUAGE_RULE } from "../italian/sectionLanguage.js";
 import { SOURCE_TEXT_UPDATE_RULES } from "../import/normalizeSourceText.js";
+import { PAGE_ENTRY_RULES } from "../import/loadPageEntries.js";
 import { type CountDifference, type CountedTable, isCountedTable, PlanCounts } from "./planCounts.js";
 
 /** The directory, from the repository root, that holds every change declaration. */
@@ -20,8 +21,8 @@ export const DECLARATIONS_DIR = "dictionary-changes";
 export const isDeclarationPath = (path: string): boolean =>
   path.startsWith(`${DECLARATIONS_DIR}/`) && path.endsWith(".json") && !path.slice(DECLARATIONS_DIR.length + 1).includes("/");
 
-/** The five commands that write the dictionary. */
-export const DECLARED_COMMANDS = ["update:upgrade", "update:auto", "hide:records", "normalize:source-text", "correct:records"] as const;
+/** The six commands that write the dictionary. */
+export const DECLARED_COMMANDS = ["update:upgrade", "update:auto", "hide:records", "normalize:source-text", "correct:records", "load:page-entries"] as const;
 export type DeclaredCommand = (typeof DECLARED_COMMANDS)[number];
 
 /** A release id: `it-` and the first eight hex digits of its archive's SHA-256. */
@@ -55,7 +56,9 @@ export type DeclaredChange =
    * as it stands at the deploy's commit, and the expected counts pin what that
    * list writes.
    */
-  | Declared<"correct:records", Record<string, never>>;
+  | Declared<"correct:records", Record<string, never>>
+  /** The release the master was seeded from, whose dump the rules read pages from, and the rules. */
+  | Declared<"load:page-entries", { readonly archive: ReleaseId; readonly rules: typeof PAGE_ENTRY_RULES }>;
 
 export type ChangeDeclaration = DeclaredChange & { readonly expected: PlanCounts };
 
@@ -189,6 +192,12 @@ function changeOf(file: string, value: Record<string, unknown>, reasons: string[
     case "correct:records": {
       reasons.push(...unknownKeys(inputs, [], "inputs of correct:records"));
       return { file, command, inputs: {} };
+    }
+    case "load:page-entries": {
+      reasons.push(...unknownKeys(inputs, ["archive", "rules"], "inputs of load:page-entries"));
+      const archive = releaseId(inputs.archive, "inputs.archive", reasons);
+      const rules = ruleSet(inputs.rules, PAGE_ENTRY_RULES, "inputs.rules", reasons);
+      return archive === undefined || rules === undefined ? undefined : { file, command, inputs: { archive, rules } };
     }
   }
 }

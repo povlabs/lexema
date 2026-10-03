@@ -268,25 +268,29 @@ export function agreementOf(reading: Reading): Agreement {
  * A declared lemma's grid (#453): a noun or adjective no record heads, whose
  * plural records gloss themselves "plurale di <word>" (`it-plural-gloss/v1`).
  *
- * - Each plural goes in the gender its gloss names, else every gender its own
- *   record's tags state; with neither, it takes no cell (`declaredCells`, with
- *   no gender of the lemma's own to fall back on).
+ * - Each form goes in the cells `declaredCells` gives it, with no gender of
+ *   the lemma's own to fall back on: the gender a curated correction of its
+ *   record sets (#420), else the one its gloss names, else every gender its
+ *   record's tags state; with none, it takes no cell. Its number is plural, as
+ *   the gloss says, unless a correction of its record's number says singular:
+ *   then it sits in the singolare cell of its gender.
  * - The lemma, as the citation form, goes in the singolare of each gender that
  *   a plural which calls itself the word's plural fills: `fratellini`, tagged
  *   masculine, says "plurale di fratellino", so `fratellino` is maschile
  *   singolare. A feminine plural (`femminile plurale di calabro`) says nothing
- *   of the lemma's own gender, so it places the lemma nowhere.
+ *   of the lemma's own gender, so it places the lemma nowhere, and neither
+ *   does a form whose number is corrected to singular: it is not a plural.
  *
- * Undefined when no plural takes a cell.
+ * Undefined when no form takes a cell.
  */
 export function declaredGridOf(word: string, forms: readonly DeclaredPluralForm[]): Grid | undefined {
   const plain = new GridBuilder();
   const lemmaGenders = new Set<Gender>();
   for (const form of forms) {
-    const { genders } = declaredCells(form.plural, []);
+    const { genders, number } = declaredCells(form.plural, []);
     for (const gender of genders) {
-      plain.put(gender, "plural", { kind: "declared-lemma-plural", form }, form.surface);
-      if (form.plural.glossGender !== "feminine") lemmaGenders.add(gender);
+      plain.put(gender, number, { kind: "declared-lemma-plural", form }, form.surface);
+      if (number === "plural" && form.plural.glossGender !== "feminine") lemmaGenders.add(gender);
     }
   }
   if (plain.size === 0) return undefined;

@@ -26,6 +26,7 @@ cannot read as one, naming the file.
 | `hide:records` | `archive`: the release id the master was seeded from; `rules`: every hiding rule |
 | `normalize:source-text` | `rules`: every source text rule the command applies |
 | `correct:records` | none: it writes the committed list of curated corrections, and `expected` pins what that list writes ([RUN_AN_IMPORT.md](../docs/RUN_AN_IMPORT.md#write-the-curated-corrections-into-a-seeded-database)) |
+| `load:page-entries` | `archive`: the release id the master was seeded from, whose dump the rule reads; `rules`: every page-entry rule ([PAGE_ENTRIES.md](../docs/PAGE_ENTRIES.md#load-them-into-a-seeded-dictionary)) |
 
 `expected` is the `counts` object a plan-only run of the command prints
 (`--plan-only`, [src/update/planOnly.ts](../src/update/planOnly.ts)). A table
@@ -37,8 +38,9 @@ with no `expected`, or with the counts you expect. The
 plans it with the pull request's own code: green when the counts match, red
 otherwise, printing the declaration with the plan's counts to copy in. Add
 one declaration per pull request, since the check counts only the first.
-This holds for `update:auto` and `hide:records` too: the check reads their
-archive and dump from `hueypov/lexema-data` with a read-only token.
+This holds for `update:auto`, `hide:records` and `load:page-entries` too: the
+check reads their archive and dump from `hueypov/lexema-data` with a read-only
+token.
 
 The [monthly release](../docs/DEPLOY.md#the-monthly-release) writes one
 `<release id>.json` here, an `update:auto` of the new kaikki release.

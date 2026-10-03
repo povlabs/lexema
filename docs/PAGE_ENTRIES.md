@@ -36,8 +36,10 @@ by curated corrections, never by an edit of the entry:
   page title and dump revision, the definition's place, its page line and the
   page's text, verbatim, plus the new wording and at least one cited revision.
   Huey approves the wording ([ADR 0008](../.decisions/0008-generated-explanations-are-labelled-and-reportable.md#amendments)).
-- The seed writes it as a `corrected_definition` row beside the entry. A
-  database seeded before it gets it from `pnpm run correct:records`
+- The seed writes it as a `corrected_definition` row beside the entry, and so
+  does `load:page-entries` for each entry it
+  [loads](#load-them-into-a-seeded-dictionary). A database that already holds
+  the entry gets a later correction from `pnpm run correct:records`
   ([run an archive seed](RUN_AN_IMPORT.md#write-the-curated-corrections-into-a-seeded-database)).
   `entry_definition` keeps the page's own words.
 - A lookup reads the new wording as the definition's `text`, and keeps the
@@ -61,8 +63,79 @@ tables exist once per lookup, from `sqlite_schema` (`dictionaryTables` in
 - Without the tables, lookups send no statement that names them, and answer as
   before, with no page-only entries.
 - With some of the four but not all, lookups refuse to answer.
-- `pnpm run update:upgrade` creates the tables empty and writes no row
+- `pnpm run update:upgrade` creates the tables and `corrected_definition`
+  empty, and writes no row
   ([update the dictionary](UPDATE_THE_DICTIONARY.md#once-a-dictionary-seeded-from-an-older-schema)).
   Serving does not need it.
-- Loading entries into a seeded dictionary is
-  [#440](https://github.com/hueypov/lexema/issues/440).
+- `pnpm run load:page-entries` loads the entries
+  ([below](#load-them-into-a-seeded-dictionary)).
+
+## Load them into a seeded dictionary
+
+`pnpm run load:page-entries` ([loadPageEntries.ts](../src/import/loadPageEntries.ts),
+[#440](https://github.com/hueypov/lexema/issues/440)) gives a dictionary seeded
+before these entries the rows a seed now writes for them, with no reseed:
+
+- It reads the archive the master was seeded from (`SEED_INPUT`, default
+  `it-extract.jsonl.gz`) only to check it is the master's, and that archive's
+  dump (`RAW_PAGES`, default the dump in the repository root), checked by size
+  and SHA-1.
+- A title gets an entry by the seed's rule, read off the dictionary as it is
+  now: a served record points at it with `form_of`, no record of any release
+  spells it, hidden or replaced records included, and the rule reads its page
+  as one Italian verb.
+- For each entry it writes the `raw_page` row of its revision, the four tables'
+  rows, the [corrected definitions](#corrected-definitions) the list gives it,
+  and the `accent_fold` and `typo_key` rows of its word. It creates no table:
+  `pnpm run update:upgrade` creates the tables and `corrected_definition`, and
+  the load refuses to write without them. The dictionary deploy runs the
+  upgrade itself first ([DEPLOY.md](DEPLOY.md#the-dictionary-deploy)).
+- It touches no record, applied change or hide. `source_record_json` stays
+  byte for byte.
+- It writes one SQL file under `.data/updates/` and runs it as one transaction,
+  then reads each entry back. An entry already held is left alone, so a second
+  run writes nothing. `--plan-only` prints the counts and writes nothing.
+
+On `it-0c432803` it loads the 14 entries of the
+[measurement](../reports/2026-10-02-page-entry-recovery.md) and
+`grufolare`'s and `tremare`'s corrected definitions.
+
+### On the shared dictionary
+
+The [dictionary deploy](DEPLOY.md#the-dictionary-deploy) runs the command when a
+merged change declaration names it
+([dictionary-changes/README.md](../dictionary-changes/README.md)). An agent runs
+it against a local D1 only. One run does both halves, in this order:
+
+1. **Data.** The deploy records a Time Travel bookmark and, when the tables
+   are missing, runs the upgrade as its own transaction, which creates all four
+   and `corrected_definition` at once, empty. When the tables are there but
+   one is stored with a definition other than schema.sql's, the upgrade
+   rebuilds them with their rows instead
+   ([DEPLOY.md](DEPLOY.md#the-dictionary-deploy), step 3). A dictionary with the tables and
+   no entries answers as one without them. The deploy then checks the plan's
+   counts against the declaration, runs the rows as one transaction and reads
+   them back. Then it looks up its fixed words, `raccontare` among them.
+2. **Reader.** The deploy fast-forwards `production` to the merge, and Workers
+   Builds uploads that commit's Worker, which reads the tables (since
+   [#438](https://github.com/hueypov/lexema/pull/438)).
+
+Until step 2, the Worker already deployed keeps serving. A Worker from before
+#438 never names the tables, so it answers as before; a later one shows the
+entries as soon as step 1 commits.
+
+To undo the load, restore the bookmark the deploy run names, with the command
+in its summary ([the dictionary deploy](DEPLOY.md#the-dictionary-deploy)). The
+bookmark is from before the first write of that run, so the restore also undoes
+any other declaration the same run wrote.
+
+### How cached lookups move
+
+The load does not change the served data identity: the release, the last
+applied change and the hide and correction revisions stay the same. Card and
+suggestion addresses move with the Worker version instead
+([cache identity](DEPLOY.md#card-and-suggestion-cache-identity)). Step 2 uploads
+a new version, so pages rendered after it ask for new addresses, and a cached
+"not found" for `raccontare` is not used again. Between steps 1 and 2, the old
+Worker keeps its old addresses, so a card it cached before the load can still
+be served until step 2.

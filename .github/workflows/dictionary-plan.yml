@@ -4,9 +4,10 @@ name: Dictionary plan
 # request adds with the pull request's own code against the shared dictionary
 # D1, and holds it to its `expected` counts. Red prints the declaration with
 # the counts to put in it. It only ever runs the plan-only entry, so it writes
-# nothing, records no bookmark and moves no branch. `update:auto` and
-# `hide:records` read an archive and a dump from hueypov/lexema-data, so the
-# plan step also gets a read-only token for that repository (#498). The steps
+# nothing, records no bookmark and moves no branch. `update:auto`,
+# `hide:records` and `load:page-entries` read an archive and a dump from
+# hueypov/lexema-data, so the plan step also gets a read-only token for that
+# repository (#498). The steps
 # are src/deploy/pullRequestPlan.ts; docs/DEPLOY.md lists the environment,
 # secrets and variable read here (ADR 0018). The deploy still holds every
 # declaration to `expected` at merge.

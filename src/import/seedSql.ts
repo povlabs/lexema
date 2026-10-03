@@ -19,7 +19,8 @@ import type { RawPageSource } from "../source/rawPage.js";
 import type { LanguageHeadings } from "../italian/sectionLanguage.js";
 import { HiddenLayer, readRulePass, type HiddenSummary } from "./hiddenLayer.js";
 import { RawPageRows } from "./rawPageRows.js";
-import { recoverPageEntry, PAGE_ENTRY_RULE } from "../italian/pageEntry.js";
+import { recoverPageEntry } from "../italian/pageEntry.js";
+import { entryDefinitionsOf, pageEntryRows } from "./pageEntryRows.js";
 import { RecoveredLayer, type RecoverySummary } from "./recoveredLayer.js";
 import { CorrectedLayer, type CorrectionSummary } from "./correctedLayer.js";
 import { CorrectedDefinitionLayer, type DefinitionCorrectionSummary } from "./correctedDefinitions.js";
@@ -491,26 +492,13 @@ export async function seedSql(options: SeedSqlOptions): Promise<SeedSqlReport> {
       const entryId = ++writer.counts.recovered_entry;
       const pageId = pageRows.idOf(start.releaseId, page);
       const key = normalizeItalianExact(title);
-      writer.statement("recovered_entry").run(entryId, start.releaseId, pageId, title, key, entry.pos, entry.posTitle, PAGE_ENTRY_RULE, entry.posRef.line, entry.posWikitext);
-      entry.definitions.forEach((definition, index) => {
-        const parent = definition.leadIn === null ? -1 : entry.definitions.findIndex((candidate) => candidate.ref.line === definition.leadIn?.ref.line);
-        writer.statement("entry_definition").run(entryId, index, definition.route, definition.route === "sub-term" ? definition.term : null, definition.ref.line, definition.wikitext, definition.text, parent >= 0 && parent < index ? parent : null);
-        writer.counts.entry_definition += 1;
-        definition.labels.forEach((label, labelIndex) => {
-          writer.statement("entry_label").run(entryId, index, labelIndex, label);
-          writer.counts.entry_label += 1;
-        });
-        definition.examples.forEach((example, exampleIndex) => {
-          writer.statement("entry_example").run(entryId, index, exampleIndex, example.ref.line, example.wikitext, example.text);
-          writer.counts.entry_example += 1;
-        });
-      });
-      correctedDefinitions.add({
-        entryId,
-        title,
-        revisionId: page.revisionId,
-        definitions: entry.definitions.map((definition) => ({ line: definition.ref.line, wikitext: definition.wikitext, text: definition.text })),
-      });
+      const rows = pageEntryRows(entryId, start.releaseId, pageId, entry);
+      writer.statement("recovered_entry").run(...rows.recovered_entry);
+      for (const table of ["entry_definition", "entry_label", "entry_example"] as const) {
+        for (const values of rows[table]) writer.statement(table).run(...values);
+        writer.counts[table] += rows[table].length;
+      }
+      correctedDefinitions.add({ entryId, title, ...entryDefinitionsOf(entry) });
       seenWords.add(title);
       keys.set(key, true);
       lemmaKeys.set(key, { languages: new Set(), richness: entry.definitions.length });

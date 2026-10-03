@@ -29,12 +29,14 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { seedSql } from "../../src/import/seedSql.js";
 import { CURATED_CORRECTIONS, definitionCorrections, type CuratedCorrection } from "../../src/italian/curatedCorrections.js";
 import { atFixtureLines, correctionFixtureLines } from "../../test/correctionFixture.js";
+import { DECLARED_CORRECTION_LINES, declaredCorrections } from "../../test/declaredCorrectionFixture.js";
 import { loadFixturePages, type RawPageSource } from "../../src/source/rawPage.js";
 import { PUBLISHED_ARCHIVE_SHA256, sourceOf, type ArchiveFacts, type ReleaseSource } from "../../src/source/archiveFacts.js";
 import { fromNodeSqlite } from "../../src/lookup/database.js";
 import type { Reading, SourceRef } from "../../src/lookup/types.js";
 import type { Attempt } from "@/lib/dictionary/attempt.ts";
 import { searchAttempt } from "@/lib/dictionary/searchAttempt.ts";
+import { declaredGridOf, NUMBERS } from "@/lib/dictionary/genderGrid.ts";
 import { Attribution } from "@/components/dictionary/Attribution";
 import { FirstLoad, Limited, Outcome, SearchPage, TRY_WORDS } from "@/components/dictionary/SearchPage";
 import { SiteFooter } from "@/components/dictionary/SiteFooter";
@@ -2156,6 +2158,52 @@ test("a declared noun's grid has the lemma in singolare and its plural where the
     assert.match(calabro[1][2], /^calabri/);
     assert.equal(calabro[2][1], "—");
     assert.match(calabro[2][2], /^calabre/);
+  });
+});
+
+// Made-up declared lemmas whose plural records a test-only curated correction
+// sets right (#470): test/declaredCorrectionFixture.ts.
+
+const withDeclaredCorrections = (corrected: boolean, run: (f: Fixture) => Promise<void>) =>
+  withLines(DECLARED_CORRECTION_LINES, run, undefined, undefined, corrected ? declaredCorrections(DECLARED_CORRECTION_LINES, RELEASE) : []);
+
+/** `declaredGridOf` over a declared lemma's one reading: each spelling as `gender number: surface`. */
+async function declaredCellsOf(db: DatabaseSync, word: string): Promise<string[]> {
+  const answer = await attempt(db, word);
+  assert.ok(answer.outcome === "declared-lemma", `${word}: ${answer.outcome}`);
+  const [reading] = answer.readings;
+  assert.ok(reading.pos !== "verb");
+  return (declaredGridOf(reading.word, reading.forms)?.rows ?? []).flatMap((row) =>
+    row.cells.flatMap((cell, n) => cell.spellings.map((spelling) => `${row.gender} ${NUMBERS[n]}: ${spelling.surface}`)),
+  );
+}
+
+test("a declared lemma's grid places a corrected plural where its correction says, and says nothing of the correction (#470)", async () => {
+  await withDeclaredCorrections(false, async ({ db }) => {
+    // As the source states them: both tagged feminine plural.
+    assert.deepEqual(await declaredCellsOf(db, "gattolino"), ["feminine singular: gattolino", "feminine plural: gattolini"]);
+    assert.deepEqual(await declaredCellsOf(db, "volpatore"), ["feminine singular: volpatore", "feminine plural: volpatrice"]);
+  });
+  await withDeclaredCorrections(true, async ({ db }) => {
+    // A gender correction moves the plural, and the lemma with it, to maschile.
+    assert.deepEqual(await declaredCellsOf(db, "gattolino"), ["masculine singular: gattolino", "masculine plural: gattolini"]);
+    // A number correction to singular puts the form in singolare, and it places no lemma.
+    assert.deepEqual(await declaredCellsOf(db, "volpatore"), ["feminine singular: volpatrice"]);
+
+    const gattolino = await render(db, "gattolino");
+    assert.deepEqual(gridRows(gattolino), [
+      ["", "singolare", "plurale"],
+      ["maschile", "gattolinoil gattolino·un gattolino", "gattolinii gattolini·dei gattolini"],
+    ]);
+    const volpatore = await render(db, "volpatore");
+    assert.deepEqual(gridRows(volpatore), [
+      ["", "singolare", "plurale"],
+      ["femminile", "volpatricela volpatrice·una volpatrice", "—"],
+    ]);
+    // The page shows the corrected fact as data, and nothing about the correction (ADR 0016).
+    for (const page of [gattolino, volpatore]) {
+      assert.doesNotMatch(page, /wiktionary\.org\/w\/index\.php|oldid|it-page-test:\d|corrett|corrected|correction/i);
+    }
   });
 });
 
