@@ -258,6 +258,13 @@ export function addLemmaRecord(scores: Map<string, LemmaScore>, record: ArchiveR
   scores.set(key, score);
 }
 
+/**
+ * The score of a page-only entry's key (ADR 0024): no record translates it,
+ * and each definition counts once. The key is headed. The seed, the load
+ * (loadPageEntries.ts) and a recompute (src/update/apply.ts) all rank it so.
+ */
+export const pageEntryScore = (definitions: number): LemmaScore => ({ languages: new Set<string>(), richness: definitions });
+
 /** One `accent_fold` row, without its release. */
 export interface AccentFoldRow {
   foldKey: string;
@@ -501,7 +508,7 @@ export async function seedSql(options: SeedSqlOptions): Promise<SeedSqlReport> {
       correctedDefinitions.add({ entryId, title, ...entryDefinitionsOf(entry) });
       seenWords.add(title);
       keys.set(key, true);
-      lemmaKeys.set(key, { languages: new Set(), richness: entry.definitions.length });
+      lemmaKeys.set(key, pageEntryScore(entry.definitions.length));
       if (writer.hasFullBatch()) await writer.flush();
     }
     await writeNearbyIndexes(writer, start.releaseId, keys, lemmaKeys);
