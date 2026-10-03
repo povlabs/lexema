@@ -31,7 +31,8 @@
     "measure:recovery": "tsx src/import/measureRecovery.ts",
     "measure:quality": "tsx src/import/measureQuality.ts",
     "measure:section-language": "tsx src/import/measureSectionLanguage.ts",
-    "bench:lookup": "tsx src/bench/lookupBenchCli.ts"
+    "bench:lookup": "tsx src/bench/lookupBenchCli.ts",
+    "measure:bare-spellings": "tsx src/lookup/measureBareSpellings.ts"
   },
   "devDependencies": {
     "@kampus/fabrika-cli": "catalog:",
