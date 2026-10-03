@@ -76,7 +76,7 @@ export const POS_TITLE_BY_TEMPLATE: Readonly<Record<string, string>> = {
 // --- Inline markup ----------------------------------------------------------
 
 /** One run of visible text and the emphasis the markup put on it. */
-interface Run {
+export interface Run {
   text: string;
   italic: boolean;
   bold: boolean;
@@ -103,6 +103,21 @@ const LANGUAGE_TEMPLATES: Readonly<Record<string, string>> = {
   la: "latino",
   grc: "greco antico",
   en: "inglese",
+};
+
+/**
+ * Templates that print fixed words around their arguments, printed the way
+ * it.wiktionary prints them, with the markup kept so emphasis toggles the way
+ * it does on the page. A picture the template shows is left out, as
+ * `withoutNoise` leaves out every picture. `undefined` is a call that prints no
+ * definition, and leaves the line unrendered like an unknown template.
+ */
+const PRINTING_TEMPLATES: Readonly<Record<string, (args: readonly string[]) => string | undefined>> = {
+  // Template:Taxon (raw source read 2026-10-03, #495) prints
+  // `la sua classificazione scientifica è '''''{{{1}}}''''' ([[File:WikiSpecies.svg|…]] '''[[wikispecies:{{{1}}}|tassonomia]]''')`.
+  // With no first argument it prints an error and a maintenance category.
+  taxon: ([name]) =>
+    name === undefined || name === "" ? undefined : `la sua classificazione scientifica è '''''${name}''''' ( '''tassonomia''')`,
 };
 
 /** `{{name|arg|…}}` with no template inside it. Replaced innermost first. */
@@ -201,14 +216,14 @@ const leadsIn = (text: string): boolean => text.endsWith(":") && !EXAMPLES_LEAD_
 const collapse = (text: string): string => text.replace(/\s+/g, " ").trim();
 
 /** A line rendered to the words a reader sees, or the template that stopped it. */
-type Rendered =
+export type Rendered =
   | { rendered: true; text: string; labels: string[]; runs: Run[] }
   | { rendered: false; template: string };
 
 /**
  * Replace every template on a line, innermost first: a label by a space, noted
- * in `labels`; the headword and a language name by what they print; any other
- * by what `unknown` returns for its name.
+ * in `labels`; the headword, a printing template and a language name by what
+ * they print; any other by what `unknown` returns for its name.
  */
 function expandTemplates(
   body: string,
@@ -228,7 +243,7 @@ function expandTemplates(
         if (printed !== undefined && printed !== "") labels.push(printed);
         return " ";
       }
-      return LANGUAGE_TEMPLATES[name] ?? unknown(name);
+      return PRINTING_TEMPLATES[name]?.(args) ?? LANGUAGE_TEMPLATES[name] ?? unknown(name);
     });
   }
   return { text: text.replace(LINK, (_, target: string, label?: string) => label ?? target), labels };
@@ -237,12 +252,12 @@ function expandTemplates(
 /**
  * Render one line of wikitext to plain text.
  *
- * Every template on the line is either a label, the headword, a language name,
- * or unknown. An unknown template stops the line: printing it wrong, or
+ * Every template on the line is either a label, the headword, a printing
+ * template, a language name, or unknown. An unknown template stops the line: printing it wrong, or
  * dropping words it prints, would put text on the page that the page upstream
  * does not say. The line is reported instead.
  */
-function renderInline(body: string, headword: string): Rendered {
+export function renderInline(body: string, headword: string): Rendered {
   let unknown: string | undefined;
   const { text, labels } = expandTemplates(body, headword, (name) => {
     unknown ??= name;
