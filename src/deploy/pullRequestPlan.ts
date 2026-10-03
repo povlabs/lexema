@@ -93,9 +93,13 @@ function outcomeLines(outcome: DeclarationOutcome): string[] {
     case "planned": {
       const { answer, check } = outcome;
       const breaches = answer.limitBreaches.length === 0 ? [] : ["", "The plan crosses a hard limit, so the deploy would refuse it:", ...answer.limitBreaches.map((breach) => `- ${breach}`)];
+      const rebuilds =
+        answer.rebuilds.length === 0
+          ? []
+          : ["", "The plan rebuilds these tables, dropping each and copying its rows back:", "", "| Table | Rows |", "|---|---|", ...answer.rebuilds.map(({ table, rows }) => `| \`${table}\` | ${rows} |`)];
       const counts = ["", "Put this in the file, with `expected` set to the plan's counts:", "", ...fenced(declarationWith(outcome.declaration, answer.counts))];
-      if (check === null) return [heading, "", "It has no `expected` yet.", ...counts, ...breaches];
-      if (check.differences.length === 0) return [heading, "", "The plan's counts match `expected`.", ...breaches];
+      if (check === null) return [heading, "", "It has no `expected` yet.", ...counts, ...breaches, ...rebuilds];
+      if (check.differences.length === 0) return [heading, "", "The plan's counts match `expected`.", ...breaches, ...rebuilds];
       return [
         heading,
         "",
@@ -103,6 +107,7 @@ function outcomeLines(outcome: DeclarationOutcome): string[] {
         ...check.differences.map(({ count, declared, planned }) => `- \`${count}\` is ${planned} in the plan, ${declared} declared`),
         ...counts,
         ...breaches,
+        ...rebuilds,
       ];
     }
   }

@@ -6,9 +6,10 @@
 // upgraded master cannot drift apart. The statements are safe to run again:
 // the tables are created only when absent, and the views are replaced.
 //
-// The page-entry tables and `corrected_definition` are also held to their
-// schema.sql definition, not only created (#507): when the one a dictionary
-// stores differs, the upgrade rebuilds them with their rows (`rebuildSql`).
+// The page-entry tables and `corrected_definition` (#507), the recovered
+// definition tables and `hidden_record` (#511) are also held to their
+// schema.sql definition: when the one a dictionary stores differs, the upgrade
+// rebuilds that table's group with its rows (`rebuildSql`).
 
 import { DatabaseSync } from "node:sqlite";
 import { PAGE_ENTRY_TABLES } from "../lookup/served.js";
@@ -40,19 +41,49 @@ export const SERVING_VIEWS = ["served_release", "served_record", "form_of_candid
 /** Every table, index and view the upgrade creates, by its sqlite_schema name. */
 export const UPGRADE_NAMES: readonly string[] = [...UPDATE_TABLES, ...PAGE_ENTRY_TABLES, ...PAGE_ENTRY_CORRECTION_TABLES, ...PAGE_ENTRY_INDEXES, ...SERVING_VIEWS];
 
+/** The recovered definitions (#28) with their labels and examples, which point at them, and their index. */
+export const RECOVERED_TABLES = ["recovered_definition", "recovered_label", "recovered_example"] as const;
+export const RECOVERED_INDEXES = ["recovered_definition_by_record"] as const;
+
 /**
  * The tables the upgrade rebuilds when a stored definition differs from
- * schema.sql's, in the order their foreign keys need. No other table points at
- * any of them (test/update.test.ts holds that), so they are rebuilt together
- * without touching another table. They hold few rows.
+ * schema.sql's, in groups, each group's tables in the order their foreign keys
+ * need, with the indexes on them. A changed table or index rebuilds its whole
+ * group and no other. No table outside a group points at one in it
+ * (test/update.test.ts holds that), so a group is rebuilt without touching
+ * another table. They hold few rows: `update:upgrade --plan-only` names each
+ * table a rebuild drops, with its rows.
  */
-export const REBUILT_TABLES = [...PAGE_ENTRY_TABLES, ...PAGE_ENTRY_CORRECTION_TABLES] as const;
+export const REBUILT_GROUPS = [
+  { tables: [...PAGE_ENTRY_TABLES, ...PAGE_ENTRY_CORRECTION_TABLES], indexes: PAGE_ENTRY_INDEXES },
+  { tables: RECOVERED_TABLES, indexes: RECOVERED_INDEXES },
+  { tables: ["hidden_record"], indexes: [] },
+] as const satisfies readonly { tables: readonly string[]; indexes: readonly string[] }[];
+
+/** A table the upgrade may rebuild. */
+export type RebuiltTable = (typeof REBUILT_GROUPS)[number]["tables"][number];
+
+/**
+ * Every table the upgrade may rebuild: the page-entry tables,
+ * `corrected_definition`, `recovered_definition`, `recovered_label`,
+ * `recovered_example` and `hidden_record`.
+ */
+export const REBUILT_TABLES: readonly RebuiltTable[] = REBUILT_GROUPS.flatMap((group) => group.tables);
+
+const REBUILT_INDEXES: readonly string[] = REBUILT_GROUPS.flatMap((group) => group.indexes);
 
 /** Every name whose stored definition the upgrade compares with schema.sql's: those tables and their indexes. */
-export const REBUILT_NAMES: readonly string[] = [...REBUILT_TABLES, ...PAGE_ENTRY_INDEXES];
+export const REBUILT_NAMES: readonly string[] = [...REBUILT_TABLES, ...REBUILT_INDEXES];
 
 /** The `CREATE` kind of a name in `REBUILT_NAMES`. */
-export const rebuiltKind = (name: string): "TABLE" | "INDEX" => ((PAGE_ENTRY_INDEXES as readonly string[]).includes(name) ? "INDEX" : "TABLE");
+export const rebuiltKind = (name: string): "TABLE" | "INDEX" => (REBUILT_INDEXES.includes(name) ? "INDEX" : "TABLE");
+
+/** The groups that hold any of `names`, a table or an index, in rebuild order. */
+const groupsOf = (names: readonly string[]) =>
+  REBUILT_GROUPS.filter((group) => [...group.tables, ...group.indexes].some((name) => names.includes(name)));
+
+/** Every table of each group that holds one of `names`: what a rebuild for them drops and creates again. */
+export const rebuiltTablesFor = (names: readonly string[]): RebuiltTable[] => groupsOf(names).flatMap((group) => group.tables);
 
 /** The tokens of SQL text: quoted strings and names whole, words, and single other characters. Comments and whitespace are dropped. */
 function tokens(sql: string): string[] {
@@ -127,7 +158,7 @@ export function columnsOf(createTable: string): string[] {
 
 /** A rebuilt table as the dictionary holds it before the upgrade: its columns and how many rows it has. */
 export interface KeptTable {
-  readonly name: (typeof REBUILT_TABLES)[number];
+  readonly name: RebuiltTable;
   readonly columns: readonly string[];
   readonly rows: number;
 }
@@ -136,17 +167,22 @@ export interface KeptTable {
 const keptName = (name: string): string => `upgrade_kept_${name}`;
 
 /**
- * SQL that rebuilds the page-entry tables and `corrected_definition` to
- * schema.sql's definitions with every row they hold, and then runs
- * `masterUpgradeSql`. `kept` are the ones the dictionary has, with their
- * columns. Each one's rows are copied aside, the tables are dropped children
- * first, created again by the upgrade, and the rows copied back parents first
- * by the columns the old and new definitions share, so every foreign key holds
- * at each statement. A row the new definition refuses, or a new column with
- * no default, stops the batch, and D1 rolls it back whole.
+ * SQL that rebuilds the groups of `kept` to schema.sql's definitions with every
+ * row they hold, and then runs `masterUpgradeSql`. `kept` are the tables of
+ * those groups the dictionary has, with their columns. Each one's rows are
+ * copied aside, the tables are dropped children first, every table and index
+ * of the groups is created from schema.sql, and the rows are copied back
+ * parents first by the columns the old and new definitions share, so every
+ * foreign key holds at each statement. A row the new definition refuses, or a
+ * new column with no default, stops the batch, and D1 rolls it back whole.
  */
 export function rebuildSql(schema: string, kept: readonly Pick<KeptTable, "name" | "columns">[]): string {
-  const ordered = REBUILT_TABLES.flatMap((name) => kept.filter((table) => table.name === name));
+  const groups = groupsOf(kept.map(({ name }) => name));
+  const ordered = groups.flatMap((group) => group.tables).flatMap((name) => kept.filter((table) => table.name === name));
+  const creates = groups.flatMap((group) => [
+    ...group.tables.map((name) => createStatement(schema, "TABLE", name)),
+    ...group.indexes.map((name) => createStatement(schema, "INDEX", name)),
+  ]);
   const copies = ordered.map(({ name, columns }) => {
     const target = new Set(columnsOf(createStatement(schema, "TABLE", name)));
     const shared = columns.filter((column) => target.has(column)).join(", ");
@@ -156,6 +192,7 @@ export function rebuildSql(schema: string, kept: readonly Pick<KeptTable, "name"
     `-- Rebuild ${ordered.map(({ name }) => name).join(", ")} to schema.sql's definitions, keeping their rows (src/update/masterUpgrade.ts).`,
     ...ordered.map(({ name }) => `CREATE TABLE ${keptName(name)} AS SELECT * FROM ${name};`),
     ...[...ordered].reverse().map(({ name }) => `DROP TABLE ${name};`),
+    ...creates,
     masterUpgradeSql(schema),
     ...copies,
     ...ordered.map(({ name }) => `DROP TABLE ${keptName(name)};`),
