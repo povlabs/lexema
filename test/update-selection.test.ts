@@ -162,6 +162,64 @@ test("archived extraction losses are skipped and archived editorial removals are
   assert.equal(JSON.stringify([...before, ...after]), original);
 });
 
+// The shapes the page hides (#422): a headword echo with its stamp, a stamp
+// alone, and a raw echo. Each is a verbatim it-0c432803 sense.
+const PRESINA: Sense = { glosses: ["presina f"] };
+const STAMP: Sense = { glosses: ["m sing"] };
+const LATINISMO: Sense = { glosses: ["latinismo"] };
+const hiddenShapes: [string, Sense][] = [["presina", PRESINA], ["Pettinatore", STAMP], ["latinismo", LATINISMO]];
+
+test("a new word whose only sense the page hides has no real gloss (#422)", () => {
+  for (const [word, sense] of hiddenShapes) {
+    assert.deepEqual(selectNew({ record: record(word, [sense]), italian: true }, everywhere), { take: false, reason: "no-real-gloss" }, word);
+  }
+  // A real definition beside the headword still reads as real.
+  assert.deepEqual(selectNew({ record: record("presina", [{ glosses: ["presina f, piccolo panno per afferrare le pentole calde"] }]), italian: true }, everywhere), {
+    take: true,
+    reason: "new-word",
+  });
+  assert.deepEqual(selectNew({ record: record("latinismo", [LATINISMO, { glosses: ["parola della lingua latina"] }]), italian: true }, everywhere), {
+    take: true,
+    reason: "new-word",
+  });
+});
+
+test("a sense the page hides fills no gloss (#422)", () => {
+  for (const [word, sense] of hiddenShapes) {
+    const verdict = selectChanged({ before: record(word, [{ glosses: [PLACEHOLDER] }]), after: record(word, [sense]), beforeHidden: false, italian: true });
+    assert.deepEqual(verdict, { take: false, reason: "no-real-gloss" }, word);
+  }
+  // Ours already shows only the echo, and a real definition arrives.
+  assert.deepEqual(
+    selectChanged({ before: record("presina", [PRESINA]), after: record("presina", [{ glosses: ["piccolo panno per afferrare le pentole calde"] }]), beforeHidden: false, italian: true }),
+    { take: true, reason: "fills-gloss" },
+  );
+});
+
+test("a real definition lost to a sense the page hides keeps ours serving (#422)", () => {
+  const hidden = { take: false, reason: "hidden-replaces-definition" };
+  for (const [word, sense] of hiddenShapes) {
+    const verdict = (before: Sense[], after: Sense[]) => selectChanged({ before: record(word, before), after: record(word, after), beforeHidden: false, italian: true });
+    assert.deepEqual(verdict([{ glosses: ["oggetto"] }], [sense]), hidden, word);
+    assert.deepEqual(verdict([{ glosses: ["oggetto"] }, { glosses: ["arnese"] }], [{ glosses: ["oggetto"] }, sense]), hidden, word);
+  }
+  // A blank in its place keeps the reason it had under v4.
+  assert.deepEqual(changed([{ glosses: ["edificio"] }, { glosses: ["famiglia"] }], [{ glosses: [PLACEHOLDER] }, LATINISMO]), {
+    take: false,
+    reason: "blank-replaces-definition",
+  });
+  // The echo was there already: the removal loses nothing to it.
+  assert.deepEqual(
+    selectChanged({
+      before: record("latinismo", [{ glosses: ["parola latina"] }, { glosses: ["stile latino"] }, LATINISMO]),
+      after: record("latinismo", [{ glosses: ["parola latina"] }, LATINISMO]),
+      beforeHidden: false,
+      italian: true,
+    }),
+    { take: true, reason: "removes-definitions" },
+  );
+});
+
 test("a hidden record or a non-Italian later record is left alone", () => {
   const fix: [Sense[], Sense[]] = [[{ glosses: [FURNITURE] }], [{ glosses: ["edificio"] }]];
   assert.deepEqual(changed(...fix, { beforeHidden: true }), { take: false, reason: "master-hidden" });

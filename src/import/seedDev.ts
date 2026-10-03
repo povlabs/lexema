@@ -92,6 +92,12 @@ process.stderr.write(
     : `hidden records (${sectionLanguage.rule}): not judged, no raw pages\n`,
 );
 process.stderr.write(`hidden records (${formOfForeignLemma.rule}): ${formOfForeignLemma.hidden}\n`);
+const { corrections } = report;
+process.stderr.write(
+  `curated corrections: ${corrections.applied} of ${corrections.keyed} keyed to ${report.releaseId} written` +
+    corrections.unapplied.map(({ id, reason }) => `\n  not written: ${id} (${reason})`).join("") +
+    "\n",
+);
 let loaded: LoadedRows;
 try {
   loaded = await loadSeed(target, report, (line) => process.stderr.write(`${line}\n`));

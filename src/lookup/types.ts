@@ -59,10 +59,64 @@ export type GrammarClaim =
 /** A claim the source states, with its value. */
 export type StatedClaim = Extract<GrammarClaim, { status: "stated" }>;
 
+/** Where a corrected claim came from: an entry of the curated list and the revision it cites. */
+export interface CorrectionRef {
+  /** The list entry, by release and archive line: `it-0c432803:449969` (src/italian/curatedCorrections.ts). */
+  id: string;
+  /** A permanent link to the Wiktionary revision that settles the fact. */
+  evidenceUrl: string;
+}
+
+/**
+ * A fact the source states wrongly, set right by a curated correction (#420):
+ * `fissazione` is tagged masculine and is feminine. It stands in for every
+ * claim the record states in its dimension, which it keeps as `replaces`, so
+ * the source's own words are never lost and never read as the fact. Only a
+ * record's own gender or number is corrected, never a form's or a sense's.
+ */
+export interface CorrectedClaim {
+  status: "corrected";
+  dimension: "gender" | "number";
+  value: string;
+  correction: CorrectionRef;
+  /** The record's own stated claims in this dimension, as imported; empty when it stated none. */
+  replaces: StatedClaim[];
+}
+
+/** A claim about the record itself: the source's, or a correction standing in for it. */
+export type RecordClaim = GrammarClaim | CorrectedClaim;
+
+/** A claim that gives a value: the source's own statement, or a correction. */
+export type AssertedClaim = StatedClaim | CorrectedClaim;
+
+/** Whether `claim` gives a value for its dimension. */
+export const asserts = (claim: RecordClaim): claim is AssertedClaim =>
+  claim.status === "stated" || claim.status === "corrected";
+
+/**
+ * The record's claims as a reader is owed them: each corrected dimension's
+ * correction in place of what the source stated or left missing there, and
+ * every other claim as it was. Claims of the same dimension are never both a
+ * correction and a statement, so nothing downstream has to pick between them.
+ */
+export function correctRecordClaims(claims: readonly GrammarClaim[], corrections: readonly Omit<CorrectedClaim, "status" | "replaces">[]): RecordClaim[] {
+  if (corrections.length === 0) return [...claims];
+  const corrected = new Set<string>(corrections.map((correction) => correction.dimension));
+  const kept = claims.filter((claim) => claim.status === "unclassified" || !corrected.has(claim.dimension));
+  return [
+    ...kept,
+    ...corrections.map((correction): CorrectedClaim => ({
+      status: "corrected",
+      ...correction,
+      replaces: claims.filter((claim): claim is StatedClaim => claim.status === "stated" && claim.dimension === correction.dimension),
+    })),
+  ];
+}
+
 /** Grammar claims, split by what they are about. */
 export interface Grammar {
-  /** About the record itself. */
-  record: GrammarClaim[];
+  /** About the record itself, with any curated correction in place (`correctRecordClaims`). */
+  record: RecordClaim[];
   /** About one `forms[]` entry, keyed by its index. */
   byForm: Map<number, GrammarClaim[]>;
   /** About one sense, keyed by its index. */
@@ -400,8 +454,18 @@ export interface PluralDeclaration {
   gloss: SourceText;
   /** The gender the gloss names: `femminile plurale di …`. Undefined for a bare `plurale di …`. */
   glossGender: "masculine" | "feminine" | undefined;
-  /** The declaring record's own stated gender claims, from its tags; empty when it states none. */
-  recordGenders: StatedClaim[];
+  /**
+   * The declaring record's own gender claims, from its tags, or the curated
+   * correction standing in for them (`giocatrici` is tagged masculine and is
+   * feminine); empty when it states none.
+   */
+  recordGenders: AssertedClaim[];
+  /**
+   * A curated correction of the declaring record's number, which overrides
+   * the gloss's "plurale": `ammaliatrice` glosses itself "plurale di
+   * ammaliatore" and is its feminine singular. Undefined when none.
+   */
+  correctedNumber: CorrectedClaim | undefined;
 }
 
 /**

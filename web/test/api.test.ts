@@ -41,6 +41,7 @@ import { withRateLimits, type LimitBindings } from "@/worker/rateLimit.ts";
 import { RATE_WINDOW_SECONDS } from "@/worker/api/keyLimits.ts";
 import { FakeRateLimit, TestMetering } from "./metering.ts";
 import { wordPage } from "@/lib/dictionary/wordPage.ts";
+import { suggestionsOf } from "@/worker/api/lookupAnswer.ts";
 
 const REPO = fileURLToPath(new URL("../..", import.meta.url));
 const RELEASE = "it-api-test";
@@ -196,6 +197,17 @@ test("a word not in the release is a 404 offering findNearby's spellings in its 
     );
     assert.deepEqual([...new Set(body.suggestions.slice(0, 1).map((s: Json) => s.kind))], kinds, q);
   }
+});
+
+test("a spelling with a final apostrophe the query left off is an accent suggestion, and a longer word is a prefix one (#468)", () => {
+  const nearby: Nearby = { kind: "accent", best: "dall'", others: ["dalla"], phrases: [] };
+  assert.deepEqual(
+    suggestionsOf(nearby, "dall").map(({ word, kind }) => [word, kind]),
+    [
+      ["dall'", "accent"],
+      ["dalla", "prefix"],
+    ],
+  );
 });
 
 test("a /lookup refused before an answer counts no calls, toward the day or the minute: a bad q, a wrong method, a 429", async () => {

@@ -134,7 +134,7 @@ export function Outcome({ raw, attempt, siteKey }: { raw: string; attempt: Attem
   }
   // A word only form-of records name shows the forms they declare (#453).
   if (attempt.outcome === "declared-lemma") return <DeclaredLemmaView page={attempt.page} siteKey={siteKey} />;
-  if (attempt.outcome === "not-found") return <NotFound query={attempt.query.raw.trim()} nearby={attempt.nearby} />;
+  if (attempt.outcome === "not-found") return <NotFound query={attempt.query.raw.trim()} nearby={attempt.nearby} siteKey={siteKey} />;
   return (
     <>
       <h1 className="sr-only">

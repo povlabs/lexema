@@ -285,6 +285,17 @@ all; the three represented states are:
 | `unclassified` | the source gave text that is not mapped | `sourceText` |
 | `missing` | the dimension was checked and the source said nothing | `dimension` |
 
+`grammar.record` can hold one more status, `corrected`: a curated correction
+of the record's own gender or number (#420), from the committed list in
+[`curatedCorrections.ts`](../src/italian/curatedCorrections.ts). It carries
+`dimension`, `value`, `correction` (the list entry's `id` and the `evidenceUrl`
+of the Wiktionary revision it cites) and `replaces`, the record's own stated
+claims in that dimension. It stands in for them and for a `missing` claim
+there, so a dimension is never both stated and corrected
+(`correctRecordClaims` in [`types.ts`](../src/lookup/types.ts)). A correction is
+read for its own record only: a record a later release replaced does not pass
+it on. Forms and senses are never corrected.
+
 ### `LemmaLink`
 
 | `kind` | Meaning | Also carries |
@@ -324,8 +335,11 @@ edge's sense opens with `plurale di`, `femminile plurale di`, `maschile plurale
 di`, `plurale femminile di` or `plurale maschile di`, then this reading's word,
 then nothing that continues the word. `case` ("plurale di casa") carries one for
 `casa`; `casetta` ("diminutivo di casa") does not. It holds the `gloss` with its
-ref, the `glossGender` the opening names, if any, and `recordGenders`, the
-declaring record's own stated gender claims.
+ref, the `glossGender` the opening names, if any, `recordGenders`, the
+declaring record's own stated gender claims or the correction standing in for
+them, and `correctedNumber`, a correction of the declaring record's number,
+which overrides the gloss's plural: `ammaliatrice` glosses itself "plurale di
+ammaliatore" and is its feminine singular.
 
 The gloss names a word, as the edge does, so every candidate carries the same
 `plural`: `temi` ("plurale di tema") gives one to both noun records of `tema`.
@@ -342,8 +356,8 @@ replaces it.
 
 ## Exported SQL
 
-`SEARCH_SQL`, `LEMMA_LINK_SQL`, `INFLECTION_SQL`, `INFLECTION_CANDIDATE_SQL` and
-`INFLECTION_GENDER_SQL` are exported
+`SEARCH_SQL`, `LEMMA_LINK_SQL`, `INFLECTION_SQL`, `INFLECTION_CANDIDATE_SQL`,
+`INFLECTION_GRAMMAR_SQL` and `INFLECTION_CORRECTION_SQL` are exported
 so tests can assert their query plans. See
 [the design notes](LOOKUP_DESIGN.md#the-view-that-costs-four-orders-of-magnitude).
 
@@ -462,7 +476,15 @@ and 3):
 2. **Accent.** The query's key with its accents taken off (`foldKey`: NFD,
    combining marks removed) is probed in `accent_fold`, which holds every
    `surface_key` whose folded spelling differs from it. `citta` → `città`. An
-   accented query also tries its unaccented spelling.
+   accented query also tries its unaccented spelling. A query that does not
+   end in an apostrophe also tries its folded key with one added, as a key of
+   its own and in `accent_fold` (#468): `dall` → `dall'`, offered in the same
+   place as an accent match. Only the query changes, so `foldKey` and the
+   stored rows stay as they are. That key ranks by its own `typo_key` row,
+   the same score the `accent_fold` rows carry. A query that is itself a word
+   (`po` beside `po'`, `e` beside `è`) is found at step 1 and offered nothing;
+   whether to offer the written form there is not yet ruled. The counts are in
+   [the bare-spelling measurement](../reports/2026-10-03-bare-spellings.md).
 3. **One edit** (a SymSpell deletion index). `typo_key` holds every distinct
    lemma headword key (a record declaring no `form_of`) under itself and each
    spelling with one character left out. The query's own deletions and itself
@@ -517,7 +539,7 @@ the word list per request. Expressions are not ranked: they keep step 4's order.
 
 | Answer | Case | Page |
 |---|---|---|
-| `{ kind: "accent", best, others, phrases }` | the same letters with an accent | "Did you mean città?", then other words that begin with the query, then the expressions |
+| `{ kind: "accent", best, others, phrases }` | the same letters with an accent or a final apostrophe | "Did you mean città?", then other words that begin with the query, then the expressions |
 | `{ kind: "typo", best, others, phrases }` | one edit away | "Did you mean mangiare?", then other close spellings, then the expressions |
 | `{ kind: "phrase", best, others }` | the query corrected to read as an expression | "Did you mean vado via?", then other expressions |
 | `{ kind: "prefix", words }` | words that begin with it | the words that fit on one line, then `+ more` |

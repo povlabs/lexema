@@ -17,6 +17,7 @@
     "seed:dev": "tsx src/import/seedDev.ts",
     "normalize:source-text": "tsx src/import/normalizeSourceTextCli.ts",
     "hide:records": "tsx src/import/hideRecordsCli.ts",
+    "correct:records": "tsx src/import/correctRecordsCli.ts",
     "update:auto": "tsx src/update/updateCli.ts auto",
     "update:upgrade": "tsx src/update/updateCli.ts upgrade",
     "update:diff": "tsx src/update/updateCli.ts diff",
@@ -32,7 +33,8 @@
     "measure:recovery": "tsx src/import/measureRecovery.ts",
     "measure:quality": "tsx src/import/measureQuality.ts",
     "measure:section-language": "tsx src/import/measureSectionLanguage.ts",
-    "bench:lookup": "tsx src/bench/lookupBenchCli.ts"
+    "bench:lookup": "tsx src/bench/lookupBenchCli.ts",
+    "measure:bare-spellings": "tsx src/lookup/measureBareSpellings.ts"
   },
   "devDependencies": {
     "@kampus/fabrika-cli": "catalog:",

@@ -12,9 +12,11 @@ import { phraseForms, phraseMatches } from "./phrase.js";
 import { pageEntriesOf, type PageEntries } from "./pageEntry.js";
 import { readExpressions } from "./expressions.js";
 import { placeRecovered, type RecoveredOfRecord, type StoredRecovered } from "./recovered.js";
-import { dictionaryTables, lineageOf, servedBy } from "./served.js";
+import { dictionaryTables, lineageOf, servedBy, type DictionaryTables } from "./served.js";
 import { readSourceRecord, type SourceRecordFields } from "./sourceRecord.js";
+import { asserts, correctRecordClaims } from "./types.js";
 import type {
+  CorrectedClaim,
   Evidence,
   Expression,
   FoundResult,
@@ -220,14 +222,19 @@ async function phraseHits(
 }
 
 export async function lookup({ db, releaseId, query }: LookupOptions): Promise<LookupResult> {
-  const [prepared, pages] = await probeWithPages(db, releaseId, query, (key) => queryAll<HitRow>(db, SEARCH_SQL, releaseId, key));
+  const [prepared, pages, tables] = await probeWithPages(db, releaseId, query, (key) => queryAll<HitRow>(db, SEARCH_SQL, releaseId, key));
   if (prepared.outcome === "rejected") return prepared;
   const { release, query: queryInfo, probed: hits } = prepared;
   const { key } = queryInfo;
+  // A master seeded before #420 has no `corrected_claim` until
+  // `pnpm run correct:records` writes it, and a read of a table that is not
+  // there would fail every statement batched with it (`fromD1`), so no
+  // correction is read where there is none.
+  const corrected = tables.corrections;
 
   const pageReadings = pages.readings(key);
   if (hits.length > 0) {
-    const [result, read] = await Promise.all([found(db, releaseId, pages, queryInfo, release, hits, { kind: "surface" }), pageReadings]);
+    const [result, read] = await Promise.all([found(db, releaseId, pages, queryInfo, release, hits, { kind: "surface" }, corrected), pageReadings]);
     return { ...result, readings: [...result.readings, ...read] };
   }
   const [page, ...otherPages] = await pageReadings;
@@ -238,22 +245,22 @@ export async function lookup({ db, releaseId, query }: LookupOptions): Promise<L
   const phrase = await phraseHits(db, releaseId, key);
   if (phrase === undefined) return { outcome: "not-found", query: queryInfo, release };
   const forms = await phraseForms(db, releaseId, phrase.phrases);
-  return found(db, releaseId, pages, queryInfo, release, phrase.hits, { kind: "phrase", phrases: phrase.phrases, forms });
+  return found(db, releaseId, pages, queryInfo, release, phrase.hits, { kind: "phrase", phrases: phrase.phrases, forms }, corrected);
 }
 
 /**
- * `probeQuery`, and the dictionary's page-only entries. The schema read is
- * sent beside the probe and the release read, so on D1 all three go in one
- * batch and the check costs a statement, not a round trip.
+ * `probeQuery`, the dictionary's page-only entries, and which optional tables
+ * it has. The schema read is sent beside the probe and the release read, so on
+ * D1 all three go in one batch and the check costs a statement, not a round trip.
  */
 async function probeWithPages<T>(
   db: LookupDatabase,
   releaseId: string,
   query: string,
   probe: (key: string) => Promise<T>,
-): Promise<[RejectedResult | ProbedQuery<T>, PageEntries]> {
+): Promise<[RejectedResult | ProbedQuery<T>, PageEntries, DictionaryTables]> {
   const [prepared, tables] = await Promise.all([probeQuery(db, releaseId, query, probe), dictionaryTables(db)]);
-  return [prepared, pageEntriesOf(db, releaseId, tables)];
+  return [prepared, pageEntriesOf(db, releaseId, tables), tables];
 }
 
 /** The readings of a probe that matched, and how the query reached them. */
@@ -265,6 +272,7 @@ async function found(
   release: ReleaseInfo,
   hits: readonly HitRow[],
   route: FoundRoute,
+  corrected: boolean,
 ): Promise<FoundResult> {
   // Group evidence by record. This is the step that keeps five lookup rows from
   // becoming five readings.
@@ -284,7 +292,7 @@ async function found(
   // listed by them, so none is read for nothing (#385).
   const tables = new Map(
     groups.map((group) => {
-      const table = readTable(db, group[0].record_id, refOn(group[0]));
+      const table = readTable(db, group[0].record_id, refOn(group[0]), corrected);
       // Awaited by the reading or listing that shows it; marked handled so a
       // lookup that fails before then does not also leave it unhandled.
       table.catch(() => undefined);
@@ -368,7 +376,7 @@ async function found(
 
   const kept = groups.filter((group) => isAbout(group) || !lemmaIds.has(group[0].record_id));
   const build = (group: HitRow[]): Promise<Reading> =>
-    buildReading(db, releaseId, group, {
+    buildReading(db, releaseId, group, corrected, {
       table: tableOf(group),
       record: recordOf(group[0].record_id),
       lemmaLinks: resolve(declared.get(group[0].record_id) ?? []),
@@ -543,11 +551,12 @@ async function readTable(
   db: LookupDatabase,
   recordId: number,
   ref: (pointer: string) => SourceRef,
+  corrected: boolean,
 ): Promise<RecordTable> {
   // A form's claims are the ones the grammar groups by index, so the grammar is
   // one read joined to the forms here, not read again per form. Neither read
   // needs the other's rows, so both are sent at once.
-  const [grammar, forms] = await Promise.all([readGrammar(db, recordId, ref), readFormRows(db, recordId)]);
+  const [grammar, forms] = await Promise.all([readGrammar(db, recordId, ref, corrected), readFormRows(db, recordId)]);
   return { grammar, forms: formsOf(forms, ref, grammar) };
 }
 
@@ -562,6 +571,7 @@ async function buildReading(
   db: LookupDatabase,
   releaseId: string,
   group: HitRow[],
+  corrected: boolean,
   inputs: ReadingInputs,
 ): Promise<Reading> {
   const first = group[0];
@@ -579,7 +589,7 @@ async function buildReading(
       source.then((fields) => readExpressions(db, releaseId, fields.expressionItems)),
       readRecovered(db, recordId, inputs.record),
       readSenseRows(db, recordId),
-      readInflections(db, releaseId, recordId, first.record_word),
+      readInflections(db, releaseId, recordId, first.record_word, corrected),
       readReviews(db, recordId),
     ]);
 
@@ -755,11 +765,40 @@ function formsOf(rows: readonly FormRow[], ref: (pointer: string) => SourceRef, 
     .sort((a, b) => a.index - b.index);
 }
 
+/**
+ * A record's curated corrections (#420), read for that record alone. Unlike the
+ * rows `lineageOf` reads, a correction does not pass to a record that replaced
+ * it: the newer source may state the fact differently, and the update reports
+ * the correction instead (src/update/apply.ts). Exported so a test can assert the
+ * plan: `readGrammar` runs it once per record.
+ */
+export const CORRECTED_CLAIM_SQL: DictionaryRead = `SELECT record_id, dimension, value, correction_id, evidence_url
+       FROM corrected_claim
+      WHERE record_id = ?
+      ORDER BY dimension`;
+
+interface CorrectionRow {
+  record_id: number;
+  dimension: "gender" | "number";
+  value: string;
+  correction_id: string;
+  evidence_url: string;
+}
+
+const correctionOf = (row: CorrectionRow): Omit<CorrectedClaim, "status" | "replaces"> => ({
+  dimension: row.dimension,
+  value: row.value,
+  correction: { id: row.correction_id, evidenceUrl: row.evidence_url },
+});
+
 async function readGrammar(
   db: LookupDatabase,
   recordId: number,
   ref: (pointer: string) => SourceRef,
+  corrected: boolean,
 ): Promise<Grammar> {
+  const corrections = corrected ? queryAll<CorrectionRow>(db, CORRECTED_CLAIM_SQL, recordId) : Promise.resolve([]);
+  corrections.catch(() => undefined);
   const rows = await queryAll<{
     scope: "record" | "sense" | "form";
     scope_index: number | null;
@@ -776,7 +815,11 @@ async function readGrammar(
       ORDER BY scope, scope_index, json_pointer`, recordId,
   );
 
-  const grammar: Grammar = { record: [], byForm: new Map(), bySense: new Map() };
+  const grammar: { record: GrammarClaim[]; byForm: Grammar["byForm"]; bySense: Grammar["bySense"] } = {
+    record: [],
+    byForm: new Map(),
+    bySense: new Map(),
+  };
 
   for (const row of rows) {
     // The schema's CHECK constraints already guarantee which columns are set for
@@ -823,7 +866,7 @@ async function readGrammar(
   for (const claims of grammar.byForm.values()) claims.sort(byPointer);
   for (const claims of grammar.bySense.values()) claims.sort(byPointer);
 
-  return grammar;
+  return { ...grammar, record: correctRecordClaims(grammar.record, (await corrections).map(correctionOf)) };
 }
 
 /**
@@ -943,19 +986,20 @@ export const INFLECTION_CANDIDATE_SQL: DictionaryRead = `SELECT t.record_id, t.r
       ORDER BY t.line_no, t.record_id`;
 
 /**
- * The stated genders of every record declaring itself a form of the word this
- * record spells, read off the same edges as `INFLECTION_SQL` and in the same
- * join order. Sent only when one of those records glosses itself this word's
- * plural, and beside the candidate read, so it adds no round trip.
+ * The stated genders and numbers of every record declaring itself a form of
+ * the word this record spells, read off the same edges as `INFLECTION_SQL` and
+ * in the same join order. Sent only when one of those records glosses itself
+ * this word's plural, and beside the candidate read, so it adds no round trip.
+ * The numbers are read only so a correction of one can say what it replaces.
  */
-export const INFLECTION_GENDER_SQL: DictionaryRead = `SELECT DISTINCT c.record_id, c.value, c.source_text, c.json_pointer,
+export const INFLECTION_GRAMMAR_SQL: DictionaryRead = `SELECT DISTINCT c.record_id, c.dimension, c.value, c.source_text, c.json_pointer,
             f.release_id, f.line_no, f.line_sha256
        FROM lookup_form lf
        CROSS JOIN form_of_edge e
          ON e.release_id IN (${servedBy("?2")}) AND e.target_word_key = lf.surface_key
        JOIN source_record f ON f.record_id = e.record_id
        JOIN grammar_claim c
-         ON c.record_id = e.record_id AND c.scope = 'record' AND c.status = 'stated' AND c.dimension = 'gender'
+         ON c.record_id = e.record_id AND c.scope = 'record' AND c.status = 'stated' AND c.dimension IN ('gender', 'number')
       WHERE lf.record_id = ?1 AND lf.origin = 'headword' AND lf.release_id IN (${servedBy("?2")})
       ORDER BY c.record_id, c.json_pointer`;
 
@@ -972,12 +1016,26 @@ const lineRef = (row: { release_id: string; line_no: number; line_sha256: string
   lineSha256: row.line_sha256,
 });
 
+/**
+ * The curated corrections of every record declaring itself a form of the word
+ * this record spells, read off the same edges as `INFLECTION_SQL`. Sent beside
+ * the gender read, and only when the master has corrections at all.
+ */
+export const INFLECTION_CORRECTION_SQL: DictionaryRead = `SELECT DISTINCT k.record_id, k.dimension, k.value, k.correction_id, k.evidence_url
+       FROM lookup_form lf
+       CROSS JOIN form_of_edge e
+         ON e.release_id IN (${servedBy("?2")}) AND e.target_word_key = lf.surface_key
+       JOIN corrected_claim k ON k.record_id = e.record_id
+      WHERE lf.record_id = ?1 AND lf.origin = 'headword' AND lf.release_id IN (${servedBy("?2")})
+      ORDER BY k.record_id, k.dimension`;
+
 /** `word` is the reading's own headword, which a plural gloss has to name. */
 async function readInflections(
   db: LookupDatabase,
   releaseId: string,
   recordId: number,
   word: string,
+  corrected: boolean,
 ): Promise<InflectionOf[]> {
   const rows = await queryAll<{
     record_id: number;
@@ -1014,7 +1072,7 @@ async function readInflections(
   // One extra read, not one per edge: every incoming edge on this record
   // matched the same surface key, so they all resolve to the same candidate set.
   // The genders go beside it, and only when a plural needs them.
-  const [candidates, genderRows] = await Promise.all([
+  const [candidates, grammarRows, correctionRows] = await Promise.all([
     queryAll<{
       record_id: number;
       release_id: string;
@@ -1027,13 +1085,17 @@ async function readInflections(
       ? Promise.resolve([])
       : queryAll<{
           record_id: number;
+          dimension: "gender" | "number";
           value: string;
           source_text: string;
           json_pointer: string;
           release_id: string;
           line_no: number;
           line_sha256: string;
-        }>(db, INFLECTION_GENDER_SQL, recordId, releaseId),
+        }>(db, INFLECTION_GRAMMAR_SQL, recordId, releaseId),
+    pluralGlosses.size === 0 || !corrected
+      ? Promise.resolve([])
+      : queryAll<CorrectionRow>(db, INFLECTION_CORRECTION_SQL, recordId, releaseId),
   ]);
 
   const targetCandidates = candidates.map((row) => ({
@@ -1043,20 +1105,29 @@ async function readInflections(
     ref: headwordRef(row.release_id, row.line_no, row.line_sha256),
   }));
 
-  const recordGenders = new Map<number, StatedClaim[]>();
-  for (const row of genderRows) {
-    const claims = recordGenders.get(row.record_id) ?? [];
-    claims.push({ status: "stated", dimension: "gender", value: row.value, sourceText: row.source_text, ref: lineRef(row, row.json_pointer) });
-    recordGenders.set(row.record_id, claims);
+  const recordClaims = new Map<number, StatedClaim[]>();
+  for (const row of grammarRows) {
+    const claims = recordClaims.get(row.record_id) ?? [];
+    claims.push({ status: "stated", dimension: row.dimension, value: row.value, sourceText: row.source_text, ref: lineRef(row, row.json_pointer) });
+    recordClaims.set(row.record_id, claims);
   }
-  for (const claims of recordGenders.values()) {
+  for (const claims of recordClaims.values()) {
     claims.sort((a, b) => compareSourcePointers(a.ref.jsonPointer, b.ref.jsonPointer));
   }
+  const corrections = new Map<number, CorrectionRow[]>();
+  for (const row of correctionRows) corrections.set(row.record_id, [...(corrections.get(row.record_id) ?? []), row]);
 
   const pluralOf = (declaring: number): PluralDeclaration | undefined => {
     const plural = pluralGlosses.get(declaring);
     if (plural === undefined) return undefined;
-    return { gloss: plural.gloss, glossGender: plural.gender, recordGenders: recordGenders.get(declaring) ?? [] };
+    const claims = correctRecordClaims(recordClaims.get(declaring) ?? [], (corrections.get(declaring) ?? []).map(correctionOf));
+    const asserted = claims.filter(asserts);
+    return {
+      gloss: plural.gloss,
+      glossGender: plural.gender,
+      recordGenders: asserted.filter((claim) => claim.dimension === "gender"),
+      correctedNumber: asserted.find((claim): claim is CorrectedClaim => claim.status === "corrected" && claim.dimension === "number"),
+    };
   };
 
   // One row per declaring *record*, not per edge: `casetta` says it is a form

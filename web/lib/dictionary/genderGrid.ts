@@ -26,7 +26,12 @@
 //   casa's femminile plurale, and `casetta`, "diminutivo di casa", fills
 //   nothing. It goes in the gender the gloss names (`femminile plurale di`),
 //   else every gender that record's tags state, else the noun's own gender
-//   when it states exactly one; otherwise it takes no cell. A record's own
+//   when it states exactly one; otherwise it takes no cell. A curated
+//   correction of the declaring record (#420) outranks all of these, and its
+//   number can move the spelling to the singolare column: `ammaliatrice`
+//   glosses itself "plurale di ammaliatore" and is its femminile singolare.
+//   A correction of a noun's own gender places its headword by it:
+//   `fissazione` is tagged masculine and sits in femminile. A record's own
 //   plural always wins, so this never adds a second one. The gloss names a
 //   word, not a record, so it fills a cell only when one noun record spells
 //   that word: `temi` says "plurale di tema", `tema` is a masculine noun and a
@@ -42,13 +47,13 @@
 // `l'hotel`); a form's spelling does not, since the IPA is the headword's. Where the rule refuses (a phrase, a spelling it does not handle) the
 // cell has no article line.
 
-import { isAdjectiveReading, isNounReading, namesOneRecordOf } from "@lexema/lookup/types.ts";
+import { asserts, isAdjectiveReading, isNounReading, namesOneRecordOf } from "@lexema/lookup/types.ts";
 import type {
   DeclaredPluralForm,
-  GrammarClaim,
   InflectionOf,
   PluralDeclaration,
   Reading,
+  RecordClaim,
   SourceForm,
 } from "@lexema/lookup/types.ts";
 import { generateItalianArticles, spokenOpening, type SpokenOpening } from "@lexema/italian/articles.ts";
@@ -70,7 +75,11 @@ export interface Spelling {
   surface: string;
   headword: boolean;
   forms: SourceForm[];
-  /** The records that gloss themselves this word's plural and spell it: `case` for casa. */
+  /**
+   * The records that gloss themselves this word's plural and spell it: `case`
+   * for casa. A curated correction can put one in a singular cell:
+   * `ammaliatrice` for ammaliatore.
+   */
   declaredBy: InflectionOf[];
   /** A declared lemma's plural records that spell it (#453): `fratellini` for fratellino. */
   declaredForms: DeclaredPluralForm[];
@@ -98,24 +107,25 @@ export interface Agreement {
   superlative: Grid | undefined;
 }
 
-function statedValues(claims: readonly GrammarClaim[], dimension: string): string[] {
+/** What the claims state for one dimension, a curated correction (#420) standing in for the source's own. */
+function statedValues(claims: readonly RecordClaim[], dimension: string): string[] {
   const values: string[] = [];
   for (const claim of claims) {
-    if (claim.status === "stated" && claim.dimension === dimension && !values.includes(claim.value)) {
+    if (asserts(claim) && claim.dimension === dimension && !values.includes(claim.value)) {
       values.push(claim.value);
     }
   }
   return values;
 }
 
-export const gendersOf = (claims: readonly GrammarClaim[]): Gender[] =>
+export const gendersOf = (claims: readonly RecordClaim[]): Gender[] =>
   GENDERS.filter((gender) => statedValues(claims, "gender").includes(gender));
 
 /** Every agreeing number the claims state, in NUMBERS order. */
-export const numbersOf = (claims: readonly GrammarClaim[]): GrammaticalNumber[] =>
+export const numbersOf = (claims: readonly RecordClaim[]): GrammaticalNumber[] =>
   NUMBERS.filter((number) => statedValues(claims, "number").includes(number));
 
-function numberOf(claims: readonly GrammarClaim[]): GrammaticalNumber | undefined {
+function numberOf(claims: readonly RecordClaim[]): GrammaticalNumber | undefined {
   const numbers = NUMBERS.filter((number) => statedValues(claims, "number").includes(number));
   return numbers.length === 1 ? numbers[0] : undefined;
 }
@@ -200,14 +210,20 @@ function givesPlural(reading: Reading): boolean {
 }
 
 /**
- * The genders a declared plural goes in: the one its gloss names, else the ones
- * its record's tags state, else the noun's own when it states exactly one.
+ * The cells a declared plural goes in. Its genders: a curated correction of
+ * its record's gender, else the one its gloss names, else the ones its
+ * record's tags state, else the noun's own when it states exactly one. Its
+ * number: plural, as the gloss says, unless a correction of its record's
+ * number says otherwise (`ammaliatrice` is ammaliatore's femminile singolare).
  */
-function pluralGenders(plural: PluralDeclaration, nounGenders: readonly Gender[]): readonly Gender[] {
-  if (plural.glossGender !== undefined) return [plural.glossGender];
+function declaredCells(plural: PluralDeclaration, nounGenders: readonly Gender[]): { genders: readonly Gender[]; number: GrammaticalNumber } {
+  const number = NUMBERS.find((value) => value === plural.correctedNumber?.value) ?? "plural";
+  const corrected = gendersOf(plural.recordGenders.filter((claim) => claim.status === "corrected"));
+  if (corrected.length > 0) return { genders: corrected, number };
+  if (plural.glossGender !== undefined) return { genders: [plural.glossGender], number };
   const tagged = gendersOf(plural.recordGenders);
-  if (tagged.length > 0) return tagged;
-  return nounGenders.length === 1 ? nounGenders : [];
+  if (tagged.length > 0) return { genders: tagged, number };
+  return { genders: nounGenders.length === 1 ? nounGenders : [], number };
 }
 
 export function agreementOf(reading: Reading): Agreement {
@@ -239,9 +255,8 @@ export function agreementOf(reading: Reading): Agreement {
   if (isNounReading(reading) && !givesPlural(reading)) {
     for (const record of reading.inflections) {
       if (record.plural === undefined || record.pos !== "noun" || !namesOneRecordOf(record.pos, record)) continue;
-      for (const gender of pluralGenders(record.plural, recordGenders)) {
-        plain.put(gender, "plural", { kind: "declared-plural", record }, record.word);
-      }
+      const { genders, number } = declaredCells(record.plural, recordGenders);
+      for (const gender of genders) plain.put(gender, number, { kind: "declared-plural", record }, record.word);
     }
   }
 
@@ -254,7 +269,7 @@ export function agreementOf(reading: Reading): Agreement {
  * plural records gloss themselves "plurale di <word>" (`it-plural-gloss/v1`).
  *
  * - Each plural goes in the gender its gloss names, else every gender its own
- *   record's tags state; with neither, it takes no cell (`pluralGenders`, with
+ *   record's tags state; with neither, it takes no cell (`declaredCells`, with
  *   no gender of the lemma's own to fall back on).
  * - The lemma, as the citation form, goes in the singolare of each gender that
  *   a plural which calls itself the word's plural fills: `fratellini`, tagged
@@ -268,7 +283,7 @@ export function declaredGridOf(word: string, forms: readonly DeclaredPluralForm[
   const plain = new GridBuilder();
   const lemmaGenders = new Set<Gender>();
   for (const form of forms) {
-    const genders = pluralGenders(form.plural, []);
+    const { genders } = declaredCells(form.plural, []);
     for (const gender of genders) {
       plain.put(gender, "plural", { kind: "declared-lemma-plural", form }, form.surface);
       if (form.plural.glossGender !== "feminine") lemmaGenders.add(gender);

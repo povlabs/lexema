@@ -16,7 +16,8 @@
 // a part that fits more than one reading (`svolta` has two Voce verbale
 // readings, so `(voce verbale)` could be either) is not given to both.
 
-import type { GrammarClaim, Reading } from "@lexema/lookup/types.ts";
+import { asserts } from "@lexema/lookup/types.ts";
+import type { Reading, RecordClaim } from "@lexema/lookup/types.ts";
 
 /** The parts of speech a label can name, in the singular the source mostly uses. */
 const HEADS = [
@@ -90,8 +91,8 @@ function headedBy(reading: Reading, head: string): boolean {
   return title === head || title.startsWith(`${head},`) || title.startsWith(`${head} `);
 }
 
-function states(claims: readonly GrammarClaim[], dimension: string, value: string): boolean {
-  return claims.some((claim) => claim.status === "stated" && claim.dimension === dimension && claim.value === value);
+function states(claims: readonly RecordClaim[], dimension: string, value: string): boolean {
+  return claims.some((claim) => asserts(claim) && claim.dimension === dimension && claim.value === value);
 }
 
 /**
