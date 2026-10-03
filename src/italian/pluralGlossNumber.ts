@@ -12,7 +12,8 @@
 // the wrong-gloss singular nouns he later accepted the lemma's it.wiktionary
 // table of forms too
 // (https://github.com/povlabs/lexema/issues/483#issuecomment-5971809939). This
-// file is that rule, `it-plural-gloss-number/v1`. It judges each record from
+// file is that rule; `it-plural-gloss-number/v1` is what follows, and v2 widens
+// it below. It judges each record from
 // two things only, the record's own line and pinned Wiktionary revisions
 // (`PLURAL_GLOSS_EVIDENCE` in pluralGlossEvidence.ts), so the same release and
 // the same revisions always give the same corrections.
@@ -43,6 +44,26 @@
 //   covers (#420, #449), a singular adjective (no ruling covers them), or no
 //   en.wiktionary confirmation.
 //
+// Huey ruled again on 2026-10-03
+// (https://github.com/povlabs/lexema/issues/515#issuecomment-5971932437, "yes to
+// all 3") that two more kinds of en.wiktionary statement confirm a plural. They
+// make `it-plural-gloss-number/v2`, which corrects every record v1 corrects,
+// identically, and judges a v1 exclusion again only where one of them can apply:
+//
+// - **The gloss names the feminine singular** (`platoniche`, "plurale di
+//   platonica", against `{{adj form of|it|platonico||f|p}}`). v1 left these as
+//   `other-lemma`. v2 corrects one when en.wiktionary's page of the gloss's
+//   lemma, in a section for the record's part of speech, names that lemma the
+//   feminine singular of the template's lemma (`{{feminine singular of|it|
+//   platonico}}`). The correction cites the word's own revision first, then
+//   the lemma's.
+// - **The plural is filed under a neighbouring part of speech** (`virtuosi`, a
+//   noun record whose en.wiktionary page has it only as an adjective). v1 left
+//   these as `no-section-for-pos` or `no-plural-statement`. v2 corrects one
+//   when the word's own revision, in a section of the other part of speech,
+//   states it a plural of exactly the gloss's lemma. Its gender is set as v1
+//   sets it, only where that same revision states one gender.
+//
 // The corrections join the curated list (curatedCorrections.ts) and travel the
 // same layer: a `corrected_claim` row beside the record, whose line stays byte
 // for byte (ADR 0027).
@@ -50,8 +71,13 @@
 import type { CorrectedFacts, CorrectedRecord, Evidence, OverriddenText, RecordCorrection } from "./curatedCorrections.js";
 import { enBlocks, type EnBlock, type FetchedPage, type Gender, headGenders, headSaysSingular, isPinned, type PinnedPage, tabsPlaces, templatesOn } from "./wiktionaryEvidence.js";
 
-/** The rule's name and version. A change to what it confirms or writes is a new version. */
-export const PLURAL_GLOSS_NUMBER_RULE = "it-plural-gloss-number/v1" as const;
+/** Every version of the rule, oldest first. A change to what it confirms or writes is a new version. */
+export const PLURAL_GLOSS_NUMBER_RULES = ["it-plural-gloss-number/v1", "it-plural-gloss-number/v2"] as const;
+
+export type PluralGlossNumberRule = (typeof PLURAL_GLOSS_NUMBER_RULES)[number];
+
+/** The version the curated list is made with. */
+export const PLURAL_GLOSS_NUMBER_RULE = "it-plural-gloss-number/v2" satisfies PluralGlossNumberRule;
 
 /** The gloss openings the scan matches: "plurale di", "femminile plurale di", "plurale maschile di"… */
 export const PLURAL_GLOSS_OPENING = /^(maschile |femminile )?plurale( maschile| femminile)? di /;
@@ -98,7 +124,7 @@ export interface PluralGlossEvidence {
   releaseId: string;
   /** Every record the scan takes, in archive order. */
   records: readonly ScannedRecord[];
-  /** Every page the rule reads: en.wiktionary for each word, and for each noun's lemma en.wiktionary and it.wiktionary. */
+  /** Every page the rule reads: en.wiktionary for each word and its lemma, and it.wiktionary for each noun's lemma. */
   pages: readonly FetchedPage[];
 }
 
@@ -106,9 +132,8 @@ export interface PluralGlossEvidence {
 export function pagesFor(record: ScannedRecord): { wiki: PinnedPage["wiki"]; title: string }[] {
   const lemma = glossLemma(record.firstGloss);
   if (record.langCode !== "it" || lemma === undefined) return [];
-  const own = { wiki: "en.wiktionary.org" as const, title: record.word };
-  if (record.pos !== "noun") return [own];
-  return [own, { wiki: "en.wiktionary.org", title: lemma }, { wiki: "it.wiktionary.org", title: lemma }];
+  const read = [{ wiki: "en.wiktionary.org" as const, title: record.word }, { wiki: "en.wiktionary.org" as const, title: lemma }];
+  return record.pos === "noun" ? [...read, { wiki: "it.wiktionary.org", title: lemma }] : read;
 }
 
 // --- What a page states ------------------------------------------------------
@@ -206,13 +231,24 @@ export type Exclusion =
 
 /** A record correction the rule made: the revisions that confirm it, never none. */
 export interface RuleMadeCorrection extends RecordCorrection {
-  rule: typeof PLURAL_GLOSS_NUMBER_RULE;
+  rule: PluralGlossNumberRule;
 }
 
-/** A real plural tagged singular: the one en.wiktionary revision that confirms it is the evidence. */
-export interface PluralCorrection extends RuleMadeCorrection {
-  evidence: readonly [Evidence & { wiki: "en.wiktionary.org" }];
-}
+type EnEvidence = Evidence & { wiki: "en.wiktionary.org" };
+
+/**
+ * How en.wiktionary confirms a real plural, and so which revisions it cites:
+ * - `own-pos` (v1): the word's page, in a section for its part of speech, names it a plural of the gloss's lemma;
+ * - `feminine-lemma` (v2): the word's page names it a plural of a lemma, and the gloss's lemma's page names
+ *   the gloss's lemma the feminine singular of that one. It cites the word's revision, then the lemma's;
+ * - `neighbouring-pos` (v2): the word's page names it a plural of the gloss's lemma, in a section of the other part of speech.
+ */
+export type PluralConfirmation = "own-pos" | "feminine-lemma" | "neighbouring-pos";
+
+/** A real plural tagged singular, cited by the word's own en.wiktionary revision, and for `feminine-lemma` by its lemma's too. */
+export type PluralCorrection =
+  | (RuleMadeCorrection & { confirmedBy: "own-pos" | "neighbouring-pos"; evidence: readonly [EnEvidence] })
+  | (RuleMadeCorrection & { confirmedBy: "feminine-lemma"; evidence: readonly [EnEvidence, EnEvidence] });
 
 export type Verdict =
   | { kind: "plural"; record: ScannedRecord; correction: PluralCorrection; genderCorrected: boolean }
@@ -243,12 +279,12 @@ function recordGender(record: ScannedRecord): { value: Gender; index: number } |
 const tagText = (record: ScannedRecord, index: number): OverriddenText => ({ pointer: `/tags/${index}`, text: record.tags[index] });
 
 /**
- * Judge one record of the scan of `releaseId`. `handCorrected` holds the
- * archive lines a hand correction of that release names. `pages` holds every
- * page `pagesFor(record)` names; a page it lacks is a fetch that was never
- * made, and throws.
+ * Judge one record of the scan of `releaseId` by `rule`. `handCorrected`
+ * holds the archive lines a hand correction of that release names. `pages`
+ * holds every page `pagesFor(record)` names; a page it lacks is a fetch that
+ * was never made, and throws.
  */
-export function judge(record: ScannedRecord, releaseId: string, pages: PageIndex, handCorrected: ReadonlySet<number>): Verdict {
+export function judge(record: ScannedRecord, releaseId: string, pages: PageIndex, handCorrected: ReadonlySet<number>, rule: PluralGlossNumberRule = PLURAL_GLOSS_NUMBER_RULE): Verdict {
   const excluded = (reason: Exclusion): Verdict => ({ kind: "excluded", record, reason });
   if (record.langCode !== "it") return excluded("not-italian");
   if (handCorrected.has(record.lineNo)) return excluded("already-corrected");
@@ -269,24 +305,7 @@ export function judge(record: ScannedRecord, releaseId: string, pages: PageIndex
 
   if (plurals.length > 0 && isPinned(own)) {
     if (singulars.length > 0) return excluded("sources-disagree");
-    const stated = new Set<Gender>();
-    for (const { statement, block } of plurals) {
-      if (statement.gender !== undefined) stated.add(statement.gender);
-      for (const gender of headGenders(block.head)) stated.add(gender);
-    }
-    const number = { overrides: tagText(record, record.tags.indexOf("singular")), value: "plural" as const };
-    const source = recordGender(record);
-    const [gender] = stated.size === 1 ? [...stated] : [];
-    const genderCorrected = gender !== undefined && source !== undefined && source.value !== gender;
-    const facts: CorrectedFacts = genderCorrected ? { gender: { overrides: tagText(record, source.index), value: gender }, number } : { number };
-    const shows = [...new Set(plurals.map((entry) => entry.shows))].join("; ");
-    const correction: PluralCorrection = {
-      record: key,
-      facts,
-      evidence: [{ wiki: "en.wiktionary.org", title: own.title, revisionId: own.revisionId, shows }],
-      rule: PLURAL_GLOSS_NUMBER_RULE,
-    };
-    return { kind: "plural", record, correction, genderCorrected };
+    return pluralVerdict(record, key, rule, own, plurals);
   }
 
   if (record.pos === "noun") {
@@ -330,7 +349,7 @@ export function judge(record: ScannedRecord, releaseId: string, pages: PageIndex
         record: key,
         facts: { number: { overrides: { pointer: "/senses/0/glosses/0", text: record.firstGloss }, value: "singular" } },
         evidence: [first, ...rest],
-        rule: PLURAL_GLOSS_NUMBER_RULE,
+        rule,
       };
       return { kind: "singular", record, correction };
     }
@@ -340,18 +359,100 @@ export function judge(record: ScannedRecord, releaseId: string, pages: PageIndex
 
   if (!isPinned(own)) return excluded("no-en-page");
   if (own.lines.length === 0) return excluded("no-italian-entry");
-  if (!enBlocks(own.lines).some((block) => SECTIONS[record.pos].has(block.heading))) return excluded("no-section-for-pos");
-  if (found.some((entry) => entry.statement.number === "plural")) return excluded("other-lemma");
-  return excluded("no-plural-statement");
+  const strict: Exclusion = !enBlocks(own.lines).some((block) => SECTIONS[record.pos].has(block.heading))
+    ? "no-section-for-pos"
+    : found.some((entry) => entry.statement.number === "plural") ? "other-lemma" : "no-plural-statement";
+  if (rule === "it-plural-gloss-number/v1") return excluded(strict);
+  // v2: the two statements Huey's #515 ruling accepts, each only where v1's own reading found none.
+  const widened = strict === "other-lemma"
+    ? feminineLemma(record, key, rule, own, found, read("en.wiktionary.org", lemma))
+    : neighbouringPos(record, key, rule, own, lemma);
+  return widened ?? excluded(strict);
 }
 
-/** Every record of `evidence`, judged, in archive order. */
-export function judgeAll(evidence: PluralGlossEvidence, handCorrections: readonly RecordCorrection[]): Verdict[] {
+/** The number, and the gender where `own` states one, that `plurals` confirm: a real plural's facts. */
+function pluralFacts(record: ScannedRecord, plurals: readonly Found[]): { facts: CorrectedFacts; genderCorrected: boolean } {
+  const stated = statedGenders(plurals);
+  const number = { overrides: tagText(record, record.tags.indexOf("singular")), value: "plural" as const };
+  const source = recordGender(record);
+  const [gender] = stated.size === 1 ? [...stated] : [];
+  const genderCorrected = gender !== undefined && source !== undefined && source.value !== gender;
+  return { facts: genderCorrected ? { gender: { overrides: tagText(record, source.index), value: gender }, number } : { number }, genderCorrected };
+}
+
+/** The genders `plurals` state: each template's, and each section head's (`g=m`). */
+function statedGenders(plurals: readonly Found[]): Set<Gender> {
+  const stated = new Set<Gender>();
+  for (const { statement, block } of plurals) {
+    if (statement.gender !== undefined) stated.add(statement.gender);
+    for (const gender of headGenders(block.head)) stated.add(gender);
+  }
+  return stated;
+}
+
+const enEvidence = (page: PinnedPage, found: readonly Found[]): EnEvidence => ({
+  wiki: "en.wiktionary.org",
+  title: page.title,
+  revisionId: page.revisionId,
+  shows: [...new Set(found.map((entry) => entry.shows))].join("; "),
+});
+
+/** A real plural confirmed by `plurals`, statements on the word's own en.wiktionary revision `own`. */
+function pluralVerdict(record: ScannedRecord, key: CorrectedRecord, rule: PluralGlossNumberRule, own: PinnedPage, plurals: readonly Found[], confirmedBy: "own-pos" | "neighbouring-pos" = "own-pos"): Verdict {
+  const { facts, genderCorrected } = pluralFacts(record, plurals);
+  return { kind: "plural", record, correction: { record: key, facts, evidence: [enEvidence(own, plurals)], rule, confirmedBy }, genderCorrected };
+}
+
+/**
+ * v2, `feminine-lemma`: the gloss names the feminine singular of the lemma
+ * the word's own page makes it a plural of. `platoniche` says "plurale di
+ * platonica"; its page says `{{adj form of|it|platonico||f|p}}`, and
+ * platonica's page, in an adjective section, `{{feminine singular of|it|platonico}}`.
+ * Every plural `found` in the record's own part of speech has to be of such a
+ * lemma, none may be stated masculine, and no singular of it may stand beside them.
+ */
+function feminineLemma(record: ScannedRecord, key: CorrectedRecord, rule: PluralGlossNumberRule, own: PinnedPage, found: readonly Found[], lemmaEn: FetchedPage): Verdict | undefined {
+  if (!isPinned(lemmaEn)) return undefined;
+  const feminineSingulars = statementsIn(lemmaEn, SECTIONS[record.pos]).filter(({ statement }) => statement.number === "singular" && statement.gender === "feminine");
+  const ofLemma = new Set(feminineSingulars.map((entry) => entry.statement.lemma));
+  const plurals = found.filter((entry) => entry.statement.number === "plural");
+  if (plurals.length === 0 || !plurals.every((entry) => ofLemma.has(entry.statement.lemma) && !headSaysSingular(entry.block.head))) return undefined;
+  if (found.some((entry) => entry.statement.number === "singular" && ofLemma.has(entry.statement.lemma))) return { kind: "excluded", record, reason: "sources-disagree" };
+  if (statedGenders(plurals).has("masculine")) return { kind: "excluded", record, reason: "sources-disagree" };
+  const named = new Set(plurals.map((entry) => entry.statement.lemma));
+  const lemmaShows = feminineSingulars.filter((entry) => named.has(entry.statement.lemma));
+  const { facts, genderCorrected } = pluralFacts(record, plurals);
+  const correction: PluralCorrection = { record: key, facts, evidence: [enEvidence(own, plurals), enEvidence(lemmaEn, lemmaShows)], rule, confirmedBy: "feminine-lemma" };
+  return { kind: "plural", record, correction, genderCorrected };
+}
+
+/** The sections of the other part of speech: an adjective's for a noun, a noun's for an adjective. */
+const NEIGHBOURS: Readonly<Record<ScannedRecord["pos"], ReadonlySet<string>>> = {
+  noun: SECTIONS.adj,
+  adj: SECTIONS.noun,
+};
+
+/**
+ * v2, `neighbouring-pos`: the word's own page names it a plural of exactly the
+ * gloss's lemma, but only in a section of the other part of speech. `virtuosi`
+ * is a noun record; en.wiktionary has it only as an adjective,
+ * `{{adj form of|it|virtuoso||m|p}}`. No singular of the lemma may stand beside it.
+ */
+function neighbouringPos(record: ScannedRecord, key: CorrectedRecord, rule: PluralGlossNumberRule, own: PinnedPage, lemma: string): Verdict | undefined {
+  const stated = statementsIn(own, NEIGHBOURS[record.pos]).filter((entry) => entry.statement.lemma === lemma);
+  const plurals = stated.filter((entry) => entry.statement.number === "plural" && !headSaysSingular(entry.block.head));
+  if (plurals.length === 0) return undefined;
+  if (stated.some((entry) => entry.statement.number === "singular")) return { kind: "excluded", record, reason: "sources-disagree" };
+  return pluralVerdict(record, key, rule, own, plurals, "neighbouring-pos");
+}
+
+/** Every record of `evidence`, judged by `rule`, in archive order. */
+export function judgeAll(evidence: PluralGlossEvidence, handCorrections: readonly RecordCorrection[], rule: PluralGlossNumberRule = PLURAL_GLOSS_NUMBER_RULE): Verdict[] {
   const pages = new PageIndex(evidence.pages);
   const handCorrected = new Set(handCorrections.filter((correction) => correction.record.releaseId === evidence.releaseId).map((correction) => correction.record.lineNo));
-  return evidence.records.map((record) => judge(record, evidence.releaseId, pages, handCorrected));
+  return evidence.records.map((record) => judge(record, evidence.releaseId, pages, handCorrected, rule));
 }
 
 /** The corrections the rule makes from `evidence`, in archive order. */
-export const pluralGlossCorrections = (evidence: PluralGlossEvidence, handCorrections: readonly RecordCorrection[]): RuleMadeCorrection[] =>
-  judgeAll(evidence, handCorrections).flatMap((verdict) => (verdict.kind === "excluded" ? [] : [verdict.correction]));
+export const pluralGlossCorrections = (evidence: PluralGlossEvidence, handCorrections: readonly RecordCorrection[], rule: PluralGlossNumberRule = PLURAL_GLOSS_NUMBER_RULE): RuleMadeCorrection[] =>
+  judgeAll(evidence, handCorrections, rule).flatMap((verdict) => (verdict.kind === "excluded" ? [] : [verdict.correction]));

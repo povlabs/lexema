@@ -25,9 +25,11 @@
 // gloss wrongly says "plurale di" may instead be confirmed by its lemma's
 // it.wiktionary table of forms (`{{Tabs}}`); six of those fifteen cite only that
 // page. Rule
-// `it-plural-gloss-number/v1` (pluralGlossNumber.ts) makes those entries from
+// `it-plural-gloss-number/v2` (pluralGlossNumber.ts) makes those entries from
 // pinned revisions (pluralGlossEvidence.ts); they follow the hand entries in
-// `CURATED_CORRECTIONS` and travel the same layer.
+// `CURATED_CORRECTIONS` and travel the same layer. v2 (#515) makes every entry
+// v1 made, and also takes a gloss naming the feminine singular and a plural
+// filed under the neighbouring part of speech, on Huey's ruling.
 //
 // A correction is a layer beside the record, never an edit of it. It names one
 // record by release, archive line and line digest, and the record's line in
@@ -408,7 +410,7 @@ export const HAND_CORRECTIONS: readonly CuratedCorrection[] = [
 
 /**
  * The committed list: the hand entries, then the corrections rule
- * `it-plural-gloss-number/v1` makes from its pinned evidence (#483), in archive
+ * `it-plural-gloss-number/v2` makes from its pinned evidence (#483, #515), in archive
  * order. A record a hand entry names is never also corrected by the rule.
  */
 export const CURATED_CORRECTIONS: readonly CuratedCorrection[] = [
