@@ -24,9 +24,9 @@ Keeping the human gate on top of it means every pull request waits for Huey twic
 **A pull request merges when its Codex review passes. The shipper merges it.**
 
 - The gate is `fabrika ship gate <n> --sha <head>`: every required verdict namespace reads `pass` at the current head. CI green is a separate, required check. Nothing else opens it.
-- Only the `ship` skill merges. A builder, reviewer, or driver still stops at the PR URL.
+- Only the `ship` skill merges. A builder, reviewer, or driver still stops at the PR URL. On `main` the shipper enqueues the PR into GitHub's merge queue, which merges it once the required checks pass on the queued result (#532).
 - A FAIL goes back to a builder for repair. The shipper never overrides a verdict.
-- **`ready-for:human` holds the merge.** A PR carrying that label waits for Huey even with every verdict PASS. The shipper reports it and stops. Put the label on anything that changes a decision, a guard, money, or what gets published.
+- **`ready-for:human` holds the merge.** A PR carrying that label waits for Huey even with every verdict PASS. The shipper reports it and stops. Since #532 the label is Huey's own hold, not a default for decision records: a PR that changes a decision record merges through the shipper once governance and the other required verdicts pass (amended by #532).
 - Huey can still merge by hand.
 
 **Still binding from 0001.** A green CI run alone is not approval. A push straight to `main` is not a route. An agent that merged says so plainly.
@@ -40,3 +40,7 @@ The reviewer is now the last look before `main`. A weak review lands a weak chan
 ## Records
 
 No vocabulary impact.
+
+## Amendments
+
+- **#532 — Merge queue, and the shipper merges decision records (2026-10-03).** The repositories moved to the `povlabs` organization and went public, so GitHub's merge queue is available. Huey asked "can we make merge queue so that you can merge those", and, asked whether pull requests that change ADRs or workflows should still wait for him, answered "yes let the shipper merge". After Fabrika's control-plane boundary was explained (`ship cp-approval` holds every `.github/CODEOWNERS` path, and with every pull request authored by `hueypov` only his `control-plane-self-approval` comment discharges it; removing a path from CODEOWNERS is the lever; the tradeoff is that only reviews, not a hard stop, guard those files) he answered "ok good". So `.decisions/`, `AGENTS.md`, `.fabrika.jsonc` and `design-system-manifest.md` leave CODEOWNERS and merge through the shipper once their required verdicts, governance included, pass at head. Fabrika's own fixed control-plane paths (`.github/`, `.claude/`, lefthook files and the fabrika-cli list) stay owned, because its `codeowners-cp` guard requires them, so workflow and agent-setting changes still need Huey's sign-off. `ready-for:human` remains Huey's hold on any pull request. The workflows whose checks the queue requires also run on `merge_group`.

@@ -1,12 +1,15 @@
-# Huey owns the files that set Lexema's rules. Fabrika reads this list to know
-# who may approve an epic's plan and changes to these files. The first block
-# matches `governedRoots` in .fabrika.jsonc.
-/.decisions/                @hueypov
+# Since 2026-10-03 (#532, ADR 0006 amendment) the shipper merges every pull
+# request whose required verdicts pass at head. Lexema's own rule files
+# (.decisions/, AGENTS.md, .fabrika.jsonc, the design manifest) are no longer
+# listed here; they stay gated by the required governance verdict
+# (`governedRoots` in .fabrika.jsonc). Huey can still hold any pull request
+# with the `ready-for:human` label.
+#
+# Fabrika's fixed control-plane boundary (fabrika-cli) still names these
+# paths, and its codeowners-cp guard requires them owned, so changes to
+# workflows, agent settings and git hooks still need Huey's sign-off.
 /.claude/                   @hueypov
 /.github/                   @hueypov
-/.fabrika.jsonc             @hueypov
-/AGENTS.md                  @hueypov
-/design-system-manifest.md  @hueypov
 **/lefthook*                @hueypov
 **/.lefthook*               @hueypov
 

@@ -5,6 +5,7 @@ name: decisions-index
 
 on:
   pull_request:
+  merge_group:
   push:
     branches: [main]
 
