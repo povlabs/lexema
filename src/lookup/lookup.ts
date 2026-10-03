@@ -14,9 +14,9 @@ import { readExpressions } from "./expressions.js";
 import { placeRecovered, type RecoveredOfRecord, type StoredRecovered } from "./recovered.js";
 import { dictionaryTables, lineageOf, servedBy, type DictionaryTables } from "./served.js";
 import { readSourceRecord, type SourceRecordFields } from "./sourceRecord.js";
-import { asserts, correctRecordClaims } from "./types.js";
+import { correctionOf, correctionsByRecord, type CorrectionRow } from "./correctedClaim.js";
+import { correctRecordClaims, pluralDeclaration } from "./types.js";
 import type {
-  CorrectedClaim,
   Evidence,
   Expression,
   FoundResult,
@@ -777,20 +777,6 @@ export const CORRECTED_CLAIM_SQL: DictionaryRead = `SELECT record_id, dimension,
       WHERE record_id = ?
       ORDER BY dimension`;
 
-interface CorrectionRow {
-  record_id: number;
-  dimension: "gender" | "number";
-  value: string;
-  correction_id: string;
-  evidence_url: string;
-}
-
-const correctionOf = (row: CorrectionRow): Omit<CorrectedClaim, "status" | "replaces"> => ({
-  dimension: row.dimension,
-  value: row.value,
-  correction: { id: row.correction_id, evidenceUrl: row.evidence_url },
-});
-
 async function readGrammar(
   db: LookupDatabase,
   recordId: number,
@@ -1114,20 +1100,12 @@ async function readInflections(
   for (const claims of recordClaims.values()) {
     claims.sort((a, b) => compareSourcePointers(a.ref.jsonPointer, b.ref.jsonPointer));
   }
-  const corrections = new Map<number, CorrectionRow[]>();
-  for (const row of correctionRows) corrections.set(row.record_id, [...(corrections.get(row.record_id) ?? []), row]);
+  const corrections = correctionsByRecord(correctionRows);
 
   const pluralOf = (declaring: number): PluralDeclaration | undefined => {
     const plural = pluralGlosses.get(declaring);
     if (plural === undefined) return undefined;
-    const claims = correctRecordClaims(recordClaims.get(declaring) ?? [], (corrections.get(declaring) ?? []).map(correctionOf));
-    const asserted = claims.filter(asserts);
-    return {
-      gloss: plural.gloss,
-      glossGender: plural.gender,
-      recordGenders: asserted.filter((claim) => claim.dimension === "gender"),
-      correctedNumber: asserted.find((claim): claim is CorrectedClaim => claim.status === "corrected" && claim.dimension === "number"),
-    };
+    return pluralDeclaration(plural.gloss, plural.gender, recordClaims.get(declaring) ?? [], (corrections.get(declaring) ?? []).map(correctionOf));
   };
 
   // One row per declaring *record*, not per edge: `casetta` says it is a form
@@ -1290,6 +1268,7 @@ async function readRecovered(db: LookupDatabase, recordId: number, record: Promi
     const definition: RecoveredDefinition = {
       ...route,
       text: row.text,
+      correction: null,
       labels: labels.filter((label) => label.recovered_id === row.recovered_id).map((label) => label.label),
       ref: at(row.page_line),
       examples: examples

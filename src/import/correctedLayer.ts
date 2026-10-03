@@ -9,11 +9,11 @@
 // `source_record_json` least of all, are written by `writeRecord` and are not
 // touched here.
 
-import { correctedFacts, correctionId, evidenceUrl, type CuratedCorrection } from "../italian/curatedCorrections.js";
+import { correctedFacts, correctionId, evidenceUrl, recordCorrections, type CuratedCorrection, type RecordCorrection } from "../italian/curatedCorrections.js";
 import type { ImportStatement } from "./importRelease.js";
 
 /** One `corrected_claim` row's values after its record id and release, in `COLUMNS` order. */
-export function correctedClaimValues(correction: CuratedCorrection): [dimension: string, value: string, correctionId: string, evidenceUrl: string][] {
+export function correctedClaimValues(correction: RecordCorrection): [dimension: string, value: string, correctionId: string, evidenceUrl: string][] {
   return correctedFacts(correction).map((fact) => [fact.dimension, fact.value, correctionId(correction), evidenceUrl(correction.evidence[0])]);
 }
 
@@ -31,7 +31,7 @@ export interface CorrectionSummary {
 }
 
 export class CorrectedLayer {
-  private readonly byLine = new Map<string, CuratedCorrection>();
+  private readonly byLine = new Map<string, RecordCorrection>();
   private readonly applied = new Set<string>();
   private readonly differing = new Set<string>();
   private releaseId: string | undefined;
@@ -41,7 +41,7 @@ export class CorrectedLayer {
     private readonly insert: ImportStatement,
     private readonly rows: { corrected_claim: number },
   ) {
-    for (const correction of corrections) this.byLine.set(correctionId(correction), correction);
+    for (const correction of recordCorrections(corrections)) this.byLine.set(correctionId(correction), correction);
   }
 
   /** Write the corrections keyed to this record's line, when its digest is the one they were checked against. */

@@ -7,7 +7,7 @@ import test from "node:test";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { recordText, recoverDefinitions, type ListedUnder, type RecordRecovery, type RecordText } from "../src/italian/recovery.js";
-import { readItalianSections } from "../src/italian/wikitext.js";
+import { readItalianSections, renderInline } from "../src/italian/wikitext.js";
 import { loadFixturePages, RAW_PAGE_WIKI, type RawPage } from "../src/source/rawPage.js";
 
 const pages = await loadFixturePages(resolve("fixtures"));
@@ -585,4 +585,59 @@ test("the line after a `#` that states a meaning, after {{Nodef}}, or a picture 
     "[[File:Carica papaya 001.JPG|thumb|una pianta di papaya [[w:Carica papaya|Carica papaya]]]]",
   ]);
   assert.deepEqual(recovered("papaya", "Sostantivo", papaya), []);
+});
+
+// `{{taxon}}` prints the way Template:Taxon does (#495), picture left out.
+
+test("{{taxon|X}} prints its fixed words with X bold and italic, in any case of the name", () => {
+  // Aglio, revision 4023379.
+  const aglio = renderInline("{{Term|botanica|it}}  [[genere]] della famiglia delle [[Liliacee]]; {{taxon|Allium sativum}}", "Aglio");
+  assert.ok(aglio.rendered);
+  assert.equal(aglio.text, "genere della famiglia delle Liliacee; la sua classificazione scientifica è Allium sativum ( tassonomia)");
+  assert.deepEqual(aglio.labels, ["botanica"]);
+  assert.deepEqual(
+    aglio.runs.filter((run) => run.italic || run.bold).map((run) => [run.text, run.italic, run.bold]),
+    [["Allium sativum", true, true], ["tassonomia", false, true]],
+  );
+  for (const name of ["Taxon", "TAXON"]) {
+    const rendered = renderInline(`{{${name}|Allium sativum}}`, "Aglio");
+    assert.ok(rendered.rendered, name);
+    assert.equal(rendered.text, "la sua classificazione scientifica è Allium sativum ( tassonomia)", name);
+  }
+});
+
+test("{{taxon}} with no first argument prints no definition, so the line stays unrendered", () => {
+  for (const body of ["[[pianta]]; {{taxon}}", "[[pianta]]; {{Taxon|}}", "[[pianta]]; {{taxon| }}", "[[pianta]]; {{taxon|lang=it}}"]) {
+    assert.deepEqual(renderInline(body, "prova"), { rendered: false, template: "taxon" }, body);
+  }
+});
+
+test("{{Taxon}} inside italics toggles the emphasis around the name, and the words stay right", () => {
+  // coniglio: `#:''{{Taxon|Oryctolagus cuniculus}}''`.
+  const coniglio = renderInline("''{{Taxon|Oryctolagus cuniculus}}''", "coniglio");
+  assert.ok(coniglio.rendered);
+  assert.equal(coniglio.text, "la sua classificazione scientifica è Oryctolagus cuniculus ( tassonomia)");
+  assert.deepEqual(
+    coniglio.runs.filter((run) => run.text.trim() !== "").map((run) => [run.text.trim(), run.italic, run.bold]),
+    [
+      ["la sua classificazione scientifica è", true, false],
+      ["Oryctolagus cuniculus", false, true],
+      ["(", true, false],
+      ["tassonomia", true, true],
+      [")", true, false],
+    ],
+  );
+});
+
+test("a record-backed `#` line with {{Taxon}} is known whole and reads as the record's gloss", () => {
+  // cavallo; the gloss is the archive's.
+  const cavallo = dumpLines("cavallo", 1, [
+    "{{-sost-|it}}",
+    "# {{Term|zoologia|it|mammalogia}} [[mammifero]] [[quadrupede]] [[equino]] [[erbivoro]], {{Taxon|Equus caballus}}",
+  ]);
+  const [noun] = readItalianSections(cavallo);
+  assert.deepEqual(noun.senseLines.map((line) => [line.kind, line.text]), [
+    ["sense", { known: "whole", text: "mammifero quadrupede equino erbivoro, la sua classificazione scientifica è Equus caballus ( tassonomia)" }],
+  ]);
+  assert.deepEqual(noun.unrendered, []);
 });

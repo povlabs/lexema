@@ -25,8 +25,23 @@ import { everyRecovered, type FoundResult, type LookupResult, type Reading } fro
 import { ApplyRefused, checkApplied, chooseChanges, planApply, type ApplyPlan } from "../src/update/apply.js";
 import type { Change } from "../src/update/changes.js";
 import { diffAgainstMaster, reportMarkdown, reportOf, type MasterDiff } from "../src/update/diff.js";
-import { missingUpgrade, type MasterReader } from "../src/update/master.js";
-import { masterUpgradeSql, PAGE_ENTRY_INDEXES, PAGE_ENTRY_TABLES, SERVING_VIEWS, UPDATE_TABLES, UPGRADE_NAMES } from "../src/update/masterUpgrade.js";
+import { changedUpgrade, missingUpgrade, planUpgrade, upgradeShortfall, type MasterReader } from "../src/update/master.js";
+import {
+  createStatement,
+  definitionOf,
+  masterUpgradeSql,
+  PAGE_ENTRY_CORRECTION_TABLES,
+  PAGE_ENTRY_INDEXES,
+  PAGE_ENTRY_TABLES,
+  REBUILT_TABLES,
+  SERVING_VIEWS,
+  UPDATE_TABLES,
+  UPGRADE_NAMES,
+} from "../src/update/masterUpgrade.js";
+import { COUNTED_TABLES } from "../src/update/planCounts.js";
+import { planOnlyRun } from "../src/update/planOnly.js";
+import { masterReaderOf } from "../src/update/updateCli.js";
+import { localD1 } from "./localD1.js";
 import { planCorrections } from "../src/import/correctRecords.js";
 import type { CuratedCorrection } from "../src/italian/curatedCorrections.js";
 
@@ -509,7 +524,7 @@ test("an apply brings a master seeded before #18 up to the schema, and the upgra
   const old = new DatabaseSync(":memory:");
   old.exec(await readFile(SCHEMA, "utf8"));
   for (const view of [...SERVING_VIEWS].reverse()) old.exec(`DROP VIEW ${view}`);
-  for (const table of [...PAGE_ENTRY_TABLES, ...UPDATE_TABLES].reverse()) old.exec(`DROP TABLE ${table}`);
+  for (const table of [...UPDATE_TABLES, ...PAGE_ENTRY_TABLES, ...PAGE_ENTRY_CORRECTION_TABLES].reverse()) old.exec(`DROP TABLE ${table}`);
   assert.deepEqual(missingUpgrade(readerOf(old)), [...UPGRADE_NAMES]);
   const upgrade = masterUpgradeSql(await readFile(SCHEMA, "utf8"));
   const asFresh = (db: DatabaseSync) => schemaOf(db).replaceAll("CREATE TABLE IF NOT EXISTS", "CREATE TABLE").replaceAll("CREATE INDEX IF NOT EXISTS", "CREATE INDEX");
@@ -530,8 +545,8 @@ test("an apply brings a master seeded before #18 up to the schema, and the upgra
 
 test("the upgrade gives a master seeded before #403 its page-entry tables, empty, and lookups answer the same", async () => {
   await withDesk(async ({ db }) => {
-    for (const table of [...PAGE_ENTRY_TABLES].reverse()) db.exec(`DROP TABLE ${table}`);
-    assert.deepEqual(missingUpgrade(readerOf(db)), [...PAGE_ENTRY_TABLES, ...PAGE_ENTRY_INDEXES]);
+    for (const table of [...PAGE_ENTRY_TABLES, ...PAGE_ENTRY_CORRECTION_TABLES].reverse()) db.exec(`DROP TABLE ${table}`);
+    assert.deepEqual(missingUpgrade(readerOf(db)), [...PAGE_ENTRY_TABLES, ...PAGE_ENTRY_CORRECTION_TABLES, ...PAGE_ENTRY_INDEXES]);
     const casa = await ask(db, "casa");
     assert.equal(casa.outcome, "found");
     const written = () => (db.prepare("SELECT total_changes() AS n").get() as { n: number }).n;
@@ -539,8 +554,59 @@ test("the upgrade gives a master seeded before #403 its page-entry tables, empty
     execute(db, masterUpgradeSql(await readFile(SCHEMA, "utf8")));
     assert.equal(written(), before, "the upgrade writes no row");
     assert.deepEqual(missingUpgrade(readerOf(db)), []);
-    for (const table of PAGE_ENTRY_TABLES) assert.equal((db.prepare(`SELECT count(*) AS n FROM ${table}`).get() as { n: number }).n, 0);
+    for (const table of [...PAGE_ENTRY_TABLES, ...PAGE_ENTRY_CORRECTION_TABLES]) assert.equal((db.prepare(`SELECT count(*) AS n FROM ${table}`).get() as { n: number }).n, 0);
     assert.deepEqual(await ask(db, "casa"), casa);
+  });
+});
+
+test("a definition compares the same through comments, spacing, IF NOT EXISTS and a quoted name, and differs on any change to what it defines", async () => {
+  const schema = await readFile(SCHEMA, "utf8");
+  const stated = createStatement(schema, "TABLE", "corrected_definition");
+  const stored = stated.replace(/^CREATE TABLE corrected_definition/, 'CREATE TABLE IF NOT EXISTS "corrected_definition"').replaceAll(/--[^\n]*\n/g, "\n").replaceAll(/\s+/g, "  ");
+  assert.equal(definitionOf(stored), definitionOf(stated));
+  assert.notEqual(definitionOf(stated.replace("CHECK (text <> '')", "CHECK (text <> ' ')")), definitionOf(stated), "a string literal is compared exactly");
+  assert.notEqual(definitionOf(stated.replace("PRIMARY KEY (entry_id, definition_index)", "UNIQUE (entry_id, definition_index)")), definitionOf(stated));
+  assert.equal(definitionOf("CREATE INDEX IF NOT EXISTS recovered_entry_by_key ON recovered_entry (release_id, word_key)"), definitionOf(createStatement(schema, "INDEX", "recovered_entry_by_key")));
+
+  // A fresh seed and an upgraded master store schema.sql's definitions, so the upgrade rebuilds neither.
+  const fresh = new DatabaseSync(":memory:");
+  fresh.exec(schema);
+  assert.deepEqual(changedUpgrade(readerOf(fresh), schema), []);
+  for (const table of [...REBUILT_TABLES].reverse()) fresh.exec(`DROP TABLE ${table}`);
+  fresh.exec(masterUpgradeSql(schema));
+  assert.deepEqual(changedUpgrade(readerOf(fresh), schema), []);
+  assert.equal(planUpgrade(readerOf(fresh), schema).sql, "");
+});
+
+test("no table outside the rebuilt page-entry tables points at one, so the upgrade can rebuild them alone", async () => {
+  const db = new DatabaseSync(":memory:");
+  db.exec(await readFile(SCHEMA, "utf8"));
+  const rebuilt = new Set<string>(REBUILT_TABLES);
+  const tables = db.prepare("SELECT name FROM sqlite_schema WHERE type = 'table'").all().map((row) => String(row.name));
+  const pointing = tables
+    .filter((table) => !rebuilt.has(table))
+    .flatMap((table) => db.prepare("SELECT \"table\" AS parent FROM pragma_foreign_key_list(?)").all(table).map((row) => `${table} -> ${String(row.parent)}`))
+    .filter((edge) => rebuilt.has(edge.split(" -> ")[1]));
+  assert.deepEqual(pointing, []);
+});
+
+test("a rebuild whose rows the new definition refuses stops whole, and the dictionary keeps its tables and rows", async () => {
+  await withDesk(async ({ db }) => {
+    const schema = await readFile(SCHEMA, "utf8");
+    db.exec("DROP TABLE recovered_entry");
+    db.exec(createStatement(schema, "TABLE", "recovered_entry").replace("CHECK (pos = 'verb')", "CHECK (pos IN ('verb', 'noun'))"));
+    db.exec(createStatement(schema, "INDEX", "recovered_entry_by_key"));
+    const [{ release_id: release }] = db.prepare("SELECT release_id FROM source_release").all() as { release_id: string }[];
+    db.prepare("INSERT INTO raw_page VALUES (900001, ?, 'it.wiktionary.org', 'scrivania', 4100, '2026-09-01T00:00:00Z')").run(release);
+    db.prepare("INSERT INTO recovered_entry VALUES (1, ?, 900001, 'scrivania', 'scrivania', 'noun', 'Verbo', 'italian-page-entry/v1', 3, '')").run(release);
+    const plan = planUpgrade(readerOf(db), schema);
+    assert.deepEqual(plan.changed, ["recovered_entry"]);
+    assert.deepEqual(plan.kept.map(({ name, rows }) => [name, rows]), [["recovered_entry", 1], ["entry_definition", 0], ["entry_label", 0], ["entry_example", 0], ["corrected_definition", 0]]);
+    const before = JSON.stringify(db.prepare("SELECT name, sql FROM sqlite_schema ORDER BY name").all());
+    assert.throws(() => execute(db, plan.sql), /CHECK constraint failed/);
+    assert.equal(JSON.stringify(db.prepare("SELECT name, sql FROM sqlite_schema ORDER BY name").all()), before);
+    assert.equal((db.prepare("SELECT count(*) AS n FROM recovered_entry").get() as { n: number }).n, 1);
+    assert.deepEqual(upgradeShortfall(readerOf(db), schema, plan), ["the upgrade left recovered_entry unlike schema.sql's definition"]);
   });
 });
 
@@ -634,6 +700,32 @@ test("selection refuses unknown, invalid, same-dump and regressive source orderi
     }
     await assert.rejects(automaticPlan(readerOf(db), found, pages, { schema, appliedAt: "2026-10-01T12:00:00Z", catalog: {} }), /no dated dump facts/);
     assert.equal(dump(db), before);
+  });
+});
+
+test("update:auto's plan-only run returns its counts and leaves a local D1 byte-identical", async () => {
+  await withDesk(async ({ db, later, dir }) => {
+    const d1 = localD1(dir, db);
+    const reader = masterReaderOf(d1.target);
+    const before = d1.sha256();
+    const found = await diffAgainstMaster(reader, later);
+    const pages = { dump: "itwiktionary-20260901", pages: [], languages: LanguageHeadings.fromList(["it", "en"]) };
+    const plan = await automaticPlan(reader, found, pages, { schema: await readFile(SCHEMA, "utf8"), appliedAt: "2026-10-01T12:00:00Z", catalog: fixtureCatalog(found) });
+    assert.ok(plan);
+    const run = planOnlyRun("update:auto", plan.counts, reader);
+    assert.deepEqual(run.counts.records, { added: 2, changed: 2, removed: 0 });
+    assert.equal(run.dictionaryRecords, MASTER_LINES.length);
+    assert.equal(d1.sha256(), before);
+    assert.ok(d1.calls.every((call) => call[0] === "--json"), "every call reads");
+
+    // The counts are what the file does: each table moves by its rows written less its rows deleted.
+    const rows = () => Object.fromEntries(COUNTED_TABLES.map((table) => [table, (db.prepare(`SELECT count(*) AS n FROM ${table}`).get() as { n: number }).n]));
+    const held = rows();
+    execute(db, plan.sql);
+    const moved = rows();
+    for (const table of COUNTED_TABLES.filter((name) => name !== "release_table_rows")) {
+      assert.equal(moved[table] - held[table], (plan.counts.written[table] ?? 0) - (plan.counts.deleted[table] ?? 0), table);
+    }
   });
 });
 

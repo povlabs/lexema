@@ -173,11 +173,11 @@ async function scoreOf(db: LookupDatabase, releaseId: string, key: string): Prom
 }
 
 /**
- * Step 2: the same letters with other accents, including an unaccented
- * spelling of an accented query, or with the final apostrophe the query left
- * off (#468).
+ * The keys with the same letters as `key` once accents and a final apostrophe
+ * are set aside, as `accent_fold` and the apostrophe probe find them. A key
+ * nothing spells is kept here and dropped when its surface is read.
  */
-async function accentMatches(db: LookupDatabase, releaseId: string, key: string): Promise<Candidate[]> {
+async function sameLetterKeys(db: LookupDatabase, releaseId: string, key: string): Promise<Map<string, Found>> {
   const folded = foldKey(key);
   // `accent_fold` keys on accents alone, so the apostrophe is added here and
   // probed there, for an accented spelling, and as a key of its own.
@@ -193,11 +193,56 @@ async function accentMatches(db: LookupDatabase, releaseId: string, key: string)
   const keys = new Map<string, Found>(
     rows.map((row) => [row.surface_key, { edits: 0, languages: row.languages, richness: row.richness }]),
   );
+  if (elided !== undefined && elidedScore !== undefined) keys.set(elided, elidedScore);
+  return keys;
+}
+
+/**
+ * Step 2: the same letters with other accents, including an unaccented
+ * spelling of an accented query, or with the final apostrophe the query left
+ * off (#468).
+ */
+async function accentMatches(db: LookupDatabase, releaseId: string, key: string): Promise<Candidate[]> {
+  const keys = await sameLetterKeys(db, releaseId, key);
+  const folded = foldKey(key);
   // An unaccented spelling of an accented query is not in accent_fold; it ranks last among equals.
   if (folded !== key && !keys.has(folded)) keys.set(folded, { edits: 0, languages: 0, richness: 0 });
-  if (elided !== undefined && elidedScore !== undefined) keys.set(elided, elidedScore);
   keys.delete(key);
   return candidatesFor(db, releaseId, keys);
+}
+
+const isMark = (char: string): boolean => /\p{M}/u.test(char);
+
+/**
+ * Whether `written` is `key` with marks added and none taken away: accents,
+ * and a final apostrophe. `citta` → `città` and `po` → `po'` are; `città` →
+ * `citta` drops one, `perchè` → `perché` swaps one, and a key is not its own.
+ */
+export function addsMarksTo(key: string, written: string): boolean {
+  if (written === key) return false;
+  const typed = [...key.normalize("NFD")];
+  const chars = [...written.normalize("NFD")];
+  let at = 0;
+  for (const [i, char] of chars.entries()) {
+    if (at < typed.length && char === typed[at]) at += 1;
+    else if (!isMark(char) && !(char === "'" && i === chars.length - 1)) return false;
+  }
+  return at === typed.length;
+}
+
+/**
+ * The headwords that write a found query with an accent or a final apostrophe
+ * it lacks (#478): `citta` → `città`, `po` → `po'`, `e` → `è`. Ranked as the
+ * not-found accent offer ranks them; a spelling that drops or swaps a mark the
+ * query has is never one (`città` offers no `citta`).
+ */
+export async function writtenSpellings({ db, releaseId, query }: { db: LookupDatabase; releaseId: string; query: string }): Promise<string[]> {
+  const key = normalizeItalianExact(query);
+  if (key === "") return [];
+  const keys = await sameLetterKeys(db, releaseId, key);
+  for (const candidate of keys.keys()) if (!addsMarksTo(key, candidate)) keys.delete(candidate);
+  const candidates = await candidatesFor(db, releaseId, keys);
+  return candidates.filter((candidate) => candidate.headword).map((candidate) => candidate.surface);
 }
 
 /** Step 3: a lemma headword one edit away, through its stored deletions. */

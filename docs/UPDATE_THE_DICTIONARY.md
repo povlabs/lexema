@@ -11,20 +11,32 @@ history routinely. Investigate accuracy when a user reports a problem.
 - Keep the later archive and the Wiktionary dump its build log names. Fetch
   using [REFETCH_A_RELEASE.md](REFETCH_A_RELEASE.md), preserving headers,
   checksum and build log. A release id is a hash, not a date. A changed
-  download timestamp alone does not establish newer source content.
+  download timestamp alone does not establish newer source content. Once a
+  month, [the monthly release](DEPLOY.md#the-monthly-release) does this in CI
+  and opens a pull request with the release's facts and change declaration.
 - Ensure checksum-bound archive facts exist in
   [archiveFacts.ts](../src/source/archiveFacts.ts) and the dump's size and SHA-1
   in [KNOWN_DUMPS](../src/source/wiktionaryDump.ts). Unknown ordering, regressive
   input and distinct archives from one dump are refused, not guessed.
 - Commands default to the local D1 under `SEED_STATE` (default
   `.data/seed-state`). `SEED_REMOTE` names a remote database. They run through
-  Wrangler from the laptop, never the Worker's read-only dictionary binding
+  Wrangler, never the Worker's read-only dictionary binding
   ([ADR 0018](../.decisions/0018-previews-on-workers-builds.md)).
-- A shared `lexema-dictionary` write requires Huey's separate authorization and
-  Cloudflare sign-in, as in
-  [RUN_AN_IMPORT.md](RUN_AN_IMPORT.md#load-a-release-into-cloudflare-d1).
-  An agent tests locally, never writes that shared database. If Wrangler lists
-  multiple accounts, set `CLOUDFLARE_ACCOUNT_ID` explicitly.
+- CI writes the shared `lexema-dictionary`. The dictionary deploy workflow
+  applies a change after a reviewed merge to `main` declares it, with the one
+  D1 Edit Cloudflare token ADR 0018 allows. It fetches the archive and dump from
+  `hueypov/lexema-data` with its own read-only token; only the monthly release
+  job holds the token that writes that repository. Its steps, secrets and
+  settings are [the dictionary deploy](DEPLOY.md#the-dictionary-deploy).
+- A change and its declaration land in one pull request. The
+  [pull request plan check](DEPLOY.md#the-pull-request-plan-check) plans the
+  declaration with the pull request's own code and a D1 read-only token, the
+  other Cloudflare key ADR 0018 allows, and gives or checks its `expected`
+  counts; no one starts a plan by hand. It does not plan `update:auto` or
+  `hide:records`, which read files from `hueypov/lexema-data`: the monthly
+  release gives an `update:auto` its counts.
+- Agents never hold the Cloudflare key, run the deploy workflow, or write the
+  shared dictionary. An agent runs these commands against the local D1 only.
 
 ## Once: a dictionary seeded from an older schema
 
@@ -36,19 +48,20 @@ pnpm run update:upgrade
 ```
 
 This adds the update tables and views, and the empty page-entry tables (#403),
-without writing records. It names what it adds; running it again changes
-nothing. The first apply also upgrades, but lookups need the views before any
+without writing records. It also rebuilds the page-entry tables, rows kept,
+when one is stored with a definition other than schema.sql's
+([DEPLOY.md](DEPLOY.md#the-dictionary-deploy), step 3). It names what it adds
+or rebuilds for; running it again changes nothing. The first apply also upgrades, but lookups need the views before any
 change is applied. Lookups do not need the page-entry tables
 ([a dictionary without them](PAGE_ENTRIES.md#a-dictionary-without-the-tables)).
+`pnpm run load:page-entries` fills them; its deploy order, restore route and
+cache movement are in
+[load them into a seeded dictionary](PAGE_ENTRIES.md#load-them-into-a-seeded-dictionary).
 
 ## 1. Keep a restore point
 
-Copy the local `SEED_STATE` directory. For an authorized shared write, save the
-bookmark returned by:
-
-```sh
-pnpm --dir web exec wrangler d1 time-travel info lexema-dictionary
-```
+Copy the local `SEED_STATE` directory. For the shared dictionary, the deploy
+workflow records the D1 Time Travel bookmark in its run before it writes.
 
 ## 2. Run the automatic operation
 
@@ -56,8 +69,8 @@ pnpm --dir web exec wrangler d1 time-travel info lexema-dictionary
 pnpm run update:auto <later.jsonl.gz> --pages <its-dump.xml.bz2>
 ```
 
-For Huey's authorized shared run, prefix with `SEED_REMOTE=lexema-dictionary`.
-No person supplies word ids or inspects old/new reports. The command compares
+Only the deploy workflow runs it with `SEED_REMOTE=lexema-dictionary`. No
+person supplies word ids or inspects old/new reports. The command compares
 against currently served records, verifies source ordering and the language
 dump, selects with `feed-selection/v5`, and plans through the existing importer.
 Ambiguous groups, hidden/non-Italian exclusions, new-word form-of checks and
@@ -99,8 +112,10 @@ execution receipt, not a newly added review product.
 
 A refusal writes nothing. If execution fails, D1 rolls the whole file back.
 Fix the mechanical cause and invoke the operation again. A read-back failure is
-different: the apply ran but does not match its plan. Restore the bookmark or
-local directory copy and file an issue with the output and SQL file:
+different: the apply ran but does not match its plan. Locally, restore the
+directory copy and file an issue with the output and SQL file. On the shared
+dictionary, the deploy run goes red and names its bookmark and the restore
+command; it never restores by itself. Huey runs the restore:
 
 ```sh
 pnpm --dir web exec wrangler d1 time-travel restore lexema-dictionary --bookmark=<bookmark>

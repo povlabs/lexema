@@ -44,9 +44,13 @@ This record amends ADR 0012 in part: its rule that source data stays as imported
 - The dictionary reads more evenly, and a page shows one spelling where the source used two.
 - The structured rows no longer always match the source text word for word. The raw record is where the original lives, so the difference is always provable, and [ADR 0016](0016-page-shows-no-origin-marks.md) still holds: the page shows no mark for a rewritten value.
 - The attribution page's statement that Lexema restructured the text ([ADR 0009](0009-two-licences-and-a-source-link.md)) already covers these rewrites; CC BY-SA allows adaptation.
-- The one-off update of the shared `lexema-dictionary` runs from Huey's laptop, like the upload in [ADR 0018](0018-previews-on-workers-builds.md). It does not go through the Worker's dictionary binding, which stays read-only.
+- CI writes the one-off update to the shared `lexema-dictionary`: the dictionary deploy workflow of [ADR 0018](0018-previews-on-workers-builds.md) applies it through Wrangler after the merge that declares it. Agents never hold the Cloudflare key, run that workflow or write the shared dictionary. The update does not go through the Worker's dictionary binding, which stays read-only.
 - Each new rewrite costs an issue, a ruling and a test. That is on purpose, so the list stays short.
 
 ## Records
 
 Coins **source text normalization**, added to [.glossary/TERMS.md](../.glossary/TERMS.md) in the same change, kept apart from the Italian search normalization in `src/italian/normalize.ts`.
+
+## Amendments
+
+- **#454 — CI writes the shared dictionary (2026-10-03).** Following [ADR 0018](0018-previews-on-workers-builds.md)'s amendment of the same day, which transcribes Huey's rulings on [#443](https://github.com/hueypov/lexema/issues/443) and [#446](https://github.com/hueypov/lexema/issues/446), the one-off update of the shared dictionary is written by the dictionary deploy workflow, not from Huey's laptop. Agents still never hold the key or write the shared dictionary.

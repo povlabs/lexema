@@ -25,6 +25,10 @@ import { suggest } from "../src/lookup/suggest.js";
 import { servedVersion, versionToken } from "../src/lookup/served.js";
 import { RAW_PAGE_WIKI, rawPageSource, type RawPage } from "../src/source/rawPage.js";
 import type { MasterReader } from "../src/update/master.js";
+import { COUNTED_TABLES } from "../src/update/planCounts.js";
+import { planOnlyRun } from "../src/update/planOnly.js";
+import { masterReaderOf } from "../src/update/updateCli.js";
+import { localD1 } from "./localD1.js";
 
 const RELEASE = "it-hidden-test";
 const SCHEMA = "src/db/schema.sql";
@@ -342,6 +346,36 @@ test("the update rebuilds a hidden_record table written before form-of-foreign-l
     assert.equal(planHide(reader, found, schema).sql, "");
   } finally {
     before.close();
+  }
+});
+
+test("hide:records' plan-only run counts each hide as a removal and leaves a local D1 byte-identical", async () => {
+  const { db } = await seed("plan-only", false);
+  const d1Dir = await mkdtemp(join(dir, "plan-only-"));
+  try {
+    const d1 = localD1(d1Dir, db);
+    const reader = masterReaderOf(d1.target);
+    const before = d1.sha256();
+    const plan = planHide(reader, await foundInArchive(), await readFile(SCHEMA, "utf8"));
+    const run = planOnlyRun("hide:records", plan.counts, reader);
+    // A seed without the pages hides only what form-of-foreign-lemma/v1 finds; the rest are this plan's.
+    assert.equal(plan.hides.length + plan.alreadyHidden, EXPECTED_HIDDEN().length);
+    assert.ok(plan.hides.length > 0);
+    assert.deepEqual(run.counts.records, { added: 0, changed: 0, removed: plan.hides.length });
+    assert.equal(run.counts.written.hidden_record, plan.hides.length);
+    assert.equal(d1.sha256(), before);
+    assert.ok(d1.calls.every((call) => call[0] === "--json"), "every call reads");
+
+    // The counts are what the file does: each table moves by its rows written less its rows deleted.
+    const rows = () => Object.fromEntries(COUNTED_TABLES.map((table) => [table, (db.prepare(`SELECT count(*) AS n FROM ${table}`).get() as { n: number }).n]));
+    const held = rows();
+    db.exec(plan.sql);
+    const moved = rows();
+    for (const table of COUNTED_TABLES.filter((name) => name !== "hide_version")) {
+      assert.equal(moved[table] - held[table], (plan.counts.written[table] ?? 0) - (plan.counts.deleted[table] ?? 0), table);
+    }
+  } finally {
+    db.close();
   }
 });
 

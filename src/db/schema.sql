@@ -702,8 +702,10 @@ CREATE TABLE corrected_claim (
   value         TEXT    NOT NULL,
   -- The list entry it was written from: release id and archive line, `it-0c432803:449969`.
   correction_id TEXT    NOT NULL,
-  -- The first revision the entry cites, as a permanent link.
-  evidence_url  TEXT    NOT NULL CHECK (evidence_url GLOB 'https://*.wiktionary.org/w/index.php?title=*&oldid=*'),
+  -- The first revision the entry cites, as a permanent link. Split into two
+  -- GLOBs because D1 refuses a pattern over 50 bytes as too complex (#489).
+  evidence_url  TEXT    NOT NULL CHECK (evidence_url GLOB 'https://*'
+                                        AND evidence_url GLOB '*.wiktionary.org/w/index.php?title=*&oldid=*'),
   PRIMARY KEY (record_id, dimension),
   FOREIGN KEY (dimension, value) REFERENCES grammar_value(dimension, value),
   FOREIGN KEY (record_id, release_id)
@@ -906,5 +908,26 @@ CREATE TABLE entry_example (
   wikitext TEXT NOT NULL,
   text TEXT NOT NULL,
   PRIMARY KEY (entry_id, definition_index, example_index),
+  FOREIGN KEY (entry_id, definition_index) REFERENCES entry_definition(entry_id, definition_index)
+) STRICT;
+
+-- A curated correction of one page-only entry's definition (#450), from the
+-- committed list (src/italian/curatedCorrections.ts). It is written only to the
+-- entry recovered from the page revision the list names, where the definition
+-- at its place is the line and text the list quotes. A layer beside the entry,
+-- never an edit of it: entry_definition keeps the page's own words, and a
+-- lookup reads `text` in their place. Absent on a master seeded before it until
+-- `correct:records` writes it.
+CREATE TABLE corrected_definition (
+  entry_id         INTEGER NOT NULL,
+  definition_index INTEGER NOT NULL,
+  text             TEXT    NOT NULL CHECK (text <> ''),
+  -- The list entry it was written from: page revision and place, `page:3906191:0`.
+  correction_id    TEXT    NOT NULL,
+  -- The first revision the entry cites, as a permanent link. Split as
+  -- corrected_claim's is, for D1's 50-byte pattern limit (#489).
+  evidence_url     TEXT    NOT NULL CHECK (evidence_url GLOB 'https://*'
+                                           AND evidence_url GLOB '*.wiktionary.org/w/index.php?title=*&oldid=*'),
+  PRIMARY KEY (entry_id, definition_index),
   FOREIGN KEY (entry_id, definition_index) REFERENCES entry_definition(entry_id, definition_index)
 ) STRICT;

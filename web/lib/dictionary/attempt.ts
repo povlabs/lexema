@@ -21,13 +21,18 @@ import type { DeclaredLemmaPage } from "./declaredLemmaPage.ts";
  * and carries the page it shows: a declared lemma whose forms take no cell is
  * a `not-found` instead, so a page with no table is not a value this holds.
  *
+ * A word found, by the exact lookup or as a declared lemma, carries the
+ * headwords that write the query with an accent or a final apostrophe it
+ * lacks (#478): `citta` finds `citto`'s form and carries `città`. The page
+ * offers the first; an empty list offers nothing.
+ *
  * The failure is a value rather than a thrown error so the page has to render
  * it. It carries no detail on purpose: the reason is a database message meant
  * for whoever runs the Worker, and it goes to the log, not to the reader.
  */
 export type Attempt =
-  | FoundResult
-  | (DeclaredLemmaResult & { page: DeclaredLemmaPage })
+  | (FoundResult & { written: string[] })
+  | (DeclaredLemmaResult & { page: DeclaredLemmaPage; written: string[] })
   | RejectedResult
   | (NotFoundResult & { nearby: Nearby })
   | { outcome: "failed" };

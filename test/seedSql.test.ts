@@ -245,7 +245,8 @@ test("the fifty-word dev seed is one part with the same rows", async () => {
       // Every fixture page whose title the fifty-word archive has no record for
       // is a page-only candidate (ADR 0028): 243 of them recover.
       recovered_entry: 512, entry_definition: 829, entry_label: 454, entry_example: 154,
-      release_table_rows: 20,
+      corrected_definition: 0,
+      release_table_rows: 21,
     });
     // Seven of the fixture's records have a raw page under fixtures/; `casa` is
     // the one whose page states definitions the record does not carry.

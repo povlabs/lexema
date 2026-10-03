@@ -27,14 +27,16 @@ import { DatabaseSync } from "node:sqlite";
 import { gzipSync } from "node:zlib";
 import { renderToStaticMarkup } from "react-dom/server";
 import { seedSql } from "../../src/import/seedSql.js";
-import type { CuratedCorrection } from "../../src/italian/curatedCorrections.js";
+import { CURATED_CORRECTIONS, definitionCorrections, type CuratedCorrection } from "../../src/italian/curatedCorrections.js";
 import { atFixtureLines, correctionFixtureLines } from "../../test/correctionFixture.js";
+import { DECLARED_CORRECTION_LINES, declaredCorrections } from "../../test/declaredCorrectionFixture.js";
 import { loadFixturePages, rawPageSource, type RawPageSource } from "../../src/source/rawPage.js";
 import { PUBLISHED_ARCHIVE_SHA256, sourceOf, type ArchiveFacts, type ReleaseSource } from "../../src/source/archiveFacts.js";
 import { fromNodeSqlite } from "../../src/lookup/database.js";
 import type { Reading, SourceRef } from "../../src/lookup/types.js";
 import type { Attempt } from "@/lib/dictionary/attempt.ts";
 import { searchAttempt } from "@/lib/dictionary/searchAttempt.ts";
+import { declaredGridOf, NUMBERS } from "@/lib/dictionary/genderGrid.ts";
 import { Attribution } from "@/components/dictionary/Attribution";
 import { FirstLoad, Limited, Outcome, SearchPage, TRY_WORDS } from "@/components/dictionary/SearchPage";
 import { SiteFooter } from "@/components/dictionary/SiteFooter";
@@ -86,6 +88,8 @@ import {
   WORD_HEADING,
   WORD_LINK,
   WORD_NOTE,
+  WRITTEN_OFFER_LEAD,
+  WRITTEN_OFFER_LINK,
 } from "@/components/shared/styles.ts";
 import { FIXTURE_LINES } from "./fixture.js";
 
@@ -1019,6 +1023,7 @@ test("no example becomes unreachable: nested items', hidden furniture's and glos
         const first = readings[0].senses[0];
         first.recoveredItems.push({
           text: "una voce annidata della prima definizione",
+          correction: null,
           labels: [],
           route: "lead-in-item",
           ref: { wiki: "it.wiktionary.org", title: "x", revisionId: 1, line: 9000 },
@@ -1447,6 +1452,47 @@ test("a search that finds nothing offers, in order: an accent, one edit, words t
     assert.match(none, /No entry for “xqzt”/);
     assert.match(none, /Check the spelling, or search for the word’s base form: the infinitive of a verb, the singular of a noun\./);
     assert.doesNotMatch(none, /Did you mean|Suggestions/);
+  });
+});
+
+// Board 32 (#478): a word found whose query a headword also writes with an
+// accent or a final apostrophe, over real archive lines (e and è, Po and po',
+// abbandono and abbandonò, città).
+test("a found word that a headword also writes with a mark offers it in one line under the bar, above the result", async () => {
+  const lines = (await readFile(join(REPO, "fixtures/bare-spellings.jsonl"), "utf8")).trim().split("\n");
+  await withLines(lines, async ({ db }) => {
+    // React writes an apostrophe as `&#x27;`, in text and in attributes.
+    const html = (text: string) => esc(text).replaceAll("'", "&#x27;");
+    const line = (word: string) =>
+      new RegExp(
+        `<p class="${esc(WRITTEN_OFFER_LEAD)}">Did you mean <a class="${esc(WRITTEN_OFFER_LINK)}" href="/\\?q=${html(encodeURIComponent(word))}" lang="it">${html(word)}</a>\\?</p>`,
+      );
+    for (const [query, word] of [
+      ["po", "po'"],
+      ["e", "è"],
+      ["abbandono", "abbandonò"],
+    ] as const) {
+      const page = await render(db, query);
+      const offer = page.search(line(word));
+      assert.ok(offer >= 0, `${query} offers ${word}`);
+      assert.ok(offer > page.indexOf("<form"), `${query}: the line sits under the search bar`);
+      assert.ok(offer < page.indexOf(`<h1 class="${WORD_HEADING}"`), `${query}: the line sits above the result`);
+      assert.equal(page.match(/Did you mean/g)?.length, 1, `${query}: one line`);
+      // The result below is the one the search finds without the line, but
+      // for the ids React generates from where an element sits.
+      const answer = await attempt(db, query);
+      assert.ok(answer.outcome === "found");
+      const ids = (html: string) => html.replaceAll(/_R_[0-9a-z]+_/g, "_R_");
+      const without = renderToStaticMarkup(
+        <SearchPage raw={query} version={VERSION}>
+          <Outcome raw={query} attempt={{ ...answer, written: [] }} />
+        </SearchPage>,
+      );
+      assert.equal(ids(page.replace(line(word), "")), ids(without));
+    }
+    for (const query of ["città", "abbandonò", "dalla"]) {
+      assert.doesNotMatch(await render(db, query), /Did you mean/, `${query} offers nothing`);
+    }
   });
 });
 
@@ -2115,6 +2161,52 @@ test("a declared noun's grid has the lemma in singolare and its plural where the
   });
 });
 
+// Made-up declared lemmas whose plural records a test-only curated correction
+// sets right (#470): test/declaredCorrectionFixture.ts.
+
+const withDeclaredCorrections = (corrected: boolean, run: (f: Fixture) => Promise<void>) =>
+  withLines(DECLARED_CORRECTION_LINES, run, undefined, undefined, corrected ? declaredCorrections(DECLARED_CORRECTION_LINES, RELEASE) : []);
+
+/** `declaredGridOf` over a declared lemma's one reading: each spelling as `gender number: surface`. */
+async function declaredCellsOf(db: DatabaseSync, word: string): Promise<string[]> {
+  const answer = await attempt(db, word);
+  assert.ok(answer.outcome === "declared-lemma", `${word}: ${answer.outcome}`);
+  const [reading] = answer.readings;
+  assert.ok(reading.pos !== "verb");
+  return (declaredGridOf(reading.word, reading.forms)?.rows ?? []).flatMap((row) =>
+    row.cells.flatMap((cell, n) => cell.spellings.map((spelling) => `${row.gender} ${NUMBERS[n]}: ${spelling.surface}`)),
+  );
+}
+
+test("a declared lemma's grid places a corrected plural where its correction says, and says nothing of the correction (#470)", async () => {
+  await withDeclaredCorrections(false, async ({ db }) => {
+    // As the source states them: both tagged feminine plural.
+    assert.deepEqual(await declaredCellsOf(db, "gattolino"), ["feminine singular: gattolino", "feminine plural: gattolini"]);
+    assert.deepEqual(await declaredCellsOf(db, "volpatore"), ["feminine singular: volpatore", "feminine plural: volpatrice"]);
+  });
+  await withDeclaredCorrections(true, async ({ db }) => {
+    // A gender correction moves the plural, and the lemma with it, to maschile.
+    assert.deepEqual(await declaredCellsOf(db, "gattolino"), ["masculine singular: gattolino", "masculine plural: gattolini"]);
+    // A number correction to singular puts the form in singolare, and it places no lemma.
+    assert.deepEqual(await declaredCellsOf(db, "volpatore"), ["feminine singular: volpatrice"]);
+
+    const gattolino = await render(db, "gattolino");
+    assert.deepEqual(gridRows(gattolino), [
+      ["", "singolare", "plurale"],
+      ["maschile", "gattolinoil gattolino·un gattolino", "gattolinii gattolini·dei gattolini"],
+    ]);
+    const volpatore = await render(db, "volpatore");
+    assert.deepEqual(gridRows(volpatore), [
+      ["", "singolare", "plurale"],
+      ["femminile", "volpatricela volpatrice·una volpatrice", "—"],
+    ]);
+    // The page shows the corrected fact as data, and nothing about the correction (ADR 0016).
+    for (const page of [gattolino, volpatore]) {
+      assert.doesNotMatch(page, /wiktionary\.org\/w\/index\.php|oldid|it-page-test:\d|corrett|corrected|correction/i);
+    }
+  });
+});
+
 test("each form a declared lemma shows names the record it came from", async () => {
   await withDeclared(async ({ db }) => {
     const verbalizzare = await render(db, "verbalizzare");
@@ -2201,4 +2293,47 @@ test("a page-only noun no form names renders like any other entry, with no note 
     assert.doesNotMatch(textOf(html), /recovered|derived|page-only|italian-page-entry|Not from the source/i);
     assert.equal(occurrencesOf(textOf(html), "Source"), 1);
   }, rawPageSource([mastoide]));
+});
+
+test("a curated definition correction shows in place of the page's wrong words, with no note, and leaves the rest as it was", async () => {
+  // Verbatim archive lines 119046 `tremo` and 283047 `grufolando`, and the
+  // dump's revisions 4002473 and 3906191 of their lemmas (#450).
+  const lines = (await readFile(join(REPO, "fixtures/definition-corrections.jsonl"), "utf8")).trimEnd().split("\n");
+  const pages = await loadFixturePages(join(REPO, "fixtures"));
+  const [grufolare, tremare] = definitionCorrections(CURATED_CORRECTIONS);
+  const rendered = async (corrections: readonly CuratedCorrection[] | undefined): Promise<Record<string, string>> => {
+    const html: Record<string, string> = {};
+    await withLines(lines, async ({ db }) => {
+      for (const word of ["grufolare", "tremare"]) html[word] = await render(db, word);
+      const answer = await attempt(db, "tremare");
+      assert.ok(answer.outcome === "found");
+      const { candidatesOf, resultJson } = await import("@/worker/api/lookupAnswer.ts");
+      const { readLookupFilters } = await import("@/worker/api/lookupFilters.ts");
+      const filters = readLookupFilters(new URLSearchParams());
+      assert.ok(filters.ok);
+      html.api = JSON.stringify(resultJson((await candidatesOf(answer, async () => undefined))[0], filters.filters).definitions);
+    }, pages, undefined, corrections);
+    return html;
+  };
+  // The committed list, as every seed writes it; and none, as the page reads without it.
+  const corrected = await rendered(undefined);
+  const source = await rendered([]);
+
+  assert.match(textOf(corrected.grufolare), exact(grufolare.text));
+  assert.doesNotMatch(textOf(corrected.grufolare), /verso prodotto dai suini/);
+  assert.match(textOf(source.grufolare), /verso prodotto dai suini/);
+  assert.match(textOf(corrected.tremare), exact(tremare.text));
+  assert.doesNotMatch(textOf(corrected.tremare), /convulso dei muscoli/);
+  // Nothing on the page says a definition was corrected (ADR 0016).
+  for (const html of [corrected.grufolare, corrected.tremare]) assert.doesNotMatch(textOf(html), /correct|corrett|evidence|Wiktionary revision|oldid/i);
+  // Only the corrected words differ: tremare's figurative sense 2, its label, and every other byte render exactly as before.
+  assert.match(textOf(corrected.tremare), /figurato/);
+  assert.match(textOf(corrected.tremare), /essere agitato da scosse continue/);
+  assert.equal(corrected.tremare.replace(tremare.text, tremare.replaces.text), source.tremare);
+  assert.equal(corrected.grufolare.replace(grufolare.text, grufolare.replaces.text), source.grufolare);
+  // The API answers the same definitions the page shows.
+  assert.deepEqual(JSON.parse(corrected.api).map((definition: { definition: string; labels: string[] }) => [definition.definition, definition.labels]), [
+    [tremare.text, []],
+    ["essere agitato da scosse continue", ["figurato"]],
+  ]);
 });

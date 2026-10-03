@@ -46,6 +46,23 @@ revision 3644006) is a `{{Trasfen}}` copy of English Wiktionary.
 archive line 93815 (`lunga`, pointing at `lungo`), so a seed test reaches a page
 with two part-of-speech sections.
 
+## Curated definition corrections (#450)
+
+[definition-corrections.jsonl](definition-corrections.jsonl) copies whole
+physical archive lines 119046 (`tremo`, pointing at `tremare`) and 283047
+(`grufolando`, pointing at `grufolare`), read on 2026-10-03. Their SHA-256
+digests are `8d4d55b99a0a3e68e23b8257863451f616a15d0c01c41c245789cecfb7988297`
+and `951b7232d3573b0e0a700f23c8440af8d0ea4b1e6e8e2cc6c21753222267f0f1`.
+No lemma record is made for either target.
+
+`upstream-pages/tremare.wikitext` (revision 4002473) and
+`upstream-pages/grufolare.wikitext` (revision 3906191) are the dump's pages,
+XML-decoded, without edits. Each equals its revision's
+`action=raw&oldid=…` wikitext on it.wiktionary.org, read on 2026-10-03.
+`grufolare`'s line 4 states *grugnire*'s sense, and `tremare`'s line 4 has no
+verb; the committed list corrects both, and the tests check it against these
+bytes.
+
 ## Test authoring contracts
 
 - The parser test owns admission, ordered meanings/labels/examples and physical
