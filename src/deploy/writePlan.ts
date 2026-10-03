@@ -25,7 +25,7 @@ import { planOnlyRun } from "../update/planOnly.js";
 import { type SourceCatalogs, withFeedDump } from "../update/select.js";
 import { DataRefused, type FetchedFiles, sha256Of } from "./dataFiles.js";
 
-/** The schema and the language headings the plans read, from the repository root. */
+/** The schema the upgrade reads and the language headings the plans read, from the repository root. */
 export const SCHEMA = resolve("src/db/schema.sql");
 export const LANGUAGES = resolve("fixtures/section-language/regressions.json");
 
@@ -84,11 +84,11 @@ export function readyChange(change: DeclaredChange, files: FetchedFiles | null):
  */
 export async function planWrite(ready: ReadyChange, reader: MasterReader, appliedAt: string, sources: PlanSources = {}): Promise<WritePlan> {
   const { catalog = ARCHIVE_FACTS, dumps = KNOWN_DUMPS, corrections = CURATED_CORRECTIONS } = sources;
-  const schema = await readFile(SCHEMA, "utf8");
   if (!("files" in ready)) {
     const { change } = ready;
     switch (change.command) {
       case "update:upgrade": {
+        const schema = await readFile(SCHEMA, "utf8");
         const upgrade = planUpgrade(reader, schema);
         return {
           run: planOnlyRun(change.command, PlanCounts.NONE, reader),
@@ -108,7 +108,7 @@ export async function planWrite(ready: ReadyChange, reader: MasterReader, applie
         };
       }
       case "correct:records": {
-        const plan = planCorrections(reader, corrections, schema);
+        const plan = planCorrections(reader, corrections);
         return {
           run: planOnlyRun(change.command, plan.counts, reader),
           sql: plan.sql,
@@ -124,7 +124,7 @@ export async function planWrite(ready: ReadyChange, reader: MasterReader, applie
     if (found.feed.releaseId !== change.inputs.feedRelease) {
       throw new DataRefused([`${files.archive} is release ${found.feed.releaseId}; ${change.file} declares ${change.inputs.feedRelease}`]);
     }
-    const plan = await withFeedDump(found.feed, files.dump, LANGUAGES, (pages) => automaticPlan(reader, found, pages, { schema, appliedAt, catalog }), { catalog, dumps });
+    const plan = await withFeedDump(found.feed, files.dump, LANGUAGES, (pages) => automaticPlan(reader, found, pages, { appliedAt, catalog }), { catalog, dumps });
     return {
       run: planOnlyRun(change.command, plan?.counts ?? PlanCounts.NONE, reader),
       sql: plan?.sql ?? "",
@@ -172,7 +172,7 @@ export async function planWrite(ready: ReadyChange, reader: MasterReader, applie
   } finally {
     await dump.close();
   }
-  const plan = planHide(reader, found, schema);
+  const plan = planHide(reader, found);
   return {
     run: planOnlyRun(change.command, plan.counts, reader),
     sql: plan.sql,

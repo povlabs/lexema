@@ -11,6 +11,7 @@ import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import test from "node:test";
+import { gzipSync } from "node:zlib";
 import { deployLog, main as deployMain } from "../src/deploy/deployCli.js";
 import { type DataFetcher, DataRefused, fetchVerified, filesFor, lexemaDataFetcher } from "../src/deploy/dataFiles.js";
 import { DEPLOY_STEPS, deployDictionary, deploySummary, type DeployDeps, type DeployStep, planOnly, restoreCommand } from "../src/deploy/dictionaryDeploy.js";
@@ -72,9 +73,12 @@ function beforeTheRules(db: DatabaseSync): void {
               VALUES (?, 'form', 0, '/forms/0/tags/0', 'stated', 'number', 'plural', 'plural')`).run(pittore);
 }
 
+/** The archive a world's dictionary is seeded from, gzipped as a released archive is. */
+const archiveOf = (dir: string): string => join(dir, "fixture.jsonl.gz");
+
 async function seeded(dir: string, lines: readonly string[]): Promise<DatabaseSync> {
-  const input = join(dir, "fixture.jsonl");
-  await writeFile(input, `${lines.join("\n")}\n`);
+  const input = archiveOf(dir);
+  await writeFile(input, gzipSync(`${lines.join("\n")}\n`));
   const report = await seedSql({
     input, outputDir: join(dir, "sql"), schema: resolve("src/db/schema.sql"), releaseId: RELEASE,
     requiredWords: [], validateFixtureClosure: false,
@@ -351,7 +355,7 @@ test("a dictionary without the page-entry tables gets the upgrade as its own bat
     const [ddlSql, dataSql] = [commandSql(ddl), commandSql(data)];
     assert.match(ddlSql, /CREATE TABLE IF NOT EXISTS recovered_entry\b/);
     assert.match(ddlSql, /CREATE TABLE IF NOT EXISTS corrected_definition\b/);
-    assert.doesNotMatch(ddlSql, /\b(INSERT|UPDATE|DELETE)\b/);
+    assert.doesNotMatch(ddlSql, /^\s*(INSERT|UPDATE|DELETE)\b/m);
     assert.doesNotMatch(dataSql, /\bCREATE\b/);
     if (outcome.kind === "green") assert.deepEqual(outcome.upgraded, { added: [...PAGE_ENTRY_UPGRADE_TABLES, ...PAGE_ENTRY_INDEXES], rebuilt: [] });
     assert.match(deploySummary(outcome, "lexema-dictionary"), /The upgrade ran first and added `recovered_entry`/);
@@ -418,7 +422,7 @@ test("a dictionary holding an older definition of a page-entry table gets schema
     assert.equal(outcome.kind, "green", deploySummary(outcome, "lexema-dictionary"));
     assert.deepEqual(deps.steps, [...DEPLOY_STEPS]);
     if (outcome.kind === "green") assert.deepEqual(outcome.upgraded, { added: [], rebuilt: ["recovered_entry", "corrected_definition"] });
-    assert.match(deploySummary(outcome, "lexema-dictionary"), /rebuilt the page-entry tables, keeping their rows, for the changed definition of `recovered_entry`, `corrected_definition`/);
+    assert.match(deploySummary(outcome, "lexema-dictionary"), /rebuilt tables, keeping their rows, for the changed definition of `recovered_entry`, `corrected_definition`/);
     const [ddl, data, ...rest] = writes(world.d1);
     assert.deepEqual(rest, []);
     assert.match(commandSql(ddl), /CREATE TABLE upgrade_kept_recovered_entry AS SELECT \* FROM recovered_entry;/);
@@ -547,6 +551,71 @@ test("a correct:records declaration whose counts match is applied with no fetche
     }
     assert.equal(world.production(), head);
     if (outcome.kind === "green") assert.deepEqual(outcome.changes.map(({ command, ran, counts: planned }) => [command, ran, planned.toJSON()]), [["correct:records", true, counts]]);
+  }, lines);
+});
+
+test("correct:records and hide:records declarations on a dictionary without their tables get them from the upgrade batch, and their data batches hold no DDL (#509)", async () => {
+  const foreignLemma = (await readFile("fixtures/form-of-foreign-lemma/archive-lines.jsonl", "utf8")).trimEnd().split("\n");
+  const lines = [...LINES, ...FILLERS, ...(await correctionFixtureLines()), ...foreignLemma];
+  const corrections = atFixtureLines(lines, RELEASE).slice(0, 2);
+  const created = ["correction_version", "corrected_claim", "hide_version", "hidden_record"];
+
+  await withWorld(async (world) => {
+    // A dictionary seeded before #382 and #420: none of the four tables.
+    const db = world.d1.open();
+    try {
+      for (const table of created) db.exec(`DROP TABLE ${table}`);
+    } finally {
+      db.close();
+    }
+    // The master's archive and an empty dump, as hueypov/lexema-data would serve them.
+    const archive = await readFile(archiveOf(world.dir));
+    const sha256 = createHash("sha256").update(archive).digest("hex");
+    const releaseId = `it-${sha256.slice(0, 8)}`;
+    const dumpBytes = Buffer.from("<mediawiki>\n</mediawiki>\n");
+    const source = join(world.dir, "lexema-data", "source");
+    await mkdir(source, { recursive: true });
+    await writeFile(join(source, `${releaseId}.jsonl.gz`), archive);
+    await writeFile(join(source, "itwiktionary-20991001-pages-articles.xml"), dumpBytes);
+    const sources = {
+      catalog: { [sha256]: { sourceUrl: "https://example.invalid/fixture.jsonl.gz", retrievedAt: "2099-10-02T00:00:00Z", dump: { id: "itwiktionary-20991001", basis: "recorded" }, evidence: [] } } as unknown as Record<string, never>,
+      dumps: { "itwiktionary-20991001": { file: "itwiktionary-20991001-pages-articles.xml", bytes: dumpBytes.length, sha1: createHash("sha1").update(dumpBytes).digest("hex") } },
+      fetcher: (async (path, to) => {
+        await mkdir(dirname(to), { recursive: true });
+        await copyFile(join(world.dir, "lexema-data", path), to);
+      }) satisfies DataFetcher,
+      corrections,
+    };
+    const CORRECT = { command: "correct:records" };
+    const HIDE = { command: "hide:records", inputs: { archive: releaseId, rules: ["section-language/v1", "form-of-foreign-lemma/v1"] } };
+    // Planned before the upgrade, as the pull request plan check plans them against the live dictionary.
+    const planned = async (change: object) =>
+      (await planOnly(parseChange("test", JSON.stringify(change)), { reader: masterReaderOf(world.d1.target), workDir: join(world.dir, "plan"), ...sources })).counts.toJSON();
+    const correctCounts = await planned(CORRECT);
+    const hideCounts = await planned(HIDE);
+    assert.equal(correctCounts.records.changed, 2);
+    assert.equal(hideCounts.records.removed, 1, "zapateros, which form-of-foreign-lemma/v1 hides");
+    assert.deepEqual(writes(world.d1), []);
+
+    const head = await world.commit({
+      "dictionary-changes/2026-10-a-correct.json": declaration(CORRECT, correctCounts),
+      "dictionary-changes/2026-10-b-hide.json": declaration(HIDE, hideCounts),
+    });
+    const deps = world.deps(head, sources);
+    const outcome = await deployDictionary(deps);
+
+    assert.equal(outcome.kind, "green", deploySummary(outcome, "lexema-dictionary"));
+    if (outcome.kind === "green") {
+      assert.deepEqual(outcome.upgraded, { added: created, rebuilt: [] });
+      assert.deepEqual(outcome.changes.map(({ command, ran }) => [command, ran]), [["correct:records", true], ["hide:records", true]]);
+    }
+    const [ddl, ...data] = writes(world.d1).map(commandSql);
+    for (const table of created) assert.match(ddl, new RegExp(`CREATE TABLE IF NOT EXISTS ${table}\\b`), table);
+    assert.doesNotMatch(ddl, /^\s*(INSERT|UPDATE|DELETE)\b/m);
+    assert.equal(data.length, 2);
+    assert.match(data[0], /INSERT INTO corrected_claim/);
+    assert.match(data[1], /INSERT INTO hidden_record/);
+    for (const sql of data) assert.doesNotMatch(sql, /\b(CREATE|DROP|ALTER)\b/);
   }, lines);
 });
 

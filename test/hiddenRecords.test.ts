@@ -14,7 +14,7 @@ import { DatabaseSync } from "node:sqlite";
 import { after, before, test } from "node:test";
 import { gzipSync } from "node:zlib";
 import { findForeignRecords, findHiddenRecords, readRulePass } from "../src/import/hiddenLayer.js";
-import { planHide, unhidden } from "../src/import/hideRecords.js";
+import { missingForHide, planHide, unhidden } from "../src/import/hideRecords.js";
 import { seedSql, type SeedSqlReport } from "../src/import/seedSql.js";
 import { readLanguageHeadings } from "../src/italian/sectionLanguage.js";
 import { fromNodeSqlite } from "../src/lookup/database.js";
@@ -24,7 +24,9 @@ import { randomHeadword } from "../src/lookup/random.js";
 import { suggest } from "../src/lookup/suggest.js";
 import { servedVersion, versionToken } from "../src/lookup/served.js";
 import { RAW_PAGE_WIKI, rawPageSource, type RawPage } from "../src/source/rawPage.js";
-import type { MasterReader } from "../src/update/master.js";
+import { changedUpgrade, planUpgrade, upgradeShortfall, type MasterReader } from "../src/update/master.js";
+import { createStatement, masterUpgradeSql } from "../src/update/masterUpgrade.js";
+import { overlongPatterns } from "../src/db/d1PatternLimit.js";
 import { COUNTED_TABLES } from "../src/update/planCounts.js";
 import { planOnlyRun } from "../src/update/planOnly.js";
 import { masterReaderOf } from "../src/update/updateCli.js";
@@ -282,9 +284,15 @@ test("the one-off update brings a dictionary seeded before both rules to what a 
     const snapshot = () => preservedTables.map((table) => before.prepare(`SELECT * FROM ${table} ORDER BY rowid`).all());
     const preserved = snapshot();
     assert.ok(preserved.every((rows) => rows.length > 0));
-    const plan = planHide(reader, found, schema);
-    assert.deepEqual({ hides: plan.hides.length, table: plan.table }, { hides: 4, table: "create" });
+    const plan = planHide(reader, found);
+    assert.equal(plan.hides.length, 4);
     assert.ok(plan.removed.lookup_form > 0 && plan.removed.form_of_edge === 1, JSON.stringify(plan.removed));
+    // The SQL creates nothing (#509): the hide refuses to write until the upgrade gives the master its tables, and plans the same after it.
+    assert.doesNotMatch(plan.sql, /\b(CREATE|DROP|ALTER)\b/);
+    assert.deepEqual(missingForHide(reader), ["hide_version", "hidden_record"]);
+    before.exec(masterUpgradeSql(schema));
+    assert.deepEqual(missingForHide(reader), []);
+    assert.equal(planHide(reader, found).sql, plan.sql);
     const lines = before.prepare("SELECT raw_json FROM source_record_json ORDER BY record_id").all();
     const version = async () => versionToken(await servedVersion(fromNodeSqlite(before), RELEASE));
     const original = await version();
@@ -309,7 +317,7 @@ test("the one-off update brings a dictionary seeded before both rules to what a 
     after[pageIndex] = after[pageIndex].filter((row) => row.page_id === 1);
     assert.deepEqual(after, preserved);
 
-    const again = planHide(reader, found, schema);
+    const again = planHide(reader, found);
     assert.deepEqual({ hides: again.hides.length, alreadyHidden: again.alreadyHidden, sql: again.sql }, { hides: 0, alreadyHidden: 4, sql: "" });
     before.exec(again.sql);
     assert.equal(await version(), hiddenVersion, "an empty hide moves nothing");
@@ -318,32 +326,108 @@ test("the one-off update brings a dictionary seeded before both rules to what a 
   }
 });
 
-test("the update rebuilds a hidden_record table written before form-of-foreign-lemma/v1, keeping its rows, and hides the new rule's records", async () => {
+/** `before` with #382's `hidden_record`, holding the rows the section-language rule hid. */
+function withHiddenRecordBefore389(before: DatabaseSync): void {
+  before.exec(`ALTER TABLE hidden_record RENAME TO kept;
+    ${HIDDEN_RECORD_BEFORE_389}
+    INSERT INTO hidden_record SELECT record_id, release_id, page_id, rule, because, language, page_line FROM kept;
+    DROP TABLE kept;`);
+  const heldLines = before.prepare("SELECT r.line_no FROM hidden_record h JOIN source_record r USING (record_id) ORDER BY r.line_no").all();
+  assert.deepEqual(heldLines.map((row) => row.line_no), FOUND_ON_PAGES().map((row) => row.line_no));
+}
+
+const tableSql = (db: DatabaseSync, name: string) => db.prepare("SELECT sql FROM sqlite_schema WHERE name = ?").get(name);
+
+test("the upgrade rebuilds a hidden_record table written before form-of-foreign-lemma/v1, keeping its rows, and the hide then hides the new rule's records", async () => {
   const { db: before } = await seed("before-389", true, archiveBefore389);
   try {
-    // A master the section-language rule hid records in, under #382's table.
-    before.exec(`ALTER TABLE hidden_record RENAME TO kept;
-      ${HIDDEN_RECORD_BEFORE_389}
-      INSERT INTO hidden_record SELECT record_id, release_id, page_id, rule, because, language, page_line FROM kept;
-      DROP TABLE kept;`);
-    const heldLines = before.prepare("SELECT r.line_no FROM hidden_record h JOIN source_record r USING (record_id) ORDER BY r.line_no").all();
-    assert.deepEqual(heldLines.map((row) => row.line_no), FOUND_ON_PAGES().map((row) => row.line_no));
+    withHiddenRecordBefore389(before);
     const reader = readerOf(before);
     const found = await foundInArchive();
     const schema = await readFile(SCHEMA, "utf8");
-    const plan = planHide(reader, found, schema);
+    // The hide plans on #382's table, but refuses to write into it.
+    const plan = planHide(reader, found);
     assert.deepEqual(
-      { hides: plan.hides.map(({ found: record }) => record.word), alreadyHidden: plan.alreadyHidden, table: plan.table },
-      { hides: ["zapateros"], alreadyHidden: 3, table: "rebuild" },
+      { hides: plan.hides.map(({ found: record }) => record.word), alreadyHidden: plan.alreadyHidden },
+      { hides: ["zapateros"], alreadyHidden: 3 },
     );
-    assert.deepEqual(plan.removed, { lookup_form: 1, form_of_edge: 1 });
+    assert.deepEqual(missingForHide(reader), ["hidden_record"]);
+    assert.doesNotMatch(plan.sql, /\b(CREATE|DROP|ALTER)\b/);
+
+    const upgrade = planUpgrade(reader, schema);
+    assert.deepEqual({ missing: upgrade.missing, changed: upgrade.changed }, { missing: [], changed: ["hidden_record"] });
+    assert.deepEqual(upgrade.kept.map(({ name, rows }) => [name, rows]), [["hidden_record", 3]], "only hidden_record is rebuilt");
+    assert.deepEqual(overlongPatterns(upgrade.sql), []);
+    assert.deepEqual(upgradeShortfall(reader, schema, upgrade), ["the upgrade left hidden_record without its lemma_line column"]);
+    before.exec("BEGIN");
+    before.exec(upgrade.sql);
+    before.exec("COMMIT");
+    assert.deepEqual(upgradeShortfall(reader, schema, upgrade), []);
+    assert.deepEqual(tableSql(before, "hidden_record"), tableSql(seeded, "hidden_record"));
+    assert.deepEqual(hiddenRows(before), EXPECTED_HIDDEN().filter((row) => row.rule === "section-language/v1"));
+    assert.deepEqual(before.prepare("PRAGMA foreign_key_check").all(), []);
+    assert.equal(planUpgrade(reader, schema).sql, "");
+    assert.deepEqual(missingForHide(reader), []);
+
+    assert.equal(planHide(reader, found).sql, plan.sql);
     before.exec(plan.sql);
     assert.deepEqual(unhidden(reader, plan), []);
     assert.deepEqual(hiddenRows(before), EXPECTED_HIDDEN());
     assert.deepEqual(servingRows(before), servingRows(seeded));
-    const table = (db: DatabaseSync) => db.prepare("SELECT sql FROM sqlite_schema WHERE name = 'hidden_record'").get();
-    assert.deepEqual(table(before), table(seeded));
-    assert.equal(planHide(reader, found, schema).sql, "");
+    assert.equal(planHide(reader, found).sql, "");
+  } finally {
+    before.close();
+  }
+});
+
+test("an upgrade that rebuilds the page-entry tables rebuilds a hidden_record from before #389 with them, and both keep every row", async () => {
+  const { db: before } = await seed("before-389-and-page-entries", true, archiveBefore389);
+  try {
+    withHiddenRecordBefore389(before);
+    const schema = await readFile(SCHEMA, "utf8");
+    // `recovered_entry` as before its page_line CHECK, with a row and a definition.
+    before.exec("DROP TABLE entry_example; DROP TABLE entry_label; DROP TABLE corrected_definition; DROP TABLE entry_definition; DROP TABLE recovered_entry;");
+    before.exec(createStatement(schema, "TABLE", "recovered_entry").replace("page_line INTEGER NOT NULL CHECK (page_line > 0)", "page_line INTEGER NOT NULL"));
+    for (const table of ["entry_definition", "entry_label", "entry_example", "corrected_definition"]) before.exec(createStatement(schema, "TABLE", table));
+    before.exec(createStatement(schema, "INDEX", "recovered_entry_by_key"));
+    before.prepare("INSERT INTO raw_page VALUES (900001, ?, 'it.wiktionary.org', 'scrivere', 4100, '2026-09-01T00:00:00Z')").run(RELEASE);
+    before.prepare("INSERT INTO recovered_entry VALUES (1, ?, 900001, 'scrivere', 'scrivere', 'verb', 'Verbo', 'italian-page-entry/v1', 3, '')").run(RELEASE);
+    before.exec("INSERT INTO entry_definition VALUES (1, 0, 'sense-line', NULL, 4, '# tracciare segni', 'tracciare segni', NULL)");
+    const reader = readerOf(before);
+
+    const upgrade = planUpgrade(reader, schema);
+    assert.deepEqual(upgrade.changed, ["recovered_entry", "hidden_record"]);
+    assert.deepEqual(upgrade.kept.map(({ name, rows }) => [name, rows]), [
+      ["recovered_entry", 1], ["entry_definition", 1], ["entry_label", 0], ["entry_example", 0], ["corrected_definition", 0], ["hidden_record", 3],
+    ]);
+    assert.deepEqual(overlongPatterns(upgrade.sql), []);
+    before.exec("BEGIN");
+    before.exec(upgrade.sql);
+    before.exec("COMMIT");
+    assert.deepEqual(upgradeShortfall(reader, schema, upgrade), []);
+    assert.deepEqual(changedUpgrade(reader, schema), []);
+    for (const name of ["recovered_entry", "hidden_record"]) assert.deepEqual(tableSql(before, name), tableSql(seeded, name), name);
+    assert.deepEqual(hiddenRows(before), EXPECTED_HIDDEN().filter((row) => row.rule === "section-language/v1"));
+    assert.equal((before.prepare("SELECT count(*) AS n FROM entry_definition").get() as { n: number }).n, 1);
+    assert.deepEqual(before.prepare("PRAGMA foreign_key_check").all(), []);
+    assert.deepEqual(before.prepare("SELECT name FROM sqlite_schema WHERE name LIKE 'upgrade_kept_%'").all(), []);
+  } finally {
+    before.close();
+  }
+});
+
+test("an upgrade that leaves fewer hidden_record rows than it found is reported short", async () => {
+  const { db: before } = await seed("before-389-short", true, archiveBefore389);
+  try {
+    withHiddenRecordBefore389(before);
+    const schema = await readFile(SCHEMA, "utf8");
+    const reader = readerOf(before);
+    const upgrade = planUpgrade(reader, schema);
+    before.exec("BEGIN");
+    before.exec(upgrade.sql);
+    before.exec("COMMIT");
+    before.exec("DELETE FROM hidden_record WHERE record_id = (SELECT min(record_id) FROM hidden_record)");
+    assert.deepEqual(upgradeShortfall(reader, schema, upgrade), ["the upgrade left 2 row(s) in hidden_record, which held 3"]);
   } finally {
     before.close();
   }
@@ -356,7 +440,7 @@ test("hide:records' plan-only run counts each hide as a removal and leaves a loc
     const d1 = localD1(d1Dir, db);
     const reader = masterReaderOf(d1.target);
     const before = d1.sha256();
-    const plan = planHide(reader, await foundInArchive(), await readFile(SCHEMA, "utf8"));
+    const plan = planHide(reader, await foundInArchive());
     const run = planOnlyRun("hide:records", plan.counts, reader);
     // A seed without the pages hides only what form-of-foreign-lemma/v1 finds; the rest are this plan's.
     assert.equal(plan.hides.length + plan.alreadyHidden, EXPECTED_HIDDEN().length);
@@ -384,7 +468,7 @@ test("the update refuses a master whose record at a found line is another word",
   try {
     const found = await foundInArchive();
     const moved = found.map((record) => ({ ...record, lineNo: record.lineNo - 1 }));
-    assert.throws(() => planHide(readerOf(db), moved, ""), /does not hold these records/);
+    assert.throws(() => planHide(readerOf(db), moved), /does not hold these records/);
   } finally {
     db.close();
   }

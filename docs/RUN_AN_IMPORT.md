@@ -240,8 +240,10 @@ database the way the seed does: the local D1 under `SEED_STATE` (default
 It writes one SQL file under `.data/updates/` and runs it as one transaction:
 each record gets its `hidden_record` row and loses its `lookup_form` and
 `form_of_edge` rows, and the nearby rows of the words they spelled are
-recomputed. A `hidden_record` table written before #389 is rebuilt first in the
-same transaction, every row kept, and the run says so. `source_record_json` is not touched. It then reads the records back
+recomputed. The file holds no DDL: on a database without `hidden_record` or
+`hide_version`, or with a `hidden_record` written before #389, the command
+refuses to write and names `pnpm run update:upgrade`, which creates or rebuilds
+them, every row kept. `source_record_json` is not touched. It then reads the records back
 and fails if one is not hidden. It takes about a minute.
 
 On the shared `lexema-dictionary`, the dictionary deploy workflow runs the
@@ -251,8 +253,8 @@ command after a merged change declaration names it
 against a local D1 only. On release `it-0c432803` the rules find 30
 records:
 `30 record(s) the rules find (form-of-foreign-lemma/v1 7, section-language/v1 23)`.
-On a database #382's run already updated, the run hides the 7, rebuilds the
-table, and prints `23 already hidden; hidden now: 7`, one line per record, and
+On a database #382's run already updated, `update:upgrade` rebuilds the table
+first; the run then hides the 7 and prints `23 already hidden; hidden now: 7`, one line per record, and
 `rows deleted: lookup_form 7, form_of_edge 7`. On one seeded before #382 it
 hides all 30. Every later run prints `30 already hidden; nothing to hide`.
 
@@ -273,11 +275,13 @@ pnpm run correct:records
 
 It picks its database the way the seed does: the local D1 under `SEED_STATE`
 (default `.data/seed-state`), or the remote D1 `SEED_REMOTE` names. It writes
-one SQL file under `.data/updates/` and runs it as one transaction: it creates
-`corrected_claim` and `correction_version` when the master lacks them, writes
+one SQL file under `.data/updates/` and runs it as one transaction: it writes
 each entry's rows, and increments the correction revision, so card and
 suggestion addresses move ([cache identity](DEPLOY.md#card-and-suggestion-cache-identity)).
-`source_record_json` and `grammar_claim` are not touched. It then reads the rows
+`source_record_json` and `grammar_claim` are not touched. The file holds no
+DDL: on a master without `corrected_claim`, `correction_version` or
+`corrected_definition` the command refuses to write and names
+`pnpm run update:upgrade`, which creates them. It then reads the rows
 back and fails if one differs. It prints one line per entry: written, already
 written, or why not. An entry is not written when the master holds no record at
 its line, when that record's digest is not the one the entry names, or when a

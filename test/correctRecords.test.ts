@@ -11,7 +11,7 @@ import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { gzipSync } from "node:zlib";
 import type { CuratedCorrection } from "../src/italian/curatedCorrections.js";
-import { describeEntry, planCorrections, unwritten } from "../src/import/correctRecords.js";
+import { describeEntry, missingForCorrections, planCorrections, unwritten } from "../src/import/correctRecords.js";
 import { seedSql } from "../src/import/seedSql.js";
 import { fromNodeSqlite } from "../src/lookup/database.js";
 import { lookup } from "../src/lookup/lookup.js";
@@ -20,6 +20,7 @@ import { filesFor } from "../src/deploy/dataFiles.js";
 import { planWrite, readyChange } from "../src/deploy/writePlan.js";
 import { parseChange } from "../src/update/declaration.js";
 import type { MasterReader } from "../src/update/master.js";
+import { masterUpgradeSql } from "../src/update/masterUpgrade.js";
 import { PlanCounts } from "../src/update/planCounts.js";
 import { atFixtureLines, correctionFixtureLines } from "./correctionFixture.js";
 
@@ -90,10 +91,16 @@ test("a master seeded before the corrections gets what a seed now writes, once, 
     const versionBefore = versionToken(await servedVersion(fromNodeSqlite(before), RELEASE));
 
     const reader = readerOf(before);
-    const schema = await readFile(SCHEMA, "utf8");
-    const plan = planCorrections(reader, corrections, schema);
+    const plan = planCorrections(reader, corrections);
     assert.deepEqual(plan.entries.map((entry) => entry.state), Array(25).fill("write"));
     assert.deepEqual(plan.counts.toJSON(), { records: { added: 0, changed: 25, removed: 0 }, written: { corrected_claim: 29, correction_version: 1 }, deleted: {} });
+    // The SQL creates nothing (#509): the upgrade gives the master the tables first, and the plan is the same after it.
+    assert.doesNotMatch(plan.sql, /\b(CREATE|DROP|ALTER)\b/);
+    assert.deepEqual(missingForCorrections(reader), ["correction_version", "corrected_claim"]);
+    assert.throws(() => execute(before, plan.sql), /no such table/);
+    execute(before, masterUpgradeSql(await readFile(SCHEMA, "utf8")));
+    assert.deepEqual(missingForCorrections(reader), []);
+    assert.equal(planCorrections(reader, corrections).sql, plan.sql);
     execute(before, plan.sql);
     assert.deepEqual(unwritten(reader, plan), []);
 
@@ -107,7 +114,7 @@ test("a master seeded before the corrections gets what a seed now writes, once, 
     assert.equal(versionAfter, `${versionBefore}.fix-1`);
 
     // A second run plans nothing.
-    const again = planCorrections(reader, corrections, schema);
+    const again = planCorrections(reader, corrections);
     assert.equal(again.sql, "");
     assert.equal(again.counts, PlanCounts.NONE);
     assert.deepEqual(again.entries.map((entry) => entry.state), Array(25).fill("already"));
@@ -124,7 +131,7 @@ test("a master that holds #420's twelve and #449's eight gets the rule's correct
   try {
     const reader = readerOf(db);
     const versionBefore = versionToken(await servedVersion(fromNodeSqlite(db), RELEASE));
-    const plan = planCorrections(reader, corrections, await readFile(SCHEMA, "utf8"));
+    const plan = planCorrections(reader, corrections);
     assert.deepEqual(plan.entries.map((entry) => entry.state), [...Array(20).fill("already"), ...Array(5).fill("write")]);
     // The rule's five fixture records: curve and agostiniani set gender and number, the others one fact each.
     assert.deepEqual(plan.counts.toJSON(), { records: { added: 0, changed: 5, removed: 0 }, written: { corrected_claim: 7, correction_version: 1 }, deleted: {} });
@@ -149,7 +156,7 @@ test("an entry whose rows differ is rewritten whole, and the counts name the row
     const held = all(db, `SELECT * FROM corrected_claim WHERE correction_id = '${id}'`).length;
     db.exec(`UPDATE corrected_claim SET value = 'masculine' WHERE correction_id = '${id}' AND dimension = 'gender'`);
     const reader = readerOf(db);
-    const plan = planCorrections(reader, corrections, await readFile(SCHEMA, "utf8"));
+    const plan = planCorrections(reader, corrections);
     assert.deepEqual(plan.entries.flatMap((entry) => (entry.state === "write" ? [entry.correction.record.word] : [])), ["fissazione"]);
     assert.deepEqual(plan.counts.toJSON(), {
       records: { added: 0, changed: 1, removed: 0 },
@@ -158,7 +165,7 @@ test("an entry whose rows differ is rewritten whole, and the counts name the row
     });
     execute(db, plan.sql);
     assert.deepEqual(unwritten(reader, plan), []);
-    assert.equal(planCorrections(reader, corrections, await readFile(SCHEMA, "utf8")).counts, PlanCounts.NONE);
+    assert.equal(planCorrections(reader, corrections).counts, PlanCounts.NONE);
   } finally {
     db.close();
   }
@@ -196,7 +203,6 @@ test("an entry the master cannot hold as named is reported, not written", async 
         { ...third, record: { ...third.record, releaseId: "it-0c432803" } },
         ...rest,
       ],
-      await readFile(SCHEMA, "utf8"),
     );
     assert.deepEqual(plan.entries.slice(0, 3).map(describeEntry), [
       `  ${RELEASE}:${first.record.lineNo} fiaschetteria: not written; the record at line ${first.record.lineNo} is not the line the entry names`,

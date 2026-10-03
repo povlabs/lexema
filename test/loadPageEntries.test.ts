@@ -132,7 +132,7 @@ async function liveShaped(name: string): Promise<DatabaseSync> {
   const found = await diffAgainstMaster(reader, later);
   const chosen = chooseChanges(found, found.diff.changes.map((change) => change.id));
   assert.deepEqual(found.diff.changes.map((change) => [change.kind, change.word]).sort(), [["changed", "casa"], ["new", "dismago"]]);
-  execute(db, (await planApply(reader, found, chosen, { schema: await readFile(SCHEMA, "utf8"), appliedAt: "2026-10-02T00:00:00Z", catalog: fixtureCatalog(found.master.archiveSha256, found.feed.archiveSha256) })).sql);
+  execute(db, (await planApply(reader, found, chosen, { appliedAt: "2026-10-02T00:00:00Z", catalog: fixtureCatalog(found.master.archiveSha256, found.feed.archiveSha256) })).sql);
   // What a hide of `dipendere` leaves: its row in hidden_record, and no search row or edge.
   const { record_id: id } = db.prepare("SELECT record_id FROM source_record WHERE word = 'dipendere'").get() as { record_id: number };
   execute(db, `DELETE FROM lookup_form WHERE record_id = ${id}; DELETE FROM form_of_edge WHERE record_id = ${id};
@@ -325,7 +325,7 @@ test("hiding a record that spells a page-only entry's key keeps the entry's sear
     const found: FoundRecord[] = [
       { rule: FORM_OF_FOREIGN_LEMMA_RULE, word: "racconta", lineNo, form: { lineNo, word: "racconta", code: "es", lemmaLine: 1, lemma: "raccontare" } },
     ];
-    const plan = planHide(reader, found, await readFile(SCHEMA, "utf8"));
+    const plan = planHide(reader, found);
     assert.equal(plan.hides.length, 1);
     execute(db, plan.sql);
     assert.deepEqual(heldNearby(db), seededRows);
@@ -347,8 +347,7 @@ test("applying a feed's new record that spells a page-only entry's key keeps the
     assert.deepEqual(diffed.diff.changes.map((change) => [change.kind, change.word]), [["new", "racconta"]]);
     const chosen = chooseChanges(diffed, diffed.diff.changes.map((change) => change.id));
     const plan = await planApply(reader, diffed, chosen, {
-      schema: await readFile(SCHEMA, "utf8"),
-      appliedAt: "2026-10-03T00:00:00Z",
+            appliedAt: "2026-10-03T00:00:00Z",
       catalog: fixtureCatalog(diffed.master.archiveSha256, diffed.feed.archiveSha256),
     });
     execute(db, plan.sql);

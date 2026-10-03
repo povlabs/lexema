@@ -8,11 +8,12 @@
 // 3. Record a D1 Time Travel bookmark, the restore point, and tell it to the
 //    log at once, before anything is written.
 // 4. Run the upgrade (src/update/masterUpgrade.ts) when the dictionary lacks a
-//    table, index or view it creates, or stores a page-entry table or index
-//    unlike schema.sql's: DDL as its own batch, before any data, so no
-//    declaration's SQL carries DDL and a later schema change reaches the live
-//    tables (#507). Then read back that nothing is missing, nothing differs
-//    and every rebuilt table kept its rows.
+//    table, index or view it creates, stores a page-entry table or index
+//    unlike schema.sql's, or a `hidden_record` from before #389: DDL as its
+//    own batch, before any data, so no declaration's SQL carries DDL (#507,
+//    #509) and a later schema change reaches the live tables. Then read back
+//    that nothing is missing, nothing differs and every rebuilt table kept its
+//    rows.
 // 5. For each declaration, oldest first: plan it, hold the plan's counts to
 //    the declared ones and to the hard limits, run its SQL, read it back.
 // 6. Look up a fixed word list in the dictionary written (wordCheck.ts).
@@ -81,8 +82,8 @@ export interface DeployedChange {
 
 /**
  * What the upgrade step did: the tables, indexes and views it created, and the
- * page-entry definitions that differed from schema.sql's, for which it rebuilt
- * the page-entry tables. Both are empty when it ran nothing.
+ * definitions that differed from schema.sql's, for which it rebuilt their
+ * tables. Both are empty when it ran nothing.
  */
 export interface UpgradeDone {
   readonly added: readonly string[];
@@ -240,7 +241,7 @@ const named = (names: readonly string[]): string => names.map((name) => `\`${nam
 
 const upgradeLine = ({ added, rebuilt }: UpgradeDone): string[] => [
   ...(added.length === 0 ? [] : ["", `The upgrade ran first and added ${named(added)}.`]),
-  ...(rebuilt.length === 0 ? [] : ["", `The upgrade ran first and rebuilt the page-entry tables, keeping their rows, for the changed definition of ${named(rebuilt)}.`]),
+  ...(rebuilt.length === 0 ? [] : ["", `The upgrade ran first and rebuilt tables, keeping their rows, for the changed definition of ${named(rebuilt)}.`]),
 ];
 
 /** The run's summary, as Markdown for the GitHub job summary. */
