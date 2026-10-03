@@ -8,6 +8,7 @@ import { DatabaseSync } from "node:sqlite";
 import { gzipSync } from "node:zlib";
 import { seedSql } from "../src/import/seedSql.js";
 import {
+  CORRECTED_CLAIM_SQL,
   INFLECTION_CANDIDATE_SQL,
   INFLECTION_CORRECTION_SQL,
   INFLECTION_GRAMMAR_SQL,
@@ -950,5 +951,20 @@ test("the inflection queries stay on indexes rather than scanning", async () => 
       // It starts from this record's own row, not from the served releases (#381).
       assert.match(plan[0], /USING INDEX lookup_form_by_record \(record_id=\?\)$/, `${name} query:\n${plan.join("\n")}`);
     }
+  });
+});
+
+test("the corrected-claim read probes its primary key rather than scanning", async () => {
+  await withFixture(async (db) => {
+    // readGrammar runs this once per record on a master with corrections (#462).
+    const plan = (
+      db.prepare(`EXPLAIN QUERY PLAN ${CORRECTED_CLAIM_SQL}`).all(1) as { detail: string }[]
+    ).map((row) => row.detail);
+
+    assert.deepEqual(
+      plan,
+      ["SEARCH corrected_claim USING INDEX sqlite_autoindex_corrected_claim_1 (record_id=?)"],
+      `the (record_id, dimension) primary key should answer the read and its order:\n${plan.join("\n")}`,
+    );
   });
 });

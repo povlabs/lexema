@@ -304,10 +304,13 @@ SEED_REMOTE=lexema-dictionary pnpm run correct:records
 ```
 
 Put `CLOUDFLARE_ACCOUNT_ID=<account id>` first if Wrangler lists more than one
-account. On `it-0c432803` the first run prints `written now: 12` and one line
-per entry, 14 rows in all (`congiuntivi` and `maniaci` set gender and number).
-Every later run prints `nothing to write` and `already written` for each. Until
-the shared dictionary holds page-only entries
+account. On `it-0c432803` the first run prints `written now: 20` and one line
+per entry, 22 rows in all (`congiuntivi` and `maniaci` set gender and number).
+On a master that already holds #420's twelve, it prints `written now: 8`, for
+the plurals tagged singular of
+[#449](https://github.com/hueypov/lexema/issues/449), and `already written` for
+the twelve. Every later run prints `nothing to write` and `already written` for
+each. Until the shared dictionary holds page-only entries
 ([#440](https://github.com/hueypov/lexema/issues/440)), the two definition
 corrections print `not written; the master holds no page-only entry`; run it
 again once they are loaded. An
