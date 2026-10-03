@@ -1,10 +1,16 @@
 // The tables and views a master needs before a change can be applied to it
-// (#18), and the page-entry tables lookups read (ADR 0024, #403), for a
-// dictionary seeded before they existed. They are read out of
+// (#18), and the page-entry tables lookups read (ADR 0024, #403) with their
+// definition corrections (#450), for a dictionary seeded before they existed.
+// The dictionary deploy runs this as its own step before any data (#507). They are read out of
 // src/db/schema.sql rather than written a second time, so a fresh seed and an
 // upgraded master cannot drift apart. The statements are safe to run again:
 // the tables are created only when absent, and the views are replaced.
+//
+// The page-entry tables and `corrected_definition` are also held to their
+// schema.sql definition, not only created (#507): when the one a dictionary
+// stores differs, the upgrade rebuilds them with their rows (`rebuildSql`).
 
+import { DatabaseSync } from "node:sqlite";
 import { PAGE_ENTRY_TABLES } from "../lookup/served.js";
 
 /** The tables #18 added, in the order their foreign keys need. */
@@ -18,6 +24,13 @@ export const UPDATE_TABLES = ["feed_release", "applied_change"] as const;
  */
 export { PAGE_ENTRY_TABLES };
 
+/**
+ * The table a curated definition correction is written to (#450). It points at
+ * `entry_definition`, so it follows the page-entry tables. The upgrade creates
+ * it so that a load of page-only entries carries no DDL (#507).
+ */
+export const PAGE_ENTRY_CORRECTION_TABLES = ["corrected_definition"] as const;
+
 /** The indexes on the page-entry tables. */
 export const PAGE_ENTRY_INDEXES = ["recovered_entry_by_key"] as const;
 
@@ -25,7 +38,130 @@ export const PAGE_ENTRY_INDEXES = ["recovered_entry_by_key"] as const;
 export const SERVING_VIEWS = ["served_release", "served_record", "form_of_candidate", "surface_hit"] as const;
 
 /** Every table, index and view the upgrade creates, by its sqlite_schema name. */
-export const UPGRADE_NAMES: readonly string[] = [...UPDATE_TABLES, ...PAGE_ENTRY_TABLES, ...PAGE_ENTRY_INDEXES, ...SERVING_VIEWS];
+export const UPGRADE_NAMES: readonly string[] = [...UPDATE_TABLES, ...PAGE_ENTRY_TABLES, ...PAGE_ENTRY_CORRECTION_TABLES, ...PAGE_ENTRY_INDEXES, ...SERVING_VIEWS];
+
+/**
+ * The tables the upgrade rebuilds when a stored definition differs from
+ * schema.sql's, in the order their foreign keys need. No other table points at
+ * any of them (test/update.test.ts holds that), so they are rebuilt together
+ * without touching another table. They hold few rows.
+ */
+export const REBUILT_TABLES = [...PAGE_ENTRY_TABLES, ...PAGE_ENTRY_CORRECTION_TABLES] as const;
+
+/** Every name whose stored definition the upgrade compares with schema.sql's: those tables and their indexes. */
+export const REBUILT_NAMES: readonly string[] = [...REBUILT_TABLES, ...PAGE_ENTRY_INDEXES];
+
+/** The `CREATE` kind of a name in `REBUILT_NAMES`. */
+export const rebuiltKind = (name: string): "TABLE" | "INDEX" => ((PAGE_ENTRY_INDEXES as readonly string[]).includes(name) ? "INDEX" : "TABLE");
+
+/** The tokens of SQL text: quoted strings and names whole, words, and single other characters. Comments and whitespace are dropped. */
+function tokens(sql: string): string[] {
+  const found: string[] = [];
+  for (let at = 0; at < sql.length; ) {
+    const char = sql[at];
+    if (/\s/.test(char)) {
+      at += 1;
+    } else if (sql.startsWith("--", at)) {
+      const end = sql.indexOf("\n", at);
+      at = end < 0 ? sql.length : end;
+    } else if (sql.startsWith("/*", at)) {
+      const end = sql.indexOf("*/", at + 2);
+      at = end < 0 ? sql.length : end + 2;
+    } else if (char === "'" || char === '"' || char === "`") {
+      let end = at + 1;
+      for (;;) {
+        const close = sql.indexOf(char, end);
+        if (close < 0) throw new Error(`unclosed ${char} in ${sql.slice(at, at + 40)}`);
+        if (sql[close + 1] === char) end = close + 2;
+        else {
+          end = close + 1;
+          break;
+        }
+      }
+      found.push(sql.slice(at, end));
+      at = end;
+    } else {
+      const word = /^[A-Za-z0-9_$]+/.exec(sql.slice(at))?.[0];
+      found.push(word ?? char);
+      at += word?.length ?? 1;
+    }
+  }
+  return found;
+}
+
+/**
+ * A table's or index's definition as the upgrade compares it: the text after
+ * `CREATE [UNIQUE] TABLE|INDEX [IF NOT EXISTS] <name>`, without comments,
+ * spacing or the closing semicolon. sqlite_schema keeps the text a table was
+ * created with, comments included, and drops `IF NOT EXISTS`, so the stored
+ * text and schema.sql's agree here exactly when they define the same thing.
+ */
+export function definitionOf(sql: string): string {
+  const all = tokens(sql);
+  let at = 0;
+  const take = (word: string): boolean => (all[at]?.toUpperCase() === word ? ((at += 1), true) : false);
+  if (!take("CREATE")) throw new Error(`not a CREATE statement: ${sql.slice(0, 40)}`);
+  take("UNIQUE");
+  if (!take("TABLE") && !take("INDEX")) throw new Error(`not a CREATE TABLE or INDEX: ${sql.slice(0, 40)}`);
+  if (take("IF")) {
+    take("NOT");
+    take("EXISTS");
+  }
+  at += 1; // the name
+  const rest = all.slice(at);
+  if (rest[rest.length - 1] === ";") rest.pop();
+  return rest.join(" ");
+}
+
+/** The columns a `CREATE TABLE` statement defines, in order, as SQLite reads it. */
+export function columnsOf(createTable: string): string[] {
+  const db = new DatabaseSync(":memory:");
+  try {
+    db.exec(createTable);
+    const name = /^CREATE TABLE (\w+)/.exec(createTable)?.[1];
+    return db.prepare("SELECT name FROM pragma_table_info(?)").all(name ?? "").map((row) => String(row.name));
+  } finally {
+    db.close();
+  }
+}
+
+/** A rebuilt table as the dictionary holds it before the upgrade: its columns and how many rows it has. */
+export interface KeptTable {
+  readonly name: (typeof REBUILT_TABLES)[number];
+  readonly columns: readonly string[];
+  readonly rows: number;
+}
+
+/** Where a rebuilt table's rows wait while it is dropped and created again. */
+const keptName = (name: string): string => `upgrade_kept_${name}`;
+
+/**
+ * SQL that rebuilds the page-entry tables and `corrected_definition` to
+ * schema.sql's definitions with every row they hold, and then runs
+ * `masterUpgradeSql`. `kept` are the ones the dictionary has, with their
+ * columns. Each one's rows are copied aside, the tables are dropped children
+ * first, created again by the upgrade, and the rows copied back parents first
+ * by the columns the old and new definitions share, so every foreign key holds
+ * at each statement. A row the new definition refuses, or a new column with
+ * no default, stops the batch, and D1 rolls it back whole.
+ */
+export function rebuildSql(schema: string, kept: readonly Pick<KeptTable, "name" | "columns">[]): string {
+  const ordered = REBUILT_TABLES.flatMap((name) => kept.filter((table) => table.name === name));
+  const copies = ordered.map(({ name, columns }) => {
+    const target = new Set(columnsOf(createStatement(schema, "TABLE", name)));
+    const shared = columns.filter((column) => target.has(column)).join(", ");
+    return `INSERT INTO ${name} (${shared}) SELECT ${shared} FROM ${keptName(name)};`;
+  });
+  return [
+    `-- Rebuild ${ordered.map(({ name }) => name).join(", ")} to schema.sql's definitions, keeping their rows (src/update/masterUpgrade.ts).`,
+    ...ordered.map(({ name }) => `CREATE TABLE ${keptName(name)} AS SELECT * FROM ${name};`),
+    ...[...ordered].reverse().map(({ name }) => `DROP TABLE ${name};`),
+    masterUpgradeSql(schema),
+    ...copies,
+    ...ordered.map(({ name }) => `DROP TABLE ${keptName(name)};`),
+    "",
+  ].join("\n");
+}
 
 /** The text of a statement up to the semicolon that ends it, without trailing comments. */
 function statementFrom(schema: string, start: number): string {
@@ -52,7 +188,7 @@ export function createStatement(schema: string, kind: "TABLE" | "VIEW" | "INDEX"
  * leaves an up-to-date one as it is. It adds no row and changes none.
  */
 export function masterUpgradeSql(schema: string): string {
-  const tables = [...UPDATE_TABLES, ...PAGE_ENTRY_TABLES].map((name) =>
+  const tables = [...UPDATE_TABLES, ...PAGE_ENTRY_TABLES, ...PAGE_ENTRY_CORRECTION_TABLES].map((name) =>
     createStatement(schema, "TABLE", name).replace(/^CREATE TABLE /, "CREATE TABLE IF NOT EXISTS "),
   );
   const indexes = PAGE_ENTRY_INDEXES.map((name) =>

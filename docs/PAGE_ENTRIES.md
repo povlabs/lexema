@@ -63,7 +63,8 @@ tables exist once per lookup, from `sqlite_schema` (`dictionaryTables` in
 - Without the tables, lookups send no statement that names them, and answer as
   before, with no page-only entries.
 - With some of the four but not all, lookups refuse to answer.
-- `pnpm run update:upgrade` creates the tables empty and writes no row
+- `pnpm run update:upgrade` creates the tables and `corrected_definition`
+  empty, and writes no row
   ([update the dictionary](UPDATE_THE_DICTIONARY.md#once-a-dictionary-seeded-from-an-older-schema)).
   Serving does not need it.
 - `pnpm run load:page-entries` loads the entries
@@ -85,8 +86,10 @@ before these entries the rows a seed now writes for them, with no reseed:
   as one Italian verb.
 - For each entry it writes the `raw_page` row of its revision, the four tables'
   rows, the [corrected definitions](#corrected-definitions) the list gives it,
-  and the `accent_fold` and `typo_key` rows of its word. It creates the tables,
-  and `corrected_definition`, when the dictionary lacks them.
+  and the `accent_fold` and `typo_key` rows of its word. It creates no table:
+  `pnpm run update:upgrade` creates the tables and `corrected_definition`, and
+  the load refuses to write without them. The dictionary deploy runs the
+  upgrade itself first ([DEPLOY.md](DEPLOY.md#the-dictionary-deploy)).
 - It touches no record, applied change or hide. `source_record_json` stays
   byte for byte.
 - It writes one SQL file under `.data/updates/` and runs it as one transaction,
@@ -104,11 +107,15 @@ merged change declaration names it
 ([dictionary-changes/README.md](../dictionary-changes/README.md)). An agent runs
 it against a local D1 only. One run does both halves, in this order:
 
-1. **Data.** The deploy records a Time Travel bookmark, checks the plan's counts
-   against the declaration, runs the one transaction and reads it back. Then it
-   looks up its fixed words, `raccontare` among them. The tables and their rows
-   arrive in that one transaction, so no reader ever sees some of the four
-   tables without the others.
+1. **Data.** The deploy records a Time Travel bookmark and, when the tables
+   are missing, runs the upgrade as its own transaction, which creates all four
+   and `corrected_definition` at once, empty. When the tables are there but
+   one is stored with a definition other than schema.sql's, the upgrade
+   rebuilds them with their rows instead
+   ([DEPLOY.md](DEPLOY.md#the-dictionary-deploy), step 3). A dictionary with the tables and
+   no entries answers as one without them. The deploy then checks the plan's
+   counts against the declaration, runs the rows as one transaction and reads
+   them back. Then it looks up its fixed words, `raccontare` among them.
 2. **Reader.** The deploy fast-forwards `production` to the merge, and Workers
    Builds uploads that commit's Worker, which reads the tables (since
    [#438](https://github.com/hueypov/lexema/pull/438)).
