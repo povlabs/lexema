@@ -85,22 +85,31 @@ tables exist once per lookup, from `sqlite_schema` (`dictionaryTables` in
 ## Load them into a seeded dictionary
 
 `pnpm run load:page-entries` ([loadPageEntries.ts](../src/import/loadPageEntries.ts),
-[#440](https://github.com/hueypov/lexema/issues/440)) gives a dictionary seeded
+[#440](https://github.com/hueypov/lexema/issues/440),
+[#477](https://github.com/hueypov/lexema/issues/477)) gives a dictionary seeded
 before these entries the rows a seed now writes for them, with no reseed:
 
 - It reads the archive the master was seeded from (`SEED_INPUT`, default
-  `it-extract.jsonl.gz`) only to check it is the master's, and that archive's
-  dump (`RAW_PAGES`, default the dump in the repository root), checked by size
-  and SHA-1.
-- A title gets an entry by the seed's rule, read off the dictionary as it is
-  now: a served record points at it with `form_of`, no record of any release
-  spells it, hidden or replaced records included, and the rule reads its page
-  as one Italian verb.
+  `it-extract.jsonl.gz`), to check it is the master's and to list the words
+  its records spell, and that archive's dump (`RAW_PAGES`, default the dump in
+  the repository root), checked by size and SHA-1.
+- A page gives entries by the seed's rule: no record of the archive spells its
+  title, and rules `italian-page-entry/v1` and `italian-page-entry/v2` read
+  one entry per part-of-speech section. A title a record of a later release
+  spells gets none either, hidden or replaced records included.
+- An entry already held, by its word and the page line that states its part
+  of speech, is left alone. Rule v2 reads every page rule v1 recovers as
+  rule v1 still, so a dictionary loaded under rule v1 alone keeps those
+  entries and gains only rule v2's.
+- A word's key is ranked by its lemma records and the definitions of all its
+  page-only entries together, as the seed ranks it. A page whose title differs
+  from a record's only in case, such as `Aglio`, adds to that record's key.
 - For each entry it writes the `raw_page` row of its revision, the four tables'
   rows, the [corrected definitions](#corrected-definitions) the list gives it,
   and the `accent_fold` and `typo_key` rows of its word. It creates no table:
-  `pnpm run update:upgrade` creates the tables and `corrected_definition`, and
-  the load refuses to write without them. The dictionary deploy runs the
+  `pnpm run update:upgrade` creates the tables and `corrected_definition`, or
+  rebuilds them with their rows when one is stored with an older definition,
+  and the load refuses to write until it has. The dictionary deploy runs the
   upgrade itself first ([DEPLOY.md](DEPLOY.md#the-dictionary-deploy)).
 - It touches no record, applied change or hide. `source_record_json` stays
   byte for byte.
@@ -108,9 +117,16 @@ before these entries the rows a seed now writes for them, with no reseed:
   then reads each entry back. An entry already held is left alone, so a second
   run writes nothing. `--plan-only` prints the counts and writes nothing.
 
-On `it-0c432803` it loads the 14 entries of the
+On `it-0c432803`, rule v1 alone loaded the 14 entries of the
 [measurement](../reports/2026-10-02-page-entry-recovery.md) and
-`grufolare`'s and `tremare`'s corrected definitions.
+`grufolare`'s and `tremare`'s corrected definitions
+([its declaration](../dictionary-changes/2026-10-03-load-page-entries-it-0c432803.json)).
+Both rules read 203 entries on 186 pages: those 14, and 189 more on 172 pages
+([its declaration](../dictionary-changes/2026-10-03-load-page-entries-v2-it-0c432803.json)).
+The pages are the 185 of the
+[layout measurement](../reports/2026-10-03-unrecorded-page-layouts.md) and
+`Aglio`, whose one definition holds a `{{taxon}}` the rule reads since
+[#495](https://github.com/hueypov/lexema/issues/495).
 
 ### On the shared dictionary
 
