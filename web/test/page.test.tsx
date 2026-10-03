@@ -86,6 +86,8 @@ import {
   WORD_HEADING,
   WORD_LINK,
   WORD_NOTE,
+  WRITTEN_OFFER_LEAD,
+  WRITTEN_OFFER_LINK,
 } from "@/components/shared/styles.ts";
 import { FIXTURE_LINES } from "./fixture.js";
 
@@ -1447,6 +1449,47 @@ test("a search that finds nothing offers, in order: an accent, one edit, words t
     assert.match(none, /No entry for “xqzt”/);
     assert.match(none, /Check the spelling, or search for the word’s base form: the infinitive of a verb, the singular of a noun\./);
     assert.doesNotMatch(none, /Did you mean|Suggestions/);
+  });
+});
+
+// Board 32 (#478): a word found whose query a headword also writes with an
+// accent or a final apostrophe, over real archive lines (e and è, Po and po',
+// abbandono and abbandonò, città).
+test("a found word that a headword also writes with a mark offers it in one line under the bar, above the result", async () => {
+  const lines = (await readFile(join(REPO, "fixtures/bare-spellings.jsonl"), "utf8")).trim().split("\n");
+  await withLines(lines, async ({ db }) => {
+    // React writes an apostrophe as `&#x27;`, in text and in attributes.
+    const html = (text: string) => esc(text).replaceAll("'", "&#x27;");
+    const line = (word: string) =>
+      new RegExp(
+        `<p class="${esc(WRITTEN_OFFER_LEAD)}">Did you mean <a class="${esc(WRITTEN_OFFER_LINK)}" href="/\\?q=${html(encodeURIComponent(word))}" lang="it">${html(word)}</a>\\?</p>`,
+      );
+    for (const [query, word] of [
+      ["po", "po'"],
+      ["e", "è"],
+      ["abbandono", "abbandonò"],
+    ] as const) {
+      const page = await render(db, query);
+      const offer = page.search(line(word));
+      assert.ok(offer >= 0, `${query} offers ${word}`);
+      assert.ok(offer > page.indexOf("<form"), `${query}: the line sits under the search bar`);
+      assert.ok(offer < page.indexOf(`<h1 class="${WORD_HEADING}"`), `${query}: the line sits above the result`);
+      assert.equal(page.match(/Did you mean/g)?.length, 1, `${query}: one line`);
+      // The result below is the one the search finds without the line, but
+      // for the ids React generates from where an element sits.
+      const answer = await attempt(db, query);
+      assert.ok(answer.outcome === "found");
+      const ids = (html: string) => html.replaceAll(/_R_[0-9a-z]+_/g, "_R_");
+      const without = renderToStaticMarkup(
+        <SearchPage raw={query} version={VERSION}>
+          <Outcome raw={query} attempt={{ ...answer, written: [] }} />
+        </SearchPage>,
+      );
+      assert.equal(ids(page.replace(line(word), "")), ids(without));
+    }
+    for (const query of ["città", "abbandonò", "dalla"]) {
+      assert.doesNotMatch(await render(db, query), /Did you mean/, `${query} offers nothing`);
+    }
   });
 });
 

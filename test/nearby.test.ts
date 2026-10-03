@@ -3,7 +3,18 @@
 
 import assert from "node:assert/strict";
 import test from "node:test";
-import { deletionKeys, foldKey, rankCandidates, withinOneEdit, type Candidate } from "../src/lookup/nearby.js";
+import { addsMarksTo, deletionKeys, foldKey, rankCandidates, withinOneEdit, type Candidate } from "../src/lookup/nearby.js";
+
+test("a written spelling adds accents or a final apostrophe to a key, and takes none away", () => {
+  assert.ok(addsMarksTo("citta", "città"));
+  assert.ok(addsMarksTo("e", "è"));
+  assert.ok(addsMarksTo("po", "po'"));
+  assert.ok(!addsMarksTo("città", "citta"), "drops the accent");
+  assert.ok(!addsMarksTo("perchè", "perché"), "swaps the accent");
+  assert.ok(!addsMarksTo("città", "città"), "a key is not its own");
+  assert.ok(!addsMarksTo("l", "l'a"), "an apostrophe only at the end");
+  assert.ok(!addsMarksTo("citta", "cittadino"), "letters are not marks");
+});
 
 test("folding takes accents off and leaves everything else", () => {
   assert.equal(foldKey("città"), "citta");

@@ -13,7 +13,7 @@ import { seedSql } from "../src/import/seedSql.js";
 import { bareSpelling, bareSpellingOutcome } from "../src/lookup/bareSpelling.js";
 import type { LookupDatabase } from "../src/lookup/database.js";
 import { lookup } from "../src/lookup/lookup.js";
-import { findNearby, type Nearby } from "../src/lookup/nearby.js";
+import { findNearby, writtenSpellings, type Nearby } from "../src/lookup/nearby.js";
 import { readOnlyDictionary } from "./databases.js";
 
 test("a bare spelling takes off a final accented vowel's accent or a final apostrophe, and nothing else", () => {
@@ -90,5 +90,21 @@ test("a search without a final accent or apostrophe offers the written word firs
       assert.equal(bareSpellingOutcome(written, answer), "best", `${query} offers ${written} first`);
     }
     for (const query of ["po", "e", "abbandono"]) assert.deepEqual(await search(db, query), { found: true }, `${query} is a word of its own`);
+  });
+});
+
+// A bare spelling that is a word of its own stays found, and also carries the
+// headwords that write it with a mark it lacks (#478).
+test("a found word carries the headwords that add an accent or a final apostrophe, and never one that takes a mark away", async () => {
+  await withBareSpellings(async (db) => {
+    const written = (query: string) => writtenSpellings({ db, releaseId: RELEASE, query });
+    assert.deepEqual(await written("abbandono"), ["abbandonò"], "a bare found word offers its accented headword");
+    assert.deepEqual(await written("e"), ["è"], "the conjunction offers the verb form");
+    assert.deepEqual(await written("po"), ["po'"], "a bare found word offers its apostrophe headword");
+    assert.deepEqual(await written("Po"), ["po'"], "the query's case does not matter");
+    assert.deepEqual(await written("abbandonò"), [], "an accented query offers no unaccented spelling");
+    assert.deepEqual(await written("città"), [], "nor its own spelling");
+    assert.deepEqual(await written("po'"), [], "an apostrophe query offers nothing it already has");
+    assert.deepEqual(await written("dalla"), [], "a found word with no such headword offers nothing");
   });
 });

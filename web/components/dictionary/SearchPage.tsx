@@ -20,6 +20,7 @@ import { DeclaredLemmaView } from "./DeclaredLemma";
 import { NotFound } from "./NotFound";
 import { PhraseView } from "./Phrase";
 import { WordView } from "./Word";
+import { WrittenOffer } from "./WrittenOffer";
 import { phrasePage } from "@/lib/dictionary/phrasePage.ts";
 import { wordPage } from "@/lib/dictionary/wordPage.ts";
 import { SITE_NAME, SITE_PRONUNCIATION, SITE_TAGLINE } from "@/lib/dictionary/params.ts";
@@ -127,13 +128,25 @@ export function Outcome({ raw, attempt, siteKey }: { raw: string; attempt: Attem
   if (attempt.outcome === "found") {
     const searched = attempt.query.raw.trim();
     // A searched expression opens its own short page (#214), not the headword's entry.
-    if (attempt.route.kind === "phrase") {
-      return <PhraseView page={phrasePage(searched, attempt.route, attempt.readings)} siteKey={siteKey} />;
-    }
-    return <WordView page={wordPage(searched, attempt.readings)} siteKey={siteKey} />;
+    // A searched expression opens its own short page (#214), not the headword's entry.
+    return (
+      <WrittenOffer written={attempt.written}>
+        {attempt.route.kind === "phrase" ? (
+          <PhraseView page={phrasePage(searched, attempt.route, attempt.readings)} siteKey={siteKey} />
+        ) : (
+          <WordView page={wordPage(searched, attempt.readings)} siteKey={siteKey} />
+        )}
+      </WrittenOffer>
+    );
   }
   // A word only form-of records name shows the forms they declare (#453).
-  if (attempt.outcome === "declared-lemma") return <DeclaredLemmaView page={attempt.page} siteKey={siteKey} />;
+  if (attempt.outcome === "declared-lemma") {
+    return (
+      <WrittenOffer written={attempt.written}>
+        <DeclaredLemmaView page={attempt.page} siteKey={siteKey} />
+      </WrittenOffer>
+    );
+  }
   if (attempt.outcome === "not-found") return <NotFound query={attempt.query.raw.trim()} nearby={attempt.nearby} siteKey={siteKey} />;
   return (
     <>
