@@ -1,0 +1,4 @@
+{
+  "command": "update:auto",
+  "inputs": { "feedRelease": "it-78385b62" }
+}
