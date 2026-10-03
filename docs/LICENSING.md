@@ -337,8 +337,10 @@ The importer, the site, the API, the Italian adapter, the article rules **as cod
 ShareAlike attaches to Adapted Material — adaptations of the licensed text — not to software that
 processes it. Our code contains no Wiktionary text (the checked-in fixtures do; see §4.4).
 
-**[HUEY]** Pick the code licence — proprietary, MIT, AGPL, whatever fits the business. It is a free
-choice, unconstrained by the source. Recommendation: decide it when the repo goes public, not now.
+**Decided (Huey, 2026-10-03, when the repo went public):** "all rights reserved for now". The code is
+proprietary: published for reading, with no reuse licence. See [`LICENSE`](../LICENSE). Upstream-derived
+material keeps CC BY-SA 4.0 (§4.2, §4.4). A more open licence can be chosen later; an open licence
+could not be taken back.
 
 ### 4.2 Dictionary data — conditional duties and proposed CC BY-SA policy
 

@@ -1,0 +1,11 @@
+Copyright (c) 2026 hueypov. All rights reserved.
+
+The source code in this repository is published for reading only. No licence is
+granted to copy, modify, distribute or run it, in whole or in part, except as
+GitHub's Terms of Service allow for viewing and forking on GitHub.
+
+This does not cover material that comes from Wiktionary or Kaikki (for example
+the page and record fixtures under fixtures/ and the dictionary data the site
+serves). That material stays under its own licence, CC BY-SA 4.0, with credit
+to Wiktionary contributors and Kaikki.org. See docs/LICENSING.md and
+docs/ATTRIBUTION_NOTICES.md.
