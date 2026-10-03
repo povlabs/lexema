@@ -12,50 +12,95 @@
     "rule": "italian-page-entry/v1",
     "pages": 13
   },
+  "recoveredByProductionRule": {
+    "rules": [
+      "italian-page-entry/v1",
+      "italian-page-entry/v2"
+    ],
+    "pages": 185,
+    "entries": 202,
+    "counted": {
+      "pages": 184,
+      "entries": 201
+    },
+    "notCounted": {
+      "pages": 1,
+      "entries": 1,
+      "titles": [
+        {
+          "title": "dismagare",
+          "revisionId": 3467484,
+          "entries": 1
+        }
+      ]
+    }
+  },
   "groups": {
     "none-heading/template": {
       "pages": 86,
-      "readWithPos": 86
+      "readWithPos": 86,
+      "recoveredPages": 85,
+      "recoveredEntries": 85
     },
     "bare-heading/template": {
       "pages": 42,
-      "readWithPos": 42
+      "readWithPos": 42,
+      "recoveredPages": 42,
+      "recoveredEntries": 42
     },
     "no-part-of-speech": {
       "pages": 42,
-      "readWithPos": 0
+      "readWithPos": 0,
+      "recoveredPages": 0,
+      "recoveredEntries": 0
     },
     "standard-heading/spaced-template": {
       "pages": 21,
-      "readWithPos": 21
+      "readWithPos": 21,
+      "recoveredPages": 21,
+      "recoveredEntries": 21
     },
     "english-wiktionary-copy": {
       "pages": 17,
-      "readWithPos": 9
+      "readWithPos": 9,
+      "recoveredPages": 0,
+      "recoveredEntries": 0
     },
     "several-parts-of-speech": {
       "pages": 16,
-      "readWithPos": 16
+      "readWithPos": 16,
+      "recoveredPages": 16,
+      "recoveredEntries": 33
     },
     "bare-heading/bare-template": {
       "pages": 8,
-      "readWithPos": 8
+      "readWithPos": 8,
+      "recoveredPages": 8,
+      "recoveredEntries": 8
     },
     "standard-heading/verb-label": {
       "pages": 6,
-      "readWithPos": 6
+      "readWithPos": 6,
+      "recoveredPages": 6,
+      "recoveredEntries": 6
     },
     "malformed-heading/template": {
       "pages": 4,
-      "readWithPos": 4
+      "readWithPos": 4,
+      "recoveredPages": 4,
+      "recoveredEntries": 4
     },
     "standard-heading/unknown-template": {
       "pages": 2,
-      "readWithPos": 0
+      "readWithPos": 0,
+      "recoveredPages": 2,
+      "recoveredEntries": 2
     },
     "bare-heading/english-heading": {
       "pages": 1,
-      "readWithPos": 0
+      "readWithPos": 0,
+      "recoveredPages": 0,
+      "recoveredEntries": 0
     }
   },
   "titles": [
@@ -76,7 +121,11 @@
       "readAs": [
         "Suffisso"
       ],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
     },
     {
       "title": "3D",
@@ -95,7 +144,11 @@
       "readAs": [
         "Espressione"
       ],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
     },
     {
       "title": "5D",
@@ -114,7 +167,11 @@
       "readAs": [
         "Espressione"
       ],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
     },
     {
       "title": "ABI",
@@ -133,7 +190,11 @@
       "readAs": [
         "Acronimo / Abbreviazione"
       ],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
     },
     {
       "title": "Agion oros",
@@ -144,7 +205,11 @@
       "sections": [],
       "unplaced": 1,
       "readAs": [],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "no-ruled-layout",
+        "entries": 0
+      }
     },
     {
       "title": "Aglio",
@@ -163,7 +228,11 @@
       "readAs": [
         "Sostantivo"
       ],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "no-definition",
+        "entries": 0
+      }
     },
     {
       "title": "Anturio",
@@ -182,7 +251,11 @@
       "readAs": [
         "Sostantivo"
       ],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
     },
     {
       "title": "Aro",
@@ -201,7 +274,11 @@
       "readAs": [
         "Sostantivo"
       ],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
     },
     {
       "title": "Asfodelo",
@@ -220,7 +297,11 @@
       "readAs": [
         "Sostantivo"
       ],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
     },
     {
       "title": "Augusteo",
@@ -239,7 +320,11 @@
       "readAs": [
         "Sostantivo"
       ],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
     },
     {
       "title": "Cinquecento",
@@ -258,7 +343,11 @@
       "readAs": [
         "Sostantivo"
       ],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
     },
     {
       "title": "Colle",
@@ -277,7 +366,11 @@
       "readAs": [
         "Sostantivo"
       ],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
     },
     {
       "title": "Eruca",
@@ -296,7 +389,11 @@
       "readAs": [
         "Sostantivo"
       ],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
     },
     {
       "title": "Gnatostomi",
@@ -315,7 +412,11 @@
       "readAs": [
         "Sostantivo"
       ],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
     },
     {
       "title": "Gong Bass Drum",
@@ -334,7 +435,11 @@
       "readAs": [
         "Sostantivo"
       ],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
     },
     {
       "title": "Irvingia",
@@ -353,7 +458,11 @@
       "readAs": [
         "Sostantivo"
       ],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
     },
     {
       "title": "KO",
@@ -372,7 +481,11 @@
       "readAs": [
         "Sostantivo"
       ],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
     },
     {
       "title": "Misurata",
@@ -383,7 +496,11 @@
       "sections": [],
       "unplaced": 1,
       "readAs": [],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "no-ruled-layout",
+        "entries": 0
+      }
     },
     {
       "title": "Natanya",
@@ -394,7 +511,11 @@
       "sections": [],
       "unplaced": 1,
       "readAs": [],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "no-ruled-layout",
+        "entries": 0
+      }
     },
     {
       "title": "Nilvo",
@@ -413,7 +534,11 @@
       "readAs": [
         "Nome proprio"
       ],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
     },
     {
       "title": "ONG",
@@ -432,7 +557,11 @@
       "readAs": [
         "Acronimo / Abbreviazione"
       ],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
     },
     {
       "title": "Rafano",
@@ -451,7 +580,11 @@
       "readAs": [
         "Sostantivo"
       ],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
     },
     {
       "title": "Redenta",
@@ -470,7 +603,11 @@
       "readAs": [
         "Nome proprio"
       ],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
     },
     {
       "title": "Settecento",
@@ -489,7 +626,11 @@
       "readAs": [
         "Sostantivo"
       ],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
     },
     {
       "title": "Stagirita",
@@ -508,7 +649,11 @@
       "readAs": [
         "Sostantivo"
       ],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
     },
     {
       "title": "TRISE",
@@ -527,7 +672,11 @@
       "readAs": [
         "Acronimo / Abbreviazione"
       ],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
     },
     {
       "title": "Telescopio",
@@ -546,7 +695,11 @@
       "readAs": [
         "Sostantivo"
       ],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
     },
     {
       "title": "a monte",
@@ -565,7 +718,11 @@
       "readAs": [
         "Locuzione avverbiale"
       ],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
     },
     {
       "title": "accarezzamenti",
@@ -584,7 +741,11 @@
       "readAs": [
         "Sostantivo, forma flessa"
       ],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
     },
     {
       "title": "accerchiarsi",
@@ -603,7 +764,11 @@
       "readAs": [
         "Verbo"
       ],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
     },
     {
       "title": "across",
@@ -614,7 +779,11 @@
       "sections": [],
       "unplaced": 1,
       "readAs": [],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "no-ruled-layout",
+        "entries": 0
+      }
     },
     {
       "title": "addirizzare",
@@ -633,7 +802,11 @@
       "readAs": [
         "Verbo"
       ],
-      "ruleV1": "recovered"
+      "ruleV1": "recovered",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
     },
     {
       "title": "alcole",
@@ -652,7 +825,11 @@
       "readAs": [
         "Sostantivo"
       ],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
     },
     {
       "title": "alluminio grigiastro",
@@ -663,7 +840,11 @@
       "sections": [],
       "unplaced": 1,
       "readAs": [],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "no-ruled-layout",
+        "entries": 0
+      }
     },
     {
       "title": "amano",
@@ -682,7 +863,11 @@
       "readAs": [
         "Voce verbale"
       ],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
     },
     {
       "title": "ancudine",
@@ -701,7 +886,11 @@
       "readAs": [
         "Sostantivo"
       ],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
     },
     {
       "title": "anfasibena",
@@ -712,7 +901,11 @@
       "sections": [],
       "unplaced": 1,
       "readAs": [],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "no-ruled-layout",
+        "entries": 0
+      }
     },
     {
       "title": "antico nordico",
@@ -731,7 +924,11 @@
       "readAs": [
         "Locuzione nominale"
       ],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
     },
     {
       "title": "anturio",
@@ -750,7 +947,11 @@
       "readAs": [
         "Sostantivo"
       ],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
     },
     {
       "title": "arancio perlato",
@@ -761,7 +962,11 @@
       "sections": [],
       "unplaced": 1,
       "readAs": [],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "no-ruled-layout",
+        "entries": 0
+      }
     },
     {
       "title": "armadeo",
@@ -780,7 +985,11 @@
       "readAs": [
         "Sostantivo"
       ],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
     },
     {
       "title": "autoconsumo",
@@ -799,7 +1008,11 @@
       "readAs": [
         "Sostantivo"
       ],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
     },
     {
       "title": "avventurieri",
@@ -824,7 +1037,11 @@
         "Aggettivo, forma flessa",
         "Sostantivo, forma flessa"
       ],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 2
+      }
     },
     {
       "title": "bagnarsi la lingua",
@@ -843,7 +1060,11 @@
       "readAs": [
         "Locuzione verbale"
       ],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
     },
     {
       "title": "beige perlato",
@@ -854,7 +1075,11 @@
       "sections": [],
       "unplaced": 1,
       "readAs": [],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "no-ruled-layout",
+        "entries": 0
+      }
     },
     {
       "title": "bellicista",
@@ -879,7 +1104,11 @@
         "Aggettivo",
         "Sostantivo"
       ],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 2
+      }
     },
     {
       "title": "bipartito perpendicolare",
@@ -898,7 +1127,11 @@
       "readAs": [
         "Locuzione aggettivale"
       ],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
     },
     {
       "title": "bituminosa",
@@ -917,7 +1150,11 @@
       "readAs": [
         "Aggettivo, forma flessa"
       ],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
     },
     {
       "title": "bituminose",
@@ -936,7 +1173,11 @@
       "readAs": [
         "Aggettivo, forma flessa"
       ],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
     },
     {
       "title": "bituminosi",
@@ -955,7 +1196,11 @@
       "readAs": [
         "Aggettivo, forma flessa"
       ],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
     },
     {
       "title": "blasonario",
@@ -974,7 +1219,11 @@
       "readAs": [
         "Sostantivo"
       ],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
     },
     {
       "title": "blocco unico",
@@ -993,7 +1242,11 @@
       "readAs": [
         "Locuzione nominale"
       ],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
     },
     {
       "title": "blu genziana perlato",
@@ -1004,7 +1257,11 @@
       "sections": [],
       "unplaced": 1,
       "readAs": [],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "no-ruled-layout",
+        "entries": 0
+      }
     },
     {
       "title": "blu notte perlato",
@@ -1015,7 +1272,11 @@
       "sections": [],
       "unplaced": 1,
       "readAs": [],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "no-ruled-layout",
+        "entries": 0
+      }
     },
     {
       "title": "calafataggio",
@@ -1034,7 +1295,11 @@
       "readAs": [
         "Sostantivo"
       ],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
     },
     {
       "title": "cannocchiali",
@@ -1053,7 +1318,11 @@
       "readAs": [
         "Sostantivo, forma flessa"
       ],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
     },
     {
       "title": "carrozzone",
@@ -1072,7 +1341,11 @@
       "readAs": [
         "Sostantivo"
       ],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
     },
     {
       "title": "catuba",
@@ -1091,7 +1364,11 @@
       "readAs": [
         "Sostantivo"
       ],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
     },
     {
       "title": "celta",
@@ -1110,7 +1387,11 @@
       "readAs": [
         "Sostantivo"
       ],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
     },
     {
       "title": "ciborio",
@@ -1129,7 +1410,11 @@
       "readAs": [
         "Sostantivo"
       ],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
     },
     {
       "title": "compassionevole",
@@ -1148,7 +1433,11 @@
       "readAs": [
         "Aggettivo"
       ],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
     },
     {
       "title": "complemento di materia",
@@ -1159,7 +1448,11 @@
       "sections": [],
       "unplaced": 1,
       "readAs": [],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "no-ruled-layout",
+        "entries": 0
+      }
     },
     {
       "title": "congedare",
@@ -1178,7 +1471,11 @@
       "readAs": [
         "Verbo"
       ],
-      "ruleV1": "recovered"
+      "ruleV1": "recovered",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
     },
     {
       "title": "consenti",
@@ -1197,7 +1494,11 @@
       "readAs": [
         "Voce verbale"
       ],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
     },
     {
       "title": "consenzienti",
@@ -1222,7 +1523,11 @@
         "Aggettivo, forma flessa",
         "Sostantivo"
       ],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 2
+      }
     },
     {
       "title": "cosacche",
@@ -1247,7 +1552,11 @@
         "Aggettivo, forma flessa",
         "Sostantivo, forma flessa"
       ],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 2
+      }
     },
     {
       "title": "cremastico",
@@ -1266,7 +1575,11 @@
       "readAs": [
         "Aggettivo"
       ],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
     },
     {
       "title": "croce decorata",
@@ -1285,7 +1598,11 @@
       "readAs": [
         "Locuzione nominale"
       ],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
     },
     {
       "title": "croce diagonale",
@@ -1304,7 +1621,11 @@
       "readAs": [
         "Locuzione aggettivale"
       ],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
     },
     {
       "title": "croce ottangola biforca",
@@ -1323,7 +1644,11 @@
       "readAs": [
         "Locuzione nominale"
       ],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
     },
     {
       "title": "croce ricrociata doppia",
@@ -1342,7 +1667,11 @@
       "readAs": [
         "Locuzione nominale"
       ],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
     },
     {
       "title": "croce ungiata",
@@ -1361,7 +1690,11 @@
       "readAs": [
         "Locuzione nominale"
       ],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
     },
     {
       "title": "dare di fuori",
@@ -1380,7 +1713,11 @@
       "readAs": [
         "Locuzione verbale"
       ],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
     },
     {
       "title": "dare esca",
@@ -1399,7 +1736,11 @@
       "readAs": [
         "Locuzione verbale"
       ],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
     },
     {
       "title": "dare spago",
@@ -1418,7 +1759,11 @@
       "readAs": [
         "Locuzione verbale"
       ],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
     },
     {
       "title": "denunziare",
@@ -1429,7 +1774,11 @@
       "sections": [],
       "unplaced": 1,
       "readAs": [],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "no-ruled-layout",
+        "entries": 0
+      }
     },
     {
       "title": "dessiografia",
@@ -1448,7 +1797,11 @@
       "readAs": [
         "Sostantivo"
       ],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
     },
     {
       "title": "dipendere",
@@ -1467,7 +1820,11 @@
       "readAs": [
         "Verbo"
       ],
-      "ruleV1": "recovered"
+      "ruleV1": "recovered",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
     },
     {
       "title": "doga",
@@ -1486,7 +1843,11 @@
       "readAs": [
         "Sostantivo"
       ],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
     },
     {
       "title": "dopo tutto",
@@ -1505,7 +1866,11 @@
       "readAs": [
         "Avverbio"
       ],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "no-ruled-layout",
+        "entries": 0
+      }
     },
     {
       "title": "duodenite",
@@ -1524,7 +1889,11 @@
       "readAs": [
         "Sostantivo"
       ],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
     },
     {
       "title": "educare",
@@ -1543,7 +1912,11 @@
       "readAs": [
         "Verbo"
       ],
-      "ruleV1": "recovered"
+      "ruleV1": "recovered",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
     },
     {
       "title": "elettrococleografia",
@@ -1562,7 +1935,11 @@
       "readAs": [
         "Sostantivo"
       ],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
     },
     {
       "title": "emopericardio",
@@ -1581,7 +1958,11 @@
       "readAs": [
         "Sostantivo"
       ],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
     },
     {
       "title": "emoperitoneo",
@@ -1600,7 +1981,11 @@
       "readAs": [
         "Sostantivo"
       ],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
     },
     {
       "title": "esplicitazione",
@@ -1619,7 +2004,11 @@
       "readAs": [
         "Sostantivo"
       ],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
     },
     {
       "title": "fasseggiato",
@@ -1638,7 +2027,11 @@
       "readAs": [
         "Aggettivo"
       ],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
     },
     {
       "title": "fibrosa",
@@ -1657,7 +2050,11 @@
       "readAs": [
         "Aggettivo, forma flessa"
       ],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
     },
     {
       "title": "fibrose",
@@ -1676,7 +2073,11 @@
       "readAs": [
         "Aggettivo, forma flessa"
       ],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
     },
     {
       "title": "fidelizzare",
@@ -1695,7 +2096,11 @@
       "readAs": [
         "Verbo"
       ],
-      "ruleV1": "recovered"
+      "ruleV1": "recovered",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
     },
     {
       "title": "fidò",
@@ -1714,7 +2119,11 @@
       "readAs": [
         "Voce verbale"
       ],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
     },
     {
       "title": "filippini",
@@ -1739,7 +2148,11 @@
         "Aggettivo, forma flessa",
         "Sostantivo, forma flessa"
       ],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 2
+      }
     },
     {
       "title": "finora",
@@ -1758,7 +2171,11 @@
       "readAs": [
         "Avverbio"
       ],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
     },
     {
       "title": "follare",
@@ -1777,7 +2194,11 @@
       "readAs": [
         "Verbo"
       ],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "no-ruled-layout",
+        "entries": 0
+      }
     },
     {
       "title": "fon",
@@ -1788,7 +2209,11 @@
       "sections": [],
       "unplaced": 2,
       "readAs": [],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "no-ruled-layout",
+        "entries": 0
+      }
     },
     {
       "title": "fornire",
@@ -1807,7 +2232,11 @@
       "readAs": [
         "Verbo"
       ],
-      "ruleV1": "recovered"
+      "ruleV1": "recovered",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
     },
     {
       "title": "francesismo",
@@ -1826,7 +2255,11 @@
       "readAs": [
         "Sostantivo"
       ],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
     },
     {
       "title": "gastrostomia",
@@ -1845,7 +2278,11 @@
       "readAs": [
         "Sostantivo"
       ],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
     },
     {
       "title": "ghiribizzi",
@@ -1864,7 +2301,11 @@
       "readAs": [
         "Sostantivo, forma flessa"
       ],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
     },
     {
       "title": "giallo sole",
@@ -1875,7 +2316,11 @@
       "sections": [],
       "unplaced": 1,
       "readAs": [],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "no-ruled-layout",
+        "entries": 0
+      }
     },
     {
       "title": "gioielliere",
@@ -1894,7 +2339,11 @@
       "readAs": [
         "Sostantivo"
       ],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
     },
     {
       "title": "gliceraldeide",
@@ -1913,7 +2362,11 @@
       "readAs": [
         "Sostantivo"
       ],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
     },
     {
       "title": "godi",
@@ -1932,7 +2385,11 @@
       "readAs": [
         "Voce verbale"
       ],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
     },
     {
       "title": "grigio chiaro perlato",
@@ -1943,7 +2400,11 @@
       "sections": [],
       "unplaced": 1,
       "readAs": [],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "no-ruled-layout",
+        "entries": 0
+      }
     },
     {
       "title": "grigio scuro perlato",
@@ -1954,7 +2415,11 @@
       "sections": [],
       "unplaced": 1,
       "readAs": [],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "no-ruled-layout",
+        "entries": 0
+      }
     },
     {
       "title": "griko",
@@ -1973,7 +2438,11 @@
       "readAs": [
         "Sostantivo"
       ],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
     },
     {
       "title": "grr",
@@ -1992,7 +2461,11 @@
       "readAs": [
         "Interiezione"
       ],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
     },
     {
       "title": "grrr",
@@ -2011,7 +2484,11 @@
       "readAs": [
         "Interiezione"
       ],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
     },
     {
       "title": "grufolare",
@@ -2030,7 +2507,11 @@
       "readAs": [
         "Verbo"
       ],
-      "ruleV1": "recovered"
+      "ruleV1": "recovered",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
     },
     {
       "title": "impegolato",
@@ -2055,7 +2536,11 @@
         "Aggettivo",
         "Voce verbale"
       ],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 2
+      }
     },
     {
       "title": "in abbinamento",
@@ -2074,7 +2559,11 @@
       "readAs": [
         "Espressione"
       ],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
     },
     {
       "title": "in effetti",
@@ -2093,7 +2582,11 @@
       "readAs": [
         "Avverbio"
       ],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "no-ruled-layout",
+        "entries": 0
+      }
     },
     {
       "title": "in media",
@@ -2110,7 +2603,11 @@
       ],
       "unplaced": 0,
       "readAs": [],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "no-ruled-layout",
+        "entries": 0
+      }
     },
     {
       "title": "incidentaloma",
@@ -2129,7 +2626,11 @@
       "readAs": [
         "Sostantivo"
       ],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
     },
     {
       "title": "ingegneria geotecnica",
@@ -2148,7 +2649,11 @@
       "readAs": [
         "Locuzione nominale"
       ],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
     },
     {
       "title": "ingoiare il rospo",
@@ -2167,7 +2672,11 @@
       "readAs": [
         "Locuzione verbale"
       ],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
     },
     {
       "title": "insino",
@@ -2189,7 +2698,11 @@
       ],
       "unplaced": 0,
       "readAs": [],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "no-ruled-layout",
+        "entries": 0
+      }
     },
     {
       "title": "insù",
@@ -2208,7 +2721,11 @@
       "readAs": [
         "Avverbio"
       ],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "no-ruled-layout",
+        "entries": 0
+      }
     },
     {
       "title": "invitó",
@@ -2227,7 +2744,11 @@
       "readAs": [
         "Voce verbale"
       ],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
     },
     {
       "title": "irrequieti",
@@ -2244,7 +2765,11 @@
       ],
       "unplaced": 0,
       "readAs": [],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "no-ruled-layout",
+        "entries": 0
+      }
     },
     {
       "title": "lampara",
@@ -2263,7 +2788,11 @@
       "readAs": [
         "Sostantivo"
       ],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
     },
     {
       "title": "lembello",
@@ -2282,7 +2811,11 @@
       "readAs": [
         "Sostantivo"
       ],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
     },
     {
       "title": "lenticolare",
@@ -2293,7 +2826,11 @@
       "sections": [],
       "unplaced": 2,
       "readAs": [],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "no-ruled-layout",
+        "entries": 0
+      }
     },
     {
       "title": "leucocitosi",
@@ -2312,7 +2849,11 @@
       "readAs": [
         "Sostantivo"
       ],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
     },
     {
       "title": "libraccio",
@@ -2323,7 +2864,11 @@
       "sections": [],
       "unplaced": 1,
       "readAs": [],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "no-ruled-layout",
+        "entries": 0
+      }
     },
     {
       "title": "limatrice",
@@ -2342,7 +2887,11 @@
       "readAs": [
         "Sostantivo"
       ],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
     },
     {
       "title": "lizzatura",
@@ -2361,7 +2910,11 @@
       "readAs": [
         "Sostantivo"
       ],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
     },
     {
       "title": "lungo",
@@ -2386,7 +2939,11 @@
         "Aggettivo",
         "Preposizione"
       ],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 2
+      }
     },
     {
       "title": "mastoide",
@@ -2405,7 +2962,11 @@
       "readAs": [
         "Sostantivo"
       ],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
     },
     {
       "title": "mastoidite",
@@ -2424,7 +2985,11 @@
       "readAs": [
         "Sostantivo"
       ],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
     },
     {
       "title": "mezz'ora",
@@ -2443,7 +3008,11 @@
       "readAs": [
         "Sostantivo"
       ],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "no-ruled-layout",
+        "entries": 0
+      }
     },
     {
       "title": "mezzora",
@@ -2462,7 +3031,11 @@
       "readAs": [
         "Sostantivo"
       ],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "no-ruled-layout",
+        "entries": 0
+      }
     },
     {
       "title": "mora perlato",
@@ -2473,7 +3046,11 @@
       "sections": [],
       "unplaced": 1,
       "readAs": [],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "no-ruled-layout",
+        "entries": 0
+      }
     },
     {
       "title": "morire come le mosche",
@@ -2492,7 +3069,11 @@
       "readAs": [
         "Locuzione verbale"
       ],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
     },
     {
       "title": "motteggio",
@@ -2503,7 +3084,11 @@
       "sections": [],
       "unplaced": 1,
       "readAs": [],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "no-ruled-layout",
+        "entries": 0
+      }
     },
     {
       "title": "mousse",
@@ -2522,7 +3107,11 @@
       "readAs": [
         "Sostantivo"
       ],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
     },
     {
       "title": "mucamo",
@@ -2533,7 +3122,11 @@
       "sections": [],
       "unplaced": 1,
       "readAs": [],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "no-ruled-layout",
+        "entries": 0
+      }
     },
     {
       "title": "mux",
@@ -2552,7 +3145,11 @@
       "readAs": [
         "Acronimo / Abbreviazione"
       ],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
     },
     {
       "title": "nanomedicina",
@@ -2571,7 +3168,11 @@
       "readAs": [
         "Sostantivo"
       ],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
     },
     {
       "title": "nefologia",
@@ -2590,7 +3191,11 @@
       "readAs": [
         "Sostantivo"
       ],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
     },
     {
       "title": "negli ultimi tempi",
@@ -2607,7 +3212,11 @@
       ],
       "unplaced": 0,
       "readAs": [],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "no-ruled-layout",
+        "entries": 0
+      }
     },
     {
       "title": "new age",
@@ -2626,7 +3235,11 @@
       "readAs": [
         "Espressione"
       ],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
     },
     {
       "title": "non-profit",
@@ -2637,7 +3250,11 @@
       "sections": [],
       "unplaced": 1,
       "readAs": [],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "no-ruled-layout",
+        "entries": 0
+      }
     },
     {
       "title": "occhio di bue",
@@ -2656,7 +3273,11 @@
       "readAs": [
         "Locuzione nominale"
       ],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
     },
     {
       "title": "offri",
@@ -2675,7 +3296,11 @@
       "readAs": [
         "Voce verbale"
       ],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
     },
     {
       "title": "onorificenze",
@@ -2694,7 +3319,11 @@
       "readAs": [
         "Sostantivo, forma flessa"
       ],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
     },
     {
       "title": "orecchioni",
@@ -2713,7 +3342,11 @@
       "readAs": [
         "Sostantivo"
       ],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
     },
     {
       "title": "oro perlato",
@@ -2724,7 +3357,11 @@
       "sections": [],
       "unplaced": 1,
       "readAs": [],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "no-ruled-layout",
+        "entries": 0
+      }
     },
     {
       "title": "paleggiato",
@@ -2743,7 +3380,11 @@
       "readAs": [
         "Aggettivo"
       ],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
     },
     {
       "title": "panchine",
@@ -2762,7 +3403,11 @@
       "readAs": [
         "Sostantivo, forma flessa"
       ],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
     },
     {
       "title": "partito a lembi",
@@ -2781,7 +3426,11 @@
       "readAs": [
         "Locuzione aggettivale"
       ],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
     },
     {
       "title": "partito intersecato",
@@ -2800,7 +3449,11 @@
       "readAs": [
         "Locuzione aggettivale"
       ],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
     },
     {
       "title": "partito retto",
@@ -2819,7 +3472,11 @@
       "readAs": [
         "Locuzione aggettivale"
       ],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
     },
     {
       "title": "patatina fritta",
@@ -2838,7 +3495,11 @@
       "readAs": [
         "Locuzione nominale"
       ],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
     },
     {
       "title": "piacione",
@@ -2863,7 +3524,11 @@
         "Sostantivo",
         "Sostantivo, forma flessa"
       ],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 2
+      }
     },
     {
       "title": "piallare",
@@ -2882,7 +3547,11 @@
       "readAs": [
         "Verbo"
       ],
-      "ruleV1": "recovered"
+      "ruleV1": "recovered",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
     },
     {
       "title": "piangere sul latte versato",
@@ -2899,7 +3568,11 @@
       ],
       "unplaced": 0,
       "readAs": [],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
     },
     {
       "title": "pianissimo",
@@ -2918,7 +3591,11 @@
       "readAs": [
         "Avverbio"
       ],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
     },
     {
       "title": "piuttosto di",
@@ -2935,7 +3612,11 @@
       ],
       "unplaced": 0,
       "readAs": [],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "no-ruled-layout",
+        "entries": 0
+      }
     },
     {
       "title": "pneumopericardio",
@@ -2954,7 +3635,11 @@
       "readAs": [
         "Sostantivo"
       ],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
     },
     {
       "title": "pneumoperitoneo",
@@ -2973,7 +3658,11 @@
       "readAs": [
         "Sostantivo"
       ],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
     },
     {
       "title": "pole position",
@@ -2984,7 +3673,11 @@
       "sections": [],
       "unplaced": 1,
       "readAs": [],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "no-ruled-layout",
+        "entries": 0
+      }
     },
     {
       "title": "poliendocrinopatia",
@@ -3003,7 +3696,11 @@
       "readAs": [
         "Sostantivo"
       ],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
     },
     {
       "title": "pomezzanotte",
@@ -3014,7 +3711,11 @@
       "sections": [],
       "unplaced": 1,
       "readAs": [],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "no-ruled-layout",
+        "entries": 0
+      }
     },
     {
       "title": "possessività",
@@ -3033,7 +3734,11 @@
       "readAs": [
         "Sostantivo"
       ],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
     },
     {
       "title": "pria",
@@ -3052,7 +3757,11 @@
       "readAs": [
         "Avverbio"
       ],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
     },
     {
       "title": "proprie",
@@ -3071,7 +3780,11 @@
       "readAs": [
         "Aggettivo, forma flessa"
       ],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
     },
     {
       "title": "punto buono",
@@ -3090,7 +3803,11 @@
       "readAs": [
         "Espressione"
       ],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
     },
     {
       "title": "purità",
@@ -3109,7 +3826,11 @@
       "readAs": [
         "Sostantivo"
       ],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
     },
     {
       "title": "quadripartito diagonale",
@@ -3128,7 +3849,11 @@
       "readAs": [
         "Locuzione aggettivale"
       ],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
     },
     {
       "title": "quartello",
@@ -3147,7 +3872,11 @@
       "readAs": [
         "Sostantivo"
       ],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
     },
     {
       "title": "raccontare",
@@ -3166,7 +3895,11 @@
       "readAs": [
         "Verbo"
       ],
-      "ruleV1": "recovered"
+      "ruleV1": "recovered",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
     },
     {
       "title": "radiose",
@@ -3185,7 +3918,11 @@
       "readAs": [
         "Aggettivo, forma flessa"
       ],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
     },
     {
       "title": "rame perlato",
@@ -3196,7 +3933,11 @@
       "sections": [],
       "unplaced": 1,
       "readAs": [],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "no-ruled-layout",
+        "entries": 0
+      }
     },
     {
       "title": "rappa",
@@ -3215,7 +3956,11 @@
       "readAs": [
         "Sostantivo"
       ],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
     },
     {
       "title": "rasenta",
@@ -3226,7 +3971,11 @@
       "sections": [],
       "unplaced": 2,
       "readAs": [],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "no-ruled-layout",
+        "entries": 0
+      }
     },
     {
       "title": "realizzo",
@@ -3251,7 +4000,11 @@
         "Sostantivo",
         "Voce verbale"
       ],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 2
+      }
     },
     {
       "title": "rivenire",
@@ -3270,7 +4023,11 @@
       "readAs": [
         "Verbo"
       ],
-      "ruleV1": "recovered"
+      "ruleV1": "recovered",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
     },
     {
       "title": "rosa di sperone",
@@ -3289,7 +4046,11 @@
       "readAs": [
         "Locuzione nominale"
       ],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
     },
     {
       "title": "rosa perlato",
@@ -3300,7 +4061,11 @@
       "sections": [],
       "unplaced": 1,
       "readAs": [],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "no-ruled-layout",
+        "entries": 0
+      }
     },
     {
       "title": "rosso rubino perlato",
@@ -3311,7 +4076,11 @@
       "sections": [],
       "unplaced": 1,
       "readAs": [],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "no-ruled-layout",
+        "entries": 0
+      }
     },
     {
       "title": "salpingite",
@@ -3330,7 +4099,11 @@
       "readAs": [
         "Sostantivo"
       ],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
     },
     {
       "title": "salvinata",
@@ -3341,7 +4114,11 @@
       "sections": [],
       "unplaced": 2,
       "readAs": [],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "no-ruled-layout",
+        "entries": 0
+      }
     },
     {
       "title": "satisfattivo",
@@ -3360,7 +4137,11 @@
       "readAs": [
         "Aggettivo"
       ],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
     },
     {
       "title": "scapestrato",
@@ -3391,7 +4172,11 @@
         "Sostantivo",
         "Voce verbale"
       ],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 3
+      }
     },
     {
       "title": "scopri",
@@ -3410,7 +4195,11 @@
       "readAs": [
         "Voce verbale"
       ],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
     },
     {
       "title": "scuci",
@@ -3429,7 +4218,11 @@
       "readAs": [
         "Voce verbale"
       ],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
     },
     {
       "title": "scucì",
@@ -3448,7 +4241,11 @@
       "readAs": [
         "Voce verbale"
       ],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
     },
     {
       "title": "semplificato",
@@ -3467,7 +4264,11 @@
       "readAs": [
         "Voce verbale"
       ],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
     },
     {
       "title": "si capisce",
@@ -3486,7 +4287,11 @@
       "readAs": [
         "Espressione"
       ],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
     },
     {
       "title": "silenziario",
@@ -3505,7 +4310,11 @@
       "readAs": [
         "Sostantivo"
       ],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "no-ruled-layout",
+        "entries": 0
+      }
     },
     {
       "title": "smentire",
@@ -3524,7 +4333,11 @@
       "readAs": [
         "Verbo"
       ],
-      "ruleV1": "recovered"
+      "ruleV1": "recovered",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
     },
     {
       "title": "spostata",
@@ -3543,7 +4356,11 @@
       "readAs": [
         "Sostantivo"
       ],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "no-ruled-layout",
+        "entries": 0
+      }
     },
     {
       "title": "spumanti",
@@ -3562,7 +4379,11 @@
       "readAs": [
         "Sostantivo, forma flessa"
       ],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
     },
     {
       "title": "stellari",
@@ -3581,7 +4402,11 @@
       "readAs": [
         "Aggettivo, forma flessa"
       ],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
     },
     {
       "title": "striata",
@@ -3606,7 +4431,11 @@
         "Aggettivo, forma flessa",
         "Voce verbale"
       ],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 2
+      }
     },
     {
       "title": "su per giù",
@@ -3623,7 +4452,11 @@
       ],
       "unplaced": 0,
       "readAs": [],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "no-ruled-layout",
+        "entries": 0
+      }
     },
     {
       "title": "subcomandante",
@@ -3634,7 +4467,11 @@
       "sections": [],
       "unplaced": 1,
       "readAs": [],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "no-ruled-layout",
+        "entries": 0
+      }
     },
     {
       "title": "subliminali",
@@ -3653,7 +4490,11 @@
       "readAs": [
         "Sostantivo"
       ],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
     },
     {
       "title": "subordinata consecutiva",
@@ -3664,7 +4505,11 @@
       "sections": [],
       "unplaced": 1,
       "readAs": [],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "no-ruled-layout",
+        "entries": 0
+      }
     },
     {
       "title": "subordinata dichiarativa",
@@ -3675,7 +4520,11 @@
       "sections": [],
       "unplaced": 1,
       "readAs": [],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "no-ruled-layout",
+        "entries": 0
+      }
     },
     {
       "title": "subordinata oggettiva",
@@ -3686,7 +4535,11 @@
       "sections": [],
       "unplaced": 1,
       "readAs": [],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "no-ruled-layout",
+        "entries": 0
+      }
     },
     {
       "title": "subordinata temporale",
@@ -3697,7 +4550,11 @@
       "sections": [],
       "unplaced": 1,
       "readAs": [],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "no-ruled-layout",
+        "entries": 0
+      }
     },
     {
       "title": "sviluppatori",
@@ -3722,7 +4579,11 @@
         "Aggettivo, forma flessa",
         "Sostantivo, forma flessa"
       ],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 2
+      }
     },
     {
       "title": "sviluppatrice",
@@ -3747,7 +4608,11 @@
         "Aggettivo, forma flessa",
         "Sostantivo, forma flessa"
       ],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 2
+      }
     },
     {
       "title": "sviluppatrici",
@@ -3772,7 +4637,11 @@
         "Aggettivo, forma flessa",
         "Sostantivo, forma flessa"
       ],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 2
+      }
     },
     {
       "title": "talora",
@@ -3791,7 +4660,11 @@
       "readAs": [
         "Avverbio"
       ],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
     },
     {
       "title": "tantundem",
@@ -3808,7 +4681,11 @@
       ],
       "unplaced": 0,
       "readAs": [],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
     },
     {
       "title": "tardamente",
@@ -3819,7 +4696,11 @@
       "sections": [],
       "unplaced": 1,
       "readAs": [],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "no-ruled-layout",
+        "entries": 0
+      }
     },
     {
       "title": "tele grigio 1",
@@ -3830,7 +4711,11 @@
       "sections": [],
       "unplaced": 1,
       "readAs": [],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "no-ruled-layout",
+        "entries": 0
+      }
     },
     {
       "title": "tele grigio 2",
@@ -3841,7 +4726,11 @@
       "sections": [],
       "unplaced": 1,
       "readAs": [],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "no-ruled-layout",
+        "entries": 0
+      }
     },
     {
       "title": "tele grigio 4",
@@ -3852,7 +4741,11 @@
       "sections": [],
       "unplaced": 1,
       "readAs": [],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "no-ruled-layout",
+        "entries": 0
+      }
     },
     {
       "title": "tic",
@@ -3871,7 +4764,11 @@
       "readAs": [
         "Sostantivo"
       ],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
     },
     {
       "title": "tireopatia",
@@ -3890,7 +4787,11 @@
       "readAs": [
         "Sostantivo"
       ],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
     },
     {
       "title": "tireotossicosi",
@@ -3909,7 +4810,11 @@
       "readAs": [
         "Sostantivo"
       ],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
     },
     {
       "title": "topopassera",
@@ -3928,7 +4833,11 @@
       "readAs": [
         "Sostantivo"
       ],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
     },
     {
       "title": "tornire",
@@ -3947,7 +4856,11 @@
       "readAs": [
         "Verbo"
       ],
-      "ruleV1": "recovered"
+      "ruleV1": "recovered",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
     },
     {
       "title": "travet",
@@ -3966,7 +4879,11 @@
       "readAs": [
         "Sostantivo"
       ],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
     },
     {
       "title": "tremare",
@@ -3985,7 +4902,11 @@
       "readAs": [
         "Verbo"
       ],
-      "ruleV1": "recovered"
+      "ruleV1": "recovered",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
     },
     {
       "title": "tremolante",
@@ -4010,7 +4931,11 @@
         "Voce verbale",
         "Aggettivo"
       ],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 2
+      }
     },
     {
       "title": "trincetto",
@@ -4029,7 +4954,11 @@
       "readAs": [
         "Sostantivo"
       ],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
     },
     {
       "title": "trinciato alla dritta",
@@ -4048,7 +4977,11 @@
       "readAs": [
         "Locuzione aggettivale"
       ],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
     },
     {
       "title": "trinciato alla sinistra",
@@ -4067,7 +5000,11 @@
       "readAs": [
         "Locuzione aggettivale"
       ],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
     },
     {
       "title": "tripartito perpendicolare",
@@ -4086,7 +5023,11 @@
       "readAs": [
         "Locuzione aggettivale"
       ],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
     },
     {
       "title": "tripartito retto",
@@ -4105,7 +5046,11 @@
       "readAs": [
         "Locuzione aggettivale"
       ],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
     },
     {
       "title": "tripartito retto e perpendicolare",
@@ -4124,7 +5069,11 @@
       "readAs": [
         "Locuzione aggettivale"
       ],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
     },
     {
       "title": "trombaio",
@@ -4143,7 +5092,11 @@
       "readAs": [
         "Sostantivo"
       ],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
     },
     {
       "title": "trombocitemia",
@@ -4162,7 +5115,11 @@
       "readAs": [
         "Sostantivo"
       ],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
     },
     {
       "title": "troncatrice",
@@ -4181,7 +5138,11 @@
       "readAs": [
         "Sostantivo"
       ],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
     },
     {
       "title": "tuttavolta",
@@ -4203,7 +5164,11 @@
       ],
       "unplaced": 0,
       "readAs": [],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "no-ruled-layout",
+        "entries": 0
+      }
     },
     {
       "title": "tutto d'un colpo",
@@ -4220,7 +5185,11 @@
       ],
       "unplaced": 0,
       "readAs": [],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "no-ruled-layout",
+        "entries": 0
+      }
     },
     {
       "title": "usucapioni",
@@ -4239,7 +5208,11 @@
       "readAs": [
         "Sostantivo, forma flessa"
       ],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
     },
     {
       "title": "vale a dire",
@@ -4264,7 +5237,11 @@
         "Avverbio",
         "Congiunzione"
       ],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "no-ruled-layout",
+        "entries": 0
+      }
     },
     {
       "title": "valente",
@@ -4289,7 +5266,11 @@
         "Aggettivo",
         "Voce verbale"
       ],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 2
+      }
     },
     {
       "title": "venire a conoscenza",
@@ -4308,7 +5289,11 @@
       "readAs": [
         "Locuzione verbale"
       ],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
     },
     {
       "title": "verde opalo perlato",
@@ -4319,7 +5304,11 @@
       "sections": [],
       "unplaced": 1,
       "readAs": [],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "no-ruled-layout",
+        "entries": 0
+      }
     },
     {
       "title": "verde perlato",
@@ -4330,7 +5319,11 @@
       "sections": [],
       "unplaced": 1,
       "readAs": [],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "no-ruled-layout",
+        "entries": 0
+      }
     },
     {
       "title": "vergognarsi",
@@ -4349,7 +5342,11 @@
       "readAs": [
         "Verbo"
       ],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
     },
     {
       "title": "videochirurgia",
@@ -4368,7 +5365,11 @@
       "readAs": [
         "Sostantivo"
       ],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
     },
     {
       "title": "violetto perlato",
@@ -4379,7 +5380,11 @@
       "sections": [],
       "unplaced": 1,
       "readAs": [],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "no-ruled-layout",
+        "entries": 0
+      }
     },
     {
       "title": "volerci",
@@ -4396,7 +5401,11 @@
       ],
       "unplaced": 0,
       "readAs": [],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "no-ruled-layout",
+        "entries": 0
+      }
     },
     {
       "title": "volvolo",
@@ -4415,7 +5424,11 @@
       "readAs": [
         "Sostantivo"
       ],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
     },
     {
       "title": "vortici",
@@ -4434,7 +5447,11 @@
       "readAs": [
         "Sostantivo, forma flessa"
       ],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
     },
     {
       "title": "xilitolo",
@@ -4453,7 +5470,11 @@
       "readAs": [
         "Sostantivo"
       ],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
     },
     {
       "title": "zorattero",
@@ -4472,7 +5493,11 @@
       "readAs": [
         "Sostantivo"
       ],
-      "ruleV1": "no-ruled-layout"
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
     }
   ]
 }

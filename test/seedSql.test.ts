@@ -237,12 +237,14 @@ test("the fifty-word dev seed is one part with the same rows", async () => {
     const report = await devSeed(join(dir, "sql"));
     assert.deepEqual(report.parts, [join(dir, "sql", "part-001.sql")]);
     assert.deepEqual(report.rows, {
-      source_record: 130, source_record_json: 130, lookup_form: 2628, accent_fold: 110, typo_key: 471, form_of_edge: 41,
+      source_record: 130, source_record_json: 130, lookup_form: 2628, accent_fold: 112, typo_key: 2682, form_of_edge: 41,
       sense: 359, sense_gloss: 358, sense_label: 151, grammar_claim: 10908,
-      raw_page: 1, recovered_definition: 7, recovered_label: 6, recovered_example: 7, hidden_record: 0,
+      raw_page: 244, recovered_definition: 7, recovered_label: 6, recovered_example: 7, hidden_record: 0,
       // The curated corrections are keyed to it-0c432803's lines, not the fixture's.
       corrected_claim: 0,
-      recovered_entry: 0, entry_definition: 0, entry_label: 0, entry_example: 0,
+      // Every fixture page whose title the fifty-word archive has no record for
+      // is a page-only candidate (ADR 0028): 243 of them recover.
+      recovered_entry: 512, entry_definition: 829, entry_label: 454, entry_example: 154,
       release_table_rows: 20,
     });
     // Seven of the fixture's records have a raw page under fixtures/; `casa` is
@@ -289,10 +291,22 @@ test("the recovered layer sits beside casa's record and leaves every source row 
     const pagesDb = openSeed(withPages.parts, ":memory:");
     const bareDb = openSeed(without.parts, ":memory:");
     try {
-      const layer = ["raw_page", "recovered_definition", "recovered_label", "recovered_example", "release_table_rows"];
+      const layer = ["raw_page", "recovered_definition", "recovered_label", "recovered_example", "release_table_rows",
+        "recovered_entry", "entry_definition", "entry_label", "entry_example"];
+      // A page-only entry is searchable, so it adds its own nearby keys and changes no other.
+      const nearby = ["accent_fold", "typo_key"];
       const source = (dump: Record<string, unknown[]>) =>
-        Object.fromEntries(Object.entries(dump).filter(([table]) => !layer.includes(table)));
-      assert.deepEqual(source(tableDump(pagesDb)), source(tableDump(bareDb)));
+        Object.fromEntries(Object.entries(dump).filter(([table]) => !layer.includes(table) && !nearby.includes(table)));
+      const withPagesDump = tableDump(pagesDb);
+      const bareDump = tableDump(bareDb);
+      assert.deepEqual(source(withPagesDump), source(bareDump));
+      const pageOnlyKeys = new Set(pagesDb.prepare("SELECT word_key FROM recovered_entry").all().map((row) => row.word_key));
+      for (const table of nearby) {
+        const bare = new Set(bareDump[table].map((row) => JSON.stringify(row)));
+        const added = withPagesDump[table].filter((row) => !bare.delete(JSON.stringify(row)));
+        assert.equal(bare.size, 0, `${table}: every row of the seed without pages stays`);
+        assert.ok(added.every((row) => pageOnlyKeys.has((row as { surface_key: string }).surface_key)), `${table}: only page-only entries add rows`);
+      }
 
       const casaLine = readFileSync(fixturePath, "utf8").split("\n").find((line) => JSON.parse(line).word === "casa");
       const casa = pagesDb.prepare(

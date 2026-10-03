@@ -340,8 +340,9 @@ export interface SeedSqlOptions {
   /** Byte ceiling for one SQL part; see DEFAULT_PART_CEILING_BYTES. */
   partCeilingBytes?: number;
   /**
-   * Raw Wiktionary pages to recover dropped definitions from (#28). Without
-   * them the recovered layer is empty and the records are seeded as before.
+   * Raw Wiktionary pages to recover dropped definitions from (#28), and every
+   * page-only entry whose title has no Italian record (ADR 0028). Without them
+   * the recovered layer is empty and the records are seeded as before.
    */
   rawPages?: RawPageSource;
   /**
@@ -409,8 +410,9 @@ export async function seedSql(options: SeedSqlOptions): Promise<SeedSqlReport> {
     },
   };
   const pageRows = new RawPageRows(writer.statement("raw_page"), writer.counts);
+  const rawPages: RawPageSource = options.rawPages ?? { page: () => undefined, titles: () => [], size: 0 };
   const recovered = new RecoveredLayer(
-    options.rawPages ?? { page: () => undefined, size: 0 },
+    rawPages,
     pageRows,
     {
       insertDefinition: writer.statement("recovered_definition"),
@@ -471,11 +473,16 @@ export async function seedSql(options: SeedSqlOptions): Promise<SeedSqlReport> {
       },
     });
     if (!start) throw new Error("archive parser did not provide seed metadata");
-    // The complete archive word set is known only after streaming it. A hidden
-    // Italian record still prevents page-only recovery of that title.
-    for (const title of targets) {
-      const page = options.rawPages?.page(title);
-      if (page === undefined) continue;
+    // The complete archive word set is known only after streaming it. Every
+    // raw page whose title no Italian record spells is a page-only candidate,
+    // whether or not a form names it (ADR 0028); a hidden Italian record still
+    // prevents page-only recovery of that title. Pages are read one at a time,
+    // so the source is never copied, and a source lists each title once, so a
+    // title recovered here never shadows a later one in `seenWords`.
+    for (const title of rawPages.titles()) {
+      if (seenWords.has(title)) continue;
+      const page = rawPages.page(title);
+      if (page === undefined) throw new Error(`the raw page source lists ${JSON.stringify(title)} but has no page for it`);
       const result = recoverPageEntry(page, seenWords);
       if (result.outcome !== "recovered") continue;
       const pageId = pageRows.idOf(start.releaseId, page);

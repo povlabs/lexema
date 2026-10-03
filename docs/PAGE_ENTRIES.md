@@ -22,6 +22,8 @@ To build one in a local seed, see
 - A page gives one entry per Italian part-of-speech section. Each entry records
   the rule that read it.
 - No inflection table, pronunciation or etymology is recovered.
+- Every raw page whose title has no Italian archive record is a candidate, not
+  only a page a form names ([seedSql.ts](../src/import/seedSql.ts)).
 
 ## Identity
 
