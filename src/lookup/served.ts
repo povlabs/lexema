@@ -45,9 +45,10 @@ export async function servedReleases(db: LookupDatabase, masterId: string): Prom
 
 /**
  * What a reader is served, as of now: the master `LEXEMA_RELEASE` names, and
- * the last change applied to it (#368), and its live-hide revision (#408).
- * A release activation or rollback moves the release, an apply moves the last
- * change, and a nonempty hide increments its revision in the same transaction.
+ * the last change applied to it (#368), its live-hide revision (#408) and its
+ * curated-correction revision (#420). A release activation or rollback moves
+ * the release, an apply moves the last change, and a nonempty hide or
+ * correction run increments its revision in the same transaction.
  *
  * The last change stands for every change before it because changes are only
  * ever added, one apply at a time, and each change's id names its content
@@ -59,6 +60,8 @@ export interface ServedVersion {
   lastChange: string | null;
   /** Committed live hides; absent on masters seeded before this mechanism. */
   hideRevision?: number;
+  /** Committed `correct:records` runs; absent on masters seeded before them. */
+  correctionRevision?: number;
 }
 
 /**
@@ -68,29 +71,41 @@ export interface ServedVersion {
  */
 export const LAST_CHANGE_SQL: DictionaryRead = `SELECT change_id FROM applied_change ORDER BY rowid DESC LIMIT 1`;
 
-export const HIDE_VERSION_TABLE_SQL: DictionaryRead = `SELECT name FROM sqlite_schema WHERE type = 'table' AND name = 'hide_version'`;
+export const VERSION_TABLES_SQL: DictionaryRead = `SELECT name FROM sqlite_schema WHERE type = 'table' AND name IN ('hide_version', 'correction_version')`;
 export const HIDE_VERSION_SQL: DictionaryRead = `SELECT revision FROM hide_version WHERE singleton = 1`;
+export const CORRECTION_VERSION_SQL: DictionaryRead = `SELECT revision FROM correction_version WHERE singleton = 1`;
 
-/** The version the master `release` serves now, including committed live hides. */
+/** The version the master `release` serves now, including committed live hides and corrections. */
 export async function servedVersion(db: LookupDatabase, release: string): Promise<ServedVersion> {
   const [last, tables] = await Promise.all([
     db.all<{ change_id: string }>(LAST_CHANGE_SQL, []),
-    db.all<{ name: string }>(HIDE_VERSION_TABLE_SQL, []),
+    db.all<{ name: string }>(VERSION_TABLES_SQL, []),
   ]);
-  // An old master has no table until its first nonempty live hide. Do not
-  // suppress other database failures: an unread version must not hit a cache.
-  const [hide] = tables.length === 0 ? [] : await db.all<{ revision: number }>(HIDE_VERSION_SQL, []);
-  return { release, lastChange: last[0]?.change_id ?? null, hideRevision: hide?.revision ?? 0 };
+  // An old master has neither table until its first nonempty hide or
+  // correction run. Do not suppress other database failures: an unread
+  // version must not hit a cache.
+  const names = new Set(tables.map((table) => table.name));
+  const revisionOf = async (table: string, sql: DictionaryRead): Promise<number> =>
+    names.has(table) ? ((await db.all<{ revision: number }>(sql, []))[0]?.revision ?? 0) : 0;
+  const [hideRevision, correctionRevision] = await Promise.all([
+    revisionOf("hide_version", HIDE_VERSION_SQL),
+    revisionOf("correction_version", CORRECTION_VERSION_SQL),
+  ]);
+  return { release, lastChange: last[0]?.change_id ?? null, hideRevision, correctionRevision };
 }
 
 /**
  * `it-0c432803.0` before the first apply, `it-0c432803.chg-0123456789ab`
- * after one, with `.hide-N` after live hides. Web callers also supply the
+ * after one, with `.hide-N` after live hides and `.fix-N` after correction
+ * runs. Web callers also supply the
  * Worker version metadata id: a deploy changes the address even when the data
  * stays the same. Non-web callers can name the data version alone.
  */
-export function versionToken({ release, lastChange, hideRevision = 0 }: ServedVersion, servingCode?: string): string {
-  const data = `${release}.${lastChange ?? "0"}${hideRevision === 0 ? "" : `.hide-${hideRevision}`}`;
+export function versionToken({ release, lastChange, hideRevision = 0, correctionRevision = 0 }: ServedVersion, servingCode?: string): string {
+  const data =
+    `${release}.${lastChange ?? "0"}` +
+    (hideRevision === 0 ? "" : `.hide-${hideRevision}`) +
+    (correctionRevision === 0 ? "" : `.fix-${correctionRevision}`);
   return servingCode === undefined ? data : `${data}.code-${encodeURIComponent(servingCode)}`;
 }
 

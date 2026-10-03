@@ -13,13 +13,14 @@
 // records spelled alike each get the articles of their own gender and number.
 
 import { articlesFor, spokenOpening, type ArticleGender, type ArticleNumber } from "../italian/articles.js";
+import { asserts } from "./types.js";
 import type {
   ArticleWithholding,
-  GrammarClaim,
   NonNounPos,
   Pronunciation,
   ReadingArticles,
   ReadingPartOfSpeech,
+  RecordClaim,
   SourceForm,
 } from "./types.js";
 
@@ -27,11 +28,14 @@ import type {
 const AGREEING_GENDERS = ["masculine", "feminine"] as const satisfies readonly ArticleGender[];
 const AGREEING_NUMBERS = ["singular", "plural"] as const satisfies readonly ArticleNumber[];
 
-/** Every distinct value the source stated for one dimension, in source order. */
-function statedValues(claims: readonly GrammarClaim[], dimension: string): string[] {
+/**
+ * Every distinct value the source stated for one dimension, in source order,
+ * or the curated correction standing in for them (#420).
+ */
+function statedValues(claims: readonly RecordClaim[], dimension: string): string[] {
   const values: string[] = [];
   for (const claim of claims) {
-    if (claim.status === "stated" && claim.dimension === dimension && !values.includes(claim.value)) {
+    if (asserts(claim) && claim.dimension === dimension && !values.includes(claim.value)) {
       values.push(claim.value);
     }
   }
@@ -56,7 +60,7 @@ function statedValues(claims: readonly GrammarClaim[], dimension: string): strin
 export function readingPartOfSpeech(
   pos: string,
   surface: string,
-  claims: readonly GrammarClaim[],
+  claims: readonly RecordClaim[],
   forms: readonly SourceForm[] = [],
   pronunciations: readonly Pronunciation[] = [],
 ): ReadingPartOfSpeech {
@@ -88,7 +92,7 @@ function pluralSurface(gender: ArticleGender, forms: readonly SourceForm[]): str
 
 /** The one agreement the record states, or the first silence or excess that stops it. */
 function agreementOf(
-  claims: readonly GrammarClaim[],
+  claims: readonly RecordClaim[],
 ): { gender: ArticleGender; number: ArticleNumber } | { withholding: ArticleWithholding } {
   const [gender, ...otherGenders] = statedValues(claims, "gender");
   const [number, ...otherNumbers] = statedValues(claims, "number");
@@ -118,7 +122,7 @@ function agreementOf(
 /** The articles for one noun reading, or the reason there are none. */
 function deriveArticles(
   surface: string,
-  claims: readonly GrammarClaim[],
+  claims: readonly RecordClaim[],
   forms: readonly SourceForm[],
   pronunciations: readonly Pronunciation[],
 ): ReadingArticles {

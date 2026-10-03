@@ -4,7 +4,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { agreementOf } from "@/lib/dictionary/genderGrid.ts";
-import type { GrammarClaim, InflectionOf, Reading, SourceForm, SourceRef, StatedClaim } from "@lexema/lookup/types.ts";
+import type { CorrectedClaim, GrammarClaim, InflectionOf, Reading, SourceForm, SourceRef, StatedClaim } from "@lexema/lookup/types.ts";
 
 const ref = (jsonPointer: string): SourceRef => ({ releaseId: "it-test", lineNo: 1, jsonPointer, lineSha256: "0".repeat(64) });
 
@@ -53,6 +53,15 @@ test("a form's spelling does not take the headword's IPA", () => {
 
 const lineOf = (lineNo: number, jsonPointer: string): SourceRef => ({ ...ref(jsonPointer), lineNo });
 
+/** A curated correction (#420) of one dimension, standing in for the tags it names. */
+const corrected = (dimension: "gender" | "number", value: string, replaces: StatedClaim[] = []): CorrectedClaim => ({
+  status: "corrected",
+  dimension,
+  value,
+  correction: { id: "it-test:1", evidenceUrl: "https://en.wiktionary.org/w/index.php?title=x&oldid=1" },
+  replaces,
+});
+
 /**
  * A record pointing at the noun, with what the lookup read off its gloss and
  * tags. `candidates` is the part of speech of every record the named word
@@ -61,7 +70,15 @@ const lineOf = (lineNo: number, jsonPointer: string): SourceRef => ({ ...ref(jso
 function declaring(
   word: string,
   lineNo: number,
-  plural: { glossGender?: "masculine" | "feminine"; tags?: ("masculine" | "feminine")[] } | undefined,
+  plural:
+    | {
+        glossGender?: "masculine" | "feminine";
+        tags?: ("masculine" | "feminine")[];
+        /** A correction of the record's gender, in place of its tags. */
+        correctedGender?: "masculine" | "feminine";
+        correctedNumber?: "singular" | "plural";
+      }
+    | undefined,
   pos = "noun",
   candidates: string[] = ["noun"],
 ): InflectionOf {
@@ -78,17 +95,23 @@ function declaring(
         : {
             gloss: { text: "plurale di x", ref: lineOf(lineNo, "/senses/0/glosses/0") },
             glossGender: plural.glossGender,
-            recordGenders: (plural.tags ?? []).map((gender) => ({ ...stated("gender", gender), ref: lineOf(lineNo, "/tags/0") })),
+            recordGenders:
+              plural.correctedGender === undefined
+                ? (plural.tags ?? []).map((gender) => ({ ...stated("gender", gender), ref: lineOf(lineNo, "/tags/0") }))
+                : [corrected("gender", plural.correctedGender)],
+            correctedNumber: plural.correctedNumber === undefined ? undefined : corrected("number", plural.correctedNumber),
           },
   };
 }
 
 /** A noun reading stating `genders` and singular, with the given forms and incoming records. */
-function nounOf(word: string, genders: string[], inflections: InflectionOf[], forms: SourceForm[] = [], numbers = ["singular"]): Reading {
+function nounOf(word: string, genders: string[] | CorrectedClaim, inflections: InflectionOf[], forms: SourceForm[] = [], numbers = ["singular"]): Reading {
   return {
     pos: "noun",
     word,
-    grammar: { record: [...genders.map((g) => stated("gender", g)), ...numbers.map((n) => stated("number", n))] },
+    grammar: {
+      record: [...(Array.isArray(genders) ? genders.map((g) => stated("gender", g)) : [genders]), ...numbers.map((n) => stated("number", n))],
+    },
     forms,
     lemmaLinks: [],
     inflections,
@@ -163,5 +186,36 @@ test("a record's own plural always wins, and a declared plural changes no other 
   assert.deepEqual(
     grid?.rows.map((row) => row.cells.map((cell) => cell.spellings.map((s) => s.surface))),
     [[["casa"], ["case"]]],
+  );
+});
+
+// Curated corrections (#420): a fact the source states wrongly, set right in the master.
+
+test("a correction of the declaring record's gender outranks its tags and its gloss", () => {
+  // `giocatrici` is tagged masculine; corrected, it is giocatrice's femminile plurale.
+  assert.deepEqual(placed(nounOf("giocatrice", ["feminine"], [declaring("giocatrici", 423567, { tags: ["masculine"], correctedGender: "feminine" })])), [
+    "feminine plural: giocatrici@423567",
+  ]);
+  assert.deepEqual(placed(nounOf("x", ["feminine"], [declaring("xs", 2, { glossGender: "masculine", correctedGender: "feminine" })])), ["feminine plural: xs@2"]);
+});
+
+test("a correction of the declaring record's number overrides the gloss's plurale", () => {
+  // `ammaliatrice` glosses itself "plurale di ammaliatore" and is its femminile singolare.
+  const grid = agreementOf(nounOf("ammaliatore", ["masculine"], [declaring("ammaliatrice", 449969, { tags: ["feminine"], correctedNumber: "singular" })])).grid;
+  assert.deepEqual(
+    grid?.rows.map((row) => [row.gender, row.cells.map((cell) => cell.spellings.map((s) => [s.surface, ...s.articles]))]),
+    [
+      ["masculine", [[["ammaliatore", "l'ammaliatore", "un ammaliatore"]], []]],
+      ["feminine", [[["ammaliatrice", "l'ammaliatrice", "un'ammaliatrice"]], []]],
+    ],
+  );
+});
+
+test("a correction of the noun's own gender places its headword by it", () => {
+  // `fissazione` is tagged masculine; `fissazioni` is tagged feminine.
+  const fissazione = nounOf("fissazione", corrected("gender", "feminine", [stated("gender", "masculine")]), [declaring("fissazioni", 97083, { tags: ["feminine"] })]);
+  assert.deepEqual(
+    agreementOf(fissazione).grid?.rows.map((row) => [row.gender, row.cells.map((cell) => cell.spellings.map((s) => s.surface))]),
+    [["feminine", [["fissazione"], ["fissazioni"]]]],
   );
 });

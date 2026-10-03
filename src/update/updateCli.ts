@@ -203,8 +203,20 @@ async function executeApply(target: SeedTarget, reader: MasterReader, plan: Appl
     (change.kind === "changed" ? `, replacing record ${change.master.recordId}` : ""),
   );
   const rows = Object.entries(plan.rows).map(([table, count]) => `  ${table}: ${count}`);
+  // A correction stays on the record it was checked against; its replacement is a newer source's claim (#420).
+  const corrections = plan.retiredCorrections.map(
+    (retired) =>
+      `  ${retired.correctionId} stays on retired record ${retired.recordId}; ${retired.changeId} replaced it with record ${retired.replacedBy}, which it does not reach. ` +
+      "Check the newer record against the entry's evidence in src/italian/curatedCorrections.ts.",
+  );
   return {
-    out: [`applied ${plan.changes.length} change(s) from ${plan.feedReleaseId} to ${plan.masterReleaseId}:`, ...(aggregate ? [] : lines), "rows written:", ...rows].join("\n"),
+    out: [
+      `applied ${plan.changes.length} change(s) from ${plan.feedReleaseId} to ${plan.masterReleaseId}:`,
+      ...(aggregate ? [] : lines),
+      "rows written:",
+      ...rows,
+      ...(corrections.length === 0 ? [] : ["curated corrections not carried to a replacing record:", ...corrections]),
+    ].join("\n"),
     status: 0,
   };
 }

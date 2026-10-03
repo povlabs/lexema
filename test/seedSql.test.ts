@@ -240,7 +240,9 @@ test("the fifty-word dev seed is one part with the same rows", async () => {
       source_record: 130, source_record_json: 130, lookup_form: 2628, accent_fold: 110, typo_key: 471, form_of_edge: 41,
       sense: 359, sense_gloss: 358, sense_label: 151, grammar_claim: 10908,
       raw_page: 1, recovered_definition: 7, recovered_label: 6, recovered_example: 7, hidden_record: 0,
-      release_table_rows: 15,
+      // The curated corrections are keyed to it-0c432803's lines, not the fixture's.
+      corrected_claim: 0,
+      release_table_rows: 16,
     });
     // Seven of the fixture's records have a raw page under fixtures/; `casa` is
     // the one whose page states definitions the record does not carry.

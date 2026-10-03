@@ -27,6 +27,8 @@ import type { Change } from "../src/update/changes.js";
 import { diffAgainstMaster, reportMarkdown, reportOf, type MasterDiff } from "../src/update/diff.js";
 import type { MasterReader } from "../src/update/master.js";
 import { masterUpgradeSql, SERVING_VIEWS, UPDATE_TABLES } from "../src/update/masterUpgrade.js";
+import { planCorrections } from "../src/import/correctRecords.js";
+import type { CuratedCorrection } from "../src/italian/curatedCorrections.js";
 
 const MASTER = "it-master";
 const SCHEMA = "src/db/schema.sql";
@@ -611,5 +613,35 @@ test("selection refuses unknown, invalid, same-dump and regressive source orderi
     }
     await assert.rejects(automaticPlan(readerOf(db), found, pages, { schema, appliedAt: "2026-10-01T12:00:00Z", catalog: {} }), /no dated dump facts/);
     assert.equal(dump(db), before);
+  });
+});
+
+test("a curated correction stays on the record a change retires, and the apply reports it rather than carry it over (#420)", async () => {
+  await withDesk(async ({ db, later }) => {
+    const [{ record_id: casaId }] = db.prepare(`SELECT record_id FROM source_record WHERE release_id = '${MASTER}' AND line_no = 1`).all() as { record_id: number }[];
+    // A synthetic entry on the master's `casa`, to test the mechanism; no ruling says casa is masculine.
+    const casa: CuratedCorrection = {
+      record: { releaseId: MASTER, lineNo: 1, lineSha256: createHash("sha256").update(CASA_JULY, "utf8").digest("hex"), word: "casa", pos: "noun" },
+      facts: { gender: { overrides: { pointer: "/tags/0", text: "feminine" }, value: "masculine" } },
+      evidence: [{ wiki: "it.wiktionary.org", title: "casa", revisionId: 1, shows: "synthetic" }],
+    };
+    const schema = await readFile(SCHEMA, "utf8");
+    execute(db, planCorrections(readerOf(db), [casa], schema).sql);
+    const genders = async (): Promise<string[]> =>
+      readings(await ask(db, "casa")).flatMap((reading) =>
+        reading.grammar.record.flatMap((claim) => (claim.status !== "unclassified" && claim.status !== "missing" && claim.dimension === "gender" ? [`${claim.status} ${claim.value}`] : [])),
+      );
+    assert.deepEqual(await genders(), ["corrected masculine"]);
+
+    const plan = await applied(db, later, [["changed", "casa"]]);
+    const [change] = plan.changes;
+    assert.deepEqual(plan.retiredCorrections, [{ correctionId: `${MASTER}:1`, recordId: casaId, replacedBy: change.recordId, changeId: change.change.id }]);
+    // The newer record states its own gender, which the correction does not reach.
+    assert.deepEqual(await genders(), ["stated feminine"]);
+    // The correction stays on the retired record, and a later run reports it instead of writing it.
+    assert.deepEqual(db.prepare("SELECT record_id FROM corrected_claim").all().map((row) => ({ ...row })), [{ record_id: casaId }]);
+    const again = planCorrections(readerOf(db), [casa], schema);
+    assert.equal(again.sql, "");
+    assert.deepEqual(again.entries.map((entry) => entry.state), ["retired"]);
   });
 });

@@ -285,6 +285,17 @@ all; the three represented states are:
 | `unclassified` | the source gave text that is not mapped | `sourceText` |
 | `missing` | the dimension was checked and the source said nothing | `dimension` |
 
+`grammar.record` can hold one more status, `corrected`: a curated correction
+of the record's own gender or number (#420), from the committed list in
+[`curatedCorrections.ts`](../src/italian/curatedCorrections.ts). It carries
+`dimension`, `value`, `correction` (the list entry's `id` and the `evidenceUrl`
+of the Wiktionary revision it cites) and `replaces`, the record's own stated
+claims in that dimension. It stands in for them and for a `missing` claim
+there, so a dimension is never both stated and corrected
+(`correctRecordClaims` in [`types.ts`](../src/lookup/types.ts)). A correction is
+read for its own record only: a record a later release replaced does not pass
+it on. Forms and senses are never corrected.
+
 ### `LemmaLink`
 
 | `kind` | Meaning | Also carries |
@@ -324,8 +335,11 @@ edge's sense opens with `plurale di`, `femminile plurale di`, `maschile plurale
 di`, `plurale femminile di` or `plurale maschile di`, then this reading's word,
 then nothing that continues the word. `case` ("plurale di casa") carries one for
 `casa`; `casetta` ("diminutivo di casa") does not. It holds the `gloss` with its
-ref, the `glossGender` the opening names, if any, and `recordGenders`, the
-declaring record's own stated gender claims.
+ref, the `glossGender` the opening names, if any, `recordGenders`, the
+declaring record's own stated gender claims or the correction standing in for
+them, and `correctedNumber`, a correction of the declaring record's number,
+which overrides the gloss's plural: `ammaliatrice` glosses itself "plurale di
+ammaliatore" and is its feminine singular.
 
 The gloss names a word, as the edge does, so every candidate carries the same
 `plural`: `temi` ("plurale di tema") gives one to both noun records of `tema`.
@@ -342,8 +356,8 @@ replaces it.
 
 ## Exported SQL
 
-`SEARCH_SQL`, `LEMMA_LINK_SQL`, `INFLECTION_SQL`, `INFLECTION_CANDIDATE_SQL` and
-`INFLECTION_GENDER_SQL` are exported
+`SEARCH_SQL`, `LEMMA_LINK_SQL`, `INFLECTION_SQL`, `INFLECTION_CANDIDATE_SQL`,
+`INFLECTION_GRAMMAR_SQL` and `INFLECTION_CORRECTION_SQL` are exported
 so tests can assert their query plans. See
 [the design notes](LOOKUP_DESIGN.md#the-view-that-costs-four-orders-of-magnitude).
 

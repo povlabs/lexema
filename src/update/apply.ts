@@ -18,7 +18,7 @@
 //   feeds, and each change under its id.
 //
 // It never deletes a record, never touches a table written by hand beside the
-// records (raw_page, recovered_*, claim_review), and never applies a lost
+// records (raw_page, recovered_*, claim_review, corrected_claim), and never applies a lost
 // word: removing a record is not ruled.
 
 import { IT_NORMALIZER_VERSION } from "../italian/normalize.js";
@@ -95,11 +95,26 @@ export interface ApplyPlan {
   changes: PlannedChange[];
   /** Records a `changed` change retires. */
   retired: number[];
+  /**
+   * The curated corrections (#420) on records this apply retires. They stay on
+   * the retired record, and the record that replaces it does not take them:
+   * the newer source may state the fact differently, so each is reported.
+   */
+  retiredCorrections: RetiredCorrection[];
   /** Rows written under the later release, by table. */
   rows: Record<AppliedTable, number>;
   /** `accent_fold` and `typo_key` rows of other releases the apply replaces. */
   replacedIndexRows: number;
   sql: string;
+}
+
+/** A curated correction left on a record a change retires. */
+export interface RetiredCorrection {
+  correctionId: string;
+  recordId: number;
+  /** The record the change writes in its place, which the correction does not reach. */
+  replacedBy: number;
+  changeId: ChangeId;
 }
 
 /** The changes `texts` name, or every reason they cannot be applied. */
@@ -293,6 +308,7 @@ export async function planApply(
     planned.push({ change, recordId: id });
   }
   const retired = chosen.flatMap((change) => (change.kind === "changed" ? [change.master.recordId] : []));
+  const retiredCorrections = correctionsOn(reader, planned);
 
   // The keys whose nearby rows can move: every key a written or a retired record spells.
   const retiredKeys = retired.length === 0
@@ -381,10 +397,29 @@ export async function planApply(
     feedReleaseId: feed.releaseId,
     changes: planned,
     retired,
+    retiredCorrections,
     rows: counts,
     replacedIndexRows: nearby.replaced,
     sql: `${sql.join("\n")}\n`,
   };
+}
+
+/** The curated corrections on the records `planned` changes retire, read where the master holds them. */
+function correctionsOn(reader: MasterReader, planned: readonly PlannedChange[]): RetiredCorrection[] {
+  const replacing = new Map(
+    planned.flatMap(({ change, recordId }) => (change.kind === "changed" ? [[change.master.recordId, { recordId, changeId: change.id }] as const] : [])),
+  );
+  if (replacing.size === 0) return [];
+  // A master seeded before #420 holds none until `correct:records` writes some.
+  if (select<{ name: string }>(reader, "SELECT name FROM sqlite_schema WHERE type = 'table' AND name = 'corrected_claim'").length === 0) return [];
+  return select<{ record_id: number; correction_id: string }>(
+    reader,
+    `SELECT DISTINCT record_id, correction_id FROM corrected_claim
+      WHERE record_id IN (SELECT value FROM json_each(${json([...replacing.keys()])})) ORDER BY record_id`,
+  ).map((row) => {
+    const by = replacing.get(row.record_id) as { recordId: number; changeId: ChangeId };
+    return { correctionId: row.correction_id, recordId: row.record_id, replacedBy: by.recordId, changeId: by.changeId };
+  });
 }
 
 const sameAccent = (a: AccentFoldRow, b: AccentFoldRow): boolean =>
