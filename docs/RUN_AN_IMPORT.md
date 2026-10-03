@@ -257,6 +257,24 @@ hides all 30. Every later run prints `30 already hidden; nothing to hide`.
 
 ## Page-only entries
 
-The seed also applies ADR 0024 to dangling form targets with a ruled Italian
-page layout. See [page-only entry seed and readers](PAGE_ENTRIES.md) for the
-local reproduction and the operational rollout boundary.
+The seed also stores page-only entries for dangling form targets with a ruled
+Italian page layout (ADR 0024). What it stores is in
+[page-only entries](PAGE_ENTRIES.md). To see them in a disposable local seed:
+
+1. For the full release, keep the verified dump in the repository root, and
+   run the full-release command in [Run it](#run-it) with a fresh
+   `SEED_STATE`. Leave `SEED_REMOTE` unset.
+2. For a small reproduction, join the development fixture and the two form
+   records that point at page-only entries into one local file, and seed it.
+   Their pages are already committed under `fixtures/`.
+
+   ```sh
+   cat fixtures/dev-seed.jsonl fixtures/page-entry-forms.jsonl > .data/page-entry-input.jsonl
+   SEED_INPUT=.data/page-entry-input.jsonl \
+   SEED_SQL=.data/page-entry-sql \
+   SEED_STATE=.data/page-entry-state \
+   pnpm run seed:dev
+   ```
+
+3. Search for `raccontare` or `fornire`, or for the forms `racconto` and
+   `fornito`, which lead to them.

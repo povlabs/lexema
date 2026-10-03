@@ -1,4 +1,3 @@
-import { entryKey } from "@lexema/lookup/types.ts";
 // How one reading renders: a heading `1 · Sostantivo` (only `Sostantivo` for a
 // reading with no definition), then *Definitions*, then
 // *Forms* — no box around it, a thin rule before the next
@@ -10,7 +9,7 @@ import { entryKey } from "@lexema/lookup/types.ts";
 // article worked out by rule. Every Italian string carries `lang="it"`.
 
 import type { ReactNode } from "react";
-import { isVerbReading, searchedSpellings } from "@lexema/lookup/types.ts";
+import { entryKey, isVerbReading, searchedSpellings } from "@lexema/lookup/types.ts";
 import type { RecoveredDefinition, Reading, Sense } from "@lexema/lookup/types.ts";
 import { conjugationOf } from "@/lib/dictionary/conjugation.ts";
 import { definitionsOf, senseLabels, type DefinitionItem } from "@/lib/dictionary/definitions.ts";

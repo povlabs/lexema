@@ -270,11 +270,16 @@ export function everyRecovered(reading: Pick<Reading, "senses" | "recovered">): 
     .sort((a, b) => a.ref.line - b.ref.line);
 }
 
-/** A record the source names as the target of a form_of edge. */
+/**
+ * What an entry is: a source record, pointed at by its archive line, or a
+ * page-only entry (ADR 0024, #403), pointed at by its page revision. Exactly
+ * one of the two.
+ */
 export type EntryIdentity =
   | { recordId: number; entryId?: never; ref: SourceRef }
   | { entryId: number; recordId?: never; ref: PageEntryRef };
 
+/** Where a page-only entry was read: its page revision and the line that names its part of speech, verbatim. */
 export interface PageEntryRef {
   releaseId: string;
   wiki: string;
@@ -288,11 +293,15 @@ export interface PageEntryRef {
   jsonPointer?: never;
 }
 
+/**
+ * A record the source names as the target of a form_of edge, or the page-only
+ * entry it names. `ref` is the candidate's own headword field, where `word`
+ * was read from: the record's line, or the entry's page line.
+ */
 export type LemmaCandidate = EntryIdentity & {
   word: string;
   pos: string;
-
-}
+};
 
 /**
  * Where a lemma's own table spells the searched surface: `andare`'s `forms[]`,

@@ -1,4 +1,3 @@
-import { entryKey } from "@lexema/lookup/types.ts";
 // The short page of a searched expression (#214, Huey's page-shape rulings of
 // 2026-09-30; design-system-manifest.md § "The result"): the search as typed,
 // then each record of the inflected word as a reading, `1 · Voce verbale`,
@@ -10,7 +9,7 @@ import { entryKey } from "@lexema/lookup/types.ts";
 // meanings as a reading of its own record. Nothing else of either word shows:
 // no forms, no pronunciation. Then one *Source*, to the expression's page.
 
-import type { PhraseDefinition } from "@lexema/lookup/types.ts";
+import { entryKey, type PhraseDefinition } from "@lexema/lookup/types.ts";
 import type { PhraseLine, PhrasePage } from "@/lib/dictionary/phrasePage.ts";
 import { searchHref } from "./Forms";
 import { More, MoreBlock } from "./More";

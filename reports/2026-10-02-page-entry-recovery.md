@@ -41,6 +41,8 @@ Their provenance and primary test contracts are in
 
 ## Seed and rollout boundary
 
-See [page-only entry seed and readers](../docs/PAGE_ENTRIES.md) for the local
-seed path, identities and the seed-only operational rollout limitation.
+The local seed steps are in
+[run an archive seed](../docs/RUN_AN_IMPORT.md#page-only-entries). What is
+stored, the identities and how a dictionary without the tables is served are in
+[page-only entries](../docs/PAGE_ENTRIES.md).
 This measurement performed no shared writes.

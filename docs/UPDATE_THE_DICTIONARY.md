@@ -38,8 +38,8 @@ pnpm run update:upgrade
 This adds the update tables and views, and the empty page-entry tables (#403),
 without writing records. It names what it adds; running it again changes
 nothing. The first apply also upgrades, but lookups need the views before any
-change is applied. Lookups do not need the page-entry tables: without them they
-serve no page-only entries.
+change is applied. Lookups do not need the page-entry tables
+([a dictionary without them](PAGE_ENTRIES.md#a-dictionary-without-the-tables)).
 
 ## 1. Keep a restore point
 

@@ -21,6 +21,7 @@ import {
   type ReportAnswer,
   type ReportChoice,
 } from "@/lib/dictionary/report.ts";
+import type { EntryIdentity } from "@lexema/lookup/types.ts";
 import type { PageReading } from "@/lib/dictionary/wordPage.ts";
 import {
   REPORT_BACKDROP,
@@ -47,12 +48,21 @@ import {
   REPORT_X,
 } from "@/components/shared/styles.ts";
 
+/**
+ * A reading a report can name: a source record, which the server checks
+ * against `source_record` (lib/dictionary/report.ts). A page-only entry (#403)
+ * has no record, so it is not offered; its report stays about the word.
+ */
 export interface ReportReading {
-  recordId?: number;
-  entryId?: number;
+  recordId: number;
   /** The reading's number on the page; none for a reading with no definition. */
   number: PageReading["number"];
   posTitle: string;
+}
+
+/** The page's readings a report can name, in page order: every one backed by a source record. */
+export function reportReadings(readings: readonly { number: ReportReading["number"]; reading: EntryIdentity & { posTitle: string } }[]): ReportReading[] {
+  return readings.flatMap(({ number, reading }) => (reading.recordId === undefined ? [] : [{ number, recordId: reading.recordId, posTitle: reading.posTitle }]));
 }
 
 /** How the dialog names a reading: `1 · Sostantivo`, or `Sostantivo` when it has no number. */
@@ -128,7 +138,7 @@ function Chip({ name, value, checked, onChange, children }: { name: string; valu
 export function ReportDialog({ word, readings, siteKey }: { word: string; readings: readonly ReportReading[]; siteKey?: string }) {
   const [open, setOpen] = useState(false);
   const [choice, setChoice] = useState<ReportChoice | undefined>(undefined);
-  const [reading, setReading] = useState<number | string | undefined>(undefined);
+  const [reading, setReading] = useState<number | "unsure" | undefined>(undefined);
   const [details, setDetails] = useState("");
   const [status, setStatus] = useState<Status>("editing");
   const [token, setToken] = useState<string | undefined>(undefined);
@@ -268,11 +278,11 @@ export function ReportDialog({ word, readings, siteKey }: { word: string; readin
                   <div className={REPORT_CHIPS}>
                     {readings.map((entry) => (
                       <Chip
-                        key={entry.recordId ?? `page-${entry.entryId}`}
+                        key={entry.recordId}
                         name="reading"
-                        value={String(entry.recordId ?? `page-${entry.entryId}`)}
-                        checked={reading === (entry.recordId ?? `page-${entry.entryId}`)}
-                        onChange={() => setReading(entry.recordId ?? `page-${entry.entryId}`)}
+                        value={String(entry.recordId)}
+                        checked={reading === entry.recordId}
+                        onChange={() => setReading(entry.recordId)}
                       >
                         {readingChoiceLabel(entry)}
                       </Chip>

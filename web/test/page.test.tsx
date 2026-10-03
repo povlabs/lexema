@@ -38,7 +38,7 @@ import { FirstLoad, Limited, Outcome, SearchPage, TRY_WORDS } from "@/components
 import { SiteFooter } from "@/components/dictionary/SiteFooter";
 import { ORIGIN } from "@/worker/hosts.ts";
 import { SiteHeader } from "@/components/dictionary/SiteHeader";
-import { readingChoiceLabel } from "@/components/dictionary/ReportDialog";
+import { readingChoiceLabel, reportReadings } from "@/components/dictionary/ReportDialog";
 import { PhraseView } from "@/components/dictionary/Phrase";
 import { phrasePage } from "@/lib/dictionary/phrasePage.ts";
 import { EXPRESSION_FILTER_ABOVE, matchesExpression, wordPage } from "@/lib/dictionary/wordPage.ts";
@@ -1709,9 +1709,7 @@ test("a reading with no definition is its part of speech alone; the readings wit
       ["1Aggettivo", "Sostantivo", "2Voce verbale"],
     );
     assert.deepEqual(
-      wordPage("litigante", await readingsFor(db, "litigante")).readings.map(({ number, reading }) =>
-        readingChoiceLabel({ number, recordId: reading.recordId, posTitle: reading.posTitle }),
-      ),
+      reportReadings(wordPage("litigante", await readingsFor(db, "litigante")).readings).map(readingChoiceLabel),
       ["1 · Aggettivo", "Sostantivo", "2 · Voce verbale"],
     );
 
@@ -1835,6 +1833,8 @@ test("page-only readings present definitions without origin marks or invented fo
     assert.ok(reading.entryId !== undefined);
     const model = wordPage("raccontare", answer.readings);
     assert.equal(model.readings.length, 1);
+    // A report names only a source record, so a page-only reading is not offered as a choice.
+    assert.deepEqual(reportReadings(model.readings), []);
     const html = await render(db, "raccontare");
     assert.match(textOf(html), /narrare, oralmente o tramite scrittura, eventi o storie/);
     assert.match(textOf(html), /rappresentare qualcosa, in genere cosa non gradita/);

@@ -1,4 +1,3 @@
-import { entryKey } from "@lexema/lookup/types.ts";
 // One word's page: the headword with its pronunciation, jump links when there
 // are three readings or more, the readings in source order, then the facts
 // about the word once, its expressions last among them, then *Source* (design-system-manifest.md § "The result").
@@ -6,13 +5,13 @@ import { entryKey } from "@lexema/lookup/types.ts";
 // Which records are readings and which lemma tables they carry is
 // `wordPage.ts`; this file only lays the answer out.
 
-import type { WordFacts } from "@lexema/lookup/types.ts";
+import { entryKey, type EntryIdentity, type WordFacts } from "@lexema/lookup/types.ts";
 import { ExternalIcon } from "@/components/shared/icons";
 import { Expressions } from "./Expressions";
 import { NEW_TAB } from "@/components/shared/ExternalLink";
 import { OneLine } from "./OneLine";
 import { ReadingView } from "./Reading";
-import { ReportDialog, type ReportReading } from "./ReportDialog";
+import { ReportDialog, reportReadings, type ReportReading } from "./ReportDialog";
 import { sourcePageUrl } from "@/lib/dictionary/sourcePage.ts";
 import { WordList } from "./WordList";
 import type { ExpressionSection, WordLists, WordPage } from "@/lib/dictionary/wordPage.ts";
@@ -118,7 +117,7 @@ export interface FooterFacts {
   /** The word a report is about. */
   headword: string;
   /** Each reading a report can name, with its number on the page; a word page leaves a reading with no definition unnumbered. */
-  readings: readonly { number: ReportReading["number"]; reading: { recordId?: number; entryId?: number; posTitle: string } }[];
+  readings: readonly { number: ReportReading["number"]; reading: EntryIdentity & { posTitle: string } }[];
 }
 
 /** One *Source*, to the Wiktionary page of the page's word, then *Report a mistake* (ADR 0009, amended on #281). */
@@ -137,7 +136,7 @@ export function SourceLine({ page, siteKey }: { page: FooterFacts; siteKey: stri
       <span aria-hidden="true">·</span>
       <ReportDialog
         word={page.headword}
-        readings={page.readings.map(({ number, reading }) => ({ number, recordId: reading.recordId, entryId: reading.entryId, posTitle: reading.posTitle }))}
+        readings={reportReadings(page.readings)}
         siteKey={siteKey}
       />
     </footer>
