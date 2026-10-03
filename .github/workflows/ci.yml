@@ -1,9 +1,32 @@
 name: CI
 
+# The typecheck and the unit tests read the whole tree, so this runs on the
+# merged result as well as on the pull request (.patterns/repo-wide-gates-run-on-main.md).
+# A change to Markdown alone checks nothing here, so it does not start a run.
+# The Markdown files a unit test reads are the exception, and each is listed
+# under both triggers: docs/DEPLOY.md (web/test/workersBuilds.test.ts) and
+# docs/UPDATE_THE_DICTIONARY.md (test/update-cli-guidance.test.ts reads each
+# docs/*.md that src/ names in a recovery hint). A test that reads another
+# Markdown file adds it here.
+
 on:
   push:
     branches: [main]
+    paths:
+      - "**"
+      - "!**/*.md"
+      - "docs/DEPLOY.md"
+      - "docs/UPDATE_THE_DICTIONARY.md"
   pull_request:
+    paths:
+      - "**"
+      - "!**/*.md"
+      - "docs/DEPLOY.md"
+      - "docs/UPDATE_THE_DICTIONARY.md"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
   check:
@@ -17,19 +40,16 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm run typecheck
-      - run: pnpm test
+      # `pnpm test` is its two suites, one after the other. The root suite
+      # runs here and the web suite in `test-web`, side by side, so neither
+      # waits for the other (#521).
+      - run: pnpm run test:root
       # The Worker's own typecheck. `wrangler types` generates from
       # wrangler.jsonc and needs no Cloudflare account.
       - run: pnpm --filter @lexema/web typecheck
 
-  # The unit tests run the schemas on node:sqlite, which accepts SQL that D1
-  # refuses (#179). This builds both databases in a throwaway local D1 from
-  # the committed fixture, so it needs no Cloudflare secret and no dataset.
-  # Both land in the seed's default .data/seed-state, inside this checkout.
-  d1:
+  test-web:
     runs-on: ubuntu-latest
-    env:
-      WRANGLER_SEND_METRICS: "false"
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
       - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
@@ -38,13 +58,4 @@ jobs:
           node-version-file: .nvmrc
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      # Applies src/db/schema.sql and the fixture's rows to DB, and every app
-      # migration to APP_DB. Wrangler exits non-zero on any refused statement.
-      - run: pnpm run seed:dev
-      # A CHECK runs only when a row is written, and D1's GLOB pattern limit
-      # is met there, not at CREATE TABLE (#167). This writes one valid row to
-      # every table the app migrations create, in a throwaway local D1 of its
-      # own, and fails when a table has no row or D1 refuses one (#330).
-      - run: pnpm run db:check-d1
-      # The key CLI's own write, through the same path a person runs.
-      - run: pnpm run api-key create --label ci --per-minute 1
+      - run: pnpm run test:web

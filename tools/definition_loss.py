@@ -73,7 +73,7 @@ POS_TITLE_BY_TEMPLATE = {
     "loc nom form": "Locuzione nominale, forma flessa",
     "card form": "Aggettivo numerale, forma flessa",
 }
-USER_AGENT = "lexema-definition-loss-study/1.0 (github.com/hueypov/lexema; issue 11)"
+USER_AGENT = "lexema-definition-loss-study/1.0 (github.com/povlabs/lexema; issue 11)"
 
 # it.wiktionary marks a language section with {{-xx-}} and a part of speech with
 # {{-sost-|it}}, {{-agg-|it}} and friends. `form` suffixes mark inflected entries.

@@ -28,6 +28,16 @@ const release = {
 type Database = { uuid: string; name: string };
 
 /**
+ * The SQL of a call's one `--command=<sql>` argument, as Wrangler parses it.
+ * A bare `--command` is the two-argument shape Wrangler misreads (#507), so it
+ * fails the test rather than being read.
+ */
+function commandOf(call: readonly string[]): string | undefined {
+  if (call.includes("--command")) throw new Error(`--command sent as its own argument: ${call.join(" ")}`);
+  return call.find((arg) => arg.startsWith("--command="))?.slice("--command=".length);
+}
+
+/**
  * Answers the reads the seed makes, records every call, and fails the part
  * named in `failPart`. `tables` is what `sqlite_schema` holds before any part.
  */
@@ -55,7 +65,8 @@ function recordingWrangler(
       tables = [...new Set([...tables, "source_record", "lookup_form", "source_release"])];
       return "";
     }
-    const sql = args[args.indexOf("--command") + 1];
+    const sql = commandOf(args);
+    if (sql === undefined) throw new Error(`no --command=<sql> argument: ${args.join(" ")}`);
     if (sql.startsWith("SELECT name FROM sqlite_schema")) {
       return answer((args[2] === "lexema-app" ? appTables : tables).map((name) => ({ name })));
     }
@@ -97,7 +108,6 @@ const reportFor = (parts: readonly string[]) => ({
 
 const silent = () => {};
 const isExecute = (call: readonly string[]) => call[1] === "execute";
-const commandOf = (call: readonly string[]) => call[call.indexOf("--command") + 1];
 
 test("a remote seed creates the named D1 when absent and aims every part and check at it with --remote", async () => {
   await withParts(3, async (parts) => {
@@ -123,7 +133,7 @@ test("a remote seed creates the named D1 when absent and aims every part and che
     assert.ok(executes.every((call) => !/\b(DROP|DELETE)\b/i.test(commandOf(call) ?? "")));
     // The parts go in order, then the checks, and the final status is written last.
     assert.deepEqual(executes.filter((call) => call.includes("--file")).map((call) => call[call.indexOf("--file") + 1]), parts);
-    const commands = executes.filter((call) => call.includes("--command")).map(commandOf);
+    const commands = executes.map(commandOf).filter((sql) => sql !== undefined);
     assert.ok(commands.some((sql) => sql.startsWith("SELECT (SELECT count(*) FROM source_record)")));
     assert.ok(commands.some((sql) => sql.startsWith("SELECT status, lines_read")));
     const promotion = commands.findIndex((sql) => sql === "UPDATE source_release SET status = 'complete' WHERE release_id = 'it-0c432803'");
@@ -157,7 +167,7 @@ test("a remote seed refuses a D1 that already holds tables before any part is ap
   await assert.rejects(target.prepare(), /already holds 2 table\(s\): source_record, source_release.*never clears one/);
   assert.ok(calls.every((call) => !call.includes("--file")));
   assert.deepEqual(calls.at(-1), [
-    "d1", "execute", "lexema-dictionary", "--json", "--command", "SELECT name FROM sqlite_schema WHERE type = 'table'", "--remote", "--yes",
+    "d1", "execute", "lexema-dictionary", "--json", "--command=SELECT name FROM sqlite_schema WHERE type = 'table'", "--remote", "--yes",
   ]);
 });
 

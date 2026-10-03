@@ -16,8 +16,12 @@ import { DatabaseSync } from "node:sqlite";
 import { after, before, test } from "node:test";
 import { gzipSync } from "node:zlib";
 import { planWrite, readyChange } from "../src/deploy/writePlan.js";
+import type { FoundRecord } from "../src/import/hiddenLayer.js";
+import { planHide } from "../src/import/hideRecords.js";
 import { danglingTitles, describePlannedEntry, findPageEntries, missingForLoad, planPageEntries, unloaded } from "../src/import/loadPageEntries.js";
-import { seedSql } from "../src/import/seedSql.js";
+import { accentFoldRowOf, seedSql, typoKeyRowsOf } from "../src/import/seedSql.js";
+import { FORM_OF_FOREIGN_LEMMA_RULE } from "../src/italian/formOfForeignLemma.js";
+import { normalizeItalianExact } from "../src/italian/normalize.js";
 import { CURATED_CORRECTIONS, definitionCorrections } from "../src/italian/curatedCorrections.js";
 import { fromNodeSqlite } from "../src/lookup/database.js";
 import { lookup } from "../src/lookup/lookup.js";
@@ -93,9 +97,9 @@ function execute(db: DatabaseSync, sql: string): void {
   }
 }
 
-async function seeded(name: string, withPages: boolean): Promise<DatabaseSync> {
+async function seeded(name: string, withPages: boolean, input = archive): Promise<DatabaseSync> {
   const { parts } = await seedSql({
-    input: archive,
+    input,
     outputDir: join(dir, name),
     schema: SCHEMA,
     releaseId: RELEASE,
@@ -128,7 +132,7 @@ async function liveShaped(name: string): Promise<DatabaseSync> {
   const found = await diffAgainstMaster(reader, later);
   const chosen = chooseChanges(found, found.diff.changes.map((change) => change.id));
   assert.deepEqual(found.diff.changes.map((change) => [change.kind, change.word]).sort(), [["changed", "casa"], ["new", "dismago"]]);
-  execute(db, (await planApply(reader, found, chosen, { schema: await readFile(SCHEMA, "utf8"), appliedAt: "2026-10-02T00:00:00Z", catalog: fixtureCatalog(found.master.archiveSha256, found.feed.archiveSha256) })).sql);
+  execute(db, (await planApply(reader, found, chosen, { appliedAt: "2026-10-02T00:00:00Z", catalog: fixtureCatalog(found.master.archiveSha256, found.feed.archiveSha256) })).sql);
   // What a hide of `dipendere` leaves: its row in hidden_record, and no search row or edge.
   const { record_id: id } = db.prepare("SELECT record_id FROM source_record WHERE word = 'dipendere'").get() as { record_id: number };
   execute(db, `DELETE FROM lookup_form WHERE record_id = ${id}; DELETE FROM form_of_edge WHERE record_id = ${id};
@@ -270,6 +274,84 @@ test("a title whose page the dictionary holds from another revision is refused",
     const reader = readerOf(db);
     const found = await findPageEntries(PAGES, danglingTitles(reader));
     assert.throws(() => planPageEntries(reader, found, CURATED_CORRECTIONS), /holds revision 1 of fornire/);
+  } finally {
+    db.close();
+  }
+});
+
+// A form whose own forms spell `raccontare`: it gives the page-only entry's
+// key a `lookup_form` row, so hiding it or adding it recomputes that key's
+// search rows (#501). It points at `raccontare` and spells no title itself, so
+// the seed still recovers the entry.
+const RACCONTA = record({
+  word: "racconta",
+  pos: "verb",
+  pos_title: "Voce verbale",
+  forms: [{ form: "raccontare", tags: ["infinitive"] }],
+  senses: [{ glosses: ["terza persona singolare del presente indicativo di raccontare"], tags: ["form-of"], form_of: [{ word: "raccontare" }] }],
+});
+
+/** `raccontare`'s `typo_key` and `accent_fold` rows as the seed writes them for its page-only entry: headed, no translation, ranked by its definitions. */
+function seededNearby(db: DatabaseSync): { typo: unknown[]; accent: unknown[] } {
+  const { n: definitions } = db.prepare("SELECT count(*) AS n FROM entry_definition d JOIN recovered_entry e ON e.entry_id = d.entry_id WHERE e.word = 'raccontare'").get() as { n: number };
+  assert.ok(definitions > 0);
+  const key = normalizeItalianExact("raccontare");
+  const score = { languages: new Set<string>(), richness: definitions };
+  const accent = accentFoldRowOf(key, true, score);
+  return {
+    typo: typoKeyRowsOf(key, score).map((row) => ({ deletion_key: row.deletionKey, languages: row.languages, richness: row.richness })).sort((a, b) => (a.deletion_key < b.deletion_key ? -1 : 1)),
+    accent: accent === undefined ? [] : [{ fold_key: accent.foldKey, headword: 1, languages: 0, richness: definitions }],
+  };
+}
+
+/** `raccontare`'s nearby rows as the dictionary holds them. */
+function heldNearby(db: DatabaseSync): { typo: unknown[]; accent: unknown[] } {
+  const { typo, accent } = entryRows(db, "raccontare") as { typo: unknown[]; accent: unknown[] };
+  return { typo, accent };
+}
+
+test("hiding a record that spells a page-only entry's key keeps the entry's search rows (#501)", async () => {
+  const input = join(dir, "hide-racconta.jsonl.gz");
+  await writeFile(input, gzipSync(`${[...master, RACCONTA].join("\n")}\n`));
+  const db = await seeded("hide-racconta", true, input);
+  try {
+    const reader = readerOf(db);
+    const seededRows = seededNearby(db);
+    assert.ok(seededRows.typo.length > 0);
+    assert.deepEqual(heldNearby(db), seededRows);
+    // The form's row spells the entry's key, so the hide recomputes it.
+    assert.deepEqual(db.prepare("SELECT origin FROM lookup_form lf JOIN source_record r ON r.record_id = lf.record_id WHERE r.word = 'racconta' AND lf.surface_key = 'raccontare'").all().map((row) => ({ ...row })), [{ origin: "embedded-form" }]);
+    const lineNo = master.length + 1;
+    const found: FoundRecord[] = [
+      { rule: FORM_OF_FOREIGN_LEMMA_RULE, word: "racconta", lineNo, form: { lineNo, word: "racconta", code: "es", lemmaLine: 1, lemma: "raccontare" } },
+    ];
+    const plan = planHide(reader, found);
+    assert.equal(plan.hides.length, 1);
+    execute(db, plan.sql);
+    assert.deepEqual(heldNearby(db), seededRows);
+  } finally {
+    db.close();
+  }
+});
+
+test("applying a feed's new record that spells a page-only entry's key keeps the entry's search rows (#501)", async () => {
+  const feed = join(dir, "feed-racconta.jsonl.gz");
+  await writeFile(feed, gzipSync(`${[...master, RACCONTA].join("\n")}\n`));
+  const db = await seeded("apply-racconta", true);
+  try {
+    const reader = readerOf(db);
+    const seededRows = seededNearby(db);
+    assert.ok(seededRows.typo.length > 0);
+    assert.deepEqual(heldNearby(db), seededRows);
+    const diffed = await diffAgainstMaster(reader, feed);
+    assert.deepEqual(diffed.diff.changes.map((change) => [change.kind, change.word]), [["new", "racconta"]]);
+    const chosen = chooseChanges(diffed, diffed.diff.changes.map((change) => change.id));
+    const plan = await planApply(reader, diffed, chosen, {
+      appliedAt: "2026-10-03T00:00:00Z",
+      catalog: fixtureCatalog(diffed.master.archiveSha256, diffed.feed.archiveSha256),
+    });
+    execute(db, plan.sql);
+    assert.deepEqual(heldNearby(db), seededRows);
   } finally {
     db.close();
   }

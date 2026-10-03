@@ -1,5 +1,5 @@
 // The monthly release workflow (#457), end to end against local Git remotes
-// standing in for this repository and `hueypov/lexema-data`, and a fetch that
+// standing in for this repository and `povlabs/lexema-data`, and a fetch that
 // answers as kaikki, Wikimedia and GitHub's pull request API do. No network,
 // no credential.
 
@@ -113,7 +113,7 @@ function fakeFetch(network: Network): typeof fetch {
     }
     if (url.endsWith("/pulls")) {
       network.pulls.push({ url, body: JSON.parse(String(init?.body)) as Record<string, unknown> });
-      return new Response(JSON.stringify({ html_url: "https://github.com/hueypov/lexema/pull/999" }), { status: network.pullStatus });
+      return new Response(JSON.stringify({ html_url: "https://github.com/povlabs/lexema/pull/999" }), { status: network.pullStatus });
     }
     return new Response("not found", { status: 404 });
   }) as typeof fetch;
@@ -124,7 +124,7 @@ interface World {
   /** This repository's checkout, and its `origin`. */
   readonly work: string;
   readonly origin: string;
-  /** `hueypov/lexema-data`. */
+  /** `povlabs/lexema-data`. */
   readonly data: string;
   readonly network: Network;
   deps(extra?: Partial<PrepareDeps>): PrepareDeps;
@@ -169,7 +169,7 @@ async function withWorld(run: (world: World) => Promise<void>): Promise<void> {
         root: work,
         workDir: join(dir, `downloads-${clones}`),
         store: (files, message) => storeFiles(pathToFileURL(data).href, join(dir, `data-clone-${clones++}`), files, message),
-        pullRequestFrom: (branch) => pullRequestFrom(fakeFetch(network), "hueypov/lexema", "a-token", branch),
+        pullRequestFrom: (branch) => pullRequestFrom(fakeFetch(network), "povlabs/lexema", "a-token", branch),
         now: () => new Date("2026-11-05T06:17:42.123Z"),
         ...extra,
       }),
@@ -317,10 +317,10 @@ test("a new release is stored in lexema-data and its facts pushed on release/<id
     // and its pull request was opened, so nothing is written.
     git(world.work, "checkout", "--quiet", "main");
     const dataHead = git(world.data, "rev-parse", "main");
-    world.network.opened = ["https://github.com/hueypov/lexema/pull/999"];
+    world.network.opened = ["https://github.com/povlabs/lexema/pull/999"];
     const again = await prepareRelease(world.deps());
     assert.equal(again.kind, "none");
-    assert.match(again.kind === "none" ? again.reason : "", /pull request https:\/\/github\.com\/hueypov\/lexema\/pull\/999 was opened already from release\/it-[0-9a-f]{8}/);
+    assert.match(again.kind === "none" ? again.reason : "", /pull request https:\/\/github\.com\/povlabs\/lexema\/pull\/999 was opened already from release\/it-[0-9a-f]{8}/);
     assert.equal(git(world.data, "rev-parse", "main"), dataHead);
   });
 });
@@ -337,7 +337,7 @@ test("a release branch with no pull request from it stops the run red, naming th
       (error: unknown) => error instanceof ReleaseRefused && error.message.includes(`the branch ${outcome.branch} exists, but no pull request was ever opened from it`) && /Re-run failed jobs/.test(error.message),
     );
     assert.equal(git(world.data, "rev-parse", "main"), dataHead);
-    assert.ok(world.network.asked.some((url) => url.startsWith("https://api.github.com/repos/hueypov/lexema/pulls?head=hueypov%3Arelease%2Fit-") && url.includes("state=all")));
+    assert.ok(world.network.asked.some((url) => url.startsWith("https://api.github.com/repos/povlabs/lexema/pulls?head=povlabs%3Arelease%2Fit-") && url.includes("state=all")));
   });
 });
 
@@ -349,7 +349,7 @@ test("re-running a pull-request job that pushed its declaration and then failed 
       const checkout = join(world.dir, name);
       git(world.dir, "clone", "--quiet", world.origin, checkout);
       git(checkout, "checkout", "--quiet", "--detach", outcome.commit);
-      return { fetch: fakeFetch(world.network), git: gitIn(checkout), root: checkout, repository: "hueypov/lexema", token: "a-token" };
+      return { fetch: fakeFetch(world.network), git: gitIn(checkout), root: checkout, repository: "povlabs/lexema", token: "a-token" };
     };
 
     // The first try pushes its declaration, then GitHub refuses the pull request.
@@ -360,7 +360,7 @@ test("re-running a pull-request job that pushed its declaration and then failed 
 
     // The re-run starts again from prepare's commit, with a plan that may count differently.
     world.network.pullStatus = 201;
-    assert.equal(await openReleasePullRequest(outcome.candidate, planAnswer(1), tryAt("try-2")), "https://github.com/hueypov/lexema/pull/999");
+    assert.equal(await openReleasePullRequest(outcome.candidate, planAnswer(1), tryAt("try-2")), "https://github.com/povlabs/lexema/pull/999");
     const second = git(world.origin, "rev-parse", `refs/heads/${outcome.branch}`);
     assert.notEqual(second, first);
     assert.equal(git(world.origin, "rev-parse", `${second}^`), outcome.commit);
@@ -453,9 +453,9 @@ test("the pull request adds the declaration to the release branch and is opened 
     git(world.dir, "clone", "--quiet", world.origin, checkout);
     git(checkout, "checkout", "--quiet", "--detach", outcome.commit);
 
-    const deps = { fetch: fakeFetch(world.network), git: gitIn(checkout), root: checkout, repository: "hueypov/lexema", token: "a-token" };
+    const deps = { fetch: fakeFetch(world.network), git: gitIn(checkout), root: checkout, repository: "povlabs/lexema", token: "a-token" };
     const url = await openReleasePullRequest(outcome.candidate, planAnswer(), deps);
-    assert.equal(url, "https://github.com/hueypov/lexema/pull/999");
+    assert.equal(url, "https://github.com/povlabs/lexema/pull/999");
 
     const path = `dictionary-changes/${RELEASE_ID}.json`;
     assert.deepEqual(git(world.origin, "diff", "--name-only", `${outcome.commit}..${outcome.branch}`).split("\n"), [path]);
@@ -463,7 +463,7 @@ test("the pull request adds the declaration to the release branch and is opened 
 
     assert.equal(world.network.pulls.length, 1);
     const [{ url: api, body }] = world.network.pulls;
-    assert.equal(api, "https://api.github.com/repos/hueypov/lexema/pulls");
+    assert.equal(api, "https://api.github.com/repos/povlabs/lexema/pulls");
     assert.equal(body.head, outcome.branch);
     assert.equal(body.base, "main");
     assert.match(String(body.title), new RegExp(RELEASE_ID));
@@ -569,7 +569,7 @@ test("the release workflow's plan job grants every permission a job of the dicti
   const deploy = jobsOf(await readFile(join(workflows, "dictionary-deploy.yml"), "utf8"));
   const granted = permissionsOf(release.get("plan") ?? "");
   const rank = { read: 1, write: 2 } as const;
-  assert.deepEqual([...deploy.keys()], ["deploy", "plan"]);
+  assert.deepEqual([...deploy.keys()], ["gate", "deploy", "plan"]);
   for (const [job, block] of deploy) {
     for (const [scope, level] of permissionsOf(block)) {
       assert.ok((rank[granted.get(scope) as keyof typeof rank] ?? 0) >= rank[level], `dictionary-deploy.yml's ${job} job asks for ${scope}: ${level}, which the release workflow's plan job does not grant`);

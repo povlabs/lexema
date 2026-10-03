@@ -120,7 +120,7 @@ export interface ReleaseCandidateFields {
 
 const isObject = (value: unknown): value is Record<string, unknown> => typeof value === "object" && value !== null && !Array.isArray(value);
 
-/** Where a candidate's files are kept in `hueypov/lexema-data`, beside the archive. */
+/** Where a candidate's files are kept in `povlabs/lexema-data`, beside the archive. */
 export const releaseFilePaths = (releaseId: ReleaseId, dumpFile: string) =>
   ({
     archive: `source/${releaseId}.jsonl.gz`,
@@ -182,7 +182,7 @@ export class ReleaseCandidate {
     return { file, url, ...this.dumpIdentity };
   }
 
-  /** Where its archive, build log, response headers and dump are kept in `hueypov/lexema-data`. */
+  /** Where its archive, build log, response headers and dump are kept in `povlabs/lexema-data`. */
   get paths(): ReturnType<typeof releaseFilePaths> {
     return releaseFilePaths(this.releaseId, this.knownDump.file);
   }
@@ -194,8 +194,8 @@ export class ReleaseCandidate {
       retrievedAt: this.retrievedAt,
       dump: { id: this.dumpId, basis: "recorded" },
       evidence: [
-        `hueypov/lexema-data ${this.paths.buildLog}: kaikki's build log, whose dump file path names ${this.dumpId}`,
-        `hueypov/lexema-data ${this.paths.headers}: the response headers of the download`,
+        `povlabs/lexema-data ${this.paths.buildLog}: kaikki's build log, whose dump file path names ${this.dumpId}`,
+        `povlabs/lexema-data ${this.paths.headers}: the response headers of the download`,
       ],
     };
   }

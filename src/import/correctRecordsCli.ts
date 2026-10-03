@@ -5,16 +5,18 @@
 // D1 `SEED_REMOTE` names. The dictionary deploy workflow writes the shared
 // dictionary, from a change declaration (#490, ADR 0018); an agent runs this
 // command against a local D1 only. `--plan-only` prints the plan's counts as
-// JSON and writes nothing to the database (src/update/planOnly.ts). See
-// docs/RUN_AN_IMPORT.md.
+// JSON and writes nothing to the database (src/update/planOnly.ts). On a
+// dictionary `update:upgrade` has not given the tables it writes into, it
+// plans but refuses to write. See docs/RUN_AN_IMPORT.md.
 
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { finish, flags, isMain, usageError, type CommandResult } from "../commandLine.js";
 import { CURATED_CORRECTIONS, type CuratedCorrection } from "../italian/curatedCorrections.js";
 import { planOnlyAnswer, planOnlyFlag, planOnlyRun } from "../update/planOnly.js";
+import { upgradeFirst } from "../update/master.js";
 import { masterReaderOf } from "../update/updateCli.js";
-import { describeDefinition, describeEntry, planCorrections, unwritten } from "./correctRecords.js";
+import { describeDefinition, describeEntry, missingForCorrections, planCorrections, unwritten } from "./correctRecords.js";
 import { seedTargetFrom, webWrangler, type Wrangler } from "./seedTarget.js";
 
 const USAGE = "usage: pnpm run correct:records [--out <dir>] [--plan-only]";
@@ -34,7 +36,7 @@ export async function main(
   if (typeof options === "string") return usageError(options, USAGE);
   const target = seedTargetFrom(env, wrangler, resolve(".data/seed-state"));
   const reader = masterReaderOf(target);
-  const plan = planCorrections(reader, corrections, await readFile(resolve("src/db/schema.sql"), "utf8"));
+  const plan = planCorrections(reader, corrections);
   log(`planning ${corrections.length} curated correction(s) for the master ${plan.masterReleaseId} in ${target.dictionary}`);
   const lines = [...plan.entries.map(describeEntry), ...plan.definitions.map(describeDefinition)];
   const out = resolve(options.get("out") ?? ".data/updates");
@@ -45,6 +47,8 @@ export async function main(
   }
   const writes = [...plan.entries, ...plan.definitions].filter((entry) => entry.state === "write").length;
   if (plan.sql === "") return { out: [`nothing to write in ${target.dictionary}`, ...lines].join("\n"), status: 0 };
+  const needed = missingForCorrections(reader);
+  if (needed.length > 0) return { out: upgradeFirst(target.dictionary, needed), status: 1 };
 
   await mkdir(out, { recursive: true });
   const file = join(out, `correct-${plan.masterReleaseId}-${Date.now()}.sql`);

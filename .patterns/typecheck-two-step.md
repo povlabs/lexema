@@ -33,7 +33,7 @@ The Worker's is two steps, in this order
 [`web/typecheck.env`](../web/typecheck.env), which is empty on purpose. Without
 it, `wrangler types` reads secret names from a local `web/.dev.vars` and types
 them as required strings, so a laptop with that file gave a different answer from
-CI ([#295](https://github.com/hueypov/lexema/issues/295)).
+CI ([#295](https://github.com/povlabs/lexema/issues/295)).
 
 ## When this applies
 

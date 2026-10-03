@@ -10,7 +10,9 @@
   "scripts": {
     "prepare": "sh tools/install-git-hooks.sh",
     "typecheck": "tsc --noEmit",
-    "test": "node --import tsx --test 'test/*.test.ts' && TSX_TSCONFIG_PATH=web/tsconfig.json node --import tsx --experimental-test-module-mocks --test 'web/test/*.test.ts' 'web/test/*.test.tsx'",
+    "test": "pnpm run test:root && pnpm run test:web",
+    "test:root": "node --import tsx --test 'test/*.test.ts'",
+    "test:web": "TSX_TSCONFIG_PATH=web/tsconfig.json node --import tsx --experimental-test-module-mocks --test 'web/test/*.test.ts' 'web/test/*.test.tsx'",
     "test:integration": "node --import tsx --test test/integration/adapter-fixtures.test.ts",
     "test:definition-loss": "python3 tools/definition_loss.py verify && python3 test/definition-loss.py",
     "validate": "tsx src/cli.ts validate",
@@ -35,7 +37,8 @@
     "measure:quality": "tsx src/import/measureQuality.ts",
     "measure:section-language": "tsx src/import/measureSectionLanguage.ts",
     "bench:lookup": "tsx src/bench/lookupBenchCli.ts",
-    "measure:bare-spellings": "tsx src/lookup/measureBareSpellings.ts"
+    "measure:bare-spellings": "tsx src/lookup/measureBareSpellings.ts",
+    "measure:plural-gloss": "tsx src/import/measurePluralGloss.ts"
   },
   "devDependencies": {
     "@kampus/fabrika-cli": "catalog:",

@@ -10,13 +10,11 @@
 // pull request adds is planned: a later one's counts depend on what the earlier
 // ones write, which a run that writes nothing cannot see. A later declaration
 // is refused, naming the earlier ones. `update:auto`, `hide:records` and
-// `load:page-entries` read an archive and a dump from `hueypov/lexema-data`, so
-// the workflow also passes a read-only token for it (#498); a run without one
-// is red, naming the secret.
+// `load:page-entries` read an archive and a dump from `povlabs/lexema-data`,
+// which is public and read without a token (#527).
 
 import { checkPlan, type DeclarationDraft, type DeclaredChange, DECLARATIONS_DIR, isDeclarationPath, parseDraft, passes, type PlanCheck } from "../update/declaration.js";
 import type { PlanCounts } from "../update/planCounts.js";
-import { DATA_REPOSITORY, readsDataFiles } from "./dataFiles.js";
 import type { PlanOnlyAnswer } from "./dictionaryDeploy.js";
 import type { Git } from "./pending.js";
 
@@ -35,8 +33,6 @@ export function addedDeclarations(git: Git, base: string, head: string): Declara
 
 /** What the check found for one declaration the pull request adds. */
 export type DeclarationOutcome =
-  /** It reads an archive and a dump, and the run was given no `hueypov/lexema-data` token to read them with. */
-  | { readonly kind: "no-data-token"; readonly declaration: DeclarationDraft }
   /** An earlier declaration in the pull request writes first, so a plan against the dictionary as it is would ignore it. */
   | { readonly kind: "after-earlier"; readonly declaration: DeclarationDraft; readonly earlier: readonly string[] }
   /** Planned: `check` holds the plan to `expected`, or is null when the draft has no `expected` yet. */
@@ -45,7 +41,6 @@ export type DeclarationOutcome =
 /** Whether an outcome lets the pull request pass: only a planned declaration whose counts match and cross no limit. */
 export function outcomePasses(outcome: DeclarationOutcome): boolean {
   switch (outcome.kind) {
-    case "no-data-token":
     case "after-earlier":
       return false;
     case "planned":
@@ -53,22 +48,19 @@ export function outcomePasses(outcome: DeclarationOutcome): boolean {
   }
 }
 
-/** The plan-only entry, and whether its run holds a `hueypov/lexema-data` token, which a change that reads data files needs. */
+/** The plan-only entry. `povlabs/lexema-data` is public, so a change that reads data files needs no token (#527). */
 export interface PullRequestPlanner {
   readonly plan: (change: DeclaredChange) => Promise<PlanOnlyAnswer>;
-  readonly hasDataToken: boolean;
 }
 
 /**
  * Plan each declaration in order with the plan-only entry. Only the first is
- * planned; a later one is refused instead. A first one that reads data files
- * is refused when the run holds no token to read them.
+ * planned; a later one is refused instead.
  */
-export async function planPullRequest(declarations: readonly DeclarationDraft[], { plan, hasDataToken }: PullRequestPlanner): Promise<DeclarationOutcome[]> {
+export async function planPullRequest(declarations: readonly DeclarationDraft[], { plan }: PullRequestPlanner): Promise<DeclarationOutcome[]> {
   const outcomes: DeclarationOutcome[] = [];
   for (const [index, declaration] of declarations.entries()) {
     if (index > 0) outcomes.push({ kind: "after-earlier", declaration, earlier: declarations.slice(0, index).map(({ file }) => file) });
-    else if (readsDataFiles(declaration) && !hasDataToken) outcomes.push({ kind: "no-data-token", declaration });
     else {
       const answer = await plan(declaration);
       const { expected } = declaration;
@@ -83,9 +75,6 @@ export function declarationWith(declaration: DeclaredChange, counts: PlanCounts)
   return `${JSON.stringify({ command: declaration.command, inputs: declaration.inputs, expected: counts.toJSON() }, null, 2)}\n`;
 }
 
-/** The GitHub environment the check runs in, and its secret holding the read-only `hueypov/lexema-data` token. */
-const PLAN_ENVIRONMENT = "dictionary-plan";
-const PLAN_DATA_SECRET = "LEXEMA_DATA_READ_TOKEN";
 
 const fenced = (json: string): string[] => ["```json", json.trimEnd(), "```"];
 
@@ -93,13 +82,6 @@ function outcomeLines(outcome: DeclarationOutcome): string[] {
   const { file, command } = outcome.declaration;
   const heading = `### \`${file}\` (\`${command}\`)`;
   switch (outcome.kind) {
-    case "no-data-token":
-      return [
-        heading,
-        "",
-        `Not planned: \`${command}\` reads an archive and a dump from \`${DATA_REPOSITORY}\`, and this run was given no token for it. ` +
-          `Add the environment secret \`${PLAN_DATA_SECRET}\` to the \`${PLAN_ENVIRONMENT}\` environment (docs/DEPLOY.md, "Set up the pull request plan check").`,
-      ];
     case "after-earlier":
       return [
         heading,
@@ -111,9 +93,13 @@ function outcomeLines(outcome: DeclarationOutcome): string[] {
     case "planned": {
       const { answer, check } = outcome;
       const breaches = answer.limitBreaches.length === 0 ? [] : ["", "The plan crosses a hard limit, so the deploy would refuse it:", ...answer.limitBreaches.map((breach) => `- ${breach}`)];
+      const rebuilds =
+        answer.rebuilds.length === 0
+          ? []
+          : ["", "The plan rebuilds these tables, dropping each and copying its rows back:", "", "| Table | Rows |", "|---|---|", ...answer.rebuilds.map(({ table, rows }) => `| \`${table}\` | ${rows} |`)];
       const counts = ["", "Put this in the file, with `expected` set to the plan's counts:", "", ...fenced(declarationWith(outcome.declaration, answer.counts))];
-      if (check === null) return [heading, "", "It has no `expected` yet.", ...counts, ...breaches];
-      if (check.differences.length === 0) return [heading, "", "The plan's counts match `expected`.", ...breaches];
+      if (check === null) return [heading, "", "It has no `expected` yet.", ...counts, ...breaches, ...rebuilds];
+      if (check.differences.length === 0) return [heading, "", "The plan's counts match `expected`.", ...breaches, ...rebuilds];
       return [
         heading,
         "",
@@ -121,6 +107,7 @@ function outcomeLines(outcome: DeclarationOutcome): string[] {
         ...check.differences.map(({ count, declared, planned }) => `- \`${count}\` is ${planned} in the plan, ${declared} declared`),
         ...counts,
         ...breaches,
+        ...rebuilds,
       ];
     }
   }

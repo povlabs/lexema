@@ -1,6 +1,6 @@
 # Related-list entries that open with a non-letter, 2026-10-01
 
-Measurement for [#224](https://github.com/hueypov/lexema/issues/224). It counts
+Measurement for [#224](https://github.com/povlabs/lexema/issues/224). It counts
 the `synonyms`, `antonyms` and `derived` entries whose text starts with something
 other than a letter, and asks whether those entries are always the tail of a note
 split off the entry before them. No rendering change comes with it.

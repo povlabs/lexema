@@ -2,11 +2,25 @@ name: decisions-index
 
 # The .decisions/ corpus holds no duplicate ADR number and no filename/frontmatter
 # mismatch. Two branches can mint the same number without seeing each other.
+#
+# It runs only when the corpus, this file, or the guard it runs can change
+# (#521): the guard is the fabrika version pnpm-workspace.yaml's catalog pins,
+# configured by .fabrika.jsonc.
 
 on:
   pull_request:
+    paths:
+      - ".decisions/**"
+      - ".github/workflows/decisions-index.yml"
+      - ".fabrika.jsonc"
+      - "pnpm-workspace.yaml"
   push:
     branches: [main]
+    paths:
+      - ".decisions/**"
+      - ".github/workflows/decisions-index.yml"
+      - ".fabrika.jsonc"
+      - "pnpm-workspace.yaml"
 
 permissions:
   contents: read

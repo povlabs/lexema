@@ -24,7 +24,7 @@ const read = (env?: string) => unstable_readConfig({ config: WRANGLER, env }, { 
 /** The shared dictionary D1, Huey's upload (#172). */
 const DICTIONARY_ID = "b07d3441-91c6-4f94-8ae3-fe8c7088f21d";
 /** The one address Preview email may reach, Huey's verified one (#172). */
-const PREVIEW_EMAIL_TO = "itshuseyingulec@gmail.com";
+const PREVIEW_EMAIL_TO = "hueypov@gmail.com";
 
 type Previews = NonNullable<ReturnType<typeof read>["previews"]>;
 /** The shapes this file reads, which Wrangler's exported config type leaves untyped. */

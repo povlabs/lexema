@@ -1,19 +1,19 @@
 # The first feed release: new words and real fixes from it-78385b62
 
-Measured 2026-10-01 for [#377](https://github.com/hueypov/lexema/issues/377),
+Measured 2026-10-01 for [#377](https://github.com/povlabs/lexema/issues/377),
 on a laptop. Huey's rule: Lexema is a simple dictionary, so take from the
 September file what clearly helps a reader and skip the rest. The rule is
 `feed-selection/v1` ([src/update/selection.ts](../src/update/selection.ts)).
 `pnpm run update:select` sorted every change of the diff by it, and
 `pnpm run update:apply --ids` applied the 268 it takes, through the apply of
-[#18](https://github.com/hueypov/lexema/issues/18)
+[#18](https://github.com/povlabs/lexema/issues/18)
 ([the runbook](../docs/UPDATE_THE_DICTIONARY.md)).
 
 ## What was read
 
 | | |
 |---|---|
-| Master | `it-0c432803`: a copy of the full local dev state, `.data/full-state`, after `pnpm run hide:records` hid its 23 records in another language ([#390](https://github.com/hueypov/lexema/pull/390)) |
+| Master | `it-0c432803`: a copy of the full local dev state, `.data/full-state`, after `pnpm run hide:records` hid its 23 records in another language ([#390](https://github.com/povlabs/lexema/pull/390)) |
 | Later release | `it-78385b62`, the September file of [the diff report](2026-10-01-update-diff-september.md) |
 | Pages for the language rule | `itwiktionary-20260901-pages-articles.xml.bz2`, 71,291,038 bytes, SHA-1 `c72d2411b1de9df8e8b3d62af0efa24862c59f68` as Wikimedia publishes it: the dump the September build log names |
 | Ids taken | [2026-10-01-first-feed-selection.ids](2026-10-01-first-feed-selection.ids), 268 |
@@ -23,7 +23,7 @@ found: 259 new words, 693 changed senses, 538,858 other changes, 33 lost
 words, 1,299 ambiguous groups and 18,147 unchanged records.
 
 The rule judged every new and changed record with the language rule of
-[#29](https://github.com/hueypov/lexema/issues/29) on the September pages. It
+[#29](https://github.com/povlabs/lexema/issues/29) on the September pages. It
 found none of them in another language, and none of them would replace a
 hidden record, so those two buckets are empty.
 

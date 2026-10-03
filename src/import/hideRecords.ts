@@ -8,12 +8,14 @@
 //
 // The SQL is one file, run as one transaction, like an apply
 // (src/update/apply.ts). A record already hidden is left alone, so a second
-// run plans nothing. A `hidden_record` table written before
-// `form-of-foreign-lemma/v1` cannot hold that rule's rows, so the same
-// transaction first rebuilds it as schema.sql writes it, keeping every row.
+// run plans nothing. It holds no DDL (#509): `update:upgrade` creates
+// `hidden_record` and `hide_version`, and rebuilds a `hidden_record` written
+// before `form-of-foreign-lemma/v1`, which cannot hold that rule's rows
+// (src/update/masterUpgrade.ts). The command refuses to write until it has
+// (`missingForHide`).
 
-import { readMasterRelease, select, type MasterReader } from "../update/master.js";
-import { createStatement } from "../update/masterUpgrade.js";
+import { readMasterRelease, select, upgradeNeededFor, type MasterReader } from "../update/master.js";
+import { HIDE_TABLES } from "../update/masterUpgrade.js";
 import { NO_NEARBY_EDITS, nearbyEdits } from "../update/apply.js";
 import { PlanCounts } from "../update/planCounts.js";
 import { SECTION_LANGUAGE_RULE } from "../italian/sectionLanguage.js";
@@ -26,12 +28,6 @@ export interface PlannedHide {
   found: FoundRecord;
 }
 
-/**
- * What a run does to the `hidden_record` table: create it, rebuild one written
- * before `form-of-foreign-lemma/v1` with every row kept, or leave it.
- */
-export type HiddenTableChange = "create" | "rebuild" | "none";
-
 /** The update, ready to run, or nothing to do. */
 export interface HidePlan {
   masterReleaseId: string;
@@ -39,7 +35,6 @@ export interface HidePlan {
   hides: PlannedHide[];
   /** Records the rules find that the master already hides. */
   alreadyHidden: number;
-  table: HiddenTableChange;
   /** Rows this run deletes from the hidden records. */
   removed: { lookup_form: number; form_of_edge: number };
   /** `accent_fold` and `typo_key` rows deleted because the keys they rank lost a record. */
@@ -62,41 +57,21 @@ function inserts(table: keyof typeof COLUMNS, tuples: readonly (readonly unknown
   return statements;
 }
 
-/** The column `form-of-foreign-lemma/v1` added; a table without it predates the rule. */
-const LATEST_COLUMN = "lemma_line";
-const BEFORE = "hidden_record_before_389";
-const KEPT_COLUMNS = "record_id, release_id, page_id, rule, because, language, page_line";
-
-/** What the master's `hidden_record` table needs, read off its stored definition. */
-function tableChange(reader: MasterReader): HiddenTableChange {
-  const [held] = select<{ sql: string }>(reader, "SELECT sql FROM sqlite_schema WHERE type = 'table' AND name = 'hidden_record'");
-  if (held === undefined) return "create";
-  return held.sql.includes(LATEST_COLUMN) ? "none" : "rebuild";
-}
-
-/** The statements that leave `hidden_record` as schema.sql writes it. */
-function tableStatements(change: HiddenTableChange, schema: string): string[] {
-  if (change === "none") return [];
-  const create = createStatement(schema, "TABLE", "hidden_record");
-  if (change === "create") return [create];
-  return [
-    `ALTER TABLE hidden_record RENAME TO ${BEFORE};`,
-    create,
-    `INSERT INTO hidden_record (${KEPT_COLUMNS}) SELECT ${KEPT_COLUMNS} FROM ${BEFORE};`,
-    `DROP TABLE ${BEFORE};`,
-  ];
-}
+/** The upgrade names a hide writes into that the master lacks, or still holds from before #389: run `update:upgrade` before the hide's SQL while any is listed. */
+export const missingForHide = (reader: MasterReader): string[] => upgradeNeededFor(reader, HIDE_TABLES);
 
 /**
  * Plan hiding `found`, the records the rules find in the archive the master
- * was seeded from. It reads the master; it writes nothing. Throws when a found
- * record is not the master's record at that line, or a page row the master
- * holds names another revision than the one judged.
+ * was seeded from. It reads the master; it writes nothing. A master without
+ * `hidden_record` is read as hiding nothing yet, so the plan counts the same
+ * before the upgrade as after it. Throws when a found record is not the
+ * master's record at that line, or a page row the master holds names another
+ * revision than the one judged.
  */
-export function planHide(reader: MasterReader, found: readonly FoundRecord[], schema: string): HidePlan {
+export function planHide(reader: MasterReader, found: readonly FoundRecord[]): HidePlan {
   const master = readMasterRelease(reader);
   const release = literal(master.releaseId);
-  const table = tableChange(reader);
+  const hasTable = select<{ name: string }>(reader, "SELECT name FROM sqlite_schema WHERE type = 'table' AND name = 'hidden_record'").length > 0;
 
   const atLine = new Map(
     select<{ record_id: number; line_no: number; word: string }>(
@@ -114,19 +89,18 @@ export function planHide(reader: MasterReader, found: readonly FoundRecord[], sc
   }
   const planned = found.map((record) => ({ recordId: (atLine.get(record.lineNo) as { record_id: number }).record_id, found: record }));
   const hidden = new Set(
-    table === "create"
-      ? []
-      : select<{ record_id: number }>(
+    hasTable
+      ? select<{ record_id: number }>(
           reader,
           `SELECT record_id FROM hidden_record WHERE record_id IN (SELECT value FROM json_each(${json(planned.map(({ recordId }) => recordId))}))`,
-        ).map((row) => row.record_id),
+        ).map((row) => row.record_id)
+      : [],
   );
   const hides = planned.filter(({ recordId }) => !hidden.has(recordId));
   const nothing: HidePlan = {
     masterReleaseId: master.releaseId,
     hides,
     alreadyHidden: hidden.size,
-    table: "none",
     removed: { lookup_form: 0, form_of_edge: 0 },
     replacedIndexRows: 0,
     counts: PlanCounts.NONE,
@@ -170,8 +144,6 @@ export function planHide(reader: MasterReader, found: readonly FoundRecord[], sc
 
   const sql = [
     `-- Generated by src/import/hideRecords.ts: ${hides.length} record(s) of ${master.releaseId} hidden by ${rules.join(", ")}.`,
-    ...tableStatements(table, schema),
-    createStatement(schema, "TABLE", "hide_version").replace("CREATE TABLE", "CREATE TABLE IF NOT EXISTS"),
     `INSERT INTO hide_version (singleton, revision) VALUES (1, 1)
        ON CONFLICT(singleton) DO UPDATE SET revision = revision + 1;`,
     ...inserts("raw_page", newPages),
@@ -191,7 +163,6 @@ export function planHide(reader: MasterReader, found: readonly FoundRecord[], sc
   ];
   return {
     ...nothing,
-    table,
     removed: { lookup_form: lookupRows, form_of_edge: edgeRows },
     replacedIndexRows: nearby.replaced.accent_fold + nearby.replaced.typo_key,
     counts: new PlanCounts(

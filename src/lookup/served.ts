@@ -86,18 +86,19 @@ export const CORRECTION_VERSION_SQL: DictionaryRead = `SELECT revision FROM corr
 
 /** The optional tables a dictionary has. */
 export interface DictionaryTables {
-  /** Absent until a master's first nonempty live hide. */
+  /** `hide_version`; absent on an old master until `update:upgrade` creates it, and read as revision zero. */
   hideVersion: boolean;
   /** All four page-entry tables; absent on a master seeded before #403. */
   pageEntries: boolean;
   /**
    * `corrected_definition`, with every page-entry table it corrects; absent
-   * on a master seeded before #450 until `correct:records` writes it.
+   * on a master seeded before #450 until `update:upgrade` creates it, and read
+   * as empty.
    */
   definitionCorrections: boolean;
-  /** `corrected_claim`; absent on a master seeded before #420 until `correct:records` writes it. */
+  /** `corrected_claim`; absent on a master seeded before #420 until `update:upgrade` creates it, and read as empty. */
   corrections: boolean;
-  /** `correction_version`; absent on a master seeded before #420 until its first `correct:records` run. */
+  /** `correction_version`; absent on a master seeded before #420 until `update:upgrade` creates it, and read as revision zero. */
   correctionVersion: boolean;
 }
 
@@ -127,9 +128,9 @@ export async function dictionaryTables(db: LookupDatabase): Promise<DictionaryTa
 /** The version the master `release` serves now, including committed live hides and corrections. */
 export async function servedVersion(db: LookupDatabase, release: string): Promise<ServedVersion> {
   const [last, tables] = await Promise.all([db.all<{ change_id: string }>(LAST_CHANGE_SQL, []), dictionaryTables(db)]);
-  // An old master has neither table until its first nonempty hide or
-  // correction run. Do not suppress other database failures: an unread
-  // version must not hit a cache.
+  // An old master has neither table until `update:upgrade` creates them; an
+  // absent one reads as revision zero. Do not suppress other database
+  // failures: an unread version must not hit a cache.
   const revisionOf = async (present: boolean, sql: DictionaryRead): Promise<number> =>
     present ? ((await db.all<{ revision: number }>(sql, []))[0]?.revision ?? 0) : 0;
   const [hideRevision, correctionRevision] = await Promise.all([

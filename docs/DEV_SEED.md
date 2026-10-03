@@ -27,7 +27,7 @@ written to: no other state directory, and in `SEED_SQL` only its own
 `part-NNN.sql` files and `rejections.tsv`. Point `SEED_STATE` at an existing
 database only when you mean to replace it. The fixture covers
 Huey's fifty required words, the words of the multi-word searches in
-[#214](https://github.com/hueypov/lexema/issues/214) (`andare via`, `tirare fuori`,
+[#214](https://github.com/povlabs/lexema/issues/214) (`andare via`, `tirare fuori`,
 `volgere le spalle`, `voltare le spalle`, `fare l'amore`, `aereo a reazione`,
 `aerei a reazione`, the words that spell them, `vada` for `vada via` and
 `faccio` for `faccio l'amore`, `fare fuori` with `hanno` and `fatte` for
@@ -46,7 +46,7 @@ keys and do not resolve a target id; the schema's `form_of_candidate` view retur
 every matching headword candidate, with no row for a dangling target. The original
 edge remains in `form_of_edge`.
 
-The seed also writes the recovered layer ([#28](https://github.com/hueypov/lexema/issues/28)):
+The seed also writes the recovered layer ([#28](https://github.com/povlabs/lexema/issues/28)):
 for a record whose word has a raw Wiktionary page, the definitions the page
 states and the record does not carry as definitions — absent, or filed under an
 example — go to `recovered_definition`, with their labels and examples, beside
@@ -58,12 +58,12 @@ examples. How the lines are chosen, and how much the extraction loses, is in
 [the measurement](../reports/2026-09-23-recovered-definitions-full-release.md).
 
 From the same raw pages the seed hides another language's entries filed as
-Italian ([#382](https://github.com/hueypov/lexema/issues/382),
+Italian ([#382](https://github.com/povlabs/lexema/issues/382),
 [ADR 0023](../.decisions/0023-foreign-records-are-hidden-not-deleted.md)): a
 record the section-language rule finds in another language is seeded whole but
 gets no `lookup_form` or `form_of_edge` rows, and a `hidden_record` row names the
 rule and the page line. A second rule, `form-of-foreign-lemma/v1`
-([#389](https://github.com/hueypov/lexema/issues/389)), needs no pages: it hides a
+([#389](https://github.com/povlabs/lexema/issues/389)), needs no pages: it hides a
 form-of record whose every target is only another language's word, and whose
 target's record lists it among its forms (`zapateros` of `zapatero` [es]). Both
 rules need the whole archive before they judge one record, so the seed first
@@ -76,7 +76,7 @@ the fifty-word fixture.
 The raw pages come from `itwiktionary-20260701-pages-articles.xml.bz2`, the
 Italian Wiktionary dump the archive was built from, when it sits in the
 repository root beside `it-extract.jsonl.gz`. It is gitignored; its durable copy,
-with its size and SHA-1, is `source/` in `hueypov/lexema-data`. It is not newer
+with its size and SHA-1, is `source/` in `povlabs/lexema-data`. It is not newer
 data: it is the page source the archive was converted from, read once to pick up
 the definitions the conversion dropped. Before any page is read, the seed checks
 the file's size and SHA-1 against that dump's and refuses a file that differs,

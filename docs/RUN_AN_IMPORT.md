@@ -63,7 +63,7 @@ changes a merge declares.
 The one run, for release `it-0c432803`:
 
 1. Put `it-extract.jsonl.gz` in the repository root. Its durable copy is
-   `source/` in `hueypov/lexema-data`. The Wiktionary dump beside it is read
+   `source/` in `povlabs/lexema-data`. The Wiktionary dump beside it is read
    too when it is there, as for a local seed.
 2. Sign Wrangler in to the Cloudflare account, once:
    `pnpm --dir web exec wrangler login`. The account must be on Workers Paid:
@@ -116,8 +116,8 @@ remote D1 lexema-dictionary database id: <id>
 ```
 
 Paste that line as a comment on
-[#172](https://github.com/hueypov/lexema/issues/172). Production's binding
-([#19](https://github.com/hueypov/lexema/issues/19)) and the Previews' `DB`
+[#172](https://github.com/povlabs/lexema/issues/172). Production's binding
+([#19](https://github.com/povlabs/lexema/issues/19)) and the Previews' `DB`
 binding use that id.
 
 ### If the upload stops
@@ -151,15 +151,15 @@ first, since it refuses a database with tables.
 The seed stores some source text rewritten by a fixed rule, a *source text
 normalization* ([ADR 0019](../.decisions/0019-source-text-may-be-normalized.md)).
 One rewrites a gloss opening "1ª/2ª/3ª persona" as "prima/seconda/terza
-persona" ([#257](https://github.com/hueypov/lexema/issues/257)). Another drops
+persona" ([#257](https://github.com/povlabs/lexema/issues/257)). Another drops
 a `forms[]` entry spelled exactly "inserisci qui voce al plurale",
 Wikizionario's empty plural template, so it is no searchable form and no row in
-a forms table ([#342](https://github.com/hueypov/lexema/issues/342)). A third,
+a forms table ([#342](https://github.com/povlabs/lexema/issues/342)). A third,
 rule `it-gloss-stamp/v1`
-([#317](https://github.com/hueypov/lexema/issues/317)), takes a gender and
+([#317](https://github.com/povlabs/lexema/issues/317)), takes a gender and
 number stamp off the end of a noun or adjective gloss (`casa ( approfondimento) f sing`)
 and states it as the record's gender and number. A fourth, rule
-`gloss-headword-lead/v1` ([#325](https://github.com/hueypov/lexema/issues/325)),
+`gloss-headword-lead/v1` ([#325](https://github.com/povlabs/lexema/issues/325)),
 stores a gloss the headword line leads (`palo ( approfondimento) pezza
 onorevole…`) as the definition after the link; a bare headword line stays as
 written. A database seeded before a rule existed gets it from a one-off update,
@@ -218,9 +218,9 @@ The seed hides a record the archive tags Italian that is another language's, by
 two rules ([ADR 0023](../.decisions/0023-foreign-records-are-hidden-not-deleted.md)):
 `section-language/v1` reads it off the raw page, where another language's entry
 sits under the Italian heading
-([#382](https://github.com/hueypov/lexema/issues/382)), and
+([#382](https://github.com/povlabs/lexema/issues/382)), and
 `form-of-foreign-lemma/v1` reads it off the archive, where a foreign record lists
-the word among its forms ([#389](https://github.com/hueypov/lexema/issues/389)).
+the word among its forms ([#389](https://github.com/povlabs/lexema/issues/389)).
 A database seeded before either gets the same records hidden by a one-off
 update, with no reseed. Before a live hide, deploy the reader described in
 [Card and suggestion cache identity](DEPLOY.md#card-and-suggestion-cache-identity),
@@ -240,8 +240,10 @@ database the way the seed does: the local D1 under `SEED_STATE` (default
 It writes one SQL file under `.data/updates/` and runs it as one transaction:
 each record gets its `hidden_record` row and loses its `lookup_form` and
 `form_of_edge` rows, and the nearby rows of the words they spelled are
-recomputed. A `hidden_record` table written before #389 is rebuilt first in the
-same transaction, every row kept, and the run says so. `source_record_json` is not touched. It then reads the records back
+recomputed. The file holds no DDL: on a database without `hidden_record` or
+`hide_version`, or with a `hidden_record` written before #389, the command
+refuses to write and names `pnpm run update:upgrade`, which creates or rebuilds
+them, every row kept. `source_record_json` is not touched. It then reads the records back
 and fails if one is not hidden. It takes about a minute.
 
 On the shared `lexema-dictionary`, the dictionary deploy workflow runs the
@@ -251,8 +253,8 @@ command after a merged change declaration names it
 against a local D1 only. On release `it-0c432803` the rules find 30
 records:
 `30 record(s) the rules find (form-of-foreign-lemma/v1 7, section-language/v1 23)`.
-On a database #382's run already updated, the run hides the 7, rebuilds the
-table, and prints `23 already hidden; hidden now: 7`, one line per record, and
+On a database #382's run already updated, `update:upgrade` rebuilds the table
+first; the run then hides the 7 and prints `23 already hidden; hidden now: 7`, one line per record, and
 `rows deleted: lookup_form 7, form_of_edge 7`. On one seeded before #382 it
 hides all 30. Every later run prints `30 already hidden; nothing to hide`.
 
@@ -260,7 +262,7 @@ hides all 30. Every later run prints `30 already hidden; nothing to hide`.
 
 A curated correction sets right a gender or number the source states wrongly,
 checked by hand against a cited Wiktionary revision
-([#420](https://github.com/hueypov/lexema/issues/420)). The committed list is
+([#420](https://github.com/povlabs/lexema/issues/420)). The committed list is
 [`src/italian/curatedCorrections.ts`](../src/italian/curatedCorrections.ts):
 each entry names its record by release, archive line and line digest, the
 source text it overrides, and its evidence. The seed writes each entry keyed to
@@ -273,11 +275,13 @@ pnpm run correct:records
 
 It picks its database the way the seed does: the local D1 under `SEED_STATE`
 (default `.data/seed-state`), or the remote D1 `SEED_REMOTE` names. It writes
-one SQL file under `.data/updates/` and runs it as one transaction: it creates
-`corrected_claim` and `correction_version` when the master lacks them, writes
+one SQL file under `.data/updates/` and runs it as one transaction: it writes
 each entry's rows, and increments the correction revision, so card and
 suggestion addresses move ([cache identity](DEPLOY.md#card-and-suggestion-cache-identity)).
-`source_record_json` and `grammar_claim` are not touched. It then reads the rows
+`source_record_json` and `grammar_claim` are not touched. The file holds no
+DDL: on a master without `corrected_claim`, `correction_version` or
+`corrected_definition` the command refuses to write and names
+`pnpm run update:upgrade`, which creates them. It then reads the rows
 back and fails if one differs. It prints one line per entry: written, already
 written, or why not. An entry is not written when the master holds no record at
 its line, when that record's digest is not the one the entry names, or when a
@@ -290,7 +294,7 @@ its counts as JSON, with one line per entry under `entries`, and runs nothing
 on the database.
 
 The same run writes definition corrections: a page-only entry's definition the
-page states wrongly ([#450](https://github.com/hueypov/lexema/issues/450),
+page states wrongly ([#450](https://github.com/povlabs/lexema/issues/450),
 [page-only entries](PAGE_ENTRIES.md#corrected-definitions)). Each is one
 `corrected_definition` row, created with its table when the master lacks it.
 `entry_definition` is not touched. It is written only to the master's entry of
@@ -322,14 +326,17 @@ Add one declaration per pull request: the check counts only the first
 declaration a pull request adds.
 
 Deploy the Worker that reads corrections before the first such declaration. On
-`it-0c432803` the first run prints `written now: 20` and one line per entry, 22
-rows in all (`congiuntivi` and `maniaci` set gender and number).
-On a master that already holds #420's twelve, it prints `written now: 8`, for
-the plurals tagged singular of
-[#449](https://github.com/hueypov/lexema/issues/449), and `already written` for
-the twelve. Every later run prints `nothing to write` and `already written` for
-each. Before a master holds page-only entries, the two definition corrections
-print `not written; the master holds no page-only entry`.
+`it-0c432803` the first run prints `written now: 215` and one line per entry,
+251 rows in all: the 20 hand entries write 22 (`congiuntivi` and `maniaci` set
+gender and number), and the 195 that rule `it-plural-gloss-number/v2` makes
+([#483](https://github.com/povlabs/lexema/issues/483),
+[#515](https://github.com/povlabs/lexema/issues/515)) write 229 (34 set
+gender and number). On a master that already holds the 20 hand entries of
+[#420](https://github.com/povlabs/lexema/issues/420) and
+[#449](https://github.com/povlabs/lexema/issues/449) and the 156 v1 made, it
+prints `written now: 39` and `already written` for the 176. Every later run prints
+`nothing to write` and `already written` for each. Before a master holds
+page-only entries, the two definition corrections print `not written; the master holds no page-only entry`.
 [Loading the entries](PAGE_ENTRIES.md#load-them-into-a-seeded-dictionary)
 writes them with the entries, as a seed does, so a run after the load prints
 `already written` for both. An

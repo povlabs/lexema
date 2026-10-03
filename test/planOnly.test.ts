@@ -18,7 +18,7 @@ import { main as correctMain } from "../src/import/correctRecordsCli.js";
 import { main as normalizeMain } from "../src/import/normalizeSourceTextCli.js";
 import { seedSql } from "../src/import/seedSql.js";
 import { PLURAL_PLACEHOLDER_FORM } from "../src/italian/sourceTextNormalization.js";
-import { PAGE_ENTRY_INDEXES, PAGE_ENTRY_TABLES } from "../src/update/masterUpgrade.js";
+import { createStatement, PAGE_ENTRY_INDEXES, PAGE_ENTRY_TABLES } from "../src/update/masterUpgrade.js";
 import { main as updateMain } from "../src/update/updateCli.js";
 import { atFixtureLines, correctionFixtureLines } from "./correctionFixture.js";
 import { localD1, type LocalD1 } from "./localD1.js";
@@ -101,6 +101,28 @@ test("update:upgrade --plan-only names what it adds, counts no row, and leaves t
   });
 });
 
+test("update:upgrade --plan-only names each table a rebuild drops, with its rows (#511)", async () => {
+  const older = createStatement(await readFile("fixtures/upgrade-older-tables.sql", "utf8"), "TABLE", "hidden_record");
+  await withLocalD1((db) => {
+    db.exec("DROP TABLE hidden_record");
+    db.exec(older);
+    const { record_id: record } = db.prepare("SELECT record_id FROM source_record ORDER BY record_id LIMIT 1").get() as { record_id: number };
+    db.prepare("INSERT INTO raw_page VALUES (900001, ?, 'it.wiktionary.org', 'curie', 4100, '2026-09-01T00:00:00Z')").run(RELEASE);
+    db.prepare("INSERT INTO hidden_record VALUES (?, ?, 900001, 'section-language/v1', 'language-line', 'nl', 3)").run(record, RELEASE);
+  }, async (d1, dir) => {
+    const before = d1.sha256();
+    const result = await updateMain(["upgrade", "--plan-only", "--out", join(dir, "out")], d1.wrangler, { SEED_STATE: d1.persistTo });
+    assert.equal(result.status, 0, result.out);
+    const answer = JSON.parse(result.out);
+    assert.deepEqual(answer.adds, []);
+    assert.deepEqual(answer.rebuildsFor, ["hidden_record"]);
+    assert.deepEqual(answer.rebuilds, [{ table: "hidden_record", rows: 1 }]);
+    assert.deepEqual(answer.counts, { records: { added: 0, changed: 0, removed: 0 }, written: {}, deleted: {} });
+    assert.equal(d1.sha256(), before);
+    assert.deepEqual(writes(d1), []);
+  });
+});
+
 test("normalize:source-text --plan-only returns every rule's counts and leaves the local D1 byte-identical", async () => {
   await withLocalD1(beforeTheRules, async (d1, dir) => {
     const before = d1.sha256();
@@ -129,7 +151,7 @@ test("normalize:source-text applies every rule as one file in one step, and a se
     const result = await normalizeMain({ SEED_STATE: d1.persistTo }, ["--out", join(dir, "out")], d1.wrangler);
     assert.equal(result.status, 0, result.out);
     assert.equal(writes(d1).length, 1, "one file");
-    assert.ok(d1.calls.every((call) => call[0] === "--file" || /^\s*SELECT\s/i.test(call[2])), "every other call reads");
+    assert.ok(d1.calls.every((call) => call[0] === "--file" || /^--command=\s*SELECT\s/i.test(call[1])), "every other call reads");
     const db = d1.open();
     try {
       assert.deepEqual(glosses(db), [VADO_STORED, FATE_STORED, "mammifero domestico", "chi dipinge"]);
@@ -168,9 +190,9 @@ test("correct:records --plan-only counts what the list writes and leaves the loc
     const answer = JSON.parse(result.out);
     assert.equal(answer.command, "correct:records");
     assert.equal(answer.planOnly, true);
-    assert.deepEqual(answer.counts, { records: { added: 0, changed: 20, removed: 0 }, written: { corrected_claim: 22, correction_version: 1 }, deleted: {} });
+    assert.deepEqual(answer.counts, { records: { added: 0, changed: 25, removed: 0 }, written: { corrected_claim: 29, correction_version: 1 }, deleted: {} });
     assert.equal(answer.dictionaryRecords, lines.length);
-    assert.equal(answer.entries.length, 20);
+    assert.equal(answer.entries.length, 25);
     assert.match(answer.entries[0], /: written$/);
     assert.ok(typeof answer.sql === "string" && (await readFile(answer.sql, "utf8")).includes("INSERT INTO corrected_claim"));
     assert.equal(d1.sha256(), before);
@@ -185,6 +207,48 @@ test("correct:records --plan-only counts what the list writes and leaves the loc
     assert.deepEqual(again.counts, { records: { added: 0, changed: 0, removed: 0 }, written: {}, deleted: {} });
     assert.equal(again.sql, null);
     assert.equal(d1.sha256(), settled);
+  } finally {
+    db.close();
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test("correct:records on a dictionary without its tables plans the same counts but refuses to write until update:upgrade ran (#509)", async () => {
+  const lines = await correctionFixtureLines();
+  const corrections = atFixtureLines(lines, RELEASE);
+  const dir = await mkdtemp(join(tmpdir(), "lexema-plan-only-correct-upgrade-"));
+  const input = join(dir, "fixture.jsonl");
+  await writeFile(input, `${lines.join("\n")}\n`);
+  const report = await seedSql({
+    input, outputDir: join(dir, "sql"), schema: resolve("src/db/schema.sql"), releaseId: RELEASE,
+    requiredWords: [], validateFixtureClosure: false, corrections: [],
+  });
+  const db = new DatabaseSync(":memory:");
+  try {
+    for (const part of report.parts) db.exec(await readFile(part, "utf8"));
+    // A dictionary seeded before #420.
+    db.exec("DROP TABLE corrected_claim; DROP TABLE correction_version;");
+    const d1 = localD1(dir, db);
+    const run = async (...args: string[]) => correctMain({ SEED_STATE: d1.persistTo }, [...args, "--out", join(dir, "out")], d1.wrangler, corrections);
+
+    const before = d1.sha256();
+    const planned = JSON.parse((await run("--plan-only")).out);
+    assert.deepEqual(planned.counts, { records: { added: 0, changed: 25, removed: 0 }, written: { corrected_claim: 29, correction_version: 1 }, deleted: {} });
+    const refused = await run();
+    assert.deepEqual(refused, {
+      out: `${d1.target.dictionary} needs pnpm run update:upgrade first, for correction_version, corrected_claim. Nothing was written.`,
+      status: 1,
+    });
+    assert.equal(d1.sha256(), before);
+    assert.deepEqual(writes(d1), []);
+
+    assert.equal((await updateMain(["upgrade", "--out", join(dir, "out")], d1.wrangler, { SEED_STATE: d1.persistTo })).status, 0);
+    const upgraded = JSON.parse((await run("--plan-only")).out);
+    assert.deepEqual(upgraded.counts, planned.counts);
+    const written = await run();
+    assert.equal(written.status, 0, written.out);
+    assert.equal(writes(d1).length, 2, "the upgrade, then the corrections");
+    assert.doesNotMatch(await readFile(writes(d1)[1][1], "utf8"), /\b(CREATE|DROP|ALTER)\b/);
   } finally {
     db.close();
     await rm(dir, { recursive: true, force: true });
