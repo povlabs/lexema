@@ -4,6 +4,7 @@
 
 import { readOnly } from "../lookup/database.js";
 import type { MasterRecord } from "./changes.js";
+import { UPGRADE_NAMES } from "./masterUpgrade.js";
 
 /**
  * A dictionary database the update reads: one statement in, its rows out.
@@ -45,6 +46,16 @@ const quoted = (value: string): string => `'${value.replaceAll("'", "''")}'`;
 /** Run one SELECT. */
 export function select<Row>(reader: MasterReader, sql: string): Row[] {
   return reader.query<Row>(readOnly(sql));
+}
+
+/**
+ * The tables, indexes and views `update:upgrade` creates that the master does
+ * not have yet, in creation order. Empty means the upgrade has nothing to do.
+ */
+export function missingUpgrade(reader: MasterReader): string[] {
+  const names = UPGRADE_NAMES.map((name) => `'${name}'`).join(", ");
+  const present = new Set(select<{ name: string }>(reader, `SELECT name FROM sqlite_schema WHERE name IN (${names})`).map((row) => row.name));
+  return UPGRADE_NAMES.filter((name) => !present.has(name));
 }
 
 /** The master without its records: its release, whether it has the update tables yet, and its feeds. */

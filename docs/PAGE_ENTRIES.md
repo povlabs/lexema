@@ -14,9 +14,12 @@ small reproduction concatenate `fixtures/dev-seed.jsonl` and
 `fixtures/page-entry-forms.jsonl` into a local input file and set `SEED_INPUT` to
 it. Its pages are already committed under `fixtures/`.
 
-**Seed-only delivery.** An already-seeded dictionary lacks the four new tables
-and rows. This change does not migrate/reseed it or choose an operational update;
-a schema/data rollout must be arranged before deploying these readers to that
-database. No shared D1 writes were performed. The existing update/feed-selection
-contracts are unchanged. Random selection still draws archive line numbers;
+**An already-seeded dictionary.** It lacks the four page-entry tables, and the
+readers fail on every lookup until it has them. `pnpm run update:upgrade`
+creates them empty, with the update tables and views, and writes no row
+([update the dictionary](UPDATE_THE_DICTIONARY.md#once-a-dictionary-seeded-from-an-older-schema)).
+Run it before these readers serve from that database; lookups then answer as
+before, with no page-only entries. Loading the entries into a seeded dictionary
+is [#440](https://github.com/hueypov/lexema/issues/440). The existing
+update/feed-selection contracts are unchanged. Random selection still draws archive line numbers;
 page-only entries are reachable by exact search and existing form-of links.

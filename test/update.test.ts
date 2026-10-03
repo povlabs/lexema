@@ -25,8 +25,8 @@ import { everyRecovered, type FoundResult, type LookupResult, type Reading } fro
 import { ApplyRefused, checkApplied, chooseChanges, planApply, type ApplyPlan } from "../src/update/apply.js";
 import type { Change } from "../src/update/changes.js";
 import { diffAgainstMaster, reportMarkdown, reportOf, type MasterDiff } from "../src/update/diff.js";
-import type { MasterReader } from "../src/update/master.js";
-import { masterUpgradeSql, SERVING_VIEWS, UPDATE_TABLES } from "../src/update/masterUpgrade.js";
+import { missingUpgrade, type MasterReader } from "../src/update/master.js";
+import { masterUpgradeSql, PAGE_ENTRY_INDEXES, PAGE_ENTRY_TABLES, SERVING_VIEWS, UPDATE_TABLES, UPGRADE_NAMES } from "../src/update/masterUpgrade.js";
 
 const MASTER = "it-master";
 const SCHEMA = "src/db/schema.sql";
@@ -507,12 +507,15 @@ test("an apply brings a master seeded before #18 up to the schema, and the upgra
   const old = new DatabaseSync(":memory:");
   old.exec(await readFile(SCHEMA, "utf8"));
   for (const view of [...SERVING_VIEWS].reverse()) old.exec(`DROP VIEW ${view}`);
-  for (const table of [...UPDATE_TABLES].reverse()) old.exec(`DROP TABLE ${table}`);
+  for (const table of [...PAGE_ENTRY_TABLES, ...UPDATE_TABLES].reverse()) old.exec(`DROP TABLE ${table}`);
+  assert.deepEqual(missingUpgrade(readerOf(old)), [...UPGRADE_NAMES]);
   const upgrade = masterUpgradeSql(await readFile(SCHEMA, "utf8"));
+  const asFresh = (db: DatabaseSync) => schemaOf(db).replaceAll("CREATE TABLE IF NOT EXISTS", "CREATE TABLE").replaceAll("CREATE INDEX IF NOT EXISTS", "CREATE INDEX");
   old.exec(upgrade);
-  assert.equal(schemaOf(old).replaceAll("CREATE TABLE IF NOT EXISTS", "CREATE TABLE"), schemaOf(fresh));
+  assert.equal(asFresh(old), schemaOf(fresh));
+  assert.deepEqual(missingUpgrade(readerOf(old)), []);
   old.exec(upgrade);
-  assert.equal(schemaOf(old).replaceAll("CREATE TABLE IF NOT EXISTS", "CREATE TABLE"), schemaOf(fresh));
+  assert.equal(asFresh(old), schemaOf(fresh));
 
   // A seeded master without them: the diff reads it, and the apply adds them.
   await withDesk(async ({ db, later }) => {
@@ -520,6 +523,22 @@ test("an apply brings a master seeded before #18 up to the schema, and the upgra
     for (const table of [...UPDATE_TABLES].reverse()) db.exec(`DROP TABLE ${table}`);
     await applied(db, later, [["changed", "casa"]]);
     assert.equal(readings(await ask(db, "casa"))[0].senses.length, 2);
+  });
+});
+
+test("the upgrade gives a master seeded before #403 its page-entry tables, empty, and lookups answer again", async () => {
+  await withDesk(async ({ db }) => {
+    for (const table of [...PAGE_ENTRY_TABLES].reverse()) db.exec(`DROP TABLE ${table}`);
+    assert.deepEqual(missingUpgrade(readerOf(db)), [...PAGE_ENTRY_TABLES, ...PAGE_ENTRY_INDEXES]);
+    await assert.rejects(ask(db, "casa"), /no such table: recovered_entry/);
+    const written = () => (db.prepare("SELECT total_changes() AS n").get() as { n: number }).n;
+    const before = written();
+    execute(db, masterUpgradeSql(await readFile(SCHEMA, "utf8")));
+    assert.equal(written(), before, "the upgrade writes no row");
+    assert.deepEqual(missingUpgrade(readerOf(db)), []);
+    for (const table of PAGE_ENTRY_TABLES) assert.equal((db.prepare(`SELECT count(*) AS n FROM ${table}`).get() as { n: number }).n, 0);
+    assert.equal(readings(await ask(db, "casa"))[0].ref.releaseId, MASTER);
+    assert.equal((await ask(db, "vado")).outcome, "found");
   });
 });
 
