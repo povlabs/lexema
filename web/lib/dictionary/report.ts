@@ -45,6 +45,15 @@ export const REPORT_SUBJECT_LABEL: Readonly<Record<ReportSubject["kind"], string
 };
 
 /**
+ * The hint in the box's details field. A missing word needs no details: the
+ * query is the report (Huey's ruling on #441, 2026-10-03).
+ */
+export const REPORT_DETAILS_HINT: Readonly<Record<ReportSubject["kind"], string>> = {
+  mistake: "What should it say instead?",
+  missing: "Anything to add? (optional)",
+};
+
+/**
  * What a report is about, as `reader_report.choice` stores it, and the reading
  * it names: one of a word page's choices, or `missing`, which names no reading.
  */
@@ -81,6 +90,9 @@ export const REPORT_CHOICE_LABEL: Readonly<Record<ReportChoice, string>> = {
   synonym: "A synonym",
   other: "Something else",
 };
+
+/** Whether a report must carry details: every one but a missing word, whose query says it all. */
+export const needsDetails = (target: ReportTarget): boolean => target.choice !== "missing";
 
 /** The longest details a report may carry, in characters. */
 export const REPORT_DETAILS_LIMIT = 2000;
@@ -140,13 +152,14 @@ export function readSubmission(body: unknown): ReportSubmission | { reason: Repo
   if (word.trim() === "" || word.length > WORD_LIMIT) return { reason: "malformed" };
   if (typeof openToken !== "string" || openToken === "" || openToken.length > 100) return { reason: "malformed" };
   if (choice !== "missing" && !isChoice(choice)) return { reason: "choice" };
-  if (typeof details !== "string" || details.trim() === "") return { reason: "details" };
+  if (typeof details !== "string") return { reason: "details" };
   if (details.length > REPORT_DETAILS_LIMIT) return { reason: "details-too-long" };
   if (recordId !== undefined && recordId !== null && !(typeof recordId === "number" && Number.isInteger(recordId))) {
     return { reason: "reading" };
   }
   const target = readTarget(choice, typeof recordId === "number" ? recordId : undefined);
   if ("reason" in target) return target;
+  if (needsDetails(target) && details.trim() === "") return { reason: "details" };
   return {
     word,
     ...target,

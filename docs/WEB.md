@@ -394,8 +394,9 @@ opens the same box on the trimmed query, through the same `POST /report` and
 spam layers. There the box asks no "what is wrong" and offers no reading: it
 sends `missing`, a sixth `choice` the word page never offers, and the report is
 stored with the query as its `word`, no `record_id` or source line, and the
-served release. A `reader_report` CHECK refuses a `missing` report that names a
-record.
+served release. Its details are optional and may be stored empty; every other
+report still needs some. `reader_report` CHECKs refuse a `missing` report that
+names a record, and empty details on any other report.
 
 Spam is kept out in four layers, as ruled on #51: the `REPORT_LIMIT` Worker
 binding stops a burst (2 a minute) before D1 is touched, and the ruled 5 reports

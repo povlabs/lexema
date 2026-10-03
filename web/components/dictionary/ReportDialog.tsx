@@ -7,7 +7,7 @@
 //
 // The same box opens from "Report a missing word" on a search that found
 // nothing (#441). There it reports the query as a missing word: it asks no
-// "What's wrong?" and names no reading, only details.
+// "What's wrong?", names no reading, and its details are optional.
 //
 // Base UI supplies the dialog's behaviour (ADR 0010): focus is kept inside,
 // Escape closes it, and the page behind is inert while it is open.
@@ -19,8 +19,10 @@ import {
   OPENING_TROUBLE,
   REPORT_CHOICE_LABEL,
   REPORT_CHOICES,
+  REPORT_DETAILS_HINT,
   REPORT_DETAILS_LIMIT,
   REPORT_SUBJECT_LABEL,
+  needsDetails,
   requestOpening,
   type OpeningTrouble,
   type ReportAnswer,
@@ -170,7 +172,7 @@ export function ReportDialog({ word, subject, siteKey }: { word: string; subject
 
   const ready =
     target !== undefined &&
-    details.trim() !== "" &&
+    (!needsDetails(target) || details.trim() !== "") &&
     status !== "sending" &&
     openToken !== undefined &&
     (siteKey === undefined || token !== undefined);
@@ -309,7 +311,7 @@ export function ReportDialog({ word, subject, siteKey }: { word: string; subject
                 <textarea
                   id={ids.details}
                   className={REPORT_DETAILS}
-                  placeholder="What should it say instead?"
+                  placeholder={REPORT_DETAILS_HINT[subject.kind]}
                   maxLength={REPORT_DETAILS_LIMIT}
                   value={details}
                   onChange={(event) => setDetails(event.target.value)}

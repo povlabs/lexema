@@ -137,15 +137,20 @@ test("the migrations build report_opening in the shape schema.sql gave it, and r
     indexes.map((index) => ({ ...index, columns: index.columns.map(withoutPosition) }));
   assert.deepEqual(indexesByName(now.indexes), indexesByName(then.indexes));
   assert.deepEqual(now.foreignKeys, then.foreignKeys);
-  // The old checks stand, the choice widened by `missing` (#441), and three
-  // more: a line comes with its reading and digest, an answer comes whole, and
-  // a missing word names no reading.
+  // The old checks stand, the choice widened by `missing` and details made
+  // optional for it alone (#441), and three more: a line comes with its
+  // reading and digest, an answer comes whole, and a missing word names no
+  // reading.
   const OLD_CHOICE = "choice IN ('meaning', 'example', 'form', 'synonym', 'other')";
   const NEW_CHOICE = "choice IN ('meaning', 'example', 'form', 'synonym', 'other', 'missing')";
+  const OLD_DETAILS = "length(details) BETWEEN 1 AND 2000";
+  const NEW_DETAILS = "length(details) <= 2000 AND (choice = 'missing' OR length(details) >= 1)";
   assert.ok(then.checks.includes(OLD_CHOICE));
-  const kept = then.checks.filter((check) => check !== OLD_CHOICE);
+  assert.ok(then.checks.includes(OLD_DETAILS));
+  const kept = then.checks.filter((check) => check !== OLD_CHOICE && check !== OLD_DETAILS);
   assert.deepEqual(now.checks.filter((check) => kept.includes(check)), kept);
   assert.ok(now.checks.includes(NEW_CHOICE));
+  assert.ok(now.checks.includes(NEW_DETAILS));
   assert.ok(now.checks.includes("choice <> 'missing' OR record_id IS NULL"));
   assert.equal(now.checks.length, then.checks.length + 3);
 });
@@ -167,6 +172,26 @@ test("the migration that adds the missing-word kind keeps every report already s
   assert.deepEqual(rows(db, "SELECT report_id, word, record_id, choice, details FROM reader_report ORDER BY report_id"), [
     { report_id: 1, word: "casa", record_id: null, choice: "form", details: "Before #441." },
     { report_id: 2, word: "xqzt", record_id: null, choice: "missing", details: "Please add it." },
+  ]);
+});
+
+test("the migration that makes a missing word's details optional keeps every report already stored, and every other report still needs details", () => {
+  const db = new DatabaseSync(":memory:");
+  const files = appMigrationFiles();
+  const optional = files.findIndex((path) => path.endsWith("_reader_report_missing_details.sql"));
+  assert.ok(optional > 0, "the optional-details migration is in the journal");
+  for (const path of files.slice(0, optional)) db.exec(readFileSync(path, "utf8"));
+  const insert = "INSERT INTO reader_report (release_id, word, record_id, choice, details, visitor_hash, received_at) VALUES";
+  db.exec(`${insert} ('it-0c432803', 'xqzt', NULL, 'missing', 'Please add it.', 'h', '2026-10-03T12:00:00.000Z')`);
+  assert.throws(() => db.exec(`${insert} ('it-0c432803', 'abc', NULL, 'missing', '', 'h', '2026-10-03T12:01:00.000Z')`), /CHECK constraint failed/);
+  for (const path of files.slice(optional)) db.exec(readFileSync(path, "utf8"));
+  assert.equal(shape(db, "reader_report").table[0]?.strict, 1);
+  db.exec(`${insert} ('it-0c432803', 'abc', NULL, 'missing', '', 'h', '2026-10-03T12:02:00.000Z')`);
+  assert.throws(() => db.exec(`${insert} ('it-0c432803', 'casa', NULL, 'other', '', 'h', '2026-10-03T12:03:00.000Z')`), /CHECK constraint failed/);
+  assert.throws(() => db.exec(`${insert} ('it-0c432803', 'abc', NULL, 'missing', '${"x".repeat(2001)}', 'h', '2026-10-03T12:04:00.000Z')`), /CHECK constraint failed/);
+  assert.deepEqual(rows(db, "SELECT report_id, word, choice, details FROM reader_report ORDER BY report_id"), [
+    { report_id: 1, word: "xqzt", choice: "missing", details: "Please add it." },
+    { report_id: 2, word: "abc", choice: "missing", details: "" },
   ]);
 });
 

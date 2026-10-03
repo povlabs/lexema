@@ -402,7 +402,8 @@ export const planNotice = sqliteTable(
  *
  * `choice` is what the reader says is wrong: one of the five a word page
  * offers, or `missing`, which the box on a search that found nothing sets
- * (#441). A missing word has no reading, so its `record_id` is NULL.
+ * (#441). A missing word has no reading, so its `record_id` is NULL. Its
+ * details are optional, so they may be empty; every other report has some.
  */
 export const readerReport = sqliteTable(
   "reader_report",
@@ -425,7 +426,7 @@ export const readerReport = sqliteTable(
     index("reader_report_by_visitor").on(table.visitorHash, table.receivedAt),
     check("reader_report_choice", sql`choice IN ('meaning', 'example', 'form', 'synonym', 'other', 'missing')`),
     check("reader_report_missing", sql`choice <> 'missing' OR record_id IS NULL`),
-    check("reader_report_details", sql`length(details) BETWEEN 1 AND 2000`),
+    check("reader_report_details", sql`length(details) <= 2000 AND (choice = 'missing' OR length(details) >= 1)`),
     check(
       "reader_report_line",
       sql`(line_no IS NULL AND line_sha256 IS NULL) OR (line_no IS NOT NULL AND line_sha256 IS NOT NULL AND record_id IS NOT NULL AND line_no > 0 AND length(line_sha256) = 64)`,
