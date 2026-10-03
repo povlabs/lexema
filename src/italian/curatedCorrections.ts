@@ -22,6 +22,21 @@
 // src/lookup/types.ts). A record a later release replaces does not inherit it:
 // the update reports it instead (src/update/apply.ts). The page shows the
 // corrected fact as data and says nothing about the correction (ADR 0016).
+//
+// The list holds a second kind (#450): a definition of a page-only entry (ADR
+// 0024) that the Wiktionary page itself states wrongly. `grufolare`'s page
+// gives the sense of *grugnire*, and `tremare`'s first sense is a fragment
+// with no verb. Huey ruled on 2026-10-03 to correct them like the plurals, and
+// that the builder may draft the wording from cited dictionaries for him to
+// approve word for word on the pull request (ADR 0008's 2026-10-03
+// amendment). Such a correction names its entry by page title and dump
+// revision, and the definition by its place, its page line and the text the
+// page shows there. The seed writes it as a `corrected_definition` row beside
+// the entry's own rows (src/import/correctedDefinitions.ts), `pnpm run
+// correct:records` writes it into a master seeded before it, and a lookup
+// reads its wording in place of the page's (src/lookup/pageEntry.ts). An entry
+// recovered from another revision, or no longer recovered at all, does not get
+// it: the seed and the run report it instead (ADR 0025).
 
 /** The dimensions a correction can set, and the values each takes. */
 export interface CorrectableValues {
@@ -67,16 +82,95 @@ export interface CorrectedRecord {
   pos: string;
 }
 
-export interface CuratedCorrection {
+/** A record's own gender or number, set right (#420). */
+export interface RecordCorrection {
   record: CorrectedRecord;
   facts: CorrectedFacts;
   /** At least one revision; a correction without evidence is not a correction. */
   evidence: readonly [Evidence, ...Evidence[]];
+  entry?: never;
 }
 
-/** A correction's id, stored on each of its rows: `it-0c432803:449969`. */
-export const correctionId = (correction: Pick<CuratedCorrection, "record">): string =>
-  `${correction.record.releaseId}:${correction.record.lineNo}`;
+/** The page-only entry (ADR 0024) a definition correction is keyed to: the dump's revision of its page. */
+export interface CorrectedPageEntry {
+  wiki: "it.wiktionary.org";
+  title: string;
+  revisionId: number;
+  pos: "verb";
+}
+
+/** The definition a correction stands in for, as that revision states it. */
+export interface ReplacedDefinition {
+  /** Its 0-based place among the entry's definitions (`entry_definition.definition_index`). */
+  index: number;
+  /** Its 1-based page line, and that line's wikitext, verbatim. */
+  line: number;
+  wikitext: string;
+  /** The text the page shows for that line, verbatim: the wrong text. */
+  text: string;
+}
+
+/** One definition of a page-only entry that the page states wrongly, set right (#450). */
+export interface DefinitionCorrection {
+  entry: CorrectedPageEntry;
+  replaces: ReplacedDefinition;
+  /** The corrected definition: Lexema's wording, drawn from the evidence and approved by Huey. */
+  text: string;
+  /** At least one revision; a correction without evidence is not a correction. */
+  evidence: readonly [Evidence, ...Evidence[]];
+  record?: never;
+}
+
+/** One entry of the curated list: a record's gender or number, or a page-only entry's definition. */
+export type CuratedCorrection = RecordCorrection | DefinitionCorrection;
+
+export const isDefinitionCorrection = (correction: CuratedCorrection): correction is DefinitionCorrection =>
+  correction.entry !== undefined;
+
+/** The entries of `corrections` that correct a record. */
+export const recordCorrections = (corrections: readonly CuratedCorrection[]): RecordCorrection[] =>
+  corrections.filter((correction): correction is RecordCorrection => !isDefinitionCorrection(correction));
+
+/** The entries of `corrections` that correct a page-only entry's definition. */
+export const definitionCorrections = (corrections: readonly CuratedCorrection[]): DefinitionCorrection[] =>
+  corrections.filter(isDefinitionCorrection);
+
+/** A page-only entry as a dictionary holds it: its page revision and its definitions, in place order. */
+export interface PageEntryDefinitions {
+  revisionId: number;
+  definitions: readonly { line: number; wikitext: string; text: string }[];
+}
+
+/** Why a definition correction does not reach a page-only entry of its title. */
+export type DefinitionMismatch =
+  /** The entry was read from another revision of the page: a later dump changed it. */
+  | "revision-differs"
+  /** Same revision, but the definition at the correction's place is not the one it quotes. */
+  | "definition-differs";
+
+/**
+ * Whether `correction` reaches `entry`, an entry of its title: only the
+ * revision it was checked against, with the very line and text it quotes at
+ * its place. Anything else is a page the correction was never checked
+ * against, which may say something else (ADR 0025).
+ */
+export function definitionMismatch(correction: DefinitionCorrection, entry: PageEntryDefinitions): DefinitionMismatch | undefined {
+  if (entry.revisionId !== correction.entry.revisionId) return "revision-differs";
+  const definition = entry.definitions[correction.replaces.index];
+  const { line, wikitext, text } = correction.replaces;
+  if (definition?.line !== line || definition.wikitext !== wikitext || definition.text !== text) return "definition-differs";
+  return undefined;
+}
+
+/**
+ * A correction's id, stored on each of its rows: a record's release and
+ * archive line, `it-0c432803:449969`, or a definition's page revision and
+ * place, `page:3906191:0`.
+ */
+export const correctionId = (correction: CuratedCorrection): string =>
+  isDefinitionCorrection(correction)
+    ? `page:${correction.entry.revisionId}:${correction.replaces.index}`
+    : `${correction.record.releaseId}:${correction.record.lineNo}`;
 
 /** A permanent link to the revision, which stays as it was whatever the page says later. */
 export const evidenceUrl = (evidence: Evidence): string =>
@@ -90,7 +184,7 @@ export interface CorrectedFact {
 }
 
 /** The facts a correction sets, gender first. */
-export function correctedFacts(correction: CuratedCorrection): CorrectedFact[] {
+export function correctedFacts(correction: RecordCorrection): CorrectedFact[] {
   const { gender, number } = correction.facts;
   return [
     ...(gender === undefined ? [] : [{ dimension: "gender" as const, ...gender }]),
@@ -200,6 +294,32 @@ export const CURATED_CORRECTIONS: readonly CuratedCorrection[] = [
     evidence: [
       { wiki: "it.wiktionary.org", title: "romantico", revisionId: 4011823, shows: "{{Tabs|romantico|romantici|romantica|romantiche}}" },
       { wiki: "en.wiktionary.org", title: "romantica", revisionId: 90337391, shows: "===Noun=== {{it-noun|f}} # {{female equivalent of|it|romantico}}" },
+    ],
+  },
+  // Huey's rulings on #450, 2026-10-03: correct both, with wording the builder drafts and he approves.
+  {
+    entry: { wiki: "it.wiktionary.org", title: "grufolare", revisionId: 3906191, pos: "verb" },
+    // The sound pigs make is grugnire's sense; grufolare is rooting about with the snout.
+    replaces: { index: 0, line: 4, wikitext: "# [[verso]] prodotto dai [[suini]]", text: "verso prodotto dai suini" },
+    text: "frugare nel terreno con il grugno, come fa il maiale in cerca di cibo",
+    evidence: [
+      { wiki: "en.wiktionary.org", title: "grufolare", revisionId: 71335228, shows: "# {{lb|it|intransitive}} to [[root]] about" },
+      { wiki: "it.wiktionary.org", title: "grugnire", revisionId: 3977394, shows: "# ''(maiale)'' [[emettere]] grugniti" },
+    ],
+  },
+  {
+    entry: { wiki: "it.wiktionary.org", title: "tremare", revisionId: 4002473, pos: "verb" },
+    // A fragment with no verb. Sense 2, `# {{Fig}} essere agitato da scosse continue`, is right and stays.
+    replaces: {
+      index: 0,
+      line: 4,
+      wikitext: "#convulso dei muscoli per effetto del freddo, della paura, di una malattia",
+      text: "convulso dei muscoli per effetto del freddo, della paura, di una malattia",
+    },
+    text: "essere scosso da piccoli movimenti involontari e ripetuti dei muscoli, per effetto del freddo, della paura o di una malattia",
+    evidence: [
+      { wiki: "en.wiktionary.org", title: "tremare", revisionId: 88487832, shows: "# {{lb|it|intransitive}} to [[tremble]], [[shake]], [[shiver]], [[shudder]]" },
+      { wiki: "it.wiktionary.org", title: "tremare", revisionId: 4002473, shows: "{{Trad1|fare movimenti avanti e indietro in rapida successione}}; ''(per freddo, febbre)'' [[rabbrividire]]" },
     ],
   },
 ];

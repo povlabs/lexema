@@ -27,7 +27,7 @@ import { DatabaseSync } from "node:sqlite";
 import { gzipSync } from "node:zlib";
 import { renderToStaticMarkup } from "react-dom/server";
 import { seedSql } from "../../src/import/seedSql.js";
-import type { CuratedCorrection } from "../../src/italian/curatedCorrections.js";
+import { CURATED_CORRECTIONS, definitionCorrections, type CuratedCorrection } from "../../src/italian/curatedCorrections.js";
 import { atFixtureLines, correctionFixtureLines } from "../../test/correctionFixture.js";
 import { loadFixturePages, type RawPageSource } from "../../src/source/rawPage.js";
 import { PUBLISHED_ARCHIVE_SHA256, sourceOf, type ArchiveFacts, type ReleaseSource } from "../../src/source/archiveFacts.js";
@@ -977,6 +977,7 @@ test("no example becomes unreachable: nested items', hidden furniture's and glos
         const first = readings[0].senses[0];
         first.recoveredItems.push({
           text: "una voce annidata della prima definizione",
+          correction: null,
           labels: [],
           route: "lead-in-item",
           ref: { wiki: "it.wiktionary.org", title: "x", revisionId: 1, line: 9000 },
@@ -2121,4 +2122,47 @@ test("page-only readings present definitions without origin marks or invented fo
     assert.deepEqual(json.pronunciations, []);
     assert.equal(json.etymology, null);
   }, await loadFixturePages(join(REPO, "fixtures")));
+});
+
+test("a curated definition correction shows in place of the page's wrong words, with no note, and leaves the rest as it was", async () => {
+  // Verbatim archive lines 119046 `tremo` and 283047 `grufolando`, and the
+  // dump's revisions 4002473 and 3906191 of their lemmas (#450).
+  const lines = (await readFile(join(REPO, "fixtures/definition-corrections.jsonl"), "utf8")).trimEnd().split("\n");
+  const pages = await loadFixturePages(join(REPO, "fixtures"));
+  const [grufolare, tremare] = definitionCorrections(CURATED_CORRECTIONS);
+  const rendered = async (corrections: readonly CuratedCorrection[] | undefined): Promise<Record<string, string>> => {
+    const html: Record<string, string> = {};
+    await withLines(lines, async ({ db }) => {
+      for (const word of ["grufolare", "tremare"]) html[word] = await render(db, word);
+      const answer = await attempt(db, "tremare");
+      assert.ok(answer.outcome === "found");
+      const { candidatesOf, resultJson } = await import("@/worker/api/lookupAnswer.ts");
+      const { readLookupFilters } = await import("@/worker/api/lookupFilters.ts");
+      const filters = readLookupFilters(new URLSearchParams());
+      assert.ok(filters.ok);
+      html.api = JSON.stringify(resultJson((await candidatesOf(answer, async () => undefined))[0], filters.filters).definitions);
+    }, pages, undefined, corrections);
+    return html;
+  };
+  // The committed list, as every seed writes it; and none, as the page reads without it.
+  const corrected = await rendered(undefined);
+  const source = await rendered([]);
+
+  assert.match(textOf(corrected.grufolare), exact(grufolare.text));
+  assert.doesNotMatch(textOf(corrected.grufolare), /verso prodotto dai suini/);
+  assert.match(textOf(source.grufolare), /verso prodotto dai suini/);
+  assert.match(textOf(corrected.tremare), exact(tremare.text));
+  assert.doesNotMatch(textOf(corrected.tremare), /convulso dei muscoli/);
+  // Nothing on the page says a definition was corrected (ADR 0016).
+  for (const html of [corrected.grufolare, corrected.tremare]) assert.doesNotMatch(textOf(html), /correct|corrett|evidence|Wiktionary revision|oldid/i);
+  // Only the corrected words differ: tremare's figurative sense 2, its label, and every other byte render exactly as before.
+  assert.match(textOf(corrected.tremare), /figurato/);
+  assert.match(textOf(corrected.tremare), /essere agitato da scosse continue/);
+  assert.equal(corrected.tremare.replace(tremare.text, tremare.replaces.text), source.tremare);
+  assert.equal(corrected.grufolare.replace(grufolare.text, grufolare.replaces.text), source.grufolare);
+  // The API answers the same definitions the page shows.
+  assert.deepEqual(JSON.parse(corrected.api).map((definition: { definition: string; labels: string[] }) => [definition.definition, definition.labels]), [
+    [tremare.text, []],
+    ["essere agitato da scosse continue", ["figurato"]],
+  ]);
 });

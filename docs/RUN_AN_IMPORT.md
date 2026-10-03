@@ -286,6 +286,16 @@ change and the replacing record to check against the entry's evidence.
 `update:apply` and `update:auto` print the same for a correction on a record
 they retire.
 
+The same run writes definition corrections: a page-only entry's definition the
+page states wrongly ([#450](https://github.com/hueypov/lexema/issues/450),
+[page-only entries](PAGE_ENTRIES.md#corrected-definitions)). Each is one
+`corrected_definition` row, created with its table when the master lacks it.
+`entry_definition` is not touched. It is written only to the master's entry of
+the page title that was read from the revision the correction names, where the
+definition at its place is the line and text it quotes. Otherwise the run
+prints why not: the master holds no entry of that title, its entry was read
+from another revision, or the definition differs.
+
 For the shared `lexema-dictionary`, from Huey's laptop, signed in to Wrangler
 as for the upload above, once the Worker that reads corrections is deployed:
 
@@ -296,7 +306,11 @@ SEED_REMOTE=lexema-dictionary pnpm run correct:records
 Put `CLOUDFLARE_ACCOUNT_ID=<account id>` first if Wrangler lists more than one
 account. On `it-0c432803` the first run prints `written now: 12` and one line
 per entry, 14 rows in all (`congiuntivi` and `maniaci` set gender and number).
-Every later run prints `nothing to write` and `already written` for each. An
+Every later run prints `nothing to write` and `already written` for each. Until
+the shared dictionary holds page-only entries
+([#440](https://github.com/hueypov/lexema/issues/440)), the two definition
+corrections print `not written; the master holds no page-only entry`; run it
+again once they are loaded. An
 older Worker serves the master as before, since it never reads the new tables;
 the deployed one reads no correction from a master without them.
 

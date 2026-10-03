@@ -51,23 +51,54 @@ const NO_PAGE_ENTRIES: PageEntries = { candidates: async () => [], readings: asy
 /** The dictionary's page-only entries, decided once from its schema (src/lookup/served.ts). */
 export function pageEntriesOf(db: LookupDatabase, releaseId: string, tables: DictionaryTables): PageEntries {
   if (!tables.pageEntries) return NO_PAGE_ENTRIES;
+  const definitionsSql = tables.definitionCorrections ? CORRECTED_ENTRY_DEFINITION_SQL : ENTRY_DEFINITION_SQL;
   return {
     candidates: (word) => pageEntryCandidates(db, releaseId, word),
-    readings: (key) => pageEntryReadings(db, releaseId, key),
+    readings: (key) => pageEntryReadings(db, releaseId, key, definitionsSql),
   };
 }
+
+interface DefinitionRow {
+  definition_index: number;
+  route: RecoveredRoute["route"];
+  term: string | null;
+  page_line: number;
+  wikitext: string;
+  text: string;
+  lead_in_index: number | null;
+  corrected_text: string | null;
+  correction_id: string | null;
+  evidence_url: string | null;
+}
+
+/** An entry's definitions, for a dictionary seeded before `corrected_definition` (#450). */
+const ENTRY_DEFINITION_SQL: DictionaryRead = `SELECT definition_index, route, term, page_line, wikitext, text, lead_in_index,
+       NULL AS corrected_text, NULL AS correction_id, NULL AS evidence_url
+  FROM entry_definition WHERE entry_id = ? ORDER BY definition_index`;
+
+/** An entry's definitions, each with the curated correction that stands in for its text, if any. */
+export const CORRECTED_ENTRY_DEFINITION_SQL: DictionaryRead = `SELECT d.definition_index, d.route, d.term, d.page_line, d.wikitext, d.text, d.lead_in_index,
+       c.text AS corrected_text, c.correction_id, c.evidence_url
+  FROM entry_definition d
+  LEFT JOIN corrected_definition c ON c.entry_id = d.entry_id AND c.definition_index = d.definition_index
+ WHERE d.entry_id = ? ORDER BY d.definition_index`;
+
+/** A definition's text, with the curated correction in place of the page's words where there is one. */
+const textOf = (row: DefinitionRow): Pick<RecoveredDefinition, "text" | "correction"> =>
+  row.corrected_text === null
+    ? { text: row.text, correction: null }
+    : { text: row.corrected_text, correction: { id: row.correction_id as string, evidenceUrl: row.evidence_url as string, replaces: row.text } };
 
 async function pageEntryCandidates(db: LookupDatabase, releaseId: string, word: string): Promise<LemmaCandidate[]> {
   const rows = await queryAll<EntryRow>(db, PAGE_ENTRY_SQL, releaseId, normalizeItalianExact(word));
   return rows.map((row) => ({ entryId: row.entry_id, word: row.word, pos: row.pos, ref: refOf(row) }));
 }
 
-async function pageEntryReadings(db: LookupDatabase, releaseId: string, key: string): Promise<Reading[]> {
+async function pageEntryReadings(db: LookupDatabase, releaseId: string, key: string, definitionsSql: DictionaryRead): Promise<Reading[]> {
   const rows = await queryAll<EntryRow>(db, PAGE_ENTRY_SQL, releaseId, key);
   return Promise.all(rows.map(async (row): Promise<Reading> => {
     const [definitions, labels, examples] = await Promise.all([
-      queryAll<{ definition_index: number; route: RecoveredRoute["route"]; term: string | null; page_line: number; wikitext: string; text: string; lead_in_index: number | null }>(db,
-        `SELECT definition_index, route, term, page_line, wikitext, text, lead_in_index FROM entry_definition WHERE entry_id = ? ORDER BY definition_index`, row.entry_id),
+      queryAll<DefinitionRow>(db, definitionsSql, row.entry_id),
       queryAll<{ definition_index: number; label: string }>(db,
         `SELECT definition_index, label FROM entry_label WHERE entry_id = ? ORDER BY definition_index, label_index`, row.entry_id),
       queryAll<{ definition_index: number; page_line: number; wikitext: string; text: string }>(db,
@@ -79,7 +110,7 @@ async function pageEntryReadings(db: LookupDatabase, releaseId: string, key: str
     for (const definition of definitions) {
       const route: RecoveredRoute = definition.route === "sub-term" ? { route: "sub-term", term: definition.term as string } : { route: definition.route };
       const value: RecoveredDefinition = {
-        ...route, text: definition.text, ref: at(definition.page_line),
+        ...route, ...textOf(definition), ref: at(definition.page_line),
         labels: labels.filter((label) => label.definition_index === definition.definition_index).map((label) => label.label),
         examples: examples.filter((example) => example.definition_index === definition.definition_index).map((example) => ({ text: example.text, ref: at(example.page_line) })),
         heldAsExample: null, items: [],

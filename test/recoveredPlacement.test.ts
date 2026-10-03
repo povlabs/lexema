@@ -13,6 +13,7 @@ let line = 0;
 const definition = (text: string): RecoveredDefinition => ({
   route: "below-page-control",
   text,
+  correction: null,
   labels: [],
   ref: { wiki: "it.wiktionary.org", title: "corona", revisionId: 456, line: ++line },
   examples: [],

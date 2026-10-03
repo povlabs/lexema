@@ -1,4 +1,4 @@
-// The committed curated corrections (#420), keyed to a fixture instead of the
+// The committed curated corrections of records (#420), keyed to a fixture instead of the
 // release: a fixture holds an archive line at a line number of its own, so each
 // entry is moved to the fixture line whose digest is the one it names. The
 // digest is kept, so an entry reaches a fixture line only when its bytes are
@@ -17,7 +17,7 @@
 
 import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
-import { CURATED_CORRECTIONS, type CuratedCorrection } from "../src/italian/curatedCorrections.js";
+import { CURATED_CORRECTIONS, recordCorrections, type RecordCorrection } from "../src/italian/curatedCorrections.js";
 
 export const CORRECTION_FIXTURE = new URL("../fixtures/curated-corrections.jsonl", import.meta.url);
 
@@ -33,7 +33,7 @@ const sha256 = (line: string): string => createHash("sha256").update(line, "utf8
  * each names. Throws on an entry no line carries, so a fixture that drifts
  * from the list fails by name.
  */
-export function atFixtureLines(lines: readonly string[], releaseId: string, corrections: readonly CuratedCorrection[] = CURATED_CORRECTIONS): CuratedCorrection[] {
+export function atFixtureLines(lines: readonly string[], releaseId: string, corrections: readonly RecordCorrection[] = recordCorrections(CURATED_CORRECTIONS)): RecordCorrection[] {
   const lineOf = new Map(lines.map((line, i) => [sha256(line), i + 1]));
   return corrections.map((correction) => {
     const lineNo = lineOf.get(correction.record.lineSha256);

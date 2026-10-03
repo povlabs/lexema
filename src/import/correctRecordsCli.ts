@@ -1,5 +1,5 @@
 // `pnpm run correct:records`: the one-off update that writes the curated
-// corrections (src/italian/curatedCorrections.ts, #420) into an already seeded
+// corrections (src/italian/curatedCorrections.ts, #420, #450) into an already seeded
 // dictionary (correctRecords.ts). It picks its database the way the seed does:
 // the local D1 under `SEED_STATE` (default `.data/seed-state`), or the remote
 // D1 `SEED_REMOTE` names. The shared dictionary is Huey's to write, from his
@@ -10,7 +10,7 @@ import { join, resolve } from "node:path";
 import { finish, isMain, type CommandResult } from "../commandLine.js";
 import { CURATED_CORRECTIONS } from "../italian/curatedCorrections.js";
 import { masterReaderOf } from "../update/updateCli.js";
-import { describeEntry, planCorrections, unwritten } from "./correctRecords.js";
+import { describeDefinition, describeEntry, planCorrections, unwritten } from "./correctRecords.js";
 import { seedTargetFrom, webWrangler } from "./seedTarget.js";
 
 const log = (line: string): void => {
@@ -22,8 +22,8 @@ export async function main(env: NodeJS.ProcessEnv = process.env): Promise<Comman
   const reader = masterReaderOf(target);
   const plan = planCorrections(reader, CURATED_CORRECTIONS, await readFile(resolve("src/db/schema.sql"), "utf8"));
   log(`planning ${CURATED_CORRECTIONS.length} curated correction(s) for the master ${plan.masterReleaseId} in ${target.dictionary}`);
-  const lines = plan.entries.map(describeEntry);
-  const writes = plan.entries.filter((entry) => entry.state === "write").length;
+  const lines = [...plan.entries.map(describeEntry), ...plan.definitions.map(describeDefinition)];
+  const writes = [...plan.entries, ...plan.definitions].filter((entry) => entry.state === "write").length;
   if (plan.sql === "") return { out: [`nothing to write in ${target.dictionary}`, ...lines].join("\n"), status: 0 };
 
   const out = resolve(".data/updates");

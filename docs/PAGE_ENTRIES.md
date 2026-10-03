@@ -24,6 +24,29 @@ To build one in a local seed, see
 - A report names a source record or the word. A page-only entry is not offered
   as a reading to report, so its report is about the word.
 
+## Corrected definitions
+
+Some pages state a definition wrongly, and the rule reads them faithfully.
+`grufolare` gives the sense of *grugnire*, and `tremare`'s first sense has no
+verb ([#450](https://github.com/hueypov/lexema/issues/450)). These are fixed
+by curated corrections, never by an edit of the entry:
+
+- Each one is an entry of the committed list,
+  [curatedCorrections.ts](../src/italian/curatedCorrections.ts). It names the
+  page title and dump revision, the definition's place, its page line and the
+  page's text, verbatim, plus the new wording and at least one cited revision.
+  Huey approves the wording ([ADR 0008](../.decisions/0008-generated-explanations-are-labelled-and-reportable.md#amendments)).
+- The seed writes it as a `corrected_definition` row beside the entry. A
+  database seeded before it gets it from `pnpm run correct:records`
+  ([run an archive seed](RUN_AN_IMPORT.md#write-the-curated-corrections-into-a-seeded-database)).
+  `entry_definition` keeps the page's own words.
+- A lookup reads the new wording as the definition's `text`, and keeps the
+  page's words in `correction.replaces`. The page shows only the wording, with
+  no mark ([ADR 0016](../.decisions/0016-page-shows-no-origin-marks.md)).
+- An entry read from another revision of the page, or a title with no entry,
+  does not get the correction. The seed and `correct:records` report it as not
+  written ([ADR 0025](../.decisions/0025-newer-source-definitions-are-authoritative.md)).
+
 ## Where it is reached
 
 - Exact search and existing form-of links reach page-only entries.

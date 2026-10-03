@@ -1289,6 +1289,7 @@ async function readRecovered(db: LookupDatabase, recordId: number, record: Promi
     const definition: RecoveredDefinition = {
       ...route,
       text: row.text,
+      correction: null,
       labels: labels.filter((label) => label.recovered_id === row.recovered_id).map((label) => label.label),
       ref: at(row.page_line),
       examples: examples

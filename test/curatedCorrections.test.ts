@@ -10,7 +10,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { gzipSync } from "node:zlib";
-import { CURATED_CORRECTIONS, correctedFacts, evidenceUrl, type CuratedCorrection } from "../src/italian/curatedCorrections.js";
+import { CURATED_CORRECTIONS, correctedFacts, evidenceUrl, recordCorrections, type CuratedCorrection } from "../src/italian/curatedCorrections.js";
 import { readPluralGloss } from "../src/italian/pluralGloss.js";
 import { seedSql, type SeedSqlReport } from "../src/import/seedSql.js";
 import { fromNodeSqlite } from "../src/lookup/database.js";
@@ -19,6 +19,7 @@ import { isNounReading, type Reading } from "../src/lookup/types.js";
 import { atFixtureLines, correctionFixtureLines } from "./correctionFixture.js";
 
 const RELEASE = "it-curated";
+const RECORDS = recordCorrections(CURATED_CORRECTIONS);
 
 /** What a record's line holds at an RFC 6901 pointer. */
 function at(line: string, pointer: string): unknown {
@@ -33,7 +34,7 @@ test("each entry names its record's line exactly, and the source text it overrid
   assert.equal(keyed.length, 12);
   for (const [i, correction] of keyed.entries()) {
     const line = lines[correction.record.lineNo - 1];
-    const archive = CURATED_CORRECTIONS[i].record;
+    const archive = RECORDS[i].record;
     assert.equal(archive.releaseId, "it-0c432803");
     assert.equal(at(line, "/word"), correction.record.word);
     assert.equal(at(line, "/pos"), correction.record.pos);
@@ -58,7 +59,7 @@ test("each entry names its record's line exactly, and the source text it overrid
 
 test("the list corrects the twelve cases Huey ruled wrong and none of the fourteen he ruled right", () => {
   // Huey's ruling on #420, 2026-10-03: eight declaring records and four nouns' own gender.
-  assert.deepEqual(CURATED_CORRECTIONS.map((correction) => correction.record.word).sort(), [
+  assert.deepEqual(RECORDS.map((correction) => correction.record.word).sort(), [
     "ammaliatrice", "amorevolezze", "congiuntivi", "fiaschetteria", "fissazione", "giocatrici",
     "maniaci", "nozione", "predatrici", "rimbalzo", "romantica", "sudafricana",
   ]);
@@ -66,7 +67,7 @@ test("the list corrects the twelve cases Huey ruled wrong and none of the fourte
     "altruiste", "anfitrioni", "australiane", "costruttrici", "fiaschetterie", "finanziatrici", "fissazioni",
     "mitre", "mosse", "nozioni", "portatrici", "ricoverati", "rimbalzi", "scolare",
   ];
-  assert.deepEqual(CURATED_CORRECTIONS.filter((correction) => right.includes(correction.record.word)), []);
+  assert.deepEqual(RECORDS.filter((correction) => right.includes(correction.record.word)), []);
 });
 
 interface Seeded {
