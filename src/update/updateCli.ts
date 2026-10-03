@@ -1,9 +1,12 @@
 // Update operations compare a later archive with the currently served master.
 // update:auto selects and applies eligible definitions under ADR 0025. All
 // pick their database the way the seed does: the local D1 under `SEED_STATE`
-// (default `.data/seed-state`), or the remote D1 `SEED_REMOTE` names. All
-// run from the laptop, through Wrangler, never through the Worker's read-only
-// dictionary binding (ADR 0018). docs/UPDATE_THE_DICTIONARY.md is the runbook.
+// (default `.data/seed-state`), or the remote D1 `SEED_REMOTE` names. A lane
+// runs them against a local D1 only. The shared `lexema-dictionary` gets
+// `update:auto` and `update:upgrade` from the dictionary deploy, after the merge
+// that declares them (ADR 0018, docs/DEPLOY.md). None writes through the
+// Worker's read-only dictionary binding. docs/UPDATE_THE_DICTIONARY.md is the
+// runbook.
 //
 //   pnpm run update:auto <archive> --pages <dump> [--out <dir>] [--plan-only]
 //   pnpm run update:upgrade [--plan-only]

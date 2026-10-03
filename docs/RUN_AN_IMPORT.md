@@ -54,10 +54,11 @@ some of its statements.
 ## Load a release into Cloudflare D1
 
 Production and every Preview read one shared dictionary D1,
-`lexema-dictionary`, and code never writes to it
+`lexema-dictionary`, and the Worker never writes to it
 ([ADR 0018](../.decisions/0018-previews-on-workers-builds.md)). A release goes
-into it once, from Huey's laptop, where the archive lives. It is not a workflow,
-since a workflow would need a Cloudflare token in GitHub.
+into it once, from Huey's laptop, where the archive lives. It is not a workflow:
+the [dictionary deploy](DEPLOY.md#the-dictionary-deploy) applies only the
+changes a merge declares.
 
 The one run, for release `it-0c432803`:
 
