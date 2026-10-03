@@ -299,3 +299,27 @@ per entry, 14 rows in all (`congiuntivi` and `maniaci` set gender and number).
 Every later run prints `nothing to write` and `already written` for each. An
 older Worker serves the master as before, since it never reads the new tables;
 the deployed one reads no correction from a master without them.
+
+## Page-only entries
+
+The seed also stores page-only entries for dangling form targets with a ruled
+Italian page layout (ADR 0024). What it stores is in
+[page-only entries](PAGE_ENTRIES.md). To see them in a disposable local seed:
+
+1. For the full release, keep the verified dump in the repository root, and
+   run the full-release command in [Run it](#run-it) with a fresh
+   `SEED_STATE`. Leave `SEED_REMOTE` unset.
+2. For a small reproduction, join the development fixture and the two form
+   records that point at page-only entries into one local file, and seed it.
+   Their pages are already committed under `fixtures/`.
+
+   ```sh
+   cat fixtures/dev-seed.jsonl fixtures/page-entry-forms.jsonl > .data/page-entry-input.jsonl
+   SEED_INPUT=.data/page-entry-input.jsonl \
+   SEED_SQL=.data/page-entry-sql \
+   SEED_STATE=.data/page-entry-state \
+   pnpm run seed:dev
+   ```
+
+3. Search for `raccontare` or `fornire`, or for the forms `racconto` and
+   `fornito`, which lead to them.

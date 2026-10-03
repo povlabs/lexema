@@ -5,13 +5,14 @@
 // Which records are readings and which lemma tables they carry is
 // `wordPage.ts`; this file only lays the answer out.
 
-import type { WordFacts } from "@lexema/lookup/types.ts";
+import { entryKey, type EntryIdentity, type WordFacts } from "@lexema/lookup/types.ts";
 import { ExternalIcon } from "@/components/shared/icons";
 import { Expressions } from "./Expressions";
 import { NEW_TAB } from "@/components/shared/ExternalLink";
 import { OneLine } from "./OneLine";
 import { ReadingView } from "./Reading";
-import { ReportDialog, type ReportReading } from "./ReportDialog";
+import { ReportDialog } from "./ReportDialog";
+import { reportReadings, type ReportReading } from "@/lib/dictionary/report.ts";
 import { sourcePageUrl } from "@/lib/dictionary/sourcePage.ts";
 import { WordList } from "./WordList";
 import type { ExpressionSection, WordLists, WordPage } from "@/lib/dictionary/wordPage.ts";
@@ -63,8 +64,8 @@ function JumpLinks({ page }: { page: WordPage }) {
     <nav aria-label="Readings">
       <ul className={JUMP_LINKS}>
         {page.readings.map(({ number, reading }) => (
-          <li key={reading.recordId}>
-            <a className={JUMP_LINK} href={`#reading-${reading.recordId}`}>
+          <li key={entryKey(reading)}>
+            <a className={JUMP_LINK} href={`#reading-${entryKey(reading)}`}>
               {number !== undefined && <span className={JUMP_NUMBER}>{number}</span>}
               <span lang="it">{reading.posTitle}</span>
             </a>
@@ -117,7 +118,7 @@ export interface FooterFacts {
   /** The word a report is about. */
   headword: string;
   /** Each reading a report can name, with its number on the page; a word page leaves a reading with no definition unnumbered. */
-  readings: readonly { number: ReportReading["number"]; reading: { recordId: number; posTitle: string } }[];
+  readings: readonly { number: ReportReading["number"]; reading: EntryIdentity & { posTitle: string } }[];
 }
 
 /** One *Source*, to the Wiktionary page of the page's word, then *Report a mistake* (ADR 0009, amended on #281). */
@@ -136,7 +137,7 @@ export function SourceLine({ page, siteKey }: { page: FooterFacts; siteKey: stri
       <span aria-hidden="true">·</span>
       <ReportDialog
         word={page.headword}
-        readings={page.readings.map(({ number, reading }) => ({ number, recordId: reading.recordId, posTitle: reading.posTitle }))}
+        readings={reportReadings(page.readings)}
         siteKey={siteKey}
       />
     </footer>
@@ -153,7 +154,7 @@ export function WordView({ page, siteKey }: { page: WordPage; siteKey?: string }
       <JumpLinks page={page} />
       <div className={READINGS}>
         {page.readings.map((entry) => (
-          <ReadingView key={entry.reading.recordId} entry={entry} />
+          <ReadingView key={entryKey(entry.reading)} entry={entry} />
         ))}
       </div>
       <WordFactsView facts={page.wordFacts} lists={page.wordLists} expressions={page.expressionSections} />

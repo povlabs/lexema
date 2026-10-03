@@ -25,8 +25,8 @@ import { everyRecovered, type FoundResult, type LookupResult, type Reading } fro
 import { ApplyRefused, checkApplied, chooseChanges, planApply, type ApplyPlan } from "../src/update/apply.js";
 import type { Change } from "../src/update/changes.js";
 import { diffAgainstMaster, reportMarkdown, reportOf, type MasterDiff } from "../src/update/diff.js";
-import type { MasterReader } from "../src/update/master.js";
-import { masterUpgradeSql, SERVING_VIEWS, UPDATE_TABLES } from "../src/update/masterUpgrade.js";
+import { missingUpgrade, type MasterReader } from "../src/update/master.js";
+import { masterUpgradeSql, PAGE_ENTRY_INDEXES, PAGE_ENTRY_TABLES, SERVING_VIEWS, UPDATE_TABLES, UPGRADE_NAMES } from "../src/update/masterUpgrade.js";
 import { planCorrections } from "../src/import/correctRecords.js";
 import type { CuratedCorrection } from "../src/italian/curatedCorrections.js";
 
@@ -509,12 +509,15 @@ test("an apply brings a master seeded before #18 up to the schema, and the upgra
   const old = new DatabaseSync(":memory:");
   old.exec(await readFile(SCHEMA, "utf8"));
   for (const view of [...SERVING_VIEWS].reverse()) old.exec(`DROP VIEW ${view}`);
-  for (const table of [...UPDATE_TABLES].reverse()) old.exec(`DROP TABLE ${table}`);
+  for (const table of [...PAGE_ENTRY_TABLES, ...UPDATE_TABLES].reverse()) old.exec(`DROP TABLE ${table}`);
+  assert.deepEqual(missingUpgrade(readerOf(old)), [...UPGRADE_NAMES]);
   const upgrade = masterUpgradeSql(await readFile(SCHEMA, "utf8"));
+  const asFresh = (db: DatabaseSync) => schemaOf(db).replaceAll("CREATE TABLE IF NOT EXISTS", "CREATE TABLE").replaceAll("CREATE INDEX IF NOT EXISTS", "CREATE INDEX");
   old.exec(upgrade);
-  assert.equal(schemaOf(old).replaceAll("CREATE TABLE IF NOT EXISTS", "CREATE TABLE"), schemaOf(fresh));
+  assert.equal(asFresh(old), schemaOf(fresh));
+  assert.deepEqual(missingUpgrade(readerOf(old)), []);
   old.exec(upgrade);
-  assert.equal(schemaOf(old).replaceAll("CREATE TABLE IF NOT EXISTS", "CREATE TABLE"), schemaOf(fresh));
+  assert.equal(asFresh(old), schemaOf(fresh));
 
   // A seeded master without them: the diff reads it, and the apply adds them.
   await withDesk(async ({ db, later }) => {
@@ -525,10 +528,27 @@ test("an apply brings a master seeded before #18 up to the schema, and the upgra
   });
 });
 
+test("the upgrade gives a master seeded before #403 its page-entry tables, empty, and lookups answer the same", async () => {
+  await withDesk(async ({ db }) => {
+    for (const table of [...PAGE_ENTRY_TABLES].reverse()) db.exec(`DROP TABLE ${table}`);
+    assert.deepEqual(missingUpgrade(readerOf(db)), [...PAGE_ENTRY_TABLES, ...PAGE_ENTRY_INDEXES]);
+    const casa = await ask(db, "casa");
+    assert.equal(casa.outcome, "found");
+    const written = () => (db.prepare("SELECT total_changes() AS n").get() as { n: number }).n;
+    const before = written();
+    execute(db, masterUpgradeSql(await readFile(SCHEMA, "utf8")));
+    assert.equal(written(), before, "the upgrade writes no row");
+    assert.deepEqual(missingUpgrade(readerOf(db)), []);
+    for (const table of PAGE_ENTRY_TABLES) assert.equal((db.prepare(`SELECT count(*) AS n FROM ${table}`).get() as { n: number }).n, 0);
+    assert.deepEqual(await ask(db, "casa"), casa);
+  });
+});
+
 // Synthetic releases exercise sequential corrections/removal, not upstream extraction.
 test("automatic updates follow A→B→C, retain source and hand rows, move indexes/caches, and repeat without writes", async () => {
   const corrected = record({ word: "casa", pos: "noun", pos_title: "Sostantivo", forms: [{ form: "casette", tags: ["plural"] }], senses: [{ glosses: ["abitazione corretta"] }, { glosses: ["nucleo familiare"] }] });
-  const removed = record({ word: "casa", pos: "noun", pos_title: "Sostantivo", forms: [], senses: [] });
+  // A removal with no blank in its place: an emptied record would keep B serving (#442).
+  const removed = record({ word: "casa", pos: "noun", pos_title: "Sostantivo", forms: [], senses: [{ glosses: ["nucleo familiare"] }] });
   await withDesk(async ({ db, later, dir }) => {
     const reader = readerOf(db);
     const schema = await readFile(SCHEMA, "utf8");
@@ -566,7 +586,7 @@ test("automatic updates follow A→B→C, retain source and hand rows, move inde
     execute(db, planC.sql);
     assert.deepEqual(checkApplied(reader, planC), { missing: [], differing: [] });
     const casaC = readings(await ask(db, "casa"))[0];
-    assert.deepEqual(glosses(casaC), []);
+    assert.deepEqual(glosses(casaC), ["nucleo familiare"]);
     assert.equal(casaC.ref.releaseId, foundC.feed.releaseId);
     assert.equal(casaC.ref.lineNo, 1);
     assert.deepEqual({ ...db.prepare("SELECT upstream_release, upstream_release_basis, archive_sha256 FROM source_release WHERE release_id = ?").get(foundC.feed.releaseId) }, { upstream_release: "itwiktionary-20261001", upstream_release_basis: "recorded", archive_sha256: foundC.feed.archiveSha256 });
@@ -575,6 +595,7 @@ test("automatic updates follow A→B→C, retain source and hand rows, move inde
     assert.equal(handRows(db), beforeHand);
     const raw = db.prepare("SELECT raw_json FROM source_record_json j JOIN source_record r USING (record_id) WHERE r.word = 'casa' ORDER BY record_id").all().map((row) => row.raw_json);
     assert.deepEqual(raw, [CASA_FIXED, corrected, removed]);
+    assert.ok(casaC.recordId !== undefined);
     const ids = db.prepare(`SELECT record_id FROM (${lineageOf("?1")}) ORDER BY record_id`).all(casaC.recordId).map((row) => row.record_id);
     assert.deepEqual(ids, [1, partial.changes[0].recordId, planC.changes[0].recordId]);
     assert.equal(db.prepare("SELECT count(*) AS n FROM sense WHERE record_id IN (?,?)").get(1, partial.changes[0].recordId)?.n, 4);

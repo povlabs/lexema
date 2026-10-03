@@ -1,0 +1,10 @@
+<!-- it.wiktionary.org/wiki/movere revision 4035357 (2025-06-08T10:03:21Z), CC BY-SA 4.0. Saved verbatim. -->
+== {{-la-}} ==
+{{-verb form-|la}}
+'''movēre'''
+# infinito presente attivo di [[moveo]]
+# seconda persona singolare dell'indicativo/imperativo presente passivo di [[moveo]]
+
+{{-verb form-|la}}
+'''mōvēre'''
+# terza persona plurale dell'indicativo perfetto attivo di [[moveo]]

@@ -32,7 +32,7 @@ import { atFixtureLines, correctionFixtureLines } from "../../test/correctionFix
 import { loadFixturePages, type RawPageSource } from "../../src/source/rawPage.js";
 import { PUBLISHED_ARCHIVE_SHA256, sourceOf, type ArchiveFacts, type ReleaseSource } from "../../src/source/archiveFacts.js";
 import { fromNodeSqlite } from "../../src/lookup/database.js";
-import type { Reading } from "../../src/lookup/types.js";
+import type { Reading, SourceRef } from "../../src/lookup/types.js";
 import type { Attempt } from "@/lib/dictionary/attempt.ts";
 import { searchAttempt } from "@/lib/dictionary/searchAttempt.ts";
 import { Attribution } from "@/components/dictionary/Attribution";
@@ -41,6 +41,7 @@ import { SiteFooter } from "@/components/dictionary/SiteFooter";
 import { ORIGIN } from "@/worker/hosts.ts";
 import { SiteHeader } from "@/components/dictionary/SiteHeader";
 import { readingChoiceLabel } from "@/components/dictionary/ReportDialog";
+import { reportReadings } from "@/lib/dictionary/report.ts";
 import { PhraseView } from "@/components/dictionary/Phrase";
 import { phrasePage } from "@/lib/dictionary/phrasePage.ts";
 import { EXPRESSION_FILTER_ABOVE, matchesExpression, wordPage } from "@/lib/dictionary/wordPage.ts";
@@ -180,11 +181,23 @@ async function render(db: DatabaseSync, query: string): Promise<string> {
   );
 }
 
-async function readingsFor(db: DatabaseSync, query: string): Promise<[Reading, ...Reading[]]> {
+type ArchiveReading = Reading & { recordId: number; ref: SourceRef };
+
+function archiveReadings(readings: readonly Reading[]): [ArchiveReading, ...ArchiveReading[]] {
+  const narrowed = readings.map((reading) => {
+    assert.ok(reading.recordId !== undefined, "existing archive fixture remains record-backed");
+    return reading;
+  });
+  const [first, ...rest] = narrowed;
+  assert.ok(first);
+  return [first, ...rest];
+}
+
+async function readingsFor(db: DatabaseSync, query: string): Promise<[ArchiveReading, ...ArchiveReading[]]> {
   const answer = await attempt(db, query);
   assert.equal(answer.outcome, "found", `${query}: expected a found answer`);
   if (answer.outcome !== "found") throw new Error("unreachable");
-  return answer.readings;
+  return archiveReadings(answer.readings);
 }
 
 /** How many times a literal string occurs. Counting, never pattern-matching. */
@@ -275,7 +288,7 @@ test("every record the lookup returns is a reading, headed by its number and its
       assert.deepEqual(headingsOf(html), headings, query);
       // Nothing the lookup returned is dropped: every record is a reading.
       assert.deepEqual(
-        wordPage(query, readings).readings.map((entry) => entry.reading.recordId).sort((a, b) => a - b),
+        wordPage(query, readings).readings.map((entry) => entry.reading.recordId).sort((a, b) => { assert.ok(a !== undefined && b !== undefined); return a - b; }),
         readings.map((reading) => reading.recordId).sort((a, b) => a - b),
         query,
       );
@@ -933,11 +946,11 @@ test("a record that states both numbers fills both columns and names both in its
 });
 
 /** The page for a query after `change` edits the readings the lookup returned. */
-async function renderChanged(db: DatabaseSync, query: string, change: (readings: Reading[]) => void): Promise<string> {
+async function renderChanged(db: DatabaseSync, query: string, change: (readings: ArchiveReading[]) => void): Promise<string> {
   const answer = await attempt(db, query);
   assert.equal(answer.outcome, "found");
   if (answer.outcome !== "found") throw new Error("unreachable");
-  change(answer.readings);
+  change(archiveReadings(answer.readings));
   return renderToStaticMarkup(
     <SearchPage raw={query} version={VERSION}>
       <Outcome raw={query} attempt={answer} />
@@ -1781,9 +1794,7 @@ test("a reading with no definition is its part of speech alone; the readings wit
       ["1Aggettivo", "Sostantivo", "2Voce verbale"],
     );
     assert.deepEqual(
-      wordPage("litigante", await readingsFor(db, "litigante")).readings.map(({ number, reading }) =>
-        readingChoiceLabel({ number, recordId: reading.recordId, posTitle: reading.posTitle }),
-      ),
+      reportReadings(wordPage("litigante", await readingsFor(db, "litigante")).readings).map(readingChoiceLabel),
       ["1 · Aggettivo", "Sostantivo", "2 · Voce verbale"],
     );
 
@@ -1895,4 +1906,37 @@ test("a list of one row has no + more", async () => {
     assert.deepEqual(expressionRows(section).rows, [["di colore", null]]);
     assert.ok(!section.includes(EXPRESSIONS_MORE));
   });
+});
+
+test("page-only readings present definitions without origin marks or invented forms, and API IDs are page identities", async () => {
+  // Verbatim archive lines 52740/53209, not a manufactured lemma record.
+  const text = await readFile(join(REPO, "fixtures/page-entry-forms.jsonl"), "utf8");
+  await withLines(text.trimEnd().split("\n"), async ({ db }) => {
+    const answer = await attempt(db, "raccontare");
+    assert.ok(answer.outcome === "found");
+    const reading = answer.readings[0];
+    assert.ok(reading.entryId !== undefined);
+    const model = wordPage("raccontare", answer.readings);
+    assert.equal(model.readings.length, 1);
+    // A report names only a source record, so a page-only reading is not offered as a choice.
+    assert.deepEqual(reportReadings(model.readings), []);
+    const html = await render(db, "raccontare");
+    assert.match(textOf(html), /narrare, oralmente o tramite scrittura, eventi o storie/);
+    assert.match(textOf(html), /rappresentare qualcosa, in genere cosa non gradita/);
+    assert.match(html, new RegExp(`id="reading-page-${reading.entryId}"`));
+    assert.doesNotMatch(html, /reading-undefined|forms-page-|<table/);
+    assert.doesNotMatch(textOf(html), /recovered|derived|Pronunciation|Etymology|Forms|Indicativo/);
+    assert.equal(occurrencesOf(textOf(html), "Source"), 1);
+    const { candidatesOf, resultJson, idOf } = await import("@/worker/api/lookupAnswer.ts");
+    const { readLookupFilters } = await import("@/worker/api/lookupFilters.ts");
+    const filters = readLookupFilters(new URLSearchParams());
+    assert.ok(filters.ok);
+    const candidates = await candidatesOf(answer, async () => undefined);
+    const json = resultJson(candidates[0], filters.filters);
+    assert.equal(json.id, `${RELEASE}:page:${reading.ref.revisionId}`);
+    assert.equal(idOf(reading), json.id);
+    assert.equal(json.forms, null);
+    assert.deepEqual(json.pronunciations, []);
+    assert.equal(json.etymology, null);
+  }, await loadFixturePages(join(REPO, "fixtures")));
 });

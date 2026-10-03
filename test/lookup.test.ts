@@ -359,8 +359,8 @@ test("returns every reading of an ambiguous surface, unranked", async () => {
     );
     assert.ok(readings.every((r) => r.isAboutQuery));
     assert.deepEqual(
-      readings.map((r) => r.ref.lineNo),
-      [...readings.map((r) => r.ref.lineNo)].sort((a, b) => a - b),
+      readings.map((r) => { assert.ok(r.ref.lineNo !== undefined); return r.ref.lineNo; }),
+      [...readings.map((r) => { assert.ok(r.ref.lineNo !== undefined); return r.ref.lineNo; })].sort((a, b) => a - b),
     );
   });
 });
@@ -393,6 +393,7 @@ test("evidence from a long table is ordered by index, not by pointer text", asyn
     // the pointers as text puts /forms/10 and /forms/11 ahead of /forms/2,
     // which is not the order the source wrote the table in.
     const [parlare] = found(await ask(db, "parli"));
+    assert.ok(parlare.recordId !== undefined);
     const formCount = (
       db.prepare(
         `SELECT count(*) AS n FROM lookup_form
@@ -704,6 +705,7 @@ test("every ref names the release, the line, the field and the line's digest", a
 
     for (const ref of refs) {
       assert.equal(ref.releaseId, RELEASE);
+      assert.ok(ref.lineNo !== undefined);
       const raw = rawByLine.get(ref.lineNo);
       assert.ok(raw !== undefined, `ref points at line ${ref.lineNo}, which holds no record`);
       // The digest is of the line the pointer is rooted in, so it is checkable
