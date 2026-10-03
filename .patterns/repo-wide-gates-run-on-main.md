@@ -35,10 +35,11 @@ everything but Markdown, save the Markdown files a unit test reads (#521). A
 filter that leaves out a file its job reads stops checking the change that can
 break it, so a new input joins the list in the same change.
 
-A gate whose guard reads the pull request's diff stays `pull_request`-only and says
-so in a comment at its `on:` block.
+A gate whose guard reads the pull request's diff runs on `pull_request` and
+`merge_group`, never `push: main`, and says so in a comment at its `on:` block.
 [`secrets.yml`](../.github/workflows/secrets.yml) scans
-`git diff origin/<base>...HEAD`, and on `main` there is no such diff to read. Its
+`git diff origin/<base>...HEAD`, or `<merge_group.base_sha>...HEAD` on a merge
+queue run, and on `main` there is no such diff to read. Its
 `cancel-in-progress` is a plain `true`, because there is no `main` run to protect.
 It carries no `paths` filter, so every pull request head has at least one check.
 
@@ -50,7 +51,7 @@ classify as:
 | Scope | Triggers | Workflows |
 |---|---|---|
 | repo-wide | `pull_request` and `push: main` | `ci.yml`, `d1.yml`, `decisions-index.yml` |
-| the PR diff | `pull_request` only, with the comment | `secrets.yml` |
+| the PR diff | `pull_request` and `merge_group`, with the comment | `secrets.yml` |
 
 `dictionary-plan.yml` also runs on `pull_request` alone, against the shared
 dictionary rather than the tree, and cancels a superseded run with a plain `true`.
