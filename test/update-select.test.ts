@@ -29,6 +29,7 @@ const MASTER_LINES = [
   record({ word: "sala", senses: [{ glosses: ["stanza ampia"] }] }),
   record({ word: "grumo", senses: [{ glosses: ["ammasso"] }] }),
   record({ word: "deprimente", pos: "adj", senses: [{ glosses: ["che deprime"] }, { glosses: ["che provoca debolezza"] }] }),
+  record({ word: "vela", senses: [{ glosses: ["telo che spinge una barca"] }] }),
 ];
 
 const LATER_LINES = [
@@ -39,6 +40,8 @@ const LATER_LINES = [
   record({ word: "deprimente", pos: "adj", senses: [{ glosses: ["che deprime"] }, { glosses: ["triste"] }, { glosses: ["avvilente"] }] }),
   // Reworded.
   record({ word: "cane", senses: [{ glosses: ["animale domestico"] }] }),
+  // Its only definition lost to a sense with no gloss: ours keeps serving.
+  record({ word: "vela", senses: [{ tags: ["no-gloss"] }] }),
   // New, and a form-of of it: taken together.
   record({ word: "antifurto", senses: [{ glosses: ["dispositivo contro i furti"] }] }),
   record({ word: "antifurti", pos_title: "Sostantivo, forma flessa", senses: [{ glosses: ["plurale di antifurto"], form_of: [{ word: "antifurto" }] }] }),
@@ -88,11 +91,13 @@ test("every change lands in one bucket, and the taken ids are ones the apply acc
       sali: "form-of-target-missing",
       skirmish: "not-italian",
       zufolo: "no-real-gloss",
+      vela: "blank-replaces-definition",
     });
     assert.deepEqual(selection.taken.map((entry) => entry.word), ["antifurti", "antifurto", "cane", "casa", "deprimente", "grumo"]);
     assert.deepEqual(selection.lost.map((entry) => entry.word), ["sala"]);
     assert.equal(selection.counts.taken["new-word"], 2);
     assert.equal(selection.counts.taken["replaces-definitions"], 1);
+    assert.equal(selection.counts.skipped["blank-replaces-definition"], 1);
 
     // The ids file reads back to the taken ids, and the apply chooses every one of them.
     const ids = idsInFile(selectionIds(selection));
@@ -103,7 +108,8 @@ test("every change lands in one bucket, and the taken ids are ones the apply acc
     const markdown = selectionMarkdown(selection);
     assert.match(markdown, /\| Applied \| new-word \| 2 \|/);
     assert.match(markdown, /### fills-gloss \(1\)/);
-    assert.match(markdown, /Rule `feed-selection\/v3`/);
+    assert.match(markdown, /Rule `feed-selection\/v4`/);
+    assert.match(markdown, /### blank-replaces-definition \(1\)/);
     assert.match(markdown, /### adds-sense \(2\)/);
     assert.match(markdown, /### replaces-definitions \(1\)/);
     assert.match(markdown, /\| lost-[0-9a-f]{12} \| sala \| noun \| it-master:3 \|/);

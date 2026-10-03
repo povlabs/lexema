@@ -30,13 +30,25 @@ Accuracy investigation follows a user report, not routine per-word review.
 
 ## Selection and source ordering
 
-`feed-selection/v3` keeps the existing new-word and raw-gloss interpretation.
+`feed-selection/v4` keeps the existing new-word and raw-gloss interpretation.
 For changed definitions it permits replacements of earlier-applied records and
 requires neither old gloss-key containment nor increasing sense counts.
 `fills-gloss` and `adds-sense` remain descriptive reasons; rewritten definitions
-use `replaces-definitions`, and reduced or empty real definitions use
+use `replaces-definitions`, and reduced real definitions use
 `removes-definitions`. Formatting-only, unchanged-gloss and duplicate-gloss
 additions still stay skipped, as do non-definition changes.
+
+v4 differs from v3 in one skip, `blank-replaces-definition`
+([#442](https://github.com/hueypov/lexema/issues/442)). A later record with
+fewer real definitions is not applied when it has more blank senses than ours,
+or only blank senses or none at all. A blank sense has no gloss text once the
+"definizione mancante" placeholder is taken out: glosses absent, null or empty,
+which is what the source tags `no-gloss`, or only the placeholder. Such a loss
+is an extraction gap, not an edit: `passata` (verb) losing its only sense to
+`{"tags": ["no-gloss"]}`, `civetta` (noun) losing "locandina" to the
+placeholder. Ours keeps serving whole; no old and new senses are merged. A
+removal with no blank in its place, such as `gay`, `gastronomia` or `logografo`
+in it-78385b62, still applies.
 
 Source ordering is checked against checksum-bound dump dates in
 [src/source/archiveFacts.ts](../src/source/archiveFacts.ts), not hash order,
