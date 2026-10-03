@@ -35,7 +35,7 @@ import { finish, isMain, usageError, type CommandResult } from "../commandLine.j
 import { seedTargetFrom, webWrangler, type SeedTarget, type Wrangler } from "../import/seedTarget.js";
 import { ApplyRefused, checkApplied, chooseChanges, planApply, type ApplyPlan } from "./apply.js";
 import { diffAgainstMaster, reportMarkdown, reportOf } from "./diff.js";
-import { missingUpgrade, planUpgrade, readMasterRelease, type MasterReader } from "./master.js";
+import { planUpgrade, readMasterRelease, upgradeShortfall, type MasterReader } from "./master.js";
 import { automaticPlan } from "./automatic.js";
 import { PlanCounts } from "./planCounts.js";
 import { planOnlyAnswer, planOnlyFlag, planOnlyRun } from "./planOnly.js";
@@ -245,18 +245,20 @@ async function upgradeCommand(target: SeedTarget, args: readonly string[]): Prom
   if (read.positional.length > 0) return usageError("update:upgrade takes no archive and no change ids", USAGE);
   const reader = masterReaderOf(target);
   const master = readMasterRelease(reader);
-  const { missing, sql } = planUpgrade(reader, await readFile(SCHEMA, "utf8"));
-  // The upgrade writes no row: its counts are none, and what it adds is named beside them.
-  if (planOnly) return planOnlyAnswer(planOnlyRun("update:upgrade", PlanCounts.NONE, reader), sql, read.out, `upgrade-${master.releaseId}`, { adds: missing });
-  if (missing.length === 0) return { out: `${target.dictionary} (master ${master.releaseId}) already has every table and view the upgrade adds; nothing to do`, status: 0 };
+  const schema = await readFile(SCHEMA, "utf8");
+  const upgrade = planUpgrade(reader, schema);
+  const { missing, changed, sql } = upgrade;
+  // The upgrade adds no row and drops none: its counts are none, and what it adds or rebuilds is named beside them.
+  if (planOnly) return planOnlyAnswer(planOnlyRun("update:upgrade", PlanCounts.NONE, reader), sql, read.out, `upgrade-${master.releaseId}`, { adds: missing, rebuildsFor: changed });
+  if (sql === "") return { out: `${target.dictionary} (master ${master.releaseId}) already has every table and view the upgrade adds, as schema.sql defines it; nothing to do`, status: 0 };
   await mkdir(read.out, { recursive: true });
   const file = join(read.out, `upgrade-${master.releaseId}-${Date.now()}.sql`);
   await writeFile(file, sql);
-  log(`adding ${missing.join(", ")}: ${file}`);
+  log(`${[...missing.map((name) => `adding ${name}`), ...changed.map((name) => `rebuilding for ${name}`)].join(", ")}: ${file}`);
   target.execute(["--file", file], false);
-  const still = missingUpgrade(masterReaderOf(target));
-  if (still.length > 0) return { out: `the upgrade ran, but ${target.dictionary} still lacks ${still.join(", ")}`, status: 1 };
-  return { out: `${target.dictionary} (master ${master.releaseId}) has every table and view the upgrade adds; no row was written`, status: 0 };
+  const shortfall = upgradeShortfall(masterReaderOf(target), schema, upgrade);
+  if (shortfall.length > 0) return { out: `the upgrade ran, but on ${target.dictionary} ${shortfall.join("; ")}`, status: 1 };
+  return { out: `${target.dictionary} (master ${master.releaseId}) has every table and view the upgrade adds, as schema.sql defines it; no row was added or lost`, status: 0 };
 }
 
 const COMMANDS = { auto: automaticCommand, upgrade: upgradeCommand, diff: diffCommand, select: selectCommand, apply: applyCommand } as const;

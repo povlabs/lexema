@@ -19,7 +19,7 @@ import { checkApplied } from "../update/apply.js";
 import { automaticPlan } from "../update/automatic.js";
 import type { DeclaredChange, PlanOnlyRun } from "../update/declaration.js";
 import { diffAgainstMaster } from "../update/diff.js";
-import { missingUpgrade, planUpgrade, readMasterRelease, type MasterReader } from "../update/master.js";
+import { planUpgrade, readMasterRelease, upgradeShortfall, type MasterReader } from "../update/master.js";
 import { PlanCounts } from "../update/planCounts.js";
 import { planOnlyRun } from "../update/planOnly.js";
 import { type SourceCatalogs, withFeedDump } from "../update/select.js";
@@ -89,11 +89,11 @@ export async function planWrite(ready: ReadyChange, reader: MasterReader, applie
     const { change } = ready;
     switch (change.command) {
       case "update:upgrade": {
-        const { sql } = planUpgrade(reader, schema);
+        const upgrade = planUpgrade(reader, schema);
         return {
           run: planOnlyRun(change.command, PlanCounts.NONE, reader),
-          sql,
-          readBack: (after) => missingUpgrade(after).map((name) => `the upgrade did not add ${name}`),
+          sql: upgrade.sql,
+          readBack: (after) => upgradeShortfall(after, schema, upgrade),
         };
       }
       case "normalize:source-text": {
@@ -152,7 +152,7 @@ export async function planWrite(ready: ReadyChange, reader: MasterReader, applie
     } finally {
       await dump.close();
     }
-    const plan = planPageEntries(reader, found, schema, corrections);
+    const plan = planPageEntries(reader, found, corrections);
     return {
       run: planOnlyRun(change.command, plan.counts, reader),
       sql: plan.sql,

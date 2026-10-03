@@ -22,6 +22,8 @@ import { PLURAL_PLACEHOLDER_FORM } from "../src/italian/sourceTextNormalization.
 import { fromNodeSqlite } from "../src/lookup/database.js";
 import { lookup } from "../src/lookup/lookup.js";
 import { parseChange } from "../src/update/declaration.js";
+import { changedUpgrade } from "../src/update/master.js";
+import { createStatement, PAGE_ENTRY_CORRECTION_TABLES, PAGE_ENTRY_INDEXES, PAGE_ENTRY_TABLES } from "../src/update/masterUpgrade.js";
 import { masterReaderOf } from "../src/update/updateCli.js";
 import { correctedClaimValues } from "../src/import/correctedLayer.js";
 import { atFixtureLines, correctionFixtureLines } from "./correctionFixture.js";
@@ -135,7 +137,7 @@ async function withWorld(run: (world: World) => Promise<void>, lines: readonly s
           target: d1.target,
           reader: masterReaderOf(d1.target),
           bookmark: () => {
-            bookmarks.push(d1.calls.filter((call) => call[0] === "--file").length);
+            bookmarks.push(writes(d1).length);
             return `bookmark-${bookmarks.length}`;
           },
           fetcher: async (path) => assert.fail(`nothing should be fetched, asked for ${path}`),
@@ -156,7 +158,15 @@ async function withWorld(run: (world: World) => Promise<void>, lines: readonly s
   }
 }
 
-const writes = (d1: LocalD1): string[][] => d1.calls.filter((call) => call[0] === "--file");
+/** The calls that write: an import, or a query-API batch (src/deploy/d1Batch.ts). Reads carry --json first. */
+const writes = (d1: LocalD1): string[][] => d1.calls.filter((call) => call[0] === "--file" || call[0].startsWith("--command="));
+
+/** The SQL of a query-API batch, sent as the one argument `--command=<sql>`; any other call fails the test. */
+const commandSql = (call: readonly string[]): string => {
+  assert.equal(call.length, 1, `a query-API batch is one argument, got ${JSON.stringify(call)}`);
+  assert.ok(call[0].startsWith("--command="), `not a query-API batch: ${call[0].slice(0, 40)}`);
+  return call[0].slice("--command=".length);
+};
 
 const glosses = (d1: LocalD1): string[] => {
   const db = d1.open();
@@ -178,7 +188,7 @@ test("a push adding one declaration records a bookmark, plans, applies, reads ba
     assert.equal(outcome.kind, "green", deploySummary(outcome, "lexema"));
     assert.deepEqual(deps.steps, [...DEPLOY_STEPS]);
     assert.deepEqual(deps.bookmarks, [0], "one bookmark, taken before any write");
-    assert.equal(writes(world.d1).length, 1, "the change ran as one file");
+    assert.equal(writes(world.d1).length, 1, "the change ran as one batch");
     const after = glosses(world.d1);
     assert.ok(after.includes(VADO_STORED) && after.includes(FATE_STORED), after.join("\n"));
     assert.ok(!after.includes(VADO_SOURCE) && !after.includes(FATE_SOURCE), after.join("\n"));
@@ -191,7 +201,7 @@ test("a push adding one declaration records a bookmark, plans, applies, reads ba
   });
 });
 
-test("the run logs the bookmark and its restore command as soon as it is taken, before the first --file call", async () => {
+test("the run logs the bookmark and its restore command as soon as it is taken, before the first write", async () => {
   await withWorld(async (world) => {
     const head = await world.commit({ "dictionary-changes/2026-10-normalize.json": declaration(NORMALIZE) });
     const log: { line: string; writesBefore: number }[] = [];
@@ -240,7 +250,7 @@ test("a plan whose counts differ from the declaration stops red before any write
     const outcome = await deployDictionary(deps);
 
     assert.equal(outcome.kind, "red");
-    assert.deepEqual(deps.steps, ["pending", "fetch", "bookmark", "plan"]);
+    assert.deepEqual(deps.steps, ["pending", "fetch", "bookmark", "upgrade", "plan"]);
     assert.deepEqual(writes(world.d1), []);
     assert.equal(world.d1.sha256(), before);
     assert.equal(world.production(), base);
@@ -276,12 +286,12 @@ test("a read-back mismatch turns the run red, names the bookmark and the restore
     const head = await world.commit({ "dictionary-changes/2026-10-normalize.json": declaration(NORMALIZE) });
     // A file that is accepted and does not land: what a read-back is for.
     const lost: string[][] = [];
-    const target = { dictionary: "lexema-dictionary", execute: (args: readonly string[], capture: boolean) => (args[0] === "--file" ? (lost.push([...args]), "") : world.d1.target.execute(args, capture)) };
+    const target = { dictionary: "lexema-dictionary", execute: (args: readonly string[], capture: boolean) => (args[0] === "--json" ? world.d1.target.execute(args, capture) : (lost.push([...args]), "")) };
     const deps = world.deps(head, { target });
     const outcome = await deployDictionary(deps);
 
     assert.equal(outcome.kind, "red");
-    assert.deepEqual(deps.steps, ["pending", "fetch", "bookmark", "plan", "apply", "read-back"]);
+    assert.deepEqual(deps.steps, ["pending", "fetch", "bookmark", "upgrade", "plan", "apply", "read-back"]);
     assert.equal(lost.length, 1);
     assert.deepEqual(deps.bookmarks, [0], "one bookmark, and no restore");
     assert.ok(world.d1.calls.every((call) => call[0] === "--json"), "after the read-back only reads reached the dictionary");
@@ -306,10 +316,196 @@ test("a word-lookup mismatch turns the run red and names the bookmark and the re
     const outcome = await deployDictionary(deps);
 
     assert.equal(outcome.kind, "red");
-    assert.deepEqual(deps.steps, ["pending", "fetch", "bookmark", "plan", "apply", "read-back", "word-lookup"]);
+    assert.deepEqual(deps.steps, ["pending", "fetch", "bookmark", "upgrade", "plan", "apply", "read-back", "word-lookup"]);
     assert.equal(world.production(), base);
     if (outcome.kind === "red") assert.deepEqual(outcome.reasons, ["word lookup: inesistentissimo: not-found, not found with a reading"]);
     assert.ok(deploySummary(outcome, "lexema-dictionary").includes(restoreCommand("lexema-dictionary", "bookmark-1")));
+  });
+});
+
+/** The tables the upgrade creates for page-only entries, in the order a drop needs. */
+const PAGE_ENTRY_UPGRADE_TABLES = [...PAGE_ENTRY_TABLES, ...PAGE_ENTRY_CORRECTION_TABLES];
+
+/** Leave the dictionary as the live one was before #507: without the page-entry tables and `corrected_definition`. */
+function withoutPageEntryTables(d1: LocalD1): void {
+  const db = d1.open();
+  try {
+    for (const table of [...PAGE_ENTRY_UPGRADE_TABLES].reverse()) db.exec(`DROP TABLE ${table}`);
+  } finally {
+    db.close();
+  }
+}
+
+test("a dictionary without the page-entry tables gets the upgrade as its own batch, before any data, and the run goes green", async () => {
+  await withWorld(async (world) => {
+    withoutPageEntryTables(world.d1);
+    const head = await world.commit({ "dictionary-changes/2026-10-normalize.json": declaration(NORMALIZE) });
+    const deps = world.deps(head);
+    const outcome = await deployDictionary(deps);
+
+    assert.equal(outcome.kind, "green", deploySummary(outcome, "lexema-dictionary"));
+    assert.deepEqual(deps.steps, [...DEPLOY_STEPS]);
+    const [ddl, data, ...rest] = writes(world.d1);
+    assert.deepEqual(rest, []);
+    // Both batches are small, so both go through the query API.
+    const [ddlSql, dataSql] = [commandSql(ddl), commandSql(data)];
+    assert.match(ddlSql, /CREATE TABLE IF NOT EXISTS recovered_entry\b/);
+    assert.match(ddlSql, /CREATE TABLE IF NOT EXISTS corrected_definition\b/);
+    assert.doesNotMatch(ddlSql, /\b(INSERT|UPDATE|DELETE)\b/);
+    assert.doesNotMatch(dataSql, /\bCREATE\b/);
+    if (outcome.kind === "green") assert.deepEqual(outcome.upgraded, { added: [...PAGE_ENTRY_UPGRADE_TABLES, ...PAGE_ENTRY_INDEXES], rebuilt: [] });
+    assert.match(deploySummary(outcome, "lexema-dictionary"), /The upgrade ran first and added `recovered_entry`/);
+
+    // The next run finds nothing missing and runs no DDL.
+    const next = await world.commit({ "dictionary-changes/2026-10-normalize-again.json": declaration(NORMALIZE, { records: { added: 0, changed: 0, removed: 0 } }) });
+    const again = await deployDictionary(world.deps(next));
+    assert.equal(again.kind, "green", deploySummary(again, "lexema-dictionary"));
+    if (again.kind === "green") assert.deepEqual(again.upgraded, { added: [], rebuilt: [] });
+    assert.equal(writes(world.d1).length, 2);
+  });
+});
+
+/**
+ * Give the dictionary older definitions of two page-entry tables, holding rows:
+ * `recovered_entry` without its `page_line` CHECK, and `corrected_definition`
+ * with the one 52-byte GLOB it had before #489.
+ */
+async function withOlderPageEntryTables(d1: LocalD1): Promise<void> {
+  const schema = await readFile("src/db/schema.sql", "utf8");
+  const older: Record<string, string> = {
+    recovered_entry: createStatement(schema, "TABLE", "recovered_entry").replace("page_line INTEGER NOT NULL CHECK (page_line > 0)", "page_line INTEGER NOT NULL"),
+    corrected_definition: createStatement(schema, "TABLE", "corrected_definition").replace(/GLOB 'https:\/\/\*'\s+AND evidence_url GLOB '\*/, "GLOB 'https://*"),
+  };
+  assert.match(older.corrected_definition, /GLOB 'https:\/\/\*\.wiktionary\.org\/w\/index\.php\?title=\*&oldid=\*'/);
+  assert.doesNotMatch(older.recovered_entry, /CHECK \(page_line > 0\)/);
+  const db = d1.open();
+  try {
+    for (const table of [...PAGE_ENTRY_UPGRADE_TABLES].reverse()) db.exec(`DROP TABLE ${table}`);
+    for (const table of PAGE_ENTRY_UPGRADE_TABLES) db.exec(older[table] ?? createStatement(schema, "TABLE", table));
+    db.exec(createStatement(schema, "INDEX", "recovered_entry_by_key"));
+    db.prepare("INSERT INTO raw_page VALUES (900001, ?, 'it.wiktionary.org', 'scrivere', 4100, '2026-09-01T00:00:00Z')").run(RELEASE);
+    db.prepare("INSERT INTO recovered_entry VALUES (1, ?, 900001, 'scrivere', 'scrivere', 'verb', 'Verbo', 'italian-page-entry/v1', 3, '{{-verb-|it}}')").run(RELEASE);
+    db.exec("INSERT INTO entry_definition VALUES (1, 0, 'sense-line', NULL, 4, '# tracciare segni', 'tracciare segni', NULL)");
+    db.exec("INSERT INTO entry_label VALUES (1, 0, 0, 'letteralmente')");
+    db.exec("INSERT INTO entry_example VALUES (1, 0, 0, 5, '#* scrivo una lettera', 'scrivo una lettera')");
+    db.exec("INSERT INTO corrected_definition VALUES (1, 0, 'tracciare lettere', 'page:4100:0', 'https://it.wiktionary.org/w/index.php?title=scrivere&oldid=4100')");
+  } finally {
+    db.close();
+  }
+}
+
+/** Every row of every page-entry table, as JSON. */
+function pageEntryRows(d1: LocalD1): string {
+  const db = d1.open();
+  try {
+    return JSON.stringify(PAGE_ENTRY_UPGRADE_TABLES.map((table) => db.prepare(`SELECT * FROM ${table} ORDER BY 1, 2`).all()));
+  } finally {
+    db.close();
+  }
+}
+
+test("a dictionary holding an older definition of a page-entry table gets schema.sql's from the deploy, with every row kept, before any data", async () => {
+  await withWorld(async (world) => {
+    await withOlderPageEntryTables(world.d1);
+    const rows = pageEntryRows(world.d1);
+    const schema = await readFile("src/db/schema.sql", "utf8");
+    assert.deepEqual(changedUpgrade(masterReaderOf(world.d1.target), schema), ["recovered_entry", "corrected_definition"]);
+
+    const head = await world.commit({ "dictionary-changes/2026-10-normalize.json": declaration(NORMALIZE) });
+    const deps = world.deps(head);
+    const outcome = await deployDictionary(deps);
+
+    assert.equal(outcome.kind, "green", deploySummary(outcome, "lexema-dictionary"));
+    assert.deepEqual(deps.steps, [...DEPLOY_STEPS]);
+    if (outcome.kind === "green") assert.deepEqual(outcome.upgraded, { added: [], rebuilt: ["recovered_entry", "corrected_definition"] });
+    assert.match(deploySummary(outcome, "lexema-dictionary"), /rebuilt the page-entry tables, keeping their rows, for the changed definition of `recovered_entry`, `corrected_definition`/);
+    const [ddl, data, ...rest] = writes(world.d1);
+    assert.deepEqual(rest, []);
+    assert.match(commandSql(ddl), /CREATE TABLE upgrade_kept_recovered_entry AS SELECT \* FROM recovered_entry;/);
+    assert.doesNotMatch(commandSql(data), /\bCREATE\b/);
+
+    // The stored definitions are schema.sql's now, the rows are the same, and every foreign key holds.
+    assert.deepEqual(changedUpgrade(masterReaderOf(world.d1.target), schema), []);
+    assert.equal(pageEntryRows(world.d1), rows);
+    const db = world.d1.open();
+    try {
+      assert.deepEqual(db.prepare("PRAGMA foreign_key_check").all(), []);
+      assert.deepEqual(db.prepare("SELECT name FROM sqlite_schema WHERE name LIKE 'upgrade_kept_%'").all(), []);
+      assert.throws(
+        () => db.exec("INSERT INTO recovered_entry VALUES (2, 'it-test', 900001, 'leggere', 'leggere', 'verb', 'Verbo', 'italian-page-entry/v1', 0, '')"),
+        /CHECK constraint failed/,
+        "the new definition's page_line CHECK holds",
+      );
+    } finally {
+      db.close();
+    }
+
+    // The next run finds every definition current and rebuilds nothing.
+    const next = await world.commit({ "dictionary-changes/2026-10-normalize-again.json": declaration(NORMALIZE, { records: { added: 0, changed: 0, removed: 0 } }) });
+    const again = await deployDictionary(world.deps(next));
+    assert.equal(again.kind, "green", deploySummary(again, "lexema-dictionary"));
+    if (again.kind === "green") assert.deepEqual(again.upgraded, { added: [], rebuilt: [] });
+    assert.equal(writes(world.d1).length, 2);
+  });
+});
+
+test("a first batch D1 refuses leaves the run red with nothing written, and the summary names no restore", async () => {
+  await withWorld(async (world) => {
+    const base = world.production();
+    const head = await world.commit({ "dictionary-changes/2026-10-normalize.json": declaration(NORMALIZE) });
+    const before = world.d1.sha256();
+    // What the live run met (#507): D1 rolled the batch back and Wrangler exited non-zero.
+    const refused: string[][] = [];
+    const target = {
+      dictionary: "lexema-dictionary",
+      execute: (args: readonly string[], capture: boolean) => {
+        if (args[0] === "--json") return world.d1.target.execute(args, capture);
+        refused.push([...args]);
+        throw new Error('{"D1_RESET_DO":true}');
+      },
+    };
+    const deps = world.deps(head, { target });
+    const outcome = await deployDictionary(deps);
+
+    assert.equal(outcome.kind, "red");
+    assert.deepEqual(deps.steps, ["pending", "fetch", "bookmark", "upgrade", "plan", "apply"]);
+    assert.equal(refused.length, 1);
+    assert.equal(world.d1.sha256(), before);
+    assert.equal(world.production(), base);
+    if (outcome.kind === "red") {
+      assert.equal(outcome.written, false);
+      assert.deepEqual(outcome.reasons, ['{"D1_RESET_DO":true}']);
+    }
+    const summary = deploySummary(outcome, "lexema-dictionary");
+    assert.match(summary, /Nothing was written to `lexema-dictionary`/);
+    assert.doesNotMatch(summary, /Something was written/);
+    assert.doesNotMatch(summary, /time-travel restore/);
+  });
+});
+
+test("a batch D1 refuses after an earlier batch landed still reports the write, with the restore command", async () => {
+  await withWorld(async (world) => {
+    withoutPageEntryTables(world.d1);
+    const head = await world.commit({ "dictionary-changes/2026-10-normalize.json": declaration(NORMALIZE) });
+    let sent = 0;
+    const target = {
+      dictionary: "lexema-dictionary",
+      execute: (args: readonly string[], capture: boolean) => {
+        if (args[0] !== "--json" && ++sent > 1) throw new Error('{"D1_RESET_DO":true}');
+        return world.d1.target.execute(args, capture);
+      },
+    };
+    const outcome = await deployDictionary(world.deps(head, { target }));
+
+    assert.equal(outcome.kind, "red");
+    if (outcome.kind === "red") {
+      assert.equal(outcome.written, true);
+      assert.deepEqual(outcome.upgraded, { added: [...PAGE_ENTRY_UPGRADE_TABLES, ...PAGE_ENTRY_INDEXES], rebuilt: [] });
+    }
+    assert.equal(writes(world.d1).length, 1, "only the upgrade reached the dictionary");
+    const summary = deploySummary(outcome, "lexema-dictionary");
+    assert.match(summary, /Something was written to `lexema-dictionary`/);
+    assert.ok(summary.includes(restoreCommand("lexema-dictionary", "bookmark-1")), summary);
   });
 });
 
@@ -342,7 +538,7 @@ test("a correct:records declaration whose counts match is applied with no fetche
 
     assert.equal(outcome.kind, "green", deploySummary(outcome, "lexema-dictionary"));
     assert.deepEqual(deps.steps, [...DEPLOY_STEPS]);
-    assert.equal(writes(world.d1).length, 1, "the corrections ran as one file, and the read-back step's `unwritten` found them all");
+    assert.equal(writes(world.d1).length, 1, "the corrections ran as one batch, and the read-back step's `unwritten` found them all");
     const db = world.d1.open();
     try {
       assert.equal((db.prepare("SELECT count(*) AS n FROM corrected_claim").get() as { n: number }).n, rows);

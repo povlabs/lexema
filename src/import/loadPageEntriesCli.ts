@@ -11,7 +11,7 @@
 // as JSON and writes nothing to the database (src/update/planOnly.ts). See
 // docs/PAGE_ENTRIES.md.
 
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { finish, flags, isMain, usageError, type CommandResult } from "../commandLine.js";
 import { sha256Of } from "../deploy/dataFiles.js";
@@ -21,7 +21,7 @@ import { KNOWN_DUMPS, VerifiedDump } from "../source/wiktionaryDump.js";
 import { readMasterRelease } from "../update/master.js";
 import { planOnlyAnswer, planOnlyFlag, planOnlyRun } from "../update/planOnly.js";
 import { masterReaderOf } from "../update/updateCli.js";
-import { danglingTitles, describePlannedEntry, findPageEntries, planPageEntries, unloaded } from "./loadPageEntries.js";
+import { danglingTitles, describePlannedEntry, findPageEntries, missingForLoad, planPageEntries, unloaded } from "./loadPageEntries.js";
 import { seedTargetFrom, webWrangler, type Wrangler } from "./seedTarget.js";
 
 const USAGE = "usage: pnpm run load:page-entries [--out <dir>] [--plan-only]";
@@ -61,7 +61,7 @@ export async function main(
   } finally {
     await dump.close();
   }
-  const plan = planPageEntries(reader, found, await readFile(resolve("src/db/schema.sql"), "utf8"), corrections);
+  const plan = planPageEntries(reader, found, corrections);
   const lines = [
     ...plan.entries.map(describePlannedEntry),
     ...plan.corrections.map(({ id, title, entryId }) => `  ${id} ${title} (entry ${entryId}): corrected definition written`),
@@ -75,6 +75,8 @@ export async function main(
     });
   }
   if (plan.sql === "") return { out: [`${summary}; nothing to write in ${target.dictionary}`, ...lines].join("\n"), status: 0 };
+  const missing = missingForLoad(reader);
+  if (missing.length > 0) return { out: `${target.dictionary} lacks ${missing.join(", ")}; run pnpm run update:upgrade first. Nothing was written.`, status: 1 };
 
   await mkdir(out, { recursive: true });
   const file = join(out, `page-entries-${plan.masterReleaseId}-${Date.now()}.sql`);

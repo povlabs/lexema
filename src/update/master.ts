@@ -4,7 +4,17 @@
 
 import { readOnly } from "../lookup/database.js";
 import type { MasterRecord } from "./changes.js";
-import { masterUpgradeSql, UPGRADE_NAMES } from "./masterUpgrade.js";
+import {
+  createStatement,
+  definitionOf,
+  type KeptTable,
+  masterUpgradeSql,
+  REBUILT_NAMES,
+  REBUILT_TABLES,
+  rebuildSql,
+  rebuiltKind,
+  UPGRADE_NAMES,
+} from "./masterUpgrade.js";
 
 /**
  * A dictionary database the update reads: one statement in, its rows out.
@@ -58,17 +68,69 @@ export function missingUpgrade(reader: MasterReader): string[] {
   return UPGRADE_NAMES.filter((name) => !present.has(name));
 }
 
-/** What `update:upgrade` would do: the names it adds, and its SQL, which writes no row. */
+/**
+ * The page-entry tables and indexes the master has whose stored definition is
+ * not schema.sql's (`definitionOf`), in creation order. Any one listed makes
+ * the upgrade rebuild the page-entry tables (`rebuildSql`).
+ */
+export function changedUpgrade(reader: MasterReader, schema: string): string[] {
+  const names = REBUILT_NAMES.map((name) => `'${name}'`).join(", ");
+  const stored = new Map(select<{ name: string; sql: string }>(reader, `SELECT name, sql FROM sqlite_schema WHERE name IN (${names})`).map((row) => [row.name, row.sql]));
+  return REBUILT_NAMES.filter((name) => {
+    const sql = stored.get(name);
+    return sql !== undefined && definitionOf(sql) !== definitionOf(createStatement(schema, rebuiltKind(name), name));
+  });
+}
+
+/** The rebuilt tables the master has, with their columns and row counts. */
+function keptTables(reader: MasterReader): KeptTable[] {
+  const present = new Set(
+    select<{ name: string }>(reader, `SELECT name FROM sqlite_schema WHERE type = 'table' AND name IN (${REBUILT_TABLES.map((name) => `'${name}'`).join(", ")})`).map(
+      (row) => row.name,
+    ),
+  );
+  return REBUILT_TABLES.filter((name) => present.has(name)).map((name) => ({
+    name,
+    columns: select<{ name: string }>(reader, `SELECT name FROM pragma_table_info('${name}')`).map((row) => row.name),
+    rows: select<{ n: number }>(reader, `SELECT count(*) AS n FROM ${name}`)[0].n,
+  }));
+}
+
+/**
+ * What `update:upgrade` would do: the names it adds, the definitions it
+ * changes, and its SQL, which writes no row and keeps every row it rebuilds.
+ */
 export interface UpgradePlan {
   missing: string[];
-  /** Empty when the master has every table and view already. */
+  /** The page-entry tables and indexes whose definition changes; empty when none does. */
+  changed: string[];
+  /** The tables a rebuild drops and creates again, with the rows each holds before: empty unless something `changed`. */
+  kept: readonly KeptTable[];
+  /** Empty when the master has every table and view already, each as schema.sql defines it. */
   sql: string;
 }
 
 /** Plan the upgrade of the master `reader` reads, from schema.sql's text; it writes nothing. */
 export function planUpgrade(reader: MasterReader, schema: string): UpgradePlan {
   const missing = missingUpgrade(reader);
-  return { missing, sql: missing.length === 0 ? "" : masterUpgradeSql(schema) };
+  const changed = changedUpgrade(reader, schema);
+  if (changed.length > 0) {
+    const kept = keptTables(reader);
+    return { missing, changed, kept, sql: rebuildSql(schema, kept) };
+  }
+  return { missing, changed, kept: [], sql: missing.length === 0 ? "" : masterUpgradeSql(schema) };
+}
+
+/** What the master `after` an upgrade still lacks or differs in from `plan`'s aim, as reasons; empty when the upgrade did all it planned. */
+export function upgradeShortfall(after: MasterReader, schema: string, plan: Pick<UpgradePlan, "kept">): string[] {
+  const rows = new Map(keptTables(after).map((table) => [table.name, table.rows]));
+  return [
+    ...missingUpgrade(after).map((name) => `the upgrade did not add ${name}`),
+    ...changedUpgrade(after, schema).map((name) => `the upgrade left ${name} unlike schema.sql's definition`),
+    ...plan.kept
+      .filter((table) => rows.get(table.name) !== table.rows)
+      .map((table) => `the upgrade left ${rows.get(table.name) ?? 0} row(s) in ${table.name}, which held ${table.rows}`),
+  ];
 }
 
 /** The master without its records: its release, whether it has the update tables yet, and its feeds. */

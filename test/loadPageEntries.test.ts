@@ -16,7 +16,7 @@ import { DatabaseSync } from "node:sqlite";
 import { after, before, test } from "node:test";
 import { gzipSync } from "node:zlib";
 import { planWrite, readyChange } from "../src/deploy/writePlan.js";
-import { danglingTitles, describePlannedEntry, findPageEntries, planPageEntries, unloaded } from "../src/import/loadPageEntries.js";
+import { danglingTitles, describePlannedEntry, findPageEntries, missingForLoad, planPageEntries, unloaded } from "../src/import/loadPageEntries.js";
 import { seedSql } from "../src/import/seedSql.js";
 import { CURATED_CORRECTIONS, definitionCorrections } from "../src/italian/curatedCorrections.js";
 import { fromNodeSqlite } from "../src/lookup/database.js";
@@ -28,6 +28,7 @@ import { chooseChanges, planApply } from "../src/update/apply.js";
 import { parseChange, parseDeclaration, readDeclaration } from "../src/update/declaration.js";
 import { diffAgainstMaster } from "../src/update/diff.js";
 import type { MasterReader } from "../src/update/master.js";
+import { masterUpgradeSql } from "../src/update/masterUpgrade.js";
 import { PlanCounts } from "../src/update/planCounts.js";
 
 const RELEASE = "it-page-entries";
@@ -176,7 +177,7 @@ test("a dictionary seeded before the tables, with a feed applied and records hid
     // `dipendere` is listed: only a hidden record spells it, and a hidden record has no search row.
     assert.deepEqual([...titles].filter((title) => PAGES.some((page) => page.title === title)).sort(), ["dipendere", "dismagare", "fornire", "grufolare", "raccontare", "tremare"]);
     const found = await findPageEntries(PAGES, titles);
-    const plan = planPageEntries(reader, found, await readFile(SCHEMA, "utf8"), CURATED_CORRECTIONS);
+    const plan = planPageEntries(reader, found, CURATED_CORRECTIONS);
     assert.deepEqual(plan.entries.map((planned) => [planned.entry.page.title, planned.state]), [
       ["dipendere", "spelled-by-a-record"],
       // `dismagare` only the feed's new form points at; a fresh seed of the master alone has no form pointing at it.
@@ -193,6 +194,15 @@ test("a dictionary seeded before the tables, with a feed applied and records hid
     assert.equal(plan.counts.written.corrected_definition, 2);
     assert.deepEqual(plan.counts.deleted, {});
 
+    // The load's SQL is data only (#507): the tables come from the upgrade, run as its own batch first.
+    assert.doesNotMatch(plan.sql, /\bCREATE\b/i);
+    assert.deepEqual(missingForLoad(reader), [...PAGE_TABLES, "recovered_entry_by_key"]);
+    execute(db, masterUpgradeSql(await readFile(SCHEMA, "utf8")));
+    assert.deepEqual(missingForLoad(reader), []);
+    // A plan counts the same, and writes the same SQL, before the upgrade as after it.
+    const upgraded = planPageEntries(reader, found, CURATED_CORRECTIONS);
+    assert.deepEqual(upgraded.counts.toJSON(), plan.counts.toJSON());
+    assert.equal(upgraded.sql, plan.sql);
     execute(db, plan.sql);
     assert.deepEqual(unloaded(reader, plan), []);
 
@@ -231,7 +241,7 @@ test("a dictionary seeded before the tables, with a feed applied and records hid
     assert.ok(JSON.stringify(racconto).includes('"entryId"'), "racconto's form-of link names the page-only entry");
 
     // A second run plans nothing.
-    const again = planPageEntries(reader, await findPageEntries(PAGES, danglingTitles(reader)), await readFile(SCHEMA, "utf8"), CURATED_CORRECTIONS);
+    const again = planPageEntries(reader, await findPageEntries(PAGES, danglingTitles(reader)), CURATED_CORRECTIONS);
     assert.equal(again.sql, "");
     assert.equal(again.counts, PlanCounts.NONE);
     assert.deepEqual(again.entries.map(describePlannedEntry).filter((line) => line.endsWith("written") && !line.endsWith("already written")), []);
@@ -247,7 +257,7 @@ test("a dictionary with some page-entry tables but not all is refused, and nothi
     db.exec("DROP TABLE entry_example");
     const reader = readerOf(db);
     const found = await findPageEntries(PAGES, danglingTitles(reader));
-    assert.throws(() => planPageEntries(reader, found, "", CURATED_CORRECTIONS), /not every page-entry table/);
+    assert.throws(() => planPageEntries(reader, found, CURATED_CORRECTIONS), /not every page-entry table/);
   } finally {
     db.close();
   }
@@ -259,8 +269,7 @@ test("a title whose page the dictionary holds from another revision is refused",
     db.exec(`INSERT INTO raw_page (page_id, release_id, wiki, title, revision_id, revision_timestamp) VALUES (9999, '${RELEASE}', 'it.wiktionary.org', 'fornire', 1, '2020-01-01T00:00:00Z')`);
     const reader = readerOf(db);
     const found = await findPageEntries(PAGES, danglingTitles(reader));
-    const schema = await readFile(SCHEMA, "utf8");
-    assert.throws(() => planPageEntries(reader, found, schema, CURATED_CORRECTIONS), /holds revision 1 of fornire/);
+    assert.throws(() => planPageEntries(reader, found, CURATED_CORRECTIONS), /holds revision 1 of fornire/);
   } finally {
     db.close();
   }
@@ -282,12 +291,13 @@ test("a declared load:page-entries is planned by the deploy from the master's ar
     const releaseId = `it-${archiveSha.slice(0, 8)}`;
     const change = parseChange("test", JSON.stringify({ command: "load:page-entries", inputs: { archive: releaseId, rules: ["italian-page-entry/v1"] } }));
     const plan = await planWrite(readyChange(change, { archive, dump }), reader, "2026-10-03T00:00:00Z", { catalog, dumps });
-    const expected = planPageEntries(reader, await findPageEntries(PAGES, danglingTitles(reader)), await readFile(SCHEMA, "utf8"), CURATED_CORRECTIONS);
+    const expected = planPageEntries(reader, await findPageEntries(PAGES, danglingTitles(reader)), CURATED_CORRECTIONS);
     assert.deepEqual(plan.run.counts.toJSON(), expected.counts.toJSON());
     assert.equal(plan.sql, expected.sql);
     // The declaration that pins those counts parses; a wrong rule set does not.
     parseDeclaration("ok.json", JSON.stringify({ command: "load:page-entries", inputs: { archive: releaseId, rules: ["italian-page-entry/v1"] }, expected: expected.counts.toJSON() }));
     assert.throws(() => parseDeclaration("bad.json", JSON.stringify({ command: "load:page-entries", inputs: { archive: releaseId, rules: [] }, expected: expected.counts.toJSON() })), /lacks italian-page-entry\/v1/);
+    execute(db, masterUpgradeSql(await readFile(SCHEMA, "utf8")));
     execute(db, plan.sql);
     assert.deepEqual(plan.readBack(reader), []);
     // Another archive than the master's is refused before anything is planned.
