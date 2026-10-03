@@ -18,7 +18,7 @@ import {
 
 /**
  * A dictionary database the update reads: one statement in, its rows out.
- * Wrangler's `d1 execute --command` for a real one, `node:sqlite` in tests.
+ * Wrangler's `d1 execute --command=<sql>` for a real one, `node:sqlite` in tests.
  */
 export interface MasterReader {
   query<Row>(sql: string): Row[];

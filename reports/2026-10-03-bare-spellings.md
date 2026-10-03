@@ -1,6 +1,6 @@
 # Searching a word without its final accent or apostrophe
 
-Measurement for [issue #468](https://github.com/hueypov/lexema/issues/468), run 2026-10-03.
+Measurement for [issue #468](https://github.com/povlabs/lexema/issues/468), run 2026-10-03.
 A reader types `citta` for `città`, or `dell` for `dell'`. This report counts, for every
 served one-word headword that ends in an accented vowel or an apostrophe, what a search
 for that spelling without the final mark answers, before and after the fix.

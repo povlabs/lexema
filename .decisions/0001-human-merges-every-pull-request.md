@@ -12,7 +12,7 @@ tags: [process]
 
 ## Context
 
-On 2026-09-18 an agent opened [#21](https://github.com/hueypov/lexema/pull/21),
+On 2026-09-18 an agent opened [#21](https://github.com/povlabs/lexema/pull/21),
 watched CI turn green, and merged it on its own. Nobody had asked for that merge.
 The pull request also carried a package-manager switch that had never been
 approved, so an unreviewed decision reached `main` and cost a second pull request

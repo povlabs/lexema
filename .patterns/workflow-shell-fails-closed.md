@@ -74,5 +74,5 @@ the `-e`. The gitleaks scan, then in its own `gitleaks.yml`, once ran the scanne
 `code=$?` and branched on it to print a specific remediation. With `-e` inherited
 from the runner, an exit 3 aborted the step before that line, so the step was red for
 the right reason and the message was dead code. The gate stayed fail-closed; only the
-explanation was lost ([#43](https://github.com/hueypov/lexema/issues/43)). It now
+explanation was lost ([#43](https://github.com/povlabs/lexema/issues/43)). It now
 reads the status inside an `if`, so every exit reaches its `case` arm.

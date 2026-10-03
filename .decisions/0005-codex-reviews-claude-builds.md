@@ -23,10 +23,10 @@ agent-written pull requests on 2026-09-18 and requested changes on all four:
 
 | PR | Review | Blocking finding |
 | --- | --- | --- |
-| [#25](https://github.com/hueypov/lexema/pull/25) | [review](https://github.com/hueypov/lexema/pull/25#pullrequestreview-5252986094) | A half-imported release could be read as an unambiguous answer, because only one of the serving queries checked release status. |
-| [#26](https://github.com/hueypov/lexema/pull/26) | [review](https://github.com/hueypov/lexema/pull/26#pullrequestreview-5253035881) | Conditional CC licence rules written up as unconditional obligations, and an unverified attribution duty filed as low priority. |
-| [#27](https://github.com/hueypov/lexema/pull/27) | [review](https://github.com/hueypov/lexema/pull/27#pullrequestreview-5253035979) | The proof script could pass against a server left running from an earlier spike, so it did not prove what it claimed. |
-| [#30](https://github.com/hueypov/lexema/pull/30) | [review](https://github.com/hueypov/lexema/pull/30#pullrequestreview-5253035775) | A usage example counted as a definition, so the headline loss number was wrong; the regression fixture froze the same mislabelling. |
+| [#25](https://github.com/povlabs/lexema/pull/25) | [review](https://github.com/povlabs/lexema/pull/25#pullrequestreview-5252986094) | A half-imported release could be read as an unambiguous answer, because only one of the serving queries checked release status. |
+| [#26](https://github.com/povlabs/lexema/pull/26) | [review](https://github.com/povlabs/lexema/pull/26#pullrequestreview-5253035881) | Conditional CC licence rules written up as unconditional obligations, and an unverified attribution duty filed as low priority. |
+| [#27](https://github.com/povlabs/lexema/pull/27) | [review](https://github.com/povlabs/lexema/pull/27#pullrequestreview-5253035979) | The proof script could pass against a server left running from an earlier spike, so it did not prove what it claimed. |
+| [#30](https://github.com/povlabs/lexema/pull/30) | [review](https://github.com/povlabs/lexema/pull/30#pullrequestreview-5253035775) | A usage example counted as a definition, so the headline loss number was wrong; the regression fixture froze the same mislabelling. |
 
 What that run establishes is narrow but real: all four pull requests had been
 opened as finished work by their authors, every one of them had CI green — each

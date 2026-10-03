@@ -122,7 +122,7 @@ test("the role tokens are declared once, in globals.css, and nowhere else", asyn
 // file is encrypted and CI cannot read it, so this snapshot stands in for it;
 // design-system-manifest.md says when to re-export it. Huey ruled that the
 // stylesheet must match the design file, so a drift on either side fails here
-// (https://github.com/hueypov/lexema/issues/103#issuecomment-5926547670).
+// (https://github.com/povlabs/lexema/issues/103#issuecomment-5926547670).
 const DESIGN: Record<string, string> = JSON.parse(
   await readFile(fileURLToPath(new URL("./fixtures/design-variables.json", import.meta.url)), "utf8"),
 );
