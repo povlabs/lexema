@@ -50,9 +50,12 @@ test("each entry names its record's line exactly, and the source text it overrid
         // A tag is overridden by another value of its own dimension.
         assert.notEqual(fact.overrides.text, fact.value, `${archive.word} ${fact.dimension}`);
       } else {
-        // A gloss is overridden only where it reads as the plural of the word its edge names, or with no edge
-        // the word it names itself (`mima`), and the fact is not plural.
-        const named = (at(line, "/senses/0/form_of/0/word") as string | undefined) ?? glossLemma(fact.overrides.text) ?? "";
+        // A gloss is overridden only where it reads as the plural of the word its edge names, and the fact is not plural.
+        // With no edge (`mima`), the word the gloss names has to be a page the correction cites, so the gloss is
+        // checked against its evidence and not only against itself.
+        const edge = at(line, "/senses/0/form_of/0/word") as string | undefined;
+        const named = edge ?? glossLemma(fact.overrides.text) ?? "";
+        if (edge === undefined) assert.ok(correction.evidence.some((evidence) => evidence.title === named), `${archive.word}: cites ${named}`);
         assert.notEqual(readPluralGloss(fact.overrides.text, named), undefined, archive.word);
         assert.equal(`${fact.dimension} ${fact.value}`, "number singular");
       }

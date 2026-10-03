@@ -8,7 +8,10 @@
 //
 // Huey ruled on 2026-10-03
 // (https://github.com/hueypov/lexema/issues/483#issuecomment-5970891514) to fix
-// them with one rule, not by hand, and only where en.wiktionary confirms: this
+// them with one rule, not by hand, and only where en.wiktionary confirms. For
+// the wrong-gloss singular nouns he later accepted the lemma's it.wiktionary
+// table of forms too
+// (https://github.com/hueypov/lexema/issues/483#issuecomment-5971809939). This
 // file is that rule, `it-plural-gloss-number/v1`. It judges each record from
 // two things only, the record's own line and pinned Wiktionary revisions
 // (`PLURAL_GLOSS_EVIDENCE` in pluralGlossEvidence.ts), so the same release and

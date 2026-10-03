@@ -4,7 +4,10 @@ Issue [#483](https://github.com/hueypov/lexema/issues/483). Release
 `it-0c432803`. Rule `it-plural-gloss-number/v1`
 ([src/italian/pluralGlossNumber.ts](../src/italian/pluralGlossNumber.ts)), on
 Huey's [ruling](https://github.com/hueypov/lexema/issues/483#issuecomment-5970891514)
-of 2026-10-03, recorded in
+of 2026-10-03, and his later
+[ruling](https://github.com/hueypov/lexema/issues/483#issuecomment-5971809939)
+that a lemma's it.wiktionary table of forms may confirm a wrong-gloss singular
+noun, both recorded in
 [ADR 0027](../.decisions/0027-curated-corrections-are-cited-exceptions.md)'s
 amendment.
 
@@ -72,6 +75,8 @@ A record is judged from its own line and those pinned lines only (`judge`):
    decides; its adjective and participle sections only when it says nothing of
    the word. No page read may make it a plural. Its number is set to singular
    over the gloss, in the shape #420 gave `ammaliatrice`; its gender stays.
+   The it.wiktionary table of forms counts here only, never for a plural or a
+   gender, on Huey's second ruling.
 5. **Anything else is left as the source states it,** with one reason:
    `singular-adjective` (en.wiktionary makes the adjective a singular of L; no
    ruling covers these), `no-en-page`, `no-italian-entry`,
@@ -89,7 +94,8 @@ No record is judged by hand.
 |---|---|---|---|
 | Corrected: number only | 43 | 74 | 117 |
 | Corrected: number and gender | 8 | 16 | 24 |
-| Corrected: wrong-gloss singular noun | 15 | 0 | 15 |
+| Corrected: wrong-gloss singular noun, en.wiktionary confirms | 9 | 0 | 9 |
+| Corrected: wrong-gloss singular noun, only the lemma's it.wiktionary table of forms confirms | 6 | 0 | 6 |
 | Already corrected by hand: #449 (8), #420 (5) | 13 | 0 | 13 |
 | Not an Italian record | 5 | 3 | 8 |
 | No en.wiktionary confirmation: `no-en-page` 10, `no-italian-entry` 2, `no-section-for-pos` 39, `no-plural-statement` 2 | 23 | 30 | 53 |
@@ -105,7 +111,8 @@ dictionary holding none of the 20 hand entries yet, so the declaration writes
 all 176 corrections, 202 rows.
 
 #483's diagnosis read 201 of the 212 real plurals as confirmed. The rule
-confirms 141 because it holds to what the ruling asks: the template has to be in
+confirms 141 because, for a plural, it takes en.wiktionary only and reads it
+strictly: the template has to be in
 the record's own part of speech and name the gloss's very lemma. The largest
 groups it leaves are adjectives whose gloss names the feminine singular
 (`platoniche`, "plurale di platonica", against `{{adj form of|it|platonico||f|p}}`)
@@ -115,7 +122,17 @@ and nouns whose plural en.wiktionary files only as an adjective (`virtuosi`,
 The wrong-gloss singular nouns: `bucaniera`, `cantiniera`, `condensa`,
 `giornalaia`, `giostraia`, `mima`, `misantropa`, `nevrotica`, `sbruffona`,
 `sicaria`, `smacchiatrice`, `sociologa`, `superstiziosa`, `tuttologa`,
-`virtuosa`.
+`virtuosa`. en.wiktionary has no page that confirms six of them, so each cites
+only its lemma's it.wiktionary table of forms, as the second ruling allows:
+
+| Line | Word | Cited it.wiktionary page and revision |
+|---|---|---|
+| 175503 | `mima` | `mimo`, 4264079 |
+| 449794 | `tuttologa` | `tuttologo`, 4038388 |
+| 454306 | `smacchiatrice` | `smacchiatore`, 3992573 |
+| 557379 | `sicaria` | `sicario`, 3956708 |
+| 594725 | `giostraia` | `giostrai`, 3867973 |
+| 605175 | `bucaniera` | `bucaniere`, 3956058 |
 
 The gender corrections:
 

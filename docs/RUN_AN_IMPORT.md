@@ -329,9 +329,9 @@ gender and number), and the 156 that rule `it-plural-gloss-number/v1` makes
 gender and number). On a master that already holds the 20 hand entries of
 [#420](https://github.com/hueypov/lexema/issues/420) and
 [#449](https://github.com/hueypov/lexema/issues/449), it prints
-`written now: 156` and `already written` for the 20. Every later run prints `nothing to write` and `already written` for
-each. Before a master holds page-only entries, the two definition corrections
-print `not written; the master holds no page-only entry`.
+`written now: 156` and `already written` for the 20. Every later run prints
+`nothing to write` and `already written` for each. Before a master holds
+page-only entries, the two definition corrections print `not written; the master holds no page-only entry`.
 [Loading the entries](PAGE_ENTRIES.md#load-them-into-a-seeded-dictionary)
 writes them with the entries, as a seed does, so a run after the load prints
 `already written` for both. An
