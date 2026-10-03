@@ -88,10 +88,10 @@ test("the hand entries correct the twelve cases Huey ruled wrong, and of the fou
 test("the committed list is the hand entries, then what the rule makes of its pinned evidence, and the two never name one record (#483)", () => {
   const made = pluralGlossCorrections(PLURAL_GLOSS_EVIDENCE, HAND);
   assert.deepEqual(CURATED_CORRECTIONS, [...HAND_CORRECTIONS, ...made]);
-  assert.equal(made.length, 156);
+  assert.equal(made.length, 195);
   const hand = new Set(HAND.map((correction) => `${correction.record.releaseId}:${correction.record.lineNo}`));
   for (const correction of made) {
-    assert.equal(correction.rule, "it-plural-gloss-number/v1");
+    assert.equal(correction.rule, "it-plural-gloss-number/v2");
     assert.ok(!hand.has(`${correction.record.releaseId}:${correction.record.lineNo}`), correction.record.word);
   }
 });
