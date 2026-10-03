@@ -1,0 +1,85 @@
+name: Dictionary release
+
+# Once a month, looks for a new kaikki Italian release and, when there is one,
+# opens one pull request that adds it (#457). Merging that pull request deploys
+# the release through the dictionary deploy; closing it skips the release. The
+# steps are src/release/monthlyRelease.ts; docs/DEPLOY.md lists the secret and
+# the schedule. No agent runs this workflow or holds its token.
+#
+# Only the `prepare` job holds the token that writes hueypov/lexema-data. No
+# job here is given the Cloudflare token: the counts come from the dictionary
+# deploy's plan-only entry, whose own job reads it.
+
+on:
+  schedule:
+    # 06:17 UTC on the 5th of each month.
+    - cron: "17 6 5 * *"
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: dictionary-release
+  cancel-in-progress: false
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    # The environment is restricted to `main`, so a run on any other branch
+    # never receives the write token.
+    environment: dictionary-release
+    permissions:
+      # Pushes the release branch with GITHUB_TOKEN.
+      contents: write
+    outputs:
+      release: ${{ steps.prepare.outputs.release }}
+      candidate: ${{ steps.prepare.outputs.candidate }}
+      change: ${{ steps.prepare.outputs.change }}
+      commit: ${{ steps.prepare.outputs.commit }}
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - id: prepare
+        run: pnpm run release:monthly prepare
+        env:
+          LEXEMA_DATA_WRITE_TOKEN: ${{ secrets.LEXEMA_DATA_WRITE_TOKEN }}
+
+  plan:
+    needs: prepare
+    if: needs.prepare.outputs.release != ''
+    permissions:
+      contents: read
+    uses: ./.github/workflows/dictionary-deploy.yml
+    with:
+      change: ${{ needs.prepare.outputs.change }}
+      release: ${{ needs.prepare.outputs.candidate }}
+
+  pull-request:
+    needs: [prepare, plan]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      # Pushes the declaration onto the release branch, and opens the pull request.
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          ref: ${{ needs.prepare.outputs.commit }}
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run release:monthly open --release "$RELEASE" --plan "$PLAN"
+        env:
+          RELEASE: ${{ needs.prepare.outputs.candidate }}
+          PLAN: ${{ needs.plan.outputs.counts }}
+          GITHUB_TOKEN: ${{ github.token }}

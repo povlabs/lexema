@@ -10,7 +10,9 @@ Each push to `production` deploys production, and every other branch gets a
 Preview, both built by Cloudflare's Workers Builds
 ([ADR 0018](../.decisions/0018-previews-on-workers-builds.md)). Huey sets both
 up once, as [Workers Builds](#workers-builds) and
-[the dictionary deploy](#set-up-the-dictionary-deploy) say.
+[the dictionary deploy](#set-up-the-dictionary-deploy) say. Once a month,
+[the monthly release](#the-monthly-release) opens a pull request for a new
+kaikki Italian release.
 
 ## What production is
 
@@ -477,8 +479,11 @@ a declaration's command and inputs, with no counts:
 ```
 
 Its job summary and its `counts` output are the plan-only answer: the counts,
-the dictionary's size and any hard limit they cross. The monthly release
-workflow takes a new declaration's counts from it. The same command runs
+the dictionary's size and any hard limit they cross. The
+[monthly release](#the-monthly-release) takes a new declaration's counts from
+it. It also passes the input `release`: the archive facts and dump of a kaikki
+release `main` does not record yet. The plan reads them as data, still runs
+`main`'s code, and holds the files it fetches to them. The same command runs
 against the local D1:
 
 ```sh
@@ -546,6 +551,95 @@ No agent does any of them.
    are ever pushed.
 5. **Workers Builds.** In the Worker's **Settings**, **Build**, **Branch
    control**, change the production branch from `main` to `production`.
+
+## The monthly release
+
+[`dictionary-release.yml`](../.github/workflows/dictionary-release.yml) runs
+at 06:17 UTC on the 5th of each month, and can be run by hand from `main`
+(`workflow_dispatch`). It opens one pull request when kaikki has a new Italian
+release, and nothing otherwise. Its steps are `pnpm run release:monthly`
+([src/release/](../src/release/monthlyRelease.ts)):
+
+1. **`prepare`.** It reads kaikki's build log for `it-extract.jsonl.gz` and
+   the Wiktionary dump the log names. A release is new only when that dump is
+   later than the dump of every [`ARCHIVE_FACTS`](../src/source/archiveFacts.ts)
+   entry, the order `update:auto` itself requires. When it is not new, the run
+   ends green: no download, nothing stored, no pull request. Otherwise it
+   downloads the archive. When the branch `release/<release id>` exists, a
+   pull request was opened for that release already, and the run ends the
+   same way. It then reads the dump's size and SHA-1 from Wikimedia's
+   `dumpstatus.json`, downloads the dump and checks it, and stores in
+   `hueypov/lexema-data`, as one commit:
+
+   | File | Path in `hueypov/lexema-data` |
+   |---|---|
+   | the archive | `source/<release id>.jsonl.gz` |
+   | kaikki's build log | `source/<release id>.log` |
+   | the archive download's response headers | `source/<release id>.headers` |
+   | the dump | `source/<its file>`, such as `source/itwiktionary-20261001-pages-articles.xml.bz2` |
+
+   A file already there with the same bytes is left alone; one with other
+   bytes stops the run. Last, it adds the release's `ARCHIVE_FACTS` entry and
+   its dump's [`KNOWN_DUMPS`](../src/source/wiktionaryDump.ts) entry on a new
+   branch `release/<release id>`, and pushes it with `GITHUB_TOKEN`.
+2. **`plan`.** It calls the dictionary deploy's
+   [plan-only entry](#the-plan-only-entry) with the change
+   `{"command": "update:auto", "inputs": {"feedRelease": "<release id>"}}` and
+   the release's facts. That job, in the dictionary deploy workflow, is the
+   only one that reads the Cloudflare token; this workflow passes it no secret.
+3. **`pull-request`.** It adds the
+   [change declaration](../dictionary-changes/README.md)
+   `dictionary-changes/<release id>.json` with the plan's counts to the branch,
+   and opens a pull request into `main` that states the counts and any hard
+   limit they cross.
+
+Merging the pull request deploys the release through
+[the dictionary deploy](#the-dictionary-deploy), which plans it again and stops
+red when the counts differ. Closing it skips the release: its branch stays, so
+a later run does not open it again. Delete the branch to have the next run
+offer the release again.
+
+GitHub starts no workflow for a branch pushed or a pull request opened with
+`GITHUB_TOKEN`, so the release pull request's checks do not start by
+themselves. Close and reopen it to start them. Workers Builds still builds its
+Preview.
+
+A stop at any step is a red run, and GitHub's failed-run email is the alert.
+No agent runs this workflow or holds its token.
+
+### What the monthly release reads
+
+| Name | Kind | Where | What it is |
+|---|---|---|---|
+| `dictionary-release` | GitHub environment | repository **Settings**, **Environments** | holds the secret below; its deployment branches are `main` only, so a run on any other branch never receives it. Only the `prepare` job names it |
+| `LEXEMA_DATA_WRITE_TOKEN` | environment secret | `dictionary-release` | a fine-grained GitHub token for `hueypov/lexema-data` only, **Contents** read and write. The only token that writes that repository; no other workflow reads it |
+| `GITHUB_TOKEN` | built in | `prepare`: `contents: write`; `pull-request`: `contents: write`, `pull-requests: write` | pushes `release/<release id>` and opens the pull request |
+| Allow GitHub Actions to create and approve pull requests | repository setting | **Settings**, **Actions**, **General**, **Workflow permissions** | on, or GitHub refuses the pull request |
+| Schedule | `on.schedule` in the workflow | `17 6 5 * *` | 06:17 UTC on the 5th of each month |
+
+The `plan` job reads what [the dictionary deploy reads](#what-it-reads), in its
+own `dictionary-deploy` environment.
+
+### Set up the monthly release
+
+Huey does these once, before the pull request that adds the workflow merges.
+No agent does any of them.
+
+1. **The write token.** Open
+   https://github.com/settings/personal-access-tokens/new. **Token name**:
+   `lexema-monthly-release-data`. **Resource owner**: `hueypov`. **Repository
+   access**: **Only select repositories**, `hueypov/lexema-data` alone.
+   **Permissions**: **Contents**, **Read and write**, and nothing else.
+   Generate it and copy it. When it expires, the run stops before it stores
+   anything.
+2. **The environment.** In this repository's **Settings**, **Environments**,
+   select **New environment** and name it `dictionary-release`. Under
+   **Deployment branches and tags** choose **Selected branches and tags** and
+   add `main` only. Add the environment secret `LEXEMA_DATA_WRITE_TOKEN`
+   (step 1).
+3. **Pull requests from Actions.** In **Settings**, **Actions**, **General**,
+   under **Workflow permissions**, turn on **Allow GitHub Actions to create and
+   approve pull requests**.
 
 ## Turn on sign-in
 

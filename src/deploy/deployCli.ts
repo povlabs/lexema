@@ -6,6 +6,12 @@
 //
 //   pnpm run deploy:dictionary
 //   pnpm run deploy:dictionary --plan-only --change '{"command":"update:auto","inputs":{"feedRelease":"it-78385b62"}}'
+//   pnpm run deploy:dictionary --plan-only --change '<change>' --release '<release candidate>'
+//
+// `--release` plans against a kaikki release the repository does not record
+// yet: the monthly release workflow passes the archive facts and dump it found
+// (src/release/releaseCandidate.ts), so the plan reads them as data and the
+// files fetched are still held to them. An empty value is no release.
 //
 // The run writes the shared dictionary and pushes `production`, so it runs
 // only inside GitHub Actions on `main`, against the remote D1 `SEED_REMOTE`
@@ -18,6 +24,7 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { finish, flags, isMain, usageError, type CommandResult } from "../commandLine.js";
 import { seedTargetFrom, webWrangler, type Wrangler } from "../import/seedTarget.js";
+import { ReleaseCandidate, ReleaseRefused } from "../release/releaseCandidate.js";
 import { DeclarationRefused, parseChange } from "../update/declaration.js";
 import { masterReaderOf } from "../update/updateCli.js";
 import { type DataFetcher, lexemaDataFetcher } from "./dataFiles.js";
@@ -26,7 +33,7 @@ import { gitIn } from "./pending.js";
 
 const USAGE = `usage:
   pnpm run deploy:dictionary
-  pnpm run deploy:dictionary --plan-only --change '<{"command": ..., "inputs": {...}}>'
+  pnpm run deploy:dictionary --plan-only --change '<{"command": ..., "inputs": {...}}>' [--release '<release candidate>']
 The run needs GITHUB_ACTIONS, GITHUB_REF refs/heads/main, GITHUB_SHA, SEED_REMOTE and LEXEMA_DATA_TOKEN.`;
 
 /** A Time Travel bookmark of `dictionary` as it is now, through Wrangler. */
@@ -59,19 +66,24 @@ function fetcherFrom(env: NodeJS.ProcessEnv): DataFetcher {
 }
 
 async function planOnlyCommand(args: readonly string[], env: NodeJS.ProcessEnv, wrangler: Wrangler): Promise<CommandResult> {
-  const options = flags(args, ["change"]);
+  const options = flags(args, ["change", "release"]);
   if (typeof options === "string") return usageError(options, USAGE);
   const text = options.get("change");
   if (text === undefined) return usageError("--plan-only needs --change, the command and inputs to plan", USAGE);
+  const release = options.get("release") ?? "";
   let change;
+  let catalogs;
   try {
     change = parseChange("--change", text);
+    catalogs = release === "" ? {} : ReleaseCandidate.parse(release).catalogs();
   } catch (error: unknown) {
     if (error instanceof DeclarationRefused) return { out: error.message, status: 1 };
+    if (error instanceof ReleaseRefused) return { out: `--release is not a release to plan against:\n${error.message}`, status: 1 };
     throw error;
   }
   const target = seedTargetFrom(env, wrangler, resolve(".data/seed-state"));
   const answer = await planOnly(change, {
+    ...catalogs,
     reader: masterReaderOf(target),
     fetcher: fetcherFrom(env),
     workDir: await mkdtemp(join(env.RUNNER_TEMP ?? tmpdir(), "lexema-plan-")),

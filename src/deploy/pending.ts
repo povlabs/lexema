@@ -17,11 +17,12 @@ export interface Git {
   test(args: readonly string[]): boolean;
 }
 
-/** The `git` command in the checkout at `cwd`. */
-export function gitIn(cwd: string): Git {
+/** The `git` command in the checkout at `cwd`, with `env` added to the environment it runs in. */
+export function gitIn(cwd: string, env: NodeJS.ProcessEnv = {}): Git {
+  const environment = { ...process.env, ...env };
   return {
-    run: (args) => execFileSync("git", args, { cwd, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"], maxBuffer: 64 * 1024 * 1024 }),
-    test: (args) => spawnSync("git", args, { cwd, stdio: "ignore" }).status === 0,
+    run: (args) => execFileSync("git", args, { cwd, env: environment, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"], maxBuffer: 64 * 1024 * 1024 }),
+    test: (args) => spawnSync("git", args, { cwd, env: environment, stdio: "ignore" }).status === 0,
   };
 }
 

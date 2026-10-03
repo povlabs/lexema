@@ -10,7 +10,7 @@ import { readRulePass, findHiddenRecords } from "../import/hiddenLayer.js";
 import { planHide, unhidden } from "../import/hideRecords.js";
 import { planSourceText } from "../import/normalizeSourceText.js";
 import { readLanguageHeadings } from "../italian/sectionLanguage.js";
-import { archiveFactsFor } from "../source/archiveFacts.js";
+import { ARCHIVE_FACTS, archiveFactsFor } from "../source/archiveFacts.js";
 import { KNOWN_DUMPS, VerifiedDump } from "../source/wiktionaryDump.js";
 import { checkApplied } from "../update/apply.js";
 import { automaticPlan } from "../update/automatic.js";
@@ -19,7 +19,7 @@ import { diffAgainstMaster } from "../update/diff.js";
 import { missingUpgrade, planUpgrade, readMasterRelease, type MasterReader } from "../update/master.js";
 import { PlanCounts } from "../update/planCounts.js";
 import { planOnlyRun } from "../update/planOnly.js";
-import { withFeedDump } from "../update/select.js";
+import { type SourceCatalogs, withFeedDump } from "../update/select.js";
 import { DataRefused, type FetchedFiles } from "./dataFiles.js";
 
 /** The schema and the language headings the plans read, from the repository root. */
@@ -54,8 +54,13 @@ export function readyChange(change: DeclaredChange, files: FetchedFiles | null):
   }
 }
 
-/** Plan `ready` against the dictionary `reader` reads. It writes nothing. */
-export async function planWrite(ready: ReadyChange, reader: MasterReader, appliedAt: string): Promise<WritePlan> {
+/**
+ * Plan `ready` against the dictionary `reader` reads. It writes nothing.
+ * `catalogs` are the archive facts and dumps it reads, the committed ones
+ * unless a plan-only run is given a release not yet committed.
+ */
+export async function planWrite(ready: ReadyChange, reader: MasterReader, appliedAt: string, catalogs: SourceCatalogs = {}): Promise<WritePlan> {
+  const { catalog = ARCHIVE_FACTS, dumps = KNOWN_DUMPS } = catalogs;
   const schema = await readFile(SCHEMA, "utf8");
   if (!("files" in ready)) {
     const { change } = ready;
@@ -84,7 +89,7 @@ export async function planWrite(ready: ReadyChange, reader: MasterReader, applie
     if (found.feed.releaseId !== change.inputs.feedRelease) {
       throw new DataRefused([`${files.archive} is release ${found.feed.releaseId}; ${change.file} declares ${change.inputs.feedRelease}`]);
     }
-    const plan = await withFeedDump(found.feed, files.dump, LANGUAGES, (pages) => automaticPlan(reader, found, pages, { schema, appliedAt }));
+    const plan = await withFeedDump(found.feed, files.dump, LANGUAGES, (pages) => automaticPlan(reader, found, pages, { schema, appliedAt, catalog }), { catalog, dumps });
     return {
       run: planOnlyRun(change.command, plan?.counts ?? PlanCounts.NONE, reader),
       sql: plan?.sql ?? "",
@@ -104,8 +109,8 @@ export async function planWrite(ready: ReadyChange, reader: MasterReader, applie
   if (pass.archiveSha256 !== master.archiveSha256) {
     throw new DataRefused([`${change.file} declares ${change.inputs.archive}, but the master ${master.releaseId} was seeded from the archive with SHA-256 ${master.archiveSha256}`]);
   }
-  const facts = archiveFactsFor(pass.archiveSha256);
-  const identity = facts === undefined ? undefined : KNOWN_DUMPS[facts.dump.id];
+  const facts = archiveFactsFor(pass.archiveSha256, catalog);
+  const identity = facts === undefined || !Object.hasOwn(dumps, facts.dump.id) ? undefined : dumps[facts.dump.id];
   if (identity === undefined) throw new DataRefused([`no dump is known for ${change.inputs.archive}`]);
   const dump = await VerifiedDump.open(files.dump, identity);
   let found;

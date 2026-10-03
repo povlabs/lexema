@@ -114,7 +114,7 @@ export async function deployDictionary(deps: DeployDeps): Promise<DeployOutcome>
 
       for (const { change: declaration, ready: change } of ready) {
         step("plan", declaration.file);
-        const plan = await planWrite(change, deps.reader, now());
+        const plan = await planWrite(change, deps.reader, now(), deps);
         const check = checkPlan(declaration, plan.run);
         const taken = { file: declaration.file, command: declaration.command, counts: plan.run.counts, ran: false };
         if (!passes(check)) {
@@ -173,7 +173,7 @@ export interface PlanOnlyAnswer {
  */
 export async function planOnly(change: DeclaredChange, deps: Pick<DeployDeps, "reader" | "fetcher" | "workDir" | "catalog" | "dumps" | "now">): Promise<PlanOnlyAnswer> {
   const [{ ready }] = await readyAll([change], deps);
-  const { run } = await planWrite(ready, deps.reader, (deps.now ?? (() => new Date().toISOString()))());
+  const { run } = await planWrite(ready, deps.reader, (deps.now ?? (() => new Date().toISOString()))(), deps);
   return { command: run.command, counts: run.counts, dictionaryRecords: run.dictionaryRecords, limitBreaches: run.counts.limitBreaches(run.dictionaryRecords) };
 }
 

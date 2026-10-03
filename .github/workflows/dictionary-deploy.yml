@@ -7,7 +7,9 @@ name: Dictionary deploy
 # runs this workflow or holds its Cloudflare token.
 #
 # The plan-only entry (`workflow_dispatch`, or `workflow_call` from the monthly
-# release workflow) plans one change and writes nothing.
+# release workflow) plans one change and writes nothing. `release` names a
+# kaikki release main does not record yet, as data: the plan still runs main's
+# code, never the release branch's.
 
 on:
   push:
@@ -18,11 +20,21 @@ on:
         description: 'The change to plan, as JSON: {"command": ..., "inputs": {...}}'
         required: true
         type: string
+      release:
+        description: 'A kaikki release not recorded yet, as the monthly release workflow gives it; empty for none'
+        required: false
+        default: ""
+        type: string
   workflow_call:
     inputs:
       change:
         description: 'The change to plan, as JSON: {"command": ..., "inputs": {...}}'
         required: true
+        type: string
+      release:
+        description: 'A kaikki release not recorded yet, as the monthly release workflow gives it; empty for none'
+        required: false
+        default: ""
         type: string
     outputs:
       counts:
@@ -92,9 +104,10 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - id: plan
-        run: pnpm run deploy:dictionary --plan-only --change "$CHANGE"
+        run: pnpm run deploy:dictionary --plan-only --change "$CHANGE" ${RELEASE:+--release "$RELEASE"}
         env:
           CHANGE: ${{ inputs.change }}
+          RELEASE: ${{ inputs.release }}
           SEED_REMOTE: lexema-dictionary
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_D1_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}

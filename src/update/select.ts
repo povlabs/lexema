@@ -12,7 +12,7 @@ import { italianRecordOf, type ArchiveRecord } from "../import/importRelease.js"
 import { normalizeItalianExact } from "../italian/normalize.js";
 import type { QualityRecord } from "../italian/recordQuality.js";
 import { ARCHIVE_FACTS, type ArchiveFactsCatalog, archiveFactsFor } from "../source/archiveFacts.js";
-import { KNOWN_DUMPS, VerifiedDump } from "../source/wiktionaryDump.js";
+import { type DumpIdentity, KNOWN_DUMPS, VerifiedDump } from "../source/wiktionaryDump.js";
 import type { AmbiguousGroup, Change, ChangeId } from "./changes.js";
 import { verifyFeedOrdering } from "./ordering.js";
 import { reportOf, type MasterDiff, type ReportedLine } from "./diff.js";
@@ -91,15 +91,27 @@ export interface FeedPages {
   languages: LanguageHeadings;
 }
 
+/** The archive facts and dump identities a run reads: the committed ones, or those plus a release not yet committed. */
+export interface SourceCatalogs {
+  readonly catalog?: ArchiveFactsCatalog;
+  readonly dumps?: Readonly<Record<string, DumpIdentity>>;
+}
+
 /**
  * Open the dump `feed` was built from at `path`, refused unless its size and
  * SHA-1 are the ones Wikimedia published for the dump the feed's build log
  * names. `use` reads its pages once; the file is closed after.
  */
-export async function withFeedDump<Result>(feed: FeedArchive, path: string, languagesPath: string, use: (pages: FeedPages) => Promise<Result>): Promise<Result> {
-  const facts = archiveFactsFor(feed.archiveSha256);
+export async function withFeedDump<Result>(
+  feed: FeedArchive,
+  path: string,
+  languagesPath: string,
+  use: (pages: FeedPages) => Promise<Result>,
+  { catalog = ARCHIVE_FACTS, dumps = KNOWN_DUMPS }: SourceCatalogs = {},
+): Promise<Result> {
+  const facts = archiveFactsFor(feed.archiveSha256, catalog);
   if (facts === undefined) throw new Error(`no archive facts name the dump ${feed.releaseId} was built from (src/source/archiveFacts.ts)`);
-  const identity = KNOWN_DUMPS[facts.dump.id];
+  const identity = Object.hasOwn(dumps, facts.dump.id) ? dumps[facts.dump.id] : undefined;
   if (identity === undefined) throw new Error(`${facts.dump.id}, the dump ${feed.releaseId} was built from, has no size and SHA-1 in KNOWN_DUMPS`);
   const languages = await readLanguageHeadings(languagesPath);
   const dump = await VerifiedDump.open(path, identity);
