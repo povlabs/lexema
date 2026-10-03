@@ -369,6 +369,12 @@ export const NOT_FOUND_TEXT = "m-0 mt-6 max-w-[42rem] font-sans text-[0.95rem] t
 export const NOT_FOUND_LEAD = "m-0 mt-6 font-sans text-[0.95rem] text-text";
 export const NOT_FOUND_LINK = `mx-1 font-serif text-[1.5rem] text-accent no-underline ${FOCUS_RING}`;
 
+// A word found whose query an accented or apostrophe headword also writes (board 32, #478)
+
+/** "Did you mean città?" under the search bar: the not-found offer's form, smaller and muted. */
+export const WRITTEN_OFFER_LEAD = "m-0 mt-3 font-sans text-[0.8125rem] text-text-muted";
+export const WRITTEN_OFFER_LINK = `mx-1 font-serif text-[0.9375rem] text-accent no-underline ${FOCUS_RING}`;
+
 // The report box (board 22, #51) ----------------------------------------------
 
 /** "Report a mistake", beside Source and in the same small muted type. */

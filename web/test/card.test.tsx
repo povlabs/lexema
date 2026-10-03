@@ -203,7 +203,7 @@ test("a declared lemma's card is its word and its part of speech, and nothing it
   };
   const page = declaredLemmaPage(result);
   assert.ok(page !== undefined);
-  assert.deepEqual(cardOf({ ...result, page }), {
+  assert.deepEqual(cardOf({ ...result, page, written: [] }), {
     kind: "word",
     headword: "verbalizzare",
     pronunciation: undefined,

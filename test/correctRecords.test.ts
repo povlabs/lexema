@@ -16,7 +16,11 @@ import { seedSql } from "../src/import/seedSql.js";
 import { fromNodeSqlite } from "../src/lookup/database.js";
 import { lookup } from "../src/lookup/lookup.js";
 import { servedVersion, versionToken } from "../src/lookup/served.js";
+import { filesFor } from "../src/deploy/dataFiles.js";
+import { planWrite, readyChange } from "../src/deploy/writePlan.js";
+import { parseChange } from "../src/update/declaration.js";
 import type { MasterReader } from "../src/update/master.js";
+import { PlanCounts } from "../src/update/planCounts.js";
 import { atFixtureLines, correctionFixtureLines } from "./correctionFixture.js";
 
 const RELEASE = "it-correct";
@@ -89,6 +93,7 @@ test("a master seeded before the corrections gets what a seed now writes, once, 
     const schema = await readFile(SCHEMA, "utf8");
     const plan = planCorrections(reader, corrections, schema);
     assert.deepEqual(plan.entries.map((entry) => entry.state), Array(20).fill("write"));
+    assert.deepEqual(plan.counts.toJSON(), { records: { added: 0, changed: 20, removed: 0 }, written: { corrected_claim: 22, correction_version: 1 }, deleted: {} });
     execute(before, plan.sql);
     assert.deepEqual(unwritten(reader, plan), []);
 
@@ -104,6 +109,7 @@ test("a master seeded before the corrections gets what a seed now writes, once, 
     // A second run plans nothing.
     const again = planCorrections(reader, corrections, schema);
     assert.equal(again.sql, "");
+    assert.equal(again.counts, PlanCounts.NONE);
     assert.deepEqual(again.entries.map((entry) => entry.state), Array(20).fill("already"));
   } finally {
     before.close();
@@ -127,6 +133,51 @@ test("a master that holds #420's twelve gets #449's eight and leaves the twelve 
   } finally {
     db.close();
     fresh.close();
+  }
+});
+
+test("an entry whose rows differ is rewritten whole, and the counts name the rows deleted and written", async () => {
+  const corrections = atFixtureLines(await correctionFixtureLines(), RELEASE);
+  const db = await seeded(corrections);
+  try {
+    // `fissazione` (#420) is held with one row; that row now says something else.
+    const fissazione = corrections.find((correction) => correction.record.word === "fissazione");
+    assert.ok(fissazione !== undefined);
+    const id = `${RELEASE}:${fissazione.record.lineNo}`;
+    const held = all(db, `SELECT * FROM corrected_claim WHERE correction_id = '${id}'`).length;
+    db.exec(`UPDATE corrected_claim SET value = 'masculine' WHERE correction_id = '${id}' AND dimension = 'gender'`);
+    const reader = readerOf(db);
+    const plan = planCorrections(reader, corrections, await readFile(SCHEMA, "utf8"));
+    assert.deepEqual(plan.entries.flatMap((entry) => (entry.state === "write" ? [entry.correction.record.word] : [])), ["fissazione"]);
+    assert.deepEqual(plan.counts.toJSON(), {
+      records: { added: 0, changed: 1, removed: 0 },
+      written: { corrected_claim: held, correction_version: 1 },
+      deleted: { corrected_claim: held },
+    });
+    execute(db, plan.sql);
+    assert.deepEqual(unwritten(reader, plan), []);
+    assert.equal(planCorrections(reader, corrections, await readFile(SCHEMA, "utf8")).counts, PlanCounts.NONE);
+  } finally {
+    db.close();
+  }
+});
+
+test("the deploy's correct:records plan reads back a mismatch for each planned correction whose rows are not there", async () => {
+  const corrections = atFixtureLines(await correctionFixtureLines(), RELEASE).slice(0, 2);
+  const db = await seeded([]);
+  try {
+    const reader = readerOf(db);
+    const change = parseChange("test", JSON.stringify({ command: "correct:records" }));
+    assert.equal(filesFor(change), null);
+    const plan = await planWrite(readyChange(change, null), reader, "2026-10-03T00:00:00Z", { corrections });
+    assert.equal(plan.run.command, "correct:records");
+    assert.equal(plan.run.counts.records.changed, 2);
+    // The file did not run, so neither correction reads back.
+    assert.deepEqual(plan.readBack(reader), corrections.map((correction) => `correction ${RELEASE}:${correction.record.lineNo} does not read back as written`));
+    execute(db, plan.sql);
+    assert.deepEqual(plan.readBack(reader), []);
+  } finally {
+    db.close();
   }
 });
 

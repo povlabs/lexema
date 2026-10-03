@@ -54,10 +54,11 @@ some of its statements.
 ## Load a release into Cloudflare D1
 
 Production and every Preview read one shared dictionary D1,
-`lexema-dictionary`, and code never writes to it
+`lexema-dictionary`, and the Worker never writes to it
 ([ADR 0018](../.decisions/0018-previews-on-workers-builds.md)). A release goes
-into it once, from Huey's laptop, where the archive lives. It is not a workflow,
-since a workflow would need a Cloudflare token in GitHub.
+into it once, from Huey's laptop, where the archive lives. It is not a workflow:
+the [dictionary deploy](DEPLOY.md#the-dictionary-deploy) applies only the
+changes a merge declares.
 
 The one run, for release `it-0c432803`:
 
@@ -169,7 +170,10 @@ pnpm run normalize:source-text
 ```
 
 It picks its database the way the seed does: the local D1 under `SEED_STATE`
-(default `.data/seed-state`), or the remote D1 `SEED_REMOTE` names. It rewrites
+(default `.data/seed-state`), or the remote D1 `SEED_REMOTE` names. It plans
+every rule into one SQL file under `.data/updates/` and runs that file in one
+step, so a run that stops leaves the database as it was; a later rule reads the
+glosses an earlier one rewrites from the plan. It rewrites
 only the `sense_gloss` rows a rule changes, and removes only the `lookup_form`
 rows of a dropped form with the `grammar_claim` rows about that form. The stamp
 rule reads each candidate record's raw line the way the seed does, trims or
@@ -184,7 +188,11 @@ and `it-gloss-stamp/v1: sense_gloss: <n> row(s) changed, grammar_claim: <n> row(
 The seed prints the first three ids on its `source text rules:` line; the stamp
 rule is the importer's grammar policy
 ([grammarPolicy.ts](../src/import/grammarPolicy.ts)). A second run changes 0
-rows.
+rows. `pnpm run normalize:source-text --plan-only` is a plan-only run: it
+writes the file and prints its counts as JSON, and runs nothing on the
+database. `hide:records`, `correct:records`, `update:auto` and `update:upgrade`
+take the same flag
+([src/update/planOnly.ts](../src/update/planOnly.ts)).
 
 For the full local seed:
 
@@ -192,21 +200,17 @@ For the full local seed:
 SEED_STATE=.data/full-state pnpm run normalize:source-text
 ```
 
-For the shared `lexema-dictionary`, from Huey's laptop, signed in to Wrangler
-as for the upload above:
-
-```sh
-SEED_REMOTE=lexema-dictionary pnpm run normalize:source-text
-```
-
-Put `CLOUDFLARE_ACCOUNT_ID=<account id>` first if Wrangler lists more than one
-account. On release `it-0c432803`, a database seeded before all three rules
-prints `gloss-person-ordinal/v1: sense_gloss: 177 row(s) changed`,
+On the shared `lexema-dictionary`, the dictionary deploy workflow runs the
+command after a merged change declaration names it
+([dictionary-changes/README.md](../dictionary-changes/README.md),
+[The dictionary deploy](DEPLOY.md#the-dictionary-deploy)). An agent runs it
+against a local D1 only. On release `it-0c432803`, a database seeded before
+all three rules prints `gloss-person-ordinal/v1: sense_gloss: 177 row(s) changed`,
 `form-plural-placeholder/v1: lookup_form: 110 row(s) removed, grammar_claim: 111 row(s) removed`
 and `it-gloss-stamp/v1: sense_gloss: 9 row(s) changed, grammar_claim: 30 row(s) changed`
 (8 nouns: 16 stated claims added, 14 `missing` rows removed) on the first run,
-and 0 on every later run. It writes through Wrangler from the laptop, never
-through the Worker's read-only binding.
+and 0 on every later run. It writes through Wrangler, never through the
+Worker's read-only binding.
 
 ## Hide another language's records in a seeded database
 
@@ -240,15 +244,12 @@ recomputed. A `hidden_record` table written before #389 is rebuilt first in the
 same transaction, every row kept, and the run says so. `source_record_json` is not touched. It then reads the records back
 and fails if one is not hidden. It takes about a minute.
 
-For the shared `lexema-dictionary`, from Huey's laptop, signed in to Wrangler
-as for the upload above:
-
-```sh
-SEED_REMOTE=lexema-dictionary pnpm run hide:records
-```
-
-Put `CLOUDFLARE_ACCOUNT_ID=<account id>` first if Wrangler lists more than one
-account. On release `it-0c432803` the rules find 30 records:
+On the shared `lexema-dictionary`, the dictionary deploy workflow runs the
+command after a merged change declaration names it
+([dictionary-changes/README.md](../dictionary-changes/README.md),
+[The dictionary deploy](DEPLOY.md#the-dictionary-deploy)). An agent runs it
+against a local D1 only. On release `it-0c432803` the rules find 30
+records:
 `30 record(s) the rules find (form-of-foreign-lemma/v1 7, section-language/v1 23)`.
 On a database #382's run already updated, the run hides the 7, rebuilds the
 table, and prints `23 already hidden; hidden now: 7`, one line per record, and
@@ -284,7 +285,9 @@ later release's change replaced the record: a correction never passes to a
 replacing record, whose source may say something else, so the run names the
 change and the replacing record to check against the entry's evidence.
 `update:apply` and `update:auto` print the same for a correction on a record
-they retire.
+they retire. `pnpm run correct:records --plan-only` writes the file and prints
+its counts as JSON, with one line per entry under `entries`, and runs nothing
+on the database.
 
 The same run writes definition corrections: a page-only entry's definition the
 page states wrongly ([#450](https://github.com/hueypov/lexema/issues/450),
@@ -294,26 +297,37 @@ page states wrongly ([#450](https://github.com/hueypov/lexema/issues/450),
 the page title that was read from the revision the correction names, where the
 definition at its place is the line and text it quotes. Otherwise the run
 prints why not: the master holds no entry of that title, its entry was read
-from another revision, or the definition differs.
+from another revision, or the definition differs. The plan's counts name its
+`corrected_definition` rows; a definition entry changes no record.
 
-For the shared `lexema-dictionary`, from Huey's laptop, signed in to Wrangler
-as for the upload above, once the Worker that reads corrections is deployed:
+On the shared `lexema-dictionary`, the dictionary deploy workflow runs the
+command after a merged change declaration names it
+([dictionary-changes/README.md](../dictionary-changes/README.md),
+[The dictionary deploy](DEPLOY.md#the-dictionary-deploy)). An agent runs it
+against a local D1 only. The declaration has no inputs: it writes the list as
+it stands at the deploy's commit, and its `expected` counts pin what that list
+writes. The plan-only entry of the deploy workflow finds those counts, but it
+runs `main`'s code, so it cannot count an entry that is not on `main` yet. A new
+correction therefore reaches the shared dictionary in two steps:
 
-```sh
-SEED_REMOTE=lexema-dictionary pnpm run correct:records
-```
+1. A pull request adds the entry to the list, and merges with no declaration.
+   The deploy writes nothing for it.
+2. Huey runs the [plan-only entry](DEPLOY.md#the-plan-only-entry) on `main` with
+   the change `{"command":"correct:records"}`. A second pull request adds a
+   declaration whose `expected` is the `counts` it prints. Its merge writes the
+   correction.
 
-Put `CLOUDFLARE_ACCOUNT_ID=<account id>` first if Wrangler lists more than one
-account. On `it-0c432803` the first run prints `written now: 20` and one line
-per entry, 22 rows in all (`congiuntivi` and `maniaci` set gender and number).
+Deploy the Worker that reads corrections before the first such declaration. On
+`it-0c432803` the first run prints `written now: 20` and one line per entry, 22
+rows in all (`congiuntivi` and `maniaci` set gender and number).
 On a master that already holds #420's twelve, it prints `written now: 8`, for
 the plurals tagged singular of
 [#449](https://github.com/hueypov/lexema/issues/449), and `already written` for
 the twelve. Every later run prints `nothing to write` and `already written` for
 each. Until the shared dictionary holds page-only entries
 ([#440](https://github.com/hueypov/lexema/issues/440)), the two definition
-corrections print `not written; the master holds no page-only entry`; run it
-again once they are loaded. An
+corrections print `not written; the master holds no page-only entry`; a later
+declaration writes them once those entries are loaded. An
 older Worker serves the master as before, since it never reads the new tables;
 the deployed one reads no correction from a master without them.
 

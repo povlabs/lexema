@@ -30,6 +30,7 @@ import { servedVersion, versionToken } from "../src/lookup/served.js";
 import type { RecoveredDefinition } from "../src/lookup/types.js";
 import { loadFixturePages, rawPageSource, type RawPage, type RawPageSource } from "../src/source/rawPage.js";
 import type { MasterReader } from "../src/update/master.js";
+import { PlanCounts } from "../src/update/planCounts.js";
 
 const RELEASE = "it-definition-corrections";
 const SCHEMA = "src/db/schema.sql";
@@ -226,6 +227,8 @@ test("correct:records writes the corrections into a master seeded before them, o
       `  page:3906191:0 grufolare (entry ${entryOf("grufolare")}): written`,
       `  page:4002473:0 tremare (entry ${entryOf("tremare")}): written`,
     ]);
+    // A definition entry changes no record; its rows are what the counts name.
+    assert.deepEqual(plan.counts.toJSON(), { records: { added: 0, changed: 0, removed: 0 }, written: { corrected_definition: 2, correction_version: 1 }, deleted: {} });
     execute(before, plan.sql);
     assert.deepEqual(unwritten(reader, plan), []);
 
@@ -238,6 +241,19 @@ test("correct:records writes the corrections into a master seeded before them, o
     const again = planCorrections(reader, DEFINITIONS, schema);
     assert.equal(again.sql, "");
     assert.deepEqual(again.definitions.map((entry) => entry.state), ["already", "already"]);
+    assert.equal(again.counts, PlanCounts.NONE);
+
+    // A held row that differs is replaced: the counts name the row deleted and the row written.
+    before.exec(`UPDATE corrected_definition SET text = 'altro' WHERE entry_id = ${entryOf("tremare")}`);
+    const rewrite = planCorrections(reader, DEFINITIONS, schema);
+    assert.deepEqual(rewrite.definitions.map((entry) => entry.state), ["already", "write"]);
+    assert.deepEqual(rewrite.counts.toJSON(), {
+      records: { added: 0, changed: 0, removed: 0 },
+      written: { corrected_definition: 1, correction_version: 1 },
+      deleted: { corrected_definition: 1 },
+    });
+    execute(before, rewrite.sql);
+    assert.deepEqual(unwritten(reader, rewrite), []);
   } finally {
     before.close();
     fresh.close();

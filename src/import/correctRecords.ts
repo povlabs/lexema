@@ -29,6 +29,7 @@ import {
 import { PAGE_ENTRY_TABLES } from "../lookup/served.js";
 import { createStatement } from "../update/masterUpgrade.js";
 import { readMasterRelease, select, type MasterReader } from "../update/master.js";
+import { PlanCounts } from "../update/planCounts.js";
 import { correctedDefinitionValues } from "./correctedDefinitions.js";
 import { correctedClaimValues } from "./correctedLayer.js";
 import { COLUMNS, literal, tupleOf } from "./seedSql.js";
@@ -58,6 +59,8 @@ export interface CorrectionPlan {
   definitions: PlannedDefinitionCorrection[];
   /** Empty when there is nothing to write. */
   sql: string;
+  /** What `sql` writes, counted (#490); `PlanCounts.NONE` when it is empty. */
+  counts: PlanCounts;
 }
 
 const json = (values: readonly unknown[]): string => literal(JSON.stringify(values));
@@ -82,7 +85,7 @@ export function planCorrections(reader: MasterReader, corrections: readonly Cura
 
   const writes = entries.flatMap((entry) => (entry.state === "write" ? [entry] : []));
   const definitionWrites = definitions.flatMap((entry) => (entry.state === "write" ? [entry] : []));
-  if (writes.length + definitionWrites.length === 0) return { masterReleaseId: master.releaseId, entries, definitions, sql: "" };
+  if (writes.length + definitionWrites.length === 0) return { masterReleaseId: master.releaseId, entries, definitions, sql: "", counts: PlanCounts.NONE };
   const ifAbsent = (name: string): string[] =>
     tables.has(name) ? [] : [createStatement(schema, "TABLE", name).replace("CREATE TABLE", "CREATE TABLE IF NOT EXISTS")];
   const written = [...writes, ...definitionWrites].map((entry) => correctionId(entry.correction));
@@ -92,28 +95,42 @@ export function planCorrections(reader: MasterReader, corrections: readonly Cura
     `INSERT INTO correction_version (singleton, revision) VALUES (1, 1)
        ON CONFLICT(singleton) DO UPDATE SET revision = revision + 1;`,
   ];
+  const claimTuples = writes.flatMap((entry) =>
+    correctedClaimValues(entry.correction).map((values) => tupleOf("corrected_claim", [entry.recordId, master.releaseId, ...values])),
+  );
+  const definitionTuples = definitionWrites.map((entry) =>
+    tupleOf("corrected_definition", [entry.entryId, entry.correction.replaces.index, ...correctedDefinitionValues(entry.correction)]),
+  );
   if (writes.length > 0) {
-    const tuples = writes.flatMap((entry) =>
-      correctedClaimValues(entry.correction).map((values) => tupleOf("corrected_claim", [entry.recordId, master.releaseId, ...values])),
-    );
     sql.push(
       ...ifAbsent("corrected_claim"),
       // An entry's rows are replaced whole, so a fact the list no longer sets goes with the rest.
       `DELETE FROM corrected_claim WHERE record_id IN (SELECT value FROM json_each(${json(writes.map((entry) => entry.recordId))}));`,
-      `INSERT INTO corrected_claim (${COLUMNS.corrected_claim}) VALUES\n  ${tuples.join(",\n  ")};`,
+      `INSERT INTO corrected_claim (${COLUMNS.corrected_claim}) VALUES\n  ${claimTuples.join(",\n  ")};`,
     );
   }
   if (definitionWrites.length > 0) {
-    const tuples = definitionWrites.map((entry) =>
-      tupleOf("corrected_definition", [entry.entryId, entry.correction.replaces.index, ...correctedDefinitionValues(entry.correction)]),
-    );
     sql.push(
       ...ifAbsent("corrected_definition"),
       ...definitionWrites.map((entry) => `DELETE FROM corrected_definition WHERE entry_id = ${entry.entryId} AND definition_index = ${entry.correction.replaces.index};`),
-      `INSERT INTO corrected_definition (${COLUMNS.corrected_definition}) VALUES\n  ${tuples.join(",\n  ")};`,
+      `INSERT INTO corrected_definition (${COLUMNS.corrected_definition}) VALUES\n  ${definitionTuples.join(",\n  ")};`,
     );
   }
-  return { masterReleaseId: master.releaseId, entries, definitions, sql: `${sql.join("\n")}\n` };
+  // Each written record changes in place: its rows already held go with the DELETE, and the INSERT writes them anew.
+  // A definition entry changes no record, so it counts in rows only: the row it replaces, if held, and the row it writes.
+  const heldClaimRows = tables.has("corrected_claim") && writes.length > 0 ? heldClaims(reader, writes.map((entry) => entry.recordId)) : new Map<number, unknown[][]>();
+  const heldDefinitionRows = tables.has("corrected_definition") && definitionWrites.length > 0
+    ? heldDefinitions(reader, definitionWrites.map((entry) => entry.entryId))
+    : new Map<string, string>();
+  const counts = new PlanCounts(
+    { added: 0, changed: writes.length, removed: 0 },
+    { corrected_claim: claimTuples.length, corrected_definition: definitionTuples.length, correction_version: 1 },
+    {
+      corrected_claim: writes.reduce((rows, entry) => rows + (heldClaimRows.get(entry.recordId)?.length ?? 0), 0),
+      corrected_definition: definitionWrites.filter((entry) => heldDefinitionRows.has(`${entry.entryId}:${entry.correction.replaces.index}`)).length,
+    },
+  );
+  return { masterReleaseId: master.releaseId, entries, definitions, sql: `${sql.join("\n")}\n`, counts };
 }
 
 function planRecords(

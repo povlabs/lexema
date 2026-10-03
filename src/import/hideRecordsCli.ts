@@ -7,24 +7,32 @@
 // (`SEED_INPUT`, default `it-extract.jsonl.gz`) and the dump that archive was
 // built from (`RAW_PAGES`, default the dump in the repository root), both
 // checked before anything is written. See docs/RUN_AN_IMPORT.md.
+// `--plan-only` prints the plan's counts as JSON and writes nothing to the
+// database (src/update/planOnly.ts).
 
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
-import { finish, isMain, type CommandResult } from "../commandLine.js";
+import { finish, flags, isMain, usageError, type CommandResult } from "../commandLine.js";
+import { planOnlyAnswer, planOnlyFlag, planOnlyRun } from "../update/planOnly.js";
 import { readLanguageHeadings, SECTION_LANGUAGE_RULE } from "../italian/sectionLanguage.js";
 import { ARCHIVE_DUMP, VerifiedDump } from "../source/wiktionaryDump.js";
 import { readMasterRelease } from "../update/master.js";
 import { masterReaderOf } from "../update/updateCli.js";
 import { findHiddenRecords, readRulePass } from "./hiddenLayer.js";
 import { planHide, unhidden } from "./hideRecords.js";
-import { seedTargetFrom, webWrangler } from "./seedTarget.js";
+import { seedTargetFrom, webWrangler, type Wrangler } from "./seedTarget.js";
+
+const USAGE = "usage: pnpm run hide:records [--out <dir>] [--plan-only]";
 
 const log = (line: string): void => {
   process.stderr.write(`${line}\n`);
 };
 
-export async function main(env: NodeJS.ProcessEnv = process.env): Promise<CommandResult> {
-  const target = seedTargetFrom(env, webWrangler, resolve(".data/seed-state"));
+export async function main(env: NodeJS.ProcessEnv = process.env, args: readonly string[] = [], wrangler: Wrangler = webWrangler): Promise<CommandResult> {
+  const { planOnly, rest } = planOnlyFlag(args);
+  const options = flags(rest, ["out"]);
+  if (typeof options === "string") return usageError(options, USAGE);
+  const target = seedTargetFrom(env, wrangler, resolve(".data/seed-state"));
   const reader = masterReaderOf(target);
   const archive = resolve(env.SEED_INPUT ?? "it-extract.jsonl.gz");
   const dumpPath = resolve(env.RAW_PAGES ?? ARCHIVE_DUMP.file);
@@ -48,9 +56,15 @@ export async function main(env: NodeJS.ProcessEnv = process.env): Promise<Comman
   const plan = planHide(reader, found, await readFile(resolve("src/db/schema.sql"), "utf8"));
   const byRule = [...new Set(found.map((record) => record.rule))].sort().map((rule) => `${rule} ${found.filter((record) => record.rule === rule).length}`);
   const summary = `${found.length} record(s) the rules find (${byRule.join(", ")}); ${plan.alreadyHidden} already hidden`;
+  const out = resolve(options.get("out") ?? ".data/updates");
+  if (planOnly) {
+    return planOnlyAnswer(planOnlyRun("hide:records", plan.counts, reader), plan.sql, out, `hide-${plan.masterReleaseId}`, {
+      found: found.length,
+      alreadyHidden: plan.alreadyHidden,
+    });
+  }
   if (plan.sql === "") return { out: `${summary}; nothing to hide in ${target.dictionary}`, status: 0 };
 
-  const out = resolve(".data/updates");
   await mkdir(out, { recursive: true });
   const file = join(out, `hide-${plan.masterReleaseId}-${Date.now()}.sql`);
   await writeFile(file, plan.sql);
@@ -78,4 +92,4 @@ export async function main(env: NodeJS.ProcessEnv = process.env): Promise<Comman
   };
 }
 
-if (isMain(import.meta.url)) finish(await main());
+if (isMain(import.meta.url)) finish(await main(process.env, process.argv.slice(2)));

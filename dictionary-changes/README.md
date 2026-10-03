@@ -1,0 +1,40 @@
+# Change declarations
+
+Each `*.json` file here is one **change declaration**: one write to the shared
+dictionary, its inputs, and the counts its plan is expected to have
+([.glossary/TERMS.md](../.glossary/TERMS.md)). One file per change, so two pull
+requests never edit one list. The parser is
+[src/update/declaration.ts](../src/update/declaration.ts); it refuses a file it
+cannot read as one, naming the file.
+
+```json
+{
+  "command": "update:auto",
+  "inputs": { "feedRelease": "it-78385b62" },
+  "expected": {
+    "records": { "added": 2, "changed": 2, "removed": 0 },
+    "written": { "source_record": 4, "applied_change": 4 },
+    "deleted": { "lookup_form": 3 }
+  }
+}
+```
+
+| `command` | `inputs` |
+|---|---|
+| `update:upgrade` | none |
+| `update:auto` | `feedRelease`: the feed release id |
+| `hide:records` | `archive`: the release id the master was seeded from; `rules`: every hiding rule |
+| `normalize:source-text` | `rules`: every source text rule the command applies |
+| `correct:records` | none: it writes the committed list of curated corrections, and `expected` pins what that list writes ([RUN_AN_IMPORT.md](../docs/RUN_AN_IMPORT.md#write-the-curated-corrections-into-a-seeded-database)) |
+
+`expected` is the `counts` object a plan-only run of the command prints
+(`--plan-only`, [src/update/planOnly.ts](../src/update/planOnly.ts)). A table
+left out of `written` or `deleted` is expected to have no row.
+
+The [monthly release](../docs/DEPLOY.md#the-monthly-release) writes one
+`<release id>.json` here, an `update:auto` of the new kaikki release.
+
+After a merge to `main`, the [dictionary deploy](../docs/DEPLOY.md#the-dictionary-deploy)
+applies every declaration the merge adds, in the order their commits reached
+`main`, and stops red when a plan's counts differ from `expected`. Changing or
+deleting a declaration that is already deployed does nothing.

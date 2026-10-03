@@ -1,12 +1,15 @@
 // Update operations compare a later archive with the currently served master.
 // update:auto selects and applies eligible definitions under ADR 0025. All
 // pick their database the way the seed does: the local D1 under `SEED_STATE`
-// (default `.data/seed-state`), or the remote D1 `SEED_REMOTE` names. All
-// run from the laptop, through Wrangler, never through the Worker's read-only
-// dictionary binding (ADR 0018). docs/UPDATE_THE_DICTIONARY.md is the runbook.
+// (default `.data/seed-state`), or the remote D1 `SEED_REMOTE` names. A lane
+// runs them against a local D1 only. The shared `lexema-dictionary` gets
+// `update:auto` and `update:upgrade` from the dictionary deploy, after the merge
+// that declares them (ADR 0018, docs/DEPLOY.md). None writes through the
+// Worker's read-only dictionary binding. docs/UPDATE_THE_DICTIONARY.md is the
+// runbook.
 //
-//   pnpm run update:auto <archive> --pages <dump> [--out <dir>]
-//   pnpm run update:upgrade
+//   pnpm run update:auto <archive> --pages <dump> [--out <dir>] [--plan-only]
+//   pnpm run update:upgrade [--plan-only]
 //   pnpm run update:diff <archive> [--out <dir>]
 //   pnpm run update:select <archive> --pages <dump> [--out <dir>]
 //   pnpm run update:apply <archive> <change id> [<change id> ...] [--out <dir>]
@@ -21,21 +24,26 @@
 // tables and views of #18, and the page-entry tables of #403, created empty.
 // It writes no row. Run it on such a dictionary before code that reads them
 // serves from it.
+//
+// `--plan-only` makes `update:auto` or `update:upgrade` a plan-only run
+// (src/update/planOnly.ts): it prints the plan's counts as JSON and writes
+// nothing to the database.
 
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { finish, isMain, usageError, type CommandResult } from "../commandLine.js";
-import { seedTargetFrom, webWrangler, type SeedTarget } from "../import/seedTarget.js";
+import { seedTargetFrom, webWrangler, type SeedTarget, type Wrangler } from "../import/seedTarget.js";
 import { ApplyRefused, checkApplied, chooseChanges, planApply, type ApplyPlan } from "./apply.js";
 import { diffAgainstMaster, reportMarkdown, reportOf } from "./diff.js";
-import { missingUpgrade, readMasterRelease, type MasterReader } from "./master.js";
-import { masterUpgradeSql } from "./masterUpgrade.js";
+import { missingUpgrade, planUpgrade, readMasterRelease, type MasterReader } from "./master.js";
 import { automaticPlan } from "./automatic.js";
+import { PlanCounts } from "./planCounts.js";
+import { planOnlyAnswer, planOnlyFlag, planOnlyRun } from "./planOnly.js";
 import { selectChanges, selectionIds, selectionMarkdown, withFeedDump } from "./select.js";
 
 const USAGE = `usage:
-  pnpm run update:auto <archive> --pages <dump the archive was built from> [--out <dir>]
-  pnpm run update:upgrade [--out <dir>]
+  pnpm run update:auto <archive> --pages <dump the archive was built from> [--out <dir>] [--plan-only]
+  pnpm run update:upgrade [--out <dir>] [--plan-only]
   pnpm run update:diff <archive> [--out <dir>]
   pnpm run update:select <archive> --pages <dump the archive was built from> [--out <dir>]
   pnpm run update:apply <archive> <change id> [<change id> ...] [--out <dir>]
@@ -164,7 +172,8 @@ async function applyCommand(target: SeedTarget, args: readonly string[]): Promis
 }
 
 async function automaticCommand(target: SeedTarget, args: readonly string[]): Promise<CommandResult> {
-  const read = readArguments(args);
+  const { planOnly, rest } = planOnlyFlag(args);
+  const read = readArguments(rest);
   if (typeof read === "string") return usageError(read, USAGE);
   if (read.positional.length !== 1 || read.pages === undefined || read.ids !== undefined) return usageError("update:auto takes one archive, --pages and no change ids", USAGE);
   const reader = masterReaderOf(target);
@@ -172,6 +181,12 @@ async function automaticCommand(target: SeedTarget, args: readonly string[]): Pr
   const plan = await withFeedDump(found.feed, read.pages, LANGUAGES, async (pages) => automaticPlan(reader, found, pages, {
     schema: await readFile(SCHEMA, "utf8"), appliedAt: new Date().toISOString(),
   }));
+  if (planOnly) {
+    const counts = plan?.counts ?? PlanCounts.NONE;
+    return planOnlyAnswer(planOnlyRun("update:auto", counts, reader), plan?.sql ?? "", read.out, `auto-${found.master.releaseId}-${found.feed.releaseId}`, {
+      feedRelease: found.feed.releaseId,
+    });
+  }
   if (plan === null) return { out: `${found.feed.releaseId}: no eligible changes; nothing written`, status: 0 };
   return executeApply(target, reader, plan, read.out, true);
 }
@@ -224,15 +239,19 @@ async function executeApply(target: SeedTarget, reader: MasterReader, plan: Appl
 }
 
 async function upgradeCommand(target: SeedTarget, args: readonly string[]): Promise<CommandResult> {
-  const read = readArguments(args);
+  const { planOnly, rest } = planOnlyFlag(args);
+  const read = readArguments(rest);
   if (typeof read === "string") return usageError(read, USAGE);
   if (read.positional.length > 0) return usageError("update:upgrade takes no archive and no change ids", USAGE);
-  const master = readMasterRelease(masterReaderOf(target));
-  const missing = missingUpgrade(masterReaderOf(target));
+  const reader = masterReaderOf(target);
+  const master = readMasterRelease(reader);
+  const { missing, sql } = planUpgrade(reader, await readFile(SCHEMA, "utf8"));
+  // The upgrade writes no row: its counts are none, and what it adds is named beside them.
+  if (planOnly) return planOnlyAnswer(planOnlyRun("update:upgrade", PlanCounts.NONE, reader), sql, read.out, `upgrade-${master.releaseId}`, { adds: missing });
   if (missing.length === 0) return { out: `${target.dictionary} (master ${master.releaseId}) already has every table and view the upgrade adds; nothing to do`, status: 0 };
   await mkdir(read.out, { recursive: true });
   const file = join(read.out, `upgrade-${master.releaseId}-${Date.now()}.sql`);
-  await writeFile(file, masterUpgradeSql(await readFile(SCHEMA, "utf8")));
+  await writeFile(file, sql);
   log(`adding ${missing.join(", ")}: ${file}`);
   target.execute(["--file", file], false);
   const still = missingUpgrade(masterReaderOf(target));
@@ -242,10 +261,10 @@ async function upgradeCommand(target: SeedTarget, args: readonly string[]): Prom
 
 const COMMANDS = { auto: automaticCommand, upgrade: upgradeCommand, diff: diffCommand, select: selectCommand, apply: applyCommand } as const;
 
-export async function main(argv: readonly string[]): Promise<CommandResult> {
+export async function main(argv: readonly string[], wrangler: Wrangler = webWrangler, env: NodeJS.ProcessEnv = process.env): Promise<CommandResult> {
   const [command, ...args] = argv;
   if (command === undefined || !Object.hasOwn(COMMANDS, command)) return usageError(`unknown command ${command ?? "(none)"}`, USAGE);
-  const target = seedTargetFrom(process.env, webWrangler, resolve(".data/seed-state"));
+  const target = seedTargetFrom(env, wrangler, resolve(".data/seed-state"));
   return COMMANDS[command as keyof typeof COMMANDS](target, args);
 }
 
