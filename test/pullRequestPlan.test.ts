@@ -30,7 +30,7 @@ function answerOf(change: DeclaredChange, counts: object = COUNTS, dictionaryRec
   return { command: change.command, counts: planned, dictionaryRecords, limitBreaches: planned.limitBreaches(dictionaryRecords) };
 }
 
-/** A stand-in for the plan-only entry, by default holding a `povlabs/lexema-data` token, that records each change it is asked to plan. */
+/** A stand-in for the plan-only entry, which needs no token (#527), that records each change it is asked to plan. */
 function planner(counts: object = COUNTS, dictionaryRecords = 1000): PullRequestPlanner & { planned: string[] } {
   const planned: string[] = [];
   return { planned, plan: async (change) => (planned.push(change.file), answerOf(change, counts, dictionaryRecords)) };

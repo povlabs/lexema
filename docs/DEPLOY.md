@@ -567,15 +567,13 @@ No agent does any of them.
    `lexema-dictionary-deploy`. Under **Permissions** add one row: **Account**,
    **D1**, **Edit**, and nothing else. Under **Account Resources** include the
    account that owns `lexema-dictionary`. Create it and copy it.
-2. **No `lexema-data` token.** `povlabs/lexema-data` is public, so the deploy
-   reads its archives and dumps without one (#527).
-3. **The environment.** In this repository's **Settings**, **Environments**,
+2. **The environment.** In this repository's **Settings**, **Environments**,
    select **New environment** and name it `dictionary-deploy`. Under
    **Deployment branches and tags** choose **Selected branches and tags** and
    add `main` only. Add the environment secret `CLOUDFLARE_D1_TOKEN` (step 1)
    and the environment variable `CLOUDFLARE_ACCOUNT_ID`. `povlabs/lexema-data`
    is public, so no data token is needed (#527).
-4. **The `production` branch.** Create it at `main`'s current commit:
+3. **The `production` branch.** Create it at `main`'s current commit:
 
    ```sh
    git fetch origin && git push origin origin/main:refs/heads/production
@@ -583,7 +581,7 @@ No agent does any of them.
 
    If a rule protects it, let GitHub Actions push to it; only fast-forwards
    are ever pushed.
-5. **Workers Builds.** In the Worker's **Settings**, **Build**, **Branch
+4. **Workers Builds.** In the Worker's **Settings**, **Build**, **Branch
    control**, change the production branch from `main` to `production`.
 
 ### The pull request plan check

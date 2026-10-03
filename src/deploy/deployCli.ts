@@ -64,10 +64,6 @@ export function deployLog(write: (line: string) => void, dictionary: string): Pi
   };
 }
 
-/** The data repository's fetcher: the public repository needs no token (#527). */
-function fetcherFrom(): DataFetcher {
-  return lexemaDataFetcher();
-}
 
 /**
  * `--plan-only --added-since <base>`: the pull request plan check (#494).
@@ -85,7 +81,7 @@ async function pullRequestPlanCommand(base: string, env: NodeJS.ProcessEnv, wran
   }
   const target = seedTargetFrom(env, wrangler, resolve(".data/seed-state"));
   const reader = masterReaderOf(target);
-  const fetcher = fetcherFrom();
+  const fetcher = lexemaDataFetcher();
   const outcomes = await planPullRequest(declarations, {
     plan: async (change) => planOnly(change, { reader, fetcher, workDir: await mkdtemp(join(env.RUNNER_TEMP ?? tmpdir(), "lexema-plan-")) }),
   });
@@ -119,7 +115,7 @@ async function planOnlyCommand(args: readonly string[], env: NodeJS.ProcessEnv, 
   const answer = await planOnly(change, {
     ...catalogs,
     reader: masterReaderOf(target),
-    fetcher: fetcherFrom(),
+    fetcher: lexemaDataFetcher(),
     workDir: await mkdtemp(join(env.RUNNER_TEMP ?? tmpdir(), "lexema-plan-")),
   });
   const out = JSON.stringify({ ...answer, planOnly: true });
@@ -143,7 +139,7 @@ async function deployCommand(env: NodeJS.ProcessEnv, wrangler: Wrangler): Promis
     target,
     reader: masterReaderOf(target),
     bookmark: () => bookmarkOf(wrangler, target.dictionary),
-    fetcher: fetcherFrom(),
+    fetcher: lexemaDataFetcher(),
     workDir: await mkdtemp(join(env.RUNNER_TEMP ?? tmpdir(), "lexema-deploy-")),
     ...deployLog((line) => process.stderr.write(line), target.dictionary),
   });
