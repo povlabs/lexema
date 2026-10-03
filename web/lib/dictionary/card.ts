@@ -52,6 +52,19 @@ function phraseLineText(line: PhraseLine): string {
 
 /** The card a result page's lookup gives it. */
 export function cardOf(attempt: Attempt): Card {
+  if (attempt.outcome === "declared-lemma") {
+    // A declared lemma's page (#453): the word and its first part of speech,
+    // and nothing it does not have: no pronunciation, gender or meaning.
+    const { page } = attempt;
+    return {
+      kind: "word",
+      headword: page.headword,
+      pronunciation: undefined,
+      gender: undefined,
+      partOfSpeech: page.readings[0].reading.posTitle,
+      meaning: undefined,
+    };
+  }
   if (attempt.outcome !== "found") return HOME_CARD;
   const searched = attempt.query.raw.trim();
   if (attempt.route.kind === "phrase") {
