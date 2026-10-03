@@ -1,0 +1,495 @@
+// The dictionary deploy run (#456), end to end against a local D1 file and a
+// local Git remote: which declarations it takes, the order of its steps, what
+// it writes, when it stops, what its summary says, and when it moves
+// `production`. No network, no credential, no Wrangler process.
+
+import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
+import { execFileSync } from "node:child_process";
+import { copyFile, mkdir, mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { dirname, join, resolve } from "node:path";
+import { DatabaseSync } from "node:sqlite";
+import test from "node:test";
+import { deployLog, main as deployMain } from "../src/deploy/deployCli.js";
+import { type DataFetcher, DataRefused, fetchVerified, filesFor, lexemaDataFetcher } from "../src/deploy/dataFiles.js";
+import { DEPLOY_STEPS, deployDictionary, deploySummary, type DeployDeps, type DeployStep, planOnly, restoreCommand } from "../src/deploy/dictionaryDeploy.js";
+import { gitIn, PRODUCTION_BRANCH } from "../src/deploy/pending.js";
+import { inlineParameters, lookupDatabaseOf, WORD_LIST } from "../src/deploy/wordCheck.js";
+import { SOURCE_TEXT_UPDATE_RULES } from "../src/import/normalizeSourceText.js";
+import { seedSql } from "../src/import/seedSql.js";
+import { PLURAL_PLACEHOLDER_FORM } from "../src/italian/sourceTextNormalization.js";
+import { fromNodeSqlite } from "../src/lookup/database.js";
+import { lookup } from "../src/lookup/lookup.js";
+import { parseChange } from "../src/update/declaration.js";
+import { masterReaderOf } from "../src/update/updateCli.js";
+import { localD1, type LocalD1 } from "./localD1.js";
+
+const RELEASE = "it-test";
+const record = (fields: Record<string, unknown>): string => JSON.stringify({ lang_code: "it", ...fields });
+
+const VADO_SOURCE = "vado ( approfondimento) 1ª persona singolare del presente indicativo di andare";
+const VADO_STORED = "prima persona singolare del presente indicativo di andare";
+const FATE_SOURCE = "2ª persona plurale dell'indicativo presente di fare";
+const FATE_STORED = "seconda persona plurale dell'indicativo presente di fare";
+
+// The words the run looks up, the records `normalize:source-text` changes, and
+// enough others that changing three stays under the 5% limit.
+const LINES = [
+  record({ word: "casa", pos: "noun", pos_title: "Sostantivo", tags: ["feminine"], senses: [{ glosses: ["edificio adibito ad abitazione"] }] }),
+  record({ word: "andare", pos: "verb", pos_title: "Verbo", senses: [{ glosses: ["muoversi"] }] }),
+  record({ word: "raccontare", pos: "verb", pos_title: "Verbo", senses: [{ glosses: ["narrare"] }] }),
+  record({ word: "bello", pos: "adj", pos_title: "Aggettivo", senses: [{ glosses: ["gradevole a vedersi"] }] }),
+  record({ word: "studente", pos: "noun", pos_title: "Sostantivo", tags: ["masculine"], senses: [{ glosses: ["chi studia"] }] }),
+  record({
+    word: "andavano", pos: "verb", pos_title: "Voce verbale",
+    senses: [{ glosses: ["terza persona plurale dell'indicativo imperfetto di andare"], tags: ["form-of"], form_of: [{ word: "andare" }] }],
+  }),
+  record({ word: "vado", pos: "verb", pos_title: "Voce verbale", tags: ["form-of"], senses: [{ glosses: [VADO_SOURCE] }] }),
+  record({ word: "fate", pos: "verb", pos_title: "Voce verbale", tags: ["form-of"], senses: [{ glosses: [FATE_SOURCE] }] }),
+  record({ word: "pittore", pos: "noun", pos_title: "Sostantivo", tags: ["masculine"], senses: [{ glosses: ["chi dipinge"] }] }),
+];
+const FILLERS = Array.from({ length: 60 }, (_, i) =>
+  record({ word: `parola${String.fromCharCode(97 + (i % 26))}${String.fromCharCode(97 + Math.floor(i / 26))}`, pos: "noun", pos_title: "Sostantivo", senses: [{ glosses: ["una parola"] }] }),
+);
+
+const NORMALIZE = { command: "normalize:source-text", inputs: { rules: [...SOURCE_TEXT_UPDATE_RULES] } };
+/** What `normalize:source-text` plans on the dictionary `beforeTheRules` leaves (test/planOnly.test.ts). */
+const NORMALIZE_COUNTS = { records: { added: 0, changed: 3, removed: 0 }, written: { sense_gloss: 2 }, deleted: { lookup_form: 1, grammar_claim: 1 } };
+
+/** As a seed before the source text rules: the source's glosses, and a lookup row and a form claim for the plural template. */
+function beforeTheRules(db: DatabaseSync): void {
+  db.prepare("UPDATE sense_gloss SET text = ? WHERE text = ?").run(VADO_SOURCE, VADO_STORED);
+  db.prepare("UPDATE sense_gloss SET text = ? WHERE text = ?").run(FATE_SOURCE, FATE_STORED);
+  const { record_id: pittore } = db.prepare("SELECT record_id FROM source_record WHERE word = 'pittore'").get() as { record_id: number };
+  db.prepare(`INSERT INTO lookup_form (record_id, release_id, origin, surface, surface_key, json_pointer, form_index, form_source)
+              VALUES (?, ?, 'embedded-form', ?, ?, '/forms/0/form', 0, NULL)`).run(pittore, RELEASE, PLURAL_PLACEHOLDER_FORM, PLURAL_PLACEHOLDER_FORM);
+  db.prepare(`INSERT INTO grammar_claim (record_id, scope, scope_index, json_pointer, status, dimension, value, source_text)
+              VALUES (?, 'form', 0, '/forms/0/tags/0', 'stated', 'number', 'plural', 'plural')`).run(pittore);
+}
+
+async function seeded(dir: string, lines: readonly string[]): Promise<DatabaseSync> {
+  const input = join(dir, "fixture.jsonl");
+  await writeFile(input, `${lines.join("\n")}\n`);
+  const report = await seedSql({
+    input, outputDir: join(dir, "sql"), schema: resolve("src/db/schema.sql"), releaseId: RELEASE,
+    requiredWords: [], validateFixtureClosure: false,
+  });
+  const db = new DatabaseSync(":memory:");
+  for (const part of report.parts) db.exec(await readFile(part, "utf8"));
+  beforeTheRules(db);
+  return db;
+}
+
+/** Git with a fixed author and no signing, so a commit never depends on the machine's config. */
+function git(cwd: string, ...args: string[]): string {
+  return execFileSync("git", ["-c", "user.name=test", "-c", "user.email=test@example.invalid", "-c", "commit.gpgsign=false", ...args], {
+    cwd, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"],
+  }).trim();
+}
+
+interface World {
+  readonly dir: string;
+  readonly d1: LocalD1;
+  readonly work: string;
+  readonly origin: string;
+  /** Commit `files` to main and push it; returns the commit. */
+  commit(files: Record<string, string>): Promise<string>;
+  /** Where `production` is on the remote. */
+  production(): string;
+  /** `deployDictionary`'s dependencies for a run on `head`, recording every step and every bookmark. */
+  deps(head: string, extra?: Partial<DeployDeps>): DeployDeps & { steps: DeployStep[]; bookmarks: number[] };
+}
+
+async function withWorld(run: (world: World) => Promise<void>, lines: readonly string[] = [...LINES, ...FILLERS]): Promise<void> {
+  const dir = await mkdtemp(join(tmpdir(), "lexema-deploy-"));
+  const db = await seeded(dir, lines);
+  try {
+    const d1 = localD1(dir, db);
+    const origin = join(dir, "origin.git");
+    const work = join(dir, "work");
+    git(dir, "init", "--bare", "--initial-branch=main", origin);
+    git(dir, "clone", origin, work);
+    git(work, "checkout", "-B", "main");
+    const world: World = {
+      dir, d1, work, origin,
+      async commit(files) {
+        for (const [path, text] of Object.entries(files)) {
+          await mkdir(dirname(join(work, path)), { recursive: true });
+          await writeFile(join(work, path), text);
+        }
+        git(work, "add", "--all");
+        git(work, "commit", "--allow-empty", "-m", "change");
+        git(work, "push", "origin", "main");
+        return git(work, "rev-parse", "HEAD");
+      },
+      production: () => git(origin, "rev-parse", `refs/heads/${PRODUCTION_BRANCH}`),
+      deps(head, extra = {}) {
+        const steps: DeployStep[] = [];
+        const bookmarks: number[] = [];
+        return {
+          git: gitIn(work),
+          head,
+          target: d1.target,
+          reader: masterReaderOf(d1.target),
+          bookmark: () => {
+            bookmarks.push(d1.calls.filter((call) => call[0] === "--file").length);
+            return `bookmark-${bookmarks.length}`;
+          },
+          fetcher: async (path) => assert.fail(`nothing should be fetched, asked for ${path}`),
+          workDir: join(dir, "run"),
+          onStep: (step) => steps.push(step),
+          steps,
+          bookmarks,
+          ...extra,
+        };
+      },
+    };
+    const base = await world.commit({ "dictionary-changes/README.md": "# Change declarations\n" });
+    git(work, "push", "origin", `${base}:refs/heads/${PRODUCTION_BRANCH}`);
+    await run(world);
+  } finally {
+    db.close();
+    await rm(dir, { recursive: true, force: true });
+  }
+}
+
+const writes = (d1: LocalD1): string[][] => d1.calls.filter((call) => call[0] === "--file");
+
+const glosses = (d1: LocalD1): string[] => {
+  const db = d1.open();
+  try {
+    return (db.prepare("SELECT text FROM sense_gloss WHERE text LIKE '%persona%' ORDER BY gloss_id").all() as { text: string }[]).map(({ text }) => text);
+  } finally {
+    db.close();
+  }
+};
+
+const declaration = (change: object, counts: object = NORMALIZE_COUNTS): string => `${JSON.stringify({ ...change, expected: counts }, null, 2)}\n`;
+
+test("a push adding one declaration records a bookmark, plans, applies, reads back, looks up the words and then fast-forwards production", async () => {
+  await withWorld(async (world) => {
+    const head = await world.commit({ "dictionary-changes/2026-10-normalize.json": declaration(NORMALIZE) });
+    const deps = world.deps(head);
+    const outcome = await deployDictionary(deps);
+
+    assert.equal(outcome.kind, "green", deploySummary(outcome, "lexema"));
+    assert.deepEqual(deps.steps, [...DEPLOY_STEPS]);
+    assert.deepEqual(deps.bookmarks, [0], "one bookmark, taken before any write");
+    assert.equal(writes(world.d1).length, 1, "the change ran as one file");
+    const after = glosses(world.d1);
+    assert.ok(after.includes(VADO_STORED) && after.includes(FATE_STORED), after.join("\n"));
+    assert.ok(!after.includes(VADO_SOURCE) && !after.includes(FATE_SOURCE), after.join("\n"));
+    assert.equal(world.production(), head);
+    if (outcome.kind === "green") {
+      assert.equal(outcome.bookmark, "bookmark-1");
+      assert.deepEqual(outcome.changes.map(({ file, ran, counts }) => [file, ran, counts.toJSON()]), [["dictionary-changes/2026-10-normalize.json", true, NORMALIZE_COUNTS]]);
+    }
+    assert.match(deploySummary(outcome, "lexema-dictionary"), /`production` is now/);
+  });
+});
+
+test("the run logs the bookmark and its restore command as soon as it is taken, before the first --file call", async () => {
+  await withWorld(async (world) => {
+    const head = await world.commit({ "dictionary-changes/2026-10-normalize.json": declaration(NORMALIZE) });
+    const log: { line: string; writesBefore: number }[] = [];
+    const deps = world.deps(head, deployLog((line) => log.push({ line, writesBefore: writes(world.d1).length }), "lexema-dictionary"));
+    const outcome = await deployDictionary(deps);
+
+    assert.equal(outcome.kind, "green", deploySummary(outcome, "lexema-dictionary"));
+    const bookmarkLines = log.filter(({ line }) => line.startsWith("bookmark: bookmark-1 "));
+    assert.equal(bookmarkLines.length, 1, log.map(({ line }) => line).join(""));
+    assert.equal(bookmarkLines[0]?.writesBefore, 0, "logged before any write");
+    assert.ok(bookmarkLines[0]?.line.includes(restoreCommand("lexema-dictionary", "bookmark-1")), bookmarkLines[0]?.line);
+    assert.ok(log.findIndex(({ line }) => line.startsWith("bookmark: ")) < log.findIndex(({ line }) => line.startsWith("apply: ")), "logged before the apply step");
+    assert.equal(writes(world.d1).length, 1);
+  });
+});
+
+test("a push adding no declaration writes nothing to the dictionary and fast-forwards production", async () => {
+  await withWorld(async (world) => {
+    // A declaration that only changes, and a file beside the declarations, are not declarations added.
+    await world.commit({ "dictionary-changes/2026-10-normalize.json": declaration(NORMALIZE) });
+    git(world.work, "push", "origin", `HEAD:refs/heads/${PRODUCTION_BRANCH}`);
+    const head = await world.commit({ "dictionary-changes/2026-10-normalize.json": declaration(NORMALIZE, { records: { added: 0, changed: 0, removed: 0 } }), "dictionary-changes/notes.md": "x\n", "README.md": "x\n" });
+    const before = world.d1.sha256();
+    const deps = world.deps(head);
+    const outcome = await deployDictionary(deps);
+
+    assert.equal(outcome.kind, "green", deploySummary(outcome, "lexema"));
+    assert.deepEqual(deps.steps, ["pending", "production"]);
+    assert.deepEqual(deps.bookmarks, []);
+    assert.deepEqual(world.d1.calls, [], "the dictionary was not even read");
+    assert.equal(world.d1.sha256(), before);
+    assert.equal(world.production(), head);
+    assert.match(deploySummary(outcome, "lexema-dictionary"), /No change declaration was added, so nothing was written/);
+
+    // A second run on the same commit has nothing to do.
+    assert.equal((await deployDictionary(world.deps(head))).kind, "deployed-already");
+  });
+});
+
+test("a plan whose counts differ from the declaration stops red before any write and leaves production unmoved", async () => {
+  await withWorld(async (world) => {
+    const base = world.production();
+    const head = await world.commit({ "dictionary-changes/2026-10-normalize.json": declaration(NORMALIZE, { ...NORMALIZE_COUNTS, written: { sense_gloss: 3 } }) });
+    const before = world.d1.sha256();
+    const deps = world.deps(head);
+    const outcome = await deployDictionary(deps);
+
+    assert.equal(outcome.kind, "red");
+    assert.deepEqual(deps.steps, ["pending", "fetch", "bookmark", "plan"]);
+    assert.deepEqual(writes(world.d1), []);
+    assert.equal(world.d1.sha256(), before);
+    assert.equal(world.production(), base);
+    if (outcome.kind === "red") {
+      assert.equal(outcome.written, false);
+      assert.deepEqual(outcome.reasons, ["dictionary-changes/2026-10-normalize.json: written.sense_gloss is 2 in the plan, 3 declared"]);
+    }
+    const summary = deploySummary(outcome, "lexema-dictionary");
+    assert.match(summary, /Nothing was written to `lexema-dictionary`/);
+    assert.doesNotMatch(summary, /time-travel restore/);
+  });
+});
+
+test("a plan that crosses a hard limit stops red before any write, even when its counts match the declaration", async () => {
+  // Without the other records, changing three is more than 5% of the dictionary.
+  await withWorld(async (world) => {
+    const base = world.production();
+    const head = await world.commit({ "dictionary-changes/2026-10-normalize.json": declaration(NORMALIZE) });
+    const before = world.d1.sha256();
+    const outcome = await deployDictionary(world.deps(head));
+
+    assert.equal(outcome.kind, "red");
+    if (outcome.kind === "red") assert.deepEqual(outcome.reasons, [`dictionary-changes/2026-10-normalize.json: the plan changes or removes 3 of ${LINES.length} records, more than 5%`]);
+    assert.deepEqual(writes(world.d1), []);
+    assert.equal(world.d1.sha256(), before);
+    assert.equal(world.production(), base);
+  }, LINES);
+});
+
+test("a read-back mismatch turns the run red, names the bookmark and the restore command, and restores nothing", async () => {
+  await withWorld(async (world) => {
+    const base = world.production();
+    const head = await world.commit({ "dictionary-changes/2026-10-normalize.json": declaration(NORMALIZE) });
+    // A file that is accepted and does not land: what a read-back is for.
+    const lost: string[][] = [];
+    const target = { dictionary: "lexema-dictionary", execute: (args: readonly string[], capture: boolean) => (args[0] === "--file" ? (lost.push([...args]), "") : world.d1.target.execute(args, capture)) };
+    const deps = world.deps(head, { target });
+    const outcome = await deployDictionary(deps);
+
+    assert.equal(outcome.kind, "red");
+    assert.deepEqual(deps.steps, ["pending", "fetch", "bookmark", "plan", "apply", "read-back"]);
+    assert.equal(lost.length, 1);
+    assert.deepEqual(deps.bookmarks, [0], "one bookmark, and no restore");
+    assert.ok(world.d1.calls.every((call) => call[0] === "--json"), "after the read-back only reads reached the dictionary");
+    assert.equal(world.production(), base);
+    if (outcome.kind === "red") {
+      assert.equal(outcome.written, true);
+      assert.deepEqual(outcome.reasons, ["dictionary-changes/2026-10-normalize.json: 5 source text change(s) still pending after the file ran"]);
+    }
+    const summary = deploySummary(outcome, "lexema-dictionary");
+    assert.ok(summary.includes("`bookmark-1`"), summary);
+    assert.ok(summary.includes(restoreCommand("lexema-dictionary", "bookmark-1")), summary);
+    assert.equal(restoreCommand("lexema-dictionary", "bookmark-1"), "pnpm --dir web exec wrangler d1 time-travel restore lexema-dictionary --bookmark=bookmark-1");
+    assert.match(summary, /Nothing restores by itself/);
+  });
+});
+
+test("a word-lookup mismatch turns the run red and names the bookmark and the restore command", async () => {
+  await withWorld(async (world) => {
+    const base = world.production();
+    const head = await world.commit({ "dictionary-changes/2026-10-normalize.json": declaration(NORMALIZE) });
+    const deps = world.deps(head, { words: [...WORD_LIST, "inesistentissimo"] });
+    const outcome = await deployDictionary(deps);
+
+    assert.equal(outcome.kind, "red");
+    assert.deepEqual(deps.steps, ["pending", "fetch", "bookmark", "plan", "apply", "read-back", "word-lookup"]);
+    assert.equal(world.production(), base);
+    if (outcome.kind === "red") assert.deepEqual(outcome.reasons, ["word lookup: inesistentissimo: not-found, not found with a reading"]);
+    assert.ok(deploySummary(outcome, "lexema-dictionary").includes(restoreCommand("lexema-dictionary", "bookmark-1")));
+  });
+});
+
+/** An archive and a dump, and the catalogs that name them, for a release made up for the test. */
+async function madeUpRelease(dir: string): Promise<{ data: string; catalog: Record<string, never>; dumps: Record<string, { file: string; bytes: number; sha1: string }>; releaseId: `it-${string}`; fetcher: DataFetcher }> {
+  const data = join(dir, "lexema-data");
+  const archiveBytes = Buffer.from(`${LINES[0]}\n`);
+  const dumpBytes = Buffer.from("<mediawiki></mediawiki>\n");
+  const sha256 = createHash("sha256").update(archiveBytes).digest("hex");
+  const releaseId = `it-${sha256.slice(0, 8)}` as const;
+  await mkdir(join(data, "source"), { recursive: true });
+  await writeFile(join(data, "source", `${releaseId}.jsonl.gz`), archiveBytes);
+  await writeFile(join(data, "source", "itwiktionary-20991001-pages-articles.xml.bz2"), dumpBytes);
+  const catalog = {
+    [sha256]: { sourceUrl: "https://example.invalid/it-extract.jsonl.gz", retrievedAt: "2099-10-02T00:00:00Z", dump: { id: "itwiktionary-20991001", basis: "recorded" }, evidence: [] },
+  } as unknown as Record<string, never>;
+  const dumps = { "itwiktionary-20991001": { file: "itwiktionary-20991001-pages-articles.xml.bz2", bytes: dumpBytes.length, sha1: createHash("sha1").update(dumpBytes).digest("hex") } };
+  const fetcher: DataFetcher = async (path, to) => {
+    await mkdir(dirname(to), { recursive: true });
+    await copyFile(join(data, path), to);
+  };
+  return { data, catalog, dumps, releaseId, fetcher };
+}
+
+test("an archive or a dump whose checksum does not match is refused before any write", async () => {
+  await withWorld(async (world) => {
+    const release = await madeUpRelease(world.dir);
+    const change = { command: "update:auto", inputs: { feedRelease: release.releaseId } };
+    const files = filesFor(parseChange("test", JSON.stringify(change)), release.catalog, release.dumps);
+    assert.ok(files !== null);
+    assert.equal(files.archive.path, `source/${release.releaseId}.jsonl.gz`);
+    assert.equal(files.dump.path, "source/itwiktionary-20991001-pages-articles.xml.bz2");
+    // The right bytes pass.
+    await fetchVerified(files, release.fetcher, join(world.dir, "fetched"));
+
+    const base = world.production();
+    const head = await world.commit({ "dictionary-changes/2099-10-feed.json": declaration(change) });
+    const before = world.d1.sha256();
+    for (const [path, wrong] of [[files.archive.path, "not the archive\n"], [files.dump.path, "not the dump\n"]] as const) {
+      const original = await readFile(join(release.data, path));
+      await writeFile(join(release.data, path), wrong);
+      const deps = world.deps(head, { fetcher: release.fetcher, catalog: release.catalog, dumps: release.dumps });
+      const outcome = await deployDictionary(deps);
+      await writeFile(join(release.data, path), original);
+
+      assert.equal(outcome.kind, "red");
+      assert.deepEqual(deps.steps, ["pending", "fetch"]);
+      assert.deepEqual(deps.bookmarks, []);
+      if (outcome.kind === "red") {
+        assert.equal(outcome.written, false);
+        assert.equal(outcome.reasons.length, 1);
+        assert.ok(outcome.reasons[0].startsWith(path), outcome.reasons[0]);
+      }
+    }
+    assert.deepEqual(world.d1.calls, []);
+    assert.equal(world.d1.sha256(), before);
+    assert.equal(world.production(), base);
+
+    // A release no archive facts name has no checksum to be held to.
+    assert.throws(() => filesFor(parseChange("test", JSON.stringify({ command: "update:auto", inputs: { feedRelease: "it-00000000" } }))), DataRefused);
+  });
+});
+
+test("the master's archive is read from source/it-extract.jsonl.gz, and a feed's from source/<release id>.jsonl.gz", () => {
+  const hide = filesFor(parseChange("test", JSON.stringify({ command: "hide:records", inputs: { archive: "it-0c432803", rules: ["section-language/v1", "form-of-foreign-lemma/v1"] } })));
+  assert.deepEqual(hide?.archive.path, "source/it-extract.jsonl.gz");
+  assert.deepEqual(hide?.dump.path, "source/itwiktionary-20260701-pages-articles.xml.bz2");
+  const feed = filesFor(parseChange("test", JSON.stringify({ command: "update:auto", inputs: { feedRelease: "it-78385b62" } })));
+  assert.deepEqual(feed?.archive.path, "source/it-78385b62.jsonl.gz");
+  assert.deepEqual(feed?.dump.path, "source/itwiktionary-20260901-pages-articles.xml.bz2");
+  assert.equal(filesFor(parseChange("test", JSON.stringify(NORMALIZE))), null);
+});
+
+test("a file is read from lexema-data's contents API with the token it is given, raw", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "lexema-fetch-"));
+  try {
+    const asked: { url: string; headers: Record<string, string> }[] = [];
+    const fake = (async (url: string, init: { headers: Record<string, string> }) => {
+      asked.push({ url, headers: init.headers });
+      return url.endsWith("missing.bz2") ? new Response("no", { status: 404 }) : new Response("the bytes");
+    }) as unknown as typeof fetch;
+    const fetcher = lexemaDataFetcher("read-only-token", fake);
+    await fetcher("source/it-78385b62.jsonl.gz", join(dir, "a", "archive"));
+    assert.equal(await readFile(join(dir, "a", "archive"), "utf8"), "the bytes");
+    assert.deepEqual(asked[0], {
+      url: "https://api.github.com/repos/hueypov/lexema-data/contents/source/it-78385b62.jsonl.gz",
+      headers: { Accept: "application/vnd.github.raw+json", Authorization: "Bearer read-only-token", "X-GitHub-Api-Version": "2022-11-28" },
+    });
+    await assert.rejects(fetcher("source/missing.bz2", join(dir, "b")), (error: unknown) => error instanceof DataRefused && /answered 404/.test(error.message));
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test("the plan-only entry runs the plan and writes nothing", async () => {
+  await withWorld(async (world) => {
+    const before = world.d1.sha256();
+    const answer = await planOnly(parseChange("test", JSON.stringify(NORMALIZE)), {
+      reader: masterReaderOf(world.d1.target),
+      fetcher: async (path) => assert.fail(`nothing should be fetched, asked for ${path}`),
+      workDir: join(world.dir, "plan"),
+    });
+    assert.deepEqual(answer.counts.toJSON(), NORMALIZE_COUNTS);
+    assert.equal(answer.dictionaryRecords, LINES.length + FILLERS.length);
+    assert.deepEqual(answer.limitBreaches, []);
+
+    // Through the command line, with the counts as a step output.
+    const output = join(world.dir, "github-output");
+    await writeFile(output, "");
+    const result = await deployMain(["--plan-only", "--change", JSON.stringify(NORMALIZE)], { SEED_STATE: world.d1.persistTo, GITHUB_OUTPUT: output, RUNNER_TEMP: world.dir }, world.d1.wrangler);
+    assert.equal(result.status, 0, result.out);
+    assert.deepEqual(JSON.parse(result.out).counts, NORMALIZE_COUNTS);
+    assert.equal(await readFile(output, "utf8"), `counts=${result.out}\n`);
+
+    assert.deepEqual(writes(world.d1), []);
+    assert.equal(world.d1.sha256(), before);
+    assert.equal(world.production(), git(world.origin, "rev-parse", "refs/heads/main"));
+  });
+});
+
+test("the deploy itself runs only in GitHub Actions on main", async () => {
+  for (const env of [{}, { GITHUB_ACTIONS: "true", GITHUB_REF: "refs/heads/build/456" }]) {
+    const result = await deployMain([], env, () => assert.fail("no wrangler call"));
+    assert.equal(result.status, 1);
+    assert.match(result.out, /runs only in the dictionary deploy workflow on main/);
+  }
+  assert.match((await deployMain(["--plan-only", "--change", "{}"], {}, () => assert.fail("no wrangler call"))).out, /command must be one of/);
+});
+
+test("parameters are written into the SQL as literals, never inside a string or a comment", () => {
+  assert.equal(inlineParameters("SELECT * FROM t WHERE a = ?2 AND b = ?1", ["x", 3]), "SELECT * FROM t WHERE a = 3 AND b = 'x'");
+  assert.equal(inlineParameters("SELECT ? , ?, ?1", ["it's", null]), "SELECT 'it''s' , NULL, 'it''s'");
+  assert.equal(inlineParameters("SELECT '?' -- what?\n, ? /* ? */", [1]), "SELECT '?' -- what?\n, 1 /* ? */");
+  assert.throws(() => inlineParameters("SELECT ?3", [1]), /parameter \?3 has no value/);
+});
+
+test("a lookup through Wrangler's reads answers as the site's own database does", async () => {
+  await withWorld(async (world) => {
+    const db = world.d1.open();
+    try {
+      for (const word of WORD_LIST) {
+        const viaWrangler = await lookup({ db: lookupDatabaseOf(masterReaderOf(world.d1.target)), releaseId: RELEASE, query: word });
+        const direct = await lookup({ db: fromNodeSqlite(db), releaseId: RELEASE, query: word });
+        assert.deepEqual(viaWrangler, direct, word);
+        assert.equal(direct.outcome, "found", word);
+      }
+    } finally {
+      db.close();
+    }
+  });
+});
+
+/** Each job of a workflow file by its id, as the text of its block under `jobs:`. */
+function jobsOf(yaml: string): Map<string, string> {
+  const lines = yaml.slice(yaml.indexOf("\njobs:\n") + "\njobs:\n".length).split("\n");
+  const jobs = new Map<string, string>();
+  let id: string | undefined;
+  for (const line of lines) {
+    const head = /^ {2}([\w-]+):\s*$/.exec(line);
+    if (head !== null) id = head[1];
+    else if (id !== undefined) jobs.set(id, `${jobs.get(id) ?? ""}${line}\n`);
+  }
+  return jobs;
+}
+
+test("the workflow reads lexema-data only with the read-only token, and every job given the Cloudflare token names the environment restricted to main", async () => {
+  const workflows = resolve(".github/workflows");
+  const yaml = await readFile(join(workflows, "dictionary-deploy.yml"), "utf8");
+  assert.deepEqual([...new Set(yaml.match(/secrets\.[A-Z0-9_]+/g))].sort(), ["secrets.CLOUDFLARE_D1_TOKEN", "secrets.LEXEMA_DATA_READ_TOKEN"]);
+  assert.deepEqual([...new Set(yaml.match(/LEXEMA_DATA_TOKEN: .*/g))], ["LEXEMA_DATA_TOKEN: ${{ secrets.LEXEMA_DATA_READ_TOKEN }}"]);
+  const jobs = jobsOf(yaml);
+  assert.deepEqual([...jobs.keys()], ["deploy", "plan"]);
+  for (const [id, block] of jobs) {
+    if (block.includes("secrets.CLOUDFLARE_D1_TOKEN")) assert.match(block, /^ {4}environment: dictionary-deploy$/m, id);
+  }
+  assert.match(jobs.get("deploy") ?? "", /if: github\.event_name == 'push'/);
+  assert.match(jobs.get("plan") ?? "", /--plan-only/);
+  assert.doesNotMatch(jobs.get("plan") ?? "", /contents: write/);
+
+  // No other workflow is given a Cloudflare credential (ADR 0018).
+  for (const file of await readdir(workflows)) {
+    if (file === "dictionary-deploy.yml") continue;
+    assert.doesNotMatch(await readFile(join(workflows, file), "utf8"), /CLOUDFLARE_(API_TOKEN|D1_TOKEN)/, file);
+  }
+});

@@ -27,6 +27,10 @@ import type { Change } from "../src/update/changes.js";
 import { diffAgainstMaster, reportMarkdown, reportOf, type MasterDiff } from "../src/update/diff.js";
 import { missingUpgrade, type MasterReader } from "../src/update/master.js";
 import { masterUpgradeSql, PAGE_ENTRY_INDEXES, PAGE_ENTRY_TABLES, SERVING_VIEWS, UPDATE_TABLES, UPGRADE_NAMES } from "../src/update/masterUpgrade.js";
+import { COUNTED_TABLES } from "../src/update/planCounts.js";
+import { planOnlyRun } from "../src/update/planOnly.js";
+import { masterReaderOf } from "../src/update/updateCli.js";
+import { localD1 } from "./localD1.js";
 import { planCorrections } from "../src/import/correctRecords.js";
 import type { CuratedCorrection } from "../src/italian/curatedCorrections.js";
 
@@ -634,6 +638,32 @@ test("selection refuses unknown, invalid, same-dump and regressive source orderi
     }
     await assert.rejects(automaticPlan(readerOf(db), found, pages, { schema, appliedAt: "2026-10-01T12:00:00Z", catalog: {} }), /no dated dump facts/);
     assert.equal(dump(db), before);
+  });
+});
+
+test("update:auto's plan-only run returns its counts and leaves a local D1 byte-identical", async () => {
+  await withDesk(async ({ db, later, dir }) => {
+    const d1 = localD1(dir, db);
+    const reader = masterReaderOf(d1.target);
+    const before = d1.sha256();
+    const found = await diffAgainstMaster(reader, later);
+    const pages = { dump: "itwiktionary-20260901", pages: [], languages: LanguageHeadings.fromList(["it", "en"]) };
+    const plan = await automaticPlan(reader, found, pages, { schema: await readFile(SCHEMA, "utf8"), appliedAt: "2026-10-01T12:00:00Z", catalog: fixtureCatalog(found) });
+    assert.ok(plan);
+    const run = planOnlyRun("update:auto", plan.counts, reader);
+    assert.deepEqual(run.counts.records, { added: 2, changed: 2, removed: 0 });
+    assert.equal(run.dictionaryRecords, MASTER_LINES.length);
+    assert.equal(d1.sha256(), before);
+    assert.ok(d1.calls.every((call) => call[0] === "--json"), "every call reads");
+
+    // The counts are what the file does: each table moves by its rows written less its rows deleted.
+    const rows = () => Object.fromEntries(COUNTED_TABLES.map((table) => [table, (db.prepare(`SELECT count(*) AS n FROM ${table}`).get() as { n: number }).n]));
+    const held = rows();
+    execute(db, plan.sql);
+    const moved = rows();
+    for (const table of COUNTED_TABLES.filter((name) => name !== "release_table_rows")) {
+      assert.equal(moved[table] - held[table], (plan.counts.written[table] ?? 0) - (plan.counts.deleted[table] ?? 0), table);
+    }
   });
 });
 

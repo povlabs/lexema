@@ -23,6 +23,8 @@
     "update:diff": "tsx src/update/updateCli.ts diff",
     "update:select": "tsx src/update/updateCli.ts select",
     "update:apply": "tsx src/update/updateCli.ts apply",
+    "deploy:dictionary": "tsx src/deploy/deployCli.ts",
+    "release:monthly": "tsx src/release/releaseCli.ts",
     "db:generate": "drizzle-kit generate",
     "db:check-d1": "tsx src/db/app/sampleRowsCli.ts",
     "api-key": "tsx src/api/keyCli.ts",

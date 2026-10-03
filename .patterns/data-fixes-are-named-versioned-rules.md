@@ -49,10 +49,11 @@ A data fix is never an edit of rows by hand. It is a rule
    and a second run plans nothing.
 5. **An agent never writes the shared D1.** The update picks its database the way
    the seed does: the local D1 under `SEED_STATE`, or the remote one `SEED_REMOTE`
-   names. The shared `lexema-dictionary` is updated from Huey's laptop through
-   Wrangler, never through the Worker's read-only binding
-   ([docs/RUN_AN_IMPORT.md](../docs/RUN_AN_IMPORT.md)). A lane runs and tests it
-   against a local D1 only.
+   names. A lane runs and tests it against a local D1 only. The shared
+   `lexema-dictionary` gets it from the dictionary deploy, after the merge that
+   declares it ([docs/DEPLOY.md](../docs/DEPLOY.md#the-dictionary-deploy),
+   [ADR 0018](../.decisions/0018-previews-on-workers-builds.md)), never through
+   the Worker's read-only binding.
 
 ## When this applies
 
