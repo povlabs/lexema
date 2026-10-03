@@ -114,9 +114,33 @@ recovers 184 of the counted pages. The difference has three parts:
 
 The JSON gives each counted title a `production` field (the rule's outcome and
 its entry count), each group `recoveredPages` and `recoveredEntries`, and the
-totals and uncounted titles under `recoveredByProductionRule`. A local seed of
-`it-0c432803` on the same dump wrote exactly these 185 pages and 202
-`recovered_entry` rows.
+totals and uncounted titles under `recoveredByProductionRule`.
+
+### The local seed
+
+A local seed of `it-0c432803` on the same dump loaded exactly these 185 pages
+and 202 `recovered_entry` rows, each joined to its `raw_page` row (revision id
+as in the JSON) with a line number. Every one has at least one definition, and
+no word among them has an archive record. The command was the full-release one
+in [RUN_AN_IMPORT.md](../docs/RUN_AN_IMPORT.md), with `RAW_PAGES` naming the
+dump, run under `/usr/bin/time -l` on an Apple M1 Pro with 16 GB and Node
+v26.2.0:
+
+| Run | Wall time | Peak, process tree | Peak, seeder's Node | `time -l` maximum resident |
+|---|---:|---:|---:|---:|
+| 1 | 535 s | 3.0 GB | — | 2.5 GB |
+| 2 | 531 s | 4.0 GB | 2.9 GB | 2.9 GB |
+
+The tree peak is the summed resident size of the seed's processes, sampled
+every 0.25 s; it varies between runs because Wrangler's `workerd` processes
+overlap. The seeder's Node holds the whole dump's pages in memory, read once.
+
+Both runs stop at the last of 17 SQL parts unless the `corrected_claim`
+evidence check is shortened, because D1 refuses its 52-byte GLOB pattern
+([#489](https://github.com/hueypov/lexema/issues/489)). The runs above used
+that local, uncommitted change; it touches no `recovered_entry` row. Without it,
+the same seed stopped at part 17 after 732 s, before the `recovered_entry`
+rows, which are in that part.
 
 ## The detector
 
