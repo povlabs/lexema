@@ -1,6 +1,6 @@
 // `pnpm run measure:plural-gloss` — the evidence fetch of rule
-// `it-plural-gloss-number` (src/italian/pluralGlossNumber.ts, #483, #515), and
-// the counts its current version gives.
+// `it-plural-gloss-number` (src/italian/pluralGlossNumber.ts, #483, #515,
+// #516), and the counts its current version gives.
 //
 // 1. It scans the archive (`--archive`, default it-extract.jsonl.gz) for the
 //    records the rule reads (`scanRecord`): noun or adjective, tagged
@@ -139,7 +139,8 @@ const CLASSES: readonly { heading: string; holds: (verdict: Verdict) => boolean 
   { heading: "Corrected: number and gender", holds: (verdict) => verdict.kind === "plural" && verdict.correction.confirmedBy === "own-pos" && verdict.genderCorrected },
   { heading: "Corrected (v2): gloss names the feminine singular", holds: (verdict) => verdict.kind === "plural" && verdict.correction.confirmedBy === "feminine-lemma" },
   { heading: "Corrected (v2): plural under a neighbouring part of speech", holds: (verdict) => verdict.kind === "plural" && verdict.correction.confirmedBy === "neighbouring-pos" },
-  { heading: "Corrected: wrong-gloss singular noun", holds: (verdict) => verdict.kind === "singular" },
+  { heading: "Corrected: wrong-gloss singular noun", holds: (verdict) => verdict.kind === "singular" && verdict.record.pos === "noun" },
+  { heading: "Corrected (v3): wrong-gloss singular adjective", holds: (verdict) => verdict.kind === "singular" && verdict.record.pos === "adj" },
   { heading: "Already corrected by hand (#420, #449)", holds: (verdict) => verdict.kind === "excluded" && verdict.reason === "already-corrected" },
   { heading: "Not an Italian record", holds: (verdict) => verdict.kind === "excluded" && verdict.reason === "not-italian" },
   {

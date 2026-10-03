@@ -12,8 +12,8 @@
 // the wrong-gloss singular nouns he later accepted the lemma's it.wiktionary
 // table of forms too
 // (https://github.com/povlabs/lexema/issues/483#issuecomment-5971809939). This
-// file is that rule; `it-plural-gloss-number/v1` is what follows, and v2 widens
-// it below. It judges each record from
+// file is that rule; `it-plural-gloss-number/v1` is what follows, and v2 and
+// v3 widen it below. It judges each record from
 // two things only, the record's own line and pinned Wiktionary revisions
 // (`PLURAL_GLOSS_EVIDENCE` in pluralGlossEvidence.ts), so the same release and
 // the same revisions always give the same corrections.
@@ -64,6 +64,18 @@
 //   states it a plural of exactly the gloss's lemma. Its gender is set as v1
 //   sets it, only where that same revision states one gender.
 //
+// Huey ruled a third time on 2026-10-03
+// (https://github.com/hueypov/lexema/issues/516#issuecomment-5971933388) that
+// a real singular adjective is corrected too. That makes
+// `it-plural-gloss-number/v3`, which corrects every record v2 corrects,
+// identically, and judges only v2's `singular-adjective` exclusions again:
+//
+// - **A real singular adjective** whose gloss wrongly says "plurale di"
+//   (`rosa` says "femminile plurale di roso") is corrected in the shape of a
+//   singular noun. Only its own en.wiktionary page confirms it: an `Adjective`
+//   or `Participle` section naming it a singular of the gloss's lemma
+//   (`{{feminine singular of|it|roso}}`), and none naming it a plural.
+//
 // The corrections join the curated list (curatedCorrections.ts) and travel the
 // same layer: a `corrected_claim` row beside the record, whose line stays byte
 // for byte (ADR 0027).
@@ -72,12 +84,16 @@ import type { CorrectedFacts, CorrectedRecord, Evidence, OverriddenText, RecordC
 import { enBlocks, type EnBlock, type FetchedPage, type Gender, headGenders, headSaysSingular, isPinned, type PinnedPage, tabsPlaces, templatesOn } from "./wiktionaryEvidence.js";
 
 /** Every version of the rule, oldest first. A change to what it confirms or writes is a new version. */
-export const PLURAL_GLOSS_NUMBER_RULES = ["it-plural-gloss-number/v1", "it-plural-gloss-number/v2"] as const;
+export const PLURAL_GLOSS_NUMBER_RULES = ["it-plural-gloss-number/v1", "it-plural-gloss-number/v2", "it-plural-gloss-number/v3"] as const;
 
 export type PluralGlossNumberRule = (typeof PLURAL_GLOSS_NUMBER_RULES)[number];
 
 /** The version the curated list is made with. */
-export const PLURAL_GLOSS_NUMBER_RULE = "it-plural-gloss-number/v2" satisfies PluralGlossNumberRule;
+export const PLURAL_GLOSS_NUMBER_RULE = "it-plural-gloss-number/v3" satisfies PluralGlossNumberRule;
+
+/** Whether `rule` is `version` or a later one. */
+const isAtLeast = (rule: PluralGlossNumberRule, version: PluralGlossNumberRule): boolean =>
+  PLURAL_GLOSS_NUMBER_RULES.indexOf(rule) >= PLURAL_GLOSS_NUMBER_RULES.indexOf(version);
 
 /** The gloss openings the scan matches: "plurale di", "femminile plurale di", "plurale maschile di"… */
 export const PLURAL_GLOSS_OPENING = /^(maschile |femminile )?plurale( maschile| femminile)? di /;
@@ -214,7 +230,7 @@ export type Exclusion =
   | "not-italian"
   /** A hand correction already names this record (#420, #449). */
   | "already-corrected"
-  /** A real singular adjective whose gloss is wrong: no ruling covers them. */
+  /** A real singular adjective whose gloss is wrong: no ruling covered them before v3 (#516). */
   | "singular-adjective"
   /** en.wiktionary has no page for the word. */
   | "no-en-page"
@@ -250,6 +266,9 @@ export type PluralCorrection =
   | (RuleMadeCorrection & { confirmedBy: "own-pos" | "neighbouring-pos"; evidence: readonly [EnEvidence] })
   | (RuleMadeCorrection & { confirmedBy: "feminine-lemma"; evidence: readonly [EnEvidence, EnEvidence] });
 
+/** A wrong-gloss singular adjective (v3, #516): its own en.wiktionary revision is the one evidence. */
+export type SingularAdjectiveCorrection = RuleMadeCorrection & { evidence: readonly [EnEvidence] };
+
 export type Verdict =
   | { kind: "plural"; record: ScannedRecord; correction: PluralCorrection; genderCorrected: boolean }
   | { kind: "singular"; record: ScannedRecord; correction: RuleMadeCorrection }
@@ -277,6 +296,11 @@ function recordGender(record: ScannedRecord): { value: Gender; index: number } |
 }
 
 const tagText = (record: ScannedRecord, index: number): OverriddenText => ({ pointer: `/tags/${index}`, text: record.tags[index] });
+
+/** A real singular whose gloss wrongly says "plurale di": number singular, overriding the gloss, as #420 set `ammaliatrice`. */
+const wrongGlossSingular = (record: ScannedRecord): CorrectedFacts => ({
+  number: { overrides: { pointer: "/senses/0/glosses/0", text: record.firstGloss }, value: "singular" },
+});
 
 /**
  * Judge one record of the scan of `releaseId` by `rule`. `handCorrected`
@@ -345,16 +369,15 @@ export function judge(record: ScannedRecord, releaseId: string, pages: PageIndex
     const [first, ...rest] = confirming;
     if (first !== undefined) {
       if (contradicted) return excluded("sources-disagree");
-      const correction: RuleMadeCorrection = {
-        record: key,
-        facts: { number: { overrides: { pointer: "/senses/0/glosses/0", text: record.firstGloss }, value: "singular" } },
-        evidence: [first, ...rest],
-        rule,
-      };
+      const correction: RuleMadeCorrection = { record: key, facts: wrongGlossSingular(record), evidence: [first, ...rest], rule };
       return { kind: "singular", record, correction };
     }
-  } else if (singulars.length > 0) {
-    return excluded("singular-adjective");
+  } else if (singulars.length > 0 && isPinned(own)) {
+    if (!isAtLeast(rule, "it-plural-gloss-number/v3")) return excluded("singular-adjective");
+    // v3: only its own en.wiktionary page confirms an adjective (#516), and that page may not also name it a plural.
+    if (ofLemma.some((entry) => entry.statement.number === "plural")) return excluded("sources-disagree");
+    const correction: SingularAdjectiveCorrection = { record: key, facts: wrongGlossSingular(record), evidence: [enEvidence(own, singulars)], rule };
+    return { kind: "singular", record, correction };
   }
 
   if (!isPinned(own)) return excluded("no-en-page");
