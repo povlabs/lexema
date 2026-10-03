@@ -526,7 +526,8 @@ test("an apply brings a master seeded before #18 up to the schema, and the upgra
 // Synthetic releases exercise sequential corrections/removal, not upstream extraction.
 test("automatic updates follow A→B→C, retain source and hand rows, move indexes/caches, and repeat without writes", async () => {
   const corrected = record({ word: "casa", pos: "noun", pos_title: "Sostantivo", forms: [{ form: "casette", tags: ["plural"] }], senses: [{ glosses: ["abitazione corretta"] }, { glosses: ["nucleo familiare"] }] });
-  const removed = record({ word: "casa", pos: "noun", pos_title: "Sostantivo", forms: [], senses: [] });
+  // A removal with no blank in its place: an emptied record would keep B serving (#442).
+  const removed = record({ word: "casa", pos: "noun", pos_title: "Sostantivo", forms: [], senses: [{ glosses: ["nucleo familiare"] }] });
   await withDesk(async ({ db, later, dir }) => {
     const reader = readerOf(db);
     const schema = await readFile(SCHEMA, "utf8");
@@ -564,7 +565,7 @@ test("automatic updates follow A→B→C, retain source and hand rows, move inde
     execute(db, planC.sql);
     assert.deepEqual(checkApplied(reader, planC), { missing: [], differing: [] });
     const casaC = readings(await ask(db, "casa"))[0];
-    assert.deepEqual(glosses(casaC), []);
+    assert.deepEqual(glosses(casaC), ["nucleo familiare"]);
     assert.equal(casaC.ref.releaseId, foundC.feed.releaseId);
     assert.equal(casaC.ref.lineNo, 1);
     assert.deepEqual({ ...db.prepare("SELECT upstream_release, upstream_release_basis, archive_sha256 FROM source_release WHERE release_id = ?").get(foundC.feed.releaseId) }, { upstream_release: "itwiktionary-20261001", upstream_release_basis: "recorded", archive_sha256: foundC.feed.archiveSha256 });

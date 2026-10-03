@@ -12,7 +12,7 @@
 //   pnpm run update:apply <archive> <change id> [<change id> ...] [--out <dir>]
 //   pnpm run update:apply <archive> --ids <file> [--out <dir>]
 //
-// `update:select` sorts the diff's changes by feed-selection/v3
+// `update:select` sorts the diff's changes by feed-selection/v4
 // (src/update/selection.ts) and writes the ids it takes to a file that
 // `update:apply --ids` reads.
 //

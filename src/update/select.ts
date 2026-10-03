@@ -64,6 +64,7 @@ const TAKE_REASONS: readonly TakeReason[] = ["new-word", "fills-gloss", "adds-se
 const SKIP_REASONS: readonly SkipReason[] = [
   "not-italian",
   "no-real-gloss",
+  "blank-replaces-definition",
   "form-of-target-missing",
   "form-of-target-not-italian",
   "master-hidden",
@@ -276,6 +277,7 @@ const MEANING: Readonly<Record<TakeReason | SkipReason, string>> = {
   "removes-definitions": "the matched later record removes some or all real definitions",
   "not-italian": "the page puts the record under another language (section-language/v1, on the later release's dump)",
   "no-real-gloss": "no sense of the later record has a real gloss",
+  "blank-replaces-definition": "the later record loses real definitions to empty or placeholder senses; ours keeps serving",
   "form-of-target-missing": "a form-of whose target no Italian headword of the dictionary or of this selection has",
   "form-of-target-not-italian": "a form-of whose target only a record hidden as another language has",
   "master-hidden": "the record it would replace is hidden as another language",

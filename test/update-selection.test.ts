@@ -114,9 +114,52 @@ test("a matched later record can remove definitions", () => {
   assert.deepEqual(changed([{ glosses: ["edificio"] }, { glosses: ["famiglia"] }], [{ glosses: ["edificio e famiglia"] }]), { take: true, reason: "removes-definitions" });
 });
 
-test("a matched record can remove all real definitions without inventing text", () => {
-  assert.deepEqual(changed([{ glosses: ["edificio"] }], [{ glosses: [PLACEHOLDER] }]), { take: true, reason: "removes-definitions" });
-  assert.deepEqual(changed([{ glosses: ["edificio"] }], []), { take: true, reason: "removes-definitions" });
+test("a real definition lost to an empty or placeholder sense keeps ours serving (#442)", () => {
+  const blanked = { take: false, reason: "blank-replaces-definition" };
+  assert.deepEqual(changed([{ glosses: ["edificio"] }], [{ glosses: [PLACEHOLDER] }]), blanked);
+  assert.deepEqual(changed([{ glosses: ["edificio"] }], [{ glosses: [] }]), blanked);
+  assert.deepEqual(changed([{ glosses: ["edificio"] }], [{ glosses: [" "] }]), blanked);
+  assert.deepEqual(changed([{ glosses: ["edificio"] }], []), blanked);
+  // One definition of several, the rest kept.
+  assert.deepEqual(changed([{ glosses: ["edificio"] }, { glosses: ["famiglia"] }], [{ glosses: ["edificio"] }, { glosses: [PLACEHOLDER] }]), blanked);
+  // Already a placeholder beside a real one, and now only the placeholder.
+  assert.deepEqual(changed([{ glosses: ["edificio"] }, { glosses: [PLACEHOLDER] }], [{ glosses: [PLACEHOLDER] }]), blanked);
+});
+
+test("a blank that loses no real definition does not stop a removal", () => {
+  // The placeholder was there already; a real definition goes and another stays.
+  assert.deepEqual(changed([{ glosses: ["edificio"] }, { glosses: ["famiglia"] }, { glosses: [PLACEHOLDER] }], [{ glosses: ["edificio"] }, { glosses: [PLACEHOLDER] }]), {
+    take: true,
+    reason: "removes-definitions",
+  });
+});
+
+// Verbatim lines, in this order: passata verb, civetta noun, gay adj,
+// gastronomia noun, logografo noun. Before: it-0c432803:52202, 16197, 41222,
+// 30767, 409187. After: it-78385b62:52494, 16368, 41502, 31035, 409634.
+const archived = async (side: "before" | "after"): Promise<Map<string, QualityRecord>> => {
+  const lines = (await readFile(`fixtures/feed-blank-loss-${side}.jsonl`, "utf8")).trimEnd().split("\n");
+  return new Map(lines.map((line) => {
+    const read = italianRecordOf(line);
+    assert.ok(read);
+    return [`${read.word} ${read.pos}`, read];
+  }));
+};
+
+test("archived extraction losses are skipped and archived editorial removals are taken", async () => {
+  const before = await archived("before");
+  const after = await archived("after");
+  const original = JSON.stringify([...before, ...after]);
+  const verdict = (key: string) => selectChanged({ before: before.get(key)!, after: after.get(key)!, beforeHidden: false, italian: true });
+  // passata: its form-of sense becomes `{"tags": ["no-gloss"]}`.
+  assert.deepEqual(verdict("passata verb"), { take: false, reason: "blank-replaces-definition" });
+  // civetta: "locandina" becomes the placeholder.
+  assert.deepEqual(verdict("civetta noun"), { take: false, reason: "blank-replaces-definition" });
+  // Senses dropped with no blank left in their place.
+  for (const key of ["gay adj", "gastronomia noun", "logografo noun"]) {
+    assert.deepEqual(verdict(key), { take: true, reason: "removes-definitions" }, key);
+  }
+  assert.equal(JSON.stringify([...before, ...after]), original);
 });
 
 test("a hidden record or a non-Italian later record is left alone", () => {

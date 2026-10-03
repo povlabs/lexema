@@ -56,7 +56,7 @@ pnpm run update:auto <later.jsonl.gz> --pages <its-dump.xml.bz2>
 For Huey's authorized shared run, prefix with `SEED_REMOTE=lexema-dictionary`.
 No person supplies word ids or inspects old/new reports. The command compares
 against currently served records, verifies source ordering and the language
-dump, selects with `feed-selection/v3`, and plans through the existing importer.
+dump, selects with `feed-selection/v4`, and plans through the existing importer.
 Ambiguous groups, hidden/non-Italian exclusions, new-word form-of checks and
 whole-record disappearance remain safeguarded.
 
