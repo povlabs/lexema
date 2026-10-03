@@ -1984,8 +1984,23 @@ test("a word only form-of records name is a word page with its forms table, not 
       assert.match(html, /data-grid=""|<dl class="[^"]*"><div [^>]*><dt [^>]*>gerundio<\/dt>/, word);
       assert.ok(!html.includes(NOT_FOUND_HEADING), word);
       assert.equal(occurrencesOf(html, `class="${SOURCE_LINE}"`), 1, word);
-      // One Source, to the page of the spelling in the title (ADR 0009, amended on #281).
-      assert.match(html, new RegExp(`href="https://it\\.wiktionary\\.org/wiki/${esc(word)}" target="_blank"`), word);
+      assert.equal(occurrencesOf(html, 'href="https://it.wiktionary.org/wiki/'), 1, word);
+    }
+  });
+});
+
+test("a declared lemma's Source opens the page of the first form its table shows that a record declares (#459)", async () => {
+  await withDeclared(async ({ db }) => {
+    // The conjugation's first form is the non-finite line's gerundio; the
+    // grid's is `fratellini`, since the lemma's own singolare is no record's.
+    for (const [word, form] of [
+      ["verbalizzare", "verbalizzando"],
+      ["fratellino", "fratellini"],
+    ]) {
+      const line = sourceLine(await render(db, word));
+      assert.equal(occurrencesOf(line, 'href="https://it.wiktionary.org/wiki/'), 1, word);
+      assert.match(line, new RegExp(`href="https://it\\.wiktionary\\.org/wiki/${esc(form)}" target="_blank"`), word);
+      assert.match(line, new RegExp(`aria-label="Wiktionary page for ${esc(form)}, the source of this page`), word);
     }
   });
 });
