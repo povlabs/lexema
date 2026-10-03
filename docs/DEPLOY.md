@@ -499,12 +499,16 @@ against the local D1:
 pnpm run deploy:dictionary --plan-only --change '{"command":"update:upgrade"}'
 ```
 
+A pull request that adds a declaration needs no hand run: the
+[pull request plan check](#the-pull-request-plan-check) plans it with the pull
+request's own code.
+
 ### What it reads
 
 | Name | Kind | Where | What it is |
 |---|---|---|---|
 | `dictionary-deploy` | GitHub environment | repository **Settings**, **Environments** | holds the two secrets and the variable below; its deployment branches are `main` only, so a run on any other branch never receives them. Both jobs name it |
-| `CLOUDFLARE_D1_TOKEN` | environment secret | `dictionary-deploy` | a Cloudflare API token with one permission, **Account**, **D1**, **Edit**. Wrangler reads it as `CLOUDFLARE_API_TOKEN`. The only Cloudflare credential in GitHub |
+| `CLOUDFLARE_D1_TOKEN` | environment secret | `dictionary-deploy` | a Cloudflare API token with one permission, **Account**, **D1**, **Edit**. Wrangler reads it as `CLOUDFLARE_API_TOKEN`. The only Cloudflare credential in GitHub that can write; the other one is the [pull request plan check](#the-pull-request-plan-check)'s read-only token |
 | `CLOUDFLARE_ACCOUNT_ID` | environment variable | `dictionary-deploy` | the Cloudflare account id that owns `lexema-dictionary`; not secret |
 | `LEXEMA_DATA_READ_TOKEN` | environment secret | `dictionary-deploy` | a fine-grained GitHub token for `hueypov/lexema-data` only, **Contents** read-only. The run reads archives and dumps with it, as `LEXEMA_DATA_TOKEN`. The monthly release job's write token is a different one, and this workflow never receives it |
 | `GITHUB_TOKEN` | built in | the `deploy` job, `contents: write` | pushes `production`. A push that is not a fast-forward is refused |
@@ -561,6 +565,88 @@ No agent does any of them.
    are ever pushed.
 5. **Workers Builds.** In the Worker's **Settings**, **Build**, **Branch
    control**, change the production branch from `main` to `production`.
+
+### The pull request plan check
+
+[`dictionary-plan.yml`](../.github/workflows/dictionary-plan.yml) runs on a
+pull request that adds or changes a file under `dictionary-changes/`. It gives
+a new declaration its `expected` counts, so one pull request carries a change
+and its declaration
+([ADR 0018](../.decisions/0018-previews-on-workers-builds.md), #494). It runs
+`pnpm run deploy:dictionary --plan-only --added-since HEAD^1` on the pull
+request's merge commit ([src/deploy/](../src/deploy/pullRequestPlan.ts)):
+
+1. It reads the declarations the pull request adds, in path order, the order
+   the deploy takes them from the one commit a pull request lands as. A
+   declaration may leave `expected` out until this check gives it.
+2. It plans the first one with the pull request's own code against
+   `lexema-dictionary`, and holds the counts to `expected` and to the hard
+   limits, as the deploy will.
+3. Its job summary says, for each declaration:
+   - the counts match `expected`: green;
+   - they differ, or `expected` is missing: red, naming each difference and
+     printing the whole declaration file with the plan's counts as
+     `expected`. Copy it into the file and push;
+   - the plan crosses a hard limit: red, naming the limit;
+   - `update:auto`, `hide:records` or `load:page-entries`: not planned, since
+     they read an archive and a dump from `hueypov/lexema-data` and this run
+     gets no token for it.
+     This does not fail the pull request. The monthly release gives an
+     `update:auto` its counts;
+   - any declaration after the first: red. Its counts depend on what the
+     earlier ones write, and this run writes nothing. Put it in its own pull
+     request once the earlier ones are deployed.
+
+It writes nothing: no bookmark, no SQL file run on the dictionary, no branch
+moved. Its job has `contents: read` and no other permission. It runs only for
+this repository's own branches: a fork's pull request never runs it, and
+`pull_request` gives a fork's run no secret anyway. The deploy still holds
+every declaration to `expected` at merge, so a count that went stale between
+the check and the merge stops the deploy red.
+
+| Name | Kind | Where | What it is |
+|---|---|---|---|
+| `dictionary-plan` | GitHub environment | repository **Settings**, **Environments** | holds the secret and the variable below, and no other token. Only this job names it |
+| `CLOUDFLARE_D1_READ_TOKEN` | environment secret | `dictionary-plan` | a Cloudflare API token with one permission, **Account**, **D1**, **Read**. Wrangler reads it as `CLOUDFLARE_API_TOKEN` |
+| `CLOUDFLARE_ACCOUNT_ID` | environment variable | `dictionary-plan` | the same account id as in `dictionary-deploy`; not secret |
+
+`SEED_REMOTE=lexema-dictionary` is set in the workflow itself.
+
+The plan reads the dictionary through `wrangler d1 execute --remote --command`
+with a `SELECT`. With `CLOUDFLARE_ACCOUNT_ID` set, Wrangler makes two
+Cloudflare API calls for it, and Cloudflare's API reference accepts `D1 Read`
+for both:
+[Get D1 Database](https://developers.cloudflare.com/api/resources/d1/subresources/database/methods/get/),
+to find the database by name, and
+[Query D1 Database](https://developers.cloudflare.com/api/resources/d1/subresources/database/methods/query/).
+
+### Set up the pull request plan check
+
+Huey does these once. No agent does any of them. Until they are done, the
+check goes red on every pull request that adds a declaration.
+
+1. **The Cloudflare token.** Open https://dash.cloudflare.com/profile/api-tokens,
+   select **Create Token**, then **Create Custom Token**. Name it
+   `lexema-dictionary-plan`. Under **Permissions** add one row: **Account**,
+   **D1**, **Read**, and nothing else. Never **Edit**. If the page offers
+   Developer Platform roles instead, pick the **D1** product with the role
+   **Content Read-Only**, and limit it to `lexema-dictionary` when it offers
+   one database. Under **Account Resources** include the account that owns
+   `lexema-dictionary`. Create it and copy it.
+2. **The environment.** In this repository's **Settings**, **Environments**,
+   select **New environment** and name it `dictionary-plan`. If a run already
+   created an empty one, open it instead. Under
+   **Deployment branches and tags** choose **Selected branches and tags** and
+   add one branch rule, `refs/pull/*/merge`, and nothing else. GitHub matches
+   the rule against the run's `GITHUB_REF`, which is `refs/pull/<number>/merge`
+   for a `pull_request` run, so only pull request runs get the secret
+   ([GitHub: deployment branches and tags](https://docs.github.com/en/actions/reference/workflows-and-actions/deployments-and-environments#deployment-branches-and-tags)).
+   Add no required reviewer, or every check waits for one.
+3. **The secret and the variable.** In `dictionary-plan`, add the environment
+   secret `CLOUDFLARE_D1_READ_TOKEN` (step 1) and the environment variable
+   `CLOUDFLARE_ACCOUNT_ID`, the same account id `dictionary-deploy` has. Add
+   no other secret: not `CLOUDFLARE_D1_TOKEN` and not
+   `LEXEMA_DATA_READ_TOKEN`.
 
 ## The monthly release
 

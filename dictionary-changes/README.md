@@ -32,6 +32,16 @@ cannot read as one, naming the file.
 (`--plan-only`, [src/update/planOnly.ts](../src/update/planOnly.ts)). A table
 left out of `written` or `deleted` is expected to have no row.
 
+A change and its declaration land in one pull request. Add the declaration
+with no `expected`, or with the counts you expect. The
+[pull request plan check](../docs/DEPLOY.md#the-pull-request-plan-check)
+plans it with the pull request's own code: green when the counts match, red
+otherwise, printing the declaration with the plan's counts to copy in. Add
+one declaration per pull request, since the check counts only the first.
+`update:auto`, `hide:records` and `load:page-entries` read files the check
+cannot fetch, so it
+does not plan them and does not fail for them.
+
 The [monthly release](../docs/DEPLOY.md#the-monthly-release) writes one
 `<release id>.json` here, an `update:auto` of the new kaikki release.
 

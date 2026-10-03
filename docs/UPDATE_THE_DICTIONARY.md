@@ -28,6 +28,13 @@ history routinely. Investigate accuracy when a user reports a problem.
   `hueypov/lexema-data` with its own read-only token; only the monthly release
   job holds the token that writes that repository. Its steps, secrets and
   settings are [the dictionary deploy](DEPLOY.md#the-dictionary-deploy).
+- A change and its declaration land in one pull request. The
+  [pull request plan check](DEPLOY.md#the-pull-request-plan-check) plans the
+  declaration with the pull request's own code and a D1 read-only token, the
+  other Cloudflare key ADR 0018 allows, and gives or checks its `expected`
+  counts; no one starts a plan by hand. It does not plan `update:auto` or
+  `hide:records`, which read files from `hueypov/lexema-data`: the monthly
+  release gives an `update:auto` its counts.
 - Agents never hold the Cloudflare key, run the deploy workflow, or write the
   shared dictionary. An agent runs these commands against the local D1 only.
 
