@@ -3,15 +3,14 @@
 // `og:image` (app/(lexema)/page.tsx).
 //
 // A card is drawn about once per served version. The address carries the
-// drawing and the served version (lib/dictionary/card.ts): the release, and
-// the last change applied to it (src/lookup/served.ts). A release activation
-// or rollback moves the release, and an apply (#18) moves the last change, so
-// whatever can change what a card shows gives it a new address. That is why a
+// drawing and the served version (lib/dictionary/card.ts): the release, last
+// applied change, live-hide revision and Worker version id. Data updates and
+// serving-code deploys give it a new address (docs/DEPLOY.md). That is why a
 // drawn card may be kept in Cloudflare's cache, and in any browser or crawler,
 // for a year: the next request for it is answered from there, marked
 // `x-lexema-card: hit`, with no lookup and no drawing.
 //
-// Every request reads the served version first, one row of D1 (#368). A
+// Every request reads the served version first (src/lookup/served.ts). A
 // request for another version's or drawing's card, or for an address from
 // before the version was in it, is sent on to the current one, so a card kept
 // under an old address is never answered for the current one. An apply moves

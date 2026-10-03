@@ -72,12 +72,14 @@ export const servedRelease = (): string => env.LEXEMA_RELEASE;
 
 /**
  * The served version's token (src/lookup/served.ts), or undefined when it
- * could not be read. One D1 read of one row. Unmemoised, for the card route
+ * could not be read. Includes the Worker's version metadata id, so serving
+ * code changes invalidate cards and suggestions without a data write.
+ * Unmemoised, for the card route
  * (worker/card.ts), which must tell an unread version from a read one.
  */
 export async function servedVersionOnce(): Promise<string | undefined> {
   try {
-    return versionToken(await readServedVersion(database(), env.LEXEMA_RELEASE));
+    return versionToken(await readServedVersion(database(), env.LEXEMA_RELEASE), env.LEXEMA_VERSION.id);
   } catch (error) {
     log.error("served version failed", {}, error);
     return undefined;
@@ -87,8 +89,8 @@ export async function servedVersionOnce(): Promise<string | undefined> {
 /**
  * The token a page names its card and its suggestions by, memoised for the
  * request. When the version cannot be read the page still renders, naming the
- * release alone: no read version ever matches that token, so the card route
+ * release and Worker version: no read data version ever matches that token, so the card route
  * sends its card on to the current address, and a suggestion answer kept
  * under it is newer than anything kept before.
  */
-export const servedVersion = cache(async (): Promise<string> => (await servedVersionOnce()) ?? env.LEXEMA_RELEASE);
+export const servedVersion = cache(async (): Promise<string> => (await servedVersionOnce()) ?? `${env.LEXEMA_RELEASE}.unread.code-${encodeURIComponent(env.LEXEMA_VERSION.id)}`);
