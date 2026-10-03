@@ -37,3 +37,6 @@ web/.next/
 .fabrika/
 
 .claude/settings.local.json
+
+# Pencil design file: kept local, not published (Huey 2026-10-03)
+lexema-design.pen
