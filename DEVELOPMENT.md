@@ -29,14 +29,14 @@ local `web/.dev.vars`, so it gives the same answer on a laptop as in CI.
 
 The unit tests run both schemas on Node's built-in SQLite, which accepts some SQL
 that Cloudflare D1 refuses: D1 rejected a long `GLOB` in a `CHECK` that every
-test passed ([#167](https://github.com/hueypov/lexema/issues/167)). So CI's `d1`
+test passed ([#167](https://github.com/povlabs/lexema/issues/167)). So CI's `d1`
 job runs `pnpm run seed:dev` into a fresh local D1, then `pnpm run db:check-d1`,
 then `pnpm run api-key create`, as in
 [call the JSON API](#call-the-json-api). A `CHECK` runs only when a row is
 written, so `db:check-d1` builds the app database in a throwaway local D1 and
 writes one valid row to every table the app migrations create
 ([src/db/app/sampleRows.ts](./src/db/app/sampleRows.ts),
-[#330](https://github.com/hueypov/lexema/issues/330)). It fails when D1 refuses
+[#330](https://github.com/povlabs/lexema/issues/330)). It fails when D1 refuses
 a row, or when a migration creates a table with no row there; a new app table
 needs one, which `test/sampleRows.test.ts` also checks on Node's SQLite.
 
@@ -106,7 +106,7 @@ See [how to run the search page](./docs/RUN_THE_SITE.md) for the full recipe,
 
 The same Worker answers a private JSON API on its own host,
 `https://api.lexema.fyi/v1`, and `http://api.localhost:8790/v1` locally (epic
-[#148](https://github.com/hueypov/lexema/issues/148); how each host is reached
+[#148](https://github.com/povlabs/lexema/issues/148); how each host is reached
 is in [how to run the search page](./docs/RUN_THE_SITE.md#reach-each-host)).
 Every request needs an
 API key in the `X-API-Key` header. Keys live in the local app database,
@@ -115,7 +115,7 @@ The CLI below makes admin keys, which belong to no developer account and carry
 their own per-minute limit; a key a developer makes for their own account is an
 owned key ([src/api/ownedKeys.ts](./src/api/ownedKeys.ts)), which carries none:
 its limits are its account's plan's, and without a serving plan it answers a 402
-`plan_required` ([#161](https://github.com/hueypov/lexema/issues/161)). Locally,
+`plan_required` ([#161](https://github.com/povlabs/lexema/issues/161)). Locally,
 give the account a plan with `pnpm run plan enterprise` (below).
 
 ```sh
@@ -130,24 +130,24 @@ takes the id. Both write to the `APP_DB` in `SEED_STATE` (default
 re-seeding drops every key with it.
 
 A local database seeded before
-[#167](https://github.com/hueypov/lexema/issues/167) has no `owner_account_id`,
+[#167](https://github.com/povlabs/lexema/issues/167) has no `owner_account_id`,
 `display_prefix` or `last_used_at` on `api_key`, and no `deleted_at` on
 `developer_account`, so `create` and every API call fail on the missing column.
-One seeded before [#187](https://github.com/hueypov/lexema/issues/187) has no
+One seeded before [#187](https://github.com/povlabs/lexema/issues/187) has no
 `endpoints` or `expires_at` on `api_key`, so every API call fails on the missing column.
-One seeded before [#190](https://github.com/hueypov/lexema/issues/190) has no
+One seeded before [#190](https://github.com/povlabs/lexema/issues/190) has no
 `display_name` on `provider_identity`, so signing in fails on the missing column.
-One seeded before [#201](https://github.com/hueypov/lexema/issues/201) still has
+One seeded before [#201](https://github.com/povlabs/lexema/issues/201) still has
 `daily_units` on `api_key` and `units` on `api_key_usage`, so making a key and
 every answered call fail.
-One seeded before [#229](https://github.com/hueypov/lexema/issues/229) has the
+One seeded before [#229](https://github.com/povlabs/lexema/issues/229) has the
 hand-built sign-in's account, identity and session tables, not better-auth's,
 so signing in fails on the missing columns. Its accounts are not carried over
 ([ADR 0017](./.decisions/0017-better-auth-and-drizzle-own-accounts.md)): after
 re-seeding, sign in again and make your keys again. Sign-in also needs
 `BETTER_AUTH_SECRET` in `web/.dev.vars`
 ([sign in locally](./docs/RUN_THE_SITE.md#sign-in-locally)).
-One seeded before [#240](https://github.com/hueypov/lexema/issues/240) keeps
+One seeded before [#240](https://github.com/povlabs/lexema/issues/240) keeps
 every app table in the dictionary database and has no `APP_DB`, so signing in,
 the dashboard, every API call and the report box fail on the missing table.
 Run `pnpm run seed:dev` again: it rebuilds the dictionary from
@@ -155,7 +155,7 @@ Run `pnpm run seed:dev` again: it rebuilds the dictionary from
 migrations ([change the database schema](#change-the-database-schema)), so make
 its keys again afterwards. That section also gives the one command that builds
 the app database alone, keeping the dictionary.
-One migrated before [#260](https://github.com/hueypov/lexema/issues/260) has no
+One migrated before [#260](https://github.com/povlabs/lexema/issues/260) has no
 `subscription` or `enterprise_plan` table, so `pnpm run plan` fails on the
 missing table. Apply the new migration with the command in that section, which
 keeps every account and key.
@@ -197,7 +197,7 @@ calls a minute and answers one light result per candidate, or one
 
 The per-minute limit counts calls, as the day does: 1 per request, or 1 per word
 for `/lookup/batch` ([src/api/calls.ts](./src/api/calls.ts); Huey on
-[#216](https://github.com/hueypov/lexema/issues/216)). A request refused before
+[#216](https://github.com/povlabs/lexema/issues/216)). A request refused before
 its calls are counted (a 400 bad `q`, parameter or body, a 403, 404 or 405) counts
 nothing, toward the minute or the day; a 401 carries no limit headers
 ([web/worker/api/keyLimits.ts](./web/worker/api/keyLimits.ts)).
@@ -208,7 +208,7 @@ nothing, toward the minute or the day; a 401 carries no limit headers
   for the day.
 - An owned key is read with its account's plan state, in one read. With no
   serving plan (none, ended, cancelled past its end, or an Enterprise period
-  past `--until`, Huey on [#222](https://github.com/hueypov/lexema/issues/222))
+  past `--until`, Huey on [#222](https://github.com/povlabs/lexema/issues/222))
   it answers 402 `plan_required`; past due still serves. Its minute is its
   plan's rate, shared by all the account's keys and counted by the `CALLS_60`
   (Starter) or `CALLS_300` (Pro) Rate Limiting binding keyed by account id, or,
@@ -243,7 +243,7 @@ subscription in `subscription`. Enterprise is set by hand, with its own calls,
 rate and period, in `enterprise_plan`
 ([src/billing/planCli.ts](./src/billing/planCli.ts); the plans and their numbers
 are [src/billing/plans.ts](./src/billing/plans.ts), epic
-[#161](https://github.com/hueypov/lexema/issues/161)):
+[#161](https://github.com/povlabs/lexema/issues/161)):
 
 ```sh
 pnpm run plan enterprise 3 --calls 20000000 --per-minute 1000 --from 2026-10-01 --until 2026-11-01
@@ -262,7 +262,7 @@ write to the `APP_DB` in `SEED_STATE`, as `pnpm run api-key` does.
 
 A report sent from a word page's *Report a mistake* box waits in
 `reader_report` until a person looks
-([#12](https://github.com/hueypov/lexema/issues/12),
+([#12](https://github.com/povlabs/lexema/issues/12),
 [src/readerReport/](./src/readerReport)):
 
 ```sh
@@ -306,7 +306,7 @@ button on `/sign-in`: *Sign in as test developer*. It posts to
 developer, in that Preview's own `APP_DB` and goes to `/dashboard`
 ([web/worker/testSignIn.ts](./web/worker/testSignIn.ts),
 [src/accounts/testDeveloper.ts](./src/accounts/testDeveloper.ts)
-([#245](https://github.com/hueypov/lexema/issues/245))). It needs no provider
+([#245](https://github.com/povlabs/lexema/issues/245))). It needs no provider
 and no credential, only the `BETTER_AUTH_SECRET` the preview command sets on
 the Preview ([DEPLOY.md](./docs/DEPLOY.md)). On the `production` and `local`
 stages, and on every other host, the route is a 404 and the page has no
@@ -331,7 +331,7 @@ There are two databases, each with its own schema and its own Worker binding
   `applied_change`, which record the changes applied from a later release
   ([docs/UPDATES.md](./docs/UPDATES.md)). Lookups read the view
   `served_release` over them, so a local dictionary seeded before
-  [#18](https://github.com/hueypov/lexema/issues/18) needs
+  [#18](https://github.com/povlabs/lexema/issues/18) needs
   `pnpm run update:upgrade` once, or a fresh seed; it reads them out of
   `schema.sql` (`src/update/masterUpgrade.ts`). Lookups serve a dictionary
   without the page-entry tables
@@ -378,7 +378,7 @@ app migration to the local `APP_DB` with `wrangler d1 migrations apply
 lexema-app`, which reads them through `migrations_dir` in
 [web/wrangler.jsonc](./web/wrangler.jsonc) and records which ran. A local
 database seeded before
-[#240](https://github.com/hueypov/lexema/issues/240) has no `APP_DB`: seed again,
+[#240](https://github.com/povlabs/lexema/issues/240) has no `APP_DB`: seed again,
 or, to keep its dictionary, build the app database alone from `web/`, with
 `--persist-to` naming the state:
 
@@ -416,7 +416,7 @@ The committed Claude Code settings live in
 [.claude/settings.json](./.claude/settings.json). They turn on the Fabrika
 plugin and allow `fabrika build` and `fabrika lane` commands without a prompt.
 They set no hooks
-([#344](https://github.com/hueypov/lexema/issues/344#issuecomment-5929722588)).
+([#344](https://github.com/povlabs/lexema/issues/344#issuecomment-5929722588)).
 Your own settings go in `.claude/settings.local.json`, which Git ignores.
 
 A park must name its cause. [.fabrika.jsonc](./.fabrika.jsonc) sets
@@ -424,7 +424,7 @@ A park must name its cause. [.fabrika.jsonc](./.fabrika.jsonc) sets
 refused with exit 52 and never lands on the lane. It sets
 `parkCause.driverRouted` to `clear`, so `fabrika recipe unpark` clears a
 park whose cause is the driver's without asking Huey
-([#350](https://github.com/hueypov/lexema/issues/350)). `fabrika lane
+([#350](https://github.com/povlabs/lexema/issues/350)). `fabrika lane
 report --help` lists the causes.
 
 ### Git hooks and new worktrees
@@ -447,7 +447,7 @@ After that, `git worktree add` sets the new tree up by itself: it links
 | Tests | `node:test` through `tsx` | Unit tests run without the dataset; one integration test streams it. |
 | App tables | Drizzle ORM + drizzle-kit | The developer app's tables and their migrations, pinned exactly; the dictionary stays raw SQL ([ADR 0017](./.decisions/0017-better-auth-and-drizzle-own-accounts.md)). |
 | Sign-in | better-auth + its Drizzle adapter | Google and GitHub sign-in, account linking and sessions on the developer site, pinned exactly, wired by hand in [src/accounts/auth.ts](./src/accounts/auth.ts); keys, account deletion and the CSRF token stay Lexema's ([ADR 0017](./.decisions/0017-better-auth-and-drizzle-own-accounts.md)). |
-| Billing | `@better-auth/stripe` + `stripe` | Stripe Checkout, the billing portal and the `subscription` rows on better-auth, pinned exactly; the plan catalogue, plan states and Enterprise stay Lexema's in [src/billing/](./src/billing) ([#161](https://github.com/hueypov/lexema/issues/161)). |
+| Billing | `@better-auth/stripe` + `stripe` | Stripe Checkout, the billing portal and the `subscription` rows on better-auth, pinned exactly; the plan catalogue, plan states and Enterprise stay Lexema's in [src/billing/](./src/billing) ([#161](https://github.com/povlabs/lexema/issues/161)). |
 | Package manager | pnpm 10 | `pnpm-lock.yaml` is the only lockfile, and every version sits in the workspace catalog ([ADR 0002](./.decisions/0002-pnpm-is-the-package-manager.md)). |
 
 ## Layout
@@ -500,7 +500,7 @@ entry loses its house definitions, embedded verb forms carry no mood tag, and th
 recovers dropped definitions from the raw Wiktionary pages, so `casa` shows its
 seven. With the dump the archive was built from in the repository root
 (`itwiktionary-20260701-pages-articles.xml.bz2`, gitignored, kept in
-`hueypov/lexema-data`), that covers every word, and `pnpm run measure:recovery`
+`povlabs/lexema-data`), that covers every word, and `pnpm run measure:recovery`
 counts the loss exactly ([the measurement](./reports/2026-09-23-recovered-definitions-full-release.md));
 without it, the seed reads the pages committed under `fixtures/`
 ([the development seed](./docs/DEV_SEED.md)). Losses with no structural mark are
@@ -523,6 +523,6 @@ development is the only access until that lands.
 | [leak-guard.yml](./.github/workflows/leak-guard.yml) | a changed doc or shell file carries a machine-local path |
 | [decisions-index.yml](./.github/workflows/decisions-index.yml) | two records share an ADR id, or a filename disagrees with its frontmatter |
 | [dictionary-deploy.yml](./.github/workflows/dictionary-deploy.yml) | on a push to `main`: a change declaration's archive or dump fails its checksum, its plan differs from the declared counts or crosses a hard limit, its write does not read back, or a word of the fixed list is not found; `production` then stays where it is ([docs/DEPLOY.md](./docs/DEPLOY.md#the-dictionary-deploy)) |
-| [dictionary-plan.yml](./.github/workflows/dictionary-plan.yml) | on a pull request that adds a change declaration: the first one's plan, with the pull request's code, differs from its `expected` or has none, or crosses a hard limit, or it is an `update:auto`, `hide:records` or `load:page-entries` and the run has no `hueypov/lexema-data` token, or the pull request adds a later declaration the plan cannot count. It prints the declaration with the plan's counts ([docs/DEPLOY.md](./docs/DEPLOY.md#the-pull-request-plan-check)) |
-| [dictionary-release.yml](./.github/workflows/dictionary-release.yml) | monthly: kaikki's build log names no dump, kaikki rebuilt while the archive was read, the dump is not what Wikimedia lists, a file in `hueypov/lexema-data` holds other bytes, or the plan-only run or the pull request fails; with no new release it opens nothing ([docs/DEPLOY.md](./docs/DEPLOY.md#the-monthly-release)) |
+| [dictionary-plan.yml](./.github/workflows/dictionary-plan.yml) | on a pull request that adds a change declaration: the first one's plan, with the pull request's code, differs from its `expected` or has none, or crosses a hard limit, or it is an `update:auto`, `hide:records` or `load:page-entries` and the run has no `povlabs/lexema-data` token, or the pull request adds a later declaration the plan cannot count. It prints the declaration with the plan's counts ([docs/DEPLOY.md](./docs/DEPLOY.md#the-pull-request-plan-check)) |
+| [dictionary-release.yml](./.github/workflows/dictionary-release.yml) | monthly: kaikki's build log names no dump, kaikki rebuilt while the archive was read, the dump is not what Wikimedia lists, a file in `povlabs/lexema-data` holds other bytes, or the plan-only run or the pull request fails; with no new release it opens nothing ([docs/DEPLOY.md](./docs/DEPLOY.md#the-monthly-release)) |
 | [preview-marker.yml](./.github/workflows/preview-marker.yml) | its `preview smoke` check, at a pull request's head: one of the six known words does not resolve on the Preview, the developer site or the API does not answer, a site does not serve `/favicon.ico` or `/apple-touch-icon.png` with its image type, or a response lacks `X-Robots-Tag: noindex` |

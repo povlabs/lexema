@@ -25,18 +25,21 @@ import { everyRecovered, type FoundResult, type LookupResult, type Reading } fro
 import { ApplyRefused, checkApplied, chooseChanges, missingForApply, planApply, type ApplyPlan } from "../src/update/apply.js";
 import type { Change } from "../src/update/changes.js";
 import { diffAgainstMaster, reportMarkdown, reportOf, type MasterDiff } from "../src/update/diff.js";
-import { changedUpgrade, missingUpgrade, planUpgrade, upgradeShortfall, type MasterReader } from "../src/update/master.js";
+import { changedUpgrade, missingUpgrade, planUpgrade, rebuildsOf, upgradeShortfall, type MasterReader } from "../src/update/master.js";
+import { overlongPatterns, sqlPatterns } from "../src/db/d1PatternLimit.js";
 import {
+  columnsOf,
   CORRECTION_TABLES,
   createStatement,
   definitionOf,
   HIDE_TABLES,
   masterUpgradeSql,
+  rebuildSql,
   PAGE_ENTRY_CORRECTION_TABLES,
   PAGE_ENTRY_INDEXES,
   PAGE_ENTRY_TABLES,
+  REBUILT_GROUPS,
   REBUILT_TABLES,
-  rebuiltTablesFor,
   SERVING_VIEWS,
   UPDATE_TABLES,
   UPGRADE_NAMES,
@@ -601,23 +604,106 @@ test("a definition compares the same through comments, spacing, IF NOT EXISTS an
   const fresh = new DatabaseSync(":memory:");
   fresh.exec(schema);
   assert.deepEqual(changedUpgrade(readerOf(fresh), schema), []);
-  for (const table of [...REBUILT_TABLES].reverse()) fresh.exec(`DROP TABLE ${table}`);
+  for (const table of [...PAGE_ENTRY_TABLES, ...PAGE_ENTRY_CORRECTION_TABLES].reverse()) fresh.exec(`DROP TABLE ${table}`);
   fresh.exec(masterUpgradeSql(schema));
   assert.deepEqual(changedUpgrade(readerOf(fresh), schema), []);
   assert.equal(planUpgrade(readerOf(fresh), schema).sql, "");
 });
 
-test("no table outside the rebuilt page-entry tables points at one, nor at hidden_record, so the upgrade can rebuild each alone", async () => {
+test("no table outside the rebuilt tables, or outside a rebuilt group, points at one, so the upgrade can rebuild each group alone", async () => {
   const db = new DatabaseSync(":memory:");
-  db.exec(await readFile(SCHEMA, "utf8"));
-  const rebuilt = new Set<string>(rebuiltTablesFor(["recovered_entry", "hidden_record"]));
-  assert.deepEqual([...rebuilt], [...REBUILT_TABLES, "hidden_record"]);
+  const schema = await readFile(SCHEMA, "utf8");
+  db.exec(schema);
   const tables = db.prepare("SELECT name FROM sqlite_schema WHERE type = 'table'").all().map((row) => String(row.name));
-  const pointing = tables
-    .filter((table) => !rebuilt.has(table))
-    .flatMap((table) => db.prepare("SELECT \"table\" AS parent FROM pragma_foreign_key_list(?)").all(table).map((row) => `${table} -> ${String(row.parent)}`))
-    .filter((edge) => rebuilt.has(edge.split(" -> ")[1]));
-  assert.deepEqual(pointing, []);
+  const pointingInto = (rebuilt: ReadonlySet<string>): string[] =>
+    tables
+      .filter((table) => !rebuilt.has(table))
+      .flatMap((table) => db.prepare("SELECT \"table\" AS parent FROM pragma_foreign_key_list(?)").all(table).map((row) => `${table} -> ${String(row.parent)}`))
+      .filter((edge) => rebuilt.has(edge.split(" -> ")[1]));
+  assert.deepEqual(REBUILT_TABLES, [...PAGE_ENTRY_TABLES, ...PAGE_ENTRY_CORRECTION_TABLES, "recovered_definition", "recovered_label", "recovered_example", "hidden_record"]);
+  assert.deepEqual(pointingInto(new Set<string>(REBUILT_TABLES)), []);
+  for (const group of REBUILT_GROUPS) {
+    assert.deepEqual(pointingInto(new Set<string>(group.tables)), [], group.tables.join(", "));
+    // Every index on a group's tables is one the group creates again, since a drop takes it.
+    const indexes = db.prepare(`SELECT name FROM sqlite_schema WHERE type = 'index' AND sql IS NOT NULL AND tbl_name IN (SELECT value FROM json_each(?))`).all(JSON.stringify(group.tables));
+    assert.deepEqual(indexes.map((row) => String(row.name)).sort(), [...group.indexes].sort(), group.tables.join(", "));
+    for (const name of group.indexes) createStatement(schema, "INDEX", name);
+  }
+});
+
+/** The rows of each table, by the columns `columns` names for it, in key order. */
+function rowsOf(db: DatabaseSync, columns: Readonly<Record<string, readonly string[]>>): string {
+  return JSON.stringify(Object.entries(columns).map(([table, names]) => db.prepare(`SELECT ${names.join(", ")} FROM ${table} ORDER BY 1, 2`).all()));
+}
+
+test("a master storing the older hidden_record and recovered_definition the live dictionary has is rebuilt to schema.sql's, with every row kept (#511)", async () => {
+  await withDesk(async ({ db }) => {
+    const schema = await readFile(SCHEMA, "utf8");
+    // Give the master the live definitions, keeping the rows the desk wrote by hand.
+    const recovered = ["recovered_definition", "recovered_label", "recovered_example"];
+    const saved = recovered.map((table) => [table, db.prepare(`SELECT * FROM ${table}`).all()] as const);
+    for (const table of ["recovered_label", "recovered_example", "recovered_definition", "hidden_record"]) db.exec(`DROP TABLE ${table}`);
+    db.exec(await readFile("fixtures/upgrade-older-tables.sql", "utf8"));
+    db.exec(createStatement(schema, "TABLE", "recovered_label"));
+    db.exec(createStatement(schema, "TABLE", "recovered_example"));
+    for (const [table, rows] of saved) {
+      for (const row of rows) {
+        const names = Object.keys(row);
+        db.prepare(`INSERT INTO ${table} (${names.join(", ")}) VALUES (${names.map(() => "?").join(", ")})`).run(...(Object.values(row) as (string | number | null)[]));
+      }
+    }
+    // A second definition, an item of the first's list, and a hidden record.
+    db.exec(`INSERT INTO recovered_definition VALUES (2, 1, '${MASTER}', 1, 1, 'lead-in-item', NULL, 9, '#*: in muratura', 'in muratura', '/senses/0/examples/0/text', NULL, 1)`);
+    db.exec(`INSERT INTO hidden_record VALUES (2, '${MASTER}', 1, 'section-language/v1', 'language-line', 'en', 3)`);
+    const newer = {
+      hidden: `INSERT INTO hidden_record (record_id, release_id, page_id, rule, because, language, page_line, lemma_line) VALUES (3, '${MASTER}', NULL, 'form-of-foreign-lemma/v1', 'lemma-lists-form', 'es', NULL, 42)`,
+      recovered: `INSERT INTO recovered_definition (recovered_id, record_id, release_id, page_id, definition_index, route, page_line, wikitext, text) VALUES (3, 1, '${MASTER}', 1, 2, 'wrapped-prose', 11, 'dimora', 'dimora')`,
+    };
+    assert.throws(() => db.exec(newer.hidden), /no column named lemma_line/);
+    assert.throws(() => db.exec(newer.recovered), /CHECK constraint failed/);
+
+    const columns: Record<string, readonly string[]> = Object.fromEntries(
+      ["recovered_definition", "recovered_label", "recovered_example", "hidden_record"].map((table) => [
+        table,
+        db.prepare("SELECT name FROM pragma_table_info(?)").all(table).map((row) => String(row.name)),
+      ]),
+    );
+    const before = rowsOf(db, columns);
+    const plan = planUpgrade(readerOf(db), schema);
+    assert.deepEqual(plan.missing, []);
+    assert.deepEqual(plan.changed, ["recovered_definition", "hidden_record"]);
+    // The two groups that hold them, and not the page-entry tables.
+    assert.deepEqual(rebuildsOf(plan), [
+      { table: "recovered_definition", rows: 2 },
+      { table: "recovered_label", rows: 1 },
+      { table: "recovered_example", rows: 1 },
+      { table: "hidden_record", rows: 1 },
+    ]);
+    assert.doesNotMatch(plan.sql, /DROP TABLE (recovered_entry|entry_definition|corrected_definition)\b/);
+    // D1 refuses a LIKE or GLOB pattern over 50 bytes (#489); every one this SQL holds, the rebuilt GLOB included, is shorter.
+    assert.ok(sqlPatterns(plan.sql).some(({ pattern, bytes }) => pattern === "/senses/[0-9]*/examples/[0-9]*/text" && bytes === 35));
+    assert.deepEqual(overlongPatterns(plan.sql), []);
+    const everyGroup = rebuildSql(schema, REBUILT_TABLES.map((name) => ({ name, columns: columnsOf(createStatement(schema, "TABLE", name)) })));
+    assert.deepEqual(overlongPatterns(everyGroup), [], "a rebuild of every group stays within D1's pattern limit");
+
+    execute(db, plan.sql);
+    assert.deepEqual(changedUpgrade(readerOf(db), schema), []);
+    assert.deepEqual(upgradeShortfall(readerOf(db), schema, plan), []);
+    assert.equal(rowsOf(db, columns), before);
+    assert.deepEqual(db.prepare("SELECT lemma_line FROM hidden_record").all().map((row) => row.lemma_line), [null]);
+    assert.deepEqual(db.prepare("PRAGMA foreign_key_check").all(), []);
+
+    // A second run has nothing to do.
+    const settled = dump(db);
+    assert.equal(planUpgrade(readerOf(db), schema).sql, "");
+    assert.equal(dump(db), settled);
+
+    // The values the older CHECKs refused are accepted now.
+    db.exec(newer.hidden);
+    db.exec(newer.recovered);
+    assert.deepEqual(db.prepare("SELECT rule FROM hidden_record ORDER BY record_id").all().map((row) => row.rule), ["section-language/v1", "form-of-foreign-lemma/v1"]);
+    assert.deepEqual(db.prepare("SELECT route FROM recovered_definition ORDER BY recovered_id").all().map((row) => row.route), ["below-page-control", "lead-in-item", "wrapped-prose"]);
+  });
 });
 
 test("a rebuild whose rows the new definition refuses stops whole, and the dictionary keeps its tables and rows", async () => {

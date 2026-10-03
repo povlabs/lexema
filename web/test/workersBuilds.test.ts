@@ -326,7 +326,7 @@ function github(pages: unknown[][] | { status: number } | Error) {
   return { fetchPage, urls, headers };
 }
 
-const pull = (ref: string) => ({ number: 1, state: "open", head: { ref, repo: { full_name: "hueypov/lexema" } } });
+const pull = (ref: string) => ({ number: 1, state: "open", head: { ref, repo: { full_name: "povlabs/lexema" } } });
 
 const OPEN = "huey/still-open";
 const CLOSED = "huey/closed";
@@ -357,11 +357,12 @@ test("the sweep selects nothing when the open pull requests cannot be read", () 
   assert.deepEqual(selectForSweep(account().databases, { state: "unread", reason: "no token" }), []);
 });
 
-test("the open pull requests are unreadable without a token, on a refused request, on a network failure and on a malformed answer", async () => {
+test("the open pull requests of the public repository are read without a token, and are unreadable on a refused request, a network failure or a malformed answer", async () => {
   for (const token of [undefined, "", "  "]) {
     const gh = github([[pull(OPEN)]]);
-    assert.deepEqual(await readOpenBranches(token, gh.fetchPage), { state: "unread", reason: "GITHUB_PR_READ_TOKEN is not set" });
-    assert.deepEqual(gh.urls, []);
+    const read = await readOpenBranches(token, gh.fetchPage);
+    assert.equal(read.state, "read");
+    assert.equal(gh.headers[0].authorization, undefined);
   }
   for (const answer of [{ status: 401 }, { status: 403 }, { status: 404 }, { status: 500 }, new Error("getaddrinfo ENOTFOUND"), [[{ number: 1 }]], [[pull(OPEN), { head: { ref: "" } }]]]) {
     const read = await readOpenBranches("token", github(answer as never).fetchPage);
@@ -378,8 +379,8 @@ test("the open pull requests are read page by page from this repository with the
   assert.equal(read.state, "read");
   assert.equal(read.state === "read" && read.branches.size, 101);
   assert.deepEqual(gh.urls, [
-    "https://api.github.com/repos/hueypov/lexema/pulls?state=open&per_page=100&page=1",
-    "https://api.github.com/repos/hueypov/lexema/pulls?state=open&per_page=100&page=2",
+    "https://api.github.com/repos/povlabs/lexema/pulls?state=open&per_page=100&page=1",
+    "https://api.github.com/repos/povlabs/lexema/pulls?state=open&per_page=100&page=2",
   ]);
   assert.equal(gh.headers[0].authorization, "Bearer github_pat_x");
 });
@@ -406,7 +407,7 @@ test("the sweep deletes each closed branch's Preview, then its app database, and
 });
 
 test("the sweep deletes nothing and calls no Wrangler when the pull requests cannot be read", async () => {
-  for (const [token, answer] of [[undefined, [[pull(OPEN)]]], ["t", { status: 401 }], ["t", new Error("offline")]] as const) {
+  for (const [token, answer] of [[undefined, { status: 403 }], ["t", { status: 401 }], ["t", new Error("offline")]] as const) {
     const fake = account();
     const deleted = await sweep({ wrangler: fake.wrangler, token, fetchPage: github(answer as never).fetchPage, log: () => {} });
     assert.deepEqual(deleted, []);

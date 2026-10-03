@@ -357,14 +357,14 @@ test("a dictionary without the page-entry tables gets the upgrade as its own bat
     assert.match(ddlSql, /CREATE TABLE IF NOT EXISTS corrected_definition\b/);
     assert.doesNotMatch(ddlSql, /^\s*(INSERT|UPDATE|DELETE)\b/m);
     assert.doesNotMatch(dataSql, /\bCREATE\b/);
-    if (outcome.kind === "green") assert.deepEqual(outcome.upgraded, { added: [...PAGE_ENTRY_UPGRADE_TABLES, ...PAGE_ENTRY_INDEXES], rebuilt: [] });
+    if (outcome.kind === "green") assert.deepEqual(outcome.upgraded, { added: [...PAGE_ENTRY_UPGRADE_TABLES, ...PAGE_ENTRY_INDEXES], changed: [], rebuilt: [] });
     assert.match(deploySummary(outcome, "lexema-dictionary"), /The upgrade ran first and added `recovered_entry`/);
 
     // The next run finds nothing missing and runs no DDL.
     const next = await world.commit({ "dictionary-changes/2026-10-normalize-again.json": declaration(NORMALIZE, { records: { added: 0, changed: 0, removed: 0 } }) });
     const again = await deployDictionary(world.deps(next));
     assert.equal(again.kind, "green", deploySummary(again, "lexema-dictionary"));
-    if (again.kind === "green") assert.deepEqual(again.upgraded, { added: [], rebuilt: [] });
+    if (again.kind === "green") assert.deepEqual(again.upgraded, { added: [], changed: [], rebuilt: [] });
     assert.equal(writes(world.d1).length, 2);
   });
 });
@@ -421,8 +421,11 @@ test("a dictionary holding an older definition of a page-entry table gets schema
 
     assert.equal(outcome.kind, "green", deploySummary(outcome, "lexema-dictionary"));
     assert.deepEqual(deps.steps, [...DEPLOY_STEPS]);
-    if (outcome.kind === "green") assert.deepEqual(outcome.upgraded, { added: [], rebuilt: ["recovered_entry", "corrected_definition"] });
-    assert.match(deploySummary(outcome, "lexema-dictionary"), /rebuilt tables, keeping their rows, for the changed definition of `recovered_entry`, `corrected_definition`/);
+    if (outcome.kind === "green") assert.deepEqual(outcome.upgraded, { added: [], changed: ["recovered_entry", "corrected_definition"], rebuilt: PAGE_ENTRY_UPGRADE_TABLES });
+    assert.match(
+      deploySummary(outcome, "lexema-dictionary"),
+      /rebuilt `recovered_entry`, `entry_definition`, `entry_label`, `entry_example`, `corrected_definition`, keeping their rows, for the changed definition of `recovered_entry`, `corrected_definition`/,
+    );
     const [ddl, data, ...rest] = writes(world.d1);
     assert.deepEqual(rest, []);
     assert.match(commandSql(ddl), /CREATE TABLE upgrade_kept_recovered_entry AS SELECT \* FROM recovered_entry;/);
@@ -448,7 +451,7 @@ test("a dictionary holding an older definition of a page-entry table gets schema
     const next = await world.commit({ "dictionary-changes/2026-10-normalize-again.json": declaration(NORMALIZE, { records: { added: 0, changed: 0, removed: 0 } }) });
     const again = await deployDictionary(world.deps(next));
     assert.equal(again.kind, "green", deploySummary(again, "lexema-dictionary"));
-    if (again.kind === "green") assert.deepEqual(again.upgraded, { added: [], rebuilt: [] });
+    if (again.kind === "green") assert.deepEqual(again.upgraded, { added: [], changed: [], rebuilt: [] });
     assert.equal(writes(world.d1).length, 2);
   });
 });
@@ -504,7 +507,7 @@ test("a batch D1 refuses after an earlier batch landed still reports the write, 
     assert.equal(outcome.kind, "red");
     if (outcome.kind === "red") {
       assert.equal(outcome.written, true);
-      assert.deepEqual(outcome.upgraded, { added: [...PAGE_ENTRY_UPGRADE_TABLES, ...PAGE_ENTRY_INDEXES], rebuilt: [] });
+      assert.deepEqual(outcome.upgraded, { added: [...PAGE_ENTRY_UPGRADE_TABLES, ...PAGE_ENTRY_INDEXES], changed: [], rebuilt: [] });
     }
     assert.equal(writes(world.d1).length, 1, "only the upgrade reached the dictionary");
     const summary = deploySummary(outcome, "lexema-dictionary");
@@ -568,7 +571,7 @@ test("correct:records and hide:records declarations on a dictionary without thei
     } finally {
       db.close();
     }
-    // The master's archive and an empty dump, as hueypov/lexema-data would serve them.
+    // The master's archive and an empty dump, as povlabs/lexema-data would serve them.
     const archive = await readFile(archiveOf(world.dir));
     const sha256 = createHash("sha256").update(archive).digest("hex");
     const releaseId = `it-${sha256.slice(0, 8)}`;
@@ -606,7 +609,7 @@ test("correct:records and hide:records declarations on a dictionary without thei
 
     assert.equal(outcome.kind, "green", deploySummary(outcome, "lexema-dictionary"));
     if (outcome.kind === "green") {
-      assert.deepEqual(outcome.upgraded, { added: created, rebuilt: [] });
+      assert.deepEqual(outcome.upgraded, { added: created, changed: [], rebuilt: [] });
       assert.deepEqual(outcome.changes.map(({ command, ran }) => [command, ran]), [["correct:records", true], ["hide:records", true]]);
     }
     const [ddl, ...data] = writes(world.d1).map(commandSql);
@@ -689,21 +692,18 @@ test("the master's archive is read from source/it-extract.jsonl.gz, and a feed's
   assert.equal(filesFor(parseChange("test", JSON.stringify(NORMALIZE))), null);
 });
 
-test("a file is read from lexema-data's contents API with the token it is given, raw", async () => {
+test("a file is read from the public lexema-data on raw.githubusercontent.com, with no token", async () => {
   const dir = await mkdtemp(join(tmpdir(), "lexema-fetch-"));
   try {
-    const asked: { url: string; headers: Record<string, string> }[] = [];
-    const fake = (async (url: string, init: { headers: Record<string, string> }) => {
-      asked.push({ url, headers: init.headers });
+    const asked: { url: string; init: unknown }[] = [];
+    const fake = (async (url: string, init?: unknown) => {
+      asked.push({ url, init });
       return url.endsWith("missing.bz2") ? new Response("no", { status: 404 }) : new Response("the bytes");
     }) as unknown as typeof fetch;
-    const fetcher = lexemaDataFetcher("read-only-token", fake);
+    const fetcher = lexemaDataFetcher(fake);
     await fetcher("source/it-78385b62.jsonl.gz", join(dir, "a", "archive"));
     assert.equal(await readFile(join(dir, "a", "archive"), "utf8"), "the bytes");
-    assert.deepEqual(asked[0], {
-      url: "https://api.github.com/repos/hueypov/lexema-data/contents/source/it-78385b62.jsonl.gz",
-      headers: { Accept: "application/vnd.github.raw+json", Authorization: "Bearer read-only-token", "X-GitHub-Api-Version": "2022-11-28" },
-    });
+    assert.deepEqual(asked[0], { url: "https://raw.githubusercontent.com/povlabs/lexema-data/main/source/it-78385b62.jsonl.gz", init: undefined });
     await assert.rejects(fetcher("source/missing.bz2", join(dir, "b")), (error: unknown) => error instanceof DataRefused && /answered 404/.test(error.message));
   } finally {
     await rm(dir, { recursive: true, force: true });
@@ -806,11 +806,12 @@ function jobsOf(yaml: string): Map<string, string> {
   return jobs;
 }
 
-test("the workflow reads lexema-data only with the read-only token, and every job given the Cloudflare token names the environment restricted to main", async () => {
+test("the workflow reads the public lexema-data with no token, and every job given the Cloudflare token names the environment restricted to main", async () => {
   const workflows = resolve(".github/workflows");
   const yaml = await readFile(join(workflows, "dictionary-deploy.yml"), "utf8");
-  assert.deepEqual([...new Set(yaml.match(/secrets\.[A-Z0-9_]+/g))].sort(), ["secrets.CLOUDFLARE_D1_TOKEN", "secrets.LEXEMA_DATA_READ_TOKEN"]);
-  assert.deepEqual([...new Set(yaml.match(/LEXEMA_DATA_TOKEN: .*/g))], ["LEXEMA_DATA_TOKEN: ${{ secrets.LEXEMA_DATA_READ_TOKEN }}"]);
+  // povlabs/lexema-data is public, so no lexema-data token is passed (#527).
+  assert.deepEqual([...new Set(yaml.match(/secrets\.[A-Z0-9_]+/g))].sort(), ["secrets.CLOUDFLARE_D1_TOKEN"]);
+  assert.doesNotMatch(yaml, /LEXEMA_DATA/);
   const jobs = jobsOf(yaml);
   assert.deepEqual([...jobs.keys()], ["deploy", "plan"]);
   for (const [id, block] of jobs) {
@@ -828,16 +829,15 @@ test("the workflow reads lexema-data only with the read-only token, and every jo
   }
 });
 
-test("the pull request plan check gets only the read-only tokens, in its own environment, never on a fork, and only plans", async () => {
+test("the pull request plan check gets only the D1 read-only token, in its own environment, never on a fork, and only plans", async () => {
   const yaml = await readFile(resolve(".github/workflows/dictionary-plan.yml"), "utf8");
   const on = yaml.slice(yaml.indexOf("\non:\n"), yaml.indexOf("\njobs:\n"));
   assert.match(on, /^ {2}pull_request:$/m);
   const code = yaml.split("\n").filter((line) => !/^\s*#/.test(line)).join("\n");
   assert.doesNotMatch(code, /pull_request_target|workflow_run|LEXEMA_DATA_WRITE_TOKEN|CLOUDFLARE_D1_TOKEN/);
-  assert.deepEqual([...new Set(yaml.match(/secrets\.[A-Z0-9_]+/g))].sort(), ["secrets.CLOUDFLARE_D1_READ_TOKEN", "secrets.LEXEMA_DATA_READ_TOKEN"]);
-  // The lexema-data read-only token reaches the plan step alone (#498).
-  assert.deepEqual(code.match(/.*LEXEMA_DATA.*/g)?.map((line) => line.trim()), ["LEXEMA_DATA_TOKEN: ${{ secrets.LEXEMA_DATA_READ_TOKEN }}"]);
-  assert.match(code, /- run: pnpm run deploy:dictionary --plan-only --added-since HEAD\^1\n {8}env:\n(?: {10}\S.*\n)* {10}LEXEMA_DATA_TOKEN: /);
+  assert.deepEqual([...new Set(yaml.match(/secrets\.[A-Z0-9_]+/g))].sort(), ["secrets.CLOUDFLARE_D1_READ_TOKEN"]);
+  // povlabs/lexema-data is public, so the plan reads it with no token (#527).
+  assert.doesNotMatch(code, /LEXEMA_DATA/);
   assert.match(code, /persist-credentials: false/);
   assert.match(yaml, /^permissions: \{\}$/m);
   const jobs = jobsOf(yaml);

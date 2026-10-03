@@ -3,7 +3,7 @@
 The dictionary database is the **master**: the release it was seeded from,
 plus selected changes from later kaikki releases. A later release is a
 **feed**, never a replacement. Huey ruled this on 2026-10-01
-([#18](https://github.com/hueypov/lexema/issues/18#issuecomment-5933489252)),
+([#18](https://github.com/povlabs/lexema/issues/18#issuecomment-5933489252)),
 keeping [ADR 0018](../.decisions/0018-previews-on-workers-builds.md)'s line
 that later releases apply as diffs, not full re-imports.
 
@@ -14,7 +14,7 @@ This page explains the design. The steps to run are in
 
 A re-import would replace every row the master holds, and the master holds rows
 no kaikki release has: the recovered definitions read off raw Wiktionary pages
-(`raw_page`, `recovered_*`, [#28](https://github.com/hueypov/lexema/issues/28)),
+(`raw_page`, `recovered_*`, [#28](https://github.com/povlabs/lexema/issues/28)),
 the notes in `claim_review`, and any layer added later. Each of them hangs off a
 source record by `record_id`, with `ON DELETE CASCADE`
 ([src/db/schema.sql](../src/db/schema.sql)). Deleting or replacing a record
@@ -39,7 +39,7 @@ use `replaces-definitions`, and reduced real definitions use
 additions still stay skipped, as do non-definition changes.
 
 v4 differs from v3 in one skip, `blank-replaces-definition`
-([#442](https://github.com/hueypov/lexema/issues/442)). A later record with
+([#442](https://github.com/povlabs/lexema/issues/442)). A later record with
 fewer real definitions is not applied when it has more blank senses than ours,
 or only blank senses or none at all. A blank sense has no gloss text once the
 "definizione mancante" placeholder is taken out: glosses absent, null or empty,
@@ -51,7 +51,7 @@ removal with no blank in its place, such as `gay`, `gastronomia` or `logografo`
 in it-78385b62, still applies.
 
 v5 differs from v4 in what counts as a real gloss
-([#422](https://github.com/hueypov/lexema/issues/422)). Up to v4 the rule read
+([#422](https://github.com/povlabs/lexema/issues/422)). Up to v4 the rule read
 the source text. The page reads the text the seed stores and hides a gloss
 that only repeats the headword, so v5 reads senses through `PageSenses`
 ([src/italian/recordQuality.ts](../src/italian/recordQuality.ts)): a sense is
@@ -166,7 +166,7 @@ line it was written about, so a reader can still check it there.
 The seed recovered a definition only when its record did not carry it, so a
 lookup asks that again of the record that replaced it, by the seed's own rule
 (`carries` in [src/italian/recovery.ts](../src/italian/recovery.ts),
-[#370](https://github.com/hueypov/lexema/issues/370)):
+[#370](https://github.com/povlabs/lexema/issues/370)):
 
 - A recovered definition the replacing record carries as a gloss is not shown
   again: the record shows it as a sense.
@@ -181,7 +181,7 @@ lookup asks that again of the record that replaced it, by the seed's own rule
 The rules live in [src/lookup/recovered.ts](../src/lookup/recovered.ts). A
 record never replaced reads its rows as the seed stored them.
 
-A curated correction (`corrected_claim`, [#420](https://github.com/hueypov/lexema/issues/420))
+A curated correction (`corrected_claim`, [#420](https://github.com/povlabs/lexema/issues/420))
 is the one row written beside a record that does not follow it. It sets a gender
 or number the source stated wrongly on that line, checked against a cited
 revision, and the later record may state it differently, rightly or not. So it
@@ -226,14 +226,14 @@ search field's suggestions are keyed on the **served version** instead: the
 release and the last change applied to it
 ([`servedVersion`](../src/lookup/served.ts), one row read). An apply moves it,
 and so every card's address and every suggestion request's address
-([#368](https://github.com/hueypov/lexema/issues/368)).
+([#368](https://github.com/povlabs/lexema/issues/368)).
 
 ## An older master
 
 A master seeded before #18 has none of `feed_release`, `applied_change` or the
 views that read them. The diff and the apply's plan read such a master as it
 is. The apply's SQL holds no DDL
-([#509](https://github.com/hueypov/lexema/issues/509)), so the apply refuses
+([#509](https://github.com/povlabs/lexema/issues/509)), so the apply refuses
 to write until `pnpm run update:upgrade` has created the tables and views, read
 out of `schema.sql` itself ([src/update/masterUpgrade.ts](../src/update/masterUpgrade.ts)),
 so a fresh seed and an upgraded master have the same shape. The dictionary

@@ -34,10 +34,11 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { finish, isMain, usageError, type CommandResult } from "../commandLine.js";
+import { readD1, type D1Executor } from "../db/d1Command.js";
 import { seedTargetFrom, webWrangler, type SeedTarget, type Wrangler } from "../import/seedTarget.js";
 import { ApplyRefused, checkApplied, chooseChanges, missingForApply, planApply, type ApplyPlan } from "./apply.js";
 import { diffAgainstMaster, reportMarkdown, reportOf } from "./diff.js";
-import { planUpgrade, readMasterRelease, upgradeFirst, upgradeShortfall, type MasterReader } from "./master.js";
+import { planUpgrade, readMasterRelease, rebuildsOf, upgradeFirst, upgradeShortfall, type MasterReader } from "./master.js";
 import { automaticPlan } from "./automatic.js";
 import { PlanCounts } from "./planCounts.js";
 import { planOnlyAnswer, planOnlyFlag, planOnlyRun } from "./planOnly.js";
@@ -56,12 +57,11 @@ const SCHEMA = resolve("src/db/schema.sql");
 /** The dump's language headings, which #29's rule reads (src/italian/sectionLanguage.ts). */
 const LANGUAGES = resolve("fixtures/section-language/regressions.json");
 
-/** The master through Wrangler: each SELECT is one `d1 execute --command`. */
-export function masterReaderOf(target: SeedTarget): MasterReader {
+/** The master through Wrangler: each query is one `D1Command` read, answering its last statement's rows. */
+export function masterReaderOf(target: D1Executor): MasterReader {
   return {
     query<Row>(sql: string): Row[] {
-      const answers = JSON.parse(target.execute(["--json", "--command", sql], true)) as { results: Row[] }[];
-      return answers.at(-1)?.results ?? [];
+      return readD1<Row>(target, sql).at(-1) ?? [];
     },
   };
 }
@@ -252,8 +252,15 @@ async function upgradeCommand(target: SeedTarget, args: readonly string[]): Prom
   const schema = await readFile(SCHEMA, "utf8");
   const upgrade = planUpgrade(reader, schema);
   const { missing, changed, sql } = upgrade;
-  // The upgrade adds no row and drops none: its counts are none, and what it adds or rebuilds is named beside them.
-  if (planOnly) return planOnlyAnswer(planOnlyRun("update:upgrade", PlanCounts.NONE, reader), sql, read.out, `upgrade-${master.releaseId}`, { adds: missing, rebuildsFor: changed });
+  // The upgrade adds no row and loses none: its counts are none, and what it adds or rebuilds is named beside them,
+  // each table a rebuild drops with the rows it holds.
+  if (planOnly) {
+    return planOnlyAnswer(planOnlyRun("update:upgrade", PlanCounts.NONE, reader), sql, read.out, `upgrade-${master.releaseId}`, {
+      adds: missing,
+      rebuildsFor: changed,
+      rebuilds: rebuildsOf(upgrade),
+    });
+  }
   if (sql === "") return { out: `${target.dictionary} (master ${master.releaseId}) already has every table and view the upgrade adds, as schema.sql defines it; nothing to do`, status: 0 };
   await mkdir(read.out, { recursive: true });
   const file = join(read.out, `upgrade-${master.releaseId}-${Date.now()}.sql`);

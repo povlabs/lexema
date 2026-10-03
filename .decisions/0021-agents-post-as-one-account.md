@@ -16,7 +16,7 @@ tags: [process, agents]
 
 That prefix is refused by Claude Code's auto-mode check, so a reviewer lane either parks or routes around the refusal ([kamp-us/phoenix#10308](https://github.com/kamp-us/phoenix/issues/10308)). Fabrika's own repository runs with one account: its verdicts are posted by the pull request author's account ([kamp-us/phoenix#10300](https://github.com/kamp-us/phoenix/pull/10300)).
 
-Huey ruled on 2026-10-01, recorded on [#333](https://github.com/hueypov/lexema/issues/333): every agent role posts as `hueypov`, the reviewer is still a different agent from the builder, never fixes what it finds and never merges, and only the separate account goes.
+Huey ruled on 2026-10-01, recorded on [#333](https://github.com/povlabs/lexema/issues/333): every agent role posts as `hueypov`, the reviewer is still a different agent from the builder, never fixes what it finds and never merges, and only the separate account goes.
 
 What made the review worth having was never the account. 0005's own evidence is four pull requests their authors had called finished, each failed by a reviewer that had not written them. That is independence of the agent, and it survives one account.
 

@@ -20,7 +20,7 @@ import {
 
 /**
  * A dictionary database the update reads: one statement in, its rows out.
- * Wrangler's `d1 execute --command` for a real one, `node:sqlite` in tests.
+ * Wrangler's `d1 execute --command=<sql>` for a real one, `node:sqlite` in tests.
  */
 export interface MasterReader {
   query<Row>(sql: string): Row[];
@@ -72,7 +72,8 @@ export function missingUpgrade(reader: MasterReader): string[] {
 
 /**
  * Whether the master's `hidden_record` is #382's, without the column
- * `form-of-foreign-lemma/v1` added (#389). The upgrade rebuilds such a table;
+ * `form-of-foreign-lemma/v1` added (#389). Its stored definition then differs
+ * from schema.sql's, so `changedUpgrade` lists it and the upgrade rebuilds it;
  * a master without the table has nothing to rebuild.
  */
 export function hiddenRecordBefore389(reader: MasterReader): boolean {
@@ -81,21 +82,17 @@ export function hiddenRecordBefore389(reader: MasterReader): boolean {
 }
 
 /**
- * The page-entry tables and indexes the master has whose stored definition is
- * not schema.sql's (`definitionOf`), in creation order, and `hidden_record`
- * when it is from before #389 (`hiddenRecordBefore389`). Any one listed makes
- * the upgrade rebuild the tables `rebuiltTablesFor` names for it (`rebuildSql`).
+ * The rebuilt tables and indexes the master has whose stored definition is not
+ * schema.sql's (`definitionOf`), in creation order. Any one listed makes the
+ * upgrade rebuild its group (`rebuildSql`).
  */
 export function changedUpgrade(reader: MasterReader, schema: string): string[] {
   const names = REBUILT_NAMES.map((name) => `'${name}'`).join(", ");
   const stored = new Map(select<{ name: string; sql: string }>(reader, `SELECT name, sql FROM sqlite_schema WHERE name IN (${names})`).map((row) => [row.name, row.sql]));
-  return [
-    ...REBUILT_NAMES.filter((name) => {
-      const sql = stored.get(name);
-      return sql !== undefined && definitionOf(sql) !== definitionOf(createStatement(schema, rebuiltKind(name), name));
-    }),
-    ...(hiddenRecordBefore389(reader) ? ["hidden_record"] : []),
-  ];
+  return REBUILT_NAMES.filter((name) => {
+    const sql = stored.get(name);
+    return sql !== undefined && definitionOf(sql) !== definitionOf(createStatement(schema, rebuiltKind(name), name));
+  });
 }
 
 /**
@@ -134,13 +131,22 @@ function keptTables(reader: MasterReader, tables: readonly RebuiltTable[]): Kept
  */
 export interface UpgradePlan {
   missing: string[];
-  /** The page-entry tables and indexes whose definition changes, and `hidden_record` when it is from before #389; empty when none does. */
+  /** The rebuilt tables and indexes whose definition changes; empty when none does. */
   changed: string[];
-  /** The tables a rebuild for `changed` drops and creates again (`rebuiltTablesFor`), with the rows each holds before: empty unless something `changed`. */
+  /** The tables a rebuild drops and creates again, every table of each group that holds a `changed` name, with the rows each holds before: empty unless something `changed`. */
   kept: readonly KeptTable[];
   /** Empty when the master has every table and view already, each as schema.sql defines it. */
   sql: string;
 }
+
+/** A table a rebuild drops and creates again, with the rows it holds before. */
+export interface Rebuild {
+  readonly table: RebuiltTable;
+  readonly rows: number;
+}
+
+/** The tables `plan` rebuilds, each with its rows: what a reader checks before a rebuild runs on the shared dictionary. */
+export const rebuildsOf = (plan: Pick<UpgradePlan, "kept">): Rebuild[] => plan.kept.map(({ name, rows }) => ({ table: name, rows }));
 
 /** Plan the upgrade of the master `reader` reads, from schema.sql's text; it writes nothing. */
 export function planUpgrade(reader: MasterReader, schema: string): UpgradePlan {
@@ -159,7 +165,7 @@ export function upgradeShortfall(after: MasterReader, schema: string, plan: Pick
   return [
     ...missingUpgrade(after).map((name) => `the upgrade did not add ${name}`),
     ...changedUpgrade(after, schema).map((name) =>
-      name === "hidden_record" ? `the upgrade left hidden_record without its ${HIDDEN_RECORD_SINCE_389} column` : `the upgrade left ${name} unlike schema.sql's definition`,
+      name === "hidden_record" && hiddenRecordBefore389(after) ? `the upgrade left hidden_record without its ${HIDDEN_RECORD_SINCE_389} column` : `the upgrade left ${name} unlike schema.sql's definition`,
     ),
     ...plan.kept
       .filter((table) => rows.get(table.name) !== table.rows)

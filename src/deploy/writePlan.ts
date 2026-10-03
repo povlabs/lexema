@@ -19,7 +19,7 @@ import { checkApplied } from "../update/apply.js";
 import { automaticPlan } from "../update/automatic.js";
 import type { DeclaredChange, PlanOnlyRun } from "../update/declaration.js";
 import { diffAgainstMaster } from "../update/diff.js";
-import { planUpgrade, readMasterRelease, upgradeShortfall, type MasterReader } from "../update/master.js";
+import { planUpgrade, readMasterRelease, type Rebuild, rebuildsOf, upgradeShortfall, type MasterReader } from "../update/master.js";
 import { PlanCounts } from "../update/planCounts.js";
 import { planOnlyRun } from "../update/planOnly.js";
 import { type SourceCatalogs, withFeedDump } from "../update/select.js";
@@ -36,6 +36,8 @@ export interface WritePlan {
   readonly sql: string;
   /** What the dictionary does not hold as planned, read after the file ran; empty when it all reads back. */
   readBack(reader: MasterReader): string[];
+  /** The tables `update:upgrade` drops and creates again, with their rows; absent for every other command. */
+  readonly rebuilds?: readonly Rebuild[];
 }
 
 /** A change and the files it reads: `update:auto`, `hide:records` and `load:page-entries` read an archive and a dump, the others none. */
@@ -94,6 +96,7 @@ export async function planWrite(ready: ReadyChange, reader: MasterReader, applie
           run: planOnlyRun(change.command, PlanCounts.NONE, reader),
           sql: upgrade.sql,
           readBack: (after) => upgradeShortfall(after, schema, upgrade),
+          rebuilds: rebuildsOf(upgrade),
         };
       }
       case "normalize:source-text": {

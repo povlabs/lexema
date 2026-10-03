@@ -21,7 +21,7 @@ import {
   UNKNOWN_KEY,
 } from "@/builds/previewSmokeCommand.ts";
 
-const REPOSITORY = "hueypov/lexema";
+const REPOSITORY = "povlabs/lexema";
 const BRANCH = "build/245-preview-test-sign-in-4e2f1c60";
 const SHA = "8be5dd31adde7c3155860e89e1b8e8d5990394ff";
 const LATER_SHA = "d1f82ee99418ab14ec11730d9c0f32bd657b724f";
@@ -136,7 +136,7 @@ async function smoke(github: FakeGitHub, pages: Record<string, Page | Error> = U
     },
     attempts,
     wait: async () => {},
-    detailsUrl: "https://github.com/hueypov/lexema/actions/runs/1",
+    detailsUrl: "https://github.com/povlabs/lexema/actions/runs/1",
     log: () => {},
   });
   return { outcome, asked };
@@ -176,7 +176,7 @@ test("a working Preview reports one successful check at the head, with a row per
   assert.equal(check.title, `All ${REQUESTS} preview requests answered`);
   assert.match(check.summary, /Preview `build-245-preview-e48bab4a` @ 8be5dd31adde7c3155860e89e1b8e8d5990394ff/);
   assert.equal(check.summary.split("\n").filter((line) => line.endsWith("| pass |")).length, REQUESTS);
-  assert.equal(check.detailsUrl, "https://github.com/hueypov/lexema/actions/runs/1");
+  assert.equal(check.detailsUrl, "https://github.com/povlabs/lexema/actions/runs/1");
 });
 
 test("any of the six words that does not resolve fails the check, naming the word", async () => {
@@ -337,7 +337,7 @@ test("the check run is created on the head through the Checks API with GITHUB_TO
     const url = new URL(String(input));
     assert.equal(new Headers(init?.headers).get("authorization"), "Bearer t0ken");
     requests.push({ key: `${init?.method} ${url.pathname}`, body: init?.body === undefined ? undefined : JSON.parse(String(init.body)) });
-    if (url.pathname === "/repos/hueypov/lexema/pulls/269") {
+    if (url.pathname === "/repos/povlabs/lexema/pulls/269") {
       return Response.json({ number: 269, state: "open", head: { sha: SHA, ref: BRANCH, repo: { full_name: REPOSITORY } } });
     }
     return Response.json({ id: 1 }, { status: 201 });
@@ -347,7 +347,7 @@ test("the check run is created on the head through the Checks API with GITHUB_TO
   assert.deepEqual(await github.pullRequest(269), pr269());
   await github.createCheckRun({ headSha: SHA, conclusion: "failure", title: "t", summary: "s", detailsUrl: "https://example.test/run" });
   assert.deepEqual(requests.at(-1), {
-    key: "POST /repos/hueypov/lexema/check-runs",
+    key: "POST /repos/povlabs/lexema/check-runs",
     body: {
       name: SMOKE_CHECK,
       head_sha: SHA,

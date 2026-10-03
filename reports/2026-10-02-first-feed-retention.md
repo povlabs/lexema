@@ -1,6 +1,6 @@
 # First-feed real-gloss retention audit
 
-Measured 2026-10-02 for [#414](https://github.com/hueypov/lexema/issues/414).
+Measured 2026-10-02 for [#414](https://github.com/povlabs/lexema/issues/414).
 This is a source/domain audit, not an observation of current production pages.
 The future-selection guard is `feed-selection/v2`: only the automatic
 `adds-sense` route now requires every old `ReadSenses.keys` key to survive.
@@ -10,7 +10,7 @@ A code merge does **not** repair already-applied data.
 ## Production fact and historical evidence
 
 Huey's **read-only D1 query**, as recorded in
-[#414](https://github.com/hueypov/lexema/issues/414), confirms production applied
+[#414](https://github.com/povlabs/lexema/issues/414), confirms production applied
 **54 changed + 214 new** from `it-78385b62` at
 **2026-10-01T22:35:34.630Z**. That is Huey's evidence, not an agent query.
 No remote query, shared D1 write, alternative authentication mode or recovery
@@ -121,4 +121,4 @@ removal over the joined gloss strings. Accents are not semantically matched.
 The source-backed proposal requiring separate approval is in
 [the recovery proposal](2026-10-02-first-feed-recovery-proposal.md).
 No targeted recovery operation exists; deferred implementation is filed as
-[#427](https://github.com/hueypov/lexema/issues/427), linked to #414.
+[#427](https://github.com/povlabs/lexema/issues/427), linked to #414.
