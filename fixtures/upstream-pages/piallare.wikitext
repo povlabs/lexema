@@ -1,0 +1,38 @@
+<!-- it.wiktionary.org/wiki/piallare revision 4059538 (2026-01-28T11:26:03Z), CC BY-SA 4.0. Saved verbatim. -->
+{{-it-}} 
+{{-verb-}} 
+{{Transitivo|it}}
+{{Pn|c}}
+# [[appiattire]] con la [[pialla]]
+
+{{-sill-}}
+; pial | là | re
+
+{{-pron-}}
+{{IPA|/pjalˈlare/}}
+
+{{-etim-}}
+deriva da [[pialla]]
+
+{{-sin-}}
+* [[appiattire]],  [[assottigliare]],  [[levigare]], [[lisciare]], [[livellare]], [[pareggiare]], [[smussare]], [[spianare]]
+
+
+{{-ant-}}
+*[[irruvidire]]  
+
+{{-der-}}
+*[[piallatura]]
+ 
+{{-trad-}}
+{{Trad1|falegnameria}}
+:*{{en}}:[[to plane]]
+{{-fr-}} [[raboter]]
+{{Trad2}}
+
+{{-ref-}}
+* {{Fonte|dizit}}
+* {{Fonte|trec}}
+* {{Fonte|sabco}}
+* {{Fonte|sin-co}}
+* ''Dizionario sinonime e contrari Mariotti'', 2006, pagina 403

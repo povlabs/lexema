@@ -333,8 +333,10 @@ There are two databases, each with its own schema and its own Worker binding
   `served_release` over them, so a local dictionary seeded before
   [#18](https://github.com/hueypov/lexema/issues/18) needs
   `pnpm run update:upgrade` once, or a fresh seed; it reads them out of
-  `schema.sql` (`src/update/masterUpgrade.ts`). Any other change to
-  `schema.sql` needs a reseed or an update of its own. Code only reads it:
+  `schema.sql` (`src/update/masterUpgrade.ts`). Lookups serve a dictionary
+  without the page-entry tables
+  ([docs/PAGE_ENTRIES.md](./docs/PAGE_ENTRIES.md#a-dictionary-without-the-tables)). Any other
+  change to `schema.sql` needs a reseed or an update of its own. Code only reads it:
   [src/lookup/database.ts](./src/lookup/database.ts) hands it out as a
   `LookupDatabase`, whose one method takes a single `SELECT`, so a write does
   not type-check and is refused again at run time

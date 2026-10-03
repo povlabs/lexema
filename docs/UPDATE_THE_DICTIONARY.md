@@ -26,17 +26,20 @@ history routinely. Investigate accuracy when a user reports a problem.
   An agent tests locally, never writes that shared database. If Wrangler lists
   multiple accounts, set `CLOUDFLARE_ACCOUNT_ID` explicitly.
 
-## Once: a dictionary seeded before #18
+## Once: a dictionary seeded from an older schema
 
-Before new lookup code serves an old dictionary lacking `served_release`, run:
+Before new lookup code serves an old dictionary lacking `served_release` (#18),
+run:
 
 ```sh
 pnpm run update:upgrade
 ```
 
-This adds update tables and views without writing records. Running it again
-changes nothing. The first apply also upgrades, but lookups need the views
-before any change is applied.
+This adds the update tables and views, and the empty page-entry tables (#403),
+without writing records. It names what it adds; running it again changes
+nothing. The first apply also upgrades, but lookups need the views before any
+change is applied. Lookups do not need the page-entry tables
+([a dictionary without them](PAGE_ENTRIES.md#a-dictionary-without-the-tables)).
 
 ## 1. Keep a restore point
 
