@@ -30,8 +30,8 @@ Accuracy investigation follows a user report, not routine per-word review.
 
 ## Selection and source ordering
 
-`feed-selection/v4` keeps the existing new-word and raw-gloss interpretation.
-For changed definitions it permits replacements of earlier-applied records and
+`feed-selection/v5` reads a sense as real the way the word page does. For
+changed definitions it permits replacements of earlier-applied records and
 requires neither old gloss-key containment nor increasing sense counts.
 `fills-gloss` and `adds-sense` remain descriptive reasons; rewritten definitions
 use `replaces-definitions`, and reduced real definitions use
@@ -49,6 +49,23 @@ is an extraction gap, not an edit: `passata` (verb) losing its only sense to
 placeholder. Ours keeps serving whole; no old and new senses are merged. A
 removal with no blank in its place, such as `gay`, `gastronomia` or `logografo`
 in it-78385b62, still applies.
+
+v5 differs from v4 in what counts as a real gloss
+([#422](https://github.com/hueypov/lexema/issues/422)). Up to v4 the rule read
+the source text. The page reads the text the seed stores and hides a gloss
+that only repeats the headword, so v5 reads senses through `PageSenses`
+([src/italian/recordQuality.ts](../src/italian/recordQuality.ts)): a sense is
+real when the page shows a meaning or a form-of for it. Two shapes v4 called
+real are not: a headword echo (`presina f`, stored as `presina`; `latinismo` on
+`latinismo`) and a gender and number stamp alone (`m sing`, stored as grammar
+and no gloss). A new word with only such senses is skipped as `no-real-gloss`,
+and they fill no gloss. A later record that loses a real definition of ours to
+one of them is skipped as `hidden-replaces-definition` under the same test as
+a blank loss, and ours keeps serving. A sense the page hides is not a blank, so
+the blank test and its reason are unchanged. The text a real sense is compared
+by is still the source gloss with the placeholder taken out.
+[The v5 measurement](../reports/2026-10-03-feed-selection-page-hidden.md)
+counts what this changes in it-78385b62.
 
 Source ordering is checked against checksum-bound dump dates in
 [src/source/archiveFacts.ts](../src/source/archiveFacts.ts), not hash order,

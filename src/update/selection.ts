@@ -1,27 +1,29 @@
-// feed-selection/v4 implements ADR 0025: safely matched newer definitions
+// feed-selection/v5 implements ADR 0025: safely matched newer definitions
 // replace older ones, including corrections and removals. Matching and source
-// ordering are checked by callers. New-word eligibility and the raw-gloss
-// interpretation below are unchanged; formatting and non-definition changes
-// remain skipped. v4 adds one skip (#442): a removal whose later record puts a
-// blank where ours has a real definition is an extraction loss, not an edit,
-// so ours keeps serving whole.
+// ordering are checked by callers. Formatting and non-definition changes
+// remain skipped. A removal whose later record puts a blank where ours has a
+// real definition is an extraction loss, not an edit, so ours keeps serving
+// whole (#442).
 //
-// "Real gloss" is this rule's own reading of the source's glosses: a sense
-// whose glosses, once the "definizione mancante" placeholder (#255) is taken
-// out, are neither empty nor only the headword line (furniture). It is fixed
-// with the rule's version, and it is not all the word page hides: the page
-// reads the stored text, and drops a gloss that only repeats the headword
-// (`PageSenses` in src/italian/recordQuality.ts; #422).
+// v5 changes what counts as a real gloss (#422). A sense is real when the word
+// page shows a definition for it: the page reads the text the seed stores and
+// hides a gloss that only repeats the headword (`PageSenses` in
+// src/italian/recordQuality.ts). Up to v4 the rule read the source text, so a
+// headword echo (`presina f`, stored `presina`) or a gender/number stamp alone
+// (`m sing`, stored as grammar and no gloss) read as real. Under v5 neither
+// does: a new word with nothing else is `no-real-gloss`, and a real definition
+// of ours lost to one is `hidden-replaces-definition`, which keeps ours (Huey's
+// ruling on #422 widens the one on #442).
+//
 // Nothing here reads a database or a file; the caller hands in what the page,
 // the dump and the master say.
 
-import { isFurnitureSense } from "../italian/furniture.js";
 import { normalizeItalianExact } from "../italian/normalize.js";
 import { withoutPlaceholder } from "../italian/placeholder.js";
-import type { QualityRecord } from "../italian/recordQuality.js";
+import { PageSenses, type QualityRecord, type SenseKind } from "../italian/recordQuality.js";
 
 /** The rule's name and version, written into every selection it makes. */
-export const SELECTION_RULE = "feed-selection/v4" as const;
+export const SELECTION_RULE = "feed-selection/v5" as const;
 
 /** Why a change is taken. */
 export type TakeReason = "new-word" | "fills-gloss" | "adds-sense" | "replaces-definitions" | "removes-definitions";
@@ -31,6 +33,7 @@ export type SkipReason =
   | "not-italian"
   | "no-real-gloss"
   | "blank-replaces-definition"
+  | "hidden-replaces-definition"
   | "form-of-target-missing"
   | "form-of-target-not-italian"
   | "master-hidden"
@@ -52,12 +55,22 @@ const sourceGlosses = (sense: SourceSense): string[] =>
 /** A sense's glosses with the placeholder taken out, and a gloss with nothing real left dropped. */
 const realGlosses = (sense: SourceSense): string[] => sourceGlosses(sense).flatMap((text) => withoutPlaceholder(text) ?? []);
 
-/** A record's senses as `feed-selection/v4` reads them. */
+/** The page kinds of a sense the page shows a definition for. */
+const SHOWN: ReadonlySet<SenseKind> = new Set(["meaning", "form-of"]);
+
+/**
+ * What a later record lost real definitions of ours to: `blank`, empty or
+ * placeholder senses (#442); `hidden`, senses with text the page hides, a
+ * headword echo or a gender/number stamp alone (#422).
+ */
+export type DefinitionLoss = "blank" | "hidden";
+
+/** A record's senses as `feed-selection/v5` reads them. */
 export class ReadSenses {
   private constructor(
-    /** Senses with a real gloss (a meaning or a form-of), in order. */
+    /** Senses the word page shows a definition for (a meaning or a form-of), in order. */
     readonly real: readonly SourceSense[],
-    /** Senses with gloss text that is not real: the placeholder, or the headword line alone. */
+    /** Senses with gloss text that is not real: the placeholder, the headword line alone, a headword echo or a stamp. */
     readonly notReal: number,
     /**
      * Blank senses: no gloss text once the placeholder is taken out, so glosses
@@ -66,32 +79,58 @@ export class ReadSenses {
      * carrying it in it-0c432803 or it-78385b62 has gloss text.
      */
     readonly blank: number,
+    /**
+     * Hidden senses: gloss text the page shows nothing for, because it only
+     * repeats the headword (`presina f`, `latinismo`) or is only a gender and
+     * number stamp (`m sing`), which the seed stores as grammar and not as a
+     * gloss (#317, #395).
+     */
+    readonly hidden: number,
     /** Every sense, of any kind. */
     readonly total: number,
-    /** The real senses' glosses, the placeholder taken out. */
+    /** The real senses' source glosses, the placeholder taken out. */
     readonly shown: readonly string[],
   ) {}
 
   static of(record: QualityRecord): ReadSenses {
-    const isReal = (sense: SourceSense): boolean => {
+    const kinds = PageSenses.of(record).kinds;
+    const read = record.senses.map((sense, index) => {
       const glosses = realGlosses(sense);
-      return glosses.length > 0 && !isFurnitureSense({ glosses, opensRecoveredList: false }, record.word);
-    };
-    const real = record.senses.filter(isReal);
-    const notReal = record.senses.filter((sense) => sourceGlosses(sense).some((text) => text.trim() !== "") && !isReal(sense)).length;
-    const blank = record.senses.filter((sense) => realGlosses(sense).length === 0).length;
-    return new ReadSenses(real, notReal, blank, record.senses.length, real.map((sense) => realGlosses(sense).join("\n")));
+      return {
+        sense,
+        glosses,
+        real: SHOWN.has(kinds[index]),
+        text: sourceGlosses(sense).some((text) => text.trim() !== ""),
+        blank: glosses.length === 0,
+        hidden: kinds[index] === "headword-echo" || (kinds[index] === "no-gloss" && glosses.length > 0),
+      };
+    });
+    const real = read.filter((entry) => entry.real);
+    return new ReadSenses(
+      real.map((entry) => entry.sense),
+      read.filter((entry) => entry.text && !entry.real).length,
+      read.filter((entry) => entry.blank).length,
+      read.filter((entry) => entry.hidden).length,
+      read.length,
+      real.map((entry) => entry.glosses.join("\n")),
+    );
   }
 
   /**
-   * Whether this later reading loses real definitions of `earlier` to blanks:
-   * fewer real senses, and either more blank ones or nothing but blanks (no
-   * sense at all, or only empty and placeholder ones). Huey's ruling on #442:
-   * when the later version is empty or only says "definizione mancante", the
-   * old one stays.
+   * What this later reading lost real definitions of `earlier` to, or
+   * undefined when it lost none that way: fewer real senses, with either more
+   * senses of that kind than `earlier` or nothing else left (no sense at all
+   * included). Huey's ruling on #442: when the later version is empty or only
+   * says "definizione mancante", the old one stays. His ruling on #422: a later
+   * sense the page hides counts the same way. A blank loss is named first, so
+   * what v4 skipped keeps its reason.
    */
-  blanksOut(earlier: ReadSenses): boolean {
-    return this.real.length < earlier.real.length && (this.blank > earlier.blank || this.blank === this.total);
+  lossTo(earlier: ReadSenses): DefinitionLoss | undefined {
+    if (this.real.length >= earlier.real.length) return undefined;
+    if (this.blank > earlier.blank || this.blank === this.total) return "blank";
+    const empty = (senses: ReadSenses): number => senses.blank + senses.hidden;
+    if (empty(this) > empty(earlier) || empty(this) === this.total) return "hidden";
+    return undefined;
   }
 
   /**
@@ -148,7 +187,8 @@ export function selectChanged({ before, after, beforeHidden, italian }: ChangedC
   if (!italian) return skip("not-italian");
   const was = ReadSenses.of(before);
   const now = ReadSenses.of(after);
-  if (now.blanksOut(was)) return skip("blank-replaces-definition");
+  const loss = now.lossTo(was);
+  if (loss !== undefined) return skip(loss === "blank" ? "blank-replaces-definition" : "hidden-replaces-definition");
   if (now.real.length < was.real.length) return take("removes-definitions");
   if (now.real.length === 0) return skip("no-real-gloss");
   if (was.real.length === 0) return take("fills-gloss");
