@@ -15,6 +15,10 @@
 // rebuilds that table's group with its rows (`rebuildSql`). That covers a
 // `hidden_record` written before `form-of-foreign-lemma/v1` (#389), which
 // lacks `lemma_line` and cannot hold that rule's rows.
+//
+// The serving views are held to their schema.sql definition too (#525): when
+// one a dictionary stores differs, the upgrade replaces the views
+// (`masterUpgradeSql`). A view holds no rows, so that rebuilds no table.
 
 import { DatabaseSync } from "node:sqlite";
 import { PAGE_ENTRY_TABLES } from "../lookup/served.js";
@@ -48,6 +52,9 @@ export const PAGE_ENTRY_INDEXES = ["recovered_entry_by_key"] as const;
 
 /** Every view that reads through them, each after the views it reads. */
 export const SERVING_VIEWS = ["served_release", "served_record", "form_of_candidate", "surface_hit"] as const;
+
+/** A serving view, which the upgrade replaces when its stored definition is not schema.sql's. */
+export type ServingView = (typeof SERVING_VIEWS)[number];
 
 /** Every table the upgrade creates when absent, in the order their foreign keys need. */
 const UPGRADE_TABLES = [...UPDATE_TABLES, ...PAGE_ENTRY_TABLES, ...PAGE_ENTRY_CORRECTION_TABLES, ...CORRECTION_TABLES, ...HIDE_TABLES] as const;
@@ -142,11 +149,12 @@ function tokens(sql: string): string[] {
 }
 
 /**
- * A table's or index's definition as the upgrade compares it: the text after
- * `CREATE [UNIQUE] TABLE|INDEX [IF NOT EXISTS] <name>`, without comments,
- * spacing or the closing semicolon. sqlite_schema keeps the text a table was
- * created with, comments included, and drops `IF NOT EXISTS`, so the stored
- * text and schema.sql's agree here exactly when they define the same thing.
+ * A table's, index's or view's definition as the upgrade compares it: the text
+ * after `CREATE [UNIQUE] TABLE|INDEX|VIEW [IF NOT EXISTS] <name>`, without
+ * comments, spacing or the closing semicolon. sqlite_schema keeps the text a
+ * table or view was created with, comments included, and drops `IF NOT
+ * EXISTS`, so the stored text and schema.sql's agree here exactly when they
+ * define the same thing.
  */
 export function definitionOf(sql: string): string {
   const all = tokens(sql);
@@ -154,7 +162,7 @@ export function definitionOf(sql: string): string {
   const take = (word: string): boolean => (all[at]?.toUpperCase() === word ? ((at += 1), true) : false);
   if (!take("CREATE")) throw new Error(`not a CREATE statement: ${sql.slice(0, 40)}`);
   take("UNIQUE");
-  if (!take("TABLE") && !take("INDEX")) throw new Error(`not a CREATE TABLE or INDEX: ${sql.slice(0, 40)}`);
+  if (!take("TABLE") && !take("INDEX") && !take("VIEW")) throw new Error(`not a CREATE TABLE, INDEX or VIEW: ${sql.slice(0, 40)}`);
   if (take("IF")) {
     take("NOT");
     take("EXISTS");

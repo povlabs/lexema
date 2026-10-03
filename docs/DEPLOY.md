@@ -493,10 +493,18 @@ holds needs nothing. Otherwise it starts the `deploy` job, whose steps are
    definitions share. A row the new definition refuses stops the batch, and
    D1 rolls it back whole. After the batch the run checks that nothing is
    missing, nothing differs and every rebuilt table holds as many rows as
-   before. So a change to those tables in schema.sql reaches the shared
-   dictionary on the next deploy. The
+   before. The upgrade also compares each of the four serving views
+   (`served_release`, `served_record`, `form_of_candidate`, `surface_hit`)
+   with schema.sql's the same way. A changed view is replaced, not rebuilt:
+   the upgrade drops the views and creates them again. A view holds no rows,
+   so this rebuilds no table
+   ([#525](https://github.com/povlabs/lexema/issues/525)).
+   After the batch the run checks that no view still differs. So a change
+   to those tables or views in schema.sql reaches the shared dictionary on
+   the next deploy. The
    [pull request plan check](#the-pull-request-plan-check) and
    `update:upgrade --plan-only` name each table a rebuild drops, with its rows.
+   `update:upgrade --plan-only` also names each view it replaces.
 4. For each declaration it runs the command's plan, without writing, and holds
    its counts to the declared ones and to the hard limits: more than 100
    records removed, or more than 5% of the records changed or removed. Any
