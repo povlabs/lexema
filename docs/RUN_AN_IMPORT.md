@@ -198,21 +198,17 @@ For the full local seed:
 SEED_STATE=.data/full-state pnpm run normalize:source-text
 ```
 
-For the shared `lexema-dictionary`, from Huey's laptop, signed in to Wrangler
-as for the upload above:
-
-```sh
-SEED_REMOTE=lexema-dictionary pnpm run normalize:source-text
-```
-
-Put `CLOUDFLARE_ACCOUNT_ID=<account id>` first if Wrangler lists more than one
-account. On release `it-0c432803`, a database seeded before all three rules
-prints `gloss-person-ordinal/v1: sense_gloss: 177 row(s) changed`,
+On the shared `lexema-dictionary`, the dictionary deploy workflow runs the
+command after a merged change declaration names it
+([dictionary-changes/README.md](../dictionary-changes/README.md),
+[The dictionary deploy](DEPLOY.md#the-dictionary-deploy)). An agent runs it
+against a local D1 only. On release `it-0c432803`, a database seeded before
+all three rules prints `gloss-person-ordinal/v1: sense_gloss: 177 row(s) changed`,
 `form-plural-placeholder/v1: lookup_form: 110 row(s) removed, grammar_claim: 111 row(s) removed`
 and `it-gloss-stamp/v1: sense_gloss: 9 row(s) changed, grammar_claim: 30 row(s) changed`
 (8 nouns: 16 stated claims added, 14 `missing` rows removed) on the first run,
-and 0 on every later run. It writes through Wrangler from the laptop, never
-through the Worker's read-only binding.
+and 0 on every later run. It writes through Wrangler, never through the
+Worker's read-only binding.
 
 ## Hide another language's records in a seeded database
 
@@ -246,15 +242,12 @@ recomputed. A `hidden_record` table written before #389 is rebuilt first in the
 same transaction, every row kept, and the run says so. `source_record_json` is not touched. It then reads the records back
 and fails if one is not hidden. It takes about a minute.
 
-For the shared `lexema-dictionary`, from Huey's laptop, signed in to Wrangler
-as for the upload above:
-
-```sh
-SEED_REMOTE=lexema-dictionary pnpm run hide:records
-```
-
-Put `CLOUDFLARE_ACCOUNT_ID=<account id>` first if Wrangler lists more than one
-account. On release `it-0c432803` the rules find 30 records:
+On the shared `lexema-dictionary`, the dictionary deploy workflow runs the
+command after a merged change declaration names it
+([dictionary-changes/README.md](../dictionary-changes/README.md),
+[The dictionary deploy](DEPLOY.md#the-dictionary-deploy)). An agent runs it
+against a local D1 only. On release `it-0c432803` the rules find 30
+records:
 `30 record(s) the rules find (form-of-foreign-lemma/v1 7, section-language/v1 23)`.
 On a database #382's run already updated, the run hides the 7, rebuilds the
 table, and prints `23 already hidden; hidden now: 7`, one line per record, and
