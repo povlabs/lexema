@@ -10,7 +10,6 @@ name: Dictionary plan
 # are src/deploy/pullRequestPlan.ts; docs/DEPLOY.md lists the environment,
 # secrets and variable read here (ADR 0018). The deploy still holds every
 # declaration to `expected` at merge.
-
 #
 # `paths` reads the whole pull request's diff, so it alone would plan again on
 # every later push. The `declarations` step also asks whether this push itself
