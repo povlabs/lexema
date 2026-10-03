@@ -1824,6 +1824,151 @@ test("a list of one row has no + more", async () => {
   });
 });
 
+// Declared lemmas (#453) ------------------------------------------------------
+//
+// `fixtures/declared-lemmas.jsonl` holds real lines of it-0c432803: some of the
+// form records of `verbalizzare`, `videoregistrare`, `aggrapparsi`,
+// `fratellino`, `lussare`, `calabro` and `tassofono`, none of which any record
+// heads.
+
+const DECLARED_LINES = (await readFile(join(REPO, "fixtures/declared-lemmas.jsonl"), "utf8")).trimEnd().split("\n");
+const withDeclared = (run: (f: Fixture) => Promise<void>) => withLines(DECLARED_LINES, run);
+
+/** The archive line of a record in that fixture, which its forms' refs name. */
+const declaredLine = (word: string, pos = "verb"): number =>
+  DECLARED_LINES.findIndex((line) => {
+    const record = JSON.parse(line) as { word: string; pos: string };
+    return record.word === word && record.pos === pos;
+  }) + 1;
+
+/** The headings of a declared lemma's readings, as text. */
+const declaredHeadings = (html: string): string[] =>
+  [...html.matchAll(/<h2 class="[^"]*" id="reading-heading-declared-[a-z]+">(.*?)<\/h2>/g)].map((match) => textOf(match[1]));
+
+/** The words in one person's row of a mood panel's first table: its first tense's cell. */
+const firstCell = (html: string, person: string): string | undefined =>
+  new RegExp(`<th scope="row"[^>]*>${esc(person)}</th><td[^>]*>(.*?)</td>`).exec(html)?.[1];
+
+/** What the non-finite line holds under one label. */
+const nonFinite = (html: string, label: string): string | undefined =>
+  new RegExp(`<dt [^>]*>${esc(label)}</dt><dd [^>]*>(.*?)</dd>`).exec(html)?.[1];
+
+test("a word only form-of records name is a word page with its forms table, not the not-found page (#453)", async () => {
+  await withDeclared(async ({ db }) => {
+    for (const word of ["verbalizzare", "videoregistrare", "aggrapparsi", "fratellino"]) {
+      const html = await render(db, word);
+      assert.match(html, new RegExp(`<h1 class="${esc(WORD_HEADING)}" lang="it">${esc(word)}</h1>`), word);
+      assert.match(html, />Forms</, word);
+      // A grid, or a conjugation; `aggrapparsi` has its participle alone.
+      assert.match(html, /data-grid=""|<dl class="[^"]*"><div [^>]*><dt [^>]*>gerundio<\/dt>/, word);
+      assert.ok(!html.includes(NOT_FOUND_HEADING), word);
+      assert.equal(occurrencesOf(html, `class="${SOURCE_LINE}"`), 1, word);
+      // One Source, to the page of the spelling in the title (ADR 0009, amended on #281).
+      assert.match(html, new RegExp(`href="https://it\\.wiktionary\\.org/wiki/${esc(word)}" target="_blank"`), word);
+    }
+  });
+});
+
+test("a declared lemma's page has no definitions and no note on what it lacks", async () => {
+  await withDeclared(async ({ db }) => {
+    const shown: string[] = [];
+    for (const word of ["verbalizzare", "videoregistrare", "aggrapparsi", "fratellino", "calabro", "lussare"]) {
+      const html = await render(db, word);
+      assert.doesNotMatch(html, /id="definitions-|>Definitions<|>Examples<|aria-label="Pronunciation"/, word);
+      assert.doesNotMatch(textOf(html), /definizion|no entry|not found|no definition|missing|non ha|nessun/i, word);
+      // The report names the word alone: no record heads it, so there is no reading to choose.
+      assert.doesNotMatch(html, /name="reading"/, word);
+      shown.push(word);
+    }
+    assert.equal(shown.length, 6);
+  });
+});
+
+test("a declared lemma's word type is its declaring records' part of speech in Italian, one reading for each", async () => {
+  await withDeclared(async ({ db }) => {
+    assert.deepEqual(declaredHeadings(await render(db, "verbalizzare")), ["Verbo"]);
+    assert.deepEqual(declaredHeadings(await render(db, "fratellino")), ["Sostantivo"]);
+    // `calabri` and `calabre` each have an adjective record and a noun record.
+    const calabro = await render(db, "calabro");
+    assert.deepEqual(declaredHeadings(calabro), ["Aggettivo", "Sostantivo"]);
+    assert.equal(patternsOf(calabro, /data-grid=""/), 2);
+  });
+});
+
+test("a declared verb's conjugation places each form where its gloss says, and shows no form the rule refuses or no cell holds", async () => {
+  await withDeclared(async ({ db }) => {
+    const html = await render(db, "verbalizzare");
+    assert.equal(textOf(firstCell(panel(html, "Indicativo"), "io") ?? ""), "verbalizzo");
+    assert.equal(textOf(nonFinite(html, "gerundio") ?? ""), "verbalizzando");
+    assert.equal(textOf(nonFinite(html, "participio") ?? ""), "verbalizzato");
+    assert.equal(textOf(nonFinite(html, "participio presente") ?? ""), "verbalizzante");
+    assert.equal(textOf(firstCell(panel(html, "Condizionale"), "io") ?? ""), "verbalizzerei");
+    assert.match(textOf(panel(html, "Congiuntivo")), /che ioverbalizzi/);
+    assert.match(textOf(panel(html, "Imperativo")), /tuverbalizza/);
+    // Agreement forms are no cell of a conjugation: `verbalizzati`, "participio
+    // passato maschile plurale", and `verbalizzanti` are not on the page.
+    assert.doesNotMatch(textOf(html), /verbalizzati|verbalizzanti/);
+    // Nothing was searched but the lemma, which no cell holds.
+    assert.doesNotMatch(html, /data-searched=""/);
+
+    // `lusso` says "… del verbo lussare", which the rule refuses: it is not
+    // shown, and `lussando` still has its slot.
+    const lussare = await render(db, "lussare");
+    assert.doesNotMatch(textOf(lussare), /\blusso\b/);
+    assert.equal(textOf(nonFinite(lussare, "gerundio") ?? ""), "lussando");
+  });
+});
+
+test("a declared noun's grid has the lemma in singolare and its plural where the plural's record puts it", async () => {
+  await withDeclared(async ({ db }) => {
+    const rows = gridRows(await render(db, "fratellino"));
+    assert.deepEqual(rows.map((row) => row[0]), ["", "maschile"]);
+    assert.match(rows[1][1], /^fratellino/);
+    assert.match(rows[1][2], /^fratellini/);
+    // A feminine plural names no gender of the lemma's own: `calabro` sits in
+    // maschile only, beside `calabri`, and `calabre` in femminile plurale.
+    const [adjective] = readingsOfPage(await render(db, "calabro"));
+    const calabro = gridRows(adjective);
+    assert.deepEqual(calabro.map((row) => row[0]), ["", "maschile", "femminile"]);
+    assert.match(calabro[1][1], /^calabro/);
+    assert.match(calabro[1][2], /^calabri/);
+    assert.equal(calabro[2][1], "—");
+    assert.match(calabro[2][2], /^calabre/);
+  });
+});
+
+test("each form a declared lemma shows names the record it came from", async () => {
+  await withDeclared(async ({ db }) => {
+    const verbalizzare = await render(db, "verbalizzare");
+    for (const word of ["verbalizzo", "verbalizzando", "verbalizzato", "verbalizzerei"]) {
+      assert.match(verbalizzare, new RegExp(`href="/\\?q=${word}" lang="it" data-line="${declaredLine(word)}">${word}</a>`), word);
+    }
+    // `verbalizzi` fills five slots from one record; every cell names that record.
+    assert.equal(patternsOf(verbalizzare, new RegExp(`data-line="${declaredLine("verbalizzi")}">verbalizzi<`)), 5);
+    assert.match(await render(db, "fratellino"), new RegExp(`<span data-line="${declaredLine("fratellini", "noun")}">fratellini</span>`));
+  });
+});
+
+test("a declared lemma whose forms take no cell keeps the not-found page", async () => {
+  await withDeclared(async ({ db }) => {
+    // `tassofoni` says "plurale di tassofono." and states no gender, so it has no cell.
+    assert.match(await render(db, "tassofono"), new RegExp(`<h1 class="${esc(NOT_FOUND_HEADING)}">No entry for`));
+    assert.equal((await attempt(db, "tassofono")).outcome, "not-found");
+  });
+});
+
+test("a word a record heads or lists answers exactly as it did: the declared probe runs only after both find nothing", async () => {
+  await withDeclared(async ({ db }) => {
+    const answer = await attempt(db, "verbalizzo");
+    assert.deepEqual(answer.outcome === "found" && answer.readings.map((reading) => reading.word), ["verbalizzo"]);
+  });
+  await withDevSeed(async ({ db }) => {
+    const outcomes: string[] = [];
+    for (const query of ["casa", "andare", "andavano", "vado via", "xqzt"]) outcomes.push((await attempt(db, query)).outcome);
+    assert.deepEqual(outcomes, ["found", "found", "found", "found", "not-found"]);
+  });
+});
+
 test("page-only readings present definitions without origin marks or invented forms, and API IDs are page identities", async () => {
   // Verbatim archive lines 52740/53209, not a manufactured lemma record.
   const text = await readFile(join(REPO, "fixtures/page-entry-forms.jsonl"), "utf8");

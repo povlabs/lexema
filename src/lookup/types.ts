@@ -5,6 +5,7 @@
 import type { ArticleDisplay } from "../core/types.js";
 import type { SurfaceWithholding } from "../italian/articles.js";
 import type { PhraseGloss } from "../italian/phrase.js";
+import type { VerbFormGloss } from "../italian/verbFormGloss.js";
 
 /** One article as `it-articles/v3` produced it, re-exported for the page. */
 export type { ArticleDisplay };
@@ -401,6 +402,57 @@ export interface PluralDeclaration {
   glossGender: "masculine" | "feminine" | undefined;
   /** The declaring record's own stated gender claims, from its tags; empty when it states none. */
   recordGenders: StatedClaim[];
+}
+
+/**
+ * A record that declares itself a form of a declared lemma, as that lemma's
+ * page shows it: the record's own headword, spelled as the source spells it,
+ * and its `/word`. The record is a real line, so the form keeps pointing at it.
+ */
+export interface DeclaredForm {
+  surface: string;
+  ref: SourceRef;
+}
+
+/** A verb form a declared lemma's gloss places, by `it-verb-form-gloss/v1` (src/italian/verbFormGloss.ts). */
+export interface DeclaredVerbForm extends DeclaredForm {
+  /** The gloss that names the slot, as stored: `gerundio di verbalizzare` at `/senses/0/glosses/0`. */
+  gloss: SourceText;
+  slot: VerbFormGloss;
+}
+
+/** A plural a declared lemma's gloss names, by `it-plural-gloss/v1` (src/italian/pluralGloss.ts). */
+export interface DeclaredPluralForm extends DeclaredForm {
+  plural: PluralDeclaration;
+}
+
+/**
+ * One part of speech of a declared lemma: the forms its declaring records of
+ * that part of speech place, in source order, and never an empty list. It is
+ * not a `Reading`: no record heads the word, so there is no `recordId`, no
+ * definition and no grammar of its own to hold. `posTitle` is the Italian
+ * section title for the declaring records' `pos` (`Verbo`, `Sostantivo`,
+ * `Aggettivo`), as Wikizionario titles a lemma's own section.
+ */
+export type DeclaredLemmaReading =
+  | { pos: "verb"; posTitle: string; word: string; forms: [DeclaredVerbForm, ...DeclaredVerbForm[]] }
+  | { pos: "noun" | "adj"; posTitle: string; word: string; forms: [DeclaredPluralForm, ...DeclaredPluralForm[]] };
+
+/**
+ * A query that no record heads, lists or spells as a phrase, but that
+ * `form_of` edges of served records name (#453): `verbalizzare` has no record,
+ * and fifty records say they are its forms. The readings are a non-empty
+ * tuple, one per part of speech whose glosses place a form, so a declared
+ * lemma with nothing to show is not a value this type can hold.
+ *
+ * The page's search reaches it after a `not-found` (web/lib/dictionary/searchAttempt.ts).
+ * The developer API's lookup does not, so it is not a `LookupResult`.
+ */
+export interface DeclaredLemmaResult {
+  outcome: "declared-lemma";
+  query: QueryInfo;
+  release: ReleaseInfo;
+  readings: [DeclaredLemmaReading, ...DeclaredLemmaReading[]];
 }
 
 /**
