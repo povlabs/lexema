@@ -46,3 +46,7 @@ This was already true before this record. Builders and the shipper have always p
 - Reviewer lanes run under auto mode without a refused prefix, so they no longer park on it.
 - A comment's author no longer shows which role wrote it; every one reads `hueypov`.
 - Huey's control-plane sign-off is protected by a rule agents follow, not by a check fabrika runs. Separating them by check would need a second account for Huey's sign-off or a fabrika change, and neither is decided here.
+
+## Amendments
+
+- **[#532](https://github.com/povlabs/lexema/issues/532) — CODEOWNERS is narrower (2026-10-03).** Huey ruled "yes let the shipper merge" for pull requests that change decision records ([ADR 0006](0006-codex-review-is-the-merge-gate.md), #532 amendment). So `.decisions/`, `AGENTS.md`, `.fabrika.jsonc` and `design-system-manifest.md` left [.github/CODEOWNERS](../.github/CODEOWNERS), and `ship cp-approval` no longer holds them. The roster above still names `@hueypov` alone, and his `control-plane-self-approval` marker is still needed only for the paths CODEOWNERS keeps: Fabrika's fixed control-plane paths (`.github/`, `.claude/`, lefthook files and the fabrika-cli list). Every binding constraint above is unchanged.
