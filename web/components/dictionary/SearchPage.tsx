@@ -128,7 +128,6 @@ export function Outcome({ raw, attempt, siteKey }: { raw: string; attempt: Attem
   if (attempt.outcome === "found") {
     const searched = attempt.query.raw.trim();
     // A searched expression opens its own short page (#214), not the headword's entry.
-    // A searched expression opens its own short page (#214), not the headword's entry.
     return (
       <WrittenOffer written={attempt.written}>
         {attempt.route.kind === "phrase" ? (
