@@ -30,10 +30,10 @@ function answerOf(change: DeclaredChange, counts: object = COUNTS, dictionaryRec
   return { command: change.command, counts: planned, dictionaryRecords, limitBreaches: planned.limitBreaches(dictionaryRecords), rebuilds };
 }
 
-/** A stand-in for the plan-only entry, by default holding a `hueypov/lexema-data` token, that records each change it is asked to plan. */
-function planner(counts: object = COUNTS, dictionaryRecords = 1000, hasDataToken = true): PullRequestPlanner & { planned: string[] } {
+/** A stand-in for the plan-only entry, which needs no token (#527), that records each change it is asked to plan. */
+function planner(counts: object = COUNTS, dictionaryRecords = 1000): PullRequestPlanner & { planned: string[] } {
   const planned: string[] = [];
-  return { planned, hasDataToken, plan: async (change) => (planned.push(change.file), answerOf(change, counts, dictionaryRecords)) };
+  return { planned, plan: async (change) => (planned.push(change.file), answerOf(change, counts, dictionaryRecords)) };
 }
 
 const drafts = (files: Record<string, string>): DeclarationDraft[] => Object.entries(files).map(([file, text]) => parseDraft(file, text));
@@ -134,7 +134,6 @@ test("an upgrade that rebuilds tables names each one with its rows (#511)", asyn
   ] as const;
   const upgrade = JSON.stringify({ command: "update:upgrade", expected: none });
   const outcomes = await planPullRequest(drafts({ "dictionary-changes/upgrade.json": upgrade }), {
-    hasDataToken: false,
     plan: async (change) => answerOf(change, none, 1000, rebuilds),
   });
   const report = pullRequestPlanReport(outcomes, "lexema-dictionary");
@@ -186,7 +185,7 @@ for (const [command, text] of Object.entries(DATA_READING)) {
   const { inputs } = JSON.parse(text) as { inputs: object };
   const declaration = (expected?: object): string => JSON.stringify({ command, inputs, ...(expected === undefined ? {} : { expected }) });
 
-  test(`a first ${command} is planned like any other command and passes on matching counts`, async () => {
+  test(`a first ${command} is planned with no lexema-data token, like any other command, and passes on matching counts`, async () => {
     const stub = planner();
     const outcomes = await planPullRequest(drafts({ "dictionary-changes/first.json": text }), stub);
     assert.deepEqual(stub.planned, ["dictionary-changes/first.json"]);
@@ -216,16 +215,6 @@ for (const [command, text] of Object.entries(DATA_READING)) {
     assert.ok(report.markdown.includes(`### \`dictionary-changes/b.json\` (\`${command}\`)\n\nNot planned: it comes after \`dictionary-changes/a.json\``), report.markdown);
   });
 
-  test(`a first ${command} with no lexema-data token is red and names the secret to add`, async () => {
-    const stub = planner(COUNTS, 1000, false);
-    const outcomes = await planPullRequest(drafts({ "dictionary-changes/first.json": text }), stub);
-    assert.deepEqual(stub.planned, []);
-    assert.deepEqual(outcomes.map(({ kind }) => kind), ["no-data-token"]);
-    const report = pullRequestPlanReport(outcomes, "lexema-dictionary");
-    assert.equal(report.green, false);
-    assert.ok(report.markdown.includes(`Not planned: \`${command}\` reads an archive and a dump from \`hueypov/lexema-data\`, and this run was given no token for it.`), report.markdown);
-    assert.match(report.markdown, /Add the environment secret `LEXEMA_DATA_READ_TOKEN` to the `dictionary-plan` environment/);
-  });
 }
 
 test("a declaration after a data-reading one is refused, since its counts would ignore that write", async () => {
@@ -236,22 +225,6 @@ test("a declaration after a data-reading one is refused, since its counts would 
   assert.equal(pullRequestPlanReport(outcomes, "lexema-dictionary").green, false);
 });
 
-test("through the command line, an unset or empty LEXEMA_DATA_TOKEN makes a first hide:records red before any read", async () => {
-  const dir = await mkdtemp(join(tmpdir(), "lexema-pr-plan-"));
-  try {
-    git(dir, "init", "--initial-branch=main");
-    const base = await commit(dir, { "dictionary-changes/README.md": "# Change declarations\n" });
-    await commit(dir, { "dictionary-changes/hide.json": HIDE });
-    for (const token of [{}, { LEXEMA_DATA_TOKEN: "" }]) {
-      const result = await deployMain(["--plan-only", "--added-since", base], { SEED_REMOTE: "lexema-dictionary", ...token }, () => assert.fail("no wrangler call"), gitIn(dir));
-      assert.equal(result.status, 1, result.out);
-      assert.match(result.out, /## Dictionary plan check: red/);
-      assert.match(result.out, /Add the environment secret `LEXEMA_DATA_READ_TOKEN` to the `dictionary-plan` environment/);
-    }
-  } finally {
-    await rm(dir, { recursive: true, force: true });
-  }
-});
 
 test("a pull request that adds no declaration passes with nothing to plan", async () => {
   const report = pullRequestPlanReport(await planPullRequest([], planner()), "lexema-dictionary");

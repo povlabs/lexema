@@ -1,6 +1,6 @@
 # Lexema specification
 
-> Historical proposal, not the current build plan. The owner has replaced the API-first/no-UI milestone with a website-first approach. [GitHub milestones and issues](https://github.com/hueypov/lexema/milestones) hold current scope and decisions. Technical choices and factual claims below require fresh validation; this document is retained for context.
+> Historical proposal, not the current build plan. The owner has replaced the API-first/no-UI milestone with a website-first approach. [GitHub milestones and issues](https://github.com/povlabs/lexema/milestones) hold current scope and decisions. Technical choices and factual claims below require fresh validation; this document is retained for context.
 
 ## Purpose
 

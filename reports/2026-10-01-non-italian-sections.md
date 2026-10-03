@@ -1,6 +1,6 @@
 # Other languages' entries tagged `lang_code: "it"`
 
-Investigation for [issue #29](https://github.com/hueypov/lexema/issues/29), run 2026-10-01.
+Investigation for [issue #29](https://github.com/povlabs/lexema/issues/29), run 2026-10-01.
 It follows up a side finding of [the definition-loss investigation](2026-09-18-definition-loss.md)
 (§3: `curie`, `dolmen` and `arteria`).
 

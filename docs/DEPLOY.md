@@ -27,9 +27,9 @@ development, with the placeholder D1 that `pnpm run seed:dev` fills.
 | Stage | `LEXEMA_STAGE` is `production` ([below](#the-preview-only-domains)) |
 | `workers_dev`, `preview_urls` | both off |
 | D1 | none yet, so a search shows the failed-lookup state; attaching it is #19 |
-| Rate limits | 15 searches and 120 suggestions a minute per visitor ([#128](https://github.com/hueypov/lexema/issues/128)); 10 sign-in starts ([#165](https://github.com/hueypov/lexema/issues/165)), 5 key creations ([#168](https://github.com/hueypov/lexema/issues/168)) and 5 billing requests ([#296](https://github.com/hueypov/lexema/issues/296)) a minute on the developer site |
-| API rate | `CALLS_60` and `CALLS_300`, Rate Limiting bindings of 60 and 300 calls a minute per developer account, keyed by account id ([#261](https://github.com/hueypov/lexema/issues/261)) |
-| Account meter | the Durable Object class `AccountMeterObject`, bound as `ACCOUNT_METER`, SQLite-backed through the `v1-account-meter` migration: one per developer account, counting its calls and adding them to `api_key_usage` at most once a minute ([#261](https://github.com/hueypov/lexema/issues/261)) |
+| Rate limits | 15 searches and 120 suggestions a minute per visitor ([#128](https://github.com/povlabs/lexema/issues/128)); 10 sign-in starts ([#165](https://github.com/povlabs/lexema/issues/165)), 5 key creations ([#168](https://github.com/povlabs/lexema/issues/168)) and 5 billing requests ([#296](https://github.com/povlabs/lexema/issues/296)) a minute on the developer site |
+| API rate | `CALLS_60` and `CALLS_300`, Rate Limiting bindings of 60 and 300 calls a minute per developer account, keyed by account id ([#261](https://github.com/povlabs/lexema/issues/261)) |
+| Account meter | the Durable Object class `AccountMeterObject`, bound as `ACCOUNT_METER`, SQLite-backed through the `v1-account-meter` migration: one per developer account, counting its calls and adding them to `api_key_usage` at most once a minute ([#261](https://github.com/povlabs/lexema/issues/261)) |
 | Sign-in | Google and GitHub, each on only once its client id and secret are set ([below](#turn-on-sign-in)) |
 | Billing | Checkout, the billing portal and Stripe's webhook at `https://developers.lexema.fyi/auth/stripe/webhook`, on only once the Stripe secrets and live price ids are set ([below](#turn-on-billing)) |
 | Account email | `EMAIL`, a `send_email` binding with no restriction, sending from `noreply@lexema.fyi` once `lexema.fyi` is onboarded to Email Sending ([below](#turn-on-account-email)) |
@@ -295,14 +295,16 @@ and the app D1 of every branch with no open pull request. A merged pull request
 is cleaned up at the production build that follows its merge; one closed
 without merging, at the next production build.
 
-- It reads the open pull requests' head branches from GitHub's REST API with
-  `GITHUB_PR_READ_TOKEN`, a read-only token kept as a Workers Builds build secret.
+- It reads the open pull requests' head branches from GitHub's REST API. The
+  repository is public, so no token is needed; `GITHUB_PR_READ_TOKEN`, if set as
+  a Workers Builds build secret, is sent with the request (#527).
 - It looks only at D1 databases whose name starts with `lexema-preview-app-`, and
   never at the shared dictionary `lexema-dictionary`.
 - It deletes the Preview first (`wrangler preview delete`), then its D1
   (`wrangler d1 delete`). If the Preview cannot be deleted, its D1 stays, and the
   next sweep tries again.
-- If the token is missing, or GitHub's list cannot be read, it deletes nothing.
+- If GitHub's list cannot be read (a refused or failed request, or a malformed
+  answer), it deletes nothing.
   The build log then says `sweep: deleting nothing` and why.
 
 A Preview made any other way, such as `wrangler preview` from a laptop, has no
@@ -314,17 +316,19 @@ A Preview made any other way, such as `wrangler preview` from a laptop, has no
 Do these once, in this order. Each Cloudflare step names the doc page it comes
 from; where a label is not in the docs, the step says what to look for.
 
-**1. Create the read-only GitHub token.**
+**1. Create the read-only GitHub token (optional).** `povlabs/lexema` is public,
+so the sweep reads open pull requests without a token (#527). A token only
+raises GitHub's rate limit for anonymous reads.
 
 1. Open https://github.com/settings/personal-access-tokens/new (a fine-grained
    token).
 2. **Token name**: `lexema-workers-builds-sweep`.
-3. **Resource owner**: `hueypov`.
+3. **Resource owner**: `povlabs`.
 4. **Expiration**: pick a date and put a reminder in your calendar. When it
    expires the sweep deletes nothing, and says `GitHub answered 401` in the build
    log, until you make a new one; deploys carry on.
 5. **Repository access**: **Only select repositories**, then pick
-   `hueypov/lexema` and nothing else.
+   `povlabs/lexema` and nothing else.
 6. **Permissions**: under the repository permissions, set **Pull requests** to
    **Read-only** (on the newer page, select **Add permissions**, then **Pull
    requests**). Add nothing else. GitHub adds **Metadata: Read-only** by itself,
@@ -339,9 +343,9 @@ from; where a label is not in the docs, the step says what to look for.
    once first: Workers Builds needs the dashboard Worker's name to match `name` in
    `web/wrangler.jsonc`.
 2. Select **Settings**, then **Builds**, then **Connect**.
-3. Pick your GitHub account and the repository `hueypov/lexema`. If Cloudflare
+3. Pick your GitHub account and the repository `povlabs/lexema`. If Cloudflare
    asks to install the **Cloudflare Workers and Pages** GitHub app, give it access
-   to `hueypov/lexema` only
+   to `povlabs/lexema` only
    ([GitHub integration, manage access](https://developers.cloudflare.com/workers/ci-cd/builds/git-integration/github-integration/#manage-access)).
 4. Fill in the build settings with exactly these values
    ([Builds configuration](https://developers.cloudflare.com/workers/ci-cd/builds/configuration/#build-settings)):
@@ -439,7 +443,7 @@ upload of a release
 1. It reads the [change declarations](../dictionary-changes/README.md) added in
    `production..<the run's commit>`, oldest first. With none, it writes
    nothing and goes to step 6.
-2. It fetches the archive and dump each one reads from `hueypov/lexema-data`
+2. It fetches the archive and dump each one reads from `povlabs/lexema-data`
    ([below](#where-the-archives-are)) and checks them: the archive's SHA-256
    against its [`ARCHIVE_FACTS`](../src/source/archiveFacts.ts) entry, the
    dump's size and SHA-1 against
@@ -452,7 +456,7 @@ upload of a release
    The run then runs the upgrade's DDL
    ([`update:upgrade`](../src/update/masterUpgrade.ts)) as its own batch, so
    no declaration's SQL carries DDL
-   ([#507](https://github.com/hueypov/lexema/issues/507)). It does so when
+   ([#507](https://github.com/povlabs/lexema/issues/507)). It does so when
    the dictionary lacks a table, index or view the upgrade creates, or when
    it stores a rebuilt table or its index with a definition other than
    [schema.sql](../src/db/schema.sql)'s. Comments and spacing do not count.
@@ -537,7 +541,6 @@ request's own code.
 | `dictionary-deploy` | GitHub environment | repository **Settings**, **Environments** | holds the two secrets and the variable below; its deployment branches are `main` only, so a run on any other branch never receives them. Both jobs name it |
 | `CLOUDFLARE_D1_TOKEN` | environment secret | `dictionary-deploy` | a Cloudflare API token with one permission, **Account**, **D1**, **Edit**. Wrangler reads it as `CLOUDFLARE_API_TOKEN`. The only Cloudflare credential in GitHub that can write; the other one is the [pull request plan check](#the-pull-request-plan-check)'s read-only token |
 | `CLOUDFLARE_ACCOUNT_ID` | environment variable | `dictionary-deploy` | the Cloudflare account id that owns `lexema-dictionary`; not secret |
-| `LEXEMA_DATA_READ_TOKEN` | environment secret | `dictionary-deploy` | a fine-grained GitHub token for `hueypov/lexema-data` only, **Contents** read-only. The run reads archives and dumps with it, as `LEXEMA_DATA_TOKEN`. The monthly release job's write token is a different one, and this workflow never receives it |
 | `GITHUB_TOKEN` | built in | the `deploy` job, `contents: write` | pushes `production`. A push that is not a fast-forward is refused |
 | `production` | branch | this repository | the commit whose dictionary changes are in place. Workers Builds deploys it ([Workers Builds](#workers-builds)) |
 | Git branch (the production branch) | Workers Builds setting | the Worker's **Settings**, **Build**, **Branch control** | `production` |
@@ -546,10 +549,10 @@ request's own code.
 
 ### Where the archives are
 
-The run reads `hueypov/lexema-data` through GitHub's contents API, which serves
-a file of up to 100 MB:
+The run reads the public `povlabs/lexema-data` from raw.githubusercontent.com,
+with no token and no API rate limit, and checks every file's checksum (#527):
 
-| File | Path in `hueypov/lexema-data` |
+| File | Path in `povlabs/lexema-data` |
 |---|---|
 | the master's archive, `it-0c432803` | `source/it-extract.jsonl.gz` |
 | any other release's archive | `source/<release id>.jsonl.gz`, such as `source/it-78385b62.jsonl.gz` |
@@ -570,19 +573,13 @@ No agent does any of them.
    `lexema-dictionary-deploy`. Under **Permissions** add one row: **Account**,
    **D1**, **Edit**, and nothing else. Under **Account Resources** include the
    account that owns `lexema-dictionary`. Create it and copy it.
-2. **The read-only `lexema-data` token.** Open
-   https://github.com/settings/personal-access-tokens/new. **Token name**:
-   `lexema-dictionary-deploy-data`. **Resource owner**: `hueypov`. **Repository
-   access**: **Only select repositories**, `hueypov/lexema-data` alone.
-   **Permissions**: **Contents**, **Read-only**, and nothing else. Generate it
-   and copy it. When it expires, the run stops at step 2 and writes nothing.
-3. **The environment.** In this repository's **Settings**, **Environments**,
+2. **The environment.** In this repository's **Settings**, **Environments**,
    select **New environment** and name it `dictionary-deploy`. Under
    **Deployment branches and tags** choose **Selected branches and tags** and
-   add `main` only. Add the environment secrets `CLOUDFLARE_D1_TOKEN` (step 1)
-   and `LEXEMA_DATA_READ_TOKEN` (step 2), and the environment variable
-   `CLOUDFLARE_ACCOUNT_ID`.
-4. **The `production` branch.** Create it at `main`'s current commit:
+   add `main` only. Add the environment secret `CLOUDFLARE_D1_TOKEN` (step 1)
+   and the environment variable `CLOUDFLARE_ACCOUNT_ID`. `povlabs/lexema-data`
+   is public, so no data token is needed (#527).
+3. **The `production` branch.** Create it at `main`'s current commit:
 
    ```sh
    git fetch origin && git push origin origin/main:refs/heads/production
@@ -590,7 +587,7 @@ No agent does any of them.
 
    If a rule protects it, let GitHub Actions push to it; only fast-forwards
    are ever pushed.
-5. **Workers Builds.** In the Worker's **Settings**, **Build**, **Branch
+4. **Workers Builds.** In the Worker's **Settings**, **Build**, **Branch
    control**, change the production branch from `main` to `production`.
 
 ### The pull request plan check
@@ -609,8 +606,8 @@ request's merge commit ([src/deploy/](../src/deploy/pullRequestPlan.ts)):
 2. It plans the first one with the pull request's own code against
    `lexema-dictionary`, and holds the counts to `expected` and to the hard
    limits, as the deploy will. This includes `update:auto`, `hide:records`
-   and `load:page-entries`: their plan downloads an archive and a dump from `hueypov/lexema-data` with
-   the read-only `LEXEMA_DATA_READ_TOKEN`, as the deploy does
+   and `load:page-entries`: their plan downloads an archive and a dump from the public
+   `povlabs/lexema-data` with no token, as the deploy does
    ([Where the archives are](#where-the-archives-are)).
 3. Its job summary says, for each declaration:
    - the counts match `expected`: green;
@@ -619,11 +616,8 @@ request's merge commit ([src/deploy/](../src/deploy/pullRequestPlan.ts)):
      `expected`. Copy it into the file and push;
    - the plan crosses a hard limit: red, naming the limit;
    - an `update:upgrade` that rebuilds tables
-     ([the deploy's step 3](#the-dictionary-deploy)): a table of each
+     ([the deploy's step 3](#the-dictionary-deploy)): a table naming each
      table it drops and copies back, with its rows;
-   - `update:auto`, `hide:records` or `load:page-entries` first, and the run
-     has no `hueypov/lexema-data` token: red, naming the
-     `LEXEMA_DATA_READ_TOKEN` secret of `dictionary-plan` to add;
    - any declaration after the first: red. Its counts depend on what the
      earlier ones write, and this run writes nothing. Put it in its own pull
      request once the earlier ones are deployed.
@@ -637,9 +631,8 @@ the check and the merge stops the deploy red.
 
 | Name | Kind | Where | What it is |
 |---|---|---|---|
-| `dictionary-plan` | GitHub environment | repository **Settings**, **Environments** | holds the two secrets and the variable below, and no other token. Only this job names it |
+| `dictionary-plan` | GitHub environment | repository **Settings**, **Environments** | holds the secret and the variable below, and no other token. Only this job names it |
 | `CLOUDFLARE_D1_READ_TOKEN` | environment secret | `dictionary-plan` | a Cloudflare API token with one permission, **Account**, **D1**, **Read**. Wrangler reads it as `CLOUDFLARE_API_TOKEN` |
-| `LEXEMA_DATA_READ_TOKEN` | environment secret | `dictionary-plan` | a fine-grained GitHub token for `hueypov/lexema-data` only, **Contents** read-only. Only the plan step gets it, as `LEXEMA_DATA_TOKEN`, to read archives and dumps. It may be the same token as `dictionary-deploy`'s. Never the monthly release's write token |
 | `CLOUDFLARE_ACCOUNT_ID` | environment variable | `dictionary-plan` | the same account id as in `dictionary-deploy`; not secret |
 
 `SEED_REMOTE=lexema-dictionary` is set in the workflow itself.
@@ -677,15 +670,6 @@ check goes red on every pull request that adds a declaration.
 3. **The secret and the variable.** In `dictionary-plan`, add the environment
    secret `CLOUDFLARE_D1_READ_TOKEN` (step 1) and the environment variable
    `CLOUDFLARE_ACCOUNT_ID`, the same account id `dictionary-deploy` has.
-4. **The read-only `lexema-data` token.** In `dictionary-plan`, add the
-   environment secret `LEXEMA_DATA_READ_TOKEN`: a fine-grained GitHub token
-   for `hueypov/lexema-data` only, **Contents**, **Read-only**, and nothing
-   else. You may reuse the deploy's token
-   ([Set up the dictionary deploy](#set-up-the-dictionary-deploy), step 2),
-   or make a new one the same way, named `lexema-dictionary-plan-data`. Until
-   it is added, the check goes red on a pull request whose first declaration
-   is `update:auto`, `hide:records` or `load:page-entries`.
-
 Add no other secret to `dictionary-plan`: never `CLOUDFLARE_D1_TOKEN` and
 never `LEXEMA_DATA_WRITE_TOKEN`.
 
@@ -707,9 +691,9 @@ release, and nothing otherwise. Its steps are `pnpm run release:monthly`
    way. When it exists with no pull request, the run stops red: see
    [When a run stops after prepare](#when-a-run-stops-after-prepare). It then reads the dump's size and SHA-1 from Wikimedia's
    `dumpstatus.json`, downloads the dump and checks it, and stores in
-   `hueypov/lexema-data`, as one commit:
+   `povlabs/lexema-data`, as one commit:
 
-   | File | Path in `hueypov/lexema-data` |
+   | File | Path in `povlabs/lexema-data` |
    |---|---|
    | the archive | `source/<release id>.jsonl.gz` |
    | kaikki's build log | `source/<release id>.log` |
@@ -749,7 +733,7 @@ No agent runs this workflow or holds its token.
 ### When a run stops after prepare
 
 When `plan` or `pull-request` stops red, `prepare` has already stored the
-release in `hueypov/lexema-data` and pushed `release/<release id>`. The run's
+release in `povlabs/lexema-data` and pushed `release/<release id>`. The run's
 `stranded` job names that branch in an error. To finish the release:
 
 1. Fix what stopped the run, such as the pull request setting under
@@ -763,7 +747,7 @@ new run stops red at `prepare` and names the branch again.
 
 GitHub re-runs a run only within 30 days of it. After that, delete
 `release/<release id>`, and delete `source/<release id>.headers` and
-`source/<release id>.log` from `hueypov/lexema-data`. A new run then downloads
+`source/<release id>.log` from `povlabs/lexema-data`. A new run then downloads
 the release again and stores those two files fresh. The archive and the dump
 are the same bytes, so they stay.
 
@@ -772,7 +756,7 @@ are the same bytes, so they stay.
 | Name | Kind | Where | What it is |
 |---|---|---|---|
 | `dictionary-release` | GitHub environment | repository **Settings**, **Environments** | holds the secret below; its deployment branches are `main` only, so a run on any other branch never receives it. Only the `prepare` job names it |
-| `LEXEMA_DATA_WRITE_TOKEN` | environment secret | `dictionary-release` | a fine-grained GitHub token for `hueypov/lexema-data` only, **Contents** read and write. The only token that writes that repository; no other workflow reads it |
+| `LEXEMA_DATA_WRITE_TOKEN` | environment secret | `dictionary-release` | a fine-grained GitHub token for `povlabs/lexema-data` only, **Contents** read and write. The only token that writes that repository; no other workflow reads it |
 | `GITHUB_TOKEN` | built in | `prepare`: `contents: write`, `pull-requests: read`; `pull-request`: `contents: write`, `pull-requests: write` | pushes `release/<release id>`, reads whether a pull request was opened from it, and opens the pull request |
 | `plan` job grant | `permissions` in the workflow | `contents: write` | GitHub checks every job of the called dictionary deploy against it when it loads the workflow, so it covers the deploy job's `contents: write`. That job runs only on a push, never here; the plan job asks for `contents: read` |
 | Allow GitHub Actions to create and approve pull requests | repository setting | **Settings**, **Actions**, **General**, **Workflow permissions** | on, or GitHub refuses the pull request |
@@ -788,8 +772,8 @@ No agent does any of them.
 
 1. **The write token.** Open
    https://github.com/settings/personal-access-tokens/new. **Token name**:
-   `lexema-monthly-release-data`. **Resource owner**: `hueypov`. **Repository
-   access**: **Only select repositories**, `hueypov/lexema-data` alone.
+   `lexema-monthly-release-data`. **Resource owner**: `povlabs`. **Repository
+   access**: **Only select repositories**, `povlabs/lexema-data` alone.
    **Permissions**: **Contents**, **Read and write**, and nothing else.
    Generate it and copy it. When it expires, the run stops before it stores
    anything.
@@ -844,9 +828,9 @@ callback answers 503.
 ## Turn on billing
 
 Starter and Pro are paid through Stripe, on better-auth's Stripe plugin
-(`src/accounts/billing.ts`, [#262](https://github.com/hueypov/lexema/issues/262)).
+(`src/accounts/billing.ts`, [#262](https://github.com/povlabs/lexema/issues/262)).
 The developer site's billing routes (`web/worker/billing.ts`,
-[#264](https://github.com/hueypov/lexema/issues/264)) send a developer to
+[#264](https://github.com/povlabs/lexema/issues/264)) send a developer to
 Stripe Checkout and to Stripe's billing portal. Its webhook keeps each
 account's `subscription` row in step with Stripe: for each event below it
 reads the subscription back from Stripe and writes it, so a late or repeated
@@ -872,7 +856,7 @@ Where each one lives:
 The price ids are not secret. The test-mode ones in the repository are
 Starter's $15 price `price_1ULTI07wyoTIgVX6DFZ5TmY3` and Pro's $49 price
 `price_1ULTI17wyoTIgVX6QiH9muAe` (posted on
-[#161](https://github.com/hueypov/lexema/issues/161)). A price id set without
+[#161](https://github.com/povlabs/lexema/issues/161)). A price id set without
 the two secrets turns nothing on. A Preview gets a fresh deployment on every
 push, which keeps only the secrets the Preview command sends, and that is
 `BETTER_AUTH_SECRET` alone, so billing stays off on every Preview.
@@ -938,7 +922,7 @@ Checkout returns a paid developer before they land on `/dashboard/settings`.
 ## Turn on account email
 
 The developer site emails a developer about their account through Cloudflare
-Email Service ([#215](https://github.com/hueypov/lexema/issues/215)), from
+Email Service ([#215](https://github.com/povlabs/lexema/issues/215)), from
 `noreply@lexema.fyi`. Each email is plain text and HTML, in English, with one
 link to `/dashboard/settings` (`src/email/accountEmail.ts`):
 

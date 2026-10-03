@@ -13,7 +13,7 @@
 //    rebuilt meanwhile, so the archive's dump is not known.
 // 4. Read the dump's size and SHA-1 from Wikimedia, download it and check it.
 // 5. Store the archive, the build log, the download's headers and the dump in
-//    `hueypov/lexema-data`.
+//    `povlabs/lexema-data`.
 // 6. Add the release's `ARCHIVE_FACTS` and `KNOWN_DUMPS` entries on a new
 //    branch `release/<release id>` and push it.
 //
@@ -103,7 +103,7 @@ export interface PrepareDeps {
   readonly root: string;
   /** Where downloads go. */
   readonly workDir: string;
-  /** Store files in `hueypov/lexema-data` as one commit. */
+  /** Store files in `povlabs/lexema-data` as one commit. */
   readonly store: (files: readonly StoredFile[], message: string) => Promise<StoreOutcome>;
   /** The URL of a pull request ever opened from `branch`, open or closed, or `undefined` when none was. */
   readonly pullRequestFrom: (branch: string) => Promise<string | undefined>;
@@ -184,7 +184,7 @@ export async function prepareRelease(deps: PrepareDeps): Promise<PrepareOutcome>
   await writeFile(logFile, log);
   await writeFile(headersFile, headersText(KAIKKI_ARCHIVE_URL, archiveResponse));
   const { paths } = candidate;
-  step(`store ${Object.values(paths).join(", ")} in hueypov/lexema-data`);
+  step(`store ${Object.values(paths).join(", ")} in povlabs/lexema-data`);
   const stored = await deps.store(
     [
       { path: paths.archive, from: archive },
@@ -246,7 +246,7 @@ export function releasePullRequestBody(candidate: ReleaseCandidate, declared: Re
     `- the release's \`ARCHIVE_FACTS\` entry in \`${ARCHIVE_FACTS_FILE}\` and its dump's \`KNOWN_DUMPS\` entry in \`${KNOWN_DUMPS_FILE}\`;`,
     `- the change declaration \`${declared.path}\`, an \`update:auto\` of \`${candidate.releaseId}\`.`,
     "",
-    `The archive is stored in \`hueypov/lexema-data\` at \`${paths.archive}\`, with kaikki's build log at \`${paths.buildLog}\` and the download's headers at \`${paths.headers}\`. The dump is at \`${paths.dump}\`. Archive SHA-256 \`${candidate.archiveSha256}\`, downloaded ${candidate.retrievedAt}; dump ${candidate.dumpIdentity.bytes} bytes, SHA-1 \`${candidate.dumpIdentity.sha1}\`, as Wikimedia lists it.`,
+    `The archive is stored in \`povlabs/lexema-data\` at \`${paths.archive}\`, with kaikki's build log at \`${paths.buildLog}\` and the download's headers at \`${paths.headers}\`. The dump is at \`${paths.dump}\`. Archive SHA-256 \`${candidate.archiveSha256}\`, downloaded ${candidate.retrievedAt}; dump ${candidate.dumpIdentity.bytes} bytes, SHA-1 \`${candidate.dumpIdentity.sha1}\`, as Wikimedia lists it.`,
     "",
     "## Expected counts",
     "",

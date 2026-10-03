@@ -1,6 +1,6 @@
 # D1 statements in one `/lookup/batch`, 2026-10-01
 
-Measurement for [#158](https://github.com/hueypov/lexema/issues/158). It counts
+Measurement for [#158](https://github.com/povlabs/lexema/issues/158). It counts
 the D1 statements one `POST /v1/lookup/batch` runs at the largest batch a plan
 allows, and compares that count with Cloudflare's per-invocation cap.
 
@@ -8,7 +8,7 @@ allows, and compares that count with Cloudflare's per-invocation cap.
 7,469 statements. A batch of the most-matched spellings runs 33,912. Cloudflare's
 D1 page caps a Workers Paid invocation at 1,000 queries. Even Starter's 60-word
 batch runs 1,285. The follow-up is
-[#335](https://github.com/hueypov/lexema/issues/335).
+[#335](https://github.com/povlabs/lexema/issues/335).
 
 ## The largest batch
 

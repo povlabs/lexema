@@ -7,7 +7,7 @@ coverage/
 artifacts/
 
 # Source downloads stay local until redistribution is reviewed; their durable
-# copies are source/ in hueypov/lexema-data
+# copies are source/ in povlabs/lexema-data
 it-extract.jsonl.gz
 itwiktionary-20260701-pages-articles.xml.bz2
 
@@ -37,3 +37,6 @@ web/.next/
 .fabrika/
 
 .claude/settings.local.json
+
+# Pencil design file: kept local, not published (Huey 2026-10-03)
+lexema-design.pen

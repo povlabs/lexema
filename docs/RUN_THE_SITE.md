@@ -17,7 +17,7 @@ Nothing up to [Check it is healthy](#check-it-is-healthy) touches a Cloudflare
 account. `wrangler dev` runs the Worker on
 workerd locally, and local D1 state is kept in `.data/`, not `web/.wrangler/`.
 The full Italian archive is maintained at
-[`source/it-extract.jsonl.gz`](https://github.com/hueypov/lexema-data/blob/main/source/it-extract.jsonl.gz).
+[`source/it-extract.jsonl.gz`](https://github.com/povlabs/lexema-data/blob/main/source/it-extract.jsonl.gz).
 A local copy at the repository root (`it-extract.jsonl.gz`) is gitignored and is
 the default full-archive input when an archive is selected explicitly.
 

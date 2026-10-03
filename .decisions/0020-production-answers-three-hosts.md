@@ -14,7 +14,7 @@ tags: [stack, hosting]
 
 [ADR 0013](0013-site-public-behind-rate-limits.md) says, under *What is public*: "The Worker `lexema-web` answers on `lexema.fyi` only." [ADR 0018](0018-previews-on-workers-builds.md) amended that line for Previews and for how production is deployed, and left the production hosts standing.
 
-Since then the same Worker answers two more production hosts. Epic [#159](https://github.com/hueypov/lexema/issues/159) planned a developer site and moved the JSON API to its own host, and Huey approved that plan on 2026-09-28. [#164](https://github.com/hueypov/lexema/issues/164), landed in PR #170, routes the hosts, and its criteria record Huey's ruling that publishing `developers.lexema.fyi` and `api.lexema.fyi` is fine. Neither touched ADR 0013, so its *What is public* line now states something false, which [#184](https://github.com/hueypov/lexema/issues/184) reports.
+Since then the same Worker answers two more production hosts. Epic [#159](https://github.com/povlabs/lexema/issues/159) planned a developer site and moved the JSON API to its own host, and Huey approved that plan on 2026-09-28. [#164](https://github.com/povlabs/lexema/issues/164), landed in PR #170, routes the hosts, and its criteria record Huey's ruling that publishing `developers.lexema.fyi` and `api.lexema.fyi` is fine. Neither touched ADR 0013, so its *What is public* line now states something false, which [#184](https://github.com/povlabs/lexema/issues/184) reports.
 
 This record makes no new choice. It writes down the shape Huey already ruled on #159 and #164, as it stands in the code:
 

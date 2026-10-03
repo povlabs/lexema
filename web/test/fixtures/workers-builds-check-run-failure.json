@@ -4,8 +4,8 @@
   "node_id": "CR_kwDOTffsds8AAAAZmPxlPg",
   "head_sha": "f7a54b1ba798d1fb474479b7a26f7e80df66f0b5",
   "external_id": "22a60519-c61c-4619-9b16-83188099cddc",
-  "url": "https://api.github.com/repos/hueypov/lexema/check-runs/109940860222",
-  "html_url": "https://github.com/hueypov/lexema/runs/109940860222",
+  "url": "https://api.github.com/repos/povlabs/lexema/check-runs/109940860222",
+  "html_url": "https://github.com/povlabs/lexema/runs/109940860222",
   "details_url": "https://dash.cloudflare.com/c82459d9d5bcea530a2508af450b82ad/workers/services/view/lexema-web/production/builds/22a60519-c61c-4619-9b16-83188099cddc",
   "status": "completed",
   "conclusion": "failure",
@@ -16,7 +16,7 @@
     "summary": "\nBuild ID: [22a60519-c61c-4619-9b16-83188099cddc](https://dash.cloudflare.com/c82459d9d5bcea530a2508af450b82ad/workers/services/view/lexema-web/production/builds/22a60519-c61c-4619-9b16-83188099cddc)\nScript: [lexema-web](https://dash.cloudflare.com/c82459d9d5bcea530a2508af450b82ad/workers/services/view/lexema-web/production)\n",
     "text": null,
     "annotations_count": 0,
-    "annotations_url": "https://api.github.com/repos/hueypov/lexema/check-runs/109940860222/annotations"
+    "annotations_url": "https://api.github.com/repos/povlabs/lexema/check-runs/109940860222/annotations"
   },
   "check_suite": {
     "id": 99472114626
@@ -68,7 +68,7 @@
   },
   "pull_requests": [
     {
-      "url": "https://api.github.com/repos/hueypov/lexema/pulls/269",
+      "url": "https://api.github.com/repos/povlabs/lexema/pulls/269",
       "id": 4691163926,
       "number": 269,
       "head": {
@@ -76,7 +76,7 @@
         "sha": "d1f82ee99418ab14ec11730d9c0f32bd657b724f",
         "repo": {
           "id": 1308093558,
-          "url": "https://api.github.com/repos/hueypov/lexema",
+          "url": "https://api.github.com/repos/povlabs/lexema",
           "name": "lexema"
         }
       },
@@ -85,7 +85,7 @@
         "sha": "d2276b19092099197813562b49786f65b4936c81",
         "repo": {
           "id": 1308093558,
-          "url": "https://api.github.com/repos/hueypov/lexema",
+          "url": "https://api.github.com/repos/povlabs/lexema",
           "name": "lexema"
         }
       }

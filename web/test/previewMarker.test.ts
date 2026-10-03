@@ -1,7 +1,7 @@
 // The preview marker (#244, web/builds/previewMarkerCommand.ts): which check
 // runs it acts on, the comment it keeps, and the GitHub calls it makes. The
 // check runs are real ones from Workers Builds on PR #269, recorded with
-// `gh api repos/hueypov/lexema/commits/<sha>/check-runs`: 8be5dd31 built
+// `gh api repos/povlabs/lexema/commits/<sha>/check-runs`: 8be5dd31 built
 // (success), f7a54b1b failed. A `check_run` webhook delivers the same object
 // under `check_run`. Everything runs against a fake GitHub and fake sites, with
 // no network and no credential.
@@ -32,7 +32,7 @@ const fixture = (name: string) => JSON.parse(readFileSync(new URL(`./fixtures/${
 const BUILT = fixture("workers-builds-check-run-success.json");
 const FAILED = fixture("workers-builds-check-run-failure.json");
 
-const REPOSITORY = "hueypov/lexema";
+const REPOSITORY = "povlabs/lexema";
 const BRANCH = "build/245-preview-test-sign-in-4e2f1c60";
 const BUILT_SHA = "8be5dd31adde7c3155860e89e1b8e8d5990394ff";
 const LATER_SHA = "d1f82ee99418ab14ec11730d9c0f32bd657b724f";
@@ -302,19 +302,19 @@ test("the REST calls use GITHUB_TOKEN on this repository's endpoints, and page t
   const page = (length: number, from: number) =>
     Array.from({ length }, (_, i) => ({ id: from + i, body: "x", user: { login: "someone" } }));
   const answers: Record<string, unknown> = {
-    "GET /repos/hueypov/lexema/pulls/269": {
+    "GET /repos/povlabs/lexema/pulls/269": {
       number: 269,
       state: "open",
       head: { sha: BUILT_SHA, ref: BRANCH, repo: { full_name: REPOSITORY } },
     },
-    [`GET /repos/hueypov/lexema/commits/${BUILT_SHA}/pulls`]: [
+    [`GET /repos/povlabs/lexema/commits/${BUILT_SHA}/pulls`]: [
       { number: 269, state: "open" },
       { number: 12, state: "closed" },
     ],
-    "GET /repos/hueypov/lexema/issues/269/comments?per_page=100&page=1": page(100, 1),
-    "GET /repos/hueypov/lexema/issues/269/comments?per_page=100&page=2": page(1, 101),
-    "POST /repos/hueypov/lexema/issues/269/comments": {},
-    "PATCH /repos/hueypov/lexema/issues/comments/7": {},
+    "GET /repos/povlabs/lexema/issues/269/comments?per_page=100&page=1": page(100, 1),
+    "GET /repos/povlabs/lexema/issues/269/comments?per_page=100&page=2": page(1, 101),
+    "POST /repos/povlabs/lexema/issues/269/comments": {},
+    "PATCH /repos/povlabs/lexema/issues/comments/7": {},
   };
   const fakeFetch = (async (input: string | URL | Request, init?: RequestInit) => {
     const url = new URL(String(input));
@@ -333,9 +333,9 @@ test("the REST calls use GITHUB_TOKEN on this repository's endpoints, and page t
   await github.updateComment(7, "hi");
   await assert.rejects(github.pullRequest(1), /answered 404/);
   assert.deepEqual(requests.slice(-3), [
-    'POST /repos/hueypov/lexema/issues/269/comments {"body":"hi"}',
-    'PATCH /repos/hueypov/lexema/issues/comments/7 {"body":"hi"}',
-    "GET /repos/hueypov/lexema/pulls/1",
+    'POST /repos/povlabs/lexema/issues/269/comments {"body":"hi"}',
+    'PATCH /repos/povlabs/lexema/issues/comments/7 {"body":"hi"}',
+    "GET /repos/povlabs/lexema/pulls/1",
   ]);
   assert.throws(() => restGitHub("", REPOSITORY, fakeFetch), /GITHUB_TOKEN/);
 });

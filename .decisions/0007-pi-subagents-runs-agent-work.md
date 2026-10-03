@@ -12,7 +12,7 @@ tags: [process, agents, tooling]
 
 ## Context
 
-The agent workflow added in [#36](https://github.com/hueypov/lexema/pull/36) starts each worker as a separate Pi process in a Herdr tab. Those processes cannot use pi-subagents' supervisor channel. Coordination instead depends on terminal callbacks, pane reads, and manual routing through Herdr.
+The agent workflow added in [#36](https://github.com/povlabs/lexema/pull/36) starts each worker as a separate Pi process in a Herdr tab. Those processes cannot use pi-subagents' supervisor channel. Coordination instead depends on terminal callbacks, pane reads, and manual routing through Herdr.
 
 Pi now has a working `pi-subagents` package. It keeps child requests and results in the parent session, supplies named fabrika agent profiles, and supports bounded parallel read-only work without opening more terminal sessions. Replacing Herdr for agent execution is a tool replacement, so [0003](0003-tool-replacement-is-its-own-decision.md) requires this decision to stand on its own.
 
