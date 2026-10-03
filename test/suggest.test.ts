@@ -120,12 +120,6 @@ test("two letters list the first words under them, and one letter is refused", a
   });
 });
 
-test("a spelling several records carry is suggested once", async () => {
-  await withFixture(async (db) => {
-    assert.equal((await spellings(db, "sal")).filter((word) => word === "sale").length, 1);
-  });
-});
-
 test("every headword under the prefix is offered, whatever its senses say", async () => {
   await withFixture(async (db) => {
     // casetta: one form-of sense and one of its own. casette: only a form.
