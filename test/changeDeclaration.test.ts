@@ -43,10 +43,21 @@ test("a declaration of each command parses to its command, inputs and expected c
   assert.deepEqual(normalize.inputs, { rules: SOURCE_TEXT_UPDATE_RULES });
 });
 
+test("a correct:records declaration takes no inputs and counts the correction tables", () => {
+  const expected = { records: { added: 0, changed: 2, removed: 0 }, written: { corrected_claim: 3, correction_version: 1 }, deleted: { corrected_claim: 1 } };
+  const correct = parseDeclaration(FILE, JSON.stringify({ command: "correct:records", expected }));
+  assert.equal(correct.command, "correct:records");
+  assert.deepEqual(correct.inputs, {});
+  assert.deepEqual(correct.expected.toJSON(), expected);
+  assert.deepEqual(parseDeclaration(FILE, JSON.stringify({ command: "correct:records", inputs: {}, expected })).inputs, {});
+
+  assert.match(refusal(JSON.stringify({ command: "correct:records", inputs: { corrections: ["it-0c432803:138314"] }, expected })), /inputs of correct:records has an unknown field "corrections"/);
+});
+
 test("a malformed declaration or an unknown command is refused with a message naming the file", () => {
   assert.match(refusal("{ command: "), /is not JSON/);
   assert.match(refusal("[]"), /JSON object/);
-  assert.match(refusal(declared({ command: "update:apply" })), /command must be one of update:upgrade, update:auto, hide:records, normalize:source-text, got "update:apply"/);
+  assert.match(refusal(declared({ command: "update:apply" })), /command must be one of update:upgrade, update:auto, hide:records, normalize:source-text, correct:records, got "update:apply"/);
   assert.match(refusal(declared({})), /command must be one of/);
   assert.match(refusal(declared({ command: "update:auto", inputs: { feedRelease: "it-78385B62" } })), /inputs\.feedRelease must be a release id/);
   assert.match(refusal(declared({ command: "update:auto", inputs: {} })), /inputs\.feedRelease must be a release id/);

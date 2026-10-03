@@ -1,7 +1,8 @@
-// Plan-only runs of `update:upgrade` and `normalize:source-text` (#455),
-// through each command's own entry point against a local D1 file: the run
-// prints its counts and leaves the file byte for byte as it was, and
-// `normalize:source-text` writes its rules as one file run in one step.
+// Plan-only runs of `update:upgrade`, `normalize:source-text` (#455) and
+// `correct:records` (#490), through each command's own entry point against a
+// local D1 file: the run prints its counts and leaves the file byte for byte
+// as it was, and `normalize:source-text` writes its rules as one file run in
+// one step.
 // `update:auto` and `hide:records` read archives a fixture cannot stand in for
 // at the command line, so their plan-only runs are tested in update.test.ts and
 // hiddenRecords.test.ts.
@@ -13,11 +14,13 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import test from "node:test";
+import { main as correctMain } from "../src/import/correctRecordsCli.js";
 import { main as normalizeMain } from "../src/import/normalizeSourceTextCli.js";
 import { seedSql } from "../src/import/seedSql.js";
 import { PLURAL_PLACEHOLDER_FORM } from "../src/italian/sourceTextNormalization.js";
 import { PAGE_ENTRY_INDEXES, PAGE_ENTRY_TABLES } from "../src/update/masterUpgrade.js";
 import { main as updateMain } from "../src/update/updateCli.js";
+import { atFixtureLines, correctionFixtureLines } from "./correctionFixture.js";
 import { localD1, type LocalD1 } from "./localD1.js";
 
 const RELEASE = "it-test";
@@ -141,4 +144,49 @@ test("normalize:source-text applies every rule as one file in one step, and a se
     assert.equal(again.sql, null);
     assert.equal(d1.sha256(), settled);
   });
+});
+
+test("correct:records --plan-only counts what the list writes and leaves the local D1 byte-identical; after a real run it counts nothing", async () => {
+  const lines = await correctionFixtureLines();
+  const corrections = atFixtureLines(lines, RELEASE);
+  const dir = await mkdtemp(join(tmpdir(), "lexema-plan-only-correct-"));
+  const input = join(dir, "fixture.jsonl");
+  await writeFile(input, `${lines.join("\n")}\n`);
+  const report = await seedSql({
+    input, outputDir: join(dir, "sql"), schema: resolve("src/db/schema.sql"), releaseId: RELEASE,
+    requiredWords: [], validateFixtureClosure: false, corrections: [],
+  });
+  const db = new DatabaseSync(":memory:");
+  try {
+    for (const part of report.parts) db.exec(await readFile(part, "utf8"));
+    const d1 = localD1(dir, db);
+    const run = async (...args: string[]) => correctMain({ SEED_STATE: d1.persistTo }, [...args, "--out", join(dir, "out")], d1.wrangler, corrections);
+
+    const before = d1.sha256();
+    const result = await run("--plan-only");
+    assert.equal(result.status, 0, result.out);
+    const answer = JSON.parse(result.out);
+    assert.equal(answer.command, "correct:records");
+    assert.equal(answer.planOnly, true);
+    assert.deepEqual(answer.counts, { records: { added: 0, changed: 20, removed: 0 }, written: { corrected_claim: 22, correction_version: 1 }, deleted: {} });
+    assert.equal(answer.dictionaryRecords, lines.length);
+    assert.equal(answer.entries.length, 20);
+    assert.match(answer.entries[0], /: written$/);
+    assert.ok(typeof answer.sql === "string" && (await readFile(answer.sql, "utf8")).includes("INSERT INTO corrected_claim"));
+    assert.equal(d1.sha256(), before);
+    assert.deepEqual(writes(d1), []);
+
+    // Without the flag the same command writes, and a plan-only run after it counts nothing.
+    const written = await run();
+    assert.equal(written.status, 0, written.out);
+    assert.equal(writes(d1).length, 1);
+    const settled = d1.sha256();
+    const again = JSON.parse((await run("--plan-only")).out);
+    assert.deepEqual(again.counts, { records: { added: 0, changed: 0, removed: 0 }, written: {}, deleted: {} });
+    assert.equal(again.sql, null);
+    assert.equal(d1.sha256(), settled);
+  } finally {
+    db.close();
+    await rm(dir, { recursive: true, force: true });
+  }
 });

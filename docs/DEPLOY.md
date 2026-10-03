@@ -430,14 +430,10 @@ accepts this, since only reviewed build commands use it.
 every push to `main`, one run at a time. It writes every declared change to
 the shared dictionary D1 `lexema-dictionary`, and it is the only thing that
 moves `production`
-([ADR 0018](../.decisions/0018-previews-on-workers-builds.md)). Two writes to
-`lexema-dictionary` still run from Huey's laptop, outside it: the one-time
+([ADR 0018](../.decisions/0018-previews-on-workers-builds.md)). One write to
+`lexema-dictionary` still runs from Huey's laptop, outside it: the one-time
 upload of a release
-([RUN_AN_IMPORT.md](RUN_AN_IMPORT.md#load-a-release-into-cloudflare-d1)) and
-`correct:records`
-([RUN_AN_IMPORT.md](RUN_AN_IMPORT.md#write-the-curated-corrections-into-a-seeded-database)),
-which is not a declarable command
-([#490](https://github.com/hueypov/lexema/issues/490)). Its steps are
+([RUN_AN_IMPORT.md](RUN_AN_IMPORT.md#load-a-release-into-cloudflare-d1)). Its steps are
 `pnpm run deploy:dictionary` ([src/deploy/](../src/deploy/dictionaryDeploy.ts)):
 
 1. It reads the [change declarations](../dictionary-changes/README.md) added in
@@ -530,7 +526,8 @@ a file of up to 100 MB:
 
 A declaration of `update:auto` reads its feed release's archive and the dump
 its `ARCHIVE_FACTS` entry names; `hide:records` reads the master's archive and
-its dump. `update:upgrade` and `normalize:source-text` read none.
+its dump. `update:upgrade`, `normalize:source-text` and `correct:records` read
+none: `correct:records` writes the committed list of curated corrections.
 
 ### Set up the dictionary deploy
 

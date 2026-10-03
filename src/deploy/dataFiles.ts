@@ -66,7 +66,8 @@ export const dumpPath = (file: string): string => `source/${file}`;
 /**
  * The archive and dump `change` reads, from the catalogs: `update:auto` reads
  * its feed release, `hide:records` the master's archive, each with the dump it
- * was built from. `update:upgrade` and `normalize:source-text` read none.
+ * was built from. `update:upgrade`, `normalize:source-text` and
+ * `correct:records` read none.
  */
 export function filesFor(
   change: DeclaredChange,
@@ -76,6 +77,7 @@ export function filesFor(
   switch (change.command) {
     case "update:upgrade":
     case "normalize:source-text":
+    case "correct:records":
       return null;
     case "update:auto":
       return releaseFiles(change.inputs.feedRelease, catalog, dumps);

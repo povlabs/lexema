@@ -6,9 +6,11 @@
 
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
+import { planCorrections, unwritten } from "../import/correctRecords.js";
 import { readRulePass, findHiddenRecords } from "../import/hiddenLayer.js";
 import { planHide, unhidden } from "../import/hideRecords.js";
 import { planSourceText } from "../import/normalizeSourceText.js";
+import { CURATED_CORRECTIONS, type CuratedCorrection } from "../italian/curatedCorrections.js";
 import { readLanguageHeadings } from "../italian/sectionLanguage.js";
 import { ARCHIVE_FACTS, archiveFactsFor } from "../source/archiveFacts.js";
 import { KNOWN_DUMPS, VerifiedDump } from "../source/wiktionaryDump.js";
@@ -37,14 +39,24 @@ export interface WritePlan {
 
 /** A change and the files it reads: `update:auto` and `hide:records` read an archive and a dump, the others none. */
 export type ReadyChange =
-  | { readonly change: Extract<DeclaredChange, { command: "update:upgrade" | "normalize:source-text" }> }
+  | { readonly change: Extract<DeclaredChange, { command: "update:upgrade" | "normalize:source-text" | "correct:records" }> }
   | { readonly change: Extract<DeclaredChange, { command: "update:auto" | "hide:records" }>; readonly files: FetchedFiles };
+
+/**
+ * What a plan reads besides the dictionary and the files: the archive facts
+ * and dumps, and the curated corrections. Each is the committed one unless
+ * given, so a test can plan against a fixture's own.
+ */
+export interface PlanSources extends SourceCatalogs {
+  readonly corrections?: readonly CuratedCorrection[];
+}
 
 /** Pair `change` with the files it reads, or refuse when it reads files and has none, or reads none and has some. */
 export function readyChange(change: DeclaredChange, files: FetchedFiles | null): ReadyChange {
   switch (change.command) {
     case "update:upgrade":
     case "normalize:source-text":
+    case "correct:records":
       if (files !== null) throw new Error(`${change.command} reads no archive`);
       return { change };
     case "update:auto":
@@ -56,31 +68,44 @@ export function readyChange(change: DeclaredChange, files: FetchedFiles | null):
 
 /**
  * Plan `ready` against the dictionary `reader` reads. It writes nothing.
- * `catalogs` are the archive facts and dumps it reads, the committed ones
- * unless a plan-only run is given a release not yet committed.
+ * `sources` are the archive facts, dumps and curated corrections it reads,
+ * the committed ones unless a plan-only run is given a release not yet
+ * committed.
  */
-export async function planWrite(ready: ReadyChange, reader: MasterReader, appliedAt: string, catalogs: SourceCatalogs = {}): Promise<WritePlan> {
-  const { catalog = ARCHIVE_FACTS, dumps = KNOWN_DUMPS } = catalogs;
+export async function planWrite(ready: ReadyChange, reader: MasterReader, appliedAt: string, sources: PlanSources = {}): Promise<WritePlan> {
+  const { catalog = ARCHIVE_FACTS, dumps = KNOWN_DUMPS, corrections = CURATED_CORRECTIONS } = sources;
   const schema = await readFile(SCHEMA, "utf8");
   if (!("files" in ready)) {
     const { change } = ready;
-    if (change.command === "update:upgrade") {
-      const { sql } = planUpgrade(reader, schema);
-      return {
-        run: planOnlyRun(change.command, PlanCounts.NONE, reader),
-        sql,
-        readBack: (after) => missingUpgrade(after).map((name) => `the upgrade did not add ${name}`),
-      };
+    switch (change.command) {
+      case "update:upgrade": {
+        const { sql } = planUpgrade(reader, schema);
+        return {
+          run: planOnlyRun(change.command, PlanCounts.NONE, reader),
+          sql,
+          readBack: (after) => missingUpgrade(after).map((name) => `the upgrade did not add ${name}`),
+        };
+      }
+      case "normalize:source-text": {
+        const plan = planSourceText(reader);
+        return {
+          run: planOnlyRun(change.command, plan.counts, reader),
+          sql: plan.sql,
+          readBack: (after) => {
+            const left = planSourceText(after).statements;
+            return left === 0 ? [] : [`${left} source text change(s) still pending after the file ran`];
+          },
+        };
+      }
+      case "correct:records": {
+        const plan = planCorrections(reader, corrections, schema);
+        return {
+          run: planOnlyRun(change.command, plan.counts, reader),
+          sql: plan.sql,
+          readBack: (after) => unwritten(after, plan).map((id) => `correction ${id} does not read back as written`),
+        };
+      }
     }
-    const plan = planSourceText(reader);
-    return {
-      run: planOnlyRun(change.command, plan.counts, reader),
-      sql: plan.sql,
-      readBack: (after) => {
-        const left = planSourceText(after).statements;
-        return left === 0 ? [] : [`${left} source text change(s) still pending after the file ran`];
-      },
-    };
   }
 
   const { change, files } = ready;

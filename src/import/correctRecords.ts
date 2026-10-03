@@ -14,6 +14,7 @@
 import { correctionId, type CuratedCorrection } from "../italian/curatedCorrections.js";
 import { createStatement } from "../update/masterUpgrade.js";
 import { readMasterRelease, select, type MasterReader } from "../update/master.js";
+import { PlanCounts } from "../update/planCounts.js";
 import { correctedClaimValues } from "./correctedLayer.js";
 import { COLUMNS, literal, tupleOf } from "./seedSql.js";
 
@@ -33,6 +34,8 @@ export interface CorrectionPlan {
   entries: PlannedCorrection[];
   /** Empty when there is nothing to write. */
   sql: string;
+  /** What `sql` writes, counted (#490); `PlanCounts.NONE` when it is empty. */
+  counts: PlanCounts;
 }
 
 const json = (values: readonly unknown[]): string => literal(JSON.stringify(values));
@@ -94,7 +97,7 @@ export function planCorrections(reader: MasterReader, corrections: readonly Cura
   });
 
   const writes = entries.flatMap((entry) => (entry.state === "write" ? [entry] : []));
-  if (writes.length === 0) return { masterReleaseId: master.releaseId, entries, sql: "" };
+  if (writes.length === 0) return { masterReleaseId: master.releaseId, entries, sql: "", counts: PlanCounts.NONE };
   const written = json(writes.map((entry) => entry.recordId));
   const tuples = writes.flatMap((entry) =>
     correctedClaimValues(entry.correction).map((values) => tupleOf("corrected_claim", [entry.recordId, master.releaseId, ...values])),
@@ -111,7 +114,13 @@ export function planCorrections(reader: MasterReader, corrections: readonly Cura
     `DELETE FROM corrected_claim WHERE record_id IN (SELECT value FROM json_each(${written}));`,
     `INSERT INTO corrected_claim (${COLUMNS.corrected_claim}) VALUES\n  ${tuples.join(",\n  ")};`,
   ];
-  return { masterReleaseId: master.releaseId, entries, sql: `${sql.join("\n")}\n` };
+  // Each written record changes in place: its rows already held go with the DELETE, and the INSERT writes them anew.
+  const counts = new PlanCounts(
+    { added: 0, changed: writes.length, removed: 0 },
+    { corrected_claim: tuples.length, correction_version: 1 },
+    { corrected_claim: writes.reduce((rows, entry) => rows + (held.get(entry.recordId)?.length ?? 0), 0) },
+  );
+  return { masterReleaseId: master.releaseId, entries, sql: `${sql.join("\n")}\n`, counts };
 }
 
 /** Entries the plan writes whose rows the master does not read back exactly. */

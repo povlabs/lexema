@@ -25,6 +25,7 @@ cannot read as one, naming the file.
 | `update:auto` | `feedRelease`: the feed release id |
 | `hide:records` | `archive`: the release id the master was seeded from; `rules`: every hiding rule |
 | `normalize:source-text` | `rules`: every source text rule the command applies |
+| `correct:records` | none: it writes the committed list of curated corrections, and `expected` pins what that list writes ([RUN_AN_IMPORT.md](../docs/RUN_AN_IMPORT.md#write-the-curated-corrections-into-a-seeded-database)) |
 
 `expected` is the `counts` object a plan-only run of the command prints
 (`--plan-only`, [src/update/planOnly.ts](../src/update/planOnly.ts)). A table

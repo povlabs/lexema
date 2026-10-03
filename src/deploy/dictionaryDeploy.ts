@@ -26,6 +26,7 @@ import { advanceProduction, deployRange, type Git } from "./pending.js";
 import { type ReadyChange, planWrite, readyChange } from "./writePlan.js";
 import { lookUpWords, WORD_LIST } from "./wordCheck.js";
 import type { ArchiveFactsCatalog } from "../source/archiveFacts.js";
+import type { CuratedCorrection } from "../italian/curatedCorrections.js";
 
 /** The steps of a run, in the order a run that writes takes them. */
 export const DEPLOY_STEPS = ["pending", "fetch", "bookmark", "plan", "apply", "read-back", "word-lookup", "production"] as const;
@@ -51,6 +52,8 @@ export interface DeployDeps {
   readonly workDir: string;
   readonly catalog?: ArchiveFactsCatalog;
   readonly dumps?: DumpCatalog;
+  /** The curated corrections `correct:records` writes; the committed list unless given. */
+  readonly corrections?: readonly CuratedCorrection[];
   readonly words?: readonly string[];
   readonly now?: () => string;
   /** Told each step as it starts. */
@@ -171,7 +174,7 @@ export interface PlanOnlyAnswer {
  * it, and return its counts. It records no bookmark, runs nothing on the
  * dictionary and moves no branch.
  */
-export async function planOnly(change: DeclaredChange, deps: Pick<DeployDeps, "reader" | "fetcher" | "workDir" | "catalog" | "dumps" | "now">): Promise<PlanOnlyAnswer> {
+export async function planOnly(change: DeclaredChange, deps: Pick<DeployDeps, "reader" | "fetcher" | "workDir" | "catalog" | "dumps" | "corrections" | "now">): Promise<PlanOnlyAnswer> {
   const [{ ready }] = await readyAll([change], deps);
   const { run } = await planWrite(ready, deps.reader, (deps.now ?? (() => new Date().toISOString()))(), deps);
   return { command: run.command, counts: run.counts, dictionaryRecords: run.dictionaryRecords, limitBreaches: run.counts.limitBreaches(run.dictionaryRecords) };

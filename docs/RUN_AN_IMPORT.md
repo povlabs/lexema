@@ -190,7 +190,8 @@ rule is the importer's grammar policy
 ([grammarPolicy.ts](../src/import/grammarPolicy.ts)). A second run changes 0
 rows. `pnpm run normalize:source-text --plan-only` is a plan-only run: it
 writes the file and prints its counts as JSON, and runs nothing on the
-database. `hide:records`, `update:auto` and `update:upgrade` take the same flag
+database. `hide:records`, `correct:records`, `update:auto` and `update:upgrade`
+take the same flag
 ([src/update/planOnly.ts](../src/update/planOnly.ts)).
 
 For the full local seed:
@@ -284,18 +285,30 @@ later release's change replaced the record: a correction never passes to a
 replacing record, whose source may say something else, so the run names the
 change and the replacing record to check against the entry's evidence.
 `update:apply` and `update:auto` print the same for a correction on a record
-they retire.
+they retire. `pnpm run correct:records --plan-only` writes the file and prints
+its counts as JSON, with one line per entry under `entries`, and runs nothing
+on the database.
 
-For the shared `lexema-dictionary`, from Huey's laptop, signed in to Wrangler
-as for the upload above, once the Worker that reads corrections is deployed:
+On the shared `lexema-dictionary`, the dictionary deploy workflow runs the
+command after a merged change declaration names it
+([dictionary-changes/README.md](../dictionary-changes/README.md),
+[The dictionary deploy](DEPLOY.md#the-dictionary-deploy)). An agent runs it
+against a local D1 only. The declaration has no inputs: it writes the list as
+it stands at the deploy's commit, and its `expected` counts pin what that list
+writes. The plan-only entry of the deploy workflow finds those counts, but it
+runs `main`'s code, so it cannot count an entry that is not on `main` yet. A new
+correction therefore reaches the shared dictionary in two steps:
 
-```sh
-SEED_REMOTE=lexema-dictionary pnpm run correct:records
-```
+1. A pull request adds the entry to the list, and merges with no declaration.
+   The deploy writes nothing for it.
+2. Huey runs the [plan-only entry](DEPLOY.md#the-plan-only-entry) on `main` with
+   the change `{"command":"correct:records"}`. A second pull request adds a
+   declaration whose `expected` is the `counts` it prints. Its merge writes the
+   correction.
 
-Put `CLOUDFLARE_ACCOUNT_ID=<account id>` first if Wrangler lists more than one
-account. On `it-0c432803` the first run prints `written now: 20` and one line
-per entry, 22 rows in all (`congiuntivi` and `maniaci` set gender and number).
+Deploy the Worker that reads corrections before the first such declaration. On
+`it-0c432803` the first run prints `written now: 20` and one line per entry, 22
+rows in all (`congiuntivi` and `maniaci` set gender and number).
 On a master that already holds #420's twelve, it prints `written now: 8`, for
 the plurals tagged singular of
 [#449](https://github.com/hueypov/lexema/issues/449), and `already written` for
