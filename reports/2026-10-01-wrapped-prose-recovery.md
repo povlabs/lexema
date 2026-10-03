@@ -1,6 +1,6 @@
 # Definitions wrapped onto the line after their `#`, 2026-10-01
 
-Measurement for [issue #28](https://github.com/hueypov/lexema/issues/28), phase three.
+Measurement for [issue #28](https://github.com/povlabs/lexema/issues/28), phase three.
 [Phase two](2026-09-23-recovered-definitions-full-release.md) recovered the definitions
 the extraction drops below `#` lines. It left out a second route, first named in
 [why `casa` has no definition](2026-09-18-definition-loss.md#a-second-separate-loss-route):

@@ -1,6 +1,6 @@
 # Gender and number left in a gloss: eight nouns
 
-Measurement for [issue #308](https://github.com/hueypov/lexema/issues/308), run 2026-10-01.
+Measurement for [issue #308](https://github.com/povlabs/lexema/issues/308), run 2026-10-01.
 It changes no data and no code that reads data. It counts the noun and adjective records
 whose gender or number sits only at the end of a gloss, and proposes a rule to move it.
 
@@ -57,7 +57,7 @@ The eight, all nouns, none with a gender tag of their own:
 | 605,574 | lap steel guitar | `lap steel guitar ( approfondimento) f sing` | feminine | singular | `lap steel guitar ( approfondimento)` |
 
 This explains 8 of the 5,014 nouns with no gender tag. The rest of that gap has some other
-cause; [#145](https://github.com/hueypov/lexema/issues/145) looks at it from the forms side.
+cause; [#145](https://github.com/povlabs/lexema/issues/145) looks at it from the forms side.
 
 ## What the page shows today
 

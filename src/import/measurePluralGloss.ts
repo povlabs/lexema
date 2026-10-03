@@ -33,7 +33,7 @@ import { judgeAll, pagesFor, type PluralGlossEvidence, scanRecord, type ScannedR
 import { enExcerpt, type FetchedPage, isPinned, itExcerpt, type PinnedPage } from "../italian/wiktionaryEvidence.js";
 
 const OUT = new URL("../italian/pluralGlossEvidence.ts", import.meta.url);
-const USER_AGENT = "lexema-plural-gloss/1 (https://github.com/hueypov/lexema)";
+const USER_AGENT = "lexema-plural-gloss/1 (https://github.com/povlabs/lexema)";
 const BATCH = 50;
 
 const sha256 = (text: string): string => createHash("sha256").update(text, "utf8").digest("hex");

@@ -6,7 +6,7 @@ name: Dictionary release
 # steps are src/release/monthlyRelease.ts; docs/DEPLOY.md lists the secret and
 # the schedule. No agent runs this workflow or holds its token.
 #
-# Only the `prepare` job holds the token that writes hueypov/lexema-data. No
+# Only the `prepare` job holds the token that writes povlabs/lexema-data. No
 # job here is given the Cloudflare token: the counts come from the dictionary
 # deploy's plan-only entry, whose own job reads it.
 

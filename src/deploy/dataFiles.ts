@@ -1,10 +1,10 @@
 // The archive and dump a declared change reads, fetched from
-// `hueypov/lexema-data` and checked before anything is written (#456). An
+// `povlabs/lexema-data` and checked before anything is written (#456). An
 // archive must have the SHA-256 its `ARCHIVE_FACTS` entry is keyed by, and a
 // dump the size and SHA-1 `KNOWN_DUMPS` gives it; a file that does not is
 // refused, so no plan is built from it and nothing is written.
 //
-// Where a file lives in `hueypov/lexema-data`, under `source/`:
+// Where a file lives in `povlabs/lexema-data`, under `source/`:
 // - the master's archive, `it-0c432803`: `source/it-extract.jsonl.gz`, as it
 //   has always been kept;
 // - any other release's archive: `source/<release id>.jsonl.gz`;
@@ -22,8 +22,8 @@ import { ARCHIVE_FACTS, PUBLISHED_ARCHIVE_SHA256, type ArchiveFactsCatalog } fro
 import { type DumpIdentity, KNOWN_DUMPS, VerifiedDump } from "../source/wiktionaryDump.js";
 import type { DeclaredChange, ReleaseId } from "../update/declaration.js";
 
-/** The repository the deploy reads archives and dumps from, with its own read-only token. */
-export const DATA_REPOSITORY = "hueypov/lexema-data";
+/** The repository the deploy reads archives and dumps from. It is public, so no token is needed (#527). */
+export const DATA_REPOSITORY = "povlabs/lexema-data";
 
 /** The dumps by id, each with its file name. */
 export type DumpCatalog = Readonly<Record<string, DumpIdentity & { readonly file: string }>>;
@@ -118,21 +118,25 @@ function releaseFiles(releaseId: ReleaseId, catalog: ArchiveFactsCatalog, dumps:
 export type DataFetcher = (path: string, to: string) => Promise<void>;
 
 /**
- * The data repository through GitHub's contents API, read with `token`, a
- * fine-grained token with Contents read-only on that repository alone. The
- * raw media type serves a file of up to 100 MB; the largest here, a dump, is
- * about 71 MB.
+ * The data repository's files. With no token, the public repository is read
+ * from raw.githubusercontent.com, which has no API rate limit (#527). With a
+ * token, GitHub's contents API is used, whose raw media type serves a file of
+ * up to 100 MB; the largest here, a dump, is about 71 MB. Either way the file
+ * is checked against its catalog entry before it is used.
  */
-export function lexemaDataFetcher(token: string, fetchImpl: typeof fetch = fetch): DataFetcher {
+export function lexemaDataFetcher(token: string | null, fetchImpl: typeof fetch = fetch): DataFetcher {
   return async (path, to) => {
-    const url = `https://api.github.com/repos/${DATA_REPOSITORY}/contents/${path.split("/").map(encodeURIComponent).join("/")}`;
-    const response = await fetchImpl(url, {
-      headers: {
-        Accept: "application/vnd.github.raw+json",
-        Authorization: `Bearer ${token}`,
-        "X-GitHub-Api-Version": "2022-11-28",
-      },
-    });
+    const encoded = path.split("/").map(encodeURIComponent).join("/");
+    const response =
+      token === null
+        ? await fetchImpl(`https://raw.githubusercontent.com/${DATA_REPOSITORY}/main/${encoded}`)
+        : await fetchImpl(`https://api.github.com/repos/${DATA_REPOSITORY}/contents/${encoded}`, {
+            headers: {
+              Accept: "application/vnd.github.raw+json",
+              Authorization: `Bearer ${token}`,
+              "X-GitHub-Api-Version": "2022-11-28",
+            },
+          });
     if (!response.ok || response.body === null) throw new DataRefused([`${DATA_REPOSITORY} answered ${response.status} for ${path}`]);
     await mkdir(dirname(to), { recursive: true });
     await pipeline(Readable.fromWeb(response.body as WebReadableStream<Uint8Array>), createWriteStream(to));

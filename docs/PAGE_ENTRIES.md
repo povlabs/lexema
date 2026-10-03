@@ -28,7 +28,7 @@ To build one in a local seed, see
 
 Some pages state a definition wrongly, and the rule reads them faithfully.
 `grufolare` gives the sense of *grugnire*, and `tremare`'s first sense has no
-verb ([#450](https://github.com/hueypov/lexema/issues/450)). These are fixed
+verb ([#450](https://github.com/povlabs/lexema/issues/450)). These are fixed
 by curated corrections, never by an edit of the entry:
 
 - Each one is an entry of the committed list,
@@ -73,7 +73,7 @@ tables exist once per lookup, from `sqlite_schema` (`dictionaryTables` in
 ## Load them into a seeded dictionary
 
 `pnpm run load:page-entries` ([loadPageEntries.ts](../src/import/loadPageEntries.ts),
-[#440](https://github.com/hueypov/lexema/issues/440)) gives a dictionary seeded
+[#440](https://github.com/povlabs/lexema/issues/440)) gives a dictionary seeded
 before these entries the rows a seed now writes for them, with no reseed:
 
 - It reads the archive the master was seeded from (`SEED_INPUT`, default
@@ -118,7 +118,7 @@ it against a local D1 only. One run does both halves, in this order:
    them back. Then it looks up its fixed words, `raccontare` among them.
 2. **Reader.** The deploy fast-forwards `production` to the merge, and Workers
    Builds uploads that commit's Worker, which reads the tables (since
-   [#438](https://github.com/hueypov/lexema/pull/438)).
+   [#438](https://github.com/povlabs/lexema/pull/438)).
 
 Until step 2, the Worker already deployed keeps serving. A Worker from before
 #438 never names the tables, so it answers as before; a later one shows the

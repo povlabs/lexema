@@ -1,9 +1,9 @@
 # First-feed recovery proposal — not approved for execution
 
-Prepared 2026-10-02 for [#414](https://github.com/hueypov/lexema/issues/414).
+Prepared 2026-10-02 for [#414](https://github.com/povlabs/lexema/issues/414).
 The [audit](2026-10-02-first-feed-retention.md) reconciles the source evidence.
 No shared write is authorized. Implementation is deferred to
-[#427](https://github.com/hueypov/lexema/issues/427); no recovery was executed.
+[#427](https://github.com/povlabs/lexema/issues/427); no recovery was executed.
 This is a proposal for a separate approval, not a rollback runbook.
 
 ## What is recoverable

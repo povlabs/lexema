@@ -25,7 +25,7 @@ history routinely. Investigate accuracy when a user reports a problem.
 - CI writes the shared `lexema-dictionary`. The dictionary deploy workflow
   applies a change after a reviewed merge to `main` declares it, with the one
   D1 Edit Cloudflare token ADR 0018 allows. It fetches the archive and dump from
-  `hueypov/lexema-data` with its own read-only token; only the monthly release
+  `povlabs/lexema-data` with its own read-only token; only the monthly release
   job holds the token that writes that repository. Its steps, secrets and
   settings are [the dictionary deploy](DEPLOY.md#the-dictionary-deploy).
 - A change and its declaration land in one pull request. The
@@ -33,7 +33,7 @@ history routinely. Investigate accuracy when a user reports a problem.
   declaration with the pull request's own code and a D1 read-only token, the
   other Cloudflare key ADR 0018 allows, and gives or checks its `expected`
   counts; no one starts a plan by hand. For `update:auto`, `hide:records` and
-  `load:page-entries`, which read files from `hueypov/lexema-data`, it also
+  `load:page-entries`, which read files from `povlabs/lexema-data`, it also
   reads them with a read-only token for that repository.
 - Agents never hold the Cloudflare key, run the deploy workflow, or write the
   shared dictionary. An agent runs these commands against the local D1 only.

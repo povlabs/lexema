@@ -101,7 +101,7 @@ point rather than a side effect: the page works before any JavaScript loads, and
 a result is shareable by copying the address bar.
 
 There is no loading state on the page
-([#115](https://github.com/hueypov/lexema/issues/115)). The HTML waits for the
+([#115](https://github.com/povlabs/lexema/issues/115)). The HTML waits for the
 D1 read and carries the result in place, so it is visible with JavaScript off.
 The page used to wrap the read in a `Suspense` boundary that flushed a
 *Searching for …* line first. React sends the finished result after that line,
@@ -162,7 +162,7 @@ one Enter cannot submit.
 ## Why the rate limits sit in front of vinext
 
 Requests are the cost (#19), so a visitor gets 15 searches and 120 suggestions a
-minute ([#128](https://github.com/hueypov/lexema/issues/128)). The numbers are
+minute ([#128](https://github.com/povlabs/lexema/issues/128)). The numbers are
 Cloudflare's rate-limit bindings in `web/wrangler.jsonc`, with Huey's reasons
 beside them. The binding counts per Cloudflare location and has only 10 s and
 60 s windows.
@@ -268,7 +268,7 @@ verbalizzare"). Before the not-found page, the page's search reads those
 `form_of` edges and shows the word with its forms table: each reading headed by
 its part of speech alone (`Verbo`), a verb's forms placed by
 `it-verb-form-gloss/v1`, a noun's or adjective's plurals by `it-plural-gloss/v1`
-([#453](https://github.com/hueypov/lexema/issues/453)). It shows no
+([#453](https://github.com/povlabs/lexema/issues/453)). It shows no
 definitions block and says nothing of what the word lacks. A word whose forms
 take no cell keeps the not-found page. The developer API's lookup does not do
 this, so its answers are unchanged; the probe is `declaredLemma` in
@@ -439,10 +439,10 @@ more. It opens the Italian Wiktionary page of the spelling in the page's title:
 page instead: `vado via` links to `andare via`'s page, never the searched
 word's; a search that spells two expressions links to the first one the page
 shows: `volto le spalle` links to *voltare le spalle*
-([#291](https://github.com/hueypov/lexema/issues/291);
+([#291](https://github.com/povlabs/lexema/issues/291);
 [design law](../design-system-manifest.md#layout)).
 [ADR 0009](../.decisions/0009-two-licences-and-a-source-link.md), as amended on
-[#281](https://github.com/hueypov/lexema/issues/281), keeps the credit itself on
+[#281](https://github.com/povlabs/lexema/issues/281), keeps the credit itself on
 `/attribution`, which the site footer reaches from every page, and in each API
 result's `attribution` field. Its accessible name is longer than its text —
 "Wiktionary page for X, the source of this page (opens in a new tab)".
@@ -465,7 +465,7 @@ credit be satisfied by a link to a page that carries the required information.
 `/attribution` is that page — the contributors, the page histories where their
 names are, the licence with its link, what Lexema restructured, and where the
 served release came from: the Wiktionary dump and the kaikki.org download. Only
-those two, by Huey's ruling on [#133](https://github.com/hueypov/lexema/issues/133);
+those two, by Huey's ruling on [#133](https://github.com/povlabs/lexema/issues/133);
 the release's other facts are in
 [`src/source/archiveFacts.ts`](../src/source/archiveFacts.ts).
 
@@ -484,7 +484,7 @@ streams each admitted record into batched D1 SQL; there is no SQLite staging
 database, prefix cutter, or second import/export path. The development seed
 uses the committed fifty-word `fixtures/dev-seed.jsonl` and applies that SQL to
 an isolated `.data/seed-state` database. The full archive is maintained at
-[`source/it-extract.jsonl.gz`](https://github.com/hueypov/lexema-data/blob/main/source/it-extract.jsonl.gz);
+[`source/it-extract.jsonl.gz`](https://github.com/povlabs/lexema-data/blob/main/source/it-extract.jsonl.gz);
 a local copy at the repository root remains gitignored. The same seed loads a
 full release in numbered SQL parts
 ([RUN_AN_IMPORT.md § Run it](RUN_AN_IMPORT.md#run-it)).

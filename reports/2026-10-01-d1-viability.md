@@ -1,6 +1,6 @@
 # D1 viability for the Italian release, 2026-10-01
 
-Measurement and recommendation for [#3](https://github.com/hueypov/lexema/issues/3).
+Measurement and recommendation for [#3](https://github.com/povlabs/lexema/issues/3).
 It answers where the entry payloads live: all in D1, or D1 as the index with
 `source_record_json` in R2.
 
@@ -21,7 +21,7 @@ and the headroom are [below](#recommendation).
   (`b07d3441-91c6-4f94-8ae3-fe8c7088f21d`), region EEUR, served from MXP, read
   replication off. Only read. Huey allowed read-only timing queries and ruled
   out any write, migration or import there
-  ([ruling](https://github.com/hueypov/lexema/issues/3#issuecomment-5934052971)).
+  ([ruling](https://github.com/povlabs/lexema/issues/3#issuecomment-5934052971)).
 - The two-release test ran on a scratch local SQLite file only, per the same
   ruling.
 
@@ -98,14 +98,14 @@ What it says:
   9 to 18 per reading, and lookup awaits many of them in turn: `casa`'s 15
   statements took about 17 round trips' worth of wall time. The one search
   near a limit is the template sentence `inserisci qui voce al plurale`
-  ([#342](https://github.com/hueypov/lexema/issues/342)): 993 statements, 7
+  ([#342](https://github.com/povlabs/lexema/issues/342)): 993 statements, 7
   below the 1,000-query cap, and 12 s from the laptop.
 - **The verbatim JSON is read on every lookup that finds something**: once per
   reading and once per lemma a reading names (the `raw_json` columns). That is
   1 to 6 reads and 1 to 60 KB for a real word.
 
 Statement counts and rows read are identical to the read-only figures in
-[an earlier comment on #3](https://github.com/hueypov/lexema/issues/3#issuecomment-5933139971),
+[an earlier comment on #3](https://github.com/povlabs/lexema/issues/3#issuecomment-5933139971),
 taken the same day by the same method. The SQL times are close but not
 identical: `avere` took 68 ms here against 79 ms there, and the template
 sentence 243 ms against 261 ms.
@@ -129,7 +129,7 @@ go into the same database today. Every release numbers its records from 1
 ([`importRelease.ts`](../src/import/importRelease.ts), `recordId = admitted`),
 and `record_id` is a global primary key, so the second release collides on its
 first row. Giving a staged release its own id range is for
-[#18](https://github.com/hueypov/lexema/issues/18).
+[#18](https://github.com/povlabs/lexema/issues/18).
 
 Results:
 
@@ -204,7 +204,7 @@ database writes the new release *and* deletes the old one, likely about 55 M
 rows, over the included 50 M in that month. Loading each release into a fresh
 database and deleting the old database would not delete its rows one by one;
 whether that is billed as written rows was not checked. That choice belongs to
-[#18](https://github.com/hueypov/lexema/issues/18).
+[#18](https://github.com/povlabs/lexema/issues/18).
 
 ## Recommendation
 

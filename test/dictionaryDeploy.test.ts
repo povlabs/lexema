@@ -632,7 +632,7 @@ test("a file is read from lexema-data's contents API with the token it is given,
     await fetcher("source/it-78385b62.jsonl.gz", join(dir, "a", "archive"));
     assert.equal(await readFile(join(dir, "a", "archive"), "utf8"), "the bytes");
     assert.deepEqual(asked[0], {
-      url: "https://api.github.com/repos/hueypov/lexema-data/contents/source/it-78385b62.jsonl.gz",
+      url: "https://api.github.com/repos/povlabs/lexema-data/contents/source/it-78385b62.jsonl.gz",
       headers: { Accept: "application/vnd.github.raw+json", Authorization: "Bearer read-only-token", "X-GitHub-Api-Version": "2022-11-28" },
     });
     await assert.rejects(fetcher("source/missing.bz2", join(dir, "b")), (error: unknown) => error instanceof DataRefused && /answered 404/.test(error.message));
@@ -737,11 +737,12 @@ function jobsOf(yaml: string): Map<string, string> {
   return jobs;
 }
 
-test("the workflow reads lexema-data only with the read-only token, and every job given the Cloudflare token names the environment restricted to main", async () => {
+test("the workflow reads the public lexema-data with no token, and every job given the Cloudflare token names the environment restricted to main", async () => {
   const workflows = resolve(".github/workflows");
   const yaml = await readFile(join(workflows, "dictionary-deploy.yml"), "utf8");
-  assert.deepEqual([...new Set(yaml.match(/secrets\.[A-Z0-9_]+/g))].sort(), ["secrets.CLOUDFLARE_D1_TOKEN", "secrets.LEXEMA_DATA_READ_TOKEN"]);
-  assert.deepEqual([...new Set(yaml.match(/LEXEMA_DATA_TOKEN: .*/g))], ["LEXEMA_DATA_TOKEN: ${{ secrets.LEXEMA_DATA_READ_TOKEN }}"]);
+  // povlabs/lexema-data is public, so no lexema-data token is passed (#527).
+  assert.deepEqual([...new Set(yaml.match(/secrets\.[A-Z0-9_]+/g))].sort(), ["secrets.CLOUDFLARE_D1_TOKEN"]);
+  assert.doesNotMatch(yaml, /LEXEMA_DATA/);
   const jobs = jobsOf(yaml);
   assert.deepEqual([...jobs.keys()], ["deploy", "plan"]);
   for (const [id, block] of jobs) {
@@ -759,16 +760,15 @@ test("the workflow reads lexema-data only with the read-only token, and every jo
   }
 });
 
-test("the pull request plan check gets only the read-only tokens, in its own environment, never on a fork, and only plans", async () => {
+test("the pull request plan check gets only the D1 read-only token, in its own environment, never on a fork, and only plans", async () => {
   const yaml = await readFile(resolve(".github/workflows/dictionary-plan.yml"), "utf8");
   const on = yaml.slice(yaml.indexOf("\non:\n"), yaml.indexOf("\njobs:\n"));
   assert.match(on, /^ {2}pull_request:$/m);
   const code = yaml.split("\n").filter((line) => !/^\s*#/.test(line)).join("\n");
   assert.doesNotMatch(code, /pull_request_target|workflow_run|LEXEMA_DATA_WRITE_TOKEN|CLOUDFLARE_D1_TOKEN/);
-  assert.deepEqual([...new Set(yaml.match(/secrets\.[A-Z0-9_]+/g))].sort(), ["secrets.CLOUDFLARE_D1_READ_TOKEN", "secrets.LEXEMA_DATA_READ_TOKEN"]);
-  // The lexema-data read-only token reaches the plan step alone (#498).
-  assert.deepEqual(code.match(/.*LEXEMA_DATA.*/g)?.map((line) => line.trim()), ["LEXEMA_DATA_TOKEN: ${{ secrets.LEXEMA_DATA_READ_TOKEN }}"]);
-  assert.match(code, /- run: pnpm run deploy:dictionary --plan-only --added-since HEAD\^1\n {8}env:\n(?: {10}\S.*\n)* {10}LEXEMA_DATA_TOKEN: /);
+  assert.deepEqual([...new Set(yaml.match(/secrets\.[A-Z0-9_]+/g))].sort(), ["secrets.CLOUDFLARE_D1_READ_TOKEN"]);
+  // povlabs/lexema-data is public, so the plan reads it with no token (#527).
+  assert.doesNotMatch(code, /LEXEMA_DATA/);
   assert.match(code, /persist-credentials: false/);
   assert.match(yaml, /^permissions: \{\}$/m);
   const jobs = jobsOf(yaml);

@@ -1,6 +1,6 @@
 # Italian articles: the rules, their references, and where we stop, 2026-10-01
 
-Investigation for [#5](https://github.com/hueypov/lexema/issues/5). It checks
+Investigation for [#5](https://github.com/povlabs/lexema/issues/5). It checks
 the article rule [`src/italian/articles.ts`](../src/italian/articles.ts) and the
 lookup layer around it, [`src/lookup/articles.ts`](../src/lookup/articles.ts),
 against two named grammar references and the source. The rule is now
@@ -114,7 +114,7 @@ It reads only the gender and number the source stated about the record:
 
 The issue says the page prints the withholding reason. It does not: the word
 page shows data, never a note on what it could not place (Huey on
-[#142](https://github.com/hueypov/lexema/issues/142), cited in `genderGrid.ts`), and its grid calls
+[#142](https://github.com/povlabs/lexema/issues/142), cited in `genderGrid.ts`), and its grid calls
 the rule per cell ([`web/lib/dictionary/genderGrid.ts`](../web/lib/dictionary/genderGrid.ts))
 and draws no article line where it refuses. The reason travels in the API's
 `articles` field ([docs/LOOKUP.md](../docs/LOOKUP.md)), and the tests cover it there.
