@@ -782,8 +782,9 @@ test("the pull request plan check gets only the read-only tokens, in its own env
   assert.match(plan, /^ {4}environment: dictionary-plan$/m);
   // At least the deploy's own plan job's limit, since it may download an archive and a dump.
   assert.ok(Number(/^ {4}timeout-minutes: (\d+)$/m.exec(plan)?.[1]) >= 60, plan);
-  // `contents: read` and nothing else: no write, no deployment, no pull request comment.
-  assert.match(plan, /^ {4}permissions:\n {6}contents: read\n {4}env:/m);
+  // Two reads and nothing else: the tree, and the plan's own earlier runs that
+  // decide a skip (#521). No write, no deployment, no pull request comment.
+  assert.match(plan, /^ {4}permissions:\n {6}contents: read\n(?: {6}#.*\n)* {6}actions: read\n {4}env:/m);
   const runs = [...plan.matchAll(/- run: (.*)/g)].map(([, command]) => command);
   assert.deepEqual(runs.filter((command) => command.includes("deploy:dictionary")), ["pnpm run deploy:dictionary --plan-only --added-since HEAD^1"]);
 });

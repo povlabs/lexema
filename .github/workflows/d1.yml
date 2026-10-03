@@ -6,10 +6,13 @@ name: D1
 # in the seed's default .data/seed-state, inside this checkout.
 #
 # It runs only when what it builds can change (#521): the schemas and app
-# migrations (src/db/), the seed and import code (src/import/, src/source/),
-# the fixture it seeds (fixtures/), the key CLI it writes through, the local D1
-# bindings (web/wrangler.jsonc) and the Wrangler version. Like ci.yml it also
-# runs on the merged result (.patterns/repo-wide-gates-run-on-main.md).
+# migrations (src/db/), every source directory that `seed:dev`, `db:check-d1`
+# and `api-key` import, transitively (src/import/, src/source/, src/italian/,
+# src/lookup/, src/billing/, src/api/, src/core/ and src/commandLine.ts), the
+# fixture it seeds (fixtures/), the local D1 bindings (web/wrangler.jsonc) and
+# the Wrangler version. A new import from another directory belongs here too.
+# Like ci.yml it also runs on the merged result
+# (.patterns/repo-wide-gates-run-on-main.md).
 
 on:
   push:
@@ -18,8 +21,12 @@ on:
       - "src/db/**"
       - "src/import/**"
       - "src/source/**"
-      - "src/api/keyCli.ts"
-      - "src/api/keys.ts"
+      - "src/italian/**"
+      - "src/lookup/**"
+      - "src/billing/**"
+      - "src/api/**"
+      - "src/core/**"
+      - "src/commandLine.ts"
       - "fixtures/**"
       - "drizzle.config.ts"
       - "web/wrangler.jsonc"
@@ -34,8 +41,12 @@ on:
       - "src/db/**"
       - "src/import/**"
       - "src/source/**"
-      - "src/api/keyCli.ts"
-      - "src/api/keys.ts"
+      - "src/italian/**"
+      - "src/lookup/**"
+      - "src/billing/**"
+      - "src/api/**"
+      - "src/core/**"
+      - "src/commandLine.ts"
       - "fixtures/**"
       - "drizzle.config.ts"
       - "web/wrangler.jsonc"

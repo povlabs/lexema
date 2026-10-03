@@ -3,7 +3,11 @@ name: CI
 # The typecheck and the unit tests read the whole tree, so this runs on the
 # merged result as well as on the pull request (.patterns/repo-wide-gates-run-on-main.md).
 # A change to Markdown alone checks nothing here, so it does not start a run.
-# docs/DEPLOY.md is the exception: web/test/workersBuilds.test.ts reads it.
+# The Markdown files a unit test reads are the exception, and each is listed
+# under both triggers: docs/DEPLOY.md (web/test/workersBuilds.test.ts) and
+# docs/UPDATE_THE_DICTIONARY.md (test/update-cli-guidance.test.ts reads each
+# docs/*.md that src/ names in a recovery hint). A test that reads another
+# Markdown file adds it here.
 
 on:
   push:
@@ -12,11 +16,13 @@ on:
       - "**"
       - "!**/*.md"
       - "docs/DEPLOY.md"
+      - "docs/UPDATE_THE_DICTIONARY.md"
   pull_request:
     paths:
       - "**"
       - "!**/*.md"
       - "docs/DEPLOY.md"
+      - "docs/UPDATE_THE_DICTIONARY.md"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}

@@ -613,8 +613,11 @@ and its declaration
 ([ADR 0018](../.decisions/0018-previews-on-workers-builds.md), #494, #498). It runs
 `pnpm run deploy:dictionary --plan-only --added-since HEAD^1` on the pull
 request's merge commit ([src/deploy/](../src/deploy/pullRequestPlan.ts)). A
-later push to the pull request plans again only when that push itself changes
-`dictionary-changes/`; a newer push cancels a plan still running.
+later push to the pull request plans again when that push itself changes
+`dictionary-changes/`, or when the plan on the previous head did not conclude
+success (red, cancelled, unfinished or unreadable). Otherwise it skips, and its
+green carries the previous green forward. A newer push cancels a plan still
+running.
 
 1. It reads the declarations the pull request adds, in path order, the order
    the deploy takes them from the one commit a pull request lands as. A

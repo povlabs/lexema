@@ -16,6 +16,10 @@ name: Dictionary plan
 # `paths` reads the whole pull request's diff, so it alone would plan again on
 # every later push. The `declarations` step also asks whether this push itself
 # touched dictionary-changes/, and the plan steps skip when it did not (#521).
+# A skip carries the previous push's result forward, so it is taken only when
+# this workflow's run on the previous head concluded success. A red, cancelled,
+# unfinished or unreadable run there plans again, so an unrelated push never
+# turns an unplanned declaration green.
 
 on:
   # `pull_request`, never `pull_request_target`: a fork's run gets no secret.
@@ -45,6 +49,8 @@ jobs:
       cancel-in-progress: true
     permissions:
       contents: read
+      # Reads this workflow's run on the previous head; see the declarations step.
+      actions: read
     env:
       WRANGLER_SEND_METRICS: "false"
     steps:
@@ -53,14 +59,18 @@ jobs:
           # The merge commit and its first parent, the base it is planned past.
           fetch-depth: 2
           persist-credentials: false
-      # A push that changes nothing under dictionary-changes/ plans nothing. Any
-      # other event, or a push whose range cannot be read, plans as before.
+      # A push that changes nothing under dictionary-changes/ plans nothing when
+      # the previous head's plan concluded success. Any other event, a push whose
+      # range cannot be read, or a previous plan that is not a success plans again.
       - id: declarations
-        name: Ask whether this push touched dictionary-changes/
+        name: Ask whether this push needs a plan
         env:
           ACTION: ${{ github.event.action }}
           BEFORE: ${{ github.event.before }}
           AFTER: ${{ github.event.after }}
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
+          REPOSITORY: ${{ github.repository }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -uo pipefail
           if [ "$ACTION" != "synchronize" ] || [ -z "$BEFORE" ] || [ -z "$AFTER" ]; then
@@ -73,11 +83,26 @@ jobs:
             echo "plan=true" >> "$GITHUB_OUTPUT"
             exit 0
           fi
-          if git diff --quiet "$BEFORE" "$AFTER" -- dictionary-changes/; then
-            echo "This push changes nothing under dictionary-changes/, so nothing is planned."
+          if ! git diff --quiet "$BEFORE" "$AFTER" -- dictionary-changes/; then
+            echo "This push changes dictionary-changes/, or the diff could not be read: planning."
+            echo "plan=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          # The newest run of this workflow on the previous head, re-runs
+          # included. A skip there concluded success only because the run before
+          # it did, so a chain of skips always ends on a real green plan.
+          if ! previous="$(gh run list --repo "$REPOSITORY" --workflow dictionary-plan.yml --event pull_request \
+              --commit "$BEFORE" --branch "$HEAD_REF" --limit 1 --json conclusion \
+              --jq 'if length == 0 then "none" elif .[0].conclusion == "" then "unfinished" else .[0].conclusion end')"; then
+            echo "::warning::could not read the plan on ${BEFORE}; planning."
+            echo "plan=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if [ "$previous" = "success" ]; then
+            echo "This push changes nothing under dictionary-changes/ and the plan on ${BEFORE} is green, so nothing is planned."
             echo "plan=false" >> "$GITHUB_OUTPUT"
           else
-            echo "This push changes dictionary-changes/, or the diff could not be read: planning."
+            echo "The plan on ${BEFORE} concluded '${previous}', not success: planning again."
             echo "plan=true" >> "$GITHUB_OUTPUT"
           fi
       - if: steps.declarations.outputs.plan == 'true'

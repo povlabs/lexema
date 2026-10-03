@@ -29,8 +29,11 @@ the whole tree.
 A `paths` filter narrows which changes start a run; it sits under both triggers
 alike, so `main` is checked on exactly the changes a pull request is. Every one of
 these gates checks something a matching change can break: `decisions-index.yml`
-runs on `.decisions/` and the guard's version, `d1.yml` on the schemas, seed and
-import code, and `ci.yml` on everything but Markdown (#521).
+runs on `.decisions/` and the guard's version, `d1.yml` on the schemas and every
+source directory its seed, sample-row check and key CLI import, and `ci.yml` on
+everything but Markdown, save the Markdown files a unit test reads (#521). A
+filter that leaves out a file its job reads stops checking the change that can
+break it, so a new input joins the list in the same change.
 
 A gate whose guard reads the pull request's diff stays `pull_request`-only and says
 so in a comment at its `on:` block.
