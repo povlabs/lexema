@@ -5,6 +5,7 @@
 import { stat } from "node:fs/promises";
 import { getTableName } from "drizzle-orm";
 import * as appSchema from "../db/app/schema.js";
+import { readD1, writeD1 } from "../db/d1Command.js";
 import type { SeedSqlReport } from "./seedSql.js";
 import type { SeedTarget } from "./seedTarget.js";
 import { applyParts, PartFailure } from "./sqlParts.js";
@@ -55,10 +56,8 @@ export async function loadSeed(
   }
 
   const appTables = Object.values(appSchema).map((table) => getTableName(table));
-  const [schema] = JSON.parse(
-    target.execute(["--json", "--command", "SELECT name FROM sqlite_schema WHERE type = 'table'"], true),
-  ) as [{ results: { name: string }[] }];
-  const dictionaryHas = new Set(schema.results.map(({ name }) => name));
+  const [schema = []] = readD1<{ name: string }>(target, "SELECT name FROM sqlite_schema WHERE type = 'table'");
+  const dictionaryHas = new Set(schema.map(({ name }) => name));
   const inDictionary = appTables.filter((table) => dictionaryHas.has(table));
   if (inDictionary.length > 0) throw new Error(`app tables in the dictionary database: ${inDictionary.join(", ")}`);
   target.migrateApp(log);
@@ -70,16 +69,13 @@ export async function loadSeed(
    * says why.
    */
   const failVerification = (message: string): never => {
-    target.execute(["--command", `UPDATE source_release SET status = 'failed' WHERE release_id = ${release}`], true);
+    writeD1(target, `UPDATE source_release SET status = 'failed' WHERE release_id = ${release}`);
     throw new SeedStopped(`${message}; release ${report.releaseId} marked failed`, target.afterStop());
   };
 
   // Read the loaded row counts back and hold them against what was generated.
   const tables = Object.keys(report.rows);
-  const [counted] = JSON.parse(
-    target.execute(["--json", "--command", `SELECT ${tables.map((table) => `(SELECT count(*) FROM ${table}) AS ${table}`).join(", ")}`], true),
-  ) as [{ results: [LoadedRows] }];
-  const loaded = counted.results[0];
+  const [[loaded]] = readD1<LoadedRows>(target, `SELECT ${tables.map((table) => `(SELECT count(*) FROM ${table}) AS ${table}`).join(", ")}`);
   log(`loaded release ${report.releaseId}:`);
   for (const table of tables) log(`  ${table}: ${loaded[table]}`);
   const mismatched = tables.filter((table) => loaded[table] !== report.rows[table]);
@@ -88,12 +84,10 @@ export async function loadSeed(
   // `source_release` is written as one row outside the batched tables, so a
   // count would say little. Hold the row itself against the run: exactly one,
   // and it carries the status and line counts the generator reported.
-  const [releaseRows] = JSON.parse(
-    target.execute(
-      ["--json", "--command", `SELECT status, lines_read, admitted, skipped_other_language, malformed_lines, malformed_members, source_url, upstream_release, upstream_release_basis FROM source_release WHERE release_id = ${release}`],
-      true,
-    ),
-  ) as [{ results: Record<string, string | number | null>[] }];
+  const [releaseRows = []] = readD1<Record<string, string | number | null>>(
+    target,
+    `SELECT status, lines_read, admitted, skipped_other_language, malformed_lines, malformed_members, source_url, upstream_release, upstream_release_basis FROM source_release WHERE release_id = ${release}`,
+  );
   const expectedRelease = {
     status: "importing",
     lines_read: report.linesRead,
@@ -105,10 +99,10 @@ export async function loadSeed(
     upstream_release: report.archiveFacts?.dump.id ?? null,
     upstream_release_basis: report.archiveFacts?.dump.basis ?? null,
   };
-  if (releaseRows.results.length !== 1) {
-    failVerification(`expected one source_release row for ${report.releaseId}, found ${releaseRows.results.length}`);
+  if (releaseRows.length !== 1) {
+    failVerification(`expected one source_release row for ${report.releaseId}, found ${releaseRows.length}`);
   }
-  const releaseRow = releaseRows.results[0];
+  const releaseRow = releaseRows[0];
   const releaseMismatch = Object.entries(expectedRelease).filter(([column, value]) => releaseRow[column] !== value);
   if (releaseMismatch.length > 0) {
     failVerification(`source_release differs from the run: ${releaseMismatch.map(([column]) => column).join(", ")}`);
@@ -116,12 +110,10 @@ export async function loadSeed(
 
   // Every check passed: only now is the release given its final status, and
   // the write is read back, so a promotion that did not land is reported.
-  target.execute(["--command", `UPDATE source_release SET status = '${report.status}' WHERE release_id = ${release}`], true);
-  const [promoted] = JSON.parse(
-    target.execute(["--json", "--command", `SELECT status FROM source_release WHERE release_id = ${release}`], true),
-  ) as [{ results: { status: string }[] }];
-  if (promoted.results[0]?.status !== report.status) {
-    throw new Error(`release ${report.releaseId} was verified but its status reads ${promoted.results[0]?.status ?? "missing"}, not ${report.status}`);
+  writeD1(target, `UPDATE source_release SET status = '${report.status}' WHERE release_id = ${release}`);
+  const [promoted = []] = readD1<{ status: string }>(target, `SELECT status FROM source_release WHERE release_id = ${release}`);
+  if (promoted[0]?.status !== report.status) {
+    throw new Error(`release ${report.releaseId} was verified but its status reads ${promoted[0]?.status ?? "missing"}, not ${report.status}`);
   }
   log(`  source_release: 1 row, ${report.status}`);
   return loaded;

@@ -227,7 +227,7 @@ export async function lookup({ db, releaseId, query }: LookupOptions): Promise<L
   const { release, query: queryInfo, probed: hits } = prepared;
   const { key } = queryInfo;
   // A master seeded before #420 has no `corrected_claim` until
-  // `pnpm run correct:records` writes it, and a read of a table that is not
+  // `pnpm run update:upgrade` creates it, and a read of a table that is not
   // there would fail every statement batched with it (`fromD1`), so no
   // correction is read where there is none.
   const corrected = tables.corrections;

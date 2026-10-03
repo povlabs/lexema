@@ -1,5 +1,5 @@
-// Rule `it-plural-gloss-number` (v1 #483, v3 #516): the scan of "plurale di" records
-// tagged singular, judged against pinned Wiktionary revisions. The scanned
+// Rule `it-plural-gloss-number` (#483, v2 #515, v3 #516): the scan of "plurale di"
+// records tagged singular, judged against pinned Wiktionary revisions. The scanned
 // records and pages are src/italian/pluralGlossEvidence.ts, which
 // `pnpm run measure:plural-gloss` writes from the archive; the lines checked
 // against them here are verbatim archive lines from
@@ -10,20 +10,26 @@ import { createHash } from "node:crypto";
 import test from "node:test";
 import { HAND_CORRECTIONS, recordCorrections } from "../src/italian/curatedCorrections.js";
 import { PLURAL_GLOSS_EVIDENCE } from "../src/italian/pluralGlossEvidence.js";
-import { judge, judgeAll, PageIndex, PLURAL_GLOSS_NUMBER_RULE, scanRecord, type ScannedRecord, type Verdict } from "../src/italian/pluralGlossNumber.js";
+import { glossLemma, judge, judgeAll, PageIndex, PLURAL_GLOSS_NUMBER_RULE, type RuleMadeCorrection, scanRecord, type ScannedRecord, type Verdict } from "../src/italian/pluralGlossNumber.js";
 import { enBlocks, enExcerpt, isPinned, itExcerpt, tabsPlaces, templatesOn } from "../src/italian/wiktionaryEvidence.js";
 import { correctionFixtureLines } from "./correctionFixture.js";
 
 const HAND = recordCorrections(HAND_CORRECTIONS);
 const VERDICTS = judgeAll(PLURAL_GLOSS_EVIDENCE, HAND);
+// The version a correction names is not written anywhere; its record, facts and evidence are.
+const withoutRule = ({ rule, ...rest }: RuleMadeCorrection): Omit<RuleMadeCorrection, "rule"> => rest;
 const sha256 = (line: string): string => createHash("sha256").update(line, "utf8").digest("hex");
 const verdictOf = (word: string, pos: "noun" | "adj"): Verdict => {
   const found = VERDICTS.filter((verdict) => verdict.record.word === word && verdict.record.pos === pos);
   assert.equal(found.length, 1, `${word} [${pos}]`);
   return found[0];
 };
-const outcome = (verdict: Verdict): string =>
-  verdict.kind === "excluded" ? verdict.reason : verdict.kind === "plural" ? (verdict.genderCorrected ? "plural and gender" : "plural") : "singular";
+const outcome = (verdict: Verdict): string => {
+  if (verdict.kind === "excluded") return verdict.reason;
+  if (verdict.kind === "singular") return "singular";
+  const by = verdict.correction.confirmedBy === "own-pos" ? "" : ` by ${verdict.correction.confirmedBy}`;
+  return `${verdict.genderCorrected ? "plural and gender" : "plural"}${by}`;
+};
 
 test("the pinned scan holds each fixture line's record exactly as the line states it, and only the lines the scan takes", async () => {
   const records = new Map(PLURAL_GLOSS_EVIDENCE.records.map((record) => [record.lineSha256, record]));
@@ -51,21 +57,88 @@ test("every scanned record of it-0c432803 falls in one class, and the counts are
     "plural adj": 74,
     "plural and gender noun": 8,
     "plural and gender adj": 16,
+    "plural by feminine-lemma noun": 1,
+    "plural by feminine-lemma adj": 9,
+    "plural and gender by feminine-lemma adj": 5,
+    "plural by neighbouring-pos noun": 7,
+    "plural by neighbouring-pos adj": 12,
+    "plural and gender by neighbouring-pos noun": 2,
+    "plural and gender by neighbouring-pos adj": 3,
     "singular noun": 15,
     "singular adj": 37,
     "already-corrected noun": 13,
     "not-italian noun": 5,
     "not-italian adj": 3,
-    "other-lemma noun": 8,
-    "other-lemma adj": 17,
-    "no-section-for-pos noun": 16,
-    "no-section-for-pos adj": 23,
+    "other-lemma noun": 7,
+    "other-lemma adj": 3,
+    "no-section-for-pos noun": 7,
+    "no-section-for-pos adj": 8,
     "no-en-page noun": 6,
     "no-en-page adj": 4,
     "no-italian-entry noun": 1,
     "no-italian-entry adj": 1,
     "no-plural-statement adj": 2,
   });
+});
+
+test("v2 corrects every record v1 corrects, identically, and changes a v1 verdict only from other-lemma, no-section-for-pos or no-plural-statement (#515)", () => {
+  const v1 = judgeAll(PLURAL_GLOSS_EVIDENCE, HAND, "it-plural-gloss-number/v1");
+  const v2 = judgeAll(PLURAL_GLOSS_EVIDENCE, HAND, "it-plural-gloss-number/v2");
+  assert.equal(v1.length, v2.length);
+  let corrected = 0;
+  let widened = 0;
+  v1.forEach((before, i) => {
+    const after = v2[i];
+    assert.equal(after.record, before.record);
+    if (before.kind !== "excluded") {
+      corrected++;
+      assert.equal(before.correction.rule, "it-plural-gloss-number/v1");
+      assert.equal(after.kind, before.kind, before.record.word);
+      assert.equal(after.correction.rule, "it-plural-gloss-number/v2");
+      assert.deepEqual(withoutRule(after.correction), withoutRule(before.correction), before.record.word);
+    } else if (after.kind === "excluded") {
+      assert.equal(after.reason, before.reason, before.record.word);
+    } else {
+      widened++;
+      assert.ok(["other-lemma", "no-section-for-pos", "no-plural-statement"].includes(before.reason), before.record.word);
+      assert.ok(after.kind === "plural" && after.correction.confirmedBy !== "own-pos", before.record.word);
+      assert.equal(after.correction.confirmedBy === "feminine-lemma", before.reason === "other-lemma", before.record.word);
+    }
+  });
+  assert.deepEqual([corrected, widened], [156, 39]);
+});
+
+test("v2: a gloss naming the feminine singular is confirmed by the lemma's page naming it the feminine singular of the template's lemma", () => {
+  const verdict = verdictOf("platoniche", "adj");
+  assert.equal(outcome(verdict), "plural and gender by feminine-lemma");
+  assert.ok(verdict.kind === "plural");
+  // The word's own revision first: its row cites that one. Then the gloss's lemma's.
+  assert.deepEqual(verdict.correction.evidence, [
+    { wiki: "en.wiktionary.org", title: "platoniche", revisionId: 88629786, shows: "===Adjective=== {{head|it|adjective form}} # {{adj form of|it|platonico||f|p}}" },
+    { wiki: "en.wiktionary.org", title: "platonica", revisionId: 88629783, shows: "===Adjective=== {{head|it|adjective form}} # {{adj form of|it|platonico||f|s}}" },
+  ]);
+  assert.deepEqual(verdict.correction.facts, {
+    gender: { overrides: { pointer: "/tags/1", text: "masculine" }, value: "feminine" },
+    number: { overrides: { pointer: "/tags/2", text: "singular" }, value: "plural" },
+  });
+  // "femminile plurale di comico" names the masculine; the page's noun plural is of comica. Not the ruled shape.
+  assert.equal(outcome(verdictOf("comiche", "noun")), "other-lemma");
+});
+
+test("v2: a plural filed only under the neighbouring part of speech confirms the number, and the gender only where that revision states one", () => {
+  const virtuosi = verdictOf("virtuosi", "noun");
+  assert.equal(outcome(virtuosi), "plural by neighbouring-pos");
+  assert.ok(virtuosi.kind === "plural");
+  assert.deepEqual(virtuosi.correction.evidence, [
+    { wiki: "en.wiktionary.org", title: "virtuosi", revisionId: 78027605, shows: "===Adjective=== {{head|it|adjective form|g=m-p}} # {{adj form of|it|virtuoso||m|p}}" },
+  ]);
+  // Tagged masculine; its page states feminine plural of piccino.
+  const piccine = verdictOf("piccine", "noun");
+  assert.equal(outcome(piccine), "plural and gender by neighbouring-pos");
+  assert.ok(piccine.kind === "plural");
+  assert.deepEqual(piccine.correction.facts.gender, { overrides: { pointer: "/tags/0", text: "masculine" }, value: "feminine" });
+  // Its noun section names it a plural of rivista, not of the gloss's rivisto: no exact lemma, so v1's reason stands.
+  assert.equal(outcome(verdictOf("riviste", "adj")), "no-section-for-pos");
 });
 
 test("the same release and the same pinned revisions give the same corrections", () => {
@@ -76,15 +149,25 @@ test("the same release and the same pinned revisions give the same corrections",
 test("each real plural cites the one en.wiktionary revision pinned for its word, and is set plural over its `singular` tag", () => {
   const pages = new Map(PLURAL_GLOSS_EVIDENCE.pages.map((page) => [`${page.wiki}:${page.title}`, page]));
   const plurals = VERDICTS.flatMap((verdict) => (verdict.kind === "plural" ? [verdict] : []));
-  assert.equal(plurals.length, 141);
+  assert.equal(plurals.length, 180);
+  const showsVerbatim = (evidence: { title: string; revisionId: number; shows: string }, word: string): void => {
+    const page = pages.get(`en.wiktionary.org:${evidence.title}`);
+    assert.ok(isPinned(page), evidence.title);
+    assert.equal(evidence.revisionId, page.revisionId, evidence.title);
+    // What it shows is the page's own lines, verbatim.
+    for (const shown of evidence.shows.split("; ")) assert.ok(page.lines.some((line) => shown.endsWith(line)), `${word}: ${shown}`);
+  };
   for (const { record, correction, genderCorrected } of plurals) {
     assert.equal(correction.rule, PLURAL_GLOSS_NUMBER_RULE);
-    const [evidence] = correction.evidence;
-    const page = pages.get(`en.wiktionary.org:${record.word}`);
-    assert.ok(isPinned(page), record.word);
-    assert.deepEqual([evidence.wiki, evidence.title, evidence.revisionId], ["en.wiktionary.org", record.word, page.revisionId]);
-    // What it shows is the page's own lines, verbatim.
-    for (const shown of evidence.shows.split("; ")) assert.ok(page.lines.some((line) => shown.endsWith(line)), `${record.word}: ${shown}`);
+    const [evidence, lemmaEvidence] = correction.evidence;
+    assert.deepEqual([evidence.wiki, evidence.title], ["en.wiktionary.org", record.word]);
+    showsVerbatim(evidence, record.word);
+    if (correction.confirmedBy === "feminine-lemma") {
+      // The gloss's lemma's own revision names it a feminine singular.
+      assert.deepEqual([lemmaEvidence.wiki, lemmaEvidence.title], ["en.wiktionary.org", glossLemma(record.firstGloss)]);
+      showsVerbatim(lemmaEvidence, record.word);
+      assert.match(lemmaEvidence.shows, /\|f\|s\b|feminine singular of|female equivalent of/, record.word);
+    }
     assert.deepEqual(correction.facts.number, { overrides: { pointer: `/tags/${record.tags.indexOf("singular")}`, text: "singular" }, value: "plural" });
     const { gender } = correction.facts;
     assert.equal(gender !== undefined, genderCorrected, record.word);
@@ -162,15 +245,29 @@ test("the 37 singular adjectives glossed \"plurale di\" are set singular over th
   ]);
 });
 
-test("every correction v1 made is unchanged: the same records, facts and evidence (#516)", () => {
-  const v1 = VERDICTS.flatMap((verdict) =>
-    verdict.kind === "excluded" || (verdict.kind === "singular" && verdict.record.pos === "adj")
-      ? []
-      : [{ record: verdict.correction.record, facts: verdict.correction.facts, evidence: verdict.correction.evidence }],
-  );
-  assert.equal(v1.length, 156);
-  // The digest of the 156 corrections rule v1 made on main at 2e0e37f, the same JSON hashed the same way.
-  assert.equal(sha256(JSON.stringify(v1)), "321efebbb743d92fb0a01ec20faa6144d64e27924123f0929a836ba08d34a885");
+test("v3 corrects every record v2 corrects, identically, and changes a v2 verdict only from singular-adjective to singular (#516)", () => {
+  const v2 = judgeAll(PLURAL_GLOSS_EVIDENCE, HAND, "it-plural-gloss-number/v2");
+  assert.equal(v2.length, VERDICTS.length);
+  let corrected = 0;
+  let widened = 0;
+  v2.forEach((before, i) => {
+    const after = VERDICTS[i];
+    assert.equal(after.record, before.record);
+    if (before.kind !== "excluded") {
+      corrected++;
+      assert.equal(before.correction.rule, "it-plural-gloss-number/v2");
+      assert.equal(after.kind, before.kind, before.record.word);
+      assert.equal(after.correction.rule, "it-plural-gloss-number/v3");
+      assert.deepEqual(withoutRule(after.correction), withoutRule(before.correction), before.record.word);
+    } else if (after.kind === "excluded") {
+      assert.equal(after.reason, before.reason, before.record.word);
+    } else {
+      widened++;
+      assert.equal(before.reason, "singular-adjective", before.record.word);
+      assert.ok(after.kind === "singular" && after.record.pos === "adj", before.record.word);
+    }
+  });
+  assert.deepEqual([corrected, widened], [195, 37]);
 });
 
 test("an adjective whose own page names it both a singular and a plural of the gloss's lemma is left alone, with a reason", () => {
@@ -195,10 +292,8 @@ test("the rule leaves alone what a hand entry corrects, other languages' records
     "ammaliatrice", "anfitrioni", "congiuntivi", "costruttrici", "curde", "maniaci", "mosse", "portatrici", "ricoverati", "romantica", "scolare", "scontente", "sudafricana",
   ]);
   assert.deepEqual(excluded("not-italian"), ["abonados", "agreements", "aiuti", "ajustées", "ajustés", "constantes", "magnets", "munceca"]);
-  // "plurale di analogica", but en.wiktionary makes it a plural of analogico.
-  assert.equal(outcome(verdictOf("analogiche", "adj")), "other-lemma");
-  // A noun record whose page files the plural under Adjective only.
-  assert.equal(outcome(verdictOf("virtuosi", "noun")), "no-section-for-pos");
+  // Its page has only a Verb section. A noun's or an adjective's neighbour is the other one, never a verb.
+  assert.equal(outcome(verdictOf("adirati", "adj")), "no-section-for-pos");
   assert.equal(outcome(verdictOf("marmocchie", "noun")), "no-en-page");
 });
 

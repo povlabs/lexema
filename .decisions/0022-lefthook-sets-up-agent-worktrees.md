@@ -18,7 +18,7 @@ Fabrika's own repository solved this with lefthook. [kamp-us/phoenix ADR 0068](h
 
 `fabrika hook worktree-create` (fabrika-cli 0.8.0, `dist/hook/worktree-create.js`) adds the worktree with hooks off, then runs the repo's own `post-checkout` hook with the all-zero object id as the previous HEAD. It refuses the spawn if `node_modules/.pnpm` is missing afterwards. So the repo's `post-checkout` is the one place that installs dependencies, whether a person runs `git worktree add` or the harness spawns an agent.
 
-Huey asked for this on [#346](https://github.com/hueypov/lexema/issues/346), split out of [#344](https://github.com/hueypov/lexema/issues/344).
+Huey asked for this on [#346](https://github.com/povlabs/lexema/issues/346), split out of [#344](https://github.com/povlabs/lexema/issues/344).
 
 This record amends [0014](0014-agent-work-runs-in-any-harness.md) in part: "the checkout" in its one-writer constraint now means one worktree, so there is one writer per worktree. Everything else in 0014 stands.
 

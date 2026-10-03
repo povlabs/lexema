@@ -6,11 +6,18 @@ name: Dictionary plan
 # the counts to put in it. It only ever runs the plan-only entry, so it writes
 # nothing, records no bookmark and moves no branch. `update:auto`,
 # `hide:records` and `load:page-entries` read an archive and a dump from
-# hueypov/lexema-data, so the plan step also gets a read-only token for that
-# repository (#498). The steps
+# povlabs/lexema-data, which is public and read without a token (#527). The steps
 # are src/deploy/pullRequestPlan.ts; docs/DEPLOY.md lists the environment,
 # secrets and variable read here (ADR 0018). The deploy still holds every
 # declaration to `expected` at merge.
+#
+# `paths` reads the whole pull request's diff, so it alone would plan again on
+# every later push. The `declarations` step also asks whether this push itself
+# touched dictionary-changes/, and the plan steps skip when it did not (#521).
+# A skip carries the previous push's result forward, so it is taken only when
+# this workflow's run on the previous head concluded success. A red, cancelled,
+# unfinished or unreadable run there plans again, so an unrelated push never
+# turns an unplanned declaration green.
 
 on:
   # `pull_request`, never `pull_request_target`: a fork's run gets no secret.
@@ -20,6 +27,10 @@ on:
 
 permissions: {}
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   plan:
     # Only this repository's own branches; a fork's pull request never runs it.
@@ -28,14 +39,16 @@ jobs:
     # As long as the deploy's own plan job: the run may download an archive
     # and a dump.
     timeout-minutes: 60
-    # Holds the D1 read-only token and a hueypov/lexema-data read-only token;
-    # never the D1 Edit token or a token that writes hueypov/lexema-data.
+    # Holds the D1 read-only token only; never the D1 Edit token or a token
+    # that writes povlabs/lexema-data.
     environment: dictionary-plan
     concurrency:
       group: dictionary-plan-${{ github.event.pull_request.number }}
       cancel-in-progress: true
     permissions:
       contents: read
+      # Reads this workflow's run on the previous head; see the declarations step.
+      actions: read
     env:
       WRANGLER_SEND_METRICS: "false"
     steps:
@@ -44,15 +57,64 @@ jobs:
           # The merge commit and its first parent, the base it is planned past.
           fetch-depth: 2
           persist-credentials: false
-      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
-      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+      # A push that changes nothing under dictionary-changes/ plans nothing when
+      # the previous head's plan concluded success. Any other event, a push whose
+      # range cannot be read, or a previous plan that is not a success plans again.
+      - id: declarations
+        name: Ask whether this push needs a plan
+        env:
+          ACTION: ${{ github.event.action }}
+          BEFORE: ${{ github.event.before }}
+          AFTER: ${{ github.event.after }}
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
+          REPOSITORY: ${{ github.repository }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -uo pipefail
+          if [ "$ACTION" != "synchronize" ] || [ -z "$BEFORE" ] || [ -z "$AFTER" ]; then
+            echo "A ${ACTION} event: planning."
+            echo "plan=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if ! git fetch --no-tags --depth=1 origin "$BEFORE" "$AFTER"; then
+            echo "::warning::could not fetch ${BEFORE} and ${AFTER}; planning anyway."
+            echo "plan=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if ! git diff --quiet "$BEFORE" "$AFTER" -- dictionary-changes/; then
+            echo "This push changes dictionary-changes/, or the diff could not be read: planning."
+            echo "plan=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          # The newest run of this workflow on the previous head, re-runs
+          # included. A skip there concluded success only because the run before
+          # it did, so a chain of skips always ends on a real green plan.
+          if ! previous="$(gh run list --repo "$REPOSITORY" --workflow dictionary-plan.yml --event pull_request \
+              --commit "$BEFORE" --branch "$HEAD_REF" --limit 1 --json conclusion \
+              --jq 'if length == 0 then "none" elif .[0].conclusion == "" then "unfinished" else .[0].conclusion end')"; then
+            echo "::warning::could not read the plan on ${BEFORE}; planning."
+            echo "plan=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if [ "$previous" = "success" ]; then
+            echo "This push changes nothing under dictionary-changes/ and the plan on ${BEFORE} is green, so nothing is planned."
+            echo "plan=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "The plan on ${BEFORE} concluded '${previous}', not success: planning again."
+            echo "plan=true" >> "$GITHUB_OUTPUT"
+          fi
+      - if: steps.declarations.outputs.plan == 'true'
+        uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+      - if: steps.declarations.outputs.plan == 'true'
+        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
         with:
           node-version-file: .nvmrc
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+        if: steps.declarations.outputs.plan == 'true'
       - run: pnpm run deploy:dictionary --plan-only --added-since HEAD^1
         env:
           SEED_REMOTE: lexema-dictionary
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_D1_READ_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
-          LEXEMA_DATA_TOKEN: ${{ secrets.LEXEMA_DATA_READ_TOKEN }}
+        if: steps.declarations.outputs.plan == 'true'

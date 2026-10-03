@@ -68,7 +68,12 @@ export class StubStripe {
     const request = new Request(input, init);
     const url = new URL(request.url);
     if (url.host !== "api.stripe.com") throw new Error(`the Stripe stub was asked for ${url.href}`);
-    if (this.down) return json({ error: { type: "api_error", message: "Stripe is down." } }, 500);
+    // `stripe-should-retry: false` stops stripe-node retrying. A retried call
+    // never reads this body, so its request timer is never cleared and keeps
+    // the test file open for its whole 80 s timeout (#521).
+    if (this.down) {
+      return Response.json({ error: { type: "api_error", message: "Stripe is down." } }, { status: 500, headers: { "stripe-should-retry": "false" } });
+    }
     const form = request.method === "POST" ? new URLSearchParams(await request.text()) : new URLSearchParams();
     const path = url.pathname;
     if (request.method === "GET" && path === "/v1/customers/search") return json({ object: "search_result", data: [], has_more: false, url: path });

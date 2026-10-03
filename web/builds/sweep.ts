@@ -3,10 +3,10 @@
 // request. A merged pull request is cleaned up at its own merge; one closed
 // without merging, at the next merge.
 //
-// Which branches still have an open pull request is read from GitHub with
-// `GITHUB_PR_READ_TOKEN`, a fine-grained read-only token kept as a Workers
-// Builds build secret: the build itself sees no pull request state (#238 R3.2).
-// When that list cannot be read, nothing is deleted.
+// Which branches still have an open pull request is read from GitHub's REST
+// API: the build itself sees no pull request state (#238 R3.2). The repository
+// is public, so no token is needed; `GITHUB_PR_READ_TOKEN` is sent when set
+// (#527). When that list cannot be read, nothing is deleted.
 //
 // What exists is read from the account's D1 databases: the preview command
 // creates `lexema-preview-app-<name>` before it runs `wrangler preview --name
@@ -19,7 +19,7 @@ import { PreviewName } from "./previewName.ts";
 import { type D1Database, listDatabases, type Wrangler } from "./wrangler.ts";
 
 /** The repository whose pull requests keep Previews alive. */
-export const REPOSITORY = "hueypov/lexema";
+export const REPOSITORY = "povlabs/lexema";
 /** GitHub's largest page (https://docs.github.com/en/rest/pulls/pulls#list-pull-requests). */
 const PAGE_SIZE = 100;
 /** More pages than this is not a list this repository has; read it as unreadable. */
@@ -46,12 +46,12 @@ export interface SweepTarget {
 
 /**
  * Every open pull request's head branch, read page by page from GitHub's REST
- * API with the read-only token. Anything short of a whole, well-formed list is
- * `unread`: no token, a refused or failed request, or an answer of the wrong
- * shape.
+ * API. The repository is public, so no token is needed; one is sent when set
+ * (#527). Anything short of a whole, well-formed list is `unread`: a refused or
+ * failed request, or an answer of the wrong shape.
  */
 export async function readOpenBranches(token: string | undefined, fetchPage: typeof fetch): Promise<OpenBranches> {
-  if (token === undefined || token.trim() === "") return { state: "unread", reason: "GITHUB_PR_READ_TOKEN is not set" };
+  const auth: Record<string, string> = token === undefined || token.trim() === "" ? {} : { authorization: `Bearer ${token.trim()}` };
   const branches = new Set<string>();
   for (let page = 1; page <= MAX_PAGES; page++) {
     const url = `https://api.github.com/repos/${REPOSITORY}/pulls?state=open&per_page=${PAGE_SIZE}&page=${page}`;
@@ -60,7 +60,7 @@ export async function readOpenBranches(token: string | undefined, fetchPage: typ
       const response = await fetchPage(url, {
         headers: {
           accept: "application/vnd.github+json",
-          authorization: `Bearer ${token.trim()}`,
+          ...auth,
           "user-agent": "lexema-workers-builds-sweep",
           "x-github-api-version": "2022-11-28",
         },
@@ -98,7 +98,7 @@ export function selectForSweep(databases: readonly D1Database[], open: OpenBranc
 
 export interface SweepSteps {
   readonly wrangler: Wrangler;
-  /** `GITHUB_PR_READ_TOKEN`. */
+  /** `GITHUB_PR_READ_TOKEN`, optional on the public repository (#527). */
   readonly token: string | undefined;
   readonly fetchPage: typeof fetch;
   log(line: string): void;

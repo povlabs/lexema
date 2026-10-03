@@ -1,6 +1,6 @@
 # Words only their forms name: what the page shows now
 
-Measurement for [issue #453](https://github.com/hueypov/lexema/issues/453), run 2026-10-03.
+Measurement for [issue #453](https://github.com/povlabs/lexema/issues/453), run 2026-10-03.
 About 9,000 Italian lemmas have no record of their own, but the bot-made records of
 their forms say which form they are. Huey ruled on 2026-10-03 that searching such a
 word shows it with its forms table, with no definition and no note. This report counts

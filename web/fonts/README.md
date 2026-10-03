@@ -29,8 +29,8 @@ So `/ˈbɛl.lo/` needs `latin-ext` and `bèl·lo` does not.
 That splits what a page costs. The search page before a query is interface text
 and needs `latin` alone, which is the 14 KB Spectral 400 face. Any page carrying
 a pronunciation pulls `latin-ext` too. Nothing renders a pronunciation yet —
-that is [#20](https://github.com/hueypov/lexema/issues/20) and the word page in
-[#100](https://github.com/hueypov/lexema/issues/100) — so today `latin-ext` is
+that is [#20](https://github.com/povlabs/lexema/issues/20) and the word page in
+[#100](https://github.com/povlabs/lexema/issues/100) — so today `latin-ext` is
 carried for what the entries will show, not for what they already do.
 
 Inter is one variable file per range covering weights 100–900: the API returns
@@ -41,7 +41,7 @@ To replace a face with a newer release, see [REFRESH.md](REFRESH.md).
 
 ## The card's faces, in `card/`
 
-A shared link's card ([#304](https://github.com/hueypov/lexema/issues/304)) is
+A shared link's card ([#304](https://github.com/povlabs/lexema/issues/304)) is
 drawn inside the Worker by Satori, which reads TrueType, OpenType and WOFF but not
 WOFF2 ([`../worker/card/draw.tsx`](../worker/card/draw.tsx)). So `card/` holds the
 same families again as whole `.woff` files, one per weight and style a card sets:

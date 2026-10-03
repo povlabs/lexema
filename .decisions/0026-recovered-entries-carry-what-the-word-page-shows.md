@@ -14,11 +14,11 @@ tags: [data, provenance]
 
 ADR 0024 lets about 23 Italian pages the extraction cannot read, `raccontare` and `fornire` among them, get an entry from the raw page. It limits that entry: "Nothing else: no forms table, pronunciation, etymology or other field. Carrying more is a new decision." Its binding constraint says the same: "A recovered entry carries only a word, a part of speech and definitions, each read from the raw page." So a recovered word shows less than a word seeded from the archive.
 
-Huey widened that in three steps, all on [#451](https://github.com/hueypov/lexema/issues/451):
+Huey widened that in three steps, all on [#451](https://github.com/povlabs/lexema/issues/451):
 
-1. On 2026-10-02, told that the `raccontare` and `fornire` pages give pronunciation, etymology and synonyms the recovered entry drops, he said "we need those as well" ([#439](https://github.com/hueypov/lexema/issues/439)). He confirmed it on 2026-10-03 in [his ruling on #451](https://github.com/hueypov/lexema/issues/451#issuecomment-5968688872). The question was "recovered words also get pronunciation, etymology and synonyms from the page?", and his answer was "yes to all 7".
-2. On 2026-10-03, on this record's pull request, he widened it: "for 480 add also expressions and what we have in a word page" ([widening](https://github.com/hueypov/lexema/issues/451#issuecomment-5969613151)). That replaced the earlier exclusion of other fields. It still grants no generated text, no broader page admission ([#471](https://github.com/hueypov/lexema/issues/471), [#475](https://github.com/hueypov/lexema/issues/475)) and no shared-database write.
-3. The same day he said which list he meant: "for 480 not wikti page i meant what ever our word page have" ([clarification](https://github.com/hueypov/lexema/issues/451#issuecomment-5969625420)). So the fields are the ones our word page shows, each filled only from the entry's own raw page under ADR 0024's rules, and nothing is generated.
+1. On 2026-10-02, told that the `raccontare` and `fornire` pages give pronunciation, etymology and synonyms the recovered entry drops, he said "we need those as well" ([#439](https://github.com/povlabs/lexema/issues/439)). He confirmed it on 2026-10-03 in [his ruling on #451](https://github.com/povlabs/lexema/issues/451#issuecomment-5968688872). The question was "recovered words also get pronunciation, etymology and synonyms from the page?", and his answer was "yes to all 7".
+2. On 2026-10-03, on this record's pull request, he widened it: "for 480 add also expressions and what we have in a word page" ([widening](https://github.com/povlabs/lexema/issues/451#issuecomment-5969613151)). That replaced the earlier exclusion of other fields. It still grants no generated text, no broader page admission ([#471](https://github.com/povlabs/lexema/issues/471), [#475](https://github.com/povlabs/lexema/issues/475)) and no shared-database write.
+3. The same day he said which list he meant: "for 480 not wikti page i meant what ever our word page have" ([clarification](https://github.com/povlabs/lexema/issues/451#issuecomment-5969625420)). So the fields are the ones our word page shows, each filled only from the entry's own raw page under ADR 0024's rules, and nothing is generated.
 
 ## Decision
 
@@ -61,7 +61,7 @@ Everything else in ADR 0024 stands.
 
 ## Consequences
 
-- A recovered word such as `raccontare` can show what a word seeded from the archive shows, wherever its page gives it. The build is [#439](https://github.com/hueypov/lexema/issues/439).
+- A recovered word such as `raccontare` can show what a word seeded from the archive shows, wherever its page gives it. The build is [#439](https://github.com/povlabs/lexema/issues/439).
 - ADR 0024's note that a recovered entry has no inflection table no longer holds where the page gives one.
 
 ## Rejected

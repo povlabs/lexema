@@ -17,9 +17,9 @@ Two lockfiles drift apart without anyone noticing: whichever one you did not run
 goes stale, and the next person installs a different dependency tree from yours.
 
 An agent resolved the duplication by deleting the pnpm lockfile and moving the
-project to npm ([#21](https://github.com/hueypov/lexema/pull/21)). The
+project to npm ([#21](https://github.com/povlabs/lexema/pull/21)). The
 duplication needed fixing; the direction was wrong. Huey uses pnpm.
-[#22](https://github.com/hueypov/lexema/pull/22) put it back.
+[#22](https://github.com/povlabs/lexema/pull/22) put it back.
 
 ## Decision
 

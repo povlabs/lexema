@@ -3,11 +3,12 @@
 // target owns the Wrangler arguments that reach it, so a command can never mix
 // `--local` with a remote database or the other way round.
 
-import { execFileSync } from "node:child_process";
+import { spawnSync } from "node:child_process";
 import { rm } from "node:fs/promises";
 import { resolve } from "node:path";
 import { getTableName } from "drizzle-orm";
 import * as appSchema from "../db/app/schema.js";
+import { readD1, type D1Executor } from "../db/d1Command.js";
 
 /**
  * Runs `wrangler <args>` from `web/` and returns its stdout when `capture` is
@@ -16,20 +17,54 @@ import * as appSchema from "../db/app/schema.js";
  */
 export type Wrangler = (args: readonly string[], capture: boolean) => string;
 
+/** The most of each captured stream a `WranglerFailed` message quotes, from its end. */
+const QUOTED_OUTPUT = 4000;
+/** The most of each argument a `WranglerFailed` message quotes; SQL can run to 100,000 bytes. */
+const QUOTED_ARGUMENT = 200;
+
+const clipped = (text: string, limit: number, keep: "head" | "tail"): string =>
+  text.length <= limit ? text : keep === "head" ? `${text.slice(0, limit)}… (${text.length} chars)` : `… ${text.slice(-limit)}`;
+
+/**
+ * A `wrangler` run that failed, with what it said. With `--json`, Wrangler
+ * writes its own error to stdout, which a captured run reads and would
+ * otherwise drop, so the message quotes both streams it captured.
+ */
+export class WranglerFailed extends Error {
+  constructor(args: readonly string[], cause: string, stdout: string, stderr: string) {
+    const said = [
+      ["stdout", stdout],
+      ["stderr", stderr],
+    ]
+      .filter(([, text]) => text.trim() !== "")
+      .map(([stream, text]) => `\nwrangler ${stream}: ${clipped(text.trim(), QUOTED_OUTPUT, "tail")}`);
+    super(`wrangler ${args.map((arg) => clipped(arg, QUOTED_ARGUMENT, "head")).join(" ")} failed (${cause})${said.join("")}`);
+    this.name = "WranglerFailed";
+  }
+}
+
 /**
  * The real `wrangler`, run from web/, where its config lives. CI=1 keeps it
  * from prompting. A captured answer may be large: the diff of a later release
  * reads the master's records fifty thousand at a time (src/update/master.ts),
- * well past Node's default 1 MiB.
+ * well past Node's default 1 MiB. A captured run's stderr is passed on once it
+ * ends; a failed run throws `WranglerFailed` quoting what it captured.
  */
-export const webWrangler: Wrangler = (args, capture) =>
-  execFileSync("pnpm", ["exec", "wrangler", ...args], {
+export const webWrangler: Wrangler = (args, capture) => {
+  const run = spawnSync("pnpm", ["exec", "wrangler", ...args], {
     cwd: resolve("web"),
-    stdio: capture ? ["ignore", "pipe", "inherit"] : "inherit",
+    stdio: capture ? ["ignore", "pipe", "pipe"] : "inherit",
     env: { ...process.env, CI: "1" },
     encoding: "utf8",
     maxBuffer: 1024 * 1024 * 1024,
-  }) ?? "";
+  });
+  const stdout = run.stdout ?? "";
+  const stderr = run.stderr ?? "";
+  if (stderr !== "") process.stderr.write(stderr);
+  if (run.error !== undefined) throw new WranglerFailed(args, run.error.message, stdout, stderr);
+  if (run.status !== 0) throw new WranglerFailed(args, run.status === null ? `signal ${run.signal}` : `exit ${run.status}`, stdout, stderr);
+  return stdout;
+};
 
 /** The two local databases, by their `database_name` in web/wrangler.jsonc. */
 export const LOCAL_DICTIONARY = "lexema";
@@ -45,14 +80,11 @@ const D1_NAME = /^[a-z0-9][a-z0-9_-]*$/;
 /** Tables D1 or SQLite keep for themselves in every database, empty or not. */
 const isInternalTable = (name: string): boolean => name.startsWith("_cf_") || name.startsWith("sqlite_");
 
-const tableNames = (answer: string): string[] => {
-  const [result] = JSON.parse(answer) as [{ results: { name: string }[] }];
-  return result.results.map(({ name }) => name);
-};
+/** Every table `database` holds, D1's and SQLite's own included. */
+const tableNames = (database: D1Executor): string[] =>
+  (readD1<{ name: string }>(database, "SELECT name FROM sqlite_schema WHERE type = 'table'")[0] ?? []).map(({ name }) => name);
 
-const TABLES_QUERY = "SELECT name FROM sqlite_schema WHERE type = 'table'";
-
-export interface SeedTarget {
+export interface SeedTarget extends D1Executor {
   /** The dictionary database's name, as Wrangler is given it. */
   readonly dictionary: string;
   /** Said once before the parts are applied. */
@@ -97,7 +129,7 @@ export class LocalSeedTarget implements SeedTarget {
     log(`app migrations: into ${LOCAL_APP}`);
     this.d1(["migrations", "apply", LOCAL_APP], false);
     const appTables = Object.values(appSchema).map((table) => getTableName(table));
-    const appHas = new Set(tableNames(this.d1(["execute", LOCAL_APP, "--json", "--command", TABLES_QUERY], true)));
+    const appHas = new Set(tableNames({ execute: (args, capture) => this.d1(["execute", LOCAL_APP, ...args], capture) }));
     const missing = appTables.filter((table) => !appHas.has(table));
     if (missing.length > 0) throw new Error(`app tables missing from ${LOCAL_APP}: ${missing.join(", ")}`);
     log(`  ${LOCAL_APP}: ${appTables.length} app table(s), none in ${this.dictionary}`);
@@ -157,7 +189,7 @@ export class RemoteSeedTarget implements SeedTarget {
       this.id = this.find();
       if (this.id === undefined) throw new Error(`created remote D1 ${this.dictionary}, but wrangler d1 list does not show it`);
     }
-    const tables = tableNames(this.execute(["--json", "--command", TABLES_QUERY], true)).filter((name) => !isInternalTable(name));
+    const tables = tableNames(this).filter((name) => !isInternalTable(name));
     if (tables.length > 0) {
       throw new Error(
         `remote D1 ${this.dictionary} (${this.id}) already holds ${tables.length} table(s): ${tables.join(", ")}. ` +

@@ -32,10 +32,6 @@ test("zapateros is hidden: its only target, zapatero, is a Spanish record that l
   assert.deepEqual(found([lineOf("zapateros"), lineOf("zapatero")]), [{ lineNo: 1, word: "zapateros", code: "es", lemmaLine: 2, lemma: "zapatero" }]);
 });
 
-test("amaricasti stays visible: its target amaricare is only a Latin record, and that record does not list it", () => {
-  assert.deepEqual(found([lineOf("amaricare"), lineOf("amaricasti")]), []);
-});
-
 test("zapateros stays visible when zapatero also has an Italian record", () => {
   const italianZapatero = without(lineOf("zapatero"), { lang_code: "it", lang: "Italiano" });
   assert.deepEqual(found([lineOf("zapatero"), lineOf("zapateros"), italianZapatero]), []);

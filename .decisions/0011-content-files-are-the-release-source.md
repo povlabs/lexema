@@ -12,7 +12,7 @@ tags: [stack, content, data]
 
 ## Context
 
-Until now the importer read `it-extract.jsonl.gz` and wrote D1 directly ([ADR 0004](0004-cloudflare-workers-d1-vinext.md)), and Lexema's own explanations were seeded from a TypeScript module ([#72](https://github.com/hueypov/lexema/issues/72)). That left two problems Huey named on 2026-09-21: re-importing the dump would overwrite anything Lexema wrote into the same records, and there was no one place a person could open and edit what the site says.
+Until now the importer read `it-extract.jsonl.gz` and wrote D1 directly ([ADR 0004](0004-cloudflare-workers-d1-vinext.md)), and Lexema's own explanations were seeded from a TypeScript module ([#72](https://github.com/povlabs/lexema/issues/72)). That left two problems Huey named on 2026-09-21: re-importing the dump would overwrite anything Lexema wrote into the same records, and there was no one place a person could open and edit what the site says.
 
 He ruled: "github seeds database d1, import wikti seeds database, we cannot let any import directly seed the database. everything will be in our folders." With, later, the option of moving those folders to a public repository and symlinking them back, and of adding more languages beside Italian.
 
@@ -42,7 +42,7 @@ The database becomes reproducible from the repository: clone, seed, serve, with 
 
 The cost is size. 541,247 files is a large repository, and the conversion has to be written before any of this runs. Whether every word ships as a file or only the words Lexema has written for, with the rest still projected from the archive at conversion time, is the first question the implementation answers; this record fixes the direction, not that detail.
 
-`docs/RUN_AN_IMPORT.md`, `src/import/seedDev.ts` and the release path in [#18](https://github.com/hueypov/lexema/issues/18) all change shape under this decision.
+`docs/RUN_AN_IMPORT.md`, `src/import/seedDev.ts` and the release path in [#18](https://github.com/povlabs/lexema/issues/18) all change shape under this decision.
 
 ## Records
 

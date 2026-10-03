@@ -1,6 +1,6 @@
 # What kaikki's September build would change in the July master
 
-Measured 2026-10-01 for [#18](https://github.com/hueypov/lexema/issues/18), on
+Measured 2026-10-01 for [#18](https://github.com/povlabs/lexema/issues/18), on
 a laptop, with `pnpm run update:diff` and `pnpm run update:apply`
 ([the runbook](../docs/UPDATE_THE_DICTIONARY.md)).
 
@@ -39,7 +39,7 @@ only difference on 536,962. After it, the fields that differ most often are
 
 The 1,299 ambiguous groups follow from the same field: a word with two to five
 records of one part of speech has every record changed, so none pairs by
-content ([#369](https://github.com/hueypov/lexema/issues/369)).
+content ([#369](https://github.com/povlabs/lexema/issues/369)).
 
 ## An apply
 

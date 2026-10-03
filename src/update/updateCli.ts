@@ -21,9 +21,11 @@
 //
 // `update:upgrade` gives a dictionary seeded from an older schema.sql the
 // tables and views lookups now read (src/update/masterUpgrade.ts): the update
-// tables and views of #18, and the page-entry tables of #403, created empty.
-// It writes no row. Run it on such a dictionary before code that reads them
-// serves from it.
+// tables and views of #18, the page-entry tables of #403, and the tables
+// curated corrections and hidden records are written to, created empty. It
+// writes no row. Run it on such a dictionary before code that reads them
+// serves from it. `update:apply` and `update:auto` carry no DDL, so they
+// refuse to write until it has run (#509).
 //
 // `--plan-only` makes `update:auto` or `update:upgrade` a plan-only run
 // (src/update/planOnly.ts): it prints the plan's counts as JSON and writes
@@ -32,10 +34,11 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { finish, isMain, usageError, type CommandResult } from "../commandLine.js";
+import { readD1, type D1Executor } from "../db/d1Command.js";
 import { seedTargetFrom, webWrangler, type SeedTarget, type Wrangler } from "../import/seedTarget.js";
-import { ApplyRefused, checkApplied, chooseChanges, planApply, type ApplyPlan } from "./apply.js";
+import { ApplyRefused, checkApplied, chooseChanges, missingForApply, planApply, type ApplyPlan } from "./apply.js";
 import { diffAgainstMaster, reportMarkdown, reportOf } from "./diff.js";
-import { planUpgrade, readMasterRelease, upgradeShortfall, type MasterReader } from "./master.js";
+import { planUpgrade, readMasterRelease, rebuildsOf, upgradeFirst, upgradeShortfall, type MasterReader } from "./master.js";
 import { automaticPlan } from "./automatic.js";
 import { PlanCounts } from "./planCounts.js";
 import { planOnlyAnswer, planOnlyFlag, planOnlyRun } from "./planOnly.js";
@@ -54,12 +57,11 @@ const SCHEMA = resolve("src/db/schema.sql");
 /** The dump's language headings, which #29's rule reads (src/italian/sectionLanguage.ts). */
 const LANGUAGES = resolve("fixtures/section-language/regressions.json");
 
-/** The master through Wrangler: each SELECT is one `d1 execute --command`. */
-export function masterReaderOf(target: SeedTarget): MasterReader {
+/** The master through Wrangler: each query is one `D1Command` read, answering its last statement's rows. */
+export function masterReaderOf(target: D1Executor): MasterReader {
   return {
     query<Row>(sql: string): Row[] {
-      const answers = JSON.parse(target.execute(["--json", "--command", sql], true)) as { results: Row[] }[];
-      return answers.at(-1)?.results ?? [];
+      return readD1<Row>(target, sql).at(-1) ?? [];
     },
   };
 }
@@ -160,10 +162,7 @@ async function applyCommand(target: SeedTarget, args: readonly string[]): Promis
   const found = await diffAgainstMaster(reader, archive);
   let plan;
   try {
-    plan = await planApply(reader, found, chooseChanges(found, ids), {
-      schema: await readFile(SCHEMA, "utf8"),
-      appliedAt: new Date().toISOString(),
-    });
+    plan = await planApply(reader, found, chooseChanges(found, ids), { appliedAt: new Date().toISOString() });
   } catch (error: unknown) {
     if (error instanceof ApplyRefused) return { out: error.message, status: 1 };
     throw error;
@@ -178,9 +177,7 @@ async function automaticCommand(target: SeedTarget, args: readonly string[]): Pr
   if (read.positional.length !== 1 || read.pages === undefined || read.ids !== undefined) return usageError("update:auto takes one archive, --pages and no change ids", USAGE);
   const reader = masterReaderOf(target);
   const found = await diffAgainstMaster(reader, resolve(read.positional[0]));
-  const plan = await withFeedDump(found.feed, read.pages, LANGUAGES, async (pages) => automaticPlan(reader, found, pages, {
-    schema: await readFile(SCHEMA, "utf8"), appliedAt: new Date().toISOString(),
-  }));
+  const plan = await withFeedDump(found.feed, read.pages, LANGUAGES, (pages) => automaticPlan(reader, found, pages, { appliedAt: new Date().toISOString() }));
   if (planOnly) {
     const counts = plan?.counts ?? PlanCounts.NONE;
     return planOnlyAnswer(planOnlyRun("update:auto", counts, reader), plan?.sql ?? "", read.out, `auto-${found.master.releaseId}-${found.feed.releaseId}`, {
@@ -191,7 +188,14 @@ async function automaticCommand(target: SeedTarget, args: readonly string[]): Pr
   return executeApply(target, reader, plan, read.out, true);
 }
 
-async function executeApply(target: SeedTarget, reader: MasterReader, plan: ApplyPlan, out: string, aggregate: boolean): Promise<CommandResult> {
+/**
+ * Write `plan` to the master as one file and read it back: what `update:apply`
+ * and `update:auto` do once planned. It refuses before writing anything while
+ * the master lacks a table or view the upgrade creates for an apply.
+ */
+export async function executeApply(target: SeedTarget, reader: MasterReader, plan: ApplyPlan, out: string, aggregate: boolean): Promise<CommandResult> {
+  const needed = missingForApply(reader);
+  if (needed.length > 0) return { out: upgradeFirst(target.dictionary, needed), status: 1 };
   await mkdir(out, { recursive: true });
   const file = join(out, `apply-${plan.masterReleaseId}-${plan.feedReleaseId}-${Date.now()}.sql`);
   await writeFile(file, plan.sql);
@@ -248,8 +252,15 @@ async function upgradeCommand(target: SeedTarget, args: readonly string[]): Prom
   const schema = await readFile(SCHEMA, "utf8");
   const upgrade = planUpgrade(reader, schema);
   const { missing, changed, sql } = upgrade;
-  // The upgrade adds no row and drops none: its counts are none, and what it adds or rebuilds is named beside them.
-  if (planOnly) return planOnlyAnswer(planOnlyRun("update:upgrade", PlanCounts.NONE, reader), sql, read.out, `upgrade-${master.releaseId}`, { adds: missing, rebuildsFor: changed });
+  // The upgrade adds no row and loses none: its counts are none, and what it adds or rebuilds is named beside them,
+  // each table a rebuild drops with the rows it holds.
+  if (planOnly) {
+    return planOnlyAnswer(planOnlyRun("update:upgrade", PlanCounts.NONE, reader), sql, read.out, `upgrade-${master.releaseId}`, {
+      adds: missing,
+      rebuildsFor: changed,
+      rebuilds: rebuildsOf(upgrade),
+    });
+  }
   if (sql === "") return { out: `${target.dictionary} (master ${master.releaseId}) already has every table and view the upgrade adds, as schema.sql defines it; nothing to do`, status: 0 };
   await mkdir(read.out, { recursive: true });
   const file = join(read.out, `upgrade-${master.releaseId}-${Date.now()}.sql`);

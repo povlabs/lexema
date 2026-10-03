@@ -1,6 +1,6 @@
 # Full-release seed measurements, 2026-09-23
 
-Measurement for [#97](https://github.com/hueypov/lexema/issues/97): what it costs
+Measurement for [#97](https://github.com/povlabs/lexema/issues/97): what it costs
 to seed the full release into local D1 in parts, and why the default part
 ceiling is 64 MiB. It describes this machine and this release; a different
 archive or machine gives different numbers. How the seed works is in

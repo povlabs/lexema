@@ -25,16 +25,16 @@ history routinely. Investigate accuracy when a user reports a problem.
 - CI writes the shared `lexema-dictionary`. The dictionary deploy workflow
   applies a change after a reviewed merge to `main` declares it, with the one
   D1 Edit Cloudflare token ADR 0018 allows. It fetches the archive and dump from
-  `hueypov/lexema-data` with its own read-only token; only the monthly release
-  job holds the token that writes that repository. Its steps, secrets and
+  the public `povlabs/lexema-data` with no token; only the monthly release
+  job holds a token, the one that writes that repository. Its steps, secrets and
   settings are [the dictionary deploy](DEPLOY.md#the-dictionary-deploy).
 - A change and its declaration land in one pull request. The
   [pull request plan check](DEPLOY.md#the-pull-request-plan-check) plans the
   declaration with the pull request's own code and a D1 read-only token, the
   other Cloudflare key ADR 0018 allows, and gives or checks its `expected`
   counts; no one starts a plan by hand. For `update:auto`, `hide:records` and
-  `load:page-entries`, which read files from `hueypov/lexema-data`, it also
-  reads them with a read-only token for that repository.
+  `load:page-entries`, which read files from `povlabs/lexema-data`, it reads
+  them from that public repository with no token.
 - Agents never hold the Cloudflare key, run the deploy workflow, or write the
   shared dictionary. An agent runs these commands against the local D1 only.
 
@@ -47,12 +47,14 @@ run:
 pnpm run update:upgrade
 ```
 
-This adds the update tables and views, and the empty page-entry tables (#403),
-without writing records. It also rebuilds the page-entry tables, rows kept,
-when one is stored with a definition other than schema.sql's
-([DEPLOY.md](DEPLOY.md#the-dictionary-deploy), step 3). It names what it adds
-or rebuilds for; running it again changes nothing. The first apply also upgrades, but lookups need the views before any
-change is applied. Lookups do not need the page-entry tables
+This adds the update tables and views, the empty page-entry tables (#403),
+and the tables `correct:records` and `hide:records` write, without writing
+records. It also rebuilds the page-entry tables, rows kept, when one is stored
+with a definition other than schema.sql's, and a `hidden_record` from before
+#389 ([DEPLOY.md](DEPLOY.md#the-dictionary-deploy), step 3). It names what it
+adds or rebuilds for; running it again changes nothing. No apply upgrades:
+`update:apply` and `update:auto` carry no DDL and refuse to write until the
+upgrade has run (#509). Lookups do not need the page-entry tables
 ([a dictionary without them](PAGE_ENTRIES.md#a-dictionary-without-the-tables)).
 `pnpm run load:page-entries` fills them; its deploy order, restore route and
 cache movement are in

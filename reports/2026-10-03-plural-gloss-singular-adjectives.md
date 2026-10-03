@@ -7,12 +7,13 @@ Huey's [ruling](https://github.com/hueypov/lexema/issues/516#issuecomment-597193
 of 2026-10-03, recorded in
 [ADR 0027](../.decisions/0027-curated-corrections-are-cited-exceptions.md)'s
 amendment. v1 and its scan, evidence fetch and other classes are in
-[the #483 report](2026-10-03-plural-gloss-number.md). v2 is
-[#515](https://github.com/hueypov/lexema/issues/515)'s, built in parallel.
+[the #483 report](2026-10-03-plural-gloss-number.md), and v2 in
+[the #515 report](2026-10-03-plural-gloss-number-v2.md). v3 is built on v2,
+which merged first.
 
 ## What changed
 
-v1 left 37 adjective records alone with the reason `singular-adjective`: each
+v1 and v2 left 37 adjective records alone with the reason `singular-adjective`: each
 is tagged singular, its first gloss says "plurale di L", and its own
 en.wiktionary page, in an `Adjective` or `Participle` section, names it a
 singular of L (`{{feminine singular of|it|L}}`, `{{adj form of|it|L||f|s}}`,
@@ -28,9 +29,10 @@ definition lines. No lemma page and no it.wiktionary table counts. An
 adjective whose page also names it a plural of L, under any head, is left
 alone as `sources-disagree`; on this release no adjective is.
 
-No pinned revision changed. Every one of v1's 156 corrections is unchanged:
-the same records, facts and evidence (`test/pluralGlossNumber.test.ts` pins
-their digest).
+No pinned revision changed. Every one of v2's 195 corrections is unchanged:
+the same records, facts and evidence. `test/pluralGlossNumber.test.ts` judges
+the release under v2 and v3 and checks that the only verdicts that differ are
+the 37 `singular-adjective` exclusions, now corrected.
 
 ## The 37 corrected adjectives
 
@@ -82,17 +84,21 @@ excluded under v1 as before.
 
 | Class | Noun | Adj | Total |
 |---|---|---|---|
-| Corrected: number only | 43 | 74 | 117 |
-| Corrected: number and gender | 8 | 16 | 24 |
-| Corrected: wrong-gloss singular | 15 | 37 | 52 |
+| Corrected by v1's reading: number only | 43 | 74 | 117 |
+| Corrected by v1's reading: number and gender | 8 | 16 | 24 |
+| Corrected by v1's reading: wrong-gloss singular noun | 15 | 0 | 15 |
+| Corrected by v2: `feminine-lemma` (5 also in gender) | 1 | 14 | 15 |
+| Corrected by v2: `neighbouring-pos` (5 also in gender) | 9 | 15 | 24 |
+| **New in v3:** wrong-gloss singular adjective | 0 | 37 | 37 |
 | Already corrected by hand: #449 (8), #420 (5) | 13 | 0 | 13 |
 | Not an Italian record | 5 | 3 | 8 |
-| No en.wiktionary confirmation: `no-en-page` 10, `no-italian-entry` 2, `no-section-for-pos` 39, `no-plural-statement` 2 | 23 | 30 | 53 |
-| Other, with a named reason: `other-lemma` 25 | 8 | 17 | 25 |
+| No en.wiktionary confirmation: `no-en-page` 10, `no-italian-entry` 2, `no-section-for-pos` 15, `no-plural-statement` 2 | 14 | 15 | 29 |
+| Other, with a named reason: `other-lemma` 10 | 7 | 3 | 10 |
 | **All** | 115 | 177 | 292 |
 
-So the rule corrects **193 records**, 37 more than v1, and writes 217
-`corrected_claim` rows, 37 more. No `singular-adjective` class is left.
+So the rule corrects **232 records**, 37 more than v2, and writes 266
+`corrected_claim` rows, 37 more: one number each. No `singular-adjective`
+class is left.
 
 ## Writing them
 

@@ -39,7 +39,7 @@ plans it with the pull request's own code: green when the counts match, red
 otherwise, printing the declaration with the plan's counts to copy in. Add
 one declaration per pull request, since the check counts only the first.
 This holds for `update:auto`, `hide:records` and `load:page-entries` too: the
-check reads their archive and dump from `hueypov/lexema-data` with a read-only
+check reads their archive and dump from `povlabs/lexema-data` with a read-only
 token.
 
 The [monthly release](../docs/DEPLOY.md#the-monthly-release) writes one

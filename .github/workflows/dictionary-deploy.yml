@@ -44,8 +44,69 @@ on:
 permissions: {}
 
 jobs:
-  deploy:
+  # Most pushes to `main` add no change declaration, and then the deploy only
+  # fast-forwards `production`. This does that without an install, and starts
+  # the deploy job only when `production..main` adds or changes anything under
+  # dictionary-changes/ (#521). It takes no secret and writes no D1: a push
+  # that is not a fast-forward is refused by the remote, and a range with any
+  # declaration in it, including one a running deploy has not finished, is
+  # left to the deploy.
+  gate:
     if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      # Pushes `production` with GITHUB_TOKEN.
+      contents: write
+    outputs:
+      deploy: ${{ steps.range.outputs.deploy }}
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          # The run reads `production..main`.
+          fetch-depth: 0
+      - id: range
+        name: Fast-forward production when nothing is declared
+        env:
+          HEAD_SHA: ${{ github.sha }}
+        run: |
+          set -uo pipefail
+          if ! git fetch --no-tags origin +refs/heads/production:refs/remotes/origin/production; then
+            echo "::error::could not fetch production; it must exist before a deploy runs (docs/DEPLOY.md)."
+            exit 1
+          fi
+          if git merge-base --is-ancestor "$HEAD_SHA" origin/production; then
+            echo "${HEAD_SHA} is already in production; nothing to do." | tee -a "$GITHUB_STEP_SUMMARY"
+            echo "deploy=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if ! changed="$(git diff --name-only origin/production "$HEAD_SHA" -- dictionary-changes/)"; then
+            echo "::error::could not diff production..${HEAD_SHA}."
+            exit 1
+          fi
+          if [ -n "$changed" ]; then
+            printf 'production..%s changes dictionary-changes/; the deploy job runs:\n%s\n' "$HEAD_SHA" "$changed"
+            echo "deploy=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if git push origin "${HEAD_SHA}:refs/heads/production"; then
+            echo "## Dictionary deploy: no change declaration" >> "$GITHUB_STEP_SUMMARY"
+            echo "production..${HEAD_SHA} adds or changes nothing under dictionary-changes/, so nothing was written and production was fast-forwarded to ${HEAD_SHA}." | tee -a "$GITHUB_STEP_SUMMARY"
+            echo "deploy=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          # A later run may have moved production past this commit meanwhile.
+          if git fetch --no-tags origin +refs/heads/production:refs/remotes/origin/production && git merge-base --is-ancestor "$HEAD_SHA" origin/production; then
+            echo "production moved past ${HEAD_SHA} while this ran; nothing to do." | tee -a "$GITHUB_STEP_SUMMARY"
+            echo "deploy=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "::error::production could not be fast-forwarded to ${HEAD_SHA}; production stays where it is."
+          exit 1
+
+  deploy:
+    needs: gate
+    if: github.event_name == 'push' && needs.gate.outputs.deploy == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 90
     # The environment is restricted to `main`, so a run on any other branch
@@ -77,7 +138,6 @@ jobs:
           SEED_REMOTE: lexema-dictionary
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_D1_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
-          LEXEMA_DATA_TOKEN: ${{ secrets.LEXEMA_DATA_READ_TOKEN }}
 
   plan:
     if: github.event_name != 'push'
@@ -111,4 +171,3 @@ jobs:
           SEED_REMOTE: lexema-dictionary
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_D1_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
-          LEXEMA_DATA_TOKEN: ${{ secrets.LEXEMA_DATA_READ_TOKEN }}

@@ -1,11 +1,11 @@
 # "Plurale di" records tagged singular, corrected by rule — 2026-10-03
 
-Issue [#483](https://github.com/hueypov/lexema/issues/483). Release
+Issue [#483](https://github.com/povlabs/lexema/issues/483). Release
 `it-0c432803`. Rule `it-plural-gloss-number/v1`
 ([src/italian/pluralGlossNumber.ts](../src/italian/pluralGlossNumber.ts)), on
-Huey's [ruling](https://github.com/hueypov/lexema/issues/483#issuecomment-5970891514)
+Huey's [ruling](https://github.com/povlabs/lexema/issues/483#issuecomment-5970891514)
 of 2026-10-03, and his later
-[ruling](https://github.com/hueypov/lexema/issues/483#issuecomment-5971809939)
+[ruling](https://github.com/povlabs/lexema/issues/483#issuecomment-5971809939)
 that a lemma's it.wiktionary table of forms may confirm a wrong-gloss singular
 noun, both recorded in
 [ADR 0027](../.decisions/0027-curated-corrections-are-cited-exceptions.md)'s

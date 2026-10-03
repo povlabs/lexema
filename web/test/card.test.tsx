@@ -26,6 +26,7 @@ import { servedVersion, versionToken } from "../../src/lookup/served.js";
 import { loadFixturePages } from "../../src/source/rawPage.js";
 import { chooseChanges, planApply } from "../../src/update/apply.js";
 import { diffAgainstMaster } from "../../src/update/diff.js";
+import { masterUpgradeSql } from "../../src/update/masterUpgrade.js";
 import type { Attempt } from "@/lib/dictionary/attempt.ts";
 import type { DeclaredLemmaResult } from "../../src/lookup/types.js";
 import { declaredLemmaPage } from "@/lib/dictionary/declaredLemmaPage.ts";
@@ -499,7 +500,6 @@ test("an apply that changes a word's first meaning moves its card's address, and
     const changed = found.diff.changes.filter((change) => change.kind === "changed" && change.word === "bello");
     assert.equal(changed.length, 1, "the one change is bello's");
     const plan = await planApply(reader, found, chooseChanges(found, [changed[0].id]), {
-      schema: await readFile(join(REPO, "src/db/schema.sql"), "utf8"),
       appliedAt: "2026-10-01T12:00:00Z",
       // Synthetic archive dates for this cache-lifecycle fixture, not upstream facts.
       catalog: {
@@ -594,8 +594,10 @@ test("live hide and serving-code deployments move card and suggestion keys, redi
     assert.notEqual(cardPath({ version: before, word: "zapateros" }), cardPath({ version: unchangedDataDeploy, word: "zapateros" }), "a deploy alone changes the card key");
     assert.notEqual(suggestPath("za", before), suggestPath("za", unchangedDataDeploy), "a deploy alone changes the suggestion key");
     const found = await findHiddenRecords([], await readRulePass(actual), LanguageHeadings.fromList([]));
-    const plan = planHide({ query: <Row,>(sql: string) => db.prepare(sql).all() as Row[] }, found, await readFile(join(REPO, "src/db/schema.sql"), "utf8"));
+    const plan = planHide({ query: <Row,>(sql: string) => db.prepare(sql).all() as Row[] }, found);
     assert.ok(plan.hides.length > 0);
+    // The hide carries no DDL (#509): the upgrade gives the master its version table first.
+    db.exec(masterUpgradeSql(await readFile(join(REPO, "src/db/schema.sql"), "utf8")));
     db.exec("BEGIN");
     db.exec(plan.sql);
     db.exec("COMMIT");
