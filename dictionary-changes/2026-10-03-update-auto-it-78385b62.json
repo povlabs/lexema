@@ -1,4 +1,21 @@
 {
   "command": "update:auto",
-  "inputs": { "feedRelease": "it-78385b62" }
+  "inputs": { "feedRelease": "it-78385b62" },
+  "expected": {
+    "records": { "added": 0, "changed": 250, "removed": 0 },
+    "written": {
+      "applied_change": 250,
+      "release_table_rows": 10,
+      "source_record": 250,
+      "source_record_json": 250,
+      "lookup_form": 564,
+      "form_of_edge": 13,
+      "sense": 411,
+      "sense_gloss": 411,
+      "sense_label": 171,
+      "grammar_claim": 1370,
+      "typo_key": 647
+    },
+    "deleted": { "lookup_form": 547, "form_of_edge": 14, "typo_key": 652 }
+  }
 }
