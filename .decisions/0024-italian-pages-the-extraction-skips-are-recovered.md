@@ -1,7 +1,7 @@
 ---
 id: 0024
 title: An Italian page the extraction cannot read gets its entry from the raw page, beside the archive
-status: accepted
+status: amended-in-part by [0026](0026-recovered-entries-carry-page-pronunciation-etymology-synonyms.md)
 date: 2026-10-01
 tags: [data, provenance]
 ---
