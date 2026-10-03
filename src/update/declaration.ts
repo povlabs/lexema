@@ -32,16 +32,22 @@ interface Declared<Command extends DeclaredCommand, Inputs> {
   readonly file: string;
   readonly command: Command;
   readonly inputs: Inputs;
-  readonly expected: PlanCounts;
 }
 
-export type ChangeDeclaration =
+/**
+ * One write and its inputs, without the counts it expects: what a plan-only
+ * run is asked for (`parseChange`), and the part of a declaration a plan is
+ * built from.
+ */
+export type DeclaredChange =
   | Declared<"update:upgrade", Record<string, never>>
   /** The feed release whose eligible changes are applied; its archive and dump follow from it. */
   | Declared<"update:auto", { readonly feedRelease: ReleaseId }>
   /** The release the master was seeded from, whose archive the rules read, and the rules. */
   | Declared<"hide:records", { readonly archive: ReleaseId; readonly rules: typeof HIDING_RULES }>
   | Declared<"normalize:source-text", { readonly rules: typeof SOURCE_TEXT_UPDATE_RULES }>;
+
+export type ChangeDeclaration = DeclaredChange & { readonly expected: PlanCounts };
 
 /** Why a file is not a change declaration, naming the file. */
 export class DeclarationRefused extends Error {
@@ -121,16 +127,20 @@ function counts(value: unknown, reasons: string[]): PlanCounts | undefined {
   return new PlanCounts({ added: read.added, changed: read.changed, removed: read.removed }, written, deleted);
 }
 
-/** The declaration `text` states, or `DeclarationRefused` naming `file` and every reason it is not one. */
-export function parseDeclaration(file: string, text: string): ChangeDeclaration {
+/** `text` as a JSON object, or `DeclarationRefused` naming `file`. */
+function jsonObject(file: string, text: string, fields: string): Record<string, unknown> {
   let value: unknown;
   try {
     value = JSON.parse(text);
   } catch (error: unknown) {
     throw new DeclarationRefused(file, [`it is not JSON (${error instanceof Error ? error.message : String(error)})`]);
   }
-  if (!isObject(value)) throw new DeclarationRefused(file, ["it must be a JSON object with command, inputs and expected"]);
-  const reasons = unknownKeys(value, ["command", "inputs", "expected"], "the declaration");
+  if (!isObject(value)) throw new DeclarationRefused(file, [`it must be a JSON object with ${fields}`]);
+  return value;
+}
+
+/** The command and inputs `value` states, adding everything wrong with them to `reasons`; undefined when an input is unreadable. */
+function changeOf(file: string, value: Record<string, unknown>, reasons: string[]): DeclaredChange | undefined {
   const { command } = value;
   if (!isCommand(command)) {
     reasons.push(`command must be one of ${DECLARED_COMMANDS.join(", ")}, got ${JSON.stringify(command)}`);
@@ -138,37 +148,51 @@ export function parseDeclaration(file: string, text: string): ChangeDeclaration 
   }
   const inputs = value.inputs ?? {};
   if (!isObject(inputs)) throw new DeclarationRefused(file, [...reasons, "inputs must be an object"]);
-  const expected = counts(value.expected, reasons);
-
-  let declaration: ChangeDeclaration | undefined;
   switch (command) {
     case "update:upgrade": {
       reasons.push(...unknownKeys(inputs, [], "inputs of update:upgrade"));
-      if (expected !== undefined) declaration = { file, command, inputs: {}, expected };
-      break;
+      return { file, command, inputs: {} };
     }
     case "update:auto": {
       reasons.push(...unknownKeys(inputs, ["feedRelease"], "inputs of update:auto"));
       const feedRelease = releaseId(inputs.feedRelease, "inputs.feedRelease", reasons);
-      if (expected !== undefined && feedRelease !== undefined) declaration = { file, command, inputs: { feedRelease }, expected };
-      break;
+      return feedRelease === undefined ? undefined : { file, command, inputs: { feedRelease } };
     }
     case "hide:records": {
       reasons.push(...unknownKeys(inputs, ["archive", "rules"], "inputs of hide:records"));
       const archive = releaseId(inputs.archive, "inputs.archive", reasons);
       const rules = ruleSet(inputs.rules, HIDING_RULES, "inputs.rules", reasons);
-      if (expected !== undefined && archive !== undefined && rules !== undefined) declaration = { file, command, inputs: { archive, rules }, expected };
-      break;
+      return archive === undefined || rules === undefined ? undefined : { file, command, inputs: { archive, rules } };
     }
     case "normalize:source-text": {
       reasons.push(...unknownKeys(inputs, ["rules"], "inputs of normalize:source-text"));
       const rules = ruleSet(inputs.rules, SOURCE_TEXT_UPDATE_RULES, "inputs.rules", reasons);
-      if (expected !== undefined && rules !== undefined) declaration = { file, command, inputs: { rules }, expected };
-      break;
+      return rules === undefined ? undefined : { file, command, inputs: { rules } };
     }
   }
-  if (reasons.length > 0 || declaration === undefined) throw new DeclarationRefused(file, reasons);
-  return declaration;
+}
+
+/** The declaration `text` states, or `DeclarationRefused` naming `file` and every reason it is not one. */
+export function parseDeclaration(file: string, text: string): ChangeDeclaration {
+  const value = jsonObject(file, text, "command, inputs and expected");
+  const reasons = unknownKeys(value, ["command", "inputs", "expected"], "the declaration");
+  const change = changeOf(file, value, reasons);
+  const expected = counts(value.expected, reasons);
+  if (reasons.length > 0 || change === undefined || expected === undefined) throw new DeclarationRefused(file, reasons);
+  return { ...change, expected };
+}
+
+/**
+ * The change `text` asks a plan-only run for: a declaration's command and
+ * inputs without expected counts, since the run is what finds them. `where`
+ * names where the text came from in a refusal.
+ */
+export function parseChange(where: string, text: string): DeclaredChange {
+  const value = jsonObject(where, text, "command and inputs");
+  const reasons = unknownKeys(value, ["command", "inputs"], "the change");
+  const change = changeOf(where, value, reasons);
+  if (reasons.length > 0 || change === undefined) throw new DeclarationRefused(where, reasons);
+  return change;
 }
 
 /** Read and parse the declaration at `path`; refuses a file that is not `*.json`. */

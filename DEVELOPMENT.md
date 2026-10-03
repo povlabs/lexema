@@ -460,6 +460,7 @@ src/
 ├── cli.ts          # `pnpm run validate` — streams the file, writes the report
 ├── core/           # dataset-independent: record types, candidate resolver, report
 ├── db/             # the dictionary schema and lookup queries as SQL; app/ holds the Drizzle app tables
+├── deploy/         # the dictionary deploy run CI makes after a merge to main, and its plan-only entry; `pnpm run deploy:dictionary`
 ├── import/         # the streaming importer, the SQL export and the dev seed
 ├── italian/        # the Italian adapter: normalize, tags, articles, examples
 ├── log/            # the Worker's log: every line names its request id
@@ -520,4 +521,5 @@ development is the only access until that lands.
 | [gitleaks.yml](./.github/workflows/gitleaks.yml) | a changed file carries a secret |
 | [leak-guard.yml](./.github/workflows/leak-guard.yml) | a changed doc or shell file carries a machine-local path |
 | [decisions-index.yml](./.github/workflows/decisions-index.yml) | two records share an ADR id, or a filename disagrees with its frontmatter |
+| [dictionary-deploy.yml](./.github/workflows/dictionary-deploy.yml) | on a push to `main`: a change declaration's archive or dump fails its checksum, its plan differs from the declared counts or crosses a hard limit, its write does not read back, or a word of the fixed list is not found; `production` then stays where it is ([docs/DEPLOY.md](./docs/DEPLOY.md#the-dictionary-deploy)) |
 | [preview-marker.yml](./.github/workflows/preview-marker.yml) | its `preview smoke` check, at a pull request's head: one of the six known words does not resolve on the Preview, the developer site or the API does not answer, a site does not serve `/favicon.ico` or `/apple-touch-icon.png` with its image type, or a response lacks `X-Robots-Tag: noindex` |

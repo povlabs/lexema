@@ -29,3 +29,8 @@ cannot read as one, naming the file.
 `expected` is the `counts` object a plan-only run of the command prints
 (`--plan-only`, [src/update/planOnly.ts](../src/update/planOnly.ts)). A table
 left out of `written` or `deleted` is expected to have no row.
+
+After a merge to `main`, the [dictionary deploy](../docs/DEPLOY.md#the-dictionary-deploy)
+applies every declaration the merge adds, in the order their commits reached
+`main`, and stops red when a plan's counts differ from `expected`. Changing or
+deleting a declaration that is already deployed does nothing.

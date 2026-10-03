@@ -24,7 +24,8 @@ history routinely. Investigate accuracy when a user reports a problem.
   applies a change after a reviewed merge to `main` declares it, with the one
   D1 Edit Cloudflare token ADR 0018 allows. It fetches the archive and dump from
   `hueypov/lexema-data` with its own read-only token; only the monthly release
-  job holds the token that writes that repository.
+  job holds the token that writes that repository. Its steps, secrets and
+  settings are [the dictionary deploy](DEPLOY.md#the-dictionary-deploy).
 - Agents never hold the Cloudflare key, run the deploy workflow, or write the
   shared dictionary. An agent runs these commands against the local D1 only.
 
