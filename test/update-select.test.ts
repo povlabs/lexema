@@ -108,7 +108,7 @@ test("every change lands in one bucket, and the taken ids are ones the apply acc
     const markdown = selectionMarkdown(selection);
     assert.match(markdown, /\| Applied \| new-word \| 2 \|/);
     assert.match(markdown, /### fills-gloss \(1\)/);
-    assert.match(markdown, /Rule `feed-selection\/v4`/);
+    assert.match(markdown, /Rule `feed-selection\/v5`/);
     assert.match(markdown, /### blank-replaces-definition \(1\)/);
     assert.match(markdown, /### adds-sense \(2\)/);
     assert.match(markdown, /### replaces-definitions \(1\)/);
