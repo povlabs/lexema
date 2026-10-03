@@ -12,6 +12,12 @@
 // facts that cite their evidence (#18). Wiktionary still carries every one of
 // these errors, so no newer release will fix them.
 //
+// Eight more declaring records are right on their noun's page and wrong on
+// their own: real plurals tagged singular, so `costruttrici`'s own page said
+// "la costruttrici" (#449). Huey's ruling on 2026-10-03 added a correction of
+// each one's number to plural, checked against Wiktionary the same way. Their
+// gloss already says plural, so their noun's page does not move.
+//
 // A correction is a layer beside the record, never an edit of it. It names one
 // record by release, archive line and line digest, and the record's line in
 // `source_record_json` stays byte for byte. The seed writes it as a
@@ -102,6 +108,8 @@ const IT = "it-0c432803";
 
 const tag = (index: number, text: string): OverriddenText => ({ pointer: `/tags/${index}`, text });
 const firstGloss = (text: string): OverriddenText => ({ pointer: "/senses/0/glosses/0", text });
+/** A real plural whose record is tagged singular at `/tags/<index>` (#449). */
+const plural = (index: number): CorrectedFacts => ({ number: { overrides: tag(index, "singular"), value: "plural" } });
 
 /** The committed list. Add an entry only with its evidence, and only on a ruling. */
 export const CURATED_CORRECTIONS: readonly CuratedCorrection[] = [
@@ -200,6 +208,66 @@ export const CURATED_CORRECTIONS: readonly CuratedCorrection[] = [
     evidence: [
       { wiki: "it.wiktionary.org", title: "romantico", revisionId: 4011823, shows: "{{Tabs|romantico|romantici|romantica|romantiche}}" },
       { wiki: "en.wiktionary.org", title: "romantica", revisionId: 90337391, shows: "===Noun=== {{it-noun|f}} # {{female equivalent of|it|romantico}}" },
+    ],
+  },
+  // #449: real plurals tagged singular, set to plural.
+  {
+    record: { releaseId: IT, lineNo: 53931, lineSha256: "5c71cd082fe584bde19f1c7f0926910771f11531aae14ea102169505a7a3eafa", word: "scolare", pos: "noun" },
+    facts: plural(2),
+    evidence: [
+      { wiki: "it.wiktionary.org", title: "scolare", revisionId: 3879641, shows: "{{-sost form-|it}} {{Pn}} ''f sing'' {{Tabs|scolaro|scolari|scolara|scolare}} # plurale di [[scolara]]" },
+    ],
+  },
+  {
+    record: { releaseId: IT, lineNo: 90588, lineSha256: "623df5fab95b9a83a210ca90b5f245e3ae0f4a72c6d0d97fcf9a930286164cf4", word: "ricoverati", pos: "noun" },
+    facts: plural(2),
+    evidence: [
+      { wiki: "it.wiktionary.org", title: "ricoverati", revisionId: 3869797, shows: "{{-sost form-|it}} {{Pn}} ''m sing'' {{Tabs|ricoverato|ricoverati|ricoverata|ricoverate}} # plurale maschile di [[ricoverato]]" },
+    ],
+  },
+  {
+    record: { releaseId: IT, lineNo: 439467, lineSha256: "232dac803227560a5661589ad8efea4a43c902b4141dfbcb666f4ed8d8b69737", word: "portatrici", pos: "noun" },
+    facts: plural(2),
+    evidence: [
+      { wiki: "en.wiktionary.org", title: "portatrici", revisionId: 62806891, shows: "===Noun=== {{head|it|noun form|g=f}} # {{plural of|it|portatrice}}" },
+    ],
+  },
+  {
+    record: { releaseId: IT, lineNo: 447524, lineSha256: "a2ed8543187f3e0e81625636473bcf3a737b8bcec20ea008c106032c5d31263a", word: "mosse", pos: "noun" },
+    facts: plural(2),
+    evidence: [
+      { wiki: "en.wiktionary.org", title: "mosse", revisionId: 92438364, shows: "====Noun==== {{head|it|noun form|g=f-p}} # {{plural of|it|mossa}}" },
+    ],
+  },
+  {
+    record: { releaseId: IT, lineNo: 449506, lineSha256: "f24ce401f420d8d546a0d9c5ed13794534ca4dab613526e01053fbae4558adde", word: "costruttrici", pos: "noun" },
+    facts: plural(2),
+    evidence: [
+      { wiki: "it.wiktionary.org", title: "costruttrici", revisionId: 3279198, shows: "{{-sost form-|it}} {{Pn}} ''f sing'' {{Tabs|costruttore|costruttori|costruttrice|costruttrici}} #plurale di [[costruttrice]]" },
+      { wiki: "en.wiktionary.org", title: "costruttrici", revisionId: 63070366, shows: "===Noun=== {{head|it|noun form|g=f}} # {{plural of|it|costruttrice}}" },
+    ],
+  },
+  {
+    record: { releaseId: IT, lineNo: 596016, lineSha256: "0e176579819b32c7ae855745e25b808f0b502e9ccf1a4c79321f181ce793df3e", word: "curde", pos: "noun" },
+    facts: plural(2),
+    evidence: [
+      { wiki: "it.wiktionary.org", title: "curde", revisionId: 3860884, shows: "{{-sost form-|it}} {{Pn}} ''f sing'' {{Tabs|curdo|curdi|curda|curde}}" },
+      { wiki: "en.wiktionary.org", title: "curde", revisionId: 92322356, shows: "===Noun=== {{head|it|noun form|g=f}} # {{plural of|it|curda}}" },
+    ],
+  },
+  {
+    record: { releaseId: IT, lineNo: 599446, lineSha256: "ffa06e61b7476047224fd5888ad3479f21b4b25faf29571d0581b2bc909c141f", word: "anfitrioni", pos: "noun" },
+    facts: plural(2),
+    evidence: [
+      { wiki: "it.wiktionary.org", title: "anfitrioni", revisionId: 3889151, shows: "{{-sost form-|it}} {{Pn}} ''m sing'' {{Tabs|anfitrione|anfitrioni|anfitriona|anfitrione}} #plurale di [[anfitrione]]" },
+      { wiki: "en.wiktionary.org", title: "anfitrioni", revisionId: 62798877, shows: "===Noun=== {{head|it|noun form|g=m}} # {{plural of|it|anfitrione}}" },
+    ],
+  },
+  {
+    record: { releaseId: IT, lineNo: 605544, lineSha256: "32b50f544c93c1f858526ef6cec905b3387b388a9049045e0952f9554b4a0d04", word: "scontente", pos: "noun" },
+    facts: plural(2),
+    evidence: [
+      { wiki: "it.wiktionary.org", title: "scontente", revisionId: 3959957, shows: "{{-sost form-|it}} {{Pn}} ''f sing'' {{Tabs|scontento|scontenti|scontenta|scontente}} #femminile plurale di [[scontento]]" },
     ],
   },
 ];
