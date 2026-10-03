@@ -10,9 +10,10 @@ import {
   type KeptTable,
   masterUpgradeSql,
   REBUILT_NAMES,
-  REBUILT_TABLES,
   rebuildSql,
   rebuiltKind,
+  rebuiltTablesFor,
+  type RebuiltTable,
   UPGRADE_NAMES,
 } from "./masterUpgrade.js";
 
@@ -69,9 +70,9 @@ export function missingUpgrade(reader: MasterReader): string[] {
 }
 
 /**
- * The page-entry tables and indexes the master has whose stored definition is
- * not schema.sql's (`definitionOf`), in creation order. Any one listed makes
- * the upgrade rebuild the page-entry tables (`rebuildSql`).
+ * The rebuilt tables and indexes the master has whose stored definition is not
+ * schema.sql's (`definitionOf`), in creation order. Any one listed makes the
+ * upgrade rebuild its group (`rebuildSql`).
  */
 export function changedUpgrade(reader: MasterReader, schema: string): string[] {
   const names = REBUILT_NAMES.map((name) => `'${name}'`).join(", ");
@@ -82,14 +83,14 @@ export function changedUpgrade(reader: MasterReader, schema: string): string[] {
   });
 }
 
-/** The rebuilt tables the master has, with their columns and row counts. */
-function keptTables(reader: MasterReader): KeptTable[] {
+/** Those of `tables` the master has, with their columns and row counts. */
+function keptTables(reader: MasterReader, tables: readonly RebuiltTable[]): KeptTable[] {
   const present = new Set(
-    select<{ name: string }>(reader, `SELECT name FROM sqlite_schema WHERE type = 'table' AND name IN (${REBUILT_TABLES.map((name) => `'${name}'`).join(", ")})`).map(
+    select<{ name: string }>(reader, `SELECT name FROM sqlite_schema WHERE type = 'table' AND name IN (${tables.map((name) => `'${name}'`).join(", ")})`).map(
       (row) => row.name,
     ),
   );
-  return REBUILT_TABLES.filter((name) => present.has(name)).map((name) => ({
+  return tables.filter((name) => present.has(name)).map((name) => ({
     name,
     columns: select<{ name: string }>(reader, `SELECT name FROM pragma_table_info('${name}')`).map((row) => row.name),
     rows: select<{ n: number }>(reader, `SELECT count(*) AS n FROM ${name}`)[0].n,
@@ -102,20 +103,29 @@ function keptTables(reader: MasterReader): KeptTable[] {
  */
 export interface UpgradePlan {
   missing: string[];
-  /** The page-entry tables and indexes whose definition changes; empty when none does. */
+  /** The rebuilt tables and indexes whose definition changes; empty when none does. */
   changed: string[];
-  /** The tables a rebuild drops and creates again, with the rows each holds before: empty unless something `changed`. */
+  /** The tables a rebuild drops and creates again, every table of each group that holds a `changed` name, with the rows each holds before: empty unless something `changed`. */
   kept: readonly KeptTable[];
   /** Empty when the master has every table and view already, each as schema.sql defines it. */
   sql: string;
 }
+
+/** A table a rebuild drops and creates again, with the rows it holds before. */
+export interface Rebuild {
+  readonly table: RebuiltTable;
+  readonly rows: number;
+}
+
+/** The tables `plan` rebuilds, each with its rows: what a reader checks before a rebuild runs on the shared dictionary. */
+export const rebuildsOf = (plan: Pick<UpgradePlan, "kept">): Rebuild[] => plan.kept.map(({ name, rows }) => ({ table: name, rows }));
 
 /** Plan the upgrade of the master `reader` reads, from schema.sql's text; it writes nothing. */
 export function planUpgrade(reader: MasterReader, schema: string): UpgradePlan {
   const missing = missingUpgrade(reader);
   const changed = changedUpgrade(reader, schema);
   if (changed.length > 0) {
-    const kept = keptTables(reader);
+    const kept = keptTables(reader, rebuiltTablesFor(changed));
     return { missing, changed, kept, sql: rebuildSql(schema, kept) };
   }
   return { missing, changed, kept: [], sql: missing.length === 0 ? "" : masterUpgradeSql(schema) };
@@ -123,7 +133,7 @@ export function planUpgrade(reader: MasterReader, schema: string): UpgradePlan {
 
 /** What the master `after` an upgrade still lacks or differs in from `plan`'s aim, as reasons; empty when the upgrade did all it planned. */
 export function upgradeShortfall(after: MasterReader, schema: string, plan: Pick<UpgradePlan, "kept">): string[] {
-  const rows = new Map(keptTables(after).map((table) => [table.name, table.rows]));
+  const rows = new Map(keptTables(after, plan.kept.map((table) => table.name)).map((table) => [table.name, table.rows]));
   return [
     ...missingUpgrade(after).map((name) => `the upgrade did not add ${name}`),
     ...changedUpgrade(after, schema).map((name) => `the upgrade left ${name} unlike schema.sql's definition`),

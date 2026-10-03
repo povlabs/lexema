@@ -25,9 +25,9 @@ const HIDE = JSON.stringify({ command: "hide:records", inputs: { archive: "it-0c
 const LOAD = JSON.stringify({ command: "load:page-entries", inputs: { archive: "it-0c432803", rules: [...PAGE_ENTRY_RULES] }, expected: COUNTS });
 
 /** A plan-only answer of `counts` on a dictionary of `dictionaryRecords` records. */
-function answerOf(change: DeclaredChange, counts: object = COUNTS, dictionaryRecords = 1000): PlanOnlyAnswer {
+function answerOf(change: DeclaredChange, counts: object = COUNTS, dictionaryRecords = 1000, rebuilds: PlanOnlyAnswer["rebuilds"] = []): PlanOnlyAnswer {
   const planned = parseDeclaration("plan", JSON.stringify({ command: change.command, inputs: change.inputs, expected: counts })).expected;
-  return { command: change.command, counts: planned, dictionaryRecords, limitBreaches: planned.limitBreaches(dictionaryRecords) };
+  return { command: change.command, counts: planned, dictionaryRecords, limitBreaches: planned.limitBreaches(dictionaryRecords), rebuilds };
 }
 
 /** A stand-in for the plan-only entry, which needs no token (#527), that records each change it is asked to plan. */
@@ -122,6 +122,40 @@ test("a declaration with no expected is red and prints the expected to put in it
   assert.equal(report.green, false);
   assert.match(report.markdown, /It has no `expected` yet\./);
   assert.ok(report.markdown.includes(declarationWith(outcomes[0].declaration, new PlanCounts(COUNTS.records, COUNTS.written)).trimEnd()), report.markdown);
+});
+
+test("an upgrade that rebuilds tables names each one with its rows (#511)", async () => {
+  const none = { records: { added: 0, changed: 0, removed: 0 }, written: {}, deleted: {} };
+  const rebuilds = [
+    { table: "recovered_definition", rows: 889 },
+    { table: "recovered_label", rows: 56 },
+    { table: "recovered_example", rows: 17 },
+    { table: "hidden_record", rows: 30 },
+  ] as const;
+  const upgrade = JSON.stringify({ command: "update:upgrade", expected: none });
+  const outcomes = await planPullRequest(drafts({ "dictionary-changes/upgrade.json": upgrade }), {
+    plan: async (change) => answerOf(change, none, 1000, rebuilds),
+  });
+  const report = pullRequestPlanReport(outcomes, "lexema-dictionary");
+  assert.equal(report.green, true, report.markdown);
+  assert.ok(
+    report.markdown.includes(
+      [
+        "The plan rebuilds these tables, dropping each and copying its rows back:",
+        "",
+        "| Table | Rows |",
+        "|---|---|",
+        "| `recovered_definition` | 889 |",
+        "| `recovered_label` | 56 |",
+        "| `recovered_example` | 17 |",
+        "| `hidden_record` | 30 |",
+      ].join("\n"),
+    ),
+    report.markdown,
+  );
+  // A plan that rebuilds nothing prints no table.
+  const plain = pullRequestPlanReport(await planPullRequest(drafts({ "dictionary-changes/fix.json": correction(COUNTS) }), planner()), "lexema-dictionary");
+  assert.doesNotMatch(plain.markdown, /rebuilds these tables/);
 });
 
 test("a plan that crosses a hard limit is red and names it, even when expected matches", async () => {
