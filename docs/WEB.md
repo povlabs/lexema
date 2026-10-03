@@ -261,6 +261,22 @@ edit away, the words that begin with it, or how to search instead
 this release matches … Accents matter" line is gone: the accent step now finds
 `città` for `citta` itself.
 
+**A word only its forms name.** About 9,000 lemmas have no record of their own,
+but the bot-made records of their forms say which form they are
+(`verbalizzo`, "prima persona singolare dell'indicativo presente di
+verbalizzare"). Before the not-found page, the page's search reads those
+`form_of` edges and shows the word with its forms table: each reading headed by
+its part of speech alone (`Verbo`), a verb's forms placed by
+`it-verb-form-gloss/v1`, a noun's or adjective's plurals by `it-plural-gloss/v1`
+([#453](https://github.com/hueypov/lexema/issues/453)). It shows no
+definitions block and says nothing of what the word lacks. A word whose forms
+take no cell keeps the not-found page. The developer API's lookup does not do
+this, so its answers are unchanged; the probe is `declaredLemma` in
+[src/lookup/declaredLemma.ts](../src/lookup/declaredLemma.ts), run from
+[web/lib/dictionary/searchAttempt.ts](../web/lib/dictionary/searchAttempt.ts).
+The measured reach is in
+[the report](../reports/2026-10-03-declared-lemmas.md).
+
 **A lookup that did not happen.** No release, a D1 error, or a release built by
 a different normalizer all produce a page that says the lookup failed. That is
 deliberately not the "found nothing" message: a reader must be able to tell *we
@@ -372,6 +388,15 @@ and its digest, so a re-seed cannot point it at another record
 The person's answer is stored on the report, with `pnpm run report answer`
 ([DEVELOPMENT.md](../DEVELOPMENT.md#review-a-readers-report)); no page and no
 API answer reads a report or its answer.
+
+A search that finds nothing ends with `Report a missing word` (#441), which
+opens the same box on the trimmed query, through the same `POST /report` and
+spam layers. There the box asks no "what is wrong" and offers no reading: it
+sends `missing`, a sixth `choice` the word page never offers, and the report is
+stored with the query as its `word`, no `record_id` or source line, and the
+served release. Its details are optional and may be stored empty; every other
+report still needs some. `reader_report` CHECKs refuse a `missing` report that
+names a record, and empty details on any other report.
 
 Spam is kept out in four layers, as ruled on #51: the `REPORT_LIMIT` Worker
 binding stops a burst (2 a minute) before D1 is touched, and the ruled 5 reports

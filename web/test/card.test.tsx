@@ -27,6 +27,8 @@ import { loadFixturePages } from "../../src/source/rawPage.js";
 import { chooseChanges, planApply } from "../../src/update/apply.js";
 import { diffAgainstMaster } from "../../src/update/diff.js";
 import type { Attempt } from "@/lib/dictionary/attempt.ts";
+import type { DeclaredLemmaResult } from "../../src/lookup/types.js";
+import { declaredLemmaPage } from "@/lib/dictionary/declaredLemmaPage.ts";
 import {
   cardAddressOf,
   cardOf,
@@ -182,6 +184,33 @@ test("a searched expression's card is titled as typed, with no pronunciation and
   assert.equal(card.pronunciation, undefined);
   assert.equal(card.gender, undefined);
   assert.equal(card.partOfSpeech, "Voce verbale");
+});
+
+test("a declared lemma's card is its word and its part of speech, and nothing it has not got (#453)", async () => {
+  const notFound = await attempt("verbalizzare");
+  assert.ok(notFound.outcome === "not-found");
+  const ref = { releaseId: RELEASE, lineNo: 1, jsonPointer: "/word", lineSha256: "0".repeat(64) };
+  const result: DeclaredLemmaResult = {
+    outcome: "declared-lemma",
+    query: notFound.query,
+    release: notFound.release,
+    readings: [{
+      pos: "verb",
+      posTitle: "Verbo",
+      word: "verbalizzare",
+      forms: [{ surface: "verbalizzando", ref, gloss: { text: "gerundio di verbalizzare", ref }, slot: { kind: "gerund" } }],
+    }],
+  };
+  const page = declaredLemmaPage(result);
+  assert.ok(page !== undefined);
+  assert.deepEqual(cardOf({ ...result, page }), {
+    kind: "word",
+    headword: "verbalizzare",
+    pronunciation: undefined,
+    gender: undefined,
+    partOfSpeech: "Verbo",
+    meaning: undefined,
+  });
 });
 
 test("an unknown word and a failed lookup get the home card", async () => {

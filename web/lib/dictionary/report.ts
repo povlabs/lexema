@@ -1,5 +1,6 @@
-// A reader's report of a mistake on a word page, from the moment it arrives
-// until it is stored for review (#51, ruled on 2026-09-27; #12 reviews it).
+// A reader's report of a mistake on a word page, or of a word a search did not
+// find (#441), from the moment it arrives until it is stored for review (#51,
+// ruled on 2026-09-27; #12 reviews it).
 //
 // Nothing here acts on a report. It is checked, counted and stored, and waits
 // for a person. The four spam layers Huey chose are all here or at the edge:
@@ -26,8 +27,39 @@ import type { LookupDatabase } from "@lexema/lookup/database.ts";
 import type { EntryIdentity } from "@lexema/lookup/types.ts";
 import type { PageReading } from "./wordPage.ts";
 
+/** What a word page's box asks the reader to pick: what is wrong on the page. */
 export const REPORT_CHOICES = ["meaning", "example", "form", "synonym", "other"] as const;
 export type ReportChoice = (typeof REPORT_CHOICES)[number];
+
+/**
+ * What a box reports on. A word page's box asks what is wrong and may name one
+ * of its readings; the not-found page's box reports a missing word, which has
+ * no reading, and asks nothing about it (Huey's ruling on #441).
+ */
+export type ReportSubject = { kind: "mistake"; readings: readonly ReportReading[] } | { kind: "missing" };
+
+/** The box's link and title, the same words for both, as the page names what it reports. */
+export const REPORT_SUBJECT_LABEL: Readonly<Record<ReportSubject["kind"], string>> = {
+  mistake: "Report a mistake",
+  missing: "Report a missing word",
+};
+
+/**
+ * The hint in the box's details field. A missing word needs no details: the
+ * query is the report (Huey's ruling on #441, 2026-10-03).
+ */
+export const REPORT_DETAILS_HINT: Readonly<Record<ReportSubject["kind"], string>> = {
+  mistake: "What should it say instead?",
+  missing: "Anything to add? (optional)",
+};
+
+/**
+ * What a report is about, as `reader_report.choice` stores it, and the reading
+ * it names: one of a word page's choices, or `missing`, which names no reading.
+ */
+export type ReportTarget =
+  | { choice: ReportChoice; /** The reading the reader picked; absent for none or "Not sure". */ recordId: number | undefined }
+  | { choice: "missing"; recordId: undefined };
 
 /**
  * A reading a report can name: a source record, which `receiveReport` checks
@@ -59,6 +91,9 @@ export const REPORT_CHOICE_LABEL: Readonly<Record<ReportChoice, string>> = {
   other: "Something else",
 };
 
+/** Whether a report must carry details: every one but a missing word, whose query says it all. */
+export const needsDetails = (target: ReportTarget): boolean => target.choice !== "missing";
+
 /** The longest details a report may carry, in characters. */
 export const REPORT_DETAILS_LIMIT = 2000;
 /** The least time, in milliseconds, between opening the box and sending it. */
@@ -69,11 +104,8 @@ const HOUR_MS = 60 * 60 * 1000;
 const WORD_LIMIT = 200;
 
 /** What the box sends, as JSON. */
-export interface ReportSubmission {
+export type ReportSubmission = ReportTarget & {
   word: string;
-  choice: ReportChoice;
-  /** The reading the reader picked; absent for none or "Not sure". */
-  recordId: number | undefined;
   details: string;
   /** The token `openReport` issued when the box opened. */
   openToken: string;
@@ -81,6 +113,14 @@ export interface ReportSubmission {
   website: string;
   /** The Turnstile token, when the page carried the widget. */
   challenge: string | undefined;
+};
+
+const isChoice = (value: unknown): value is ReportChoice => REPORT_CHOICES.includes(value as ReportChoice);
+
+/** The target a body names, or why it cannot be one: a missing word names no reading. */
+function readTarget(choice: unknown, recordId: number | undefined): ReportTarget | { reason: ReportRejection } {
+  if (choice === "missing") return recordId === undefined ? { choice, recordId } : { reason: "reading" };
+  return isChoice(choice) ? { choice, recordId } : { reason: "choice" };
 }
 
 /** `expired`: the box's opening token is unknown, e.g. the box was open across a new release. */
@@ -111,16 +151,18 @@ export function readSubmission(body: unknown): ReportSubmission | { reason: Repo
   if (typeof word !== "string") return { reason: "malformed" };
   if (word.trim() === "" || word.length > WORD_LIMIT) return { reason: "malformed" };
   if (typeof openToken !== "string" || openToken === "" || openToken.length > 100) return { reason: "malformed" };
-  if (!REPORT_CHOICES.includes(choice as ReportChoice)) return { reason: "choice" };
-  if (typeof details !== "string" || details.trim() === "") return { reason: "details" };
+  if (choice !== "missing" && !isChoice(choice)) return { reason: "choice" };
+  if (typeof details !== "string") return { reason: "details" };
   if (details.length > REPORT_DETAILS_LIMIT) return { reason: "details-too-long" };
   if (recordId !== undefined && recordId !== null && !(typeof recordId === "number" && Number.isInteger(recordId))) {
     return { reason: "reading" };
   }
+  const target = readTarget(choice, typeof recordId === "number" ? recordId : undefined);
+  if ("reason" in target) return target;
+  if (needsDetails(target) && details.trim() === "") return { reason: "details" };
   return {
     word,
-    choice: choice as ReportChoice,
-    recordId: typeof recordId === "number" ? recordId : undefined,
+    ...target,
     details: details.trim(),
     openToken,
     website: typeof website === "string" ? website : "",

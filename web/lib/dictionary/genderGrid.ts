@@ -48,7 +48,14 @@
 // cell has no article line.
 
 import { asserts, isAdjectiveReading, isNounReading, namesOneRecordOf } from "@lexema/lookup/types.ts";
-import type { InflectionOf, PluralDeclaration, Reading, RecordClaim, SourceForm } from "@lexema/lookup/types.ts";
+import type {
+  DeclaredPluralForm,
+  InflectionOf,
+  PluralDeclaration,
+  Reading,
+  RecordClaim,
+  SourceForm,
+} from "@lexema/lookup/types.ts";
 import { generateItalianArticles, spokenOpening, type SpokenOpening } from "@lexema/italian/articles.ts";
 
 export const GENDERS = ["masculine", "feminine"] as const;
@@ -74,6 +81,8 @@ export interface Spelling {
    * `ammaliatrice` for ammaliatore.
    */
   declaredBy: InflectionOf[];
+  /** A declared lemma's plural records that spell it (#453): `fratellini` for fratellino. */
+  declaredForms: DeclaredPluralForm[];
 }
 
 export interface GridCell {
@@ -137,7 +146,8 @@ function articleLine(surface: string, gender: Gender, number: GrammaticalNumber,
 type Entry =
   | { kind: "headword" }
   | { kind: "form"; form: SourceForm }
-  | { kind: "declared-plural"; record: InflectionOf };
+  | { kind: "declared-plural"; record: InflectionOf }
+  | { kind: "declared-lemma-plural"; form: DeclaredPluralForm };
 
 const HEADWORD: Entry = { kind: "headword" };
 
@@ -149,12 +159,13 @@ class GridBuilder {
     const spellings = this.cells.get(key) ?? [];
     let spelling = spellings.find((existing) => existing.surface === surface);
     if (spelling === undefined) {
-      spelling = { surface, headword: false, forms: [], declaredBy: [] };
+      spelling = { surface, headword: false, forms: [], declaredBy: [], declaredForms: [] };
       spellings.push(spelling);
     }
     if (entry.kind === "headword") spelling.headword = true;
     else if (entry.kind === "form") spelling.forms.push(entry.form);
-    else spelling.declaredBy.push(entry.record);
+    else if (entry.kind === "declared-plural") spelling.declaredBy.push(entry.record);
+    else spelling.declaredForms.push(entry.form);
     this.cells.set(key, spellings);
   }
 
@@ -251,6 +262,36 @@ export function agreementOf(reading: Reading): Agreement {
 
   const spoken = spokenOpening(reading.wordFacts.pronunciations.map((sound) => sound.ipa));
   return { grid: plain.build(spoken), superlative: superlative.build() };
+}
+
+/**
+ * A declared lemma's grid (#453): a noun or adjective no record heads, whose
+ * plural records gloss themselves "plurale di <word>" (`it-plural-gloss/v1`).
+ *
+ * - Each plural goes in the gender its gloss names, else every gender its own
+ *   record's tags state; with neither, it takes no cell (`declaredCells`, with
+ *   no gender of the lemma's own to fall back on).
+ * - The lemma, as the citation form, goes in the singolare of each gender that
+ *   a plural which calls itself the word's plural fills: `fratellini`, tagged
+ *   masculine, says "plurale di fratellino", so `fratellino` is maschile
+ *   singolare. A feminine plural (`femminile plurale di calabro`) says nothing
+ *   of the lemma's own gender, so it places the lemma nowhere.
+ *
+ * Undefined when no plural takes a cell.
+ */
+export function declaredGridOf(word: string, forms: readonly DeclaredPluralForm[]): Grid | undefined {
+  const plain = new GridBuilder();
+  const lemmaGenders = new Set<Gender>();
+  for (const form of forms) {
+    const { genders } = declaredCells(form.plural, []);
+    for (const gender of genders) {
+      plain.put(gender, "plural", { kind: "declared-lemma-plural", form }, form.surface);
+      if (form.plural.glossGender !== "feminine") lemmaGenders.add(gender);
+    }
+  }
+  if (plain.size === 0) return undefined;
+  for (const gender of GENDERS) if (lemmaGenders.has(gender)) plain.put(gender, "singular", HEADWORD, word);
+  return plain.build();
 }
 
 /** Two labels as Italian joins them: `maschile e femminile`. */

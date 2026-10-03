@@ -33,6 +33,7 @@ interface PageProps {
 /** What the tab's title says about a lookup's answer. */
 function titleOutcome(attempt: Attempt): TitleOutcome {
   if (attempt.outcome === "not-found") return "not-found";
+  if (attempt.outcome === "declared-lemma") return { found: attempt.page.headword };
   if (attempt.outcome !== "found") return undefined;
   // A searched expression's page is titled as typed (#214).
   const searched = attempt.query.raw.trim();

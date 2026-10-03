@@ -7,7 +7,8 @@
 // instead keeps the rendering half free of it.
 
 import type { Nearby } from "@lexema/lookup/nearby.ts";
-import type { FoundResult, NotFoundResult, RejectedResult } from "@lexema/lookup/types.ts";
+import type { DeclaredLemmaResult, FoundResult, NotFoundResult, RejectedResult } from "@lexema/lookup/types.ts";
+import type { DeclaredLemmaPage } from "./declaredLemmaPage.ts";
 
 /**
  * A lookup that reached the database, or the fact that it did not.
@@ -16,12 +17,17 @@ import type { FoundResult, NotFoundResult, RejectedResult } from "@lexema/lookup
  * (src/lookup/nearby.ts): an accent, a spelling one edit away, an expression
  * it nearly spells, the words that begin with it, or nothing.
  *
+ * A word no record heads but form-of records name is a declared lemma (#453),
+ * and carries the page it shows: a declared lemma whose forms take no cell is
+ * a `not-found` instead, so a page with no table is not a value this holds.
+ *
  * The failure is a value rather than a thrown error so the page has to render
  * it. It carries no detail on purpose: the reason is a database message meant
  * for whoever runs the Worker, and it goes to the log, not to the reader.
  */
 export type Attempt =
   | FoundResult
+  | (DeclaredLemmaResult & { page: DeclaredLemmaPage })
   | RejectedResult
   | (NotFoundResult & { nearby: Nearby })
   | { outcome: "failed" };

@@ -19,6 +19,8 @@ import { seedSql } from "../../src/import/seedSql.js";
 import { appTablesOverNodeSqlite } from "../../src/db/app/nodeSqlite.js";
 import { freshAppDatabase, readOnlyDictionary } from "../../test/databases.js";
 import {
+  REPORT_CHOICES,
+  REPORT_DETAILS_HINT,
   REPORT_DETAILS_LIMIT,
   REPORT_MIN_OPEN_MS,
   REPORTS_PER_HOUR,
@@ -153,6 +155,47 @@ test("a valid report is stored for review, with the served release, the reading'
     assert.equal(row.received_at, new Date(NOW).toISOString());
     assert.equal(row.visitor_hash, await visitorHash("v4:203.0.113.7"));
     assert.doesNotMatch(row.visitor_hash, /203\.0\.113/);
+  });
+});
+
+test("a missing word is a sixth kind that names no reading; a word page's five are unchanged", () => {
+  const body = { word: "xqzt", choice: "missing", details: "Please add it.", openToken: "token" };
+  const read = readSubmission(body);
+  assert.ok(!("reason" in read));
+  assert.equal(read.choice, "missing");
+  assert.equal(read.recordId, undefined);
+  assert.deepEqual(readSubmission({ ...body, recordId: 7 }), { reason: "reading" });
+  assert.deepEqual(REPORT_CHOICES, ["meaning", "example", "form", "synonym", "other"]);
+});
+
+test("a report from a search that found nothing stores the query as its word, with no reading, in the served release", async () => {
+  await withDatabase(async (db) => {
+    const missing = submission(await opened(db), { word: "xqzt", choice: "missing", recordId: undefined, details: "Please add this word." });
+    assert.deepEqual(await receiveReport(missing, context(db)), { outcome: "sent" });
+    const [row] = stored(db);
+    assert.equal(row.word, "xqzt");
+    assert.equal(row.choice, "missing");
+    assert.equal(row.record_id, null);
+    assert.equal(row.line_no, null);
+    assert.equal(row.line_sha256, null);
+    assert.equal(row.release_id, RELEASE);
+    assert.equal(row.details, "Please add this word.");
+  });
+});
+
+test("a missing word's details are optional, and its box says so; every other report still needs details", async () => {
+  assert.equal(REPORT_DETAILS_HINT.missing, "Anything to add? (optional)");
+  assert.equal(REPORT_DETAILS_HINT.mistake, "What should it say instead?");
+  const read = readSubmission({ word: "xqzt", choice: "missing", details: "   ", openToken: "token" });
+  assert.ok(!("reason" in read));
+  assert.equal(read.details, "");
+  assert.deepEqual(readSubmission({ word: "casa", choice: "other", details: "   ", openToken: "token" }), { reason: "details" });
+  await withDatabase(async (db) => {
+    const missing = submission(await opened(db), { word: "xqzt", choice: "missing", recordId: undefined, details: "" });
+    assert.deepEqual(await receiveReport(missing, context(db)), { outcome: "sent" });
+    const [row] = stored(db);
+    assert.equal(row.choice, "missing");
+    assert.equal(row.details, "");
   });
 });
 

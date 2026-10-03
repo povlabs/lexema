@@ -13,13 +13,17 @@
 //
 // Every word offered is a link to its own search. The page says nothing about
 // how the offers were found.
+//
+// Below the offers, in the word page's footer row, one `Report a missing word`
+// opens the word page's report box on the query (#441).
 
 import type { Nearby } from "@lexema/lookup/nearby.ts";
 import type { PhraseOffer } from "@lexema/lookup/phrase.ts";
 import { searchHref } from "./Forms";
+import { ReportDialog } from "./ReportDialog";
 import { WordList } from "./WordList";
 import type { RelatedItem } from "@/lib/dictionary/relatedList.ts";
-import { NOT_FOUND_HEADING, NOT_FOUND_LEAD, NOT_FOUND_LINK, NOT_FOUND_TEXT } from "@/components/shared/styles.ts";
+import { NOT_FOUND_HEADING, NOT_FOUND_LEAD, NOT_FOUND_LINK, NOT_FOUND_TEXT, SOURCE_LINE } from "@/components/shared/styles.ts";
 
 const words = (list: readonly string[]): RelatedItem[] => list.map((word) => ({ kind: "word", word }));
 const phrases = (offers: readonly PhraseOffer[]): string[] => offers.map((offer) => offer.phrase);
@@ -36,7 +40,7 @@ function DidYouMean({ word }: { word: string }) {
   );
 }
 
-export function NotFound({ query, nearby }: { query: string; nearby: Nearby }) {
+export function NotFound({ query, nearby, siteKey }: { query: string; nearby: Nearby; siteKey?: string }) {
   return (
     <>
       <h1 className={NOT_FOUND_HEADING}>
@@ -72,6 +76,9 @@ export function NotFound({ query, nearby }: { query: string; nearby: Nearby }) {
           infinitive of a verb, the singular of a noun.
         </p>
       )}
+      <footer className={SOURCE_LINE}>
+        <ReportDialog word={query} subject={{ kind: "missing" }} siteKey={siteKey} />
+      </footer>
     </>
   );
 }

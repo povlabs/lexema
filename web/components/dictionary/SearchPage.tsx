@@ -16,6 +16,7 @@ import type { ReactNode } from "react";
 import type { Attempt } from "@/lib/dictionary/attempt.ts";
 import { SearchField } from "./SearchField";
 import { SiteHeader } from "./SiteHeader";
+import { DeclaredLemmaView } from "./DeclaredLemma";
 import { NotFound } from "./NotFound";
 import { PhraseView } from "./Phrase";
 import { WordView } from "./Word";
@@ -131,7 +132,9 @@ export function Outcome({ raw, attempt, siteKey }: { raw: string; attempt: Attem
     }
     return <WordView page={wordPage(searched, attempt.readings)} siteKey={siteKey} />;
   }
-  if (attempt.outcome === "not-found") return <NotFound query={attempt.query.raw.trim()} nearby={attempt.nearby} />;
+  // A word only form-of records name shows the forms they declare (#453).
+  if (attempt.outcome === "declared-lemma") return <DeclaredLemmaView page={attempt.page} siteKey={siteKey} />;
+  if (attempt.outcome === "not-found") return <NotFound query={attempt.query.raw.trim()} nearby={attempt.nearby} siteKey={siteKey} />;
   return (
     <>
       <h1 className="sr-only">
