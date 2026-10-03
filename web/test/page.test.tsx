@@ -38,7 +38,8 @@ import { FirstLoad, Limited, Outcome, SearchPage, TRY_WORDS } from "@/components
 import { SiteFooter } from "@/components/dictionary/SiteFooter";
 import { ORIGIN } from "@/worker/hosts.ts";
 import { SiteHeader } from "@/components/dictionary/SiteHeader";
-import { readingChoiceLabel, reportReadings } from "@/components/dictionary/ReportDialog";
+import { readingChoiceLabel } from "@/components/dictionary/ReportDialog";
+import { reportReadings } from "@/lib/dictionary/report.ts";
 import { PhraseView } from "@/components/dictionary/Phrase";
 import { phrasePage } from "@/lib/dictionary/phrasePage.ts";
 import { EXPRESSION_FILTER_ABOVE, matchesExpression, wordPage } from "@/lib/dictionary/wordPage.ts";

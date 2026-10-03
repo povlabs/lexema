@@ -20,9 +20,8 @@ import {
   type OpeningTrouble,
   type ReportAnswer,
   type ReportChoice,
+  type ReportReading,
 } from "@/lib/dictionary/report.ts";
-import type { EntryIdentity } from "@lexema/lookup/types.ts";
-import type { PageReading } from "@/lib/dictionary/wordPage.ts";
 import {
   REPORT_BACKDROP,
   REPORT_CANCEL,
@@ -47,23 +46,6 @@ import {
   REPORT_TRIGGER,
   REPORT_X,
 } from "@/components/shared/styles.ts";
-
-/**
- * A reading a report can name: a source record, which the server checks
- * against `source_record` (lib/dictionary/report.ts). A page-only entry (#403)
- * has no record, so it is not offered; its report stays about the word.
- */
-export interface ReportReading {
-  recordId: number;
-  /** The reading's number on the page; none for a reading with no definition. */
-  number: PageReading["number"];
-  posTitle: string;
-}
-
-/** The page's readings a report can name, in page order: every one backed by a source record. */
-export function reportReadings(readings: readonly { number: ReportReading["number"]; reading: EntryIdentity & { posTitle: string } }[]): ReportReading[] {
-  return readings.flatMap(({ number, reading }) => (reading.recordId === undefined ? [] : [{ number, recordId: reading.recordId, posTitle: reading.posTitle }]));
-}
 
 /** How the dialog names a reading: `1 · Sostantivo`, or `Sostantivo` when it has no number. */
 export const readingChoiceLabel = ({ number, posTitle }: ReportReading): string =>
