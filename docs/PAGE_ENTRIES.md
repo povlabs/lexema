@@ -109,7 +109,10 @@ it against a local D1 only. One run does both halves, in this order:
 
 1. **Data.** The deploy records a Time Travel bookmark and, when the tables
    are missing, runs the upgrade as its own transaction, which creates all four
-   and `corrected_definition` at once, empty. A dictionary with the tables and
+   and `corrected_definition` at once, empty. When the tables are there but
+   one is stored with a definition other than schema.sql's, the upgrade
+   rebuilds them with their rows instead
+   ([DEPLOY.md](DEPLOY.md#the-dictionary-deploy), step 3). A dictionary with the tables and
    no entries answers as one without them. The deploy then checks the plan's
    counts against the declaration, runs the rows as one transaction and reads
    them back. Then it looks up its fixed words, `raccontare` among them.

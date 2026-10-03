@@ -22,7 +22,8 @@ import { PLURAL_PLACEHOLDER_FORM } from "../src/italian/sourceTextNormalization.
 import { fromNodeSqlite } from "../src/lookup/database.js";
 import { lookup } from "../src/lookup/lookup.js";
 import { parseChange } from "../src/update/declaration.js";
-import { PAGE_ENTRY_CORRECTION_TABLES, PAGE_ENTRY_INDEXES, PAGE_ENTRY_TABLES } from "../src/update/masterUpgrade.js";
+import { changedUpgrade } from "../src/update/master.js";
+import { createStatement, PAGE_ENTRY_CORRECTION_TABLES, PAGE_ENTRY_INDEXES, PAGE_ENTRY_TABLES } from "../src/update/masterUpgrade.js";
 import { masterReaderOf } from "../src/update/updateCli.js";
 import { correctedClaimValues } from "../src/import/correctedLayer.js";
 import { atFixtureLines, correctionFixtureLines } from "./correctionFixture.js";
@@ -344,14 +345,98 @@ test("a dictionary without the page-entry tables gets the upgrade as its own bat
     assert.match(ddl[1], /CREATE TABLE IF NOT EXISTS corrected_definition\b/);
     assert.doesNotMatch(ddl[1], /\b(INSERT|UPDATE|DELETE)\b/);
     assert.doesNotMatch(data[1], /\bCREATE\b/);
-    if (outcome.kind === "green") assert.deepEqual(outcome.upgraded, [...PAGE_ENTRY_UPGRADE_TABLES, ...PAGE_ENTRY_INDEXES]);
+    if (outcome.kind === "green") assert.deepEqual(outcome.upgraded, { added: [...PAGE_ENTRY_UPGRADE_TABLES, ...PAGE_ENTRY_INDEXES], rebuilt: [] });
     assert.match(deploySummary(outcome, "lexema-dictionary"), /The upgrade ran first and added `recovered_entry`/);
 
     // The next run finds nothing missing and runs no DDL.
     const next = await world.commit({ "dictionary-changes/2026-10-normalize-again.json": declaration(NORMALIZE, { records: { added: 0, changed: 0, removed: 0 } }) });
     const again = await deployDictionary(world.deps(next));
     assert.equal(again.kind, "green", deploySummary(again, "lexema-dictionary"));
-    if (again.kind === "green") assert.deepEqual(again.upgraded, []);
+    if (again.kind === "green") assert.deepEqual(again.upgraded, { added: [], rebuilt: [] });
+    assert.equal(writes(world.d1).length, 2);
+  });
+});
+
+/**
+ * Give the dictionary older definitions of two page-entry tables, holding rows:
+ * `recovered_entry` without its `page_line` CHECK, and `corrected_definition`
+ * with the one 52-byte GLOB it had before #489.
+ */
+async function withOlderPageEntryTables(d1: LocalD1): Promise<void> {
+  const schema = await readFile("src/db/schema.sql", "utf8");
+  const older: Record<string, string> = {
+    recovered_entry: createStatement(schema, "TABLE", "recovered_entry").replace("page_line INTEGER NOT NULL CHECK (page_line > 0)", "page_line INTEGER NOT NULL"),
+    corrected_definition: createStatement(schema, "TABLE", "corrected_definition").replace(/GLOB 'https:\/\/\*'\s+AND evidence_url GLOB '\*/, "GLOB 'https://*"),
+  };
+  assert.match(older.corrected_definition, /GLOB 'https:\/\/\*\.wiktionary\.org\/w\/index\.php\?title=\*&oldid=\*'/);
+  assert.doesNotMatch(older.recovered_entry, /CHECK \(page_line > 0\)/);
+  const db = d1.open();
+  try {
+    for (const table of [...PAGE_ENTRY_UPGRADE_TABLES].reverse()) db.exec(`DROP TABLE ${table}`);
+    for (const table of PAGE_ENTRY_UPGRADE_TABLES) db.exec(older[table] ?? createStatement(schema, "TABLE", table));
+    db.exec(createStatement(schema, "INDEX", "recovered_entry_by_key"));
+    db.prepare("INSERT INTO raw_page VALUES (900001, ?, 'it.wiktionary.org', 'scrivere', 4100, '2026-09-01T00:00:00Z')").run(RELEASE);
+    db.prepare("INSERT INTO recovered_entry VALUES (1, ?, 900001, 'scrivere', 'scrivere', 'verb', 'Verbo', 'italian-page-entry/v1', 3, '{{-verb-|it}}')").run(RELEASE);
+    db.exec("INSERT INTO entry_definition VALUES (1, 0, 'sense-line', NULL, 4, '# tracciare segni', 'tracciare segni', NULL)");
+    db.exec("INSERT INTO entry_label VALUES (1, 0, 0, 'letteralmente')");
+    db.exec("INSERT INTO entry_example VALUES (1, 0, 0, 5, '#* scrivo una lettera', 'scrivo una lettera')");
+    db.exec("INSERT INTO corrected_definition VALUES (1, 0, 'tracciare lettere', 'page:4100:0', 'https://it.wiktionary.org/w/index.php?title=scrivere&oldid=4100')");
+  } finally {
+    db.close();
+  }
+}
+
+/** Every row of every page-entry table, as JSON. */
+function pageEntryRows(d1: LocalD1): string {
+  const db = d1.open();
+  try {
+    return JSON.stringify(PAGE_ENTRY_UPGRADE_TABLES.map((table) => db.prepare(`SELECT * FROM ${table} ORDER BY 1, 2`).all()));
+  } finally {
+    db.close();
+  }
+}
+
+test("a dictionary holding an older definition of a page-entry table gets schema.sql's from the deploy, with every row kept, before any data", async () => {
+  await withWorld(async (world) => {
+    await withOlderPageEntryTables(world.d1);
+    const rows = pageEntryRows(world.d1);
+    const schema = await readFile("src/db/schema.sql", "utf8");
+    assert.deepEqual(changedUpgrade(masterReaderOf(world.d1.target), schema), ["recovered_entry", "corrected_definition"]);
+
+    const head = await world.commit({ "dictionary-changes/2026-10-normalize.json": declaration(NORMALIZE) });
+    const deps = world.deps(head);
+    const outcome = await deployDictionary(deps);
+
+    assert.equal(outcome.kind, "green", deploySummary(outcome, "lexema-dictionary"));
+    assert.deepEqual(deps.steps, [...DEPLOY_STEPS]);
+    if (outcome.kind === "green") assert.deepEqual(outcome.upgraded, { added: [], rebuilt: ["recovered_entry", "corrected_definition"] });
+    assert.match(deploySummary(outcome, "lexema-dictionary"), /rebuilt the page-entry tables, keeping their rows, for the changed definition of `recovered_entry`, `corrected_definition`/);
+    const [ddl, data, ...rest] = writes(world.d1);
+    assert.deepEqual(rest, []);
+    assert.match(ddl[1], /CREATE TABLE upgrade_kept_recovered_entry AS SELECT \* FROM recovered_entry;/);
+    assert.doesNotMatch(data[1], /\bCREATE\b/);
+
+    // The stored definitions are schema.sql's now, the rows are the same, and every foreign key holds.
+    assert.deepEqual(changedUpgrade(masterReaderOf(world.d1.target), schema), []);
+    assert.equal(pageEntryRows(world.d1), rows);
+    const db = world.d1.open();
+    try {
+      assert.deepEqual(db.prepare("PRAGMA foreign_key_check").all(), []);
+      assert.deepEqual(db.prepare("SELECT name FROM sqlite_schema WHERE name LIKE 'upgrade_kept_%'").all(), []);
+      assert.throws(
+        () => db.exec("INSERT INTO recovered_entry VALUES (2, 'it-test', 900001, 'leggere', 'leggere', 'verb', 'Verbo', 'italian-page-entry/v1', 0, '')"),
+        /CHECK constraint failed/,
+        "the new definition's page_line CHECK holds",
+      );
+    } finally {
+      db.close();
+    }
+
+    // The next run finds every definition current and rebuilds nothing.
+    const next = await world.commit({ "dictionary-changes/2026-10-normalize-again.json": declaration(NORMALIZE, { records: { added: 0, changed: 0, removed: 0 } }) });
+    const again = await deployDictionary(world.deps(next));
+    assert.equal(again.kind, "green", deploySummary(again, "lexema-dictionary"));
+    if (again.kind === "green") assert.deepEqual(again.upgraded, { added: [], rebuilt: [] });
     assert.equal(writes(world.d1).length, 2);
   });
 });
@@ -407,7 +492,7 @@ test("a batch D1 refuses after an earlier batch landed still reports the write, 
     assert.equal(outcome.kind, "red");
     if (outcome.kind === "red") {
       assert.equal(outcome.written, true);
-      assert.deepEqual(outcome.upgraded, [...PAGE_ENTRY_UPGRADE_TABLES, ...PAGE_ENTRY_INDEXES]);
+      assert.deepEqual(outcome.upgraded, { added: [...PAGE_ENTRY_UPGRADE_TABLES, ...PAGE_ENTRY_INDEXES], rebuilt: [] });
     }
     assert.equal(writes(world.d1).length, 1, "only the upgrade reached the dictionary");
     const summary = deploySummary(outcome, "lexema-dictionary");

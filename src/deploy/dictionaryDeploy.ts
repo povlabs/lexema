@@ -8,8 +8,11 @@
 // 3. Record a D1 Time Travel bookmark, the restore point, and tell it to the
 //    log at once, before anything is written.
 // 4. Run the upgrade (src/update/masterUpgrade.ts) when the dictionary lacks a
-//    table, index or view it creates: DDL as its own batch, before any data,
-//    so no declaration's SQL carries DDL (#507).
+//    table, index or view it creates, or stores a page-entry table or index
+//    unlike schema.sql's: DDL as its own batch, before any data, so no
+//    declaration's SQL carries DDL and a later schema change reaches the live
+//    tables (#507). Then read back that nothing is missing, nothing differs
+//    and every rebuilt table kept its rows.
 // 5. For each declaration, oldest first: plan it, hold the plan's counts to
 //    the declared ones and to the hard limits, run its SQL, read it back.
 // 6. Look up a fixed word list in the dictionary written (wordCheck.ts).
@@ -24,7 +27,7 @@
 import { mkdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { checkPlan, passes, type ChangeDeclaration, type DeclaredChange } from "../update/declaration.js";
-import { missingUpgrade, planUpgrade, type MasterReader } from "../update/master.js";
+import { planUpgrade, upgradeShortfall, type MasterReader } from "../update/master.js";
 import type { PlanCounts } from "../update/planCounts.js";
 import { D1Batch } from "./d1Batch.js";
 import { type DataFetcher, type DumpCatalog, fetchVerified, filesFor } from "./dataFiles.js";
@@ -77,15 +80,26 @@ export interface DeployedChange {
 }
 
 /**
- * How a run ended. `upgraded` names what the upgrade step created, empty when
- * it ran nothing. A red run that wrote holds the bookmark it wrote after, so
+ * What the upgrade step did: the tables, indexes and views it created, and the
+ * page-entry definitions that differed from schema.sql's, for which it rebuilt
+ * the page-entry tables. Both are empty when it ran nothing.
+ */
+export interface UpgradeDone {
+  readonly added: readonly string[];
+  readonly rebuilt: readonly string[];
+}
+
+const NO_UPGRADE: UpgradeDone = { added: [], rebuilt: [] };
+
+/**
+ * How a run ended. A red run that wrote holds the bookmark it wrote after, so
  * its restore can always be named.
  */
 export type DeployOutcome =
-  | { readonly kind: "green"; readonly production: string; readonly bookmark: string | null; readonly upgraded: readonly string[]; readonly changes: readonly DeployedChange[] }
+  | { readonly kind: "green"; readonly production: string; readonly bookmark: string | null; readonly upgraded: UpgradeDone; readonly changes: readonly DeployedChange[] }
   | { readonly kind: "deployed-already"; readonly production: string; readonly head: string }
-  | { readonly kind: "red"; readonly written: false; readonly reasons: readonly string[]; readonly bookmark: string | null; readonly upgraded: readonly string[]; readonly changes: readonly DeployedChange[] }
-  | { readonly kind: "red"; readonly written: true; readonly reasons: readonly string[]; readonly bookmark: string; readonly upgraded: readonly string[]; readonly changes: readonly DeployedChange[] };
+  | { readonly kind: "red"; readonly written: false; readonly reasons: readonly string[]; readonly bookmark: string | null; readonly upgraded: UpgradeDone; readonly changes: readonly DeployedChange[] }
+  | { readonly kind: "red"; readonly written: true; readonly reasons: readonly string[]; readonly bookmark: string; readonly upgraded: UpgradeDone; readonly changes: readonly DeployedChange[] };
 
 const messageOf = (error: unknown): string => (error instanceof Error ? error.message : String(error));
 
@@ -109,7 +123,7 @@ export async function deployDictionary(deps: DeployDeps): Promise<DeployOutcome>
   const now = deps.now ?? (() => new Date().toISOString());
   const changes: DeployedChange[] = [];
   let bookmark: string | null = null;
-  let upgraded: readonly string[] = [];
+  let upgraded = NO_UPGRADE;
   // Set only once D1 answered a batch without error: a batch it refused rolled back whole.
   let written = false;
   const red = (reasons: readonly string[]): DeployOutcome =>
@@ -136,13 +150,17 @@ export async function deployDictionary(deps: DeployDeps): Promise<DeployOutcome>
       bookmark = deps.bookmark();
       deps.onBookmark?.(bookmark);
 
-      const upgrade = planUpgrade(deps.reader, await readFile(SCHEMA, "utf8"));
-      step("upgrade", upgrade.missing.length === 0 ? "nothing missing" : upgrade.missing.join(", "));
+      const schema = await readFile(SCHEMA, "utf8");
+      const upgrade = planUpgrade(deps.reader, schema);
+      step(
+        "upgrade",
+        upgrade.sql === "" ? "nothing missing or changed" : [...upgrade.missing.map((name) => `add ${name}`), ...upgrade.changed.map((name) => `rebuild for ${name}`)].join(", "),
+      );
       if (upgrade.sql !== "") {
         await run(upgrade.sql, "upgrade");
-        upgraded = upgrade.missing;
-        const still = missingUpgrade(deps.reader);
-        if (still.length > 0) return red(still.map((name) => `the upgrade did not add ${name}`));
+        upgraded = { added: upgrade.missing, rebuilt: upgrade.changed };
+        const shortfall = upgradeShortfall(deps.reader, schema, upgrade);
+        if (shortfall.length > 0) return red(shortfall);
       }
 
       for (const { change: declaration, ready: change } of ready) {
@@ -218,8 +236,12 @@ const changesTable = (changes: readonly DeployedChange[]): string[] =>
     ? []
     : ["", "| Declaration | Command | Added | Changed | Removed | Written |", "|---|---|---|---|---|---|", ...changes.map(countsLine)];
 
-const upgradeLine = (upgraded: readonly string[]): string[] =>
-  upgraded.length === 0 ? [] : ["", `The upgrade ran first and added ${upgraded.map((name) => `\`${name}\``).join(", ")}.`];
+const named = (names: readonly string[]): string => names.map((name) => `\`${name}\``).join(", ");
+
+const upgradeLine = ({ added, rebuilt }: UpgradeDone): string[] => [
+  ...(added.length === 0 ? [] : ["", `The upgrade ran first and added ${named(added)}.`]),
+  ...(rebuilt.length === 0 ? [] : ["", `The upgrade ran first and rebuilt the page-entry tables, keeping their rows, for the changed definition of ${named(rebuilt)}.`]),
+];
 
 /** The run's summary, as Markdown for the GitHub job summary. */
 export function deploySummary(outcome: DeployOutcome, dictionary: string): string {

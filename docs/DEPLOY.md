@@ -449,11 +449,21 @@ upload of a release
    written, its log gets the line
    `bookmark: <bookmark> (restore with: <the restore command below>)`, so a run
    killed mid-write still names it. The summary names it again at the end.
-   When the dictionary lacks a table, index or view of
-   [`update:upgrade`](../src/update/masterUpgrade.ts), the page-entry tables
-   and `corrected_definition` included, the run then runs the upgrade's DDL as
-   its own batch, so no declaration's SQL carries DDL
-   ([#507](https://github.com/hueypov/lexema/issues/507)).
+   The run then runs the upgrade's DDL
+   ([`update:upgrade`](../src/update/masterUpgrade.ts)) as its own batch, so
+   no declaration's SQL carries DDL
+   ([#507](https://github.com/hueypov/lexema/issues/507)). It does so when
+   the dictionary lacks a table, index or view the upgrade creates, or when
+   it stores a page-entry table, `corrected_definition` or their index with a
+   definition other than [schema.sql](../src/db/schema.sql)'s. Comments and
+   spacing do not count. For a changed definition the upgrade rebuilds those
+   five tables with their rows: it copies the rows aside, drops the tables,
+   creates them from schema.sql and copies the rows back by the columns both
+   definitions share. A row the new definition refuses stops the batch, and
+   D1 rolls it back whole. After the batch the run checks that nothing is
+   missing, nothing differs and every rebuilt table holds as many rows as
+   before. So a change to those tables in schema.sql reaches the shared
+   dictionary on the next deploy.
 4. For each declaration it runs the command's plan, without writing, and holds
    its counts to the declared ones and to the hard limits: more than 100
    records removed, or more than 5% of the records changed or removed. Any
