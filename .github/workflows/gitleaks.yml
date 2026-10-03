@@ -39,11 +39,20 @@ jobs:
       - name: Scan changed files
         env:
           BASE_REF: ${{ github.base_ref }}
+          # Set only on a merge queue run, where github.base_ref is empty.
+          QUEUE_BASE_SHA: ${{ github.event.merge_group.base_sha }}
         run: |
           set -uo pipefail
-          git fetch --no-tags origin "$BASE_REF"
-          if ! diff_out="$(git diff --name-only --diff-filter=ACMR "origin/$BASE_REF...HEAD")"; then
-            echo "::error::could not diff origin/$BASE_REF...HEAD — refusing to report clean over nothing."
+          if [ -n "$QUEUE_BASE_SHA" ]; then
+            base="$QUEUE_BASE_SHA"
+          elif [ -n "$BASE_REF" ] && git fetch --no-tags origin "$BASE_REF"; then
+            base="origin/$BASE_REF"
+          else
+            echo "::error::no base to diff against — refusing to report clean over nothing."
+            exit 1
+          fi
+          if ! diff_out="$(git diff --name-only --diff-filter=ACMR "$base...HEAD")"; then
+            echo "::error::could not diff $base...HEAD — refusing to report clean over nothing."
             exit 1
           fi
           changed=()
