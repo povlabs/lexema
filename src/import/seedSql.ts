@@ -19,6 +19,7 @@ import type { RawPageSource } from "../source/rawPage.js";
 import type { LanguageHeadings } from "../italian/sectionLanguage.js";
 import { HiddenLayer, readRulePass, type HiddenSummary } from "./hiddenLayer.js";
 import { RawPageRows } from "./rawPageRows.js";
+import { recoverPageEntry, PAGE_ENTRY_RULE } from "../italian/pageEntry.js";
 import { RecoveredLayer, type RecoverySummary } from "./recoveredLayer.js";
 import { normalizeItalianExact } from "../italian/normalize.js";
 import { SOURCE_TEXT_RULES, type SourceTextRuleId } from "../italian/sourceTextNormalization.js";
@@ -41,6 +42,10 @@ const TABLE_ORDER = [
   "recovered_label",
   "recovered_example",
   "hidden_record",
+  "recovered_entry",
+  "entry_definition",
+  "entry_label",
+  "entry_example",
   "release_table_rows",
 ] as const;
 
@@ -65,6 +70,10 @@ export const COLUMNS: Record<TableName, string> = {
   recovered_label: "recovered_id,label_index,label",
   recovered_example: "recovered_id,example_index,page_line,wikitext,text",
   hidden_record: "record_id,release_id,page_id,rule,because,language,page_line,lemma_line",
+  recovered_entry: "entry_id,release_id,page_id,word,word_key,pos,pos_title,rule,page_line,wikitext",
+  entry_definition: "entry_id,definition_index,route,term,page_line,wikitext,text,lead_in_index",
+  entry_label: "entry_id,definition_index,label_index,label",
+  entry_example: "entry_id,definition_index,example_index,page_line,wikitext,text",
   release_table_rows: "release_id,table_name,rows",
 };
 
@@ -108,6 +117,10 @@ class SqlBatchWriter {
     recovered_label: 0,
     recovered_example: 0,
     hidden_record: 0,
+    recovered_entry: 0,
+    entry_definition: 0,
+    entry_label: 0,
+    entry_example: 0,
     release_table_rows: 0,
   };
 
@@ -443,6 +456,36 @@ export async function seedSql(options: SeedSqlOptions): Promise<SeedSqlReport> {
       },
     });
     if (!start) throw new Error("archive parser did not provide seed metadata");
+    // The complete archive word set is known only after streaming it. A hidden
+    // Italian record still prevents page-only recovery of that title.
+    for (const title of targets) {
+      const page = options.rawPages?.page(title);
+      if (page === undefined) continue;
+      const result = recoverPageEntry(page, seenWords);
+      if (result.outcome !== "recovered") continue;
+      const entry = result.entry;
+      const entryId = ++writer.counts.recovered_entry;
+      const pageId = pageRows.idOf(start.releaseId, page);
+      const key = normalizeItalianExact(title);
+      writer.statement("recovered_entry").run(entryId, start.releaseId, pageId, title, key, entry.pos, entry.posTitle, PAGE_ENTRY_RULE, entry.posRef.line, entry.posWikitext);
+      entry.definitions.forEach((definition, index) => {
+        const parent = definition.leadIn === null ? -1 : entry.definitions.findIndex((candidate) => candidate.ref.line === definition.leadIn?.ref.line);
+        writer.statement("entry_definition").run(entryId, index, definition.route, definition.route === "sub-term" ? definition.term : null, definition.ref.line, definition.wikitext, definition.text, parent >= 0 && parent < index ? parent : null);
+        writer.counts.entry_definition += 1;
+        definition.labels.forEach((label, labelIndex) => {
+          writer.statement("entry_label").run(entryId, index, labelIndex, label);
+          writer.counts.entry_label += 1;
+        });
+        definition.examples.forEach((example, exampleIndex) => {
+          writer.statement("entry_example").run(entryId, index, exampleIndex, example.ref.line, example.wikitext, example.text);
+          writer.counts.entry_example += 1;
+        });
+      });
+      seenWords.add(title);
+      keys.set(key, true);
+      lemmaKeys.set(key, { languages: new Set(), richness: entry.definitions.length });
+      if (writer.hasFullBatch()) await writer.flush();
+    }
     await writeNearbyIndexes(writer, start.releaseId, keys, lemmaKeys);
     await writer.finish();
 

@@ -358,6 +358,13 @@ const isSenseMarker = (marker: string): boolean => /^#+$/.test(marker);
 
 /** Why the structure marks a line below `#` as a definition. */
 export type DefinitionRoute =
+  | { route: "sense-line" }
+  | { route: "numbered-prose" }
+  /**
+   * A plain prose line between the language heading and the part-of-speech
+   * heading: the page wrote its definition above the heading (`fidelizzare`).
+   */
+  | { route: "above-heading-prose" }
   /** One level below a `#` line that carries only the headword and its grammar. */
   | { route: "below-page-control" }
   /** Opened by a bold sub-term and then plain prose; `term` is that sub-term. */
@@ -614,5 +621,115 @@ export function readItalianSections(page: RawPage): PageSection[] {
       senseLines,
       unrendered: reader.unrendered,
     };
+  });
+}
+
+/**
+ * The usage labels in the lead-in before a numbered meaning, written the way a
+ * printed dictionary writes them: `v. tr. (dismago, dismaghi, ecc.), arc.`.
+ * The first comma-separated part is the grammar and the bracket holds forms;
+ * every part after the grammar is a label, as the page writes it (`arc.`).
+ */
+function leadInLabels(leadIn: string): string[] {
+  const [, ...labels] = collapse(withoutTemplates(leadIn).replace(/\([^()]*\)/g, " ")).split(",").map(collapse);
+  return labels.filter((label) => hasLetters(label));
+}
+
+/** The three verb layouts ruled in ADR 0024, without changing record-backed recovery. */
+export function readRuledVerbSections(page: RawPage): { ref: RawPageRef; wikitext: string; definitions: PageDefinition[] }[] {
+  const sections: { line: number; wikitext: string; handwritten: boolean; list: Omit<ListLine, "children">[]; prose: ProseLine[]; aboveHeading: ProseLine[] }[] = [];
+  let italian = false;
+  let current: (typeof sections)[number] | undefined;
+  let hasPos = false;
+  let hasLanguageHeading = false;
+  /** Plain prose between the language heading and the first heading or section after it. */
+  let aboveHeading: ProseLine[] = [];
+  let aboveHeadingOpen = false;
+  const hasStandardLanguageHeading = page.wikitext.split("\n").some((line) => /^==[^=]/.test(line.trim()));
+  const open = (index: number, raw: string, handwritten: boolean) => {
+    current = { line: index + 1, wikitext: raw, handwritten, list: [], prose: [], aboveHeading };
+    sections.push(current);
+    aboveHeading = [];
+    aboveHeadingOpen = false;
+  };
+  for (const [index, raw] of page.wikitext.split("\n").entries()) {
+    const line = raw.trim();
+    // A bare part-of-speech template (`{{-verb-}}`) is a part-of-speech heading, never a language (piallare).
+    const barePos = /^\{\{-([a-z][a-z ]*?)-\}\}$/.exec(line);
+    if (barePos !== null && POS_TITLE_BY_TEMPLATE[barePos[1]] !== undefined) {
+      hasPos = true;
+      current = undefined;
+      aboveHeadingOpen = false;
+      continue;
+    }
+    const language = LANGUAGE_HEADING.exec(line) ?? /^\{\{-([A-Za-z-]+)-\}\}$/.exec(line);
+    if (language !== null || /^==[^=].*[^=]==$/.test(line)) {
+      hasLanguageHeading = true;
+      italian = language?.[1].toLowerCase() === "it";
+      current = undefined;
+      hasPos = false;
+      aboveHeading = [];
+      aboveHeadingOpen = italian;
+      continue;
+    }
+    const pos = POS_HEADING.exec(line);
+    if (pos !== null) {
+      // A language-qualified POS can state Italian even when the language heading is absent (fornire).
+      if (!hasLanguageHeading && pos[1] === "verb") italian = true;
+      hasPos = true;
+      current = undefined;
+      aboveHeadingOpen = false;
+      continue;
+    }
+    const transitivity = /^\{\{(?:Transitivo|Intransitivo)\|it\}\}$/.test(line);
+    const handwritten = line === "'''''Verbo'''''";
+    if (italian && ((transitivity && !hasPos) || handwritten)) {
+      open(index, raw, handwritten);
+      continue;
+    }
+    // The explicit Italian verb heading with no language section is itself unreadable by the extraction.
+    if (italian && transitivity && hasPos && !hasStandardLanguageHeading) {
+      open(index, raw, false);
+      hasPos = false;
+      continue;
+    }
+    if (aboveHeadingOpen && continuesItem(line)) {
+      aboveHeading.push({ line: index + 1, wikitext: raw });
+      continue;
+    }
+    if (OTHER_HEADING.test(line) || /^={3,}/.test(line)) {
+      current = undefined;
+      continue;
+    }
+    if (current === undefined) continue;
+    const item = LIST_LINE.exec(raw);
+    if (item !== null) current.list.push({ line: index + 1, marker: item[1], body: item[2], wikitext: raw, wrapped: null });
+    else if (current.handwritten && line !== "") current.prose.push({ line: index + 1, wikitext: raw });
+  }
+  return sections.map((section) => {
+    const reader = new SectionReader(page);
+    const ref = reader.ref(section.line);
+    if (section.aboveHeading.length > 0) {
+      // The page wrote its definition above the heading; the `#` list under it then holds something else.
+      const definitions = section.aboveHeading.flatMap((prose) =>
+        reader.definition({ ...prose, marker: "", body: prose.wikitext, wrapped: null, children: [] }, { route: "above-heading-prose" }, null));
+      return { ref, wikitext: section.wikitext, definitions: definitions.filter((definition) => definition.text !== "") };
+    }
+    const definitions = listTree(section.list).flatMap((node) => {
+      if (!isSenseMarker(node.marker)) return [];
+      if (NO_DEFINITION.test(node.body)) return [];
+      if (hasPlainProse(node.body)) return reader.definition(node, { route: "sense-line" }, null);
+      return reader.senseLine(node).below;
+    });
+    for (const prose of section.prose) {
+      // Bold ordinal markers delimit meanings; the bracketed etymology is not a definition.
+      const numbered = [...prose.wikitext.matchAll(/'''\d+\.'''\s*([\s\S]*?)(?='''\d+\.'''|$)/g)];
+      const labels = numbered.length > 0 ? leadInLabels(prose.wikitext.slice(0, numbered[0].index)) : [];
+      for (const match of numbered) {
+        const body = match[1].replace(/\s*\[[^\]]*\]\.?\s*$/, "").trim();
+        definitions.push(...reader.definition({ ...prose, marker: "", body, wrapped: null, children: [] }, { route: "numbered-prose" }, null, labels));
+      }
+    }
+    return { ref, wikitext: section.wikitext, definitions: definitions.filter((definition) => definition.text !== "") };
   });
 }

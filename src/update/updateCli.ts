@@ -16,9 +16,11 @@
 // (src/update/selection.ts) and writes the ids it takes to a file that
 // `update:apply --ids` reads.
 //
-// `update:upgrade` gives a dictionary seeded before #18 the tables and views
-// lookups now read (src/update/masterUpgrade.ts), and nothing else. Run it on
-// such a dictionary before code that reads `served_release` serves from it.
+// `update:upgrade` gives a dictionary seeded from an older schema.sql the
+// tables and views lookups now read (src/update/masterUpgrade.ts): the update
+// tables and views of #18, and the page-entry tables of #403, created empty.
+// It writes no row. Run it on such a dictionary before code that reads them
+// serves from it.
 
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
@@ -26,7 +28,7 @@ import { finish, isMain, usageError, type CommandResult } from "../commandLine.j
 import { seedTargetFrom, webWrangler, type SeedTarget } from "../import/seedTarget.js";
 import { ApplyRefused, checkApplied, chooseChanges, planApply, type ApplyPlan } from "./apply.js";
 import { diffAgainstMaster, reportMarkdown, reportOf } from "./diff.js";
-import { readMasterRelease, type MasterReader } from "./master.js";
+import { missingUpgrade, readMasterRelease, type MasterReader } from "./master.js";
 import { masterUpgradeSql } from "./masterUpgrade.js";
 import { automaticPlan } from "./automatic.js";
 import { selectChanges, selectionIds, selectionMarkdown, withFeedDump } from "./select.js";
@@ -214,14 +216,16 @@ async function upgradeCommand(target: SeedTarget, args: readonly string[]): Prom
   if (typeof read === "string") return usageError(read, USAGE);
   if (read.positional.length > 0) return usageError("update:upgrade takes no archive and no change ids", USAGE);
   const master = readMasterRelease(masterReaderOf(target));
-  if (master.upgraded) return { out: `${target.dictionary} (master ${master.releaseId}) already has the tables and views for applied changes; nothing to do`, status: 0 };
+  const missing = missingUpgrade(masterReaderOf(target));
+  if (missing.length === 0) return { out: `${target.dictionary} (master ${master.releaseId}) already has every table and view the upgrade adds; nothing to do`, status: 0 };
   await mkdir(read.out, { recursive: true });
   const file = join(read.out, `upgrade-${master.releaseId}-${Date.now()}.sql`);
   await writeFile(file, masterUpgradeSql(await readFile(SCHEMA, "utf8")));
-  log(`adding the tables and views for applied changes: ${file}`);
+  log(`adding ${missing.join(", ")}: ${file}`);
   target.execute(["--file", file], false);
-  if (!readMasterRelease(masterReaderOf(target)).upgraded) return { out: `the upgrade ran, but ${target.dictionary} still lacks its tables or views`, status: 1 };
-  return { out: `${target.dictionary} (master ${master.releaseId}) has the tables and views for applied changes; no row was written`, status: 0 };
+  const still = missingUpgrade(masterReaderOf(target));
+  if (still.length > 0) return { out: `the upgrade ran, but ${target.dictionary} still lacks ${still.join(", ")}`, status: 1 };
+  return { out: `${target.dictionary} (master ${master.releaseId}) has every table and view the upgrade adds; no row was written`, status: 0 };
 }
 
 const COMMANDS = { auto: automaticCommand, upgrade: upgradeCommand, diff: diffCommand, select: selectCommand, apply: applyCommand } as const;

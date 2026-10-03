@@ -1,0 +1,55 @@
+<!-- it.wiktionary.org/wiki/fornire revision 3983355 (2024-05-25T14:11:43Z), CC BY-SA 4.0. Saved verbatim. -->
+{{-verb-|it}}
+{{Transitivo|it}}
+{{Pn|c}}
+# [[dare]] cose a qualcuno
+#* '' dopo la separazione dovette fornire gli alimenti alla moglie''
+
+{{-sill-}}
+; for | nì | re
+
+{{-pron-}}
+{{IPA|/forˈnire/}}
+
+{{-etim-}}
+dal [[francese]] ''[[fournir]]'' 
+
+{{-sin-}}
+*[[attrezzare]], [[corredare]], [[dare]], [[dotare]], [[equipaggiare]], [[erogare]], [[munire]], [[procurare]], [[provvedere]], [[rifornire]],
+* [[armare]], [[assegnare]],[[somministrare]],  
+* ''(per un fine)''  [[esibire]], [[mostrare]] [[offrire]], 
+* {{Glossa|letterario}} [[finire]], [[terminare]]
+
+{{-ant-}}
+*[[defraudare]], [[negare]], [[privare]], [[sfornire]], [[sguarnire]], [[sottrarre]], [[togliere]],    
+  
+{{-der-}}
+*[[fornibile]],   [[fornirsi]], [[fornitore]], [[fornitura]], [[rifornire]] 
+
+{{-trad-}}
+{{Trad1|provvedere}}
+:* {{en}}: to [[supply]], to [[provide]], to [[furnish]]
+{{Trad2}}
+
+{{Trad1|dare}}
+:* {{en}}: to [[supply]], to [[give]], to [[furnish]]
+:* {{la}}: [[orno#Latino|orno]]
+{{Trad2}}
+
+{{Trad1|equipaggiare}}
+:* {{en}}:  to [[equip]] (with)
+:* {{la}}: [[orno#Latino|orno]], [[instruo]], [[suppedito]] (in senso militare) [[armo#Latino|armo]]
+{{Trad2}}
+
+{{Trad1|commercio}}
+:*{{en}}: to [[supply]], to [[furnish]], to [[purvey]]
+{{Trad2}} 
+
+{{-ref-}}
+* {{Fonte|sabco}}
+* {{Fonte|desan|F}}
+* {{Fonte|sin-co}}
+* {{Fonte|gar}}
+* {{Fonte|trec}}
+*{{Fonte|dizit}}
+*AA.VV., ''Dizionario sinonimi e contrari'', Mariotti, 2006, pagina 224

@@ -1,0 +1,58 @@
+<!-- it.wiktionary.org/wiki/raccontare revision 4035772 (2025-06-10T14:27:14Z), CC BY-SA 4.0. Saved verbatim. -->
+== {{-it-}} ==
+{{Transitivo|it}}
+{{Pn|c}}
+# [[narrare]], oralmente o tramite scrittura,  [[eventi]] o [[storie]]
+# {{Fig}} [[rappresentare]] qualcosa, in genere [[cosa]] non [[gradita]]
+#* ''quello lì non me la '''racconta''' giusta''
+
+{{-sill-}}
+; rac | con | tà | re
+
+{{-pron-}}
+{{IPA|/rakkonˈtare/}} 
+
+{{-etim-}}
+derivazione di [[contare]] (dal latino ''[[computo#Latino|compŭtare]]'', formato da [[con-]] e da ''[[puto#Latino|putare]]'' cioè "[[calcolare]], verificare un conto"), ma è anche possibile un'origine germanica del lemma dall'[[alto tedesco antico]] ''[[rahhôn]]'' cioè "[[narrare]], tramandare storie"
+
+{{-sin-}}
+* [[riferire]], [[parlare]], [[esporre]], [[riportare]], [[enunciare]], [[ripetere]], [[menzionare]], dar notizia
+* ''(di libri, film)'' [[narrare]], [[descrivere]], [[favoleggiare]]
+* ''(confidenze, segreti)'' [[rivelare]], [[spifferare]]
+* [[dire]],  [[riferire]]
+
+{{-ant-}}
+* [[tacere]], [[nascondere]], [[celare]]
+
+{{-der-}}
+* [[raccontaballe]], [[raccontabile]], [[raccontafavole]], [[raccontatore]], [[racconto]]
+
+{{-prov-}}
+* ''{{Pn}} per filo e per segno'': raccontare minuziosamente però, in particolare, quando si tratta di chiacchiericcio
+* ''la sa {{Pn}} bene'': è in grado di raccontare frottole e spacciandole come vere
+* ''ma a chi la '''racconti'''?'': chi, invero inutilmente ma proprio convinto di cambiare la sorte di un torto fatto, espone argomentazioni o giustificazioni senza fondamento
+* ''non me la stare a {{Pn}}''/''[ma] me la stai a {{Pn}}?'': lusinga per indagare in merito all'interlocutore, talvolta con insistenza malgrado la consapevolezza di questo quindi creando una dialettica pressoché insostenibile
+
+{{-trad-}}
+{{Trad1|narrare eventi e storie}}
+:* {{fr}}: [[conter]]
+:* {{en}}: to [[tell]], to [[narrate]], to [[recount]], to [[relate]]
+:* {{la}}: [[narro#Latino|narro]], [[enarro#Latino|enarro]], [[affero#Latino|affero]], [[refero#Latino|refero]], [[trado#Latino|trado]], [[prodo#Latino|prodo]]
+:* {{es}}: [[contar]], [[decir]]
+{{Trad2}}
+
+{{Trad1|parla di}}
+:* {{en}}:to be about
+{{Trad2}}
+
+{{Trad1|[[tramandare]]}}
+:* {{la}}: [[memorare]]
+{{Trad2}}
+
+{{-ref-}}
+* {{Fonte|trec}}
+* {{Fonte|trec|contare}}
+* {{Fonte|dizit}}
+* {{Fonte|gar}}
+* {{Fonte|sin-co}}
+* Wilhelm Braune '' Althochdeutsches Lesebuch, Walter de Gruyter, 1994''

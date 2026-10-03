@@ -21,7 +21,7 @@ import { exists, lookup, MAX_QUERY_LENGTH, rejectionOf } from "@lexema/lookup/lo
 import { findNearby } from "@lexema/lookup/nearby.ts";
 import { randomHeadword } from "@lexema/lookup/random.ts";
 import { prefixRejectionOf, suggest } from "@lexema/lookup/suggest.ts";
-import { isFormOfReading, type LemmaTarget, type LookupResult, type RejectedQuery } from "@lexema/lookup/types.ts";
+import { entryKey, isFormOfReading, type LemmaTarget, type LookupResult, type RejectedQuery } from "@lexema/lookup/types.ts";
 import { error, read, refused, type Reading, type Route } from "./answer.ts";
 import {
   attributionOf,
@@ -73,7 +73,7 @@ class Lookups {
   /** A lemma a form-of record names, read as the lookup reads any word: its headword, and the reading that is that record. */
   readonly lemma: LemmaReader = async (target: LemmaTarget) => {
     const answer = await this.of(target.word);
-    return answer.outcome === "found" ? answer.readings.find((reading) => reading.recordId === target.recordId) : undefined;
+    return answer.outcome === "found" ? answer.readings.find((reading) => entryKey(reading) === entryKey(target)) : undefined;
   };
 }
 
@@ -282,7 +282,7 @@ const batchRoute: Route = async (request, _url, { batchWords: most }) => {
       return answer.candidates.map((candidate) => ({
         query: word,
         found: true,
-        id: `${candidate.releaseId}:${candidate.lineNo}`,
+        id: `${candidate.releaseId}:${candidate.recordId === undefined ? `page:${candidate.revisionId}` : candidate.lineNo}`,
         lemma: candidate.word,
         pos: candidate.pos,
         pos_title: candidate.posTitle,

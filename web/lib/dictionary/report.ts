@@ -23,9 +23,32 @@ import { and, count, eq, gt, lt } from "drizzle-orm";
 import type { AppTables } from "@lexema/db/app/database.ts";
 import { readerReport, reportOpening } from "@lexema/db/app/schema.ts";
 import type { LookupDatabase } from "@lexema/lookup/database.ts";
+import type { EntryIdentity } from "@lexema/lookup/types.ts";
+import type { PageReading } from "./wordPage.ts";
 
 export const REPORT_CHOICES = ["meaning", "example", "form", "synonym", "other"] as const;
 export type ReportChoice = (typeof REPORT_CHOICES)[number];
+
+/**
+ * A reading a report can name: a source record, which `receiveReport` checks
+ * against `source_record`. A page-only entry (#403) has no record, so it is
+ * not offered; a report on it is about the word.
+ */
+export interface ReportReading {
+  recordId: number;
+  /** The reading's number on the page; none for a reading with no definition. */
+  number: PageReading["number"];
+  posTitle: string;
+}
+
+/**
+ * The page's readings a report can name, in page order: every one backed by a
+ * source record. Here, not in the client dialog, because server components
+ * call it, and a function exported from a "use client" file is not callable there.
+ */
+export function reportReadings(readings: readonly { number: ReportReading["number"]; reading: EntryIdentity & { posTitle: string } }[]): ReportReading[] {
+  return readings.flatMap(({ number, reading }) => (reading.recordId === undefined ? [] : [{ number, recordId: reading.recordId, posTitle: reading.posTitle }]));
+}
 
 /** What each choice is called in the box. */
 export const REPORT_CHOICE_LABEL: Readonly<Record<ReportChoice, string>> = {

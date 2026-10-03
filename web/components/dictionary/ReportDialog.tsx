@@ -20,8 +20,8 @@ import {
   type OpeningTrouble,
   type ReportAnswer,
   type ReportChoice,
+  type ReportReading,
 } from "@/lib/dictionary/report.ts";
-import type { PageReading } from "@/lib/dictionary/wordPage.ts";
 import {
   REPORT_BACKDROP,
   REPORT_CANCEL,
@@ -46,13 +46,6 @@ import {
   REPORT_TRIGGER,
   REPORT_X,
 } from "@/components/shared/styles.ts";
-
-export interface ReportReading {
-  recordId: number;
-  /** The reading's number on the page; none for a reading with no definition. */
-  number: PageReading["number"];
-  posTitle: string;
-}
 
 /** How the dialog names a reading: `1 · Sostantivo`, or `Sostantivo` when it has no number. */
 export const readingChoiceLabel = ({ number, posTitle }: ReportReading): string =>
