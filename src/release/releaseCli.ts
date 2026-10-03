@@ -6,7 +6,7 @@
 //   pnpm run release:monthly prepare
 //   pnpm run release:monthly open --release '<release candidate>' --plan '<plan-only answer>'
 //
-// Both write to GitHub, `prepare` to `hueypov/lexema-data` with its write
+// Both write to GitHub, `prepare` to `povlabs/lexema-data` with its write
 // token, so they run only inside GitHub Actions on `main`: no agent and no
 // laptop runs them.
 
@@ -42,7 +42,7 @@ async function summary(env: NodeJS.ProcessEnv, text: string): Promise<void> {
 
 async function prepareCommand(env: NodeJS.ProcessEnv, fetchImpl: typeof fetch): Promise<CommandResult> {
   const token = env.LEXEMA_DATA_WRITE_TOKEN;
-  if (token === undefined || token === "") return usageError("LEXEMA_DATA_WRITE_TOKEN is not set, so nothing can be stored in hueypov/lexema-data", USAGE);
+  if (token === undefined || token === "") return usageError("LEXEMA_DATA_WRITE_TOKEN is not set, so nothing can be stored in povlabs/lexema-data", USAGE);
   const { GITHUB_TOKEN: githubToken, GITHUB_REPOSITORY: repository } = env;
   if (githubToken === undefined || githubToken === "" || repository === undefined) return usageError("prepare needs GITHUB_TOKEN and GITHUB_REPOSITORY", USAGE);
   const workDir = await mkdtemp(join(env.RUNNER_TEMP ?? tmpdir(), "lexema-release-"));
@@ -72,7 +72,7 @@ async function prepareCommand(env: NodeJS.ProcessEnv, fetchImpl: typeof fetch): 
     change: JSON.stringify(releaseChange(candidate)),
     commit,
   });
-  const line = `${candidate.releaseId} from ${candidate.dumpId}: ${stored.kind === "stored" ? `stored ${stored.paths.join(", ")}` : "its files were stored already"} in hueypov/lexema-data, and its facts are on ${branch} at ${commit}`;
+  const line = `${candidate.releaseId} from ${candidate.dumpId}: ${stored.kind === "stored" ? `stored ${stored.paths.join(", ")}` : "its files were stored already"} in povlabs/lexema-data, and its facts are on ${branch} at ${commit}`;
   await summary(env, `## Monthly release: ${candidate.releaseId}\n\n${line}. The plan-only run and the pull request follow.\n`);
   return { out: line, status: 0 };
 }

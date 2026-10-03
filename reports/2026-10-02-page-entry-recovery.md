@@ -1,6 +1,6 @@
 # Ruled page-only recovery measurement
 
-Read-only measurement for [#403](https://github.com/hueypov/lexema/issues/403),
+Read-only measurement for [#403](https://github.com/povlabs/lexema/issues/403),
 2026-10-02, under [ADR 0024](../.decisions/0024-italian-pages-the-extraction-skips-are-recovered.md).
 
 The [machine-readable output](2026-10-02-page-entry-recovery.json) lists every
@@ -17,7 +17,7 @@ is not an acceptance count or a title allowlist. Eligible titles: `addirizzare`,
 `tremare`.
 
 Re-measured on 2026-10-03 after the rule fixes in the
-[#403 amendments](https://github.com/hueypov/lexema/issues/403): a bare
+[#403 amendments](https://github.com/povlabs/lexema/issues/403): a bare
 `{{-verb-}}` line is a part-of-speech heading, not a language, so `piallare`
 is now eligible. The fixes for `fidelizzare` and `dismagare` change what is
 recovered, not which titles are eligible.
@@ -29,7 +29,7 @@ judges every page. No source-accuracy review or newer-feed selection is added.
 
 ## Reproduce
 
-With the verified archive and dump copied locally from `hueypov/lexema-data`:
+With the verified archive and dump copied locally from `povlabs/lexema-data`:
 
 ```sh
 pnpm exec tsx src/import/measurePageEntries.ts \

@@ -18,7 +18,7 @@ On 2026-09-27 Huey reviewed a simplified result page in `lexema-design.pen` (boa
 
 The part of speech needs no translation. Every source record carries its own Italian heading in `pos_title` (*Sostantivo*, *Verbo*, *Voce verbale*, *Locuzione nominale*), and the database already stores it (`src/db/schema.sql`). It is also more precise than the English `pos` code: `phrase` covers four different Italian headings.
 
-A reader-chosen interface language is a separate, later feature ([#138](https://github.com/hueypov/lexema/issues/138)). This record does not decide it.
+A reader-chosen interface language is a separate, later feature ([#138](https://github.com/povlabs/lexema/issues/138)). This record does not decide it.
 
 [0008](0008-generated-explanations-are-labelled-and-reportable.md) lets a grammatical paraphrase built by rule appear in English. The simplified page shows the source's own Italian gloss for a form and no paraphrase, so this record leaves 0008 as it is.
 

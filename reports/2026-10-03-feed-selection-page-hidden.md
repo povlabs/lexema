@@ -1,6 +1,6 @@
 # Feed selection and senses the page hides, in it-78385b62
 
-Measured 2026-10-03 for [#422](https://github.com/hueypov/lexema/issues/422),
+Measured 2026-10-03 for [#422](https://github.com/povlabs/lexema/issues/422),
 on a laptop. Up to `feed-selection/v4` the selection rule read a sense as real
 from the source text. The word page hides two shapes that text reads as real:
 a gloss that only repeats the headword (`presina f`, `latinismo`) and a gender
@@ -10,7 +10,7 @@ the page does. This report counts what that changes in the September release.
 
 **Result: nothing.** No new or changed record of it-78385b62 has a sense the
 page hides, so v4 and v5 give the same verdict on all 952 of them. The first
-applied selection ([#377](https://github.com/hueypov/lexema/issues/377)) took
+applied selection ([#377](https://github.com/povlabs/lexema/issues/377)) took
 no such record.
 
 ## The command
@@ -87,5 +87,5 @@ No record moves to `hidden-replaces-definition`. Of the 268 ids #377 applied,
 v5 takes all 268.
 
 The dictionary now serves those 268 records, so a later selection from
-it-78385b62 ([#436](https://github.com/hueypov/lexema/issues/436)) reads a
+it-78385b62 ([#436](https://github.com/povlabs/lexema/issues/436)) reads a
 subset of these candidates, and v5 changes none of its verdicts either.

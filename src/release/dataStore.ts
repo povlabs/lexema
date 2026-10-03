@@ -1,4 +1,4 @@
-// Storing a new release's files in `hueypov/lexema-data` (#457), the one write
+// Storing a new release's files in `povlabs/lexema-data` (#457), the one write
 // the monthly release workflow makes there. It pushes one commit with Git,
 // which takes a file of any size up to GitHub's 100 MB limit, where the
 // contents API would carry a dump base64-encoded. The clone is shallow and
@@ -14,7 +14,7 @@ import { dirname, join } from "node:path";
 import { type Git, gitIn } from "../deploy/pending.js";
 
 /** The data repository the monthly job writes, over HTTPS. */
-export const DATA_REPOSITORY_URL = "https://github.com/hueypov/lexema-data.git";
+export const DATA_REPOSITORY_URL = "https://github.com/povlabs/lexema-data.git";
 
 /** Who the release commits are made as. */
 export const RELEASE_COMMITTER = ["-c", "user.name=github-actions[bot]", "-c", "user.email=41898282+github-actions[bot]@users.noreply.github.com", "-c", "commit.gpgsign=false"] as const;

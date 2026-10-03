@@ -42,7 +42,7 @@ const USAGE = `usage:
   pnpm run deploy:dictionary
   pnpm run deploy:dictionary --plan-only --change '<{"command": ..., "inputs": {...}}>' [--release '<release candidate>']
   pnpm run deploy:dictionary --plan-only --added-since <base commit>
-The run needs GITHUB_ACTIONS, GITHUB_REF refs/heads/main, GITHUB_SHA, SEED_REMOTE and LEXEMA_DATA_TOKEN.`;
+The run needs GITHUB_ACTIONS, GITHUB_REF refs/heads/main, GITHUB_SHA and SEED_REMOTE. povlabs/lexema-data is public and is read without a token.`;
 
 /** A Time Travel bookmark of `dictionary` as it is now, through Wrangler. */
 export function bookmarkOf(wrangler: Wrangler, dictionary: string): string {
@@ -64,27 +64,12 @@ export function deployLog(write: (line: string) => void, dictionary: string): Pi
   };
 }
 
-/** The `hueypov/lexema-data` token the run was given, or null when it is unset or empty. */
-function dataTokenOf(env: NodeJS.ProcessEnv): string | null {
-  const token = env.LEXEMA_DATA_TOKEN;
-  return token === undefined || token === "" ? null : token;
-}
-
-/** The data repository's fetcher, or a fetcher that refuses when no token was given. */
-function fetcherFrom(env: NodeJS.ProcessEnv): DataFetcher {
-  const token = dataTokenOf(env);
-  if (token !== null) return lexemaDataFetcher(token);
-  return async (path) => {
-    throw new Error(`LEXEMA_DATA_TOKEN is not set, so ${path} cannot be read from hueypov/lexema-data`);
-  };
-}
 
 /**
  * `--plan-only --added-since <base>`: the pull request plan check (#494).
  * Plans the declaration the checked-out commit adds past `base` and holds it
  * to `expected` (pullRequestPlan.ts). Red when a count differs, `expected` is
- * missing, a hard limit is crossed, a later declaration cannot be counted, or
- * a declaration that reads data files finds no `LEXEMA_DATA_TOKEN`.
+ * missing, a hard limit is crossed, or a later declaration cannot be counted.
  */
 async function pullRequestPlanCommand(base: string, env: NodeJS.ProcessEnv, wrangler: Wrangler, git: Git): Promise<CommandResult> {
   let declarations;
@@ -96,10 +81,9 @@ async function pullRequestPlanCommand(base: string, env: NodeJS.ProcessEnv, wran
   }
   const target = seedTargetFrom(env, wrangler, resolve(".data/seed-state"));
   const reader = masterReaderOf(target);
-  const fetcher = fetcherFrom(env);
+  const fetcher = lexemaDataFetcher();
   const outcomes = await planPullRequest(declarations, {
     plan: async (change) => planOnly(change, { reader, fetcher, workDir: await mkdtemp(join(env.RUNNER_TEMP ?? tmpdir(), "lexema-plan-")) }),
-    hasDataToken: dataTokenOf(env) !== null,
   });
   const { markdown, green } = pullRequestPlanReport(outcomes, target.dictionary);
   if (env.GITHUB_STEP_SUMMARY !== undefined) await appendFile(env.GITHUB_STEP_SUMMARY, markdown);
@@ -131,7 +115,7 @@ async function planOnlyCommand(args: readonly string[], env: NodeJS.ProcessEnv, 
   const answer = await planOnly(change, {
     ...catalogs,
     reader: masterReaderOf(target),
-    fetcher: fetcherFrom(env),
+    fetcher: lexemaDataFetcher(),
     workDir: await mkdtemp(join(env.RUNNER_TEMP ?? tmpdir(), "lexema-plan-")),
   });
   const out = JSON.stringify({ ...answer, planOnly: true });
@@ -155,7 +139,7 @@ async function deployCommand(env: NodeJS.ProcessEnv, wrangler: Wrangler): Promis
     target,
     reader: masterReaderOf(target),
     bookmark: () => bookmarkOf(wrangler, target.dictionary),
-    fetcher: fetcherFrom(env),
+    fetcher: lexemaDataFetcher(),
     workDir: await mkdtemp(join(env.RUNNER_TEMP ?? tmpdir(), "lexema-deploy-")),
     ...deployLog((line) => process.stderr.write(line), target.dictionary),
   });
