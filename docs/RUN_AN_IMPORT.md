@@ -30,10 +30,11 @@ file, so it is written as 64 MiB parts and applied in order
 in the SQL directory. It never seeds or writes the demo's `web/.wrangler`
 database, and it clears no state directory except `SEED_STATE`.
 
-On an Apple M1 Pro with 16 GB the full release takes about seven minutes and
-peaks at about 2.8 GB of memory
-([measurements](../reports/2026-09-23-full-release-seed-measurements.md)). It
-ends by printing the loaded row counts: 560,357 `source_record` and 1,273,490
+On an Apple M1 Pro with 16 GB the full release takes nine to ten minutes and
+peaks at 3.4 to 3.7 GB of memory, with the Wiktionary dump in the repository
+root; those figures include reading the dump's raw pages
+([measurements](../reports/2026-10-04-full-release-seed-on-main.md)). It ends
+by printing the loaded row counts: 560,357 `source_record` and 1,273,350
 `lookup_form` rows for release `it-0c432803`.
 
 ## If a seed stops
@@ -108,7 +109,7 @@ It builds no app table there, and it never deletes or clears a database.
 local state.
 
 On success it ends by printing the loaded counts, including 560,357
-`source_record` and 1,273,490 `lookup_form` rows, then
+`source_record` and 1,273,350 `lookup_form` rows, then
 `source_release: 1 row, complete`, and last:
 
 ```text
