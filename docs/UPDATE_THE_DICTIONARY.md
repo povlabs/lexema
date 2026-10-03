@@ -28,16 +28,18 @@ history routinely. Investigate accuracy when a user reports a problem.
 
 ## Once: a dictionary seeded from an older schema
 
-Before new lookup code serves an old dictionary lacking `served_release` (#18)
-or the page-entry tables (#403), run:
+Before new lookup code serves an old dictionary lacking `served_release` (#18),
+run:
 
 ```sh
 pnpm run update:upgrade
 ```
 
-This adds the update tables and views and the empty page-entry tables without
-writing records. It names what it adds; running it again changes nothing. The
-first apply also upgrades, but lookups need these before any change is applied.
+This adds the update tables and views, and the empty page-entry tables (#403),
+without writing records. It names what it adds; running it again changes
+nothing. The first apply also upgrades, but lookups need the views before any
+change is applied. Lookups do not need the page-entry tables: without them they
+serve no page-only entries.
 
 ## 1. Keep a restore point
 

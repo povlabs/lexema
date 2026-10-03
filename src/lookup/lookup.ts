@@ -9,10 +9,10 @@ import { readPluralGloss, type PluralGlossGender } from "../italian/pluralGloss.
 import { readingPartOfSpeech } from "./articles.js";
 import type { DictionaryRead, LookupDatabase } from "./database.js";
 import { phraseForms, phraseMatches } from "./phrase.js";
-import { pageEntryReadings, pageEntryCandidates } from "./pageEntry.js";
+import { pageEntriesOf, type PageEntries } from "./pageEntry.js";
 import { readExpressions } from "./expressions.js";
 import { placeRecovered, type RecoveredOfRecord, type StoredRecovered } from "./recovered.js";
-import { lineageOf, servedBy } from "./served.js";
+import { dictionaryTables, lineageOf, servedBy } from "./served.js";
 import { readSourceRecord, type SourceRecordFields } from "./sourceRecord.js";
 import type {
   Evidence,
@@ -180,10 +180,10 @@ export type ExistsResult =
   | { outcome: "present"; query: QueryInfo; release: ReleaseInfo; word: string };
 
 export async function exists({ db, releaseId, query }: LookupOptions): Promise<ExistsResult> {
-  const prepared = await probeQuery(db, releaseId, query, (key) => queryAll<HitRow>(db, `${SEARCH_SQL}\n      LIMIT 1`, releaseId, key));
+  const [prepared, pages] = await probeWithPages(db, releaseId, query, (key) => queryAll<HitRow>(db, `${SEARCH_SQL}\n      LIMIT 1`, releaseId, key));
   if (prepared.outcome === "rejected") return prepared;
   const [first] = prepared.probed;
-  const word = first?.record_word ?? (await pageEntryCandidates(db, releaseId, prepared.query.key))[0]?.word ?? (await phraseHits(db, releaseId, prepared.query.key))?.hits[0].record_word;
+  const word = first?.record_word ?? (await pages.candidates(prepared.query.key))[0]?.word ?? (await phraseHits(db, releaseId, prepared.query.key))?.hits[0].record_word;
   return word === undefined
     ? { outcome: "absent", query: prepared.query, release: prepared.release }
     : { outcome: "present", query: prepared.query, release: prepared.release, word };
@@ -220,15 +220,15 @@ async function phraseHits(
 }
 
 export async function lookup({ db, releaseId, query }: LookupOptions): Promise<LookupResult> {
-  const prepared = await probeQuery(db, releaseId, query, (key) => queryAll<HitRow>(db, SEARCH_SQL, releaseId, key));
+  const [prepared, pages] = await probeWithPages(db, releaseId, query, (key) => queryAll<HitRow>(db, SEARCH_SQL, releaseId, key));
   if (prepared.outcome === "rejected") return prepared;
   const { release, query: queryInfo, probed: hits } = prepared;
   const { key } = queryInfo;
 
-  const pageReadings = pageEntryReadings(db, releaseId, key);
+  const pageReadings = pages.readings(key);
   if (hits.length > 0) {
-    const [result, pages] = await Promise.all([found(db, releaseId, queryInfo, release, hits, { kind: "surface" }), pageReadings]);
-    return { ...result, readings: [...result.readings, ...pages] };
+    const [result, read] = await Promise.all([found(db, releaseId, pages, queryInfo, release, hits, { kind: "surface" }), pageReadings]);
+    return { ...result, readings: [...result.readings, ...read] };
   }
   const [page, ...otherPages] = await pageReadings;
   if (page !== undefined) return { outcome: "found", query: queryInfo, release, route: { kind: "surface" }, readings: [page, ...otherPages] };
@@ -238,13 +238,29 @@ export async function lookup({ db, releaseId, query }: LookupOptions): Promise<L
   const phrase = await phraseHits(db, releaseId, key);
   if (phrase === undefined) return { outcome: "not-found", query: queryInfo, release };
   const forms = await phraseForms(db, releaseId, phrase.phrases);
-  return found(db, releaseId, queryInfo, release, phrase.hits, { kind: "phrase", phrases: phrase.phrases, forms });
+  return found(db, releaseId, pages, queryInfo, release, phrase.hits, { kind: "phrase", phrases: phrase.phrases, forms });
+}
+
+/**
+ * `probeQuery`, and the dictionary's page-only entries. The schema read is
+ * sent beside the probe and the release read, so on D1 all three go in one
+ * batch and the check costs a statement, not a round trip.
+ */
+async function probeWithPages<T>(
+  db: LookupDatabase,
+  releaseId: string,
+  query: string,
+  probe: (key: string) => Promise<T>,
+): Promise<[RejectedResult | ProbedQuery<T>, PageEntries]> {
+  const [prepared, tables] = await Promise.all([probeQuery(db, releaseId, query, probe), dictionaryTables(db)]);
+  return [prepared, pageEntriesOf(db, releaseId, tables)];
 }
 
 /** The readings of a probe that matched, and how the query reached them. */
 async function found(
   db: LookupDatabase,
   releaseId: string,
+  pages: PageEntries,
   queryInfo: QueryInfo,
   release: ReleaseInfo,
   hits: readonly HitRow[],
@@ -336,9 +352,9 @@ async function found(
     Promise.all(
       links.map(async (link): Promise<LemmaLink> => {
         if (link.kind === "dangling") {
-          const pages = await pageEntryCandidates(db, releaseId, link.targetWord);
-          if (pages.length === 0) return link;
-          return { ...link, kind: "candidates", candidates: pages.map((page) => ({ ...page, listing: undefined, expressions: [] })) };
+          const entries = await pages.candidates(link.targetWord);
+          if (entries.length === 0) return link;
+          return { ...link, kind: "candidates", candidates: entries.map((entry) => ({ ...entry, listing: undefined, expressions: [] })) };
         }
         const candidates = await Promise.all(
           link.candidates.map(async (candidate) => {

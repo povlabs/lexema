@@ -526,19 +526,19 @@ test("an apply brings a master seeded before #18 up to the schema, and the upgra
   });
 });
 
-test("the upgrade gives a master seeded before #403 its page-entry tables, empty, and lookups answer again", async () => {
+test("the upgrade gives a master seeded before #403 its page-entry tables, empty, and lookups answer the same", async () => {
   await withDesk(async ({ db }) => {
     for (const table of [...PAGE_ENTRY_TABLES].reverse()) db.exec(`DROP TABLE ${table}`);
     assert.deepEqual(missingUpgrade(readerOf(db)), [...PAGE_ENTRY_TABLES, ...PAGE_ENTRY_INDEXES]);
-    await assert.rejects(ask(db, "casa"), /no such table: recovered_entry/);
+    const casa = await ask(db, "casa");
+    assert.equal(casa.outcome, "found");
     const written = () => (db.prepare("SELECT total_changes() AS n").get() as { n: number }).n;
     const before = written();
     execute(db, masterUpgradeSql(await readFile(SCHEMA, "utf8")));
     assert.equal(written(), before, "the upgrade writes no row");
     assert.deepEqual(missingUpgrade(readerOf(db)), []);
     for (const table of PAGE_ENTRY_TABLES) assert.equal((db.prepare(`SELECT count(*) AS n FROM ${table}`).get() as { n: number }).n, 0);
-    assert.equal(readings(await ask(db, "casa"))[0].ref.releaseId, MASTER);
-    assert.equal((await ask(db, "vado")).outcome, "found");
+    assert.deepEqual(await ask(db, "casa"), casa);
   });
 });
 

@@ -14,12 +14,14 @@ small reproduction concatenate `fixtures/dev-seed.jsonl` and
 `fixtures/page-entry-forms.jsonl` into a local input file and set `SEED_INPUT` to
 it. Its pages are already committed under `fixtures/`.
 
-**An already-seeded dictionary.** It lacks the four page-entry tables, and the
-readers fail on every lookup until it has them. `pnpm run update:upgrade`
-creates them empty, with the update tables and views, and writes no row
-([update the dictionary](UPDATE_THE_DICTIONARY.md#once-a-dictionary-seeded-from-an-older-schema)).
-Run it before these readers serve from that database; lookups then answer as
-before, with no page-only entries. Loading the entries into a seeded dictionary
-is [#440](https://github.com/hueypov/lexema/issues/440). The existing
+**An already-seeded dictionary.** It lacks the four page-entry tables. Lookups
+read which tables exist once per lookup, from `sqlite_schema`
+(`dictionaryTables` in [served.ts](../src/lookup/served.ts)). Without the tables
+they send no statement that names them and answer as before, with no page-only
+entries. Some of the four without the rest is refused, not read as either.
+`pnpm run update:upgrade` creates the tables empty and writes no row
+([update the dictionary](UPDATE_THE_DICTIONARY.md#once-a-dictionary-seeded-from-an-older-schema));
+serving does not need it. Loading the entries into a seeded dictionary is
+[#440](https://github.com/hueypov/lexema/issues/440). The existing
 update/feed-selection contracts are unchanged. Random selection still draws archive line numbers;
 page-only entries are reachable by exact search and existing form-of links.

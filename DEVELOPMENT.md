@@ -330,11 +330,14 @@ There are two databases, each with its own schema and its own Worker binding
   `claim_review`, which cascades from `source_record`, and `feed_release` and
   `applied_change`, which record the changes applied from a later release
   ([docs/UPDATES.md](./docs/UPDATES.md)). Lookups read the view
-  `served_release` over them, and the page-entry tables of
-  [#403](https://github.com/hueypov/lexema/issues/403). A dictionary seeded
-  before either needs `pnpm run update:upgrade` once, or a fresh seed; it
-  creates them empty, read out of `schema.sql` (`src/update/masterUpgrade.ts`).
-  A new dictionary table that lookups read goes in that upgrade too. Any other
+  `served_release` over them, so a local dictionary seeded before
+  [#18](https://github.com/hueypov/lexema/issues/18) needs
+  `pnpm run update:upgrade` once, or a fresh seed; it reads them out of
+  `schema.sql` (`src/update/masterUpgrade.ts`). A table an older dictionary
+  may lack, such as `hide_version` or the page-entry tables of
+  [#403](https://github.com/hueypov/lexema/issues/403), is read only once
+  `dictionaryTables` ([src/lookup/served.ts](./src/lookup/served.ts)) finds it
+  in the schema, so lookups serve such a dictionary unchanged. Any other
   change to `schema.sql` needs a reseed or an update of its own. Code only reads it:
   [src/lookup/database.ts](./src/lookup/database.ts) hands it out as a
   `LookupDatabase`, whose one method takes a single `SELECT`, so a write does

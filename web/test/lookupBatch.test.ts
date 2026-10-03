@@ -16,6 +16,7 @@ import { seedSql } from "../../src/import/seedSql.js";
 import { BATCH_LEMMA_LINK_SQL, BATCH_SEARCH_SQL, lookupBatch, type BatchAnswer } from "../../src/lookup/batch.js";
 import { fromNodeSqlite, type DictionaryRead, type LookupDatabase } from "../../src/lookup/database.js";
 import { lookup } from "../../src/lookup/lookup.js";
+import { OPTIONAL_TABLES_SQL } from "../../src/lookup/served.js";
 import type { LemmaTarget } from "../../src/lookup/types.js";
 import { candidatesOf } from "@/worker/api/lookupAnswer.ts";
 
@@ -143,9 +144,10 @@ test("a batch reads the release once and runs the same few statements for one wo
     assert.equal(releaseReads(asked), 1, asked.join("\n---\n"));
     assert.equal(asked.filter((sql) => sql === BATCH_SEARCH_SQL).length, 1, asked.join("\n---\n"));
     assert.equal(asked.filter((sql) => sql === BATCH_LEMMA_LINK_SQL).length, 1, asked.join("\n---\n"));
-    // The release, the search and the lemma links: a single word nothing
-    // spells is never read word by word.
-    assert.equal(asked.length, 3, asked.join("\n---\n"));
+    assert.equal(asked.filter((sql) => sql === OPTIONAL_TABLES_SQL).length, 1, asked.join("\n---\n"));
+    // The release and the optional tables (one D1 call), the search and the
+    // lemma links: a single word nothing spells is never read word by word.
+    assert.equal(asked.length, 4, asked.join("\n---\n"));
   }
 });
 

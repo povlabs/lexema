@@ -1,6 +1,6 @@
 import type { DictionaryRead, LookupDatabase, SqlValue } from "./database.js";
 import { readingPartOfSpeech } from "./articles.js";
-import { servedBy } from "./served.js";
+import { servedBy, type DictionaryTables } from "./served.js";
 import { normalizeItalianExact } from "../italian/normalize.js";
 import { type LemmaCandidate, type Reading, type RecoveredDefinition, type PageEntryRef, type RecoveredRoute } from "./types.js";
 
@@ -35,12 +35,34 @@ const refOf = (row: EntryRow): PageEntryRef => ({
   timestamp: row.revision_timestamp, line: row.page_line, wikitext: row.wikitext,
 });
 
-export async function pageEntryCandidates(db: LookupDatabase, releaseId: string, word: string): Promise<LemmaCandidate[]> {
+/**
+ * The page-only entries a dictionary serves. A dictionary seeded before their
+ * tables (#403) serves none, and is never sent a statement that names them.
+ */
+export interface PageEntries {
+  /** The entries `word` names, as lemma candidates of a form that names it. */
+  candidates(word: string): Promise<LemmaCandidate[]>;
+  /** The entries headed by the query key, as readings. */
+  readings(key: string): Promise<Reading[]>;
+}
+
+const NO_PAGE_ENTRIES: PageEntries = { candidates: async () => [], readings: async () => [] };
+
+/** The dictionary's page-only entries, decided once from its schema (src/lookup/served.ts). */
+export function pageEntriesOf(db: LookupDatabase, releaseId: string, tables: DictionaryTables): PageEntries {
+  if (!tables.pageEntries) return NO_PAGE_ENTRIES;
+  return {
+    candidates: (word) => pageEntryCandidates(db, releaseId, word),
+    readings: (key) => pageEntryReadings(db, releaseId, key),
+  };
+}
+
+async function pageEntryCandidates(db: LookupDatabase, releaseId: string, word: string): Promise<LemmaCandidate[]> {
   const rows = await queryAll<EntryRow>(db, PAGE_ENTRY_SQL, releaseId, normalizeItalianExact(word));
   return rows.map((row) => ({ entryId: row.entry_id, word: row.word, pos: row.pos, ref: refOf(row) }));
 }
 
-export async function pageEntryReadings(db: LookupDatabase, releaseId: string, key: string): Promise<Reading[]> {
+async function pageEntryReadings(db: LookupDatabase, releaseId: string, key: string): Promise<Reading[]> {
   const rows = await queryAll<EntryRow>(db, PAGE_ENTRY_SQL, releaseId, key);
   return Promise.all(rows.map(async (row): Promise<Reading> => {
     const [definitions, labels, examples] = await Promise.all([

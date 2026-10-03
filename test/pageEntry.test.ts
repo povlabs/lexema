@@ -7,7 +7,8 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { seedSql } from "../src/import/seedSql.js";
-import { fromNodeSqlite } from "../src/lookup/database.js";
+import { fromNodeSqlite, type LookupDatabase } from "../src/lookup/database.js";
+import { OPTIONAL_TABLES_SQL, PAGE_ENTRY_TABLES } from "../src/lookup/served.js";
 import { lookup, exists } from "../src/lookup/lookup.js";
 import { lookupBatch } from "../src/lookup/batch.js";
 import { loadFixturePages, rawPageSource } from "../src/source/rawPage.js";
@@ -96,7 +97,8 @@ test("isolated seed finds page entries and resolves real form records without in
       const batch = await lookupBatch({ db: { all: (sql, params) => { statements.push(sql); return read.all(sql, params); } },
         releaseId: options.releaseId, queries });
       assert.deepEqual(batch.answers.map((answer) => answer.outcome), queries.map(() => "found"));
-      assert.equal(statements.length, 3);
+      // The release and the optional tables (one D1 call), the search, the links.
+      assert.equal(statements.length, 4);
       for (const answer of batch.answers) {
         assert.ok(answer.outcome === "found");
         assert.ok(answer.candidates[0].entryId !== undefined);
@@ -119,4 +121,40 @@ test("isolated seed finds page entries and resolves real form records without in
       assert.equal(present.rows.recovered_entry, 0);
     } finally { before.close(); }
   } finally { db.close(); await rm(dir, { recursive: true, force: true }); }
+});
+
+test("a dictionary seeded before the page-entry tables answers as it did, and never names them", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "lexema-page-entry-"));
+  const empty = new DatabaseSync(":memory:");
+  const old = new DatabaseSync(":memory:");
+  try {
+    const releaseId = "it-page-entry-test";
+    const seeded = await seedSql({ input: resolve("fixtures/dev-seed.jsonl"), outputDir: join(dir, "sql"), schema: resolve("src/db/schema.sql"), releaseId, rawPages: pages });
+    for (const part of seeded.parts) {
+      const sql = await readFile(part, "utf8");
+      empty.exec(sql);
+      old.exec(sql);
+    }
+    assert.equal((empty.prepare("SELECT count(*) AS n FROM recovered_entry").get() as { n: number }).n, 0);
+    for (const table of [...PAGE_ENTRY_TABLES].reverse()) old.exec(`DROP TABLE ${table}`);
+
+    const sent: string[] = [];
+    const watched = fromNodeSqlite(old);
+    const oldRead: LookupDatabase = { all: (sql, params) => { sent.push(sql); return watched.all(sql, params); } };
+    const emptyRead = fromNodeSqlite(empty);
+    const words = ["casa", "vado", "andare", "bello", "raccontare"];
+    for (const query of words) {
+      assert.deepEqual(await lookup({ db: oldRead, releaseId, query }), await lookup({ db: emptyRead, releaseId, query }), query);
+      assert.deepEqual(await exists({ db: oldRead, releaseId, query }), await exists({ db: emptyRead, releaseId, query }), query);
+    }
+    assert.equal((await lookup({ db: oldRead, releaseId, query: "casa" })).outcome, "found");
+    assert.equal((await lookup({ db: oldRead, releaseId, query: "vado" })).outcome, "found");
+    assert.deepEqual(await lookupBatch({ db: oldRead, releaseId, queries: words }), await lookupBatch({ db: emptyRead, releaseId, queries: words }));
+    const named = sent.filter((sql) => PAGE_ENTRY_TABLES.some((table) => new RegExp(`\\b${table}\\b`).test(sql.replace(OPTIONAL_TABLES_SQL, ""))));
+    assert.deepEqual(named, []);
+
+    // Some page-entry tables without the rest is no schema anyone seeded: refused, never read as either.
+    empty.exec("DROP TABLE entry_example");
+    await assert.rejects(lookup({ db: emptyRead, releaseId, query: "casa" }), /not every page-entry table/);
+  } finally { empty.close(); old.close(); await rm(dir, { recursive: true, force: true }); }
 });

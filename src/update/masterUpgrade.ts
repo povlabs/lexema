@@ -5,14 +5,18 @@
 // upgraded master cannot drift apart. The statements are safe to run again:
 // the tables are created only when absent, and the views are replaced.
 
+import { PAGE_ENTRY_TABLES } from "../lookup/served.js";
+
 /** The tables #18 added, in the order their foreign keys need. */
 export const UPDATE_TABLES = ["feed_release", "applied_change"] as const;
 
 /**
  * The page-entry tables (ADR 0024), in the order their foreign keys need. The
- * upgrade creates them empty; loading their rows into a seeded master is #440.
+ * upgrade creates them empty; lookups serve a master without them as one with
+ * no page-only entries (src/lookup/served.ts), so the upgrade is not needed
+ * to serve, only to load entries later.
  */
-export const PAGE_ENTRY_TABLES = ["recovered_entry", "entry_definition", "entry_label", "entry_example"] as const;
+export { PAGE_ENTRY_TABLES };
 
 /** The indexes on the page-entry tables. */
 export const PAGE_ENTRY_INDEXES = ["recovered_entry_by_key"] as const;

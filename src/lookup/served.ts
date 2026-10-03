@@ -68,18 +68,46 @@ export interface ServedVersion {
  */
 export const LAST_CHANGE_SQL: DictionaryRead = `SELECT change_id FROM applied_change ORDER BY rowid DESC LIMIT 1`;
 
-export const HIDE_VERSION_TABLE_SQL: DictionaryRead = `SELECT name FROM sqlite_schema WHERE type = 'table' AND name = 'hide_version'`;
+/** The page-only entry tables (ADR 0024, #403), in the order their foreign keys need. */
+export const PAGE_ENTRY_TABLES = ["recovered_entry", "entry_definition", "entry_label", "entry_example"] as const;
+
+/**
+ * Which of the tables an older master may lack it has: `hide_version` (#408)
+ * and the page-entry tables (#403). Presence is read from the schema, never
+ * inferred from a failed read, so an error on a table that exists still fails.
+ */
+export const OPTIONAL_TABLES_SQL: DictionaryRead = `SELECT name FROM sqlite_schema WHERE type = 'table' AND name IN (${["hide_version", ...PAGE_ENTRY_TABLES].map((name) => `'${name}'`).join(", ")})`;
 export const HIDE_VERSION_SQL: DictionaryRead = `SELECT revision FROM hide_version WHERE singleton = 1`;
+
+/** The optional tables a dictionary has. */
+export interface DictionaryTables {
+  /** Absent until a master's first nonempty live hide. */
+  hideVersion: boolean;
+  /** All four page-entry tables; absent on a master seeded before #403. */
+  pageEntries: boolean;
+}
+
+/**
+ * The optional tables the dictionary has, in one statement. Callers send it
+ * beside their first read, so on D1 it rides in that same batch (fromD1).
+ * Some page-entry tables without the rest is no schema.sql ever wrote, and is
+ * refused rather than read as either.
+ */
+export async function dictionaryTables(db: LookupDatabase): Promise<DictionaryTables> {
+  const present = new Set((await db.all<{ name: string }>(OPTIONAL_TABLES_SQL, [])).map((row) => row.name));
+  const pages = PAGE_ENTRY_TABLES.filter((name) => present.has(name));
+  if (pages.length > 0 && pages.length < PAGE_ENTRY_TABLES.length) {
+    throw new Error(`the dictionary has ${pages.join(", ")} but not every page-entry table (${PAGE_ENTRY_TABLES.join(", ")})`);
+  }
+  return { hideVersion: present.has("hide_version"), pageEntries: pages.length === PAGE_ENTRY_TABLES.length };
+}
 
 /** The version the master `release` serves now, including committed live hides. */
 export async function servedVersion(db: LookupDatabase, release: string): Promise<ServedVersion> {
-  const [last, tables] = await Promise.all([
-    db.all<{ change_id: string }>(LAST_CHANGE_SQL, []),
-    db.all<{ name: string }>(HIDE_VERSION_TABLE_SQL, []),
-  ]);
+  const [last, tables] = await Promise.all([db.all<{ change_id: string }>(LAST_CHANGE_SQL, []), dictionaryTables(db)]);
   // An old master has no table until its first nonempty live hide. Do not
   // suppress other database failures: an unread version must not hit a cache.
-  const [hide] = tables.length === 0 ? [] : await db.all<{ revision: number }>(HIDE_VERSION_SQL, []);
+  const [hide] = tables.hideVersion ? await db.all<{ revision: number }>(HIDE_VERSION_SQL, []) : [];
   return { release, lastChange: last[0]?.change_id ?? null, hideRevision: hide?.revision ?? 0 };
 }
 
