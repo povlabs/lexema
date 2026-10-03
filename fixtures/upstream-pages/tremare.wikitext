@@ -1,0 +1,49 @@
+<!-- it.wiktionary.org/wiki/tremare revision 4002473 (2024-11-07T06:13:27Z), CC BY-SA 4.0. Saved verbatim. -->
+== {{-it-}} ==
+{{Intransitivo|it}}
+{{Pn|c}}
+#convulso dei muscoli per effetto del freddo, della paura, di una malattia
+# {{Fig}} essere agitato da scosse continue
+
+{{-sill-}}
+; tre | mà | re
+
+{{-pron-}}
+{{IPA|/treˈmare/}}
+
+{{-etim-}}
+dal [[latino]] ''[[tremere|trĕmĕre]]''
+
+{{-sin-}}
+* ''(per freddo, febbre)'' [[rabbrividire]]
+* ''(di cose)'' [[ondeggiare]], [[dondolare]], [[oscillare]], [[sussultare]], [[traballare]], [[vacillare]]
+* ''(di suono, voce)'' [[vibrare]], [[tremolare]]
+* {{Fig}} [[bollire]], [[ribollire]], essere in ansia, [[trepidare]], [[scalpitare]], [[fremere]], [[sgomentarsi]], [[spaventarsi]], [[impaurirsi]], [[temere]], [[trasalire]], [[sobbalzare]]
+* {{Fig}} ''(di luce)'' essere discontinuo, variare d’intensità; essere intermittente
+* ''(della vista)'' [[offuscarsi]]
+
+{{-ant-}}
+*essere fisso, restare immobile,  stare fermo
+* ''(di cose)''[[stabilizzarsi]]
+*aver coraggio, [[osare]], restare calmo
+
+{{-der-}}
+* [[tremante]], [[tremarella]], [[trematore]], [[tremebondo]], [[tremendamente]], [[tremendo]], [[trementina]], [[tremerella]], [[tremitio]], [[tremito]], [[tremolare]], [[tremolio]], [[tremore]], [[tremulo]]
+
+{{-prov-}}
+* ''tremare come una foglia'': avere timore
+
+{{-trad-}}
+{{Trad1|fare movimenti avanti e indietro in rapida successione}}
+:* {{nds}}: [[dibbern]]
+:* {{en}}: to [[tremble]]
+{{mid}}
+:* {{la}}: [[trepidare]], [[tremĕre]]
+:* {{de}}: [[zittern]]
+{{Trad2}}
+
+{{-ref-}}
+* {{Fonte|trec}}
+* {{Fonte|hoep}}
+*{{Fonte|dizit}}
+*AA.VV,. ''Dizionario  Sinonimi e contrari'', Mariotti, 2006, pagina 591

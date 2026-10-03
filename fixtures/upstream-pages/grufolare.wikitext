@@ -1,0 +1,30 @@
+<!-- it.wiktionary.org/wiki/grufolare revision 3906191 (2023-01-19T20:52:32Z), CC BY-SA 4.0. Saved verbatim. -->
+== {{-it-}} ==
+{{Intransitivo|it}}
+{{Pn|c}}
+# [[verso]] prodotto dai [[suini]]
+# {{Fig}} {{Nodef|it}}
+
+{{-sill-}}
+; gru | fo | là | re
+
+{{-pron-}}
+{{IPA|/ɡrufoˈlare/}}
+
+{{-etim-}}
+{{Noetim|it}}
+
+{{-der-}}
+* [[grufolarsi]]
+
+{{-trad-}}
+{{Trad1|verso prodotto dai suini}}
+:* {{en}}:
+{{Trad2}}
+
+{{Trad1|}}
+:* {{en}}:
+{{Trad2}}
+
+{{-ref-}}
+* {{Fonte|dizit}}

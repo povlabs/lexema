@@ -289,6 +289,17 @@ they retire. `pnpm run correct:records --plan-only` writes the file and prints
 its counts as JSON, with one line per entry under `entries`, and runs nothing
 on the database.
 
+The same run writes definition corrections: a page-only entry's definition the
+page states wrongly ([#450](https://github.com/hueypov/lexema/issues/450),
+[page-only entries](PAGE_ENTRIES.md#corrected-definitions)). Each is one
+`corrected_definition` row, created with its table when the master lacks it.
+`entry_definition` is not touched. It is written only to the master's entry of
+the page title that was read from the revision the correction names, where the
+definition at its place is the line and text it quotes. Otherwise the run
+prints why not: the master holds no entry of that title, its entry was read
+from another revision, or the definition differs. The plan's counts name its
+`corrected_definition` rows; a definition entry changes no record.
+
 On the shared `lexema-dictionary`, the dictionary deploy workflow runs the
 command after a merged change declaration names it
 ([dictionary-changes/README.md](../dictionary-changes/README.md),
@@ -313,7 +324,10 @@ On a master that already holds #420's twelve, it prints `written now: 8`, for
 the plurals tagged singular of
 [#449](https://github.com/hueypov/lexema/issues/449), and `already written` for
 the twelve. Every later run prints `nothing to write` and `already written` for
-each. An
+each. Until the shared dictionary holds page-only entries
+([#440](https://github.com/hueypov/lexema/issues/440)), the two definition
+corrections print `not written; the master holds no page-only entry`; a later
+declaration writes them once those entries are loaded. An
 older Worker serves the master as before, since it never reads the new tables;
 the deployed one reads no correction from a master without them.
 
