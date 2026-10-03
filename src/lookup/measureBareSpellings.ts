@@ -17,7 +17,8 @@
 import { readdir } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { DatabaseSync } from "node:sqlite";
-import { bareSpelling, bareSpellingOutcome, type BareSpellingOutcome } from "./bareSpelling.js";
+import { isMain } from "../commandLine.js";
+import { bareSpelling,bareSpellingOutcome, type BareSpellingOutcome } from "./bareSpelling.js";
 import { fromNodeSqlite } from "./database.js";
 import { lookup } from "./lookup.js";
 import { findNearby, type Nearby } from "./nearby.js";
@@ -136,5 +137,7 @@ async function measure(file: string, named: string | undefined, log: (line: stri
   return out.join("\n");
 }
 
-const file = await dictionaryFile(resolve(process.env.SEED_STATE ?? ".data/full-state"));
-process.stdout.write(`${await measure(file, process.env.LEXEMA_RELEASE, (line) => process.stderr.write(`${line}\n`))}\n`);
+if (isMain(import.meta.url)) {
+  const file = await dictionaryFile(resolve(process.env.SEED_STATE ?? ".data/full-state"));
+  process.stdout.write(`${await measure(file, process.env.LEXEMA_RELEASE, (line) => process.stderr.write(`${line}\n`))}\n`);
+}
