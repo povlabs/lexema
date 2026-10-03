@@ -1,5 +1,6 @@
 // What a search that found nothing offers instead (#142, board 24): the same
-// letters with an accent (`citta` → `città`), a spelling one edit away
+// letters with an accent (`citta` → `città`) or a final apostrophe (`dall` →
+// `dall'`, #468), a spelling one edit away
 // (`mangare` → `mangiare`), or the words that begin with what was typed
 // (`bab`). Each step runs only when the one before it found nothing, and each
 // is an indexed read: `accent_fold` and `typo_key` are written by the seed
@@ -23,6 +24,17 @@ import { suggest } from "./suggest.js";
 /** A key with its accents taken off: `città` → `citta`. The query is folded the same way. */
 export function foldKey(key: string): string {
   return key.normalize("NFD").replace(/\p{M}/gu, "").normalize("NFC");
+}
+
+/**
+ * The letters an accent offer matches on: a key with its accents and a final
+ * apostrophe taken off, so `città` and `po'` match `citta` and `po`. Stored
+ * keys are folded by `foldKey` alone; the apostrophe is the query's to add
+ * (`accentMatches`).
+ */
+export function bareKey(key: string): string {
+  const folded = foldKey(key);
+  return folded.length > 1 && folded.endsWith("'") ? folded.slice(0, -1) : folded;
 }
 
 /** A key and every spelling of it with one character left out: the typo index's keys. */
@@ -151,18 +163,39 @@ async function candidatesFor(
   );
 }
 
-/** Step 2: the same letters with other accents, including an unaccented spelling of an accented query. */
+/** How common a key is, as its own `typo_key` row states it; 0 and 0 for a key that is no lemma headword. */
+async function scoreOf(db: LookupDatabase, releaseId: string, key: string): Promise<Found> {
+  const [row] = await db.all<{ languages: number; richness: number }>(
+    `SELECT languages, richness FROM typo_key WHERE release_id IN (${servedBy("?1")}) AND deletion_key = ?2 AND surface_key = ?2`,
+    [releaseId, key],
+  );
+  return { edits: 0, languages: row?.languages ?? 0, richness: row?.richness ?? 0 };
+}
+
+/**
+ * Step 2: the same letters with other accents, including an unaccented
+ * spelling of an accented query, or with the final apostrophe the query left
+ * off (#468).
+ */
 async function accentMatches(db: LookupDatabase, releaseId: string, key: string): Promise<Candidate[]> {
   const folded = foldKey(key);
-  const rows = await db.all<{ surface_key: string; languages: number; richness: number }>(
-    `SELECT surface_key, languages, richness FROM accent_fold WHERE release_id IN (${servedBy("?1")}) AND fold_key = ?2`,
-    [releaseId, folded],
-  );
+  // `accent_fold` keys on accents alone, so the apostrophe is added here and
+  // probed there, for an accented spelling, and as a key of its own.
+  const elided = key.endsWith("'") ? undefined : `${folded}'`;
+  const folds = elided === undefined ? [folded] : [folded, elided];
+  const [rows, elidedScore] = await Promise.all([
+    db.all<{ surface_key: string; languages: number; richness: number }>(
+      `SELECT surface_key, languages, richness FROM accent_fold WHERE release_id IN (${servedBy("?1")}) AND fold_key IN (${placeholders(folds.length, 2)})`,
+      [releaseId, ...folds],
+    ),
+    elided === undefined ? undefined : scoreOf(db, releaseId, elided),
+  ]);
   const keys = new Map<string, Found>(
     rows.map((row) => [row.surface_key, { edits: 0, languages: row.languages, richness: row.richness }]),
   );
   // An unaccented spelling of an accented query is not in accent_fold; it ranks last among equals.
   if (folded !== key && !keys.has(folded)) keys.set(folded, { edits: 0, languages: 0, richness: 0 });
+  if (elided !== undefined && elidedScore !== undefined) keys.set(elided, elidedScore);
   keys.delete(key);
   return candidatesFor(db, releaseId, keys);
 }

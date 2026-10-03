@@ -24,7 +24,7 @@
 
 import { normalizeItalianExact } from "@lexema/italian/normalize.ts";
 import { expressionMeaning } from "@lexema/lookup/expressions.ts";
-import { foldKey, type Nearby } from "@lexema/lookup/nearby.ts";
+import { bareKey, type Nearby } from "@lexema/lookup/nearby.ts";
 import type { PhraseOffer } from "@lexema/lookup/phrase.ts";
 import { entryKey, isFormOfReading, isVerbReading, lemmasOfPartOfSpeech, searchedSpellings } from "@lexema/lookup/types.ts";
 import type {
@@ -428,16 +428,17 @@ const phraseSuggestions = (offers: readonly PhraseOffer[]): Suggestion[] =>
 /**
  * `findNearby`'s offer as a list. After an accent match it also lists the
  * words that begin with the query (`others`), so each of those is told apart
- * by whether it is the query's letters with other accents, which is the test
- * `accent_fold` itself keys on. The phrases follow an accent or a typo offer.
+ * by whether it is the query's letters with other accents or a final
+ * apostrophe, which is the test the accent step itself makes (`bareKey`). The
+ * phrases follow an accent or a typo offer.
  */
 export function suggestionsOf(nearby: Nearby, query: string): Suggestion[] {
   switch (nearby.kind) {
     case "accent": {
-      const folded = foldKey(normalizeItalianExact(query));
+      const bare = bareKey(normalizeItalianExact(query));
       return [
         ...[nearby.best, ...nearby.others].map((word) =>
-          spelling(word, foldKey(normalizeItalianExact(word)) === folded ? "accent" : "prefix"),
+          spelling(word, bareKey(normalizeItalianExact(word)) === bare ? "accent" : "prefix"),
         ),
         ...phraseSuggestions(nearby.phrases),
       ];

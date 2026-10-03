@@ -921,13 +921,55 @@ test("a declared plural the source states rightly renders exactly as it did, and
     return read;
   };
   const [before, after] = [await pages(false), await pages(true)];
-  // `costruttrici` says "plurale di costruttrice" and is right: nothing about its page moves.
-  assert.equal(after.costruttrice, before.costruttrice);
+  // `costruttrici` says "plurale di costruttrice" and is right: nothing about the noun moves.
+  // Only its own reading, which the page shows too, now says plural (#449).
+  assert.deepEqual(readingsBesides(after.costruttrice, COSTRUTTRICI), readingsBesides(before.costruttrice, COSTRUTTRICI));
   assert.deepEqual(gridRows(nth(after.costruttrice, 1)), [HEAD, ["femminile", "—", "costruttricile costruttrici·delle costruttrici"]]);
   // The page shows the corrected fact as data, and nothing about the correction (ADR 0016).
   for (const page of Object.values(after)) {
     assert.doesNotMatch(page, /wiktionary\.org\/w\/index\.php|oldid|it-page-test:\d|corrett|corrected|correction/i);
   }
+});
+
+/** `costruttrici`'s record: its line in fixtures/curated-corrections.jsonl. */
+const COSTRUTTRICI = 31;
+
+/** A page's readings, but for the ones of these records. */
+const readingsBesides = (html: string, ...recordIds: number[]): string[] =>
+  readingsOfPage(html).filter((reading) => !recordIds.some((id) => reading.startsWith(` id="reading-${id}"`)));
+
+test("a real plural tagged singular is plural on its own page, and its noun's page does not move (#449)", async () => {
+  const plurals = ["costruttrici", "scolare", "curde", "anfitrioni", "mosse", "portatrici", "ricoverati", "scontente"];
+  const nouns = ["costruttrice", "scolara", "curdo", "anfitrione", "portatrice", "mossa", "ricoverato", "scontento"];
+  const pages = async (corrected: boolean): Promise<Record<string, string>> => {
+    let read: Record<string, string> = {};
+    await withCorrectionLines(corrected, async ({ db }) => {
+      read = Object.fromEntries(await Promise.all([...plurals, ...nouns].map(async (word) => [word, await render(db, word)] as const)));
+    });
+    return read;
+  };
+  const [before, after] = [await pages(false), await pages(true)];
+  // As the source states it: `la costruttrici`, in the singolare beside costruttrice.
+  assert.deepEqual(gridRows(nth(before.costruttrici, 1))[2], ["femminile", "costruttricila costruttrici·una costruttricicostruttricela costruttrice·una costruttrice", "—"]);
+
+  assert.deepEqual(gridRows(nth(after.costruttrici, 1)), [
+    HEAD,
+    ["maschile", "costruttoreil costruttore·un costruttore", "costruttorii costruttori·dei costruttori"],
+    ["femminile", "costruttricela costruttrice·una costruttrice", "costruttricile costruttrici·delle costruttrici"],
+  ]);
+  assert.deepEqual(gridRows(nth(after.scolare, 1))[2], ["femminile", "scolarala scolara·una scolara", "scolarele scolare·delle scolare"]);
+  assert.deepEqual(gridRows(nth(after.anfitrioni, 1))[1], ["maschile", "anfitrionel'anfitrione·un anfitrione", "anfitrionigli anfitrioni·degli anfitrioni"]);
+  for (const word of plurals) {
+    const own = nth(after[word], 1);
+    assert.match(headingsOf(after[word])[0], /^1·Sostantivo, forma flessa·(maschile|femminile), plurale$/, word);
+    // The word sits in no singolare cell of its own grid (`mosse` and `portatrici` list no forms, so take none).
+    for (const row of gridRows(own).slice(1)) assert.ok(!row[1].startsWith(word), `${word}: ${row[1]}`);
+    assert.doesNotMatch(after[word], /wiktionary\.org\/w\/index\.php|oldid|it-page-test:\d|corrett|corrected|correction/i);
+  }
+
+  // Each noun's own readings render exactly as before; only the plurals' own readings, when its page shows them, moved.
+  const corrected = [8, 10, 25, 26, COSTRUTTRICI, 38, 39, 41];
+  for (const noun of nouns) assert.deepEqual(readingsBesides(after[noun], ...corrected), readingsBesides(before[noun], ...corrected), noun);
 });
 
 test("a record that states both numbers fills both columns and names both in its heading; a proper name names neither", async () => {

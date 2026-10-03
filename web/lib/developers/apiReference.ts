@@ -619,7 +619,7 @@ export const ENDPOINT_REFERENCE: Readonly<Record<Endpoint, EndpointReference>> =
     title: "Find close spellings",
     tagline: "Did you mean",
     summary:
-      "Spellings close to `q`, in the not-found page's order: the same letters with accents (`accent`), one edit away (`edit`), `q` corrected so that its words spell a multi-word headword as their lemmas, with one word misspelled, the last word unfinished, or only some of the words (`phrase`: `tiro fouri` offers `tiro fuori`, which finds `tirare fuori`), or words that begin with `q` (`prefix`). Phrases also follow an `accent` or `edit` offer. A `phrase`'s `attribution` is the page of the headword it finds.",
+      "Spellings close to `q`, in the not-found page's order: the same letters with accents or a final apostrophe (`accent`), one edit away (`edit`), `q` corrected so that its words spell a multi-word headword as their lemmas, with one word misspelled, the last word unfinished, or only some of the words (`phrase`: `tiro fouri` offers `tiro fuori`, which finds `tirare fuori`), or words that begin with `q` (`prefix`). Phrases also follow an `accent` or `edit` offer. A `phrase`'s `attribution` is the page of the headword it finds.",
     parameters: [Q],
     answers: [{ status: "200", description: "`results` holds the spellings, and is empty when none is close." }],
     examples: [{
