@@ -2172,7 +2172,7 @@ test("page-only readings present definitions without origin marks or invented fo
     assert.ok(filters.ok);
     const candidates = await candidatesOf(answer, async () => undefined);
     const json = resultJson(candidates[0], filters.filters);
-    assert.equal(json.id, `${RELEASE}:page:${reading.ref.revisionId}`);
+    assert.equal(json.id, `${RELEASE}:page:${reading.ref.revisionId}:${reading.ref.line}`);
     assert.equal(idOf(reading), json.id);
     assert.equal(json.forms, null);
     assert.deepEqual(json.pronunciations, []);

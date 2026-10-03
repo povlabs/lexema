@@ -26,7 +26,7 @@ import { normalizeItalianExact } from "@lexema/italian/normalize.ts";
 import { expressionMeaning } from "@lexema/lookup/expressions.ts";
 import { bareKey, type Nearby } from "@lexema/lookup/nearby.ts";
 import type { PhraseOffer } from "@lexema/lookup/phrase.ts";
-import { entryKey, isFormOfReading, isVerbReading, lemmasOfPartOfSpeech, searchedSpellings } from "@lexema/lookup/types.ts";
+import { entryKey, isFormOfReading, isVerbReading, lemmasOfPartOfSpeech, publicEntryId, searchedSpellings } from "@lexema/lookup/types.ts";
 import type {
   FoundResult,
   LemmaTarget,
@@ -502,7 +502,11 @@ export interface LemmaJson {
   attribution: AttributionJson;
 }
 
-export const idOf = (reading: Reading): string => `${reading.ref.releaseId}:${reading.recordId === undefined ? `page:${reading.ref.revisionId}` : reading.ref.lineNo}`;
+export const idOf = ({ recordId, ref }: Reading): string => publicEntryId(
+  recordId === undefined
+    ? { releaseId: ref.releaseId, revisionId: ref.revisionId, pageLine: ref.line }
+    : { releaseId: ref.releaseId, lineNo: ref.lineNo },
+);
 
 export function lemmaJson(candidate: Candidate): LemmaJson {
   const { reading } = candidate;

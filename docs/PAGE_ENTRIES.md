@@ -19,15 +19,18 @@ To build one in a local seed, see
 - An entry holds its word, its part of speech, its definitions, and their labels
   and examples. Each fact keeps the page revision, its 1-based page line and that
   line's wikitext, verbatim.
-- A page gives one entry per Italian part-of-speech section, and the rule that
-  read it.
+- A page gives one entry per Italian part-of-speech section. Each entry records
+  the rule that read it.
 - No inflection table, pronunciation or etymology is recovered.
 
 ## Identity
 
 - A page-only entry has an `entryId`, never a `recordId`; a reading is exactly
   one of the two (`EntryIdentity` in [types.ts](../src/lookup/types.ts)).
-- API ids are `<release>:page:<revisionId>`. Archive ids stay `<release>:<lineNo>`.
+- API ids are `<release>:page:<revisionId>:<pageLine>`, where `pageLine` is the
+  1-based line that states the entry's part of speech. A page gives one entry
+  per such line, so `lungo` gives two ids. Archive ids stay `<release>:<lineNo>`
+  (`publicEntryId` in [types.ts](../src/lookup/types.ts)).
 - A report names a source record or the word. A page-only entry is not offered
   as a reading to report, so its report is about the word.
 
