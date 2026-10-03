@@ -1,12 +1,12 @@
 ---
 id: 0018
-title: Workers Builds deploys a Preview per branch and production on each merge to main, over one shared read-only dictionary D1
+title: Workers Builds deploys a Preview per branch and production after each green dictionary deploy, over one shared read-only dictionary D1
 status: accepted
 date: 2026-09-30
 tags: [stack, hosting]
 ---
 
-# 0018 — Workers Builds deploys a Preview per branch and production on each merge to main, over one shared read-only dictionary D1
+# 0018 — Workers Builds deploys a Preview per branch and production after each green dictionary deploy, over one shared read-only dictionary D1
 
 **What this decides:** Every branch gets its own public, noindexed preview of the three sites, built by Cloudflare from the connected repository; previews and production read one dictionary database and never write to it; each preview writes only to its own app database; and a merge to `main` deploys production once the dictionary deploy workflow has passed. The only Cloudflare key in GitHub is one D1 Edit token that only that workflow reads.
 
@@ -84,7 +84,7 @@ On 2026-10-03 Huey ruled in grilling session [#443](https://github.com/hueypov/l
 - Previews are public and serve the dictionary before production does. They carry the same *Source* links and `/attribution` page as production, so the licence terms ADR 0013 checked apply to them unchanged. ADR 0013's rule that production gains a D1 only once the release records its source dump is left as it stands, with #19.
 - The dictionary D1 is shared, so a bad write would reach production and every Preview at once. The read-only binding and its test stop one from the Worker. CI's writes are guarded by the deploy workflow's restore point and checks, and a bad one is undone by a person running the restore, never by the workflow.
 - A GitHub secret can now edit every D1 on the account, as the Builds token already can. The environment restricted to `main` and the reviewed workflow are what keep it to the dictionary deploy.
-- A closed, unmerged pull request's Preview and app D1 live until the next merge to `main`.
+- A closed, unmerged pull request's Preview and app D1 live until the next production build, which runs only when a green dictionary deploy run advances `production`.
 - The Builds token can edit every D1 on the account, including the dictionary. Build commands are reviewed like any other code.
 - The build pipeline now lives in Cloudflare's dashboard as well as the repository, so it can drift; that is why its settings go into `docs/DEPLOY.md`.
 
@@ -94,4 +94,4 @@ This ADR coins three terms, added to [.glossary/TERMS.md](../.glossary/TERMS.md)
 
 ## Amendments
 
-- **#454 — CI writes the shared dictionary (2026-10-03).** Transcribes Huey's rulings on [#443](https://github.com/hueypov/lexema/issues/443) (R1.1, R1.3, R2.1, R3.1), the [#446](https://github.com/hueypov/lexema/issues/446) amendment, and grilling session [#452](https://github.com/hueypov/lexema/issues/452) (R1.1, R1.3, R1.4), listed under Context. The binding constraint "No GitHub workflow holds, reads or is given a Cloudflare credential" now allows one D1 Edit token in a GitHub environment restricted to `main`, used only by the dictionary deploy workflow. The Workers Builds production branch moves from `main` to `production`, which only that workflow advances after a green run. The deploy workflow and the monthly job each get their own `hueypov/lexema-data` token, read-only and write. The Worker's dictionary binding stays read-only, and no agent holds the key, runs the deploy or writes the shared dictionary.
+- **#454 — CI writes the shared dictionary (2026-10-03).** Transcribes Huey's rulings on [#443](https://github.com/hueypov/lexema/issues/443) (R1.1, R1.3, R2.1, R3.1), the [#446](https://github.com/hueypov/lexema/issues/446) amendment, and grilling session [#452](https://github.com/hueypov/lexema/issues/452) (R1.1, R1.3, R1.4), listed under Context. The binding constraint "No GitHub workflow holds, reads or is given a Cloudflare credential" now allows one D1 Edit token in a GitHub environment restricted to `main`, used only by the dictionary deploy workflow. The Workers Builds production branch moves from `main` to `production`, which only that workflow advances after a green run. The deploy workflow and the monthly job each get their own `hueypov/lexema-data` token, read-only and write. The Worker's dictionary binding stays read-only, and no agent holds the key, runs the deploy or writes the shared dictionary. The title, H1 and the sweep Consequence now name the green dictionary deploy and the next production build, not a merge to `main`.
