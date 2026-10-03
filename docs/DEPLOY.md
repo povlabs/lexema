@@ -182,33 +182,45 @@ commands on every push, from `web/`. Their steps are in `web/builds/`:
 | Branch | Command | What it runs |
 |---|---|---|
 | `production` | `pnpm run deploy:workers-builds` | the [sweep](#the-sweep), then `deploy:production`: the production build and `wrangler deploy` |
-| any other, `main` included | the [Preview command](#the-preview-command) | `preview:prepare`, then `wrangler preview` |
+| `main` | the [Preview command](#the-preview-command) | `preview:prepare` only, which skips `main`: no build, no app D1, no Preview |
+| any other | the [Preview command](#the-preview-command) | `preview:prepare`, then `wrangler preview` |
 
 Only the [dictionary deploy](#the-dictionary-deploy) moves `production`, so the
-site never deploys ahead of the dictionary it reads.
+site never deploys ahead of the dictionary it reads. `main` builds no Preview:
+what lands on it goes live through `production`, and the next production
+build's [sweep](#the-sweep) would delete a `main` Preview anyway
+([ADR 0018](../.decisions/0018-previews-on-workers-builds.md), amended on
+[#491](https://github.com/povlabs/lexema/issues/491)).
 
 ### The Preview command
 
 This is the exact string for the Preview command field:
 
 ```sh
-pnpm run preview:prepare && npx wrangler preview --config dist/server/wrangler.json --name "$(cat dist/preview/name)" --secrets-file dist/preview/secrets.json
+pnpm run preview:prepare && if [ -f dist/preview/name ]; then npx wrangler preview --config dist/server/wrangler.json --name "$(cat dist/preview/name)" --secrets-file dist/preview/secrets.json; fi
 ```
 
 It has two steps, because Workers Builds refuses a custom Preview command that
 does not run `npx wrangler preview` itself
 ([Build branches, existing Workers](https://developers.cloudflare.com/workers/ci-cd/builds/build-branches/#existing-workers-connected-to-builds)).
+Workers Builds has no setting that leaves a branch out of preview builds, only
+one checkbox for all of them
+([Build branches](https://developers.cloudflare.com/workers/ci-cd/builds/build-branches/#configure-preview-builds)),
+so the second step runs only when the first wrote the Preview name. On `main`,
+`preview:prepare` writes nothing and does nothing else, and the command ends
+there, green.
 
-1. `pnpm run preview:prepare` (`web/builds/preview.ts`) runs the production
-   build. It finds or creates the branch's app D1 `lexema-preview-app-<name>`
-   and binds it as `APP_DB` in `web/dist/server/wrangler.json`, leaving `DB` on
-   the shared dictionary. It applies the app migrations to it. Then it writes
+1. `pnpm run preview:prepare` (`web/builds/preview.ts`) stops at once on
+   `main`. On any other branch, it runs the production build. It finds or
+   creates the branch's app D1 `lexema-preview-app-<name>` and binds it as
+   `APP_DB` in `web/dist/server/wrangler.json`, leaving `DB` on the shared
+   dictionary. It applies the app migrations to it. Then it writes
    the [Preview name](#the-preview-name) to `web/dist/preview/name`, and the
    secrets for the deployment to `web/dist/preview/secrets.json`. That file holds
    a new random `BETTER_AUTH_SECRET` on every push, the first and every later one.
-2. `npx wrangler preview` deploys the Preview from that config, named by that
-   name, with those secrets. Without `--name`, Wrangler would name it after the
-   raw branch.
+2. If that name file exists, `npx wrangler preview` deploys the Preview from
+   that config, named by that name, with those secrets. Without `--name`,
+   Wrangler would name it after the raw branch.
 
 The secret is sent with every Preview deployment, because a deployment keeps
 only the secrets it is sent: Wrangler 4.135.0 has no flag to keep the last
@@ -356,7 +368,7 @@ raises GitHub's rate limit for anonymous reads.
    | Git branch (the production branch) | `production` ([below](#set-up-the-dictionary-deploy) makes it) |
    | Build command | `pnpm install --frozen-lockfile` |
    | Deploy command | `pnpm run deploy:workers-builds` |
-   | Preview command (the one for branches that are not `production`, whatever the page labels it) | `pnpm run preview:prepare && npx wrangler preview --config dist/server/wrangler.json --name "$(cat dist/preview/name)" --secrets-file dist/preview/secrets.json` ([above](#the-preview-command)) |
+   | Preview command (the one for branches that are not `production`, whatever the page labels it) | `pnpm run preview:prepare && if [ -f dist/preview/name ]; then npx wrangler preview --config dist/server/wrangler.json --name "$(cat dist/preview/name)" --secrets-file dist/preview/secrets.json; fi` ([above](#the-preview-command)) |
    | Root directory | `web` |
    | API token | leave the default, **Create new token**, unless one already exists for Workers Builds; then select that one |
 
@@ -374,7 +386,7 @@ raises GitHub's rate limit for anonymous reads.
    exactly:
 
    ```sh
-   pnpm run preview:prepare && npx wrangler preview --config dist/server/wrangler.json --name "$(cat dist/preview/name)" --secrets-file dist/preview/secrets.json
+   pnpm run preview:prepare && if [ -f dist/preview/name ]; then npx wrangler preview --config dist/server/wrangler.json --name "$(cat dist/preview/name)" --secrets-file dist/preview/secrets.json; fi
    ```
 
    Then select **Switch to Worker Previews**. It cannot be undone, and nothing
