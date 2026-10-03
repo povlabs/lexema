@@ -743,11 +743,15 @@ test("the workflow reads lexema-data only with the read-only token, and every jo
   assert.deepEqual([...new Set(yaml.match(/secrets\.[A-Z0-9_]+/g))].sort(), ["secrets.CLOUDFLARE_D1_TOKEN", "secrets.LEXEMA_DATA_READ_TOKEN"]);
   assert.deepEqual([...new Set(yaml.match(/LEXEMA_DATA_TOKEN: .*/g))], ["LEXEMA_DATA_TOKEN: ${{ secrets.LEXEMA_DATA_READ_TOKEN }}"]);
   const jobs = jobsOf(yaml);
-  assert.deepEqual([...jobs.keys()], ["deploy", "plan"]);
+  assert.deepEqual([...jobs.keys()], ["gate", "deploy", "plan"]);
   for (const [id, block] of jobs) {
     if (block.includes("secrets.CLOUDFLARE_D1_TOKEN")) assert.match(block, /^ {4}environment: dictionary-deploy$/m, id);
   }
-  assert.match(jobs.get("deploy") ?? "", /if: github\.event_name == 'push'/);
+  // The gate only fast-forwards `production` when nothing is declared (#521):
+  // no secret, no environment, no install, and the deploy waits on its answer.
+  assert.doesNotMatch(jobs.get("gate") ?? "", /secrets\.|environment:|pnpm/);
+  assert.match(jobs.get("deploy") ?? "", /^ {4}needs: gate$/m);
+  assert.match(jobs.get("deploy") ?? "", /if: github\.event_name == 'push' && needs\.gate\.outputs\.deploy == 'true'/);
   assert.match(jobs.get("plan") ?? "", /--plan-only/);
   assert.doesNotMatch(jobs.get("plan") ?? "", /contents: write/);
 

@@ -569,7 +569,7 @@ test("the release workflow's plan job grants every permission a job of the dicti
   const deploy = jobsOf(await readFile(join(workflows, "dictionary-deploy.yml"), "utf8"));
   const granted = permissionsOf(release.get("plan") ?? "");
   const rank = { read: 1, write: 2 } as const;
-  assert.deepEqual([...deploy.keys()], ["deploy", "plan"]);
+  assert.deepEqual([...deploy.keys()], ["gate", "deploy", "plan"]);
   for (const [job, block] of deploy) {
     for (const [scope, level] of permissionsOf(block)) {
       assert.ok((rank[granted.get(scope) as keyof typeof rank] ?? 0) >= rank[level], `dictionary-deploy.yml's ${job} job asks for ${scope}: ${level}, which the release workflow's plan job does not grant`);

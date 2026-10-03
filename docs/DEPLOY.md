@@ -424,16 +424,33 @@ accepts this, since only reviewed build commands use it.
    log starts with `sweep:` lines, deletes that branch's Preview and app D1,
    and then deploys production.
 
+## CI runners
+
+Every GitHub Actions job here runs on a GitHub-hosted `ubuntu-latest` runner.
+`povlabs/lexema` is a public repository, so those minutes are free
+([GitHub Actions billing](https://docs.github.com/en/billing/managing-billing-for-your-products/managing-billing-for-github-actions/about-billing-for-github-actions)).
+Do not use a self-hosted runner on this repository: a pull request from a fork
+can run code on it
+([self-hosted runner security](https://docs.github.com/en/actions/hosting-your-own-runners/managing-self-hosted-runners/about-self-hosted-runners#self-hosted-runner-security)).
+Which change starts which workflow is in
+[DEVELOPMENT.md](../DEVELOPMENT.md#ci-gates).
+
 ## The dictionary deploy
 
 [`dictionary-deploy.yml`](../.github/workflows/dictionary-deploy.yml) runs on
-every push to `main`, one run at a time. It writes every declared change to
+every push to `main`, its `deploy` job one run at a time. It writes every declared change to
 the shared dictionary D1 `lexema-dictionary`, and it is the only thing that
 moves `production`
 ([ADR 0018](../.decisions/0018-previews-on-workers-builds.md)). One write to
 `lexema-dictionary` still runs from Huey's laptop, outside it: the one-time
 upload of a release
-([RUN_AN_IMPORT.md](RUN_AN_IMPORT.md#load-a-release-into-cloudflare-d1)). Its steps are
+([RUN_AN_IMPORT.md](RUN_AN_IMPORT.md#load-a-release-into-cloudflare-d1)).
+
+Most pushes declare nothing. So the workflow's first job, `gate`, reads
+`production..<the run's commit>` with no install and no secret. When that range
+adds or changes nothing under `dictionary-changes/`, `gate` fast-forwards
+`production` itself and the run ends in seconds; a commit `production` already
+holds needs nothing. Otherwise it starts the `deploy` job, whose steps are
 `pnpm run deploy:dictionary` ([src/deploy/](../src/deploy/dictionaryDeploy.ts)):
 
 1. It reads the [change declarations](../dictionary-changes/README.md) added in
@@ -595,7 +612,9 @@ a new declaration its `expected` counts, so one pull request carries a change
 and its declaration
 ([ADR 0018](../.decisions/0018-previews-on-workers-builds.md), #494, #498). It runs
 `pnpm run deploy:dictionary --plan-only --added-since HEAD^1` on the pull
-request's merge commit ([src/deploy/](../src/deploy/pullRequestPlan.ts)):
+request's merge commit ([src/deploy/](../src/deploy/pullRequestPlan.ts)). A
+later push to the pull request plans again only when that push itself changes
+`dictionary-changes/`; a newer push cancels a plan still running.
 
 1. It reads the declarations the pull request adds, in path order, the order
    the deploy takes them from the one commit a pull request lands as. A

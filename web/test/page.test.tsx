@@ -19,7 +19,7 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import test from "node:test";
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -30,6 +30,7 @@ import { seedSql } from "../../src/import/seedSql.js";
 import { CURATED_CORRECTIONS, definitionCorrections, type CuratedCorrection } from "../../src/italian/curatedCorrections.js";
 import { atFixtureLines, correctionFixtureLines } from "../../test/correctionFixture.js";
 import { DECLARED_CORRECTION_LINES, declaredCorrections } from "../../test/declaredCorrectionFixture.js";
+import { seededDictionary } from "../../test/seededDictionary.js";
 import { loadFixturePages, type RawPageSource } from "../../src/source/rawPage.js";
 import { PUBLISHED_ARCHIVE_SHA256, sourceOf, type ArchiveFacts, type ReleaseSource } from "../../src/source/archiveFacts.js";
 import { fromNodeSqlite } from "../../src/lookup/database.js";
@@ -99,22 +100,22 @@ const RELEASE = "it-page-test";
 const VERSION = `${RELEASE}.0`;
 
 interface Fixture {
-  dir: string;
   db: DatabaseSync;
 }
 
-async function fixture(
+/** Seed `lines` as one gzipped archive into `outputDir`. */
+async function seedLines(
+  outputDir: string,
   lines: readonly string[],
   rawPages?: RawPageSource,
   facts?: ArchiveFacts,
   corrections?: readonly CuratedCorrection[],
-): Promise<Fixture> {
-  const dir = await mkdtemp(join(tmpdir(), "lexema-page-"));
-  const archive = join(dir, "fixture.jsonl.gz");
-  const outputDir = join(dir, "sql");
+): Promise<{ parts: readonly string[] }> {
+  await mkdir(outputDir, { recursive: true });
+  const archive = join(outputDir, "fixture.jsonl.gz");
   const bytes = gzipSync(Buffer.from(`${lines.join("\n")}\n`, "utf8"));
   await writeFile(archive, bytes);
-  const { parts } = await seedSql({
+  return seedSql({
     input: archive,
     outputDir,
     schema: join(REPO, "src/db/schema.sql"),
@@ -131,11 +132,17 @@ async function fixture(
       throw new Error(`fixture line rejected: ${JSON.stringify(rejection)}`);
     },
   });
-  const db = new DatabaseSync(":memory:");
-  for (const part of parts) db.exec(await readFile(part, "utf8"));
-  // No review comes from Lexema: the seed writes no `claim_review` row (#117).
-  assert.deepEqual({ ...db.prepare("SELECT count(*) AS n FROM claim_review").get() }, { n: 0 });
-  return { dir, db };
+}
+
+/** Run `run` over `db`, then close it. */
+async function withDatabase(db: DatabaseSync, run: (f: Fixture) => Promise<void>): Promise<void> {
+  try {
+    // No review comes from Lexema: the seed writes no `claim_review` row (#117).
+    assert.deepEqual({ ...db.prepare("SELECT count(*) AS n FROM claim_review").get() }, { n: 0 });
+    await run({ db });
+  } finally {
+    db.close();
+  }
 }
 
 async function withLines(
@@ -145,31 +152,36 @@ async function withLines(
   facts?: ArchiveFacts,
   corrections?: readonly CuratedCorrection[],
 ): Promise<void> {
-  const f = await fixture(lines, rawPages, facts, corrections);
+  const dir = await mkdtemp(join(tmpdir(), "lexema-page-"));
   try {
-    await run(f);
+    const { parts } = await seedLines(join(dir, "sql"), lines, rawPages, facts, corrections);
+    const db = new DatabaseSync(":memory:");
+    for (const part of parts) db.exec(await readFile(part, "utf8"));
+    await withDatabase(db, run);
   } finally {
-    f.db.close();
-    await rm(f.dir, { recursive: true, force: true });
+    await rm(dir, { recursive: true, force: true });
   }
 }
 
-/** The synthetic archive in `fixture.ts`. */
-const withFixture = (run: (f: Fixture) => Promise<void>) => withLines(FIXTURE_LINES, run);
+const devSeedLines = async (): Promise<string[]> => (await readFile(join(REPO, "fixtures/dev-seed.jsonl"), "utf8")).trim().split("\n");
 
-/** The real development fixture, `fixtures/dev-seed.jsonl`. */
-async function withDevSeed(run: (f: Fixture) => Promise<void>): Promise<void> {
-  const text = await readFile(join(REPO, "fixtures/dev-seed.jsonl"), "utf8");
-  return withLines(text.trim().split("\n"), run);
-}
+/** The synthetic archive in `fixture.ts`, seeded once for this file (test/seededDictionary.ts). */
+const withFixture = async (run: (f: Fixture) => Promise<void>) =>
+  withDatabase(await seededDictionary("page:fixture", (outputDir) => seedLines(outputDir, FIXTURE_LINES)), run);
+
+/** The real development fixture, `fixtures/dev-seed.jsonl`, seeded once for this file. */
+const withDevSeed = async (run: (f: Fixture) => Promise<void>) =>
+  withDatabase(await seededDictionary("page:dev-seed", async (outputDir) => seedLines(outputDir, await devSeedLines())), run);
 
 /**
  * The development fixture seeded the way `pnpm run seed:dev` seeds it: with the
  * raw pages under `fixtures/`, so records like `casa` carry the recovered layer.
+ * Seeded once for this file.
  */
 async function withDevSeedAndPages(run: (f: Fixture) => Promise<void>): Promise<void> {
-  const text = await readFile(join(REPO, "fixtures/dev-seed.jsonl"), "utf8");
-  return withLines(text.trim().split("\n"), run, await loadFixturePages(join(REPO, "fixtures")));
+  const db = await seededDictionary("page:dev-seed+pages", async (outputDir) =>
+    seedLines(outputDir, await devSeedLines(), await loadFixturePages(join(REPO, "fixtures"))));
+  return withDatabase(db, run);
 }
 
 async function attempt(db: DatabaseSync, query: string): Promise<Attempt> {

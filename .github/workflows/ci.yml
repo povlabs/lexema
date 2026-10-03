@@ -1,9 +1,26 @@
 name: CI
 
+# The typecheck and the unit tests read the whole tree, so this runs on the
+# merged result as well as on the pull request (.patterns/repo-wide-gates-run-on-main.md).
+# A change to Markdown alone checks nothing here, so it does not start a run.
+# docs/DEPLOY.md is the exception: web/test/workersBuilds.test.ts reads it.
+
 on:
   push:
     branches: [main]
+    paths:
+      - "**"
+      - "!**/*.md"
+      - "docs/DEPLOY.md"
   pull_request:
+    paths:
+      - "**"
+      - "!**/*.md"
+      - "docs/DEPLOY.md"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
   check:
@@ -21,30 +38,3 @@ jobs:
       # The Worker's own typecheck. `wrangler types` generates from
       # wrangler.jsonc and needs no Cloudflare account.
       - run: pnpm --filter @lexema/web typecheck
-
-  # The unit tests run the schemas on node:sqlite, which accepts SQL that D1
-  # refuses (#179). This builds both databases in a throwaway local D1 from
-  # the committed fixture, so it needs no Cloudflare secret and no dataset.
-  # Both land in the seed's default .data/seed-state, inside this checkout.
-  d1:
-    runs-on: ubuntu-latest
-    env:
-      WRANGLER_SEND_METRICS: "false"
-    steps:
-      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
-      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
-      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
-        with:
-          node-version-file: .nvmrc
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      # Applies src/db/schema.sql and the fixture's rows to DB, and every app
-      # migration to APP_DB. Wrangler exits non-zero on any refused statement.
-      - run: pnpm run seed:dev
-      # A CHECK runs only when a row is written, and D1's GLOB pattern limit
-      # is met there, not at CREATE TABLE (#167). This writes one valid row to
-      # every table the app migrations create, in a throwaway local D1 of its
-      # own, and fails when a table has no row or D1 refuses one (#330).
-      - run: pnpm run db:check-d1
-      # The key CLI's own write, through the same path a person runs.
-      - run: pnpm run api-key create --label ci --per-minute 1

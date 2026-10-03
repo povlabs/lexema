@@ -21,27 +21,36 @@ concurrency:
 
 That is [`decisions-index.yml`](../.github/workflows/decisions-index.yml): the
 duplicate-id check reads every record in `.decisions/`, so it runs on the merged
-result as well as on the pull request. [`ci.yml`](../.github/workflows/ci.yml)
-carries both triggers for the same reason, since the typecheck and the unit tests
-read the whole tree; it declares no `concurrency` block, which never cancels
-anything and is the other safe choice.
+result as well as on the pull request. [`ci.yml`](../.github/workflows/ci.yml) and
+[`d1.yml`](../.github/workflows/d1.yml) carry both triggers and the same block for
+the same reason, since the typecheck, the unit tests and the local D1 build read
+the whole tree.
+
+A `paths` filter narrows which changes start a run; it sits under both triggers
+alike, so `main` is checked on exactly the changes a pull request is. Every one of
+these gates checks something a matching change can break: `decisions-index.yml`
+runs on `.decisions/` and the guard's version, `d1.yml` on the schemas, seed and
+import code, and `ci.yml` on everything but Markdown (#521).
 
 A gate whose guard reads the pull request's diff stays `pull_request`-only and says
 so in a comment at its `on:` block.
-[`leak-guard.yml`](../.github/workflows/leak-guard.yml) and
-[`gitleaks.yml`](../.github/workflows/gitleaks.yml) both scan
-`git diff origin/<base>...HEAD`, and on `main` there is no such diff to read. Their
+[`secrets.yml`](../.github/workflows/secrets.yml) scans
+`git diff origin/<base>...HEAD`, and on `main` there is no such diff to read. Its
 `cancel-in-progress` is a plain `true`, because there is no `main` run to protect.
+It carries no `paths` filter, so every pull request head has at least one check.
 
 ## When this applies
 
-Every workflow that carries a `pull_request` trigger. The four here today classify
-as:
+Every workflow that carries a `pull_request` trigger. The four gates here today
+classify as:
 
 | Scope | Triggers | Workflows |
 |---|---|---|
-| repo-wide | `pull_request` and `push: main` | `ci.yml`, `decisions-index.yml` |
-| the PR diff | `pull_request` only, with the comment | `gitleaks.yml`, `leak-guard.yml` |
+| repo-wide | `pull_request` and `push: main` | `ci.yml`, `d1.yml`, `decisions-index.yml` |
+| the PR diff | `pull_request` only, with the comment | `secrets.yml` |
+
+`dictionary-plan.yml` also runs on `pull_request` alone, against the shared
+dictionary rather than the tree, and cancels a superseded run with a plain `true`.
 
 A workflow with no `pull_request` trigger at all, such as a schedule or an issue
 event, is out of scope. Adapted from
