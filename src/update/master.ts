@@ -15,6 +15,8 @@ import {
   rebuiltKind,
   rebuiltTablesFor,
   type RebuiltTable,
+  SERVING_VIEWS,
+  type ServingView,
   UPGRADE_NAMES,
 } from "./masterUpgrade.js";
 
@@ -81,17 +83,38 @@ export function hiddenRecordBefore389(reader: MasterReader): boolean {
   return columns.length > 0 && !columns.includes(HIDDEN_RECORD_SINCE_389);
 }
 
+/** The stored `sql` of each of `names` the master has, by name. */
+function storedSql(reader: MasterReader, names: readonly string[]): Map<string, string> {
+  const listed = names.map((name) => `'${name}'`).join(", ");
+  return new Map(select<{ name: string; sql: string }>(reader, `SELECT name, sql FROM sqlite_schema WHERE name IN (${listed})`).map((row) => [row.name, row.sql]));
+}
+
 /**
  * The rebuilt tables and indexes the master has whose stored definition is not
  * schema.sql's (`definitionOf`), in creation order. Any one listed makes the
- * upgrade rebuild its group (`rebuildSql`).
+ * upgrade rebuild its group (`rebuildSql`). A changed serving view is not
+ * listed here: `changedViews` lists it, and the upgrade replaces it without
+ * rebuilding any table.
  */
 export function changedUpgrade(reader: MasterReader, schema: string): string[] {
-  const names = REBUILT_NAMES.map((name) => `'${name}'`).join(", ");
-  const stored = new Map(select<{ name: string; sql: string }>(reader, `SELECT name, sql FROM sqlite_schema WHERE name IN (${names})`).map((row) => [row.name, row.sql]));
+  const stored = storedSql(reader, REBUILT_NAMES);
   return REBUILT_NAMES.filter((name) => {
     const sql = stored.get(name);
     return sql !== undefined && definitionOf(sql) !== definitionOf(createStatement(schema, rebuiltKind(name), name));
+  });
+}
+
+/**
+ * The serving views the master has whose stored definition is not schema.sql's
+ * (`definitionOf`, so comments and spacing do not count), in creation order.
+ * Any one listed makes the upgrade replace the views (`masterUpgradeSql`). A
+ * view holds no rows, so replacing one rebuilds no table.
+ */
+export function changedViews(reader: MasterReader, schema: string): ServingView[] {
+  const stored = storedSql(reader, SERVING_VIEWS);
+  return SERVING_VIEWS.filter((name) => {
+    const sql = stored.get(name);
+    return sql !== undefined && definitionOf(sql) !== definitionOf(createStatement(schema, "VIEW", name));
   });
 }
 
@@ -126,13 +149,16 @@ function keptTables(reader: MasterReader, tables: readonly RebuiltTable[]): Kept
 }
 
 /**
- * What `update:upgrade` would do: the names it adds, the definitions it
- * changes, and its SQL, which writes no row and keeps every row it rebuilds.
+ * What `update:upgrade` would do: the names it adds, the table definitions it
+ * rebuilds, the serving views it replaces, and its SQL, which writes no row
+ * and keeps every row it rebuilds.
  */
 export interface UpgradePlan {
   missing: string[];
   /** The rebuilt tables and indexes whose definition changes; empty when none does. */
   changed: string[];
+  /** The serving views whose stored definition is not schema.sql's, which the upgrade replaces and rebuilds no table for; empty when none differs. */
+  replaced: ServingView[];
   /** The tables a rebuild drops and creates again, every table of each group that holds a `changed` name, with the rows each holds before: empty unless something `changed`. */
   kept: readonly KeptTable[];
   /** Empty when the master has every table and view already, each as schema.sql defines it. */
@@ -148,15 +174,21 @@ export interface Rebuild {
 /** The tables `plan` rebuilds, each with its rows: what a reader checks before a rebuild runs on the shared dictionary. */
 export const rebuildsOf = (plan: Pick<UpgradePlan, "kept">): Rebuild[] => plan.kept.map(({ name, rows }) => ({ table: name, rows }));
 
-/** Plan the upgrade of the master `reader` reads, from schema.sql's text; it writes nothing. */
+/**
+ * Plan the upgrade of the master `reader` reads, from schema.sql's text; it
+ * writes nothing. A changed table or index rebuilds its group (`rebuildSql`).
+ * A missing name or a changed serving view runs `masterUpgradeSql`, which
+ * creates what is absent and replaces the views, and rebuilds no table.
+ */
 export function planUpgrade(reader: MasterReader, schema: string): UpgradePlan {
   const missing = missingUpgrade(reader);
   const changed = changedUpgrade(reader, schema);
+  const replaced = changedViews(reader, schema);
   if (changed.length > 0) {
     const kept = keptTables(reader, rebuiltTablesFor(changed));
-    return { missing, changed, kept, sql: rebuildSql(schema, kept) };
+    return { missing, changed, replaced, kept, sql: rebuildSql(schema, kept) };
   }
-  return { missing, changed, kept: [], sql: missing.length === 0 ? "" : masterUpgradeSql(schema) };
+  return { missing, changed, replaced, kept: [], sql: missing.length === 0 && replaced.length === 0 ? "" : masterUpgradeSql(schema) };
 }
 
 /** What the master `after` an upgrade still lacks or differs in from `plan`'s aim, as reasons; empty when the upgrade did all it planned. */
@@ -167,6 +199,7 @@ export function upgradeShortfall(after: MasterReader, schema: string, plan: Pick
     ...changedUpgrade(after, schema).map((name) =>
       name === "hidden_record" && hiddenRecordBefore389(after) ? `the upgrade left hidden_record without its ${HIDDEN_RECORD_SINCE_389} column` : `the upgrade left ${name} unlike schema.sql's definition`,
     ),
+    ...changedViews(after, schema).map((name) => `the upgrade left the view ${name} unlike schema.sql's definition`),
     ...plan.kept
       .filter((table) => rows.get(table.name) !== table.rows)
       .map((table) => `the upgrade left ${rows.get(table.name) ?? 0} row(s) in ${table.name}, which held ${table.rows}`),

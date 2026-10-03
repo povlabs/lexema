@@ -23,7 +23,8 @@
 // tables and views lookups now read (src/update/masterUpgrade.ts): the update
 // tables and views of #18, the page-entry tables of #403, and the tables
 // curated corrections and hidden records are written to, created empty. It
-// writes no row. Run it on such a dictionary before code that reads them
+// writes no row. A serving view stored unlike schema.sql's is replaced, which
+// rebuilds no table (#525). Run it on such a dictionary before code that reads them
 // serves from it. `update:apply` and `update:auto` carry no DDL, so they
 // refuse to write until it has run (#509).
 //
@@ -251,25 +252,27 @@ async function upgradeCommand(target: SeedTarget, args: readonly string[]): Prom
   const master = readMasterRelease(reader);
   const schema = await readFile(SCHEMA, "utf8");
   const upgrade = planUpgrade(reader, schema);
-  const { missing, changed, sql } = upgrade;
-  // The upgrade adds no row and loses none: its counts are none, and what it adds or rebuilds is named beside them,
-  // each table a rebuild drops with the rows it holds.
+  const { missing, changed, replaced, sql } = upgrade;
+  // The upgrade adds no row and loses none: its counts are none, and what it adds, rebuilds or replaces is named beside
+  // them, each table a rebuild drops with the rows it holds. A replaced view holds no rows and rebuilds no table.
   if (planOnly) {
     return planOnlyAnswer(planOnlyRun("update:upgrade", PlanCounts.NONE, reader), sql, read.out, `upgrade-${master.releaseId}`, {
       adds: missing,
       rebuildsFor: changed,
       rebuilds: rebuildsOf(upgrade),
+      replacesViews: replaced,
     });
   }
   if (sql === "") return { out: `${target.dictionary} (master ${master.releaseId}) already has every table and view the upgrade adds, as schema.sql defines it; nothing to do`, status: 0 };
   await mkdir(read.out, { recursive: true });
   const file = join(read.out, `upgrade-${master.releaseId}-${Date.now()}.sql`);
   await writeFile(file, sql);
-  log(`${[...missing.map((name) => `adding ${name}`), ...changed.map((name) => `rebuilding for ${name}`)].join(", ")}: ${file}`);
+  log(`${[...missing.map((name) => `adding ${name}`), ...changed.map((name) => `rebuilding for ${name}`), ...replaced.map((name) => `replacing view ${name}`)].join(", ")}: ${file}`);
   target.execute(["--file", file], false);
   const shortfall = upgradeShortfall(masterReaderOf(target), schema, upgrade);
   if (shortfall.length > 0) return { out: `the upgrade ran, but on ${target.dictionary} ${shortfall.join("; ")}`, status: 1 };
-  return { out: `${target.dictionary} (master ${master.releaseId}) has every table and view the upgrade adds, as schema.sql defines it; no row was added or lost`, status: 0 };
+  const views = replaced.length === 0 ? "" : `; it replaced the view(s) ${replaced.join(", ")}, which rebuilt no table`;
+  return { out: `${target.dictionary} (master ${master.releaseId}) has every table and view the upgrade adds, as schema.sql defines it; no row was added or lost${views}`, status: 0 };
 }
 
 const COMMANDS = { auto: automaticCommand, upgrade: upgradeCommand, diff: diffCommand, select: selectCommand, apply: applyCommand } as const;

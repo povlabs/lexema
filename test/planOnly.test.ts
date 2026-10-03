@@ -123,6 +123,34 @@ test("update:upgrade --plan-only names each table a rebuild drops, with its rows
   });
 });
 
+test("update:upgrade names a serving view stored unlike schema.sql's as replaced, lists no rebuild for it, and a run replaces it (#525)", async () => {
+  const schema = await readFile("src/db/schema.sql", "utf8");
+  const current = createStatement(schema, "VIEW", "surface_hit");
+  const older = current.replace(/^\s*lf\.form_source,\n/m, "");
+  assert.notEqual(older, current);
+  await withLocalD1((db) => {
+    db.exec("DROP VIEW surface_hit");
+    db.exec(older);
+  }, async (d1, dir) => {
+    const before = d1.sha256();
+    const planned = await updateMain(["upgrade", "--plan-only", "--out", join(dir, "out")], d1.wrangler, { SEED_STATE: d1.persistTo });
+    assert.equal(planned.status, 0, planned.out);
+    const answer = JSON.parse(planned.out);
+    assert.deepEqual(answer.adds, []);
+    assert.deepEqual(answer.rebuildsFor, []);
+    assert.deepEqual(answer.rebuilds, []);
+    assert.deepEqual(answer.replacesViews, ["surface_hit"]);
+    assert.equal(d1.sha256(), before);
+
+    const ran = await updateMain(["upgrade", "--out", join(dir, "out")], d1.wrangler, { SEED_STATE: d1.persistTo });
+    assert.equal(ran.status, 0, ran.out);
+    assert.match(ran.out, /replaced the view\(s\) surface_hit, which rebuilt no table/);
+    assert.doesNotMatch(ran.out, /rebuil(t|ding) for/);
+    const again = JSON.parse((await updateMain(["upgrade", "--plan-only", "--out", join(dir, "out")], d1.wrangler, { SEED_STATE: d1.persistTo })).out);
+    assert.deepEqual(again.replacesViews, []);
+  });
+});
+
 test("normalize:source-text --plan-only returns every rule's counts and leaves the local D1 byte-identical", async () => {
   await withLocalD1(beforeTheRules, async (d1, dir) => {
     const before = d1.sha256();
