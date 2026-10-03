@@ -471,6 +471,31 @@ test("the plan-only entry runs the plan and writes nothing", async () => {
   });
 });
 
+test("the pull request plan check plans an added declaration with the checkout's code, writes nothing, and passes only on matching counts", async () => {
+  await withWorld(async (world) => {
+    const before = world.d1.sha256();
+    const base = git(world.work, "rev-parse", "HEAD");
+    const env = { SEED_STATE: world.d1.persistTo, RUNNER_TEMP: world.dir };
+    const check = () => deployMain(["--plan-only", "--added-since", base], env, world.d1.wrangler, gitIn(world.work));
+
+    await world.commit({ "dictionary-changes/2026-10-normalize.json": `${JSON.stringify(NORMALIZE)}\n` });
+    const missing = await check();
+    assert.equal(missing.status, 1, missing.out);
+    assert.match(missing.out, /It has no `expected` yet\./);
+    const printed = /```json\n([\s\S]*?)\n```/.exec(missing.out)?.[1] ?? assert.fail(missing.out);
+    assert.deepEqual(JSON.parse(printed), { ...NORMALIZE, expected: NORMALIZE_COUNTS });
+
+    await world.commit({ "dictionary-changes/2026-10-normalize.json": `${printed}\n` });
+    const matching = await check();
+    assert.equal(matching.status, 0, matching.out);
+    assert.match(matching.out, /The plan's counts match `expected`\./);
+
+    assert.deepEqual(writes(world.d1), []);
+    assert.equal(world.d1.sha256(), before);
+    assert.match((await deployMain(["--plan-only", "--added-since", base, "--change", "{}"], env, () => assert.fail("no wrangler call"))).out, /takes no --change or --release/);
+  });
+});
+
 test("the deploy itself runs only in GitHub Actions on main", async () => {
   for (const env of [{}, { GITHUB_ACTIONS: "true", GITHUB_REF: "refs/heads/build/456" }]) {
     const result = await deployMain([], env, () => assert.fail("no wrangler call"));
@@ -530,9 +555,29 @@ test("the workflow reads lexema-data only with the read-only token, and every jo
   assert.match(jobs.get("plan") ?? "", /--plan-only/);
   assert.doesNotMatch(jobs.get("plan") ?? "", /contents: write/);
 
-  // No other workflow is given a Cloudflare credential (ADR 0018).
+  // No other workflow is given a Cloudflare credential but the pull request
+  // plan check, which gets the D1 read-only token alone (ADR 0018, #494).
   for (const file of await readdir(workflows)) {
-    if (file === "dictionary-deploy.yml") continue;
-    assert.doesNotMatch(await readFile(join(workflows, file), "utf8"), /CLOUDFLARE_(API_TOKEN|D1_TOKEN)/, file);
+    if (file === "dictionary-deploy.yml" || file === "dictionary-plan.yml") continue;
+    assert.doesNotMatch(await readFile(join(workflows, file), "utf8"), /CLOUDFLARE_(API_TOKEN|D1_TOKEN|D1_READ_TOKEN)/, file);
   }
+});
+
+test("the pull request plan check gets only the D1 read-only token, in its own environment, never on a fork, and only plans", async () => {
+  const yaml = await readFile(resolve(".github/workflows/dictionary-plan.yml"), "utf8");
+  const on = yaml.slice(yaml.indexOf("\non:\n"), yaml.indexOf("\njobs:\n"));
+  assert.match(on, /^ {2}pull_request:$/m);
+  const code = yaml.split("\n").filter((line) => !/^\s*#/.test(line)).join("\n");
+  assert.doesNotMatch(code, /pull_request_target|workflow_run|LEXEMA_DATA|CLOUDFLARE_D1_TOKEN/);
+  assert.deepEqual([...new Set(yaml.match(/secrets\.[A-Z0-9_]+/g))], ["secrets.CLOUDFLARE_D1_READ_TOKEN"]);
+  assert.match(yaml, /^permissions: \{\}$/m);
+  const jobs = jobsOf(yaml);
+  assert.deepEqual([...jobs.keys()], ["plan"]);
+  const plan = jobs.get("plan") ?? "";
+  assert.match(plan, /^ {4}if: github\.event\.pull_request\.head\.repo\.full_name == github\.repository$/m);
+  assert.match(plan, /^ {4}environment: dictionary-plan$/m);
+  // `contents: read` and nothing else: no write, no deployment, no pull request comment.
+  assert.match(plan, /^ {4}permissions:\n {6}contents: read\n {4}env:/m);
+  const runs = [...plan.matchAll(/- run: (.*)/g)].map(([, command]) => command);
+  assert.deepEqual(runs.filter((command) => command.includes("deploy:dictionary")), ["pnpm run deploy:dictionary --plan-only --added-since HEAD^1"]);
 });

@@ -7,6 +7,12 @@
 //   pnpm run deploy:dictionary
 //   pnpm run deploy:dictionary --plan-only --change '{"command":"update:auto","inputs":{"feedRelease":"it-78385b62"}}'
 //   pnpm run deploy:dictionary --plan-only --change '<change>' --release '<release candidate>'
+//   pnpm run deploy:dictionary --plan-only --added-since <base commit>
+//
+// `--added-since` is the pull request plan check (#494,
+// `.github/workflows/dictionary-plan.yml`): it plans the declarations the
+// checked-out commit adds past the base and holds them to `expected`
+// (pullRequestPlan.ts). It writes nothing, like every plan-only run.
 //
 // `--release` plans against a kaikki release the repository does not record
 // yet: the monthly release workflow passes the archive facts and dump it found
@@ -29,11 +35,13 @@ import { DeclarationRefused, parseChange } from "../update/declaration.js";
 import { masterReaderOf } from "../update/updateCli.js";
 import { type DataFetcher, lexemaDataFetcher } from "./dataFiles.js";
 import { type DeployDeps, deployDictionary, deploySummary, planOnly, restoreCommand } from "./dictionaryDeploy.js";
-import { gitIn } from "./pending.js";
+import { type Git, gitIn } from "./pending.js";
+import { addedDeclarations, planPullRequest, pullRequestPlanReport } from "./pullRequestPlan.js";
 
 const USAGE = `usage:
   pnpm run deploy:dictionary
   pnpm run deploy:dictionary --plan-only --change '<{"command": ..., "inputs": {...}}>' [--release '<release candidate>']
+  pnpm run deploy:dictionary --plan-only --added-since <base commit>
 The run needs GITHUB_ACTIONS, GITHUB_REF refs/heads/main, GITHUB_SHA, SEED_REMOTE and LEXEMA_DATA_TOKEN.`;
 
 /** A Time Travel bookmark of `dictionary` as it is now, through Wrangler. */
@@ -65,9 +73,39 @@ function fetcherFrom(env: NodeJS.ProcessEnv): DataFetcher {
   };
 }
 
-async function planOnlyCommand(args: readonly string[], env: NodeJS.ProcessEnv, wrangler: Wrangler): Promise<CommandResult> {
-  const options = flags(args, ["change", "release"]);
+/**
+ * `--plan-only --added-since <base>`: the pull request plan check (#494).
+ * Plans the declaration the checked-out commit adds past `base` and holds it
+ * to `expected` (pullRequestPlan.ts). Red when a count differs, `expected` is
+ * missing, a hard limit is crossed or a later declaration cannot be counted.
+ */
+async function pullRequestPlanCommand(base: string, env: NodeJS.ProcessEnv, wrangler: Wrangler, git: Git): Promise<CommandResult> {
+  let declarations;
+  try {
+    declarations = addedDeclarations(git, base, "HEAD");
+  } catch (error: unknown) {
+    if (error instanceof DeclarationRefused) return { out: error.message, status: 1 };
+    throw error;
+  }
+  const target = seedTargetFrom(env, wrangler, resolve(".data/seed-state"));
+  const reader = masterReaderOf(target);
+  const fetcher = fetcherFrom(env);
+  const outcomes = await planPullRequest(declarations, async (change) =>
+    planOnly(change, { reader, fetcher, workDir: await mkdtemp(join(env.RUNNER_TEMP ?? tmpdir(), "lexema-plan-")) }),
+  );
+  const { markdown, green } = pullRequestPlanReport(outcomes, target.dictionary);
+  if (env.GITHUB_STEP_SUMMARY !== undefined) await appendFile(env.GITHUB_STEP_SUMMARY, markdown);
+  return { out: markdown, status: green ? 0 : 1 };
+}
+
+async function planOnlyCommand(args: readonly string[], env: NodeJS.ProcessEnv, wrangler: Wrangler, git: Git): Promise<CommandResult> {
+  const options = flags(args, ["change", "release", "added-since"]);
   if (typeof options === "string") return usageError(options, USAGE);
+  const base = options.get("added-since");
+  if (base !== undefined) {
+    if (options.has("change") || options.has("release")) return usageError("--added-since plans what the commit adds, so it takes no --change or --release", USAGE);
+    return pullRequestPlanCommand(base, env, wrangler, git);
+  }
   const text = options.get("change");
   if (text === undefined) return usageError("--plan-only needs --change, the command and inputs to plan", USAGE);
   const release = options.get("release") ?? "";
@@ -118,9 +156,14 @@ async function deployCommand(env: NodeJS.ProcessEnv, wrangler: Wrangler): Promis
   return { out: summary, status: outcome.kind === "red" ? 1 : 0 };
 }
 
-export async function main(args: readonly string[], env: NodeJS.ProcessEnv = process.env, wrangler: Wrangler = webWrangler): Promise<CommandResult> {
+export async function main(
+  args: readonly string[],
+  env: NodeJS.ProcessEnv = process.env,
+  wrangler: Wrangler = webWrangler,
+  git: Git = gitIn(process.cwd()),
+): Promise<CommandResult> {
   const [first, ...rest] = args;
-  if (first === "--plan-only") return planOnlyCommand(rest, env, wrangler);
+  if (first === "--plan-only") return planOnlyCommand(rest, env, wrangler, git);
   if (first !== undefined) return usageError(`unknown argument ${first}`, USAGE);
   return deployCommand(env, wrangler);
 }

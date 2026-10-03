@@ -16,6 +16,10 @@ import { type CountDifference, type CountedTable, isCountedTable, PlanCounts } f
 /** The directory, from the repository root, that holds every change declaration. */
 export const DECLARATIONS_DIR = "dictionary-changes";
 
+/** Whether `path`, from the repository root, is where a declaration lives: a `.json` file directly under `DECLARATIONS_DIR`. */
+export const isDeclarationPath = (path: string): boolean =>
+  path.startsWith(`${DECLARATIONS_DIR}/`) && path.endsWith(".json") && !path.slice(DECLARATIONS_DIR.length + 1).includes("/");
+
 /** The five commands that write the dictionary. */
 export const DECLARED_COMMANDS = ["update:upgrade", "update:auto", "hide:records", "normalize:source-text", "correct:records"] as const;
 export type DeclaredCommand = (typeof DECLARED_COMMANDS)[number];
@@ -54,6 +58,13 @@ export type DeclaredChange =
   | Declared<"correct:records", Record<string, never>>;
 
 export type ChangeDeclaration = DeclaredChange & { readonly expected: PlanCounts };
+
+/**
+ * A declaration as a pull request adds it (#494): its `expected` may still be
+ * missing, since the pull request's plan check is what finds it. The deploy
+ * reads only a `ChangeDeclaration`, so a draft with no counts never deploys.
+ */
+export type DeclarationDraft = DeclaredChange & { readonly expected: PlanCounts | null };
 
 /** Why a file is not a change declaration, naming the file. */
 export class DeclarationRefused extends Error {
@@ -188,6 +199,16 @@ export function parseDeclaration(file: string, text: string): ChangeDeclaration 
   const reasons = unknownKeys(value, ["command", "inputs", "expected"], "the declaration");
   const change = changeOf(file, value, reasons);
   const expected = counts(value.expected, reasons);
+  if (reasons.length > 0 || change === undefined || expected === undefined) throw new DeclarationRefused(file, reasons);
+  return { ...change, expected };
+}
+
+/** The draft `text` states: a declaration whose `expected` may be left out, refused for anything else `parseDeclaration` refuses. */
+export function parseDraft(file: string, text: string): DeclarationDraft {
+  const value = jsonObject(file, text, "command, inputs and expected");
+  const reasons = unknownKeys(value, ["command", "inputs", "expected"], "the declaration");
+  const change = changeOf(file, value, reasons);
+  const expected = value.expected === undefined ? null : counts(value.expected, reasons);
   if (reasons.length > 0 || change === undefined || expected === undefined) throw new DeclarationRefused(file, reasons);
   return { ...change, expected };
 }

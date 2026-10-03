@@ -63,6 +63,13 @@ export const archivePath = (releaseId: ReleaseId, sha256: string): string =>
 /** Where a dump of this file name lives in the data repository. */
 export const dumpPath = (file: string): string => `source/${file}`;
 
+/** A change that reads an archive and a dump from the data repository. */
+export type DataReadingChange = Extract<DeclaredChange, { command: "update:auto" | "hide:records" }>;
+
+/** Whether `change` reads an archive and a dump, the ones `filesFor` names. */
+export const readsDataFiles = (change: DeclaredChange): change is DataReadingChange =>
+  change.command === "update:auto" || change.command === "hide:records";
+
 /**
  * The archive and dump `change` reads, from the catalogs: `update:auto` reads
  * its feed release, `hide:records` the master's archive, each with the dump it

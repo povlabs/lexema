@@ -295,16 +295,20 @@ command after a merged change declaration names it
 [The dictionary deploy](DEPLOY.md#the-dictionary-deploy)). An agent runs it
 against a local D1 only. The declaration has no inputs: it writes the list as
 it stands at the deploy's commit, and its `expected` counts pin what that list
-writes. The plan-only entry of the deploy workflow finds those counts, but it
-runs `main`'s code, so it cannot count an entry that is not on `main` yet. A new
-correction therefore reaches the shared dictionary in two steps:
+writes. A new correction reaches the shared dictionary in one pull request:
 
-1. A pull request adds the entry to the list, and merges with no declaration.
-   The deploy writes nothing for it.
-2. Huey runs the [plan-only entry](DEPLOY.md#the-plan-only-entry) on `main` with
-   the change `{"command":"correct:records"}`. A second pull request adds a
-   declaration whose `expected` is the `counts` it prints. Its merge writes the
-   correction.
+1. The pull request adds the entry to the list and a declaration
+   `{"command": "correct:records"}` under `dictionary-changes/`, with no
+   `expected` yet.
+2. The [pull request plan check](DEPLOY.md#the-pull-request-plan-check) plans
+   it with the pull request's own code, goes red and prints the declaration
+   with its `expected` counts. Copy it into the file and push; the check then
+   goes green.
+3. Its merge writes the correction. The deploy plans it again and stops red
+   if the counts no longer match.
+
+Add one declaration per pull request: the check counts only the first
+declaration a pull request adds.
 
 Deploy the Worker that reads corrections before the first such declaration. On
 `it-0c432803` the first run prints `written now: 20` and one line per entry, 22
