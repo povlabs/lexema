@@ -835,7 +835,7 @@ CREATE INDEX recovered_entry_by_key ON recovered_entry (release_id, word_key);
 CREATE TABLE entry_definition (
   entry_id INTEGER NOT NULL REFERENCES recovered_entry(entry_id),
   definition_index INTEGER NOT NULL CHECK (definition_index >= 0),
-  route TEXT NOT NULL CHECK (route IN ('sense-line', 'numbered-prose', 'below-page-control', 'sub-term', 'lead-in-item', 'wrapped-prose')),
+  route TEXT NOT NULL CHECK (route IN ('sense-line', 'numbered-prose', 'above-heading-prose', 'below-page-control', 'sub-term', 'lead-in-item', 'wrapped-prose')),
   term TEXT,
   page_line INTEGER NOT NULL CHECK (page_line > 0),
   wikitext TEXT NOT NULL,

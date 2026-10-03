@@ -13,7 +13,9 @@ at `fornire`). No lemma record is made for either target.
 The saved pages in [upstream-pages/](upstream-pages/) have the repository's
 revision header followed by the complete, XML-decoded wikitext, without edits:
 `raccontare` and `fornire` cover Transitivo; `dipendere` covers Intransitivo;
-`dismagare` covers handwritten Verbo. `movere` and `skirmish` are foreign entries;
+`dismagare` covers handwritten Verbo and the labels in its numbered lead-in;
+`fidelizzare` writes its definition above `{{-verb-|it}}`, and its `#` line is
+an etymology; `piallare` has a bare `{{-verb-}}` heading. `movere` and `skirmish` are foreign entries;
 `notiziare` is a `{{W}}` stub. Each header records revision id and timestamp.
 The raw facts remain Italian and are licensed CC BY-SA 4.0.
 

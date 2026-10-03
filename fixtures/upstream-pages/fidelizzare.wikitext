@@ -1,0 +1,22 @@
+<!-- it.wiktionary.org/wiki/fidelizzare revision 3405050 (2018-08-14T17:37:10Z), CC BY-SA 4.0. Saved verbatim. -->
+{{-it-}} 
+Rendere fedeli i consumatori di un prodotto, servizio o a una catena di negozi con opportune tecniche pubblicitarie e di marketing
+{{-verb-|it}}
+{{Transitivo|it}}
+{{Pn|c}}
+# Dalla radice "fid-" ispirare fiducia.
+
+{{-sill-}}
+; fi | de | liz | zà | re
+
+{{-etim-}}
+{{Noetim|it}}
+
+{{-trad-}}
+{{Trad1|}}
+:* {{en}}: to [[loyalize]]
+{{Trad2}}
+
+{{-ref-}}
+* {{Fonte|sabco}}
+* {{Fonte|hoep}}

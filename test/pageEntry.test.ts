@@ -23,6 +23,10 @@ test("ruled layouts recover definitions in page order with exact line evidence, 
     dipendere: [2, ["esprime una condizione necessaria"]],
     dismagare: [2, ["Togliere, escludere", "Distogliere dalla coscienza di sè o del dovere."]],
     fornire: [2, ["dare cose a qualcuno"]],
+    // The definition sits above the heading; the `#` line below it is the etymology.
+    fidelizzare: [4, ["Rendere fedeli i consumatori di un prodotto, servizio o a una catena di negozi con opportune tecniche pubblicitarie e di marketing"]],
+    // A bare `{{-verb-}}` is a part-of-speech heading, not a language that ends the Italian section.
+    piallare: [3, ["appiattire con la pialla"]],
   };
   for (const [title, [posLine, texts]] of Object.entries(expected)) {
     const source = page(title);
@@ -43,6 +47,14 @@ test("ruled layouts recover definitions in page order with exact line evidence, 
       }
     }
   }
+  const labelsOf = (title: string) => {
+    const recovered = recoverPageEntry(page(title), new Set());
+    assert.ok(recovered.outcome === "recovered");
+    return recovered.entry.definitions.map((definition) => definition.labels);
+  };
+  // The lead-in `v. tr. (dismago, dismaghi, ecc.), arc.` labels every meaning it opens.
+  assert.deepEqual(labelsOf("dismagare"), [["arc."], ["arc."]]);
+  assert.deepEqual(labelsOf("fidelizzare"), [[]]);
   const result = recoverPageEntry(page("raccontare"), new Set());
   assert.ok(result.outcome === "recovered");
   assert.deepEqual(result.entry.definitions[1].labels, ["figurato"]);

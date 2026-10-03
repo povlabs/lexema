@@ -231,6 +231,7 @@ export interface RecoveredExample {
 export type RecoveredRoute =
   | { route: "sense-line" }
   | { route: "numbered-prose" }
+  | { route: "above-heading-prose" }
   | { route: "below-page-control" }
   | { route: "sub-term"; term: string }
   | { route: "lead-in-item" }

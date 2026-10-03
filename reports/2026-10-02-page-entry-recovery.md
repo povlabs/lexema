@@ -9,11 +9,18 @@ recovered-definition count. It verifies release `it-0c432803` (archive SHA-256
 `0c432803c672aceccd48787eb64807c5366fdbd6796715c9a99e31c0024d5dcf`) and dump
 `itwiktionary-20260701` (SHA-1 `2bdd444236f7dcd26fee3652dbd641c31d0d9651`).
 
-The rule `italian-page-entry/v1` admits **13 of 104** dangling titles with a page;
-**91** have no ruled layout and are excluded. The ruling's estimate of about 23
+The rule `italian-page-entry/v1` admits **14 of 104** dangling titles with a page;
+**90** have no ruled layout and are excluded. The ruling's estimate of about 23
 is not an acceptance count or a title allowlist. Eligible titles: `addirizzare`,
 `congedare`, `dipendere`, `dismagare`, `educare`, `fidelizzare`, `fornire`,
-`grufolare`, `raccontare`, `rivenire`, `smentire`, `tornire`, `tremare`.
+`grufolare`, `piallare`, `raccontare`, `rivenire`, `smentire`, `tornire`,
+`tremare`.
+
+Re-measured on 2026-10-03 after the rule fixes in the
+[#403 amendments](https://github.com/hueypov/lexema/issues/403): a bare
+`{{-verb-}}` line is a part-of-speech heading, not a language, so `piallare`
+is now eligible. The fixes for `fidelizzare` and `dismagare` change what is
+recovered, not which titles are eligible.
 
 The set is derived from all admitted Italian archive words and all their
 `form_of` targets, subtracting words already in the archive, then streaming the

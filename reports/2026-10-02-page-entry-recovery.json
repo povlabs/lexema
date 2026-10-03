@@ -6,11 +6,11 @@
   "rule": "italian-page-entry/v1",
   "danglingTitles": 9064,
   "withAPage": 104,
-  "eligible": 13,
-  "excluded": 91,
+  "eligible": 14,
+  "excluded": 90,
   "counts": {
-    "no-ruled-layout": 91,
-    "recovered": 13
+    "no-ruled-layout": 90,
+    "recovered": 14
   },
   "titles": [
     {
@@ -472,8 +472,8 @@
       "title": "piallare",
       "revisionId": 4059538,
       "timestamp": "2026-01-28T11:26:03Z",
-      "outcome": "no-ruled-layout",
-      "definitions": 0
+      "outcome": "recovered",
+      "definitions": 1
     },
     {
       "title": "pittare",
