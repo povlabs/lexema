@@ -1,0 +1,26 @@
+<!-- it.wiktionary.org/wiki/tantundem revision 3651204 (2019-12-25T17:54:00Z), CC BY-SA 4.0. Saved verbatim. -->
+== {{-it-}} ==
+{{-pron-|it}}
+{{Pn}}
+# {{Term|diritto|it}} [[equibarabile]]
+
+{{-sill-}}
+; tan | tùn | dem
+
+{{-pron-}}
+{{IPA|/tanˈtundem/}}
+
+{{-etim-}}
+deriva da ''[[tantusdem]]'' cioè "altrettanto grande"
+
+{{-sin-}}
+* [[equivalente]]
+
+{{-trad-}}
+{{Trad1|}}
+:* {{en}}:
+{{Trad2}}
+
+{{-ref-}}
+* {{Fonte|dizit}}
+* {{Fonte|trec}}

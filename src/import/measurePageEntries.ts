@@ -4,7 +4,7 @@ import { parseArgs } from "node:util";
 import { parseArchive } from "./importRelease.js";
 import { PUBLISHED_ARCHIVE_SHA256 } from "../source/archiveFacts.js";
 import { ARCHIVE_DUMP, VerifiedDump } from "../source/wiktionaryDump.js";
-import { recoverPageEntry, PAGE_ENTRY_RULE } from "../italian/pageEntry.js";
+import { recoverUnderRuleV1, PAGE_ENTRY_RULE } from "../italian/pageEntry.js";
 
 const { values } = parseArgs({ options: { archive: { type: "string" }, dump: { type: "string" }, out: { type: "string" } } });
 if (values.archive === undefined || values.dump === undefined || values.out === undefined) {
@@ -27,9 +27,9 @@ const titles: { title: string; revisionId: number; timestamp: string; outcome: s
 try {
   for await (const page of dump.pages()) {
     if (!dangling.has(page.title)) continue;
-    const result = recoverPageEntry(page, words);
+    const result = recoverUnderRuleV1(page, words);
     titles.push({ title: page.title, revisionId: page.revisionId, timestamp: page.timestamp,
-      outcome: result.outcome, definitions: result.outcome === "recovered" ? result.entry.definitions.length : 0 });
+      outcome: result.outcome, definitions: result.outcome === "recovered" ? result.entries[0].definitions.length : 0 });
   }
 } finally { await dump.close(); }
 titles.sort((a, b) => a.title.localeCompare(b.title, "it"));

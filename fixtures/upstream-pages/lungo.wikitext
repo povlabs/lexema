@@ -1,0 +1,104 @@
+<!-- it.wiktionary.org/wiki/lungo revision 4038855 (2025-07-08T13:36:18Z), CC BY-SA 4.0. Saved verbatim. -->
+[[]]== {{-it-}} ==
+{{-agg-|it}}
+{{It-decl-agg4|lung|o|hi|a|he|hissim}}
+{{Pn}} ''m sing''
+# che si [[prolungare|prolunga]] nel [[tempo]]
+#* ''l'Italia è uno dei Paesi in cui si vive più a {{Pn}}''
+# di grande [[lunghezza]]
+
+[[File:Puente de Amistad, Macao, 2013-08-08, DD 02-03-04 PAN.jpg|thumb|il ponte di Amizade, lungo 4,7 km collega la penisola di Macao all'isola di Taipa in Cina.]]
+
+{{-prep-|it}}
+{{Pn}}
+#per un [[tratto]] [[abbastanza]] [[ampio]] al [[limite]] di... [[confinante]] con...
+# {{Term|raro|it}} in [[tangenza]]
+
+{{-sill-}}
+; lùn | go
+
+{{-pron-}}
+{{IPA|/ˈluŋɡo/}}
+
+{{-etim-}}
+dal {{la}}  ''[[longus|lŏngus]]''
+
+{{-quote-}}
+{{Quote
+|E Dio non farà forse giustizia ai suoi eletti, che gridano giorno e notte verso di lui? Li farà aspettare forse a '''lungo''' ?}}
+[[w:Vangelo secondo Luca|Vangelo secondo Luca]] {{Passo biblico|Lc|18,7}}
+
+{{-sin-}}
+*''(di tempo)''. [[durevole]], [[duraturo]]; [[interminabile]], [[protratto]], [[prolungato]], [[eccessivo]]
+*''(nel tempo)''  [[permanente]], [[durante]], nel corso di
+*''(di giorno)'' [[noioso]], [[tedioso]], [[uggioso]], [[monotono]], [[vuoto]], [[insopportabile]], [[pieno]]   
+*''(nello spazio)''  [[profondo]]. [[esteso]], [[ampio]]
+*''(di capelli, barba)''[[fluente]]
+*''(di forma)'' [[bislungo]]
+*''(botanica)''  [[oblungo]]
+* {{Fig}} {{Term|familiare|it}} ''(di individuo)'' [[lento]], [[tardo]], [[flemmatico]], [[pigro]]
+* {{Term|scherzoso|it}} ''(di individuo)'' [[alto]], [[longilineo]], [[allampanato]]
+*''(di discorso)'' [[interminabile]], [[prolisso]], [[verboso]]
+*''(di cibo, bevanda)'' [[acquoso]], [[allungato]], [[annacquato]], [[brodoso]]
+*{{Term|popolare|it}} [[diluito]]
+*''(preposizione)'' [[rasente]], accosto a
+*''(sostantivo)''[[lunghezza]], [[profondità]]
+
+{{-ant-}}
+*''(di tempo)'' [[breve]],  [[corto]]
+*''(nel tempo)'' in breve
+*[[concentrato]], [[ristretto]]
+* ''(di capelli, barba)'' [[corto]]
+*''nello spazio)''[[alto]], [[largo]]
+*''(nel tempo)'' [[accelerato]], [[contratto]], [[istantaneo]], [[momentaneo]]
+*''(di individuo)'' [[veloce]], [[svelto]], [[rapido]], [[pronto]], [[scattante]], [[fulmineo]], [[vivace]]
+* {{Term|scherzoso|it}} ''(di individuo)'' [[basso]], [[corto]], [[tarchiato]]
+*''(di discorso, scritto)'' [[breve]], [[conciso]], [[sintetico]], [[stringato]], [[stringato]]
+*[[altezza]], [[larghezza]]
+*lontano da, distante da
+
+{{-der-}}
+*[[bislungo]],  [[dilungare]], [[dilungamento]], [[lungaggine]], [[lungagnata]], [[lungamente]], [[lunghezza]], [[lunghissimo]],  [[lunghista]],  [[lungomare]], [[lungometraggio]], [[lungosopravvivente]], [[lungotevere]], [[slungare]]
+
+{{-alter-}}
+* {{Dim}} [[lunghino]], [[lunghetto]]
+* {{Accr}} [[lungone]]
+
+{{-prov-}}
+* '' [[a lungo]] '': lungamente
+* '' [[a lungo andare]] '': con il trascorrere del tempo
+* ''[[tirare in lungo]] '': [[tergiversare]]
+*''[[fare il passo più lungo della gamba]]''
+*''[[in lungo e in largo]]'': [[accuratamente]]
+
+{{-trad-}}
+{{Trad1|che si estende in lunghezza}}
+:*{{cs}}: [[dlouhý]]
+:*{{fi}}: [[pitkä]]
+:*{{fr}}: [[long]]
+:*{{hi}}: [[दीर्घ]] (ḍīrgh)
+:*{{en}}: [[long]]
+:*{{pl}}: [[długo]]
+:*{{pt}}: [[longo]]
+{{mid}}
+:*{{ro}}: [[lung]]
+:*{{ru}}: [[длинный]]
+:*{{sr}}: [[дуг]], [[dug]]
+:*{{es}}: [[largo]]
+:*{{sv}}: [[lång]]
+:*{{de}}: [[lang]]
+:*{{tr}}: [[uzun]]
+:*{{hu}}: [[hosszú]]
+{{Trad2}}
+
+{{-ref-}}
+* {{Fonte|trec}}
+* {{Fonte|dizit}}
+* {{Fonte|sabco|1}}
+* {{Fonte|sabco|2}}
+* {{Fonte|sin-co|1}}
+* {{Fonte|sin-co|2}}
+* {{Fonte|hoep}}
+*{{Fonte|sape}}
+*AA.VV., ''Dizionario Sinonimi e contrari'', Mariotti, 2006, pagina 319-320
+*AA.VV., ''Sinonimi e contrari'', Garzanti linguistica, 2009, pagina 430

@@ -307,7 +307,7 @@ the deployed one reads no correction from a master without them.
 ## Page-only entries
 
 The seed also stores page-only entries for dangling form targets with a ruled
-Italian page layout (ADR 0024). What it stores is in
+Italian page layout (ADR 0024, ADR 0028). What it stores is in
 [page-only entries](PAGE_ENTRIES.md). To see them in a disposable local seed:
 
 1. For the full release, keep the verified dump in the repository root, and
