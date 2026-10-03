@@ -129,7 +129,7 @@ test("normalize:source-text applies every rule as one file in one step, and a se
     const result = await normalizeMain({ SEED_STATE: d1.persistTo }, ["--out", join(dir, "out")], d1.wrangler);
     assert.equal(result.status, 0, result.out);
     assert.equal(writes(d1).length, 1, "one file");
-    assert.ok(d1.calls.every((call) => call[0] === "--file" || /^\s*SELECT\s/i.test(call[2])), "every other call reads");
+    assert.ok(d1.calls.every((call) => call[0] === "--file" || /^--command=\s*SELECT\s/i.test(call[1])), "every other call reads");
     const db = d1.open();
     try {
       assert.deepEqual(glosses(db), [VADO_STORED, FATE_STORED, "mammifero domestico", "chi dipinge"]);
