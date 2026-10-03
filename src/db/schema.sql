@@ -916,7 +916,7 @@ CREATE TABLE entry_example (
 -- at its place is the line and text the list quotes. A layer beside the entry,
 -- never an edit of it: entry_definition keeps the page's own words, and a
 -- lookup reads `text` in their place. Absent on a master seeded before it until
--- `correct:records` writes it.
+-- `update:upgrade` creates it; a lookup reads an absent one as empty.
 CREATE TABLE corrected_definition (
   entry_id         INTEGER NOT NULL,
   definition_index INTEGER NOT NULL,
