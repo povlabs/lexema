@@ -12,12 +12,16 @@
 // Each edge's gloss is read by a closed rule: `it-verb-form-gloss/v1` for a
 // verb record, `it-plural-gloss/v1` for a noun or adjective record. A gloss the
 // rule refuses gives no form. Nothing is written: the rules read at lookup time.
+// A curated correction of a plural's record (#420) stands in for its tags here
+// exactly as on a word's own page (`pluralDeclaration`, #470).
 
 import { POS_TITLE_BY_TEMPLATE } from "../italian/wikitext.js";
 import { readPluralGloss } from "../italian/pluralGloss.js";
 import { readVerbFormGloss } from "../italian/verbFormGloss.js";
+import { correctionOf, correctionsByRecord, type CorrectionRow } from "./correctedClaim.js";
 import type { DictionaryRead, LookupDatabase } from "./database.js";
-import { servedBy } from "./served.js";
+import { dictionaryTables, servedBy } from "./served.js";
+import { pluralDeclaration } from "./types.js";
 import type {
   DeclaredLemmaReading,
   DeclaredLemmaResult,
@@ -45,17 +49,31 @@ export const DECLARED_LEMMA_SQL: DictionaryRead = `SELECT d.record_id, d.release
       ORDER BY d.line_no, e.json_pointer`;
 
 /**
- * The stated genders of the same declaring records, which place a plural whose
- * gloss names no gender. Read off the same edges, beside the read above.
+ * The stated genders and numbers of the same declaring records. The genders
+ * place a plural whose gloss names no gender; the numbers are read only so a
+ * correction of one can say what it replaces, as `INFLECTION_GRAMMAR_SQL`
+ * reads them for a word's own page. Read off the same edges, beside the read
+ * above.
  */
-export const DECLARED_LEMMA_GENDER_SQL: DictionaryRead = `SELECT DISTINCT c.record_id, c.value, c.source_text, c.json_pointer,
+export const DECLARED_LEMMA_GENDER_SQL: DictionaryRead = `SELECT DISTINCT c.record_id, c.dimension, c.value, c.source_text, c.json_pointer,
             d.release_id, d.line_no, d.line_sha256
        FROM form_of_edge e
        JOIN source_record d ON d.record_id = e.record_id
        JOIN grammar_claim c
-         ON c.record_id = e.record_id AND c.scope = 'record' AND c.status = 'stated' AND c.dimension = 'gender'
+         ON c.record_id = e.record_id AND c.scope = 'record' AND c.status = 'stated' AND c.dimension IN ('gender', 'number')
       WHERE e.release_id IN (${servedBy("?1")}) AND e.target_word_key = ?2
       ORDER BY c.record_id, c.json_pointer`;
+
+/**
+ * The curated corrections (#420) of the same declaring records, read off the
+ * same edges and beside the reads above, and only when the master has the
+ * table (`dictionaryTables`).
+ */
+export const DECLARED_LEMMA_CORRECTION_SQL: DictionaryRead = `SELECT DISTINCT k.record_id, k.dimension, k.value, k.correction_id, k.evidence_url
+       FROM form_of_edge e
+       JOIN corrected_claim k ON k.record_id = e.record_id
+      WHERE e.release_id IN (${servedBy("?1")}) AND e.target_word_key = ?2
+      ORDER BY k.record_id, k.dimension`;
 
 /** The declaring records' parts of speech a declared lemma reads, to their section template. */
 const TEMPLATE = { verb: "verb", noun: "sost", adj: "adj" } as const;
@@ -74,8 +92,9 @@ interface EdgeRow {
   gloss_pointer: string | null;
 }
 
-interface GenderRow {
+interface GrammarRow {
   record_id: number;
+  dimension: "gender" | "number";
   value: string;
   source_text: string;
   json_pointer: string;
@@ -106,18 +125,22 @@ export async function declaredLemma(
   notFound: NotFoundResult,
 ): Promise<DeclaredLemmaResult | undefined> {
   const { key } = notFound.query;
-  const [edges, genderRows] = await Promise.all([
+  const [edges, grammarRows, correctionRows] = await Promise.all([
     db.all<EdgeRow>(DECLARED_LEMMA_SQL, [releaseId, key]),
-    db.all<GenderRow>(DECLARED_LEMMA_GENDER_SQL, [releaseId, key]),
+    db.all<GrammarRow>(DECLARED_LEMMA_GENDER_SQL, [releaseId, key]),
+    dictionaryTables(db).then(({ corrections }) =>
+      corrections ? db.all<CorrectionRow>(DECLARED_LEMMA_CORRECTION_SQL, [releaseId, key]) : [],
+    ),
   ]);
 
-  const genders = new Map<number, StatedClaim[]>();
-  for (const row of genderRows) {
-    genders.set(row.record_id, [
-      ...(genders.get(row.record_id) ?? []),
-      { status: "stated", dimension: "gender", value: row.value, sourceText: row.source_text, ref: lineRef(row, row.json_pointer) },
+  const stated = new Map<number, StatedClaim[]>();
+  for (const row of grammarRows) {
+    stated.set(row.record_id, [
+      ...(stated.get(row.record_id) ?? []),
+      { status: "stated", dimension: row.dimension, value: row.value, sourceText: row.source_text, ref: lineRef(row, row.json_pointer) },
     ]);
   }
+  const corrections = correctionsByRecord(correctionRows);
 
   // One reading per part of speech, in the order the source first places a
   // form of it, each spelled as its first placed edge names the word.
@@ -135,8 +158,13 @@ export async function declaredLemma(
     } else {
       const plural = readPluralGloss(row.gloss, row.target_word);
       if (plural === undefined) continue;
-      const recordGenders = genders.get(row.record_id) ?? [];
-      plurals[row.pos].push({ ...form, plural: { gloss, glossGender: plural.gender, recordGenders, correctedNumber: undefined } });
+      const declaration = pluralDeclaration(
+        gloss,
+        plural.gender,
+        stated.get(row.record_id) ?? [],
+        (corrections.get(row.record_id) ?? []).map(correctionOf),
+      );
+      plurals[row.pos].push({ ...form, plural: declaration });
     }
     if (!words.has(row.pos)) words.set(row.pos, row.target_word);
   }

@@ -482,6 +482,28 @@ export interface PluralDeclaration {
 }
 
 /**
+ * A declaring record's plural declaration, as a reader is owed it: its stated
+ * gender and number claims with its curated corrections in their place
+ * (`correctRecordClaims`). A word's own page and a declared lemma's page both
+ * build it here, so a corrected record sits in the same cell on each. The
+ * number claims are read only so a correction of one can say what it replaces.
+ */
+export function pluralDeclaration(
+  gloss: SourceText,
+  glossGender: PluralDeclaration["glossGender"],
+  stated: readonly StatedClaim[],
+  corrections: readonly Omit<CorrectedClaim, "status" | "replaces">[],
+): PluralDeclaration {
+  const asserted = correctRecordClaims(stated, corrections).filter(asserts);
+  return {
+    gloss,
+    glossGender,
+    recordGenders: asserted.filter((claim) => claim.dimension === "gender"),
+    correctedNumber: asserted.find((claim): claim is CorrectedClaim => claim.status === "corrected" && claim.dimension === "number"),
+  };
+}
+
+/**
  * A record that declares itself a form of a declared lemma, as that lemma's
  * page shows it: the record's own headword, spelled as the source spells it,
  * and its `/word`. The record is a real line, so the form keeps pointing at it.
