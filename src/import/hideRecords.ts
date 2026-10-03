@@ -14,7 +14,8 @@
 
 import { readMasterRelease, select, type MasterReader } from "../update/master.js";
 import { createStatement } from "../update/masterUpgrade.js";
-import { nearbyEdits } from "../update/apply.js";
+import { NO_NEARBY_EDITS, nearbyEdits } from "../update/apply.js";
+import { PlanCounts } from "../update/planCounts.js";
 import { SECTION_LANGUAGE_RULE } from "../italian/sectionLanguage.js";
 import { COLUMNS, literal, tupleOf } from "./seedSql.js";
 import { type FoundRecord, hiddenRowValues } from "./hiddenLayer.js";
@@ -43,6 +44,8 @@ export interface HidePlan {
   removed: { lookup_form: number; form_of_edge: number };
   /** `accent_fold` and `typo_key` rows deleted because the keys they rank lost a record. */
   replacedIndexRows: number;
+  /** What the SQL writes and deletes: each hide is a removal. */
+  counts: PlanCounts;
   /** Empty when there is nothing to hide. */
   sql: string;
 }
@@ -126,6 +129,7 @@ export function planHide(reader: MasterReader, found: readonly FoundRecord[], sc
     table: "none",
     removed: { lookup_form: 0, form_of_edge: 0 },
     replacedIndexRows: 0,
+    counts: PlanCounts.NONE,
     sql: "",
   };
   if (hides.length === 0) return nothing;
@@ -161,7 +165,7 @@ export function planHide(reader: MasterReader, found: readonly FoundRecord[], sc
   const [{ n: lookupRows }] = select<{ n: number }>(reader, `SELECT count(*) AS n FROM lookup_form WHERE record_id ${byRecord}`);
   const [{ n: edgeRows }] = select<{ n: number }>(reader, `SELECT count(*) AS n FROM form_of_edge WHERE record_id ${byRecord}`);
   const served = [master.releaseId, ...master.feeds.map((feed) => feed.releaseId)];
-  const nearby = keys.length === 0 ? { deletes: [], accent: [], typo: [], replaced: 0 } : nearbyEdits(reader, served, keys, new Set(ids), [], []);
+  const nearby = keys.length === 0 ? NO_NEARBY_EDITS : nearbyEdits(reader, served, keys, new Set(ids), [], []);
   const rules = [...new Set(hides.map(({ found: record }) => record.rule))].sort();
 
   const sql = [
@@ -185,7 +189,18 @@ export function planHide(reader: MasterReader, found: readonly FoundRecord[], sc
     ...inserts("accent_fold", nearby.accent.map((row) => [master.releaseId, row.foldKey, row.surfaceKey, row.headword, row.languages, row.richness])),
     ...inserts("typo_key", nearby.typo.map((row) => [master.releaseId, row.deletionKey, row.surfaceKey, row.languages, row.richness])),
   ];
-  return { ...nothing, table, removed: { lookup_form: lookupRows, form_of_edge: edgeRows }, replacedIndexRows: nearby.replaced, sql: `${sql.join("\n")}\n` };
+  return {
+    ...nothing,
+    table,
+    removed: { lookup_form: lookupRows, form_of_edge: edgeRows },
+    replacedIndexRows: nearby.replaced.accent_fold + nearby.replaced.typo_key,
+    counts: new PlanCounts(
+      { added: 0, changed: 0, removed: hides.length },
+      { hide_version: 1, raw_page: newPages.length, hidden_record: hides.length, accent_fold: nearby.accent.length, typo_key: nearby.typo.length },
+      { lookup_form: lookupRows, form_of_edge: edgeRows, ...nearby.replaced },
+    ),
+    sql: `${sql.join("\n")}\n`,
+  };
 }
 
 /** Records the plan hides that the master does not read back as hidden: a `hidden_record` row, and no search row or edge. */
