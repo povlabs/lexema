@@ -137,7 +137,7 @@ export function SourceLine({ page, siteKey }: { page: FooterFacts; siteKey: stri
       <span aria-hidden="true">·</span>
       <ReportDialog
         word={page.headword}
-        readings={reportReadings(page.readings)}
+        subject={{ kind: "mistake", readings: reportReadings(page.readings) }}
         siteKey={siteKey}
       />
     </footer>

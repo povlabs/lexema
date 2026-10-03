@@ -137,9 +137,37 @@ test("the migrations build report_opening in the shape schema.sql gave it, and r
     indexes.map((index) => ({ ...index, columns: index.columns.map(withoutPosition) }));
   assert.deepEqual(indexesByName(now.indexes), indexesByName(then.indexes));
   assert.deepEqual(now.foreignKeys, then.foreignKeys);
-  // The old checks stand, and two more: a line comes with its reading and digest, and an answer comes whole.
-  assert.deepEqual(now.checks.filter((check) => then.checks.includes(check)), then.checks);
-  assert.equal(now.checks.length, then.checks.length + 2);
+  // The old checks stand, the choice widened by `missing` (#441), and three
+  // more: a line comes with its reading and digest, an answer comes whole, and
+  // a missing word names no reading.
+  const OLD_CHOICE = "choice IN ('meaning', 'example', 'form', 'synonym', 'other')";
+  const NEW_CHOICE = "choice IN ('meaning', 'example', 'form', 'synonym', 'other', 'missing')";
+  assert.ok(then.checks.includes(OLD_CHOICE));
+  const kept = then.checks.filter((check) => check !== OLD_CHOICE);
+  assert.deepEqual(now.checks.filter((check) => kept.includes(check)), kept);
+  assert.ok(now.checks.includes(NEW_CHOICE));
+  assert.ok(now.checks.includes("choice <> 'missing' OR record_id IS NULL"));
+  assert.equal(now.checks.length, then.checks.length + 3);
+});
+
+test("the migration that adds the missing-word kind keeps every report already stored, and a missing word names no reading", () => {
+  const db = new DatabaseSync(":memory:");
+  const files = appMigrationFiles();
+  const widening = files.findIndex((path) => path.endsWith("_reader_report_missing.sql"));
+  assert.ok(widening > 0, "the missing-word migration is in the journal");
+  for (const path of files.slice(0, widening)) db.exec(readFileSync(path, "utf8"));
+  const insert = "INSERT INTO reader_report (release_id, word, record_id, choice, details, visitor_hash, received_at) VALUES";
+  db.exec(`${insert} ('it-0c432803', 'casa', NULL, 'form', 'Before #441.', 'h', '2026-10-01T12:00:00.000Z')`);
+  assert.throws(() => db.exec(`${insert} ('it-0c432803', 'xqzt', NULL, 'missing', 'Too soon.', 'h', '2026-10-01T12:01:00.000Z')`), /CHECK constraint failed/);
+  for (const path of files.slice(widening)) db.exec(readFileSync(path, "utf8"));
+  assert.equal(shape(db, "reader_report").table[0]?.strict, 1);
+  db.exec(`${insert} ('it-0c432803', 'xqzt', NULL, 'missing', 'Please add it.', 'h', '2026-10-01T12:02:00.000Z')`);
+  assert.throws(() => db.exec(`${insert} ('it-0c432803', 'casa', 7, 'missing', 'A reading.', 'h', '2026-10-01T12:03:00.000Z')`), /CHECK constraint failed/);
+  assert.throws(() => db.exec(`${insert} ('it-0c432803', 'casa', NULL, 'spelling', 'Unknown.', 'h', '2026-10-01T12:04:00.000Z')`), /CHECK constraint failed/);
+  assert.deepEqual(rows(db, "SELECT report_id, word, record_id, choice, details FROM reader_report ORDER BY report_id"), [
+    { report_id: 1, word: "casa", record_id: null, choice: "form", details: "Before #441." },
+    { report_id: 2, word: "xqzt", record_id: null, choice: "missing", details: "Please add it." },
+  ]);
 });
 
 test("the migration that adds a report's line and answer keeps every report already stored, waiting", () => {

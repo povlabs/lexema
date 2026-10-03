@@ -5,6 +5,10 @@
 // and details; Send stays off until a choice and details are given. No account
 // and no email field. What the server does with a report is lib/dictionary/report.ts.
 //
+// The same box opens from "Report a missing word" on a search that found
+// nothing (#441). There it reports the query as a missing word: it asks no
+// "What's wrong?" and names no reading, only details.
+//
 // Base UI supplies the dialog's behaviour (ADR 0010): focus is kept inside,
 // Escape closes it, and the page behind is inert while it is open.
 
@@ -16,11 +20,14 @@ import {
   REPORT_CHOICE_LABEL,
   REPORT_CHOICES,
   REPORT_DETAILS_LIMIT,
+  REPORT_SUBJECT_LABEL,
   requestOpening,
   type OpeningTrouble,
   type ReportAnswer,
   type ReportChoice,
   type ReportReading,
+  type ReportSubject,
+  type ReportTarget,
 } from "@/lib/dictionary/report.ts";
 import {
   REPORT_BACKDROP,
@@ -117,7 +124,9 @@ function Chip({ name, value, checked, onChange, children }: { name: string; valu
   );
 }
 
-export function ReportDialog({ word, readings, siteKey }: { word: string; readings: readonly ReportReading[]; siteKey?: string }) {
+export function ReportDialog({ word, subject, siteKey }: { word: string; subject: ReportSubject; siteKey?: string }) {
+  const readings = subject.kind === "mistake" ? subject.readings : [];
+  const label = REPORT_SUBJECT_LABEL[subject.kind];
   const [open, setOpen] = useState(false);
   const [choice, setChoice] = useState<ReportChoice | undefined>(undefined);
   const [reading, setReading] = useState<number | "unsure" | undefined>(undefined);
@@ -151,15 +160,23 @@ export function ReportDialog({ word, readings, siteKey }: { word: string; readin
     }
   }
 
+  /** What the report is about: set by the page for a missing word, picked by the reader on a word page. */
+  const target: ReportTarget | undefined =
+    subject.kind === "missing"
+      ? { choice: "missing", recordId: undefined }
+      : choice === undefined
+        ? undefined
+        : { choice, recordId: typeof reading === "number" ? reading : undefined };
+
   const ready =
-    choice !== undefined &&
+    target !== undefined &&
     details.trim() !== "" &&
     status !== "sending" &&
     openToken !== undefined &&
     (siteKey === undefined || token !== undefined);
 
   async function send() {
-    if (!ready) return;
+    if (!ready || target === undefined) return;
     setStatus("sending");
     try {
       const response = await fetch("/report", {
@@ -167,8 +184,7 @@ export function ReportDialog({ word, readings, siteKey }: { word: string; readin
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
           word,
-          choice,
-          recordId: typeof reading === "number" ? reading : undefined,
+          ...target,
           details,
           openToken,
           website: honeypot.current?.value ?? "",
@@ -202,7 +218,7 @@ export function ReportDialog({ word, readings, siteKey }: { word: string; readin
         }
       }}
     >
-      <Dialog.Trigger className={REPORT_TRIGGER}>Report a mistake</Dialog.Trigger>
+      <Dialog.Trigger className={REPORT_TRIGGER}>{label}</Dialog.Trigger>
       <Dialog.Portal>
         <Dialog.Backdrop className={REPORT_BACKDROP} />
         <Dialog.Popup className={REPORT_POPUP}>
@@ -231,7 +247,7 @@ export function ReportDialog({ word, readings, siteKey }: { word: string; readin
                 void send();
               }}
             >
-              <Dialog.Title className={REPORT_TITLE}>Report a mistake</Dialog.Title>
+              <Dialog.Title className={REPORT_TITLE}>{label}</Dialog.Title>
               <Dialog.Description className={REPORT_SUBTITLE}>
                 on{" "}
                 <span className={REPORT_SUBTITLE_WORD} lang="it">
@@ -239,18 +255,20 @@ export function ReportDialog({ word, readings, siteKey }: { word: string; readin
                 </span>
               </Dialog.Description>
 
-              <fieldset className={REPORT_FIELD}>
-                <legend className={REPORT_FIELD_LABEL} id={ids.choice}>
-                  What’s wrong?
-                </legend>
-                <div className={REPORT_CHIPS}>
-                  {REPORT_CHOICES.map((value) => (
-                    <Chip key={value} name="choice" value={value} checked={choice === value} onChange={() => setChoice(value)}>
-                      {REPORT_CHOICE_LABEL[value]}
-                    </Chip>
-                  ))}
-                </div>
-              </fieldset>
+              {subject.kind === "mistake" && (
+                <fieldset className={REPORT_FIELD}>
+                  <legend className={REPORT_FIELD_LABEL} id={ids.choice}>
+                    What’s wrong?
+                  </legend>
+                  <div className={REPORT_CHIPS}>
+                    {REPORT_CHOICES.map((value) => (
+                      <Chip key={value} name="choice" value={value} checked={choice === value} onChange={() => setChoice(value)}>
+                        {REPORT_CHOICE_LABEL[value]}
+                      </Chip>
+                    ))}
+                  </div>
+                </fieldset>
+              )}
 
               {readings.length > 0 && (
                 <fieldset className={REPORT_FIELD}>
