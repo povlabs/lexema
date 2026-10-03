@@ -32,6 +32,7 @@
 // is the page's own `Esempi:` label.
 
 import type { RawPage, RawPageRef } from "../source/rawPage.js";
+import type { PosTitle } from "./partOfSpeech.js";
 
 // --- Page layout ------------------------------------------------------------
 
@@ -51,7 +52,7 @@ const LIST_LINE = /^(#[#*:]*)\s*(.*)$/;
  * It is the table `tools/definition_loss.py` measured with, unchanged; a heading
  * missing from it leaves its section unmatched and counted, never guessed at.
  */
-export const POS_TITLE_BY_TEMPLATE: Readonly<Record<string, string>> = {
+export const POS_TITLE_BY_TEMPLATE: Readonly<Record<string, PosTitle>> = {
   sost: "Sostantivo", agg: "Aggettivo", adj: "Aggettivo",
   verb: "Verbo", nome: "Nome proprio", avv: "Avverbio",
   acron: "Acronimo / Abbreviazione", chat: "Abbreviazione in uso nelle chat",
@@ -650,6 +651,19 @@ function leadInLabels(leadIn: string): string[] {
   return labels.filter((label) => hasLetters(label));
 }
 
+/**
+ * The definitions a page-only section's `#` list states, in page order: a `#`
+ * line with prose is one, and below a page control the lines it marks are.
+ */
+function listDefinitions(reader: SectionReader, list: readonly Omit<ListLine, "children">[]): PageDefinition[] {
+  return listTree(list).flatMap((node) => {
+    if (!isSenseMarker(node.marker)) return [];
+    if (NO_DEFINITION.test(node.body)) return [];
+    if (hasPlainProse(node.body)) return reader.definition(node, { route: "sense-line" }, null);
+    return reader.senseLine(node).below;
+  });
+}
+
 /** The three verb layouts ruled in ADR 0024, without changing record-backed recovery. */
 export function readRuledVerbSections(page: RawPage): { ref: RawPageRef; wikitext: string; definitions: PageDefinition[] }[] {
   const sections: { line: number; wikitext: string; handwritten: boolean; list: Omit<ListLine, "children">[]; prose: ProseLine[]; aboveHeading: ProseLine[] }[] = [];
@@ -730,12 +744,7 @@ export function readRuledVerbSections(page: RawPage): { ref: RawPageRef; wikitex
         reader.definition({ ...prose, marker: "", body: prose.wikitext, wrapped: null, children: [] }, { route: "above-heading-prose" }, null));
       return { ref, wikitext: section.wikitext, definitions: definitions.filter((definition) => definition.text !== "") };
     }
-    const definitions = listTree(section.list).flatMap((node) => {
-      if (!isSenseMarker(node.marker)) return [];
-      if (NO_DEFINITION.test(node.body)) return [];
-      if (hasPlainProse(node.body)) return reader.definition(node, { route: "sense-line" }, null);
-      return reader.senseLine(node).below;
-    });
+    const definitions = listDefinitions(reader, section.list);
     for (const prose of section.prose) {
       // Bold ordinal markers delimit meanings; the bracketed etymology is not a definition.
       const numbered = [...prose.wikitext.matchAll(/'''\d+\.'''\s*([\s\S]*?)(?='''\d+\.'''|$)/g)];
@@ -747,4 +756,210 @@ export function readRuledVerbSections(page: RawPage): { ref: RawPageRef; wikitex
     }
     return { ref, wikitext: section.wikitext, definitions: definitions.filter((definition) => definition.text !== "") };
   });
+}
+
+// --- Every measured layout (ADR 0028) ---------------------------------------
+//
+// The page-only rule reads layout the way the 2026-10-03 measurement's
+// detector does (src/import/measureUnrecordedPages.ts), so the pages it admits
+// are the pages that report counted. It reads no definition text to decide a
+// part of speech: only the markers and headings below.
+
+/** How a page marks its Italian section. */
+export type LanguageMark =
+  | "standard" // `== {{-it-}} ==`
+  | "malformed" // `{{-it-}}` in a heading line of another shape: `= {{-it-}} =`, `[[]]== {{-it-}} ==`
+  | "bare" // `{{-it-}}` alone on a line
+  | "none"; // no Italian marker; a `{{-sost-|it}}`-style heading states the language
+
+/** What opens a part-of-speech section. */
+export type PosSignal =
+  | "template" // `{{-sost-|it}}`
+  | "spaced-template" // `{{-sost  form-|it}}`, ` {{-sost-|it}}`: a known template with stray spaces
+  | "added-template" // `{{-loc veb-|it}}`, `{{-pron-|it}}`: the two ADR 0028 adds to the table
+  | "bare-template" // `{{-sost-}}`
+  | "verb-label" // `{{Transitivo|it}}`, `{{Intransitivo|it}}`, `{{Riflessivo|it}}` with no section open
+  | "italian-heading" // `=== Verbo transitivo ===`, `'''''Verbo'''''`
+  | "english-heading" // `===Verb===`: states no Italian part of speech
+  | "unknown-template"; // a template no table knows: states none
+
+/** One section holding Italian definitions, and the part of speech it states, if any. */
+export interface StatedSection {
+  signal: PosSignal;
+  posTitle: PosTitle | null;
+  /** The line that opened the section. */
+  ref: RawPageRef;
+  wikitext: string;
+  /** Its definitions in page order. */
+  definitions: PageDefinition[];
+}
+
+/** A page's Italian part-of-speech sections, read from its layout alone. */
+export interface StatedLayout {
+  language: LanguageMark;
+  /** Every section holding an Italian `#` line that states a meaning, in page order. */
+  sections: StatedSection[];
+  /** Italian `#` lines that state a meaning and sit in no section. */
+  unplaced: number;
+  /** The page carries `{{Trasfen}}`: copied from English Wiktionary. */
+  englishCopy: boolean;
+}
+
+/**
+ * The two templates ADR 0028 reads beyond `POS_TITLE_BY_TEMPLATE`, only in the
+ * `{{-x-|it}}` form: a bare `{{-pron-}}` opens the pronunciation section.
+ */
+const ADDED_POS_TITLE_BY_TEMPLATE: Readonly<Record<string, PosTitle>> = { "loc veb": "Locuzione verbale", pron: "Pronome" };
+
+/** Section templates that are not a language: `{{-sill-}}`, `{{-trad-}}`… */
+const SECTION_TEMPLATES = new Set([
+  "sill", "pron", "etim", "trad", "ref", "sin", "ant", "rel", "der", "var", "alter", "prov", "quote",
+  "uso", "noconf", "decl", "coni", "iperon", "ipon", "example", "hyph", "cod",
+]);
+
+const titleIn = (table: Readonly<Record<string, PosTitle>>, name: string): PosTitle | undefined =>
+  Object.hasOwn(table, name) ? table[name] : undefined;
+/** `loc  verb` and `agg  form` are written with doubled spaces; the table spells them single. */
+const spacedOnce = (name: string): string => name.trim().replace(/\s+/g, " ");
+/** A language code as a `{{-xx-}}` marker spells it. */
+const isLanguageCode = (name: string): boolean =>
+  /^[a-z]{2,3}(?:-[a-z]{2,3})?$/.test(name) && !SECTION_TEMPLATES.has(name) && titleIn(POS_TITLE_BY_TEMPLATE, spacedOnce(name)) === undefined;
+
+const ITALIAN_POS_TITLES = new Map(Object.values(POS_TITLE_BY_TEMPLATE).map((title) => [title.toLowerCase(), title]));
+const ENGLISH_POS_HEADING = /^(?:verb|noun|adjective|adverb|adverbial phrase|preposition|conjunction|conjunction phrase|interjection|pronoun|phrase|proper noun)$/i;
+const REDIRECT = /^#\s*(?:rinvia|redirect)\b/i;
+const STATED_SENSE_LINE = /^(#+)(?![#*:])\s*(.*)$/;
+
+/**
+ * Whether a `#` line states something in plain text beyond the headword: not
+ * only templates (`{{Nodef|it}}`), italics (a gender stamp, `''m''`) and the
+ * bold headword (`'''carciofino''' ''m'';`).
+ */
+function statesMeaning(body: string, title: string): boolean {
+  let text = body.replace(/<!--[\s\S]*?-->|<ref[^>]*\/>|<ref[^>]*>[\s\S]*?<\/ref>|<[^>]+>/g, " ");
+  for (let previous = ""; previous !== text; ) {
+    previous = text;
+    text = text.replace(/\{\{[^{}]*\}\}/g, " ");
+  }
+  text = text
+    .replace(/\[\[(?:[^[\]|]*\|)?([^[\]]*)\]\]/g, "$1")
+    .replace(/'{5}[^']*'{5}/g, " ")
+    .replace(/'{3}([^']*)'{3}/g, "$1")
+    .replace(/'{2}[^']*'{2}/g, " ")
+    .replace(/'{2,}/g, "");
+  return /\p{L}/u.test(text.split(title).join(" "));
+}
+
+/** What a line opens. `italian` is the language the opener itself states, if any. */
+type Opener = { signal: PosSignal; posTitle: PosTitle | null; italian: boolean | undefined };
+
+/** `{{-sost-|it}}`, with or without stray spaces, or one of the two added templates. */
+function templateOpener(raw: string, line: string): Opener | undefined {
+  const match = /^\{\{-([a-z][a-z \-]*?)-\|(\s*)([a-z-]+)(\s*)\}\}$/.exec(line);
+  if (match === null) return undefined;
+  const name = spacedOnce(match[1]);
+  const italian = match[3] === "it";
+  const known = titleIn(POS_TITLE_BY_TEMPLATE, name);
+  if (known !== undefined) {
+    const spaced = /^\s/.test(raw) || match[1] !== name || match[2] !== "" || match[4] !== "";
+    return { signal: spaced ? "spaced-template" : "template", posTitle: known, italian };
+  }
+  const added = titleIn(ADDED_POS_TITLE_BY_TEMPLATE, name);
+  if (added !== undefined) return { signal: "added-template", posTitle: added, italian };
+  return { signal: "unknown-template", posTitle: null, italian };
+}
+
+/** `{{-verb-}}` with no language: a part-of-speech heading, never a language (`piallare`). */
+function bareTemplateOpener(line: string): Opener | undefined {
+  const match = /^\{\{-([a-z][a-z ]*?)-\}\}$/.exec(line);
+  const posTitle = match === null ? undefined : titleIn(POS_TITLE_BY_TEMPLATE, spacedOnce(match[1]));
+  return posTitle === undefined ? undefined : { signal: "bare-template", posTitle, italian: undefined };
+}
+
+/** `{{Transitivo|it}}` where no section is open states a verb (`raccontare`, `accerchiarsi`). */
+function verbLabelOpener(line: string, sectionOpen: boolean): Opener | undefined {
+  return !sectionOpen && /^\{\{(?:Transitivo|Intransitivo|Riflessivo)\|it\}\}$/.test(line)
+    ? { signal: "verb-label", posTitle: "Verbo", italian: true }
+    : undefined;
+}
+
+/** A written title: `=== Verbo transitivo ===`, `'''''Verbo'''''`, or an English `===Verb===`. */
+function writtenTitleOpener(line: string): Opener | undefined {
+  const heading = /^(={1,6})\s*(.*?)\s*\1$/.exec(line)?.[2];
+  const written = heading ?? /^'''''([^']+)'''''$/.exec(line)?.[1];
+  if (written === undefined || written.includes("{{")) return undefined;
+  const posTitle = ITALIAN_POS_TITLES.get(written.toLowerCase().replace(/\s+(?:transitivo|intransitivo|riflessivo)$/, ""));
+  if (posTitle !== undefined) return { signal: "italian-heading", posTitle, italian: undefined };
+  if (ENGLISH_POS_HEADING.test(written)) return { signal: "english-heading", posTitle: null, italian: undefined };
+  return undefined;
+}
+
+/**
+ * The page's Italian part-of-speech sections and how it marks Italian. A
+ * section is Italian when its language marker or its opener says so and
+ * neither names another language.
+ */
+export function readStatedSections(page: RawPage): StatedLayout {
+  type Open = Opener & { line: number; wikitext: string; isItalian: boolean; stated: number; list: Omit<ListLine, "children">[] };
+  /** The language the latest marker opened; `undefined` before any marker, `""` after a heading that ends it. */
+  let language: string | undefined;
+  let mark: LanguageMark = "none";
+  let section: Open | undefined;
+  const sections: Open[] = [];
+  let unplaced = 0;
+  for (const [index, raw] of page.wikitext.split("\n").entries()) {
+    const line = raw.trim();
+    const marker = /\{\{-([a-z][a-z-]*)-\}\}/.exec(line);
+    if (marker !== null && isLanguageCode(marker[1]) && (line === marker[0] || line.includes("="))) {
+      language = marker[1];
+      if (language === "it" && mark === "none") {
+        mark = line === marker[0] ? "bare" : /^==\s*\{\{-it-\}\}\s*==$/.test(line) ? "standard" : "malformed";
+      }
+      section = undefined;
+      continue;
+    }
+    if (/^==[^=].*[^=]==$/.test(line)) {
+      // A level-two heading with no language marker (`== Altri progetti ==`) ends every section.
+      language = language === undefined ? undefined : "";
+      section = undefined;
+      continue;
+    }
+    const opener = templateOpener(raw, line) ?? bareTemplateOpener(line) ?? verbLabelOpener(line, section !== undefined) ?? writtenTitleOpener(line);
+    if (opener !== undefined) {
+      const scope = language === undefined ? undefined : language === "it";
+      const isItalian = scope === false || opener.italian === false ? false : scope === true || opener.italian === true;
+      section = { ...opener, line: index + 1, wikitext: raw, isItalian, stated: 0, list: [] };
+      sections.push(section);
+      continue;
+    }
+    if (/^\{\{-/.test(line) || /^=/.test(line)) {
+      section = undefined;
+      continue;
+    }
+    const sense = STATED_SENSE_LINE.exec(line);
+    if (sense !== null && !REDIRECT.test(line) && statesMeaning(sense[2], page.title)) {
+      if (section === undefined && language === "it") unplaced += 1;
+      if (section !== undefined) section.stated += 1;
+    }
+    const item = section === undefined ? null : LIST_LINE.exec(line);
+    if (section !== undefined && item !== null) {
+      section.list.push({ line: index + 1, marker: item[1], body: item[2], wikitext: raw, wrapped: null });
+    }
+  }
+  const held = sections.filter((item) => item.isItalian && item.stated > 0);
+  return {
+    language: mark,
+    sections: held.map((item) => {
+      const reader = new SectionReader(page);
+      return {
+        signal: item.signal,
+        posTitle: item.posTitle,
+        ref: reader.ref(item.line),
+        wikitext: item.wikitext,
+        definitions: listDefinitions(reader, item.list).filter((definition) => definition.text !== ""),
+      };
+    }),
+    unplaced,
+    englishCopy: /\{\{\s*Trasfen\s*[|}]/i.test(page.wikitext),
+  };
 }

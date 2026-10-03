@@ -285,6 +285,7 @@ export async function loadDumpPages(path: string, expected: DumpIdentity): Promi
   }
   return {
     size: held.size,
+    titles: () => held.keys(),
     page(title) {
       const page = held.get(title);
       if (page === undefined) return undefined;

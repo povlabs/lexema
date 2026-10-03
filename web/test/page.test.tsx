@@ -31,7 +31,7 @@ import { CURATED_CORRECTIONS, definitionCorrections, type CuratedCorrection } fr
 import { atFixtureLines, correctionFixtureLines } from "../../test/correctionFixture.js";
 import { DECLARED_CORRECTION_LINES, declaredCorrections } from "../../test/declaredCorrectionFixture.js";
 import { seededDictionary } from "../../test/seededDictionary.js";
-import { loadFixturePages, type RawPageSource } from "../../src/source/rawPage.js";
+import { loadFixturePages, rawPageSource, type RawPageSource } from "../../src/source/rawPage.js";
 import { PUBLISHED_ARCHIVE_SHA256, sourceOf, type ArchiveFacts, type ReleaseSource } from "../../src/source/archiveFacts.js";
 import { fromNodeSqlite } from "../../src/lookup/database.js";
 import type { Reading, SourceRef } from "../../src/lookup/types.js";
@@ -2321,12 +2321,35 @@ test("page-only readings present definitions without origin marks or invented fo
     assert.ok(filters.ok);
     const candidates = await candidatesOf(answer, async () => undefined);
     const json = resultJson(candidates[0], filters.filters);
-    assert.equal(json.id, `${RELEASE}:page:${reading.ref.revisionId}`);
+    assert.equal(json.id, `${RELEASE}:page:${reading.ref.revisionId}:${reading.ref.line}`);
     assert.equal(idOf(reading), json.id);
     assert.equal(json.forms, null);
     assert.deepEqual(json.pronunciations, []);
     assert.equal(json.etymology, null);
   }, await loadFixturePages(join(REPO, "fixtures")));
+});
+
+test("a page-only noun no form names renders like any other entry, with no note on where it came from", async () => {
+  // `mastoide` (revision in fixtures/upstream-pages) states `{{-sost-|it}}`; no archive line names it.
+  const pages = await loadFixturePages(join(REPO, "fixtures"));
+  const mastoide = pages.page("mastoide");
+  assert.ok(mastoide !== undefined);
+  const text = await readFile(join(REPO, "fixtures/page-entry-forms.jsonl"), "utf8");
+  await withLines(text.trimEnd().split("\n"), async ({ db }) => {
+    const answer = await attempt(db, "mastoide");
+    assert.ok(answer.outcome === "found");
+    assert.equal(answer.readings.length, 1);
+    const [reading] = answer.readings;
+    assert.ok(reading.entryId !== undefined);
+    assert.equal(reading.posTitle, "Sostantivo");
+    const html = await render(db, "mastoide");
+    // The part of speech heads the reading exactly as a record's does.
+    assert.match(html, /<span lang="it">Sostantivo<\/span>/);
+    assert.match(html, new RegExp(`id="reading-page-${reading.entryId}"`));
+    assert.match(textOf(html), /prominenza tondeggiante dell'osso temporale, posta dietro il padiglione dell'orecchio/);
+    assert.doesNotMatch(textOf(html), /recovered|derived|page-only|italian-page-entry|Not from the source/i);
+    assert.equal(occurrencesOf(textOf(html), "Source"), 1);
+  }, rawPageSource([mastoide]));
 });
 
 test("a curated definition correction shows in place of the page's wrong words, with no note, and leaves the rest as it was", async () => {

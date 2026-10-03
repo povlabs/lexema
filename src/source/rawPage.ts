@@ -42,6 +42,11 @@ export interface RawPageRef {
 /** Raw pages by title. At most one revision per title. */
 export interface RawPageSource {
   page(title: string): RawPage | undefined;
+  /**
+   * Every title the source holds, each once, in the order it read them. The
+   * seed walks these to find pages with no Italian archive record (ADR 0028).
+   */
+  titles(): Iterable<string>;
   /** How many pages the source holds. */
   readonly size: number;
 }
@@ -58,7 +63,7 @@ export function rawPageSource(pages: Iterable<RawPage>): RawPageSource {
     }
     byTitle.set(page.title, page);
   }
-  return { page: (title) => byTitle.get(title), size: byTitle.size };
+  return { page: (title) => byTitle.get(title), titles: () => byTitle.keys(), size: byTitle.size };
 }
 
 /** `fixtures/upstream-pages/<title>.wikitext` opens with this comment and nothing else on the line. */

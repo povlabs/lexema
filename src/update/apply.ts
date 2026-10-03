@@ -40,8 +40,8 @@ import {
   COLUMNS,
   accentFoldRowOf,
   addLemmaRecord,
+  addPageEntryScore,
   literal,
-  pageEntryScore,
   tupleOf,
   typoKeyRowsOf,
   type AccentFoldRow,
@@ -476,6 +476,10 @@ const sameTypo = (a: TypoKeyRow, b: TypoKeyRow): boolean =>
  * later release. A row already right is left in its own release. Hiding
  * records (src/import/hideRecords.ts) reads it too, with the hidden records as
  * `retired` and nothing new, and writes them under the master's release.
+ * `pages` are the definitions of the page-only entries (ADR 0024) heading
+ * each key: a page-only entry heads its key and adds its definitions to the
+ * key's rank, as the seed counts it. The load of page-only entries
+ * (src/import/loadPageEntries.ts) passes them.
  */
 export function nearbyEdits(
   reader: MasterReader,
@@ -484,6 +488,7 @@ export function nearbyEdits(
   retired: ReadonlySet<number>,
   newKeys: readonly KeyRow[],
   newLemmas: readonly ArchiveRecord["record"][],
+  pages: ReadonlyMap<string, number> = new Map(),
 ): NearbyEdits {
   const inServed = `IN (SELECT value FROM json_each(${json(served)}))`;
   // The reads name every key, so they run over a few hundred keys at a time:
@@ -513,11 +518,18 @@ export function nearbyEdits(
     addLemmaRecord(scores, record);
   }
   for (const record of newLemmas) addLemmaRecord(scores, record);
-  // A served page-only entry (ADR 0024) heads its word's key with its own
-  // score, as the seed ranks it, though no record spells the key (#501).
+  // Page-only entries (ADR 0024, ADR 0028) head their word's key, ranked by
+  // their definitions beside any lemma record, as the seed ranks them. The
+  // caller's `pages` count every entry of a key they name, held or about to be
+  // written; any other key takes the served entries the master holds, so a
+  // hide or an apply keeps their search rows (#501).
+  const pageDefinitions = new Map(pages);
   for (const entry of pageEntriesOf(reader, inServed, runs.map(inKeys))) {
-    headed.set(entry.word_key, true);
-    scores.set(entry.word_key, pageEntryScore(entry.definitions));
+    if (!pages.has(entry.word_key)) pageDefinitions.set(entry.word_key, (pageDefinitions.get(entry.word_key) ?? 0) + entry.definitions);
+  }
+  for (const [key, definitions] of pageDefinitions) {
+    headed.set(key, true);
+    addPageEntryScore(scores, key, definitions);
   }
   const wantedKeys = new Set(keys);
 
@@ -578,9 +590,8 @@ export function nearbyEdits(
 
 /**
  * The served page-only entries whose word key is in one of `keyRuns`, with
- * their definition counts, in entry order: the seed's order, so a later entry
- * of one key wins as it does there. None in a dictionary the upgrade has not
- * given the page-entry tables.
+ * their definition counts. None in a dictionary the upgrade has not given the
+ * page-entry tables.
  */
 function pageEntriesOf(reader: MasterReader, inServed: string, keyRuns: readonly string[]): { word_key: string; definitions: number }[] {
   const tables = select<{ name: string }>(reader, "SELECT name FROM sqlite_schema WHERE type = 'table' AND name IN ('recovered_entry', 'entry_definition')");
@@ -591,7 +602,7 @@ function pageEntriesOf(reader: MasterReader, inServed: string, keyRuns: readonly
       `SELECT e.entry_id, e.word_key, (SELECT count(*) FROM entry_definition d WHERE d.entry_id = e.entry_id) AS definitions
          FROM recovered_entry e WHERE e.release_id ${inServed} AND e.word_key ${inKeys}`,
     ),
-  ).sort((a, b) => a.entry_id - b.entry_id);
+  );
 }
 
 /** What a read back of the master found after the apply ran, against the plan. */

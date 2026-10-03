@@ -2,7 +2,12 @@
 
 A page-only entry is an Italian word the archive has no record for, read from
 its Wiktionary page by the rules of
-[ADR 0024](../.decisions/0024-italian-pages-the-extraction-skips-are-recovered.md).
+[ADR 0024](../.decisions/0024-italian-pages-the-extraction-skips-are-recovered.md)
+and [ADR 0028](../.decisions/0028-recovered-pages-any-part-of-speech.md).
+Rule `italian-page-entry/v1` reads ADR 0024's three verb layouts. Rule
+`italian-page-entry/v2` reads ADR 0028's measured layouts, for any part of
+speech the layout states; a page v1 recovers keeps its v1 entry
+([pageEntry.ts](../src/italian/pageEntry.ts)).
 To build one in a local seed, see
 [run an archive seed](RUN_AN_IMPORT.md#page-only-entries).
 
@@ -14,13 +19,20 @@ To build one in a local seed, see
 - An entry holds its word, its part of speech, its definitions, and their labels
   and examples. Each fact keeps the page revision, its 1-based page line and that
   line's wikitext, verbatim.
+- A page gives one entry per Italian part-of-speech section. Each entry records
+  the rule that read it.
 - No inflection table, pronunciation or etymology is recovered.
+- Every raw page whose title has no Italian archive record is a candidate, not
+  only a page a form names ([seedSql.ts](../src/import/seedSql.ts)).
 
 ## Identity
 
 - A page-only entry has an `entryId`, never a `recordId`; a reading is exactly
   one of the two (`EntryIdentity` in [types.ts](../src/lookup/types.ts)).
-- API ids are `<release>:page:<revisionId>`. Archive ids stay `<release>:<lineNo>`.
+- API ids are `<release>:page:<revisionId>:<pageLine>`, where `pageLine` is the
+  1-based line that states the entry's part of speech. A page gives one entry
+  per such line, so `lungo` gives two ids. Archive ids stay `<release>:<lineNo>`
+  (`publicEntryId` in [types.ts](../src/lookup/types.ts)).
 - A report names a source record or the word. A page-only entry is not offered
   as a reading to report, so its report is about the word.
 
@@ -73,22 +85,31 @@ tables exist once per lookup, from `sqlite_schema` (`dictionaryTables` in
 ## Load them into a seeded dictionary
 
 `pnpm run load:page-entries` ([loadPageEntries.ts](../src/import/loadPageEntries.ts),
-[#440](https://github.com/povlabs/lexema/issues/440)) gives a dictionary seeded
+[#440](https://github.com/povlabs/lexema/issues/440),
+[#477](https://github.com/povlabs/lexema/issues/477)) gives a dictionary seeded
 before these entries the rows a seed now writes for them, with no reseed:
 
 - It reads the archive the master was seeded from (`SEED_INPUT`, default
-  `it-extract.jsonl.gz`) only to check it is the master's, and that archive's
-  dump (`RAW_PAGES`, default the dump in the repository root), checked by size
-  and SHA-1.
-- A title gets an entry by the seed's rule, read off the dictionary as it is
-  now: a served record points at it with `form_of`, no record of any release
-  spells it, hidden or replaced records included, and the rule reads its page
-  as one Italian verb.
+  `it-extract.jsonl.gz`), to check it is the master's and to list the words
+  its records spell, and that archive's dump (`RAW_PAGES`, default the dump in
+  the repository root), checked by size and SHA-1.
+- A page gives entries by the seed's rule: no record of the archive spells its
+  title, and rules `italian-page-entry/v1` and `italian-page-entry/v2` read
+  one entry per part-of-speech section. A title a record of a later release
+  spells gets none either, hidden or replaced records included.
+- An entry already held, by its word and the page line that states its part
+  of speech, is left alone. Rule v2 reads every page rule v1 recovers as
+  rule v1 still, so a dictionary loaded under rule v1 alone keeps those
+  entries and gains only rule v2's.
+- A word's key is ranked by its lemma records and the definitions of all its
+  page-only entries together, as the seed ranks it. A page whose title differs
+  from a record's only in case, such as `Aglio`, adds to that record's key.
 - For each entry it writes the `raw_page` row of its revision, the four tables'
   rows, the [corrected definitions](#corrected-definitions) the list gives it,
   and the `accent_fold` and `typo_key` rows of its word. It creates no table:
-  `pnpm run update:upgrade` creates the tables and `corrected_definition`, and
-  the load refuses to write without them. The dictionary deploy runs the
+  `pnpm run update:upgrade` creates the tables and `corrected_definition`, or
+  rebuilds them with their rows when one is stored with an older definition,
+  and the load refuses to write until it has. The dictionary deploy runs the
   upgrade itself first ([DEPLOY.md](DEPLOY.md#the-dictionary-deploy)).
 - It touches no record, applied change or hide. `source_record_json` stays
   byte for byte.
@@ -96,9 +117,22 @@ before these entries the rows a seed now writes for them, with no reseed:
   then reads each entry back. An entry already held is left alone, so a second
   run writes nothing. `--plan-only` prints the counts and writes nothing.
 
-On `it-0c432803` it loads the 14 entries of the
+On `it-0c432803`, rule v1 alone loaded the 14 entries of the
 [measurement](../reports/2026-10-02-page-entry-recovery.md) and
-`grufolare`'s and `tremare`'s corrected definitions.
+`grufolare`'s and `tremare`'s corrected definitions
+([its declaration](../dictionary-changes/2026-10-03-load-page-entries-it-0c432803.json)).
+A local seed under both rules reads 203 entries on 186 pages: those 14, and
+189 more on 172 pages. The pages are the 185 of the
+[layout measurement](../reports/2026-10-03-unrecorded-page-layouts.md) and
+`Aglio`, whose one definition holds a `{{taxon}}` the rule reads since
+[#495](https://github.com/povlabs/lexema/issues/495).
+On the shared dictionary, which holds rule v1's 14 already, the plan check
+counts 186 entries on 169 pages to write
+([its declaration](../dictionary-changes/2026-10-03-load-page-entries-v2-it-0c432803.json),
+[plan run](https://github.com/povlabs/lexema/actions/runs/37157579692)).
+That is three entries, each of one definition, fewer than the local seed
+reads. Which three, and why, is
+[#539](https://github.com/povlabs/lexema/issues/539).
 
 ### On the shared dictionary
 

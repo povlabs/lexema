@@ -864,6 +864,41 @@ test("POST /lookup/batch answers each word light: every candidate's lemma, or no
   );
 });
 
+test("each page-only entry of a page with several part-of-speech sections has its own id, in /lookup and /lookup/batch alike", async () => {
+  // Archive line 93815: `lunga`, a form of `lungo`, which has no Italian record.
+  // `lungo` (revision 4038855) states Aggettivo at line 2 and Preposizione at line 11.
+  const lungoDir = await mkdtemp(join(tmpdir(), "lexema-api-lungo-"));
+  const { parts } = await seedSql({
+    input: join(REPO, "fixtures/page-entry-v2-forms.jsonl"),
+    outputDir: join(lungoDir, "sql"),
+    schema: join(REPO, "src/db/schema.sql"),
+    releaseId: RELEASE,
+    rawPages: await loadFixturePages(join(REPO, "fixtures")),
+  });
+  const lungoSqlite = new DatabaseSync(":memory:");
+  try {
+    for (const part of parts) lungoSqlite.exec(await readFile(part, "utf8"));
+    const over = readOnlyDictionary(lungoSqlite);
+    const { key } = await newKey(1_000, "lungo");
+    // The `lunga` record itself may answer too; these are the page-only entries' ids.
+    const pageIds = async (path: string, body?: string): Promise<string[]> => {
+      const response = await handleApi(
+        new Request(`https://api.lexema.fyi/v1/${path}`, { method: body === undefined ? "GET" : "POST", body, headers: { "x-api-key": key } }),
+        { db: over, appDb: db, releaseId: RELEASE, now: NOW, metering },
+      );
+      assert.equal(response.status, 200, path);
+      return ((await response.json()) as Json).results.map((result: Json) => result.id).filter((id: string) => id.includes(":page:"));
+    };
+    const expected = [`${RELEASE}:page:4038855:2`, `${RELEASE}:page:4038855:11`];
+    assert.deepEqual(await pageIds("lookup?q=lungo"), expected);
+    assert.deepEqual(await pageIds("lemmatize?q=lungo"), expected);
+    assert.deepEqual(await pageIds("lookup/batch", JSON.stringify({ q: ["lungo"] })), expected);
+  } finally {
+    lungoSqlite.close();
+    await rm(lungoDir, { recursive: true, force: true });
+  }
+});
+
 test("POST /lookup/batch takes up to the key's calls a minute in words and refuses more, none, a non-string or a body that is not JSON", async () => {
   const words = (count: number) => JSON.stringify({ q: Array.from({ length: count }, (_, i) => (i % 2 === 0 ? "casa" : "qqqqqq")) });
   const { key } = await newKey(200, "batch-cap");

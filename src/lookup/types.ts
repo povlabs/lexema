@@ -695,6 +695,22 @@ export function entryKey(entry: EntryIdentity): string {
 }
 
 /**
+ * What an entry's public id is read from: a source record's archive line, or
+ * a page-only entry's revision and the 1-based line that states its part of
+ * speech. A page states one part of speech per line, so the line tells apart
+ * the entries one page gives (`lungo`, ADR 0028).
+ */
+export type PublicEntryKey = { releaseId: string } & (
+  | { lineNo: number; revisionId?: never; pageLine?: never }
+  | { revisionId: number; pageLine: number; lineNo?: never }
+);
+
+/** The id the API names an entry by: `<release>:<lineNo>`, or `<release>:page:<revisionId>:<pageLine>`. */
+export function publicEntryId(key: PublicEntryKey): string {
+  return key.lineNo === undefined ? `${key.releaseId}:page:${key.revisionId}:${key.pageLine}` : `${key.releaseId}:${key.lineNo}`;
+}
+
+/**
  * Whether this reading is a noun — and so whether it carries articles.
  *
  * The brand on `NonNounPos` is not a unit type, so `reading.pos === "noun"`

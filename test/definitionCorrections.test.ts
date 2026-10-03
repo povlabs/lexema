@@ -59,7 +59,10 @@ test("each definition entry quotes its revision's line and text exactly, and cit
     assert.equal(source.wikitext.split("\n")[correction.replaces.line - 1], correction.replaces.wikitext);
     const recovered = recoverPageEntry(source, new Set());
     assert.ok(recovered.outcome === "recovered");
-    const definition = recovered.entry.definitions[correction.replaces.index];
+    // The correction's entry is the page's one entry of its part of speech.
+    const [entry, ...others] = recovered.entries.filter((candidate) => candidate.pos === correction.entry.pos);
+    assert.deepEqual(others, []);
+    const definition = entry.definitions[correction.replaces.index];
     assert.equal(definition.ref.line, correction.replaces.line);
     assert.equal(definition.wikitext, correction.replaces.wikitext);
     assert.equal(definition.text, correction.replaces.text);

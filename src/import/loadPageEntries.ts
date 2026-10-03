@@ -1,5 +1,5 @@
-// The one-off update that loads page-only entries (ADR 0024, #403) into a
-// dictionary seeded before them (#440). It writes what a seed now writes for
+// The update that loads page-only entries (ADR 0024, ADR 0028) into a
+// dictionary seeded before them (#440, #477). It writes what a seed now writes for
 // each entry and nothing else: the `raw_page` row of the revision it was read
 // from, its `recovered_entry`, `entry_definition`, `entry_label` and
 // `entry_example` rows (pageEntryRows.ts), the `corrected_definition` rows the
@@ -10,31 +10,35 @@
 // record is touched, `source_record_json` least of all, and no applied change
 // or hide is undone.
 //
-// Which titles get an entry is the seed's rule, read off the dictionary as it
-// stands: a word a served record points at with `form_of`, which no record of
-// any release spells, whose page in the master's dump the rule reads as one
-// Italian verb (`recoverPageEntry`). A title a record spells, hidden or
-// replaced included, gets none, as in the seed.
+// Which pages give entries is the seed's rule (seedSql.ts): every page of the
+// master's dump whose title no record of the master's archive spells, read by
+// `recoverPageEntry`, one entry per part-of-speech section. A title a record
+// of any release spells, hidden or replaced included, gets none, as in the
+// seed; the dictionary is read for the records a feed added.
 //
 // The SQL is one batch, run as one transaction, like a hide
-// (src/import/hideRecords.ts). An entry the dictionary already holds is left
-// alone, so a second run plans nothing.
+// (src/import/hideRecords.ts). An entry the dictionary already holds, by its
+// word and the page line that states its part of speech, is left alone, so a
+// second run plans nothing. A dictionary loaded under rule v1 alone (#440)
+// keeps those entries: rule v2 reads a page rule v1 recovers as v1 still
+// (pageEntry.ts), so the load adds only the entries rule v2 gives.
 
 import { correctionId, definitionCorrections, definitionMismatch, type CuratedCorrection } from "../italian/curatedCorrections.js";
 import { normalizeItalianExact } from "../italian/normalize.js";
-import { PAGE_ENTRY_RULE, recoverPageEntry, type RecoveredEntry } from "../italian/pageEntry.js";
-import { deletionKeys, foldKey } from "../lookup/nearby.js";
+import { PAGE_ENTRY_RULE, PAGE_ENTRY_RULE_V2, recoverPageEntry, type RecoveredEntry } from "../italian/pageEntry.js";
 import { PAGE_ENTRY_TABLES } from "../lookup/served.js";
 import type { RawPage } from "../source/rawPage.js";
 import { missingUpgrade, readMasterRelease, select, type MasterReader } from "../update/master.js";
 import { PAGE_ENTRY_CORRECTION_TABLES, PAGE_ENTRY_INDEXES } from "../update/masterUpgrade.js";
 import { PlanCounts } from "../update/planCounts.js";
-import { correctedDefinitionValues } from "./correctedDefinitions.js";
+import { correctedDefinitionValues, correctsEntry } from "./correctedDefinitions.js";
+import { parseArchive } from "./importRelease.js";
 import { entryDefinitionsOf, pageEntryRows } from "./pageEntryRows.js";
-import { accentFoldRowOf, COLUMNS, literal, pageEntryScore, tupleOf, typoKeyRowsOf, type AccentFoldRow, type TypoKeyRow } from "./seedSql.js";
+import { nearbyEdits } from "../update/apply.js";
+import { COLUMNS, literal, tupleOf } from "./seedSql.js";
 
 /** The rules the load reads pages by; a declaration names them all. */
-export const PAGE_ENTRY_RULES = [PAGE_ENTRY_RULE] as const;
+export const PAGE_ENTRY_RULES = [PAGE_ENTRY_RULE, PAGE_ENTRY_RULE_V2] as const;
 
 /** What a run does with one entry the rule reads off the dump. */
 export type PlannedEntry =
@@ -62,6 +66,8 @@ export interface PageEntryPlan {
 }
 
 const json = (values: readonly unknown[]): string => literal(JSON.stringify(values));
+/** Where an entry sits: its word and the page line that states its part of speech, which tell a word's entries apart. */
+const placeOf = (word: string, pageLine: number): string => `${word}\u0000${pageLine}`;
 const CHUNK = 200;
 
 /** `tuples` as INSERTs into `table` of at most `CHUNK` rows each. */
@@ -85,118 +91,55 @@ const PAGE_ENTRY_UPGRADE: readonly string[] = [...PAGE_ENTRY_TABLES, ...PAGE_ENT
 /** The upgrade names the load writes into that the dictionary lacks: run `update:upgrade` before the load's SQL while any is listed. */
 export const missingForLoad = (reader: MasterReader): string[] => missingUpgrade(reader).filter((name) => PAGE_ENTRY_UPGRADE.includes(name));
 
+/** Throws unless the dictionary has every table and view the upgrade adds, the page-entry ones aside. */
+function requireUpdateTables(reader: MasterReader): void {
+  const missing = missingUpgrade(reader).filter((name) => !PAGE_ENTRY_UPGRADE.includes(name));
+  if (missing.length > 0) throw new Error(`the dictionary lacks ${missing.join(", ")}; run pnpm run update:upgrade first`);
+}
+
 /** Which of `names` the dictionary has. */
 const tablesIn = (reader: MasterReader, names: readonly string[]): Set<string> =>
   new Set(select<{ name: string }>(reader, `SELECT name FROM sqlite_schema WHERE type = 'table' AND name IN (SELECT value FROM json_each(${json(names)}))`).map((row) => row.name));
 
 /**
- * The titles a page-only entry may be read for: each word a served record
- * points at with `form_of` that no record heading its key spells. Exact words,
- * as the seed reads them. A hidden record has no search row, so a title only
- * a hidden record spells is still listed here; `planPageEntries` drops it.
+ * The words the records of `archive` spell, hidden ones included: the seed
+ * reads no page-only entry for a page of one of these titles (seedSql.ts).
  */
-export function danglingTitles(reader: MasterReader): Set<string> {
-  const missing = missingUpgrade(reader).filter((name) => !PAGE_ENTRY_UPGRADE.includes(name));
-  if (missing.length > 0) throw new Error(`the dictionary lacks ${missing.join(", ")}; run pnpm run update:upgrade first`);
-  const master = readMasterRelease(reader);
-  // Naming the releases lets the probe use lookup_form_headword_by_key, which leads with release_id.
-  const served = `IN (SELECT value FROM json_each(${json([master.releaseId, ...master.feeds.map((feed) => feed.releaseId)])}))`;
-  return new Set(
-    select<{ word: string }>(
-      reader,
-      `SELECT DISTINCT e.target_word AS word FROM form_of_edge e
-         JOIN served_record r ON r.record_id = e.record_id
-        WHERE NOT EXISTS (
-          SELECT 1 FROM lookup_form lf JOIN source_record t ON t.record_id = lf.record_id
-           WHERE lf.release_id ${served} AND lf.surface_key = e.target_word_key AND lf.origin = 'headword' AND t.word = e.target_word)`,
-    ).map((row) => row.word),
-  );
+export async function archiveWords(archive: string): Promise<Set<string>> {
+  const words = new Set<string>();
+  await parseArchive({ input: archive, onRejection: () => {}, onRecord: ({ record }) => void words.add(record.word) });
+  return words;
 }
 
-/** The entries the rule reads off `pages` for `titles`, by title. Reads each page once and keeps nothing else. */
-export async function findPageEntries(pages: AsyncIterable<RawPage> | Iterable<RawPage>, titles: ReadonlySet<string>): Promise<RecoveredEntry[]> {
-  const found: RecoveredEntry[] = [];
-  const nothing = new Set<string>();
-  for await (const page of pages) {
-    if (!titles.has(page.title)) continue;
-    const result = recoverPageEntry(page, nothing);
-    if (result.outcome === "recovered") found.push(result.entry);
-  }
-  return found.sort((a, b) => (a.page.title < b.page.title ? -1 : a.page.title > b.page.title ? 1 : 0));
-}
-
-const sameAccent = (a: AccentFoldRow, b: AccentFoldRow): boolean =>
-  a.foldKey === b.foldKey && a.surfaceKey === b.surfaceKey && a.headword === b.headword && a.languages === b.languages && a.richness === b.richness;
-
-const sameTypo = (a: TypoKeyRow, b: TypoKeyRow): boolean =>
-  a.deletionKey === b.deletionKey && a.surfaceKey === b.surfaceKey && a.languages === b.languages && a.richness === b.richness;
-
-interface NearbyRows {
-  readonly deletes: string[];
-  readonly accent: AccentFoldRow[];
-  readonly typo: TypoKeyRow[];
-  readonly replaced: { accent_fold: number; typo_key: number };
-}
+/** Entries by title, then by the page line that states their part of speech. */
+const byPlace = (a: RecoveredEntry, b: RecoveredEntry): number =>
+  a.page.title < b.page.title ? -1 : a.page.title > b.page.title ? 1 : a.posRef.line - b.posRef.line;
 
 /**
- * The `accent_fold` and `typo_key` rows of the entries' keys as the seed
- * writes them: each key is headed, and ranked by the entry's definitions and
- * no translation. Rows held for a key that differ are deleted, whatever
- * release wrote them, and rows already right are kept.
+ * The entries the rule reads off `pages` for every title `spelled` lacks, as
+ * the seed reads them: one per part-of-speech section, by title and line.
+ * Reads each page once and keeps nothing else.
  */
-function nearbyRows(reader: MasterReader, served: readonly string[], entries: readonly RecoveredEntry[]): NearbyRows {
-  const wanted = entries.map((entry) => {
-    const key = normalizeItalianExact(entry.page.title);
-    const score = pageEntryScore(entry.definitions.length);
-    const accent = accentFoldRowOf(key, true, score);
-    return { key, accent: accent === undefined ? [] : [accent], typo: typoKeyRowsOf(key, score) };
-  });
-  const keys = wanted.map(({ key }) => key);
-  const inServed = `release_id IN (SELECT value FROM json_each(${json(served)}))`;
-  const heldAccent = select<{ release_id: string; fold_key: string; surface_key: string; headword: 0 | 1; languages: number; richness: number }>(
-    reader,
-    `SELECT release_id, fold_key, surface_key, headword, languages, richness FROM accent_fold
-      WHERE ${inServed} AND fold_key IN (SELECT value FROM json_each(${json([...new Set(keys.map(foldKey))])}))
-        AND surface_key IN (SELECT value FROM json_each(${json(keys)}))`,
-  );
-  const heldTypo = select<{ release_id: string; deletion_key: string; surface_key: string; languages: number; richness: number }>(
-    reader,
-    `SELECT release_id, deletion_key, surface_key, languages, richness FROM typo_key
-      WHERE ${inServed} AND deletion_key IN (SELECT value FROM json_each(${json([...new Set(keys.flatMap(deletionKeys))])}))
-        AND surface_key IN (SELECT value FROM json_each(${json(keys)}))`,
-  );
-  const accent = wanted.flatMap((row) => row.accent);
-  const typo = wanted.flatMap((row) => row.typo);
-  const deletes: string[] = [];
-  const keptAccent: AccentFoldRow[] = [];
-  for (const held of heldAccent) {
-    const row: AccentFoldRow = { foldKey: held.fold_key, surfaceKey: held.surface_key, headword: held.headword, languages: held.languages, richness: held.richness };
-    if (accent.some((want) => sameAccent(want, row))) keptAccent.push(row);
-    else deletes.push(`DELETE FROM accent_fold WHERE release_id = ${literal(held.release_id)} AND fold_key = ${literal(held.fold_key)} AND surface_key = ${literal(held.surface_key)};`);
+export async function findPageEntries(pages: AsyncIterable<RawPage> | Iterable<RawPage>, spelled: ReadonlySet<string>): Promise<RecoveredEntry[]> {
+  const found: RecoveredEntry[] = [];
+  for await (const page of pages) {
+    if (spelled.has(page.title)) continue;
+    const result = recoverPageEntry(page, spelled);
+    if (result.outcome === "recovered") found.push(...result.entries);
   }
-  const keptTypo: TypoKeyRow[] = [];
-  for (const held of heldTypo) {
-    const row: TypoKeyRow = { deletionKey: held.deletion_key, surfaceKey: held.surface_key, languages: held.languages, richness: held.richness };
-    if (typo.some((want) => sameTypo(want, row))) keptTypo.push(row);
-    else deletes.push(`DELETE FROM typo_key WHERE release_id = ${literal(held.release_id)} AND deletion_key = ${literal(held.deletion_key)} AND surface_key = ${literal(held.surface_key)};`);
-  }
-  return {
-    deletes,
-    accent: accent.filter((want) => !keptAccent.some((held) => sameAccent(want, held))),
-    typo: typo.filter((want) => !keptTypo.some((held) => sameTypo(want, held))),
-    replaced: { accent_fold: heldAccent.length - keptAccent.length, typo_key: heldTypo.length - keptTypo.length },
-  };
+  return found.sort(byPlace);
 }
 
 /**
  * Plan loading `found`, the entries the rule read off the master's dump for
- * the dictionary's dangling titles. It reads the dictionary; it writes
+ * the titles its archive does not spell. It reads the dictionary; it writes
  * nothing. Its SQL holds no DDL: it writes into the tables `update:upgrade`
  * creates (`missingForLoad`). Throws when the dictionary holds some page-entry
  * tables but not all, or holds a title's page or entry from another revision
  * than the one read.
  */
 export function planPageEntries(reader: MasterReader, found: readonly RecoveredEntry[], corrections: readonly CuratedCorrection[]): PageEntryPlan {
+  requireUpdateTables(reader);
   const master = readMasterRelease(reader);
   const release = literal(master.releaseId);
   const tables = tablesIn(reader, PAGE_ENTRY_TABLES);
@@ -205,7 +148,7 @@ export function planPageEntries(reader: MasterReader, found: readonly RecoveredE
     throw new Error(`the dictionary has ${pageTables.join(", ")} but not every page-entry table (${PAGE_ENTRY_TABLES.join(", ")})`);
   }
   const hasEntries = pageTables.length === PAGE_ENTRY_TABLES.length;
-  const titles = found.map((entry) => entry.page.title);
+  const titles = [...new Set(found.map((entry) => entry.page.title))];
   const nothing: PageEntryPlan = { masterReleaseId: master.releaseId, entries: [], corrections: [], sql: "", counts: PlanCounts.NONE };
   if (titles.length === 0) return nothing;
 
@@ -213,11 +156,11 @@ export function planPageEntries(reader: MasterReader, found: readonly RecoveredE
   const spelled = new Set(select<{ word: string }>(reader, `SELECT DISTINCT word FROM source_record WHERE word ${inTitles}`).map((row) => row.word));
   const heldEntries = new Map(
     hasEntries
-      ? select<{ entry_id: number; word: string; revision_id: number }>(
+      ? select<{ entry_id: number; word: string; page_line: number; revision_id: number }>(
           reader,
-          `SELECT e.entry_id, e.word, p.revision_id FROM recovered_entry e JOIN raw_page p ON p.page_id = e.page_id
+          `SELECT e.entry_id, e.word, e.page_line, p.revision_id FROM recovered_entry e JOIN raw_page p ON p.page_id = e.page_id
             WHERE e.release_id = ${release} AND e.word ${inTitles}`,
-        ).map((row) => [row.word, row])
+        ).map((row) => [placeOf(row.word, row.page_line), row])
       : [],
   );
   const heldPages = new Map(
@@ -239,13 +182,17 @@ export function planPageEntries(reader: MasterReader, found: readonly RecoveredE
     if (heldPage !== undefined && heldPage.revision_id !== revisionId) {
       throw new Error(`the dictionary holds revision ${heldPage.revision_id} of ${title}, the rule read revision ${revisionId}`);
     }
-    const held = heldEntries.get(title);
+    const held = heldEntries.get(placeOf(title, entry.posRef.line));
     if (held !== undefined) {
       if (held.revision_id !== revisionId) throw new Error(`the dictionary holds an entry of ${title} read from revision ${held.revision_id}, the rule read revision ${revisionId}`);
       return { state: "already", entry, entryId: held.entry_id };
     }
     const pageId = heldPage?.page_id ?? nextPage++;
-    if (heldPage === undefined) newPages.push([pageId, master.releaseId, entry.page.wiki, title, revisionId, entry.page.timestamp]);
+    if (heldPage === undefined) {
+      newPages.push([pageId, master.releaseId, entry.page.wiki, title, revisionId, entry.page.timestamp]);
+      // A page gives several entries (ADR 0028); they share its one raw_page row.
+      heldPages.set(title, { page_id: pageId, title, revision_id: revisionId });
+    }
     return { state: "write", entry, entryId: nextEntry++, pageId };
   });
   const writes = entries.flatMap((planned) => (planned.state === "write" ? [planned] : []));
@@ -255,14 +202,25 @@ export function planPageEntries(reader: MasterReader, found: readonly RecoveredE
   const definitionList = definitionCorrections(corrections);
   const correctionRows = writes.flatMap(({ entry, entryId }) =>
     definitionList
-      .filter((correction) => correction.entry.title === entry.page.title && definitionMismatch(correction, entryDefinitionsOf(entry)) === undefined)
+      .filter((correction) => correctsEntry(correction, { title: entry.page.title, pos: entry.pos }) && definitionMismatch(correction, entryDefinitionsOf(entry)) === undefined)
       .map((correction) => ({ id: correctionId(correction), entryId, title: entry.page.title, values: [entryId, correction.replaces.index, ...correctedDefinitionValues(correction)] })),
   );
-  const nearby = nearbyRows(reader, [master.releaseId, ...master.feeds.map((feed) => feed.releaseId)], writes.map(({ entry }) => entry));
+  // The `accent_fold` and `typo_key` rows of the keys a write reaches, as the
+  // seed writes them: each key headed, and ranked by its lemma records and the
+  // definitions of every page-only entry of it, written now or held. Rows held
+  // for a key that differ are deleted, whatever release wrote them.
+  const written = new Set(writes.map(({ entry }) => entry.page.title));
+  const writtenKeys = new Set([...written].map(normalizeItalianExact));
+  const pageScores = new Map<string, number>();
+  for (const planned of entries) {
+    const key = normalizeItalianExact(planned.entry.page.title);
+    if (planned.state !== "spelled-by-a-record" && writtenKeys.has(key)) pageScores.set(key, (pageScores.get(key) ?? 0) + planned.entry.definitions.length);
+  }
+  const nearby = nearbyEdits(reader, [master.releaseId, ...master.feeds.map((feed) => feed.releaseId)], [...writtenKeys], new Set(), [], [], pageScores);
   const all = <Table extends "entry_definition" | "entry_label" | "entry_example">(table: Table) => rows.flatMap((entry) => entry[table]);
 
   const sql = [
-    `-- Generated by src/import/loadPageEntries.ts: ${writes.length} page-only entr${writes.length === 1 ? "y" : "ies"} of ${master.releaseId} by ${PAGE_ENTRY_RULE}: ${writes.map(({ entry }) => entry.page.title).join(", ")}.`,
+    `-- Generated by src/import/loadPageEntries.ts: ${writes.length} page-only entr${writes.length === 1 ? "y" : "ies"} of ${master.releaseId} by ${PAGE_ENTRY_RULES.join(", ")}: ${[...written].join(", ")}.`,
     ...inserts("raw_page", newPages),
     ...inserts("recovered_entry", rows.map((entry) => entry.recovered_entry)),
     ...inserts("entry_definition", all("entry_definition")),
@@ -332,7 +290,7 @@ export function unloaded(reader: MasterReader, plan: PageEntryPlan): string[] {
 /** One line per entry, for the run's report. */
 export function describePlannedEntry(planned: PlannedEntry): string {
   const { title, revisionId } = planned.entry.page;
-  const head = `  ${title} (revision ${revisionId}, ${planned.entry.definitions.length} definition(s))`;
+  const head = `  ${title} (revision ${revisionId}, line ${planned.entry.posRef.line}, ${planned.entry.pos}, ${planned.entry.definitions.length} definition(s))`;
   switch (planned.state) {
     case "write":
       return `${head}: entry ${planned.entryId}, written`;

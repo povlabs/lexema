@@ -19,6 +19,33 @@ an etymology; `piallare` has a bare `{{-verb-}}` heading. `movere` and `skirmish
 `notiziare` is a `{{W}}` stub. Each header records revision id and timestamp.
 The raw facts remain Italian and are licensed CC BY-SA 4.0.
 
+## Rule v2 inputs (ADR 0028)
+
+Read from the same verified dump on 2026-10-03. One page per layout ADR 0028
+admits, named by the group of
+[the 2026-10-03 measurement](../reports/2026-10-03-unrecorded-page-layouts.md):
+
+| Page | Revision | Saved | Layout |
+|---|---:|---|---|
+| `mastoide` | 3928854 | 2023-03-23T09:45:11Z | `none-heading/template` |
+| `finora` | 4040126 | 2025-07-24T12:39:32Z | `bare-heading/template` |
+| `a monte` | 4040642 | 2025-07-29T13:10:52Z | `standard-heading/spaced-template` |
+| `lungo` | 4038855 | 2025-07-08T13:36:18Z | `several-parts-of-speech` |
+| `trincetto` | 3147373 | 2017-05-13T15:38:39Z | `bare-heading/bare-template` |
+| `accerchiarsi` | 3902057 | 2023-01-19T19:43:05Z | `standard-heading/verb-label` (`{{Riflessivo\|it}}`) |
+| `purità` | 3681982 | 2020-05-09T14:19:18Z | `malformed-heading/template` |
+| `piangere sul latte versato` | 4060155 | 2026-02-03T10:18:06Z | `standard-heading/unknown-template` (`{{-loc veb-\|it}}`) |
+| `tantundem` | 3651204 | 2019-12-25T17:54:00Z | `standard-heading/unknown-template` (`{{-pron-\|it}}`) |
+
+Three more pages stay excluded: `motteggio` (2025-02-06T21:25:32Z, revision
+4014868) has no part-of-speech signal; `irrequieti` (2017-05-08T05:34:41Z,
+revision 2980547) has only `===Adjective===`; `mezz'ora` (2019-12-19T01:36:47Z,
+revision 3644006) is a `{{Trasfen}}` copy of English Wiktionary.
+
+[page-entry-v2-forms.jsonl](page-entry-v2-forms.jsonl) copies whole physical
+archive line 93815 (`lunga`, pointing at `lungo`), so a seed test reaches a page
+with two part-of-speech sections.
+
 ## Curated definition corrections (#450)
 
 [definition-corrections.jsonl](definition-corrections.jsonl) copies whole

@@ -1,0 +1,31 @@
+<!-- it.wiktionary.org/wiki/finora revision 4040126 (2025-07-24T12:39:32Z), CC BY-SA 4.0. Saved verbatim. -->
+{{-it-}}
+
+{{-avv-|it}}
+{{Pn}}
+# fino a questo momento
+
+{{-sill-}}
+; fi | nó | ra
+
+{{-pron-}}
+{{IPA|/fiˈnora/}}
+
+{{-sin-}}
+* [[ancora]]
+* [[fino a ora]]
+* [[sinora]]
+
+{{-etim-}}
+{{Noetim|it}}
+
+{{-trad-}}
+{{Trad1|avverbio}}
+:*{{en}}: [[so far]], [[till now]], [[up to now]], [[yet]]
+:*{{nb}}: [[hittil]], [[til nå]], [[så langt]], [[inntil nå]], [[enn så lenge]]
+{{Trad2}}
+
+{{-ref-}}
+* {{Fonte|trec}}
+* {{Fonte|dizit}}
+* {{Fonte|gar}}

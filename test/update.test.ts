@@ -710,7 +710,11 @@ test("a rebuild whose rows the new definition refuses stops whole, and the dicti
   await withDesk(async ({ db }) => {
     const schema = await readFile(SCHEMA, "utf8");
     db.exec("DROP TABLE recovered_entry");
-    db.exec(createStatement(schema, "TABLE", "recovered_entry").replace("CHECK (pos = 'verb')", "CHECK (pos IN ('verb', 'noun'))"));
+    // Without rule v1's verb-only CHECK (ADR 0028), the old table takes a noun read by rule v1.
+    const stated = createStatement(schema, "TABLE", "recovered_entry");
+    const without = stated.replace("  CHECK (rule <> 'italian-page-entry/v1' OR (pos = 'verb' AND pos_title = 'Verbo')),\n", "");
+    assert.notEqual(without, stated);
+    db.exec(without);
     db.exec(createStatement(schema, "INDEX", "recovered_entry_by_key"));
     const [{ release_id: release }] = db.prepare("SELECT release_id FROM source_release").all() as { release_id: string }[];
     db.prepare("INSERT INTO raw_page VALUES (900001, ?, 'it.wiktionary.org', 'scrivania', 4100, '2026-09-01T00:00:00Z')").run(release);

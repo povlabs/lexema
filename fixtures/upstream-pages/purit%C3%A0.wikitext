@@ -1,0 +1,40 @@
+<!-- it.wiktionary.org/wiki/purità revision 3681982 (2020-05-09T14:19:18Z), CC BY-SA 4.0. Saved verbatim. -->
+= {{-it-}} =
+{{-sost-|it}}
+{{Pn}}
+# [[condizione]] [[spirituale]] e [[fisica]] di chi non viene [[corrotto]], è [[mondo]] ed addirittura [[apporta]] [[miglioramenti]] anche per gli altri
+#* ''la {{Pn}} è spesso percepita con [[serenità]]''
+# {{Fig}} [[situazione]] di [[massimo]] [[bene]] [[ricercata]] anche nell'[[ordine]], comunque con la [[possibilità]] di [[estendere|estenderla]] anche al [[mondo]] [[materiale]]
+#* ''purché [[veramente]] [[erudito]], anche un [[bambino]], [[cercare|cercandole]], [[sa]] come [[ritrovare]] le [[vie]] della {{Pn}} [[ricominciando]] e ricominciando [[ancora]] con la [[riscoperta]] degli [[ornamenti]] della [[tradizione]]''
+# {{Term|religione|it}} [[integrità]] [[interiore]], [[spirituale]] e quindi "[[fisica]]"
+# {{Est}} [[vivere]] in [[modo]] da [[non]] essere [[coinvolti]] nel [[desiderio]] [[errato]] di [[volere|voler]] [[ostinatamente]] [[trovare]] [[errori]] o [[causare]] [[cose]] [[sbagliate]]
+
+{{-sill-}}
+; pu | ri | tà
+
+{{-etim-}}
+{{Noetim|it}}
+
+{{-sin-}}
+* {{Term|raro|it}} [[nettezza]]
+* {{Est}} [[espiazione]], [[redenzione]]
+* {{Est}} [[rettitudine]]
+* {{Term|familiare|it}} [[semplicità]]
+
+{{-ant-}}
+* {{Term|gergale|it}} {{Fig}} [[macchia]]
+* [[perversione]]
+* {{Est}} [[malafede]]
+
+{{-der-}}
+*[[puritano]]
+
+{{-rel-}}
+* [[penitenza]]
+* [[redento]]
+* {{Est}} [[salvo]]
+* {{Term|gergale|it}} [[pulito]]
+
+{{-prov-}}
+* ''{{Pn}} dei sentimenti'': è la misericordia verso le persone, sapere qual è la propria missione con gli altri ovvero aiutare veramente chi può essere aiutato... ad ''[[imitatio Dei]]''
+* ''{{Pn}} della [[razza]]'': [[storicamente]] avvenne con le teorie [[naziste]]

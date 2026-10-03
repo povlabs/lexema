@@ -1,10 +1,10 @@
-// The rows one page-only entry (ADR 0024) is stored as, in `COLUMNS` order:
+// The rows one page-only entry (ADR 0024, ADR 0028) is stored as, in `COLUMNS` order:
 // one `recovered_entry` row and its `entry_definition`, `entry_label` and
 // `entry_example` rows. The seed (seedSql.ts) and the one-off load into a
 // dictionary seeded before them (loadPageEntries.ts) both write these, so a
 // fresh seed and a loaded dictionary hold the same rows for one entry.
 
-import { PAGE_ENTRY_RULE, type RecoveredEntry } from "../italian/pageEntry.js";
+import type { RecoveredEntry } from "../italian/pageEntry.js";
 import type { PageEntryDefinitions } from "../italian/curatedCorrections.js";
 import { normalizeItalianExact } from "../italian/normalize.js";
 
@@ -28,7 +28,7 @@ export function pageEntryRows(entryId: number, releaseId: string, pageId: number
     definition.examples.forEach((example, exampleIndex) => examples.push([entryId, index, exampleIndex, example.ref.line, example.wikitext, example.text]));
   });
   return {
-    recovered_entry: [entryId, releaseId, pageId, title, normalizeItalianExact(title), entry.pos, entry.posTitle, PAGE_ENTRY_RULE, entry.posRef.line, entry.posWikitext],
+    recovered_entry: [entryId, releaseId, pageId, title, normalizeItalianExact(title), entry.pos, entry.posTitle, entry.rule, entry.posRef.line, entry.posWikitext],
     entry_definition: definitions,
     entry_label: labels,
     entry_example: examples,

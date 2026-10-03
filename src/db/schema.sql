@@ -860,19 +860,23 @@ FROM lookup_form lf
 JOIN source_record r ON r.record_id = lf.record_id
 JOIN served_release s ON s.release_id = lf.release_id;
 
--- Page-only entries (ADR 0024). These never name an archive record or line.
+-- Page-only entries (ADR 0024, ADR 0028). These never name an archive record or
+-- line. A page gives one entry per part-of-speech section, so `page_line`, the
+-- line that states the part of speech, tells a word's entries apart. `pos`
+-- takes the codes of `POS_BY_TITLE` in src/italian/partOfSpeech.ts.
 CREATE TABLE recovered_entry (
   entry_id INTEGER PRIMARY KEY,
   release_id TEXT NOT NULL REFERENCES source_release(release_id),
   page_id INTEGER NOT NULL,
   word TEXT NOT NULL,
   word_key TEXT NOT NULL,
-  pos TEXT NOT NULL CHECK (pos = 'verb'),
-  pos_title TEXT NOT NULL CHECK (pos_title = 'Verbo'),
-  rule TEXT NOT NULL CHECK (rule = 'italian-page-entry/v1'),
+  pos TEXT NOT NULL CHECK (pos IN ('noun', 'adj', 'verb', 'name', 'adv', 'abbrev', 'intj', 'conj', 'prep', 'pron', 'article', 'prefix', 'suffix', 'affix', 'character', 'symbol', 'num', 'particle', 'phrase', 'adv_phrase', 'prep_phrase')),
+  pos_title TEXT NOT NULL CHECK (pos_title <> ''),
+  rule TEXT NOT NULL CHECK (rule IN ('italian-page-entry/v1', 'italian-page-entry/v2')),
   page_line INTEGER NOT NULL CHECK (page_line > 0),
   wikitext TEXT NOT NULL,
-  UNIQUE (release_id, word),
+  CHECK (rule <> 'italian-page-entry/v1' OR (pos = 'verb' AND pos_title = 'Verbo')),
+  UNIQUE (release_id, word, page_line),
   FOREIGN KEY (page_id, release_id) REFERENCES raw_page(page_id, release_id)
 ) STRICT;
 CREATE INDEX recovered_entry_by_key ON recovered_entry (release_id, word_key);

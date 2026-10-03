@@ -1,0 +1,28 @@
+<!-- it.wiktionary.org/wiki/accerchiarsi revision 3902057 (2023-01-19T19:43:05Z), CC BY-SA 4.0. Saved verbatim. -->
+== {{-it-}} ==
+{{Riflessivo|it}}
+{{Pn|c}} 
+# [[circondarsi]] con, [[portare]] a se un [[insieme]] di [[persone]]
+#* {{Pn}} di persone più [[capaci]] per superare il [[problema]]
+
+{{-sill-}}
+; ac | cer | chiàr | si
+
+{{-pron-}}
+{{IPA|/att͡ʃerˈkjarsi/}}
+
+{{-etim-}}
+deriva da [[accerchiare]] 
+
+{{-sin-}}
+* [[circondarsi]], [[attorniarsi]]
+
+{{-trad-}}
+{{Trad1|}}
+:* {{en}}:
+{{Trad2}}
+
+{{-ref-}}
+* {{Fonte|sabco|accerchiare}}
+*{{Fonte|sin-co|accerchiare}}
+* {{Fonte|dizit|accerchiare}}

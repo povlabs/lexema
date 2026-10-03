@@ -1,0 +1,5503 @@
+{
+  "release": "it-0c432803",
+  "archiveSha256": "0c432803c672aceccd48787eb64807c5366fdbd6796715c9a99e31c0024d5dcf",
+  "dump": "itwiktionary-20260701",
+  "dumpSha1": "2bdd444236f7dcd26fee3652dbd641c31d0d9651",
+  "mainNamespacePages": 758429,
+  "unrecordedWithItalianDefinitions": 245,
+  "readWithPos": 192,
+  "severalPartsOfSpeech": 19,
+  "noPartOfSpeechSignal": 42,
+  "recoveredByRuleV1": {
+    "rule": "italian-page-entry/v1",
+    "pages": 13
+  },
+  "recoveredByProductionRule": {
+    "rules": [
+      "italian-page-entry/v1",
+      "italian-page-entry/v2"
+    ],
+    "pages": 185,
+    "entries": 202,
+    "counted": {
+      "pages": 184,
+      "entries": 201
+    },
+    "notCounted": {
+      "pages": 1,
+      "entries": 1,
+      "titles": [
+        {
+          "title": "dismagare",
+          "revisionId": 3467484,
+          "entries": 1
+        }
+      ]
+    }
+  },
+  "groups": {
+    "none-heading/template": {
+      "pages": 86,
+      "readWithPos": 86,
+      "recoveredPages": 85,
+      "recoveredEntries": 85
+    },
+    "bare-heading/template": {
+      "pages": 42,
+      "readWithPos": 42,
+      "recoveredPages": 42,
+      "recoveredEntries": 42
+    },
+    "no-part-of-speech": {
+      "pages": 42,
+      "readWithPos": 0,
+      "recoveredPages": 0,
+      "recoveredEntries": 0
+    },
+    "standard-heading/spaced-template": {
+      "pages": 21,
+      "readWithPos": 21,
+      "recoveredPages": 21,
+      "recoveredEntries": 21
+    },
+    "english-wiktionary-copy": {
+      "pages": 17,
+      "readWithPos": 9,
+      "recoveredPages": 0,
+      "recoveredEntries": 0
+    },
+    "several-parts-of-speech": {
+      "pages": 16,
+      "readWithPos": 16,
+      "recoveredPages": 16,
+      "recoveredEntries": 33
+    },
+    "bare-heading/bare-template": {
+      "pages": 8,
+      "readWithPos": 8,
+      "recoveredPages": 8,
+      "recoveredEntries": 8
+    },
+    "standard-heading/verb-label": {
+      "pages": 6,
+      "readWithPos": 6,
+      "recoveredPages": 6,
+      "recoveredEntries": 6
+    },
+    "malformed-heading/template": {
+      "pages": 4,
+      "readWithPos": 4,
+      "recoveredPages": 4,
+      "recoveredEntries": 4
+    },
+    "standard-heading/unknown-template": {
+      "pages": 2,
+      "readWithPos": 0,
+      "recoveredPages": 2,
+      "recoveredEntries": 2
+    },
+    "bare-heading/english-heading": {
+      "pages": 1,
+      "readWithPos": 0,
+      "recoveredPages": 0,
+      "recoveredEntries": 0
+    }
+  },
+  "titles": [
+    {
+      "title": "-osi",
+      "revisionId": 3970051,
+      "timestamp": "2024-01-16T16:31:00Z",
+      "group": "none-heading/template",
+      "heading": "none",
+      "sections": [
+        {
+          "signal": "template",
+          "pos": "Suffisso",
+          "definitions": 1
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [
+        "Suffisso"
+      ],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
+    },
+    {
+      "title": "3D",
+      "revisionId": 3355661,
+      "timestamp": "2018-07-22T09:39:14Z",
+      "group": "none-heading/template",
+      "heading": "none",
+      "sections": [
+        {
+          "signal": "template",
+          "pos": "Espressione",
+          "definitions": 1
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [
+        "Espressione"
+      ],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
+    },
+    {
+      "title": "5D",
+      "revisionId": 3355662,
+      "timestamp": "2018-07-22T09:39:24Z",
+      "group": "none-heading/template",
+      "heading": "none",
+      "sections": [
+        {
+          "signal": "template",
+          "pos": "Espressione",
+          "definitions": 1
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [
+        "Espressione"
+      ],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
+    },
+    {
+      "title": "ABI",
+      "revisionId": 3355712,
+      "timestamp": "2018-07-22T09:46:44Z",
+      "group": "none-heading/template",
+      "heading": "none",
+      "sections": [
+        {
+          "signal": "template",
+          "pos": "Acronimo / Abbreviazione",
+          "definitions": 1
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [
+        "Acronimo / Abbreviazione"
+      ],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
+    },
+    {
+      "title": "Agion oros",
+      "revisionId": 3998659,
+      "timestamp": "2024-10-04T17:31:38Z",
+      "group": "no-part-of-speech",
+      "heading": "standard",
+      "sections": [],
+      "unplaced": 1,
+      "readAs": [],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "no-ruled-layout",
+        "entries": 0
+      }
+    },
+    {
+      "title": "Aglio",
+      "revisionId": 4023379,
+      "timestamp": "2025-04-08T09:17:25Z",
+      "group": "none-heading/template",
+      "heading": "none",
+      "sections": [
+        {
+          "signal": "template",
+          "pos": "Sostantivo",
+          "definitions": 1
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [
+        "Sostantivo"
+      ],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "no-definition",
+        "entries": 0
+      }
+    },
+    {
+      "title": "Anturio",
+      "revisionId": 4023202,
+      "timestamp": "2025-04-07T09:01:16Z",
+      "group": "none-heading/template",
+      "heading": "none",
+      "sections": [
+        {
+          "signal": "template",
+          "pos": "Sostantivo",
+          "definitions": 1
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [
+        "Sostantivo"
+      ],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
+    },
+    {
+      "title": "Aro",
+      "revisionId": 4023392,
+      "timestamp": "2025-04-08T09:42:08Z",
+      "group": "none-heading/template",
+      "heading": "none",
+      "sections": [
+        {
+          "signal": "template",
+          "pos": "Sostantivo",
+          "definitions": 1
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [
+        "Sostantivo"
+      ],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
+    },
+    {
+      "title": "Asfodelo",
+      "revisionId": 4023398,
+      "timestamp": "2025-04-08T09:55:41Z",
+      "group": "none-heading/template",
+      "heading": "none",
+      "sections": [
+        {
+          "signal": "template",
+          "pos": "Sostantivo",
+          "definitions": 1
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [
+        "Sostantivo"
+      ],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
+    },
+    {
+      "title": "Augusteo",
+      "revisionId": 3905424,
+      "timestamp": "2023-01-19T20:39:35Z",
+      "group": "none-heading/template",
+      "heading": "none",
+      "sections": [
+        {
+          "signal": "template",
+          "pos": "Sostantivo",
+          "definitions": 1
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [
+        "Sostantivo"
+      ],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
+    },
+    {
+      "title": "Cinquecento",
+      "revisionId": 3968122,
+      "timestamp": "2023-12-30T18:15:16Z",
+      "group": "none-heading/template",
+      "heading": "none",
+      "sections": [
+        {
+          "signal": "template",
+          "pos": "Sostantivo",
+          "definitions": 1
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [
+        "Sostantivo"
+      ],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
+    },
+    {
+      "title": "Colle",
+      "revisionId": 3760085,
+      "timestamp": "2021-01-05T19:00:30Z",
+      "group": "none-heading/template",
+      "heading": "none",
+      "sections": [
+        {
+          "signal": "template",
+          "pos": "Sostantivo",
+          "definitions": 1
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [
+        "Sostantivo"
+      ],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
+    },
+    {
+      "title": "Eruca",
+      "revisionId": 4024778,
+      "timestamp": "2025-04-15T18:14:13Z",
+      "group": "none-heading/template",
+      "heading": "none",
+      "sections": [
+        {
+          "signal": "template",
+          "pos": "Sostantivo",
+          "definitions": 1
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [
+        "Sostantivo"
+      ],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
+    },
+    {
+      "title": "Gnatostomi",
+      "revisionId": 3622274,
+      "timestamp": "2019-11-06T13:20:18Z",
+      "group": "none-heading/template",
+      "heading": "none",
+      "sections": [
+        {
+          "signal": "template",
+          "pos": "Sostantivo",
+          "definitions": 1
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [
+        "Sostantivo"
+      ],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
+    },
+    {
+      "title": "Gong Bass Drum",
+      "revisionId": 3954648,
+      "timestamp": "2023-09-24T06:22:01Z",
+      "group": "malformed-heading/template",
+      "heading": "malformed",
+      "sections": [
+        {
+          "signal": "template",
+          "pos": "Sostantivo",
+          "definitions": 1
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [
+        "Sostantivo"
+      ],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
+    },
+    {
+      "title": "Irvingia",
+      "revisionId": 4027149,
+      "timestamp": "2025-05-01T10:03:25Z",
+      "group": "none-heading/template",
+      "heading": "none",
+      "sections": [
+        {
+          "signal": "template",
+          "pos": "Sostantivo",
+          "definitions": 1
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [
+        "Sostantivo"
+      ],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
+    },
+    {
+      "title": "KO",
+      "revisionId": 3449320,
+      "timestamp": "2018-08-23T05:04:41Z",
+      "group": "bare-heading/template",
+      "heading": "bare",
+      "sections": [
+        {
+          "signal": "template",
+          "pos": "Sostantivo",
+          "definitions": 2
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [
+        "Sostantivo"
+      ],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
+    },
+    {
+      "title": "Misurata",
+      "revisionId": 3789173,
+      "timestamp": "2021-06-05T19:25:32Z",
+      "group": "no-part-of-speech",
+      "heading": "standard",
+      "sections": [],
+      "unplaced": 1,
+      "readAs": [],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "no-ruled-layout",
+        "entries": 0
+      }
+    },
+    {
+      "title": "Natanya",
+      "revisionId": 4015190,
+      "timestamp": "2025-02-08T20:02:44Z",
+      "group": "no-part-of-speech",
+      "heading": "standard",
+      "sections": [],
+      "unplaced": 1,
+      "readAs": [],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "no-ruled-layout",
+        "entries": 0
+      }
+    },
+    {
+      "title": "Nilvo",
+      "revisionId": 1406481,
+      "timestamp": "2013-04-13T09:41:58Z",
+      "group": "bare-heading/template",
+      "heading": "bare",
+      "sections": [
+        {
+          "signal": "template",
+          "pos": "Nome proprio",
+          "definitions": 1
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [
+        "Nome proprio"
+      ],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
+    },
+    {
+      "title": "ONG",
+      "revisionId": 3363171,
+      "timestamp": "2018-07-25T19:52:52Z",
+      "group": "bare-heading/template",
+      "heading": "bare",
+      "sections": [
+        {
+          "signal": "template",
+          "pos": "Acronimo / Abbreviazione",
+          "definitions": 1
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [
+        "Acronimo / Abbreviazione"
+      ],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
+    },
+    {
+      "title": "Rafano",
+      "revisionId": 4024774,
+      "timestamp": "2025-04-15T17:56:27Z",
+      "group": "none-heading/template",
+      "heading": "none",
+      "sections": [
+        {
+          "signal": "template",
+          "pos": "Sostantivo",
+          "definitions": 1
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [
+        "Sostantivo"
+      ],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
+    },
+    {
+      "title": "Redenta",
+      "revisionId": 2797103,
+      "timestamp": "2017-05-04T12:50:14Z",
+      "group": "bare-heading/template",
+      "heading": "bare",
+      "sections": [
+        {
+          "signal": "template",
+          "pos": "Nome proprio",
+          "definitions": 1
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [
+        "Nome proprio"
+      ],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
+    },
+    {
+      "title": "Settecento",
+      "revisionId": 3901499,
+      "timestamp": "2023-01-19T19:33:47Z",
+      "group": "none-heading/template",
+      "heading": "none",
+      "sections": [
+        {
+          "signal": "template",
+          "pos": "Sostantivo",
+          "definitions": 1
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [
+        "Sostantivo"
+      ],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
+    },
+    {
+      "title": "Stagirita",
+      "revisionId": 3907280,
+      "timestamp": "2023-01-19T21:11:52Z",
+      "group": "none-heading/template",
+      "heading": "none",
+      "sections": [
+        {
+          "signal": "template",
+          "pos": "Sostantivo",
+          "definitions": 1
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [
+        "Sostantivo"
+      ],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
+    },
+    {
+      "title": "TRISE",
+      "revisionId": 3622647,
+      "timestamp": "2019-11-06T14:21:31Z",
+      "group": "none-heading/template",
+      "heading": "none",
+      "sections": [
+        {
+          "signal": "template",
+          "pos": "Acronimo / Abbreviazione",
+          "definitions": 1
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [
+        "Acronimo / Abbreviazione"
+      ],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
+    },
+    {
+      "title": "Telescopio",
+      "revisionId": 3364614,
+      "timestamp": "2018-07-26T09:48:49Z",
+      "group": "none-heading/template",
+      "heading": "none",
+      "sections": [
+        {
+          "signal": "template",
+          "pos": "Sostantivo",
+          "definitions": 1
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [
+        "Sostantivo"
+      ],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
+    },
+    {
+      "title": "a monte",
+      "revisionId": 4040642,
+      "timestamp": "2025-07-29T13:10:52Z",
+      "group": "standard-heading/spaced-template",
+      "heading": "standard",
+      "sections": [
+        {
+          "signal": "spaced-template",
+          "pos": "Locuzione avverbiale",
+          "definitions": 2
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [
+        "Locuzione avverbiale"
+      ],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
+    },
+    {
+      "title": "accarezzamenti",
+      "revisionId": 3793134,
+      "timestamp": "2021-06-13T19:01:13Z",
+      "group": "standard-heading/spaced-template",
+      "heading": "standard",
+      "sections": [
+        {
+          "signal": "spaced-template",
+          "pos": "Sostantivo, forma flessa",
+          "definitions": 1
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [
+        "Sostantivo, forma flessa"
+      ],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
+    },
+    {
+      "title": "accerchiarsi",
+      "revisionId": 3902057,
+      "timestamp": "2023-01-19T19:43:05Z",
+      "group": "standard-heading/verb-label",
+      "heading": "standard",
+      "sections": [
+        {
+          "signal": "verb-label",
+          "pos": "Verbo",
+          "definitions": 1
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [
+        "Verbo"
+      ],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
+    },
+    {
+      "title": "across",
+      "revisionId": 3370731,
+      "timestamp": "2018-07-28T02:05:59Z",
+      "group": "no-part-of-speech",
+      "heading": "bare",
+      "sections": [],
+      "unplaced": 1,
+      "readAs": [],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "no-ruled-layout",
+        "entries": 0
+      }
+    },
+    {
+      "title": "addirizzare",
+      "revisionId": 3370967,
+      "timestamp": "2018-07-28T02:45:21Z",
+      "group": "none-heading/template",
+      "heading": "none",
+      "sections": [
+        {
+          "signal": "template",
+          "pos": "Verbo",
+          "definitions": 2
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [
+        "Verbo"
+      ],
+      "ruleV1": "recovered",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
+    },
+    {
+      "title": "alcole",
+      "revisionId": 4007162,
+      "timestamp": "2024-12-18T01:19:30Z",
+      "group": "bare-heading/template",
+      "heading": "bare",
+      "sections": [
+        {
+          "signal": "template",
+          "pos": "Sostantivo",
+          "definitions": 1
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [
+        "Sostantivo"
+      ],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
+    },
+    {
+      "title": "alluminio grigiastro",
+      "revisionId": 1450074,
+      "timestamp": "2013-07-08T06:59:20Z",
+      "group": "no-part-of-speech",
+      "heading": "bare",
+      "sections": [],
+      "unplaced": 1,
+      "readAs": [],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "no-ruled-layout",
+        "entries": 0
+      }
+    },
+    {
+      "title": "amano",
+      "revisionId": 2822837,
+      "timestamp": "2017-05-04T23:42:01Z",
+      "group": "bare-heading/template",
+      "heading": "bare",
+      "sections": [
+        {
+          "signal": "template",
+          "pos": "Voce verbale",
+          "definitions": 1
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [
+        "Voce verbale"
+      ],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
+    },
+    {
+      "title": "ancudine",
+      "revisionId": 3994962,
+      "timestamp": "2024-09-04T04:11:03Z",
+      "group": "bare-heading/bare-template",
+      "heading": "bare",
+      "sections": [
+        {
+          "signal": "bare-template",
+          "pos": "Sostantivo",
+          "definitions": 1
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [
+        "Sostantivo"
+      ],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
+    },
+    {
+      "title": "anfasibena",
+      "revisionId": 3926440,
+      "timestamp": "2023-02-28T21:13:14Z",
+      "group": "no-part-of-speech",
+      "heading": "standard",
+      "sections": [],
+      "unplaced": 1,
+      "readAs": [],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "no-ruled-layout",
+        "entries": 0
+      }
+    },
+    {
+      "title": "antico nordico",
+      "revisionId": 3909947,
+      "timestamp": "2023-01-20T20:21:12Z",
+      "group": "bare-heading/template",
+      "heading": "bare",
+      "sections": [
+        {
+          "signal": "template",
+          "pos": "Locuzione nominale",
+          "definitions": 1
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [
+        "Locuzione nominale"
+      ],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
+    },
+    {
+      "title": "anturio",
+      "revisionId": 4023200,
+      "timestamp": "2025-04-07T08:57:34Z",
+      "group": "none-heading/template",
+      "heading": "none",
+      "sections": [
+        {
+          "signal": "template",
+          "pos": "Sostantivo",
+          "definitions": 1
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [
+        "Sostantivo"
+      ],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
+    },
+    {
+      "title": "arancio perlato",
+      "revisionId": 2832779,
+      "timestamp": "2017-05-05T17:35:34Z",
+      "group": "no-part-of-speech",
+      "heading": "bare",
+      "sections": [],
+      "unplaced": 1,
+      "readAs": [],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "no-ruled-layout",
+        "entries": 0
+      }
+    },
+    {
+      "title": "armadeo",
+      "revisionId": 1456728,
+      "timestamp": "2013-07-08T11:56:17Z",
+      "group": "bare-heading/bare-template",
+      "heading": "bare",
+      "sections": [
+        {
+          "signal": "bare-template",
+          "pos": "Sostantivo",
+          "definitions": 1
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [
+        "Sostantivo"
+      ],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
+    },
+    {
+      "title": "autoconsumo",
+      "revisionId": 3632859,
+      "timestamp": "2019-12-06T21:31:28Z",
+      "group": "none-heading/template",
+      "heading": "none",
+      "sections": [
+        {
+          "signal": "template",
+          "pos": "Sostantivo",
+          "definitions": 1
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [
+        "Sostantivo"
+      ],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
+    },
+    {
+      "title": "avventurieri",
+      "revisionId": 3962578,
+      "timestamp": "2023-11-13T15:52:01Z",
+      "group": "several-parts-of-speech",
+      "heading": "none",
+      "sections": [
+        {
+          "signal": "template",
+          "pos": "Aggettivo, forma flessa",
+          "definitions": 1
+        },
+        {
+          "signal": "template",
+          "pos": "Sostantivo, forma flessa",
+          "definitions": 1
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [
+        "Aggettivo, forma flessa",
+        "Sostantivo, forma flessa"
+      ],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 2
+      }
+    },
+    {
+      "title": "bagnarsi la lingua",
+      "revisionId": 4041979,
+      "timestamp": "2025-08-17T10:34:10Z",
+      "group": "standard-heading/spaced-template",
+      "heading": "standard",
+      "sections": [
+        {
+          "signal": "spaced-template",
+          "pos": "Locuzione verbale",
+          "definitions": 1
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [
+        "Locuzione verbale"
+      ],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
+    },
+    {
+      "title": "beige perlato",
+      "revisionId": 3824472,
+      "timestamp": "2021-12-08T10:36:28Z",
+      "group": "no-part-of-speech",
+      "heading": "bare",
+      "sections": [],
+      "unplaced": 1,
+      "readAs": [],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "no-ruled-layout",
+        "entries": 0
+      }
+    },
+    {
+      "title": "bellicista",
+      "revisionId": 4059678,
+      "timestamp": "2026-01-30T15:59:15Z",
+      "group": "several-parts-of-speech",
+      "heading": "none",
+      "sections": [
+        {
+          "signal": "template",
+          "pos": "Aggettivo",
+          "definitions": 1
+        },
+        {
+          "signal": "template",
+          "pos": "Sostantivo",
+          "definitions": 1
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [
+        "Aggettivo",
+        "Sostantivo"
+      ],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 2
+      }
+    },
+    {
+      "title": "bipartito perpendicolare",
+      "revisionId": 3384768,
+      "timestamp": "2018-08-09T18:16:55Z",
+      "group": "bare-heading/template",
+      "heading": "bare",
+      "sections": [
+        {
+          "signal": "template",
+          "pos": "Locuzione aggettivale",
+          "definitions": 1
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [
+        "Locuzione aggettivale"
+      ],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
+    },
+    {
+      "title": "bituminosa",
+      "revisionId": 3829467,
+      "timestamp": "2021-12-31T14:47:27Z",
+      "group": "standard-heading/spaced-template",
+      "heading": "standard",
+      "sections": [
+        {
+          "signal": "spaced-template",
+          "pos": "Aggettivo, forma flessa",
+          "definitions": 1
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [
+        "Aggettivo, forma flessa"
+      ],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
+    },
+    {
+      "title": "bituminose",
+      "revisionId": 3269593,
+      "timestamp": "2018-06-10T23:33:51Z",
+      "group": "standard-heading/spaced-template",
+      "heading": "standard",
+      "sections": [
+        {
+          "signal": "spaced-template",
+          "pos": "Aggettivo, forma flessa",
+          "definitions": 1
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [
+        "Aggettivo, forma flessa"
+      ],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
+    },
+    {
+      "title": "bituminosi",
+      "revisionId": 3829468,
+      "timestamp": "2021-12-31T14:47:44Z",
+      "group": "standard-heading/spaced-template",
+      "heading": "standard",
+      "sections": [
+        {
+          "signal": "spaced-template",
+          "pos": "Aggettivo, forma flessa",
+          "definitions": 1
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [
+        "Aggettivo, forma flessa"
+      ],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
+    },
+    {
+      "title": "blasonario",
+      "revisionId": 3385071,
+      "timestamp": "2018-08-09T19:04:38Z",
+      "group": "none-heading/template",
+      "heading": "none",
+      "sections": [
+        {
+          "signal": "template",
+          "pos": "Sostantivo",
+          "definitions": 1
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [
+        "Sostantivo"
+      ],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
+    },
+    {
+      "title": "blocco unico",
+      "revisionId": 3385210,
+      "timestamp": "2018-08-09T19:26:59Z",
+      "group": "none-heading/template",
+      "heading": "none",
+      "sections": [
+        {
+          "signal": "template",
+          "pos": "Locuzione nominale",
+          "definitions": 1
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [
+        "Locuzione nominale"
+      ],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
+    },
+    {
+      "title": "blu genziana perlato",
+      "revisionId": 2851518,
+      "timestamp": "2017-05-06T01:48:15Z",
+      "group": "no-part-of-speech",
+      "heading": "bare",
+      "sections": [],
+      "unplaced": 1,
+      "readAs": [],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "no-ruled-layout",
+        "entries": 0
+      }
+    },
+    {
+      "title": "blu notte perlato",
+      "revisionId": 3633536,
+      "timestamp": "2019-12-06T23:24:03Z",
+      "group": "no-part-of-speech",
+      "heading": "bare",
+      "sections": [],
+      "unplaced": 1,
+      "readAs": [],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "no-ruled-layout",
+        "entries": 0
+      }
+    },
+    {
+      "title": "calafataggio",
+      "revisionId": 3387228,
+      "timestamp": "2018-08-10T00:56:29Z",
+      "group": "none-heading/template",
+      "heading": "none",
+      "sections": [
+        {
+          "signal": "template",
+          "pos": "Sostantivo",
+          "definitions": 1
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [
+        "Sostantivo"
+      ],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
+    },
+    {
+      "title": "cannocchiali",
+      "revisionId": 3271629,
+      "timestamp": "2018-06-11T17:21:27Z",
+      "group": "standard-heading/spaced-template",
+      "heading": "standard",
+      "sections": [
+        {
+          "signal": "spaced-template",
+          "pos": "Sostantivo, forma flessa",
+          "definitions": 1
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [
+        "Sostantivo, forma flessa"
+      ],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
+    },
+    {
+      "title": "carrozzone",
+      "revisionId": 3388856,
+      "timestamp": "2018-08-10T18:01:09Z",
+      "group": "bare-heading/template",
+      "heading": "bare",
+      "sections": [
+        {
+          "signal": "template",
+          "pos": "Sostantivo",
+          "definitions": 2
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [
+        "Sostantivo"
+      ],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
+    },
+    {
+      "title": "catuba",
+      "revisionId": 2863030,
+      "timestamp": "2017-05-06T06:43:28Z",
+      "group": "none-heading/template",
+      "heading": "none",
+      "sections": [
+        {
+          "signal": "template",
+          "pos": "Sostantivo",
+          "definitions": 1
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [
+        "Sostantivo"
+      ],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
+    },
+    {
+      "title": "celta",
+      "revisionId": 4065195,
+      "timestamp": "2026-03-05T10:35:20Z",
+      "group": "malformed-heading/template",
+      "heading": "malformed",
+      "sections": [
+        {
+          "signal": "template",
+          "pos": "Sostantivo",
+          "definitions": 1
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [
+        "Sostantivo"
+      ],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
+    },
+    {
+      "title": "ciborio",
+      "revisionId": 4031433,
+      "timestamp": "2025-05-20T10:17:14Z",
+      "group": "bare-heading/template",
+      "heading": "bare",
+      "sections": [
+        {
+          "signal": "template",
+          "pos": "Sostantivo",
+          "definitions": 2
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [
+        "Sostantivo"
+      ],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
+    },
+    {
+      "title": "compassionevole",
+      "revisionId": 4248215,
+      "timestamp": "2026-06-12T05:25:54Z",
+      "group": "none-heading/template",
+      "heading": "none",
+      "sections": [
+        {
+          "signal": "template",
+          "pos": "Aggettivo",
+          "definitions": 1
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [
+        "Aggettivo"
+      ],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
+    },
+    {
+      "title": "complemento di materia",
+      "revisionId": 4039273,
+      "timestamp": "2025-07-11T16:04:57Z",
+      "group": "no-part-of-speech",
+      "heading": "bare",
+      "sections": [],
+      "unplaced": 1,
+      "readAs": [],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "no-ruled-layout",
+        "entries": 0
+      }
+    },
+    {
+      "title": "congedare",
+      "revisionId": 3971165,
+      "timestamp": "2024-01-31T10:50:13Z",
+      "group": "bare-heading/template",
+      "heading": "bare",
+      "sections": [
+        {
+          "signal": "template",
+          "pos": "Verbo",
+          "definitions": 2
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [
+        "Verbo"
+      ],
+      "ruleV1": "recovered",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
+    },
+    {
+      "title": "consenti",
+      "revisionId": 3835516,
+      "timestamp": "2022-01-30T01:12:04Z",
+      "group": "none-heading/template",
+      "heading": "none",
+      "sections": [
+        {
+          "signal": "template",
+          "pos": "Voce verbale",
+          "definitions": 2
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [
+        "Voce verbale"
+      ],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
+    },
+    {
+      "title": "consenzienti",
+      "revisionId": 3665808,
+      "timestamp": "2020-02-08T15:26:32Z",
+      "group": "several-parts-of-speech",
+      "heading": "none",
+      "sections": [
+        {
+          "signal": "template",
+          "pos": "Aggettivo, forma flessa",
+          "definitions": 1
+        },
+        {
+          "signal": "template",
+          "pos": "Sostantivo",
+          "definitions": 1
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [
+        "Aggettivo, forma flessa",
+        "Sostantivo"
+      ],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 2
+      }
+    },
+    {
+      "title": "cosacche",
+      "revisionId": 3635799,
+      "timestamp": "2019-12-08T00:00:37Z",
+      "group": "several-parts-of-speech",
+      "heading": "none",
+      "sections": [
+        {
+          "signal": "template",
+          "pos": "Aggettivo, forma flessa",
+          "definitions": 1
+        },
+        {
+          "signal": "template",
+          "pos": "Sostantivo, forma flessa",
+          "definitions": 1
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [
+        "Aggettivo, forma flessa",
+        "Sostantivo, forma flessa"
+      ],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 2
+      }
+    },
+    {
+      "title": "cremastico",
+      "revisionId": 3755838,
+      "timestamp": "2020-12-28T18:51:54Z",
+      "group": "none-heading/template",
+      "heading": "none",
+      "sections": [
+        {
+          "signal": "template",
+          "pos": "Aggettivo",
+          "definitions": 1
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [
+        "Aggettivo"
+      ],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
+    },
+    {
+      "title": "croce decorata",
+      "revisionId": 3395008,
+      "timestamp": "2018-08-12T10:52:18Z",
+      "group": "bare-heading/template",
+      "heading": "bare",
+      "sections": [
+        {
+          "signal": "template",
+          "pos": "Locuzione nominale",
+          "definitions": 1
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [
+        "Locuzione nominale"
+      ],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
+    },
+    {
+      "title": "croce diagonale",
+      "revisionId": 3395033,
+      "timestamp": "2018-08-12T10:56:28Z",
+      "group": "bare-heading/template",
+      "heading": "bare",
+      "sections": [
+        {
+          "signal": "template",
+          "pos": "Locuzione aggettivale",
+          "definitions": 1
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [
+        "Locuzione aggettivale"
+      ],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
+    },
+    {
+      "title": "croce ottangola biforca",
+      "revisionId": 3395057,
+      "timestamp": "2018-08-12T11:00:19Z",
+      "group": "bare-heading/template",
+      "heading": "bare",
+      "sections": [
+        {
+          "signal": "template",
+          "pos": "Locuzione nominale",
+          "definitions": 1
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [
+        "Locuzione nominale"
+      ],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
+    },
+    {
+      "title": "croce ricrociata doppia",
+      "revisionId": 3395072,
+      "timestamp": "2018-08-12T11:02:39Z",
+      "group": "bare-heading/template",
+      "heading": "bare",
+      "sections": [
+        {
+          "signal": "template",
+          "pos": "Locuzione nominale",
+          "definitions": 1
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [
+        "Locuzione nominale"
+      ],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
+    },
+    {
+      "title": "croce ungiata",
+      "revisionId": 3395091,
+      "timestamp": "2018-08-12T11:05:49Z",
+      "group": "bare-heading/template",
+      "heading": "bare",
+      "sections": [
+        {
+          "signal": "template",
+          "pos": "Locuzione nominale",
+          "definitions": 1
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [
+        "Locuzione nominale"
+      ],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
+    },
+    {
+      "title": "dare di fuori",
+      "revisionId": 4044368,
+      "timestamp": "2025-09-01T15:53:37Z",
+      "group": "standard-heading/spaced-template",
+      "heading": "standard",
+      "sections": [
+        {
+          "signal": "spaced-template",
+          "pos": "Locuzione verbale",
+          "definitions": 1
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [
+        "Locuzione verbale"
+      ],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
+    },
+    {
+      "title": "dare esca",
+      "revisionId": 4044384,
+      "timestamp": "2025-09-01T16:52:24Z",
+      "group": "standard-heading/spaced-template",
+      "heading": "standard",
+      "sections": [
+        {
+          "signal": "spaced-template",
+          "pos": "Locuzione verbale",
+          "definitions": 1
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [
+        "Locuzione verbale"
+      ],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
+    },
+    {
+      "title": "dare spago",
+      "revisionId": 4044322,
+      "timestamp": "2025-09-01T13:05:23Z",
+      "group": "standard-heading/spaced-template",
+      "heading": "standard",
+      "sections": [
+        {
+          "signal": "spaced-template",
+          "pos": "Locuzione verbale",
+          "definitions": 1
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [
+        "Locuzione verbale"
+      ],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
+    },
+    {
+      "title": "denunziare",
+      "revisionId": 3994971,
+      "timestamp": "2024-09-04T04:12:14Z",
+      "group": "no-part-of-speech",
+      "heading": "bare",
+      "sections": [],
+      "unplaced": 1,
+      "readAs": [],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "no-ruled-layout",
+        "entries": 0
+      }
+    },
+    {
+      "title": "dessiografia",
+      "revisionId": 3282485,
+      "timestamp": "2018-06-21T03:49:15Z",
+      "group": "standard-heading/spaced-template",
+      "heading": "standard",
+      "sections": [
+        {
+          "signal": "spaced-template",
+          "pos": "Sostantivo",
+          "definitions": 1
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [
+        "Sostantivo"
+      ],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
+    },
+    {
+      "title": "dipendere",
+      "revisionId": 3972165,
+      "timestamp": "2024-02-11T15:45:17Z",
+      "group": "standard-heading/verb-label",
+      "heading": "standard",
+      "sections": [
+        {
+          "signal": "verb-label",
+          "pos": "Verbo",
+          "definitions": 1
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [
+        "Verbo"
+      ],
+      "ruleV1": "recovered",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
+    },
+    {
+      "title": "doga",
+      "revisionId": 3891224,
+      "timestamp": "2023-01-19T16:42:14Z",
+      "group": "bare-heading/template",
+      "heading": "bare",
+      "sections": [
+        {
+          "signal": "template",
+          "pos": "Sostantivo",
+          "definitions": 2
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [
+        "Sostantivo"
+      ],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
+    },
+    {
+      "title": "dopo tutto",
+      "revisionId": 3763603,
+      "timestamp": "2021-01-18T17:56:04Z",
+      "group": "english-wiktionary-copy",
+      "heading": "bare",
+      "sections": [
+        {
+          "signal": "template",
+          "pos": "Avverbio",
+          "definitions": 1
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [
+        "Avverbio"
+      ],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "no-ruled-layout",
+        "entries": 0
+      }
+    },
+    {
+      "title": "duodenite",
+      "revisionId": 3399916,
+      "timestamp": "2018-08-13T12:56:53Z",
+      "group": "none-heading/template",
+      "heading": "none",
+      "sections": [
+        {
+          "signal": "template",
+          "pos": "Sostantivo",
+          "definitions": 1
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [
+        "Sostantivo"
+      ],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
+    },
+    {
+      "title": "educare",
+      "revisionId": 3951644,
+      "timestamp": "2023-09-05T19:38:09Z",
+      "group": "standard-heading/verb-label",
+      "heading": "standard",
+      "sections": [
+        {
+          "signal": "verb-label",
+          "pos": "Verbo",
+          "definitions": 1
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [
+        "Verbo"
+      ],
+      "ruleV1": "recovered",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
+    },
+    {
+      "title": "elettrococleografia",
+      "revisionId": 3400870,
+      "timestamp": "2018-08-13T15:29:21Z",
+      "group": "none-heading/template",
+      "heading": "none",
+      "sections": [
+        {
+          "signal": "template",
+          "pos": "Sostantivo",
+          "definitions": 1
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [
+        "Sostantivo"
+      ],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
+    },
+    {
+      "title": "emopericardio",
+      "revisionId": 3401354,
+      "timestamp": "2018-08-13T17:28:08Z",
+      "group": "none-heading/template",
+      "heading": "none",
+      "sections": [
+        {
+          "signal": "template",
+          "pos": "Sostantivo",
+          "definitions": 1
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [
+        "Sostantivo"
+      ],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
+    },
+    {
+      "title": "emoperitoneo",
+      "revisionId": 3401355,
+      "timestamp": "2018-08-13T17:28:18Z",
+      "group": "none-heading/template",
+      "heading": "none",
+      "sections": [
+        {
+          "signal": "template",
+          "pos": "Sostantivo",
+          "definitions": 1
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [
+        "Sostantivo"
+      ],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
+    },
+    {
+      "title": "esplicitazione",
+      "revisionId": 3403019,
+      "timestamp": "2018-08-14T12:14:33Z",
+      "group": "none-heading/template",
+      "heading": "none",
+      "sections": [
+        {
+          "signal": "template",
+          "pos": "Sostantivo",
+          "definitions": 3
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [
+        "Sostantivo"
+      ],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
+    },
+    {
+      "title": "fasseggiato",
+      "revisionId": 3404406,
+      "timestamp": "2018-08-14T15:50:24Z",
+      "group": "bare-heading/template",
+      "heading": "bare",
+      "sections": [
+        {
+          "signal": "template",
+          "pos": "Aggettivo",
+          "definitions": 1
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [
+        "Aggettivo"
+      ],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
+    },
+    {
+      "title": "fibrosa",
+      "revisionId": 4070500,
+      "timestamp": "2026-04-13T15:48:08Z",
+      "group": "standard-heading/spaced-template",
+      "heading": "standard",
+      "sections": [
+        {
+          "signal": "spaced-template",
+          "pos": "Aggettivo, forma flessa",
+          "definitions": 1
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [
+        "Aggettivo, forma flessa"
+      ],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
+    },
+    {
+      "title": "fibrose",
+      "revisionId": 4070501,
+      "timestamp": "2026-04-13T15:48:43Z",
+      "group": "standard-heading/spaced-template",
+      "heading": "standard",
+      "sections": [
+        {
+          "signal": "spaced-template",
+          "pos": "Aggettivo, forma flessa",
+          "definitions": 1
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [
+        "Aggettivo, forma flessa"
+      ],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
+    },
+    {
+      "title": "fidelizzare",
+      "revisionId": 3405050,
+      "timestamp": "2018-08-14T17:37:10Z",
+      "group": "bare-heading/template",
+      "heading": "bare",
+      "sections": [
+        {
+          "signal": "template",
+          "pos": "Verbo",
+          "definitions": 1
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [
+        "Verbo"
+      ],
+      "ruleV1": "recovered",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
+    },
+    {
+      "title": "fidò",
+      "revisionId": 3817446,
+      "timestamp": "2021-11-04T11:56:13Z",
+      "group": "none-heading/template",
+      "heading": "none",
+      "sections": [
+        {
+          "signal": "template",
+          "pos": "Voce verbale",
+          "definitions": 1
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [
+        "Voce verbale"
+      ],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
+    },
+    {
+      "title": "filippini",
+      "revisionId": 4077002,
+      "timestamp": "2026-05-06T21:45:52Z",
+      "group": "several-parts-of-speech",
+      "heading": "none",
+      "sections": [
+        {
+          "signal": "template",
+          "pos": "Aggettivo, forma flessa",
+          "definitions": 1
+        },
+        {
+          "signal": "template",
+          "pos": "Sostantivo, forma flessa",
+          "definitions": 1
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [
+        "Aggettivo, forma flessa",
+        "Sostantivo, forma flessa"
+      ],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 2
+      }
+    },
+    {
+      "title": "finora",
+      "revisionId": 4040126,
+      "timestamp": "2025-07-24T12:39:32Z",
+      "group": "bare-heading/template",
+      "heading": "bare",
+      "sections": [
+        {
+          "signal": "template",
+          "pos": "Avverbio",
+          "definitions": 1
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [
+        "Avverbio"
+      ],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
+    },
+    {
+      "title": "follare",
+      "revisionId": 3712287,
+      "timestamp": "2020-09-18T22:47:32Z",
+      "group": "english-wiktionary-copy",
+      "heading": "bare",
+      "sections": [
+        {
+          "signal": "bare-template",
+          "pos": "Verbo",
+          "definitions": 2
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [
+        "Verbo"
+      ],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "no-ruled-layout",
+        "entries": 0
+      }
+    },
+    {
+      "title": "fon",
+      "revisionId": 4076433,
+      "timestamp": "2026-05-01T06:31:52Z",
+      "group": "no-part-of-speech",
+      "heading": "standard",
+      "sections": [],
+      "unplaced": 2,
+      "readAs": [],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "no-ruled-layout",
+        "entries": 0
+      }
+    },
+    {
+      "title": "fornire",
+      "revisionId": 3983355,
+      "timestamp": "2024-05-25T14:11:43Z",
+      "group": "none-heading/template",
+      "heading": "none",
+      "sections": [
+        {
+          "signal": "template",
+          "pos": "Verbo",
+          "definitions": 1
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [
+        "Verbo"
+      ],
+      "ruleV1": "recovered",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
+    },
+    {
+      "title": "francesismo",
+      "revisionId": 3891703,
+      "timestamp": "2023-01-19T16:50:17Z",
+      "group": "bare-heading/bare-template",
+      "heading": "bare",
+      "sections": [
+        {
+          "signal": "bare-template",
+          "pos": "Sostantivo",
+          "definitions": 3
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [
+        "Sostantivo"
+      ],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
+    },
+    {
+      "title": "gastrostomia",
+      "revisionId": 3904317,
+      "timestamp": "2023-01-19T20:21:00Z",
+      "group": "none-heading/template",
+      "heading": "none",
+      "sections": [
+        {
+          "signal": "template",
+          "pos": "Sostantivo",
+          "definitions": 1
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [
+        "Sostantivo"
+      ],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
+    },
+    {
+      "title": "ghiribizzi",
+      "revisionId": 3830397,
+      "timestamp": "2022-01-04T18:37:05Z",
+      "group": "standard-heading/spaced-template",
+      "heading": "standard",
+      "sections": [
+        {
+          "signal": "spaced-template",
+          "pos": "Sostantivo, forma flessa",
+          "definitions": 1
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [
+        "Sostantivo, forma flessa"
+      ],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
+    },
+    {
+      "title": "giallo sole",
+      "revisionId": 2940719,
+      "timestamp": "2017-05-07T14:01:35Z",
+      "group": "no-part-of-speech",
+      "heading": "bare",
+      "sections": [],
+      "unplaced": 1,
+      "readAs": [],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "no-ruled-layout",
+        "entries": 0
+      }
+    },
+    {
+      "title": "gioielliere",
+      "revisionId": 3903890,
+      "timestamp": "2023-01-19T20:13:47Z",
+      "group": "none-heading/template",
+      "heading": "none",
+      "sections": [
+        {
+          "signal": "template",
+          "pos": "Sostantivo",
+          "definitions": 1
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [
+        "Sostantivo"
+      ],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
+    },
+    {
+      "title": "gliceraldeide",
+      "revisionId": 3409191,
+      "timestamp": "2018-08-15T15:44:45Z",
+      "group": "none-heading/template",
+      "heading": "none",
+      "sections": [
+        {
+          "signal": "template",
+          "pos": "Sostantivo",
+          "definitions": 1
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [
+        "Sostantivo"
+      ],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
+    },
+    {
+      "title": "godi",
+      "revisionId": 3685572,
+      "timestamp": "2020-05-28T13:32:17Z",
+      "group": "none-heading/template",
+      "heading": "none",
+      "sections": [
+        {
+          "signal": "template",
+          "pos": "Voce verbale",
+          "definitions": 2
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [
+        "Voce verbale"
+      ],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
+    },
+    {
+      "title": "grigio chiaro perlato",
+      "revisionId": 2945294,
+      "timestamp": "2017-05-07T15:53:54Z",
+      "group": "no-part-of-speech",
+      "heading": "bare",
+      "sections": [],
+      "unplaced": 1,
+      "readAs": [],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "no-ruled-layout",
+        "entries": 0
+      }
+    },
+    {
+      "title": "grigio scuro perlato",
+      "revisionId": 2945311,
+      "timestamp": "2017-05-07T15:54:14Z",
+      "group": "no-part-of-speech",
+      "heading": "bare",
+      "sections": [],
+      "unplaced": 1,
+      "readAs": [],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "no-ruled-layout",
+        "entries": 0
+      }
+    },
+    {
+      "title": "griko",
+      "revisionId": 3707826,
+      "timestamp": "2020-09-07T23:58:08Z",
+      "group": "none-heading/template",
+      "heading": "none",
+      "sections": [
+        {
+          "signal": "template",
+          "pos": "Sostantivo",
+          "definitions": 1
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [
+        "Sostantivo"
+      ],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
+    },
+    {
+      "title": "grr",
+      "revisionId": 3410320,
+      "timestamp": "2018-08-15T18:44:35Z",
+      "group": "none-heading/template",
+      "heading": "none",
+      "sections": [
+        {
+          "signal": "template",
+          "pos": "Interiezione",
+          "definitions": 1
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [
+        "Interiezione"
+      ],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
+    },
+    {
+      "title": "grrr",
+      "revisionId": 3410321,
+      "timestamp": "2018-08-15T18:44:45Z",
+      "group": "none-heading/template",
+      "heading": "none",
+      "sections": [
+        {
+          "signal": "template",
+          "pos": "Interiezione",
+          "definitions": 1
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [
+        "Interiezione"
+      ],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
+    },
+    {
+      "title": "grufolare",
+      "revisionId": 3906191,
+      "timestamp": "2023-01-19T20:52:32Z",
+      "group": "standard-heading/verb-label",
+      "heading": "standard",
+      "sections": [
+        {
+          "signal": "verb-label",
+          "pos": "Verbo",
+          "definitions": 1
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [
+        "Verbo"
+      ],
+      "ruleV1": "recovered",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
+    },
+    {
+      "title": "impegolato",
+      "revisionId": 2954666,
+      "timestamp": "2017-05-07T20:06:36Z",
+      "group": "several-parts-of-speech",
+      "heading": "none",
+      "sections": [
+        {
+          "signal": "template",
+          "pos": "Aggettivo",
+          "definitions": 2
+        },
+        {
+          "signal": "template",
+          "pos": "Voce verbale",
+          "definitions": 1
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [
+        "Aggettivo",
+        "Voce verbale"
+      ],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 2
+      }
+    },
+    {
+      "title": "in abbinamento",
+      "revisionId": 2748707,
+      "timestamp": "2017-01-17T02:32:35Z",
+      "group": "none-heading/template",
+      "heading": "none",
+      "sections": [
+        {
+          "signal": "template",
+          "pos": "Espressione",
+          "definitions": 1
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [
+        "Espressione"
+      ],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
+    },
+    {
+      "title": "in effetti",
+      "revisionId": 3641106,
+      "timestamp": "2019-12-17T06:23:31Z",
+      "group": "english-wiktionary-copy",
+      "heading": "bare",
+      "sections": [
+        {
+          "signal": "bare-template",
+          "pos": "Avverbio",
+          "definitions": 1
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [
+        "Avverbio"
+      ],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "no-ruled-layout",
+        "entries": 0
+      }
+    },
+    {
+      "title": "in media",
+      "revisionId": 3641109,
+      "timestamp": "2019-12-17T06:24:01Z",
+      "group": "english-wiktionary-copy",
+      "heading": "bare",
+      "sections": [
+        {
+          "signal": "english-heading",
+          "pos": null,
+          "definitions": 1
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "no-ruled-layout",
+        "entries": 0
+      }
+    },
+    {
+      "title": "incidentaloma",
+      "revisionId": 3413665,
+      "timestamp": "2018-08-16T18:21:32Z",
+      "group": "none-heading/template",
+      "heading": "none",
+      "sections": [
+        {
+          "signal": "template",
+          "pos": "Sostantivo",
+          "definitions": 1
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [
+        "Sostantivo"
+      ],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
+    },
+    {
+      "title": "ingegneria geotecnica",
+      "revisionId": 3414523,
+      "timestamp": "2018-08-16T20:44:19Z",
+      "group": "none-heading/template",
+      "heading": "none",
+      "sections": [
+        {
+          "signal": "template",
+          "pos": "Locuzione nominale",
+          "definitions": 1
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [
+        "Locuzione nominale"
+      ],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
+    },
+    {
+      "title": "ingoiare il rospo",
+      "revisionId": 4042630,
+      "timestamp": "2025-08-24T14:07:28Z",
+      "group": "standard-heading/spaced-template",
+      "heading": "standard",
+      "sections": [
+        {
+          "signal": "spaced-template",
+          "pos": "Locuzione verbale",
+          "definitions": 1
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [
+        "Locuzione verbale"
+      ],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
+    },
+    {
+      "title": "insino",
+      "revisionId": 3641751,
+      "timestamp": "2019-12-17T08:09:57Z",
+      "group": "english-wiktionary-copy",
+      "heading": "bare",
+      "sections": [
+        {
+          "signal": "english-heading",
+          "pos": null,
+          "definitions": 1
+        },
+        {
+          "signal": "bare-template",
+          "pos": "Avverbio",
+          "definitions": 1
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "no-ruled-layout",
+        "entries": 0
+      }
+    },
+    {
+      "title": "insù",
+      "revisionId": 3641807,
+      "timestamp": "2019-12-17T08:18:37Z",
+      "group": "english-wiktionary-copy",
+      "heading": "bare",
+      "sections": [
+        {
+          "signal": "bare-template",
+          "pos": "Avverbio",
+          "definitions": 1
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [
+        "Avverbio"
+      ],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "no-ruled-layout",
+        "entries": 0
+      }
+    },
+    {
+      "title": "invitó",
+      "revisionId": 4004544,
+      "timestamp": "2024-11-25T12:27:02Z",
+      "group": "none-heading/template",
+      "heading": "none",
+      "sections": [
+        {
+          "signal": "template",
+          "pos": "Voce verbale",
+          "definitions": 1
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [
+        "Voce verbale"
+      ],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
+    },
+    {
+      "title": "irrequieti",
+      "revisionId": 2980547,
+      "timestamp": "2017-05-08T05:34:41Z",
+      "group": "bare-heading/english-heading",
+      "heading": "bare",
+      "sections": [
+        {
+          "signal": "english-heading",
+          "pos": null,
+          "definitions": 1
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "no-ruled-layout",
+        "entries": 0
+      }
+    },
+    {
+      "title": "lampara",
+      "revisionId": 3892699,
+      "timestamp": "2023-01-19T17:07:02Z",
+      "group": "none-heading/template",
+      "heading": "none",
+      "sections": [
+        {
+          "signal": "template",
+          "pos": "Sostantivo",
+          "definitions": 2
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [
+        "Sostantivo"
+      ],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
+    },
+    {
+      "title": "lembello",
+      "revisionId": 3419201,
+      "timestamp": "2018-08-18T21:46:38Z",
+      "group": "bare-heading/template",
+      "heading": "bare",
+      "sections": [
+        {
+          "signal": "template",
+          "pos": "Sostantivo",
+          "definitions": 1
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [
+        "Sostantivo"
+      ],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
+    },
+    {
+      "title": "lenticolare",
+      "revisionId": 3873590,
+      "timestamp": "2022-09-29T02:49:59Z",
+      "group": "no-part-of-speech",
+      "heading": "standard",
+      "sections": [],
+      "unplaced": 2,
+      "readAs": [],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "no-ruled-layout",
+        "entries": 0
+      }
+    },
+    {
+      "title": "leucocitosi",
+      "revisionId": 3904376,
+      "timestamp": "2023-01-19T20:21:58Z",
+      "group": "none-heading/template",
+      "heading": "none",
+      "sections": [
+        {
+          "signal": "template",
+          "pos": "Sostantivo",
+          "definitions": 1
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [
+        "Sostantivo"
+      ],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
+    },
+    {
+      "title": "libraccio",
+      "revisionId": 3941014,
+      "timestamp": "2023-06-26T12:10:28Z",
+      "group": "no-part-of-speech",
+      "heading": "standard",
+      "sections": [],
+      "unplaced": 1,
+      "readAs": [],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "no-ruled-layout",
+        "entries": 0
+      }
+    },
+    {
+      "title": "limatrice",
+      "revisionId": 3643068,
+      "timestamp": "2019-12-18T23:00:19Z",
+      "group": "bare-heading/bare-template",
+      "heading": "bare",
+      "sections": [
+        {
+          "signal": "bare-template",
+          "pos": "Sostantivo",
+          "definitions": 1
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [
+        "Sostantivo"
+      ],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
+    },
+    {
+      "title": "lizzatura",
+      "revisionId": 3420148,
+      "timestamp": "2018-08-19T00:19:38Z",
+      "group": "none-heading/template",
+      "heading": "none",
+      "sections": [
+        {
+          "signal": "template",
+          "pos": "Sostantivo",
+          "definitions": 1
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [
+        "Sostantivo"
+      ],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
+    },
+    {
+      "title": "lungo",
+      "revisionId": 4038855,
+      "timestamp": "2025-07-08T13:36:18Z",
+      "group": "several-parts-of-speech",
+      "heading": "malformed",
+      "sections": [
+        {
+          "signal": "template",
+          "pos": "Aggettivo",
+          "definitions": 2
+        },
+        {
+          "signal": "template",
+          "pos": "Preposizione",
+          "definitions": 2
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [
+        "Aggettivo",
+        "Preposizione"
+      ],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 2
+      }
+    },
+    {
+      "title": "mastoide",
+      "revisionId": 3928854,
+      "timestamp": "2023-03-23T09:45:11Z",
+      "group": "none-heading/template",
+      "heading": "none",
+      "sections": [
+        {
+          "signal": "template",
+          "pos": "Sostantivo",
+          "definitions": 1
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [
+        "Sostantivo"
+      ],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
+    },
+    {
+      "title": "mastoidite",
+      "revisionId": 3422176,
+      "timestamp": "2018-08-19T06:28:33Z",
+      "group": "none-heading/template",
+      "heading": "none",
+      "sections": [
+        {
+          "signal": "template",
+          "pos": "Sostantivo",
+          "definitions": 1
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [
+        "Sostantivo"
+      ],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
+    },
+    {
+      "title": "mezz'ora",
+      "revisionId": 3644006,
+      "timestamp": "2019-12-19T01:36:47Z",
+      "group": "english-wiktionary-copy",
+      "heading": "bare",
+      "sections": [
+        {
+          "signal": "bare-template",
+          "pos": "Sostantivo",
+          "definitions": 1
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [
+        "Sostantivo"
+      ],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "no-ruled-layout",
+        "entries": 0
+      }
+    },
+    {
+      "title": "mezzora",
+      "revisionId": 3644010,
+      "timestamp": "2019-12-19T01:37:27Z",
+      "group": "english-wiktionary-copy",
+      "heading": "bare",
+      "sections": [
+        {
+          "signal": "bare-template",
+          "pos": "Sostantivo",
+          "definitions": 1
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [
+        "Sostantivo"
+      ],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "no-ruled-layout",
+        "entries": 0
+      }
+    },
+    {
+      "title": "mora perlato",
+      "revisionId": 3002861,
+      "timestamp": "2017-05-08T16:05:54Z",
+      "group": "no-part-of-speech",
+      "heading": "bare",
+      "sections": [],
+      "unplaced": 1,
+      "readAs": [],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "no-ruled-layout",
+        "entries": 0
+      }
+    },
+    {
+      "title": "morire come le mosche",
+      "revisionId": 4042586,
+      "timestamp": "2025-08-24T08:20:31Z",
+      "group": "standard-heading/spaced-template",
+      "heading": "standard",
+      "sections": [
+        {
+          "signal": "spaced-template",
+          "pos": "Locuzione verbale",
+          "definitions": 1
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [
+        "Locuzione verbale"
+      ],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
+    },
+    {
+      "title": "motteggio",
+      "revisionId": 4014868,
+      "timestamp": "2025-02-06T21:25:32Z",
+      "group": "no-part-of-speech",
+      "heading": "standard",
+      "sections": [],
+      "unplaced": 1,
+      "readAs": [],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "no-ruled-layout",
+        "entries": 0
+      }
+    },
+    {
+      "title": "mousse",
+      "revisionId": 3686036,
+      "timestamp": "2020-06-03T10:28:40Z",
+      "group": "none-heading/template",
+      "heading": "none",
+      "sections": [
+        {
+          "signal": "template",
+          "pos": "Sostantivo",
+          "definitions": 2
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [
+        "Sostantivo"
+      ],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
+    },
+    {
+      "title": "mucamo",
+      "revisionId": 3003910,
+      "timestamp": "2017-05-08T16:35:31Z",
+      "group": "no-part-of-speech",
+      "heading": "bare",
+      "sections": [],
+      "unplaced": 1,
+      "readAs": [],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "no-ruled-layout",
+        "entries": 0
+      }
+    },
+    {
+      "title": "mux",
+      "revisionId": 3425257,
+      "timestamp": "2018-08-19T14:58:01Z",
+      "group": "bare-heading/template",
+      "heading": "bare",
+      "sections": [
+        {
+          "signal": "template",
+          "pos": "Acronimo / Abbreviazione",
+          "definitions": 1
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [
+        "Acronimo / Abbreviazione"
+      ],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
+    },
+    {
+      "title": "nanomedicina",
+      "revisionId": 3425519,
+      "timestamp": "2018-08-19T15:40:34Z",
+      "group": "none-heading/template",
+      "heading": "none",
+      "sections": [
+        {
+          "signal": "template",
+          "pos": "Sostantivo",
+          "definitions": 1
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [
+        "Sostantivo"
+      ],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
+    },
+    {
+      "title": "nefologia",
+      "revisionId": 3578649,
+      "timestamp": "2019-07-10T18:28:44Z",
+      "group": "bare-heading/template",
+      "heading": "bare",
+      "sections": [
+        {
+          "signal": "template",
+          "pos": "Sostantivo",
+          "definitions": 1
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [
+        "Sostantivo"
+      ],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
+    },
+    {
+      "title": "negli ultimi tempi",
+      "revisionId": 3644615,
+      "timestamp": "2019-12-19T03:18:33Z",
+      "group": "english-wiktionary-copy",
+      "heading": "bare",
+      "sections": [
+        {
+          "signal": "english-heading",
+          "pos": null,
+          "definitions": 1
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "no-ruled-layout",
+        "entries": 0
+      }
+    },
+    {
+      "title": "new age",
+      "revisionId": 4066634,
+      "timestamp": "2026-03-11T09:57:12Z",
+      "group": "none-heading/template",
+      "heading": "none",
+      "sections": [
+        {
+          "signal": "template",
+          "pos": "Espressione",
+          "definitions": 2
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [
+        "Espressione"
+      ],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
+    },
+    {
+      "title": "non-profit",
+      "revisionId": 3644813,
+      "timestamp": "2019-12-19T03:51:44Z",
+      "group": "no-part-of-speech",
+      "heading": "standard",
+      "sections": [],
+      "unplaced": 1,
+      "readAs": [],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "no-ruled-layout",
+        "entries": 0
+      }
+    },
+    {
+      "title": "occhio di bue",
+      "revisionId": 3644970,
+      "timestamp": "2019-12-19T04:17:56Z",
+      "group": "none-heading/template",
+      "heading": "none",
+      "sections": [
+        {
+          "signal": "template",
+          "pos": "Locuzione nominale",
+          "definitions": 1
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [
+        "Locuzione nominale"
+      ],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
+    },
+    {
+      "title": "offri",
+      "revisionId": 3836839,
+      "timestamp": "2022-01-30T04:55:29Z",
+      "group": "none-heading/template",
+      "heading": "none",
+      "sections": [
+        {
+          "signal": "template",
+          "pos": "Voce verbale",
+          "definitions": 2
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [
+        "Voce verbale"
+      ],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
+    },
+    {
+      "title": "onorificenze",
+      "revisionId": 3788384,
+      "timestamp": "2021-05-30T16:10:20Z",
+      "group": "standard-heading/spaced-template",
+      "heading": "standard",
+      "sections": [
+        {
+          "signal": "spaced-template",
+          "pos": "Sostantivo, forma flessa",
+          "definitions": 1
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [
+        "Sostantivo, forma flessa"
+      ],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
+    },
+    {
+      "title": "orecchioni",
+      "revisionId": 3578655,
+      "timestamp": "2019-07-10T18:30:32Z",
+      "group": "bare-heading/template",
+      "heading": "bare",
+      "sections": [
+        {
+          "signal": "template",
+          "pos": "Sostantivo",
+          "definitions": 1
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [
+        "Sostantivo"
+      ],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
+    },
+    {
+      "title": "oro perlato",
+      "revisionId": 3013180,
+      "timestamp": "2017-05-08T21:02:32Z",
+      "group": "no-part-of-speech",
+      "heading": "bare",
+      "sections": [],
+      "unplaced": 1,
+      "readAs": [],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "no-ruled-layout",
+        "entries": 0
+      }
+    },
+    {
+      "title": "paleggiato",
+      "revisionId": 3429294,
+      "timestamp": "2018-08-20T07:36:01Z",
+      "group": "bare-heading/template",
+      "heading": "bare",
+      "sections": [
+        {
+          "signal": "template",
+          "pos": "Aggettivo",
+          "definitions": 1
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [
+        "Aggettivo"
+      ],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
+    },
+    {
+      "title": "panchine",
+      "revisionId": 4002075,
+      "timestamp": "2024-11-04T07:16:29Z",
+      "group": "standard-heading/spaced-template",
+      "heading": "standard",
+      "sections": [
+        {
+          "signal": "spaced-template",
+          "pos": "Sostantivo, forma flessa",
+          "definitions": 1
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [
+        "Sostantivo, forma flessa"
+      ],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
+    },
+    {
+      "title": "partito a lembi",
+      "revisionId": 3430067,
+      "timestamp": "2018-08-20T09:40:37Z",
+      "group": "bare-heading/template",
+      "heading": "bare",
+      "sections": [
+        {
+          "signal": "template",
+          "pos": "Locuzione aggettivale",
+          "definitions": 1
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [
+        "Locuzione aggettivale"
+      ],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
+    },
+    {
+      "title": "partito intersecato",
+      "revisionId": 3430068,
+      "timestamp": "2018-08-20T09:40:47Z",
+      "group": "bare-heading/template",
+      "heading": "bare",
+      "sections": [
+        {
+          "signal": "template",
+          "pos": "Locuzione aggettivale",
+          "definitions": 1
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [
+        "Locuzione aggettivale"
+      ],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
+    },
+    {
+      "title": "partito retto",
+      "revisionId": 3430069,
+      "timestamp": "2018-08-20T09:40:57Z",
+      "group": "bare-heading/template",
+      "heading": "bare",
+      "sections": [
+        {
+          "signal": "template",
+          "pos": "Locuzione aggettivale",
+          "definitions": 1
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [
+        "Locuzione aggettivale"
+      ],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
+    },
+    {
+      "title": "patatina fritta",
+      "revisionId": 4002057,
+      "timestamp": "2024-11-04T05:55:58Z",
+      "group": "none-heading/template",
+      "heading": "none",
+      "sections": [
+        {
+          "signal": "template",
+          "pos": "Locuzione nominale",
+          "definitions": 1
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [
+        "Locuzione nominale"
+      ],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
+    },
+    {
+      "title": "piacione",
+      "revisionId": 3431459,
+      "timestamp": "2018-08-20T13:25:09Z",
+      "group": "several-parts-of-speech",
+      "heading": "malformed",
+      "sections": [
+        {
+          "signal": "template",
+          "pos": "Sostantivo",
+          "definitions": 1
+        },
+        {
+          "signal": "template",
+          "pos": "Sostantivo, forma flessa",
+          "definitions": 1
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [
+        "Sostantivo",
+        "Sostantivo, forma flessa"
+      ],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 2
+      }
+    },
+    {
+      "title": "piallare",
+      "revisionId": 4059538,
+      "timestamp": "2026-01-28T11:26:03Z",
+      "group": "bare-heading/bare-template",
+      "heading": "bare",
+      "sections": [
+        {
+          "signal": "bare-template",
+          "pos": "Verbo",
+          "definitions": 1
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [
+        "Verbo"
+      ],
+      "ruleV1": "recovered",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
+    },
+    {
+      "title": "piangere sul latte versato",
+      "revisionId": 4060155,
+      "timestamp": "2026-02-03T10:18:06Z",
+      "group": "standard-heading/unknown-template",
+      "heading": "standard",
+      "sections": [
+        {
+          "signal": "unknown-template",
+          "pos": null,
+          "definitions": 1
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
+    },
+    {
+      "title": "pianissimo",
+      "revisionId": 3768983,
+      "timestamp": "2021-02-13T01:00:36Z",
+      "group": "bare-heading/template",
+      "heading": "bare",
+      "sections": [
+        {
+          "signal": "template",
+          "pos": "Avverbio",
+          "definitions": 1
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [
+        "Avverbio"
+      ],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
+    },
+    {
+      "title": "piuttosto di",
+      "revisionId": 3646196,
+      "timestamp": "2019-12-19T07:42:27Z",
+      "group": "english-wiktionary-copy",
+      "heading": "bare",
+      "sections": [
+        {
+          "signal": "english-heading",
+          "pos": null,
+          "definitions": 1
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "no-ruled-layout",
+        "entries": 0
+      }
+    },
+    {
+      "title": "pneumopericardio",
+      "revisionId": 3866759,
+      "timestamp": "2022-08-18T12:29:05Z",
+      "group": "none-heading/template",
+      "heading": "none",
+      "sections": [
+        {
+          "signal": "template",
+          "pos": "Sostantivo",
+          "definitions": 1
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [
+        "Sostantivo"
+      ],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
+    },
+    {
+      "title": "pneumoperitoneo",
+      "revisionId": 3432301,
+      "timestamp": "2018-08-20T15:42:57Z",
+      "group": "none-heading/template",
+      "heading": "none",
+      "sections": [
+        {
+          "signal": "template",
+          "pos": "Sostantivo",
+          "definitions": 1
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [
+        "Sostantivo"
+      ],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
+    },
+    {
+      "title": "pole position",
+      "revisionId": 3432443,
+      "timestamp": "2018-08-20T16:06:38Z",
+      "group": "no-part-of-speech",
+      "heading": "standard",
+      "sections": [],
+      "unplaced": 1,
+      "readAs": [],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "no-ruled-layout",
+        "entries": 0
+      }
+    },
+    {
+      "title": "poliendocrinopatia",
+      "revisionId": 3685214,
+      "timestamp": "2020-05-24T19:19:47Z",
+      "group": "none-heading/template",
+      "heading": "none",
+      "sections": [
+        {
+          "signal": "template",
+          "pos": "Sostantivo",
+          "definitions": 1
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [
+        "Sostantivo"
+      ],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
+    },
+    {
+      "title": "pomezzanotte",
+      "revisionId": 4040455,
+      "timestamp": "2025-07-27T03:03:42Z",
+      "group": "no-part-of-speech",
+      "heading": "standard",
+      "sections": [],
+      "unplaced": 1,
+      "readAs": [],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "no-ruled-layout",
+        "entries": 0
+      }
+    },
+    {
+      "title": "possessività",
+      "revisionId": 3432992,
+      "timestamp": "2018-08-20T17:37:53Z",
+      "group": "none-heading/template",
+      "heading": "none",
+      "sections": [
+        {
+          "signal": "template",
+          "pos": "Sostantivo",
+          "definitions": 1
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [
+        "Sostantivo"
+      ],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
+    },
+    {
+      "title": "pria",
+      "revisionId": 3033444,
+      "timestamp": "2017-05-09T04:55:47Z",
+      "group": "none-heading/template",
+      "heading": "none",
+      "sections": [
+        {
+          "signal": "template",
+          "pos": "Avverbio",
+          "definitions": 2
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [
+        "Avverbio"
+      ],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
+    },
+    {
+      "title": "proprie",
+      "revisionId": 3647421,
+      "timestamp": "2019-12-24T21:47:33Z",
+      "group": "none-heading/template",
+      "heading": "none",
+      "sections": [
+        {
+          "signal": "template",
+          "pos": "Aggettivo, forma flessa",
+          "definitions": 1
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [
+        "Aggettivo, forma flessa"
+      ],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
+    },
+    {
+      "title": "punto buono",
+      "revisionId": 3434888,
+      "timestamp": "2018-08-20T22:46:29Z",
+      "group": "none-heading/template",
+      "heading": "none",
+      "sections": [
+        {
+          "signal": "template",
+          "pos": "Espressione",
+          "definitions": 1
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [
+        "Espressione"
+      ],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
+    },
+    {
+      "title": "purità",
+      "revisionId": 3681982,
+      "timestamp": "2020-05-09T14:19:18Z",
+      "group": "malformed-heading/template",
+      "heading": "malformed",
+      "sections": [
+        {
+          "signal": "template",
+          "pos": "Sostantivo",
+          "definitions": 4
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [
+        "Sostantivo"
+      ],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
+    },
+    {
+      "title": "quadripartito diagonale",
+      "revisionId": 3435197,
+      "timestamp": "2018-08-20T23:38:02Z",
+      "group": "bare-heading/template",
+      "heading": "bare",
+      "sections": [
+        {
+          "signal": "template",
+          "pos": "Locuzione aggettivale",
+          "definitions": 1
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [
+        "Locuzione aggettivale"
+      ],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
+    },
+    {
+      "title": "quartello",
+      "revisionId": 3435309,
+      "timestamp": "2018-08-20T23:56:43Z",
+      "group": "bare-heading/template",
+      "heading": "bare",
+      "sections": [
+        {
+          "signal": "template",
+          "pos": "Sostantivo",
+          "definitions": 1
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [
+        "Sostantivo"
+      ],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
+    },
+    {
+      "title": "raccontare",
+      "revisionId": 4035772,
+      "timestamp": "2025-06-10T14:27:14Z",
+      "group": "standard-heading/verb-label",
+      "heading": "standard",
+      "sections": [
+        {
+          "signal": "verb-label",
+          "pos": "Verbo",
+          "definitions": 2
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [
+        "Verbo"
+      ],
+      "ruleV1": "recovered",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
+    },
+    {
+      "title": "radiose",
+      "revisionId": 3905417,
+      "timestamp": "2023-01-19T20:39:28Z",
+      "group": "none-heading/template",
+      "heading": "none",
+      "sections": [
+        {
+          "signal": "template",
+          "pos": "Aggettivo, forma flessa",
+          "definitions": 2
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [
+        "Aggettivo, forma flessa"
+      ],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
+    },
+    {
+      "title": "rame perlato",
+      "revisionId": 3043540,
+      "timestamp": "2017-05-09T08:51:22Z",
+      "group": "no-part-of-speech",
+      "heading": "bare",
+      "sections": [],
+      "unplaced": 1,
+      "readAs": [],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "no-ruled-layout",
+        "entries": 0
+      }
+    },
+    {
+      "title": "rappa",
+      "revisionId": 3647917,
+      "timestamp": "2019-12-24T23:20:02Z",
+      "group": "none-heading/template",
+      "heading": "none",
+      "sections": [
+        {
+          "signal": "template",
+          "pos": "Sostantivo",
+          "definitions": 1
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [
+        "Sostantivo"
+      ],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
+    },
+    {
+      "title": "rasenta",
+      "revisionId": 4059295,
+      "timestamp": "2026-01-26T14:24:20Z",
+      "group": "no-part-of-speech",
+      "heading": "standard",
+      "sections": [],
+      "unplaced": 2,
+      "readAs": [],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "no-ruled-layout",
+        "entries": 0
+      }
+    },
+    {
+      "title": "realizzo",
+      "revisionId": 4076623,
+      "timestamp": "2026-05-02T14:34:43Z",
+      "group": "several-parts-of-speech",
+      "heading": "none",
+      "sections": [
+        {
+          "signal": "template",
+          "pos": "Sostantivo",
+          "definitions": 1
+        },
+        {
+          "signal": "template",
+          "pos": "Voce verbale",
+          "definitions": 1
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [
+        "Sostantivo",
+        "Voce verbale"
+      ],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 2
+      }
+    },
+    {
+      "title": "rivenire",
+      "revisionId": 3438016,
+      "timestamp": "2018-08-21T22:02:18Z",
+      "group": "bare-heading/template",
+      "heading": "bare",
+      "sections": [
+        {
+          "signal": "template",
+          "pos": "Verbo",
+          "definitions": 1
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [
+        "Verbo"
+      ],
+      "ruleV1": "recovered",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
+    },
+    {
+      "title": "rosa di sperone",
+      "revisionId": 3438273,
+      "timestamp": "2018-08-21T22:45:10Z",
+      "group": "bare-heading/template",
+      "heading": "bare",
+      "sections": [
+        {
+          "signal": "template",
+          "pos": "Locuzione nominale",
+          "definitions": 1
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [
+        "Locuzione nominale"
+      ],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
+    },
+    {
+      "title": "rosa perlato",
+      "revisionId": 3075674,
+      "timestamp": "2017-05-09T19:47:01Z",
+      "group": "no-part-of-speech",
+      "heading": "bare",
+      "sections": [],
+      "unplaced": 1,
+      "readAs": [],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "no-ruled-layout",
+        "entries": 0
+      }
+    },
+    {
+      "title": "rosso rubino perlato",
+      "revisionId": 3075896,
+      "timestamp": "2017-05-09T19:51:52Z",
+      "group": "no-part-of-speech",
+      "heading": "bare",
+      "sections": [],
+      "unplaced": 1,
+      "readAs": [],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "no-ruled-layout",
+        "entries": 0
+      }
+    },
+    {
+      "title": "salpingite",
+      "revisionId": 3438979,
+      "timestamp": "2018-08-22T00:35:46Z",
+      "group": "none-heading/template",
+      "heading": "none",
+      "sections": [
+        {
+          "signal": "template",
+          "pos": "Sostantivo",
+          "definitions": 1
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [
+        "Sostantivo"
+      ],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
+    },
+    {
+      "title": "salvinata",
+      "revisionId": 3860523,
+      "timestamp": "2022-06-28T09:03:50Z",
+      "group": "no-part-of-speech",
+      "heading": "standard",
+      "sections": [],
+      "unplaced": 2,
+      "readAs": [],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "no-ruled-layout",
+        "entries": 0
+      }
+    },
+    {
+      "title": "satisfattivo",
+      "revisionId": 3575061,
+      "timestamp": "2019-07-03T09:20:07Z",
+      "group": "none-heading/template",
+      "heading": "none",
+      "sections": [
+        {
+          "signal": "template",
+          "pos": "Aggettivo",
+          "definitions": 2
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [
+        "Aggettivo"
+      ],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
+    },
+    {
+      "title": "scapestrato",
+      "revisionId": 4076874,
+      "timestamp": "2026-05-05T09:44:53Z",
+      "group": "several-parts-of-speech",
+      "heading": "none",
+      "sections": [
+        {
+          "signal": "template",
+          "pos": "Aggettivo",
+          "definitions": 2
+        },
+        {
+          "signal": "template",
+          "pos": "Sostantivo",
+          "definitions": 1
+        },
+        {
+          "signal": "template",
+          "pos": "Voce verbale",
+          "definitions": 1
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [
+        "Aggettivo",
+        "Sostantivo",
+        "Voce verbale"
+      ],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 3
+      }
+    },
+    {
+      "title": "scopri",
+      "revisionId": 3838501,
+      "timestamp": "2022-01-31T08:09:11Z",
+      "group": "none-heading/template",
+      "heading": "none",
+      "sections": [
+        {
+          "signal": "template",
+          "pos": "Voce verbale",
+          "definitions": 2
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [
+        "Voce verbale"
+      ],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
+    },
+    {
+      "title": "scuci",
+      "revisionId": 3978610,
+      "timestamp": "2024-04-12T12:39:23Z",
+      "group": "none-heading/template",
+      "heading": "none",
+      "sections": [
+        {
+          "signal": "template",
+          "pos": "Voce verbale",
+          "definitions": 2
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [
+        "Voce verbale"
+      ],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
+    },
+    {
+      "title": "scucì",
+      "revisionId": 3978611,
+      "timestamp": "2024-04-12T12:45:08Z",
+      "group": "none-heading/template",
+      "heading": "none",
+      "sections": [
+        {
+          "signal": "template",
+          "pos": "Voce verbale",
+          "definitions": 1
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [
+        "Voce verbale"
+      ],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
+    },
+    {
+      "title": "semplificato",
+      "revisionId": 3868773,
+      "timestamp": "2022-08-21T15:23:52Z",
+      "group": "none-heading/template",
+      "heading": "none",
+      "sections": [
+        {
+          "signal": "template",
+          "pos": "Voce verbale",
+          "definitions": 1
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [
+        "Voce verbale"
+      ],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
+    },
+    {
+      "title": "si capisce",
+      "revisionId": 3441698,
+      "timestamp": "2018-08-22T08:17:58Z",
+      "group": "bare-heading/template",
+      "heading": "bare",
+      "sections": [
+        {
+          "signal": "template",
+          "pos": "Espressione",
+          "definitions": 1
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [
+        "Espressione"
+      ],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
+    },
+    {
+      "title": "silenziario",
+      "revisionId": 3649789,
+      "timestamp": "2019-12-25T04:49:32Z",
+      "group": "english-wiktionary-copy",
+      "heading": "bare",
+      "sections": [
+        {
+          "signal": "bare-template",
+          "pos": "Sostantivo",
+          "definitions": 2
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [
+        "Sostantivo"
+      ],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "no-ruled-layout",
+        "entries": 0
+      }
+    },
+    {
+      "title": "smentire",
+      "revisionId": 3940442,
+      "timestamp": "2023-06-20T07:30:04Z",
+      "group": "none-heading/template",
+      "heading": "none",
+      "sections": [
+        {
+          "signal": "template",
+          "pos": "Verbo",
+          "definitions": 1
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [
+        "Verbo"
+      ],
+      "ruleV1": "recovered",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
+    },
+    {
+      "title": "spostata",
+      "revisionId": 3650494,
+      "timestamp": "2019-12-25T06:47:08Z",
+      "group": "english-wiktionary-copy",
+      "heading": "bare",
+      "sections": [
+        {
+          "signal": "bare-template",
+          "pos": "Sostantivo",
+          "definitions": 1
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [
+        "Sostantivo"
+      ],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "no-ruled-layout",
+        "entries": 0
+      }
+    },
+    {
+      "title": "spumanti",
+      "revisionId": 3557404,
+      "timestamp": "2019-06-05T10:22:51Z",
+      "group": "none-heading/template",
+      "heading": "none",
+      "sections": [
+        {
+          "signal": "template",
+          "pos": "Sostantivo, forma flessa",
+          "definitions": 1
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [
+        "Sostantivo, forma flessa"
+      ],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
+    },
+    {
+      "title": "stellari",
+      "revisionId": 3869716,
+      "timestamp": "2022-08-25T21:38:35Z",
+      "group": "standard-heading/spaced-template",
+      "heading": "standard",
+      "sections": [
+        {
+          "signal": "spaced-template",
+          "pos": "Aggettivo, forma flessa",
+          "definitions": 1
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [
+        "Aggettivo, forma flessa"
+      ],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
+    },
+    {
+      "title": "striata",
+      "revisionId": 3924625,
+      "timestamp": "2023-02-13T09:28:24Z",
+      "group": "several-parts-of-speech",
+      "heading": "none",
+      "sections": [
+        {
+          "signal": "template",
+          "pos": "Aggettivo, forma flessa",
+          "definitions": 1
+        },
+        {
+          "signal": "template",
+          "pos": "Voce verbale",
+          "definitions": 1
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [
+        "Aggettivo, forma flessa",
+        "Voce verbale"
+      ],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 2
+      }
+    },
+    {
+      "title": "su per giù",
+      "revisionId": 3650897,
+      "timestamp": "2019-12-25T16:58:47Z",
+      "group": "english-wiktionary-copy",
+      "heading": "bare",
+      "sections": [
+        {
+          "signal": "english-heading",
+          "pos": null,
+          "definitions": 1
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "no-ruled-layout",
+        "entries": 0
+      }
+    },
+    {
+      "title": "subcomandante",
+      "revisionId": 3445098,
+      "timestamp": "2018-08-22T17:32:48Z",
+      "group": "no-part-of-speech",
+      "heading": "bare",
+      "sections": [],
+      "unplaced": 1,
+      "readAs": [],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "no-ruled-layout",
+        "entries": 0
+      }
+    },
+    {
+      "title": "subliminali",
+      "revisionId": 3129839,
+      "timestamp": "2017-05-10T16:01:30Z",
+      "group": "malformed-heading/template",
+      "heading": "malformed",
+      "sections": [
+        {
+          "signal": "template",
+          "pos": "Sostantivo",
+          "definitions": 1
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [
+        "Sostantivo"
+      ],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
+    },
+    {
+      "title": "subordinata consecutiva",
+      "revisionId": 3445138,
+      "timestamp": "2018-08-22T17:39:28Z",
+      "group": "no-part-of-speech",
+      "heading": "bare",
+      "sections": [],
+      "unplaced": 1,
+      "readAs": [],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "no-ruled-layout",
+        "entries": 0
+      }
+    },
+    {
+      "title": "subordinata dichiarativa",
+      "revisionId": 3445139,
+      "timestamp": "2018-08-22T17:39:38Z",
+      "group": "no-part-of-speech",
+      "heading": "bare",
+      "sections": [],
+      "unplaced": 1,
+      "readAs": [],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "no-ruled-layout",
+        "entries": 0
+      }
+    },
+    {
+      "title": "subordinata oggettiva",
+      "revisionId": 3445141,
+      "timestamp": "2018-08-22T17:39:58Z",
+      "group": "no-part-of-speech",
+      "heading": "bare",
+      "sections": [],
+      "unplaced": 1,
+      "readAs": [],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "no-ruled-layout",
+        "entries": 0
+      }
+    },
+    {
+      "title": "subordinata temporale",
+      "revisionId": 3445142,
+      "timestamp": "2018-08-22T17:40:08Z",
+      "group": "no-part-of-speech",
+      "heading": "bare",
+      "sections": [],
+      "unplaced": 1,
+      "readAs": [],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "no-ruled-layout",
+        "entries": 0
+      }
+    },
+    {
+      "title": "sviluppatori",
+      "revisionId": 3346109,
+      "timestamp": "2018-07-19T15:36:15Z",
+      "group": "several-parts-of-speech",
+      "heading": "standard",
+      "sections": [
+        {
+          "signal": "spaced-template",
+          "pos": "Aggettivo, forma flessa",
+          "definitions": 1
+        },
+        {
+          "signal": "spaced-template",
+          "pos": "Sostantivo, forma flessa",
+          "definitions": 1
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [
+        "Aggettivo, forma flessa",
+        "Sostantivo, forma flessa"
+      ],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 2
+      }
+    },
+    {
+      "title": "sviluppatrice",
+      "revisionId": 3346110,
+      "timestamp": "2018-07-19T15:36:25Z",
+      "group": "several-parts-of-speech",
+      "heading": "standard",
+      "sections": [
+        {
+          "signal": "spaced-template",
+          "pos": "Aggettivo, forma flessa",
+          "definitions": 1
+        },
+        {
+          "signal": "spaced-template",
+          "pos": "Sostantivo, forma flessa",
+          "definitions": 1
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [
+        "Aggettivo, forma flessa",
+        "Sostantivo, forma flessa"
+      ],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 2
+      }
+    },
+    {
+      "title": "sviluppatrici",
+      "revisionId": 3651098,
+      "timestamp": "2019-12-25T17:36:19Z",
+      "group": "several-parts-of-speech",
+      "heading": "standard",
+      "sections": [
+        {
+          "signal": "spaced-template",
+          "pos": "Aggettivo, forma flessa",
+          "definitions": 1
+        },
+        {
+          "signal": "spaced-template",
+          "pos": "Sostantivo, forma flessa",
+          "definitions": 1
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [
+        "Aggettivo, forma flessa",
+        "Sostantivo, forma flessa"
+      ],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 2
+      }
+    },
+    {
+      "title": "talora",
+      "revisionId": 3947171,
+      "timestamp": "2023-08-14T07:35:10Z",
+      "group": "none-heading/template",
+      "heading": "none",
+      "sections": [
+        {
+          "signal": "template",
+          "pos": "Avverbio",
+          "definitions": 1
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [
+        "Avverbio"
+      ],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
+    },
+    {
+      "title": "tantundem",
+      "revisionId": 3651204,
+      "timestamp": "2019-12-25T17:54:00Z",
+      "group": "standard-heading/unknown-template",
+      "heading": "standard",
+      "sections": [
+        {
+          "signal": "unknown-template",
+          "pos": null,
+          "definitions": 1
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
+    },
+    {
+      "title": "tardamente",
+      "revisionId": 4050196,
+      "timestamp": "2025-11-10T15:33:20Z",
+      "group": "no-part-of-speech",
+      "heading": "standard",
+      "sections": [],
+      "unplaced": 1,
+      "readAs": [],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "no-ruled-layout",
+        "entries": 0
+      }
+    },
+    {
+      "title": "tele grigio 1",
+      "revisionId": 3137613,
+      "timestamp": "2017-05-13T11:34:22Z",
+      "group": "no-part-of-speech",
+      "heading": "bare",
+      "sections": [],
+      "unplaced": 1,
+      "readAs": [],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "no-ruled-layout",
+        "entries": 0
+      }
+    },
+    {
+      "title": "tele grigio 2",
+      "revisionId": 3137614,
+      "timestamp": "2017-05-13T11:34:23Z",
+      "group": "no-part-of-speech",
+      "heading": "bare",
+      "sections": [],
+      "unplaced": 1,
+      "readAs": [],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "no-ruled-layout",
+        "entries": 0
+      }
+    },
+    {
+      "title": "tele grigio 4",
+      "revisionId": 3137615,
+      "timestamp": "2017-05-13T11:34:24Z",
+      "group": "no-part-of-speech",
+      "heading": "bare",
+      "sections": [],
+      "unplaced": 1,
+      "readAs": [],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "no-ruled-layout",
+        "entries": 0
+      }
+    },
+    {
+      "title": "tic",
+      "revisionId": 3927266,
+      "timestamp": "2023-03-07T23:08:16Z",
+      "group": "none-heading/template",
+      "heading": "none",
+      "sections": [
+        {
+          "signal": "template",
+          "pos": "Sostantivo",
+          "definitions": 1
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [
+        "Sostantivo"
+      ],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
+    },
+    {
+      "title": "tireopatia",
+      "revisionId": 3651564,
+      "timestamp": "2019-12-25T18:54:03Z",
+      "group": "none-heading/template",
+      "heading": "none",
+      "sections": [
+        {
+          "signal": "template",
+          "pos": "Sostantivo",
+          "definitions": 1
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [
+        "Sostantivo"
+      ],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
+    },
+    {
+      "title": "tireotossicosi",
+      "revisionId": 3744189,
+      "timestamp": "2020-11-22T21:09:06Z",
+      "group": "none-heading/template",
+      "heading": "none",
+      "sections": [
+        {
+          "signal": "template",
+          "pos": "Sostantivo",
+          "definitions": 1
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [
+        "Sostantivo"
+      ],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
+    },
+    {
+      "title": "topopassera",
+      "revisionId": 4067880,
+      "timestamp": "2026-03-17T20:51:01Z",
+      "group": "none-heading/template",
+      "heading": "none",
+      "sections": [
+        {
+          "signal": "template",
+          "pos": "Sostantivo",
+          "definitions": 1
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [
+        "Sostantivo"
+      ],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
+    },
+    {
+      "title": "tornire",
+      "revisionId": 3581666,
+      "timestamp": "2019-07-14T05:09:52Z",
+      "group": "bare-heading/template",
+      "heading": "bare",
+      "sections": [
+        {
+          "signal": "template",
+          "pos": "Verbo",
+          "definitions": 1
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [
+        "Verbo"
+      ],
+      "ruleV1": "recovered",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
+    },
+    {
+      "title": "travet",
+      "revisionId": 3651838,
+      "timestamp": "2019-12-25T19:39:56Z",
+      "group": "bare-heading/template",
+      "heading": "bare",
+      "sections": [
+        {
+          "signal": "template",
+          "pos": "Sostantivo",
+          "definitions": 1
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [
+        "Sostantivo"
+      ],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
+    },
+    {
+      "title": "tremare",
+      "revisionId": 4002473,
+      "timestamp": "2024-11-07T06:13:27Z",
+      "group": "standard-heading/verb-label",
+      "heading": "standard",
+      "sections": [
+        {
+          "signal": "verb-label",
+          "pos": "Verbo",
+          "definitions": 2
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [
+        "Verbo"
+      ],
+      "ruleV1": "recovered",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
+    },
+    {
+      "title": "tremolante",
+      "revisionId": 3651860,
+      "timestamp": "2019-12-25T19:43:36Z",
+      "group": "several-parts-of-speech",
+      "heading": "bare",
+      "sections": [
+        {
+          "signal": "bare-template",
+          "pos": "Voce verbale",
+          "definitions": 1
+        },
+        {
+          "signal": "template",
+          "pos": "Aggettivo",
+          "definitions": 2
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [
+        "Voce verbale",
+        "Aggettivo"
+      ],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 2
+      }
+    },
+    {
+      "title": "trincetto",
+      "revisionId": 3147373,
+      "timestamp": "2017-05-13T15:38:39Z",
+      "group": "bare-heading/bare-template",
+      "heading": "bare",
+      "sections": [
+        {
+          "signal": "bare-template",
+          "pos": "Sostantivo",
+          "definitions": 1
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [
+        "Sostantivo"
+      ],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
+    },
+    {
+      "title": "trinciato alla dritta",
+      "revisionId": 3448481,
+      "timestamp": "2018-08-23T02:51:48Z",
+      "group": "bare-heading/template",
+      "heading": "bare",
+      "sections": [
+        {
+          "signal": "template",
+          "pos": "Locuzione aggettivale",
+          "definitions": 1
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [
+        "Locuzione aggettivale"
+      ],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
+    },
+    {
+      "title": "trinciato alla sinistra",
+      "revisionId": 3448482,
+      "timestamp": "2018-08-23T02:51:58Z",
+      "group": "bare-heading/template",
+      "heading": "bare",
+      "sections": [
+        {
+          "signal": "template",
+          "pos": "Locuzione aggettivale",
+          "definitions": 1
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [
+        "Locuzione aggettivale"
+      ],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
+    },
+    {
+      "title": "tripartito perpendicolare",
+      "revisionId": 3448500,
+      "timestamp": "2018-08-23T02:54:58Z",
+      "group": "bare-heading/template",
+      "heading": "bare",
+      "sections": [
+        {
+          "signal": "template",
+          "pos": "Locuzione aggettivale",
+          "definitions": 1
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [
+        "Locuzione aggettivale"
+      ],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
+    },
+    {
+      "title": "tripartito retto",
+      "revisionId": 3448501,
+      "timestamp": "2018-08-23T02:55:08Z",
+      "group": "bare-heading/template",
+      "heading": "bare",
+      "sections": [
+        {
+          "signal": "template",
+          "pos": "Locuzione aggettivale",
+          "definitions": 1
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [
+        "Locuzione aggettivale"
+      ],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
+    },
+    {
+      "title": "tripartito retto e perpendicolare",
+      "revisionId": 3448502,
+      "timestamp": "2018-08-23T02:55:18Z",
+      "group": "bare-heading/template",
+      "heading": "bare",
+      "sections": [
+        {
+          "signal": "template",
+          "pos": "Locuzione aggettivale",
+          "definitions": 1
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [
+        "Locuzione aggettivale"
+      ],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
+    },
+    {
+      "title": "trombaio",
+      "revisionId": 3981149,
+      "timestamp": "2024-05-06T09:17:18Z",
+      "group": "none-heading/template",
+      "heading": "none",
+      "sections": [
+        {
+          "signal": "template",
+          "pos": "Sostantivo",
+          "definitions": 1
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [
+        "Sostantivo"
+      ],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
+    },
+    {
+      "title": "trombocitemia",
+      "revisionId": 3448602,
+      "timestamp": "2018-08-23T03:11:59Z",
+      "group": "none-heading/template",
+      "heading": "none",
+      "sections": [
+        {
+          "signal": "template",
+          "pos": "Sostantivo",
+          "definitions": 1
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [
+        "Sostantivo"
+      ],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
+    },
+    {
+      "title": "troncatrice",
+      "revisionId": 1474271,
+      "timestamp": "2013-07-08T21:13:06Z",
+      "group": "bare-heading/bare-template",
+      "heading": "bare",
+      "sections": [
+        {
+          "signal": "bare-template",
+          "pos": "Sostantivo",
+          "definitions": 1
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [
+        "Sostantivo"
+      ],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
+    },
+    {
+      "title": "tuttavolta",
+      "revisionId": 3652033,
+      "timestamp": "2019-12-25T22:36:04Z",
+      "group": "english-wiktionary-copy",
+      "heading": "bare",
+      "sections": [
+        {
+          "signal": "english-heading",
+          "pos": null,
+          "definitions": 1
+        },
+        {
+          "signal": "english-heading",
+          "pos": null,
+          "definitions": 1
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "no-ruled-layout",
+        "entries": 0
+      }
+    },
+    {
+      "title": "tutto d'un colpo",
+      "revisionId": 3863424,
+      "timestamp": "2022-07-23T08:10:06Z",
+      "group": "english-wiktionary-copy",
+      "heading": "bare",
+      "sections": [
+        {
+          "signal": "english-heading",
+          "pos": null,
+          "definitions": 2
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "no-ruled-layout",
+        "entries": 0
+      }
+    },
+    {
+      "title": "usucapioni",
+      "revisionId": 3492502,
+      "timestamp": "2019-01-03T16:23:37Z",
+      "group": "bare-heading/template",
+      "heading": "bare",
+      "sections": [
+        {
+          "signal": "template",
+          "pos": "Sostantivo, forma flessa",
+          "definitions": 1
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [
+        "Sostantivo, forma flessa"
+      ],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
+    },
+    {
+      "title": "vale a dire",
+      "revisionId": 3652257,
+      "timestamp": "2019-12-25T23:12:16Z",
+      "group": "english-wiktionary-copy",
+      "heading": "bare",
+      "sections": [
+        {
+          "signal": "italian-heading",
+          "pos": "Avverbio",
+          "definitions": 1
+        },
+        {
+          "signal": "italian-heading",
+          "pos": "Congiunzione",
+          "definitions": 1
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [
+        "Avverbio",
+        "Congiunzione"
+      ],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "no-ruled-layout",
+        "entries": 0
+      }
+    },
+    {
+      "title": "valente",
+      "revisionId": 4036009,
+      "timestamp": "2025-06-13T09:04:52Z",
+      "group": "several-parts-of-speech",
+      "heading": "none",
+      "sections": [
+        {
+          "signal": "template",
+          "pos": "Aggettivo",
+          "definitions": 2
+        },
+        {
+          "signal": "template",
+          "pos": "Voce verbale",
+          "definitions": 1
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [
+        "Aggettivo",
+        "Voce verbale"
+      ],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 2
+      }
+    },
+    {
+      "title": "venire a conoscenza",
+      "revisionId": 4070660,
+      "timestamp": "2026-04-14T14:46:06Z",
+      "group": "standard-heading/spaced-template",
+      "heading": "standard",
+      "sections": [
+        {
+          "signal": "spaced-template",
+          "pos": "Locuzione verbale",
+          "definitions": 1
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [
+        "Locuzione verbale"
+      ],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
+    },
+    {
+      "title": "verde opalo perlato",
+      "revisionId": 3154575,
+      "timestamp": "2017-05-13T18:54:37Z",
+      "group": "no-part-of-speech",
+      "heading": "bare",
+      "sections": [],
+      "unplaced": 1,
+      "readAs": [],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "no-ruled-layout",
+        "entries": 0
+      }
+    },
+    {
+      "title": "verde perlato",
+      "revisionId": 3154579,
+      "timestamp": "2017-05-13T18:54:41Z",
+      "group": "no-part-of-speech",
+      "heading": "bare",
+      "sections": [],
+      "unplaced": 1,
+      "readAs": [],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "no-ruled-layout",
+        "entries": 0
+      }
+    },
+    {
+      "title": "vergognarsi",
+      "revisionId": 3939991,
+      "timestamp": "2023-06-14T21:49:52Z",
+      "group": "none-heading/template",
+      "heading": "none",
+      "sections": [
+        {
+          "signal": "template",
+          "pos": "Verbo",
+          "definitions": 3
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [
+        "Verbo"
+      ],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
+    },
+    {
+      "title": "videochirurgia",
+      "revisionId": 3450913,
+      "timestamp": "2018-08-23T09:28:49Z",
+      "group": "none-heading/template",
+      "heading": "none",
+      "sections": [
+        {
+          "signal": "template",
+          "pos": "Sostantivo",
+          "definitions": 1
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [
+        "Sostantivo"
+      ],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
+    },
+    {
+      "title": "violetto perlato",
+      "revisionId": 3156405,
+      "timestamp": "2017-05-13T19:42:15Z",
+      "group": "no-part-of-speech",
+      "heading": "bare",
+      "sections": [],
+      "unplaced": 1,
+      "readAs": [],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "no-ruled-layout",
+        "entries": 0
+      }
+    },
+    {
+      "title": "volerci",
+      "revisionId": 3652677,
+      "timestamp": "2019-12-26T00:19:20Z",
+      "group": "english-wiktionary-copy",
+      "heading": "bare",
+      "sections": [
+        {
+          "signal": "english-heading",
+          "pos": null,
+          "definitions": 1
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "no-ruled-layout",
+        "entries": 0
+      }
+    },
+    {
+      "title": "volvolo",
+      "revisionId": 3451530,
+      "timestamp": "2018-08-23T11:07:15Z",
+      "group": "none-heading/template",
+      "heading": "none",
+      "sections": [
+        {
+          "signal": "template",
+          "pos": "Sostantivo",
+          "definitions": 1
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [
+        "Sostantivo"
+      ],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
+    },
+    {
+      "title": "vortici",
+      "revisionId": 3938136,
+      "timestamp": "2023-05-30T20:54:06Z",
+      "group": "standard-heading/spaced-template",
+      "heading": "standard",
+      "sections": [
+        {
+          "signal": "spaced-template",
+          "pos": "Sostantivo, forma flessa",
+          "definitions": 1
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [
+        "Sostantivo, forma flessa"
+      ],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
+    },
+    {
+      "title": "xilitolo",
+      "revisionId": 3743549,
+      "timestamp": "2020-11-22T10:25:04Z",
+      "group": "none-heading/template",
+      "heading": "none",
+      "sections": [
+        {
+          "signal": "template",
+          "pos": "Sostantivo",
+          "definitions": 1
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [
+        "Sostantivo"
+      ],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
+    },
+    {
+      "title": "zorattero",
+      "revisionId": 3452774,
+      "timestamp": "2018-08-23T14:23:55Z",
+      "group": "bare-heading/bare-template",
+      "heading": "bare",
+      "sections": [
+        {
+          "signal": "bare-template",
+          "pos": "Sostantivo",
+          "definitions": 1
+        }
+      ],
+      "unplaced": 0,
+      "readAs": [
+        "Sostantivo"
+      ],
+      "ruleV1": "no-ruled-layout",
+      "production": {
+        "outcome": "recovered",
+        "entries": 1
+      }
+    }
+  ]
+}

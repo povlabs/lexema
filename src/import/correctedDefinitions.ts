@@ -27,6 +27,10 @@ import type { ImportStatement } from "./importRelease.js";
 export const correctedDefinitionValues = (correction: DefinitionCorrection): [text: string, correctionId: string, evidenceUrl: string] =>
   [correction.text, correctionId(correction), evidenceUrl(correction.evidence[0])];
 
+/** Whether `correction` is keyed to an entry of this title and part of speech; `definitionMismatch` then says if it reaches it. */
+export const correctsEntry = (correction: DefinitionCorrection, entry: { title: string; pos: string }): boolean =>
+  correction.entry.title === entry.title && correction.entry.pos === entry.pos;
+
 /** Why a definition correction was not written. */
 export type UnwrittenDefinition = "no-entry" | DefinitionMismatch;
 
@@ -52,12 +56,17 @@ export class CorrectedDefinitionLayer {
     this.corrections = definitionCorrections(corrections);
   }
 
-  /** Write the corrections of the entry's title that reach it. */
-  add(entry: PageEntryDefinitions & { entryId: number; title: string }): void {
+  /**
+   * Write the corrections of the entry's title and part of speech that reach
+   * it. A page may give several entries (ADR 0028); a correction one of them
+   * took stays applied whatever the others say.
+   */
+  add(entry: PageEntryDefinitions & { entryId: number; title: string; pos: string }): void {
     for (const correction of this.corrections) {
-      if (correction.entry.title !== entry.title) continue;
+      if (!correctsEntry(correction, entry)) continue;
+      const id = correctionId(correction);
       const mismatch = definitionMismatch(correction, entry);
-      this.outcomes.set(correctionId(correction), mismatch ?? "applied");
+      if (this.outcomes.get(id) !== "applied") this.outcomes.set(id, mismatch ?? "applied");
       if (mismatch !== undefined) continue;
       this.insert.run(entry.entryId, correction.replaces.index, ...correctedDefinitionValues(correction));
       this.rows.corrected_definition += 1;

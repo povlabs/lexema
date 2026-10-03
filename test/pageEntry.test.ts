@@ -12,10 +12,108 @@ import { OPTIONAL_TABLES_SQL, PAGE_ENTRY_TABLES } from "../src/lookup/served.js"
 import { lookup, exists } from "../src/lookup/lookup.js";
 import { lookupBatch } from "../src/lookup/batch.js";
 import { loadFixturePages, rawPageSource } from "../src/source/rawPage.js";
-import { recoverPageEntry } from "../src/italian/pageEntry.js";
+import { recoverPageEntry, PAGE_ENTRY_RULE, PAGE_ENTRY_RULE_V2, type RecoveredEntry } from "../src/italian/pageEntry.js";
+import { POS_BY_TITLE } from "../src/italian/partOfSpeech.js";
+import type { RawPage } from "../src/source/rawPage.js";
 
 const pages = await loadFixturePages(resolve("fixtures"));
 const page = (title: string) => { const value = pages.page(title); assert.ok(value); return value; };
+
+/** Every recovered fact names its revision and 1-based line, and keeps that line verbatim. */
+function assertLineEvidence(source: RawPage, entry: RecoveredEntry): void {
+  const lines = source.wikitext.split("\n");
+  assert.equal(entry.posRef.revisionId, source.revisionId);
+  assert.equal(entry.posRef.title, source.title);
+  assert.equal(entry.posWikitext, lines[entry.posRef.line - 1]);
+  for (const definition of entry.definitions) {
+    assert.equal(definition.ref.revisionId, source.revisionId);
+    assert.equal(definition.ref.title, source.title);
+    assert.equal(definition.wikitext, lines[definition.ref.line - 1]);
+    for (const example of definition.examples) {
+      assert.equal(example.ref.revisionId, source.revisionId);
+      assert.equal(example.wikitext, lines[example.ref.line - 1]);
+    }
+  }
+}
+
+/** One part-of-speech section as recovered: its title, the line stating it, its definitions in page order. */
+type Section = [posTitle: string, posLine: number, texts: string[]];
+
+const sectionsOf = (title: string): Section[] => {
+  const source = page(title);
+  const result = recoverPageEntry(source, new Set());
+  assert.equal(result.outcome, "recovered", title);
+  assert.ok(result.outcome === "recovered");
+  return result.entries.map((entry) => {
+    assert.equal(entry.rule, PAGE_ENTRY_RULE_V2, title);
+    assert.equal(entry.pos, POS_BY_TITLE[entry.posTitle], title);
+    assertLineEvidence(source, entry);
+    return [entry.posTitle, entry.posRef.line, entry.definitions.map((definition) => definition.text)];
+  });
+};
+
+test("each layout ADR 0028 admits recovers under rule v2 with the part of speech it states", () => {
+  // One real page per layout, named by the 2026-10-03 report's group.
+  const expected: Record<string, [layout: string, Section]> = {
+    mastoide: ["none-heading/template", ["Sostantivo", 1, ["prominenza tondeggiante dell'osso temporale, posta dietro il padiglione dell'orecchio"]]],
+    finora: ["bare-heading/template", ["Avverbio", 3, ["fino a questo momento"]]],
+    "a monte": ["standard-heading/spaced-template", ["Locuzione avverbiale", 2, ["nella parte parte superiore di un monte", "indietro nel passato"]]],
+    trincetto: ["bare-heading/bare-template", ["Sostantivo", 2, ["Strumento che il calzolaio usa per tagliare e rifilare cuoio e pelli; è costituito, in genere, da una lunga lama d'acciaio che ad un'estrenità è tagliata in tralice e affilata ."]]],
+    accerchiarsi: ["standard-heading/verb-label", ["Verbo", 2, ["circondarsi con, portare a se un insieme di persone"]]],
+    "purità": ["malformed-heading/template", ["Sostantivo", 2, [
+      "condizione spirituale e fisica di chi non viene corrotto, è mondo ed addirittura apporta miglioramenti anche per gli altri",
+      "situazione di massimo bene ricercata anche nell'ordine, comunque con la possibilità di estenderla anche al mondo materiale",
+      "integrità interiore, spirituale e quindi \"fisica\"",
+      "vivere in modo da non essere coinvolti nel desiderio errato di voler ostinatamente trovare errori o causare cose sbagliate",
+    ]]],
+    // The two templates ADR 0028 adds to the table.
+    "piangere sul latte versato": ["standard-heading/unknown-template", ["Locuzione verbale", 2, ["lamentarsi di qualcosa in ritardo"]]],
+    tantundem: ["standard-heading/unknown-template", ["Pronome", 2, ["equibarabile"]]],
+  };
+  for (const [title, [layout, section]] of Object.entries(expected)) {
+    assert.deepEqual(sectionsOf(title), [section], `${title} (${layout})`);
+  }
+  const accerchiarsi = recoverPageEntry(page("accerchiarsi"), new Set());
+  assert.ok(accerchiarsi.outcome === "recovered");
+  assert.equal(accerchiarsi.entries[0].pos, "verb");
+  const tantundem = recoverPageEntry(page("tantundem"), new Set());
+  assert.ok(tantundem.outcome === "recovered");
+  assert.equal(tantundem.entries[0].pos, "pron");
+  assert.deepEqual(tantundem.entries[0].definitions[0].labels, ["diritto"]);
+  // An archive record for the title still wins over the page.
+  assert.equal(recoverPageEntry(page("mastoide"), new Set(["mastoide"])).outcome, "present-in-archive");
+});
+
+test("a page with several Italian part-of-speech sections gives one entry per section, in page order", () => {
+  // `lungo` (`[[]]== {{-it-}} ==`): Aggettivo, then Preposizione.
+  assert.deepEqual(sectionsOf("lungo"), [
+    ["Aggettivo", 2, ["che si prolunga nel tempo", "di grande lunghezza"]],
+    ["Preposizione", 11, ["per un tratto abbastanza ampio al limite di... confinante con...", "in tangenza"]],
+  ]);
+  const result = recoverPageEntry(page("lungo"), new Set());
+  assert.ok(result.outcome === "recovered");
+  assert.deepEqual(result.entries.map((entry) => entry.pos), ["adj", "prep"]);
+  assert.deepEqual(result.entries[0].definitions[0].examples.map((example) => example.text), ["l'Italia è uno dei Paesi in cui si vive più a lungo"]);
+  assert.deepEqual(result.entries[1].definitions[1].labels, ["raro"]);
+});
+
+test("no part of speech is guessed: a page with no signal, an English heading or an English Wiktionary copy gives nothing", () => {
+  // `motteggio`: `== {{-it-}} ==`, then a `#` definition under no part-of-speech heading.
+  // `irrequieti`: its only section is `===Adjective===`. `mezz'ora`: `{{Trasfen}}`, read as Sostantivo.
+  for (const title of ["motteggio", "irrequieti", "mezz'ora"]) {
+    assert.equal(recoverPageEntry(page(title), new Set()).outcome, "no-ruled-layout", title);
+  }
+});
+
+test("the schema admits exactly the parts of speech a recovered entry can have", async () => {
+  const schema = await readFile(resolve("src/db/schema.sql"), "utf8");
+  const table = /CREATE TABLE recovered_entry \(([\s\S]*?)\) STRICT;/.exec(schema)?.[1];
+  assert.ok(table !== undefined);
+  const allowed = /pos TEXT NOT NULL CHECK \(pos IN \(([^)]*)\)\)/.exec(table)?.[1];
+  assert.ok(allowed !== undefined);
+  assert.deepEqual(new Set(allowed.split(",").map((code) => code.trim().replace(/^'|'$/g, ""))), new Set(Object.values(POS_BY_TITLE)));
+  assert.match(table, new RegExp(`rule IN \\('${PAGE_ENTRY_RULE}', '${PAGE_ENTRY_RULE_V2}'\\)`));
+});
 
 test("ruled layouts recover definitions in page order with exact line evidence, not foreign entries or existing words", () => {
   const expected: Record<string, [number, string[]]> = {
@@ -33,32 +131,29 @@ test("ruled layouts recover definitions in page order with exact line evidence, 
     const result = recoverPageEntry(source, new Set());
     assert.equal(result.outcome, "recovered", title);
     assert.ok(result.outcome === "recovered");
-    assert.equal(result.entry.pos, "verb");
-    assert.equal(result.entry.posRef.line, posLine);
-    assert.equal(result.entry.posWikitext, source.wikitext.split("\n")[posLine - 1]);
-    assert.deepEqual(result.entry.definitions.map((item) => item.text), texts);
-    for (const definition of result.entry.definitions) {
-      assert.equal(definition.ref.revisionId, source.revisionId);
-      assert.equal(definition.ref.title, title);
-      assert.equal(definition.wikitext, source.wikitext.split("\n")[definition.ref.line - 1]);
-      for (const example of definition.examples) {
-        assert.equal(example.ref.revisionId, source.revisionId);
-        assert.equal(example.wikitext, source.wikitext.split("\n")[example.ref.line - 1]);
-      }
-    }
+    // Every page rule v1 recovers keeps its single v1 verb entry under rule v2's widening.
+    assert.equal(result.entries.length, 1, title);
+    const [entry] = result.entries;
+    assert.equal(entry.rule, PAGE_ENTRY_RULE, title);
+    assert.equal(entry.pos, "verb");
+    assert.equal(entry.posTitle, "Verbo");
+    assert.equal(entry.posRef.line, posLine);
+    assert.equal(entry.posWikitext, source.wikitext.split("\n")[posLine - 1]);
+    assert.deepEqual(entry.definitions.map((item) => item.text), texts);
+    assertLineEvidence(source, entry);
   }
   const labelsOf = (title: string) => {
     const recovered = recoverPageEntry(page(title), new Set());
     assert.ok(recovered.outcome === "recovered");
-    return recovered.entry.definitions.map((definition) => definition.labels);
+    return recovered.entries[0].definitions.map((definition) => definition.labels);
   };
   // The lead-in `v. tr. (dismago, dismaghi, ecc.), arc.` labels every meaning it opens.
   assert.deepEqual(labelsOf("dismagare"), [["arc."], ["arc."]]);
   assert.deepEqual(labelsOf("fidelizzare"), [[]]);
   const result = recoverPageEntry(page("raccontare"), new Set());
   assert.ok(result.outcome === "recovered");
-  assert.deepEqual(result.entry.definitions[1].labels, ["figurato"]);
-  assert.deepEqual(result.entry.definitions[1].examples.map((example) => example.text), ["quello lì non me la racconta giusta"]);
+  assert.deepEqual(result.entries[0].definitions[1].labels, ["figurato"]);
+  assert.deepEqual(result.entries[0].definitions[1].examples.map((example) => example.text), ["quello lì non me la racconta giusta"]);
   for (const title of ["movere", "skirmish", "notiziare"]) {
     assert.notEqual(recoverPageEntry(page(title), new Set()).outcome, "recovered", title);
   }
@@ -74,8 +169,8 @@ test("isolated seed finds page entries and resolves real form records without in
     const options = { input, outputDir: join(dir, "sql"),
       schema: resolve("src/db/schema.sql"), releaseId: "it-page-entry-test" };
     // The comparison seed has precisely the same originals, without page recovery.
-    const baseline = await seedSql({ ...options, rawPages: { size: pages.size - 2, page: (title) =>
-      title === "raccontare" || title === "fornire" ? undefined : pages.page(title) } });
+    const baseline = await seedSql({ ...options, rawPages: rawPageSource([...pages.titles()]
+      .filter((title) => title !== "raccontare" && title !== "fornire").map(page)) });
     assert.ok(baseline.rows.recovered_definition > 0);
     const before = new DatabaseSync(":memory:");
     try {
@@ -121,7 +216,8 @@ test("isolated seed finds page entries and resolves real form records without in
       }
       assert.deepEqual(db.prepare("PRAGMA foreign_key_check").all(), []);
       const stored = db.prepare(`SELECT p.title, p.revision_id, p.revision_timestamp, d.page_line, d.wikitext
-        FROM entry_definition d JOIN recovered_entry e USING (entry_id) JOIN raw_page p USING (page_id)`).all();
+        FROM entry_definition d JOIN recovered_entry e USING (entry_id) JOIN raw_page p USING (page_id)
+        WHERE p.title IN ('raccontare', 'fornire')`).all();
       assert.equal(stored.length, 3);
       for (const row of stored) {
         const source = page(String(row.title));
@@ -135,13 +231,50 @@ test("isolated seed finds page entries and resolves real form records without in
   } finally { db.close(); await rm(dir, { recursive: true, force: true }); }
 });
 
+test("the seed recovers every raw page no Italian record spells, not only the pages a form names", async () => {
+  // Archive line 93815: `lunga`, a form of `lungo`, which has no Italian record.
+  // No line names `mastoide` (Sostantivo) or `finora` (Avverbio); `casa` has a record.
+  const dir = await mkdtemp(join(tmpdir(), "lexema-page-entry-"));
+  const db = new DatabaseSync(":memory:");
+  try {
+    const input = join(dir, "input.jsonl");
+    await writeFile(input, (await readFile(resolve("fixtures/dev-seed.jsonl"), "utf8"))
+      + (await readFile(resolve("fixtures/page-entry-forms.jsonl"), "utf8"))
+      + (await readFile(resolve("fixtures/page-entry-v2-forms.jsonl"), "utf8")));
+    const source = rawPageSource(["casa", "fornire", "raccontare", "lungo", "mastoide", "finora"].map(page));
+    const seeded = await seedSql({ input, outputDir: join(dir, "sql"), schema: resolve("src/db/schema.sql"), releaseId: "it-page-entry-test", rawPages: source });
+    for (const part of seeded.parts) db.exec(await readFile(part, "utf8"));
+    const named = db.prepare("SELECT DISTINCT target_word FROM form_of_edge WHERE target_word IN ('mastoide', 'finora')").all();
+    assert.deepEqual(named, [], "no form names the two pages");
+    const rows = db.prepare("SELECT word, pos, pos_title, rule, page_line FROM recovered_entry ORDER BY word, page_line").all().map((row) => ({ ...row }));
+    assert.deepEqual(rows, [
+      { word: "finora", pos: "adv", pos_title: "Avverbio", rule: PAGE_ENTRY_RULE_V2, page_line: 3 },
+      { word: "fornire", pos: "verb", pos_title: "Verbo", rule: PAGE_ENTRY_RULE, page_line: 2 },
+      { word: "lungo", pos: "adj", pos_title: "Aggettivo", rule: PAGE_ENTRY_RULE_V2, page_line: 2 },
+      { word: "lungo", pos: "prep", pos_title: "Preposizione", rule: PAGE_ENTRY_RULE_V2, page_line: 11 },
+      { word: "mastoide", pos: "noun", pos_title: "Sostantivo", rule: PAGE_ENTRY_RULE_V2, page_line: 1 },
+      { word: "raccontare", pos: "verb", pos_title: "Verbo", rule: PAGE_ENTRY_RULE, page_line: 2 },
+    ]);
+    // Each entry names the revision it was read from, and keeps its line verbatim.
+    const evidence = db.prepare(`SELECT p.title, p.revision_id, e.page_line, e.wikitext
+      FROM recovered_entry e JOIN raw_page p USING (page_id)`).all();
+    for (const row of evidence) {
+      const read = page(String(row.title));
+      assert.equal(row.revision_id, read.revisionId);
+      assert.equal(row.wikitext, read.wikitext.split("\n")[Number(row.page_line) - 1]);
+    }
+    assert.deepEqual(db.prepare("PRAGMA foreign_key_check").all(), []);
+  } finally { db.close(); await rm(dir, { recursive: true, force: true }); }
+});
+
 test("a dictionary seeded before the page-entry tables answers as it did, and never names them", async () => {
   const dir = await mkdtemp(join(tmpdir(), "lexema-page-entry-"));
   const empty = new DatabaseSync(":memory:");
   const old = new DatabaseSync(":memory:");
   try {
     const releaseId = "it-page-entry-test";
-    const seeded = await seedSql({ input: resolve("fixtures/dev-seed.jsonl"), outputDir: join(dir, "sql"), schema: resolve("src/db/schema.sql"), releaseId, rawPages: pages });
+    // Only `casa`'s page, which its record already heads: no page-only entry.
+    const seeded = await seedSql({ input: resolve("fixtures/dev-seed.jsonl"), outputDir: join(dir, "sql"), schema: resolve("src/db/schema.sql"), releaseId, rawPages: rawPageSource([page("casa")]) });
     for (const part of seeded.parts) {
       const sql = await readFile(part, "utf8");
       empty.exec(sql);

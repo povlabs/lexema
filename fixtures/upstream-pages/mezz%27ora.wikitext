@@ -1,0 +1,16 @@
+<!-- it.wiktionary.org/wiki/mezz'ora revision 3644006 (2019-12-19T01:36:47Z), CC BY-SA 4.0. Saved verbatim. -->
+{{Trasfen}}
+{{-it-}}
+
+===Alternative spellings===
+* [[mezzora]]
+
+{{-sost-}}
+{{Pn}} ''f'' {{Linkp| mezz']] [[ora]]|mezz'ore}} 
+
+# [[half an hour]], [[half-hour]]
+
+{{-der-}}
+* [[mezz'oretta]]
+
+{{Noetim|it}}
