@@ -47,7 +47,7 @@ export function localD1(dir: string, seeded: DatabaseSync): LocalD1 {
     };
     try {
       if (own[0] === "--file") return transaction(readFileSync(own[1], "utf8"));
-      if (own[0] === "--command") return transaction(own[1]);
+      if (own.length === 1 && own[0].startsWith("--command=")) return transaction(own[0].slice("--command=".length));
       if (own[0] === "--json" && own[1] === "--command") return JSON.stringify([{ results: db.prepare(own[2]).all() }]);
       throw new Error(`unexpected d1 execute: ${own.join(" ")}`);
     } finally {

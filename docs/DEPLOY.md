@@ -470,7 +470,7 @@ upload of a release
    difference stops the run before that change is written. Otherwise it runs
    the plan's SQL as one transaction, then reads the changed rows back.
    SQL of at most 100,000 bytes goes through D1's query API
-   (`wrangler d1 execute --command`), and larger SQL through an import
+   (`wrangler d1 execute --command=<sql>`), and larger SQL through an import
    (`--file`) ([d1Batch.ts](../src/deploy/d1Batch.ts)). SQL holding a `LIKE`
    or `GLOB` pattern over 50 bytes, which D1 refuses, stops the run before it
    is sent.

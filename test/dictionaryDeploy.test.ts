@@ -159,7 +159,14 @@ async function withWorld(run: (world: World) => Promise<void>, lines: readonly s
 }
 
 /** The calls that write: an import, or a query-API batch (src/deploy/d1Batch.ts). Reads carry --json first. */
-const writes = (d1: LocalD1): string[][] => d1.calls.filter((call) => call[0] === "--file" || call[0] === "--command");
+const writes = (d1: LocalD1): string[][] => d1.calls.filter((call) => call[0] === "--file" || call[0].startsWith("--command="));
+
+/** The SQL of a query-API batch, sent as the one argument `--command=<sql>`; any other call fails the test. */
+const commandSql = (call: readonly string[]): string => {
+  assert.equal(call.length, 1, `a query-API batch is one argument, got ${JSON.stringify(call)}`);
+  assert.ok(call[0].startsWith("--command="), `not a query-API batch: ${call[0].slice(0, 40)}`);
+  return call[0].slice("--command=".length);
+};
 
 const glosses = (d1: LocalD1): string[] => {
   const db = d1.open();
@@ -340,11 +347,12 @@ test("a dictionary without the page-entry tables gets the upgrade as its own bat
     assert.deepEqual(deps.steps, [...DEPLOY_STEPS]);
     const [ddl, data, ...rest] = writes(world.d1);
     assert.deepEqual(rest, []);
-    assert.deepEqual([ddl[0], data[0]], ["--command", "--command"], "both batches are small, so both go through the query API");
-    assert.match(ddl[1], /CREATE TABLE IF NOT EXISTS recovered_entry\b/);
-    assert.match(ddl[1], /CREATE TABLE IF NOT EXISTS corrected_definition\b/);
-    assert.doesNotMatch(ddl[1], /\b(INSERT|UPDATE|DELETE)\b/);
-    assert.doesNotMatch(data[1], /\bCREATE\b/);
+    // Both batches are small, so both go through the query API.
+    const [ddlSql, dataSql] = [commandSql(ddl), commandSql(data)];
+    assert.match(ddlSql, /CREATE TABLE IF NOT EXISTS recovered_entry\b/);
+    assert.match(ddlSql, /CREATE TABLE IF NOT EXISTS corrected_definition\b/);
+    assert.doesNotMatch(ddlSql, /\b(INSERT|UPDATE|DELETE)\b/);
+    assert.doesNotMatch(dataSql, /\bCREATE\b/);
     if (outcome.kind === "green") assert.deepEqual(outcome.upgraded, { added: [...PAGE_ENTRY_UPGRADE_TABLES, ...PAGE_ENTRY_INDEXES], rebuilt: [] });
     assert.match(deploySummary(outcome, "lexema-dictionary"), /The upgrade ran first and added `recovered_entry`/);
 
@@ -413,8 +421,8 @@ test("a dictionary holding an older definition of a page-entry table gets schema
     assert.match(deploySummary(outcome, "lexema-dictionary"), /rebuilt the page-entry tables, keeping their rows, for the changed definition of `recovered_entry`, `corrected_definition`/);
     const [ddl, data, ...rest] = writes(world.d1);
     assert.deepEqual(rest, []);
-    assert.match(ddl[1], /CREATE TABLE upgrade_kept_recovered_entry AS SELECT \* FROM recovered_entry;/);
-    assert.doesNotMatch(data[1], /\bCREATE\b/);
+    assert.match(commandSql(ddl), /CREATE TABLE upgrade_kept_recovered_entry AS SELECT \* FROM recovered_entry;/);
+    assert.doesNotMatch(commandSql(data), /\bCREATE\b/);
 
     // The stored definitions are schema.sql's now, the rows are the same, and every foreign key holds.
     assert.deepEqual(changedUpgrade(masterReaderOf(world.d1.target), schema), []);

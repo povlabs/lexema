@@ -2,7 +2,7 @@
 // takes there.
 //
 // A batch of at most `QUERY_API_LIMIT` bytes goes through D1's query API,
-// `wrangler d1 execute --command`. Wrangler posts the whole text to
+// `wrangler d1 execute --command=<sql>`. Wrangler posts the whole text to
 // `/d1/database/{id}/query` in one request (wrangler 4.135.0, `executeRemotely`
 // in wrangler-dist/cli.js). That endpoint runs "multiple statements, joined by
 // semicolons ... as a batch"
@@ -32,6 +32,16 @@ export const QUERY_API_LIMIT = 100_000;
 export interface D1Executor {
   execute(args: readonly string[], capture: boolean): string;
 }
+
+/**
+ * `--command` and its SQL as the one argument Wrangler parses whole. As two
+ * arguments, Wrangler's yargs-parser takes the next one as the option's value
+ * only when it does not start with `-`, so SQL that opens with a `--` comment,
+ * as every deploy batch does, is read as an unknown flag and nothing is sent
+ * (wrangler 4.135.0, #507). Joined by `=`, the parser splits at the first `=`
+ * and keeps the rest, newlines and later `=` included.
+ */
+export const commandArgument = (sql: string): string => `--command=${sql}`;
 
 /** A batch D1 would refuse before running it. */
 export class D1BatchRefused extends Error {}
@@ -67,7 +77,7 @@ export class D1Batch {
    */
   async run(target: D1Executor, file: string): Promise<void> {
     if (this.route === "command") {
-      target.execute(["--command", this.sql], false);
+      target.execute([commandArgument(this.sql)], false);
       return;
     }
     await writeFile(file, this.sql);

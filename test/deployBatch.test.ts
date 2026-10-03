@@ -3,13 +3,14 @@
 // and never with a LIKE or GLOB pattern D1 refuses.
 
 import assert from "node:assert/strict";
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 import { overlongPatterns, sqlPatterns } from "../src/db/d1PatternLimit.js";
-import { D1Batch, D1BatchRefused, QUERY_API_LIMIT } from "../src/deploy/d1Batch.js";
+import { commandArgument, D1Batch, D1BatchRefused, QUERY_API_LIMIT, type D1Executor } from "../src/deploy/d1Batch.js";
 import type { DeployTarget } from "../src/deploy/dictionaryDeploy.js";
+import { webWrangler } from "../src/import/seedTarget.js";
 import { masterUpgradeSql } from "../src/update/masterUpgrade.js";
 
 /** A DeployTarget that records each `execute` call and answers it as Wrangler would on success. */
@@ -34,7 +35,7 @@ test(`a batch of at most ${QUERY_API_LIMIT} bytes runs through the query API, --
     assert.equal(batch.bytes, QUERY_API_LIMIT);
     assert.equal(batch.route, "command");
     await batch.run(target, join(dir, "batch.sql"));
-    assert.deepEqual(target.calls, [["--command", sql]]);
+    assert.deepEqual(target.calls, [[`--command=${sql}`]]);
     await assert.rejects(readFile(join(dir, "batch.sql")), { code: "ENOENT" });
   } finally {
     await rm(dir, { recursive: true, force: true });
@@ -52,6 +53,40 @@ test(`a batch over ${QUERY_API_LIMIT} bytes is imported with --file, from the fi
     await batch.run(target, file);
     assert.deepEqual(target.calls, [["--file", file]]);
     assert.equal(await readFile(file, "utf8"), sql);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+// The recording target above checks the argv, not that Wrangler accepts it.
+// Here the batch goes through `webWrangler`'s own execFileSync to the installed
+// Wrangler, aimed `--local` at a probe database that only a temporary config
+// names, so nothing can reach a remote D1.
+test("a batch that opens with a -- comment reaches a local D1 whole through the installed Wrangler", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "lexema-batch-wrangler-"));
+  try {
+    const config = join(dir, "wrangler.jsonc");
+    await writeFile(
+      config,
+      JSON.stringify({
+        name: "lexema-argv-probe",
+        compatibility_date: "2026-01-01",
+        d1_databases: [{ binding: "DB", database_name: "lexema-argv-probe", database_id: "00000000-0000-0000-0000-000000000000" }],
+      }),
+    );
+    const probe: D1Executor = {
+      execute: (args, capture) =>
+        webWrangler(["d1", "execute", "lexema-argv-probe", ...args, "--local", "--persist-to", join(dir, "state"), "--config", config, "--yes"], capture),
+    };
+    const value = "a = b; -- not a comment";
+    const sql = [
+      "-- Opens with a comment, as every upgrade, rebuild and page-entry batch does (#507).",
+      "CREATE TABLE probe (v TEXT NOT NULL);",
+      `INSERT INTO probe (v) VALUES ('${value}');`,
+    ].join("\n");
+    await D1Batch.of(sql).run(probe, join(dir, "unused.sql"));
+    const [answer] = JSON.parse(probe.execute(["--json", commandArgument("SELECT v FROM probe")], true)) as [{ results: { v: string }[] }];
+    assert.deepEqual(answer.results, [{ v: value }]);
   } finally {
     await rm(dir, { recursive: true, force: true });
   }
