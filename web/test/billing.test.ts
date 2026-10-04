@@ -156,6 +156,27 @@ test("signed in, choosing Pro makes a Checkout session for Pro's price with the 
   assert.equal(new URL(checkout.successUrl).searchParams.get("callbackURL"), SETTINGS);
 });
 
+test("Checkout for Starter and for Pro shows the Terms and business-use line by the subscribe button, with no consent checkbox (#572)", async () => {
+  for (const [plan, price] of [["starter", TEST_SETTINGS.STRIPE_PRICE_STARTER], ["pro", TEST_SETTINGS.STRIPE_PRICE_PRO]] as const) {
+    const { stripe, signIn, post } = site();
+    await signIn();
+
+    assert.equal((await post(CHECKOUT_ACTION, { plan })).status, 303, plan);
+
+    const [checkout] = stripe.checkouts;
+    assert.equal(checkout.price, price, plan);
+    assert.deepEqual(
+      checkout.customText,
+      {
+        "[submit][message]":
+          "By subscribing, you agree to the [Terms of service](https://developers.lexema.fyi/terms) and confirm you are using the API for business purposes.",
+      },
+      plan,
+    );
+    assert.deepEqual(checkout.consentCollection, {}, plan);
+  }
+});
+
 test("a bad CSRF token, a foreign Origin or an unknown plan changes nothing and makes no Checkout session", async () => {
   const refusals: [string, Record<string, string>, string | undefined, number][] = [
     ["bad CSRF token", { plan: "pro", csrf: "A".repeat(43) }, undefined, 403],
