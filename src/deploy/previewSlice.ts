@@ -180,7 +180,7 @@ function rowsToCopy(reader: MasterReader, keys: readonly string[]): Map<string, 
   // Page-only entries of each word, and of each word a copied record names as its lemma.
   read("recovered_entry", () => rowsWhere(reader, "recovered_entry", (ids) => `release_id IN (${releasesIn}) AND word_key IN (SELECT value FROM json_each(${ids}))`, [...keys, ...targets]));
   const entries = numbers(rows.get("recovered_entry") ?? [], "entry_id");
-  for (const table of ["entry_definition", "entry_label", "entry_example", "corrected_definition"]) read(table, () => rowsWhere(reader, table, inList("entry_id"), entries));
+  for (const table of ["entry_definition", "entry_label", "entry_example", "entry_fact", "corrected_definition"]) read(table, () => rowsWhere(reader, table, inList("entry_id"), entries));
 
   const pages = ["recovered_definition", "hidden_record", "recovered_entry"].flatMap((table) => numbers(rows.get(table) ?? [], "page_id"));
   read("raw_page", () => rowsWhere(reader, "raw_page", inList("page_id"), pages));

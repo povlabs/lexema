@@ -74,13 +74,16 @@ export const LAST_CHANGE_SQL: DictionaryRead = `SELECT change_id FROM applied_ch
 /** The page-only entry tables (ADR 0024, #403), in the order their foreign keys need. */
 export const PAGE_ENTRY_TABLES = ["recovered_entry", "entry_definition", "entry_label", "entry_example"] as const;
 
+/** The table of a page-only entry's other fields (ADR 0026, #439). A dictionary may hold the entries without it. */
+export const PAGE_ENTRY_FACT_TABLE = "entry_fact";
+
 /**
  * Which of the tables an older master may lack it has: `hide_version` (#408),
  * the page-entry tables (#403) and the curated-correction tables (#420,
  * #450). Presence is read from the schema, never inferred from a failed read,
  * so an error on a table that exists still fails.
  */
-export const OPTIONAL_TABLES_SQL: DictionaryRead = `SELECT name FROM sqlite_schema WHERE type = 'table' AND name IN (${["hide_version", "corrected_claim", "correction_version", ...PAGE_ENTRY_TABLES, "corrected_definition"].map((name) => `'${name}'`).join(", ")})`;
+export const OPTIONAL_TABLES_SQL: DictionaryRead = `SELECT name FROM sqlite_schema WHERE type = 'table' AND name IN (${["hide_version", "corrected_claim", "correction_version", ...PAGE_ENTRY_TABLES, PAGE_ENTRY_FACT_TABLE, "corrected_definition"].map((name) => `'${name}'`).join(", ")})`;
 export const HIDE_VERSION_SQL: DictionaryRead = `SELECT revision FROM hide_version WHERE singleton = 1`;
 export const CORRECTION_VERSION_SQL: DictionaryRead = `SELECT revision FROM correction_version WHERE singleton = 1`;
 
@@ -96,6 +99,12 @@ export interface DictionaryTables {
    * as empty.
    */
   definitionCorrections: boolean;
+  /**
+   * `entry_fact`, with every page-entry table it points at; absent on a
+   * master seeded before #439 until `update:upgrade` creates it, and read as
+   * empty: the entries then show their definitions alone.
+   */
+  pageFacts: boolean;
   /** `corrected_claim`; absent on a master seeded before #420 until `update:upgrade` creates it, and read as empty. */
   corrections: boolean;
   /** `correction_version`; absent on a master seeded before #420 until `update:upgrade` creates it, and read as revision zero. */
@@ -120,6 +129,7 @@ export async function dictionaryTables(db: LookupDatabase): Promise<DictionaryTa
     pageEntries,
     // Read only beside the entries it corrects.
     definitionCorrections: pageEntries && present.has("corrected_definition"),
+    pageFacts: pageEntries && present.has(PAGE_ENTRY_FACT_TABLE),
     corrections: present.has("corrected_claim"),
     correctionVersion: present.has("correction_version"),
   };

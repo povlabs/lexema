@@ -8,6 +8,7 @@
 // Every form in a conjugation links to its own search; grid forms do not.
 
 import type { ReactNode } from "react";
+import { factRefKey, sourcePointerOf, type DeclaredForm } from "@lexema/lookup/types.ts";
 import {
   isSourceForm,
   type Conjugation,
@@ -62,7 +63,7 @@ import {
 export const searchHref = (word: string): string => `/?q=${encodeURIComponent(word)}`;
 
 /** A form's place in the source, which no other form in a table shares. */
-const formKey = ({ ref }: TableForm): string => `${ref.releaseId}\u0000${ref.lineNo}\u0000${ref.jsonPointer}`;
+const formKey = ({ ref }: TableForm): string => factRefKey(ref);
 
 function Dash() {
   return (
@@ -161,7 +162,7 @@ function FormLink({ forms, searched }: { forms: readonly TableForm[]; searched: 
   // A record's own entry is named by its index in `forms[]`; a declared
   // lemma's form is a record of its own, named by its line.
   const own = forms.filter(isSourceForm);
-  const declared = forms.filter((form) => !isSourceForm(form));
+  const declared = forms.filter((form): form is DeclaredForm => !isSourceForm(form));
   return (
     <a
       className={searched ? FORM_LINK_SEARCHED : FORM_LINK}
@@ -341,7 +342,7 @@ export function ConjugationView({
   searchedPointers: ReadonlySet<string>;
   word: string;
 }): ReactNode {
-  const searched = (form: TableForm) => searchedPointers.has(form.ref.jsonPointer);
+  const searched = (form: TableForm) => searchedPointers.has(sourcePointerOf(form.ref) ?? "");
   return (
     <>
       <NonFiniteLine items={conjugation.nonFinite} searched={searched} />

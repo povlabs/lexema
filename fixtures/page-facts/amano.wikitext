@@ -1,0 +1,5 @@
+<!-- it.wiktionary.org/wiki/amano revision 2822837 (2017-05-04T23:42:01Z), CC BY-SA 4.0. Saved verbatim. -->
+{{-it-}}
+{{-verb form-|it}}
+{{Pn}}
+# terza persona plurale dell'indicativo presente del verbo [[amare]]

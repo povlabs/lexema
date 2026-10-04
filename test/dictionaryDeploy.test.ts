@@ -16,7 +16,8 @@ import { deployLog, main as deployMain } from "../src/deploy/deployCli.js";
 import { type DataFetcher, DataRefused, fetchVerified, filesFor, lexemaDataFetcher } from "../src/deploy/dataFiles.js";
 import { DEPLOY_STEPS, deployDictionary, deploySummary, type DeployDeps, type DeployStep, planOnly, restoreCommand } from "../src/deploy/dictionaryDeploy.js";
 import { gitIn, PRODUCTION_BRANCH } from "../src/deploy/pending.js";
-import { inlineParameters, lookupDatabaseOf, WORD_LIST } from "../src/deploy/wordCheck.js";
+import { declaredMiss, inlineParameters, lookupDatabaseOf, WORD_LIST } from "../src/deploy/wordCheck.js";
+import type { LookupResult } from "../src/lookup/types.js";
 import { SOURCE_TEXT_UPDATE_RULES } from "../src/import/normalizeSourceText.js";
 import { seedSql } from "../src/import/seedSql.js";
 import { PLURAL_PLACEHOLDER_FORM } from "../src/italian/sourceTextNormalization.js";
@@ -24,7 +25,7 @@ import { fromNodeSqlite } from "../src/lookup/database.js";
 import { lookup } from "../src/lookup/lookup.js";
 import { parseChange } from "../src/update/declaration.js";
 import { changedUpgrade, changedViews } from "../src/update/master.js";
-import { createStatement, PAGE_ENTRY_CORRECTION_TABLES, PAGE_ENTRY_INDEXES, PAGE_ENTRY_TABLES } from "../src/update/masterUpgrade.js";
+import { createStatement, PAGE_ENTRY_CORRECTION_TABLES, PAGE_ENTRY_FACT_TABLES, PAGE_ENTRY_INDEXES, PAGE_ENTRY_TABLES } from "../src/update/masterUpgrade.js";
 import { masterReaderOf } from "../src/update/updateCli.js";
 import { correctedClaimValues } from "../src/import/correctedLayer.js";
 import { atFixtureLines, correctionFixtureLines } from "./correctionFixture.js";
@@ -327,8 +328,86 @@ test("a word-lookup mismatch turns the run red and names the bookmark and the re
   });
 });
 
+const NORMALIZE_FILE = "dictionary-changes/2026-10-normalize.json";
+
+/** A run of `NORMALIZE` declaring `lookups`, recording each step's detail beside the steps. */
+async function deployWithLookups(world: World, lookups: readonly object[], extra: Partial<DeployDeps> = {}) {
+  const head = await world.commit({ [NORMALIZE_FILE]: declaration({ ...NORMALIZE, lookups }) });
+  const details = new Map<DeployStep, string>();
+  const deps = world.deps(head, extra);
+  const outcome = await deployDictionary({ ...deps, onStep: (step, detail) => (deps.steps.push(step), details.set(step, detail)) });
+  return { head, deps, outcome, details };
+}
+
+test("a declared word the write makes found, with the gloss it declares, goes green and production moves (#554)", async () => {
+  await withWorld(async (world) => {
+    // `vado` holds "prima persona singolare" only once normalize:source-text has run.
+    const { head, deps, outcome, details } = await deployWithLookups(world, [{ word: "vado", gloss: "prima persona singolare" }, { word: "pittore" }, { word: "inesistentissimo", found: false }]);
+
+    assert.equal(outcome.kind, "green", deploySummary(outcome, "lexema"));
+    assert.deepEqual(deps.steps, [...DEPLOY_STEPS]);
+    assert.equal(details.get("word-lookup"), `${WORD_LIST.join(", ")}; ${NORMALIZE_FILE}: vado, pittore, inesistentissimo`);
+    assert.equal(world.production(), head);
+  });
+});
+
+/** Run `NORMALIZE` declaring `lookups`, and check it went red at the word lookup, after the write, for `reasons`, leaving production where it was. */
+async function redAtWordLookup(world: World, lookups: readonly object[], reasons: readonly string[], extra: Partial<DeployDeps> = {}): Promise<void> {
+  const base = world.production();
+  const { deps, outcome } = await deployWithLookups(world, lookups, extra);
+  assert.equal(outcome.kind, "red");
+  assert.deepEqual(deps.steps, ["pending", "fetch", "bookmark", "upgrade", "plan", "apply", "read-back", "word-lookup"]);
+  assert.equal(world.production(), base);
+  if (outcome.kind === "red") {
+    assert.deepEqual(outcome.reasons, reasons);
+    assert.equal(outcome.written, true);
+    assert.equal(outcome.bookmark, "bookmark-1");
+  }
+  assert.ok(deploySummary(outcome, "lexema-dictionary").includes(restoreCommand("lexema-dictionary", "bookmark-1")));
+}
+
+test("a declared word the write did not add turns the run red after the write, naming the file and the word (#554)", async () => {
+  await withWorld(async (world) => {
+    await redAtWordLookup(world, [{ word: "vado" }, { word: "mastoide" }], [`word lookup: ${NORMALIZE_FILE}: mastoide: not-found, not found with a reading`]);
+  });
+});
+
+test("a declared gloss no definition of the word holds turns the run red (#554)", async () => {
+  await withWorld(async (world) => {
+    // The source's own wording, which the write replaced.
+    await redAtWordLookup(world, [{ word: "vado", gloss: "1ª persona" }], [`word lookup: ${NORMALIZE_FILE}: vado: found, but no definition holds "1ª persona"`]);
+  });
+});
+
+test("a word declared not found that the lookup finds turns the run red (#554)", async () => {
+  await withWorld(async (world) => {
+    await redAtWordLookup(world, [{ word: "casa", found: false }], [`word lookup: ${NORMALIZE_FILE}: casa: found, declared not found`]);
+  });
+});
+
+test("a declared word whose lookup throws turns the run red, and the other words are still looked up (#554)", async () => {
+  await withWorld(async (world) => {
+    const real = masterReaderOf(world.d1.target);
+    // Every read of the lookup carries its key as a literal, so only `pittore`'s fail.
+    const reader = { query: <Row>(sql: string): Row[] => (sql.includes("'pittore'") ? assert.fail("D1 is unreachable") : real.query<Row>(sql)) };
+    await redAtWordLookup(world, [{ word: "pittore" }, { word: "mastoide" }], [
+      `word lookup: ${NORMALIZE_FILE}: pittore: the lookup failed (D1 is unreachable)`,
+      `word lookup: ${NORMALIZE_FILE}: mastoide: not-found, not found with a reading`,
+    ], { reader });
+  });
+});
+
+test("a declared gloss is also found in a page-only entry's definitions, which it holds outside any sense (#554)", () => {
+  const ref = { wiki: "it.wiktionary.org", title: "mastoide", revisionId: 1, line: 4 };
+  const definition = { route: "sense-line", text: "processo osseo del temporale", correction: null, labels: [], ref, examples: [], heldAsExample: null, items: [] };
+  // Only what the check reads: a page-only reading has no senses, only its definitions.
+  const found = { outcome: "found", readings: [{ senses: [], recovered: [definition] }] } as unknown as LookupResult;
+  assert.equal(declaredMiss({ word: "mastoide", expect: "found", gloss: "processo osseo" }, found), undefined);
+  assert.equal(declaredMiss({ word: "mastoide", expect: "found", gloss: "osso sacro" }, found), 'found, but no definition holds "osso sacro"');
+});
+
 /** The tables the upgrade creates for page-only entries, in the order a drop needs. */
-const PAGE_ENTRY_UPGRADE_TABLES = [...PAGE_ENTRY_TABLES, ...PAGE_ENTRY_CORRECTION_TABLES];
+const PAGE_ENTRY_UPGRADE_TABLES = [...PAGE_ENTRY_TABLES, ...PAGE_ENTRY_FACT_TABLES, ...PAGE_ENTRY_CORRECTION_TABLES];
 
 /** Leave the dictionary as the live one was before #507: without the page-entry tables and `corrected_definition`. */
 function withoutPageEntryTables(d1: LocalD1): void {
@@ -424,7 +503,7 @@ test("a dictionary holding an older definition of a page-entry table gets schema
     if (outcome.kind === "green") assert.deepEqual(outcome.upgraded, { added: [], changed: ["recovered_entry", "corrected_definition"], rebuilt: PAGE_ENTRY_UPGRADE_TABLES, replaced: [] });
     assert.match(
       deploySummary(outcome, "lexema-dictionary"),
-      /rebuilt `recovered_entry`, `entry_definition`, `entry_label`, `entry_example`, `corrected_definition`, keeping their rows, for the changed definition of `recovered_entry`, `corrected_definition`/,
+      /rebuilt `recovered_entry`, `entry_definition`, `entry_label`, `entry_example`, `entry_fact`, `corrected_definition`, keeping their rows, for the changed definition of `recovered_entry`, `corrected_definition`/,
     );
     const [ddl, data, ...rest] = writes(world.d1);
     assert.deepEqual(rest, []);

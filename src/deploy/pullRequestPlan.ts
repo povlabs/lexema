@@ -13,7 +13,18 @@
 // `load:page-entries` read an archive and a dump from `povlabs/lexema-data`,
 // which is public and read without a token (#527).
 
-import { checkPlan, type DeclarationDraft, type DeclaredChange, DECLARATIONS_DIR, isDeclarationPath, parseDraft, passes, type PlanCheck } from "../update/declaration.js";
+import {
+  checkPlan,
+  type DeclarationDraft,
+  type DeclaredChange,
+  DECLARATIONS_DIR,
+  isDeclarationPath,
+  lookupJSON,
+  lookupLine,
+  parseDraft,
+  passes,
+  type PlanCheck,
+} from "../update/declaration.js";
 import type { PlanCounts } from "../update/planCounts.js";
 import type { PlanOnlyAnswer } from "./dictionaryDeploy.js";
 import type { Git } from "./pending.js";
@@ -75,10 +86,15 @@ export async function planPullRequest(declarations: readonly DeclarationDraft[],
   return outcomes;
 }
 
-/** The declaration file `declaration` should be, with `counts` as its `expected`. */
-export function declarationWith(declaration: DeclaredChange, counts: PlanCounts): string {
-  return `${JSON.stringify({ command: declaration.command, inputs: declaration.inputs, expected: counts.toJSON() }, null, 2)}\n`;
+/** The declaration file `declaration` should be, with `counts` as its `expected` and its own `lookups` kept. */
+export function declarationWith(declaration: DeclaredChange & Pick<DeclarationDraft, "lookups">, counts: PlanCounts): string {
+  const { command, inputs, lookups } = declaration;
+  return `${JSON.stringify({ command, inputs, ...(lookups === undefined ? {} : { lookups: lookups.map(lookupJSON) }), expected: counts.toJSON() }, null, 2)}\n`;
 }
+
+/** The words a draft names for the deploy to look up, which this check does not look up: the change is not written yet. */
+const lookupLines = ({ lookups }: DeclarationDraft): string[] =>
+  lookups === undefined ? [] : ["", "After writing it, the deploy looks up:", ...lookups.map((lookup) => `- ${lookupLine(lookup)}`)];
 
 
 const fenced = (json: string): string[] => ["```json", json.trimEnd(), "```"];
@@ -124,6 +140,6 @@ export function pullRequestPlanReport(outcomes: readonly DeclarationOutcome[], d
   const lines =
     outcomes.length === 0
       ? ["This pull request adds no change declaration, so there is nothing to plan."]
-      : [`Each declaration this pull request adds, planned with its own code against \`${dictionary}\`. Nothing was written.`, ...outcomes.flatMap((outcome) => ["", ...outcomeLines(outcome)])];
+      : [`Each declaration this pull request adds, planned with its own code against \`${dictionary}\`. Nothing was written.`, ...outcomes.flatMap((outcome) => ["", ...outcomeLines(outcome), ...lookupLines(outcome.declaration)])];
   return { markdown: [`## Dictionary plan check: ${green ? "green" : "red"}`, "", ...lines, ""].join("\n"), green };
 }

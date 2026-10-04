@@ -245,6 +245,28 @@ test("on a slice with the pull request's changes, a word it adds or recovers is 
   }
 });
 
+test("a slice of words whose page-only entries the shared dictionary already holds reads each of them, facts included, exactly as the shared dictionary does", async () => {
+  const db = await seeded(archive);
+  const entries = planPageEntries(readerOf(db), await findPageEntries(PAGES, await archiveWords(archive)), CURATED_CORRECTIONS);
+  db.exec(entries.sql);
+  const words = wordsOfPageEntries(entries);
+  assert.ok(words.kind === "words");
+  const facts = (database: DatabaseSync) => (database.prepare("SELECT count(*) AS n FROM entry_fact").get() as { n: number }).n;
+  assert.ok(facts(db) > 0);
+  const slice = build(db, words.words);
+  try {
+    assert.equal(facts(slice.db), facts(db));
+    for (const word of words.words) {
+      const shared = await lookup({ db: fromNodeSqlite(db), releaseId: RELEASE, query: word });
+      assert.equal(shared.outcome, "found", word);
+      assert.deepEqual(await lookup({ db: fromNodeSqlite(slice.db), releaseId: RELEASE, query: word }), shared, word);
+    }
+  } finally {
+    slice.close();
+    db.close();
+  }
+});
+
 test("the slice's SQL file rebuilds it whole on an empty database, and it counts each row once per table and once per index", async () => {
   const db = await seeded(archive);
   const apply = await applyPlan(db);

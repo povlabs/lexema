@@ -18,6 +18,7 @@ import { seedSql, type SeedSqlReport } from "../src/import/seedSql.js";
 import { fromNodeSqlite } from "../src/lookup/database.js";
 import { lookup } from "../src/lookup/lookup.js";
 import { isNounReading, type Reading } from "../src/lookup/types.js";
+import { archiveRef } from "./archiveRef.js";
 import { atFixtureLines, correctionFixtureLines, fixtureCorrections } from "./correctionFixture.js";
 
 const RELEASE = "it-curated";
@@ -185,7 +186,7 @@ test("a correction stands in for the record's own claim, keeps it, and costs no 
         id: `${RELEASE}:14`,
         evidenceUrl: "https://en.wiktionary.org/w/index.php?title=fissazione&oldid=90568134",
       });
-      assert.deepEqual(claim.replaces.map((stated) => [stated.value, stated.ref.lineNo, stated.ref.jsonPointer]), [["masculine", 14, "/tags/0"]]);
+      assert.deepEqual(claim.replaces.map((stated) => [stated.value, archiveRef(stated.ref).lineNo, archiveRef(stated.ref).jsonPointer]), [["masculine", 14, "/tags/0"]]);
       // Its articles follow: la fissazione, never il fissazione.
       assert.ok(isNounReading(fissazione));
       const { articles } = fissazione;
@@ -196,7 +197,7 @@ test("a correction stands in for the record's own claim, keeps it, and costs no 
       const [ammaliatore] = await ask("ammaliatore");
       const [ammaliatrice] = ammaliatore.inflections;
       assert.equal(ammaliatrice.plural?.correctedNumber?.value, "singular");
-      assert.deepEqual(ammaliatrice.plural?.correctedNumber?.replaces.map((stated) => stated.ref.jsonPointer), ["/tags/2"]);
+      assert.deepEqual(ammaliatrice.plural?.correctedNumber?.replaces.map((stated) => archiveRef(stated.ref).jsonPointer), ["/tags/2"]);
       const [congiuntivo] = await ask("congiuntivo");
       assert.deepEqual(congiuntivo.inflections[0].plural?.recordGenders.map((claim) => [claim.status, claim.value]), [["corrected", "masculine"]]);
 

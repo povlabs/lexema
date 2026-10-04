@@ -39,7 +39,8 @@
     "measure:section-language": "tsx src/import/measureSectionLanguage.ts",
     "bench:lookup": "tsx src/bench/lookupBenchCli.ts",
     "measure:bare-spellings": "tsx src/lookup/measureBareSpellings.ts",
-    "measure:plural-gloss": "tsx src/import/measurePluralGloss.ts"
+    "measure:plural-gloss": "tsx src/import/measurePluralGloss.ts",
+    "measure:page-entry-fields": "tsx src/import/measurePageEntryFields.ts"
   },
   "devDependencies": {
     "@kampus/fabrika-cli": "catalog:",

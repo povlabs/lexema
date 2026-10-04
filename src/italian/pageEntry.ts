@@ -1,5 +1,6 @@
 import type { RawPage, RawPageRef } from "../source/rawPage.js";
-import { statedPartOfSpeech, type StatedPartOfSpeech } from "./partOfSpeech.js";
+import { readPageFacts, type PageFact } from "./pageFacts.js";
+import { statedPartOfSpeech, type PosTitle, type StatedPartOfSpeech } from "./partOfSpeech.js";
 import { readRuledVerbSections, readStatedSections, type PageDefinition, type StatedLayout } from "./wikitext.js";
 
 /** ADR 0024's three verb layouts. An entry it recovers keeps this id. */
@@ -15,7 +16,15 @@ interface EntryFacts {
   posRef: RawPageRef;
   posWikitext: string;
   definitions: PageDefinition[];
+  /** Every other field the word page shows that the page gives (ADR 0026), by `PAGE_FACT_RULE`. */
+  facts: PageFact[];
 }
+
+/** The entry's facts, read off its page once its section and definitions are known. */
+const withFacts = <E extends Omit<EntryFacts, "facts"> & { posTitle: PosTitle }>(entry: E): E & { facts: PageFact[] } => ({
+  ...entry,
+  facts: readPageFacts(entry),
+});
 
 /** A page-only entry: rule v1 recovers verbs only, rule v2 any part of speech its layout states. */
 export type RecoveredEntry =
@@ -47,7 +56,7 @@ export function recoverUnderRuleV1(page: RawPage, italianWords: ReadonlySet<stri
   if (section.definitions.length === 0) return { outcome: "no-definition" };
   return {
     outcome: "recovered",
-    entries: [{ rule: PAGE_ENTRY_RULE, page, pos: "verb", posTitle: "Verbo", posRef: section.ref, posWikitext: section.wikitext, definitions: section.definitions }],
+    entries: [withFacts({ rule: PAGE_ENTRY_RULE, page, pos: "verb", posTitle: "Verbo", posRef: section.ref, posWikitext: section.wikitext, definitions: section.definitions })],
   };
 }
 
@@ -82,10 +91,10 @@ function recoverUnderRuleV2(page: RawPage): PageEntryRecovery {
   const layout = readStatedSections(page);
   if (!isAdmitted(layout)) return { outcome: "no-ruled-layout" };
   const entries = layout.sections.flatMap((section): RecoveredEntry[] =>
-    section.posTitle === null || section.definitions.length === 0 ? [] : [{
+    section.posTitle === null || section.definitions.length === 0 ? [] : [withFacts({
       rule: PAGE_ENTRY_RULE_V2, page, ...statedPartOfSpeech(section.posTitle),
       posRef: section.ref, posWikitext: section.wikitext, definitions: section.definitions,
-    }]);
+    })]);
   const [first, ...rest] = entries;
   return first === undefined ? { outcome: "no-definition" } : { outcome: "recovered", entries: [first, ...rest] };
 }

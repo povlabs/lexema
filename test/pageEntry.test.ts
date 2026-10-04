@@ -188,9 +188,11 @@ test("isolated seed finds page entries and resolves real form records without in
         assert.equal(entry.ref.lineNo, undefined);
         assert.equal(entry.ref.revisionId, page(title).revisionId);
         assert.ok(entry.recovered.length > 0);
+        // Neither page writes its forms out, so neither entry has any; each
+        // gives its pronunciation and etymology (ADR 0026, test/pageFacts.test.ts).
         assert.deepEqual(entry.forms, []);
-        assert.deepEqual(entry.wordFacts.pronunciations, []);
-        assert.deepEqual(entry.wordFacts.etymologies, []);
+        assert.deepEqual(entry.wordFacts.pronunciations.map((sound) => sound.ipa), [title === "raccontare" ? "/rakkonˈtare/" : "/forˈnire/"]);
+        assert.equal(entry.wordFacts.etymologies.length, 1);
         const inflected = await lookup({ db: read, releaseId: options.releaseId, query: form });
         assert.ok(inflected.outcome === "found");
         const link = inflected.readings.flatMap((reading) => reading.lemmaLinks).find((link) => link.targetWord === title);

@@ -226,6 +226,36 @@ test("a declaration after a data-reading one is refused, since its counts would 
 });
 
 
+test("a draft's lookups are kept in the declaration it prints and listed in the summary, and not looked up (#554)", async () => {
+  const lookups = [{ word: "mastoide" }, { word: "finora", gloss: "fino a ora" }, { word: "tantundem", found: false }];
+  const withLookups = (expected?: object): string => JSON.stringify({ command: "correct:records", lookups, ...(expected === undefined ? {} : { expected }) });
+
+  // No `expected` yet: the printed file keeps the lookups, and the summary lists each word.
+  const stub = planner();
+  const missing = pullRequestPlanReport(await planPullRequest(drafts({ "dictionary-changes/fix.json": withLookups() }), stub), "lexema-dictionary");
+  assert.equal(missing.green, false);
+  assert.deepEqual(stub.planned, ["dictionary-changes/fix.json"], "only the plan was asked for; no word was looked up");
+  const printed = /```json\n([\s\S]*?)\n```/.exec(missing.markdown)?.[1] ?? assert.fail(missing.markdown);
+  assert.deepEqual(JSON.parse(printed), { command: "correct:records", inputs: {}, lookups, expected: COUNTS });
+  const listed = ["After writing it, the deploy looks up:", "- `mastoide` (found)", '- `finora` (found, with a definition holding "fino a ora")', "- `tantundem` (not found)"].join("\n");
+  assert.ok(missing.markdown.includes(listed), missing.markdown);
+  // What it prints parses back to the same lookups, and the same plan then passes.
+  assert.deepEqual(parseDraft("dictionary-changes/fix.json", printed).lookups, parseDraft("dictionary-changes/fix.json", withLookups()).lookups);
+  const fixed = pullRequestPlanReport(await planPullRequest(drafts({ "dictionary-changes/fix.json": printed }), planner()), "lexema-dictionary");
+  assert.equal(fixed.green, true, fixed.markdown);
+  assert.ok(fixed.markdown.includes(listed), fixed.markdown);
+
+  // A later declaration that is not planned still lists its words.
+  const later = pullRequestPlanReport(await planPullRequest(drafts({ "dictionary-changes/a.json": correction(COUNTS), "dictionary-changes/b.json": withLookups(COUNTS) }), planner()), "lexema-dictionary");
+  assert.match(later.markdown, /Not planned: it comes after[\s\S]*After writing it, the deploy looks up:\n- `mastoide` \(found\)/);
+
+  // A draft with no lookups prints none and lists none.
+  const plain = pullRequestPlanReport(await planPullRequest(drafts({ "dictionary-changes/fix.json": correction() }), planner()), "lexema-dictionary");
+  const plainPrinted = /```json\n([\s\S]*?)\n```/.exec(plain.markdown)?.[1] ?? assert.fail(plain.markdown);
+  assert.deepEqual(Object.keys(JSON.parse(plainPrinted) as object), ["command", "inputs", "expected"]);
+  assert.doesNotMatch(plain.markdown, /the deploy looks up/);
+});
+
 test("a pull request that adds no declaration passes with nothing to plan", async () => {
   const report = pullRequestPlanReport(await planPullRequest([], planner()), "lexema-dictionary");
   assert.equal(report.green, true);
