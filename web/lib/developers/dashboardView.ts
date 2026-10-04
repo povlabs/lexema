@@ -158,15 +158,16 @@ const dayOfMs = (ms: number): string => shortDate(new Date(ms).toISOString());
 const stripeTitle = (plan: StripePlan): string => `${PLAN_TERMS[plan.id].name} · $${PLAN_TERMS[plan.id].usdPerMonth} / month`;
 
 /**
- * What the Plan section says for an account's plan. A plan that no longer
- * serves reads as no plan, whatever its state: `serving` in
- * src/billing/plans.ts decides that, as it does for the API and the meter, so
- * a lapsed Enterprise plan, or a cancelled one past its end, draws like an
- * ended one (#300). Enterprise shows its own numbers and when it ends, with no
- * price and no Manage billing.
+ * What the Plan section says for an account's plan. A plan the account no
+ * longer holds reads as no plan, whatever its state: `holdsPlan` in
+ * src/billing/plans.ts decides that, so a lapsed Enterprise plan, or a
+ * cancelled one past its end, draws like an ended one (#300). A past-due plan
+ * serves nothing but is still held, so it keeps Manage billing to fix the card
+ * (#571). Enterprise shows its own numbers and when it ends, with no price and
+ * no Manage billing.
  */
-export function planSectionOf({ state, serving }: AccountPlan): PlanSection {
-  if (!serving.serving) return NO_PLAN_SECTION;
+export function planSectionOf({ state, held }: AccountPlan): PlanSection {
+  if (!held) return NO_PLAN_SECTION;
   switch (state.kind) {
     case "none":
     case "ended":
@@ -181,7 +182,7 @@ export function planSectionOf({ state, serving }: AccountPlan): PlanSection {
       return { kind: "manage", title: stripeTitle(plan), line: `${calls} calls a month · Renews ${dayOfMs(state.period.end)}`, pastDue: false };
     }
     case "past-due":
-      return { kind: "manage", title: stripeTitle(state.plan), line: "Payment failed. Update your card to keep your keys working.", pastDue: true };
+      return { kind: "manage", title: stripeTitle(state.plan), line: "Payment failed. Your keys are paused until the payment goes through.", pastDue: true };
     case "cancelling":
       return { kind: "manage", title: stripeTitle(state.plan), line: `Cancelled · Ends ${dayOfMs(state.endsAt)}`, pastDue: false };
   }

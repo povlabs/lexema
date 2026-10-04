@@ -1143,7 +1143,7 @@ const requestOf =
       { db: dictionary, appDb, releaseId: RELEASE, now, metering: meters },
     );
 
-test("an owned key with no serving plan is a 402 plan_required, counting nothing; past due and cancelling before its end serve, and an admin key needs no plan", async () => {
+test("an owned key with no serving plan, past due included, is a 402 plan_required, counting nothing; cancelling before its end serves, and an admin key needs no plan", async () => {
   const { sqlite: own, appDb } = freshAppDatabase();
   const meters = new TestMetering();
   const ask = requestOf(appDb, meters);
@@ -1157,8 +1157,9 @@ test("an owned key with no serving plan is a 402 plan_required, counting nothing
     ["ended", { ...STARTER, status: "canceled" }, 402],
     ["unpaid", { ...STARTER, status: "unpaid" }, 402],
     ["cancelled, past its end", { ...STARTER, cancelAt: new Date(NOW - 1_000) }, 402],
+    // A failed payment stops the keys until it goes through (Huey, #571).
+    ["past due", { ...STARTER, status: "past_due" }, 402],
     ["cancelled, before its end", { ...STARTER, cancelAt: new Date(NOW + day) }, 200],
-    ["past due", { ...STARTER, status: "past_due" }, 200],
   ];
   for (const [label, plan, status] of accounts) {
     const { key } = await accountWithKey(appDb, label.replaceAll(/[^a-z]/g, "-"), plan);
@@ -1171,8 +1172,8 @@ test("an owned key with no serving plan is a 402 plan_required, counting nothing
     });
     assert.equal(response.headers.get("ratelimit-limit"), null, label);
   }
-  // Only the two serving accounts reached their meters; a 402 counts nothing.
-  assert.equal(meters.calls.length, 2);
+  // Only the one serving account reached its meter; a 402 counts nothing.
+  assert.equal(meters.calls.length, 1);
 
   // Enterprise stops serving at its --until date (Huey, #222) until the next period is set.
   const lapsing = await accountWithKey(appDb, "lapsing", "no plan");
@@ -1183,6 +1184,22 @@ test("an owned key with no serving plan is a 402 plan_required, counting nothing
   assert.equal(((await lapsed.json()) as Json).error.code, "plan_required");
   await enterprise(appDb, lapsing.accountId, 1_000, 10, "2026-09-28", "2026-10-28");
   assert.equal((await ask(lapsing.key, "exists?q=casa", undefined, Date.parse("2026-09-28T00:00:00Z"))).status, 200);
+  own.close();
+});
+
+test("an owned key whose payment failed answers 402 and meters nothing, then 200 once Stripe marks the subscription active again (#571)", async () => {
+  const { sqlite: own, appDb } = freshAppDatabase();
+  const meters = new TestMetering();
+  const ask = requestOf(appDb, meters);
+  const { accountId, key } = await accountWithKey(appDb, "renewing", { ...STARTER, status: "past_due" });
+  const refused = await ask(key, "exists?q=casa");
+  assert.equal(refused.status, 402);
+  assert.equal(((await refused.json()) as Json).error.code, "plan_required");
+  assert.equal(meters.calls.length, 0);
+
+  await appDb.app.update(subscription).set({ status: "active" }).where(eq(subscription.referenceId, String(accountId)));
+  assert.equal((await ask(key, "exists?q=casa")).status, 200);
+  assert.equal(meters.calls.length, 1);
   own.close();
 });
 

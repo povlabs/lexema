@@ -7,6 +7,7 @@ import { and, eq, isNull, max, sql, type SQLWrapper } from "drizzle-orm";
 import type { AppDatabase, AppTables } from "../db/app/database.js";
 import { developerAccount, enterprisePlan, subscription } from "../db/app/schema.js";
 import {
+  holdsPlan,
   NO_PLAN,
   serving,
   stateOfEnterprise,
@@ -19,18 +20,27 @@ import {
   type SubscriptionRow,
 } from "./plans.js";
 
-/** An account's plan state, and what it lets the account's keys do at the moment it was read for. */
+/**
+ * An account's plan state, what it lets the account's keys do at the moment it
+ * was read for, and whether the account still holds it then (`holdsPlan`),
+ * as `accountPlanAt` reads them from one state.
+ */
 export interface AccountPlan {
   readonly state: PlanState;
   readonly serving: Serving;
+  readonly held: boolean;
 }
 
+/** An account's plan in this state at `now`. */
+export const accountPlanAt = (state: PlanState, now: number): AccountPlan => ({ state, serving: serving(state, now), held: holdsPlan(state, now) });
+
 /**
- * Where choosing Starter or Pro takes an account (#264): Checkout while no
- * plan serves it, and the billing portal once one does, where a serving
- * Stripe plan is switched or renewed rather than bought twice.
+ * Where choosing Starter or Pro takes an account (#264): Checkout while it
+ * holds no plan, and the billing portal once it does, where a held Stripe plan
+ * is switched, renewed or paid rather than bought twice. A past-due plan is
+ * held, so its card is fixed in the portal (#571).
  */
-export const choiceFor = (plan: AccountPlan): "checkout" | "portal" => (plan.serving.serving ? "portal" : "checkout");
+export const choiceFor = (plan: AccountPlan): "checkout" | "portal" => (plan.held ? "portal" : "checkout");
 
 /**
  * The state a stored subscription row is in. The table's CHECKs refuse an
@@ -85,8 +95,7 @@ export const accountPlanQuery = (db: AppDatabase, accountId: number) => {
 /** An account's plan at `now`. One read. */
 export async function accountPlan(db: AppTables, accountId: number, now: number): Promise<AccountPlan> {
   const [row] = await accountPlanQuery(db.app, accountId);
-  const state = row === undefined ? NO_PLAN : stateOfPlanRows(row);
-  return { state, serving: serving(state, now) };
+  return accountPlanAt(row === undefined ? NO_PLAN : stateOfPlanRows(row), now);
 }
 
 /** The account's newest subscription row alone, as the Enterprise CLI reads it. */
@@ -101,7 +110,7 @@ export type EnterpriseSet =
   | { readonly outcome: "set"; readonly state: PlanState }
   /** No account has this id, or it is deleted. */
   | { readonly outcome: "unknown" }
-  /** The account's Stripe plan still serves: it is cancelled in Stripe first. */
+  /** The account still holds a Stripe plan, serving or past due: it is cancelled in Stripe first. */
   | { readonly outcome: "on-stripe"; readonly state: PlanState };
 
 /** Whether the account exists and is not deleted: its primary key. */
@@ -122,8 +131,9 @@ export const setEnterpriseQuery = (db: AppDatabase, accountId: number, limits: P
 
 /**
  * Put an account on Enterprise with these limits for this period (Huey, by
- * hand). Refused for an account that is unknown or deleted, and for one whose
- * Starter or Pro plan still serves at `now`, which is cancelled in Stripe first.
+ * hand). Refused for an account that is unknown or deleted, and for one that
+ * still holds a Starter or Pro plan at `now`, serving or past due, which is
+ * cancelled in Stripe first.
  */
 export async function setEnterprise(db: AppTables, accountId: number, limits: PlanLimits, period: Period, now: number): Promise<EnterpriseSet> {
   const [account] = await liveAccountQuery(db.app, accountId);
@@ -131,7 +141,7 @@ export async function setEnterprise(db: AppTables, accountId: number, limits: Pl
   const [newest] = await newestSubscriptionQuery(db.app, accountId);
   if (newest !== undefined) {
     const current = subscriptionState(newest);
-    if (serving(current, now).serving) return { outcome: "on-stripe", state: current };
+    if (holdsPlan(current, now)) return { outcome: "on-stripe", state: current };
   }
   await setEnterpriseQuery(db.app, accountId, limits, period);
   return { outcome: "set", state: { kind: "active", plan: { id: "enterprise", ...limits }, period } };
