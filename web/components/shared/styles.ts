@@ -63,7 +63,11 @@ export const LINK = `text-accent underline ${FOCUS_RING}`;
 /** C1: a full-width bar, the name at the left, a hairline under it. */
 export const TOP_BAR = "border-b border-border";
 export const TOP_BAR_INNER = inDictionaryColumn("flex h-16 items-center");
-export const TOP_BAR_NAME = `font-serif text-xl text-text-strong no-underline ${FOCUS_RING}`;
+/**
+ * On a phone the name, and the footer's name and links below, are drawn at the
+ * smaller sizes frames 33m and 34m give them, on every dictionary page (#591).
+ */
+export const TOP_BAR_NAME = `font-serif text-xl text-text-strong no-underline max-sm:text-[1.125rem] ${FOCUS_RING}`;
 
 /** C2: the name at the left, three small links at the right. */
 /**
@@ -73,10 +77,10 @@ export const TOP_BAR_NAME = `font-serif text-xl text-text-strong no-underline ${
 export const SITE_FOOTER = "mt-5 border-t border-border sm:mt-8";
 export const SITE_FOOTER_INNER = inDictionaryColumn("flex flex-wrap items-center justify-between gap-4 py-8");
 /** The footer's wordmark, a link home like the top bar's. */
-export const SITE_FOOTER_NAME = `font-serif text-base text-text-strong no-underline ${FOCUS_RING}`;
-export const SITE_FOOTER_LINKS = "m-0 flex list-none flex-wrap gap-x-6 gap-y-2 p-0";
+export const SITE_FOOTER_NAME = `font-serif text-base text-text-strong no-underline max-sm:text-[0.875rem] ${FOCUS_RING}`;
+export const SITE_FOOTER_LINKS = "m-0 flex list-none flex-wrap gap-x-6 gap-y-2 p-0 max-sm:gap-x-[0.9375rem]";
 /** The link to the page being shown is drawn in `text-strong`. */
-export const SITE_FOOTER_LINK = `font-sans text-[0.8rem] text-text-muted no-underline hover:text-text aria-[current=page]:text-text-strong ${FOCUS_RING}`;
+export const SITE_FOOTER_LINK = `font-sans text-[0.8rem] text-text-muted no-underline hover:text-text aria-[current=page]:text-text-strong max-sm:text-[0.6875rem] ${FOCUS_RING}`;
 
 /**
  * Frame 00: before a query the page is the name and the bar, centred on the
