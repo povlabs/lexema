@@ -87,7 +87,7 @@ all twelve queries of the spot check, not only these.
 The fixture is intentionally bounded, so a word outside its fifty-word set
 returns the empty state rather than an error. A full archive can be supplied
 with `SEED_INPUT=it-extract.jsonl.gz`; it loads in numbered SQL parts and takes
-about seven minutes
+nine to ten minutes
 ([RUN_AN_IMPORT.md § Run it](RUN_AN_IMPORT.md#run-it)).
 
 ## See the failed-lookup state

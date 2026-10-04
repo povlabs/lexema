@@ -6,7 +6,11 @@ actually run one, see [RUN_AN_IMPORT.md](RUN_AN_IMPORT.md).
 
 ## What a run reports
 
-From the current archive, unchanged across runs:
+From the current archive, unchanged across runs. The row counts are the
+`loaded release it-0c432803` block that the full-release seed
+(`pnpm run seed:dev` with `SEED_INPUT=it-extract.jsonl.gz`, as in
+[RUN_AN_IMPORT.md § Run it](RUN_AN_IMPORT.md#run-it)) printed on main in
+[the 2026-10-04 seed report](../reports/2026-10-04-full-release-seed-on-main.md):
 
 ```
 status           complete
@@ -18,18 +22,28 @@ refused leaves   0
 
 source_record       560,357
 source_record_json  560,357
-lookup_form       1,273,490
-form_of_edge        608,726
+lookup_form       1,273,350
+form_of_edge        608,717
 sense               714,867
-sense_gloss         714,223
+sense_gloss         714,222
 sense_label         637,585
-grammar_claim     3,454,793
+grammar_claim     3,454,684
 ```
 
-Those first four numbers, and the 713,133 embedded forms inside `lookup_form`,
-match the independent inspection in [the dataset spot check](../reports/2026-09-18-dataset-spot-check.md),
-which was measured by a different program. Two counts agreeing is not proof, but
-they were arrived at separately.
+A seed from before the seed hid records and applied its source-text rules read
+1,273,490 `lookup_form`, 608,726 `form_of_edge`, 714,223 `sense_gloss` and
+3,454,793 `grammar_claim`; the seed now hides 30 records, which drops their 30
+headword rows and 9 edges, and its source-text rules
+([ADR 0019](../.decisions/0019-source-text-may-be-normalized.md)) drop the 110
+`inserisci qui voce al plurale` placeholder forms and change the gloss and
+grammar rows.
+
+The archive holds 560,357 Italian records with 713,133 embedded `forms[]`
+objects, the figures of the earlier, separate inspection in
+[the dataset findings](../reports/dataset-findings.md). `lookup_form` holds one
+`headword` row for each of the 560,327 records left visible and one
+`embedded-form` row for each of the 713,023 forms left after the placeholders
+are dropped.
 
 Every line that does not become a record is counted exactly and located —
 rejected non-Italian lines as well as malformed ones, so a run can be audited
