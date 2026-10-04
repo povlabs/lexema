@@ -18,6 +18,7 @@ import { seedSql } from "../src/import/seedSql.js";
 import { fromNodeSqlite } from "../src/lookup/database.js";
 import { lookup } from "../src/lookup/lookup.js";
 import { namesOneRecordOf, type InflectionOf, type Reading, type SourceRef } from "../src/lookup/types.js";
+import { archiveRef } from "./archiveRef.js";
 
 const RELEASE = "it-declared-plural";
 const FIXTURE = "fixtures/declared-plural.jsonl";
@@ -81,7 +82,7 @@ const told = (link: InflectionOf): unknown[] =>
         link.plural.gloss.text,
         link.plural.gloss.ref.jsonPointer,
         link.plural.glossGender,
-        link.plural.recordGenders.map((claim) => `${claim.value} ${claim.status === "stated" ? claim.ref.jsonPointer : claim.correction.id}`),
+        link.plural.recordGenders.map((claim) => `${claim.value} ${claim.status === "stated" ? archiveRef(claim.ref).jsonPointer : claim.correction.id}`),
       ];
 
 test("a declared plural carries its gloss, the gender the gloss names, and the declaring record's own genders", async () => {
@@ -116,8 +117,8 @@ test("a declared plural carries its gloss, the gender the gloss names, and the d
       for (const claim of plural.recordGenders) {
         // No correction is keyed to this fixture's release.
         assert.ok(claim.status === "stated");
-        assert.equal(at(lines, claim.ref), claim.value);
-        assert.equal(claim.ref.lineNo, plural.gloss.ref.lineNo);
+        assert.equal(at(lines, archiveRef(claim.ref)), claim.value);
+        assert.equal(archiveRef(claim.ref).lineNo, plural.gloss.ref.lineNo);
       }
     }
   });

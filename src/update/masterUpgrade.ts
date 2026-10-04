@@ -17,7 +17,7 @@
 // lacks `lemma_line` and cannot hold that rule's rows.
 
 import { DatabaseSync } from "node:sqlite";
-import { PAGE_ENTRY_TABLES } from "../lookup/served.js";
+import { PAGE_ENTRY_FACT_TABLE, PAGE_ENTRY_TABLES } from "../lookup/served.js";
 
 /** The tables #18 added, in the order their foreign keys need. */
 export const UPDATE_TABLES = ["feed_release", "applied_change"] as const;
@@ -37,6 +37,13 @@ export { PAGE_ENTRY_TABLES };
  */
 export const PAGE_ENTRY_CORRECTION_TABLES = ["corrected_definition"] as const;
 
+/**
+ * The table a page-only entry's other fields are written to (ADR 0026, #439).
+ * It points at the page-entry tables, so it follows them. The upgrade creates
+ * it so that a load of page-only entries carries no DDL (#507).
+ */
+export const PAGE_ENTRY_FACT_TABLES = [PAGE_ENTRY_FACT_TABLE] as const;
+
 /** The tables `correct:records` writes a record's curated facts to (#420), after its cache revision. */
 export const CORRECTION_TABLES = ["correction_version", "corrected_claim"] as const;
 
@@ -50,7 +57,7 @@ export const PAGE_ENTRY_INDEXES = ["recovered_entry_by_key"] as const;
 export const SERVING_VIEWS = ["served_release", "served_record", "form_of_candidate", "surface_hit"] as const;
 
 /** Every table the upgrade creates when absent, in the order their foreign keys need. */
-const UPGRADE_TABLES = [...UPDATE_TABLES, ...PAGE_ENTRY_TABLES, ...PAGE_ENTRY_CORRECTION_TABLES, ...CORRECTION_TABLES, ...HIDE_TABLES] as const;
+const UPGRADE_TABLES = [...UPDATE_TABLES, ...PAGE_ENTRY_TABLES, ...PAGE_ENTRY_FACT_TABLES, ...PAGE_ENTRY_CORRECTION_TABLES, ...CORRECTION_TABLES, ...HIDE_TABLES] as const;
 
 /** Every table, index and view the upgrade creates, by its sqlite_schema name. */
 export const UPGRADE_NAMES: readonly string[] = [...UPGRADE_TABLES, ...PAGE_ENTRY_INDEXES, ...SERVING_VIEWS];
@@ -69,7 +76,7 @@ export const RECOVERED_INDEXES = ["recovered_definition_by_record"] as const;
  * table a rebuild drops, with its rows.
  */
 export const REBUILT_GROUPS = [
-  { tables: [...PAGE_ENTRY_TABLES, ...PAGE_ENTRY_CORRECTION_TABLES], indexes: PAGE_ENTRY_INDEXES },
+  { tables: [...PAGE_ENTRY_TABLES, ...PAGE_ENTRY_FACT_TABLES, ...PAGE_ENTRY_CORRECTION_TABLES], indexes: PAGE_ENTRY_INDEXES },
   { tables: RECOVERED_TABLES, indexes: RECOVERED_INDEXES },
   { tables: ["hidden_record"], indexes: [] },
 ] as const satisfies readonly { tables: readonly string[]; indexes: readonly string[] }[];

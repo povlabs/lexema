@@ -1,0 +1,5333 @@
+{
+  "release": "it-0c432803",
+  "archiveSha256": "0c432803c672aceccd48787eb64807c5366fdbd6796715c9a99e31c0024d5dcf",
+  "dump": "itwiktionary-20260701",
+  "dumpSha1": "2bdd444236f7dcd26fee3652dbd641c31d0d9651",
+  "rule": "italian-page-facts/v1",
+  "words": 186,
+  "entries": 203,
+  "byField": {
+    "partOfSpeech": {
+      "words": 186,
+      "entries": 203
+    },
+    "genderNumber": {
+      "words": 113,
+      "entries": 122
+    },
+    "definitions": {
+      "words": 186,
+      "entries": 203
+    },
+    "formOf": {
+      "words": 35,
+      "entries": 42
+    },
+    "forms": {
+      "words": 45,
+      "entries": 54
+    },
+    "pronunciation": {
+      "words": 47,
+      "entries": 53
+    },
+    "etymology": {
+      "words": 114,
+      "entries": 126
+    },
+    "synonyms": {
+      "words": 50,
+      "entries": 58
+    },
+    "antonyms": {
+      "words": 29,
+      "entries": 37
+    },
+    "derived": {
+      "words": 20,
+      "entries": 25
+    },
+    "expressions": {
+      "words": 4,
+      "entries": 5
+    }
+  },
+  "everyField": [],
+  "titles": [
+    {
+      "title": "-osi",
+      "revisionId": 3970051,
+      "entries": [
+        {
+          "posTitle": "Suffisso",
+          "posLine": 2,
+          "rule": "italian-page-entry/v2",
+          "definitions": 1,
+          "labels": 1,
+          "examples": 0,
+          "supplied": [
+            "partOfSpeech",
+            "definitions",
+            "etymology",
+            "derived"
+          ]
+        }
+      ],
+      "supplied": [
+        "partOfSpeech",
+        "definitions",
+        "etymology",
+        "derived"
+      ]
+    },
+    {
+      "title": "3D",
+      "revisionId": 3355661,
+      "entries": [
+        {
+          "posTitle": "Espressione",
+          "posLine": 1,
+          "rule": "italian-page-entry/v2",
+          "definitions": 1,
+          "labels": 0,
+          "examples": 1,
+          "supplied": [
+            "partOfSpeech",
+            "definitions"
+          ]
+        }
+      ],
+      "supplied": [
+        "partOfSpeech",
+        "definitions"
+      ]
+    },
+    {
+      "title": "5D",
+      "revisionId": 3355662,
+      "entries": [
+        {
+          "posTitle": "Espressione",
+          "posLine": 1,
+          "rule": "italian-page-entry/v2",
+          "definitions": 1,
+          "labels": 1,
+          "examples": 1,
+          "supplied": [
+            "partOfSpeech",
+            "definitions"
+          ]
+        }
+      ],
+      "supplied": [
+        "partOfSpeech",
+        "definitions"
+      ]
+    },
+    {
+      "title": "ABI",
+      "revisionId": 3355712,
+      "entries": [
+        {
+          "posTitle": "Acronimo / Abbreviazione",
+          "posLine": 2,
+          "rule": "italian-page-entry/v2",
+          "definitions": 1,
+          "labels": 0,
+          "examples": 0,
+          "supplied": [
+            "partOfSpeech",
+            "definitions",
+            "etymology",
+            "derived"
+          ]
+        }
+      ],
+      "supplied": [
+        "partOfSpeech",
+        "definitions",
+        "etymology",
+        "derived"
+      ]
+    },
+    {
+      "title": "Aglio",
+      "revisionId": 4023379,
+      "entries": [
+        {
+          "posTitle": "Sostantivo",
+          "posLine": 2,
+          "rule": "italian-page-entry/v2",
+          "definitions": 1,
+          "labels": 1,
+          "examples": 0,
+          "supplied": [
+            "partOfSpeech",
+            "genderNumber",
+            "definitions",
+            "etymology"
+          ]
+        }
+      ],
+      "supplied": [
+        "partOfSpeech",
+        "genderNumber",
+        "definitions",
+        "etymology"
+      ]
+    },
+    {
+      "title": "Anturio",
+      "revisionId": 4023202,
+      "entries": [
+        {
+          "posTitle": "Sostantivo",
+          "posLine": 2,
+          "rule": "italian-page-entry/v2",
+          "definitions": 1,
+          "labels": 1,
+          "examples": 0,
+          "supplied": [
+            "partOfSpeech",
+            "genderNumber",
+            "definitions",
+            "pronunciation"
+          ]
+        }
+      ],
+      "supplied": [
+        "partOfSpeech",
+        "genderNumber",
+        "definitions",
+        "pronunciation"
+      ]
+    },
+    {
+      "title": "Aro",
+      "revisionId": 4023392,
+      "entries": [
+        {
+          "posTitle": "Sostantivo",
+          "posLine": 2,
+          "rule": "italian-page-entry/v2",
+          "definitions": 1,
+          "labels": 1,
+          "examples": 0,
+          "supplied": [
+            "partOfSpeech",
+            "genderNumber",
+            "definitions",
+            "etymology"
+          ]
+        }
+      ],
+      "supplied": [
+        "partOfSpeech",
+        "genderNumber",
+        "definitions",
+        "etymology"
+      ]
+    },
+    {
+      "title": "Asfodelo",
+      "revisionId": 4023398,
+      "entries": [
+        {
+          "posTitle": "Sostantivo",
+          "posLine": 2,
+          "rule": "italian-page-entry/v2",
+          "definitions": 1,
+          "labels": 1,
+          "examples": 0,
+          "supplied": [
+            "partOfSpeech",
+            "genderNumber",
+            "definitions",
+            "pronunciation",
+            "etymology"
+          ]
+        }
+      ],
+      "supplied": [
+        "partOfSpeech",
+        "genderNumber",
+        "definitions",
+        "pronunciation",
+        "etymology"
+      ]
+    },
+    {
+      "title": "Augusteo",
+      "revisionId": 3905424,
+      "entries": [
+        {
+          "posTitle": "Sostantivo",
+          "posLine": 2,
+          "rule": "italian-page-entry/v2",
+          "definitions": 1,
+          "labels": 2,
+          "examples": 0,
+          "supplied": [
+            "partOfSpeech",
+            "genderNumber",
+            "definitions",
+            "pronunciation",
+            "etymology"
+          ]
+        }
+      ],
+      "supplied": [
+        "partOfSpeech",
+        "genderNumber",
+        "definitions",
+        "pronunciation",
+        "etymology"
+      ]
+    },
+    {
+      "title": "Cinquecento",
+      "revisionId": 3968122,
+      "entries": [
+        {
+          "posTitle": "Sostantivo",
+          "posLine": 2,
+          "rule": "italian-page-entry/v2",
+          "definitions": 1,
+          "labels": 4,
+          "examples": 1,
+          "supplied": [
+            "partOfSpeech",
+            "genderNumber",
+            "definitions",
+            "etymology",
+            "synonyms"
+          ]
+        }
+      ],
+      "supplied": [
+        "partOfSpeech",
+        "genderNumber",
+        "definitions",
+        "etymology",
+        "synonyms"
+      ]
+    },
+    {
+      "title": "Colle",
+      "revisionId": 3760085,
+      "entries": [
+        {
+          "posTitle": "Sostantivo",
+          "posLine": 3,
+          "rule": "italian-page-entry/v2",
+          "definitions": 1,
+          "labels": 1,
+          "examples": 0,
+          "supplied": [
+            "partOfSpeech",
+            "genderNumber",
+            "definitions",
+            "etymology",
+            "synonyms"
+          ]
+        }
+      ],
+      "supplied": [
+        "partOfSpeech",
+        "genderNumber",
+        "definitions",
+        "etymology",
+        "synonyms"
+      ]
+    },
+    {
+      "title": "Eruca",
+      "revisionId": 4024778,
+      "entries": [
+        {
+          "posTitle": "Sostantivo",
+          "posLine": 2,
+          "rule": "italian-page-entry/v2",
+          "definitions": 1,
+          "labels": 1,
+          "examples": 0,
+          "supplied": [
+            "partOfSpeech",
+            "genderNumber",
+            "definitions"
+          ]
+        }
+      ],
+      "supplied": [
+        "partOfSpeech",
+        "genderNumber",
+        "definitions"
+      ]
+    },
+    {
+      "title": "Gnatostomi",
+      "revisionId": 3622274,
+      "entries": [
+        {
+          "posTitle": "Sostantivo",
+          "posLine": 1,
+          "rule": "italian-page-entry/v2",
+          "definitions": 1,
+          "labels": 1,
+          "examples": 0,
+          "supplied": [
+            "partOfSpeech",
+            "genderNumber",
+            "definitions",
+            "pronunciation",
+            "etymology",
+            "antonyms"
+          ]
+        }
+      ],
+      "supplied": [
+        "partOfSpeech",
+        "genderNumber",
+        "definitions",
+        "pronunciation",
+        "etymology",
+        "antonyms"
+      ]
+    },
+    {
+      "title": "Gong Bass Drum",
+      "revisionId": 3954648,
+      "entries": [
+        {
+          "posTitle": "Sostantivo",
+          "posLine": 3,
+          "rule": "italian-page-entry/v2",
+          "definitions": 1,
+          "labels": 1,
+          "examples": 0,
+          "supplied": [
+            "partOfSpeech",
+            "definitions",
+            "etymology"
+          ]
+        }
+      ],
+      "supplied": [
+        "partOfSpeech",
+        "definitions",
+        "etymology"
+      ]
+    },
+    {
+      "title": "Irvingia",
+      "revisionId": 4027149,
+      "entries": [
+        {
+          "posTitle": "Sostantivo",
+          "posLine": 2,
+          "rule": "italian-page-entry/v2",
+          "definitions": 1,
+          "labels": 1,
+          "examples": 0,
+          "supplied": [
+            "partOfSpeech",
+            "genderNumber",
+            "definitions",
+            "pronunciation",
+            "etymology"
+          ]
+        }
+      ],
+      "supplied": [
+        "partOfSpeech",
+        "genderNumber",
+        "definitions",
+        "pronunciation",
+        "etymology"
+      ]
+    },
+    {
+      "title": "KO",
+      "revisionId": 3449320,
+      "entries": [
+        {
+          "posTitle": "Sostantivo",
+          "posLine": 2,
+          "rule": "italian-page-entry/v2",
+          "definitions": 2,
+          "labels": 2,
+          "examples": 1,
+          "supplied": [
+            "partOfSpeech",
+            "definitions"
+          ]
+        }
+      ],
+      "supplied": [
+        "partOfSpeech",
+        "definitions"
+      ]
+    },
+    {
+      "title": "Nilvo",
+      "revisionId": 1406481,
+      "entries": [
+        {
+          "posTitle": "Nome proprio",
+          "posLine": 2,
+          "rule": "italian-page-entry/v2",
+          "definitions": 1,
+          "labels": 0,
+          "examples": 0,
+          "supplied": [
+            "partOfSpeech",
+            "genderNumber",
+            "definitions"
+          ]
+        }
+      ],
+      "supplied": [
+        "partOfSpeech",
+        "genderNumber",
+        "definitions"
+      ]
+    },
+    {
+      "title": "ONG",
+      "revisionId": 3363171,
+      "entries": [
+        {
+          "posTitle": "Acronimo / Abbreviazione",
+          "posLine": 2,
+          "rule": "italian-page-entry/v2",
+          "definitions": 1,
+          "labels": 1,
+          "examples": 1,
+          "supplied": [
+            "partOfSpeech",
+            "definitions"
+          ]
+        }
+      ],
+      "supplied": [
+        "partOfSpeech",
+        "definitions"
+      ]
+    },
+    {
+      "title": "Rafano",
+      "revisionId": 4024774,
+      "entries": [
+        {
+          "posTitle": "Sostantivo",
+          "posLine": 2,
+          "rule": "italian-page-entry/v2",
+          "definitions": 1,
+          "labels": 1,
+          "examples": 0,
+          "supplied": [
+            "partOfSpeech",
+            "genderNumber",
+            "definitions"
+          ]
+        }
+      ],
+      "supplied": [
+        "partOfSpeech",
+        "genderNumber",
+        "definitions"
+      ]
+    },
+    {
+      "title": "Redenta",
+      "revisionId": 2797103,
+      "entries": [
+        {
+          "posTitle": "Nome proprio",
+          "posLine": 2,
+          "rule": "italian-page-entry/v2",
+          "definitions": 1,
+          "labels": 0,
+          "examples": 0,
+          "supplied": [
+            "partOfSpeech",
+            "genderNumber",
+            "definitions"
+          ]
+        }
+      ],
+      "supplied": [
+        "partOfSpeech",
+        "genderNumber",
+        "definitions"
+      ]
+    },
+    {
+      "title": "Settecento",
+      "revisionId": 3901499,
+      "entries": [
+        {
+          "posTitle": "Sostantivo",
+          "posLine": 2,
+          "rule": "italian-page-entry/v2",
+          "definitions": 1,
+          "labels": 3,
+          "examples": 2,
+          "supplied": [
+            "partOfSpeech",
+            "genderNumber",
+            "definitions",
+            "pronunciation",
+            "etymology",
+            "synonyms"
+          ]
+        }
+      ],
+      "supplied": [
+        "partOfSpeech",
+        "genderNumber",
+        "definitions",
+        "pronunciation",
+        "etymology",
+        "synonyms"
+      ]
+    },
+    {
+      "title": "Stagirita",
+      "revisionId": 3907280,
+      "entries": [
+        {
+          "posTitle": "Sostantivo",
+          "posLine": 2,
+          "rule": "italian-page-entry/v2",
+          "definitions": 1,
+          "labels": 1,
+          "examples": 0,
+          "supplied": [
+            "partOfSpeech",
+            "definitions",
+            "pronunciation",
+            "etymology"
+          ]
+        }
+      ],
+      "supplied": [
+        "partOfSpeech",
+        "definitions",
+        "pronunciation",
+        "etymology"
+      ]
+    },
+    {
+      "title": "TRISE",
+      "revisionId": 3622647,
+      "entries": [
+        {
+          "posTitle": "Acronimo / Abbreviazione",
+          "posLine": 2,
+          "rule": "italian-page-entry/v2",
+          "definitions": 1,
+          "labels": 0,
+          "examples": 0,
+          "supplied": [
+            "partOfSpeech",
+            "definitions"
+          ]
+        }
+      ],
+      "supplied": [
+        "partOfSpeech",
+        "definitions"
+      ]
+    },
+    {
+      "title": "Telescopio",
+      "revisionId": 3364614,
+      "entries": [
+        {
+          "posTitle": "Sostantivo",
+          "posLine": 2,
+          "rule": "italian-page-entry/v2",
+          "definitions": 1,
+          "labels": 1,
+          "examples": 0,
+          "supplied": [
+            "partOfSpeech",
+            "genderNumber",
+            "definitions",
+            "etymology"
+          ]
+        }
+      ],
+      "supplied": [
+        "partOfSpeech",
+        "genderNumber",
+        "definitions",
+        "etymology"
+      ]
+    },
+    {
+      "title": "a monte",
+      "revisionId": 4040642,
+      "entries": [
+        {
+          "posTitle": "Locuzione avverbiale",
+          "posLine": 2,
+          "rule": "italian-page-entry/v2",
+          "definitions": 2,
+          "labels": 1,
+          "examples": 0,
+          "supplied": [
+            "partOfSpeech",
+            "definitions",
+            "etymology"
+          ]
+        }
+      ],
+      "supplied": [
+        "partOfSpeech",
+        "definitions",
+        "etymology"
+      ]
+    },
+    {
+      "title": "accarezzamenti",
+      "revisionId": 3793134,
+      "entries": [
+        {
+          "posTitle": "Sostantivo, forma flessa",
+          "posLine": 2,
+          "rule": "italian-page-entry/v2",
+          "definitions": 1,
+          "labels": 0,
+          "examples": 0,
+          "supplied": [
+            "partOfSpeech",
+            "genderNumber",
+            "definitions",
+            "formOf",
+            "etymology"
+          ]
+        }
+      ],
+      "supplied": [
+        "partOfSpeech",
+        "genderNumber",
+        "definitions",
+        "formOf",
+        "etymology"
+      ]
+    },
+    {
+      "title": "accerchiarsi",
+      "revisionId": 3902057,
+      "entries": [
+        {
+          "posTitle": "Verbo",
+          "posLine": 2,
+          "rule": "italian-page-entry/v2",
+          "definitions": 1,
+          "labels": 0,
+          "examples": 0,
+          "supplied": [
+            "partOfSpeech",
+            "definitions",
+            "pronunciation",
+            "etymology",
+            "synonyms"
+          ]
+        }
+      ],
+      "supplied": [
+        "partOfSpeech",
+        "definitions",
+        "pronunciation",
+        "etymology",
+        "synonyms"
+      ]
+    },
+    {
+      "title": "addirizzare",
+      "revisionId": 3370967,
+      "entries": [
+        {
+          "posTitle": "Verbo",
+          "posLine": 2,
+          "rule": "italian-page-entry/v1",
+          "definitions": 2,
+          "labels": 1,
+          "examples": 1,
+          "supplied": [
+            "partOfSpeech",
+            "definitions",
+            "etymology",
+            "synonyms",
+            "derived"
+          ]
+        }
+      ],
+      "supplied": [
+        "partOfSpeech",
+        "definitions",
+        "etymology",
+        "synonyms",
+        "derived"
+      ]
+    },
+    {
+      "title": "alcole",
+      "revisionId": 4007162,
+      "entries": [
+        {
+          "posTitle": "Sostantivo",
+          "posLine": 2,
+          "rule": "italian-page-entry/v2",
+          "definitions": 1,
+          "labels": 0,
+          "examples": 0,
+          "supplied": [
+            "partOfSpeech",
+            "genderNumber",
+            "definitions",
+            "etymology"
+          ]
+        }
+      ],
+      "supplied": [
+        "partOfSpeech",
+        "genderNumber",
+        "definitions",
+        "etymology"
+      ]
+    },
+    {
+      "title": "amano",
+      "revisionId": 2822837,
+      "entries": [
+        {
+          "posTitle": "Voce verbale",
+          "posLine": 2,
+          "rule": "italian-page-entry/v2",
+          "definitions": 1,
+          "labels": 0,
+          "examples": 0,
+          "supplied": [
+            "partOfSpeech",
+            "definitions",
+            "formOf"
+          ]
+        }
+      ],
+      "supplied": [
+        "partOfSpeech",
+        "definitions",
+        "formOf"
+      ]
+    },
+    {
+      "title": "ancudine",
+      "revisionId": 3994962,
+      "entries": [
+        {
+          "posTitle": "Sostantivo",
+          "posLine": 2,
+          "rule": "italian-page-entry/v2",
+          "definitions": 1,
+          "labels": 0,
+          "examples": 0,
+          "supplied": [
+            "partOfSpeech",
+            "genderNumber",
+            "definitions"
+          ]
+        }
+      ],
+      "supplied": [
+        "partOfSpeech",
+        "genderNumber",
+        "definitions"
+      ]
+    },
+    {
+      "title": "antico nordico",
+      "revisionId": 3909947,
+      "entries": [
+        {
+          "posTitle": "Locuzione nominale",
+          "posLine": 2,
+          "rule": "italian-page-entry/v2",
+          "definitions": 1,
+          "labels": 1,
+          "examples": 0,
+          "supplied": [
+            "partOfSpeech",
+            "definitions",
+            "pronunciation",
+            "etymology"
+          ]
+        }
+      ],
+      "supplied": [
+        "partOfSpeech",
+        "definitions",
+        "pronunciation",
+        "etymology"
+      ]
+    },
+    {
+      "title": "anturio",
+      "revisionId": 4023200,
+      "entries": [
+        {
+          "posTitle": "Sostantivo",
+          "posLine": 2,
+          "rule": "italian-page-entry/v2",
+          "definitions": 1,
+          "labels": 0,
+          "examples": 0,
+          "supplied": [
+            "partOfSpeech",
+            "genderNumber",
+            "definitions",
+            "pronunciation"
+          ]
+        }
+      ],
+      "supplied": [
+        "partOfSpeech",
+        "genderNumber",
+        "definitions",
+        "pronunciation"
+      ]
+    },
+    {
+      "title": "armadeo",
+      "revisionId": 1456728,
+      "entries": [
+        {
+          "posTitle": "Sostantivo",
+          "posLine": 2,
+          "rule": "italian-page-entry/v2",
+          "definitions": 1,
+          "labels": 0,
+          "examples": 0,
+          "supplied": [
+            "partOfSpeech",
+            "definitions"
+          ]
+        }
+      ],
+      "supplied": [
+        "partOfSpeech",
+        "definitions"
+      ]
+    },
+    {
+      "title": "autoconsumo",
+      "revisionId": 3632859,
+      "entries": [
+        {
+          "posTitle": "Sostantivo",
+          "posLine": 1,
+          "rule": "italian-page-entry/v2",
+          "definitions": 1,
+          "labels": 1,
+          "examples": 0,
+          "supplied": [
+            "partOfSpeech",
+            "genderNumber",
+            "definitions",
+            "pronunciation",
+            "etymology"
+          ]
+        }
+      ],
+      "supplied": [
+        "partOfSpeech",
+        "genderNumber",
+        "definitions",
+        "pronunciation",
+        "etymology"
+      ]
+    },
+    {
+      "title": "avventurieri",
+      "revisionId": 3962578,
+      "entries": [
+        {
+          "posTitle": "Aggettivo, forma flessa",
+          "posLine": 1,
+          "rule": "italian-page-entry/v2",
+          "definitions": 1,
+          "labels": 0,
+          "examples": 0,
+          "supplied": [
+            "partOfSpeech",
+            "genderNumber",
+            "definitions",
+            "formOf",
+            "forms",
+            "etymology",
+            "synonyms",
+            "antonyms"
+          ]
+        },
+        {
+          "posTitle": "Sostantivo, forma flessa",
+          "posLine": 6,
+          "rule": "italian-page-entry/v2",
+          "definitions": 1,
+          "labels": 0,
+          "examples": 0,
+          "supplied": [
+            "partOfSpeech",
+            "genderNumber",
+            "definitions",
+            "formOf",
+            "forms",
+            "etymology",
+            "synonyms",
+            "antonyms"
+          ]
+        }
+      ],
+      "supplied": [
+        "partOfSpeech",
+        "genderNumber",
+        "definitions",
+        "formOf",
+        "forms",
+        "etymology",
+        "synonyms",
+        "antonyms"
+      ]
+    },
+    {
+      "title": "bagnarsi la lingua",
+      "revisionId": 4041979,
+      "entries": [
+        {
+          "posTitle": "Locuzione verbale",
+          "posLine": 2,
+          "rule": "italian-page-entry/v2",
+          "definitions": 1,
+          "labels": 0,
+          "examples": 0,
+          "supplied": [
+            "partOfSpeech",
+            "definitions",
+            "etymology",
+            "synonyms"
+          ]
+        }
+      ],
+      "supplied": [
+        "partOfSpeech",
+        "definitions",
+        "etymology",
+        "synonyms"
+      ]
+    },
+    {
+      "title": "bellicista",
+      "revisionId": 4059678,
+      "entries": [
+        {
+          "posTitle": "Aggettivo",
+          "posLine": 1,
+          "rule": "italian-page-entry/v2",
+          "definitions": 1,
+          "labels": 0,
+          "examples": 0,
+          "supplied": [
+            "partOfSpeech",
+            "genderNumber",
+            "definitions",
+            "forms",
+            "pronunciation",
+            "etymology",
+            "synonyms",
+            "antonyms",
+            "derived"
+          ]
+        },
+        {
+          "posTitle": "Sostantivo",
+          "posLine": 6,
+          "rule": "italian-page-entry/v2",
+          "definitions": 1,
+          "labels": 0,
+          "examples": 0,
+          "supplied": [
+            "partOfSpeech",
+            "genderNumber",
+            "definitions",
+            "forms",
+            "pronunciation",
+            "etymology",
+            "synonyms",
+            "antonyms",
+            "derived"
+          ]
+        }
+      ],
+      "supplied": [
+        "partOfSpeech",
+        "genderNumber",
+        "definitions",
+        "forms",
+        "pronunciation",
+        "etymology",
+        "synonyms",
+        "antonyms",
+        "derived"
+      ]
+    },
+    {
+      "title": "bipartito perpendicolare",
+      "revisionId": 3384768,
+      "entries": [
+        {
+          "posTitle": "Locuzione aggettivale",
+          "posLine": 2,
+          "rule": "italian-page-entry/v2",
+          "definitions": 1,
+          "labels": 1,
+          "examples": 0,
+          "supplied": [
+            "partOfSpeech",
+            "genderNumber",
+            "definitions"
+          ]
+        }
+      ],
+      "supplied": [
+        "partOfSpeech",
+        "genderNumber",
+        "definitions"
+      ]
+    },
+    {
+      "title": "bituminosa",
+      "revisionId": 3829467,
+      "entries": [
+        {
+          "posTitle": "Aggettivo, forma flessa",
+          "posLine": 2,
+          "rule": "italian-page-entry/v2",
+          "definitions": 1,
+          "labels": 0,
+          "examples": 0,
+          "supplied": [
+            "partOfSpeech",
+            "genderNumber",
+            "definitions",
+            "formOf",
+            "forms",
+            "etymology"
+          ]
+        }
+      ],
+      "supplied": [
+        "partOfSpeech",
+        "genderNumber",
+        "definitions",
+        "formOf",
+        "forms",
+        "etymology"
+      ]
+    },
+    {
+      "title": "bituminose",
+      "revisionId": 3269593,
+      "entries": [
+        {
+          "posTitle": "Aggettivo, forma flessa",
+          "posLine": 2,
+          "rule": "italian-page-entry/v2",
+          "definitions": 1,
+          "labels": 0,
+          "examples": 0,
+          "supplied": [
+            "partOfSpeech",
+            "genderNumber",
+            "definitions",
+            "formOf",
+            "forms",
+            "etymology"
+          ]
+        }
+      ],
+      "supplied": [
+        "partOfSpeech",
+        "genderNumber",
+        "definitions",
+        "formOf",
+        "forms",
+        "etymology"
+      ]
+    },
+    {
+      "title": "bituminosi",
+      "revisionId": 3829468,
+      "entries": [
+        {
+          "posTitle": "Aggettivo, forma flessa",
+          "posLine": 2,
+          "rule": "italian-page-entry/v2",
+          "definitions": 1,
+          "labels": 0,
+          "examples": 0,
+          "supplied": [
+            "partOfSpeech",
+            "genderNumber",
+            "definitions",
+            "formOf",
+            "forms",
+            "etymology"
+          ]
+        }
+      ],
+      "supplied": [
+        "partOfSpeech",
+        "genderNumber",
+        "definitions",
+        "formOf",
+        "forms",
+        "etymology"
+      ]
+    },
+    {
+      "title": "blasonario",
+      "revisionId": 3385071,
+      "entries": [
+        {
+          "posTitle": "Sostantivo",
+          "posLine": 1,
+          "rule": "italian-page-entry/v2",
+          "definitions": 1,
+          "labels": 1,
+          "examples": 0,
+          "supplied": [
+            "partOfSpeech",
+            "genderNumber",
+            "definitions",
+            "etymology"
+          ]
+        }
+      ],
+      "supplied": [
+        "partOfSpeech",
+        "genderNumber",
+        "definitions",
+        "etymology"
+      ]
+    },
+    {
+      "title": "blocco unico",
+      "revisionId": 3385210,
+      "entries": [
+        {
+          "posTitle": "Locuzione nominale",
+          "posLine": 1,
+          "rule": "italian-page-entry/v2",
+          "definitions": 1,
+          "labels": 2,
+          "examples": 0,
+          "supplied": [
+            "partOfSpeech",
+            "definitions"
+          ]
+        }
+      ],
+      "supplied": [
+        "partOfSpeech",
+        "definitions"
+      ]
+    },
+    {
+      "title": "calafataggio",
+      "revisionId": 3387228,
+      "entries": [
+        {
+          "posTitle": "Sostantivo",
+          "posLine": 1,
+          "rule": "italian-page-entry/v2",
+          "definitions": 1,
+          "labels": 1,
+          "examples": 0,
+          "supplied": [
+            "partOfSpeech",
+            "genderNumber",
+            "definitions",
+            "forms",
+            "etymology"
+          ]
+        }
+      ],
+      "supplied": [
+        "partOfSpeech",
+        "genderNumber",
+        "definitions",
+        "forms",
+        "etymology"
+      ]
+    },
+    {
+      "title": "cannocchiali",
+      "revisionId": 3271629,
+      "entries": [
+        {
+          "posTitle": "Sostantivo, forma flessa",
+          "posLine": 2,
+          "rule": "italian-page-entry/v2",
+          "definitions": 1,
+          "labels": 0,
+          "examples": 0,
+          "supplied": [
+            "partOfSpeech",
+            "genderNumber",
+            "definitions",
+            "formOf",
+            "etymology"
+          ]
+        }
+      ],
+      "supplied": [
+        "partOfSpeech",
+        "genderNumber",
+        "definitions",
+        "formOf",
+        "etymology"
+      ]
+    },
+    {
+      "title": "carrozzone",
+      "revisionId": 3388856,
+      "entries": [
+        {
+          "posTitle": "Sostantivo",
+          "posLine": 2,
+          "rule": "italian-page-entry/v2",
+          "definitions": 2,
+          "labels": 2,
+          "examples": 0,
+          "supplied": [
+            "partOfSpeech",
+            "genderNumber",
+            "definitions",
+            "forms",
+            "etymology"
+          ]
+        }
+      ],
+      "supplied": [
+        "partOfSpeech",
+        "genderNumber",
+        "definitions",
+        "forms",
+        "etymology"
+      ]
+    },
+    {
+      "title": "catuba",
+      "revisionId": 2863030,
+      "entries": [
+        {
+          "posTitle": "Sostantivo",
+          "posLine": 1,
+          "rule": "italian-page-entry/v2",
+          "definitions": 1,
+          "labels": 1,
+          "examples": 0,
+          "supplied": [
+            "partOfSpeech",
+            "genderNumber",
+            "definitions",
+            "forms",
+            "etymology"
+          ]
+        }
+      ],
+      "supplied": [
+        "partOfSpeech",
+        "genderNumber",
+        "definitions",
+        "forms",
+        "etymology"
+      ]
+    },
+    {
+      "title": "celta",
+      "revisionId": 4065195,
+      "entries": [
+        {
+          "posTitle": "Sostantivo",
+          "posLine": 2,
+          "rule": "italian-page-entry/v2",
+          "definitions": 1,
+          "labels": 1,
+          "examples": 0,
+          "supplied": [
+            "partOfSpeech",
+            "genderNumber",
+            "definitions",
+            "forms",
+            "pronunciation",
+            "etymology"
+          ]
+        }
+      ],
+      "supplied": [
+        "partOfSpeech",
+        "genderNumber",
+        "definitions",
+        "forms",
+        "pronunciation",
+        "etymology"
+      ]
+    },
+    {
+      "title": "ciborio",
+      "revisionId": 4031433,
+      "entries": [
+        {
+          "posTitle": "Sostantivo",
+          "posLine": 2,
+          "rule": "italian-page-entry/v2",
+          "definitions": 2,
+          "labels": 2,
+          "examples": 0,
+          "supplied": [
+            "partOfSpeech",
+            "genderNumber",
+            "definitions",
+            "forms",
+            "pronunciation",
+            "etymology"
+          ]
+        }
+      ],
+      "supplied": [
+        "partOfSpeech",
+        "genderNumber",
+        "definitions",
+        "forms",
+        "pronunciation",
+        "etymology"
+      ]
+    },
+    {
+      "title": "compassionevole",
+      "revisionId": 4248215,
+      "entries": [
+        {
+          "posTitle": "Aggettivo",
+          "posLine": 1,
+          "rule": "italian-page-entry/v2",
+          "definitions": 1,
+          "labels": 0,
+          "examples": 0,
+          "supplied": [
+            "partOfSpeech",
+            "genderNumber",
+            "definitions",
+            "forms",
+            "pronunciation",
+            "etymology",
+            "synonyms",
+            "antonyms"
+          ]
+        }
+      ],
+      "supplied": [
+        "partOfSpeech",
+        "genderNumber",
+        "definitions",
+        "forms",
+        "pronunciation",
+        "etymology",
+        "synonyms",
+        "antonyms"
+      ]
+    },
+    {
+      "title": "congedare",
+      "revisionId": 3971165,
+      "entries": [
+        {
+          "posTitle": "Verbo",
+          "posLine": 3,
+          "rule": "italian-page-entry/v1",
+          "definitions": 2,
+          "labels": 1,
+          "examples": 0,
+          "supplied": [
+            "partOfSpeech",
+            "definitions",
+            "etymology",
+            "synonyms",
+            "antonyms",
+            "derived"
+          ]
+        }
+      ],
+      "supplied": [
+        "partOfSpeech",
+        "definitions",
+        "etymology",
+        "synonyms",
+        "antonyms",
+        "derived"
+      ]
+    },
+    {
+      "title": "consenti",
+      "revisionId": 3835516,
+      "entries": [
+        {
+          "posTitle": "Voce verbale",
+          "posLine": 2,
+          "rule": "italian-page-entry/v2",
+          "definitions": 2,
+          "labels": 0,
+          "examples": 0,
+          "supplied": [
+            "partOfSpeech",
+            "definitions",
+            "formOf",
+            "etymology"
+          ]
+        }
+      ],
+      "supplied": [
+        "partOfSpeech",
+        "definitions",
+        "formOf",
+        "etymology"
+      ]
+    },
+    {
+      "title": "consenzienti",
+      "revisionId": 3665808,
+      "entries": [
+        {
+          "posTitle": "Aggettivo, forma flessa",
+          "posLine": 1,
+          "rule": "italian-page-entry/v2",
+          "definitions": 1,
+          "labels": 0,
+          "examples": 0,
+          "supplied": [
+            "partOfSpeech",
+            "definitions",
+            "formOf",
+            "etymology"
+          ]
+        },
+        {
+          "posTitle": "Sostantivo",
+          "posLine": 5,
+          "rule": "italian-page-entry/v2",
+          "definitions": 1,
+          "labels": 0,
+          "examples": 0,
+          "supplied": [
+            "partOfSpeech",
+            "definitions",
+            "etymology"
+          ]
+        }
+      ],
+      "supplied": [
+        "partOfSpeech",
+        "definitions",
+        "formOf",
+        "etymology"
+      ]
+    },
+    {
+      "title": "cosacche",
+      "revisionId": 3635799,
+      "entries": [
+        {
+          "posTitle": "Aggettivo, forma flessa",
+          "posLine": 1,
+          "rule": "italian-page-entry/v2",
+          "definitions": 1,
+          "labels": 0,
+          "examples": 0,
+          "supplied": [
+            "partOfSpeech",
+            "genderNumber",
+            "definitions",
+            "formOf",
+            "forms",
+            "etymology"
+          ]
+        },
+        {
+          "posTitle": "Sostantivo, forma flessa",
+          "posLine": 6,
+          "rule": "italian-page-entry/v2",
+          "definitions": 1,
+          "labels": 0,
+          "examples": 0,
+          "supplied": [
+            "partOfSpeech",
+            "genderNumber",
+            "definitions",
+            "formOf",
+            "forms",
+            "etymology"
+          ]
+        }
+      ],
+      "supplied": [
+        "partOfSpeech",
+        "genderNumber",
+        "definitions",
+        "formOf",
+        "forms",
+        "etymology"
+      ]
+    },
+    {
+      "title": "cremastico",
+      "revisionId": 3755838,
+      "entries": [
+        {
+          "posTitle": "Aggettivo",
+          "posLine": 2,
+          "rule": "italian-page-entry/v2",
+          "definitions": 1,
+          "labels": 0,
+          "examples": 0,
+          "supplied": [
+            "partOfSpeech",
+            "definitions",
+            "etymology"
+          ]
+        }
+      ],
+      "supplied": [
+        "partOfSpeech",
+        "definitions",
+        "etymology"
+      ]
+    },
+    {
+      "title": "croce decorata",
+      "revisionId": 3395008,
+      "entries": [
+        {
+          "posTitle": "Locuzione nominale",
+          "posLine": 2,
+          "rule": "italian-page-entry/v2",
+          "definitions": 1,
+          "labels": 1,
+          "examples": 0,
+          "supplied": [
+            "partOfSpeech",
+            "genderNumber",
+            "definitions"
+          ]
+        }
+      ],
+      "supplied": [
+        "partOfSpeech",
+        "genderNumber",
+        "definitions"
+      ]
+    },
+    {
+      "title": "croce diagonale",
+      "revisionId": 3395033,
+      "entries": [
+        {
+          "posTitle": "Locuzione aggettivale",
+          "posLine": 2,
+          "rule": "italian-page-entry/v2",
+          "definitions": 1,
+          "labels": 1,
+          "examples": 0,
+          "supplied": [
+            "partOfSpeech",
+            "genderNumber",
+            "definitions"
+          ]
+        }
+      ],
+      "supplied": [
+        "partOfSpeech",
+        "genderNumber",
+        "definitions"
+      ]
+    },
+    {
+      "title": "croce ottangola biforca",
+      "revisionId": 3395057,
+      "entries": [
+        {
+          "posTitle": "Locuzione nominale",
+          "posLine": 2,
+          "rule": "italian-page-entry/v2",
+          "definitions": 1,
+          "labels": 1,
+          "examples": 0,
+          "supplied": [
+            "partOfSpeech",
+            "genderNumber",
+            "definitions"
+          ]
+        }
+      ],
+      "supplied": [
+        "partOfSpeech",
+        "genderNumber",
+        "definitions"
+      ]
+    },
+    {
+      "title": "croce ricrociata doppia",
+      "revisionId": 3395072,
+      "entries": [
+        {
+          "posTitle": "Locuzione nominale",
+          "posLine": 2,
+          "rule": "italian-page-entry/v2",
+          "definitions": 1,
+          "labels": 1,
+          "examples": 0,
+          "supplied": [
+            "partOfSpeech",
+            "genderNumber",
+            "definitions"
+          ]
+        }
+      ],
+      "supplied": [
+        "partOfSpeech",
+        "genderNumber",
+        "definitions"
+      ]
+    },
+    {
+      "title": "croce ungiata",
+      "revisionId": 3395091,
+      "entries": [
+        {
+          "posTitle": "Locuzione nominale",
+          "posLine": 2,
+          "rule": "italian-page-entry/v2",
+          "definitions": 1,
+          "labels": 1,
+          "examples": 0,
+          "supplied": [
+            "partOfSpeech",
+            "genderNumber",
+            "definitions"
+          ]
+        }
+      ],
+      "supplied": [
+        "partOfSpeech",
+        "genderNumber",
+        "definitions"
+      ]
+    },
+    {
+      "title": "dare di fuori",
+      "revisionId": 4044368,
+      "entries": [
+        {
+          "posTitle": "Locuzione verbale",
+          "posLine": 2,
+          "rule": "italian-page-entry/v2",
+          "definitions": 1,
+          "labels": 0,
+          "examples": 0,
+          "supplied": [
+            "partOfSpeech",
+            "definitions",
+            "etymology",
+            "synonyms"
+          ]
+        }
+      ],
+      "supplied": [
+        "partOfSpeech",
+        "definitions",
+        "etymology",
+        "synonyms"
+      ]
+    },
+    {
+      "title": "dare esca",
+      "revisionId": 4044384,
+      "entries": [
+        {
+          "posTitle": "Locuzione verbale",
+          "posLine": 2,
+          "rule": "italian-page-entry/v2",
+          "definitions": 1,
+          "labels": 0,
+          "examples": 0,
+          "supplied": [
+            "partOfSpeech",
+            "definitions",
+            "etymology",
+            "synonyms"
+          ]
+        }
+      ],
+      "supplied": [
+        "partOfSpeech",
+        "definitions",
+        "etymology",
+        "synonyms"
+      ]
+    },
+    {
+      "title": "dare spago",
+      "revisionId": 4044322,
+      "entries": [
+        {
+          "posTitle": "Locuzione verbale",
+          "posLine": 2,
+          "rule": "italian-page-entry/v2",
+          "definitions": 1,
+          "labels": 0,
+          "examples": 0,
+          "supplied": [
+            "partOfSpeech",
+            "definitions",
+            "etymology",
+            "synonyms"
+          ]
+        }
+      ],
+      "supplied": [
+        "partOfSpeech",
+        "definitions",
+        "etymology",
+        "synonyms"
+      ]
+    },
+    {
+      "title": "dessiografia",
+      "revisionId": 3282485,
+      "entries": [
+        {
+          "posTitle": "Sostantivo",
+          "posLine": 2,
+          "rule": "italian-page-entry/v2",
+          "definitions": 1,
+          "labels": 0,
+          "examples": 0,
+          "supplied": [
+            "partOfSpeech",
+            "definitions"
+          ]
+        }
+      ],
+      "supplied": [
+        "partOfSpeech",
+        "definitions"
+      ]
+    },
+    {
+      "title": "dipendere",
+      "revisionId": 3972165,
+      "entries": [
+        {
+          "posTitle": "Verbo",
+          "posLine": 2,
+          "rule": "italian-page-entry/v1",
+          "definitions": 1,
+          "labels": 1,
+          "examples": 1,
+          "supplied": [
+            "partOfSpeech",
+            "definitions",
+            "pronunciation",
+            "etymology",
+            "synonyms",
+            "antonyms"
+          ]
+        }
+      ],
+      "supplied": [
+        "partOfSpeech",
+        "definitions",
+        "pronunciation",
+        "etymology",
+        "synonyms",
+        "antonyms"
+      ]
+    },
+    {
+      "title": "dismagare",
+      "revisionId": 3467484,
+      "entries": [
+        {
+          "posTitle": "Verbo",
+          "posLine": 2,
+          "rule": "italian-page-entry/v1",
+          "definitions": 2,
+          "labels": 2,
+          "examples": 0,
+          "supplied": [
+            "partOfSpeech",
+            "definitions"
+          ]
+        }
+      ],
+      "supplied": [
+        "partOfSpeech",
+        "definitions"
+      ]
+    },
+    {
+      "title": "doga",
+      "revisionId": 3891224,
+      "entries": [
+        {
+          "posTitle": "Sostantivo",
+          "posLine": 2,
+          "rule": "italian-page-entry/v2",
+          "definitions": 2,
+          "labels": 0,
+          "examples": 0,
+          "supplied": [
+            "partOfSpeech",
+            "genderNumber",
+            "definitions",
+            "forms",
+            "pronunciation",
+            "etymology",
+            "derived"
+          ]
+        }
+      ],
+      "supplied": [
+        "partOfSpeech",
+        "genderNumber",
+        "definitions",
+        "forms",
+        "pronunciation",
+        "etymology",
+        "derived"
+      ]
+    },
+    {
+      "title": "duodenite",
+      "revisionId": 3399916,
+      "entries": [
+        {
+          "posTitle": "Sostantivo",
+          "posLine": 1,
+          "rule": "italian-page-entry/v2",
+          "definitions": 1,
+          "labels": 1,
+          "examples": 0,
+          "supplied": [
+            "partOfSpeech",
+            "genderNumber",
+            "definitions",
+            "etymology"
+          ]
+        }
+      ],
+      "supplied": [
+        "partOfSpeech",
+        "genderNumber",
+        "definitions",
+        "etymology"
+      ]
+    },
+    {
+      "title": "educare",
+      "revisionId": 3951644,
+      "entries": [
+        {
+          "posTitle": "Verbo",
+          "posLine": 2,
+          "rule": "italian-page-entry/v1",
+          "definitions": 1,
+          "labels": 0,
+          "examples": 0,
+          "supplied": [
+            "partOfSpeech",
+            "definitions",
+            "pronunciation",
+            "etymology",
+            "synonyms",
+            "antonyms",
+            "derived"
+          ]
+        }
+      ],
+      "supplied": [
+        "partOfSpeech",
+        "definitions",
+        "pronunciation",
+        "etymology",
+        "synonyms",
+        "antonyms",
+        "derived"
+      ]
+    },
+    {
+      "title": "elettrococleografia",
+      "revisionId": 3400870,
+      "entries": [
+        {
+          "posTitle": "Sostantivo",
+          "posLine": 1,
+          "rule": "italian-page-entry/v2",
+          "definitions": 1,
+          "labels": 1,
+          "examples": 0,
+          "supplied": [
+            "partOfSpeech",
+            "genderNumber",
+            "definitions",
+            "etymology"
+          ]
+        }
+      ],
+      "supplied": [
+        "partOfSpeech",
+        "genderNumber",
+        "definitions",
+        "etymology"
+      ]
+    },
+    {
+      "title": "emopericardio",
+      "revisionId": 3401354,
+      "entries": [
+        {
+          "posTitle": "Sostantivo",
+          "posLine": 1,
+          "rule": "italian-page-entry/v2",
+          "definitions": 1,
+          "labels": 1,
+          "examples": 0,
+          "supplied": [
+            "partOfSpeech",
+            "genderNumber",
+            "definitions",
+            "etymology"
+          ]
+        }
+      ],
+      "supplied": [
+        "partOfSpeech",
+        "genderNumber",
+        "definitions",
+        "etymology"
+      ]
+    },
+    {
+      "title": "emoperitoneo",
+      "revisionId": 3401355,
+      "entries": [
+        {
+          "posTitle": "Sostantivo",
+          "posLine": 1,
+          "rule": "italian-page-entry/v2",
+          "definitions": 1,
+          "labels": 1,
+          "examples": 0,
+          "supplied": [
+            "partOfSpeech",
+            "genderNumber",
+            "definitions",
+            "etymology"
+          ]
+        }
+      ],
+      "supplied": [
+        "partOfSpeech",
+        "genderNumber",
+        "definitions",
+        "etymology"
+      ]
+    },
+    {
+      "title": "esplicitazione",
+      "revisionId": 3403019,
+      "entries": [
+        {
+          "posTitle": "Sostantivo",
+          "posLine": 1,
+          "rule": "italian-page-entry/v2",
+          "definitions": 3,
+          "labels": 2,
+          "examples": 0,
+          "supplied": [
+            "partOfSpeech",
+            "definitions",
+            "synonyms",
+            "antonyms"
+          ]
+        }
+      ],
+      "supplied": [
+        "partOfSpeech",
+        "definitions",
+        "synonyms",
+        "antonyms"
+      ]
+    },
+    {
+      "title": "fasseggiato",
+      "revisionId": 3404406,
+      "entries": [
+        {
+          "posTitle": "Aggettivo",
+          "posLine": 2,
+          "rule": "italian-page-entry/v2",
+          "definitions": 1,
+          "labels": 1,
+          "examples": 0,
+          "supplied": [
+            "partOfSpeech",
+            "genderNumber",
+            "definitions"
+          ]
+        }
+      ],
+      "supplied": [
+        "partOfSpeech",
+        "genderNumber",
+        "definitions"
+      ]
+    },
+    {
+      "title": "fibrosa",
+      "revisionId": 4070500,
+      "entries": [
+        {
+          "posTitle": "Aggettivo, forma flessa",
+          "posLine": 2,
+          "rule": "italian-page-entry/v2",
+          "definitions": 1,
+          "labels": 0,
+          "examples": 0,
+          "supplied": [
+            "partOfSpeech",
+            "genderNumber",
+            "definitions",
+            "formOf",
+            "forms",
+            "etymology",
+            "synonyms",
+            "antonyms"
+          ]
+        }
+      ],
+      "supplied": [
+        "partOfSpeech",
+        "genderNumber",
+        "definitions",
+        "formOf",
+        "forms",
+        "etymology",
+        "synonyms",
+        "antonyms"
+      ]
+    },
+    {
+      "title": "fibrose",
+      "revisionId": 4070501,
+      "entries": [
+        {
+          "posTitle": "Aggettivo, forma flessa",
+          "posLine": 2,
+          "rule": "italian-page-entry/v2",
+          "definitions": 1,
+          "labels": 0,
+          "examples": 0,
+          "supplied": [
+            "partOfSpeech",
+            "genderNumber",
+            "definitions",
+            "formOf",
+            "forms",
+            "etymology",
+            "synonyms",
+            "antonyms"
+          ]
+        }
+      ],
+      "supplied": [
+        "partOfSpeech",
+        "genderNumber",
+        "definitions",
+        "formOf",
+        "forms",
+        "etymology",
+        "synonyms",
+        "antonyms"
+      ]
+    },
+    {
+      "title": "fidelizzare",
+      "revisionId": 3405050,
+      "entries": [
+        {
+          "posTitle": "Verbo",
+          "posLine": 4,
+          "rule": "italian-page-entry/v1",
+          "definitions": 1,
+          "labels": 0,
+          "examples": 0,
+          "supplied": [
+            "partOfSpeech",
+            "definitions"
+          ]
+        }
+      ],
+      "supplied": [
+        "partOfSpeech",
+        "definitions"
+      ]
+    },
+    {
+      "title": "fidò",
+      "revisionId": 3817446,
+      "entries": [
+        {
+          "posTitle": "Voce verbale",
+          "posLine": 2,
+          "rule": "italian-page-entry/v2",
+          "definitions": 1,
+          "labels": 0,
+          "examples": 0,
+          "supplied": [
+            "partOfSpeech",
+            "definitions",
+            "formOf",
+            "etymology",
+            "synonyms"
+          ]
+        }
+      ],
+      "supplied": [
+        "partOfSpeech",
+        "definitions",
+        "formOf",
+        "etymology",
+        "synonyms"
+      ]
+    },
+    {
+      "title": "filippini",
+      "revisionId": 4077002,
+      "entries": [
+        {
+          "posTitle": "Aggettivo, forma flessa",
+          "posLine": 2,
+          "rule": "italian-page-entry/v2",
+          "definitions": 1,
+          "labels": 1,
+          "examples": 0,
+          "supplied": [
+            "partOfSpeech",
+            "genderNumber",
+            "definitions",
+            "formOf",
+            "forms",
+            "etymology"
+          ]
+        },
+        {
+          "posTitle": "Sostantivo, forma flessa",
+          "posLine": 7,
+          "rule": "italian-page-entry/v2",
+          "definitions": 1,
+          "labels": 1,
+          "examples": 0,
+          "supplied": [
+            "partOfSpeech",
+            "genderNumber",
+            "definitions",
+            "formOf",
+            "forms",
+            "etymology"
+          ]
+        }
+      ],
+      "supplied": [
+        "partOfSpeech",
+        "genderNumber",
+        "definitions",
+        "formOf",
+        "forms",
+        "etymology"
+      ]
+    },
+    {
+      "title": "finora",
+      "revisionId": 4040126,
+      "entries": [
+        {
+          "posTitle": "Avverbio",
+          "posLine": 3,
+          "rule": "italian-page-entry/v2",
+          "definitions": 1,
+          "labels": 0,
+          "examples": 0,
+          "supplied": [
+            "partOfSpeech",
+            "definitions",
+            "pronunciation",
+            "synonyms"
+          ]
+        }
+      ],
+      "supplied": [
+        "partOfSpeech",
+        "definitions",
+        "pronunciation",
+        "synonyms"
+      ]
+    },
+    {
+      "title": "fornire",
+      "revisionId": 3983355,
+      "entries": [
+        {
+          "posTitle": "Verbo",
+          "posLine": 2,
+          "rule": "italian-page-entry/v1",
+          "definitions": 1,
+          "labels": 0,
+          "examples": 1,
+          "supplied": [
+            "partOfSpeech",
+            "definitions",
+            "pronunciation",
+            "etymology",
+            "synonyms",
+            "antonyms",
+            "derived"
+          ]
+        }
+      ],
+      "supplied": [
+        "partOfSpeech",
+        "definitions",
+        "pronunciation",
+        "etymology",
+        "synonyms",
+        "antonyms",
+        "derived"
+      ]
+    },
+    {
+      "title": "francesismo",
+      "revisionId": 3891703,
+      "entries": [
+        {
+          "posTitle": "Sostantivo",
+          "posLine": 2,
+          "rule": "italian-page-entry/v2",
+          "definitions": 3,
+          "labels": 1,
+          "examples": 1,
+          "supplied": [
+            "partOfSpeech",
+            "genderNumber",
+            "definitions",
+            "forms",
+            "pronunciation",
+            "etymology",
+            "synonyms"
+          ]
+        }
+      ],
+      "supplied": [
+        "partOfSpeech",
+        "genderNumber",
+        "definitions",
+        "forms",
+        "pronunciation",
+        "etymology",
+        "synonyms"
+      ]
+    },
+    {
+      "title": "gastrostomia",
+      "revisionId": 3904317,
+      "entries": [
+        {
+          "posTitle": "Sostantivo",
+          "posLine": 1,
+          "rule": "italian-page-entry/v2",
+          "definitions": 1,
+          "labels": 2,
+          "examples": 0,
+          "supplied": [
+            "partOfSpeech",
+            "genderNumber",
+            "definitions",
+            "forms",
+            "pronunciation",
+            "etymology"
+          ]
+        }
+      ],
+      "supplied": [
+        "partOfSpeech",
+        "genderNumber",
+        "definitions",
+        "forms",
+        "pronunciation",
+        "etymology"
+      ]
+    },
+    {
+      "title": "ghiribizzi",
+      "revisionId": 3830397,
+      "entries": [
+        {
+          "posTitle": "Sostantivo, forma flessa",
+          "posLine": 2,
+          "rule": "italian-page-entry/v2",
+          "definitions": 1,
+          "labels": 0,
+          "examples": 0,
+          "supplied": [
+            "partOfSpeech",
+            "genderNumber",
+            "definitions",
+            "formOf",
+            "etymology"
+          ]
+        }
+      ],
+      "supplied": [
+        "partOfSpeech",
+        "genderNumber",
+        "definitions",
+        "formOf",
+        "etymology"
+      ]
+    },
+    {
+      "title": "gioielliere",
+      "revisionId": 3903890,
+      "entries": [
+        {
+          "posTitle": "Sostantivo",
+          "posLine": 1,
+          "rule": "italian-page-entry/v2",
+          "definitions": 1,
+          "labels": 3,
+          "examples": 0,
+          "supplied": [
+            "partOfSpeech",
+            "genderNumber",
+            "definitions",
+            "forms",
+            "pronunciation",
+            "etymology",
+            "synonyms",
+            "derived"
+          ]
+        }
+      ],
+      "supplied": [
+        "partOfSpeech",
+        "genderNumber",
+        "definitions",
+        "forms",
+        "pronunciation",
+        "etymology",
+        "synonyms",
+        "derived"
+      ]
+    },
+    {
+      "title": "gliceraldeide",
+      "revisionId": 3409191,
+      "entries": [
+        {
+          "posTitle": "Sostantivo",
+          "posLine": 1,
+          "rule": "italian-page-entry/v2",
+          "definitions": 1,
+          "labels": 2,
+          "examples": 0,
+          "supplied": [
+            "partOfSpeech",
+            "genderNumber",
+            "definitions",
+            "forms",
+            "etymology"
+          ]
+        }
+      ],
+      "supplied": [
+        "partOfSpeech",
+        "genderNumber",
+        "definitions",
+        "forms",
+        "etymology"
+      ]
+    },
+    {
+      "title": "godi",
+      "revisionId": 3685572,
+      "entries": [
+        {
+          "posTitle": "Voce verbale",
+          "posLine": 1,
+          "rule": "italian-page-entry/v2",
+          "definitions": 2,
+          "labels": 0,
+          "examples": 0,
+          "supplied": [
+            "partOfSpeech",
+            "definitions",
+            "formOf",
+            "etymology",
+            "derived"
+          ]
+        }
+      ],
+      "supplied": [
+        "partOfSpeech",
+        "definitions",
+        "formOf",
+        "etymology",
+        "derived"
+      ]
+    },
+    {
+      "title": "griko",
+      "revisionId": 3707826,
+      "entries": [
+        {
+          "posTitle": "Sostantivo",
+          "posLine": 1,
+          "rule": "italian-page-entry/v2",
+          "definitions": 1,
+          "labels": 0,
+          "examples": 0,
+          "supplied": [
+            "partOfSpeech",
+            "genderNumber",
+            "definitions"
+          ]
+        }
+      ],
+      "supplied": [
+        "partOfSpeech",
+        "genderNumber",
+        "definitions"
+      ]
+    },
+    {
+      "title": "grr",
+      "revisionId": 3410320,
+      "entries": [
+        {
+          "posTitle": "Interiezione",
+          "posLine": 2,
+          "rule": "italian-page-entry/v2",
+          "definitions": 1,
+          "labels": 0,
+          "examples": 0,
+          "supplied": [
+            "partOfSpeech",
+            "definitions"
+          ]
+        }
+      ],
+      "supplied": [
+        "partOfSpeech",
+        "definitions"
+      ]
+    },
+    {
+      "title": "grrr",
+      "revisionId": 3410321,
+      "entries": [
+        {
+          "posTitle": "Interiezione",
+          "posLine": 2,
+          "rule": "italian-page-entry/v2",
+          "definitions": 1,
+          "labels": 0,
+          "examples": 0,
+          "supplied": [
+            "partOfSpeech",
+            "definitions"
+          ]
+        }
+      ],
+      "supplied": [
+        "partOfSpeech",
+        "definitions"
+      ]
+    },
+    {
+      "title": "grufolare",
+      "revisionId": 3906191,
+      "entries": [
+        {
+          "posTitle": "Verbo",
+          "posLine": 2,
+          "rule": "italian-page-entry/v1",
+          "definitions": 1,
+          "labels": 0,
+          "examples": 0,
+          "supplied": [
+            "partOfSpeech",
+            "definitions",
+            "pronunciation",
+            "derived"
+          ]
+        }
+      ],
+      "supplied": [
+        "partOfSpeech",
+        "definitions",
+        "pronunciation",
+        "derived"
+      ]
+    },
+    {
+      "title": "impegolato",
+      "revisionId": 2954666,
+      "entries": [
+        {
+          "posTitle": "Aggettivo",
+          "posLine": 1,
+          "rule": "italian-page-entry/v2",
+          "definitions": 2,
+          "labels": 1,
+          "examples": 0,
+          "supplied": [
+            "partOfSpeech",
+            "genderNumber",
+            "definitions",
+            "forms"
+          ]
+        },
+        {
+          "posTitle": "Voce verbale",
+          "posLine": 6,
+          "rule": "italian-page-entry/v2",
+          "definitions": 1,
+          "labels": 0,
+          "examples": 0,
+          "supplied": [
+            "partOfSpeech",
+            "definitions",
+            "formOf"
+          ]
+        }
+      ],
+      "supplied": [
+        "partOfSpeech",
+        "genderNumber",
+        "definitions",
+        "formOf",
+        "forms"
+      ]
+    },
+    {
+      "title": "in abbinamento",
+      "revisionId": 2748707,
+      "entries": [
+        {
+          "posTitle": "Espressione",
+          "posLine": 1,
+          "rule": "italian-page-entry/v2",
+          "definitions": 1,
+          "labels": 0,
+          "examples": 0,
+          "supplied": [
+            "partOfSpeech",
+            "definitions"
+          ]
+        }
+      ],
+      "supplied": [
+        "partOfSpeech",
+        "definitions"
+      ]
+    },
+    {
+      "title": "incidentaloma",
+      "revisionId": 3413665,
+      "entries": [
+        {
+          "posTitle": "Sostantivo",
+          "posLine": 1,
+          "rule": "italian-page-entry/v2",
+          "definitions": 1,
+          "labels": 1,
+          "examples": 0,
+          "supplied": [
+            "partOfSpeech",
+            "genderNumber",
+            "definitions",
+            "forms",
+            "etymology"
+          ]
+        }
+      ],
+      "supplied": [
+        "partOfSpeech",
+        "genderNumber",
+        "definitions",
+        "forms",
+        "etymology"
+      ]
+    },
+    {
+      "title": "ingegneria geotecnica",
+      "revisionId": 3414523,
+      "entries": [
+        {
+          "posTitle": "Locuzione nominale",
+          "posLine": 1,
+          "rule": "italian-page-entry/v2",
+          "definitions": 1,
+          "labels": 2,
+          "examples": 0,
+          "supplied": [
+            "partOfSpeech",
+            "genderNumber",
+            "definitions",
+            "etymology"
+          ]
+        }
+      ],
+      "supplied": [
+        "partOfSpeech",
+        "genderNumber",
+        "definitions",
+        "etymology"
+      ]
+    },
+    {
+      "title": "ingoiare il rospo",
+      "revisionId": 4042630,
+      "entries": [
+        {
+          "posTitle": "Locuzione verbale",
+          "posLine": 2,
+          "rule": "italian-page-entry/v2",
+          "definitions": 1,
+          "labels": 0,
+          "examples": 0,
+          "supplied": [
+            "partOfSpeech",
+            "definitions",
+            "etymology"
+          ]
+        }
+      ],
+      "supplied": [
+        "partOfSpeech",
+        "definitions",
+        "etymology"
+      ]
+    },
+    {
+      "title": "invitó",
+      "revisionId": 4004544,
+      "entries": [
+        {
+          "posTitle": "Voce verbale",
+          "posLine": 2,
+          "rule": "italian-page-entry/v2",
+          "definitions": 1,
+          "labels": 0,
+          "examples": 0,
+          "supplied": [
+            "partOfSpeech",
+            "definitions",
+            "formOf",
+            "etymology",
+            "synonyms",
+            "antonyms"
+          ]
+        }
+      ],
+      "supplied": [
+        "partOfSpeech",
+        "definitions",
+        "formOf",
+        "etymology",
+        "synonyms",
+        "antonyms"
+      ]
+    },
+    {
+      "title": "lampara",
+      "revisionId": 3892699,
+      "entries": [
+        {
+          "posTitle": "Sostantivo",
+          "posLine": 2,
+          "rule": "italian-page-entry/v2",
+          "definitions": 2,
+          "labels": 2,
+          "examples": 0,
+          "supplied": [
+            "partOfSpeech",
+            "genderNumber",
+            "definitions",
+            "forms",
+            "pronunciation",
+            "etymology"
+          ]
+        }
+      ],
+      "supplied": [
+        "partOfSpeech",
+        "genderNumber",
+        "definitions",
+        "forms",
+        "pronunciation",
+        "etymology"
+      ]
+    },
+    {
+      "title": "lembello",
+      "revisionId": 3419201,
+      "entries": [
+        {
+          "posTitle": "Sostantivo",
+          "posLine": 2,
+          "rule": "italian-page-entry/v2",
+          "definitions": 1,
+          "labels": 1,
+          "examples": 0,
+          "supplied": [
+            "partOfSpeech",
+            "genderNumber",
+            "definitions"
+          ]
+        }
+      ],
+      "supplied": [
+        "partOfSpeech",
+        "genderNumber",
+        "definitions"
+      ]
+    },
+    {
+      "title": "leucocitosi",
+      "revisionId": 3904376,
+      "entries": [
+        {
+          "posTitle": "Sostantivo",
+          "posLine": 1,
+          "rule": "italian-page-entry/v2",
+          "definitions": 1,
+          "labels": 1,
+          "examples": 0,
+          "supplied": [
+            "partOfSpeech",
+            "genderNumber",
+            "definitions",
+            "pronunciation",
+            "etymology"
+          ]
+        }
+      ],
+      "supplied": [
+        "partOfSpeech",
+        "genderNumber",
+        "definitions",
+        "pronunciation",
+        "etymology"
+      ]
+    },
+    {
+      "title": "limatrice",
+      "revisionId": 3643068,
+      "entries": [
+        {
+          "posTitle": "Sostantivo",
+          "posLine": 3,
+          "rule": "italian-page-entry/v2",
+          "definitions": 1,
+          "labels": 0,
+          "examples": 0,
+          "supplied": [
+            "partOfSpeech",
+            "genderNumber",
+            "definitions"
+          ]
+        }
+      ],
+      "supplied": [
+        "partOfSpeech",
+        "genderNumber",
+        "definitions"
+      ]
+    },
+    {
+      "title": "lizzatura",
+      "revisionId": 3420148,
+      "entries": [
+        {
+          "posTitle": "Sostantivo",
+          "posLine": 1,
+          "rule": "italian-page-entry/v2",
+          "definitions": 1,
+          "labels": 0,
+          "examples": 0,
+          "supplied": [
+            "partOfSpeech",
+            "genderNumber",
+            "definitions"
+          ]
+        }
+      ],
+      "supplied": [
+        "partOfSpeech",
+        "genderNumber",
+        "definitions"
+      ]
+    },
+    {
+      "title": "lungo",
+      "revisionId": 4038855,
+      "entries": [
+        {
+          "posTitle": "Aggettivo",
+          "posLine": 2,
+          "rule": "italian-page-entry/v2",
+          "definitions": 2,
+          "labels": 0,
+          "examples": 1,
+          "supplied": [
+            "partOfSpeech",
+            "genderNumber",
+            "definitions",
+            "pronunciation",
+            "etymology",
+            "synonyms",
+            "antonyms",
+            "derived",
+            "expressions"
+          ]
+        },
+        {
+          "posTitle": "Preposizione",
+          "posLine": 11,
+          "rule": "italian-page-entry/v2",
+          "definitions": 2,
+          "labels": 1,
+          "examples": 0,
+          "supplied": [
+            "partOfSpeech",
+            "definitions",
+            "pronunciation",
+            "etymology",
+            "synonyms",
+            "antonyms",
+            "derived",
+            "expressions"
+          ]
+        }
+      ],
+      "supplied": [
+        "partOfSpeech",
+        "genderNumber",
+        "definitions",
+        "pronunciation",
+        "etymology",
+        "synonyms",
+        "antonyms",
+        "derived",
+        "expressions"
+      ]
+    },
+    {
+      "title": "mastoide",
+      "revisionId": 3928854,
+      "entries": [
+        {
+          "posTitle": "Sostantivo",
+          "posLine": 1,
+          "rule": "italian-page-entry/v2",
+          "definitions": 1,
+          "labels": 1,
+          "examples": 0,
+          "supplied": [
+            "partOfSpeech",
+            "genderNumber",
+            "definitions",
+            "forms",
+            "etymology"
+          ]
+        }
+      ],
+      "supplied": [
+        "partOfSpeech",
+        "genderNumber",
+        "definitions",
+        "forms",
+        "etymology"
+      ]
+    },
+    {
+      "title": "mastoidite",
+      "revisionId": 3422176,
+      "entries": [
+        {
+          "posTitle": "Sostantivo",
+          "posLine": 1,
+          "rule": "italian-page-entry/v2",
+          "definitions": 1,
+          "labels": 1,
+          "examples": 0,
+          "supplied": [
+            "partOfSpeech",
+            "genderNumber",
+            "definitions",
+            "forms",
+            "etymology"
+          ]
+        }
+      ],
+      "supplied": [
+        "partOfSpeech",
+        "genderNumber",
+        "definitions",
+        "forms",
+        "etymology"
+      ]
+    },
+    {
+      "title": "morire come le mosche",
+      "revisionId": 4042586,
+      "entries": [
+        {
+          "posTitle": "Locuzione verbale",
+          "posLine": 2,
+          "rule": "italian-page-entry/v2",
+          "definitions": 1,
+          "labels": 0,
+          "examples": 0,
+          "supplied": [
+            "partOfSpeech",
+            "definitions",
+            "etymology"
+          ]
+        }
+      ],
+      "supplied": [
+        "partOfSpeech",
+        "definitions",
+        "etymology"
+      ]
+    },
+    {
+      "title": "mousse",
+      "revisionId": 3686036,
+      "entries": [
+        {
+          "posTitle": "Sostantivo",
+          "posLine": 1,
+          "rule": "italian-page-entry/v2",
+          "definitions": 2,
+          "labels": 0,
+          "examples": 0,
+          "supplied": [
+            "partOfSpeech",
+            "definitions"
+          ]
+        }
+      ],
+      "supplied": [
+        "partOfSpeech",
+        "definitions"
+      ]
+    },
+    {
+      "title": "mux",
+      "revisionId": 3425257,
+      "entries": [
+        {
+          "posTitle": "Acronimo / Abbreviazione",
+          "posLine": 2,
+          "rule": "italian-page-entry/v2",
+          "definitions": 1,
+          "labels": 0,
+          "examples": 0,
+          "supplied": [
+            "partOfSpeech",
+            "definitions"
+          ]
+        }
+      ],
+      "supplied": [
+        "partOfSpeech",
+        "definitions"
+      ]
+    },
+    {
+      "title": "nanomedicina",
+      "revisionId": 3425519,
+      "entries": [
+        {
+          "posTitle": "Sostantivo",
+          "posLine": 1,
+          "rule": "italian-page-entry/v2",
+          "definitions": 1,
+          "labels": 3,
+          "examples": 0,
+          "supplied": [
+            "partOfSpeech",
+            "genderNumber",
+            "definitions",
+            "etymology"
+          ]
+        }
+      ],
+      "supplied": [
+        "partOfSpeech",
+        "genderNumber",
+        "definitions",
+        "etymology"
+      ]
+    },
+    {
+      "title": "nefologia",
+      "revisionId": 3578649,
+      "entries": [
+        {
+          "posTitle": "Sostantivo",
+          "posLine": 2,
+          "rule": "italian-page-entry/v2",
+          "definitions": 1,
+          "labels": 1,
+          "examples": 0,
+          "supplied": [
+            "partOfSpeech",
+            "genderNumber",
+            "definitions",
+            "forms"
+          ]
+        }
+      ],
+      "supplied": [
+        "partOfSpeech",
+        "genderNumber",
+        "definitions",
+        "forms"
+      ]
+    },
+    {
+      "title": "new age",
+      "revisionId": 4066634,
+      "entries": [
+        {
+          "posTitle": "Espressione",
+          "posLine": 1,
+          "rule": "italian-page-entry/v2",
+          "definitions": 1,
+          "labels": 1,
+          "examples": 1,
+          "supplied": [
+            "partOfSpeech",
+            "definitions"
+          ]
+        }
+      ],
+      "supplied": [
+        "partOfSpeech",
+        "definitions"
+      ]
+    },
+    {
+      "title": "occhio di bue",
+      "revisionId": 3644970,
+      "entries": [
+        {
+          "posTitle": "Locuzione nominale",
+          "posLine": 1,
+          "rule": "italian-page-entry/v2",
+          "definitions": 1,
+          "labels": 1,
+          "examples": 0,
+          "supplied": [
+            "partOfSpeech",
+            "definitions",
+            "etymology"
+          ]
+        }
+      ],
+      "supplied": [
+        "partOfSpeech",
+        "definitions",
+        "etymology"
+      ]
+    },
+    {
+      "title": "offri",
+      "revisionId": 3836839,
+      "entries": [
+        {
+          "posTitle": "Voce verbale",
+          "posLine": 2,
+          "rule": "italian-page-entry/v2",
+          "definitions": 2,
+          "labels": 0,
+          "examples": 0,
+          "supplied": [
+            "partOfSpeech",
+            "definitions",
+            "formOf",
+            "etymology"
+          ]
+        }
+      ],
+      "supplied": [
+        "partOfSpeech",
+        "definitions",
+        "formOf",
+        "etymology"
+      ]
+    },
+    {
+      "title": "onorificenze",
+      "revisionId": 3788384,
+      "entries": [
+        {
+          "posTitle": "Sostantivo, forma flessa",
+          "posLine": 2,
+          "rule": "italian-page-entry/v2",
+          "definitions": 1,
+          "labels": 0,
+          "examples": 0,
+          "supplied": [
+            "partOfSpeech",
+            "genderNumber",
+            "definitions",
+            "formOf",
+            "etymology",
+            "synonyms"
+          ]
+        }
+      ],
+      "supplied": [
+        "partOfSpeech",
+        "genderNumber",
+        "definitions",
+        "formOf",
+        "etymology",
+        "synonyms"
+      ]
+    },
+    {
+      "title": "orecchioni",
+      "revisionId": 3578655,
+      "entries": [
+        {
+          "posTitle": "Sostantivo",
+          "posLine": 2,
+          "rule": "italian-page-entry/v2",
+          "definitions": 1,
+          "labels": 0,
+          "examples": 0,
+          "supplied": [
+            "partOfSpeech",
+            "genderNumber",
+            "definitions"
+          ]
+        }
+      ],
+      "supplied": [
+        "partOfSpeech",
+        "genderNumber",
+        "definitions"
+      ]
+    },
+    {
+      "title": "paleggiato",
+      "revisionId": 3429294,
+      "entries": [
+        {
+          "posTitle": "Aggettivo",
+          "posLine": 2,
+          "rule": "italian-page-entry/v2",
+          "definitions": 1,
+          "labels": 1,
+          "examples": 0,
+          "supplied": [
+            "partOfSpeech",
+            "genderNumber",
+            "definitions"
+          ]
+        }
+      ],
+      "supplied": [
+        "partOfSpeech",
+        "genderNumber",
+        "definitions"
+      ]
+    },
+    {
+      "title": "panchine",
+      "revisionId": 4002075,
+      "entries": [
+        {
+          "posTitle": "Sostantivo, forma flessa",
+          "posLine": 2,
+          "rule": "italian-page-entry/v2",
+          "definitions": 1,
+          "labels": 0,
+          "examples": 0,
+          "supplied": [
+            "partOfSpeech",
+            "genderNumber",
+            "definitions",
+            "formOf",
+            "etymology",
+            "synonyms"
+          ]
+        }
+      ],
+      "supplied": [
+        "partOfSpeech",
+        "genderNumber",
+        "definitions",
+        "formOf",
+        "etymology",
+        "synonyms"
+      ]
+    },
+    {
+      "title": "partito a lembi",
+      "revisionId": 3430067,
+      "entries": [
+        {
+          "posTitle": "Locuzione aggettivale",
+          "posLine": 2,
+          "rule": "italian-page-entry/v2",
+          "definitions": 1,
+          "labels": 1,
+          "examples": 0,
+          "supplied": [
+            "partOfSpeech",
+            "genderNumber",
+            "definitions"
+          ]
+        }
+      ],
+      "supplied": [
+        "partOfSpeech",
+        "genderNumber",
+        "definitions"
+      ]
+    },
+    {
+      "title": "partito intersecato",
+      "revisionId": 3430068,
+      "entries": [
+        {
+          "posTitle": "Locuzione aggettivale",
+          "posLine": 2,
+          "rule": "italian-page-entry/v2",
+          "definitions": 1,
+          "labels": 1,
+          "examples": 0,
+          "supplied": [
+            "partOfSpeech",
+            "genderNumber",
+            "definitions"
+          ]
+        }
+      ],
+      "supplied": [
+        "partOfSpeech",
+        "genderNumber",
+        "definitions"
+      ]
+    },
+    {
+      "title": "partito retto",
+      "revisionId": 3430069,
+      "entries": [
+        {
+          "posTitle": "Locuzione aggettivale",
+          "posLine": 2,
+          "rule": "italian-page-entry/v2",
+          "definitions": 1,
+          "labels": 1,
+          "examples": 0,
+          "supplied": [
+            "partOfSpeech",
+            "genderNumber",
+            "definitions"
+          ]
+        }
+      ],
+      "supplied": [
+        "partOfSpeech",
+        "genderNumber",
+        "definitions"
+      ]
+    },
+    {
+      "title": "patatina fritta",
+      "revisionId": 4002057,
+      "entries": [
+        {
+          "posTitle": "Locuzione nominale",
+          "posLine": 1,
+          "rule": "italian-page-entry/v2",
+          "definitions": 1,
+          "labels": 1,
+          "examples": 0,
+          "supplied": [
+            "partOfSpeech",
+            "genderNumber",
+            "definitions",
+            "pronunciation",
+            "etymology",
+            "synonyms"
+          ]
+        }
+      ],
+      "supplied": [
+        "partOfSpeech",
+        "genderNumber",
+        "definitions",
+        "pronunciation",
+        "etymology",
+        "synonyms"
+      ]
+    },
+    {
+      "title": "piacione",
+      "revisionId": 3431459,
+      "entries": [
+        {
+          "posTitle": "Sostantivo",
+          "posLine": 2,
+          "rule": "italian-page-entry/v2",
+          "definitions": 1,
+          "labels": 1,
+          "examples": 1,
+          "supplied": [
+            "partOfSpeech",
+            "genderNumber",
+            "definitions",
+            "forms",
+            "etymology"
+          ]
+        },
+        {
+          "posTitle": "Sostantivo, forma flessa",
+          "posLine": 7,
+          "rule": "italian-page-entry/v2",
+          "definitions": 1,
+          "labels": 0,
+          "examples": 0,
+          "supplied": [
+            "partOfSpeech",
+            "genderNumber",
+            "definitions",
+            "forms",
+            "etymology"
+          ]
+        }
+      ],
+      "supplied": [
+        "partOfSpeech",
+        "genderNumber",
+        "definitions",
+        "forms",
+        "etymology"
+      ]
+    },
+    {
+      "title": "piallare",
+      "revisionId": 4059538,
+      "entries": [
+        {
+          "posTitle": "Verbo",
+          "posLine": 3,
+          "rule": "italian-page-entry/v1",
+          "definitions": 1,
+          "labels": 0,
+          "examples": 0,
+          "supplied": [
+            "partOfSpeech",
+            "definitions",
+            "pronunciation",
+            "etymology",
+            "synonyms",
+            "antonyms",
+            "derived"
+          ]
+        }
+      ],
+      "supplied": [
+        "partOfSpeech",
+        "definitions",
+        "pronunciation",
+        "etymology",
+        "synonyms",
+        "antonyms",
+        "derived"
+      ]
+    },
+    {
+      "title": "piangere sul latte versato",
+      "revisionId": 4060155,
+      "entries": [
+        {
+          "posTitle": "Locuzione verbale",
+          "posLine": 2,
+          "rule": "italian-page-entry/v2",
+          "definitions": 1,
+          "labels": 0,
+          "examples": 0,
+          "supplied": [
+            "partOfSpeech",
+            "definitions",
+            "etymology"
+          ]
+        }
+      ],
+      "supplied": [
+        "partOfSpeech",
+        "definitions",
+        "etymology"
+      ]
+    },
+    {
+      "title": "pianissimo",
+      "revisionId": 3768983,
+      "entries": [
+        {
+          "posTitle": "Avverbio",
+          "posLine": 7,
+          "rule": "italian-page-entry/v2",
+          "definitions": 1,
+          "labels": 0,
+          "examples": 0,
+          "supplied": [
+            "partOfSpeech",
+            "definitions",
+            "antonyms"
+          ]
+        }
+      ],
+      "supplied": [
+        "partOfSpeech",
+        "definitions",
+        "antonyms"
+      ]
+    },
+    {
+      "title": "pneumopericardio",
+      "revisionId": 3866759,
+      "entries": [
+        {
+          "posTitle": "Sostantivo",
+          "posLine": 1,
+          "rule": "italian-page-entry/v2",
+          "definitions": 1,
+          "labels": 1,
+          "examples": 0,
+          "supplied": [
+            "partOfSpeech",
+            "genderNumber",
+            "definitions",
+            "forms",
+            "pronunciation",
+            "etymology"
+          ]
+        }
+      ],
+      "supplied": [
+        "partOfSpeech",
+        "genderNumber",
+        "definitions",
+        "forms",
+        "pronunciation",
+        "etymology"
+      ]
+    },
+    {
+      "title": "pneumoperitoneo",
+      "revisionId": 3432301,
+      "entries": [
+        {
+          "posTitle": "Sostantivo",
+          "posLine": 1,
+          "rule": "italian-page-entry/v2",
+          "definitions": 1,
+          "labels": 1,
+          "examples": 0,
+          "supplied": [
+            "partOfSpeech",
+            "genderNumber",
+            "definitions"
+          ]
+        }
+      ],
+      "supplied": [
+        "partOfSpeech",
+        "genderNumber",
+        "definitions"
+      ]
+    },
+    {
+      "title": "poliendocrinopatia",
+      "revisionId": 3685214,
+      "entries": [
+        {
+          "posTitle": "Sostantivo",
+          "posLine": 1,
+          "rule": "italian-page-entry/v2",
+          "definitions": 1,
+          "labels": 1,
+          "examples": 0,
+          "supplied": [
+            "partOfSpeech",
+            "genderNumber",
+            "definitions",
+            "forms",
+            "pronunciation",
+            "etymology"
+          ]
+        }
+      ],
+      "supplied": [
+        "partOfSpeech",
+        "genderNumber",
+        "definitions",
+        "forms",
+        "pronunciation",
+        "etymology"
+      ]
+    },
+    {
+      "title": "possessività",
+      "revisionId": 3432992,
+      "entries": [
+        {
+          "posTitle": "Sostantivo",
+          "posLine": 3,
+          "rule": "italian-page-entry/v2",
+          "definitions": 1,
+          "labels": 0,
+          "examples": 1,
+          "supplied": [
+            "partOfSpeech",
+            "definitions"
+          ]
+        }
+      ],
+      "supplied": [
+        "partOfSpeech",
+        "definitions"
+      ]
+    },
+    {
+      "title": "pria",
+      "revisionId": 3033444,
+      "entries": [
+        {
+          "posTitle": "Avverbio",
+          "posLine": 1,
+          "rule": "italian-page-entry/v2",
+          "definitions": 2,
+          "labels": 0,
+          "examples": 1,
+          "supplied": [
+            "partOfSpeech",
+            "definitions"
+          ]
+        }
+      ],
+      "supplied": [
+        "partOfSpeech",
+        "definitions"
+      ]
+    },
+    {
+      "title": "proprie",
+      "revisionId": 3647421,
+      "entries": [
+        {
+          "posTitle": "Aggettivo, forma flessa",
+          "posLine": 1,
+          "rule": "italian-page-entry/v2",
+          "definitions": 1,
+          "labels": 0,
+          "examples": 0,
+          "supplied": [
+            "partOfSpeech",
+            "genderNumber",
+            "definitions",
+            "formOf",
+            "forms",
+            "etymology",
+            "synonyms",
+            "antonyms"
+          ]
+        }
+      ],
+      "supplied": [
+        "partOfSpeech",
+        "genderNumber",
+        "definitions",
+        "formOf",
+        "forms",
+        "etymology",
+        "synonyms",
+        "antonyms"
+      ]
+    },
+    {
+      "title": "punto buono",
+      "revisionId": 3434888,
+      "entries": [
+        {
+          "posTitle": "Espressione",
+          "posLine": 1,
+          "rule": "italian-page-entry/v2",
+          "definitions": 1,
+          "labels": 1,
+          "examples": 1,
+          "supplied": [
+            "partOfSpeech",
+            "definitions",
+            "synonyms",
+            "antonyms"
+          ]
+        }
+      ],
+      "supplied": [
+        "partOfSpeech",
+        "definitions",
+        "synonyms",
+        "antonyms"
+      ]
+    },
+    {
+      "title": "purità",
+      "revisionId": 3681982,
+      "entries": [
+        {
+          "posTitle": "Sostantivo",
+          "posLine": 2,
+          "rule": "italian-page-entry/v2",
+          "definitions": 4,
+          "labels": 3,
+          "examples": 2,
+          "supplied": [
+            "partOfSpeech",
+            "definitions",
+            "synonyms",
+            "antonyms",
+            "derived",
+            "expressions"
+          ]
+        }
+      ],
+      "supplied": [
+        "partOfSpeech",
+        "definitions",
+        "synonyms",
+        "antonyms",
+        "derived",
+        "expressions"
+      ]
+    },
+    {
+      "title": "quadripartito diagonale",
+      "revisionId": 3435197,
+      "entries": [
+        {
+          "posTitle": "Locuzione aggettivale",
+          "posLine": 2,
+          "rule": "italian-page-entry/v2",
+          "definitions": 1,
+          "labels": 1,
+          "examples": 0,
+          "supplied": [
+            "partOfSpeech",
+            "genderNumber",
+            "definitions"
+          ]
+        }
+      ],
+      "supplied": [
+        "partOfSpeech",
+        "genderNumber",
+        "definitions"
+      ]
+    },
+    {
+      "title": "quartello",
+      "revisionId": 3435309,
+      "entries": [
+        {
+          "posTitle": "Sostantivo",
+          "posLine": 2,
+          "rule": "italian-page-entry/v2",
+          "definitions": 1,
+          "labels": 1,
+          "examples": 0,
+          "supplied": [
+            "partOfSpeech",
+            "genderNumber",
+            "definitions"
+          ]
+        }
+      ],
+      "supplied": [
+        "partOfSpeech",
+        "genderNumber",
+        "definitions"
+      ]
+    },
+    {
+      "title": "raccontare",
+      "revisionId": 4035772,
+      "entries": [
+        {
+          "posTitle": "Verbo",
+          "posLine": 2,
+          "rule": "italian-page-entry/v1",
+          "definitions": 2,
+          "labels": 1,
+          "examples": 1,
+          "supplied": [
+            "partOfSpeech",
+            "definitions",
+            "pronunciation",
+            "etymology",
+            "synonyms",
+            "antonyms",
+            "derived",
+            "expressions"
+          ]
+        }
+      ],
+      "supplied": [
+        "partOfSpeech",
+        "definitions",
+        "pronunciation",
+        "etymology",
+        "synonyms",
+        "antonyms",
+        "derived",
+        "expressions"
+      ]
+    },
+    {
+      "title": "radiose",
+      "revisionId": 3905417,
+      "entries": [
+        {
+          "posTitle": "Aggettivo, forma flessa",
+          "posLine": 1,
+          "rule": "italian-page-entry/v2",
+          "definitions": 2,
+          "labels": 1,
+          "examples": 0,
+          "supplied": [
+            "partOfSpeech",
+            "genderNumber",
+            "definitions",
+            "forms",
+            "pronunciation",
+            "etymology",
+            "synonyms",
+            "antonyms",
+            "derived"
+          ]
+        }
+      ],
+      "supplied": [
+        "partOfSpeech",
+        "genderNumber",
+        "definitions",
+        "forms",
+        "pronunciation",
+        "etymology",
+        "synonyms",
+        "antonyms",
+        "derived"
+      ]
+    },
+    {
+      "title": "rappa",
+      "revisionId": 3647917,
+      "entries": [
+        {
+          "posTitle": "Sostantivo",
+          "posLine": 1,
+          "rule": "italian-page-entry/v2",
+          "definitions": 1,
+          "labels": 0,
+          "examples": 0,
+          "supplied": [
+            "partOfSpeech",
+            "genderNumber",
+            "definitions",
+            "forms",
+            "etymology"
+          ]
+        }
+      ],
+      "supplied": [
+        "partOfSpeech",
+        "genderNumber",
+        "definitions",
+        "forms",
+        "etymology"
+      ]
+    },
+    {
+      "title": "realizzo",
+      "revisionId": 4076623,
+      "entries": [
+        {
+          "posTitle": "Sostantivo",
+          "posLine": 2,
+          "rule": "italian-page-entry/v2",
+          "definitions": 1,
+          "labels": 3,
+          "examples": 0,
+          "supplied": [
+            "partOfSpeech",
+            "genderNumber",
+            "definitions",
+            "forms",
+            "pronunciation",
+            "etymology",
+            "synonyms",
+            "antonyms"
+          ]
+        },
+        {
+          "posTitle": "Voce verbale",
+          "posLine": 6,
+          "rule": "italian-page-entry/v2",
+          "definitions": 1,
+          "labels": 0,
+          "examples": 0,
+          "supplied": [
+            "partOfSpeech",
+            "definitions",
+            "formOf",
+            "pronunciation",
+            "etymology",
+            "synonyms",
+            "antonyms"
+          ]
+        }
+      ],
+      "supplied": [
+        "partOfSpeech",
+        "genderNumber",
+        "definitions",
+        "formOf",
+        "forms",
+        "pronunciation",
+        "etymology",
+        "synonyms",
+        "antonyms"
+      ]
+    },
+    {
+      "title": "rivenire",
+      "revisionId": 3438016,
+      "entries": [
+        {
+          "posTitle": "Verbo",
+          "posLine": 4,
+          "rule": "italian-page-entry/v1",
+          "definitions": 1,
+          "labels": 0,
+          "examples": 0,
+          "supplied": [
+            "partOfSpeech",
+            "definitions",
+            "etymology"
+          ]
+        }
+      ],
+      "supplied": [
+        "partOfSpeech",
+        "definitions",
+        "etymology"
+      ]
+    },
+    {
+      "title": "rosa di sperone",
+      "revisionId": 3438273,
+      "entries": [
+        {
+          "posTitle": "Locuzione nominale",
+          "posLine": 2,
+          "rule": "italian-page-entry/v2",
+          "definitions": 1,
+          "labels": 1,
+          "examples": 0,
+          "supplied": [
+            "partOfSpeech",
+            "genderNumber",
+            "definitions"
+          ]
+        }
+      ],
+      "supplied": [
+        "partOfSpeech",
+        "genderNumber",
+        "definitions"
+      ]
+    },
+    {
+      "title": "salpingite",
+      "revisionId": 3438979,
+      "entries": [
+        {
+          "posTitle": "Sostantivo",
+          "posLine": 1,
+          "rule": "italian-page-entry/v2",
+          "definitions": 1,
+          "labels": 1,
+          "examples": 0,
+          "supplied": [
+            "partOfSpeech",
+            "genderNumber",
+            "definitions",
+            "forms",
+            "etymology"
+          ]
+        }
+      ],
+      "supplied": [
+        "partOfSpeech",
+        "genderNumber",
+        "definitions",
+        "forms",
+        "etymology"
+      ]
+    },
+    {
+      "title": "satisfattivo",
+      "revisionId": 3575061,
+      "entries": [
+        {
+          "posTitle": "Aggettivo",
+          "posLine": 1,
+          "rule": "italian-page-entry/v2",
+          "definitions": 2,
+          "labels": 2,
+          "examples": 0,
+          "supplied": [
+            "partOfSpeech",
+            "genderNumber",
+            "definitions",
+            "forms"
+          ]
+        }
+      ],
+      "supplied": [
+        "partOfSpeech",
+        "genderNumber",
+        "definitions",
+        "forms"
+      ]
+    },
+    {
+      "title": "scapestrato",
+      "revisionId": 4076874,
+      "entries": [
+        {
+          "posTitle": "Aggettivo",
+          "posLine": 1,
+          "rule": "italian-page-entry/v2",
+          "definitions": 2,
+          "labels": 0,
+          "examples": 0,
+          "supplied": [
+            "partOfSpeech",
+            "genderNumber",
+            "definitions",
+            "forms",
+            "pronunciation",
+            "synonyms",
+            "antonyms",
+            "derived"
+          ]
+        },
+        {
+          "posTitle": "Sostantivo",
+          "posLine": 7,
+          "rule": "italian-page-entry/v2",
+          "definitions": 1,
+          "labels": 0,
+          "examples": 1,
+          "supplied": [
+            "partOfSpeech",
+            "genderNumber",
+            "definitions",
+            "forms",
+            "pronunciation",
+            "synonyms",
+            "antonyms",
+            "derived"
+          ]
+        },
+        {
+          "posTitle": "Voce verbale",
+          "posLine": 13,
+          "rule": "italian-page-entry/v2",
+          "definitions": 1,
+          "labels": 0,
+          "examples": 0,
+          "supplied": [
+            "partOfSpeech",
+            "definitions",
+            "formOf",
+            "pronunciation",
+            "synonyms",
+            "antonyms",
+            "derived"
+          ]
+        }
+      ],
+      "supplied": [
+        "partOfSpeech",
+        "genderNumber",
+        "definitions",
+        "formOf",
+        "forms",
+        "pronunciation",
+        "synonyms",
+        "antonyms",
+        "derived"
+      ]
+    },
+    {
+      "title": "scopri",
+      "revisionId": 3838501,
+      "entries": [
+        {
+          "posTitle": "Voce verbale",
+          "posLine": 3,
+          "rule": "italian-page-entry/v2",
+          "definitions": 2,
+          "labels": 0,
+          "examples": 0,
+          "supplied": [
+            "partOfSpeech",
+            "definitions",
+            "etymology",
+            "synonyms"
+          ]
+        }
+      ],
+      "supplied": [
+        "partOfSpeech",
+        "definitions",
+        "etymology",
+        "synonyms"
+      ]
+    },
+    {
+      "title": "scuci",
+      "revisionId": 3978610,
+      "entries": [
+        {
+          "posTitle": "Voce verbale",
+          "posLine": 2,
+          "rule": "italian-page-entry/v2",
+          "definitions": 2,
+          "labels": 0,
+          "examples": 0,
+          "supplied": [
+            "partOfSpeech",
+            "definitions",
+            "formOf",
+            "etymology"
+          ]
+        }
+      ],
+      "supplied": [
+        "partOfSpeech",
+        "definitions",
+        "formOf",
+        "etymology"
+      ]
+    },
+    {
+      "title": "scucì",
+      "revisionId": 3978611,
+      "entries": [
+        {
+          "posTitle": "Voce verbale",
+          "posLine": 2,
+          "rule": "italian-page-entry/v2",
+          "definitions": 1,
+          "labels": 0,
+          "examples": 0,
+          "supplied": [
+            "partOfSpeech",
+            "definitions",
+            "etymology",
+            "synonyms"
+          ]
+        }
+      ],
+      "supplied": [
+        "partOfSpeech",
+        "definitions",
+        "etymology",
+        "synonyms"
+      ]
+    },
+    {
+      "title": "semplificato",
+      "revisionId": 3868773,
+      "entries": [
+        {
+          "posTitle": "Voce verbale",
+          "posLine": 6,
+          "rule": "italian-page-entry/v2",
+          "definitions": 1,
+          "labels": 0,
+          "examples": 0,
+          "supplied": [
+            "partOfSpeech",
+            "definitions",
+            "pronunciation",
+            "etymology",
+            "synonyms",
+            "antonyms"
+          ]
+        }
+      ],
+      "supplied": [
+        "partOfSpeech",
+        "definitions",
+        "pronunciation",
+        "etymology",
+        "synonyms",
+        "antonyms"
+      ]
+    },
+    {
+      "title": "si capisce",
+      "revisionId": 3441698,
+      "entries": [
+        {
+          "posTitle": "Espressione",
+          "posLine": 2,
+          "rule": "italian-page-entry/v2",
+          "definitions": 1,
+          "labels": 0,
+          "examples": 1,
+          "supplied": [
+            "partOfSpeech",
+            "definitions"
+          ]
+        }
+      ],
+      "supplied": [
+        "partOfSpeech",
+        "definitions"
+      ]
+    },
+    {
+      "title": "smentire",
+      "revisionId": 3940442,
+      "entries": [
+        {
+          "posTitle": "Verbo",
+          "posLine": 2,
+          "rule": "italian-page-entry/v1",
+          "definitions": 1,
+          "labels": 0,
+          "examples": 0,
+          "supplied": [
+            "partOfSpeech",
+            "definitions",
+            "pronunciation",
+            "etymology",
+            "synonyms",
+            "antonyms",
+            "derived"
+          ]
+        }
+      ],
+      "supplied": [
+        "partOfSpeech",
+        "definitions",
+        "pronunciation",
+        "etymology",
+        "synonyms",
+        "antonyms",
+        "derived"
+      ]
+    },
+    {
+      "title": "spumanti",
+      "revisionId": 3557404,
+      "entries": [
+        {
+          "posTitle": "Sostantivo, forma flessa",
+          "posLine": 1,
+          "rule": "italian-page-entry/v2",
+          "definitions": 1,
+          "labels": 0,
+          "examples": 0,
+          "supplied": [
+            "partOfSpeech",
+            "genderNumber",
+            "definitions",
+            "formOf",
+            "etymology"
+          ]
+        }
+      ],
+      "supplied": [
+        "partOfSpeech",
+        "genderNumber",
+        "definitions",
+        "formOf",
+        "etymology"
+      ]
+    },
+    {
+      "title": "stellari",
+      "revisionId": 3869716,
+      "entries": [
+        {
+          "posTitle": "Aggettivo, forma flessa",
+          "posLine": 2,
+          "rule": "italian-page-entry/v2",
+          "definitions": 1,
+          "labels": 1,
+          "examples": 0,
+          "supplied": [
+            "partOfSpeech",
+            "genderNumber",
+            "definitions",
+            "formOf",
+            "etymology"
+          ]
+        }
+      ],
+      "supplied": [
+        "partOfSpeech",
+        "genderNumber",
+        "definitions",
+        "formOf",
+        "etymology"
+      ]
+    },
+    {
+      "title": "striata",
+      "revisionId": 3924625,
+      "entries": [
+        {
+          "posTitle": "Aggettivo, forma flessa",
+          "posLine": 1,
+          "rule": "italian-page-entry/v2",
+          "definitions": 1,
+          "labels": 0,
+          "examples": 0,
+          "supplied": [
+            "partOfSpeech",
+            "genderNumber",
+            "definitions",
+            "formOf",
+            "forms",
+            "synonyms",
+            "antonyms"
+          ]
+        },
+        {
+          "posTitle": "Voce verbale",
+          "posLine": 6,
+          "rule": "italian-page-entry/v2",
+          "definitions": 1,
+          "labels": 0,
+          "examples": 0,
+          "supplied": [
+            "partOfSpeech",
+            "definitions",
+            "formOf",
+            "synonyms",
+            "antonyms"
+          ]
+        }
+      ],
+      "supplied": [
+        "partOfSpeech",
+        "genderNumber",
+        "definitions",
+        "formOf",
+        "forms",
+        "synonyms",
+        "antonyms"
+      ]
+    },
+    {
+      "title": "subliminali",
+      "revisionId": 3129839,
+      "entries": [
+        {
+          "posTitle": "Sostantivo",
+          "posLine": 2,
+          "rule": "italian-page-entry/v2",
+          "definitions": 1,
+          "labels": 0,
+          "examples": 0,
+          "supplied": [
+            "partOfSpeech",
+            "definitions"
+          ]
+        }
+      ],
+      "supplied": [
+        "partOfSpeech",
+        "definitions"
+      ]
+    },
+    {
+      "title": "sviluppatori",
+      "revisionId": 3346109,
+      "entries": [
+        {
+          "posTitle": "Aggettivo, forma flessa",
+          "posLine": 2,
+          "rule": "italian-page-entry/v2",
+          "definitions": 1,
+          "labels": 0,
+          "examples": 0,
+          "supplied": [
+            "partOfSpeech",
+            "genderNumber",
+            "definitions",
+            "formOf",
+            "forms",
+            "etymology"
+          ]
+        },
+        {
+          "posTitle": "Sostantivo, forma flessa",
+          "posLine": 7,
+          "rule": "italian-page-entry/v2",
+          "definitions": 1,
+          "labels": 0,
+          "examples": 0,
+          "supplied": [
+            "partOfSpeech",
+            "genderNumber",
+            "definitions",
+            "formOf",
+            "forms",
+            "etymology"
+          ]
+        }
+      ],
+      "supplied": [
+        "partOfSpeech",
+        "genderNumber",
+        "definitions",
+        "formOf",
+        "forms",
+        "etymology"
+      ]
+    },
+    {
+      "title": "sviluppatrice",
+      "revisionId": 3346110,
+      "entries": [
+        {
+          "posTitle": "Aggettivo, forma flessa",
+          "posLine": 2,
+          "rule": "italian-page-entry/v2",
+          "definitions": 1,
+          "labels": 0,
+          "examples": 0,
+          "supplied": [
+            "partOfSpeech",
+            "genderNumber",
+            "definitions",
+            "formOf",
+            "forms",
+            "etymology"
+          ]
+        },
+        {
+          "posTitle": "Sostantivo, forma flessa",
+          "posLine": 7,
+          "rule": "italian-page-entry/v2",
+          "definitions": 1,
+          "labels": 0,
+          "examples": 0,
+          "supplied": [
+            "partOfSpeech",
+            "genderNumber",
+            "definitions",
+            "formOf",
+            "forms",
+            "etymology"
+          ]
+        }
+      ],
+      "supplied": [
+        "partOfSpeech",
+        "genderNumber",
+        "definitions",
+        "formOf",
+        "forms",
+        "etymology"
+      ]
+    },
+    {
+      "title": "sviluppatrici",
+      "revisionId": 3651098,
+      "entries": [
+        {
+          "posTitle": "Aggettivo, forma flessa",
+          "posLine": 2,
+          "rule": "italian-page-entry/v2",
+          "definitions": 1,
+          "labels": 0,
+          "examples": 0,
+          "supplied": [
+            "partOfSpeech",
+            "genderNumber",
+            "definitions",
+            "formOf",
+            "forms",
+            "etymology"
+          ]
+        },
+        {
+          "posTitle": "Sostantivo, forma flessa",
+          "posLine": 7,
+          "rule": "italian-page-entry/v2",
+          "definitions": 1,
+          "labels": 0,
+          "examples": 0,
+          "supplied": [
+            "partOfSpeech",
+            "genderNumber",
+            "definitions",
+            "formOf",
+            "forms",
+            "etymology"
+          ]
+        }
+      ],
+      "supplied": [
+        "partOfSpeech",
+        "genderNumber",
+        "definitions",
+        "formOf",
+        "forms",
+        "etymology"
+      ]
+    },
+    {
+      "title": "talora",
+      "revisionId": 3947171,
+      "entries": [
+        {
+          "posTitle": "Avverbio",
+          "posLine": 1,
+          "rule": "italian-page-entry/v2",
+          "definitions": 1,
+          "labels": 0,
+          "examples": 0,
+          "supplied": [
+            "partOfSpeech",
+            "definitions",
+            "etymology",
+            "synonyms",
+            "antonyms"
+          ]
+        }
+      ],
+      "supplied": [
+        "partOfSpeech",
+        "definitions",
+        "etymology",
+        "synonyms",
+        "antonyms"
+      ]
+    },
+    {
+      "title": "tantundem",
+      "revisionId": 3651204,
+      "entries": [
+        {
+          "posTitle": "Pronome",
+          "posLine": 2,
+          "rule": "italian-page-entry/v2",
+          "definitions": 1,
+          "labels": 1,
+          "examples": 0,
+          "supplied": [
+            "partOfSpeech",
+            "definitions",
+            "pronunciation",
+            "etymology",
+            "synonyms"
+          ]
+        }
+      ],
+      "supplied": [
+        "partOfSpeech",
+        "definitions",
+        "pronunciation",
+        "etymology",
+        "synonyms"
+      ]
+    },
+    {
+      "title": "tic",
+      "revisionId": 3927266,
+      "entries": [
+        {
+          "posTitle": "Sostantivo",
+          "posLine": 2,
+          "rule": "italian-page-entry/v2",
+          "definitions": 1,
+          "labels": 0,
+          "examples": 0,
+          "supplied": [
+            "partOfSpeech",
+            "definitions",
+            "pronunciation",
+            "synonyms"
+          ]
+        }
+      ],
+      "supplied": [
+        "partOfSpeech",
+        "definitions",
+        "pronunciation",
+        "synonyms"
+      ]
+    },
+    {
+      "title": "tireopatia",
+      "revisionId": 3651564,
+      "entries": [
+        {
+          "posTitle": "Sostantivo",
+          "posLine": 1,
+          "rule": "italian-page-entry/v2",
+          "definitions": 1,
+          "labels": 1,
+          "examples": 0,
+          "supplied": [
+            "partOfSpeech",
+            "genderNumber",
+            "definitions",
+            "forms",
+            "pronunciation",
+            "etymology"
+          ]
+        }
+      ],
+      "supplied": [
+        "partOfSpeech",
+        "genderNumber",
+        "definitions",
+        "forms",
+        "pronunciation",
+        "etymology"
+      ]
+    },
+    {
+      "title": "tireotossicosi",
+      "revisionId": 3744189,
+      "entries": [
+        {
+          "posTitle": "Sostantivo",
+          "posLine": 1,
+          "rule": "italian-page-entry/v2",
+          "definitions": 1,
+          "labels": 1,
+          "examples": 0,
+          "supplied": [
+            "partOfSpeech",
+            "genderNumber",
+            "definitions",
+            "pronunciation",
+            "etymology"
+          ]
+        }
+      ],
+      "supplied": [
+        "partOfSpeech",
+        "genderNumber",
+        "definitions",
+        "pronunciation",
+        "etymology"
+      ]
+    },
+    {
+      "title": "topopassera",
+      "revisionId": 4067880,
+      "entries": [
+        {
+          "posTitle": "Sostantivo",
+          "posLine": 6,
+          "rule": "italian-page-entry/v2",
+          "definitions": 1,
+          "labels": 0,
+          "examples": 0,
+          "supplied": [
+            "partOfSpeech",
+            "definitions",
+            "forms",
+            "etymology"
+          ]
+        }
+      ],
+      "supplied": [
+        "partOfSpeech",
+        "definitions",
+        "forms",
+        "etymology"
+      ]
+    },
+    {
+      "title": "tornire",
+      "revisionId": 3581666,
+      "entries": [
+        {
+          "posTitle": "Verbo",
+          "posLine": 3,
+          "rule": "italian-page-entry/v1",
+          "definitions": 1,
+          "labels": 0,
+          "examples": 0,
+          "supplied": [
+            "partOfSpeech",
+            "definitions"
+          ]
+        }
+      ],
+      "supplied": [
+        "partOfSpeech",
+        "definitions"
+      ]
+    },
+    {
+      "title": "travet",
+      "revisionId": 3651838,
+      "entries": [
+        {
+          "posTitle": "Sostantivo",
+          "posLine": 2,
+          "rule": "italian-page-entry/v2",
+          "definitions": 1,
+          "labels": 2,
+          "examples": 0,
+          "supplied": [
+            "partOfSpeech",
+            "genderNumber",
+            "definitions",
+            "pronunciation",
+            "etymology",
+            "synonyms"
+          ]
+        }
+      ],
+      "supplied": [
+        "partOfSpeech",
+        "genderNumber",
+        "definitions",
+        "pronunciation",
+        "etymology",
+        "synonyms"
+      ]
+    },
+    {
+      "title": "tremare",
+      "revisionId": 4002473,
+      "entries": [
+        {
+          "posTitle": "Verbo",
+          "posLine": 2,
+          "rule": "italian-page-entry/v1",
+          "definitions": 2,
+          "labels": 1,
+          "examples": 0,
+          "supplied": [
+            "partOfSpeech",
+            "definitions",
+            "pronunciation",
+            "etymology",
+            "synonyms",
+            "antonyms",
+            "derived",
+            "expressions"
+          ]
+        }
+      ],
+      "supplied": [
+        "partOfSpeech",
+        "definitions",
+        "pronunciation",
+        "etymology",
+        "synonyms",
+        "antonyms",
+        "derived",
+        "expressions"
+      ]
+    },
+    {
+      "title": "tremolante",
+      "revisionId": 3651860,
+      "entries": [
+        {
+          "posTitle": "Voce verbale",
+          "posLine": 3,
+          "rule": "italian-page-entry/v2",
+          "definitions": 1,
+          "labels": 0,
+          "examples": 0,
+          "supplied": [
+            "partOfSpeech",
+            "definitions",
+            "formOf"
+          ]
+        },
+        {
+          "posTitle": "Aggettivo",
+          "posLine": 6,
+          "rule": "italian-page-entry/v2",
+          "definitions": 2,
+          "labels": 1,
+          "examples": 0,
+          "supplied": [
+            "partOfSpeech",
+            "definitions"
+          ]
+        }
+      ],
+      "supplied": [
+        "partOfSpeech",
+        "definitions",
+        "formOf"
+      ]
+    },
+    {
+      "title": "trincetto",
+      "revisionId": 3147373,
+      "entries": [
+        {
+          "posTitle": "Sostantivo",
+          "posLine": 2,
+          "rule": "italian-page-entry/v2",
+          "definitions": 1,
+          "labels": 0,
+          "examples": 0,
+          "supplied": [
+            "partOfSpeech",
+            "genderNumber",
+            "definitions"
+          ]
+        }
+      ],
+      "supplied": [
+        "partOfSpeech",
+        "genderNumber",
+        "definitions"
+      ]
+    },
+    {
+      "title": "trinciato alla dritta",
+      "revisionId": 3448481,
+      "entries": [
+        {
+          "posTitle": "Locuzione aggettivale",
+          "posLine": 2,
+          "rule": "italian-page-entry/v2",
+          "definitions": 1,
+          "labels": 1,
+          "examples": 0,
+          "supplied": [
+            "partOfSpeech",
+            "genderNumber",
+            "definitions"
+          ]
+        }
+      ],
+      "supplied": [
+        "partOfSpeech",
+        "genderNumber",
+        "definitions"
+      ]
+    },
+    {
+      "title": "trinciato alla sinistra",
+      "revisionId": 3448482,
+      "entries": [
+        {
+          "posTitle": "Locuzione aggettivale",
+          "posLine": 2,
+          "rule": "italian-page-entry/v2",
+          "definitions": 1,
+          "labels": 1,
+          "examples": 0,
+          "supplied": [
+            "partOfSpeech",
+            "genderNumber",
+            "definitions"
+          ]
+        }
+      ],
+      "supplied": [
+        "partOfSpeech",
+        "genderNumber",
+        "definitions"
+      ]
+    },
+    {
+      "title": "tripartito perpendicolare",
+      "revisionId": 3448500,
+      "entries": [
+        {
+          "posTitle": "Locuzione aggettivale",
+          "posLine": 2,
+          "rule": "italian-page-entry/v2",
+          "definitions": 1,
+          "labels": 1,
+          "examples": 0,
+          "supplied": [
+            "partOfSpeech",
+            "genderNumber",
+            "definitions"
+          ]
+        }
+      ],
+      "supplied": [
+        "partOfSpeech",
+        "genderNumber",
+        "definitions"
+      ]
+    },
+    {
+      "title": "tripartito retto",
+      "revisionId": 3448501,
+      "entries": [
+        {
+          "posTitle": "Locuzione aggettivale",
+          "posLine": 2,
+          "rule": "italian-page-entry/v2",
+          "definitions": 1,
+          "labels": 1,
+          "examples": 0,
+          "supplied": [
+            "partOfSpeech",
+            "genderNumber",
+            "definitions"
+          ]
+        }
+      ],
+      "supplied": [
+        "partOfSpeech",
+        "genderNumber",
+        "definitions"
+      ]
+    },
+    {
+      "title": "tripartito retto e perpendicolare",
+      "revisionId": 3448502,
+      "entries": [
+        {
+          "posTitle": "Locuzione aggettivale",
+          "posLine": 2,
+          "rule": "italian-page-entry/v2",
+          "definitions": 1,
+          "labels": 1,
+          "examples": 0,
+          "supplied": [
+            "partOfSpeech",
+            "genderNumber",
+            "definitions"
+          ]
+        }
+      ],
+      "supplied": [
+        "partOfSpeech",
+        "genderNumber",
+        "definitions"
+      ]
+    },
+    {
+      "title": "trombaio",
+      "revisionId": 3981149,
+      "entries": [
+        {
+          "posTitle": "Sostantivo",
+          "posLine": 1,
+          "rule": "italian-page-entry/v2",
+          "definitions": 1,
+          "labels": 1,
+          "examples": 0,
+          "supplied": [
+            "partOfSpeech",
+            "genderNumber",
+            "definitions",
+            "forms",
+            "pronunciation",
+            "etymology",
+            "synonyms"
+          ]
+        }
+      ],
+      "supplied": [
+        "partOfSpeech",
+        "genderNumber",
+        "definitions",
+        "forms",
+        "pronunciation",
+        "etymology",
+        "synonyms"
+      ]
+    },
+    {
+      "title": "trombocitemia",
+      "revisionId": 3448602,
+      "entries": [
+        {
+          "posTitle": "Sostantivo",
+          "posLine": 1,
+          "rule": "italian-page-entry/v2",
+          "definitions": 1,
+          "labels": 1,
+          "examples": 0,
+          "supplied": [
+            "partOfSpeech",
+            "definitions"
+          ]
+        }
+      ],
+      "supplied": [
+        "partOfSpeech",
+        "definitions"
+      ]
+    },
+    {
+      "title": "troncatrice",
+      "revisionId": 1474271,
+      "entries": [
+        {
+          "posTitle": "Sostantivo",
+          "posLine": 3,
+          "rule": "italian-page-entry/v2",
+          "definitions": 1,
+          "labels": 0,
+          "examples": 0,
+          "supplied": [
+            "partOfSpeech",
+            "genderNumber",
+            "definitions"
+          ]
+        }
+      ],
+      "supplied": [
+        "partOfSpeech",
+        "genderNumber",
+        "definitions"
+      ]
+    },
+    {
+      "title": "usucapioni",
+      "revisionId": 3492502,
+      "entries": [
+        {
+          "posTitle": "Sostantivo, forma flessa",
+          "posLine": 2,
+          "rule": "italian-page-entry/v2",
+          "definitions": 1,
+          "labels": 0,
+          "examples": 0,
+          "supplied": [
+            "partOfSpeech",
+            "genderNumber",
+            "definitions",
+            "formOf",
+            "etymology"
+          ]
+        }
+      ],
+      "supplied": [
+        "partOfSpeech",
+        "genderNumber",
+        "definitions",
+        "formOf",
+        "etymology"
+      ]
+    },
+    {
+      "title": "valente",
+      "revisionId": 4036009,
+      "entries": [
+        {
+          "posTitle": "Aggettivo",
+          "posLine": 2,
+          "rule": "italian-page-entry/v2",
+          "definitions": 2,
+          "labels": 1,
+          "examples": 2,
+          "supplied": [
+            "partOfSpeech",
+            "genderNumber",
+            "definitions",
+            "forms",
+            "pronunciation",
+            "etymology",
+            "synonyms",
+            "antonyms",
+            "derived"
+          ]
+        },
+        {
+          "posTitle": "Voce verbale",
+          "posLine": 9,
+          "rule": "italian-page-entry/v2",
+          "definitions": 1,
+          "labels": 0,
+          "examples": 0,
+          "supplied": [
+            "partOfSpeech",
+            "definitions",
+            "formOf",
+            "pronunciation",
+            "etymology",
+            "synonyms",
+            "antonyms",
+            "derived"
+          ]
+        }
+      ],
+      "supplied": [
+        "partOfSpeech",
+        "genderNumber",
+        "definitions",
+        "formOf",
+        "forms",
+        "pronunciation",
+        "etymology",
+        "synonyms",
+        "antonyms",
+        "derived"
+      ]
+    },
+    {
+      "title": "venire a conoscenza",
+      "revisionId": 4070660,
+      "entries": [
+        {
+          "posTitle": "Locuzione verbale",
+          "posLine": 2,
+          "rule": "italian-page-entry/v2",
+          "definitions": 1,
+          "labels": 0,
+          "examples": 0,
+          "supplied": [
+            "partOfSpeech",
+            "definitions",
+            "etymology"
+          ]
+        }
+      ],
+      "supplied": [
+        "partOfSpeech",
+        "definitions",
+        "etymology"
+      ]
+    },
+    {
+      "title": "vergognarsi",
+      "revisionId": 3939991,
+      "entries": [
+        {
+          "posTitle": "Verbo",
+          "posLine": 1,
+          "rule": "italian-page-entry/v2",
+          "definitions": 3,
+          "labels": 3,
+          "examples": 1,
+          "supplied": [
+            "partOfSpeech",
+            "definitions",
+            "pronunciation",
+            "etymology",
+            "synonyms",
+            "antonyms"
+          ]
+        }
+      ],
+      "supplied": [
+        "partOfSpeech",
+        "definitions",
+        "pronunciation",
+        "etymology",
+        "synonyms",
+        "antonyms"
+      ]
+    },
+    {
+      "title": "videochirurgia",
+      "revisionId": 3450913,
+      "entries": [
+        {
+          "posTitle": "Sostantivo",
+          "posLine": 1,
+          "rule": "italian-page-entry/v2",
+          "definitions": 1,
+          "labels": 2,
+          "examples": 0,
+          "supplied": [
+            "partOfSpeech",
+            "genderNumber",
+            "definitions",
+            "etymology"
+          ]
+        }
+      ],
+      "supplied": [
+        "partOfSpeech",
+        "genderNumber",
+        "definitions",
+        "etymology"
+      ]
+    },
+    {
+      "title": "volvolo",
+      "revisionId": 3451530,
+      "entries": [
+        {
+          "posTitle": "Sostantivo",
+          "posLine": 1,
+          "rule": "italian-page-entry/v2",
+          "definitions": 1,
+          "labels": 2,
+          "examples": 0,
+          "supplied": [
+            "partOfSpeech",
+            "definitions"
+          ]
+        }
+      ],
+      "supplied": [
+        "partOfSpeech",
+        "definitions"
+      ]
+    },
+    {
+      "title": "vortici",
+      "revisionId": 3938136,
+      "entries": [
+        {
+          "posTitle": "Sostantivo, forma flessa",
+          "posLine": 2,
+          "rule": "italian-page-entry/v2",
+          "definitions": 1,
+          "labels": 0,
+          "examples": 0,
+          "supplied": [
+            "partOfSpeech",
+            "genderNumber",
+            "definitions",
+            "formOf",
+            "pronunciation",
+            "etymology",
+            "synonyms"
+          ]
+        }
+      ],
+      "supplied": [
+        "partOfSpeech",
+        "genderNumber",
+        "definitions",
+        "formOf",
+        "pronunciation",
+        "etymology",
+        "synonyms"
+      ]
+    },
+    {
+      "title": "xilitolo",
+      "revisionId": 3743549,
+      "entries": [
+        {
+          "posTitle": "Sostantivo",
+          "posLine": 1,
+          "rule": "italian-page-entry/v2",
+          "definitions": 1,
+          "labels": 4,
+          "examples": 0,
+          "supplied": [
+            "partOfSpeech",
+            "genderNumber",
+            "definitions",
+            "forms",
+            "etymology"
+          ]
+        }
+      ],
+      "supplied": [
+        "partOfSpeech",
+        "genderNumber",
+        "definitions",
+        "forms",
+        "etymology"
+      ]
+    },
+    {
+      "title": "zorattero",
+      "revisionId": 3452774,
+      "entries": [
+        {
+          "posTitle": "Sostantivo",
+          "posLine": 2,
+          "rule": "italian-page-entry/v2",
+          "definitions": 1,
+          "labels": 1,
+          "examples": 0,
+          "supplied": [
+            "partOfSpeech",
+            "genderNumber",
+            "definitions"
+          ]
+        }
+      ],
+      "supplied": [
+        "partOfSpeech",
+        "genderNumber",
+        "definitions"
+      ]
+    }
+  ]
+}

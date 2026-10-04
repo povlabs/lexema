@@ -17,6 +17,7 @@ import { readSourceRecord, type SourceRecordFields } from "./sourceRecord.js";
 import { correctionOf, correctionsByRecord, type CorrectionRow } from "./correctedClaim.js";
 import { correctRecordClaims, pluralDeclaration } from "./types.js";
 import type {
+  ArchiveClaim,
   Evidence,
   Expression,
   FoundResult,
@@ -801,7 +802,7 @@ async function readGrammar(
       ORDER BY scope, scope_index, json_pointer`, recordId,
   );
 
-  const grammar: { record: GrammarClaim[]; byForm: Grammar["byForm"]; bySense: Grammar["bySense"] } = {
+  const grammar: { record: ArchiveClaim[]; byForm: Map<number, ArchiveClaim[]>; bySense: Map<number, ArchiveClaim[]> } = {
     record: [],
     byForm: new Map(),
     bySense: new Map(),
@@ -810,7 +811,7 @@ async function readGrammar(
   for (const row of rows) {
     // The schema's CHECK constraints already guarantee which columns are set for
     // which status, so this narrows without inventing defaults.
-    let claim: GrammarClaim;
+    let claim: ArchiveClaim;
     if (row.status === "stated") {
       claim = {
         status: "stated",
@@ -846,7 +847,7 @@ async function readGrammar(
 
   // The rows arrive ordered by pointer as text, so put each bucket back into
   // the order the source wrote its tags in.
-  const byPointer = (a: GrammarClaim, b: GrammarClaim): number =>
+  const byPointer = (a: ArchiveClaim, b: ArchiveClaim): number =>
     compareSourcePointers(a.ref.jsonPointer, b.ref.jsonPointer);
   grammar.record.sort(byPointer);
   for (const claims of grammar.byForm.values()) claims.sort(byPointer);
@@ -1091,7 +1092,7 @@ async function readInflections(
     ref: headwordRef(row.release_id, row.line_no, row.line_sha256),
   }));
 
-  const recordClaims = new Map<number, StatedClaim[]>();
+  const recordClaims = new Map<number, (StatedClaim & ArchiveClaim)[]>();
   for (const row of grammarRows) {
     const claims = recordClaims.get(row.record_id) ?? [];
     claims.push({ status: "stated", dimension: row.dimension, value: row.value, sourceText: row.source_text, ref: lineRef(row, row.json_pointer) });

@@ -16,6 +16,7 @@ import { expressionPhrase, hasLetters, withoutLeadingDots, withoutWrappingBracke
 import { expressionMeaning, expressionsOf, mergeExpressions } from "../src/lookup/expressions.js";
 import { lookup } from "../src/lookup/lookup.js";
 import type { Expression, ExpressionItem, LookupResult, Reading, SourceRef } from "../src/lookup/types.js";
+import { archiveRef } from "./archiveRef.js";
 import { readOnlyDictionary } from "./databases.js";
 
 const ref = (i: number, lineNo = 1): SourceRef => ({ releaseId: "r", lineNo, jsonPointer: `/proverbs/${i}`, lineSha256: "x" });
@@ -64,7 +65,7 @@ test("rule 4: one phrase is one row, its distinct meanings in source order; an e
   ];
   const rows = expressionsOf(items, () => false);
   assert.deepEqual(
-    rows.map((row) => [row.phrase, expressionMeaning(row), row.refs.map((each) => each.jsonPointer)]),
+    rows.map((row) => [row.phrase, expressionMeaning(row), row.refs.map((each) => archiveRef(each).jsonPointer)]),
     [
       ["a pancia in su", "supino", ["/proverbs/0"]],
       ["mettere su pancia", "oziare; ingrassare", ["/proverbs/2", "/proverbs/3", "/proverbs/4"]],
@@ -133,7 +134,7 @@ async function readings(db: DatabaseSync, query: string): Promise<[Reading, ...R
 }
 
 const rows = (reading: Reading) =>
-  reading.wordFacts.expressions.map((row) => [row.phrase, expressionMeaning(row), row.refs.map((each) => each.jsonPointer)]);
+  reading.wordFacts.expressions.map((row) => [row.phrase, expressionMeaning(row), row.refs.map((each) => archiveRef(each).jsonPointer)]);
 
 test("each proverbs item gives one row with its phrase, its sense and its pointer; the four rules are the only rewrites", async () => {
   await withExpressionWords(async (db) => {

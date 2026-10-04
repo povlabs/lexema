@@ -14,16 +14,44 @@ To build one in a local seed, see
 ## What is stored
 
 - The seed stores page-only entries in `recovered_entry`, `entry_definition`,
-  `entry_label` and `entry_example`, beside `source_record` and
+  `entry_label`, `entry_example` and `entry_fact`, beside `source_record` and
   `source_record_json`, never inside them.
 - An entry holds its word, its part of speech, its definitions, and their labels
   and examples. Each fact keeps the page revision, its 1-based page line and that
   line's wikitext, verbatim.
 - A page gives one entry per Italian part-of-speech section. Each entry records
   the rule that read it.
-- No inflection table, pronunciation or etymology is recovered.
 - Every raw page whose title has no Italian archive record is a candidate, not
   only a page a form names ([seedSql.ts](../src/import/seedSql.ts)).
+
+## The other fields
+
+An entry also carries every other field the word page shows, when its own page
+gives it ([ADR 0026](../.decisions/0026-recovered-entries-carry-what-the-word-page-shows.md),
+[#439](https://github.com/povlabs/lexema/issues/439)). Rule
+`italian-page-facts/v1` ([pageFacts.ts](../src/italian/pageFacts.ts)) reads
+them, and `entry_fact` stores one row per fact, with the rule, the page line
+and that line verbatim.
+
+- From the entry's own section: the gender and number its headword line
+  stamps (`{{Pn}} ''f sing''`), the plurals `{{Linkp|…}}` writes, the four
+  cells `{{Tabs|…}}` writes, and, in a section of inflected forms, the word a
+  definition ends by naming (`plurale di [[avventuriero]]`).
+- From the word's sections, which every entry of the page carries: each
+  `{{IPA|…}}` of `{{-pron-}}`, each line of `{{-etim-}}`, the words of
+  `{{-sin-}}`, `{{-ant-}}` and `{{-der-}}` with the labels their line opens
+  with, and the phrases and meanings of `{{-prov-}}`.
+- A field the page does not write is not stored. Forms come only from a page
+  that writes them out: a conjugation from a stem, or a template's rule such
+  as `{{it-agg|…}}`, is not made. A line holding a template the renderer does
+  not print gives nothing.
+- Hyphenation (`{{-sill-}}`) is not read: the word page does not show it.
+- A lookup reads the facts into the reading's grammar, forms, word facts and
+  lemma links ([pageFacts.ts](../src/lookup/pageFacts.ts)), so the page shows
+  them through the components an archive entry's take, with no mark.
+
+On `it-0c432803`, no word of the 186 gives every field
+([measurement](../reports/2026-10-04-page-entry-fields.md)).
 
 ## Identity
 
@@ -75,8 +103,10 @@ tables exist once per lookup, from `sqlite_schema` (`dictionaryTables` in
 - Without the tables, lookups send no statement that names them, and answer as
   before, with no page-only entries.
 - With some of the four but not all, lookups refuse to answer.
-- `pnpm run update:upgrade` creates the tables and `corrected_definition`
-  empty, and writes no row
+- With the four and no `entry_fact`, lookups answer with the entries'
+  definitions alone, as before #439.
+- `pnpm run update:upgrade` creates the tables, `entry_fact` and
+  `corrected_definition` empty, and writes no row
   ([update the dictionary](UPDATE_THE_DICTIONARY.md#once-a-dictionary-seeded-from-an-older-schema)).
   Serving does not need it.
 - `pnpm run load:page-entries` loads the entries
@@ -100,11 +130,13 @@ before these entries the rows a seed now writes for them, with no reseed:
 - An entry already held, by its word and the page line that states its part
   of speech, is left alone. Rule v2 reads every page rule v1 recovers as
   rule v1 still, so a dictionary loaded under rule v1 alone keeps those
-  entries and gains only rule v2's.
+  entries and gains only rule v2's. An entry held before `entry_fact` gains
+  no fact either: giving the shared dictionary's held entries their facts is
+  [#440](https://github.com/povlabs/lexema/issues/440)'s rollout.
 - A word's key is ranked by its lemma records and the definitions of all its
   page-only entries together, as the seed ranks it. A page whose title differs
   from a record's only in case, such as `Aglio`, adds to that record's key.
-- For each entry it writes the `raw_page` row of its revision, the four tables'
+- For each entry it writes the `raw_page` row of its revision, the five tables'
   rows, the [corrected definitions](#corrected-definitions) the list gives it,
   and the `accent_fold` and `typo_key` rows of its word. It creates no table:
   `pnpm run update:upgrade` creates the tables and `corrected_definition`, or

@@ -38,7 +38,7 @@ import { PlanCounts } from "../src/update/planCounts.js";
 
 const RELEASE = "it-page-entries";
 const SCHEMA = "src/db/schema.sql";
-const PAGE_TABLES = ["recovered_entry", "entry_definition", "entry_label", "entry_example", "corrected_definition"];
+const PAGE_TABLES = ["recovered_entry", "entry_definition", "entry_label", "entry_example", "entry_fact", "corrected_definition"];
 
 const pages = await loadFixturePages(resolve("fixtures"));
 // `mastoide` and `lungo` are rule v2's: a noun, and a page with two part-of-speech sections (ADR 0028).
@@ -158,7 +158,7 @@ function entryRows(db: DatabaseSync, word: string): unknown {
   return {
     entries: entries.map(({ entry_id: id, page_id: _page, ...rest }) => {
       const rows = (table: string) => (db.prepare(`SELECT * FROM ${table} WHERE entry_id = ?`).all(id as number) as Record<string, unknown>[]).map(({ entry_id: _id, ...row }) => row);
-      return { entry: rest, definitions: rows("entry_definition"), labels: rows("entry_label"), examples: rows("entry_example"), corrections: rows("corrected_definition") };
+      return { entry: rest, definitions: rows("entry_definition"), labels: rows("entry_label"), examples: rows("entry_example"), facts: rows("entry_fact"), corrections: rows("corrected_definition") };
     }),
     accent: db.prepare("SELECT fold_key, headword, languages, richness FROM accent_fold WHERE surface_key = ?").all(key).map((row) => ({ ...row })),
     typo: db.prepare("SELECT deletion_key, languages, richness FROM typo_key WHERE surface_key = ? ORDER BY deletion_key").all(key).map((row) => ({ ...row })),
@@ -306,7 +306,7 @@ test("a dictionary loaded under rule v1 keeps those rows through the upgrade's r
     // The upgrade rebuilds recovered_entry to schema.sql's definition and copies every row back as it was.
     assert.deepEqual(changedUpgrade(reader, schema), ["recovered_entry"]);
     const upgrade = planUpgrade(reader, schema);
-    assert.deepEqual(upgrade.kept.map(({ name, rows }) => [name, rows]), [["recovered_entry", 5], ["entry_definition", v1.counts.written.entry_definition], ["entry_label", v1.counts.written.entry_label ?? 0], ["entry_example", v1.counts.written.entry_example ?? 0], ["corrected_definition", 2]]);
+    assert.deepEqual(upgrade.kept.map(({ name, rows }) => [name, rows]), [["recovered_entry", 5], ["entry_definition", v1.counts.written.entry_definition], ["entry_label", v1.counts.written.entry_label ?? 0], ["entry_example", v1.counts.written.entry_example ?? 0], ["entry_fact", v1.counts.written.entry_fact ?? 0], ["corrected_definition", 2]]);
     execute(db, upgrade.sql);
     assert.deepEqual(upgradeShortfall(reader, schema, upgrade), []);
     assert.deepEqual(changedUpgrade(reader, schema), []);

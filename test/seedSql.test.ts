@@ -246,8 +246,10 @@ test("the fifty-word dev seed is one part with the same rows", async () => {
       // is a page-only candidate (ADR 0028): 245 of them recover, `grufolare`
       // and `tremare` among them, whose curated definition corrections apply.
       recovered_entry: 516, entry_definition: 837, entry_label: 461, entry_example: 154,
+      // Their other fields, each read from the entry's own page (ADR 0026).
+      entry_fact: 11156,
       corrected_definition: 2,
-      release_table_rows: 21,
+      release_table_rows: 22,
     });
     // Seven of the fixture's records have a raw page under fixtures/; `casa` is
     // the one whose page states definitions the record does not carry.
@@ -294,7 +296,7 @@ test("the recovered layer sits beside casa's record and leaves every source row 
     const bareDb = openSeed(without.parts, ":memory:");
     try {
       const layer = ["raw_page", "recovered_definition", "recovered_label", "recovered_example", "release_table_rows",
-        "recovered_entry", "entry_definition", "entry_label", "entry_example", "corrected_definition"];
+        "recovered_entry", "entry_definition", "entry_label", "entry_example", "entry_fact", "corrected_definition"];
       // A page-only entry is searchable, so it adds its own nearby keys and changes no other.
       const nearby = ["accent_fold", "typo_key"];
       const source = (dump: Record<string, unknown[]>) =>

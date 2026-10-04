@@ -9,8 +9,8 @@
 // article worked out by rule. Every Italian string carries `lang="it"`.
 
 import type { ReactNode } from "react";
-import { entryKey, isVerbReading, searchedSpellings } from "@lexema/lookup/types.ts";
-import type { RecoveredDefinition, Reading, Sense } from "@lexema/lookup/types.ts";
+import { entryKey, everyRecovered, factRefKey, isSourceRef, isVerbReading, searchedSpellings } from "@lexema/lookup/types.ts";
+import type { FactRef, RecoveredDefinition, Reading } from "@lexema/lookup/types.ts";
 import { conjugationOf } from "@/lib/dictionary/conjugation.ts";
 import { definitionsOf, senseLabels, type DefinitionItem } from "@/lib/dictionary/definitions.ts";
 import { agreementOf, headingGrammar } from "@/lib/dictionary/genderGrid.ts";
@@ -67,12 +67,24 @@ const nestedItemsOf = (item: DefinitionItem): readonly RecoveredDefinition[] =>
   item.from === "record" ? item.sense.recoveredItems : item.definition.items;
 
 /**
- * The words a sense's `form_of` edges name, to link where its gloss writes
- * them: `terza persona plurale dell'imperfetto indicativo di andare`.
+ * Where a definition sits: a sense of the record, by its index, or a line of
+ * the raw page a page-only entry was read from (ADR 0026).
  */
-function lemmaWordsOf(reading: Reading, sense: Sense): string[] {
+type DefinitionPlace = { sense: number } | { line: number };
+
+/** Whether a fact was read off the definition at `place`. */
+const readAt = (ref: FactRef, place: DefinitionPlace): boolean =>
+  "sense" in place
+    ? isSourceRef(ref) && ref.jsonPointer.startsWith(`/senses/${place.sense}/`)
+    : !isSourceRef(ref) && ref.line === place.line;
+
+/**
+ * The words the `form_of` edges of a definition name, to link where its text
+ * writes them: `terza persona plurale dell'imperfetto indicativo di andare`.
+ */
+function lemmaWordsOf(reading: Reading, place: DefinitionPlace): string[] {
   return reading.lemmaLinks
-    .filter((link) => link.kind === "candidates" && link.ref.jsonPointer.startsWith(`/senses/${sense.index}/`))
+    .filter((link) => link.kind === "candidates" && readAt(link.ref, place))
     .map((link) => link.targetWord);
 }
 
@@ -153,7 +165,7 @@ function DefinitionText({ item, reading }: { item: DefinitionItem; reading: Read
       <>
         <p className={GLOSS} lang="it">
           {definition.labels.length > 0 && <span className={SENSE_LABEL}>({definition.labels.join(", ")}) </span>}
-          {definition.text}
+          <LinkedGloss text={definition.text} lemmas={lemmaWordsOf(reading, { line: definition.ref.line })} />
         </p>
         <SubItems items={definition.items} />
       </>
@@ -161,7 +173,7 @@ function DefinitionText({ item, reading }: { item: DefinitionItem; reading: Read
   }
   const { sense } = item;
   const labels = senseLabels(sense.labels.map((label) => label.label));
-  const lemmas = lemmaWordsOf(reading, sense);
+  const lemmas = lemmaWordsOf(reading, { sense: sense.index });
   return (
     <>
       {sense.glosses.map((gloss, i) => (
@@ -260,17 +272,18 @@ function Definitions({ reading }: { reading: Reading }) {
  * the release has no entry for is not mentioned (Huey, 2026-09-27, on #142).
  */
 function LemmaLines({ reading }: { reading: Reading }) {
-  const linkedInGloss = (word: string, pointer: string) =>
+  const writes = (text: string, place: DefinitionPlace, word: string) =>
+    lemmaMatches(text, lemmaWordsOf(reading, place)).some((match) => match.lemma === word);
+  const linkedInGloss = (word: string, ref: FactRef) =>
     reading.senses.some(
-      (sense) =>
-        pointer.startsWith(`/senses/${sense.index}/`) &&
-        sense.glosses.some((gloss) =>
-          lemmaMatches(gloss.text, lemmaWordsOf(reading, sense)).some((match) => match.lemma === word),
-        ),
+      (sense) => readAt(ref, { sense: sense.index }) && sense.glosses.some((gloss) => writes(gloss.text, { sense: sense.index }, word)),
+    ) ||
+    everyRecovered(reading).some(
+      (definition) => readAt(ref, { line: definition.ref.line }) && writes(definition.text, { line: definition.ref.line }, word),
     );
   const unlinked = new Set<string>();
   for (const link of reading.lemmaLinks) {
-    if (link.kind === "candidates" && !linkedInGloss(link.targetWord, link.ref.jsonPointer)) unlinked.add(link.targetWord);
+    if (link.kind === "candidates" && !linkedInGloss(link.targetWord, link.ref)) unlinked.add(link.targetWord);
   }
   return (
     <>
@@ -384,7 +397,7 @@ export function ReadingView({ entry }: { entry: PageReading }) {
       {entry.etymologies.length > 0 && (
         <Block id={`etymology-${entryKey(reading)}`} label="Etymology">
           {entry.etymologies.map((etymology) => (
-            <OneLine key={etymology.ref.jsonPointer} text={etymology.text} lang="it" />
+            <OneLine key={factRefKey(etymology.ref)} text={etymology.text} lang="it" />
           ))}
         </Block>
       )}

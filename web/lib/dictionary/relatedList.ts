@@ -9,7 +9,7 @@
 // source record is not touched: the pieces are read back in the order the
 // record lists them and shown as the one note they were, read-only.
 
-import type { RelatedWord, SourceRef } from "@lexema/lookup/types.ts";
+import { factRefKey, isSourceRef, type RelatedWord } from "@lexema/lookup/types.ts";
 
 /** One item of a list: a word, which is a search, or a note, which is text. */
 export type RelatedItem = { kind: "word"; word: string } | { kind: "note"; text: string };
@@ -53,8 +53,6 @@ export function noteRuns(pieces: readonly string[]): [number, number][] {
 /** `/synonyms/3/word` → the list and the entry's place in it. */
 const POINTER = /^\/([a-z]+)\/(\d+)\/word$/;
 
-const refKey = (ref: SourceRef): string => `${ref.releaseId}\u0000${ref.lineNo}\u0000${ref.jsonPointer}`;
-
 /**
  * The list's words and notes, in the order the words come. A word every one of
  * whose entries is a piece of a note is not a word; a spelling that is also
@@ -66,10 +64,12 @@ export function relatedItems(words: readonly RelatedWord[]): RelatedItem[] {
   const lists = new Map<string, { index: number; word: string; key: string }[]>();
   for (const { word, refs } of words) {
     for (const ref of refs) {
+      // A page-only entry's list is read whole off its page line, notes and all, so it is never in pieces.
+      if (!isSourceRef(ref)) continue;
       const place = POINTER.exec(ref.jsonPointer);
       if (place === null) continue;
       const list = `${ref.releaseId}\u0000${ref.lineNo}\u0000${place[1]}`;
-      lists.set(list, [...(lists.get(list) ?? []), { index: Number(place[2]), word, key: refKey(ref) }]);
+      lists.set(list, [...(lists.get(list) ?? []), { index: Number(place[2]), word, key: factRefKey(ref) }]);
     }
   }
 
@@ -91,9 +91,9 @@ export function relatedItems(words: readonly RelatedWord[]): RelatedItem[] {
   const items: RelatedItem[] = [];
   const shownNotes = new Set<string>();
   for (const { word, refs } of words) {
-    if (refs.some((ref) => !pieces.has(refKey(ref)))) items.push({ kind: "word", word });
+    if (refs.some((ref) => !pieces.has(factRefKey(ref)))) items.push({ kind: "word", word });
     for (const ref of refs) {
-      const text = noteAt.get(refKey(ref));
+      const text = noteAt.get(factRefKey(ref));
       if (text === undefined || shownNotes.has(text)) continue;
       shownNotes.add(text);
       items.push({ kind: "note", text });

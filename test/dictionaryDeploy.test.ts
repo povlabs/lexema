@@ -24,7 +24,7 @@ import { fromNodeSqlite } from "../src/lookup/database.js";
 import { lookup } from "../src/lookup/lookup.js";
 import { parseChange } from "../src/update/declaration.js";
 import { changedUpgrade } from "../src/update/master.js";
-import { createStatement, PAGE_ENTRY_CORRECTION_TABLES, PAGE_ENTRY_INDEXES, PAGE_ENTRY_TABLES } from "../src/update/masterUpgrade.js";
+import { createStatement, PAGE_ENTRY_CORRECTION_TABLES, PAGE_ENTRY_FACT_TABLES, PAGE_ENTRY_INDEXES, PAGE_ENTRY_TABLES } from "../src/update/masterUpgrade.js";
 import { masterReaderOf } from "../src/update/updateCli.js";
 import { correctedClaimValues } from "../src/import/correctedLayer.js";
 import { atFixtureLines, correctionFixtureLines } from "./correctionFixture.js";
@@ -328,7 +328,7 @@ test("a word-lookup mismatch turns the run red and names the bookmark and the re
 });
 
 /** The tables the upgrade creates for page-only entries, in the order a drop needs. */
-const PAGE_ENTRY_UPGRADE_TABLES = [...PAGE_ENTRY_TABLES, ...PAGE_ENTRY_CORRECTION_TABLES];
+const PAGE_ENTRY_UPGRADE_TABLES = [...PAGE_ENTRY_TABLES, ...PAGE_ENTRY_FACT_TABLES, ...PAGE_ENTRY_CORRECTION_TABLES];
 
 /** Leave the dictionary as the live one was before #507: without the page-entry tables and `corrected_definition`. */
 function withoutPageEntryTables(d1: LocalD1): void {
@@ -424,7 +424,7 @@ test("a dictionary holding an older definition of a page-entry table gets schema
     if (outcome.kind === "green") assert.deepEqual(outcome.upgraded, { added: [], changed: ["recovered_entry", "corrected_definition"], rebuilt: PAGE_ENTRY_UPGRADE_TABLES });
     assert.match(
       deploySummary(outcome, "lexema-dictionary"),
-      /rebuilt `recovered_entry`, `entry_definition`, `entry_label`, `entry_example`, `corrected_definition`, keeping their rows, for the changed definition of `recovered_entry`, `corrected_definition`/,
+      /rebuilt `recovered_entry`, `entry_definition`, `entry_label`, `entry_example`, `entry_fact`, `corrected_definition`, keeping their rows, for the changed definition of `recovered_entry`, `corrected_definition`/,
     );
     const [ddl, data, ...rest] = writes(world.d1);
     assert.deepEqual(rest, []);

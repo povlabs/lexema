@@ -13,6 +13,7 @@ import { seedSql } from "../src/import/seedSql.js";
 import { withoutPlaceholder } from "../src/italian/placeholder.js";
 import { lookup } from "../src/lookup/lookup.js";
 import type { LookupResult, Reading } from "../src/lookup/types.js";
+import { archiveRef } from "./archiveRef.js";
 import { readOnlyDictionary } from "./databases.js";
 
 const ETYMOLOGY = "→ Etimologia mancante. Se vuoi, aggiungila tu.";
@@ -134,7 +135,7 @@ test("an etymology that is only the placeholder, with or without its label, is n
     // addì: `(avverbio) → Etimologia mancante…` goes, `(voce verbale) vedi addire` stays.
     for (const reading of await readings(db, "addì")) {
       assert.deepEqual(reading.wordFacts.etymologies.map((etymology) => etymology.text), ["(voce verbale) vedi addire"]);
-      assert.equal(reading.wordFacts.etymologies[0]?.ref.jsonPointer, "/etymology_texts/1");
+      assert.equal(archiveRef(reading.wordFacts.etymologies[0].ref).jsonPointer, "/etymology_texts/1");
     }
 
     const [sbrisolona] = await readings(db, "sbrisolona");
@@ -145,7 +146,7 @@ test("an etymology that is only the placeholder, with or without its label, is n
 test("an etymology with real text beside the placeholder keeps the real text, at its own pointer", async () => {
   await withPlaceholderWords(async (db) => {
     const [plutone] = await readings(db, "Plutone");
-    assert.deepEqual(plutone.wordFacts.etymologies.map(({ text, ref }) => [text, ref.jsonPointer]), [["dal greco vagabondo", "/etymology_texts/0"]]);
+    assert.deepEqual(plutone.wordFacts.etymologies.map(({ text, ref }) => [text, archiveRef(ref).jsonPointer]), [["dal greco vagabondo", "/etymology_texts/0"]]);
   });
 });
 
