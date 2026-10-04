@@ -12,7 +12,10 @@ underneath. This page is the reasoning. To run it, see
 its `page.tsx` and `route.ts` files, and `globals.css`. What they render and
 call lives beside it, split by site. `components/` is markup, `lib/` is what
 the markup shows and the server calls, and each has a `dictionary/`, a
-`developers/` and a `shared/` folder. Code imports through `@/`, which is
+`developers/` and a `shared/` folder. `worker/` is the code that answers a
+request before vinext does, split the same way, plus `api/` for the JSON API;
+its one file outside a site folder is `index.ts`, the entry that wires the
+sites together. Code imports through `@/`, which is
 `web/` (`@/components/dictionary/Word`), set in both `vite.config.ts` and
 `tsconfig.json`.
 
@@ -26,12 +29,21 @@ web/components/shared/   what both sites draw: links, icons and styles.ts, the o
 web/lib/dictionary/      the query, the lookup attempt, the page's grammar, reports
 web/lib/developers/      the API reference, the docs pages, the dashboard's view and actions
 web/lib/shared/          what both sites call: the two D1 bindings and the search shortcut
+web/worker/index.ts      the Worker's entry, the one file that imports every site
+web/worker/dictionary/   a shared link's card, and which dictionary requests the limits count
+web/worker/developers/   sign-in, billing, the dashboard's actions, Stripe's webhook, and their limits
+web/worker/api/          the JSON API at api.lexema.fyi
+web/worker/shared/       the hosts, the stage, the request log, the health check and the rate-limit counter
 ```
 
 A dictionary file never imports from a `developers/` folder, nor the other way
-round; what both need goes in `shared/`, which imports from neither.
-[web/test/layout.test.ts](../web/test/layout.test.ts) fails `pnpm test` when an
-import crosses, or when anything but a route file lands in `web/app/`.
+round; what both need goes in `shared/`, which imports from no site. The API
+may import dictionary code, since it is the dictionary in another format, but
+not developer-site code; the developer site may import API code, which it
+documents and meters. [web/test/layout.test.ts](../web/test/layout.test.ts)
+fails `pnpm test` when an import crosses, when a file under `components/`,
+`lib/` or `worker/` sits in no site's folder, or when anything but a route file
+lands in `web/app/`.
 
 The files a change to the search page most often starts from:
 
@@ -47,9 +59,10 @@ web/lib/dictionary/attempt.ts              a lookup, or the fact that it did not
 web/lib/dictionary/db.ts                   the lookup and the suggestions, read from D1
 web/lib/shared/database.ts                 the two D1 bindings: the dictionary, read-only, and the app database
 web/worker/index.ts                        the Worker's entry: the host, then the API or the rate limits and vinext
-web/worker/hosts.ts                        which of the three hosts a request is for, and where it goes
-web/worker/rateLimit.ts                    which requests are counted, and against whose count
-web/worker/dashboard.ts                    the developer dashboard's actions: make or revoke a key, delete the account;
+web/worker/shared/hosts.ts                 which of the three hosts a request is for, and where it goes
+web/worker/shared/rateLimit.ts             counts a request against whose count, and answers it once blocked
+web/worker/dictionary/limits.ts            which dictionary requests are counted; developers/limits.ts, the developer site's
+web/worker/developers/dashboard.ts         the developer dashboard's actions: make or revoke a key, delete the account;
                                            and its pages' guard: sign-in without a session, a new key's secret shown once
 web/components/developers/dashboard/Dashboard.tsx  the dashboard's markup; what it shows is web/lib/developers/dashboardView.ts
 src/lookup/                                the query layer, shared with the importer's tests

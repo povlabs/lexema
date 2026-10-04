@@ -10,8 +10,9 @@ import { accountProfile } from "../../src/accounts/accounts.js";
 import { configuredProviders, type ProviderProfile, type ProviderRegistry } from "../../src/accounts/providers.js";
 import { freshAppDatabase } from "../../test/databases.js";
 import { apiNotFound } from "@/worker/api/handler.ts";
-import { byHost, ORIGIN } from "@/worker/hosts.ts";
-import { withRateLimits, type LimitBindings } from "@/worker/rateLimit.ts";
+import { byHost, ORIGIN } from "@/worker/shared/hosts.ts";
+import { withRateLimits, type LimitBindings } from "@/worker/shared/rateLimit.ts";
+import { SITE_LIMITS } from "./siteLimits.ts";
 import {
   AFTER_SIGN_IN,
   availableProviders,
@@ -20,7 +21,7 @@ import {
   signedInAccount,
   withSignIn,
   type SignInBindings,
-} from "@/worker/signIn.ts";
+} from "@/worker/developers/signIn.ts";
 import { StubProvider } from "./stubProvider.ts";
 
 const NOW = Date.parse("2026-09-28T12:00:00Z");
@@ -56,6 +57,7 @@ function site(providers?: ProviderRegistry) {
   const appSaw: string[] = [];
   const worker = byHost<typeof env>({
     app: withRateLimits(
+      SITE_LIMITS,
       withSignIn(
         async (request) => {
           appSaw.push(new URL(request.url).pathname);

@@ -27,7 +27,7 @@ export const PREVIEW_COMMAND =
   `pnpm run preview:prepare && npx wrangler preview --config ${BUILT_CONFIG}` +
   ` --name "$(cat ${PREVIEW_NAME_FILE})" --secrets-file ${PREVIEW_SECRETS_FILE}`;
 
-/** The secret better-auth signs the session cookie with (web/worker/signIn.ts). */
+/** The secret better-auth signs the session cookie with (web/worker/developers/signIn.ts). */
 const AUTH_SECRET = "BETTER_AUTH_SECRET";
 
 export interface PreviewPrepareSteps {

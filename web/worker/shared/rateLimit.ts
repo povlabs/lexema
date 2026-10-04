@@ -14,20 +14,21 @@
 //
 // The limits themselves (15 searches and 120 suggestions a minute, 10 sign-in
 // starts, 5 key creations and 5 billing requests a minute on the developer
-// site, and why) are the `ratelimits` bindings in web/wrangler.jsonc. This module decides
-// which limit a request counts against, whose count it is, and what a blocked
-// request is answered with.
+// site, and why) are the `ratelimits` bindings in web/wrangler.jsonc. This
+// module counts a request and answers it once its count is spent. Which of a
+// site's requests count, and what each says when blocked, is that site's:
+// worker/dictionary/limits.ts and worker/developers/limits.ts. worker/index.ts
+// hands both in, so this module imports neither site (#199).
 
 import { log } from "@lexema/log/requestLog.ts";
-import type { ReportAnswer } from "@/lib/dictionary/report.ts";
-import type { SuggestAnswer } from "@/lib/dictionary/suggestAnswer.ts";
-import { billingRouteOf } from "./billing.ts";
-import { dashboardRouteOf } from "./dashboard.ts";
-import { signInRouteOf } from "./signIn.ts";
-import { isTestSignIn } from "./testSignIn.ts";
+import type { FetchHandler } from "./fetchHandler.ts";
 
-/** The things a visitor can do that are counted: the database, a sign-in, a key, or Stripe. */
-export type Limit = "search" | "suggest" | "report" | "report-open" | "sign-in" | "key-create" | "billing";
+/** What the dictionary counts: the database. */
+export type DictionaryLimit = "search" | "suggest" | "report" | "report-open";
+/** What the developer site counts: a sign-in, a key, or Stripe. */
+export type DeveloperLimit = "sign-in" | "key-create" | "billing";
+/** The things a visitor can do that are counted. */
+export type Limit = DictionaryLimit | DeveloperLimit;
 
 /** The bindings this module counts with, one per limit, as wrangler.jsonc names them. */
 export interface LimitBindings {
@@ -68,41 +69,44 @@ export const RETRY_AFTER_SECONDS = 60;
  */
 export const SEARCH_LIMITED_HEADER = "x-lexema-search-limited";
 
-/**
- * Which limit a request counts against, or none.
- *
- * `/suggest` is a suggestion. Anything else carrying a non-empty `q` is a
- * search: the page runs its lookup for the first `q` when its trimmed value is
- * not empty (app/(lexema)/page.tsx), and that holds for the HTML request and for an RSC
- * request for the same URL alike. Counting every other path with a `q` too
- * (`/attribution?q=…`, a mistyped path) costs a reader nothing and means no
- * spelling of the page's path that vinext normalizes back to `/` gets past the
- * limit. The home page without a query and static assets are never counted;
- * assets do not even reach the Worker.
- *
- * Only a POST to the keys path makes a key, so only a POST counts against the
- * key limit; any other method is a 405 that makes nothing (worker/dashboard.ts).
- */
-export function limitOf(url: URL, method: string): Limit | undefined {
-  if (url.pathname === "/suggest") return "suggest";
-  // A report's hourly allowance is counted over stored reports (lib/dictionary/report.ts);
-  // this binding only stops a burst before the database is touched.
-  if (url.pathname === "/report") return "report";
-  // Opening the box stores a token; counted apart so opening does not use up sending.
-  if (url.pathname === "/report/open") return "report-open";
-  // Starting a sign-in (Huey, #163 R1.2). Its path exists on the developer
-  // site's host only (worker/signIn.ts); the callback is not counted.
-  if (signInRouteOf(url)?.kind === "start") return "sign-in";
-  // The test sign-in, on a Preview's developer host only (worker/testSignIn.ts).
-  if (isTestSignIn(url)) return "sign-in";
-  // Making a key (Huey, #163 R1.2); on the developer site only (worker/dashboard.ts).
-  if (method === "POST" && dashboardRouteOf(url)?.kind === "create-key") return "key-create";
-  // Every billing route, Checkout, the portal and Checkout's return, each of
-  // which can call Stripe (Huey, #296); on the developer site only (worker/billing.ts).
-  if (billingRouteOf(url) !== undefined) return "billing";
-  if ((url.searchParams.get("q") ?? "").trim() !== "") return "search";
-  return undefined;
+/** How a request is answered once its count is spent. Each is a 429 that says when to retry. */
+export type Blocked =
+  /** Handed to the app marked with `SEARCH_LIMITED_HEADER`, so its page renders the blocked state. */
+  | { by: "page" }
+  /** Answered here with this JSON body; the app never sees it. */
+  | { by: "json"; body: unknown }
+  /** Answered here with this plain-text sentence; the app never sees it. */
+  | { by: "text"; sentence: string };
+
+/** A counted request: the limit it counts against, and its answer once that is spent. */
+export interface Counted<L extends Limit> {
+  limit: L;
+  blocked: Blocked;
 }
+
+/** Which of one site's requests count, or none for a request it does not count. */
+export type Counter<L extends Limit> = (url: URL, method: string) => Counted<L> | undefined;
+
+/** Each site's counter, as worker/index.ts hands them in. */
+export interface SiteLimits {
+  developers: Counter<DeveloperLimit>;
+  dictionary: Counter<DictionaryLimit>;
+}
+
+/**
+ * What a request counts against, and how it is answered once that is spent, or none.
+ *
+ * The developer site is asked first. Its routes all sit under its own segment,
+ * where no dictionary path is, but the dictionary counts any other request
+ * carrying a `q` as a search, so asked first it would count a developer route
+ * that carries a `q` as a search.
+ */
+function countedOf(limits: SiteLimits, url: URL, method: string): Counted<Limit> | undefined {
+  return limits.developers(url, method) ?? limits.dictionary(url, method);
+}
+
+/** Which limit a request counts against, or none. */
+export const limitOf = (limits: SiteLimits, url: URL, method: string): Limit | undefined => countedOf(limits, url, method)?.limit;
 
 /**
  * Whose count a request is, from `CF-Connecting-IP`.
@@ -152,53 +156,35 @@ function ipv6Groups(address: string): number[] | undefined {
   return groups.map((group) => parseInt(group, 16));
 }
 
-/** The shape of a Worker's fetch handler, as vinext's App Router entry exports it. */
-export type FetchHandler<E> = (request: Request, env: E, ctx: ExecutionContext) => Promise<Response>;
-
 /**
- * Wrap the app so every search and suggestion is counted before it runs.
+ * Wrap the app so every request a site counts is counted before it runs.
  *
  * Admitted, the request goes to the app as it came, less any forged
- * `SEARCH_LIMITED_HEADER`. A blocked suggestion is answered here with a 429
- * and the app never sees it. A blocked search still goes to the app, marked,
+ * `SEARCH_LIMITED_HEADER`. A blocked request is answered as its site says: a
+ * suggestion, a report or a developer-site action is answered here with a 429
+ * and the app never sees it; a blocked search still goes to the app, marked,
  * so the page can render its "too many searches" state around the search field
- * without running the lookup; its response then leaves as a 429. Either way a
- * block is logged by which limit it was, never by the address.
+ * without running the lookup, and its response then leaves as a 429. Either
+ * way a block is logged by which limit it was, never by the address.
  */
-export function withRateLimits<E extends LimitBindings>(app: FetchHandler<E>): FetchHandler<E> {
+export function withRateLimits<E extends LimitBindings>(limits: SiteLimits, app: FetchHandler<E>): FetchHandler<E> {
   return async (request, env, ctx) => {
-    const limit = limitOf(new URL(request.url), request.method);
+    const counted = countedOf(limits, new URL(request.url), request.method);
     const admitted =
-      limit === undefined ||
-      (await env[BINDING[limit]].limit({ key: visitorKey(request.headers.get("cf-connecting-ip")) })).success;
+      counted === undefined ||
+      (await env[BINDING[counted.limit]].limit({ key: visitorKey(request.headers.get("cf-connecting-ip")) })).success;
 
     if (admitted) {
       return app(request.headers.has(SEARCH_LIMITED_HEADER) ? marked(request, false) : request, env, ctx);
     }
 
-    log.warn("rate limited", { limit });
-    if (limit === "suggest") {
-      const body: SuggestAnswer = { outcome: "limited" };
-      return Response.json(body, { status: 429, headers: tooManyHeaders() });
-    }
-    if (limit === "report" || limit === "report-open") {
-      const body: ReportAnswer = { outcome: "limited" };
-      return Response.json(body, { status: 429, headers: tooManyHeaders() });
-    }
-    if (limit === "sign-in") {
+    log.warn("rate limited", { limit: counted.limit });
+    const { blocked } = counted;
+    if (blocked.by === "json") return Response.json(blocked.body, { status: 429, headers: tooManyHeaders() });
+    if (blocked.by === "text") {
       const headers = tooManyHeaders();
       headers.set("content-type", "text/plain; charset=utf-8");
-      return new Response("Too many sign-in attempts. Try again in a minute.", { status: 429, headers });
-    }
-    if (limit === "key-create") {
-      const headers = tooManyHeaders();
-      headers.set("content-type", "text/plain; charset=utf-8");
-      return new Response("Too many keys made. Try again in a minute.", { status: 429, headers });
-    }
-    if (limit === "billing") {
-      const headers = tooManyHeaders();
-      headers.set("content-type", "text/plain; charset=utf-8");
-      return new Response("Too many billing requests. Try again in a minute.", { status: 429, headers });
+      return new Response(blocked.sentence, { status: 429, headers });
     }
     const page = await app(marked(request, true), env, ctx);
     const headers = new Headers(page.headers);
@@ -206,6 +192,7 @@ export function withRateLimits<E extends LimitBindings>(app: FetchHandler<E>): F
     return new Response(page.body, { status: 429, statusText: "Too Many Requests", headers });
   };
 }
+
 
 function tooManyHeaders(): Headers {
   return new Headers({ "retry-after": String(RETRY_AFTER_SECONDS), "cache-control": "no-store" });

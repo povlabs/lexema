@@ -21,11 +21,12 @@ import { freshAppDatabase, readOnlyDictionary, subscribe } from "../../test/data
 import { CHECKOUT_ACTION, PORTAL_ACTION, PRICING } from "@/lib/developers/billingActions.ts";
 import { SETTINGS } from "@/lib/developers/dashboardActions.ts";
 import { apiNotFound, handleApi } from "@/worker/api/handler.ts";
-import { withBilling, type BillingContext } from "@/worker/billing.ts";
-import { byHost, ORIGIN } from "@/worker/hosts.ts";
-import { withRateLimits, type LimitBindings } from "@/worker/rateLimit.ts";
-import { CHOSEN_PLAN_COOKIE, SESSION_COOKIE, signedInAccount, withSignIn, type SignInBindings } from "@/worker/signIn.ts";
-import { withStripeWebhook } from "@/worker/stripeWebhook.ts";
+import { withBilling, type BillingContext } from "@/worker/developers/billing.ts";
+import { byHost, ORIGIN } from "@/worker/shared/hosts.ts";
+import { withRateLimits, type LimitBindings } from "@/worker/shared/rateLimit.ts";
+import { SITE_LIMITS } from "./siteLimits.ts";
+import { CHOSEN_PLAN_COOKIE, SESSION_COOKIE, signedInAccount, withSignIn, type SignInBindings } from "@/worker/developers/signIn.ts";
+import { withStripeWebhook } from "@/worker/developers/stripeWebhook.ts";
 import { TestMetering } from "./metering.ts";
 import { StubProvider } from "./stubProvider.ts";
 import { eventPayload, signatureOf, StubStripe, TEST_SETTINGS } from "./stubStripe.ts";
@@ -62,6 +63,7 @@ function site(billingSetting: (billing: Billing) => BillingContext["billing"] = 
   const worker = withStripeWebhook<typeof env>(
     byHost({
       app: withRateLimits(
+        SITE_LIMITS,
         withSignIn(
           withBilling(async () => new Response("page"), () => ({ billing: billingSetting(billing), appDb, now: now() })),
           () => ({ providers: { google, github: undefined }, appDb, now: now() }),

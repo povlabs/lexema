@@ -3,7 +3,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { log } from "@lexema/log/requestLog.ts";
-import { REQUEST_ID_HEADER, withRequestLog } from "@/worker/requestLog.ts";
+import { REQUEST_ID_HEADER, withRequestLog } from "@/worker/shared/requestLog.ts";
 import { onRequestError } from "@/instrumentation.ts";
 
 /** Run `body` with console.error and console.warn captured, and return what they printed. */

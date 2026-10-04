@@ -2,14 +2,14 @@
 // else. A provider whose client id and secret are not both set is a disabled
 // button, so the page never offers a sign-in that answers 503. On a Preview's
 // developer host, one more button signs in as the test developer (#245,
-// worker/testSignIn.ts); nowhere else does the page show it. No Terms line
+// worker/developers/testSignIn.ts); nowhere else does the page show it. No Terms line
 // until the terms exist (#162, #163 R1.7). The page's wiring, which reads the
 // session and the providers, is `(developers)/developer-site/sign-in/page.tsx`.
 
 import { Button } from "@base-ui/react/button";
 import { PROVIDER_IDS, PROVIDER_NAME, type ProviderId } from "@lexema/accounts/providers.ts";
-import type { SiteOrigins } from "@/worker/hosts.ts";
-import { TEST_SIGN_IN } from "@/worker/testSignIn.ts";
+import type { SiteOrigins } from "@/worker/shared/hosts.ts";
+import { TEST_SIGN_IN } from "@/worker/developers/testSignIn.ts";
 import { DeveloperPage } from "./DeveloperPage";
 import { GitHubIcon } from "@/components/shared/icons";
 import {
@@ -23,7 +23,7 @@ import {
   SIGN_IN_SHELL,
 } from "@/components/shared/styles.ts";
 
-/** Where a provider's sign-in starts (worker/signIn.ts). */
+/** Where a provider's sign-in starts (worker/developers/signIn.ts). */
 export const signInStart = (provider: ProviderId): string => `/sign-in/${provider}`;
 
 function ProviderMark({ provider }: { provider: ProviderId }) {

@@ -4,8 +4,8 @@
 // session names its account, and the session a deleted account had names no one.
 import { accountProfile } from "@lexema/accounts/accounts.ts";
 import type { AppTables } from "@lexema/db/app/database.ts";
-import type { SiteOrigins } from "@/worker/hosts.ts";
-import { signedInAccount } from "@/worker/signIn.ts";
+import type { SiteOrigins } from "@/worker/shared/hosts.ts";
+import { signedInAccount } from "@/worker/developers/signIn.ts";
 import { signedInOf, type SignedIn } from "./signedIn.ts";
 
 /** The visitor a session cookie names, or `undefined` when it names no live session or no account. */

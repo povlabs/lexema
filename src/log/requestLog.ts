@@ -2,7 +2,7 @@
 //
 // Workers Logs keeps what `console` prints (docs/RUN_THE_SITE.md, "What is
 // logged"). The Worker runs each request inside `inRequest`
-// (web/worker/requestLog.ts), and `log` adds that request's id to the fields
+// (web/worker/shared/requestLog.ts), and `log` adds that request's id to the fields
 // of every line, so one failure's lines can be found together, and a reader
 // quoting the id of a failed page can be matched to them.
 //

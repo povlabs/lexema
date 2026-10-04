@@ -14,8 +14,8 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "nod
 import { join } from "node:path";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
-import { PREVIEW_DOMAIN } from "@/worker/hosts.ts";
-import { robotsTagOf } from "@/worker/stage.ts";
+import { PREVIEW_DOMAIN } from "@/worker/shared/hosts.ts";
+import { robotsTagOf } from "@/worker/shared/stage.ts";
 
 const WEB = fileURLToPath(new URL("..", import.meta.url));
 const VINEXT = join(WEB, "node_modules", ".bin", "vinext");

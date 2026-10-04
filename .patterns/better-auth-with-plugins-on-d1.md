@@ -23,9 +23,9 @@ There are four builders in `auth.ts`:
 
 | Builder | Adds to the base | Used by |
 |---|---|---|
-| `sessionAuth` | nothing | reading and ending a session ([`web/worker/signIn.ts`](../web/worker/signIn.ts)) |
+| `sessionAuth` | nothing | reading and ending a session ([`web/worker/developers/signIn.ts`](../web/worker/developers/signIn.ts)) |
 | `signInAuth` | one social provider and the database hooks | one sign-in, start or callback |
-| `billingAuth` | the Stripe plugin ([`src/accounts/billing.ts`](../src/accounts/billing.ts)) | [`web/worker/billing.ts`](../web/worker/billing.ts), [`web/worker/stripeWebhook.ts`](../web/worker/stripeWebhook.ts) |
+| `billingAuth` | the Stripe plugin ([`src/accounts/billing.ts`](../src/accounts/billing.ts)) | [`web/worker/developers/billing.ts`](../web/worker/developers/billing.ts), [`web/worker/developers/stripeWebhook.ts`](../web/worker/developers/stripeWebhook.ts) |
 | `startSession` | a one-off `createAuthEndpoint.serverOnly` plugin | starting a session for an account already signed in |
 
 The rules, each visible in `auth.ts`:
@@ -43,7 +43,7 @@ The rules, each visible in `auth.ts`:
    `input: false`.
 4. **The Worker's limits, not better-auth's.** `rateLimit: { enabled: false }`;
    sign-in starts are counted by the rate-limit bindings in
-   [`web/worker/rateLimit.ts`](../web/worker/rateLimit.ts).
+   [`web/worker/shared/rateLimit.ts`](../web/worker/shared/rateLimit.ts).
 5. **Host-only cookies.** `crossSubDomainCookies: { enabled: false }` and
    `useSecureCookies: true`, so `lexema.fyi` never gets a session cookie.
 6. **What better-auth would keep, dropped in a hook.** The account hooks spread

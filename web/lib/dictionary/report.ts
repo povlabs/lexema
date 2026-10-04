@@ -5,7 +5,7 @@
 // Nothing here acts on a report. It is checked, counted and stored, and waits
 // for a person. The four spam layers Huey chose are all here or at the edge:
 //
-// 1. A per-visitor limit. The Worker binding (web/worker/rateLimit.ts) stops a
+// 1. A per-visitor limit. The Worker binding (web/worker/shared/rateLimit.ts) stops a
 //    burst before the database is touched; it only knows 10 s and 60 s
 //    windows, so the hourly allowance is counted here, over the stored reports.
 // 2. A hidden honeypot field and a minimum time between opening the box and

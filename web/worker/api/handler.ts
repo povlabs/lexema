@@ -1,7 +1,7 @@
 // The JSON API at https://api.lexema.fyi/v1 (#148, #150, #164).
 //
-// It sits at the Worker level for the reason worker/rateLimit.ts does: it has
-// to decide each response's status, and a streamed page cannot. worker/hosts.ts
+// It sits at the Worker level for the reason worker/shared/rateLimit.ts does: it has
+// to decide each response's status, and a streamed page cannot. worker/shared/hosts.ts
 // sends it every request for its host, so an API request never reaches the
 // per-visitor limits or the App Router, and the API never sets a cookie.
 //
@@ -23,7 +23,7 @@ import { appTablesOverD1 } from "@lexema/db/app/database.ts";
 import { fromD1 } from "@lexema/lookup/database.ts";
 import { dictionaryFor } from "@lexema/lookup/slice.ts";
 import { log } from "@lexema/log/requestLog.ts";
-import { originsOf, type SiteOrigins } from "../hosts.ts";
+import { originsOf, type SiteOrigins } from "../shared/hosts.ts";
 import { error, type ApiContext, type ErrorJson } from "./answer.ts";
 import { ROUTES } from "./endpoints.ts";
 import { keyStanding, type LimitHeaders } from "./keyLimits.ts";

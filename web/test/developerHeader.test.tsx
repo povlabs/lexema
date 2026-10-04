@@ -34,7 +34,7 @@ const { DashboardSettings } = await import("@/components/developers/dashboard/Da
 const { DeveloperDocs } = await import("@/components/developers/DeveloperDocs");
 const { settingsView } = await import("@/lib/developers/dashboardView.ts");
 const { NO_PLAN } = await import("@lexema/billing/plans.ts");
-const { ORIGIN } = await import("@/worker/hosts.ts");
+const { ORIGIN } = await import("@/worker/shared/hosts.ts");
 
 /** The ☰ menu's links on a rendered page, each as [label, current]. */
 const menuOf = (html: string): [string, boolean][] => {

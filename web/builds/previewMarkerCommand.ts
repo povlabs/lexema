@@ -12,7 +12,7 @@
 // The Preview's name comes from the pull request's branch through
 // `PreviewName.ofBranch`, the one function the Preview command names it with,
 // and each site answers one label below its preview-only domain
-// (web/worker/hosts.ts, `PREVIEW_DOMAIN`). A check run for any commit but an
+// (web/worker/shared/hosts.ts, `PREVIEW_DOMAIN`). A check run for any commit but an
 // open pull request's current head changes nothing: the name always serves
 // its latest deployment, so announcing an older commit would bind a newer
 // tree's pixels to it.
@@ -33,11 +33,11 @@ export const SHA = /^[0-9a-f]{40}$/;
 
 /**
  * One preview site as Fabrika names it, the domain it answers one label below
- * (the same three as `PREVIEW_DOMAIN` in web/worker/hosts.ts, which a test
+ * (the same three as `PREVIEW_DOMAIN` in web/worker/shared/hosts.ts, which a test
  * holds this to), and the status its root answers once the Preview is up.
  *
  * Every response on the preview stage carries `X-Robots-Tag: noindex`
- * (web/worker/stage.ts), and Cloudflare's own answer for a name with no
+ * (web/worker/shared/stage.ts), and Cloudflare's own answer for a name with no
  * Preview does not, so that header is what says the Worker answered. The API
  * has no endpoint at `/` and answers it with its own JSON 404; the dictionary
  * and the developer site answer `/` with their home pages.
@@ -183,7 +183,7 @@ export type MarkerOutcome =
       readonly pullRequests: readonly { readonly number: number; readonly comment: "created" | "updated" | "unchanged" }[];
     };
 
-/** Whether an `X-Robots-Tag` value says `noindex`, as every preview-stage response's does (web/worker/stage.ts). */
+/** Whether an `X-Robots-Tag` value says `noindex`, as every preview-stage response's does (web/worker/shared/stage.ts). */
 export function hasNoindex(robotsTag: string | undefined): boolean {
   return (robotsTag ?? "").split(",").some((value) => value.trim().toLowerCase() === "noindex");
 }

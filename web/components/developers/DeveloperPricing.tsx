@@ -3,7 +3,7 @@
 //
 // Starter's and Pro's numbers are the plan table's (src/billing/plans.ts), and
 // Pro, the table's featured plan, carries the "Most popular" tag and the accent
-// border. Their Choose buttons post the plan to Checkout (worker/billing.ts),
+// border. Their Choose buttons post the plan to Checkout (worker/developers/billing.ts),
 // with the session's CSRF token when the visitor is signed in; signed out, the
 // route sends them through sign-in first and keeps the plan. Enterprise is
 // agreed per account, so its card writes to the contact address.
@@ -15,7 +15,7 @@ import { PLAN_TERMS, type PlanId, type StripePlanId } from "@lexema/billing/plan
 import type { ReactNode } from "react";
 import { CALL_ROWS, callText } from "@/lib/developers/apiReference.ts";
 import type { PostingVisitor } from "@/lib/developers/signedIn.ts";
-import type { SiteOrigins } from "@/worker/hosts.ts";
+import type { SiteOrigins } from "@/worker/shared/hosts.ts";
 import { ChoosePlanForm } from "./BillingForms";
 import { CONTACT_EMAIL, DeveloperPage } from "./DeveloperPage";
 import { CheckIcon } from "@/components/shared/MenuIcons";

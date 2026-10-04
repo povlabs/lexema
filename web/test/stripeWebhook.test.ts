@@ -15,7 +15,7 @@ import { billingOf, STRIPE_SETTINGS, type Billing, type StripeSettings } from ".
 import { developerAccount, subscription } from "../../src/db/app/schema.js";
 import { freshAppDatabase } from "../../test/databases.js";
 import { StubEmail } from "../../test/stubEmail.js";
-import { withStripeWebhook, type StripeWebhookContext } from "@/worker/stripeWebhook.ts";
+import { withStripeWebhook, type StripeWebhookContext } from "@/worker/developers/stripeWebhook.ts";
 import { eventPayload, signatureOf, StubStripe, TEST_SETTINGS, type SubscriptionState } from "./stubStripe.ts";
 
 // The session secret, a constant that exists nowhere else: CI holds no secret.

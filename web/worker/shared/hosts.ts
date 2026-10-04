@@ -32,7 +32,7 @@
 // the browser to the developer site with the same query (#185).
 
 import { API_PREFIX } from "@lexema/api/calls.ts";
-import type { FetchHandler } from "./rateLimit.ts";
+import type { FetchHandler } from "./fetchHandler.ts";
 
 /** The sites one Worker serves, each on its own host. */
 export type Site = "lexema" | "developers" | "api";
@@ -144,7 +144,7 @@ export function siteOf(url: URL): Site {
 
 /**
  * Whether a URL is exactly `path` on the developer site's host, live, local or
- * a Preview's. worker/stripeWebhook.ts reads its route this way, in front of
+ * a Preview's. worker/developers/stripeWebhook.ts reads its route this way, in front of
  * `byHost`; any other spelling or host goes where `destinationOf` sends it.
  */
 export const isDeveloperSitePath = (url: URL, path: string): boolean => siteOf(url) === "developers" && url.pathname === path;

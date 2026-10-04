@@ -4,7 +4,7 @@
 // the excerpt's lines are laid out as board 25 draws them.
 
 import { API_PREFIX } from "@lexema/api/calls.ts";
-import type { SiteOrigins } from "@/worker/hosts.ts";
+import type { SiteOrigins } from "@/worker/shared/hosts.ts";
 import {
   apiBaseOf,
   ENDPOINT_REFERENCE,

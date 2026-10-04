@@ -38,8 +38,9 @@ import { offered, suggest } from "../../src/lookup/suggest.js";
 import { loadFixturePages } from "../../src/source/rawPage.js";
 import { answerApi, apiNotFound, handleApi, lookedUpWord, type ApiBindings } from "@/worker/api/handler.ts";
 import { PreviewSlice } from "../../src/deploy/previewSlice.js";
-import { byHost, DEVELOPERS_SEGMENT } from "@/worker/hosts.ts";
-import { withRateLimits, type LimitBindings } from "@/worker/rateLimit.ts";
+import { byHost, DEVELOPERS_SEGMENT } from "@/worker/shared/hosts.ts";
+import { withRateLimits, type LimitBindings } from "@/worker/shared/rateLimit.ts";
+import { SITE_LIMITS } from "./siteLimits.ts";
 import { RATE_WINDOW_SECONDS } from "@/worker/api/keyLimits.ts";
 import { FakeRateLimit, TestMetering } from "./metering.ts";
 import { wordPage } from "@/lib/dictionary/wordPage.ts";
@@ -409,7 +410,7 @@ test("each host reaches its own site: lexema.fyi the pages as before, api.lexema
   } satisfies ApiBindings & LimitBindings;
   const appSaw: Request[] = [];
   const worker = byHost<typeof env>({
-    app: withRateLimits<typeof env>(async (request) => {
+    app: withRateLimits<typeof env>(SITE_LIMITS, async (request) => {
       appSaw.push(request);
       // The site sets a cookie, so the API's no-cookie check fails if a request reaches it.
       return new Response("<p>page</p>", { headers: { "set-cookie": "visitor=1" } });

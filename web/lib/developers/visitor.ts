@@ -6,8 +6,8 @@
 import { env } from "cloudflare:workers";
 import { headers } from "next/headers";
 import { log } from "@lexema/log/requestLog.ts";
-import { csrfTokenOf } from "@/worker/dashboard.ts";
-import type { SiteOrigins } from "@/worker/hosts.ts";
+import { csrfTokenOf } from "@/worker/developers/dashboard.ts";
+import type { SiteOrigins } from "@/worker/shared/hosts.ts";
 import { appDatabase } from "@/lib/shared/database.ts";
 import { siteOrigins } from "@/lib/shared/siteOrigins.ts";
 import { sessionVisitor } from "./sessionVisitor.ts";

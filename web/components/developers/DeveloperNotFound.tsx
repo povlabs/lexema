@@ -2,7 +2,7 @@
 // developer page carries, and one plain line in the column. No board draws it,
 // so it takes the pricing page's column and heading and nothing more.
 
-import type { SiteOrigins } from "@/worker/hosts.ts";
+import type { SiteOrigins } from "@/worker/shared/hosts.ts";
 import { DeveloperPage } from "./DeveloperPage";
 import type { SignedIn } from "@/lib/developers/signedIn.ts";
 import { DEV_HEADING, DEV_SHELL } from "@/components/shared/styles.ts";

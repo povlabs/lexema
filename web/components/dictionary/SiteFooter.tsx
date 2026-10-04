@@ -12,7 +12,7 @@
 // site (#159): `lexema.fyi/developers` is gone, with no redirect. It is on the
 // host `origins` names, so a Preview's footer stays on that Preview (#266).
 
-import type { SiteOrigins } from "@/worker/hosts.ts";
+import type { SiteOrigins } from "@/worker/shared/hosts.ts";
 import {
   SITE_FOOTER,
   SITE_FOOTER_INNER,

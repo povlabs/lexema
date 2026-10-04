@@ -94,7 +94,7 @@ export function FirstLoad() {
 }
 
 /**
- * Too many searches from this visitor this minute (worker/rateLimit.ts), so
+ * Too many searches from this visitor this minute (worker/shared/rateLimit.ts), so
  * the lookup did not run and the page answers with a 429. Said plainly, with
  * the search field still above it; nothing here claims anything about the
  * word, because nobody looked.
