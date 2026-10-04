@@ -7,14 +7,18 @@
 // (worker/developers/dashboard.ts, worker/developers/billing.ts).
 
 import type { SuspendedView } from "@/lib/developers/dashboardView.ts";
-import { DeveloperPage, type DeveloperSection } from "@/components/developers/DeveloperPage";
+import { CONTACT_EMAIL, DeveloperPage, TERMS_PATH, type DeveloperSection } from "@/components/developers/DeveloperPage";
 import type { SiteOrigins } from "@/worker/shared/hosts.ts";
 import { DeleteAccountControl } from "./DeleteAccountDialog";
-import { BUTTON_DANGER_OUTLINE, DASH_SHELL, SUSPENDED_CARD, SUSPENDED_LINE, SUSPENDED_TITLE } from "@/components/shared/styles.ts";
+import { BUTTON_DANGER_OUTLINE, DASH_SHELL, LINK, SUSPENDED_CARD, SUSPENDED_LINE, SUSPENDED_TITLE } from "@/components/shared/styles.ts";
 
-/** The card's words: what happened, then what the person can still do. */
+/**
+ * The card's words are Huey's, ruled on PR #577
+ * (https://github.com/povlabs/lexema/pull/577#issuecomment-5984751318): why the
+ * account is suspended and what that stops, then whom to write to and what is
+ * still open. web/test/dashboard.test.ts holds them word for word.
+ */
 export const SUSPENDED_HEADING = "Your account is suspended";
-export const SUSPENDED_TEXT = "Your API keys do not answer, and you cannot make keys or choose a plan. You can still delete the account.";
 
 export function SuspendedAccount({ view, csrf, current, origins }: { view: SuspendedView; csrf: string; current: DeveloperSection; origins: SiteOrigins }) {
   return (
@@ -23,7 +27,21 @@ export function SuspendedAccount({ view, csrf, current, origins }: { view: Suspe
         <div className={SUSPENDED_CARD} data-suspended="">
           <div>
             <h1 className={SUSPENDED_TITLE}>{SUSPENDED_HEADING}</h1>
-            <p className={SUSPENDED_LINE}>{SUSPENDED_TEXT}</p>
+            <p className={SUSPENDED_LINE}>
+              We have suspended this account because of activity that may breach our{" "}
+              <a className={LINK} href={TERMS_PATH}>
+                Terms of service
+              </a>
+              , such as abuse of usage limits, a payment problem or a risk to the service. While it is suspended, your API keys do not answer,
+              and you cannot create keys or choose a plan.
+            </p>
+            <p className={SUSPENDED_LINE}>
+              If you believe this is a mistake, write to{" "}
+              <a className={LINK} href={`mailto:${CONTACT_EMAIL}`}>
+                {CONTACT_EMAIL}
+              </a>{" "}
+              and we will review it. You can still delete your account below.
+            </p>
           </div>
           <DeleteAccountControl className={BUTTON_DANGER_OUTLINE} warning={view.deleteWarning} csrf={csrf} />
         </div>

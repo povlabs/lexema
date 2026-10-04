@@ -31,7 +31,7 @@ import {
   type ActionAnswer,
 } from "@/lib/developers/dashboardActions.ts";
 import { suspendedView } from "@/lib/developers/dashboardView.ts";
-import { SUSPENDED_HEADING, SUSPENDED_TEXT, SuspendedAccount } from "@/components/developers/dashboard/SuspendedAccount";
+import { SUSPENDED_HEADING, SuspendedAccount } from "@/components/developers/dashboard/SuspendedAccount";
 import { afterDelete, takeNotice, type NoticeStore } from "@/lib/developers/arrivalNotice.ts";
 import { sessionVisitor } from "@/lib/developers/sessionVisitor.ts";
 import { ArrivalToast } from "@/components/developers/dashboard/ArrivalToast";
@@ -758,6 +758,12 @@ test("a suspended account signs out, and deletes itself through the existing del
   assert.deepEqual(await authenticate(db, key.key, NOW), { outcome: "refused", refusal: "revoked" });
 });
 
+/** The suspended card's body, word for word as Huey ruled it on PR #577 (issuecomment-5984751318). */
+const SUSPENDED_BODY = [
+  "We have suspended this account because of activity that may breach our Terms of service, such as abuse of usage limits, a payment problem or a risk to the service. While it is suspended, your API keys do not answer, and you cannot create keys or choose a plan.",
+  "If you believe this is a mistake, write to contact@lexema.fyi and we will review it. You can still delete your account below.",
+];
+
 test("a suspended account's dashboard and settings show only the suspended card, with Delete account and its warning (#573)", () => {
   const profile = { email: "ada@example.com", name: "Ada Lovelace", providers: ["google"] as ["google"] };
   const view = suspendedView(profile, []);
@@ -765,10 +771,14 @@ test("a suspended account's dashboard and settings show only the suspended card,
     const html = renderToStaticMarkup(createElement(SuspendedAccount, { view, csrf: "c".repeat(43), current, origins: ORIGIN }));
     const main = /<main[^>]*>([\s\S]*)<\/main>/.exec(html)?.[1] ?? "";
     assert.match(main, new RegExp(`<h1[^>]*>${SUSPENDED_HEADING}</h1>`), current);
-    assert.ok(main.includes(SUSPENDED_TEXT), current);
+    const paragraphs = [...main.matchAll(/<p[^>]*>([\s\S]*?)<\/p>/g)].map((p) => (p[1] ?? "").replace(/<[^>]+>/g, "").replace(/\s+/g, " "));
+    assert.deepEqual(paragraphs.slice(0, 2), SUSPENDED_BODY, current);
+    assert.match(main, /<a [^>]*href="\/terms"[^>]*>Terms of service<\/a>/, current);
+    assert.match(main, /<a [^>]*href="mailto:contact@lexema\.fyi"[^>]*>contact@lexema\.fyi<\/a>/, current);
     assert.ok(main.includes(">Delete account</button>"), current);
     // Nothing else: no tabs, no keys, no usage, no plan.
     for (const absent of ["<h2", "<nav", "Create key", "Usage", "Plan", "Settings", "Choose", "Manage billing"]) assert.ok(!main.includes(absent), `${current}: ${absent}`);
-    assert.equal(main.match(/<(button|a|form)\b/g)?.length, 1, current);
+    // Its only controls: the two links in its words, and Delete account.
+    assert.equal(main.match(/<(button|a|form)\b/g)?.length, 3, current);
   }
 });
