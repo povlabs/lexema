@@ -385,9 +385,15 @@ export const planNotice = sqliteTable(
  * in shape (#240), since the dictionary database is never written (ADR 0018).
  *
  * No foreign key: a report names the release and record it was sent from, and
- * has to outlive that release, which lives in another database. The visitor is
- * stored as a SHA-256 of their rate-limit key, never as an address, and is kept
- * only so the hourly allowance can be counted.
+ * has to outlive that release, which lives in another database.
+ *
+ * Two things in a report are the reader's own, and neither is kept for long
+ * (Huey's rulings on #570). `visitor_hash`, a SHA-256 of their rate-limit key,
+ * never their address, serves only the hourly allowance, and is erased one
+ * hour after the report arrives (`forgetVisitors` in
+ * web/lib/dictionary/report.ts, run by the Worker's cron trigger). `details`,
+ * the reader's note, is erased when the report is answered. The report itself
+ * stays, and nothing deletes it.
  *
  * A reading is named by its source line, `line_no` and `line_sha256`, copied
  * from `source_record` when the report arrives (#12). `record_id` is a number
@@ -402,8 +408,9 @@ export const planNotice = sqliteTable(
  *
  * `choice` is what the reader says is wrong: one of the five a word page
  * offers, or `missing`, which the box on a search that found nothing sets
- * (#441). A missing word has no reading, so its `record_id` is NULL. Its
- * details are optional, so they may be empty; every other report has some.
+ * (#441). A missing word has no reading, so its `record_id` is NULL. While a
+ * report waits, a missing word's details may be empty, and every other
+ * report's have some; once it is answered, it has none.
  */
 export const readerReport = sqliteTable(
   "reader_report",
@@ -415,8 +422,8 @@ export const readerReport = sqliteTable(
     lineNo: integer("line_no"), // that reading's source line in the release; NULL with no reading
     lineSha256: text("line_sha256"), // that line's digest, as source_record holds it
     choice: text("choice", { enum: ["meaning", "example", "form", "synonym", "other", "missing"] }).notNull(),
-    details: text("details").notNull(),
-    visitorHash: text("visitor_hash").notNull(),
+    details: text("details"), // the reader's note; NULL once the report is answered
+    visitorHash: text("visitor_hash"), // NULL from one hour after `received_at`
     receivedAt: text("received_at").notNull(), // ISO-8601
     outcome: text("outcome"), // what the person who looked found or did; NULL while waiting
     reviewedAt: text("reviewed_at"), // ISO-8601
@@ -426,7 +433,11 @@ export const readerReport = sqliteTable(
     index("reader_report_by_visitor").on(table.visitorHash, table.receivedAt),
     check("reader_report_choice", sql`choice IN ('meaning', 'example', 'form', 'synonym', 'other', 'missing')`),
     check("reader_report_missing", sql`choice <> 'missing' OR record_id IS NULL`),
-    check("reader_report_details", sql`length(details) <= 2000 AND (choice = 'missing' OR length(details) >= 1)`),
+    check(
+      "reader_report_details",
+      sql`(outcome IS NULL AND details IS NOT NULL AND length(details) <= 2000 AND (choice = 'missing' OR length(details) >= 1)) OR (outcome IS NOT NULL AND details IS NULL)`,
+    ),
+    check("reader_report_visitor_hash", sql`visitor_hash IS NULL OR length(visitor_hash) = 64`),
     check(
       "reader_report_line",
       sql`(line_no IS NULL AND line_sha256 IS NULL) OR (line_no IS NOT NULL AND line_sha256 IS NOT NULL AND record_id IS NOT NULL AND line_no > 0 AND length(line_sha256) = 64)`,

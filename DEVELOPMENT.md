@@ -280,8 +280,13 @@ what the reader picked and said, and where its reading is in the local
 dictionary, found by its source line
 ([docs/RECORD_IDENTITY.md](./docs/RECORD_IDENTITY.md#a-readers-report-names-a-line)).
 `answer` records what the person found or did, once; a second answer is
-refused. Neither changes the dictionary or anything a reader sees: a fix is
-made by hand, elsewhere. Both read the `APP_DB` and the dictionary in
+refused. Answering erases the reader's note, so `list --all` prints no note for
+an answered report; read it before you answer. The code made from the reader's
+IP address is erased one hour after the report, by the Worker's cron trigger
+([docs/WEB.md](./docs/WEB.md#why-a-report-is-stored-and-nothing-more)). Both
+rules are Huey's ([#570](https://github.com/povlabs/lexema/issues/570)); the
+report itself is kept. Neither command changes the dictionary or anything a
+reader sees: a fix is made by hand, elsewhere. Both read the `APP_DB` and the dictionary in
 `SEED_STATE`, as `pnpm run plan` does, so a local `pnpm run seed:dev` drops
 every report and its answer with it. A remote seed leaves reports alone.
 

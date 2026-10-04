@@ -8,6 +8,8 @@
 // 1. A per-visitor limit. The Worker binding (web/worker/shared/rateLimit.ts) stops a
 //    burst before the database is touched; it only knows 10 s and 60 s
 //    windows, so the hourly allowance is counted here, over the stored reports.
+//    Each report keeps its visitor code only while that count needs it: one
+//    hour, then `forgetVisitors` erases it (#570).
 // 2. A hidden honeypot field and a minimum time between opening the box and
 //    sending it, measured on the server's clock alone: the box asks for a
 //    token when it opens (`openReport`), and the send is timed against it. A
@@ -20,7 +22,7 @@
 // Reports and openings live in the app database (`APP_DB`); the dictionary is
 // only read, to check the reading a report names (ADR 0018).
 
-import { and, count, eq, gt, lt } from "drizzle-orm";
+import { and, count, eq, gt, isNotNull, lt, lte } from "drizzle-orm";
 import type { AppTables } from "@lexema/db/app/database.ts";
 import { readerReport, reportOpening } from "@lexema/db/app/schema.ts";
 import type { LookupDatabase } from "@lexema/lookup/database.ts";
@@ -192,6 +194,12 @@ export async function visitorHash(visitor: string): Promise<string> {
   return [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, "0")).join("");
 }
 
+/**
+ * When the hourly allowance opens at `now`: the reports received after it are
+ * the ones counted, and the only ones that still need their visitor code.
+ */
+const allowanceOpens = (now: number): string => new Date(now - HOUR_MS).toISOString();
+
 /** Check, count and store one report. The only writer of `reader_report`. */
 export async function receiveReport(submission: ReportSubmission, context: ReportContext): Promise<ReportAnswer> {
   const { db, now } = context;
@@ -211,11 +219,10 @@ export async function receiveReport(submission: ReportSubmission, context: Repor
   }
 
   const visitor = await visitorHash(context.visitor);
-  const since = new Date(now - HOUR_MS).toISOString();
   const [{ sent }] = await app
     .select({ sent: count() })
     .from(readerReport)
-    .where(and(eq(readerReport.visitorHash, visitor), gt(readerReport.receivedAt, since)));
+    .where(and(eq(readerReport.visitorHash, visitor), gt(readerReport.receivedAt, allowanceOpens(now))));
   if (sent >= REPORTS_PER_HOUR) return { outcome: "limited" };
 
   // The reading is kept by its source line, which a re-seed cannot renumber
@@ -247,6 +254,20 @@ export async function receiveReport(submission: ReportSubmission, context: Repor
     app.delete(reportOpening).where(eq(reportOpening.token, submission.openToken)),
   ]);
   return { outcome: "sent" };
+}
+
+/**
+ * Erase the visitor code of every report the hourly allowance no longer
+ * counts: each one received an hour or more before `now` (Huey's ruling on
+ * #570). The code is kept only for that count, so the allowance holds as it
+ * did; the report itself stays. The Worker's cron trigger runs this every five
+ * minutes (worker/dictionary/reportSweep.ts).
+ */
+export async function forgetVisitors({ app }: AppTables, now: number): Promise<void> {
+  await app
+    .update(readerReport)
+    .set({ visitorHash: null })
+    .where(and(isNotNull(readerReport.visitorHash), lte(readerReport.receivedAt, allowanceOpens(now))));
 }
 
 const DAY_MS = 24 * HOUR_MS;

@@ -427,6 +427,18 @@ every report. After any answer that did not store the report, the box resets the
 widget for a fresh token, because a token can be used once. The visitor is
 stored as a SHA-256 of their rate-limit key, never as an address.
 
+A report keeps the reader's own data only while it serves, as Huey ruled on
+2026-10-04 (#570). The visitor code serves only the hourly count, but it can be
+turned back into an address, so it is erased one hour after the report: the
+Worker's cron trigger, every five minutes, sets `visitor_hash` to NULL on each
+report received an hour ago or earlier (`forgetVisitors`,
+`web/worker/dictionary/reportSweep.ts`). The reader's note is erased when the
+report is answered, in the same write as the answer, and a `reader_report`
+CHECK refuses an answered report that still has one. The report itself stays,
+and nothing deletes it. D1 Time Travel keeps up to 30 days of history, so an erased
+value can last there that long
+([docs/RUN_THE_SITE.md](./RUN_THE_SITE.md#roll-back)).
+
 ## Why a disputed claim is a row and not a code path
 
 A disputed claim is left untouched, and the result page does not show the

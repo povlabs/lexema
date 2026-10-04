@@ -9,7 +9,8 @@
 // (fixtures/report-tables-before-app-db.sql). The plan tables came with #260:
 // the Stripe plugin's `subscription` and Lexema's `enterprise_plan`, and
 // `plan_notice` with #215. `reader_report` then gained the reading's source
-// line and a person's answer (#12); every column it had stays as it was.
+// line and a person's answer (#12), and its note and visitor code became
+// erasable (#570); every other column it had stays as it was.
 
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
@@ -117,6 +118,10 @@ test("the migrations build every key table in the shape schema.sql gave it", () 
 
 /** The columns #12 added to `reader_report`. */
 const REPORT_REVIEW_COLUMNS = ["line_no", "line_sha256", "outcome", "reviewed_at", "reviewed_by"];
+/** The `reader_report` columns #570 made NULL once their time is up. */
+const ERASABLE_COLUMNS = ["details", "visitor_hash"];
+/** A visitor code as the box stores it: a SHA-256, 64 hex digits. */
+const VISITOR = "f".repeat(64);
 
 test("the migrations build report_opening in the shape schema.sql gave it, and reader_report in that shape plus a source line and an answer", () => {
   const reference = before("fixtures/report-tables-before-app-db.sql");
@@ -126,7 +131,9 @@ test("the migrations build report_opening in the shape schema.sql gave it, and r
   const then = shape(reference, "reader_report");
   const added = (column: Row) => REPORT_REVIEW_COLUMNS.includes(String(column.name));
   const withoutPosition = ({ cid: _cid, ...column }: Row) => column;
-  assert.deepEqual(now.columns.filter((column) => !added(column)).map(withoutPosition), then.columns.map(withoutPosition));
+  // The note and the visitor code are erased in time (#570), so both may be NULL.
+  const erasable = (column: Row) => (ERASABLE_COLUMNS.includes(String(column.name)) ? { ...column, notnull: 0 } : column);
+  assert.deepEqual(now.columns.filter((column) => !added(column)).map(withoutPosition), then.columns.map(withoutPosition).map(erasable));
   assert.deepEqual(
     now.columns.filter(added).map((column: Row) => `${String(column.name)} ${String(column.type)}${column.notnull ? " NOT NULL" : ""}`),
     ["line_no INTEGER", "line_sha256 TEXT", "outcome TEXT", "reviewed_at TEXT", "reviewed_by TEXT"],
@@ -138,13 +145,14 @@ test("the migrations build report_opening in the shape schema.sql gave it, and r
   assert.deepEqual(indexesByName(now.indexes), indexesByName(then.indexes));
   assert.deepEqual(now.foreignKeys, then.foreignKeys);
   // The old checks stand, the choice widened by `missing` and details made
-  // optional for it alone (#441), and three more: a line comes with its
-  // reading and digest, an answer comes whole, and a missing word names no
-  // reading.
+  // optional for it alone (#441), and held only while a report waits (#570),
+  // and four more: a line comes with its reading and digest, an answer comes
+  // whole, a missing word names no reading, and a visitor code is a SHA-256.
   const OLD_CHOICE = "choice IN ('meaning', 'example', 'form', 'synonym', 'other')";
   const NEW_CHOICE = "choice IN ('meaning', 'example', 'form', 'synonym', 'other', 'missing')";
   const OLD_DETAILS = "length(details) BETWEEN 1 AND 2000";
-  const NEW_DETAILS = "length(details) <= 2000 AND (choice = 'missing' OR length(details) >= 1)";
+  const NEW_DETAILS =
+    "(outcome IS NULL AND details IS NOT NULL AND length(details) <= 2000 AND (choice = 'missing' OR length(details) >= 1)) OR (outcome IS NOT NULL AND details IS NULL)";
   assert.ok(then.checks.includes(OLD_CHOICE));
   assert.ok(then.checks.includes(OLD_DETAILS));
   const kept = then.checks.filter((check) => check !== OLD_CHOICE && check !== OLD_DETAILS);
@@ -152,7 +160,8 @@ test("the migrations build report_opening in the shape schema.sql gave it, and r
   assert.ok(now.checks.includes(NEW_CHOICE));
   assert.ok(now.checks.includes(NEW_DETAILS));
   assert.ok(now.checks.includes("choice <> 'missing' OR record_id IS NULL"));
-  assert.equal(now.checks.length, then.checks.length + 3);
+  assert.ok(now.checks.includes("visitor_hash IS NULL OR length(visitor_hash) = 64"));
+  assert.equal(now.checks.length, then.checks.length + 4);
 });
 
 test("the migration that adds the missing-word kind keeps every report already stored, and a missing word names no reading", () => {
@@ -162,13 +171,13 @@ test("the migration that adds the missing-word kind keeps every report already s
   assert.ok(widening > 0, "the missing-word migration is in the journal");
   for (const path of files.slice(0, widening)) db.exec(readFileSync(path, "utf8"));
   const insert = "INSERT INTO reader_report (release_id, word, record_id, choice, details, visitor_hash, received_at) VALUES";
-  db.exec(`${insert} ('it-0c432803', 'casa', NULL, 'form', 'Before #441.', 'h', '2026-10-01T12:00:00.000Z')`);
-  assert.throws(() => db.exec(`${insert} ('it-0c432803', 'xqzt', NULL, 'missing', 'Too soon.', 'h', '2026-10-01T12:01:00.000Z')`), /CHECK constraint failed/);
+  db.exec(`${insert} ('it-0c432803', 'casa', NULL, 'form', 'Before #441.', '${VISITOR}', '2026-10-01T12:00:00.000Z')`);
+  assert.throws(() => db.exec(`${insert} ('it-0c432803', 'xqzt', NULL, 'missing', 'Too soon.', '${VISITOR}', '2026-10-01T12:01:00.000Z')`), /CHECK constraint failed/);
   for (const path of files.slice(widening)) db.exec(readFileSync(path, "utf8"));
   assert.equal(shape(db, "reader_report").table[0]?.strict, 1);
-  db.exec(`${insert} ('it-0c432803', 'xqzt', NULL, 'missing', 'Please add it.', 'h', '2026-10-01T12:02:00.000Z')`);
-  assert.throws(() => db.exec(`${insert} ('it-0c432803', 'casa', 7, 'missing', 'A reading.', 'h', '2026-10-01T12:03:00.000Z')`), /CHECK constraint failed/);
-  assert.throws(() => db.exec(`${insert} ('it-0c432803', 'casa', NULL, 'spelling', 'Unknown.', 'h', '2026-10-01T12:04:00.000Z')`), /CHECK constraint failed/);
+  db.exec(`${insert} ('it-0c432803', 'xqzt', NULL, 'missing', 'Please add it.', '${VISITOR}', '2026-10-01T12:02:00.000Z')`);
+  assert.throws(() => db.exec(`${insert} ('it-0c432803', 'casa', 7, 'missing', 'A reading.', '${VISITOR}', '2026-10-01T12:03:00.000Z')`), /CHECK constraint failed/);
+  assert.throws(() => db.exec(`${insert} ('it-0c432803', 'casa', NULL, 'spelling', 'Unknown.', '${VISITOR}', '2026-10-01T12:04:00.000Z')`), /CHECK constraint failed/);
   assert.deepEqual(rows(db, "SELECT report_id, word, record_id, choice, details FROM reader_report ORDER BY report_id"), [
     { report_id: 1, word: "casa", record_id: null, choice: "form", details: "Before #441." },
     { report_id: 2, word: "xqzt", record_id: null, choice: "missing", details: "Please add it." },
@@ -182,13 +191,13 @@ test("the migration that makes a missing word's details optional keeps every rep
   assert.ok(optional > 0, "the optional-details migration is in the journal");
   for (const path of files.slice(0, optional)) db.exec(readFileSync(path, "utf8"));
   const insert = "INSERT INTO reader_report (release_id, word, record_id, choice, details, visitor_hash, received_at) VALUES";
-  db.exec(`${insert} ('it-0c432803', 'xqzt', NULL, 'missing', 'Please add it.', 'h', '2026-10-03T12:00:00.000Z')`);
-  assert.throws(() => db.exec(`${insert} ('it-0c432803', 'abc', NULL, 'missing', '', 'h', '2026-10-03T12:01:00.000Z')`), /CHECK constraint failed/);
+  db.exec(`${insert} ('it-0c432803', 'xqzt', NULL, 'missing', 'Please add it.', '${VISITOR}', '2026-10-03T12:00:00.000Z')`);
+  assert.throws(() => db.exec(`${insert} ('it-0c432803', 'abc', NULL, 'missing', '', '${VISITOR}', '2026-10-03T12:01:00.000Z')`), /CHECK constraint failed/);
   for (const path of files.slice(optional)) db.exec(readFileSync(path, "utf8"));
   assert.equal(shape(db, "reader_report").table[0]?.strict, 1);
-  db.exec(`${insert} ('it-0c432803', 'abc', NULL, 'missing', '', 'h', '2026-10-03T12:02:00.000Z')`);
-  assert.throws(() => db.exec(`${insert} ('it-0c432803', 'casa', NULL, 'other', '', 'h', '2026-10-03T12:03:00.000Z')`), /CHECK constraint failed/);
-  assert.throws(() => db.exec(`${insert} ('it-0c432803', 'abc', NULL, 'missing', '${"x".repeat(2001)}', 'h', '2026-10-03T12:04:00.000Z')`), /CHECK constraint failed/);
+  db.exec(`${insert} ('it-0c432803', 'abc', NULL, 'missing', '', '${VISITOR}', '2026-10-03T12:02:00.000Z')`);
+  assert.throws(() => db.exec(`${insert} ('it-0c432803', 'casa', NULL, 'other', '', '${VISITOR}', '2026-10-03T12:03:00.000Z')`), /CHECK constraint failed/);
+  assert.throws(() => db.exec(`${insert} ('it-0c432803', 'abc', NULL, 'missing', '${"x".repeat(2001)}', '${VISITOR}', '2026-10-03T12:04:00.000Z')`), /CHECK constraint failed/);
   assert.deepEqual(rows(db, "SELECT report_id, word, choice, details FROM reader_report ORDER BY report_id"), [
     { report_id: 1, word: "xqzt", choice: "missing", details: "Please add it." },
     { report_id: 2, word: "abc", choice: "missing", details: "" },
@@ -202,13 +211,65 @@ test("the migration that adds a report's line and answer keeps every report alre
   assert.ok(widening > 0, "the widening migration is in the journal");
   for (const path of files.slice(0, widening)) db.exec(readFileSync(path, "utf8"));
   db.exec(`INSERT INTO reader_report (release_id, word, record_id, choice, details, visitor_hash, received_at)
-    VALUES ('it-0c432803', 'sale', 21652, 'meaning', 'Sent before #12.', 'h', '2026-09-30T12:00:00.000Z'),
-           ('it-0c432803', 'casa', NULL, 'form', 'No reading.', 'h', '2026-09-30T12:01:00.000Z')`);
+    VALUES ('it-0c432803', 'sale', 21652, 'meaning', 'Sent before #12.', '${VISITOR}', '2026-09-30T12:00:00.000Z'),
+           ('it-0c432803', 'casa', NULL, 'form', 'No reading.', '${VISITOR}', '2026-09-30T12:01:00.000Z')`);
   for (const path of files.slice(widening)) db.exec(readFileSync(path, "utf8"));
   assert.deepEqual(rows(db, "SELECT report_id, word, record_id, line_no, details, outcome FROM reader_report ORDER BY report_id"), [
     { report_id: 1, word: "sale", record_id: 21652, line_no: null, details: "Sent before #12.", outcome: null },
     { report_id: 2, word: "casa", record_id: null, line_no: null, details: "No reading.", outcome: null },
   ]);
+});
+
+test("the migration that makes a report's note and visitor code erasable erases the note of every answered report and keeps the rest as they stand", () => {
+  const db = new DatabaseSync(":memory:");
+  const files = appMigrationFiles();
+  const retention = files.findIndex((path) => path.endsWith("_reader_report_retention.sql"));
+  assert.ok(retention > 0, "the retention migration is in the journal");
+  for (const path of files.slice(0, retention)) db.exec(readFileSync(path, "utf8"));
+  db.exec(`INSERT INTO reader_report (release_id, word, record_id, choice, details, visitor_hash, received_at, outcome, reviewed_at, reviewed_by)
+    VALUES ('it-0c432803', 'sale', NULL, 'meaning', 'Answered already.', '${VISITOR}', '2026-10-01T12:00:00.000Z', 'Fixed.', '2026-10-02T12:00:00.000Z', 'huey'),
+           ('it-0c432803', 'casa', NULL, 'form', 'Still waiting.', '${VISITOR}', '2026-10-01T12:01:00.000Z', NULL, NULL, NULL),
+           ('it-0c432803', 'xqzt', NULL, 'missing', '', '${VISITOR}', '2026-10-01T12:02:00.000Z', NULL, NULL, NULL)`);
+  for (const path of files.slice(retention)) db.exec(readFileSync(path, "utf8"));
+  const report = shape(db, "reader_report");
+  assert.equal(report.table[0]?.strict, 1);
+  assert.deepEqual(
+    report.indexes.map(({ name, columns }) => ({ name, columns: columns.filter((column) => column.key === 1).map((column) => column.name) })),
+    [{ name: "reader_report_by_visitor", columns: ["visitor_hash", "received_at"] }],
+  );
+  assert.deepEqual(
+    rows(db, "PRAGMA table_xinfo(reader_report)")
+      .filter((column) => ERASABLE_COLUMNS.includes(String(column.name)))
+      .map(({ name, notnull }) => ({ name, notnull })),
+    [
+      { name: "details", notnull: 0 },
+      { name: "visitor_hash", notnull: 0 },
+    ],
+  );
+  assert.deepEqual(rows(db, "SELECT report_id, details, visitor_hash, outcome FROM reader_report ORDER BY report_id"), [
+    { report_id: 1, details: null, visitor_hash: VISITOR, outcome: "Fixed." },
+    { report_id: 2, details: "Still waiting.", visitor_hash: VISITOR, outcome: null },
+    { report_id: 3, details: "", visitor_hash: VISITOR, outcome: null },
+  ]);
+
+  const insert = (choice: string, details: string, visitor: string, answer = "NULL, NULL, NULL") =>
+    `INSERT INTO reader_report (release_id, word, choice, details, visitor_hash, received_at, outcome, reviewed_at, reviewed_by)
+     VALUES ('it-0c432803', 'casa', '${choice}', ${details}, ${visitor}, '2026-10-04T12:00:00.000Z', ${answer})`;
+  const ANSWER = "'Fixed.', '2026-10-04T13:00:00.000Z', 'huey'";
+  const refused: [string, string][] = [
+    ["an answered report that keeps its note", insert("form", "'Kept.'", "NULL", ANSWER)],
+    ["an answered missing word that keeps an empty note", insert("missing", "''", "NULL", ANSWER)],
+    ["a waiting report with no note", insert("form", "NULL", `'${VISITOR}'`)],
+    ["a waiting report with an empty note", insert("form", "''", `'${VISITOR}'`)],
+    ["a waiting missing word with no note", insert("missing", "NULL", `'${VISITOR}'`)],
+    ["a waiting report with a note over 2,000 characters", insert("form", `'${"x".repeat(2001)}'`, `'${VISITOR}'`)],
+    ["a visitor code that is not a SHA-256", insert("form", "'A note.'", "'h'")],
+  ];
+  for (const [what, sql] of refused) assert.throws(() => db.exec(sql), /CHECK constraint failed/, what);
+  db.exec(insert("form", "'A note.'", "NULL"));
+  db.exec(insert("missing", "''", `'${VISITOR}'`));
+  db.exec(insert("other", "NULL", "NULL", ANSWER));
+  assert.equal(rows(db, "SELECT count(*) AS n FROM reader_report")[0]?.n, 6);
 });
 
 test("better-auth's tables are STRICT, keep Lexema's names for the columns other code reads, and are what an owned key's owner is", () => {

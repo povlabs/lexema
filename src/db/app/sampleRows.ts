@@ -102,7 +102,8 @@ const ROWS: SampleRowsByTable = {
     lineNo: 1,
     lineSha256: SHA256_B,
     choice: "meaning",
-    details: "sample report",
+    // Answered, so its note is erased: one row cannot hold both a note and an answer.
+    details: null,
     visitorHash: SHA256_A,
     receivedAt: "2026-10-01T00:00:00.000Z",
     outcome: "sample answer",
