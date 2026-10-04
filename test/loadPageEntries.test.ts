@@ -257,6 +257,59 @@ test("a dictionary seeded before the tables, with a feed applied and records hid
   }
 });
 
+test("entries loaded before entry_fact gain only their facts, and every other row stays as it was (#439, #440)", async () => {
+  const db = await liveShaped("before-facts");
+  const fresh = await seeded("fresh-facts", true);
+  try {
+    const reader = readerOf(db);
+    const spelled = await archiveWords(archive);
+    const found = await findPageEntries(PAGES, spelled);
+    execute(db, masterUpgradeSql(await readFile(SCHEMA, "utf8")));
+    execute(db, planPageEntries(reader, found, CURATED_CORRECTIONS).sql);
+    // The shared dictionary as the loads of #440 and #477 left it: every entry held, no entry_fact table.
+    db.exec("DROP TABLE entry_fact");
+    const before = snapshot(db);
+
+    const plan = planPageEntries(reader, found, CURATED_CORRECTIONS);
+    const withFacts = found.filter((entry) => entry.facts.length > 0);
+    assert.ok(withFacts.length > 0 && withFacts.length < found.length, "the fixture has entries with facts and without");
+    assert.deepEqual(
+      plan.entries.map((planned) => [planned.entry.page.title, planned.state]),
+      found.map((entry) => [entry.page.title, entry.facts.length > 0 ? "facts" : "already"]),
+    );
+    const factCount = found.reduce((sum, entry) => sum + entry.facts.length, 0);
+    assert.deepEqual(plan.counts.toJSON(), new PlanCounts({ added: 0, changed: 0, removed: 0 }, { entry_fact: factCount }, {}).toJSON());
+    assert.deepEqual(plan.corrections, []);
+    assert.doesNotMatch(plan.sql, /\bCREATE\b|\bDELETE\b/i);
+    assert.match(plan.entries.map(describePlannedEntry).join("\n"), /raccontare .*: entry \d+, already written; its \d+ fact\(s\) written/);
+
+    // The upgrade creates entry_fact empty; the plan is the same after it.
+    assert.deepEqual(missingForLoad(reader), ["entry_fact"]);
+    execute(db, masterUpgradeSql(await readFile(SCHEMA, "utf8")));
+    const upgraded = planPageEntries(reader, found, CURATED_CORRECTIONS);
+    assert.deepEqual(upgraded.counts.toJSON(), plan.counts.toJSON());
+    assert.equal(upgraded.sql, plan.sql);
+    execute(db, plan.sql);
+    assert.deepEqual(unloaded(reader, plan), []);
+
+    // Only entry_fact gained rows; every other row, source_record_json included, is unchanged.
+    const after = snapshot(db);
+    for (const [table, rows] of before) assert.deepEqual(after.get(table), rows, table);
+    assert.deepEqual([...after.keys()].filter((table) => !before.has(table)), ["entry_fact"]);
+    assert.equal(after.get("entry_fact")?.length, factCount);
+    // Each entry now holds what a fresh seed writes for it, facts included.
+    for (const word of LOADED) assert.deepEqual(entryRows(db, word), entryRows(fresh, word), word);
+
+    // A second run plans nothing.
+    const again = planPageEntries(reader, found, CURATED_CORRECTIONS);
+    assert.equal(again.sql, "");
+    assert.equal(again.counts, PlanCounts.NONE);
+  } finally {
+    db.close();
+    fresh.close();
+  }
+});
+
 /**
  * `recovered_entry` as #440 created it on the shared dictionary, verbatim from
  * src/db/schema.sql before ADR 0028: rule v1's verbs, one entry per word.
@@ -532,15 +585,31 @@ test("the deployed rule v1 declaration pinned the counts of the 14 the measureme
   assert.equal(declaration.expected.deleted, undefined);
 });
 
-test("the committed rule v2 declaration loads the master's entries under both rules, on top of rule v1's", async () => {
-  const declaration = await readDeclaration("dictionary-changes/2026-10-03-load-page-entries-v2-it-0c432803.json");
-  assert.ok(declaration.command === "load:page-entries");
-  assert.equal(declaration.inputs.archive, `it-${PUBLISHED_ARCHIVE_SHA256.slice(0, 8)}`);
-  assert.deepEqual([...declaration.inputs.rules], [...PAGE_ENTRY_RULES]);
+test("the deployed rule v2 declaration loaded the master's entries under both rules, on top of rule v1's", async () => {
+  // Deployed by #477 and never read again (src/deploy/pending.ts reads only added files), so it is
+  // read as JSON: the command now applies the fact rule too, and its parser refuses a rule set without it.
+  const declaration = JSON.parse(await readFile("dictionary-changes/2026-10-03-load-page-entries-v2-it-0c432803.json", "utf8")) as {
+    inputs: { archive: string; rules: string[] };
+    expected: { records: unknown; written: Record<string, number> };
+  };
+  assert.deepEqual(declaration.inputs, { archive: `it-${PUBLISHED_ARCHIVE_SHA256.slice(0, 8)}`, rules: [PAGE_ENTRY_RULE, PAGE_ENTRY_RULE_V2] });
   assert.deepEqual(declaration.expected.records, { added: 0, changed: 0, removed: 0 });
   // Rule v1's 14 entries and their two corrected definitions are held already: the load writes no correction.
   assert.equal(declaration.expected.written.corrected_definition, undefined);
   // A page gives one raw_page row and at least one entry.
   const { raw_page: pages = 0, recovered_entry: entries = 0 } = declaration.expected.written;
   assert.ok(pages > 0 && entries >= pages);
+});
+
+test("the committed fact backfill declaration writes entry_fact rows and nothing else", async () => {
+  const declaration = await readDeclaration("dictionary-changes/2026-10-04-load-page-entry-facts-it-0c432803.json");
+  assert.ok(declaration.command === "load:page-entries");
+  assert.equal(declaration.inputs.archive, `it-${PUBLISHED_ARCHIVE_SHA256.slice(0, 8)}`);
+  assert.deepEqual([...declaration.inputs.rules], [...PAGE_ENTRY_RULES]);
+  // Every entry is held already: no record, page, entry, correction or search row is written or deleted.
+  const { records, written, deleted } = declaration.expected.toJSON();
+  assert.deepEqual(records, { added: 0, changed: 0, removed: 0 });
+  assert.deepEqual(Object.keys(written), ["entry_fact"]);
+  assert.ok((written.entry_fact ?? 0) > 0);
+  assert.deepEqual(deleted, {});
 });

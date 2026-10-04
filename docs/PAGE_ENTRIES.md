@@ -130,9 +130,11 @@ before these entries the rows a seed now writes for them, with no reseed:
 - An entry already held, by its word and the page line that states its part
   of speech, is left alone. Rule v2 reads every page rule v1 recovers as
   rule v1 still, so a dictionary loaded under rule v1 alone keeps those
-  entries and gains only rule v2's. An entry held before `entry_fact` gains
-  no fact either: giving the shared dictionary's held entries their facts is
-  [#440](https://github.com/povlabs/lexema/issues/440)'s rollout.
+  entries and gains only rule v2's. An entry held with no `entry_fact` row,
+  loaded before [the other fields](#the-other-fields), gains the facts rule
+  `italian-page-facts/v1` reads off the same revision, and nothing else: its
+  other rows, its page, its corrections and its word's search rows stay as
+  they are. A declaration names all three rules.
 - A word's key is ranked by its lemma records and the definitions of all its
   page-only entries together, as the seed ranks it. A page whose title differs
   from a record's only in case, such as `Aglio`, adds to that record's key.
@@ -169,6 +171,17 @@ The shared dictionary took a record of each from the September feed
 as it should. Each record gives the word the same definition the page does
 ([the check](../reports/2026-10-04-page-entry-gap.md)).
 
+Those 200 entries were loaded before `entry_fact`. A third load gives them
+their facts
+([its declaration](../dictionary-changes/2026-10-04-load-page-entry-facts-it-0c432803.json),
+[#439](https://github.com/povlabs/lexema/issues/439)): 1,524 `entry_fact`
+rows for 176 entries, and no other row. The other 24 entries' pages give no
+fact. The count comes from a plan of the command on a local twin of the shared
+dictionary: a full seed, the September feed `it-78385b62` applied, and
+`entry_fact` dropped. It is the same before and after the upgrade creates
+`entry_fact`. The three entries a feed record spells hold 5 more facts in a
+local seed, and the load skips them.
+
 ### On the shared dictionary
 
 The [dictionary deploy](DEPLOY.md#the-dictionary-deploy) runs the command when a
@@ -191,7 +204,10 @@ it against a local D1 only. One run does both halves, in this order:
 
 Until step 2, the Worker already deployed keeps serving. A Worker from before
 #438 never names the tables, so it answers as before; a later one shows the
-entries as soon as step 1 commits.
+entries as soon as step 1 commits. The facts follow the same order: the
+upgrade creates `entry_fact` empty in step 1, before the rows. A Worker from
+before #439 never names `entry_fact`, so it shows the definitions alone until
+step 2 uploads one that reads it.
 
 To undo the load, restore the bookmark the deploy run names, with the command
 in its summary ([the dictionary deploy](DEPLOY.md#the-dictionary-deploy)). The
