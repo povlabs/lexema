@@ -25,7 +25,7 @@ import { everyRecovered, type FoundResult, type LookupResult, type Reading } fro
 import { ApplyRefused, checkApplied, chooseChanges, missingForApply, planApply, type ApplyPlan } from "../src/update/apply.js";
 import type { Change } from "../src/update/changes.js";
 import { diffAgainstMaster, reportMarkdown, reportOf, type MasterDiff } from "../src/update/diff.js";
-import { changedUpgrade, missingUpgrade, planUpgrade, rebuildsOf, upgradeShortfall, type MasterReader } from "../src/update/master.js";
+import { changedUpgrade, changedViews, missingUpgrade, planUpgrade, rebuildsOf, upgradeShortfall, type MasterReader } from "../src/update/master.js";
 import { overlongPatterns, sqlPatterns } from "../src/db/d1PatternLimit.js";
 import {
   columnsOf,
@@ -729,6 +729,71 @@ test("a rebuild whose rows the new definition refuses stops whole, and the dicti
     assert.equal((db.prepare("SELECT count(*) AS n FROM recovered_entry").get() as { n: number }).n, 1);
     assert.deepEqual(upgradeShortfall(readerOf(db), schema, plan), ["the upgrade left recovered_entry unlike schema.sql's definition"]);
   });
+});
+
+/** Every row of every table, by table name: what a view-only upgrade must leave as it was. */
+function tableRows(db: DatabaseSync): string {
+  const tables = db.prepare("SELECT name FROM sqlite_schema WHERE type = 'table' AND name NOT LIKE 'sqlite_%' ORDER BY name").all().map((row) => String(row.name));
+  return JSON.stringify(tables.map((table) => [table, (db.prepare(`SELECT * FROM ${table}`).all() as object[]).map((row) => JSON.stringify(row)).sort()]));
+}
+
+/** The `sql` sqlite_schema stores for `name`. */
+const storedSqlOf = (db: DatabaseSync, name: string): string => String((db.prepare("SELECT sql FROM sqlite_schema WHERE name = ?").get(name) as { sql: string }).sql);
+
+test("a master storing an older serving view gets schema.sql's from the upgrade, which replaces the views and rebuilds no table (#525)", async () => {
+  await withDesk(async ({ db }) => {
+    const schema = await readFile(SCHEMA, "utf8");
+    const current = createStatement(schema, "VIEW", "surface_hit");
+    const older = current.replace(/^\s*lf\.form_source,\n/m, "");
+    assert.notEqual(older, current);
+    db.exec("DROP VIEW surface_hit");
+    db.exec(older);
+    const before = tableRows(db);
+
+    const plan = planUpgrade(readerOf(db), schema);
+    assert.deepEqual(plan.missing, []);
+    assert.deepEqual(plan.changed, []);
+    assert.deepEqual(plan.replaced, ["surface_hit"]);
+    assert.deepEqual(plan.kept, []);
+    assert.match(plan.sql, /DROP VIEW IF EXISTS surface_hit;/);
+    assert.match(plan.sql, /CREATE VIEW surface_hit AS/);
+    assert.doesNotMatch(plan.sql, /DROP TABLE/);
+    assert.doesNotMatch(plan.sql, /upgrade_kept_/);
+    // Before the SQL runs, the read-back names the view it left unlike schema.sql's.
+    assert.deepEqual(upgradeShortfall(readerOf(db), schema, plan), ["the upgrade left the view surface_hit unlike schema.sql's definition"]);
+
+    execute(db, plan.sql);
+    assert.equal(definitionOf(storedSqlOf(db, "surface_hit")), definitionOf(current));
+    assert.deepEqual(changedViews(readerOf(db), schema), []);
+    assert.deepEqual(upgradeShortfall(readerOf(db), schema, plan), []);
+    assert.equal(planUpgrade(readerOf(db), schema).sql, "");
+    assert.equal(tableRows(db), before);
+  });
+});
+
+test("a fresh seed, and serving views that differ from schema.sql's only in comments and spacing, get no upgrade (#525)", async () => {
+  const schema = await readFile(SCHEMA, "utf8");
+  const db = new DatabaseSync(":memory:");
+  try {
+    db.exec(schema);
+    assert.deepEqual(changedViews(readerOf(db), schema), []);
+    assert.equal(planUpgrade(readerOf(db), schema).sql, "");
+
+    for (const view of [...SERVING_VIEWS].reverse()) db.exec(`DROP VIEW ${view}`);
+    for (const view of SERVING_VIEWS) {
+      const stated = createStatement(schema, "VIEW", view);
+      const respaced = stated
+        .replaceAll(/--[^\n]*\n/g, "\n")
+        .replaceAll(/\s+/g, "   ")
+        .replace(/\bAS\b/, "AS -- written by an older schema.sql\n /* with other spacing */");
+      db.exec(respaced);
+      assert.notEqual(storedSqlOf(db, view), stated.replace(/;\s*$/, ""), view);
+    }
+    assert.deepEqual(changedViews(readerOf(db), schema), []);
+    assert.equal(planUpgrade(readerOf(db), schema).sql, "");
+  } finally {
+    db.close();
+  }
 });
 
 // Synthetic releases exercise sequential corrections/removal, not upstream extraction.

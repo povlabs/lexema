@@ -163,8 +163,11 @@ counts 186 entries on 169 pages to write
 ([its declaration](../dictionary-changes/2026-10-03-load-page-entries-v2-it-0c432803.json),
 [plan run](https://github.com/povlabs/lexema/actions/runs/37157579692)).
 That is three entries, each of one definition, fewer than the local seed
-reads. Which three, and why, is
-[#539](https://github.com/povlabs/lexema/issues/539).
+reads: `antico nordico`, `orecchioni` and `piangere sul latte versato`.
+The shared dictionary took a record of each from the September feed
+`it-78385b62`, so a record spells their titles there and the load skips them,
+as it should. Each record gives the word the same definition the page does
+([the check](../reports/2026-10-04-page-entry-gap.md)).
 
 ### On the shared dictionary
 

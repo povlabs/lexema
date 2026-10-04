@@ -8,12 +8,14 @@
 // 3. Record a D1 Time Travel bookmark, the restore point, and tell it to the
 //    log at once, before anything is written.
 // 4. Run the upgrade (src/update/masterUpgrade.ts) when the dictionary lacks a
-//    table, index or view it creates, stores a page-entry table or index
-//    unlike schema.sql's, or a `hidden_record` from before #389: DDL as its
-//    own batch, before any data, so no declaration's SQL carries DDL (#507,
-//    #509) and a later schema change reaches the live tables. Then read back
-//    that nothing is missing, nothing differs and every rebuilt table kept its
-//    rows.
+//    table, index or view it creates, stores a rebuilt table or index unlike
+//    schema.sql's, such as a `hidden_record` from before #389, or stores a
+//    serving view unlike schema.sql's: DDL as its own batch, before any data,
+//    so no declaration's SQL carries DDL (#507, #509) and a later schema
+//    change reaches the live tables and views. A changed table is rebuilt
+//    with its rows; a changed view is replaced, which rebuilds no table
+//    (#525). Then read back that nothing is missing, nothing differs and
+//    every rebuilt table kept its rows.
 // 5. For each declaration, oldest first: plan it, hold the plan's counts to
 //    the declared ones and to the hard limits, run its SQL, read it back.
 // 6. Look up a fixed word list in the dictionary written (wordCheck.ts).
@@ -82,16 +84,18 @@ export interface DeployedChange {
 
 /**
  * What the upgrade step did: the tables, indexes and views it created, the
- * definitions that differed from schema.sql's, and the tables it rebuilt for
- * them, keeping their rows. All are empty when it ran nothing.
+ * table and index definitions that differed from schema.sql's, the tables it
+ * rebuilt for them, keeping their rows, and the serving views it replaced
+ * because theirs differed. All are empty when it ran nothing.
  */
 export interface UpgradeDone {
   readonly added: readonly string[];
   readonly changed: readonly string[];
   readonly rebuilt: readonly string[];
+  readonly replaced: readonly string[];
 }
 
-const NO_UPGRADE: UpgradeDone = { added: [], changed: [], rebuilt: [] };
+const NO_UPGRADE: UpgradeDone = { added: [], changed: [], rebuilt: [], replaced: [] };
 
 /**
  * How a run ended. A red run that wrote holds the bookmark it wrote after, so
@@ -156,11 +160,17 @@ export async function deployDictionary(deps: DeployDeps): Promise<DeployOutcome>
       const upgrade = planUpgrade(deps.reader, schema);
       step(
         "upgrade",
-        upgrade.sql === "" ? "nothing missing or changed" : [...upgrade.missing.map((name) => `add ${name}`), ...upgrade.changed.map((name) => `rebuild for ${name}`)].join(", "),
+        upgrade.sql === ""
+          ? "nothing missing or changed"
+          : [
+              ...upgrade.missing.map((name) => `add ${name}`),
+              ...upgrade.changed.map((name) => `rebuild for ${name}`),
+              ...upgrade.replaced.map((name) => `replace view ${name}`),
+            ].join(", "),
       );
       if (upgrade.sql !== "") {
         await run(upgrade.sql, "upgrade");
-        upgraded = { added: upgrade.missing, changed: upgrade.changed, rebuilt: upgrade.kept.map(({ name }) => name) };
+        upgraded = { added: upgrade.missing, changed: upgrade.changed, rebuilt: upgrade.kept.map(({ name }) => name), replaced: upgrade.replaced };
         const shortfall = upgradeShortfall(deps.reader, schema, upgrade);
         if (shortfall.length > 0) return red(shortfall);
       }
@@ -242,9 +252,10 @@ const changesTable = (changes: readonly DeployedChange[]): string[] =>
 
 const named = (names: readonly string[]): string => names.map((name) => `\`${name}\``).join(", ");
 
-const upgradeLine = ({ added, changed, rebuilt }: UpgradeDone): string[] => [
+const upgradeLine = ({ added, changed, rebuilt, replaced }: UpgradeDone): string[] => [
   ...(added.length === 0 ? [] : ["", `The upgrade ran first and added ${named(added)}.`]),
   ...(rebuilt.length === 0 ? [] : ["", `The upgrade ran first and rebuilt ${named(rebuilt)}, keeping their rows, for the changed definition of ${named(changed)}.`]),
+  ...(replaced.length === 0 ? [] : ["", `The upgrade ran first and replaced the view(s) ${named(replaced)} with schema.sql's definition. A view holds no rows, so no table was rebuilt for it.`]),
 ];
 
 /** The run's summary, as Markdown for the GitHub job summary. */
