@@ -98,7 +98,10 @@ export const BATCH_ARCHIVE_LEMMA_LINK_SQL: DictionaryRead = `SELECT e.record_id,
       WHERE e.record_id IN (SELECT value FROM json_each(?1)) AND e.release_id IN (${servedBy("?2")})
       ORDER BY e.record_id, e.edge_id, t.line_no`;
 
-/** `BATCH_ARCHIVE_LEMMA_LINK_SQL`, with the page-only entry a dangling target names. */
+/**
+ * `BATCH_ARCHIVE_LEMMA_LINK_SQL`, with the page-only entries a dangling target
+ * names, in `entry_id` order as `PAGE_ENTRY_SQL` (src/lookup/pageEntry.ts) reads them.
+ */
 export const BATCH_LEMMA_LINK_SQL: DictionaryRead = `SELECT e.record_id, e.edge_id,
             t.record_id   AS candidate_record_id,
             p.entry_id AS candidate_entry_id,
@@ -121,7 +124,7 @@ export const BATCH_LEMMA_LINK_SQL: DictionaryRead = `SELECT e.record_id, e.edge_
                         AND present.surface_key = p.word_key AND present.origin = 'headword')
        LEFT JOIN raw_page page ON page.page_id = p.page_id
       WHERE e.record_id IN (SELECT value FROM json_each(?1)) AND e.release_id IN (${servedBy("?2")})
-      ORDER BY e.record_id, e.edge_id, t.line_no`;
+      ORDER BY e.record_id, e.edge_id, t.line_no, p.entry_id`;
 
 interface HitRow {
   surface_key: string;
@@ -224,7 +227,16 @@ function eachOnce(records: readonly CandidateRecord[]): CandidateRecord[] {
   return records.filter((record) => !seen.has(candidateKey(record)) && seen.add(candidateKey(record)));
 }
 
-const inSourceOrder = (matches: Iterable<Match>): Match[] => [...matches].sort((a, b) => (a.record.lineNo ?? Number.MAX_SAFE_INTEGER) - (b.record.lineNo ?? Number.MAX_SAFE_INTEGER));
+/**
+ * Archive records by source line, then page-only entries, which have no line,
+ * in `entry_id` order as `PAGE_ENTRY_SQL` (src/lookup/pageEntry.ts) reads them.
+ */
+const inSourceOrder = (matches: Iterable<Match>): Match[] =>
+  [...matches].sort(
+    (a, b) =>
+      (a.record.lineNo ?? Number.MAX_SAFE_INTEGER) - (b.record.lineNo ?? Number.MAX_SAFE_INTEGER) ||
+      (a.record.entryId ?? 0) - (b.record.entryId ?? 0),
+  );
 
 /**
  * The candidates of a word something spells, as `found` and `candidatesOf`
