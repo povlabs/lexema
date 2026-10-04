@@ -1,7 +1,8 @@
-// The sweep (ADR 0018): on each merge to `main`, before production deploys,
-// delete the Preview and app database of every branch with no open pull
-// request. A merged pull request is cleaned up at its own merge; one closed
-// without merging, at the next merge.
+// The sweep (ADR 0018): on each push to `production`, before production
+// deploys, delete the Preview and app database of every branch with no open
+// pull request. A merged pull request is cleaned up at the production build
+// that follows its merge; one closed without merging, at the next production
+// build.
 //
 // Which branches still have an open pull request is read from GitHub's REST
 // API: the build itself sees no pull request state (#238 R3.2). The repository
