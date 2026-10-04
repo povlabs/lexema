@@ -17,7 +17,8 @@ import { BATCH_LEMMA_LINK_SQL, BATCH_SEARCH_SQL, lookupBatch, type BatchAnswer }
 import { fromNodeSqlite, type DictionaryRead, type LookupDatabase } from "../../src/lookup/database.js";
 import { lookup } from "../../src/lookup/lookup.js";
 import { OPTIONAL_TABLES_SQL } from "../../src/lookup/served.js";
-import type { LemmaTarget } from "../../src/lookup/types.js";
+import { entryKey, type LemmaTarget } from "../../src/lookup/types.js";
+import { loadFixturePages, rawPageSource } from "../../src/source/rawPage.js";
 import { candidatesOf } from "@/worker/api/lookupAnswer.ts";
 
 const REPO = fileURLToPath(new URL("../..", import.meta.url));
@@ -163,4 +164,62 @@ test("the batch's search and lemma-link reads stay on indexes rather than scanni
   const links = plan(BATCH_LEMMA_LINK_SQL, JSON.stringify([1, 2]));
   assert.ok(!links.some((step) => /MATERIALIZE|SCAN lookup_form|SCAN form_of_edge/.test(step)), links.join("\n"));
   assert.ok(links.some((step) => step.includes("form_of_edge_by_record")), links.join("\n"));
+});
+
+test("a word's page-only entries come in entry_id order, as the single lookup reads them, heading the query or through a form", async () => {
+  // `lungo` has no Italian record; its page gives an Aggettivo, then a
+  // Preposizione (ADR 0028). Archive line 93815, `lunga`, is a form of it.
+  const pageDir = await mkdtemp(join(tmpdir(), "lexema-batch-pages-"));
+  const pageDb = new DatabaseSync(":memory:");
+  try {
+    const releaseId = "it-batch-page-test";
+    const pages = await loadFixturePages(join(REPO, "fixtures"));
+    const lungo = pages.page("lungo");
+    assert.ok(lungo);
+    const { parts } = await seedSql({
+      input: join(REPO, "fixtures/page-entry-v2-forms.jsonl"),
+      outputDir: join(pageDir, "sql"),
+      schema: join(REPO, "src/db/schema.sql"),
+      releaseId,
+      rawPages: rawPageSource([lungo]),
+    });
+    for (const part of parts) pageDb.exec(await readFile(part, "utf8"));
+    const read = fromNodeSqlite(pageDb);
+
+    const entries = pageDb.prepare("SELECT entry_id, pos FROM recovered_entry WHERE word = 'lungo' ORDER BY entry_id").all() as { entry_id: number; pos: string }[];
+    assert.deepEqual(entries.map((entry) => entry.pos), ["adj", "prep"]);
+    const [adj, prep] = entries.map((entry) => `page-${entry.entry_id}`);
+
+    // The single path: a whole lookup of the word, and of each lemma a form-of reading names.
+    const single = async (word: string): Promise<string[]> => {
+      const result = await lookup({ db: read, releaseId, query: word });
+      assert.ok(result.outcome === "found", word);
+      const readLemma = async (target: LemmaTarget) => {
+        const lemma = await lookup({ db: read, releaseId, query: target.word });
+        return lemma.outcome === "found" ? lemma.readings.find((reading) => entryKey(reading) === entryKey(target)) : undefined;
+      };
+      return (await candidatesOf(result, readLemma)).map(({ reading }) => entryKey(reading));
+    };
+
+    const words = ["lungo", "lunga"];
+    const { answers } = await lookupBatch({ db: read, releaseId, queries: words });
+    const batch = answers.map((answer) => {
+      assert.ok(answer.outcome === "found");
+      return answer.candidates.map((candidate) => (candidate.recordId === undefined ? `page-${candidate.entryId}` : String(candidate.recordId)));
+    });
+
+    const lunga = pageDb.prepare("SELECT record_id FROM source_record WHERE word = 'lunga'").get() as { record_id: number };
+    // The word itself: the form whose table spells it, then both entries, the adjective first.
+    assert.deepEqual(batch[0], [String(lunga.record_id), adj, prep]);
+    // Its form reaches it through `form_of`; the form's part of speech keeps the adjective.
+    assert.deepEqual(batch[1], [adj]);
+    for (const [at, word] of words.entries()) assert.deepEqual(batch[at], await single(word), word);
+
+    // The form's edge itself names both entries, in entry_id order.
+    const links = pageDb.prepare(BATCH_LEMMA_LINK_SQL).all(JSON.stringify([lunga.record_id]), releaseId) as { candidate_entry_id: number }[];
+    assert.deepEqual(links.map((link) => `page-${link.candidate_entry_id}`), [adj, prep]);
+  } finally {
+    pageDb.close();
+    await rm(pageDir, { recursive: true, force: true });
+  }
 });
