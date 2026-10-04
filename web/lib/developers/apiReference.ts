@@ -16,7 +16,7 @@ import { MAX_QUERY_LENGTH } from "@lexema/lookup/lookup.ts";
 import { MIN_PREFIX_LENGTH, SUGGESTION_LIMIT } from "@lexema/lookup/suggest.ts";
 import { SECTION_KEY } from "@/worker/api/lookupAnswer.ts";
 import { GRAMMAR_CODES, MATCHES, PARTS_OF_SPEECH, POS_ALIASES, SECTIONS, type Match } from "@/worker/api/lookupFilters.ts";
-import type { SiteOrigins } from "@/worker/hosts.ts";
+import type { SiteOrigins } from "@/worker/shared/hosts.ts";
 
 /** Where every endpoint lives, on the API host the page names (#266): `https://api.lexema.fyi/v1` live. */
 export const apiBaseOf = (origins: SiteOrigins): string => `${origins.api}${API_PREFIX.slice(0, -1)}`;

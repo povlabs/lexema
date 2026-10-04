@@ -1,5 +1,5 @@
 // What the dashboard's pages read (#169, #190): the signed-in account's view
-// and the session's CSRF token, or a trip to sign-in. worker/dashboard.ts sends
+// and the session's CSRF token, or a trip to sign-in. worker/developers/dashboard.ts sends
 // a visitor without a session to sign-in before either page runs; the check
 // here covers any request that reaches one anyway.
 //
@@ -14,9 +14,9 @@ import { accountPlan } from "@lexema/billing/accountPlan.ts";
 import type { Serving } from "@lexema/billing/plans.ts";
 import { redirect } from "next/navigation";
 import { accountMeterOf } from "@/worker/api/metering.ts";
-import { csrfTokenOf, SIGN_IN_PAGE } from "@/worker/dashboard.ts";
-import type { SiteOrigins } from "@/worker/hosts.ts";
-import { signedInAccount } from "@/worker/signIn.ts";
+import { csrfTokenOf, SIGN_IN_PAGE } from "@/worker/developers/dashboard.ts";
+import type { SiteOrigins } from "@/worker/shared/hosts.ts";
+import { signedInAccount } from "@/worker/developers/signIn.ts";
 import { dashboardView, periodUsageOf, settingsView, type DashboardView, type PeriodUsage, type SettingsView } from "./dashboardView.ts";
 import { appDatabase } from "@/lib/shared/database.ts";
 

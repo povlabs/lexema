@@ -23,7 +23,7 @@ development, with the placeholder D1 that `pnpm run seed:dev` fills.
 | Setting | Production |
 |---|---|
 | Worker | `lexema-web` |
-| Address | the custom domains `lexema.fyi`, `developers.lexema.fyi` and `api.lexema.fyi` only, told apart by host (`web/worker/hosts.ts`) |
+| Address | the custom domains `lexema.fyi`, `developers.lexema.fyi` and `api.lexema.fyi` only, told apart by host (`web/worker/shared/hosts.ts`) |
 | Stage | `LEXEMA_STAGE` is `production` ([below](#the-preview-only-domains)) |
 | `workers_dev`, `preview_urls` | both off |
 | D1 | none yet, so a search shows the failed-lookup state; attaching it is #19 |
@@ -157,7 +157,7 @@ alone, never from the top level or `env.production`:
 
 | Setting | Preview |
 |---|---|
-| `LEXEMA_STAGE` | `preview`, so every response the Worker gives carries `X-Robots-Tag: noindex` (`web/worker/stage.ts`); static assets, which never reach the Worker, get it from `web/public/_headers` |
+| `LEXEMA_STAGE` | `preview`, so every response the Worker gives carries `X-Robots-Tag: noindex` (`web/worker/shared/stage.ts`); static assets, which never reach the Worker, get it from `web/public/_headers` |
 | `LEXEMA_RELEASE` | `it-0c432803` |
 | `DB` | the shared dictionary D1 `lexema-dictionary`, which code only reads |
 | `APP_DB` | `<REPLACE_ME>`, which the [Preview command](#the-preview-command) replaces with the branch's own app D1; `wrangler preview` refuses to run while it is there |
@@ -895,7 +895,7 @@ No agent does any of them.
 ## Turn on sign-in
 
 The developer site signs in with Google and GitHub, on better-auth
-(`web/worker/signIn.ts`, [ADR 0017](../.decisions/0017-better-auth-and-drizzle-own-accounts.md)).
+(`web/worker/developers/signIn.ts`, [ADR 0017](../.decisions/0017-better-auth-and-drizzle-own-accounts.md)).
 A provider stays unavailable, and its sign-in route answers 503, until its
 client id and its secret are set, and so is `BETTER_AUTH_SECRET`, which signs
 the session cookie. None of them is in the repository.
@@ -935,7 +935,7 @@ callback answers 503.
 
 Starter and Pro are paid through Stripe, on better-auth's Stripe plugin
 (`src/accounts/billing.ts`, [#262](https://github.com/povlabs/lexema/issues/262)).
-The developer site's billing routes (`web/worker/billing.ts`,
+The developer site's billing routes (`web/worker/developers/billing.ts`,
 [#264](https://github.com/povlabs/lexema/issues/264)) send a developer to
 Stripe Checkout and to Stripe's billing portal. Its webhook keeps each
 account's `subscription` row in step with Stripe: for each event below it
@@ -1042,7 +1042,7 @@ link to `/dashboard/settings` (`src/email/accountEmail.ts`):
 | Your Lexema account is deleted | the developer deleted their account |
 
 Each is sent once per change. The plan emails are sent by the webhook
-(`web/worker/stripeWebhook.ts`) after it writes the subscription's row: it
+(`web/worker/developers/stripeWebhook.ts`) after it writes the subscription's row: it
 compares Stripe's current state with the `plan_notice` row, which holds what
 the account was last emailed about, and moving that row is what claims the
 email (`src/billing/planNotice.ts`). So a replayed or late event, or two

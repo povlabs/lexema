@@ -12,7 +12,7 @@
 //
 // Everything here is decided from the page's own lookup, so a card never
 // reads the database more than the page does. How it is drawn is
-// web/worker/card/draw.tsx; where it is served is web/worker/card.ts.
+// web/worker/dictionary/card/draw.tsx; where it is served is web/worker/dictionary/card.ts.
 
 import type { Attempt } from "./attempt.ts";
 import { definitionsOf, type DefinitionItem } from "./definitions.ts";

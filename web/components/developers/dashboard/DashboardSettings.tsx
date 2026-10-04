@@ -19,7 +19,7 @@ import { DashboardTabs } from "./DashboardTabs";
 import type { PlanSection, SettingsView } from "@/lib/developers/dashboardView.ts";
 import { ChoosePlanForm, ManageBillingForm } from "@/components/developers/BillingForms";
 import { DeleteAccountControl } from "./DeleteAccountDialog";
-import type { SiteOrigins } from "@/worker/hosts.ts";
+import type { SiteOrigins } from "@/worker/shared/hosts.ts";
 import { DeveloperPage } from "@/components/developers/DeveloperPage";
 import {
   ACCOUNT_DETAIL,

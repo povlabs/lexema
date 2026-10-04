@@ -43,7 +43,7 @@ To replace a face with a newer release, see [REFRESH.md](REFRESH.md).
 
 A shared link's card ([#304](https://github.com/povlabs/lexema/issues/304)) is
 drawn inside the Worker by Satori, which reads TrueType, OpenType and WOFF but not
-WOFF2 ([`../worker/card/draw.tsx`](../worker/card/draw.tsx)). So `card/` holds the
+WOFF2 ([`../worker/dictionary/card/draw.tsx`](../worker/dictionary/card/draw.tsx)). So `card/` holds the
 same families again as whole `.woff` files, one per weight and style a card sets:
 Spectral 400 and 400 italic, Inter 400 and 600, IBM Plex Mono 400. They are whole
 fonts, not the two ranges above, because a card is one picture and the Worker
@@ -58,7 +58,7 @@ after download. The requests, verbatim:
 
 Each file keeps its `.woff` name with `.bin` after it: `@cloudflare/vite-plugin`
 bundles a `.bin` import as a Data module, the file's bytes, and has no rule for
-`.woff` ([`../worker/card/desk.ts`](../worker/card/desk.ts)). They are never served
+`.woff` ([`../worker/dictionary/card/desk.ts`](../worker/dictionary/card/desk.ts)). They are never served
 to a browser.
 
 Licences: Spectral and IBM Plex Mono are under the SIL Open Font License 1.1,

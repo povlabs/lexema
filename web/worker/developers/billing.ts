@@ -18,7 +18,7 @@
 //
 // The POSTs need an `Origin` that is this site, and, signed in, the session's
 // CSRF token in the form's `csrf` field, like the dashboard actions
-// (worker/dashboard.ts). A signed-out choice has no session to carry a token
+// (worker/developers/dashboard.ts). A signed-out choice has no session to carry a token
 // for: it changes nothing but its own short-lived cookie, and only a signed-in
 // GET that holds that cookie goes on to Checkout. A refused request changes
 // nothing and starts no Checkout.
@@ -27,7 +27,7 @@
 // `client_reference_id` and the account's Stripe customer, making one on the
 // first Checkout. Without every Stripe setting, `BETTER_AUTH_SECRET` or
 // `APP_DB`, every route answers 503 and logs which is missing, as the webhook
-// does (worker/stripeWebhook.ts).
+// does (worker/developers/stripeWebhook.ts).
 
 import { authSecret, billingAuth, CHECKOUT_RETURN_PATH } from "@lexema/accounts/auth.ts";
 import { billingOf, type Billing, type BillingSetup, type StripeSettings } from "@lexema/accounts/billing.ts";
@@ -38,8 +38,8 @@ import { appTablesOverD1, type AppTables } from "@lexema/db/app/database.ts";
 import { log } from "@lexema/log/requestLog.ts";
 import { CHECKOUT_ACTION, PLAN_FIELD, PORTAL_ACTION, PRICING } from "@/lib/developers/billingActions.ts";
 import { CSRF_FIELD, SETTINGS } from "@/lib/developers/dashboardActions.ts";
-import { DEVELOPERS_SEGMENT, originsOf } from "./hosts.ts";
-import type { FetchHandler } from "./rateLimit.ts";
+import { DEVELOPERS_SEGMENT, originsOf } from "../shared/hosts.ts";
+import type { FetchHandler } from "../shared/fetchHandler.ts";
 import {
   CHOSEN_PLAN_COOKIE,
   CHOSEN_PLAN_SECONDS,

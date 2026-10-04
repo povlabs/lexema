@@ -1,5 +1,5 @@
 // Where the pricing and settings pages' billing buttons post (#264), shared by
-// the Worker that answers them (worker/billing.ts) and the pages (#207, #208).
+// the Worker that answers them (worker/developers/billing.ts) and the pages (#207, #208).
 // Nothing here reaches the database, so the browser loads it.
 //
 // Each is a plain form POST the browser follows: the answer is a 303 to

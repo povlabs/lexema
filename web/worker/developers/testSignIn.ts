@@ -12,15 +12,15 @@
 // a Preview's developer host. On any other stage `withTestSignIn` adds nothing
 // to the Worker at all, and on any other host the path is not this route, so
 // the request goes on to the App Router, which answers it as a missing page.
-// Like the provider sign-in (worker/signIn.ts), it is answered before vinext,
+// Like the provider sign-in (worker/developers/signIn.ts), it is answered before vinext,
 // since it sets a cookie and redirects rather than renders.
 
 import { authSecret } from "@lexema/accounts/auth.ts";
 import { signInTestDeveloper } from "@lexema/accounts/testDeveloper.ts";
-import { DEVELOPERS_SEGMENT, isDeveloperPreviewHost } from "./hosts.ts";
-import type { FetchHandler } from "./rateLimit.ts";
+import { DEVELOPERS_SEGMENT, isDeveloperPreviewHost } from "../shared/hosts.ts";
+import type { FetchHandler } from "../shared/fetchHandler.ts";
 import { afterSignIn, liveContext, redirect, text, type SignInBindings, type SignInContext } from "./signIn.ts";
-import type { Stage } from "./stage.ts";
+import type { Stage } from "../shared/stage.ts";
 
 /** Where the test sign-in is posted, on a Preview's developer host. */
 export const TEST_SIGN_IN = "/sign-in/test-developer";

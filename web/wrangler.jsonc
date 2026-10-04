@@ -69,14 +69,14 @@
     //   the token the 3 s minimum is timed against.
     { "name": "REPORT_OPEN_LIMIT", "namespace_id": "1284", "simple": { "limit": 10, "period": 60 } },
     // - SIGN_IN_LIMIT, 10 sign-in starts a minute on developers.lexema.fyi
-    //   (Huey, #163 R1.2; worker/signIn.ts).
+    //   (Huey, #163 R1.2; worker/developers/signIn.ts).
     { "name": "SIGN_IN_LIMIT", "namespace_id": "1651", "simple": { "limit": 10, "period": 60 } },
     // - KEY_CREATE_LIMIT, 5 key creations a minute on developers.lexema.fyi
-    //   (Huey, #163 R1.2; worker/dashboard.ts).
+    //   (Huey, #163 R1.2; worker/developers/dashboard.ts).
     { "name": "KEY_CREATE_LIMIT", "namespace_id": "1681", "simple": { "limit": 5, "period": 60 } },
     // - BILLING_LIMIT, 5 billing requests a minute on developers.lexema.fyi:
     //   Checkout, the billing portal and Checkout's return, each of which can
-    //   call Stripe (Huey on #296, 2026-10-01; worker/billing.ts).
+    //   call Stripe (Huey on #296, 2026-10-01; worker/developers/billing.ts).
     { "name": "BILLING_LIMIT", "namespace_id": "2961", "simple": { "limit": 5, "period": 60 } },
     // - CALLS_60 and CALLS_300, an API account's calls a minute on the two plan
     //   rates, keyed by account id and shared by all its keys (Huey on #161,
@@ -102,7 +102,7 @@
   "send_email": [{ "name": "EMAIL" }],
   "vars": {
     // Where this Worker runs: local, preview or production (ADR 0018,
-    // worker/stage.ts). Any other value refuses to boot.
+    // worker/shared/stage.ts). Any other value refuses to boot.
     "LEXEMA_STAGE": "local",
     // Which imported release to serve. A deployment flips this to activate a
     // new one; doing that safely is #18.
@@ -198,7 +198,7 @@
   "env": {
     // What runs at https://lexema.fyi, https://developers.lexema.fyi and
     // https://api.lexema.fyi: one Worker, which tells the three apart by host
-    // (worker/hosts.ts). Selected at build time with CLOUDFLARE_ENV=production,
+    // (worker/shared/hosts.ts). Selected at build time with CLOUDFLARE_ENV=production,
     // which `pnpm --filter @lexema/web run deploy:production` sets
     // (docs/DEPLOY.md). Only the custom domains serve it: no workers.dev
     // address and no preview URLs. No D1 binding until #19, so a search there

@@ -27,7 +27,7 @@
 // - each of the three sites serves the site icon (#383): `/favicon.ico` and
 //   `/apple-touch-icon.png` are a 200 with an icon's and a PNG's content type.
 //   They are static assets, answered before the Worker runs, on every host;
-// - every response carries `X-Robots-Tag: noindex` (web/worker/stage.ts), the
+// - every response carries `X-Robots-Tag: noindex` (web/worker/shared/stage.ts), the
 //   icons' from web/public/_headers.
 
 import { type GitHub, hasNoindex, isHead, PreviewAnnouncement, type PreviewSite, restCall, restGitHub, SHA } from "./previewMarkerCommand.ts";
@@ -266,7 +266,7 @@ export type SmokeOutcome =
 /**
  * Ask one probe, again while it gets no answer or a server error. A wrong
  * answer, such as a word with no reading, is final: asking again would only
- * spend the dictionary's search limit (web/worker/rateLimit.ts).
+ * spend the dictionary's search limit (web/worker/shared/rateLimit.ts).
  */
 async function ask(probe: SmokeProbe, steps: SmokeSteps): Promise<ProbeResult> {
   for (let attempt = 1; ; attempt++) {

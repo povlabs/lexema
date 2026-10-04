@@ -21,13 +21,13 @@
 //
 // Drawing a word's card runs the lookup its page runs (searchAttempt.ts), once,
 // and counts against the visitor's search limit as that page does
-// (worker/rateLimit.ts). Over the limit, or when the lookup fails, the answer
+// (worker/shared/rateLimit.ts). Over the limit, or when the lookup fails, the answer
 // is the home card, never cached, so the next request draws the word's.
 // Everything else that is not a word Lexema has gets the home card too.
 
 import { cardAddressOf, cardOf, cardPath, CARD_DRAWING, HOME_CARD, type Card } from "@/lib/dictionary/card.ts";
 import type { Attempt } from "@/lib/dictionary/attempt.ts";
-import type { FetchHandler } from "./rateLimit.ts";
+import type { FetchHandler } from "../shared/fetchHandler.ts";
 
 /** How long a drawn card is kept: a year, since its address changes whenever the card could. */
 const KEPT_SECONDS = 365 * 24 * 60 * 60;

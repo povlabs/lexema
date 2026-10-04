@@ -1,5 +1,5 @@
 // The dashboard's address and its actions' answers (#168, #169, #187),
-// shared by the Worker that answers them (worker/dashboard.ts) and the page
+// shared by the Worker that answers them (worker/developers/dashboard.ts) and the page
 // that sends them. Nothing here reaches the database, so the browser loads it.
 //
 // Every action is a POST of form fields, which the page sends with fetch from
@@ -37,7 +37,7 @@ export const JSON_ANSWER = "application/json";
  * - `refused` (401, 403, 404, 400, 503): why nothing changed.
  *
  * The key-creation limit answers before the action runs: a 429 whose body is
- * the sentence to show (worker/rateLimit.ts).
+ * the sentence to show (worker/developers/limits.ts).
  */
 export type ActionAnswer =
   | { readonly outcome: "created"; readonly key: KeyRow; readonly secret: string }

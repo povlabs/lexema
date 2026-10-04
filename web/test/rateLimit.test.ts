@@ -15,7 +15,7 @@ import { fileURLToPath } from "node:url";
 import { unstable_readConfig } from "wrangler";
 import { shownFor } from "@/components/dictionary/SearchField";
 import type { SuggestAnswer } from "@/lib/dictionary/suggestAnswer.ts";
-import { withBilling, type BillingBindings, type BillingContext } from "@/worker/billing.ts";
+import { withBilling, type BillingBindings, type BillingContext } from "@/worker/developers/billing.ts";
 import {
   RETRY_AFTER_SECONDS,
   SEARCH_LIMITED_HEADER,
@@ -23,7 +23,8 @@ import {
   visitorKey,
   withRateLimits,
   type LimitBindings,
-} from "@/worker/rateLimit.ts";
+} from "@/worker/shared/rateLimit.ts";
+import { SITE_LIMITS } from "./siteLimits.ts";
 import { RATE_BINDINGS } from "../../src/api/accountRate.js";
 import { RATE_WINDOW_SECONDS } from "@/worker/api/keyLimits.ts";
 import { FakeRateLimit } from "./metering.ts";
@@ -40,7 +41,7 @@ function harness() {
     BILLING_LIMIT: new FakeRateLimit(5),
   } satisfies LimitBindings;
   const seen: Request[] = [];
-  const worker = withRateLimits<LimitBindings>(async (request) => {
+  const worker = withRateLimits<LimitBindings>(SITE_LIMITS, async (request) => {
     seen.push(request);
     return new Response("<p>page</p>", { status: 200, headers: { "content-type": "text/html" } });
   });
@@ -71,7 +72,7 @@ async function warnings(body: () => Promise<void>): Promise<unknown[][]> {
 }
 
 test("a search is any request with a non-empty q, and /suggest is a suggestion", () => {
-  const of = (path: string) => limitOf(new URL(`https://lexema.fyi${path}`), "GET");
+  const of = (path: string) => limitOf(SITE_LIMITS, new URL(`https://lexema.fyi${path}`), "GET");
   assert.equal(of("/?q=casa"), "search");
   assert.equal(of("/?q=casa&q=sale"), "search");
   assert.equal(of("/index.rsc?q=casa"), "search");
@@ -152,7 +153,7 @@ test("two reports a minute reach the app, and the third is a 429 the app never s
 
 test("ten sign-in starts a minute go through, and the eleventh is a 429 the app never sees", async () => {
   const { env, seen, fetch } = harness();
-  // worker/hosts.ts hands a developers.lexema.fyi request on under the developer-site segment.
+  // worker/shared/hosts.ts hands a developers.lexema.fyi request on under the developer-site segment.
   const start = (ip = "203.0.113.7") => fetch("/developer-site/sign-in/google", ip, {}, "GET", "https://developers.lexema.fyi");
   const logged = await warnings(async () => {
     for (let i = 0; i < 10; i++) assert.equal((await start()).status, 200);
@@ -173,7 +174,7 @@ test("ten sign-in starts a minute go through, and the eleventh is a 429 the app 
 
 test("five key creations a minute go through, and the sixth is a 429 the app never sees", async () => {
   const { env, seen, fetch } = harness();
-  // worker/hosts.ts hands a developers.lexema.fyi request on under the developer-site segment.
+  // worker/shared/hosts.ts hands a developers.lexema.fyi request on under the developer-site segment.
   const create = (ip = "203.0.113.7") => fetch("/developer-site/dashboard/keys", ip, {}, "POST", "https://developers.lexema.fyi");
   const logged = await warnings(async () => {
     for (let i = 0; i < 5; i++) assert.equal((await create()).status, 200);
@@ -197,9 +198,9 @@ test("opening the keys path with a GET makes no key and is never counted against
   for (let i = 0; i < 10; i++) assert.equal((await open()).status, 200);
   assert.equal(seen.length, 10);
   assert.equal(env.KEY_CREATE_LIMIT.counts.size, 0);
-  assert.equal(limitOf(new URL("https://developers.lexema.fyi/developer-site/dashboard/keys"), "GET"), undefined);
-  assert.equal(limitOf(new URL("https://developers.lexema.fyi/developer-site/dashboard/keys"), "HEAD"), undefined);
-  assert.equal(limitOf(new URL("https://developers.lexema.fyi/developer-site/dashboard/keys"), "POST"), "key-create");
+  assert.equal(limitOf(SITE_LIMITS, new URL("https://developers.lexema.fyi/developer-site/dashboard/keys"), "GET"), undefined);
+  assert.equal(limitOf(SITE_LIMITS, new URL("https://developers.lexema.fyi/developer-site/dashboard/keys"), "HEAD"), undefined);
+  assert.equal(limitOf(SITE_LIMITS, new URL("https://developers.lexema.fyi/developer-site/dashboard/keys"), "POST"), "key-create");
   // The GETs left all five creations: five POSTs go through, and the sixth is a 429.
   const create = () => fetch("/developer-site/dashboard/keys", "203.0.113.7", {}, "POST", "https://developers.lexema.fyi");
   await warnings(async () => {
@@ -208,14 +209,14 @@ test("opening the keys path with a GET makes no key and is never counted against
   });
 });
 
-// worker/hosts.ts hands a developers.lexema.fyi request on under the developer-site segment.
+// worker/shared/hosts.ts hands a developers.lexema.fyi request on under the developer-site segment.
 const developerSite = (path: string) => new URL(`https://developers.lexema.fyi/developer-site${path}`);
 
 /** The billing limit's count after one request to `path` on the developer site, with `limitOf`'s answer for it. */
 async function billingCount(path: string, method: "GET" | "POST") {
   const { env, fetch } = harness();
   await fetch(`/developer-site${path}`, "203.0.113.7", {}, method, "https://developers.lexema.fyi");
-  return { limit: limitOf(developerSite(path), method), count: env.BILLING_LIMIT.counts.get("v4:203.0.113.7") };
+  return { limit: limitOf(SITE_LIMITS, developerSite(path), method), count: env.BILLING_LIMIT.counts.get("v4:203.0.113.7") };
 }
 
 test("POST /billing/checkout counts against the billing limit", async () => {
@@ -250,7 +251,7 @@ test("five billing requests a minute reach the billing routes, and the sixth is 
     reached += 1;
     return { billing: { outcome: "missing", missing: ["STRIPE_SECRET_KEY"] }, appDb: undefined, now: 0 };
   };
-  const worker = withRateLimits<LimitBindings & BillingBindings>(withBilling(async () => new Response("page"), contextOf));
+  const worker = withRateLimits<LimitBindings & BillingBindings>(SITE_LIMITS, withBilling(async () => new Response("page"), contextOf));
   // Without an Origin a billing POST is refused before Stripe; that is enough to see it was reached.
   const post = (path: string, ip = "203.0.113.7") =>
     worker(new Request(developerSite(path), { method: "POST", headers: { "cf-connecting-ip": ip } }), env, {} as ExecutionContext);

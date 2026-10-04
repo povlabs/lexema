@@ -13,11 +13,11 @@
 // carries the result in place, visible with or without JavaScript.
 //
 // A search over the visitor's limit is decided before this runs, in
-// worker/rateLimit.ts, which marks the request; a marked request renders the
+// worker/shared/rateLimit.ts, which marks the request; a marked request renders the
 // "too many searches" state and never reaches `search`.
 
 import { headers } from "next/headers";
-import { SEARCH_LIMITED_HEADER } from "@/worker/rateLimit.ts";
+import { SEARCH_LIMITED_HEADER } from "@/worker/shared/rateLimit.ts";
 import { FirstLoad, Limited, Outcome, SearchPage } from "@/components/dictionary/SearchPage";
 import type { Attempt } from "@/lib/dictionary/attempt.ts";
 import { cardOf, HOME_CARD, linkPreview } from "@/lib/dictionary/card.ts";

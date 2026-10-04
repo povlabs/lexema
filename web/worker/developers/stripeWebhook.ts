@@ -12,7 +12,7 @@
 // through `EMAIL`, the `send_email` binding, once (#215,
 // src/billing/planNotice.ts); without the binding nothing is sent. Every other `/auth/*` path, on every host, goes on to the
 // host routing like any path, where only the developer site's Checkout return
-// (worker/billing.ts) answers one.
+// (worker/developers/billing.ts) answers one.
 //
 // Without every Stripe setting (src/accounts/billing.ts), `BETTER_AUTH_SECRET`
 // or `APP_DB`, the route answers 503 and logs which is missing.
@@ -22,8 +22,8 @@ import { billingOf, type BillingSetup, type StripeSettings } from "@lexema/accou
 import { appTablesOverD1, type AppTables } from "@lexema/db/app/database.ts";
 import { accountMailOf, workerEmailOf, type EmailBinding } from "@lexema/email/send.ts";
 import { log } from "@lexema/log/requestLog.ts";
-import { isDeveloperSitePath, originsOf } from "./hosts.ts";
-import type { FetchHandler } from "./rateLimit.ts";
+import { isDeveloperSitePath, originsOf } from "../shared/hosts.ts";
+import type { FetchHandler } from "../shared/fetchHandler.ts";
 import { text } from "./signIn.ts";
 
 /** The bindings the webhook reads: the app database, the Stripe settings and the email binding. */

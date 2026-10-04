@@ -14,11 +14,12 @@ import { freshAppDatabase } from "../../test/databases.js";
 import { SignIn } from "@/components/developers/SignIn";
 import { SIGN_IN_PROVIDER } from "@/components/shared/styles.ts";
 import { apiNotFound } from "@/worker/api/handler.ts";
-import { byHost, ORIGIN, originsOf } from "@/worker/hosts.ts";
-import { limitOf, withRateLimits, type LimitBindings } from "@/worker/rateLimit.ts";
-import { AFTER_SIGN_IN, SESSION_COOKIE, signedInAccount, withSignIn, type SignInBindings } from "@/worker/signIn.ts";
-import type { Stage } from "@/worker/stage.ts";
-import { offersTestSignIn, TEST_SIGN_IN, withTestSignIn } from "@/worker/testSignIn.ts";
+import { byHost, ORIGIN, originsOf } from "@/worker/shared/hosts.ts";
+import { limitOf, withRateLimits, type LimitBindings } from "@/worker/shared/rateLimit.ts";
+import { SITE_LIMITS } from "./siteLimits.ts";
+import { AFTER_SIGN_IN, SESSION_COOKIE, signedInAccount, withSignIn, type SignInBindings } from "@/worker/developers/signIn.ts";
+import type { Stage } from "@/worker/shared/stage.ts";
+import { offersTestSignIn, TEST_SIGN_IN, withTestSignIn } from "@/worker/developers/testSignIn.ts";
 
 const NOW = Date.parse("2026-09-30T12:00:00Z");
 const PREVIEW_DEVELOPERS = "https://huey-245-test-sign-in.developers-preview.lexema.fyi";
@@ -45,7 +46,7 @@ function worker(stage: Stage) {
   const { sqlite, appDb } = freshAppDatabase();
   const context = () => ({ providers: { google: undefined, github: undefined }, appDb, now: NOW });
   const fetch = byHost<typeof env>({
-    app: withRateLimits(withTestSignIn(stage, withSignIn(async () => new Response("Not Found", { status: 404 }), context), context)),
+    app: withRateLimits(SITE_LIMITS, withTestSignIn(stage, withSignIn(async () => new Response("Not Found", { status: 404 }), context), context)),
     api: async () => Response.json({}),
     apiNotFound,
   });
@@ -151,8 +152,8 @@ test("the test sign-in takes a POST from its own site only", async () => {
 });
 
 test("the test sign-in counts against the sign-in limit", () => {
-  assert.equal(limitOf(new URL(`${PREVIEW_DEVELOPERS}/developer-site${TEST_SIGN_IN}`), "POST"), "sign-in");
-  assert.equal(limitOf(new URL(`https://developers.lexema.fyi/developer-site${TEST_SIGN_IN}`), "POST"), undefined);
+  assert.equal(limitOf(SITE_LIMITS, new URL(`${PREVIEW_DEVELOPERS}/developer-site${TEST_SIGN_IN}`), "POST"), "sign-in");
+  assert.equal(limitOf(SITE_LIMITS, new URL(`https://developers.lexema.fyi/developer-site${TEST_SIGN_IN}`), "POST"), undefined);
 });
 
 test("the sign-in page shows the test sign-in button on a Preview's developer host only", () => {

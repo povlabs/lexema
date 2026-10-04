@@ -15,7 +15,7 @@
 import { log } from "@lexema/log/requestLog.ts";
 import { fromD1 } from "@lexema/lookup/database.ts";
 import { siteOf, type Site } from "./hosts.ts";
-import type { FetchHandler } from "./rateLimit.ts";
+import type { FetchHandler } from "./fetchHandler.ts";
 
 /** Where the health check answers, on every host. */
 export const HEALTH_PATH = "/health";

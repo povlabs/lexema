@@ -4,8 +4,8 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { apiNotFound } from "@/worker/api/handler.ts";
-import { byHost } from "@/worker/hosts.ts";
-import { parseStage, withStage, type Stage } from "@/worker/stage.ts";
+import { byHost } from "@/worker/shared/hosts.ts";
+import { parseStage, withStage, type Stage } from "@/worker/shared/stage.ts";
 
 test("LEXEMA_STAGE is local, preview or production, and anything else refuses", () => {
   assert.equal(parseStage("local"), "local");

@@ -308,7 +308,7 @@ A Preview's developer site, `<name>.developers-preview.lexema.fyi`
 button on `/sign-in`: *Sign in as test developer*. It posts to
 `/sign-in/test-developer`, which signs in one fixed account, the test
 developer, in that Preview's own `APP_DB` and goes to `/dashboard`
-([web/worker/testSignIn.ts](./web/worker/testSignIn.ts),
+([web/worker/developers/testSignIn.ts](./web/worker/developers/testSignIn.ts),
 [src/accounts/testDeveloper.ts](./src/accounts/testDeveloper.ts)
 ([#245](https://github.com/povlabs/lexema/issues/245))). It needs no provider
 and no credential, only the `BETTER_AUTH_SECRET` the preview command sets on
