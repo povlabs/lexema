@@ -541,7 +541,10 @@ cannot read that range it starts them all. Its `ci-required` job always runs: it
 fails when `changes` failed or when a job the change needed did not succeed, and
 passes when every needed job passed and the rest were skipped. So it reports on a
 Markdown-only pull request too, and the merge queue can require it
-([pattern](./.patterns/repo-wide-gates-run-on-main.md)). The rows below give each
+([pattern](./.patterns/repo-wide-gates-run-on-main.md)). On a merge queue entry it
+also fails while the pull request carries `ready-for:human`, which holds it for
+Huey until he removes the label and queues it again
+([ADR 0006](./.decisions/0006-codex-review-is-the-merge-gate.md)). The rows below give each
 gated job's paths.
 
 | Workflow | Runs on | Fails when |
@@ -549,7 +552,7 @@ gated job's paths.
 | [ci.yml](./.github/workflows/ci.yml) `check`, `test-web` | a change to any file but Markdown (`docs/DEPLOY.md` and `docs/UPDATE_THE_DICTIONARY.md` still count, since a unit test reads them) | `check`: the root typecheck, a root unit test (`test:root`), or the `@lexema/web` typecheck fails; `test-web`: a web unit test (`test:web`) fails |
 | [ci.yml](./.github/workflows/ci.yml) `d1` | a change to `src/db/` or any source the seed, the sample-row check or the key CLI imports (`src/import/`, `src/source/`, `src/italian/`, `src/lookup/`, `src/billing/`, `src/api/`, `src/core/`, `src/commandLine.ts`), `fixtures/`, `drizzle.config.ts`, `web/wrangler.jsonc`, `.nvmrc`, the dependencies (`package.json`, `web/package.json`, `pnpm-lock.yaml`, `pnpm-workspace.yaml`), or `ci.yml` | local D1 refuses a statement of `pnpm run seed:dev`, a sample row of `pnpm run db:check-d1` or writing one API key, or an app table has no sample row |
 | [ci.yml](./.github/workflows/ci.yml) `validate the ADR corpus` | a change to `.decisions/`, `ci.yml`, `.fabrika.jsonc` or `pnpm-workspace.yaml` | two records share an ADR id, or a filename disagrees with its frontmatter |
-| [ci.yml](./.github/workflows/ci.yml) `ci-required` | every pull request, merge queue entry and push to `main`; it gates `check`, `test-web`, `d1` and `validate the ADR corpus` | `changes` failed, or a job the change needed failed, was cancelled or was skipped |
+| [ci.yml](./.github/workflows/ci.yml) `ci-required` | every pull request, merge queue entry and push to `main`; it gates `check`, `test-web`, `d1` and `validate the ADR corpus` | `changes` failed, or a job the change needed failed, was cancelled or was skipped; on a merge queue entry also when the pull request carries `ready-for:human`, or its head ref or labels cannot be read ([ADR 0006](./.decisions/0006-codex-review-is-the-merge-gate.md)) |
 | [secrets.yml](./.github/workflows/secrets.yml) | every pull request and merge queue entry | a changed file carries a secret (gitleaks), or a changed doc or shell file carries a machine-local path (leak-guard) |
 | [dictionary-deploy.yml](./.github/workflows/dictionary-deploy.yml) | every push to `main`, and by hand for its plan-only `plan` job; on a push, its `gate` job fast-forwards `production` by itself when `production..main` changes nothing under `dictionary-changes/`, and starts the `deploy` job otherwise | on a push to `main`: a change declaration's archive or dump fails its checksum, its plan differs from the declared counts or crosses a hard limit, its write does not read back, or a word of the fixed list is not found; `production` then stays where it is ([docs/DEPLOY.md](./docs/DEPLOY.md#the-dictionary-deploy)) |
 | [dictionary-plan.yml](./.github/workflows/dictionary-plan.yml) | a pull request whose diff changes `dictionary-changes/`, when it is opened, reopened or pushed to. On a push that changes nothing there, the run still starts, and its plan steps skip when the plan on the previous head concluded success | on a pull request that adds a change declaration: the first one's plan, with the pull request's code, differs from its `expected` or has none, or crosses a hard limit, or the pull request adds a later declaration the plan cannot count. It prints the declaration with the plan's counts ([docs/DEPLOY.md](./docs/DEPLOY.md#the-pull-request-plan-check)) |
