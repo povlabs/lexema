@@ -57,6 +57,29 @@ records; for the fifty-word fixture that is `casa`'s seven definitions and seven
 examples. How the lines are chosen, and how much the extraction loses, is in
 [the measurement](../reports/2026-09-23-recovered-definitions-full-release.md).
 
+The seed also writes [page-only entries](PAGE_ENTRIES.md): words with a raw
+page and no Italian record. Which pages it offers depends on the input
+([#499](https://github.com/povlabs/lexema/issues/499)):
+
+- **The fixture, or any plain `.jsonl`.** Only the titles in
+  [`fixtures/unrecorded-page-titles.json`](../fixtures/unrecorded-page-titles.json)
+  are offered. These are the 246 titles whose page has Italian definitions and
+  no Italian record in `it-0c432803`, as
+  [the measurement](../reports/2026-10-03-unrecorded-page-layouts.md) found them.
+  The fifty-word fixture lacks most words, so a word it has no record for may
+  still have one in the release, and that word is never a page-only entry here.
+  With the pages under `fixtures/`, 20 listed titles have a page and 17 of
+  them give 18 entries, such as `raccontare`; `acquirente`, which the release
+  has a record for, gives none. With the dump, the seed reads only the listed
+  pages, never all 758,429, and writes 203 entries.
+- **A `.jsonl.gz` archive.** It is seeded as a full release: every raw page
+  whose title no Italian record spells is offered
+  ([ADR 0028](../.decisions/0028-recovered-pages-any-part-of-speech.md)).
+
+The run prints the set it offered as `page-only candidates: …`. The list is
+written again from each release's measurement, with `--titles` on
+[`measureUnrecordedPages.ts`](../src/import/measureUnrecordedPages.ts).
+
 From the same raw pages the seed hides another language's entries filed as
 Italian ([#382](https://github.com/povlabs/lexema/issues/382),
 [ADR 0023](../.decisions/0023-foreign-records-are-hidden-not-deleted.md)): a

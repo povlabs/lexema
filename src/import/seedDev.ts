@@ -9,6 +9,7 @@ import { mkdir, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { openRawPages } from "../source/wiktionaryDump.js";
 import { readLanguageHeadings } from "../italian/sectionLanguage.js";
+import { PageOnlyCandidates, UNRECORDED_PAGE_TITLES_FILE } from "./pageOnlyCandidates.js";
 import { type LoadedRows, loadSeed, SeedStopped } from "./seedLoad.js";
 import { seedSql } from "./seedSql.js";
 import { seedTargetFrom, webWrangler } from "./seedTarget.js";
@@ -43,6 +44,11 @@ await mkdir(resolve(".data"), { recursive: true });
 await target.prepare();
 const rawPages = await openRawPages();
 process.stderr.write(`raw pages: ${rawPages.pages.size} from ${rawPages.described}\n`);
+// A release archive offers every page it has no record for; the fifty-word
+// fixture offers only the record-less titles a release measurement found, so a
+// word the release does have a record for is never a page-only entry here (#499).
+const pageOnly = await PageOnlyCandidates.forSeedInput(input, resolve(UNRECORDED_PAGE_TITLES_FILE));
+process.stderr.write(`page-only candidates: ${pageOnly.describe()}\n`);
 const rejectionLines: string[] = [];
 const report = await seedSql({
   input,
@@ -56,6 +62,7 @@ const report = await seedSql({
   // else the pages committed under fixtures/ (#28). A word without a page is
   // seeded as it always was.
   rawPages: rawPages.pages,
+  pageOnly,
   // The dump's language headings, checked against the dump by
   // `pnpm run measure:section-language`; with the raw pages they let the seed
   // hide another language's entries filed as Italian (ADR 0023).
