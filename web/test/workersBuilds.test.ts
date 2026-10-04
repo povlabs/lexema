@@ -10,7 +10,15 @@ import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
 import { unstable_readConfig } from "wrangler";
-import { BUILT_CONFIG, PREVIEW_COMMAND, PREVIEW_NAME_FILE, PREVIEW_SECRETS_FILE, preparePreview } from "@/builds/previewCommand.ts";
+import {
+  BUILT_CONFIG,
+  NO_PREVIEW_BRANCH,
+  PREVIEW_COMMAND,
+  PREVIEW_NAME_FILE,
+  PREVIEW_SECRETS_FILE,
+  type PreviewPrepareSteps,
+  preparePreview,
+} from "@/builds/previewCommand.ts";
 import { type BuiltConfig, DICTIONARY, migrationsConfig, refuseDictionary, SLICE_BINDING, withAppDatabase, withDictionarySlice } from "@/builds/previewConfig.ts";
 import { APP_DATABASE_PREFIX, PREVIEW_NAME_MAX, PreviewName, SLICE_DATABASE_PREFIX } from "@/builds/previewName.ts";
 import { readBuilt, readDeclared, SLICE_ROWS_WRITTEN_CAP, type SliceBuilt, type SliceDeclared, type SlicePlanner } from "@/builds/previewSlice.ts";
@@ -270,8 +278,8 @@ function planner(account: FakeAccount, declared: SliceDeclared, built?: SliceBui
   return { slices, asked };
 }
 
-/** The prepare step against `account`, keeping every file it wrote. */
-function prepare(account: FakeAccount, branch: string | undefined, newSecret = () => "random-secret", slices: SlicePlanner = planner(account, NO_DECLARATION).slices) {
+/** The prepare step's inputs against `account`, keeping every file it writes and every step it runs, in order. */
+function prepareSteps(account: FakeAccount, branch: string | undefined, newSecret = () => "random-secret", slices: SlicePlanner = planner(account, NO_DECLARATION).slices) {
   const files = new Map<string, string>();
   const migrationConfigs: Record<string, unknown>[] = [];
   const order: string[] = [];
@@ -280,7 +288,7 @@ function prepare(account: FakeAccount, branch: string | undefined, newSecret = (
     order.push(`wrangler ${args.slice(0, 2).join(" ")}`);
     return account.wrangler(args, input);
   };
-  const name = preparePreview({
+  const steps: PreviewPrepareSteps = {
     branch,
     wrangler,
     build: () => order.push("build"),
@@ -297,7 +305,16 @@ function prepare(account: FakeAccount, branch: string | undefined, newSecret = (
     newSecret,
     slices,
     log: (line) => logged.push(line),
-  });
+  };
+  return { steps, files, migrationConfigs, order, logged };
+}
+
+/** The prepare step against `account` on a branch that gets a Preview, keeping every file it wrote. */
+function prepare(account: FakeAccount, branch: string | undefined, newSecret = () => "random-secret", slices: SlicePlanner = planner(account, NO_DECLARATION).slices) {
+  const { steps, files, migrationConfigs, order, logged } = prepareSteps(account, branch, newSecret, slices);
+  const prepared = preparePreview(steps);
+  if (prepared.kind !== "prepared") throw new Error(`no Preview for ${branch}`);
+  const name = prepared.preview;
   const config = JSON.parse(files.get(BUILT_CONFIG) ?? "null") as BuiltConfig;
   const secrets = JSON.parse(files.get(PREVIEW_SECRETS_FILE) ?? "null") as Record<string, string>;
   const appDatabaseId = config.previews?.d1_databases?.find((entry) => entry.binding === "APP_DB")?.database_id;
@@ -314,16 +331,20 @@ function previewCommand(account: FakeAccount, branch: string, newSecret?: () => 
 
 // --- The preview command ----------------------------------------------------
 
-test("the Preview command runs the prepare step, then invokes npx wrangler preview over the files it writes", () => {
+test("the Preview command runs the prepare step, then invokes npx wrangler preview over the files it writes, if it wrote a name", () => {
   assert.equal(
     PREVIEW_COMMAND,
-    'pnpm run preview:prepare && npx wrangler preview --config dist/server/wrangler.json --name "$(cat dist/preview/name)" --secrets-file dist/preview/secrets.json',
+    'pnpm run preview:prepare && if [ -f dist/preview/name ]; then npx wrangler preview --config dist/server/wrangler.json --name "$(cat dist/preview/name)" --secrets-file dist/preview/secrets.json; fi',
   );
   // Workers Builds refuses a Preview command that does not invoke `npx wrangler preview` itself.
-  const [first, wranglerCall, ...rest] = PREVIEW_COMMAND.split(" && ");
+  const [first, guarded, ...rest] = PREVIEW_COMMAND.split(" && ");
   assert.equal(first, "pnpm run preview:prepare");
-  assert.ok(wranglerCall.startsWith("npx wrangler preview "));
   assert.deepEqual(rest, []);
+  const guard = guarded.match(/^if \[ -f (\S+) \]; then (npx wrangler preview .+); fi$/);
+  assert.ok(guard, guarded);
+  const [, guardFile, wranglerCall] = guard;
+  // The name file is the last thing the prepare step writes, and only for a branch that gets a Preview.
+  assert.equal(guardFile, PREVIEW_NAME_FILE);
   for (const path of [BUILT_CONFIG, PREVIEW_NAME_FILE, PREVIEW_SECRETS_FILE]) assert.ok(wranglerCall.includes(path), path);
   // Neither the Worker (dist/server) nor its assets (dist/client) upload the name or the secrets.
   for (const path of [PREVIEW_NAME_FILE, PREVIEW_SECRETS_FILE]) assert.match(path, /^dist\/preview\//);
@@ -385,6 +406,25 @@ test("a second push to the same branch reuses the same app database and sends th
   assert.deepEqual(third.secrets, { BETTER_AUTH_SECRET: "secret-2" });
   assert.equal(account.secrets.get(first.name.value), "secret-2");
   assert.equal(account.lines.some((line) => line.startsWith("preview")), false);
+});
+
+test("the prepare step on main builds nothing, makes no app database, migrates nothing and writes no name", () => {
+  const account = new FakeAccount([{ name: DICTIONARY.name, uuid: DICTIONARY.id }]);
+  const { slices, asked } = planner(account, NO_DECLARATION);
+  const { steps, files, migrationConfigs, order } = prepareSteps(account, "main", undefined, slices);
+  assert.deepEqual(preparePreview(steps), { kind: "skipped", branch: NO_PREVIEW_BRANCH });
+  assert.deepEqual(asked, []);
+  assert.equal(NO_PREVIEW_BRANCH, "main");
+  assert.deepEqual(order, []);
+  assert.deepEqual(account.calls, []);
+  assert.deepEqual([...files.keys()], []);
+  assert.deepEqual(migrationConfigs, []);
+  assert.deepEqual(account.databases, [{ name: DICTIONARY.name, uuid: DICTIONARY.id }]);
+
+  // Only the exact branch: anything else that looks like it still gets its Preview.
+  for (const branch of ["Main", "main-2", "huey/main", "maint"]) {
+    assert.equal(prepare(new FakeAccount(), branch).files.has(PREVIEW_NAME_FILE), true, branch);
+  }
 });
 
 test("the prepare step stops before writing the name when the migrations fail, and runs nowhere without a branch", () => {
