@@ -44,7 +44,9 @@ import { DeveloperDocs } from "@/components/developers/DeveloperDocs";
 import { DOCS_PAGES, endpointPath, pathOf } from "@/lib/developers/docsPages.ts";
 import { DOCS_CODE } from "@/components/shared/styles.ts";
 import { DeveloperLanding } from "@/components/developers/DeveloperLanding";
-import { DeveloperFooter } from "@/components/developers/DeveloperPage";
+import { DeveloperFooter, developerFooterLinks } from "@/components/developers/DeveloperPage";
+import { LegalPage } from "@/components/developers/LegalPage";
+import { PRIVACY, TERMS } from "@/components/developers/legalDocuments";
 import { DeveloperPricing } from "@/components/developers/DeveloperPricing";
 import { SiteFooter } from "@/components/dictionary/SiteFooter";
 import { handleApi } from "@/worker/api/handler.ts";
@@ -435,22 +437,79 @@ test("pricing shows Starter, Pro and Enterprise with the plan table's numbers, a
   assert.match(enterprise, /<a [^>]*href="mailto:contact@lexema.fyi">Contact us<\/a>/);
 });
 
-test("every developer page carries the footer: lexema.fyi, Docs, Pricing and Contact by mail, and no Terms", () => {
+test("every developer page carries the footer: lexema.fyi, Docs, Pricing, Terms, Privacy and Contact by mail", () => {
+  assert.deepEqual(
+    developerFooterLinks(ORIGIN).map(({ label, href }) => [label, href]),
+    [
+      ["lexema.fyi", "https://lexema.fyi"],
+      ["Docs", "/docs"],
+      ["Pricing", "/pricing"],
+      ["Terms", "/terms"],
+      ["Privacy", "/privacy"],
+      ["Contact", "mailto:contact@lexema.fyi"],
+    ],
+  );
   const footer = renderToStaticMarkup(<DeveloperFooter origins={ORIGIN} />);
   const links = [...footer.matchAll(/<a class="[^"]*" href="([^"]+)">([^<]+)<\/a>/g)].map((match) => [match[2], match[1]]);
-  assert.deepEqual(links, [
-    ["Lexema Developers", "/"],
-    ["lexema.fyi", "https://lexema.fyi"],
-    ["Docs", "/docs"],
-    ["Pricing", "/pricing"],
-    ["Contact", "mailto:contact@lexema.fyi"],
-  ]);
+  assert.deepEqual(links, [["Lexema Developers", "/"], ...developerFooterLinks(ORIGIN).map(({ label, href }) => [label, href])]);
   const docsPages = DOCS_PAGES.map((page) => <DeveloperDocs page={page} origins={ORIGIN} />);
   for (const page of [<DeveloperLanding origins={ORIGIN} />, ...docsPages, <DeveloperPricing origins={ORIGIN} />]) {
     const html = renderToStaticMarkup(page);
     assert.ok(html.includes(renderToStaticMarkup(<DeveloperFooter wide={html.includes('aria-label="Docs"')} origins={ORIGIN} />)));
-    assert.doesNotMatch(html, /Terms/);
   }
+});
+
+test("the Terms and Privacy pages: numbered sections in a Contents column, the mailboxes as links, the page marked in the footer (#162)", () => {
+  const pages = [
+    { document: TERMS, title: "Terms of service", parts: 11, mailbox: "contact@lexema.fyi" },
+    { document: PRIVACY, title: "Privacy policy", parts: 8, mailbox: "privacy@lexema.fyi" },
+  ];
+  for (const { document, title, parts, mailbox } of pages) {
+    const html = renderToStaticMarkup(<LegalPage document={document} origins={ORIGIN} />);
+    assert.match(html, new RegExp(`<h1[^>]*>${title}</h1>`));
+    assert.match(html, />Lexema Developers · Legal</);
+    assert.match(html, />Effective 4 October 2026</);
+    // Each section is headed by its number and named, in order, in the Contents.
+    const headings = [...html.matchAll(/<h2 class="[^"]*" id="([a-z-]+)-heading"><span class="[^"]*">(\d+)\.<\/span><span>([^<]+)<\/span><\/h2>/g)];
+    assert.equal(headings.length, parts);
+    assert.deepEqual(
+      headings.map((match) => [match[1], Number(match[2]), match[3]]),
+      document.parts.map((part, index) => [part.id, index + 1, part.heading]),
+    );
+    const contents = [...html.matchAll(/<a class="[^"]*" href="#([a-z-]+)"(?: aria-current="location")?><span class="[^"]*">(\d+)\.<\/span>([^<]+)<\/a>/g)];
+    assert.deepEqual(
+      contents.map((match) => [match[1], Number(match[2]), match[3]]),
+      headings.map((match) => [match[1], Number(match[2]), match[3]]),
+    );
+    // The section's last line is its mailbox, as a mail link.
+    assert.match(html, new RegExp(`<a class="[^"]*" href="mailto:${mailbox}">${mailbox}</a>`));
+    // The footer marks this page's link and no other.
+    assert.deepEqual(
+      [...html.matchAll(/<a class="[^"]*" href="([^"]+)" aria-current="page">/g)].map((match) => match[1]),
+      [`/${document.section}`],
+    );
+  }
+});
+
+test("the Terms state each plan's price and limits from the plan table", () => {
+  const html = renderToStaticMarkup(<LegalPage document={TERMS} origins={ORIGIN} />);
+  const items = [...html.matchAll(/<li class="[^"]*"><span class="[^"]*">\(([a-c])\)<\/span><span>((?:Starter|Pro|Enterprise):[^<]+)<\/span><\/li>/g)].map((match) => [
+    match[1],
+    match[2],
+  ]);
+  const count = (n: number) => n.toLocaleString("en-US");
+  const line = (plan: "starter" | "pro") =>
+    `${PLAN_TERMS[plan].name}: US$${PLAN_TERMS[plan].usdPerMonth} per month, ${count(PLAN_TERMS[plan].callsPerPeriod)} calls per month and ${count(PLAN_TERMS[plan].callsPerMinute)} per minute;`;
+  assert.deepEqual(items, [
+    ["a", line("starter")],
+    ["b", line("pro")],
+    ["c", "Enterprise: terms agreed in writing."],
+  ]);
+  // As the table stood when Huey approved the text (2026-10-04).
+  assert.deepEqual(items.slice(0, 2).map(([, text]) => text), [
+    "Starter: US$15 per month, 1,000,000 calls per month and 60 per minute;",
+    "Pro: US$49 per month, 5,000,000 calls per month and 300 per minute;",
+  ]);
 });
 
 test("lexema.fyi keeps no /developers route, and its footer links to the developer site", async () => {

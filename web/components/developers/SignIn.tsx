@@ -2,15 +2,16 @@
 // else. A provider whose client id and secret are not both set is a disabled
 // button, so the page never offers a sign-in that answers 503. On a Preview's
 // developer host, one more button signs in as the test developer (#245,
-// worker/developers/testSignIn.ts); nowhere else does the page show it. No Terms line
-// until the terms exist (#162, #163 R1.7). The page's wiring, which reads the
-// session and the providers, is `(developers)/developer-site/sign-in/page.tsx`.
+// worker/developers/testSignIn.ts); nowhere else does the page show it. The card
+// ends on the line board 27 draws, linking the Terms of service (#162). The
+// page's wiring, which reads the session and the providers, is
+// `(developers)/developer-site/sign-in/page.tsx`.
 
 import { Button } from "@base-ui/react/button";
 import { PROVIDER_IDS, PROVIDER_NAME, type ProviderId } from "@lexema/accounts/providers.ts";
 import type { SiteOrigins } from "@/worker/shared/hosts.ts";
 import { TEST_SIGN_IN } from "@/worker/developers/testSignIn.ts";
-import { DeveloperPage } from "./DeveloperPage";
+import { DeveloperPage, TERMS_PATH } from "./DeveloperPage";
 import { GitHubIcon } from "@/components/shared/icons";
 import {
   SIGN_IN_CARD,
@@ -21,6 +22,8 @@ import {
   SIGN_IN_PROVIDER,
   SIGN_IN_PROVIDERS,
   SIGN_IN_SHELL,
+  SIGN_IN_TERMS,
+  SIGN_IN_TERMS_LINK,
 } from "@/components/shared/styles.ts";
 
 /** Where a provider's sign-in starts (worker/developers/signIn.ts). */
@@ -81,6 +84,13 @@ export function SignIn({
               </li>
             ) : null}
           </ul>
+          <p className={SIGN_IN_TERMS}>
+            By continuing you agree to the{" "}
+            <a className={SIGN_IN_TERMS_LINK} href={TERMS_PATH}>
+              Terms
+            </a>
+            .
+          </p>
         </div>
       </main>
     </DeveloperPage>

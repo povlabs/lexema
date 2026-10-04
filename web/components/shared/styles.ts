@@ -495,8 +495,16 @@ const FOOTER_ROW = "flex flex-col gap-[0.28125rem] py-5 sm:flex-row sm:flex-wrap
 export const DEV_FOOTER_INNER = `${DEV_COLUMN} ${FOOTER_ROW}`;
 export const DEV_FOOTER_INNER_WIDE = `${WIDE} ${FOOTER_ROW}`;
 export const DEV_FOOTER_NAME = `self-start font-serif text-[0.9375rem] leading-6 text-text-strong no-underline ${FOCUS_RING}`;
-export const DEV_FOOTER_LINKS = "m-0 flex list-none flex-wrap gap-x-[1.125rem] gap-y-2 p-0 sm:gap-x-6";
-export const DEV_FOOTER_LINK = `font-sans text-[0.78125rem] text-text-muted no-underline hover:text-text ${FOCUS_RING}`;
+/**
+ * On a phone a zero-height break after Contact sends the legal links to a
+ * second row (boards 35m and 36m), 25 px under the first: the line height alone,
+ * since the break would double any row gap.
+ */
+export const DEV_FOOTER_LINKS =
+  "m-0 flex list-none flex-wrap gap-x-[1.125rem] gap-y-2 p-0 max-sm:gap-y-0 max-sm:after:order-1 max-sm:after:basis-full max-sm:after:content-[''] sm:gap-x-6";
+export const DEV_FOOTER_LEGAL_ITEM = "max-sm:order-2";
+/** The legal page being read is marked in `text-strong` (boards 35 and 36). */
+export const DEV_FOOTER_LINK = `font-sans text-[0.78125rem] text-text-muted no-underline hover:text-text aria-[current=page]:text-text-strong ${FOCUS_RING}`;
 
 /** A landing or pricing page: the column, with room above the heading. */
 export const DEV_SHELL = `${DEV_COLUMN} flex-1 pt-[2.875rem] pb-[3.4375rem] sm:pt-20 sm:pb-[5.9375rem]`;
@@ -705,7 +713,7 @@ export const DEV_MENU_ACCOUNT = "flex flex-col items-start gap-[0.6875rem] px-5 
 export const DEV_MENU_EMAIL = "font-sans text-[0.875rem] leading-5 text-text-muted wrap-anywhere";
 export const DEV_MENU_SIGN_OUT = `cursor-pointer border-0 bg-transparent p-0 font-sans text-[0.9375rem] leading-6 text-accent ${FOCUS_RING}`;
 
-/** Sign-in (boards 27 and 27m): a raised card, 120 px under the bar (40 on a phone), with no Terms line (#163 R1.7). */
+/** Sign-in (boards 27 and 27m): a raised card, 120 px under the bar (40 on a phone), ending on the Terms line (#162). */
 export const SIGN_IN_SHELL = `${DEV_COLUMN} flex-1 pt-10 pb-14 sm:pt-[7.5rem] sm:pb-40`;
 export const SIGN_IN_CARD = "mx-auto w-full rounded-[8px] border border-border bg-surface-raised px-[2.4375rem] pt-[2.625rem] pb-[2.4375rem] text-center sm:max-w-[27.5rem]";
 export const SIGN_IN_HEADING = "m-0 font-serif text-[2rem] leading-[2.75rem] font-normal text-text-strong";
@@ -716,6 +724,43 @@ export const SIGN_IN_PROVIDER = `flex h-[2.625rem] w-full cursor-pointer items-c
 export const SIGN_IN_ICON = "size-4 shrink-0";
 /** Google's mark as the board draws it: a bold `G` in the button's colour. */
 export const SIGN_IN_G = "w-4 shrink-0 text-center font-sans text-[0.8125rem] font-bold leading-none";
+/** `By continuing you agree to the Terms.`, small and muted under the providers, Terms in the accent. */
+export const SIGN_IN_TERMS = "m-0 mt-7 font-sans text-[0.75rem] leading-[1.125rem] text-text-muted";
+export const SIGN_IN_TERMS_LINK = `text-accent no-underline hover:underline ${FOCUS_RING}`;
+
+// The legal pages (#162, boards 35, 35m, 36 and 36m): Terms of service and
+// Privacy policy. On a wide screen the Contents column sits at the column's
+// left and the text, 720 px, 316 px in from it; from `lg` down there is no
+// Contents column, as the phone boards draw none.
+
+export const LEGAL_SHELL = `${DEV_COLUMN} flex-1 pt-[2.0625rem] pb-[3.4375rem] sm:pt-[4.5rem] sm:pb-24 lg:flex`;
+/** The Contents column: sticky beside the text, level with the lede. */
+export const LEGAL_CONTENTS = "hidden shrink-0 lg:block lg:w-[19.75rem]";
+export const LEGAL_CONTENTS_INNER = "sticky top-8 pt-[8.875rem] pr-8";
+export const LEGAL_CONTENTS_LABEL = "m-0 mb-[0.6875rem] font-sans text-[0.6875rem] leading-4 font-semibold tracking-[0.1em] text-text-muted uppercase";
+export const LEGAL_CONTENTS_LIST = "m-0 flex list-none flex-col gap-3 p-0";
+/** A section in the Contents: the one being read is `text-strong`. */
+export const LEGAL_CONTENTS_LINK = `block font-sans text-[0.8125rem] leading-[1.125rem] text-text-muted no-underline hover:text-text aria-[current=location]:text-text-strong ${FOCUS_RING}`;
+export const LEGAL_CONTENTS_NUMBER = "mr-1.5";
+export const LEGAL_ARTICLE = "min-w-0 lg:max-w-[45rem] lg:flex-1";
+/** `LEXEMA DEVELOPERS · LEGAL`, in the accent. */
+export const LEGAL_KICKER = "m-0 font-sans text-[0.6875rem] leading-4 font-semibold tracking-[0.1em] text-accent uppercase";
+export const LEGAL_TITLE = "m-0 mt-3 font-serif text-[2.125rem] leading-[1.2] font-normal text-text-strong sm:mt-[0.9375rem] sm:text-[3rem]";
+export const LEGAL_EFFECTIVE = "m-0 mt-3 font-sans text-[0.8125rem] leading-5 text-text-muted sm:mt-4";
+/** The lede ends the head on a hairline. */
+export const LEGAL_LEDE =
+  "m-0 mt-3.5 border-b border-border pb-[1.3125rem] font-sans text-[1rem] leading-[1.625rem] text-text-strong sm:mt-4 sm:pb-[2.1875rem] sm:text-[1.0625rem] sm:leading-7";
+export const LEGAL_SECTION = "mt-[2.1875rem] scroll-mt-8 first-of-type:mt-[2.0625rem] sm:mt-[3.125rem] sm:first-of-type:mt-[3.25rem]";
+/** `1.  Accounts`: the number in the accent, the heading in serif. */
+export const LEGAL_HEADING = "m-0 flex gap-3 font-serif text-[1.25rem] leading-7 font-normal text-text-strong sm:gap-3.5 sm:text-[1.375rem] sm:leading-[1.875rem]";
+export const LEGAL_NUMBER = "text-accent";
+/** A section's text, under its heading's words on a wide screen and at the column's edge on a phone. */
+export const LEGAL_BODY = "mt-3 font-sans text-[0.9375rem] leading-[1.625rem] text-text sm:mt-3.5 sm:pl-[1.875rem] [&>*+*]:mt-2.5";
+export const LEGAL_PARAGRAPH = "m-0";
+export const LEGAL_LIST = "m-0 flex list-none flex-col gap-1.5 p-0";
+export const LEGAL_ITEM = "flex gap-2.5";
+export const LEGAL_ITEM_MARK = "shrink-0 text-text-muted";
+export const LEGAL_MAIL = `text-accent no-underline hover:underline ${FOCUS_RING}`;
 
 /** The dashboard's column, as the landing's: the heading, the tab bar, then each section a heading with its content under it. */
 export const DASH_SHELL = `${DEV_COLUMN} flex-1 pt-[2.375rem] pb-[3.1875rem] sm:pt-20 sm:pb-[5.9375rem]`;

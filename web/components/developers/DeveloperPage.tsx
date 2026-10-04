@@ -1,7 +1,7 @@
 // The chrome every page of developers.lexema.fyi carries (#166): the bar with
 // the site's name, Docs, Pricing and Sign in (signed in, #169: Dashboard too,
 // and at the right end the account's avatar and its menu, #190), and the
-// footer. Split out of the
+// footer, which also names the Terms and Privacy pages (#162). Split out of the
 // route group's layout for the reason `SiteFooter.tsx` is — the layout imports
 // `globals.css`, which Node cannot load — and because the docs lay the bar and
 // footer out edge to edge where the other pages keep them to the column.
@@ -29,6 +29,7 @@ import {
   DEV_FOOTER,
   DEV_FOOTER_INNER,
   DEV_FOOTER_INNER_WIDE,
+  DEV_FOOTER_LEGAL_ITEM,
   DEV_FOOTER_LINK,
   DEV_FOOTER_LINKS,
   DEV_FOOTER_NAME,
@@ -48,14 +49,23 @@ import {
 /** The address the developer site's Contact reaches (#159). */
 export const CONTACT_EMAIL = "contact@lexema.fyi";
 
+/** The address the privacy policy gives for questions about it (#162). */
+export const PRIVACY_EMAIL = "privacy@lexema.fyi";
+
 /** Where signing in starts: the sign-in page (#169). */
 export const SIGN_IN_PATH = SIGN_IN_PAGE;
 
 /** Where signing out is posted (worker/developers/signIn.ts). */
 export const SIGN_OUT_PATH = "/sign-out";
 
-/** The pages the bar names, and which one a page is. */
-export type DeveloperSection = "dashboard" | "settings" | "docs" | "pricing";
+/** The two legal pages (#162), which only the footer and the sign-in card name. */
+export type LegalSection = "terms" | "privacy";
+
+export const TERMS_PATH = "/terms";
+export const PRIVACY_PATH = "/privacy";
+
+/** The pages the bar or the footer names, and which one a page is. */
+export type DeveloperSection = "dashboard" | "settings" | "docs" | "pricing" | LegalSection;
 
 /** A page the bar and the ☰ menu name. */
 export interface DeveloperNavItem {
@@ -87,14 +97,24 @@ export const developerMenuLinks = (signedIn: SignedIn | undefined, current: Deve
 /** The bar has no Settings: on the settings page it marks the dashboard, as board 28g draws it. */
 const barSection = (current: DeveloperSection | undefined): DeveloperSection | undefined => (current === "settings" ? "dashboard" : current);
 
+/** A footer link. A legal page's link names that page, so the footer can mark it while it is read. */
+export interface DeveloperFooterLink {
+  label: string;
+  href: string;
+  legal?: LegalSection;
+}
+
 /**
- * The footer's links: the dictionary, the two public pages, and the contact
- * address. No Terms until #162. The dictionary is on the host `origins` names (#266).
+ * The footer's links: the dictionary, the two public pages, the two legal
+ * pages (#162) and the contact address. The dictionary is on the host
+ * `origins` names (#266).
  */
-export const developerFooterLinks = (origins: SiteOrigins): readonly { label: string; href: string }[] => [
+export const developerFooterLinks = (origins: SiteOrigins): readonly DeveloperFooterLink[] => [
   { label: "lexema.fyi", href: origins.lexema },
   { label: "Docs", href: "/docs" },
   { label: "Pricing", href: "/pricing" },
+  { label: "Terms", href: TERMS_PATH, legal: "terms" },
+  { label: "Privacy", href: PRIVACY_PATH, legal: "privacy" },
   { label: "Contact", href: `mailto:${CONTACT_EMAIL}` },
 ];
 
@@ -177,7 +197,12 @@ function DeveloperHeader({ current, wide, signedIn }: { current?: DeveloperSecti
   );
 }
 
-export function DeveloperFooter({ wide = false, origins }: { wide?: boolean; origins: SiteOrigins }) {
+/**
+ * On a phone the legal links take a second row (boards 35m and 36m), so Contact
+ * ends the first; from `sm` up the row keeps the links' own order. On a legal
+ * page, its own link is marked.
+ */
+export function DeveloperFooter({ wide = false, origins, current }: { wide?: boolean; origins: SiteOrigins; current?: DeveloperSection }) {
   return (
     <footer className={DEV_FOOTER}>
       <div className={wide ? DEV_FOOTER_INNER_WIDE : DEV_FOOTER_INNER}>
@@ -187,8 +212,8 @@ export function DeveloperFooter({ wide = false, origins }: { wide?: boolean; ori
         <nav aria-label="Site">
           <ul className={DEV_FOOTER_LINKS}>
             {developerFooterLinks(origins).map((link) => (
-              <li key={link.label}>
-                <a className={DEV_FOOTER_LINK} href={link.href}>
+              <li key={link.label} className={link.legal === undefined ? undefined : DEV_FOOTER_LEGAL_ITEM}>
+                <a className={DEV_FOOTER_LINK} href={link.href} aria-current={link.legal !== undefined && link.legal === current ? "page" : undefined}>
                   {link.label}
                 </a>
               </li>
@@ -222,7 +247,7 @@ export function DeveloperPage({
     <>
       <DeveloperHeader current={current} wide={wide} signedIn={signedIn} />
       {children}
-      <DeveloperFooter wide={wide} origins={origins} />
+      <DeveloperFooter wide={wide} origins={origins} current={current} />
     </>
   );
 }
