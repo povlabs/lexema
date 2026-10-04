@@ -22,8 +22,13 @@ To build one in a local seed, see
 - A page gives one entry per Italian part-of-speech section. Each entry records
   the rule that read it.
 - No inflection table, pronunciation or etymology is recovered.
-- Every raw page whose title has no Italian archive record is a candidate, not
-  only a page a form names ([seedSql.ts](../src/import/seedSql.ts)).
+- In a full-release seed, every raw page whose title has no Italian archive
+  record is a candidate, not only a page a form names
+  ([seedSql.ts](../src/import/seedSql.ts)). A fixture seed offers only the
+  release's record-less titles in
+  [`fixtures/unrecorded-page-titles.json`](../fixtures/unrecorded-page-titles.json)
+  ([pageOnlyCandidates.ts](../src/import/pageOnlyCandidates.ts),
+  [development seed](DEV_SEED.md#what-is-emitted)).
 
 ## Identity
 

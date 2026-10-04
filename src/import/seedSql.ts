@@ -22,6 +22,7 @@ import { RawPageRows } from "./rawPageRows.js";
 import { recoverPageEntry } from "../italian/pageEntry.js";
 import { entryDefinitionsOf, pageEntryRows } from "./pageEntryRows.js";
 import { RecoveredLayer, type RecoverySummary } from "./recoveredLayer.js";
+import { PageOnlyCandidates } from "./pageOnlyCandidates.js";
 import { CorrectedLayer, type CorrectionSummary } from "./correctedLayer.js";
 import { CorrectedDefinitionLayer, type DefinitionCorrectionSummary } from "./correctedDefinitions.js";
 import { CURATED_CORRECTIONS, type CuratedCorrection } from "../italian/curatedCorrections.js";
@@ -363,6 +364,12 @@ export interface SeedSqlOptions {
    */
   rawPages?: RawPageSource;
   /**
+   * Which of `rawPages` are offered as page-only entries: every one no Italian
+   * record spells, as a full release does (ADR 0028, the default), or only the
+   * committed record-less titles, as the fifty-word fixture does (#499).
+   */
+  pageOnly?: PageOnlyCandidates;
+  /**
    * The language codes the dump heads sections with
    * (`fixtures/section-language/regressions.json`). With `rawPages`, the seed
    * hides every record the section-language rule finds in another language
@@ -432,6 +439,7 @@ export async function seedSql(options: SeedSqlOptions): Promise<SeedSqlReport> {
   };
   const pageRows = new RawPageRows(writer.statement("raw_page"), writer.counts);
   const rawPages: RawPageSource = options.rawPages ?? { page: () => undefined, titles: () => [], size: 0 };
+  const pageOnly = options.pageOnly ?? PageOnlyCandidates.everyUnrecordedPage();
   const recovered = new RecoveredLayer(
     rawPages,
     pageRows,
@@ -496,12 +504,12 @@ export async function seedSql(options: SeedSqlOptions): Promise<SeedSqlReport> {
     });
     if (!start) throw new Error("archive parser did not provide seed metadata");
     // The complete archive word set is known only after streaming it. Every
-    // raw page whose title no Italian record spells is a page-only candidate,
-    // whether or not a form names it (ADR 0028); a hidden Italian record still
-    // prevents page-only recovery of that title. Pages are read one at a time,
-    // so the source is never copied, and a source lists each title once, so a
-    // title recovered here never shadows a later one in `seenWords`.
-    for (const title of rawPages.titles()) {
+    // offered raw page whose title no Italian record spells is a page-only
+    // candidate, whether or not a form names it (ADR 0028); a hidden Italian
+    // record still prevents page-only recovery of that title. Pages are read
+    // one at a time, so the source is never copied, and each title is offered
+    // once, so a title recovered here never shadows a later one in `seenWords`.
+    for (const title of pageOnly.titlesIn(rawPages)) {
       if (seenWords.has(title)) continue;
       const page = rawPages.page(title);
       if (page === undefined) throw new Error(`the raw page source lists ${JSON.stringify(title)} but has no page for it`);
