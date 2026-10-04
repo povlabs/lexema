@@ -40,19 +40,19 @@ import { ORIGIN } from "@/worker/shared/hosts.ts";
 const NOW = Date.parse("2026-09-28T12:00:00Z");
 const CSRF = "c".repeat(43);
 
-test("the sign-in page offers Google and GitHub, disables one that is not configured, and has no Terms line", () => {
+test("the sign-in page offers Google and GitHub, disables one that is not configured, and ends on the Terms line (#162)", () => {
   const both = renderToStaticMarkup(<SignIn available={{ google: true, github: true }} origins={ORIGIN} />);
   assert.match(both, /<h1[^>]*>Sign in<\/h1>/);
   assert.ok(both.includes(`href="${signInStart("google")}"`) && both.includes(`href="${signInStart("github")}"`));
   assert.match(both, /Continue with Google/);
   assert.match(both, /Continue with GitHub/);
-  assert.doesNotMatch(both, /Terms/);
+  assert.match(both, /By continuing you agree to the <a class="[^"]*" href="\/terms">Terms<\/a>\./);
 
   const githubOnly = renderToStaticMarkup(<SignIn available={{ google: false, github: true }} origins={ORIGIN} />);
   assert.ok(!githubOnly.includes(`href="${signInStart("google")}"`), "an unconfigured provider is not a link");
   assert.match(githubOnly, /<button[^>]*disabled=""[^>]*>(?:(?!<\/button>).)*Continue with Google<\/button>/);
   assert.ok(githubOnly.includes(`href="${signInStart("github")}"`));
-  assert.doesNotMatch(githubOnly, /Terms/);
+  assert.match(githubOnly, /By continuing you agree to the <a [^>]*>Terms<\/a>\./);
 });
 
 test("dates read as the boards write them, and last use as a time ago, then a date", () => {

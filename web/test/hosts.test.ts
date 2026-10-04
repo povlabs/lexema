@@ -100,7 +100,7 @@ test("the query survives the rewrite, and every other host is the dictionary's",
   ]);
   for (const url of [
     "https://lexema.fyi/?q=casa",
-    "http://localhost:8790/attribution",
+    "http://localhost:8790/licence",
     "http://127.0.0.1:8790/",
     "https://www.lexema.fyi/v1/lookup?q=casa",
   ]) {

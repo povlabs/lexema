@@ -6,13 +6,16 @@
 // Before a query the page is the name and the bar alone, centred (frame 00), so
 // the search page leaves this out in that state rather than showing the name
 // twice.
+//
+// `column` is the page's own column, so the name starts on the page's edge: a
+// legal page's header is 20 px in on a phone, every other page's 16 (#588).
 
-import { TOP_BAR, TOP_BAR_INNER, TOP_BAR_NAME } from "@/components/shared/styles.ts";
+import { TOP_BAR, TOP_BAR_INNER, TOP_BAR_NAME, type DictionaryColumn } from "@/components/shared/styles.ts";
 
-export function SiteHeader() {
+export function SiteHeader({ column = "page" }: { column?: DictionaryColumn }) {
   return (
     <header className={TOP_BAR}>
-      <div className={TOP_BAR_INNER}>
+      <div className={TOP_BAR_INNER[column]}>
         <a className={TOP_BAR_NAME} href="/">
           Lexema
         </a>

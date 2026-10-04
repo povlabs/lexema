@@ -79,7 +79,9 @@ and this section as its evidence. A seed of this file copies them into `source_r
 Italian Wiktionary dump of 1 July 2026 linked to
 [its Wikimedia page](https://dumps.wikimedia.org/itwiktionary/20260701/), and the kaikki.org
 download the file came from. The download time, the checksum, the basis and this reasoning stay
-here and in the facts file, not on the page.
+here and in the facts file, not on the page. Since [#139](https://github.com/povlabs/lexema/issues/139)
+the page is `/licence`, and it names the release the dictionary serves and its dump date instead
+(ADR 0009, amendment #139).
 
 ### 1.4 How a future release becomes traceable
 
@@ -300,12 +302,16 @@ compliance bug.
 
 ### 3.2 The public attribution page
 
-Route: `/attribuzione` (IT) and `/attribution` (EN), linked from the site footer on every page. It
+Route: `/attribuzione` (IT) and `/licence` (EN), linked from the site footer on every page. It
 carries what 3(a)(2) lets a link absorb — the copyright notice, the warranty disclaimer, the release
 identification — plus what we changed, the trademark disclaimer, and the statement that no
 third-party dictionary text entered the data. The
 [draft page](ATTRIBUTION_NOTICES.md#public-attribution-page-draft) is written out in full, and its
 `{...}` placeholders come from release metadata: they **must not be published with guessed values.**
+
+**Built since 2026-10-04 ([#139](https://github.com/povlabs/lexema/issues/139)).** The English page
+is `/licence`, and `/attribution`, its old address, redirects to it. No `/attribuzione` page exists
+yet. [WEB.md](WEB.md#why-the-credit-is-on-its-own-page) describes the current page.
 
 ### 3.3 In API responses and data downloads
 
@@ -607,7 +613,7 @@ keep building.
 | # | Work | Where | Related issue |
 | --- | --- | --- | --- |
 | B7 | Result-page attribution notice, per word, with history link and change notice. | §3.1 | #14, #19 |
-| B8 | Finalise and implement `/attribuzione` and `/attribution`: fill licence/audio choices, translate the full English page, verify metadata and include cleared extra notices. Drafts are not publication-ready. | §3.2 | #19 |
+| B8 | Finalise and implement `/attribuzione`, and finalise the English page, built as `/licence` ([#139](https://github.com/povlabs/lexema/issues/139)): fill licence/audio choices, translate the full English page, verify metadata and include cleared extra notices. Drafts are not publication-ready. | §3.2 | #19 |
 | B9 | Fix form→lemma attribution so the notice cites the record the text actually came from. | §3.1, §7.2 | **#16 — now a compliance blocker, not just a bug** |
 | B10 | Add the missing `ReleaseMetadata` fields, including `identityConfidence`; set `license` to whatever B2 decides (the proposed policy is `["CC-BY-SA-4.0"]`). | §7.1 | #2, #10 |
 | B11 | Capture the kaikki log and edition-page footer at fetch time. | §1.4 | #10 |

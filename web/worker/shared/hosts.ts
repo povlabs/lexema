@@ -30,6 +30,10 @@
 // since a subdomain's top-level domain must be a public suffix, but accepts
 // `localhost`. So locally Google's callback is on `localhost`, which relays
 // the browser to the developer site with the same query (#185).
+//
+// One dictionary page moved: `/attribution` is `/licence` since #139, and the
+// old address answers a permanent redirect there. A browser never sends a URL's
+// fragment, so the Licence page carries the old page's section ids itself.
 
 import { API_PREFIX } from "@lexema/api/calls.ts";
 import type { FetchHandler } from "./fetchHandler.ts";
@@ -83,6 +87,9 @@ export const DEVELOPERS_SEGMENT = "developer-site";
  */
 const RETIRED_API_SEGMENTS = ["api", "v1"] as const;
 
+/** Dictionary pages that moved, by their old path: each answers a permanent redirect to its new one (#139). */
+const MOVED_PAGES: Readonly<Record<string, string>> = { "/attribution": "/licence" };
+
 /** Where a request goes. Each arm carries exactly what answering it needs. */
 export type Destination =
   /** A `lexema.fyi` page or route, handed on exactly as it came. */
@@ -93,6 +100,8 @@ export type Destination =
   | { to: "api" }
   /** Local Google sign-in only: the browser is sent on to `location`. */
   | { to: "relay"; location: string }
+  /** A dictionary page that moved: the browser is sent on to `location` for good. */
+  | { to: "moved"; location: string }
   /** Nothing is here: answered as the named site answers a missing path. */
   | { to: "not-found"; site: "lexema" | "api" };
 
@@ -206,9 +215,11 @@ export function destinationOf(url: URL): Destination {
     case "lexema": {
       const segments = segmentsOf(url.pathname);
       if (RETIRED_API_SEGMENTS.every((segment, i) => segments[i] === segment)) return { to: "not-found", site: "lexema" };
-      if (url.hostname === LOCAL_DOMAIN && `/${segments.join("/")}` === GOOGLE_CALLBACK_PATH) {
+      const path = `/${segments.join("/")}`;
+      if (url.hostname === LOCAL_DOMAIN && path === GOOGLE_CALLBACK_PATH) {
         return { to: "relay", location: `${localOrigin(url, "developers")}${GOOGLE_CALLBACK_PATH}${url.search}` };
       }
+      if (Object.hasOwn(MOVED_PAGES, path)) return { to: "moved", location: `${MOVED_PAGES[path]}${url.search}` };
       const [first = ""] = segments;
       const segment = first.endsWith(".rsc") ? first.slice(0, -".rsc".length) : first;
       return segment === DEVELOPERS_SEGMENT ? { to: "not-found", site: "lexema" } : { to: "site" };
@@ -240,6 +251,8 @@ export function byHost<E>(handlers: SiteHandlers<E>): FetchHandler<E> {
         return handlers.api(request, env, ctx);
       case "relay":
         return new Response(null, { status: 302, headers: { location: destination.location, "cache-control": "no-store" } });
+      case "moved":
+        return new Response(null, { status: 308, headers: { location: destination.location } });
       case "not-found":
         return destination.site === "api"
           ? handlers.apiNotFound(url)

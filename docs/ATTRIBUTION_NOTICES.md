@@ -31,7 +31,7 @@ English equivalent:
 > Text available under [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/).
 > **Lexema modified this material:** the data was extracted, restructured and reorganised
 > automatically; the wording of the definitions was not rewritten.
-> [Full source and licence details](/attribution).
+> [Full source and licence details](/licence).
 
 What each part has to achieve, and the rules on placement and on forms that
 resolve to a different lemma, are in
@@ -39,9 +39,14 @@ resolve to a different lemma, are in
 
 ## Public attribution page (draft)
 
-Route: `/attribuzione` (IT) and `/attribution` (EN), linked from the site footer
+Route: `/attribuzione` (IT) and `/licence` (EN), linked from the site footer
 on every page. Drafted in full below — placeholders in `{...}` come from release
 metadata, and **must not be published with guessed values.**
+
+**Built since 2026-10-04 ([#139](https://github.com/povlabs/lexema/issues/139)).**
+The English page is `/licence`, and `/attribution`, its old address, redirects
+to it. No `/attribuzione` page exists yet. [WEB.md](WEB.md#why-the-credit-is-on-its-own-page)
+describes the current page.
 
 > # Fonti e licenze
 >
@@ -115,8 +120,9 @@ and its evidence are kept in [`src/source/archiveFacts.ts`](../src/source/archiv
 > [Vocabolario Treccani](https://www.treccani.it/vocabolario/), esclusivamente come verifica
 > redazionale. **Nessun testo proveniente da queste fonti è stato importato in Lexema.**
 
-An English translation of this page should exist at `/attribution` with
-identical content. That translation is not written yet; it is part of B8.
+An English translation of this page should exist on the English page,
+`/licence`, with identical content. That translation is not written yet; it is
+part of B8.
 
 ## API responses and bulk downloads (draft)
 
@@ -135,7 +141,7 @@ source-derived text:
     "modified": true,
     "modificationNotice": "Extracted, restructured and re-indexed by Lexema. Definition wording unchanged.",
     "releaseId": "{releaseId}",
-    "attributionPage": "https://{host}/attribution",
+    "attributionPage": "https://{host}/licence",
     "disclaimer": "Provided as-is, without warranties. See CC BY-SA 4.0 section 5."
   }
 }

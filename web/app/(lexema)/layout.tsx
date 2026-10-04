@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import "@/app/globals.css";
-import { SiteFooter } from "@/components/dictionary/SiteFooter";
+import { CurrentSiteFooter } from "@/components/dictionary/CurrentSiteFooter";
 import { BODY } from "@/components/shared/styles.ts";
 import { SITE_ICON_METADATA } from "@/lib/shared/siteIcons.ts";
 import { siteOrigins } from "@/lib/shared/siteOrigins.ts";
@@ -15,10 +15,10 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
           light branch — the manifest rules dark only. */}
       <body className={BODY}>
         {children}
-        {/* Every page, including this one's children: the attribution page is
+        {/* Every page, including this one's children: the Licence page is
             what makes the small per-reading Source link lawful, so the way to
             it cannot depend on which page a reader landed on (ADR 0009). */}
-        <SiteFooter origins={await siteOrigins()} />
+        <CurrentSiteFooter origins={await siteOrigins()} />
       </body>
     </html>
   );

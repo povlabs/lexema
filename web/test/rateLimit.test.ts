@@ -84,7 +84,7 @@ test("a search is any request with a non-empty q, and /suggest is a suggestion",
   assert.equal(of("/"), undefined);
   assert.equal(of("/?q="), undefined);
   assert.equal(of("/?q=%20%20"), undefined);
-  assert.equal(of("/attribution"), undefined);
+  assert.equal(of("/licence"), undefined);
   assert.equal(of("/developers"), undefined);
   assert.equal(of("/_next/static/app.js"), undefined);
 });
@@ -113,7 +113,7 @@ test("fifteen searches a minute go through, and the sixteenth is a 429 the page 
 test("the home page and static paths are never counted", async () => {
   const { fetch, env } = harness();
   for (let i = 0; i < 40; i++) assert.equal((await fetch("/")).status, 200);
-  assert.equal((await fetch("/attribution")).status, 200);
+  assert.equal((await fetch("/licence")).status, 200);
   assert.equal(env.SEARCH_LIMIT.counts.size, 0);
   assert.equal(env.SUGGEST_LIMIT.counts.size, 0);
 });

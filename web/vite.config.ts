@@ -4,8 +4,15 @@ import { cloudflare } from "@cloudflare/vite-plugin";
 import tailwindcss from "@tailwindcss/vite";
 import vinext from "vinext";
 import { defineConfig } from "vite";
+import { readServedRelease } from "../src/update/readServedRelease.ts";
 
 export default defineConfig({
+  // The release the dictionary serves, read from `dictionary-changes/` once per
+  // build, so the Licence page names it with no database (#139,
+  // app/(lexema)/licence/page.tsx).
+  define: {
+    __LEXEMA_SERVED_RELEASE__: JSON.stringify(await readServedRelease(fileURLToPath(new URL("..", import.meta.url)))),
+  },
   plugins: [
     // This order is the one the spike proved on vinext, and it is load-bearing:
     // reports/2026-09-21-base-ui-tailwind-on-vinext.md ran `tailwindcss()`

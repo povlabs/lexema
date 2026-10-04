@@ -1,5 +1,5 @@
 // A link that leaves Lexema — a Source page on Wiktionary, a review's
-// evidence, a credit on /attribution — opens in a new tab, so the page stays
+// evidence, a credit on /licence — opens in a new tab, so the page stays
 // where the reader left it, and says so to a screen reader. `noopener` keeps
 // the new page from reaching back into this one; `noreferrer` sends it no
 // referrer. Links inside Lexema (`/?q=…`) are plain `<a>`s in the same tab.

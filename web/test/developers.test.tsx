@@ -43,9 +43,10 @@ import {
 } from "@/lib/developers/apiReference.ts";
 import { DeveloperDocs } from "@/components/developers/DeveloperDocs";
 import { DOCS_PAGES, endpointPath, pathOf } from "@/lib/developers/docsPages.ts";
-import { DOCS_CODE } from "@/components/shared/styles.ts";
+import { DEV_FOOTER_LEGAL, DOCS_CODE, LEGAL_CONTENTS } from "@/components/shared/styles.ts";
 import { DeveloperLanding } from "@/components/developers/DeveloperLanding";
-import { DeveloperFooter } from "@/components/developers/DeveloperPage";
+import { DeveloperFooter, developerFooterLinks } from "@/components/developers/DeveloperPage";
+import { DeveloperPrivacy, DeveloperTerms, planTermsLine } from "@/components/developers/DeveloperLegal";
 import { DeveloperPricing } from "@/components/developers/DeveloperPricing";
 import { SiteFooter } from "@/components/dictionary/SiteFooter";
 import { handleApi } from "@/worker/api/handler.ts";
@@ -443,27 +444,250 @@ test("pricing shows Starter, Pro and Enterprise with the plan table's numbers, a
   assert.match(enterprise, /<a [^>]*href="mailto:contact@lexema.fyi">Contact us<\/a>/);
 });
 
-test("every developer page carries the footer: lexema.fyi, Docs, Pricing and Contact by mail, and no Terms", () => {
+test("every developer page carries the footer: lexema.fyi, Docs, Pricing, Terms, Privacy and Contact by mail (#162)", () => {
+  assert.deepEqual(
+    developerFooterLinks(ORIGIN).map(({ label, href }) => [label, href]),
+    [
+      ["lexema.fyi", "https://lexema.fyi"],
+      ["Docs", "/docs"],
+      ["Pricing", "/pricing"],
+      ["Terms", "/terms"],
+      ["Privacy", "/privacy"],
+      ["Contact", "mailto:contact@lexema.fyi"],
+    ],
+  );
   const footer = renderToStaticMarkup(<DeveloperFooter origins={ORIGIN} />);
-  const links = [...footer.matchAll(/<a class="[^"]*" href="([^"]+)">([^<]+)<\/a>/g)].map((match) => [match[2], match[1]]);
+  const links = [...footer.matchAll(/<li( class="([^"]*)")?><a class="[^"]*" href="([^"]+)">([^<]+)<\/a>/g)].map((match) => [match[4], match[3], match[2]]);
+  // On a phone, Terms and Privacy take the second row (frames 35m and 36m).
   assert.deepEqual(links, [
-    ["Lexema Developers", "/"],
-    ["lexema.fyi", "https://lexema.fyi"],
-    ["Docs", "/docs"],
-    ["Pricing", "/pricing"],
-    ["Contact", "mailto:contact@lexema.fyi"],
+    ["lexema.fyi", "https://lexema.fyi", undefined],
+    ["Docs", "/docs", undefined],
+    ["Pricing", "/pricing", undefined],
+    ["Terms", "/terms", DEV_FOOTER_LEGAL],
+    ["Privacy", "/privacy", DEV_FOOTER_LEGAL],
+    ["Contact", "mailto:contact@lexema.fyi", undefined],
   ]);
   const docsPages = DOCS_PAGES.map((page) => <DeveloperDocs page={page} origins={ORIGIN} />);
   for (const page of [<DeveloperLanding origins={ORIGIN} />, ...docsPages, <DeveloperPricing origins={ORIGIN} />]) {
     const html = renderToStaticMarkup(page);
     assert.ok(html.includes(renderToStaticMarkup(<DeveloperFooter wide={html.includes('aria-label="Docs"')} origins={ORIGIN} />)));
-    assert.doesNotMatch(html, /Terms/);
+  }
+});
+
+/** The developer Terms and Privacy pages as their routes serve them, signed out. */
+const terms = (): string => renderToStaticMarkup(<DeveloperTerms origins={ORIGIN} />);
+const devPrivacy = (): string => renderToStaticMarkup(<DeveloperPrivacy origins={ORIGIN} />);
+
+/** A legal page's text as a reader reads it: the tags taken out, the entities read. */
+const readLegal = (html: string): string =>
+  html
+    .replace(/<[^>]*>/g, "")
+    .replace(/&amp;/g, "&")
+    .replace(/&quot;/g, '"')
+    .replace(/&#x27;/g, "'");
+
+/** Every section of a legal page, in order: its id, its numbered heading, and its paragraphs and items. */
+function legalSections(html: string): { id: string; heading: string; blocks: string[] }[] {
+  return [...html.matchAll(/<section [^>]*id="([^"]+)"[^>]*><h2[^>]*>(.*?)<\/h2>(.*?)<\/section>/g)].map((match) => ({
+    id: match[1],
+    heading: readLegal(match[2]),
+    blocks: [...match[3].matchAll(/<(p|li)\b[^>]*>(.*?)<\/\1>/g)].map((block) => readLegal(block[2])),
+  }));
+}
+
+test("/terms on the developer host reads, section by section, exactly as Huey approved it (#162)", () => {
+  const html = terms();
+  assert.match(html, /<p class="[^"]*">LEXEMA DEVELOPERS · LEGAL<\/p><h1 class="[^"]*">Terms of service<\/h1><p class="[^"]*">Effective 4 October 2026<\/p>/);
+  assert.ok(
+    html.includes(
+      ">These terms govern your use of developers.lexema.fyi and the Lexema API at api.lexema.fyi. By creating an account or calling the API, you agree to them.</p>",
+    ),
+  );
+  assert.deepEqual(legalSections(html), [
+    {
+      id: "accounts",
+      heading: "1. Accounts",
+      blocks: [
+        "The service is offered for business and professional use only. By creating an account you confirm that you are not acting as a consumer. You sign in with a Google or GitHub account that has a verified email address. You are responsible for all activity under your account and for keeping your API keys secret. If a key is exposed, revoke it from your dashboard.",
+      ],
+    },
+    {
+      id: "plans",
+      heading: "2. Plans and billing",
+      blocks: [
+        "Access to the API requires a paid plan:",
+        "(a) Starter: US$15 per month, 1,000,000 calls per month and 60 per minute;",
+        "(b) Pro: US$49 per month, 5,000,000 calls per month and 300 per minute;",
+        "(c) Enterprise: terms agreed in writing.",
+        "Plans are billed monthly in advance through Stripe. Receipts and invoices are issued by Stripe.",
+      ],
+    },
+    {
+      id: "cancellation",
+      heading: "3. Cancellation and refunds",
+      blocks: [
+        "You may cancel at any time from the billing portal. Your keys keep working until the end of the paid period and you are not charged again. Fees are not refunded; we may refund a charge made in error, such as a duplicate payment. If a payment fails, your keys stop answering calls until the payment succeeds or you choose a plan again.",
+      ],
+    },
+    {
+      id: "limits",
+      heading: "4. Use limits",
+      blocks: [
+        "Each plan sets a monthly and a per-minute limit on calls, shared by all keys on the account. Calls beyond a limit are answered with status 429. You may not:",
+        "(a) circumvent the limits, for example by opening several accounts;",
+        "(b) interfere with or disrupt the service or its infrastructure;",
+        "(c) use the service in breach of applicable law.",
+      ],
+    },
+    {
+      id: "licence",
+      heading: "5. Licence of the content",
+      blocks: [
+        "Content returned by the API is licensed under CC BY-SA 4.0. Every result carries an attribution field naming the source and the licence. When you reuse the content you must credit the source, link to the licence and share adaptations under the same licence. Nothing in these terms restricts the rights that licence grants you.",
+      ],
+    },
+    {
+      id: "availability",
+      heading: "6. Availability",
+      blocks: [
+        "The service is provided “as is” and “as available”. We may change, suspend or discontinue features, and we do not guarantee any level of uptime unless agreed in an Enterprise agreement.",
+      ],
+    },
+    {
+      id: "liability",
+      heading: "7. Liability",
+      blocks: [
+        "To the extent permitted by law, Lexema is not liable for indirect or consequential loss, and its total liability is limited to the fees you paid in the three months before the claim.",
+      ],
+    },
+    {
+      id: "suspension",
+      heading: "8. Suspension and termination",
+      blocks: [
+        "We may suspend or close any account at any time, with or without notice, if we suspect a breach of these terms, abuse, fraud or a risk to the service. When an account is suspended, its keys stop answering calls, any subscription is cancelled and no new keys can be created. You can still sign in and delete your account at any time from the dashboard.",
+      ],
+    },
+    {
+      id: "changes",
+      heading: "9. Changes",
+      blocks: [
+        "We may update these terms. The effective date at the top shows when they last changed. By continuing to use the service after a change, you accept the updated terms.",
+      ],
+    },
+    {
+      id: "law",
+      heading: "10. Governing law",
+      blocks: ["These terms are governed by the laws of Italy. Any dispute arising from them falls under the exclusive jurisdiction of the Italian courts."],
+    },
+    { id: "contact", heading: "11. Contact", blocks: ["For any question about these terms, write to:", "contact@lexema.fyi"] },
+  ]);
+});
+
+test("/privacy on the developer host reads, section by section, exactly as Huey approved it (#162)", () => {
+  const html = devPrivacy();
+  assert.match(html, /<p class="[^"]*">LEXEMA DEVELOPERS · LEGAL<\/p><h1 class="[^"]*">Privacy policy<\/h1><p class="[^"]*">Effective 4 October 2026<\/p>/);
+  assert.ok(
+    html.includes(
+      ">This policy explains what information Lexema processes when you use developers.lexema.fyi and the Lexema API, why, and for how long.</p>",
+    ),
+  );
+  assert.deepEqual(legalSections(html), [
+    {
+      id: "information",
+      heading: "1. Information we process",
+      blocks: [
+        "(a) Account: your name and email address, and the identifier of the Google or GitHub account you sign in with. We keep no profile picture and no sign-in tokens;",
+        "(b) Sessions: a session token and its expiry. We do not record your IP address or browser;",
+        "(c) API keys: a one-way hash of each key, its label, prefix and dates. The full key is shown to you once and never stored;",
+        "(d) Usage: the number of calls each key makes per day;",
+        "(e) Billing: your Stripe customer and subscription identifiers, plan and status. Card details are handled by Stripe and never reach us.",
+      ],
+    },
+    {
+      id: "cookies",
+      heading: "2. Cookies",
+      blocks: ["We use only the cookies needed to sign you in and keep you signed in, for up to 30 days. We use no analytics or advertising cookies."],
+    },
+    {
+      id: "purpose",
+      heading: "3. Purpose and legal basis",
+      blocks: [
+        "We process account, key, usage and billing information to provide the service you signed up for (Article 6(1)(b) GDPR), keep billing records as tax law requires (Article 6(1)(c)), and limit requests to protect the service (Article 6(1)(f)).",
+      ],
+    },
+    {
+      id: "providers",
+      heading: "4. Service providers",
+      blocks: [
+        "Cloudflare, Inc. hosts the service and delivers our emails. Stripe, Inc. processes payments. Google and GitHub authenticate your sign-in. We do not sell or share your information with anyone else.",
+      ],
+    },
+    {
+      id: "retention",
+      heading: "5. Retention",
+      blocks: [
+        "We keep your account information while your account exists. When you delete your account, your sessions and sign-in identities are deleted, your name and email address are erased, and your keys are revoked. Anonymous usage counts and billing records are kept, the latter for as long as tax law requires.",
+      ],
+    },
+    {
+      id: "rights",
+      heading: "6. Your rights",
+      blocks: [
+        "You can delete your account at any time from the dashboard. You may also ask us for a copy of your information, or to correct it, by writing to us. You have the right to object to processing and to lodge a complaint with your data protection authority.",
+      ],
+    },
+    { id: "changes", heading: "7. Changes", blocks: ["We may update this policy. The effective date at the top shows when it last changed."] },
+    { id: "contact", heading: "8. Contact", blocks: ["For any question about this policy, write to:", "privacy@lexema.fyi"] },
+  ]);
+});
+
+test("/terms section 2 states each Stripe plan's price and limits from PLAN_TERMS (#162)", () => {
+  const plans = legalSections(terms()).find((section) => section.id === "plans");
+  for (const [mark, plan] of [["a", "starter"], ["b", "pro"]] as const) {
+    const { name, usdPerMonth, callsPerPeriod, callsPerMinute } = PLAN_TERMS[plan];
+    const count = (n: number) => n.toLocaleString("en-US");
+    const line = `(${mark}) ${name}: US$${usdPerMonth} per month, ${count(callsPerPeriod)} calls per month and ${count(callsPerMinute)} per minute;`;
+    assert.ok(plans?.blocks.includes(line), line);
+    assert.equal(`(${mark}) ${planTermsLine(plan)};`, line);
+  }
+});
+
+test("the developer legal pages' contact and privacy addresses are mailto links to the lexema.fyi mailboxes (#162)", () => {
+  assert.match(terms(), /<a class="[^"]*" href="mailto:contact@lexema\.fyi">contact@lexema\.fyi<\/a><\/p><\/section>/);
+  assert.match(devPrivacy(), /<a class="[^"]*" href="mailto:privacy@lexema\.fyi">privacy@lexema\.fyi<\/a><\/p><\/section>/);
+});
+
+test("the developer legal pages: a Contents column on a wide screen only, read as \"1. Accounts\", and the footer marks the page (#162)", () => {
+  for (const [html, first, legal] of [
+    [terms(), "1. Accounts", "Terms"],
+    [devPrivacy(), "1. Information we process", "Privacy"],
+  ] as const) {
+    const contents = html.slice(html.indexOf(`<nav class="${LEGAL_CONTENTS}"`), html.indexOf("</nav>", html.indexOf(`<nav class="${LEGAL_CONTENTS}"`)));
+    assert.deepEqual(LEGAL_CONTENTS.split(" "), ["hidden", "sm:block"], "no Contents column on a phone");
+    const entries = [...contents.matchAll(/<a class="[^"]*" href="#([^"]+)"( aria-current="location")?>(.*?)<\/a>/g)];
+    // Contents lists every section, in order, each read as its heading is.
+    assert.deepEqual(
+      entries.map((match) => [match[1], readLegal(match[3])]),
+      legalSections(html).map((section) => [section.id, section.heading]),
+    );
+    assert.equal(readLegal(entries[0][3]), first);
+    assert.equal(legalSections(html)[0].heading, first);
+    assert.deepEqual(
+      entries.map((match) => match[2] !== undefined),
+      entries.map((_, i) => i === 0),
+    );
+    // The footer marks the page being read, and nothing else.
+    assert.deepEqual(
+      [...html.matchAll(/aria-current="page">([^<]+)</g)].map((match) => match[1]),
+      [legal],
+    );
+    assert.ok(html.includes(renderToStaticMarkup(<DeveloperFooter wide legal={legal === "Terms" ? "terms" : "privacy"} origins={ORIGIN} />)));
   }
 });
 
 test("lexema.fyi keeps no /developers route, and its footer links to the developer site", async () => {
   await assert.rejects(access(join(REPO, "web/app/(lexema)/developers")), { code: "ENOENT" });
-  const footer = renderToStaticMarkup(<SiteFooter origins={ORIGIN} />);
+  const footer = renderToStaticMarkup(<SiteFooter origins={ORIGIN} current="/" />);
   assert.match(footer, /<a class="[^"]*" href="https:\/\/developers\.lexema\.fyi">Developers<\/a>/);
 });
 
@@ -471,7 +695,7 @@ test("rendered for a Preview, every link to another site and every API address n
   const name = "huey-266-preview-links";
   const preview = originsOf(`${name}.developers-preview.lexema.fyi`);
   const pages = [
-    <SiteFooter origins={preview} />,
+    <SiteFooter origins={preview} current="/" />,
     <DeveloperLanding origins={preview} />,
     <DeveloperPricing origins={preview} />,
     ...DOCS_PAGES.map((page) => <DeveloperDocs page={page} origins={preview} />),
@@ -480,10 +704,10 @@ test("rendered for a Preview, every link to another site and every API address n
   const hosts = new Set([...html.matchAll(/https?:\/\/([a-z0-9.-]*lexema\.fyi)/g)].map((match) => match[1]));
   assert.deepEqual([...hosts].sort(), [`${name}.api-preview.lexema.fyi`, `${name}.developers-preview.lexema.fyi`, `${name}.preview.lexema.fyi`]);
 
-  assert.match(renderToStaticMarkup(<SiteFooter origins={preview} />), new RegExp(`href="https://${name}\\.developers-preview\\.lexema\\.fyi">Developers</a>`));
+  assert.match(renderToStaticMarkup(<SiteFooter origins={preview} current="/" />), new RegExp(`href="https://${name}\\.developers-preview\\.lexema\\.fyi">Developers</a>`));
   assert.match(renderToStaticMarkup(<DeveloperFooter origins={preview} />), new RegExp(`href="https://${name}\\.preview\\.lexema\\.fyi">lexema\\.fyi</a>`));
   const attribution = renderToStaticMarkup(<DeveloperDocs page={{ kind: "guide", guide: "attribution" }} origins={preview} />);
-  assert.match(attribution, new RegExp(`href="https://${name}\\.preview\\.lexema\\.fyi/attribution"`));
+  assert.match(attribution, new RegExp(`href="https://${name}\\.preview\\.lexema\\.fyi/licence"`));
   const lookup = renderToStaticMarkup(<DeveloperDocs page={{ kind: "endpoint", endpoint: "lookup" }} origins={preview} />);
   assert.ok(lookup.includes(`https://${name}.api-preview.lexema.fyi/v1/lookup`), "the endpoint's address and its examples");
   assert.ok(renderToStaticMarkup(<DeveloperLanding origins={preview} />).includes(`GET https://${name}.api-preview.lexema.fyi/v1/lookup`));
@@ -493,7 +717,7 @@ test("rendered for the live and local hosts, every link to another site and ever
   for (const hostname of ["developers.lexema.fyi", "developers.localhost"]) {
     const origins = originsOf(hostname);
     const pages = [
-      <SiteFooter origins={origins} />,
+      <SiteFooter origins={origins} current="/" />,
       <DeveloperLanding origins={origins} />,
       <DeveloperPricing origins={origins} />,
       ...DOCS_PAGES.map((page) => <DeveloperDocs page={page} origins={origins} />),
@@ -603,7 +827,7 @@ test("a developer-site 404 is framed like its other pages: the bar and footer, n
     const html = renderToStaticMarkup(await boundary.default());
     assert.match(html, /<nav aria-label="Developer site">/, "the developer bar");
     assert.ok(html.includes(renderToStaticMarkup(<DeveloperFooter origins={ORIGIN} />)), "the developer footer");
-    assert.ok(!html.includes(renderToStaticMarkup(<SiteFooter origins={ORIGIN} />)), "no dictionary footer");
+    assert.ok(!html.includes(renderToStaticMarkup(<SiteFooter origins={ORIGIN} current="/" />)), "no dictionary footer");
     assert.match(html, /<h1[^>]*>Page not found<\/h1>/);
   } finally {
     hooks.deregister();
