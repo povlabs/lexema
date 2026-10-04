@@ -63,7 +63,11 @@ export function readSourceRecord(
   rawJson: string,
   ref: (pointer: string) => SourceRef,
 ): SourceRecordFields {
-  const parsed: Json = JSON.parse(rawJson);
+  return readSourceFields(JSON.parse(rawJson), ref);
+}
+
+/** `readSourceRecord` over a line already parsed. */
+export function readSourceFields(parsed: Json, ref: (pointer: string) => SourceRef): SourceRecordFields {
   if (!isObject(parsed)) {
     return { wordFacts: emptyWordFacts(), expressionItems: [], examplesBySense: new Map() };
   }

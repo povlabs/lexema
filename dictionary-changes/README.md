@@ -26,7 +26,7 @@ cannot read as one, naming the file.
 | `hide:records` | `archive`: the release id the master was seeded from; `rules`: every hiding rule |
 | `normalize:source-text` | `rules`: every source text rule the command applies |
 | `correct:records` | none: it writes the committed list of curated corrections, and `expected` pins what that list writes ([RUN_AN_IMPORT.md](../docs/RUN_AN_IMPORT.md#write-the-curated-corrections-into-a-seeded-database)) |
-| `load:page-entries` | `archive`: the release id the master was seeded from, whose dump the rule reads; `rules`: every page-entry rule ([PAGE_ENTRIES.md](../docs/PAGE_ENTRIES.md#load-them-into-a-seeded-dictionary)) |
+| `load:page-entries` | `archive`: the release id the master was seeded from, whose dump the rule reads; `rules`: every page-entry and page-fact rule ([PAGE_ENTRIES.md](../docs/PAGE_ENTRIES.md#load-them-into-a-seeded-dictionary)) |
 
 `expected` is the `counts` object a plan-only run of the command prints
 (`--plan-only`, [src/update/planOnly.ts](../src/update/planOnly.ts)). A table
@@ -49,3 +49,35 @@ After a merge to `main`, the [dictionary deploy](../docs/DEPLOY.md#the-dictionar
 applies every declaration the merge adds, in the order their commits reached
 `main`, and stops red when a plan's counts differ from `expected`. Changing or
 deleting a declaration that is already deployed does nothing.
+
+## Words the deploy looks up
+
+A declaration may name up to 10 of its own words in `lookups`. After every
+declaration is written and read back, the deploy looks each one up with the
+site's own lookup, beside its fixed word list, and stops red before
+`production` moves when one does not show what the item says:
+
+```json
+{
+  "command": "correct:records",
+  "lookups": [
+    { "word": "mastoide" },
+    { "word": "finora", "gloss": "fino" },
+    { "word": "inesistentissimo", "found": false }
+  ],
+  "expected": { "records": { "added": 0, "changed": 2, "removed": 0 }, "written": { "corrected_claim": 3, "correction_version": 1 } }
+}
+```
+
+| Item | Passes when the lookup |
+|---|---|
+| `{ "word": "mastoide" }` | finds the word, with at least one reading |
+| `{ "word": "finora", "gloss": "fino" }` | finds it, and some definition of some reading holds the text: a sense's gloss, or a definition read from the page |
+| `{ "word": "inesistentissimo", "found": false }` | does not find it |
+
+`lookups` is optional. When present it lists 1 to 10 items, each with a
+non-empty `word` the lookup accepts, and no word twice. `found` is `true` or
+`false` (`true` when left out), and a `gloss` goes only on a found word. The
+[pull request plan check](../docs/DEPLOY.md#the-pull-request-plan-check)
+lists the words and keeps them in the file it prints, but does not look them
+up, since the change is not written yet.

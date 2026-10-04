@@ -27,6 +27,7 @@ import { DatabaseSync } from "node:sqlite";
 import { gzipSync } from "node:zlib";
 import { renderToStaticMarkup } from "react-dom/server";
 import { seedSql } from "../../src/import/seedSql.js";
+import { PageOnlyCandidates, readUnrecordedPageTitles, UNRECORDED_PAGE_TITLES_FILE } from "../../src/import/pageOnlyCandidates.js";
 import { CURATED_CORRECTIONS, definitionCorrections, type CuratedCorrection } from "../../src/italian/curatedCorrections.js";
 import { atFixtureLines, correctionFixtureLines } from "../../test/correctionFixture.js";
 import { DECLARED_CORRECTION_LINES, declaredCorrections } from "../../test/declaredCorrectionFixture.js";
@@ -110,6 +111,7 @@ async function seedLines(
   rawPages?: RawPageSource,
   facts?: ArchiveFacts,
   corrections?: readonly CuratedCorrection[],
+  pageOnly?: PageOnlyCandidates,
 ): Promise<{ parts: readonly string[] }> {
   await mkdir(outputDir, { recursive: true });
   const archive = join(outputDir, "fixture.jsonl.gz");
@@ -127,6 +129,7 @@ async function seedLines(
       facts === undefined ? undefined : { [createHash("sha256").update(bytes).digest("hex")]: facts },
     license: "CC-BY-SA-4.0",
     rawPages,
+    pageOnly,
     corrections,
     onRejection: (rejection) => {
       throw new Error(`fixture line rejected: ${JSON.stringify(rejection)}`);
@@ -175,12 +178,16 @@ const withDevSeed = async (run: (f: Fixture) => Promise<void>) =>
 
 /**
  * The development fixture seeded the way `pnpm run seed:dev` seeds it: with the
- * raw pages under `fixtures/`, so records like `casa` carry the recovered layer.
+ * raw pages under `fixtures/`, so records like `casa` carry the recovered layer,
+ * and only the committed record-less titles as page-only entries (#499).
  * Seeded once for this file.
  */
 async function withDevSeedAndPages(run: (f: Fixture) => Promise<void>): Promise<void> {
   const db = await seededDictionary("page:dev-seed+pages", async (outputDir) =>
-    seedLines(outputDir, await devSeedLines(), await loadFixturePages(join(REPO, "fixtures"))));
+    seedLines(
+      outputDir, await devSeedLines(), await loadFixturePages(join(REPO, "fixtures")), undefined, undefined,
+      PageOnlyCandidates.listed(await readUnrecordedPageTitles(join(REPO, UNRECORDED_PAGE_TITLES_FILE))),
+    ));
   return withDatabase(db, run);
 }
 
@@ -2296,7 +2303,7 @@ test("a word a record heads or lists answers exactly as it did: the declared pro
   });
 });
 
-test("page-only readings present definitions without origin marks or invented forms, and API IDs are page identities", async () => {
+test("page-only readings present their page's fields without origin marks or invented forms, and API IDs are page identities", async () => {
   // Verbatim archive lines 52740/53209, not a manufactured lemma record.
   const text = await readFile(join(REPO, "fixtures/page-entry-forms.jsonl"), "utf8");
   await withLines(text.trimEnd().split("\n"), async ({ db }) => {
@@ -2312,8 +2319,17 @@ test("page-only readings present definitions without origin marks or invented fo
     assert.match(textOf(html), /narrare, oralmente o tramite scrittura, eventi o storie/);
     assert.match(textOf(html), /rappresentare qualcosa, in genere cosa non gradita/);
     assert.match(html, new RegExp(`id="reading-page-${reading.entryId}"`));
+    // The page writes no forms out, so there is no Forms block and no conjugation (ADR 0026).
     assert.doesNotMatch(html, /reading-undefined|forms-page-|<table/);
-    assert.doesNotMatch(textOf(html), /recovered|derived|Pronunciation|Etymology|Forms|Indicativo/);
+    assert.doesNotMatch(textOf(html), /recovered|page-only|italian-page|Forms|Indicativo/i);
+    // Every other field its page gives, through the components and in the order an archive entry's take:
+    // the IPA under the headword, the readings, then the word's facts, its expressions last, then Source.
+    assert.match(html, /<h1 [^>]*lang="it">raccontare<\/h1><p class="[^"]*" aria-label="Pronunciation"><span>\/rakkonˈtare\/<\/span><\/p>/);
+    const order = ["/rakkonˈtare/", "Definitions", "Etymology", "derivazione di contare", "Synonyms", "dar notizia", "Antonyms", "Derived words",
+      "raccontafavole", "Expressions", "raccontare per filo e per segno", "Source"].map((text) => textOf(html).indexOf(text));
+    assert.ok(order.every((at, i) => at >= 0 && (i === 0 || at > order[i - 1])), `${order}`);
+    // Its `{{-sill-}}` line is not read: hyphenation is no field the word page shows.
+    assert.doesNotMatch(textOf(html), /rac \| con|rac-con|racconta-re/);
     assert.equal(occurrencesOf(textOf(html), "Source"), 1);
     const { candidatesOf, resultJson, idOf } = await import("@/worker/api/lookupAnswer.ts");
     const { readLookupFilters } = await import("@/worker/api/lookupFilters.ts");
@@ -2324,9 +2340,26 @@ test("page-only readings present definitions without origin marks or invented fo
     assert.equal(json.id, `${RELEASE}:page:${reading.ref.revisionId}:${reading.ref.line}`);
     assert.equal(idOf(reading), json.id);
     assert.equal(json.forms, null);
-    assert.deepEqual(json.pronunciations, []);
-    assert.equal(json.etymology, null);
+    assert.deepEqual(json.pronunciations, [{ ipa: "/rakkonˈtare/", note: null }]);
+    assert.match(json.etymology ?? "", /^derivazione di contare/);
+    assert.deepEqual(json.antonyms, ["tacere", "nascondere", "celare"]);
   }, await loadFixturePages(join(REPO, "fixtures")));
+});
+
+test("a page-only form's definition links the lemma it names, as a record's gloss does", async () => {
+  // A page in the layout `avventurieri` writes (fixtures/page-facts), naming `racconto`, an archive line here.
+  const racconti = {
+    wiki: "it.wiktionary.org" as const, title: "racconti", revisionId: 1, timestamp: "2026-10-04T00:00:00Z",
+    wikitext: "{{-sost form-|it}}\n{{Pn}} ''m pl''\n#plurale di [[racconto]]",
+  };
+  const text = await readFile(join(REPO, "fixtures/page-entry-forms.jsonl"), "utf8");
+  await withLines(text.trimEnd().split("\n"), async ({ db }) => {
+    const html = await render(db, "racconti");
+    assert.match(html, /plurale di <a class="[^"]*" href="\/\?q=racconto">racconto<\/a>/);
+    assert.doesNotMatch(textOf(html), /Form of/);
+    // Its heading states the number its stamp writes.
+    assert.match(textOf(html), /Sostantivo, forma flessa·maschile, plurale/);
+  }, rawPageSource([racconti]));
 });
 
 test("a page-only noun no form names renders like any other entry, with no note on where it came from", async () => {
@@ -2347,7 +2380,15 @@ test("a page-only noun no form names renders like any other entry, with no note 
     assert.match(html, /<span lang="it">Sostantivo<\/span>/);
     assert.match(html, new RegExp(`id="reading-page-${reading.entryId}"`));
     assert.match(textOf(html), /prominenza tondeggiante dell'osso temporale, posta dietro il padiglione dell'orecchio/);
-    assert.doesNotMatch(textOf(html), /recovered|derived|page-only|italian-page-entry|Not from the source/i);
+    // `{{Pn}} ''f sing'' {{Linkp|mastoidi}}`: the heading states the gender and number, and the grid holds the plural the page writes.
+    assert.match(textOf(html), /Sostantivo·femminile, singolare/);
+    assert.match(html, new RegExp(`id="forms-page-${reading.entryId}"`));
+    assert.match(textOf(html), /mastoidi/);
+    assert.match(textOf(html), /Etymology/);
+    // The page gives no pronunciation and no word list, so the page shows none.
+    assert.doesNotMatch(html, /aria-label="Pronunciation"/);
+    assert.doesNotMatch(textOf(html), /Synonyms|Antonyms|Derived words|Expressions/);
+    assert.doesNotMatch(textOf(html), /recovered|page-only|italian-page-entry|Not from the source/i);
     assert.equal(occurrencesOf(textOf(html), "Source"), 1);
   }, rawPageSource([mastoide]));
 });

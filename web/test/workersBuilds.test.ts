@@ -1,8 +1,9 @@
 // The two Workers Builds commands (ADR 0018, web/builds/): the Preview name
 // they derive from a branch, the built config the preview command rewrites,
-// the order it runs Wrangler in, and what the sweep selects and deletes. Every
-// test drives a fake account and a fake GitHub, so none needs the network or a
-// credential.
+// the order it runs Wrangler in, the dictionary slice it writes for a branch
+// that changes dictionary data (#447), and what the sweep selects and
+// deletes. Every test drives a fake account, a fake slice planner and a fake
+// GitHub, so none needs the network or a credential.
 
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
@@ -18,8 +19,9 @@ import {
   type PreviewPrepareSteps,
   preparePreview,
 } from "@/builds/previewCommand.ts";
-import { type BuiltConfig, DICTIONARY, migrationsConfig, withAppDatabase } from "@/builds/previewConfig.ts";
-import { APP_DATABASE_PREFIX, PREVIEW_NAME_MAX, PreviewName } from "@/builds/previewName.ts";
+import { type BuiltConfig, DICTIONARY, migrationsConfig, refuseDictionary, SLICE_BINDING, withAppDatabase, withDictionarySlice } from "@/builds/previewConfig.ts";
+import { APP_DATABASE_PREFIX, PREVIEW_NAME_MAX, PreviewName, SLICE_DATABASE_PREFIX } from "@/builds/previewName.ts";
+import { readBuilt, readDeclared, SLICE_ROWS_WRITTEN_CAP, type SliceBuilt, type SliceDeclared, type SlicePlanner } from "@/builds/previewSlice.ts";
 import { runProductionCommand } from "@/builds/productionCommand.ts";
 import { type OpenBranches, readOpenBranches, selectForSweep, sweep } from "@/builds/sweep.ts";
 import type { D1Database, Wrangler, WranglerRun } from "@/builds/wrangler.ts";
@@ -88,6 +90,21 @@ test("a Preview's app database is a valid D1 name, and reads back to the same Pr
   }
 });
 
+test("a Preview's dictionary slice is a valid D1 name of its own prefix, and reads back to the same Preview", () => {
+  for (const branch of ["huey/foo_bar", "build/447-preview-dictionary-slice-a7d6a73d", "main", "a".repeat(80)]) {
+    const name = PreviewName.ofBranch(branch);
+    assert.match(name.sliceDatabase, /^lexema-preview-dict-[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/);
+    assert.ok(name.sliceDatabase.length <= SLICE_DATABASE_PREFIX.length + PREVIEW_NAME_MAX);
+    assert.equal(PreviewName.ofSliceDatabase(name.sliceDatabase)?.value, name.value);
+    // Neither prefix reads as the other.
+    assert.equal(PreviewName.ofAppDatabase(name.sliceDatabase), undefined);
+    assert.equal(PreviewName.ofSliceDatabase(name.appDatabase), undefined);
+  }
+  for (const other of ["lexema-dictionary", "lexema-preview-dict-", "lexema-preview-dict-Bad_Name", "x-lexema-preview-dict-a"]) {
+    assert.equal(PreviewName.ofSliceDatabase(other), undefined, other);
+  }
+});
+
 // --- The built config -------------------------------------------------------
 
 /** The `previews` block as web/wrangler.jsonc has it, and so as the build copies it. */
@@ -132,6 +149,27 @@ test("the migrations config names only the branch's app database and the app mig
   });
 });
 
+test("the rewritten config binds a dictionary slice as a second binding beside DB, and refuses the dictionary as a slice", () => {
+  const preview = PreviewName.ofBranch("huey/foo_bar");
+  const app = withAppDatabase(builtConfig(), { preview, id: "11111111-2222-4333-8444-555555555555" });
+  const after = withDictionarySlice(app, { preview, id: "66666666-7777-4888-8999-000000000000" });
+  assert.deepEqual(
+    (after.previews?.d1_databases ?? []).map(({ binding, database_name, database_id }) => [binding, database_name, database_id]),
+    [
+      ["DB", DICTIONARY.name, DICTIONARY.id],
+      ["APP_DB", preview.appDatabase, "11111111-2222-4333-8444-555555555555"],
+      [SLICE_BINDING, preview.sliceDatabase, "66666666-7777-4888-8999-000000000000"],
+    ],
+  );
+  assert.equal(SLICE_BINDING, "DICTIONARY_SLICE");
+  assert.throws(() => withDictionarySlice(app, { preview, id: DICTIONARY.id }), /refusing to bind DICTIONARY_SLICE to the shared dictionary/);
+  assert.throws(() => withDictionarySlice(after, { preview, id: "x" }), /already binds DICTIONARY_SLICE/);
+  for (const database of [{ name: DICTIONARY.name }, { id: DICTIONARY.id }, { name: "lexema-preview-dict-x", id: DICTIONARY.id }]) {
+    assert.throws(() => refuseDictionary(database, "delete"), /refusing to delete the shared dictionary/, JSON.stringify(database));
+  }
+  refuseDictionary({ name: preview.sliceDatabase, id: "x" }, "delete");
+});
+
 // --- A fake account ---------------------------------------------------------
 
 /** A Cloudflare account as the commands see it through Wrangler, with every call kept. */
@@ -141,6 +179,10 @@ class FakeAccount {
   readonly previews = new Set<string>();
   readonly secrets = new Map<string, string>();
   readonly failing: RegExp[] = [];
+  /** The fingerprint each slice D1 holds, written by running a slice's SQL file on it. */
+  readonly fingerprints = new Map<string, string>();
+  /** What running each SQL file writes: the fingerprint row it ends with. */
+  readonly sqlFiles = new Map<string, string>();
   private next = 1;
 
   constructor(databases: D1Database[] = []) {
@@ -169,6 +211,22 @@ class FakeAccount {
       }
       case "d1 migrations":
         return ok();
+      case "d1 execute": {
+        const database = args[2];
+        if (!this.databases.some((db) => db.name === database)) return fail("Couldn't find a D1 DB");
+        if (args.includes("--file")) {
+          const fingerprint = this.sqlFiles.get(args[args.indexOf("--file") + 1]);
+          if (fingerprint === undefined) return fail("no such file");
+          this.fingerprints.set(database, fingerprint);
+          return ok();
+        }
+        if (args.includes("--command=SELECT fingerprint FROM preview_slice")) {
+          const fingerprint = this.fingerprints.get(database);
+          if (fingerprint === undefined) return fail("✘ [ERROR] no such table: preview_slice: SQLITE_ERROR [code: 7500]");
+          return ok(JSON.stringify([{ results: [{ fingerprint }], success: true, meta: {} }]));
+        }
+        throw new Error(`the fake account runs no ${line}`);
+      }
       case "preview delete":
         if (!this.previews.delete(name)) return fail(`✘ [ERROR] A request to the Cloudflare API failed.\n  Preview not found [code: 10025]`);
         return ok();
@@ -195,11 +253,37 @@ class FakeAccount {
   }
 }
 
+/** A branch that adds no change declaration past `main`. */
+const NO_DECLARATION: SliceDeclared = { state: "none", reason: "the branch adds no change declaration past main" };
+
+/**
+ * The root's `preview:slice` as a fake: what `declared` answers, and what
+ * `build` answers, with the SQL file it names registered on `account`.
+ * Each call is kept, so a test sees whether the build was planned at all.
+ */
+function planner(account: FakeAccount, declared: SliceDeclared, built?: SliceBuilt) {
+  const asked: string[] = [];
+  const slices: SlicePlanner = {
+    declared: () => {
+      asked.push("declared");
+      return declared;
+    },
+    build: () => {
+      asked.push("build");
+      if (built === undefined) throw new Error("this branch's slice is not built");
+      if (built.state === "built") account.sqlFiles.set(built.sql, built.fingerprint);
+      return built;
+    },
+  };
+  return { slices, asked };
+}
+
 /** The prepare step's inputs against `account`, keeping every file it writes and every step it runs, in order. */
-function prepareSteps(account: FakeAccount, branch: string | undefined, newSecret = () => "random-secret") {
+function prepareSteps(account: FakeAccount, branch: string | undefined, newSecret = () => "random-secret", slices: SlicePlanner = planner(account, NO_DECLARATION).slices) {
   const files = new Map<string, string>();
   const migrationConfigs: Record<string, unknown>[] = [];
   const order: string[] = [];
+  const logged: string[] = [];
   const wrangler: Wrangler = (args, input) => {
     order.push(`wrangler ${args.slice(0, 2).join(" ")}`);
     return account.wrangler(args, input);
@@ -219,26 +303,28 @@ function prepareSteps(account: FakeAccount, branch: string | undefined, newSecre
     },
     migrationsDir: "/repo/src/db/app/migrations",
     newSecret,
-    log: () => {},
+    slices,
+    log: (line) => logged.push(line),
   };
-  return { steps, files, migrationConfigs, order };
+  return { steps, files, migrationConfigs, order, logged };
 }
 
 /** The prepare step against `account` on a branch that gets a Preview, keeping every file it wrote. */
-function prepare(account: FakeAccount, branch: string | undefined, newSecret = () => "random-secret") {
-  const { steps, files, migrationConfigs, order } = prepareSteps(account, branch, newSecret);
+function prepare(account: FakeAccount, branch: string | undefined, newSecret = () => "random-secret", slices: SlicePlanner = planner(account, NO_DECLARATION).slices) {
+  const { steps, files, migrationConfigs, order, logged } = prepareSteps(account, branch, newSecret, slices);
   const prepared = preparePreview(steps);
   if (prepared.kind !== "prepared") throw new Error(`no Preview for ${branch}`);
   const name = prepared.preview;
   const config = JSON.parse(files.get(BUILT_CONFIG) ?? "null") as BuiltConfig;
   const secrets = JSON.parse(files.get(PREVIEW_SECRETS_FILE) ?? "null") as Record<string, string>;
   const appDatabaseId = config.previews?.d1_databases?.find((entry) => entry.binding === "APP_DB")?.database_id;
-  return { name, files, config, secrets, appDatabaseId, migrationConfigs, order };
+  const slice = config.previews?.d1_databases?.find((entry) => entry.binding === SLICE_BINDING);
+  return { name, files, config, secrets, appDatabaseId, slice, migrationConfigs, order, logged };
 }
 
 /** The whole Preview command: the prepare step, then `wrangler preview` over what it wrote. */
-function previewCommand(account: FakeAccount, branch: string, newSecret?: () => string) {
-  const prepared = prepare(account, branch, newSecret);
+function previewCommand(account: FakeAccount, branch: string, newSecret?: () => string, slices?: SlicePlanner) {
+  const prepared = prepare(account, branch, newSecret, slices);
   account.deployPreview(prepared.files.get(PREVIEW_NAME_FILE) ?? "", prepared.secrets);
   return prepared;
 }
@@ -324,8 +410,10 @@ test("a second push to the same branch reuses the same app database and sends th
 
 test("the prepare step on main builds nothing, makes no app database, migrates nothing and writes no name", () => {
   const account = new FakeAccount([{ name: DICTIONARY.name, uuid: DICTIONARY.id }]);
-  const { steps, files, migrationConfigs, order } = prepareSteps(account, "main");
+  const { slices, asked } = planner(account, NO_DECLARATION);
+  const { steps, files, migrationConfigs, order } = prepareSteps(account, "main", undefined, slices);
   assert.deepEqual(preparePreview(steps), { kind: "skipped", branch: NO_PREVIEW_BRANCH });
+  assert.deepEqual(asked, []);
   assert.equal(NO_PREVIEW_BRANCH, "main");
   assert.deepEqual(order, []);
   assert.deepEqual(account.calls, []);
@@ -345,6 +433,148 @@ test("the prepare step stops before writing the name when the migrations fail, a
   assert.throws(() => prepare(migrationsFail, "huey/foo_bar"), /migrations apply failed/);
 
   assert.throws(() => prepare(new FakeAccount(), undefined), /WORKERS_CI_BRANCH/);
+});
+
+// --- The dictionary slice ---------------------------------------------------
+
+const DICTIONARY_BRANCH = "build/447-raccontare";
+const FINGERPRINT = "a".repeat(64);
+const declaring = (fingerprint = FINGERPRINT): SliceDeclared => ({ state: "declared", fingerprint, files: ["dictionary-changes/2026-10-04-load-page-entries.json"] });
+const builtSlice = (rowsWritten: number, fingerprint = FINGERPRINT, sql = "/tmp/slice/slice.sql"): SliceBuilt => ({ state: "built", fingerprint, words: 12, rowsWritten, sql });
+/** The D1 bindings of a built config, as [binding, database name, database id]. */
+const bindingsOf = (config: BuiltConfig) => (config.previews?.d1_databases ?? []).map(({ binding, database_name, database_id }) => [binding, database_name, database_id]);
+/** Every Wrangler call that writes or deletes a D1. */
+const d1Writes = (account: FakeAccount) => account.lines.filter((line) => /^d1 (create|delete)|^d1 execute .*--file/.test(line));
+
+test("a branch that adds no change declaration gets today's built config: DB on the dictionary, APP_DB, no slice binding and no slice D1", () => {
+  const account = new FakeAccount([{ name: DICTIONARY.name, uuid: DICTIONARY.id }]);
+  const { slices, asked } = planner(account, NO_DECLARATION);
+  const { name, config, appDatabaseId, slice, logged } = prepare(account, "huey/foo_bar", undefined, slices);
+  assert.deepEqual(bindingsOf(config), [
+    ["DB", DICTIONARY.name, DICTIONARY.id],
+    ["APP_DB", name.appDatabase, appDatabaseId],
+  ]);
+  assert.equal(slice, undefined);
+  assert.deepEqual(asked, ["declared"]);
+  assert.equal(account.databases.some((db) => db.name.startsWith(SLICE_DATABASE_PREFIX)), false);
+  assert.ok(logged.includes("dictionary slice: none, the branch adds no change declaration past main"), logged.join("\n"));
+  // The same as the config the command wrote before slices existed.
+  assert.deepEqual(config, withAppDatabase(builtConfig(), { preview: name, id: appDatabaseId ?? "" }));
+});
+
+test("a branch that adds change declarations gets its slice D1 created, written with the slice's SQL, and bound read-only beside DB", () => {
+  const account = new FakeAccount([{ name: DICTIONARY.name, uuid: DICTIONARY.id }]);
+  const { slices, asked } = planner(account, declaring(), builtSlice(41_250));
+  const { name, config, appDatabaseId, slice, order, logged } = prepare(account, DICTIONARY_BRANCH, undefined, slices);
+  const created = account.databases.find((db) => db.name === name.sliceDatabase);
+  assert.ok(created);
+  assert.deepEqual(asked, ["declared", "build"]);
+  assert.deepEqual(bindingsOf(config), [
+    ["DB", DICTIONARY.name, DICTIONARY.id],
+    ["APP_DB", name.appDatabase, appDatabaseId],
+    ["DICTIONARY_SLICE", name.sliceDatabase, created.uuid],
+  ]);
+  assert.deepEqual(slice, { binding: "DICTIONARY_SLICE", database_name: name.sliceDatabase, database_id: created.uuid });
+  assert.deepEqual(d1Writes(account), [
+    `d1 create ${name.appDatabase} --update-config=false`,
+    `d1 create ${name.sliceDatabase} --update-config=false`,
+    `d1 execute ${name.sliceDatabase} --remote --yes --file /tmp/slice/slice.sql`,
+  ]);
+  assert.equal(account.fingerprints.get(name.sliceDatabase), FINGERPRINT);
+  // The slice is written before the built config that binds it.
+  assert.ok(order.indexOf("wrangler d1 execute") < order.indexOf(`write ${BUILT_CONFIG}`));
+  assert.ok(logged.some((line) => line.includes(`dictionary slice: wrote ${name.sliceDatabase}`) && line.includes("41250 rows written") && line.includes(`cap of ${SLICE_ROWS_WRITTEN_CAP}`)), logged.join("\n"));
+  // No call ever names the dictionary, by name or by id.
+  assert.equal(account.lines.some((line) => line.includes(DICTIONARY.name) || line.includes(DICTIONARY.id)), false);
+});
+
+test("a slice over the cap is not written: no slice D1, no binding, a log line with the count and the cap, and the Preview still deploys", () => {
+  assert.equal(SLICE_ROWS_WRITTEN_CAP, 100_000);
+  const account = new FakeAccount([{ name: DICTIONARY.name, uuid: DICTIONARY.id }]);
+  const { slices } = planner(account, declaring(), builtSlice(SLICE_ROWS_WRITTEN_CAP + 1));
+  const { name, config, slice, files, logged } = previewCommand(account, DICTIONARY_BRANCH, undefined, slices);
+  assert.equal(slice, undefined);
+  assert.deepEqual(bindingsOf(config).map(([binding]) => binding), ["DB", "APP_DB"]);
+  assert.equal(account.databases.some((db) => db.name === name.sliceDatabase), false);
+  assert.deepEqual(d1Writes(account), [`d1 create ${name.appDatabase} --update-config=false`]);
+  assert.ok(logged.includes("dictionary slice: none, writing it would write 100001 rows, over the cap of 100000; nothing was written"), logged.join("\n"));
+  assert.ok(account.previews.has(name.value));
+  assert.equal(files.get(PREVIEW_NAME_FILE), name.value);
+
+  // At the cap it is written.
+  const atCap = new FakeAccount([{ name: DICTIONARY.name, uuid: DICTIONARY.id }]);
+  assert.ok(prepare(atCap, DICTIONARY_BRANCH, undefined, planner(atCap, declaring(), builtSlice(SLICE_ROWS_WRITTEN_CAP)).slices).slice);
+});
+
+test("a push whose declarations and schema are unchanged reuses the slice and writes no row; a changed one rebuilds it under the cap", () => {
+  const account = new FakeAccount([{ name: DICTIONARY.name, uuid: DICTIONARY.id }]);
+  const first = previewCommand(account, DICTIONARY_BRANCH, undefined, planner(account, declaring(), builtSlice(41_250)).slices);
+  account.calls.length = 0;
+
+  const unchanged = planner(account, declaring());
+  const second = previewCommand(account, DICTIONARY_BRANCH, undefined, unchanged.slices);
+  assert.deepEqual(unchanged.asked, ["declared"]);
+  assert.deepEqual(second.slice, first.slice);
+  assert.deepEqual(d1Writes(account), []);
+  assert.ok(second.logged.some((line) => line.startsWith(`dictionary slice: reusing ${first.name.sliceDatabase}`) && line.includes("nothing is written")), second.logged.join("\n"));
+  account.calls.length = 0;
+
+  const changed = planner(account, declaring("b".repeat(64)), builtSlice(52_000, "b".repeat(64), "/tmp/slice/changed.sql"));
+  const third = previewCommand(account, DICTIONARY_BRANCH, undefined, changed.slices);
+  assert.deepEqual(changed.asked, ["declared", "build"]);
+  const rebuilt = account.databases.find((db) => db.name === first.name.sliceDatabase);
+  assert.ok(rebuilt);
+  assert.notEqual(rebuilt.uuid, first.slice?.database_id);
+  assert.equal(third.slice?.database_id, rebuilt.uuid);
+  assert.deepEqual(d1Writes(account), [
+    `d1 delete ${first.name.sliceDatabase} --skip-confirmation`,
+    `d1 create ${first.name.sliceDatabase} --update-config=false`,
+    `d1 execute ${first.name.sliceDatabase} --remote --yes --file /tmp/slice/changed.sql`,
+  ]);
+  assert.equal(account.fingerprints.get(first.name.sliceDatabase), "b".repeat(64));
+
+  // A changed slice over the cap leaves the old one unbound and writes nothing.
+  account.calls.length = 0;
+  const over = previewCommand(account, DICTIONARY_BRANCH, undefined, planner(account, declaring("c".repeat(64)), builtSlice(200_000, "c".repeat(64))).slices);
+  assert.equal(over.slice, undefined);
+  assert.deepEqual(d1Writes(account), []);
+});
+
+test("a branch whose base, plan or slice cannot be read, or whose declarations touch no word, keeps today's Preview and logs why", () => {
+  const cases: [string, SlicePlanner, RegExp][] = [];
+  const account = new FakeAccount([{ name: DICTIONARY.name, uuid: DICTIONARY.id }]);
+  cases.push(["unread base", planner(account, { state: "none", reason: "the base could not be read: fetching main failed" }).slices, /^dictionary slice: none, the base could not be read/]);
+  cases.push(["no words", planner(account, declaring(), { state: "none", reason: "the declarations touch no word (only update:upgrade, or plans that write nothing)" }).slices, /^dictionary slice: none, the declarations touch no word/]);
+  cases.push(["unread plan", planner(account, declaring(), { state: "none", reason: "the plan of dictionary-changes/x.json could not be read: offline" }).slices, /^dictionary slice: none, the plan of/]);
+  cases.push(["planner fails", { declared: () => { throw new Error("pnpm run preview:slice declared failed (exit 1)"); }, build: () => assert.fail() }, /^dictionary slice: none, pnpm run preview:slice declared failed \(exit 1\); the Preview reads the shared dictionary$/]);
+  cases.push(["build fails", planner(account, declaring()).slices, /^dictionary slice: none, this branch's slice is not built; the Preview reads the shared dictionary$/]);
+  for (const [what, slices, line] of cases) {
+    const { name, config, slice, logged } = previewCommand(account, DICTIONARY_BRANCH, undefined, slices);
+    assert.equal(slice, undefined, what);
+    assert.deepEqual(bindingsOf(config).map(([binding]) => binding), ["DB", "APP_DB"], what);
+    assert.equal(account.databases.some((db) => db.name === name.sliceDatabase), false, what);
+    assert.ok(logged.some((logLine) => line.test(logLine)), `${what}: ${logged.join("\n")}`);
+  }
+});
+
+test("the slice step refuses a slice D1 that is the dictionary: it reads, writes and deletes nothing there and binds no slice", () => {
+  const preview = PreviewName.ofBranch(DICTIONARY_BRANCH);
+  // A database under the slice's name that is, by id, the shared dictionary.
+  const account = new FakeAccount([{ name: preview.sliceDatabase, uuid: DICTIONARY.id }]);
+  const { slices } = planner(account, declaring(), builtSlice(41_250));
+  const { slice, logged } = prepare(account, DICTIONARY_BRANCH, undefined, slices);
+  assert.equal(slice, undefined);
+  assert.equal(account.lines.some((line) => line.startsWith("d1 execute") || line.startsWith("d1 delete")), false, account.lines.join("\n"));
+  assert.ok(logged.some((line) => line.includes("refusing to use as a slice the shared dictionary")), logged.join("\n"));
+});
+
+test("the slice planner's answers are read strictly: anything but a reason, a fingerprint or a built slice is refused", () => {
+  assert.deepEqual(readDeclared('{"state":"none","reason":"why"}'), { state: "none", reason: "why" });
+  assert.deepEqual(readDeclared(`{"state":"declared","fingerprint":"${FINGERPRINT}","files":["a.json"]}`), { state: "declared", fingerprint: FINGERPRINT, files: ["a.json"] });
+  assert.deepEqual(readBuilt('{"state":"built","fingerprint":"f","words":3,"rowsWritten":120,"sql":"/s.sql","rowsByTable":{}}'), { state: "built", fingerprint: "f", words: 3, rowsWritten: 120, sql: "/s.sql" });
+  for (const bad of ['{"state":"none"}', '{"state":"declared","fingerprint":"f"}', "[]", '{"state":"built","fingerprint":"f","words":3,"rowsWritten":-1,"sql":"/s.sql"}']) {
+    assert.throws(() => (bad.includes("built") ? readBuilt(bad) : readDeclared(bad)), /preview:slice/, bad);
+  }
 });
 
 // --- The sweep ----------------------------------------------------------------
@@ -381,7 +611,7 @@ const account = () =>
 test("the sweep selects only lexema-preview-app databases whose branch has no open pull request", () => {
   const databases = account().databases;
   const open: OpenBranches = { state: "read", branches: new Set([OPEN]) };
-  const selected = selectForSweep(databases, open).map(({ preview, database }) => [preview.value, database.name]);
+  const selected = selectForSweep(databases, open).map(({ preview, databases: deleted }) => [preview.value, ...deleted.map(({ name }) => name)]);
   assert.deepEqual(selected, [
     [PreviewName.ofBranch(CLOSED).value, PreviewName.ofBranch(CLOSED).appDatabase],
     ["main", "lexema-preview-app-main"],
@@ -452,6 +682,52 @@ test("the sweep deletes nothing and calls no Wrangler when the pull requests can
     assert.deepEqual(fake.calls, []);
     assert.equal(fake.databases.length, 6);
   }
+});
+
+test("the sweep selects a closed branch's slice with its app database, and a slice with no app database, never an open branch's or the dictionary", () => {
+  const open: OpenBranches = { state: "read", branches: new Set([OPEN]) };
+  const closed = PreviewName.ofBranch(CLOSED);
+  const sliceOnly = PreviewName.ofBranch("huey/slice-only");
+  const databases = [
+    ...account().databases,
+    { name: closed.sliceDatabase, uuid: "b0000000-0000-4000-8000-000000000001" },
+    { name: PreviewName.ofBranch(OPEN).sliceDatabase, uuid: "b0000000-0000-4000-8000-000000000002" },
+    { name: sliceOnly.sliceDatabase, uuid: "b0000000-0000-4000-8000-000000000003" },
+  ];
+  const selected = selectForSweep(databases, open).map(({ preview, databases: deleted }) => [preview.value, ...deleted.map(({ name }) => name)]);
+  assert.deepEqual(selected, [
+    // The slice goes before the app database.
+    [closed.value, closed.sliceDatabase, closed.appDatabase],
+    ["main", "lexema-preview-app-main"],
+    [sliceOnly.value, sliceOnly.sliceDatabase],
+  ]);
+  assert.deepEqual(selectForSweep(databases, { state: "unread", reason: "offline" }), []);
+  const disguised = [{ name: "lexema-preview-dict-x", uuid: DICTIONARY.id }];
+  assert.deepEqual(selectForSweep(disguised, { state: "read", branches: new Set() }), []);
+});
+
+test("the sweep deletes a closed branch's Preview first, then its slice and its app database; a slice that fails to delete stays for the next sweep", async () => {
+  const closed = PreviewName.ofBranch(CLOSED);
+  const fake = account();
+  fake.databases.push({ name: closed.sliceDatabase, uuid: "b0000000-0000-4000-8000-000000000001" });
+  fake.previews.add(closed.value);
+  const deleted = await sweep({ wrangler: fake.wrangler, token: "t", fetchPage: github([[pull(OPEN), pull("main")]]).fetchPage, log: () => {} });
+  assert.deepEqual(deleted.map(({ preview }) => preview.value), [closed.value]);
+  assert.deepEqual(fake.lines.filter((line) => line.includes("delete")), [
+    `preview delete --name ${closed.value} --worker-name lexema-web --skip-confirmation`,
+    `d1 delete ${closed.sliceDatabase} --skip-confirmation`,
+    `d1 delete ${closed.appDatabase} --skip-confirmation`,
+  ]);
+  assert.equal(fake.databases.some(({ name }) => name === closed.sliceDatabase || name === closed.appDatabase), false);
+
+  const failing = account();
+  failing.databases.push({ name: closed.sliceDatabase, uuid: "b0000000-0000-4000-8000-000000000001" });
+  failing.failing.push(new RegExp(`^d1 delete ${closed.sliceDatabase}`));
+  const logged: string[] = [];
+  const none = await sweep({ wrangler: failing.wrangler, token: "t", fetchPage: github([[pull(OPEN), pull("main")]]).fetchPage, log: (line) => logged.push(line) });
+  assert.deepEqual(none, []);
+  assert.ok(failing.databases.some(({ name }) => name === closed.sliceDatabase));
+  assert.ok(logged.includes(`sweep: deleted Preview ${closed.value}, but not ${closed.sliceDatabase}`), logged.join("\n"));
 });
 
 test("a Preview the sweep cannot delete keeps its app database for the next sweep", async () => {

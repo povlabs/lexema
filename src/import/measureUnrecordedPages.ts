@@ -13,6 +13,7 @@ import { PUBLISHED_ARCHIVE_SHA256 } from "../source/archiveFacts.js";
 import type { RawPage } from "../source/rawPage.js";
 import { ARCHIVE_DUMP, VerifiedDump } from "../source/wiktionaryDump.js";
 import { parseArchive } from "./importRelease.js";
+import type { UnrecordedPageTitles } from "./pageOnlyCandidates.js";
 
 /** How the page marks its Italian section. */
 export type LanguageHeading =
@@ -189,10 +190,31 @@ export function readPageLayout(page: RawPage): PageLayout | undefined {
   return { heading, sections: held, unplaced, englishCopy, group, readAs: read ? held.flatMap((item) => (item.pos === null ? [] : [item.pos])) : [] };
 }
 
+/** The part of the measurement the record-less title list is read from. */
+export interface UnrecordedMeasurement {
+  release: string;
+  titles: readonly { title: string }[];
+  recoveredByProductionRule: { notCounted: { titles: readonly { title: string }[] } };
+}
+
+/**
+ * The record-less titles a fixture seed offers as page-only candidates (#499):
+ * every page the detector counts, and every page the production rule recovers
+ * that the detector does not, each once, sorted.
+ */
+export function unrecordedPageTitlesOf(measurement: UnrecordedMeasurement, measuredBy: string): UnrecordedPageTitles {
+  const titles = new Set([...measurement.titles, ...measurement.recoveredByProductionRule.notCounted.titles].map((item) => item.title));
+  return { release: measurement.release, measuredBy, titles: [...titles].sort((a, b) => (a < b ? -1 : a > b ? 1 : 0)) };
+}
+
 async function main(): Promise<void> {
-  const { values } = parseArgs({ options: { archive: { type: "string" }, dump: { type: "string" }, out: { type: "string" } } });
+  const { values } = parseArgs({
+    options: { archive: { type: "string" }, dump: { type: "string" }, out: { type: "string" }, titles: { type: "string" } },
+  });
   if (values.archive === undefined || values.dump === undefined || values.out === undefined) {
-    throw new Error("usage: pnpm exec tsx src/import/measureUnrecordedPages.ts --archive <jsonl.gz> --dump <xml.bz2> --out <json>");
+    throw new Error(
+      "usage: pnpm exec tsx src/import/measureUnrecordedPages.ts --archive <jsonl.gz> --dump <xml.bz2> --out <json> [--titles <json>]",
+    );
   }
   const words = new Set<string>();
   const archive = await parseArchive({ input: values.archive, onRejection: () => {}, onRecord: ({ record }) => { words.add(record.word); } });
@@ -261,6 +283,11 @@ async function main(): Promise<void> {
     groups: ordered, titles,
   };
   await writeFile(values.out, JSON.stringify(output, null, 2) + "\n");
+  // The list a fixture seed reads (fixtures/unrecorded-page-titles.json),
+  // written again from each release's measurement.
+  if (values.titles !== undefined) {
+    await writeFile(values.titles, JSON.stringify(unrecordedPageTitlesOf(output, values.out), null, 2) + "\n");
+  }
   const { titles: _titles, ...summary } = output;
   process.stdout.write(JSON.stringify({ ...summary, output: values.out }) + "\n");
 }

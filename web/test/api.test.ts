@@ -23,6 +23,7 @@ import { createAccountKey, keyName, listAccountKeys } from "../../src/api/ownedK
 import type { Endpoint } from "../../src/api/calls.js";
 import { accountUsage, USAGE_WINDOW_DAYS } from "../../src/api/usage.js";
 import { seedSql } from "../../src/import/seedSql.js";
+import { PageOnlyCandidates, readUnrecordedPageTitles, UNRECORDED_PAGE_TITLES_FILE } from "../../src/import/pageOnlyCandidates.js";
 import type { AppTables } from "../../src/db/app/database.js";
 import type { LookupDatabase } from "../../src/lookup/database.js";
 import { freshAppDatabase, readOnlyDictionary, subscribe, type SeededSubscription } from "../../test/databases.js";
@@ -35,7 +36,8 @@ import { lookup } from "../../src/lookup/lookup.js";
 import { findNearby, type Nearby } from "../../src/lookup/nearby.js";
 import { offered, suggest } from "../../src/lookup/suggest.js";
 import { loadFixturePages } from "../../src/source/rawPage.js";
-import { answerApi, apiNotFound, handleApi, type ApiBindings } from "@/worker/api/handler.ts";
+import { answerApi, apiNotFound, handleApi, lookedUpWord, type ApiBindings } from "@/worker/api/handler.ts";
+import { PreviewSlice } from "../../src/deploy/previewSlice.js";
 import { byHost, DEVELOPERS_SEGMENT } from "@/worker/hosts.ts";
 import { withRateLimits, type LimitBindings } from "@/worker/rateLimit.ts";
 import { RATE_WINDOW_SECONDS } from "@/worker/api/keyLimits.ts";
@@ -75,6 +77,8 @@ before(async () => {
     archiveR2Key: `releases/${RELEASE}.jsonl.gz`,
     license: "CC-BY-SA-4.0",
     rawPages: await loadFixturePages(join(REPO, "fixtures")),
+    // As `pnpm run seed:dev` offers them for the fixture (#499).
+    pageOnly: PageOnlyCandidates.listed(await readUnrecordedPageTitles(join(REPO, UNRECORDED_PAGE_TITLES_FILE))),
     onRejection: (rejection) => {
       throw new Error(`fixture line rejected: ${JSON.stringify(rejection)}`);
     },
@@ -451,6 +455,49 @@ test("api.lexema.fyi answers a JSON 503 when the Worker has no D1 binding", asyn
   assert.equal(response.status, 503);
   assert.match(response.headers.get("content-type") ?? "", /^application\/json/);
   assert.equal(((await response.json()) as Json).error.code, "unavailable");
+});
+
+test("on a Preview with a dictionary slice, the API reads the slice for a word it serves and the shared dictionary for any other (#447)", async () => {
+  const { key } = await newKey(1_000, "slice");
+  // A slice serving `casa`, built from the shared dictionary with a change that takes `casa` out of search, as a hide does.
+  const slice = PreviewSlice.build({
+    reader: { query: <Row>(sql: string) => dictionarySqlite.prepare(sql).all() as Row[] },
+    words: ["casa"],
+    schema: await readFile(join(REPO, "src/db/schema.sql"), "utf8"),
+    changes: [{ file: "dictionary-changes/hide-casa.json", sql: "DELETE FROM lookup_form WHERE record_id IN (SELECT record_id FROM source_record WHERE word = 'casa');" }],
+    fingerprint: "f".repeat(64),
+  });
+  const d1Over = (over: DatabaseSync) => {
+    const bound = (sql: string, params: (string | number | null)[]) => ({
+      all: async () => ({ results: over.prepare(sql).all(...params) }),
+      raw: async () => {
+        const statement = over.prepare(sql);
+        statement.setReturnArrays(true);
+        return statement.all(...params);
+      },
+      run: async () => (over.prepare(sql).run(...params), { success: true }),
+    });
+    return {
+      prepare: (sql: string) => ({ ...bound(sql, []), bind: (...params: (string | number | null)[]) => bound(sql, params) }),
+      batch: (statements: { all: () => Promise<unknown> }[]) => Promise.all(statements.map((statement) => statement.all())),
+    } as unknown as D1Database;
+  };
+  try {
+    const env = { ...unmetered(), DB: d1Over(dictionarySqlite), APP_DB: d1Over(sqlite), DICTIONARY_SLICE: d1Over(slice.db), LEXEMA_RELEASE: RELEASE } satisfies ApiBindings;
+    const send = (path: string) => answerApi(new Request(`https://api.lexema.fyi${path}`, { headers: { "x-api-key": key } }), env);
+    // `casa` is the slice's: there, the change took it out of search.
+    assert.equal((await send("/v1/lookup?q=casa")).status, 404);
+    assert.equal(((await (await send("/v1/exists?q=casa")).json()) as Json).exists, false);
+    // Any other word is the shared dictionary's.
+    assert.equal((await send("/v1/lookup?q=bello")).status, 200);
+    // Without the slice, `casa` is the shared dictionary's, where it is found.
+    const { DICTIONARY_SLICE: _slice, ...shared } = env;
+    assert.equal((await answerApi(new Request("https://api.lexema.fyi/v1/lookup?q=casa", { headers: { "x-api-key": key } }), shared)).status, 200);
+  } finally {
+    slice.close();
+  }
+  assert.equal(lookedUpWord(new URL("https://api.lexema.fyi/v1/inflect?lemma=andare")), "andare");
+  assert.equal(lookedUpWord(new URL("https://api.lexema.fyi/v1/suggest?q=cas")), undefined);
 });
 
 // The /lookup filters (#151).

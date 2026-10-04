@@ -1,0 +1,31 @@
+<!-- it.wiktionary.org/wiki/avventurieri revision 3962578 (2023-11-13T15:52:01Z), CC BY-SA 4.0. Saved verbatim. -->
+{{-agg form-|it}}
+{{Pn}} ''m pl''
+{{Tabs|avventuriero|avventurieri|avventuriera|avventuriere}}
+#plurale di [[avventuriero]]
+
+{{-sost form-|it}}
+{{Pn}} ''m pl''
+{{Tabs|avventuriero|avventurieri|avventuriera|avventuriere}}
+#plurale  di [[avventuriero]]
+
+{{-sill-}}
+; av | ven | tu | riè | ri
+
+{{-etim-}}
+{{Etim-link|avventuriero}}
+
+{{-sin-}}
+*[[canaglie]], [[faccendieri]], [[farabutti]], [[filibustieri]], [[furfanti]], [[imbroglioni]], [[impostori]], [[mestatori]],  [[trafficanti]],   [[truffatori]]
+  
+{{-ant-}}
+*[[galantuomini]], persone oneste
+
+{{-trad-}}
+{{Trad1|}}
+:* {{en}}:
+{{Trad2}}
+
+{{-ref-}}
+* {{Fonte|gar|avventuriero}}
+*{{Fonte|sin-co|avventuriero}}

@@ -1,5 +1,6 @@
 // Entry point of `pnpm run deploy:workers-builds`, the Workers Builds deploy
-// command on `main` (docs/DEPLOY.md). The steps are productionCommand.ts's.
+// command on the `production` branch (docs/DEPLOY.md). The steps are
+// productionCommand.ts's.
 
 import { spawnSync } from "node:child_process";
 import { runProductionCommand } from "./productionCommand.ts";

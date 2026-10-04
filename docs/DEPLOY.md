@@ -161,6 +161,7 @@ alone, never from the top level or `env.production`:
 | `LEXEMA_RELEASE` | `it-0c432803` |
 | `DB` | the shared dictionary D1 `lexema-dictionary`, which code only reads |
 | `APP_DB` | `<REPLACE_ME>`, which the [Preview command](#the-preview-command) replaces with the branch's own app D1; `wrangler preview` refuses to run while it is there |
+| `DICTIONARY_SLICE` | not in `web/wrangler.jsonc`; the [Preview command](#the-preview-command) adds it, read-only, only for a branch that changes dictionary data: its [dictionary slice](#the-dictionary-slice) |
 | Rate limits | production's limits under their own `namespace_id`s, `CALLS_60` and `CALLS_300` included |
 | `ACCOUNT_METER` | the account meter's binding; each Preview gets its own Durable Object namespace and storage |
 | `EMAIL` | a `send_email` binding with `destination_address` set to Huey's verified address, so it can send nowhere else |
@@ -214,7 +215,9 @@ there, green.
    `main`. On any other branch, it runs the production build. It finds or
    creates the branch's app D1 `lexema-preview-app-<name>` and binds it as
    `APP_DB` in `web/dist/server/wrangler.json`, leaving `DB` on the shared
-   dictionary. It applies the app migrations to it. Then it writes
+   dictionary. For a branch that adds change declarations, it also gives the
+   Preview its [dictionary slice](#the-dictionary-slice), bound as
+   `DICTIONARY_SLICE`. It applies the app migrations to the app D1. Then it writes
    the [Preview name](#the-preview-name) to `web/dist/preview/name`, and the
    secrets for the deployment to `web/dist/preview/secrets.json`. That file holds
    a new random `BETTER_AUTH_SECRET` on every push, the first and every later one.
@@ -247,6 +250,62 @@ this string, that is why.
 Every later push to a branch reuses its app D1. `web/test/workersBuilds.test.ts`
 checks the prepare step and the deploy command against a fake account, with no
 network and no credential.
+
+### The dictionary slice
+
+A pull request that adds or fixes dictionary words cannot show them on a
+Preview that reads only the shared dictionary. So a branch that adds change
+declarations under `dictionary-changes/` past `main` gets a small D1 of its
+own, `lexema-preview-dict-<name>`, holding only the words those declarations
+touch, with their changes applied
+([#447](https://github.com/povlabs/lexema/issues/447), ADR 0018). The Preview
+binds it read-only as `DICTIONARY_SLICE`, beside `DB`. A page lookup and an
+API lookup (`/v1/lookup`, `/lemmatize`, `/exists`, `/inflect`) of a word the
+slice serves read the slice, so a word the pull request hides reads as not
+found and a word it adds or recovers reads as found. Every other word, and
+suggestions, read the shared dictionary.
+
+The prepare step builds it in this order, and logs a line starting
+`dictionary slice:` that says what it did and why:
+
+1. `pnpm run preview:slice declared` (`src/deploy/sliceCli.ts`, from the
+   repository root) fetches `main` and reads the declarations the branch adds
+   past it. None, or a base it cannot read, gives no slice, and the Preview is
+   the one a branch without declarations gets.
+2. A slice that already holds the fingerprint of those declarations,
+   `src/db/schema.sql` and the slice format is reused, and nothing is written.
+3. Otherwise `pnpm run preview:slice build` plans each declaration with
+   `planWrite` against `lexema-dictionary`, through single `SELECT`s only, and
+   takes the words each plan touches. `update:auto`, `hide:records`,
+   `correct:records` and `load:page-entries` name them; `update:upgrade` touches
+   none, and `normalize:source-text` rewrites the whole dictionary, so a branch
+   with only those gets no slice. It builds the slice in a local SQLite
+   database: the schema, the shared rows a lookup of those words reads, then
+   each plan's SQL, with foreign keys on as on D1. A plan it cannot read, or
+   SQL that does not run on the slice, gives no slice.
+4. It counts the rows writing the slice would write, each row once for its
+   table and once per index. Over `SLICE_ROWS_WRITTEN_CAP`, 100,000 rows, it
+   writes nothing and binds no slice, and the log line gives the count and the
+   cap. Otherwise it deletes the branch's old slice, creates a new one, runs the
+   slice's SQL on it with `wrangler d1 execute --remote --file`, and reads the
+   fingerprint back.
+
+Whatever fails, the Preview still deploys on the shared dictionary. Every step
+refuses a D1 whose name or id is `lexema-dictionary`'s before it reads,
+writes or deletes it (`web/builds/previewSlice.ts`).
+
+What a slice holds for its words: every row of each record that spells one or
+names one as a form-of target, of the lemma records those name, and of the
+records an applied change links them to; the words' page-only entries; and
+the accent and typo index rows a not-found page reads for them. A lookup there
+lists another word's multi-word expressions and inflections only as far as
+the slice holds that word.
+
+It needs no new setting or secret. The build reads `lexema-dictionary` with the
+Workers Builds token, which already has D1 Edit (step 5 of
+[Set it up](#set-it-up)), and reads `povlabs/lexema-data`, which is public,
+with no token. Planning an `update:auto`, `hide:records` or `load:page-entries`
+declaration downloads an archive and a dump, so that build runs longer.
 
 ### The Preview name
 
@@ -303,19 +362,21 @@ the steps are `web/builds/previewSmokeCommand.ts`.
 
 ### The sweep
 
-On each push to `production`, before the deploy, the sweep deletes the Preview
-and the app D1 of every branch with no open pull request. A merged pull request
+On each push to `production`, before the deploy, the sweep deletes the Preview,
+the app D1 and the [dictionary slice](#the-dictionary-slice) of every branch
+with no open pull request. A merged pull request
 is cleaned up at the production build that follows its merge; one closed
 without merging, at the next production build.
 
 - It reads the open pull requests' head branches from GitHub's REST API. The
   repository is public, so no token is needed; `GITHUB_PR_READ_TOKEN`, if set as
   a Workers Builds build secret, is sent with the request (#527).
-- It looks only at D1 databases whose name starts with `lexema-preview-app-`, and
-  never at the shared dictionary `lexema-dictionary`.
-- It deletes the Preview first (`wrangler preview delete`), then its D1
-  (`wrangler d1 delete`). If the Preview cannot be deleted, its D1 stays, and the
-  next sweep tries again.
+- It looks only at D1 databases whose name starts with `lexema-preview-app-` or
+  `lexema-preview-dict-`, and never at the shared dictionary
+  `lexema-dictionary`. A slice with no app D1 still names its branch's Preview.
+- It deletes the Preview first (`wrangler preview delete`), then its slice and
+  its app D1 (`wrangler d1 delete`). If the Preview cannot be deleted, its D1s
+  stay, and the next sweep tries again; so does a D1 that fails to delete.
 - If GitHub's list cannot be read (a refused or failed request, or a malformed
   answer), it deletes nothing.
   The build log then says `sweep: deleting nothing` and why.
@@ -529,6 +590,10 @@ holds needs nothing. Otherwise it starts the `deploy` job, whose steps are
    is sent.
 5. It looks up `casa`, `andare`, `raccontare`, `bello`, `studente` and
    `andavano` in the dictionary with the site's own lookup. Each must be found.
+   It also looks up each word a declaration it applied names in its
+   [`lookups`](../dictionary-changes/README.md#words-the-deploy-looks-up), and
+   each must show what the declaration says. A miss names the declaration
+   file and the word.
 6. It fast-forwards `production` to the run's commit with `GITHUB_TOKEN`, and
    Workers Builds deploys the site.
 
@@ -670,6 +735,9 @@ running.
    - any declaration after the first: red. Its counts depend on what the
      earlier ones write, and this run writes nothing. Put it in its own pull
      request once the earlier ones are deployed.
+
+   It also lists each word a declaration names in `lookups`, and the file it
+   prints keeps them. It does not look them up: the change is not written yet.
 
 It writes nothing: no bookmark, no SQL file run on the dictionary, no branch
 moved. Its job has `contents: read`, and `actions: read` to read this

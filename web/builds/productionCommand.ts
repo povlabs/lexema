@@ -1,6 +1,6 @@
-// The Workers Builds deploy command on `main` (ADR 0018, docs/DEPLOY.md): the
-// sweep, then the production build and `wrangler deploy`. The sweep is
-// housekeeping, so however it ends, production still deploys.
+// The Workers Builds deploy command on the `production` branch (ADR 0018,
+// docs/DEPLOY.md): the sweep, then the production build and `wrangler deploy`.
+// The sweep is housekeeping, so however it ends, production still deploys.
 
 export interface ProductionCommandSteps {
   sweep(): Promise<unknown>;

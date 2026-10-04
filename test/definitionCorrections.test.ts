@@ -275,7 +275,7 @@ test("correct:records reports, and never writes, a correction the master's entry
     // A master seeded before the page-entry tables holds no entry to correct.
     const old = await seeded([]);
     try {
-      old.db.exec("DROP TABLE corrected_definition; DROP TABLE entry_example; DROP TABLE entry_label; DROP TABLE entry_definition; DROP TABLE recovered_entry;");
+      old.db.exec("DROP TABLE corrected_definition; DROP TABLE entry_fact; DROP TABLE entry_example; DROP TABLE entry_label; DROP TABLE entry_definition; DROP TABLE recovered_entry;");
       const none = planCorrections(readerOf(old.db), DEFINITIONS);
       assert.equal(none.sql, "");
       assert.deepEqual(none.definitions.map(describeDefinition), [

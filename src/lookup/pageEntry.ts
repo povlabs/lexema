@@ -2,7 +2,8 @@ import type { DictionaryRead, LookupDatabase, SqlValue } from "./database.js";
 import { readingPartOfSpeech } from "./articles.js";
 import { servedBy, type DictionaryTables } from "./served.js";
 import { normalizeItalianExact } from "../italian/normalize.js";
-import { type LemmaCandidate, type Reading, type RecoveredDefinition, type PageEntryRef, type RecoveredRoute } from "./types.js";
+import { NO_ENTRY_FACTS, readEntryFacts, type EntryFacts } from "./pageFacts.js";
+import { type LemmaCandidate, type Reading, type RecoveredDefinition, type PageEntryRef, type RecoveredRef, type RecoveredRoute } from "./types.js";
 
 const queryAll = <T>(db: LookupDatabase, sql: DictionaryRead, ...params: SqlValue[]): Promise<T[]> => db.all<T>(sql, params);
 
@@ -52,9 +53,13 @@ const NO_PAGE_ENTRIES: PageEntries = { candidates: async () => [], readings: asy
 export function pageEntriesOf(db: LookupDatabase, releaseId: string, tables: DictionaryTables): PageEntries {
   if (!tables.pageEntries) return NO_PAGE_ENTRIES;
   const definitionsSql = tables.definitionCorrections ? CORRECTED_ENTRY_DEFINITION_SQL : ENTRY_DEFINITION_SQL;
+  const candidates = (word: string) => pageEntryCandidates(db, releaseId, word);
+  // A dictionary seeded before `entry_fact` (#439) is never sent a statement that names it.
+  const factsOf = (entryId: number, at: (line: number) => RecoveredRef): Promise<EntryFacts> =>
+    tables.pageFacts ? readEntryFacts(db, releaseId, entryId, at, candidates) : Promise.resolve(NO_ENTRY_FACTS);
   return {
-    candidates: (word) => pageEntryCandidates(db, releaseId, word),
-    readings: (key) => pageEntryReadings(db, releaseId, key, definitionsSql),
+    candidates,
+    readings: (key) => pageEntryReadings(db, releaseId, key, definitionsSql, factsOf),
   };
 }
 
@@ -94,19 +99,26 @@ async function pageEntryCandidates(db: LookupDatabase, releaseId: string, word: 
   return rows.map((row) => ({ entryId: row.entry_id, word: row.word, pos: row.pos, ref: refOf(row) }));
 }
 
-async function pageEntryReadings(db: LookupDatabase, releaseId: string, key: string, definitionsSql: DictionaryRead): Promise<Reading[]> {
+async function pageEntryReadings(
+  db: LookupDatabase,
+  releaseId: string,
+  key: string,
+  definitionsSql: DictionaryRead,
+  factsOf: (entryId: number, at: (line: number) => RecoveredRef) => Promise<EntryFacts>,
+): Promise<Reading[]> {
   const rows = await queryAll<EntryRow>(db, PAGE_ENTRY_SQL, releaseId, key);
   return Promise.all(rows.map(async (row): Promise<Reading> => {
-    const [definitions, labels, examples] = await Promise.all([
+    const at = (line: number): RecoveredRef => ({ wiki: row.wiki, title: row.title, revisionId: row.revision_id, line });
+    const [definitions, labels, examples, facts] = await Promise.all([
       queryAll<DefinitionRow>(db, definitionsSql, row.entry_id),
       queryAll<{ definition_index: number; label: string }>(db,
         `SELECT definition_index, label FROM entry_label WHERE entry_id = ? ORDER BY definition_index, label_index`, row.entry_id),
       queryAll<{ definition_index: number; page_line: number; wikitext: string; text: string }>(db,
         `SELECT definition_index, page_line, wikitext, text FROM entry_example WHERE entry_id = ? ORDER BY definition_index, example_index`, row.entry_id),
+      factsOf(row.entry_id, at),
     ]);
     const recovered: RecoveredDefinition[] = [];
     const byIndex = new Map<number, RecoveredDefinition>();
-    const at = (line: number) => ({ wiki: row.wiki, title: row.title, revisionId: row.revision_id, line });
     for (const definition of definitions) {
       const route: RecoveredRoute = definition.route === "sub-term" ? { route: "sub-term", term: definition.term as string } : { route: definition.route };
       const value: RecoveredDefinition = {
@@ -120,11 +132,13 @@ async function pageEntryReadings(db: LookupDatabase, releaseId: string, key: str
       if (parent === undefined) recovered.push(value);
       else parent.items.push(value);
     }
+    const { claims, forms, wordFacts, lemmaLinks } = facts;
     return {
-      entryId: row.entry_id, ref: refOf(row), word: row.word, ...readingPartOfSpeech(row.pos, row.word, [], [], []), posTitle: row.pos_title,
-      isAboutQuery: true, evidence: [], senses: [], recovered, forms: [],
-      wordFacts: { pronunciations: [], hyphenations: [], etymologies: [], synonyms: [], synonymList: [], antonyms: [], derived: [], expressions: [] },
-      grammar: { record: [], byForm: new Map(), bySense: new Map() }, lemmaLinks: [], inflections: [], reviews: [],
+      entryId: row.entry_id, ref: refOf(row), word: row.word,
+      ...readingPartOfSpeech(row.pos, row.word, claims, forms, wordFacts.pronunciations), posTitle: row.pos_title,
+      isAboutQuery: true, evidence: [], senses: [], recovered, forms, wordFacts,
+      grammar: { record: claims, byForm: new Map(forms.map((form) => [form.index, form.claims])), bySense: new Map() },
+      lemmaLinks, inflections: [], reviews: [],
     };
   }));
 }

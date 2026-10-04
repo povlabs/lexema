@@ -30,10 +30,11 @@ file, so it is written as 64 MiB parts and applied in order
 in the SQL directory. It never seeds or writes the demo's `web/.wrangler`
 database, and it clears no state directory except `SEED_STATE`.
 
-On an Apple M1 Pro with 16 GB the full release takes about seven minutes and
-peaks at about 2.8 GB of memory
-([measurements](../reports/2026-09-23-full-release-seed-measurements.md)). It
-ends by printing the loaded row counts: 560,357 `source_record` and 1,273,490
+On an Apple M1 Pro with 16 GB the full release takes nine to ten minutes and
+peaks at 3.4 to 3.7 GB of memory, with the Wiktionary dump in the repository
+root; those figures include reading the dump's raw pages
+([measurements](../reports/2026-10-04-full-release-seed-on-main.md)). It ends
+by printing the loaded row counts: 560,357 `source_record` and 1,273,350
 `lookup_form` rows for release `it-0c432803`.
 
 ## If a seed stops
@@ -108,7 +109,7 @@ It builds no app table there, and it never deletes or clears a database.
 local state.
 
 On success it ends by printing the loaded counts, including 560,357
-`source_record` and 1,273,490 `lookup_form` rows, then
+`source_record` and 1,273,350 `lookup_form` rows, then
 `source_release: 1 row, complete`, and last:
 
 ```text
@@ -354,8 +355,9 @@ dump that is 186 pages and 203 entries
 [measurement](../reports/2026-10-03-unrecorded-page-layouts.md#what-the-production-rule-recovers),
 which predates [#495](https://github.com/povlabs/lexema/issues/495), and
 `Aglio`, which the rule reads since #495.
-A small fixture has records for few words, so every committed page under
-`fixtures/` it lacks a record for can become a page-only entry. What the seed
+A small fixture has records for few words, so a plain `.jsonl` input offers
+only the release's record-less titles, not every page it lacks a record for
+([development seed](DEV_SEED.md#what-is-emitted)). What the seed
 stores is in [page-only entries](PAGE_ENTRIES.md). To see them in a disposable
 local seed:
 

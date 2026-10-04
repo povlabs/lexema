@@ -17,6 +17,7 @@ import { gzipSync } from "node:zlib";
 import { Resvg } from "@cf-wasm/resvg/node";
 import { satori, type Font } from "@cf-wasm/satori/node";
 import { seedSql } from "../../src/import/seedSql.js";
+import { PageOnlyCandidates, readUnrecordedPageTitles, UNRECORDED_PAGE_TITLES_FILE } from "../../src/import/pageOnlyCandidates.js";
 import { planHide } from "../../src/import/hideRecords.js";
 import { findHiddenRecords, readRulePass } from "../../src/import/hiddenLayer.js";
 import { LanguageHeadings } from "../../src/italian/sectionLanguage.js";
@@ -77,6 +78,8 @@ before(async () => {
     archiveR2Key: `releases/${RELEASE}.jsonl.gz`,
     license: "CC-BY-SA-4.0",
     rawPages: await loadFixturePages(join(REPO, "fixtures")),
+    // As `pnpm run seed:dev` offers them for the fixture (#499).
+    pageOnly: PageOnlyCandidates.listed(await readUnrecordedPageTitles(join(REPO, UNRECORDED_PAGE_TITLES_FILE))),
     onRejection: (rejection) => {
       throw new Error(`fixture line rejected: ${JSON.stringify(rejection)}`);
     },

@@ -15,6 +15,8 @@ import { fileURLToPath } from "node:url";
 import { cloudflare } from "@cloudflare/vite-plugin";
 import { createBuilder } from "vite";
 import { unstable_readConfig } from "wrangler";
+import { type BuiltConfig, withAppDatabase, withDictionarySlice } from "@/builds/previewConfig.ts";
+import { PreviewName } from "@/builds/previewName.ts";
 import { PREVIEW_DOMAIN } from "@/worker/hosts.ts";
 import { parseStage } from "@/worker/stage.ts";
 
@@ -150,4 +152,30 @@ test("the built config keeps the previews block, in the local build and the prod
   // What a production build deploys is the production stage, never a Preview's.
   assert.equal(parseStage(production.vars.LEXEMA_STAGE), "production");
   assert.deepEqual(production.routes, read("production").routes);
+});
+
+test("a Preview's built config with its app database and a dictionary slice reads back through Wrangler, DB still on the shared dictionary (#447)", async () => {
+  const production = await built("production");
+  const preview = PreviewName.ofBranch("build/447-raccontare");
+  const config = withDictionarySlice(
+    withAppDatabase(production as BuiltConfig, { preview, id: "11111111-2222-4333-8444-555555555555" }),
+    { preview, id: "66666666-7777-4888-8999-000000000000" },
+  );
+  const root = mkdtempSync(join(tmpdir(), "lexema-slice-config-"));
+  try {
+    const path = join(root, "wrangler.json");
+    writeFileSync(path, JSON.stringify(config));
+    const block = unstable_readConfig({ config: path }, { hideWarnings: true }).previews;
+    assert.deepEqual(
+      (block?.d1_databases ?? []).map(({ binding, database_name, database_id }: D1Entry) => [binding, database_name, database_id]),
+      [
+        ["DB", "lexema-dictionary", DICTIONARY_ID],
+        ["APP_DB", preview.appDatabase, "11111111-2222-4333-8444-555555555555"],
+        ["DICTIONARY_SLICE", preview.sliceDatabase, "66666666-7777-4888-8999-000000000000"],
+      ],
+    );
+    assert.equal(JSON.stringify(block).includes("<REPLACE_ME>"), false);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
 });

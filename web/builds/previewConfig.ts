@@ -5,8 +5,10 @@
 // of web/wrangler.jsonc copied in (web/test/preview.test.ts). There `APP_DB` is
 // a `<REPLACE_ME>` placeholder, which Wrangler 4.135.0 refuses to preview
 // (`ensurePreviewsConfig` in wrangler-dist/cli.js). The preview command binds
-// it to the branch's own app database, and nothing else in the file changes:
-// `DB` stays on the shared dictionary.
+// it to the branch's own app database. A branch that changes dictionary data
+// may also get a dictionary slice (#447, web/builds/previewSlice.ts), bound
+// as a second, read-only `DICTIONARY_SLICE`. Nothing else in the file
+// changes: `DB` stays on the shared dictionary.
 
 import type { PreviewName } from "./previewName.ts";
 
@@ -15,9 +17,17 @@ export const DICTIONARY = { name: "lexema-dictionary", id: "b07d3441-91c6-4f94-8
 
 /** The binding each Preview's own app database is bound as. */
 const APP_BINDING = "APP_DB";
+/** The binding a Preview's dictionary slice is bound as, beside `DB` (src/lookup/slice.ts). */
+export const SLICE_BINDING = "DICTIONARY_SLICE";
 
 /** One branch's app database, found or created on the account. */
 export interface AppDatabase {
+  readonly preview: PreviewName;
+  readonly id: string;
+}
+
+/** One branch's dictionary slice, written by the preview build (web/builds/previewSlice.ts). */
+export interface SliceDatabase {
   readonly preview: PreviewName;
   readonly id: string;
 }
@@ -36,11 +46,31 @@ export interface BuiltConfig {
   [key: string]: unknown;
 }
 
+/** Whether a D1 is the shared dictionary, by its name or its id. */
+export const isDictionary = (database: { readonly name?: string; readonly id?: string }): boolean =>
+  database.id === DICTIONARY.id || database.name === DICTIONARY.name;
+
+/** Refuse a database that is the dictionary, by name or id, before `what` is done to it: a Preview never writes there. */
+export function refuseDictionary(database: { readonly name?: string; readonly id?: string }, what: string): void {
+  if (isDictionary(database)) throw new Error(`refusing to ${what} the shared dictionary ${DICTIONARY.name} (${DICTIONARY.id})`);
+}
+
 /** Refuse any id that is the dictionary's: a Preview never writes there. */
 function assertNotDictionary(database: AppDatabase): void {
-  if (database.id === DICTIONARY.id || database.preview.appDatabase === DICTIONARY.name) {
-    throw new Error(`refusing to bind APP_DB to the shared dictionary ${DICTIONARY.name} (${DICTIONARY.id})`);
-  }
+  refuseDictionary({ name: database.preview.appDatabase, id: database.id }, "bind APP_DB to");
+}
+
+/**
+ * The built config with `slice` bound as `DICTIONARY_SLICE` in its `previews`
+ * block, beside `DB`. Refuses the dictionary, and a config that binds the
+ * slice's binding already.
+ */
+export function withDictionarySlice(config: BuiltConfig, slice: SliceDatabase): BuiltConfig {
+  refuseDictionary({ name: slice.preview.sliceDatabase, id: slice.id }, `bind ${SLICE_BINDING} to`);
+  const entries = config.previews?.d1_databases ?? [];
+  if (entries.some(({ binding }) => binding === SLICE_BINDING)) throw new Error(`the built config's previews block already binds ${SLICE_BINDING}`);
+  const d1_databases = [...entries, { binding: SLICE_BINDING, database_name: slice.preview.sliceDatabase, database_id: slice.id }];
+  return { ...config, previews: { ...config.previews, d1_databases } };
 }
 
 /**

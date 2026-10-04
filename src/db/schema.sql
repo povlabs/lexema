@@ -914,6 +914,40 @@ CREATE TABLE entry_example (
   FOREIGN KEY (entry_id, definition_index) REFERENCES entry_definition(entry_id, definition_index)
 ) STRICT;
 
+-- Every other field the word page shows that a page-only entry's own page
+-- gives (ADR 0026, #439), one row per fact, read by `italian-page-facts/v1`
+-- (src/italian/pageFacts.ts). Each keeps its page line and that line
+-- verbatim, as entry_definition does. `value` is what the fact states: a
+-- gender or number, a form or a word, a transcription, a text or a phrase.
+-- Absent on a master seeded before it until `update:upgrade` creates it; a
+-- lookup reads an absent one as empty.
+CREATE TABLE entry_fact (
+  entry_id INTEGER NOT NULL REFERENCES recovered_entry(entry_id),
+  fact_index INTEGER NOT NULL CHECK (fact_index >= 0),
+  rule TEXT NOT NULL CHECK (rule IN ('italian-page-facts/v1')),
+  kind TEXT NOT NULL CHECK (kind IN ('gender', 'number', 'form', 'form-of', 'pronunciation', 'etymology', 'synonym', 'antonym', 'derived', 'expression')),
+  page_line INTEGER NOT NULL CHECK (page_line > 0),
+  wikitext TEXT NOT NULL,
+  value TEXT NOT NULL CHECK (value <> ''),
+  -- gender and number: the stamp as the page writes it, `f`, `sing`.
+  source_text TEXT,
+  -- expression: its meaning, when the page gives one.
+  meaning TEXT,
+  -- A JSON array of strings. form: the tags its template states; synonym,
+  -- antonym, derived: the labels its line opens with; any other kind: empty.
+  tags TEXT NOT NULL CHECK (json_valid(tags) AND json_type(tags) = 'array'),
+  -- form-of: the definition that names the word.
+  definition_index INTEGER,
+  CHECK ((kind IN ('gender', 'number')) = (source_text IS NOT NULL)),
+  CHECK (kind <> 'gender' OR value IN ('masculine', 'feminine')),
+  CHECK (kind <> 'number' OR value IN ('singular', 'plural', 'invariable')),
+  CHECK (kind = 'expression' OR meaning IS NULL),
+  CHECK ((kind = 'form-of') = (definition_index IS NOT NULL)),
+  CHECK (kind IN ('form', 'synonym', 'antonym', 'derived') OR tags = '[]'),
+  PRIMARY KEY (entry_id, fact_index),
+  FOREIGN KEY (entry_id, definition_index) REFERENCES entry_definition(entry_id, definition_index)
+) STRICT;
+
 -- A curated correction of one page-only entry's definition (#450), from the
 -- committed list (src/italian/curatedCorrections.ts). It is written only to the
 -- entry recovered from the page revision the list names, where the definition

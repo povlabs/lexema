@@ -12,7 +12,7 @@
 // gloss names (`it-verb-form-gloss/v1`, src/italian/verbFormGloss.ts), into the
 // same grid.
 
-import type { DeclaredForm, DeclaredVerbForm, SearchedSpellings, SourceForm } from "@lexema/lookup/types.ts";
+import { sourcePointerOf, type DeclaredForm, type DeclaredVerbForm, type SearchedSpellings, type SourceForm } from "@lexema/lookup/types.ts";
 import { placeItalianVerbForm, type TenseBox, type VerbSlot } from "@lexema/italian/moods.ts";
 import type { GlossNumber, GlossPerson, VerbFormGloss } from "@lexema/italian/verbFormGloss.ts";
 
@@ -142,8 +142,10 @@ export function sourceTagsOf(form: SourceForm): { tags: string[]; rawTags: strin
   const rawTags: string[] = [];
   for (const claim of form.claims) {
     if (claim.status === "missing") continue;
-    if (/\/raw_tags\/\d+$/.test(claim.ref.jsonPointer)) rawTags.push(claim.sourceText);
-    else if (/\/tags\/\d+$/.test(claim.ref.jsonPointer)) tags.push(claim.sourceText);
+    // A form a raw page writes out states its tags and nothing else (src/italian/pageFacts.ts).
+    const pointer = sourcePointerOf(claim.ref);
+    if (pointer === undefined || /\/tags\/\d+$/.test(pointer)) tags.push(claim.sourceText);
+    else if (/\/raw_tags\/\d+$/.test(pointer)) rawTags.push(claim.sourceText);
   }
   return { tags, rawTags };
 }
@@ -274,7 +276,7 @@ const placedBy = <F>(forms: readonly F[], place: (form: F) => Place | undefined)
   });
 
 export function conjugationOf(forms: readonly SourceForm[], searched: SearchedSpellings): Conjugation {
-  return layOut(placedBy(forms, placeOf), (form) => searched.formPointers.has(form.ref.jsonPointer));
+  return layOut(placedBy(forms, placeOf), (form) => searched.formPointers.has(sourcePointerOf(form.ref) ?? ""));
 }
 
 /**

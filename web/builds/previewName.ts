@@ -14,7 +14,9 @@
 // a 36-character UUID, and a name gets 63 - 36 - 1 = 26 characters.
 //
 // The same name, behind `lexema-preview-app-`, names a D1 database: 45
-// characters at most, of lowercase letters, digits and hyphens.
+// characters at most, of lowercase letters, digits and hyphens. Behind
+// `lexema-preview-dict-`, it names the branch's dictionary slice (#447), when
+// the branch changes dictionary data: 46 characters at most.
 
 import { createHash } from "node:crypto";
 
@@ -29,6 +31,8 @@ const HASH_LENGTH = 8;
 
 /** What every Preview app database's name starts with. */
 export const APP_DATABASE_PREFIX = "lexema-preview-app-";
+/** What every Preview dictionary slice's name starts with (#447). */
+export const SLICE_DATABASE_PREFIX = "lexema-preview-dict-";
 
 /** A name that is one DNS label: lowercase letters, digits and inner hyphens. */
 const NAME = new RegExp(`^[a-z0-9](?:[a-z0-9-]{0,${PREVIEW_NAME_MAX - 2}}[a-z0-9])?$`);
@@ -64,14 +68,28 @@ export class PreviewName {
 
   /** The Preview whose app database this is, or none for any other database. */
   static ofAppDatabase(databaseName: string): PreviewName | undefined {
-    if (!databaseName.startsWith(APP_DATABASE_PREFIX)) return undefined;
-    const value = databaseName.slice(APP_DATABASE_PREFIX.length);
+    return PreviewName.behind(APP_DATABASE_PREFIX, databaseName);
+  }
+
+  /** The Preview whose dictionary slice this is, or none for any other database. */
+  static ofSliceDatabase(databaseName: string): PreviewName | undefined {
+    return PreviewName.behind(SLICE_DATABASE_PREFIX, databaseName);
+  }
+
+  private static behind(prefix: string, databaseName: string): PreviewName | undefined {
+    if (!databaseName.startsWith(prefix)) return undefined;
+    const value = databaseName.slice(prefix.length);
     return NAME.test(value) ? new PreviewName(value) : undefined;
   }
 
   /** The D1 database this Preview writes to: `lexema-preview-app-<name>`. */
   get appDatabase(): string {
     return `${APP_DATABASE_PREFIX}${this.value}`;
+  }
+
+  /** The D1 database this Preview's dictionary slice is in, when it has one: `lexema-preview-dict-<name>`. */
+  get sliceDatabase(): string {
+    return `${SLICE_DATABASE_PREFIX}${this.value}`;
   }
 
   equals(other: PreviewName): boolean {

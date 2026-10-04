@@ -14,16 +14,49 @@ To build one in a local seed, see
 ## What is stored
 
 - The seed stores page-only entries in `recovered_entry`, `entry_definition`,
-  `entry_label` and `entry_example`, beside `source_record` and
+  `entry_label`, `entry_example` and `entry_fact`, beside `source_record` and
   `source_record_json`, never inside them.
 - An entry holds its word, its part of speech, its definitions, and their labels
   and examples. Each fact keeps the page revision, its 1-based page line and that
   line's wikitext, verbatim.
 - A page gives one entry per Italian part-of-speech section. Each entry records
   the rule that read it.
-- No inflection table, pronunciation or etymology is recovered.
-- Every raw page whose title has no Italian archive record is a candidate, not
-  only a page a form names ([seedSql.ts](../src/import/seedSql.ts)).
+- In a full-release seed, every raw page whose title has no Italian archive
+  record is a candidate, not only a page a form names
+  ([seedSql.ts](../src/import/seedSql.ts)). A fixture seed offers only the
+  release's record-less titles in
+  [`fixtures/unrecorded-page-titles.json`](../fixtures/unrecorded-page-titles.json)
+  ([pageOnlyCandidates.ts](../src/import/pageOnlyCandidates.ts),
+  [development seed](DEV_SEED.md#what-is-emitted)).
+
+## The other fields
+
+An entry also carries every other field the word page shows, when its own page
+gives it ([ADR 0026](../.decisions/0026-recovered-entries-carry-what-the-word-page-shows.md),
+[#439](https://github.com/povlabs/lexema/issues/439)). Rule
+`italian-page-facts/v1` ([pageFacts.ts](../src/italian/pageFacts.ts)) reads
+them, and `entry_fact` stores one row per fact, with the rule, the page line
+and that line verbatim.
+
+- From the entry's own section: the gender and number its headword line
+  stamps (`{{Pn}} ''f sing''`), the plurals `{{Linkp|…}}` writes, the four
+  cells `{{Tabs|…}}` writes, and, in a section of inflected forms, the word a
+  definition ends by naming (`plurale di [[avventuriero]]`).
+- From the word's sections, which every entry of the page carries: each
+  `{{IPA|…}}` of `{{-pron-}}`, each line of `{{-etim-}}`, the words of
+  `{{-sin-}}`, `{{-ant-}}` and `{{-der-}}` with the labels their line opens
+  with, and the phrases and meanings of `{{-prov-}}`.
+- A field the page does not write is not stored. Forms come only from a page
+  that writes them out: a conjugation from a stem, or a template's rule such
+  as `{{it-agg|…}}`, is not made. A line holding a template the renderer does
+  not print gives nothing.
+- Hyphenation (`{{-sill-}}`) is not read: the word page does not show it.
+- A lookup reads the facts into the reading's grammar, forms, word facts and
+  lemma links ([pageFacts.ts](../src/lookup/pageFacts.ts)), so the page shows
+  them through the components an archive entry's take, with no mark.
+
+On `it-0c432803`, no word of the 186 gives every field
+([measurement](../reports/2026-10-04-page-entry-fields.md)).
 
 ## Identity
 
@@ -75,8 +108,10 @@ tables exist once per lookup, from `sqlite_schema` (`dictionaryTables` in
 - Without the tables, lookups send no statement that names them, and answer as
   before, with no page-only entries.
 - With some of the four but not all, lookups refuse to answer.
-- `pnpm run update:upgrade` creates the tables and `corrected_definition`
-  empty, and writes no row
+- With the four and no `entry_fact`, lookups answer with the entries'
+  definitions alone, as before #439.
+- `pnpm run update:upgrade` creates the tables, `entry_fact` and
+  `corrected_definition` empty, and writes no row
   ([update the dictionary](UPDATE_THE_DICTIONARY.md#once-a-dictionary-seeded-from-an-older-schema)).
   Serving does not need it.
 - `pnpm run load:page-entries` loads the entries
@@ -100,11 +135,15 @@ before these entries the rows a seed now writes for them, with no reseed:
 - An entry already held, by its word and the page line that states its part
   of speech, is left alone. Rule v2 reads every page rule v1 recovers as
   rule v1 still, so a dictionary loaded under rule v1 alone keeps those
-  entries and gains only rule v2's.
+  entries and gains only rule v2's. An entry held with no `entry_fact` row,
+  loaded before [the other fields](#the-other-fields), gains the facts rule
+  `italian-page-facts/v1` reads off the same revision, and nothing else: its
+  other rows, its page, its corrections and its word's search rows stay as
+  they are. A declaration names all three rules.
 - A word's key is ranked by its lemma records and the definitions of all its
   page-only entries together, as the seed ranks it. A page whose title differs
   from a record's only in case, such as `Aglio`, adds to that record's key.
-- For each entry it writes the `raw_page` row of its revision, the four tables'
+- For each entry it writes the `raw_page` row of its revision, the five tables'
   rows, the [corrected definitions](#corrected-definitions) the list gives it,
   and the `accent_fold` and `typo_key` rows of its word. It creates no table:
   `pnpm run update:upgrade` creates the tables and `corrected_definition`, or
@@ -131,8 +170,22 @@ counts 186 entries on 169 pages to write
 ([its declaration](../dictionary-changes/2026-10-03-load-page-entries-v2-it-0c432803.json),
 [plan run](https://github.com/povlabs/lexema/actions/runs/37157579692)).
 That is three entries, each of one definition, fewer than the local seed
-reads. Which three, and why, is
-[#539](https://github.com/povlabs/lexema/issues/539).
+reads: `antico nordico`, `orecchioni` and `piangere sul latte versato`.
+The shared dictionary took a record of each from the September feed
+`it-78385b62`, so a record spells their titles there and the load skips them,
+as it should. Each record gives the word the same definition the page does
+([the check](../reports/2026-10-04-page-entry-gap.md)).
+
+Those 200 entries were loaded before `entry_fact`. A third load gives them
+their facts
+([its declaration](../dictionary-changes/2026-10-04-load-page-entry-facts-it-0c432803.json),
+[#439](https://github.com/povlabs/lexema/issues/439)): 1,524 `entry_fact`
+rows for 176 entries, and no other row. The other 24 entries' pages give no
+fact. The count comes from a plan of the command on a local twin of the shared
+dictionary: a full seed, the September feed `it-78385b62` applied, and
+`entry_fact` dropped. It is the same before and after the upgrade creates
+`entry_fact`. The three entries a feed record spells hold 5 more facts in a
+local seed, and the load skips them.
 
 ### On the shared dictionary
 
@@ -156,7 +209,10 @@ it against a local D1 only. One run does both halves, in this order:
 
 Until step 2, the Worker already deployed keeps serving. A Worker from before
 #438 never names the tables, so it answers as before; a later one shows the
-entries as soon as step 1 commits.
+entries as soon as step 1 commits. The facts follow the same order: the
+upgrade creates `entry_fact` empty in step 1, before the rows. A Worker from
+before #439 never names `entry_fact`, so it shows the definitions alone until
+step 2 uploads one that reads it.
 
 To undo the load, restore the bookmark the deploy run names, with the command
 in its summary ([the dictionary deploy](DEPLOY.md#the-dictionary-deploy)). The

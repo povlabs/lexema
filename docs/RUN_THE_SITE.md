@@ -85,9 +85,12 @@ What these actually rendered, on which release and on which date, is in
 all twelve queries of the spot check, not only these.
 
 The fixture is intentionally bounded, so a word outside its fifty-word set
-returns the empty state rather than an error. A full archive can be supplied
+returns the empty state rather than an error. The one exception is a word the
+release itself has no record for, such as `raccontare`: its committed page
+gives a page-only entry, as on the real site
+([DEV_SEED.md](DEV_SEED.md#what-is-emitted)). A full archive can be supplied
 with `SEED_INPUT=it-extract.jsonl.gz`; it loads in numbered SQL parts and takes
-about seven minutes
+nine to ten minutes
 ([RUN_AN_IMPORT.md § Run it](RUN_AN_IMPORT.md#run-it)).
 
 ## See the failed-lookup state

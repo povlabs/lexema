@@ -388,9 +388,9 @@ test("an upgrade that rebuilds the page-entry tables rebuilds a hidden_record fr
     withHiddenRecordBefore389(before);
     const schema = await readFile(SCHEMA, "utf8");
     // `recovered_entry` as before its page_line CHECK, with a row and a definition.
-    before.exec("DROP TABLE entry_example; DROP TABLE entry_label; DROP TABLE corrected_definition; DROP TABLE entry_definition; DROP TABLE recovered_entry;");
+    before.exec("DROP TABLE entry_fact; DROP TABLE entry_example; DROP TABLE entry_label; DROP TABLE corrected_definition; DROP TABLE entry_definition; DROP TABLE recovered_entry;");
     before.exec(createStatement(schema, "TABLE", "recovered_entry").replace("page_line INTEGER NOT NULL CHECK (page_line > 0)", "page_line INTEGER NOT NULL"));
-    for (const table of ["entry_definition", "entry_label", "entry_example", "corrected_definition"]) before.exec(createStatement(schema, "TABLE", table));
+    for (const table of ["entry_definition", "entry_label", "entry_example", "entry_fact", "corrected_definition"]) before.exec(createStatement(schema, "TABLE", table));
     before.exec(createStatement(schema, "INDEX", "recovered_entry_by_key"));
     before.prepare("INSERT INTO raw_page VALUES (900001, ?, 'it.wiktionary.org', 'scrivere', 4100, '2026-09-01T00:00:00Z')").run(RELEASE);
     before.prepare("INSERT INTO recovered_entry VALUES (1, ?, 900001, 'scrivere', 'scrivere', 'verb', 'Verbo', 'italian-page-entry/v1', 3, '')").run(RELEASE);
@@ -400,7 +400,7 @@ test("an upgrade that rebuilds the page-entry tables rebuilds a hidden_record fr
     const upgrade = planUpgrade(reader, schema);
     assert.deepEqual(upgrade.changed, ["recovered_entry", "hidden_record"]);
     assert.deepEqual(upgrade.kept.map(({ name, rows }) => [name, rows]), [
-      ["recovered_entry", 1], ["entry_definition", 1], ["entry_label", 0], ["entry_example", 0], ["corrected_definition", 0], ["hidden_record", 3],
+      ["recovered_entry", 1], ["entry_definition", 1], ["entry_label", 0], ["entry_example", 0], ["entry_fact", 0], ["corrected_definition", 0], ["hidden_record", 3],
     ]);
     assert.deepEqual(overlongPatterns(upgrade.sql), []);
     before.exec("BEGIN");

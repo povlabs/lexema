@@ -86,7 +86,8 @@ export async function main(
   const file = join(out, `page-entries-${plan.masterReleaseId}-${Date.now()}.sql`);
   await writeFile(file, plan.sql);
   const writes = plan.entries.filter((planned) => planned.state === "write").length;
-  log(`writing ${writes} page-only entr${writes === 1 ? "y" : "ies"} as one transaction: ${file}`);
+  const backfills = plan.entries.filter((planned) => planned.state === "facts").length;
+  log(`writing ${writes} page-only entr${writes === 1 ? "y" : "ies"} and the facts of ${backfills} held one(s) as one transaction: ${file}`);
   // One file, one transaction: if any statement fails, D1 leaves the master as it was.
   try {
     target.execute(["--file", file], false);
@@ -95,7 +96,7 @@ export async function main(
   }
   const left = unloaded(reader, plan);
   if (left.length > 0) return { out: `the update ran, but these entries do not read back as written: ${left.join(", ")}`, status: 1 };
-  return { out: [`${summary}; written now: ${writes}`, ...lines].join("\n"), status: 0 };
+  return { out: [`${summary}; written now: ${writes}; facts written for held entries: ${backfills}`, ...lines].join("\n"), status: 0 };
 }
 
 if (isMain(import.meta.url)) finish(await main(process.env, process.argv.slice(2)));

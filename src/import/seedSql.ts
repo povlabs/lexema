@@ -22,6 +22,7 @@ import { RawPageRows } from "./rawPageRows.js";
 import { recoverPageEntry } from "../italian/pageEntry.js";
 import { entryDefinitionsOf, pageEntryRows } from "./pageEntryRows.js";
 import { RecoveredLayer, type RecoverySummary } from "./recoveredLayer.js";
+import { PageOnlyCandidates } from "./pageOnlyCandidates.js";
 import { CorrectedLayer, type CorrectionSummary } from "./correctedLayer.js";
 import { CorrectedDefinitionLayer, type DefinitionCorrectionSummary } from "./correctedDefinitions.js";
 import { CURATED_CORRECTIONS, type CuratedCorrection } from "../italian/curatedCorrections.js";
@@ -51,6 +52,7 @@ const TABLE_ORDER = [
   "entry_definition",
   "entry_label",
   "entry_example",
+  "entry_fact",
   "corrected_definition",
   "release_table_rows",
 ] as const;
@@ -81,6 +83,7 @@ export const COLUMNS: Record<TableName, string> = {
   entry_definition: "entry_id,definition_index,route,term,page_line,wikitext,text,lead_in_index",
   entry_label: "entry_id,definition_index,label_index,label",
   entry_example: "entry_id,definition_index,example_index,page_line,wikitext,text",
+  entry_fact: "entry_id,fact_index,rule,kind,page_line,wikitext,value,source_text,meaning,tags,definition_index",
   corrected_definition: "entry_id,definition_index,text,correction_id,evidence_url",
   release_table_rows: "release_id,table_name,rows",
 };
@@ -130,6 +133,7 @@ class SqlBatchWriter {
     entry_definition: 0,
     entry_label: 0,
     entry_example: 0,
+    entry_fact: 0,
     corrected_definition: 0,
     release_table_rows: 0,
   };
@@ -363,6 +367,12 @@ export interface SeedSqlOptions {
    */
   rawPages?: RawPageSource;
   /**
+   * Which of `rawPages` are offered as page-only entries: every one no Italian
+   * record spells, as a full release does (ADR 0028, the default), or only the
+   * committed record-less titles, as the fifty-word fixture does (#499).
+   */
+  pageOnly?: PageOnlyCandidates;
+  /**
    * The language codes the dump heads sections with
    * (`fixtures/section-language/regressions.json`). With `rawPages`, the seed
    * hides every record the section-language rule finds in another language
@@ -432,6 +442,7 @@ export async function seedSql(options: SeedSqlOptions): Promise<SeedSqlReport> {
   };
   const pageRows = new RawPageRows(writer.statement("raw_page"), writer.counts);
   const rawPages: RawPageSource = options.rawPages ?? { page: () => undefined, titles: () => [], size: 0 };
+  const pageOnly = options.pageOnly ?? PageOnlyCandidates.everyUnrecordedPage();
   const recovered = new RecoveredLayer(
     rawPages,
     pageRows,
@@ -496,12 +507,12 @@ export async function seedSql(options: SeedSqlOptions): Promise<SeedSqlReport> {
     });
     if (!start) throw new Error("archive parser did not provide seed metadata");
     // The complete archive word set is known only after streaming it. Every
-    // raw page whose title no Italian record spells is a page-only candidate,
-    // whether or not a form names it (ADR 0028); a hidden Italian record still
-    // prevents page-only recovery of that title. Pages are read one at a time,
-    // so the source is never copied, and a source lists each title once, so a
-    // title recovered here never shadows a later one in `seenWords`.
-    for (const title of rawPages.titles()) {
+    // offered raw page whose title no Italian record spells is a page-only
+    // candidate, whether or not a form names it (ADR 0028); a hidden Italian
+    // record still prevents page-only recovery of that title. Pages are read
+    // one at a time, so the source is never copied, and each title is offered
+    // once, so a title recovered here never shadows a later one in `seenWords`.
+    for (const title of pageOnly.titlesIn(rawPages)) {
       if (seenWords.has(title)) continue;
       const page = rawPages.page(title);
       if (page === undefined) throw new Error(`the raw page source lists ${JSON.stringify(title)} but has no page for it`);
@@ -514,7 +525,7 @@ export async function seedSql(options: SeedSqlOptions): Promise<SeedSqlReport> {
         const entryId = ++writer.counts.recovered_entry;
         const rows = pageEntryRows(entryId, start.releaseId, pageId, entry);
         writer.statement("recovered_entry").run(...rows.recovered_entry);
-        for (const table of ["entry_definition", "entry_label", "entry_example"] as const) {
+        for (const table of ["entry_definition", "entry_label", "entry_example", "entry_fact"] as const) {
           for (const values of rows[table]) writer.statement(table).run(...values);
           writer.counts[table] += rows[table].length;
         }

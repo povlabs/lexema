@@ -18,7 +18,8 @@
 //    every rebuilt table kept its rows.
 // 5. For each declaration, oldest first: plan it, hold the plan's counts to
 //    the declared ones and to the hard limits, run its SQL, read it back.
-// 6. Look up a fixed word list in the dictionary written (wordCheck.ts).
+// 6. Look up a fixed word list in the dictionary written, and every word a
+//    declaration names in its `lookups` (wordCheck.ts, #554).
 // 7. Fast-forward `production` to `head`, which deploys the site.
 //
 // Each batch goes to D1 as one transaction (d1Batch.ts). Any stop is red and
@@ -35,8 +36,8 @@ import type { PlanCounts } from "../update/planCounts.js";
 import { D1Batch } from "./d1Batch.js";
 import { type DataFetcher, type DumpCatalog, fetchVerified, filesFor } from "./dataFiles.js";
 import { advanceProduction, deployRange, type Git } from "./pending.js";
-import { type ReadyChange, planWrite, readyChange, SCHEMA } from "./writePlan.js";
-import { lookUpWords, WORD_LIST } from "./wordCheck.js";
+import { type ReadyChange, planWrite, readyChange, SCHEMA, type WritePlan } from "./writePlan.js";
+import { lookUpDeclaredWords, lookUpWords, WORD_LIST } from "./wordCheck.js";
 import type { ArchiveFactsCatalog } from "../source/archiveFacts.js";
 import type { CuratedCorrection } from "../italian/curatedCorrections.js";
 
@@ -197,8 +198,9 @@ export async function deployDictionary(deps: DeployDeps): Promise<DeployOutcome>
         if (mismatches.length > 0) return red(mismatches.map((mismatch) => `${declaration.file}: ${mismatch}`));
       }
 
-      step("word-lookup", (deps.words ?? WORD_LIST).join(", "));
-      const missing = await lookUpWords(deps.reader, deps.words);
+      const declaredWords = range.declarations.flatMap(({ file, lookups }) => (lookups === undefined ? [] : [`${file}: ${lookups.map(({ word }) => word).join(", ")}`]));
+      step("word-lookup", [(deps.words ?? WORD_LIST).join(", "), ...declaredWords].join("; "));
+      const missing = [...(await lookUpWords(deps.reader, deps.words)), ...(await lookUpDeclaredWords(deps.reader, range.declarations))];
       if (missing.length > 0) return red(missing.map((mismatch) => `word lookup: ${mismatch}`));
     }
 
@@ -227,14 +229,26 @@ export interface PlanOnlyAnswer {
   readonly rebuilds: readonly Rebuild[];
 }
 
+/** What planning one change reads: the dictionary, and where its files come from and go. */
+export type PlanDeps = Pick<DeployDeps, "reader" | "fetcher" | "workDir" | "catalog" | "dumps" | "corrections" | "now">;
+
+/**
+ * Fetch and check the files `change` reads, and plan it against the
+ * dictionary `deps.reader` reads. It writes nothing. The plan-only entry and a
+ * Preview's dictionary slice (#447) both plan through it.
+ */
+export async function planDeclared(change: DeclaredChange, deps: PlanDeps): Promise<WritePlan> {
+  const [{ ready }] = await readyAll([change], deps);
+  return planWrite(ready, deps.reader, (deps.now ?? (() => new Date().toISOString()))(), deps);
+}
+
 /**
  * The plan-only entry (#456): fetch and check the files `change` reads, plan
  * it, and return its counts. It records no bookmark, runs nothing on the
  * dictionary and moves no branch.
  */
-export async function planOnly(change: DeclaredChange, deps: Pick<DeployDeps, "reader" | "fetcher" | "workDir" | "catalog" | "dumps" | "corrections" | "now">): Promise<PlanOnlyAnswer> {
-  const [{ ready }] = await readyAll([change], deps);
-  const { run, rebuilds = [] } = await planWrite(ready, deps.reader, (deps.now ?? (() => new Date().toISOString()))(), deps);
+export async function planOnly(change: DeclaredChange, deps: PlanDeps): Promise<PlanOnlyAnswer> {
+  const { run, rebuilds = [] } = await planDeclared(change, deps);
   return { command: run.command, counts: run.counts, dictionaryRecords: run.dictionaryRecords, limitBreaches: run.counts.limitBreaches(run.dictionaryRecords), rebuilds };
 }
 
