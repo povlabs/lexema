@@ -131,11 +131,12 @@ export function sessionAuth(db: AppDatabase, secret: string, origin: string) {
  * better-auth over this database with the Stripe plugin added to the base
  * options: its verified webhook, and the Checkout and billing-portal endpoints
  * the billing routes call through `auth.api`. `billing` exists only once every
- * Stripe setting is set (./billing.ts). `mail` is where the webhook's plan
+ * Stripe setting is set (./billing.ts). `origin` is the developer site, which
+ * Checkout's Terms link points at (#572). `mail` is where the webhook's plan
  * emails go (#215); only the webhook sends any.
  */
 export function billingAuth(db: AppDatabase, secret: string, origin: string, billing: Billing, mail?: AccountMail) {
-  return betterAuth({ ...baseOptions(db, secret, origin), plugins: [billingPlugin(db, billing, mail)] });
+  return betterAuth({ ...baseOptions(db, secret, origin), plugins: [billingPlugin(db, billing, origin, mail)] });
 }
 
 /**

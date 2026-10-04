@@ -72,14 +72,27 @@ export function billingOf(settings: StripeSettings, fetchFn?: typeof fetch): Bil
   };
 }
 
+/** The developer site's Terms of service page (#162). */
+export const TERMS_PATH = "/terms";
+
+/**
+ * The line every Checkout shows beside its subscribe button (#572): by
+ * subscribing you agree to the Terms and confirm business use, with no
+ * checkbox. Stripe renders a Markdown link in `custom_text.submit.message`,
+ * so the link is absolute, on the developer site that made the session.
+ */
+export const checkoutTermsLine = (developerOrigin: string): string =>
+  `By subscribing, you agree to the [Terms of service](${new URL(TERMS_PATH, developerOrigin).href}) and confirm you are using the API for business purposes.`;
+
 /**
  * The Stripe plugin over this database. A customer is made at Checkout, not
  * at sign-up. The plugin's `subscription` model and `user.stripeCustomerId`
  * are the Drizzle table and column of the same field names, so the mapping
- * names only the table. `mail` sends the emails a plan change owes; without
+ * names only the table. Every Checkout it makes shows `checkoutTermsLine` for
+ * `developerOrigin`. `mail` sends the emails a plan change owes; without
  * it they are recorded as owed and sent nowhere (src/email/send.ts).
  */
-export function billingPlugin(db: Parameters<typeof syncSubscription>[0], billing: Billing, mail: AccountMail | undefined) {
+export function billingPlugin(db: Parameters<typeof syncSubscription>[0], billing: Billing, developerOrigin: string, mail: AccountMail | undefined) {
   return stripePlugin({
     stripeClient: billing.stripe,
     stripeWebhookSecret: billing.webhookSecret,
@@ -90,6 +103,7 @@ export function billingPlugin(db: Parameters<typeof syncSubscription>[0], billin
         { name: "starter", priceId: billing.prices.starter },
         { name: "pro", priceId: billing.prices.pro },
       ],
+      getCheckoutSessionParams: () => ({ params: { custom_text: { submit: { message: checkoutTermsLine(developerOrigin) } } } }),
     },
     schema: { subscription: { modelName: "subscription" } },
     onEvent: async (event) => {
