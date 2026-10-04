@@ -9,8 +9,10 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { createHash } from "node:crypto";
 import { seedSql } from "../src/import/seedSql.js";
-import { ARCHIVE_FACTS, archiveFactsFor } from "../src/source/archiveFacts.js";
-import { loadFixturePages } from "../src/source/rawPage.js";
+import { ARCHIVE_FACTS, archiveFactsFor, PUBLISHED_ARCHIVE_SHA256 } from "../src/source/archiveFacts.js";
+import { loadFixturePages, type RawPageSource } from "../src/source/rawPage.js";
+import { PageOnlyCandidates, readUnrecordedPageTitles, UNRECORDED_PAGE_TITLES_FILE } from "../src/import/pageOnlyCandidates.js";
+import { unrecordedPageTitlesOf } from "../src/import/measureUnrecordedPages.js";
 import { applyParts, PartFailure } from "../src/import/sqlParts.js";
 
 const rawLemma = '{ "word":"lemma", "pos":"noun", "pos_title":"Sostantivo", "lang_code":"it", "forms":[{"form":"forma","source":"Appendice:Coniugazioni/Italiano/lemma","tags":["plural"]}], "senses":[{"glosses":["una voce"],"tags":["rare"]}] }';
@@ -224,12 +226,23 @@ function tableDump(db: DatabaseSync): Record<string, unknown[]> {
 
 // The raw pages seedDev reads, so the dev seed here carries the recovered layer too.
 const rawPages = await loadFixturePages(resolve("fixtures"));
+// The page-only candidates seedDev offers for the fixture (#499).
+const unrecorded = await readUnrecordedPageTitles(resolve(UNRECORDED_PAGE_TITLES_FILE));
+const devPageOnly = await PageOnlyCandidates.forSeedInput(fixturePath, resolve(UNRECORDED_PAGE_TITLES_FILE));
 
-const devSeed = (outputDir: string, partCeilingBytes?: number) =>
+const devSeed = (outputDir: string, partCeilingBytes?: number, pages: RawPageSource = rawPages) =>
   seedSql({
     input: fixturePath, outputDir, schema: resolve("src/db/schema.sql"), releaseId: "it-dev",
-    requiredWords: HUEY_WORDS, validateFixtureClosure: true, partCeilingBytes, rawPages,
+    requiredWords: HUEY_WORDS, validateFixtureClosure: true, partCeilingBytes, rawPages: pages, pageOnly: devPageOnly,
   });
+
+/** The words the seed wrote page-only entries for, sorted. */
+const pageOnlyWords = (parts: readonly string[]): string[] => {
+  const db = openSeed(parts, ":memory:");
+  try {
+    return [...new Set(db.prepare("SELECT word FROM recovered_entry").all().map((row) => row.word as string))].sort();
+  } finally { db.close(); }
+};
 
 test("the fifty-word dev seed is one part with the same rows", async () => {
   const dir = await mkdtemp(join(tmpdir(), "lexema-seed-"));
@@ -237,17 +250,18 @@ test("the fifty-word dev seed is one part with the same rows", async () => {
     const report = await devSeed(join(dir, "sql"));
     assert.deepEqual(report.parts, [join(dir, "sql", "part-001.sql")]);
     assert.deepEqual(report.rows, {
-      source_record: 130, source_record_json: 130, lookup_form: 2628, accent_fold: 112, typo_key: 2700, form_of_edge: 41,
+      source_record: 130, source_record_json: 130, lookup_form: 2628, accent_fold: 111, typo_key: 640, form_of_edge: 41,
       sense: 359, sense_gloss: 358, sense_label: 151, grammar_claim: 10908,
-      raw_page: 246, recovered_definition: 7, recovered_label: 6, recovered_example: 7, hidden_record: 0,
+      raw_page: 18, recovered_definition: 7, recovered_label: 6, recovered_example: 7, hidden_record: 0,
       // The curated corrections are keyed to it-0c432803's lines, not the fixture's.
       corrected_claim: 0,
-      // Every fixture page whose title the fifty-word archive has no record for
-      // is a page-only candidate (ADR 0028): 245 of them recover, `grufolare`
-      // and `tremare` among them, whose curated definition corrections apply.
-      recovered_entry: 516, entry_definition: 837, entry_label: 461, entry_example: 154,
+      // Only the fixture pages on the committed list of it-0c432803's
+      // record-less titles are page-only candidates (#499): 20 of them, of
+      // which 17 recover (`lungo` as two entries), `grufolare` and `tremare`
+      // among them, whose curated definition corrections apply.
+      recovered_entry: 18, entry_definition: 27, entry_label: 12, entry_example: 6,
       // Their other fields, each read from the entry's own page (ADR 0026).
-      entry_fact: 11156,
+      entry_fact: 367,
       corrected_definition: 2,
       release_table_rows: 22,
     });
@@ -258,6 +272,79 @@ test("the fifty-word dev seed is one part with the same rows", async () => {
       definitions: 7, examples: 7, unrendered: 0,
     });
   } finally { await rm(dir, { recursive: true, force: true }); }
+});
+
+test("the dev seed offers only the release's record-less titles as page-only entries", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "lexema-seed-"));
+  try {
+    const words = pageOnlyWords((await devSeed(join(dir, "sql"))).parts);
+    // Pages sampled under fixtures/upstream-wikitext/ for words it-0c432803 has
+    // records for are not page-only entries, though the fixture lacks them.
+    for (const word of ["acquirente", "albanese", "americana", "Dalia"]) {
+      assert.ok(rawPages.page(word) !== undefined, `${word} has a fixture page`);
+      assert.ok(!words.includes(word), `${word} is not a page-only entry`);
+    }
+    // A fixture page the release has no record for still is one, `raccontare`
+    // among them. `irrequieti`, `mezz'ora` and `motteggio` are listed too, and
+    // ADR 0028 excludes their layouts.
+    assert.deepEqual(words, [
+      "a monte", "accerchiarsi", "dipendere", "dismagare", "fidelizzare", "finora", "fornire", "grufolare", "lungo",
+      "mastoide", "piallare", "piangere sul latte versato", "purità", "raccontare", "tantundem", "tremare", "trincetto",
+    ]);
+    const listed = new Set(unrecorded.titles);
+    assert.deepEqual(words.filter((word) => !listed.has(word)), []);
+  } finally { await rm(dir, { recursive: true, force: true }); }
+});
+
+test("a dev seed over the whole dump reads only the listed pages, never every title", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "lexema-seed-"));
+  // A stand-in for the dump: it would hold every main-namespace page, so
+  // listing its titles is the walk the fixture seed must not make.
+  const asked: string[] = [];
+  const dump: RawPageSource = {
+    page: (title) => {
+      asked.push(title);
+      return rawPages.page(title);
+    },
+    titles: () => {
+      throw new Error("the fixture seed walked every title of the raw page source");
+    },
+    size: 758_429,
+  };
+  try {
+    const words = pageOnlyWords((await devSeed(join(dir, "sql"), undefined, dump)).parts);
+    const listed = new Set(unrecorded.titles);
+    const offered = new Set(unrecorded.titles.filter((title) => rawPages.page(title) !== undefined));
+    assert.ok(words.length > 0 && words.every((word) => offered.has(word)));
+    // The archive's own records ask for their pages too; nothing else is read.
+    const recordWords = new Set(readFileSync(fixturePath, "utf8").trimEnd().split("\n").map((line) => JSON.parse(line).word as string));
+    assert.deepEqual([...new Set(asked)].filter((title) => !listed.has(title) && !recordWords.has(title)), []);
+  } finally { await rm(dir, { recursive: true, force: true }); }
+});
+
+test("a release archive offers every raw page with no Italian record, a fixture only the committed list", async () => {
+  const every = await PageOnlyCandidates.forSeedInput("it-extract.jsonl.gz", resolve(UNRECORDED_PAGE_TITLES_FILE));
+  assert.deepEqual([...every.titlesIn(rawPages)], [...rawPages.titles()]);
+  assert.deepEqual([...devPageOnly.titlesIn(rawPages)], unrecorded.titles.filter((title) => rawPages.page(title) !== undefined));
+
+  // Seeded as a full release is, the same archive and pages offer the
+  // sampled pages too (ADR 0028): its records are all the release has.
+  const dir = await mkdtemp(join(tmpdir(), "lexema-seed-"));
+  try {
+    const report = await seedSql({
+      input: fixturePath, outputDir: join(dir, "sql"), schema: resolve("src/db/schema.sql"), releaseId: "it-dev",
+      rawPages, pageOnly: every,
+    });
+    const words = pageOnlyWords(report.parts);
+    for (const word of ["acquirente", "albanese", "americana", "Dalia", "raccontare"]) assert.ok(words.includes(word), word);
+  } finally { await rm(dir, { recursive: true, force: true }); }
+});
+
+test("the committed record-less titles are the release measurement's, sorted and distinct", async () => {
+  assert.equal(unrecorded.release, `it-${PUBLISHED_ARCHIVE_SHA256.slice(0, 8)}`);
+  const measurement = JSON.parse(await readFile(resolve(unrecorded.measuredBy), "utf8"));
+  assert.equal(measurement.release, unrecorded.release);
+  assert.deepEqual(unrecorded, unrecordedPageTitlesOf(measurement, unrecorded.measuredBy));
 });
 
 test("a seed forced across parts cuts only between statements and loads the same database", async () => {

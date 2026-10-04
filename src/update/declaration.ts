@@ -4,7 +4,8 @@
 // edit one list. The deploy reads them and the monthly release job writes
 // them (#446); this is the only format either uses. `parseDeclaration` is the
 // only way to get a `ChangeDeclaration`, so a value of that type is always a
-// valid one.
+// valid one. A declaration may also name a few words the deploy looks up once
+// the change is written (#554).
 
 import { readFile } from "node:fs/promises";
 import { basename } from "node:path";
@@ -12,6 +13,7 @@ import { FORM_OF_FOREIGN_LEMMA_RULE } from "../italian/formOfForeignLemma.js";
 import { SECTION_LANGUAGE_RULE } from "../italian/sectionLanguage.js";
 import { SOURCE_TEXT_UPDATE_RULES } from "../import/normalizeSourceText.js";
 import { PAGE_ENTRY_RULES } from "../import/loadPageEntries.js";
+import { rejectionOf } from "../lookup/lookup.js";
 import { type CountDifference, type CountedTable, isCountedTable, PlanCounts } from "./planCounts.js";
 
 /** The directory, from the repository root, that holds every change declaration. */
@@ -60,14 +62,34 @@ export type DeclaredChange =
   /** The release the master was seeded from, whose dump the rules read pages from, and the rules. */
   | Declared<"load:page-entries", { readonly archive: ReleaseId; readonly rules: typeof PAGE_ENTRY_RULES }>;
 
-export type ChangeDeclaration = DeclaredChange & { readonly expected: PlanCounts };
+/**
+ * A word a declaration names and what the site's lookup must show for it once
+ * the change is written (#554): found with a reading, optionally with a
+ * definition holding `gloss`, or not found. A not-found word has no gloss.
+ */
+export type DeclaredLookup =
+  | { readonly word: string; readonly expect: "found"; readonly gloss: string | null }
+  | { readonly word: string; readonly expect: "not-found"; readonly gloss?: never };
+
+/** The most words one declaration may name for the deploy to look up. */
+export const MAX_DECLARED_LOOKUPS = 10;
+
+/** A declaration's words to look up: one to `MAX_DECLARED_LOOKUPS`, no word twice. */
+export type DeclaredLookups = readonly [DeclaredLookup, ...DeclaredLookup[]];
+
+/** The words a declaration names for the deploy to look up after the write; absent when it names none. */
+interface WithLookups {
+  readonly lookups?: DeclaredLookups;
+}
+
+export type ChangeDeclaration = DeclaredChange & WithLookups & { readonly expected: PlanCounts };
 
 /**
  * A declaration as a pull request adds it (#494): its `expected` may still be
  * missing, since the pull request's plan check is what finds it. The deploy
  * reads only a `ChangeDeclaration`, so a draft with no counts never deploys.
  */
-export type DeclarationDraft = DeclaredChange & { readonly expected: PlanCounts | null };
+export type DeclarationDraft = DeclaredChange & WithLookups & { readonly expected: PlanCounts | null };
 
 /** Why a file is not a change declaration, naming the file. */
 export class DeclarationRefused extends Error {
@@ -147,6 +169,72 @@ function counts(value: unknown, reasons: string[]): PlanCounts | undefined {
   return new PlanCounts({ added: read.added, changed: read.changed, removed: read.removed }, written, deleted);
 }
 
+/** Item `index` of `lookups`, adding everything wrong with it to `reasons`; undefined when anything is. */
+function declaredLookup(value: unknown, index: number, reasons: string[]): DeclaredLookup | undefined {
+  if (!isObject(value)) {
+    reasons.push(`lookups[${index}] must be an object with a word`);
+    return undefined;
+  }
+  const { word, found = true, gloss } = value;
+  const where = typeof word === "string" && word.trim() !== "" ? `lookups[${index}] (${JSON.stringify(word)})` : `lookups[${index}]`;
+  const before = reasons.length;
+  reasons.push(...unknownKeys(value, ["word", "found", "gloss"], where));
+  if (word === undefined) reasons.push(`${where} has no word`);
+  else if (typeof word !== "string") reasons.push(`${where}.word must be a text, got ${JSON.stringify(word)}`);
+  else {
+    const rejection = rejectionOf(word);
+    if (rejection?.reason === "empty") reasons.push(`${where} has an empty word`);
+    if (rejection?.reason === "too-long") reasons.push(`${where}.word is ${rejection.length} characters, longer than the lookup takes (${rejection.limit})`);
+  }
+  if (typeof found !== "boolean") reasons.push(`${where}.found must be true or false, got ${JSON.stringify(found)}`);
+  if (gloss !== undefined && (typeof gloss !== "string" || gloss.trim() === "")) reasons.push(`${where}.gloss must be a non-empty text, got ${JSON.stringify(gloss)}`);
+  if (found === false && gloss !== undefined) reasons.push(`${where} has found: false and a gloss, which only a found word can have`);
+  if (reasons.length > before || typeof word !== "string") return undefined;
+  return found ? { word, expect: "found", gloss: typeof gloss === "string" ? gloss : null } : { word, expect: "not-found" };
+}
+
+/** The `lookups` a declaration states, adding everything wrong with them to `reasons`; undefined when anything is. */
+function declaredLookups(value: unknown, reasons: string[]): DeclaredLookups | undefined {
+  if (!Array.isArray(value)) {
+    reasons.push("lookups must be a list of words to look up");
+    return undefined;
+  }
+  const before = reasons.length;
+  if (value.length === 0) reasons.push("lookups must name at least one word; leave it out to name none");
+  if (value.length > MAX_DECLARED_LOOKUPS) reasons.push(`lookups names ${value.length} words, more than ${MAX_DECLARED_LOOKUPS}`);
+  const read: DeclaredLookup[] = [];
+  const seen = new Map<string, number>();
+  value.forEach((item: unknown, index) => {
+    const lookup = declaredLookup(item, index, reasons);
+    if (lookup === undefined) return;
+    const first = seen.get(lookup.word.trim());
+    if (first === undefined) seen.set(lookup.word.trim(), index);
+    else reasons.push(`lookups[${index}] (${JSON.stringify(lookup.word)}) names the same word as lookups[${first}]`);
+    read.push(lookup);
+  });
+  const [head, ...tail] = read;
+  return reasons.length > before || head === undefined ? undefined : [head, ...tail];
+}
+
+/** `lookups` read from a declaration `value`, or no field when it names none; what is wrong goes to `reasons`. */
+function lookupsField(value: Record<string, unknown>, reasons: string[]): WithLookups {
+  if (value.lookups === undefined) return {};
+  const lookups = declaredLookups(value.lookups, reasons);
+  return lookups === undefined ? {} : { lookups };
+}
+
+/** `lookup` as a declaration file states it: the word, with `gloss` or `found: false` when it asks more than "found". */
+export function lookupJSON(lookup: DeclaredLookup): Record<string, string | boolean> {
+  if (lookup.expect === "not-found") return { word: lookup.word, found: false };
+  return lookup.gloss === null ? { word: lookup.word } : { word: lookup.word, gloss: lookup.gloss };
+}
+
+/** What `lookup` asks of the site's lookup, as Markdown: `` `mastoide` (found, with a definition holding "osso") ``. */
+export function lookupLine(lookup: DeclaredLookup): string {
+  const asked = lookup.expect === "not-found" ? "not found" : lookup.gloss === null ? "found" : `found, with a definition holding ${JSON.stringify(lookup.gloss)}`;
+  return `\`${lookup.word}\` (${asked})`;
+}
+
 /** `text` as a JSON object, or `DeclarationRefused` naming `file`. */
 function jsonObject(file: string, text: string, fields: string): Record<string, unknown> {
   let value: unknown;
@@ -205,21 +293,23 @@ function changeOf(file: string, value: Record<string, unknown>, reasons: string[
 /** The declaration `text` states, or `DeclarationRefused` naming `file` and every reason it is not one. */
 export function parseDeclaration(file: string, text: string): ChangeDeclaration {
   const value = jsonObject(file, text, "command, inputs and expected");
-  const reasons = unknownKeys(value, ["command", "inputs", "expected"], "the declaration");
+  const reasons = unknownKeys(value, ["command", "inputs", "lookups", "expected"], "the declaration");
   const change = changeOf(file, value, reasons);
+  const lookups = lookupsField(value, reasons);
   const expected = counts(value.expected, reasons);
   if (reasons.length > 0 || change === undefined || expected === undefined) throw new DeclarationRefused(file, reasons);
-  return { ...change, expected };
+  return { ...change, ...lookups, expected };
 }
 
 /** The draft `text` states: a declaration whose `expected` may be left out, refused for anything else `parseDeclaration` refuses. */
 export function parseDraft(file: string, text: string): DeclarationDraft {
   const value = jsonObject(file, text, "command, inputs and expected");
-  const reasons = unknownKeys(value, ["command", "inputs", "expected"], "the declaration");
+  const reasons = unknownKeys(value, ["command", "inputs", "lookups", "expected"], "the declaration");
   const change = changeOf(file, value, reasons);
+  const lookups = lookupsField(value, reasons);
   const expected = value.expected === undefined ? null : counts(value.expected, reasons);
   if (reasons.length > 0 || change === undefined || expected === undefined) throw new DeclarationRefused(file, reasons);
-  return { ...change, expected };
+  return { ...change, ...lookups, expected };
 }
 
 /**

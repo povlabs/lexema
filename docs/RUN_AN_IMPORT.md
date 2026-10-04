@@ -355,8 +355,9 @@ dump that is 186 pages and 203 entries
 [measurement](../reports/2026-10-03-unrecorded-page-layouts.md#what-the-production-rule-recovers),
 which predates [#495](https://github.com/povlabs/lexema/issues/495), and
 `Aglio`, which the rule reads since #495.
-A small fixture has records for few words, so every committed page under
-`fixtures/` it lacks a record for can become a page-only entry. What the seed
+A small fixture has records for few words, so a plain `.jsonl` input offers
+only the release's record-less titles, not every page it lacks a record for
+([development seed](DEV_SEED.md#what-is-emitted)). What the seed
 stores is in [page-only entries](PAGE_ENTRIES.md). To see them in a disposable
 local seed:
 

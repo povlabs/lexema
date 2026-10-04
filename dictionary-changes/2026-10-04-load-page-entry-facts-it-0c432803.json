@@ -1,6 +1,11 @@
 {
   "command": "load:page-entries",
   "inputs": { "archive": "it-0c432803", "rules": ["italian-page-entry/v1", "italian-page-entry/v2", "italian-page-facts/v1"] },
+  "lookups": [
+    { "word": "raccontare" },
+    { "word": "fornire" },
+    { "word": "mastoide" }
+  ],
   "expected": {
     "records": { "added": 0, "changed": 0, "removed": 0 },
     "written": { "entry_fact": 1524 },

@@ -517,6 +517,10 @@ holds needs nothing. Otherwise it starts the `deploy` job, whose steps are
    is sent.
 5. It looks up `casa`, `andare`, `raccontare`, `bello`, `studente` and
    `andavano` in the dictionary with the site's own lookup. Each must be found.
+   It also looks up each word a declaration it applied names in its
+   [`lookups`](../dictionary-changes/README.md#words-the-deploy-looks-up), and
+   each must show what the declaration says. A miss names the declaration
+   file and the word.
 6. It fast-forwards `production` to the run's commit with `GITHUB_TOKEN`, and
    Workers Builds deploys the site.
 
@@ -658,6 +662,9 @@ running.
    - any declaration after the first: red. Its counts depend on what the
      earlier ones write, and this run writes nothing. Put it in its own pull
      request once the earlier ones are deployed.
+
+   It also lists each word a declaration names in `lookups`, and the file it
+   prints keeps them. It does not look them up: the change is not written yet.
 
 It writes nothing: no bookmark, no SQL file run on the dictionary, no branch
 moved. Its job has `contents: read`, and `actions: read` to read this

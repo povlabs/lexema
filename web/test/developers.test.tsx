@@ -24,6 +24,7 @@ import { createKey, revokeKey } from "../../src/api/keys.js";
 import { createAccountKey, keyName } from "../../src/api/ownedKeys.js";
 import { API_PREFIX, ENDPOINTS } from "../../src/api/calls.js";
 import { seedSql } from "../../src/import/seedSql.js";
+import { PageOnlyCandidates, readUnrecordedPageTitles, UNRECORDED_PAGE_TITLES_FILE } from "../../src/import/pageOnlyCandidates.js";
 import type { AppTables } from "../../src/db/app/database.js";
 import type { LookupDatabase } from "../../src/lookup/database.js";
 import { freshAppDatabase, readOnlyDictionary, subscribe } from "../../test/databases.js";
@@ -76,6 +77,8 @@ before(async () => {
     archiveR2Key: `releases/${RELEASE}.jsonl.gz`,
     license: "CC-BY-SA-4.0",
     rawPages: await loadFixturePages(join(REPO, "fixtures")),
+    // As `pnpm run seed:dev` offers them for the fixture (#499).
+    pageOnly: PageOnlyCandidates.listed(await readUnrecordedPageTitles(join(REPO, UNRECORDED_PAGE_TITLES_FILE))),
     onRejection: (rejection) => {
       throw new Error(`fixture line rejected: ${JSON.stringify(rejection)}`);
     },

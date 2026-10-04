@@ -27,6 +27,7 @@ import { DatabaseSync } from "node:sqlite";
 import { gzipSync } from "node:zlib";
 import { renderToStaticMarkup } from "react-dom/server";
 import { seedSql } from "../../src/import/seedSql.js";
+import { PageOnlyCandidates, readUnrecordedPageTitles, UNRECORDED_PAGE_TITLES_FILE } from "../../src/import/pageOnlyCandidates.js";
 import { CURATED_CORRECTIONS, definitionCorrections, type CuratedCorrection } from "../../src/italian/curatedCorrections.js";
 import { atFixtureLines, correctionFixtureLines } from "../../test/correctionFixture.js";
 import { DECLARED_CORRECTION_LINES, declaredCorrections } from "../../test/declaredCorrectionFixture.js";
@@ -110,6 +111,7 @@ async function seedLines(
   rawPages?: RawPageSource,
   facts?: ArchiveFacts,
   corrections?: readonly CuratedCorrection[],
+  pageOnly?: PageOnlyCandidates,
 ): Promise<{ parts: readonly string[] }> {
   await mkdir(outputDir, { recursive: true });
   const archive = join(outputDir, "fixture.jsonl.gz");
@@ -127,6 +129,7 @@ async function seedLines(
       facts === undefined ? undefined : { [createHash("sha256").update(bytes).digest("hex")]: facts },
     license: "CC-BY-SA-4.0",
     rawPages,
+    pageOnly,
     corrections,
     onRejection: (rejection) => {
       throw new Error(`fixture line rejected: ${JSON.stringify(rejection)}`);
@@ -175,12 +178,16 @@ const withDevSeed = async (run: (f: Fixture) => Promise<void>) =>
 
 /**
  * The development fixture seeded the way `pnpm run seed:dev` seeds it: with the
- * raw pages under `fixtures/`, so records like `casa` carry the recovered layer.
+ * raw pages under `fixtures/`, so records like `casa` carry the recovered layer,
+ * and only the committed record-less titles as page-only entries (#499).
  * Seeded once for this file.
  */
 async function withDevSeedAndPages(run: (f: Fixture) => Promise<void>): Promise<void> {
   const db = await seededDictionary("page:dev-seed+pages", async (outputDir) =>
-    seedLines(outputDir, await devSeedLines(), await loadFixturePages(join(REPO, "fixtures"))));
+    seedLines(
+      outputDir, await devSeedLines(), await loadFixturePages(join(REPO, "fixtures")), undefined, undefined,
+      PageOnlyCandidates.listed(await readUnrecordedPageTitles(join(REPO, UNRECORDED_PAGE_TITLES_FILE))),
+    ));
   return withDatabase(db, run);
 }
 
