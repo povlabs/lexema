@@ -5,7 +5,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import type { DatabaseSync } from "node:sqlite";
-import { accountPlan } from "../src/billing/accountPlan.js";
+import { accountPlan, setEnterprise } from "../src/billing/accountPlan.js";
 import { runPlanCommand } from "../src/billing/planCli.js";
 import { subscription } from "../src/db/app/schema.js";
 import type { AppTables } from "../src/db/app/database.js";
@@ -28,7 +28,7 @@ function withAccounts(accounts: number): { sqlite: DatabaseSync; appDb: AppTable
   return { sqlite, appDb };
 }
 
-const subscribe = (appDb: AppTables, accountId: number, plan: "starter" | "pro", status: "active" | "canceled") =>
+const subscribe = (appDb: AppTables, accountId: number, plan: "starter" | "pro", status: "active" | "canceled" | "past_due") =>
   appDb.app.insert(subscription).values({ plan, referenceId: String(accountId), status, periodStart: START, periodEnd: END });
 
 test("accountPlan answers the live Enterprise plan first, else the newest subscription's state, else none", async () => {
@@ -50,13 +50,15 @@ test("accountPlan answers the live Enterprise plan first, else the newest subscr
   assert.deepEqual(await accountPlan(appDb, 1, NOW), {
     state: { kind: "active", plan: { id: "starter" }, period },
     serving: { serving: true, limits: { callsPerPeriod: 1_000_000, callsPerMinute: 60 }, period },
+    held: true,
   });
   assert.deepEqual(await accountPlan(appDb, 2, NOW), {
     state: { kind: "active", plan: enterprise, period: enterprisePeriod },
     serving: { serving: true, limits: { callsPerPeriod: 20_000_000, callsPerMinute: 1000 }, period: enterprisePeriod },
+    held: true,
   });
-  assert.deepEqual(await accountPlan(appDb, 3, NOW), { state: { kind: "ended", plan: { id: "pro" } }, serving: { serving: false } });
-  assert.deepEqual(await accountPlan(appDb, 4, NOW), { state: { kind: "none" }, serving: { serving: false } });
+  assert.deepEqual(await accountPlan(appDb, 3, NOW), { state: { kind: "ended", plan: { id: "pro" } }, serving: { serving: false }, held: false });
+  assert.deepEqual(await accountPlan(appDb, 4, NOW), { state: { kind: "none" }, serving: { serving: false }, held: false });
 });
 
 test("pnpm run plan sets account 3 to Enterprise and ends it; bad flags print the usage line and exit 1", async () => {
@@ -94,12 +96,20 @@ test("pnpm run plan sets account 3 to Enterprise and ends it; bad flags print th
   }
 });
 
-test("pnpm run plan refuses an account whose Stripe plan serves, an unknown account, and ending no Enterprise plan", async () => {
-  const { appDb } = withAccounts(2);
+test("pnpm run plan refuses an account whose Stripe plan serves or is past due, an unknown account, and ending no Enterprise plan", async () => {
+  const { appDb } = withAccounts(3);
   await subscribe(appDb, 1, "starter", "active");
   await subscribe(appDb, 2, "pro", "canceled");
+  await subscribe(appDb, 3, "pro", "past_due");
   assert.deepEqual(await runPlanCommand(["enterprise", "1", ...ENTERPRISE], appDb, NOW), {
     out: "account 1 is active on Starter through Stripe; cancel it in Stripe first",
+    status: 1,
+  });
+  // A past-due plan serves nothing, but Stripe still retries it, so it is held (#571).
+  const pastDue = await setEnterprise(appDb, 3, { callsPerPeriod: 1_000, callsPerMinute: 10 }, { start: NOW, end: NOW + 1 }, NOW);
+  assert.equal(pastDue.outcome, "on-stripe");
+  assert.deepEqual(await runPlanCommand(["enterprise", "3", ...ENTERPRISE], appDb, NOW), {
+    out: "account 3 is past-due on Pro through Stripe; cancel it in Stripe first",
     status: 1,
   });
   // The refusal is the serving plan's: an ended one is not refused.

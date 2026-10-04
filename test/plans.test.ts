@@ -5,6 +5,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  holdsPlan,
   serving,
   stateOfEnterprise,
   stateOfSubscription,
@@ -56,7 +57,7 @@ test("an Enterprise row is active over its period until it is ended", () => {
   assert.deepEqual(stateOfEnterprise({ ...enterprise, endedAt: CANCEL_AT }), { kind: "ended", plan });
 });
 
-test("serving: none, ended and an Enterprise period past its end refuse; active, past due and cancelling before its end serve under the plan's limits", () => {
+test("serving: none, ended, past due and an Enterprise period past its end refuse; active and cancelling before its end serve under the plan's limits", () => {
   const now = Date.parse("2026-09-15T00:00:00Z");
   const endsAt = CANCEL_AT.getTime();
   const starter = { id: "starter" } as const;
@@ -66,7 +67,8 @@ test("serving: none, ended and an Enterprise period past its end refuse; active,
     [{ kind: "none" }, now, { serving: false }],
     [{ kind: "ended", plan: starter }, now, { serving: false }],
     [{ kind: "active", plan: starter, period }, now, starterServes],
-    [{ kind: "past-due", plan: starter, period }, now, starterServes],
+    // A failed payment stops the keys until it goes through (Huey, #571).
+    [{ kind: "past-due", plan: starter, period }, now, { serving: false }],
     [{ kind: "cancelling", plan: starter, period, endsAt }, now, starterServes],
     [{ kind: "cancelling", plan: starter, period, endsAt }, endsAt, { serving: false }],
     [{ kind: "active", plan: { id: "pro" }, period }, now, { serving: true, limits: { callsPerPeriod: 5_000_000, callsPerMinute: 300 }, period }],
@@ -77,4 +79,23 @@ test("serving: none, ended and an Enterprise period past its end refuse; active,
     [{ kind: "active", plan: starter, period }, period.end, starterServes],
   ];
   for (const [state, at, expected] of cases) assert.deepEqual(serving(state, at), expected, `${state.kind} at ${new Date(at).toISOString()}`);
+});
+
+test("holdsPlan: a serving plan and a past-due one are held; none, ended, and a plan past its end are not (#571)", () => {
+  const now = Date.parse("2026-09-15T00:00:00Z");
+  const endsAt = CANCEL_AT.getTime();
+  const starter = { id: "starter" } as const;
+  const enterprise = { id: "enterprise", callsPerPeriod: 20_000_000, callsPerMinute: 1000 } as const;
+  const cases: [PlanState, number, boolean][] = [
+    [{ kind: "none" }, now, false],
+    [{ kind: "ended", plan: starter }, now, false],
+    [{ kind: "active", plan: starter, period }, now, true],
+    [{ kind: "past-due", plan: starter, period }, now, true],
+    [{ kind: "past-due", plan: starter, period }, period.end, true],
+    [{ kind: "cancelling", plan: starter, period, endsAt }, now, true],
+    [{ kind: "cancelling", plan: starter, period, endsAt }, endsAt, false],
+    [{ kind: "active", plan: enterprise, period }, now, true],
+    [{ kind: "active", plan: enterprise, period }, period.end, false],
+  ];
+  for (const [state, at, expected] of cases) assert.equal(holdsPlan(state, at), expected, `${state.kind} at ${new Date(at).toISOString()}`);
 });

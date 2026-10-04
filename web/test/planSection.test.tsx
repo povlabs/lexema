@@ -6,10 +6,11 @@ import { test } from "node:test";
 import { renderToStaticMarkup } from "react-dom/server";
 import type { AccountProfile } from "../../src/accounts/accounts.js";
 import { AccountUsage, usageDays } from "../../src/api/usage.js";
+import { accountPlanAt } from "../../src/billing/accountPlan.js";
 import { NO_PLAN, serving, type Period, type PlanState } from "../../src/billing/plans.js";
 import { Dashboard } from "@/components/developers/dashboard/Dashboard";
 import { DashboardSettings } from "@/components/developers/dashboard/DashboardSettings";
-import { dashboardView, periodUsageOf, settingsView } from "@/lib/developers/dashboardView.ts";
+import { dashboardView, periodUsageOf, planSectionOf, settingsView } from "@/lib/developers/dashboardView.ts";
 import { CHECKOUT_ACTION, PORTAL_ACTION } from "@/lib/developers/billingActions.ts";
 import { CSRF_FIELD } from "@/lib/developers/dashboardActions.ts";
 import { PLAN_BUTTON_OUTLINE, PLAN_BUTTON_PRIMARY, PLAN_WARNING } from "@/components/shared/styles.ts";
@@ -20,9 +21,9 @@ const CSRF = "c".repeat(43);
 const profile: AccountProfile = { email: "ada@example.com", name: "Ada Lovelace", providers: ["google"] };
 const PERIOD: Period = { start: Date.parse("2026-09-29T00:00:00Z"), end: Date.parse("2026-10-29T00:00:00Z") };
 
-/** The Plan card as settings draws it for a state at `now`, serving as `accountPlan` reads it. */
+/** The Plan card as settings draws it for a state at `now`, as `accountPlan` reads it. */
 const planCard = (state: PlanState, now = NOW): string => {
-  const html = renderToStaticMarkup(<DashboardSettings view={settingsView(profile, [], { state, serving: serving(state, now) })} csrf={CSRF} origins={ORIGIN} />);
+  const html = renderToStaticMarkup(<DashboardSettings view={settingsView(profile, [], accountPlanAt(state, now))} csrf={CSRF} origins={ORIGIN} />);
   const card = /<div[^>]*data-plan-section="[^"]*"[^>]*>.*?(?=<section)/s.exec(html)?.[0];
   assert.ok(card !== undefined, "settings draws a Plan card");
   return card;
@@ -62,9 +63,17 @@ test("an active Stripe plan shows its price, allowance and renewal, with an outl
   ]);
 });
 
-test("past due keeps the title, warns in the warning colour, and fills Manage billing in the accent", () => {
-  const card = planCard({ kind: "past-due", plan: { id: "pro" }, period: PERIOD });
-  assert.deepEqual(textOf(card), ["Pro · $49 / month", "Payment failed. Update your card to keep your keys working."]);
+test("past due serves nothing but keeps the title, says the keys are paused in the warning colour, and fills Manage billing in the accent (#571)", () => {
+  const pastDue = { kind: "past-due", plan: { id: "pro" }, period: PERIOD } as const satisfies PlanState;
+  assert.equal(serving(pastDue, NOW).serving, false);
+  assert.deepEqual(planSectionOf(accountPlanAt(pastDue, NOW)), {
+    kind: "manage",
+    title: "Pro · $49 / month",
+    line: "Payment failed. Your keys are paused until the payment goes through.",
+    pastDue: true,
+  });
+  const card = planCard(pastDue);
+  assert.deepEqual(textOf(card), ["Pro · $49 / month", "Payment failed. Your keys are paused until the payment goes through."]);
   assert.ok(card.includes(`<p class="${PLAN_WARNING}">Payment failed.`));
   assert.deepEqual(formsOf(card), manage(PLAN_BUTTON_PRIMARY));
 });

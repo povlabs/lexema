@@ -5,8 +5,9 @@
 //
 // Enterprise is agreed per account, so Huey sets its calls, its rate and each
 // period by hand; nothing renews it. The period runs from the start of `--from`
-// up to the start of `--until`, both UTC days. An account whose Starter or Pro
-// plan still serves is refused: that plan is cancelled in Stripe first. The
+// up to the start of `--until`, both UTC days. An account that still holds a
+// Starter or Pro plan, serving or past due, is refused: that plan is cancelled
+// in Stripe first. The
 // database is the local `APP_DB` the dev seed migrates, as `pnpm run api-key`
 // reaches it.
 

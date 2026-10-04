@@ -216,7 +216,7 @@ test("signed out, choosing Pro goes to sign-in, and the first page after signing
   assert.equal(location(await signIn()), "/dashboard");
 });
 
-test("the portal returns to settings; without a Stripe customer it answers 303 to pricing, and choosing a plan while one serves goes to the portal", async () => {
+test("the portal returns to settings; without a Stripe customer it answers 303 to pricing, and choosing a plan while one serves or is past due goes to the portal", async () => {
   const { appDb, stripe, signIn, post, account } = site();
   await signIn();
 
@@ -237,6 +237,16 @@ test("the portal returns to settings; without a Stripe customer it answers 303 t
   const serving = await post(CHECKOUT_ACTION, { plan: "pro" });
   assert.equal(location(serving), stripe.portals[1]?.url);
   assert.equal(stripe.checkouts.length, 1, "no second Checkout");
+
+  // A past-due plan serves nothing but is still held: its card is fixed in the portal, not bought twice (#571).
+  await appDb.app.update(subscription).set({ status: "past_due" });
+  for (const plan of ["starter", "pro"]) {
+    const pastDue = await post(CHECKOUT_ACTION, { plan });
+    assert.equal(pastDue.status, 303, plan);
+    assert.equal(location(pastDue), stripe.portals.at(-1)?.url, plan);
+  }
+  assert.equal(stripe.portals.length, 4);
+  assert.equal(stripe.checkouts.length, 1, "no second Checkout while past due");
 });
 
 test("with the price ids set but no Stripe secret, choosing a plan answers 503 and calls nothing", async () => {
