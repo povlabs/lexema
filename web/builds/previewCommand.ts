@@ -34,17 +34,36 @@ export const PREVIEW_COMMAND =
   ` --name "$(cat ${PREVIEW_NAME_FILE})" --secrets-file ${PREVIEW_SECRETS_FILE}; fi`;
 
 /**
- * The branch that gets no Preview (ADR 0018, amended on #491). What lands on
- * `main` goes live through `production` after the next green dictionary
- * deploy, and that production build's sweep would delete a `main` Preview
- * anyway, since `main` has no open pull request.
+ * The one exact branch that gets no Preview (ADR 0018, amended on #491). What
+ * lands on `main` goes live through `production` after the next green
+ * dictionary deploy, and that production build's sweep would delete a `main`
+ * Preview anyway, since `main` has no open pull request.
  */
 export const NO_PREVIEW_BRANCH = "main";
+
+/**
+ * What every merge queue branch starts with (ADR 0018, amended on #566).
+ * GitHub tests a queued pull request on a temporary `gh-readonly-queue/...`
+ * branch that nobody opens, so a Preview there only spends build minutes, an
+ * app database and maybe a dictionary slice.
+ */
+export const MERGE_QUEUE_PREFIX = "gh-readonly-queue/";
+
+/** A branch that gets no Preview: `main`, or a merge queue branch. */
+export type NoPreviewBranch = typeof NO_PREVIEW_BRANCH | `${typeof MERGE_QUEUE_PREFIX}${string}`;
+
+/**
+ * Whether this branch gets no Preview. The match is exact and case-sensitive:
+ * `Main`, `huey/main` or `x/gh-readonly-queue/...` still get one.
+ */
+export function getsNoPreview(branch: string): branch is NoPreviewBranch {
+  return branch === NO_PREVIEW_BRANCH || branch.startsWith(MERGE_QUEUE_PREFIX);
+}
 
 /** What the prepare step did for one push: prepared that branch's Preview, or skipped a branch that gets none. */
 export type PreparedPreview =
   | { readonly kind: "prepared"; readonly preview: PreviewName }
-  | { readonly kind: "skipped"; readonly branch: typeof NO_PREVIEW_BRANCH };
+  | { readonly kind: "skipped"; readonly branch: NoPreviewBranch };
 
 /** The secret better-auth signs the session cookie with (web/worker/developers/signIn.ts). */
 const AUTH_SECRET = "BETTER_AUTH_SECRET";
@@ -92,16 +111,16 @@ export function findOrCreateAppDatabase(wrangler: Wrangler, preview: PreviewName
  * Prepare one branch's Preview for `wrangler preview`: build, give the branch
  * its own app database and, when it changes dictionary data, its dictionary
  * slice (#447), migrate the app database, and write the built config, the
- * Preview name and the secrets file the Preview command reads. On `main`,
- * which gets no Preview, it does none of that and writes nothing, so the
- * command's `wrangler preview` step does not run.
+ * Preview name and the secrets file the Preview command reads. On a branch
+ * that gets no Preview (`getsNoPreview`), it does none of that and writes
+ * nothing, so the command's `wrangler preview` step does not run.
  */
 export function preparePreview(steps: PreviewPrepareSteps): PreparedPreview {
   const { wrangler, log } = steps;
   if (steps.branch === undefined) throw new Error("WORKERS_CI_BRANCH is not set; the preview command runs in Workers Builds");
-  if (steps.branch === NO_PREVIEW_BRANCH) {
-    log(`no Preview for branch ${NO_PREVIEW_BRANCH}: nothing built, no app database, nothing deployed`);
-    return { kind: "skipped", branch: NO_PREVIEW_BRANCH };
+  if (getsNoPreview(steps.branch)) {
+    log(`no Preview for branch ${steps.branch}: nothing built, no app database, nothing deployed`);
+    return { kind: "skipped", branch: steps.branch };
   }
   const preview = PreviewName.ofBranch(steps.branch);
   log(`Preview ${preview} for branch ${steps.branch}`);

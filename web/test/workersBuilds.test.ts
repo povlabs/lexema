@@ -12,6 +12,7 @@ import { fileURLToPath } from "node:url";
 import { unstable_readConfig } from "wrangler";
 import {
   BUILT_CONFIG,
+  MERGE_QUEUE_PREFIX,
   NO_PREVIEW_BRANCH,
   PREVIEW_COMMAND,
   PREVIEW_NAME_FILE,
@@ -424,6 +425,26 @@ test("the prepare step on main builds nothing, makes no app database, migrates n
   // Only the exact branch: anything else that looks like it still gets its Preview.
   for (const branch of ["Main", "main-2", "huey/main", "maint"]) {
     assert.equal(prepare(new FakeAccount(), branch).files.has(PREVIEW_NAME_FILE), true, branch);
+  }
+});
+
+test("the prepare step on a merge queue branch builds nothing, makes no app database, migrates nothing and writes no name", () => {
+  const branch = "gh-readonly-queue/main/pr-566-0123456789abcdef0123456789abcdef01234567";
+  const account = new FakeAccount([{ name: DICTIONARY.name, uuid: DICTIONARY.id }]);
+  const { slices, asked } = planner(account, declaring());
+  const { steps, files, migrationConfigs, order } = prepareSteps(account, branch, undefined, slices);
+  assert.deepEqual(preparePreview(steps), { kind: "skipped", branch });
+  assert.equal(MERGE_QUEUE_PREFIX, "gh-readonly-queue/");
+  assert.deepEqual(asked, []);
+  assert.deepEqual(order, []);
+  assert.deepEqual(account.calls, []);
+  assert.deepEqual([...files.keys()], []);
+  assert.deepEqual(migrationConfigs, []);
+  assert.deepEqual(account.databases, [{ name: DICTIONARY.name, uuid: DICTIONARY.id }]);
+
+  // Only the exact prefix, at the start and in lowercase: look-alikes still get their Preview.
+  for (const lookAlike of ["gh-readonly-queue", "x/gh-readonly-queue/main/pr-1-abc", "GH-READONLY-QUEUE/main/pr-1-abc", "main-ish"]) {
+    assert.equal(prepare(new FakeAccount(), lookAlike).files.has(PREVIEW_NAME_FILE), true, lookAlike);
   }
 });
 
