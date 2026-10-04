@@ -1,6 +1,8 @@
 // What a later kaikki release would change in the master (#18): its records
 // matched with the master's by content, never by line number or record id,
-// which neither file keeps stable. docs/UPDATES.md explains the matching.
+// which neither file keeps stable. Content is the fields Lexema reads
+// (`READ_FIELDS`, src/update/content.ts, #369). docs/UPDATES.md explains the
+// matching.
 
 import { createHash } from "node:crypto";
 
@@ -21,7 +23,10 @@ export interface FeedRecord {
   word: string;
   pos: string;
   lineSha256: string;
-  /** Its content's digest (src/update/content.ts): equal lines in another key order match. */
+  /**
+   * Its content's digest (src/update/content.ts): lines that differ only in key
+   * order, or only in fields Lexema never reads, match.
+   */
   contentSha256: string;
 }
 
@@ -148,8 +153,8 @@ export class RecordMatch {
   }
 
   /**
-   * Finish the match: pair what says the same in another layout, then call
-   * what is left. `contentOf` holds the content digest of every record
+   * Finish the match: pair what says the same to Lexema in another layout or
+   * with other unread fields, then call what is left. `contentOf` holds the content digest of every record
    * `contentWanted` named.
    */
   diff(contentOf: ReadonlyMap<number, string>): ReleaseDiff {

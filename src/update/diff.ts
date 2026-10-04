@@ -36,7 +36,7 @@ export interface ReportedLine {
 /** What the report says of one change. */
 export type ReportedChange =
   | { kind: "new"; id: ChangeId; word: string; pos: string; feed: ReportedLine }
-  /** `fields` are the record's top-level fields whose content differs, in name order. */
+  /** `fields` are the record's top-level read fields whose content differs, in name order. */
   | { kind: "changed"; id: ChangeId; word: string; pos: string; master: ReportedLine; feed: ReportedLine; fields: string[] }
   | { kind: "lost"; id: ChangeId; word: string; pos: string; master: ReportedLine };
 
@@ -44,10 +44,8 @@ type Reported<Kind extends ReportedChange["kind"]> = Extract<ReportedChange, { k
 
 /**
  * The report a person chooses changes from, as data. A changed record is
- * filed by what changed: its senses, or only other fields. A later build of
- * the extractor can add a field to every record (kaikki's September build
- * added `etymology_links`), and the sense fixes are the changes worth reading
- * first.
+ * filed by what changed: its senses, or only other fields Lexema reads. The
+ * sense fixes are the changes worth reading first.
  */
 export interface DiffReport {
   master: { releaseId: string; feeds: string[] };
