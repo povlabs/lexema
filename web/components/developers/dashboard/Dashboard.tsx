@@ -1,7 +1,7 @@
 // developers.lexema.fyi/dashboard (#169, boards 28 and 28m): the account's live
 // keys with Create key and a Revoke each, and 30 days of usage, under the tab
 // bar (#190). The plan and the account are the Settings tab's
-// (DashboardSettings.tsx). Every action (worker/dashboard.ts) carries the
+// (DashboardSettings.tsx). Every action (worker/developers/dashboard.ts) carries the
 // session's CSRF token. What the page shows is worked out in
 // `dashboardView.ts`; the wiring that reads the session and D1 is
 // `(developers)/developer-site/dashboard/`.
@@ -20,7 +20,7 @@
 // Last used …", then its endpoints, then "Expires …" (#187).
 
 import { Meter } from "@base-ui/react/meter";
-import type { SiteOrigins } from "@/worker/hosts.ts";
+import type { SiteOrigins } from "@/worker/shared/hosts.ts";
 import { DeveloperPage } from "@/components/developers/DeveloperPage";
 import { CreateKeyControl, DashboardFlow, KeyTable } from "./DashboardFlow";
 import { DashboardTabs } from "./DashboardTabs";

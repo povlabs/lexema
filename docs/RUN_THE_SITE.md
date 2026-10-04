@@ -48,7 +48,7 @@ in [DEV_SEED.md](DEV_SEED.md).
 ## Reach each host
 
 One Worker serves three hosts, and tells them apart by the request's host
-(`web/worker/hosts.ts`). Locally each has a `.localhost` twin on the same port:
+(`web/worker/shared/hosts.ts`). Locally each has a `.localhost` twin on the same port:
 
 | Live | Local | Serves |
 |---|---|---|
@@ -118,7 +118,7 @@ or restart `wrangler dev` to reset the count. Why they are there is
 
 ## Sign in locally
 
-The developer site's sign-in (`web/worker/signIn.ts`, on better-auth) needs a
+The developer site's sign-in (`web/worker/developers/signIn.ts`, on better-auth) needs a
 real OAuth client and a secret to sign sessions with, so it is off locally
 until you give it both: each provider's sign-in route answers 503 until its
 client id and secret are set and so is `BETTER_AUTH_SECRET`. Put the values in
@@ -149,7 +149,7 @@ want any other host's top-level domain on the
 runs on `developers.localhost`, the Worker sends Google the `localhost`
 callback, and `localhost` answers it with a 302 to the same path and query on
 `developers.localhost`, which checks the sign-in as it does live
-(`web/worker/hosts.ts`, #185). The port in the URI is the one you run on.
+(`web/worker/shared/hosts.ts`, #185). The port in the URI is the one you run on.
 
 For GitHub, create a GitHub OAuth app whose authorization callback URL is
 `http://developers.localhost:8790/sign-in/github/callback`. GitHub sets no host
@@ -184,7 +184,7 @@ network, and it sets a test-only `BETTER_AUTH_SECRET`.
 
 ## Check it is healthy
 
-Every host answers `GET /health` (`web/worker/health.ts`):
+Every host answers `GET /health` (`web/worker/shared/health.ts`):
 
 ```sh
 curl -s https://lexema.fyi/health

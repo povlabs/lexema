@@ -1,5 +1,5 @@
 # Headers Cloudflare adds to static assets, which are answered before the
-# Worker runs (web/wrangler.jsonc, `assets`), so worker/stage.ts never sees
+# Worker runs (web/wrangler.jsonc, `assets`), so worker/shared/stage.ts never sees
 # them. Vite copies this file into dist/client, and vinext then writes no
 # _headers of its own, so its cache rule is repeated here
 # (web/test/assetHeaders.test.ts, #265).

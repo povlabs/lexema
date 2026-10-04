@@ -14,7 +14,7 @@ export type SuggestAnswer =
   /** The index could not be read. */
   | { outcome: "failed" }
   /**
-   * Too many suggestions asked for this minute (worker/rateLimit.ts); sent with
+   * Too many suggestions asked for this minute (worker/dictionary/limits.ts); sent with
    * a 429 and the index was not asked.
    */
   | { outcome: "limited" };

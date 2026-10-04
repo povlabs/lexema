@@ -46,7 +46,7 @@ export type PreparedPreview =
   | { readonly kind: "prepared"; readonly preview: PreviewName }
   | { readonly kind: "skipped"; readonly branch: typeof NO_PREVIEW_BRANCH };
 
-/** The secret better-auth signs the session cookie with (web/worker/signIn.ts). */
+/** The secret better-auth signs the session cookie with (web/worker/developers/signIn.ts). */
 const AUTH_SECRET = "BETTER_AUTH_SECRET";
 
 export interface PreviewPrepareSteps {

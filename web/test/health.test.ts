@@ -10,9 +10,10 @@ import { DatabaseSync } from "node:sqlite";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
 import { unstable_readConfig } from "wrangler";
-import { HEALTH_PATH, healthOf, withHealth, type HealthBindings } from "@/worker/health.ts";
-import { byHost } from "@/worker/hosts.ts";
-import { withRateLimits, type LimitBindings } from "@/worker/rateLimit.ts";
+import { HEALTH_PATH, healthOf, withHealth, type HealthBindings } from "@/worker/shared/health.ts";
+import { byHost } from "@/worker/shared/hosts.ts";
+import { withRateLimits, type LimitBindings } from "@/worker/shared/rateLimit.ts";
+import { SITE_LIMITS } from "./siteLimits.ts";
 import { FakeRateLimit } from "./metering.ts";
 
 /** A D1 binding over an in-memory SQLite, or one whose every query fails. */
@@ -54,7 +55,7 @@ function worker(bindings: Partial<HealthBindings> = {}) {
   };
   // The order worker/index.ts runs: the health check, then the hosts, then the
   // limits, here allowing no request at all.
-  const handler = withHealth<Env>(byHost<Env>({ app: withRateLimits<Env>(answer), api: answer, apiNotFound: () => new Response(null, { status: 404 }) }));
+  const handler = withHealth<Env>(byHost<Env>({ app: withRateLimits<Env>(SITE_LIMITS, answer), api: answer, apiNotFound: () => new Response(null, { status: 404 }) }));
   const fetch = (url: string, method = "GET") => handler(new Request(url, { method, headers: { "cf-connecting-ip": "203.0.113.7" } }), env, {} as ExecutionContext);
   return { fetch, behind, search };
 }

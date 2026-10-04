@@ -2,7 +2,7 @@
 // Manage billing posts to the billing portal. Pricing (#208) and the settings
 // Plan section (#207) both draw them; each page picks the button's size.
 // Signed in, a form carries the session's CSRF token; signed out, pricing's
-// Choose goes through sign-in first and keeps the plan (worker/billing.ts).
+// Choose goes through sign-in first and keeps the plan (worker/developers/billing.ts).
 
 import { Button } from "@base-ui/react/button";
 import { PLAN_TERMS, type StripePlanId } from "@lexema/billing/plans.ts";

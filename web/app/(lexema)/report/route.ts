@@ -1,12 +1,12 @@
 // `POST /report`: a reader's report of a mistake on a word page (#51), as JSON.
 //
 // The Worker has already counted it against the per-minute report limit
-// (worker/rateLimit.ts). What a report must carry, the hourly allowance, the
+// (worker/shared/rateLimit.ts). What a report must carry, the hourly allowance, the
 // honeypot, the timing check and the store are lib/dictionary/report.ts; this file is the
 // wiring to the request and the Worker's bindings.
 
 import { log } from "@lexema/log/requestLog.ts";
-import { visitorKey } from "@/worker/rateLimit.ts";
+import { visitorKey } from "@/worker/shared/rateLimit.ts";
 import { servedRelease, turnstile } from "@/lib/dictionary/db";
 import { appDatabase, database } from "@/lib/shared/database.ts";
 import { readSubmission, receiveReport, REPORT_STATUS, verifyTurnstile, type ReportAnswer } from "@/lib/dictionary/report.ts";

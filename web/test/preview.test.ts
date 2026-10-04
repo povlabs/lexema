@@ -17,8 +17,8 @@ import { createBuilder } from "vite";
 import { unstable_readConfig } from "wrangler";
 import { type BuiltConfig, withAppDatabase, withDictionarySlice } from "@/builds/previewConfig.ts";
 import { PreviewName } from "@/builds/previewName.ts";
-import { PREVIEW_DOMAIN } from "@/worker/hosts.ts";
-import { parseStage } from "@/worker/stage.ts";
+import { PREVIEW_DOMAIN } from "@/worker/shared/hosts.ts";
+import { parseStage } from "@/worker/shared/stage.ts";
 
 const WRANGLER = fileURLToPath(new URL("../wrangler.jsonc", import.meta.url));
 const read = (env?: string) => unstable_readConfig({ config: WRANGLER, env }, { hideWarnings: true });

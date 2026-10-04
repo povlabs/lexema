@@ -15,8 +15,8 @@
 // Every one needs a signed-in session, an `Origin` that is this site, and the
 // session's CSRF token in the form's `csrf` field (src/accounts/csrf.ts).
 // A request that fails any of those is refused before anything changes. Like
-// the sign-in routes (worker/signIn.ts), they sit under the developer-site
-// segment that worker/hosts.ts answers with a 404 on every other host.
+// the sign-in routes (worker/developers/signIn.ts), they sit under the developer-site
+// segment that worker/shared/hosts.ts answers with a 404 on every other host.
 //
 // Every action answers one `ActionAnswer` in JSON (lib/developers/dashboardActions.ts):
 // the page sends each with fetch from its dialogs and key rows, and changes in
@@ -46,8 +46,8 @@ import { log } from "@lexema/log/requestLog.ts";
 import { accessOf, defaultKeyName, draftOf, readDraft } from "@/lib/developers/createKeyForm.ts";
 import { CSRF_FIELD, DASHBOARD, DELETE_CONFIRM_FIELD, DELETE_CONFIRMATION, SETTINGS, UNREACHABLE, type ActionAnswer } from "@/lib/developers/dashboardActions.ts";
 import { keyRowOf } from "@/lib/developers/dashboardView.ts";
-import { DEVELOPERS_SEGMENT, originsOf } from "./hosts.ts";
-import type { FetchHandler } from "./rateLimit.ts";
+import { DEVELOPERS_SEGMENT, originsOf } from "../shared/hosts.ts";
+import type { FetchHandler } from "../shared/fetchHandler.ts";
 import { AFTER_SIGN_OUT, clearedCookie, readCookie, SESSION_COOKIE, signedInAccount } from "./signIn.ts";
 
 export { CSRF_FIELD, DASHBOARD, DELETE_CONFIRMATION, SETTINGS } from "@/lib/developers/dashboardActions.ts";

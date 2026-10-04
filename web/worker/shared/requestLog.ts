@@ -10,7 +10,7 @@
 // it can be matched to the log.
 
 import { inRequest, log } from "@lexema/log/requestLog.ts";
-import type { FetchHandler } from "./rateLimit.ts";
+import type { FetchHandler } from "./fetchHandler.ts";
 
 /** The response header a failed request's id is returned in. */
 export const REQUEST_ID_HEADER = "x-request-id";

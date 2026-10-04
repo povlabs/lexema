@@ -1,7 +1,7 @@
 // The developer site's layout (#159): every page of developers.lexema.fyi.
 //
 // Its own root layout, beside `(lexema)/layout.tsx`, so the developer site
-// shares the dictionary's face and none of its chrome. worker/hosts.ts
+// shares the dictionary's face and none of its chrome. worker/shared/hosts.ts
 // rewrites `developers.lexema.fyi/…` onto this segment; on any other host the
 // segment is a 404, so no dictionary URL reaches it.
 import type { ReactNode } from "react";

@@ -17,7 +17,7 @@ import type { Resvg } from "@cf-wasm/resvg";
 import type { CSSProperties, ReactNode } from "react";
 import { CARD_HEIGHT, CARD_WIDTH, type Card, type WordCard } from "@/lib/dictionary/card.ts";
 import { SITE_NAME, SITE_PRONUNCIATION, SITE_TAGLINE } from "@/lib/dictionary/params.ts";
-import { ORIGIN } from "../hosts.ts";
+import { ORIGIN } from "../../shared/hosts.ts";
 import type { Palette } from "./palette.ts";
 
 const SERIF = "Spectral";

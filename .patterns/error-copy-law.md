@@ -20,8 +20,8 @@ each visible in the source:
    return refuse(403, "This form has expired. Reload the page and try again.");
    ```
 
-   ([`web/worker/dashboard.ts`](../web/worker/dashboard.ts)). The same shape runs
-   through the limits in [`web/worker/rateLimit.ts`](../web/worker/rateLimit.ts):
+   ([`web/worker/developers/dashboard.ts`](../web/worker/developers/dashboard.ts)). The same shape runs
+   through the limits in [`web/worker/developers/limits.ts`](../web/worker/developers/limits.ts):
    "Too many sign-in attempts. Try again in a minute."
 2. **A failure the reader cannot fix gets one fixed line; the cause goes to the
    log.** The database's or Stripe's message never reaches the reader:

@@ -34,8 +34,8 @@ import { dashboardView, deleteWarning, lastUsed, settingsView, shortDate, type K
 import { SignIn, signInStart } from "@/components/developers/SignIn";
 import { EMPTY_DRAFT, type CreateKeyDraft } from "@/lib/developers/createKeyForm.ts";
 import { CREATE_KEY_HINT, CREATE_KEY_PROBLEM } from "@/components/shared/styles.ts";
-import { DASHBOARD, SETTINGS } from "@/worker/dashboard.ts";
-import { ORIGIN } from "@/worker/hosts.ts";
+import { DASHBOARD, SETTINGS } from "@/worker/developers/dashboard.ts";
+import { ORIGIN } from "@/worker/shared/hosts.ts";
 
 const NOW = Date.parse("2026-09-28T12:00:00Z");
 const CSRF = "c".repeat(43);

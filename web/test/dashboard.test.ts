@@ -34,10 +34,11 @@ import { ArrivalToast } from "@/components/developers/dashboard/ArrivalToast";
 import { DeveloperLanding } from "@/components/developers/DeveloperLanding";
 import { apiNotFound, handleApi } from "@/worker/api/handler.ts";
 import { TestMetering } from "./metering.ts";
-import { CSRF_FIELD, csrfTokenOf, type DashboardBindings, DASHBOARD, DELETE_CONFIRMATION, SETTINGS, SIGN_IN_PAGE, withDashboard } from "@/worker/dashboard.ts";
-import { byHost, ORIGIN } from "@/worker/hosts.ts";
-import { withRateLimits, type LimitBindings } from "@/worker/rateLimit.ts";
-import { AFTER_SIGN_OUT, SESSION_COOKIE, signedInAccount, withSignIn, type SignInBindings } from "@/worker/signIn.ts";
+import { CSRF_FIELD, csrfTokenOf, type DashboardBindings, DASHBOARD, DELETE_CONFIRMATION, SETTINGS, SIGN_IN_PAGE, withDashboard } from "@/worker/developers/dashboard.ts";
+import { byHost, ORIGIN } from "@/worker/shared/hosts.ts";
+import { withRateLimits, type LimitBindings } from "@/worker/shared/rateLimit.ts";
+import { SITE_LIMITS } from "./siteLimits.ts";
+import { AFTER_SIGN_OUT, SESSION_COOKIE, signedInAccount, withSignIn, type SignInBindings } from "@/worker/developers/signIn.ts";
 import { StubProvider } from "./stubProvider.ts";
 import { BILLING_OFF, StubStripe, TEST_SETTINGS } from "./stubStripe.ts";
 
@@ -63,6 +64,7 @@ function site({ limits = {}, billing = BILLING_OFF, email }: { limits?: Partial<
   const appSaw: Request[] = [];
   const worker = byHost<typeof env>({
     app: withRateLimits(
+      SITE_LIMITS,
       withSignIn(
         withDashboard(
           async (request) => {

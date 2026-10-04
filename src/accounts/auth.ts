@@ -3,11 +3,11 @@
 // better-auth runs the OAuth flow with Google and GitHub (state, PKCE, the
 // code exchange), links a second provider to an account by verified email,
 // and keeps sessions. It is built per request, over the app tables through
-// Drizzle (src/db/app), and web/worker/signIn.ts calls it from Lexema's own
+// Drizzle (src/db/app), and web/worker/developers/signIn.ts calls it from Lexema's own
 // routes. Two of its endpoints are reachable, both the Stripe plugin's
 // (./billing.ts) and on the developer site only: its webhook
-// (web/worker/stripeWebhook.ts) and the page Checkout returns to
-// (web/worker/billing.ts).
+// (web/worker/developers/stripeWebhook.ts) and the page Checkout returns to
+// (web/worker/developers/billing.ts).
 //
 // What stays Lexema's is the account rule in ./accounts.ts: only a verified
 // email reaches an account, and each identity keeps the email it was linked
@@ -45,8 +45,8 @@ export const PENDING_COOKIE = `__Secure-${COOKIE_PREFIX}.state`;
 export const SESSION_LIFETIME_SECONDS = 30 * 24 * 60 * 60;
 /**
  * The path better-auth's endpoints sit under. Two are routed, both the Stripe
- * plugin's: `STRIPE_WEBHOOK_PATH` and `CHECKOUT_RETURN_PATH`. web/worker/signIn.ts
- * and web/worker/billing.ts call the rest directly.
+ * plugin's: `STRIPE_WEBHOOK_PATH` and `CHECKOUT_RETURN_PATH`. web/worker/developers/signIn.ts
+ * and web/worker/developers/billing.ts call the rest directly.
  */
 export const AUTH_PATH = "/auth";
 /** The Stripe plugin's webhook, on the developer site (#262). */
@@ -55,7 +55,7 @@ export const STRIPE_WEBHOOK_PATH = `${AUTH_PATH}/stripe/webhook`;
  * Where Stripe sends the browser after a paid Checkout (#264). The plugin
  * makes this Checkout's success URL itself, whatever it is asked for, then
  * reads the subscription back from Stripe and redirects on to the URL it was
- * asked for (web/worker/billing.ts).
+ * asked for (web/worker/developers/billing.ts).
  */
 export const CHECKOUT_RETURN_PATH = `${AUTH_PATH}/subscription/success`;
 
@@ -107,7 +107,7 @@ function baseOptions(db: AppDatabase, secret: string, origin: string) {
       // A session ends when it was always going to: reading it never writes.
       disableSessionRefresh: true,
     },
-    // The Worker's own limits count sign-in starts (SIGN_IN_LIMIT, web/worker/rateLimit.ts).
+    // The Worker's own limits count sign-in starts (SIGN_IN_LIMIT, web/worker/shared/rateLimit.ts).
     rateLimit: { enabled: false },
     telemetry: { enabled: false },
     advanced: {

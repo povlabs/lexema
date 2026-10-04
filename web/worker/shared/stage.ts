@@ -6,7 +6,7 @@
 // throws there, so a Worker with no stage or a misspelt one never serves a
 // request. Preview-only behaviour keys on the parsed stage, never on the string.
 
-import type { FetchHandler } from "./rateLimit.ts";
+import type { FetchHandler } from "./fetchHandler.ts";
 
 /** Every stage a Worker can run on. */
 const STAGES = ["local", "preview", "production"] as const;

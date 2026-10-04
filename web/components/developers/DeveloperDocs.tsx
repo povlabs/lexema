@@ -9,7 +9,7 @@
 
 import { Fragment, type ReactNode } from "react";
 import { API_PREFIX, CALL_BASIS, type Endpoint } from "@lexema/api/calls.ts";
-import type { SiteOrigins } from "@/worker/hosts.ts";
+import type { SiteOrigins } from "@/worker/shared/hosts.ts";
 import {
   apiBaseOf,
   callText,

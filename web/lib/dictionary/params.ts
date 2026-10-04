@@ -24,7 +24,7 @@ export function firstQuery(value: QueryParam): string {
 /**
  * What the site calls itself, how that is said, and what it is: the home page
  * shows all three (SearchPage.tsx), the tab's title the first and the last, and
- * a shared link's home card all three again (web/worker/card/draw.tsx).
+ * a shared link's home card all three again (web/worker/dictionary/card/draw.tsx).
  */
 export const SITE_NAME = "Lexema";
 export const SITE_PRONUNCIATION = "/lekˈsɛːma/";

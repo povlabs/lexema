@@ -49,7 +49,7 @@ import { DeveloperPricing } from "@/components/developers/DeveloperPricing";
 import { SiteFooter } from "@/components/dictionary/SiteFooter";
 import { handleApi } from "@/worker/api/handler.ts";
 import { TestMetering } from "./metering.ts";
-import { destinationOf, ORIGIN, originsOf } from "@/worker/hosts.ts";
+import { destinationOf, ORIGIN, originsOf } from "@/worker/shared/hosts.ts";
 
 const REPO = fileURLToPath(new URL("../..", import.meta.url));
 const RELEASE = "it-0c432803";

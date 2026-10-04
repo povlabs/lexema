@@ -1,6 +1,6 @@
 // The test developer: the one account a Preview's test sign-in reaches (#245,
 // ADR 0018). A reviewer's capture signs in as it with one click and no
-// credential, in that Preview's own `APP_DB`; web/worker/testSignIn.ts is the
+// credential, in that Preview's own `APP_DB`; web/worker/developers/testSignIn.ts is the
 // route, and only a Preview's developer host has it.
 //
 // It is an ordinary account under the ordinary account rule (./accounts.ts):

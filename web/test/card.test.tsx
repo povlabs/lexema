@@ -44,9 +44,9 @@ import {
 import { headingGender, headingGrammar } from "@/lib/dictionary/genderGrid.ts";
 import { searchAttempt } from "@/lib/dictionary/searchAttempt.ts";
 import { requestOrigin } from "@/lib/shared/requestOrigin.ts";
-import { answerCard, CARD_SOURCE_HEADER, type CardDesk } from "@/worker/card.ts";
-import { cardSvg, drawCard, headwordSizeOf, type CardEngine, type CardInk } from "@/worker/card/draw.tsx";
-import { oklchToHex, paletteOf } from "@/worker/card/palette.ts";
+import { answerCard, CARD_SOURCE_HEADER, type CardDesk } from "@/worker/dictionary/card.ts";
+import { cardSvg, drawCard, headwordSizeOf, type CardEngine, type CardInk } from "@/worker/dictionary/card/draw.tsx";
+import { oklchToHex, paletteOf } from "@/worker/dictionary/card/palette.ts";
 
 const REPO = fileURLToPath(new URL("../..", import.meta.url));
 const WEB = fileURLToPath(new URL("..", import.meta.url));
@@ -93,7 +93,7 @@ before(async () => {
   };
   ink = {
     engine: { satori, Resvg },
-    // The five the Worker bundles (worker/card/desk.ts).
+    // The five the Worker bundles (worker/dictionary/card/desk.ts).
     fonts: [
       await face("Spectral", "Spectral-400-normal.woff.bin", 400, "normal"),
       await face("Spectral", "Spectral-400-italic.woff.bin", 400, "italic"),
@@ -519,7 +519,7 @@ test("an apply that changes a word's first meaning moves its card's address, and
     assert.equal(await version(), versionToken({ release: RELEASE, lastChange: changed[0].id }));
     assert.notEqual(await address("bello"), belloBefore);
     // casa's card is the same, and its address moves too: the route cannot tell
-    // an untouched word without the lookup its cache exists to skip (worker/card.ts).
+    // an untouched word without the lookup its cache exists to skip (worker/dictionary/card.ts).
     assert.deepEqual(await card("casa"), casaCard);
     assert.notEqual(await address("casa"), casaBefore);
   } finally {

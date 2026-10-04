@@ -8,7 +8,7 @@
 //                                      or on to Checkout for a plan chosen before it
 //   POST /sign-out                     end the session and clear its cookie
 //
-// worker/hosts.ts rewrites the developer site onto `/developer-site/…` and
+// worker/shared/hosts.ts rewrites the developer site onto `/developer-site/…` and
 // answers that segment with a 404 on every other host, so these routes and
 // their cookies never exist on `lexema.fyi` or `api.lexema.fyi`. better-auth
 // is reached from here alone, through `auth.api` and `auth.handler`, never
@@ -43,8 +43,8 @@ import { stripePlanOf } from "@lexema/billing/plans.ts";
 import { appTablesOverD1, type AppTables } from "@lexema/db/app/database.ts";
 import { log } from "@lexema/log/requestLog.ts";
 import { CHECKOUT_ACTION } from "@/lib/developers/billingActions.ts";
-import { DEVELOPERS_SEGMENT, googleCallbackUri, type SiteOrigins } from "./hosts.ts";
-import type { FetchHandler } from "./rateLimit.ts";
+import { DEVELOPERS_SEGMENT, googleCallbackUri, type SiteOrigins } from "../shared/hosts.ts";
+import type { FetchHandler } from "../shared/fetchHandler.ts";
 
 export { PENDING_COOKIE, SESSION_COOKIE } from "@lexema/accounts/auth.ts";
 
@@ -54,7 +54,7 @@ export const AFTER_SIGN_IN = "/dashboard";
 /**
  * The plan a signed-out visitor chose on the pricing page, kept while they
  * sign in (#264): `starter` or `pro`, host-only like the session cookie.
- * worker/billing.ts sets it and clears it.
+ * worker/developers/billing.ts sets it and clears it.
  */
 export const CHOSEN_PLAN_COOKIE = "__Secure-lexema.plan";
 /** How long a chosen plan waits for its sign-in: 15 minutes. */
@@ -63,7 +63,7 @@ export const CHOSEN_PLAN_SECONDS = 15 * 60;
 /**
  * Where a finished sign-in sends the browser: when a plan was chosen before
  * it, a GET of the checkout action, which goes on to Checkout for that plan
- * (worker/billing.ts); else the dashboard.
+ * (worker/developers/billing.ts); else the dashboard.
  */
 export const afterSignIn = (cookieHeader: string | null): string =>
   stripePlanOf(readCookie(cookieHeader, CHOSEN_PLAN_COOKIE)) === undefined ? AFTER_SIGN_IN : CHECKOUT_ACTION;
@@ -203,7 +203,7 @@ export function liveContext(env: SignInBindings): SignInContext {
   return { providers: configuredProviders(env), appDb: env.APP_DB === undefined ? undefined : appTablesOverD1(env.APP_DB), now: Date.now() };
 }
 
-/** The public URL the provider sends the browser back to. Google's differs locally (worker/hosts.ts). */
+/** The public URL the provider sends the browser back to. Google's differs locally (worker/shared/hosts.ts). */
 const callbackUri = (url: URL, provider: ProviderId): string =>
   provider === "google" ? googleCallbackUri(url) : `${url.origin}/sign-in/${provider}/callback`;
 

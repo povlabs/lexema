@@ -11,12 +11,12 @@
 // in, the bar keeps only the name, and the menu names the dashboard and its
 // settings first and ends with the email and Sign out (board `j6UaW`).
 //
-// Paths here are the developer site's own (`/docs`): worker/hosts.ts serves
+// Paths here are the developer site's own (`/docs`): worker/shared/hosts.ts serves
 // them from the route group, so no link names the group's segment.
 
 import type { ReactNode } from "react";
-import { SIGN_IN_PAGE } from "@/worker/dashboard.ts";
-import type { SiteOrigins } from "@/worker/hosts.ts";
+import { SIGN_IN_PAGE } from "@/worker/developers/dashboard.ts";
+import type { SiteOrigins } from "@/worker/shared/hosts.ts";
 import { AccountMenu } from "./AccountMenu";
 import { DASHBOARD, SETTINGS } from "@/lib/developers/dashboardActions.ts";
 import { DeveloperMenu, type DeveloperMenuLink } from "./DeveloperMenu";
@@ -51,7 +51,7 @@ export const CONTACT_EMAIL = "contact@lexema.fyi";
 /** Where signing in starts: the sign-in page (#169). */
 export const SIGN_IN_PATH = SIGN_IN_PAGE;
 
-/** Where signing out is posted (worker/signIn.ts). */
+/** Where signing out is posted (worker/developers/signIn.ts). */
 export const SIGN_OUT_PATH = "/sign-out";
 
 /** The pages the bar names, and which one a page is. */

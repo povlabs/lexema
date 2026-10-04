@@ -29,9 +29,9 @@ mock.module(AUTH, {
 });
 
 const { apiNotFound } = await import("@/worker/api/handler.ts");
-const { withDashboard } = await import("@/worker/dashboard.ts");
-const { byHost } = await import("@/worker/hosts.ts");
-const { SESSION_COOKIE } = await import("@/worker/signIn.ts");
+const { withDashboard } = await import("@/worker/developers/dashboard.ts");
+const { byHost } = await import("@/worker/shared/hosts.ts");
+const { SESSION_COOKIE } = await import("@/worker/developers/signIn.ts");
 type AppTables = import("@lexema/db/app/database.ts").AppTables;
 
 const worker = byHost<object>({

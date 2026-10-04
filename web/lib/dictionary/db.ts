@@ -23,7 +23,7 @@ import { turnstileConfig, type TurnstileConfig } from "./report.ts";
  * On a Preview with a dictionary slice, a word the pull request changes is
  * read from the slice (#447, src/lookup/slice.ts).
  *
- * Unmemoised, as a shared link's card runs it outside any page (worker/card.ts).
+ * Unmemoised, as a shared link's card runs it outside any page (worker/dictionary/card.ts).
  */
 export async function searchOnce(query: string): Promise<Attempt> {
   try {
@@ -78,7 +78,7 @@ export const servedRelease = (): string => env.LEXEMA_RELEASE;
  * could not be read. Includes the Worker's version metadata id, so serving
  * code changes invalidate cards and suggestions without a data write.
  * Unmemoised, for the card route
- * (worker/card.ts), which must tell an unread version from a read one.
+ * (worker/dictionary/card.ts), which must tell an unread version from a read one.
  */
 export async function servedVersionOnce(): Promise<string | undefined> {
   try {

@@ -26,7 +26,7 @@ import {
   restGitHub,
 } from "@/builds/previewMarkerCommand.ts";
 import { PreviewName } from "@/builds/previewName.ts";
-import { PREVIEW_DOMAIN } from "@/worker/hosts.ts";
+import { PREVIEW_DOMAIN } from "@/worker/shared/hosts.ts";
 
 const fixture = (name: string) => JSON.parse(readFileSync(new URL(`./fixtures/${name}`, import.meta.url), "utf8"));
 const BUILT = fixture("workers-builds-check-run-success.json");

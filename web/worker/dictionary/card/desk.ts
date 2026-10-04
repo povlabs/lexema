@@ -1,24 +1,24 @@
 // What a card is drawn with inside the Worker: the faces and colours, bundled
 // once per isolate, Cloudflare's cache, the search limit, the served version
 // and the page's lookup.
-// worker/card.ts decides what to answer; this file only supplies it.
+// worker/dictionary/card.ts decides what to answer; this file only supplies it.
 
 // The workerd builds by name: the bare package names resolve to the Node
 // builds here, which inline their wasm as base64 and grow the Worker by a
 // third. These import the `.wasm` files as compiled modules instead.
 import { Resvg } from "@cf-wasm/resvg/workerd";
 import { satori, type Font } from "@cf-wasm/satori/workerd";
-import stylesheet from "../../app/globals.css?raw";
+import stylesheet from "../../../app/globals.css?raw";
 import { searchOnce, servedVersionOnce } from "@/lib/dictionary/db.ts";
-import { visitorKey, type LimitBindings } from "../rateLimit.ts";
+import { visitorKey, type LimitBindings } from "../../shared/rateLimit.ts";
 import type { CardDesk } from "../card.ts";
 import { drawCard } from "./draw.tsx";
 import { paletteOf } from "./palette.ts";
-import interRegular from "../../fonts/card/Inter-400-normal.woff.bin";
-import interSemibold from "../../fonts/card/Inter-600-normal.woff.bin";
-import plexMono from "../../fonts/card/IBMPlexMono-400-normal.woff.bin";
-import spectralItalic from "../../fonts/card/Spectral-400-italic.woff.bin";
-import spectralRegular from "../../fonts/card/Spectral-400-normal.woff.bin";
+import interRegular from "../../../fonts/card/Inter-400-normal.woff.bin";
+import interSemibold from "../../../fonts/card/Inter-600-normal.woff.bin";
+import plexMono from "../../../fonts/card/IBMPlexMono-400-normal.woff.bin";
+import spectralItalic from "../../../fonts/card/Spectral-400-italic.woff.bin";
+import spectralRegular from "../../../fonts/card/Spectral-400-normal.woff.bin";
 
 /** The three families, in the weights and styles a card sets (web/fonts/README.md § "The card's faces, in `card/`"). */
 const FONTS: Font[] = [

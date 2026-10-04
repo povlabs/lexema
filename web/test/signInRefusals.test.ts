@@ -8,11 +8,12 @@ import { test } from "node:test";
 import type { ProviderProfile, ProviderRegistry } from "../../src/accounts/providers.js";
 import { freshAppDatabase } from "../../test/databases.js";
 import { apiNotFound } from "@/worker/api/handler.ts";
-import { CSRF_FIELD, csrfTokenOf, DELETE_CONFIRMATION, withDashboard } from "@/worker/dashboard.ts";
+import { CSRF_FIELD, csrfTokenOf, DELETE_CONFIRMATION, withDashboard } from "@/worker/developers/dashboard.ts";
 import { BILLING_OFF } from "./stubStripe.ts";
-import { byHost, ORIGIN } from "@/worker/hosts.ts";
-import { withRateLimits, type LimitBindings } from "@/worker/rateLimit.ts";
-import { PENDING_COOKIE, SESSION_COOKIE, signedInAccount, withSignIn, type SignInBindings } from "@/worker/signIn.ts";
+import { byHost, ORIGIN } from "@/worker/shared/hosts.ts";
+import { withRateLimits, type LimitBindings } from "@/worker/shared/rateLimit.ts";
+import { SITE_LIMITS } from "./siteLimits.ts";
+import { PENDING_COOKIE, SESSION_COOKIE, signedInAccount, withSignIn, type SignInBindings } from "@/worker/developers/signIn.ts";
 import { StubProvider } from "./stubProvider.ts";
 
 const NOW = Date.now();
@@ -35,6 +36,7 @@ function site(providers?: (stubs: { google: StubProvider; github: StubProvider }
   const github = new StubProvider("github");
   const worker = byHost<typeof env>({
     app: withRateLimits(
+      SITE_LIMITS,
       withSignIn(
         withDashboard(async () => new Response("page"), () => ({ appDb: db, billing: BILLING_OFF, now: NOW })),
         () => ({ providers: providers?.({ google, github }) ?? { google, github }, appDb: db, now: NOW }),

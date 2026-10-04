@@ -42,7 +42,7 @@ import { declaredGridOf, NUMBERS } from "@/lib/dictionary/genderGrid.ts";
 import { Attribution } from "@/components/dictionary/Attribution";
 import { FirstLoad, Limited, Outcome, SearchPage, TRY_WORDS } from "@/components/dictionary/SearchPage";
 import { SiteFooter } from "@/components/dictionary/SiteFooter";
-import { ORIGIN } from "@/worker/hosts.ts";
+import { ORIGIN } from "@/worker/shared/hosts.ts";
 import { SiteHeader } from "@/components/dictionary/SiteHeader";
 import { readingChoiceLabel } from "@/components/dictionary/ReportDialog";
 import { reportReadings } from "@/lib/dictionary/report.ts";

@@ -13,7 +13,7 @@ import { dashboardView, periodUsageOf, settingsView } from "@/lib/developers/das
 import { CHECKOUT_ACTION, PORTAL_ACTION } from "@/lib/developers/billingActions.ts";
 import { CSRF_FIELD } from "@/lib/developers/dashboardActions.ts";
 import { PLAN_BUTTON_OUTLINE, PLAN_BUTTON_PRIMARY, PLAN_WARNING } from "@/components/shared/styles.ts";
-import { ORIGIN } from "@/worker/hosts.ts";
+import { ORIGIN } from "@/worker/shared/hosts.ts";
 
 const NOW = Date.parse("2026-10-05T12:00:00Z");
 const CSRF = "c".repeat(43);
