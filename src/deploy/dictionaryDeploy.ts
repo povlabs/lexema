@@ -36,7 +36,7 @@ import type { PlanCounts } from "../update/planCounts.js";
 import { D1Batch } from "./d1Batch.js";
 import { type DataFetcher, type DumpCatalog, fetchVerified, filesFor } from "./dataFiles.js";
 import { advanceProduction, deployRange, type Git } from "./pending.js";
-import { type ReadyChange, planWrite, readyChange, SCHEMA } from "./writePlan.js";
+import { type ReadyChange, planWrite, readyChange, SCHEMA, type WritePlan } from "./writePlan.js";
 import { lookUpDeclaredWords, lookUpWords, WORD_LIST } from "./wordCheck.js";
 import type { ArchiveFactsCatalog } from "../source/archiveFacts.js";
 import type { CuratedCorrection } from "../italian/curatedCorrections.js";
@@ -229,14 +229,26 @@ export interface PlanOnlyAnswer {
   readonly rebuilds: readonly Rebuild[];
 }
 
+/** What planning one change reads: the dictionary, and where its files come from and go. */
+export type PlanDeps = Pick<DeployDeps, "reader" | "fetcher" | "workDir" | "catalog" | "dumps" | "corrections" | "now">;
+
+/**
+ * Fetch and check the files `change` reads, and plan it against the
+ * dictionary `deps.reader` reads. It writes nothing. The plan-only entry and a
+ * Preview's dictionary slice (#447) both plan through it.
+ */
+export async function planDeclared(change: DeclaredChange, deps: PlanDeps): Promise<WritePlan> {
+  const [{ ready }] = await readyAll([change], deps);
+  return planWrite(ready, deps.reader, (deps.now ?? (() => new Date().toISOString()))(), deps);
+}
+
 /**
  * The plan-only entry (#456): fetch and check the files `change` reads, plan
  * it, and return its counts. It records no bookmark, runs nothing on the
  * dictionary and moves no branch.
  */
-export async function planOnly(change: DeclaredChange, deps: Pick<DeployDeps, "reader" | "fetcher" | "workDir" | "catalog" | "dumps" | "corrections" | "now">): Promise<PlanOnlyAnswer> {
-  const [{ ready }] = await readyAll([change], deps);
-  const { run, rebuilds = [] } = await planWrite(ready, deps.reader, (deps.now ?? (() => new Date().toISOString()))(), deps);
+export async function planOnly(change: DeclaredChange, deps: PlanDeps): Promise<PlanOnlyAnswer> {
+  const { run, rebuilds = [] } = await planDeclared(change, deps);
   return { command: run.command, counts: run.counts, dictionaryRecords: run.dictionaryRecords, limitBreaches: run.counts.limitBreaches(run.dictionaryRecords), rebuilds };
 }
 

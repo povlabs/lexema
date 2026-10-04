@@ -24,6 +24,7 @@ import { PlanCounts } from "../update/planCounts.js";
 import { planOnlyRun } from "../update/planOnly.js";
 import { type SourceCatalogs, withFeedDump } from "../update/select.js";
 import { DataRefused, type FetchedFiles, sha256Of } from "./dataFiles.js";
+import { NO_WORDS, type TouchedWords, unbounded, wordsOfApply, wordsOfCorrections, wordsOfHide, wordsOfPageEntries } from "./touchedWords.js";
 
 /** The schema the upgrade reads and the language headings the plans read, from the repository root. */
 export const SCHEMA = resolve("src/db/schema.sql");
@@ -38,6 +39,8 @@ export interface WritePlan {
   readBack(reader: MasterReader): string[];
   /** The tables `update:upgrade` drops and creates again, with their rows; absent for every other command. */
   readonly rebuilds?: readonly Rebuild[];
+  /** The words the file writes, read off the plan (touchedWords.ts): what a Preview's dictionary slice holds (#447). */
+  readonly touched: TouchedWords;
 }
 
 /** A change and the files it reads: `update:auto`, `hide:records` and `load:page-entries` read an archive and a dump, the others none. */
@@ -97,6 +100,7 @@ export async function planWrite(ready: ReadyChange, reader: MasterReader, applie
           sql: upgrade.sql,
           readBack: (after) => upgradeShortfall(after, schema, upgrade),
           rebuilds: rebuildsOf(upgrade),
+          touched: NO_WORDS,
         };
       }
       case "normalize:source-text": {
@@ -108,6 +112,7 @@ export async function planWrite(ready: ReadyChange, reader: MasterReader, applie
             const left = planSourceText(after).statements;
             return left === 0 ? [] : [`${left} source text change(s) still pending after the file ran`];
           },
+          touched: unbounded(change.command),
         };
       }
       case "correct:records": {
@@ -116,6 +121,7 @@ export async function planWrite(ready: ReadyChange, reader: MasterReader, applie
           run: planOnlyRun(change.command, plan.counts, reader),
           sql: plan.sql,
           readBack: (after) => unwritten(after, plan).map((id) => `correction ${id} does not read back as written`),
+          touched: wordsOfCorrections(plan),
         };
       }
     }
@@ -139,6 +145,7 @@ export async function planWrite(ready: ReadyChange, reader: MasterReader, applie
           ...differing.map(({ table, planned, found: held }) => `${table}: ${held} row(s) for the new records, ${planned} planned`),
         ];
       },
+      touched: wordsOfApply(plan),
     };
   }
 
@@ -160,6 +167,7 @@ export async function planWrite(ready: ReadyChange, reader: MasterReader, applie
       run: planOnlyRun(change.command, plan.counts, reader),
       sql: plan.sql,
       readBack: (after) => unloaded(after, plan).map((title) => `page-only entry ${title} does not read back as written`),
+      touched: wordsOfPageEntries(plan),
     };
   }
 
@@ -180,5 +188,6 @@ export async function planWrite(ready: ReadyChange, reader: MasterReader, applie
     run: planOnlyRun(change.command, plan.counts, reader),
     sql: plan.sql,
     readBack: (after) => unhidden(after, plan).map((recordId) => `record ${recordId} does not read back as hidden`),
+    touched: wordsOfHide(plan),
   };
 }

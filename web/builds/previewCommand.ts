@@ -5,8 +5,9 @@
 // so the command is two steps: `preview:prepare`, which is `preparePreview`
 // below, then Wrangler's own `wrangler preview` over the files it wrote.
 
-import { type AppDatabase, type BuiltConfig, migrationsConfig, withAppDatabase } from "./previewConfig.ts";
+import { type AppDatabase, type BuiltConfig, migrationsConfig, withAppDatabase, withDictionarySlice } from "./previewConfig.ts";
 import { PreviewName } from "./previewName.ts";
+import { prepareSlice, type SlicePlanner } from "./previewSlice.ts";
 import { listDatabases, required, type Wrangler } from "./wrangler.ts";
 
 /** The built config `wrangler preview` reads, relative to web/. */
@@ -44,6 +45,8 @@ export interface PreviewPrepareSteps {
   readonly migrationsDir: string;
   /** A fresh random secret. */
   newSecret(): string;
+  /** What the branch's change declarations give its dictionary slice (web/builds/previewSlice.ts). */
+  readonly slices: SlicePlanner;
   log(line: string): void;
 }
 
@@ -68,8 +71,10 @@ export function findOrCreateAppDatabase(wrangler: Wrangler, preview: PreviewName
 
 /**
  * Prepare one branch's Preview for `wrangler preview`: build, give the branch
- * its own app database, migrate it, and write the built config, the Preview
- * name and the secrets file the Preview command reads. Returns the name.
+ * its own app database and, when it changes dictionary data, its dictionary
+ * slice (#447), migrate the app database, and write the built config, the
+ * Preview name and the secrets file the Preview command reads. Returns the
+ * name.
  */
 export function preparePreview(steps: PreviewPrepareSteps): PreviewName {
   const { wrangler, log } = steps;
@@ -79,7 +84,9 @@ export function preparePreview(steps: PreviewPrepareSteps): PreviewName {
 
   steps.build();
   const database = findOrCreateAppDatabase(wrangler, preview, log);
-  steps.writeFile(BUILT_CONFIG, `${JSON.stringify(withAppDatabase(steps.readBuiltConfig(), database), null, 2)}\n`);
+  const slice = prepareSlice(wrangler, preview, steps.slices, log);
+  const config = withAppDatabase(steps.readBuiltConfig(), database);
+  steps.writeFile(BUILT_CONFIG, `${JSON.stringify(slice === undefined ? config : withDictionarySlice(config, slice), null, 2)}\n`);
 
   // Migrations before the Preview, so no deployment ever runs on a database
   // older than its code ("Resources and isolation", D1 migrations).

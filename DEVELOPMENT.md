@@ -469,7 +469,7 @@ src/
 ├── cli.ts          # `pnpm run validate` — streams the file, writes the report
 ├── core/           # dataset-independent: record types, candidate resolver, report
 ├── db/             # the dictionary schema and lookup queries as SQL; app/ holds the Drizzle app tables
-├── deploy/         # the dictionary deploy run CI makes after a merge to main, and its plan-only entry; `pnpm run deploy:dictionary`
+├── deploy/         # the dictionary deploy run CI makes after a merge to main, and its plan-only entry; `pnpm run deploy:dictionary`; a Preview's dictionary slice, `pnpm run preview:slice`
 ├── import/         # the streaming importer, the SQL export and the dev seed
 ├── italian/        # the Italian adapter: normalize, tags, articles, examples
 ├── log/            # the Worker's log: every line names its request id

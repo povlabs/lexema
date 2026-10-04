@@ -21,6 +21,7 @@ import { authenticate, type KeyRefusal } from "@lexema/api/keys.ts";
 import { callCost, endpointOf } from "@lexema/api/calls.ts";
 import { appTablesOverD1 } from "@lexema/db/app/database.ts";
 import { fromD1 } from "@lexema/lookup/database.ts";
+import { dictionaryFor } from "@lexema/lookup/slice.ts";
 import { log } from "@lexema/log/requestLog.ts";
 import { originsOf, type SiteOrigins } from "../hosts.ts";
 import { error, type ApiContext, type ErrorJson } from "./answer.ts";
@@ -96,25 +97,59 @@ export async function handleApi(request: Request, context: ApiContext): Promise<
   }
 }
 
-/** The bindings the API reads: the dictionary, the app database its keys and usage live in, and what meters owned keys. */
+/**
+ * The bindings the API reads: the dictionary, the app database its keys and
+ * usage live in, and what meters owned keys. `DICTIONARY_SLICE` is a
+ * Preview's dictionary slice (#447), which only the preview build binds.
+ */
 export interface ApiBindings extends MeteringBindings {
   DB?: D1Database;
   APP_DB?: D1Database;
+  DICTIONARY_SLICE?: D1Database;
   LEXEMA_RELEASE: string;
 }
+
+/**
+ * The word a request looks up, for the endpoints that read one word's entry,
+ * or none. On a Preview with a dictionary slice, those read the slice for a
+ * word it serves (src/lookup/slice.ts); the others read the shared dictionary.
+ */
+export function lookedUpWord(url: URL): string | undefined {
+  switch (endpointOf(url.pathname)) {
+    case "lookup":
+    case "lemmatize":
+    case "exists":
+      return url.searchParams.get("q") ?? undefined;
+    case "inflect":
+      return url.searchParams.get("lemma") ?? undefined;
+    default:
+      return undefined;
+  }
+}
+
+const unavailable = (): Response => json(503, error("unavailable", "The request could not be answered. Try again later."));
 
 /**
  * Answer a request `api.lexema.fyi` routed to the API. A Worker missing either
  * D1 binding answers 503, as a failed read does.
  */
-export function answerApi<E extends ApiBindings>(request: Request, env: E): Promise<Response> {
+export async function answerApi<E extends ApiBindings>(request: Request, env: E): Promise<Response> {
   if (env.DB === undefined || env.APP_DB === undefined) {
     const missing = env.DB === undefined ? "DB" : "APP_DB";
     log.error("api request failed", {}, new Error(`no D1 binding: this Worker has no ${missing}`));
-    return Promise.resolve(json(503, error("unavailable", "The request could not be answered. Try again later.")));
+    return unavailable();
+  }
+  const shared = fromD1(env.DB);
+  const word = lookedUpWord(new URL(request.url));
+  let db = shared;
+  try {
+    if (word !== undefined) db = await dictionaryFor(word, shared, env.DICTIONARY_SLICE === undefined ? undefined : fromD1(env.DICTIONARY_SLICE));
+  } catch (failure) {
+    log.error("api request failed", {}, failure);
+    return unavailable();
   }
   return handleApi(request, {
-    db: fromD1(env.DB),
+    db,
     appDb: appTablesOverD1(env.APP_DB),
     releaseId: env.LEXEMA_RELEASE,
     now: Date.now(),

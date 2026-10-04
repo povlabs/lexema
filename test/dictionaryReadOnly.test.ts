@@ -138,3 +138,20 @@ test("the Worker reaches DB only through the read-only adapter", () => {
   }
   assert.deepEqual(uses, [], "a raw DB binding could be written through");
 });
+
+test("the Worker reaches a Preview's dictionary slice only through the read-only adapter (#447)", () => {
+  const uses: string[] = [];
+  let reads = 0;
+  for (const path of workerSources()) {
+    const text = readFileSync(path, "utf8");
+    for (const match of text.matchAll(/[^\n]*\b\w+\.DICTIONARY_SLICE\b[^\n]*/g)) {
+      const line = match[0];
+      reads += 1;
+      // Allowed: wrapping it, or asking whether it is there.
+      const rest = line.replaceAll(/fromD1\(\w+\.DICTIONARY_SLICE\)/g, "").replaceAll(/\w+\.DICTIONARY_SLICE === undefined/g, "");
+      if (/\b\w+\.DICTIONARY_SLICE\b/.test(rest)) uses.push(`${path.slice(file("web").length)}: ${line.trim()}`);
+    }
+  }
+  assert.ok(reads >= 2, "the scan reads the page's and the API's slice bindings");
+  assert.deepEqual(uses, [], "a raw slice binding could be written through");
+});

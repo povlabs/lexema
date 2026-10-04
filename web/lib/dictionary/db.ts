@@ -6,7 +6,7 @@ import { cache } from "react";
 import { servedVersion as readServedVersion, versionToken } from "@lexema/lookup/served.ts";
 import { suggest, type SuggestResult } from "@lexema/lookup/suggest.ts";
 import { log } from "@lexema/log/requestLog.ts";
-import { database } from "@/lib/shared/database.ts";
+import { database, lookupDatabase } from "@/lib/shared/database.ts";
 import type { Attempt } from "./attempt.ts";
 import { searchAttempt } from "./searchAttempt.ts";
 import { turnstileConfig, type TurnstileConfig } from "./report.ts";
@@ -20,11 +20,14 @@ import { turnstileConfig, type TurnstileConfig } from "./report.ts";
  * releases and binding state, which is the operator's business and not the
  * reader's, so it is logged and nothing of it reaches the page.
  *
+ * On a Preview with a dictionary slice, a word the pull request changes is
+ * read from the slice (#447, src/lookup/slice.ts).
+ *
  * Unmemoised, as a shared link's card runs it outside any page (worker/card.ts).
  */
 export async function searchOnce(query: string): Promise<Attempt> {
   try {
-    return await searchAttempt(database(), env.LEXEMA_RELEASE, query);
+    return await searchAttempt(await lookupDatabase(query), env.LEXEMA_RELEASE, query);
   } catch (error) {
     log.error("lookup failed", {}, error);
     return { outcome: "failed" };
