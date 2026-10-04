@@ -22,6 +22,11 @@
   // (docs/RUN_THE_SITE.md, "What is logged"). Environments and Previews
   // inherit this block; web/test/health.test.ts checks production does.
   "observability": { "enabled": true, "logs": { "enabled": true, "invocation_logs": false } },
+  // Every five minutes, erase the visitor code of each reader's report older
+  // than an hour (Huey's ruling on #570; worker/dictionary/reportSweep.ts).
+  // Triggers are inherited, so env.production runs it too;
+  // web/test/report.test.ts checks it does.
+  "triggers": { "crons": ["*/5 * * * *"] },
   // Two databases (ADR 0018). DB is the dictionary, which code only reads
   // (src/lookup/database.ts); APP_DB holds accounts, keys, usage and reader
   // reports. Both ids are local-only placeholders: `--local` keys each

@@ -25,7 +25,9 @@
 // per-visitor limits: one served from Cloudflare's cache reaches no database,
 // and one it draws counts as a search itself. It also exports the account
 // meter's Durable Object class (worker/api/accountMeterObject.ts), which
-// wrangler.jsonc binds as ACCOUNT_METER.
+// wrangler.jsonc binds as ACCOUNT_METER. Beside `fetch`, `scheduled` answers
+// wrangler.jsonc's cron trigger: it erases reports' visitor codes once their
+// hour is past (worker/dictionary/reportSweep.ts).
 //
 // Every other file under worker/ sits in one site's folder, and this is the one
 // file that imports from all of them (web/test/layout.test.ts).
@@ -42,6 +44,7 @@ import { withTestSignIn } from "./developers/testSignIn.ts";
 import { withCards } from "./dictionary/card.ts";
 import { workerDesk } from "./dictionary/card/desk.ts";
 import { dictionaryLimitOf } from "./dictionary/limits.ts";
+import { sweepReports } from "./dictionary/reportSweep.ts";
 import { withHealth } from "./shared/health.ts";
 import { byHost } from "./shared/hosts.ts";
 import { withRateLimits } from "./shared/rateLimit.ts";
@@ -74,4 +77,5 @@ export default {
       ),
     ),
   ),
+  scheduled: sweepReports,
 } satisfies ExportedHandler<Env>;

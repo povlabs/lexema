@@ -26,9 +26,13 @@ export type ReportTarget =
   /** `line` is undefined only for a report stored before #12 kept it. */
   | { kind: "reading"; recordId: number; line: SourceLine | undefined };
 
-/** Whether someone has looked yet. */
+/**
+ * Whether someone has looked yet. The reader's note is held only while the
+ * report waits: answering it erases the note (Huey's ruling on #570), so an
+ * answered report has none to read.
+ */
 export type ReportReview =
-  | { state: "waiting" }
+  | { state: "waiting"; details: string }
   | { state: "answered"; outcome: string; reviewedAt: string; reviewedBy: string };
 
 type Row = typeof readerReport.$inferSelect;
@@ -39,9 +43,14 @@ export interface ReaderReport {
   word: string;
   target: ReportTarget;
   choice: Row["choice"];
-  details: string;
   receivedAt: string;
   review: ReportReview;
+}
+
+/** A waiting report's note, which the `reader_report_details` CHECK makes present. */
+function noteOf(row: Row): string {
+  if (row.details === null) throw new Error(`report ${row.reportId} waits with no note, which its table refuses`);
+  return row.details;
 }
 
 /** A stored row as a report. The table's CHECKs make every other shape unstorable. */
@@ -56,7 +65,7 @@ export function reportFromRow(row: Row): ReaderReport {
         };
   const review: ReportReview =
     row.outcome === null || row.reviewedAt === null || row.reviewedBy === null
-      ? { state: "waiting" }
+      ? { state: "waiting", details: noteOf(row) }
       : { state: "answered", outcome: row.outcome, reviewedAt: row.reviewedAt, reviewedBy: row.reviewedBy };
   return {
     reportId: row.reportId,
@@ -64,7 +73,6 @@ export function reportFromRow(row: Row): ReaderReport {
     word: row.word,
     target,
     choice: row.choice,
-    details: row.details,
     receivedAt: row.receivedAt,
     review,
   };
@@ -119,8 +127,10 @@ export interface ReportAnswer {
 export type AnswerRefusal = "no-report" | "already-answered" | "outcome" | "outcome-too-long" | "reviewer";
 
 /**
- * Record what a person found, once. A report already answered keeps its
- * answer: a second one is refused rather than written over the first.
+ * Record what a person found, once, and erase the reader's note in the same
+ * write: an answered report keeps no note (Huey's ruling on #570). A report
+ * already answered keeps its answer: a second one is refused rather than
+ * written over the first.
  */
 export async function answerReport(
   { app }: AppTables,
@@ -141,7 +151,7 @@ export async function answerReport(
   if (found.outcome !== null) return { outcome: "refused", reason: "already-answered" };
   await app
     .update(readerReport)
-    .set({ outcome, reviewedAt: new Date(now).toISOString(), reviewedBy })
+    .set({ outcome, reviewedAt: new Date(now).toISOString(), reviewedBy, details: null })
     .where(and(eq(readerReport.reportId, reportId), isNull(readerReport.outcome)));
   return { outcome: "answered" };
 }
