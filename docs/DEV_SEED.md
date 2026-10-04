@@ -70,8 +70,9 @@ page and no Italian record. Which pages it offers depends on the input
   still have one in the release, and that word is never a page-only entry here.
   With the pages under `fixtures/`, 20 listed titles have a page and 17 of
   them give 18 entries, such as `raccontare`; `acquirente`, which the release
-  has a record for, gives none. With the dump, the seed reads only the listed
-  pages, never all 758,429, and writes 203 entries.
+  has a record for, gives none. With the dump, the seed still loads all
+  758,429 pages, but offers only the listed titles as page-only candidates and
+  writes 203 entries.
 - **A `.jsonl.gz` archive.** It is seeded as a full release: every raw page
   whose title no Italian record spells is offered
   ([ADR 0028](../.decisions/0028-recovered-pages-any-part-of-speech.md)).
