@@ -6,8 +6,8 @@ and https://api.lexema.fyi live from this repository. Running it locally is
 [WEB.md](WEB.md). A merge to `main` first runs the
 [dictionary deploy](#the-dictionary-deploy), which applies the dictionary
 changes the merge declares and then fast-forwards the `production` branch.
-Each push to `production` deploys production, and every other branch gets a
-Preview, both built by Cloudflare's Workers Builds
+Each push to `production` deploys production, `main` gets no Preview, and
+every other branch gets one, all built by Cloudflare's Workers Builds
 ([ADR 0018](../.decisions/0018-previews-on-workers-builds.md)). Huey sets both
 up once, as [Workers Builds](#workers-builds) and
 [the dictionary deploy](#set-up-the-dictionary-deploy) say. Once a month,
