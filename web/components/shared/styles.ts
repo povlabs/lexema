@@ -60,14 +60,18 @@ export const LINK = `text-accent underline ${FOCUS_RING}`;
 
 // Page chrome -------------------------------------------------------------
 
-/** C1: a full-width bar, the name at the left, a hairline under it. */
-export const TOP_BAR = "border-b border-border";
-export const TOP_BAR_INNER = inDictionaryColumn("flex h-16 items-center");
 /**
- * On a phone the name, and the footer's name and links below, are drawn at the
- * smaller sizes frames 33m and 34m give them, on every dictionary page (#591).
+ * C1: a full-width bar, the name at the left, a hairline under it. From `sm` up
+ * the bar is 72px, as frames 33 and 34 draw it (#593).
  */
-export const TOP_BAR_NAME = `font-serif text-xl text-text-strong no-underline max-sm:text-[1.125rem] ${FOCUS_RING}`;
+export const TOP_BAR = "border-b border-border";
+export const TOP_BAR_INNER = inDictionaryColumn("flex h-16 items-center sm:h-18");
+/**
+ * The name is 22px from `sm` up, as frames 33 and 34 draw it (#593). On a phone
+ * the name, and the footer's name and links below, are drawn at the smaller
+ * sizes frames 33m and 34m give them, on every dictionary page (#591).
+ */
+export const TOP_BAR_NAME = `font-serif text-[1.375rem] text-text-strong no-underline max-sm:text-[1.125rem] ${FOCUS_RING}`;
 
 /** C2: the name at the left, three small links at the right. */
 /**
