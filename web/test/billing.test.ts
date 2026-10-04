@@ -14,12 +14,13 @@ import { gzipSync } from "node:zlib";
 import { eq } from "drizzle-orm";
 import { csrfToken } from "../../src/accounts/csrf.js";
 import { billingOf, type Billing } from "../../src/accounts/billing.js";
+import { suspendAccount, suspensionReasonOf } from "../../src/accounts/suspension.js";
 import { createAccountKey, keyName } from "../../src/api/ownedKeys.js";
 import { subscription } from "../../src/db/app/schema.js";
 import { seedSql } from "../../src/import/seedSql.js";
 import { freshAppDatabase, readOnlyDictionary, subscribe } from "../../test/databases.js";
 import { CHECKOUT_ACTION, PORTAL_ACTION, PRICING } from "@/lib/developers/billingActions.ts";
-import { SETTINGS } from "@/lib/developers/dashboardActions.ts";
+import { SETTINGS, SUSPENDED } from "@/lib/developers/dashboardActions.ts";
 import { apiNotFound, handleApi } from "@/worker/api/handler.ts";
 import { withBilling, type BillingContext } from "@/worker/developers/billing.ts";
 import { byHost, ORIGIN } from "@/worker/shared/hosts.ts";
@@ -216,6 +217,29 @@ test("the portal returns to settings; without a Stripe customer it answers 303 t
   const serving = await post(CHECKOUT_ACTION, { plan: "pro" });
   assert.equal(location(serving), stripe.portals[1]?.url);
   assert.equal(stripe.checkouts.length, 1, "no second Checkout");
+});
+
+test("a suspended account is refused Checkout, the plan it chose before signing in, and the billing portal, and nothing reaches Stripe (#573)", async () => {
+  const { appDb, stripe, jar, send, signIn, post, account } = site();
+  // Chosen signed out, so the first page after signing in would go on to Checkout.
+  await post(CHECKOUT_ACTION, { plan: "pro" });
+  await signIn();
+  const reason = suspensionReasonOf("Abuse.");
+  assert.ok(reason !== undefined);
+  assert.equal((await suspendAccount(appDb, await account(), reason, Date.now(), { stripe: undefined, blockList: undefined })).outcome, "suspended");
+
+  const refused: [string, () => Promise<Response>][] = [
+    ["checkout", () => post(CHECKOUT_ACTION, { plan: "pro" })],
+    ["checkout after sign-in", () => send(`${DEVELOPERS}${CHECKOUT_ACTION}`)],
+    ["portal", () => post(PORTAL_ACTION, {})],
+  ];
+  for (const [what, ask] of refused) {
+    const answer = await ask();
+    assert.equal(answer.status, 403, what);
+    assert.equal(await answer.text(), SUSPENDED, what);
+  }
+  assert.ok(!jar.has(CHOSEN_PLAN_COOKIE), "the chosen plan is dropped");
+  assert.equal(stripe.checkouts.length + stripe.portals.length, 0);
 });
 
 test("with the price ids set but no Stripe secret, choosing a plan answers 503 and calls nothing", async () => {

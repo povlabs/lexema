@@ -1,6 +1,7 @@
 // The local app database, `APP_DB`, reached through Wrangler as
 // src/import/seedDev.ts reaches it, with Drizzle over it, for the CLIs that
-// change it by hand (`pnpm run api-key`, `pnpm run plan`, `pnpm run report`).
+// change it by hand (`pnpm run api-key`, `pnpm run plan`, `pnpm run account`,
+// `pnpm run report`).
 // `pnpm run report` also reads the local dictionary, `DB`, the same way and
 // only through `readOnly` (ADR 0018).
 

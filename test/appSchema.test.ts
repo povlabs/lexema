@@ -29,7 +29,9 @@ const AUTH_TABLES = ["developer_account", "provider_identity", "developer_sessio
 const REPORT_TABLES = ["reader_report", "report_opening"] as const;
 /** The plan tables (#260), and what each account was last emailed about its plan (#215). */
 const PLAN_TABLES = ["subscription", "enterprise_plan", "plan_notice"] as const;
-const APP_TABLES = [...AUTH_TABLES, ...KEY_TABLES, ...REPORT_TABLES, ...PLAN_TABLES] as const;
+/** The Radar items a suspension added (#573). */
+const SUSPENSION_TABLES = ["suspension_card_block"] as const;
+const APP_TABLES = [...AUTH_TABLES, ...KEY_TABLES, ...REPORT_TABLES, ...PLAN_TABLES, ...SUSPENSION_TABLES] as const;
 
 type Row = Record<string, unknown>;
 
@@ -226,6 +228,8 @@ test("better-auth's tables are STRICT, keep Lexema's names for the columns other
     "updated_at TEXT NOT NULL",
     "deleted_at TEXT",
     "stripe_customer_id TEXT",
+    "suspended_at TEXT",
+    "suspension_reason TEXT",
   ]);
   assert.deepEqual(columns("provider_identity"), [
     "identity_id INTEGER NOT NULL PK",
@@ -306,8 +310,10 @@ test("the migrations build only the app tables and their indexes", () => {
     "index sqlite_autoindex_api_key_usage_1",
     "index sqlite_autoindex_plan_notice_1",
     "index sqlite_autoindex_report_opening_1",
+    "index sqlite_autoindex_suspension_card_block_1",
     "index subscription_by_reference",
     "index subscription_stripe_subscription_id_unique",
+    "index suspension_card_block_by_item",
     "index verification_by_expiry",
     "index verification_by_identifier",
     ...APP_TABLES.map((table) => `table ${table}`).sort(),
@@ -340,4 +346,36 @@ test("the plan tables are STRICT and refuse an unknown plan, status or notice, a
   for (const status of STRIPE_STATUSES) db.exec(subscription("starter", status));
   db.exec(enterprise(20_000_000, 1000, period));
   for (const state of ["active", "past-due", "cancelling", "ended"]) db.exec(notice("starter", state));
+});
+
+test("an account's suspension is stored whole or not at all, and the migration that adds it keeps every account as it was", () => {
+  const db = new DatabaseSync(":memory:");
+  const files = appMigrationFiles();
+  const adding = files.findIndex((path) => path.endsWith("_account_suspension.sql"));
+  assert.ok(adding > 0, "the suspension migration is in the journal");
+  for (const path of files.slice(0, adding)) db.exec(readFileSync(path, "utf8"));
+  const at = "2026-10-04T12:00:00.000Z";
+  db.prepare("INSERT INTO developer_account (name, email, email_verified, created_at, updated_at) VALUES ('Ada', 'ada@example.com', 1, ?, ?)").run(at, at);
+  for (const path of files.slice(adding)) db.exec(readFileSync(path, "utf8"));
+
+  assert.equal(shape(db, "developer_account").table[0]?.strict, 1);
+  assert.equal(shape(db, "suspension_card_block").table[0]?.strict, 1);
+  assert.deepEqual(rows(db, "SELECT account_id, email, suspended_at, suspension_reason FROM developer_account"), [
+    { account_id: 1, email: "ada@example.com", suspended_at: null, suspension_reason: null },
+  ]);
+  const block = (item: string, fingerprint: string) =>
+    `INSERT INTO suspension_card_block (account_id, value_list_item_id, card_fingerprint) VALUES (1, '${item}', '${fingerprint}')`;
+  const refused: [string, string][] = [
+    ["a time with no reason", `UPDATE developer_account SET suspended_at = '${at}'`],
+    ["a reason with no time", "UPDATE developer_account SET suspension_reason = 'Abuse.'"],
+    ["an empty reason", `UPDATE developer_account SET suspended_at = '${at}', suspension_reason = ''`],
+    ["a reason with spaces round it", `UPDATE developer_account SET suspended_at = '${at}', suspension_reason = ' Abuse.'`],
+    ["a reason past 500 characters", `UPDATE developer_account SET suspended_at = '${at}', suspension_reason = '${"x".repeat(501)}'`],
+    ["an item that is not a Radar item", block("card_1", "fp")],
+    ["an empty fingerprint", block("rsli_1", "")],
+  ];
+  for (const [what, sql] of refused) assert.throws(() => db.exec(sql), /CHECK constraint failed/, what);
+  db.exec(`UPDATE developer_account SET suspended_at = '${at}', suspension_reason = 'Abuse.'`);
+  db.exec("UPDATE developer_account SET suspended_at = NULL, suspension_reason = NULL");
+  db.exec(block("rsli_1", "fp"));
 });

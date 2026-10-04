@@ -33,6 +33,7 @@
     "db:check-d1": "tsx src/db/app/sampleRowsCli.ts",
     "api-key": "tsx src/api/keyCli.ts",
     "plan": "tsx src/billing/planCli.ts",
+    "account": "tsx src/accounts/accountCli.ts",
     "report": "tsx src/readerReport/reportCli.ts",
     "measure:recovery": "tsx src/import/measureRecovery.ts",
     "measure:quality": "tsx src/import/measureQuality.ts",

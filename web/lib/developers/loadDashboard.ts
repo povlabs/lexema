@@ -3,11 +3,15 @@
 // a visitor without a session to sign-in before either page runs; the check
 // here covers any request that reaches one anyway.
 //
+// A suspended account (#573) gets neither page's view: both draw only the
+// card that says so, with Delete account, and read no plan or usage.
+//
 // Both pages read the account's plan (#207). While a plan serves, the
 // dashboard asks the account meter (worker/api/accountMeterObject.ts) for the
 // period's count, which is exact where D1's usage rows are up to a minute behind.
 import { env } from "cloudflare:workers";
 import { accountProfile, type AccountProfile } from "@lexema/accounts/accounts.ts";
+import { accountSuspension } from "@lexema/accounts/suspension.ts";
 import { listAccountKeys, type OwnedKey } from "@lexema/api/ownedKeys.ts";
 import { accountUsage } from "@lexema/api/usage.ts";
 import { accountPlan } from "@lexema/billing/accountPlan.ts";
@@ -17,7 +21,16 @@ import { accountMeterOf } from "@/worker/api/metering.ts";
 import { csrfTokenOf, SIGN_IN_PAGE } from "@/worker/developers/dashboard.ts";
 import type { SiteOrigins } from "@/worker/shared/hosts.ts";
 import { signedInAccount } from "@/worker/developers/signIn.ts";
-import { dashboardView, periodUsageOf, settingsView, type DashboardView, type PeriodUsage, type SettingsView } from "./dashboardView.ts";
+import {
+  dashboardView,
+  periodUsageOf,
+  settingsView,
+  suspendedView,
+  type DashboardView,
+  type PeriodUsage,
+  type SettingsView,
+  type SuspendedView,
+} from "./dashboardView.ts";
 import { appDatabase } from "@/lib/shared/database.ts";
 
 /** The signed-in account a dashboard page is for, with every key it owns, revoked ones too. */
@@ -28,10 +41,19 @@ async function signedInOwner(cookies: string | null, origins: SiteOrigins) {
   const csrf = await csrfTokenOf(cookies);
   const profile: AccountProfile | undefined = accountId === undefined ? undefined : await accountProfile(db, accountId);
   if (accountId === undefined || csrf === undefined || profile === undefined) redirect(SIGN_IN_PAGE);
-  return { db, now, accountId, csrf, profile, keys: await listAccountKeys(db, accountId) };
+  const [keys, suspension] = await Promise.all([listAccountKeys(db, accountId), accountSuspension(db, accountId)]);
+  return { db, now, accountId, csrf, profile, keys, suspended: suspension !== undefined };
+}
+
+/** A suspended account's page, either one: the card and the session's CSRF token for its Delete account. */
+export interface LoadedSuspended {
+  kind: "suspended";
+  view: SuspendedView;
+  csrf: string;
 }
 
 export interface LoadedDashboard {
+  kind: "open";
   view: DashboardView;
   csrf: string;
   /** Every key the account owns, revoked ones too. */
@@ -45,20 +67,23 @@ async function periodUsage(accountId: number, serving: Serving): Promise<PeriodU
   return periodUsageOf(serving, await meter.periodCalls(new Date(serving.period.start).toISOString()));
 }
 
-export async function loadDashboard(cookies: string | null, origins: SiteOrigins): Promise<LoadedDashboard> {
-  const { db, now, accountId, csrf, profile, keys } = await signedInOwner(cookies, origins);
+export async function loadDashboard(cookies: string | null, origins: SiteOrigins): Promise<LoadedDashboard | LoadedSuspended> {
+  const { db, now, accountId, csrf, profile, keys, suspended } = await signedInOwner(cookies, origins);
+  if (suspended) return { kind: "suspended", view: suspendedView(profile, keys), csrf };
   const [usage, plan] = await Promise.all([accountUsage(db, accountId, now), accountPlan(db, accountId, now)]);
   const period = await periodUsage(accountId, plan.serving);
-  return { view: dashboardView(profile, keys, usage, period, now), csrf, keys };
+  return { kind: "open", view: dashboardView(profile, keys, usage, period, now), csrf, keys };
 }
 
 export interface LoadedSettings {
+  kind: "open";
   view: SettingsView;
   csrf: string;
 }
 
-export async function loadSettings(cookies: string | null, origins: SiteOrigins): Promise<LoadedSettings> {
-  const { db, now, accountId, csrf, profile, keys } = await signedInOwner(cookies, origins);
+export async function loadSettings(cookies: string | null, origins: SiteOrigins): Promise<LoadedSettings | LoadedSuspended> {
+  const { db, now, accountId, csrf, profile, keys, suspended } = await signedInOwner(cookies, origins);
+  if (suspended) return { kind: "suspended", view: suspendedView(profile, keys), csrf };
   const plan = await accountPlan(db, accountId, now);
-  return { view: settingsView(profile, keys, plan), csrf };
+  return { kind: "open", view: settingsView(profile, keys, plan), csrf };
 }

@@ -262,6 +262,35 @@ An account whose Starter or Pro plan still serves is refused until that plan is
 cancelled in Stripe. Bad flags print the usage line and exit 1. Both commands
 write to the `APP_DB` in `SEED_STATE`, as `pnpm run api-key` does.
 
+### Suspend a developer account
+
+A suspended account still signs in, but its dashboard and settings show only a
+card saying it is suspended, with *Delete account*. Its keys are not revoked:
+each answers 403 `account_suspended` until the suspension is lifted. Every
+dashboard and billing action but deleting the account and signing out is
+refused ([src/accounts/suspension.ts](./src/accounts/suspension.ts),
+[#573](https://github.com/povlabs/lexema/issues/573)):
+
+```sh
+pnpm run account suspend 3 --reason "Resold the API."
+pnpm run account lift 3
+```
+
+The number is the developer account's id, and the reason is 1 to 500
+characters. `suspend` also cancels at once every Stripe subscription that may
+still bill the account, as deleting it does, and puts the fingerprint of each
+card on its Stripe customer on a Radar block list, so the same card cannot pay
+from a new account. `lift` takes those items off the list again, and leaves the
+subscriptions cancelled. Stripe is reached with `STRIPE_SECRET_KEY` from the
+environment, and the block list is `STRIPE_RADAR_BLOCK_LIST`, the id (`rsl_…`)
+of a `card_fingerprint` value list made in the Stripe Dashboard; the command
+never makes one. Without the list, the Radar step is skipped and the command
+says so. Without the key, a subscription that may still bill is named and the
+command exits 1, with the account suspended all the same. Both commands can be
+run again: a second `suspend` keeps the first time and reason and finishes any
+Stripe step that failed. Both write to the `APP_DB` in `SEED_STATE`, as
+`pnpm run plan` does.
+
 ### Review a reader's report
 
 A report sent from a word page's *Report a mistake* box waits in
@@ -348,7 +377,8 @@ There are two databases, each with its own schema and its own Worker binding
 - **The app database**, bound as `APP_DB`, holds the app tables
   (`developer_account`, `provider_identity`, `developer_session`,
   `verification`, `api_key`, `api_key_minute`, `api_key_usage`,
-  `reader_report`, `report_opening`, `subscription`, `enterprise_plan`),
+  `reader_report`, `report_opening`, `subscription`, `enterprise_plan`,
+  `plan_notice`, `suspension_card_block`),
   defined in Drizzle in
   [src/db/app/schema.ts](./src/db/app/schema.ts). The first four are
   better-auth's, generated with `pnpm dlx auth@1.7.6 generate --adapter drizzle
@@ -463,6 +493,7 @@ After that, `git worktree add` sets the new tree up by itself: it links
 
 ```
 src/
+├── accounts/       # developer accounts, sign-in, and suspension; `pnpm run account`
 ├── api/            # API keys, call counts and per-key counters; `pnpm run api-key`
 ├── bench/          # the exact-lookup benchmark and its synthetic corpus; `pnpm run bench:lookup`
 ├── billing/        # plans, plan states and the Enterprise plan; `pnpm run plan`

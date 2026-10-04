@@ -35,8 +35,13 @@
 //
 // The dashboard and its settings page (#190) are for a signed-in developer
 // only: without a session each answers 303 to sign-in.
+//
+// A suspended account (#573, src/accounts/suspension.ts) may still delete
+// itself here, and every other action is refused 403 before it runs, whatever
+// the page shows.
 
 import { deleteAccount } from "@lexema/accounts/accounts.ts";
+import { accountSuspension } from "@lexema/accounts/suspension.ts";
 import { billingOf, type BillingSetup, type StripeSettings } from "@lexema/accounts/billing.ts";
 import { csrfMatches, csrfToken } from "@lexema/accounts/csrf.ts";
 import { createAccountKey, listAccountKeys, revokeAccountKey } from "@lexema/api/ownedKeys.ts";
@@ -44,7 +49,7 @@ import { appTablesOverD1, type AppTables } from "@lexema/db/app/database.ts";
 import { accountMailOf, workerEmailOf, type EmailBinding } from "@lexema/email/send.ts";
 import { log } from "@lexema/log/requestLog.ts";
 import { accessOf, defaultKeyName, draftOf, readDraft } from "@/lib/developers/createKeyForm.ts";
-import { CSRF_FIELD, DASHBOARD, DELETE_CONFIRM_FIELD, DELETE_CONFIRMATION, SETTINGS, UNREACHABLE, type ActionAnswer } from "@/lib/developers/dashboardActions.ts";
+import { CSRF_FIELD, DASHBOARD, DELETE_CONFIRM_FIELD, DELETE_CONFIRMATION, SETTINGS, SUSPENDED, UNREACHABLE, type ActionAnswer } from "@/lib/developers/dashboardActions.ts";
 import { keyRowOf } from "@/lib/developers/dashboardView.ts";
 import { DEVELOPERS_SEGMENT, originsOf } from "../shared/hosts.ts";
 import type { FetchHandler } from "../shared/fetchHandler.ts";
@@ -65,6 +70,9 @@ export type DashboardRoute =
   | { kind: "create-key" }
   | { kind: "revoke-key"; keyId: number }
   | { kind: "delete-account" };
+
+/** Whether a suspended account may take this action: deleting itself, and nothing else. */
+const openWhileSuspended = (route: DashboardRoute): boolean => route.kind === "delete-account";
 
 const KEY_ID = /^[1-9][0-9]{0,14}$/;
 
@@ -164,6 +172,7 @@ export async function answerDashboard(request: Request, route: DashboardRoute, c
     if (form === undefined || !(await csrfMatches(session, field(form, CSRF_FIELD)))) {
       return refuse(403, "This form has expired. Reload the page and try again.");
     }
+    if (!openWhileSuspended(route) && (await accountSuspension(db, accountId)) !== undefined) return refuse(403, SUSPENDED);
 
     switch (route.kind) {
       case "create-key": {

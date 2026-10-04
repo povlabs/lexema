@@ -6,7 +6,7 @@
 // per-visitor limits or the App Router, and the API never sets a cookie.
 //
 // A request goes: its `X-API-Key` (401 when missing, unknown, revoked or
-// expired), its account's plan (402 when an owned key's account has none
+// expired, 403 when its account is suspended, #573), its account's plan (402 when an owned key's account has none
 // serving, #263), its endpoint (404 when there is none, 403 when the key may
 // not call it, #187) and method (405), the endpoint's reading of it (400 when
 // it cannot be read), then its calls counted toward the minute and the billing
@@ -31,11 +31,13 @@ import { meteringOver, type MeteringBindings } from "./metering.ts";
 
 export type { ApiContext, ErrorJson } from "./answer.ts";
 
-const REFUSAL: Record<KeyRefusal, ErrorJson> = {
-  missing: error("missing_key", "Send your API key in the X-API-Key header."),
-  unknown: error("invalid_key", "This API key is not valid."),
-  revoked: error("revoked_key", "This API key has been revoked."),
-  expired: error("expired_key", "This API key has expired."),
+/** Each refused key's status and answer. A suspended account's key is a real key that may not call now: 403, not 401. */
+const REFUSAL: Readonly<Record<KeyRefusal, { readonly status: 401 | 403; readonly body: ErrorJson }>> = {
+  missing: { status: 401, body: error("missing_key", "Send your API key in the X-API-Key header.") },
+  unknown: { status: 401, body: error("invalid_key", "This API key is not valid.") },
+  revoked: { status: 401, body: error("revoked_key", "This API key has been revoked.") },
+  expired: { status: 401, body: error("expired_key", "This API key has expired.") },
+  suspended: { status: 403, body: error("account_suspended", "This key's account is suspended.") },
 };
 
 /**
@@ -57,7 +59,10 @@ export async function handleApi(request: Request, context: ApiContext): Promise<
   const url = new URL(request.url);
   try {
     const authentication = await authenticate(appDb, request.headers.get("x-api-key"), now);
-    if (authentication.outcome === "refused") return json(401, REFUSAL[authentication.refusal]);
+    if (authentication.outcome === "refused") {
+      const { status, body } = REFUSAL[authentication.refusal];
+      return json(status, body);
+    }
     const standing = keyStanding(authentication.key, appDb, metering, now);
     if (standing.outcome === "plan-required") return json(402, planRequired(originsOf(url.hostname)));
     const { limits } = standing;

@@ -793,6 +793,14 @@ const PLAN_BUTTON = `inline-flex h-[2.3125rem] cursor-pointer items-center justi
 export const PLAN_BUTTON_PRIMARY = `${PLAN_BUTTON} border-accent bg-accent text-surface`;
 /** Choose Starter, and Manage billing otherwise: outlined. */
 export const PLAN_BUTTON_OUTLINE = `${PLAN_BUTTON} border-border-strong bg-transparent text-text-strong hover:border-text-muted`;
+/**
+ * A suspended account's one card (#573), with no board of its own: the Plan
+ * card's box, title and line, with Delete account where the plan's buttons go.
+ * Nothing sits above it, so it starts where the dashboard's heading would.
+ */
+export const SUSPENDED_CARD = `${ROW_CARD} px-4 pt-[1.125rem] pb-[1.1875rem] sm:px-6 sm:py-5`;
+export const SUSPENDED_TITLE = PLAN_TITLE;
+export const SUSPENDED_LINE = PLAN_LINE;
 /** The account card's words, 2.5 px under the card's middle on a wide screen (board 28). */
 export const ACCOUNT_TEXT = "sm:pt-[0.3125rem]";
 export const ACCOUNT_TITLE = "m-0 font-sans text-[0.9375rem] leading-5 font-semibold text-text-strong";

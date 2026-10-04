@@ -46,6 +46,13 @@ export type ActionAnswer =
   | { readonly outcome: "signed-out"; readonly location: string }
   | { readonly outcome: "refused"; readonly message: string };
 
+/**
+ * What a suspended account is told when it asks for anything but deleting
+ * itself or signing out (#573): the dashboard's actions, Checkout and the
+ * billing portal.
+ */
+export const SUSPENDED = "Your account is suspended.";
+
 /** What the page says when an action could not be reached at all. */
 export const UNREACHABLE = "That could not be done. Try again later.";
 

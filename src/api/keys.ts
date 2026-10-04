@@ -5,11 +5,14 @@
 // CLI in src/api/keyCli.ts, has no owner and carries its own per-minute limit
 // (Huey, #148). An owned key is made by a developer account in the dashboard
 // (src/api/ownedKeys.ts) and carries no limit: its limits are its account's
-// plan's (#161), read with the key. Both are this one kind of row.
+// plan's (#161), read with the key. Both are this one kind of row. An owned
+// key whose account is suspended is refused, and answers again once the
+// suspension is lifted (#573, src/accounts/suspension.ts); it is not revoked.
 
 import { and, eq, isNull, lte, or } from "drizzle-orm";
 import type { AppDatabase, AppTables } from "../db/app/database.js";
-import { apiKey, enterprisePlan, subscription } from "../db/app/schema.js";
+import { apiKey, developerAccount, enterprisePlan, subscription } from "../db/app/schema.js";
+import { isSuspended } from "../accounts/suspension.js";
 import { planJoins, stateOfPlanRows, type PlanRows } from "../billing/accountPlan.js";
 import type { PlanState } from "../billing/plans.js";
 import { endpointsOfColumn, type EndpointScope } from "./keyAccess.js";
@@ -89,20 +92,30 @@ function holderOf(row: KeyRow & PlanRows): KeyHolder {
   return { kind: "admin", perMinuteLimit: row.perMinuteLimit };
 }
 
-/** Why a request's key was refused. A key both revoked and expired reads as revoked. */
-export type KeyRefusal = "missing" | "unknown" | "revoked" | "expired";
+/**
+ * Why a request's key was refused. A key both revoked and expired reads as
+ * revoked, and either reads before its account's suspension (#573).
+ */
+export type KeyRefusal = "missing" | "unknown" | "revoked" | "expired" | "suspended";
 
 export type Authentication = { outcome: "accepted"; key: ApiKey } | { outcome: "refused"; refusal: KeyRefusal };
 
 /**
  * The key a presented one hashes to, through the unique index on `key_hash`,
- * with its owner's plan rows in the same read (#263): none for an admin key.
+ * with its owner's plan rows (#263) and suspension (#573) in the same read:
+ * none for an admin key.
  */
 export const keyByHashQuery = (db: AppDatabase, hash: string) => {
   const joins = planJoins(db, apiKey.ownerAccountId);
   return db
-    .select({ ...KEY_COLUMNS, enterprise: enterprisePlan, subscription })
+    .select({
+      ...KEY_COLUMNS,
+      owner: { suspendedAt: developerAccount.suspendedAt, suspensionReason: developerAccount.suspensionReason },
+      enterprise: enterprisePlan,
+      subscription,
+    })
     .from(apiKey)
+    .leftJoin(developerAccount, eq(developerAccount.id, apiKey.ownerAccountId))
     .leftJoin(enterprisePlan, joins.enterprise)
     .leftJoin(subscription, joins.subscription)
     .where(eq(apiKey.keyHash, hash));
@@ -127,9 +140,10 @@ export const lastUsedIsStale = (lastUsedAt: string | null, now: number): boolean
 
 /**
  * The `X-API-Key` a request presented, checked against the stored hashes in one
- * read, which also reads an owned key's plan state (#263). A live key is neither
- * revoked nor expired: its `expires_at`, if it has
- * one, is still ahead of now (#187). An accepted key's `last_used_at` becomes
+ * read, which also reads an owned key's plan state (#263) and whether its
+ * account is suspended (#573). A live key is neither revoked nor expired: its
+ * `expires_at`, if it has one, is still ahead of now (#187). A live key of a
+ * suspended account is refused and its use is not stamped. An accepted key's `last_used_at` becomes
  * `now` when it is more than a minute old, so a key's calls write it at most
  * once a minute (#261).
  */
@@ -141,6 +155,7 @@ export async function authenticate(db: AppTables, presented: string | null, now:
   const at = new Date(now).toISOString();
   if (row.revokedAt !== null) return { outcome: "refused", refusal: "revoked" };
   if (row.expiresAt !== null && row.expiresAt <= at) return { outcome: "refused", refusal: "expired" };
+  if (row.owner !== null && isSuspended(row.owner)) return { outcome: "refused", refusal: "suspended" };
   if (lastUsedIsStale(row.lastUsedAt, now)) {
     await stampLastUsedQuery(db.app, row.keyId, at, new Date(now - LAST_USED_EVERY_MS).toISOString());
   }
