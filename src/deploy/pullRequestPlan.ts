@@ -24,11 +24,16 @@ import type { Git } from "./pending.js";
  * request lands as. A file that is not a declaration is refused, naming it.
  */
 export function addedDeclarations(git: Git, base: string, head: string): DeclarationDraft[] {
+  return addedDeclarationFiles(git, base, head).map(({ file, text }) => parseDraft(file, text));
+}
+
+/** The declaration files `head` adds past `base`, in path order, each with its text as `head` holds it. */
+export function addedDeclarationFiles(git: Git, base: string, head: string): { readonly file: string; readonly text: string }[] {
   return git
     .run(["diff", "--name-only", "--diff-filter=A", base, head, "--", DECLARATIONS_DIR])
     .split("\n")
     .filter(isDeclarationPath)
-    .map((path) => parseDraft(path, git.run(["show", `${head}:${path}`])));
+    .map((file) => ({ file, text: git.run(["show", `${head}:${file}`]) }));
 }
 
 /** What the check found for one declaration the pull request adds. */

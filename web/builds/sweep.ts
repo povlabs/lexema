@@ -1,6 +1,6 @@
 // The sweep (ADR 0018): on each push to `production`, before production
-// deploys, delete the Preview and app database of every branch with no open
-// pull request. A merged pull request is cleaned up at the production build
+// deploys, delete the Preview, the app database and the dictionary slice
+// (#447) of every branch with no open pull request. A merged pull request is cleaned up at the production build
 // that follows its merge; one closed without merging, at the next production
 // build.
 //
@@ -12,10 +12,12 @@
 // What exists is read from the account's D1 databases: the preview command
 // creates `lexema-preview-app-<name>` before it runs `wrangler preview --name
 // <name>`, so every Preview it made has one, and Wrangler 4.135.0 has no
-// command that lists Previews. Only databases with that prefix are ever
-// selected, and the shared dictionary never is.
+// command that lists Previews. A branch that changes dictionary data may also
+// have `lexema-preview-dict-<name>`, its dictionary slice; a slice found with
+// no app database still names its Preview. Only databases with those prefixes
+// are ever selected, and the shared dictionary never is.
 
-import { DICTIONARY } from "./previewConfig.ts";
+import { isDictionary } from "./previewConfig.ts";
 import { PreviewName } from "./previewName.ts";
 import { type D1Database, listDatabases, type Wrangler } from "./wrangler.ts";
 
@@ -39,10 +41,11 @@ export type OpenBranches =
   | { readonly state: "read"; readonly branches: ReadonlySet<string> }
   | { readonly state: "unread"; readonly reason: string };
 
-/** One branch's leftovers the sweep deletes. */
+/** One branch's leftovers the sweep deletes: its Preview, and its app database, its dictionary slice or both. */
 export interface SweepTarget {
   readonly preview: PreviewName;
-  readonly database: D1Database;
+  /** In the order they are deleted: the slice first, then the app database. */
+  readonly databases: readonly [D1Database, ...D1Database[]];
 }
 
 /**
@@ -82,18 +85,35 @@ export async function readOpenBranches(token: string | undefined, fetchPage: typ
   return { state: "unread", reason: `more than ${MAX_PAGES * PAGE_SIZE} open pull requests` };
 }
 
+/** The Preview a database belongs to, and which of its databases it is, or none for any other database. */
+function previewOf(database: D1Database): { preview: PreviewName; kind: "slice" | "app" } | undefined {
+  if (isDictionary({ name: database.name, id: database.uuid })) return undefined;
+  const slice = PreviewName.ofSliceDatabase(database.name);
+  if (slice !== undefined) return { preview: slice, kind: "slice" };
+  const app = PreviewName.ofAppDatabase(database.name);
+  return app === undefined ? undefined : { preview: app, kind: "app" };
+}
+
 /**
- * What the sweep deletes: each Preview app database whose branch has no open
- * pull request, with its Preview. Nothing when the open list is unread, and
- * never a database without the Preview prefix or the shared dictionary.
+ * What the sweep deletes: each Preview whose branch has no open pull request,
+ * with its app database and its dictionary slice, either of which alone names
+ * it. Nothing when the open list is unread, and never a database without a
+ * Preview prefix or the shared dictionary.
  */
 export function selectForSweep(databases: readonly D1Database[], open: OpenBranches): SweepTarget[] {
   if (open.state !== "read") return [];
   const live = new Set([...open.branches].map((branch) => PreviewName.ofBranch(branch).value));
-  return databases.flatMap((database) => {
-    if (database.uuid === DICTIONARY.id || database.name === DICTIONARY.name) return [];
-    const preview = PreviewName.ofAppDatabase(database.name);
-    return preview === undefined || live.has(preview.value) ? [] : [{ preview, database }];
+  const byPreview = new Map<string, { preview: PreviewName; slices: D1Database[]; apps: D1Database[] }>();
+  for (const database of databases) {
+    const owner = previewOf(database);
+    if (owner === undefined || live.has(owner.preview.value)) continue;
+    const target = byPreview.get(owner.preview.value) ?? { preview: owner.preview, slices: [], apps: [] };
+    (owner.kind === "slice" ? target.slices : target.apps).push(database);
+    byPreview.set(owner.preview.value, target);
+  }
+  return [...byPreview.values()].map(({ preview, slices, apps }) => {
+    const [first, ...rest] = [...slices, ...apps];
+    return { preview, databases: [first, ...rest] };
   });
 }
 
@@ -106,9 +126,10 @@ export interface SweepSteps {
 }
 
 /**
- * Delete what `selectForSweep` selects. Each Preview goes first; its database
- * goes only once the Preview is gone, so a failed delete leaves the database
- * as the record the next sweep retries from. Returns what it deleted.
+ * Delete what `selectForSweep` selects. Each Preview goes first; its
+ * databases go only once the Preview is gone, so a failed delete leaves them
+ * as the record the next sweep retries from. A database that fails to delete
+ * stays for the next sweep too. Returns the targets it deleted whole.
  */
 export async function sweep({ wrangler, token, fetchPage, log }: SweepSteps): Promise<SweepTarget[]> {
   const open = await readOpenBranches(token, fetchPage);
@@ -120,17 +141,19 @@ export async function sweep({ wrangler, token, fetchPage, log }: SweepSteps): Pr
   log(`sweep: ${open.branches.size} open pull request branch(es); ${targets.length} Preview(s) to delete`);
   const deleted: SweepTarget[] = [];
   for (const target of targets) {
-    const { preview } = target;
+    const { preview, databases } = target;
+    const names = databases.map(({ name }) => name).join(" and ");
     const removed = wrangler(["preview", "delete", "--name", preview.value, "--worker-name", WORKER, "--skip-confirmation"]);
     if (!removed.ok && !`${removed.stdout}${removed.stderr}`.includes(PREVIEW_NOT_FOUND)) {
-      log(`sweep: could not delete Preview ${preview}; keeping ${preview.appDatabase} for the next sweep`);
+      log(`sweep: could not delete Preview ${preview}; keeping ${names} for the next sweep`);
       continue;
     }
-    if (!wrangler(["d1", "delete", preview.appDatabase, "--skip-confirmation"]).ok) {
-      log(`sweep: deleted Preview ${preview}, but not ${preview.appDatabase}`);
+    const kept = databases.filter(({ name }) => !wrangler(["d1", "delete", name, "--skip-confirmation"]).ok);
+    if (kept.length > 0) {
+      log(`sweep: deleted Preview ${preview}, but not ${kept.map(({ name }) => name).join(" and ")}`);
       continue;
     }
-    log(`sweep: deleted Preview ${preview} and ${preview.appDatabase}`);
+    log(`sweep: deleted Preview ${preview} and ${names}`);
     deleted.push(target);
   }
   return deleted;
