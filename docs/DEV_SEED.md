@@ -114,8 +114,7 @@ The seed records the archive's download URL, download time and source dump only
 from [`src/source/archiveFacts.ts`](../src/source/archiveFacts.ts), for the
 file whose SHA-256 they are keyed by: today the July archive, `it-0c432803`,
 whose dump `itwiktionary-20260701` is stored as `inferred`. Any other file,
-including this fixture, leaves them NULL, and `/attribution` says *not
-recorded*. The fixture is a byte-for-byte selection of that archive's lines,
+including this fixture, leaves them NULL. The fixture is a byte-for-byte selection of that archive's lines,
 but it is a different file, and the facts were read off the archive, not off
 it. The run prints which facts it recorded, and checks them in the loaded row.
 
@@ -195,6 +194,6 @@ both. An older database has neither column, so every search on it fails until
 `pnpm run seed:dev` rebuilds its `SEED_STATE`.
 
 **A database seeded before #133 must be reseeded as well.** `source_release`
-gained `upstream_release_basis`, and every lookup and the attribution page read
-it, so both fail on an older database until `pnpm run seed:dev` rebuilds its
+gained `upstream_release_basis`, and every lookup reads
+it, so a lookup fails on an older database until `pnpm run seed:dev` rebuilds its
 `SEED_STATE`. A full release needs the same reseed, into a fresh `SEED_STATE`.

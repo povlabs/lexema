@@ -40,7 +40,7 @@ export const TOP_BAR = "border-b border-border";
 export const TOP_BAR_INNER = `${COLUMN} flex h-16 items-center`;
 export const TOP_BAR_NAME = `font-serif text-xl text-text-strong no-underline ${FOCUS_RING}`;
 
-/** C2: the name at the left, four small links at the right. */
+/** C2: the name at the left, three small links at the right. */
 /**
  * The site footer's rule sits the Source line's gap below the page: the
  * shell's `pb-4` plus this margin make 48px, 36px on a phone.
@@ -50,7 +50,8 @@ export const SITE_FOOTER_INNER = `${COLUMN} flex flex-wrap items-center justify-
 /** The footer's wordmark, a link home like the top bar's. */
 export const SITE_FOOTER_NAME = `font-serif text-base text-text-strong no-underline ${FOCUS_RING}`;
 export const SITE_FOOTER_LINKS = "m-0 flex list-none flex-wrap gap-x-6 gap-y-2 p-0";
-export const SITE_FOOTER_LINK = `font-sans text-[0.8rem] text-text-muted no-underline hover:text-text ${FOCUS_RING}`;
+/** The link to the page being shown is drawn in `text-strong`. */
+export const SITE_FOOTER_LINK = `font-sans text-[0.8rem] text-text-muted no-underline hover:text-text aria-[current=page]:text-text-strong ${FOCUS_RING}`;
 
 /**
  * Frame 00: before a query the page is the name and the bar, centred on the
@@ -140,8 +141,6 @@ export const EMPTY = `${MESSAGE} text-text-muted`;
 export const ERROR = `${MESSAGE} text-warning`;
 /** A small aside beside a value. */
 export const MUTED = "font-sans text-[0.85rem] text-text-muted";
-/** Something the source left open, said plainly and never in colour alone. */
-export const AMBIGUOUS = "font-sans text-[0.85rem] text-text-muted";
 
 // The result ----------------------------------------------------------------
 //
@@ -408,33 +407,39 @@ export const REPORT_SENT_CHECK = "font-sans text-base text-accent";
 export const REPORT_SENT_TEXT = "m-0 mt-4 font-sans text-[0.9rem] text-text";
 export const REPORT_CLOSE = `mt-5 cursor-pointer rounded-[3px] border border-border-strong bg-transparent px-4 py-2 font-sans text-[0.9rem] text-text-strong hover:border-text-muted ${FOCUS_RING}`;
 
-// The attribution page ---------------------------------------------------
+// The legal pages (#139, frames 33, 33m, 34 and 34m) ------------------------
+//
+// `/licence` and `/privacy`: a kicker, the title in serif, the date the text
+// took effect, the lede with a rule under it, then numbered sections. On a
+// wide screen a Contents list of the sections sits in a column on the left;
+// on a phone there is none, and the text is the whole column.
 
-/** Prose on the attribution page, where the browser's own margins used to do it. */
-export const PARAGRAPH = "my-4";
-export const PAGE_HEADING = "m-0 mt-6 font-serif text-[2.5rem] font-normal text-text-strong";
-export const SECTION_HEADING = "my-[0.83em] text-2xl font-bold text-text-strong";
-export const PROSE_LIST = "my-4 list-disc pl-10";
-
-/** The release identity's rows, which the page omits when it cannot read one. */
-export const RELEASE_FIELDS = "my-[0.8rem]";
-/** The fields the attribution draft leaves open, which are always shown. */
-export const OPEN_FIELDS = RELEASE_FIELDS;
-export const FIELD = "my-[0.6rem]";
-export const FIELD_LABEL =
-  "text-[0.78rem] font-semibold uppercase tracking-[0.06em] text-text-muted";
-export const FIELD_VALUE = "mt-[0.15rem] mb-0";
-/**
- * The "— open" mark inside a field label. It reads as a sentence rather than
- * as a tag, so it drops the label's own upper-casing and letter-spacing.
- */
-export const OPEN_MARK = `${AMBIGUOUS} normal-case tracking-normal`;
-
-/**
- * A release identity: long, and broken wherever it has to be to fit. Every
- * `<code>` already renders in `--font-mono` through Tailwind's base layer.
- */
-export const CODE_IDENTITY = "text-[0.85em] break-all";
+export const LEGAL_SHELL = `${COLUMN} flex-1 pt-12 pb-12 max-sm:pt-8 max-sm:pb-8`;
+export const LEGAL_LAYOUT = "sm:grid sm:grid-cols-[12rem_minmax(0,1fr)] sm:gap-x-16";
+/** The Contents column, hidden on a phone; it stays in view while the text scrolls. */
+export const LEGAL_CONTENTS = "hidden sm:block";
+export const LEGAL_CONTENTS_INNER = "sticky top-8";
+export const LEGAL_CONTENTS_LABEL = "m-0 font-sans text-[0.6875rem] leading-4 font-semibold tracking-[0.08em] text-text-muted uppercase";
+export const LEGAL_CONTENTS_LIST = "m-0 mt-3 flex list-none flex-col gap-2 p-0";
+export const LEGAL_CONTENTS_LINK = `flex gap-2 font-sans text-[0.84375rem] leading-5 text-text no-underline hover:text-text-strong ${FOCUS_RING}`;
+export const LEGAL_CONTENTS_NUMBER = "w-4 shrink-0 text-accent";
+export const LEGAL_TEXT = "min-w-0 max-w-[42rem]";
+export const LEGAL_KICKER = "m-0 font-sans text-[0.75rem] leading-4 font-medium tracking-[0.12em] text-accent";
+export const LEGAL_TITLE = "m-0 mt-4 font-serif text-[2.5rem] leading-[1.15] font-normal text-text-strong max-sm:text-[2rem]";
+export const LEGAL_EFFECTIVE = "m-0 mt-3 font-sans text-[0.8125rem] text-text-muted";
+/** The lede, and the rule that closes the page's head. */
+export const LEGAL_LEDE = "m-0 mt-6 border-b border-border pb-8 font-serif text-[1.1875rem] leading-[1.6] text-text-strong";
+/** A section; the gap above its heading is kept when a Contents link scrolls to it. */
+export const LEGAL_SECTION = "mt-10 scroll-mt-8";
+export const LEGAL_SECTION_HEADING = "m-0 flex items-baseline gap-3 font-serif text-[1.375rem] leading-[1.3] font-normal text-text-strong";
+export const LEGAL_SECTION_NUMBER = "font-sans text-[0.9375rem] text-accent";
+export const LEGAL_PARAGRAPH = "m-0 mt-4 font-serif text-[1.0625rem] leading-[1.7] text-text";
+/** The lettered items, `(a)` and `(b)`, set in from the paragraph that opens them. */
+export const LEGAL_ITEMS = "m-0 mt-3 flex list-none flex-col gap-2 p-0 pl-6 font-serif text-[1.0625rem] leading-[1.7] text-text";
+/** A release id or a date, kept on one line: a phone broke `it-78385b62` at its hyphen. */
+export const LEGAL_UNBROKEN = "whitespace-nowrap";
+/** The privacy mailbox, on its own line. */
+export const LEGAL_ADDRESS = "m-0 mt-3 font-serif text-[1.0625rem] leading-[1.7]";
 
 // The developer site (#166) -------------------------------------------------
 //

@@ -9,9 +9,9 @@
 // fixture cut from this one — gets none of them.
 //
 // This is the one place these facts live. The seed copies them into
-// `source_release` (src/db/schema.sql), and the attribution page reads the
-// published archive's facts from here, so it shows them whether or not a
-// database is attached; nothing else types them in.
+// `source_release` (src/db/schema.sql), and the Licence page reads the served
+// release's dump from here (src/source/servedRelease.ts), so it shows it
+// whether or not a database is attached; nothing else types them in.
 
 /** A Wikimedia dump id, `itwiktionary-` and the dump's date as `YYYYMMDD`. */
 export type WiktionaryDumpId = `itwiktionary-${string}`;
@@ -88,24 +88,8 @@ export function dumpPage(id: WiktionaryDumpId): { date: string; url: string } {
   };
 }
 
-/** What the attribution page says about where Lexema's data came from. */
-export interface ReleaseSource {
-  /** The dump's date and Wikimedia page, or null when none is recorded. */
-  dump: { date: string; url: string } | null;
-  /** The URL the archive was downloaded from, or null when none is recorded. */
-  sourceUrl: string | null;
-}
-
 /**
  * The archive Lexema publishes: the July `it-extract.jsonl.gz`, named the
  * 1 July 2026 snapshot by ADR 0013.
  */
 export const PUBLISHED_ARCHIVE_SHA256 = "0c432803c672aceccd48787eb64807c5366fdbd6796715c9a99e31c0024d5dcf";
-
-/** Where an archive came from, as far as this repository records. */
-export function sourceOf(sha256: string, catalog: ArchiveFactsCatalog = ARCHIVE_FACTS): ReleaseSource {
-  const facts = archiveFactsFor(sha256, catalog);
-  return facts === undefined
-    ? { dump: null, sourceUrl: null }
-    : { dump: dumpPage(facts.dump.id), sourceUrl: facts.sourceUrl };
-}

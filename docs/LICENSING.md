@@ -79,7 +79,9 @@ and this section as its evidence. A seed of this file copies them into `source_r
 Italian Wiktionary dump of 1 July 2026 linked to
 [its Wikimedia page](https://dumps.wikimedia.org/itwiktionary/20260701/), and the kaikki.org
 download the file came from. The download time, the checksum, the basis and this reasoning stay
-here and in the facts file, not on the page.
+here and in the facts file, not on the page. Since [#139](https://github.com/povlabs/lexema/issues/139)
+the page is `/licence`, and it names the release the dictionary serves and its dump date instead
+(ADR 0009, amendment #139).
 
 ### 1.4 How a future release becomes traceable
 
