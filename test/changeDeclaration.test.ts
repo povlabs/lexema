@@ -180,6 +180,14 @@ test("every declaration already in dictionary-changes parses as before, with no 
       );
       continue;
     }
+    // The second update:auto of it-78385b62, planned on the read fields (#560).
+    if (name === "2026-10-04-update-auto-read-fields-it-78385b62.json") {
+      assert.deepEqual(
+        parseDeclaration(path, text).lookups?.map((item) => item.word),
+        ["informatica", "stonare", "console"],
+      );
+      continue;
+    }
     for (const parsed of [parseDeclaration(path, text), parseDraft(path, text)]) {
       assert.deepEqual(Object.keys(parsed).sort(), ["command", "expected", "file", "inputs"], path);
     }

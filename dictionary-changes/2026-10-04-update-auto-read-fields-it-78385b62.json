@@ -1,0 +1,9 @@
+{
+  "command": "update:auto",
+  "inputs": { "feedRelease": "it-78385b62" },
+  "lookups": [
+    { "word": "informatica", "gloss": "concetti logici, statistici e matematici" },
+    { "word": "stonare", "gloss": "apparire troppo diverso dagli altri elementi del contesto" },
+    { "word": "console", "gloss": "per riprodurre, creare e modificare manualmente musica" }
+  ]
+}
