@@ -22,32 +22,13 @@
 // the wide one, so from `sm` up the page is the one the wide boards draw.
 
 /**
- * The one column every page is laid out in, and the chrome lines up with. At
- * 1440 px its content starts at x = 120, where frames 33 and 34 draw the
- * header name, the legal pages' Contents and the footer (#581).
+ * The one column every page on both sites is laid out in, and the chrome lines
+ * up with. At 1440 px its content starts at x = 120, where frames 10 to 34
+ * draw the header name, the page's first row, the legal pages' Contents and
+ * the footer (#581). On a phone it is 20 px in, where frames 19 to 21 draw the
+ * word pages and frames 33m to 36m the legal pages (#588, #595).
  */
-const COLUMN = "mx-auto w-full max-w-[78rem] px-4 sm:px-6";
-
-/**
- * The developer site's column (#166): the same 1200 px of content, 120 px in
- * from a 1440 px window, but 20 px in on a phone, where `COLUMN` is 16.
- */
-const DEV_COLUMN = "mx-auto w-full max-w-[78rem] px-5 sm:px-6";
-
-/**
- * Which column a dictionary page and its chrome are laid out in. Frames 33m
- * and 34m draw the legal pages' header name, text and footer 20 px in on a
- * phone, the developer site's edge; every other page keeps `COLUMN`'s 16 px
- * (#588). From `sm` up the two are the same column. The header, the footer
- * and the legal shell each read this one table, so a page cannot put its
- * header and its text on different edges.
- */
-export type DictionaryColumn = "page" | "legal";
-const DICTIONARY_COLUMN: Readonly<Record<DictionaryColumn, string>> = { page: COLUMN, legal: DEV_COLUMN };
-const inDictionaryColumn = (rest: string): Readonly<Record<DictionaryColumn, string>> => ({
-  page: `${DICTIONARY_COLUMN.page} ${rest}`,
-  legal: `${DICTIONARY_COLUMN.legal} ${rest}`,
-});
+const COLUMN = "mx-auto w-full max-w-[78rem] px-5 sm:px-6";
 
 /** The focus ring the manifest rules: `accent`, and never removed. */
 const FOCUS_RING =
@@ -61,11 +42,12 @@ export const LINK = `text-accent underline ${FOCUS_RING}`;
 // Page chrome -------------------------------------------------------------
 
 /**
- * C1: a full-width bar, the name at the left, a hairline under it. From `sm` up
- * the bar is 72px, as frames 33 and 34 draw it (#593).
+ * C1: a full-width bar, the name at the left, a hairline under it. The bar is
+ * 72 px from `sm` up, as frames 10 to 34 draw it (#593), and 55 px on a phone,
+ * as frames 33m and 34m draw it, with the name's ink 21 px from the top (#595).
  */
 export const TOP_BAR = "border-b border-border";
-export const TOP_BAR_INNER = inDictionaryColumn("flex h-16 items-center sm:h-18");
+export const TOP_BAR_INNER = `${COLUMN} flex h-13.75 items-center pt-1 sm:h-18 sm:pt-0`;
 /**
  * The name is 22px from `sm` up, as frames 33 and 34 draw it (#593). On a phone
  * the name, and the footer's name and links below, are drawn at the smaller
@@ -73,18 +55,19 @@ export const TOP_BAR_INNER = inDictionaryColumn("flex h-16 items-center sm:h-18"
  */
 export const TOP_BAR_NAME = `font-serif text-[1.375rem] text-text-strong no-underline max-sm:text-[1.125rem] ${FOCUS_RING}`;
 
-/** C2: the name at the left, three small links at the right. */
 /**
- * The site footer's rule sits the Source line's gap below the page: the
- * shell's `pb-4` plus this margin make 48px, 36px on a phone.
+ * C2: the name at the left, three small links at the right. Its rule sits
+ * 45 px below the page from `sm` up, with the shell's own bottom padding, and
+ * its name's ink 32 px under the rule, as frames 10 to 34 draw them; on a
+ * phone, 25 px under the rule, as frames 33m and 34m draw it (#595).
  */
-export const SITE_FOOTER = "mt-5 border-t border-border sm:mt-8";
-export const SITE_FOOTER_INNER = inDictionaryColumn("flex flex-wrap items-center justify-between gap-4 py-8");
+export const SITE_FOOTER = "mt-5 border-t border-border sm:mt-7.25";
+export const SITE_FOOTER_INNER = `${COLUMN} flex flex-wrap items-center justify-between gap-4 pt-4.25 pb-4.5 sm:pt-6.25 sm:pb-7.25`;
 /** The footer's wordmark, a link home like the top bar's. */
 export const SITE_FOOTER_NAME = `font-serif text-base text-text-strong no-underline max-sm:text-[0.875rem] ${FOCUS_RING}`;
 export const SITE_FOOTER_LINKS = "m-0 flex list-none flex-wrap gap-x-6 gap-y-2 p-0 max-sm:gap-x-[0.9375rem]";
-/** The link to the page being shown is drawn in `text-strong`. */
-export const SITE_FOOTER_LINK = `font-sans text-[0.8rem] text-text-muted no-underline hover:text-text aria-[current=page]:text-text-strong max-sm:text-[0.6875rem] ${FOCUS_RING}`;
+/** 12.5 px from `sm` up, as frames 33 and 34 draw it (#595); the link to the page being shown is drawn in `text-strong`. */
+export const SITE_FOOTER_LINK = `font-sans text-[0.78125rem] text-text-muted no-underline hover:text-text aria-[current=page]:text-text-strong max-sm:text-[0.6875rem] ${FOCUS_RING}`;
 
 /**
  * Frame 00: before a query the page is the name and the bar, centred on the
@@ -101,9 +84,11 @@ export const HOME_TAGLINE = "m-0 mt-1 mb-10 font-serif text-[1.1rem] italic text
  * column grows to fill the window, so on a short page the footer sits at the
  * bottom of the window and the extra room falls between Source and the
  * footer; the Source line's own gap below it (design-system-manifest.md §
- * "Layout") is the minimum, and a long page is unchanged.
+ * "Layout") is the minimum, and a long page is unchanged. The first row sits
+ * 28 px under the top bar's rule from `sm` up, as frames 10 to 32 draw it, and
+ * 16 px on a phone, as frames 19 to 21 draw it (#595).
  */
-export const SHELL_TOP = `${COLUMN} flex-1 pt-6 pb-4`;
+export const SHELL_TOP = `${COLUMN} flex-1 pt-4 pb-3.25 sm:pt-7 sm:pb-4`;
 
 // The search field --------------------------------------------------------
 
@@ -449,18 +434,17 @@ export const REPORT_CLOSE = `mt-5 cursor-pointer rounded-[3px] border border-bor
 // on the left; on a phone there is none, and the text is the whole column.
 
 // Frames 33 and 35 at 1440 px: the Contents column 120 px in, 220 px wide, a
-// 96 px gap, then the 720 px text column at 436 px (#581). The shell is its
-// site's legal column, the dictionary's `legal` column or `DEV_COLUMN`, so on
-// every width the text starts on the same edge as that site's header: 120 px
-// at 1440 px, and 20 px on a phone on both sites (#585, #588). The
+// 96 px gap, then the 720 px text column at 436 px (#581). The shell is the
+// one `COLUMN`, so on every width the text starts on the same edge as its
+// site's header: 120 px at 1440 px, and 20 px on a phone (#585, #588). The
 // shell's bottom padding plus the footer's own margin make the frame's 112 px,
 // 56 px on a phone.
 const LEGAL_SHELL_SPACE = "flex-1 pt-18 pb-20 max-sm:pt-9 max-sm:pb-9";
 /** The site a legal page belongs to, which picks its shell's column. */
 export type LegalSite = "dictionary" | "developers";
 export const LEGAL_SHELL: Readonly<Record<LegalSite, string>> = {
-  dictionary: `${DICTIONARY_COLUMN.legal} ${LEGAL_SHELL_SPACE}`,
-  developers: `${DEV_COLUMN} ${LEGAL_SHELL_SPACE}`,
+  dictionary: `${COLUMN} ${LEGAL_SHELL_SPACE}`,
+  developers: `${COLUMN} ${LEGAL_SHELL_SPACE}`,
 };
 export const LEGAL_LAYOUT =
   "sm:grid sm:grid-cols-[11rem_minmax(0,1fr)] sm:gap-x-12 lg:grid-cols-[13.75rem_minmax(0,45rem)] lg:gap-x-24";
@@ -530,7 +514,7 @@ const WIDE = "w-full px-5 sm:px-10";
 /** The bar: 56 px on a phone, 68 on a wide screen. `relative` holds the ☰ button above its open menu. */
 export const DEV_BAR = "border-b border-border";
 const BAR_ROW = "flex h-14 items-center sm:h-[4.25rem]";
-export const DEV_BAR_INNER = `${DEV_COLUMN} ${BAR_ROW}`;
+export const DEV_BAR_INNER = `${COLUMN} ${BAR_ROW}`;
 export const DEV_BAR_INNER_WIDE = `${WIDE} ${BAR_ROW}`;
 /** `Lexema Developers`: the name in serif, the site in small muted sans beside it. */
 export const DEV_NAME = `flex shrink-0 items-center gap-2 font-serif text-[1.1875rem] leading-none text-text-strong no-underline sm:gap-3 sm:pt-[3px] sm:text-[1.375rem] ${FOCUS_RING}`;
@@ -568,7 +552,7 @@ export const DEV_MENU_FILLED = `${MENU_BUTTON} h-[2.625rem] border-accent bg-acc
 
 export const DEV_FOOTER = "border-t border-border";
 const FOOTER_ROW = "flex flex-col gap-[0.28125rem] py-5 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:pt-7 sm:pb-[1.625rem]";
-export const DEV_FOOTER_INNER = `${DEV_COLUMN} ${FOOTER_ROW}`;
+export const DEV_FOOTER_INNER = `${COLUMN} ${FOOTER_ROW}`;
 export const DEV_FOOTER_INNER_WIDE = `${WIDE} ${FOOTER_ROW}`;
 export const DEV_FOOTER_NAME = `self-start font-serif text-[0.9375rem] leading-6 text-text-strong no-underline ${FOCUS_RING}`;
 /**
@@ -583,7 +567,7 @@ export const DEV_FOOTER_LEGAL = "max-sm:order-2";
 export const DEV_FOOTER_LINK = `font-sans text-[0.78125rem] text-text-muted no-underline hover:text-text aria-[current=page]:text-text-strong ${FOCUS_RING}`;
 
 /** A landing or pricing page: the column, with room above the heading. */
-export const DEV_SHELL = `${DEV_COLUMN} flex-1 pt-[2.875rem] pb-[3.4375rem] sm:pt-20 sm:pb-[5.9375rem]`;
+export const DEV_SHELL = `${COLUMN} flex-1 pt-[2.875rem] pb-[3.4375rem] sm:pt-20 sm:pb-[5.9375rem]`;
 /** A page's heading: `Pricing`. */
 export const DEV_HEADING = "m-0 font-serif text-[2.125rem] leading-[1.2] font-normal text-text-strong sm:text-[3rem]";
 /** A section's heading under the page's: `Endpoints`, `What a call costs`. */
@@ -790,7 +774,7 @@ export const DEV_MENU_EMAIL = "font-sans text-[0.875rem] leading-5 text-text-mut
 export const DEV_MENU_SIGN_OUT = `cursor-pointer border-0 bg-transparent p-0 font-sans text-[0.9375rem] leading-6 text-accent ${FOCUS_RING}`;
 
 /** Sign-in (boards 27 and 27m): a raised card, 120 px under the bar (40 on a phone), ending on the Terms line (#162). */
-export const SIGN_IN_SHELL = `${DEV_COLUMN} flex-1 pt-10 pb-14 sm:pt-[7.5rem] sm:pb-40`;
+export const SIGN_IN_SHELL = `${COLUMN} flex-1 pt-10 pb-14 sm:pt-[7.5rem] sm:pb-40`;
 export const SIGN_IN_CARD = "mx-auto w-full rounded-[8px] border border-border bg-surface-raised px-[2.4375rem] pt-[2.625rem] pb-[2.4375rem] text-center sm:max-w-[27.5rem]";
 export const SIGN_IN_HEADING = "m-0 font-serif text-[2rem] leading-[2.75rem] font-normal text-text-strong";
 export const SIGN_IN_LEAD = "m-0 mt-[1.1875rem] font-sans text-[0.875rem] leading-5 text-text-muted";
@@ -804,7 +788,7 @@ export const SIGN_IN_ICON = "size-4 shrink-0";
 export const SIGN_IN_G = "w-4 shrink-0 text-center font-sans text-[0.8125rem] font-bold leading-none";
 
 /** The dashboard's column, as the landing's: the heading, the tab bar, then each section a heading with its content under it. */
-export const DASH_SHELL = `${DEV_COLUMN} flex-1 pt-[2.375rem] pb-[3.1875rem] sm:pt-20 sm:pb-[5.9375rem]`;
+export const DASH_SHELL = `${COLUMN} flex-1 pt-[2.375rem] pb-[3.1875rem] sm:pt-20 sm:pb-[5.9375rem]`;
 /** `Dashboard`: 44 px on a wide screen, as board 28 draws it; the phone size is the landing's. */
 export const DASH_HEADING = "m-0 font-serif text-[2rem] leading-[1.2] font-normal text-text-strong sm:text-[2.75rem]";
 /** Keys and usage, and Settings (#190, boards 28 and 28g): links under the heading on a hairline, the current one underlined in the accent. */

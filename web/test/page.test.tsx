@@ -46,7 +46,7 @@ import { Licence } from "@/components/dictionary/Licence";
 import { Privacy } from "@/components/dictionary/Privacy";
 import { readingIndex } from "@/components/shared/LegalContents";
 import { FirstLoad, Limited, Outcome, SearchPage, TRY_WORDS } from "@/components/dictionary/SearchPage";
-import { columnOf, SiteFooter } from "@/components/dictionary/SiteFooter";
+import { SiteFooter } from "@/components/dictionary/SiteFooter";
 import { byHost, ORIGIN } from "@/worker/shared/hosts.ts";
 import { SiteHeader } from "@/components/dictionary/SiteHeader";
 import { readingChoiceLabel } from "@/components/dictionary/ReportDialog";
@@ -1955,7 +1955,7 @@ test("the Privacy page reads, section by section, exactly as Huey approved it (#
 
 test("both legal pages: the header, a Contents column on a wide screen only, no attribution heading and no note about the page", async () => {
   for (const html of [licence(), privacy()]) {
-    assert.match(html, exact(renderToStaticMarkup(<SiteHeader column="legal" />)));
+    assert.match(html, exact(renderToStaticMarkup(<SiteHeader />)));
     // The Contents column lists every section, in order, each a link to it; on a phone it is hidden.
     const contents = html.slice(html.indexOf(`<nav class="${LEGAL_CONTENTS}"`), html.indexOf("</nav>"));
     assert.deepEqual(LEGAL_CONTENTS.split(" "), ["hidden", "sm:block"], "no Contents column on a phone");
@@ -1979,22 +1979,14 @@ test("both legal pages: the header, a Contents column on a wide screen only, no 
   assert.equal(privacyMeta.title, "Privacy — Lexema");
 });
 
-test("the dictionary's legal pages put header, text and footer 20 px in on a phone; every other page keeps 16 (#588)", () => {
-  // Frames 33m and 34m: the legal pages share the developer site's phone edge.
-  assert.equal(columnOf("/licence"), "legal");
-  assert.equal(columnOf("/privacy"), "legal");
-  for (const path of ["/", "/report", "/suggest"]) assert.equal(columnOf(path), "page", path);
+test("every dictionary page puts header, text and footer 20 px in on a phone, as frames 19 to 21, 33m and 34m draw (#588, #595)", () => {
   const gutter = (classes: string) => classes.split(" ").filter((name) => /^(sm:)?px-/.test(name));
   for (const html of [licence(), privacy()]) assert.match(html, exact(`<main class="${LEGAL_SHELL.dictionary}">`));
   const footerOf = (current: string) =>
     renderToStaticMarkup(<SiteFooter origins={ORIGIN} current={current} />).match(/<footer[^>]*><div class="([^"]*)"/)?.[1] ?? "";
-  const headerOf = (column?: "page" | "legal") =>
-    renderToStaticMarkup(<SiteHeader column={column} />).match(/<header[^>]*><div class="([^"]*)"/)?.[1] ?? "";
-  for (const classes of [LEGAL_SHELL.dictionary, headerOf("legal"), footerOf("/licence"), footerOf("/privacy")]) {
-    assert.deepEqual(gutter(classes), ["px-5", "sm:px-6"], classes);
-  }
-  // The search page and every other page keep the site column.
-  for (const classes of [headerOf(), headerOf("page"), footerOf("/")]) assert.deepEqual(gutter(classes), ["px-4", "sm:px-6"], classes);
+  const header = renderToStaticMarkup(<SiteHeader />).match(/<header[^>]*><div class="([^"]*)"/)?.[1] ?? "";
+  const shells = [LEGAL_SHELL.dictionary, SHELL_TOP, header, footerOf("/"), footerOf("/licence"), footerOf("/privacy")];
+  for (const classes of shells) assert.deepEqual(gutter(classes), ["px-5", "sm:px-6"], classes);
 });
 
 test("on a phone a legal section number is its own width and a fixed gap; from sm up it keeps #585's slot (#588)", () => {
