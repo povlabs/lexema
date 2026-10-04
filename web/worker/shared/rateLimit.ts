@@ -69,28 +69,63 @@ export const RETRY_AFTER_SECONDS = 60;
  */
 export const SEARCH_LIMITED_HEADER = "x-lexema-search-limited";
 
-/** How a request is answered once its count is spent. Each is a 429 that says when to retry. */
-export type Blocked =
-  /** Handed to the app marked with `SEARCH_LIMITED_HEADER`, so its page renders the blocked state. */
-  | { by: "page" }
-  /** Answered here with this JSON body; the app never sees it. */
-  | { by: "json"; body: unknown }
-  /** Answered here with this plain-text sentence; the app never sees it. */
-  | { by: "text"; sentence: string };
+/**
+ * How each limit is answered once its count is spent. Only the types read it,
+ * so a limit can carry no other kind of answer (#564).
+ */
+const ANSWERED_BY = {
+  search: "page",
+  suggest: "json",
+  report: "json",
+  "report-open": "json",
+  "sign-in": "text",
+  "key-create": "text",
+  billing: "text",
+} as const satisfies Record<Limit, "page" | "json" | "text">;
 
-/** A counted request: the limit it counts against, and its answer once that is spent. */
-export interface Counted<L extends Limit> {
-  limit: L;
-  blocked: Blocked;
-}
+/** The limits answered with a JSON body. */
+export type JsonLimit = { [L in Limit]: (typeof ANSWERED_BY)[L] extends "json" ? L : never }[Limit];
+
+/** A value `Response.json` sends as it is. */
+export type Json = string | number | boolean | null | Json[] | { [key: string]: Json };
+
+/**
+ * The body each of a site's JSON-answered limits carries. The site names its
+ * own, since this module imports from no site: worker/dictionary/limits.ts.
+ */
+export type JsonBodies<L extends Limit> = { [K in Extract<L, JsonLimit>]: Json };
+
+/** No body at all: the default, so a JSON answer cannot be written without its site's bodies. */
+type NoBodies<L extends Limit> = { [K in Extract<L, JsonLimit>]: never };
+
+/** How limit `L` is answered once spent, each a 429 that says when to retry. */
+type Blocked<L extends Limit, B extends JsonBodies<L>> = {
+  /** Handed to the app marked with `SEARCH_LIMITED_HEADER`, so its page renders the blocked state. */
+  page: { by: "page" };
+  /** Answered here with this JSON body; the app never sees it. */
+  json: { by: "json"; body: B[Extract<L, JsonLimit>] };
+  /** Answered here with this plain-text sentence; the app never sees it. */
+  text: { by: "text"; sentence: string };
+}[(typeof ANSWERED_BY)[L]];
+
+/**
+ * A counted request: the limit it counts against, and its answer once that is
+ * spent. One member per limit, so each limit carries only its own answer.
+ */
+export type Counted<L extends Limit, B extends JsonBodies<L> = NoBodies<L>> = {
+  [K in L]: { limit: K; blocked: Blocked<K, B> };
+}[L];
 
 /** Which of one site's requests count, or none for a request it does not count. */
-export type Counter<L extends Limit> = (url: URL, method: string) => Counted<L> | undefined;
+export type Counter<L extends Limit, B extends JsonBodies<L> = NoBodies<L>> = (url: URL, method: string) => Counted<L, B> | undefined;
 
-/** Each site's counter, as worker/index.ts hands them in. */
+/**
+ * Each site's counter, as worker/index.ts hands them in. Here a JSON body is
+ * only something to send; its type is fixed where the site writes it.
+ */
 export interface SiteLimits {
   developers: Counter<DeveloperLimit>;
-  dictionary: Counter<DictionaryLimit>;
+  dictionary: Counter<DictionaryLimit, JsonBodies<DictionaryLimit>>;
 }
 
 /**
@@ -101,7 +136,7 @@ export interface SiteLimits {
  * carrying a `q` as a search, so asked first it would count a developer route
  * that carries a `q` as a search.
  */
-function countedOf(limits: SiteLimits, url: URL, method: string): Counted<Limit> | undefined {
+function countedOf(limits: SiteLimits, url: URL, method: string): Counted<Limit, JsonBodies<Limit>> | undefined {
   return limits.developers(url, method) ?? limits.dictionary(url, method);
 }
 

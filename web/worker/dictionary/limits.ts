@@ -5,13 +5,23 @@ import type { ReportAnswer } from "@/lib/dictionary/report.ts";
 import type { SuggestAnswer } from "@/lib/dictionary/suggestAnswer.ts";
 import type { Counted, Counter, DictionaryLimit } from "../shared/rateLimit.ts";
 
+/** The body each of the dictionary's JSON-answered limits is blocked with. */
+export interface DictionaryBodies {
+  suggest: SuggestAnswer;
+  report: ReportAnswer;
+  "report-open": ReportAnswer;
+}
+
+/** A counted dictionary request, each limit with only its own answer. */
+export type DictionaryCounted = Counted<DictionaryLimit, DictionaryBodies>;
+
 const SUGGEST_LIMITED: SuggestAnswer = { outcome: "limited" };
 const REPORT_LIMITED: ReportAnswer = { outcome: "limited" };
 
-const SUGGEST: Counted<DictionaryLimit> = { limit: "suggest", blocked: { by: "json", body: SUGGEST_LIMITED } };
-const REPORT: Counted<DictionaryLimit> = { limit: "report", blocked: { by: "json", body: REPORT_LIMITED } };
-const REPORT_OPEN: Counted<DictionaryLimit> = { limit: "report-open", blocked: { by: "json", body: REPORT_LIMITED } };
-const SEARCH: Counted<DictionaryLimit> = { limit: "search", blocked: { by: "page" } };
+const SUGGEST: DictionaryCounted = { limit: "suggest", blocked: { by: "json", body: SUGGEST_LIMITED } };
+const REPORT: DictionaryCounted = { limit: "report", blocked: { by: "json", body: REPORT_LIMITED } };
+const REPORT_OPEN: DictionaryCounted = { limit: "report-open", blocked: { by: "json", body: REPORT_LIMITED } };
+const SEARCH: DictionaryCounted = { limit: "search", blocked: { by: "page" } };
 
 /**
  * Which limit a dictionary request counts against, or none.
@@ -25,7 +35,7 @@ const SEARCH: Counted<DictionaryLimit> = { limit: "search", blocked: { by: "page
  * limit. The home page without a query and static assets are never counted;
  * assets do not even reach the Worker.
  */
-export const dictionaryLimitOf: Counter<DictionaryLimit> = (url) => {
+export const dictionaryLimitOf: Counter<DictionaryLimit, DictionaryBodies> = (url) => {
   if (url.pathname === "/suggest") return SUGGEST;
   // A report's hourly allowance is counted over stored reports (lib/dictionary/report.ts);
   // this binding only stops a burst before the database is touched.
