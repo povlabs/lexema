@@ -137,7 +137,7 @@ first until it opens. The one *Source* links the page of the first headword show
 searched words': `vado via` links to *andare via*'s page
 ([Huey's hand check](https://github.com/povlabs/lexema/issues/214#issuecomment-5910100974)).
 Each form line keeps its record's provenance pointer, which reaches `vado`'s
-page, and `/attribution` carries the full credit
+page, and `/licence` carries the full credit
 ([ADR 0009](../.decisions/0009-two-licences-and-a-source-link.md)).
 
 ## Outcomes
