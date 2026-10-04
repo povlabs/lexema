@@ -272,7 +272,7 @@ The prepare step builds it in this order, and logs a line starting
    each plan's SQL, with foreign keys on as on D1. A plan it cannot read, or
    SQL that does not run on the slice, gives no slice.
 4. It counts the rows writing the slice would write, each row once for its
-   table and once per index. Over `SLICE_ROWS_WRITTEN_CAP`, 100,000 rows, it
+   table and once per index. Over `SLICE_ROWS_WRITTEN_CAP`, 250,000 rows, it
    writes nothing and binds no slice, and the log line gives the count and the
    cap. Otherwise it deletes the branch's old slice, creates a new one, runs the
    slice's SQL on it with `wrangler d1 execute --remote --file`, and reads the

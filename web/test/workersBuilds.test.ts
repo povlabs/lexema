@@ -449,7 +449,7 @@ test("a branch that adds change declarations gets its slice D1 created, written 
 });
 
 test("a slice over the cap is not written: no slice D1, no binding, a log line with the count and the cap, and the Preview still deploys", () => {
-  assert.equal(SLICE_ROWS_WRITTEN_CAP, 100_000);
+  assert.equal(SLICE_ROWS_WRITTEN_CAP, 250_000);
   const account = new FakeAccount([{ name: DICTIONARY.name, uuid: DICTIONARY.id }]);
   const { slices } = planner(account, declaring(), builtSlice(SLICE_ROWS_WRITTEN_CAP + 1));
   const { name, config, slice, files, logged } = previewCommand(account, DICTIONARY_BRANCH, undefined, slices);
@@ -457,7 +457,7 @@ test("a slice over the cap is not written: no slice D1, no binding, a log line w
   assert.deepEqual(bindingsOf(config).map(([binding]) => binding), ["DB", "APP_DB"]);
   assert.equal(account.databases.some((db) => db.name === name.sliceDatabase), false);
   assert.deepEqual(d1Writes(account), [`d1 create ${name.appDatabase} --update-config=false`]);
-  assert.ok(logged.includes("dictionary slice: none, writing it would write 100001 rows, over the cap of 100000; nothing was written"), logged.join("\n"));
+  assert.ok(logged.includes("dictionary slice: none, writing it would write 250001 rows, over the cap of 250000; nothing was written"), logged.join("\n"));
   assert.ok(account.previews.has(name.value));
   assert.equal(files.get(PREVIEW_NAME_FILE), name.value);
 
@@ -495,7 +495,7 @@ test("a push whose declarations and schema are unchanged reuses the slice and wr
 
   // A changed slice over the cap leaves the old one unbound and writes nothing.
   account.calls.length = 0;
-  const over = previewCommand(account, DICTIONARY_BRANCH, undefined, planner(account, declaring("c".repeat(64)), builtSlice(200_000, "c".repeat(64))).slices);
+  const over = previewCommand(account, DICTIONARY_BRANCH, undefined, planner(account, declaring("c".repeat(64)), builtSlice(SLICE_ROWS_WRITTEN_CAP + 1, "c".repeat(64))).slices);
   assert.equal(over.slice, undefined);
   assert.deepEqual(d1Writes(account), []);
 });

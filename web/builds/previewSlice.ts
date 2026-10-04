@@ -33,7 +33,7 @@ import { listDatabases, required, type Wrangler } from "./wrangler.ts";
  * the 50 million rows a month Workers Paid includes
  * (https://developers.cloudflare.com/d1/platform/pricing/).
  */
-export const SLICE_ROWS_WRITTEN_CAP = 100_000;
+export const SLICE_ROWS_WRITTEN_CAP = 250_000;
 
 /** What `preview:slice declared` answers: no slice and why, or the fingerprint the branch's slice must have. */
 export type SliceDeclared =
