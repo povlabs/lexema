@@ -3,12 +3,23 @@
 // it report every count that differs and every hard limit crossed.
 
 import assert from "node:assert/strict";
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 import { SOURCE_TEXT_UPDATE_RULES } from "../src/import/normalizeSourceText.js";
-import { checkPlan, DeclarationRefused, HIDING_RULES, parseDeclaration, passes, readDeclaration } from "../src/update/declaration.js";
+import {
+  checkPlan,
+  DECLARATIONS_DIR,
+  DeclarationRefused,
+  HIDING_RULES,
+  lookupJSON,
+  parseChange,
+  parseDeclaration,
+  parseDraft,
+  passes,
+  readDeclaration,
+} from "../src/update/declaration.js";
 import { PlanCounts } from "../src/update/planCounts.js";
 
 const FILE = "dictionary-changes/2026-10-feed.json";
@@ -125,4 +136,78 @@ test("a plan removing more than 100 records, or changing more than 5% of the rec
   const check = checkPlan(hides, { command: "hide:records", counts: removing(101), dictionaryRecords: 560_357 });
   assert.deepEqual(check, { differences: [], breaches: ["removes 101 records, more than 100"] });
   assert.ok(!passes(check));
+});
+
+// Words a declaration names for the deploy to look up after the write (#554).
+const withLookups = (lookups: unknown): string => declared({ command: "update:upgrade", lookups });
+
+test("a declaration may name words to look up: found, found with a gloss, or not found", () => {
+  const parsed = parseDeclaration(FILE, withLookups([{ word: "mastoide" }, { word: "finora", found: true, gloss: "fino a ora" }, { word: "tantundem", found: false }]));
+  assert.deepEqual(parsed.lookups, [
+    { word: "mastoide", expect: "found", gloss: null },
+    { word: "finora", expect: "found", gloss: "fino a ora" },
+    { word: "tantundem", expect: "not-found" },
+  ]);
+  assert.deepEqual(parsed.lookups?.map(lookupJSON), [{ word: "mastoide" }, { word: "finora", gloss: "fino a ora" }, { word: "tantundem", found: false }]);
+  // A draft keeps them too, with or without `expected`.
+  assert.deepEqual(parseDraft(FILE, JSON.stringify({ command: "update:upgrade", lookups: [{ word: "mastoide" }] })).lookups, [{ word: "mastoide", expect: "found", gloss: null }]);
+  // A declaration naming none has no lookups field at all.
+  assert.equal("lookups" in parseDeclaration(FILE, declared({ command: "update:upgrade" })), false);
+  assert.equal("lookups" in parseDraft(FILE, JSON.stringify({ command: "update:upgrade" })), false);
+});
+
+test("every declaration already in dictionary-changes parses as before, with no lookups", async () => {
+  const files = (await readdir(DECLARATIONS_DIR)).filter((name) => name.endsWith(".json"));
+  assert.ok(files.length > 0);
+  for (const name of files) {
+    const path = `${DECLARATIONS_DIR}/${name}`;
+    const text = await readFile(path, "utf8");
+    // The first load:page-entries file names the rule set it deployed with,
+    // which v2 replaced; it is refused for that alone, as it was before #554.
+    if (name === "2026-10-03-load-page-entries-it-0c432803.json") {
+      assert.equal(refusal(text, path), "inputs.rules must name every rule the command applies; it lacks italian-page-entry/v2");
+      continue;
+    }
+    for (const parsed of [parseDeclaration(path, text), parseDraft(path, text)]) {
+      assert.deepEqual(Object.keys(parsed).sort(), ["command", "expected", "file", "inputs"], path);
+    }
+  }
+});
+
+test("lookups that are not a list of one to ten distinct, well-formed words are refused, naming the item", () => {
+  const refusals: [unknown, RegExp][] = [
+    ["mastoide", /lookups must be a list of words to look up/],
+    [{ word: "mastoide" }, /lookups must be a list of words to look up/],
+    [[], /lookups must name at least one word/],
+    [Array.from({ length: 11 }, (_, i) => ({ word: `parola${i}` })), /lookups names 11 words, more than 10/],
+    [["mastoide"], /lookups\[0\] must be an object with a word/],
+    [[{ gloss: "osso" }], /lookups\[0\] has no word/],
+    [[{ word: "" }], /lookups\[0\] has an empty word/],
+    [[{ word: "   " }], /lookups\[0\] has an empty word/],
+    [[{ word: 7 }], /lookups\[0\]\.word must be a text, got 7/],
+    [[{ word: "a".repeat(129) }], /lookups\[0\] \("a+"\)\.word is 129 characters, longer than the lookup takes \(128\)/],
+    [[{ word: "mastoide" }, { word: "mastoide" }], /lookups\[1\] \("mastoide"\) names the same word as lookups\[0\]/],
+    [[{ word: "mastoide" }, { word: " mastoide " }], /lookups\[1\] \(" mastoide "\) names the same word as lookups\[0\]/],
+    [[{ word: "mastoide", note: "x" }], /lookups\[0\] \("mastoide"\) has an unknown field "note"/],
+    [[{ word: "mastoide", found: "yes" }], /lookups\[0\] \("mastoide"\)\.found must be true or false, got "yes"/],
+    [[{ word: "mastoide", gloss: "" }], /lookups\[0\] \("mastoide"\)\.gloss must be a non-empty text/],
+    [[{ word: "mastoide", gloss: 3 }], /lookups\[0\] \("mastoide"\)\.gloss must be a non-empty text, got 3/],
+    [[{ word: "tantundem", found: false, gloss: "tanto" }], /lookups\[0\] \("tantundem"\) has found: false and a gloss, which only a found word can have/],
+  ];
+  for (const [lookups, reason] of refusals) {
+    assert.match(refusal(withLookups(lookups)), reason);
+    assert.throws(
+      () => parseDraft(FILE, JSON.stringify({ command: "update:upgrade", lookups })),
+      (error: unknown) => error instanceof DeclarationRefused && reason.test(error.reasons.join("\n")),
+    );
+  }
+  // Every item's reasons are given at once, each naming its item.
+  const both = refusal(withLookups([{ word: "" }, { word: "finora", found: false, gloss: "x" }]));
+  assert.match(both, /lookups\[0\] has an empty word/);
+  assert.match(both, /lookups\[1\] \("finora"\) has found: false and a gloss/);
+});
+
+test("the change a plan-only run is asked for still takes no lookups", () => {
+  assert.equal("lookups" in parseChange("change", JSON.stringify({ command: "update:upgrade" })), false);
+  assert.throws(() => parseChange("change", JSON.stringify({ command: "update:upgrade", lookups: [{ word: "mastoide" }] })), /the change has an unknown field "lookups"/);
 });
