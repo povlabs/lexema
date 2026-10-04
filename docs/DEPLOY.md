@@ -6,8 +6,8 @@ and https://api.lexema.fyi live from this repository. Running it locally is
 [WEB.md](WEB.md). A merge to `main` first runs the
 [dictionary deploy](#the-dictionary-deploy), which applies the dictionary
 changes the merge declares and then fast-forwards the `production` branch.
-Each push to `production` deploys production, `main` gets no Preview, and
-every other branch gets one, all built by Cloudflare's Workers Builds
+Each push to `production` deploys production, `main` and the merge queue's
+`gh-readonly-queue/` branches get no Preview, and every other branch gets one, all built by Cloudflare's Workers Builds
 ([ADR 0018](../.decisions/0018-previews-on-workers-builds.md)). Huey sets both
 up once, as [Workers Builds](#workers-builds) and
 [the dictionary deploy](#set-up-the-dictionary-deploy) say. Once a month,
@@ -184,6 +184,7 @@ commands on every push, from `web/`. Their steps are in `web/builds/`:
 |---|---|---|
 | `production` | `pnpm run deploy:workers-builds` | the [sweep](#the-sweep), then `deploy:production`: the production build and `wrangler deploy` |
 | `main` | the [Preview command](#the-preview-command) | `preview:prepare` only, which skips `main`: no build, no app D1, no Preview |
+| `gh-readonly-queue/...` (the merge queue) | the [Preview command](#the-preview-command) | `preview:prepare` only, which skips it like `main`: no build, no app D1, no Preview |
 | any other | the [Preview command](#the-preview-command) | `preview:prepare`, then `wrangler preview` |
 
 Only the [dictionary deploy](#the-dictionary-deploy) moves `production`, so the
@@ -191,7 +192,12 @@ site never deploys ahead of the dictionary it reads. `main` builds no Preview:
 what lands on it goes live through `production`, and the next production
 build's [sweep](#the-sweep) would delete a `main` Preview anyway
 ([ADR 0018](../.decisions/0018-previews-on-workers-builds.md), amended on
-[#491](https://github.com/povlabs/lexema/issues/491)).
+[#491](https://github.com/povlabs/lexema/issues/491)). Nor does a merge queue
+branch: GitHub tests each queued pull request on a temporary branch whose name
+starts with `gh-readonly-queue/`, and nobody opens a Preview of it (amended on
+[#566](https://github.com/povlabs/lexema/issues/566)). The match is exact and
+case-sensitive, at the start of the name (`getsNoPreview` in
+`web/builds/previewCommand.ts`).
 
 ### The Preview command
 
@@ -207,12 +213,12 @@ does not run `npx wrangler preview` itself
 Workers Builds has no setting that leaves a branch out of preview builds, only
 one checkbox for all of them
 ([Build branches](https://developers.cloudflare.com/workers/ci-cd/builds/build-branches/#configure-preview-builds)),
-so the second step runs only when the first wrote the Preview name. On `main`,
-`preview:prepare` writes nothing and does nothing else, and the command ends
+so the second step runs only when the first wrote the Preview name. On `main`
+and on a `gh-readonly-queue/` branch, `preview:prepare` writes nothing and does nothing else, and the command ends
 there, green.
 
 1. `pnpm run preview:prepare` (`web/builds/preview.ts`) stops at once on
-   `main`. On any other branch, it runs the production build. It finds or
+   `main` and on a `gh-readonly-queue/` branch. On any other branch, it runs the production build. It finds or
    creates the branch's app D1 `lexema-preview-app-<name>` and binds it as
    `APP_DB` in `web/dist/server/wrangler.json`, leaving `DB` on the shared
    dictionary. For a branch that adds change declarations, it also gives the
