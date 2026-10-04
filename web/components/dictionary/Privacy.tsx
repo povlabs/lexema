@@ -19,6 +19,7 @@ export function Privacy() {
     <>
       <SiteHeader />
       <LegalPage
+        site="dictionary"
         kicker="LEXEMA · LEGAL"
         title="Privacy"
         effective="2026-10-04"

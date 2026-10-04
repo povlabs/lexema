@@ -26,6 +26,7 @@ export function Licence({ release }: { release: ServedRelease }) {
     <>
       <SiteHeader />
       <LegalPage
+        site="dictionary"
         kicker="LEXEMA · LEGAL"
         title="Licence"
         effective="2026-10-04"

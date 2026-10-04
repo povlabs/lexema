@@ -23,6 +23,7 @@ import {
   LEGAL_SHELL,
   LEGAL_TEXT,
   LEGAL_TITLE,
+  type LegalSite,
 } from "@/components/shared/styles.ts";
 import { LegalContents } from "./LegalContents";
 
@@ -58,9 +59,13 @@ export function LegalItem({ mark, children }: { mark: string; children: ReactNod
 /** `2026-10-04` as `4 October 2026`, the date a reader would say. */
 const DAY = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" });
 
-export function LegalPage({ kicker, title, effective, lede, sections }: LegalText) {
+/**
+ * A legal page, in its site's column: `site` sets the edge the text starts on,
+ * so it lines up with that site's header on a phone as on a wide screen.
+ */
+export function LegalPage({ site, kicker, title, effective, lede, sections }: LegalText & { site: LegalSite }) {
   return (
-    <main className={LEGAL_SHELL}>
+    <main className={LEGAL_SHELL[site]}>
       <div className={LEGAL_LAYOUT}>
         <LegalContents sections={sections.map(({ id, title }) => ({ id, title }))} />
         <article className={LEGAL_TEXT}>
@@ -71,7 +76,7 @@ export function LegalPage({ kicker, title, effective, lede, sections }: LegalTex
           {sections.map((section, i) => (
             <section key={section.id} className={LEGAL_SECTION} id={section.id} aria-labelledby={`${section.id}-heading`}>
               <h2 className={LEGAL_SECTION_HEADING} id={`${section.id}-heading`}>
-                {/* The space is text, so the heading reads "1. Accounts" to a screen reader, as issue 581 asks; the flex gap draws it. */}
+                {/* The space is text, so the heading reads "1. Accounts" to a screen reader, as issue 581 asks; the number's slot draws it. */}
                 <span className={LEGAL_SECTION_NUMBER}>{i + 1}.</span> {section.title}
               </h2>
               {section.body}

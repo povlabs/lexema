@@ -50,6 +50,7 @@ export function DeveloperTerms({ signedIn, origins }: LegalPageProps) {
   return (
     <DeveloperPage legal="terms" wide signedIn={signedIn} origins={origins}>
       <LegalPage
+        site="developers"
         kicker={KICKER}
         title="Terms of service"
         effective={TERMS_EFFECTIVE}
@@ -197,6 +198,7 @@ export function DeveloperPrivacy({ signedIn, origins }: LegalPageProps) {
   return (
     <DeveloperPage legal="privacy" wide signedIn={signedIn} origins={origins}>
       <LegalPage
+        site="developers"
         kicker={KICKER}
         title="Privacy policy"
         effective={PRIVACY_EFFECTIVE}
