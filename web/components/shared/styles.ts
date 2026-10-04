@@ -414,32 +414,45 @@ export const REPORT_CLOSE = `mt-5 cursor-pointer rounded-[3px] border border-bor
 // wide screen a Contents list of the sections sits in a column on the left;
 // on a phone there is none, and the text is the whole column.
 
-export const LEGAL_SHELL = `${COLUMN} flex-1 pt-12 pb-12 max-sm:pt-8 max-sm:pb-8`;
-export const LEGAL_LAYOUT = "sm:grid sm:grid-cols-[12rem_minmax(0,1fr)] sm:gap-x-16";
-/** The Contents column, hidden on a phone; it stays in view while the text scrolls. */
+// Frame 33 at 1440 px: a 220 px Contents column, a 96 px gap, a 720 px text
+// column. The shell's bottom padding plus the footer's own margin make the
+// frame's 112 px, 56 px on a phone.
+export const LEGAL_SHELL = `${COLUMN} flex-1 pt-18 pb-20 max-sm:pt-9 max-sm:pb-9`;
+export const LEGAL_LAYOUT =
+  "sm:grid sm:grid-cols-[11rem_minmax(0,1fr)] sm:gap-x-12 lg:grid-cols-[13.75rem_minmax(0,45rem)] lg:gap-x-24";
+/**
+ * The Contents column, hidden on a phone. It starts level with the lede and,
+ * once the page scrolls, stays in view.
+ */
 export const LEGAL_CONTENTS = "hidden sm:block";
-export const LEGAL_CONTENTS_INNER = "sticky top-8";
-export const LEGAL_CONTENTS_LABEL = "m-0 font-sans text-[0.6875rem] leading-4 font-semibold tracking-[0.08em] text-text-muted uppercase";
-export const LEGAL_CONTENTS_LIST = "m-0 mt-3 flex list-none flex-col gap-2 p-0";
-export const LEGAL_CONTENTS_LINK = `flex gap-2 font-sans text-[0.84375rem] leading-5 text-text no-underline hover:text-text-strong ${FOCUS_RING}`;
-export const LEGAL_CONTENTS_NUMBER = "w-4 shrink-0 text-accent";
-export const LEGAL_TEXT = "min-w-0 max-w-[42rem]";
-export const LEGAL_KICKER = "m-0 font-sans text-[0.75rem] leading-4 font-medium tracking-[0.12em] text-accent";
-export const LEGAL_TITLE = "m-0 mt-4 font-serif text-[2.5rem] leading-[1.15] font-normal text-text-strong max-sm:text-[2rem]";
-export const LEGAL_EFFECTIVE = "m-0 mt-3 font-sans text-[0.8125rem] text-text-muted";
+export const LEGAL_CONTENTS_INNER = "sticky top-8 mt-37";
+export const LEGAL_CONTENTS_LABEL = "m-0 font-sans text-[0.6875rem] leading-[1.7] font-semibold tracking-[0.1em] text-text-muted uppercase";
+export const LEGAL_CONTENTS_LIST = "m-0 mt-2.5 flex list-none flex-col gap-2.5 p-0";
+export const LEGAL_CONTENTS_LINK = `flex gap-2 font-sans text-[0.84375rem] leading-[1.5] text-text-muted no-underline hover:text-text-strong ${FOCUS_RING}`;
+export const LEGAL_CONTENTS_NUMBER = "shrink-0";
+export const LEGAL_TEXT = "min-w-0";
+export const LEGAL_KICKER = "m-0 font-sans text-[0.6875rem] leading-[1.7] font-semibold tracking-[0.1em] text-accent";
+export const LEGAL_TITLE = "m-0 mt-3.5 font-serif text-[2.75rem] leading-[1.15] font-normal text-text-strong max-sm:text-[2.125rem]";
+export const LEGAL_EFFECTIVE = "m-0 mt-3.5 font-sans text-[0.8125rem] leading-[1.7] text-text-muted";
 /** The lede, and the rule that closes the page's head. */
-export const LEGAL_LEDE = "m-0 mt-6 border-b border-border pb-8 font-serif text-[1.1875rem] leading-[1.6] text-text-strong";
+export const LEGAL_LEDE =
+  "m-0 mt-3.5 border-b border-border pb-8 font-sans text-[1.0625rem] leading-[1.65] text-text-strong max-sm:text-base";
 /** A section; the gap above its heading is kept when a Contents link scrolls to it. */
-export const LEGAL_SECTION = "mt-10 scroll-mt-8";
-export const LEGAL_SECTION_HEADING = "m-0 flex items-baseline gap-3 font-serif text-[1.375rem] leading-[1.3] font-normal text-text-strong";
-export const LEGAL_SECTION_NUMBER = "font-sans text-[0.9375rem] text-accent";
-export const LEGAL_PARAGRAPH = "m-0 mt-4 font-serif text-[1.0625rem] leading-[1.7] text-text";
-/** The lettered items, `(a)` and `(b)`, set in from the paragraph that opens them. */
-export const LEGAL_ITEMS = "m-0 mt-3 flex list-none flex-col gap-2 p-0 pl-6 font-serif text-[1.0625rem] leading-[1.7] text-text";
+export const LEGAL_SECTION = "mt-10 scroll-mt-8 max-sm:mt-8";
+export const LEGAL_SECTION_HEADING =
+  "m-0 flex items-baseline gap-3.5 font-serif text-[1.3125rem] leading-[1.35] font-normal text-text-strong max-sm:text-[1.1875rem]";
+export const LEGAL_SECTION_NUMBER = "text-accent";
+/** The section's text, set in under the heading's words on a wide screen. */
+const LEGAL_BODY = "font-sans text-[0.96875rem] leading-[1.7] text-text sm:pl-[1.875rem] max-sm:text-[0.9375rem]";
+export const LEGAL_PARAGRAPH = `m-0 mt-3 ${LEGAL_BODY}`;
+/** The lettered items, `(a)` and `(b)`, each mark hanging beside its text. */
+export const LEGAL_ITEMS = `m-0 mt-3 flex list-none flex-col gap-1.5 p-0 ${LEGAL_BODY}`;
+export const LEGAL_ITEM = "flex gap-2.5";
+export const LEGAL_ITEM_MARK = "shrink-0 text-text-muted";
 /** A release id or a date, kept on one line: a phone broke `it-78385b62` at its hyphen. */
 export const LEGAL_UNBROKEN = "whitespace-nowrap";
 /** The privacy mailbox, on its own line. */
-export const LEGAL_ADDRESS = "m-0 mt-3 font-serif text-[1.0625rem] leading-[1.7]";
+export const LEGAL_ADDRESS = `m-0 mt-1.5 ${LEGAL_BODY}`;
 
 // The developer site (#166) -------------------------------------------------
 //

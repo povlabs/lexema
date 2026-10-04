@@ -15,6 +15,8 @@ import {
   LEGAL_CONTENTS_LIST,
   LEGAL_CONTENTS_NUMBER,
   LEGAL_EFFECTIVE,
+  LEGAL_ITEM,
+  LEGAL_ITEM_MARK,
   LEGAL_KICKER,
   LEGAL_LAYOUT,
   LEGAL_LEDE,
@@ -42,6 +44,18 @@ export interface LegalText {
   sections: readonly LegalSection[];
 }
 
+/**
+ * One lettered item of a section's list. The space after the mark keeps the
+ * item reading "(a) copy …" as text; the layout sets the gap.
+ */
+export function LegalItem({ mark, children }: { mark: string; children: ReactNode }) {
+  return (
+    <li className={LEGAL_ITEM}>
+      <span className={LEGAL_ITEM_MARK}>({mark})</span> <span>{children}</span>
+    </li>
+  );
+}
+
 /** `2026-10-04` as `4 October 2026`, the date a reader would say. */
 const DAY = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" });
 
@@ -61,7 +75,7 @@ export function LegalPage({ title, effective, lede, sections }: LegalText) {
                 {sections.map((section, i) => (
                   <li key={section.id}>
                     <a className={LEGAL_CONTENTS_LINK} href={`#${section.id}`}>
-                      <span className={LEGAL_CONTENTS_NUMBER}>{i + 1}</span>
+                      <span className={LEGAL_CONTENTS_NUMBER}>{i + 1}.</span>
                       {section.title}
                     </a>
                   </li>
@@ -77,7 +91,7 @@ export function LegalPage({ title, effective, lede, sections }: LegalText) {
             {sections.map((section, i) => (
               <section key={section.id} className={LEGAL_SECTION} id={section.id} aria-labelledby={`${section.id}-heading`}>
                 <h2 className={LEGAL_SECTION_HEADING} id={`${section.id}-heading`}>
-                  <span className={LEGAL_SECTION_NUMBER}>{i + 1}</span>
+                  <span className={LEGAL_SECTION_NUMBER}>{i + 1}.</span>
                   {section.title}
                 </h2>
                 {section.body}

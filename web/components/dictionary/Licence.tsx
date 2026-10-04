@@ -11,7 +11,7 @@
 import { ExternalLink } from "@/components/shared/ExternalLink";
 import { LEGAL_ITEMS, LEGAL_PARAGRAPH, LEGAL_UNBROKEN, LINK } from "@/components/shared/styles.ts";
 import type { ServedRelease } from "@lexema/source/servedRelease.ts";
-import { LegalPage } from "./LegalPage";
+import { LegalItem, LegalPage } from "./LegalPage";
 
 const LICENCE_URL = "https://creativecommons.org/licenses/by-sa/4.0/";
 const LICENCE_TEXT_URL = "https://creativecommons.org/licenses/by-sa/4.0/legalcode";
@@ -47,8 +47,8 @@ export function Licence({ release }: { release: ServedRelease }) {
             <>
               <p className={LEGAL_PARAGRAPH}>Under that licence you may:</p>
               <ul className={LEGAL_ITEMS}>
-                <li>(a) copy and redistribute the content in any medium or format;</li>
-                <li>(b) adapt, transform and build upon it, for any purpose, including commercially;</li>
+                <LegalItem mark="a">copy and redistribute the content in any medium or format;</LegalItem>
+                <LegalItem mark="b">adapt, transform and build upon it, for any purpose, including commercially;</LegalItem>
               </ul>
               <p className={LEGAL_PARAGRAPH}>
                 provided that you give appropriate credit, provide a link to the licence, indicate any changes made,

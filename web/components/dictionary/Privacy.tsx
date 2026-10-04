@@ -8,7 +8,7 @@
 // (`pnpm run report answer`).
 
 import { LEGAL_ADDRESS, LEGAL_ITEMS, LEGAL_PARAGRAPH, LINK } from "@/components/shared/styles.ts";
-import { LegalPage } from "./LegalPage";
+import { LegalItem, LegalPage } from "./LegalPage";
 
 /** The mailbox a reader writes to about this notice. */
 export const PRIVACY_ADDRESS = "privacy@lexema.fyi";
@@ -30,15 +30,15 @@ export function Privacy() {
                 only:
               </p>
               <ul className={LEGAL_ITEMS}>
-                <li>
-                  (a) your IP address, transiently, to limit the number of requests a single visitor can make. It is
+                <LegalItem mark="a">
+                  your IP address, transiently, to limit the number of requests a single visitor can make. It is
                   not stored;
-                </li>
-                <li>
-                  (b) when you report a mistake or suggest a correction: the entry, the option you selected, any note
+                </LegalItem>
+                <LegalItem mark="b">
+                  when you report a mistake or suggest a correction: the entry, the option you selected, any note
                   you write, and, for one hour, a one-way code derived from your IP address, used only to limit the
                   number of reports per hour.
-                </li>
+                </LegalItem>
               </ul>
             </>
           ),
