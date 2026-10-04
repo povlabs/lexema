@@ -92,23 +92,61 @@ by content, inside each `(word, pos)` group
 ([src/update/changes.ts](../src/update/changes.ts)):
 
 1. A later line byte for byte equal to a master line is the same record.
-2. A later line with the same content in another key order is the same record
-   too. Content is the line's JSON with every object's keys sorted
-   ([src/update/content.ts](../src/update/content.ts)).
+2. A later line with the same content is the same record too. Content is the
+   fields Lexema reads, and nothing else: the line's JSON cut down to the
+   fields `READ_FIELDS` names, with every object's keys sorted
+   ([src/update/content.ts](../src/update/content.ts)). So a line in another
+   key order, or one that differs only in fields Lexema never reads, says the
+   same.
 3. What is left in the group decides the change:
    - only later records: each is **new**;
    - only master records: each is **lost**;
    - one on each side: the record **changed**;
-   - anything else, such as two `sale` nouns on each side: the group is
-     **ambiguous**. The schema notes groups of up to five records. Pairing them
-     by likeness would be a guess, so the diff names the group and offers no
-     change for it.
+   - anything else, such as two `sale` nouns on each side that each fix a
+     gloss: the group is **ambiguous**. The schema notes groups of up to five
+     records. Pairing them by likeness would be a guess, so the diff names the
+     group and offers no change for it.
 
-A changed record is filed by what changed: **changed or fixed senses** when its
-`senses` differ, **other changes** when only other fields do. The split keeps
-the report readable. kaikki's build of 28 September 2026 added
-`etymology_links` to almost every record, which makes almost every record
-"changed" while its senses stay the same.
+### The fields Lexema reads
+
+Huey ruled on [#369](https://github.com/povlabs/lexema/issues/369#issuecomment-5941458326)
+that the diff compares only the fields Lexema uses: what the pages and the API
+show, and what the import and the selection read. A field Lexema never reads is
+no change, whether or not a release changes it. kaikki's build of 28 September
+2026 added `etymology_links` to almost every record; before this rule that made
+almost every record "changed", and two `sale` nouns could no longer pair.
+
+`READ_FIELDS` lists them, field by field and inside lists item by item:
+
+| Field | What reads it |
+|---|---|
+| `lang_code` | the admission test |
+| `word`, `pos`, `pos_title`, `tags`, `raw_tags` | the import: the record, its grammar claims |
+| `forms[]`: `form`, `tags`, `raw_tags`, `source` | the import: search forms and their grammar |
+| `senses[]`: `glosses`, `tags`, `raw_tags`, `form_of[].word`, `examples[].text` | the import, the selection, and the page's senses and examples |
+| `sounds[]`: `ipa`, `sense` | the page's pronunciation |
+| `hyphenations[].parts`, `etymology_texts` | the page's hyphenation and etymology |
+| `synonyms[]`: `word`, `raw_tags`; `antonyms[].word`, `derived[].word` | the page's related words |
+| `proverbs[]`: `word`, `sense` | the page's expressions |
+| `translations[].lang_code` | the suggestion ranking |
+
+A list keeps every item, so a list that gains or loses one is a change even
+when the item holds no read field: readers count them. A value not shaped the
+way a reader expects is compared as it is. The raw line is never touched:
+`source_record_json` keeps it byte for byte, every field included.
+
+[test/readFields.test.ts](../test/readFields.test.ts) runs every reader of a
+record over one that watches which fields it is asked for. It fails when a
+reader asks for a field the list leaves out, and when the list names a field no
+reader asks for. A new field shown on the page joins the list in the same
+change, or the test stays red.
+[The 2026-10-04 measurement](../reports/2026-10-04-diff-read-fields.md) counts
+what the rule changes in it-78385b62.
+
+A changed record is filed by what changed: **changed or fixed senses** when the
+read fields of its `senses` differ, **other changes** when only other read
+fields do. The split keeps the report readable: the sense fixes are the
+changes worth reading first.
 
 ## Change ids
 
@@ -244,6 +282,9 @@ deploy runs the upgrade before any declaration.
 - **Remove a lost word.** A lost word is reported and never deleted. Whether a
   chosen removal may ever delete a record is not ruled.
 - **Apply an ambiguous group.** It has no change id.
+- **Import a line for a field Lexema never reads.** A record whose later line
+  differs only there is unchanged: the master keeps serving its own line
+  ([the fields Lexema reads](#the-fields-lexema-reads)).
 - **Recover definitions for an applied record.** The recovered layer is written
   by the seed from raw pages. An applied record gets the rows of its own line.
   The definitions recovered for the record it replaced are still read.
