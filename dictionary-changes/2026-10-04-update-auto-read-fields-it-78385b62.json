@@ -1,9 +1,43 @@
 {
   "command": "update:auto",
-  "inputs": { "feedRelease": "it-78385b62" },
+  "inputs": {
+    "feedRelease": "it-78385b62"
+  },
   "lookups": [
-    { "word": "informatica", "gloss": "concetti logici, statistici e matematici" },
-    { "word": "stonare", "gloss": "apparire troppo diverso dagli altri elementi del contesto" },
-    { "word": "console", "gloss": "per riprodurre, creare e modificare manualmente musica" }
-  ]
+    {
+      "word": "informatica",
+      "gloss": "concetti logici, statistici e matematici"
+    },
+    {
+      "word": "stonare",
+      "gloss": "apparire troppo diverso dagli altri elementi del contesto"
+    },
+    {
+      "word": "console",
+      "gloss": "per riprodurre, creare e modificare manualmente musica"
+    }
+  ],
+  "expected": {
+    "records": {
+      "added": 1,
+      "changed": 3,
+      "removed": 0
+    },
+    "written": {
+      "applied_change": 4,
+      "release_table_rows": 10,
+      "source_record": 4,
+      "source_record_json": 4,
+      "lookup_form": 99,
+      "sense": 17,
+      "sense_gloss": 17,
+      "sense_label": 4,
+      "grammar_claim": 416,
+      "typo_key": 8
+    },
+    "deleted": {
+      "lookup_form": 98,
+      "typo_key": 8
+    }
+  }
 }
