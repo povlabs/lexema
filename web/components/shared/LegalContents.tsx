@@ -90,7 +90,7 @@ export function LegalContents({ sections }: { sections: readonly ContentsEntry[]
           {sections.map((section, i) => (
             <li key={section.id}>
               <a className={LEGAL_CONTENTS_LINK} href={`#${section.id}`} aria-current={i === current ? "location" : undefined}>
-                {/* The space is text, so the link reads "1. Accounts", as issue 581 asks; the flex gap draws it. */}
+                {/* The space is text, so the link reads "1. Accounts", as issue 581 asks; the number's slot draws it. */}
                 <span className={LEGAL_CONTENTS_NUMBER}>{i + 1}.</span> {section.title}
               </a>
             </li>

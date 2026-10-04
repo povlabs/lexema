@@ -28,6 +28,12 @@
  */
 const COLUMN = "mx-auto w-full max-w-[78rem] px-4 sm:px-6";
 
+/**
+ * The developer site's column (#166): the same 1200 px of content, 120 px in
+ * from a 1440 px window, but 20 px in on a phone, where `COLUMN` is 16.
+ */
+const DEV_COLUMN = "mx-auto w-full max-w-[78rem] px-5 sm:px-6";
+
 /** The focus ring the manifest rules: `accent`, and never removed. */
 const FOCUS_RING =
   "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent";
@@ -420,13 +426,19 @@ export const REPORT_CLOSE = `mt-5 cursor-pointer rounded-[3px] border border-bor
 // on the left; on a phone there is none, and the text is the whole column.
 
 // Frames 33 and 35 at 1440 px: the Contents column 120 px in, 220 px wide, a
-// 96 px gap, then the 720 px text column at 436 px (#581). From `sm` up it
-// starts on the same edge as each site's own column, `COLUMN` or `DEV_COLUMN`,
-// so the header, the Contents and the footer line up. On a phone, frames 33m
-// to 36m set the text 20 px in. The shell's bottom
-// padding plus the footer's own margin make the frame's 112 px, 56 px on a
-// phone.
-export const LEGAL_SHELL = "mx-auto w-full max-w-[78rem] px-5 sm:px-6 flex-1 pt-18 pb-20 max-sm:pt-9 max-sm:pb-9";
+// 96 px gap, then the 720 px text column at 436 px (#581). The shell is its
+// site's own column, `COLUMN` or `DEV_COLUMN`, so on every width the text
+// starts on the same edge as that site's header: 120 px at 1440 px, and on a
+// phone 16 px on the dictionary and 20 px on the developer site (#585). The
+// shell's bottom padding plus the footer's own margin make the frame's 112 px,
+// 56 px on a phone.
+const LEGAL_SHELL_SPACE = "flex-1 pt-18 pb-20 max-sm:pt-9 max-sm:pb-9";
+/** The site a legal page belongs to, which picks its shell's column. */
+export type LegalSite = "dictionary" | "developers";
+export const LEGAL_SHELL: Readonly<Record<LegalSite, string>> = {
+  dictionary: `${COLUMN} ${LEGAL_SHELL_SPACE}`,
+  developers: `${DEV_COLUMN} ${LEGAL_SHELL_SPACE}`,
+};
 export const LEGAL_LAYOUT =
   "sm:grid sm:grid-cols-[11rem_minmax(0,1fr)] sm:gap-x-12 lg:grid-cols-[13.75rem_minmax(0,45rem)] lg:gap-x-24";
 /**
@@ -438,9 +450,19 @@ export const LEGAL_CONTENTS_INNER = "sticky top-8 mt-37";
 export const LEGAL_CONTENTS_LABEL = "m-0 font-sans text-[0.6875rem] leading-[1.7] font-semibold tracking-[0.1em] text-text-muted uppercase";
 export const LEGAL_CONTENTS_LIST = "m-0 mt-2.5 flex list-none flex-col gap-2.5 p-0";
 /** A Contents entry; the one for the section being read is drawn strong (LegalContents.tsx). */
-export const LEGAL_CONTENTS_LINK = `flex gap-2 font-sans text-[0.84375rem] leading-[1.5] text-text-muted no-underline hover:text-text-strong aria-[current=location]:text-text-strong ${FOCUS_RING}`;
-export const LEGAL_CONTENTS_NUMBER = "shrink-0";
-export const LEGAL_TEXT = "min-w-0";
+export const LEGAL_CONTENTS_LINK = `flex font-sans text-[0.84375rem] leading-[1.5] text-text-muted no-underline hover:text-text-strong aria-[current=location]:text-text-strong ${FOCUS_RING}`;
+/**
+ * A Contents entry's number, in a slot as wide as "11." and the 8 px after it,
+ * so every title starts on one edge (#585).
+ */
+export const LEGAL_CONTENTS_NUMBER = "w-[1.625rem] shrink-0";
+/**
+ * The text column. `--legal-hang` is how far a section title sits from the
+ * column's edge: the number's slot, as wide as "11." and the 14 px after it.
+ * The heading's number takes it as its width and the section's text, on a
+ * wide screen, as its indent, so the text starts under the title (#585).
+ */
+export const LEGAL_TEXT = "min-w-0 [--legal-hang:2.5rem]";
 export const LEGAL_KICKER = "m-0 font-sans text-[0.6875rem] leading-[1.7] font-semibold tracking-[0.1em] text-accent";
 export const LEGAL_TITLE = "m-0 mt-3.5 font-serif text-[2.75rem] leading-[1.15] font-normal text-text-strong max-sm:text-[2.125rem]";
 export const LEGAL_EFFECTIVE = "m-0 mt-3.5 font-sans text-[0.8125rem] leading-[1.7] text-text-muted";
@@ -450,10 +472,10 @@ export const LEGAL_LEDE =
 /** A section; the gap above its heading is kept when a Contents link scrolls to it. */
 export const LEGAL_SECTION = "mt-10 scroll-mt-8 max-sm:mt-8";
 export const LEGAL_SECTION_HEADING =
-  "m-0 flex items-baseline gap-3.5 font-serif text-[1.3125rem] leading-[1.35] font-normal text-text-strong max-sm:text-[1.1875rem]";
-export const LEGAL_SECTION_NUMBER = "text-accent";
+  "m-0 flex items-baseline font-serif text-[1.3125rem] leading-[1.35] font-normal text-text-strong max-sm:text-[1.1875rem]";
+export const LEGAL_SECTION_NUMBER = "w-(--legal-hang) shrink-0 text-accent";
 /** The section's text, set in under the heading's words on a wide screen. */
-const LEGAL_BODY = "font-sans text-[0.96875rem] leading-[1.7] text-text sm:pl-[1.875rem] max-sm:text-[0.9375rem]";
+const LEGAL_BODY = "font-sans text-[0.96875rem] leading-[1.7] text-text sm:pl-(--legal-hang) max-sm:text-[0.9375rem]";
 export const LEGAL_PARAGRAPH = `m-0 mt-3 ${LEGAL_BODY}`;
 /** The lettered items, `(a)` and `(b)`, each mark hanging beside its text. */
 export const LEGAL_ITEMS = `m-0 mt-3 flex list-none flex-col gap-1.5 p-0 ${LEGAL_BODY}`;
@@ -474,8 +496,6 @@ export const LEGAL_ADDRESS = `m-0 mt-1.5 ${LEGAL_BODY}`;
 // dictionary's roles and faces: serif for page and section headings, sans for
 // prose and controls, mono for code, paths and parameter names.
 
-/** The landing and pricing column: 1200 px of content, 120 px in from a 1440 px window. */
-const DEV_COLUMN = "mx-auto w-full max-w-[78rem] px-5 sm:px-6";
 /** The docs lay out edge to edge, the sidebar against the window's left edge. */
 const WIDE = "w-full px-5 sm:px-10";
 
