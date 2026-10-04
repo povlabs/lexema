@@ -29,6 +29,7 @@ import {
   DEV_FOOTER,
   DEV_FOOTER_INNER,
   DEV_FOOTER_INNER_WIDE,
+  DEV_FOOTER_LEGAL,
   DEV_FOOTER_LINK,
   DEV_FOOTER_LINKS,
   DEV_FOOTER_NAME,
@@ -47,6 +48,13 @@ import {
 
 /** The address the developer site's Contact reaches (#159). */
 export const CONTACT_EMAIL = "contact@lexema.fyi";
+
+/** The address the developer Privacy policy names for questions about it (#162). */
+export const PRIVACY_EMAIL = "privacy@lexema.fyi";
+
+/** The developer site's Terms of service and Privacy policy (#162). */
+export const TERMS_PATH = "/terms";
+export const PRIVACY_PATH = "/privacy";
 
 /** Where signing in starts: the sign-in page (#169). */
 export const SIGN_IN_PATH = SIGN_IN_PAGE;
@@ -87,15 +95,29 @@ export const developerMenuLinks = (signedIn: SignedIn | undefined, current: Deve
 /** The bar has no Settings: on the settings page it marks the dashboard, as board 28g draws it. */
 const barSection = (current: DeveloperSection | undefined): DeveloperSection | undefined => (current === "settings" ? "dashboard" : current);
 
+/** The legal pages, which the footer names and marks when one is being read (frames 35 and 36). */
+export type LegalSection = "terms" | "privacy";
+
 /**
- * The footer's links: the dictionary, the two public pages, and the contact
- * address. No Terms until #162. The dictionary is on the host `origins` names (#266).
+ * A footer link. A legal one names its page, which the footer marks while it
+ * is read, and moves to the second row on a phone (frames 35m and 36m).
  */
-export const developerFooterLinks = (origins: SiteOrigins): readonly { label: string; href: string }[] => [
-  { label: "lexema.fyi", href: origins.lexema },
-  { label: "Docs", href: "/docs" },
-  { label: "Pricing", href: "/pricing" },
-  { label: "Contact", href: `mailto:${CONTACT_EMAIL}` },
+export type DeveloperFooterLink =
+  | { label: string; href: string; legal: false }
+  | { label: string; href: string; legal: LegalSection };
+
+/**
+ * The footer's links: the dictionary, the two public pages, the Terms of
+ * service and Privacy policy (#162), and the contact address. The dictionary
+ * is on the host `origins` names (#266).
+ */
+export const developerFooterLinks = (origins: SiteOrigins): readonly DeveloperFooterLink[] => [
+  { label: "lexema.fyi", href: origins.lexema, legal: false },
+  { label: "Docs", href: "/docs", legal: false },
+  { label: "Pricing", href: "/pricing", legal: false },
+  { label: "Terms", href: TERMS_PATH, legal: "terms" },
+  { label: "Privacy", href: PRIVACY_PATH, legal: "privacy" },
+  { label: "Contact", href: `mailto:${CONTACT_EMAIL}`, legal: false },
 ];
 
 function DeveloperName() {
@@ -177,7 +199,7 @@ function DeveloperHeader({ current, wide, signedIn }: { current?: DeveloperSecti
   );
 }
 
-export function DeveloperFooter({ wide = false, origins }: { wide?: boolean; origins: SiteOrigins }) {
+export function DeveloperFooter({ wide = false, legal, origins }: { wide?: boolean; legal?: LegalSection; origins: SiteOrigins }) {
   return (
     <footer className={DEV_FOOTER}>
       <div className={wide ? DEV_FOOTER_INNER_WIDE : DEV_FOOTER_INNER}>
@@ -187,8 +209,12 @@ export function DeveloperFooter({ wide = false, origins }: { wide?: boolean; ori
         <nav aria-label="Site">
           <ul className={DEV_FOOTER_LINKS}>
             {developerFooterLinks(origins).map((link) => (
-              <li key={link.label}>
-                <a className={DEV_FOOTER_LINK} href={link.href}>
+              <li key={link.label} className={link.legal === false ? undefined : DEV_FOOTER_LEGAL}>
+                <a
+                  className={DEV_FOOTER_LINK}
+                  href={link.href}
+                  aria-current={link.legal !== false && link.legal === legal ? "page" : undefined}
+                >
                   {link.label}
                 </a>
               </li>
@@ -203,6 +229,7 @@ export function DeveloperFooter({ wide = false, origins }: { wide?: boolean; ori
 /** A developer-site page: the bar, the page, the footer. */
 export function DeveloperPage({
   current,
+  legal,
   wide = false,
   signedIn,
   origins,
@@ -210,6 +237,8 @@ export function DeveloperPage({
 }: {
   /** The page the bar marks as the one being read. */
   current?: DeveloperSection;
+  /** The legal page the footer marks as the one being read. */
+  legal?: LegalSection;
   /** Edge to edge, as the docs are drawn. */
   wide?: boolean;
   /** Signed in: the bar names the dashboard and carries the account menu. */
@@ -222,7 +251,7 @@ export function DeveloperPage({
     <>
       <DeveloperHeader current={current} wide={wide} signedIn={signedIn} />
       {children}
-      <DeveloperFooter wide={wide} origins={origins} />
+      <DeveloperFooter wide={wide} legal={legal} origins={origins} />
     </>
   );
 }

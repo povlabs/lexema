@@ -407,17 +407,21 @@ export const REPORT_SENT_CHECK = "font-sans text-base text-accent";
 export const REPORT_SENT_TEXT = "m-0 mt-4 font-sans text-[0.9rem] text-text";
 export const REPORT_CLOSE = `mt-5 cursor-pointer rounded-[3px] border border-border-strong bg-transparent px-4 py-2 font-sans text-[0.9rem] text-text-strong hover:border-text-muted ${FOCUS_RING}`;
 
-// The legal pages (#139, frames 33, 33m, 34 and 34m) ------------------------
+// The legal pages (#139, frames 33 to 34m; #162, frames 35 to 36m) ----------
 //
-// `/licence` and `/privacy`: a kicker, the title in serif, the date the text
-// took effect, the lede with a rule under it, then numbered sections. On a
-// wide screen a Contents list of the sections sits in a column on the left;
-// on a phone there is none, and the text is the whole column.
+// The dictionary's `/licence` and `/privacy`, and the developer site's
+// `/terms` and `/privacy` (LegalPage.tsx): a kicker, the title in serif, the
+// date the text took effect, the lede with a rule under it, then numbered
+// sections. On a wide screen a Contents list of the sections sits in a column
+// on the left; on a phone there is none, and the text is the whole column.
 
-// Frame 33 at 1440 px: a 220 px Contents column, a 96 px gap, a 720 px text
-// column. The shell's bottom padding plus the footer's own margin make the
-// frame's 112 px, 56 px on a phone.
-export const LEGAL_SHELL = `${COLUMN} flex-1 pt-18 pb-20 max-sm:pt-9 max-sm:pb-9`;
+// Frames 33 and 35 at 1440 px: the Contents column 120 px in, 220 px wide, a
+// 96 px gap, then the 720 px text column at 436 px (#581). The 1200 px column
+// the dictionary's other pages take starts at 144 px, so this one is its own.
+// On a phone, frames 33m to 36m set the text 20 px in. The shell's bottom
+// padding plus the footer's own margin make the frame's 112 px, 56 px on a
+// phone.
+export const LEGAL_SHELL = "mx-auto w-full max-w-[78rem] px-5 sm:px-6 flex-1 pt-18 pb-20 max-sm:pt-9 max-sm:pb-9";
 export const LEGAL_LAYOUT =
   "sm:grid sm:grid-cols-[11rem_minmax(0,1fr)] sm:gap-x-12 lg:grid-cols-[13.75rem_minmax(0,45rem)] lg:gap-x-24";
 /**
@@ -428,7 +432,8 @@ export const LEGAL_CONTENTS = "hidden sm:block";
 export const LEGAL_CONTENTS_INNER = "sticky top-8 mt-37";
 export const LEGAL_CONTENTS_LABEL = "m-0 font-sans text-[0.6875rem] leading-[1.7] font-semibold tracking-[0.1em] text-text-muted uppercase";
 export const LEGAL_CONTENTS_LIST = "m-0 mt-2.5 flex list-none flex-col gap-2.5 p-0";
-export const LEGAL_CONTENTS_LINK = `flex gap-2 font-sans text-[0.84375rem] leading-[1.5] text-text-muted no-underline hover:text-text-strong ${FOCUS_RING}`;
+/** A Contents entry; the one for the section being read is drawn strong (LegalContents.tsx). */
+export const LEGAL_CONTENTS_LINK = `flex gap-2 font-sans text-[0.84375rem] leading-[1.5] text-text-muted no-underline hover:text-text-strong aria-[current=location]:text-text-strong ${FOCUS_RING}`;
 export const LEGAL_CONTENTS_NUMBER = "shrink-0";
 export const LEGAL_TEXT = "min-w-0";
 export const LEGAL_KICKER = "m-0 font-sans text-[0.6875rem] leading-[1.7] font-semibold tracking-[0.1em] text-accent";
@@ -449,7 +454,7 @@ export const LEGAL_PARAGRAPH = `m-0 mt-3 ${LEGAL_BODY}`;
 export const LEGAL_ITEMS = `m-0 mt-3 flex list-none flex-col gap-1.5 p-0 ${LEGAL_BODY}`;
 export const LEGAL_ITEM = "flex gap-2.5";
 export const LEGAL_ITEM_MARK = "shrink-0 text-text-muted";
-/** A release id or a date, kept on one line: a phone broke `it-78385b62` at its hyphen. */
+/** A release id, a date or "one-way", kept on one line: a phone broke `it-78385b62` at its hyphen. */
 export const LEGAL_UNBROKEN = "whitespace-nowrap";
 /** The privacy mailbox, on its own line. */
 export const LEGAL_ADDRESS = `m-0 mt-1.5 ${LEGAL_BODY}`;
@@ -513,8 +518,16 @@ const FOOTER_ROW = "flex flex-col gap-[0.28125rem] py-5 sm:flex-row sm:flex-wrap
 export const DEV_FOOTER_INNER = `${DEV_COLUMN} ${FOOTER_ROW}`;
 export const DEV_FOOTER_INNER_WIDE = `${WIDE} ${FOOTER_ROW}`;
 export const DEV_FOOTER_NAME = `self-start font-serif text-[0.9375rem] leading-6 text-text-strong no-underline ${FOCUS_RING}`;
-export const DEV_FOOTER_LINKS = "m-0 flex list-none flex-wrap gap-x-[1.125rem] gap-y-2 p-0 sm:gap-x-6";
-export const DEV_FOOTER_LINK = `font-sans text-[0.78125rem] text-text-muted no-underline hover:text-text ${FOCUS_RING}`;
+/**
+ * On a phone the links take two rows, Terms and Privacy on the second (frames
+ * 35m and 36m): the list's `::after` is a full-width break ordered between the
+ * other links and the legal ones. With no row gap the rows sit 24 px apart,
+ * as the frames draw them.
+ */
+export const DEV_FOOTER_LINKS =
+  "m-0 flex list-none flex-wrap gap-x-[1.125rem] gap-y-2 p-0 sm:gap-x-6 max-sm:gap-y-0 max-sm:after:order-1 max-sm:after:basis-full max-sm:after:content-['']";
+export const DEV_FOOTER_LEGAL = "max-sm:order-2";
+export const DEV_FOOTER_LINK = `font-sans text-[0.78125rem] text-text-muted no-underline hover:text-text aria-[current=page]:text-text-strong ${FOCUS_RING}`;
 
 /** A landing or pricing page: the column, with room above the heading. */
 export const DEV_SHELL = `${DEV_COLUMN} flex-1 pt-[2.875rem] pb-[3.4375rem] sm:pt-20 sm:pb-[5.9375rem]`;
@@ -723,12 +736,14 @@ export const DEV_MENU_ACCOUNT = "flex flex-col items-start gap-[0.6875rem] px-5 
 export const DEV_MENU_EMAIL = "font-sans text-[0.875rem] leading-5 text-text-muted wrap-anywhere";
 export const DEV_MENU_SIGN_OUT = `cursor-pointer border-0 bg-transparent p-0 font-sans text-[0.9375rem] leading-6 text-accent ${FOCUS_RING}`;
 
-/** Sign-in (boards 27 and 27m): a raised card, 120 px under the bar (40 on a phone), with no Terms line (#163 R1.7). */
+/** Sign-in (boards 27 and 27m): a raised card, 120 px under the bar (40 on a phone), ending on the Terms line (#162). */
 export const SIGN_IN_SHELL = `${DEV_COLUMN} flex-1 pt-10 pb-14 sm:pt-[7.5rem] sm:pb-40`;
 export const SIGN_IN_CARD = "mx-auto w-full rounded-[8px] border border-border bg-surface-raised px-[2.4375rem] pt-[2.625rem] pb-[2.4375rem] text-center sm:max-w-[27.5rem]";
 export const SIGN_IN_HEADING = "m-0 font-serif text-[2rem] leading-[2.75rem] font-normal text-text-strong";
 export const SIGN_IN_LEAD = "m-0 mt-[1.1875rem] font-sans text-[0.875rem] leading-5 text-text-muted";
 export const SIGN_IN_PROVIDERS = "m-0 mt-10 flex list-none flex-col gap-[1.125rem] p-0";
+/** "By continuing you agree to the Terms.", small and muted under the providers. */
+export const SIGN_IN_TERMS = "m-0 mt-7 font-sans text-[0.75rem] leading-5 text-text-muted";
 /** A provider: outlined, on the page's own surface; unconfigured, muted and not clickable. */
 export const SIGN_IN_PROVIDER = `flex h-[2.625rem] w-full cursor-pointer items-center justify-center gap-2.5 rounded-[4px] border border-border-strong bg-surface px-5 font-sans text-[0.9375rem] font-medium text-text-strong no-underline hover:border-text-muted disabled:cursor-not-allowed disabled:border-border disabled:text-text-muted ${FOCUS_RING}`;
 export const SIGN_IN_ICON = "size-4 shrink-0";

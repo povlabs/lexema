@@ -44,6 +44,7 @@ import { searchAttempt } from "@/lib/dictionary/searchAttempt.ts";
 import { declaredGridOf, NUMBERS } from "@/lib/dictionary/genderGrid.ts";
 import { Licence } from "@/components/dictionary/Licence";
 import { Privacy } from "@/components/dictionary/Privacy";
+import { readingIndex } from "@/components/shared/LegalContents";
 import { FirstLoad, Limited, Outcome, SearchPage, TRY_WORDS } from "@/components/dictionary/SearchPage";
 import { SiteFooter } from "@/components/dictionary/SiteFooter";
 import { byHost, ORIGIN } from "@/worker/shared/hosts.ts";
@@ -80,6 +81,7 @@ import {
   LEGAL_LEDE,
   LEGAL_SECTION,
   LEGAL_TITLE,
+  LEGAL_UNBROKEN,
   LINK,
   NON_FINITE_LABEL_SEARCHED,
   NOT_FOUND_HEADING,
@@ -1833,10 +1835,10 @@ test("the Licence page reads, section by section, exactly as Huey approved it (#
     ),
   );
   const expected: [string, string, string[]][] = [
-    ["licence", "1.Licence", ["The definitions and other lexical content derived from the sources below are made available under the Creative Commons Attribution-ShareAlike 4.0 International licence (CC BY-SA 4.0)."]],
+    ["licence", "1. Licence", ["The definitions and other lexical content derived from the sources below are made available under the Creative Commons Attribution-ShareAlike 4.0 International licence (CC BY-SA 4.0)."]],
     [
       "reuse",
-      "2.Reuse",
+      "2. Reuse",
       [
         "Under that licence you may:",
         "(a) copy and redistribute the content in any medium or format;",
@@ -1846,7 +1848,7 @@ test("the Licence page reads, section by section, exactly as Huey approved it (#
     ],
     [
       "where",
-      "3.Sources",
+      "3. Sources",
       [
         "The content is derived from the Italian Wiktionary (Wikizionario), a project of the Wikimedia Foundation written by volunteer contributors. Most entries are taken from the extraction published by kaikki.org, produced with wiktextract by Tatu Ylonen. Where that extraction could not read a page, Lexema reads the entry from the page’s own text in the Wikimedia dump.",
         "The authors of each entry are recorded in the revision history of its Wiktionary page. Every entry on Lexema links to that page.",
@@ -1854,18 +1856,18 @@ test("the Licence page reads, section by section, exactly as Huey approved it (#
     ],
     [
       "changed",
-      "4.Modifications",
+      "4. Modifications",
       ["Lexema has adapted the source material: it is restructured and indexed for search, some grammatical information is added by rule, some wording is made consistent, and individual errors are corrected. Lexema does not write or generate definitions."],
     ],
-    ["version", "5.Version of the data", ["The content is up to date with release it-78385b62, published by kaikki.org and built from the Italian Wiktionary dump of 1 September 2026."]],
+    ["version", "5. Version of the data", ["The content is up to date with release it-78385b62, published by kaikki.org and built from the Italian Wiktionary dump of 1 September 2026."]],
     [
       "disclaimer",
-      "6.Disclaimer",
+      "6. Disclaimer",
       ["The content is provided “as is”, without warranties of any kind, as set out in section 5 of the licence. Lexema does not warrant that the content is accurate, complete or fit for any particular purpose."],
     ],
     [
       "trademarks",
-      "7.Trademarks",
+      "7. Trademarks",
       ["Wikipedia, Wiktionary, Wikizionario and Wikimedia are registered trademarks of the Wikimedia Foundation, Inc. Lexema is not affiliated with, endorsed or sponsored by the Wikimedia Foundation."],
     ],
   ];
@@ -1910,7 +1912,7 @@ test("the Privacy page reads, section by section, exactly as Huey approved it (#
   const expected: [string, string, string[]][] = [
     [
       "information",
-      "1.Information we process",
+      "1. Information we process",
       [
         "Lexema has no user accounts and does not use advertising, analytics or tracking cookies. We process only:",
         "(a) your IP address, transiently, to limit the number of requests a single visitor can make. It is not stored;",
@@ -1919,26 +1921,26 @@ test("the Privacy page reads, section by section, exactly as Huey approved it (#
     ],
     [
       "purpose",
-      "2.Purpose and legal basis",
+      "2. Purpose and legal basis",
       ["We process this information to operate the service, protect it from abuse and review reported errors. The legal basis is our legitimate interest in providing a reliable dictionary (Article 6(1)(f) GDPR)."],
     ],
     [
       "providers",
-      "3.Service providers",
+      "3. Service providers",
       ["Lexema is hosted by Cloudflare, Inc., which processes requests on our behalf and may keep short-lived security logs. Report forms are protected by Cloudflare Turnstile. We do not sell or share information with anyone else."],
     ],
     [
       "retention",
-      "4.Retention",
+      "4. Retention",
       ["Request counts expire within minutes. The code derived from your IP address is erased one hour after a report is sent. Reports themselves are kept as a record of corrections to the dictionary; any note you wrote is erased as soon as the report is resolved."],
     ],
     [
       "rights",
-      "5.Your rights",
+      "5. Your rights",
       ["Because Lexema does not store your IP address or any account, we generally cannot link stored information to you. Until a report is resolved, you may ask us to remove a note you wrote, using the address below. You also have the right to lodge a complaint with your data protection authority."],
     ],
-    ["changes", "6.Changes", ["We may update this notice. The effective date above shows when it last changed."]],
-    ["contact", "7.Contact", ["For any question about this notice, write to:", "privacy@lexema.fyi"]],
+    ["changes", "6. Changes", ["We may update this notice. The effective date above shows when it last changed."]],
+    ["contact", "7. Contact", ["For any question about this notice, write to:", "privacy@lexema.fyi"]],
   ];
   assert.deepEqual(sectionsOf(html), expected.map(([id, heading]) => [id, heading]));
   for (const [id, heading, blocks] of expected) assert.deepEqual(readSection(html, id), { heading, blocks }, id);
@@ -1955,9 +1957,15 @@ test("both legal pages: the header, a Contents column on a wide screen only, no 
     // The Contents column lists every section, in order, each a link to it; on a phone it is hidden.
     const contents = html.slice(html.indexOf(`<nav class="${LEGAL_CONTENTS}"`), html.indexOf("</nav>"));
     assert.deepEqual(LEGAL_CONTENTS.split(" "), ["hidden", "sm:block"], "no Contents column on a phone");
-    const listed = [...contents.matchAll(/<a class="[^"]*" href="#([^"]+)">(.*?)<\/a>/g)].map((match) => [match[1], readOf(match[2])]);
+    const entries = [...contents.matchAll(/<a class="[^"]*" href="#([^"]+)"( aria-current="location")?>(.*?)<\/a>/g)];
+    const listed = entries.map((match) => [match[1], readOf(match[3])]);
     assert.deepEqual(listed, sectionsOf(html));
     assert.equal(listed.length, 7);
+    // At rest the page is at its top, so entry 1 is the section being read, and no other (#581).
+    assert.deepEqual(
+      entries.map((match) => match[2] !== undefined),
+      [true, false, false, false, false, false, false],
+    );
     // "attribution" is never a heading, and nothing on the page talks about the page.
     for (const [, heading] of html.matchAll(/<h[1-6][^>]*>(.*?)<\/h[1-6]>/g)) assert.doesNotMatch(heading, /attribution/i);
     assert.doesNotMatch(readOf(html), /Still open|— open|not recorded|recovered|derived by Lexema/i);
@@ -1969,11 +1977,33 @@ test("both legal pages: the header, a Contents column on a wide screen only, no 
   assert.equal(privacyMeta.title, "Privacy — Lexema");
 });
 
+test("a legal page's heading and Contents link read the number, a full stop and a space before the title (#581)", () => {
+  for (const [html, id, read] of [
+    [licence(), "licence", "1. Licence"],
+    [privacy(), "information", "1. Information we process"],
+  ] as const) {
+    const heading = sectionOf(html, id).match(/<h2[^>]*>(.*?)<\/h2>/);
+    assert.equal(textOf(heading?.[1] ?? ""), read);
+    const link = html.match(new RegExp(`<a class="[^"]*" href="#${id}"[^>]*>(.*?)</a>`));
+    assert.equal(textOf(link?.[1] ?? ""), read);
+  }
+});
+
+test("the Contents mark follows the section whose top has passed the read line, and the last one at the end (#581)", () => {
+  assert.equal(readingIndex([400, 700, 1000], false), 0);
+  assert.equal(readingIndex([-300, 20, 600], false), 1);
+  assert.equal(readingIndex([-900, -500, 300], true), 2);
+});
+
+test("Privacy keeps \"one-way\" on one line on a phone (#581)", () => {
+  assert.match(sectionOf(privacy(), "information"), exact(`<span class="${LEGAL_UNBROKEN}">one-way</span>`));
+});
+
 test("the old /attribution sections land on the /licence sections that replaced them", () => {
   const html = licence();
   assert.deepEqual(
     ["licence", "where", "changed", "version", "trademarks"].map((id) => readSection(html, id).heading),
-    ["1.Licence", "3.Sources", "4.Modifications", "5.Version of the data", "7.Trademarks"],
+    ["1. Licence", "3. Sources", "4. Modifications", "5. Version of the data", "7. Trademarks"],
   );
 });
 
