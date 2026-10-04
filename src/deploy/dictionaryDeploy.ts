@@ -18,7 +18,8 @@
 //    every rebuilt table kept its rows.
 // 5. For each declaration, oldest first: plan it, hold the plan's counts to
 //    the declared ones and to the hard limits, run its SQL, read it back.
-// 6. Look up a fixed word list in the dictionary written (wordCheck.ts).
+// 6. Look up a fixed word list in the dictionary written, and every word a
+//    declaration names in its `lookups` (wordCheck.ts, #554).
 // 7. Fast-forward `production` to `head`, which deploys the site.
 //
 // Each batch goes to D1 as one transaction (d1Batch.ts). Any stop is red and
@@ -36,7 +37,7 @@ import { D1Batch } from "./d1Batch.js";
 import { type DataFetcher, type DumpCatalog, fetchVerified, filesFor } from "./dataFiles.js";
 import { advanceProduction, deployRange, type Git } from "./pending.js";
 import { type ReadyChange, planWrite, readyChange, SCHEMA } from "./writePlan.js";
-import { lookUpWords, WORD_LIST } from "./wordCheck.js";
+import { lookUpDeclaredWords, lookUpWords, WORD_LIST } from "./wordCheck.js";
 import type { ArchiveFactsCatalog } from "../source/archiveFacts.js";
 import type { CuratedCorrection } from "../italian/curatedCorrections.js";
 
@@ -197,8 +198,9 @@ export async function deployDictionary(deps: DeployDeps): Promise<DeployOutcome>
         if (mismatches.length > 0) return red(mismatches.map((mismatch) => `${declaration.file}: ${mismatch}`));
       }
 
-      step("word-lookup", (deps.words ?? WORD_LIST).join(", "));
-      const missing = await lookUpWords(deps.reader, deps.words);
+      const declaredWords = range.declarations.flatMap(({ file, lookups }) => (lookups === undefined ? [] : [`${file}: ${lookups.map(({ word }) => word).join(", ")}`]));
+      step("word-lookup", [(deps.words ?? WORD_LIST).join(", "), ...declaredWords].join("; "));
+      const missing = [...(await lookUpWords(deps.reader, deps.words)), ...(await lookUpDeclaredWords(deps.reader, range.declarations))];
       if (missing.length > 0) return red(missing.map((mismatch) => `word lookup: ${mismatch}`));
     }
 
