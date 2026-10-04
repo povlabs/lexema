@@ -286,9 +286,10 @@ IP address is erased one hour after the report, by the Worker's cron trigger
 ([docs/WEB.md](./docs/WEB.md#why-a-report-is-stored-and-nothing-more)). Both
 rules are Huey's ([#570](https://github.com/povlabs/lexema/issues/570)); the
 report itself is kept. Neither command changes the dictionary or anything a
-reader sees: a fix is made by hand, elsewhere. Both read the `APP_DB` and the dictionary in
-`SEED_STATE`, as `pnpm run plan` does, so a local `pnpm run seed:dev` drops
-every report and its answer with it. A remote seed leaves reports alone.
+reader sees: a fix is made by hand, elsewhere. Both read the `APP_DB` and the
+dictionary in `SEED_STATE`, as `pnpm run plan` does, so a local
+`pnpm run seed:dev` drops every report and its answer with it. A remote seed
+leaves reports alone.
 
 ### Look at a pull request's Preview
 
