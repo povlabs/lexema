@@ -201,12 +201,44 @@ jobs:
   # passes a required check, so this never skips: it reads each gated job's
   # result against what `changes` said the change needs. An output other than
   # `false` counts as needed.
+  #
+  # On a merge queue entry it also holds a pull request labelled
+  # `ready-for:human` (ADR 0006, #565). It reads the label, so it needs only
+  # `pull-requests: read`; it checks out nothing, so it needs no `contents`.
   ci-required:
     if: always()
     needs: [changes, check, test-web, d1, validate]
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    permissions:
+      pull-requests: read
     steps:
+      # The `merge_group` payload carries no labels, so this reads the pull
+      # request's live labels. It runs on the queue only: `ci.yml` does not
+      # re-run on `unlabeled`, so a red check on the pull request would outlive
+      # the label. A head ref it cannot parse, or a read that fails, fails it.
+      - name: hold a pull request labelled ready-for:human
+        if: github.event_name == 'merge_group'
+        env:
+          HEAD_REF: ${{ github.event.merge_group.head_ref }}
+          REPO: ${{ github.repository }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -u
+          if [[ ! "$HEAD_REF" =~ ^refs/heads/gh-readonly-queue/.+/pr-([0-9]+)-[0-9a-f]{40}$ ]]; then
+            echo "::error::merge queue head ref '${HEAD_REF}' names no pull request, so its ready-for:human hold is unread."
+            exit 1
+          fi
+          pr="${BASH_REMATCH[1]}"
+          if ! labels="$(gh api "repos/${REPO}/pulls/${pr}" --jq '.labels[].name')"; then
+            echo "::error::could not read the labels of pull request #${pr}, so its ready-for:human hold is unread."
+            exit 1
+          fi
+          if printf '%s\n' "$labels" | grep -Fxq 'ready-for:human'; then
+            echo "::error::pull request #${pr} carries ready-for:human, which holds it for Huey (ADR 0006). To release it, remove the label, then queue the pull request again."
+            exit 1
+          fi
+          echo "pull request #${pr}: no ready-for:human hold."
       - env:
           CHANGES: ${{ needs.changes.result }}
           NEED_CI: ${{ needs.changes.outputs.ci }}
