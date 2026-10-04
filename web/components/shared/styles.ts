@@ -21,8 +21,12 @@
 // 19 to 21 draw it at 390 px. A phone-only rule is a `max-sm:` variant beside
 // the wide one, so from `sm` up the page is the one the wide boards draw.
 
-/** The one column every page is laid out in, and the chrome lines up with. */
-const COLUMN = "mx-auto w-full max-w-[75rem] px-4 sm:px-6";
+/**
+ * The one column every page is laid out in, and the chrome lines up with. At
+ * 1440 px its content starts at x = 120, where frames 33 and 34 draw the
+ * header name, the legal pages' Contents and the footer (#581).
+ */
+const COLUMN = "mx-auto w-full max-w-[78rem] px-4 sm:px-6";
 
 /** The focus ring the manifest rules: `accent`, and never removed. */
 const FOCUS_RING =
@@ -416,9 +420,10 @@ export const REPORT_CLOSE = `mt-5 cursor-pointer rounded-[3px] border border-bor
 // on the left; on a phone there is none, and the text is the whole column.
 
 // Frames 33 and 35 at 1440 px: the Contents column 120 px in, 220 px wide, a
-// 96 px gap, then the 720 px text column at 436 px (#581). The 1200 px column
-// the dictionary's other pages take starts at 144 px, so this one is its own.
-// On a phone, frames 33m to 36m set the text 20 px in. The shell's bottom
+// 96 px gap, then the 720 px text column at 436 px (#581). From `sm` up it
+// starts on the same edge as each site's own column, `COLUMN` or `DEV_COLUMN`,
+// so the header, the Contents and the footer line up. On a phone, frames 33m
+// to 36m set the text 20 px in. The shell's bottom
 // padding plus the footer's own margin make the frame's 112 px, 56 px on a
 // phone.
 export const LEGAL_SHELL = "mx-auto w-full max-w-[78rem] px-5 sm:px-6 flex-1 pt-18 pb-20 max-sm:pt-9 max-sm:pb-9";
