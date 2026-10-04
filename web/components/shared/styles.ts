@@ -34,6 +34,21 @@ const COLUMN = "mx-auto w-full max-w-[78rem] px-4 sm:px-6";
  */
 const DEV_COLUMN = "mx-auto w-full max-w-[78rem] px-5 sm:px-6";
 
+/**
+ * Which column a dictionary page and its chrome are laid out in. Frames 33m
+ * and 34m draw the legal pages' header name, text and footer 20 px in on a
+ * phone, the developer site's edge; every other page keeps `COLUMN`'s 16 px
+ * (#588). From `sm` up the two are the same column. The header, the footer
+ * and the legal shell each read this one table, so a page cannot put its
+ * header and its text on different edges.
+ */
+export type DictionaryColumn = "page" | "legal";
+const DICTIONARY_COLUMN: Readonly<Record<DictionaryColumn, string>> = { page: COLUMN, legal: DEV_COLUMN };
+const inDictionaryColumn = (rest: string): Readonly<Record<DictionaryColumn, string>> => ({
+  page: `${DICTIONARY_COLUMN.page} ${rest}`,
+  legal: `${DICTIONARY_COLUMN.legal} ${rest}`,
+});
+
 /** The focus ring the manifest rules: `accent`, and never removed. */
 const FOCUS_RING =
   "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent";
@@ -47,7 +62,7 @@ export const LINK = `text-accent underline ${FOCUS_RING}`;
 
 /** C1: a full-width bar, the name at the left, a hairline under it. */
 export const TOP_BAR = "border-b border-border";
-export const TOP_BAR_INNER = `${COLUMN} flex h-16 items-center`;
+export const TOP_BAR_INNER = inDictionaryColumn("flex h-16 items-center");
 export const TOP_BAR_NAME = `font-serif text-xl text-text-strong no-underline ${FOCUS_RING}`;
 
 /** C2: the name at the left, three small links at the right. */
@@ -56,7 +71,7 @@ export const TOP_BAR_NAME = `font-serif text-xl text-text-strong no-underline ${
  * shell's `pb-4` plus this margin make 48px, 36px on a phone.
  */
 export const SITE_FOOTER = "mt-5 border-t border-border sm:mt-8";
-export const SITE_FOOTER_INNER = `${COLUMN} flex flex-wrap items-center justify-between gap-4 py-8`;
+export const SITE_FOOTER_INNER = inDictionaryColumn("flex flex-wrap items-center justify-between gap-4 py-8");
 /** The footer's wordmark, a link home like the top bar's. */
 export const SITE_FOOTER_NAME = `font-serif text-base text-text-strong no-underline ${FOCUS_RING}`;
 export const SITE_FOOTER_LINKS = "m-0 flex list-none flex-wrap gap-x-6 gap-y-2 p-0";
@@ -427,16 +442,16 @@ export const REPORT_CLOSE = `mt-5 cursor-pointer rounded-[3px] border border-bor
 
 // Frames 33 and 35 at 1440 px: the Contents column 120 px in, 220 px wide, a
 // 96 px gap, then the 720 px text column at 436 px (#581). The shell is its
-// site's own column, `COLUMN` or `DEV_COLUMN`, so on every width the text
-// starts on the same edge as that site's header: 120 px at 1440 px, and on a
-// phone 16 px on the dictionary and 20 px on the developer site (#585). The
+// site's legal column, the dictionary's `legal` column or `DEV_COLUMN`, so on
+// every width the text starts on the same edge as that site's header: 120 px
+// at 1440 px, and 20 px on a phone on both sites (#585, #588). The
 // shell's bottom padding plus the footer's own margin make the frame's 112 px,
 // 56 px on a phone.
 const LEGAL_SHELL_SPACE = "flex-1 pt-18 pb-20 max-sm:pt-9 max-sm:pb-9";
 /** The site a legal page belongs to, which picks its shell's column. */
 export type LegalSite = "dictionary" | "developers";
 export const LEGAL_SHELL: Readonly<Record<LegalSite, string>> = {
-  dictionary: `${COLUMN} ${LEGAL_SHELL_SPACE}`,
+  dictionary: `${DICTIONARY_COLUMN.legal} ${LEGAL_SHELL_SPACE}`,
   developers: `${DEV_COLUMN} ${LEGAL_SHELL_SPACE}`,
 };
 export const LEGAL_LAYOUT =
@@ -458,9 +473,9 @@ export const LEGAL_CONTENTS_LINK = `flex font-sans text-[0.84375rem] leading-[1.
 export const LEGAL_CONTENTS_NUMBER = "w-[1.625rem] shrink-0";
 /**
  * The text column. `--legal-hang` is how far a section title sits from the
- * column's edge: the number's slot, as wide as "11." and the 14 px after it.
- * The heading's number takes it as its width and the section's text, on a
- * wide screen, as its indent, so the text starts under the title (#585).
+ * column's edge on a wide screen: the number's slot, as wide as "11." and the
+ * 14 px after it. The heading's number takes it as its width and the
+ * section's text as its indent, so the text starts under the title (#585).
  */
 export const LEGAL_TEXT = "min-w-0 [--legal-hang:2.5rem]";
 export const LEGAL_KICKER = "m-0 font-sans text-[0.6875rem] leading-[1.7] font-semibold tracking-[0.1em] text-accent";
@@ -473,7 +488,12 @@ export const LEGAL_LEDE =
 export const LEGAL_SECTION = "mt-10 scroll-mt-8 max-sm:mt-8";
 export const LEGAL_SECTION_HEADING =
   "m-0 flex items-baseline font-serif text-[1.3125rem] leading-[1.35] font-normal text-text-strong max-sm:text-[1.1875rem]";
-export const LEGAL_SECTION_NUMBER = "w-(--legal-hang) shrink-0 text-accent";
+/**
+ * On a phone there is no slot: the number is its own width and a fixed gap,
+ * so titles 1 to 9 start 30 px in and 10 and 11 start 40 px in, as frames 33m
+ * to 36m draw them, and the text has no indent (#588).
+ */
+export const LEGAL_SECTION_NUMBER = "w-(--legal-hang) shrink-0 text-accent max-sm:w-auto max-sm:mr-4";
 /** The section's text, set in under the heading's words on a wide screen. */
 const LEGAL_BODY = "font-sans text-[0.96875rem] leading-[1.7] text-text sm:pl-(--legal-hang) max-sm:text-[0.9375rem]";
 export const LEGAL_PARAGRAPH = `m-0 mt-3 ${LEGAL_BODY}`;
