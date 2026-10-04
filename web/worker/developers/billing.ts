@@ -16,6 +16,10 @@
 //   GET  /auth/subscription/success    where Stripe returns a paid Checkout:
 //                                      the plugin's, then /dashboard/settings
 //
+// A suspended account (#573, src/accounts/suspension.ts) is refused Checkout
+// and the billing portal, so it cannot choose a plan again; Stripe's return
+// from a Checkout started before the suspension still lands.
+//
 // The POSTs need an `Origin` that is this site, and, signed in, the session's
 // CSRF token in the form's `csrf` field, like the dashboard actions
 // (worker/developers/dashboard.ts). A signed-out choice has no session to carry a token
@@ -32,12 +36,13 @@
 import { authSecret, billingAuth, CHECKOUT_RETURN_PATH } from "@lexema/accounts/auth.ts";
 import { billingOf, type Billing, type BillingSetup, type StripeSettings } from "@lexema/accounts/billing.ts";
 import { csrfMatches } from "@lexema/accounts/csrf.ts";
+import { accountSuspension } from "@lexema/accounts/suspension.ts";
 import { accountPlan, choiceFor } from "@lexema/billing/accountPlan.ts";
 import { stripePlanOf, type StripePlanId } from "@lexema/billing/plans.ts";
 import { appTablesOverD1, type AppTables } from "@lexema/db/app/database.ts";
 import { log } from "@lexema/log/requestLog.ts";
 import { CHECKOUT_ACTION, PLAN_FIELD, PORTAL_ACTION, PRICING } from "@/lib/developers/billingActions.ts";
-import { CSRF_FIELD, SETTINGS } from "@/lib/developers/dashboardActions.ts";
+import { CSRF_FIELD, SETTINGS, SUSPENDED } from "@/lib/developers/dashboardActions.ts";
 import { DEVELOPERS_SEGMENT, originsOf } from "../shared/hosts.ts";
 import type { FetchHandler } from "../shared/fetchHandler.ts";
 import {
@@ -136,6 +141,9 @@ async function sessionOf(request: Request, ready: Ready): Promise<Session | unde
   return { accountId, cookie, headers: new Headers({ cookie: cookies ?? "" }) };
 }
 
+/** Whether the signed-in account is suspended (#573): it may start no Checkout and open no portal. */
+const suspended = async (ready: Ready, session: Session): Promise<boolean> => (await accountSuspension(ready.appDb, session.accountId)) !== undefined;
+
 /** better-auth with the Stripe plugin, for this request's site. */
 const authFor = (url: URL, ready: Ready) => billingAuth(ready.appDb.app, ready.secret, url.origin, ready.billing);
 
@@ -190,6 +198,7 @@ export async function answerBilling(request: Request, route: BillingRoute, conte
       // waits for the sign-in; signed in, it is used once, whatever happens next.
       if (session === undefined) return seeOther(SIGN_IN_PAGE);
       const cleared = [clearedCookie(CHOSEN_PLAN_COOKIE)];
+      if (await suspended(ready, session)) return text(403, SUSPENDED, new Headers({ "set-cookie": cleared[0] }));
       const plan = stripePlanOf(readCookie(request.headers.get("cookie"), CHOSEN_PLAN_COOKIE));
       if (plan === undefined) return seeOther(PRICING, cleared);
       return await toCheckout(url, ready, session, plan, cleared);
@@ -203,12 +212,14 @@ export async function answerBilling(request: Request, route: BillingRoute, conte
     if (route.kind === "portal") {
       if (session === undefined) return seeOther(SIGN_IN_PAGE);
       if (await expired(session)) return text(403, EXPIRED);
+      if (await suspended(ready, session)) return text(403, SUSPENDED);
       return await toPortal(url, ready, session);
     }
     const plan = stripePlanOf(field(form, PLAN_FIELD));
     if (plan === undefined) return text(400, "Choose Starter or Pro.");
     if (session === undefined) return seeOther(SIGN_IN_PAGE, [cookie(CHOSEN_PLAN_COOKIE, plan, CHOSEN_PLAN_SECONDS)]);
     if (await expired(session)) return text(403, EXPIRED);
+    if (await suspended(ready, session)) return text(403, SUSPENDED);
     return await toCheckout(url, ready, session, plan);
   } catch (failure) {
     // Stripe's, the plugin's or the database's message stays in the log.

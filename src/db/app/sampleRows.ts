@@ -33,6 +33,8 @@ const ROWS: SampleRowsByTable = {
     createdAt: at("2026-10-01T00:00:00.000Z"),
     updatedAt: at("2026-10-01T00:00:00.000Z"),
     stripeCustomerId: "cus_sample",
+    suspendedAt: at("2026-10-02T00:00:00.000Z"),
+    suspensionReason: "sample suspension",
   },
   providerIdentity: {
     id: 1,
@@ -93,6 +95,7 @@ const ROWS: SampleRowsByTable = {
     periodStart: at("2026-10-01T00:00:00.000Z"),
     periodEnd: at("2026-11-01T00:00:00.000Z"),
   },
+  suspensionCardBlock: { accountId: 1, valueListItemId: "rsli_sample", cardFingerprint: "sample_fingerprint" },
   planNotice: { stripeSubscriptionId: "sub_sample", accountId: 1, plan: "starter", state: "active" },
   readerReport: {
     reportId: 1,

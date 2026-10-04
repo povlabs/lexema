@@ -771,6 +771,7 @@ export const ERRORS: readonly ErrorReference[] = [
   { status: 401, code: "revoked_key", when: "The key has been revoked." },
   { status: 401, code: "expired_key", when: "The key is past the expiry it was made with." },
   { status: 402, code: "plan_required", when: "The key's account has no active plan: none yet, one whose payment failed, or one that has ended." },
+  { status: 403, code: "account_suspended", when: "The key's account is suspended. Its keys answer again if the suspension is lifted." },
   { status: 403, code: "endpoint_not_allowed", when: "The key is limited to other endpoints." },
   { status: 404, code: "unknown_lemma", when: "`/inflect`: `lemma` heads no record." },
   { status: 404, code: "not_found", when: "No endpoint at this path." },

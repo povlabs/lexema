@@ -46,6 +46,11 @@ const moment = customType<{ data: Date; driverData: string }>({
  * `image` is better-auth's column for a provider's picture; Lexema keeps none.
  * `stripe_customer_id` is the Stripe plugin's `user.stripeCustomerId`: the
  * Stripe customer the account is billed as, NULL until Checkout makes one (#260).
+ *
+ * `suspended_at` and `suspension_reason` are one suspension, set and cleared
+ * together by `pnpm run account` (src/accounts/suspension.ts, #573): when it
+ * began and why. Both are NULL while the account is not suspended, and the
+ * CHECK below stores neither without the other.
  */
 export const developerAccount = sqliteTable(
   "developer_account",
@@ -59,11 +64,17 @@ export const developerAccount = sqliteTable(
     updatedAt: moment("updated_at").notNull(),
     deletedAt: moment("deleted_at"), // NULL while the account is in use
     stripeCustomerId: text("stripe_customer_id").unique(),
+    suspendedAt: moment("suspended_at"), // NULL while the account is not suspended
+    suspensionReason: text("suspension_reason"), // NULL while the account is not suspended
   },
   () => [
     check("developer_account_email", sql`email = lower(email) AND email LIKE '%_@_%'`),
     check("developer_account_email_verified", sql`email_verified = 1`),
     check("developer_account_image", sql`image IS NULL`),
+    check(
+      "developer_account_suspension",
+      sql`(suspended_at IS NULL AND suspension_reason IS NULL) OR (suspended_at IS NOT NULL AND suspension_reason IS NOT NULL AND length(suspension_reason) BETWEEN 1 AND 500 AND suspension_reason = trim(suspension_reason))`,
+    ),
   ],
 );
 
@@ -369,6 +380,33 @@ export const planNotice = sqliteTable(
   () => [
     check("plan_notice_plan", sql`plan IN ('starter', 'pro')`),
     check("plan_notice_state", sql`state IN ('active', 'past-due', 'cancelling', 'ended')`),
+  ],
+);
+
+/**
+ * A card a suspension blocked in Stripe Radar (#573): the item it added to the
+ * configured card-fingerprint block list, so that lifting the suspension
+ * removes exactly what suspending added (src/accounts/suspension.ts). Two
+ * suspended accounts that paid with one card share its item, and each holds a
+ * row for it; the item leaves the list only when the last of them is lifted.
+ * An item already on the list that no suspension added has no row, and lifting
+ * never removes it. Only the card's fingerprint is kept: Stripe's own id for a
+ * card, which names no person and no number.
+ */
+export const suspensionCardBlock = sqliteTable(
+  "suspension_card_block",
+  {
+    accountId: integer("account_id")
+      .notNull()
+      .references(() => developerAccount.id),
+    valueListItemId: text("value_list_item_id").notNull(),
+    cardFingerprint: text("card_fingerprint").notNull(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.accountId, table.valueListItemId] }),
+    index("suspension_card_block_by_item").on(table.valueListItemId),
+    check("suspension_card_block_item", sql`value_list_item_id GLOB 'rsli_*'`),
+    check("suspension_card_block_fingerprint", sql`length(card_fingerprint) > 0`),
   ],
 );
 

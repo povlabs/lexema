@@ -209,6 +209,22 @@ export function settingsView(profile: AccountProfile, keys: readonly OwnedKey[],
 }
 
 /**
+ * A suspended account's dashboard and settings page (#573): one card saying
+ * so, with Delete account, and nothing else.
+ */
+export interface SuspendedView {
+  signedIn: SignedIn;
+  /** What the delete confirmation says, as on the settings page. */
+  deleteWarning: string;
+}
+
+/** The page a suspended account sees, for its profile and keys: its keys are not revoked, so deleting still revokes them. */
+export const suspendedView = (profile: AccountProfile, keys: readonly OwnedKey[]): SuspendedView => ({
+  signedIn: signedInOf(profile),
+  deleteWarning: deleteWarning(liveKeys(keys).length),
+});
+
+/**
  * What the delete confirmation says (#163 R1.4, board 30): "Your N API keys
  * will be revoked right away, and any app using them will stop working. This
  * can't be undone." One key reads in the singular; with none, only the last

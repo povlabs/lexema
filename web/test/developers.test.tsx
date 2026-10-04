@@ -19,6 +19,7 @@ import { gzipSync } from "node:zlib";
 import type { ReactElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { signInAccount, verifiedIdentity } from "../../src/accounts/accounts.js";
+import { suspendAccount, suspensionReasonOf } from "../../src/accounts/suspension.js";
 import { ALL_ENDPOINTS, onlyEndpoints, type KeyAccess } from "../../src/api/keyAccess.js";
 import { createKey, revokeKey } from "../../src/api/keys.js";
 import { createAccountKey, keyName } from "../../src/api/ownedKeys.js";
@@ -169,6 +170,12 @@ test("every error the docs list is one the API answers, with that status and cod
   assert.ok(lookup !== undefined);
   const lookupOnly = await ownedKey({ endpoints: lookup, expiresAt: null });
   const planless = await ownedKey({ endpoints: ALL_ENDPOINTS, expiresAt: null }, "planless", "no plan");
+  const suspended = await ownedKey({ endpoints: ALL_ENDPOINTS, expiresAt: null }, "suspended");
+  const suspendedIdentity = verifiedIdentity("github", { subject: "suspended", verifiedEmail: "suspended@example.com", name: undefined });
+  const reason = suspensionReasonOf("Abuse.");
+  assert.ok(suspendedIdentity !== undefined && reason !== undefined);
+  const { accountId: suspendedAccount } = await signInAccount(db, suspendedIdentity, NOW);
+  assert.equal((await suspendAccount(db, suspendedAccount, reason, NOW, { stripe: undefined, blockList: undefined })).outcome, "suspended");
   // A plan of 1 call a period, already spent.
   const spent = await ownedKey({ endpoints: ALL_ENDPOINTS, expiresAt: null }, "spent", { enterpriseCalls: 1 });
   assert.equal((await send("exists?q=sale", { key: spent })).status, 200);
@@ -185,6 +192,7 @@ test("every error the docs list is one the API answers, with that status and cod
     revoked_key: () => send("lookup?q=sale", { key: revoked.key }),
     expired_key: () => send("lookup?q=sale", { key: expired }),
     plan_required: () => send("lookup?q=sale", { key: planless }),
+    account_suspended: () => send("lookup?q=sale", { key: suspended }),
     allowance_exceeded: () => send("exists?q=sale", { key: spent }),
     endpoint_not_allowed: () => send("exists?q=sale", { key: lookupOnly }),
     unknown_lemma: () => send("inflect?lemma=qqqqqq", { key }),

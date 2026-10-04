@@ -11,6 +11,7 @@ import { DatabaseSync } from "node:sqlite";
 import { createElement, isValidElement, type ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { deleteAccount } from "../../src/accounts/accounts.js";
+import { liftSuspension, suspendAccount, suspensionReasonOf } from "../../src/accounts/suspension.js";
 import type { BillingSetup } from "../../src/accounts/billing.js";
 import type { ProviderProfile } from "../../src/accounts/providers.js";
 import { authenticate } from "../../src/api/keys.js";
@@ -25,9 +26,12 @@ import {
   JSON_ANSWER,
   revokeKeyAction,
   sendAction,
+  SUSPENDED,
   UNREACHABLE,
   type ActionAnswer,
 } from "@/lib/developers/dashboardActions.ts";
+import { suspendedView } from "@/lib/developers/dashboardView.ts";
+import { SUSPENDED_HEADING, SuspendedAccount } from "@/components/developers/dashboard/SuspendedAccount";
 import { afterDelete, takeNotice, type NoticeStore } from "@/lib/developers/arrivalNotice.ts";
 import { sessionVisitor } from "@/lib/developers/sessionVisitor.ts";
 import { ArrivalToast } from "@/components/developers/dashboard/ArrivalToast";
@@ -695,4 +699,86 @@ test("a failed deletion email is logged, and the account is still deleted (#215)
   assert.equal(deletedAt(), new Date(NOW).toISOString());
   assert.equal(await adas.signedIn(), undefined);
   assert.deepEqual(email.sent, []);
+});
+
+/** Suspend an account as `pnpm run account suspend` does, with billing off. */
+async function suspend(db: Parameters<typeof suspendAccount>[0], accountId: number): Promise<void> {
+  const reason = suspensionReasonOf("Abuse.");
+  assert.ok(reason !== undefined);
+  assert.equal((await suspendAccount(db, accountId, reason, NOW, { stripe: undefined, blockList: undefined })).outcome, "suspended");
+}
+
+test("a suspended account still signs in to its pages, and each dashboard action but deleting it is refused 403 and changes nothing (#573)", async () => {
+  const { db, appSaw, browser, snapshot } = site();
+  const before = await browser(ada);
+  const key = await createAccountKey(db, before.accountId, name("one"), NOW);
+  assert.ok(key.outcome === "created");
+  await suspend(db, before.accountId);
+
+  // The same person signs in again, to the same account.
+  const adas = await browser(ada);
+  assert.equal(adas.accountId, before.accountId);
+  for (const page of [DASHBOARD, SETTINGS]) assert.equal((await adas.send(`${DEVELOPERS}${page}`)).status, 200, page);
+  assert.equal(appSaw.length, 2);
+
+  const unchanged = snapshot();
+  const refused: [string, Record<string, string>][] = [
+    ["/dashboard/keys", { name: "another" }],
+    ["/dashboard/keys", { name: "limited", endpoints: "some", endpoint: "lookup", expires: "30-days" }],
+    [`/dashboard/keys/${key.keyId}/revoke`, {}],
+  ];
+  for (const [path, fields] of refused) {
+    const answer = await adas.post(path, fields);
+    assert.equal(answer.status, 403, path);
+    assert.deepEqual(await answerOf(answer), { outcome: "refused", message: SUSPENDED }, path);
+  }
+  assert.deepEqual(snapshot(), unchanged);
+
+  // Lifted, the same actions run again.
+  await liftSuspension(db, adas.accountId, undefined);
+  assert.equal((await adas.post(`/dashboard/keys/${key.keyId}/revoke`)).status, 200);
+});
+
+test("a suspended account signs out, and deletes itself through the existing deletion path (#573)", async () => {
+  const { db, browser } = site();
+  const adas = await browser(ada);
+  const key = await createAccountKey(db, adas.accountId, name("one"), NOW);
+  assert.ok(key.outcome === "created");
+  await suspend(db, adas.accountId);
+
+  const signedOut = await adas.send(`${DEVELOPERS}/sign-out`, { method: "POST", headers: { origin: DEVELOPERS } });
+  assert.equal(signedOut.status, 303);
+  assert.equal(await adas.signedIn(), undefined);
+
+  const again = await browser(ada);
+  const deleted = await again.post("/dashboard/account/delete", { confirm: DELETE_CONFIRMATION });
+  assert.equal(deleted.status, 200);
+  assert.deepEqual(await answerOf(deleted), { outcome: "signed-out", location: AFTER_SIGN_OUT });
+  assert.equal(await again.signedIn(), undefined);
+  assert.deepEqual(await authenticate(db, key.key, NOW), { outcome: "refused", refusal: "revoked" });
+});
+
+/** The suspended card's body, word for word as Huey ruled it on PR #577 (issuecomment-5984751318). */
+const SUSPENDED_BODY = [
+  "We have suspended this account because of activity that may breach our Terms of service, such as abuse of usage limits, a payment problem or a risk to the service. While it is suspended, your API keys do not answer, and you cannot create keys or choose a plan.",
+  "If you believe this is a mistake, write to contact@lexema.fyi and we will review it. You can still delete your account below.",
+];
+
+test("a suspended account's dashboard and settings show only the suspended card, with Delete account and its warning (#573)", () => {
+  const profile = { email: "ada@example.com", name: "Ada Lovelace", providers: ["google"] as ["google"] };
+  const view = suspendedView(profile, []);
+  for (const current of ["dashboard", "settings"] as const) {
+    const html = renderToStaticMarkup(createElement(SuspendedAccount, { view, csrf: "c".repeat(43), current, origins: ORIGIN }));
+    const main = /<main[^>]*>([\s\S]*)<\/main>/.exec(html)?.[1] ?? "";
+    assert.match(main, new RegExp(`<h1[^>]*>${SUSPENDED_HEADING}</h1>`), current);
+    const paragraphs = [...main.matchAll(/<p[^>]*>([\s\S]*?)<\/p>/g)].map((p) => (p[1] ?? "").replace(/<[^>]+>/g, "").replace(/\s+/g, " "));
+    assert.deepEqual(paragraphs.slice(0, 2), SUSPENDED_BODY, current);
+    assert.match(main, /<a [^>]*href="\/terms"[^>]*>Terms of service<\/a>/, current);
+    assert.match(main, /<a [^>]*href="mailto:contact@lexema\.fyi"[^>]*>contact@lexema\.fyi<\/a>/, current);
+    assert.ok(main.includes(">Delete account</button>"), current);
+    // Nothing else: no tabs, no keys, no usage, no plan.
+    for (const absent of ["<h2", "<nav", "Create key", "Usage", "Plan", "Settings", "Choose", "Manage billing"]) assert.ok(!main.includes(absent), `${current}: ${absent}`);
+    // Its only controls: the two links in its words, and Delete account.
+    assert.equal(main.match(/<(button|a|form)\b/g)?.length, 3, current);
+  }
 });

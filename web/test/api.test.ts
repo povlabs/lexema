@@ -16,6 +16,7 @@ import { fileURLToPath } from "node:url";
 import { DatabaseSync } from "node:sqlite";
 import { gzipSync } from "node:zlib";
 import { signInAccount, verifiedIdentity } from "../../src/accounts/accounts.js";
+import { liftSuspension, suspendAccount, suspensionReasonOf } from "../../src/accounts/suspension.js";
 import { ALL_ENDPOINTS, onlyEndpoints, type KeyAccess } from "../../src/api/keyAccess.js";
 import { runKeyCommand } from "../../src/api/keyCli.js";
 import { createKey, hashApiKey, revokeKey } from "../../src/api/keys.js";
@@ -1195,6 +1196,31 @@ test("an owned key whose payment failed answers 402 and meters nothing, then 200
   const refused = await ask(key, "exists?q=casa");
   assert.equal(refused.status, 402);
   assert.equal(((await refused.json()) as Json).error.code, "plan_required");
+  assert.equal(meters.calls.length, 0);
+
+  await appDb.app.update(subscription).set({ status: "active" }).where(eq(subscription.referenceId, String(accountId)));
+  assert.equal((await ask(key, "exists?q=casa")).status, 200);
+  assert.equal(meters.calls.length, 1);
+  own.close();
+});
+
+test("a suspended account whose payment also failed answers 403 account_suspended; lifted it answers 402, and 200 once paid (#573, #571)", async () => {
+  const { sqlite: own, appDb } = freshAppDatabase();
+  const meters = new TestMetering();
+  const ask = requestOf(appDb, meters);
+  const { accountId, key } = await accountWithKey(appDb, "both", { ...STARTER, status: "past_due" });
+  const reason = suspensionReasonOf("Abuse.");
+  assert.ok(reason);
+  // No Stripe client: the past-due row stays as it is, so both refusals stand at once.
+  assert.equal((await suspendAccount(appDb, accountId, reason, NOW, { stripe: undefined, blockList: undefined })).outcome, "suspended");
+  const suspended = await ask(key, "exists?q=casa");
+  assert.equal(suspended.status, 403);
+  assert.equal(((await suspended.json()) as Json).error.code, "account_suspended");
+
+  assert.equal((await liftSuspension(appDb, accountId, undefined)).outcome, "lifted");
+  const unpaid = await ask(key, "exists?q=casa");
+  assert.equal(unpaid.status, 402);
+  assert.equal(((await unpaid.json()) as Json).error.code, "plan_required");
   assert.equal(meters.calls.length, 0);
 
   await appDb.app.update(subscription).set({ status: "active" }).where(eq(subscription.referenceId, String(accountId)));
