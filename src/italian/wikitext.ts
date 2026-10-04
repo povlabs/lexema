@@ -113,7 +113,10 @@ const LANGUAGE_TEMPLATES: Readonly<Record<string, string>> = {
  * `withoutNoise` leaves out every picture. `undefined` is a call that prints no
  * definition, and leaves the line unrendered like an unknown template.
  */
-const PRINTING_TEMPLATES: Readonly<Record<string, (args: readonly string[]) => string | undefined>> = {
+/** What a template prints for its positional arguments, as wikitext; `undefined` when it prints no text a reader is owed. */
+export type TemplatePrinter = (args: readonly string[]) => string | undefined;
+
+const PRINTING_TEMPLATES: Readonly<Record<string, TemplatePrinter>> = {
   // Template:Taxon (raw source read 2026-10-03, #495) prints
   // `la sua classificazione scientifica è '''''{{{1}}}''''' ([[File:WikiSpecies.svg|…]] '''[[wikispecies:{{{1}}}|tassonomia]]''')`.
   // With no first argument it prints an error and a maintenance category.
@@ -230,6 +233,7 @@ function expandTemplates(
   body: string,
   headword: string,
   unknown: (name: string) => string,
+  printing: Readonly<Record<string, TemplatePrinter>> = {},
 ): { text: string; labels: string[] } {
   const labels: string[] = [];
   let text = withoutNoise(body);
@@ -244,7 +248,8 @@ function expandTemplates(
         if (printed !== undefined && printed !== "") labels.push(printed);
         return " ";
       }
-      return PRINTING_TEMPLATES[name]?.(args) ?? LANGUAGE_TEMPLATES[name] ?? unknown(name);
+      const printer = Object.hasOwn(PRINTING_TEMPLATES, name) ? PRINTING_TEMPLATES[name] : Object.hasOwn(printing, name) ? printing[name] : undefined;
+      return printer?.(args) ?? LANGUAGE_TEMPLATES[name] ?? unknown(name);
     });
   }
   return { text: text.replace(LINK, (_, target: string, label?: string) => label ?? target), labels };
@@ -258,12 +263,12 @@ function expandTemplates(
  * dropping words it prints, would put text on the page that the page upstream
  * does not say. The line is reported instead.
  */
-export function renderInline(body: string, headword: string): Rendered {
+export function renderInline(body: string, headword: string, printing: Readonly<Record<string, TemplatePrinter>> = {}): Rendered {
   let unknown: string | undefined;
   const { text, labels } = expandTemplates(body, headword, (name) => {
     unknown ??= name;
     return " ";
-  });
+  }, printing);
   if (unknown !== undefined) return { rendered: false, template: unknown };
   const runs = runsOf(text);
   return { rendered: true, text: collapse(runs.map((run) => run.text).join("")), labels, runs };
@@ -962,4 +967,101 @@ export function readStatedSections(page: RawPage): StatedLayout {
     unplaced,
     englishCopy: /\{\{\s*Trasfen\s*[|}]/i.test(page.wikitext),
   };
+}
+
+// --- Lines by section (ADR 0026) ---------------------------------------------
+//
+// A page-only entry may carry every field the word page shows, each read from
+// its own page (ADR 0026). Those fields sit in two kinds of section: the
+// part-of-speech section the entry was read from (its headword line, a forms
+// table), and the sections Wikizionario writes once for the word after them
+// (`{{-pron-}}`, `{{-etim-}}`, `{{-sin-}}`…). This walk tells the lines apart
+// by the markers and headings `readStatedSections` reads, so a part-of-speech
+// section opens here on the line it opens there. It reads each line with its
+// comments blanked, since a comment can span lines and a reader sees none.
+
+/** The word sections a page-only entry reads, by the name their `{{-name-}}` heading gives. */
+export const WORD_SECTIONS = ["pron", "etim", "sin", "ant", "der", "prov"] as const;
+export type WordSectionName = (typeof WORD_SECTIONS)[number];
+
+const isWordSection = (name: string): name is WordSectionName => (WORD_SECTIONS as readonly string[]).includes(name);
+
+/** Which Italian section a line sits in: a part-of-speech section, by the line that opens it, or a word section. */
+export type LineSection = { kind: "pos"; opener: number } | { kind: "word"; name: WordSectionName };
+
+/** One line of a page's Italian section, under the heading it sits in. */
+export interface SectionLine {
+  /** 1-based line in the revision's wikitext. */
+  line: number;
+  /** The line exactly as the page has it. */
+  wikitext: string;
+  /** The line with every HTML comment blanked, including one that spans lines. A reader never sees a comment. */
+  visible: string;
+  section: LineSection;
+}
+
+/**
+ * The page's lines with every `<!-- … -->` blanked, line for line: a comment
+ * that spans lines leaves its lines empty, and one never closed runs to the
+ * end of the page, as MediaWiki reads it.
+ */
+function visibleLines(wikitext: string): string[] {
+  return wikitext.replace(/<!--[\s\S]*?(?:-->|$)/g, (comment) => comment.replace(/[^\n]/g, "")).split("\n");
+}
+
+/**
+ * Every line of the page that sits in an Italian part-of-speech section or an
+ * Italian word section, in page order. A word section is Italian when the
+ * Italian marker opened the language it sits in, or, on a page with no
+ * language marker, when the part-of-speech section before it is Italian.
+ */
+export function italianSectionLines(page: RawPage): SectionLine[] {
+  const raws = page.wikitext.split("\n");
+  const visibles = visibleLines(page.wikitext);
+  /** As `readStatedSections` keeps it: undefined before any marker, "" after a heading that ends one. */
+  let language: string | undefined;
+  /** Whether a part-of-speech section is open, which decides whether a verb label opens one. */
+  let posOpen = false;
+  let openerItalian = false;
+  let section: LineSection | undefined;
+  const lines: SectionLine[] = [];
+  for (const [index, raw] of raws.entries()) {
+    const visible = visibles[index] ?? "";
+    const line = visible.trim();
+    const marker = /\{\{-([a-z][a-z-]*)-\}\}/.exec(line);
+    if (marker !== null && isLanguageCode(marker[1]) && (line === marker[0] || line.includes("="))) {
+      language = marker[1];
+      posOpen = false;
+      section = undefined;
+      continue;
+    }
+    if (/^==[^=].*[^=]==$/.test(line)) {
+      language = language === undefined ? undefined : "";
+      posOpen = false;
+      section = undefined;
+      continue;
+    }
+    const opener = templateOpener(visible, line) ?? bareTemplateOpener(line) ?? verbLabelOpener(line, posOpen) ?? writtenTitleOpener(line);
+    if (opener !== undefined) {
+      const scope = language === undefined ? undefined : language === "it";
+      openerItalian = scope === false || opener.italian === false ? false : scope === true || opener.italian === true;
+      posOpen = true;
+      section = openerItalian ? { kind: "pos", opener: index + 1 } : undefined;
+      continue;
+    }
+    const heading = /^\{\{-([a-z]+)-\}\}$/.exec(line)?.[1];
+    if (heading !== undefined && isWordSection(heading)) {
+      const italian = language === "it" || (language === undefined && openerItalian);
+      posOpen = false;
+      section = italian ? { kind: "word", name: heading } : undefined;
+      continue;
+    }
+    if (/^\{\{-/.test(line) || /^=/.test(line)) {
+      posOpen = false;
+      section = undefined;
+      continue;
+    }
+    if (section !== undefined) lines.push({ line: index + 1, wikitext: raw, visible, section });
+  }
+  return lines;
 }

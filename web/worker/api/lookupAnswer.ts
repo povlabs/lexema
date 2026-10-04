@@ -26,7 +26,7 @@ import { normalizeItalianExact } from "@lexema/italian/normalize.ts";
 import { expressionMeaning } from "@lexema/lookup/expressions.ts";
 import { bareKey, type Nearby } from "@lexema/lookup/nearby.ts";
 import type { PhraseOffer } from "@lexema/lookup/phrase.ts";
-import { entryKey, isFormOfReading, isVerbReading, lemmasOfPartOfSpeech, publicEntryId, searchedSpellings } from "@lexema/lookup/types.ts";
+import { entryKey, isFormOfReading, isVerbReading, lemmasOfPartOfSpeech, publicEntryId, searchedSpellings, sourcePointerOf } from "@lexema/lookup/types.ts";
 import type {
   FoundResult,
   LemmaTarget,
@@ -131,7 +131,7 @@ const NON_FINITE_PLACE: Record<string, GrammarPlace> = {
 /** Where each searched form of a verb sits in its conjugation, in source order. */
 function conjugationPlaces(reading: Reading, hit: SearchedSpellings, conjugation: Conjugation): GrammarPlace[] {
   return reading.forms
-    .filter((form) => hit.formPointers.has(form.ref.jsonPointer))
+    .filter((form) => hit.formPointers.has(sourcePointerOf(form.ref) ?? ""))
     .flatMap((form): GrammarPlace[] => {
       const slot = slotOf(form);
       if (slot.kind === "non-finite") return [NON_FINITE_PLACE[slot.role]];
@@ -151,7 +151,7 @@ function gridPlaces(grid: Grid | undefined, hit: SearchedSpellings, degree: Gram
     row.cells.flatMap((cell, n) =>
       cell.spellings.some(
         (spelling) =>
-          (hit.headword && spelling.headword) || spelling.forms.some((form) => hit.formPointers.has(form.ref.jsonPointer)),
+          (hit.headword && spelling.headword) || spelling.forms.some((form) => hit.formPointers.has(sourcePointerOf(form.ref) ?? "")),
       )
         ? [{ gender: GENDER_LABEL[row.gender], number: NUMBER_LABEL[NUMBERS[n]], ...degree }]
         : [],

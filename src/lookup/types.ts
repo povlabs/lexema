@@ -52,9 +52,12 @@ export interface Evidence {
  * `missing`, which means we looked and the source said nothing.
  */
 export type GrammarClaim =
-  | { status: "stated"; dimension: string; value: string; sourceText: string; ref: SourceRef }
-  | { status: "unclassified"; sourceText: string; ref: SourceRef }
-  | { status: "missing"; dimension: string; ref: SourceRef };
+  | { status: "stated"; dimension: string; value: string; sourceText: string; ref: FactRef }
+  | { status: "unclassified"; sourceText: string; ref: FactRef }
+  | { status: "missing"; dimension: string; ref: FactRef };
+
+/** A claim read off an archive line, which is every claim but a page-only entry's (ADR 0026). */
+export type ArchiveClaim = GrammarClaim & { ref: SourceRef };
 
 /** A claim the source states, with its value. */
 export type StatedClaim = Extract<GrammarClaim, { status: "stated" }>;
@@ -140,8 +143,8 @@ export interface SourceForm {
   index: number;
   /** Verbatim source spelling, never cleaned. */
   surface: string;
-  /** The entry this was read from: `/forms/3/form`. */
-  ref: SourceRef;
+  /** The entry this was read from: `/forms/3/form`, or the page line that writes it out (ADR 0026). */
+  ref: FactRef;
   /** The conjugation table the source names for this entry, when it names one. */
   formSource: string | null;
   /** Grammar the source states about this entry, and the silences it left. */
@@ -159,7 +162,7 @@ export interface Pronunciation {
   ipa: string;
   /** The source's own `sense` on the sound: `italiano standard`. */
   note: string | null;
-  ref: SourceRef;
+  ref: FactRef;
 }
 
 /** One `hyphenations[].parts`, never empty and never only the missing-hyphenation placeholder (#255). */
@@ -175,7 +178,7 @@ export interface Hyphenation {
  */
 export interface RelatedWord {
   word: string;
-  refs: [SourceRef, ...SourceRef[]];
+  refs: [FactRef, ...FactRef[]];
 }
 
 /**
@@ -187,7 +190,7 @@ export interface RelatedWord {
 export interface SynonymEntry {
   word: string;
   rawTags: string[];
-  ref: SourceRef;
+  ref: FactRef;
 }
 
 /**
@@ -197,8 +200,8 @@ export interface SynonymEntry {
 export interface ExpressionItem {
   phrase: string;
   meaning: string | null;
-  /** The item: `/proverbs/3`. */
-  ref: SourceRef;
+  /** The item: `/proverbs/3`, or the page line that lists it (ADR 0026). */
+  ref: FactRef;
 }
 
 /**
@@ -214,19 +217,27 @@ export interface Expression {
   meanings: string[];
   /** Whether the phrase is itself an Italian headword, so a page links it to its entry. */
   hasEntry: boolean;
-  refs: [SourceRef, ...SourceRef[]];
+  refs: [FactRef, ...FactRef[]];
+}
+
+/** A text the source wrote about the word, verbatim, and where it was read. */
+export interface WordText {
+  text: string;
+  ref: FactRef;
 }
 
 /**
  * What the source says about the *headword* rather than about one record of
  * it: read from `source_record_json`, where it is repeated on each record the
- * headword has. A page shows it once per word, not once per reading.
+ * headword has, or, for a page-only entry, from its own raw page (ADR 0026).
+ * A page shows it once per word, not once per reading.
  */
 export interface WordFacts {
   pronunciations: Pronunciation[];
+  /** Never read for a page-only entry: the word page does not show it (ADR 0026). */
   hyphenations: Hyphenation[];
   /** `etymology_texts`, with Wikizionario's "Etimologia/Riferimenti mancante/i" placeholder taken out (#255). */
-  etymologies: SourceText[];
+  etymologies: WordText[];
   synonyms: RelatedWord[];
   /** The same synonyms uncollapsed, in source order, each with its `raw_tags`. */
   synonymList: SynonymEntry[];
@@ -274,6 +285,25 @@ export interface RecoveredRef {
   /** 1-based line in the revision's wikitext. */
   line: number;
 }
+
+/**
+ * Where a fact a page shows was read: a field of an archive line, or a line of
+ * a raw page for a page-only entry (ADR 0026). The two are told apart by
+ * shape, never by a flag that could disagree with it.
+ */
+export type FactRef = SourceRef | RecoveredRef;
+
+/** Whether a fact was read from the archive rather than from a raw page. */
+export const isSourceRef = (ref: FactRef): ref is SourceRef => "jsonPointer" in ref;
+
+/** The archive pointer a fact was read at; undefined for a raw page's line, which no query hits. */
+export const sourcePointerOf = (ref: FactRef): string | undefined => (isSourceRef(ref) ? ref.jsonPointer : undefined);
+
+/** A key that tells any two facts' places apart, whichever source each was read from. */
+export const factRefKey = (ref: FactRef): string =>
+  isSourceRef(ref)
+    ? `${ref.releaseId}\u0000${ref.lineNo}\u0000${ref.jsonPointer}`
+    : `${ref.wiki}\u0000${ref.title}\u0000${ref.revisionId}\u0000${ref.line}`;
 
 /** The permanent URL of the page revision a recovered ref names. */
 export function recoveredRevisionUrl(ref: RecoveredRef): string {
@@ -413,8 +443,8 @@ export type LemmaTarget = LemmaCandidate & {
  * stays visible.
  */
 export type LemmaLink =
-  | { kind: "dangling"; targetWord: string; ref: SourceRef }
-  | { kind: "candidates"; targetWord: string; candidates: LemmaTarget[]; ref: SourceRef };
+  | { kind: "dangling"; targetWord: string; ref: FactRef }
+  | { kind: "candidates"; targetWord: string; candidates: LemmaTarget[]; ref: FactRef };
 
 /**
  * A record that declares itself a form of a word this record spells — the

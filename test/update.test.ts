@@ -36,6 +36,7 @@ import {
   masterUpgradeSql,
   rebuildSql,
   PAGE_ENTRY_CORRECTION_TABLES,
+  PAGE_ENTRY_FACT_TABLES,
   PAGE_ENTRY_INDEXES,
   PAGE_ENTRY_TABLES,
   REBUILT_GROUPS,
@@ -528,7 +529,7 @@ test("the upgrade brings a master seeded before #18 up to the schema and is safe
   const old = new DatabaseSync(":memory:");
   old.exec(await readFile(SCHEMA, "utf8"));
   for (const view of [...SERVING_VIEWS].reverse()) old.exec(`DROP VIEW ${view}`);
-  for (const table of [...UPDATE_TABLES, ...PAGE_ENTRY_TABLES, ...PAGE_ENTRY_CORRECTION_TABLES, ...CORRECTION_TABLES, ...HIDE_TABLES].reverse()) old.exec(`DROP TABLE ${table}`);
+  for (const table of [...UPDATE_TABLES, ...PAGE_ENTRY_TABLES, ...PAGE_ENTRY_FACT_TABLES, ...PAGE_ENTRY_CORRECTION_TABLES, ...CORRECTION_TABLES, ...HIDE_TABLES].reverse()) old.exec(`DROP TABLE ${table}`);
   assert.deepEqual(missingUpgrade(readerOf(old)), [...UPGRADE_NAMES]);
   assert.deepEqual(UPGRADE_NAMES.filter((name) => [...CORRECTION_TABLES, ...HIDE_TABLES].includes(name as never)), ["correction_version", "corrected_claim", "hide_version", "hidden_record"]);
   const upgrade = masterUpgradeSql(await readFile(SCHEMA, "utf8"));
@@ -577,8 +578,8 @@ test("the upgrade brings a master seeded before #18 up to the schema and is safe
 
 test("the upgrade gives a master seeded before #403 its page-entry tables, empty, and lookups answer the same", async () => {
   await withDesk(async ({ db }) => {
-    for (const table of [...PAGE_ENTRY_TABLES, ...PAGE_ENTRY_CORRECTION_TABLES].reverse()) db.exec(`DROP TABLE ${table}`);
-    assert.deepEqual(missingUpgrade(readerOf(db)), [...PAGE_ENTRY_TABLES, ...PAGE_ENTRY_CORRECTION_TABLES, ...PAGE_ENTRY_INDEXES]);
+    for (const table of [...PAGE_ENTRY_TABLES, ...PAGE_ENTRY_FACT_TABLES, ...PAGE_ENTRY_CORRECTION_TABLES].reverse()) db.exec(`DROP TABLE ${table}`);
+    assert.deepEqual(missingUpgrade(readerOf(db)), [...PAGE_ENTRY_TABLES, ...PAGE_ENTRY_FACT_TABLES, ...PAGE_ENTRY_CORRECTION_TABLES, ...PAGE_ENTRY_INDEXES]);
     const casa = await ask(db, "casa");
     assert.equal(casa.outcome, "found");
     const written = () => (db.prepare("SELECT total_changes() AS n").get() as { n: number }).n;
@@ -586,7 +587,7 @@ test("the upgrade gives a master seeded before #403 its page-entry tables, empty
     execute(db, masterUpgradeSql(await readFile(SCHEMA, "utf8")));
     assert.equal(written(), before, "the upgrade writes no row");
     assert.deepEqual(missingUpgrade(readerOf(db)), []);
-    for (const table of [...PAGE_ENTRY_TABLES, ...PAGE_ENTRY_CORRECTION_TABLES]) assert.equal((db.prepare(`SELECT count(*) AS n FROM ${table}`).get() as { n: number }).n, 0);
+    for (const table of [...PAGE_ENTRY_TABLES, ...PAGE_ENTRY_FACT_TABLES, ...PAGE_ENTRY_CORRECTION_TABLES]) assert.equal((db.prepare(`SELECT count(*) AS n FROM ${table}`).get() as { n: number }).n, 0);
     assert.deepEqual(await ask(db, "casa"), casa);
   });
 });
@@ -604,7 +605,7 @@ test("a definition compares the same through comments, spacing, IF NOT EXISTS an
   const fresh = new DatabaseSync(":memory:");
   fresh.exec(schema);
   assert.deepEqual(changedUpgrade(readerOf(fresh), schema), []);
-  for (const table of [...PAGE_ENTRY_TABLES, ...PAGE_ENTRY_CORRECTION_TABLES].reverse()) fresh.exec(`DROP TABLE ${table}`);
+  for (const table of [...PAGE_ENTRY_TABLES, ...PAGE_ENTRY_FACT_TABLES, ...PAGE_ENTRY_CORRECTION_TABLES].reverse()) fresh.exec(`DROP TABLE ${table}`);
   fresh.exec(masterUpgradeSql(schema));
   assert.deepEqual(changedUpgrade(readerOf(fresh), schema), []);
   assert.equal(planUpgrade(readerOf(fresh), schema).sql, "");
@@ -620,7 +621,7 @@ test("no table outside the rebuilt tables, or outside a rebuilt group, points at
       .filter((table) => !rebuilt.has(table))
       .flatMap((table) => db.prepare("SELECT \"table\" AS parent FROM pragma_foreign_key_list(?)").all(table).map((row) => `${table} -> ${String(row.parent)}`))
       .filter((edge) => rebuilt.has(edge.split(" -> ")[1]));
-  assert.deepEqual(REBUILT_TABLES, [...PAGE_ENTRY_TABLES, ...PAGE_ENTRY_CORRECTION_TABLES, "recovered_definition", "recovered_label", "recovered_example", "hidden_record"]);
+  assert.deepEqual(REBUILT_TABLES, [...PAGE_ENTRY_TABLES, ...PAGE_ENTRY_FACT_TABLES, ...PAGE_ENTRY_CORRECTION_TABLES, "recovered_definition", "recovered_label", "recovered_example", "hidden_record"]);
   assert.deepEqual(pointingInto(new Set<string>(REBUILT_TABLES)), []);
   for (const group of REBUILT_GROUPS) {
     assert.deepEqual(pointingInto(new Set<string>(group.tables)), [], group.tables.join(", "));
@@ -721,7 +722,7 @@ test("a rebuild whose rows the new definition refuses stops whole, and the dicti
     db.prepare("INSERT INTO recovered_entry VALUES (1, ?, 900001, 'scrivania', 'scrivania', 'noun', 'Verbo', 'italian-page-entry/v1', 3, '')").run(release);
     const plan = planUpgrade(readerOf(db), schema);
     assert.deepEqual(plan.changed, ["recovered_entry"]);
-    assert.deepEqual(plan.kept.map(({ name, rows }) => [name, rows]), [["recovered_entry", 1], ["entry_definition", 0], ["entry_label", 0], ["entry_example", 0], ["corrected_definition", 0]]);
+    assert.deepEqual(plan.kept.map(({ name, rows }) => [name, rows]), [["recovered_entry", 1], ["entry_definition", 0], ["entry_label", 0], ["entry_example", 0], ["entry_fact", 0], ["corrected_definition", 0]]);
     const before = JSON.stringify(db.prepare("SELECT name, sql FROM sqlite_schema ORDER BY name").all());
     assert.throws(() => execute(db, plan.sql), /CHECK constraint failed/);
     assert.equal(JSON.stringify(db.prepare("SELECT name, sql FROM sqlite_schema ORDER BY name").all()), before);

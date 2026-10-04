@@ -10,7 +10,7 @@
 
 import { normalizeItalianExact } from "@lexema/italian/normalize.ts";
 import { mergeExpressions } from "@lexema/lookup/expressions.ts";
-import { isFormOfReading, isVerbReading } from "@lexema/lookup/types.ts";
+import { factRefKey, isFormOfReading, isVerbReading } from "@lexema/lookup/types.ts";
 import { hasDefinitions } from "./definitions.ts";
 import { labelParts, readingsNamed, splitLabel } from "./readingLabels.ts";
 import { relatedItems, type RelatedItem } from "./relatedList.ts";
@@ -22,9 +22,8 @@ import type {
   Hyphenation,
   Reading,
   RelatedWord,
-  SourceRef,
-  SourceText,
   WordFacts,
+  WordText,
 } from "@lexema/lookup/types.ts";
 
 /**
@@ -52,7 +51,7 @@ export interface PageReading {
    */
   lemmaTables: LemmaTable[];
   /** The etymologies the source ties to this reading, their bracket label dropped. */
-  etymologies: SourceText[];
+  etymologies: WordText[];
   /** The synonym groups the source labels with this reading's part of speech. */
   synonyms: RelatedItem[];
 }
@@ -243,7 +242,7 @@ function mergeWordFacts(readings: readonly Reading[]): WordFacts {
   return {
     pronunciations: distinct<Pronunciation>(all((facts) => facts.pronunciations), (p) => `${p.ipa}\u0000${p.note}`),
     hyphenations: distinct<Hyphenation>(all((facts) => facts.hyphenations), (h) => h.parts.join("\u0000")),
-    etymologies: distinct<SourceText>(all((facts) => facts.etymologies), (e) => e.text),
+    etymologies: distinct<WordText>(all((facts) => facts.etymologies), (e) => e.text),
     synonyms: related((facts) => facts.synonyms),
     synonymList: all((facts) => facts.synonymList),
     antonyms: related((facts) => facts.antonyms),
@@ -258,9 +257,6 @@ function mergeWordFacts(readings: readonly Reading[]): WordFacts {
  * it stays once after the readings instead (Huey: identical things show once).
  */
 const onlyReading = (named: readonly Reading[]): Reading | undefined => (named.length === 1 ? named[0] : undefined);
-
-/** A source position, the key an occurrence is placed by. */
-const refKey = (ref: SourceRef): string => `${ref.releaseId}\u0000${ref.lineNo}\u0000${ref.jsonPointer}`;
 
 /**
  * Etymologies and synonym groups the source ties to one part of speech, moved
@@ -280,12 +276,12 @@ const refKey = (ref: SourceRef): string => `${ref.releaseId}\u0000${ref.lineNo}\
 function placeWordFacts(
   about: readonly Reading[],
   merged: WordFacts,
-): { etymologies: Map<Reading, SourceText[]>; synonyms: Map<Reading, RelatedWord[]>; rest: WordFacts } {
-  const etymologies = new Map<Reading, SourceText[]>();
+): { etymologies: Map<Reading, WordText[]>; synonyms: Map<Reading, RelatedWord[]>; rest: WordFacts } {
+  const etymologies = new Map<Reading, WordText[]>();
   const synonyms = new Map<Reading, RelatedWord[]>();
   if (about.length < 2) return { etymologies, synonyms, rest: merged };
 
-  const keptEtymologies: SourceText[] = [];
+  const keptEtymologies: WordText[] = [];
   for (const etymology of merged.etymologies) {
     const { label, rest } = splitLabel(etymology.text);
     const reading = label !== undefined ? onlyReading(readingsNamed(label, about)) : undefined;
@@ -301,15 +297,15 @@ function placeWordFacts(
       const label = entry.rawTags.find((tag) => labelParts(tag).length > 0);
       if (label !== undefined) group = onlyReading(readingsNamed(label, about));
       if (group === undefined) continue;
-      placedRefs.add(refKey(entry.ref));
+      placedRefs.add(factRefKey(entry.ref));
       const words = synonyms.get(group) ?? [];
       const existing = words.find((word) => word.word === entry.word);
       if (existing === undefined) words.push({ word: entry.word, refs: [entry.ref] });
-      else if (!existing.refs.some((ref) => refKey(ref) === refKey(entry.ref))) existing.refs.push(entry.ref);
+      else if (!existing.refs.some((ref) => factRefKey(ref) === factRefKey(entry.ref))) existing.refs.push(entry.ref);
       synonyms.set(group, words);
     }
   }
-  const keptSynonyms = merged.synonyms.filter((word) => word.refs.some((ref) => !placedRefs.has(refKey(ref))));
+  const keptSynonyms = merged.synonyms.filter((word) => word.refs.some((ref) => !placedRefs.has(factRefKey(ref))));
 
   return { etymologies, synonyms, rest: { ...merged, etymologies: keptEtymologies, synonyms: keptSynonyms } };
 }

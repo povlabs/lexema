@@ -16,6 +16,7 @@ import { PLURAL_PLACEHOLDER_FORM, normalizeFormSurface } from "../src/italian/so
 import { fromNodeSqlite } from "../src/lookup/database.js";
 import { lookup } from "../src/lookup/lookup.js";
 import type { Reading } from "../src/lookup/types.js";
+import { archiveRef } from "./archiveRef.js";
 import { readOnlyDictionary } from "./databases.js";
 
 const RELEASE = "it-test";
@@ -84,7 +85,7 @@ async function assertNoPlaceholderForm(db: DatabaseSync): Promise<void> {
   const result = await lookup({ db: readOnlyDictionary(db), releaseId: RELEASE, query: PLURAL_PLACEHOLDER_FORM });
   assert.equal(result.outcome, "not-found");
 
-  const formsOf = (r: Reading) => r.forms.map((form) => [form.surface, form.ref.jsonPointer, form.claims.map((claim) => claim.status === "stated" ? claim.value : claim.status)]);
+  const formsOf = (r: Reading) => r.forms.map((form) => [form.surface, archiveRef(form.ref).jsonPointer, form.claims.map((claim) => claim.status === "stated" ? claim.value : claim.status)]);
   assert.deepEqual(formsOf(await reading(db, "mioplastica", "mioplastica")), []);
   assert.deepEqual(formsOf(await reading(db, "pittore", "pittore")), [["pittrice", "/forms/1/form", ["feminine"]]]);
   assert.deepEqual(formsOf(await reading(db, "casa", "casa")), [["case", "/forms/0/form", ["plural"]]]);

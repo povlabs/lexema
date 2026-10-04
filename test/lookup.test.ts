@@ -18,6 +18,7 @@ import {
   SEARCH_SQL,
   lookup,
 } from "../src/lookup/lookup.js";
+import { archiveRef } from "./archiveRef.js";
 import { fromNodeSqlite, type DictionaryRead, type LookupDatabase, type SqlValue } from "../src/lookup/database.js";
 import type {
   FoundResult,
@@ -414,7 +415,7 @@ test("evidence from a long table is ordered by index, not by pointer text", asyn
     const tenth = parlare.grammar.byForm.get(10);
     assert.ok(tenth);
     assert.deepEqual(
-      tenth.map((c) => c.ref.jsonPointer),
+      tenth.map((c) => archiveRef(c.ref).jsonPointer),
       ["/forms/10", "/forms/10/tags/0"],
     );
   });
@@ -584,7 +585,7 @@ test("keeps stated, unclassified and missing grammar apart in the result", async
     // that gloss and nothing is left missing. (A record the stamp leaves a
     // dimension missing for is in test/glossGrammarStamp.test.ts.)
     assert.deepEqual(
-      record.map((c) => (c.status === "stated" ? `${c.dimension}=${c.value} ${c.ref.jsonPointer}` : c.status)),
+      record.map((c) => (c.status === "stated" ? `${c.dimension}=${c.value} ${archiveRef(c.ref).jsonPointer}` : c.status)),
       ["gender=feminine /senses/0/glosses/0", "number=singular /senses/0/glosses/0"],
     );
 
@@ -641,7 +642,7 @@ test("a reading carries its own forms, spelled and ordered as the source wrote t
       [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
     );
     assert.deepEqual(
-      parlare.forms.map((f) => f.ref.jsonPointer),
+      parlare.forms.map((f) => archiveRef(f.ref).jsonPointer),
       parlare.forms.map((f) => `/forms/${f.index}/form`),
     );
 
@@ -704,7 +705,7 @@ test("every ref names the release, the line, the field and the line's digest", a
       ).map((row) => [row.line_no, row.raw_json]),
     );
 
-    for (const ref of refs) {
+    for (const ref of refs.map(archiveRef)) {
       assert.equal(ref.releaseId, RELEASE);
       assert.ok(ref.lineNo !== undefined);
       const raw = rawByLine.get(ref.lineNo);

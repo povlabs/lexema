@@ -5,7 +5,7 @@
 // Which records are readings and which lemma tables they carry is
 // `wordPage.ts`; this file only lays the answer out.
 
-import { entryKey, type EntryIdentity, type WordFacts } from "@lexema/lookup/types.ts";
+import { entryKey, factRefKey, type EntryIdentity, type WordFacts } from "@lexema/lookup/types.ts";
 import { ExternalIcon } from "@/components/shared/icons";
 import { Expressions } from "./Expressions";
 import { NEW_TAB } from "@/components/shared/ExternalLink";
@@ -44,7 +44,7 @@ function Pronunciation({ facts }: { facts: WordFacts }) {
   return (
     <p className={PRONUNCIATION} aria-label="Pronunciation">
       {pronunciations.map((sound, i) => (
-        <span key={sound.ref.jsonPointer}>
+        <span key={factRefKey(sound.ref)}>
           {i > 0 && " · "}
           {sound.ipa}
           {pronunciations.length > 1 && sound.note !== null && (
@@ -97,7 +97,7 @@ function WordFactsView({
             Etymology
           </h2>
           {facts.etymologies.map((etymology) => (
-            <OneLine key={etymology.ref.jsonPointer} text={etymology.text} lang="it" />
+            <OneLine key={factRefKey(etymology.ref)} text={etymology.text} lang="it" />
           ))}
         </section>
       )}

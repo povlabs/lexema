@@ -34,6 +34,7 @@ export const COUNTED_TABLES = [
   "entry_definition",
   "entry_label",
   "entry_example",
+  "entry_fact",
 ] as const;
 
 export type CountedTable = (typeof COUNTED_TABLES)[number];

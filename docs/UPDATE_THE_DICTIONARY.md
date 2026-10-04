@@ -47,7 +47,8 @@ run:
 pnpm run update:upgrade
 ```
 
-This adds the update tables and views, the empty page-entry tables (#403),
+This adds the update tables and views, the empty page-entry tables (#403)
+and `entry_fact` (#439),
 and the tables `correct:records` and `hide:records` write, without writing
 records. It also rebuilds the page-entry tables, rows kept, when one is stored
 with a definition other than schema.sql's, and a `hidden_record` from before

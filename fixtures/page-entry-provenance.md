@@ -63,6 +63,22 @@ XML-decoded, without edits. Each equals its revision's
 verb; the committed list corrects both, and the tests check it against these
 bytes.
 
+## The other fields (#439, ADR 0026)
+
+[page-facts/](page-facts/) holds two more pages of the same verified dump, read
+on 2026-10-04, with the same revision header and their wikitext unedited. They
+sit outside `upstream-pages/`, so no seed of the fixture tree reads them:
+
+| Page | Revision | Saved | Covers |
+|---|---:|---|---|
+| `avventurieri` | 3962578 | 2023-11-13T15:52:01Z | two sections, each with its own `{{Tabs\|…}}` and a definition naming `avventuriero` |
+| `amano` | 2822837 | 2017-05-04T23:42:01Z | a `Voce verbale` naming `del verbo [[amare]]` |
+
+[test/pageFacts.test.ts](../test/pageFacts.test.ts) reads them beside
+`raccontare`, `fornire` and `mastoide`. It also writes one page of its own,
+`racconti`, in `avventurieri`'s layout, so a definition names a lemma the
+seed's archive line `racconto` heads; its header says so.
+
 ## Test authoring contracts
 
 - The parser test owns admission, ordered meanings/labels/examples and physical

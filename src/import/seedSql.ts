@@ -52,6 +52,7 @@ const TABLE_ORDER = [
   "entry_definition",
   "entry_label",
   "entry_example",
+  "entry_fact",
   "corrected_definition",
   "release_table_rows",
 ] as const;
@@ -82,6 +83,7 @@ export const COLUMNS: Record<TableName, string> = {
   entry_definition: "entry_id,definition_index,route,term,page_line,wikitext,text,lead_in_index",
   entry_label: "entry_id,definition_index,label_index,label",
   entry_example: "entry_id,definition_index,example_index,page_line,wikitext,text",
+  entry_fact: "entry_id,fact_index,rule,kind,page_line,wikitext,value,source_text,meaning,tags,definition_index",
   corrected_definition: "entry_id,definition_index,text,correction_id,evidence_url",
   release_table_rows: "release_id,table_name,rows",
 };
@@ -131,6 +133,7 @@ class SqlBatchWriter {
     entry_definition: 0,
     entry_label: 0,
     entry_example: 0,
+    entry_fact: 0,
     corrected_definition: 0,
     release_table_rows: 0,
   };
@@ -522,7 +525,7 @@ export async function seedSql(options: SeedSqlOptions): Promise<SeedSqlReport> {
         const entryId = ++writer.counts.recovered_entry;
         const rows = pageEntryRows(entryId, start.releaseId, pageId, entry);
         writer.statement("recovered_entry").run(...rows.recovered_entry);
-        for (const table of ["entry_definition", "entry_label", "entry_example"] as const) {
+        for (const table of ["entry_definition", "entry_label", "entry_example", "entry_fact"] as const) {
           for (const values of rows[table]) writer.statement(table).run(...values);
           writer.counts[table] += rows[table].length;
         }
