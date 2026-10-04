@@ -11,7 +11,7 @@
 //   a frame.
 // - `web/test/fixture.ts` is a small synthetic archive for the edge cases the
 //   real words do not all reach: a verb auxiliary written as source text, a
-//   tense cycle the source leaves without a pronoun, and the attribution page.
+//   tense cycle the source leaves without a pronoun.
 //
 // What this cannot cover is the wiring in app/(lexema)/page.tsx: reaching D1 needs
 // `cloudflare:workers`, which exists only inside workerd.
@@ -33,16 +33,20 @@ import { atFixtureLines, correctionFixtureLines } from "../../test/correctionFix
 import { DECLARED_CORRECTION_LINES, declaredCorrections } from "../../test/declaredCorrectionFixture.js";
 import { seededDictionary } from "../../test/seededDictionary.js";
 import { loadFixturePages, rawPageSource, type RawPageSource } from "../../src/source/rawPage.js";
-import { PUBLISHED_ARCHIVE_SHA256, sourceOf, type ArchiveFacts, type ReleaseSource } from "../../src/source/archiveFacts.js";
+import type { ArchiveFacts } from "../../src/source/archiveFacts.js";
+import { servedRelease, ServedReleaseUnknown, type ServedRelease } from "../../src/source/servedRelease.js";
+import type { DeclaredChange, ReleaseId } from "../../src/update/declaration.js";
+import { readServedRelease } from "../../src/update/readServedRelease.js";
 import { fromNodeSqlite } from "../../src/lookup/database.js";
 import type { Reading, SourceRef } from "../../src/lookup/types.js";
 import type { Attempt } from "@/lib/dictionary/attempt.ts";
 import { searchAttempt } from "@/lib/dictionary/searchAttempt.ts";
 import { declaredGridOf, NUMBERS } from "@/lib/dictionary/genderGrid.ts";
-import { Attribution } from "@/components/dictionary/Attribution";
+import { Licence } from "@/components/dictionary/Licence";
+import { Privacy } from "@/components/dictionary/Privacy";
 import { FirstLoad, Limited, Outcome, SearchPage, TRY_WORDS } from "@/components/dictionary/SearchPage";
 import { SiteFooter } from "@/components/dictionary/SiteFooter";
-import { ORIGIN } from "@/worker/shared/hosts.ts";
+import { byHost, ORIGIN } from "@/worker/shared/hosts.ts";
 import { SiteHeader } from "@/components/dictionary/SiteHeader";
 import { readingChoiceLabel } from "@/components/dictionary/ReportDialog";
 import { reportReadings } from "@/lib/dictionary/report.ts";
@@ -54,12 +58,10 @@ import { firstQuery, pageTitle } from "@/lib/dictionary/params";
 // The class strings the components carry, imported rather than copied, so a
 // restyle that changes one changes both together.
 import {
-  CODE_IDENTITY,
   DEFINITION,
   DEFINITION_EXTRA,
   DEFINITION_NUMBER_CLOSED,
   DEFINITION_NUMBER_OPEN,
-  EMPTY,
   EXPRESSION_FILTER,
   EXPRESSION_LINK,
   EXPRESSION_MEANING,
@@ -69,15 +71,19 @@ import {
   EXPRESSIONS_MORE,
   ERROR,
   EXAMPLE_EXTRA,
-  FIELD_LABEL,
-  FIELD_VALUE,
   GLOSS_LINK,
   JUMP_LINK,
+  LEGAL_ADDRESS,
+  LEGAL_CONTENTS,
+  LEGAL_EFFECTIVE,
+  LEGAL_KICKER,
+  LEGAL_LEDE,
+  LEGAL_SECTION,
+  LEGAL_TITLE,
   LINK,
   NON_FINITE_LABEL_SEARCHED,
   NOT_FOUND_HEADING,
   NOT_FOUND_LINK,
-  OPEN_MARK,
   PERSON_SEARCHED,
   READING,
   SHELL_CENTRED,
@@ -236,10 +242,6 @@ const textOf = (html: string): string => html.replace(/<[^>]*>/g, "").replace(/&
 
 const esc = (literal: string): string => literal.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 const exact = (literal: string): RegExp => new RegExp(esc(literal));
-
-/** One row of the attribution page's release identity. */
-const field = (label: string, value: string): string =>
-  `<dt class="${FIELD_LABEL}">${label}</dt><dd class="${FIELD_VALUE}">${value}</dd>`;
 
 /** Each reading of a page, in the order the page rendered them. */
 function readingsOfPage(html: string): string[] {
@@ -1449,7 +1451,7 @@ test("the page shows data only: no dispute, no 'lists … among its forms', no '
   });
 });
 
-test("every link that leaves Lexema, on a result or on /attribution, opens in a new tab; every link inside it stays", async () => {
+test("every link that leaves Lexema, on a result, opens in a new tab; every link inside it stays", async () => {
   await withDevSeed(async ({ db }) => {
     for (const query of ["andavano", "sale", "studente", "bello"]) {
       const html = await render(db, query);
@@ -1467,15 +1469,6 @@ test("every link that leaves Lexema, on a result or on /attribution, opens in a 
       for (const attributes of internal) assert.doesNotMatch(attributes, /target=/, `${query}: ${attributes}`);
     }
   });
-  // /attribution's credits leave Lexema too; its nav and footer links stay.
-  const page = attribution();
-  const external = [...page.matchAll(/<a ([^>]*href="https?:\/\/[^>]*)>(.*?)<\/a>/g)];
-  assert.ok(external.length >= 5, "the attribution page links out");
-  for (const [, attributes, inner] of external) {
-    assert.match(attributes, /target="_blank" rel="noopener noreferrer"/, attributes);
-    assert.match(inner, /opens in a new tab/, attributes);
-  }
-  for (const [, attributes] of page.matchAll(/<a ([^>]*href="[/#][^>]*)>/g)) assert.doesNotMatch(attributes, /target=/, attributes);
 });
 
 test("a search that finds nothing offers, in order: an accent, one edit, words that begin with it, or how to search", async () => {
@@ -1691,20 +1684,31 @@ test("the field is a combobox in both states, and still a plain named input for 
   });
 });
 
-test("every page reaches the attribution page from the footer's four links, and the developer site from a fifth", async () => {
-  const footer = renderToStaticMarkup(<SiteFooter origins={ORIGIN} />);
-  const links = [...footer.matchAll(new RegExp(`<a class="${esc(SITE_FOOTER_LINK)}" href="([^"]+)">([^<]+)</a>`, "g"))];
-  assert.deepEqual(links.map((match) => match[2]), ["Attribution", "About the data", "Licence", "Contact", "Developers"]);
-  for (const [, href] of links.slice(0, 4)) assert.match(href, /^\/attribution(#|$)/);
-  assert.equal(links[4][1], "https://developers.lexema.fyi");
+test("the footer links Licence, Privacy and Developers, and marks the page being shown", async () => {
+  const linksOf = (current: string) =>
+    [...renderToStaticMarkup(<SiteFooter origins={ORIGIN} current={current} />).matchAll(/<a class="([^"]*)" href="([^"]+)"( aria-current="page")?>([^<]+)<\/a>/g)]
+      .filter((match) => match[1] === SITE_FOOTER_LINK)
+      .map((match) => [match[4], match[2], match[3] !== undefined]);
+  assert.deepEqual(linksOf("/"), [
+    ["Licence", "/licence", false],
+    ["Privacy", "/privacy", false],
+    ["Developers", "https://developers.lexema.fyi", false],
+  ]);
+  assert.deepEqual(linksOf("/licence").map(([label, , current]) => [label, current]), [["Licence", true], ["Privacy", false], ["Developers", false]]);
+  assert.deepEqual(linksOf("/privacy").map(([label, , current]) => [label, current]), [["Licence", false], ["Privacy", true], ["Developers", false]]);
+  // The marked link is drawn highlighted, in the strong text role.
+  assert.ok(SITE_FOOTER_LINK.split(" ").includes("aria-[current=page]:text-text-strong"));
   // The footer's wordmark goes home, in the same tab, like the top bar's.
+  const footer = renderToStaticMarkup(<SiteFooter origins={ORIGIN} current="/" />);
   assert.match(footer, new RegExp(`<a class="${esc(SITE_FOOTER_NAME)}" href="/">Lexema</a>`));
   assert.match(renderToStaticMarkup(<SiteHeader />), /<a class="[^"]*" href="\/">Lexema<\/a>/);
 
   // The layout imports globals.css, which Node cannot load, so that it carries
-  // this footer is asserted on the file.
+  // this footer, told the page being shown, is asserted on the files.
   const layout = await readFile(join(REPO, "web/app/(lexema)/layout.tsx"), "utf8");
-  assert.match(layout, /<SiteFooter origins=\{await siteOrigins\(\)\} \/>/);
+  assert.match(layout, /<CurrentSiteFooter origins=\{await siteOrigins\(\)\} \/>/);
+  const current = await readFile(join(REPO, "web/components/dictionary/CurrentSiteFooter.tsx"), "utf8");
+  assert.match(current, /<SiteFooter origins=\{origins\} current=\{usePathname\(\)\} \/>/);
 });
 
 test("the search page carries no credit line, no licence name and no contributor text", async () => {
@@ -1784,136 +1788,269 @@ test("a search over the limit says so plainly, under the same field, and claims 
   assert.doesNotMatch(html, /Nothing in this release|The lookup failed|Searching for/);
 });
 
-/** The attribution page, over the release the fixture imported. */
-/** The page as the route serves it: the published archive's source. It reads no database. */
-function attribution(source: ReleaseSource = sourceOf(PUBLISHED_ARCHIVE_SHA256)): string {
-  return renderToStaticMarkup(<Attribution source={source} />);
+/** The release today's repository serves, read from `dictionary-changes/` as the build reads it. */
+const SERVED = await readServedRelease(REPO);
+
+/** The Licence page as the route serves it, over a release. It reads no database. */
+const licence = (release: ServedRelease = SERVED): string => renderToStaticMarkup(<Licence release={release} />);
+const privacy = (): string => renderToStaticMarkup(<Privacy />);
+
+/** The words a reader reads: tags, and the screen reader's "(opens in a new tab)", taken out. */
+const readOf = (html: string): string => textOf(html.replace(/<span class="sr-only">[^<]*<\/span>/g, "")).replace(/&amp;/g, "&");
+
+/** One section of a legal page, by its id. */
+function sectionOf(html: string, id: string): string {
+  const open = html.indexOf(`<section class="${LEGAL_SECTION}" id="${id}"`);
+  assert.notEqual(open, -1, `no section #${id}`);
+  return html.slice(open, html.indexOf("</section>", open));
 }
 
-/** A source nothing is recorded for. */
-const UNRECORDED: ReleaseSource = { dump: null, sourceUrl: null };
+/** A section as a reader reads it: its heading, then each paragraph and item in order. */
+function readSection(html: string, id: string): { heading: string; blocks: string[] } {
+  const section = sectionOf(html, id);
+  const heading = section.match(/<h2[^>]*>(.*?)<\/h2>/);
+  assert.ok(heading, `#${id} has a heading`);
+  const blocks = [...section.matchAll(/<(p|li)\b[^>]*>(.*?)<\/\1>/g)].map((match) => readOf(match[2]));
+  return { heading: readOf(heading[1]), blocks };
+}
 
-test("the attribution page carries the credit, the licence and the restructuring statement", () => {
-  {
-    const html = attribution();
+/** Every section of a legal page, in order: its id and its numbered heading. */
+const sectionsOf = (html: string): [string, string][] =>
+  [...html.matchAll(new RegExp(`<section class="${esc(LEGAL_SECTION)}" id="([^"]+)"[^>]*><h2[^>]*>(.*?)</h2>`, "g"))].map((match) => [
+    match[1],
+    readOf(match[2]),
+  ]);
 
-    // The licence, linked, under the name the licence itself uses.
-    assert.match(
-      html,
-      exact(
-        `<a class="${LINK}" href="https://creativecommons.org/licenses/by-sa/4.0/" ` +
-          `target="_blank" rel="noopener noreferrer">Creative Commons Attribution-ShareAlike 4.0 International ` +
-          `(CC BY-SA 4.0)<span class="sr-only"> (opens in a new tab)</span></a>`,
-      ),
-    );
-    // The credit: the contributors, and where their names are kept.
-    assert.match(html, /written by Wiktionary’s contributors/);
-    assert.match(html, /listed in the page history of that entry’s Wiktionary page/);
-    assert.match(
-      html,
-      exact(
-        `<a class="${LINK}" href="https://it.wiktionary.org/" target="_blank" rel="noopener noreferrer">Italian Wiktionary<span class="sr-only"> (opens in a new tab)</span></a>`,
-      ),
-    );
-    assert.match(html, /kaikki\.org/);
-    assert.match(html, /wiktextract/);
-    // What Lexema did to the material, and what it did not do.
-    assert.match(html, /Lexema modified this material/);
-    assert.match(html, /extracted from wiki text and converted into a data structure/);
-    assert.match(html, /The wording of the definitions was not rewritten and was not generated/);
+test("the Licence page reads, section by section, exactly as Huey approved it (#139)", () => {
+  const html = licence();
+  assert.match(html, exact(`<p class="${LEGAL_KICKER}">LEXEMA · LEGAL</p>`));
+  assert.match(html, exact(`<h1 class="${LEGAL_TITLE}">Licence</h1>`));
+  assert.match(html, exact(`<p class="${LEGAL_EFFECTIVE}">Effective 4 October 2026</p>`));
+  assert.match(
+    html,
+    exact(
+      `<p class="${LEGAL_LEDE}">This page sets out the terms under which the lexical content published on Lexema may be reused, and credits the sources from which it is derived.</p>`,
+    ),
+  );
+  const expected: [string, string, string[]][] = [
+    ["licence", "1.Licence", ["The definitions and other lexical content derived from the sources below are made available under the Creative Commons Attribution-ShareAlike 4.0 International licence (CC BY-SA 4.0)."]],
+    [
+      "reuse",
+      "2.Reuse",
+      [
+        "Under that licence you may:",
+        "(a) copy and redistribute the content in any medium or format;",
+        "(b) adapt, transform and build upon it, for any purpose, including commercially;",
+        "provided that you give appropriate credit, provide a link to the licence, indicate any changes made, and distribute your contributions under the same licence.",
+      ],
+    ],
+    [
+      "where",
+      "3.Sources",
+      [
+        "The content is derived from the Italian Wiktionary (Wikizionario), a project of the Wikimedia Foundation written by volunteer contributors. Most entries are taken from the extraction published by kaikki.org, produced with wiktextract by Tatu Ylonen. Where that extraction could not read a page, Lexema reads the entry from the page’s own text in the Wikimedia dump.",
+        "The authors of each entry are recorded in the revision history of its Wiktionary page. Every entry on Lexema links to that page.",
+      ],
+    ],
+    [
+      "changed",
+      "4.Modifications",
+      ["Lexema has adapted the source material: it is restructured and indexed for search, some grammatical information is added by rule, some wording is made consistent, and individual errors are corrected. Lexema does not write or generate definitions."],
+    ],
+    ["version", "5.Version of the data", ["The content is up to date with release it-78385b62, published by kaikki.org and built from the Italian Wiktionary dump of 1 September 2026."]],
+    [
+      "disclaimer",
+      "6.Disclaimer",
+      ["The content is provided “as is”, without warranties of any kind, as set out in section 5 of the licence. Lexema does not warrant that the content is accurate, complete or fit for any particular purpose."],
+    ],
+    [
+      "trademarks",
+      "7.Trademarks",
+      ["Wikipedia, Wiktionary, Wikizionario and Wikimedia are registered trademarks of the Wikimedia Foundation, Inc. Lexema is not affiliated with, endorsed or sponsored by the Wikimedia Foundation."],
+    ],
+  ];
+  assert.deepEqual(sectionsOf(html), expected.map(([id, heading]) => [id, heading]));
+  for (const [id, heading, blocks] of expected) assert.deepEqual(readSection(html, id), { heading, blocks }, id);
+});
+
+test("the Licence page links each source and the licence where /attribution did, each in a new tab", () => {
+  const html = licence();
+  const external = [...html.matchAll(/<a ([^>]*href="(https?:\/\/[^"]+)"[^>]*)>(.*?)<\/a>/g)];
+  assert.deepEqual(
+    external.map((match) => [readOf(match[3]), match[2]]),
+    [
+      ["Creative Commons Attribution-ShareAlike 4.0 International licence (CC BY-SA 4.0)", "https://creativecommons.org/licenses/by-sa/4.0/"],
+      ["Italian Wiktionary", "https://it.wiktionary.org/"],
+      ["Wikimedia Foundation", "https://wikimediafoundation.org/"],
+      ["kaikki.org", "https://kaikki.org/itwiktionary/"],
+      ["wiktextract", "https://github.com/tatuylonen/wiktextract"],
+      // The dump's own page, as /attribution linked it: the served release's dump.
+      ["Wikimedia dump", "https://dumps.wikimedia.org/itwiktionary/20260901/"],
+      ["section 5 of the licence", "https://creativecommons.org/licenses/by-sa/4.0/legalcode"],
+    ],
+  );
+  for (const [, attributes, , inner] of external) {
+    assert.match(attributes, /target="_blank" rel="noopener noreferrer"/, attributes);
+    assert.match(inner, /opens in a new tab/, attributes);
+  }
+  for (const page of [html, privacy()]) {
+    for (const [, attributes] of page.matchAll(/<a ([^>]*href="(?:[/#]|mailto:)[^>]*)>/g)) assert.doesNotMatch(attributes, /target=/, attributes);
   }
 });
 
-test("the attribution page names the dump and links the download the release came from, with no database", () => {
-  {
-    const html = attribution();
-
-    assert.match(
-      html,
-      exact(
-        field(
-          "Source",
-          `<a class="${LINK}" href="https://dumps.wikimedia.org/itwiktionary/20260701/" target="_blank" rel="noopener noreferrer">` +
-            `Italian Wiktionary, dump of 1 July 2026<span class="sr-only"> (opens in a new tab)</span></a>`,
-        ),
-      ),
-    );
-    assert.match(
-      html,
-      exact(
-        field(
-          "Downloaded from",
-          `<a class="${LINK}" href="https://kaikki.org/dictionary/downloads/it/it-extract.jsonl.gz" target="_blank" rel="noopener noreferrer">` +
-            `<code class="${CODE_IDENTITY}">https://kaikki.org/dictionary/downloads/it/it-extract.jsonl.gz</code><span class="sr-only"> (opens in a new tab)</span></a>`,
-        ),
-      ),
-    );
-
-    // Short and plain, by Huey's ruling on #133: the two facts a reader needs
-    // to know where the data came from, and nothing else about the release.
-    const identity = html.slice(html.indexOf('id="version"'), html.indexOf('id="open"'));
-    assert.deepEqual(
-      [...identity.matchAll(/<dt[^>]*>([^<]*)<\/dt>/g)].map((match) => match[1]),
-      ["Source", "Downloaded from"],
-    );
-    assert.doesNotMatch(html, /0c432803/, "no checksum and no release id");
-    assert.doesNotMatch(html, /2026-07-20|20 July|16 July|3 July/, "no download, build or edit date");
-    assert.doesNotMatch(html, /560,357/, "no counts");
-    assert.doesNotMatch(html, /inferred/i, "the basis stays in the facts and the docs");
-    assert.doesNotMatch(html, /github\.com\/hueypov|reports\//, "no report links");
-  }
+test("the Privacy page reads, section by section, exactly as Huey approved it (#139)", () => {
+  const html = privacy();
+  assert.match(html, exact(`<p class="${LEGAL_KICKER}">LEXEMA · LEGAL</p>`));
+  assert.match(html, exact(`<h1 class="${LEGAL_TITLE}">Privacy</h1>`));
+  assert.match(html, exact(`<p class="${LEGAL_EFFECTIVE}">Effective 4 October 2026</p>`));
+  assert.match(
+    html,
+    exact(`<p class="${LEGAL_LEDE}">This notice explains what information Lexema processes when you use lexema.fyi, why, and for how long.</p>`),
+  );
+  const expected: [string, string, string[]][] = [
+    [
+      "information",
+      "1.Information we process",
+      [
+        "Lexema has no user accounts and does not use advertising, analytics or tracking cookies. We process only:",
+        "(a) your IP address, transiently, to limit the number of requests a single visitor can make. It is not stored;",
+        "(b) when you report a mistake or suggest a correction: the entry, the option you selected, any note you write, and, for one hour, a one-way code derived from your IP address, used only to limit the number of reports per hour.",
+      ],
+    ],
+    [
+      "purpose",
+      "2.Purpose and legal basis",
+      ["We process this information to operate the service, protect it from abuse and review reported errors. The legal basis is our legitimate interest in providing a reliable dictionary (Article 6(1)(f) GDPR)."],
+    ],
+    [
+      "providers",
+      "3.Service providers",
+      ["Lexema is hosted by Cloudflare, Inc., which processes requests on our behalf and may keep short-lived security logs. Report forms are protected by Cloudflare Turnstile. We do not sell or share information with anyone else."],
+    ],
+    [
+      "retention",
+      "4.Retention",
+      ["Request counts expire within minutes. The code derived from your IP address is erased one hour after a report is sent. Reports themselves are kept as a record of corrections to the dictionary; any note you wrote is erased as soon as the report is resolved."],
+    ],
+    [
+      "rights",
+      "5.Your rights",
+      ["Because Lexema does not store your IP address or any account, we generally cannot link stored information to you. Until a report is resolved, you may ask us to remove a note you wrote, using the address below. You also have the right to lodge a complaint with your data protection authority."],
+    ],
+    ["changes", "6.Changes", ["We may update this notice. The effective date above shows when it last changed."]],
+    ["contact", "7.Contact", ["For any question about this notice, write to:", "privacy@lexema.fyi"]],
+  ];
+  assert.deepEqual(sectionsOf(html), expected.map(([id, heading]) => [id, heading]));
+  for (const [id, heading, blocks] of expected) assert.deepEqual(readSection(html, id), { heading, blocks }, id);
+  // The address is a mailto link, on a line of its own.
+  assert.match(
+    sectionOf(html, "contact"),
+    exact(`<p class="${LEGAL_ADDRESS}"><a class="${LINK}" href="mailto:privacy@lexema.fyi">privacy@lexema.fyi</a></p>`),
+  );
 });
 
-test("the attribution page says not recorded for a release with no recorded facts", () => {
-  {
-    const html = attribution(UNRECORDED);
-
-    // Said in words, in place: never a blank, and never a value nobody recorded.
-    assert.match(html, exact(field("Source", `<span class="${EMPTY}">not recorded</span>`)));
-    assert.match(html, exact(field("Downloaded from", `<span class="${EMPTY}">not recorded</span>`)));
-    // The sources paragraph links Wikimedia's dump index in general; the
-    // release section itself must name no dump and no download.
-    const version = html.slice(html.indexOf('id="version"'), html.indexOf('id="open"'));
-    assert.doesNotMatch(version, /kaikki\.org\/dictionary\/downloads|dumps\.wikimedia\.org/);
-    // Counted on the element: a blank value is a blank whatever it is classed.
-    assert.equal(patternsOf(html, /<dd[^>]*><\/dd>/), 0, "no field renders blank");
-
-    // An archive with no facts recorded says the same.
-    const other = attribution(sourceOf("f".repeat(64)));
-    assert.match(other, exact(field("Source", `<span class="${EMPTY}">not recorded</span>`)));
-    assert.match(other, exact(field("Downloaded from", `<span class="${EMPTY}">not recorded</span>`)));
+test("both legal pages: the header, a Contents column on a wide screen only, no attribution heading and no note about the page", async () => {
+  for (const html of [licence(), privacy()]) {
+    assert.match(html, exact(renderToStaticMarkup(<SiteHeader />)));
+    // The Contents column lists every section, in order, each a link to it; on a phone it is hidden.
+    const contents = html.slice(html.indexOf(`<nav class="${LEGAL_CONTENTS}"`), html.indexOf("</nav>"));
+    assert.deepEqual(LEGAL_CONTENTS.split(" "), ["hidden", "sm:block"], "no Contents column on a phone");
+    const listed = [...contents.matchAll(/<a class="[^"]*" href="#([^"]+)">(.*?)<\/a>/g)].map((match) => [match[1], readOf(match[2])]);
+    assert.deepEqual(listed, sectionsOf(html));
+    assert.equal(listed.length, 7);
+    // "attribution" is never a heading, and nothing on the page talks about the page.
+    for (const [, heading] of html.matchAll(/<h[1-6][^>]*>(.*?)<\/h[1-6]>/g)) assert.doesNotMatch(heading, /attribution/i);
+    assert.doesNotMatch(readOf(html), /Still open|— open|not recorded|recovered|derived by Lexema/i);
+    assert.equal(patternsOf(html, /<h1[\s>]/), 1);
   }
+  const { metadata: licenceMeta } = await import("@/app/(lexema)/licence/page");
+  const { metadata: privacyMeta } = await import("@/app/(lexema)/privacy/page");
+  assert.equal(licenceMeta.title, "Licence — Lexema");
+  assert.equal(privacyMeta.title, "Privacy — Lexema");
 });
 
-test("the attribution page shows every open field as open, with nothing guessed in it", async () => {
-  await withFixture(async () => {
-    const html = attribution();
+test("the old /attribution sections land on the /licence sections that replaced them", () => {
+  const html = licence();
+  assert.deepEqual(
+    ["licence", "where", "changed", "version", "trademarks"].map((id) => readSection(html, id).heading),
+    ["1.Licence", "3.Sources", "4.Modifications", "5.Version of the data", "7.Trademarks"],
+  );
+});
 
-    // The two the draft in docs/ATTRIBUTION_NOTICES.md still leaves open, each
-    // named as open and each saying what would settle it. The licence for
-    // Lexema's own material is settled (ADR 0009's amendment) and stated.
-    assert.equal(html.split(`<span class="${OPEN_MARK}">— open</span>`).length - 1, 2);
-    assert.doesNotMatch(html, /Lexema’s own material <span/);
-    assert.match(textOf(html), /What Lexema writes itself — its own explanations, examples and review records — is published under the same licence, CC BY-SA 4\.0\./);
-    assert.match(
-      html,
-      exact(`Pronunciation and audio <span class="${OPEN_MARK}">— open</span>`),
-    );
-    assert.match(html, /per-file review recorded as §5/);
-    assert.match(
-      html,
-      exact(`The version of the extractor <span class="${OPEN_MARK}">— open</span>`),
-    );
-    assert.match(html, /version of wiktextract that produced this extraction is not recorded/);
-
-    // Nothing filled in behind a reader's back: no placeholder survives from
-    // the draft.
-    assert.doesNotMatch(html, /\{[a-zA-Z]+\}/, "no draft placeholder is published");
-
-    // The page says where recovered definitions were read, not only the extraction.
-    assert.doesNotMatch(textOf(html), /did not read Wiktionary directly/);
-    assert.match(textOf(html), /Where that extraction dropped a definition, Lexema reads it from the page itself/);
+test("/attribution answers a permanent redirect to /licence, and only on the dictionary's host", async () => {
+  const app: string[] = [];
+  const send = byHost<undefined>({
+    app: async (request) => {
+      app.push(request.url);
+      return new Response("page");
+    },
+    api: async () => new Response("api"),
+    apiNotFound: () => new Response("none", { status: 404 }),
   });
+  const ctx = {} as ExecutionContext;
+  for (const [url, location] of [
+    ["https://lexema.fyi/attribution", "/licence"],
+    ["https://lexema.fyi/attribution/", "/licence"],
+    ["https://lexema.fyi//attribution", "/licence"],
+    ["https://lexema.fyi/attribution?from=old", "/licence?from=old"],
+    ["https://name.preview.lexema.fyi/attribution", "/licence"],
+    ["http://localhost:8790/attribution", "/licence"],
+  ]) {
+    const response = await send(new Request(url), undefined, ctx);
+    assert.equal(response.status, 308, url);
+    assert.equal(response.headers.get("location"), location, url);
+  }
+  assert.deepEqual(app, []);
+  // Other pages, and the developer site's own paths, are served as before.
+  await send(new Request("https://lexema.fyi/licence"), undefined, ctx);
+  await send(new Request("https://developers.lexema.fyi/attribution"), undefined, ctx);
+  assert.deepEqual(app, ["https://lexema.fyi/licence", "https://developers.lexema.fyi/developer-site/attribution"]);
+});
+
+test("Version of the data follows the declarations: the newest feed release and its dump, else the master release", () => {
+  // Today's repository: the September feed of the master.
+  assert.deepEqual(SERVED, { release: "it-78385b62", dump: { date: "2026-09-01", url: "https://dumps.wikimedia.org/itwiktionary/20260901/" } });
+
+  // A second catalog: a master and two feeds, declared out of dump order.
+  const master = "a".repeat(64);
+  const october = `b${"0".repeat(63)}`;
+  const november = `c${"0".repeat(63)}`;
+  const facts = (dump: `itwiktionary-${string}`): ArchiveFacts => ({
+    sourceUrl: "https://example.invalid/it-extract.jsonl.gz",
+    retrievedAt: "2026-11-02T00:00:00Z",
+    dump: { id: dump, basis: "recorded" },
+    evidence: [],
+  });
+  const catalog = { [master]: facts("itwiktionary-20260801"), [october]: facts("itwiktionary-20261001"), [november]: facts("itwiktionary-20261101") };
+  const feed = (feedRelease: ReleaseId, file: string): DeclaredChange => ({ file, command: "update:auto", inputs: { feedRelease } });
+  const other: DeclaredChange = { file: "dictionary-changes/2026-12-01-update-upgrade.json", command: "update:upgrade", inputs: {} };
+  const version = (release: ServedRelease) => readSection(licence(release), "version").blocks;
+
+  const fed = servedRelease(
+    [feed("it-c0000000", "dictionary-changes/it-c0000000.json"), feed("it-b0000000", "dictionary-changes/2026-12-02-update-auto.json"), other],
+    catalog,
+    master,
+  );
+  assert.deepEqual(version(fed), [
+    "The content is up to date with release it-c0000000, published by kaikki.org and built from the Italian Wiktionary dump of 1 November 2026.",
+  ]);
+  assert.match(licence(fed), exact(`href="https://dumps.wikimedia.org/itwiktionary/20261101/"`));
+
+  // With no feed declared, the master is what the dictionary serves.
+  assert.deepEqual(version(servedRelease([other], catalog, master)), [
+    "The content is up to date with release it-aaaaaaaa, published by kaikki.org and built from the Italian Wiktionary dump of 1 August 2026.",
+  ]);
+  // A release with no recorded dump is refused, never shown without one.
+  assert.throws(() => servedRelease([feed("it-dddddddd", "dictionary-changes/it-dddddddd.json")], catalog, master), ServedReleaseUnknown);
+});
+
+test("the Licence page's release is never typed into the page or its route", async () => {
+  for (const file of ["web/components/dictionary/Licence.tsx", "web/app/(lexema)/licence/page.tsx"]) {
+    const source = await readFile(join(REPO, file), "utf8");
+    assert.doesNotMatch(source, /it-[0-9a-f]{8}|2026090|September/, file);
+  }
+  const config = await readFile(join(REPO, "web/vite.config.ts"), "utf8");
+  assert.match(config, /__LEXEMA_SERVED_RELEASE__: JSON\.stringify\(await readServedRelease\(/);
 });
 
 test("Wikizionario's missing-field placeholders are not data: no Etymology block, no definition, the example kept (#255)", async () => {

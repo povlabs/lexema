@@ -373,8 +373,8 @@ const GUIDE_TOPICS: Readonly<Record<Guide, (origins: SiteOrigins) => ReactNode>>
       <Paragraph>{"The API's text comes from Wikizionario, the Italian Wiktionary, under CC BY-SA 4.0. Every result carries `attribution`: `licence`, `licence_url`, `source`, and `source_url`, the word's Wikizionario page."}</Paragraph>
       <p className={DOCS_PARAGRAPH}>
         <Text>{"Where you show or pass on that text, credit it with the source and its page, name the licence with its link, and share what you adapt from it under the same licence. "}</Text>
-        <a className={LINK} href={`${origins.lexema}/attribution`}>
-          Sources and licences
+        <a className={LINK} href={`${origins.lexema}/licence`}>
+          Lexema&rsquo;s Licence page
         </a>
         {" has the full credit; "}
         <ExternalLink className={LINK} href="https://creativecommons.org/licenses/by-sa/4.0/">

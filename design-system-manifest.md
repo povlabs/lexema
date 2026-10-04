@@ -18,7 +18,7 @@ history. Where a board and this file disagree, this file wins and the board is f
 | The result page shows data only. It adds no note explaining missing, unplaced, derived or disputed data: an empty slot is a dash in its cell or simply absent, a form the page cannot place in a grid or table is not shown, and a disputed claim is not marked on the page (the review stays in the data). Where there is no data, the page shows nothing. | [README.md](./README.md); ruled by Huey on 2026-09-27 |
 | Every candidate a lookup returns is rendered. The interface may rank; it never drops. | [AGENTS.md](./AGENTS.md), the product rule |
 | A generated short explanation may appear in Italian and in English, labelled as generated. Its example sentence, and everything from the source, stays Italian. | [ADR 0008](./.decisions/0008-generated-explanations-are-labelled-and-reportable.md), amendment of 2026-09-21 |
-| One small *Source* link per result page, to the Wiktionary page of the spelling in its title; a searched expression's short page links to the expression's page; a page for a word only its forms name links the page of the first form its forms table shows; no credit line on the search page. The full credit is on `/attribution`, linked from the footer. | [ADR 0009](./.decisions/0009-two-licences-and-a-source-link.md), amendments #281 and #459 |
+| One small *Source* link per result page, to the Wiktionary page of the spelling in its title; a searched expression's short page links to the expression's page; a page for a word only its forms name links the page of the first form its forms table shows; no credit line on the search page. The full credit is on `/licence`, linked from the footer. | [ADR 0009](./.decisions/0009-two-licences-and-a-source-link.md), amendments #281, #459 and #139 |
 
 ## The page
 
@@ -89,6 +89,19 @@ Ruled by Huey on 2026-09-27, board 24.
 | **Every word offered is a search.** | Each links to its own result, in the same style as a synonym run. The page does not say how an offer was found. |
 | **One report link at the bottom.** | Below the offers, in the word page's footer row and trigger style, one `Report a missing word`, with no *Source* beside it and no note that the word is missing. It opens the word page's report box on the query, titled `Report a missing word`; the box asks no "What's wrong?", names no reading, and its details are optional, hinted `Anything to add? (optional)`; the report is stored as a missing word. Ruled by Huey on 2026-10-03 ([same box](https://github.com/povlabs/lexema/issues/441#issuecomment-5968691300), [missing kind](https://github.com/povlabs/lexema/issues/441#issuecomment-5968896110), [details hint](https://github.com/povlabs/lexema/issues/441#issuecomment-5969133681)). |
 
+## The legal pages
+
+Ruled by Huey on 2026-10-04, frames 33, 33m, 34 and 34m, with the exact text of
+both pages ([#139](https://github.com/povlabs/lexema/issues/139#issuecomment-5978972736)).
+
+| Rule | What it means on the page |
+|---|---|
+| **Two pages, one shape.** | `/licence` (title *Licence*) and `/privacy` (title *Privacy*), each with the site's header and footer. The word *attribution* is never a heading. |
+| **Head, then numbered sections.** | The kicker `LEXEMA · LEGAL`, the title in serif, `Effective <date>`, then the lede with a rule under it. The sections follow, numbered from 1. |
+| **Contents on the left, on a wide screen.** | A Contents list of the sections, each a link to its section, in a column on the left. On a phone there is no Contents column; the text is the same. |
+| **The text is the approved text.** | Word for word. Only the Licence page's *Version of the data* is filled in, from the release the dictionary serves. No provenance mark, no *Still open* section, no note about the page itself. |
+| **The footer names three pages.** | `Licence · Privacy · Developers`, and the link to the page being shown is highlighted. |
+
 ## Role tokens: the dark scheme
 
 The nine colour roles take the values of the design file's `variables`, moved
@@ -119,6 +132,5 @@ scheme is the only scheme.
 
 ## Not yet ruled
 
-A light scheme; the attribution and licence page ([#139](https://github.com/povlabs/lexema/issues/139));
-the phone version of the report box. A builder who needs one of these stops and
+A light scheme; the phone version of the report box. A builder who needs one of these stops and
 asks. Sizes and spacing not stated here follow the boards.

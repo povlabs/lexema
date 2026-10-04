@@ -455,7 +455,7 @@ test("every developer page carries the footer: lexema.fyi, Docs, Pricing and Con
 
 test("lexema.fyi keeps no /developers route, and its footer links to the developer site", async () => {
   await assert.rejects(access(join(REPO, "web/app/(lexema)/developers")), { code: "ENOENT" });
-  const footer = renderToStaticMarkup(<SiteFooter origins={ORIGIN} />);
+  const footer = renderToStaticMarkup(<SiteFooter origins={ORIGIN} current="/" />);
   assert.match(footer, /<a class="[^"]*" href="https:\/\/developers\.lexema\.fyi">Developers<\/a>/);
 });
 
@@ -463,7 +463,7 @@ test("rendered for a Preview, every link to another site and every API address n
   const name = "huey-266-preview-links";
   const preview = originsOf(`${name}.developers-preview.lexema.fyi`);
   const pages = [
-    <SiteFooter origins={preview} />,
+    <SiteFooter origins={preview} current="/" />,
     <DeveloperLanding origins={preview} />,
     <DeveloperPricing origins={preview} />,
     ...DOCS_PAGES.map((page) => <DeveloperDocs page={page} origins={preview} />),
@@ -472,10 +472,10 @@ test("rendered for a Preview, every link to another site and every API address n
   const hosts = new Set([...html.matchAll(/https?:\/\/([a-z0-9.-]*lexema\.fyi)/g)].map((match) => match[1]));
   assert.deepEqual([...hosts].sort(), [`${name}.api-preview.lexema.fyi`, `${name}.developers-preview.lexema.fyi`, `${name}.preview.lexema.fyi`]);
 
-  assert.match(renderToStaticMarkup(<SiteFooter origins={preview} />), new RegExp(`href="https://${name}\\.developers-preview\\.lexema\\.fyi">Developers</a>`));
+  assert.match(renderToStaticMarkup(<SiteFooter origins={preview} current="/" />), new RegExp(`href="https://${name}\\.developers-preview\\.lexema\\.fyi">Developers</a>`));
   assert.match(renderToStaticMarkup(<DeveloperFooter origins={preview} />), new RegExp(`href="https://${name}\\.preview\\.lexema\\.fyi">lexema\\.fyi</a>`));
   const attribution = renderToStaticMarkup(<DeveloperDocs page={{ kind: "guide", guide: "attribution" }} origins={preview} />);
-  assert.match(attribution, new RegExp(`href="https://${name}\\.preview\\.lexema\\.fyi/attribution"`));
+  assert.match(attribution, new RegExp(`href="https://${name}\\.preview\\.lexema\\.fyi/licence"`));
   const lookup = renderToStaticMarkup(<DeveloperDocs page={{ kind: "endpoint", endpoint: "lookup" }} origins={preview} />);
   assert.ok(lookup.includes(`https://${name}.api-preview.lexema.fyi/v1/lookup`), "the endpoint's address and its examples");
   assert.ok(renderToStaticMarkup(<DeveloperLanding origins={preview} />).includes(`GET https://${name}.api-preview.lexema.fyi/v1/lookup`));
@@ -485,7 +485,7 @@ test("rendered for the live and local hosts, every link to another site and ever
   for (const hostname of ["developers.lexema.fyi", "developers.localhost"]) {
     const origins = originsOf(hostname);
     const pages = [
-      <SiteFooter origins={origins} />,
+      <SiteFooter origins={origins} current="/" />,
       <DeveloperLanding origins={origins} />,
       <DeveloperPricing origins={origins} />,
       ...DOCS_PAGES.map((page) => <DeveloperDocs page={page} origins={origins} />),
@@ -595,7 +595,7 @@ test("a developer-site 404 is framed like its other pages: the bar and footer, n
     const html = renderToStaticMarkup(await boundary.default());
     assert.match(html, /<nav aria-label="Developer site">/, "the developer bar");
     assert.ok(html.includes(renderToStaticMarkup(<DeveloperFooter origins={ORIGIN} />)), "the developer footer");
-    assert.ok(!html.includes(renderToStaticMarkup(<SiteFooter origins={ORIGIN} />)), "no dictionary footer");
+    assert.ok(!html.includes(renderToStaticMarkup(<SiteFooter origins={ORIGIN} current="/" />)), "no dictionary footer");
     assert.match(html, /<h1[^>]*>Page not found<\/h1>/);
   } finally {
     hooks.deregister();

@@ -20,7 +20,7 @@ sites together. Code imports through `@/`, which is
 `tsconfig.json`.
 
 ```
-web/app/(lexema)/        lexema.fyi: the search page, attribution, /suggest and /report
+web/app/(lexema)/        lexema.fyi: the search page, /licence, /privacy, /suggest and /report
 web/app/(developers)/    developers.lexema.fyi: landing, docs, pricing, sign-in, the dashboard
 web/components/dictionary/   the word page, the search field, the site's header and footer
 web/components/developers/   the developer site's pages, its docs, menus and sign-in
@@ -468,14 +468,15 @@ shows: `volto le spalle` links to *voltare le spalle*
 ([#291](https://github.com/povlabs/lexema/issues/291);
 [design law](../design-system-manifest.md#layout)).
 [ADR 0009](../.decisions/0009-two-licences-and-a-source-link.md), as amended on
-[#281](https://github.com/povlabs/lexema/issues/281), keeps the credit itself on
-`/attribution`, which the site footer reaches from every page, and in each API
+[#281](https://github.com/povlabs/lexema/issues/281) and
+[#139](https://github.com/povlabs/lexema/issues/139), keeps the credit itself on
+`/licence`, which the site footer reaches from every page, and in each API
 result's `attribution` field. Its accessible name is longer than its text —
 "Wiktionary page for X, the source of this page (opens in a new tab)".
 
 Every link that leaves Lexema opens in a new tab (`target="_blank"
 rel="noopener noreferrer"`, `web/components/shared/ExternalLink.tsx`), so the page stays where
-the reader left it: the Source links on a result, and the credit, licence and source links on `/attribution`. Each says
+the reader left it: the Source links on a result, and the credit, licence and source links on `/licence`. Each says
 so to a screen reader. Links inside Lexema stay in the same tab.
 
 The release stores no per-record URL, so the link is *constructed* from the
@@ -488,20 +489,28 @@ release without printing the line on the page.
 The search page carries no credit line, no licence name and no contributor text.
 That is ADR 0009's ruling, and the licence permits it: CC BY-SA 4.0 lets the
 credit be satisfied by a link to a page that carries the required information.
-`/attribution` is that page — the contributors, the page histories where their
-names are, the licence with its link, what Lexema restructured, and where the
-served release came from: the Wiktionary dump and the kaikki.org download. Only
-those two, by Huey's ruling on [#133](https://github.com/povlabs/lexema/issues/133);
-the release's other facts are in
-[`src/source/archiveFacts.ts`](../src/source/archiveFacts.ts).
+`/licence` is that page ([#139](https://github.com/povlabs/lexema/issues/139)):
+the licence and what it allows, the sources and where each entry's authors are
+recorded, what Lexema adapted, the release the content is up to date with, the
+no-warranty notice and the trademark line. Its words are Huey's approved text,
+kept exactly. `/privacy` beside it is the Privacy notice, and the footer on every
+page links *Licence*, *Privacy* and *Developers*, marking the page being shown.
 
-`components/dictionary/Attribution.tsx` is the markup, and `app/(lexema)/attribution/page.tsx` is the wiring.
-The page reads no database: it shows the published archive's source from
-`src/source/archiveFacts.ts`, so it shows it even while production has no D1. A
-fact that is not recorded renders as *not recorded* in words, and a field the draft in
-[ATTRIBUTION_NOTICES.md](ATTRIBUTION_NOTICES.md) leaves open renders as open,
-naming what would settle it. Neither a blank nor a plausible-looking value is
-allowed to stand in for either.
+`/attribution`, the page's old address, answers a permanent redirect to
+`/licence` (`worker/shared/hosts.ts`). A browser never sends a URL's fragment, so
+`/licence`'s sections carry the old page's ids: `#licence`, `#where`, `#changed`,
+`#version` and `#trademarks` land on the sections that replaced them.
+
+`components/dictionary/Licence.tsx` and `Privacy.tsx` are the markup, over the
+shared `LegalPage.tsx`, and `app/(lexema)/licence/page.tsx` and
+`app/(lexema)/privacy/page.tsx` are the wiring. The Licence page reads no
+database. The release it names is read from the change declarations in
+`dictionary-changes/` when the site is built (`web/vite.config.ts`): the
+`update:auto` feed release built from the latest dump, or the master release
+when no declaration feeds one, with its dump from
+[`src/source/archiveFacts.ts`](../src/source/archiveFacts.ts)
+(`src/source/servedRelease.ts`). A release with no recorded dump fails the build
+rather than show a page without one.
 
 ## Why the seed goes through generated SQL
 

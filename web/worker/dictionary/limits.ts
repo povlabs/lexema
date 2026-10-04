@@ -30,7 +30,7 @@ const SEARCH: DictionaryCounted = { limit: "search", blocked: { by: "page" } };
  * search: the page runs its lookup for the first `q` when its trimmed value is
  * not empty (app/(lexema)/page.tsx), and that holds for the HTML request and for an RSC
  * request for the same URL alike. Counting every other path with a `q` too
- * (`/attribution?q=…`, a mistyped path) costs a reader nothing and means no
+ * (`/licence?q=…`, a mistyped path) costs a reader nothing and means no
  * spelling of the page's path that vinext normalizes back to `/` gets past the
  * limit. The home page without a query and static assets are never counted;
  * assets do not even reach the Worker.

@@ -40,7 +40,7 @@ export const TOP_BAR = "border-b border-border";
 export const TOP_BAR_INNER = `${COLUMN} flex h-16 items-center`;
 export const TOP_BAR_NAME = `font-serif text-xl text-text-strong no-underline ${FOCUS_RING}`;
 
-/** C2: the name at the left, four small links at the right. */
+/** C2: the name at the left, three small links at the right. */
 /**
  * The site footer's rule sits the Source line's gap below the page: the
  * shell's `pb-4` plus this margin make 48px, 36px on a phone.
@@ -50,7 +50,8 @@ export const SITE_FOOTER_INNER = `${COLUMN} flex flex-wrap items-center justify-
 /** The footer's wordmark, a link home like the top bar's. */
 export const SITE_FOOTER_NAME = `font-serif text-base text-text-strong no-underline ${FOCUS_RING}`;
 export const SITE_FOOTER_LINKS = "m-0 flex list-none flex-wrap gap-x-6 gap-y-2 p-0";
-export const SITE_FOOTER_LINK = `font-sans text-[0.8rem] text-text-muted no-underline hover:text-text ${FOCUS_RING}`;
+/** The link to the page being shown is drawn in `text-strong`. */
+export const SITE_FOOTER_LINK = `font-sans text-[0.8rem] text-text-muted no-underline hover:text-text aria-[current=page]:text-text-strong ${FOCUS_RING}`;
 
 /**
  * Frame 00: before a query the page is the name and the bar, centred on the
@@ -140,8 +141,6 @@ export const EMPTY = `${MESSAGE} text-text-muted`;
 export const ERROR = `${MESSAGE} text-warning`;
 /** A small aside beside a value. */
 export const MUTED = "font-sans text-[0.85rem] text-text-muted";
-/** Something the source left open, said plainly and never in colour alone. */
-export const AMBIGUOUS = "font-sans text-[0.85rem] text-text-muted";
 
 // The result ----------------------------------------------------------------
 //
@@ -408,33 +407,52 @@ export const REPORT_SENT_CHECK = "font-sans text-base text-accent";
 export const REPORT_SENT_TEXT = "m-0 mt-4 font-sans text-[0.9rem] text-text";
 export const REPORT_CLOSE = `mt-5 cursor-pointer rounded-[3px] border border-border-strong bg-transparent px-4 py-2 font-sans text-[0.9rem] text-text-strong hover:border-text-muted ${FOCUS_RING}`;
 
-// The attribution page ---------------------------------------------------
+// The legal pages (#139, frames 33, 33m, 34 and 34m) ------------------------
+//
+// `/licence` and `/privacy`: a kicker, the title in serif, the date the text
+// took effect, the lede with a rule under it, then numbered sections. On a
+// wide screen a Contents list of the sections sits in a column on the left;
+// on a phone there is none, and the text is the whole column.
 
-/** Prose on the attribution page, where the browser's own margins used to do it. */
-export const PARAGRAPH = "my-4";
-export const PAGE_HEADING = "m-0 mt-6 font-serif text-[2.5rem] font-normal text-text-strong";
-export const SECTION_HEADING = "my-[0.83em] text-2xl font-bold text-text-strong";
-export const PROSE_LIST = "my-4 list-disc pl-10";
-
-/** The release identity's rows, which the page omits when it cannot read one. */
-export const RELEASE_FIELDS = "my-[0.8rem]";
-/** The fields the attribution draft leaves open, which are always shown. */
-export const OPEN_FIELDS = RELEASE_FIELDS;
-export const FIELD = "my-[0.6rem]";
-export const FIELD_LABEL =
-  "text-[0.78rem] font-semibold uppercase tracking-[0.06em] text-text-muted";
-export const FIELD_VALUE = "mt-[0.15rem] mb-0";
+// Frame 33 at 1440 px: a 220 px Contents column, a 96 px gap, a 720 px text
+// column. The shell's bottom padding plus the footer's own margin make the
+// frame's 112 px, 56 px on a phone.
+export const LEGAL_SHELL = `${COLUMN} flex-1 pt-18 pb-20 max-sm:pt-9 max-sm:pb-9`;
+export const LEGAL_LAYOUT =
+  "sm:grid sm:grid-cols-[11rem_minmax(0,1fr)] sm:gap-x-12 lg:grid-cols-[13.75rem_minmax(0,45rem)] lg:gap-x-24";
 /**
- * The "— open" mark inside a field label. It reads as a sentence rather than
- * as a tag, so it drops the label's own upper-casing and letter-spacing.
+ * The Contents column, hidden on a phone. It starts level with the lede and,
+ * once the page scrolls, stays in view.
  */
-export const OPEN_MARK = `${AMBIGUOUS} normal-case tracking-normal`;
-
-/**
- * A release identity: long, and broken wherever it has to be to fit. Every
- * `<code>` already renders in `--font-mono` through Tailwind's base layer.
- */
-export const CODE_IDENTITY = "text-[0.85em] break-all";
+export const LEGAL_CONTENTS = "hidden sm:block";
+export const LEGAL_CONTENTS_INNER = "sticky top-8 mt-37";
+export const LEGAL_CONTENTS_LABEL = "m-0 font-sans text-[0.6875rem] leading-[1.7] font-semibold tracking-[0.1em] text-text-muted uppercase";
+export const LEGAL_CONTENTS_LIST = "m-0 mt-2.5 flex list-none flex-col gap-2.5 p-0";
+export const LEGAL_CONTENTS_LINK = `flex gap-2 font-sans text-[0.84375rem] leading-[1.5] text-text-muted no-underline hover:text-text-strong ${FOCUS_RING}`;
+export const LEGAL_CONTENTS_NUMBER = "shrink-0";
+export const LEGAL_TEXT = "min-w-0";
+export const LEGAL_KICKER = "m-0 font-sans text-[0.6875rem] leading-[1.7] font-semibold tracking-[0.1em] text-accent";
+export const LEGAL_TITLE = "m-0 mt-3.5 font-serif text-[2.75rem] leading-[1.15] font-normal text-text-strong max-sm:text-[2.125rem]";
+export const LEGAL_EFFECTIVE = "m-0 mt-3.5 font-sans text-[0.8125rem] leading-[1.7] text-text-muted";
+/** The lede, and the rule that closes the page's head. */
+export const LEGAL_LEDE =
+  "m-0 mt-3.5 border-b border-border pb-8 font-sans text-[1.0625rem] leading-[1.65] text-text-strong max-sm:text-base";
+/** A section; the gap above its heading is kept when a Contents link scrolls to it. */
+export const LEGAL_SECTION = "mt-10 scroll-mt-8 max-sm:mt-8";
+export const LEGAL_SECTION_HEADING =
+  "m-0 flex items-baseline gap-3.5 font-serif text-[1.3125rem] leading-[1.35] font-normal text-text-strong max-sm:text-[1.1875rem]";
+export const LEGAL_SECTION_NUMBER = "text-accent";
+/** The section's text, set in under the heading's words on a wide screen. */
+const LEGAL_BODY = "font-sans text-[0.96875rem] leading-[1.7] text-text sm:pl-[1.875rem] max-sm:text-[0.9375rem]";
+export const LEGAL_PARAGRAPH = `m-0 mt-3 ${LEGAL_BODY}`;
+/** The lettered items, `(a)` and `(b)`, each mark hanging beside its text. */
+export const LEGAL_ITEMS = `m-0 mt-3 flex list-none flex-col gap-1.5 p-0 ${LEGAL_BODY}`;
+export const LEGAL_ITEM = "flex gap-2.5";
+export const LEGAL_ITEM_MARK = "shrink-0 text-text-muted";
+/** A release id or a date, kept on one line: a phone broke `it-78385b62` at its hyphen. */
+export const LEGAL_UNBROKEN = "whitespace-nowrap";
+/** The privacy mailbox, on its own line. */
+export const LEGAL_ADDRESS = `m-0 mt-1.5 ${LEGAL_BODY}`;
 
 // The developer site (#166) -------------------------------------------------
 //
