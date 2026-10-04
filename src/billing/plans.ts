@@ -69,7 +69,8 @@ export interface Period {
  * - `none`: never had a plan, or its first payment has not gone through.
  * - `active`: serving; a Stripe plan renews at `period.end`, and an Enterprise
  *   period ends there until Huey sets the next one.
- * - `past-due`: a renewal payment failed. Still serving while Stripe retries (#200 R1.1).
+ * - `past-due`: a renewal payment failed. Not serving until the payment goes
+ *   through, while Stripe retries; the account still holds the plan (#571).
  * - `cancelling`: cancelled, serving until `endsAt` (Stripe's `cancel_at`).
  * - `ended`: no longer serving; `plan` is the one it had.
  */
@@ -91,17 +92,26 @@ export type Serving =
   | { readonly serving: true; readonly limits: PlanLimits; readonly period: Period };
 
 /**
- * What a plan state lets an account's keys do at `now`. Past due still serves
- * (#200 R1.1), and a cancelling plan serves until `endsAt`. An Enterprise
- * period is renewed by nothing, so it stops serving at its end until Huey sets
- * the next one (Huey, #222); a Stripe period is moved on by Stripe's renewal.
+ * What a plan state lets an account's keys do at `now`. Past due does not
+ * serve: a failed payment stops the keys until it goes through (Huey, #571).
+ * A cancelling plan serves until `endsAt`. An Enterprise period is renewed by
+ * nothing, so it stops serving at its end until Huey sets the next one (Huey,
+ * #222); a Stripe period is moved on by Stripe's renewal.
  */
 export function serving(state: PlanState, now: number): Serving {
-  if (state.kind === "none" || state.kind === "ended") return { serving: false };
+  if (state.kind === "none" || state.kind === "ended" || state.kind === "past-due") return { serving: false };
   if (state.kind === "cancelling" && now >= state.endsAt) return { serving: false };
   if (state.plan.id === "enterprise" && now >= state.period.end) return { serving: false };
   return { serving: true, limits: limitsOf(state.plan), period: state.period };
 }
+
+/**
+ * Whether an account still holds a plan at `now`: one that serves, or a past
+ * due one, which serves nothing but Stripe still retries and which serves again
+ * once paid (#571). A held plan is managed in the billing portal rather than
+ * bought a second time, and Enterprise is not set over a held Stripe plan.
+ */
+export const holdsPlan = (state: PlanState, now: number): boolean => state.kind === "past-due" || serving(state, now).serving;
 
 // ---------------------------------------------------------------------------
 // From a Stripe subscription row

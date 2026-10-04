@@ -25,7 +25,7 @@ export type AccountEmail =
   | { readonly kind: "plan-started"; readonly plan: StripePlanId; readonly on: number; readonly renewsOn: number | null }
   /** A serving plan moved between Starter and Pro. `renewsOn` as for a plan started. */
   | { readonly kind: "plan-changed"; readonly from: StripePlanId; readonly to: StripePlanId; readonly on: number; readonly renewsOn: number | null }
-  /** A renewal payment failed; the plan still serves while Stripe retries. */
+  /** A renewal payment failed; the plan serves nothing until the payment goes through, while Stripe retries (#571). */
   | { readonly kind: "payment-failed"; readonly plan: StripePlanId; readonly on: number }
   /** The plan was cancelled and serves until `endsAt`. */
   | { readonly kind: "cancellation-confirmed"; readonly plan: StripePlanId; readonly on: number; readonly endsAt: number }
@@ -113,7 +113,7 @@ function letterOf(email: AccountEmail): Letter {
         subject: `Your ${planName(email.plan)} payment failed`,
         headline: "Your payment failed",
         lead: `Stripe could not take the payment for your ${planName(email.plan)} plan on ${dayOf(email.on)}.`,
-        facts: ["Your API keys keep working for now.", "Stripe will try the payment again.", `${planName(email.plan)} is ${price(email.plan)} a month.`],
+        facts: ["API calls are paused until the payment goes through.", "Stripe will try the payment again.", `${planName(email.plan)} is ${price(email.plan)} a month.`],
         button: true,
         note: "To update your payment method, open Settings and choose Manage billing.",
       };

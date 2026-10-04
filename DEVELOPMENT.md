@@ -211,9 +211,10 @@ nothing, toward the minute or the day; a 401 carries no limit headers
   `Retry-After` to the minute's end. Its answered calls are added to its D1 row
   for the day.
 - An owned key is read with its account's plan state, in one read. With no
-  serving plan (none, ended, cancelled past its end, or an Enterprise period
-  past `--until`, Huey on [#222](https://github.com/povlabs/lexema/issues/222))
-  it answers 402 `plan_required`; past due still serves. Its minute is its
+  serving plan (none, ended, past due, cancelled past its end, or an Enterprise
+  period past `--until`, Huey on [#222](https://github.com/povlabs/lexema/issues/222))
+  it answers 402 `plan_required`. A failed payment stops the keys until it goes
+  through ([#571](https://github.com/povlabs/lexema/issues/571)). Its minute is its
   plan's rate, shared by all the account's keys and counted by the `CALLS_60`
   (Starter) or `CALLS_300` (Pro) Rate Limiting binding keyed by account id, or,
   for another Enterprise rate, by the account meter. Its answers carry
@@ -258,8 +259,8 @@ The number is the developer account's id. The period runs from the start of
 `--from` up to the start of `--until`, both UTC days, and nothing renews it: from
 `--until` on, the account's keys answer 402 until the next period is set with
 `enterprise` again, which replaces the account's row.
-An account whose Starter or Pro plan still serves is refused until that plan is
-cancelled in Stripe. Bad flags print the usage line and exit 1. Both commands
+An account that still holds a Starter or Pro plan, serving or past due, is
+refused until that plan is cancelled in Stripe. Bad flags print the usage line and exit 1. Both commands
 write to the `APP_DB` in `SEED_STATE`, as `pnpm run api-key` does.
 
 ### Suspend a developer account
@@ -309,10 +310,16 @@ what the reader picked and said, and where its reading is in the local
 dictionary, found by its source line
 ([docs/RECORD_IDENTITY.md](./docs/RECORD_IDENTITY.md#a-readers-report-names-a-line)).
 `answer` records what the person found or did, once; a second answer is
-refused. Neither changes the dictionary or anything a reader sees: a fix is
-made by hand, elsewhere. Both read the `APP_DB` and the dictionary in
-`SEED_STATE`, as `pnpm run plan` does, so a local `pnpm run seed:dev` drops
-every report and its answer with it. A remote seed leaves reports alone.
+refused. Answering erases the reader's note, so `list --all` prints no note for
+an answered report; read it before you answer. The code made from the reader's
+IP address is erased one hour after the report, by the Worker's cron trigger
+([docs/WEB.md](./docs/WEB.md#why-a-report-is-stored-and-nothing-more)). Both
+rules are Huey's ([#570](https://github.com/povlabs/lexema/issues/570)); the
+report itself is kept. Neither command changes the dictionary or anything a
+reader sees: a fix is made by hand, elsewhere. Both read the `APP_DB` and the
+dictionary in `SEED_STATE`, as `pnpm run plan` does, so a local
+`pnpm run seed:dev` drops every report and its answer with it. A remote seed
+leaves reports alone.
 
 ### Look at a pull request's Preview
 

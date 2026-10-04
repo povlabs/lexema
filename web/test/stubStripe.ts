@@ -40,6 +40,10 @@ export interface StartedCheckout {
   cancelUrl: string;
   metadata: Record<string, string>;
   subscriptionMetadata: Record<string, string>;
+  /** Every `custom_text` field sent, by its path under `custom_text`: `[submit][message]` for the line by the subscribe button. */
+  customText: Record<string, string>;
+  /** Every `consent_collection` field sent, by its path under `consent_collection`. */
+  consentCollection: Record<string, string>;
 }
 
 const json = (body: unknown, status = 200) => Response.json(body, { status });
@@ -96,6 +100,11 @@ export class StubStripe {
         }
         return metadata;
       };
+      const fieldsUnder = (prefix: string) => {
+        const fields: Record<string, string> = {};
+        for (const [key, value] of form) if (key.startsWith(`${prefix}[`)) fields[key.slice(prefix.length)] = value;
+        return fields;
+      };
       this.checkouts.push({
         id,
         customer: form.get("customer") ?? "",
@@ -105,6 +114,8 @@ export class StubStripe {
         cancelUrl: form.get("cancel_url") ?? "",
         metadata: metadataOf("metadata"),
         subscriptionMetadata: metadataOf("subscription_data[metadata]"),
+        customText: fieldsUnder("custom_text"),
+        consentCollection: fieldsUnder("consent_collection"),
       });
       return json({ object: "checkout.session", id, url: `https://checkout.stripe.com/c/pay/${id}` });
     }

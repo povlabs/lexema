@@ -48,16 +48,16 @@ function describeTarget(report: ReaderReport, where: TargetInDictionary): string
   }
 }
 
+/** A report in a few lines; what the reader said only while it waits, since answering erases it. */
 async function describeReport(report: ReaderReport, dictionary: LookupDatabase): Promise<string> {
   const review =
     report.review.state === "waiting"
-      ? "waiting"
-      : `answered ${report.review.reviewedAt} by ${report.review.reviewedBy}: ${report.review.outcome}`;
+      ? [`  reader said: ${report.review.details}`, "  waiting"]
+      : [`  answered ${report.review.reviewedAt} by ${report.review.reviewedBy}: ${report.review.outcome}`];
   return [
     `#${report.reportId}  ${report.receivedAt}  ${report.word}  (${report.choice})`,
     `  reading: ${describeTarget(report, await locateTarget(report, dictionary))}`,
-    `  reader said: ${report.details}`,
-    `  ${review}`,
+    ...review,
   ].join("\n");
 }
 

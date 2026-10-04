@@ -407,9 +407,10 @@ opens the same box on the trimmed query, through the same `POST /report` and
 spam layers. There the box asks no "what is wrong" and offers no reading: it
 sends `missing`, a sixth `choice` the word page never offers, and the report is
 stored with the query as its `word`, no `record_id` or source line, and the
-served release. Its details are optional and may be stored empty; every other
-report still needs some. `reader_report` CHECKs refuse a `missing` report that
-names a record, and empty details on any other report.
+served release. While it waits, its details are optional and may be stored
+empty, and every other waiting report needs some; once any report is answered,
+it has none (see below). `reader_report` CHECKs refuse a `missing` report that
+names a record, and empty details on any other waiting report.
 
 Spam is kept out in four layers, as ruled on #51: the `REPORT_LIMIT` Worker
 binding stops a burst (2 a minute) before D1 is touched, and the ruled 5 reports
@@ -426,6 +427,18 @@ the Worker logs which key is missing, so a half-configured Worker never refuses
 every report. After any answer that did not store the report, the box resets the
 widget for a fresh token, because a token can be used once. The visitor is
 stored as a SHA-256 of their rate-limit key, never as an address.
+
+A report keeps the reader's own data only while it serves, as Huey ruled on
+2026-10-04 (#570). The visitor code serves only the hourly count, but it can be
+turned back into an address, so it is erased one hour after the report: the
+Worker's cron trigger, every five minutes, sets `visitor_hash` to NULL on each
+report received an hour ago or earlier (`forgetVisitors`,
+`web/worker/dictionary/reportSweep.ts`). The reader's note is erased when the
+report is answered, in the same write as the answer, and a `reader_report`
+CHECK refuses an answered report that still has one. The report itself stays,
+and nothing deletes it. D1 Time Travel keeps up to 30 days of history, so an erased
+value can last there that long
+([docs/RUN_THE_SITE.md](./RUN_THE_SITE.md#roll-back)).
 
 ## Why a disputed claim is a row and not a code path
 

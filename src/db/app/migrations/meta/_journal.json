@@ -61,8 +61,15 @@
     {
       "idx": 8,
       "version": "6",
-      "when": 1791109900994,
-      "tag": "0008_account_suspension",
+      "when": 1791109724353,
+      "tag": "0008_reader_report_retention",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "6",
+      "when": 1791111420387,
+      "tag": "0009_account_suspension",
       "breakpoints": true
     }
   ]

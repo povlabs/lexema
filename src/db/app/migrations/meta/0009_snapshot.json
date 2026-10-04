@@ -1,8 +1,8 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "ec981576-4a68-437c-bec9-73240ab0a919",
-  "prevId": "36c083f6-cb9e-41c3-9527-bf0a1f822162",
+  "id": "91348b91-d650-4ee3-bc16-3945ed91d00b",
+  "prevId": "ec981576-4a68-437c-bec9-73240ab0a919",
   "tables": {
     "api_key": {
       "name": "api_key",
@@ -330,6 +330,20 @@
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false
+        },
+        "suspended_at": {
+          "name": "suspended_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "suspension_reason": {
+          "name": "suspension_reason",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
         }
       },
       "indexes": {
@@ -363,6 +377,10 @@
         "developer_account_image": {
           "name": "developer_account_image",
           "value": "image IS NULL"
+        },
+        "developer_account_suspension": {
+          "name": "developer_account_suspension",
+          "value": "(suspended_at IS NULL AND suspension_reason IS NULL) OR (suspended_at IS NOT NULL AND suspension_reason IS NOT NULL AND length(suspension_reason) BETWEEN 1 AND 500 AND suspension_reason = trim(suspension_reason))"
         }
       }
     },
@@ -1121,6 +1139,76 @@
         "subscription_seats": {
           "name": "subscription_seats",
           "value": "seats IS NULL OR seats > 0"
+        }
+      }
+    },
+    "suspension_card_block": {
+      "name": "suspension_card_block",
+      "columns": {
+        "account_id": {
+          "name": "account_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "value_list_item_id": {
+          "name": "value_list_item_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "card_fingerprint": {
+          "name": "card_fingerprint",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "suspension_card_block_by_item": {
+          "name": "suspension_card_block_by_item",
+          "columns": [
+            "value_list_item_id"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "suspension_card_block_account_id_developer_account_account_id_fk": {
+          "name": "suspension_card_block_account_id_developer_account_account_id_fk",
+          "tableFrom": "suspension_card_block",
+          "tableTo": "developer_account",
+          "columnsFrom": [
+            "account_id"
+          ],
+          "columnsTo": [
+            "account_id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "suspension_card_block_account_id_value_list_item_id_pk": {
+          "columns": [
+            "account_id",
+            "value_list_item_id"
+          ],
+          "name": "suspension_card_block_account_id_value_list_item_id_pk"
+        }
+      },
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "suspension_card_block_item": {
+          "name": "suspension_card_block_item",
+          "value": "value_list_item_id GLOB 'rsli_*'"
+        },
+        "suspension_card_block_fingerprint": {
+          "name": "suspension_card_block_fingerprint",
+          "value": "length(card_fingerprint) > 0"
         }
       }
     },

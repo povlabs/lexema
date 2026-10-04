@@ -1,7 +1,7 @@
 // A reader's report as a person reviews it (#12): the reading it names is
 // followed by source line, never by a record number a re-seed may change; an
-// answer is recorded once, beside the report; and nothing the site serves reads
-// either.
+// answer is recorded once, beside the report, and erases the reader's note
+// (#570); and nothing the site serves reads either.
 
 import assert from "node:assert/strict";
 import { readdirSync, readFileSync } from "node:fs";
@@ -103,18 +103,33 @@ test("a report stored before reports kept their line still lists, and is said to
 test("the table refuses a line with no reading or no digest, and a half-written answer", async () => {
   const { sqlite } = freshAppDatabase();
   const insert = (columns: string, values: string) =>
-    `INSERT INTO reader_report (release_id, word, choice, details, visitor_hash, received_at${columns})
-     VALUES ('${RELEASE}', 'sale', 'meaning', 'x', 'h', '2026-09-30'${values})`;
+    `INSERT INTO reader_report (release_id, word, choice, visitor_hash, received_at${columns})
+     VALUES ('${RELEASE}', 'sale', 'meaning', '${sha("f")}', '2026-09-30'${values})`;
   const refused: [string, string][] = [
-    ["a line with no reading", insert(", line_no, line_sha256", `, 5, '${sha("5")}'`)],
-    ["a line with no digest", insert(", record_id, line_no", ", 2, 5")],
-    ["a digest that is not SHA-256", insert(", record_id, line_no, line_sha256", ", 2, 5, 'abc'")],
+    ["a line with no reading", insert(", details, line_no, line_sha256", `, 'x', 5, '${sha("5")}'`)],
+    ["a line with no digest", insert(", details, record_id, line_no", ", 'x', 2, 5")],
+    ["a digest that is not SHA-256", insert(", details, record_id, line_no, line_sha256", ", 'x', 2, 5, 'abc'")],
     ["an outcome with no reviewer", insert(", outcome, reviewed_at", ", 'Fixed.', '2026-10-01'")],
-    ["a reviewer with no outcome", insert(", reviewed_at, reviewed_by", ", '2026-10-01', 'huey'")],
+    ["a reviewer with no outcome", insert(", details, reviewed_at, reviewed_by", ", 'x', '2026-10-01', 'huey'")],
     ["an empty outcome", insert(", outcome, reviewed_at, reviewed_by", ", '', '2026-10-01', 'huey'")],
   ];
   for (const [what, sql] of refused) assert.throws(() => sqlite.exec(sql), /CHECK constraint failed/, what);
   sqlite.exec(insert(", record_id, line_no, line_sha256, outcome, reviewed_at, reviewed_by", `, 2, 5, '${sha("5")}', 'Fixed.', '2026-10-01', 'huey'`));
+});
+
+test("an answer erases the reader's note in the same write; a waiting report keeps its note", async () => {
+  const { appDb, sqlite } = freshAppDatabase();
+  await store(appDb, { recordId: 2, lineNo: 5, lineSha256: sha("5") });
+  await store(appDb);
+  assert.deepEqual(await answerReport(appDb, 1, { outcome: "Fixed upstream.", reviewedBy: "huey" }, NOW), { outcome: "answered" });
+  assert.deepEqual(sqlite.prepare("SELECT report_id, details, outcome FROM reader_report ORDER BY report_id").all().map((row) => ({ ...row })), [
+    { report_id: 1, details: null, outcome: "Fixed upstream." },
+    { report_id: 2, details: "This meaning belongs to sala.", outcome: null },
+  ]);
+  const [answered, waiting] = await listReports(appDb, "all");
+  assert.equal(answered.review.state, "answered");
+  assert.ok(!("details" in answered.review), "an answered report has no note to read");
+  assert.deepEqual(waiting.review, { state: "waiting", details: "This meaning belongs to sala." });
 });
 
 test("an answer is recorded once, beside the report, and takes it off the waiting list", async () => {
@@ -134,7 +149,6 @@ test("an answer is recorded once, beside the report, and takes it off the waitin
     reviewedAt: new Date(NOW).toISOString(),
     reviewedBy: "huey",
   });
-  assert.equal(report.details, "This meaning belongs to sala.", "what the reader said is kept as sent");
 });
 
 test("an answer needs a report that exists, an outcome within the limit and someone who looked", async () => {
@@ -170,10 +184,11 @@ test("a row reads back as the report it holds", () => {
     word: "sale",
     target: { kind: "word" },
     choice: "other",
-    details: "x",
     receivedAt: "2026-09-30",
-    review: { state: "waiting" },
+    review: { state: "waiting", details: "x" },
   });
+  const answered = { ...row, details: null, visitorHash: null, outcome: "Fixed.", reviewedAt: "2026-10-01", reviewedBy: "huey" };
+  assert.deepEqual(reportFromRow(answered).review, { state: "answered", outcome: "Fixed.", reviewedAt: "2026-10-01", reviewedBy: "huey" });
 });
 
 test("`pnpm run report` lists what waits with where its reading is, and records an answer", async () => {
@@ -201,6 +216,7 @@ test("`pnpm run report` lists what waits with where its reading is, and records 
   assert.deepEqual(await runReportCommand(["list"], appDb, db, NOW), { out: "no report is waiting", status: 0 });
   const all = await runReportCommand(["list", "--all"], appDb, db, NOW);
   assert.match(all.out, /answered 2026-10-01T09:00:00\.000Z by huey: Fixed upstream\./);
+  assert.doesNotMatch(all.out, /reader said/, "an answered report has no note to print");
   assert.equal((await runReportCommand(["answer", "1", "--outcome", "x"], appDb, db, NOW)).status, 1);
   assert.equal((await runReportCommand(["list", "--everything"], appDb, db, NOW)).status, 1);
 });

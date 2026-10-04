@@ -5,9 +5,11 @@
 //
 // The Worker's per-minute binding is web/test/rateLimit.test.ts; this file is
 // everything after it: what a report must carry, the honeypot, the timing
-// check, the hourly allowance, the Turnstile hook, and what is stored.
+// check, the hourly allowance, the Turnstile hook, what is stored, and the
+// cron sweep that erases a report's visitor code after an hour (#570).
 
 import assert from "node:assert/strict";
+import { registerHooks } from "node:module";
 import test from "node:test";
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -15,6 +17,7 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { DatabaseSync } from "node:sqlite";
 import { gzipSync } from "node:zlib";
+import { unstable_readConfig } from "wrangler";
 import { seedSql } from "../../src/import/seedSql.js";
 import { appTablesOverNodeSqlite } from "../../src/db/app/nodeSqlite.js";
 import { freshAppDatabase, readOnlyDictionary } from "../../test/databases.js";
@@ -25,6 +28,7 @@ import {
   REPORT_MIN_OPEN_MS,
   REPORTS_PER_HOUR,
   afterAnswer,
+  forgetVisitors,
   OPENING_TROUBLE,
   openReport,
   requestOpening,
@@ -113,8 +117,8 @@ const stored = (db: Databases) =>
     line_sha256: string | null;
     choice: string;
     outcome: string | null;
-    details: string;
-    visitor_hash: string;
+    details: string | null;
+    visitor_hash: string | null;
     received_at: string;
   }[];
 
@@ -154,7 +158,7 @@ test("a valid report is stored for review, with the served release, the reading'
     assert.equal(row.details, "The plural should be case.");
     assert.equal(row.received_at, new Date(NOW).toISOString());
     assert.equal(row.visitor_hash, await visitorHash("v4:203.0.113.7"));
-    assert.doesNotMatch(row.visitor_hash, /203\.0\.113/);
+    assert.doesNotMatch(row.visitor_hash ?? "", /203\.0\.113/);
   });
 });
 
@@ -248,6 +252,117 @@ test("a visitor may send five reports an hour; the sixth is limited, and others 
       outcome: "sent",
     });
   });
+});
+
+const HOUR_MS = 60 * 60_000;
+
+/** A waiting report from one visitor, received at `at`, written straight to the table. */
+function storeAt(app: DatabaseSync, at: number, visitor: string): void {
+  app
+    .prepare("INSERT INTO reader_report (release_id, word, choice, details, visitor_hash, received_at) VALUES (?, 'casa', 'form', 'A note.', ?, ?)")
+    .run(RELEASE, visitor, new Date(at).toISOString());
+}
+
+const visitorCodes = (app: DatabaseSync) =>
+  app
+    .prepare("SELECT received_at, visitor_hash, details FROM reader_report ORDER BY received_at")
+    .all()
+    .map((row) => ({ ...row }));
+
+test("the sweep erases the visitor code of every report received an hour ago or earlier, and leaves younger ones and the reports", async () => {
+  const { sqlite, appDb } = freshAppDatabase();
+  const code = await visitorHash("v4:203.0.113.7");
+  const times = [NOW - HOUR_MS - 1, NOW - HOUR_MS, NOW - HOUR_MS + 1, NOW];
+  for (const at of times) storeAt(sqlite, at, code);
+  await forgetVisitors(appDb, NOW);
+  assert.deepEqual(visitorCodes(sqlite), [
+    { received_at: new Date(NOW - HOUR_MS - 1).toISOString(), visitor_hash: null, details: "A note." },
+    { received_at: new Date(NOW - HOUR_MS).toISOString(), visitor_hash: null, details: "A note." },
+    { received_at: new Date(NOW - HOUR_MS + 1).toISOString(), visitor_hash: code, details: "A note." },
+    { received_at: new Date(NOW).toISOString(), visitor_hash: code, details: "A note." },
+  ]);
+  // The clock moves on: the next sweep takes the next one, and still deletes nothing.
+  await forgetVisitors(appDb, NOW + 1);
+  assert.deepEqual(
+    visitorCodes(sqlite).map(({ visitor_hash }) => visitor_hash),
+    [null, null, null, code],
+  );
+});
+
+test("after the sweep the hourly allowance still holds: a visitor at the limit inside the hour is still refused", async () => {
+  await withDatabase(async (db) => {
+    for (let i = 0; i < REPORTS_PER_HOUR; i++) {
+      const token = await opened(db, NOW + i * 60_000 - 10_000);
+      assert.deepEqual(await receiveReport(submission(token), context(db, { now: NOW + i * 60_000 })), { outcome: "sent" });
+    }
+    const later = NOW + REPORTS_PER_HOUR * 60_000;
+    await forgetVisitors(appTablesOverNodeSqlite(db.app), later);
+    assert.deepEqual(await receiveReport(submission(await opened(db, later - 10_000)), context(db, { now: later })), {
+      outcome: "limited",
+    });
+    assert.equal(stored(db).length, REPORTS_PER_HOUR);
+  });
+});
+
+/** D1's shape over a `node:sqlite` database, as far as Drizzle's D1 driver reaches it. */
+function d1Over(over: DatabaseSync): D1Database {
+  const bound = (sql: string, params: (string | number | null)[]) => ({
+    all: async () => ({ results: over.prepare(sql).all(...params) }),
+    raw: async () => {
+      const statement = over.prepare(sql);
+      statement.setReturnArrays(true);
+      return statement.all(...params);
+    },
+    run: async () => (over.prepare(sql).run(...params), { success: true }),
+  });
+  return {
+    prepare: (sql: string) => ({ ...bound(sql, []), bind: (...params: (string | number | null)[]) => bound(sql, params) }),
+  } as unknown as D1Database;
+}
+
+/**
+ * The Worker's entry, imported outside workerd: `cloudflare:workers` and
+ * vinext's App Router entry exist only in a build, and the card desk loads
+ * WebAssembly, so each is stood in for. None of them is what `scheduled` runs.
+ */
+async function workerEntry() {
+  const STUBS: Record<string, string> = {
+    "cloudflare:workers": `export const env = { LEXEMA_STAGE: "local" }; export class DurableObject {}`,
+    "vinext/server/app-router-entry": `export default { fetch() { throw new Error("no app"); } };`,
+  };
+  const stub = (source: string) => ({ url: `data:text/javascript,${encodeURIComponent(source)}`, shortCircuit: true });
+  const hooks = registerHooks({
+    resolve: (specifier, context, nextResolve) => {
+      if (specifier in STUBS) return stub(STUBS[specifier]);
+      const resolved = nextResolve(specifier, context);
+      return resolved.url.endsWith("/worker/dictionary/card/desk.ts") ? stub(`export function workerDesk() { throw new Error("no desk"); }`) : resolved;
+    },
+  });
+  try {
+    return (await import("../worker/index.ts")).default;
+  } finally {
+    hooks.deregister();
+  }
+}
+
+test("the Worker's scheduled handler sweeps APP_DB at the trigger's time, on a cron every five minutes, in production too", async () => {
+  const configPath = fileURLToPath(new URL("../wrangler.jsonc", import.meta.url));
+  for (const env of [undefined, "production"]) {
+    assert.deepEqual(unstable_readConfig({ config: configPath, env }).triggers.crons, ["*/5 * * * *"], env ?? "top level");
+  }
+  const { sqlite } = freshAppDatabase();
+  const code = await visitorHash("v4:203.0.113.7");
+  storeAt(sqlite, NOW - HOUR_MS, code);
+  storeAt(sqlite, NOW - 60_000, code);
+  const worker = await workerEntry();
+  await worker.scheduled({ scheduledTime: NOW }, { APP_DB: d1Over(sqlite) });
+  assert.deepEqual(
+    visitorCodes(sqlite).map(({ visitor_hash }) => visitor_hash),
+    [null, code],
+    "the hour-old code is gone; the minute-old one stays",
+  );
+  // With no APP_DB, as production has until #19, there is no report to erase, and nothing fails.
+  await worker.scheduled({ scheduledTime: NOW }, {});
 });
 
 test("a reading from another release is refused, and nothing is stored", async () => {

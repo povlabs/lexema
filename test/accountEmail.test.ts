@@ -95,7 +95,7 @@ const EVERY_EMAIL: { email: AccountEmail; subject: string; lead: string; facts: 
     email: { kind: "payment-failed", plan: "starter", on: ON },
     subject: "Your Starter payment failed",
     lead: "Stripe could not take the payment for your Starter plan on 1 October 2026.",
-    facts: ["Your API keys keep working for now.", "Stripe will try the payment again.", "Starter is $15 a month."],
+    facts: ["API calls are paused until the payment goes through.", "Stripe will try the payment again.", "Starter is $15 a month."],
     button: true,
     note: /Manage billing/,
   },

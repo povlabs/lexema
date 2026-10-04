@@ -157,6 +157,27 @@ test("signed in, choosing Pro makes a Checkout session for Pro's price with the 
   assert.equal(new URL(checkout.successUrl).searchParams.get("callbackURL"), SETTINGS);
 });
 
+test("Checkout for Starter and for Pro shows the Terms and business-use line by the subscribe button, with no consent checkbox (#572)", async () => {
+  for (const [plan, price] of [["starter", TEST_SETTINGS.STRIPE_PRICE_STARTER], ["pro", TEST_SETTINGS.STRIPE_PRICE_PRO]] as const) {
+    const { stripe, signIn, post } = site();
+    await signIn();
+
+    assert.equal((await post(CHECKOUT_ACTION, { plan })).status, 303, plan);
+
+    const [checkout] = stripe.checkouts;
+    assert.equal(checkout.price, price, plan);
+    assert.deepEqual(
+      checkout.customText,
+      {
+        "[submit][message]":
+          "By subscribing, you agree to the [Terms of service](https://developers.lexema.fyi/terms) and confirm you are using the API for business purposes.",
+      },
+      plan,
+    );
+    assert.deepEqual(checkout.consentCollection, {}, plan);
+  }
+});
+
 test("a bad CSRF token, a foreign Origin or an unknown plan changes nothing and makes no Checkout session", async () => {
   const refusals: [string, Record<string, string>, string | undefined, number][] = [
     ["bad CSRF token", { plan: "pro", csrf: "A".repeat(43) }, undefined, 403],
@@ -196,7 +217,7 @@ test("signed out, choosing Pro goes to sign-in, and the first page after signing
   assert.equal(location(await signIn()), "/dashboard");
 });
 
-test("the portal returns to settings; without a Stripe customer it answers 303 to pricing, and choosing a plan while one serves goes to the portal", async () => {
+test("the portal returns to settings; without a Stripe customer it answers 303 to pricing, and choosing a plan while one serves or is past due goes to the portal", async () => {
   const { appDb, stripe, signIn, post, account } = site();
   await signIn();
 
@@ -217,6 +238,16 @@ test("the portal returns to settings; without a Stripe customer it answers 303 t
   const serving = await post(CHECKOUT_ACTION, { plan: "pro" });
   assert.equal(location(serving), stripe.portals[1]?.url);
   assert.equal(stripe.checkouts.length, 1, "no second Checkout");
+
+  // A past-due plan serves nothing but is still held: its card is fixed in the portal, not bought twice (#571).
+  await appDb.app.update(subscription).set({ status: "past_due" });
+  for (const plan of ["starter", "pro"]) {
+    const pastDue = await post(CHECKOUT_ACTION, { plan });
+    assert.equal(pastDue.status, 303, plan);
+    assert.equal(location(pastDue), stripe.portals.at(-1)?.url, plan);
+  }
+  assert.equal(stripe.portals.length, 4);
+  assert.equal(stripe.checkouts.length, 1, "no second Checkout while past due");
 });
 
 test("a suspended account is refused Checkout, the plan it chose before signing in, and the billing portal, and nothing reaches Stripe (#573)", async () => {
