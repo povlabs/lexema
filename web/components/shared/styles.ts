@@ -108,20 +108,24 @@ export const SHELL_TOP = `${COLUMN} flex-1 pt-4 pb-3.25 sm:pt-7 sm:pb-4`;
  */
 export type SearchPlacement = "centred" | "top";
 
-/** Frame 00 at 1440: the box is 642 px wide and 61 px tall, border included. */
+/**
+ * Border included: frame 00 at 1440 draws the centred box 642 x 61 px; frame
+ * 10 draws the top box 561 x 57 px, and frame 19 at 390 draws it 49 px tall
+ * (#596).
+ */
 export const SEARCH_FORM: Record<SearchPlacement, string> = {
   centred: "w-full max-w-[40.125rem]",
-  top: "w-full max-w-[40rem]",
+  top: "w-full max-w-[35.0625rem]",
 };
 const FIELD =
   "relative flex w-full items-center rounded-[4px] border border-border-strong bg-surface-raised focus-within:border-accent";
 export const SEARCH_FIELD: Record<SearchPlacement, string> = {
   centred: `${FIELD} h-[3.8125rem]`,
-  top: FIELD,
+  top: `${FIELD} h-[3.0625rem] sm:h-[3.5625rem]`,
 };
 export const SEARCH_ICON: Record<SearchPlacement, string> = {
   centred: "pointer-events-none absolute left-5 size-5 text-text-muted",
-  top: "pointer-events-none absolute left-4 size-4 text-text-muted",
+  top: "pointer-events-none absolute left-[0.8125rem] size-[0.9375rem] text-text-muted sm:left-[1.0625rem] sm:size-4",
 };
 /**
  * The browser's own clear button on a `type="search"` field is hidden: it is
@@ -131,7 +135,7 @@ export const SEARCH_ICON: Record<SearchPlacement, string> = {
 export const SEARCH_INPUT: Record<SearchPlacement, string> = {
   centred:
     "w-full min-w-0 bg-transparent py-3 pr-24 pl-[3.375rem] font-serif text-lg text-text-strong outline-none placeholder:font-sans placeholder:text-[1.0625rem] placeholder:text-text-muted [&::-webkit-search-cancel-button]:appearance-none",
-  top: "w-full min-w-0 bg-transparent py-3 pr-24 pl-11 font-serif text-lg text-text-strong outline-none placeholder:font-sans placeholder:text-base placeholder:text-text-muted [&::-webkit-search-cancel-button]:appearance-none",
+  top: "w-full min-w-0 bg-transparent py-3 pr-24 pl-[2.375rem] font-serif text-[1.0625rem] text-text-strong outline-none placeholder:font-sans placeholder:text-base placeholder:text-text-muted sm:pl-[2.875rem] sm:text-lg [&::-webkit-search-cancel-button]:appearance-none",
 };
 /**
  * The right end of the bar: the shortcut hint, the `ENTER` hint and the `×`,
@@ -141,7 +145,7 @@ export const SEARCH_INPUT: Record<SearchPlacement, string> = {
  */
 export const SEARCH_TRAILING: Record<SearchPlacement, string> = {
   centred: "pointer-events-none absolute inset-y-0 right-4 flex items-center gap-1.5",
-  top: "pointer-events-none absolute inset-y-0 right-3 flex items-center gap-1.5",
+  top: "pointer-events-none absolute inset-y-0 right-1.5 flex items-center gap-1.5 sm:right-3",
 };
 const TRAILING_BOX = "flex h-7 items-center leading-none";
 /**
@@ -207,49 +211,52 @@ export const MUTED = "font-sans text-[0.85rem] text-text-muted";
  * sideways: `precipitevolissimevolmente` is one word.
  */
 export const WORD_HEADING =
-  "m-0 mt-12 font-serif text-[3.25rem] leading-none font-normal break-words text-text-strong sm:mt-16 sm:text-[4.5rem]";
+  "m-0 mt-[2.625rem] font-serif text-[3rem] leading-none font-normal break-words text-text-strong sm:mt-[3.6875rem] sm:text-[4.5rem]";
 /** The IPA under the headword. */
-export const PRONUNCIATION = "m-0 mt-4 font-mono text-base text-text-muted sm:mt-6 sm:text-lg";
+export const PRONUNCIATION = "m-0 mt-[0.9375rem] font-mono text-[0.8125rem] text-text-muted sm:mt-[1.5625rem] sm:text-[0.9375rem] sm:leading-5";
 export const PRONUNCIATION_NOTE = "ml-2 font-sans text-[0.75rem]";
 
-/** Jump links, one per reading, for three readings or more. */
-export const JUMP_LINKS = "m-0 mt-4 flex list-none flex-wrap gap-x-5 gap-y-1 p-0";
-export const JUMP_LINK = `font-sans text-[0.85rem] text-text no-underline ${FOCUS_RING}`;
-export const JUMP_NUMBER = "mr-1.5 text-accent";
+/** Jump links, one per reading, for three readings or more. Numbers are tabular, as the frames set them. */
+export const JUMP_LINKS = "m-0 mt-2.5 flex list-none flex-wrap gap-x-3.5 gap-y-1 p-0 sm:mt-[1.375rem] sm:gap-x-[1.125rem]";
+export const JUMP_LINK = `font-sans text-[0.78125rem] text-text no-underline sm:text-[0.8125rem] ${FOCUS_RING}`;
+export const JUMP_NUMBER = "mr-1.5 text-accent tabular-nums";
 
-/** A reading: a heading and its blocks, with a thin rule before every one after the first. */
 /**
- * The page's vertical rhythm, one value per kind of gap (desktop / phone):
- * 40 / 28 on either side of a rule between readings and before the first
- * reading; 28 / 22 between blocks inside a reading; 32 / 24 between the word's
- * own blocks; 48 / 36 above and below Source. Each gap is the top edge of the
- * thing below it, so an empty section adds nothing.
+ * The page's vertical rhythm, as frames 10 to 23 draw it at 1440 and frames 19
+ * to 21 at 390 (wide / phone, #596). The first reading starts 57 / 37 px under
+ * the headword, 39 / 24 under its pronunciation and 32 / 20 under the jump
+ * links. A rule between readings, and the one before the word's own facts,
+ * has 39 px above and below it on a wide screen, 27 and 26 on a phone. Blocks
+ * inside a reading are 22 / 18 apart; the word's own blocks 28 / 24; Source
+ * 48 / 36. Each gap is the top edge of the thing below it, so an empty section
+ * adds nothing.
  */
-export const READINGS = "mt-7 sm:mt-10";
+export const READINGS = "mt-[2.3125rem] [p+&]:mt-6 [nav+&]:mt-5 sm:mt-[3.5625rem] sm:[p+&]:mt-[2.4375rem] sm:[nav+&]:mt-8";
+/** A reading: a heading and its blocks, with a thin rule before every one after the first. */
 export const READING =
-  "scroll-mt-6 mt-7 border-t border-border pt-7 first:mt-0 first:border-t-0 first:pt-0 sm:mt-10 sm:pt-10";
+  "scroll-mt-6 mt-[1.6875rem] border-t border-border pt-6.5 first:mt-0 first:border-t-0 first:pt-0 sm:mt-[2.4375rem] sm:pt-[2.4375rem]";
 export const READING_HEADING =
-  "m-0 flex flex-wrap items-baseline gap-x-2.5 gap-y-1 font-sans text-[0.95rem] font-semibold text-text-strong";
-export const READING_NUMBER = "font-normal text-accent";
+  "m-0 flex flex-wrap items-baseline gap-x-2.5 gap-y-1 font-sans text-[0.875rem] font-semibold text-text-strong sm:text-[0.95rem]";
+export const READING_NUMBER = "font-normal text-accent tabular-nums";
 export const READING_DOT = "font-normal text-text-muted";
 /** The record's own gender and number after the part of speech, muted: `maschile, singolare`. */
 export const READING_GRAMMAR = "font-normal text-text-muted";
 export const READING_GRAMMAR_GROUP = "inline-flex items-baseline gap-2.5";
 
 /** A small grey label over a block: Definitions, Forms, Etymology, Synonyms. */
-export const BLOCK = "mt-[1.375rem] sm:mt-7";
+export const BLOCK = "mt-[1.125rem] sm:mt-[1.375rem]";
 /** A block of the word's own facts, after the readings; the first sits right under the rule. */
-export const WORD_BLOCK = "mt-6 first:mt-0 sm:mt-8";
-export const BLOCK_LABEL = "m-0 mb-3 font-sans text-[0.8rem] font-normal text-text-muted";
+export const WORD_BLOCK = "mt-6 first:mt-0 sm:mt-7";
+export const BLOCK_LABEL = "m-0 mb-[0.3125rem] font-sans text-[0.75rem] font-normal text-text-muted sm:mb-1.5 sm:text-[0.8rem]";
 export const BLOCK_LABEL_WORD = "ml-2 font-semibold text-text-strong";
 
 /** `Form of andare`: a lemma the gloss does not write, linked on a line of its own. */
 export const FORM_OF_LINE = "m-0 mt-4 font-sans text-[0.85rem] text-text-muted";
 
 export const DEFINITIONS = "m-0 flex list-none flex-col gap-4 p-0";
-export const DEFINITION = "flex gap-4";
+export const DEFINITION = "flex gap-[0.4375rem] sm:gap-3";
 /** A definition after the first: in the document, shown once the reading's `+ more` is open. */
-export const DEFINITION_EXTRA = "hidden gap-4 group-data-open/definitions:flex";
+export const DEFINITION_EXTRA = "hidden gap-[0.4375rem] group-data-open/definitions:flex sm:gap-3";
 export const DEFINITION_NUMBER = "w-5 shrink-0 pt-1 font-mono text-[0.85rem] text-text-muted";
 /**
  * A searched expression's form line numbers what shows (Phrase.tsx): closed,
@@ -258,17 +265,17 @@ export const DEFINITION_NUMBER = "w-5 shrink-0 pt-1 font-mono text-[0.85rem] tex
 export const DEFINITION_NUMBER_CLOSED = "group-data-open/definitions:hidden";
 export const DEFINITION_NUMBER_OPEN = "hidden group-data-open/definitions:inline";
 export const DEFINITION_BODY = "min-w-0 flex-1";
-export const GLOSS = "m-0 max-w-[48rem] font-serif text-[1.2rem] leading-snug text-text-strong wrap-anywhere sm:text-[1.3rem]";
+export const GLOSS = "m-0 max-w-[48rem] font-serif text-[1.0625rem] leading-[1.625rem] text-text-strong wrap-anywhere sm:pb-0.5 sm:text-[1.1875rem] sm:leading-7";
 export const SENSE_LABEL = "italic text-text-muted";
 /** The word a form-of definition names, linked to its own search. */
 export const GLOSS_LINK = `text-accent no-underline ${FOCUS_RING}`;
 /** The items of a list a definition opens with a colon (#123), nested under it. */
 export const SUB_ITEMS = "mt-2 mb-0 flex list-disc flex-col gap-2 pl-5 marker:text-text-muted";
-export const EXAMPLE = "m-0 mt-2 max-w-[48rem] font-serif text-[1.05rem] italic text-text-muted";
+export const EXAMPLE = "m-0 mt-1 max-w-[48rem] font-serif text-[0.9375rem] italic text-text-muted sm:mt-[0.3125rem] sm:text-base";
 /** An example past the first definition's first: in the document, shown once `+ more` is open. */
 export const EXAMPLE_EXTRA = `${EXAMPLE} hidden group-data-open/definitions:block`;
 /** An example of a sense not shown as a definition, after the definitions, in line with their text. */
-export const EXAMPLE_LOOSE = `${EXAMPLE_EXTRA} ml-9`;
+export const EXAMPLE_LOOSE = `${EXAMPLE_EXTRA} ml-[1.6875rem] sm:ml-8`;
 /** A reading's definitions and the one `+ more` after them, which reveals everything else: `data-open` once open. */
 export const DEFINITIONS_GROUP = "group/definitions";
 
@@ -280,27 +287,29 @@ export const DEFINITIONS_GROUP = "group/definitions";
 export const MORE_TRIGGER = `group inline cursor-pointer font-sans text-[0.8rem] text-accent ${FOCUS_RING}`;
 export const MORE_CLOSED = "group-data-panel-open:hidden";
 export const MORE_OPEN = "hidden group-data-panel-open:inline";
-/** Under the definition it ends, in line with its text. */
-export const DEFINITIONS_MORE = "mt-2 ml-9 block";
+/** Under the definitions, at the column's edge, where frames 10 to 23 and 19 to 21 draw it (#596). */
+export const DEFINITIONS_MORE = "mt-[0.4375rem] block leading-4 sm:mt-[0.3125rem] sm:leading-[1.375rem]";
 
 /**
- * Columns singolare and plurale with a gender column before them; on a phone
- * two columns, with each gender's label over its pair.
+ * Columns singolare and plurale with a gender column before them, at 120, 230
+ * and 490 px as frames 10 to 23 draw them; on a phone two halves of the
+ * column, with each gender's label over its pair (frames 19 to 21, #596). The
+ * last row drops the row gap, so the reading's own gap follows it.
  */
-export const GRID = "grid grid-cols-2 gap-x-6 sm:grid-cols-[7rem_15rem_15rem]";
+export const GRID = "grid grid-cols-2 sm:gap-x-6 sm:grid-cols-[5.375rem_14.75rem_14.75rem]";
 export const GRID_CORNER = "max-sm:hidden";
-export const GRID_HEAD = "pb-3 font-sans text-[0.75rem] text-text-muted";
-export const GRID_GENDER = "pt-1 font-sans text-[0.75rem] text-text-muted max-sm:col-span-2 max-sm:pt-0 max-sm:pb-1.5 max-sm:font-semibold";
-export const GRID_CELL = "min-w-0 pb-4";
+export const GRID_HEAD = "pb-2 font-sans text-[0.75rem] leading-5 text-text-muted sm:pb-[0.8125rem] sm:leading-[1.6]";
+export const GRID_GENDER = "pt-1 font-sans text-[0.75rem] text-text-muted max-sm:col-span-2 max-sm:pt-0 max-sm:pb-0.5 max-sm:font-semibold";
+export const GRID_CELL = "min-w-0 pb-4 sm:pb-[0.9375rem] [[role=row]:last-child>&]:pb-0 sm:[[role=row]:last-child>&]:pb-px";
 /** One spelling of a cell and its article line; a second spelling sits under the first. */
 export const GRID_SPELLING = "[&+&]:mt-2";
 export const GRID_FORM = "m-0 font-mono text-[1.05rem] text-text-strong wrap-anywhere";
-export const GRID_ARTICLES = "m-0 mt-1 font-mono text-[0.75rem] text-text-muted";
+export const GRID_ARTICLES = "m-0 mt-px font-mono text-[0.75rem] leading-4 text-text-muted sm:mt-[0.1875rem]";
 export const GRID_ARTICLE = "max-sm:block";
 export const GRID_ARTICLE_DOT = "px-2 max-sm:hidden";
 /** A form the source does not give: a dash, with no note. */
 export const DASH = "font-mono text-text-muted";
-export const GRID_LABEL = "m-0 mt-4 mb-3 font-sans text-[0.75rem] font-semibold text-text-muted";
+export const GRID_LABEL = "m-0 mt-4 mb-3 sm:mt-6 font-sans text-[0.75rem] font-semibold text-text-muted";
 
 /** A form in a conjugation: a link to its own search, the pointer the only cue. */
 export const FORM_LINK = `cursor-pointer font-mono text-text-strong no-underline ${FOCUS_RING}`;
@@ -349,8 +358,8 @@ export const TENSE_SET_SIMPLE = `${TENSE_SET} hidden group-data-open/panel:block
 export const COMPOUND_TABLES = "pt-4";
 export const COMPOUND_MORE = "mt-2 block";
 
-export const WORD_FACTS = "mt-7 border-t border-border pt-7 sm:mt-10 sm:pt-10";
-export const ETYMOLOGY = "m-0 max-w-[48rem] font-serif text-[1.1rem] text-text";
+export const WORD_FACTS = "mt-[1.6875rem] border-t border-border pt-6.5 sm:mt-[2.4375rem] sm:pt-[2.4375rem]";
+export const ETYMOLOGY = "m-0 max-w-[48rem] font-serif text-[1.1rem] text-text sm:text-[1.0625rem]";
 /**
  * An etymology on one line, cut with an ellipsis, and `+ more` right after the
  * ellipsis; open, the whole text wraps and `less` follows its last word. The
@@ -416,11 +425,11 @@ export const ICON = "size-3.5";
 // A search that found nothing (board 24) ---------------------------------
 
 export const NOT_FOUND_HEADING =
-  "m-0 mt-12 font-serif text-[2.25rem] leading-tight font-normal break-words text-text-strong sm:mt-16 sm:text-[3rem]";
-export const NOT_FOUND_TEXT = "m-0 mt-6 max-w-[42rem] font-sans text-[0.95rem] text-text";
+  "m-0 mt-12 font-serif text-[2.25rem] leading-tight font-normal break-words text-text-strong sm:mt-[3.3125rem] sm:text-[2.5rem]";
+export const NOT_FOUND_TEXT = "m-0 mt-6 max-w-[42rem] font-sans text-[0.95rem] text-text sm:mt-4.5";
 /** "Did you mean città?": the word in the accent, larger, and a link to its search. */
-export const NOT_FOUND_LEAD = "m-0 mt-6 font-sans text-[0.95rem] text-text";
-export const NOT_FOUND_LINK = `mx-1 font-serif text-[1.5rem] text-accent no-underline ${FOCUS_RING}`;
+export const NOT_FOUND_LEAD = "m-0 mt-6 font-sans text-[0.95rem] text-text sm:mt-4.5";
+export const NOT_FOUND_LINK = `ml-1.5 mr-2.5 font-serif text-[1.5rem] text-accent no-underline ${FOCUS_RING}`;
 
 // A word found whose query an accented or apostrophe headword also writes (board 32, #478)
 
@@ -436,27 +445,27 @@ export const REPORT_BACKDROP = "fixed inset-0 bg-surface/70";
 /** A small box in the middle of the screen; on a phone, the width of the screen less its margin. */
 export const REPORT_POPUP =
   "fixed top-1/2 left-1/2 w-[32.5rem] max-w-[calc(100vw-2rem)] max-h-[calc(100dvh-2rem)] -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-[6px] border border-border-strong bg-surface-raised p-7 outline-none max-sm:p-5";
-export const REPORT_X = `absolute top-6 right-6 flex size-7 cursor-pointer items-center justify-center border-0 bg-transparent font-sans text-lg text-text-muted hover:text-text max-sm:top-4 max-sm:right-4 ${FOCUS_RING}`;
+export const REPORT_X = `absolute top-11 right-[1.375rem] flex size-7 cursor-pointer items-center justify-center border-0 bg-transparent font-sans text-2xl text-text-muted hover:text-text max-sm:top-4 max-sm:right-4 ${FOCUS_RING}`;
 export const REPORT_TITLE = "m-0 flex items-center gap-3 pr-10 font-serif text-[1.5rem] font-normal text-text-strong";
-export const REPORT_SUBTITLE = "m-0 mt-1 font-sans text-[0.85rem] text-text-muted";
-export const REPORT_SUBTITLE_WORD = "ml-1 font-serif text-[1.05rem] text-text-strong";
-export const REPORT_FIELD = "m-0 mt-6 border-0 p-0";
-export const REPORT_FIELD_LABEL = "mb-2.5 block p-0 font-sans text-[0.85rem] font-semibold text-text-strong";
+export const REPORT_SUBTITLE = "m-0 mt-0.5 font-sans text-[0.8125rem] text-text-muted";
+export const REPORT_SUBTITLE_WORD = "ml-1 font-serif text-[0.9375rem] text-text-strong";
+export const REPORT_FIELD = "m-0 mt-[1.1875rem] border-0 p-0";
+export const REPORT_FIELD_LABEL = "mb-1.25 block p-0 font-sans text-[0.78125rem] font-semibold text-text-strong";
 export const REPORT_OPTIONAL = "ml-1.5 font-normal text-text-muted";
-export const REPORT_CHIPS = "flex flex-wrap gap-2";
+export const REPORT_CHIPS = "flex max-w-80 flex-wrap gap-x-1.5 gap-y-[0.4375rem]";
 /** A choice: a native radio, drawn as a chip; the chosen one is outlined in the accent. */
 export const REPORT_CHIP =
-  "inline-flex cursor-pointer items-center rounded-[3px] border border-border-strong px-3 py-1.5 font-sans text-[0.85rem] text-text hover:border-text-muted has-[:checked]:border-accent has-[:checked]:font-semibold has-[:checked]:text-accent has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-accent";
+  "inline-flex h-8 cursor-pointer items-center rounded-[3px] border border-border-strong px-3 font-sans text-[0.8125rem] text-text hover:border-text-muted has-[:checked]:border-accent has-[:checked]:font-semibold has-[:checked]:text-accent has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-accent";
 export const REPORT_DETAILS =
-  "block min-h-28 w-full resize-y rounded-[4px] border border-border-strong bg-surface px-3.5 py-3 font-sans text-[0.9rem] text-text-strong outline-none placeholder:text-text-muted focus:border-accent";
+  "block min-h-[7.125rem] w-full resize-y rounded-[4px] border border-border-strong bg-surface px-3.5 py-3 font-sans text-[0.875rem] text-text-strong outline-none placeholder:text-text-muted focus:border-accent";
 export const REPORT_ERROR = "m-0 mt-4 font-sans text-[0.8rem] text-warning";
 /** Try again, after the box could not get its opening token. */
 export const REPORT_RETRY = `ml-2 cursor-pointer border-0 bg-transparent p-0 font-sans text-[0.8rem] text-accent underline ${FOCUS_RING}`;
 /** "No account needed." on its own line on a phone, Cancel and Send together on the right. */
-export const REPORT_FOOTER = "mt-7 flex flex-wrap items-center justify-end gap-x-6 gap-y-3";
+export const REPORT_FOOTER = "mt-[1.5625rem] flex flex-wrap items-center justify-end gap-x-6 gap-y-3";
 export const REPORT_NOTE = "m-0 mr-auto font-sans text-[0.75rem] text-text-muted max-sm:w-full";
-export const REPORT_CANCEL = `cursor-pointer border-0 bg-transparent p-0 font-sans text-[0.9rem] text-text hover:text-text-strong ${FOCUS_RING}`;
-export const REPORT_SEND = `cursor-pointer rounded-[3px] border-0 bg-accent px-4 py-2 font-sans text-[0.9rem] font-semibold text-surface disabled:cursor-not-allowed disabled:bg-border disabled:font-normal disabled:text-text-muted ${FOCUS_RING}`;
+export const REPORT_CANCEL = `cursor-pointer border-0 bg-transparent p-0 font-sans text-[0.875rem] text-text hover:text-text-strong ${FOCUS_RING}`;
+export const REPORT_SEND = `cursor-pointer rounded-[3px] border-0 bg-accent px-4 py-1.5 font-sans text-[0.875rem] leading-[1.375rem] font-semibold text-surface disabled:cursor-not-allowed disabled:bg-border disabled:font-normal disabled:text-text-muted ${FOCUS_RING}`;
 export const REPORT_SENT_CHECK = "font-sans text-base text-accent";
 export const REPORT_SENT_TEXT = "m-0 mt-4 font-sans text-[0.9rem] text-text";
 export const REPORT_CLOSE = `mt-5 cursor-pointer rounded-[3px] border border-border-strong bg-transparent px-4 py-2 font-sans text-[0.9rem] text-text-strong hover:border-text-muted ${FOCUS_RING}`;
