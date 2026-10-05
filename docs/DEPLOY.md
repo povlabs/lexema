@@ -253,9 +253,19 @@ and `--name` to choose the name
 They say nothing about `&&` or `$(...)` in the field. If the dashboard refuses
 this string, that is why.
 
-Every later push to a branch reuses its app D1. `web/test/workersBuilds.test.ts`
-checks the prepare step and the deploy command against a fake account, with no
-network and no credential.
+Every later push to a branch reuses its app D1, and keeps its rows, while the
+migrations it applied are the tree's list so far, in the tree's order. Wrangler
+picks the migrations to run by file name alone, from its `d1_migrations` table,
+which keeps no SQL. So when a merge of `main` renumbers a migration the branch
+already applied, Wrangler would run the same SQL again under the new name, and
+fail. Before the migrations run, `preview:prepare` reads the names the app D1
+applied. If one is not in the tree, or one is out of the tree's order, it
+deletes the app D1, creates it again empty, and applies every migration. One
+`app database: reset` line in the build log names the migration that differed.
+A Preview's app data is for review only; the test developer is made again at
+the next test sign-in. `web/test/workersBuilds.test.ts` checks the prepare step
+and the deploy command against a fake account, with no network and no
+credential.
 
 ### The dictionary slice
 

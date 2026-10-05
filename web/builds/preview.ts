@@ -3,7 +3,7 @@
 
 import { spawnSync } from "node:child_process";
 import { randomBytes } from "node:crypto";
-import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -31,6 +31,8 @@ const slices: SlicePlanner = {
   build: () => readBuilt(previewSlice("build", "--dictionary", DICTIONARY.name, "--sql", join(mkdtempSync(join(tmpdir(), "lexema-preview-slice-")), "slice.sql"))),
 };
 
+const migrationsDir = fileURLToPath(new URL("../../src/db/app/migrations", import.meta.url));
+
 try {
   preparePreview({
     branch: process.env.WORKERS_CI_BRANCH,
@@ -47,7 +49,9 @@ try {
       writeFileSync(path, `${JSON.stringify(config, null, 2)}\n`);
       return path;
     },
-    migrationsDir: fileURLToPath(new URL("../../src/db/app/migrations", import.meta.url)),
+    migrationsDir,
+    // Wrangler's default `migrations_pattern`, `<migrations_dir>/*.sql`.
+    migrations: readdirSync(migrationsDir, { withFileTypes: true }).filter((entry) => entry.isFile() && entry.name.endsWith(".sql")).map(({ name }) => name),
     // The same strength as the production one (docs/DEPLOY.md, Turn on sign-in).
     newSecret: () => randomBytes(32).toString("base64"),
     slices,

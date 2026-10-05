@@ -7,10 +7,11 @@
 // second step runs only when the first wrote a Preview name, so a branch that
 // gets no Preview builds and deploys nothing and still ends green.
 
-import { type AppDatabase, type BuiltConfig, migrationsConfig, withAppDatabase, withDictionarySlice } from "./previewConfig.ts";
+import { prepareAppDatabase } from "./previewAppDatabase.ts";
+import { type BuiltConfig, migrationsConfig, withAppDatabase, withDictionarySlice } from "./previewConfig.ts";
 import { PreviewName } from "./previewName.ts";
 import { prepareSlice, type SlicePlanner } from "./previewSlice.ts";
-import { listDatabases, required, type Wrangler } from "./wrangler.ts";
+import { required, type Wrangler } from "./wrangler.ts";
 
 /** The built config `wrangler preview` reads, relative to web/. */
 export const BUILT_CONFIG = "dist/server/wrangler.json";
@@ -81,6 +82,8 @@ export interface PreviewPrepareSteps {
   writeMigrationsConfig(config: Record<string, unknown>): string;
   /** The app migrations directory, absolute. */
   readonly migrationsDir: string;
+  /** The app migration file names in that directory, which `wrangler d1 migrations apply` runs. */
+  readonly migrations: readonly string[];
   /** A fresh random secret. */
   newSecret(): string;
   /** What the branch's change declarations give its dictionary slice (web/builds/previewSlice.ts). */
@@ -89,28 +92,11 @@ export interface PreviewPrepareSteps {
 }
 
 /**
- * This branch's app database: the one already on the account, so every push
- * to a branch reuses it, or a new one. A create that loses a race with a
- * concurrent build of the same branch still finds the winner's database.
- */
-export function findOrCreateAppDatabase(wrangler: Wrangler, preview: PreviewName, log: (line: string) => void): AppDatabase {
-  const find = () => listDatabases(wrangler).find(({ name }) => name === preview.appDatabase)?.uuid;
-  const existing = find();
-  if (existing !== undefined) {
-    log(`app database: reusing ${preview.appDatabase} (${existing})`);
-    return { preview, id: existing };
-  }
-  wrangler(["d1", "create", preview.appDatabase, "--update-config=false"]);
-  const created = find();
-  if (created === undefined) throw new Error(`could not create the app database ${preview.appDatabase}`);
-  log(`app database: created ${preview.appDatabase} (${created})`);
-  return { preview, id: created };
-}
-
-/**
  * Prepare one branch's Preview for `wrangler preview`: build, give the branch
- * its own app database and, when it changes dictionary data, its dictionary
- * slice (#447), migrate the app database, and write the built config, the
+ * its own app database (deleted and created again when the migrations it
+ * applied left the tree's, web/builds/previewAppDatabase.ts) and, when it
+ * changes dictionary data, its dictionary slice (#447), migrate the app
+ * database, and write the built config, the
  * Preview name and the secrets file the Preview command reads. On a branch
  * that gets no Preview (`getsNoPreview`), it does none of that and writes
  * nothing, so the command's `wrangler preview` step does not run.
@@ -126,7 +112,7 @@ export function preparePreview(steps: PreviewPrepareSteps): PreparedPreview {
   log(`Preview ${preview} for branch ${steps.branch}`);
 
   steps.build();
-  const database = findOrCreateAppDatabase(wrangler, preview, log);
+  const database = prepareAppDatabase(wrangler, preview, steps.migrations, log);
   const slice = prepareSlice(wrangler, preview, steps.slices, log);
   const config = withAppDatabase(steps.readBuiltConfig(), database);
   steps.writeFile(BUILT_CONFIG, `${JSON.stringify(slice === undefined ? config : withDictionarySlice(config, slice), null, 2)}\n`);
