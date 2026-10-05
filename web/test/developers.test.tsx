@@ -43,7 +43,7 @@ import {
 } from "@/lib/developers/apiReference.ts";
 import { DeveloperDocs } from "@/components/developers/DeveloperDocs";
 import { DOCS_PAGES, endpointPath, pathOf } from "@/lib/developers/docsPages.ts";
-import { DEV_FOOTER_LEGAL, DOCS_CODE, LEGAL_CONTENTS, LEGAL_LAYOUT } from "@/components/shared/styles.ts";
+import { DEV_FOOTER_LEGAL, DEV_NAME, DOCS_CODE, LEGAL_CONTENTS, LEGAL_LAYOUT } from "@/components/shared/styles.ts";
 import { numberDigits } from "@/components/shared/LegalPage";
 import { DeveloperLanding } from "@/components/developers/DeveloperLanding";
 import { DeveloperFooter, developerFooterLinks } from "@/components/developers/DeveloperPage";
@@ -445,11 +445,11 @@ test("pricing shows Starter, Pro and Enterprise with the plan table's numbers, a
   assert.match(enterprise, /<a [^>]*href="mailto:contact@lexema.fyi">Contact us<\/a>/);
 });
 
-test("every developer page carries the footer: lexema.fyi, Docs, Pricing, Terms, Privacy and Contact by mail (#162)", () => {
+test("every developer page carries the footer: Lexema.fyi, Docs, Pricing, Terms, Privacy and Contact by mail (#162)", () => {
   assert.deepEqual(
     developerFooterLinks(ORIGIN).map(({ label, href }) => [label, href]),
     [
-      ["lexema.fyi", "https://lexema.fyi"],
+      ["Lexema.fyi", "https://lexema.fyi"],
       ["Docs", "/docs"],
       ["Pricing", "/pricing"],
       ["Terms", "/terms"],
@@ -461,7 +461,7 @@ test("every developer page carries the footer: lexema.fyi, Docs, Pricing, Terms,
   const links = [...footer.matchAll(/<li( class="([^"]*)")?><a class="[^"]*" href="([^"]+)">([^<]+)<\/a>/g)].map((match) => [match[4], match[3], match[2]]);
   // On a phone, Terms and Privacy take the second row (frames 35m and 36m).
   assert.deepEqual(links, [
-    ["lexema.fyi", "https://lexema.fyi", undefined],
+    ["Lexema.fyi", "https://lexema.fyi", undefined],
     ["Docs", "/docs", undefined],
     ["Pricing", "/pricing", undefined],
     ["Terms", "/terms", DEV_FOOTER_LEGAL],
@@ -472,6 +472,13 @@ test("every developer page carries the footer: lexema.fyi, Docs, Pricing, Terms,
   for (const page of [<DeveloperLanding signUp="open" origins={ORIGIN} />, ...docsPages, <DeveloperPricing signUp="open" origins={ORIGIN} />]) {
     const html = renderToStaticMarkup(page);
     assert.ok(html.includes(renderToStaticMarkup(<DeveloperFooter wide={html.includes('aria-label="Docs"')} origins={ORIGIN} />)));
+  }
+});
+
+test("the developer bar names the site with one serif wordmark, as the footer does (#614)", () => {
+  for (const page of [<DeveloperLanding signUp="open" origins={ORIGIN} />, <DeveloperPricing signUp="closed" origins={ORIGIN} />]) {
+    const header = renderToStaticMarkup(page).match(/<header [^>]*>.*?<\/header>/)?.[0] ?? "";
+    assert.ok(header.includes(`<a class="${DEV_NAME}" href="/">Lexema Developers</a>`));
   }
 });
 
@@ -714,7 +721,7 @@ test("rendered for a Preview, every link to another site and every API address n
   assert.deepEqual([...hosts].sort(), [`${name}.api-preview.lexema.fyi`, `${name}.developers-preview.lexema.fyi`, `${name}.preview.lexema.fyi`]);
 
   assert.match(renderToStaticMarkup(<SiteFooter origins={preview} current="/" />), new RegExp(`href="https://${name}\\.developers-preview\\.lexema\\.fyi">Developers</a>`));
-  assert.match(renderToStaticMarkup(<DeveloperFooter origins={preview} />), new RegExp(`href="https://${name}\\.preview\\.lexema\\.fyi">lexema\\.fyi</a>`));
+  assert.match(renderToStaticMarkup(<DeveloperFooter origins={preview} />), new RegExp(`href="https://${name}\\.preview\\.lexema\\.fyi">Lexema\\.fyi</a>`));
   const attribution = renderToStaticMarkup(<DeveloperDocs page={{ kind: "guide", guide: "attribution" }} signUp="open" origins={preview} />);
   assert.match(attribution, new RegExp(`href="https://${name}\\.preview\\.lexema\\.fyi/licence"`));
   const lookup = renderToStaticMarkup(<DeveloperDocs page={{ kind: "endpoint", endpoint: "lookup" }} signUp="open" origins={preview} />);

@@ -14,7 +14,8 @@ import { LEGAL_ADDRESS, LEGAL_ITEMS, LEGAL_PARAGRAPH, LEGAL_UNBROKEN, LINK } fro
 import type { SignedIn } from "@/lib/developers/signedIn.ts";
 import type { SignUp } from "@/worker/developers/signUp.ts";
 import type { SiteOrigins } from "@/worker/shared/hosts.ts";
-import { CONTACT_EMAIL, DeveloperPage, PRIVACY_EMAIL } from "./DeveloperPage";
+import { CONTACT_EMAIL } from "@/components/shared/contact.ts";
+import { DeveloperPage, PRIVACY_EMAIL } from "./DeveloperPage";
 
 /** The date the Terms of service took effect, `YYYY-MM-DD`; change it when the text changes. */
 export const TERMS_EFFECTIVE = "2026-10-04";

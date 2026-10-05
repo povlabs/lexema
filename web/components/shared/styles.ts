@@ -58,7 +58,7 @@ export const TOP_BAR_INNER = `${COLUMN} flex h-15.25 items-center pt-0.5 sm:h-18
 export const TOP_BAR_NAME = `font-serif text-[1.375rem] text-text-strong no-underline max-sm:text-[1.1875rem] ${FOCUS_RING}`;
 
 /**
- * C2: the name at the left, three small links at the right. Its rule sits
+ * C2: the name at the left, four small links at the right. Its rule sits
  * 45 px below the page from `sm` up, with the shell's own bottom padding, and
  * its name's ink 32 px under the rule, as frames 10 to 34 draw them. On a
  * phone the links stack under the name, both at the left, with the name's ink
@@ -605,9 +605,8 @@ export const DEV_BAR = "border-b border-border";
 const BAR_ROW = "flex h-14 items-center sm:h-[4.25rem]";
 export const DEV_BAR_INNER = `${COLUMN} ${BAR_ROW}`;
 export const DEV_BAR_INNER_WIDE = `${WIDE} ${BAR_ROW}`;
-/** `Lexema Developers`: the name in serif, the site in small muted sans beside it. */
-export const DEV_NAME = `flex shrink-0 items-center gap-2 font-serif text-[1.1875rem] leading-none text-text-strong no-underline sm:gap-3 sm:pt-[3px] sm:text-[1.375rem] ${FOCUS_RING}`;
-export const DEV_NAME_SITE = "font-sans text-[0.75rem] text-text-muted sm:text-[0.8125rem]";
+/** `Lexema Developers`: one serif wordmark, as the footer writes it (frames 35 to 36m, #614). */
+export const DEV_NAME = `shrink-0 font-serif text-[1.1875rem] leading-none whitespace-nowrap text-text-strong no-underline sm:pt-[3px] sm:text-[1.375rem] ${FOCUS_RING}`;
 /** Docs and Pricing in the bar, on a wide screen only: on a phone they are in the ☰ menu. */
 export const DEV_NAV = "m-0 ml-[3.25rem] hidden list-none gap-6 p-0 pt-[3px] text-[0.875rem] leading-5 sm:flex";
 export const DEV_NAV_LINK = `font-sans text-text no-underline hover:text-text-strong aria-[current=page]:font-semibold aria-[current=page]:text-text-strong ${FOCUS_RING}`;
