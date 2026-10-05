@@ -4,10 +4,11 @@
 // nothing else from D1.
 import { DeveloperDocs } from "@/components/developers/DeveloperDocs";
 import { signedInVisitor } from "@/lib/developers/visitor.ts";
+import { developerSignUp } from "@/lib/developers/signUp.ts";
 import { siteOrigins } from "@/lib/shared/siteOrigins.ts";
 
 export const metadata = { title: "Docs — Lexema API" };
 
 export default async function Page() {
-  return <DeveloperDocs page={{ kind: "guide", guide: "introduction" }} signedIn={await signedInVisitor()} origins={await siteOrigins()} />;
+  return <DeveloperDocs page={{ kind: "guide", guide: "introduction" }} signedIn={await signedInVisitor()} signUp={developerSignUp()} origins={await siteOrigins()} />;
 }

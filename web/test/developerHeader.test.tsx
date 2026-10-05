@@ -56,7 +56,7 @@ test("signed in on Settings, the ☰ menu marks Settings, not Dashboard, though 
 });
 
 test("signed out on the docs, the ☰ menu marks Docs", () => {
-  const html = renderToStaticMarkup(<DeveloperDocs page={{ kind: "guide", guide: "grammar-values" }} origins={ORIGIN} />);
+  const html = renderToStaticMarkup(<DeveloperDocs page={{ kind: "guide", guide: "grammar-values" }} signUp="open" origins={ORIGIN} />);
   assert.deepEqual(menuOf(html), [
     ["Docs", true],
     ["Pricing", false],

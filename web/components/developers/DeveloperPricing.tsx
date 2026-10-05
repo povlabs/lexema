@@ -5,8 +5,10 @@
 // Pro, the table's featured plan, carries the "Most popular" tag and the accent
 // border. Their Choose buttons post the plan to Checkout (worker/developers/billing.ts),
 // with the session's CSRF token when the visitor is signed in; signed out, the
-// route sends them through sign-in first and keeps the plan. Enterprise is
-// agreed per account, so its card writes to the contact address.
+// route sends them through sign-in first and keeps the plan. While sign-up is
+// closed (#610, worker/developers/signUp.ts), Starter and Pro show their prices
+// with no Choose button. Enterprise is agreed per account, so its card writes
+// to the contact address.
 //
 // The call table is read from the call map (src/api/calls.ts): any endpoint,
 // then each endpoint counted per word. It restates no count of its own.
@@ -15,6 +17,7 @@ import { PLAN_TERMS, type PlanId, type StripePlanId } from "@lexema/billing/plan
 import type { ReactNode } from "react";
 import { CALL_ROWS, callText } from "@/lib/developers/apiReference.ts";
 import type { PostingVisitor } from "@/lib/developers/signedIn.ts";
+import type { SignUp } from "@/worker/developers/signUp.ts";
 import type { SiteOrigins } from "@/worker/shared/hosts.ts";
 import { ChoosePlanForm } from "./BillingForms";
 import { CONTACT_EMAIL, DeveloperPage } from "./DeveloperPage";
@@ -75,7 +78,7 @@ function Features({ items }: { items: readonly string[] }) {
 }
 
 /** One plan's card: its name, and the featured plan's tag and border, from the plan table. */
-function PlanCard({ plan, price, lines, action }: { plan: PlanId; price: ReactNode; lines: readonly string[]; action: ReactNode }) {
+function PlanCard({ plan, price, lines, action }: { plan: PlanId; price: ReactNode; lines: readonly string[]; action?: ReactNode }) {
   const { name, featured } = PLAN_TERMS[plan];
   const heading = `plan-${plan}`;
   return (
@@ -88,15 +91,15 @@ function PlanCard({ plan, price, lines, action }: { plan: PlanId; price: ReactNo
       </div>
       <p className={PLAN_PRICE}>{price}</p>
       <Features items={lines} />
-      <div className={PLAN_ACTION}>{action}</div>
+      {action !== undefined && <div className={PLAN_ACTION}>{action}</div>}
     </section>
   );
 }
 
-export function DeveloperPricing({ visitor, origins }: { visitor?: PostingVisitor; origins: SiteOrigins }) {
+export function DeveloperPricing({ visitor, signUp, origins }: { visitor?: PostingVisitor; signUp: SignUp; origins: SiteOrigins }) {
   return (
     // Board 26 draws the bar with neither page marked.
-    <DeveloperPage signedIn={visitor?.signedIn} origins={origins}>
+    <DeveloperPage signedIn={visitor?.signedIn} signUp={signUp} origins={origins}>
       <main className={DEV_SHELL}>
         <h1 className={DEV_HEADING}>Pricing</h1>
 
@@ -113,7 +116,9 @@ export function DeveloperPricing({ visitor, origins }: { visitor?: PostingVisito
               }
               lines={stripePlanLines(plan)}
               action={
-                <ChoosePlanForm plan={plan} csrf={visitor?.csrf} className={PLAN_TERMS[plan].featured ? BUTTON_PRIMARY : BUTTON_SECONDARY} />
+                signUp === "open" ? (
+                  <ChoosePlanForm plan={plan} csrf={visitor?.csrf} className={PLAN_TERMS[plan].featured ? BUTTON_PRIMARY : BUTTON_SECONDARY} />
+                ) : undefined
               }
             />
           ))}

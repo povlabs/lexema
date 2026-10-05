@@ -618,6 +618,8 @@ export const BUTTON_PRIMARY = `inline-flex h-10 items-center justify-center roun
 export const BUTTON_SECONDARY = `inline-flex h-10 items-center justify-center rounded-[4px] border border-border-strong bg-transparent px-5 font-sans text-[0.875rem] font-semibold whitespace-nowrap text-text-strong no-underline hover:border-text-muted ${FOCUS_RING}`;
 /** Sign in, at the right of the bar. */
 export const DEV_SIGN_IN = `ml-auto inline-flex h-[1.8125rem] shrink-0 items-center rounded-[4px] border border-border-strong px-[0.6875rem] font-sans text-[0.875rem] whitespace-nowrap text-text-strong no-underline hover:border-text-muted sm:h-[2.0625rem] sm:px-[0.9375rem] ${FOCUS_RING}`;
+/** The bar's end while sign-up is closed (#610): the ☰ alone, pushed right as Sign in pushes it. */
+export const DEV_BAR_END = "ml-auto flex items-center";
 
 /**
  * The ☰ menu, on a phone only (DeveloperMenu.tsx): the ☰ in the bar opens

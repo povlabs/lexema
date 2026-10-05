@@ -109,6 +109,12 @@
     // Where this Worker runs: local, preview or production (ADR 0018,
     // worker/shared/stage.ts). Any other value refuses to boot.
     "LEXEMA_STAGE": "local",
+    // Whether the developer site takes new developers: open or closed (#610,
+    // worker/developers/signUp.ts). Closed, nobody can sign in, make an account
+    // or start a Checkout, and the docs and pricing stay readable. Closed on
+    // Previews and production until Lexema can take payments. Any other value
+    // refuses to boot.
+    "DEVELOPER_SIGN_UP": "open",
     // Which imported release to serve. A deployment flips this to activate a
     // new one; doing that safely is #18.
     "LEXEMA_RELEASE": "it-dev",
@@ -142,6 +148,7 @@
     "version_metadata": { "binding": "LEXEMA_VERSION" },
     "vars": {
       "LEXEMA_STAGE": "preview",
+      "DEVELOPER_SIGN_UP": "closed",
       "LEXEMA_RELEASE": "it-0c432803",
       "TURNSTILE_SITE_KEY": "",
       "GOOGLE_CLIENT_ID": "",
@@ -248,6 +255,7 @@
       "send_email": [{ "name": "EMAIL" }],
       "vars": {
         "LEXEMA_STAGE": "production",
+        "DEVELOPER_SIGN_UP": "closed",
         "LEXEMA_RELEASE": "it-dev",
         "TURNSTILE_SITE_KEY": "",
         "GOOGLE_CLIENT_ID": "",

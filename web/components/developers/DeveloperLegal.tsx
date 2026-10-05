@@ -12,6 +12,7 @@ import { PLAN_TERMS, type StripePlanId } from "@lexema/billing/plans.ts";
 import { LegalItem, LegalPage } from "@/components/shared/LegalPage";
 import { LEGAL_ADDRESS, LEGAL_ITEMS, LEGAL_PARAGRAPH, LEGAL_UNBROKEN, LINK } from "@/components/shared/styles.ts";
 import type { SignedIn } from "@/lib/developers/signedIn.ts";
+import type { SignUp } from "@/worker/developers/signUp.ts";
 import type { SiteOrigins } from "@/worker/shared/hosts.ts";
 import { CONTACT_EMAIL, DeveloperPage, PRIVACY_EMAIL } from "./DeveloperPage";
 
@@ -43,12 +44,13 @@ function Address({ email }: { email: string }) {
 
 interface LegalPageProps {
   signedIn?: SignedIn;
+  signUp: SignUp;
   origins: SiteOrigins;
 }
 
-export function DeveloperTerms({ signedIn, origins }: LegalPageProps) {
+export function DeveloperTerms({ signedIn, signUp, origins }: LegalPageProps) {
   return (
-    <DeveloperPage legal="terms" wide signedIn={signedIn} origins={origins}>
+    <DeveloperPage legal="terms" wide signedIn={signedIn} signUp={signUp} origins={origins}>
       <LegalPage
         site="developers"
         kicker={KICKER}
@@ -194,9 +196,9 @@ export function DeveloperTerms({ signedIn, origins }: LegalPageProps) {
   );
 }
 
-export function DeveloperPrivacy({ signedIn, origins }: LegalPageProps) {
+export function DeveloperPrivacy({ signedIn, signUp, origins }: LegalPageProps) {
   return (
-    <DeveloperPage legal="privacy" wide signedIn={signedIn} origins={origins}>
+    <DeveloperPage legal="privacy" wide signedIn={signedIn} signUp={signUp} origins={origins}>
       <LegalPage
         site="developers"
         kicker={KICKER}
