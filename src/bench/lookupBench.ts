@@ -17,7 +17,7 @@ import { servedBy } from "../lookup/served.js";
  * edge's candidates read through the view. Lookup never runs this; it is here
  * only to be timed against the form that replaced it.
  */
-export const LEMMA_LINK_VIA_VIEW_SQL = `SELECT e.edge_id, e.json_pointer, e.target_word,
+export const LEMMA_LINK_VIA_VIEW_SQL = `SELECT e.record_id AS set_key, e.edge_id, e.json_pointer, e.target_word,
             t.record_id   AS candidate_record_id,
             t.release_id  AS candidate_release_id,
             t.line_no     AS candidate_line_no,
@@ -27,7 +27,7 @@ export const LEMMA_LINK_VIA_VIEW_SQL = `SELECT e.edge_id, e.json_pointer, e.targ
        FROM form_of_edge e
        LEFT JOIN form_of_candidate c ON c.edge_id = e.edge_id
        LEFT JOIN source_record t ON t.record_id = c.candidate_record_id
-      WHERE e.record_id = ?1 AND e.release_id IN (${servedBy("?2")})
+      WHERE e.record_id IN (SELECT value FROM json_each(?1)) AND e.release_id IN (${servedBy("?2")})
       ORDER BY e.edge_id, t.line_no`;
 
 /**

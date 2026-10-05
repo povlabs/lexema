@@ -852,7 +852,7 @@ function countingRoundTrips(sqlite: DatabaseSync): { db: LookupDatabase; roundTr
   };
 }
 
-test("a lookup the index spells waits on the database at most four times in a row, however many readings it builds (#385)", async () => {
+test("a lookup the index spells waits on the database at most three times in a row, however many readings it builds (#385, #393)", async () => {
   await withFixture(async (sqlite) => {
     // sale: three readings, two lemma links, a lemma listed by its table.
     // studente: four readings, inflections, an ambiguous edge. On D1 each
@@ -862,7 +862,7 @@ test("a lookup the index spells waits on the database at most four times in a ro
       const { db, roundTrips } = countingRoundTrips(sqlite);
       const plain = await ask(sqlite, query);
       assert.deepEqual(await lookup({ db, releaseId: RELEASE, query }), plain, `${query}: the same answer`);
-      assert.ok(roundTrips() <= 4, `${query}: ${roundTrips()} round trips`);
+      assert.ok(roundTrips() <= 3, `${query}: ${roundTrips()} round trips`);
     }
   });
 });
@@ -957,14 +957,19 @@ test("the inflection queries stay on indexes rather than scanning", async () => 
 
 test("the corrected-claim read probes its primary key rather than scanning", async () => {
   await withFixture(async (db) => {
-    // readGrammar runs this once per record on a master with corrections (#462).
+    // readGrammar reads every record's on a master with corrections (#462),
+    // one statement for the records of one wait (#393).
     const plan = (
-      db.prepare(`EXPLAIN QUERY PLAN ${CORRECTED_CLAIM_SQL}`).all(1) as { detail: string }[]
+      db.prepare(`EXPLAIN QUERY PLAN ${CORRECTED_CLAIM_SQL}`).all("[1, 2]") as { detail: string }[]
     ).map((row) => row.detail);
 
     assert.deepEqual(
       plan,
-      ["SEARCH corrected_claim USING INDEX sqlite_autoindex_corrected_claim_1 (record_id=?)"],
+      [
+        "SEARCH corrected_claim USING INDEX sqlite_autoindex_corrected_claim_1 (record_id=?)",
+        "LIST SUBQUERY 1",
+        "SCAN json_each VIRTUAL TABLE INDEX 1:",
+      ],
       `the (record_id, dimension) primary key should answer the read and its order:\n${plan.join("\n")}`,
     );
   });

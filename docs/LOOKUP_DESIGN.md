@@ -142,23 +142,31 @@ Every statement on D1 is a network round trip from the Worker, and D1's own
 insights put each lookup read at about 1 ms or less (#385), so what a reader
 waits for is the round trips one after another. A lookup sends every read that
 needs no other read's rows at once, and waits only where a read needs
-another's rows. A lookup the index spells waits four times in a row, however
+another's rows. A lookup the index spells waits three times in a row, however
 many readings it builds: the release beside the search; every matched record's
-lemma links, grammar and forms; each kept reading's line, senses, recovered
-definitions, inflections and reviews, and each lemma's line; then what needs one
-of those first: expressions, an inflection's candidates, a recovered
-definition's labels and examples, and the line of a record it was recovered
-for that a change replaced. When a record glosses itself the reading's plural,
-the declaring records' stated genders are read in that fourth wait too, beside
-the candidates (#145). A phrase lookup waits on its own probes and
-forms before those four. `test/lookup.test.ts` holds the four for `sale`,
-`studente`, `casa` and `andavano`, so an added `await` fails it only when it
-puts one of those words past four.
+line, lemma links, grammar and forms, the line of each lemma those links name,
+and the senses, recovered definitions, inflections and reviews of every reading
+that is kept whatever the links say; then what needs one of those first:
+expressions, an inflection's candidates, a recovered definition's labels and
+examples, the line of a record it was recovered for that a change replaced, and
+the reads of a record the query reached only through its table, which waits for
+the links that say whether it is a reading's lemma (#393). When a record glosses
+itself the reading's plural, the declaring records' stated genders are read in
+that third wait too, beside the candidates (#145). A phrase lookup waits on its
+own probes and forms before those three. `test/lookup.test.ts` holds the three
+for `sale`, `studente`, `casa` and `andavano`, so an added `await` fails it only
+when it puts one of those words past three.
 
 Sending them at once is not enough on its own. Sent as one call each, the
 hundred-odd reads of `bello` answered no faster than when they waited on each
 other (#385). So `fromD1` sends every statement queued before the caller next
 waits as one `batch()` call, and each wait is one call to D1.
+Within that call, the same read asked twice is sent once, and a keyed read
+(`KeyedRead` in `src/lookup/database.ts`) is sent once over every record asked
+of it, not once per record: D1 bills and times each statement, and a page asks
+most of its reads once per record (#393).
+`web/test/pageStatements.test.ts` holds the statements and calls of one word
+page for `bello`, `andare`, `casa`, `sale` and `studente`.
 Smart Placement, which runs the Worker near D1 instead of near the reader, was
 tried on a Preview in the same change and left out: it placed nothing there
 and timed the same.
