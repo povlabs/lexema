@@ -797,6 +797,41 @@ export function isFormOfReading(reading: Reading): boolean {
 }
 
 /**
+ * The readings that are only forms of the query's own readings: on `bello`'s
+ * page, the records of `bella`, `belli` and `bellissimo`, which list `bello`
+ * in their tables and declare themselves its forms (#622).
+ *
+ * A reading is one when it is not about the query, so it matched only through
+ * its table, and one of its declared lemma candidates is a reading about the
+ * query or a reading already found here. The second arm is what takes a chain:
+ * `bellissime` is a form of `bellissimo`, which is a form of `bello`.
+ *
+ * Only declared `form_of` edges count, never a gloss, and only one that lands
+ * on a reading of this page: `studentessa` lists `studenti` and is a form of
+ * `studente`, which is no reading about `studenti`, so it stays. Nothing is
+ * compared by spelling; an entry is matched by its identity.
+ */
+export function formsOfQueryReadings(readings: readonly Reading[]): ReadonlySet<Reading> {
+  const reached = new Set(readings.filter((reading) => reading.isAboutQuery).map(entryKey));
+  const forms = new Set<Reading>();
+  const namesReached = (reading: Reading): boolean =>
+    reading.lemmaLinks.some(
+      (link) => link.kind === "candidates" && link.candidates.some((candidate) => reached.has(entryKey(candidate))),
+    );
+  let grew = true;
+  while (grew) {
+    grew = false;
+    for (const reading of readings) {
+      if (reading.isAboutQuery || forms.has(reading) || !namesReached(reading)) continue;
+      forms.add(reading);
+      reached.add(entryKey(reading));
+      grew = true;
+    }
+  }
+  return forms;
+}
+
+/**
  * The lemmas a form-of record of part of speech `pos` names that are of its
  * own part of speech: `andavano` the verb names `andare`, which is a noun
  * record and a verb record, and the verb is its lemma. When no candidate

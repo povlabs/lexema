@@ -38,7 +38,7 @@ import { servedRelease, ServedReleaseUnknown, type ServedRelease } from "../../s
 import type { DeclaredChange, ReleaseId } from "../../src/update/declaration.js";
 import { readServedRelease } from "../../src/update/readServedRelease.js";
 import { fromNodeSqlite } from "../../src/lookup/database.js";
-import type { Reading, SourceRef } from "../../src/lookup/types.js";
+import { formsOfQueryReadings, type Reading, type SourceRef } from "../../src/lookup/types.js";
 import type { Attempt } from "@/lib/dictionary/attempt.ts";
 import { searchAttempt } from "@/lib/dictionary/searchAttempt.ts";
 import { declaredGridOf, NUMBERS } from "@/lib/dictionary/genderGrid.ts";
@@ -300,7 +300,7 @@ const formLinks = (html: string): { text: string; href: string; searched: boolea
 
 // The design's words, from their real records ----------------------------------
 
-test("every record the lookup returns is a reading, headed by its number and its own pos_title", async () => {
+test("every record the lookup returns is a reading, except a form of the query's own readings, headed by its number and its own pos_title", async () => {
   await withDevSeed(async ({ db }) => {
     const expected: Record<string, string[]> = {
       // After a grid reading's part of speech, the gender and number its
@@ -313,7 +313,6 @@ test("every record the lookup returns is a reading, headed by its number and its
         "1·Aggettivo·maschile, singolare",
         "2·Sostantivo·maschile, invariabile",
         "3·Sostantivo·maschile, singolare",
-        "4·Aggettivo, forma flessa·femminile, singolare",
       ],
       sale: ["1·Sostantivo·maschile, singolare", "2·Sostantivo, forma flessa·femminile, plurale", "3·Voce verbale"],
     };
@@ -321,14 +320,20 @@ test("every record the lookup returns is a reading, headed by its number and its
       const html = await render(db, query);
       const readings = await readingsFor(db, query);
       assert.deepEqual(headingsOf(html), headings, query);
-      // Nothing the lookup returned is dropped: every record is a reading.
+      // Every record the lookup returned is a reading, except a form of the
+      // query's own readings (#622): bello's page leaves out bella's record.
+      const forms = formsOfQueryReadings(readings);
       assert.deepEqual(
         wordPage(query, readings).readings.map((entry) => entry.reading.recordId).sort((a, b) => { assert.ok(a !== undefined && b !== undefined); return a - b; }),
-        readings.map((reading) => reading.recordId).sort((a, b) => a - b),
+        readings.filter((reading) => !forms.has(reading)).map((reading) => reading.recordId).sort((a, b) => a - b),
         query,
       );
       assert.equal(patternsOf(html, /<h1[\s>]/), 1, `${query}: one h1`);
     }
+    // The one record left out in the seed: bella lists bello and is its form.
+    const bello = await readingsFor(db, "bello");
+    assert.deepEqual([...formsOfQueryReadings(bello)].map((reading) => `${reading.word} ${reading.posTitle}`), ["bella Aggettivo, forma flessa"]);
+    assert.ok(bello.some((reading) => reading.word === "bella"), "the lookup still returns bella for bello");
   });
 });
 
@@ -338,7 +343,7 @@ test("jump links appear from three readings up, one per reading, and never below
     const jumps = [...bello.matchAll(new RegExp(`<a class="${esc(JUMP_LINK)}" href="#reading-(\\d+)">(.*?)</a>`, "g"))];
     assert.deepEqual(
       jumps.map((match) => textOf(match[2])),
-      ["1Aggettivo", "2Sostantivo", "3Sostantivo", "4Aggettivo, forma flessa"],
+      ["1Aggettivo", "2Sostantivo", "3Sostantivo"],
     );
     for (const [, id] of jumps) assert.match(bello, new RegExp(`<article [^>]*id="reading-${id}"`));
     assert.doesNotMatch(await render(db, "andare"), /aria-label="Readings"/);
@@ -453,7 +458,8 @@ test("a searched noun or adjective form, headword or inflected, is found but nev
   await withDevSeed(async ({ db }) => {
     // The lookup still returns the inflected form's own reading; only the mark is withheld.
     const pages: Record<string, string[]> = {
-      studente: ["1·Sostantivo·maschile, singolare", "2·Voce verbale", "3·Sostantivo, forma flessa·maschile, plurale", "4·Sostantivo, forma flessa·femminile, singolare"],
+      // studenti and studentessa are forms of studente, so its page leaves them out (#622).
+      studente: ["1·Sostantivo·maschile, singolare", "2·Voce verbale"],
       studenti: ["1·Sostantivo, forma flessa·maschile, plurale", "2·Sostantivo, forma flessa·femminile, singolare"],
       bella: ["1·Aggettivo, forma flessa·femminile, singolare", "2·Sostantivo, forma flessa·femminile, singolare"],
     };
@@ -468,7 +474,7 @@ test("a searched noun or adjective form, headword or inflected, is found but nev
 
 test("an adjective's superlatives are a second grid, labelled superlativo", async () => {
   await withDevSeed(async ({ db }) => {
-    const bella = nth(await render(db, "bello"), 4);
+    const bella = nth(await render(db, "bella"), 1);
     const superlative = textOf(bella.slice(bella.indexOf(">superlativo</p>")));
     assert.match(
       superlative,

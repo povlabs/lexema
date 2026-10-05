@@ -324,9 +324,18 @@ verb records shows each record's table, and shows two identical tables once
 query matches as a reading, and a lemma the query also matched through its
 table — `sala` and `salire` for `sale` — is not one of those records but the
 lemma of the reading that points to it
-([the lookup reference](LOOKUP.md#result-fields)). Any record that lists the
-query and is no reading's lemma keeps a reading of its own, drawn like any
-other, with no line saying why it is there.
+([the lookup reference](LOOKUP.md#result-fields)). A record that lists the
+query and declares itself a form of a reading about the query has no reading
+of its own, and nor has a record that declares itself a form of one of those:
+`bello`'s page does not repeat `bella`, `belli`, `bellissimo` and
+`bellissime`, whose table its own reading already shows (Huey, 2026-10-05, on
+#622; `formsOfQueryReadings` in `src/lookup/types.ts`). Only a declared
+`form_of` edge counts, never a gloss. The lookup still returns those records,
+and the lemma reading lists them under its inflections. Any other record that
+lists the query keeps a reading of its own, drawn like any other, with no line
+saying why it is there: `studentessa` for `studenti`, or `bellissimo` for
+`bella`, each a form of a word (`studente`, `bello`) that is no reading about
+the query.
 
 **One expand control.** Etymology, the word lists and Definitions share one
 control (`web/components/dictionary/More.tsx`): `+ more` right after what shows, and, open, `less`
