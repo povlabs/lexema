@@ -1,8 +1,10 @@
 // What one word page costs D1 (#393): the statements a page sends and the
 // calls they go in, counted through `fromD1` over the development fixture.
 // One page is the search the page runs (`searchAttempt`) and the served
-// version it names its card and suggestions by (`servedVersion`), each through
-// its own adapter, as web/lib/dictionary/db.ts reaches them.
+// version it names its card and suggestions by (`servedVersion`), through one
+// adapter, as the baseline on #393 was measured. web/lib/dictionary/db.ts
+// reaches them through an adapter each, so a deployed page makes two more
+// calls than counted here: the served version's own two waits.
 //
 // The ceilings are the counts measured before #393 at 0014d44 (bello 61,
 // andare 35, casa 25, sale 56, studente 59 statements; 6 calls each). A page
