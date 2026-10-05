@@ -3,14 +3,13 @@
 
 import { spawnSync } from "node:child_process";
 import { randomBytes } from "node:crypto";
-import { mkdirSync, mkdtempSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
 import { BUILT_CONFIG, preparePreview } from "./previewCommand.ts";
 import { DICTIONARY } from "./previewConfig.ts";
 import { readBuilt, readDeclared, type SlicePlanner } from "./previewSlice.ts";
-import { buildProduction, WEB_DIR, wrangler } from "./wrangler.ts";
+import { APP_MIGRATIONS_DIR, appMigrationFiles, buildProduction, WEB_DIR, wrangler, writeMigrationsConfigFile } from "./wrangler.ts";
 
 const log = (line: string) => process.stderr.write(`${line}\n`);
 
@@ -31,8 +30,6 @@ const slices: SlicePlanner = {
   build: () => readBuilt(previewSlice("build", "--dictionary", DICTIONARY.name, "--sql", join(mkdtempSync(join(tmpdir(), "lexema-preview-slice-")), "slice.sql"))),
 };
 
-const migrationsDir = fileURLToPath(new URL("../../src/db/app/migrations", import.meta.url));
-
 try {
   preparePreview({
     branch: process.env.WORKERS_CI_BRANCH,
@@ -44,14 +41,9 @@ try {
       mkdirSync(dirname(absolute), { recursive: true });
       writeFileSync(absolute, content);
     },
-    writeMigrationsConfig: (config) => {
-      const path = join(mkdtempSync(join(tmpdir(), "lexema-preview-app-")), "wrangler.json");
-      writeFileSync(path, `${JSON.stringify(config, null, 2)}\n`);
-      return path;
-    },
-    migrationsDir,
-    // Wrangler's default `migrations_pattern`, `<migrations_dir>/*.sql`.
-    migrations: readdirSync(migrationsDir, { withFileTypes: true }).filter((entry) => entry.isFile() && entry.name.endsWith(".sql")).map(({ name }) => name),
+    writeMigrationsConfig: writeMigrationsConfigFile,
+    migrationsDir: APP_MIGRATIONS_DIR,
+    migrations: appMigrationFiles(),
     // The same strength as the production one (docs/DEPLOY.md, Turn on sign-in).
     newSecret: () => randomBytes(32).toString("base64"),
     slices,

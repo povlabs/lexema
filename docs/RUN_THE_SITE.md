@@ -179,7 +179,7 @@ network, and it sets a test-only `BETTER_AUTH_SECRET`.
 |---|---|
 | zsh asks to correct `wrangler` to `.wrangler` | shell autocorrect; answer `n` or run from outside `web/` |
 | D1 looks empty after a seed | `--persist-to` was relative; pass the `.data/seed-state` path shown above |
-| Every search says the lookup failed | `web/dist/` holds a production build, which has no D1; run `pnpm --filter @lexema/web build` again |
+| Every search says the lookup failed | `web/dist/` holds a production build, whose D1 ids have no local data; run `pnpm --filter @lexema/web build` again |
 | Sign-in, the dashboard, API keys or the report box answer 503, and the log says `no such table` | the state was seeded before `APP_DB` existed (#240); run `pnpm run seed:dev` again, or migrate the app database alone ([DEVELOPMENT.md](../DEVELOPMENT.md#change-the-database-schema)) |
 | Seed stops with `part N of M failed` | one Wrangler run failed; the state directory is partial, so seed again into a fresh one ([RUN_AN_IMPORT.md § If a seed stops](RUN_AN_IMPORT.md#if-a-seed-stops)) |
 
@@ -306,7 +306,8 @@ take back every account, key and report written since.
 
 ## Smoke-test right after go-live
 
-Run these as soon as production serves the dictionary (#19). Each row is one
+Run these as soon as production serves the dictionary, the first production
+deploy after [#611](https://github.com/povlabs/lexema/issues/611). Each row is one
 check; *Huey* marks the ones only Huey can run.
 
 | Check | Do | Passes when |
@@ -351,6 +352,7 @@ for i in $(seq 16); do curl -s -o /dev/null -w "%{http_code}\n" "https://lexema.
 
 ## Not this page
 
-Deploying is [DEPLOY.md](DEPLOY.md); attaching D1 in production is #19. Flipping
+Deploying, and how production's two databases are bound and its app database
+migrated, is [DEPLOY.md](DEPLOY.md#the-production-app-migrations). Flipping
 which imported release is served is #18. What a reader should know about the
 data's gaps is [KNOWN_LIMITATIONS.md](KNOWN_LIMITATIONS.md).

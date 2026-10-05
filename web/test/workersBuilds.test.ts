@@ -21,10 +21,11 @@ import {
   type PreviewPrepareSteps,
   preparePreview,
 } from "@/builds/previewCommand.ts";
-import { APPLIED_MIGRATIONS_QUERY, compareHistory, inApplyOrder } from "@/builds/previewAppDatabase.ts";
-import { type BuiltConfig, DICTIONARY, migrationsConfig, refuseDictionary, SLICE_BINDING, withAppDatabase, withDictionarySlice } from "@/builds/previewConfig.ts";
+import { APPLIED_MIGRATIONS_QUERY, compareHistory, inApplyOrder } from "@/builds/appMigrations.ts";
+import { appMigrationsConfig, type BuiltConfig, DICTIONARY, refuseDictionary, SLICE_BINDING, withAppDatabase, withDictionarySlice } from "@/builds/previewConfig.ts";
 import { APP_DATABASE_PREFIX, PREVIEW_NAME_MAX, PreviewName, SLICE_DATABASE_PREFIX } from "@/builds/previewName.ts";
 import { readBuilt, readDeclared, SLICE_ROWS_WRITTEN_CAP, type SliceBuilt, type SliceDeclared, type SlicePlanner } from "@/builds/previewSlice.ts";
+import { migrateProductionAppDatabase, PRODUCTION_APP_DATABASE, type ProductionMigrationSteps } from "@/builds/productionAppDatabase.ts";
 import { runProductionCommand } from "@/builds/productionCommand.ts";
 import { type OpenBranches, readOpenBranches, selectForSweep, sweep } from "@/builds/sweep.ts";
 import type { D1Database, Wrangler, WranglerRun } from "@/builds/wrangler.ts";
@@ -140,13 +141,13 @@ test("the rewritten config binds APP_DB to the branch's database and leaves DB o
 test("the config rewrite refuses the dictionary as an app database and a config with no APP_DB", () => {
   const preview = PreviewName.ofBranch("huey/foo_bar");
   assert.throws(() => withAppDatabase(builtConfig(), { preview, id: DICTIONARY.id }), /dictionary/);
-  assert.throws(() => migrationsConfig({ preview, id: DICTIONARY.id }, "/m"), /dictionary/);
+  assert.throws(() => appMigrationsConfig({ name: preview.appDatabase, id: DICTIONARY.id }, "/m"), /dictionary/);
   assert.throws(() => withAppDatabase({ previews: { d1_databases: [] } }, { preview, id: "x" }), /APP_DB/);
 });
 
 test("the migrations config names only the branch's app database and the app migrations", () => {
   const preview = PreviewName.ofBranch("huey/foo_bar");
-  assert.deepEqual(migrationsConfig({ preview, id: "abc" }, "/repo/src/db/app/migrations"), {
+  assert.deepEqual(appMigrationsConfig({ name: preview.appDatabase, id: "abc" }, "/repo/src/db/app/migrations"), {
     name: "lexema-web",
     d1_databases: [{ binding: "APP_DB", database_name: preview.appDatabase, database_id: "abc", migrations_dir: "/repo/src/db/app/migrations" }],
   });
@@ -175,6 +176,16 @@ test("the rewritten config binds a dictionary slice as a second binding beside D
 
 // --- A fake account ---------------------------------------------------------
 
+/** A D1 entry of a Wrangler config, as name resolution reads it. */
+interface ConfigD1Entry {
+  readonly binding?: string;
+  readonly database_name?: string;
+  readonly database_id?: string;
+}
+
+/** The top-level D1 entries of web/wrangler.jsonc, which Wrangler reads from web/ when a call passes no `--config`. */
+const ambientD1Entries = (): readonly ConfigD1Entry[] => unstable_readConfig({ config: WRANGLER }, { hideWarnings: true }).d1_databases;
+
 /** A Cloudflare account as the commands see it through Wrangler, with every call kept. */
 class FakeAccount {
   readonly calls: string[][] = [];
@@ -197,10 +208,35 @@ class FakeAccount {
   readonly ran = new Map<string, string[]>();
   /** Rows written to each app database by its Preview, such as the test developer. */
   readonly rows = new Map<string, string[]>();
+  /** The D1 entries of each config file a command wrote, by path, as `--config <path>` reads them. */
+  readonly configs = new Map<string, readonly ConfigD1Entry[]>();
   private next = 1;
 
   constructor(databases: D1Database[] = []) {
     this.databases = [...databases];
+  }
+
+  /** Keep the D1 entries of a config a command wrote at `path`. */
+  writeConfig(path: string, config: Record<string, unknown>): string {
+    this.configs.set(path, (config.d1_databases ?? []) as ConfigD1Entry[]);
+    return path;
+  }
+
+  /**
+   * The database a `d1 execute` or `d1 migrations` call on `name` reaches, as
+   * Wrangler 4.135.0 resolves it (`getDatabaseByNameOrBinding`,
+   * `getDatabaseInfoFromConfig`, `hasUuid` in wrangler-dist/cli.js): the first
+   * entry of the config it reads, `--config <path>` or else web/wrangler.jsonc's
+   * top level, whose `database_name` or binding is `name`; when that entry has
+   * an id, the database of that id; otherwise the account's database of that name.
+   */
+  private resolve(args: readonly string[], name: string): D1Database | undefined {
+    const at = args.indexOf("--config");
+    const entries = at < 0 ? ambientD1Entries() : this.configs.get(args[at + 1]);
+    if (entries === undefined) throw new Error(`the fake account has no config at ${args[at + 1]}`);
+    const entry = entries.find((candidate) => candidate.database_name === name || candidate.binding === name);
+    const byName = entry?.database_name ?? name;
+    return entry?.database_id ? this.databases.find((db) => db.uuid === entry.database_id) : this.databases.find((db) => db.name === byName);
   }
 
   readonly wrangler: Wrangler = (args) => {
@@ -233,8 +269,8 @@ class FakeAccount {
       }
       case "d1 migrations": {
         // Wrangler 4.135.0 runs every tree file whose name it has not applied, in the tree's order.
-        const database = args[3];
-        if (!this.databases.some((db) => db.name === database)) return fail("Couldn't find a D1 DB");
+        const database = this.resolve(args, args[3])?.name;
+        if (database === undefined) return fail("Couldn't find a D1 DB");
         const applied = this.applied.get(database) ?? [];
         const ran = this.ran.get(database) ?? [];
         this.applied.set(database, applied);
@@ -248,8 +284,8 @@ class FakeAccount {
         return ok();
       }
       case "d1 execute": {
-        const database = args[2];
-        if (!this.databases.some((db) => db.name === database)) return fail("Couldn't find a D1 DB");
+        const database = this.resolve(args, args[2])?.name;
+        if (database === undefined) return fail("Couldn't find a D1 DB");
         if (args.includes(`--command=${APPLIED_MIGRATIONS_QUERY}`)) {
           const applied = this.applied.get(database);
           if (applied === undefined) return queryFailed("no such table: d1_migrations: SQLITE_ERROR [code: 7500]");
@@ -340,7 +376,7 @@ function prepareSteps(account: FakeAccount, branch: string | undefined, newSecre
     },
     writeMigrationsConfig: (config) => {
       migrationConfigs.push(config);
-      return "/tmp/migrations/wrangler.json";
+      return account.writeConfig("/tmp/migrations/wrangler.json", config);
     },
     migrationsDir: "/repo/src/db/app/migrations",
     migrations: [...account.tree.keys()],
@@ -419,7 +455,7 @@ test("the prepare step creates the app database, binds it, migrates it, and writ
   assert.equal(appDatabaseId, created.uuid);
   assert.equal(byBinding.APP_DB.database_name, name.appDatabase);
   assert.deepEqual(byBinding.DB, { binding: "DB", database_name: DICTIONARY.name, database_id: DICTIONARY.id });
-  assert.deepEqual(migrationConfigs, [migrationsConfig({ preview: name, id: created.uuid }, "/repo/src/db/app/migrations")]);
+  assert.deepEqual(migrationConfigs, [appMigrationsConfig({ name: name.appDatabase, id: created.uuid }, "/repo/src/db/app/migrations")]);
 
   // The Preview is named by the slug, never the raw branch.
   assert.equal(files.get(PREVIEW_NAME_FILE), name.value);
@@ -539,7 +575,11 @@ test("a push after main renumbered the branch's applied migration resets the app
   assert.deepEqual(appDbWrites(account), [`d1 delete ${database} --skip-confirmation`, `d1 create ${database} --update-config=false`]);
   assert.notEqual(second.appDatabaseId, first.appDatabaseId);
   assert.equal(account.databases.find((db) => db.name === database)?.uuid, second.appDatabaseId);
-  assert.deepEqual(second.migrationConfigs, [migrationsConfig({ preview: second.name, id: second.appDatabaseId ?? "" }, "/repo/src/db/app/migrations")]);
+  // One config to read the old database's history by its id, one to migrate the new one by its own.
+  assert.deepEqual(second.migrationConfigs, [
+    appMigrationsConfig({ name: database, id: first.appDatabaseId ?? "" }, "/repo/src/db/app/migrations"),
+    appMigrationsConfig({ name: database, id: second.appDatabaseId ?? "" }, "/repo/src/db/app/migrations"),
+  ]);
   // Every tree migration applied, each SQL run once, and the Preview's old rows gone with the old database.
   assert.deepEqual(account.applied.get(database), inApplyOrder([...account.tree.keys()]));
   assert.deepEqual(account.ran.get(database), ["CREATE TABLE app", "CREATE TABLE user", "CREATE TABLE reader_report_retention", "ALTER TABLE user ADD suspended_at"]);
@@ -622,7 +662,8 @@ test("the history step refuses an app database that is the shared dictionary: it
   account.applied.set(DICTIONARY.name, ["0000_gone.sql"]);
   const before = structuredClone(account.databases);
   const { steps, files } = prepareSteps(account, "huey/foo_bar");
-  assert.throws(() => preparePreview(steps), /refusing to read the applied migrations of the shared dictionary lexema-dictionary/);
+  // Refused as the read's config is written, before any read.
+  assert.throws(() => preparePreview(steps), /refusing to bind APP_DB to the shared dictionary lexema-dictionary/);
   assert.deepEqual(account.lines.filter((line) => !/^d1 list/.test(line)), []);
   assert.deepEqual(account.databases, before);
   assert.deepEqual(account.applied.get(DICTIONARY.name), ["0000_gone.sql"]);
@@ -936,25 +977,176 @@ test("a Preview the sweep cannot delete keeps its app database for the next swee
 
 // --- The production command -------------------------------------------------
 
-test("the production command runs the sweep, then deploys, and deploys even when the sweep fails", async () => {
+/** An account holding the shared dictionary and production's app database, `lexema-app`, empty. */
+const productionAccount = () =>
+  new FakeAccount([{ name: DICTIONARY.name, uuid: DICTIONARY.id }, { name: PRODUCTION_APP_DATABASE.name, uuid: PRODUCTION_APP_DATABASE.id }]);
+
+/** The production migration step's inputs against `account`, keeping every Wrangler call in `order`. */
+function productionSteps(account: FakeAccount, order: string[] = []) {
+  const logged: string[] = [];
+  const configs: Record<string, unknown>[] = [];
+  const steps: ProductionMigrationSteps = {
+    wrangler: (args, input) => {
+      order.push(`wrangler ${args.slice(0, 2).join(" ")}`);
+      return account.wrangler(args, input);
+    },
+    migrationsDir: "/repo/src/db/app/migrations",
+    migrations: [...account.tree.keys()],
+    writeMigrationsConfig: (config) => {
+      configs.push(config);
+      return account.writeConfig("/tmp/migrations/wrangler.json", config);
+    },
+    log: (line) => logged.push(line),
+  };
+  return { steps, logged, configs };
+}
+
+/** The whole production command against `account`, with the sweep's outcome given and deploy kept in `order`. */
+function productionCommand(account: FakeAccount, sweepOutcome: "passes" | "throws" | "rejects" = "passes") {
+  const order: string[] = [];
+  const { steps, logged, configs } = productionSteps(account, order);
+  const run = runProductionCommand({
+    sweep: async () => {
+      order.push("sweep");
+      if (sweepOutcome === "throws") throw new Error("d1 list failed");
+      if (sweepOutcome === "rejects") return Promise.reject(new Error("offline"));
+    },
+    migrate: () => migrateProductionAppDatabase(PRODUCTION_APP_DATABASE, steps),
+    deploy: () => order.push("deploy"),
+    log: (line) => logged.push(line),
+  });
+  return { run, order, logged, configs };
+}
+
+/** Every Wrangler call that creates, deletes or migrates a D1. */
+const productionWrites = (account: FakeAccount) => account.lines.filter((line) => /^d1 (create|delete|migrations)/.test(line));
+
+test("the production command runs the sweep, then the app migrations on lexema-app, then deploys, whatever the sweep's outcome (#611)", async () => {
   for (const outcome of ["passes", "throws", "rejects"] as const) {
-    const order: string[] = [];
-    await runProductionCommand({
-      sweep: async () => {
-        order.push("sweep");
-        if (outcome === "throws") throw new Error("d1 list failed");
-        if (outcome === "rejects") return Promise.reject(new Error("offline"));
-      },
-      deploy: () => order.push("deploy"),
-      log: (line) => order.push(`log: ${line}`),
-    });
-    assert.equal(order[0], "sweep", outcome);
-    assert.equal(order.at(-1), "deploy", outcome);
+    const account = productionAccount();
+    const { run, order, configs, logged } = productionCommand(account, outcome);
+    await run;
+    assert.deepEqual(order, ["sweep", "wrangler d1 list", "wrangler d1 execute", "wrangler d1 migrations", "deploy"], outcome);
+    assert.deepEqual(productionWrites(account), [`d1 migrations apply lexema-app --remote --config /tmp/migrations/wrangler.json`], outcome);
+    assert.deepEqual(configs, [appMigrationsConfig(PRODUCTION_APP_DATABASE, "/repo/src/db/app/migrations")], outcome);
+    assert.deepEqual(account.applied.get("lexema-app"), ["0000_app_tables.sql", "0001_better_auth_tables.sql"], outcome);
+    assert.ok(logged.includes(
+      `app database: applying 2 new migration(s) to lexema-app (${PRODUCTION_APP_DATABASE.id}): 0000_app_tables.sql, 0001_better_auth_tables.sql`,
+    ), logged.join("\n"));
   }
   await assert.rejects(
-    runProductionCommand({ sweep: async () => {}, deploy: () => { throw new Error("deploy failed"); }, log: () => {} }),
+    runProductionCommand({ sweep: async () => {}, migrate: () => {}, deploy: () => { throw new Error("deploy failed"); }, log: () => {} }),
     /deploy failed/,
   );
+});
+
+test("a later production build applies only the new migrations, keeps lexema-app's rows, and runs no apply when none is new", async () => {
+  const account = productionAccount();
+  await productionCommand(account).run;
+  account.rows.set("lexema-app", ["a developer", "a reader report"]);
+  account.tree.set("0002_reader_reports.sql", "CREATE TABLE reader_report");
+  account.calls.length = 0;
+
+  await productionCommand(account).run;
+  assert.deepEqual(account.ran.get("lexema-app"), ["CREATE TABLE app", "CREATE TABLE user", "CREATE TABLE reader_report"]);
+  assert.deepEqual(account.rows.get("lexema-app"), ["a developer", "a reader report"]);
+  assert.deepEqual(account.databases.find(({ name }) => name === "lexema-app")?.uuid, PRODUCTION_APP_DATABASE.id);
+  account.calls.length = 0;
+
+  const { run, order, logged } = productionCommand(account);
+  await run;
+  assert.deepEqual(order, ["sweep", "wrangler d1 list", "wrangler d1 execute", "deploy"]);
+  assert.deepEqual(productionWrites(account), []);
+  assert.ok(logged.includes(`app database: lexema-app (${PRODUCTION_APP_DATABASE.id}) has run every app migration; nothing to apply`), logged.join("\n"));
+});
+
+test("a failed migration stops the production deploy: deploy is not called", async () => {
+  const account = productionAccount();
+  account.failing.push(/^d1 migrations apply lexema-app/);
+  const { run, order } = productionCommand(account);
+  await assert.rejects(run, /app migrations failed, so production is not deployed: wrangler d1 migrations apply failed/);
+  assert.equal(order.includes("deploy"), false);
+
+  // So does a history that cannot be read.
+  const unread = productionAccount();
+  unread.failing.push(/^d1 execute lexema-app/);
+  const second = productionCommand(unread);
+  await assert.rejects(second.run, /could not read the applied migrations of lexema-app/);
+  assert.equal(second.order.includes("deploy"), false);
+  assert.deepEqual(productionWrites(unread), []);
+});
+
+test("a diverged history on lexema-app is refused: nothing is deleted, created or migrated, its rows stay, and deploy is not called", async () => {
+  const account = productionAccount();
+  // lexema-app ran 0001 under a name the tree no longer has, as after a renumbering.
+  account.applied.set("lexema-app", ["0000_app_tables.sql", "0001_old_name.sql"]);
+  account.ran.set("lexema-app", ["CREATE TABLE app", "CREATE TABLE user"]);
+  account.rows.set("lexema-app", ["a developer"]);
+  const before = structuredClone(account.databases);
+
+  const { run, order } = productionCommand(account);
+  await assert.rejects(
+    run,
+    /refusing to migrate lexema-app: it applied 0001_old_name\.sql, which the tree no longer has \(renamed or removed\), so its history has left the tree's; production's app database is never deleted or reset/,
+  );
+  assert.equal(order.includes("deploy"), false);
+  assert.deepEqual(productionWrites(account), []);
+  assert.deepEqual(account.databases, before);
+  assert.deepEqual(account.applied.get("lexema-app"), ["0000_app_tables.sql", "0001_old_name.sql"]);
+  assert.deepEqual(account.rows.get("lexema-app"), ["a developer"]);
+
+  // Out of the tree's order is diverged too.
+  const reordered = productionAccount();
+  reordered.tree = new Map([["0000_a.sql", "CREATE TABLE a"], ["0001_b.sql", "CREATE TABLE b"], ["0002_c.sql", "CREATE TABLE c"]]);
+  reordered.applied.set("lexema-app", ["0000_a.sql", "0002_c.sql"]);
+  assert.throws(() => migrateProductionAppDatabase(PRODUCTION_APP_DATABASE, productionSteps(reordered).steps), /it applied 0002_c\.sql where the tree runs 0001_b\.sql/);
+  assert.deepEqual(productionWrites(reordered), []);
+});
+
+test("the production migration step refuses the shared dictionary by name or by id before it calls Wrangler at all", () => {
+  for (const database of [{ name: DICTIONARY.name, id: PRODUCTION_APP_DATABASE.id }, { name: PRODUCTION_APP_DATABASE.name, id: DICTIONARY.id }]) {
+    const account = productionAccount();
+    account.applied.set(DICTIONARY.name, ["0000_gone.sql"]);
+    assert.throws(() => migrateProductionAppDatabase(database, productionSteps(account).steps), /refusing to migrate the shared dictionary lexema-dictionary/, JSON.stringify(database));
+    assert.deepEqual(account.lines, [], JSON.stringify(database));
+  }
+  assert.throws(() => appMigrationsConfig({ name: "lexema-app", id: DICTIONARY.id }, "/m"), /dictionary/);
+});
+
+test("the production migration step never creates lexema-app: absent, or under another id, it refuses and deploy is not called", async () => {
+  const absent = new FakeAccount([{ name: DICTIONARY.name, uuid: DICTIONARY.id }]);
+  const first = productionCommand(absent);
+  await assert.rejects(first.run, /refusing to migrate lexema-app: it is not on the account, and the production command never creates it/);
+  assert.equal(first.order.includes("deploy"), false);
+  assert.deepEqual(productionWrites(absent), []);
+
+  const other = new FakeAccount([{ name: "lexema-app", uuid: "a0000000-0000-4000-8000-000000000009" }]);
+  const second = productionCommand(other);
+  await assert.rejects(second.run, /the account holds it as a0000000-0000-4000-8000-000000000009, not e77ba8e9-f4da-45fe-9b8c-322904054edc/);
+  assert.equal(second.order.includes("deploy"), false);
+  assert.deepEqual(productionWrites(other), []);
+});
+
+test("the production step reads and migrates lexema-app by its real id, never through web/wrangler.jsonc's local placeholder (#611)", async () => {
+  // The hazard: web/wrangler.jsonc's top level binds the same name to a local id, which a call with no --config resolves to.
+  const ambient = ambientD1Entries().find((entry) => entry.database_name === PRODUCTION_APP_DATABASE.name);
+  assert.ok(ambient?.database_id);
+  assert.notEqual(ambient.database_id, PRODUCTION_APP_DATABASE.id);
+  const account = productionAccount();
+  account.applied.set("lexema-app", []);
+  assert.equal(account.wrangler(["d1", "execute", "lexema-app", "--remote", "--json", `--command=${APPLIED_MIGRATIONS_QUERY}`]).ok, false);
+  account.calls.length = 0;
+
+  const { run, configs } = productionCommand(account);
+  await run;
+  const onLexemaApp = account.calls.filter((args) => /^d1 (execute|migrations)$/.test(args.slice(0, 2).join(" ")));
+  assert.deepEqual(onLexemaApp.map((args) => args.slice(0, 2).join(" ")), ["d1 execute", "d1 migrations"]);
+  for (const args of onLexemaApp) {
+    const config = account.configs.get(args[args.indexOf("--config") + 1]);
+    assert.deepEqual(config?.map(({ database_name, database_id }) => [database_name, database_id]), [["lexema-app", PRODUCTION_APP_DATABASE.id]], args.join(" "));
+  }
+  assert.equal(configs.length, 1);
+  assert.deepEqual(account.applied.get("lexema-app"), ["0000_app_tables.sql", "0001_better_auth_tables.sql"]);
 });
 
 test("the web package names the preview prepare step and the deploy command, and production deploys the production build", () => {
@@ -965,4 +1157,5 @@ test("the web package names the preview prepare step and the deploy command, and
   assert.equal(scripts["deploy:production"], "CLOUDFLARE_ENV=production vinext build && wrangler deploy --config dist/server/wrangler.json");
   const entry = readFileSync(fileURLToPath(new URL("../builds/production.ts", import.meta.url)), "utf8");
   assert.match(entry, /"run", "deploy:production"/);
+  assert.match(entry, /migrate: \(\) =>\s+migrateProductionAppDatabase\(PRODUCTION_APP_DATABASE,/);
 });

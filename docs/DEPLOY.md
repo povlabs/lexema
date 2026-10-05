@@ -26,7 +26,9 @@ development, with the placeholder D1 that `pnpm run seed:dev` fills.
 | Address | the custom domains `lexema.fyi`, `developers.lexema.fyi` and `api.lexema.fyi` only, told apart by host (`web/worker/shared/hosts.ts`) |
 | Stage | `LEXEMA_STAGE` is `production` ([below](#the-preview-only-domains)) |
 | `workers_dev`, `preview_urls` | both off |
-| D1 | none yet, so a search shows the failed-lookup state; attaching it is #19 |
+| D1 | `DB`, the shared dictionary `lexema-dictionary`, which code only reads, the same one the Previews read; `APP_DB`, production's own app database `lexema-app`, which the deploy command migrates ([below](#deploy)) ([#611](https://github.com/povlabs/lexema/issues/611)) |
+| Release | `LEXEMA_RELEASE` is `it-0c432803`, the master the shared dictionary serves, the same as the Previews' |
+| Report box | Turnstile, on once both halves are set: `TURNSTILE_SITE_KEY`, the public site key, is a var ([#611](https://github.com/povlabs/lexema/issues/611)); its secret `TURNSTILE_SECRET_KEY` is a Worker secret Huey sets with `wrangler secret put`, never in the repository |
 | Rate limits | 15 searches and 120 suggestions a minute per visitor ([#128](https://github.com/povlabs/lexema/issues/128)); 10 sign-in starts ([#165](https://github.com/povlabs/lexema/issues/165)), 5 key creations ([#168](https://github.com/povlabs/lexema/issues/168)) and 5 billing requests ([#296](https://github.com/povlabs/lexema/issues/296)) a minute on the developer site |
 | API rate | `CALLS_60` and `CALLS_300`, Rate Limiting bindings of 60 and 300 calls a minute per developer account, keyed by account id ([#261](https://github.com/povlabs/lexema/issues/261)) |
 | Account meter | the Durable Object class `AccountMeterObject`, bound as `ACCOUNT_METER`, SQLite-backed through the `v1-account-meter` migration: one per developer account, counting its calls and adding them to `api_key_usage` at most once a minute ([#261](https://github.com/povlabs/lexema/issues/261)) |
@@ -88,9 +90,11 @@ pnpm --filter @lexema/web run typecheck
 A merge to `main` deploys production once its
 [dictionary deploy](#the-dictionary-deploy) is green and has fast-forwarded
 `production`. Workers Builds runs the deploy command on every push to
-`production`: the [sweep](#the-sweep), then the production build and
-`wrangler deploy`, the same `deploy:production` script as a deploy by hand. A
-failed sweep never stops the deploy. The build log is under the Worker's
+`production`: the [sweep](#the-sweep), then the
+[app migrations](#the-production-app-migrations) on `lexema-app`, then the
+production build and `wrangler deploy`, the same `deploy:production` script as
+a deploy by hand. A failed sweep never stops the deploy; a failed or refused
+migration step always does. The build log is under the Worker's
 **Deployments** tab, **View build history**
 ([Builds](https://developers.cloudflare.com/workers/ci-cd/builds/#view-build-and-preview-url)).
 
@@ -107,11 +111,14 @@ pnpm --filter @lexema/web run deploy:production
 
 That builds with `CLOUDFLARE_ENV=production`, which makes the build write the
 production settings into `web/dist/server/wrangler.json`, and deploys that file.
+It applies no app migrations. When the commit being deployed adds one, run
+`pnpm --filter @lexema/web run deploy:workers-builds` instead: the same sweep,
+[app migrations](#the-production-app-migrations) and deploy that Workers Builds
+runs, so the code never goes live ahead of its schema.
 
 A deploy creates every custom domain its routes list. So a production deploy
 puts `lexema.fyi`, `developers.lexema.fyi` and `api.lexema.fyi`
-live, and creates the three preview-only domains below. The API cannot look
-anything up there until production has a D1 (#19).
+live, and creates the three preview-only domains below.
 
 To see what would go up without deploying, add `--dry-run`:
 
@@ -121,18 +128,45 @@ pnpm --filter @lexema/web run deploy:production --dry-run
 
 The domains it would create are the `routes` in
 `web/dist/server/wrangler.json`. The dry run ends by listing the bindings, and
-nothing else:
+nothing else. Among them are the two databases and the release:
 
 ```
-env.SEARCH_LIMIT (15 requests/60s)         Rate Limit
-env.SUGGEST_LIMIT (120 requests/60s)       Rate Limit
-env.ASSETS                                 Assets
-env.LEXEMA_STAGE ("production")            Environment Variable
-env.LEXEMA_RELEASE ("it-dev")              Environment Variable
+env.DB (lexema-dictionary)                                 D1 Database
+env.APP_DB (lexema-app)                                    D1 Database
+env.LEXEMA_STAGE ("production")                            Environment Variable
+env.LEXEMA_RELEASE ("it-0c432803")                         Environment Variable
 ```
 
-The build warns that the top-level `DB` and `APP_DB` have no counterpart in
-`env.production`. That is expected: production has no D1 until #19.
+### The production app migrations
+
+Production's app database is `lexema-app`
+(`e77ba8e9-f4da-45fe-9b8c-322904054edc`), made empty by Huey on 2026-10-05
+([#611](https://github.com/povlabs/lexema/issues/611)). It holds real accounts,
+keys, usage and reader reports, so the deploy command only ever moves it
+forward (`web/builds/productionAppDatabase.ts`). After the sweep and before
+`wrangler deploy`, it:
+
+1. Refuses the shared dictionary, by name or id, before it touches anything.
+2. Finds `lexema-app` on the account under that id. It never creates it: an
+   absent database, or one under another id, stops the deploy.
+3. Reads the migrations it has applied, as the
+   [Preview command](#the-preview-command) does. When they are the tree's list
+   so far, in its order, it applies only the new ones from
+   `src/db/app/migrations` with `wrangler d1 migrations apply --remote`, and
+   logs one `app database:` line naming them. With none new, it applies
+   nothing. The read and the apply both pass `--config` with a temporary
+   config that names `lexema-app` by its real id. Without it, Wrangler would
+   take the local placeholder id that `web/wrangler.jsonc`'s top level gives
+   the same name.
+4. When the history has left the tree's, such as after a renumbered
+   migration, it stops red and names the divergence. Unlike a Preview's, it
+   never deletes, creates again or resets the database; a person decides how
+   to bring it back.
+
+A failed or refused step stops the deploy, so production keeps its last
+deployed version. Unlike the sweep, it is not housekeeping. It uses the same
+Workers Builds token, with D1 Edit, that migrates Preview app databases
+([ADR 0018](../.decisions/0018-previews-on-workers-builds.md)).
 
 ## The preview-only domains
 
@@ -184,7 +218,7 @@ commands on every push, from `web/`. Their steps are in `web/builds/`:
 
 | Branch | Command | What it runs |
 |---|---|---|
-| `production` | `pnpm run deploy:workers-builds` | the [sweep](#the-sweep), then `deploy:production`: the production build and `wrangler deploy` |
+| `production` | `pnpm run deploy:workers-builds` | the [sweep](#the-sweep), then the [app migrations](#the-production-app-migrations) on `lexema-app`, then `deploy:production`: the production build and `wrangler deploy`. A failed or refused migration step deploys nothing |
 | `main` | the [Preview command](#the-preview-command) | `preview:prepare` only, which skips `main`: no build, no app D1, no Preview |
 | `gh-readonly-queue/...` (the merge queue) | the [Preview command](#the-preview-command) | `preview:prepare` only, which skips it like `main`: no build, no app D1, no Preview |
 | any other | the [Preview command](#the-preview-command) | `preview:prepare`, then `wrangler preview` |
@@ -960,8 +994,9 @@ while it is `closed`, no provider is offered and the routes refuse.
    every var and secret under `nodejs_compat`. Replacing it signs every
    developer out.
 
-Sign-in also needs the production app database, `APP_DB` (#19): without it, a
-callback answers 503.
+Sign-in also needs the production app database, `APP_DB`, bound since
+[#611](https://github.com/povlabs/lexema/issues/611): without it, a callback
+answers 503.
 
 ## Turn on billing
 
@@ -1051,7 +1086,7 @@ mode:
   monthly prices.
 - Subscriptions, cancel: on, at the end of the billing period.
 
-Billing also needs the production app database, `APP_DB` (#19): without it,
+Billing also needs the production app database, `APP_DB`, bound since #611: without it,
 the billing routes and the webhook answer 503. Two `/auth` paths are answered,
 both the Stripe plugin's and only on the developer site: the webhook, which is
 not counted by the per-visitor limits, and `/auth/subscription/success`, where

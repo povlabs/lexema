@@ -10,6 +10,7 @@
 // as a second, read-only `DICTIONARY_SLICE`. Nothing else in the file
 // changes: `DB` stays on the shared dictionary.
 
+import type { D1Target } from "./appMigrations.ts";
 import type { PreviewName } from "./previewName.ts";
 
 /** The shared dictionary D1 production and every Preview read (web/wrangler.jsonc). */
@@ -94,19 +95,21 @@ export function withAppDatabase(config: BuiltConfig, database: AppDatabase): Bui
 
 /**
  * A Wrangler config that names only this app database, with the app
- * migrations (src/db/app/migrations) as its `migrations_dir`, for
- * `wrangler d1 migrations apply --remote`. The `previews` block cannot carry
- * one: the build does not rebase paths inside it (web/wrangler.jsonc).
- * `migrationsDir` is absolute, so the file works wherever it is written.
+ * migrations (src/db/app/migrations) as its `migrations_dir`, for reading
+ * and applying its migrations (`AppMigrationsConfig` in
+ * web/builds/appMigrations.ts). Neither the `previews` block nor the built
+ * config can carry one: the build does not rebase paths inside that block
+ * (web/wrangler.jsonc). `migrationsDir` is absolute, so the file works
+ * wherever it is written. The preview and production commands both write one.
  */
-export function migrationsConfig(database: AppDatabase, migrationsDir: string): Record<string, unknown> {
-  assertNotDictionary(database);
+export function appMigrationsConfig(database: D1Target, migrationsDir: string): Record<string, unknown> {
+  refuseDictionary(database, `bind ${APP_BINDING} to`);
   return {
     name: "lexema-web",
     d1_databases: [
       {
         binding: APP_BINDING,
-        database_name: database.preview.appDatabase,
+        database_name: database.name,
         database_id: database.id,
         migrations_dir: migrationsDir,
       },
