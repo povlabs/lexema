@@ -1,9 +1,11 @@
 // developers.lexema.fyi/ (#166, board 25): what the API is, one call and an
 // excerpt of its answer, and every endpoint. The call is the docs' filtered
 // `/lookup` example, and every value in the excerpt is read from its answer;
-// the excerpt's lines are laid out as board 25 draws them.
+// the excerpt's lines are laid out as board 25 draws them. While sign-up is
+// closed (#610, worker/developers/signUp.ts), there is no Get an API key.
 
 import { API_PREFIX } from "@lexema/api/calls.ts";
+import type { SignUp } from "@/worker/developers/signUp.ts";
 import type { SiteOrigins } from "@/worker/shared/hosts.ts";
 import {
   apiBaseOf,
@@ -74,18 +76,20 @@ const FEATURES = [
   { heading: "Close matches", text: "A typo or a missing accent returns what it probably was." },
 ] as const;
 
-export function DeveloperLanding({ signedIn, origins }: { signedIn?: SignedIn; origins: SiteOrigins }) {
+export function DeveloperLanding({ signedIn, signUp, origins }: { signedIn?: SignedIn; signUp: SignUp; origins: SiteOrigins }) {
   return (
-    <DeveloperPage signedIn={signedIn} origins={origins}>
+    <DeveloperPage signedIn={signedIn} signUp={signUp} origins={origins}>
       <main className={DEV_SHELL}>
         <h1 className={LANDING_HEADING}>The Lexema API</h1>
         <p className={LANDING_LEAD}>
           Look up any Italian word, in any form, and get its lemma, meanings, forms and examples as JSON.
         </p>
         <div className={LANDING_ACTIONS}>
-          <a className={BUTTON_PRIMARY} href={SIGN_IN_PATH}>
-            Get an API key
-          </a>
+          {signUp === "open" && (
+            <a className={BUTTON_PRIMARY} href={SIGN_IN_PATH}>
+              Get an API key
+            </a>
+          )}
           <a className={BUTTON_SECONDARY} href={DOCS_PATH}>
             Read the docs
           </a>

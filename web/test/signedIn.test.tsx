@@ -41,14 +41,14 @@ const NOW = Date.parse("2026-09-28T12:00:00Z");
 const CSRF = "c".repeat(43);
 
 test("the sign-in page offers Google and GitHub, disables one that is not configured, and ends on the Terms line (#162)", () => {
-  const both = renderToStaticMarkup(<SignIn available={{ google: true, github: true }} origins={ORIGIN} />);
+  const both = renderToStaticMarkup(<SignIn available={{ google: true, github: true }} signUp="open" origins={ORIGIN} />);
   assert.match(both, /<h1[^>]*>Sign in<\/h1>/);
   assert.ok(both.includes(`href="${signInStart("google")}"`) && both.includes(`href="${signInStart("github")}"`));
   assert.match(both, /Continue with Google/);
   assert.match(both, /Continue with GitHub/);
   assert.match(both, /By continuing you agree to the <a class="[^"]*" href="\/terms">Terms<\/a>\./);
 
-  const githubOnly = renderToStaticMarkup(<SignIn available={{ google: false, github: true }} origins={ORIGIN} />);
+  const githubOnly = renderToStaticMarkup(<SignIn available={{ google: false, github: true }} signUp="open" origins={ORIGIN} />);
   assert.ok(!githubOnly.includes(`href="${signInStart("google")}"`), "an unconfigured provider is not a link");
   assert.match(githubOnly, /<button[^>]*disabled=""[^>]*>(?:(?!<\/button>).)*Continue with Google<\/button>/);
   assert.ok(githubOnly.includes(`href="${signInStart("github")}"`));
@@ -227,19 +227,19 @@ test("signed in, the landing page, the docs, the pricing page and the 404 carry 
   const signedIn = { email: "ada@example.com", name: "Ada Lovelace" };
   const avatar = /aria-haspopup="menu"[^>]*aria-label="Account"/;
   for (const html of [
-    renderToStaticMarkup(<DeveloperLanding signedIn={signedIn} origins={ORIGIN} />),
-    renderToStaticMarkup(<DeveloperDocs page={{ kind: "guide", guide: "introduction" }} signedIn={signedIn} origins={ORIGIN} />),
-    renderToStaticMarkup(<DeveloperPricing visitor={{ signedIn, csrf: "the-token" }} origins={ORIGIN} />),
-    renderToStaticMarkup(<DeveloperNotFound signedIn={signedIn} origins={ORIGIN} />),
+    renderToStaticMarkup(<DeveloperLanding signedIn={signedIn} signUp="open" origins={ORIGIN} />),
+    renderToStaticMarkup(<DeveloperDocs page={{ kind: "guide", guide: "introduction" }} signedIn={signedIn} signUp="open" origins={ORIGIN} />),
+    renderToStaticMarkup(<DeveloperPricing visitor={{ signedIn, csrf: "the-token" }} signUp="open" origins={ORIGIN} />),
+    renderToStaticMarkup(<DeveloperNotFound signedIn={signedIn} signUp="open" origins={ORIGIN} />),
   ]) {
     assert.match(html, avatar);
     assert.doesNotMatch(html, /Sign in</);
   }
   for (const html of [
-    renderToStaticMarkup(<DeveloperLanding origins={ORIGIN} />),
-    renderToStaticMarkup(<DeveloperDocs page={{ kind: "guide", guide: "introduction" }} origins={ORIGIN} />),
-    renderToStaticMarkup(<DeveloperPricing origins={ORIGIN} />),
-    renderToStaticMarkup(<DeveloperNotFound origins={ORIGIN} />),
+    renderToStaticMarkup(<DeveloperLanding signUp="open" origins={ORIGIN} />),
+    renderToStaticMarkup(<DeveloperDocs page={{ kind: "guide", guide: "introduction" }} signUp="open" origins={ORIGIN} />),
+    renderToStaticMarkup(<DeveloperPricing signUp="open" origins={ORIGIN} />),
+    renderToStaticMarkup(<DeveloperNotFound signUp="open" origins={ORIGIN} />),
   ]) {
     assert.doesNotMatch(html, avatar);
     assert.match(html, /Sign in</);

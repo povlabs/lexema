@@ -327,7 +327,7 @@ function d1Over(over: DatabaseSync): D1Database {
  */
 async function workerEntry() {
   const STUBS: Record<string, string> = {
-    "cloudflare:workers": `export const env = { LEXEMA_STAGE: "local" }; export class DurableObject {}`,
+    "cloudflare:workers": `export const env = { LEXEMA_STAGE: "local", DEVELOPER_SIGN_UP: "open" }; export class DurableObject {}`,
     "vinext/server/app-router-entry": `export default { fetch() { throw new Error("no app"); } };`,
   };
   const stub = (source: string) => ({ url: `data:text/javascript,${encodeURIComponent(source)}`, shortCircuit: true });

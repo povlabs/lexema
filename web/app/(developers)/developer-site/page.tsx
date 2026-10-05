@@ -3,8 +3,9 @@
 // there is one, for the account menu (#193), and nothing else from D1.
 import { DeveloperLanding } from "@/components/developers/DeveloperLanding";
 import { signedInVisitor } from "@/lib/developers/visitor.ts";
+import { developerSignUp } from "@/lib/developers/signUp.ts";
 import { siteOrigins } from "@/lib/shared/siteOrigins.ts";
 
 export default async function Page() {
-  return <DeveloperLanding signedIn={await signedInVisitor()} origins={await siteOrigins()} />;
+  return <DeveloperLanding signedIn={await signedInVisitor()} signUp={developerSignUp()} origins={await siteOrigins()} />;
 }

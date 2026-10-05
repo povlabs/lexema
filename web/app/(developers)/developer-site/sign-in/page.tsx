@@ -1,7 +1,8 @@
 // developers.lexema.fyi/sign-in (#169): the wiring only; the markup is
 // `@/components/developers/SignIn.tsx`. A developer already signed in goes to
 // the dashboard. The test sign-in is offered on a Preview's developer host only
-// (worker/developers/testSignIn.ts).
+// (worker/developers/testSignIn.ts). While sign-up is closed (#610) the page says
+// so and offers no provider.
 import { env } from "cloudflare:workers";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
@@ -10,6 +11,7 @@ import { availableProviders, signedInAccount } from "@/worker/developers/signIn.
 import { parseStage } from "@/worker/shared/stage.ts";
 import { offersTestSignIn } from "@/worker/developers/testSignIn.ts";
 import { originsOf } from "@/worker/shared/hosts.ts";
+import { developerSignUp } from "@/lib/developers/signUp.ts";
 import { appDatabase } from "@/lib/shared/database.ts";
 import { hostnameOf } from "@/lib/shared/siteOrigins.ts";
 import { SignIn } from "@/components/developers/SignIn";
@@ -24,5 +26,5 @@ export default async function Page() {
   // Without a database nobody can be signed in; the page still offers sign-in.
   const accountId = env.APP_DB === undefined ? undefined : await signedInAccount(cookies, appDatabase(), Date.now(), origins);
   if (accountId !== undefined) redirect(DASHBOARD);
-  return <SignIn available={availableProviders(env)} testSignIn={offersTestSignIn(parseStage(env.LEXEMA_STAGE), hostname)} origins={origins} />;
+  return <SignIn available={availableProviders(env)} testSignIn={offersTestSignIn(parseStage(env.LEXEMA_STAGE), hostname)} signUp={developerSignUp()} origins={origins} />;
 }

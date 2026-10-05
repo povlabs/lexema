@@ -166,14 +166,14 @@ test("the sign-in page shows the test sign-in button on a Preview's developer ho
   }
 
   const available = { google: true, github: true };
-  const offered = renderToStaticMarkup(<SignIn available={available} testSignIn origins={PREVIEW_ORIGINS} />);
+  const offered = renderToStaticMarkup(<SignIn available={available} testSignIn signUp="open" origins={PREVIEW_ORIGINS} />);
   // Base UI's Button, in the providers' own style, submitting a form POST.
   assert.ok(
     offered.includes(
       `<form action="${TEST_SIGN_IN}" method="post"><button type="submit" tabindex="0" class="${SIGN_IN_PROVIDER}">Sign in as test developer</button></form>`,
     ),
   );
-  for (const markup of [renderToStaticMarkup(<SignIn available={available} origins={ORIGIN} />), renderToStaticMarkup(<SignIn available={available} testSignIn={false} origins={ORIGIN} />)]) {
+  for (const markup of [renderToStaticMarkup(<SignIn available={available} signUp="open" origins={ORIGIN} />), renderToStaticMarkup(<SignIn available={available} testSignIn={false} signUp="open" origins={ORIGIN} />)]) {
     assert.doesNotMatch(markup, /test developer/);
     assert.ok(!markup.includes(TEST_SIGN_IN));
   }

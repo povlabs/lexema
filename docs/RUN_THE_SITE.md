@@ -319,7 +319,7 @@ check; *Huey* marks the ones only Huey can run.
 | Missing data | <https://lexema.fyi/?q=casa> | one entry; what the source does not give, such as its forms, is missing, not filled in |
 | Disputed | <https://lexema.fyi/?q=studente> | every reading as the source states it, and no note about a dispute ([WEB.md](WEB.md#why-a-disputed-claim-is-a-row-and-not-a-code-path)) |
 | Share card | the `og:image` of `?q=casa`, below | 200, `image/png`, the word's card |
-| Sign-in (Huey) | <https://developers.lexema.fyi/sign-in>, with Google and with GitHub | back on the dashboard, signed in |
+| Sign-in (Huey) | <https://developers.lexema.fyi/sign-in>, with Google and with GitHub | back on the dashboard, signed in; while `DEVELOPER_SIGN_UP` is `closed` ([DEPLOY.md](DEPLOY.md#turn-on-sign-in)), the page says *Sign-up opens soon*, and this row, API key and Checkout wait |
 | API key (Huey) | on the dashboard, create a key named `smoke` | the key is shown once; copy it |
 | API lookup | `/v1/lookup`, below | 200 with `casa`'s entry |
 | API batch | `/v1/lookup/batch`, below | 200, `results` for `sale` then `casa` |

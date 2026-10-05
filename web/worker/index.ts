@@ -14,7 +14,9 @@
 // (worker/developers/billing.ts) and dashboard actions (worker/developers/dashboard.ts) are
 // answered before vinext, since they set cookies,
 // change data and redirect rather than render, and so is a Preview's test
-// sign-in (worker/developers/testSignIn.ts), which no other stage has. In front of the
+// sign-in (worker/developers/testSignIn.ts), which no other stage has. While
+// sign-up is closed (worker/developers/signUp.ts), the sign-in and Checkout
+// routes answer with the sign-in page before they run. In front of the
 // host routing, Stripe's webhook on the developer site (worker/developers/stripeWebhook.ts)
 // is answered outside the per-visitor limits. Around all of it,
 // the stage (worker/shared/stage.ts) adds what its responses carry: noindex on a
@@ -39,6 +41,7 @@ import { withBilling } from "./developers/billing.ts";
 import { withDashboard } from "./developers/dashboard.ts";
 import { developerLimitOf } from "./developers/limits.ts";
 import { withSignIn } from "./developers/signIn.ts";
+import { parseSignUp, withSignUp } from "./developers/signUp.ts";
 import { withStripeWebhook } from "./developers/stripeWebhook.ts";
 import { withTestSignIn } from "./developers/testSignIn.ts";
 import { withCards } from "./dictionary/card.ts";
@@ -53,8 +56,9 @@ import { parseStage, withStage } from "./shared/stage.ts";
 
 export { AccountMeterObject } from "./api/accountMeterObject.ts";
 
-// Read at startup, so an unknown stage refuses to boot rather than serve.
+// Read at startup, so an unknown stage or sign-up state refuses to boot rather than serve.
 const stage = parseStage(env.LEXEMA_STAGE);
+const signUp = parseSignUp(env.DEVELOPER_SIGN_UP);
 
 export default {
   fetch: withStage<Env>(
@@ -67,7 +71,10 @@ export default {
               workerDesk,
               withRateLimits<Env>(
                 { developers: developerLimitOf, dictionary: dictionaryLimitOf },
-                withTestSignIn<Env>(stage, withSignIn<Env>(withBilling<Env>(withDashboard<Env>((request, env, ctx) => app.fetch(request, env, ctx))))),
+                withTestSignIn<Env>(
+                  stage,
+                  withSignUp<Env>(signUp, withSignIn<Env>(withBilling<Env>(withDashboard<Env>((request, env, ctx) => app.fetch(request, env, ctx))))),
+                ),
               ),
             ),
             api: answerApi,
