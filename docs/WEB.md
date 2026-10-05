@@ -329,13 +329,33 @@ query and declares itself a form of a reading about the query has no reading
 of its own, and nor has a record that declares itself a form of one of those:
 `bello`'s page does not repeat `bella`, `belli`, `bellissimo` and
 `bellissime`, whose table its own reading already shows (Huey, 2026-10-05, on
-#622; `formsOfQueryReadings` in `src/lookup/types.ts`). Only a declared
-`form_of` edge counts, never a gloss. The lookup still returns those records,
-and the lemma reading lists them under its inflections. Any other record that
-lists the query keeps a reading of its own, drawn like any other, with no line
-saying why it is there: `studentessa` for `studenti`, or `bellissimo` for
-`bella`, each a form of a word (`studente`, `bello`) that is no reading about
-the query.
+#622; `formsOfQueryReadings` in `src/lookup/types.ts`). In the same way, a
+record that lists the query and declares itself a form of a lemma that a
+reading about the query is a form of has no reading of its own, and nor has a
+record that declares itself a form of one of those: `bella`'s page does not
+show `belli`, `belle`, `bellissimo` or `bellissime`, since they are forms of
+`bello` as `bella` is, and `studenti`'s does not show `studentessa`, another
+form of `studente` (Huey, 2026-10-05, on
+[#626](https://github.com/povlabs/lexema/issues/626): "bella is the same as
+bello"; `otherFormsOfQueryLemmas` in `src/lookup/types.ts`). Only a declared
+`form_of` edge counts, never a gloss, and a record is matched by its identity.
+The lookup still returns those records, and the lemma reading lists them under
+its inflections. Any other record that lists the query keeps a reading of its
+own, drawn like any other, with no line saying why it is there: a record that
+declares no `form_of` edge, or one whose edge names some other word.
+
+A noun or adjective form about the query shows its lemma's grid, the one that
+lemma's own reading draws, as *Forms of bello* under `bella`'s adjective
+reading and *Forms of casa* under `case`, in place of its own grid
+([ruling](https://github.com/povlabs/lexema/issues/626#issuecomment-6001258715)).
+It does not show the lemma's definitions: like `andavano`, its own reading
+keeps its gender and number in its heading and its definition links the lemma.
+Only a lemma whose grid lists the searched form shows, through a `forms[]`
+entry the query hit or the form's own plural gloss (#145), once per distinct
+grid, with nothing marked. A lemma record that is itself a form (`costruttrice`
+for `costruttrici`) draws no grid, and the form keeps its own. The search reads
+those lemma records with the same lookup a search of the lemma runs
+(`web/lib/dictionary/searchAttempt.ts`); the lookup and the API do not change.
 
 **One expand control.** Etymology, the word lists and Definitions share one
 control (`web/components/dictionary/More.tsx`): `+ more` right after what shows, and, open, `less`

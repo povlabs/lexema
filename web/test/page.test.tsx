@@ -38,7 +38,7 @@ import { servedRelease, ServedReleaseUnknown, type ServedRelease } from "../../s
 import type { DeclaredChange, ReleaseId } from "../../src/update/declaration.js";
 import { readServedRelease } from "../../src/update/readServedRelease.js";
 import { fromNodeSqlite } from "../../src/lookup/database.js";
-import { formsOfQueryReadings, type Reading, type SourceRef } from "../../src/lookup/types.js";
+import { formsOfQueryReadings, otherFormsOfQueryLemmas, type Reading, type SourceRef } from "../../src/lookup/types.js";
 import type { Attempt } from "@/lib/dictionary/attempt.ts";
 import { searchAttempt } from "@/lib/dictionary/searchAttempt.ts";
 import { declaredGridOf, NUMBERS } from "@/lib/dictionary/genderGrid.ts";
@@ -300,7 +300,7 @@ const formLinks = (html: string): { text: string; href: string; searched: boolea
 
 // The design's words, from their real records ----------------------------------
 
-test("every record the lookup returns is a reading, except a form of the query's own readings, headed by its number and its own pos_title", async () => {
+test("every record the lookup returns is a reading, except a form of the query's own readings or lemma, headed by its number and its own pos_title", async () => {
   await withDevSeed(async ({ db }) => {
     const expected: Record<string, string[]> = {
       // After a grid reading's part of speech, the gender and number its
@@ -315,17 +315,27 @@ test("every record the lookup returns is a reading, except a form of the query's
         "3·Sostantivo·maschile, singolare",
       ],
       sale: ["1·Sostantivo·maschile, singolare", "2·Sostantivo, forma flessa·femminile, plurale", "3·Voce verbale"],
+      // A form's page keeps only the readings about it: bella's two, case's
+      // one, andati's two (#626).
+      bella: ["1·Aggettivo, forma flessa·femminile, singolare", "2·Sostantivo, forma flessa·femminile, singolare"],
+      case: ["1·Sostantivo, forma flessa·femminile, plurale"],
+      andati: ["1·Aggettivo, forma flessa·maschile", "2·Voce verbale"],
     };
     for (const [query, headings] of Object.entries(expected)) {
       const html = await render(db, query);
+      const answer = await attempt(db, query);
+      assert.ok(answer.outcome === "found", query);
       const readings = await readingsFor(db, query);
       assert.deepEqual(headingsOf(html), headings, query);
+      assert.match(html, new RegExp(`<h1 [^>]*lang="it">${query}</h1>`), `${query}: headed as typed`);
       // Every record the lookup returned is a reading, except a form of the
-      // query's own readings (#622): bello's page leaves out bella's record.
+      // query's own readings (#622) or of its own lemma (#626): bello's page
+      // leaves out bella's record.
       const forms = formsOfQueryReadings(readings);
+      const siblings = otherFormsOfQueryLemmas(readings);
       assert.deepEqual(
-        wordPage(query, readings).readings.map((entry) => entry.reading.recordId).sort((a, b) => { assert.ok(a !== undefined && b !== undefined); return a - b; }),
-        readings.filter((reading) => !forms.has(reading)).map((reading) => reading.recordId).sort((a, b) => a - b),
+        wordPage(query, readings, answer.lemmas).readings.map((entry) => entry.reading.recordId).sort((a, b) => { assert.ok(a !== undefined && b !== undefined); return a - b; }),
+        readings.filter((reading) => !forms.has(reading) && !siblings.has(reading)).map((reading) => reading.recordId).sort((a, b) => a - b),
         query,
       );
       assert.equal(patternsOf(html, /<h1[\s>]/), 1, `${query}: one h1`);
@@ -460,7 +470,8 @@ test("a searched noun or adjective form, headword or inflected, is found but nev
     const pages: Record<string, string[]> = {
       // studenti and studentessa are forms of studente, so its page leaves them out (#622).
       studente: ["1·Sostantivo·maschile, singolare", "2·Voce verbale"],
-      studenti: ["1·Sostantivo, forma flessa·maschile, plurale", "2·Sostantivo, forma flessa·femminile, singolare"],
+      // studentessa is another form of studente, as studenti is, so studenti's page leaves it out (#626).
+      studenti: ["1·Sostantivo, forma flessa·maschile, plurale"],
       bella: ["1·Aggettivo, forma flessa·femminile, singolare", "2·Sostantivo, forma flessa·femminile, singolare"],
     };
     for (const [query, headings] of Object.entries(pages)) {
@@ -473,13 +484,42 @@ test("a searched noun or adjective form, headword or inflected, is found but nev
 });
 
 test("an adjective's superlatives are a second grid, labelled superlativo", async () => {
+  await withFixture(async ({ db }) => {
+    const grande = nth(await render(db, "grande"), 1);
+    const superlative = textOf(grande.slice(grande.indexOf(">superlativo</p>")));
+    assert.match(superlative, /^>superlativosingolarepluralemaschilegrandissimo\n massimo/);
+  });
+});
+
+test("a searched noun or adjective form shows its lemma's grid as Forms of the lemma, unmarked, in place of its own (#626)", async () => {
   await withDevSeed(async ({ db }) => {
-    const bella = nth(await render(db, "bella"), 1);
-    const superlative = textOf(bella.slice(bella.indexOf(">superlativo</p>")));
-    assert.match(
-      superlative,
-      /^>superlativosingolarepluralemaschilebellissimoil bellissimo·un bellissimobellissimii bellissimi·dei bellissimifemminilebellissimala bellissima·una bellissimabellissimele bellissime·delle bellissime/,
-    );
+    const lemmaForms = (html: string): string[] =>
+      [...html.matchAll(/<h3 [^>]*id="lemma-forms-[^"]*">(.*?)<\/h3>/g)].map((match) => textOf(match[1]));
+    const ownForms = (html: string): number => patternsOf(html, /<h3 [^>]*id="forms-\d+">Forms<\/h3>/);
+
+    // bella the adjective shows bello's grid, as bello's own reading draws it.
+    const bella = await render(db, "bella");
+    const adjective = nth(bella, 1);
+    assert.deepEqual(lemmaForms(adjective), ["Forms ofbello"]);
+    assert.equal(ownForms(adjective), 0, "bella's own grid is not shown beside bello's");
+    assert.deepEqual(gridRows(adjective), gridRows(nth(await render(db, "bello"), 1)));
+    assert.match(adjective, /<div [^>]*role="table" aria-label="Forms of bello" data-grid="">/);
+    // bella the noun names the bello nouns, and neither one's grid lists bella.
+    assert.deepEqual(lemmaForms(nth(bella, 2)), []);
+    // Its own reading stays: its gender and number, its line linking bello.
+    assert.match(textOf(adjective), /femminile singolare di bello/);
+    assert.match(adjective, new RegExp(`<a class="${esc(GLOSS_LINK)}" href="/\\?q=bello">bello</a>`));
+
+    // case shows casa's grid, which takes case from case's own plural gloss (#145).
+    const caseReading = nth(await render(db, "case"), 1);
+    assert.deepEqual(lemmaForms(caseReading), ["Forms ofcasa"]);
+    assert.deepEqual(gridRows(caseReading), [
+      ["", "singolare", "plurale"],
+      ["femminile", "casala casa·una casa", "casele case·delle case"],
+    ]);
+
+    // A grid never marks the searched form (#111).
+    assert.doesNotMatch(bella + caseReading, /data-searched/);
   });
 });
 
@@ -575,7 +615,7 @@ test("etymology and synonyms come once after the readings: every synonym a searc
     assert.equal(patternsOf(html, />Etymology</g), 1);
     const synonyms = facts.slice(facts.indexOf('id="synonyms"'), facts.indexOf("</section>", facts.indexOf('id="synonyms"')));
     const words = [...synonyms.matchAll(new RegExp(`<a class="${esc(WORD_LINK)}" href="([^"]+)" lang="it">([^<]+)</a>`, "g"))];
-    assert.equal(words.length, wordPage("andare", await readingsFor(db, "andare")).wordFacts.synonyms.length, "every synonym is in the document");
+    assert.equal(words.length, wordPage("andare", await readingsFor(db, "andare"), []).wordFacts.synonyms.length, "every synonym is in the document");
     for (const [, href, word] of words) assert.equal(href, `/?q=${encodeURIComponent(textOf(word))}`);
     // The one control, last in the list so it ends what shows, open or closed.
     assert.match(synonyms, /<li[^>]*><div class="[^"]*"><button type="button"[^>]*aria-controls="synonyms-words" aria-expanded="false"[^>]*><span class="[^"]*">\+ more<\/span><span class="[^"]*">less<\/span><\/button><\/div><\/li><\/ul>$/);
@@ -2194,7 +2234,7 @@ test("a reading with no definition is its part of speech alone; the readings wit
       ["1Aggettivo", "Sostantivo", "2Voce verbale"],
     );
     assert.deepEqual(
-      reportReadings(wordPage("litigante", await readingsFor(db, "litigante")).readings).map(readingChoiceLabel),
+      reportReadings(wordPage("litigante", await readingsFor(db, "litigante"), []).readings).map(readingChoiceLabel),
       ["1 · Aggettivo", "Sostantivo", "2 · Voce verbale"],
     );
 
@@ -2522,7 +2562,7 @@ test("page-only readings present their page's fields without origin marks or inv
     assert.ok(answer.outcome === "found");
     const reading = answer.readings[0];
     assert.ok(reading.entryId !== undefined);
-    const model = wordPage("raccontare", answer.readings);
+    const model = wordPage("raccontare", answer.readings, answer.lemmas);
     assert.equal(model.readings.length, 1);
     // A report names only a source record, so a page-only reading is not offered as a choice.
     assert.deepEqual(reportReadings(model.readings), []);

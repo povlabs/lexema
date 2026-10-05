@@ -619,7 +619,7 @@ test("every result carries its record's expressions as the page lists them, and 
   // The order is the page's.
   const found = await lookup({ db: dictionary, releaseId: RELEASE, query: "fare" });
   assert.ok(found.outcome === "found");
-  const page = wordPage("fare", found.readings);
+  const page = wordPage("fare", found.readings, []);
   assert.deepEqual(
     noun.expressions.map((row) => row.phrase),
     page.expressionSections[0]?.expressions.map((row) => row.phrase),

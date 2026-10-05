@@ -7,7 +7,7 @@
 // instead keeps the rendering half free of it.
 
 import type { Nearby } from "@lexema/lookup/nearby.ts";
-import type { DeclaredLemmaResult, FoundResult, NotFoundResult, RejectedResult } from "@lexema/lookup/types.ts";
+import type { DeclaredLemmaResult, FoundResult, NotFoundResult, Reading, RejectedResult } from "@lexema/lookup/types.ts";
 import type { DeclaredLemmaPage } from "./declaredLemmaPage.ts";
 
 /**
@@ -26,12 +26,16 @@ import type { DeclaredLemmaPage } from "./declaredLemmaPage.ts";
  * lacks (#478): `citta` finds `citto`'s form and carries `città`. The page
  * offers the first; an empty list offers nothing.
  *
+ * A word found by the exact lookup also carries the records of the lemmas its
+ * noun and adjective forms name, read so the page can draw *Forms of bello*
+ * under `bella` (#626, `gridLemmaWords` in wordPage.ts). Empty when it has none.
+ *
  * The failure is a value rather than a thrown error so the page has to render
  * it. It carries no detail on purpose: the reason is a database message meant
  * for whoever runs the Worker, and it goes to the log, not to the reader.
  */
 export type Attempt =
-  | (FoundResult & { written: string[] })
+  | (FoundResult & { written: string[]; lemmas: Reading[] })
   | (DeclaredLemmaResult & { page: DeclaredLemmaPage; written: string[] })
   | RejectedResult
   | (NotFoundResult & { nearby: Nearby })

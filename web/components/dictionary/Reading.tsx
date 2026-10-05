@@ -10,7 +10,7 @@
 
 import type { ReactNode } from "react";
 import { entryKey, everyRecovered, factRefKey, isSourceRef, isVerbReading, searchedSpellings } from "@lexema/lookup/types.ts";
-import type { FactRef, RecoveredDefinition, Reading } from "@lexema/lookup/types.ts";
+import type { FactRef, LemmaListing, RecoveredDefinition, Reading } from "@lexema/lookup/types.ts";
 import { conjugationOf } from "@/lib/dictionary/conjugation.ts";
 import { definitionsOf, senseLabels, type DefinitionItem } from "@/lib/dictionary/definitions.ts";
 import { agreementOf, headingGrammar } from "@/lib/dictionary/genderGrid.ts";
@@ -326,12 +326,20 @@ function OwnForms({ reading }: { reading: Reading }) {
   );
 }
 
-/** *Forms of andare*: the lemma's whole table, opened where the searched form sits. */
+function LemmaConjugation({ listing, word }: { listing: LemmaListing; word: string }) {
+  const searched = searchedSpellings(listing);
+  return <ConjugationView conjugation={conjugationOf(listing.forms, searched)} searchedPointers={searched.formPointers} word={word} />;
+}
+
+/**
+ * *Forms of andare*, the lemma's whole conjugation opened where the searched
+ * form sits, or *Forms of bello*, the lemma's grid with nothing marked (#626).
+ */
 function LemmaForms({ entry }: { entry: PageReading }) {
   return (
     <>
-      {entry.lemmaTables.map(({ lemma, listing }) => {
-        const searched = searchedSpellings(listing);
+      {entry.lemmaTables.map((table) => {
+        const { lemma } = table;
         return (
           <Block
             key={entryKey(lemma)}
@@ -345,11 +353,14 @@ function LemmaForms({ entry }: { entry: PageReading }) {
               </>
             }
           >
-            <ConjugationView
-              conjugation={conjugationOf(listing.forms, searched)}
-              searchedPointers={searched.formPointers}
-              word={lemma.word}
-            />
+            {table.kind === "conjugation" ? (
+              <LemmaConjugation listing={table.listing} word={lemma.word} />
+            ) : (
+              <>
+                {table.agreement.grid !== undefined && <GridView grid={table.agreement.grid} label={`Forms of ${lemma.word}`} />}
+                {table.agreement.superlative !== undefined && <SuperlativeGrid grid={table.agreement.superlative} />}
+              </>
+            )}
           </Block>
         );
       })}
@@ -392,7 +403,7 @@ export function ReadingView({ entry }: { entry: PageReading }) {
       </h2>
       <Definitions reading={reading} />
       <LemmaLines reading={reading} />
-      <OwnForms reading={reading} />
+      {entry.ownForms && <OwnForms reading={reading} />}
       <LemmaForms entry={entry} />
       {entry.etymologies.length > 0 && (
         <Block id={`etymology-${entryKey(reading)}`} label="Etymology">

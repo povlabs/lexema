@@ -2,23 +2,49 @@
 //
 // A lookup returns every record the query matches. Some are *about* the
 // searched word (`isAboutQuery`); some merely list it in their own table. Each
-// is a reading on the page except a form of the query's own readings: a record
-// that only lists the query and declares itself a form of a reading about it,
-// or of a record already left out this way (`formsOfQueryReadings`). `bello`
-// does not repeat `bella`, `belli` and `bellissimo` as readings, since its own
-// reading already shows their table (Huey, 2026-10-05, on #622). A record that
-// lists the query and declares no such form is still a reading: `studentessa`
-// for `studenti`.
+// is a reading on the page except two kinds of form, each found only through
+// declared `form_of` edges and matched by identity:
 //
-// A reading that is a form of a verb carries that verb's table when the table
-// lists the query: `andavano` shows *Forms of andare*. The lookup does not
-// return the lemma as a record of its own, so nothing is counted twice: the
-// readings are the lookup's records, and the tables are their lemmas'.
+// - A form of the query's own readings: a record that only lists the query and
+//   declares itself a form of a reading about it, or of a record already left
+//   out this way (`formsOfQueryReadings`). `bello` does not repeat `bella`,
+//   `belli` and `bellissimo` as readings, since its own reading already shows
+//   their table (Huey, 2026-10-05, on #622).
+// - Another form of the query's own lemma: a record that only lists the query
+//   and declares itself a form of a lemma a reading about the query is a form
+//   of, or of a record already left out this way (`otherFormsOfQueryLemmas`).
+//   `bella` does not show `belli`, `belle` and `bellissimo` as readings, since
+//   they are forms of `bello`, as `bella` is (Huey, 2026-10-05, on #626: "bella
+//   is the same as bello").
+//
+// A record that lists the query and declares no such form is still a reading.
+//
+// A form reading carries its lemma's table when that table lists the query, the
+// way the lemma's own page draws it: `andavano` shows *Forms of andare*, the
+// conjugation, and `bella` the adjective shows *Forms of bello*, the gender and
+// number grid, in place of its own (#626). The lookup does not return the lemma
+// as a record of its own, so nothing is counted twice: the readings are the
+// lookup's records, and the tables are their lemmas'. A verb's table comes with
+// the lookup; a grid needs the lemma's whole record, which the search reads for
+// the words `gridLemmaWords` names (web/lib/dictionary/searchAttempt.ts).
 
 import { normalizeItalianExact } from "@lexema/italian/normalize.ts";
 import { mergeExpressions } from "@lexema/lookup/expressions.ts";
-import { factRefKey, formsOfQueryReadings, isFormOfReading, isVerbReading } from "@lexema/lookup/types.ts";
+import {
+  entryKey,
+  factRefKey,
+  formsOfQueryReadings,
+  isAdjectiveReading,
+  isFormOfReading,
+  isNounReading,
+  isVerbReading,
+  lemmasOfPartOfSpeech,
+  otherFormsOfQueryLemmas,
+  searchedSpellings,
+  sourcePointerOf,
+} from "@lexema/lookup/types.ts";
 import { hasDefinitions } from "./definitions.ts";
+import { agreementOf, type Agreement, type Spelling } from "./genderGrid.ts";
 import { labelParts, readingsNamed, splitLabel } from "./readingLabels.ts";
 import { relatedItems, type RelatedItem } from "./relatedList.ts";
 import type {
@@ -34,14 +60,18 @@ import type {
 } from "@lexema/lookup/types.ts";
 
 /**
- * A verb lemma whose table lists the searched form: `andare` for `andavano`.
- * Its whole conjugation renders under the form's reading, as *Forms of andare*,
- * opened where the form sits (design-system-manifest.md § "The result").
+ * A lemma whose table lists the searched form, as its own page draws that
+ * table. It renders under the form's reading as *Forms of andare* or *Forms of
+ * bello* (design-system-manifest.md § "The result").
+ *
+ * - A verb's whole conjugation, opened where the form sits: `andare` for
+ *   `andavano`.
+ * - A noun's or adjective's gender and number grid, superlatives included,
+ *   with nothing marked: `bello` for `bella`, `casa` for `case` (#626).
  */
-export interface LemmaTable {
-  lemma: LemmaTarget;
-  listing: LemmaListing;
-}
+export type LemmaTable =
+  | { kind: "conjugation"; lemma: LemmaTarget; listing: LemmaListing }
+  | { kind: "grid"; lemma: Reading; agreement: Agreement };
 
 export interface PageReading {
   /**
@@ -52,11 +82,17 @@ export interface PageReading {
   number: number | undefined;
   reading: Reading;
   /**
-   * The verb lemmas whose tables list the query, one per distinct table. Two
+   * The lemmas whose tables list the query, one per distinct table. Two
    * records with the same table (`chiusi` names `chiudere` twice) show it once;
    * tables that differ each show.
    */
   lemmaTables: LemmaTable[];
+  /**
+   * Whether the reading shows its own table. A noun or adjective form that
+   * shows its lemma's grid does not also show its own (#626); a verb form
+   * keeps both, as before.
+   */
+  ownForms: boolean;
   /** The etymologies the source ties to this reading, their bracket label dropped. */
   etymologies: WordText[];
   /** The synonym groups the source labels with this reading's part of speech. */
@@ -139,7 +175,7 @@ function tableKey(listing: LemmaListing): string {
  * The verb lemmas whose own tables list the query, for a verb reading that is
  * a form of them: every candidate of every link, once per distinct table.
  */
-function lemmaTablesOf(reading: Reading): LemmaTable[] {
+function conjugationTablesOf(reading: Reading): LemmaTable[] {
   if (!isVerbReading(reading)) return [];
   const tables = new Map<string, LemmaTable>();
   for (const link of reading.lemmaLinks) {
@@ -147,30 +183,96 @@ function lemmaTablesOf(reading: Reading): LemmaTable[] {
     for (const lemma of link.candidates) {
       if (lemma.pos !== "verb" || lemma.listing === undefined) continue;
       const key = `${lemma.word}\u0000${tableKey(lemma.listing)}`;
-      if (!tables.has(key)) tables.set(key, { lemma, listing: lemma.listing });
+      if (!tables.has(key)) tables.set(key, { kind: "conjugation", lemma, listing: lemma.listing });
     }
   }
   return [...tables.values()];
 }
 
-export function wordPage(query: string, readings: readonly [Reading, ...Reading[]]): WordPage {
+/** Whether a reading is a noun or adjective form about the query: one whose lemma's grid it shows. */
+const takesLemmaGrid = (reading: Reading): boolean =>
+  isFormOfReading(reading) && (isNounReading(reading) || isAdjectiveReading(reading));
+
+/** The lemma records a noun or adjective form names, of its own part of speech when it names one. */
+const gridLemmasOf = (reading: Reading) => lemmasOfPartOfSpeech(reading.pos, reading.lemmaLinks);
+
+/**
+ * The words whose records a page needs read to draw its lemma grids: every
+ * lemma a noun or adjective form about the query names (`bello` for `bella`).
+ * Empty for any other page, so a search reads nothing more for it.
+ */
+export function gridLemmaWords(readings: readonly Reading[]): string[] {
+  return [...new Set(readings.filter(takesLemmaGrid).flatMap((reading) => gridLemmasOf(reading).map((lemma) => lemma.word)))];
+}
+
+const spellingsOf = ({ grid, superlative }: Agreement): Spelling[] =>
+  [grid, superlative].flatMap((one) => one?.rows.flatMap((row) => row.cells.flatMap((cell) => cell.spellings)) ?? []);
+
+/** What a lemma's grids show: each row's gender and each cell's spellings, in order. */
+const gridKey = ({ grid, superlative }: Agreement): string =>
+  JSON.stringify(
+    [grid, superlative].map((one) => one?.rows.map((row) => [row.gender, row.cells.map((cell) => cell.spellings.map((spelling) => spelling.surface))])),
+  );
+
+/**
+ * The lemma grids that list the query, for a noun or adjective form about it:
+ * each lemma record it names, drawn from `lemmas` as that record's own reading
+ * draws it, once per distinct grid.
+ *
+ * A grid lists the query when one of its cells holds a `forms[]` entry the
+ * query hit (`bello` lists `bella`), or the form's own record declared as the
+ * lemma's plural (`casa` takes `case` from `case`, #145). Both are matched by
+ * pointer and record, never by spelling.
+ */
+function gridTablesOf(reading: Reading, lemmas: readonly Reading[]): LemmaTable[] {
+  if (!takesLemmaGrid(reading)) return [];
+  const tables = new Map<string, LemmaTable>();
+  for (const candidate of gridLemmasOf(reading)) {
+    const lemma = lemmas.find((one) => entryKey(one) === entryKey(candidate));
+    // A record that is itself a form is no lemma to draw: `costruttrice`, the
+    // "femminile di costruttore" that `costruttrici` names, has no table of its
+    // own, so `costruttrici` keeps its own.
+    if (lemma === undefined || lemma.lemmaLinks.length > 0) continue;
+    const agreement = agreementOf(lemma);
+    const hit = candidate.listing === undefined ? new Set<string>() : searchedSpellings(candidate.listing).formPointers;
+    const lists = spellingsOf(agreement).some(
+      (spelling) =>
+        spelling.forms.some((form) => hit.has(sourcePointerOf(form.ref) ?? "")) ||
+        (reading.recordId !== undefined && spelling.declaredBy.some((record) => record.recordId === reading.recordId)),
+    );
+    if (!lists) continue;
+    const key = `${lemma.word}\u0000${gridKey(agreement)}`;
+    if (!tables.has(key)) tables.set(key, { kind: "grid", lemma, agreement });
+  }
+  return [...tables.values()];
+}
+
+/**
+ * The page for `query`. `lemmas` are the records of the words
+ * `gridLemmaWords(readings)` names, as the lookup reads them; a lemma grid is
+ * drawn only from one of them.
+ */
+export function wordPage(query: string, readings: readonly [Reading, ...Reading[]], lemmas: readonly Reading[]): WordPage {
   const forms = formsOfQueryReadings(readings);
-  const ordered = pageOrder(readings.filter((reading) => !forms.has(reading)));
+  const siblings = otherFormsOfQueryLemmas(readings);
+  const ordered = pageOrder(readings.filter((reading) => !forms.has(reading) && !siblings.has(reading)));
   const about = ordered.filter((reading) => reading.isAboutQuery);
   const merged = mergeWordFacts(about);
   const placed = placeWordFacts(about, merged);
   // Readings with a definition number 1, 2, 3 among themselves, so the page
   // never shows a gap (Huey, 2026-09-30, on #250).
   let numbered = 0;
-  const entries = ordered.map(
-    (reading): PageReading => ({
+  const entries = ordered.map((reading): PageReading => {
+    const grids = gridTablesOf(reading, lemmas);
+    return {
       number: hasDefinitions(reading) ? ++numbered : undefined,
       reading,
-      lemmaTables: lemmaTablesOf(reading),
+      lemmaTables: [...conjugationTablesOf(reading), ...grids],
+      ownForms: grids.length === 0,
       etymologies: placed.etymologies.get(reading) ?? [],
       synonyms: relatedItems(placed.synonyms.get(reading) ?? []),
-    }),
-  );
+    };
+  });
   const [first, ...rest] = entries;
   if (first === undefined) throw new Error("a found result renders at least one reading");
 
