@@ -2,22 +2,33 @@
 // in production (#631). Only the `reader-reports.yml` workflow runs it; see
 // docs/DEPLOY.md, "Reader report issues".
 //
-// It reads production's `lexema-app` by its real id through a temporary
-// Wrangler config, as the production deploy does (web/builds/), because
-// web/wrangler.jsonc gives the same name a local placeholder id. Its one D1
-// statement is `WAITING_REPORTS_QUERY`. Wrangler's answer is captured and never
-// printed: Actions logs are public, and the answer holds reader text.
+// It reads production's `lexema-app` and `lexema-dictionary` by their real ids
+// through temporary Wrangler configs, as the production deploy does
+// (web/builds/), because web/wrangler.jsonc gives `lexema-app` a local
+// placeholder id. Its D1 statements are `WAITING_REPORTS_QUERY` on
+// `lexema-app` and, when a report to open names a record, one `headwordQuery`
+// on `lexema-dictionary`. Wrangler's answers are captured and never printed:
+// Actions logs are public, and an answer may hold reader text.
 //
 //   CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID  the D1 read token, for Wrangler only
 //   GITHUB_TOKEN, GITHUB_REPOSITORY              the issues to read and open, for GitHub only
 
 import { spawnSync } from "node:child_process";
 import { setTimeout as pause } from "node:timers/promises";
+import type { D1Target } from "../../web/builds/appMigrations.ts";
 import { PRODUCTION_APP_DATABASE } from "../../web/builds/productionAppDatabase.ts";
-import { appMigrationsConfig } from "../../web/builds/previewConfig.ts";
+import { appMigrationsConfig, DICTIONARY } from "../../web/builds/previewConfig.ts";
 import { APP_MIGRATIONS_DIR, WEB_DIR, writeMigrationsConfigFile } from "../../web/builds/wrangler.ts";
 import { isMain } from "../commandLine.js";
-import { REPORT_LABEL, ReportNotice, sendWaitingReports, WAITING_REPORTS_QUERY, type ReportIssues, type WaitingReports } from "./reportIssue.js";
+import {
+  REPORT_LABEL,
+  ReportNotice,
+  sendWaitingReports,
+  WAITING_REPORTS_QUERY,
+  type Dictionary,
+  type ReportIssues,
+  type WaitingReports,
+} from "./reportIssue.js";
 
 /** Runs `wrangler <args>` from web/ with `env`, and gives back its exit status and stdout, which it never prints. */
 export type QuietWrangler = (args: readonly string[], env: NodeJS.ProcessEnv) => { status: number | null; stdout: string };
@@ -47,19 +58,39 @@ export function rowsOf(stdout: string): unknown[] {
 }
 
 /**
- * The waiting reports in production's `lexema-app`. Wrangler gets the
- * Cloudflare token and none of GitHub's; its output is read, never echoed, and
- * a failure names only its exit status.
+ * The rows of `statement` on `database`, through the Wrangler config at
+ * `config`. Wrangler gets the Cloudflare token and none of GitHub's; its output
+ * is read, never echoed, and a failure names only its exit status.
  */
+function quietRows(wrangler: QuietWrangler, env: NodeJS.ProcessEnv, database: D1Target, config: string, statement: string): unknown[] {
+  const { GITHUB_TOKEN: _github, GH_TOKEN: _gh, ...wranglerEnv } = env;
+  const args = ["d1", "execute", database.name, "--remote", "--config", config, "--json", `--command=${statement}`];
+  const run = wrangler(args, { ...wranglerEnv, CI: "1", WRANGLER_SEND_METRICS: "false" });
+  if (run.status !== 0) throw new Error(`wrangler d1 execute on ${database.name} failed (exit ${run.status ?? "signal"}); its output is not printed`);
+  return rowsOf(run.stdout);
+}
+
+/** The waiting reports in production's `lexema-app`. */
 export function productionReports(wrangler: QuietWrangler = quietWrangler, env: NodeJS.ProcessEnv = process.env): WaitingReports {
   return {
     read() {
       const config = writeMigrationsConfigFile(appMigrationsConfig(PRODUCTION_APP_DATABASE, APP_MIGRATIONS_DIR));
-      const { GITHUB_TOKEN: _github, GH_TOKEN: _gh, ...wranglerEnv } = env;
-      const args = ["d1", "execute", PRODUCTION_APP_DATABASE.name, "--remote", "--config", config, "--json", `--command=${WAITING_REPORTS_QUERY}`];
-      const run = wrangler(args, { ...wranglerEnv, CI: "1", WRANGLER_SEND_METRICS: "false" });
-      if (run.status !== 0) throw new Error(`wrangler d1 execute on ${PRODUCTION_APP_DATABASE.name} failed (exit ${run.status ?? "signal"}); its output is not printed`);
-      return rowsOf(run.stdout).map((row) => ReportNotice.fromRow(row));
+      return quietRows(wrangler, env, PRODUCTION_APP_DATABASE, config, WAITING_REPORTS_QUERY).map((row) => ReportNotice.fromRow(row));
+    },
+  };
+}
+
+/** The Wrangler config naming the shared dictionary by its real id, bound as production binds it. */
+export const dictionaryConfig = (): Record<string, unknown> => ({
+  name: "lexema-web",
+  d1_databases: [{ binding: "DB", database_name: DICTIONARY.name, database_id: DICTIONARY.id }],
+});
+
+/** Production's `lexema-dictionary`, read only: it runs the one headword statement it is handed. */
+export function productionDictionary(wrangler: QuietWrangler = quietWrangler, env: NodeJS.ProcessEnv = process.env): Dictionary {
+  return {
+    rows(statement) {
+      return quietRows(wrangler, env, DICTIONARY, writeMigrationsConfigFile(dictionaryConfig()), statement);
     },
   };
 }
@@ -130,7 +161,7 @@ if (isMain(import.meta.url)) {
     process.exitCode = 1;
   } else {
     try {
-      await sendWaitingReports(productionReports(), githubIssues(repository, token), (line) => process.stdout.write(`${line}\n`));
+      await sendWaitingReports(productionReports(), githubIssues(repository, token), productionDictionary(), (line) => process.stdout.write(`${line}\n`));
     } catch (error) {
       process.stderr.write(`report:issues: ${(error as Error).message}\n`);
       process.exitCode = 1;
