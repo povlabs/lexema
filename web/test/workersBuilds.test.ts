@@ -21,7 +21,7 @@ import {
   type PreviewPrepareSteps,
   preparePreview,
 } from "@/builds/previewCommand.ts";
-import { APPLIED_MIGRATIONS_QUERY, compareHistory, inApplyOrder } from "@/builds/appMigrations.ts";
+import { APPLIED_MIGRATIONS_QUERY, compareHistory, inApplyOrder, MIGRATIONS_TABLE_QUERY } from "@/builds/appMigrations.ts";
 import { appMigrationsConfig, type BuiltConfig, DICTIONARY, refuseDictionary, SLICE_BINDING, withAppDatabase, withDictionarySlice } from "@/builds/previewConfig.ts";
 import { APP_DATABASE_PREFIX, PREVIEW_NAME_MAX, PreviewName, SLICE_DATABASE_PREFIX } from "@/builds/previewName.ts";
 import { readBuilt, readDeclared, SLICE_ROWS_WRITTEN_CAP, type SliceBuilt, type SliceDeclared, type SlicePlanner } from "@/builds/previewSlice.ts";
@@ -286,6 +286,11 @@ class FakeAccount {
       case "d1 execute": {
         const database = this.resolve(args, args[2])?.name;
         if (database === undefined) return fail("Couldn't find a D1 DB");
+        if (args.includes(`--command=${MIGRATIONS_TABLE_QUERY}`)) {
+          // `sqlite_master` lists the table once a migrations apply made it, and answers no rows before.
+          const rows = this.applied.has(database) ? [{ name: "d1_migrations" }] : [];
+          return ok(JSON.stringify([{ results: rows, success: true, meta: {} }]));
+        }
         if (args.includes(`--command=${APPLIED_MIGRATIONS_QUERY}`)) {
           const applied = this.applied.get(database);
           if (applied === undefined) return queryFailed("no such table: d1_migrations: SQLITE_ERROR [code: 7500]");
@@ -555,7 +560,8 @@ test("a push whose app database applied the tree's migrations so far keeps it an
     `app database: reusing ${database} (${first.appDatabaseId}); 1 new migration(s) to apply`,
   ]);
   // The history is read before APP_DB is bound, so the build binds the database it migrates.
-  assert.deepEqual(second.order.slice(0, 4), ["build", "wrangler d1 list", "wrangler d1 execute", `write ${BUILT_CONFIG}`]);
+  // Two reads: whether d1_migrations exists, then its names.
+  assert.deepEqual(second.order.slice(0, 5), ["build", "wrangler d1 list", "wrangler d1 execute", "wrangler d1 execute", `write ${BUILT_CONFIG}`]);
 });
 
 test("a push after main renumbered the branch's applied migration resets the app database and runs every migration once (#573)", () => {
@@ -638,12 +644,6 @@ test("a reused app database with no migrations table yet, left by a build that s
   const preview = PreviewName.ofBranch("huey/stopped");
   const uuid = "a0000000-0000-4000-8000-000000000001";
   const account = new FakeAccount([{ name: preview.appDatabase, uuid }]);
-  // Wrangler answers the missing table on stdout, as `{"error": ...}`, and writes nothing to stderr.
-  const read = account.wrangler(["d1", "execute", preview.appDatabase, "--remote", "--json", `--command=${APPLIED_MIGRATIONS_QUERY}`]);
-  assert.equal(read.ok, false);
-  assert.equal(read.stderr, "");
-  assert.match(JSON.parse(read.stdout).error.notes[0].text, /^no such table: d1_migrations: SQLITE_ERROR/);
-  account.calls.length = 0;
 
   const prepared = prepare(account, "huey/stopped");
   assert.equal(prepared.appDatabaseId, uuid);
@@ -652,6 +652,9 @@ test("a reused app database with no migrations table yet, left by a build that s
   assert.deepEqual(prepared.logged.filter((line) => line.startsWith("app database:")), [
     `app database: reusing ${preview.appDatabase} (${uuid}); 2 new migration(s) to apply`,
   ]);
+  // It asked sqlite_master, and never queried the missing table, so no failed query's answer was read (#611).
+  const reads = account.calls.filter((args) => args[1] === "execute").map((args) => args.at(-1));
+  assert.deepEqual(reads, [`--command=${MIGRATIONS_TABLE_QUERY}`]);
 });
 
 test("the history step refuses an app database that is the shared dictionary: it reads, deletes, creates and migrates nothing", () => {
@@ -1040,6 +1043,22 @@ test("the production command runs the sweep, then the app migrations on lexema-a
   );
 });
 
+test("on an empty lexema-app the production step asks sqlite_master for d1_migrations and never queries the missing table (#611)", async () => {
+  const account = productionAccount();
+  await productionCommand(account).run;
+  const reads = account.calls.filter((args) => args[1] === "execute").map((args) => args.at(-1));
+  assert.deepEqual(reads, [`--command=${MIGRATIONS_TABLE_QUERY}`]);
+  assert.equal(MIGRATIONS_TABLE_QUERY, "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'd1_migrations'");
+
+  // A failed sqlite_master read is unknown, not empty: nothing migrates and nothing deploys.
+  const unread = productionAccount();
+  unread.failing.push(/sqlite_master/);
+  const second = productionCommand(unread);
+  await assert.rejects(second.run, /could not read the applied migrations of lexema-app/);
+  assert.equal(second.order.includes("deploy"), false);
+  assert.deepEqual(productionWrites(unread), []);
+});
+
 test("a later production build applies only the new migrations, keeps lexema-app's rows, and runs no apply when none is new", async () => {
   const account = productionAccount();
   await productionCommand(account).run;
@@ -1055,7 +1074,7 @@ test("a later production build applies only the new migrations, keeps lexema-app
 
   const { run, order, logged } = productionCommand(account);
   await run;
-  assert.deepEqual(order, ["sweep", "wrangler d1 list", "wrangler d1 execute", "deploy"]);
+  assert.deepEqual(order, ["sweep", "wrangler d1 list", "wrangler d1 execute", "wrangler d1 execute", "deploy"]);
   assert.deepEqual(productionWrites(account), []);
   assert.ok(logged.includes(`app database: lexema-app (${PRODUCTION_APP_DATABASE.id}) has run every app migration; nothing to apply`), logged.join("\n"));
 });
@@ -1140,7 +1159,7 @@ test("the production step reads and migrates lexema-app by its real id, never th
   const { run, configs } = productionCommand(account);
   await run;
   const onLexemaApp = account.calls.filter((args) => /^d1 (execute|migrations)$/.test(args.slice(0, 2).join(" ")));
-  assert.deepEqual(onLexemaApp.map((args) => args.slice(0, 2).join(" ")), ["d1 execute", "d1 migrations"]);
+  assert.deepEqual(onLexemaApp.map((args) => args.slice(0, 2).join(" ")), ["d1 execute", "d1 execute", "d1 migrations"]);
   for (const args of onLexemaApp) {
     const config = account.configs.get(args[args.indexOf("--config") + 1]);
     assert.deepEqual(config?.map(({ database_name, database_id }) => [database_name, database_id]), [["lexema-app", PRODUCTION_APP_DATABASE.id]], args.join(" "));

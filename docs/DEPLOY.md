@@ -150,7 +150,10 @@ forward (`web/builds/productionAppDatabase.ts`). After the sweep and before
 2. Finds `lexema-app` on the account under that id. It never creates it: an
    absent database, or one under another id, stops the deploy.
 3. Reads the migrations it has applied, as the
-   [Preview command](#the-preview-command) does. When they are the tree's list
+   [Preview command](#the-preview-command) does. It first asks
+   `sqlite_master` whether the `d1_migrations` table exists. A new, empty
+   database has none, so it has applied nothing, and the table itself is never
+   queried. A failed read stops the deploy. When they are the tree's list
    so far, in its order, it applies only the new ones from
    `src/db/app/migrations` with `wrangler d1 migrations apply --remote`, and
    logs one `app database:` line naming them. With none new, it applies
@@ -214,7 +217,11 @@ block. The Workers Builds settings that build and sweep Previews are
 ## Workers Builds
 
 Cloudflare's Workers Builds is connected to this repository and runs one of two
-commands on every push, from `web/`. Their steps are in `web/builds/`:
+commands on every push, from `web/`. Their steps are in `web/builds/`, which
+runs under plain `node`, not `tsx`. Node only strips types, so those files use
+no TypeScript that is more than types, such as a parameter property or an
+`enum`. `web/test/buildsRunUnderNode.test.ts` checks every file there the way
+Node strips it ([#611](https://github.com/povlabs/lexema/issues/611)).
 
 | Branch | Command | What it runs |
 |---|---|---|

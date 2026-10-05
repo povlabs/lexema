@@ -34,7 +34,13 @@ export interface D1Target {
 
 /** Wrangler's table of applied migrations, `DEFAULT_MIGRATION_TABLE` in Wrangler 4.135.0. */
 const MIGRATIONS_TABLE = "d1_migrations";
-/** What reads an app database's applied migrations, oldest first. */
+/**
+ * What asks whether an app database has `d1_migrations` at all. It answers a
+ * list, with one row or none, and fails only when the read itself fails, so the
+ * missing table never rests on the shape of a failed query's answer.
+ */
+export const MIGRATIONS_TABLE_QUERY = `SELECT name FROM sqlite_master WHERE type = 'table' AND name = '${MIGRATIONS_TABLE}'`;
+/** What reads an app database's applied migrations, oldest first. Run only once the table is known to be there. */
 export const APPLIED_MIGRATIONS_QUERY = `SELECT name FROM ${MIGRATIONS_TABLE} ORDER BY id`;
 
 /** A migration file's leading number, as Wrangler reads it: the digits before the first `_`. */
@@ -79,7 +85,7 @@ export function divergence(history: Extract<MigrationHistory, { state: "diverged
 
 const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === "object" && value !== null && !Array.isArray(value);
 
-/** The names in `wrangler d1 execute --json`'s answer to `APPLIED_MIGRATIONS_QUERY`, or a throw. */
+/** The `name` column of `wrangler d1 execute --json`'s answer to one query, or a throw. */
 function namesIn(run: WranglerRun, database: string): string[] {
   const answer: unknown = JSON.parse(run.stdout);
   const rows = Array.isArray(answer) && isRecord(answer[0]) ? answer[0].results : undefined;
@@ -90,35 +96,22 @@ function namesIn(run: WranglerRun, database: string): string[] {
 }
 
 /**
- * Whether a failed `wrangler d1 execute --json` answered that `table` does not
- * exist. Wrangler 4.135.0 catches the query's error and, under `--json`, throws
- * it as a `JsonFriendlyFatalError` whose message is `{"error": ...}`, which its
- * top-level handler prints with `logger.log`: so the answer is that JSON on
- * stdout, not text on stderr. A remote query's error is an `APIError` whose
- * notes carry D1's own words, `no such table: <table>: SQLITE_ERROR`; the
- * colon after the name keeps `d1_migrations` from matching a longer name.
- */
-function answeredNoSuchTable(run: WranglerRun, table: string): boolean {
-  let answer: unknown;
-  try {
-    answer = JSON.parse(run.stdout);
-  } catch {
-    return false;
-  }
-  return isRecord(answer) && "error" in answer && JSON.stringify(answer.error).includes(`no such table: ${table}:`);
-}
-
-/**
  * A Wrangler config file that names one app database by name and id, with the
  * app migrations as its `migrations_dir` (`appMigrationsConfig`). It is the
  * only way to read or apply an app database's migrations, so neither call can
  * resolve the name through web/wrangler.jsonc instead. Never the dictionary.
  */
 export class AppMigrationsConfig {
-  private constructor(
-    readonly database: D1Target,
-    readonly path: string,
-  ) {}
+  // Fields assigned in the constructor, not TypeScript parameter properties:
+  // Workers Builds runs this file with plain `node`, whose type stripping
+  // refuses those (#611, web/test/buildsRunUnderNode.test.ts).
+  readonly database: D1Target;
+  readonly path: string;
+
+  private constructor(database: D1Target, path: string) {
+    this.database = database;
+    this.path = path;
+  }
 
   /** Write the config for `database` with `write`, which returns the file's path. */
   static write(database: D1Target, migrationsDir: string, write: (config: Record<string, unknown>) => string): AppMigrationsConfig {
@@ -126,17 +119,23 @@ export class AppMigrationsConfig {
   }
 
   /**
-   * The migrations the database applied, oldest first. A database with no
-   * `d1_migrations` table has applied none; any other failed read stops the
-   * build, since what was applied is then unknown.
+   * The migrations the database applied, oldest first. It first asks whether
+   * the `d1_migrations` table exists: a database without it, such as a new,
+   * empty one, has applied none, and its table is never queried. Any failed
+   * read stops the build, since what was applied is then unknown.
    */
   applied(wrangler: Wrangler): string[] {
-    const { name } = this.database;
     refuseDictionary(this.database, "read the applied migrations of");
-    const read = wrangler(["d1", "execute", name, "--remote", "--config", this.path, "--json", `--command=${APPLIED_MIGRATIONS_QUERY}`]);
-    if (read.ok) return namesIn(read, name);
-    if (answeredNoSuchTable(read, MIGRATIONS_TABLE)) return [];
-    throw new Error(`could not read the applied migrations of ${name}`);
+    if (this.query(wrangler, MIGRATIONS_TABLE_QUERY).length === 0) return [];
+    return this.query(wrangler, APPLIED_MIGRATIONS_QUERY);
+  }
+
+  /** The `name` column of `query`'s rows on the database, or a throw. */
+  private query(wrangler: Wrangler, query: string): string[] {
+    const { name } = this.database;
+    const read = wrangler(["d1", "execute", name, "--remote", "--config", this.path, "--json", `--command=${query}`]);
+    if (!read.ok) throw new Error(`could not read the applied migrations of ${name}`);
+    return namesIn(read, name);
   }
 
   /** Run every app migration the database has not applied, or throw. */
