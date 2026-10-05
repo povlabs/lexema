@@ -69,6 +69,17 @@ export const ARCHIVE_FACTS: ArchiveFactsCatalog = {
       "reports/2026-10-01-update-diff-september.md: the download, its headers and the dump its build log names",
     ],
   },
+  // `it-extract.jsonl.gz` of kaikki's build from `itwiktionary-20261001`, release
+  // `it-1935f76d`, added by the monthly release workflow (#457).
+  "1935f76d7b2d93d695fe3109f51a1d5a274497d9ad1371a50a6445d73424af7d": {
+    sourceUrl: "https://kaikki.org/dictionary/downloads/it/it-extract.jsonl.gz",
+    retrievedAt: "2026-10-05T14:47:57Z",
+    dump: { id: "itwiktionary-20261001", basis: "recorded" },
+    evidence: [
+      "povlabs/lexema-data source/it-1935f76d.log: kaikki's build log, whose dump file path names itwiktionary-20261001",
+      "povlabs/lexema-data source/it-1935f76d.headers: the response headers of the download",
+    ],
+  },
 };
 
 /** The facts recorded for the archive with this SHA-256, or none. */

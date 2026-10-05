@@ -43,6 +43,12 @@ export const KNOWN_DUMPS: Readonly<Record<string, DumpIdentity & { file: string;
     bytes: 71_291_038,
     sha1: "c72d2411b1de9df8e8b3d62af0efa24862c59f68",
   },
+  "itwiktionary-20261001": {
+    file: "itwiktionary-20261001-pages-articles.xml.bz2",
+    url: "https://dumps.wikimedia.org/itwiktionary/20261001/itwiktionary-20261001-pages-articles.xml.bz2",
+    bytes: 71_493_528,
+    sha1: "b34c28860741cf2e71eceac61dd9f27ad3385c62",
+  },
 };
 
 /** The main namespace: dictionary entries. Every other namespace is skipped. */
