@@ -8,8 +8,9 @@
 // account's cards go on is `STRIPE_RADAR_BLOCK_LIST`, a `card_fingerprint`
 // value list's id (`rsl_…`) made in the Stripe Dashboard; this command never
 // makes one. Without the list the Radar step is skipped and says so. Without
-// the key, a subscription that may still bill is named and the command fails,
-// with the account suspended all the same. Both commands can be run again: a
+// the key, the Checkout step is skipped and says so, and a subscription that
+// may still bill is named and the command fails, with the account suspended
+// all the same. Both commands can be run again: a
 // second run changes nothing done and finishes what an earlier one could not.
 // The database is the local `APP_DB` the dev seed migrates, as
 // `pnpm run plan` reaches it.
@@ -18,7 +19,7 @@ import { finish, flags, isMain, positive, usageError, type CommandResult } from 
 import type { AppTables } from "../db/app/database.js";
 import { seededAppDatabase } from "../db/localD1.js";
 import { stripeClient } from "./billing.js";
-import { liftSuspension, suspendAccount, suspensionReasonOf, SUSPENSION_REASON_MAX, type CardBlocking, type CardUnblocking, type SuspensionReach } from "./suspension.js";
+import { liftSuspension, suspendAccount, suspensionReasonOf, SUSPENSION_REASON_MAX, type CardBlocking, type CardUnblocking, type CheckoutClosing, type SuspensionReach } from "./suspension.js";
 
 const USAGE = `usage:
   pnpm run account suspend <account id> --reason <text>
@@ -40,6 +41,11 @@ export function reachOf(env: AccountEnvironment): SuspensionReach {
 }
 
 const plural = (count: number, one: string, many: string): string => `${count} ${count === 1 ? one : many}`;
+
+function checkoutLine(checkouts: CheckoutClosing): string {
+  if (checkouts.kind === "expired") return `Checkout: ${plural(checkouts.checkouts, "open session", "open sessions")} expired`;
+  return `Checkout step skipped: ${checkouts.why === "no-customer" ? "the account has no Stripe customer" : "STRIPE_SECRET_KEY is not set"}`;
+}
 
 function blockingLine(cards: CardBlocking): string {
   if (cards.kind === "blocked") return `Radar: ${plural(cards.cards, "card is", "cards are")} on the block list`;
@@ -68,6 +74,7 @@ async function suspend(accountId: number, reasonText: string, db: AppTables, now
   } else {
     lines.push("Stripe: no subscription can bill the account");
   }
+  lines.push(checkoutLine(done.checkouts));
   lines.push(blockingLine(done.cards));
   return { out: lines.join("\n"), status: billing.outcome === "billing-off" ? 1 : 0 };
 }

@@ -8,12 +8,19 @@
 // reads the subscription back from Stripe and writes that snapshot to its row.
 // Replays and late events then end in Stripe's current state, and a failed
 // write throws, which the plugin answers with a 400 so Stripe tries again.
+//
+// A suspended account keeps no plan (#578): a subscription that may still bill
+// for one, such as one made by a Checkout paid just before the suspension
+// closed it, is cancelled at once, through deletion's own path
+// (./subscriptionCancel.ts), and the account is told nothing of it.
 
 import { and, eq, isNull, or } from "drizzle-orm";
 import type Stripe from "stripe";
 import type { AppDatabase } from "../db/app/database.js";
+import { accountSuspensionQuery, isSuspended } from "../accounts/suspension.js";
 import { developerAccount, subscription } from "../db/app/schema.js";
-import { STRIPE_STATUSES, type StripePlanId, type StripeStatus } from "./plans.js";
+import { isFinalStatus, STRIPE_STATUSES, type StripePlanId, type StripeStatus } from "./plans.js";
+import { stopSubscription, type SubscriptionCanceller } from "./subscriptionCancel.js";
 
 /** The Stripe price each plan is bought at: `STRIPE_PRICE_STARTER` and `STRIPE_PRICE_PRO`. */
 export type PlanPrices = Readonly<Record<StripePlanId, string>>;
@@ -146,9 +153,11 @@ export type SyncOutcome =
   /** No row is kept for the subscription: it was not started by a Checkout here, nor made for a known customer. */
   | { readonly outcome: "no-row"; readonly stripeSubscriptionId: string }
   /** The row now holds Stripe's current state. */
-  | { readonly outcome: "written"; readonly accountId: number; readonly snapshot: SubscriptionSnapshot };
+  | { readonly outcome: "written"; readonly accountId: number; readonly snapshot: SubscriptionSnapshot }
+  /** The account is suspended, so the subscription was cancelled at once and its row holds Stripe's ended state. */
+  | { readonly outcome: "stopped-suspended"; readonly accountId: number; readonly stripeSubscriptionId: string };
 
-/** What a sync reads Stripe through: the one call it makes. */
+/** How a subscription is read back from Stripe. */
 export interface SubscriptionSource {
   retrieve(id: string): Promise<Stripe.Subscription>;
 }
@@ -156,10 +165,11 @@ export interface SubscriptionSource {
 /**
  * Read the subscription an event is about back from Stripe and write it to its
  * row, linking its Stripe customer to the account when the account has none.
- * Both writes are one batch. Throws when Stripe or the database fails, so the
- * webhook answers 400 and Stripe retries.
+ * Both writes are one batch. When the account is suspended and the
+ * subscription may still bill, it is then cancelled at once. Throws when
+ * Stripe or the database fails, so the webhook answers 400 and Stripe retries.
  */
-export async function syncSubscription(db: AppDatabase, source: SubscriptionSource, prices: PlanPrices, event: Stripe.Event): Promise<SyncOutcome> {
+export async function syncSubscription(db: AppDatabase, source: SubscriptionCanceller, prices: PlanPrices, event: Stripe.Event): Promise<SyncOutcome> {
   const stripeSubscriptionId = subscriptionNamedBy(event);
   if (stripeSubscriptionId === undefined) return { outcome: "not-synced" };
   const current = await source.retrieve(stripeSubscriptionId);
@@ -178,5 +188,12 @@ export async function syncSubscription(db: AppDatabase, source: SubscriptionSour
       .set({ stripeCustomerId: snapshot.stripeCustomerId })
       .where(and(eq(developerAccount.id, accountId), isNull(developerAccount.stripeCustomerId))),
   ]);
+  if (!isFinalStatus(snapshot.status)) {
+    const [owner] = await accountSuspensionQuery(db, accountId);
+    if (owner !== undefined && isSuspended(owner)) {
+      await stopSubscription(db, source, stripeSubscriptionId);
+      return { outcome: "stopped-suspended", accountId, stripeSubscriptionId };
+    }
+  }
   return { outcome: "written", accountId, snapshot };
 }

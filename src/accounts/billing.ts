@@ -113,6 +113,7 @@ export function billingPlugin(db: Parameters<typeof syncSubscription>[0], billin
       if (synced.outcome === "not-a-plan" || synced.outcome === "no-row") {
         console.warn("stripe event changed no subscription", { event: event.type, ...synced });
       }
+      if (synced.outcome === "stopped-suspended") console.warn("stripe subscription of a suspended account cancelled", { event: event.type, ...synced });
       if (synced.outcome === "written") await emailAccount(db, mail, synced.accountId, await notePlanChange(db, synced, Date.now()));
     },
   });

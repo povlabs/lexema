@@ -8,7 +8,8 @@
 // or no longer has, needs nothing, and any other is cancelled. The row then
 // takes Stripe's answer, so a second deletion reads it as done and calls
 // Stripe no more; the webhook's sync (./subscriptionSync.ts) writes the same
-// state when Stripe's `customer.subscription.deleted` arrives.
+// state when Stripe's `customer.subscription.deleted` arrives. The same path
+// stops a subscription that starts for a suspended account (#578).
 
 import { and, eq, isNotNull, notInArray } from "drizzle-orm";
 import Stripe from "stripe";
@@ -59,11 +60,11 @@ const isMissing = (failure: unknown): boolean => failure instanceof Stripe.error
 
 /**
  * Stop Stripe billing one subscription: cancel it at once unless Stripe has
- * already ended it or has no such subscription. The cancel carries an
- * idempotency key, so a deletion running twice at once cancels once. Any other
- * failure of Stripe's throws.
+ * already ended it or has no such subscription, and write Stripe's answer to
+ * its row. The cancel carries an idempotency key, so two runs at once cancel
+ * once. Any other failure of Stripe's throws.
  */
-async function stop(db: AppDatabase, stripe: SubscriptionCanceller, id: string): Promise<void> {
+export async function stopSubscription(db: AppDatabase, stripe: SubscriptionCanceller, id: string): Promise<void> {
   let current: Stripe.Subscription;
   try {
     current = await stripe.retrieve(id);
@@ -94,6 +95,6 @@ export async function cancelSubscriptions(db: AppDatabase, stripe: SubscriptionC
   const [first, ...rest] = ids;
   if (first === undefined) return { outcome: "stopped" };
   if (stripe === undefined) return { outcome: "billing-off", billable: [first, ...rest] };
-  for (const id of ids) await stop(db, stripe, id);
+  for (const id of ids) await stopSubscription(db, stripe, id);
   return { outcome: "stopped" };
 }

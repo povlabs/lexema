@@ -9,8 +9,11 @@
 //
 // Suspending also stops Stripe: every subscription that may still bill is
 // cancelled at once, through deletion's own path (src/billing/subscriptionCancel.ts),
-// and each card on the account's Stripe customer is put on a Radar block list,
-// so the same card cannot pay from a new account. Lifting takes off the items
+// every Checkout the account opened and has not paid is expired, so it cannot
+// be paid later (#578), and each card on the account's Stripe customer is put
+// on a Radar block list, so the same card cannot pay from a new account. A
+// Checkout paid just before it closes still makes a subscription; the
+// webhook's sync cancels that one at once (src/billing/subscriptionSync.ts). Lifting takes off the items
 // the suspension put there and leaves the subscriptions cancelled. No address
 // of any kind is read or kept.
 //
@@ -110,9 +113,17 @@ export interface RadarItems {
   del(id: string): PromiseLike<unknown>;
 }
 
+/** A customer's Checkout sessions: the client's `checkout.sessions`. `list` pages through all of them. */
+export interface CheckoutSessions {
+  list(params: { customer: string; status: "open" }): AsyncIterable<{ readonly id: string }>;
+  retrieve(id: string): PromiseLike<{ readonly status: string | null }>;
+  expire(id: string): PromiseLike<unknown>;
+}
+
 /** What a suspension reaches Stripe through; a Stripe client is one. */
 export interface SuspensionStripe {
   readonly subscriptions: SubscriptionCanceller;
+  readonly checkout: { readonly sessions: CheckoutSessions };
   readonly customers: CardSource;
   readonly radar: { readonly valueListItems: RadarItems };
 }
@@ -127,6 +138,15 @@ export interface SuspensionReach {
   readonly stripe: SuspensionStripe | undefined;
   readonly blockList: string | undefined;
 }
+
+/** Why the Checkout step did nothing: the account has no Stripe customer, so it never opened one, or billing is off. */
+export type CheckoutSkip = "no-customer" | "billing-off";
+
+/** What suspending did to the account's open Checkouts. */
+export type CheckoutClosing =
+  | { readonly kind: "skipped"; readonly why: CheckoutSkip }
+  /** `expired`: the open Checkouts this run expired. One that was paid or expired before its turn is not counted. */
+  | { readonly kind: "expired"; readonly checkouts: number };
 
 /** Why the Radar step did nothing: no block list is configured, or billing is off. */
 export type RadarSkip = "no-block-list" | "billing-off";
@@ -208,6 +228,39 @@ async function blockCards(db: AppDatabase, stripe: SuspensionStripe, blockList: 
 const isMissing = (failure: unknown): boolean => failure instanceof Stripe.errors.StripeError && failure.statusCode === 404;
 
 /**
+ * Expire one open Checkout, and answer whether this call expired it. Stripe
+ * refuses to expire a session that is no longer open, so when the call fails,
+ * the session is read back: one that was paid or expired in the meantime, or
+ * that Stripe no longer has, is done with. Any other failure throws.
+ */
+async function expireCheckout(sessions: CheckoutSessions, id: string): Promise<boolean> {
+  try {
+    await sessions.expire(id);
+    return true;
+  } catch (failure) {
+    if (isMissing(failure)) return false;
+    let status: string | null;
+    try {
+      ({ status } = await sessions.retrieve(id));
+    } catch (reread) {
+      if (isMissing(reread)) return false;
+      throw failure;
+    }
+    if (status !== "open") return false;
+    throw failure;
+  }
+}
+
+/** Expire every Checkout the customer opened that is still open, so none of them can be paid. */
+async function expireCheckouts(sessions: CheckoutSessions, customer: string): Promise<CheckoutClosing> {
+  const open: string[] = [];
+  for await (const session of sessions.list({ customer, status: "open" })) open.push(session.id);
+  let checkouts = 0;
+  for (const id of open) if (await expireCheckout(sessions, id)) checkouts += 1;
+  return { kind: "expired", checkouts };
+}
+
+/**
  * Take off the list each item this account's suspension holds, unless another
  * suspended account holds it too, and forget each. An item Stripe no longer
  * has is already off. Each row goes only once its item is off, so a run that
@@ -247,6 +300,7 @@ export type Suspending =
       /** Whether the account was already suspended before this run. */
       readonly already: boolean;
       readonly subscriptions: Cancelled;
+      readonly checkouts: CheckoutClosing;
       readonly cards: CardBlocking;
     }
   /** No account has this id. */
@@ -257,8 +311,8 @@ export type Suspending =
 /**
  * Suspend an account at `now` for `reason`. The suspension is stored first, so
  * its keys stop at once whatever Stripe does next. Then every subscription
- * that may still bill is cancelled at once, and each of its cards goes on the
- * block list. A Stripe failure throws with the account already suspended; a
+ * that may still bill is cancelled at once, every Checkout it left open is
+ * expired, and each of its cards goes on the block list. A Stripe failure throws with the account already suspended; a
  * second run keeps that suspension and finishes the rest.
  */
 export async function suspendAccount(db: AppTables, accountId: number, reason: SuspensionReason, now: number, reach: SuspensionReach): Promise<Suspending> {
@@ -268,11 +322,15 @@ export async function suspendAccount(db: AppTables, accountId: number, reason: S
   const suspension = suspensionOf(row);
   if (suspension === undefined) return { outcome: "deleted" };
   const subscriptions = await cancelSubscriptions(db.app, reach.stripe?.subscriptions, accountId);
+  let checkouts: CheckoutClosing;
+  if (row.stripeCustomerId === null) checkouts = { kind: "skipped", why: "no-customer" };
+  else if (reach.stripe === undefined) checkouts = { kind: "skipped", why: "billing-off" };
+  else checkouts = await expireCheckouts(reach.stripe.checkout.sessions, row.stripeCustomerId);
   let cards: CardBlocking;
   if (reach.blockList === undefined) cards = { kind: "skipped", why: "no-block-list" };
   else if (reach.stripe === undefined) cards = { kind: "skipped", why: "billing-off" };
   else cards = await blockCards(db.app, reach.stripe, reach.blockList, accountId, row.stripeCustomerId);
-  return { outcome: "suspended", suspension, already: stored === undefined, subscriptions, cards };
+  return { outcome: "suspended", suspension, already: stored === undefined, subscriptions, checkouts, cards };
 }
 
 /** What lifting a suspension did. */
