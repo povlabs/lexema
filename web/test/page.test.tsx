@@ -47,6 +47,7 @@ import { Privacy } from "@/components/dictionary/Privacy";
 import { readingIndex } from "@/components/shared/LegalContents";
 import { FirstLoad, Limited, Outcome, SearchPage, TRY_WORDS } from "@/components/dictionary/SearchPage";
 import { SiteFooter } from "@/components/dictionary/SiteFooter";
+import { CONTACT_EMAIL } from "@/components/shared/contact.ts";
 import { byHost, ORIGIN } from "@/worker/shared/hosts.ts";
 import { SiteHeader } from "@/components/dictionary/SiteHeader";
 import { readingChoiceLabel } from "@/components/dictionary/ReportDialog";
@@ -1699,7 +1700,7 @@ test("the field is a combobox in both states, and still a plain named input for 
   });
 });
 
-test("the footer links Licence, Privacy and Developers, and marks the page being shown", async () => {
+test("the footer links Licence, Privacy, Contact and Developers, and marks the page being shown", async () => {
   const linksOf = (current: string) =>
     [...renderToStaticMarkup(<SiteFooter origins={ORIGIN} current={current} />).matchAll(/<a class="([^"]*)" href="([^"]+)"( aria-current="page")?>([^<]+)<\/a>/g)]
       .filter((match) => match[1] === SITE_FOOTER_LINK)
@@ -1707,10 +1708,13 @@ test("the footer links Licence, Privacy and Developers, and marks the page being
   assert.deepEqual(linksOf("/"), [
     ["Licence", "/licence", false],
     ["Privacy", "/privacy", false],
+    ["Contact", `mailto:${CONTACT_EMAIL}`, false],
     ["Developers", "https://developers.lexema.fyi", false],
   ]);
-  assert.deepEqual(linksOf("/licence").map(([label, , current]) => [label, current]), [["Licence", true], ["Privacy", false], ["Developers", false]]);
-  assert.deepEqual(linksOf("/privacy").map(([label, , current]) => [label, current]), [["Licence", false], ["Privacy", true], ["Developers", false]]);
+  assert.deepEqual(linksOf("/licence").map(([label, , current]) => [label, current]), [["Licence", true], ["Privacy", false], ["Contact", false], ["Developers", false]]);
+  assert.deepEqual(linksOf("/privacy").map(([label, , current]) => [label, current]), [["Licence", false], ["Privacy", true], ["Contact", false], ["Developers", false]]);
+  // Contact is a mail link, so no page is ever its own: it is never marked.
+  assert.deepEqual(linksOf(`mailto:${CONTACT_EMAIL}`).map(([label, , current]) => [label, current]), [["Licence", false], ["Privacy", false], ["Contact", false], ["Developers", false]]);
   // The marked link is drawn highlighted, in the strong text role.
   assert.ok(SITE_FOOTER_LINK.split(" ").includes("aria-[current=page]:text-text-strong"));
   // The footer's wordmark goes home, in the same tab, like the top bar's.

@@ -20,7 +20,8 @@ import type { PostingVisitor } from "@/lib/developers/signedIn.ts";
 import type { SignUp } from "@/worker/developers/signUp.ts";
 import type { SiteOrigins } from "@/worker/shared/hosts.ts";
 import { ChoosePlanForm } from "./BillingForms";
-import { CONTACT_EMAIL, DeveloperPage } from "./DeveloperPage";
+import { CONTACT_EMAIL } from "@/components/shared/contact.ts";
+import { DeveloperPage } from "./DeveloperPage";
 import { CheckIcon } from "@/components/shared/MenuIcons";
 import {
   BUTTON_PRIMARY,

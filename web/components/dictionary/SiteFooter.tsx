@@ -5,13 +5,16 @@
 // of `page.tsx`: the layout imports `globals.css`, which Node cannot load, so
 // `web/test/page.test.tsx` renders this component instead of the layout.
 //
-// Three links (#139): the Licence page, which carries the credit ADR 0009 asks
-// for, the Privacy notice, and Developers, the one way from the dictionary to
-// the developer site (#159). Developers is on the host `origins` names, so a
+// Four links (#139, #614): the Licence page, which carries the credit ADR 0009
+// asks for, the Privacy notice, Contact, a mail to the address the developer
+// site gives too, and Developers, the one way from the dictionary to the
+// developer site (#159). Developers is on the host `origins` names, so a
 // Preview's footer stays on that Preview (#266). The link to the page being
-// shown is marked `aria-current` and drawn highlighted.
+// shown is marked `aria-current` and drawn highlighted; only Licence and
+// Privacy are pages of this site, so only they can be.
 
 import type { SiteOrigins } from "@/worker/shared/hosts.ts";
+import { CONTACT_EMAIL } from "@/components/shared/contact.ts";
 import {
   SITE_FOOTER,
   SITE_FOOTER_INNER,
@@ -25,12 +28,18 @@ export const LICENCE_PATH = "/licence";
 /** The Privacy notice's path. */
 export const PRIVACY_PATH = "/privacy";
 
-const linksOf = (origins: SiteOrigins) =>
-  [
-    { label: "Licence", href: LICENCE_PATH },
-    { label: "Privacy", href: PRIVACY_PATH },
-    { label: "Developers", href: origins.developers },
-  ] as const;
+/** A footer link: a page of this site, which marks itself while shown, or a way out of it, which never does. */
+type FooterLink = { kind: "page"; label: string; path: string } | { kind: "away"; label: string; href: string };
+
+const linksOf = (origins: SiteOrigins): readonly FooterLink[] => [
+  { kind: "page", label: "Licence", path: LICENCE_PATH },
+  { kind: "page", label: "Privacy", path: PRIVACY_PATH },
+  { kind: "away", label: "Contact", href: `mailto:${CONTACT_EMAIL}` },
+  { kind: "away", label: "Developers", href: origins.developers },
+];
+
+const hrefOf = (link: FooterLink) => (link.kind === "page" ? link.path : link.href);
+const isShown = (link: FooterLink, current: string) => link.kind === "page" && link.path === current;
 
 /** The footer, with `current`, the path of the page being shown, marking its own link. */
 export function SiteFooter({ origins, current }: { origins: SiteOrigins; current: string }) {
@@ -44,7 +53,7 @@ export function SiteFooter({ origins, current }: { origins: SiteOrigins; current
           <ul className={SITE_FOOTER_LINKS}>
             {linksOf(origins).map((link) => (
               <li key={link.label}>
-                <a className={SITE_FOOTER_LINK} href={link.href} aria-current={link.href === current ? "page" : undefined}>
+                <a className={SITE_FOOTER_LINK} href={hrefOf(link)} aria-current={isShown(link, current) ? "page" : undefined}>
                   {link.label}
                 </a>
               </li>

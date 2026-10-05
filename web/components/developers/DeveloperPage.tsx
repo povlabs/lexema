@@ -22,6 +22,7 @@ import type { ReactNode } from "react";
 import { SIGN_IN_PAGE } from "@/worker/developers/dashboard.ts";
 import type { SignUp } from "@/worker/developers/signUp.ts";
 import type { SiteOrigins } from "@/worker/shared/hosts.ts";
+import { CONTACT_EMAIL } from "@/components/shared/contact.ts";
 import { AccountMenu } from "./AccountMenu";
 import { DASHBOARD, SETTINGS } from "@/lib/developers/dashboardActions.ts";
 import { DeveloperMenu, type DeveloperMenuLink } from "./DeveloperMenu";
@@ -46,14 +47,10 @@ import {
   DEV_MENU_OUTLINE,
   DEV_MENU_SIGN_OUT,
   DEV_NAME,
-  DEV_NAME_SITE,
   DEV_NAV,
   DEV_NAV_LINK,
   DEV_SIGN_IN,
 } from "@/components/shared/styles.ts";
-
-/** The address the developer site's Contact reaches (#159). */
-export const CONTACT_EMAIL = "contact@lexema.fyi";
 
 /** The address the developer Privacy policy names for questions about it (#162). */
 export const PRIVACY_EMAIL = "privacy@lexema.fyi";
@@ -118,7 +115,7 @@ export type DeveloperFooterLink =
  * is on the host `origins` names (#266).
  */
 export const developerFooterLinks = (origins: SiteOrigins): readonly DeveloperFooterLink[] => [
-  { label: "lexema.fyi", href: origins.lexema, legal: false },
+  { label: "Lexema.fyi", href: origins.lexema, legal: false },
   { label: "Docs", href: "/docs", legal: false },
   { label: "Pricing", href: "/pricing", legal: false },
   { label: "Terms", href: TERMS_PATH, legal: "terms" },
@@ -129,7 +126,7 @@ export const developerFooterLinks = (origins: SiteOrigins): readonly DeveloperFo
 function DeveloperName() {
   return (
     <a className={DEV_NAME} href="/">
-      Lexema<span className={DEV_NAME_SITE}>Developers</span>
+      Lexema Developers
     </a>
   );
 }

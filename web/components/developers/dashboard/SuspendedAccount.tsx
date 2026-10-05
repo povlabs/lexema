@@ -7,7 +7,8 @@
 // (worker/developers/dashboard.ts, worker/developers/billing.ts).
 
 import type { SuspendedView } from "@/lib/developers/dashboardView.ts";
-import { CONTACT_EMAIL, DeveloperPage, TERMS_PATH, type DeveloperSection } from "@/components/developers/DeveloperPage";
+import { CONTACT_EMAIL } from "@/components/shared/contact.ts";
+import { DeveloperPage, TERMS_PATH, type DeveloperSection } from "@/components/developers/DeveloperPage";
 import type { SiteOrigins } from "@/worker/shared/hosts.ts";
 import { DeleteAccountControl } from "./DeleteAccountDialog";
 import { BUTTON_DANGER_OUTLINE, DASH_SHELL, LINK, SUSPENDED_CARD, SUSPENDED_LINE, SUSPENDED_TITLE } from "@/components/shared/styles.ts";

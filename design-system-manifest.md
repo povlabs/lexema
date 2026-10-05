@@ -100,7 +100,7 @@ both pages ([#139](https://github.com/povlabs/lexema/issues/139#issuecomment-597
 | **Head, then numbered sections.** | The kicker `LEXEMA · LEGAL`, the title in serif, `Effective <date>`, then the lede with a rule under it. The sections follow, numbered from 1. |
 | **Contents on the left, on a wide screen.** | A Contents list of the sections, each a link to its section, in a column on the left. On a phone there is no Contents column; the text is the same. |
 | **The text is the approved text.** | Word for word. Only the Licence page's *Version of the data* is filled in, from the release the dictionary serves. No provenance mark, no *Still open* section, no note about the page itself. |
-| **The footer names three pages.** | `Licence · Privacy · Developers`, and the link to the page being shown is highlighted. |
+| **The footer names three pages and a way to write.** | `Licence · Privacy · Contact · Developers`, and the link to the page being shown is highlighted. Contact is a mail link to the contact address and is never highlighted. On a phone the four links sit on one row under the name ([#614](https://github.com/povlabs/lexema/issues/614)). |
 
 ## Role tokens: the dark scheme
 
