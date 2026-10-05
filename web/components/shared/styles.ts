@@ -316,37 +316,55 @@ export const FORM_LINK = `cursor-pointer font-mono text-text-strong no-underline
 /** The searched form, underlined in the accent where it sits. */
 export const FORM_LINK_SEARCHED = `cursor-pointer font-mono text-accent underline decoration-accent decoration-1 underline-offset-[0.3em] ${FOCUS_RING}`;
 
-/** Gerundio · participio · ausiliare: one line, three short rows on a phone. */
-export const NON_FINITE = "m-0 flex flex-wrap items-baseline gap-x-2.5 gap-y-1 max-sm:flex-col";
-export const NON_FINITE_ITEM = "flex items-baseline gap-2 max-sm:grid max-sm:grid-cols-[8.5rem_1fr]";
-export const NON_FINITE_LABEL = "m-0 font-sans text-[0.75rem] text-text-muted";
-export const NON_FINITE_LABEL_SEARCHED = "m-0 font-sans text-[0.75rem] font-semibold text-accent";
-export const NON_FINITE_FORMS = "m-0 font-mono text-[1.05rem]";
+/**
+ * Gerundio · participio · ausiliare: one line, three short rows on a phone.
+ * On a phone the forms start 88 px in, as frame 19 draws them, or after the
+ * longest label when one is wider (`participio presente`).
+ */
+export const NON_FINITE = "m-0 flex flex-wrap items-baseline gap-x-2.5 gap-y-1 max-sm:grid max-sm:grid-cols-[minmax(5.5rem,max-content)_1fr] max-sm:gap-y-0 max-sm:pt-px";
+export const NON_FINITE_ITEM = "flex items-baseline gap-2.5 max-sm:col-span-2 max-sm:grid max-sm:grid-cols-subgrid max-sm:gap-0";
+export const NON_FINITE_LABEL = "m-0 font-sans text-[0.75rem] text-text-muted max-sm:pr-2 sm:text-[0.78125rem]";
+export const NON_FINITE_LABEL_SEARCHED = "m-0 font-sans text-[0.75rem] font-semibold text-accent max-sm:pr-2 sm:text-[0.78125rem]";
+export const NON_FINITE_FORMS = "m-0 font-mono text-[0.9375rem] leading-6 sm:leading-[1.375rem]";
 export const NON_FINITE_DOT = "font-sans text-[0.75rem] text-text-muted max-sm:hidden";
 
 /** The mood tabs: one line, the open one underlined in `text-strong`. */
-export const TABS = "mt-6";
+export const TABS = "mt-[1.125rem]";
 /** The four tabs stay on one line: on the narrowest phones they spread across it at a smaller size. */
-export const TAB_LIST = "flex gap-5 border-border max-sm:gap-3 max-sm:border-b max-[24rem]:justify-between max-[24rem]:gap-1";
-export const TAB = `-mb-px cursor-pointer border-b-2 border-transparent pb-1.5 font-sans text-[0.9rem] text-text-muted data-active:border-text-strong data-active:font-semibold data-active:text-text-strong max-sm:text-[0.8rem] max-[24rem]:text-[0.72rem] ${FOCUS_RING}`;
-export const TAB_PANEL = `mt-6 ${FOCUS_RING}`;
+export const TAB_LIST = "flex gap-6 border-border max-sm:gap-[0.8125rem] max-sm:border-b max-[24rem]:justify-between max-[24rem]:gap-1";
+export const TAB = `-mb-px cursor-pointer border-b-2 border-transparent pb-1 font-sans text-[0.84375rem] leading-5 sm:pb-[0.1875rem] text-text-muted data-active:border-text-strong data-active:font-semibold data-active:text-text-strong max-sm:text-[0.8rem] max-[24rem]:text-[0.72rem] ${FOCUS_RING}`;
+export const TAB_PANEL = `mt-4 sm:mt-[1.1875rem] ${FOCUS_RING}`;
 
 /**
  * Tenses two at a time: pairs side by side on a wide screen, reading as one
  * table under one person column; on a phone each pair under its own.
  */
-export const TENSE_PAIRS = "flex flex-col gap-5 sm:flex-row sm:gap-0";
+export const TENSE_PAIRS = "flex flex-col gap-[0.8125rem] sm:flex-row sm:gap-0";
 /** On a phone a pair fills the width with fixed columns, so a long form wraps rather than scrolls. */
 export const TENSE_TABLE = "border-collapse text-left max-sm:w-full max-sm:table-fixed";
-export const PERSON_HEAD = "w-[5.5rem] p-0 sm:w-28";
+export const PERSON_HEAD = "w-[4.0625rem] p-0 sm:w-[6.875rem]";
 /** A second table's person column: drawn on a phone, kept for screen readers on a wide screen. */
 export const PERSON_HEAD_REPEAT = `${PERSON_HEAD} sm:sr-only`;
-export const TENSE_HEAD = "p-0 pb-2 pr-4 font-sans text-[0.75rem] font-normal text-text-muted sm:w-48";
-export const TENSE_HEAD_SEARCHED = "p-0 pb-2 pr-4 font-sans text-[0.75rem] font-semibold text-accent sm:w-48";
-export const PERSON = "p-0 py-1 pr-3 align-baseline whitespace-nowrap font-sans text-[0.8rem] font-normal text-text-muted";
-export const PERSON_SEARCHED = "p-0 py-1 pr-3 align-baseline whitespace-nowrap font-sans text-[0.8rem] font-semibold text-accent";
+const TENSE_HEAD_BASE = "p-0 pb-px pr-4 align-top font-sans text-[0.72rem] leading-5 sm:w-[11.875rem] sm:text-[0.75rem]";
+export const TENSE_HEAD = `${TENSE_HEAD_BASE} font-normal text-text-muted`;
+export const TENSE_HEAD_SEARCHED = `${TENSE_HEAD_BASE} font-semibold text-accent`;
+/**
+ * Rows 26 px apart on a phone and 29 px on a wide screen, as frames 10, 17
+ * and 19 draw them; a person shares its forms' baseline. The label's line is
+ * shorter than the forms', so the forms set the row's height.
+ */
+const PERSON_BASE = "p-0 pr-3 align-baseline whitespace-nowrap font-sans text-[0.75rem] leading-6 sm:text-[0.8rem] sm:leading-[1.5625rem]";
+export const PERSON = `${PERSON_BASE} font-normal text-text-muted`;
+export const PERSON_SEARCHED = `${PERSON_BASE} font-semibold text-accent`;
 export const PERSON_REPEAT = "sm:sr-only";
-export const TENSE_CELL = "p-0 py-1 pr-4 align-baseline font-mono text-[1rem] text-text-strong wrap-anywhere max-sm:pr-2 max-sm:text-[0.8rem]";
+export const TENSE_CELL = "p-0 pr-4 align-baseline font-mono text-[0.875rem] leading-[1.625rem] text-text-strong wrap-anywhere max-sm:pr-2 sm:text-[0.9375rem] sm:leading-[1.8125rem]";
+/**
+ * The row that holds the searched form is 2 px taller, the form 1 px lower, so
+ * its underline clears the next row (frames 17, 18 and 21). On a wide screen
+ * the pairs sit side by side, so the other pair's row grows with it.
+ */
+export const TENSE_CELL_SEARCHED_ROW = `${TENSE_CELL} py-px`;
+export const TENSE_CELL_SEARCHED_ROW_WIDE = `${TENSE_CELL} sm:py-px`;
 export const CELL_SEPARATOR = "text-text-muted";
 
 /** One mood's tables, and the `+ more` after the simple tenses that shows the compound ones: `data-open` once open. */
@@ -356,7 +374,7 @@ export const TENSE_SET = "m-0 mb-2 font-sans text-[0.8rem] font-semibold text-te
 export const TENSE_SET_SIMPLE = `${TENSE_SET} hidden group-data-open/panel:block`;
 /** Base UI's panel: hidden until the `+ more` after it opens. */
 export const COMPOUND_TABLES = "pt-4";
-export const COMPOUND_MORE = "mt-2 block";
+export const COMPOUND_MORE = "mt-[0.4375rem] block pb-0.5 leading-3 sm:pb-[0.1875rem]";
 
 export const WORD_FACTS = "mt-[1.6875rem] border-t border-border pt-6.5 sm:mt-[2.4375rem] sm:pt-[2.4375rem]";
 export const ETYMOLOGY = "m-0 max-w-[48rem] font-serif text-[1.1rem] text-text sm:text-[1.0625rem]";

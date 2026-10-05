@@ -97,6 +97,8 @@ import {
   SITE_FOOTER_LINK,
   SOURCE_LINE,
   SITE_FOOTER_NAME,
+  TENSE_CELL_SEARCHED_ROW,
+  TENSE_CELL_SEARCHED_ROW_WIDE,
   TENSE_HEAD_SEARCHED,
   TOP_BAR,
   WORD_HEADING,
@@ -520,6 +522,10 @@ test("a searched verb form is marked where it sits, in its lemma's table opened 
     assert.deepEqual(formLinks(reading).filter((link) => link.searched).map((link) => link.text), ["andavano"]);
     assert.match(indicativo, new RegExp(`<th scope="row" class="${esc(PERSON_SEARCHED)}" lang="it">loro</th>`));
     assert.match(indicativo, new RegExp(`<th scope="col" class="${esc(TENSE_HEAD_SEARCHED)}" lang="it">imperfetto</th>`));
+    // The searched row is taller in its own pair and, on a wide screen only,
+    // in the pair beside it, so the two tables keep one row line (frames 17, 21).
+    assert.equal(patternsOf(indicativo, new RegExp(esc(`class="${TENSE_CELL_SEARCHED_ROW}"`), "g")), 2);
+    assert.equal(patternsOf(indicativo, new RegExp(esc(`class="${TENSE_CELL_SEARCHED_ROW_WIDE}"`), "g")), 2);
     // Two pages' content is shown, and still one Source, to the searched word's page (#281).
     assert.deepEqual(
       [...html.matchAll(/href="https:\/\/it\.wiktionary\.org\/wiki\/([^"]+)" target="_blank"/g)].map((match) => match[1]),
