@@ -9,7 +9,7 @@
 // same rule, and each phrase still shows once.
 
 import { normalizeItalianExact } from "../italian/normalize.js";
-import type { DictionaryRead, LookupDatabase } from "./database.js";
+import { keyedRead, readKeys, type KeyedRead, type LookupDatabase } from "./database.js";
 import { servedBy } from "./served.js";
 import type { Expression, ExpressionItem } from "./types.js";
 
@@ -49,14 +49,15 @@ export function expressionMeaning(expression: Pick<Expression, "meanings">): str
 }
 
 /**
- * Which of the keys are Italian headwords. The keys are one JSON array, so a
- * list of any length is one read of `lookup_form_headword_by_key`. Exported so
- * a test can assert the plan.
+ * Which of the keys are Italian headwords: one read of
+ * `lookup_form_headword_by_key` for a list of any length, and on D1 one for
+ * every list a page asks in one wait (`KeyedRead`, #393). Exported so a test
+ * can assert the plan.
  */
-export const HEADWORD_KEY_SQL: DictionaryRead = `SELECT DISTINCT surface_key
+export const HEADWORD_KEY_SQL: KeyedRead = keyedRead(`SELECT DISTINCT surface_key AS set_key
        FROM lookup_form
-      WHERE release_id IN (${servedBy("?1")}) AND origin = 'headword'
-        AND surface_key IN (SELECT value FROM json_each(?2))`;
+      WHERE release_id IN (${servedBy("?2")}) AND origin = 'headword'
+        AND surface_key IN (SELECT value FROM json_each(?1))`);
 
 /**
  * A record's items as rows. A phrase is a headword when a search for it
@@ -69,8 +70,8 @@ export async function readExpressions(
   items: readonly ExpressionItem[],
 ): Promise<Expression[]> {
   if (items.length === 0) return [];
-  const keys = [...new Set(items.map((item) => normalizeItalianExact(item.phrase)))];
-  const rows = await db.all<{ surface_key: string }>(HEADWORD_KEY_SQL, [releaseId, JSON.stringify(keys)]);
-  const headwords = new Set(rows.map((row) => row.surface_key));
+  const keys = items.map((item) => normalizeItalianExact(item.phrase));
+  const rows = await readKeys<{ set_key: string }>(db, HEADWORD_KEY_SQL, keys, [releaseId]);
+  const headwords = new Set(rows.map((row) => row.set_key));
   return expressionsOf(items, (phrase) => headwords.has(normalizeItalianExact(phrase)));
 }

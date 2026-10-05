@@ -20,20 +20,22 @@ export const servedBy = (master: Parameter): string =>
   `SELECT release_id FROM served_release WHERE master_release_id = ${master}`;
 
 /**
- * The record bound at `record` and every record it replaced, through
- * `applied_change`, as the operand of an `IN`. The rows written by hand beside
- * a record (`recovered_*`, `claim_review`) stay attached to the record they
- * were written for; a lookup reads them for the record that replaced it.
+ * Each record of the JSON array bound at `records`, as `set_key`, beside
+ * itself and every record it replaced through `applied_change`, as
+ * `record_id`: a table to join, one row per record of each lineage. The rows
+ * written by hand beside a record (`recovered_*`, `claim_review`) stay
+ * attached to the record they were written for; a lookup reads them for the
+ * record that replaced it, keyed by that record (`KeyedRead`, #393).
  */
-export const lineageOf = (record: Parameter): string =>
-  `WITH RECURSIVE lineage(record_id) AS (
-              SELECT ${record}
+export const lineagesOf = (records: Parameter): string =>
+  `(WITH RECURSIVE lineage(set_key, record_id) AS (
+              SELECT value, value FROM json_each(${records})
               UNION ALL
-              SELECT a.replaced_record_id
+              SELECT l.set_key, a.replaced_record_id
                 FROM applied_change a
                 JOIN lineage l ON a.record_id = l.record_id
                WHERE a.replaced_record_id IS NOT NULL)
-            SELECT record_id FROM lineage`;
+            SELECT DISTINCT set_key, record_id FROM lineage)`;
 
 /** Every release a master serves, in id order. Exported so a test can name the statement. */
 export const SERVED_RELEASES_SQL: DictionaryRead = `SELECT release_id FROM served_release WHERE master_release_id = ?1 ORDER BY release_id`;
@@ -135,19 +137,31 @@ export async function dictionaryTables(db: LookupDatabase): Promise<DictionaryTa
   };
 }
 
+/**
+ * The last change and both revisions as one statement (#393). An old master
+ * has neither revision table until `update:upgrade` creates it, and is never
+ * sent a statement that names one: an absent table reads as revision zero.
+ */
+export function servedStateSql(tables: Pick<DictionaryTables, "hideVersion" | "correctionVersion">): DictionaryRead {
+  const revision = (present: boolean, sql: DictionaryRead): string => (present ? `(${sql})` : "0");
+  return `SELECT (${LAST_CHANGE_SQL}) AS change_id,
+            ${revision(tables.hideVersion, HIDE_VERSION_SQL)} AS hide_revision,
+            ${revision(tables.correctionVersion, CORRECTION_VERSION_SQL)} AS correction_revision`;
+}
+
 /** The version the master `release` serves now, including committed live hides and corrections. */
 export async function servedVersion(db: LookupDatabase, release: string): Promise<ServedVersion> {
-  const [last, tables] = await Promise.all([db.all<{ change_id: string }>(LAST_CHANGE_SQL, []), dictionaryTables(db)]);
-  // An old master has neither table until `update:upgrade` creates them; an
-  // absent one reads as revision zero. Do not suppress other database
-  // failures: an unread version must not hit a cache.
-  const revisionOf = async (present: boolean, sql: DictionaryRead): Promise<number> =>
-    present ? ((await db.all<{ revision: number }>(sql, []))[0]?.revision ?? 0) : 0;
-  const [hideRevision, correctionRevision] = await Promise.all([
-    revisionOf(tables.hideVersion, HIDE_VERSION_SQL),
-    revisionOf(tables.correctionVersion, CORRECTION_VERSION_SQL),
-  ]);
-  return { release, lastChange: last[0]?.change_id ?? null, hideRevision, correctionRevision };
+  // Database failures are not suppressed: an unread version must not hit a cache.
+  const [state] = await db.all<{ change_id: string | null; hide_revision: number | null; correction_revision: number | null }>(
+    servedStateSql(await dictionaryTables(db)),
+    [],
+  );
+  return {
+    release,
+    lastChange: state?.change_id ?? null,
+    hideRevision: state?.hide_revision ?? 0,
+    correctionRevision: state?.correction_revision ?? 0,
+  };
 }
 
 /**

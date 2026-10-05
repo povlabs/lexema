@@ -7,12 +7,12 @@ import { shownGloss } from "../italian/headwordEcho.js";
 import { recordGlosses, type RecordGloss } from "../italian/recovery.js";
 import { readPluralGloss, type PluralGlossGender } from "../italian/pluralGloss.js";
 import { readingPartOfSpeech } from "./articles.js";
-import type { DictionaryRead, LookupDatabase } from "./database.js";
+import { keyedRead, readKeys, type DictionaryRead, type KeyedRead, type LookupDatabase } from "./database.js";
 import { phraseForms, phraseMatches } from "./phrase.js";
 import { pageEntriesOf, type PageEntries } from "./pageEntry.js";
 import { readExpressions } from "./expressions.js";
 import { placeRecovered, type RecoveredOfRecord, type StoredRecovered } from "./recovered.js";
-import { dictionaryTables, lineageOf, servedBy, type DictionaryTables } from "./served.js";
+import { dictionaryTables, lineagesOf, servedBy, type DictionaryTables } from "./served.js";
 import { readSourceRecord, type SourceRecordFields } from "./sourceRecord.js";
 import { correctionOf, correctionsByRecord, type CorrectionRow } from "./correctedClaim.js";
 import { correctRecordClaims, pluralDeclaration } from "./types.js";
@@ -292,13 +292,7 @@ async function found(
   // as a reading shows them, and a record taken out as a reading's lemma is
   // listed by them, so none is read for nothing (#385).
   const tables = new Map(
-    groups.map((group) => {
-      const table = readTable(db, group[0].record_id, refOn(group[0]), corrected);
-      // Awaited by the reading or listing that shows it; marked handled so a
-      // lookup that fails before then does not also leave it unhandled.
-      table.catch(() => undefined);
-      return [group[0].record_id, table] as const;
-    }),
+    groups.map((group) => [group[0].record_id, handled(readTable(db, group[0].record_id, refOn(group[0]), corrected))] as const),
   );
   const tableOf = (group: readonly HitRow[]): Promise<RecordTable> => {
     const table = tables.get(group[0].record_id);
@@ -307,17 +301,41 @@ async function found(
   };
 
   // A record's verbatim line, read once whether it is a reading, a lemma a
-  // link names, or both.
+  // link names, or both. Every matched record is one or the other, so each
+  // line is read now, beside the links (#393).
   const records = new Map<number, Promise<RecordLine>>();
   const recordOf = (recordId: number): Promise<RecordLine> => {
     let record = records.get(recordId);
     if (record === undefined) {
-      record = readRecord(db, recordId);
+      record = handled(readRecord(db, recordId));
       records.set(recordId, record);
     }
     return record;
   };
+  for (const group of groups) recordOf(group[0].record_id);
 
+  // A reading's own reads, started once. A reading about the query is always
+  // kept, so its reads go out now, beside the links; so does every reading of
+  // a lookup with no reading about the query, which takes no record out. Only
+  // a record the query reached through its table alone, beside a reading
+  // about the query, waits for the links that say whether it is that
+  // reading's lemma (#393).
+  const reads = new Map<number, ReadingReads>();
+  const readsOf = (group: readonly HitRow[]): ReadingReads => {
+    const recordId = group[0].record_id;
+    let started = reads.get(recordId);
+    if (started === undefined) {
+      started = startReadingReads(db, releaseId, group[0], corrected, recordOf(recordId));
+      reads.set(recordId, started);
+    }
+    return started;
+  };
+  const anyAbout = groups.some(isAbout);
+  for (const group of groups) if (isAbout(group) || !anyAbout) readsOf(group);
+
+  // The lines of the lemmas each record's links name, read beside the links,
+  // so a lemma's expressions wait on nothing the links wait on.
+  const lemmaLines = handled(readLemmaLines(db, releaseId, groups.map((group) => group[0].record_id)));
   const declared = new Map(
     await Promise.all(
       groups.map(async (group) => {
@@ -326,6 +344,7 @@ async function found(
       }),
     ),
   );
+  for (const [recordId, line] of await lemmaLines) if (!records.has(recordId)) records.set(recordId, Promise.resolve(line));
 
   // The lemmas the readings about the query point to. A record the query
   // matched only through its table, and that is one of these, is that
@@ -377,10 +396,11 @@ async function found(
 
   const kept = groups.filter((group) => isAbout(group) || !lemmaIds.has(group[0].record_id));
   const build = (group: HitRow[]): Promise<Reading> =>
-    buildReading(db, releaseId, group, corrected, {
+    buildReading(db, releaseId, group, {
       table: tableOf(group),
       record: recordOf(group[0].record_id),
       lemmaLinks: resolve(declared.get(group[0].record_id) ?? []),
+      reads: readsOf(group),
     });
 
   // A lemma is only ever taken out on behalf of a reading about the query, so
@@ -561,18 +581,47 @@ async function readTable(
   return { grammar, forms: formsOf(forms, ref, grammar) };
 }
 
+/** A promise, marked handled: it is awaited later, and a lookup that fails before then must not also leave it unhandled. */
+function handled<T>(promise: Promise<T>): Promise<T> {
+  promise.catch(() => undefined);
+  return promise;
+}
+
+/** The reads of one reading that need only its record: started as soon as the lookup knows the reading is kept. */
+interface ReadingReads {
+  recovered: Promise<RecoveredOfRecord>;
+  senseRows: Promise<SenseRows>;
+  inflections: Promise<InflectionOf[]>;
+  reviews: Promise<Review[]>;
+}
+
+function startReadingReads(
+  db: LookupDatabase,
+  releaseId: string,
+  first: HitRow,
+  corrected: boolean,
+  record: Promise<RecordLine>,
+): ReadingReads {
+  return {
+    recovered: handled(readRecovered(db, first.record_id, record)),
+    senseRows: handled(readSenseRows(db, first.record_id)),
+    inflections: handled(readInflections(db, releaseId, first.record_id, first.record_word, corrected)),
+    reviews: handled(readReviews(db, first.record_id)),
+  };
+}
+
 /** The reads one reading is built from that the lookup started before it. */
 interface ReadingInputs {
   table: Promise<RecordTable>;
   record: Promise<RecordLine>;
   lemmaLinks: Promise<LemmaLink[]>;
+  reads: ReadingReads;
 }
 
 async function buildReading(
   db: LookupDatabase,
   releaseId: string,
   group: HitRow[],
-  corrected: boolean,
   inputs: ReadingInputs,
 ): Promise<Reading> {
   const first = group[0];
@@ -588,10 +637,10 @@ async function buildReading(
       inputs.record,
       source,
       source.then((fields) => readExpressions(db, releaseId, fields.expressionItems)),
-      readRecovered(db, recordId, inputs.record),
-      readSenseRows(db, recordId),
-      readInflections(db, releaseId, recordId, first.record_word, corrected),
-      readReviews(db, recordId),
+      inputs.reads.recovered,
+      inputs.reads.senseRows,
+      inputs.reads.inflections,
+      inputs.reads.reviews,
     ]);
 
   return {
@@ -633,20 +682,43 @@ interface RecordLine {
   rawJson: string;
 }
 
-async function readRecord(db: LookupDatabase, recordId: number): Promise<RecordLine> {
-  // The verbatim line is read here, once per record that is a returned reading
-  // or a lemma a reading names (for its expressions, #213), and never for any
-  // other record: the table is split off for exactly that.
-  const row = await queryOne<{ pos_title: string; raw_json: string }>(
-    db,
-    `SELECT r.pos_title, j.raw_json
+/**
+ * Records' section titles and verbatim lines. The line is read once per record
+ * that is a returned reading or a lemma a reading names (for its expressions,
+ * #213), and never for any other record: the table is split off for exactly that.
+ */
+export const RECORD_LINE_SQL: KeyedRead = keyedRead(`SELECT r.record_id AS set_key, r.pos_title, j.raw_json
        FROM source_record r
        JOIN source_record_json j ON j.record_id = r.record_id
-      WHERE r.record_id = ?`,
-    recordId,
-  );
+      WHERE r.record_id IN (SELECT value FROM json_each(?1))`);
+
+async function readRecord(db: LookupDatabase, recordId: number): Promise<RecordLine> {
+  const [row] = await readKeys<{ pos_title: string; raw_json: string }>(db, RECORD_LINE_SQL, [recordId]);
   if (row === undefined) throw new Error(`record ${recordId} vanished mid-lookup`);
   return { posTitle: row.pos_title, rawJson: row.raw_json };
+}
+
+/**
+ * The lines of every headword record the `form_of` edges of the records bound
+ * at `?1` name: the candidates `LEMMA_LINK_SQL` reads, each once per record
+ * that names it, however many of its edges do. Read beside the links, so a
+ * lemma's expressions are one wait after them, not two (#393).
+ */
+export const LEMMA_LINE_SQL: KeyedRead = keyedRead(`SELECT c.set_key AS set_key, c.record_id, r.pos_title, j.raw_json
+       FROM (SELECT DISTINCT e.record_id AS set_key, lf.record_id
+               FROM form_of_edge e
+               JOIN lookup_form lf
+                 ON lf.release_id IN (${servedBy("?2")})
+                AND lf.surface_key = e.target_word_key
+                AND lf.origin = 'headword'
+              WHERE e.record_id IN (SELECT value FROM json_each(?1)) AND e.release_id IN (${servedBy("?2")})) c
+       JOIN source_record r ON r.record_id = c.record_id
+       JOIN source_record_json j ON j.record_id = c.record_id`);
+
+/** The lines of the lemmas the links of `recordIds` name, by lemma record. */
+async function readLemmaLines(db: LookupDatabase, releaseId: string, recordIds: readonly number[]): Promise<Map<number, RecordLine>> {
+  const rows = await readKeys<{ record_id: number; pos_title: string; raw_json: string }>(db, LEMMA_LINE_SQL, recordIds, [releaseId]);
+  return new Map(rows.map((row) => [row.record_id, { posTitle: row.pos_title, rawJson: row.raw_json }]));
 }
 
 /** A record's senses as the database holds them: each gloss, and each label. */
@@ -655,27 +727,29 @@ interface SenseRows {
   labels: { sense_index: number; sense_pointer: string; kind: "tag" | "raw_tag"; label: string; json_pointer: string }[];
 }
 
+/**
+ * A record's glosses. A sense with no gloss still gets a row, because "this
+ * sense exists and says nothing" is a fact worth showing rather than a sense
+ * to drop.
+ */
+export const SENSE_GLOSS_SQL: KeyedRead = keyedRead(`SELECT s.record_id AS set_key, s.sense_index, s.json_pointer AS sense_pointer, g.text, g.json_pointer
+       FROM sense s
+       LEFT JOIN sense_gloss g ON g.sense_id = s.sense_id
+      WHERE s.record_id IN (SELECT value FROM json_each(?1))
+      ORDER BY s.record_id, s.sense_index, g.gloss_index`);
+
+/** A record's sense labels. */
+export const SENSE_LABEL_SQL: KeyedRead = keyedRead(`SELECT s.record_id AS set_key, s.sense_index, s.json_pointer AS sense_pointer, l.kind, l.label, l.json_pointer
+       FROM sense s
+       JOIN sense_label l ON l.sense_id = s.sense_id
+      WHERE s.record_id IN (SELECT value FROM json_each(?1))
+      ORDER BY s.record_id, s.sense_index, l.kind, l.label_index`);
+
 /** Both reads of a record's senses, sent at once: neither needs the other's rows. */
 async function readSenseRows(db: LookupDatabase, recordId: number): Promise<SenseRows> {
   const [glosses, labels] = await Promise.all([
-    // A sense with no gloss still gets a row, because "this sense exists and
-    // says nothing" is a fact worth showing rather than a sense to drop.
-    queryAll<SenseRows["glosses"][number]>(
-      db,
-      `SELECT s.sense_index, s.json_pointer AS sense_pointer, g.text, g.json_pointer
-       FROM sense s
-       LEFT JOIN sense_gloss g ON g.sense_id = s.sense_id
-      WHERE s.record_id = ?
-      ORDER BY s.sense_index, g.gloss_index`, recordId,
-    ),
-    queryAll<SenseRows["labels"][number]>(
-      db,
-      `SELECT s.sense_index, s.json_pointer AS sense_pointer, l.kind, l.label, l.json_pointer
-       FROM sense s
-       JOIN sense_label l ON l.sense_id = s.sense_id
-      WHERE s.record_id = ?
-      ORDER BY s.sense_index, l.kind, l.label_index`, recordId,
-    ),
+    readKeys<SenseRows["glosses"][number]>(db, SENSE_GLOSS_SQL, [recordId]),
+    readKeys<SenseRows["labels"][number]>(db, SENSE_LABEL_SQL, [recordId]),
   ]);
   return { glosses, labels };
 }
@@ -732,9 +806,9 @@ function sensesOf(
  * The record's own `forms[]` entries. Exported so a test can assert the plan as
  * well as the rows, like the two edge queries below.
  */
-export const RECORD_FORM_SQL = `SELECT form_index, surface, json_pointer, form_source
+export const RECORD_FORM_SQL: KeyedRead = keyedRead(`SELECT record_id AS set_key, form_index, surface, json_pointer, form_source
        FROM lookup_form
-      WHERE record_id = ? AND origin = 'embedded-form'`;
+      WHERE record_id IN (SELECT value FROM json_each(?1)) AND origin = 'embedded-form'`);
 
 /** One of the record's own `forms[]` entries, as `RECORD_FORM_SQL` returns it. */
 interface FormRow {
@@ -744,7 +818,7 @@ interface FormRow {
   form_source: string | null;
 }
 
-const readFormRows = (db: LookupDatabase, recordId: number): Promise<FormRow[]> => queryAll<FormRow>(db, RECORD_FORM_SQL, recordId);
+const readFormRows = (db: LookupDatabase, recordId: number): Promise<FormRow[]> => readKeys<FormRow>(db, RECORD_FORM_SQL, [recordId]);
 
 /**
  * Every form the record lists, in the order the source wrote them.
@@ -773,10 +847,16 @@ function formsOf(rows: readonly FormRow[], ref: (pointer: string) => SourceRef, 
  * the correction instead (src/update/apply.ts). Exported so a test can assert the
  * plan: `readGrammar` runs it once per record.
  */
-export const CORRECTED_CLAIM_SQL: DictionaryRead = `SELECT record_id, dimension, value, correction_id, evidence_url
+export const CORRECTED_CLAIM_SQL: KeyedRead = keyedRead(`SELECT record_id AS set_key, record_id, dimension, value, correction_id, evidence_url
        FROM corrected_claim
-      WHERE record_id = ?
-      ORDER BY dimension`;
+      WHERE record_id IN (SELECT value FROM json_each(?1))
+      ORDER BY record_id, dimension`);
+
+/** A record's grammar claims, of every scope. */
+export const GRAMMAR_CLAIM_SQL: KeyedRead = keyedRead(`SELECT record_id AS set_key, scope, scope_index, status, dimension, value, source_text, json_pointer
+       FROM grammar_claim
+      WHERE record_id IN (SELECT value FROM json_each(?1))
+      ORDER BY record_id, scope, scope_index, json_pointer`);
 
 async function readGrammar(
   db: LookupDatabase,
@@ -784,9 +864,8 @@ async function readGrammar(
   ref: (pointer: string) => SourceRef,
   corrected: boolean,
 ): Promise<Grammar> {
-  const corrections = corrected ? queryAll<CorrectionRow>(db, CORRECTED_CLAIM_SQL, recordId) : Promise.resolve([]);
-  corrections.catch(() => undefined);
-  const rows = await queryAll<{
+  const corrections = handled(corrected ? readKeys<CorrectionRow>(db, CORRECTED_CLAIM_SQL, [recordId]) : Promise.resolve([]));
+  const rows = await readKeys<{
     scope: "record" | "sense" | "form";
     scope_index: number | null;
     status: "stated" | "unclassified" | "missing";
@@ -794,13 +873,7 @@ async function readGrammar(
     value: string | null;
     source_text: string | null;
     json_pointer: string;
-  }>(
-    db,
-    `SELECT scope, scope_index, status, dimension, value, source_text, json_pointer
-       FROM grammar_claim
-      WHERE record_id = ?
-      ORDER BY scope, scope_index, json_pointer`, recordId,
-  );
+  }>(db, GRAMMAR_CLAIM_SQL, [recordId]);
 
   const grammar: { record: ArchiveClaim[]; byForm: Map<number, ArchiveClaim[]>; bySense: Map<number, ArchiveClaim[]> } = {
     record: [],
@@ -862,7 +935,7 @@ async function readGrammar(
  * the regression a rows-only test sails past. See
  * docs/LOOKUP_DESIGN.md#the-view-that-costs-four-orders-of-magnitude.
  */
-export const LEMMA_LINK_SQL: DictionaryRead = `SELECT e.edge_id, e.json_pointer, e.target_word,
+export const LEMMA_LINK_SQL: KeyedRead = keyedRead(`SELECT e.record_id AS set_key, e.edge_id, e.json_pointer, e.target_word,
             t.record_id   AS candidate_record_id,
             t.release_id  AS candidate_release_id,
             t.line_no     AS candidate_line_no,
@@ -875,8 +948,8 @@ export const LEMMA_LINK_SQL: DictionaryRead = `SELECT e.edge_id, e.json_pointer,
         AND lf.surface_key = e.target_word_key
         AND lf.origin = 'headword'
        LEFT JOIN source_record t ON t.record_id = lf.record_id
-      WHERE e.record_id = ?1 AND e.release_id IN (${servedBy("?2")})
-      ORDER BY e.edge_id, t.line_no`;
+      WHERE e.record_id IN (SELECT value FROM json_each(?1)) AND e.release_id IN (${servedBy("?2")})
+      ORDER BY e.edge_id, t.line_no`);
 
 async function readLemmaLinks(
   db: LookupDatabase,
@@ -887,7 +960,7 @@ async function readLemmaLinks(
   // LEFT JOIN on purpose: an edge whose target word matches no headword record
   // must still appear. Dropping it would turn "the source points somewhere we
   // cannot follow" into "the source points nowhere".
-  const rows = await queryAll<{
+  const rows = await readKeys<{
     edge_id: number;
     json_pointer: string;
     target_word: string;
@@ -897,10 +970,7 @@ async function readLemmaLinks(
     candidate_line_sha256: string | null;
     candidate_pos: string | null;
     candidate_word: string | null;
-  }>(
-    db,
-    LEMMA_LINK_SQL, recordId, releaseId,
-  );
+  }>(db, LEMMA_LINK_SQL, [recordId], [releaseId]);
 
   const byEdge = new Map<number, DeclaredLink>();
   for (const row of rows) {
@@ -946,7 +1016,7 @@ async function readLemmaLinks(
  * release on the `release_id` prefix alone, about two million rows per record
  * on `it-0c432803` (#381).
  */
-export const INFLECTION_SQL: DictionaryRead = `SELECT f.record_id, f.release_id, f.line_no, f.line_sha256, f.word, f.pos,
+export const INFLECTION_SQL: KeyedRead = keyedRead(`SELECT lf.record_id AS set_key, f.record_id, f.release_id, f.line_no, f.line_sha256, f.word, f.pos,
             e.json_pointer, e.target_word, g.text AS gloss, g.json_pointer AS gloss_pointer
        FROM lookup_form lf
        CROSS JOIN form_of_edge e
@@ -954,23 +1024,23 @@ export const INFLECTION_SQL: DictionaryRead = `SELECT f.record_id, f.release_id,
        JOIN source_record f ON f.record_id = e.record_id
        LEFT JOIN sense s ON s.record_id = e.record_id AND s.sense_index = e.sense_index
        LEFT JOIN sense_gloss g ON g.sense_id = s.sense_id AND g.gloss_index = 0
-      WHERE lf.record_id = ?1 AND lf.origin = 'headword' AND lf.release_id IN (${servedBy("?2")})
-      ORDER BY f.line_no, e.json_pointer`;
+      WHERE lf.record_id IN (SELECT value FROM json_each(?1)) AND lf.origin = 'headword' AND lf.release_id IN (${servedBy("?2")})
+      ORDER BY f.line_no, e.json_pointer`);
 
 /**
  * Every headword record spelling what this one spells — itself included. An
  * incoming edge matches on the target word key, so it lands on all of them at
  * once; this is the set the source left unresolved.
  */
-export const INFLECTION_CANDIDATE_SQL: DictionaryRead = `SELECT t.record_id, t.release_id, t.line_no, t.line_sha256, t.word, t.pos
+export const INFLECTION_CANDIDATE_SQL: KeyedRead = keyedRead(`SELECT self.record_id AS set_key, t.record_id, t.release_id, t.line_no, t.line_sha256, t.word, t.pos
        FROM lookup_form self
        CROSS JOIN lookup_form other
          ON other.release_id IN (${servedBy("?2")})
         AND other.surface_key = self.surface_key
         AND other.origin = 'headword'
        JOIN source_record t ON t.record_id = other.record_id
-      WHERE self.record_id = ?1 AND self.origin = 'headword'
-      ORDER BY t.line_no, t.record_id`;
+      WHERE self.record_id IN (SELECT value FROM json_each(?1)) AND self.origin = 'headword'
+      ORDER BY t.line_no, t.record_id`);
 
 /**
  * The stated genders and numbers of every record declaring itself a form of
@@ -979,7 +1049,7 @@ export const INFLECTION_CANDIDATE_SQL: DictionaryRead = `SELECT t.record_id, t.r
  * this word's plural, and beside the candidate read, so it adds no round trip.
  * The numbers are read only so a correction of one can say what it replaces.
  */
-export const INFLECTION_GRAMMAR_SQL: DictionaryRead = `SELECT DISTINCT c.record_id, c.dimension, c.value, c.source_text, c.json_pointer,
+export const INFLECTION_GRAMMAR_SQL: KeyedRead = keyedRead(`SELECT DISTINCT lf.record_id AS set_key, c.record_id, c.dimension, c.value, c.source_text, c.json_pointer,
             f.release_id, f.line_no, f.line_sha256
        FROM lookup_form lf
        CROSS JOIN form_of_edge e
@@ -987,8 +1057,8 @@ export const INFLECTION_GRAMMAR_SQL: DictionaryRead = `SELECT DISTINCT c.record_
        JOIN source_record f ON f.record_id = e.record_id
        JOIN grammar_claim c
          ON c.record_id = e.record_id AND c.scope = 'record' AND c.status = 'stated' AND c.dimension IN ('gender', 'number')
-      WHERE lf.record_id = ?1 AND lf.origin = 'headword' AND lf.release_id IN (${servedBy("?2")})
-      ORDER BY c.record_id, c.json_pointer`;
+      WHERE lf.record_id IN (SELECT value FROM json_each(?1)) AND lf.origin = 'headword' AND lf.release_id IN (${servedBy("?2")})
+      ORDER BY c.record_id, c.json_pointer`);
 
 /** The `/word` field of a headword record, which is where its spelling is. */
 function headwordRef(releaseId: string, lineNo: number, lineSha256: string): SourceRef {
@@ -1008,13 +1078,13 @@ const lineRef = (row: { release_id: string; line_no: number; line_sha256: string
  * this record spells, read off the same edges as `INFLECTION_SQL`. Sent beside
  * the gender read, and only when the master has corrections at all.
  */
-export const INFLECTION_CORRECTION_SQL: DictionaryRead = `SELECT DISTINCT k.record_id, k.dimension, k.value, k.correction_id, k.evidence_url
+export const INFLECTION_CORRECTION_SQL: KeyedRead = keyedRead(`SELECT DISTINCT lf.record_id AS set_key, k.record_id, k.dimension, k.value, k.correction_id, k.evidence_url
        FROM lookup_form lf
        CROSS JOIN form_of_edge e
          ON e.release_id IN (${servedBy("?2")}) AND e.target_word_key = lf.surface_key
        JOIN corrected_claim k ON k.record_id = e.record_id
-      WHERE lf.record_id = ?1 AND lf.origin = 'headword' AND lf.release_id IN (${servedBy("?2")})
-      ORDER BY k.record_id, k.dimension`;
+      WHERE lf.record_id IN (SELECT value FROM json_each(?1)) AND lf.origin = 'headword' AND lf.release_id IN (${servedBy("?2")})
+      ORDER BY k.record_id, k.dimension`);
 
 /** `word` is the reading's own headword, which a plural gloss has to name. */
 async function readInflections(
@@ -1024,7 +1094,7 @@ async function readInflections(
   word: string,
   corrected: boolean,
 ): Promise<InflectionOf[]> {
-  const rows = await queryAll<{
+  const rows = await readKeys<{
     record_id: number;
     release_id: string;
     line_no: number;
@@ -1035,7 +1105,7 @@ async function readInflections(
     target_word: string;
     gloss: string | null;
     gloss_pointer: string | null;
-  }>(db, INFLECTION_SQL, recordId, releaseId);
+  }>(db, INFLECTION_SQL, [recordId], [releaseId]);
 
   if (rows.length === 0) return [];
 
@@ -1060,17 +1130,17 @@ async function readInflections(
   // matched the same surface key, so they all resolve to the same candidate set.
   // The genders go beside it, and only when a plural needs them.
   const [candidates, grammarRows, correctionRows] = await Promise.all([
-    queryAll<{
+    readKeys<{
       record_id: number;
       release_id: string;
       line_no: number;
       line_sha256: string;
       word: string;
       pos: string;
-    }>(db, INFLECTION_CANDIDATE_SQL, recordId, releaseId),
+    }>(db, INFLECTION_CANDIDATE_SQL, [recordId], [releaseId]),
     pluralGlosses.size === 0
       ? Promise.resolve([])
-      : queryAll<{
+      : readKeys<{
           record_id: number;
           dimension: "gender" | "number";
           value: string;
@@ -1079,10 +1149,10 @@ async function readInflections(
           release_id: string;
           line_no: number;
           line_sha256: string;
-        }>(db, INFLECTION_GRAMMAR_SQL, recordId, releaseId),
+        }>(db, INFLECTION_GRAMMAR_SQL, [recordId], [releaseId]),
     pluralGlosses.size === 0 || !corrected
       ? Promise.resolve([])
-      : queryAll<CorrectionRow>(db, INFLECTION_CORRECTION_SQL, recordId, releaseId),
+      : readKeys<CorrectionRow>(db, INFLECTION_CORRECTION_SQL, [recordId], [releaseId]),
   ]);
 
   const targetCandidates = candidates.map((row) => ({
@@ -1150,15 +1220,15 @@ async function readInflections(
  * A review stays on the record it was written for, so its ref names that
  * record's line. Exported so a test can hold the query to its plan.
  */
-export const REVIEW_SQL: DictionaryRead = `SELECT v.json_pointer, v.status, v.note, v.evidence_url, v.reviewed_at, v.reviewed_by,
+export const REVIEW_SQL: KeyedRead = keyedRead(`SELECT l.set_key AS set_key, v.json_pointer, v.status, v.note, v.evidence_url, v.reviewed_at, v.reviewed_by,
             h.release_id, h.line_no, h.line_sha256
-       FROM claim_review v
+       FROM ${lineagesOf("?1")} l
+       JOIN claim_review v ON v.record_id = l.record_id
        JOIN source_record h ON h.record_id = v.record_id
-      WHERE v.record_id IN (${lineageOf("?1")})
-      ORDER BY v.json_pointer, v.reviewed_at`;
+      ORDER BY v.json_pointer, v.reviewed_at`);
 
 async function readReviews(db: LookupDatabase, recordId: number): Promise<Review[]> {
-  const rows = await queryAll<{
+  const rows = await readKeys<{
     json_pointer: string;
     status: "disputed" | "corroborated";
     note: string;
@@ -1168,7 +1238,7 @@ async function readReviews(db: LookupDatabase, recordId: number): Promise<Review
     release_id: string;
     line_no: number;
     line_sha256: string;
-  }>(db, REVIEW_SQL, recordId);
+  }>(db, REVIEW_SQL, [recordId]);
 
   return rows
     .map((row) => ({
@@ -1190,14 +1260,26 @@ async function readReviews(db: LookupDatabase, recordId: number): Promise<Review
  * The recovered layer's definitions for one record, with their labels and
  * examples. Exported so a test can hold the query to its plan.
  */
-export const RECOVERED_SQL: DictionaryRead = `SELECT d.recovered_id, d.record_id, d.route, d.term, d.page_line, d.text, d.held_as_example,
+export const RECOVERED_SQL: KeyedRead = keyedRead(`SELECT l.set_key AS set_key, d.recovered_id, d.record_id, d.route, d.term, d.page_line, d.text, d.held_as_example,
             d.lead_in_sense_index, d.lead_in_recovered_id, p.wiki, p.title, p.revision_id,
             h.release_id, h.line_no, h.line_sha256
-       FROM recovered_definition d
+       FROM ${lineagesOf("?1")} l
+       JOIN recovered_definition d ON d.record_id = l.record_id
        JOIN raw_page p ON p.page_id = d.page_id
        JOIN source_record h ON h.record_id = d.record_id
-      WHERE d.record_id IN (${lineageOf("?1")})
-      ORDER BY d.record_id, d.definition_index`;
+      ORDER BY d.record_id, d.definition_index`);
+
+/** The labels of recovered definitions, each definition's in its own order. */
+export const RECOVERED_LABEL_SQL: KeyedRead = keyedRead(`SELECT recovered_id AS set_key, recovered_id, label
+       FROM recovered_label
+      WHERE recovered_id IN (SELECT value FROM json_each(?1))
+      ORDER BY recovered_id, label_index`);
+
+/** The examples of recovered definitions, each definition's in its own order. */
+export const RECOVERED_EXAMPLE_SQL: KeyedRead = keyedRead(`SELECT recovered_id AS set_key, recovered_id, page_line, text
+       FROM recovered_example
+      WHERE recovered_id IN (SELECT value FROM json_each(?1))
+      ORDER BY recovered_id, example_index`);
 
 /**
  * The recovered definitions of a record and of every record it replaced: a
@@ -1206,7 +1288,7 @@ export const RECOVERED_SQL: DictionaryRead = `SELECT d.recovered_id, d.record_id
  * checked against its own line (`placeRecovered`).
  */
 async function readRecovered(db: LookupDatabase, recordId: number, record: Promise<RecordLine>): Promise<RecoveredOfRecord> {
-  const rows = await queryAll<{
+  const rows = await readKeys<{
     recovered_id: number;
     record_id: number;
     route: RecoveredRoute["route"];
@@ -1222,34 +1304,19 @@ async function readRecovered(db: LookupDatabase, recordId: number, record: Promi
     release_id: string;
     line_no: number;
     line_sha256: string;
-  }>(db, RECOVERED_SQL, recordId);
+  }>(db, RECOVERED_SQL, [recordId]);
   if (rows.length === 0) return { topLevel: [], underSense: new Map() };
 
   const ids = rows.map((row) => row.recovered_id);
-  const marks = ids.map(() => "?").join(",");
   // A lead-in sense of a replaced record is found again by its glosses, so
   // that record's line is read, and only when some row needs it.
   const replaced = [
     ...new Set(rows.filter((row) => row.record_id !== recordId && row.lead_in_sense_index !== null).map((row) => row.record_id)),
   ];
   const [labels, examples, replacedLines, served] = await Promise.all([
-    queryAll<{ recovered_id: number; label: string }>(
-      db,
-      `SELECT recovered_id, label FROM recovered_label WHERE recovered_id IN (${marks}) ORDER BY recovered_id, label_index`,
-      ...ids,
-    ),
-    queryAll<{ recovered_id: number; page_line: number; text: string }>(
-      db,
-      `SELECT recovered_id, page_line, text FROM recovered_example WHERE recovered_id IN (${marks}) ORDER BY recovered_id, example_index`,
-      ...ids,
-    ),
-    replaced.length === 0
-      ? []
-      : queryAll<{ record_id: number; raw_json: string }>(
-          db,
-          `SELECT record_id, raw_json FROM source_record_json WHERE record_id IN (${replaced.map(() => "?").join(",")})`,
-          ...replaced,
-        ),
+    readKeys<{ recovered_id: number; label: string }>(db, RECOVERED_LABEL_SQL, ids),
+    readKeys<{ recovered_id: number; page_line: number; text: string }>(db, RECOVERED_EXAMPLE_SQL, ids),
+    Promise.all(replaced.map(async (id) => ({ record_id: id, raw_json: (await readRecord(db, id)).rawJson }))),
     record,
   ]);
   const glossesOf = (rawJson: string): RecordGloss[] => {
