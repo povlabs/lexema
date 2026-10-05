@@ -90,6 +90,7 @@ import {
   NOT_FOUND_LINK,
   PERSON_SEARCHED,
   READING,
+  SEARCH_FIELD,
   SHELL_CENTRED,
   SHELL_TOP,
   SITE_FOOTER_LINK,
@@ -1642,6 +1643,8 @@ test("the home page is the name, the field and the Try chips, centred", async ()
   assert.match(home, /aria-label="Search an Italian word"/);
   assert.match(home, />ENTER<\/kbd>/);
   assert.match(home, /<form class="[^"]*" role="search" action="\/" method="get">/);
+  // Frame 00 draws the field before a query larger than the result frames draw it.
+  assert.match(home, new RegExp(`class="${esc(SEARCH_FIELD.centred)}"`));
   assert.match(home, />Try<\/span>/);
   for (const word of TRY_WORDS) assert.match(home, new RegExp(`href="/\\?q=${word}" lang="it">${word}</a>`));
   assert.doesNotMatch(home, /href="\/\?q=andavano"/);
@@ -1653,6 +1656,7 @@ test("a results page has the top bar and one bordered field with a clear control
     assert.match(html, new RegExp(`^<header class="${esc(TOP_BAR)}"><div class="[^"]*"><a class="[^"]*" href="/">Lexema</a></div></header><main class="${esc(SHELL_TOP)}">`));
     assert.match(html, /<input [^>]*type="search" aria-label="Search an Italian word"[^>]*name="q" value="casa"\/>/);
     assert.match(html, /<a class="[^"]*" href="\/" aria-label="Clear search">×<\/a>/);
+    assert.match(html, new RegExp(`class="${esc(SEARCH_FIELD.top)}"`));
     assert.doesNotMatch(html, />ENTER</);
     assert.equal(patternsOf(html, /<label[\s>]/), 0);
   });

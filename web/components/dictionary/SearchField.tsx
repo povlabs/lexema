@@ -44,6 +44,7 @@ import {
   SUGGEST_LIST,
   SUGGEST_NOTE,
   SUGGEST_POPUP,
+  type SearchPlacement,
 } from "@/components/shared/styles.ts";
 
 /**
@@ -101,6 +102,7 @@ function statusOf(shown: Shown | null): string {
  */
 export function SearchField({ raw, version }: { raw: string; version: string }) {
   const asked = raw.trim() !== "";
+  const at: SearchPlacement = asked ? "top" : "centred";
   const [value, setValue] = useState(raw);
   const [open, setOpen] = useState(false);
   const [shown, setShown] = useState<Shown | null>(null);
@@ -186,12 +188,12 @@ export function SearchField({ raw, version }: { raw: string; version: string }) 
       onOpenChange={setOpen}
       submitOnItemClick
     >
-      <form className={SEARCH_FORM} action="/" method="get" role="search">
-        <Autocomplete.InputGroup ref={field} className={SEARCH_FIELD}>
-          <SearchIcon className={SEARCH_ICON} />
+      <form className={SEARCH_FORM[at]} action="/" method="get" role="search">
+        <Autocomplete.InputGroup ref={field} className={SEARCH_FIELD[at]}>
+          <SearchIcon className={SEARCH_ICON[at]} />
           <Autocomplete.Input
             ref={input}
-            className={SEARCH_INPUT}
+            className={SEARCH_INPUT[at]}
             id="q"
             type="search"
             aria-label="Search an Italian word"
@@ -205,7 +207,7 @@ export function SearchField({ raw, version }: { raw: string; version: string }) 
             onFocus={() => setFocused(true)}
             onBlur={() => setFocused(false)}
           />
-          <div className={SEARCH_TRAILING}>
+          <div className={SEARCH_TRAILING[at]}>
             {/* Away from the field, the shortcut back to it; left of the × when there is text. */}
             {apple !== undefined && !focused && (
               <kbd className={SEARCH_SHORTCUT} aria-hidden="true">
