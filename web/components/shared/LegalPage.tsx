@@ -23,6 +23,7 @@ import {
   LEGAL_SHELL,
   LEGAL_TEXT,
   LEGAL_TITLE,
+  type LegalNumberDigits,
   type LegalSite,
 } from "@/components/shared/styles.ts";
 import { LegalContents } from "./LegalContents";
@@ -59,6 +60,11 @@ export function LegalItem({ mark, children }: { mark: string; children: ReactNod
 /** `2026-10-04` as `4 October 2026`, the date a reader would say. */
 const DAY = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" });
 
+/** How many digits the highest of `count` section numbers has. */
+export function numberDigits(count: number): LegalNumberDigits {
+  return count > 9 ? 2 : 1;
+}
+
 /**
  * A legal page, in its site's column: `site` sets the edge the text starts on,
  * so it lines up with that site's header on a phone as on a wide screen.
@@ -66,7 +72,7 @@ const DAY = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "long", ye
 export function LegalPage({ site, kicker, title, effective, lede, sections }: LegalText & { site: LegalSite }) {
   return (
     <main className={LEGAL_SHELL[site]}>
-      <div className={LEGAL_LAYOUT}>
+      <div className={LEGAL_LAYOUT[numberDigits(sections.length)]}>
         <LegalContents sections={sections.map(({ id, title }) => ({ id, title }))} />
         <article className={LEGAL_TEXT}>
           <p className={LEGAL_KICKER}>{kicker}</p>

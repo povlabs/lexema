@@ -43,7 +43,8 @@ import {
 } from "@/lib/developers/apiReference.ts";
 import { DeveloperDocs } from "@/components/developers/DeveloperDocs";
 import { DOCS_PAGES, endpointPath, pathOf } from "@/lib/developers/docsPages.ts";
-import { DEV_FOOTER_LEGAL, DOCS_CODE, LEGAL_CONTENTS } from "@/components/shared/styles.ts";
+import { DEV_FOOTER_LEGAL, DOCS_CODE, LEGAL_CONTENTS, LEGAL_LAYOUT } from "@/components/shared/styles.ts";
+import { numberDigits } from "@/components/shared/LegalPage";
 import { DeveloperLanding } from "@/components/developers/DeveloperLanding";
 import { DeveloperFooter, developerFooterLinks } from "@/components/developers/DeveloperPage";
 import { DeveloperPrivacy, DeveloperTerms, planTermsLine } from "@/components/developers/DeveloperLegal";
@@ -650,6 +651,14 @@ test("/terms section 2 states each Stripe plan's price and limits from PLAN_TERM
     assert.ok(plans?.blocks.includes(line), line);
     assert.equal(`(${mark}) ${planTermsLine(plan)};`, line);
   }
+});
+
+test("a legal page sizes its section numbers' slot for its highest number: two digits on /terms, one on /privacy (#585, #596)", () => {
+  assert.equal(legalSections(terms()).length, 11);
+  assert.ok(terms().includes(`<div class="${LEGAL_LAYOUT[2]}">`), "/terms: as wide as 11.");
+  assert.ok(legalSections(devPrivacy()).length <= 9);
+  assert.ok(devPrivacy().includes(`<div class="${LEGAL_LAYOUT[1]}">`), "/privacy: frame 36's one-digit edge");
+  assert.deepEqual([1, 9, 10, 11].map(numberDigits), [1, 1, 2, 2]);
 });
 
 test("the developer legal pages' contact and privacy addresses are mailto links to the lexema.fyi mailboxes (#162)", () => {
