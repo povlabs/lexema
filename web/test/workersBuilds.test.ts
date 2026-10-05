@@ -1,6 +1,7 @@
 // The two Workers Builds commands (ADR 0018, web/builds/): the Preview name
 // they derive from a branch, the built config the preview command rewrites,
-// the order it runs Wrangler in, the dictionary slice it writes for a branch
+// the order it runs Wrangler in, the app database it resets when its applied
+// migrations left the tree's (#589), the dictionary slice it writes for a branch
 // that changes dictionary data (#447), and what the sweep selects and
 // deletes. Every test drives a fake account, a fake slice planner and a fake
 // GitHub, so none needs the network or a credential.
@@ -20,6 +21,7 @@ import {
   type PreviewPrepareSteps,
   preparePreview,
 } from "@/builds/previewCommand.ts";
+import { APPLIED_MIGRATIONS_QUERY, compareHistory, inApplyOrder } from "@/builds/previewAppDatabase.ts";
 import { type BuiltConfig, DICTIONARY, migrationsConfig, refuseDictionary, SLICE_BINDING, withAppDatabase, withDictionarySlice } from "@/builds/previewConfig.ts";
 import { APP_DATABASE_PREFIX, PREVIEW_NAME_MAX, PreviewName, SLICE_DATABASE_PREFIX } from "@/builds/previewName.ts";
 import { readBuilt, readDeclared, SLICE_ROWS_WRITTEN_CAP, type SliceBuilt, type SliceDeclared, type SlicePlanner } from "@/builds/previewSlice.ts";
@@ -184,6 +186,17 @@ class FakeAccount {
   readonly fingerprints = new Map<string, string>();
   /** What running each SQL file writes: the fingerprint row it ends with. */
   readonly sqlFiles = new Map<string, string>();
+  /** The app migrations in the tree: each file's name and the SQL it runs. */
+  tree = new Map<string, string>([
+    ["0000_app_tables.sql", "CREATE TABLE app"],
+    ["0001_better_auth_tables.sql", "CREATE TABLE user"],
+  ]);
+  /** Each app database's `d1_migrations` names, oldest first; absent until a migrations apply makes the table. */
+  readonly applied = new Map<string, string[]>();
+  /** The migration SQL each app database ran, so running one twice fails as Wrangler's would. */
+  readonly ran = new Map<string, string[]>();
+  /** Rows written to each app database by its Preview, such as the test developer. */
+  readonly rows = new Map<string, string[]>();
   private next = 1;
 
   constructor(databases: D1Database[] = []) {
@@ -195,6 +208,13 @@ class FakeAccount {
     const line = args.join(" ");
     const ok = (stdout = ""): WranglerRun => ({ ok: true, stdout, stderr: "" });
     const fail = (stderr: string): WranglerRun => ({ ok: false, stdout: "", stderr });
+    // `d1 execute --json` answers a failed query on stdout, as Wrangler 4.135.0's `JsonFriendlyFatalError`
+    // printing the remote `APIError`: `{"error": {"text": ..., "notes": [{"text": <D1's words>}], ...}}`.
+    const queryFailed = (words: string): WranglerRun => ({
+      ok: false,
+      stdout: JSON.stringify({ error: { text: `A request to the Cloudflare API (/accounts/a/d1/database/${args[2]}/query) failed.`, notes: [{ text: words }], kind: "error", name: "APIError", code: 7500 } }, null, 2),
+      stderr: "",
+    });
     if (this.failing.some((pattern) => pattern.test(line))) return fail("✘ [ERROR] A request to the Cloudflare API failed. [code: 10000]");
     const name = args[args.indexOf("--name") + 1];
     switch (`${args[0]} ${args[1]}`) {
@@ -208,13 +228,33 @@ class FakeAccount {
         const at = this.databases.findIndex((db) => db.name === args[2]);
         if (at < 0) return fail("Couldn't find a D1 DB");
         this.databases.splice(at, 1);
+        for (const held of [this.applied, this.ran, this.rows]) held.delete(args[2]);
         return ok();
       }
-      case "d1 migrations":
+      case "d1 migrations": {
+        // Wrangler 4.135.0 runs every tree file whose name it has not applied, in the tree's order.
+        const database = args[3];
+        if (!this.databases.some((db) => db.name === database)) return fail("Couldn't find a D1 DB");
+        const applied = this.applied.get(database) ?? [];
+        const ran = this.ran.get(database) ?? [];
+        this.applied.set(database, applied);
+        this.ran.set(database, ran);
+        for (const name of inApplyOrder([...this.tree.keys()]).filter((file) => !applied.includes(file))) {
+          const sql = this.tree.get(name) ?? "";
+          if (ran.includes(sql)) return fail(`✘ [ERROR] Migration ${name} failed: duplicate column name: SQLITE_ERROR [code: 7500]`);
+          ran.push(sql);
+          applied.push(name);
+        }
         return ok();
+      }
       case "d1 execute": {
         const database = args[2];
         if (!this.databases.some((db) => db.name === database)) return fail("Couldn't find a D1 DB");
+        if (args.includes(`--command=${APPLIED_MIGRATIONS_QUERY}`)) {
+          const applied = this.applied.get(database);
+          if (applied === undefined) return queryFailed("no such table: d1_migrations: SQLITE_ERROR [code: 7500]");
+          return ok(JSON.stringify([{ results: applied.map((name, at) => ({ name, id: at + 1 })), success: true, meta: {} }]));
+        }
         if (args.includes("--file")) {
           const fingerprint = this.sqlFiles.get(args[args.indexOf("--file") + 1]);
           if (fingerprint === undefined) return fail("no such file");
@@ -223,7 +263,7 @@ class FakeAccount {
         }
         if (args.includes("--command=SELECT fingerprint FROM preview_slice")) {
           const fingerprint = this.fingerprints.get(database);
-          if (fingerprint === undefined) return fail("✘ [ERROR] no such table: preview_slice: SQLITE_ERROR [code: 7500]");
+          if (fingerprint === undefined) return queryFailed("no such table: preview_slice: SQLITE_ERROR [code: 7500]");
           return ok(JSON.stringify([{ results: [{ fingerprint }], success: true, meta: {} }]));
         }
         throw new Error(`the fake account runs no ${line}`);
@@ -303,6 +343,7 @@ function prepareSteps(account: FakeAccount, branch: string | undefined, newSecre
       return "/tmp/migrations/wrangler.json";
     },
     migrationsDir: "/repo/src/db/app/migrations",
+    migrations: [...account.tree.keys()],
     newSecret,
     slices,
     log: (line) => logged.push(line),
@@ -454,6 +495,138 @@ test("the prepare step stops before writing the name when the migrations fail, a
   assert.throws(() => prepare(migrationsFail, "huey/foo_bar"), /migrations apply failed/);
 
   assert.throws(() => prepare(new FakeAccount(), undefined), /WORKERS_CI_BRANCH/);
+});
+
+// --- The app database's migration history (#589) ----------------------------
+
+const appDbWrites = (account: FakeAccount) => account.lines.filter((line) => /^d1 (create|delete)/.test(line));
+
+test("a push whose app database applied the tree's migrations so far keeps it and its rows, and runs only the new ones", () => {
+  const account = new FakeAccount([{ name: DICTIONARY.name, uuid: DICTIONARY.id }]);
+  const first = previewCommand(account, "huey/foo_bar");
+  const database = first.name.appDatabase;
+  account.rows.set(database, ["test developer", "a reader report"]);
+  account.tree.set("0002_reader_reports.sql", "CREATE TABLE reader_report");
+  account.calls.length = 0;
+
+  const second = previewCommand(account, "huey/foo_bar");
+  assert.equal(second.appDatabaseId, first.appDatabaseId);
+  assert.deepEqual(appDbWrites(account), []);
+  assert.deepEqual(account.rows.get(database), ["test developer", "a reader report"]);
+  assert.deepEqual(account.applied.get(database), ["0000_app_tables.sql", "0001_better_auth_tables.sql", "0002_reader_reports.sql"]);
+  assert.deepEqual(account.ran.get(database), ["CREATE TABLE app", "CREATE TABLE user", "CREATE TABLE reader_report"]);
+  assert.deepEqual(second.logged.filter((line) => line.startsWith("app database:")), [
+    `app database: reusing ${database} (${first.appDatabaseId}); 1 new migration(s) to apply`,
+  ]);
+  // The history is read before APP_DB is bound, so the build binds the database it migrates.
+  assert.deepEqual(second.order.slice(0, 4), ["build", "wrangler d1 list", "wrangler d1 execute", `write ${BUILT_CONFIG}`]);
+});
+
+test("a push after main renumbered the branch's applied migration resets the app database and runs every migration once (#573)", () => {
+  const account = new FakeAccount([{ name: DICTIONARY.name, uuid: DICTIONARY.id }]);
+  account.tree.set("0002_account_suspension.sql", "ALTER TABLE user ADD suspended_at");
+  const first = previewCommand(account, "build/573-suspend");
+  const database = first.name.appDatabase;
+  account.rows.set(database, ["test developer"]);
+
+  // The merge of main: main's own 0002 arrives, and the branch's file is renamed to 0003 with the same SQL.
+  account.tree.delete("0002_account_suspension.sql");
+  account.tree.set("0002_reader_report_retention.sql", "CREATE TABLE reader_report_retention");
+  account.tree.set("0003_account_suspension.sql", "ALTER TABLE user ADD suspended_at");
+  account.calls.length = 0;
+
+  const second = previewCommand(account, "build/573-suspend");
+  assert.deepEqual(appDbWrites(account), [`d1 delete ${database} --skip-confirmation`, `d1 create ${database} --update-config=false`]);
+  assert.notEqual(second.appDatabaseId, first.appDatabaseId);
+  assert.equal(account.databases.find((db) => db.name === database)?.uuid, second.appDatabaseId);
+  assert.deepEqual(second.migrationConfigs, [migrationsConfig({ preview: second.name, id: second.appDatabaseId ?? "" }, "/repo/src/db/app/migrations")]);
+  // Every tree migration applied, each SQL run once, and the Preview's old rows gone with the old database.
+  assert.deepEqual(account.applied.get(database), inApplyOrder([...account.tree.keys()]));
+  assert.deepEqual(account.ran.get(database), ["CREATE TABLE app", "CREATE TABLE user", "CREATE TABLE reader_report_retention", "ALTER TABLE user ADD suspended_at"]);
+  assert.equal(account.rows.get(database), undefined);
+  assert.deepEqual(second.logged.filter((line) => line.startsWith("app database:")), [
+    `app database: reset ${database}: it applied 0002_account_suspension.sql, which the tree no longer has (renamed or removed),` +
+      ` so its history has left the tree's; deleted ${first.appDatabaseId} and created ${second.appDatabaseId}, and every migration runs on it`,
+  ]);
+  assert.equal(account.previews.has(second.name.value), true);
+});
+
+test("without the reset, that renumbered migration's SQL would run a second time and fail the build", () => {
+  // The fake runs Wrangler's rule: a name it has not applied runs, whatever SQL it already ran.
+  const account = new FakeAccount();
+  account.tree.set("0002_x.sql", "ALTER TABLE user ADD x");
+  const database = prepare(account, "huey/x").name.appDatabase;
+  account.tree.delete("0002_x.sql");
+  account.tree.set("0003_x.sql", "ALTER TABLE user ADD x");
+  assert.equal(account.wrangler(["d1", "migrations", "apply", database, "--remote"]).ok, false);
+});
+
+test("an app database that applied a migration out of the tree's order is reset; a history the tree runs in order is not", () => {
+  const tree = ["0000_a.sql", "0001_b.sql", "0002_c.sql"];
+  assert.deepEqual(compareHistory([], tree), { state: "prefix", pending: tree });
+  assert.deepEqual(compareHistory(["0000_a.sql", "0001_b.sql"], ["0002_c.sql", "0001_b.sql", "0000_a.sql"]), { state: "prefix", pending: ["0002_c.sql"] });
+  assert.deepEqual(compareHistory(tree, tree), { state: "prefix", pending: [] });
+  assert.deepEqual(compareHistory(["0000_a.sql", "0002_c.sql"], tree), { state: "diverged", applied: "0002_c.sql", tree: "0001_b.sql", gone: [] });
+  assert.deepEqual(compareHistory([...tree, "0003_d.sql"], tree), { state: "diverged", applied: "0003_d.sql", tree: undefined, gone: ["0003_d.sql"] });
+  // Wrangler's order: by leading number, so 10 runs after 9.
+  assert.deepEqual(inApplyOrder(["0010_j.sql", "0009_i.sql", "0001_b.sql"]), ["0001_b.sql", "0009_i.sql", "0010_j.sql"]);
+
+  const account = new FakeAccount();
+  account.tree = new Map([["0000_a.sql", "CREATE TABLE a"], ["0002_c.sql", "CREATE TABLE c"]]);
+  const first = prepare(account, "huey/order");
+  account.tree.set("0001_b.sql", "CREATE TABLE b");
+  const second = prepare(account, "huey/order");
+  assert.notEqual(second.appDatabaseId, first.appDatabaseId);
+  assert.ok(second.logged.includes(
+    `app database: reset ${first.name.appDatabase}: it applied 0002_c.sql where the tree runs 0001_b.sql, so its history has left the tree's;` +
+      ` deleted ${first.appDatabaseId} and created ${second.appDatabaseId}, and every migration runs on it`,
+  ), second.logged.join("\n"));
+  assert.deepEqual(account.applied.get(first.name.appDatabase), ["0000_a.sql", "0001_b.sql", "0002_c.sql"]);
+});
+
+test("an app database whose history cannot be read stops the build before anything is deleted or bound", () => {
+  const account = new FakeAccount();
+  const first = prepare(account, "huey/unread");
+  account.failing.push(/^d1 execute .*d1_migrations/);
+  account.calls.length = 0;
+  assert.throws(() => prepare(account, "huey/unread"), /could not read the applied migrations of lexema-preview-app-/);
+  assert.deepEqual(appDbWrites(account), []);
+  assert.equal(account.databases.find((db) => db.name === first.name.appDatabase)?.uuid, first.appDatabaseId);
+});
+
+test("a reused app database with no migrations table yet, left by a build that stopped before its migrate step, is migrated, not a red build", () => {
+  const preview = PreviewName.ofBranch("huey/stopped");
+  const uuid = "a0000000-0000-4000-8000-000000000001";
+  const account = new FakeAccount([{ name: preview.appDatabase, uuid }]);
+  // Wrangler answers the missing table on stdout, as `{"error": ...}`, and writes nothing to stderr.
+  const read = account.wrangler(["d1", "execute", preview.appDatabase, "--remote", "--json", `--command=${APPLIED_MIGRATIONS_QUERY}`]);
+  assert.equal(read.ok, false);
+  assert.equal(read.stderr, "");
+  assert.match(JSON.parse(read.stdout).error.notes[0].text, /^no such table: d1_migrations: SQLITE_ERROR/);
+  account.calls.length = 0;
+
+  const prepared = prepare(account, "huey/stopped");
+  assert.equal(prepared.appDatabaseId, uuid);
+  assert.deepEqual(appDbWrites(account), []);
+  assert.deepEqual(account.applied.get(preview.appDatabase), ["0000_app_tables.sql", "0001_better_auth_tables.sql"]);
+  assert.deepEqual(prepared.logged.filter((line) => line.startsWith("app database:")), [
+    `app database: reusing ${preview.appDatabase} (${uuid}); 2 new migration(s) to apply`,
+  ]);
+});
+
+test("the history step refuses an app database that is the shared dictionary: it reads, deletes, creates and migrates nothing", () => {
+  const preview = PreviewName.ofBranch("huey/foo_bar");
+  // A database under the branch's app name whose id is the dictionary's, with a diverged history.
+  const account = new FakeAccount([{ name: DICTIONARY.name, uuid: DICTIONARY.id }, { name: preview.appDatabase, uuid: DICTIONARY.id }]);
+  account.applied.set(preview.appDatabase, ["0000_gone.sql"]);
+  account.applied.set(DICTIONARY.name, ["0000_gone.sql"]);
+  const before = structuredClone(account.databases);
+  const { steps, files } = prepareSteps(account, "huey/foo_bar");
+  assert.throws(() => preparePreview(steps), /refusing to read the applied migrations of the shared dictionary lexema-dictionary/);
+  assert.deepEqual(account.lines.filter((line) => !/^d1 list/.test(line)), []);
+  assert.deepEqual(account.databases, before);
+  assert.deepEqual(account.applied.get(DICTIONARY.name), ["0000_gone.sql"]);
+  assert.deepEqual([...files.keys()], []);
 });
 
 // --- The dictionary slice ---------------------------------------------------
