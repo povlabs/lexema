@@ -30,6 +30,7 @@ development, with the placeholder D1 that `pnpm run seed:dev` fills.
 | Rate limits | 15 searches and 120 suggestions a minute per visitor ([#128](https://github.com/povlabs/lexema/issues/128)); 10 sign-in starts ([#165](https://github.com/povlabs/lexema/issues/165)), 5 key creations ([#168](https://github.com/povlabs/lexema/issues/168)) and 5 billing requests ([#296](https://github.com/povlabs/lexema/issues/296)) a minute on the developer site |
 | API rate | `CALLS_60` and `CALLS_300`, Rate Limiting bindings of 60 and 300 calls a minute per developer account, keyed by account id ([#261](https://github.com/povlabs/lexema/issues/261)) |
 | Account meter | the Durable Object class `AccountMeterObject`, bound as `ACCOUNT_METER`, SQLite-backed through the `v1-account-meter` migration: one per developer account, counting its calls and adding them to `api_key_usage` at most once a minute ([#261](https://github.com/povlabs/lexema/issues/261)) |
+| Sign-up | `DEVELOPER_SIGN_UP` is `closed` until Lexema can take payments ([#610](https://github.com/povlabs/lexema/issues/610)): the developer site offers no sign-in and no plan button, and the sign-in and Checkout routes answer 303 to the sign-in page (`web/worker/developers/signUp.ts`). Setting it to `open` restores the flow below |
 | Sign-in | Google and GitHub, each on only once its client id and secret are set ([below](#turn-on-sign-in)) |
 | Billing | Checkout, the billing portal and Stripe's webhook at `https://developers.lexema.fyi/auth/stripe/webhook`, on only once the Stripe secrets and live price ids are set ([below](#turn-on-billing)) |
 | Account email | `EMAIL`, a `send_email` binding with no restriction, sending from `noreply@lexema.fyi` once `lexema.fyi` is onboarded to Email Sending ([below](#turn-on-account-email)) |
@@ -166,6 +167,7 @@ alone, never from the top level or `env.production`:
 | `ACCOUNT_METER` | the account meter's binding; each Preview gets its own Durable Object namespace and storage |
 | `EMAIL` | a `send_email` binding with `destination_address` set to Huey's verified address, so it can send nowhere else |
 | `EMAIL_ONLY_TO` | Huey's verified address, the same as the binding's `destination_address`, so every [account email](#turn-on-account-email) goes to Huey whoever the account is |
+| `DEVELOPER_SIGN_UP` | `closed`, as production: no sign-in or plan button, and the sign-in and Checkout routes answer 303 to the sign-in page; the test sign-in still shows there |
 | Sign-in | off: both OAuth client ids are empty |
 | Billing | off: the Stripe test-mode price ids are set, but the [Preview command](#the-preview-command) sends no Stripe secret, so the billing routes and the webhook answer 503 |
 
@@ -926,7 +928,9 @@ The developer site signs in with Google and GitHub, on better-auth
 (`web/worker/developers/signIn.ts`, [ADR 0017](../.decisions/0017-better-auth-and-drizzle-own-accounts.md)).
 A provider stays unavailable, and its sign-in route answers 503, until its
 client id and its secret are set, and so is `BETTER_AUTH_SECRET`, which signs
-the session cookie. None of them is in the repository.
+the session cookie. None of them is in the repository. Sign-in also needs
+`DEVELOPER_SIGN_UP` set to `open` in `env.production` of `web/wrangler.jsonc`;
+while it is `closed`, no provider is offered and the routes refuse.
 
 1. Create a Google OAuth client of type *Web application* in the Google Cloud
    console, with the authorized redirect URI

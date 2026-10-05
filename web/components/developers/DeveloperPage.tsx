@@ -11,11 +11,16 @@
 // in, the bar keeps only the name, and the menu names the dashboard and its
 // settings first and ends with the email and Sign out (board `j6UaW`).
 //
+// While sign-up is closed (#610, worker/developers/signUp.ts), a signed-out bar
+// offers no Sign in, and its menu no Sign in or Get an API key: Docs and
+// Pricing stay.
+//
 // Paths here are the developer site's own (`/docs`): worker/shared/hosts.ts serves
 // them from the route group, so no link names the group's segment.
 
 import type { ReactNode } from "react";
 import { SIGN_IN_PAGE } from "@/worker/developers/dashboard.ts";
+import type { SignUp } from "@/worker/developers/signUp.ts";
 import type { SiteOrigins } from "@/worker/shared/hosts.ts";
 import { AccountMenu } from "./AccountMenu";
 import { DASHBOARD, SETTINGS } from "@/lib/developers/dashboardActions.ts";
@@ -24,6 +29,7 @@ import type { SignedIn } from "@/lib/developers/signedIn.ts";
 import {
   DEV_ACCOUNT,
   DEV_BAR,
+  DEV_BAR_END,
   DEV_BAR_INNER,
   DEV_BAR_INNER_WIDE,
   DEV_FOOTER,
@@ -156,8 +162,49 @@ export function SignedInMenuActions({ signedIn }: { signedIn: SignedIn }) {
   );
 }
 
-function DeveloperHeader({ current, wide, signedIn }: { current?: DeveloperSection; wide: boolean; signedIn?: SignedIn }) {
-  const nav = signedIn === undefined ? NAV : SIGNED_IN_NAV;
+/**
+ * Who a page is for: signed in, or signed out on a site whose sign-up is open
+ * or closed. A page that may be read signed out must say which, so no page
+ * offers a sign-in the site has closed.
+ */
+export type DeveloperVisitor = { signedIn?: SignedIn; signUp: SignUp } | { signedIn: SignedIn; signUp?: undefined };
+
+/** A signed-out bar's end: Sign in, and the ☰ menu with its Sign in foot, while sign-up is open; the menu alone while it is closed. */
+function SignedOutEnd({ signUp, menu }: { signUp: SignUp; menu: readonly DeveloperMenuLink[] }) {
+  switch (signUp) {
+    case "open":
+      return (
+        <>
+          <a className={DEV_SIGN_IN} href={SIGN_IN_PATH}>
+            Sign in
+          </a>
+          <DeveloperMenu name={<DeveloperName />} links={menu}>
+            <SignedOutMenuActions />
+          </DeveloperMenu>
+        </>
+      );
+    case "closed":
+      return (
+        <div className={DEV_BAR_END}>
+          <DeveloperMenu name={<DeveloperName />} links={menu}>
+            {null}
+          </DeveloperMenu>
+        </div>
+      );
+  }
+}
+
+/** Who the bar is drawn for: an account, or a signed-out visitor and whether sign-up is open. */
+type BarVisitor = { kind: "signed-in"; signedIn: SignedIn } | { kind: "signed-out"; signUp: SignUp };
+
+function barVisitorOf(visitor: DeveloperVisitor): BarVisitor {
+  if (visitor.signUp === undefined) return { kind: "signed-in", signedIn: visitor.signedIn };
+  return visitor.signedIn === undefined ? { kind: "signed-out", signUp: visitor.signUp } : { kind: "signed-in", signedIn: visitor.signedIn };
+}
+
+function DeveloperHeader({ current, wide, visitor }: { current?: DeveloperSection; wide: boolean; visitor: DeveloperVisitor }) {
+  const bar = barVisitorOf(visitor);
+  const nav = bar.kind === "signed-out" ? NAV : SIGNED_IN_NAV;
   const marked = barSection(current);
   return (
     <header className={DEV_BAR}>
@@ -174,23 +221,16 @@ function DeveloperHeader({ current, wide, signedIn }: { current?: DeveloperSecti
             ))}
           </ul>
         </nav>
-        {signedIn === undefined ? (
-          <>
-            <a className={DEV_SIGN_IN} href={SIGN_IN_PATH}>
-              Sign in
-            </a>
-            <DeveloperMenu name={<DeveloperName />} links={developerMenuLinks(signedIn, current)}>
-              <SignedOutMenuActions />
-            </DeveloperMenu>
-          </>
+        {bar.kind === "signed-out" ? (
+          <SignedOutEnd signUp={bar.signUp} menu={developerMenuLinks(undefined, current)} />
         ) : (
           <>
             <div className={DEV_ACCOUNT}>
               <form id={SIGN_OUT_FORM} method="post" action={SIGN_OUT_PATH} hidden />
-              <AccountMenu signedIn={signedIn} signOutForm={SIGN_OUT_FORM} />
+              <AccountMenu signedIn={bar.signedIn} signOutForm={SIGN_OUT_FORM} />
             </div>
-            <DeveloperMenu name={<DeveloperName />} links={developerMenuLinks(signedIn, current)}>
-              <SignedInMenuActions signedIn={signedIn} />
+            <DeveloperMenu name={<DeveloperName />} links={developerMenuLinks(bar.signedIn, current)}>
+              <SignedInMenuActions signedIn={bar.signedIn} />
             </DeveloperMenu>
           </>
         )}
@@ -231,25 +271,23 @@ export function DeveloperPage({
   current,
   legal,
   wide = false,
-  signedIn,
   origins,
   children,
-}: {
+  ...visitor
+}: DeveloperVisitor & {
   /** The page the bar marks as the one being read. */
   current?: DeveloperSection;
   /** The legal page the footer marks as the one being read. */
   legal?: LegalSection;
   /** Edge to edge, as the docs are drawn. */
   wide?: boolean;
-  /** Signed in: the bar names the dashboard and carries the account menu. */
-  signedIn?: SignedIn;
   /** The sites' addresses as this request's host names them: the footer links the dictionary. */
   origins: SiteOrigins;
   children: ReactNode;
 }) {
   return (
     <>
-      <DeveloperHeader current={current} wide={wide} signedIn={signedIn} />
+      <DeveloperHeader current={current} wide={wide} visitor={visitor} />
       {children}
       <DeveloperFooter wide={wide} legal={legal} origins={origins} />
     </>

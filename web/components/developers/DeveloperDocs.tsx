@@ -9,6 +9,7 @@
 
 import { Fragment, type ReactNode } from "react";
 import { API_PREFIX, CALL_BASIS, type Endpoint } from "@lexema/api/calls.ts";
+import type { SignUp } from "@/worker/developers/signUp.ts";
 import type { SiteOrigins } from "@/worker/shared/hosts.ts";
 import {
   apiBaseOf,
@@ -292,22 +293,26 @@ function GrammarValues() {
 }
 
 /** Each guide page's topic. */
-const GUIDE_TOPICS: Readonly<Record<Guide, (origins: SiteOrigins) => ReactNode>> = {
+const GUIDE_TOPICS: Readonly<Record<Guide, (origins: SiteOrigins, signUp: SignUp) => ReactNode>> = {
   introduction: (origins) => (
     <Topic page={{ kind: "guide", guide: "introduction" }}>
       <Paragraph>{`A JSON API over Lexema's Italian dictionary. Every endpoint is under \`${apiBaseOf(origins)}\`, takes an API key, and answers JSON.`}</Paragraph>
       <Paragraph>{"Each parameter is sent at most once. `release_id` names the release every answer was read from. Grammar values are Italian labels; the English codes are read as the same."}</Paragraph>
     </Topic>
   ),
-  authentication: () => (
+  authentication: (_origins, signUp) => (
     <Topic page={{ kind: "guide", guide: "authentication" }}>
-      <p className={DOCS_PARAGRAPH}>
-        <a className={LINK} href={SIGN_IN_PATH}>
-          Sign in
-        </a>{" "}
-        with Google or GitHub to create a key on your dashboard. A key is shown once, when it is made; Lexema keeps only
-        its SHA-256, so a lost key is revoked and replaced.
-      </p>
+      {signUp === "open" ? (
+        <p className={DOCS_PARAGRAPH}>
+          <a className={LINK} href={SIGN_IN_PATH}>
+            Sign in
+          </a>{" "}
+          with Google or GitHub to create a key on your dashboard. A key is shown once, when it is made; Lexema keeps only
+          its SHA-256, so a lost key is revoked and replaced.
+        </p>
+      ) : (
+        <Paragraph>{"A key is created on your account's dashboard. It is shown once, when it is made; Lexema keeps only its SHA-256, so a lost key is revoked and replaced."}</Paragraph>
+      )}
       <Paragraph>{"Send the key in the `X-API-Key` header of every request. A request without a valid key is a `401`, and one whose account has no active plan is a `402`."}</Paragraph>
     </Topic>
   ),
@@ -401,10 +406,10 @@ const groupsFor = (current: DocsPage): DocsGroup[] =>
   }));
 
 /** One page of the docs. */
-export function DeveloperDocs({ page, signedIn, origins }: { page: DocsPage; signedIn?: SignedIn; origins: SiteOrigins }) {
+export function DeveloperDocs({ page, signedIn, signUp, origins }: { page: DocsPage; signedIn?: SignedIn; signUp: SignUp; origins: SiteOrigins }) {
   const groups = groupsFor(page);
   return (
-    <DeveloperPage current="docs" wide signedIn={signedIn} origins={origins}>
+    <DeveloperPage current="docs" wide signedIn={signedIn} signUp={signUp} origins={origins}>
       <div className={DOCS_LAYOUT}>
         <aside className={DOCS_SIDEBAR}>
           <div className={DOCS_SIDEBAR_INNER}>
@@ -416,7 +421,7 @@ export function DeveloperDocs({ page, signedIn, origins }: { page: DocsPage; sig
           <DocsNav groups={groups} label="Docs contents" />
         </DocsContents>
         <main className={DOCS_MAIN}>
-          {page.kind === "guide" ? GUIDE_TOPICS[page.guide](origins) : <EndpointTopic endpoint={page.endpoint} origins={origins} />}
+          {page.kind === "guide" ? GUIDE_TOPICS[page.guide](origins, signUp) : <EndpointTopic endpoint={page.endpoint} origins={origins} />}
         </main>
       </div>
     </DeveloperPage>

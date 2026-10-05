@@ -401,11 +401,11 @@ test("Delete account on the settings page lands on the landing page, signed out,
   // The landing page reads the ended session as no one: it renders signed out, and still hosts the toast.
   const visitor = await adas.visitor();
   assert.equal(visitor, undefined);
-  const html = renderToStaticMarkup(createElement(DeveloperLanding, { signedIn: visitor, origins: ORIGIN }));
+  const html = renderToStaticMarkup(createElement(DeveloperLanding, { signedIn: visitor, signUp: "open", origins: ORIGIN }));
   assert.match(html, /<h1[^>]*>The Lexema API<\/h1>/);
   assert.match(html, /Sign in</);
   assert.doesNotMatch(html, /aria-label="Account"/);
-  assert.ok(holds(DeveloperLanding({ signedIn: visitor, origins: ORIGIN }), ArrivalToast), "the landing page hosts the arrival toast");
+  assert.ok(holds(DeveloperLanding({ signedIn: visitor, signUp: "open", origins: ORIGIN }), ArrivalToast), "the landing page hosts the arrival toast");
 
   // The landing page takes the notice as it opens: one toast, in board 28f's success style, and none on a reload.
   assert.deepEqual(takeNotice(tab), { tone: "success", message: "Your account was deleted." });
