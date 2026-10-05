@@ -208,6 +208,13 @@ class FakeAccount {
     const line = args.join(" ");
     const ok = (stdout = ""): WranglerRun => ({ ok: true, stdout, stderr: "" });
     const fail = (stderr: string): WranglerRun => ({ ok: false, stdout: "", stderr });
+    // `d1 execute --json` answers a failed query on stdout, as Wrangler 4.135.0's `JsonFriendlyFatalError`
+    // printing the remote `APIError`: `{"error": {"text": ..., "notes": [{"text": <D1's words>}], ...}}`.
+    const queryFailed = (words: string): WranglerRun => ({
+      ok: false,
+      stdout: JSON.stringify({ error: { text: `A request to the Cloudflare API (/accounts/a/d1/database/${args[2]}/query) failed.`, notes: [{ text: words }], kind: "error", name: "APIError", code: 7500 } }, null, 2),
+      stderr: "",
+    });
     if (this.failing.some((pattern) => pattern.test(line))) return fail("✘ [ERROR] A request to the Cloudflare API failed. [code: 10000]");
     const name = args[args.indexOf("--name") + 1];
     switch (`${args[0]} ${args[1]}`) {
@@ -245,7 +252,7 @@ class FakeAccount {
         if (!this.databases.some((db) => db.name === database)) return fail("Couldn't find a D1 DB");
         if (args.includes(`--command=${APPLIED_MIGRATIONS_QUERY}`)) {
           const applied = this.applied.get(database);
-          if (applied === undefined) return fail("✘ [ERROR] no such table: d1_migrations: SQLITE_ERROR [code: 7500]");
+          if (applied === undefined) return queryFailed("no such table: d1_migrations: SQLITE_ERROR [code: 7500]");
           return ok(JSON.stringify([{ results: applied.map((name, at) => ({ name, id: at + 1 })), success: true, meta: {} }]));
         }
         if (args.includes("--file")) {
@@ -256,7 +263,7 @@ class FakeAccount {
         }
         if (args.includes("--command=SELECT fingerprint FROM preview_slice")) {
           const fingerprint = this.fingerprints.get(database);
-          if (fingerprint === undefined) return fail("✘ [ERROR] no such table: preview_slice: SQLITE_ERROR [code: 7500]");
+          if (fingerprint === undefined) return queryFailed("no such table: preview_slice: SQLITE_ERROR [code: 7500]");
           return ok(JSON.stringify([{ results: [{ fingerprint }], success: true, meta: {} }]));
         }
         throw new Error(`the fake account runs no ${line}`);
@@ -585,6 +592,26 @@ test("an app database whose history cannot be read stops the build before anythi
   assert.throws(() => prepare(account, "huey/unread"), /could not read the applied migrations of lexema-preview-app-/);
   assert.deepEqual(appDbWrites(account), []);
   assert.equal(account.databases.find((db) => db.name === first.name.appDatabase)?.uuid, first.appDatabaseId);
+});
+
+test("a reused app database with no migrations table yet, left by a build that stopped before its migrate step, is migrated, not a red build", () => {
+  const preview = PreviewName.ofBranch("huey/stopped");
+  const uuid = "a0000000-0000-4000-8000-000000000001";
+  const account = new FakeAccount([{ name: preview.appDatabase, uuid }]);
+  // Wrangler answers the missing table on stdout, as `{"error": ...}`, and writes nothing to stderr.
+  const read = account.wrangler(["d1", "execute", preview.appDatabase, "--remote", "--json", `--command=${APPLIED_MIGRATIONS_QUERY}`]);
+  assert.equal(read.ok, false);
+  assert.equal(read.stderr, "");
+  assert.match(JSON.parse(read.stdout).error.notes[0].text, /^no such table: d1_migrations: SQLITE_ERROR/);
+  account.calls.length = 0;
+
+  const prepared = prepare(account, "huey/stopped");
+  assert.equal(prepared.appDatabaseId, uuid);
+  assert.deepEqual(appDbWrites(account), []);
+  assert.deepEqual(account.applied.get(preview.appDatabase), ["0000_app_tables.sql", "0001_better_auth_tables.sql"]);
+  assert.deepEqual(prepared.logged.filter((line) => line.startsWith("app database:")), [
+    `app database: reusing ${preview.appDatabase} (${uuid}); 2 new migration(s) to apply`,
+  ]);
 });
 
 test("the history step refuses an app database that is the shared dictionary: it reads, deletes, creates and migrates nothing", () => {

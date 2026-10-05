@@ -81,6 +81,24 @@ function namesIn(run: WranglerRun, database: string): string[] {
 }
 
 /**
+ * Whether a failed `wrangler d1 execute --json` answered that `table` does not
+ * exist. Wrangler 4.135.0 catches the query's error and, under `--json`, throws
+ * it as a `JsonFriendlyFatalError` whose message is `{"error": ...}`, which its
+ * top-level handler prints with `logger.log`: so the answer is that JSON on
+ * stdout, not text on stderr. A remote query's error is an `APIError` whose
+ * notes carry D1's own words, `no such table: <table>: SQLITE_ERROR`.
+ */
+function answeredNoSuchTable(run: WranglerRun, table: string): boolean {
+  let answer: unknown;
+  try {
+    answer = JSON.parse(run.stdout);
+  } catch {
+    return false;
+  }
+  return isRecord(answer) && "error" in answer && JSON.stringify(answer.error).includes(`no such table: ${table}`);
+}
+
+/**
  * The migrations `database` applied, oldest first. A database with no
  * `d1_migrations` table has applied none; any other failed read stops the
  * build, since what was applied is then unknown. Never the dictionary.
@@ -90,7 +108,7 @@ export function appliedMigrations(wrangler: Wrangler, database: AppDatabase): st
   refuseDictionary({ name, id: database.id }, "read the applied migrations of");
   const read = wrangler(["d1", "execute", name, "--remote", "--json", `--command=${APPLIED_MIGRATIONS_QUERY}`]);
   if (read.ok) return namesIn(read, name);
-  if (read.stderr.includes(`no such table: ${MIGRATIONS_TABLE}`)) return [];
+  if (answeredNoSuchTable(read, MIGRATIONS_TABLE)) return [];
   throw new Error(`could not read the applied migrations of ${name}`);
 }
 
