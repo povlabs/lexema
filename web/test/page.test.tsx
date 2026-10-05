@@ -2640,3 +2640,21 @@ test("a curated definition correction shows in place of the page's wrong words, 
     ["essere agitato da scosse continue", ["figurato"]],
   ]);
 });
+
+test("dictionary text that holds markup renders as escaped text, never as a script (#620)", async () => {
+  const hostile = "<script>alert(1)</script>";
+  // A gloss and a plural form carrying a script tag, as an edit upstream could.
+  const line = JSON.stringify({
+    word: "veleno", pos: "noun", pos_title: "Sostantivo", lang_code: "it",
+    tags: ["masculine", "singular"],
+    forms: [{ form: `veleni${hostile}`, tags: ["masculine", "plural"] }],
+    senses: [{ glosses: [`sostanza tossica ${hostile}`] }],
+  });
+  await withLines([line], async ({ db }) => {
+    const html = await render(db, "veleno");
+    const escaped = "&lt;script&gt;alert(1)&lt;/script&gt;";
+    assert.ok(html.includes(`sostanza tossica ${escaped}`), "the gloss, escaped");
+    assert.ok(html.includes(`veleni${escaped}`), "the form, escaped");
+    assert.doesNotMatch(html, /<script/i);
+  });
+});
