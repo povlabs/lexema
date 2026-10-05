@@ -3,6 +3,7 @@
 
 import type { ReportAnswer } from "@/lib/dictionary/report.ts";
 import type { SuggestAnswer } from "@/lib/dictionary/suggestAnswer.ts";
+import { routePathOf } from "../shared/hosts.ts";
 import type { Counted, Counter, DictionaryLimit } from "../shared/rateLimit.ts";
 
 /** The body each of the dictionary's JSON-answered limits is blocked with. */
@@ -24,15 +25,6 @@ const REPORT_OPEN: DictionaryCounted = { limit: "report-open", blocked: { by: "j
 const SEARCH: DictionaryCounted = { limit: "search", blocked: { by: "page" } };
 
 /**
- * The path a route handler answers a request on. vinext serves every route
- * under its own path and again with one `.rsc` appended (`stripRscSuffix`,
- * vinext's server/app-rsc-cache-busting.js), so `/report/open.rsc` reaches
- * the `/report/open` handler; a limit that matched only the bare path let it
- * through uncounted (#621).
- */
-const routePathOf = (pathname: string): string => (pathname.endsWith(".rsc") ? pathname.slice(0, -".rsc".length) : pathname);
-
-/**
  * Which limit a dictionary request counts against, or none.
  *
  * `/suggest` is a suggestion. Anything else carrying a non-empty `q` is a
@@ -43,7 +35,8 @@ const routePathOf = (pathname: string): string => (pathname.endsWith(".rsc") ? p
  * spelling of the page's path that vinext normalizes back to `/` gets past the
  * limit. The home page without a query and static assets are never counted;
  * assets do not even reach the Worker. The route handlers are matched on
- * `routePathOf`, so their `.rsc` spellings count as they do.
+ * `routePathOf`, the path vinext routes on, so their `.rsc` and repeated-slash
+ * spellings count as they do (#621).
  */
 export const dictionaryLimitOf: Counter<DictionaryLimit, DictionaryBodies> = (url) => {
   const path = routePathOf(url.pathname);

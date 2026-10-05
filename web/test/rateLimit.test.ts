@@ -163,6 +163,31 @@ test("a route handler's .rsc spelling counts against its own limit, as the bare 
   assert.equal(of("/reportrsc"), undefined);
 });
 
+test("a route handler's repeated-slash and dot spellings count against its own limit, as vinext routes them (#621)", () => {
+  const of = (path: string) => dictionaryLimitOf(new URL(`https://lexema.fyi${path}`), "POST")?.limit;
+  assert.equal(of("/report//open"), "report-open");
+  assert.equal(of("/report///open"), "report-open");
+  assert.equal(of("/report//open.rsc"), "report-open");
+  assert.equal(of("/report/./open"), "report-open");
+  assert.equal(of("/report/x/%2E%2E/open"), "report-open");
+  assert.equal(of("/report/open/"), "report-open");
+  assert.equal(of("/report//"), "report");
+  assert.equal(of("/suggest//"), "suggest");
+});
+
+test("with the opening limit spent, POST /report//open is a 429 the app never sees", async () => {
+  const { env, seen, fetch } = harness();
+  const logged = await warnings(async () => {
+    for (let i = 0; i < 10; i++) assert.equal((await fetch("/report/open", "203.0.113.7", {}, "POST")).status, 200);
+    const blocked = await fetch("/report//open", "203.0.113.7", {}, "POST");
+    assert.equal(blocked.status, 429);
+    assert.deepEqual(await blocked.json(), { outcome: "limited" });
+  });
+  assert.equal(seen.length, 10);
+  assert.equal(env.REPORT_OPEN_LIMIT.counts.get("v4:203.0.113.7"), 11);
+  assert.deepEqual(logged, [["rate limited", { limit: "report-open" }]]);
+});
+
 test("with the opening limit spent, POST /report/open.rsc is a 429 the app never sees", async () => {
   const { env, seen, fetch } = harness();
   const logged = await warnings(async () => {

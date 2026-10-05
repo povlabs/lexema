@@ -414,10 +414,11 @@ names a record, and empty details on any other waiting report.
 
 Spam is kept out in four layers, as ruled on #51: the `REPORT_LIMIT` Worker
 binding stops a burst (2 a minute) before D1 is touched, and opening the box
-counts against `REPORT_OPEN_LIMIT`. Both bindings count a route's `.rsc`
-spelling too (`/report.rsc`, `/report/open.rsc`, and `/suggest.rsc` for
-suggestions), because vinext serves a route handler under that path as well
-(`web/worker/dictionary/limits.ts`, #621). And the ruled 5 reports
+counts against `REPORT_OPEN_LIMIT`. Both bindings count every spelling vinext
+routes to the same handler: a `.rsc` suffix (`/report/open.rsc`), and repeated
+slashes or dot segments (`/report//open`), which vinext collapses before it
+matches a route (`routePathOf` in `web/worker/shared/hosts.ts`, #621).
+`/suggest` is counted the same way. And the ruled 5 reports
 an hour is counted over the stored rows, because the binding has no hourly
 period; a hidden honeypot field and a 3-second minimum between opening the box
 and sending it drop a bot's report while answering it as sent. The 3 seconds are

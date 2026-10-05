@@ -197,6 +197,18 @@ function segmentsOf(pathname: string): string[] {
   return segments;
 }
 
+/**
+ * The path a route handler answers a request on, as vinext matches it:
+ * `normalizeRscRequest` reads the segments as `segmentsOf` does, then strips
+ * one `.rsc` (`stripRscSuffix`, server/app-rsc-cache-busting.js). So
+ * `/report//open` and `/report/open.rsc` both reach the `/report/open`
+ * handler, and a limit matched on this path counts them as it does (#621).
+ */
+export function routePathOf(pathname: string): string {
+  const path = `/${segmentsOf(pathname).join("/")}`;
+  return path.endsWith(".rsc") ? path.slice(0, -".rsc".length) : path;
+}
+
 /** The App Router path a developer-site path is served from. */
 function developersPath(segments: string[]): string {
   if (segments.length === 0) return `/${DEVELOPERS_SEGMENT}`;
