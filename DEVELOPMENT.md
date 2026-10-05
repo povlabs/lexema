@@ -327,6 +327,14 @@ dictionary in `SEED_STATE`, as `pnpm run plan` does, so a local
 `pnpm run seed:dev` drops every report and its answer with it. A remote seed
 leaves reports alone.
 
+Production's reports are not read here. Each new one gets a public GitHub issue
+with the `reader-report` label instead, opened every hour by
+`pnpm run report:issues` in
+[`reader-reports.yml`](./.github/workflows/reader-reports.yml): the word, the
+reading, the option and whether a note is there, never the note
+([#631](https://github.com/povlabs/lexema/issues/631),
+[docs/DEPLOY.md](./docs/DEPLOY.md#reader-report-issues)).
+
 ### Look at a pull request's Preview
 
 Each pull request's branch gets a Preview with all three sites, and one comment
@@ -519,7 +527,7 @@ src/
 ├── italian/        # the Italian adapter: normalize, tags, articles, examples
 ├── log/            # the Worker's log: every line names its request id
 ├── lookup/         # exact surface lookup over the master: a release and the changes applied to it
-├── readerReport/   # readers' reports as a person reviews them; `pnpm run report`
+├── readerReport/   # readers' reports as a person reviews them; `pnpm run report`, and `report:issues` for production's
 ├── release/        # the monthly release CI runs: a new kaikki release stored, its facts added, a pull request opened; `pnpm run release:monthly`
 ├── source/         # gzip JSONL streaming and provenance refs
 └── update/         # a later release against the master; `pnpm run update:auto`, with optional `update:diff`, `update:select`, `update:apply`

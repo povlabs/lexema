@@ -947,9 +947,10 @@ test("the workflow reads the public lexema-data with no token, and every job giv
   assert.doesNotMatch(jobs.get("plan") ?? "", /contents: write/);
 
   // No other workflow is given a Cloudflare credential but the pull request
-  // plan check, which gets the D1 read-only token alone (ADR 0018, #494).
+  // plan check (ADR 0018, #494) and the reader report issues (#631), which get
+  // the D1 read-only token alone (test/reportIssue.test.ts holds the latter to it).
   for (const file of await readdir(workflows)) {
-    if (file === "dictionary-deploy.yml" || file === "dictionary-plan.yml") continue;
+    if (file === "dictionary-deploy.yml" || file === "dictionary-plan.yml" || file === "reader-reports.yml") continue;
     assert.doesNotMatch(await readFile(join(workflows, file), "utf8"), /CLOUDFLARE_(API_TOKEN|D1_TOKEN|D1_READ_TOKEN)/, file);
   }
 });

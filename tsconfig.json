@@ -7,6 +7,9 @@
     "esModuleInterop": true,
     "skipLibCheck": true,
     "noEmit": true,
+    // web/builds/ imports with `.ts` paths, since plain `node` runs it; the
+    // reader report issues read production's app database through it (#631).
+    "allowImportingTsExtensions": true,
     "types": ["node"]
   },
   "include": ["src/**/*.ts", "test/**/*.ts"]
