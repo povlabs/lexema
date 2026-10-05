@@ -21,10 +21,11 @@ import {
   type PreviewPrepareSteps,
   preparePreview,
 } from "@/builds/previewCommand.ts";
-import { APPLIED_MIGRATIONS_QUERY, compareHistory, inApplyOrder } from "@/builds/previewAppDatabase.ts";
-import { type BuiltConfig, DICTIONARY, migrationsConfig, refuseDictionary, SLICE_BINDING, withAppDatabase, withDictionarySlice } from "@/builds/previewConfig.ts";
+import { APPLIED_MIGRATIONS_QUERY, compareHistory, inApplyOrder } from "@/builds/appMigrations.ts";
+import { appMigrationsConfig, type BuiltConfig, DICTIONARY, migrationsConfig, refuseDictionary, SLICE_BINDING, withAppDatabase, withDictionarySlice } from "@/builds/previewConfig.ts";
 import { APP_DATABASE_PREFIX, PREVIEW_NAME_MAX, PreviewName, SLICE_DATABASE_PREFIX } from "@/builds/previewName.ts";
 import { readBuilt, readDeclared, SLICE_ROWS_WRITTEN_CAP, type SliceBuilt, type SliceDeclared, type SlicePlanner } from "@/builds/previewSlice.ts";
+import { migrateProductionAppDatabase, PRODUCTION_APP_DATABASE, type ProductionMigrationSteps } from "@/builds/productionAppDatabase.ts";
 import { runProductionCommand } from "@/builds/productionCommand.ts";
 import { type OpenBranches, readOpenBranches, selectForSweep, sweep } from "@/builds/sweep.ts";
 import type { D1Database, Wrangler, WranglerRun } from "@/builds/wrangler.ts";
@@ -936,25 +937,154 @@ test("a Preview the sweep cannot delete keeps its app database for the next swee
 
 // --- The production command -------------------------------------------------
 
-test("the production command runs the sweep, then deploys, and deploys even when the sweep fails", async () => {
+/** An account holding the shared dictionary and production's app database, `lexema-app`, empty. */
+const productionAccount = () =>
+  new FakeAccount([{ name: DICTIONARY.name, uuid: DICTIONARY.id }, { name: PRODUCTION_APP_DATABASE.name, uuid: PRODUCTION_APP_DATABASE.id }]);
+
+/** The production migration step's inputs against `account`, keeping every Wrangler call in `order`. */
+function productionSteps(account: FakeAccount, order: string[] = []) {
+  const logged: string[] = [];
+  const configs: Record<string, unknown>[] = [];
+  const steps: ProductionMigrationSteps = {
+    wrangler: (args, input) => {
+      order.push(`wrangler ${args.slice(0, 2).join(" ")}`);
+      return account.wrangler(args, input);
+    },
+    migrationsDir: "/repo/src/db/app/migrations",
+    migrations: [...account.tree.keys()],
+    writeMigrationsConfig: (config) => {
+      configs.push(config);
+      return "/tmp/migrations/wrangler.json";
+    },
+    log: (line) => logged.push(line),
+  };
+  return { steps, logged, configs };
+}
+
+/** The whole production command against `account`, with the sweep's outcome given and deploy kept in `order`. */
+function productionCommand(account: FakeAccount, sweepOutcome: "passes" | "throws" | "rejects" = "passes") {
+  const order: string[] = [];
+  const { steps, logged, configs } = productionSteps(account, order);
+  const run = runProductionCommand({
+    sweep: async () => {
+      order.push("sweep");
+      if (sweepOutcome === "throws") throw new Error("d1 list failed");
+      if (sweepOutcome === "rejects") return Promise.reject(new Error("offline"));
+    },
+    migrate: () => migrateProductionAppDatabase(PRODUCTION_APP_DATABASE, steps),
+    deploy: () => order.push("deploy"),
+    log: (line) => logged.push(line),
+  });
+  return { run, order, logged, configs };
+}
+
+/** Every Wrangler call that creates, deletes or migrates a D1. */
+const productionWrites = (account: FakeAccount) => account.lines.filter((line) => /^d1 (create|delete|migrations)/.test(line));
+
+test("the production command runs the sweep, then the app migrations on lexema-app, then deploys, whatever the sweep's outcome (#611)", async () => {
   for (const outcome of ["passes", "throws", "rejects"] as const) {
-    const order: string[] = [];
-    await runProductionCommand({
-      sweep: async () => {
-        order.push("sweep");
-        if (outcome === "throws") throw new Error("d1 list failed");
-        if (outcome === "rejects") return Promise.reject(new Error("offline"));
-      },
-      deploy: () => order.push("deploy"),
-      log: (line) => order.push(`log: ${line}`),
-    });
-    assert.equal(order[0], "sweep", outcome);
-    assert.equal(order.at(-1), "deploy", outcome);
+    const account = productionAccount();
+    const { run, order, configs, logged } = productionCommand(account, outcome);
+    await run;
+    assert.deepEqual(order, ["sweep", "wrangler d1 list", "wrangler d1 execute", "wrangler d1 migrations", "deploy"], outcome);
+    assert.deepEqual(productionWrites(account), [`d1 migrations apply lexema-app --remote --config /tmp/migrations/wrangler.json`], outcome);
+    assert.deepEqual(configs, [appMigrationsConfig(PRODUCTION_APP_DATABASE, "/repo/src/db/app/migrations")], outcome);
+    assert.deepEqual(account.applied.get("lexema-app"), ["0000_app_tables.sql", "0001_better_auth_tables.sql"], outcome);
+    assert.ok(logged.includes(
+      `app database: applying 2 new migration(s) to lexema-app (${PRODUCTION_APP_DATABASE.id}): 0000_app_tables.sql, 0001_better_auth_tables.sql`,
+    ), logged.join("\n"));
   }
   await assert.rejects(
-    runProductionCommand({ sweep: async () => {}, deploy: () => { throw new Error("deploy failed"); }, log: () => {} }),
+    runProductionCommand({ sweep: async () => {}, migrate: () => {}, deploy: () => { throw new Error("deploy failed"); }, log: () => {} }),
     /deploy failed/,
   );
+});
+
+test("a later production build applies only the new migrations, keeps lexema-app's rows, and runs no apply when none is new", async () => {
+  const account = productionAccount();
+  await productionCommand(account).run;
+  account.rows.set("lexema-app", ["a developer", "a reader report"]);
+  account.tree.set("0002_reader_reports.sql", "CREATE TABLE reader_report");
+  account.calls.length = 0;
+
+  await productionCommand(account).run;
+  assert.deepEqual(account.ran.get("lexema-app"), ["CREATE TABLE app", "CREATE TABLE user", "CREATE TABLE reader_report"]);
+  assert.deepEqual(account.rows.get("lexema-app"), ["a developer", "a reader report"]);
+  assert.deepEqual(account.databases.find(({ name }) => name === "lexema-app")?.uuid, PRODUCTION_APP_DATABASE.id);
+  account.calls.length = 0;
+
+  const { run, order, logged } = productionCommand(account);
+  await run;
+  assert.deepEqual(order, ["sweep", "wrangler d1 list", "wrangler d1 execute", "deploy"]);
+  assert.deepEqual(productionWrites(account), []);
+  assert.ok(logged.includes(`app database: lexema-app (${PRODUCTION_APP_DATABASE.id}) has run every app migration; nothing to apply`), logged.join("\n"));
+});
+
+test("a failed migration stops the production deploy: deploy is not called", async () => {
+  const account = productionAccount();
+  account.failing.push(/^d1 migrations apply lexema-app/);
+  const { run, order } = productionCommand(account);
+  await assert.rejects(run, /app migrations failed, so production is not deployed: wrangler d1 migrations apply failed/);
+  assert.equal(order.includes("deploy"), false);
+
+  // So does a history that cannot be read.
+  const unread = productionAccount();
+  unread.failing.push(/^d1 execute lexema-app/);
+  const second = productionCommand(unread);
+  await assert.rejects(second.run, /could not read the applied migrations of lexema-app/);
+  assert.equal(second.order.includes("deploy"), false);
+  assert.deepEqual(productionWrites(unread), []);
+});
+
+test("a diverged history on lexema-app is refused: nothing is deleted, created or migrated, its rows stay, and deploy is not called", async () => {
+  const account = productionAccount();
+  // lexema-app ran 0001 under a name the tree no longer has, as after a renumbering.
+  account.applied.set("lexema-app", ["0000_app_tables.sql", "0001_old_name.sql"]);
+  account.ran.set("lexema-app", ["CREATE TABLE app", "CREATE TABLE user"]);
+  account.rows.set("lexema-app", ["a developer"]);
+  const before = structuredClone(account.databases);
+
+  const { run, order } = productionCommand(account);
+  await assert.rejects(
+    run,
+    /refusing to migrate lexema-app: it applied 0001_old_name\.sql, which the tree no longer has \(renamed or removed\), so its history has left the tree's; production's app database is never deleted or reset/,
+  );
+  assert.equal(order.includes("deploy"), false);
+  assert.deepEqual(productionWrites(account), []);
+  assert.deepEqual(account.databases, before);
+  assert.deepEqual(account.applied.get("lexema-app"), ["0000_app_tables.sql", "0001_old_name.sql"]);
+  assert.deepEqual(account.rows.get("lexema-app"), ["a developer"]);
+
+  // Out of the tree's order is diverged too.
+  const reordered = productionAccount();
+  reordered.tree = new Map([["0000_a.sql", "CREATE TABLE a"], ["0001_b.sql", "CREATE TABLE b"], ["0002_c.sql", "CREATE TABLE c"]]);
+  reordered.applied.set("lexema-app", ["0000_a.sql", "0002_c.sql"]);
+  assert.throws(() => migrateProductionAppDatabase(PRODUCTION_APP_DATABASE, productionSteps(reordered).steps), /it applied 0002_c\.sql where the tree runs 0001_b\.sql/);
+  assert.deepEqual(productionWrites(reordered), []);
+});
+
+test("the production migration step refuses the shared dictionary by name or by id before it calls Wrangler at all", () => {
+  for (const database of [{ name: DICTIONARY.name, id: PRODUCTION_APP_DATABASE.id }, { name: PRODUCTION_APP_DATABASE.name, id: DICTIONARY.id }]) {
+    const account = productionAccount();
+    account.applied.set(DICTIONARY.name, ["0000_gone.sql"]);
+    assert.throws(() => migrateProductionAppDatabase(database, productionSteps(account).steps), /refusing to migrate the shared dictionary lexema-dictionary/, JSON.stringify(database));
+    assert.deepEqual(account.lines, [], JSON.stringify(database));
+  }
+  assert.throws(() => appMigrationsConfig({ name: "lexema-app", id: DICTIONARY.id }, "/m"), /dictionary/);
+});
+
+test("the production migration step never creates lexema-app: absent, or under another id, it refuses and deploy is not called", async () => {
+  const absent = new FakeAccount([{ name: DICTIONARY.name, uuid: DICTIONARY.id }]);
+  const first = productionCommand(absent);
+  await assert.rejects(first.run, /refusing to migrate lexema-app: it is not on the account, and the production command never creates it/);
+  assert.equal(first.order.includes("deploy"), false);
+  assert.deepEqual(productionWrites(absent), []);
+
+  const other = new FakeAccount([{ name: "lexema-app", uuid: "a0000000-0000-4000-8000-000000000009" }]);
+  const second = productionCommand(other);
+  await assert.rejects(second.run, /the account holds it as a0000000-0000-4000-8000-000000000009, not e77ba8e9-f4da-45fe-9b8c-322904054edc/);
+  assert.equal(second.order.includes("deploy"), false);
+  assert.deepEqual(productionWrites(other), []);
 });
 
 test("the web package names the preview prepare step and the deploy command, and production deploys the production build", () => {
@@ -965,4 +1095,5 @@ test("the web package names the preview prepare step and the deploy command, and
   assert.equal(scripts["deploy:production"], "CLOUDFLARE_ENV=production vinext build && wrangler deploy --config dist/server/wrangler.json");
   const entry = readFileSync(fileURLToPath(new URL("../builds/production.ts", import.meta.url)), "utf8");
   assert.match(entry, /"run", "deploy:production"/);
+  assert.match(entry, /migrate: \(\) =>\s+migrateProductionAppDatabase\(PRODUCTION_APP_DATABASE,/);
 });

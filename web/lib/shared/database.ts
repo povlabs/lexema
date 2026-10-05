@@ -13,9 +13,8 @@ import { fromD1, type LookupDatabase } from "@lexema/lookup/database.ts";
 import { dictionaryFor } from "@lexema/lookup/slice.ts";
 
 /**
- * The dictionary, read-only. Production has no D1 binding until #19
- * (web/wrangler.jsonc, `env.production`), so its absence is thrown here and
- * lands where any other database failure does: in the log, and as the
+ * The dictionary, read-only. A Worker without the binding throws here, and
+ * that lands where any other database failure does: in the log, and as the
  * failed state on the page.
  */
 export function database(): LookupDatabase {
@@ -38,7 +37,7 @@ export function lookupDatabase(query: string): Promise<LookupDatabase> {
   return dictionaryFor(query, database(), dictionarySlice());
 }
 
-/** The app database. Absent in production until #19, and thrown like `database`'s. */
+/** The app database. Its absence is thrown like `database`'s. */
 export function appDatabase(): AppTables {
   if (env.APP_DB === undefined) throw new Error("no D1 binding: this Worker has no APP_DB");
   return appTablesOverD1(env.APP_DB);

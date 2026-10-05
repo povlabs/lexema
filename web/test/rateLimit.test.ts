@@ -383,7 +383,7 @@ test("the account meter's Durable Object is bound, and migrated as a SQLite clas
   }
 });
 
-test("production is what is live: its three custom domains only, no D1, logs on; local keeps its two D1s", () => {
+test("production is what is live: its three custom domains only, logs on; local keeps its two D1s", () => {
   const production = read("production");
   assert.equal(production.name, "lexema-web");
   assert.equal(production.workers_dev, false);
@@ -395,7 +395,7 @@ test("production is what is live: its three custom domains only, no D1, logs on;
     { pattern: "developers.lexema.fyi", custom_domain: true },
     { pattern: "api.lexema.fyi", custom_domain: true },
   ]);
-  assert.deepEqual(production.d1_databases, []);
+  // Production's databases are checked in web/test/preview.test.ts (#611).
   assert.equal(production.observability?.enabled, true);
 
   const local = read();

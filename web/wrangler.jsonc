@@ -31,8 +31,8 @@
   // (src/lookup/database.ts); APP_DB holds accounts, keys, usage and reader
   // reports. Both ids are local-only placeholders: `--local` keys each
   // miniflare sqlite file off its database_id, which can be any uuid, so no
-  // Cloudflare account is touched. Production has no D1 binding yet; attaching
-  // the real ones is #19.
+  // Cloudflare account is touched. Production binds the real ones in
+  // env.production below (#611).
   "d1_databases": [
     {
       "binding": "DB",
@@ -206,8 +206,7 @@
     // (worker/shared/hosts.ts). Selected at build time with CLOUDFLARE_ENV=production,
     // which `pnpm --filter @lexema/web run deploy:production` sets
     // (docs/DEPLOY.md). Only the custom domains serve it: no workers.dev
-    // address and no preview URLs. No D1 binding until #19, so a search there
-    // answers with the failed-lookup state. The last three routes serve
+    // address and no preview URLs. The last three routes serve
     // Previews only, never production (ADR 0018, Cloudflare's "Previews,
     // custom domains"): a Preview answers one label below each.
     "production": {
@@ -223,9 +222,29 @@
         { "pattern": "developers-preview.lexema.fyi", "custom_domain": true, "previews_enabled": true, "enabled": false },
         { "pattern": "api-preview.lexema.fyi", "custom_domain": true, "previews_enabled": true, "enabled": false }
       ],
-      // Empty on purpose. Wrangler warns at build that the top-level DB and
-      // APP_DB have no counterpart here; that absence is what is live until #19.
-      "d1_databases": [],
+      // Production's two databases (#611, Huey's go-live of 2026-10-05).
+      "d1_databases": [
+        // The shared dictionary, the same entry as the previews block's DB
+        // (web/test/preview.test.ts fails if the two drift). Code only reads it.
+        {
+          "binding": "DB",
+          "database_name": "lexema-dictionary",
+          "database_id": "b07d3441-91c6-4f94-8ae3-fe8c7088f21d"
+        },
+        // Production's own app database, made empty by Huey on 2026-10-05.
+        // The Workers Builds production command (web/builds/productionCommand.ts)
+        // applies the app migrations it has not run, after the sweep and
+        // before `wrangler deploy`, and stops the deploy when they fail or
+        // its history has left the tree's; it never deletes or resets it
+        // (web/builds/productionAppDatabase.ts). No migrations_dir: that
+        // command writes its own config naming the folder absolutely, since
+        // the build does not rebase every path.
+        {
+          "binding": "APP_DB",
+          "database_name": "lexema-app",
+          "database_id": "e77ba8e9-f4da-45fe-9b8c-322904054edc"
+        }
+      ],
       "ratelimits": [
         { "name": "SEARCH_LIMIT", "namespace_id": "1281", "simple": { "limit": 15, "period": 60 } },
         { "name": "SUGGEST_LIMIT", "namespace_id": "1282", "simple": { "limit": 120, "period": 60 } },
@@ -248,8 +267,12 @@
       "send_email": [{ "name": "EMAIL" }],
       "vars": {
         "LEXEMA_STAGE": "production",
-        "LEXEMA_RELEASE": "it-dev",
-        "TURNSTILE_SITE_KEY": "",
+        // The master the shared dictionary serves, the same as the previews
+        // block's (web/test/preview.test.ts fails if the two drift).
+        "LEXEMA_RELEASE": "it-0c432803",
+        // Turnstile's public site key for the report box (Huey, #611,
+        // 2026-10-05). Its secret, TURNSTILE_SECRET_KEY, is a Worker secret.
+        "TURNSTILE_SITE_KEY": "0x4AAAAAAFOe_Wk7rJE2N77_",
         "GOOGLE_CLIENT_ID": "",
         "GITHUB_CLIENT_ID": "",
         // Empty until live-mode Stripe prices exist at go-live (docs/DEPLOY.md).

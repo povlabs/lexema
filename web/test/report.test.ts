@@ -361,7 +361,7 @@ test("the Worker's scheduled handler sweeps APP_DB at the trigger's time, on a c
     [null, code],
     "the hour-old code is gone; the minute-old one stays",
   );
-  // With no APP_DB, as production has until #19, there is no report to erase, and nothing fails.
+  // With no APP_DB bound, there is no report to erase, and nothing fails.
   await worker.scheduled({ scheduledTime: NOW }, {});
 });
 

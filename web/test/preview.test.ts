@@ -17,6 +17,7 @@ import { createBuilder } from "vite";
 import { unstable_readConfig } from "wrangler";
 import { type BuiltConfig, withAppDatabase, withDictionarySlice } from "@/builds/previewConfig.ts";
 import { PreviewName } from "@/builds/previewName.ts";
+import { PRODUCTION_APP_DATABASE } from "@/builds/productionAppDatabase.ts";
 import { PREVIEW_DOMAIN } from "@/worker/shared/hosts.ts";
 import { parseStage } from "@/worker/shared/stage.ts";
 
@@ -99,16 +100,43 @@ test("Preview email is restricted to Huey's verified address, on every send_emai
   assert.equal(read("production").vars.EMAIL_ONLY_TO, "");
 });
 
-test("production serves Previews on the three preview-only domains, and has no D1 of its own", () => {
+test("production serves Previews on the three preview-only domains, and sends account email to any address", () => {
   const production = read("production");
   const previewRoutes = production.routes?.filter((route: RouteEntry) => typeof route === "object" && "previews_enabled" in route);
   assert.deepEqual(
     previewRoutes,
     Object.values(PREVIEW_DOMAIN).map((pattern) => ({ pattern, custom_domain: true, previews_enabled: true, enabled: false })),
   );
-  assert.deepEqual(production.d1_databases, []);
   // Production's own email binding sends account email to any address (#215): the Preview's one-recipient binding is not what it gets.
   assert.deepEqual(production.send_email, [{ name: "EMAIL" }]);
+});
+
+test("production reads the shared dictionary the Previews read, and writes its own app database, lexema-app (#611)", () => {
+  const [dictionary, app, ...rest] = read("production").d1_databases as D1Entry[];
+  assert.deepEqual(rest, []);
+  assert.deepEqual(dictionary, { binding: "DB", database_name: "lexema-dictionary", database_id: DICTIONARY_ID });
+  assert.deepEqual(dictionary, previews().d1_databases?.[0]);
+  assert.deepEqual(app, { binding: "APP_DB", database_name: PRODUCTION_APP_DATABASE.name, database_id: PRODUCTION_APP_DATABASE.id });
+  assert.deepEqual(PRODUCTION_APP_DATABASE, { name: "lexema-app", id: "e77ba8e9-f4da-45fe-9b8c-322904054edc" });
+  // No Preview binds production's app database, and the local placeholders are neither production database.
+  assert.ok(!JSON.stringify(previews()).includes(PRODUCTION_APP_DATABASE.id));
+  const local = read().d1_databases.map(({ database_id }: D1Entry) => database_id);
+  assert.ok(!local.includes(DICTIONARY_ID) && !local.includes(PRODUCTION_APP_DATABASE.id));
+});
+
+test("production serves the release the Previews serve from the same dictionary", () => {
+  assert.equal(read("production").vars.LEXEMA_RELEASE, previews().vars?.LEXEMA_RELEASE);
+  assert.equal(read("production").vars.LEXEMA_RELEASE, "it-0c432803");
+});
+
+test("production shows the report box's Turnstile widget, and no configuration carries a Turnstile secret", () => {
+  assert.equal(read("production").vars.TURNSTILE_SITE_KEY, "0x4AAAAAAFOe_Wk7rJE2N77_");
+  // The secret is a Worker secret (docs/DEPLOY.md), never a var in any configuration.
+  for (const vars of [read().vars, read("production").vars, previews().vars ?? {}]) {
+    assert.equal("TURNSTILE_SECRET_KEY" in vars, false);
+  }
+  // The one Turnstile key in the file is the public site key.
+  assert.deepEqual(readFileSync(WRANGLER, "utf8").match(/0x4[A-Za-z0-9_-]+/g), ["0x4AAAAAAFOe_Wk7rJE2N77_"]);
 });
 
 /**
@@ -152,6 +180,14 @@ test("the built config keeps the previews block, in the local build and the prod
   // What a production build deploys is the production stage, never a Preview's.
   assert.equal(parseStage(production.vars.LEXEMA_STAGE), "production");
   assert.deepEqual(production.routes, read("production").routes);
+  // What `wrangler deploy` reads binds production's two databases (#611).
+  assert.deepEqual(
+    (production.d1_databases as D1Entry[]).map(({ binding, database_name, database_id }) => [binding, database_name, database_id]),
+    [
+      ["DB", "lexema-dictionary", DICTIONARY_ID],
+      ["APP_DB", PRODUCTION_APP_DATABASE.name, PRODUCTION_APP_DATABASE.id],
+    ],
+  );
 });
 
 test("a Preview's built config with its app database and a dictionary slice reads back through Wrangler, DB still on the shared dictionary (#447)", async () => {
