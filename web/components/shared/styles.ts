@@ -43,31 +43,34 @@ export const LINK = `text-accent underline ${FOCUS_RING}`;
 
 /**
  * C1: a full-width bar, the name at the left, a hairline under it. The bar is
- * 72 px from `sm` up, as frames 10 to 34 draw it (#593), and 55 px on a phone,
- * as frames 33m and 34m draw it, with the name's ink 21 px from the top (#595).
+ * 72 px from `sm` up, as frames 10 to 34 draw it (#593), and 61 px on a phone,
+ * as frames 19 to 21, 33m and 34m draw it, with the name's ink 23 px from the
+ * top (#595).
  */
 export const TOP_BAR = "border-b border-border";
-export const TOP_BAR_INNER = `${COLUMN} flex h-13.75 items-center pt-1 sm:h-18 sm:pt-0`;
+export const TOP_BAR_INNER = `${COLUMN} flex h-15.25 items-center pt-0.5 sm:h-18 sm:pt-0`;
 /**
  * The name is 22px from `sm` up, as frames 33 and 34 draw it (#593). On a phone
  * the name, and the footer's name and links below, are drawn at the smaller
- * sizes frames 33m and 34m give them, on every dictionary page (#591).
+ * sizes frames 19 to 21, 33m and 34m give them, on every dictionary page
+ * (#591, #595).
  */
-export const TOP_BAR_NAME = `font-serif text-[1.375rem] text-text-strong no-underline max-sm:text-[1.125rem] ${FOCUS_RING}`;
+export const TOP_BAR_NAME = `font-serif text-[1.375rem] text-text-strong no-underline max-sm:text-[1.1875rem] ${FOCUS_RING}`;
 
 /**
  * C2: the name at the left, three small links at the right. Its rule sits
  * 45 px below the page from `sm` up, with the shell's own bottom padding, and
- * its name's ink 32 px under the rule, as frames 10 to 34 draw them; on a
- * phone, 25 px under the rule, as frames 33m and 34m draw it (#595).
+ * its name's ink 32 px under the rule, as frames 10 to 34 draw them. On a
+ * phone the links stack under the name, both at the left, with the name's ink
+ * 26 px under the rule, as frames 19 to 21, 33m and 34m draw it (#595).
  */
 export const SITE_FOOTER = "mt-5 border-t border-border sm:mt-7.25";
-export const SITE_FOOTER_INNER = `${COLUMN} flex flex-wrap items-center justify-between gap-4 pt-4.25 pb-4.5 sm:pt-6.25 sm:pb-7.25`;
+export const SITE_FOOTER_INNER = `${COLUMN} flex flex-col items-start gap-0.75 pt-5 pb-5.5 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-4 sm:pt-6.25 sm:pb-7.25`;
 /** The footer's wordmark, a link home like the top bar's. */
-export const SITE_FOOTER_NAME = `font-serif text-base text-text-strong no-underline max-sm:text-[0.875rem] ${FOCUS_RING}`;
-export const SITE_FOOTER_LINKS = "m-0 flex list-none flex-wrap gap-x-6 gap-y-2 p-0 max-sm:gap-x-[0.9375rem]";
+export const SITE_FOOTER_NAME = `font-serif text-base text-text-strong no-underline max-sm:text-[0.90625rem] ${FOCUS_RING}`;
+export const SITE_FOOTER_LINKS = "m-0 flex list-none flex-wrap gap-x-6 gap-y-2 p-0 max-sm:gap-x-4.5";
 /** 12.5 px from `sm` up, as frames 33 and 34 draw it (#595); the link to the page being shown is drawn in `text-strong`. */
-export const SITE_FOOTER_LINK = `font-sans text-[0.78125rem] text-text-muted no-underline hover:text-text aria-[current=page]:text-text-strong max-sm:text-[0.6875rem] ${FOCUS_RING}`;
+export const SITE_FOOTER_LINK = `font-sans text-[0.78125rem] text-text-muted no-underline hover:text-text aria-[current=page]:text-text-strong max-sm:text-[0.703125rem] ${FOCUS_RING}`;
 
 /**
  * Frame 00: before a query the page is the name and the bar, centred on the

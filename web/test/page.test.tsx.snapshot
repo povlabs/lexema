@@ -1,7 +1,7 @@
 exports[`bello's whole page is the page the snapshot holds (#385) 1`] = `
 <header class="border-b border-border">
-<div class="mx-auto w-full max-w-[78rem] px-5 sm:px-6 flex h-13.75 items-center pt-1 sm:h-18 sm:pt-0">
-<a class="font-serif text-[1.375rem] text-text-strong no-underline max-sm:text-[1.125rem] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent" href="/">Lexema</a>
+<div class="mx-auto w-full max-w-[78rem] px-5 sm:px-6 flex h-15.25 items-center pt-0.5 sm:h-18 sm:pt-0">
+<a class="font-serif text-[1.375rem] text-text-strong no-underline max-sm:text-[1.1875rem] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent" href="/">Lexema</a>
 </div>
 </header>
 <main class="mx-auto w-full max-w-[78rem] px-5 sm:px-6 flex-1 pt-4 pb-3.25 sm:pt-7 sm:pb-4">
