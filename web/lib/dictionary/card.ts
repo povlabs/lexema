@@ -85,7 +85,19 @@ export function cardOf(attempt: Attempt): Card {
   // The reading the page's first meaning sits under: the first one numbered,
   // since a reading with no definition has no number. A page with none
   // numbered falls back to its first reading.
-  const { reading } = page.readings.find((entry) => entry.number !== undefined) ?? page.readings[0];
+  const entry = page.readings.find((one) => one.number !== undefined) ?? page.readings[0];
+  if (entry.kind === "verb-form") {
+    // A verb form with no record of its own opens with its rule-built line (#627).
+    return {
+      kind: "word",
+      headword: page.headword,
+      pronunciation: page.wordFacts.pronunciations[0]?.ipa,
+      gender: undefined,
+      partOfSpeech: entry.posTitle,
+      meaning: entry.lines[0].text,
+    };
+  }
+  const { reading } = entry;
   const [meaning] = definitionsOf(reading).items;
   return {
     kind: "word",

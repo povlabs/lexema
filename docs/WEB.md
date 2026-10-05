@@ -357,6 +357,30 @@ for `costruttrici`) draws no grid, and the form keeps its own. The search reads
 those lemma records with the same lookup a search of the lemma runs
 (`web/lib/dictionary/searchAttempt.ts`); the lookup and the API do not change.
 
+**A verb form with no record of its own.** A compound form such as
+`sono andato` is only a cell of its verb's table: no record is about it, so the
+page has the verb's reading alone, with the cell marked. The page opens with a
+reading that says which form it is, `1 · Voce verbale`, whose definitions are
+one line per cell the query hit, built by rule `it-verb-form-line/v1`
+([src/italian/verbFormLine.ts](../src/italian/verbFormLine.ts)): "prima persona
+singolare del passato prossimo indicativo di andare". The shape is fixed —
+person, number, `del` or `dell'` and the tense, the mood, `di` and the verb —
+and the tense and mood are the names the table shows (`TENSE_NAMES` in
+`src/italian/moods.ts`), read from the same placement the table marks, so the
+line and the cell never disagree. An imperative, a non-finite form and a cell
+`it-moods/v1` cannot place give no line. `siamo andati` fills a cell of the
+indicativo and one of the congiuntivo and gets both lines; identical lines show
+once. The verb's own reading follows, numbered on (`2 · Verbo`), with its
+table. A verb that a reading about the query already declares itself a form of
+gives no line: `andavano`'s own record says what it is. The line is Lexema's
+text, a grammatical paraphrase built from source tags (ADR 0008), built when
+the page is built (`web/lib/dictionary/wordPage.ts`) and never stored by the
+seed (ADR 0012). The page shows no mark for it (ADR 0016); its type,
+`VerbFormReading`, carries `sourceType: "lexema-deterministic"`, the rule and
+the pointer of the `forms[]` entry it was built from. The lookup and the API do
+not change ([#627](https://github.com/povlabs/lexema/issues/627), Huey's brief
+of 2026-10-05).
+
 **One expand control.** Etymology, the word lists and Definitions share one
 control (`web/components/dictionary/More.tsx`): `+ more` right after what shows, and, open, `less`
 at the very end, with no count. It is a native `<details>` placed after all the

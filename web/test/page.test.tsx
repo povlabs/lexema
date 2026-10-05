@@ -55,7 +55,7 @@ import { reportReadings } from "@/lib/dictionary/report.ts";
 import { NotFound } from "@/components/dictionary/NotFound";
 import { PhraseView } from "@/components/dictionary/Phrase";
 import { phrasePage } from "@/lib/dictionary/phrasePage.ts";
-import { EXPRESSION_FILTER_ABOVE, matchesExpression, wordPage } from "@/lib/dictionary/wordPage.ts";
+import { EXPRESSION_FILTER_ABOVE, matchesExpression, sourceReadings, wordPage } from "@/lib/dictionary/wordPage.ts";
 import { firstQuery, pageTitle } from "@/lib/dictionary/params";
 // The class strings the components carry, imported rather than copied, so a
 // restyle that changes one changes both together.
@@ -262,7 +262,7 @@ function readingsOfPage(html: string): string[] {
 
 /** The headings of a page's readings, as text: `1·Sostantivo`. */
 const headingsOf = (html: string): string[] =>
-  [...html.matchAll(/<h2 class="[^"]*" id="reading-heading-\d+">(.*?)<\/h2>/g)].map((match) => textOf(match[1]));
+  [...html.matchAll(/<h2 class="[^"]*" id="reading-heading-(?:\d+|voce-verbale)">(.*?)<\/h2>/g)].map((match) => textOf(match[1]));
 
 /** One reading out of a page, by the record it renders. */
 function readingById(html: string, recordId: number): string {
@@ -334,7 +334,7 @@ test("every record the lookup returns is a reading, except a form of the query's
       const forms = formsOfQueryReadings(readings);
       const siblings = otherFormsOfQueryLemmas(readings);
       assert.deepEqual(
-        wordPage(query, readings, answer.lemmas).readings.map((entry) => entry.reading.recordId).sort((a, b) => { assert.ok(a !== undefined && b !== undefined); return a - b; }),
+        sourceReadings(wordPage(query, readings, answer.lemmas).readings).map((entry) => entry.reading.recordId).sort((a, b) => { assert.ok(a !== undefined && b !== undefined); return a - b; }),
         readings.filter((reading) => !forms.has(reading) && !siblings.has(reading)).map((reading) => reading.recordId).sort((a, b) => a - b),
         query,
       );
@@ -605,6 +605,121 @@ test("a searched compound form opens the compound tenses; otherwise they wait be
     assert.doesNotMatch(closed, /compound tenses/);
     const compound = await render(db, "sono andato");
     assert.match(panel(compound, "Indicativo"), /<button type="button" data-panel-open=""[^>]*aria-expanded="true"[^>]*><span [^>]*>\+ more/);
+  });
+});
+
+/** The rule-built *Voce verbale* reading of a page (#627), or undefined when it has none. */
+function voceVerbale(html: string): string | undefined {
+  const open = html.indexOf(`<article class="${READING}" id="reading-voce-verbale"`);
+  return open === -1 ? undefined : html.slice(open, html.indexOf("</article>", open));
+}
+
+test("a searched compound form opens with a Voce verbale line built from its cell, then the verb's reading and its one table (#627)", async () => {
+  await withDevSeed(async ({ db }) => {
+    const html = await render(db, "sono andato");
+    assert.deepEqual(headingsOf(html).slice(0, 2), ["1·Voce verbale", "2·Verbo"]);
+    const lines = voceVerbale(html);
+    assert.ok(lines !== undefined, "sono andato: no Voce verbale reading");
+    assert.deepEqual(definitionLines(lines), ["prima persona singolare del passato prossimo indicativo di andare"]);
+    // The lemma links to its search, as frame 17's line links it, and the
+    // reading has no Forms block: the verb's own reading carries the table.
+    assert.match(lines, /indicativo di <a class="[^"]*" href="\/\?q=andare">andare<\/a><\/p>/);
+    assert.doesNotMatch(lines, /data-mood=|Forms/);
+    // Nothing on the page says the line was built by rule (ADR 0016).
+    assert.doesNotMatch(lines, /lexema-deterministic|it-verb-form-line|generated/i);
+
+    const verb = nth(html, 2);
+    assert.match(definitionLines(verb)[0], /^(?!prima persona)/);
+    assert.equal(occurrencesOf(html, 'data-mood="Indicativo"'), 1, "one conjugation table on the page");
+    assert.match(panel(verb, "Indicativo"), /<button type="button" data-panel-open=""[^>]*aria-expanded="true"[^>]*><span [^>]*>\+ more/);
+    assert.deepEqual(formLinks(verb).filter((link) => link.searched).map((link) => link.text), ["sono andato"]);
+  });
+});
+
+test("a compound form in two moods' cells gives a line for each, one in three cells three; a form with a record of its own gives none (#627)", async () => {
+  await withDevSeed(async ({ db }) => {
+    assert.deepEqual(definitionLines(voceVerbale(await render(db, "siamo andati")) ?? ""), [
+      "prima persona plurale del passato prossimo indicativo di andare",
+      "prima persona plurale del passato congiuntivo di andare",
+    ]);
+    const sia = voceVerbale(await render(db, "sia andato")) ?? "";
+    assert.deepEqual(definitionLines(sia), [
+      "prima persona singolare del passato congiuntivo di andare",
+      "seconda persona singolare del passato congiuntivo di andare",
+      "terza persona singolare del passato congiuntivo di andare",
+    ]);
+    // Closed, the first line shows, then the one expand control.
+    assert.deepEqual(closedLines(sia), ["prima persona singolare del passato congiuntivo di andare"]);
+    assert.match(sia, /\+ more/);
+    assert.deepEqual(definitionLines(voceVerbale(await render(db, "sarei andato")) ?? ""), [
+      "prima persona singolare del passato condizionale di andare",
+    ]);
+
+    // A form whose own record says what it is, and the verb itself, read as before.
+    for (const [query, headings] of [
+      ["andavano", ["1·Voce verbale"]],
+      ["andare", ["1·Sostantivo·maschile", "2·Verbo"]],
+    ] as const) {
+      const html = await render(db, query);
+      assert.equal(voceVerbale(html), undefined, `${query}: no rule-built reading`);
+      assert.deepEqual(headingsOf(html), headings, query);
+    }
+    assert.deepEqual(definitionLines(nth(await render(db, "andavano"), 1)), ["terza persona plurale dell'imperfetto indicativo di andareloro/essi andavano"]);
+
+    // The dev seed has no record of `andassi`, so here it is a form only its
+    // verb's table holds, and it opens with a line for each of its two cells.
+    assert.deepEqual(definitionLines(voceVerbale(await render(db, "andassi")) ?? ""), [
+      "prima persona singolare dell'imperfetto congiuntivo di andare",
+      "seconda persona singolare dell'imperfetto congiuntivo di andare",
+    ]);
+  });
+  // With its own record, as the release has it, `andassi` reads as before:
+  // the record's lines alone, then andare's table under them.
+  const andassi = JSON.stringify({
+    word: "andassi",
+    lang_code: "it",
+    lang: "Italiano",
+    pos: "verb",
+    pos_title: "Voce verbale",
+    senses: [
+      { glosses: ["prima persona congiuntivo imperfetto di andare"], tags: ["form-of"], form_of: [{ word: "andare" }] },
+      { glosses: ["seconda persona congiuntivo imperfetto di andare"], tags: ["form-of"], form_of: [{ word: "andare" }] },
+    ],
+    tags: ["form-of"],
+  });
+  await withLines([...(await devSeedLines()), andassi], async ({ db }) => {
+    const html = await render(db, "andassi");
+    assert.equal(voceVerbale(html), undefined, "andassi: no rule-built reading");
+    assert.deepEqual(headingsOf(html), ["1·Voce verbale"]);
+    assert.deepEqual(definitionLines(nth(html, 1)), [
+      "prima persona congiuntivo imperfetto di andare",
+      "seconda persona congiuntivo imperfetto di andare",
+    ]);
+    assert.match(textOf(nth(html, 1)), /Forms ofandare/);
+  });
+});
+
+test("the rule-built line is kept apart from a source reading in the page's data: its source type, rule and the forms[] entry it came from (#627)", async () => {
+  await withDevSeed(async ({ db }) => {
+    const answer = await attempt(db, "sono andato");
+    assert.ok(answer.outcome === "found" && answer.route.kind !== "phrase");
+    const page = wordPage("sono andato", answer.readings, answer.lemmas);
+    const [lead, verb] = page.readings;
+    assert.ok(lead.kind === "verb-form" && verb.kind === "source");
+    assert.equal(lead.number, 1);
+    assert.equal(verb.number, 2);
+    assert.deepEqual(lead.lines, [
+      {
+        text: "prima persona singolare del passato prossimo indicativo di andare",
+        lemma: "andare",
+        sourceType: "lexema-deterministic",
+        rule: "it-verb-form-line/v1",
+        ref: verb.reading.evidence.find((occurrence) => occurrence.surface === "sono andato")?.ref,
+      },
+    ]);
+    assert.equal(lead.lines[0].ref.jsonPointer, "/forms/29/form");
+    // A report names only a source record.
+    assert.deepEqual(reportReadings(sourceReadings(page.readings)).map((reading) => reading.number), [2]);
   });
 });
 
@@ -2234,7 +2349,7 @@ test("a reading with no definition is its part of speech alone; the readings wit
       ["1Aggettivo", "Sostantivo", "2Voce verbale"],
     );
     assert.deepEqual(
-      reportReadings(wordPage("litigante", await readingsFor(db, "litigante"), []).readings).map(readingChoiceLabel),
+      reportReadings(sourceReadings(wordPage("litigante", await readingsFor(db, "litigante"), []).readings)).map(readingChoiceLabel),
       ["1 · Aggettivo", "Sostantivo", "2 · Voce verbale"],
     );
 
@@ -2565,7 +2680,7 @@ test("page-only readings present their page's fields without origin marks or inv
     const model = wordPage("raccontare", answer.readings, answer.lemmas);
     assert.equal(model.readings.length, 1);
     // A report names only a source record, so a page-only reading is not offered as a choice.
-    assert.deepEqual(reportReadings(model.readings), []);
+    assert.deepEqual(reportReadings(sourceReadings(model.readings)), []);
     const html = await render(db, "raccontare");
     assert.match(textOf(html), /narrare, oralmente o tramite scrittura, eventi o storie/);
     assert.match(textOf(html), /rappresentare qualcosa, in genere cosa non gradita/);

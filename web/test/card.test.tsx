@@ -182,6 +182,17 @@ test("the card's gender is exactly the gender its reading's heading opens with",
   }
 });
 
+test("a compound verb form's card speaks for its Voce verbale line, as its page opens with it (#627)", async () => {
+  assert.deepEqual(await wordCard("sono andato"), {
+    kind: "word",
+    headword: "sono andato",
+    pronunciation: undefined,
+    gender: undefined,
+    partOfSpeech: "Voce verbale",
+    meaning: "prima persona singolare del passato prossimo indicativo di andare",
+  });
+});
+
 test("a searched expression's card is titled as typed, with no pronunciation and no gender", async () => {
   const card = await wordCard("vado via");
   assert.equal(card.headword, "vado via");
