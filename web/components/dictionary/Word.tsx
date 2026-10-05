@@ -5,17 +5,17 @@
 // Which records are readings and which lemma tables they carry is
 // `wordPage.ts`; this file only lays the answer out.
 
-import { entryKey, factRefKey, type EntryIdentity, type WordFacts } from "@lexema/lookup/types.ts";
+import { factRefKey, type EntryIdentity, type WordFacts } from "@lexema/lookup/types.ts";
 import { ExternalIcon } from "@/components/shared/icons";
 import { Expressions } from "./Expressions";
 import { NEW_TAB } from "@/components/shared/ExternalLink";
 import { OneLine } from "./OneLine";
-import { ReadingView } from "./Reading";
+import { ReadingView, VerbFormReadingView } from "./Reading";
 import { ReportDialog } from "./ReportDialog";
 import { reportReadings, type ReportReading } from "@/lib/dictionary/report.ts";
 import { sourcePageUrl } from "@/lib/dictionary/sourcePage.ts";
 import { WordList } from "./WordList";
-import type { ExpressionSection, WordLists, WordPage } from "@/lib/dictionary/wordPage.ts";
+import { readingAnchor, sourceReadings, type ExpressionSection, type WordLists, type WordPage } from "@/lib/dictionary/wordPage.ts";
 import {
   BLOCK_LABEL,
   WORD_BLOCK,
@@ -63,11 +63,11 @@ function JumpLinks({ page }: { page: WordPage }) {
   return (
     <nav aria-label="Readings">
       <ul className={JUMP_LINKS}>
-        {page.readings.map(({ number, reading }) => (
-          <li key={entryKey(reading)}>
-            <a className={JUMP_LINK} href={`#reading-${entryKey(reading)}`}>
-              {number !== undefined && <span className={JUMP_NUMBER}>{number}</span>}
-              <span lang="it">{reading.posTitle}</span>
+        {page.readings.map((entry) => (
+          <li key={readingAnchor(entry)}>
+            <a className={JUMP_LINK} href={`#${readingAnchor(entry)}`}>
+              {entry.number !== undefined && <span className={JUMP_NUMBER}>{entry.number}</span>}
+              <span lang="it">{entry.kind === "verb-form" ? entry.posTitle : entry.reading.posTitle}</span>
             </a>
           </li>
         ))}
@@ -153,12 +153,16 @@ export function WordView({ page, siteKey }: { page: WordPage; siteKey?: string }
       <Pronunciation facts={page.wordFacts} />
       <JumpLinks page={page} />
       <div className={READINGS}>
-        {page.readings.map((entry) => (
-          <ReadingView key={entryKey(entry.reading)} entry={entry} />
-        ))}
+        {page.readings.map((entry) =>
+          entry.kind === "verb-form" ? (
+            <VerbFormReadingView key={readingAnchor(entry)} entry={entry} />
+          ) : (
+            <ReadingView key={readingAnchor(entry)} entry={entry} />
+          ),
+        )}
       </div>
       <WordFactsView facts={page.wordFacts} lists={page.wordLists} expressions={page.expressionSections} />
-      <SourceLine page={page} siteKey={siteKey} />
+      <SourceLine page={{ ...page, readings: sourceReadings(page.readings) }} siteKey={siteKey} />
     </>
   );
 }

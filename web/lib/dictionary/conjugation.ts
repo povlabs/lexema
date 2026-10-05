@@ -13,8 +13,18 @@
 // same grid.
 
 import { sourcePointerOf, type DeclaredForm, type DeclaredVerbForm, type SearchedSpellings, type SourceForm } from "@lexema/lookup/types.ts";
-import { placeItalianVerbForm, type TenseBox, type VerbSlot } from "@lexema/italian/moods.ts";
-import type { GlossNumber, GlossPerson, VerbFormGloss } from "@lexema/italian/verbFormGloss.ts";
+import {
+  personOfItalianVerbForm,
+  placeItalianVerbForm,
+  TENSE_BOXES,
+  TENSE_NAMES,
+  type FiniteMood,
+  type TenseBox,
+  type VerbNumber,
+  type VerbPerson,
+  type VerbSlot,
+} from "@lexema/italian/moods.ts";
+import type { VerbFormGloss } from "@lexema/italian/verbFormGloss.ts";
 
 export const MOODS = ["Indicativo", "Congiuntivo", "Condizionale", "Imperativo"] as const;
 export type Mood = (typeof MOODS)[number];
@@ -22,23 +32,22 @@ export type Mood = (typeof MOODS)[number];
 export const PERSONS = ["io", "tu", "lui, lei", "noi", "voi", "loro"] as const;
 export type Person = (typeof PERSONS)[number];
 
-/** Where each tense box of `it-moods/v1` sits on the page, and its Italian name there. */
-const TENSE_PLACE: Record<TenseBox, { mood: Mood; tense: string; compound: boolean }> = {
-  presente: { mood: "Indicativo", tense: "presente", compound: false },
-  imperfetto: { mood: "Indicativo", tense: "imperfetto", compound: false },
-  "passato remoto": { mood: "Indicativo", tense: "passato remoto", compound: false },
-  "futuro semplice": { mood: "Indicativo", tense: "futuro semplice", compound: false },
-  "passato prossimo": { mood: "Indicativo", tense: "passato prossimo", compound: true },
-  "trapassato prossimo": { mood: "Indicativo", tense: "trapassato prossimo", compound: true },
-  "trapassato remoto": { mood: "Indicativo", tense: "trapassato remoto", compound: true },
-  "futuro anteriore": { mood: "Indicativo", tense: "futuro anteriore", compound: true },
-  "congiuntivo presente": { mood: "Congiuntivo", tense: "presente", compound: false },
-  "congiuntivo imperfetto": { mood: "Congiuntivo", tense: "imperfetto", compound: false },
-  "congiuntivo passato": { mood: "Congiuntivo", tense: "passato", compound: true },
-  "congiuntivo trapassato": { mood: "Congiuntivo", tense: "trapassato", compound: true },
-  "condizionale presente": { mood: "Condizionale", tense: "presente", compound: false },
-  "condizionale passato": { mood: "Condizionale", tense: "passato", compound: true },
+/** The tab each finite mood's tenses sit under. */
+const MOOD_TAB: Record<FiniteMood, Mood> = {
+  indicativo: "Indicativo",
+  congiuntivo: "Congiuntivo",
+  condizionale: "Condizionale",
 };
+
+/**
+ * Where a tense box of `it-moods/v1` sits on the page: its tab, and the
+ * Italian name `TENSE_NAMES` gives it, the one a searched form's line writes
+ * (`it-verb-form-line/v1`, #627).
+ */
+const tensePlace = (box: TenseBox): { mood: Mood; tense: string } => ({
+  mood: MOOD_TAB[TENSE_NAMES[box].mood],
+  tense: TENSE_NAMES[box].tense,
+});
 
 /** The tense order within each mood, simple then compound. */
 const TENSE_ORDER: Record<Mood, readonly string[]> = {
@@ -57,29 +66,14 @@ const TENSE_ORDER: Record<Mood, readonly string[]> = {
   Imperativo: ["presente"],
 };
 
-/** The pronoun the source writes beside a finite form, to the person it names. */
-const PRONOUN_PERSON: Record<string, Person> = {
-  io: "io",
-  tu: "tu",
-  "lui/lei": "lui, lei",
-  noi: "noi",
-  voi: "voi",
-  "essi/esse": "loro",
-  "che io": "io",
-  "che tu": "tu",
-  "che lui/che lei": "lui, lei",
-  "che noi": "noi",
-  "che voi": "voi",
-  "che essi/che esse": "loro",
-};
-
-const TAGGED_PERSON: Record<string, Person> = {
-  "first-person singular": "io",
-  "second-person singular": "tu",
-  "third-person singular": "lui, lei",
-  "first-person plural": "noi",
-  "second-person plural": "voi",
-  "third-person plural": "loro",
+/** The row label of each person and number. */
+const ROW: Record<`${VerbPerson} ${VerbNumber}`, Person> = {
+  "first singular": "io",
+  "second singular": "tu",
+  "third singular": "lui, lei",
+  "first plural": "noi",
+  "second plural": "voi",
+  "third plural": "loro",
 };
 
 /** A form a table can hold: a record's own `forms[]` entry, or a declared lemma's form record. */
@@ -152,13 +146,10 @@ export function sourceTagsOf(form: SourceForm): { tags: string[]; rawTags: strin
 
 export const slotOf = (form: SourceForm): VerbSlot => placeItalianVerbForm(sourceTagsOf(form));
 
-/** The person a finite form is, by its person and number tags, else its one pronoun. */
+/** The row a finite form sits in, as `personOfItalianVerbForm` reads it. */
 function personOf(form: SourceForm): Person | undefined {
-  const { tags, rawTags } = sourceTagsOf(form);
-  const person = tags.find((tag) => tag.endsWith("-person"));
-  const number = tags.find((tag) => tag === "singular" || tag === "plural");
-  if (person !== undefined && number !== undefined) return TAGGED_PERSON[`${person} ${number}`];
-  return rawTags.length === 1 ? PRONOUN_PERSON[rawTags[0]] : undefined;
+  const row = personOfItalianVerbForm(sourceTagsOf(form));
+  return row === undefined ? undefined : ROW[`${row.person} ${row.number}`];
 }
 
 /** Where a record's own form goes, or undefined when no cell takes it. */
@@ -172,18 +163,8 @@ function placeOf(form: SourceForm): Place | undefined {
   const person = personOf(form);
   if (person === undefined) return undefined;
   if (slot.kind === "imperative") return { kind: "finite", mood: "Imperativo", tense: "presente", person };
-  const { mood, tense } = TENSE_PLACE[slot.box];
-  return { kind: "finite", mood, tense, person };
+  return { kind: "finite", ...tensePlace(slot.box), person };
 }
-
-const GLOSS_PERSON: Record<`${GlossPerson} ${GlossNumber}`, Person> = {
-  "first singular": "io",
-  "second singular": "tu",
-  "third singular": "lui, lei",
-  "first plural": "noi",
-  "second plural": "voi",
-  "third plural": "loro",
-};
 
 /**
  * Where a declared lemma's form goes, by the slot its gloss names. The
@@ -195,12 +176,10 @@ const GLOSS_PERSON: Record<`${GlossPerson} ${GlossNumber}`, Person> = {
  */
 function placeOfGloss(slot: VerbFormGloss): Place | undefined {
   switch (slot.kind) {
-    case "finite": {
-      const { mood, tense } = TENSE_PLACE[slot.tense];
-      return { kind: "finite", mood, tense, person: GLOSS_PERSON[`${slot.person} ${slot.number}`] };
-    }
+    case "finite":
+      return { kind: "finite", ...tensePlace(slot.tense), person: ROW[`${slot.person} ${slot.number}`] };
     case "imperative":
-      return { kind: "finite", mood: "Imperativo", tense: "presente", person: GLOSS_PERSON[`${slot.person} ${slot.number}`] };
+      return { kind: "finite", mood: "Imperativo", tense: "presente", person: ROW[`${slot.person} ${slot.number}`] };
     case "gerund":
       return { kind: "non-finite", label: "gerundio" };
     case "present-participle":
@@ -211,7 +190,7 @@ function placeOfGloss(slot: VerbFormGloss): Place | undefined {
 }
 
 const isCompound = (mood: Mood, tense: string): boolean =>
-  Object.values(TENSE_PLACE).some((place) => place.mood === mood && place.tense === tense && place.compound);
+  TENSE_BOXES.some((box) => TENSE_NAMES[box].compound && tensePlace(box).mood === mood && TENSE_NAMES[box].tense === tense);
 
 const NON_FINITE_ORDER: NonFiniteLabel[] = ["infinito", "gerundio", "participio presente", "participio", "ausiliare"];
 

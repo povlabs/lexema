@@ -44,6 +44,39 @@ export const TENSE_BOXES = [
 
 export type TenseBox = (typeof TENSE_BOXES)[number];
 
+/** The moods a tense box belongs to, as Italian grammar names them. */
+export type FiniteMood = "indicativo" | "congiuntivo" | "condizionale";
+
+/** A tense box's place in a conjugation: its mood, the tense's Italian name within it, and whether it is compound. */
+export interface TenseName {
+  mood: FiniteMood;
+  tense: string;
+  compound: boolean;
+}
+
+/**
+ * Each tense box's Italian names, the one owner of them (ADR 0015): the page's
+ * table heads its columns with them (web/lib/dictionary/conjugation.ts), and
+ * `it-verb-form-line/v1` writes them into a searched form's line
+ * (src/italian/verbFormLine.ts), so the two never name one cell differently.
+ */
+export const TENSE_NAMES: Readonly<Record<TenseBox, TenseName>> = {
+  presente: { mood: "indicativo", tense: "presente", compound: false },
+  imperfetto: { mood: "indicativo", tense: "imperfetto", compound: false },
+  "passato remoto": { mood: "indicativo", tense: "passato remoto", compound: false },
+  "futuro semplice": { mood: "indicativo", tense: "futuro semplice", compound: false },
+  "passato prossimo": { mood: "indicativo", tense: "passato prossimo", compound: true },
+  "trapassato prossimo": { mood: "indicativo", tense: "trapassato prossimo", compound: true },
+  "trapassato remoto": { mood: "indicativo", tense: "trapassato remoto", compound: true },
+  "futuro anteriore": { mood: "indicativo", tense: "futuro anteriore", compound: true },
+  "congiuntivo presente": { mood: "congiuntivo", tense: "presente", compound: false },
+  "congiuntivo imperfetto": { mood: "congiuntivo", tense: "imperfetto", compound: false },
+  "congiuntivo passato": { mood: "congiuntivo", tense: "passato", compound: true },
+  "congiuntivo trapassato": { mood: "congiuntivo", tense: "trapassato", compound: true },
+  "condizionale presente": { mood: "condizionale", tense: "presente", compound: false },
+  "condizionale passato": { mood: "condizionale", tense: "passato", compound: true },
+};
+
 /** The non-finite rows, in the order the table shows them. */
 export const NON_FINITE_ROLES = [
   "infinito",
@@ -110,6 +143,48 @@ const CONDIZIONALE: Record<string, TenseBox> = {
 };
 
 const UNPLACED: VerbSlot = { kind: "unplaced" };
+
+export type VerbPerson = "first" | "second" | "third";
+export type VerbNumber = "singular" | "plural";
+
+/** The person and number of a finite row: one of a conjugation's six rows. */
+export interface FinitePerson {
+  person: VerbPerson;
+  number: VerbNumber;
+}
+
+const TAGGED_PERSON = new Map<string, VerbPerson>([
+  ["first-person", "first"],
+  ["second-person", "second"],
+  ["third-person", "third"],
+]);
+
+/** The pronoun the source writes beside a finite form, to the row it names. */
+const PRONOUN_PERSON = new Map<string, FinitePerson>([
+  ["io", { person: "first", number: "singular" }],
+  ["tu", { person: "second", number: "singular" }],
+  ["lui/lei", { person: "third", number: "singular" }],
+  ["noi", { person: "first", number: "plural" }],
+  ["voi", { person: "second", number: "plural" }],
+  ["essi/esse", { person: "third", number: "plural" }],
+  ["che io", { person: "first", number: "singular" }],
+  ["che tu", { person: "second", number: "singular" }],
+  ["che lui/che lei", { person: "third", number: "singular" }],
+  ["che noi", { person: "first", number: "plural" }],
+  ["che voi", { person: "second", number: "plural" }],
+  ["che essi/che esse", { person: "third", number: "plural" }],
+]);
+
+/**
+ * The row a finite form sits in: by its person and number tags when it has
+ * both, else by its one pronoun. Undefined when neither says.
+ */
+export function personOfItalianVerbForm({ tags, rawTags }: VerbFormTags): FinitePerson | undefined {
+  const person = tags.map((tag) => TAGGED_PERSON.get(tag)).find((one) => one !== undefined);
+  const number = tags.find((tag): tag is VerbNumber => tag === "singular" || tag === "plural");
+  if (person !== undefined && number !== undefined) return { person, number };
+  return rawTags.length === 1 ? PRONOUN_PERSON.get(rawTags[0]) : undefined;
+}
 
 export function placeItalianVerbForm({ tags, rawTags }: VerbFormTags): VerbSlot {
   const tagged = new Set(tags);

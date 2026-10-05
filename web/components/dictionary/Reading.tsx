@@ -15,7 +15,7 @@ import { conjugationOf } from "@/lib/dictionary/conjugation.ts";
 import { definitionsOf, senseLabels, type DefinitionItem } from "@/lib/dictionary/definitions.ts";
 import { agreementOf, headingGrammar } from "@/lib/dictionary/genderGrid.ts";
 import { ConjugationView, GridView, SuperlativeGrid, searchHref } from "./Forms";
-import type { PageReading } from "@/lib/dictionary/wordPage.ts";
+import { readingAnchor, type PageReading, type VerbFormLine, type VerbFormReading } from "@/lib/dictionary/wordPage.ts";
 import { More, MoreBlock } from "./More";
 import { OneLine } from "./OneLine";
 import { WordList } from "./WordList";
@@ -365,6 +365,58 @@ function LemmaForms({ entry }: { entry: PageReading }) {
         );
       })}
     </>
+  );
+}
+
+/** A rule-built line, its verb linked as a source gloss links its lemma. */
+function VerbFormLineText({ line }: { line: VerbFormLine }) {
+  return (
+    <p className={GLOSS} lang="it">
+      {line.text.slice(0, line.text.length - line.lemma.length)}
+      <a className={GLOSS_LINK} href={searchHref(line.lemma)}>
+        {line.lemma}
+      </a>
+    </p>
+  );
+}
+
+/**
+ * `1 · Voce verbale`, then *Definitions*: the lines saying which verb form
+ * the query is, built by rule (#627). It reads as frame 17's form reading
+ * does, with the one expand control every *Definitions* block has, and no
+ * table: the verb's own reading, after it, carries that. Nothing marks the
+ * lines as Lexema's (ADR 0016).
+ */
+export function VerbFormReadingView({ entry }: { entry: VerbFormReading }) {
+  const anchor = readingAnchor(entry);
+  const list = `definition-list-${anchor}`;
+  return (
+    <article className={READING} id={anchor} aria-labelledby="reading-heading-voce-verbale">
+      <h2 className={READING_HEADING} id="reading-heading-voce-verbale">
+        <span className={READING_NUMBER}>{entry.number}</span>
+        <span className={READING_DOT} aria-hidden="true">
+          ·
+        </span>
+        <span lang="it">{entry.posTitle}</span>
+      </h2>
+      <Block id={`definitions-${anchor}`} label="Definitions">
+        <MoreBlock className={DEFINITIONS_GROUP}>
+          <ol className={DEFINITIONS} id={list}>
+            {entry.lines.map((line, i) => (
+              <li key={line.text} className={i === 0 ? DEFINITION : DEFINITION_EXTRA} data-definition={i + 1}>
+                <span className={DEFINITION_NUMBER} aria-hidden="true">
+                  {i + 1}.
+                </span>
+                <div className={DEFINITION_BODY}>
+                  <VerbFormLineText line={line} />
+                </div>
+              </li>
+            ))}
+          </ol>
+          {entry.lines.length > 1 && <More className={DEFINITIONS_MORE} controls={list} />}
+        </MoreBlock>
+      </Block>
+    </article>
   );
 }
 

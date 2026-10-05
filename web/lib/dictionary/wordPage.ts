@@ -19,6 +19,18 @@
 //
 // A record that lists the query and declares no such form is still a reading.
 //
+// A verb form with no record of its own, such as the compound `sono andato`,
+// is only a cell of its verb's table. The page opens with a reading that says
+// which form it is, `1 · Voce verbale`, built by rule `it-verb-form-line/v1`
+// (src/italian/verbFormLine.ts) from each cell the query hit: "prima persona
+// singolare del passato prossimo indicativo di andare" (#627; Huey's brief of
+// 2026-10-05). The verb's own reading follows, numbered on, with its table. A
+// verb a reading about the query already declares itself a form of gives no
+// line: `andavano`'s own record says what it is. The line is built here, when
+// the page is built; the lookup, the API and the seed never hold it (ADR 0012),
+// and the page shows no mark for it (ADR 0016), though its type keeps it apart
+// from a source reading (`VerbFormReading`).
+//
 // A form reading carries its lemma's table when that table lists the query, the
 // way the lemma's own page draws it: `andavano` shows *Forms of andare*, the
 // conjugation, and `bella` the adjective shows *Forms of bello*, the gender and
@@ -29,6 +41,7 @@
 // the words `gridLemmaWords` names (web/lib/dictionary/searchAttempt.ts).
 
 import { normalizeItalianExact } from "@lexema/italian/normalize.ts";
+import { VERB_FORM_LINE_RULE, verbFormLine } from "@lexema/italian/verbFormLine.ts";
 import { mergeExpressions } from "@lexema/lookup/expressions.ts";
 import {
   entryKey,
@@ -37,12 +50,15 @@ import {
   isAdjectiveReading,
   isFormOfReading,
   isNounReading,
+  isSourceRef,
   isVerbReading,
   lemmasOfPartOfSpeech,
   otherFormsOfQueryLemmas,
   searchedSpellings,
   sourcePointerOf,
+  type SourceRef,
 } from "@lexema/lookup/types.ts";
+import { sourceTagsOf } from "./conjugation.ts";
 import { hasDefinitions } from "./definitions.ts";
 import { agreementOf, type Agreement, type Spelling } from "./genderGrid.ts";
 import { labelParts, readingsNamed, splitLabel } from "./readingLabels.ts";
@@ -73,7 +89,9 @@ export type LemmaTable =
   | { kind: "conjugation"; lemma: LemmaTarget; listing: LemmaListing }
   | { kind: "grid"; lemma: Reading; agreement: Agreement };
 
+/** A reading of a source record. */
 export interface PageReading {
+  kind: "source";
   /**
    * 1-based among the readings that have a definition, and the same number the
    * jump links and the report dialog show. A reading with no definition has
@@ -98,6 +116,49 @@ export interface PageReading {
   /** The synonym groups the source labels with this reading's part of speech. */
   synonyms: RelatedItem[];
 }
+
+/** The heading of a reading that says which verb form the query is: the source's own for one (frame 17). */
+export const VOCE_VERBALE = "Voce verbale";
+
+/**
+ * One line saying which cell of a verb's table the query is, built by rule:
+ * "prima persona singolare del passato prossimo indicativo di andare".
+ * Lexema's text, not the source's, which its type says and the page does not
+ * (ADR 0008, ADR 0016).
+ */
+export interface VerbFormLine {
+  /** The whole line, ending with `lemma`. */
+  text: string;
+  /** The verb the line names, linked to its search. */
+  lemma: string;
+  sourceType: "lexema-deterministic";
+  rule: typeof VERB_FORM_LINE_RULE;
+  /** The verb's `forms[]` entry the line was built from: the pointer the query's evidence carries. */
+  ref: SourceRef;
+}
+
+/**
+ * The reading a verb form with no record of its own opens with, `1 · Voce
+ * verbale`: one line per cell of a verb's table the query hit, identical lines
+ * once (#627). It has no record behind it, so no report names it.
+ */
+export interface VerbFormReading {
+  kind: "verb-form";
+  number: number;
+  posTitle: typeof VOCE_VERBALE;
+  lines: [VerbFormLine, ...VerbFormLine[]];
+}
+
+/** One reading on a word's page: a source record's, or the rule-built one. */
+export type PageEntry = PageReading | VerbFormReading;
+
+/** The anchor of a page entry's reading, which the jump links point to. */
+export const readingAnchor = (entry: PageEntry): string =>
+  entry.kind === "verb-form" ? "reading-voce-verbale" : `reading-${entryKey(entry.reading)}`;
+
+/** The entries backed by a source record: every one a report can name. */
+export const sourceReadings = (entries: readonly PageEntry[]): PageReading[] =>
+  entries.filter((entry): entry is PageReading => entry.kind === "source");
 
 /** The word lists no reading took, as they show: words, and the notes among them. */
 export interface WordLists {
@@ -131,7 +192,7 @@ export function matchesExpression(expression: Expression, typed: string): boolea
 export interface WordPage {
   /** The headword as the source spells it, or the query when no record is about it. */
   headword: string;
-  readings: [PageReading, ...PageReading[]];
+  readings: [PageEntry, ...PageEntry[]];
   /** The facts about the word no reading took: shown once, after the readings. */
   wordFacts: WordFacts;
   /** `wordFacts`' synonyms, antonyms and derived words, as the page lists them. */
@@ -260,11 +321,16 @@ export function wordPage(query: string, readings: readonly [Reading, ...Reading[
   const merged = mergeWordFacts(about);
   const placed = placeWordFacts(about, merged);
   // Readings with a definition number 1, 2, 3 among themselves, so the page
-  // never shows a gap (Huey, 2026-09-30, on #250).
+  // never shows a gap (Huey, 2026-09-30, on #250). The rule-built reading,
+  // when there is one, is the first of them.
+  const lines = verbFormLines(ordered, about);
   let numbered = 0;
+  const lead: VerbFormReading[] =
+    lines === undefined ? [] : [{ kind: "verb-form", number: ++numbered, posTitle: VOCE_VERBALE, lines }];
   const entries = ordered.map((reading): PageReading => {
     const grids = gridTablesOf(reading, lemmas);
     return {
+      kind: "source",
       number: hasDefinitions(reading) ? ++numbered : undefined,
       reading,
       lemmaTables: [...conjugationTablesOf(reading), ...grids],
@@ -273,7 +339,7 @@ export function wordPage(query: string, readings: readonly [Reading, ...Reading[
       synonyms: relatedItems(placed.synonyms.get(reading) ?? []),
     };
   });
-  const [first, ...rest] = entries;
+  const [first, ...rest] = [...lead, ...entries];
   if (first === undefined) throw new Error("a found result renders at least one reading");
 
   const headword = about[0]?.word ?? query;
@@ -289,6 +355,36 @@ export function wordPage(query: string, readings: readonly [Reading, ...Reading[
     expressionSections: expressionSections(headword, about),
     sourceWord: headword,
   };
+}
+
+/** Whether a reading about the query declares itself a form of `verb`, so its own record says what the query is. */
+const formOfReadingAbout = (verb: Reading, about: readonly Reading[]): boolean =>
+  about.some((reading) =>
+    reading.lemmaLinks.some(
+      (link) => link.kind === "candidates" && link.candidates.some((candidate) => entryKey(candidate) === entryKey(verb)),
+    ),
+  );
+
+/**
+ * The lines saying which verb form the query is (#627): for each verb reading
+ * on the page that is not about the query and whose own `forms[]` entries the
+ * query hit, one line per hit cell `it-verb-form-line/v1` names, matched by
+ * pointer. Identical lines show once. None when no cell is named, or when a
+ * reading about the query already declares itself a form of that verb.
+ */
+function verbFormLines(readings: readonly Reading[], about: readonly Reading[]): [VerbFormLine, ...VerbFormLine[]] | undefined {
+  const lines = new Map<string, VerbFormLine>();
+  for (const verb of readings) {
+    if (!isVerbReading(verb) || verb.isAboutQuery || formOfReadingAbout(verb, about)) continue;
+    const hit = searchedSpellings(verb).formPointers;
+    for (const form of verb.forms) {
+      if (!isSourceRef(form.ref) || !hit.has(form.ref.jsonPointer)) continue;
+      const text = verbFormLine(verb.word, sourceTagsOf(form));
+      if (text === undefined || lines.has(text)) continue;
+      lines.set(text, { text, lemma: verb.word, sourceType: "lexema-deterministic", rule: VERB_FORM_LINE_RULE, ref: form.ref });
+    }
+  }
+  return nonEmpty([...lines.values()]);
 }
 
 const nonEmpty = <T>(items: T[]): [T, ...T[]] | undefined => {
