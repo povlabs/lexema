@@ -812,7 +812,40 @@ export function isFormOfReading(reading: Reading): boolean {
  * compared by spelling; an entry is matched by its identity.
  */
 export function formsOfQueryReadings(readings: readonly Reading[]): ReadonlySet<Reading> {
-  const reached = new Set(readings.filter((reading) => reading.isAboutQuery).map(entryKey));
+  return formsReaching(readings, readings.filter((reading) => reading.isAboutQuery).map(entryKey));
+}
+
+/**
+ * The readings that are only other forms of the query's own lemma: on `bella`'s
+ * page, the records of `belli`, `belle` and `bellissimo`, which list `bella` in
+ * their tables and declare themselves forms of `bello`, as `bella` does (Huey,
+ * 2026-10-05, on #626: "bella is the same as bello").
+ *
+ * A reading is one when it is not about the query and one of its declared
+ * lemma candidates is a record that a reading about the query declares itself
+ * a form of, or a reading already found here. The second arm takes a chain:
+ * `bellissime` is a form of `bellissimo`, which is a form of `bello`.
+ *
+ * As in {@link formsOfQueryReadings}, only declared `form_of` edges count,
+ * never a gloss, and entries are matched by identity, never by spelling. A
+ * record that lists the query and declares no form of such a lemma keeps its
+ * reading: a separate noun `bella`, or a proper name.
+ */
+export function otherFormsOfQueryLemmas(readings: readonly Reading[]): ReadonlySet<Reading> {
+  const lemmas = readings
+    .filter((reading) => reading.isAboutQuery)
+    .flatMap((reading) => reading.lemmaLinks.flatMap((link) => (link.kind === "candidates" ? link.candidates : [])))
+    .map(entryKey);
+  return formsReaching(readings, lemmas);
+}
+
+/**
+ * The readings not about the query whose declared lemma candidates reach
+ * `seed`, each one found reaching on to the readings that declare themselves
+ * its forms.
+ */
+function formsReaching(readings: readonly Reading[], seed: readonly string[]): ReadonlySet<Reading> {
+  const reached = new Set(seed);
   const forms = new Set<Reading>();
   const namesReached = (reading: Reading): boolean =>
     reading.lemmaLinks.some(
