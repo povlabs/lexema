@@ -70,21 +70,21 @@ exports[`bello's whole page is the page the snapshot holds (#385) 1`] = `
 <div data-closed="" class="group/definitions">
 <ol class="m-0 flex list-none flex-col gap-4 p-0" id="definition-list-65">
 <li class="flex gap-[0.4375rem] sm:gap-3" data-definition="1">
-<span class="w-5 shrink-0 pt-1 font-mono text-[0.85rem] text-text-muted" aria-hidden="true">1.</span>
+<span class="w-5 shrink-0 pt-1 font-mono text-[0.85rem] text-text-muted sm:pt-0 sm:leading-[1.125rem]" aria-hidden="true">1.</span>
 <div class="min-w-0 flex-1">
-<p class="m-0 max-w-[48rem] font-serif text-[1.0625rem] leading-[1.625rem] text-text-strong wrap-anywhere sm:pb-0.5 sm:text-[1.1875rem] sm:leading-7" lang="it">che desta impressione di piacere e gradimento</p>
+<p class="m-0 max-w-[48rem] font-serif text-[1.0625rem] leading-[1.625rem] text-text-strong wrap-anywhere sm:py-px sm:text-[1.1875rem] sm:leading-7" lang="it">che desta impressione di piacere e gradimento</p>
 </div>
 </li>
 <li class="hidden gap-[0.4375rem] group-data-open/definitions:flex sm:gap-3" data-definition="2">
-<span class="w-5 shrink-0 pt-1 font-mono text-[0.85rem] text-text-muted" aria-hidden="true">2.</span>
+<span class="w-5 shrink-0 pt-1 font-mono text-[0.85rem] text-text-muted sm:pt-0 sm:leading-[1.125rem]" aria-hidden="true">2.</span>
 <div class="min-w-0 flex-1">
-<p class="m-0 max-w-[48rem] font-serif text-[1.0625rem] leading-[1.625rem] text-text-strong wrap-anywhere sm:pb-0.5 sm:text-[1.1875rem] sm:leading-7" lang="it">che corrisponde ai canoni della bellezza</p>
+<p class="m-0 max-w-[48rem] font-serif text-[1.0625rem] leading-[1.625rem] text-text-strong wrap-anywhere sm:py-px sm:text-[1.1875rem] sm:leading-7" lang="it">che corrisponde ai canoni della bellezza</p>
 </div>
 </li>
 <li class="hidden gap-[0.4375rem] group-data-open/definitions:flex sm:gap-3" data-definition="3">
-<span class="w-5 shrink-0 pt-1 font-mono text-[0.85rem] text-text-muted" aria-hidden="true">3.</span>
+<span class="w-5 shrink-0 pt-1 font-mono text-[0.85rem] text-text-muted sm:pt-0 sm:leading-[1.125rem]" aria-hidden="true">3.</span>
 <div class="min-w-0 flex-1">
-<p class="m-0 max-w-[48rem] font-serif text-[1.0625rem] leading-[1.625rem] text-text-strong wrap-anywhere sm:pb-0.5 sm:text-[1.1875rem] sm:leading-7" lang="it">
+<p class="m-0 max-w-[48rem] font-serif text-[1.0625rem] leading-[1.625rem] text-text-strong wrap-anywhere sm:py-px sm:text-[1.1875rem] sm:leading-7" lang="it">
 <span class="italic text-text-muted">(broadly) </span>gradito, con tratti somatici e quindi estetici apprezzati</p>
 <p class="m-0 mt-1 max-w-[48rem] font-serif text-[0.9375rem] italic text-text-muted sm:mt-[0.3125rem] sm:text-base">
 <span lang="it">&quot;Ha una faccia bella. Una domanda: ma è anche saggio?&quot;</span>
@@ -92,18 +92,18 @@ exports[`bello's whole page is the page the snapshot holds (#385) 1`] = `
 </div>
 </li>
 <li class="hidden gap-[0.4375rem] group-data-open/definitions:flex sm:gap-3" data-definition="4">
-<span class="w-5 shrink-0 pt-1 font-mono text-[0.85rem] text-text-muted" aria-hidden="true">4.</span>
+<span class="w-5 shrink-0 pt-1 font-mono text-[0.85rem] text-text-muted sm:pt-0 sm:leading-[1.125rem]" aria-hidden="true">4.</span>
 <div class="min-w-0 flex-1">
-<p class="m-0 max-w-[48rem] font-serif text-[1.0625rem] leading-[1.625rem] text-text-strong wrap-anywhere sm:pb-0.5 sm:text-[1.1875rem] sm:leading-7" lang="it">sereno</p>
+<p class="m-0 max-w-[48rem] font-serif text-[1.0625rem] leading-[1.625rem] text-text-strong wrap-anywhere sm:py-px sm:text-[1.1875rem] sm:leading-7" lang="it">sereno</p>
 <p class="m-0 mt-1 max-w-[48rem] font-serif text-[0.9375rem] italic text-text-muted sm:mt-[0.3125rem] sm:text-base">
 <span lang="it">Oggi il tempo è bello</span>
 </p>
 </div>
 </li>
 <li class="hidden gap-[0.4375rem] group-data-open/definitions:flex sm:gap-3" data-definition="5">
-<span class="w-5 shrink-0 pt-1 font-mono text-[0.85rem] text-text-muted" aria-hidden="true">5.</span>
+<span class="w-5 shrink-0 pt-1 font-mono text-[0.85rem] text-text-muted sm:pt-0 sm:leading-[1.125rem]" aria-hidden="true">5.</span>
 <div class="min-w-0 flex-1">
-<p class="m-0 max-w-[48rem] font-serif text-[1.0625rem] leading-[1.625rem] text-text-strong wrap-anywhere sm:pb-0.5 sm:text-[1.1875rem] sm:leading-7" lang="it">
+<p class="m-0 max-w-[48rem] font-serif text-[1.0625rem] leading-[1.625rem] text-text-strong wrap-anywhere sm:py-px sm:text-[1.1875rem] sm:leading-7" lang="it">
 <span class="italic text-text-muted">(figuratively) </span>che suscita sentimenti positivi ed entusiasmo</p>
 <p class="m-0 mt-1 max-w-[48rem] font-serif text-[0.9375rem] italic text-text-muted sm:mt-[0.3125rem] sm:text-base">
 <span lang="it">è bello vedere tanti giovani ballare assieme</span>
@@ -111,9 +111,9 @@ exports[`bello's whole page is the page the snapshot holds (#385) 1`] = `
 </div>
 </li>
 <li class="hidden gap-[0.4375rem] group-data-open/definitions:flex sm:gap-3" data-definition="6">
-<span class="w-5 shrink-0 pt-1 font-mono text-[0.85rem] text-text-muted" aria-hidden="true">6.</span>
+<span class="w-5 shrink-0 pt-1 font-mono text-[0.85rem] text-text-muted sm:pt-0 sm:leading-[1.125rem]" aria-hidden="true">6.</span>
 <div class="min-w-0 flex-1">
-<p class="m-0 max-w-[48rem] font-serif text-[1.0625rem] leading-[1.625rem] text-text-strong wrap-anywhere sm:pb-0.5 sm:text-[1.1875rem] sm:leading-7" lang="it">
+<p class="m-0 max-w-[48rem] font-serif text-[1.0625rem] leading-[1.625rem] text-text-strong wrap-anywhere sm:py-px sm:text-[1.1875rem] sm:leading-7" lang="it">
 <span class="italic text-text-muted">(familiare) </span>agevole, che porta con sé un puro sentire</p>
 <p class="m-0 mt-1 max-w-[48rem] font-serif text-[0.9375rem] italic text-text-muted sm:mt-[0.3125rem] sm:text-base">
 <span lang="it">anche qua è bello</span>
@@ -226,15 +226,15 @@ exports[`bello's whole page is the page the snapshot holds (#385) 1`] = `
 <div data-closed="" class="group/definitions">
 <ol class="m-0 flex list-none flex-col gap-4 p-0" id="definition-list-66">
 <li class="flex gap-[0.4375rem] sm:gap-3" data-definition="1">
-<span class="w-5 shrink-0 pt-1 font-mono text-[0.85rem] text-text-muted" aria-hidden="true">1.</span>
+<span class="w-5 shrink-0 pt-1 font-mono text-[0.85rem] text-text-muted sm:pt-0 sm:leading-[1.125rem]" aria-hidden="true">1.</span>
 <div class="min-w-0 flex-1">
-<p class="m-0 max-w-[48rem] font-serif text-[1.0625rem] leading-[1.625rem] text-text-strong wrap-anywhere sm:pb-0.5 sm:text-[1.1875rem] sm:leading-7" lang="it">categoria positiva dell&#x27;estetica; fin dall&#x27;antichità ha rappresentato uno dei tre generi supremi di valori, assieme al vero e al bene</p>
+<p class="m-0 max-w-[48rem] font-serif text-[1.0625rem] leading-[1.625rem] text-text-strong wrap-anywhere sm:py-px sm:text-[1.1875rem] sm:leading-7" lang="it">categoria positiva dell&#x27;estetica; fin dall&#x27;antichità ha rappresentato uno dei tre generi supremi di valori, assieme al vero e al bene</p>
 </div>
 </li>
 <li class="hidden gap-[0.4375rem] group-data-open/definitions:flex sm:gap-3" data-definition="2">
-<span class="w-5 shrink-0 pt-1 font-mono text-[0.85rem] text-text-muted" aria-hidden="true">2.</span>
+<span class="w-5 shrink-0 pt-1 font-mono text-[0.85rem] text-text-muted sm:pt-0 sm:leading-[1.125rem]" aria-hidden="true">2.</span>
 <div class="min-w-0 flex-1">
-<p class="m-0 max-w-[48rem] font-serif text-[1.0625rem] leading-[1.625rem] text-text-strong wrap-anywhere sm:pb-0.5 sm:text-[1.1875rem] sm:leading-7" lang="it">condizione climatica buona</p>
+<p class="m-0 max-w-[48rem] font-serif text-[1.0625rem] leading-[1.625rem] text-text-strong wrap-anywhere sm:py-px sm:text-[1.1875rem] sm:leading-7" lang="it">condizione climatica buona</p>
 <p class="m-0 mt-1 max-w-[48rem] font-serif text-[0.9375rem] italic text-text-muted sm:mt-[0.3125rem] sm:text-base">
 <span lang="it">domani riprenderà il bello?</span>
 </p>
@@ -298,9 +298,9 @@ exports[`bello's whole page is the page the snapshot holds (#385) 1`] = `
 <div data-closed="" class="group/definitions">
 <ol class="m-0 flex list-none flex-col gap-4 p-0" id="definition-list-67">
 <li class="flex gap-[0.4375rem] sm:gap-3" data-definition="1">
-<span class="w-5 shrink-0 pt-1 font-mono text-[0.85rem] text-text-muted" aria-hidden="true">1.</span>
+<span class="w-5 shrink-0 pt-1 font-mono text-[0.85rem] text-text-muted sm:pt-0 sm:leading-[1.125rem]" aria-hidden="true">1.</span>
 <div class="min-w-0 flex-1">
-<p class="m-0 max-w-[48rem] font-serif text-[1.0625rem] leading-[1.625rem] text-text-strong wrap-anywhere sm:pb-0.5 sm:text-[1.1875rem] sm:leading-7" lang="it">individuo di particolare fascino</p>
+<p class="m-0 max-w-[48rem] font-serif text-[1.0625rem] leading-[1.625rem] text-text-strong wrap-anywhere sm:py-px sm:text-[1.1875rem] sm:leading-7" lang="it">individuo di particolare fascino</p>
 </div>
 </li>
 </ol>
@@ -368,9 +368,9 @@ exports[`bello's whole page is the page the snapshot holds (#385) 1`] = `
 <div data-closed="" class="group/definitions">
 <ol class="m-0 flex list-none flex-col gap-4 p-0" id="definition-list-96">
 <li class="flex gap-[0.4375rem] sm:gap-3" data-definition="1">
-<span class="w-5 shrink-0 pt-1 font-mono text-[0.85rem] text-text-muted" aria-hidden="true">1.</span>
+<span class="w-5 shrink-0 pt-1 font-mono text-[0.85rem] text-text-muted sm:pt-0 sm:leading-[1.125rem]" aria-hidden="true">1.</span>
 <div class="min-w-0 flex-1">
-<p class="m-0 max-w-[48rem] font-serif text-[1.0625rem] leading-[1.625rem] text-text-strong wrap-anywhere sm:pb-0.5 sm:text-[1.1875rem] sm:leading-7" lang="it">femminile singolare di <a class="text-accent no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent" href="/?q=bello">bello</a>
+<p class="m-0 max-w-[48rem] font-serif text-[1.0625rem] leading-[1.625rem] text-text-strong wrap-anywhere sm:py-px sm:text-[1.1875rem] sm:leading-7" lang="it">femminile singolare di <a class="text-accent no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent" href="/?q=bello">bello</a>
 </p>
 </div>
 </li>
