@@ -76,11 +76,16 @@ export const SITE_FOOTER_LINK = `font-sans text-[0.78125rem] text-text-muted no-
  * Frame 00: before a query the page is the name and the bar, centred on the
  * screen, with nothing else competing (design-system-manifest.md § "The page").
  */
-export const SHELL_CENTRED = `${COLUMN} flex flex-1 flex-col items-center justify-center py-16 text-center`;
-export const HOME_NAME = "m-0 font-serif text-[3.75rem] leading-none font-normal text-text-strong";
-/** Under the wordmark on the home page: its pronunciation, as a word's is drawn, then what it is. */
-export const HOME_PRONUNCIATION = "m-0 mt-4 font-mono text-base text-text-muted sm:text-lg";
-export const HOME_TAGLINE = "m-0 mt-1 mb-10 font-serif text-[1.1rem] italic text-text-muted";
+export const SHELL_CENTRED = `${COLUMN} flex flex-1 flex-col items-center justify-center pt-22 pb-10 text-center`;
+/** Frame 00 at 1440: the name 63 px. */
+export const HOME_NAME = "m-0 font-serif text-[3.9375rem] leading-none font-normal text-text-strong";
+/**
+ * Under the wordmark on the home page: its pronunciation in mono, muted, then
+ * what it is in italic serif, in `text`. Frame 00 draws both, at 13 px and
+ * 19 px (#596).
+ */
+export const HOME_PRONUNCIATION = "m-0 mt-[1.9375rem] font-mono text-[0.8125rem] text-text-muted";
+export const HOME_TAGLINE = "m-0 mt-[0.3125rem] mb-[2.5625rem] font-serif text-[1.1875rem] italic text-text";
 
 /**
  * With a query: the bar at the top of the column, the word below it. The
@@ -95,24 +100,49 @@ export const SHELL_TOP = `${COLUMN} flex-1 pt-4 pb-3.25 sm:pt-7 sm:pb-4`;
 
 // The search field --------------------------------------------------------
 
-export const SEARCH_FORM = "w-full max-w-[40rem]";
-export const SEARCH_FIELD =
+/**
+ * Where the one field sits: `centred` on the home page before a query, `top`
+ * above a result. Frame 00 draws the centred field larger than the result
+ * frames draw the top one, so each part whose size differs is keyed by it
+ * (#596).
+ */
+export type SearchPlacement = "centred" | "top";
+
+/** Frame 00 at 1440: the box is 642 px wide and 61 px tall, border included. */
+export const SEARCH_FORM: Record<SearchPlacement, string> = {
+  centred: "w-full max-w-[40.125rem]",
+  top: "w-full max-w-[40rem]",
+};
+const FIELD =
   "relative flex w-full items-center rounded-[4px] border border-border-strong bg-surface-raised focus-within:border-accent";
-export const SEARCH_ICON = "pointer-events-none absolute left-4 size-4 text-text-muted";
+export const SEARCH_FIELD: Record<SearchPlacement, string> = {
+  centred: `${FIELD} h-[3.8125rem]`,
+  top: FIELD,
+};
+export const SEARCH_ICON: Record<SearchPlacement, string> = {
+  centred: "pointer-events-none absolute left-5 size-5 text-text-muted",
+  top: "pointer-events-none absolute left-4 size-4 text-text-muted",
+};
 /**
  * The browser's own clear button on a `type="search"` field is hidden: it is
  * drawn in the browser's blue, not a role, and sat on top of the field's own
  * `×` and `ENTER` hint once typing opened the suggestion list.
  */
-export const SEARCH_INPUT =
-  "w-full min-w-0 bg-transparent py-3 pr-24 pl-11 font-serif text-lg text-text-strong outline-none placeholder:font-sans placeholder:text-base placeholder:text-text-muted [&::-webkit-search-cancel-button]:appearance-none";
+export const SEARCH_INPUT: Record<SearchPlacement, string> = {
+  centred:
+    "w-full min-w-0 bg-transparent py-3 pr-24 pl-[3.375rem] font-serif text-lg text-text-strong outline-none placeholder:font-sans placeholder:text-[1.0625rem] placeholder:text-text-muted [&::-webkit-search-cancel-button]:appearance-none",
+  top: "w-full min-w-0 bg-transparent py-3 pr-24 pl-11 font-serif text-lg text-text-strong outline-none placeholder:font-sans placeholder:text-base placeholder:text-text-muted [&::-webkit-search-cancel-button]:appearance-none",
+};
 /**
  * The right end of the bar: the shortcut hint, the `ENTER` hint and the `×`,
  * in one row centred on the input. Each sits in a box of the same height with
  * its glyph centred in it, so their centres line up with each other and with
  * the typed text.
  */
-export const SEARCH_TRAILING = "pointer-events-none absolute inset-y-0 right-3 flex items-center gap-1.5";
+export const SEARCH_TRAILING: Record<SearchPlacement, string> = {
+  centred: "pointer-events-none absolute inset-y-0 right-4 flex items-center gap-1.5",
+  top: "pointer-events-none absolute inset-y-0 right-3 flex items-center gap-1.5",
+};
 const TRAILING_BOX = "flex h-7 items-center leading-none";
 /**
  * Capitals and `⌘` are drawn higher in their line than `×`; measured, the
@@ -147,10 +177,13 @@ export const SUGGEST_ITEM_HINT =
 /** No suggestions, or none could be read: said in words, in the list's place. */
 export const SUGGEST_NOTE = "px-3 py-2 font-sans text-[0.85rem] text-text-muted";
 
-/** Frame 00: `Try` and a row of bordered chips under the field. */
-export const TRY_ROW = "mt-8 flex flex-wrap items-center justify-center gap-2";
-export const TRY_LABEL = "mr-1 font-sans text-[0.8rem] text-text-muted";
-export const TRY_CHIP = `rounded-[3px] border border-border bg-surface-raised px-2.5 py-1 font-serif text-[0.9rem] text-text no-underline hover:border-border-strong ${FOCUS_RING}`;
+/**
+ * Frame 00: `Try` and a row of chips under the field, 10 px apart. Each chip
+ * is a 32 px tall hairline box on the page's own `surface` (#596).
+ */
+export const TRY_ROW = "mt-[2.5625rem] flex flex-wrap items-center justify-center gap-2.5";
+export const TRY_LABEL = "font-sans text-[0.8125rem] text-text-muted";
+export const TRY_CHIP = `inline-flex h-8 items-center rounded-[3px] border border-border px-2.5 font-serif text-sm text-text no-underline hover:border-border-strong ${FOCUS_RING}`;
 
 // What the page says about itself ----------------------------------------
 
