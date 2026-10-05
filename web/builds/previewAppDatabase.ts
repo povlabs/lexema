@@ -86,7 +86,8 @@ function namesIn(run: WranglerRun, database: string): string[] {
  * it as a `JsonFriendlyFatalError` whose message is `{"error": ...}`, which its
  * top-level handler prints with `logger.log`: so the answer is that JSON on
  * stdout, not text on stderr. A remote query's error is an `APIError` whose
- * notes carry D1's own words, `no such table: <table>: SQLITE_ERROR`.
+ * notes carry D1's own words, `no such table: <table>: SQLITE_ERROR`; the
+ * colon after the name keeps `d1_migrations` from matching a longer name.
  */
 function answeredNoSuchTable(run: WranglerRun, table: string): boolean {
   let answer: unknown;
@@ -95,7 +96,7 @@ function answeredNoSuchTable(run: WranglerRun, table: string): boolean {
   } catch {
     return false;
   }
-  return isRecord(answer) && "error" in answer && JSON.stringify(answer.error).includes(`no such table: ${table}`);
+  return isRecord(answer) && "error" in answer && JSON.stringify(answer.error).includes(`no such table: ${table}:`);
 }
 
 /**
