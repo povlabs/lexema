@@ -472,18 +472,42 @@ export const REPORT_CLOSE = `mt-5 cursor-pointer rounded-[3px] border border-bor
 // Frames 33 and 35 at 1440 px: the Contents column 120 px in, 220 px wide, a
 // 96 px gap, then the 720 px text column at 436 px (#581). The shell is the
 // one `COLUMN`, so on every width the text starts on the same edge as its
-// site's header: 120 px at 1440 px, and 20 px on a phone (#585, #588). The
-// shell's bottom padding plus the footer's own margin make the frame's 112 px,
-// 56 px on a phone.
-const LEGAL_SHELL_SPACE = "flex-1 pt-18 pb-20 max-sm:pt-9 max-sm:pb-9";
+// site's header: 120 px at 1440 px, and 20 px on a phone (#585, #588). Under
+// the text, the frames leave 110 px to the footer's rule, 56 px on a
+// phone, on both sites (#596). The dictionary's footer brings its own margin
+// (`SITE_FOOTER`), so its shell pads the rest; the developer footer has none,
+// so its shell pads it all.
+const LEGAL_SHELL_TOP = "flex-1 pt-18 max-sm:pt-9";
 /** The site a legal page belongs to, which picks its shell's column. */
 export type LegalSite = "dictionary" | "developers";
 export const LEGAL_SHELL: Readonly<Record<LegalSite, string>> = {
-  dictionary: `${COLUMN} ${LEGAL_SHELL_SPACE}`,
-  developers: `${COLUMN} ${LEGAL_SHELL_SPACE}`,
+  dictionary: `${COLUMN} ${LEGAL_SHELL_TOP} pb-20.25 max-sm:pb-9`,
+  developers: `${COLUMN} ${LEGAL_SHELL_TOP} pb-27.5 max-sm:pb-14`,
 };
-export const LEGAL_LAYOUT =
+/**
+ * How many digits a page's highest section number has. It sets the width of
+ * the number's slot, in the headings and in the Contents, so every title on
+ * the page starts on one edge (#585) and that edge sits where the frames draw
+ * it (#596): frames 33, 34 and 36 have one-digit numbers and set titles 1 to 9
+ * close; frame 35 has eleven sections, and its titles start where "10." ends.
+ */
+export type LegalNumberDigits = 1 | 2;
+const LEGAL_GRID =
   "sm:grid sm:grid-cols-[11rem_minmax(0,1fr)] sm:gap-x-12 lg:grid-cols-[13.75rem_minmax(0,45rem)] lg:gap-x-24";
+/**
+ * The two columns, and the slots their numbers take on a wide screen.
+ * `--legal-hang` is how far a section title sits from the text column's edge:
+ * the heading's number takes it as its width and the section's text as its
+ * indent, so the text starts under the title (#585). One digit: 30 px, the
+ * titles' and the text's edge in frames 33, 34 and 36. Two digits: as wide as
+ * "11." and the 14 px after it. `--legal-contents-slot` is the Contents
+ * number's: one digit, 20 px, where frames 33, 34 and 36 start the titles;
+ * two digits, as wide as "11." and the 8 px after it.
+ */
+export const LEGAL_LAYOUT: Readonly<Record<LegalNumberDigits, string>> = {
+  1: `${LEGAL_GRID} [--legal-hang:1.875rem] [--legal-contents-slot:1.25rem]`,
+  2: `${LEGAL_GRID} [--legal-hang:2.5rem] [--legal-contents-slot:1.625rem]`,
+};
 /**
  * The Contents column, hidden on a phone. It starts level with the lede and,
  * once the page scrolls, stays in view.
@@ -492,38 +516,40 @@ export const LEGAL_CONTENTS = "hidden sm:block";
 export const LEGAL_CONTENTS_INNER = "sticky top-8 mt-37";
 export const LEGAL_CONTENTS_LABEL = "m-0 font-sans text-[0.6875rem] leading-[1.7] font-semibold tracking-[0.1em] text-text-muted uppercase";
 export const LEGAL_CONTENTS_LIST = "m-0 mt-2.5 flex list-none flex-col gap-2.5 p-0";
-/** A Contents entry; the one for the section being read is drawn strong (LegalContents.tsx). */
-export const LEGAL_CONTENTS_LINK = `flex font-sans text-[0.84375rem] leading-[1.5] text-text-muted no-underline hover:text-text-strong aria-[current=location]:text-text-strong ${FOCUS_RING}`;
 /**
- * A Contents entry's number, in a slot as wide as "11." and the 8 px after it,
- * so every title starts on one edge (#585).
+ * A Contents entry; the one for the section being read is drawn strong
+ * (LegalContents.tsx). Frames 33 to 36 set the entries 30 px apart: a 20 px
+ * line and the list's 10 px gap.
  */
-export const LEGAL_CONTENTS_NUMBER = "w-[1.625rem] shrink-0";
-/**
- * The text column. `--legal-hang` is how far a section title sits from the
- * column's edge on a wide screen: the number's slot, as wide as "11." and the
- * 14 px after it. The heading's number takes it as its width and the
- * section's text as its indent, so the text starts under the title (#585).
- */
-export const LEGAL_TEXT = "min-w-0 [--legal-hang:2.5rem]";
+export const LEGAL_CONTENTS_LINK = `flex font-sans text-[0.84375rem] leading-5 text-text-muted no-underline hover:text-text-strong aria-[current=location]:text-text-strong ${FOCUS_RING}`;
+/** A Contents entry's number, in the page's slot (`LEGAL_LAYOUT`), so every title starts on one edge (#585). */
+export const LEGAL_CONTENTS_NUMBER = "w-(--legal-contents-slot) shrink-0";
+export const LEGAL_TEXT = "min-w-0";
 export const LEGAL_KICKER = "m-0 font-sans text-[0.6875rem] leading-[1.7] font-semibold tracking-[0.1em] text-accent";
 export const LEGAL_TITLE = "m-0 mt-3.5 font-serif text-[2.75rem] leading-[1.15] font-normal text-text-strong max-sm:text-[2.125rem]";
 export const LEGAL_EFFECTIVE = "m-0 mt-3.5 font-sans text-[0.8125rem] leading-[1.7] text-text-muted";
-/** The lede, and the rule that closes the page's head. */
+/** The lede, and the rule that closes the page's head: lines 28 px apart, and on a phone 26 px apart with the rule 2 px closer (frames 33 to 36m). */
 export const LEGAL_LEDE =
-  "m-0 mt-3.5 border-b border-border pb-8 font-sans text-[1.0625rem] leading-[1.65] text-text-strong max-sm:text-base";
-/** A section; the gap above its heading is kept when a Contents link scrolls to it. */
-export const LEGAL_SECTION = "mt-10 scroll-mt-8 max-sm:mt-8";
+  "m-0 mt-3.5 border-b border-border pb-8 font-sans text-[1.0625rem] leading-7 text-text-strong max-sm:pb-7.5 max-sm:text-base max-sm:leading-6.5";
+/**
+ * A section; the gap above its heading is kept when a Contents link scrolls to
+ * it. Its heading is a 28 px line, and on a phone a 24 px line 34 px under the
+ * text before it (frames 33 to 36m, #596).
+ */
+export const LEGAL_SECTION = "mt-10 scroll-mt-8 max-sm:mt-8.5";
 export const LEGAL_SECTION_HEADING =
-  "m-0 flex items-baseline font-serif text-[1.3125rem] leading-[1.35] font-normal text-text-strong max-sm:text-[1.1875rem]";
+  "m-0 flex items-baseline font-serif text-[1.3125rem] leading-7 font-normal text-text-strong max-sm:text-[1.1875rem] max-sm:leading-6";
 /**
  * On a phone there is no slot: the number is its own width and a fixed gap,
  * so titles 1 to 9 start 30 px in and 10 and 11 start 40 px in, as frames 33m
  * to 36m draw them, and the text has no indent (#588).
  */
 export const LEGAL_SECTION_NUMBER = "w-(--legal-hang) shrink-0 text-accent max-sm:w-auto max-sm:mr-4";
-/** The section's text, set in under the heading's words on a wide screen. */
-const LEGAL_BODY = "font-sans text-[0.96875rem] leading-[1.7] text-text sm:pl-(--legal-hang) max-sm:text-[0.9375rem]";
+/**
+ * The section's text, set in under the heading's words on a wide screen.
+ * Frames 33 to 36m draw its lines 26 px apart on every width (#596).
+ */
+const LEGAL_BODY = "font-sans text-[0.96875rem] leading-6.5 text-text sm:pl-(--legal-hang) max-sm:text-[0.9375rem]";
 export const LEGAL_PARAGRAPH = `m-0 mt-3 ${LEGAL_BODY}`;
 /** The lettered items, `(a)` and `(b)`, each mark hanging beside its text. */
 export const LEGAL_ITEMS = `m-0 mt-3 flex list-none flex-col gap-1.5 p-0 ${LEGAL_BODY}`;

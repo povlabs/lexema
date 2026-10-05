@@ -78,6 +78,7 @@ import {
   LEGAL_CONTENTS,
   LEGAL_EFFECTIVE,
   LEGAL_KICKER,
+  LEGAL_LAYOUT,
   LEGAL_LEDE,
   LEGAL_SECTION,
   LEGAL_SECTION_NUMBER,
@@ -1998,6 +1999,10 @@ test("on a phone a legal section number is its own width and a fixed gap; from s
   assert.ok(classes.includes("w-(--legal-hang)"), "the wide slot");
   assert.ok(classes.includes("max-sm:w-auto"), "no slot on a phone");
   assert.ok(classes.includes("max-sm:mr-4"), "frames 33m to 36m: the title 16 px after the number");
+});
+
+test("the dictionary's legal pages have one-digit section numbers, so their titles take frames 33 and 34's edge (#596)", () => {
+  for (const html of [licence(), privacy()]) assert.match(html, exact(`<div class="${LEGAL_LAYOUT[1]}">`));
 });
 
 test("a legal page's heading and Contents link read the number, a full stop and a space before the title (#581)", () => {
