@@ -28,7 +28,7 @@ development, with the placeholder D1 that `pnpm run seed:dev` fills.
 | `workers_dev`, `preview_urls` | both off |
 | D1 | `DB`, the shared dictionary `lexema-dictionary`, which code only reads, the same one the Previews read; `APP_DB`, production's own app database `lexema-app`, which the deploy command migrates ([below](#deploy)) ([#611](https://github.com/povlabs/lexema/issues/611)) |
 | Release | `LEXEMA_RELEASE` is `it-0c432803`, the master the shared dictionary serves, the same as the Previews' |
-| Report box | Turnstile, on once both halves are set: `TURNSTILE_SITE_KEY`, the public site key, is a var ([#611](https://github.com/povlabs/lexema/issues/611)); its secret `TURNSTILE_SECRET_KEY` is a Worker secret Huey sets with `wrangler secret put`, never in the repository |
+| Report box | Turnstile: `TURNSTILE_SITE_KEY`, the public site key, is a var ([#611](https://github.com/povlabs/lexema/issues/611)); its secret `TURNSTILE_SECRET_KEY` is a Worker secret. The visitor code is keyed by the Worker secret `REPORT_VISITOR_KEY` ([#621](https://github.com/povlabs/lexema/issues/621)). Huey sets both secrets with `wrangler secret put`, never in the repository; without either, or without the site key, the box is closed ([below](#set-the-report-boxs-secrets)) |
 | Rate limits | 15 searches and 120 suggestions a minute per visitor ([#128](https://github.com/povlabs/lexema/issues/128)); 10 sign-in starts ([#165](https://github.com/povlabs/lexema/issues/165)), 5 key creations ([#168](https://github.com/povlabs/lexema/issues/168)) and 5 billing requests ([#296](https://github.com/povlabs/lexema/issues/296)) a minute on the developer site |
 | API rate | `CALLS_60` and `CALLS_300`, Rate Limiting bindings of 60 and 300 calls a minute per developer account, keyed by account id ([#261](https://github.com/povlabs/lexema/issues/261)) |
 | Account meter | the Durable Object class `AccountMeterObject`, bound as `ACCOUNT_METER`, SQLite-backed through the `v1-account-meter` migration: one per developer account, counting its calls and adding them to `api_key_usage` at most once a minute ([#261](https://github.com/povlabs/lexema/issues/261)) |
@@ -269,18 +269,21 @@ there, green.
    `DICTIONARY_SLICE`. It applies the app migrations to the app D1. Then it writes
    the [Preview name](#the-preview-name) to `web/dist/preview/name`, and the
    secrets for the deployment to `web/dist/preview/secrets.json`. That file holds
-   a new random `BETTER_AUTH_SECRET` on every push, the first and every later one.
+   a new random `BETTER_AUTH_SECRET` and a new random `REPORT_VISITOR_KEY` on
+   every push, the first and every later one.
 2. If that name file exists, `npx wrangler preview` deploys the Preview from
    that config, named by that name, with those secrets. Without `--name`,
    Wrangler would name it after the raw branch.
 
-The secret is sent with every Preview deployment, because a deployment keeps
+The secrets are sent with every Preview deployment, because a deployment keeps
 only the secrets it is sent: Wrangler 4.135.0 has no flag to keep the last
 deployment's. A push that sent none would leave the Preview with no
-`BETTER_AUTH_SECRET`, and sign-in would break. It goes up with the deployment,
+`BETTER_AUTH_SECRET`, and sign-in would break, and no `REPORT_VISITOR_KEY`, and
+the report box would answer `failed`. They go up with the deployment,
 not after it, because `wrangler preview secret put` refuses a Preview that has
 no deployment yet. So nothing has to run after `npx wrangler preview`. The cost
-is that each push signs the Preview's testers out.
+is that each push signs the Preview's testers out, and starts its reports'
+visitor codes afresh, which only resets an hour's report allowance.
 
 `npx` runs the Wrangler pinned in `web/package.json`, 4.135.0, from
 `web/node_modules`, and downloads nothing
@@ -553,10 +556,11 @@ accepts this, since only reviewed build commands use it.
 1. Push a branch and open a pull request. Once the build succeeds, the
    [preview comment](#the-preview-comment) names its three sites. The build log shows `Preview <name> for branch <branch>`, then
    `app database: created lexema-preview-app-<name>`, the migrations,
-   `BETTER_AUTH_SECRET: a new random one goes up with Preview <name>`, and
+   `BETTER_AUTH_SECRET: a new random one goes up with Preview <name>`,
+   `REPORT_VISITOR_KEY: a new random one goes up with Preview <name>`, and
    `wrangler preview`.
 2. Push to the branch again. The log now says `app database: reusing`, and
-   again `BETTER_AUTH_SECRET: a new random one goes up with Preview <name>`.
+   again the two `a new random one goes up with Preview <name>` lines.
 3. Merge it. Once its dictionary deploy run is green, the `production` build
    log starts with `sweep:` lines, deletes that branch's Preview and app D1,
    and then deploys production.
@@ -963,6 +967,42 @@ No agent does any of them.
    under **Workflow permissions**, turn on **Allow GitHub Actions to create and
    approve pull requests**.
 
+## Set the report box's secrets
+
+The report box ([WEB.md](WEB.md#why-a-report-is-stored-and-nothing-more)) needs two Worker secrets in
+production, and neither is in the repository
+([#621](https://github.com/povlabs/lexema/issues/621)):
+
+| Secret | What it is |
+|---|---|
+| `TURNSTILE_SECRET_KEY` | Turnstile's secret key, the other half of `TURNSTILE_SITE_KEY` in `env.production.vars` |
+| `REPORT_VISITOR_KEY` | the key a report's visitor code is an HMAC-SHA-256 under, so the code cannot be turned back into an address without it |
+
+On production the box is closed while either is unset, or while
+`TURNSTILE_SITE_KEY` is empty: `POST /report` answers `{ "outcome": "failed" }`
+with a 503 and stores nothing, `POST /report/open` does the same for a missing
+Turnstile key, and the Worker logs one error, `report box closed: <secrets> not
+set`, naming each one. Every other route keeps serving. Locally and on a
+Preview, a missing Turnstile key turns Turnstile off with a warning instead.
+
+Set `REPORT_VISITOR_KEY` from `web/`:
+
+```sh
+openssl rand -base64 32 | pnpm exec wrangler secret put REPORT_VISITOR_KEY --env production
+```
+
+It is safe in any order with a deploy, because `wrangler secret put` only adds
+a binding, and code that does not read it ignores it. The order Huey follows:
+
+1. Huey sets the secret with the command above.
+2. The pull request merges and production deploys.
+3. If the merge lands first, the site stays up. Only `POST /report` answers
+   `failed` until step 1 is done, and the Worker log names `REPORT_VISITOR_KEY`.
+
+Replacing the secret changes every visitor's code, so stored codes stop
+matching. That only resets one hour of report allowance, and the cron sweep
+erases those codes within the hour anyway.
+
 ## Turn on sign-in
 
 The developer site signs in with Google and GitHub, on better-auth
@@ -1038,8 +1078,9 @@ Starter's $15 price `price_1ULTI07wyoTIgVX6DFZ5TmY3` and Pro's $49 price
 `price_1ULTI17wyoTIgVX6QiH9muAe` (posted on
 [#161](https://github.com/povlabs/lexema/issues/161)). A price id set without
 the two secrets turns nothing on. A Preview gets a fresh deployment on every
-push, which keeps only the secrets the Preview command sends, and that is
-`BETTER_AUTH_SECRET` alone, so billing stays off on every Preview.
+push, which keeps only the secrets the Preview command sends, and those are
+`BETTER_AUTH_SECRET` and `REPORT_VISITOR_KEY` alone, so billing stays off on
+every Preview.
 
 ### Locally, in test mode
 

@@ -24,6 +24,15 @@ const REPORT_OPEN: DictionaryCounted = { limit: "report-open", blocked: { by: "j
 const SEARCH: DictionaryCounted = { limit: "search", blocked: { by: "page" } };
 
 /**
+ * The path a route handler answers a request on. vinext serves every route
+ * under its own path and again with one `.rsc` appended (`stripRscSuffix`,
+ * vinext's server/app-rsc-cache-busting.js), so `/report/open.rsc` reaches
+ * the `/report/open` handler; a limit that matched only the bare path let it
+ * through uncounted (#621).
+ */
+const routePathOf = (pathname: string): string => (pathname.endsWith(".rsc") ? pathname.slice(0, -".rsc".length) : pathname);
+
+/**
  * Which limit a dictionary request counts against, or none.
  *
  * `/suggest` is a suggestion. Anything else carrying a non-empty `q` is a
@@ -33,15 +42,17 @@ const SEARCH: DictionaryCounted = { limit: "search", blocked: { by: "page" } };
  * (`/licence?q=…`, a mistyped path) costs a reader nothing and means no
  * spelling of the page's path that vinext normalizes back to `/` gets past the
  * limit. The home page without a query and static assets are never counted;
- * assets do not even reach the Worker.
+ * assets do not even reach the Worker. The route handlers are matched on
+ * `routePathOf`, so their `.rsc` spellings count as they do.
  */
 export const dictionaryLimitOf: Counter<DictionaryLimit, DictionaryBodies> = (url) => {
-  if (url.pathname === "/suggest") return SUGGEST;
+  const path = routePathOf(url.pathname);
+  if (path === "/suggest") return SUGGEST;
   // A report's hourly allowance is counted over stored reports (lib/dictionary/report.ts);
   // this binding only stops a burst before the database is touched.
-  if (url.pathname === "/report") return REPORT;
+  if (path === "/report") return REPORT;
   // Opening the box stores a token; counted apart so opening does not use up sending.
-  if (url.pathname === "/report/open") return REPORT_OPEN;
+  if (path === "/report/open") return REPORT_OPEN;
   if ((url.searchParams.get("q") ?? "").trim() !== "") return SEARCH;
   return undefined;
 };

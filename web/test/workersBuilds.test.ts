@@ -191,7 +191,8 @@ class FakeAccount {
   readonly calls: string[][] = [];
   readonly databases: D1Database[];
   readonly previews = new Set<string>();
-  readonly secrets = new Map<string, string>();
+  /** Each Preview's secrets, as its latest deployment carries them. */
+  readonly secrets = new Map<string, Record<string, string>>();
   readonly failing: RegExp[] = [];
   /** The fingerprint each slice D1 holds, written by running a slice's SQL file on it. */
   readonly fingerprints = new Map<string, string>();
@@ -324,9 +325,7 @@ class FakeAccount {
    */
   deployPreview(name: string, secrets: Record<string, string>): void {
     this.previews.add(name);
-    const secret = secrets.BETTER_AUTH_SECRET;
-    if (secret === undefined) this.secrets.delete(name);
-    else this.secrets.set(name, secret);
+    this.secrets.set(name, { ...secrets });
   }
 
   /** The calls, each as one line. */
@@ -466,13 +465,13 @@ test("the prepare step creates the app database, binds it, migrates it, and writ
   assert.equal(files.get(PREVIEW_NAME_FILE), name.value);
   assert.equal(name.value, PreviewName.ofBranch("huey/foo_bar").value);
   assert.notEqual(name.value, "huey/foo_bar");
-  assert.deepEqual(secrets, { BETTER_AUTH_SECRET: "random-secret" });
+  assert.deepEqual(secrets, { BETTER_AUTH_SECRET: "random-secret", REPORT_VISITOR_KEY: "random-secret" });
 });
 
-test("a second push to the same branch reuses the same app database and sends the Preview a fresh secret", () => {
+test("a second push to the same branch reuses the same app database and sends the Preview fresh secrets", () => {
   const account = new FakeAccount([{ name: DICTIONARY.name, uuid: DICTIONARY.id }]);
   const first = previewCommand(account, "huey/foo_bar");
-  assert.equal(account.secrets.get(first.name.value), "random-secret");
+  assert.deepEqual(account.secrets.get(first.name.value), { BETTER_AUTH_SECRET: "random-secret", REPORT_VISITOR_KEY: "random-secret" });
   account.calls.length = 0;
 
   let asked = 0;
@@ -482,12 +481,17 @@ test("a second push to the same branch reuses the same app database and sends th
   assert.equal(account.lines.some((line) => line.startsWith("d1 create")), false);
   assert.equal(account.databases.filter((db) => db.name.startsWith(APP_DATABASE_PREFIX)).length, 1);
   assert.ok(account.lines.includes(`d1 migrations apply ${first.name.appDatabase} --remote --config /tmp/migrations/wrangler.json`));
-  // A deployment keeps only the secrets it is sent, so every push sends one.
-  assert.deepEqual(second.secrets, { BETTER_AUTH_SECRET: "secret-1" });
-  assert.equal(account.secrets.get(first.name.value), "secret-1");
+  // A deployment keeps only the secrets it is sent, so every push sends both,
+  // each its own fresh random value.
+  assert.deepEqual(second.secrets, { BETTER_AUTH_SECRET: "secret-1", REPORT_VISITOR_KEY: "secret-2" });
+  assert.deepEqual(account.secrets.get(first.name.value), second.secrets);
+  assert.deepEqual(second.logged.filter((line) => line.includes("a new random one")), [
+    `BETTER_AUTH_SECRET: a new random one goes up with Preview ${first.name}`,
+    `REPORT_VISITOR_KEY: a new random one goes up with Preview ${first.name}`,
+  ]);
   const third = previewCommand(account, "huey/foo_bar", () => `secret-${++asked}`);
-  assert.deepEqual(third.secrets, { BETTER_AUTH_SECRET: "secret-2" });
-  assert.equal(account.secrets.get(first.name.value), "secret-2");
+  assert.deepEqual(third.secrets, { BETTER_AUTH_SECRET: "secret-3", REPORT_VISITOR_KEY: "secret-4" });
+  assert.deepEqual(account.secrets.get(first.name.value), third.secrets);
   assert.equal(account.lines.some((line) => line.startsWith("preview")), false);
 });
 

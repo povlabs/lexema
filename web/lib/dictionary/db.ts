@@ -9,7 +9,8 @@ import { log } from "@lexema/log/requestLog.ts";
 import { database, lookupDatabase } from "@/lib/shared/database.ts";
 import type { Attempt } from "./attempt.ts";
 import { searchAttempt } from "./searchAttempt.ts";
-import { turnstileConfig, type TurnstileConfig } from "./report.ts";
+import { parseStage } from "@/worker/shared/stage.ts";
+import { reportKeys, turnstileConfig, VisitorCodeKey, type ReportKeys, type TurnstileConfig } from "./report.ts";
 
 /**
  * Run the lookup, or report that it did not run.
@@ -57,17 +58,27 @@ export async function suggestions(prefix: string): Promise<SuggestResult | { out
   }
 }
 
+/** The Worker secrets the report box reads, set with `wrangler secret put` and so not in the generated `Env`. */
+type ReportSecrets = { TURNSTILE_SECRET_KEY?: string; REPORT_VISITOR_KEY?: string };
+
 /**
  * The report box's Turnstile keys (#51): the site key is a var, the secret is
- * set with `wrangler secret put`. On only when both are set; one alone is off,
- * with a warning in the log.
+ * set with `wrangler secret put`. On only when both are set; off without them
+ * on a local or Preview Worker, with a warning in the log when one alone is
+ * set; `unset` on production, where the report routes close the box (#621).
  */
-export function turnstile(): TurnstileConfig | undefined {
+export function turnstile(): TurnstileConfig {
   return turnstileConfig(
+    parseStage(env.LEXEMA_STAGE),
     env.TURNSTILE_SITE_KEY,
-    (env as { TURNSTILE_SECRET_KEY?: string }).TURNSTILE_SECRET_KEY,
+    (env as ReportSecrets).TURNSTILE_SECRET_KEY,
     (message) => log.warn(message),
   );
+}
+
+/** What `POST /report` needs from the Worker's secrets, or every one it lacks (#621). */
+export async function reportKeysOfWorker(): Promise<ReportKeys> {
+  return reportKeys(turnstile(), await VisitorCodeKey.of((env as ReportSecrets).REPORT_VISITOR_KEY));
 }
 
 /** The release this Worker serves. */

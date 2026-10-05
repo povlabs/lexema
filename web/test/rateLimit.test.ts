@@ -24,6 +24,7 @@ import {
   withRateLimits,
   type LimitBindings,
 } from "@/worker/shared/rateLimit.ts";
+import { dictionaryLimitOf } from "@/worker/dictionary/limits.ts";
 import { SITE_LIMITS } from "./siteLimits.ts";
 import { RATE_BINDINGS } from "../../src/api/accountRate.js";
 import { RATE_WINDOW_SECONDS } from "@/worker/api/keyLimits.ts";
@@ -149,6 +150,31 @@ test("two reports a minute reach the app, and the third is a 429 the app never s
   assert.equal((await fetch("/report/open", "203.0.113.7", {}, "POST")).status, 200);
   assert.equal(env.REPORT_OPEN_LIMIT.counts.get("v4:203.0.113.7"), 1);
   assert.deepEqual(logged, [["rate limited", { limit: "report" }]]);
+});
+
+test("a route handler's .rsc spelling counts against its own limit, as the bare path does (#621)", () => {
+  const of = (path: string) => dictionaryLimitOf(new URL(`https://lexema.fyi${path}`), "POST")?.limit;
+  assert.equal(of("/report.rsc"), "report");
+  assert.equal(of("/report/open.rsc"), "report-open");
+  assert.equal(of("/suggest.rsc"), "suggest");
+  assert.equal(of("/suggest.rsc?q=ca"), "suggest");
+  // One suffix, stripped once: what vinext serves the route under, and nothing more.
+  assert.equal(of("/report.rsc.rsc"), undefined);
+  assert.equal(of("/reportrsc"), undefined);
+});
+
+test("with the opening limit spent, POST /report/open.rsc is a 429 the app never sees", async () => {
+  const { env, seen, fetch } = harness();
+  const logged = await warnings(async () => {
+    for (let i = 0; i < 10; i++) assert.equal((await fetch("/report/open", "203.0.113.7", {}, "POST")).status, 200);
+    const blocked = await fetch("/report/open.rsc", "203.0.113.7", {}, "POST");
+    assert.equal(blocked.status, 429);
+    assert.equal(blocked.headers.get("retry-after"), String(RETRY_AFTER_SECONDS));
+    assert.deepEqual(await blocked.json(), { outcome: "limited" });
+  });
+  assert.equal(seen.length, 10);
+  assert.equal(env.REPORT_OPEN_LIMIT.counts.get("v4:203.0.113.7"), 11);
+  assert.deepEqual(logged, [["rate limited", { limit: "report-open" }]]);
 });
 
 test("ten sign-in starts a minute go through, and the eleventh is a 429 the app never sees", async () => {

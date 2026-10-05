@@ -67,8 +67,12 @@ export type PreparedPreview =
   | { readonly kind: "prepared"; readonly preview: PreviewName }
   | { readonly kind: "skipped"; readonly branch: NoPreviewBranch };
 
-/** The secret better-auth signs the session cookie with (web/worker/developers/signIn.ts). */
-const AUTH_SECRET = "BETTER_AUTH_SECRET";
+/**
+ * The secrets every Preview deployment carries, each a fresh random one: the
+ * one better-auth signs the session cookie with (web/worker/developers/signIn.ts),
+ * and the one a report's visitor code is keyed by (web/lib/dictionary/report.ts, #621).
+ */
+const PREVIEW_SECRETS = ["BETTER_AUTH_SECRET", "REPORT_VISITOR_KEY"] as const;
 
 export interface PreviewPrepareSteps {
   /** `WORKERS_CI_BRANCH`: the pushed branch. */
@@ -125,10 +129,12 @@ export function preparePreview(steps: PreviewPrepareSteps): PreparedPreview {
 
   // A Preview deployment keeps only the secrets it is sent (Wrangler 4.135.0
   // sends no keep flag), and `preview secret put` refuses a Preview with no
-  // deployment. So every deployment carries a fresh secret through
-  // `--secrets-file`; a push signs the Preview's testers out.
-  steps.writeFile(PREVIEW_SECRETS_FILE, `${JSON.stringify({ [AUTH_SECRET]: steps.newSecret() })}\n`);
-  log(`${AUTH_SECRET}: a new random one goes up with Preview ${preview}`);
+  // deployment. So every deployment carries fresh secrets through
+  // `--secrets-file`; a push signs the Preview's testers out and starts its
+  // reports' visitor codes afresh.
+  const secrets = Object.fromEntries(PREVIEW_SECRETS.map((name) => [name, steps.newSecret()]));
+  steps.writeFile(PREVIEW_SECRETS_FILE, `${JSON.stringify(secrets)}\n`);
+  for (const name of PREVIEW_SECRETS) log(`${name}: a new random one goes up with Preview ${preview}`);
   steps.writeFile(PREVIEW_NAME_FILE, preview.value);
   return { kind: "prepared", preview };
 }
