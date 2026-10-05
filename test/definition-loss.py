@@ -49,7 +49,7 @@ def check(data, expected):
 
 records = records_from(cases)
 check(records, 0)
-if (root / 'it-extract.jsonl.gz').exists():
+if (root / '.data' / 'source' / 'it-extract.jsonl.gz').exists():
     # The rebuilt records are the cases restated, so they cannot catch archive
     # drift. Whoever has the archive gets that check too.
     check(real_records_for({c['word'] for c in cases}), 0)

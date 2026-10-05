@@ -130,11 +130,11 @@ test("committed fixture matches archive-derived expectations", async () => {
       `${word}: fixture record shape differs from archive-derived expectation`);
   }
 
-  // The archive is ignored and absent in CI; when present locally, retain the stronger byte check.
-  if (!existsSync(resolve("it-extract.jsonl.gz"))) return;
+  // The archive is ignored and absent in CI; when the source cache holds it locally, retain the stronger byte check.
+  if (!existsSync(resolve(".data/source/it-extract.jsonl.gz"))) return;
   const archiveByWord = new Map<string, Array<{ raw: string; pos: string; keys: string[]; forms: number }>>();
   const archiveSelectedLines: string[] = [];
-  const input = createReadStream(resolve("it-extract.jsonl.gz")).pipe(createGunzip());
+  const input = createReadStream(resolve(".data/source/it-extract.jsonl.gz")).pipe(createGunzip());
   // The archive has records larger than readline's 4 KiB default. Node accepts
   // this option at runtime, but older @types/node releases do not declare it.
   const lines = createInterface({ input, crlfDelay: Infinity, maxLineLength: 1_000_000 } as any);

@@ -1,10 +1,11 @@
 // The post-checkout script (#346, ADR 0022): a new linked worktree gets the
-// source-file link and one `pnpm install --frozen-lockfile`; a branch switch
+// source-cache link and one `pnpm install --frozen-lockfile`; a branch switch
 // gets nothing. A throwaway repository stands in for the main checkout, and a
 // fake `pnpm` on PATH records what it was asked to do.
 
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
+import { existsSync } from "node:fs";
 import { chmod, mkdtemp, readFile, readlink, realpath, rm, writeFile, mkdir } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
@@ -37,17 +38,26 @@ test("a new worktree is linked and installed; a branch switch does nothing", asy
     git(main, env, "add", "README.md");
     git(main, env, "commit", "--quiet", "-m", "init");
     git(main, env, "config", "core.hooksPath", hooks);
-    await writeFile(join(main, "it-extract.jsonl.gz"), "source\n");
+    const cache = join(main, ".data", "source");
 
+    // The main checkout has no cache yet: the first worktree makes it and links it.
     const tree = join(root, "tree");
     git(main, env, "worktree", "add", "--quiet", "-b", "lane", tree);
-
-    assert.equal(await readlink(join(tree, "it-extract.jsonl.gz")), join(main, "it-extract.jsonl.gz"));
+    assert.equal(await readlink(join(tree, ".data", "source")), cache);
     assert.equal(await readFile(log, "utf8"), `${tree} install --frozen-lockfile\n`);
+
+    // A file one checkout fetched is read by the next one, never fetched again.
+    await writeFile(join(tree, ".data", "source", "it-extract.jsonl.gz"), "source\n");
+    const next = join(root, "next");
+    git(main, env, "worktree", "add", "--quiet", "-b", "lane-2", next);
+    assert.equal(await readlink(join(next, ".data", "source")), cache);
+    assert.equal(await readFile(join(next, ".data", "source", "it-extract.jsonl.gz"), "utf8"), "source\n");
+    assert.equal(existsSync(join(next, "it-extract.jsonl.gz")), false);
+    assert.equal(await readFile(log, "utf8"), `${tree} install --frozen-lockfile\n${next} install --frozen-lockfile\n`);
 
     git(tree, env, "checkout", "--quiet", "-b", "other");
     git(tree, env, "checkout", "--quiet", "lane");
-    assert.equal(await readFile(log, "utf8"), `${tree} install --frozen-lockfile\n`);
+    assert.equal(await readFile(log, "utf8"), `${tree} install --frozen-lockfile\n${next} install --frozen-lockfile\n`);
   } finally {
     await rm(root, { recursive: true, force: true });
   }

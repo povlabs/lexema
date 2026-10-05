@@ -2,7 +2,8 @@
 // `it-plural-gloss-number` (src/italian/pluralGlossNumber.ts, #483, #515,
 // #516), and the counts its current version gives.
 //
-// 1. It scans the archive (`--archive`, default it-extract.jsonl.gz) for the
+// 1. It scans the archive (`--archive`, default the master's in `.data/source/`,
+//    fetched from `povlabs/lexema-data` when the cache lacks it) for the
 //    records the rule reads (`scanRecord`): noun or adjective, tagged
 //    `singular` and not `plural`, first gloss "plurale di <lemma>".
 // 2. For each, it reads the pages `pagesFor` names: en.wiktionary's page of
@@ -30,6 +31,7 @@ import { createGunzip } from "node:zlib";
 import { type Evidence, HAND_CORRECTIONS, recordCorrections } from "../italian/curatedCorrections.js";
 import { PLURAL_GLOSS_EVIDENCE } from "../italian/pluralGlossEvidence.js";
 import { judgeAll, pagesFor, type PluralGlossEvidence, scanRecord, type ScannedRecord, type Verdict } from "../italian/pluralGlossNumber.js";
+import { SourceCache } from "../source/sourceCache.js";
 import { enExcerpt, type FetchedPage, isPinned, itExcerpt, type PinnedPage } from "../italian/wiktionaryEvidence.js";
 
 const OUT = new URL("../italian/pluralGlossEvidence.ts", import.meta.url);
@@ -176,8 +178,8 @@ function report(verdicts: readonly Verdict[]): string {
   ].join("\n");
 }
 
-const { values } = parseArgs({ options: { archive: { type: "string", default: "it-extract.jsonl.gz" }, repin: { type: "boolean", default: false } } });
-const scanned = await scanArchive(values.archive);
+const { values } = parseArgs({ options: { archive: { type: "string" }, repin: { type: "boolean", default: false } } });
+const scanned = await scanArchive(values.archive ?? await new SourceCache().archive());
 const pinned = PLURAL_GLOSS_EVIDENCE.releaseId === scanned.releaseId ? PLURAL_GLOSS_EVIDENCE.pages : [];
 const pages = await readPages(scanned.records.flatMap(pagesFor), pinned, values.repin);
 const evidence: PluralGlossEvidence = { releaseId: scanned.releaseId, records: scanned.records, pages };

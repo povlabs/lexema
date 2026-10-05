@@ -67,12 +67,16 @@ pnpm run test:integration   # streams the real file through the adapter
 pnpm run validate           # writes a report under the ignored artifacts/
 ```
 
-Both need the original `it-extract.jsonl.gz` in the repository root. Git ignores
-it and CI never downloads it. Its SHA-256 is recorded in
-[the dataset spot check](./reports/2026-09-18-dataset-spot-check.md); a newer
+Both read the original `it-extract.jsonl.gz` from `.data/source/`. On first use
+they fetch it from `source/` in `povlabs/lexema-data` and check its SHA-256
+against [archiveFacts.ts](./src/source/archiveFacts.ts) before reading it
+([sourceCache.ts](./src/source/sourceCache.ts)). The same holds for the
+`measure:*` scripts and for the dump they read. Git ignores the cache and CI
+never fills it. A file that fails its check is refused, not read. A newer
 download from kaikki.org is a different snapshot, so do not substitute one and
-assume the numbers still hold. A missing file fails these two commands and nothing
-else.
+assume the numbers still hold. `--input` names another copy for `validate`.
+`pnpm run source:fetch` fills the cache by itself, for a command such as
+`seed:dev` that reads only the path it is given.
 
 ### Time exact lookup
 
@@ -480,7 +484,8 @@ report --help` lists the causes.
 `pnpm install` in the main checkout installs the git hooks through lefthook
 ([lefthook.yml](./lefthook.yml), [ADR 0022](./.decisions/0022-lefthook-sets-up-agent-worktrees.md)).
 After that, `git worktree add` sets the new tree up by itself: it links
-`it-extract.jsonl.gz` from the main checkout and runs
+the main checkout's source cache, `.data/source/`, so no tree fetches a file
+another already fetched, and runs
 `pnpm install --frozen-lockfile`. A branch switch runs nothing.
 
 ## Stack
@@ -547,9 +552,9 @@ Three dataset limits are already measured, in [reports/](./reports/): the `casa`
 entry loses its house definitions, embedded verb forms carry no mood tag, and the
 `studente` verb claim is disputed upstream. The first is partly repaired: the seed
 recovers dropped definitions from the raw Wiktionary pages, so `casa` shows its
-seven. With the dump the archive was built from in the repository root
-(`itwiktionary-20260701-pages-articles.xml.bz2`, gitignored, kept in
-`povlabs/lexema-data`), that covers every word, and `pnpm run measure:recovery`
+seven. With the dump the archive was built from in the source cache
+(`.data/source/itwiktionary-20260701-pages-articles.xml.bz2`, gitignored,
+fetched from `povlabs/lexema-data`), that covers every word, and `pnpm run measure:recovery`
 counts the loss exactly ([the measurement](./reports/2026-09-23-recovered-definitions-full-release.md));
 without it, the seed reads the pages committed under `fixtures/`
 ([the development seed](./docs/DEV_SEED.md)). Losses with no structural mark are

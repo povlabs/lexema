@@ -13,10 +13,14 @@ pnpm run seed:dev
 ```
 
 To seed the full release without touching the demo database, set `SEED_INPUT`
-and use a private SQL directory and Wrangler state path:
+and use a private SQL directory and Wrangler state path. The seed reads only
+the path it is given, so first fetch the archive and its dump from
+`povlabs/lexema-data` into the source cache, `.data/source/`, where both are
+checked ([sourceCache.ts](../src/source/sourceCache.ts)):
 
 ```sh
-SEED_INPUT=it-extract.jsonl.gz \
+pnpm run source:fetch
+SEED_INPUT=.data/source/it-extract.jsonl.gz \
 SEED_SQL=.data/full-sql \
 SEED_STATE=.data/full-state \
 pnpm run seed:dev
@@ -63,16 +67,17 @@ changes a merge declares.
 
 The one run, for release `it-0c432803`:
 
-1. Put `it-extract.jsonl.gz` in the repository root. Its durable copy is
-   `source/` in `povlabs/lexema-data`. The Wiktionary dump beside it is read
-   too when it is there, as for a local seed.
+1. Run `pnpm run source:fetch`. It fetches `it-extract.jsonl.gz` and the
+   Wiktionary dump it was built from out of `source/` in `povlabs/lexema-data`
+   into `.data/source/`, and checks both. The seed reads the dump from there,
+   as a local seed does.
 2. Sign Wrangler in to the Cloudflare account, once:
    `pnpm --dir web exec wrangler login`. The account must be on Workers Paid:
    the Free plan's per-database cap does not hold this release.
 3. From the repository root, run:
 
    ```sh
-   SEED_INPUT=it-extract.jsonl.gz \
+   SEED_INPUT=.data/source/it-extract.jsonl.gz \
    SEED_SQL=.data/full-sql \
    SEED_REMOTE=lexema-dictionary \
    pnpm run seed:dev
@@ -85,7 +90,7 @@ The one run, for release `it-0c432803`:
 
    ```sh
    CLOUDFLARE_ACCOUNT_ID=<account id> \
-   SEED_INPUT=it-extract.jsonl.gz \
+   SEED_INPUT=.data/source/it-extract.jsonl.gz \
    SEED_SQL=.data/full-sql \
    SEED_REMOTE=lexema-dictionary \
    pnpm run seed:dev
@@ -231,8 +236,10 @@ which also explains compatibility with older masters and cache verification:
 pnpm run hide:records
 ```
 
-It needs `it-extract.jsonl.gz` and `itwiktionary-20260701-pages-articles.xml.bz2`
-in the repository root (`SEED_INPUT` and `RAW_PAGES` name other copies). It
+It reads the master's `it-extract.jsonl.gz` and
+`itwiktionary-20260701-pages-articles.xml.bz2` from the source cache,
+`.data/source/`, and fetches either one from `povlabs/lexema-data` when the
+cache lacks it (`SEED_INPUT` and `RAW_PAGES` name other copies). It
 refuses an archive whose SHA-256 is not the one the database was seeded from,
 and a dump whose size and SHA-1 are not the archive's dump. It picks its
 database the way the seed does: the local D1 under `SEED_STATE` (default
@@ -361,8 +368,8 @@ only the release's record-less titles, not every page it lacks a record for
 stores is in [page-only entries](PAGE_ENTRIES.md). To see them in a disposable
 local seed:
 
-1. For the full release, keep the verified dump in the repository root, and
-   run the full-release command in [Run it](#run-it) with a fresh
+1. For the full release, fetch the verified dump into the source cache with
+   `pnpm run source:fetch`, and run the full-release command in [Run it](#run-it) with a fresh
    `SEED_STATE`. Leave `SEED_REMOTE` unset.
 2. For a small reproduction, join the development fixture and the two form
    records that point at page-only entries into one local file, and seed it.

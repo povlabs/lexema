@@ -125,9 +125,10 @@ tables exist once per lookup, from `sqlite_schema` (`dictionaryTables` in
 before these entries the rows a seed now writes for them, with no reseed:
 
 - It reads the archive the master was seeded from (`SEED_INPUT`, default
-  `it-extract.jsonl.gz`), to check it is the master's and to list the words
-  its records spell, and that archive's dump (`RAW_PAGES`, default the dump in
-  the repository root), checked by size and SHA-1.
+  its copy in the source cache, `.data/source/`), to check it is the master's
+  and to list the words its records spell, and that archive's dump
+  (`RAW_PAGES`, default its copy in `.data/source/`), checked by size and
+  SHA-1. A file the cache lacks is fetched from `povlabs/lexema-data` first.
 - A page gives entries by the seed's rule: no record of the archive spells its
   title, and rules `italian-page-entry/v1` and `italian-page-entry/v2` read
   one entry per part-of-speech section. A title a record of a later release

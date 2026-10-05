@@ -4,22 +4,26 @@
 // Streams `it-extract.jsonl.gz` once. Every Italian record whose word has a raw
 // page is matched to its section of that page and run through the same
 // recovery the seed runs, so the counts here are the counts a seed recovers.
-// The raw pages are the Wiktionary dump the archive was built from when it is in
-// the repository root, else the pages committed under `fixtures/`
-// (`openRawPages`). Over the dump the counts are exact for the whole release.
+// The raw pages are the Wiktionary dump the archive was built from (`RAW_PAGES`,
+// default its copy in `.data/source/`), or the pages committed under
+// `fixtures/` with `RAW_PAGES=fixtures`. Over the dump the counts are exact for
+// the whole release.
 // The uniformly sampled records in `fixtures/definition-loss-samples/` are
 // counted again on their own: they are the only records whose rate may be
 // projected onto the release from the fixtures alone.
 //
-// Needs the archive in the repository root; it is gitignored and absent in CI.
+// Reads the archive `RECOVERY_INPUT` names, default the master's in
+// `.data/source/`. A file the cache lacks is fetched from `povlabs/lexema-data`
+// (src/source/sourceCache.ts); the cache is gitignored and absent in CI.
 
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { recordText, recoverDefinitions, type RecordRecovery, type RecoveredDefinition } from "../italian/recovery.js";
-import { openRawPages } from "../source/wiktionaryDump.js";
+import { SourceCache } from "../source/sourceCache.js";
 import { parseArchive } from "./importRelease.js";
 
-const input = resolve(process.env.RECOVERY_INPUT ?? "it-extract.jsonl.gz");
+const source = new SourceCache();
+const input = process.env.RECOVERY_INPUT === undefined ? await source.archive() : resolve(process.env.RECOVERY_INPUT);
 /**
  * When Wiktextract wrote the archive (gzip header mtime, docs/LICENSING.md §1.1).
  * A page revised after this cannot be the revision the record was read from.
@@ -84,7 +88,7 @@ function wilson(k: number, n: number): [number, number] {
   return [Math.max(0, centre - margin), Math.min(1, centre + margin)];
 }
 
-const { pages, described } = await openRawPages();
+const { pages, described } = await source.rawPages();
 const samples = await Promise.all([readSample("sample-lemma.json"), readSample("sample-inflected.json")]);
 const sampledStratum = new Map<number, string>();
 for (const sample of samples) for (const record of sample.records) sampledStratum.set(record.line, sample.stratum);

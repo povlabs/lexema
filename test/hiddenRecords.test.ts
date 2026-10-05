@@ -8,9 +8,9 @@
 
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { copyFile, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { after, before, test } from "node:test";
 import { gzipSync } from "node:zlib";
@@ -25,7 +25,11 @@ import { findNearby } from "../src/lookup/nearby.js";
 import { randomHeadword } from "../src/lookup/random.js";
 import { suggest } from "../src/lookup/suggest.js";
 import { servedVersion, versionToken } from "../src/lookup/served.js";
+import { DataRefused, sha256Of } from "../src/deploy/dataFiles.js";
+import type { ArchiveFactsCatalog } from "../src/source/archiveFacts.js";
 import { RAW_PAGE_WIKI, rawPageSource, type RawPage } from "../src/source/rawPage.js";
+import { releaseIdOf } from "../src/source/servedRelease.js";
+import { SourceCache } from "../src/source/sourceCache.js";
 import { changedUpgrade, planUpgrade, upgradeShortfall, type MasterReader } from "../src/update/master.js";
 import { createStatement, masterUpgradeSql } from "../src/update/masterUpgrade.js";
 import { overlongPatterns } from "../src/db/d1PatternLimit.js";
@@ -533,3 +537,48 @@ for (const { slug, name, needed, unready } of [
     }
   });
 }
+
+test("hide:records reads SEED_INPUT and RAW_PAGES over the source cache, and the master's cached files when neither is set (#606)", async () => {
+  const { db } = await seed("cli-source", false);
+  const d1Dir = await mkdtemp(join(dir, "cli-source-"));
+  try {
+    const d1 = localD1(d1Dir, db);
+    const dumpPath = join(d1Dir, "dump.xml");
+    const identity = await dumpOfPages(dumpPath);
+    const args = ["--plan-only", "--out", join(d1Dir, "out")];
+    const asked: string[] = [];
+
+    // Named files win: the cache is never asked, so an offline fetcher is never reached.
+    const offline = new SourceCache({
+      root: join(d1Dir, ".data"),
+      fetcher: async (path) => {
+        asked.push(path);
+        throw new DataRefused([`offline: ${path}`]);
+      },
+    });
+    const named = await hideMain({ SEED_STATE: d1.persistTo, SEED_INPUT: archive, RAW_PAGES: dumpPath }, args, d1.wrangler, identity, offline);
+    assert.equal(named.status, 0, named.out);
+    assert.equal(asked.length, 0);
+
+    // Neither named: the master's release is fetched into the cache and read from there.
+    const sha256 = await sha256Of(archive);
+    const data: Record<string, string> = { [`source/${releaseIdOf(sha256)}.jsonl.gz`]: archive, "source/dump.xml": dumpPath };
+    const cached = new SourceCache({
+      root: join(d1Dir, ".data"),
+      fetcher: async (path, to) => {
+        asked.push(path);
+        await mkdir(dirname(to), { recursive: true });
+        await copyFile(data[path], to);
+      },
+      catalog: { [sha256]: { dump: { id: "itwiktionary-test", basis: "recorded" } } } as unknown as ArchiveFactsCatalog,
+      dumps: { "itwiktionary-test": { file: "dump.xml", ...identity } },
+    });
+    const fromCache = await hideMain({ SEED_STATE: d1.persistTo }, args, d1.wrangler, identity, cached);
+    assert.equal(fromCache.status, 0, fromCache.out);
+    assert.deepEqual(asked, Object.keys(data));
+    const counts = (out: string) => ({ ...(JSON.parse(out) as Record<string, unknown>), sql: undefined });
+    assert.deepEqual(counts(fromCache.out), counts(named.out));
+  } finally {
+    db.close();
+  }
+});

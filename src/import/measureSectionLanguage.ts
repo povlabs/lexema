@@ -13,17 +13,21 @@
 // read only the record's text, and exist to test how much the structural ones
 // miss.
 //
-// Needs the archive and the dump in the repository root; both are gitignored
-// and absent in CI. Run with `RAW_PAGES=<path>` to name another copy of the dump.
+// Reads the master's archive and dump from `.data/source/`, fetching a file the
+// cache lacks from `povlabs/lexema-data` (src/source/sourceCache.ts); the cache
+// is gitignored and absent in CI. Run with `SECTION_LANGUAGE_INPUT=<path>` or
+// `RAW_PAGES=<path>` to name another copy of either.
 
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { alignRecords, blockLanguage, headingCodes, LanguageHeadings, type PosBlock, readItalianPosBlocks } from "../italian/sectionLanguage.js";
+import { SourceCache } from "../source/sourceCache.js";
 import { ARCHIVE_DUMP, VerifiedDump } from "../source/wiktionaryDump.js";
 import { parseArchive } from "./importRelease.js";
 
-const input = resolve(process.env.SECTION_LANGUAGE_INPUT ?? "it-extract.jsonl.gz");
-const dumpPath = resolve(process.env.RAW_PAGES ?? ARCHIVE_DUMP.file);
+const source = new SourceCache();
+const input = process.env.SECTION_LANGUAGE_INPUT === undefined ? await source.archive() : resolve(process.env.SECTION_LANGUAGE_INPUT);
+const dumpPath = process.env.RAW_PAGES === undefined ? await source.dump() : resolve(process.env.RAW_PAGES);
 const labelsPath = resolve("fixtures/section-language/labels.json");
 const regressionsPath = resolve("fixtures/section-language/regressions.json");
 const output = resolve(process.env.SECTION_LANGUAGE_OUTPUT ?? "artifacts/section-language-measure.json");

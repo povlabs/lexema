@@ -18,7 +18,7 @@ app tables in the local app database, `APP_DB`, and never in the dictionary
 | `SEED_STATE` | `.data/seed-state` | isolated Wrangler D1 persist directory, holding both `DB` and `APP_DB` |
 | `SEED_PART_BYTES` | `67108864` (64 MiB) | byte ceiling for one SQL part |
 | `SEED_REMOTE` | unset | a remote D1's name, such as `lexema-dictionary`; loads the dictionary there instead of locally, and refuses `SEED_STATE` beside it ([RUN_AN_IMPORT.md § Load a release into Cloudflare D1](RUN_AN_IMPORT.md#load-a-release-into-cloudflare-d1)) |
-| `RAW_PAGES` | the dump in the repository root if present, else `fixtures/` | where the recovered layer reads raw pages: a dump path, or `fixtures` |
+| `RAW_PAGES` | the dump in the source cache, `.data/source/`, if present, else `fixtures/`; the seed never fetches it | where the recovered layer reads raw pages: a dump path, or `fixtures` |
 
 The demo's `web/.wrangler` directory is never touched. The seed clears only
 `SEED_STATE`, so repeated runs rebuild the same two local databases, and drop
@@ -98,9 +98,12 @@ and 0 with the pages under `fixtures/`, and
 the fifty-word fixture.
 
 The raw pages come from `itwiktionary-20260701-pages-articles.xml.bz2`, the
-Italian Wiktionary dump the archive was built from, when it sits in the
-repository root beside `it-extract.jsonl.gz`. It is gitignored; its durable copy,
-with its size and SHA-1, is `source/` in `povlabs/lexema-data`. It is not newer
+Italian Wiktionary dump the archive was built from, when it sits in the source
+cache, `.data/source/`, beside `it-extract.jsonl.gz`. The cache is gitignored.
+Its durable copy is `source/` in `povlabs/lexema-data`, and its size and SHA-1
+are in `KNOWN_DUMPS`. The seed does not fetch it: a `measure:*` script, or
+`hide:records` or `load:page-entries`, fills the cache on first use
+([sourceCache.ts](../src/source/sourceCache.ts)). It is not newer
 data: it is the page source the archive was converted from, read once to pick up
 the definitions the conversion dropped. Before any page is read, the seed checks
 the file's size and SHA-1 against that dump's and refuses a file that differs,

@@ -8,7 +8,7 @@ actually run one, see [RUN_AN_IMPORT.md](RUN_AN_IMPORT.md).
 
 From the current archive, unchanged across runs. The row counts are the
 `loaded release it-0c432803` block that the full-release seed
-(`pnpm run seed:dev` with `SEED_INPUT=it-extract.jsonl.gz`, as in
+(`pnpm run seed:dev` with `SEED_INPUT=.data/source/it-extract.jsonl.gz`, as in
 [RUN_AN_IMPORT.md § Run it](RUN_AN_IMPORT.md#run-it)) printed on main in
 [the 2026-10-04 seed report](../reports/2026-10-04-full-release-seed-on-main.md):
 

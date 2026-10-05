@@ -94,7 +94,12 @@ export function filesFor(
   }
 }
 
-function releaseFiles(releaseId: ReleaseId, catalog: ArchiveFactsCatalog, dumps: DumpCatalog): ChangeFiles {
+/**
+ * The archive of `releaseId` and the dump it was built from, from the
+ * catalogs. Refuses a release no archive facts entry names alone, or whose
+ * dump has no size and SHA-1.
+ */
+export function releaseFiles(releaseId: ReleaseId, catalog: ArchiveFactsCatalog = ARCHIVE_FACTS, dumps: DumpCatalog = KNOWN_DUMPS): ChangeFiles {
   const prefix = releaseId.slice("it-".length);
   const known = Object.keys(catalog).filter((sha256) => sha256.startsWith(prefix));
   if (known.length !== 1) {
@@ -155,16 +160,25 @@ export async function fetchVerified(files: ChangeFiles, fetcher: DataFetcher, di
   const dump = join(dir, files.dump.path);
   await fetcher(files.archive.path, archive);
   await fetcher(files.dump.path, dump);
-  const reasons: string[] = [];
-  const sha256 = await sha256Of(archive);
-  if (sha256 !== files.archive.sha256) {
-    reasons.push(`${files.archive.path} has SHA-256 ${sha256}; release ${files.archive.releaseId} must have ${files.archive.sha256} (src/source/archiveFacts.ts)`);
-  }
-  try {
-    await (await VerifiedDump.open(dump, files.dump.identity)).close();
-  } catch (error: unknown) {
-    reasons.push(`${files.dump.path} is not ${files.dump.id} as KNOWN_DUMPS gives it: ${error instanceof Error ? error.message : String(error)}`);
-  }
+  const reasons = [await archiveRefusal(files.archive, archive), await dumpRefusal(files.dump, dump)].filter((reason) => reason !== null);
   if (reasons.length > 0) throw new DataRefused(reasons);
   return { archive, dump };
+}
+
+/** Why the file at `at` is not `archive`, or `null` when its SHA-256 is the one it must have. */
+export async function archiveRefusal(archive: ArchiveFile, at: string): Promise<string | null> {
+  const sha256 = await sha256Of(at);
+  return sha256 === archive.sha256
+    ? null
+    : `${archive.path} has SHA-256 ${sha256}; release ${archive.releaseId} must have ${archive.sha256} (src/source/archiveFacts.ts)`;
+}
+
+/** Why the file at `at` is not `dump`, or `null` when its size and SHA-1 are the ones it must have. */
+export async function dumpRefusal(dump: DumpFile, at: string): Promise<string | null> {
+  try {
+    await (await VerifiedDump.open(at, dump.identity)).close();
+    return null;
+  } catch (error: unknown) {
+    return `${dump.path} is not ${dump.id} as KNOWN_DUMPS gives it: ${error instanceof Error ? error.message : String(error)}`;
+  }
 }

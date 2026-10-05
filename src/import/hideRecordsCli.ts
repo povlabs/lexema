@@ -4,9 +4,10 @@
 // ADR 0023). It picks its database the way the seed does: the
 // local D1 under `SEED_STATE` (default `.data/seed-state`), or the remote D1
 // `SEED_REMOTE` names. It reads the archive the master was seeded from
-// (`SEED_INPUT`, default `it-extract.jsonl.gz`) and the dump that archive was
-// built from (`RAW_PAGES`, default the dump in the repository root), both
-// checked before anything is written. See docs/RUN_AN_IMPORT.md.
+// (`SEED_INPUT`, default the master's archive in `.data/source/`) and the dump
+// that archive was built from (`RAW_PAGES`, default its copy in
+// `.data/source/`), both checked before anything is written. A file the cache
+// lacks is fetched from `povlabs/lexema-data` (src/source/sourceCache.ts). See docs/RUN_AN_IMPORT.md.
 // `--plan-only` prints the plan's counts as JSON and writes nothing to the
 // database (src/update/planOnly.ts). On a dictionary `update:upgrade` has not
 // given the tables it writes into, it plans but refuses to write.
@@ -16,6 +17,8 @@ import { join, resolve } from "node:path";
 import { finish, flags, isMain, usageError, type CommandResult } from "../commandLine.js";
 import { planOnlyAnswer, planOnlyFlag, planOnlyRun } from "../update/planOnly.js";
 import { readLanguageHeadings, SECTION_LANGUAGE_RULE } from "../italian/sectionLanguage.js";
+import { releaseIdOf } from "../source/servedRelease.js";
+import { SourceCache } from "../source/sourceCache.js";
 import { ARCHIVE_DUMP, type DumpIdentity, VerifiedDump } from "../source/wiktionaryDump.js";
 import { readMasterRelease, upgradeFirst } from "../update/master.js";
 import { masterReaderOf } from "../update/updateCli.js";
@@ -34,15 +37,17 @@ export async function main(
   args: readonly string[] = [],
   wrangler: Wrangler = webWrangler,
   dumpIdentity: DumpIdentity = ARCHIVE_DUMP,
+  source: SourceCache = new SourceCache(),
 ): Promise<CommandResult> {
   const { planOnly, rest } = planOnlyFlag(args);
   const options = flags(rest, ["out"]);
   if (typeof options === "string") return usageError(options, USAGE);
   const target = seedTargetFrom(env, wrangler, resolve(".data/seed-state"));
   const reader = masterReaderOf(target);
-  const archive = resolve(env.SEED_INPUT ?? "it-extract.jsonl.gz");
-  const dumpPath = resolve(env.RAW_PAGES ?? ARCHIVE_DUMP.file);
   const master = readMasterRelease(reader);
+  const release = releaseIdOf(master.archiveSha256);
+  const archive = env.SEED_INPUT === undefined ? await source.archive(release) : resolve(env.SEED_INPUT);
+  const dumpPath = env.RAW_PAGES === undefined ? await source.dump(release) : resolve(env.RAW_PAGES);
   log(`reading ${archive} and ${dumpPath} for the master ${master.releaseId} in ${target.dictionary}`);
 
   const pass = await readRulePass(archive);

@@ -29,7 +29,7 @@ export type DeclaredCommand = (typeof DECLARED_COMMANDS)[number];
 
 /** A release id: `it-` and the first eight hex digits of its archive's SHA-256. */
 export type ReleaseId = `it-${string}`;
-const RELEASE_ID = /^it-[0-9a-f]{8}$/;
+export const RELEASE_ID = /^it-[0-9a-f]{8}$/;
 
 /** The rules `hide:records` applies; a declaration names them all. */
 export const HIDING_RULES = [SECTION_LANGUAGE_RULE, FORM_OF_FOREIGN_LEMMA_RULE] as const;

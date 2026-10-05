@@ -18,6 +18,7 @@
     "validate": "tsx src/cli.ts validate",
     "seed:dev": "tsx src/import/seedDev.ts",
     "normalize:source-text": "tsx src/import/normalizeSourceTextCli.ts",
+    "source:fetch": "tsx src/source/fetchSourceCli.ts",
     "hide:records": "tsx src/import/hideRecordsCli.ts",
     "correct:records": "tsx src/import/correctRecordsCli.ts",
     "load:page-entries": "tsx src/import/loadPageEntriesCli.ts",
