@@ -8,7 +8,10 @@
 // 1. A per-visitor limit. The Worker binding (web/worker/shared/rateLimit.ts) stops a
 //    burst before the database is touched; it only knows 10 s and 60 s
 //    windows, so the hourly allowance is counted here, over the stored reports.
-//    Each report keeps its visitor code only while that count needs it: one
+//    The visitor code a report is counted by is an HMAC-SHA-256 of the
+//    visitor's rate-limit key under the Worker secret `REPORT_VISITOR_KEY`
+//    (`visitorHash`), so without that secret no address can be tried against
+//    it (#621). Each report keeps it only while that count needs it: one
 //    hour, then `forgetVisitors` erases it (#570).
 // 2. A hidden honeypot field and a minimum time between opening the box and
 //    sending it, measured on the server's clock alone: the box asks for a
@@ -16,17 +19,26 @@
 //    report that trips either is dropped and answered as sent, so a bot learns
 //    nothing from the reply.
 // 3. Cloudflare Turnstile, verified before storing when both its keys are
-//    configured (`turnstileConfig`); with either missing it is off.
+//    configured (`turnstileConfig`), its pass bound to the request's
+//    hostname. On a local or Preview Worker with either key missing it is
+//    off; on production a missing key closes the box instead, so bot
+//    protection never switches off unseen (#621).
 // 4. Nothing automatic: a stored report changes nothing on the page.
 //
 // Reports and openings live in the app database (`APP_DB`); the dictionary is
 // only read, to check the reading a report names (ADR 0018).
+//
+// A secret the box needs and lacks closes it: `POST /report`, and for a
+// Turnstile key `POST /report/open` too, answers `failed` and the Worker logs
+// which secret is unset (`reportKeys`, `closedLine`). Nothing else reads these
+// secrets, so every other route keeps serving.
 
 import { and, count, eq, gt, isNotNull, lt, lte } from "drizzle-orm";
 import type { AppTables } from "@lexema/db/app/database.ts";
 import { readerReport, reportOpening } from "@lexema/db/app/schema.ts";
 import type { LookupDatabase } from "@lexema/lookup/database.ts";
 import type { EntryIdentity } from "@lexema/lookup/types.ts";
+import type { Stage } from "@/worker/shared/stage.ts";
 import type { PageReading } from "./wordPage.ts";
 
 /** What a word page's box asks the reader to pick: what is wrong on the page. */
@@ -184,13 +196,38 @@ export interface ReportContext {
   now: number;
   /** Whose report this is: `visitorKey` of the request, never stored as it is. */
   visitor: string;
-  /** Turnstile's verdict on a token, or undefined when no secret key is configured. */
+  /** The key `visitor` is stored under (`visitorHash`). */
+  visitorCodeKey: VisitorCodeKey;
+  /** Turnstile's verdict on a token, or undefined where Turnstile is off (`turnstileConfig`). */
   verifyChallenge: ((token: string | undefined) => Promise<boolean>) | undefined;
 }
 
-/** A visitor key as stored: its SHA-256, so the table never holds an address. */
-export async function visitorHash(visitor: string): Promise<string> {
-  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(`lexema-report:${visitor}`));
+/** The Worker secret a visitor code is keyed by. */
+export const VISITOR_CODE_SECRET = "REPORT_VISITOR_KEY";
+
+/**
+ * `REPORT_VISITOR_KEY`, imported for HMAC-SHA-256. Only `of` makes one, and
+ * only from a secret that is set, so no report is stored without it.
+ */
+export class VisitorCodeKey {
+  private constructor(readonly hmac: CryptoKey) {}
+
+  /** The key `secret` names, or `missing` when it is unset or blank. */
+  static async of(secret: string | undefined): Promise<VisitorCodeKey | "missing"> {
+    const value = secret?.trim() ?? "";
+    if (value === "") return "missing";
+    const encoded = new TextEncoder().encode(value);
+    return new VisitorCodeKey(await crypto.subtle.importKey("raw", encoded, { name: "HMAC", hash: "SHA-256" }, false, ["sign"]));
+  }
+}
+
+/**
+ * A visitor key as stored: its HMAC-SHA-256 under `key`, as 64 lowercase hex
+ * characters. The table never holds an address, and without the secret no
+ * address can be tried against a code.
+ */
+export async function visitorHash(visitor: string, key: VisitorCodeKey): Promise<string> {
+  const digest = await crypto.subtle.sign("HMAC", key.hmac, new TextEncoder().encode(visitor));
   return [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, "0")).join("");
 }
 
@@ -218,7 +255,7 @@ export async function receiveReport(submission: ReportSubmission, context: Repor
     return { outcome: "rejected", reason: "challenge" };
   }
 
-  const visitor = await visitorHash(context.visitor);
+  const visitor = await visitorHash(context.visitor, context.visitorCodeKey);
   const [{ sent }] = await app
     .select({ sent: count() })
     .from(readerReport)
@@ -285,30 +322,66 @@ export async function openReport({ app }: AppTables, now: number): Promise<strin
   return token;
 }
 
-/** Turnstile's two keys, both set or neither. */
-export interface TurnstileConfig {
-  siteKey: string;
-  secretKey: string;
-}
+/** Turnstile's two keys, by their Worker names. */
+export type TurnstileKeyName = "TURNSTILE_SITE_KEY" | "TURNSTILE_SECRET_KEY";
+
+/** A secret the report box cannot take reports without, by its Worker name. */
+export type ReportSecret = typeof VISITOR_CODE_SECRET | TurnstileKeyName;
+
+/** One or more of `S`. */
+type Some<S> = readonly [S, ...S[]];
+
+/**
+ * Turnstile on this Worker: on, with both keys; off, on a stage that may run
+ * without it; or `unset` on production, which may not, with the keys it lacks.
+ */
+export type TurnstileConfig =
+  | { state: "on"; siteKey: string; secretKey: string }
+  | { state: "off" }
+  | { state: "unset"; missing: Some<TurnstileKeyName> };
 
 /**
  * Turnstile is on only when both keys are set. With one alone the widget and
  * the check could not agree — a secret with no site key would refuse every
- * report — so it is off, and `warn` says which key is missing.
+ * report — so on a local or Preview Worker it is off, and `warn` says which key
+ * is missing. Production never takes reports without it: a missing key there
+ * is `unset`, and the report routes close the box (#621).
  */
 export function turnstileConfig(
+  stage: Stage,
   siteKey: string | undefined,
   secretKey: string | undefined,
   warn: (message: string) => void,
-): TurnstileConfig | undefined {
+): TurnstileConfig {
   const site = siteKey?.trim() ?? "";
   const secret = secretKey?.trim() ?? "";
-  if (site !== "" && secret !== "") return { siteKey: site, secretKey: secret };
-  if (site !== "" || secret !== "") {
-    warn(`Turnstile is off: ${site === "" ? "TURNSTILE_SITE_KEY" : "TURNSTILE_SECRET_KEY"} is not set, and both are needed`);
-  }
-  return undefined;
+  if (site !== "" && secret !== "") return { state: "on", siteKey: site, secretKey: secret };
+  const missing: TurnstileKeyName[] = [];
+  if (site === "") missing.push("TURNSTILE_SITE_KEY");
+  if (secret === "") missing.push("TURNSTILE_SECRET_KEY");
+  if (stage === "production") return { state: "unset", missing: [missing[0], ...missing.slice(1)] };
+  if (missing.length === 1) warn(`Turnstile is off: ${missing[0]} is not set, and both are needed`);
+  return { state: "off" };
 }
+
+/** The site key the page's widget renders with, or none where Turnstile is not on. */
+export const turnstileSiteKey = (config: TurnstileConfig): string | undefined => (config.state === "on" ? config.siteKey : undefined);
+
+/** What `POST /report` needs before it reads a report, or every secret it lacks. */
+export type ReportKeys =
+  | { state: "ready"; visitorCodeKey: VisitorCodeKey; turnstile: Exclude<TurnstileConfig, { state: "unset" }> }
+  | { state: "closed"; missing: Some<ReportSecret> };
+
+/** The report box's keys, from what this Worker has set. */
+export function reportKeys(turnstile: TurnstileConfig, visitorCodeKey: VisitorCodeKey | "missing"): ReportKeys {
+  if (turnstile.state !== "unset" && visitorCodeKey !== "missing") return { state: "ready", visitorCodeKey, turnstile };
+  const missing: ReportSecret[] = turnstile.state === "unset" ? [...turnstile.missing] : [];
+  if (visitorCodeKey === "missing") missing.push(VISITOR_CODE_SECRET);
+  return { state: "closed", missing: [missing[0], ...missing.slice(1)] };
+}
+
+/** The error line a closed box logs, naming every secret it lacks. */
+export const closedLine = (missing: Some<ReportSecret>): string => `report box closed: ${missing.join(" and ")} not set`;
 
 /**
  * What the box shows after an answer, and whether its Turnstile token may be
@@ -334,8 +407,12 @@ export function afterAnswer(answer: ReportAnswer): {
   }
 }
 
-/** Turnstile's server-side check of a token, with the Worker's `fetch`. */
-export async function verifyTurnstile(secret: string, token: string | undefined, remoteIp: string | null): Promise<boolean> {
+/**
+ * Turnstile's server-side check of a token, with the Worker's `fetch`. A pass
+ * counts only on the site it was solved on: siteverify names that hostname,
+ * and it must be the request's own.
+ */
+export async function verifyTurnstile(secret: string, token: string | undefined, remoteIp: string | null, hostname: string): Promise<boolean> {
   if (token === undefined) return false;
   const form = new FormData();
   form.set("secret", secret);
@@ -343,8 +420,8 @@ export async function verifyTurnstile(secret: string, token: string | undefined,
   if (remoteIp !== null) form.set("remoteip", remoteIp);
   const response = await fetch("https://challenges.cloudflare.com/turnstile/v0/siteverify", { method: "POST", body: form });
   if (!response.ok) return false;
-  const verdict = (await response.json()) as { success?: boolean };
-  return verdict.success === true;
+  const verdict = (await response.json()) as { success?: boolean; hostname?: string };
+  return verdict.success === true && verdict.hostname === hostname;
 }
 
 /** Why the box could not get its opening token: opened too often, or anything else. */

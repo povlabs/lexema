@@ -117,6 +117,25 @@ answers 429 with the "too many searches" message under the field; wait a minute
 or restart `wrangler dev` to reset the count. Why they are there is
 [WEB.md](WEB.md#why-the-rate-limits-sit-in-front-of-vinext).
 
+## Send a report locally
+
+The report box on a word page stores reports in the local app database, and
+it keys each report's visitor code with the Worker secret `REPORT_VISITOR_KEY`
+([WEB.md](WEB.md#why-a-report-is-stored-and-nothing-more)). Without it,
+sending a report answers `failed` and the log says `report box closed:
+REPORT_VISITOR_KEY not set`; every other page works. Put a key of your own in
+`web/.dev.vars`, which is gitignored and which `wrangler dev` reads:
+
+```sh
+REPORT_VISITOR_KEY=…
+```
+
+Make it with `openssl rand -base64 32`, and never reuse the production one.
+Turnstile stays off locally unless you set both of its keys. The tests set
+their own key (`web/test/report.test.ts`), and each Preview gets a fresh
+random one from the Preview command
+([DEPLOY.md](DEPLOY.md#the-preview-command)).
+
 ## Sign in locally
 
 The developer site's sign-in (`web/worker/developers/signIn.ts`, on better-auth) needs a

@@ -119,8 +119,11 @@
     // new one; doing that safely is #18.
     "LEXEMA_RELEASE": "it-dev",
     // Cloudflare Turnstile's public site key for the report box (#51). Empty
-    // means no widget and no check; the secret is TURNSTILE_SECRET_KEY, set
-    // with `wrangler secret put`, never here.
+    // means no widget and no check here and on Previews; on production a
+    // missing key closes the box instead (#621). The secret is
+    // TURNSTILE_SECRET_KEY, set with `wrangler secret put`, never here. So is
+    // REPORT_VISITOR_KEY, which a report's visitor code is an HMAC-SHA-256
+    // under; without it the box answers `failed` (docs/DEPLOY.md).
     "TURNSTILE_SITE_KEY": "",
     // The sign-in providers' OAuth client ids (#165). Empty means that
     // provider is unavailable; so does an unset secret, GOOGLE_CLIENT_SECRET
@@ -279,7 +282,10 @@
         // block's (web/test/preview.test.ts fails if the two drift).
         "LEXEMA_RELEASE": "it-0c432803",
         // Turnstile's public site key for the report box (Huey, #611,
-        // 2026-10-05). Its secret, TURNSTILE_SECRET_KEY, is a Worker secret.
+        // 2026-10-05). Its secret, TURNSTILE_SECRET_KEY, is a Worker secret,
+        // and so is REPORT_VISITOR_KEY, the visitor code's HMAC key. Production
+        // fails closed: with either Turnstile key or REPORT_VISITOR_KEY unset,
+        // the report routes answer `failed` and log the missing one (#621).
         "TURNSTILE_SITE_KEY": "0x4AAAAAAFOe_Wk7rJE2N77_",
         "GOOGLE_CLIENT_ID": "",
         "GITHUB_CLIENT_ID": "",

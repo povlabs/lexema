@@ -3,6 +3,7 @@
 
 import type { ReportAnswer } from "@/lib/dictionary/report.ts";
 import type { SuggestAnswer } from "@/lib/dictionary/suggestAnswer.ts";
+import { routePathOf } from "../shared/hosts.ts";
 import type { Counted, Counter, DictionaryLimit } from "../shared/rateLimit.ts";
 
 /** The body each of the dictionary's JSON-answered limits is blocked with. */
@@ -33,15 +34,18 @@ const SEARCH: DictionaryCounted = { limit: "search", blocked: { by: "page" } };
  * (`/licence?q=…`, a mistyped path) costs a reader nothing and means no
  * spelling of the page's path that vinext normalizes back to `/` gets past the
  * limit. The home page without a query and static assets are never counted;
- * assets do not even reach the Worker.
+ * assets do not even reach the Worker. The route handlers are matched on
+ * `routePathOf`, the path vinext routes on, so their `.rsc` and repeated-slash
+ * spellings count as they do (#621).
  */
 export const dictionaryLimitOf: Counter<DictionaryLimit, DictionaryBodies> = (url) => {
-  if (url.pathname === "/suggest") return SUGGEST;
+  const path = routePathOf(url.pathname);
+  if (path === "/suggest") return SUGGEST;
   // A report's hourly allowance is counted over stored reports (lib/dictionary/report.ts);
   // this binding only stops a burst before the database is touched.
-  if (url.pathname === "/report") return REPORT;
+  if (path === "/report") return REPORT;
   // Opening the box stores a token; counted apart so opening does not use up sending.
-  if (url.pathname === "/report/open") return REPORT_OPEN;
+  if (path === "/report/open") return REPORT_OPEN;
   if ((url.searchParams.get("q") ?? "").trim() !== "") return SEARCH;
   return undefined;
 };

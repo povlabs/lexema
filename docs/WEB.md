@@ -413,7 +413,12 @@ it has none (see below). `reader_report` CHECKs refuse a `missing` report that
 names a record, and empty details on any other waiting report.
 
 Spam is kept out in four layers, as ruled on #51: the `REPORT_LIMIT` Worker
-binding stops a burst (2 a minute) before D1 is touched, and the ruled 5 reports
+binding stops a burst (2 a minute) before D1 is touched, and opening the box
+counts against `REPORT_OPEN_LIMIT`. Both bindings count every spelling vinext
+routes to the same handler: a `.rsc` suffix (`/report/open.rsc`), and repeated
+slashes or dot segments (`/report//open`), which vinext collapses before it
+matches a route (`routePathOf` in `web/worker/shared/hosts.ts`, #621).
+`/suggest` is counted the same way. And the ruled 5 reports
 an hour is counted over the stored rows, because the binding has no hourly
 period; a hidden honeypot field and a 3-second minimum between opening the box
 and sending it drop a bot's report while answering it as sent. The 3 seconds are
@@ -421,16 +426,29 @@ measured on the server's clock alone: when the box opens it asks `POST
 /report/open` for a random token, which is stored with the server's time in
 `report_opening`, and the report is timed against it and consumes it when it is
 stored, so a reader's clock never enters the check. Cloudflare Turnstile is
-checked before storing only when both `TURNSTILE_SITE_KEY` (a var) and
-`TURNSTILE_SECRET_KEY` (a secret) are set; with either missing it is off, and
-the Worker logs which key is missing, so a half-configured Worker never refuses
-every report. After any answer that did not store the report, the box resets the
-widget for a fresh token, because a token can be used once. The visitor is
-stored as a SHA-256 of their rate-limit key, never as an address.
+checked before storing when both `TURNSTILE_SITE_KEY` (a var) and
+`TURNSTILE_SECRET_KEY` (a secret) are set, and a pass counts only when
+siteverify names the request's own hostname. On a local or Preview Worker with
+either key missing it is off, and the Worker warns which key is missing, so a
+half-configured Worker never refuses every report. On production it fails
+closed instead (#621): with either key missing, `POST /report` and `POST
+/report/open` answer `failed` with a 503 and the Worker logs an error naming the
+missing key, so bot protection never switches off unseen. After any answer that
+did not store the report, the box resets the widget for a fresh token, because a
+token can be used once.
+
+The visitor is stored as a one-way code, never as an address: the
+HMAC-SHA-256 of their rate-limit key under the Worker secret
+`REPORT_VISITOR_KEY`, as 64 hex characters (#621). Without that secret no
+address can be tried against a code. With it unset or blank, `POST /report`
+answers `failed` with a 503, stores nothing, and the Worker logs `report box
+closed: REPORT_VISITOR_KEY not set`; every other route keeps serving. Where each
+stage gets the secret is [DEPLOY.md](DEPLOY.md#set-the-report-boxs-secrets) and
+[RUN_THE_SITE.md](RUN_THE_SITE.md#send-a-report-locally).
 
 A report keeps the reader's own data only while it serves, as Huey ruled on
-2026-10-04 (#570). The visitor code serves only the hourly count, but it can be
-turned back into an address, so it is erased one hour after the report: the
+2026-10-04 (#570). The visitor code serves only the hourly count, and anyone
+holding `REPORT_VISITOR_KEY` could still try addresses against it, so it is erased one hour after the report: the
 Worker's cron trigger, every five minutes, sets `visitor_hash` to NULL on each
 report received an hour ago or earlier (`forgetVisitors`,
 `web/worker/dictionary/reportSweep.ts`). The reader's note is erased when the

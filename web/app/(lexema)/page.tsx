@@ -24,6 +24,7 @@ import { cardOf, HOME_CARD, linkPreview } from "@/lib/dictionary/card.ts";
 import { firstQuery, pageTitle, type QueryParam, type TitleOutcome } from "@/lib/dictionary/params";
 import { wordPage } from "@/lib/dictionary/wordPage.ts";
 import { search, servedVersion, turnstile } from "@/lib/dictionary/db";
+import { turnstileSiteKey } from "@/lib/dictionary/report.ts";
 import { requestOrigin } from "@/lib/shared/requestOrigin.ts";
 
 interface PageProps {
@@ -79,7 +80,7 @@ export default async function Page({ searchParams }: PageProps) {
       ) : limited ? (
         <Limited raw={raw} />
       ) : (
-        <Outcome raw={raw} attempt={await search(raw)} siteKey={turnstile()?.siteKey} />
+        <Outcome raw={raw} attempt={await search(raw)} siteKey={turnstileSiteKey(turnstile())} />
       )}
     </SearchPage>
   );

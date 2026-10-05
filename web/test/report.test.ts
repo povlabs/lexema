@@ -6,9 +6,12 @@
 // The Worker's per-minute binding is web/test/rateLimit.test.ts; this file is
 // everything after it: what a report must carry, the honeypot, the timing
 // check, the hourly allowance, the Turnstile hook, what is stored, and the
-// cron sweep that erases a report's visitor code after an hour (#570).
+// cron sweep that erases a report's visitor code after an hour (#570). The
+// two report routes run here too, outside workerd, to show what a Worker
+// missing one of the box's secrets answers and logs (#621).
 
 import assert from "node:assert/strict";
+import { createHmac } from "node:crypto";
 import { registerHooks } from "node:module";
 import test from "node:test";
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
@@ -34,8 +37,11 @@ import {
   requestOpening,
   readSubmission,
   receiveReport,
+  reportKeys,
   turnstileConfig,
+  verifyTurnstile,
   visitorHash,
+  VisitorCodeKey,
   type ReportAnswer,
   type ReportContext,
   type ReportSubmission,
@@ -45,6 +51,17 @@ import { FIXTURE_LINES } from "./fixture.js";
 const REPO = fileURLToPath(new URL("../..", import.meta.url));
 const RELEASE = "it-report-test";
 const NOW = Date.parse("2026-09-27T12:00:00Z");
+
+/** The visitor code key `secret` names, which must be set. */
+async function keyOf(secret: string): Promise<VisitorCodeKey> {
+  const key = await VisitorCodeKey.of(secret);
+  assert.ok(key !== "missing", "a set secret is a key");
+  return key;
+}
+
+/** The tests' own `REPORT_VISITOR_KEY`, as docs/RUN_THE_SITE.md says tests set one. */
+const TEST_VISITOR_SECRET = "lexema-tests-only-visitor-key-7d41c0e2";
+const KEY = await keyOf(TEST_VISITOR_SECRET);
 
 /** The two databases a report touches: the dictionary it reads, and the app database it writes. */
 interface Databases {
@@ -100,6 +117,7 @@ const context = (db: Databases, overrides: Partial<ReportContext> = {}): ReportC
   release: RELEASE,
   now: NOW,
   visitor: "v4:203.0.113.7",
+  visitorCodeKey: KEY,
   verifyChallenge: undefined,
   ...overrides,
 });
@@ -157,7 +175,7 @@ test("a valid report is stored for review, with the served release, the reading'
     assert.equal(row.choice, "form");
     assert.equal(row.details, "The plural should be case.");
     assert.equal(row.received_at, new Date(NOW).toISOString());
-    assert.equal(row.visitor_hash, await visitorHash("v4:203.0.113.7"));
+    assert.equal(row.visitor_hash, await visitorHash("v4:203.0.113.7", KEY));
     assert.doesNotMatch(row.visitor_hash ?? "", /203\.0\.113/);
   });
 });
@@ -271,7 +289,7 @@ const visitorCodes = (app: DatabaseSync) =>
 
 test("the sweep erases the visitor code of every report received an hour ago or earlier, and leaves younger ones and the reports", async () => {
   const { sqlite, appDb } = freshAppDatabase();
-  const code = await visitorHash("v4:203.0.113.7");
+  const code = await visitorHash("v4:203.0.113.7", KEY);
   const times = [NOW - HOUR_MS - 1, NOW - HOUR_MS, NOW - HOUR_MS + 1, NOW];
   for (const at of times) storeAt(sqlite, at, code);
   await forgetVisitors(appDb, NOW);
@@ -314,34 +332,108 @@ function d1Over(over: DatabaseSync): D1Database {
       return statement.all(...params);
     },
     run: async () => (over.prepare(sql).run(...params), { success: true }),
+    ranInBatch: () => (over.prepare(sql).run(...params), { success: true, results: [] }),
   });
   return {
     prepare: (sql: string) => ({ ...bound(sql, []), bind: (...params: (string | number | null)[]) => bound(sql, params) }),
+    batch: async (statements: ReturnType<typeof bound>[]) => {
+      over.exec("BEGIN");
+      const results = statements.map((statement) => statement.ranInBatch());
+      over.exec("COMMIT");
+      return results;
+    },
   } as unknown as D1Database;
 }
 
+/** A D1 binding that records every statement and runs none, to show nothing was asked of it. */
+function untouchedD1(): { d1: D1Database; asked: string[] } {
+  const asked: string[] = [];
+  const refuse = (sql: string) => {
+    asked.push(sql);
+    throw new Error("this test's database must not be reached");
+  };
+  return { d1: { prepare: refuse, batch: async () => refuse("batch") } as unknown as D1Database, asked };
+}
+
 /**
- * The Worker's entry, imported outside workerd: `cloudflare:workers` and
- * vinext's App Router entry exist only in a build, and the card desk loads
- * WebAssembly, so each is stood in for. None of them is what `scheduled` runs.
+ * The Worker's `env` as `cloudflare:workers` hands it to every module the
+ * stub below reaches, one object for the whole file, so a test sets the
+ * fields it needs on it before it runs. The Worker's entry reads the stage once,
+ * when it is imported: production, the stage a missing secret matters on.
  */
-async function workerEntry() {
+const WORKER_ENV: Record<string, unknown> = { LEXEMA_STAGE: "production", DEVELOPER_SIGN_UP: "closed", LEXEMA_RELEASE: RELEASE };
+(globalThis as { lexemaTestEnv?: Record<string, unknown> }).lexemaTestEnv = WORKER_ENV;
+
+/**
+ * Import `path` outside workerd: `cloudflare:workers` and vinext's App Router
+ * entry exist only in a build, and the card desk loads WebAssembly, so each is
+ * stood in for. The App Router answers every request it is handed with a page,
+ * so a route the Worker hands on is seen to be served.
+ */
+async function outsideWorkerd<T>(path: string): Promise<T> {
   const STUBS: Record<string, string> = {
-    "cloudflare:workers": `export const env = { LEXEMA_STAGE: "local", DEVELOPER_SIGN_UP: "open" }; export class DurableObject {}`,
-    "vinext/server/app-router-entry": `export default { fetch() { throw new Error("no app"); } };`,
+    "cloudflare:workers": `export const env = globalThis.lexemaTestEnv; export class DurableObject {}`,
+    "vinext/server/app-router-entry": `export default { fetch() { return new Response("the page", { status: 200 }); } };`,
   };
   const stub = (source: string) => ({ url: `data:text/javascript,${encodeURIComponent(source)}`, shortCircuit: true });
   const hooks = registerHooks({
     resolve: (specifier, context, nextResolve) => {
       if (specifier in STUBS) return stub(STUBS[specifier]);
       const resolved = nextResolve(specifier, context);
-      return resolved.url.endsWith("/worker/dictionary/card/desk.ts") ? stub(`export function workerDesk() { throw new Error("no desk"); }`) : resolved;
+      // A desk with nothing on it: only a card's address reaches into one, and no test here asks for a card.
+      return resolved.url.endsWith("/worker/dictionary/card/desk.ts") ? stub(`export function workerDesk() { return {}; }`) : resolved;
     },
   });
   try {
-    return (await import("../worker/index.ts")).default;
+    return (await import(path)) as T;
   } finally {
     hooks.deregister();
+  }
+}
+
+/** The Worker's entry, imported as `outsideWorkerd` stands it up. */
+async function workerEntry() {
+  return (await outsideWorkerd<typeof import("../worker/index.ts")>("../worker/index.ts")).default;
+}
+
+type RouteModule = { POST: (request: Request) => Promise<Response> };
+
+/** `POST /report` and `POST /report/open`, as the App Router runs them, over `WORKER_ENV`. */
+async function reportRoutes(): Promise<{ report: RouteModule; open: RouteModule }> {
+  return {
+    report: await outsideWorkerd<RouteModule>("../app/(lexema)/report/route.ts"),
+    open: await outsideWorkerd<RouteModule>("../app/(lexema)/report/open/route.ts"),
+  };
+}
+
+/** Run `body` with console.error and console.warn captured, and return what each printed. */
+async function printed(body: () => Promise<void>): Promise<{ errors: unknown[][]; warnings: unknown[][] }> {
+  const errors: unknown[][] = [];
+  const warnings: unknown[][] = [];
+  const { error, warn } = console;
+  console.error = (...args: unknown[]) => void errors.push(args);
+  console.warn = (...args: unknown[]) => void warnings.push(args);
+  try {
+    await body();
+  } finally {
+    Object.assign(console, { error, warn });
+  }
+  return { errors, warnings };
+}
+
+/** A report a word page's box sends, as JSON. */
+const reportRequest = (openToken = "a-token", host = "lexema.fyi") =>
+  new Request(`https://${host}/report`, {
+    method: "POST",
+    headers: { "content-type": "application/json", "cf-connecting-ip": "203.0.113.7" },
+    body: JSON.stringify({ word: "xqzt", choice: "missing", details: "", openToken, website: "" }),
+  });
+
+/** Set `fields` on the Worker's env, and remove each key named `undefined`. */
+function setEnv(fields: Record<string, unknown>): void {
+  for (const [name, value] of Object.entries(fields)) {
+    if (value === undefined) delete WORKER_ENV[name];
+    else WORKER_ENV[name] = value;
   }
 }
 
@@ -351,7 +443,7 @@ test("the Worker's scheduled handler sweeps APP_DB at the trigger's time, on a c
     assert.deepEqual(unstable_readConfig({ config: configPath, env }).triggers.crons, ["*/5 * * * *"], env ?? "top level");
   }
   const { sqlite } = freshAppDatabase();
-  const code = await visitorHash("v4:203.0.113.7");
+  const code = await visitorHash("v4:203.0.113.7", KEY);
   storeAt(sqlite, NOW - HOUR_MS, code);
   storeAt(sqlite, NOW - 60_000, code);
   const worker = await workerEntry();
@@ -363,6 +455,134 @@ test("the Worker's scheduled handler sweeps APP_DB at the trigger's time, on a c
   );
   // With no APP_DB bound, there is no report to erase, and nothing fails.
   await worker.scheduled({ scheduledTime: NOW }, {});
+});
+
+test("the visitor code is an HMAC-SHA-256 under REPORT_VISITOR_KEY: one visitor, one code per key, and another key gives another (#621)", async () => {
+  const code = await visitorHash("v4:203.0.113.7", KEY);
+  assert.match(code, /^[0-9a-f]{64}$/);
+  assert.equal(await visitorHash("v4:203.0.113.7", await keyOf(TEST_VISITOR_SECRET)), code, "the same visitor under the same key");
+  assert.notEqual(await visitorHash("v4:198.51.100.9", KEY), code, "another visitor");
+  const other = await visitorHash("v4:203.0.113.7", await keyOf("another-key-entirely"));
+  assert.match(other, /^[0-9a-f]{64}$/);
+  assert.notEqual(other, code, "the same visitor under another key");
+  // HMAC-SHA-256 itself, from node:crypto: the stored code is the keyed digest of the visitor key and nothing else.
+  assert.equal(code, createHmac("sha256", TEST_VISITOR_SECRET).update("v4:203.0.113.7").digest("hex"));
+  // Unset and blank are the same missing key; a set one is trimmed as the other secrets are.
+  assert.equal(await VisitorCodeKey.of(undefined), "missing");
+  assert.equal(await VisitorCodeKey.of(""), "missing");
+  assert.equal(await VisitorCodeKey.of("  \n"), "missing");
+  assert.equal(await visitorHash("v4:203.0.113.7", await keyOf(`${TEST_VISITOR_SECRET}\n`)), code);
+});
+
+test("with REPORT_VISITOR_KEY unset or blank, POST /report is failed with a 503, stores nothing and logs one error naming it; the Worker still serves (#621)", async () => {
+  const { report } = await reportRoutes();
+  for (const secret of [undefined, "", "   "]) {
+    const app = untouchedD1();
+    const dictionary = untouchedD1();
+    setEnv({ LEXEMA_STAGE: "production", TURNSTILE_SITE_KEY: "site", TURNSTILE_SECRET_KEY: "secret", REPORT_VISITOR_KEY: secret, APP_DB: app.d1, DB: dictionary.d1 });
+    const { errors } = await printed(async () => {
+      const response = await report.POST(reportRequest());
+      assert.equal(response.status, 503, JSON.stringify(secret));
+      assert.deepEqual(await response.json(), { outcome: "failed" });
+    });
+    assert.deepEqual(errors, [["report box closed: REPORT_VISITOR_KEY not set", {}]], JSON.stringify(secret));
+    assert.deepEqual(app.asked, [], "nothing is stored, nor read");
+    assert.deepEqual(dictionary.asked, []);
+  }
+  // The Worker boots on production without the secret, and hands every other route on.
+  const worker = await workerEntry();
+  const page = await worker.fetch(new Request("https://lexema.fyi/licence"), WORKER_ENV as unknown as Env, {} as ExecutionContext);
+  assert.equal(page.status, 200);
+  assert.equal(await page.text(), "the page");
+});
+
+test("with REPORT_VISITOR_KEY set, POST /report stores the report under the key's visitor code", async () => {
+  const { report } = await reportRoutes();
+  const { sqlite } = freshAppDatabase();
+  const token = await openReport(appTablesOverNodeSqlite(sqlite), Date.now() - 10_000);
+  setEnv({ LEXEMA_STAGE: "local", TURNSTILE_SITE_KEY: "", TURNSTILE_SECRET_KEY: undefined, REPORT_VISITOR_KEY: TEST_VISITOR_SECRET, APP_DB: d1Over(sqlite), DB: untouchedD1().d1 });
+  const response = await report.POST(reportRequest(token));
+  assert.deepEqual(await response.json(), { outcome: "sent" });
+  const rows = sqlite.prepare("SELECT word, visitor_hash FROM reader_report").all();
+  assert.deepEqual(rows.map((row) => ({ ...row })), [{ word: "xqzt", visitor_hash: await visitorHash("v4:203.0.113.7", KEY) }]);
+});
+
+test("on production with either Turnstile key missing, POST /report and POST /report/open are failed with a 503 and log the missing key (#621)", async () => {
+  const { report, open } = await reportRoutes();
+  const cases = [
+    { site: "", secret: "secret", line: "report box closed: TURNSTILE_SITE_KEY not set" },
+    { site: "site", secret: undefined, line: "report box closed: TURNSTILE_SECRET_KEY not set" },
+    { site: " ", secret: "", line: "report box closed: TURNSTILE_SITE_KEY and TURNSTILE_SECRET_KEY not set" },
+  ];
+  for (const { site, secret, line } of cases) {
+    const app = untouchedD1();
+    setEnv({ LEXEMA_STAGE: "production", TURNSTILE_SITE_KEY: site, TURNSTILE_SECRET_KEY: secret, REPORT_VISITOR_KEY: TEST_VISITOR_SECRET, APP_DB: app.d1, DB: untouchedD1().d1 });
+    const { errors, warnings } = await printed(async () => {
+      for (const response of [await report.POST(reportRequest()), await open.POST(new Request("https://lexema.fyi/report/open", { method: "POST" }))]) {
+        assert.equal(response.status, 503, line);
+        assert.deepEqual(await response.json(), { outcome: "failed" });
+      }
+    });
+    assert.deepEqual(errors, [[line, {}], [line, {}]]);
+    assert.deepEqual(warnings, [], "an error, not a warning");
+    assert.deepEqual(app.asked, [], "no opening and no report is stored");
+  }
+  // With both secrets missing, one line names both.
+  setEnv({ TURNSTILE_SITE_KEY: "", REPORT_VISITOR_KEY: undefined });
+  const { errors } = await printed(async () => void (await report.POST(reportRequest())));
+  assert.deepEqual(errors, [["report box closed: TURNSTILE_SITE_KEY and TURNSTILE_SECRET_KEY and REPORT_VISITOR_KEY not set", {}]]);
+});
+
+test("on local and preview, a missing Turnstile key keeps today's behaviour: off, with a warning, and the box still opens", async () => {
+  const { open } = await reportRoutes();
+  for (const stage of ["local", "preview"]) {
+    const { sqlite } = freshAppDatabase();
+    setEnv({ LEXEMA_STAGE: stage, TURNSTILE_SITE_KEY: "site", TURNSTILE_SECRET_KEY: undefined, APP_DB: d1Over(sqlite) });
+    const { errors, warnings } = await printed(async () => {
+      const response = await open.POST(new Request("https://lexema.fyi/report/open", { method: "POST" }));
+      assert.equal(response.status, 200, stage);
+      assert.equal(((await response.json()) as { outcome: string }).outcome, "opened");
+    });
+    assert.deepEqual(errors, []);
+    assert.deepEqual(warnings, [["Turnstile is off: TURNSTILE_SECRET_KEY is not set, and both are needed", {}]], stage);
+    assert.equal((sqlite.prepare("SELECT count(*) AS n FROM report_opening").get() as { n: number }).n, 1);
+  }
+});
+
+test("Turnstile's pass counts only when siteverify names the request's own hostname (#621)", async () => {
+  const sent: FormData[] = [];
+  const answers: Record<string, unknown>[] = [];
+  const realFetch = globalThis.fetch;
+  globalThis.fetch = (async (_url: string | URL | Request, init?: RequestInit) => {
+    sent.push(init?.body as FormData);
+    return Response.json(answers.shift());
+  }) as typeof fetch;
+  try {
+    answers.push({ success: true, hostname: "lexema.fyi" });
+    assert.equal(await verifyTurnstile("secret", "token", "203.0.113.7", "lexema.fyi"), true);
+    answers.push({ success: true, hostname: "elsewhere.example" });
+    assert.equal(await verifyTurnstile("secret", "token", "203.0.113.7", "lexema.fyi"), false, "solved on another site");
+    answers.push({ success: true });
+    assert.equal(await verifyTurnstile("secret", "token", "203.0.113.7", "lexema.fyi"), false, "no hostname named");
+    answers.push({ success: false, hostname: "lexema.fyi" });
+    assert.equal(await verifyTurnstile("secret", "token", "203.0.113.7", "lexema.fyi"), false, "a failed check on the right host");
+    assert.equal(sent.length, 4);
+    assert.equal(sent[0].get("secret"), "secret");
+    assert.equal(sent[0].get("response"), "token");
+    assert.equal(await verifyTurnstile("secret", undefined, null, "lexema.fyi"), false, "no token, no call");
+    assert.equal(sent.length, 4);
+  } finally {
+    globalThis.fetch = realFetch;
+  }
+});
+
+test("the report box is ready only with every secret it needs, and names each one it lacks", async () => {
+  const off = { state: "off" } as const;
+  const on = { state: "on", siteKey: "site", secretKey: "secret" } as const;
+  assert.deepEqual(reportKeys(on, KEY), { state: "ready", visitorCodeKey: KEY, turnstile: on });
+  assert.deepEqual(reportKeys(off, KEY), { state: "ready", visitorCodeKey: KEY, turnstile: off });
+  assert.deepEqual(reportKeys(off, "missing"), { state: "closed", missing: ["REPORT_VISITOR_KEY"] });
+  assert.deepEqual(reportKeys({ state: "unset", missing: ["TURNSTILE_SECRET_KEY"] }, KEY), { state: "closed", missing: ["TURNSTILE_SECRET_KEY"] });
 });
 
 test("a reading from another release is refused, and nothing is stored", async () => {
@@ -398,18 +618,30 @@ test("with Turnstile configured a failed check is refused; with none configured 
   });
 });
 
-test("Turnstile is on only when both keys are set; one alone is off, with a warning naming the missing key", () => {
+test("on local and preview Turnstile is on only when both keys are set; one alone is off, with a warning naming the missing key", () => {
+  for (const stage of ["local", "preview"] as const) {
+    const warnings: string[] = [];
+    const warn = (message: string) => void warnings.push(message);
+    assert.deepEqual(turnstileConfig(stage, "site", "secret", warn), { state: "on", siteKey: "site", secretKey: "secret" });
+    assert.deepEqual(turnstileConfig(stage, undefined, undefined, warn), { state: "off" });
+    assert.deepEqual(turnstileConfig(stage, "", "", warn), { state: "off" });
+    assert.deepEqual(warnings, []);
+    assert.deepEqual(turnstileConfig(stage, "", "secret", warn), { state: "off" });
+    assert.deepEqual(turnstileConfig(stage, "site", undefined, warn), { state: "off" });
+    assert.equal(warnings.length, 2);
+    assert.match(warnings[0], /TURNSTILE_SITE_KEY is not set/);
+    assert.match(warnings[1], /TURNSTILE_SECRET_KEY is not set/);
+  }
+});
+
+test("on production a missing Turnstile key is unset, never off, and no warning stands in for the error the routes log", () => {
   const warnings: string[] = [];
   const warn = (message: string) => void warnings.push(message);
-  assert.deepEqual(turnstileConfig("site", "secret", warn), { siteKey: "site", secretKey: "secret" });
-  assert.equal(turnstileConfig(undefined, undefined, warn), undefined);
-  assert.equal(turnstileConfig("", "", warn), undefined);
+  assert.deepEqual(turnstileConfig("production", "site", "secret", warn), { state: "on", siteKey: "site", secretKey: "secret" });
+  assert.deepEqual(turnstileConfig("production", "", "secret", warn), { state: "unset", missing: ["TURNSTILE_SITE_KEY"] });
+  assert.deepEqual(turnstileConfig("production", "site", " ", warn), { state: "unset", missing: ["TURNSTILE_SECRET_KEY"] });
+  assert.deepEqual(turnstileConfig("production", undefined, undefined, warn), { state: "unset", missing: ["TURNSTILE_SITE_KEY", "TURNSTILE_SECRET_KEY"] });
   assert.deepEqual(warnings, []);
-  assert.equal(turnstileConfig("", "secret", warn), undefined);
-  assert.equal(turnstileConfig("site", undefined, warn), undefined);
-  assert.equal(warnings.length, 2);
-  assert.match(warnings[0], /TURNSTILE_SITE_KEY is not set/);
-  assert.match(warnings[1], /TURNSTILE_SECRET_KEY is not set/);
 });
 
 test("after any answer that did not store the report, the box drops its Turnstile token for a fresh one", () => {
