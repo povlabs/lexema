@@ -9,9 +9,9 @@
 // that has left the tree's (web/builds/appMigrations.ts); each refusal stops
 // the deploy.
 
-import { appliedMigrations, compareHistory, type D1Target, divergence } from "./appMigrations.ts";
-import { appMigrationsConfig, refuseDictionary } from "./previewConfig.ts";
-import { listDatabases, required, type Wrangler } from "./wrangler.ts";
+import { AppMigrationsConfig, compareHistory, type D1Target, divergence } from "./appMigrations.ts";
+import { refuseDictionary } from "./previewConfig.ts";
+import { listDatabases, type Wrangler } from "./wrangler.ts";
 
 /** Production's `APP_DB` (web/wrangler.jsonc, `env.production`), made empty by Huey on 2026-10-05 (#611). */
 export const PRODUCTION_APP_DATABASE: D1Target = { name: "lexema-app", id: "e77ba8e9-f4da-45fe-9b8c-322904054edc" };
@@ -43,7 +43,10 @@ export function migrateProductionAppDatabase(database: D1Target, steps: Producti
     throw new Error(`refusing to migrate ${database.name}: the account holds it as ${onAccount.uuid}, not ${database.id}`);
   }
 
-  const history = compareHistory(appliedMigrations(wrangler, database), steps.migrations);
+  // The read and the apply both name lexema-app's real id through this file,
+  // never web/wrangler.jsonc's local placeholder for the same name.
+  const config = AppMigrationsConfig.write(database, steps.migrationsDir, steps.writeMigrationsConfig);
+  const history = compareHistory(config.applied(wrangler), steps.migrations);
   if (history.state === "diverged") {
     throw new Error(
       `refusing to migrate ${database.name}: ${divergence(history)}, so its history has left the tree's;` +
@@ -55,6 +58,5 @@ export function migrateProductionAppDatabase(database: D1Target, steps: Producti
     return;
   }
   log(`app database: applying ${history.pending.length} new migration(s) to ${database.name} (${database.id}): ${history.pending.join(", ")}`);
-  const config = steps.writeMigrationsConfig(appMigrationsConfig(database, steps.migrationsDir));
-  required(wrangler(["d1", "migrations", "apply", database.name, "--remote", "--config", config]), "wrangler d1 migrations apply");
+  config.apply(wrangler);
 }

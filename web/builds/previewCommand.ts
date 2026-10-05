@@ -7,11 +7,12 @@
 // second step runs only when the first wrote a Preview name, so a branch that
 // gets no Preview builds and deploys nothing and still ends green.
 
+import { AppMigrationsConfig, type D1Target } from "./appMigrations.ts";
 import { prepareAppDatabase } from "./previewAppDatabase.ts";
-import { type BuiltConfig, migrationsConfig, withAppDatabase, withDictionarySlice } from "./previewConfig.ts";
+import { type BuiltConfig, withAppDatabase, withDictionarySlice } from "./previewConfig.ts";
 import { PreviewName } from "./previewName.ts";
 import { prepareSlice, type SlicePlanner } from "./previewSlice.ts";
-import { required, type Wrangler } from "./wrangler.ts";
+import type { Wrangler } from "./wrangler.ts";
 
 /** The built config `wrangler preview` reads, relative to web/. */
 export const BUILT_CONFIG = "dist/server/wrangler.json";
@@ -112,15 +113,15 @@ export function preparePreview(steps: PreviewPrepareSteps): PreparedPreview {
   log(`Preview ${preview} for branch ${steps.branch}`);
 
   steps.build();
-  const database = prepareAppDatabase(wrangler, preview, steps.migrations, log);
+  const configFor = (database: D1Target) => AppMigrationsConfig.write(database, steps.migrationsDir, steps.writeMigrationsConfig);
+  const { database, migrations } = prepareAppDatabase(wrangler, preview, steps.migrations, configFor, log);
   const slice = prepareSlice(wrangler, preview, steps.slices, log);
   const config = withAppDatabase(steps.readBuiltConfig(), database);
   steps.writeFile(BUILT_CONFIG, `${JSON.stringify(slice === undefined ? config : withDictionarySlice(config, slice), null, 2)}\n`);
 
   // Migrations before the Preview, so no deployment ever runs on a database
   // older than its code ("Resources and isolation", D1 migrations).
-  const migrations = steps.writeMigrationsConfig(migrationsConfig(database, steps.migrationsDir));
-  required(wrangler(["d1", "migrations", "apply", preview.appDatabase, "--remote", "--config", migrations]), "wrangler d1 migrations apply");
+  migrations.apply(wrangler);
 
   // A Preview deployment keeps only the secrets it is sent (Wrangler 4.135.0
   // sends no keep flag), and `preview secret put` refuses a Preview with no

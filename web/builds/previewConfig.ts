@@ -95,12 +95,12 @@ export function withAppDatabase(config: BuiltConfig, database: AppDatabase): Bui
 
 /**
  * A Wrangler config that names only this app database, with the app
- * migrations (src/db/app/migrations) as its `migrations_dir`, for
- * `wrangler d1 migrations apply --remote`. Neither the `previews` block nor
- * the built config can carry one: the build does not rebase paths inside that
- * block (web/wrangler.jsonc). `migrationsDir` is absolute, so the file works
- * wherever it is written. The production command writes one for `lexema-app`
- * the same way (web/builds/productionAppDatabase.ts).
+ * migrations (src/db/app/migrations) as its `migrations_dir`, for reading
+ * and applying its migrations (`AppMigrationsConfig` in
+ * web/builds/appMigrations.ts). Neither the `previews` block nor the built
+ * config can carry one: the build does not rebase paths inside that block
+ * (web/wrangler.jsonc). `migrationsDir` is absolute, so the file works
+ * wherever it is written. The preview and production commands both write one.
  */
 export function appMigrationsConfig(database: D1Target, migrationsDir: string): Record<string, unknown> {
   refuseDictionary(database, `bind ${APP_BINDING} to`);
@@ -115,9 +115,4 @@ export function appMigrationsConfig(database: D1Target, migrationsDir: string): 
       },
     ],
   };
-}
-
-/** `appMigrationsConfig` for a branch's own app database. */
-export function migrationsConfig(database: AppDatabase, migrationsDir: string): Record<string, unknown> {
-  return appMigrationsConfig({ name: database.preview.appDatabase, id: database.id }, migrationsDir);
 }

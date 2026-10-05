@@ -154,7 +154,10 @@ forward (`web/builds/productionAppDatabase.ts`). After the sweep and before
    so far, in its order, it applies only the new ones from
    `src/db/app/migrations` with `wrangler d1 migrations apply --remote`, and
    logs one `app database:` line naming them. With none new, it applies
-   nothing.
+   nothing. The read and the apply both pass `--config` with a temporary
+   config that names `lexema-app` by its real id. Without it, Wrangler would
+   take the local placeholder id that `web/wrangler.jsonc`'s top level gives
+   the same name.
 4. When the history has left the tree's, such as after a renumbered
    migration, it stops red and names the divergence. Unlike a Preview's, it
    never deletes, creates again or resets the database; a person decides how

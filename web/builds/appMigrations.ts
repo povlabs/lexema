@@ -14,9 +14,17 @@
 // name would run the same SQL again and fail. So each command reads the
 // history first, and runs the migrations only on a history that is the tree's
 // list so far.
+//
+// Both the read and the apply go through an `AppMigrationsConfig`, a config
+// file that names the one database by name and id. With no `--config`,
+// Wrangler 4.135.0 reads web/wrangler.jsonc, and when a top-level entry has
+// the same `database_name` and an id, it uses that id
+// (`getDatabaseInfoFromConfig` in wrangler-dist/cli.js). The top level binds
+// `lexema-app` to a local placeholder id, so a read of production's
+// `lexema-app` with no config would ask D1 for the placeholder (#611).
 
-import { refuseDictionary } from "./previewConfig.ts";
-import type { Wrangler, WranglerRun } from "./wrangler.ts";
+import { appMigrationsConfig, refuseDictionary } from "./previewConfig.ts";
+import { required, type Wrangler, type WranglerRun } from "./wrangler.ts";
 
 /** One D1 on the account, by the name Wrangler addresses it by and its id. */
 export interface D1Target {
@@ -101,14 +109,39 @@ function answeredNoSuchTable(run: WranglerRun, table: string): boolean {
 }
 
 /**
- * The migrations `database` applied, oldest first. A database with no
- * `d1_migrations` table has applied none; any other failed read stops the
- * build, since what was applied is then unknown. Never the dictionary.
+ * A Wrangler config file that names one app database by name and id, with the
+ * app migrations as its `migrations_dir` (`appMigrationsConfig`). It is the
+ * only way to read or apply an app database's migrations, so neither call can
+ * resolve the name through web/wrangler.jsonc instead. Never the dictionary.
  */
-export function appliedMigrations(wrangler: Wrangler, database: D1Target): string[] {
-  refuseDictionary(database, "read the applied migrations of");
-  const read = wrangler(["d1", "execute", database.name, "--remote", "--json", `--command=${APPLIED_MIGRATIONS_QUERY}`]);
-  if (read.ok) return namesIn(read, database.name);
-  if (answeredNoSuchTable(read, MIGRATIONS_TABLE)) return [];
-  throw new Error(`could not read the applied migrations of ${database.name}`);
+export class AppMigrationsConfig {
+  private constructor(
+    readonly database: D1Target,
+    readonly path: string,
+  ) {}
+
+  /** Write the config for `database` with `write`, which returns the file's path. */
+  static write(database: D1Target, migrationsDir: string, write: (config: Record<string, unknown>) => string): AppMigrationsConfig {
+    return new AppMigrationsConfig(database, write(appMigrationsConfig(database, migrationsDir)));
+  }
+
+  /**
+   * The migrations the database applied, oldest first. A database with no
+   * `d1_migrations` table has applied none; any other failed read stops the
+   * build, since what was applied is then unknown.
+   */
+  applied(wrangler: Wrangler): string[] {
+    const { name } = this.database;
+    refuseDictionary(this.database, "read the applied migrations of");
+    const read = wrangler(["d1", "execute", name, "--remote", "--config", this.path, "--json", `--command=${APPLIED_MIGRATIONS_QUERY}`]);
+    if (read.ok) return namesIn(read, name);
+    if (answeredNoSuchTable(read, MIGRATIONS_TABLE)) return [];
+    throw new Error(`could not read the applied migrations of ${name}`);
+  }
+
+  /** Run every app migration the database has not applied, or throw. */
+  apply(wrangler: Wrangler): void {
+    refuseDictionary(this.database, "migrate");
+    required(wrangler(["d1", "migrations", "apply", this.database.name, "--remote", "--config", this.path]), "wrangler d1 migrations apply");
+  }
 }
