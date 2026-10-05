@@ -18,17 +18,12 @@ import {
   SITE_FOOTER_LINK,
   SITE_FOOTER_LINKS,
   SITE_FOOTER_NAME,
-  type DictionaryColumn,
 } from "@/components/shared/styles.ts";
 
 /** The Licence page's path, which every result's Source link leans on (ADR 0009). */
 export const LICENCE_PATH = "/licence";
 /** The Privacy notice's path. */
 export const PRIVACY_PATH = "/privacy";
-
-/** The column the page at `path` is laid out in: the legal pages have their own (#588). */
-export const columnOf = (path: string): DictionaryColumn =>
-  path === LICENCE_PATH || path === PRIVACY_PATH ? "legal" : "page";
 
 const linksOf = (origins: SiteOrigins) =>
   [
@@ -41,7 +36,7 @@ const linksOf = (origins: SiteOrigins) =>
 export function SiteFooter({ origins, current }: { origins: SiteOrigins; current: string }) {
   return (
     <footer className={SITE_FOOTER}>
-      <div className={SITE_FOOTER_INNER[columnOf(current)]}>
+      <div className={SITE_FOOTER_INNER}>
         <a className={SITE_FOOTER_NAME} href="/">
           Lexema
         </a>
