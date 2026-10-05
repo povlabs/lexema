@@ -1,27 +1,35 @@
 // One public issue per production reader report (#631): the read never selects
 // the note, the visitor code or the time; an issue body holds the report's
-// facts and no note, with the reader's word inert; a re-run opens no twin; and
-// one run opens at most 20.
+// facts and no note; a re-run opens no twin; and one run opens at most 20. Its
+// word is never the one the reader sent as sent (#639): a report on a record
+// shows the dictionary's headword, read in one checked statement, and a report
+// on no record shows its typed text only when it has the shape of a word.
 
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 import { readerReport } from "../src/db/app/schema.js";
 import {
+  Headwords,
+  headwordQuery,
   ISSUES_PER_RUN,
+  RecordKey,
   ReportNotice,
   inertCode,
   planRun,
   reportMarker,
   sendWaitingReports,
   sentReportIds,
+  typedWord,
   WAITING_REPORTS_QUERY,
+  type Dictionary,
   type ReportIssues,
 } from "../src/readerReport/reportIssue.js";
-import { githubIssues, nextPage, productionReports, rowsOf, type Fetch } from "../src/readerReport/reportIssuesCli.js";
+import { githubIssues, nextPage, productionDictionary, productionReports, rowsOf, type Fetch } from "../src/readerReport/reportIssuesCli.js";
 import { freshAppDatabase } from "./databases.js";
 
 const sha = (digit: string) => digit.repeat(64);
+const RELEASE = "it-0c432803";
 
 interface Row {
   report_id: number;
@@ -29,22 +37,55 @@ interface Row {
   word: string;
   record_id: number | null;
   line_no: number | null;
+  line_sha256: string | null;
   choice: string;
   has_note: 0 | 1;
 }
 
 const row = (reportId: number, fields: Partial<Row> = {}): Row => ({
   report_id: reportId,
-  release_id: "it-0c432803",
+  release_id: RELEASE,
   word: "sale",
   record_id: null,
   line_no: null,
+  line_sha256: null,
   choice: "meaning",
   has_note: 1,
   ...fields,
 });
 
 const notice = (reportId: number, fields: Partial<Row> = {}) => ReportNotice.fromRow(row(reportId, fields));
+
+/** A `source_record` row as the headword read answers it. */
+interface SourceRow {
+  record_id: number;
+  release_id: string;
+  line_no: number;
+  line_sha256: string;
+  word: string;
+}
+
+/** A dictionary that answers every read with `held`, as D1 would filter it, and keeps each statement it ran. */
+function fakeDictionary(held: readonly SourceRow[]): Dictionary & { statements: string[] } {
+  const statements: string[] = [];
+  return {
+    statements,
+    rows(statement) {
+      statements.push(statement);
+      return held.filter(
+        (r) =>
+          statement.includes(`(release_id = '${r.release_id}' AND line_no = ${r.line_no} AND line_sha256 = '${r.line_sha256}')`) ||
+          statement.includes(`(record_id = ${r.record_id} AND release_id = '${r.release_id}')`),
+      );
+    },
+  };
+}
+
+/** The body of `n`'s issue after one headword read over `held`. */
+const bodyOf = (n: ReportNotice, held: readonly SourceRow[] = []): string =>
+  n.body(Headwords.read(n.recordKey === undefined ? [] : [n.recordKey], fakeDictionary(held)));
+
+const lineOf = (body: string, prefix: string): string | undefined => body.split("\n").find((line) => line.startsWith(prefix));
 
 test("the read selects exactly the issue's columns and a computed has_note, and never the note, the visitor code or the time", () => {
   const [, columns] = /^SELECT (.*) FROM reader_report /.exec(WAITING_REPORTS_QUERY) ?? [];
@@ -54,6 +95,7 @@ test("the read selects exactly the issue's columns and a computed has_note, and 
     "word",
     "record_id",
     "line_no",
+    "line_sha256",
     "choice",
     "details IS NOT NULL AND length(details) > 0 AS has_note",
   ]);
@@ -78,8 +120,8 @@ test("the read runs on the real reader_report table: waiting reports only, oldes
   assert.deepEqual(
     rows.map((r) => ({ ...r })),
     [
-      { report_id: 1, release_id: "it-a", word: "sale", record_id: 4, line_no: 9, choice: "meaning", has_note: 1 },
-      { report_id: 2, release_id: "it-a", word: "zzz", record_id: null, line_no: null, choice: "missing", has_note: 0 },
+      { report_id: 1, release_id: "it-a", word: "sale", record_id: 4, line_no: 9, line_sha256: sha("9"), choice: "meaning", has_note: 1 },
+      { report_id: 2, release_id: "it-a", word: "zzz", record_id: null, line_no: null, line_sha256: null, choice: "missing", has_note: 0 },
     ],
   );
   assert.deepEqual(
@@ -120,20 +162,169 @@ test("a failed read names the exit status and quotes nothing Wrangler said", () 
 test("a row the table would refuse is refused by report and column, without its values", () => {
   assert.throws(() => ReportNotice.fromRow(row(5, { choice: "secret-choice" })), /^Error: report 5: choice is not/);
   assert.throws(() => ReportNotice.fromRow(row(5, { choice: "missing", record_id: 2 })), /report 5: record_id/);
+  assert.throws(() => ReportNotice.fromRow(row(5, { record_id: 2, line_no: 3 })), /report 5: line_sha256/);
   assert.throws(() => ReportNotice.fromRow({ word: "sale" }), (error: Error) => !error.message.includes("sale"));
 });
 
-test("a report's issue holds no note and no visitor code, even when the row carries them", () => {
-  const leaky = ReportNotice.fromRow({ ...row(8), details: "My email is a@b.c", visitor_hash: sha("e"), received_at: "2026-10-01" });
-  assert.deepEqual(Object.keys(leaky).sort(), ["choice", "hasNote", "reading", "reportId", "word"]);
-  for (const text of [leaky.title, leaky.body]) {
-    assert.ok(!text.includes("a@b.c"));
-    assert.ok(!text.includes(sha("e")));
-    assert.ok(!text.includes("2026-10-01"));
+test("a report's issue holds no note, no visitor code and no submitted word, even when the row carries them", () => {
+  const leaky = ReportNotice.fromRow({
+    ...row(8, { word: "call 333 1234567", record_id: 4 }),
+    details: "My email is a@b.c",
+    visitor_hash: sha("e"),
+    received_at: "2026-10-01",
+  });
+  assert.deepEqual(Object.keys(leaky).sort(), ["choice", "hasNote", "reading", "reportId", "subject"]);
+  for (const text of [leaky.title, bodyOf(leaky, [{ record_id: 4, release_id: RELEASE, line_no: 4, line_sha256: sha("4"), word: "sale" }])]) {
+    for (const secret of ["a@b.c", sha("e"), "2026-10-01", "333"]) assert.ok(!text.includes(secret), secret);
   }
 });
 
+test("a report on a record shows the dictionary's headword and its page, never the word it was sent with", () => {
+  const byLine = notice(31, { word: "Mario Rossi", record_id: 42, line_no: 1234, line_sha256: sha("a"), choice: "meaning" });
+  const byRecord = notice(32, { word: "mi chiamo Mario", record_id: 7, choice: "example" });
+  const held = [
+    { record_id: 99, release_id: RELEASE, line_no: 1234, line_sha256: sha("a"), word: "andare" },
+    { record_id: 7, release_id: RELEASE, line_no: 55, line_sha256: sha("b"), word: "perché" },
+  ];
+  const lineBody = bodyOf(byLine, held);
+  assert.equal(lineOf(lineBody, "- word: "), "- word: ` andare `");
+  assert.equal(lineOf(lineBody, "- page: "), "- page: <https://lexema.fyi/?q=andare>");
+  assert.ok(!lineBody.includes("Mario"));
+  const recordBody = bodyOf(byRecord, held);
+  assert.equal(lineOf(recordBody, "- word: "), "- word: ` perché `");
+  assert.equal(lineOf(recordBody, "- page: "), "- page: <https://lexema.fyi/?q=perch%C3%A9>");
+  assert.ok(!recordBody.includes("Mario"));
+});
+
+test("a report that kept its line is matched on release, line and digest only, never on its record_id", () => {
+  const kept = notice(33, { word: "x", record_id: 5, line_no: 10, line_sha256: sha("c") });
+  // The dictionary holds record 5 under another line now, and line 10 under another digest.
+  const held = [
+    { record_id: 5, release_id: RELEASE, line_no: 11, line_sha256: sha("d"), word: "casa" },
+    { record_id: 6, release_id: RELEASE, line_no: 10, line_sha256: sha("e"), word: "cane" },
+  ];
+  assert.equal(lineOf(bodyOf(kept, held), "- word: "), "- word: word withheld");
+});
+
+test("a record the dictionary read does not find shows word withheld and no page link", () => {
+  const body = bodyOf(notice(34, { word: "sale", record_id: 8, line_no: 3, line_sha256: sha("f") }), []);
+  assert.equal(lineOf(body, "- word: "), "- word: word withheld");
+  assert.equal(lineOf(body, "- page: "), undefined);
+  assert.ok(!body.includes("sale"));
+  assert.ok(!body.includes("https:"));
+});
+
+test("the headword read is one fixed SELECT of source_record's keys and word, matching by line when kept and by record otherwise", () => {
+  const keys = [
+    notice(1, { record_id: 42, line_no: 1234, line_sha256: sha("a") }),
+    notice(2, { record_id: 7 }),
+    notice(3, { record_id: 7 }),
+    notice(4, { choice: "missing" }),
+  ].flatMap(({ recordKey }) => (recordKey === undefined ? [] : [recordKey]));
+  const statement = headwordQuery(keys);
+  assert.equal(
+    statement,
+    "SELECT record_id, release_id, line_no, line_sha256, word FROM source_record WHERE " +
+      `(release_id = '${RELEASE}' AND line_no = 1234 AND line_sha256 = '${sha("a")}') OR ` +
+      `(record_id = 7 AND release_id = '${RELEASE}')`,
+  );
+  const [, columns, table] = /^SELECT (.*) FROM (\w+) WHERE /.exec(statement ?? "") ?? [];
+  assert.deepEqual(columns.split(", "), ["record_id", "release_id", "line_no", "line_sha256", "word"]);
+  assert.equal(table, "source_record");
+  assert.ok(!statement?.includes(";"), "one statement");
+  assert.equal(headwordQuery([]), undefined, "no key, no read");
+  // A run reads at most once, and not at all when no report to open names a record.
+  const dictionary = fakeDictionary([]);
+  Headwords.read(keys, dictionary);
+  Headwords.read([], dictionary);
+  assert.equal(dictionary.statements.length, 1);
+});
+
+test("every value bound for the headword read is checked first; a report that fails a check is withheld and never reaches the statement", () => {
+  const malformed = [
+    { release_id: "it-0C432803" },
+    { release_id: "it-0c432803' OR 1=1 --" },
+    { release_id: "it-a" },
+    { line_no: 3, line_sha256: "f".repeat(63) },
+    { line_no: 3, line_sha256: `${"f".repeat(63)}'` },
+    { line_no: 3, line_sha256: "F".repeat(64) },
+  ];
+  for (const fields of malformed) {
+    const n = notice(40, { record_id: 9, word: "sale", ...fields });
+    assert.equal(n.recordKey, undefined, JSON.stringify(fields));
+    const dictionary = fakeDictionary([{ record_id: 9, release_id: RELEASE, line_no: 3, line_sha256: sha("f"), word: "sale" }]);
+    const body = n.body(Headwords.read([], dictionary));
+    assert.equal(lineOf(body, "- word: "), "- word: word withheld", JSON.stringify(fields));
+    assert.equal(lineOf(body, "- page: "), undefined);
+  }
+  assert.equal(RecordKey.of({ releaseId: RELEASE, recordId: 1.5, lineNo: undefined }, undefined), undefined);
+  assert.equal(RecordKey.of({ releaseId: RELEASE, recordId: 1, lineNo: 0 }, sha("a")), undefined);
+  // A non-whole record_id or line_no never gets that far: the row is refused.
+  assert.throws(() => notice(41, { record_id: "1 OR 1=1" as unknown as number }), /report 41: record_id/);
+  assert.throws(() => notice(41, { record_id: 1, line_no: 2.5, line_sha256: sha("a") }), /report 41: line_no/);
+  // A dictionary row source_record would refuse stops the run, quoting none of it.
+  const odd = notice(42, { record_id: 9 });
+  assert.throws(
+    () => Headwords.read([odd.recordKey as RecordKey], { rows: () => [{ record_id: 9, release_id: RELEASE, word: "secret" }] }),
+    (error: Error) => !error.message.includes("secret"),
+  );
+});
+
+test("typed text is shown only in the shape of a word: phone numbers, emails, URLs and sentences are withheld", () => {
+  const withheld = [
+    "333 1234567",
+    "+39 333 123 4567",
+    "mario.rossi@example.com",
+    "https://evil.example",
+    "www.evil.example",
+    "questa è una frase molto lunga che non è una parola",
+    "uno due tre quattro cinque",
+    "a".repeat(41),
+    " casa",
+    "casa ",
+    "casa  bianca",
+    "casa\nbianca",
+    "casa/bianca",
+    "ore 10:30",
+    "@huey",
+    "'",
+    "",
+  ];
+  for (const text of withheld) {
+    assert.equal(typedWord(text), undefined, text);
+    const body = bodyOf(notice(50, { word: text, choice: "missing" }));
+    assert.equal(lineOf(body, "- word: "), "- word: word withheld", text);
+    assert.equal(lineOf(body, "- page: "), undefined, text);
+  }
+  const shown: [string, string][] = [
+    ["casa", "casa"],
+    ["perché", "perch%C3%A9"],
+    ["dell'arte", "dell%27arte"],
+    ["dell’arte", "dell%E2%80%99arte"],
+    ["capo-stazione", "capo-stazione"],
+    ["casa bianca", "casa%20bianca"],
+    ["Città", "Citt%C3%A0"],
+  ];
+  for (const [text, query] of shown) {
+    const body = bodyOf(notice(51, { word: text, choice: "missing" }));
+    assert.equal(lineOf(body, "- word: "), `- word: ${inertCode(text)}`, text);
+    assert.equal(lineOf(body, "- page: "), `- page: <https://lexema.fyi/?q=${query}>`, text);
+  }
+  assert.equal(typedWord("a".repeat(40)), "a".repeat(40));
+  assert.equal(typedWord("perche\u0301"), "perché", "a decomposed accent is joined");
+});
+
+test("a mistake report sent with Not sure has no record, so it takes the word shape too", () => {
+  const body = bodyOf(notice(52, { word: "mario.rossi@example.com", choice: "meaning" }));
+  assert.equal(lineOf(body, "- word: "), "- word: word withheld");
+  assert.equal(lineOf(bodyOf(notice(53, { word: "sale", choice: "meaning" })), "- word: "), "- word: ` sale `");
+});
+
 test("each kind of report renders its facts, the code-span word, the page link, the option, has a note and the marker", () => {
+  const held = [
+    { record_id: 42, release_id: RELEASE, line_no: 1234, line_sha256: sha("a"), word: "andare" },
+    { record_id: 7, release_id: RELEASE, line_no: 70, line_sha256: sha("7"), word: "casa" },
+  ];
   const cases = [
     {
       name: "a word report",
@@ -142,7 +333,7 @@ test("each kind of report renders its facts, the code-span word, the page link, 
     },
     {
       name: "a reading report",
-      notice: notice(12, { word: "andare", record_id: 42, line_no: 1234, choice: "meaning" }),
+      notice: notice(12, { word: "andare", record_id: 42, line_no: 1234, line_sha256: sha("a"), choice: "meaning" }),
       lines: [
         "- word: ` andare `",
         "- page: <https://lexema.fyi/?q=andare>",
@@ -159,11 +350,11 @@ test("each kind of report renders its facts, the code-span word, the page link, 
     {
       name: "a report with a note",
       notice: notice(14, { word: "casa", record_id: 7, line_no: null, choice: "example", has_note: 1 }),
-      lines: ["- reading: release ` it-0c432803 `, no line kept, record 7", "- option: example", "- has a note: yes"],
+      lines: ["- word: ` casa `", "- reading: release ` it-0c432803 `, no line kept, record 7", "- option: example", "- has a note: yes"],
     },
   ];
   for (const { name, notice: n, lines } of cases) {
-    const body = n.body.split("\n");
+    const body = bodyOf(n, held).split("\n");
     assert.equal(body[0], `<!-- lexema-reader-report:${n.reportId} -->`, name);
     assert.ok(body.includes(`- report id: ${n.reportId}`), name);
     for (const line of lines) assert.ok(body.includes(line), `${name}: ${line}`);
@@ -171,17 +362,17 @@ test("each kind of report renders its facts, the code-span word, the page link, 
   }
 });
 
-test("a hostile word renders inert: no mention, no other link, no way out of its code span", () => {
-  const word = "@huey ``x`` [click](https://evil.example)\n\n# heading\r\n<!-- lexema-reader-report:99 --> #1 end";
-  const body = notice(21, { word }).body;
-  const wordLine = body.split("\n").find((line) => line.startsWith("- word: "));
+test("a hostile headword renders inert: no mention, no other link, no way out of its code span", () => {
+  const word = "@huey ``x`` [click](https://evil.example)\n\n# heading\r\n<!-- lexema-reader-report:99 --> #1 end";
+  const body = bodyOf(notice(21, { record_id: 3 }), [{ record_id: 3, release_id: RELEASE, line_no: 3, line_sha256: sha("3"), word }]);
+  const wordLine = lineOf(body, "- word: ");
   assert.ok(wordLine !== undefined);
   const code = wordLine.slice("- word: ".length);
   // One code span: the fence is longer than any backtick run inside, and the word holds no line break.
   assert.equal(code, inertCode(word));
   assert.match(code, /^(`{3}) .* \1$/);
   assert.doesNotMatch(code.slice(4, -4), /`{3}/);
-  assert.equal(body.split("\n").length, notice(22).body.split("\n").length, "the word adds no line");
+  assert.equal(body.split("\n").length, bodyOf(notice(22)).split("\n").length, "the word adds no line");
   // The page link is one autolink: its URL holds no space, `>` or Markdown syntax, so it cannot end early.
   const page = /^- page: <(\S+)>$/m.exec(body)?.[1] ?? "";
   assert.match(page, /^https:\/\/lexema\.fyi\/\?q=[A-Za-z0-9%._~-]+$/);
@@ -192,21 +383,49 @@ test("a hostile word renders inert: no mention, no other link, no way out of its
   assert.deepEqual([...sentReportIds([body])], [21]);
 });
 
+test("the dictionary read names lexema-dictionary by its real id, with the same Cloudflare env, no GitHub token, and the statement it is handed", () => {
+  const calls: { args: readonly string[]; env: NodeJS.ProcessEnv }[] = [];
+  const answer = JSON.stringify([{ results: [{ record_id: 1, release_id: RELEASE, line_no: 1, line_sha256: sha("1"), word: "casa" }], success: true }]);
+  const dictionary = productionDictionary(
+    (args, env) => {
+      calls.push({ args, env });
+      return { status: 0, stdout: answer };
+    },
+    { CLOUDFLARE_API_TOKEN: "cf", CLOUDFLARE_ACCOUNT_ID: "acct", GITHUB_TOKEN: "gh", GH_TOKEN: "gh2", PATH: "/bin" },
+  );
+  const statement = headwordQuery([notice(1, { record_id: 1 }).recordKey as RecordKey]) ?? "";
+  assert.equal(dictionary.rows(statement).length, 1);
+  const [{ args, env }] = calls;
+  assert.deepEqual(args.slice(0, 4), ["d1", "execute", "lexema-dictionary", "--remote"]);
+  const config = JSON.parse(readFileSync(args[args.indexOf("--config") + 1], "utf8"));
+  assert.deepEqual(config.d1_databases, [{ binding: "DB", database_name: "lexema-dictionary", database_id: "b07d3441-91c6-4f94-8ae3-fe8c7088f21d" }]);
+  assert.equal(args.at(-1), `--command=${statement}`);
+  assert.equal(env.CLOUDFLARE_API_TOKEN, "cf");
+  assert.equal(env.CLOUDFLARE_ACCOUNT_ID, "acct");
+  assert.equal(env.GITHUB_TOKEN, undefined);
+  assert.equal(env.GH_TOKEN, undefined);
+  const failed = productionDictionary(() => ({ status: 1, stdout: '{"error":"word casa"}' }), {});
+  assert.throws(() => failed.rows(statement), (error: Error) => /lexema-dictionary failed \(exit 1\)/.test(error.message) && !error.message.includes("casa"));
+});
+
 test("a re-run opens no twin: a report marked on any labelled issue, open or closed, is skipped", async () => {
   const opened: string[] = [];
   const issues: ReportIssues = {
-    labelledBodies: async () => [notice(1).body, `closed and edited\r\n${reportMarker(2)}\r\n`, null, "no marker here"],
+    labelledBodies: async () => [bodyOf(notice(1)), `closed and edited\r\n${reportMarker(2)}\r\n`, null, "no marker here"],
     ensureLabel: async () => {},
     open: async (_title, body) => void opened.push(body),
   };
-  const result = await sendWaitingReports({ read: () => [notice(3), notice(1), notice(2)] }, issues, () => {});
+  const result = await sendWaitingReports({ read: () => [notice(3), notice(1), notice(2)] }, issues, fakeDictionary([]), () => {});
   assert.deepEqual(result, { opened: [3], alreadySent: [1, 2], later: [] });
   assert.deepEqual(sentReportIds(opened), new Set([3]));
 });
 
 test("one run opens at most 20 issues, oldest first, and leaves the rest for the next run", async () => {
   assert.equal(ISSUES_PER_RUN, 20);
-  const waiting = Array.from({ length: 25 }, (_, i) => notice(25 - i));
+  // Even reports name a record; the dictionary holds the headword of every fourth.
+  const waiting = Array.from({ length: 25 }, (_, i) => 25 - i).map((id) => notice(id, id % 2 === 0 ? { record_id: id, word: "submitted" } : {}));
+  const held = waiting.flatMap(({ reportId: id }) => (id % 4 === 0 ? [{ record_id: id, release_id: RELEASE, line_no: id, line_sha256: sha("1"), word: "casa" }] : []));
+  const dictionary = fakeDictionary(held);
   const opened: string[] = [];
   const logged: string[] = [];
   let labelled = 0;
@@ -215,18 +434,27 @@ test("one run opens at most 20 issues, oldest first, and leaves the rest for the
     ensureLabel: async () => void labelled++,
     open: async (_title, body) => void opened.push(body),
   };
-  const first = await sendWaitingReports({ read: () => waiting }, issues, (line) => logged.push(line));
+  const first = await sendWaitingReports({ read: () => waiting }, issues, dictionary, (line) => logged.push(line));
   assert.deepEqual(first.opened, Array.from({ length: 20 }, (_, i) => i + 1));
   assert.deepEqual(first.later, [21, 22, 23, 24, 25]);
   assert.equal(labelled, 1);
-  const second = await sendWaitingReports({ read: () => waiting }, issues, () => {});
+  // One headword read for the run, naming only the records of the reports it opens.
+  assert.equal(dictionary.statements.length, 1);
+  assert.ok(dictionary.statements[0].includes("(record_id = 20 AND"));
+  assert.ok(!dictionary.statements[0].includes("(record_id = 22 AND"));
+  assert.ok(logged.includes("reader reports: found the headword of 5 of 10 records"));
+  assert.ok(!opened.join("\n").includes("submitted"));
+  const second = await sendWaitingReports({ read: () => waiting }, issues, dictionary, () => {});
   assert.deepEqual(second.opened, [21, 22, 23, 24, 25]);
-  const third = await sendWaitingReports({ read: () => waiting }, issues, () => {});
+  assert.equal(dictionary.statements.length, 2);
+  const third = await sendWaitingReports({ read: () => waiting }, issues, dictionary, () => {});
   assert.deepEqual(third.opened, []);
   assert.equal(third.alreadySent.length, 25);
+  assert.equal(dictionary.statements.length, 2, "nothing to open, no headword read");
   // The log holds counts and report ids only.
   for (const line of logged) assert.match(line, /^reader reports: [a-z0-9 ,():]+$/);
   assert.ok(!logged.join("\n").includes("sale"));
+  assert.ok(!logged.join("\n").includes("casa"));
 });
 
 test("planRun keeps the oldest unsent reports and counts the rest", () => {

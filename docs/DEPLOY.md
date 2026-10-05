@@ -987,21 +987,41 @@ public issue in this repository for each new report waiting in production's
    real id, through a temporary Wrangler config as
    [the production app migrations](#the-production-app-migrations) do. Its one
    statement selects `report_id`, `release_id`, `word`, `record_id`, `line_no`,
-   `choice` and whether a note is there, and never the note, the visitor code
-   or the time the report came in.
+   `line_sha256`, `choice` and whether a note is there, and never the note, the
+   visitor code or the time the report came in.
 3. It lists every issue with the `reader-report` label, open and closed,
    through the REST issues list, page by page, and skips each report whose
    hidden marker `<!-- lexema-reader-report:<report id> -->` is already on one.
    The search API lags behind a new issue, so it is never used.
-4. It opens an issue for each report left, oldest first, at most 20 a run; the
-   rest wait for the next run. It creates the `reader-report` label when the
-   repository lacks it.
+4. It takes the reports left, oldest first, at most 20 a run; the rest wait for
+   the next run. When one of them names a record, it reads production's
+   `lexema-dictionary` (`DB`, by its real id) once, with the same token: one
+   `SELECT` of `record_id`, `release_id`, `line_no`, `line_sha256` and `word`
+   from `source_record`. A report that kept its source line is matched on
+   `release_id`, `line_no` and `line_sha256`, because a re-seed of a release
+   can renumber `record_id`; one that did not is matched on `record_id` and
+   `release_id`. Each value is checked before it goes into the statement:
+   numbers are whole, `release_id` is `it-` and eight lowercase hex digits, and
+   `line_sha256` is 64 lowercase hex digits. A report that fails a check is
+   left out of the statement.
+5. It opens an issue for each of those reports. It creates the `reader-report`
+   label when the repository lacks it.
 
-An issue shows the report id, the word in a code span, a link to the word's page
-on https://lexema.fyi, the reading (release, line and record) or "no reading
+An issue shows the report id, the word, a link to the word's page on
+https://lexema.fyi, the reading (release, line and record) or "no reading
 picked", the option the reader chose, and whether the reader left a note. It
-never shows the note or anything from the visitor code. The word is shown inert:
-it cannot mention anyone, form a link or break the issue's layout.
+never shows the note or anything from the visitor code, and it never shows the
+word as the reader sent it
+([#639](https://github.com/povlabs/lexema/issues/639)):
+
+| Report | Word and page link |
+|---|---|
+| names a record (a mistake report on a reading) | the record's headword from `lexema-dictionary`. When the read finds no row, or a value failed its check, "word withheld" and no link |
+| names no record (a missing word, or a mistake report sent with "Not sure") | the typed text, only when it has the shape of a word: Latin and Italian accented letters, `'` or `’`, `-`, and single spaces between words, so no digits, `@`, `/`, `:` or `.`; no space at either end; at most 40 characters and 4 words. Otherwise "word withheld" and no link |
+
+A shown word is in a code span, so it cannot mention anyone, form a link or
+break the issue's layout. A word that passes the shape can still be a name;
+that is inside the rule Huey approved on #639.
 
 The run never writes D1: it knows a report was sent only from that report's
 marker. It does not answer a report or erase its note; that stays with
@@ -1013,7 +1033,7 @@ word. Two runs never overlap.
 | Name | Kind | Where | What it is |
 |---|---|---|---|
 | `dictionary-plan` | GitHub environment | repository **Settings**, **Environments** | the [pull request plan check](#the-pull-request-plan-check)'s environment, reused; holds the secret and the variable below. Its deployment branch rules are `refs/pull/*/merge` and `main`; on any other branch GitHub refuses the job before it starts |
-| `CLOUDFLARE_D1_READ_TOKEN` | environment secret | `dictionary-plan` | the existing Cloudflare API token with one permission, **Account**, **D1**, **Read**. Wrangler reads it as `CLOUDFLARE_API_TOKEN`; the script passes it to nothing else |
+| `CLOUDFLARE_D1_READ_TOKEN` | environment secret | `dictionary-plan` | the existing Cloudflare API token with one permission, **Account**, **D1**, **Read**, which covers both `lexema-app` and `lexema-dictionary`. Wrangler reads it as `CLOUDFLARE_API_TOKEN`; the script passes it to nothing else |
 | `CLOUDFLARE_ACCOUNT_ID` | environment variable | `dictionary-plan` | the existing account id; not secret |
 | `GITHUB_TOKEN` | built in | the `issues` job, `contents: read`, `issues: write` | lists the `reader-report` issues, creates the label and opens the issues |
 | Schedule | `on.schedule` in the workflow | `17 * * * *` | every hour, at 17 minutes past |
