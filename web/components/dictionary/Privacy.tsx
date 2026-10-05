@@ -8,11 +8,9 @@
 // (`pnpm run report answer`).
 
 import { LEGAL_ADDRESS, LEGAL_ITEMS, LEGAL_PARAGRAPH, LEGAL_UNBROKEN, LINK } from "@/components/shared/styles.ts";
+import { PRIVACY_EMAIL } from "@/components/shared/contact.ts";
 import { LegalItem } from "@/components/shared/LegalPage";
 import { DictionaryLegalPage } from "./DictionaryLegalPage";
-
-/** The mailbox a reader writes to about this notice. */
-export const PRIVACY_ADDRESS = "privacy@lexema.fyi";
 
 export function Privacy() {
   return (
@@ -104,8 +102,8 @@ export function Privacy() {
             <>
               <p className={LEGAL_PARAGRAPH}>For any question about this notice, write to:</p>
               <p className={LEGAL_ADDRESS}>
-                <a className={LINK} href={`mailto:${PRIVACY_ADDRESS}`}>
-                  {PRIVACY_ADDRESS}
+                <a className={LINK} href={`mailto:${PRIVACY_EMAIL}`}>
+                  {PRIVACY_EMAIL}
                 </a>
               </p>
             </>

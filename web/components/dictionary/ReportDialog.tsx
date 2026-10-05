@@ -31,6 +31,7 @@ import {
   type ReportSubject,
   type ReportTarget,
 } from "@/lib/dictionary/report.ts";
+import { TURNSTILE_SCRIPT } from "@/lib/shared/turnstile.ts";
 import {
   REPORT_BACKDROP,
   REPORT_CANCEL,
@@ -71,8 +72,6 @@ const TROUBLE: Partial<Record<Status, string>> = {
 };
 
 const isOpeningTrouble = (status: Status): status is OpeningTrouble => status === "open-limited" || status === "open-failed";
-
-const TURNSTILE_SCRIPT = "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit";
 
 interface Turnstile {
   render(container: HTMLElement, options: { sitekey: string; callback: (token: string) => void }): string;

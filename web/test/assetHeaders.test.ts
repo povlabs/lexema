@@ -1,7 +1,8 @@
 // The `_headers` file a build leaves in dist/client (#265). Static assets are
 // answered before the Worker runs (web/wrangler.jsonc, `assets`), so the
 // headers on them are this file's alone: noindex on every Preview host (ADR
-// 0018) and vinext's year-long cache on content-hashed assets.
+// 0018), vinext's year-long cache on content-hashed assets, and the browser
+// security headers the Worker sets on its own responses (#620).
 //
 // vinext writes its own `_headers` only when the build has none, so
 // web/public/_headers repeats its cache rule. Each test here runs a real
@@ -15,6 +16,7 @@ import { join } from "node:path";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
 import { PREVIEW_DOMAIN } from "@/worker/shared/hosts.ts";
+import { SECURITY_HEADERS } from "@/worker/shared/securityHeaders.ts";
 import { robotsTagOf } from "@/worker/shared/stage.ts";
 
 const WEB = fileURLToPath(new URL("..", import.meta.url));
@@ -149,6 +151,18 @@ test("on every Preview host a static asset carries X-Robots-Tag: noindex, and a 
     assert.equal(hashed.get("cache-control"), IMMUTABLE, host);
     assert.equal(hashed.get("x-robots-tag"), undefined, host);
     assert.equal(headersFor(rules, `https://${host}${OTHER_ASSET}`).get("x-robots-tag"), undefined, host);
+  }
+});
+
+test("every static asset on every host carries the Worker's security headers, X-Content-Type-Options: nosniff among them", () => {
+  const rules = built();
+  assert.equal(SECURITY_HEADERS["x-content-type-options"], "nosniff");
+  const hosts = ["lexema.fyi", "developers.lexema.fyi", "api.lexema.fyi", ...Object.values(PREVIEW_DOMAIN).map((domain) => `branch.${domain}`)];
+  for (const host of hosts) {
+    for (const path of [ASSET, OTHER_ASSET, "/favicon.ico"]) {
+      const headers = headersFor(rules, `https://${host}${path}`);
+      for (const [name, value] of Object.entries(SECURITY_HEADERS)) assert.equal(headers.get(name), value, `${name} on ${host}${path}`);
+    }
   }
 });
 

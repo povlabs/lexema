@@ -52,9 +52,6 @@ import {
   DEV_SIGN_IN,
 } from "@/components/shared/styles.ts";
 
-/** The address the developer Privacy policy names for questions about it (#162). */
-export const PRIVACY_EMAIL = "privacy@lexema.fyi";
-
 /** The developer site's Terms of service and Privacy policy (#162). */
 export const TERMS_PATH = "/terms";
 export const PRIVACY_PATH = "/privacy";

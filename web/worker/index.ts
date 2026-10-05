@@ -20,7 +20,9 @@
 // host routing, Stripe's webhook on the developer site (worker/developers/stripeWebhook.ts)
 // is answered outside the per-visitor limits. Around all of it,
 // the stage (worker/shared/stage.ts) adds what its responses carry: noindex on a
-// Preview. Inside the stage, every request runs under its own id, and anything
+// Preview. Inside the stage, every response gets the browser security headers,
+// and every HTML page a Content Security Policy with a fresh script nonce
+// (worker/shared/securityHeaders.ts). Inside those, every request runs under its own id, and anything
 // thrown past the handlers is logged and answered 500 (worker/shared/requestLog.ts).
 // The health check (worker/shared/health.ts) is answered next, on every host and in
 // front of the per-visitor limits, so a monitor is never counted as a visitor. A shared link's card (worker/dictionary/card.ts) is answered in front of the
@@ -52,6 +54,7 @@ import { withHealth } from "./shared/health.ts";
 import { byHost } from "./shared/hosts.ts";
 import { withRateLimits } from "./shared/rateLimit.ts";
 import { withRequestLog } from "./shared/requestLog.ts";
+import { withSecurityHeaders } from "./shared/securityHeaders.ts";
 import { parseStage, withStage } from "./shared/stage.ts";
 
 export { AccountMeterObject } from "./api/accountMeterObject.ts";
@@ -63,23 +66,25 @@ const signUp = parseSignUp(env.DEVELOPER_SIGN_UP);
 export default {
   fetch: withStage<Env>(
     stage,
-    withRequestLog<Env>(
-      withHealth<Env>(
-        withStripeWebhook<Env>(
-          byHost<Env>({
-            app: withCards<Env>(
-              workerDesk,
-              withRateLimits<Env>(
-                { developers: developerLimitOf, dictionary: dictionaryLimitOf },
-                withTestSignIn<Env>(
-                  stage,
-                  withSignUp<Env>(signUp, withSignIn<Env>(withBilling<Env>(withDashboard<Env>((request, env, ctx) => app.fetch(request, env, ctx))))),
+    withSecurityHeaders<Env>(
+      withRequestLog<Env>(
+        withHealth<Env>(
+          withStripeWebhook<Env>(
+            byHost<Env>({
+              app: withCards<Env>(
+                workerDesk,
+                withRateLimits<Env>(
+                  { developers: developerLimitOf, dictionary: dictionaryLimitOf },
+                  withTestSignIn<Env>(
+                    stage,
+                    withSignUp<Env>(signUp, withSignIn<Env>(withBilling<Env>(withDashboard<Env>((request, env, ctx) => app.fetch(request, env, ctx))))),
+                  ),
                 ),
               ),
-            ),
-            api: answerApi,
-            apiNotFound,
-          }),
+              api: answerApi,
+              apiNotFound,
+            }),
+          ),
         ),
       ),
     ),

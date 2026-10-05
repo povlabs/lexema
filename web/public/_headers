@@ -4,6 +4,14 @@
 # _headers of its own, so its cache rule is repeated here
 # (web/test/assetHeaders.test.ts, #265).
 
+# Every asset on every host carries the browser security headers the Worker
+# sets on its own responses (worker/shared/securityHeaders.ts, #620).
+/*
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  X-Frame-Options: DENY
+  Strict-Transport-Security: max-age=31536000
+
 # Content-hashed assets are cached for a year, on every host.
 /_next/static/*
   Cache-Control: public, max-age=31536000, immutable
