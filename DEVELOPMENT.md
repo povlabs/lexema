@@ -279,14 +279,16 @@ pnpm run account lift 3
 
 The number is the developer account's id, and the reason is 1 to 500
 characters. `suspend` also cancels at once every Stripe subscription that may
-still bill the account, as deleting it does, and puts the fingerprint of each
-card on its Stripe customer on a Radar block list, so the same card cannot pay
-from a new account. `lift` takes those items off the list again, and leaves the
+still bill the account, as deleting it does, expires every Checkout the account
+opened and has not paid, and puts the fingerprint of each card on its Stripe
+customer on a Radar block list, so the same card cannot pay from a new account.
+A Checkout paid just before the suspension reached Stripe still makes a
+subscription; the webhook cancels it at once and emails nothing. `lift` takes those items off the list again, and leaves the
 subscriptions cancelled. Stripe is reached with `STRIPE_SECRET_KEY` from the
 environment, and the block list is `STRIPE_RADAR_BLOCK_LIST`, the id (`rsl_…`)
 of a `card_fingerprint` value list made in the Stripe Dashboard; the command
 never makes one. Without the list, the Radar step is skipped and the command
-says so. Without the key, a subscription that may still bill is named and the
+says so. Without the key, the Checkout step is skipped and says so, and a subscription that may still bill is named and the
 command exits 1, with the account suspended all the same. Both commands can be
 run again: a second `suspend` keeps the first time and reason and finishes any
 Stripe step that failed. Both write to the `APP_DB` in `SEED_STATE`, as

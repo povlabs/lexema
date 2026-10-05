@@ -1,8 +1,9 @@
 // Stripe for tests (#262): a stand-in for api.stripe.com at the level of
 // `fetch`, handed to a real stripe-node client, so the Stripe plugin's own
 // code and Lexema's sync run against it. It answers only the calls a Checkout,
-// its return, the billing portal, a webhook and an account deletion make, and
-// refuses any other, so a test can never reach Stripe.
+// its return, the billing portal, a webhook, an account deletion and a
+// suspension's Checkout step (#578) make, and refuses any other, so a test can
+// never reach Stripe.
 // Webhook payloads are signed with a test secret that exists nowhere else: CI
 // holds no Stripe secret.
 
@@ -60,6 +61,8 @@ export class StubStripe {
   readonly portals: StartedPortal[] = [];
   /** Each subscription cancelled at once (`DELETE /v1/subscriptions/<id>`), in order. */
   readonly cancelled: string[] = [];
+  /** Each Checkout expired (`POST /v1/checkout/sessions/<id>/expire`), in order. */
+  readonly expired: string[] = [];
   /** While set, Stripe answers every call with a server error, as during an outage. */
   down = false;
   /** The subscription each Checkout made once it was paid, by Checkout id: `pay` sets it. */
@@ -119,20 +122,38 @@ export class StubStripe {
       });
       return json({ object: "checkout.session", id, url: `https://checkout.stripe.com/c/pay/${id}` });
     }
-    const session = /^\/v1\/checkout\/sessions\/([^/]+)$/.exec(path);
-    const started = this.checkouts.find((checkout) => checkout.id === session?.[1]);
-    if (request.method === "GET" && started !== undefined) {
+    const sessionObject = (started: StartedCheckout) => {
       const subscription = this.paid.get(started.id) ?? null;
-      return json({
+      return {
         object: "checkout.session",
         id: started.id,
         mode: "subscription",
         customer: started.customer,
         client_reference_id: started.clientReferenceId,
         metadata: started.metadata,
+        status: this.checkoutStatus(started),
         subscription,
         payment_status: subscription === null ? "unpaid" : "paid",
-      });
+      };
+    };
+    if (request.method === "GET" && path === "/v1/checkout/sessions") {
+      const customer = url.searchParams.get("customer");
+      const status = url.searchParams.get("status");
+      const listed = this.checkouts.filter((checkout) => (customer === null || checkout.customer === customer) && (status === null || this.checkoutStatus(checkout) === status));
+      return json({ object: "list", data: listed.map(sessionObject), has_more: false, url: path });
+    }
+    const session = /^\/v1\/checkout\/sessions\/([^/]+)(\/expire)?$/.exec(path);
+    const started = this.checkouts.find((checkout) => checkout.id === session?.[1]);
+    if (session !== null && started === undefined) {
+      return json({ error: { type: "invalid_request_error", code: "resource_missing", message: `No such checkout.session: '${session[1]}'` } }, 404);
+    }
+    if (request.method === "GET" && started !== undefined && session?.[2] === undefined) return json(sessionObject(started));
+    if (request.method === "POST" && started !== undefined && session?.[2] === "/expire") {
+      if (this.checkoutStatus(started) !== "open") {
+        return json({ error: { type: "invalid_request_error", message: 'Only Checkout Sessions with a status in ["open"] can be expired.' } }, 400);
+      }
+      this.expired.push(started.id);
+      return json(sessionObject(started));
     }
     if (request.method === "POST" && path === "/v1/billing_portal/sessions") {
       const portal = { customer: form.get("customer") ?? "", returnUrl: form.get("return_url") ?? "", url: `https://billing.stripe.com/p/session/test_${this.portals.length + 1}` };
@@ -169,6 +190,12 @@ export class StubStripe {
   /** A Stripe client over this stub, as the Worker builds one. */
   client(): Stripe {
     return new Stripe(TEST_SETTINGS.STRIPE_SECRET_KEY, { httpClient: Stripe.createFetchHttpClient(this.fetch) });
+  }
+
+  /** A Checkout's status at Stripe: complete once paid, expired once expired, and open until then. */
+  checkoutStatus(checkout: StartedCheckout): "open" | "complete" | "expired" {
+    if (this.paid.has(checkout.id)) return "complete";
+    return this.expired.includes(checkout.id) ? "expired" : "open";
   }
 
   /** The developer pays Checkout `checkout`: Stripe now holds subscription `id` in `state`, made by that Checkout. */

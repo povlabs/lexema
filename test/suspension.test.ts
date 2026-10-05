@@ -1,13 +1,13 @@
 // Suspending a developer account and lifting it (#573), over the real schema
-// and a fake Stripe client: its keys, its subscriptions, its cards on the Radar
-// block list, and `pnpm run account`. The dashboard and billing refusals are
+// and a fake Stripe client: its keys, its subscriptions, its open Checkouts
+// (#578), its cards on the Radar block list, and `pnpm run account`. The dashboard and billing refusals are
 // web/test/dashboard.test.ts and web/test/billing.test.ts.
 
 import assert from "node:assert/strict";
 import test from "node:test";
 import { DatabaseSync } from "node:sqlite";
 import { eq } from "drizzle-orm";
-import type Stripe from "stripe";
+import Stripe from "stripe";
 import { deleteAccount, signInAccount, verifiedIdentity } from "../src/accounts/accounts.js";
 import { runAccountCommand } from "../src/accounts/accountCli.js";
 import {
@@ -67,9 +67,12 @@ async function ownedKey(db: AppTables, accountId: number): Promise<{ keyId: numb
   return { keyId: created.keyId, key: created.key };
 }
 
+/** What happens to a Checkout between the list that finds it open and the call that expires it. */
+type CheckoutRace = "paid" | "expired" | "gone";
+
 /**
- * A fake Stripe client: the subscriptions, cards and Radar items a suspension
- * reaches, held in memory. Every call is recorded, so a test sees what reached
+ * A fake Stripe client: the subscriptions, Checkouts, cards and Radar items a
+ * suspension reaches, held in memory. Every call is recorded, so a test sees what reached
  * Stripe.
  */
 class FakeStripe implements SuspensionStripe {
@@ -77,9 +80,12 @@ class FakeStripe implements SuspensionStripe {
   readonly items = new Map<string, { id: string; value: string; value_list: string }>();
   private readonly subscriptionsById = new Map<string, Stripe.Subscription>();
   private readonly cards = new Map<string, string[]>();
+  private readonly sessions = new Map<string, { customer: string; status: "open" | "complete" | "expired"; race?: CheckoutRace }>();
   private nextItem = 1;
   /** While set, every Radar call fails, as during an outage. */
   radarDown = false;
+  /** While set, every expiry of a Checkout fails, as during an outage. */
+  checkoutDown = false;
 
   constructor() {
     const fake = this;
@@ -97,6 +103,34 @@ class FakeStripe implements SuspensionStripe {
         const ended = { ...found, status: "canceled", canceled_at: NOW / 1000, ended_at: NOW / 1000 } as Stripe.Subscription;
         fake.subscriptionsById.set(id, ended);
         return ended;
+      },
+    };
+    const missing = (id: string) => new Stripe.errors.StripeInvalidRequestError({ message: `No such checkout.session: '${id}'`, statusCode: 404 });
+    this.checkout = {
+      sessions: {
+        async *list({ customer, status }) {
+          fake.calls.push(`checkouts ${customer} ${status}`);
+          for (const [id, session] of fake.sessions) if (session.customer === customer && session.status === status) yield { id };
+        },
+        async retrieve(id) {
+          const session = fake.sessions.get(id);
+          if (session === undefined) throw missing(id);
+          return { status: session.status };
+        },
+        async expire(id) {
+          if (fake.checkoutDown) throw new Error("Stripe is down.");
+          const session = fake.sessions.get(id);
+          if (session?.race === "gone") fake.sessions.delete(id);
+          else if (session?.race !== undefined) session.status = session.race === "paid" ? "complete" : "expired";
+          const now = fake.sessions.get(id);
+          if (now === undefined) throw missing(id);
+          if (now.status !== "open") {
+            throw new Stripe.errors.StripeInvalidRequestError({ message: "Only Checkout Sessions with a status in [\"open\"] can be expired.", statusCode: 400 });
+          }
+          fake.calls.push(`expire ${id}`);
+          now.status = "expired";
+          return { id, status: "expired" };
+        },
       },
     };
     this.customers = {
@@ -133,12 +167,23 @@ class FakeStripe implements SuspensionStripe {
   }
 
   readonly subscriptions: SuspensionStripe["subscriptions"];
+  readonly checkout: SuspensionStripe["checkout"];
   readonly customers: SuspensionStripe["customers"];
   readonly radar: SuspensionStripe["radar"];
 
   /** A subscription Stripe holds in `status`. */
   subscription(id: string, status: Stripe.Subscription.Status): void {
     this.subscriptionsById.set(id, { id, status, cancel_at_period_end: false, cancel_at: null, canceled_at: null, ended_at: null } as unknown as Stripe.Subscription);
+  }
+
+  /** A Checkout the customer opened and has not paid; `race` is what happens to it once it is listed. */
+  openCheckout(id: string, customer: string, race?: CheckoutRace): void {
+    this.sessions.set(id, { customer, status: "open", race });
+  }
+
+  /** Each Checkout's status, by id. */
+  checkoutStatuses(): Record<string, string> {
+    return Object.fromEntries([...this.sessions].map(([id, session]) => [id, session.status]));
   }
 
   /** The customer's cards, by fingerprint. */
@@ -261,6 +306,75 @@ test("with billing off, a subscription that may still bill is named and the acco
   assert.deepEqual(await authenticate(db, key, NOW), { outcome: "refused", refusal: "suspended" });
 });
 
+test("suspending expires every open Checkout of the account's Stripe customer, and a second run finds none left", async () => {
+  const db = appTablesOverNodeSqlite(appDb());
+  const ada = await account(db, "ada", "cus_ada");
+  await account(db, "bob", "cus_bob");
+  const stripe = new FakeStripe();
+  stripe.openCheckout("cs_ada_1", "cus_ada");
+  stripe.openCheckout("cs_ada_2", "cus_ada");
+  stripe.openCheckout("cs_bob", "cus_bob");
+
+  const done = await suspendAccount(db, ada, ABUSE, NOW, reach(stripe));
+  assert.ok(done.outcome === "suspended");
+  assert.deepEqual(done.checkouts, { kind: "expired", checkouts: 2 });
+  assert.deepEqual(stripe.checkoutStatuses(), { cs_ada_1: "expired", cs_ada_2: "expired", cs_bob: "open" });
+
+  const again = await suspendAccount(db, ada, ABUSE, NOW + 60_000, reach(stripe));
+  assert.ok(again.outcome === "suspended");
+  assert.deepEqual(again.checkouts, { kind: "expired", checkouts: 0 });
+  assert.deepEqual(
+    stripe.calls.filter((call) => call.startsWith("checkouts") || call.startsWith("expire")),
+    ["checkouts cus_ada open", "expire cs_ada_1", "expire cs_ada_2", "checkouts cus_ada open"],
+  );
+});
+
+test("the Checkout step is skipped for an account with no Stripe customer or with billing off, and says why", async () => {
+  const db = appTablesOverNodeSqlite(appDb());
+  const ada = await account(db, "ada");
+  const bob = await account(db, "bob", "cus_bob");
+  const stripe = new FakeStripe();
+  stripe.openCheckout("cs_bob", "cus_bob");
+
+  const none = await suspendAccount(db, ada, ABUSE, NOW, noList(stripe));
+  assert.ok(none.outcome === "suspended");
+  assert.deepEqual(none.checkouts, { kind: "skipped", why: "no-customer" });
+  const off = await suspendAccount(db, bob, ABUSE, NOW, noList(undefined));
+  assert.ok(off.outcome === "suspended");
+  assert.deepEqual(off.checkouts, { kind: "skipped", why: "billing-off" });
+  assert.deepEqual(stripe.calls, []);
+  assert.deepEqual(stripe.checkoutStatuses(), { cs_bob: "open" });
+});
+
+test("a Checkout paid, expired or gone by the time it is expired does not fail the suspension", async () => {
+  const db = appTablesOverNodeSqlite(appDb());
+  const ada = await account(db, "ada", "cus_ada");
+  const stripe = new FakeStripe();
+  stripe.openCheckout("cs_paid", "cus_ada", "paid");
+  stripe.openCheckout("cs_lapsed", "cus_ada", "expired");
+  stripe.openCheckout("cs_gone", "cus_ada", "gone");
+  stripe.openCheckout("cs_open", "cus_ada");
+
+  const done = await suspendAccount(db, ada, ABUSE, NOW, reach(stripe));
+  assert.ok(done.outcome === "suspended");
+  assert.deepEqual(done.checkouts, { kind: "expired", checkouts: 1 });
+  assert.deepEqual(stripe.checkoutStatuses(), { cs_paid: "complete", cs_lapsed: "expired", cs_open: "expired" });
+});
+
+test("a Checkout Stripe will not expire while it is still open fails the suspension, and a second run finishes the step", async () => {
+  const db = appTablesOverNodeSqlite(appDb());
+  const ada = await account(db, "ada", "cus_ada");
+  const stripe = new FakeStripe();
+  stripe.openCheckout("cs_open", "cus_ada");
+  stripe.checkoutDown = true;
+  await assert.rejects(suspendAccount(db, ada, ABUSE, NOW, reach(stripe)), /Stripe is down/);
+  assert.deepEqual(stripe.checkoutStatuses(), { cs_open: "open" });
+  stripe.checkoutDown = false;
+  const done = await suspendAccount(db, ada, ABUSE, NOW, reach(stripe));
+  assert.ok(done.outcome === "suspended");
+  assert.deepEqual(done.checkouts, { kind: "expired", checkouts: 1 });
+});
+
 test("suspending puts each card of the account on the block list, and lifting takes off exactly what it put there", async () => {
   const db = appTablesOverNodeSqlite(appDb());
   const ada = await account(db, "ada", "cus_ada");
@@ -361,19 +475,36 @@ test("a suspended account is deleted through the existing deletion path", async 
 test("`pnpm run account` suspends and lifts, says when the Radar step was skipped, and can be run again", async () => {
   const db = appTablesOverNodeSqlite(appDb());
   const ada = await account(db, "ada", "cus_ada");
+  const bob = await account(db, "bob");
   const stripe = new FakeStripe();
   stripe.card("cus_ada", "fp_visa");
+  stripe.openCheckout("cs_ada", "cus_ada");
   const run = (args: string[], over: SuspensionReach = reach(stripe)) => runAccountCommand(args, db, NOW, over);
 
   assert.deepEqual(await run(["suspend", String(ada), "--reason", " Resold the API. "], noList(stripe)), {
-    out: [`suspended account ${ada}: Resold the API.`, "Stripe: no subscription can bill the account", "Radar step skipped: STRIPE_RADAR_BLOCK_LIST is not set"].join("\n"),
+    out: [
+      `suspended account ${ada}: Resold the API.`,
+      "Stripe: no subscription can bill the account",
+      "Checkout: 1 open session expired",
+      "Radar step skipped: STRIPE_RADAR_BLOCK_LIST is not set",
+    ].join("\n"),
     status: 0,
   });
   assert.deepEqual(await run(["suspend", String(ada), "--reason", "Something else."]), {
     out: [
       `account ${ada} was already suspended on ${new Date(NOW).toISOString()}: Resold the API.`,
       "Stripe: no subscription can bill the account",
+      "Checkout: 0 open sessions expired",
       "Radar: 1 card is on the block list",
+    ].join("\n"),
+    status: 0,
+  });
+  assert.deepEqual(await run(["suspend", String(bob), "--reason", "Resold the API."], noList(undefined)), {
+    out: [
+      `suspended account ${bob}: Resold the API.`,
+      "Stripe: no subscription can bill the account",
+      "Checkout step skipped: the account has no Stripe customer",
+      "Radar step skipped: STRIPE_RADAR_BLOCK_LIST is not set",
     ].join("\n"),
     status: 0,
   });

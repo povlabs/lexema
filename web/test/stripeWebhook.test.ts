@@ -12,6 +12,7 @@ import type Stripe from "stripe";
 import { signInAccount, verifiedIdentity } from "../../src/accounts/accounts.js";
 import { billingAuth, startSession } from "../../src/accounts/auth.js";
 import { billingOf, STRIPE_SETTINGS, type Billing, type StripeSettings } from "../../src/accounts/billing.js";
+import { suspendAccount, suspensionReasonOf } from "../../src/accounts/suspension.js";
 import { developerAccount, subscription } from "../../src/db/app/schema.js";
 import { freshAppDatabase } from "../../test/databases.js";
 import { StubEmail } from "../../test/stubEmail.js";
@@ -28,6 +29,7 @@ const seconds = (iso: string) => Date.parse(iso) / 1000;
 const SEPTEMBER = { periodStart: seconds("2026-09-30T00:00:00Z"), periodEnd: seconds("2026-10-30T00:00:00Z") };
 const OCTOBER = { periodStart: seconds("2026-10-30T00:00:00Z"), periodEnd: seconds("2026-11-30T00:00:00Z") };
 const ACTIVE_PRO: SubscriptionState = { status: "active", price: TEST_SETTINGS.STRIPE_PRICE_PRO, ...SEPTEMBER };
+const SUSPENDED_FOR = suspensionReasonOf("Resold the API.") ?? assert.fail("a reason");
 
 /** The `Stripe-Signature` an event's payload is sent with, at `now` in seconds. */
 type Signer = (payload: string, now: number) => Promise<string | null>;
@@ -107,7 +109,10 @@ async function checkoutStarted({ emailOff = false }: { emailOff?: boolean } = {}
   const customerOf = async () =>
     (await appDb.app.select({ id: developerAccount.stripeCustomerId }).from(developerAccount).where(eq(developerAccount.id, accountId)))[0]?.id;
 
-  return { sqlite, worker, stripeHolds, send, completedCheckout, row, customerOf, checkout, email };
+  /** Suspend the account as `pnpm run account suspend` does, with billing on over the stub. */
+  const suspend = () => suspendAccount(appDb, accountId, SUSPENDED_FOR, Date.now(), { stripe: billing.stripe, blockList: undefined });
+
+  return { sqlite, worker, stripe, stripeHolds, send, completedCheckout, row, customerOf, checkout, email, suspend };
 }
 
 const date = (at: number | null | undefined) => (at == null ? null : new Date(at * 1000));
@@ -324,4 +329,49 @@ test("an email that fails is logged, answers 200 and is not sent again; without 
   assert.equal((await off.send("checkout.session.completed", off.completedCheckout())).status, 200);
   assert.deepEqual(await off.row(), rowOf(ACTIVE_PRO));
   assert.deepEqual(off.email.sent, []);
+});
+
+// Suspension (#578): a Checkout opened before it cannot start a plan after it.
+
+test("suspending expires a Checkout the account opened and has not paid", async () => {
+  const site = await checkoutStarted();
+  const suspended = await site.suspend();
+  assert.ok(suspended.outcome === "suspended");
+  assert.deepEqual(suspended.checkouts, { kind: "expired", checkouts: 1 });
+  assert.deepEqual(site.stripe.expired, [site.checkout.id]);
+  assert.equal(site.stripe.checkoutStatus(site.checkout), "expired");
+});
+
+test("a Checkout opened before a suspension and paid as it lands is cancelled at once by its webhook, and no plan-started email goes out", async () => {
+  const site = await checkoutStarted();
+  // Paid just before the suspension reached Stripe: the Checkout is no longer open to expire, and no row names its subscription yet.
+  site.stripe.pay(site.checkout, SUBSCRIPTION, ACTIVE_PRO);
+  const suspended = await site.suspend();
+  assert.ok(suspended.outcome === "suspended");
+  assert.deepEqual(suspended.subscriptions, { outcome: "stopped" });
+  assert.deepEqual(suspended.checkouts, { kind: "expired", checkouts: 0 });
+  assert.deepEqual(site.stripe.cancelled, []);
+
+  assert.equal((await site.send("checkout.session.completed", site.completedCheckout())).status, 200);
+  assert.deepEqual(site.stripe.cancelled, [SUBSCRIPTION]);
+  const row = await site.row();
+  assert.equal(row.status, "canceled");
+  assert.ok(row.canceledAt !== null && row.endedAt !== null);
+
+  // The cancel's own events, and a replay of the Checkout's, change nothing more and email nothing.
+  const ended = await site.stripe.client().subscriptions.retrieve(SUBSCRIPTION);
+  assert.equal((await site.send("customer.subscription.deleted", ended)).status, 200);
+  assert.equal((await site.send("checkout.session.completed", site.completedCheckout())).status, 200);
+  assert.deepEqual(await site.row(), row);
+  assert.deepEqual(site.stripe.cancelled, [SUBSCRIPTION]);
+  assert.deepEqual(site.email.sent, []);
+});
+
+test("a subscription synced for an account that is not suspended is written as before, and nothing is cancelled", async () => {
+  const site = await checkoutStarted();
+  site.stripeHolds(ACTIVE_PRO);
+  assert.equal((await site.send("checkout.session.completed", site.completedCheckout())).status, 200);
+  assert.deepEqual(await site.row(), rowOf(ACTIVE_PRO));
+  assert.deepEqual(site.stripe.cancelled, []);
+  assert.deepEqual(site.email.subjects(), ["Your Pro plan is active"]);
 });
