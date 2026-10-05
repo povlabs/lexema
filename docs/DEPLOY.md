@@ -812,7 +812,7 @@ the check and the merge stops the deploy red.
 
 | Name | Kind | Where | What it is |
 |---|---|---|---|
-| `dictionary-plan` | GitHub environment | repository **Settings**, **Environments** | holds the secret and the variable below, and no other token. Only this job names it |
+| `dictionary-plan` | GitHub environment | repository **Settings**, **Environments** | holds the secret and the variable below, and no other token. This job and the [reader report issues](#reader-report-issues) job name it |
 | `CLOUDFLARE_D1_READ_TOKEN` | environment secret | `dictionary-plan` | a Cloudflare API token with one permission, **Account**, **D1**, **Read**. Wrangler reads it as `CLOUDFLARE_API_TOKEN` |
 | `CLOUDFLARE_ACCOUNT_ID` | environment variable | `dictionary-plan` | the same account id as in `dictionary-deploy`; not secret |
 
@@ -843,10 +843,12 @@ check goes red on every pull request that adds a declaration.
    select **New environment** and name it `dictionary-plan`. If a run already
    created an empty one, open it instead. Under
    **Deployment branches and tags** choose **Selected branches and tags** and
-   add one branch rule, `refs/pull/*/merge`, and nothing else. GitHub matches
+   add the branch rule `refs/pull/*/merge`. GitHub matches
    the rule against the run's `GITHUB_REF`, which is `refs/pull/<number>/merge`
-   for a `pull_request` run, so only pull request runs get the secret
+   for a `pull_request` run, so pull request runs get the secret
    ([GitHub: deployment branches and tags](https://docs.github.com/en/actions/reference/workflows-and-actions/deployments-and-environments#deployment-branches-and-tags)).
+   The one other rule is `main`, for the
+   [reader report issues](#set-up-the-reader-report-issues).
    Add no required reviewer, or every check waits for one.
 3. **The secret and the variable.** In `dictionary-plan`, add the environment
    secret `CLOUDFLARE_D1_READ_TOKEN` (step 1) and the environment variable
@@ -966,6 +968,69 @@ No agent does any of them.
 3. **Pull requests from Actions.** In **Settings**, **Actions**, **General**,
    under **Workflow permissions**, turn on **Allow GitHub Actions to create and
    approve pull requests**.
+
+## Reader report issues
+
+[`reader-reports.yml`](../.github/workflows/reader-reports.yml) runs every hour,
+at 17 minutes past, and can be run by hand (`workflow_dispatch`). It opens one
+public issue in this repository for each new report waiting in production's
+`lexema-app`, so a report sent on https://lexema.fyi reaches someone
+([#631](https://github.com/povlabs/lexema/issues/631)). Its steps are
+`pnpm run report:issues`
+([src/readerReport/](../src/readerReport/reportIssuesCli.ts)):
+
+1. Its first step checks that `CLOUDFLARE_D1_READ_TOKEN` and
+   `CLOUDFLARE_ACCOUNT_ID` are set and not empty. When one is not, the job
+   stops red with an error naming it, before any install, D1 read or GitHub
+   write.
+2. It reads the waiting reports (`outcome IS NULL`) from `lexema-app` by its
+   real id, through a temporary Wrangler config as
+   [the production app migrations](#the-production-app-migrations) do. Its one
+   statement selects `report_id`, `release_id`, `word`, `record_id`, `line_no`,
+   `choice` and whether a note is there, and never the note, the visitor code
+   or the time the report came in.
+3. It lists every issue with the `reader-report` label, open and closed,
+   through the REST issues list, page by page, and skips each report whose
+   hidden marker `<!-- lexema-reader-report:<report id> -->` is already on one.
+   The search API lags behind a new issue, so it is never used.
+4. It opens an issue for each report left, oldest first, at most 20 a run; the
+   rest wait for the next run. It creates the `reader-report` label when the
+   repository lacks it.
+
+An issue shows the report id, the word in a code span, a link to the word's page
+on https://lexema.fyi, the reading (release, line and record) or "no reading
+picked", the option the reader chose, and whether the reader left a note. It
+never shows the note or anything from the visitor code. The word is shown inert:
+it cannot mention anyone, form a link or break the issue's layout.
+
+The run never writes D1: it knows a report was sent only from that report's
+marker. It does not answer a report or erase its note; that stays with
+`pnpm run report answer`, run by Huey
+([#632](https://github.com/povlabs/lexema/issues/632)). Actions logs are public,
+so the run logs counts and report ids only, never a row, Wrangler's output or a
+word. Two runs never overlap.
+
+| Name | Kind | Where | What it is |
+|---|---|---|---|
+| `dictionary-plan` | GitHub environment | repository **Settings**, **Environments** | the [pull request plan check](#the-pull-request-plan-check)'s environment, reused; holds the secret and the variable below. Its deployment branch rules are `refs/pull/*/merge` and `main`; on any other branch GitHub refuses the job before it starts |
+| `CLOUDFLARE_D1_READ_TOKEN` | environment secret | `dictionary-plan` | the existing Cloudflare API token with one permission, **Account**, **D1**, **Read**. Wrangler reads it as `CLOUDFLARE_API_TOKEN`; the script passes it to nothing else |
+| `CLOUDFLARE_ACCOUNT_ID` | environment variable | `dictionary-plan` | the existing account id; not secret |
+| `GITHUB_TOKEN` | built in | the `issues` job, `contents: read`, `issues: write` | lists the `reader-report` issues, creates the label and opens the issues |
+| Schedule | `on.schedule` in the workflow | `17 * * * *` | every hour, at 17 minutes past |
+
+No new token, secret, variable or environment is needed, and no D1 edit token:
+the run only reads D1.
+
+### Set up the reader report issues
+
+Huey does this once. No agent does it.
+
+| Setting | Where | Change |
+|---|---|---|
+| deployment branch rule for `main` | repository **Settings**, **Environments**, `dictionary-plan`, **Deployment branches and tags** | add a rule for `main`; keep the existing `refs/pull/*/merge` rule |
+
+Until it is done, GitHub refuses the job before it starts, so a run writes
+nothing.
 
 ## Set the report box's secrets
 
