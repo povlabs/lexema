@@ -190,7 +190,7 @@ fifty-word fixture (or an explicitly supplied archive) into generated SQL and
 loads local D1; getting a full release onto Cloudflare, activating it and
 rolling it back is #18. The source archive is maintained at
 [`source/it-extract.jsonl.gz`](https://github.com/povlabs/lexema-data/blob/main/source/it-extract.jsonl.gz),
-and a local root copy remains gitignored. A full release seeds into local D1
+and its local copy lives in the gitignored source cache, `.data/source/`. A full release seeds into local D1
 in parts ([RUN_AN_IMPORT.md § Run it](RUN_AN_IMPORT.md#run-it)).
 
 No repair of upstream extraction defects. `casa` still arrives with no usable
