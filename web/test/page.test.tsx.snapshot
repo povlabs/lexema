@@ -140,12 +140,12 @@ exports[`bello's whole page is the page the snapshot holds (#385) 1`] = `
 </div>
 <div role="row" class="contents">
 <span class="pt-1 font-sans text-[0.75rem] text-text-muted max-sm:col-span-2 max-sm:pt-0 max-sm:pb-0.5 max-sm:font-semibold" role="rowheader" lang="it">maschile</span>
-<div class="min-w-0 pb-[0.6875rem] sm:pb-[0.9375rem] [[role=row]:last-child&gt;&amp;]:pb-0 sm:[[role=row]:last-child&gt;&amp;]:pb-px" role="cell">
+<div class="min-w-0 pb-[0.6875rem] sm:pb-[0.9375rem] [[role=row]:last-child&gt;&amp;]:pb-px" role="cell">
 <div class="[&amp;+&amp;]:mt-2">
 <p class="m-0 font-mono text-[1.05rem] text-text-strong wrap-anywhere" lang="it">
 <span data-headword="">bello</span>
 </p>
-<p class="m-0 mt-px font-mono text-[0.75rem] leading-4 text-text-muted sm:mt-[0.1875rem]" lang="it">
+<p class="m-0 font-mono text-[0.75rem] leading-4 text-text-muted sm:mt-[0.1875rem]" lang="it">
 <span>
 <span class="max-sm:block">il bello</span>
 </span>
@@ -156,12 +156,12 @@ exports[`bello's whole page is the page the snapshot holds (#385) 1`] = `
 </p>
 </div>
 </div>
-<div class="min-w-0 pb-[0.6875rem] sm:pb-[0.9375rem] [[role=row]:last-child&gt;&amp;]:pb-0 sm:[[role=row]:last-child&gt;&amp;]:pb-px" role="cell">
+<div class="min-w-0 pb-[0.6875rem] sm:pb-[0.9375rem] [[role=row]:last-child&gt;&amp;]:pb-px" role="cell">
 <div class="[&amp;+&amp;]:mt-2">
 <p class="m-0 font-mono text-[1.05rem] text-text-strong wrap-anywhere" lang="it">
 <span data-form="0">belli</span>
 </p>
-<p class="m-0 mt-px font-mono text-[0.75rem] leading-4 text-text-muted sm:mt-[0.1875rem]" lang="it">
+<p class="m-0 font-mono text-[0.75rem] leading-4 text-text-muted sm:mt-[0.1875rem]" lang="it">
 <span>
 <span class="max-sm:block">i belli</span>
 </span>
@@ -175,12 +175,12 @@ exports[`bello's whole page is the page the snapshot holds (#385) 1`] = `
 </div>
 <div role="row" class="contents">
 <span class="pt-1 font-sans text-[0.75rem] text-text-muted max-sm:col-span-2 max-sm:pt-0 max-sm:pb-0.5 max-sm:font-semibold" role="rowheader" lang="it">femminile</span>
-<div class="min-w-0 pb-[0.6875rem] sm:pb-[0.9375rem] [[role=row]:last-child&gt;&amp;]:pb-0 sm:[[role=row]:last-child&gt;&amp;]:pb-px" role="cell">
+<div class="min-w-0 pb-[0.6875rem] sm:pb-[0.9375rem] [[role=row]:last-child&gt;&amp;]:pb-px" role="cell">
 <div class="[&amp;+&amp;]:mt-2">
 <p class="m-0 font-mono text-[1.05rem] text-text-strong wrap-anywhere" lang="it">
 <span data-form="1">bella</span>
 </p>
-<p class="m-0 mt-px font-mono text-[0.75rem] leading-4 text-text-muted sm:mt-[0.1875rem]" lang="it">
+<p class="m-0 font-mono text-[0.75rem] leading-4 text-text-muted sm:mt-[0.1875rem]" lang="it">
 <span>
 <span class="max-sm:block">la bella</span>
 </span>
@@ -191,12 +191,12 @@ exports[`bello's whole page is the page the snapshot holds (#385) 1`] = `
 </p>
 </div>
 </div>
-<div class="min-w-0 pb-[0.6875rem] sm:pb-[0.9375rem] [[role=row]:last-child&gt;&amp;]:pb-0 sm:[[role=row]:last-child&gt;&amp;]:pb-px" role="cell">
+<div class="min-w-0 pb-[0.6875rem] sm:pb-[0.9375rem] [[role=row]:last-child&gt;&amp;]:pb-px" role="cell">
 <div class="[&amp;+&amp;]:mt-2">
 <p class="m-0 font-mono text-[1.05rem] text-text-strong wrap-anywhere" lang="it">
 <span data-form="2">belle</span>
 </p>
-<p class="m-0 mt-px font-mono text-[0.75rem] leading-4 text-text-muted sm:mt-[0.1875rem]" lang="it">
+<p class="m-0 font-mono text-[0.75rem] leading-4 text-text-muted sm:mt-[0.1875rem]" lang="it">
 <span>
 <span class="max-sm:block">le belle</span>
 </span>
@@ -260,12 +260,12 @@ exports[`bello's whole page is the page the snapshot holds (#385) 1`] = `
 </div>
 <div role="row" class="contents">
 <span class="pt-1 font-sans text-[0.75rem] text-text-muted max-sm:col-span-2 max-sm:pt-0 max-sm:pb-0.5 max-sm:font-semibold" role="rowheader" lang="it">maschile</span>
-<div class="min-w-0 pb-[0.6875rem] sm:pb-[0.9375rem] [[role=row]:last-child&gt;&amp;]:pb-0 sm:[[role=row]:last-child&gt;&amp;]:pb-px" role="cell">
+<div class="min-w-0 pb-[0.6875rem] sm:pb-[0.9375rem] [[role=row]:last-child&gt;&amp;]:pb-px" role="cell">
 <div class="[&amp;+&amp;]:mt-2">
 <p class="m-0 font-mono text-[1.05rem] text-text-strong wrap-anywhere" lang="it">
 <span data-headword="">bello</span>
 </p>
-<p class="m-0 mt-px font-mono text-[0.75rem] leading-4 text-text-muted sm:mt-[0.1875rem]" lang="it">
+<p class="m-0 font-mono text-[0.75rem] leading-4 text-text-muted sm:mt-[0.1875rem]" lang="it">
 <span>
 <span class="max-sm:block">il bello</span>
 </span>
@@ -276,7 +276,7 @@ exports[`bello's whole page is the page the snapshot holds (#385) 1`] = `
 </p>
 </div>
 </div>
-<div class="min-w-0 pb-[0.6875rem] sm:pb-[0.9375rem] [[role=row]:last-child&gt;&amp;]:pb-0 sm:[[role=row]:last-child&gt;&amp;]:pb-px" role="cell">
+<div class="min-w-0 pb-[0.6875rem] sm:pb-[0.9375rem] [[role=row]:last-child&gt;&amp;]:pb-px" role="cell">
 <span class="font-mono text-text-muted" aria-hidden="true">—</span>
 </div>
 </div>
@@ -317,12 +317,12 @@ exports[`bello's whole page is the page the snapshot holds (#385) 1`] = `
 </div>
 <div role="row" class="contents">
 <span class="pt-1 font-sans text-[0.75rem] text-text-muted max-sm:col-span-2 max-sm:pt-0 max-sm:pb-0.5 max-sm:font-semibold" role="rowheader" lang="it">maschile</span>
-<div class="min-w-0 pb-[0.6875rem] sm:pb-[0.9375rem] [[role=row]:last-child&gt;&amp;]:pb-0 sm:[[role=row]:last-child&gt;&amp;]:pb-px" role="cell">
+<div class="min-w-0 pb-[0.6875rem] sm:pb-[0.9375rem] [[role=row]:last-child&gt;&amp;]:pb-px" role="cell">
 <div class="[&amp;+&amp;]:mt-2">
 <p class="m-0 font-mono text-[1.05rem] text-text-strong wrap-anywhere" lang="it">
 <span data-headword="">bello</span>
 </p>
-<p class="m-0 mt-px font-mono text-[0.75rem] leading-4 text-text-muted sm:mt-[0.1875rem]" lang="it">
+<p class="m-0 font-mono text-[0.75rem] leading-4 text-text-muted sm:mt-[0.1875rem]" lang="it">
 <span>
 <span class="max-sm:block">il bello</span>
 </span>
@@ -333,12 +333,12 @@ exports[`bello's whole page is the page the snapshot holds (#385) 1`] = `
 </p>
 </div>
 </div>
-<div class="min-w-0 pb-[0.6875rem] sm:pb-[0.9375rem] [[role=row]:last-child&gt;&amp;]:pb-0 sm:[[role=row]:last-child&gt;&amp;]:pb-px" role="cell">
+<div class="min-w-0 pb-[0.6875rem] sm:pb-[0.9375rem] [[role=row]:last-child&gt;&amp;]:pb-px" role="cell">
 <div class="[&amp;+&amp;]:mt-2">
 <p class="m-0 font-mono text-[1.05rem] text-text-strong wrap-anywhere" lang="it">
 <span data-form="0">belli</span>
 </p>
-<p class="m-0 mt-px font-mono text-[0.75rem] leading-4 text-text-muted sm:mt-[0.1875rem]" lang="it">
+<p class="m-0 font-mono text-[0.75rem] leading-4 text-text-muted sm:mt-[0.1875rem]" lang="it">
 <span>
 <span class="max-sm:block">i belli</span>
 </span>
@@ -388,12 +388,12 @@ exports[`bello's whole page is the page the snapshot holds (#385) 1`] = `
 </div>
 <div role="row" class="contents">
 <span class="pt-1 font-sans text-[0.75rem] text-text-muted max-sm:col-span-2 max-sm:pt-0 max-sm:pb-0.5 max-sm:font-semibold" role="rowheader" lang="it">maschile</span>
-<div class="min-w-0 pb-[0.6875rem] sm:pb-[0.9375rem] [[role=row]:last-child&gt;&amp;]:pb-0 sm:[[role=row]:last-child&gt;&amp;]:pb-px" role="cell">
+<div class="min-w-0 pb-[0.6875rem] sm:pb-[0.9375rem] [[role=row]:last-child&gt;&amp;]:pb-px" role="cell">
 <div class="[&amp;+&amp;]:mt-2">
 <p class="m-0 font-mono text-[1.05rem] text-text-strong wrap-anywhere" lang="it">
 <span data-form="0">bello</span>
 </p>
-<p class="m-0 mt-px font-mono text-[0.75rem] leading-4 text-text-muted sm:mt-[0.1875rem]" lang="it">
+<p class="m-0 font-mono text-[0.75rem] leading-4 text-text-muted sm:mt-[0.1875rem]" lang="it">
 <span>
 <span class="max-sm:block">il bello</span>
 </span>
@@ -404,12 +404,12 @@ exports[`bello's whole page is the page the snapshot holds (#385) 1`] = `
 </p>
 </div>
 </div>
-<div class="min-w-0 pb-[0.6875rem] sm:pb-[0.9375rem] [[role=row]:last-child&gt;&amp;]:pb-0 sm:[[role=row]:last-child&gt;&amp;]:pb-px" role="cell">
+<div class="min-w-0 pb-[0.6875rem] sm:pb-[0.9375rem] [[role=row]:last-child&gt;&amp;]:pb-px" role="cell">
 <div class="[&amp;+&amp;]:mt-2">
 <p class="m-0 font-mono text-[1.05rem] text-text-strong wrap-anywhere" lang="it">
 <span data-form="1">belli</span>
 </p>
-<p class="m-0 mt-px font-mono text-[0.75rem] leading-4 text-text-muted sm:mt-[0.1875rem]" lang="it">
+<p class="m-0 font-mono text-[0.75rem] leading-4 text-text-muted sm:mt-[0.1875rem]" lang="it">
 <span>
 <span class="max-sm:block">i belli</span>
 </span>
@@ -423,12 +423,12 @@ exports[`bello's whole page is the page the snapshot holds (#385) 1`] = `
 </div>
 <div role="row" class="contents">
 <span class="pt-1 font-sans text-[0.75rem] text-text-muted max-sm:col-span-2 max-sm:pt-0 max-sm:pb-0.5 max-sm:font-semibold" role="rowheader" lang="it">femminile</span>
-<div class="min-w-0 pb-[0.6875rem] sm:pb-[0.9375rem] [[role=row]:last-child&gt;&amp;]:pb-0 sm:[[role=row]:last-child&gt;&amp;]:pb-px" role="cell">
+<div class="min-w-0 pb-[0.6875rem] sm:pb-[0.9375rem] [[role=row]:last-child&gt;&amp;]:pb-px" role="cell">
 <div class="[&amp;+&amp;]:mt-2">
 <p class="m-0 font-mono text-[1.05rem] text-text-strong wrap-anywhere" lang="it">
 <span data-headword="">bella</span>
 </p>
-<p class="m-0 mt-px font-mono text-[0.75rem] leading-4 text-text-muted sm:mt-[0.1875rem]" lang="it">
+<p class="m-0 font-mono text-[0.75rem] leading-4 text-text-muted sm:mt-[0.1875rem]" lang="it">
 <span>
 <span class="max-sm:block">la bella</span>
 </span>
@@ -439,12 +439,12 @@ exports[`bello's whole page is the page the snapshot holds (#385) 1`] = `
 </p>
 </div>
 </div>
-<div class="min-w-0 pb-[0.6875rem] sm:pb-[0.9375rem] [[role=row]:last-child&gt;&amp;]:pb-0 sm:[[role=row]:last-child&gt;&amp;]:pb-px" role="cell">
+<div class="min-w-0 pb-[0.6875rem] sm:pb-[0.9375rem] [[role=row]:last-child&gt;&amp;]:pb-px" role="cell">
 <div class="[&amp;+&amp;]:mt-2">
 <p class="m-0 font-mono text-[1.05rem] text-text-strong wrap-anywhere" lang="it">
 <span data-form="2">belle</span>
 </p>
-<p class="m-0 mt-px font-mono text-[0.75rem] leading-4 text-text-muted sm:mt-[0.1875rem]" lang="it">
+<p class="m-0 font-mono text-[0.75rem] leading-4 text-text-muted sm:mt-[0.1875rem]" lang="it">
 <span>
 <span class="max-sm:block">le belle</span>
 </span>
@@ -467,12 +467,12 @@ exports[`bello's whole page is the page the snapshot holds (#385) 1`] = `
 </div>
 <div role="row" class="contents">
 <span class="pt-1 font-sans text-[0.75rem] text-text-muted max-sm:col-span-2 max-sm:pt-0 max-sm:pb-0.5 max-sm:font-semibold" role="rowheader" lang="it">maschile</span>
-<div class="min-w-0 pb-[0.6875rem] sm:pb-[0.9375rem] [[role=row]:last-child&gt;&amp;]:pb-0 sm:[[role=row]:last-child&gt;&amp;]:pb-px" role="cell">
+<div class="min-w-0 pb-[0.6875rem] sm:pb-[0.9375rem] [[role=row]:last-child&gt;&amp;]:pb-px" role="cell">
 <div class="[&amp;+&amp;]:mt-2">
 <p class="m-0 font-mono text-[1.05rem] text-text-strong wrap-anywhere" lang="it">
 <span data-form="3">bellissimo</span>
 </p>
-<p class="m-0 mt-px font-mono text-[0.75rem] leading-4 text-text-muted sm:mt-[0.1875rem]" lang="it">
+<p class="m-0 font-mono text-[0.75rem] leading-4 text-text-muted sm:mt-[0.1875rem]" lang="it">
 <span>
 <span class="max-sm:block">il bellissimo</span>
 </span>
@@ -483,12 +483,12 @@ exports[`bello's whole page is the page the snapshot holds (#385) 1`] = `
 </p>
 </div>
 </div>
-<div class="min-w-0 pb-[0.6875rem] sm:pb-[0.9375rem] [[role=row]:last-child&gt;&amp;]:pb-0 sm:[[role=row]:last-child&gt;&amp;]:pb-px" role="cell">
+<div class="min-w-0 pb-[0.6875rem] sm:pb-[0.9375rem] [[role=row]:last-child&gt;&amp;]:pb-px" role="cell">
 <div class="[&amp;+&amp;]:mt-2">
 <p class="m-0 font-mono text-[1.05rem] text-text-strong wrap-anywhere" lang="it">
 <span data-form="4">bellissimi</span>
 </p>
-<p class="m-0 mt-px font-mono text-[0.75rem] leading-4 text-text-muted sm:mt-[0.1875rem]" lang="it">
+<p class="m-0 font-mono text-[0.75rem] leading-4 text-text-muted sm:mt-[0.1875rem]" lang="it">
 <span>
 <span class="max-sm:block">i bellissimi</span>
 </span>
@@ -502,12 +502,12 @@ exports[`bello's whole page is the page the snapshot holds (#385) 1`] = `
 </div>
 <div role="row" class="contents">
 <span class="pt-1 font-sans text-[0.75rem] text-text-muted max-sm:col-span-2 max-sm:pt-0 max-sm:pb-0.5 max-sm:font-semibold" role="rowheader" lang="it">femminile</span>
-<div class="min-w-0 pb-[0.6875rem] sm:pb-[0.9375rem] [[role=row]:last-child&gt;&amp;]:pb-0 sm:[[role=row]:last-child&gt;&amp;]:pb-px" role="cell">
+<div class="min-w-0 pb-[0.6875rem] sm:pb-[0.9375rem] [[role=row]:last-child&gt;&amp;]:pb-px" role="cell">
 <div class="[&amp;+&amp;]:mt-2">
 <p class="m-0 font-mono text-[1.05rem] text-text-strong wrap-anywhere" lang="it">
 <span data-form="5">bellissima</span>
 </p>
-<p class="m-0 mt-px font-mono text-[0.75rem] leading-4 text-text-muted sm:mt-[0.1875rem]" lang="it">
+<p class="m-0 font-mono text-[0.75rem] leading-4 text-text-muted sm:mt-[0.1875rem]" lang="it">
 <span>
 <span class="max-sm:block">la bellissima</span>
 </span>
@@ -518,12 +518,12 @@ exports[`bello's whole page is the page the snapshot holds (#385) 1`] = `
 </p>
 </div>
 </div>
-<div class="min-w-0 pb-[0.6875rem] sm:pb-[0.9375rem] [[role=row]:last-child&gt;&amp;]:pb-0 sm:[[role=row]:last-child&gt;&amp;]:pb-px" role="cell">
+<div class="min-w-0 pb-[0.6875rem] sm:pb-[0.9375rem] [[role=row]:last-child&gt;&amp;]:pb-px" role="cell">
 <div class="[&amp;+&amp;]:mt-2">
 <p class="m-0 font-mono text-[1.05rem] text-text-strong wrap-anywhere" lang="it">
 <span data-form="6">bellissime</span>
 </p>
-<p class="m-0 mt-px font-mono text-[0.75rem] leading-4 text-text-muted sm:mt-[0.1875rem]" lang="it">
+<p class="m-0 font-mono text-[0.75rem] leading-4 text-text-muted sm:mt-[0.1875rem]" lang="it">
 <span>
 <span class="max-sm:block">le bellissime</span>
 </span>
