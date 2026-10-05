@@ -54,6 +54,8 @@ import {
   PERSON_REPEAT,
   PERSON_SEARCHED,
   TENSE_CELL,
+  TENSE_CELL_SEARCHED_ROW,
+  TENSE_CELL_SEARCHED_ROW_WIDE,
   TENSE_HEAD,
   TENSE_HEAD_SEARCHED,
   TENSE_PAIRS,
@@ -275,13 +277,18 @@ function TenseTables({
             {table.persons.map((person, row) => {
               const hit = pair.some((tense) => tense.cells[row].searched);
               const personClass = hit ? PERSON_SEARCHED : PERSON;
+              const cellClass = hit
+                ? TENSE_CELL_SEARCHED_ROW
+                : tenses.some((tense) => tense.cells[row].searched)
+                  ? TENSE_CELL_SEARCHED_ROW_WIDE
+                  : TENSE_CELL;
               return (
                 <tr key={person}>
                   <th scope="row" className={p === 0 ? personClass : `${personClass} ${PERSON_REPEAT}`} lang="it">
                     {personLabel(table.mood, person)}
                   </th>
                   {pair.map((tense) => (
-                    <td key={tense.name} className={TENSE_CELL}>
+                    <td key={tense.name} className={cellClass}>
                       {tense.cells[row].forms.length === 0 ? (
                         <Dash />
                       ) : (
