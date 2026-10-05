@@ -1,16 +1,23 @@
 // What one word's page is made of, decided before anything renders.
 //
-// A lookup returns every record the query matches, and each is a reading on
-// the page. Some are *about* the searched word (`isAboutQuery`); some merely
-// list it in their own table. A reading that is a form of a verb carries that
-// verb's table when the table lists the query: `andavano` shows *Forms of
-// andare*. The lookup does not return the lemma as a record of its own, so
-// nothing is counted twice: the readings are the lookup's records, and the
-// tables are their lemmas'.
+// A lookup returns every record the query matches. Some are *about* the
+// searched word (`isAboutQuery`); some merely list it in their own table. Each
+// is a reading on the page except a form of the query's own readings: a record
+// that only lists the query and declares itself a form of a reading about it,
+// or of a record already left out this way (`formsOfQueryReadings`). `bello`
+// does not repeat `bella`, `belli` and `bellissimo` as readings, since its own
+// reading already shows their table (Huey, 2026-10-05, on #622). A record that
+// lists the query and declares no such form is still a reading: `studentessa`
+// for `studenti`.
+//
+// A reading that is a form of a verb carries that verb's table when the table
+// lists the query: `andavano` shows *Forms of andare*. The lookup does not
+// return the lemma as a record of its own, so nothing is counted twice: the
+// readings are the lookup's records, and the tables are their lemmas'.
 
 import { normalizeItalianExact } from "@lexema/italian/normalize.ts";
 import { mergeExpressions } from "@lexema/lookup/expressions.ts";
-import { factRefKey, isFormOfReading, isVerbReading } from "@lexema/lookup/types.ts";
+import { factRefKey, formsOfQueryReadings, isFormOfReading, isVerbReading } from "@lexema/lookup/types.ts";
 import { hasDefinitions } from "./definitions.ts";
 import { labelParts, readingsNamed, splitLabel } from "./readingLabels.ts";
 import { relatedItems, type RelatedItem } from "./relatedList.ts";
@@ -147,7 +154,8 @@ function lemmaTablesOf(reading: Reading): LemmaTable[] {
 }
 
 export function wordPage(query: string, readings: readonly [Reading, ...Reading[]]): WordPage {
-  const ordered = pageOrder(readings);
+  const forms = formsOfQueryReadings(readings);
+  const ordered = pageOrder(readings.filter((reading) => !forms.has(reading)));
   const about = ordered.filter((reading) => reading.isAboutQuery);
   const merged = mergeWordFacts(about);
   const placed = placeWordFacts(about, merged);
