@@ -58,8 +58,9 @@ const report = await seedSql({
   license: "CC-BY-SA-4.0",
   requiredWords,
   validateFixtureClosure: !isArchive,
-  // The dump the archive was built from when it is in the repository root,
-  // else the pages committed under fixtures/ (#28). A word without a page is
+  // The dump the archive was built from when the source cache holds it
+  // (`.data/source/`), else the pages committed under fixtures/ (#28); the
+  // seed never fetches it (`openRawPages`). A word without a page is
   // seeded as it always was.
   rawPages: rawPages.pages,
   pageOnly,

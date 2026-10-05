@@ -520,7 +520,7 @@ database, prefix cutter, or second import/export path. The development seed
 uses the committed fifty-word `fixtures/dev-seed.jsonl` and applies that SQL to
 an isolated `.data/seed-state` database. The full archive is maintained at
 [`source/it-extract.jsonl.gz`](https://github.com/povlabs/lexema-data/blob/main/source/it-extract.jsonl.gz);
-a local copy at the repository root remains gitignored. The same seed loads a
+its local copy lives in the gitignored source cache, `.data/source/`. The same seed loads a
 full release in numbered SQL parts
 ([RUN_AN_IMPORT.md § Run it](RUN_AN_IMPORT.md#run-it)).
 
@@ -531,8 +531,9 @@ The fixture is a bounded, reviewable fifty-word set with its transitive
 provenance, lookup, and grammar projection without downloading the archive or
 silently serving an incomplete archive as a complete release. A query for a
 word outside that set is an honest empty result. To run against another archive,
-set `SEED_INPUT`; the local full-archive copy is conventionally
-`it-extract.jsonl.gz` at the repository root.
+set `SEED_INPUT`; the local full-archive copy is
+`.data/source/it-extract.jsonl.gz`, which `pnpm run source:fetch` fetches from
+`povlabs/lexema-data`.
 
 ## Known rough edges
 

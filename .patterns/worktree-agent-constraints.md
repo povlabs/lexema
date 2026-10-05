@@ -24,8 +24,11 @@ post-checkout:
 previous HEAD is the all-zero id and `--git-dir` differs from `--git-common-dir`,
 which is true only for the first checkout of a linked worktree. It then:
 
-1. **Links the source file.** `it-extract.jsonl.gz` is ignored by Git, so it is
-   symlinked from the main checkout, found through `--git-common-dir`. A tree
+1. **Links the source cache.** `.data/source/` holds the archive and dump
+   fetched from `povlabs/lexema-data` ([sourceCache.ts](../src/source/sourceCache.ts))
+   and is ignored by Git, so it is symlinked from the main checkout, found
+   through `--git-common-dir`. The main checkout's cache is made when it is
+   missing, so a file one tree fetches is never fetched again by another. A tree
    that already has one keeps it.
 2. **Installs dependencies for real.** It runs `pnpm install --frozen-lockfile` in
    the new tree. `node_modules` is never linked from the main checkout.

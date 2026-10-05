@@ -3,10 +3,11 @@
 An Italian word-search website, not built yet. `src/` holds the Italian source
 adapter, the candidate resolver and the validation CLI; `test/` and `fixtures/`
 hold their checks; `reports/` holds dated findings; `.decisions/` holds the
-rulings. The source file `it-extract.jsonl.gz` sits in the repository root,
-ignored by Git and absent in CI; its durable copy is `source/` in
-`povlabs/lexema-data`. The release id is `it-` plus the first eight hex digits
-of its SHA-256, `it-0c432803`.
+rulings. The source file `it-extract.jsonl.gz` and the dump it was built from
+live in `source/` of `povlabs/lexema-data`. Local commands fetch them into
+`.data/source/` on first use and check them there; that cache is ignored by Git
+and absent in CI. The release id is `it-` plus the first eight hex digits of
+the archive's SHA-256, `it-0c432803`.
 
 ## Working rules
 

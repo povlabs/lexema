@@ -34,7 +34,7 @@ from collections import Counter
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parent.parent
-EXTRACT = REPO / "it-extract.jsonl.gz"
+EXTRACT = REPO / ".data" / "source" / "it-extract.jsonl.gz"  # the source cache; `pnpm run source:fetch` fills it
 RELEASE_SHA256 = "0c432803c672aceccd48787eb64807c5366fdbd6796715c9a99e31c0024d5dcf"
 
 MEASURED_POS = ("noun", "adj")

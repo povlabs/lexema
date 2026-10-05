@@ -6,7 +6,8 @@
 // same dump gives every entry the page its record was extracted from, so the
 // recovered layer can pick up the definitions the conversion dropped. It is read
 // once, at seed time, to match the archive; it is not a feed of new dumps
-// (ADR 0012). The durable copy is `source/` in `povlabs/lexema-data`.
+// (ADR 0012). The durable copy is `source/` in `povlabs/lexema-data`, fetched
+// into `.data/source/` on first use (src/source/sourceCache.ts).
 //
 // The file is bz2-compressed MediaWiki export XML, about 830 MB unpacked. It is
 // checked against its published size and SHA-1 before any page is read, then
@@ -303,14 +304,15 @@ export interface RawPageInput {
 
 /**
  * The raw pages a seed or measurement reads: the dump `RAW_PAGES` names, else
- * the archive's dump at `dump` (the repository root) when it is there, else the
- * pages committed under `fixtures/`, which is what a fresh clone and CI read.
+ * the archive's dump at `dump` (by default its copy in the source cache,
+ * src/source/sourceCache.ts) when it is there, else the pages committed under
+ * `fixtures/`, which is what a fresh clone and CI read. Nothing is fetched.
  * `RAW_PAGES=fixtures` asks for the committed pages even when the dump is there.
  * Either dump file is read only if its bytes are `expected`'s.
  */
 export async function openRawPages(
   env: NodeJS.ProcessEnv = process.env,
-  dump: string = resolve(ARCHIVE_DUMP.file),
+  dump: string = resolve(".data/source", ARCHIVE_DUMP.file),
   fixtures: string = resolve("fixtures"),
   expected: DumpIdentity = ARCHIVE_DUMP,
 ): Promise<RawPageInput> {

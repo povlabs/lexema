@@ -18,8 +18,9 @@ account. `wrangler dev` runs the Worker on
 workerd locally, and local D1 state is kept in `.data/`, not `web/.wrangler/`.
 The full Italian archive is maintained at
 [`source/it-extract.jsonl.gz`](https://github.com/povlabs/lexema-data/blob/main/source/it-extract.jsonl.gz).
-A local copy at the repository root (`it-extract.jsonl.gz`) is gitignored and is
-the default full-archive input when an archive is selected explicitly.
+`pnpm run source:fetch` fetches it into the gitignored source cache,
+`.data/source/it-extract.jsonl.gz`, and checks it; that copy is the
+full-archive input when an archive is selected explicitly.
 
 ## Run it
 
@@ -89,7 +90,7 @@ returns the empty state rather than an error. The one exception is a word the
 release itself has no record for, such as `raccontare`: its committed page
 gives a page-only entry, as on the real site
 ([DEV_SEED.md](DEV_SEED.md#what-is-emitted)). A full archive can be supplied
-with `SEED_INPUT=it-extract.jsonl.gz`; it loads in numbered SQL parts and takes
+with `SEED_INPUT=.data/source/it-extract.jsonl.gz`; it loads in numbered SQL parts and takes
 nine to ten minutes
 ([RUN_AN_IMPORT.md § Run it](RUN_AN_IMPORT.md#run-it)).
 

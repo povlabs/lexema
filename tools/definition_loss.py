@@ -38,7 +38,7 @@ from dataclasses import dataclass, field, asdict
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parent.parent
-EXTRACT = REPO / "it-extract.jsonl.gz"
+EXTRACT = REPO / ".data" / "source" / "it-extract.jsonl.gz"  # the source cache; `pnpm run source:fetch` fills it
 CACHE = REPO / "fixtures" / "upstream-wikitext"     # committed sampled pages
 PAGES = REPO / "fixtures" / "upstream-pages"        # saved regression pages
 API = "https://it.wiktionary.org/w/api.php"
@@ -726,7 +726,7 @@ def main() -> int:
     p = sub.add_parser("verify")
     p.add_argument("--cases", default=str(REPO / "fixtures" / "definition-loss-regressions.json"))
     p.add_argument("--with-extract", action="store_true",
-                   help="also compare the cases against the local it-extract.jsonl.gz")
+                   help="also compare the cases against .data/source/it-extract.jsonl.gz")
     p.set_defaults(func=cmd_verify)
 
     args = parser.parse_args()

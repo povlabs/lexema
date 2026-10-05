@@ -8,7 +8,7 @@ tags: [tooling, agents, git-hooks]
 
 # 0022 — lefthook runs the git hooks, and a new worktree sets itself up
 
-**What this decides:** lefthook manages this repository's git hooks. Its `post-checkout` hook prepares every new linked worktree: it links the source file from the main checkout and installs dependencies. Claude Code's `WorktreeCreate` hook calls `fabrika hook worktree-create`. Fabrika's `plugin-sync` hook is not used.
+**What this decides:** lefthook manages this repository's git hooks. Its `post-checkout` hook prepares every new linked worktree: it links the source cache from the main checkout and installs dependencies. Claude Code's `WorktreeCreate` hook calls `fabrika hook worktree-create`. Fabrika's `plugin-sync` hook is not used.
 
 ## Context
 
@@ -28,14 +28,18 @@ This record amends [0014](0014-agent-work-runs-in-any-harness.md) in part: "the 
 
 - `lefthook` is a root dev dependency, its version in the pnpm catalog ([0002](0002-pnpm-is-the-package-manager.md)).
 - The root `prepare` script, [tools/install-git-hooks.sh](../tools/install-git-hooks.sh), runs `lefthook install` in the main checkout only. It does nothing in CI, outside a Git checkout, or in a linked worktree, which shares the main checkout's hooks.
-- [lefthook.yml](../lefthook.yml) runs [tools/set-up-worktree.sh](../tools/set-up-worktree.sh) on `post-checkout`. It acts only when the previous HEAD is the all-zero id and the tree is a linked worktree. Then it symlinks `it-extract.jsonl.gz` from the main checkout, found through `git rev-parse --git-common-dir`, and runs `pnpm install --frozen-lockfile`. A branch switch does nothing.
+- [lefthook.yml](../lefthook.yml) runs [tools/set-up-worktree.sh](../tools/set-up-worktree.sh) on `post-checkout`. It acts only when the previous HEAD is the all-zero id and the tree is a linked worktree. Then it symlinks `.data/source/`, the source cache, to the main checkout's, found through `git rev-parse --git-common-dir`, and makes the main checkout's directory when it is missing (amended by [#606](https://github.com/povlabs/lexema/issues/606)). Then it runs `pnpm install --frozen-lockfile`. A branch switch does nothing.
 - `.claude/settings.json` gets a `WorktreeCreate` hook running `fabrika hook worktree-create`, timeout 600, as phoenix has it. Huey adds that entry; agents cannot write the file.
 
 **`plugin-sync` is not used.** Phoenix also runs `fabrika hook plugin-sync` at `SessionStart`. It fast-forwards the main checkout to `origin/main` so a plugin served from that checkout stays current. Lexema serves no plugin from its own checkout, so the hook would buy nothing. It would also move Huey's main checkout at every session start, and AGENTS.md says the branch is left where it was found.
 
 ## Consequences
 
-- A `git worktree add`, by hand or through the harness, gives a tree with dependencies and the source file, with no step to remember.
+- A `git worktree add`, by hand or through the harness, gives a tree with dependencies and the main checkout's source cache, with no step to remember.
 - The hooks live in the main checkout's `.git/hooks`. A checkout that has not run `pnpm install` since this landed has none until it does.
 - Each new worktree costs one `pnpm install`, a few seconds from the shared store.
 - A second hook is now a `lefthook.yml` entry, not a new script and install step.
+
+## Amendments
+
+- **#606 — The hook links the source cache, not the root archive (2026-10-05).** Local tools no longer read `it-extract.jsonl.gz` or the Wikimedia dump from the repository root. They fetch both from `povlabs/lexema-data` into `.data/source/` on first use and check them as the deploy does ([`src/source/sourceCache.ts`](../src/source/sourceCache.ts), [#606](https://github.com/povlabs/lexema/issues/606)). So `post-checkout` now links a new worktree's `.data/source` to the main checkout's `.data/source/`, making that directory when it is missing, and links no root file. A file one checkout fetched is not fetched again by the next. The Context above describes the tree before this change. The rest of this record stands.

@@ -7,7 +7,7 @@
 //
 // Reads the local D1 a full seed leaves (docs/RUN_AN_IMPORT.md):
 //
-//   SEED_INPUT=it-extract.jsonl.gz SEED_SQL=.data/full-sql SEED_STATE=.data/full-state pnpm run seed:dev
+//   SEED_INPUT=.data/source/it-extract.jsonl.gz SEED_SQL=.data/full-sql SEED_STATE=.data/full-state pnpm run seed:dev
 //   SEED_STATE=.data/full-state pnpm run measure:bare-spellings
 //
 // `SEED_STATE` defaults to `.data/full-state`; `LEXEMA_RELEASE` names the

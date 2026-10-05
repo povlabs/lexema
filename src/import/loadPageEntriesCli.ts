@@ -3,10 +3,11 @@
 // #440, #477). It picks its database the way the seed does: the local D1 under
 // `SEED_STATE` (default `.data/seed-state`), or the remote D1 `SEED_REMOTE`
 // names. It reads the archive the master was seeded from (`SEED_INPUT`,
-// default `it-extract.jsonl.gz`), to check it is the master's and to know the
-// words its records spell, and the dump that archive was built from
-// (`RAW_PAGES`, default the dump in the repository root), held to its size and
-// SHA-1. The dictionary deploy writes
+// default the master's archive in `.data/source/`), to check it is the
+// master's and to know the words its records spell, and the dump that archive
+// was built from (`RAW_PAGES`, default its copy in `.data/source/`), held to
+// its size and SHA-1. A file the cache lacks is fetched from
+// `povlabs/lexema-data` (src/source/sourceCache.ts). The dictionary deploy writes
 // the shared dictionary from a change declaration (ADR 0018); an agent runs
 // this command against a local D1 only. `--plan-only` prints the plan's counts
 // as JSON and writes nothing to the database (src/update/planOnly.ts). See
@@ -18,6 +19,8 @@ import { finish, flags, isMain, usageError, type CommandResult } from "../comman
 import { sha256Of } from "../deploy/dataFiles.js";
 import { CURATED_CORRECTIONS, type CuratedCorrection } from "../italian/curatedCorrections.js";
 import { archiveFactsFor } from "../source/archiveFacts.js";
+import { releaseIdOf } from "../source/servedRelease.js";
+import { SourceCache } from "../source/sourceCache.js";
 import { KNOWN_DUMPS, VerifiedDump } from "../source/wiktionaryDump.js";
 import { changedUpgrade, readMasterRelease } from "../update/master.js";
 import { planOnlyAnswer, planOnlyFlag, planOnlyRun } from "../update/planOnly.js";
@@ -36,6 +39,7 @@ export async function main(
   args: readonly string[] = [],
   wrangler: Wrangler = webWrangler,
   corrections: readonly CuratedCorrection[] = CURATED_CORRECTIONS,
+  source: SourceCache = new SourceCache(),
 ): Promise<CommandResult> {
   const { planOnly, rest } = planOnlyFlag(args);
   const options = flags(rest, ["out"]);
@@ -43,7 +47,8 @@ export async function main(
   const target = seedTargetFrom(env, wrangler, resolve(".data/seed-state"));
   const reader = masterReaderOf(target);
   const master = readMasterRelease(reader);
-  const archive = resolve(env.SEED_INPUT ?? "it-extract.jsonl.gz");
+  const release = releaseIdOf(master.archiveSha256);
+  const archive = env.SEED_INPUT === undefined ? await source.archive(release) : resolve(env.SEED_INPUT);
   const sha256 = await sha256Of(archive);
   if (sha256 !== master.archiveSha256) {
     return { out: `${archive} has SHA-256 ${sha256}; the master ${master.releaseId} was seeded from ${master.archiveSha256}. Nothing was written.`, status: 1 };
@@ -51,7 +56,7 @@ export async function main(
   const dumpId = archiveFactsFor(sha256)?.dump.id;
   const identity = dumpId === undefined || !Object.hasOwn(KNOWN_DUMPS, dumpId) ? undefined : KNOWN_DUMPS[dumpId];
   if (identity === undefined) return { out: `no dump is known for the master ${master.releaseId}. Nothing was written.`, status: 1 };
-  const dumpPath = resolve(env.RAW_PAGES ?? identity.file);
+  const dumpPath = env.RAW_PAGES === undefined ? await source.dump(release) : resolve(env.RAW_PAGES);
   log(`reading ${dumpPath} for the page-only entries of the master ${master.releaseId} in ${target.dictionary}`);
 
   const spelled = await archiveWords(archive);

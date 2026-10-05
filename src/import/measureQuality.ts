@@ -15,8 +15,9 @@
 //   only from those labels, per stratum, and the run refuses to print one
 //   while any sampled record is unlabelled.
 //
-// Needs the archive in the repository root (or QUALITY_INPUT), and reads the
-// recovered layer from the raw pages `openRawPages` finds (RAW_PAGES).
+// Reads the master's archive from `.data/source/` (or QUALITY_INPUT), and the
+// recovered layer from the master's dump there (or RAW_PAGES). A file the
+// cache lacks is fetched from `povlabs/lexema-data` (src/source/sourceCache.ts).
 
 import { createHash } from "node:crypto";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
@@ -42,11 +43,12 @@ import {
 } from "../italian/recordQuality.js";
 import { recordText, recoverDefinitions } from "../italian/recovery.js";
 import { readItalianSections } from "../italian/wikitext.js";
-import { openRawPages } from "../source/wiktionaryDump.js";
+import { SourceCache } from "../source/sourceCache.js";
 import { expectedFormDimensions, expectedRecordDimensions, mapStructuralTag } from "./grammarPolicy.js";
 import { parseArchive, type ArchiveRecord } from "./importRelease.js";
 
-const input = resolve(process.env.QUALITY_INPUT ?? "it-extract.jsonl.gz");
+const source = new SourceCache();
+const input = process.env.QUALITY_INPUT === undefined ? await source.archive() : resolve(process.env.QUALITY_INPUT);
 const output = resolve(process.env.QUALITY_OUTPUT ?? "artifacts/quality-measure.json");
 const SAMPLE = resolve("fixtures/quality-sample/sample.json");
 const LABELS = resolve("fixtures/quality-sample/hand-labels.json");
@@ -131,7 +133,7 @@ const sampleKey = (stratum: Stratum, lineSha256: string): string =>
 
 // Pass 2: the counts.
 
-const { pages, described } = await openRawPages();
+const { pages, described } = await source.rawPages();
 
 /** A record's kind is its strongest sense's, in `SENSE_KINDS` order. */
 const recordKind = (kinds: readonly SenseKind[]): SenseKind | "no-sense" =>

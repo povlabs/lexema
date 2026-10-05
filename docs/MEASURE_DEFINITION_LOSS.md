@@ -11,8 +11,8 @@ Every step names its own inputs. Three kinds exist:
   saved regression pages in `fixtures/upstream-pages/`, and the sampled page cache in
   [`fixtures/upstream-wikitext/`](../fixtures/upstream-wikitext/PROVENANCE.md). All present
   in a fresh checkout.
-- **The archive** — `it-extract.jsonl.gz` in the repository root. Gitignored, absent from CI,
-  downloaded by hand.
+- **The archive** — `it-extract.jsonl.gz` in the source cache, `.data/source/`. Gitignored,
+  absent from CI. `pnpm run source:fetch` fetches it from `povlabs/lexema-data` and checks it.
 - **The network** — it.wiktionary.org, for `fetch` alone.
 
 Steps 1 and 2 need only committed fixtures, and they are the pair `pnpm run

@@ -1,7 +1,9 @@
 #!/bin/sh
 # Git's post-checkout hook, run by lefthook (lefthook.yml, ADR 0022). It prepares
-# a fresh linked worktree: it links the source file from the main checkout and
-# installs dependencies. Every other checkout returns at once.
+# a fresh linked worktree: it links the main checkout's source cache,
+# `.data/source/` (src/source/sourceCache.ts), so a file one checkout fetched
+# from povlabs/lexema-data is not fetched again, and installs dependencies.
+# Every other checkout returns at once.
 #
 # The one argument is git's first: the previous HEAD.
 set -eu
@@ -21,14 +23,13 @@ common_dir=$(git rev-parse --path-format=absolute --git-common-dir)
 [ "$git_dir" = "$common_dir" ] && exit 0
 
 main_checkout=$(dirname "$common_dir")
-source_file=it-extract.jsonl.gz
+source_cache=.data/source
 
-if [ -e "$source_file" ] || [ -L "$source_file" ]; then
-  :
-elif [ -e "$main_checkout/$source_file" ]; then
-  ln -s "$main_checkout/$source_file" "$source_file"
-else
-  echo "set-up-worktree: $main_checkout has no $source_file to link" >&2
+# The main checkout's cache is made when it is missing, so the first fetch from
+# any checkout lands where every other one reads.
+if [ ! -e "$source_cache" ] && [ ! -L "$source_cache" ]; then
+  mkdir -p "$main_checkout/$source_cache" .data
+  ln -s "$main_checkout/$source_cache" "$source_cache"
 fi
 
 pnpm install --frozen-lockfile

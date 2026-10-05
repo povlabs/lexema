@@ -4,6 +4,7 @@ import { readFile } from "node:fs/promises";
 import { adaptFixture } from "../../src/italian/adapter.js";
 import { collectFixtureRecords } from "../../src/core/fixtureCollector.js";
 import type { ReleaseMetadata } from "../../src/core/types.js";
+import { SourceCache } from "../../src/source/sourceCache.js";
 
 const metadata: ReleaseMetadata = {
   releaseId: "it-local-integration",
@@ -17,7 +18,7 @@ const manifest = JSON.parse(await readFile("fixtures/it-validation-forms.json", 
 let collection: Awaited<ReturnType<typeof collectFixtureRecords>> | undefined;
 
 async function collected() {
-  collection ??= await collectFixtureRecords("it-extract.jsonl.gz", manifest.fixtures, metadata);
+  collection ??= await collectFixtureRecords(await new SourceCache().archive(), manifest.fixtures, metadata);
   return collection;
 }
 

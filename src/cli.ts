@@ -3,6 +3,7 @@ import { readFile } from "node:fs/promises";
 import { basename, resolve } from "node:path";
 import { adaptFixture } from "./italian/adapter.js";
 import { collectFixtureRecords } from "./core/fixtureCollector.js";
+import { SourceCache } from "./source/sourceCache.js";
 import { summarizeReport, writeReport } from "./core/report.js";
 import type { ReleaseMetadata, ValidationReport } from "./core/types.js";
 
@@ -67,7 +68,7 @@ async function loadFixtures(path: string): Promise<{ fixtures: string[]; hash: s
 }
 
 async function validate(args: Args): Promise<void> {
-  const input = value(args, "input") ?? "it-extract.jsonl.gz";
+  const input = value(args, "input") ?? await new SourceCache().archive();
   const fixturePath = value(args, "fixtures") ?? "fixtures/it-validation-forms.json";
   const output = value(args, "out") ?? "artifacts/it-adapter-validation";
   const { fixtures, hash } = await loadFixtures(fixturePath);
