@@ -38,6 +38,7 @@ import { createRequestContext, runWithRequestContext } from "vinext/shims/unifie
 
 const REPO = fileURLToPath(new URL("../..", import.meta.url));
 const RELEASE = "it-page-statements";
+const FIXTURES = ["fixtures/dev-seed.jsonl", "fixtures/salivate.jsonl", "fixtures/vira.jsonl"];
 
 /** Statements per page before #393; the calls were 6 for every word. */
 const BEFORE: Record<string, number> = { bello: 61, andare: 35, casa: 25, sale: 56, studente: 59 };
@@ -48,8 +49,12 @@ let sqlite: DatabaseSync;
 
 before(async () => {
   dir = await mkdtemp(join(tmpdir(), "lexema-page-statements-"));
+  // The development fixture, then the real lines of `salivate` and `vira`
+  // (fixtures/salivate.jsonl, fixtures/vira.jsonl), whose pages show a verb's
+  // own Definitions (#686).
   const archive = join(dir, "dev-seed.jsonl.gz");
-  await writeFile(archive, gzipSync(await readFile(join(REPO, "fixtures/dev-seed.jsonl"))));
+  const lines = await Promise.all(FIXTURES.map(async (file) => (await readFile(join(REPO, file), "utf8")).trimEnd()));
+  await writeFile(archive, gzipSync(`${lines.join("\n")}\n`));
   const { parts } = await seedSql({
     input: archive,
     outputDir: join(dir, "sql"),
@@ -123,18 +128,47 @@ for (const [word, ceiling] of Object.entries(BEFORE)) {
  * so they send what they sent at e380d77, before the read was added; `andati`,
  * which andare's table does not list, sends andare's table read beside the
  * reads it already made, in no more calls.
+ *
+ * A block also lists its verb's own Definitions (#686). A verb record that is a
+ * reading on the page (`sono andato`'s andare, `salivate`'s salire) brings its
+ * definitions with it, and a noun or adjective form's lemma record is read
+ * whole already (`bella`'s bello), so those reads add nothing. A verb that a
+ * verb form record names (andare for `andavano` and `andati`, virare for
+ * `vira`, salivare for `salivate`) is not a reading, so its definitions are
+ * read once, beside the reads a page makes after the lookup
+ * (`withVerbDefinitions`): more statements, no more calls. The counts before
+ * are those at 975d5aa, `vira`, `bella` and `salivate` measured over this
+ * fixture.
  */
 const VERB_FORMS_BEFORE: Record<string, { statements: number; calls: number }> = {
   andavano: { statements: 19, calls: 5 },
   "sono andato": { statements: 20, calls: 5 },
   andati: { statements: 43, calls: 6 },
+  vira: { statements: 18, calls: 4 },
+  bella: { statements: 41, calls: 6 },
+  salivate: { statements: 25, calls: 6 },
 };
 
 /** The statements one table read sends: a record's grammar and its forms (`readTable`, src/lookup/lookup.ts). */
 const TABLE_READ_STATEMENTS = 3;
 
+/**
+ * The statements one verb's definitions send (#686): its archive line, its
+ * sense glosses, its sense labels and its recovered definitions. A verb with
+ * recovered definitions would add their labels and examples; none here has one.
+ */
+const DEFINITIONS_READ_STATEMENTS = 4;
+
+/** What each page reads beyond what it read before: a table its verb's does not list, and a verb's definitions. */
+const EXTRA: Record<string, number> = {
+  andavano: DEFINITIONS_READ_STATEMENTS,
+  andati: TABLE_READ_STATEMENTS + DEFINITIONS_READ_STATEMENTS,
+  vira: DEFINITIONS_READ_STATEMENTS,
+  salivate: DEFINITIONS_READ_STATEMENTS,
+};
+
 for (const [word, then] of Object.entries(VERB_FORMS_BEFORE)) {
-  const extra = word === "andati" ? TABLE_READ_STATEMENTS : 0;
+  const extra = EXTRA[word] ?? 0;
   test(`the page for '${word}' sends ${then.statements + extra} statements in ${then.calls} calls, and reads the page SQLite reads`, async () => {
     const sent = nothingSent();
     const attempt = await searchAttempt(fromD1(countingD1(sqlite, sent)), RELEASE, word);

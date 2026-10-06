@@ -360,9 +360,17 @@ those lemma records with the same lookup a search of the lemma runs
 **One block per verb a form belongs to.** A searched verb form shows one block
 for each verb it is a form of, as frame 37 draws it
 ([#636](https://github.com/povlabs/lexema/issues/636), Huey's ruling of
-2026-10-06): `1 · Voce verbale · salire`, then that verb's form-of lines under
-*Definitions*, then *Forms of salire*, the verb's conjugation opened where the
-searched cell is. The table is a lemma link's `listing` or the verb reading's
+2026-10-06): `1 · Voce verbale · salire`, that verb's form-of lines right under
+it with no label, then *Definitions*, the verb record's own, then *Forms of
+salire*, the verb's conjugation opened where the searched cell is (frames 17 and
+37, [#686](https://github.com/povlabs/lexema/issues/686)). The definitions are
+those of the record whose table the block shows first: a verb that is a reading
+brings its own, and a verb a form record names has its senses read by
+`withVerbDefinitions` (`src/lookup/lookup.ts`) in the same wait as the search's
+other reads after the lookup, so a page sends more statements and no more calls
+(`web/test/pageStatements.test.ts`). A noun or adjective form that shows its
+lemma's grid draws the same way, its own lines under its heading and the lemma
+record's definitions as its *Definitions*. The table is a lemma link's `listing` or the verb reading's
 own `forms`, both already in the lookup's answer, so the page reads nothing
 more for it; a verb whose table does not list the form (`andati`: andare's lists
 only `andato`) has a block with no table. A block's lines come from two places:
@@ -386,8 +394,8 @@ only `andato`) has a block with no table. A block's lines come from two places:
   `src/italian/moods.ts`), read from the same placement the table marks, so the
   line and the cell never disagree. `siamo andati` fills a cell of the
   indicativo and one of the congiuntivo and gets both lines; identical lines
-  show once. The verb's record has no reading of its own: its table is the
-  block's, and none of its definitions show. These blocks lead the page.
+  show once. The verb's record has no reading of its own: its table and its
+  definitions are the block's. These blocks lead the page.
 
 An imperative, a non-finite form and a cell `it-moods/v1` cannot place give no
 line, and a verb with no line gives no block and keeps its reading: on `stato`,
