@@ -15,10 +15,11 @@ import test from "node:test";
 import { clientElements, renderWordPages, weightOf, type PageWeight } from "./rscPage.ts";
 
 const CEILING: Readonly<Record<string, PageWeight>> = {
-  // Measured 286,395 and 146,758: 283,570 and 144,983 before #676 let paired
-  // tense tables share their rows on a wide screen (the grid rules on each
-  // set of tenses, once in the HTML and once in the payload).
-  sale: { html: 286_500, payload: 147_000 },
+  // Measured 290,542 and 148,896: 286,395 and 146,758 before #686 put
+  // salire's meanings under its Voce verbale line, once in the HTML and once
+  // in the payload; 283,570 and 144,983 before #676 let paired tense tables
+  // share their rows on a wide screen (the grid rules on each set of tenses).
+  sale: { html: 291_000, payload: 149_000 },
   // Measured 119,015 and 39,218.
   bello: { html: 119_500, payload: 39_500 },
   // Measured 268,893 and 125,330: 265,363 and 123,547 before #676 showed

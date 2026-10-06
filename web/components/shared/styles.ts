@@ -276,6 +276,13 @@ export const EXAMPLE = "m-0 mt-1 max-w-[48rem] font-serif text-[0.9375rem] itali
 export const EXAMPLE_EXTRA = `${EXAMPLE} hidden group-data-open/definitions:block`;
 /** An example of a sense not shown as a definition, after the definitions, in line with their text. */
 export const EXAMPLE_LOOSE = `${EXAMPLE_EXTRA} ml-[1.6875rem] sm:ml-8`;
+/**
+ * What a form's lemma means, under the form's first line (#686, frames 17 and
+ * 37): serif 16, muted, upright, so it does not read as an example.
+ */
+export const LEMMA_MEANING = "m-0 mt-1 max-w-[48rem] font-serif text-[0.9375rem] text-text-muted wrap-anywhere sm:mt-[0.3125rem] sm:text-base";
+/** A meaning past the lemma's first: in the document, shown once `+ more` is open. */
+export const LEMMA_MEANING_EXTRA = `${LEMMA_MEANING} hidden group-data-open/definitions:block`;
 /** A reading's definitions and the one `+ more` after them, which reveals everything else: `data-open` once open. */
 export const DEFINITIONS_GROUP = "group/definitions";
 

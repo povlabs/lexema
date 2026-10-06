@@ -446,6 +446,13 @@ export interface UnlistedTable {
 }
 
 /**
+ * A lemma record's own definitions, read as its own page reads them: its
+ * senses and the definitions recovered from its raw page. A verb form's block
+ * shows the first under its form line (#686).
+ */
+export type LemmaDefinitions = Pick<ReadingFacts, "senses" | "recovered">;
+
+/**
  * One record a reading's lemma link resolves to, as this lookup found it.
  *
  * A lemma whose own table lists the searched surface matches the query too,
@@ -461,6 +468,12 @@ export type LemmaTarget = LemmaCandidate & {
    * *Expressions with* the lemma without the lemma being a reading (#213).
    */
   expressions: Expression[];
+  /**
+   * The verb record's own definitions, for a verb a verb form record about the
+   * query names, once a page has read them (`withVerbDefinitions`,
+   * src/lookup/lookup.ts); absent for every other lemma, and from the lookup.
+   */
+  definitions?: LemmaDefinitions;
 } & ({ listing: LemmaListing; unlisted?: never } | { listing: undefined; unlisted?: UnlistedTable });
 
 /**

@@ -57,6 +57,11 @@
 // lookup's records, and the tables are their lemmas'. A verb's table comes with
 // the lookup; a grid needs the lemma's whole record, which the search reads for
 // the words `gridLemmaWords` names (web/lib/dictionary/searchAttempt.ts).
+//
+// Under a form's first line sits what the lemma whose table it shows first
+// means (`LemmaMeaning`, #686): that record's own definitions. A verb that is a
+// reading on the page and a grid's lemma record bring theirs; a verb a form
+// record names gets them from the search (`withVerbDefinitions`).
 
 import { normalizeItalianExact } from "@lexema/italian/normalize.ts";
 import { VERB_FORM_LINE_RULE, verbFormLine, type SpelledGender } from "@lexema/italian/verbFormLine.ts";
@@ -87,6 +92,7 @@ import type {
   EntryIdentity,
   Expression,
   LemmaCandidate,
+  LemmaDefinitions,
   LemmaListing,
   Pronunciation,
   Hyphenation,
@@ -108,7 +114,13 @@ import type {
  *   with nothing marked: `bello` for `bella`, `casa` for `case` (#626).
  */
 export type LemmaTable =
-  | { kind: "conjugation"; lemma: LemmaCandidate; listing: LemmaListing | UnlistedTable }
+  | {
+      kind: "conjugation";
+      lemma: LemmaCandidate;
+      listing: LemmaListing | UnlistedTable;
+      /** The verb record's own definitions, when the lookup read them: what its meaning line is read from (#686). */
+      definitions: LemmaDefinitions | undefined;
+    }
   | { kind: "grid"; lemma: Reading; agreement: Agreement };
 
 /** A verb's conjugation, the one kind of table a verb form block shows. */
@@ -117,6 +129,31 @@ export type ConjugationTable = Extract<LemmaTable, { kind: "conjugation" }>;
 /** The cells a conjugation marks: those its listing says the query hit, and none in a table that does not list it. */
 export const searchedIn = ({ listing }: ConjugationTable): SearchedSpellings =>
   "evidence" in listing ? searchedSpellings(listing) : { headword: false, formPointers: new Set() };
+
+/**
+ * What a form's lemma means, under the form's first line (#686; Huey's
+ * rulings of 2026-10-06, frames 17 and 37): the definitions of the lemma
+ * record whose table the form shows first, as that record's own page shows
+ * them, source text unchanged. The first shows closed; the rest wait for the
+ * one `+ more` the form's lines already have. It names the record it was read
+ * from, and each definition carries its own pointer, so a meaning with no
+ * source is not a value this holds.
+ */
+export interface LemmaMeaning {
+  /** The lemma record the definitions are its own. */
+  lemma: EntryIdentity & { word: string };
+  definitions: [DefinitionItem, ...DefinitionItem[]];
+}
+
+/** The meaning of the lemma whose table shows first, or none when its record has no definition or was not read. */
+function meaningOf(tables: readonly LemmaTable[]): LemmaMeaning | undefined {
+  const [table] = tables;
+  if (table === undefined) return undefined;
+  const definitions = table.kind === "grid" ? table.lemma : table.definitions;
+  if (definitions === undefined) return undefined;
+  const items = nonEmpty(definitionsOf({ word: table.lemma.word, senses: definitions.senses, recovered: definitions.recovered }).items);
+  return items === undefined ? undefined : { lemma: table.lemma, definitions: items };
+}
 
 /** A reading of a source record. */
 export interface PageReading {
@@ -140,6 +177,8 @@ export interface PageReading {
    * keeps both, as before.
    */
   ownForms: boolean;
+  /** For a noun or adjective form that shows its lemma's grid, what that lemma means (#686). */
+  meaning: LemmaMeaning | undefined;
   /** The etymologies the source ties to this reading, their bracket label dropped. */
   etymologies: WordText[];
   /** The synonym groups the source labels with this reading's part of speech. */
@@ -218,6 +257,8 @@ export interface VerbFormBlock {
   verbs: Reading[];
   /** The verb's conjugation, one per distinct table; the block's only *Forms*. */
   tables: ConjugationTable[];
+  /** What the verb means: the definitions of the record whose table the block shows first (#686). */
+  meaning: LemmaMeaning | undefined;
   /** The etymologies the source ties to the block's form records, their bracket label dropped. */
   etymologies: WordText[];
   /** The synonym groups the source labels with the block's form records. */
@@ -389,7 +430,7 @@ function conjugationTablesByVerb(reading: Reading): Map<string, ConjugationTable
     for (const lemma of link.candidates) {
       const listing = lemma.listing ?? lemma.unlisted;
       if (lemma.pos !== "verb" || listing === undefined) continue;
-      const table: ConjugationTable = { kind: "conjugation", lemma, listing };
+      const table: ConjugationTable = { kind: "conjugation", lemma, listing, definitions: lemma.definitions };
       const tables = byVerb.get(link.targetWord) ?? new Map<string, ConjugationTable>();
       if (!tables.has(conjugationKey(table))) tables.set(conjugationKey(table), table);
       byVerb.set(link.targetWord, tables);
@@ -586,6 +627,7 @@ export function wordPage(query: string, readings: readonly [Reading, ...Reading[
       const { block } = slot;
       const lines = nonEmpty<FormLine>([...block.sourceLines, ...block.ruleLines.values()]);
       if (lines === undefined) return [];
+      const tables = [...block.tables.values()];
       return [
         {
           kind: "verb-form",
@@ -595,7 +637,8 @@ export function wordPage(query: string, readings: readonly [Reading, ...Reading[
           lines,
           sources: block.sources,
           verbs: block.verbs,
-          tables: [...block.tables.values()],
+          tables,
+          meaning: meaningOf(tables),
           etymologies: block.etymologies,
           synonyms: relatedItems(block.synonyms),
         },
@@ -610,6 +653,7 @@ export function wordPage(query: string, readings: readonly [Reading, ...Reading[
         reading,
         lemmaTables: [...conjugationTablesOf(reading), ...grids],
         ownForms: grids.length === 0,
+        meaning: meaningOf(grids),
         etymologies: placed.etymologies.get(reading) ?? [],
         synonyms: relatedItems(placed.synonyms.get(reading) ?? []),
       },
@@ -695,7 +739,9 @@ function ruleLinesOf(verb: Reading, about: readonly Reading[], gender: SpelledGe
 /** A verb reading's own conjugation, drawn as a lemma's: opened where the query hit it. */
 function ownConjugation(verb: Reading): ConjugationTable | undefined {
   const evidence = nonEmpty(verb.evidence.filter((occurrence) => occurrence.origin === "embedded-form"));
-  return evidence === undefined ? undefined : { kind: "conjugation", lemma: verb, listing: { forms: verb.forms, evidence } };
+  return evidence === undefined
+    ? undefined
+    : { kind: "conjugation", lemma: verb, listing: { forms: verb.forms, evidence }, definitions: { senses: verb.senses, recovered: verb.recovered } };
 }
 
 /** A verb form block as it is gathered, before it is numbered. */
