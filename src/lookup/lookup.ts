@@ -13,16 +13,7 @@ import { pageEntriesOf, type PageEntries } from "./pageEntry.js";
 import { readExpressions } from "./expressions.js";
 import { placeRecovered, type RecoveredOfRecord, type StoredRecovered } from "./recovered.js";
 import { dictionaryTables, lineagesOf, servedBy, type DictionaryTables } from "./served.js";
-import { projectedJsonSql } from "./projection.js";
-import {
-  EXPRESSION_FIELDS,
-  LINE_FIELDS,
-  readExpressionItems,
-  readSourceRecord,
-  type ExpressionLine,
-  type ReadingLine,
-  type SourceRecordFields,
-} from "./sourceRecord.js";
+import { readSourceRecord, type SourceRecordFields } from "./sourceRecord.js";
 import { correctionOf, correctionsByRecord, type CorrectionRow } from "./correctedClaim.js";
 import { correctRecordClaims, pluralDeclaration } from "./types.js";
 import type {
@@ -309,8 +300,8 @@ async function found(
     return table;
   };
 
-  // A record's line as a reading reads it, read once whether it is a
-  // reading, a lemma a link names, or both. Every matched record is one or the other, so each
+  // A record's verbatim line, read once whether it is a reading, a lemma a
+  // link names, or both. Every matched record is one or the other, so each
   // line is read now, beside the links (#393).
   const records = new Map<number, Promise<RecordLine>>();
   const recordOf = (recordId: number): Promise<RecordLine> => {
@@ -353,13 +344,7 @@ async function found(
       }),
     ),
   );
-  // A lemma's expressions come off its own line, read beside the links; a
-  // lemma no link read returned, off the reading's line read for it.
-  const lemmaLineOf = await lemmaLines;
-  const expressionLineOf = (recordId: number): Promise<ExpressionLine> => {
-    const line = lemmaLineOf.get(recordId);
-    return line === undefined ? recordOf(recordId).then((record) => record.line) : Promise.resolve(line);
-  };
+  for (const [recordId, line] of await lemmaLines) if (!records.has(recordId)) records.set(recordId, Promise.resolve(line));
 
   // The lemmas the readings about the query point to. A record the query
   // matched only through its table, and that is one of these, is that
@@ -385,7 +370,7 @@ async function found(
     if (candidate.recordId === undefined) return Promise.resolve([]);
     let expressions = lemmaExpressions.get(candidate.recordId);
     if (expressions === undefined) {
-      expressions = readRecordExpressions(db, releaseId, expressionLineOf(candidate.recordId), (pointer) => ({ ...candidate.ref, jsonPointer: pointer }));
+      expressions = readRecordExpressions(db, releaseId, recordOf(candidate.recordId), (pointer) => ({ ...candidate.ref, jsonPointer: pointer }));
       lemmaExpressions.set(candidate.recordId, expressions);
     }
     return expressions;
@@ -644,7 +629,7 @@ async function buildReading(
   const ref = refOn(first);
   // Each read waits only on the ones it needs, and the rest go to the database
   // together: on D1 every wait is a network round trip (#385).
-  const source = inputs.record.then((record) => readSourceRecord(record.line, ref));
+  const source = inputs.record.then((record) => readSourceRecord(record.rawJson, ref));
   const [{ grammar, forms }, lemmaLinks, record, fields, expressions, recovered, senseRows, inflections, reviews] =
     await Promise.all([
       inputs.table,
@@ -685,44 +670,41 @@ async function buildReading(
 async function readRecordExpressions(
   db: LookupDatabase,
   releaseId: string,
-  line: Promise<ExpressionLine>,
+  record: Promise<RecordLine>,
   ref: (pointer: string) => SourceRef,
 ): Promise<Expression[]> {
-  return readExpressions(db, releaseId, readExpressionItems(await line, ref));
+  return readExpressions(db, releaseId, readSourceRecord((await record).rawJson, ref).expressionItems);
 }
 
-/** A record's section title and its archive line, cut to the fields a reading reads. */
+/** A record's section title and its verbatim archive line. */
 interface RecordLine {
   posTitle: string;
-  line: ReadingLine;
+  rawJson: string;
 }
 
 /**
- * Records' section titles and archive lines, each line cut in SQL to
- * `LINE_FIELDS` (#646): a page reads a few fields of a line, and D1 costs the
- * Worker CPU by the bytes it returns. The line is read once per record that is
- * a returned reading or a lemma a reading names (for its expressions, #213),
- * and never for any other record: the table is split off for exactly that.
+ * Records' section titles and verbatim lines. The line is read once per record
+ * that is a returned reading or a lemma a reading names (for its expressions,
+ * #213), and never for any other record: the table is split off for exactly that.
  */
-export const RECORD_LINE_SQL: KeyedRead = keyedRead(`SELECT r.record_id AS set_key, r.pos_title, ${projectedJsonSql("j.raw_json", LINE_FIELDS)} AS line
+export const RECORD_LINE_SQL: KeyedRead = keyedRead(`SELECT r.record_id AS set_key, r.pos_title, j.raw_json
        FROM source_record r
        JOIN source_record_json j ON j.record_id = r.record_id
       WHERE r.record_id IN (SELECT value FROM json_each(?1))`);
 
 async function readRecord(db: LookupDatabase, recordId: number): Promise<RecordLine> {
-  const [row] = await readKeys<{ pos_title: string; line: ReadingLine }>(db, RECORD_LINE_SQL, [recordId]);
+  const [row] = await readKeys<{ pos_title: string; raw_json: string }>(db, RECORD_LINE_SQL, [recordId]);
   if (row === undefined) throw new Error(`record ${recordId} vanished mid-lookup`);
-  return { posTitle: row.pos_title, line: row.line };
+  return { posTitle: row.pos_title, rawJson: row.raw_json };
 }
 
 /**
  * The lines of every headword record the `form_of` edges of the records bound
  * at `?1` name: the candidates `LEMMA_LINK_SQL` reads, each once per record
  * that names it, however many of its edges do. Read beside the links, so a
- * lemma's expressions are one wait after them, not two (#393). A lemma's line
- * is read for its expressions alone, so it is cut to them (#646).
+ * lemma's expressions are one wait after them, not two (#393).
  */
-export const LEMMA_LINE_SQL: KeyedRead = keyedRead(`SELECT c.set_key AS set_key, c.record_id, ${projectedJsonSql("j.raw_json", EXPRESSION_FIELDS)} AS line
+export const LEMMA_LINE_SQL: KeyedRead = keyedRead(`SELECT c.set_key AS set_key, c.record_id, r.pos_title, j.raw_json
        FROM (SELECT DISTINCT e.record_id AS set_key, lf.record_id
                FROM form_of_edge e
                JOIN lookup_form lf
@@ -730,12 +712,13 @@ export const LEMMA_LINE_SQL: KeyedRead = keyedRead(`SELECT c.set_key AS set_key,
                 AND lf.surface_key = e.target_word_key
                 AND lf.origin = 'headword'
               WHERE e.record_id IN (SELECT value FROM json_each(?1)) AND e.release_id IN (${servedBy("?2")})) c
+       JOIN source_record r ON r.record_id = c.record_id
        JOIN source_record_json j ON j.record_id = c.record_id`);
 
-/** The lines of the lemmas the links of `recordIds` name, by lemma record, each cut to its expressions. */
-async function readLemmaLines(db: LookupDatabase, releaseId: string, recordIds: readonly number[]): Promise<Map<number, ExpressionLine>> {
-  const rows = await readKeys<{ record_id: number; line: ExpressionLine }>(db, LEMMA_LINE_SQL, recordIds, [releaseId]);
-  return new Map(rows.map((row) => [row.record_id, row.line]));
+/** The lines of the lemmas the links of `recordIds` name, by lemma record. */
+async function readLemmaLines(db: LookupDatabase, releaseId: string, recordIds: readonly number[]): Promise<Map<number, RecordLine>> {
+  const rows = await readKeys<{ record_id: number; pos_title: string; raw_json: string }>(db, LEMMA_LINE_SQL, recordIds, [releaseId]);
+  return new Map(rows.map((row) => [row.record_id, { posTitle: row.pos_title, rawJson: row.raw_json }]));
 }
 
 /** A record's senses as the database holds them: each gloss, and each label. */
@@ -1333,14 +1316,14 @@ async function readRecovered(db: LookupDatabase, recordId: number, record: Promi
   const [labels, examples, replacedLines, served] = await Promise.all([
     readKeys<{ recovered_id: number; label: string }>(db, RECOVERED_LABEL_SQL, ids),
     readKeys<{ recovered_id: number; page_line: number; text: string }>(db, RECOVERED_EXAMPLE_SQL, ids),
-    Promise.all(replaced.map(async (id) => ({ record_id: id, line: (await readRecord(db, id)).line }))),
+    Promise.all(replaced.map(async (id) => ({ record_id: id, raw_json: (await readRecord(db, id)).rawJson }))),
     record,
   ]);
-  const glossesOf = (line: ReadingLine): RecordGloss[] => {
-    const parsed: unknown = JSON.parse(line);
+  const glossesOf = (rawJson: string): RecordGloss[] => {
+    const parsed: unknown = JSON.parse(rawJson);
     return recordGlosses(typeof parsed === "object" && parsed !== null ? (parsed as { senses?: unknown }).senses : undefined);
   };
-  const replacedGlosses = new Map(replacedLines.map((line) => [line.record_id, glossesOf(line.line)]));
+  const replacedGlosses = new Map(replacedLines.map((line) => [line.record_id, glossesOf(line.raw_json)]));
 
   const stored: StoredRecovered[] = [];
   for (const row of rows) {
@@ -1375,5 +1358,5 @@ async function readRecovered(db: LookupDatabase, recordId: number, record: Promi
       stored.push({ id, definition, writtenFor: "replaced", leadIn: recovered ?? (sense === null ? null : { in: "sense", glosses }) });
     }
   }
-  return placeRecovered(stored, glossesOf(served.line));
+  return placeRecovered(stored, glossesOf(served.rawJson));
 }
