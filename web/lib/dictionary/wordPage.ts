@@ -22,8 +22,8 @@
 // A searched verb form shows one block per verb it is a form of (#636; Huey's
 // ruling of 2026-10-06, frame 37): `1 · Voce verbale · salire`, then that
 // verb's form-of lines under *Definitions*, then *Forms of salire*, its
-// conjugation opened where the searched cell is, when that table lists the
-// query (matched by pointer). A block's lines come from two places:
+// conjugation opened where the searched cell is (matched by pointer). A block's
+// lines come from two places:
 //
 // - A form record about the query: each of its definitions goes to the verb its
 //   `form_of` edge names. `salivate`'s record gives salivare's block its two
@@ -41,10 +41,13 @@
 // 0016), though its type keeps it apart from a source line (`VerbFormLine`). A
 // verb with no line, such as one whose only hit cell is a participle, gives no
 // block and keeps its reading. A verb whose table does not list the query
-// (`andati`: andare's lists only `andato`) has a block with no table.
+// (`andati`: andare's lists only `andato`) still shows that table, opened as
+// the verb's own page opens it, with nothing marked (Huey's direction of
+// 2026-10-06, #666). A block shows no *Forms* of its form record's own: its
+// only tables are its verb's.
 //
-// A form reading carries its lemma's table when that table lists the query, the
-// way the lemma's own page draws it: `andavano` shows *Forms of andare*, the
+// A form reading carries its lemma's table the way the lemma's own page draws
+// it: `andavano` shows *Forms of andare*, the
 // conjugation, and `bella` the adjective shows *Forms of bello*, the gender and
 // number grid, in place of its own (#626). The lookup does not return the lemma
 // as a record of its own, so nothing is counted twice: the readings are the
@@ -68,6 +71,7 @@ import {
   otherFormsOfQueryLemmas,
   searchedSpellings,
   sourcePointerOf,
+  type SearchedSpellings,
   type SourceRef,
 } from "@lexema/lookup/types.ts";
 import { sourceTagsOf } from "./conjugation.ts";
@@ -84,26 +88,31 @@ import type {
   Hyphenation,
   Reading,
   RelatedWord,
+  UnlistedTable,
   WordFacts,
   WordText,
 } from "@lexema/lookup/types.ts";
 
 /**
- * A lemma whose table lists the searched form, as its own page draws that
- * table. It renders under the form's reading as *Forms of andare* or *Forms of
- * bello* (design-system-manifest.md § "The result").
+ * A lemma's table, as its own page draws it, under a form's reading as *Forms
+ * of andare* or *Forms of bello* (design-system-manifest.md § "The result").
  *
- * - A verb's whole conjugation, opened where the form sits: `andare` for
- *   `andavano`.
+ * - A verb's whole conjugation, opened where the form sits when its table
+ *   lists it (`andare` for `andavano`), and otherwise as the verb's own page
+ *   opens it, with nothing marked (`andare` for `andati`, #666).
  * - A noun's or adjective's gender and number grid, superlatives included,
  *   with nothing marked: `bello` for `bella`, `casa` for `case` (#626).
  */
 export type LemmaTable =
-  | { kind: "conjugation"; lemma: LemmaCandidate; listing: LemmaListing }
+  | { kind: "conjugation"; lemma: LemmaCandidate; listing: LemmaListing | UnlistedTable }
   | { kind: "grid"; lemma: Reading; agreement: Agreement };
 
 /** A verb's conjugation, the one kind of table a verb form block shows. */
 export type ConjugationTable = Extract<LemmaTable, { kind: "conjugation" }>;
+
+/** The cells a conjugation marks: those its listing says the query hit, and none in a table that does not list it. */
+export const searchedIn = ({ listing }: ConjugationTable): SearchedSpellings =>
+  "evidence" in listing ? searchedSpellings(listing) : { headword: false, formPointers: new Set() };
 
 /** A reading of a source record. */
 export interface PageReading {
@@ -116,7 +125,7 @@ export interface PageReading {
   number: number | undefined;
   reading: Reading;
   /**
-   * The lemmas whose tables list the query, one per distinct table. Two
+   * The lemmas whose tables the reading shows, one per distinct table. Two
    * records with the same table (`chiusi` names `chiudere` twice) show it once;
    * tables that differ each show.
    */
@@ -171,7 +180,7 @@ export type FormLine = SourceFormLine | VerbFormLine;
  */
 export interface BlockRecord {
   reading: Reading;
-  /** Whether this is the record's first block, the one that shows its own table and its loose examples. */
+  /** Whether this is the record's first block, the one that shows its loose examples. */
   first: boolean;
   /**
    * The words this record's `form_of` edges name that its `Form of` lines may
@@ -197,7 +206,7 @@ export interface VerbFormBlock {
   sources: BlockRecord[];
   /** The verb records the rule-built lines were read from, which have no reading of their own. */
   verbs: Reading[];
-  /** The verb's conjugation, one per distinct table. */
+  /** The verb's conjugation, one per distinct table; the block's only *Forms*. */
   tables: ConjugationTable[];
   /** The etymologies the source ties to the block's form records, their bracket label dropped. */
   etymologies: WordText[];
@@ -343,7 +352,7 @@ export function pageOrder(readings: readonly Reading[]): Reading[] {
 }
 
 /** What a table shows: each form's spelling and the grammar the source states for it, in order. */
-function tableKey(listing: LemmaListing): string {
+function tableKey(listing: LemmaListing | UnlistedTable): string {
   return JSON.stringify(
     listing.forms.map((form) => [
       form.surface,
@@ -356,9 +365,10 @@ function tableKey(listing: LemmaListing): string {
 const conjugationKey = (table: ConjugationTable): string => `${table.lemma.word}\u0000${tableKey(table.listing)}`;
 
 /**
- * The verb lemmas whose own tables list the query, for a verb reading that is
- * a form of them, by the word each `form_of` edge names: every candidate of
- * every link, once per distinct table.
+ * The verb lemmas' tables, for a verb reading that is a form of them, by the
+ * word each `form_of` edge names: every candidate of every link whose table
+ * the lookup returned, listing the query or not (#666), once per distinct
+ * table.
  */
 function conjugationTablesByVerb(reading: Reading): Map<string, ConjugationTable[]> {
   const byVerb = new Map<string, Map<string, ConjugationTable>>();
@@ -366,8 +376,9 @@ function conjugationTablesByVerb(reading: Reading): Map<string, ConjugationTable
   for (const link of reading.lemmaLinks) {
     if (link.kind !== "candidates") continue;
     for (const lemma of link.candidates) {
-      if (lemma.pos !== "verb" || lemma.listing === undefined) continue;
-      const table: ConjugationTable = { kind: "conjugation", lemma, listing: lemma.listing };
+      const listing = lemma.listing ?? lemma.unlisted;
+      if (lemma.pos !== "verb" || listing === undefined) continue;
+      const table: ConjugationTable = { kind: "conjugation", lemma, listing };
       const tables = byVerb.get(link.targetWord) ?? new Map<string, ConjugationTable>();
       if (!tables.has(conjugationKey(table))) tables.set(conjugationKey(table), table);
       byVerb.set(link.targetWord, tables);
@@ -398,8 +409,9 @@ interface FormOfVerb {
  * undefined for any other reading, which keeps a reading of its own.
  *
  * A verb is a word an edge names that resolves to a verb record; its tables
- * are those that list the query, and there may be none (`andati`: andare's
- * table lists only `andato`). A definition goes to the first verb an edge on
+ * are its records' conjugations, whether or not they list the query (`andati`:
+ * andare's table lists only `andato`, #666), and a verb record with no forms
+ * has none. A definition goes to the first verb an edge on
  * it names, and one with no edge at all to the record's first verb, as the
  * source leaves `macchina`'s second line without one. A record with a
  * definition whose edges name no verb is not split: it keeps its reading

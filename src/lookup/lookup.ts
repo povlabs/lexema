@@ -28,6 +28,7 @@ import type {
   LemmaCandidate,
   LemmaLink,
   LemmaListing,
+  LemmaTarget,
   LookupResult,
   PhraseMatch,
   PluralDeclaration,
@@ -45,6 +46,7 @@ import type {
   SourceRef,
   SourceText,
   StatedClaim,
+  UnlistedTable,
 } from "./types.js";
 
 /** Longest surface we will look up, so a pathological query cannot become a
@@ -356,13 +358,17 @@ async function found(
       .flatMap((group) => (declared.get(group[0].record_id) ?? []).flatMap(candidateIds)),
   );
 
-  const listingOf = async (recordId: number): Promise<LemmaListing | undefined> => {
+  /** Where a record's table spells the query, known from the hits alone, before its table is read. */
+  const listedAt = (recordId: number): { group: HitRow[]; evidence: [Evidence, ...Evidence[]] } | undefined => {
     const group = byRecord.get(recordId);
     if (group === undefined) return undefined;
     const [first, ...rest] = evidenceOf(group).filter((occurrence) => occurrence.origin === "embedded-form");
-    if (first === undefined) return undefined;
-    return { forms: (await tableOf(group)).forms, evidence: [first, ...rest] };
+    return first === undefined ? undefined : { group, evidence: [first, ...rest] };
   };
+  const listingOf = async ({ group, evidence }: { group: HitRow[]; evidence: [Evidence, ...Evidence[]] }): Promise<LemmaListing> => ({
+    forms: (await tableOf(group)).forms,
+    evidence,
+  });
 
   // A lemma's own expressions, read once per record however many links name it.
   const lemmaExpressions = new Map<number, Promise<Expression[]>>();
@@ -376,7 +382,24 @@ async function found(
     return expressions;
   };
 
-  const resolve = (links: DeclaredLink[]): Promise<LemmaLink[]> =>
+  // A verb's whole table, read once per record, for a verb form about the
+  // query that names it when its table lists nothing the query hit (`andare`
+  // for `andati`, #666). Only then: a verb whose table lists the query came
+  // with the lookup, so `andavano` reads nothing more.
+  const unlistedTables = new Map<number, Promise<UnlistedTable | undefined>>();
+  const unlistedOf = (candidate: LemmaCandidate & { recordId: number }): Promise<UnlistedTable | undefined> => {
+    let table = unlistedTables.get(candidate.recordId);
+    if (table === undefined) {
+      const ref = (pointer: string): SourceRef => ({ ...candidate.ref, jsonPointer: pointer });
+      table = handled(readTable(db, candidate.recordId, ref, corrected)).then(({ forms: [first, ...rest] }) =>
+        first === undefined ? undefined : { forms: [first, ...rest] },
+      );
+      unlistedTables.set(candidate.recordId, table);
+    }
+    return table;
+  };
+
+  const resolve = (links: DeclaredLink[], verbForm: boolean): Promise<LemmaLink[]> =>
     Promise.all(
       links.map(async (link): Promise<LemmaLink> => {
         if (link.kind === "dangling") {
@@ -385,9 +408,18 @@ async function found(
           return { ...link, kind: "candidates", candidates: entries.map((entry) => ({ ...entry, listing: undefined, expressions: [] })) };
         }
         const candidates = await Promise.all(
-          link.candidates.map(async (candidate) => {
-            const [listing, expressions] = await Promise.all([candidate.recordId === undefined ? undefined : listingOf(candidate.recordId), expressionsOf(candidate)]);
-            return { ...candidate, listing, expressions };
+          link.candidates.map(async (candidate): Promise<LemmaTarget> => {
+            const { recordId } = candidate;
+            const listed = recordId === undefined ? undefined : listedAt(recordId);
+            if (listed !== undefined) {
+              const [listing, expressions] = await Promise.all([listingOf(listed), expressionsOf(candidate)]);
+              return { ...candidate, listing, expressions };
+            }
+            const [unlisted, expressions] = await Promise.all([
+              verbForm && recordId !== undefined && candidate.pos === "verb" ? unlistedOf({ ...candidate, recordId }) : undefined,
+              expressionsOf(candidate),
+            ]);
+            return unlisted === undefined ? { ...candidate, listing: undefined, expressions } : { ...candidate, listing: undefined, expressions, unlisted };
           }),
         );
         return { ...link, candidates };
@@ -399,7 +431,7 @@ async function found(
     buildReading(db, releaseId, group, {
       table: tableOf(group),
       record: recordOf(group[0].record_id),
-      lemmaLinks: resolve(declared.get(group[0].record_id) ?? []),
+      lemmaLinks: resolve(declared.get(group[0].record_id) ?? [], isAbout(group) && group[0].record_pos === "verb"),
       reads: readsOf(group),
     });
 

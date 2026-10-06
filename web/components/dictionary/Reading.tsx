@@ -11,7 +11,7 @@
 
 import type { ReactNode } from "react";
 import { entryKey, everyRecovered, factRefKey, isVerbReading, searchedSpellings } from "@lexema/lookup/types.ts";
-import type { FactRef, LemmaListing, RecoveredDefinition, Reading } from "@lexema/lookup/types.ts";
+import type { FactRef, RecoveredDefinition, Reading } from "@lexema/lookup/types.ts";
 import { conjugationOf } from "@/lib/dictionary/conjugation.ts";
 import { definitionsOf, readAt, senseLabels, type DefinitionItem, type DefinitionPlace } from "@/lib/dictionary/definitions.ts";
 import { agreementOf, headingGrammar } from "@/lib/dictionary/genderGrid.ts";
@@ -19,6 +19,8 @@ import { ConjugationView, GridView, SuperlativeGrid, searchHref } from "./Forms"
 import {
   readingAnchor,
   readingHeadingId,
+  searchedIn,
+  type ConjugationTable,
   type FormLine,
   type LemmaTable,
   type PageReading,
@@ -323,14 +325,15 @@ function OwnForms({ reading }: { reading: Reading }) {
   );
 }
 
-function LemmaConjugation({ listing, word }: { listing: LemmaListing; word: string }) {
-  const searched = searchedSpellings(listing);
-  return <ConjugationView conjugation={conjugationOf(listing.forms, searched)} searchedPointers={searched.formPointers} word={word} />;
+function LemmaConjugation({ table }: { table: ConjugationTable }) {
+  const searched = searchedIn(table);
+  return <ConjugationView conjugation={conjugationOf(table.listing.forms, searched)} searchedPointers={searched.formPointers} word={table.lemma.word} />;
 }
 
 /**
  * *Forms of andare*, the lemma's whole conjugation opened where the searched
- * form sits, or *Forms of bello*, the lemma's grid with nothing marked (#626).
+ * form sits, or with nothing marked when it does not list it (#666); or *Forms
+ * of bello*, the lemma's grid with nothing marked (#626).
  */
 function LemmaForms({ owner, tables }: { owner: string; tables: readonly LemmaTable[] }) {
   return (
@@ -351,7 +354,7 @@ function LemmaForms({ owner, tables }: { owner: string; tables: readonly LemmaTa
             }
           >
             {table.kind === "conjugation" ? (
-              <LemmaConjugation listing={table.listing} word={lemma.word} />
+              <LemmaConjugation table={table} />
             ) : (
               <>
                 {table.agreement.grid !== undefined && <GridView grid={table.agreement.grid} label={`Forms of ${lemma.word}`} />}
@@ -385,7 +388,9 @@ const formLineKey = (line: FormLine): string =>
  * `1 · Voce verbale · salire`, then *Definitions*, its form-of lines, the
  * source's and those built by rule (#627) read alike, with the one expand
  * control every *Definitions* block has; then *Forms of salire*, opened where
- * the searched cell is. Nothing marks a line as Lexema's (ADR 0016).
+ * the searched cell is. Nothing marks a line as Lexema's (ADR 0016). The verb's
+ * table is the block's only *Forms*: a form record's own `forms[]` never shows
+ * here (#666).
  */
 export function VerbFormBlockView({ block }: { block: VerbFormBlock }) {
   const anchor = readingAnchor(block);
@@ -436,9 +441,6 @@ export function VerbFormBlockView({ block }: { block: VerbFormBlock }) {
       </Block>
       {block.sources.map((source) => (
         <LemmaLines key={entryKey(source.reading)} reading={source.reading} only={source.lemmaWords} />
-      ))}
-      {firsts.map((reading) => (
-        <OwnForms key={entryKey(reading)} reading={reading} />
       ))}
       <LemmaForms owner={anchor} tables={block.tables} />
       {block.etymologies.length > 0 && (
