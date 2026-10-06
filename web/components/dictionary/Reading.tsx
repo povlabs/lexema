@@ -12,7 +12,7 @@
 import type { ReactNode } from "react";
 import { entryKey, everyRecovered, factRefKey, isVerbReading, searchedSpellings } from "@lexema/lookup/types.ts";
 import type { FactRef, RecoveredDefinition, Reading } from "@lexema/lookup/types.ts";
-import { conjugationOf } from "@/lib/dictionary/conjugation.ts";
+import { conjugationOf, placesAny } from "@/lib/dictionary/conjugation.ts";
 import { definitionsOf, readAt, senseLabels, type DefinitionItem, type DefinitionPlace } from "@/lib/dictionary/definitions.ts";
 import { agreementOf, headingGrammar } from "@/lib/dictionary/genderGrid.ts";
 import { ConjugationView, GridView, SuperlativeGrid, searchHref } from "./Forms";
@@ -303,12 +303,14 @@ function LemmaLines({ reading, only }: { reading: Reading; only?: readonly strin
 function OwnForms({ reading }: { reading: Reading }) {
   const id = `forms-${entryKey(reading)}`;
   if (isVerbReading(reading)) {
-    if (reading.forms.length === 0) return null;
     const searched = searchedSpellings(reading);
+    const conjugation = conjugationOf(reading.forms, searched);
+    // Forms that fill no cell would draw only a row of dashes (#674).
+    if (!placesAny(conjugation)) return null;
     return (
       <Block id={id} label="Forms">
         <ConjugationView
-          conjugation={conjugationOf(reading.forms, searched)}
+          conjugation={conjugation}
           searchedPointers={searched.formPointers}
           word={reading.word}
         />
