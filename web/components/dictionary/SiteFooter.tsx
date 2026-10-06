@@ -31,7 +31,10 @@ export const PRIVACY_PATH = "/privacy";
 /** A footer link: a page of this site, which marks itself while shown, or a way out of it, which never does. */
 type FooterLink = { kind: "page"; label: string; path: string } | { kind: "away"; label: string; href: string };
 
-const linksOf = (origins: SiteOrigins): readonly FooterLink[] => [
+/** The one origin the footer links to; the rest of `SiteOrigins` never reaches it (#647). */
+export type FooterOrigins = Pick<SiteOrigins, "developers">;
+
+const linksOf = (origins: FooterOrigins): readonly FooterLink[] => [
   { kind: "page", label: "Licence", path: LICENCE_PATH },
   { kind: "page", label: "Privacy", path: PRIVACY_PATH },
   { kind: "away", label: "Contact", href: `mailto:${CONTACT_EMAIL}` },
@@ -42,7 +45,7 @@ const hrefOf = (link: FooterLink) => (link.kind === "page" ? link.path : link.hr
 const isShown = (link: FooterLink, current: string) => link.kind === "page" && link.path === current;
 
 /** The footer, with `current`, the path of the page being shown, marking its own link. */
-export function SiteFooter({ origins, current }: { origins: SiteOrigins; current: string }) {
+export function SiteFooter({ origins, current }: { origins: FooterOrigins; current: string }) {
   return (
     <footer className={SITE_FOOTER}>
       <div className={SITE_FOOTER_INNER}>

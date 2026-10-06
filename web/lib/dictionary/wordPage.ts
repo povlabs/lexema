@@ -281,11 +281,29 @@ export type ExpressionSection =
 /** A list longer than this gets the *Find an expression* box once it is open (Huey, 2026-10-01, on #213). */
 export const EXPRESSION_FILTER_ABOVE = 30;
 
+/** The section's label: `Expressions`, or `Expressions with andare` for a lemma's. */
+export const expressionsLabel = (section: ExpressionSection): string =>
+  section.kind === "own" ? "Expressions" : `Expressions with ${section.lemma}`;
+
+/**
+ * What a row of the section shows, and what *Find an expression* searches:
+ * the expression without the refs it was read from, which the page does not
+ * show. Only this crosses into the client component, so the refs stay out of
+ * the page's inline payload (#647).
+ */
+export type ExpressionRow = Pick<Expression, "phrase" | "meanings" | "hasEntry">;
+
+/** The section's rows, in order. */
+export const expressionRows = (section: ExpressionSection): [ExpressionRow, ...ExpressionRow[]] => {
+  const [first, ...rest] = section.expressions.map(({ phrase, meanings, hasEntry }) => ({ phrase, meanings, hasEntry }));
+  return [first, ...rest];
+};
+
 /** Whether a section lists enough rows to be filtered. */
-export const takesFilter = (section: ExpressionSection): boolean => section.expressions.length > EXPRESSION_FILTER_ABOVE;
+export const takesFilter = (rows: readonly ExpressionRow[]): boolean => rows.length > EXPRESSION_FILTER_ABOVE;
 
 /** Whether a row answers what was typed in *Find an expression*: its phrase or its meaning holds it. */
-export function matchesExpression(expression: Expression, typed: string): boolean {
+export function matchesExpression(expression: Pick<Expression, "phrase" | "meanings">, typed: string): boolean {
   const wanted = normalizeItalianExact(typed);
   if (wanted === "") return true;
   return [expression.phrase, ...expression.meanings].some((text) => normalizeItalianExact(text).includes(wanted));

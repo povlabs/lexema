@@ -23,9 +23,6 @@ import { More, MoreBlock, MorePanel } from "./More";
 import { MoodTabs } from "./MoodTabs";
 import {
   CELL_SEPARATOR,
-  COMPOUND_MORE,
-  COMPOUND_TABLES,
-  MOOD_PANEL,
   TENSE_SET,
   TENSE_SET_SIMPLE,
   DASH,
@@ -314,7 +311,7 @@ function TenseTables({
  */
 function MoodPanelView({ table, searched }: { table: MoodTable<TableForm>; searched: (form: TableForm) => boolean }) {
   return (
-    <MoreBlock className={MOOD_PANEL} open={table.compoundSearched}>
+    <MoreBlock kind="mood" open={table.compoundSearched}>
       {table.simple.length > 0 && (
         <>
           {table.compound.length > 0 && (
@@ -327,13 +324,13 @@ function MoodPanelView({ table, searched }: { table: MoodTable<TableForm>; searc
       )}
       {table.compound.length > 0 && (
         <>
-          <MorePanel className={COMPOUND_TABLES}>
+          <MorePanel>
             <p className={TENSE_SET} lang="it">
               Tempi composti
             </p>
             <TenseTables table={table} tenses={table.compound} searched={searched} />
           </MorePanel>
-          <More className={COMPOUND_MORE} />
+          <More place="compound" />
         </>
       )}
     </MoreBlock>

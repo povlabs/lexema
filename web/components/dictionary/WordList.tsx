@@ -28,7 +28,6 @@ import {
   WORD_LIST_ITEM,
   WORD_LIST_ITEM_REST,
   WORD_LIST_MORE_UNNEEDED,
-  WORD_MORE,
   WORD_NOTE,
 } from "@/components/shared/styles.ts";
 
@@ -131,7 +130,7 @@ export function WordList({
         {/* Last, so it ends what shows, open or closed; kept when every word
             fits, so a narrower window can bring it back. */}
         <li ref={toggle} className={cut ? WORD_LIST_ITEM : WORD_LIST_MORE_UNNEEDED}>
-          <More className={WORD_MORE} controls={`${id}-words`} />
+          <More place="words" controls={`${id}-words`} />
         </li>
       </Collapsible.Root>
     </section>

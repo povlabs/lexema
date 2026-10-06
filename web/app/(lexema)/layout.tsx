@@ -8,6 +8,7 @@ import { siteOrigins } from "@/lib/shared/siteOrigins.ts";
 export const metadata = { title: "Lexema", ...SITE_ICON_METADATA };
 
 export default async function RootLayout({ children }: { children: ReactNode }) {
+  const { developers } = await siteOrigins();
   return (
     <html lang="en">
       {/* The dark scheme, said once: `surface` under the page and `text` on it,
@@ -18,7 +19,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
         {/* Every page, including this one's children: the Licence page is
             what makes the small per-reading Source link lawful, so the way to
             it cannot depend on which page a reader landed on (ADR 0009). */}
-        <CurrentSiteFooter origins={await siteOrigins()} />
+        <CurrentSiteFooter origins={{ developers }} />
       </body>
     </html>
   );

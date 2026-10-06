@@ -2025,7 +2025,9 @@ test("the footer links Licence, Privacy, Contact and Developers, and marks the p
   // The layout imports globals.css, which Node cannot load, so that it carries
   // this footer, told the page being shown, is asserted on the files.
   const layout = await readFile(join(REPO, "web/app/(lexema)/layout.tsx"), "utf8");
-  assert.match(layout, /<CurrentSiteFooter origins=\{await siteOrigins\(\)\} \/>/);
+  assert.match(layout, /const \{ developers \} = await siteOrigins\(\);/);
+  // Only the origin the footer links to crosses into the client component (#647).
+  assert.match(layout, /<CurrentSiteFooter origins=\{\{ developers \}\} \/>/);
   const current = await readFile(join(REPO, "web/components/dictionary/CurrentSiteFooter.tsx"), "utf8");
   assert.match(current, /<SiteFooter origins=\{origins\} current=\{usePathname\(\)\} \/>/);
 });
