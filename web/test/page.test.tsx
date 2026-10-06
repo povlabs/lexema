@@ -639,6 +639,45 @@ async function verbDefinitions(db: DatabaseSync, word: string): Promise<string[]
     .flatMap((reading) => reading.senses.flatMap((sense) => sense.glosses.map((gloss) => gloss.text)));
 }
 
+/**
+ * A verb form block that shows andare's whole conjugation as its only *Forms*,
+ * with nothing marked: the shape of a block whose verb's table does not list
+ * the query (#666).
+ */
+function assertWholeUnmarkedConjugation(block: string, query: string): void {
+  assert.match(textOf(block), /gerundioandando·participio presenteandante·participioandato·ausiliareessere/, `${query}: andare's non-finite line`);
+  const tabs = [...block.matchAll(/<button [^>]*role="tab"[^>]*>([^<]+)<\/button>/g)];
+  assert.deepEqual(tabs.map((match) => match[1]), ["Indicativo", "Congiuntivo", "Condizionale", "Imperativo"], `${query}: andare's mood tabs`);
+  assert.match(tabs[0][0], /aria-selected="true"/, `${query}: opens at Indicativo, as andare's own page does`);
+  assert.match(textOf(panel(block, "Indicativo")), /lorovannoandavano/, `${query}: andare's tenses`);
+  // Nothing is marked: no cell, no person or tense, no non-finite label.
+  assert.deepEqual(searchedForms(block), [], `${query}: a cell is marked`);
+  for (const marked of [PERSON_SEARCHED, TENSE_HEAD_SEARCHED, NON_FINITE_LABEL_SEARCHED]) {
+    assert.ok(!block.includes(`class="${marked}"`), `${query}: marks ${marked}`);
+  }
+  // No Forms of the form record's own, so no row of dashes.
+  assert.doesNotMatch(block, /id="forms-/, `${query}: shows its record's own Forms`);
+  assert.doesNotMatch(textOf(block), /gerundio—|participio—|ausiliare—/, `${query}: shows a dash-only row`);
+}
+
+/** `fixtures/andata.jsonl`: andata's adjective, noun and verb form records, as release it-0c432803 has them (lines 30497-30499). */
+const ANDATA_LINES = (await readFile(join(REPO, "fixtures/andata.jsonl"), "utf8")).trimEnd().split("\n");
+
+test("a verb form its verb's table does not list shows that verb's whole table, opened as the verb's own page opens it, nothing marked (#666)", async () => {
+  await withLines([...(await devSeedLines()), ...ANDATA_LINES], async ({ db }) => {
+    const html = await render(db, "andata");
+    const block = verbBlock(html, "andare");
+    assert.ok(block !== undefined, "andata: no andare block");
+    assert.deepEqual(definitionLines(block), ["participio passato femminile singolare di andare"]);
+    assert.deepEqual(lemmaFormsOf(block), ["Forms ofandare"]);
+    assertWholeUnmarkedConjugation(block, "andata");
+    // andare's own page opens its table at the same mood.
+    const selected = (markup: string): string[] =>
+      [...markup.matchAll(/<button [^>]*role="tab"[^>]*>([^<]+)<\/button>/g)].filter((match) => /aria-selected="true"/.test(match[0])).map((match) => match[1]);
+    assert.deepEqual(selected(block), selected(nth(await render(db, "andare"), 2)));
+  });
+});
+
 /** `fixtures/salivate.jsonl`: salivate, salivare (adjective and verb) and saliva (noun and verb form), as the release has them. */
 const SALIVATE_LINES = (await readFile(join(REPO, "fixtures/salivate.jsonl"), "utf8")).trimEnd().split("\n");
 
@@ -813,13 +852,14 @@ test("a form that is also a noun keeps its noun readings, and its verb form is a
     );
 
     // andati the adjective form reads as before; its verb form is andare's
-    // block. andare's table lists `andato` and not `andati`, so there is no
-    // table to open at it.
+    // block. andare's table lists `andato` and not `andati`, and the block
+    // still shows it whole, as its only Forms (#666).
     const andati = await render(db, "andati");
     assert.deepEqual(headingsOf(andati), ["1·Aggettivo, forma flessa·maschile", "2·Voce verbale·andare"]);
     const verb = verbBlock(andati, "andare") ?? "";
     assert.deepEqual(definitionLines(verb), ["participio passato plurale maschile di andare"]);
-    assert.deepEqual(lemmaFormsOf(verb), []);
+    assert.deepEqual(lemmaFormsOf(verb), ["Forms ofandare"]);
+    assertWholeUnmarkedConjugation(verb, "andati");
     // studente the noun reads as before; its verb form is studiare's block.
     assert.deepEqual(headingsOf(await render(db, "studente")), ["1·Sostantivo·maschile, singolare", "2·Voce verbale·studiare"]);
   });

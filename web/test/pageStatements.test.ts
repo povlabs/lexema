@@ -114,6 +114,34 @@ for (const [word, ceiling] of Object.entries(BEFORE)) {
 }
 
 /**
+ * A verb form block reads its verb's table only when that table does not list
+ * the query (#666). `andavano` and `sono andato` are listed by andare's table,
+ * so they send what they sent at e380d77, before the read was added; `andati`,
+ * which andare's table does not list, sends andare's table read beside the
+ * reads it already made, in no more calls.
+ */
+const VERB_FORMS_BEFORE: Record<string, { statements: number; calls: number }> = {
+  andavano: { statements: 19, calls: 5 },
+  "sono andato": { statements: 20, calls: 5 },
+  andati: { statements: 43, calls: 6 },
+};
+
+/** The statements one table read sends: a record's grammar and its forms (`readTable`, src/lookup/lookup.ts). */
+const TABLE_READ_STATEMENTS = 3;
+
+for (const [word, then] of Object.entries(VERB_FORMS_BEFORE)) {
+  const extra = word === "andati" ? TABLE_READ_STATEMENTS : 0;
+  test(`the page for '${word}' sends ${then.statements + extra} statements in ${then.calls} calls, and reads the page SQLite reads`, async () => {
+    const sent = nothingSent();
+    const attempt = await searchAttempt(fromD1(countingD1(sqlite, sent)), RELEASE, word);
+    assert.equal(attempt.outcome, "found", `${word}: expected a found page`);
+    assert.equal(sent.statements, then.statements + extra, `${word}: statements`);
+    assert.equal(sent.calls, then.calls, `${word}: calls`);
+    assert.deepEqual(attempt, await searchAttempt(fromNodeSqlite(sqlite), RELEASE, word));
+  });
+}
+
+/**
  * A search that finds nothing (#663): what the page sent at f6731dd, before
  * the "Did you mean" reads were sent in fewer waits. A not-found page must make
  * fewer calls than then, and send no more statements.
