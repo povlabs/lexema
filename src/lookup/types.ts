@@ -419,22 +419,34 @@ export interface LemmaListing {
 }
 
 /**
+ * A verb lemma's whole `forms[]` when that table spells nothing the query hit:
+ * `andare`'s, for `andati`, whose own record says it is a form of `andare`
+ * while andare's table lists only `andato` (#666). It is read only for a verb
+ * a verb form record about the query names, and only when the lemma has no
+ * {@link LemmaListing}, so its page can show the verb's conjugation with
+ * nothing marked.
+ */
+export interface UnlistedTable {
+  forms: [SourceForm, ...SourceForm[]];
+}
+
+/**
  * One record a reading's lemma link resolves to, as this lookup found it.
  *
  * A lemma whose own table lists the searched surface matches the query too,
  * but it is not returned as a reading of its own: it is the lemma of the
  * reading that points to it, and it arrives here. `listing` is where its table
  * spells the query, and is absent when its table does not — `sala` the verb
- * record, for `sale`, lists no `sale`.
+ * record, for `sale`, lists no `sale`. Only then may `unlisted` carry the
+ * lemma's table anyway, so a lemma never carries both.
  */
 export type LemmaTarget = LemmaCandidate & {
-  listing: LemmaListing | undefined;
   /**
    * The lemma record's own expressions, so a form's page can show them under
    * *Expressions with andare* without the lemma being a reading (#213).
    */
   expressions: Expression[];
-}
+} & ({ listing: LemmaListing; unlisted?: never } | { listing: undefined; unlisted?: UnlistedTable });
 
 /**
  * A declared "this word is a form of that word" link: the reading's lemma. The
