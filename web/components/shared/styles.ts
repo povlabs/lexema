@@ -216,7 +216,7 @@ export const WORD_HEADING =
 export const PRONUNCIATION = "m-0 mt-[0.9375rem] font-mono text-[0.8125rem] text-text-muted sm:mt-[1.5625rem] sm:text-[0.9375rem] sm:leading-5";
 export const PRONUNCIATION_NOTE = "ml-2 font-sans text-[0.75rem]";
 
-/** Jump links, one per reading, for three readings or more. Numbers are tabular, as the frames set them. */
+/** Jump links, one per reading, when `showsJumpLinks` says so. Numbers are tabular, as the frames set them. */
 export const JUMP_LINKS = "m-0 mt-2.5 flex list-none flex-wrap gap-x-3.5 gap-y-1 p-0 sm:mt-[1.375rem] sm:gap-x-[1.125rem]";
 export const JUMP_LINK = `font-sans text-[0.78125rem] text-text no-underline sm:text-[0.8125rem] ${FOCUS_RING}`;
 export const JUMP_NUMBER = "mr-1.5 text-accent tabular-nums";

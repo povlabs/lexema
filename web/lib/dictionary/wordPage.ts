@@ -211,6 +211,20 @@ export type PageEntry = PageReading | VerbFormBlock;
 /** What follows a block's number in its heading and its jump link: `Voce verbale · salire`. */
 export const blockTitle = (block: VerbFormBlock): string => `${block.posTitle} · ${block.verb}`;
 
+/** Jump links appear from this many readings up, on any page. */
+export const JUMP_LINKS_FROM = 3;
+
+/**
+ * Whether a word page lists its readings under the headword: from three
+ * readings up, or when it is a form of two or more verbs, `salivate` of salire
+ * and salivare (frame 37, Huey's ruling of 2026-10-06, #654). Blocks are one
+ * per verb, so two verb form blocks are two different verbs.
+ */
+export function showsJumpLinks(page: WordPage): boolean {
+  const verbs = page.readings.filter((entry) => entry.kind === "verb-form").length;
+  return page.readings.length >= JUMP_LINKS_FROM || verbs >= 2;
+}
+
 /** What names an entry in its ids: its record, or a block's verb. */
 const entryName = (entry: PageEntry): string =>
   entry.kind === "verb-form" ? `voce-verbale-${entry.verb.replace(/\s+/g, "_")}` : entryKey(entry.reading);

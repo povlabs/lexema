@@ -399,8 +399,11 @@ paraphrase built from source tags (ADR 0008), built when the page is built
 page shows no mark for it (ADR 0016); its type, `VerbFormLine`, carries
 `sourceType: "lexema-deterministic"`, the rule and the pointer of the `forms[]`
 entry it was built from, apart from a source line by type. A block has its own
-anchor, named by its verb, and its jump link reads `3 Voce verbale · salire`;
-jump links still start at three readings. The report dialog names every record
+anchor, named by its verb, and its jump link reads `3 Voce verbale · salire`.
+Jump links start at three readings, or at two verb form blocks, which are two
+different verbs: `salivate` lists `1 Voce verbale · salire` and
+`2 Voce verbale · salivare` (`showsJumpLinks` in `wordPage.ts`,
+[#654](https://github.com/povlabs/lexema/issues/654)). The report dialog names every record
 a block shows, its form records and the verb records its lines were built from,
 once each, under the block's number and heading. The lookup and the API do not
 change.
