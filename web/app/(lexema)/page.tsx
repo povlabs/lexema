@@ -52,7 +52,7 @@ export async function generateMetadata({ searchParams }: PageProps) {
   // lookup rather than after it, and memoised with it.
   const version = servedVersion();
   // A search over the visitor's limit is not run for its title either. The
-  // same memoised search the result renders from (db.ts).
+  // same search the result renders from, memoised for the request (db.ts).
   const attempt = raw.trim() === "" || requestHeaders.has(SEARCH_LIMITED_HEADER) ? undefined : await search(raw);
   const title = pageTitle(raw, attempt === undefined ? undefined : titleOutcome(attempt));
   return {
@@ -72,7 +72,7 @@ export default async function Page({ searchParams }: PageProps) {
   const limited = (await headers()).has(SEARCH_LIMITED_HEADER);
 
   // The search field names the served version in its suggestion requests
-  // (#368): the one generateMetadata read, memoised.
+  // (#368): the one generateMetadata read, memoised for the request (db.ts).
   return (
     <SearchPage raw={raw} version={await servedVersion()}>
       {raw.trim() === "" ? (
