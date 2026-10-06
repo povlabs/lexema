@@ -999,32 +999,60 @@ public issue in this repository for each new report waiting in production's
 4. It takes the reports left, oldest first, at most 20 a run; the rest wait for
    the next run. When one of them names a record, it reads production's
    `lexema-dictionary` (`DB`, by its real id) once, with the same token: one
-   `SELECT` of `record_id`, `release_id`, `line_no`, `line_sha256` and `word`
-   from `source_record`. A report that kept its source line is matched on
+   `SELECT` of `record_id`, `release_id`, `line_no`, `line_sha256`, `word` and
+   `pos_title` from `source_record`. A row whose `pos_title` is missing or not
+   text stops the run, and the error quotes none of the row. A report that kept its source line is matched on
    `release_id`, `line_no` and `line_sha256`, because a re-seed of a release
    can renumber `record_id`; one that did not is matched on `record_id` and
    `release_id`. Each value is checked before it goes into the statement:
    numbers are whole, `release_id` is `it-` and eight lowercase hex digits, and
    `line_sha256` is 64 lowercase hex digits. A report that fails a check is
    left out of the statement.
-5. It opens an issue for each of those reports. It creates the `reader-report`
-   label when the repository lacks it.
+5. It opens an issue for each of those reports, with the `reader-report`
+   label. It creates the label when the repository lacks it.
 
-An issue shows the report id, the word, a link to the word's page on
-https://lexema.fyi, the reading (release, line and record) or "no reading
-picked", the option the reader chose, and whether the reader left a note. It
-never shows the note or anything from the visitor code, and it never shows the
-word as the reader sent it
+An issue never shows the note or anything from the visitor code, and it never
+shows the word as the reader sent it
 ([#639](https://github.com/povlabs/lexema/issues/639)):
 
 | Report | Word and page link |
 |---|---|
-| names a record (a mistake report on a reading) | the record's headword from `lexema-dictionary`. When the read finds no row, or a value failed its check, "word withheld" and no link |
-| names no record (a missing word, or a mistake report sent with "Not sure") | the typed text, only when it has the shape of a word: Latin and Italian accented letters, `'` or `’`, `-`, and single spaces between words, so no digits, `@`, `/`, `:` or `.`; no space at either end; at most 40 characters and 4 words. Otherwise "word withheld" and no link |
+| names a record (a mistake report on a reading) | the record's headword from `lexema-dictionary`. When the read finds no row, or a value failed its check, the word is withheld and has no link |
+| names no record (a missing word, or a mistake report sent with "Not sure") | the typed text, only when it has the shape of a word: Latin and Italian accented letters, `'` or `’`, `-`, and single spaces between words, so no digits, `@`, `/`, `:` or `.`; no space at either end; at most 40 characters and 4 words. Otherwise the word is withheld and has no link |
 
-A shown word is in a code span, so it cannot mention anyone, form a link or
-break the issue's layout. A word that passes the shape can still be a name;
-that is inside the rule Huey approved on #639.
+The issue's title names the word and what the reader says is wrong, and ends
+with ` (reader report)`, for example `bello: a meaning is wrong (reader report)`
+or `zzzz: missing word (reader report)`
+([#652](https://github.com/povlabs/lexema/issues/652)). A title has no code
+span, so a word stands in it only when it has the shape of a word, as in the
+table above. A withheld word, or a headword that holds a digit, `#` or another
+character the shape refuses, gives
+`Report <report id>: <what is wrong> (reader report)` instead. What is wrong is
+one of these plain words, by the option the reader picked:
+
+| Option | Plain words |
+|---|---|
+| `meaning` | a meaning is wrong |
+| `example` | an example is wrong |
+| `form` | a form is wrong |
+| `synonym` | a synonym is wrong |
+| `other` | something else is wrong |
+| `missing` | missing word |
+
+The body starts with the hidden marker on its own line, then short sentences:
+
+- the word in a code span with a link to its page on https://lexema.fyi, or
+  "The word is withheld." with no link;
+- the reading's part of speech (`pos_title`, from the same `source_record` row
+  as the headword) in a code span, then its release, line and record in small
+  print; or "The reader picked no reading.";
+- what the reader picked, in the plain words above;
+- "The reader left a note. Read it with `pnpm run report list`." or "No note.";
+- the report id in small print.
+
+A shown word or part of speech is in a code span, so it cannot mention anyone,
+form a link or break the issue's layout. A word that passes the shape can still
+be a name; that is inside the rule Huey approved on #639.
 
 The run never writes D1: it knows a report was sent only from that report's
 marker. It does not answer a report or erase its note; that stays with

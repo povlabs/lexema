@@ -6,7 +6,7 @@
 // does an issue print the word a reader sent as sent (#639): a report on a
 // record shows that record's headword, read from the dictionary, and a report
 // on no record shows its typed text only when it has the shape of a word.
-// Anything else is "word withheld". The workflow never writes the database:
+// Anything else is withheld. The workflow never writes the database:
 // it tells a sent report by the hidden marker on its issue.
 
 import type { readerReport } from "../db/app/schema.js";
@@ -20,8 +20,8 @@ export const ISSUES_PER_RUN = 20;
 /** Where a report's word is looked up on the live site. */
 export const SITE_SEARCH = "https://lexema.fyi/?q=";
 
-/** What an issue prints in place of a word it may not show. */
-export const WORD_WITHHELD = "word withheld";
+/** Every issue title ends with this, so the issue list says what each one is. */
+export const TITLE_SUFFIX = " (reader report)";
 
 /**
  * The run's one read of `reader_report`: the waiting reports, oldest first.
@@ -35,7 +35,17 @@ export const WAITING_REPORTS_QUERY =
   "FROM reader_report WHERE outcome IS NULL ORDER BY report_id";
 
 type Choice = (typeof readerReport.$inferSelect)["choice"];
-const CHOICES: readonly Choice[] = ["meaning", "example", "form", "synonym", "other", "missing"];
+
+/** What the reader says is wrong, by the option they picked, in the plain words an issue's title and body both use. */
+export const PROBLEMS = {
+  meaning: "a meaning is wrong",
+  example: "an example is wrong",
+  form: "a form is wrong",
+  synonym: "a synonym is wrong",
+  other: "something else is wrong",
+  missing: "missing word",
+} as const satisfies Record<Choice, string>;
+const CHOICES = Object.keys(PROBLEMS) as readonly Choice[];
 
 const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === "object" && value !== null && !Array.isArray(value);
 const isWhole = (value: unknown): value is number => typeof value === "number" && Number.isSafeInteger(value) && value > 0;
@@ -92,8 +102,8 @@ export class RecordKey {
 const recordId = (releaseId: string, id: number): string => `record ${releaseId} ${id}`;
 const lineId = (releaseId: string, lineNo: number, lineSha256: string): string => `line ${releaseId} ${lineNo} ${lineSha256}`;
 
-/** The columns the headword read selects from `source_record`: its keys and `word`, nothing else. */
-const HEADWORD_COLUMNS = "record_id, release_id, line_no, line_sha256, word";
+/** The columns the headword read selects from `source_record`: its keys, `word` and `pos_title`, nothing else. */
+const HEADWORD_COLUMNS = "record_id, release_id, line_no, line_sha256, word, pos_title";
 
 /**
  * The run's one read of production's `lexema-dictionary`: the headwords of the
@@ -111,9 +121,15 @@ export interface Dictionary {
   rows(statement: string): unknown[];
 }
 
+/** A record as the headword read found it: its headword and its part of speech. */
+export interface Headword {
+  readonly word: string;
+  readonly posTitle: string;
+}
+
 /** The headwords one dictionary read found, by record key. */
 export class Headwords {
-  private constructor(private readonly byKey: ReadonlyMap<string, string>) {}
+  private constructor(private readonly byKey: ReadonlyMap<string, Headword>) {}
 
   /** No headwords: what a run with no record to look up holds. */
   static readonly none = new Headwords(new Map());
@@ -126,21 +142,22 @@ export class Headwords {
   static read(keys: readonly RecordKey[], dictionary: Dictionary): Headwords {
     const statement = headwordQuery(keys);
     if (statement === undefined) return Headwords.none;
-    const byKey = new Map<string, string>();
+    const byKey = new Map<string, Headword>();
     for (const row of dictionary.rows(statement)) {
       if (!isRecord(row)) throw new Error("the headword read answered a row that is not a record");
-      const { record_id: id, release_id: releaseId, line_no: lineNo, line_sha256: lineSha256, word } = row;
-      if (!isWhole(id) || !isString(releaseId) || !isWhole(lineNo) || !isString(lineSha256) || !isString(word)) {
+      const { record_id: id, release_id: releaseId, line_no: lineNo, line_sha256: lineSha256, word, pos_title: posTitle } = row;
+      if (!isWhole(id) || !isString(releaseId) || !isWhole(lineNo) || !isString(lineSha256) || !isString(word) || !isString(posTitle)) {
         throw new Error("the headword read answered a row source_record would refuse");
       }
-      byKey.set(lineId(releaseId, lineNo, lineSha256), word);
-      byKey.set(recordId(releaseId, id), word);
+      const headword: Headword = { word, posTitle };
+      byKey.set(lineId(releaseId, lineNo, lineSha256), headword);
+      byKey.set(recordId(releaseId, id), headword);
     }
     return new Headwords(byKey);
   }
 
   /** The headword of the record `key` names, if the read found it. */
-  of(key: RecordKey): string | undefined {
+  of(key: RecordKey): Headword | undefined {
     return this.byKey.get(key.id);
   }
 }
@@ -267,39 +284,58 @@ export class ReportNotice {
   /** The word the issue shows: the record's headword or the accepted typed text, or undefined when it is withheld. */
   shownWord(headwords: Headwords): string | undefined {
     if (this.subject.kind === "typed") return this.subject.word;
-    return this.subject.key === undefined ? undefined : headwords.of(this.subject.key);
+    return this.subject.key === undefined ? undefined : headwords.of(this.subject.key)?.word;
   }
 
-  /** The issue's title. The word is left out: GitHub links a `#` reference in a title, and a title has no code span. */
-  get title(): string {
-    return `Reader report ${this.reportId}: ${this.choice}`;
+  /** What the reader says is wrong, in plain words. */
+  get problem(): string {
+    return PROBLEMS[this.choice];
   }
 
   /**
-   * The issue's body: the hidden marker on its own line, then one line per
-   * fact, and nothing else from the row. The word line and the page link both
-   * come from `shownWord`; a withheld word has no page link.
+   * The issue's title: `<word>: <problem> (reader report)`, or
+   * `Report <id>: <problem> (reader report)` when the word is withheld or lacks
+   * the shape of a word. A title has no code span and GitHub links a `#`
+   * reference in one, so only a word `typedWord` accepts may stand there.
+   */
+  title(headwords: Headwords): string {
+    const word = this.shownWord(headwords);
+    const titled = word === undefined ? undefined : typedWord(word);
+    return `${titled ?? `Report ${this.reportId}`}: ${this.problem}${TITLE_SUFFIX}`;
+  }
+
+  /**
+   * The issue's body: the hidden marker on its own line, then one short
+   * paragraph per fact, and nothing else from the row. The word and its page
+   * link both come from `shownWord`; a withheld word has no page link. The
+   * part of speech comes from the same dictionary row as the headword.
    */
   body(headwords: Headwords): string {
     const word = this.shownWord(headwords);
-    const reading =
-      this.reading === undefined
-        ? "no reading picked"
-        : [
-            `release ${inertCode(this.reading.releaseId)}`,
-            this.reading.lineNo === undefined ? "no line kept" : `line ${this.reading.lineNo}`,
-            `record ${this.reading.recordId}`,
-          ].join(", ");
+    const paragraphs = [
+      word === undefined ? "The word is withheld." : `The word is ${inertCode(word)}. Its page is <${sitePage(word)}>.`,
+      ...this.readingParagraphs(headwords),
+      `The reader picked: ${this.problem}.`,
+      this.hasNote ? "The reader left a note. Read it with `pnpm run report list`." : "No note.",
+      `<sub>Report ${this.reportId}.</sub>`,
+    ];
+    return `${reportMarker(this.reportId)}\n\n${paragraphs.join("\n\n")}\n`;
+  }
+
+  /** The reading's part of speech, when the read found it, then its release, line and record in small print; or that none was picked. */
+  private readingParagraphs(headwords: Headwords): string[] {
+    if (this.reading === undefined) return ["The reader picked no reading."];
+    const key = this.recordKey;
+    const posTitle = key === undefined ? undefined : headwords.of(key)?.posTitle;
+    const where = [
+      `Release ${inertCode(this.reading.releaseId)}`,
+      this.reading.lineNo === undefined ? "no line kept" : `line ${this.reading.lineNo}`,
+      `record ${this.reading.recordId}`,
+    ].join(", ");
     return [
-      reportMarker(this.reportId),
-      "",
-      `- report id: ${this.reportId}`,
-      ...(word === undefined ? [`- word: ${WORD_WITHHELD}`] : [`- word: ${inertCode(word)}`, `- page: <${sitePage(word)}>`]),
-      `- reading: ${reading}`,
-      `- option: ${this.choice}`,
-      `- has a note: ${this.hasNote ? "yes" : "no"}`,
-      "",
-    ].join("\n");
+      posTitle === undefined ? "The reading's part of speech is not known." : `The reading's part of speech is ${inertCode(posTitle)}.`,
+      `<sub>${where}.</sub>`,
+    ];
   }
 }
 
@@ -376,7 +412,7 @@ export async function sendWaitingReports(
   const opened: number[] = [];
   if (plan.open.length > 0) await issues.ensureLabel();
   for (const notice of plan.open) {
-    await issues.open(notice.title, notice.body(headwords));
+    await issues.open(notice.title(headwords), notice.body(headwords));
     opened.push(notice.reportId);
     log(`reader reports: opened an issue for report ${notice.reportId}`);
   }

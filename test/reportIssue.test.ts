@@ -3,7 +3,9 @@
 // facts and no note; a re-run opens no twin; and one run opens at most 20. Its
 // word is never the one the reader sent as sent (#639): a report on a record
 // shows the dictionary's headword, read in one checked statement, and a report
-// on no record shows its typed text only when it has the shape of a word.
+// on no record shows its typed text only when it has the shape of a word. An
+// issue reads at a glance (#652): its title names that word, when it may stand
+// in a title, and what is wrong, and its body is short sentences.
 
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
@@ -17,6 +19,7 @@ import {
   ReportNotice,
   inertCode,
   planRun,
+  PROBLEMS,
   reportMarker,
   sendWaitingReports,
   sentReportIds,
@@ -63,6 +66,8 @@ interface SourceRow {
   line_no: number;
   line_sha256: string;
   word: string;
+  /** `Sostantivo` when a test leaves it out. */
+  pos_title?: string;
 }
 
 /** A dictionary that answers every read with `held`, as D1 would filter it, and keeps each statement it ran. */
@@ -72,20 +77,36 @@ function fakeDictionary(held: readonly SourceRow[]): Dictionary & { statements: 
     statements,
     rows(statement) {
       statements.push(statement);
-      return held.filter(
-        (r) =>
-          statement.includes(`(release_id = '${r.release_id}' AND line_no = ${r.line_no} AND line_sha256 = '${r.line_sha256}')`) ||
-          statement.includes(`(record_id = ${r.record_id} AND release_id = '${r.release_id}')`),
-      );
+      return held
+        .filter(
+          (r) =>
+            statement.includes(`(release_id = '${r.release_id}' AND line_no = ${r.line_no} AND line_sha256 = '${r.line_sha256}')`) ||
+            statement.includes(`(record_id = ${r.record_id} AND release_id = '${r.release_id}')`),
+        )
+        .map((r) => ({ pos_title: "Sostantivo", ...r }));
     },
   };
 }
 
+/** The headwords one read over `held` finds for `n`. */
+const headwordsOf = (n: ReportNotice, held: readonly SourceRow[] = []): Headwords =>
+  Headwords.read(n.recordKey === undefined ? [] : [n.recordKey], fakeDictionary(held));
+
 /** The body of `n`'s issue after one headword read over `held`. */
-const bodyOf = (n: ReportNotice, held: readonly SourceRow[] = []): string =>
-  n.body(Headwords.read(n.recordKey === undefined ? [] : [n.recordKey], fakeDictionary(held)));
+const bodyOf = (n: ReportNotice, held: readonly SourceRow[] = []): string => n.body(headwordsOf(n, held));
+
+/** The title of `n`'s issue after one headword read over `held`. */
+const titleOf = (n: ReportNotice, held: readonly SourceRow[] = []): string => n.title(headwordsOf(n, held));
 
 const lineOf = (body: string, prefix: string): string | undefined => body.split("\n").find((line) => line.startsWith(prefix));
+
+/** The body's sentence about the word. */
+const wordLine = (body: string): string | undefined => lineOf(body, "The word is ");
+
+/** That sentence for a shown word, whose page link ends with `query`. */
+const shownLine = (word: string, query: string): string => `The word is ${inertCode(word)}. Its page is <https://lexema.fyi/?q=${query}>.`;
+
+const WITHHELD_LINE = "The word is withheld.";
 
 test("the read selects exactly the issue's columns and a computed has_note, and never the note, the visitor code or the time", () => {
   const [, columns] = /^SELECT (.*) FROM reader_report /.exec(WAITING_REPORTS_QUERY) ?? [];
@@ -174,8 +195,71 @@ test("a report's issue holds no note, no visitor code and no submitted word, eve
     received_at: "2026-10-01",
   });
   assert.deepEqual(Object.keys(leaky).sort(), ["choice", "hasNote", "reading", "reportId", "subject"]);
-  for (const text of [leaky.title, bodyOf(leaky, [{ record_id: 4, release_id: RELEASE, line_no: 4, line_sha256: sha("4"), word: "sale" }])]) {
-    for (const secret of ["a@b.c", sha("e"), "2026-10-01", "333"]) assert.ok(!text.includes(secret), secret);
+  const held = [{ record_id: 4, release_id: RELEASE, line_no: 4, line_sha256: sha("4"), word: "sale" }];
+  for (const text of [titleOf(leaky, held), bodyOf(leaky, held)]) {
+    for (const secret of ["a@b.c", sha("e"), "2026-10-01", "333", "call"]) assert.ok(!text.includes(secret), secret);
+  }
+});
+
+test("a withheld word is in neither the title nor the body", () => {
+  const cases: [ReportNotice, SourceRow[]][] = [
+    // Typed text without the shape of a word.
+    [notice(60, { word: "mario.rossi@example.com", choice: "missing" }), []],
+    // A record the dictionary read does not find: its submitted word is never shown.
+    [notice(61, { word: "segreto", record_id: 8, line_no: 3, line_sha256: sha("f") }), []],
+    // A record whose key failed its check never reaches the read.
+    [notice(62, { word: "segreto", record_id: 9, release_id: "it-a" }), [{ record_id: 9, release_id: "it-a", line_no: 9, line_sha256: sha("9"), word: "segreto" }]],
+  ];
+  for (const [n, held] of cases) {
+    const title = titleOf(n, held);
+    const body = bodyOf(n, held);
+    assert.equal(title, `Report ${n.reportId}: ${n.problem} (reader report)`);
+    assert.equal(wordLine(body), WITHHELD_LINE);
+    for (const text of [title, body]) {
+      for (const secret of ["mario", "example.com", "segreto"]) assert.ok(!text.includes(secret), `${n.reportId}: ${secret}`);
+    }
+  }
+});
+
+test("the title names a word-shaped word and the problem, else the report id, and always ends with (reader report)", () => {
+  const held = [
+    { record_id: 5782, release_id: RELEASE, line_no: 33646, line_sha256: sha("a"), word: "bello", pos_title: "Aggettivo" },
+    { record_id: 3, release_id: RELEASE, line_no: 3, line_sha256: sha("3"), word: "#651" },
+    { record_id: 4, release_id: RELEASE, line_no: 4, line_sha256: sha("4"), word: "G8" },
+  ];
+  const titles: [ReportNotice, string][] = [
+    [notice(1, { word: "bel", record_id: 5782, line_no: 33646, line_sha256: sha("a"), choice: "meaning" }), "bello: a meaning is wrong (reader report)"],
+    [notice(2, { word: "zzzz", choice: "missing" }), "zzzz: missing word (reader report)"],
+    [notice(3, { word: "333 1234567", choice: "missing" }), "Report 3: missing word (reader report)"],
+    [notice(4, { word: "x", record_id: 99, line_no: 99, line_sha256: sha("b"), choice: "example" }), "Report 4: an example is wrong (reader report)"],
+    [notice(5, { word: "x", record_id: 3, choice: "form" }), "Report 5: a form is wrong (reader report)"],
+    [notice(6, { word: "x", record_id: 4, choice: "synonym" }), "Report 6: a synonym is wrong (reader report)"],
+  ];
+  for (const [n, title] of titles) {
+    assert.equal(titleOf(n, held), title);
+    assert.ok(title.endsWith(" (reader report)"));
+    assert.ok(!title.startsWith("Reader report"));
+  }
+  // A headword the title may not hold is still shown in the body, inside its code span.
+  assert.equal(wordLine(bodyOf(titles[4][0], held)), shownLine("#651", "%23651"));
+});
+
+test("each of the six options maps to its plain words, in the title and the body alike", () => {
+  const expected: Record<string, string> = {
+    meaning: "a meaning is wrong",
+    example: "an example is wrong",
+    form: "a form is wrong",
+    synonym: "a synonym is wrong",
+    other: "something else is wrong",
+    missing: "missing word",
+  };
+  assert.deepEqual(PROBLEMS, expected);
+  assert.deepEqual([...readerReport.choice.enumValues].sort(), Object.keys(expected).sort());
+  for (const [choice, words] of Object.entries(expected)) {
+    const n = notice(70, { word: "casa", choice });
+    assert.equal(n.problem, words);
+    assert.equal(titleOf(n), `casa: ${words} (reader report)`);
+    assert.equal(lineOf(bodyOf(n), "The reader picked: "), `The reader picked: ${words}.`);
   }
 });
 
@@ -187,13 +271,13 @@ test("a report on a record shows the dictionary's headword and its page, never t
     { record_id: 7, release_id: RELEASE, line_no: 55, line_sha256: sha("b"), word: "perché" },
   ];
   const lineBody = bodyOf(byLine, held);
-  assert.equal(lineOf(lineBody, "- word: "), "- word: ` andare `");
-  assert.equal(lineOf(lineBody, "- page: "), "- page: <https://lexema.fyi/?q=andare>");
+  assert.equal(wordLine(lineBody), shownLine("andare", "andare"));
   assert.ok(!lineBody.includes("Mario"));
+  assert.ok(!titleOf(byLine, held).includes("Mario"));
   const recordBody = bodyOf(byRecord, held);
-  assert.equal(lineOf(recordBody, "- word: "), "- word: ` perché `");
-  assert.equal(lineOf(recordBody, "- page: "), "- page: <https://lexema.fyi/?q=perch%C3%A9>");
+  assert.equal(wordLine(recordBody), shownLine("perché", "perch%C3%A9"));
   assert.ok(!recordBody.includes("Mario"));
+  assert.equal(titleOf(byRecord, held), "perché: an example is wrong (reader report)");
 });
 
 test("a report that kept its line is matched on release, line and digest only, never on its record_id", () => {
@@ -203,18 +287,18 @@ test("a report that kept its line is matched on release, line and digest only, n
     { record_id: 5, release_id: RELEASE, line_no: 11, line_sha256: sha("d"), word: "casa" },
     { record_id: 6, release_id: RELEASE, line_no: 10, line_sha256: sha("e"), word: "cane" },
   ];
-  assert.equal(lineOf(bodyOf(kept, held), "- word: "), "- word: word withheld");
+  assert.equal(wordLine(bodyOf(kept, held)), WITHHELD_LINE);
 });
 
-test("a record the dictionary read does not find shows word withheld and no page link", () => {
+test("a record the dictionary read does not find shows the word withheld, no page link and no part of speech", () => {
   const body = bodyOf(notice(34, { word: "sale", record_id: 8, line_no: 3, line_sha256: sha("f") }), []);
-  assert.equal(lineOf(body, "- word: "), "- word: word withheld");
-  assert.equal(lineOf(body, "- page: "), undefined);
+  assert.equal(wordLine(body), WITHHELD_LINE);
+  assert.equal(lineOf(body, "The reading's "), "The reading's part of speech is not known.");
   assert.ok(!body.includes("sale"));
   assert.ok(!body.includes("https:"));
 });
 
-test("the headword read is one fixed SELECT of source_record's keys and word, matching by line when kept and by record otherwise", () => {
+test("the headword read is one fixed SELECT of source_record's keys, word and pos_title, matching by line when kept and by record otherwise", () => {
   const keys = [
     notice(1, { record_id: 42, line_no: 1234, line_sha256: sha("a") }),
     notice(2, { record_id: 7 }),
@@ -224,12 +308,12 @@ test("the headword read is one fixed SELECT of source_record's keys and word, ma
   const statement = headwordQuery(keys);
   assert.equal(
     statement,
-    "SELECT record_id, release_id, line_no, line_sha256, word FROM source_record WHERE " +
+    "SELECT record_id, release_id, line_no, line_sha256, word, pos_title FROM source_record WHERE " +
       `(release_id = '${RELEASE}' AND line_no = 1234 AND line_sha256 = '${sha("a")}') OR ` +
       `(record_id = 7 AND release_id = '${RELEASE}')`,
   );
   const [, columns, table] = /^SELECT (.*) FROM (\w+) WHERE /.exec(statement ?? "") ?? [];
-  assert.deepEqual(columns.split(", "), ["record_id", "release_id", "line_no", "line_sha256", "word"]);
+  assert.deepEqual(columns.split(", "), ["record_id", "release_id", "line_no", "line_sha256", "word", "pos_title"]);
   assert.equal(table, "source_record");
   assert.ok(!statement?.includes(";"), "one statement");
   assert.equal(headwordQuery([]), undefined, "no key, no read");
@@ -254,8 +338,8 @@ test("every value bound for the headword read is checked first; a report that fa
     assert.equal(n.recordKey, undefined, JSON.stringify(fields));
     const dictionary = fakeDictionary([{ record_id: 9, release_id: RELEASE, line_no: 3, line_sha256: sha("f"), word: "sale" }]);
     const body = n.body(Headwords.read([], dictionary));
-    assert.equal(lineOf(body, "- word: "), "- word: word withheld", JSON.stringify(fields));
-    assert.equal(lineOf(body, "- page: "), undefined);
+    assert.equal(wordLine(body), WITHHELD_LINE, JSON.stringify(fields));
+    assert.ok(!body.includes("https:"));
   }
   assert.equal(RecordKey.of({ releaseId: RELEASE, recordId: 1.5, lineNo: undefined }, undefined), undefined);
   assert.equal(RecordKey.of({ releaseId: RELEASE, recordId: 1, lineNo: 0 }, sha("a")), undefined);
@@ -268,6 +352,25 @@ test("every value bound for the headword read is checked first; a report that fa
     () => Headwords.read([odd.recordKey as RecordKey], { rows: () => [{ record_id: 9, release_id: RELEASE, word: "secret" }] }),
     (error: Error) => !error.message.includes("secret"),
   );
+  // So does a row whose pos_title is missing or not a string.
+  const keyed = { record_id: 9, release_id: RELEASE, line_no: 9, line_sha256: sha("9"), word: "casa" };
+  for (const posTitle of [undefined, null, 7, ["secret"]]) {
+    const answer = posTitle === undefined ? keyed : { ...keyed, pos_title: posTitle };
+    assert.throws(
+      () => Headwords.read([odd.recordKey as RecordKey], { rows: () => [answer] }),
+      (error: Error) => error.message === "the headword read answered a row source_record would refuse",
+      JSON.stringify(posTitle),
+    );
+  }
+});
+
+test("the reading's part of speech comes from the row the headword read found it in", () => {
+  const n = notice(43, { word: "x", record_id: 5782, line_no: 33646, line_sha256: sha("a") });
+  const headwords = Headwords.read([n.recordKey as RecordKey], {
+    rows: () => [{ record_id: 5782, release_id: RELEASE, line_no: 33646, line_sha256: sha("a"), word: "bello", pos_title: "Aggettivo" }],
+  });
+  assert.deepEqual(headwords.of(n.recordKey as RecordKey), { word: "bello", posTitle: "Aggettivo" });
+  assert.equal(lineOf(n.body(headwords), "The reading's "), "The reading's part of speech is ` Aggettivo `.");
 });
 
 test("typed text is shown only in the shape of a word: phone numbers, emails, URLs and sentences are withheld", () => {
@@ -293,8 +396,8 @@ test("typed text is shown only in the shape of a word: phone numbers, emails, UR
   for (const text of withheld) {
     assert.equal(typedWord(text), undefined, text);
     const body = bodyOf(notice(50, { word: text, choice: "missing" }));
-    assert.equal(lineOf(body, "- word: "), "- word: word withheld", text);
-    assert.equal(lineOf(body, "- page: "), undefined, text);
+    assert.equal(wordLine(body), WITHHELD_LINE, text);
+    assert.ok(!body.includes("https:"), text);
   }
   const shown: [string, string][] = [
     ["casa", "casa"],
@@ -307,8 +410,7 @@ test("typed text is shown only in the shape of a word: phone numbers, emails, UR
   ];
   for (const [text, query] of shown) {
     const body = bodyOf(notice(51, { word: text, choice: "missing" }));
-    assert.equal(lineOf(body, "- word: "), `- word: ${inertCode(text)}`, text);
-    assert.equal(lineOf(body, "- page: "), `- page: <https://lexema.fyi/?q=${query}>`, text);
+    assert.equal(wordLine(body), shownLine(text, query), text);
   }
   assert.equal(typedWord("a".repeat(40)), "a".repeat(40));
   assert.equal(typedWord("perche\u0301"), "perché", "a decomposed accent is joined");
@@ -316,69 +418,109 @@ test("typed text is shown only in the shape of a word: phone numbers, emails, UR
 
 test("a mistake report sent with Not sure has no record, so it takes the word shape too", () => {
   const body = bodyOf(notice(52, { word: "mario.rossi@example.com", choice: "meaning" }));
-  assert.equal(lineOf(body, "- word: "), "- word: word withheld");
-  assert.equal(lineOf(bodyOf(notice(53, { word: "sale", choice: "meaning" })), "- word: "), "- word: ` sale `");
+  assert.equal(wordLine(body), WITHHELD_LINE);
+  assert.equal(wordLine(bodyOf(notice(53, { word: "sale", choice: "meaning" }))), shownLine("sale", "sale"));
 });
 
-test("each kind of report renders its facts, the code-span word, the page link, the option, has a note and the marker", () => {
+test("each kind of report renders the marker, then short sentences: the word and its page, the reading, the option and the note", () => {
   const held = [
-    { record_id: 42, release_id: RELEASE, line_no: 1234, line_sha256: sha("a"), word: "andare" },
-    { record_id: 7, release_id: RELEASE, line_no: 70, line_sha256: sha("7"), word: "casa" },
+    { record_id: 5782, release_id: RELEASE, line_no: 33646, line_sha256: sha("a"), word: "bello", pos_title: "Aggettivo" },
+    { record_id: 7, release_id: RELEASE, line_no: 70, line_sha256: sha("7"), word: "casa", pos_title: "Sostantivo" },
   ];
-  const cases = [
-    {
-      name: "a word report",
-      notice: notice(11, { word: "sale", choice: "other" }),
-      lines: ["- report id: 11", "- word: ` sale `", "- page: <https://lexema.fyi/?q=sale>", "- reading: no reading picked", "- option: other", "- has a note: yes"],
-    },
-    {
-      name: "a reading report",
-      notice: notice(12, { word: "andare", record_id: 42, line_no: 1234, line_sha256: sha("a"), choice: "meaning" }),
-      lines: [
-        "- word: ` andare `",
-        "- page: <https://lexema.fyi/?q=andare>",
-        "- reading: release ` it-0c432803 `, line 1234, record 42",
-        "- option: meaning",
-        "- has a note: yes",
-      ],
-    },
-    {
-      name: "a missing-word report with an empty note",
-      notice: notice(13, { word: "dell'acqua", choice: "missing", has_note: 0 }),
-      lines: ["- word: ` dell'acqua `", "- page: <https://lexema.fyi/?q=dell%27acqua>", "- reading: no reading picked", "- option: missing", "- has a note: no"],
-    },
-    {
-      name: "a report with a note",
-      notice: notice(14, { word: "casa", record_id: 7, line_no: null, choice: "example", has_note: 1 }),
-      lines: ["- word: ` casa `", "- reading: release ` it-0c432803 `, no line kept, record 7", "- option: example", "- has a note: yes"],
-    },
+  const cases: [ReportNotice, string][] = [
+    [
+      notice(1, { word: "bello", record_id: 5782, line_no: 33646, line_sha256: sha("a"), choice: "meaning" }),
+      [
+        "<!-- lexema-reader-report:1 -->",
+        "The word is ` bello `. Its page is <https://lexema.fyi/?q=bello>.",
+        "The reading's part of speech is ` Aggettivo `.",
+        "<sub>Release ` it-0c432803 `, line 33646, record 5782.</sub>",
+        "The reader picked: a meaning is wrong.",
+        "The reader left a note. Read it with `pnpm run report list`.",
+        "<sub>Report 1.</sub>",
+      ].join("\n\n"),
+    ],
+    [
+      notice(11, { word: "sale", choice: "other", has_note: 0 }),
+      [
+        "<!-- lexema-reader-report:11 -->",
+        "The word is ` sale `. Its page is <https://lexema.fyi/?q=sale>.",
+        "The reader picked no reading.",
+        "The reader picked: something else is wrong.",
+        "No note.",
+        "<sub>Report 11.</sub>",
+      ].join("\n\n"),
+    ],
+    [
+      notice(13, { word: "zzzz", choice: "missing" }),
+      [
+        "<!-- lexema-reader-report:13 -->",
+        "The word is ` zzzz `. Its page is <https://lexema.fyi/?q=zzzz>.",
+        "The reader picked no reading.",
+        "The reader picked: missing word.",
+        "The reader left a note. Read it with `pnpm run report list`.",
+        "<sub>Report 13.</sub>",
+      ].join("\n\n"),
+    ],
+    [
+      notice(14, { word: "casa", record_id: 7, line_no: null, choice: "example", has_note: 0 }),
+      [
+        "<!-- lexema-reader-report:14 -->",
+        "The word is ` casa `. Its page is <https://lexema.fyi/?q=casa>.",
+        "The reading's part of speech is ` Sostantivo `.",
+        "<sub>Release ` it-0c432803 `, no line kept, record 7.</sub>",
+        "The reader picked: an example is wrong.",
+        "No note.",
+        "<sub>Report 14.</sub>",
+      ].join("\n\n"),
+    ],
+    [
+      notice(15, { word: "Mario", record_id: 8, line_no: 3, line_sha256: sha("f"), choice: "form" }),
+      [
+        "<!-- lexema-reader-report:15 -->",
+        "The word is withheld.",
+        "The reading's part of speech is not known.",
+        "<sub>Release ` it-0c432803 `, line 3, record 8.</sub>",
+        "The reader picked: a form is wrong.",
+        "The reader left a note. Read it with `pnpm run report list`.",
+        "<sub>Report 15.</sub>",
+      ].join("\n\n"),
+    ],
   ];
-  for (const { name, notice: n, lines } of cases) {
-    const body = bodyOf(n, held).split("\n");
-    assert.equal(body[0], `<!-- lexema-reader-report:${n.reportId} -->`, name);
-    assert.ok(body.includes(`- report id: ${n.reportId}`), name);
-    for (const line of lines) assert.ok(body.includes(line), `${name}: ${line}`);
-    assert.equal(n.title, `Reader report ${n.reportId}: ${n.choice}`);
+  for (const [n, expected] of cases) {
+    const body = bodyOf(n, held);
+    assert.equal(body, `${expected}\n`, `report ${n.reportId}`);
+    // The marker is alone on the first line, and the run still reads it there.
+    assert.equal(body.split("\n")[0], reportMarker(n.reportId));
+    assert.deepEqual([...sentReportIds([body])], [n.reportId]);
   }
 });
 
 test("a hostile headword renders inert: no mention, no other link, no way out of its code span", () => {
   const word = "@huey ``x`` [click](https://evil.example)\n\n# heading\r\n<!-- lexema-reader-report:99 --> #1 end";
-  const body = bodyOf(notice(21, { record_id: 3 }), [{ record_id: 3, release_id: RELEASE, line_no: 3, line_sha256: sha("3"), word }]);
-  const wordLine = lineOf(body, "- word: ");
-  assert.ok(wordLine !== undefined);
-  const code = wordLine.slice("- word: ".length);
+  const posTitle = "@pos ``y``\n# [z](https://evil.example)";
+  const n = notice(21, { record_id: 3 });
+  const held = [{ record_id: 3, release_id: RELEASE, line_no: 3, line_sha256: sha("3"), word, pos_title: posTitle }];
+  const body = bodyOf(n, held);
+  const sentence = wordLine(body);
+  assert.ok(sentence !== undefined);
+  const code = inertCode(word);
+  assert.ok(sentence.startsWith(`The word is ${code}. Its page is <`));
   // One code span: the fence is longer than any backtick run inside, and the word holds no line break.
-  assert.equal(code, inertCode(word));
   assert.match(code, /^(`{3}) .* \1$/);
   assert.doesNotMatch(code.slice(4, -4), /`{3}/);
-  assert.equal(body.split("\n").length, bodyOf(notice(22)).split("\n").length, "the word adds no line");
+  const plain = bodyOf(notice(22, { record_id: 4 }), [{ record_id: 4, release_id: RELEASE, line_no: 4, line_sha256: sha("4"), word: "casa" }]);
+  assert.equal(body.split("\n").length, plain.split("\n").length, "the word and the part of speech add no line");
   // The page link is one autolink: its URL holds no space, `>` or Markdown syntax, so it cannot end early.
-  const page = /^- page: <(\S+)>$/m.exec(body)?.[1] ?? "";
+  const page = /Its page is <(\S+)>\.$/m.exec(body)?.[1] ?? "";
   assert.match(page, /^https:\/\/lexema\.fyi\/\?q=[A-Za-z0-9%._~-]+$/);
-  // Outside the code span and that URL, the body names no user and holds no other link.
-  const outside = body.replace(code, "").replace(page, "");
+  // The part of speech is one code span too.
+  assert.equal(lineOf(body, "The reading's "), `The reading's part of speech is ${inertCode(posTitle)}.`);
+  // Outside the code spans and that URL, the body names no user and holds no other link.
+  const outside = body.replace(code, "").replace(page, "").replace(inertCode(posTitle), "");
   assert.doesNotMatch(outside, /@|evil|\]\(|https?:/);
+  // The title may not hold it, so it falls back to the report id.
+  assert.equal(titleOf(n, held), "Report 21: a meaning is wrong (reader report)");
   // A marker inside the word is not a marker: only the first line is.
   assert.deepEqual([...sentReportIds([body])], [21]);
 });
@@ -509,6 +651,28 @@ test("the label is created only when missing, issues carry it, and a refusal nam
   );
   await assert.rejects(issues.open("t", "b"), (error: Error) => error.message === "GitHub refused to open a report issue (HTTP 422)");
   assert.deepEqual(JSON.parse(calls.at(-1)?.body ?? "{}"), { title: "t", body: "b", labels: ["reader-report"] });
+});
+
+test("a run opens each issue with its readable title and body, and the reader-report label", async () => {
+  const posts: unknown[] = [];
+  const fetch: Fetch = async (url, { method, body }) => {
+    if (method === "POST" && url.endsWith("/issues")) posts.push(JSON.parse(body ?? "null"));
+    if (url.includes("/issues?")) return Response.json([]);
+    return new Response(null, { status: 201 });
+  };
+  const waiting = [notice(1, { word: "bel", record_id: 5782, line_no: 33646, line_sha256: sha("a") }), notice(2, { word: "zzzz", choice: "missing" })];
+  const dictionary = fakeDictionary([{ record_id: 5782, release_id: RELEASE, line_no: 33646, line_sha256: sha("a"), word: "bello", pos_title: "Aggettivo" }]);
+  await sendWaitingReports({ read: () => waiting }, githubIssues("povlabs/lexema", "token", fetch, async () => {}), dictionary, () => {});
+  assert.deepEqual(
+    posts.map((post) => (post as { title: string; labels: string[] }).title),
+    ["bello: a meaning is wrong (reader report)", "zzzz: missing word (reader report)"],
+  );
+  for (const post of posts) {
+    const { body, labels } = post as { body: string; labels: string[] };
+    assert.deepEqual(labels, ["reader-report"]);
+    assert.ok(body.startsWith("<!-- lexema-reader-report:"));
+  }
+  assert.deepEqual(sentReportIds(posts.map((post) => (post as { body: string }).body)), new Set([1, 2]));
 });
 
 test("reader-reports.yml runs hourly and by hand, in dictionary-plan with the read token alone, and checks its settings first", () => {
