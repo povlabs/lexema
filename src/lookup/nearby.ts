@@ -2,8 +2,9 @@
 // letters with an accent (`citta` → `città`) or a final apostrophe (`dall` →
 // `dall'`, #468), a spelling one edit away
 // (`mangare` → `mangiare`), or the words that begin with what was typed
-// (`bab`). Each step runs only when the one before it found nothing, and each
-// is an indexed read: `accent_fold` and `typo_key` are written by the seed
+// (`bab`). Each step is used only when the one before it found nothing (a
+// one-word query's prefix list is read early, beside the accent step, #663),
+// and each is an indexed read: `accent_fold` and `typo_key` are written by the seed
 // (src/import/seedSql.ts), and the prefix list is the search field's own
 // `suggest`. Nothing here scores the whole word list per request.
 //
@@ -272,10 +273,14 @@ export async function findNearby({ db, releaseId, query }: { db: LookupDatabase;
   const key = normalizeItalianExact(query);
   if (key === "") return { kind: "none" };
 
-  const prefixWords = async (): Promise<string[]> => {
-    const answer = await suggest({ db, releaseId, prefix: query });
-    return answer.outcome === "suggested" ? answer.suggestions : [];
-  };
+  let prefixRead: Promise<string[]> | undefined;
+  const prefixWords = (): Promise<string[]> =>
+    (prefixRead ??= suggest({ db, releaseId, prefix: query }).then((answer) => (answer.outcome === "suggested" ? answer.suggestions : [])));
+  // A query of one word is never offered a phrase, so its prefix list is used
+  // unless a typo match is found. Its reads start beside the accent step's and
+  // ride in the same D1 calls (#663). A typo match never awaits it, so a
+  // failed prefix read cannot fail that answer.
+  if (!/\s/.test(key)) prefixWords().catch(() => undefined);
   const [accent, phrases] = await Promise.all([accentMatches(db, releaseId, key), nearPhrases(db, releaseId, key, NEARBY_LIMIT)]);
   const phrasesBesides = (shown: readonly string[]) => {
     const keys = new Set(shown.map(normalizeItalianExact));
