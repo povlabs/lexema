@@ -1,8 +1,8 @@
 "use client";
 
 // One *Expressions* section (#213): the expressions the source lists for the
-// word, or, on a form's page, for a word it is a form of (*Expressions with
-// andare*). No count on the label. Closed, the first row, then `+ more` when
+// word, or, on a form's page, for a word it is a form of (*Expressions with*
+// its lemma; never a verb shown as a block, #668). No count on the label. Closed, the first row, then `+ more` when
 // there are others; open, every row, then `less` (More.tsx). A phrase that is
 // its own headword is bright and links to its entry; one that is not is dimmer
 // and plain. A list longer than thirty rows takes *Find an expression* once
