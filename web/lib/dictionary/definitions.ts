@@ -73,9 +73,8 @@ export function definitionsOf(reading: Pick<Reading, "word" | "senses" | "recove
 }
 
 /**
- * Whether the reading has a definition to show. The one rule for it: a reading
- * without one gets no number (wordPage.ts), so whatever `definitionsOf` stops
- * counting as a definition changes the numbering too.
+ * Whether the reading has a definition to show. The share card takes its
+ * meaning from the first reading that has one (card.ts).
  */
 export function hasDefinitions(reading: Reading): boolean {
   return definitionsOf(reading).items.length > 0;

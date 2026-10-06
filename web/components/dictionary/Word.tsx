@@ -75,7 +75,7 @@ function JumpLinks({ page }: { page: WordPage }) {
         {page.readings.map((entry) => (
           <li key={readingAnchor(entry)}>
             <a className={JUMP_LINK} href={`#${readingAnchor(entry)}`}>
-              {entry.number !== undefined && <span className={JUMP_NUMBER}>{entry.number}</span>}
+              <span className={JUMP_NUMBER}>{entry.number}</span>
               <span lang="it">{entry.kind === "verb-form" ? blockTitle(entry) : entry.reading.posTitle}</span>
             </a>
           </li>
@@ -131,7 +131,7 @@ export interface FooterFacts {
   sourceWord: string;
   /** The word a report is about. */
   headword: string;
-  /** Each reading a report can name, with its number on the page; a word page leaves a reading with no definition unnumbered. */
+  /** Each reading a report can name, with its number on the page. */
   readings: readonly { number: ReportReading["number"]; reading: EntryIdentity & { posTitle: string } }[];
 }
 

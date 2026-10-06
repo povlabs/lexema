@@ -238,9 +238,9 @@ headword says nothing either: `presina`'s one gloss is `presina f`, and once its
 gender stamp is lifted (#317) it reads `presina`. The lookup treats a gloss equal
 to the headword, ignoring case, accents, apostrophes and the punctuation around
 it, as no definition too (#395); one that only contains the headword (`sci`'s
-`sport associato all'attività di andare sugli sci`) stays. A reading with no definition shows
-its part-of-speech label alone, with no number, and the readings that have one
-number 1, 2, 3 among themselves (#250).
+`sport associato all'attività di andare sugli sci`) stays. A reading with no definition has no
+*Definitions* block, and it is numbered like every other reading: `salivare`
+reads `1 · Aggettivo` then `2 · Verbo` (#687, reversing #250).
 
 **Definitions the extraction dropped or misfiled.** Where the raw Wiktionary page states a
 definition the record does not carry as a definition (#28) — absent, or filed

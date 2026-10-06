@@ -151,9 +151,9 @@ test("a gender stated only by a gloss stamp is on the card, and a word whose pag
   assert.equal(dormire.gender, undefined);
 });
 
-test("a page whose first reading has no definition: the card speaks for its first numbered reading", async () => {
-  // fuori's Interiezione reading has no definition, so the page gives it no
-  // number. Put first, it opens the page; the page's first meaning is still the
+test("a page whose first reading has no definition: the card speaks for its first reading that has one (#687)", async () => {
+  // fuori's Interiezione reading has no definition. Put first, it opens the
+  // page as `1 · Interiezione`; the page's first meaning is still the
   // Avverbio's, and so is the card's.
   const found = await attempt("fuori");
   assert.equal(found.outcome, "found");
