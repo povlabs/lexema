@@ -15,7 +15,9 @@ import { placeRecovered, type RecoveredOfRecord, type StoredRecovered } from "./
 import { dictionaryTables, lineagesOf, servedBy, type DictionaryTables } from "./served.js";
 import { readSourceRecord, type SourceRecordFields } from "./sourceRecord.js";
 import { correctionOf, correctionsByRecord, type CorrectionRow } from "./correctedClaim.js";
-import { correctRecordClaims, pluralDeclaration } from "./types.js";
+import { essereAgreement, feminineOf, type AgreeingSpelling } from "../italian/essereAgreement.js";
+import { personOfItalianVerbForm } from "../italian/moods.js";
+import { correctRecordClaims, pluralDeclaration, sourcePointerOf, sourceTagsOf } from "./types.js";
 import type {
   ArchiveClaim,
   Evidence,
@@ -185,10 +187,15 @@ export type ExistsResult =
   | { outcome: "present"; query: QueryInfo; release: ReleaseInfo; word: string };
 
 export async function exists({ db, releaseId, query }: LookupOptions): Promise<ExistsResult> {
-  const [prepared, pages] = await probeWithPages(db, releaseId, query, (key) => queryAll<HitRow>(db, `${SEARCH_SQL}\n      LIMIT 1`, releaseId, key));
+  const [prepared, pages, tables] = await probeWithPages(db, releaseId, query, (key) => queryAll<HitRow>(db, `${SEARCH_SQL}\n      LIMIT 1`, releaseId, key));
   if (prepared.outcome === "rejected") return prepared;
   const [first] = prepared.probed;
-  const word = first?.record_word ?? (await pages.candidates(prepared.query.key))[0]?.word ?? (await phraseHits(db, releaseId, prepared.query.key))?.hits[0].record_word;
+  const { key } = prepared.query;
+  const word =
+    first?.record_word ??
+    (await pages.candidates(key))[0]?.word ??
+    (await phraseHits(db, releaseId, key))?.hits[0].record_word ??
+    (await feminineHits(db, releaseId, key, tables.corrections))?.hits[0].record_word;
   return word === undefined
     ? { outcome: "absent", query: prepared.query, release: prepared.release }
     : { outcome: "present", query: prepared.query, release: prepared.release, word };
@@ -246,9 +253,52 @@ export async function lookup({ db, releaseId, query }: LookupOptions): Promise<L
   // Nothing spells the query. A query of several words may still be a
   // multi-word headword said the way a speaker says it (#214).
   const phrase = await phraseHits(db, releaseId, key);
-  if (phrase === undefined) return { outcome: "not-found", query: queryInfo, release };
-  const forms = await phraseForms(db, releaseId, phrase.phrases);
-  return found(db, releaseId, pages, queryInfo, release, phrase.hits, { kind: "phrase", phrases: phrase.phrases, forms }, corrected);
+  if (phrase !== undefined) {
+    const forms = await phraseForms(db, releaseId, phrase.phrases);
+    return found(db, releaseId, pages, queryInfo, release, phrase.hits, { kind: "phrase", phrases: phrase.phrases, forms }, corrected);
+  }
+
+  // Nor a phrase. It may be the feminine of a compound form the source lists
+  // only as the masculine: `sono andata` of `sono andato` (#676).
+  const feminine = await feminineHits(db, releaseId, key, corrected);
+  if (feminine === undefined) return { outcome: "not-found", query: queryInfo, release };
+  const route: FoundRoute = { kind: "feminine", agreement: feminine.agreement };
+  return found(db, releaseId, pages, queryInfo, release, feminine.hits, route, corrected, feminine.tables);
+}
+
+/**
+ * The rows of a query read as the feminine of a compound spelling, by rule
+ * `it-essere-agreement/v1` (#676): `sono andata` probes `sono andato`, and
+ * keeps a row only where it is a verb's `forms[]` cell on a row of the number
+ * the feminine names, whose spelling the rule says agrees there. The tables
+ * read to place each cell come back with the rows, so `found` reads none
+ * twice. Undefined when no cell agrees. Nothing is sent for a query the rule
+ * cannot read as a feminine (`casa`, `ho mangiata`, `sono andat`).
+ */
+async function feminineHits(
+  db: LookupDatabase,
+  releaseId: string,
+  key: string,
+  corrected: boolean,
+): Promise<{ hits: [HitRow, ...HitRow[]]; agreement: AgreeingSpelling; tables: ReadonlyMap<number, Promise<RecordTable>> } | undefined> {
+  const agreement = feminineOf(key);
+  if (agreement === undefined) return undefined;
+  const rows = (await queryAll<HitRow>(db, SEARCH_SQL, releaseId, agreement.masculine)).filter(
+    (row) => row.origin === "embedded-form" && row.record_pos === "verb",
+  );
+  const tables = new Map<number, Promise<RecordTable>>();
+  for (const row of rows) {
+    if (!tables.has(row.record_id)) tables.set(row.record_id, handled(readTable(db, row.record_id, refOn(row), corrected)));
+  }
+  const agrees = await Promise.all(
+    rows.map(async (row) => {
+      const form = (await tables.get(row.record_id))?.forms.find((one) => sourcePointerOf(one.ref) === row.json_pointer);
+      const place = form === undefined ? undefined : personOfItalianVerbForm(sourceTagsOf(form));
+      return place?.number === agreement.number && essereAgreement(row.surface, place.number).kind === "agrees";
+    }),
+  );
+  const [first, ...rest] = rows.filter((_, i) => agrees[i]);
+  return first === undefined ? undefined : { hits: [first, ...rest], agreement, tables };
 }
 
 /**
@@ -276,6 +326,8 @@ async function found(
   hits: readonly HitRow[],
   route: FoundRoute,
   corrected: boolean,
+  /** Record tables already read for these hits, so none is read again. */
+  read: ReadonlyMap<number, Promise<RecordTable>> = new Map(),
 ): Promise<FoundResult> {
   // Group evidence by record. This is the step that keeps five lookup rows from
   // becoming five readings.
@@ -294,7 +346,9 @@ async function found(
   // as a reading shows them, and a record taken out as a reading's lemma is
   // listed by them, so none is read for nothing (#385).
   const tables = new Map(
-    groups.map((group) => [group[0].record_id, handled(readTable(db, group[0].record_id, refOn(group[0]), corrected))] as const),
+    groups.map(
+      (group) => [group[0].record_id, read.get(group[0].record_id) ?? handled(readTable(db, group[0].record_id, refOn(group[0]), corrected))] as const,
+    ),
   );
   const tableOf = (group: readonly HitRow[]): Promise<RecordTable> => {
     const table = tables.get(group[0].record_id);

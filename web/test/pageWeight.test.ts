@@ -19,8 +19,9 @@ const CEILING: Readonly<Record<string, PageWeight>> = {
   sale: { html: 284_000, payload: 145_500 },
   // Measured 119,015 and 39,218.
   bello: { html: 119_500, payload: 39_500 },
-  // Measured 265,363 and 123,547.
-  andare: { html: 265_500, payload: 124_000 },
+  // Measured 265,531 and 123,631: 265,363 and 123,547 before #676 showed
+  // andare's 42 compound cells with both genders (`sono andato/a`).
+  andare: { html: 266_000, payload: 124_000 },
 };
 
 const pages = renderWordPages(Object.keys(CEILING));

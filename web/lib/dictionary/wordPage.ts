@@ -34,6 +34,9 @@
 //   (src/italian/verbFormLine.ts) in the table's own Italian names: "prima
 //   persona singolare del passato prossimo indicativo di andare" (#627). The
 //   verb's record then has no reading of its own: its table is the block's.
+//   A feminine compound form the lookup read by `it-essere-agreement/v1`
+//   (`sono andata`, route `feminine`, #676) hits its masculine's cell, and its
+//   line names the gender: "prima persona singolare femminile del ...".
 //   Rule-built blocks lead the page, as their lines did under #627.
 //
 // A rule-built line is built here, when the page is built; the lookup, the API
@@ -56,7 +59,7 @@
 // the words `gridLemmaWords` names (web/lib/dictionary/searchAttempt.ts).
 
 import { normalizeItalianExact } from "@lexema/italian/normalize.ts";
-import { VERB_FORM_LINE_RULE, verbFormLine } from "@lexema/italian/verbFormLine.ts";
+import { VERB_FORM_LINE_RULE, verbFormLine, type SpelledGender } from "@lexema/italian/verbFormLine.ts";
 import { mergeExpressions } from "@lexema/lookup/expressions.ts";
 import {
   entryKey,
@@ -71,10 +74,11 @@ import {
   otherFormsOfQueryLemmas,
   searchedSpellings,
   sourcePointerOf,
+  sourceTagsOf,
+  type FoundRoute,
   type SearchedSpellings,
   type SourceRef,
 } from "@lexema/lookup/types.ts";
-import { sourceTagsOf } from "./conjugation.ts";
 import { definitionsOf, hasDefinitions, placeOf, readAt, type DefinitionItem } from "./definitions.ts";
 import { agreementOf, type Agreement, type Spelling } from "./genderGrid.ts";
 import { labelParts, readingsNamed, splitLabel } from "./readingLabels.ts";
@@ -162,6 +166,12 @@ export interface VerbFormLine {
   /** The verb's `forms[]` entry the line was built from: the pointer the query's evidence carries. */
   ref: SourceRef;
 }
+
+/** How a lookup reached a word page's readings: every route but a phrase's, which has a page of its own. */
+export type WordRoute = Exclude<FoundRoute, { kind: "phrase" }>;
+
+/** The route of a query found as typed. */
+export const SURFACE_ROUTE: WordRoute = { kind: "surface" };
 
 /** A definition of a form record about the query, in the block of the verb its `form_of` edge names. */
 export interface SourceFormLine {
@@ -510,9 +520,12 @@ function gridTablesOf(reading: Reading, lemmas: readonly Reading[]): LemmaTable[
 /**
  * The page for `query`. `lemmas` are the records of the words
  * `gridLemmaWords(readings)` names, as the lookup reads them; a lemma grid is
- * drawn only from one of them.
+ * drawn only from one of them. `route` is how the lookup reached the readings:
+ * a feminine compound form (`sono andata`, #676) names the gender in its
+ * verbs' lines.
  */
-export function wordPage(query: string, readings: readonly [Reading, ...Reading[]], lemmas: readonly Reading[]): WordPage {
+export function wordPage(query: string, readings: readonly [Reading, ...Reading[]], lemmas: readonly Reading[], route: WordRoute): WordPage {
+  const gender: SpelledGender = route.kind === "feminine" ? "feminine" : "as-listed";
   const forms = formsOfQueryReadings(readings);
   const siblings = otherFormsOfQueryLemmas(readings);
   const ordered = pageOrder(readings.filter((reading) => !forms.has(reading) && !siblings.has(reading)));
@@ -535,7 +548,7 @@ export function wordPage(query: string, readings: readonly [Reading, ...Reading[
     return block;
   };
   for (const verb of ordered) {
-    const lines = ruleLinesOf(verb, about);
+    const lines = ruleLinesOf(verb, about, gender);
     if (lines.length === 0) continue;
     const block = blockOf(verb.word);
     for (const line of lines) if (!block.ruleLines.has(line.text)) block.ruleLines.set(line.text, line);
@@ -664,14 +677,15 @@ const formOfReadingAbout = (verb: Reading, about: readonly Reading[]): boolean =
  * `forms[]` entries the query hit: one line per hit cell `it-verb-form-line/v1`
  * names, matched by pointer, identical lines once. None when no cell is named,
  * or when a reading about the query already declares itself a form of `verb`.
+ * `gender` is how the query spelled the cells: a feminine names it in each line.
  */
-function ruleLinesOf(verb: Reading, about: readonly Reading[]): VerbFormLine[] {
+function ruleLinesOf(verb: Reading, about: readonly Reading[], gender: SpelledGender): VerbFormLine[] {
   if (!isVerbReading(verb) || verb.isAboutQuery || formOfReadingAbout(verb, about)) return [];
   const hit = searchedSpellings(verb).formPointers;
   const lines = new Map<string, VerbFormLine>();
   for (const form of verb.forms) {
     if (!isSourceRef(form.ref) || !hit.has(form.ref.jsonPointer)) continue;
-    const text = verbFormLine(verb.word, sourceTagsOf(form));
+    const text = verbFormLine(verb.word, sourceTagsOf(form), gender);
     if (text === undefined || lines.has(text)) continue;
     lines.set(text, { kind: "rule", text, lemma: verb.word, sourceType: "lexema-deterministic", rule: VERB_FORM_LINE_RULE, ref: form.ref });
   }

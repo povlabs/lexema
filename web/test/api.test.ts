@@ -44,7 +44,7 @@ import { withRateLimits, type LimitBindings } from "@/worker/shared/rateLimit.ts
 import { SITE_LIMITS } from "./siteLimits.ts";
 import { RATE_WINDOW_SECONDS } from "@/worker/api/keyLimits.ts";
 import { FakeRateLimit, TestMetering } from "./metering.ts";
-import { wordPage } from "@/lib/dictionary/wordPage.ts";
+import { SURFACE_ROUTE, wordPage } from "@/lib/dictionary/wordPage.ts";
 import { suggestionsOf } from "@/worker/api/lookupAnswer.ts";
 
 const REPO = fileURLToPath(new URL("../..", import.meta.url));
@@ -619,7 +619,7 @@ test("every result carries its record's expressions as the page lists them, and 
   // The order is the page's.
   const found = await lookup({ db: dictionary, releaseId: RELEASE, query: "fare" });
   assert.ok(found.outcome === "found");
-  const page = wordPage("fare", found.readings, []);
+  const page = wordPage("fare", found.readings, [], SURFACE_ROUTE);
   assert.deepEqual(
     noun.expressions.map((row) => row.phrase),
     page.expressionSections[0]?.expressions.map((row) => row.phrase),

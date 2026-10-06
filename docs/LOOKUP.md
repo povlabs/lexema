@@ -92,8 +92,9 @@ When the key matches nothing and has two to `MAX_PHRASE_WORDS` (12) words,
    headword is a match, and only a record's headword counts.
 
 The readings are those headwords' records, and `route` says how they were
-reached: `{ kind: "surface" }` for every other `found`, or
-`{ kind: "phrase", phrases, forms }`. Each phrase is the headword `key`, its
+reached: `{ kind: "surface" }` for a query found as typed,
+`{ kind: "phrase", phrases, forms }`, or `{ kind: "feminine", agreement }`
+(below). Each phrase is the headword `key`, its
 `word` as the source spells it, and the typed `words` with the lemma each
 stood for and the one word that stands for it (`inflected`: the participle of
 a compound tense). A single word is never read this way, and neither is a
@@ -139,6 +140,37 @@ searched words': `vado via` links to *andare via*'s page
 Each form line keeps its record's provenance pointer, which reaches `vado`'s
 page, and `/licence` carries the full credit
 ([ADR 0009](../.decisions/0009-two-licences-and-a-source-link.md)).
+
+### A feminine compound form
+
+A compound tense built on essere agrees its participle with the subject:
+`sono andata`, `siamo andate`. The source lists only the masculine (`sono
+andato`), so the feminine spells nothing. When the key matches nothing and is
+no phrase either, `lookup()` reads it as a feminine by rule
+`it-essere-agreement/v1` (#676,
+[`src/italian/essereAgreement.ts`](../src/italian/essereAgreement.ts), probe
+`feminineHits` in [`src/lookup/lookup.ts`](../src/lookup/lookup.ts)):
+
+1. The key must be two words, the first a finite form of essere (a closed set
+   the rule owns) and the second ending in `-a` (singular) or `-e` (plural).
+   Anything else sends nothing more: `casa`, `ho mangiata` and `sono andat`
+   cost exactly the statements they cost before.
+2. The masculine (`-a` to `-o`, `-e` to `-i`) is probed with `SEARCH_SQL`:
+   `sono andata` probes `sono andato`, `sono andate` probes `sono andati`.
+3. A row is kept only when it is a verb's `forms[]` cell, the cell's row has
+   the number the feminine names, and the rule says its spelling agrees
+   there. `è andate` finds nothing: `è andati` is in no cell.
+
+The readings are those verbs, and their evidence is only the cells that
+agree. `route` is `{ kind: "feminine", agreement }`, where `agreement` holds
+the rule, the number, the masculine and the feminine. The page builds its
+verb form line from that route ("prima persona singolare femminile del passato
+prossimo indicativo di andare") and marks the masculine's cell. `exists()`
+answers the same way, so the two never disagree. The switch is the spelling,
+never the record's `ausiliare` line: essere's own record has none, and a verb
+with both auxiliaries lists `ho vissuto` and `sono vissuto` in one cell, where
+only the second agrees. Nothing derived is stored
+([Huey's ruling](https://github.com/povlabs/lexema/issues/676#issuecomment-6013478337)).
 
 ## Outcomes
 

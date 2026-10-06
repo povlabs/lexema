@@ -4,6 +4,7 @@
 
 import type { ArticleDisplay } from "../core/types.js";
 import type { SurfaceWithholding } from "../italian/articles.js";
+import type { AgreeingSpelling } from "../italian/essereAgreement.js";
 import type { PhraseGloss } from "../italian/phrase.js";
 import type { VerbFormGloss } from "../italian/verbFormGloss.js";
 
@@ -149,6 +150,20 @@ export interface SourceForm {
   formSource: string | null;
   /** Grammar the source states about this entry, and the silences it left. */
   claims: GrammarClaim[];
+}
+
+/** A form's own tags and raw tags, recovered from its claims by pointer. */
+export function sourceTagsOf(form: SourceForm): { tags: string[]; rawTags: string[] } {
+  const tags: string[] = [];
+  const rawTags: string[] = [];
+  for (const claim of form.claims) {
+    if (claim.status === "missing") continue;
+    // A form a raw page writes out states its tags and nothing else (src/italian/pageFacts.ts).
+    const pointer = sourcePointerOf(claim.ref);
+    if (pointer === undefined || /\/tags\/\d+$/.test(pointer)) tags.push(claim.sourceText);
+    else if (/\/raw_tags\/\d+$/.test(pointer)) rawTags.push(claim.sourceText);
+  }
+  return { tags, rawTags };
 }
 
 /** A string the source wrote, verbatim, and the field it was read from. */
@@ -1056,11 +1071,15 @@ export interface PhraseForm {
  * headword or a listed form. `phrase`: it is none, and its words, each read as
  * its lemmas, spell one or more multi-word headwords, which are the readings.
  * `forms` are the searched words' form entries rewritten for those headwords,
- * in source order.
+ * in source order. `feminine`: it is none, and it is the feminine of a
+ * compound spelling verbs' tables list (`sono andata` of `sono andato`, rule
+ * `it-essere-agreement/v1`, #676); the readings are those verbs, and their
+ * evidence is only the cells of the masculine spelling that agree.
  */
 export type FoundRoute =
   | { kind: "surface" }
-  | { kind: "phrase"; phrases: [PhraseMatch, ...PhraseMatch[]]; forms: PhraseForm[] };
+  | { kind: "phrase"; phrases: [PhraseMatch, ...PhraseMatch[]]; forms: PhraseForm[] }
+  | { kind: "feminine"; agreement: AgreeingSpelling };
 
 /**
  * The index was probed and at least one record matched. The readings are a

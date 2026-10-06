@@ -133,7 +133,7 @@ export function Outcome({ raw, attempt, siteKey }: { raw: string; attempt: Attem
         {attempt.route.kind === "phrase" ? (
           <PhraseView page={phrasePage(searched, attempt.route, attempt.readings)} siteKey={siteKey} />
         ) : (
-          <WordView page={wordPage(searched, attempt.readings, attempt.lemmas)} siteKey={siteKey} />
+          <WordView page={wordPage(searched, attempt.readings, attempt.lemmas, attempt.route)} siteKey={siteKey} />
         )}
       </WrittenOffer>
     );
