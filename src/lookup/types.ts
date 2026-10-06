@@ -448,7 +448,7 @@ export interface UnlistedTable {
 /**
  * A lemma record's own definitions, read as its own page reads them: its
  * senses and the definitions recovered from its raw page. A verb form's block
- * shows the first under its form line (#686).
+ * lists them as its *Definitions* (#686).
  */
 export type LemmaDefinitions = Pick<ReadingFacts, "senses" | "recovered">;
 

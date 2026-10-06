@@ -51,7 +51,7 @@ before(async () => {
   dir = await mkdtemp(join(tmpdir(), "lexema-page-statements-"));
   // The development fixture, then the real lines of `salivate` and `vira`
   // (fixtures/salivate.jsonl, fixtures/vira.jsonl), whose pages show a verb's
-  // meaning (#686).
+  // own Definitions (#686).
   const archive = join(dir, "dev-seed.jsonl.gz");
   const lines = await Promise.all(FIXTURES.map(async (file) => (await readFile(join(REPO, file), "utf8")).trimEnd()));
   await writeFile(archive, gzipSync(`${lines.join("\n")}\n`));
@@ -129,7 +129,7 @@ for (const [word, ceiling] of Object.entries(BEFORE)) {
  * which andare's table does not list, sends andare's table read beside the
  * reads it already made, in no more calls.
  *
- * A block also says what its verb means (#686). A verb record that is a
+ * A block also lists its verb's own Definitions (#686). A verb record that is a
  * reading on the page (`sono andato`'s andare, `salivate`'s salire) brings its
  * definitions with it, and a noun or adjective form's lemma record is read
  * whole already (`bella`'s bello), so those reads add nothing. A verb that a

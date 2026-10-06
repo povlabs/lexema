@@ -20,10 +20,10 @@
 // A record that lists the query and declares no such form is still a reading.
 //
 // A searched verb form shows one block per verb it is a form of (#636; Huey's
-// ruling of 2026-10-06, frame 37): `1 · Voce verbale · salire`, then that
-// verb's form-of lines under *Definitions*, then *Forms of salire*, its
-// conjugation opened where the searched cell is (matched by pointer). A block's
-// lines come from two places:
+// ruling of 2026-10-06, frame 37): `1 · Voce verbale · salire`, that verb's
+// form-of lines right under it, then *Definitions*, the verb's own (#686), then
+// *Forms of salire*, its conjugation opened where the searched cell is (matched
+// by pointer). A block's lines come from two places:
 //
 // - A form record about the query: each of its definitions goes to the verb its
 //   `form_of` edge names. `salivate`'s record gives salivare's block its two
@@ -58,10 +58,11 @@
 // the lookup; a grid needs the lemma's whole record, which the search reads for
 // the words `gridLemmaWords` names (web/lib/dictionary/searchAttempt.ts).
 //
-// Under a form's first line sits what the lemma whose table it shows first
-// means (`LemmaMeaning`, #686): that record's own definitions. A verb that is a
-// reading on the page and a grid's lemma record bring theirs; a verb a form
-// record names gets them from the search (`withVerbDefinitions`).
+// A form's lines sit right under its heading, and its *Definitions* are those
+// of the lemma whose table it shows first (`LemmaDefinitionList`, #686): that
+// record's own, as its own page lists them. A verb that is a reading on the
+// page and a grid's lemma record bring theirs; a verb a form record names gets
+// them from the search (`withVerbDefinitions`).
 
 import { normalizeItalianExact } from "@lexema/italian/normalize.ts";
 import { VERB_FORM_LINE_RULE, verbFormLine, type SpelledGender } from "@lexema/italian/verbFormLine.ts";
@@ -118,8 +119,13 @@ export type LemmaTable =
       kind: "conjugation";
       lemma: LemmaCandidate;
       listing: LemmaListing | UnlistedTable;
-      /** The verb record's own definitions, when the lookup read them: what its meaning line is read from (#686). */
-      definitions: LemmaDefinitions | undefined;
+      /**
+       * The verb record's own definitions, when they were read: what the
+       * block's *Definitions* list (#686). The links its glosses carry come
+       * with them when the verb is a reading; a verb read only as a link
+       * target has none.
+       */
+      definitions: (LemmaDefinitions & Pick<Reading, "lemmaLinks">) | undefined;
     }
   | { kind: "grid"; lemma: Reading; agreement: Agreement };
 
@@ -131,28 +137,33 @@ export const searchedIn = ({ listing }: ConjugationTable): SearchedSpellings =>
   "evidence" in listing ? searchedSpellings(listing) : { headword: false, formPointers: new Set() };
 
 /**
- * What a form's lemma means, under the form's first line (#686; Huey's
- * rulings of 2026-10-06, frames 17 and 37): the definitions of the lemma
- * record whose table the form shows first, as that record's own page shows
- * them, source text unchanged. The first shows closed; the rest wait for the
- * one `+ more` the form's lines already have. It names the record it was read
- * from, and each definition carries its own pointer, so a meaning with no
- * source is not a value this holds.
+ * A form's lemma's definitions, the *Definitions* of the form's block (#686;
+ * Huey's rulings of 2026-10-06, frames 17 and 37): those of the lemma record
+ * whose table the form shows first, listed as that record's own page lists
+ * them, source text unchanged. It names the record it was read from, and each
+ * definition carries its own pointer, so a definition with no source is not a
+ * value this holds. A lemma with no definition has no list, and its form
+ * shows no *Definitions*.
  */
-export interface LemmaMeaning {
+export interface LemmaDefinitionList {
   /** The lemma record the definitions are its own. */
   lemma: EntryIdentity & { word: string };
-  definitions: [DefinitionItem, ...DefinitionItem[]];
+  items: [DefinitionItem, ...DefinitionItem[]];
+  /** The examples of the lemma's senses not shown as definitions, kept behind `+ more` as its own page keeps them. */
+  looseExamples: string[];
+  /** The lemma record's own links, which its glosses link where they write the word; none when it was read only as a link target. */
+  lemmaLinks: Reading["lemmaLinks"];
 }
 
-/** The meaning of the lemma whose table shows first, or none when its record has no definition or was not read. */
-function meaningOf(tables: readonly LemmaTable[]): LemmaMeaning | undefined {
+/** The definitions of the lemma whose table shows first, or none when its record has no definition or was not read. */
+function lemmaDefinitionsOf(tables: readonly LemmaTable[]): LemmaDefinitionList | undefined {
   const [table] = tables;
   if (table === undefined) return undefined;
   const definitions = table.kind === "grid" ? table.lemma : table.definitions;
   if (definitions === undefined) return undefined;
-  const items = nonEmpty(definitionsOf({ word: table.lemma.word, senses: definitions.senses, recovered: definitions.recovered }).items);
-  return items === undefined ? undefined : { lemma: table.lemma, definitions: items };
+  const { items, looseExamples } = definitionsOf({ word: table.lemma.word, senses: definitions.senses, recovered: definitions.recovered });
+  const listed = nonEmpty(items);
+  return listed === undefined ? undefined : { lemma: table.lemma, items: listed, looseExamples, lemmaLinks: definitions.lemmaLinks };
 }
 
 /** A reading of a source record. */
@@ -172,13 +183,13 @@ export interface PageReading {
    */
   lemmaTables: LemmaTable[];
   /**
-   * Whether the reading shows its own table. A noun or adjective form that
-   * shows its lemma's grid does not also show its own (#626); a verb form
-   * keeps both, as before.
+   * Set when the reading is a noun or adjective form that shows its lemma's
+   * grid (`bella` of bello). Its own definitions are then its form lines,
+   * under its heading with no label; its own table is not shown (#626); and
+   * its *Definitions* are the lemma's (#686). Unset, the reading shows its own
+   * definitions and table; a verb form keeps both, as before.
    */
-  ownForms: boolean;
-  /** For a noun or adjective form that shows its lemma's grid, what that lemma means (#686). */
-  meaning: LemmaMeaning | undefined;
+  formOf: { definitions: LemmaDefinitionList | undefined } | undefined;
   /** The etymologies the source ties to this reading, their bracket label dropped. */
   etymologies: WordText[];
   /** The synonym groups the source labels with this reading's part of speech. */
@@ -241,7 +252,8 @@ export interface BlockRecord {
 
 /**
  * One verb the query is a form of, as frame 37 draws it (#636): `1 · Voce
- * verbale · salire`, the verb's form-of lines, then *Forms of salire*.
+ * verbale · salire`, the verb's form-of lines, its *Definitions*, then *Forms
+ * of salire*.
  */
 export interface VerbFormBlock {
   kind: "verb-form";
@@ -257,8 +269,8 @@ export interface VerbFormBlock {
   verbs: Reading[];
   /** The verb's conjugation, one per distinct table; the block's only *Forms*. */
   tables: ConjugationTable[];
-  /** What the verb means: the definitions of the record whose table the block shows first (#686). */
-  meaning: LemmaMeaning | undefined;
+  /** The verb's own definitions, of the record whose table the block shows first: the block's *Definitions* (#686). */
+  definitions: LemmaDefinitionList | undefined;
   /** The etymologies the source ties to the block's form records, their bracket label dropped. */
   etymologies: WordText[];
   /** The synonym groups the source labels with the block's form records. */
@@ -430,7 +442,8 @@ function conjugationTablesByVerb(reading: Reading): Map<string, ConjugationTable
     for (const lemma of link.candidates) {
       const listing = lemma.listing ?? lemma.unlisted;
       if (lemma.pos !== "verb" || listing === undefined) continue;
-      const table: ConjugationTable = { kind: "conjugation", lemma, listing, definitions: lemma.definitions };
+      const definitions = lemma.definitions === undefined ? undefined : { ...lemma.definitions, lemmaLinks: [] };
+      const table: ConjugationTable = { kind: "conjugation", lemma, listing, definitions };
       const tables = byVerb.get(link.targetWord) ?? new Map<string, ConjugationTable>();
       if (!tables.has(conjugationKey(table))) tables.set(conjugationKey(table), table);
       byVerb.set(link.targetWord, tables);
@@ -638,7 +651,7 @@ export function wordPage(query: string, readings: readonly [Reading, ...Reading[
           sources: block.sources,
           verbs: block.verbs,
           tables,
-          meaning: meaningOf(tables),
+          definitions: lemmaDefinitionsOf(tables),
           etymologies: block.etymologies,
           synonyms: relatedItems(block.synonyms),
         },
@@ -652,8 +665,7 @@ export function wordPage(query: string, readings: readonly [Reading, ...Reading[
         number: hasDefinitions(reading) ? ++numbered : undefined,
         reading,
         lemmaTables: [...conjugationTablesOf(reading), ...grids],
-        ownForms: grids.length === 0,
-        meaning: meaningOf(grids),
+        formOf: grids.length === 0 ? undefined : { definitions: lemmaDefinitionsOf(grids) },
         etymologies: placed.etymologies.get(reading) ?? [],
         synonyms: relatedItems(placed.synonyms.get(reading) ?? []),
       },
@@ -741,7 +753,7 @@ function ownConjugation(verb: Reading): ConjugationTable | undefined {
   const evidence = nonEmpty(verb.evidence.filter((occurrence) => occurrence.origin === "embedded-form"));
   return evidence === undefined
     ? undefined
-    : { kind: "conjugation", lemma: verb, listing: { forms: verb.forms, evidence }, definitions: { senses: verb.senses, recovered: verb.recovered } };
+    : { kind: "conjugation", lemma: verb, listing: { forms: verb.forms, evidence }, definitions: { senses: verb.senses, recovered: verb.recovered, lemmaLinks: verb.lemmaLinks } };
 }
 
 /** A verb form block as it is gathered, before it is numbered. */

@@ -795,7 +795,7 @@ async function readRecordExpressions(
 
 /**
  * The readings, each verb that a verb form record about the query names given
- * its own definitions, so the verb's block can say what the verb means
+ * its own definitions, so the verb's block can list them as its *Definitions*
  * (`LemmaTarget.definitions`, #686). A verb record is read once however many
  * links name it: its line, its senses and its recovered definitions, sent
  * together. A page sends this beside the reads it makes after the lookup

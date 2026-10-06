@@ -22,7 +22,7 @@ import {
   searchedIn,
   type ConjugationTable,
   type FormLine,
-  type LemmaMeaning,
+  type LemmaDefinitionList,
   type LemmaTable,
   type PageReading,
   type VerbFormBlock,
@@ -43,11 +43,11 @@ import {
   EXAMPLE,
   EXAMPLE_EXTRA,
   EXAMPLE_LOOSE,
+  FORM_LINE,
+  FORM_LINES,
   FORM_OF_LINE,
   GLOSS,
   GLOSS_LINK,
-  LEMMA_MEANING,
-  LEMMA_MEANING_EXTRA,
   READING,
   READING_DOT,
   READING_GRAMMAR,
@@ -78,11 +78,14 @@ const nestedExamples = (items: readonly RecoveredDefinition[]): boolean =>
 const nestedItemsOf = (item: DefinitionItem): readonly RecoveredDefinition[] =>
   item.from === "record" ? item.sense.recoveredItems : item.definition.items;
 
+/** A record's lemma links: what a definition of its links where its text writes them. */
+type LinksOf = Pick<Reading, "lemmaLinks">;
+
 /**
  * The words the `form_of` edges of a definition name, to link where its text
  * writes them: `terza persona plurale dell'imperfetto indicativo di andare`.
  */
-function lemmaWordsOf(reading: Reading, place: DefinitionPlace): string[] {
+function lemmaWordsOf(reading: LinksOf, place: DefinitionPlace): string[] {
   return reading.lemmaLinks
     .filter((link) => link.kind === "candidates" && readAt(link.ref, place))
     .map((link) => link.targetWord);
@@ -158,12 +161,13 @@ function SubItems({ items }: { items: readonly RecoveredDefinition[] }) {
   );
 }
 
-function DefinitionText({ item, reading }: { item: DefinitionItem; reading: Reading }) {
+/** A definition's text, in the gloss style or, as a form line, in `gloss`'s. */
+function DefinitionText({ item, reading, gloss = GLOSS }: { item: DefinitionItem; reading: LinksOf; gloss?: string }) {
   if (item.from === "page") {
     const { definition } = item;
     return (
       <>
-        <p className={GLOSS} lang="it">
+        <p className={gloss} lang="it">
           {definition.labels.length > 0 && <span className={SENSE_LABEL}>({definition.labels.join(", ")}) </span>}
           <LinkedGloss text={definition.text} lemmas={lemmaWordsOf(reading, { line: definition.ref.line })} />
         </p>
@@ -176,10 +180,10 @@ function DefinitionText({ item, reading }: { item: DefinitionItem; reading: Read
   const lemmas = lemmaWordsOf(reading, { sense: sense.index });
   return (
     <>
-      {sense.glosses.map((gloss, i) => (
-        <p key={i} className={GLOSS} lang="it">
+      {sense.glosses.map(({ text }, i) => (
+        <p key={i} className={gloss} lang="it">
           {i === 0 && labels.length > 0 && <span className={SENSE_LABEL}>({labels.join(", ")}) </span>}
-          <LinkedGloss text={gloss.text} lemmas={lemmas} />
+          <LinkedGloss text={text} lemmas={lemmas} />
         </p>
       ))}
       <SubItems items={sense.recoveredItems} />
@@ -204,7 +208,7 @@ function Example({ text, className = EXAMPLE }: { text: string; className?: stri
  * example shows until `+ more`; the others' examples fold with them. A
  * searched expression's page folds its meanings the same way (Phrase.tsx).
  */
-export function DefinitionContent({ item, reading, lead }: { item: DefinitionItem; reading: Reading; lead: boolean }) {
+export function DefinitionContent({ item, reading, lead }: { item: DefinitionItem; reading: LinksOf; lead: boolean }) {
   return (
     <>
       <DefinitionText item={item} reading={reading} />
@@ -219,68 +223,31 @@ export function DefinitionContent({ item, reading, lead }: { item: DefinitionIte
 export const leadHoldsMore = (item: DefinitionItem): boolean =>
   item.examples.length > 1 || nestedExamples(nestedItemsOf(item));
 
-/** Whether a form's lemma has a meaning past its first, which waits for `+ more`. */
-const meaningHoldsMore = (meaning: LemmaMeaning | undefined): boolean => meaning !== undefined && meaning.definitions.length > 1;
-
-/** One of the lemma's definitions as a meaning line: its labels, then its text as the source wrote it, nothing linked. */
-function MeaningLine({ item, className }: { item: DefinitionItem; className: string }) {
-  const [labels, texts] =
-    item.from === "record"
-      ? [senseLabels(item.sense.labels.map((label) => label.label)), item.sense.glosses.map((gloss) => gloss.text)]
-      : [item.definition.labels, [item.definition.text]];
-  return (
-    <>
-      {texts.map((text, i) => (
-        <p key={i} className={className} lang="it">
-          {i === 0 && labels.length > 0 && <span className={SENSE_LABEL}>({labels.join(", ")}) </span>}
-          {text}
-        </p>
-      ))}
-    </>
-  );
-}
-
 /**
- * What a form's lemma means, under the form's first line (#686, frames 17 and
- * 37): the lemma's first definition, then the rest, which wait for the one
- * `+ more` the form's lines already have. No heading and no label.
+ * A *Definitions* block. Closed, the first definition and its own first
+ * example, or none: an example stays under its own definition. Then `+ more`,
+ * when anything else is there. Open, every definition with every example in
+ * order, then those of senses not shown as definitions, then `less`
+ * (design-system-manifest.md § "Layout", one expand control). Everything is in
+ * the document whether it is open or not. `owner` names the ids; `links` are
+ * the record's own, which its glosses link where they write the word.
  */
-function LemmaMeaningLines({ meaning }: { meaning: LemmaMeaning | undefined }) {
-  if (meaning === undefined) return null;
-  return (
-    <div data-meaning-of={meaning.lemma.word}>
-      {meaning.definitions.map((item, i) => (
-        <MeaningLine key={definitionKey(item)} item={item} className={i === 0 ? LEMMA_MEANING : LEMMA_MEANING_EXTRA} />
-      ))}
-    </div>
-  );
-}
-
-/**
- * Closed, the first definition and its own first example, or none: an example
- * stays under its own definition. Then `+ more`, when anything else is there.
- * Open, every definition with every example in order, then those of senses
- * not shown as definitions, then `less` (design-system-manifest.md § "Layout",
- * one expand control). Everything is in the document whether it is open or not.
- */
-function Definitions({ reading, meaning }: { reading: Reading; meaning: LemmaMeaning | undefined }) {
-  const { items, looseExamples } = definitionsOf(reading);
-  if (items.length === 0) {
-    // Nothing to define, but the source's examples are still shown.
-    if (looseExamples.length === 0) return null;
-    return (
-      <Block id={`examples-${entryKey(reading)}`} label="Examples">
-        {looseExamples.map((text, i) => (
-          <Example key={i} text={text} />
-        ))}
-      </Block>
-    );
-  }
+function DefinitionList({
+  owner,
+  items,
+  looseExamples,
+  links,
+}: {
+  owner: string;
+  items: readonly [DefinitionItem, ...DefinitionItem[]];
+  looseExamples: readonly string[];
+  links: LinksOf;
+}) {
   const [first, ...rest] = items;
-  const more = rest.length > 0 || leadHoldsMore(first) || looseExamples.length > 0 || meaningHoldsMore(meaning);
-  const list = `definition-list-${entryKey(reading)}`;
+  const more = rest.length > 0 || leadHoldsMore(first) || looseExamples.length > 0;
+  const list = `definition-list-${owner}`;
   return (
-    <Block id={`definitions-${entryKey(reading)}`} label="Definitions">
+    <Block id={`definitions-${owner}`} label="Definitions">
       <MoreBlock kind="definitions">
         <ol className={DEFINITIONS} id={list}>
           {items.map((item, i) => (
@@ -289,8 +256,7 @@ function Definitions({ reading, meaning }: { reading: Reading; meaning: LemmaMea
                 {i + 1}.
               </span>
               <div className={DEFINITION_BODY}>
-                <DefinitionContent item={item} reading={reading} lead={i === 0} />
-                {i === 0 && <LemmaMeaningLines meaning={meaning} />}
+                <DefinitionContent item={item} reading={links} lead={i === 0} />
               </div>
             </li>
           ))}
@@ -301,6 +267,57 @@ function Definitions({ reading, meaning }: { reading: Reading; meaning: LemmaMea
         {more && <More place="definitions" controls={list} />}
       </MoreBlock>
     </Block>
+  );
+}
+
+/** A reading's own definitions; with none, the source's examples still show. */
+function Definitions({ reading }: { reading: Reading }) {
+  const { items, looseExamples } = definitionsOf(reading);
+  const [first, ...rest] = items;
+  if (first === undefined) {
+    if (looseExamples.length === 0) return null;
+    return (
+      <Block id={`examples-${entryKey(reading)}`} label="Examples">
+        {looseExamples.map((text, i) => (
+          <Example key={i} text={text} />
+        ))}
+      </Block>
+    );
+  }
+  return <DefinitionList owner={entryKey(reading)} items={[first, ...rest]} looseExamples={looseExamples} links={reading} />;
+}
+
+/**
+ * A form's lemma's *Definitions* (#686): the lemma record's own, listed as its
+ * own page lists them, under the form's lines. A lemma with none shows none.
+ */
+function LemmaDefinitions({ owner, list }: { owner: string; list: LemmaDefinitionList | undefined }) {
+  if (list === undefined) return null;
+  return (
+    <div data-definitions-of={list.lemma.word}>
+      <DefinitionList owner={owner} items={list.items} looseExamples={list.looseExamples} links={list} />
+    </div>
+  );
+}
+
+/**
+ * A form's lines, right under its heading with no label (#686, frames 17 and
+ * 37): unnumbered and always shown, each ending with its lemma linked. A form
+ * record's examples, rare, show with its lines.
+ */
+function FormLines({ children }: { children: ReactNode }) {
+  return <div className={FORM_LINES}>{children}</div>;
+}
+
+/** One of a form record's definitions as a form line, then its examples. */
+function SourceFormLineText({ item, reading }: { item: DefinitionItem; reading: LinksOf }) {
+  return (
+    <>
+      <DefinitionText item={item} reading={reading} gloss={FORM_LINE} />
+      {item.examples.map((text, j) => (
+        <Example key={j} text={text} />
+      ))}
+    </>
   );
 }
 
@@ -414,7 +431,7 @@ function LemmaForms({ owner, tables }: { owner: string; tables: readonly LemmaTa
 /** A rule-built line, its verb linked as a source gloss links its lemma. */
 function VerbFormLineText({ line }: { line: VerbFormLine }) {
   return (
-    <p className={GLOSS} lang="it">
+    <p className={FORM_LINE} lang="it">
       {line.text.slice(0, line.text.length - line.lemma.length)}
       <a className={GLOSS_LINK} href={searchHref(line.lemma)}>
         {line.lemma}
@@ -427,22 +444,18 @@ const formLineKey = (line: FormLine): string =>
   line.kind === "rule" ? `rule-${line.text}` : `${entryKey(line.reading)}-${definitionKey(line.item)}`;
 
 /**
- * One verb the searched form belongs to, as frame 37 draws it (#636):
- * `1 · Voce verbale · salire`, then *Definitions*, its form-of lines, the
- * source's and those built by rule (#627) read alike, with the one expand
- * control every *Definitions* block has; then *Forms of salire*, opened where
- * the searched cell is. Nothing marks a line as Lexema's (ADR 0016). The verb's
- * table is the block's only *Forms*: a form record's own `forms[]` never shows
- * here (#666).
+ * One verb the searched form belongs to, as frames 17 and 37 draw it (#636,
+ * #686): `1 · Voce verbale · salire`, its form-of lines right under it, the
+ * source's and those built by rule (#627) read alike, all shown; then
+ * *Definitions*, the verb's own, with the one expand control; then *Forms of
+ * salire*, opened where the searched cell is. Nothing marks a line as Lexema's
+ * (ADR 0016). The verb's table is the block's only *Forms*: a form record's own
+ * `forms[]` never shows here (#666).
  */
 export function VerbFormBlockView({ block }: { block: VerbFormBlock }) {
   const anchor = readingAnchor(block);
-  const list = `definition-list-${anchor}`;
-  const [lead] = block.lines;
   const firsts = block.sources.filter((source) => source.first).map((source) => source.reading);
   const looseExamples = firsts.flatMap((reading) => definitionsOf(reading).looseExamples);
-  const more =
-    block.lines.length > 1 || (lead.kind === "source" && leadHoldsMore(lead.item)) || looseExamples.length > 0 || meaningHoldsMore(block.meaning);
   return (
     <article className={READING} id={anchor} aria-labelledby={readingHeadingId(block)} data-verb-form={block.verb}>
       <h2 className={READING_HEADING} id={readingHeadingId(block)}>
@@ -459,34 +472,22 @@ export function VerbFormBlockView({ block }: { block: VerbFormBlock }) {
           <span lang="it">{block.verb}</span>
         </span>
       </h2>
-      <Block id={`definitions-${anchor}`} label="Definitions">
-        <MoreBlock kind="definitions">
-          <ol className={DEFINITIONS} id={list}>
-            {block.lines.map((line, i) => (
-              <li key={formLineKey(line)} className={i === 0 ? DEFINITION : DEFINITION_EXTRA} data-definition={i + 1}>
-                <span className={DEFINITION_NUMBER} aria-hidden="true">
-                  {i + 1}.
-                </span>
-                <div className={DEFINITION_BODY}>
-                  {line.kind === "rule" ? (
-                    <VerbFormLineText line={line} />
-                  ) : (
-                    <DefinitionContent item={line.item} reading={line.reading} lead={i === 0} />
-                  )}
-                  {i === 0 && <LemmaMeaningLines meaning={block.meaning} />}
-                </div>
-              </li>
-            ))}
-          </ol>
-          {looseExamples.map((text, i) => (
-            <Example key={`loose-${i}`} text={text} className={EXAMPLE_LOOSE} />
-          ))}
-          {more && <More place="definitions" controls={list} />}
-        </MoreBlock>
-      </Block>
+      <FormLines>
+        {block.lines.map((line) =>
+          line.kind === "rule" ? (
+            <VerbFormLineText key={formLineKey(line)} line={line} />
+          ) : (
+            <SourceFormLineText key={formLineKey(line)} item={line.item} reading={line.reading} />
+          ),
+        )}
+        {looseExamples.map((text, i) => (
+          <Example key={`loose-${i}`} text={text} />
+        ))}
+      </FormLines>
       {block.sources.map((source) => (
         <LemmaLines key={entryKey(source.reading)} reading={source.reading} only={source.lemmaWords} />
       ))}
+      <LemmaDefinitions owner={anchor} list={block.definitions} />
       <LemmaForms owner={anchor} tables={block.tables} />
       {block.etymologies.length > 0 && (
         <Block id={`etymology-${anchor}`} label="Etymology">
@@ -497,6 +498,22 @@ export function VerbFormBlockView({ block }: { block: VerbFormBlock }) {
       )}
       <WordList id={`synonyms-${anchor}`} label="Synonyms" items={block.synonyms} level="h3" />
     </article>
+  );
+}
+
+/** A noun or adjective form's own definitions as its form lines (`femminile singolare di bello`), with any examples its senses hold. */
+function ReadingFormLines({ reading }: { reading: Reading }) {
+  const { items, looseExamples } = definitionsOf(reading);
+  if (items.length === 0 && looseExamples.length === 0) return null;
+  return (
+    <FormLines>
+      {items.map((item) => (
+        <SourceFormLineText key={definitionKey(item)} item={item} reading={reading} />
+      ))}
+      {looseExamples.map((text, i) => (
+        <Example key={`loose-${i}`} text={text} />
+      ))}
+    </FormLines>
   );
 }
 
@@ -533,9 +550,19 @@ export function ReadingView({ entry }: { entry: PageReading }) {
           </span>
         )}
       </h2>
-      <Definitions reading={reading} meaning={entry.meaning} />
-      <LemmaLines reading={reading} />
-      {entry.ownForms && <OwnForms reading={reading} />}
+      {entry.formOf === undefined ? (
+        <>
+          <Definitions reading={reading} />
+          <LemmaLines reading={reading} />
+          <OwnForms reading={reading} />
+        </>
+      ) : (
+        <>
+          <ReadingFormLines reading={reading} />
+          <LemmaLines reading={reading} />
+          <LemmaDefinitions owner={entryKey(reading)} list={entry.formOf.definitions} />
+        </>
+      )}
       <LemmaForms owner={entryKey(reading)} tables={entry.lemmaTables} />
       {entry.etymologies.length > 0 && (
         <Block id={`etymology-${entryKey(reading)}`} label="Etymology">
