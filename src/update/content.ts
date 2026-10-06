@@ -73,9 +73,9 @@ function readOf(value: unknown, fields: ReadFields): unknown {
   return read;
 }
 
-/** A record's parsed line as Lexema reads it: only the fields `READ_FIELDS` names, or `fields`. */
-export function readContent(record: unknown, fields: ReadFields = READ_FIELDS): unknown {
-  return readOf(record, fields);
+/** A record's parsed line as Lexema reads it: only the fields `READ_FIELDS` names. */
+export function readContent(record: unknown): unknown {
+  return readOf(record, READ_FIELDS);
 }
 
 /** Every field `READ_FIELDS` names, as a path: `senses[].form_of[].word`. */

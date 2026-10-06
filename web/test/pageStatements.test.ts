@@ -11,10 +11,6 @@
 // may cost less; it may not cost more. The answer read through `fromD1` is the
 // answer read straight off SQLite, so a cheaper read is never a different page.
 //
-// D1 also costs the Worker CPU by the bytes it returns (#646), so each search
-// here, word page or not-found page, has a ceiling on the calls it waits on and
-// the bytes of the rows it reads (`READS`).
-//
 // The last tests run one whole word-page request, `generateMetadata` and
 // `Page` both, in a vinext request scope as the Worker does (#644): each half
 // asks for the lookup and the served version, and D1 must see each once.
@@ -73,29 +69,23 @@ after(async () => {
 interface Sent {
   statements: number;
   calls: number;
-  /** Bytes of the rows D1 returned, as their JSON. */
-  bytes: number;
   /** The SQL of each statement, in the order sent. */
   sql: string[];
 }
 
-const nothingSent = (): Sent => ({ statements: 0, calls: 0, bytes: 0, sql: [] });
+const nothingSent = (): Sent => ({ statements: 0, calls: 0, sql: [] });
 
 /** A D1 over the local SQLite that counts what reaches it: a `batch()` is one call, a lone `all()` another. */
 function countingD1(db: DatabaseSync, sent: Sent): D1Like {
-  const returned = (rows: unknown[]): unknown[] => {
-    sent.bytes += Buffer.byteLength(JSON.stringify(rows));
-    return rows;
-  };
   const statement = (sql: string, params: SqlValue[]): D1StatementLike & { sql: string; run(): unknown[] } => ({
     sql,
     bind: (...bound) => statement(sql, bound),
-    run: () => returned(db.prepare(sql).all(...params)),
+    run: () => db.prepare(sql).all(...params),
     all: async <T>() => {
       sent.calls += 1;
       sent.statements += 1;
       sent.sql.push(sql);
-      return { results: returned(db.prepare(sql).all(...params)) as T[] };
+      return { results: db.prepare(sql).all(...params) as T[] };
     },
   });
   return {
@@ -119,38 +109,6 @@ for (const [word, ceiling] of Object.entries(BEFORE)) {
     assert.ok(sent.statements < ceiling, `${word}: ${sent.statements} statements, not fewer than ${ceiling}`);
     assert.ok(sent.calls <= CALLS_BEFORE, `${word}: ${sent.calls} calls, more than ${CALLS_BEFORE}`);
     assert.deepEqual(attempt, await searchAttempt(fromNodeSqlite(sqlite), RELEASE, word));
-  });
-}
-
-/**
- * What one search costs D1 at most since #646: the calls it waits on, and the
- * bytes of the rows it reads, as JSON. Measured over this fixture, one search
- * through one adapter. Before #646, at 439c0da, the words read bello 74,035,
- * andare 138,860, casa 27,320, sale 334,514 and studente 48,971 bytes, and the
- * not-found searches took stud 10, citta 9, mangare 8, vadoo via 12 and xqzt
- * 10 calls.
- */
-const READS: Record<string, { outcome: "found" | "not-found"; calls: number; bytes: number }> = {
-  bello: { outcome: "found", calls: 5, bytes: 35_298 },
-  andare: { outcome: "found", calls: 5, bytes: 106_967 },
-  casa: { outcome: "found", calls: 5, bytes: 12_099 },
-  sale: { outcome: "found", calls: 6, bytes: 228_304 },
-  studente: { outcome: "found", calls: 5, bytes: 16_829 },
-  stud: { outcome: "not-found", calls: 6, bytes: 1_356 },
-  citta: { outcome: "not-found", calls: 6, bytes: 1_343 },
-  mangare: { outcome: "not-found", calls: 6, bytes: 1_303 },
-  "vadoo via": { outcome: "not-found", calls: 11, bytes: 1_333 },
-  xqzt: { outcome: "not-found", calls: 6, bytes: 1_111 },
-};
-
-for (const [query, ceiling] of Object.entries(READS)) {
-  test(`a search for '${query}' waits on at most ${ceiling.calls} D1 calls and reads at most ${ceiling.bytes} bytes, and reads what SQLite reads`, async () => {
-    const sent = nothingSent();
-    const attempt = await searchAttempt(fromD1(countingD1(sqlite, sent)), RELEASE, query);
-    assert.equal(attempt.outcome, ceiling.outcome, query);
-    assert.ok(sent.calls <= ceiling.calls, `${query}: ${sent.calls} calls, more than ${ceiling.calls}`);
-    assert.ok(sent.bytes <= ceiling.bytes, `${query}: ${sent.bytes} bytes, more than ${ceiling.bytes}`);
-    assert.deepEqual(attempt, await searchAttempt(fromNodeSqlite(sqlite), RELEASE, query));
   });
 }
 

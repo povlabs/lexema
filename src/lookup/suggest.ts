@@ -169,9 +169,7 @@ export async function suggest({ db, releaseId, prefix }: SuggestOptions): Promis
   // The same two refusals exact lookup makes, for the same reasons: a release
   // that is not complete is not servable, and keys built by another normalizer
   // would be probed with the wrong prefix.
-  // The served releases are read beside the release, not after it: one wait,
-  // not two, and the refusals below still come before any prefix is read.
-  const [release, releases] = await Promise.all([readRelease(db, releaseId), servedReleases(db, releaseId)]);
+  const release = await readRelease(db, releaseId);
   if (release === undefined) throw new Error(`no complete release '${releaseId}'`);
   if (release.normalizer !== IT_NORMALIZER_VERSION) {
     throw new Error(
@@ -180,6 +178,7 @@ export async function suggest({ db, releaseId, prefix }: SuggestOptions): Promis
   }
 
   const upper = prefixUpperBound(key);
+  const releases = await servedReleases(db, releaseId);
   let suggestions: string[] = [];
   for (let scan = FIRST_SCAN; ; scan *= 2) {
     const rows = await inKeyOrder<{ surface_key: string; surface: string }>(db, releases, HEADWORD_PREFIX_SQL, [key, upper], scan);
