@@ -72,6 +72,10 @@ flight text falls as it does in the test's render. `sale`'s payload falls less
 than its flight text: the Worker split it into three more scripts, at 184 bytes
 each. How the Worker splits the stream is not something this change controls.
 
+These built-Worker numbers were read before the footer change below. That
+change touches only the layout, which the test's render leaves out, so the
+first table stands. In the built app it can only make the payload smaller.
+
 Where the bytes went:
 
 - *Expressions* was handed whole `Expression` values, each with the refs it was
@@ -81,6 +85,8 @@ Where the bytes went:
   many expressions.
 - `More`, `MoreBlock` and `MorePanel` were handed Tailwind class strings. They
   now take a key (`place="definitions"`, `kind="mood"`) or nothing.
+- `CurrentSiteFooter`, in the layout, was handed every site origin. It now gets
+  only the Developers origin, the one link it draws from them.
 
 ## What is left: class strings on server-rendered markup
 
