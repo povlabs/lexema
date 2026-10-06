@@ -818,6 +818,9 @@ test("/inflect answers the cells /lookup's narrowed forms hold, and leaves out a
         { grammar: { gender: "femminile", number: "plurale", degree: "superlativo" }, forms: ["grandissime\n massime"] },
       ],
     ],
+    // grande the noun lists no form; it takes `grandi` from grandi's own noun
+    // record, "plurale di grande" (it-plural-gloss/v1, #145), in the seed since #695.
+    ["grande", "noun", [{ grammar: { gender: "femminile", number: "plurale" }, forms: ["grandi"] }]],
   ]);
 
   // The same narrowing through /lookup holds the same forms, cell for cell.

@@ -14,6 +14,7 @@ import { loadFixturePages, type RawPageSource } from "../src/source/rawPage.js";
 import { PageOnlyCandidates, readUnrecordedPageTitles, UNRECORDED_PAGE_TITLES_FILE } from "../src/import/pageOnlyCandidates.js";
 import { unrecordedPageTitlesOf } from "../src/import/measureUnrecordedPages.js";
 import { applyParts, PartFailure } from "../src/import/sqlParts.js";
+import { normalizeItalianExact } from "../src/italian/normalize.js";
 
 const rawLemma = '{ "word":"lemma", "pos":"noun", "pos_title":"Sostantivo", "lang_code":"it", "forms":[{"form":"forma","source":"Appendice:Coniugazioni/Italiano/lemma","tags":["plural"]}], "senses":[{"glosses":["una voce"],"tags":["rare"]}] }';
 const rawForm = JSON.stringify({
@@ -120,8 +121,10 @@ test("committed fixture matches archive-derived expectations", async () => {
   for (const word of HUEY_WORDS) {
     assert.ok(fixtureWords.has(word), `missing required word: ${word}`);
   }
+  // An edge resolves by its word's key, as `form_of_candidate` joins it: `Parti` resolves to `parti`.
+  const fixtureKeys = new Set([...fixtureWords].map(normalizeItalianExact));
   for (const target of allFormOfTargets) {
-    assert.ok(fixtureWords.has(target), `missing form_of target word: ${target}`);
+    assert.ok(fixtureKeys.has(normalizeItalianExact(target)), `missing form_of target word: ${target}`);
   }
   for (const [word, expectation] of Object.entries(expectations.recordsByWord)) {
     const actualRecords = fixtureByWord.get(word) ?? [];
@@ -250,8 +253,8 @@ test("the fifty-word dev seed is one part with the same rows", async () => {
     const report = await devSeed(join(dir, "sql"));
     assert.deepEqual(report.parts, [join(dir, "sql", "part-001.sql")]);
     assert.deepEqual(report.rows, {
-      source_record: 130, source_record_json: 130, lookup_form: 2628, accent_fold: 111, typo_key: 640, form_of_edge: 41,
-      sense: 359, sense_gloss: 358, sense_label: 151, grammar_claim: 10908,
+      source_record: 176, source_record_json: 176, lookup_form: 2933, accent_fold: 113, typo_key: 738, form_of_edge: 74,
+      sense: 444, sense_gloss: 443, sense_label: 202, grammar_claim: 11905,
       raw_page: 18, recovered_definition: 7, recovered_label: 6, recovered_example: 7, hidden_record: 0,
       // The curated corrections are keyed to it-0c432803's lines, not the fixture's.
       corrected_claim: 0,
@@ -265,10 +268,10 @@ test("the fifty-word dev seed is one part with the same rows", async () => {
       corrected_definition: 2,
       release_table_rows: 22,
     });
-    // Seven of the fixture's records have a raw page under fixtures/; `casa` is
+    // Ten of the fixture's records have a raw page under fixtures/; `casa` is
     // the one whose page states definitions the record does not carry.
     assert.deepEqual(report.recovery, {
-      rawPages: rawPages.size, recordsWithAPage: 7, fullLoss: 1, partialLoss: 0,
+      rawPages: rawPages.size, recordsWithAPage: 10, fullLoss: 1, partialLoss: 0,
       definitions: 7, examples: 7, unrendered: 0,
     });
   } finally { await rm(dir, { recursive: true, force: true }); }

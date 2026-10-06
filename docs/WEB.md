@@ -327,9 +327,21 @@ verb records shows each record's table, and shows two identical tables once
 query matches as a reading, and a lemma the query also matched through its
 table — `sala` and `salire` for `sale` — is not one of those records but the
 lemma of the reading that points to it
-([the lookup reference](LOOKUP.md#result-fields)). A record that lists the
-query and declares itself a form of a reading about the query has no reading
-of its own, and nor has a record that declares itself a form of one of those:
+([the lookup reference](LOOKUP.md#result-fields)). Only the records about the
+query are readings: a record that only lists the query in its table is another
+word's, and shows only as the verb of a block, below. `costruttrici` shows none
+of costruttore's or costruttori's records, and `grande` not `grandissimo`,
+whose only tie is its gloss (Huey's rule 2 of 2026-10-06,
+[#695](https://github.com/povlabs/lexema/issues/695#issuecomment-6024404411);
+[design law](../design-system-manifest.md#how-a-word-page-renders)). The
+lookup and the API still return them.
+
+A page none of whose records about the query has anything to show (`gravida`,
+`citta`) keeps the records that list the query as readings until #696 and #700
+rule on it, as every page did before #695, less two kinds of form. A record
+that lists the query and declares itself a form of a reading about the query
+has no reading of its own, and nor has a record that declares itself a form of
+one of those:
 `bello`'s page does not repeat `bella`, `belli`, `bellissimo` and
 `bellissime`, whose table its own reading already shows (Huey, 2026-10-05, on
 #622; `formsOfQueryReadings` in `src/lookup/types.ts`). In the same way, a
@@ -347,18 +359,31 @@ its inflections. Any other record that lists the query keeps a reading of its
 own, drawn like any other, with no line saying why it is there: a record that
 declares no `form_of` edge, or one whose edge names some other word.
 
-A noun or adjective form about the query shows its lemma's grid, the one that
-lemma's own reading draws, as *Forms of bello* under `bella`'s adjective
+A noun or adjective form about the query shows its base word's grid, the one
+that word's own reading draws, as *Forms of bello* under `bella`'s adjective
 reading and *Forms of casa* under `case`, in place of its own grid
-([ruling](https://github.com/povlabs/lexema/issues/626#issuecomment-6001258715)).
-It does not show the lemma's definitions: like `andavano`, its own reading
-keeps its gender and number in its heading and its definition links the lemma.
-Only a lemma whose grid lists the searched form shows, through a `forms[]`
-entry the query hit or the form's own plural gloss (#145), once per distinct
-grid, with nothing marked. A lemma record that is itself a form (`costruttrice`
-for `costruttrici`) draws no grid, and the form keeps its own. The search reads
-those lemma records with the same lookup a search of the lemma runs
-(`web/lib/dictionary/searchAttempt.ts`); the lookup and the API do not change.
+([ruling](https://github.com/povlabs/lexema/issues/626#issuecomment-6001258715)),
+with nothing marked. Its base word is the word its `form_of` edge names, of its
+own part of speech when it names one, followed through a record that is itself
+a form to the word that one names: `bellissima` → `bellissimo` → `bello`, and
+`costruttrici` → `costruttrice` → `costruttore` (Huey's rule 1 of 2026-10-06,
+[#695](https://github.com/povlabs/lexema/issues/695#issuecomment-6024404411)).
+Every base word whose table lists the form shows, through a `forms[]` entry the
+query hit on the edge's candidate or the form's own plural gloss (#145); when
+none does, the first base word shows anyway, as a verb's table does (#666):
+`lavoratrici` shows lavoratore's noun grid, which lists only `lavoratori`.
+`parti`'s record names `parte`, and, on two lines about `parto`, `neonato` and
+itself (`Parti`); only parte's table lists it, so only parte's shows. A link
+that names only the query's own records is no base word. The search reads the
+base records with the same lookup a search of the word runs, one more round for
+each link of a chain (`web/lib/dictionary/searchAttempt.ts`); the lookup and the
+API do not change.
+
+A table shows once on a page, and so does one base record's *Definitions*
+(`Drawn` in `wordPage.ts`; rule 1, "never two … tables for the same word"):
+`essere`'s and `vivere`'s two verb records draw one conjugation, under the
+first, and `costruttrici`'s noun reading, whose grid its adjective reading
+already drew, shows its line and the costruttore noun's *Definitions* only.
 
 **One block per verb a form belongs to.** A searched verb form shows one block
 for each verb it is a form of, as frame 37 draws it
@@ -389,20 +414,24 @@ only `andato`) has a block with no table. A block's lines come from two places:
   query names that verb. A compound form such as `sono andato` is only a cell
   of andare's table, and `salivate` is a cell of salire's that no record says
   it is. The block's lines are one per cell the query hit, built by rule
-  `it-verb-form-line/v1` ([src/italian/verbFormLine.ts](../src/italian/verbFormLine.ts)):
+  `it-verb-form-line/v2` ([src/italian/verbFormLine.ts](../src/italian/verbFormLine.ts)):
   "prima persona singolare del passato prossimo indicativo di andare"
   ([#627](https://github.com/povlabs/lexema/issues/627)). The shape is fixed —
   person, number, `del` or `dell'` and the tense, the mood, `di` and the verb —
   and the tense and mood are the names the table shows (`TENSE_NAMES` in
   `src/italian/moods.ts`), read from the same placement the table marks, so the
-  line and the cell never disagree. `siamo andati` fills a cell of the
+  line and the cell never disagree. A cell of the non-finite line is named as
+  the table names it (`NON_FINITE_NAMES`), then `di` and the verb: `stato`,
+  which essere's table lists only as its participio, gets essere's block with
+  "participio di essere" (v2,
+  [#695](https://github.com/povlabs/lexema/issues/695)). `siamo andati` fills a cell of the
   indicativo and one of the congiuntivo and gets both lines; identical lines
   show once. The verb's record has no reading of its own: its table and its
   definitions are the block's. These blocks lead the page.
 
-An imperative, a non-finite form and a cell `it-moods/v1` cannot place give no
-line, and a verb with no line gives no block and keeps its reading: on `stato`,
-essere's two `Verbo` readings list `stato` only as a participle. A word that is
+An imperative, the infinitive and a cell `it-moods/v1` cannot place give no
+line, and a verb with no line gives no block; on a page with a record about the
+query that shows something, it is no reading either (rule 2). A word that is
 also an entry of its own (`sale` the noun, `andare` itself) keeps that entry as
 a normal reading. The rule-built line is Lexema's text, a grammatical
 paraphrase built from source tags (ADR 0008), built when the page is built

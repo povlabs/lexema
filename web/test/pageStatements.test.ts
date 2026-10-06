@@ -149,14 +149,17 @@ for (const [word, ceiling] of Object.entries(BEFORE)) {
  * read once, beside the reads a page makes after the lookup
  * (`withVerbDefinitions`): more statements, no more calls. The counts before
  * are those at 975d5aa, `vira`, `bella` and `salivate` measured over this
- * fixture.
+ * fixture. `bella`'s were measured again at #695, whose fixture adds the four
+ * bellissimo records the release has: they list bella and bello, so the
+ * lookups of both read their rows and resolve their links (41 statements in 6
+ * calls before; the old search sends the same 52 in 8 over the new fixture).
  */
 const VERB_FORMS_BEFORE: Record<string, { statements: number; calls: number }> = {
   andavano: { statements: 19, calls: 5 },
   "sono andato": { statements: 20, calls: 5 },
   andati: { statements: 43, calls: 6 },
   vira: { statements: 18, calls: 4 },
-  bella: { statements: 41, calls: 6 },
+  bella: { statements: 52, calls: 8 },
   salivate: { statements: 25, calls: 6 },
 };
 

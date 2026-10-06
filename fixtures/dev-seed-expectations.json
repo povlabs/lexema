@@ -1,6 +1,6 @@
 {
   "source": "it-extract.jsonl.gz",
-  "selection": "Huey's fifty required words, the multi-word search words of #214 (andare via, tirare fuori, volgere and voltare le spalle, fare l'amore, fare l'abitudine, fare fuori, aereo and aerei a reazione, and the words that spell them), plus the archive's form_of closure",
+  "selection": "Huey's fifty required words, the multi-word search words of #214 (andare via, tirare fuori, volgere and voltare le spalle, fare l'amore, fare l'abitudine, fare fuori, aereo and aerei a reazione, and the words that spell them), the word-page words of #695 (costruttrici, bellissima, lavoratrici, stato, parti, grandi, and every record that lists one of them or grande in its table), plus the archive's form_of closure",
   "recordsByWord": {
     "acqua": {
       "recordCount": 1,
@@ -1054,6 +1054,381 @@
           "pos": "phrase",
           "keyCount": 11,
           "forms": 0
+        }
+      ]
+    },
+    "neonato": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 16,
+          "forms": 3
+        },
+        {
+          "pos": "noun",
+          "keyCount": 16,
+          "forms": 3
+        }
+      ]
+    },
+    "parte": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "noun",
+          "keyCount": 18,
+          "forms": 1
+        },
+        {
+          "pos": "verb",
+          "keyCount": 17,
+          "forms": 0
+        }
+      ]
+    },
+    "stare": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "verb",
+          "keyCount": 17,
+          "forms": 94
+        }
+      ]
+    },
+    "parto": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "noun",
+          "keyCount": 16,
+          "forms": 1
+        },
+        {
+          "pos": "verb",
+          "keyCount": 15,
+          "forms": 0
+        }
+      ]
+    },
+    "stato": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "noun",
+          "keyCount": 16,
+          "forms": 1
+        },
+        {
+          "pos": "verb",
+          "keyCount": 15,
+          "forms": 0
+        }
+      ]
+    },
+    "bellissimo": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 13,
+          "forms": 7
+        }
+      ]
+    },
+    "lavoratore": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 15,
+          "forms": 3
+        },
+        {
+          "pos": "noun",
+          "keyCount": 16,
+          "forms": 1
+        }
+      ]
+    },
+    "maggiore": {
+      "recordCount": 3,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 17,
+          "forms": 1
+        },
+        {
+          "pos": "adj",
+          "keyCount": 17,
+          "forms": 8
+        },
+        {
+          "pos": "noun",
+          "keyCount": 17,
+          "forms": 1
+        }
+      ]
+    },
+    "massimo": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 18,
+          "forms": 9
+        },
+        {
+          "pos": "noun",
+          "keyCount": 18,
+          "forms": 1
+        }
+      ]
+    },
+    "bellissime": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 12,
+          "forms": 7
+        }
+      ]
+    },
+    "bellissimi": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 12,
+          "forms": 7
+        }
+      ]
+    },
+    "grandi": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 12,
+          "forms": 8
+        },
+        {
+          "pos": "noun",
+          "keyCount": 11,
+          "forms": 0
+        }
+      ]
+    },
+    "massima": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 15,
+          "forms": 9
+        },
+        {
+          "pos": "noun",
+          "keyCount": 15,
+          "forms": 1
+        }
+      ]
+    },
+    "massime": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 13,
+          "forms": 9
+        },
+        {
+          "pos": "noun",
+          "keyCount": 12,
+          "forms": 0
+        }
+      ]
+    },
+    "parti": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "noun",
+          "keyCount": 11,
+          "forms": 0
+        },
+        {
+          "pos": "verb",
+          "keyCount": 11,
+          "forms": 0
+        }
+      ]
+    },
+    "lavoratori": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "noun",
+          "keyCount": 13,
+          "forms": 3
+        }
+      ]
+    },
+    "lavoratrice": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "noun",
+          "keyCount": 14,
+          "forms": 3
+        }
+      ]
+    },
+    "lavoratrici": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "noun",
+          "keyCount": 11,
+          "forms": 3
+        }
+      ]
+    },
+    "bellissima": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 12,
+          "forms": 7
+        }
+      ]
+    },
+    "massimi": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 12,
+          "forms": 9
+        },
+        {
+          "pos": "noun",
+          "keyCount": 11,
+          "forms": 0
+        }
+      ]
+    },
+    "Stato": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "noun",
+          "keyCount": 12,
+          "forms": 1
+        }
+      ]
+    },
+    "costruttore": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 14,
+          "forms": 3
+        },
+        {
+          "pos": "noun",
+          "keyCount": 14,
+          "forms": 3
+        }
+      ]
+    },
+    "costruttrice": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 12,
+          "forms": 4
+        },
+        {
+          "pos": "noun",
+          "keyCount": 11,
+          "forms": 0
+        }
+      ]
+    },
+    "costruttrici": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 11,
+          "forms": 3
+        },
+        {
+          "pos": "noun",
+          "keyCount": 11,
+          "forms": 3
+        }
+      ]
+    },
+    "costruttori": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 12,
+          "forms": 3
+        },
+        {
+          "pos": "noun",
+          "keyCount": 12,
+          "forms": 3
+        }
+      ]
+    },
+    "grandissimo": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 15,
+          "forms": 9
+        }
+      ]
+    },
+    "grandissima": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 11,
+          "forms": 9
+        }
+      ]
+    },
+    "grandissimi": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 11,
+          "forms": 9
+        }
+      ]
+    },
+    "grandissime": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 11,
+          "forms": 9
         }
       ]
     }

@@ -543,8 +543,11 @@ export async function seedSql(options: SeedSqlOptions): Promise<SeedSqlReport> {
       if (!seenWords.has(word)) throw new Error(`fixture is missing required word: ${word}`);
     }
     if (options.validateFixtureClosure) {
+      // An edge resolves by its word's key, as the `form_of_candidate` view
+      // joins it: `parti`'s edge to `Parti` resolves to `parti` (#695).
+      const seenKeys = new Set([...seenWords].map(normalizeItalianExact));
       for (const target of targets) {
-        if (!seenWords.has(target)) throw new Error(`fixture is missing form_of target word: ${target}`);
+        if (!seenKeys.has(normalizeItalianExact(target))) throw new Error(`fixture is missing form_of target word: ${target}`);
       }
     }
 

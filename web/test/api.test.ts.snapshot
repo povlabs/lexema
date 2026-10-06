@@ -4,7 +4,7 @@ exports[`bello's whole /lookup answer is the one the snapshot holds (#385) 1`] =
   "release_id": "it-api-test",
   "results": [
     {
-      "id": "it-api-test:65",
+      "id": "it-api-test:70",
       "word": "bello",
       "pos": "adj",
       "pos_title": "Aggettivo",
@@ -270,7 +270,7 @@ exports[`bello's whole /lookup answer is the one the snapshot holds (#385) 1`] =
       }
     },
     {
-      "id": "it-api-test:66",
+      "id": "it-api-test:71",
       "word": "bello",
       "pos": "noun",
       "pos_title": "Sostantivo",
@@ -490,7 +490,7 @@ exports[`bello's whole /lookup answer is the one the snapshot holds (#385) 1`] =
       }
     },
     {
-      "id": "it-api-test:67",
+      "id": "it-api-test:72",
       "word": "bello",
       "pos": "noun",
       "pos_title": "Sostantivo",
@@ -704,7 +704,91 @@ exports[`bello's whole /lookup answer is the one the snapshot holds (#385) 1`] =
       }
     },
     {
-      "id": "it-api-test:96",
+      "id": "it-api-test:92",
+      "word": "bellissimo",
+      "pos": "adj",
+      "pos_title": "Aggettivo, forma flessa",
+      "match": {
+        "surface": "bello",
+        "via": "form",
+        "grammar": [
+          {
+            "gender": "maschile",
+            "number": "singolare"
+          }
+        ]
+      },
+      "pronunciations": [
+        {
+          "ipa": "/belˈlissimo/",
+          "note": null
+        }
+      ],
+      "definitions": [
+        {
+          "definition": "superlativo assoluto, maschile singolare di bello",
+          "labels": [],
+          "examples": [],
+          "items": []
+        }
+      ],
+      "examples": [],
+      "forms": {
+        "type": "gender_number",
+        "grid": {
+          "maschile": {
+            "singolare": [
+              "bellissimo",
+              "bello"
+            ],
+            "plurale": [
+              "belli"
+            ]
+          },
+          "femminile": {
+            "singolare": [
+              "bella"
+            ],
+            "plurale": [
+              "belle"
+            ]
+          }
+        },
+        "superlativo": {
+          "maschile": {
+            "singolare": [],
+            "plurale": [
+              "bellissimi"
+            ]
+          },
+          "femminile": {
+            "singolare": [
+              "bellissima"
+            ],
+            "plurale": [
+              "bellissime"
+            ]
+          }
+        }
+      },
+      "etymology": "vedi bello",
+      "synonyms": [
+        "stupendo",
+        "magnifico",
+        "molto bello"
+      ],
+      "antonyms": [],
+      "derived": [],
+      "expressions": [],
+      "attribution": {
+        "licence": "CC BY-SA 4.0",
+        "licence_url": "https://creativecommons.org/licenses/by-sa/4.0/",
+        "source": "Wikizionario",
+        "source_url": "https://it.wiktionary.org/wiki/bellissimo"
+      }
+    },
+    {
+      "id": "it-api-test:113",
       "word": "bella",
       "pos": "adj",
       "pos_title": "Aggettivo, forma flessa",
@@ -906,6 +990,246 @@ exports[`bello's whole /lookup answer is the one the snapshot holds (#385) 1`] =
         "licence_url": "https://creativecommons.org/licenses/by-sa/4.0/",
         "source": "Wikizionario",
         "source_url": "https://it.wiktionary.org/wiki/bella"
+      }
+    },
+    {
+      "id": "it-api-test:115",
+      "word": "bellissime",
+      "pos": "adj",
+      "pos_title": "Aggettivo, forma flessa",
+      "match": {
+        "surface": "bello",
+        "via": "form",
+        "grammar": [
+          {
+            "gender": "maschile",
+            "number": "singolare"
+          }
+        ]
+      },
+      "pronunciations": [
+        {
+          "ipa": "/belˈlissime/",
+          "note": null
+        }
+      ],
+      "definitions": [
+        {
+          "definition": "femminile plurale di bellissimo",
+          "labels": [],
+          "examples": [],
+          "items": []
+        }
+      ],
+      "examples": [],
+      "forms": {
+        "type": "gender_number",
+        "grid": {
+          "maschile": {
+            "singolare": [
+              "bello"
+            ],
+            "plurale": [
+              "belli"
+            ]
+          },
+          "femminile": {
+            "singolare": [
+              "bella"
+            ],
+            "plurale": [
+              "bellissime",
+              "belle"
+            ]
+          }
+        },
+        "superlativo": {
+          "maschile": {
+            "singolare": [
+              "bellissimo"
+            ],
+            "plurale": [
+              "bellissimi"
+            ]
+          },
+          "femminile": {
+            "singolare": [
+              "bellissima"
+            ],
+            "plurale": []
+          }
+        }
+      },
+      "etymology": "vedi bellissimo",
+      "synonyms": [],
+      "antonyms": [],
+      "derived": [],
+      "expressions": [],
+      "attribution": {
+        "licence": "CC BY-SA 4.0",
+        "licence_url": "https://creativecommons.org/licenses/by-sa/4.0/",
+        "source": "Wikizionario",
+        "source_url": "https://it.wiktionary.org/wiki/bellissime"
+      }
+    },
+    {
+      "id": "it-api-test:116",
+      "word": "bellissimi",
+      "pos": "adj",
+      "pos_title": "Aggettivo, forma flessa",
+      "match": {
+        "surface": "bello",
+        "via": "form",
+        "grammar": [
+          {
+            "gender": "maschile",
+            "number": "singolare"
+          }
+        ]
+      },
+      "pronunciations": [
+        {
+          "ipa": "/belˈlissimo/",
+          "note": null
+        }
+      ],
+      "definitions": [
+        {
+          "definition": "plurale di bellissimo",
+          "labels": [],
+          "examples": [],
+          "items": []
+        }
+      ],
+      "examples": [],
+      "forms": {
+        "type": "gender_number",
+        "grid": {
+          "maschile": {
+            "singolare": [
+              "bello"
+            ],
+            "plurale": [
+              "bellissimi",
+              "belli"
+            ]
+          },
+          "femminile": {
+            "singolare": [
+              "bella"
+            ],
+            "plurale": [
+              "belle"
+            ]
+          }
+        },
+        "superlativo": {
+          "maschile": {
+            "singolare": [
+              "bellissimo"
+            ],
+            "plurale": []
+          },
+          "femminile": {
+            "singolare": [
+              "bellissima"
+            ],
+            "plurale": [
+              "bellissime"
+            ]
+          }
+        }
+      },
+      "etymology": "vedi bellissimo",
+      "synonyms": [],
+      "antonyms": [],
+      "derived": [],
+      "expressions": [],
+      "attribution": {
+        "licence": "CC BY-SA 4.0",
+        "licence_url": "https://creativecommons.org/licenses/by-sa/4.0/",
+        "source": "Wikizionario",
+        "source_url": "https://it.wiktionary.org/wiki/bellissimi"
+      }
+    },
+    {
+      "id": "it-api-test:145",
+      "word": "bellissima",
+      "pos": "adj",
+      "pos_title": "Aggettivo, forma flessa",
+      "match": {
+        "surface": "bello",
+        "via": "form",
+        "grammar": [
+          {
+            "gender": "maschile",
+            "number": "singolare"
+          }
+        ]
+      },
+      "pronunciations": [
+        {
+          "ipa": "/belˈlissima/",
+          "note": null
+        }
+      ],
+      "definitions": [
+        {
+          "definition": "femminile di bellissimo",
+          "labels": [],
+          "examples": [],
+          "items": []
+        }
+      ],
+      "examples": [],
+      "forms": {
+        "type": "gender_number",
+        "grid": {
+          "maschile": {
+            "singolare": [
+              "bello"
+            ],
+            "plurale": [
+              "belli"
+            ]
+          },
+          "femminile": {
+            "singolare": [
+              "bellissima",
+              "bella"
+            ],
+            "plurale": [
+              "belle"
+            ]
+          }
+        },
+        "superlativo": {
+          "maschile": {
+            "singolare": [
+              "bellissimo"
+            ],
+            "plurale": [
+              "bellissimi"
+            ]
+          },
+          "femminile": {
+            "singolare": [],
+            "plurale": [
+              "bellissime"
+            ]
+          }
+        }
+      },
+      "etymology": "vedi bellissimo",
+      "synonyms": [],
+      "antonyms": [],
+      "derived": [],
+      "expressions": [],
+      "attribution": {
+        "licence": "CC BY-SA 4.0",
+        "licence_url": "https://creativecommons.org/licenses/by-sa/4.0/",
+        "source": "Wikizionario",
+        "source_url": "https://it.wiktionary.org/wiki/bellissima"
       }
     }
   ]

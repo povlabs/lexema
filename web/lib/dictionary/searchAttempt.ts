@@ -33,13 +33,25 @@ export async function searchAttempt(db: LookupDatabase, releaseId: string, query
   return { ...result, nearby: await findNearby({ db, release: result.release, query: result.query.raw }) };
 }
 
+/** How many rounds of reads a chain of forms may take: `bellissima` reads `bellissimo`, then `bello`. */
+const LEMMA_ROUNDS = 4;
+
 /**
  * The records of the words `gridLemmaWords` names, each read by the same
  * lookup a search of that word runs: a lemma grid is drawn from the lemma's
- * own record, exactly as the lemma's page draws it. Nothing is read for a page
- * with no noun or adjective form.
+ * own record, exactly as the lemma's page draws it. A word that is itself a
+ * form names the next word to read, so a chain takes one more wait per link
+ * (#695). Nothing is read for a page with no noun or adjective form.
  */
 async function lemmaRecords(db: LookupDatabase, releaseId: string, readings: readonly Reading[]): Promise<Reading[]> {
-  const found = await Promise.all(gridLemmaWords(readings).map((word) => lookup({ db, releaseId, query: word })));
-  return found.flatMap((result) => (result.outcome === "found" ? result.readings.filter((reading) => reading.isAboutQuery) : []));
+  const asked = new Set<string>();
+  const records: Reading[] = [];
+  for (let round = 0; round < LEMMA_ROUNDS; round++) {
+    const words = gridLemmaWords(readings, records).filter((word) => !asked.has(word));
+    if (words.length === 0) break;
+    for (const word of words) asked.add(word);
+    const found = await Promise.all(words.map((word) => lookup({ db, releaseId, query: word })));
+    records.push(...found.flatMap((result) => (result.outcome === "found" ? result.readings.filter((reading) => reading.isAboutQuery) : [])));
+  }
+  return records;
 }
