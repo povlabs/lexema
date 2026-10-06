@@ -906,6 +906,75 @@ test("a feminine nothing agrees with is not found, and masculine searches keep t
   });
 });
 
+/**
+ * `fixtures/essere-compound-cells.jsonl`: arrendersi, accorgersi, assorbire and
+ * perdersi, as release it-0c432803 has them (lines 624, 770, 113784, 137480).
+ * The dev seed has no reflexive verb and no cell of two spellings (#676).
+ */
+const ESSERE_CELL_LINES = (await readFile(join(REPO, "fixtures/essere-compound-cells.jsonl"), "utf8")).trimEnd().split("\n");
+
+/** The dev seed and those lines, seeded once for this file. */
+const withEssereCells = async (run: (f: Fixture) => Promise<void>) =>
+  withDatabase(await seededDictionary("page:dev-seed+essere-cells", async (outputDir) => seedLines(outputDir, [...(await devSeedLines()), ...ESSERE_CELL_LINES])), run);
+
+test("a reflexive essere verb's compound cells show both genders; its simple tenses stay as the source gives them (#676)", async () => {
+  await withEssereCells(async ({ db }) => {
+    const accorgersi = await render(db, "accorgersi");
+    assert.deepEqual(tenseColumn(accorgersi, "Indicativo", "passato prossimo"), [
+      "io mi sono accorto/a",
+      "tu ti sei accorto/a",
+      "lui, lei si è accorto/a",
+      "noi ci siamo accorti/e",
+      "voi vi siete accorti/e",
+      "loro si sono accorti/e",
+    ]);
+    for (const [mood, tense] of COMPOUND_TENSES) {
+      const cells = tenseColumn(accorgersi, mood, tense);
+      assert.equal(cells.length, 6, `${mood} ${tense}`);
+      cells.forEach((cell, row) => assert.match(cell, row < 3 ? /^\S.* [mts]i \S+ accorto\/a$/ : /^\S.* [cvs]i \S+ accorti\/e$/, `${mood} ${tense}`));
+    }
+    assert.equal(tenseColumn(accorgersi, "Indicativo", "presente")[0], "io mi accorgo");
+    assert.ok(formLinks(accorgersi).some((link) => link.text === "mi sono accorto/a" && link.href === "/?q=mi%20sono%20accorto"));
+  });
+});
+
+test("a cell of several spellings shows only its first with both genders, the rest exactly as stored (#676)", async () => {
+  await withEssereCells(async ({ db }) => {
+    const arrendersi = tenseColumn(await render(db, "arrendersi"), "Indicativo", "passato prossimo");
+    assert.equal(arrendersi[0], "io mi sono arreso/a, arresosi");
+    assert.equal(arrendersi[3], "noi ci siamo arresi/e, arresosi");
+    const assorbire = tenseColumn(await render(db, "assorbire"), "Indicativo", "passato prossimo");
+    // assorbire takes both auxiliaries: the avere spelling stays plain.
+    assert.equal(assorbire[0], "io ho assorbito, assorto, sono assorbito/a, assorto");
+    // The plural rows' essere spelling ends in -o, so it does not agree.
+    assert.equal(assorbire[3], "noi abbiamo assorbito, assorto, siamo assorbito, assorti, assorti");
+  });
+});
+
+test("a searched feminine reflexive opens its verb's block with a line naming the gender (#676)", async () => {
+  await withEssereCells(async ({ db }) => {
+    const lines = async (query: string, verb: string): Promise<string[]> => {
+      const html = await render(db, query);
+      assert.deepEqual(headingsOf(html), [`1·Voce verbale·${verb}`], query);
+      return definitionLines(verbBlock(html, verb) ?? "");
+    };
+    assert.deepEqual(await lines("mi sono accorta", "accorgersi"), ["prima persona singolare femminile del passato prossimo indicativo di accorgersi"]);
+    assert.deepEqual(await lines("ci siamo accorte", "accorgersi"), [
+      "prima persona plurale femminile del passato prossimo indicativo di accorgersi",
+      "prima persona plurale femminile del passato congiuntivo di accorgersi",
+    ]);
+    assert.deepEqual(await lines("mi sono arresa", "arrendersi"), ["prima persona singolare femminile del passato prossimo indicativo di arrendersi"]);
+    assert.deepEqual(await lines("mi sono arreso", "arrendersi"), ["prima persona singolare del passato prossimo indicativo di arrendersi"]);
+    // The masculine and the whole cell keep the lines they have today.
+    assert.deepEqual(await lines("mi sono accorto", "accorgersi"), ["prima persona singolare del passato prossimo indicativo di accorgersi"]);
+    assert.deepEqual(await lines("mi sono arreso, arresosi", "arrendersi"), ["prima persona singolare del passato prossimo indicativo di arrendersi"]);
+    assert.deepEqual(searchedForms(verbBlock(await render(db, "mi sono arresa"), "arrendersi") ?? ""), ["mi sono arreso/a, arresosi"]);
+    for (const query of ["siamo assorbite", "mi sono perduta"]) {
+      assert.match(await render(db, query), new RegExp(`<h1 class="${esc(NOT_FOUND_HEADING)}">No entry for`), query);
+    }
+  });
+});
+
 test("a form of two verbs is one block per verb, each line under its verb's heading and above its verb's table (#636, frame 37)", async () => {
   await withLines([...(await devSeedLines()), ...SALIVATE_LINES], async ({ db }) => {
     const html = await render(db, "salivate");

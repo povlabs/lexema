@@ -1071,15 +1071,19 @@ export interface PhraseForm {
  * headword or a listed form. `phrase`: it is none, and its words, each read as
  * its lemmas, spell one or more multi-word headwords, which are the readings.
  * `forms` are the searched words' form entries rewritten for those headwords,
- * in source order. `feminine`: it is none, and it is the feminine of a
- * compound spelling verbs' tables list (`sono andata` of `sono andato`, rule
+ * in source order. `feminine`: it is none, and it is the feminine of an
+ * agreeing first spelling verbs' tables list (`sono andata` of `sono andato`,
+ * `mi sono arresa` of `mi sono arreso, arresosi`; rule
  * `it-essere-agreement/v1`, #676); the readings are those verbs, and their
- * evidence is only the cells of the masculine spelling that agree.
+ * evidence is only the cells of that spelling that agree. `first-spelling`:
+ * it is none, and it is, as typed, the agreeing first spelling of cells that
+ * hold more than one (`mi sono arreso` of `mi sono arreso, arresosi`).
  */
 export type FoundRoute =
   | { kind: "surface" }
   | { kind: "phrase"; phrases: [PhraseMatch, ...PhraseMatch[]]; forms: PhraseForm[] }
-  | { kind: "feminine"; agreement: AgreeingSpelling };
+  | { kind: "feminine"; agreement: AgreeingSpelling }
+  | { kind: "first-spelling"; agreement: AgreeingSpelling };
 
 /**
  * The index was probed and at least one record matched. The readings are a

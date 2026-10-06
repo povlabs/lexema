@@ -15,7 +15,8 @@ import { placeRecovered, type RecoveredOfRecord, type StoredRecovered } from "./
 import { dictionaryTables, lineagesOf, servedBy, type DictionaryTables } from "./served.js";
 import { readSourceRecord, type SourceRecordFields } from "./sourceRecord.js";
 import { correctionOf, correctionsByRecord, type CorrectionRow } from "./correctedClaim.js";
-import { essereAgreement, feminineOf, type AgreeingSpelling } from "../italian/essereAgreement.js";
+import { agreeingQuery, essereAgreement } from "../italian/essereAgreement.js";
+import { prefixUpperBound } from "./keyRange.js";
 import { personOfItalianVerbForm } from "../italian/moods.js";
 import { correctRecordClaims, pluralDeclaration, sourcePointerOf, sourceTagsOf } from "./types.js";
 import type {
@@ -195,7 +196,7 @@ export async function exists({ db, releaseId, query }: LookupOptions): Promise<E
     first?.record_word ??
     (await pages.candidates(key))[0]?.word ??
     (await phraseHits(db, releaseId, key))?.hits[0].record_word ??
-    (await feminineHits(db, releaseId, key, tables.corrections))?.hits[0].record_word;
+    (await agreementHits(db, releaseId, key, tables.corrections))?.hits[0].record_word;
   return word === undefined
     ? { outcome: "absent", query: prepared.query, release: prepared.release }
     : { outcome: "present", query: prepared.query, release: prepared.release, word };
@@ -259,46 +260,61 @@ export async function lookup({ db, releaseId, query }: LookupOptions): Promise<L
   }
 
   // Nor a phrase. It may be the feminine of a compound form the source lists
-  // only as the masculine: `sono andata` of `sono andato` (#676).
-  const feminine = await feminineHits(db, releaseId, key, corrected);
-  if (feminine === undefined) return { outcome: "not-found", query: queryInfo, release };
-  const route: FoundRoute = { kind: "feminine", agreement: feminine.agreement };
-  return found(db, releaseId, pages, queryInfo, release, feminine.hits, route, corrected, feminine.tables);
+  // only as the masculine, `sono andata` of `sono andato`, or the first of the
+  // spellings one cell holds, `mi sono arreso` of `mi sono arreso, arresosi`
+  // (#676).
+  const agreement = await agreementHits(db, releaseId, key, corrected);
+  if (agreement === undefined) return { outcome: "not-found", query: queryInfo, release };
+  return found(db, releaseId, pages, queryInfo, release, agreement.hits, agreement.route, corrected, agreement.tables);
 }
 
 /**
- * The rows of a query read as the feminine of a compound spelling, by rule
- * `it-essere-agreement/v1` (#676): `sono andata` probes `sono andato`, and
- * keeps a row only where it is a verb's `forms[]` cell on a row of the number
- * the feminine names, whose spelling the rule says agrees there. The tables
- * read to place each cell come back with the rows, so `found` reads none
- * twice. Undefined when no cell agrees. Nothing is sent for a query the rule
- * cannot read as a feminine (`casa`, `ho mangiata`, `sono andat`).
+ * The rows of a query rule `it-essere-agreement/v1` reads as an agreeing first
+ * spelling (#676), and the route that says how. A feminine is read as its
+ * masculine, `sono andata` as `sono andato`, and that key is probed. When it
+ * finds no cell, or the query was typed as the masculine and so already found
+ * nothing, the cells whose spelling starts with the masculine and `, ` are read
+ * in one range: `mi sono arresa` and `mi sono arreso` both reach `mi sono
+ * arreso, arresosi`. A row is kept only where it is a verb's `forms[]` cell, on
+ * a row of the query's number, whose first spelling is the masculine and
+ * agrees there. The tables read to place each cell come back with the rows, so
+ * `found` reads none twice. Undefined when no cell is kept. Nothing is sent
+ * for a query without the rule's shape (`casa`, `ho mangiata`, `sono andat`).
  */
-async function feminineHits(
+async function agreementHits(
   db: LookupDatabase,
   releaseId: string,
   key: string,
   corrected: boolean,
-): Promise<{ hits: [HitRow, ...HitRow[]]; agreement: AgreeingSpelling; tables: ReadonlyMap<number, Promise<RecordTable>> } | undefined> {
-  const agreement = feminineOf(key);
-  if (agreement === undefined) return undefined;
-  const rows = (await queryAll<HitRow>(db, SEARCH_SQL, releaseId, agreement.masculine)).filter(
-    (row) => row.origin === "embedded-form" && row.record_pos === "verb",
-  );
+): Promise<{ hits: [HitRow, ...HitRow[]]; route: FoundRoute; tables: ReadonlyMap<number, Promise<RecordTable>> } | undefined> {
+  const query = agreeingQuery(key);
+  if (query === undefined) return undefined;
+  const { spelling } = query;
   const tables = new Map<number, Promise<RecordTable>>();
-  for (const row of rows) {
-    if (!tables.has(row.record_id)) tables.set(row.record_id, handled(readTable(db, row.record_id, refOn(row), corrected)));
-  }
-  const agrees = await Promise.all(
-    rows.map(async (row) => {
-      const form = (await tables.get(row.record_id))?.forms.find((one) => sourcePointerOf(one.ref) === row.json_pointer);
-      const place = form === undefined ? undefined : personOfItalianVerbForm(sourceTagsOf(form));
-      return place?.number === agreement.number && essereAgreement(row.surface, place.number).kind === "agrees";
-    }),
-  );
-  const [first, ...rest] = rows.filter((_, i) => agrees[i]);
-  return first === undefined ? undefined : { hits: [first, ...rest], agreement, tables };
+  const agreeing = async (rows: readonly HitRow[]): Promise<HitRow[]> => {
+    const cells = rows.filter((row) => row.origin === "embedded-form" && row.record_pos === "verb");
+    for (const row of cells) {
+      if (!tables.has(row.record_id)) tables.set(row.record_id, handled(readTable(db, row.record_id, refOn(row), corrected)));
+    }
+    const kept = await Promise.all(
+      cells.map(async (row) => {
+        const form = (await tables.get(row.record_id))?.forms.find((one) => sourcePointerOf(one.ref) === row.json_pointer);
+        const place = form === undefined ? undefined : personOfItalianVerbForm(sourceTagsOf(form));
+        if (place?.number !== spelling.number) return false;
+        const read = essereAgreement(row.surface, place.number);
+        return read.kind === "agrees" && normalizeItalianExact(read.spelling.first) === spelling.first;
+      }),
+    );
+    return cells.filter((_, i) => kept[i]);
+  };
+  const exact = query.spelled === "feminine" ? await agreeing(await queryAll<HitRow>(db, SEARCH_SQL, releaseId, spelling.first)) : [];
+  const prefix = `${spelling.first}, `;
+  const [first, ...rest] =
+    exact.length > 0 ? exact : await agreeing(await queryAll<HitRow>(db, FIRST_SPELLING_SQL, releaseId, prefix, prefixUpperBound(prefix)));
+  if (first === undefined) return undefined;
+  const route: FoundRoute =
+    query.spelled === "feminine" ? { kind: "feminine", agreement: spelling } : { kind: "first-spelling", agreement: spelling };
+  return { hits: [first, ...rest], route, tables };
 }
 
 /**
@@ -515,12 +531,25 @@ async function found(
  * `surface_hit` view because the view does not carry `form_index`, which is
  * how a claim names its form. Exported so a test can assert the plan.
  */
-export const SEARCH_SQL: DictionaryRead = `SELECT r.record_id, r.release_id, r.line_no, r.line_sha256, r.word AS record_word, r.pos AS record_pos,
+export const SEARCH_SQL: DictionaryRead = searchWhere("lf.surface_key = ?2");
+
+/**
+ * The rows of every cell whose spelling starts with `?2`, read in one range of
+ * `lookup_form_by_key`: `surface_key >= ?2 AND surface_key < ?3`, the bounds
+ * `prefixUpperBound` gives. The first-spelling probe of rule
+ * `it-essere-agreement/v1` (#676) sends `mi sono arreso, ` to reach the cell
+ * `mi sono arreso, arresosi`. Exported so a test can assert the plan.
+ */
+export const FIRST_SPELLING_SQL: DictionaryRead = searchWhere("lf.surface_key >= ?2 AND lf.surface_key < ?3");
+
+/** `SEARCH_SQL`'s read, over the keys `keys` names. */
+function searchWhere(keys: string): DictionaryRead {
+  return `SELECT r.record_id, r.release_id, r.line_no, r.line_sha256, r.word AS record_word, r.pos AS record_pos,
             lf.origin, lf.json_pointer, lf.form_source, lf.surface,
             (lf.origin = 'headword') AS is_headword_hit
        FROM lookup_form lf
        JOIN source_record r ON r.record_id = lf.record_id
-      WHERE lf.release_id IN (${servedBy("?1")}) AND lf.surface_key = ?2
+      WHERE lf.release_id IN (${servedBy("?1")}) AND ${keys}
         AND NOT EXISTS (
               SELECT 1 FROM grammar_claim g
                WHERE g.record_id = lf.record_id
@@ -528,6 +557,7 @@ export const SEARCH_SQL: DictionaryRead = `SELECT r.record_id, r.release_id, r.l
                  AND g.status = 'stated'
                  AND g.dimension = 'form-role' AND g.value = 'auxiliary')
       ORDER BY is_headword_hit DESC, r.line_no, lf.json_pointer`;
+}
 
 // --- rows as they come back from SQLite -------------------------------------
 
