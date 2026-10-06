@@ -17,6 +17,7 @@ import { HEADWORD_PREFIX_SQL, prefixUpperBound } from "./keyRange.js";
 import { MAX_QUERY_LENGTH, readRelease } from "./lookup.js";
 import { phraseCompletions, type PhraseOffer } from "./phrase.js";
 import { inKeyOrder, servedReleases } from "./served.js";
+import type { ReleaseInfo } from "./types.js";
 
 /**
  * The shortest prefix answered, in characters of the normalized key. Two
@@ -33,11 +34,17 @@ export const MAX_PREFIX_LENGTH = MAX_QUERY_LENGTH;
 /** The most suggestions one answer carries, Huey's "5-10 word list". */
 export const SUGGESTION_LIMIT = 10;
 
-export interface SuggestOptions {
-  db: LookupDatabase;
-  releaseId: string;
-  prefix: string;
-}
+/**
+ * The release to read: its id, whose release row is read and checked, or the
+ * release a lookup already read and found servable, which is not read again
+ * (#665). Either one, never both, so the two can never name different releases.
+ */
+export type ReleaseRef = { releaseId: string; release?: never } | { release: ReleaseInfo; releaseId?: never };
+
+/** The id of the release `ref` names. */
+export const releaseIdOf = (ref: ReleaseRef): string => (ref.release !== undefined ? ref.release.releaseId : ref.releaseId);
+
+export type SuggestOptions = { db: LookupDatabase; prefix: string } & ReleaseRef;
 
 /**
  * A prefix the index was probed for, and what it held. `suggestions` are the
@@ -161,17 +168,19 @@ export class CompleteSuggestions {
  */
 export const FIRST_SCAN = 22;
 
-export async function suggest({ db, releaseId, prefix }: SuggestOptions): Promise<SuggestResult> {
+export async function suggest({ db, prefix, ...of }: SuggestOptions): Promise<SuggestResult> {
   const rejection = prefixRejectionOf(prefix);
   if (rejection !== undefined) return { outcome: "rejected", prefix: { raw: prefix }, rejection };
   const key = normalizeItalianExact(prefix);
+  const releaseId = releaseIdOf(of);
 
   // The same two refusals exact lookup makes, for the same reasons: a release
   // that is not complete is not servable, and keys built by another normalizer
-  // would be probed with the wrong prefix. The served releases are read in the
-  // same wait, one D1 call instead of two (#663), and used only once both
-  // checks pass.
-  const [release, releases] = await Promise.all([readRelease(db, releaseId), servedReleases(db, releaseId)]);
+  // would be probed with the wrong prefix. A release row is only ever read
+  // when complete, so one handed in has passed the first. The served releases
+  // are read in the same wait, one D1 call instead of two (#663), and used
+  // only once both checks pass.
+  const [release, releases] = await Promise.all([of.release ?? readRelease(db, releaseId), servedReleases(db, releaseId)]);
   if (release === undefined) throw new Error(`no complete release '${releaseId}'`);
   if (release.normalizer !== IT_NORMALIZER_VERSION) {
     throw new Error(

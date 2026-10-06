@@ -114,25 +114,31 @@ for (const [word, ceiling] of Object.entries(BEFORE)) {
 }
 
 /**
- * A search that finds nothing (#663): what the page sent at f6731dd, before
- * the "Did you mean" reads were sent in fewer waits. A not-found page must make
- * fewer calls than then, and send no more statements.
+ * A search that finds nothing (#663, #665): a not-found page sends no more
+ * statements than it did at f6731dd, before the "Did you mean" reads were sent
+ * in fewer waits, and makes at most the calls below. `mangare` gets a typo
+ * match, which never uses the words that begin with it, so it pays for no
+ * prefix read and keeps f6731dd's 8 calls. `citta` may make 7 calls, one more
+ * than at e380d77, so that a typo page reads no prefix list (Huey's ruling,
+ * https://github.com/povlabs/lexema/issues/665#issuecomment-6012462663).
  */
-const NOT_FOUND_BEFORE: Record<string, { statements: number; calls: number }> = {
-  zzzz: { statements: 16, calls: 10 },
-  citta: { statements: 15, calls: 9 },
-  xqzt: { statements: 16, calls: 10 },
-  qwrtz: { statements: 16, calls: 10 },
+const NOT_FOUND: Record<string, { kind: string; statements: number; calls: number }> = {
+  zzzz: { kind: "none", statements: 16, calls: 7 },
+  citta: { kind: "accent", statements: 15, calls: 7 },
+  xqzt: { kind: "none", statements: 16, calls: 7 },
+  qwrtz: { kind: "none", statements: 16, calls: 7 },
+  mangare: { kind: "typo", statements: 14, calls: 8 },
 };
 
-for (const [word, then] of Object.entries(NOT_FOUND_BEFORE)) {
-  test(`the not-found page for '${word}' makes fewer than ${then.calls} calls with at most ${then.statements} statements, and reads the page SQLite reads`, async () => {
+for (const [word, ceiling] of Object.entries(NOT_FOUND)) {
+  test(`the not-found page for '${word}' sends at most ${ceiling.statements} statements in at most ${ceiling.calls} calls, and reads the page SQLite reads`, async () => {
     const sent = nothingSent();
     const db = fromD1(countingD1(sqlite, sent));
     const [attempt] = await Promise.all([searchAttempt(db, RELEASE, word), servedVersion(db, RELEASE)]);
-    assert.equal(attempt.outcome, "not-found", `${word}: expected a not-found page`);
-    assert.ok(sent.calls < then.calls, `${word}: ${sent.calls} calls, not fewer than ${then.calls}`);
-    assert.ok(sent.statements <= then.statements, `${word}: ${sent.statements} statements, more than ${then.statements}`);
+    assert.ok(attempt.outcome === "not-found", `${word}: expected a not-found page`);
+    assert.equal(attempt.nearby.kind, ceiling.kind, `${word}: expected a '${ceiling.kind}' offer`);
+    assert.ok(sent.calls <= ceiling.calls, `${word}: ${sent.calls} calls, more than ${ceiling.calls}`);
+    assert.ok(sent.statements <= ceiling.statements, `${word}: ${sent.statements} statements, more than ${ceiling.statements}`);
     assert.deepEqual(attempt, await searchAttempt(fromNodeSqlite(sqlite), RELEASE, word));
   });
 }
