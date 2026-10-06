@@ -37,8 +37,6 @@ import {
   DEFINITION_EXTRA,
   DEFINITION_NUMBER,
   DEFINITIONS,
-  DEFINITIONS_GROUP,
-  DEFINITIONS_MORE,
   EXAMPLE,
   EXAMPLE_EXTRA,
   EXAMPLE_LOOSE,
@@ -241,7 +239,7 @@ function Definitions({ reading }: { reading: Reading }) {
   const list = `definition-list-${entryKey(reading)}`;
   return (
     <Block id={`definitions-${entryKey(reading)}`} label="Definitions">
-      <MoreBlock className={DEFINITIONS_GROUP}>
+      <MoreBlock kind="definitions">
         <ol className={DEFINITIONS} id={list}>
           {items.map((item, i) => (
             <li key={definitionKey(item)} className={i === 0 ? DEFINITION : DEFINITION_EXTRA} data-definition={i + 1}>
@@ -257,7 +255,7 @@ function Definitions({ reading }: { reading: Reading }) {
         {looseExamples.map((text, i) => (
           <Example key={`loose-${i}`} text={text} className={EXAMPLE_LOOSE} />
         ))}
-        {more && <More className={DEFINITIONS_MORE} controls={list} />}
+        {more && <More place="definitions" controls={list} />}
       </MoreBlock>
     </Block>
   );
@@ -413,7 +411,7 @@ export function VerbFormBlockView({ block }: { block: VerbFormBlock }) {
         </span>
       </h2>
       <Block id={`definitions-${anchor}`} label="Definitions">
-        <MoreBlock className={DEFINITIONS_GROUP}>
+        <MoreBlock kind="definitions">
           <ol className={DEFINITIONS} id={list}>
             {block.lines.map((line, i) => (
               <li key={formLineKey(line)} className={i === 0 ? DEFINITION : DEFINITION_EXTRA} data-definition={i + 1}>
@@ -433,7 +431,7 @@ export function VerbFormBlockView({ block }: { block: VerbFormBlock }) {
           {looseExamples.map((text, i) => (
             <Example key={`loose-${i}`} text={text} className={EXAMPLE_LOOSE} />
           ))}
-          {more && <More className={DEFINITIONS_MORE} controls={list} />}
+          {more && <More place="definitions" controls={list} />}
         </MoreBlock>
       </Block>
       {block.sources.map((source) => (

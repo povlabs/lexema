@@ -23,8 +23,6 @@ import {
   DEFINITION_NUMBER_CLOSED,
   DEFINITION_NUMBER_OPEN,
   DEFINITIONS,
-  DEFINITIONS_GROUP,
-  DEFINITIONS_MORE,
   FORM_OF_LINE,
   GLOSS,
   GLOSS_LINK,
@@ -111,7 +109,7 @@ export function PhraseView({ page, siteKey }: { page: PhrasePage; siteKey?: stri
               <span lang="it">{reading.posTitle}</span>
             </h2>
             <Block id={`definitions-${entryKey(reading)}`} label="Definitions">
-              <MoreBlock className={DEFINITIONS_GROUP}>
+              <MoreBlock kind="definitions">
                 <ol className={DEFINITIONS} id={`definition-list-${entryKey(reading)}`}>
                   {lines.map((line, i) => (
                     <li
@@ -130,7 +128,7 @@ export function PhraseView({ page, siteKey }: { page: PhrasePage; siteKey?: stri
                     </li>
                   ))}
                 </ol>
-                {holdsMore(lines) && <More className={DEFINITIONS_MORE} controls={`definition-list-${entryKey(reading)}`} />}
+                {holdsMore(lines) && <More place="definitions" controls={`definition-list-${entryKey(reading)}`} />}
               </MoreBlock>
             </Block>
           </article>

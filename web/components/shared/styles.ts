@@ -435,6 +435,25 @@ export const EXPRESSION_FILTER_ICON = "pointer-events-none absolute left-3 size-
 export const EXPRESSION_FILTER_INPUT =
   "w-full min-w-0 bg-transparent py-2 pr-3 pl-9 font-sans text-[0.9rem] text-text-strong outline-none placeholder:text-text-muted [&::-webkit-search-cancel-button]:appearance-none";
 
+/**
+ * The one expand control and the block it opens (More.tsx), keyed by where
+ * they sit. A server component names the key and the client component reads
+ * the classes here, so a class string never crosses into the page's inline
+ * payload (#647).
+ */
+export type MoreBlockKind = "definitions" | "mood";
+export const MORE_BLOCK: Readonly<Record<MoreBlockKind, string>> = { definitions: DEFINITIONS_GROUP, mood: MOOD_PANEL };
+/** `line-fits` is a one-line text that fits, whose control is hidden until a resize cuts it. */
+export type MorePlace = "definitions" | "compound" | "expressions" | "line" | "line-fits" | "words";
+export const MORE_PLACE: Readonly<Record<MorePlace, string>> = {
+  definitions: DEFINITIONS_MORE,
+  compound: COMPOUND_MORE,
+  expressions: EXPRESSIONS_MORE,
+  line: ONE_LINE_MORE,
+  "line-fits": ONE_LINE_MORE_UNNEEDED,
+  words: WORD_MORE,
+};
+
 /** `Source ↗`, with the same space above and below it. */
 export const SOURCE_LINE = "mt-9 sm:mt-12 flex flex-wrap items-center gap-x-3 gap-y-1 font-sans text-[0.8rem] text-text-muted";
 export const SOURCE_LINK = `inline-flex items-center gap-1.5 text-text-muted no-underline hover:text-text ${FOCUS_RING}`;

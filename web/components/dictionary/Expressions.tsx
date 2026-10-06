@@ -15,9 +15,8 @@ import { Collapsible } from "@base-ui/react/collapsible";
 import { Input } from "@base-ui/react/input";
 import { useState } from "react";
 import { expressionMeaning } from "@lexema/lookup/expressions.ts";
-import type { Expression } from "@lexema/lookup/types.ts";
 import { SearchIcon } from "@/components/shared/icons";
-import { matchesExpression, takesFilter, type ExpressionSection } from "@/lib/dictionary/wordPage.ts";
+import { matchesExpression, takesFilter, type ExpressionRow } from "@/lib/dictionary/wordPage.ts";
 import { searchHref } from "./Forms";
 import { More } from "./More";
 import {
@@ -33,15 +32,10 @@ import {
   EXPRESSION_ROW_EXTRA,
   EXPRESSION_ROW_FILTERED,
   EXPRESSIONS,
-  EXPRESSIONS_MORE,
   WORD_BLOCK,
 } from "@/components/shared/styles.ts";
 
-/** The section's label: `Expressions`, or `Expressions with andare` for a lemma's. */
-export const expressionsLabel = (section: ExpressionSection): string =>
-  section.kind === "own" ? "Expressions" : `Expressions with ${section.lemma}`;
-
-function Row({ expression, className }: { expression: Expression; className: string }) {
+function Row({ expression, className }: { expression: ExpressionRow; className: string }) {
   const meaning = expressionMeaning(expression);
   return (
     <li className={className} data-expression="">
@@ -63,17 +57,20 @@ function Row({ expression, className }: { expression: Expression; className: str
   );
 }
 
-export function Expressions({ section, id }: { section: ExpressionSection; id: string }) {
+/**
+ * The section, labelled `label` (wordPage.ts, `expressionsLabel`), over its
+ * rows (`expressionRows`): what it shows and nothing more.
+ */
+export function Expressions({ id, label, expressions }: { id: string; label: string; expressions: readonly [ExpressionRow, ...ExpressionRow[]] }) {
   const [typed, setTyped] = useState("");
-  const { expressions } = section;
   const list = `${id}-list`;
   return (
     <section className={WORD_BLOCK} aria-labelledby={id}>
       <h2 className={BLOCK_LABEL} id={id}>
-        {expressionsLabel(section)}
+        {label}
       </h2>
       <Collapsible.Root className={EXPRESSIONS} onOpenChange={(open) => open || setTyped("")}>
-        {takesFilter(section) && (
+        {takesFilter(expressions) && (
           <div className={EXPRESSION_FILTER}>
             <SearchIcon className={EXPRESSION_FILTER_ICON} />
             <Input
@@ -98,7 +95,7 @@ export function Expressions({ section, id }: { section: ExpressionSection; id: s
             />
           ))}
         </ul>
-        {expressions.length > 1 && <More className={EXPRESSIONS_MORE} controls={list} />}
+        {expressions.length > 1 && <More place="expressions" controls={list} />}
       </Collapsible.Root>
     </section>
   );

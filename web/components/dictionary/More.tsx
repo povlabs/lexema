@@ -11,36 +11,49 @@
 // class until then, so the whole content is in the HTML the server sends. The
 // control sits after all of them, so closed, with the rest hidden, it follows
 // the last thing that shows; open, it follows the last thing of all.
+//
+// Callers name where each part sits by a key, and the classes are read here
+// (styles.ts, `MORE_BLOCK` and `MORE_PLACE`), so no class string is carried in
+// the page's inline payload (#647).
 
 import { Collapsible } from "@base-ui/react/collapsible";
 import type { ReactNode } from "react";
-import { MORE_CLOSED, MORE_OPEN, MORE_TRIGGER } from "@/components/shared/styles.ts";
+import {
+  COMPOUND_TABLES,
+  MORE_BLOCK,
+  MORE_CLOSED,
+  MORE_OPEN,
+  MORE_PLACE,
+  MORE_TRIGGER,
+  type MoreBlockKind,
+  type MorePlace,
+} from "@/components/shared/styles.ts";
 
 /** The block the control opens. `open` starts it open, as when the search hit something it reveals. */
-export function MoreBlock({ className, open, children }: { className: string; open?: boolean; children: ReactNode }) {
+export function MoreBlock({ kind, open, children }: { kind: MoreBlockKind; open?: boolean; children: ReactNode }) {
   return (
-    <Collapsible.Root className={className} defaultOpen={open}>
+    <Collapsible.Root className={MORE_BLOCK[kind]} defaultOpen={open}>
       {children}
     </Collapsible.Root>
   );
 }
 
-/** What waits for `+ more` when it is one run of content: Base UI's panel, in the HTML while closed. */
-export function MorePanel({ className, children }: { className: string; children: ReactNode }) {
+/** A mood's compound tenses, which wait for `+ more` as one run: Base UI's panel, in the HTML while closed. */
+export function MorePanel({ children }: { children: ReactNode }) {
   return (
-    <Collapsible.Panel className={className} keepMounted>
+    <Collapsible.Panel className={COMPOUND_TABLES} keepMounted>
       {children}
     </Collapsible.Panel>
   );
 }
 
 /**
- * The control, placed by `className`. Where what it reveals is spread through
- * the block rather than one panel, `controls` names the element it opens.
+ * The control, placed by `place`. Where what it reveals is spread through the
+ * block rather than one panel, `controls` names the element it opens.
  */
-export function More({ className, controls }: { className: string; controls?: string }) {
+export function More({ place, controls }: { place: MorePlace; controls?: string }) {
   return (
-    <div className={className}>
+    <div className={MORE_PLACE[place]}>
       <Collapsible.Trigger className={MORE_TRIGGER} aria-controls={controls}>
         <span className={MORE_CLOSED}>+ more</span>
         <span className={MORE_OPEN}>less</span>

@@ -11,7 +11,7 @@
 import { Collapsible } from "@base-ui/react/collapsible";
 import { useEffect, useId, useRef, useState } from "react";
 import { More } from "./More";
-import { ONE_LINE, ONE_LINE_MORE, ONE_LINE_MORE_UNNEEDED, ONE_LINE_TEXT } from "@/components/shared/styles.ts";
+import { ONE_LINE, ONE_LINE_TEXT } from "@/components/shared/styles.ts";
 
 export function OneLine({ text, lang }: { text: string; lang?: string }) {
   const root = useRef<HTMLDivElement>(null);
@@ -47,7 +47,7 @@ export function OneLine({ text, lang }: { text: string; lang?: string }) {
         {text}
       </p>
       {/* Hidden, not left out, so a resize that cuts the text can bring it back. */}
-      <More className={fits ? ONE_LINE_MORE_UNNEEDED : ONE_LINE_MORE} controls={id} />
+      <More place={fits ? "line-fits" : "line"} controls={id} />
     </Collapsible.Root>
   );
 }

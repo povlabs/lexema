@@ -17,7 +17,17 @@ import { ReportDialog } from "./ReportDialog";
 import { reportReadings, type ReportReading } from "@/lib/dictionary/report.ts";
 import { sourcePageUrl } from "@/lib/dictionary/sourcePage.ts";
 import { WordList } from "./WordList";
-import { blockTitle, readingAnchor, showsJumpLinks, shownRecords, type ExpressionSection, type WordLists, type WordPage } from "@/lib/dictionary/wordPage.ts";
+import {
+  blockTitle,
+  expressionRows,
+  expressionsLabel,
+  readingAnchor,
+  showsJumpLinks,
+  shownRecords,
+  type ExpressionSection,
+  type WordLists,
+  type WordPage,
+} from "@/lib/dictionary/wordPage.ts";
 import {
   BLOCK_LABEL,
   WORD_BLOCK,
@@ -104,7 +114,12 @@ function WordFactsView({
       <WordList id="antonyms" label="Antonyms" items={lists.antonyms} />
       <WordList id="derived" label="Derived words" items={lists.derived} />
       {expressions.map((section, i) => (
-        <Expressions key={section.kind === "own" ? "own" : `lemma:${section.lemma}`} section={section} id={`expressions-${i}`} />
+        <Expressions
+          key={section.kind === "own" ? "own" : `lemma:${section.lemma}`}
+          id={`expressions-${i}`}
+          label={expressionsLabel(section)}
+          expressions={expressionRows(section)}
+        />
       ))}
     </div>
   );
