@@ -190,7 +190,9 @@ line: essere's own record has none, and a verb with both auxiliaries lists
 `ho vissuto` and `sono vissuto` in one cell, where only the second agrees.
 Nothing derived is stored
 ([Huey's ruling](https://github.com/povlabs/lexema/issues/676#issuecomment-6013478337);
-reflexive verbs are in scope by the same ruling, widened on 2026-10-06).
+reflexive verbs are in scope by
+[Huey's scope reply](https://github.com/povlabs/lexema/issues/676#issuecomment-6014794503)
+of 2026-10-06).
 
 ## Outcomes
 
