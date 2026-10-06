@@ -367,7 +367,12 @@ const PERSON_BASE = "p-0 pr-3 align-baseline whitespace-nowrap font-sans text-[0
 export const PERSON = `${PERSON_BASE} font-normal text-text-muted`;
 export const PERSON_SEARCHED = `${PERSON_BASE} font-semibold text-accent`;
 export const PERSON_REPEAT = "sm:sr-only";
-export const TENSE_CELL = "p-0 pr-4 align-baseline font-mono text-[0.875rem] leading-[1.625rem] text-text-strong wrap-anywhere max-sm:pr-2 sm:text-[0.9375rem] sm:leading-[1.8125rem]";
+/**
+ * A tense cell keeps the 16 px gap the tense heads draw before the next
+ * column, on a phone too (frames 19 to 21), so two long forms never touch
+ * (`ti sei accorto/a`, `ti eri accorto/a`, #683).
+ */
+export const TENSE_CELL = "p-0 pr-4 align-baseline font-mono text-[0.875rem] leading-[1.625rem] text-text-strong wrap-anywhere sm:text-[0.9375rem] sm:leading-[1.8125rem]";
 /**
  * The row that holds the searched form is 2 px taller, the form 1 px lower, so
  * its underline clears the next row (frames 17, 18 and 21). On a wide screen

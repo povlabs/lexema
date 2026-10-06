@@ -20,7 +20,7 @@ import {
   type Tense,
 } from "@/lib/dictionary/conjugation.ts";
 import { GENDER_LABEL, NUMBER_LABEL, NUMBERS, type Grid, type GridCell } from "@/lib/dictionary/genderGrid.ts";
-import { More, MoreBlock, MorePanel } from "./More";
+import { More, MoodMoreBlock, MorePanel } from "./More";
 import { MoodTabs } from "./MoodTabs";
 import {
   CELL_SEPARATOR,
@@ -194,28 +194,37 @@ function shownSpelling(surface: string, agreeing: ReadonlyMap<string, AgreeingSp
  * A spelling the source files twice in the slot (`abbisognare` repeats its
  * whole table) shows once and keeps both entries. A spelling `agreeing` names
  * shows both genders, `sono andato/a`, and links to the source's spelling.
+ *
+ * `lines` are the slot's spellings grouped by the auxiliary they are built on
+ * (#683): each group after the first starts on a new line, with no comma
+ * before it, so vivere's `io` cell is `ho vissuto` above `sono vissuto/a`. The
+ * break sits inside the group's first span rather than in a wrapper per line,
+ * since every byte here is in the HTML and again in the payload (#647).
  */
 function FormLinks({
-  forms,
+  lines,
   searched,
   agreeing = NONE_AGREE,
 }: {
-  forms: readonly TableForm[];
+  lines: readonly (readonly TableForm[])[];
   searched: (form: TableForm) => boolean;
   agreeing?: ReadonlyMap<string, AgreeingSpelling>;
 }) {
-  const spellings: TableForm[][] = [];
-  for (const form of forms) {
-    const same = spellings.find((group) => group[0].surface === form.surface);
-    if (same === undefined) spellings.push([form]);
-    else same.push(form);
+  const spellings: { forms: TableForm[]; startsLine: boolean }[] = [];
+  for (const line of lines) {
+    const lineStart = spellings.length;
+    for (const form of line) {
+      const same = spellings.slice(lineStart).find((group) => group.forms[0].surface === form.surface);
+      if (same === undefined) spellings.push({ forms: [form], startsLine: spellings.length === lineStart });
+      else same.forms.push(form);
+    }
   }
   return (
     <>
-      {spellings.map((group, i) => (
-        <span key={formKey(group[0])}>
-          {i > 0 && <span className={CELL_SEPARATOR}>, </span>}
-          <FormLink forms={group} searched={group.some(searched)} shown={shownSpelling(group[0].surface, agreeing)} />
+      {spellings.map(({ forms, startsLine }, i) => (
+        <span key={formKey(forms[0])}>
+          {i > 0 && (startsLine ? <br /> : <span className={CELL_SEPARATOR}>, </span>)}
+          <FormLink forms={forms} searched={forms.some(searched)} shown={shownSpelling(forms[0].surface, agreeing)} />
         </span>
       ))}
     </>
@@ -247,7 +256,7 @@ function NonFiniteLine({ items, searched }: { items: readonly NonFinite<TableFor
               {label}
             </dt>
             <dd className={NON_FINITE_FORMS}>
-              {forms.length === 0 ? <Dash /> : <FormLinks forms={forms} searched={searched} />}
+              {forms.length === 0 ? <Dash /> : <FormLinks lines={[forms]} searched={searched} />}
             </dd>
           </div>
         );
@@ -311,7 +320,7 @@ function TenseTables({
                       {tense.cells[row].forms.length === 0 ? (
                         <Dash />
                       ) : (
-                        <FormLinks forms={tense.cells[row].forms} searched={searched} agreeing={tense.cells[row].agreeing} />
+                        <FormLinks lines={tense.cells[row].lines} searched={searched} agreeing={tense.cells[row].agreeing} />
                       )}
                     </td>
                   ))}
@@ -327,13 +336,14 @@ function TenseTables({
 
 /**
  * One mood's tables. The compound tenses wait behind the one `+ more` after the
- * simple tenses, open when the search hit one. Open, each set is named —
+ * simple tenses, open when the search hit one in any mood; every mood's control
+ * opens and closes them on every tab (`MoodsMore`, #683). Open, each set is named —
  * *Tempi semplici*, *Tempi composti* (board f9vHId) — and `less` ends them;
  * closed, the simple tenses need no name.
  */
 function MoodPanelView({ table, searched }: { table: MoodTable<TableForm>; searched: (form: TableForm) => boolean }) {
   return (
-    <MoreBlock kind="mood" open={table.compoundSearched}>
+    <MoodMoreBlock>
       {table.simple.length > 0 && (
         <>
           {table.compound.length > 0 && (
@@ -355,7 +365,7 @@ function MoodPanelView({ table, searched }: { table: MoodTable<TableForm>; searc
           <More place="compound" />
         </>
       )}
-    </MoreBlock>
+    </MoodMoreBlock>
   );
 }
 
@@ -376,6 +386,7 @@ export function ConjugationView({
         <MoodTabs
           label={`Moods of ${word}`}
           open={conjugation.openMood}
+          compoundOpen={conjugation.compoundSearched}
           panels={conjugation.moods.map((table) => ({
             mood: table.mood,
             panel: <MoodPanelView table={table} searched={searched} />,
