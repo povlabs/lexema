@@ -74,6 +74,8 @@ URL. Suggestion keys move too; a page left open keeps its old key until reloaded
 A reader may see a word page up to one hour old after a dictionary apply: the
 Worker lets the reader's browser keep the home page and each word page for an
 hour (`private, max-age=3600`, [pageCache.ts](../web/worker/dictionary/pageCache.ts)).
+A page whose lookup failed is never kept, so an outage does not outlast itself
+in a reader's browser.
 If the data identity cannot be read, the card route returns an uncached home card.
 Reading the identity probes the newest applied change and table existence, plus
 one singleton row for each revision table that exists; it scans no lexical rows.

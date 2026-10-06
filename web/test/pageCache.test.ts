@@ -200,7 +200,7 @@ test("nothing else changes: an RSC payload keeps vinext's header, the developer 
   }
 });
 
-test("only a 200 HTML answer to a GET or HEAD of / on the dictionary, setting no cookie, is a page the browser may keep", () => {
+test("only a 200 HTML answer to a GET or HEAD of / on the dictionary, setting no cookie, whose lookup did not fail, is a page the browser may keep", () => {
   const html = (status = 200, headers: Record<string, string> = {}) =>
     new Response(null, { status, headers: { "content-type": "text/html; charset=utf-8", ...headers } });
   const ask = (url: string, method = "GET") => new Request(url, { method });
@@ -214,6 +214,7 @@ test("only a 200 HTML answer to a GET or HEAD of / on the dictionary, setting no
   for (const status of [204, 301, 404, 429, 500, 503]) assert.ok(!keeps("https://lexema.fyi/?q=bello", html(status)), String(status));
   assert.ok(!keeps("https://lexema.fyi/?q=bello", new Response("0:{}", { headers: { "content-type": "text/x-component" } })), "an RSC payload");
   assert.ok(!keeps("https://lexema.fyi/?q=bello", html(200, { "set-cookie": "visitor=1" })), "a response that sets a cookie");
+  assert.ok(!browserMayKeep(ask("https://lexema.fyi/?q=bello"), html(), "lookup-failed"), "a page whose lookup failed (#642)");
   for (const url of ["https://lexema.fyi/licence", "https://lexema.fyi/privacy", "https://lexema.fyi/suggest?q=bel", "https://lexema.fyi/report/open"]) {
     assert.ok(!keeps(url), url);
   }

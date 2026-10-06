@@ -9,6 +9,7 @@ import { log } from "@lexema/log/requestLog.ts";
 import { database, lookupDatabase } from "@/lib/shared/database.ts";
 import type { Attempt } from "./attempt.ts";
 import { searchAttempt } from "./searchAttempt.ts";
+import { refuseKeeping } from "@/worker/dictionary/pageCache.ts";
 import { parseStage } from "@/worker/shared/stage.ts";
 import { reportKeys, turnstileConfig, VisitorCodeKey, type ReportKeys, type TurnstileConfig } from "./report.ts";
 
@@ -44,12 +45,19 @@ const requestSearches = cacheForRequest(() => new Map<string, Promise<Attempt>>(
  * `cache`: vinext resolves a page's metadata outside the React render, where
  * that memo misses. vinext's request scope holds across both and ends with the
  * request, so two requests never share a lookup.
+ *
+ * A failed lookup tells the Worker the page must not stay in the reader's
+ * browser (#642, worker/dictionary/pageCache.ts), so a reader does not keep
+ * seeing an outage after it ends.
  */
 export function search(query: string): Promise<Attempt> {
   const searches = requestSearches();
   const memoised = searches.get(query);
   if (memoised !== undefined) return memoised;
-  const attempt = searchOnce(query);
+  const attempt = searchOnce(query).then((answer) => {
+    if (answer.outcome === "failed") refuseKeeping("lookup-failed");
+    return answer;
+  });
   searches.set(query, attempt);
   return attempt;
 }

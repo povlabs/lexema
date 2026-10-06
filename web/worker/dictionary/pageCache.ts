@@ -10,11 +10,26 @@
 // that policy names.
 //
 // Only one kind of response qualifies: a 200 HTML answer to a GET or HEAD of
-// `/` on the dictionary's host, with or without `?q=`, that sets no cookie.
-// Everything else leaves with the header it already has: a 429 "too many
-// searches" page and any other status, an RSC payload on the same address
-// (`text/x-component`), the report routes, the developer site and the API.
+// `/` on the dictionary's host, with or without `?q=`, that sets no cookie,
+// and whose lookup did not fail. Everything else leaves with the header it
+// already has, `no-store` among its directives: a page whose lookup failed,
+// such as during a database outage (#642), a 429 "too many searches" page and
+// any other status, an RSC payload on the same address (`text/x-component`),
+// the report routes, the developer site and the API.
+//
+// A failed lookup is still a 200 page, so the response alone cannot tell it
+// from a found word. The page says so instead: `search`
+// (lib/dictionary/db.ts) calls `refuseKeeping` when its lookup fails, which
+// notes it on this request's `PageNotes`. The notes live in an
+// AsyncLocalStorage that `withPageCache` opens around the request, as
+// worker/shared/requestLog.ts opens the request id the page's log lines carry.
+// Nothing is written on the response, so nothing has to be stripped before it
+// leaves. vinext builds a page's response only once its shell has rendered
+// (vinext/dist/server/app-page-render.js), and the lookup has no streaming
+// boundary around it (app/(lexema)/page.tsx, #115), so the note is in place
+// before the response reaches the rule.
 
+import { AsyncLocalStorage } from "node:async_hooks";
 import type { FetchHandler } from "../shared/fetchHandler.ts";
 import { routePathOf, siteOf } from "../shared/hosts.ts";
 import { isHtml } from "../shared/securityHeaders.ts";
@@ -25,10 +40,34 @@ export const PAGE_MAX_AGE_SECONDS = 3600;
 /** The `cache-control` a page the browser may keep is sent with: the browser's cache only. */
 export const PAGE_CACHE_CONTROL = `private, max-age=${PAGE_MAX_AGE_SECONDS}`;
 
-/** Whether `response`, the answer to `request`, is a dictionary page a reader's browser may keep. */
-export function browserMayKeep(request: Request, response: Response): boolean {
+/** Why a page the browser could otherwise keep must not be kept: its lookup failed. */
+export type KeepRefusal = "lookup-failed";
+
+/** What a request's page said about itself while it rendered: whether it refused to be kept. */
+class PageNotes {
+  #refusal: KeepRefusal | undefined;
+
+  refuse(reason: KeepRefusal): void {
+    this.#refusal = reason;
+  }
+
+  get refusal(): KeepRefusal | undefined {
+    return this.#refusal;
+  }
+}
+
+const pageNotes = new AsyncLocalStorage<PageNotes>();
+
+/** Note that this request's page must not stay in the reader's browser. Outside `withPageCache`, as in a test of the page alone, nothing is noted. */
+export function refuseKeeping(reason: KeepRefusal): void {
+  pageNotes.getStore()?.refuse(reason);
+}
+
+/** Whether `response`, the answer to `request`, is a dictionary page a reader's browser may keep; `refusal` is the page's own word against it. */
+export function browserMayKeep(request: Request, response: Response, refusal?: KeepRefusal): boolean {
   const url = new URL(request.url);
   return (
+    refusal === undefined &&
     siteOf(url) === "lexema" &&
     (request.method === "GET" || request.method === "HEAD") &&
     routePathOf(url.pathname) === "/" &&
@@ -41,8 +80,9 @@ export function browserMayKeep(request: Request, response: Response): boolean {
 /** Every response `handler` gives, with `PAGE_CACHE_CONTROL` on the pages a browser may keep. */
 export function withPageCache<E>(handler: FetchHandler<E>): FetchHandler<E> {
   return async (request, env, ctx) => {
-    const response = await handler(request, env, ctx);
-    if (!browserMayKeep(request, response)) return response;
+    const notes = new PageNotes();
+    const response = await pageNotes.run(notes, () => handler(request, env, ctx));
+    if (!browserMayKeep(request, response, notes.refusal)) return response;
     // A fetched or asset response has immutable headers, so this is a copy.
     const headers = new Headers(response.headers);
     headers.set("cache-control", PAGE_CACHE_CONTROL);
