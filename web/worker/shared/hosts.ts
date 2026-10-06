@@ -209,6 +209,9 @@ export function routePathOf(pathname: string): string {
   return path.endsWith(".rsc") ? path.slice(0, -".rsc".length) : path;
 }
 
+/** Whether vinext reads `pathname` as an RSC request's, by its `.rsc` suffix (`normalizeRscRequest`). */
+export const isRscPath = (pathname: string): boolean => `/${segmentsOf(pathname).join("/")}`.endsWith(".rsc");
+
 /** The App Router path a developer-site path is served from. */
 function developersPath(segments: string[]): string {
   if (segments.length === 0) return `/${DEVELOPERS_SEGMENT}`;
