@@ -13,6 +13,12 @@
 //   sarei andato  "prima persona singolare del passato condizionale di andare"
 //   andavano      "terza persona plurale dell'imperfetto indicativo di andare"
 //
+// A searched feminine compound form (`sono andata`, #676) reaches the cell of
+// its masculine through `it-essere-agreement/v1` (src/italian/essereAgreement.ts),
+// and its line names the gender after the number. A masculine line names none:
+//
+//   sono andata   "prima persona singolare femminile del passato prossimo indicativo di andare"
+//
 // The cell is where `placeItalianVerbForm` (it-moods/v1) puts the form, with
 // the row `personOfItalianVerbForm` reads, so the line and the cell a table
 // marks are one placement. The tense and mood names are `TENSE_NAMES`, the
@@ -40,19 +46,28 @@ export const VERB_FORM_LINE_RULE = "it-verb-form-line/v1" as const;
 const PERSON: Record<VerbPerson, string> = { first: "prima", second: "seconda", third: "terza" };
 const NUMBER: Record<VerbNumber, string> = { singular: "singolare", plural: "plurale" };
 
+/**
+ * The gender the query spelled the form in: as the cell spells it, or its
+ * feminine, read by `it-essere-agreement/v1`. Only the feminine is named.
+ */
+export type SpelledGender = "as-listed" | "feminine";
+
+const GENDER: Record<SpelledGender, string> = { "as-listed": "", feminine: " femminile" };
+
 /** `del passato`, `dell'imperfetto`: the elided article before a vowel. */
 const ofThe = (tense: string): string => (/^[aeiou]/.test(tense) ? `dell'${tense}` : `del ${tense}`);
 
 /**
  * The line for one form of `lemma`, or undefined when the form does not sit in
  * a finite tense with a person. `lemma` is written as given and ends the line.
+ * `gender` is how the query spelled the form.
  */
-export function verbFormLine(lemma: string, form: VerbFormTags): string | undefined {
+export function verbFormLine(lemma: string, form: VerbFormTags, gender: SpelledGender = "as-listed"): string | undefined {
   if (lemma === "") return undefined;
   const slot = placeItalianVerbForm(form);
   if (slot.kind !== "tense") return undefined;
   const row = personOfItalianVerbForm(form);
   if (row === undefined) return undefined;
   const { mood, tense } = TENSE_NAMES[slot.box];
-  return `${PERSON[row.person]} persona ${NUMBER[row.number]} ${ofThe(tense)} ${mood} di ${lemma}`;
+  return `${PERSON[row.person]} persona ${NUMBER[row.number]}${GENDER[gender]} ${ofThe(tense)} ${mood} di ${lemma}`;
 }

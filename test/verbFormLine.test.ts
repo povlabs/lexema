@@ -53,6 +53,16 @@ test("an imperative, a non-finite form and an unplaced form give no line", () =>
   assert.equal(line(["auxiliary"], []), undefined);
 });
 
+test("a feminine compound form's line names the gender after the number; the masculine names none (#676)", () => {
+  const io = { tags: ["singular", "first-person", "past", "perfect"], rawTags: ["io"] };
+  assert.equal(verbFormLine("andare", io, "feminine"), "prima persona singolare femminile del passato prossimo indicativo di andare");
+  assert.equal(verbFormLine("andare", io), "prima persona singolare del passato prossimo indicativo di andare");
+  assert.equal(
+    verbFormLine("andare", { tags: ["past"], rawTags: ["che noi"] }, "feminine"),
+    "prima persona plurale femminile del passato congiuntivo di andare",
+  );
+});
+
 test("a finite cell with no row gives no line rather than a guessed person", () => {
   assert.equal(line(["first-person", "present"], []), undefined);
   assert.equal(verbFormLine("", { tags: ["singular", "first-person", "present"], rawTags: ["io"] }), undefined);

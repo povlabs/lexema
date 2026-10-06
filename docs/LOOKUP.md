@@ -92,8 +92,9 @@ When the key matches nothing and has two to `MAX_PHRASE_WORDS` (12) words,
    headword is a match, and only a record's headword counts.
 
 The readings are those headwords' records, and `route` says how they were
-reached: `{ kind: "surface" }` for every other `found`, or
-`{ kind: "phrase", phrases, forms }`. Each phrase is the headword `key`, its
+reached: `{ kind: "surface" }` for a query found as typed,
+`{ kind: "phrase", phrases, forms }`, or `{ kind: "feminine", agreement }`
+and `{ kind: "first-spelling", agreement }` (below). Each phrase is the headword `key`, its
 `word` as the source spells it, and the typed `words` with the lemma each
 stood for and the one word that stands for it (`inflected`: the participle of
 a compound tense). A single word is never read this way, and neither is a
@@ -139,6 +140,59 @@ searched words': `vado via` links to *andare via*'s page
 Each form line keeps its record's provenance pointer, which reaches `vado`'s
 page, and `/licence` carries the full credit
 ([ADR 0009](../.decisions/0009-two-licences-and-a-source-link.md)).
+
+### A feminine compound form, or the first spelling of a cell
+
+A compound tense built on essere agrees its participle with the subject:
+`sono andata`, `siamo andate`, `mi sono accorta`. The source lists only the
+masculine (`sono andato`, `mi sono accorto`), so the feminine spells nothing.
+A few cells also hold more than one spelling, joined by `, `
+(`mi sono arreso, arresosi`), and are indexed whole, so neither
+`mi sono arreso` nor `mi sono arresa` spells a key. When the key matches
+nothing and is no phrase either, `lookup()` reads it by rule
+`it-essere-agreement/v1` (#676,
+[`src/italian/essereAgreement.ts`](../src/italian/essereAgreement.ts), probe
+`agreementHits` in [`src/lookup/lookup.ts`](../src/lookup/lookup.ts)):
+
+1. The key must be two words, a finite form of essere then a participle, or
+   three, a clitic (`mi`, `ti`, `si`, `ci`, `vi`) then a finite form of essere
+   then a participle. The rule owns both closed sets. The last word must end
+   in `-o` or `-a` (singular) or `-i` or `-e` (plural). Anything else sends
+   nothing more: `casa`, `ho mangiata`, `mi arrendo` and `sono andat` cost
+   exactly the statements they cost before.
+2. A feminine is read as its masculine (`-a` to `-o`, `-e` to `-i`), and the
+   masculine is probed with `SEARCH_SQL`: `sono andata` probes `sono andato`,
+   `ci siamo accorte` probes `ci siamo accorti`.
+3. When that finds no cell, or the key was typed as the masculine and so has
+   already found nothing, the first-spelling probe reads every cell whose
+   spelling starts with the masculine and `, `, in one range of
+   `lookup_form_by_key` (`FIRST_SPELLING_SQL`, bounds from `prefixUpperBound`).
+   `mi sono arresa` and `mi sono arreso` both reach arrendersi's
+   `mi sono arreso, arresosi`.
+4. A row is kept only when it is a verb's `forms[]` cell, the cell's row has
+   the number the key names, and the rule reads the cell's first spelling,
+   the text before the first `, `, as that masculine and as agreeing there.
+   Later spellings are never read. `è andate` finds nothing (`è andati` is in
+   no cell), and neither do `siamo assorbite` (assorbire's plural cells start
+   `siamo assorbito`, which ends in `-o`) and `mi sono perduta` (`perduto` is
+   the second spelling of `mi sono perso, perduto`).
+
+The readings are those verbs, and their evidence is only the cells kept.
+`route` is `{ kind: "feminine", agreement }` for a feminine and
+`{ kind: "first-spelling", agreement }` for a masculine reached by the range.
+`agreement` is the rule's `AgreeingSpelling`: the number and the first
+spelling, which only the rule can build. The page builds its verb form line
+from that route, naming the gender after the number for a feminine only
+("prima persona singolare femminile del passato prossimo indicativo di
+andare"), and marks the cell. `exists()` answers the same way, so the two
+never disagree. The switch is the spelling, never the record's `ausiliare`
+line: essere's own record has none, and a verb with both auxiliaries lists
+`ho vissuto` and `sono vissuto` in one cell, where only the second agrees.
+Nothing derived is stored
+([Huey's ruling](https://github.com/povlabs/lexema/issues/676#issuecomment-6013478337);
+reflexive verbs are in scope by
+[Huey's scope reply](https://github.com/povlabs/lexema/issues/676#issuecomment-6014794503)
+of 2026-10-06).
 
 ## Outcomes
 

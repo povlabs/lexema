@@ -338,14 +338,24 @@ export const TAB_PANEL = `mt-4 sm:mt-[1.1875rem] ${FOCUS_RING}`;
 /**
  * Tenses two at a time: pairs side by side on a wide screen, reading as one
  * table under one person column; on a phone each pair under its own.
+ *
+ * On a wide screen the pairs share their rows: each pair's rows are the rows
+ * of this grid, so a form that wraps in one pair (`ci eravamo accorti/e`)
+ * makes the same row taller in the other, and every form stays level with
+ * its person (#676). Seven rows hold the tense names and at most six persons;
+ * a mood with fewer leaves the rest empty, at no height. A tense column is
+ * 190 px, narrower when the screen is; only the first pair draws the person
+ * column. The rules sit here, once per set, not on each pair, to keep the
+ * page light.
  */
-export const TENSE_PAIRS = "flex flex-col gap-[0.8125rem] sm:flex-row sm:gap-0";
+export const TENSE_PAIRS =
+  "flex flex-col gap-[0.8125rem] sm:grid sm:grid-flow-col sm:justify-start sm:gap-0 sm:*:row-span-7 sm:*:grid sm:*:grid-rows-subgrid sm:*:*:contents sm:[&_tr]:grid sm:[&_tr]:grid-flow-col sm:[&_tr]:auto-cols-[minmax(0,11.875rem)] sm:[&_tbody_tr]:items-baseline sm:[&>:first-child_tr]:grid-cols-[6.875rem]";
 /** On a phone a pair fills the width with fixed columns, so a long form wraps rather than scrolls. */
 export const TENSE_TABLE = "border-collapse text-left max-sm:w-full max-sm:table-fixed";
 export const PERSON_HEAD = "w-[4.0625rem] p-0 sm:w-[6.875rem]";
 /** A second table's person column: drawn on a phone, kept for screen readers on a wide screen. */
 export const PERSON_HEAD_REPEAT = `${PERSON_HEAD} sm:sr-only`;
-const TENSE_HEAD_BASE = "p-0 pb-px pr-4 align-top font-sans text-[0.72rem] leading-5 sm:w-[11.875rem] sm:text-[0.75rem]";
+const TENSE_HEAD_BASE = "p-0 pb-px pr-4 align-top font-sans text-[0.72rem] leading-5 sm:text-[0.75rem]";
 export const TENSE_HEAD = `${TENSE_HEAD_BASE} font-normal text-text-muted`;
 export const TENSE_HEAD_SEARCHED = `${TENSE_HEAD_BASE} font-semibold text-accent`;
 /**

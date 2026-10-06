@@ -8,11 +8,17 @@
 // and says which cells the query hit. A form with no cell (`parlarsi
 // (coniugazione)`, the link to the reflexive verb) is not shown.
 //
+// A compound spelling built on essere is shown with both genders, `sono
+// andato/a`, `siamo andati/e`, where `it-essere-agreement/v1`
+// (src/italian/essereAgreement.ts) says it agrees (#676). The form stays the
+// source's spelling and links to its own search; only the text shown changes.
+//
 // A declared lemma's forms (#453) carry no tags: each is placed by the slot its
 // gloss names (`it-verb-form-gloss/v1`, src/italian/verbFormGloss.ts), into the
 // same grid.
 
-import { sourcePointerOf, type DeclaredForm, type DeclaredVerbForm, type SearchedSpellings, type SourceForm } from "@lexema/lookup/types.ts";
+import { essereAgreement, type AgreeingSpelling } from "@lexema/italian/essereAgreement.ts";
+import { sourcePointerOf, sourceTagsOf, type DeclaredForm, type DeclaredVerbForm, type SearchedSpellings, type SourceForm } from "@lexema/lookup/types.ts";
 import {
   personOfItalianVerbForm,
   placeItalianVerbForm,
@@ -76,16 +82,44 @@ const ROW: Record<`${VerbPerson} ${VerbNumber}`, Person> = {
   "third plural": "loro",
 };
 
+/** The number of each row. */
+const NUMBER_OF: Record<Person, VerbNumber> = {
+  io: "singular",
+  tu: "singular",
+  "lui, lei": "singular",
+  noi: "plural",
+  voi: "plural",
+  loro: "plural",
+};
+
 /** A form a table can hold: a record's own `forms[]` entry, or a declared lemma's form record. */
 export type TableForm = SourceForm | DeclaredForm;
 
 /** Whether a table's form is a record's own `forms[]` entry, which alone has an index there. */
 export const isSourceForm = (form: TableForm): form is SourceForm => "index" in form;
 
+const NONE_AGREE: ReadonlyMap<string, AgreeingSpelling> = new Map();
+
+/** The spellings of a compound cell on a row of `number` that `it-essere-agreement/v1` says agree, by spelling. */
+function agreeingOf(forms: readonly TableForm[], number: VerbNumber): ReadonlyMap<string, AgreeingSpelling> {
+  const agreeing = new Map<string, AgreeingSpelling>();
+  for (const { surface } of forms) {
+    const read = essereAgreement(surface, number);
+    if (read.kind === "agrees") agreeing.set(surface, read.spelling);
+  }
+  return agreeing.size === 0 ? NONE_AGREE : agreeing;
+}
+
 /** One cell: every spelling the source files there, in source order. */
 export interface Cell<F extends TableForm = SourceForm> {
   forms: F[];
   searched: boolean;
+  /**
+   * The cell's spellings that agree with the subject's gender, keyed by the
+   * source's spelling: the table shows `sono andato` as `sono andato/a`
+   * (`it-essere-agreement/v1`, #676). Only a compound tense has any.
+   */
+  agreeing: ReadonlyMap<string, AgreeingSpelling>;
 }
 
 export interface Tense<F extends TableForm = SourceForm> {
@@ -128,20 +162,6 @@ type Place = { kind: "finite"; mood: Mood; tense: string; person: Person } | { k
 interface Placed<F> {
   form: F;
   place: Place;
-}
-
-/** A form's own tags and raw tags, recovered from its claims by pointer. */
-export function sourceTagsOf(form: SourceForm): { tags: string[]; rawTags: string[] } {
-  const tags: string[] = [];
-  const rawTags: string[] = [];
-  for (const claim of form.claims) {
-    if (claim.status === "missing") continue;
-    // A form a raw page writes out states its tags and nothing else (src/italian/pageFacts.ts).
-    const pointer = sourcePointerOf(claim.ref);
-    if (pointer === undefined || /\/tags\/\d+$/.test(pointer)) tags.push(claim.sourceText);
-    else if (/\/raw_tags\/\d+$/.test(pointer)) rawTags.push(claim.sourceText);
-  }
-  return { tags, rawTags };
 }
 
 export const slotOf = (form: SourceForm): VerbSlot => placeItalianVerbForm(sourceTagsOf(form));
@@ -216,9 +236,10 @@ function layOut<F extends TableForm>(placed: readonly Placed<F>[], hit: (form: F
     if (tenses === undefined) return [];
     const persons = PERSONS.filter((person) => [...tenses.values()].some((cells) => cells.has(person)));
     const tense = (name: string): Tense<F> => {
+      const compound = isCompound(mood, name);
       const cells = persons.map((person) => {
         const spelled = tenses.get(name)?.get(person) ?? [];
-        return { forms: spelled, searched: spelled.some(hit) };
+        return { forms: spelled, searched: spelled.some(hit), agreeing: compound ? agreeingOf(spelled, NUMBER_OF[person]) : NONE_AGREE };
       });
       return { name, cells, searched: cells.some((cell) => cell.searched) };
     };

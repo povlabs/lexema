@@ -8,6 +8,7 @@
 // Every form in a conjugation links to its own search; grid forms do not.
 
 import type { ReactNode } from "react";
+import { bothGenders, type AgreeingSpelling } from "@lexema/italian/essereAgreement.ts";
 import { factRefKey, sourcePointerOf, type DeclaredForm } from "@lexema/lookup/types.ts";
 import {
   isSourceForm,
@@ -156,8 +157,12 @@ export function SuperlativeGrid({ grid }: { grid: Grid }) {
   );
 }
 
-/** One spelling, linked to its search, carrying every source entry that spells it here. */
-function FormLink({ forms, searched }: { forms: readonly TableForm[]; searched: boolean }) {
+/**
+ * One spelling, linked to its search, carrying every source entry that spells
+ * it here. `shown` is the text it shows: the source's spelling, or both genders
+ * of it (`sono andato/a`).
+ */
+function FormLink({ forms, searched, shown }: { forms: readonly TableForm[]; searched: boolean; shown: string }) {
   // A record's own entry is named by its index in `forms[]`; a declared
   // lemma's form is a record of its own, named by its line.
   const own = forms.filter(isSourceForm);
@@ -171,17 +176,34 @@ function FormLink({ forms, searched }: { forms: readonly TableForm[]; searched: 
       data-line={declared.length > 0 ? declared.map((form) => form.ref.lineNo).join(" ") : undefined}
       data-searched={searched ? "" : undefined}
     >
-      {forms[0].surface}
+      {shown}
     </a>
   );
+}
+
+const NONE_AGREE: ReadonlyMap<string, AgreeingSpelling> = new Map();
+
+/** The text a spelling shows: both genders where it agrees, else the source's spelling. */
+function shownSpelling(surface: string, agreeing: ReadonlyMap<string, AgreeingSpelling>): string {
+  const spelling = agreeing.get(surface);
+  return spelling === undefined ? surface : bothGenders(spelling);
 }
 
 /**
  * Every spelling of one slot, each once and each its own link: `va', va, vai`.
  * A spelling the source files twice in the slot (`abbisognare` repeats its
- * whole table) shows once and keeps both entries.
+ * whole table) shows once and keeps both entries. A spelling `agreeing` names
+ * shows both genders, `sono andato/a`, and links to the source's spelling.
  */
-function FormLinks({ forms, searched }: { forms: readonly TableForm[]; searched: (form: TableForm) => boolean }) {
+function FormLinks({
+  forms,
+  searched,
+  agreeing = NONE_AGREE,
+}: {
+  forms: readonly TableForm[];
+  searched: (form: TableForm) => boolean;
+  agreeing?: ReadonlyMap<string, AgreeingSpelling>;
+}) {
   const spellings: TableForm[][] = [];
   for (const form of forms) {
     const same = spellings.find((group) => group[0].surface === form.surface);
@@ -193,7 +215,7 @@ function FormLinks({ forms, searched }: { forms: readonly TableForm[]; searched:
       {spellings.map((group, i) => (
         <span key={formKey(group[0])}>
           {i > 0 && <span className={CELL_SEPARATOR}>, </span>}
-          <FormLink forms={group} searched={group.some(searched)} />
+          <FormLink forms={group} searched={group.some(searched)} shown={shownSpelling(group[0].surface, agreeing)} />
         </span>
       ))}
     </>
@@ -289,7 +311,7 @@ function TenseTables({
                       {tense.cells[row].forms.length === 0 ? (
                         <Dash />
                       ) : (
-                        <FormLinks forms={tense.cells[row].forms} searched={searched} />
+                        <FormLinks forms={tense.cells[row].forms} searched={searched} agreeing={tense.cells[row].agreeing} />
                       )}
                     </td>
                   ))}

@@ -55,7 +55,7 @@ import { reportReadings } from "@/lib/dictionary/report.ts";
 import { NotFound } from "@/components/dictionary/NotFound";
 import { PhraseView } from "@/components/dictionary/Phrase";
 import { phrasePage } from "@/lib/dictionary/phrasePage.ts";
-import { EXPRESSION_FILTER_ABOVE, matchesExpression, shownRecords, wordPage } from "@/lib/dictionary/wordPage.ts";
+import { EXPRESSION_FILTER_ABOVE, matchesExpression, shownRecords, SURFACE_ROUTE, wordPage } from "@/lib/dictionary/wordPage.ts";
 import { firstQuery, pageTitle } from "@/lib/dictionary/params";
 import { readingProblem, SMOKE_WORDS } from "@/builds/previewSmokeCommand.ts";
 // The class strings the components carry, imported rather than copied, so a
@@ -341,7 +341,7 @@ test("every record the lookup returns is a reading, except a form of the query's
       const forms = formsOfQueryReadings(readings);
       const siblings = otherFormsOfQueryLemmas(readings);
       assert.deepEqual(
-        shownRecords(wordPage(query, readings, answer.lemmas).readings).map((entry) => entry.reading.recordId).sort((a, b) => { assert.ok(a !== undefined && b !== undefined); return a - b; }),
+        shownRecords(wordPage(query, readings, answer.lemmas, SURFACE_ROUTE).readings).map((entry) => entry.reading.recordId).sort((a, b) => { assert.ok(a !== undefined && b !== undefined); return a - b; }),
         readings.filter((reading) => !forms.has(reading) && !siblings.has(reading)).map((reading) => reading.recordId).sort((a, b) => a - b),
         query,
       );
@@ -561,7 +561,8 @@ test("a verb's conjugation: the non-finite line, four Italian mood tabs, persons
     const shown = new Set([...verb.matchAll(/data-form="(\d+)"/g)].map((match) => Number(match[1])));
     for (const form of reading.forms) assert.ok(shown.has(form.index), `form ${form.index} (${form.surface}) is shown`);
     for (const variant of ["vo", "annò", "anderò"]) assert.ok(links.some((link) => link.text === variant), variant);
-    for (const link of links) assert.equal(link.href, `/?q=${encodeURIComponent(link.text)}`);
+    // A compound cell that shows both genders (`sono andato/a`, #676) links to the source's spelling.
+    for (const link of links) assert.equal(link.href, `/?q=${encodeURIComponent(link.text.replace(/\/[ae]$/, ""))}`);
     assert.ok(links.every((link) => !link.searched));
     // Several spellings in one cell link each one.
     assert.match(textOf(panel(verb, "Imperativo")), /tuva', va, vai, non andare/);
@@ -718,7 +719,8 @@ test("a searched compound form is one block: Voce verbale · its verb, the line 
     assert.deepEqual(lemmaFormsOf(block), ["Forms ofandare"]);
     assert.equal(occurrencesOf(html, 'data-mood="Indicativo"'), 1, "one conjugation table on the page");
     assert.match(panel(block, "Indicativo"), /<button type="button" data-panel-open=""[^>]*aria-expanded="true"[^>]*><span [^>]*>\+ more/);
-    assert.deepEqual(searchedForms(block), ["sono andato"]);
+    // The marked cell shows both genders, as every essere cell does (#676).
+    assert.deepEqual(searchedForms(block), ["sono andato/a"]);
     assert.doesNotMatch(html, />Verbo</);
     const definitions = await verbDefinitions(db, "andare");
     assert.ok(definitions.length > 0);
@@ -793,6 +795,186 @@ test("a compound form in two moods' cells gives a line for each, one in three ce
   });
 });
 
+/** One tense's cells in the first panel of a mood, as text, row by row: `io sono andato/a`. */
+function tenseColumn(html: string, mood: string, tense: string): string[] {
+  const tables = [...panel(html, mood).matchAll(/<table [^>]*data-tenses="([^"]*)"[^>]*>(.*?)<\/table>/g)];
+  const table = tables.find((match) => match[1].split(" · ").includes(tense));
+  assert.ok(table !== undefined, `no ${mood} ${tense}`);
+  const column = table[1].split(" · ").indexOf(tense);
+  const body = table[2].slice(table[2].indexOf("<tbody>"));
+  return [...body.matchAll(/<tr>(.*?)<\/tr>/g)].map((row) => {
+    const person = textOf(/<th [^>]*>(.*?)<\/th>/.exec(row[1])?.[1] ?? "");
+    const cells = [...row[1].matchAll(/<td [^>]*>(.*?)<\/td>/g)].map((cell) => textOf(cell[1]));
+    return `${person} ${cells[column]}`;
+  });
+}
+
+/** Every compound tense of a full conjugation, by mood (`it-moods/v1`). */
+const COMPOUND_TENSES: [string, string][] = [
+  ["Indicativo", "passato prossimo"],
+  ["Indicativo", "trapassato prossimo"],
+  ["Indicativo", "trapassato remoto"],
+  ["Indicativo", "futuro anteriore"],
+  ["Congiuntivo", "passato"],
+  ["Congiuntivo", "trapassato"],
+  ["Condizionale", "passato"],
+];
+
+test("an essere verb's compound cells show both genders: sono andato/a, siamo andati/e; the forms line stays masculine (#676)", async () => {
+  await withDevSeed(async ({ db }) => {
+    const andare = nth(await render(db, "andare"), 2);
+    assert.deepEqual(tenseColumn(andare, "Indicativo", "passato prossimo"), [
+      "io sono andato/a",
+      "tu sei andato/a",
+      "lui, lei è andato/a",
+      "noi siamo andati/e",
+      "voi siete andati/e",
+      "loro sono andati/e",
+    ]);
+    for (const [mood, tense] of COMPOUND_TENSES) {
+      const cells = tenseColumn(andare, mood, tense);
+      assert.equal(cells.length, 6, `${mood} ${tense}`);
+      cells.forEach((cell, row) => assert.match(cell, row < 3 ? /^\S.* \S+ andato\/a$/ : /^\S.* \S+ andati\/e$/, `${mood} ${tense}`));
+    }
+    // A shown spelling still links to the source's own spelling's search.
+    assert.ok(formLinks(andare).some((link) => link.text === "sono andato/a" && link.href === "/?q=sono%20andato"));
+    // The participle in the forms line, and the simple tenses, stay as the source gives them.
+    assert.match(textOf(andare), /participioandato·/);
+    assert.equal(tenseColumn(andare, "Indicativo", "presente")[0], "io vado, vo");
+  });
+});
+
+test("essere's own table and venire's agree, though essere's record has no ausiliare line (#676)", async () => {
+  await withDevSeed(async ({ db }) => {
+    const essere = await render(db, "essere");
+    const passato = tenseColumn(essere, "Indicativo", "passato prossimo");
+    assert.equal(passato[0], "io sono stato/a");
+    assert.equal(passato[3], "noi siamo stati/e");
+    assert.equal(tenseColumn(await render(db, "venire"), "Indicativo", "passato prossimo")[0], "io sono venuto/a");
+  });
+});
+
+test("a verb with both auxiliaries shows the avere spelling plain and the essere one with both genders: ho vissuto, sono vissuto/a (#676)", async () => {
+  await withDevSeed(async ({ db }) => {
+    const vivere = await render(db, "vivere");
+    const passato = tenseColumn(vivere, "Indicativo", "passato prossimo");
+    assert.equal(passato[0], "io ho vissuto, sono vissuto/a");
+  });
+});
+
+test("an avere verb's table is unchanged: no /a and no /e in mangiare's cells (#676)", async () => {
+  await withDevSeed(async ({ db }) => {
+    const mangiare = await render(db, "mangiare");
+    const links = formLinks(mangiare);
+    assert.ok(links.some((link) => link.text === "ho mangiato"));
+    assert.deepEqual(links.filter((link) => link.text.includes("/")), []);
+    assert.equal(tenseColumn(mangiare, "Indicativo", "passato prossimo")[3], "noi abbiamo mangiato");
+  });
+});
+
+test("a searched feminine compound form opens its verb's block with a line naming the gender, its cell marked (#676)", async () => {
+  await withDevSeed(async ({ db }) => {
+    const html = await render(db, "sono andata");
+    assert.deepEqual(headingsOf(html), ["1·Voce verbale·andare"]);
+    const block = verbBlock(html, "andare");
+    assert.ok(block !== undefined, "sono andata: no andare block");
+    assert.deepEqual(definitionLines(block), ["prima persona singolare femminile del passato prossimo indicativo di andare"]);
+    assert.deepEqual(lemmaFormsOf(block), ["Forms ofandare"]);
+    assert.deepEqual(searchedForms(block), ["sono andato/a"]);
+
+    const siamo = await render(db, "siamo andate");
+    assert.deepEqual(headingsOf(siamo), ["1·Voce verbale·andare"]);
+    assert.deepEqual(definitionLines(verbBlock(siamo, "andare") ?? ""), [
+      "prima persona plurale femminile del passato prossimo indicativo di andare",
+      "prima persona plurale femminile del passato congiuntivo di andare",
+    ]);
+  });
+});
+
+test("a feminine nothing agrees with is not found, and masculine searches keep their lines (#676)", async () => {
+  await withDevSeed(async ({ db }) => {
+    for (const query of ["ho mangiata", "è andate", "sono andat"]) {
+      assert.match(await render(db, query), new RegExp(`<h1 class="${esc(NOT_FOUND_HEADING)}">No entry for`), query);
+    }
+    const lines = async (query: string, verb: string): Promise<string[]> => definitionLines(verbBlock(await render(db, query), verb) ?? "");
+    assert.deepEqual(await lines("sono andato", "andare"), ["prima persona singolare del passato prossimo indicativo di andare"]);
+    assert.deepEqual(await lines("siamo andati", "andare"), [
+      "prima persona plurale del passato prossimo indicativo di andare",
+      "prima persona plurale del passato congiuntivo di andare",
+    ]);
+    assert.deepEqual(await lines("ho mangiato", "mangiare"), ["prima persona singolare del passato prossimo indicativo di mangiare"]);
+  });
+});
+
+/**
+ * `fixtures/essere-compound-cells.jsonl`: arrendersi, accorgersi, assorbire and
+ * perdersi, as release it-0c432803 has them (lines 624, 770, 113784, 137480).
+ * The dev seed has no reflexive verb and no cell of two spellings (#676).
+ */
+const ESSERE_CELL_LINES = (await readFile(join(REPO, "fixtures/essere-compound-cells.jsonl"), "utf8")).trimEnd().split("\n");
+
+/** The dev seed and those lines, seeded once for this file. */
+const withEssereCells = async (run: (f: Fixture) => Promise<void>) =>
+  withDatabase(await seededDictionary("page:dev-seed+essere-cells", async (outputDir) => seedLines(outputDir, [...(await devSeedLines()), ...ESSERE_CELL_LINES])), run);
+
+test("a reflexive essere verb's compound cells show both genders; its simple tenses stay as the source gives them (#676)", async () => {
+  await withEssereCells(async ({ db }) => {
+    const accorgersi = await render(db, "accorgersi");
+    assert.deepEqual(tenseColumn(accorgersi, "Indicativo", "passato prossimo"), [
+      "io mi sono accorto/a",
+      "tu ti sei accorto/a",
+      "lui, lei si è accorto/a",
+      "noi ci siamo accorti/e",
+      "voi vi siete accorti/e",
+      "loro si sono accorti/e",
+    ]);
+    for (const [mood, tense] of COMPOUND_TENSES) {
+      const cells = tenseColumn(accorgersi, mood, tense);
+      assert.equal(cells.length, 6, `${mood} ${tense}`);
+      cells.forEach((cell, row) => assert.match(cell, row < 3 ? /^\S.* [mts]i \S+ accorto\/a$/ : /^\S.* [cvs]i \S+ accorti\/e$/, `${mood} ${tense}`));
+    }
+    assert.equal(tenseColumn(accorgersi, "Indicativo", "presente")[0], "io mi accorgo");
+    assert.ok(formLinks(accorgersi).some((link) => link.text === "mi sono accorto/a" && link.href === "/?q=mi%20sono%20accorto"));
+  });
+});
+
+test("a cell of several spellings shows only its first with both genders, the rest exactly as stored (#676)", async () => {
+  await withEssereCells(async ({ db }) => {
+    const arrendersi = tenseColumn(await render(db, "arrendersi"), "Indicativo", "passato prossimo");
+    assert.equal(arrendersi[0], "io mi sono arreso/a, arresosi");
+    assert.equal(arrendersi[3], "noi ci siamo arresi/e, arresosi");
+    const assorbire = tenseColumn(await render(db, "assorbire"), "Indicativo", "passato prossimo");
+    // assorbire takes both auxiliaries: the avere spelling stays plain.
+    assert.equal(assorbire[0], "io ho assorbito, assorto, sono assorbito/a, assorto");
+    // The plural rows' essere spelling ends in -o, so it does not agree.
+    assert.equal(assorbire[3], "noi abbiamo assorbito, assorto, siamo assorbito, assorti, assorti");
+  });
+});
+
+test("a searched feminine reflexive opens its verb's block with a line naming the gender (#676)", async () => {
+  await withEssereCells(async ({ db }) => {
+    const lines = async (query: string, verb: string): Promise<string[]> => {
+      const html = await render(db, query);
+      assert.deepEqual(headingsOf(html), [`1·Voce verbale·${verb}`], query);
+      return definitionLines(verbBlock(html, verb) ?? "");
+    };
+    assert.deepEqual(await lines("mi sono accorta", "accorgersi"), ["prima persona singolare femminile del passato prossimo indicativo di accorgersi"]);
+    assert.deepEqual(await lines("ci siamo accorte", "accorgersi"), [
+      "prima persona plurale femminile del passato prossimo indicativo di accorgersi",
+      "prima persona plurale femminile del passato congiuntivo di accorgersi",
+    ]);
+    assert.deepEqual(await lines("mi sono arresa", "arrendersi"), ["prima persona singolare femminile del passato prossimo indicativo di arrendersi"]);
+    assert.deepEqual(await lines("mi sono arreso", "arrendersi"), ["prima persona singolare del passato prossimo indicativo di arrendersi"]);
+    // The masculine and the whole cell keep the lines they have today.
+    assert.deepEqual(await lines("mi sono accorto", "accorgersi"), ["prima persona singolare del passato prossimo indicativo di accorgersi"]);
+    assert.deepEqual(await lines("mi sono arreso, arresosi", "arrendersi"), ["prima persona singolare del passato prossimo indicativo di arrendersi"]);
+    assert.deepEqual(searchedForms(verbBlock(await render(db, "mi sono arresa"), "arrendersi") ?? ""), ["mi sono arreso/a, arresosi"]);
+    for (const query of ["siamo assorbite", "mi sono perduta"]) {
+      assert.match(await render(db, query), new RegExp(`<h1 class="${esc(NOT_FOUND_HEADING)}">No entry for`), query);
+    }
+  });
+});
+
 test("a form of two verbs is one block per verb, each line under its verb's heading and above its verb's table (#636, frame 37)", async () => {
   await withLines([...(await devSeedLines()), ...SALIVATE_LINES], async ({ db }) => {
     const html = await render(db, "salivate");
@@ -834,7 +1016,7 @@ test("a form of two verbs is one block per verb, each line under its verb's head
     // number: salire's, whose table block 1 draws, and salivate's.
     const answer = await attempt(db, "salivate");
     assert.ok(answer.outcome === "found" && answer.route.kind !== "phrase");
-    const page = wordPage("salivate", answer.readings, answer.lemmas);
+    const page = wordPage("salivate", answer.readings, answer.lemmas, SURFACE_ROUTE);
     const records = await readingsFor(db, "salivate");
     assert.deepEqual(
       reportReadings(shownRecords(page.readings)).map((reading) => [readingChoiceLabel(reading), reading.recordId]),
@@ -868,7 +1050,7 @@ test("a form that is also a noun keeps its noun readings, and its verb form is a
     assert.deepEqual(jumps.map((match) => textOf(match[2])), ["1Sostantivo", "2Sostantivo, forma flessa", "3Voce verbale · salire"]);
     for (const [, id] of jumps) assert.equal(patternsOf(sale, new RegExp(`<article [^>]*id="${esc(id)}"`)), 1, id);
     assert.deepEqual(
-      reportReadings(shownRecords(wordPage("sale", await readingsFor(db, "sale"), []).readings)).map(readingChoiceLabel),
+      reportReadings(shownRecords(wordPage("sale", await readingsFor(db, "sale"), [], SURFACE_ROUTE).readings)).map(readingChoiceLabel),
       ["1 · Sostantivo", "2 · Sostantivo, forma flessa", "3 · Voce verbale · salire"],
     );
 
@@ -890,7 +1072,7 @@ test("the rule-built line is kept apart from a source line in the page's data: i
   await withDevSeed(async ({ db }) => {
     const answer = await attempt(db, "sono andato");
     assert.ok(answer.outcome === "found" && answer.route.kind !== "phrase");
-    const page = wordPage("sono andato", answer.readings, answer.lemmas);
+    const page = wordPage("sono andato", answer.readings, answer.lemmas, SURFACE_ROUTE);
     assert.equal(page.readings.length, 1);
     const [block] = page.readings;
     assert.ok(block.kind === "verb-form");
@@ -917,7 +1099,7 @@ test("the rule-built line is kept apart from a source line in the page's data: i
     // A source line is the record's own definition, kept by its type.
     const andavano = await attempt(db, "andavano");
     assert.ok(andavano.outcome === "found" && andavano.route.kind !== "phrase");
-    const [form] = wordPage("andavano", andavano.readings, andavano.lemmas).readings;
+    const [form] = wordPage("andavano", andavano.readings, andavano.lemmas, SURFACE_ROUTE).readings;
     assert.ok(form.kind === "verb-form");
     assert.deepEqual(form.lines.map((one) => one.kind), ["source"]);
   });
@@ -930,7 +1112,7 @@ test("etymology and synonyms come once after the readings: every synonym a searc
     assert.equal(patternsOf(html, />Etymology</g), 1);
     const synonyms = facts.slice(facts.indexOf('id="synonyms"'), facts.indexOf("</section>", facts.indexOf('id="synonyms"')));
     const words = [...synonyms.matchAll(new RegExp(`<a class="${esc(WORD_LINK)}" href="([^"]+)" lang="it">([^<]+)</a>`, "g"))];
-    assert.equal(words.length, wordPage("andare", await readingsFor(db, "andare"), []).wordFacts.synonyms.length, "every synonym is in the document");
+    assert.equal(words.length, wordPage("andare", await readingsFor(db, "andare"), [], SURFACE_ROUTE).wordFacts.synonyms.length, "every synonym is in the document");
     for (const [, href, word] of words) assert.equal(href, `/?q=${encodeURIComponent(textOf(word))}`);
     // The one control, last in the list so it ends what shows, open or closed.
     assert.match(synonyms, /<li[^>]*><div class="[^"]*"><button type="button"[^>]*aria-controls="synonyms-words" aria-expanded="false"[^>]*><span class="[^"]*">\+ more<\/span><span class="[^"]*">less<\/span><\/button><\/div><\/li><\/ul>$/);
@@ -2551,7 +2733,7 @@ test("a reading with no definition is its part of speech alone; the readings wit
       ["1Aggettivo", "Sostantivo", "2Voce verbale"],
     );
     assert.deepEqual(
-      reportReadings(shownRecords(wordPage("litigante", await readingsFor(db, "litigante"), []).readings)).map(readingChoiceLabel),
+      reportReadings(shownRecords(wordPage("litigante", await readingsFor(db, "litigante"), [], SURFACE_ROUTE).readings)).map(readingChoiceLabel),
       ["1 · Aggettivo", "Sostantivo", "2 · Voce verbale"],
     );
 
@@ -2929,7 +3111,7 @@ test("page-only readings present their page's fields without origin marks or inv
     assert.ok(answer.outcome === "found");
     const reading = answer.readings[0];
     assert.ok(reading.entryId !== undefined);
-    const model = wordPage("raccontare", answer.readings, answer.lemmas);
+    const model = wordPage("raccontare", answer.readings, answer.lemmas, SURFACE_ROUTE);
     assert.equal(model.readings.length, 1);
     // A report names only a source record, so a page-only reading is not offered as a choice.
     assert.deepEqual(reportReadings(shownRecords(model.readings)), []);
