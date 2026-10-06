@@ -87,14 +87,15 @@ export function cardOf(attempt: Attempt): Card {
   // numbered falls back to its first reading.
   const entry = page.readings.find((one) => one.number !== undefined) ?? page.readings[0];
   if (entry.kind === "verb-form") {
-    // A verb form with no record of its own opens with its rule-built line (#627).
+    // A verb form block (#636): its first line, the source's or built by rule (#627).
+    const [line] = entry.lines;
     return {
       kind: "word",
       headword: page.headword,
       pronunciation: page.wordFacts.pronunciations[0]?.ipa,
       gender: undefined,
       partOfSpeech: entry.posTitle,
-      meaning: entry.lines[0].text,
+      meaning: line.kind === "rule" ? line.text : definitionText(line.item),
     };
   }
   const { reading } = entry;

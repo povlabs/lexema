@@ -1,5 +1,6 @@
 // One word's page: the headword with its pronunciation, jump links when there
-// are three readings or more, the readings in source order, then the facts
+// are three readings or more (a verb form block, `1 Voce verbale · salire`,
+// counts as one), the readings in source order, then the facts
 // about the word once, its expressions last among them, then *Source* (design-system-manifest.md § "The result").
 //
 // Which records are readings and which lemma tables they carry is
@@ -10,12 +11,12 @@ import { ExternalIcon } from "@/components/shared/icons";
 import { Expressions } from "./Expressions";
 import { NEW_TAB } from "@/components/shared/ExternalLink";
 import { OneLine } from "./OneLine";
-import { ReadingView, VerbFormReadingView } from "./Reading";
+import { ReadingView, VerbFormBlockView } from "./Reading";
 import { ReportDialog } from "./ReportDialog";
 import { reportReadings, type ReportReading } from "@/lib/dictionary/report.ts";
 import { sourcePageUrl } from "@/lib/dictionary/sourcePage.ts";
 import { WordList } from "./WordList";
-import { readingAnchor, sourceReadings, type ExpressionSection, type WordLists, type WordPage } from "@/lib/dictionary/wordPage.ts";
+import { blockTitle, readingAnchor, shownRecords, type ExpressionSection, type WordLists, type WordPage } from "@/lib/dictionary/wordPage.ts";
 import {
   BLOCK_LABEL,
   WORD_BLOCK,
@@ -67,7 +68,7 @@ function JumpLinks({ page }: { page: WordPage }) {
           <li key={readingAnchor(entry)}>
             <a className={JUMP_LINK} href={`#${readingAnchor(entry)}`}>
               {entry.number !== undefined && <span className={JUMP_NUMBER}>{entry.number}</span>}
-              <span lang="it">{entry.kind === "verb-form" ? entry.posTitle : entry.reading.posTitle}</span>
+              <span lang="it">{entry.kind === "verb-form" ? blockTitle(entry) : entry.reading.posTitle}</span>
             </a>
           </li>
         ))}
@@ -155,14 +156,14 @@ export function WordView({ page, siteKey }: { page: WordPage; siteKey?: string }
       <div className={READINGS}>
         {page.readings.map((entry) =>
           entry.kind === "verb-form" ? (
-            <VerbFormReadingView key={readingAnchor(entry)} entry={entry} />
+            <VerbFormBlockView key={readingAnchor(entry)} block={entry} />
           ) : (
             <ReadingView key={readingAnchor(entry)} entry={entry} />
           ),
         )}
       </div>
       <WordFactsView facts={page.wordFacts} lists={page.wordLists} expressions={page.expressionSections} />
-      <SourceLine page={{ ...page, readings: sourceReadings(page.readings) }} siteKey={siteKey} />
+      <SourceLine page={{ ...page, readings: shownRecords(page.readings) }} siteKey={siteKey} />
     </>
   );
 }

@@ -357,29 +357,53 @@ for `costruttrici`) draws no grid, and the form keeps its own. The search reads
 those lemma records with the same lookup a search of the lemma runs
 (`web/lib/dictionary/searchAttempt.ts`); the lookup and the API do not change.
 
-**A verb form with no record of its own.** A compound form such as
-`sono andato` is only a cell of its verb's table: no record is about it, so the
-page has the verb's reading alone, with the cell marked. The page opens with a
-reading that says which form it is, `1 · Voce verbale`, whose definitions are
-one line per cell the query hit, built by rule `it-verb-form-line/v1`
-([src/italian/verbFormLine.ts](../src/italian/verbFormLine.ts)): "prima persona
-singolare del passato prossimo indicativo di andare". The shape is fixed —
-person, number, `del` or `dell'` and the tense, the mood, `di` and the verb —
-and the tense and mood are the names the table shows (`TENSE_NAMES` in
-`src/italian/moods.ts`), read from the same placement the table marks, so the
-line and the cell never disagree. An imperative, a non-finite form and a cell
-`it-moods/v1` cannot place give no line. `siamo andati` fills a cell of the
-indicativo and one of the congiuntivo and gets both lines; identical lines show
-once. The verb's own reading follows, numbered on (`2 · Verbo`), with its
-table. A verb that a reading about the query already declares itself a form of
-gives no line: `andavano`'s own record says what it is. The line is Lexema's
-text, a grammatical paraphrase built from source tags (ADR 0008), built when
-the page is built (`web/lib/dictionary/wordPage.ts`) and never stored by the
-seed (ADR 0012). The page shows no mark for it (ADR 0016); its type,
-`VerbFormReading`, carries `sourceType: "lexema-deterministic"`, the rule and
-the pointer of the `forms[]` entry it was built from. The lookup and the API do
-not change ([#627](https://github.com/povlabs/lexema/issues/627), Huey's brief
-of 2026-10-05).
+**One block per verb a form belongs to.** A searched verb form shows one block
+for each verb it is a form of, as frame 37 draws it
+([#636](https://github.com/povlabs/lexema/issues/636), Huey's ruling of
+2026-10-06): `1 · Voce verbale · salire`, then that verb's form-of lines under
+*Definitions*, then *Forms of salire*, the verb's conjugation opened where the
+searched cell is. The table is a lemma link's `listing` or the verb reading's
+own `forms`, both already in the lookup's answer, so the page reads nothing
+more for it; a verb whose table does not list the form (`andati`: andare's lists
+only `andato`) has a block with no table. A block's lines come from two places:
+
+- A form record about the query. Each of its definitions goes to the verb its
+  `form_of` edge names: `salivate`'s record gives salivare's block its two
+  lines, and `saliva`'s, which names salivare on one sense and salire on the
+  other, gives one line to each. A definition with no edge at all goes to the
+  record's first verb (`macchina`'s second sense). A record with a definition
+  whose edges name only words that are not verbs keeps its reading, unsplit
+  (`andarsene`'s "andare sovrappensiero").
+- A verb on the page whose own table lists the query, when no record about the
+  query names that verb. A compound form such as `sono andato` is only a cell
+  of andare's table, and `salivate` is a cell of salire's that no record says
+  it is. The block's lines are one per cell the query hit, built by rule
+  `it-verb-form-line/v1` ([src/italian/verbFormLine.ts](../src/italian/verbFormLine.ts)):
+  "prima persona singolare del passato prossimo indicativo di andare"
+  ([#627](https://github.com/povlabs/lexema/issues/627)). The shape is fixed —
+  person, number, `del` or `dell'` and the tense, the mood, `di` and the verb —
+  and the tense and mood are the names the table shows (`TENSE_NAMES` in
+  `src/italian/moods.ts`), read from the same placement the table marks, so the
+  line and the cell never disagree. `siamo andati` fills a cell of the
+  indicativo and one of the congiuntivo and gets both lines; identical lines
+  show once. The verb's record has no reading of its own: its table is the
+  block's, and none of its definitions show. These blocks lead the page.
+
+An imperative, a non-finite form and a cell `it-moods/v1` cannot place give no
+line, and a verb with no line gives no block and keeps its reading: on `stato`,
+essere's two `Verbo` readings list `stato` only as a participle. A word that is
+also an entry of its own (`sale` the noun, `andare` itself) keeps that entry as
+a normal reading. The rule-built line is Lexema's text, a grammatical
+paraphrase built from source tags (ADR 0008), built when the page is built
+(`web/lib/dictionary/wordPage.ts`) and never stored by the seed (ADR 0012). The
+page shows no mark for it (ADR 0016); its type, `VerbFormLine`, carries
+`sourceType: "lexema-deterministic"`, the rule and the pointer of the `forms[]`
+entry it was built from, apart from a source line by type. A block has its own
+anchor, named by its verb, and its jump link reads `3 Voce verbale · salire`;
+jump links still start at three readings. The report dialog names every record
+a block shows, its form records and the verb records its lines were built from,
+once each, under the block's number and heading. The lookup and the API do not
+change.
 
 **One expand control.** Etymology, the word lists and Definitions share one
 control (`web/components/dictionary/More.tsx`): `+ more` right after what shows, and, open, `less`

@@ -1,7 +1,8 @@
 // How one reading renders: a heading `1 · Sostantivo` (only `Sostantivo` for a
 // reading with no definition), then *Definitions*, then
 // *Forms* — no box around it, a thin rule before the next
-// (design-system-manifest.md § "The result").
+// (design-system-manifest.md § "The result"). A verb form block reads the same
+// way, headed `1 · Voce verbale · salire` (#636).
 //
 // The part of speech is the record's own `pos_title`, verbatim (ADR 0015).
 // Nothing on the reading says where a fact came from (ADR 0016): a definition
@@ -9,13 +10,21 @@
 // article worked out by rule. Every Italian string carries `lang="it"`.
 
 import type { ReactNode } from "react";
-import { entryKey, everyRecovered, factRefKey, isSourceRef, isVerbReading, searchedSpellings } from "@lexema/lookup/types.ts";
+import { entryKey, everyRecovered, factRefKey, isVerbReading, searchedSpellings } from "@lexema/lookup/types.ts";
 import type { FactRef, LemmaListing, RecoveredDefinition, Reading } from "@lexema/lookup/types.ts";
 import { conjugationOf } from "@/lib/dictionary/conjugation.ts";
-import { definitionsOf, senseLabels, type DefinitionItem } from "@/lib/dictionary/definitions.ts";
+import { definitionsOf, readAt, senseLabels, type DefinitionItem, type DefinitionPlace } from "@/lib/dictionary/definitions.ts";
 import { agreementOf, headingGrammar } from "@/lib/dictionary/genderGrid.ts";
 import { ConjugationView, GridView, SuperlativeGrid, searchHref } from "./Forms";
-import { readingAnchor, type PageReading, type VerbFormLine, type VerbFormReading } from "@/lib/dictionary/wordPage.ts";
+import {
+  readingAnchor,
+  readingHeadingId,
+  type FormLine,
+  type LemmaTable,
+  type PageReading,
+  type VerbFormBlock,
+  type VerbFormLine,
+} from "@/lib/dictionary/wordPage.ts";
 import { More, MoreBlock } from "./More";
 import { OneLine } from "./OneLine";
 import { WordList } from "./WordList";
@@ -65,18 +74,6 @@ const nestedExamples = (items: readonly RecoveredDefinition[]): boolean =>
 
 const nestedItemsOf = (item: DefinitionItem): readonly RecoveredDefinition[] =>
   item.from === "record" ? item.sense.recoveredItems : item.definition.items;
-
-/**
- * Where a definition sits: a sense of the record, by its index, or a line of
- * the raw page a page-only entry was read from (ADR 0026).
- */
-type DefinitionPlace = { sense: number } | { line: number };
-
-/** Whether a fact was read off the definition at `place`. */
-const readAt = (ref: FactRef, place: DefinitionPlace): boolean =>
-  "sense" in place
-    ? isSourceRef(ref) && ref.jsonPointer.startsWith(`/senses/${place.sense}/`)
-    : !isSourceRef(ref) && ref.line === place.line;
 
 /**
  * The words the `form_of` edges of a definition name, to link where its text
@@ -270,8 +267,9 @@ function Definitions({ reading }: { reading: Reading }) {
  * A lemma the release has whose word the definition does not write, linked on
  * a line of its own, so the source's `form_of` edge stays reachable. A lemma
  * the release has no entry for is not mentioned (Huey, 2026-09-27, on #142).
+ * In a verb form block, `only` names the words that block may show.
  */
-function LemmaLines({ reading }: { reading: Reading }) {
+function LemmaLines({ reading, only }: { reading: Reading; only?: readonly string[] }) {
   const writes = (text: string, place: DefinitionPlace, word: string) =>
     lemmaMatches(text, lemmaWordsOf(reading, place)).some((match) => match.lemma === word);
   const linkedInGloss = (word: string, ref: FactRef) =>
@@ -283,7 +281,8 @@ function LemmaLines({ reading }: { reading: Reading }) {
     );
   const unlinked = new Set<string>();
   for (const link of reading.lemmaLinks) {
-    if (link.kind === "candidates" && !linkedInGloss(link.targetWord, link.ref)) unlinked.add(link.targetWord);
+    if (link.kind !== "candidates" || (only !== undefined && !only.includes(link.targetWord))) continue;
+    if (!linkedInGloss(link.targetWord, link.ref)) unlinked.add(link.targetWord);
   }
   return (
     <>
@@ -335,15 +334,15 @@ function LemmaConjugation({ listing, word }: { listing: LemmaListing; word: stri
  * *Forms of andare*, the lemma's whole conjugation opened where the searched
  * form sits, or *Forms of bello*, the lemma's grid with nothing marked (#626).
  */
-function LemmaForms({ entry }: { entry: PageReading }) {
+function LemmaForms({ owner, tables }: { owner: string; tables: readonly LemmaTable[] }) {
   return (
     <>
-      {entry.lemmaTables.map((table) => {
+      {tables.map((table) => {
         const { lemma } = table;
         return (
           <Block
             key={entryKey(lemma)}
-            id={`lemma-forms-${entryKey(entry.reading)}-${entryKey(lemma)}`}
+            id={`lemma-forms-${owner}-${entryKey(lemma)}`}
             label={
               <>
                 Forms of
@@ -380,42 +379,78 @@ function VerbFormLineText({ line }: { line: VerbFormLine }) {
   );
 }
 
+const formLineKey = (line: FormLine): string =>
+  line.kind === "rule" ? `rule-${line.text}` : `${entryKey(line.reading)}-${definitionKey(line.item)}`;
+
 /**
- * `1 · Voce verbale`, then *Definitions*: the lines saying which verb form
- * the query is, built by rule (#627). It reads as frame 17's form reading
- * does, with the one expand control every *Definitions* block has, and no
- * table: the verb's own reading, after it, carries that. Nothing marks the
- * lines as Lexema's (ADR 0016).
+ * One verb the searched form belongs to, as frame 37 draws it (#636):
+ * `1 · Voce verbale · salire`, then *Definitions*, its form-of lines, the
+ * source's and those built by rule (#627) read alike, with the one expand
+ * control every *Definitions* block has; then *Forms of salire*, opened where
+ * the searched cell is. Nothing marks a line as Lexema's (ADR 0016).
  */
-export function VerbFormReadingView({ entry }: { entry: VerbFormReading }) {
-  const anchor = readingAnchor(entry);
+export function VerbFormBlockView({ block }: { block: VerbFormBlock }) {
+  const anchor = readingAnchor(block);
   const list = `definition-list-${anchor}`;
+  const [lead] = block.lines;
+  const firsts = block.sources.filter((source) => source.first).map((source) => source.reading);
+  const looseExamples = firsts.flatMap((reading) => definitionsOf(reading).looseExamples);
+  const more = block.lines.length > 1 || (lead.kind === "source" && leadHoldsMore(lead.item)) || looseExamples.length > 0;
   return (
-    <article className={READING} id={anchor} aria-labelledby="reading-heading-voce-verbale">
-      <h2 className={READING_HEADING} id="reading-heading-voce-verbale">
-        <span className={READING_NUMBER}>{entry.number}</span>
+    <article className={READING} id={anchor} aria-labelledby={readingHeadingId(block)}>
+      <h2 className={READING_HEADING} id={readingHeadingId(block)}>
+        <span className={READING_NUMBER}>{block.number}</span>
         <span className={READING_DOT} aria-hidden="true">
           ·
         </span>
-        <span lang="it">{entry.posTitle}</span>
+        <span lang="it">{block.posTitle}</span>
+        {/* The dot travels with the verb, so a wrapped heading never ends on it. */}
+        <span className={READING_GRAMMAR_GROUP}>
+          <span className={READING_DOT} aria-hidden="true">
+            ·
+          </span>
+          <span lang="it">{block.verb}</span>
+        </span>
       </h2>
       <Block id={`definitions-${anchor}`} label="Definitions">
         <MoreBlock className={DEFINITIONS_GROUP}>
           <ol className={DEFINITIONS} id={list}>
-            {entry.lines.map((line, i) => (
-              <li key={line.text} className={i === 0 ? DEFINITION : DEFINITION_EXTRA} data-definition={i + 1}>
+            {block.lines.map((line, i) => (
+              <li key={formLineKey(line)} className={i === 0 ? DEFINITION : DEFINITION_EXTRA} data-definition={i + 1}>
                 <span className={DEFINITION_NUMBER} aria-hidden="true">
                   {i + 1}.
                 </span>
                 <div className={DEFINITION_BODY}>
-                  <VerbFormLineText line={line} />
+                  {line.kind === "rule" ? (
+                    <VerbFormLineText line={line} />
+                  ) : (
+                    <DefinitionContent item={line.item} reading={line.reading} lead={i === 0} />
+                  )}
                 </div>
               </li>
             ))}
           </ol>
-          {entry.lines.length > 1 && <More className={DEFINITIONS_MORE} controls={list} />}
+          {looseExamples.map((text, i) => (
+            <Example key={`loose-${i}`} text={text} className={EXAMPLE_LOOSE} />
+          ))}
+          {more && <More className={DEFINITIONS_MORE} controls={list} />}
         </MoreBlock>
       </Block>
+      {block.sources.map((source) => (
+        <LemmaLines key={entryKey(source.reading)} reading={source.reading} only={source.lemmaWords} />
+      ))}
+      {firsts.map((reading) => (
+        <OwnForms key={entryKey(reading)} reading={reading} />
+      ))}
+      <LemmaForms owner={anchor} tables={block.tables} />
+      {block.etymologies.length > 0 && (
+        <Block id={`etymology-${anchor}`} label="Etymology">
+          {block.etymologies.map((etymology) => (
+            <OneLine key={factRefKey(etymology.ref)} text={etymology.text} lang="it" />
+          ))}
+        </Block>
+      )}
+      <WordList id={`synonyms-${anchor}`} label="Synonyms" items={block.synonyms} level="h3" />
     </article>
   );
 }
@@ -456,7 +491,7 @@ export function ReadingView({ entry }: { entry: PageReading }) {
       <Definitions reading={reading} />
       <LemmaLines reading={reading} />
       {entry.ownForms && <OwnForms reading={reading} />}
-      <LemmaForms entry={entry} />
+      <LemmaForms owner={entryKey(reading)} tables={entry.lemmaTables} />
       {entry.etymologies.length > 0 && (
         <Block id={`etymology-${entryKey(reading)}`} label="Etymology">
           {entry.etymologies.map((etymology) => (

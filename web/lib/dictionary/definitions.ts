@@ -3,8 +3,8 @@
 // API returns them (web/worker/api/lookupAnswer.ts), so both read one list.
 
 import { splitSenses, type SenseShape } from "@lexema/italian/furniture.ts";
-import { everyRecovered } from "@lexema/lookup/types.ts";
-import type { Reading, RecoveredDefinition, Sense } from "@lexema/lookup/types.ts";
+import { everyRecovered, isSourceRef } from "@lexema/lookup/types.ts";
+import type { FactRef, Reading, RecoveredDefinition, Sense } from "@lexema/lookup/types.ts";
 
 /**
  * Two source glosses for `casa` are page furniture, not definitions (#28, #61).
@@ -21,6 +21,22 @@ const shapeOf = (sense: Sense): SenseShape => ({
 export type DefinitionItem =
   | { from: "record"; sense: Sense; examples: string[] }
   | { from: "page"; definition: RecoveredDefinition; examples: string[] };
+
+/**
+ * Where a definition sits: a sense of the record, by its index, or a line of
+ * the raw page a page-only entry was read from (ADR 0026).
+ */
+export type DefinitionPlace = { sense: number } | { line: number };
+
+/** Where `item` sits. */
+export const placeOf = (item: DefinitionItem): DefinitionPlace =>
+  item.from === "record" ? { sense: item.sense.index } : { line: item.definition.ref.line };
+
+/** Whether a fact was read off the definition at `place`. */
+export const readAt = (ref: FactRef, place: DefinitionPlace): boolean =>
+  "sense" in place
+    ? isSourceRef(ref) && ref.jsonPointer.startsWith(`/senses/${place.sense}/`)
+    : !isSourceRef(ref) && ref.line === place.line;
 
 /**
  * The reading's definitions in order, each with its examples, and the examples
