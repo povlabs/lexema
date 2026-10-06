@@ -132,6 +132,9 @@ export type LemmaTable =
 /** A verb's conjugation, the one kind of table a verb form block shows. */
 export type ConjugationTable = Extract<LemmaTable, { kind: "conjugation" }>;
 
+/** A noun's or adjective's gender and number grid, the table a noun or adjective form shows in place of its own. */
+export type GridTable = Extract<LemmaTable, { kind: "grid" }>;
+
 /** The cells a conjugation marks: those its listing says the query hit, and none in a table that does not list it. */
 export const searchedIn = ({ listing }: ConjugationTable): SearchedSpellings =>
   "evidence" in listing ? searchedSpellings(listing) : { headword: false, formPointers: new Set() };
@@ -166,6 +169,28 @@ function lemmaDefinitionsOf(tables: readonly LemmaTable[]): LemmaDefinitionList 
   return listed === undefined ? undefined : { lemma: table.lemma, items: listed, looseExamples, lemmaLinks: definitions.lemmaLinks };
 }
 
+/**
+ * How a form-of reading draws. Its own definitions are always its form lines,
+ * under its heading with no label or number (#686, #690). What follows them
+ * depends on whether a lemma's grid lists it:
+ *
+ * - `lemma-grid`: a noun or adjective form its lemma's grid lists (`bella` the
+ *   adjective, of bello). The lemma's *Definitions* follow (#686), then the
+ *   grid as *Forms of bello*, in place of its own table (#626).
+ * - `own`: no lemma grid lists it (`bella` the noun: the bello nouns do not).
+ *   It keeps its own table, if it has one, and shows no lemma *Definitions*.
+ */
+export type FormOf =
+  | { kind: "lemma-grid"; grids: [GridTable, ...GridTable[]]; definitions: LemmaDefinitionList | undefined }
+  | { kind: "own" };
+
+/** A reading's form-of state: set from `isFormOfReading`, its lemma part from the grids that list it. */
+function formOfReading(reading: Reading, lemmas: readonly Reading[]): FormOf | undefined {
+  if (!isFormOfReading(reading)) return undefined;
+  const grids = nonEmpty(gridTablesOf(reading, lemmas));
+  return grids === undefined ? { kind: "own" } : { kind: "lemma-grid", grids, definitions: lemmaDefinitionsOf(grids) };
+}
+
 /** A reading of a source record. */
 export interface PageReading {
   kind: "source";
@@ -177,19 +202,17 @@ export interface PageReading {
   number: number;
   reading: Reading;
   /**
-   * The lemmas whose tables the reading shows, one per distinct table. Two
-   * records with the same table (`chiusi` names `chiudere` twice) show it once;
-   * tables that differ each show.
+   * The verb lemmas whose conjugations the reading shows, one per distinct
+   * table. Two records with the same table (`chiusi` names `chiudere` twice)
+   * show it once; tables that differ each show.
    */
-  lemmaTables: LemmaTable[];
+  conjugations: ConjugationTable[];
   /**
-   * Set when the reading is a noun or adjective form that shows its lemma's
-   * grid (`bella` of bello). Its own definitions are then its form lines,
-   * under its heading with no label; its own table is not shown (#626); and
-   * its *Definitions* are the lemma's (#686). Unset, the reading shows its own
-   * definitions and table; a verb form keeps both, as before.
+   * Set exactly when the reading is the query's own form-of record
+   * (`isFormOfReading`). Unset, the reading shows its own numbered
+   * *Definitions* and its own table.
    */
-  formOf: { definitions: LemmaDefinitionList | undefined } | undefined;
+  formOf: FormOf | undefined;
   /** The etymologies the source ties to this reading, their bracket label dropped. */
   etymologies: WordText[];
   /** The synonym groups the source labels with this reading's part of speech. */
@@ -453,7 +476,7 @@ function conjugationTablesByVerb(reading: Reading): Map<string, ConjugationTable
 }
 
 /** {@link conjugationTablesByVerb}, every verb's tables together, once per distinct table. */
-function conjugationTablesOf(reading: Reading): LemmaTable[] {
+function conjugationTablesOf(reading: Reading): ConjugationTable[] {
   const tables = new Map<string, ConjugationTable>();
   for (const table of [...conjugationTablesByVerb(reading).values()].flat()) {
     if (!tables.has(conjugationKey(table))) tables.set(conjugationKey(table), table);
@@ -548,9 +571,9 @@ const gridKey = ({ grid, superlative }: Agreement): string =>
  * lemma's plural (`casa` takes `case` from `case`, #145). Both are matched by
  * pointer and record, never by spelling.
  */
-function gridTablesOf(reading: Reading, lemmas: readonly Reading[]): LemmaTable[] {
+function gridTablesOf(reading: Reading, lemmas: readonly Reading[]): GridTable[] {
   if (!takesLemmaGrid(reading)) return [];
-  const tables = new Map<string, LemmaTable>();
+  const tables = new Map<string, GridTable>();
   for (const candidate of gridLemmasOf(reading)) {
     const lemma = lemmas.find((one) => entryKey(one) === entryKey(candidate));
     // A record that is itself a form is no lemma to draw: `costruttrice`, the
@@ -658,14 +681,13 @@ export function wordPage(query: string, readings: readonly [Reading, ...Reading[
       ];
     }
     const { reading } = slot;
-    const grids = gridTablesOf(reading, lemmas);
     return [
       {
         kind: "source",
         number: ++numbered,
         reading,
-        lemmaTables: [...conjugationTablesOf(reading), ...grids],
-        formOf: grids.length === 0 ? undefined : { definitions: lemmaDefinitionsOf(grids) },
+        conjugations: conjugationTablesOf(reading),
+        formOf: formOfReading(reading, lemmas),
         etymologies: placed.etymologies.get(reading) ?? [],
         synonyms: relatedItems(placed.synonyms.get(reading) ?? []),
       },

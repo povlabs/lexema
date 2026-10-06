@@ -38,7 +38,7 @@ import { servedRelease, ServedReleaseUnknown, type ServedRelease } from "../../s
 import type { DeclaredChange, ReleaseId } from "../../src/update/declaration.js";
 import { readServedRelease } from "../../src/update/readServedRelease.js";
 import { fromNodeSqlite } from "../../src/lookup/database.js";
-import { formsOfQueryReadings, otherFormsOfQueryLemmas, type Reading, type SourceRef } from "../../src/lookup/types.js";
+import { formsOfQueryReadings, isFormOfReading, otherFormsOfQueryLemmas, type Reading, type SourceRef } from "../../src/lookup/types.js";
 import type { Attempt } from "@/lib/dictionary/attempt.ts";
 import { searchAttempt } from "@/lib/dictionary/searchAttempt.ts";
 import { definitionsOf, type DefinitionItem } from "@/lib/dictionary/definitions.ts";
@@ -1261,20 +1261,15 @@ test("a noun or adjective form that shows its lemma's grid draws its line under 
     const answer = await attempt(db, "bella");
     assert.ok(answer.outcome === "found" && answer.route.kind !== "phrase");
     const page = wordPage("bella", answer.readings, answer.lemmas, SURFACE_ROUTE);
-    const forms = page.readings.filter((entry) => entry.kind === "source" && entry.formOf !== undefined);
+    const forms = page.readings.filter((entry) => entry.kind === "source" && entry.formOf?.kind === "lemma-grid");
     assert.ok(forms.length > 0, "bella shows bello's grid");
     for (const entry of forms) {
-      assert.ok(entry.kind === "source" && entry.formOf?.definitions !== undefined);
-      const [table] = entry.lemmaTables.filter((one) => one.kind === "grid");
-      assert.ok(table !== undefined);
+      assert.ok(entry.kind === "source" && entry.formOf?.kind === "lemma-grid" && entry.formOf.definitions !== undefined);
+      const [table] = entry.formOf.grids;
       const { definitions } = entry.formOf;
       assert.equal(definitions.lemma.recordId, table.lemma.recordId, "the record whose grid shows first");
       assert.deepEqual(definitions.items.map(definitionRef), definitionsOf(table.lemma).items.map(definitionRef));
       assert.equal(definitions.lemmaLinks, table.lemma.lemmaLinks);
-    }
-    // A reading that shows no lemma grid is drawn as before.
-    for (const entry of page.readings) {
-      if (entry.kind === "source" && !forms.includes(entry)) assert.ok(!entry.lemmaTables.some((table) => table.kind === "grid"));
     }
 
     // The page: the heading, bella's line under it with no label or number,
@@ -1289,6 +1284,33 @@ test("a noun or adjective form that shows its lemma's grid draws its line under 
     const bello = readingsOfPage(await render(db, "bello")).find((one) => /<h2 [^>]*>.*?Aggettivo.*?<\/h2>/.test(one)) ?? "";
     assert.deepEqual(lemmaDefinitions(reading), [{ lemma: "bello", all: definitionLines(bello), closed: closedLines(bello) }]);
     assert.doesNotMatch(reading, /Meaning|Grammar|data-meaning-of/);
+  });
+});
+
+test("a form-of reading whose lemma shows no table on the page still draws its lines under its heading, never as numbered Definitions (#690)", async () => {
+  await withDevSeed(async ({ db }) => {
+    // The page model: every form-of reading, and only those, carries the form-of state.
+    for (const word of ["bella", "case", "bello"]) {
+      const answer = await attempt(db, word);
+      assert.ok(answer.outcome === "found" && answer.route.kind !== "phrase");
+      for (const entry of wordPage(word, answer.readings, answer.lemmas, SURFACE_ROUTE).readings) {
+        if (entry.kind === "source") assert.equal(entry.formOf !== undefined, isFormOfReading(entry.reading), `${word}: ${entry.reading.posTitle}`);
+      }
+    }
+
+    // bella the noun: no bello noun's grid lists it, so no lemma table shows,
+    // and its line still sits under its heading, unnumbered, bello linked.
+    const noun = nth(await render(db, "bella"), 2);
+    assert.deepEqual(headingTexts(noun), ["2·Sostantivo, forma flessa·femminile, singolare"]);
+    assert.deepEqual(formLines(noun), ["femminile di bello"]);
+    assert.match(noun, /femminile di <a class="[^"]*" href="\/\?q=bello">bello<\/a><\/p>/);
+    assert.deepEqual(definitionLines(noun), []);
+    assert.doesNotMatch(noun, /id="definitions-|data-definition=/);
+
+    // A lemma keeps its own numbered Definitions.
+    const bello = nth(await render(db, "bello"), 1);
+    assert.ok(definitionLines(bello).length > 0);
+    assert.deepEqual(formLines(bello), []);
   });
 });
 
@@ -2929,13 +2951,15 @@ test("a reading with no definition is numbered like every reading, with no Defin
     assert.match(textOf(afterReadings(fare)), /Synonymsabituarsi/);
 
     // litigante: the noun between the adjective and the verb form has no
-    // definition; it takes 2, and the verb form 3, with no gap.
+    // definition; it takes 2, and the verb form 3, with no gap. The verb form,
+    // whose verb this release lacks, draws its line as a form line (#690).
     const litigante = await render(db, "litigante");
     assert.deepEqual(headingsOf(litigante), ["1·Aggettivo·maschile e femminile, singolare", "2·Sostantivo", "3·Voce verbale"]);
     assert.deepEqual(
       readingsOfPage(litigante).map((reading) => patternsOf(reading, /data-definition="/g)),
-      [1, 0, 1],
+      [1, 0, 0],
     );
+    assert.deepEqual(formLines(nth(litigante, 3)), ["participio presente singolare di litigare"]);
     assert.doesNotMatch(nth(litigante, 2), /id="definitions-/);
     const jumps = [...litigante.matchAll(new RegExp(`<a class="${esc(JUMP_LINK)}" href="#reading-\\d+">(.*?)</a>`, "g"))];
     assert.deepEqual(

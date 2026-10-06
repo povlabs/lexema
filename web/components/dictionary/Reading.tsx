@@ -501,7 +501,7 @@ export function VerbFormBlockView({ block }: { block: VerbFormBlock }) {
   );
 }
 
-/** A noun or adjective form's own definitions as its form lines (`femminile singolare di bello`), with any examples its senses hold. */
+/** A form-of reading's own definitions as its form lines (`femminile singolare di bello`), with any examples its senses hold. */
 function ReadingFormLines({ reading }: { reading: Reading }) {
   const { items, looseExamples } = definitionsOf(reading);
   if (items.length === 0 && looseExamples.length === 0) return null;
@@ -517,8 +517,13 @@ function ReadingFormLines({ reading }: { reading: Reading }) {
   );
 }
 
+/**
+ * A source reading. A form-of reading draws its own definitions as form lines
+ * under its heading, never as numbered *Definitions*, with or without its
+ * lemma's table (#690); any other reading lists its own numbered.
+ */
 export function ReadingView({ entry }: { entry: PageReading }) {
-  const { reading, number } = entry;
+  const { reading, number, formOf } = entry;
   const grammar = headingGrammar(reading);
   return (
     <article
@@ -546,20 +551,14 @@ export function ReadingView({ entry }: { entry: PageReading }) {
           </span>
         )}
       </h2>
-      {entry.formOf === undefined ? (
-        <>
-          <Definitions reading={reading} />
-          <LemmaLines reading={reading} />
-          <OwnForms reading={reading} />
-        </>
+      {formOf === undefined ? <Definitions reading={reading} /> : <ReadingFormLines reading={reading} />}
+      <LemmaLines reading={reading} />
+      {formOf?.kind === "lemma-grid" ? (
+        <LemmaDefinitions owner={entryKey(reading)} list={formOf.definitions} />
       ) : (
-        <>
-          <ReadingFormLines reading={reading} />
-          <LemmaLines reading={reading} />
-          <LemmaDefinitions owner={entryKey(reading)} list={entry.formOf.definitions} />
-        </>
+        <OwnForms reading={reading} />
       )}
-      <LemmaForms owner={entryKey(reading)} tables={entry.lemmaTables} />
+      <LemmaForms owner={entryKey(reading)} tables={formOf?.kind === "lemma-grid" ? [...entry.conjugations, ...formOf.grids] : entry.conjugations} />
       {entry.etymologies.length > 0 && (
         <Block id={`etymology-${entryKey(reading)}`} label="Etymology">
           {entry.etymologies.map((etymology) => (
