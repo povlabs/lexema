@@ -19,17 +19,29 @@
 //
 // A record that lists the query and declares no such form is still a reading.
 //
-// A verb form with no record of its own, such as the compound `sono andato`,
-// is only a cell of its verb's table. The page opens with a reading that says
-// which form it is, `1 · Voce verbale`, built by rule `it-verb-form-line/v1`
-// (src/italian/verbFormLine.ts) from each cell the query hit: "prima persona
-// singolare del passato prossimo indicativo di andare" (#627; Huey's brief of
-// 2026-10-05). The verb's own reading follows, numbered on, with its table. A
-// verb a reading about the query already declares itself a form of gives no
-// line: `andavano`'s own record says what it is. The line is built here, when
-// the page is built; the lookup, the API and the seed never hold it (ADR 0012),
-// and the page shows no mark for it (ADR 0016), though its type keeps it apart
-// from a source reading (`VerbFormReading`).
+// A searched verb form shows one block per verb it is a form of (#636; Huey's
+// ruling of 2026-10-06, frame 37): `1 · Voce verbale · salire`, then that
+// verb's form-of lines under *Definitions*, then *Forms of salire*, its
+// conjugation opened where the searched cell is, when that table lists the
+// query (matched by pointer). A block's lines come from two places:
+//
+// - A form record about the query: each of its definitions goes to the verb its
+//   `form_of` edge names. `salivate`'s record gives salivare's block its two
+//   lines, and `saliva`'s, naming salivare and salire, gives one line to each.
+//   A record with a definition whose edges name no verb keeps its reading.
+// - A verb's own table, when no record about the query names that verb: one
+//   line per cell the query hit, built by rule `it-verb-form-line/v1`
+//   (src/italian/verbFormLine.ts) in the table's own Italian names: "prima
+//   persona singolare del passato prossimo indicativo di andare" (#627). The
+//   verb's record then has no reading of its own: its table is the block's.
+//   Rule-built blocks lead the page, as their lines did under #627.
+//
+// A rule-built line is built here, when the page is built; the lookup, the API
+// and the seed never hold it (ADR 0012), and the page shows no mark for it (ADR
+// 0016), though its type keeps it apart from a source line (`VerbFormLine`). A
+// verb with no line, such as one whose only hit cell is a participle, gives no
+// block and keeps its reading. A verb whose table does not list the query
+// (`andati`: andare's lists only `andato`) has a block with no table.
 //
 // A form reading carries its lemma's table when that table lists the query, the
 // way the lemma's own page draws it: `andavano` shows *Forms of andare*, the
@@ -59,14 +71,15 @@ import {
   type SourceRef,
 } from "@lexema/lookup/types.ts";
 import { sourceTagsOf } from "./conjugation.ts";
-import { hasDefinitions } from "./definitions.ts";
+import { definitionsOf, hasDefinitions, placeOf, readAt, type DefinitionItem } from "./definitions.ts";
 import { agreementOf, type Agreement, type Spelling } from "./genderGrid.ts";
 import { labelParts, readingsNamed, splitLabel } from "./readingLabels.ts";
 import { relatedItems, type RelatedItem } from "./relatedList.ts";
 import type {
+  EntryIdentity,
   Expression,
+  LemmaCandidate,
   LemmaListing,
-  LemmaTarget,
   Pronunciation,
   Hyphenation,
   Reading,
@@ -86,8 +99,11 @@ import type {
  *   with nothing marked: `bello` for `bella`, `casa` for `case` (#626).
  */
 export type LemmaTable =
-  | { kind: "conjugation"; lemma: LemmaTarget; listing: LemmaListing }
+  | { kind: "conjugation"; lemma: LemmaCandidate; listing: LemmaListing }
   | { kind: "grid"; lemma: Reading; agreement: Agreement };
+
+/** A verb's conjugation, the one kind of table a verb form block shows. */
+export type ConjugationTable = Extract<LemmaTable, { kind: "conjugation" }>;
 
 /** A reading of a source record. */
 export interface PageReading {
@@ -117,7 +133,7 @@ export interface PageReading {
   synonyms: RelatedItem[];
 }
 
-/** The heading of a reading that says which verb form the query is: the source's own for one (frame 17). */
+/** The part of speech a verb form block is headed with: the source's own for a verb form (frame 37). */
 export const VOCE_VERBALE = "Voce verbale";
 
 /**
@@ -127,6 +143,7 @@ export const VOCE_VERBALE = "Voce verbale";
  * (ADR 0008, ADR 0016).
  */
 export interface VerbFormLine {
+  kind: "rule";
   /** The whole line, ending with `lemma`. */
   text: string;
   /** The verb the line names, linked to its search. */
@@ -137,28 +154,99 @@ export interface VerbFormLine {
   ref: SourceRef;
 }
 
+/** A definition of a form record about the query, in the block of the verb its `form_of` edge names. */
+export interface SourceFormLine {
+  kind: "source";
+  reading: Reading;
+  item: DefinitionItem;
+}
+
+/** One form-of line of a verb form block: the source's, or built by rule. */
+export type FormLine = SourceFormLine | VerbFormLine;
+
 /**
- * The reading a verb form with no record of its own opens with, `1 · Voce
- * verbale`: one line per cell of a verb's table the query hit, identical lines
- * once (#627). It has no record behind it, so no report names it.
+ * A form record about the query whose definitions a block holds. A record
+ * whose definitions name two verbs has a part in each verb's block; what
+ * belongs to the record rather than to one definition shows in its first.
  */
-export interface VerbFormReading {
+export interface BlockRecord {
+  reading: Reading;
+  /** Whether this is the record's first block, the one that shows its own table and its loose examples. */
+  first: boolean;
+  /**
+   * The words this record's `form_of` edges name that its `Form of` lines may
+   * show here: this block's verb and, in its first block, every word no block
+   * of its own is for.
+   */
+  lemmaWords: string[];
+}
+
+/**
+ * One verb the query is a form of, as frame 37 draws it (#636): `1 · Voce
+ * verbale · salire`, the verb's form-of lines, then *Forms of salire*.
+ */
+export interface VerbFormBlock {
   kind: "verb-form";
   number: number;
   posTitle: typeof VOCE_VERBALE;
-  lines: [VerbFormLine, ...VerbFormLine[]];
+  /** The verb, as the form's `form_of` edge or the verb's own record writes it. */
+  verb: string;
+  /** The form records' lines first, then the rule-built ones; each once. */
+  lines: [FormLine, ...FormLine[]];
+  /** The form records about the query whose definitions are lines here. */
+  sources: BlockRecord[];
+  /** The verb records the rule-built lines were read from, which have no reading of their own. */
+  verbs: Reading[];
+  /** The verb's conjugation, one per distinct table. */
+  tables: ConjugationTable[];
+  /** The etymologies the source ties to the block's form records, their bracket label dropped. */
+  etymologies: WordText[];
+  /** The synonym groups the source labels with the block's form records. */
+  synonyms: RelatedItem[];
 }
 
-/** One reading on a word's page: a source record's, or the rule-built one. */
-export type PageEntry = PageReading | VerbFormReading;
+/** One reading on a word's page: a source record's, or a verb form block. */
+export type PageEntry = PageReading | VerbFormBlock;
 
-/** The anchor of a page entry's reading, which the jump links point to. */
-export const readingAnchor = (entry: PageEntry): string =>
-  entry.kind === "verb-form" ? "reading-voce-verbale" : `reading-${entryKey(entry.reading)}`;
+/** What follows a block's number in its heading and its jump link: `Voce verbale · salire`. */
+export const blockTitle = (block: VerbFormBlock): string => `${block.posTitle} · ${block.verb}`;
 
-/** The entries backed by a source record: every one a report can name. */
-export const sourceReadings = (entries: readonly PageEntry[]): PageReading[] =>
-  entries.filter((entry): entry is PageReading => entry.kind === "source");
+/** What names an entry in its ids: its record, or a block's verb. */
+const entryName = (entry: PageEntry): string =>
+  entry.kind === "verb-form" ? `voce-verbale-${entry.verb.replace(/\s+/g, "_")}` : entryKey(entry.reading);
+
+/** The anchor of a page entry, which the jump links point to: one per entry, a block's named by its verb. */
+export const readingAnchor = (entry: PageEntry): string => `reading-${entryName(entry)}`;
+
+/** The id of a page entry's heading, which names the entry for assistive technology. */
+export const readingHeadingId = (entry: PageEntry): string => `reading-heading-${entryName(entry)}`;
+
+/** A source record a page shows, under the number of the entry that shows it. */
+export interface ShownRecord {
+  number: number | undefined;
+  /** The record, named as its entry is headed: its part of speech, or the block's title. */
+  reading: EntryIdentity & { posTitle: string };
+}
+
+/**
+ * Every source record the page shows, in page order and each once: a
+ * reading's record, and a block's form records and verb records under the
+ * block's number and title. These are the records a report can name.
+ */
+export function shownRecords(entries: readonly PageEntry[]): ShownRecord[] {
+  const seen = new Set<string>();
+  const shown: ShownRecord[] = [];
+  const add = (number: number | undefined, reading: Reading, posTitle: string) => {
+    if (seen.has(entryKey(reading))) return;
+    seen.add(entryKey(reading));
+    shown.push({ number, reading: { ...reading, posTitle } });
+  };
+  for (const entry of entries) {
+    if (entry.kind === "source") add(entry.number, entry.reading, entry.reading.posTitle);
+    else for (const reading of [...entry.sources.map((source) => source.reading), ...entry.verbs]) add(entry.number, reading, blockTitle(entry));
+  }
+  return shown;
+}
 
 /** The word lists no reading took, as they show: words, and the notes among them. */
 export interface WordLists {
@@ -232,22 +320,88 @@ function tableKey(listing: LemmaListing): string {
   );
 }
 
+/** What tells two conjugations apart: the lemma's word and what its table shows. */
+const conjugationKey = (table: ConjugationTable): string => `${table.lemma.word}\u0000${tableKey(table.listing)}`;
+
 /**
  * The verb lemmas whose own tables list the query, for a verb reading that is
- * a form of them: every candidate of every link, once per distinct table.
+ * a form of them, by the word each `form_of` edge names: every candidate of
+ * every link, once per distinct table.
  */
-function conjugationTablesOf(reading: Reading): LemmaTable[] {
-  if (!isVerbReading(reading)) return [];
-  const tables = new Map<string, LemmaTable>();
+function conjugationTablesByVerb(reading: Reading): Map<string, ConjugationTable[]> {
+  const byVerb = new Map<string, Map<string, ConjugationTable>>();
+  if (!isVerbReading(reading)) return new Map();
   for (const link of reading.lemmaLinks) {
     if (link.kind !== "candidates") continue;
     for (const lemma of link.candidates) {
       if (lemma.pos !== "verb" || lemma.listing === undefined) continue;
-      const key = `${lemma.word}\u0000${tableKey(lemma.listing)}`;
-      if (!tables.has(key)) tables.set(key, { kind: "conjugation", lemma, listing: lemma.listing });
+      const table: ConjugationTable = { kind: "conjugation", lemma, listing: lemma.listing };
+      const tables = byVerb.get(link.targetWord) ?? new Map<string, ConjugationTable>();
+      if (!tables.has(conjugationKey(table))) tables.set(conjugationKey(table), table);
+      byVerb.set(link.targetWord, tables);
     }
   }
+  return new Map([...byVerb].map(([verb, tables]) => [verb, [...tables.values()]]));
+}
+
+/** {@link conjugationTablesByVerb}, every verb's tables together, once per distinct table. */
+function conjugationTablesOf(reading: Reading): LemmaTable[] {
+  const tables = new Map<string, ConjugationTable>();
+  for (const table of [...conjugationTablesByVerb(reading).values()].flat()) {
+    if (!tables.has(conjugationKey(table))) tables.set(conjugationKey(table), table);
+  }
   return [...tables.values()];
+}
+
+/** One verb a form record about the query is a form of: its tables, and the record's definitions that name it. */
+interface FormOfVerb {
+  verb: string;
+  tables: ConjugationTable[];
+  items: [DefinitionItem, ...DefinitionItem[]];
+}
+
+/**
+ * The verbs a form record about the query is a form of, each with the
+ * definitions its `form_of` edges put there, in the order the edges name them;
+ * undefined for any other reading, which keeps a reading of its own.
+ *
+ * A verb is a word an edge names that resolves to a verb record; its tables
+ * are those that list the query, and there may be none (`andati`: andare's
+ * table lists only `andato`). A definition goes to the first verb an edge on
+ * it names, and one with no edge at all to the record's first verb, as the
+ * source leaves `macchina`'s second line without one. A record with a
+ * definition whose edges name no verb is not split: it keeps its reading
+ * (`andarsene`'s "andare sovrappensiero" names `sovrappensiero`). A verb no
+ * definition went to gives its tables to the record's first block, so no
+ * table is left out.
+ */
+function formOfVerbs(reading: Reading): FormOfVerb[] | undefined {
+  if (!isVerbReading(reading) || !isFormOfReading(reading)) return undefined;
+  const tables = conjugationTablesByVerb(reading);
+  const itemsOf = new Map<string, DefinitionItem[]>();
+  for (const link of reading.lemmaLinks) {
+    if (link.kind === "candidates" && link.candidates.some((candidate) => candidate.pos === "verb")) itemsOf.set(link.targetWord, []);
+  }
+  const [first] = itemsOf.keys();
+  const { items } = definitionsOf(reading);
+  if (first === undefined || items.length === 0) return undefined;
+  for (const item of items) {
+    const place = placeOf(item);
+    const edges = reading.lemmaLinks.filter((link) => readAt(link.ref, place));
+    const verb = edges.length === 0 ? first : edges.find((link) => itemsOf.has(link.targetWord))?.targetWord;
+    if (verb === undefined) return undefined;
+    itemsOf.get(verb)?.push(item);
+  }
+  const verbs: FormOfVerb[] = [];
+  const unlined: ConjugationTable[] = [];
+  for (const [verb, verbItems] of itemsOf) {
+    const lined = nonEmpty(verbItems);
+    if (lined === undefined) unlined.push(...(tables.get(verb) ?? []));
+    else verbs.push({ verb, tables: tables.get(verb) ?? [], items: lined });
+  }
+  const [lead] = verbs;
+  if (lead !== undefined) lead.tables = [...lead.tables, ...unlined];
+  return verbs;
 }
 
 /** Whether a reading is a noun or adjective form about the query: one whose lemma's grid it shows. */
@@ -320,26 +474,90 @@ export function wordPage(query: string, readings: readonly [Reading, ...Reading[
   const about = ordered.filter((reading) => reading.isAboutQuery);
   const merged = mergeWordFacts(about);
   const placed = placeWordFacts(about, merged);
+
+  // Each verb the query is a form of gets one block, in the place its first
+  // line puts it: the rule-built ones lead, as their lines did under #627, and
+  // a form record's take its place in the source's order.
+  const slots: Slot[] = [];
+  const blocks = new Map<string, BlockDraft>();
+  const blockOf = (verb: string): BlockDraft => {
+    let block = blocks.get(verb);
+    if (block === undefined) {
+      block = { verb, sourceLines: [], ruleLines: new Map(), sources: [], verbs: [], tables: new Map(), etymologies: [], synonyms: [] };
+      blocks.set(verb, block);
+      slots.push({ kind: "block", block });
+    }
+    return block;
+  };
+  for (const verb of ordered) {
+    const lines = ruleLinesOf(verb, about);
+    if (lines.length === 0) continue;
+    const block = blockOf(verb.word);
+    for (const line of lines) if (!block.ruleLines.has(line.text)) block.ruleLines.set(line.text, line);
+    block.verbs.push(verb);
+    const table = ownConjugation(verb);
+    if (table !== undefined) addTables(block, [table]);
+  }
+  const inBlocks = new Set([...blocks.values()].flatMap((block) => block.verbs));
+  for (const reading of ordered) {
+    if (inBlocks.has(reading)) continue;
+    const verbs = formOfVerbs(reading);
+    if (verbs === undefined) {
+      slots.push({ kind: "reading", reading });
+      continue;
+    }
+    const blockVerbs = new Set(verbs.map((one) => one.verb));
+    const elsewhere = reading.lemmaLinks.map((link) => link.targetWord).filter((word) => !blockVerbs.has(word));
+    verbs.forEach(({ verb, tables, items }, i) => {
+      const block = blockOf(verb);
+      block.sourceLines.push(...items.map((item): SourceFormLine => ({ kind: "source", reading, item })));
+      block.sources.push({ reading, first: i === 0, lemmaWords: [...new Set(i === 0 ? [verb, ...elsewhere] : [verb])] });
+      addTables(block, tables);
+      if (i === 0) {
+        block.etymologies.push(...(placed.etymologies.get(reading) ?? []));
+        block.synonyms.push(...(placed.synonyms.get(reading) ?? []));
+      }
+    });
+  }
+
   // Readings with a definition number 1, 2, 3 among themselves, so the page
-  // never shows a gap (Huey, 2026-09-30, on #250). The rule-built reading,
-  // when there is one, is the first of them.
-  const lines = verbFormLines(ordered, about);
+  // never shows a gap (Huey, 2026-09-30, on #250); a block always has one.
   let numbered = 0;
-  const lead: VerbFormReading[] =
-    lines === undefined ? [] : [{ kind: "verb-form", number: ++numbered, posTitle: VOCE_VERBALE, lines }];
-  const entries = ordered.map((reading): PageReading => {
+  const entries = slots.flatMap((slot): PageEntry[] => {
+    if (slot.kind === "block") {
+      const { block } = slot;
+      const lines = nonEmpty<FormLine>([...block.sourceLines, ...block.ruleLines.values()]);
+      if (lines === undefined) return [];
+      return [
+        {
+          kind: "verb-form",
+          number: ++numbered,
+          posTitle: VOCE_VERBALE,
+          verb: block.verb,
+          lines,
+          sources: block.sources,
+          verbs: block.verbs,
+          tables: [...block.tables.values()],
+          etymologies: block.etymologies,
+          synonyms: relatedItems(block.synonyms),
+        },
+      ];
+    }
+    const { reading } = slot;
     const grids = gridTablesOf(reading, lemmas);
-    return {
-      kind: "source",
-      number: hasDefinitions(reading) ? ++numbered : undefined,
-      reading,
-      lemmaTables: [...conjugationTablesOf(reading), ...grids],
-      ownForms: grids.length === 0,
-      etymologies: placed.etymologies.get(reading) ?? [],
-      synonyms: relatedItems(placed.synonyms.get(reading) ?? []),
-    };
+    return [
+      {
+        kind: "source",
+        number: hasDefinitions(reading) ? ++numbered : undefined,
+        reading,
+        lemmaTables: [...conjugationTablesOf(reading), ...grids],
+        ownForms: grids.length === 0,
+        etymologies: placed.etymologies.get(reading) ?? [],
+        synonyms: relatedItems(placed.synonyms.get(reading) ?? []),
+      },
+    ];
   });
-  const [first, ...rest] = [...lead, ...entries];
+  const [first, ...rest] = entries;
   if (first === undefined) throw new Error("a found result renders at least one reading");
 
   const headword = about[0]?.word ?? query;
@@ -366,26 +584,51 @@ const formOfReadingAbout = (verb: Reading, about: readonly Reading[]): boolean =
   );
 
 /**
- * The lines saying which verb form the query is (#627): for each verb reading
- * on the page that is not about the query and whose own `forms[]` entries the
- * query hit, one line per hit cell `it-verb-form-line/v1` names, matched by
- * pointer. Identical lines show once. None when no cell is named, or when a
- * reading about the query already declares itself a form of that verb.
+ * The lines saying which form of `verb` the query is (#627), when `verb` is a
+ * verb reading on the page that is not about the query and whose own
+ * `forms[]` entries the query hit: one line per hit cell `it-verb-form-line/v1`
+ * names, matched by pointer, identical lines once. None when no cell is named,
+ * or when a reading about the query already declares itself a form of `verb`.
  */
-function verbFormLines(readings: readonly Reading[], about: readonly Reading[]): [VerbFormLine, ...VerbFormLine[]] | undefined {
+function ruleLinesOf(verb: Reading, about: readonly Reading[]): VerbFormLine[] {
+  if (!isVerbReading(verb) || verb.isAboutQuery || formOfReadingAbout(verb, about)) return [];
+  const hit = searchedSpellings(verb).formPointers;
   const lines = new Map<string, VerbFormLine>();
-  for (const verb of readings) {
-    if (!isVerbReading(verb) || verb.isAboutQuery || formOfReadingAbout(verb, about)) continue;
-    const hit = searchedSpellings(verb).formPointers;
-    for (const form of verb.forms) {
-      if (!isSourceRef(form.ref) || !hit.has(form.ref.jsonPointer)) continue;
-      const text = verbFormLine(verb.word, sourceTagsOf(form));
-      if (text === undefined || lines.has(text)) continue;
-      lines.set(text, { text, lemma: verb.word, sourceType: "lexema-deterministic", rule: VERB_FORM_LINE_RULE, ref: form.ref });
-    }
+  for (const form of verb.forms) {
+    if (!isSourceRef(form.ref) || !hit.has(form.ref.jsonPointer)) continue;
+    const text = verbFormLine(verb.word, sourceTagsOf(form));
+    if (text === undefined || lines.has(text)) continue;
+    lines.set(text, { kind: "rule", text, lemma: verb.word, sourceType: "lexema-deterministic", rule: VERB_FORM_LINE_RULE, ref: form.ref });
   }
-  return nonEmpty([...lines.values()]);
+  return [...lines.values()];
 }
+
+/** A verb reading's own conjugation, drawn as a lemma's: opened where the query hit it. */
+function ownConjugation(verb: Reading): ConjugationTable | undefined {
+  const evidence = nonEmpty(verb.evidence.filter((occurrence) => occurrence.origin === "embedded-form"));
+  return evidence === undefined ? undefined : { kind: "conjugation", lemma: verb, listing: { forms: verb.forms, evidence } };
+}
+
+/** A verb form block as it is gathered, before it is numbered. */
+interface BlockDraft {
+  verb: string;
+  sourceLines: SourceFormLine[];
+  /** By text, so an identical line shows once. */
+  ruleLines: Map<string, VerbFormLine>;
+  sources: BlockRecord[];
+  verbs: Reading[];
+  /** By {@link conjugationKey}, so an identical table shows once. */
+  tables: Map<string, ConjugationTable>;
+  etymologies: WordText[];
+  synonyms: RelatedWord[];
+}
+
+/** One place on the page: a reading of its own, or a verb's block. */
+type Slot = { kind: "reading"; reading: Reading } | { kind: "block"; block: BlockDraft };
+
+const addTables = (block: BlockDraft, tables: readonly ConjugationTable[]): void => {
+  for (const table of tables) if (!block.tables.has(conjugationKey(table))) block.tables.set(conjugationKey(table), table);
+};
 
 const nonEmpty = <T>(items: T[]): [T, ...T[]] | undefined => {
   const [first, ...rest] = items;

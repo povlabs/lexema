@@ -10,7 +10,8 @@
 //
 // What each site must answer:
 // - the dictionary finds every word in `SMOKE_WORDS`: `/?q=<word>` is a 200
-//   whose page holds a reading (`data-record`, web/components/dictionary/Reading.tsx).
+//   whose page holds a reading: a source record's (`data-record`) or a verb
+//   form block's (`data-verb-form`, #636), both web/components/dictionary/Reading.tsx.
 //   A word it cannot find is a 200 too, with no reading, so the status alone
 //   says nothing. The reading must be visible as sent, since the smoke runs no
 //   script (#115): React streams a result that is not ready at the first flush
@@ -60,13 +61,13 @@ export const SMOKE_ICONS = [
   { path: "/apple-touch-icon.png", contentTypes: ["image/png"] },
 ] as const;
 
-/** A reading on the dictionary's page: only a found word renders one. */
-const READING = /<article\b[^>]*\bdata-record="/;
+/** A reading on the dictionary's page, a record's or a verb form block's (#636): only a found word renders one. */
+const READING = /<article\b[^>]*\bdata-(?:record|verb-form)="/;
 /** Where React's streamed, hidden segments begin: after everything the first flush showed. */
 const HIDDEN_SEGMENT = /<div hidden id="S:/;
 
 /** What is wrong with a found word's page, as sent and with no script run; nothing when it shows a reading. */
-function readingProblem(body: string, word: string): string | undefined {
+export function readingProblem(body: string, word: string): string | undefined {
   const reading = READING.exec(body);
   if (reading === null) return `no reading for "${word}" on the page`;
   const hidden = HIDDEN_SEGMENT.exec(body);
