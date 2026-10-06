@@ -72,7 +72,8 @@ export function pagePolicyOf(nonce: ScriptNonce): string {
 /** The policy of every API response: JSON loads nothing and is framed by nothing. */
 export const API_POLICY = "default-src 'none'; frame-ancestors 'none'";
 
-const isHtml = (response: Response): boolean => response.headers.get("content-type")?.startsWith("text/html") ?? false;
+/** Whether `response` is an HTML page. */
+export const isHtml = (response: Response): boolean => response.headers.get("content-type")?.startsWith("text/html") ?? false;
 
 /** Every response `handler` gives, with the security headers its site's responses carry. */
 export function withSecurityHeaders<E>(handler: FetchHandler<E>): FetchHandler<E> {
