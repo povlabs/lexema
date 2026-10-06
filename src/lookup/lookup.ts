@@ -29,6 +29,7 @@ import type {
   GrammarClaim,
   InflectionOf,
   LemmaCandidate,
+  LemmaDefinitions,
   LemmaLink,
   LemmaListing,
   LemmaTarget,
@@ -790,6 +791,60 @@ async function readRecordExpressions(
   ref: (pointer: string) => SourceRef,
 ): Promise<Expression[]> {
   return readExpressions(db, releaseId, readSourceRecord((await record).rawJson, ref).expressionItems);
+}
+
+/**
+ * The readings, each verb that a verb form record about the query names given
+ * its own definitions, so the verb's block can list them as its *Definitions*
+ * (`LemmaTarget.definitions`, #686). A verb record is read once however many
+ * links name it: its line, its senses and its recovered definitions, sent
+ * together. A page sends this beside the reads it makes after the lookup
+ * (web/lib/dictionary/searchAttempt.ts), so it adds statements and no call.
+ */
+export async function withVerbDefinitions(db: LookupDatabase, readings: readonly [Reading, ...Reading[]]): Promise<[Reading, ...Reading[]]> {
+  const reads = new Map<number, Promise<LemmaDefinitions>>();
+  for (const reading of readings) {
+    if (!reading.isAboutQuery || reading.pos !== "verb") continue;
+    for (const link of reading.lemmaLinks) {
+      if (link.kind !== "candidates") continue;
+      for (const candidate of link.candidates) {
+        const { recordId } = candidate;
+        if (recordId === undefined || candidate.pos !== "verb" || reads.has(recordId)) continue;
+        reads.set(recordId, handled(readDefinitions(db, recordId, candidate.word, (pointer) => ({ ...candidate.ref, jsonPointer: pointer }))));
+      }
+    }
+  }
+  if (reads.size === 0) return [...readings];
+  const read = new Map(await Promise.all([...reads].map(async ([recordId, definitions]) => [recordId, await definitions] as const)));
+  const withDefinitions = (reading: Reading): Reading => {
+    if (!reading.isAboutQuery || reading.pos !== "verb") return reading;
+    const lemmaLinks = reading.lemmaLinks.map((link): LemmaLink => {
+      if (link.kind !== "candidates") return link;
+      const candidates = link.candidates.map((candidate): LemmaTarget => {
+        const definitions = candidate.recordId === undefined ? undefined : read.get(candidate.recordId);
+        return definitions === undefined ? candidate : { ...candidate, definitions };
+      });
+      return { ...link, candidates };
+    });
+    return { ...reading, lemmaLinks };
+  };
+  const [first, ...rest] = readings;
+  return [withDefinitions(first), ...rest.map(withDefinitions)];
+}
+
+/** A record's own definitions, as its reading carries them: its senses, with their examples and recovered items, and its recovered definitions. */
+async function readDefinitions(
+  db: LookupDatabase,
+  recordId: number,
+  word: string,
+  ref: (pointer: string) => SourceRef,
+): Promise<LemmaDefinitions> {
+  const record = handled(readRecord(db, recordId));
+  const [senseRows, recovered, line] = await Promise.all([readSenseRows(db, recordId), readRecovered(db, recordId, record), record]);
+  return {
+    senses: sensesOf(senseRows, word, ref, readSourceRecord(line.rawJson, ref), recovered.underSense),
+    recovered: recovered.topLevel,
+  };
 }
 
 /** A record's section title and its verbatim archive line. */

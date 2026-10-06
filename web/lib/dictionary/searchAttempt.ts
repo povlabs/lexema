@@ -1,14 +1,15 @@
 // One search, as the page runs it: the exact lookup; when it finds nothing, a
 // word only form-of records name (#453); and when that has no table either,
 // what to offer instead. A word found also carries the headwords that write it
-// with an accent or apostrophe it lacks (#478), and the records of the lemmas
-// whose grids its noun and adjective forms show (#626). Free of the Workers runtime, so the page test runs the
+// with an accent or apostrophe it lacks (#478), the records of the lemmas
+// whose grids its noun and adjective forms show (#626), and the definitions of
+// the verbs its verb forms name (#686), all in one wait. Free of the Workers runtime, so the page test runs the
 // same code over a local database.
 
 import type { LookupDatabase } from "@lexema/lookup/database.ts";
 import type { Reading } from "@lexema/lookup/types.ts";
 import { declaredLemma } from "@lexema/lookup/declaredLemma.ts";
-import { lookup } from "@lexema/lookup/lookup.ts";
+import { lookup, withVerbDefinitions } from "@lexema/lookup/lookup.ts";
 import { findNearby, writtenSpellings } from "@lexema/lookup/nearby.ts";
 import type { Attempt } from "./attempt.ts";
 import { declaredLemmaPage } from "./declaredLemmaPage.ts";
@@ -18,8 +19,12 @@ export async function searchAttempt(db: LookupDatabase, releaseId: string, query
   const result = await lookup({ db, releaseId, query });
   const written = () => writtenSpellings({ db, releaseId, query: result.query.raw });
   if (result.outcome === "found") {
-    const [spellings, lemmas] = await Promise.all([written(), lemmaRecords(db, releaseId, result.readings)]);
-    return { ...result, written: spellings, lemmas };
+    const [spellings, lemmas, readings] = await Promise.all([
+      written(),
+      lemmaRecords(db, releaseId, result.readings),
+      withVerbDefinitions(db, result.readings),
+    ]);
+    return { ...result, readings, written: spellings, lemmas };
   }
   if (result.outcome !== "not-found") return result;
   const declared = await declaredLemma(db, releaseId, result);

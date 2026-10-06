@@ -276,6 +276,15 @@ export const EXAMPLE = "m-0 mt-1 max-w-[48rem] font-serif text-[0.9375rem] itali
 export const EXAMPLE_EXTRA = `${EXAMPLE} hidden group-data-open/definitions:block`;
 /** An example of a sense not shown as a definition, after the definitions, in line with their text. */
 export const EXAMPLE_LOOSE = `${EXAMPLE_EXTRA} ml-[1.6875rem] sm:ml-8`;
+/**
+ * A form's lines, right under its heading with no label (#686, frames 17 and
+ * 37): 10 px below it, their left edge in line with the part of speech, 34 px
+ * in from the number. The 6 px under them makes the gap to the next block the
+ * reading's 28 (24 on a phone).
+ */
+export const FORM_LINES = "mt-2.5 flex flex-col gap-1 pb-1.5 pl-[2.125rem]";
+/** One form line: serif 17, strong, unnumbered, the lemma linked at its end. */
+export const FORM_LINE = "m-0 max-w-[48rem] font-serif text-[1.0625rem] leading-[1.625rem] text-text-strong wrap-anywhere";
 /** A reading's definitions and the one `+ more` after them, which reveals everything else: `data-open` once open. */
 export const DEFINITIONS_GROUP = "group/definitions";
 

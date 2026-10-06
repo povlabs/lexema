@@ -45,7 +45,7 @@ export const readAt = (ref: FactRef, place: DefinitionPlace): boolean =>
  * no note about either. An example the record holds that is really a
  * recovered definition is shown once, as that definition.
  */
-export function definitionsOf(reading: Reading): { items: DefinitionItem[]; looseExamples: string[] } {
+export function definitionsOf(reading: Pick<Reading, "word" | "senses" | "recovered">): { items: DefinitionItem[]; looseExamples: string[] } {
   const heldAsDefinition = new Set(
     everyRecovered(reading).flatMap((definition) => definition.heldAsExample?.jsonPointer ?? []),
   );
