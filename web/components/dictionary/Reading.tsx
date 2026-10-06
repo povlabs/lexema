@@ -1,8 +1,9 @@
-// How one reading renders: a heading `1 · Sostantivo` (only `Sostantivo` for a
-// reading with no definition), then *Definitions*, then
-// *Forms* — no box around it, a thin rule before the next
-// (design-system-manifest.md § "The result"). A verb form block reads the same
-// way, headed `1 · Voce verbale · salire` (#636).
+// How one reading renders: a heading `1 · Sostantivo`, then the parts the page
+// model gave it (wordPage.ts), *Definitions* then *Forms* among them — no box
+// around it, a thin rule before the next (design-system-manifest.md § "The
+// result"). Which parts a reading has, and whether it shows at all, is decided
+// there, not here (#694). A verb form block reads the same way, headed
+// `1 · Voce verbale · salire` (#636).
 //
 // The part of speech is the record's own `pos_title`, verbatim (ADR 0015).
 // Nothing on the reading says where a fact came from (ADR 0016): a definition
@@ -10,20 +11,26 @@
 // article worked out by rule. Every Italian string carries `lang="it"`.
 
 import type { ReactNode } from "react";
-import { entryKey, everyRecovered, factRefKey, isVerbReading, searchedSpellings } from "@lexema/lookup/types.ts";
-import type { FactRef, RecoveredDefinition, Reading } from "@lexema/lookup/types.ts";
-import { conjugationOf, placesAny } from "@/lib/dictionary/conjugation.ts";
-import { definitionsOf, readAt, senseLabels, type DefinitionItem, type DefinitionPlace } from "@/lib/dictionary/definitions.ts";
-import { agreementOf, headingGrammar } from "@/lib/dictionary/genderGrid.ts";
+import { entryKey, factRefKey } from "@lexema/lookup/types.ts";
+import type { RecoveredDefinition, Reading } from "@lexema/lookup/types.ts";
+import { conjugationOf } from "@/lib/dictionary/conjugation.ts";
+import { definitionsOf, senseLabels, type DefinitionItem } from "@/lib/dictionary/definitions.ts";
+import { headingGrammar } from "@/lib/dictionary/genderGrid.ts";
+import { lemmaMatches, lemmaWordsOf, unlinkedLemmas, type LinksOf } from "@/lib/dictionary/lemmaLines.ts";
 import { ConjugationView, GridView, SuperlativeGrid, searchHref } from "./Forms";
 import {
   readingAnchor,
   readingHeadingId,
   searchedIn,
+  type BareReading,
   type ConjugationTable,
   type FormLine,
+  type FormOfPart,
   type LemmaDefinitionList,
+  type LemmaPart,
   type LemmaTable,
+  type OwnForms,
+  type OwnText,
   type PageReading,
   type VerbFormBlock,
   type VerbFormLine,
@@ -77,49 +84,6 @@ const nestedExamples = (items: readonly RecoveredDefinition[]): boolean =>
 
 const nestedItemsOf = (item: DefinitionItem): readonly RecoveredDefinition[] =>
   item.from === "record" ? item.sense.recoveredItems : item.definition.items;
-
-/** A record's lemma links: what a definition of its links where its text writes them. */
-type LinksOf = Pick<Reading, "lemmaLinks">;
-
-/**
- * The words the `form_of` edges of a definition name, to link where its text
- * writes them: `terza persona plurale dell'imperfetto indicativo di andare`.
- */
-function lemmaWordsOf(reading: LinksOf, place: DefinitionPlace): string[] {
-  return reading.lemmaLinks
-    .filter((link) => link.kind === "candidates" && readAt(link.ref, place))
-    .map((link) => link.targetWord);
-}
-
-const isLetter = (char: string | undefined): boolean => char !== undefined && /\p{L}/u.test(char);
-
-/** Where a gloss writes a lemma as a whole word, last occurrence first; -1 when it does not. */
-function findLemma(text: string, lemma: string): number {
-  let at = text.lastIndexOf(lemma);
-  while (at !== -1 && (isLetter(text[at - 1]) || isLetter(text[at + lemma.length]))) {
-    at = at === 0 ? -1 : text.lastIndexOf(lemma, at - 1);
-  }
-  return at;
-}
-
-/**
- * Every lemma a gloss writes as a whole word, where it writes it last, in text
- * order and never overlapping. The one place a gloss is matched against its
- * lemmas, so what `LinkedGloss` links and what `LemmaLines` counts as linked
- * cannot disagree.
- */
-function lemmaMatches(text: string, lemmas: readonly string[]): { at: number; lemma: string }[] {
-  const found = [...new Set(lemmas)]
-    .map((lemma) => ({ at: findLemma(text, lemma), lemma }))
-    .filter((match) => match.at !== -1)
-    .sort((a, b) => a.at - b.at || b.lemma.length - a.lemma.length);
-  const kept: { at: number; lemma: string }[] = [];
-  for (const match of found) {
-    const last = kept[kept.length - 1];
-    if (last === undefined || match.at >= last.at + last.lemma.length) kept.push(match);
-  }
-  return kept;
-}
 
 /** A gloss with each lemma it names linked to its search. */
 function LinkedGloss({ text, lemmas }: { text: string; lemmas: readonly string[] }) {
@@ -271,20 +235,17 @@ function DefinitionList({
 }
 
 /** A reading's own definitions; with none, the source's examples still show. */
-function Definitions({ reading }: { reading: Reading }) {
-  const { items, looseExamples } = definitionsOf(reading);
-  const [first, ...rest] = items;
-  if (first === undefined) {
-    if (looseExamples.length === 0) return null;
+function Definitions({ reading, text }: { reading: Reading; text: OwnText }) {
+  if (text.kind === "examples") {
     return (
       <Block id={`examples-${entryKey(reading)}`} label="Examples">
-        {looseExamples.map((text, i) => (
-          <Example key={i} text={text} />
+        {text.looseExamples.map((example, i) => (
+          <Example key={i} text={example} />
         ))}
       </Block>
     );
   }
-  return <DefinitionList owner={entryKey(reading)} items={[first, ...rest]} looseExamples={looseExamples} links={reading} />;
+  return <DefinitionList owner={entryKey(reading)} items={text.items} looseExamples={text.looseExamples} links={reading} />;
 }
 
 /**
@@ -322,29 +283,14 @@ function SourceFormLineText({ item, reading }: { item: DefinitionItem; reading: 
 }
 
 /**
- * A lemma the release has whose word the definition does not write, linked on
- * a line of its own, so the source's `form_of` edge stays reachable. A lemma
- * the release has no entry for is not mentioned (Huey, 2026-09-27, on #142).
- * In a verb form block, `only` names the words that block may show.
+ * Lemmas a record's `form_of` edges name that its definitions do not write,
+ * each linked on a line of its own, so the edge stays reachable
+ * (`unlinkedLemmas`).
  */
-function LemmaLines({ reading, only }: { reading: Reading; only?: readonly string[] }) {
-  const writes = (text: string, place: DefinitionPlace, word: string) =>
-    lemmaMatches(text, lemmaWordsOf(reading, place)).some((match) => match.lemma === word);
-  const linkedInGloss = (word: string, ref: FactRef) =>
-    reading.senses.some(
-      (sense) => readAt(ref, { sense: sense.index }) && sense.glosses.some((gloss) => writes(gloss.text, { sense: sense.index }, word)),
-    ) ||
-    everyRecovered(reading).some(
-      (definition) => readAt(ref, { line: definition.ref.line }) && writes(definition.text, { line: definition.ref.line }, word),
-    );
-  const unlinked = new Set<string>();
-  for (const link of reading.lemmaLinks) {
-    if (link.kind !== "candidates" || (only !== undefined && !only.includes(link.targetWord))) continue;
-    if (!linkedInGloss(link.targetWord, link.ref)) unlinked.add(link.targetWord);
-  }
+function LemmaLineList({ words }: { words: readonly string[] }) {
   return (
     <>
-      {[...unlinked].map((word) => (
+      {words.map((word) => (
         <p key={word} className={FORM_OF_LINE}>
           Form of{" "}
           <a className={GLOSS_LINK} href={searchHref(word)} lang="it">
@@ -357,30 +303,18 @@ function LemmaLines({ reading, only }: { reading: Reading; only?: readonly strin
   );
 }
 
-/** The reading's own forms, in the shape they have. */
-function OwnForms({ reading }: { reading: Reading }) {
-  const id = `forms-${entryKey(reading)}`;
-  if (isVerbReading(reading)) {
-    const searched = searchedSpellings(reading);
-    const conjugation = conjugationOf(reading.forms, searched);
-    // Forms that fill no cell would draw only a row of dashes (#674).
-    if (!placesAny(conjugation)) return null;
-    return (
-      <Block id={id} label="Forms">
-        <ConjugationView
-          conjugation={conjugation}
-          searchedPointers={searched.formPointers}
-          word={reading.word}
-        />
-      </Block>
-    );
-  }
-  const { grid, superlative } = agreementOf(reading);
-  if (grid === undefined && superlative === undefined) return null;
+/** A reading's own *Forms*, in the shape they have. */
+function OwnFormsView({ owner, forms }: { owner: Reading; forms: OwnForms }) {
   return (
-    <Block id={id} label="Forms">
-      {grid !== undefined && <GridView grid={grid} label={`Forms of ${reading.word}`} />}
-      {superlative !== undefined && <SuperlativeGrid grid={superlative} />}
+    <Block id={`forms-${entryKey(owner)}`} label="Forms">
+      {forms.kind === "conjugation" ? (
+        <ConjugationView conjugation={forms.conjugation} searchedPointers={forms.searchedPointers} word={owner.word} />
+      ) : (
+        <>
+          {forms.agreement.grid !== undefined && <GridView grid={forms.agreement.grid} label={`Forms of ${owner.word}`} />}
+          {forms.agreement.superlative !== undefined && <SuperlativeGrid grid={forms.agreement.superlative} />}
+        </>
+      )}
     </Block>
   );
 }
@@ -485,7 +419,7 @@ export function VerbFormBlockView({ block }: { block: VerbFormBlock }) {
         ))}
       </FormLines>
       {block.sources.map((source) => (
-        <LemmaLines key={entryKey(source.reading)} reading={source.reading} only={source.lemmaWords} />
+        <LemmaLineList key={entryKey(source.reading)} words={unlinkedLemmas(source.reading, source.lemmaWords)} />
       ))}
       <LemmaDefinitions owner={anchor} list={block.definitions} />
       <LemmaForms owner={anchor} tables={block.tables} />
@@ -502,29 +436,60 @@ export function VerbFormBlockView({ block }: { block: VerbFormBlock }) {
 }
 
 /** A form-of reading's own definitions as its form lines (`femminile singolare di bello`), with any examples its senses hold. */
-function ReadingFormLines({ reading }: { reading: Reading }) {
-  const { items, looseExamples } = definitionsOf(reading);
-  if (items.length === 0 && looseExamples.length === 0) return null;
+function ReadingFormLines({ reading, text }: { reading: Reading; text: OwnText }) {
   return (
     <FormLines>
-      {items.map((item) => (
+      {(text.kind === "definitions" ? text.items : []).map((item) => (
         <SourceFormLineText key={definitionKey(item)} item={item} reading={reading} />
       ))}
-      {looseExamples.map((text, i) => (
-        <Example key={`loose-${i}`} text={text} />
+      {text.looseExamples.map((example, i) => (
+        <Example key={`loose-${i}`} text={example} />
       ))}
     </FormLines>
   );
 }
 
+/** One part of a source reading, as the page model decided it (wordPage.ts). */
+function ReadingPartView({ reading, part }: { reading: Reading; part: LemmaPart | FormOfPart }) {
+  const owner = entryKey(reading);
+  switch (part.kind) {
+    case "definitions":
+      return <Definitions reading={reading} text={part.text} />;
+    case "form-lines":
+      return <ReadingFormLines reading={reading} text={part.text} />;
+    case "lemma-lines":
+      return <LemmaLineList words={part.words} />;
+    case "own-forms":
+      return <OwnFormsView owner={reading} forms={part.forms} />;
+    case "lemma-definitions":
+      return <LemmaDefinitions owner={owner} list={part.list} />;
+    case "lemma-forms":
+      return <LemmaForms owner={owner} tables={part.tables} />;
+    case "etymology":
+      return (
+        <Block id={`etymology-${owner}`} label="Etymology">
+          {part.etymologies.map((etymology) => (
+            <OneLine key={factRefKey(etymology.ref)} text={etymology.text} lang="it" />
+          ))}
+        </Block>
+      );
+    case "synonyms":
+      return <WordList id={`synonyms-${owner}`} label="Synonyms" items={part.items} level="h3" />;
+  }
+}
+
 /**
- * A source reading. A form-of reading draws its own definitions as form lines
- * under its heading, never as numbered *Definitions*, with or without its
- * lemma's table (#690); any other reading lists its own numbered.
+ * A source reading: its heading, then each part the page model gave it, in
+ * order. A form-of reading draws its own definitions as form lines under its
+ * heading, never as numbered *Definitions*, with or without its lemma's table
+ * (#690), and has no *Forms* of its own (#694); any other reading lists its
+ * own numbered. A bare reading, only on a page where no reading has anything
+ * to show, is its heading alone.
  */
-export function ReadingView({ entry }: { entry: PageReading }) {
-  const { reading, number, formOf } = entry;
+export function ReadingView({ entry }: { entry: PageReading | BareReading }) {
+  const { reading, number } = entry;
   const grammar = headingGrammar(reading);
+  const parts: readonly (LemmaPart | FormOfPart)[] = entry.kind === "bare" ? [] : entry.parts;
   return (
     <article
       className={READING}
@@ -551,22 +516,9 @@ export function ReadingView({ entry }: { entry: PageReading }) {
           </span>
         )}
       </h2>
-      {formOf === undefined ? <Definitions reading={reading} /> : <ReadingFormLines reading={reading} />}
-      <LemmaLines reading={reading} />
-      {formOf?.kind === "lemma-grid" ? (
-        <LemmaDefinitions owner={entryKey(reading)} list={formOf.definitions} />
-      ) : (
-        <OwnForms reading={reading} />
-      )}
-      <LemmaForms owner={entryKey(reading)} tables={formOf?.kind === "lemma-grid" ? [...entry.conjugations, ...formOf.grids] : entry.conjugations} />
-      {entry.etymologies.length > 0 && (
-        <Block id={`etymology-${entryKey(reading)}`} label="Etymology">
-          {entry.etymologies.map((etymology) => (
-            <OneLine key={factRefKey(etymology.ref)} text={etymology.text} lang="it" />
-          ))}
-        </Block>
-      )}
-      <WordList id={`synonyms-${entryKey(reading)}`} label="Synonyms" items={entry.synonyms} level="h3" />
+      {parts.map((part) => (
+        <ReadingPartView key={part.kind} reading={reading} part={part} />
+      ))}
     </article>
   );
 }
