@@ -55,6 +55,13 @@
 // request that rendered it, so a hit swaps in this request's nonce, in every
 // script and in the policy. `x-lexema-page` says where a page came from, as
 // `x-lexema-card` does for a card (worker/dictionary/card.ts).
+//
+// The page renders under the version the cache step read for its key, so a
+// miss reads it from D1 once, not twice (#673). The read is handed on in an
+// AsyncLocalStorage around the render, as the notes are: `servedVersion`
+// (lib/dictionary/db.ts) cannot pass it through its own memo, since vinext
+// opens that request scope only inside its handler. A read that failed is
+// handed on too, and the page names the unread version without asking again.
 
 import { AsyncLocalStorage } from "node:async_hooks";
 import type { FetchHandler } from "../shared/fetchHandler.ts";
@@ -122,6 +129,18 @@ export function withPageCache<E>(handler: FetchHandler<E>): FetchHandler<E> {
     if (!browserMayKeep(request, response, notes.refusal)) return response;
     return withHeaders(response, { "cache-control": PAGE_CACHE_CONTROL });
   };
+}
+
+/** The served version the cache step read for this request: its token, or undefined when it could not be read. */
+export interface VersionRead {
+  readonly token: string | undefined;
+}
+
+const handedVersions = new AsyncLocalStorage<VersionRead>();
+
+/** The served version this request's cache step already read, or none when no cache step read one, as for a request the shared cache does not take. */
+export function handedVersion(): VersionRead | undefined {
+  return handedVersions.getStore();
 }
 
 /** What the shared cache needs; the Worker's own (worker/dictionary/pageDesk.ts), or a test's. */
@@ -217,13 +236,14 @@ export function withSharedPageCache<E>(desk: (env: E, request: Request, ctx: Exe
     const { version, cache, waitUntil } = desk(env, request, ctx);
 
     const served = await version();
-    if (served === undefined) return withHeaders(await app(request, env, ctx), { [PAGE_SOURCE_HEADER]: "unkept" });
+    const render = (): Promise<Response> => handedVersions.run({ token: served }, () => app(request, env, ctx));
+    if (served === undefined) return withHeaders(await render(), { [PAGE_SOURCE_HEADER]: "unkept" });
     const key = ask.keyFor(served);
     const kept = await cache.match(key);
     const hit = kept === undefined ? undefined : await ask.answer(kept);
     if (hit !== undefined) return hit;
 
-    const response = await app(request, env, ctx);
+    const response = await render();
     if (ask.head || !browserMayKeep(request, response, notes.refusal)) {
       return withHeaders(response, { [PAGE_SOURCE_HEADER]: "unkept" });
     }

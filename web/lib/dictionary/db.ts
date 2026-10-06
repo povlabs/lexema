@@ -9,7 +9,7 @@ import { log } from "@lexema/log/requestLog.ts";
 import { database, lookupDatabase } from "@/lib/shared/database.ts";
 import type { Attempt } from "./attempt.ts";
 import { searchAttempt } from "./searchAttempt.ts";
-import { refuseKeeping } from "@/worker/dictionary/pageCache.ts";
+import { handedVersion, refuseKeeping } from "@/worker/dictionary/pageCache.ts";
 import { parseStage } from "@/worker/shared/stage.ts";
 import { reportKeys, turnstileConfig, VisitorCodeKey, type ReportKeys, type TurnstileConfig } from "./report.ts";
 
@@ -123,9 +123,17 @@ export async function servedVersionOnce(): Promise<string | undefined> {
 
 /**
  * The token a page names its card and its suggestions by, memoised for the
- * request as `search` is, so metadata and page read it once. When the version cannot be read the page still renders, naming the
+ * request as `search` is, so metadata and page read it once. A page the shared
+ * page cache rendered uses the version it read for its key, so a miss reads
+ * it once in all (#673, worker/dictionary/pageCache.ts). When the version cannot be read the page still renders, naming the
  * release and Worker version: no read data version ever matches that token, so the card route
  * sends its card on to the current address, and a suggestion answer kept
  * under it is newer than anything kept before.
  */
-export const servedVersion = cacheForRequest(async (): Promise<string> => (await servedVersionOnce()) ?? `${env.LEXEMA_RELEASE}.unread.code-${encodeURIComponent(env.LEXEMA_VERSION.id)}`);
+export const servedVersion = cacheForRequest(async (): Promise<string> => (await servedVersionOfRequest()) ?? `${env.LEXEMA_RELEASE}.unread.code-${encodeURIComponent(env.LEXEMA_VERSION.id)}`);
+
+/** The version the shared page cache read for this request, even one it could not read, or else a fresh read. */
+async function servedVersionOfRequest(): Promise<string | undefined> {
+  const handed = handedVersion();
+  return handed === undefined ? servedVersionOnce() : handed.token;
+}
