@@ -10,6 +10,7 @@
 // andare 35, casa 25, sale 56, studente 59 statements; 6 calls each). A page
 // may cost less; it may not cost more. The answer read through `fromD1` is the
 // answer read straight off SQLite, so a cheaper read is never a different page.
+// A page that finds nothing is held to its own counts the same way (#663).
 //
 // The last tests run one whole word-page request, `generateMetadata` and
 // `Page` both, in a vinext request scope as the Worker does (#644): each half
@@ -108,6 +109,30 @@ for (const [word, ceiling] of Object.entries(BEFORE)) {
     assert.equal(attempt.outcome, "found", `${word}: expected a found page`);
     assert.ok(sent.statements < ceiling, `${word}: ${sent.statements} statements, not fewer than ${ceiling}`);
     assert.ok(sent.calls <= CALLS_BEFORE, `${word}: ${sent.calls} calls, more than ${CALLS_BEFORE}`);
+    assert.deepEqual(attempt, await searchAttempt(fromNodeSqlite(sqlite), RELEASE, word));
+  });
+}
+
+/**
+ * A search that finds nothing (#663): what the page sent at f6731dd, before
+ * the "Did you mean" reads were sent in fewer waits. A not-found page must make
+ * fewer calls than then, and send no more statements.
+ */
+const NOT_FOUND_BEFORE: Record<string, { statements: number; calls: number }> = {
+  zzzz: { statements: 16, calls: 10 },
+  citta: { statements: 15, calls: 9 },
+  xqzt: { statements: 16, calls: 10 },
+  qwrtz: { statements: 16, calls: 10 },
+};
+
+for (const [word, then] of Object.entries(NOT_FOUND_BEFORE)) {
+  test(`the not-found page for '${word}' makes fewer than ${then.calls} calls with at most ${then.statements} statements, and reads the page SQLite reads`, async () => {
+    const sent = nothingSent();
+    const db = fromD1(countingD1(sqlite, sent));
+    const [attempt] = await Promise.all([searchAttempt(db, RELEASE, word), servedVersion(db, RELEASE)]);
+    assert.equal(attempt.outcome, "not-found", `${word}: expected a not-found page`);
+    assert.ok(sent.calls < then.calls, `${word}: ${sent.calls} calls, not fewer than ${then.calls}`);
+    assert.ok(sent.statements <= then.statements, `${word}: ${sent.statements} statements, more than ${then.statements}`);
     assert.deepEqual(attempt, await searchAttempt(fromNodeSqlite(sqlite), RELEASE, word));
   });
 }
