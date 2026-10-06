@@ -1,6 +1,7 @@
 // One word's page: the headword with its pronunciation, jump links when there
-// are three readings or more (a verb form block, `1 Voce verbale · salire`,
-// counts as one), the readings in source order, then the facts
+// are three readings or more or the word is a form of two verbs (a verb form
+// block, `1 Voce verbale · salire`, counts as one reading), the readings in
+// source order, then the facts
 // about the word once, its expressions last among them, then *Source* (design-system-manifest.md § "The result").
 //
 // Which records are readings and which lemma tables they carry is
@@ -16,7 +17,7 @@ import { ReportDialog } from "./ReportDialog";
 import { reportReadings, type ReportReading } from "@/lib/dictionary/report.ts";
 import { sourcePageUrl } from "@/lib/dictionary/sourcePage.ts";
 import { WordList } from "./WordList";
-import { blockTitle, readingAnchor, shownRecords, type ExpressionSection, type WordLists, type WordPage } from "@/lib/dictionary/wordPage.ts";
+import { blockTitle, readingAnchor, showsJumpLinks, shownRecords, type ExpressionSection, type WordLists, type WordPage } from "@/lib/dictionary/wordPage.ts";
 import {
   BLOCK_LABEL,
   WORD_BLOCK,
@@ -32,9 +33,6 @@ import {
   WORD_FACTS,
   WORD_HEADING,
 } from "@/components/shared/styles.ts";
-
-/** Jump links appear from this many readings up. */
-export const JUMP_LINKS_FROM = 3;
 
 export { WORD_LIST_SLICE } from "./WordList";
 
@@ -60,7 +58,7 @@ function Pronunciation({ facts }: { facts: WordFacts }) {
 }
 
 function JumpLinks({ page }: { page: WordPage }) {
-  if (page.readings.length < JUMP_LINKS_FROM) return null;
+  if (!showsJumpLinks(page)) return null;
   return (
     <nav aria-label="Readings">
       <ul className={JUMP_LINKS}>

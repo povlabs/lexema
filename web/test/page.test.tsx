@@ -364,6 +364,10 @@ test("jump links appear from three readings up, one per reading, and never below
     );
     for (const [, id] of jumps) assert.match(bello, new RegExp(`<article [^>]*id="reading-${id}"`));
     assert.doesNotMatch(await render(db, "andare"), /aria-label="Readings"/);
+    // Two readings, one of them a verb form block, are still too few (#654).
+    const studente = await render(db, "studente");
+    assert.deepEqual(headingsOf(studente), ["1·Sostantivo·maschile, singolare", "2·Voce verbale·studiare"]);
+    assert.doesNotMatch(studente, /aria-label="Readings"/);
   });
 });
 
@@ -756,8 +760,15 @@ test("a form of two verbs is one block per verb, each line under its verb's head
     for (const definition of await verbDefinitions(db, "salire")) {
       assert.ok(!textOf(html).includes(definition), `salivate: shows salire's "${definition}"`);
     }
-    // Two blocks are two readings: no jump links (JUMP_LINKS_FROM stays 3).
-    assert.doesNotMatch(html, /aria-label="Readings"/);
+    // A form of two verbs names both under the headword, though it has only
+    // two readings (#654, frame 37), each link pointing to its block.
+    const verbJumps = [...html.matchAll(new RegExp(`<a class="${esc(JUMP_LINK)}" href="#([^"]+)">(.*?)</a>`, "g"))];
+    assert.deepEqual(verbJumps.map((match) => textOf(match[2])), ["1Voce verbale · salire", "2Voce verbale · salivare"]);
+    for (const [, id] of verbJumps) assert.equal(patternsOf(html, new RegExp(`<article [^>]*id="${esc(id)}"`)), 1, id);
+    assert.deepEqual(
+      verbJumps.map(([, id]) => id),
+      ["salire", "salivare"].map((verb) => `reading-voce-verbale-${verb}`),
+    );
 
     // The report names each record the page shows once, with its block's
     // number: salire's, whose table block 1 draws, and salivate's.

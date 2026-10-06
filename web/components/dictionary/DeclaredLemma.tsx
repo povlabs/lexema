@@ -10,7 +10,8 @@
 
 import { ConjugationView, GridView } from "./Forms";
 import { Block } from "./Reading";
-import { JUMP_LINKS_FROM, SourceLine } from "./Word";
+import { SourceLine } from "./Word";
+import { JUMP_LINKS_FROM } from "@/lib/dictionary/wordPage.ts";
 import type { DeclaredLemmaPage, DeclaredPageReading } from "@/lib/dictionary/declaredLemmaPage.ts";
 import {
   JUMP_LINK,
