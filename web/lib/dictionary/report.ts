@@ -82,7 +82,7 @@ export type ReportTarget =
  */
 export interface ReportReading {
   recordId: number;
-  /** The reading's number on the page; none for a reading with no definition. */
+  /** The reading's number on the page. */
   number: PageReading["number"];
   posTitle: string;
 }

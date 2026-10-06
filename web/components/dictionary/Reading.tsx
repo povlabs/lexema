@@ -469,14 +469,10 @@ export function ReadingView({ entry }: { entry: PageReading }) {
       data-line={reading.ref.lineNo}
     >
       <h2 className={READING_HEADING} id={`reading-heading-${entryKey(reading)}`}>
-        {number !== undefined && (
-          <>
-            <span className={READING_NUMBER}>{number}</span>
-            <span className={READING_DOT} aria-hidden="true">
-              ·
-            </span>
-          </>
-        )}
+        <span className={READING_NUMBER}>{number}</span>
+        <span className={READING_DOT} aria-hidden="true">
+          ·
+        </span>
         <span lang="it">{reading.posTitle}</span>
         {grammar !== undefined && (
           // The dot travels with the grammar, so a wrapped heading never ends on it.

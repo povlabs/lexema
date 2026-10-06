@@ -15,7 +15,7 @@
 // web/worker/dictionary/card/draw.tsx; where it is served is web/worker/dictionary/card.ts.
 
 import type { Attempt } from "./attempt.ts";
-import { definitionsOf, type DefinitionItem } from "./definitions.ts";
+import { definitionsOf, hasDefinitions, type DefinitionItem } from "./definitions.ts";
 import { headingGender } from "./genderGrid.ts";
 import { SITE_NAME, SITE_TAGLINE } from "./params.ts";
 import { phrasePage, type PhraseLine } from "./phrasePage.ts";
@@ -82,10 +82,10 @@ export function cardOf(attempt: Attempt): Card {
     };
   }
   const page = wordPage(searched, attempt.readings, attempt.lemmas, attempt.route);
-  // The reading the page's first meaning sits under: the first one numbered,
-  // since a reading with no definition has no number. A page with none
-  // numbered falls back to its first reading.
-  const entry = page.readings.find((one) => one.number !== undefined) ?? page.readings[0];
+  // The reading the page's first meaning sits under: the first block, or the
+  // first reading that has a definition. A page with neither falls back to its
+  // first reading.
+  const entry = page.readings.find((one) => one.kind === "verb-form" || hasDefinitions(one.reading)) ?? page.readings[0];
   if (entry.kind === "verb-form") {
     // A verb form block (#636): its first line, the source's or built by rule (#627).
     const [line] = entry.lines;

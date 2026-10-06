@@ -57,9 +57,8 @@ import {
   REPORT_X,
 } from "@/components/shared/styles.ts";
 
-/** How the dialog names a reading: `1 · Sostantivo`, or `Sostantivo` when it has no number. */
-export const readingChoiceLabel = ({ number, posTitle }: ReportReading): string =>
-  number === undefined ? posTitle : `${number} · ${posTitle}`;
+/** How the dialog names a reading: its number on the page, then its part of speech, `1 · Sostantivo`. */
+export const readingChoiceLabel = ({ number, posTitle }: ReportReading): string => `${number} · ${posTitle}`;
 
 type Status = "editing" | "sending" | ReturnType<typeof afterAnswer>["status"] | OpeningTrouble;
 

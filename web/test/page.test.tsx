@@ -1749,7 +1749,7 @@ test("a meaning that only repeats the headword is not shown, and a reading left 
   await withLines(lines, async ({ db }) => {
     // presina's one gloss is `presina f`; with the stamp off it is the headword.
     const presina = await render(db, "presina");
-    assert.deepEqual(headingsOf(presina), ["Sostantivo·femminile"], "no number: the reading has no definition");
+    assert.deepEqual(headingsOf(presina), ["1·Sostantivo·femminile"], "numbered like any reading (#687)");
     assert.deepEqual(definitionLines(presina), []);
     const reading = nth(presina, 1);
     assert.doesNotMatch(reading, /id="definitions-\d+"/, "no Definitions block");
@@ -2754,37 +2754,54 @@ test("Wikizionario's missing-field placeholders are not data: no Etymology block
   });
 });
 
-test("a reading with no definition is its part of speech alone; the readings with one number 1, 2 among themselves (#250)", async () => {
+test("a reading with no definition is numbered like every reading, with no Definitions block (#687, reversing #250)", async () => {
   const lines = (await readFile(join(REPO, "fixtures/no-definition.jsonl"), "utf8")).trim().split("\n");
   await withLines(lines, async ({ db }) => {
-    // fare l'abitudine: its one sense is `no-gloss`. No number, no dot, no
-    // Definitions or Examples block; its synonym still shows.
+    // fare l'abitudine: its one sense is `no-gloss`. It is still `1 ·`, with
+    // no Definitions or Examples block; its synonym still shows.
     const fare = await render(db, "fare l'abitudine");
-    assert.deepEqual(headingsOf(fare), ["Locuzione verbale"]);
+    assert.deepEqual(headingsOf(fare), ["1·Locuzione verbale"]);
     assert.doesNotMatch(nth(fare, 1), /id="(?:definitions|examples)-/);
     assert.match(textOf(afterReadings(fare)), /Synonymsabituarsi/);
 
     // litigante: the noun between the adjective and the verb form has no
-    // definition; the two that do are 1 and 2, with no gap.
+    // definition; it takes 2, and the verb form 3, with no gap.
     const litigante = await render(db, "litigante");
-    assert.deepEqual(headingsOf(litigante), ["1·Aggettivo·maschile e femminile, singolare", "Sostantivo", "2·Voce verbale"]);
+    assert.deepEqual(headingsOf(litigante), ["1·Aggettivo·maschile e femminile, singolare", "2·Sostantivo", "3·Voce verbale"]);
     assert.deepEqual(
       readingsOfPage(litigante).map((reading) => patternsOf(reading, /data-definition="/g)),
       [1, 0, 1],
     );
+    assert.doesNotMatch(nth(litigante, 2), /id="definitions-/);
     const jumps = [...litigante.matchAll(new RegExp(`<a class="${esc(JUMP_LINK)}" href="#reading-\\d+">(.*?)</a>`, "g"))];
     assert.deepEqual(
       jumps.map((match) => textOf(match[1])),
-      ["1Aggettivo", "Sostantivo", "2Voce verbale"],
+      ["1Aggettivo", "2Sostantivo", "3Voce verbale"],
     );
     assert.deepEqual(
       reportReadings(shownRecords(wordPage("litigante", await readingsFor(db, "litigante"), [], SURFACE_ROUTE).readings)).map(readingChoiceLabel),
-      ["1 · Aggettivo", "Sostantivo", "2 · Voce verbale"],
+      ["1 · Aggettivo", "2 · Sostantivo", "3 · Voce verbale"],
     );
 
     for (const html of [fare, litigante]) {
       assert.doesNotMatch(textOf(html), /no definition|definizione|mancante|not given|missing/i, "no note about the missing definition");
     }
+  });
+});
+
+test("salivare: the verb with no definition is `2 · Verbo`, after the adjective, and keeps its Forms and conjugation (#687)", async () => {
+  await withLines(SALIVATE_LINES, async ({ db }) => {
+    const salivare = await render(db, "salivare");
+    assert.deepEqual(headingsOf(salivare), ["1·Aggettivo·maschile e femminile, singolare", "2·Verbo"]);
+    const verb = nth(salivare, 2);
+    assert.doesNotMatch(verb, /id="definitions-/, "no Definitions block");
+    assert.match(verb, /id="forms-/, "its Forms");
+    assert.match(verb, /data-mood="Indicativo"/, "its conjugation");
+    assert.doesNotMatch(textOf(salivare), /definizione mancante/);
+    assert.deepEqual(
+      reportReadings(shownRecords(wordPage("salivare", await readingsFor(db, "salivare"), [], SURFACE_ROUTE).readings)).map(readingChoiceLabel),
+      ["1 · Aggettivo", "2 · Verbo"],
+    );
   });
 });
 

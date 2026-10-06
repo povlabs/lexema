@@ -79,7 +79,7 @@ import {
   type SearchedSpellings,
   type SourceRef,
 } from "@lexema/lookup/types.ts";
-import { definitionsOf, hasDefinitions, placeOf, readAt, type DefinitionItem } from "./definitions.ts";
+import { definitionsOf, placeOf, readAt, type DefinitionItem } from "./definitions.ts";
 import { agreementOf, type Agreement, type Spelling } from "./genderGrid.ts";
 import { labelParts, readingsNamed, splitLabel } from "./readingLabels.ts";
 import { relatedItems, type RelatedItem } from "./relatedList.ts";
@@ -122,11 +122,11 @@ export const searchedIn = ({ listing }: ConjugationTable): SearchedSpellings =>
 export interface PageReading {
   kind: "source";
   /**
-   * 1-based among the readings that have a definition, and the same number the
-   * jump links and the report dialog show. A reading with no definition has
-   * none: its heading is its part of speech alone.
+   * 1-based in page order across every entry, with or without a definition,
+   * and the same number the jump links and the report dialog show (Huey,
+   * 2026-10-06, #687).
    */
-  number: number | undefined;
+  number: number;
   reading: Reading;
   /**
    * The lemmas whose tables the reading shows, one per distinct table. Two
@@ -256,7 +256,7 @@ export const readingHeadingId = (entry: PageEntry): string => `reading-heading-$
 
 /** A source record a page shows, under the number of the entry that shows it. */
 export interface ShownRecord {
-  number: number | undefined;
+  number: number;
   /** The record, named as its entry is headed: its part of speech, or the block's title. */
   reading: EntryIdentity & { posTitle: string };
 }
@@ -269,7 +269,7 @@ export interface ShownRecord {
 export function shownRecords(entries: readonly PageEntry[]): ShownRecord[] {
   const seen = new Set<string>();
   const shown: ShownRecord[] = [];
-  const add = (number: number | undefined, reading: Reading, posTitle: string) => {
+  const add = (number: number, reading: Reading, posTitle: string) => {
     if (seen.has(entryKey(reading))) return;
     seen.add(entryKey(reading));
     shown.push({ number, reading: { ...reading, posTitle } });
@@ -578,8 +578,8 @@ export function wordPage(query: string, readings: readonly [Reading, ...Reading[
     });
   }
 
-  // Readings with a definition number 1, 2, 3 among themselves, so the page
-  // never shows a gap (Huey, 2026-09-30, on #250); a block always has one.
+  // Every entry numbers 1, 2, 3 in page order, a reading with no definition
+  // included (Huey, 2026-10-06, #687).
   let numbered = 0;
   const entries = slots.flatMap((slot): PageEntry[] => {
     if (slot.kind === "block") {
@@ -606,7 +606,7 @@ export function wordPage(query: string, readings: readonly [Reading, ...Reading[
     return [
       {
         kind: "source",
-        number: hasDefinitions(reading) ? ++numbered : undefined,
+        number: ++numbered,
         reading,
         lemmaTables: [...conjugationTablesOf(reading), ...grids],
         ownForms: grids.length === 0,
