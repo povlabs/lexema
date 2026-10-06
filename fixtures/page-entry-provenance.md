@@ -79,6 +79,29 @@ sit outside `upstream-pages/`, so no seed of the fixture tree reads them:
 `racconti`, in `avventurieri`'s layout, so a definition names a lemma the
 seed's archive line `racconto` heads; its header says so.
 
+## A verb form's Definitions, counted (#691)
+
+[fiaccando.jsonl](fiaccando.jsonl) copies whole physical archive lines 138358
+(`fiaccare`) and 335510 (`fiaccando`, pointing at `fiaccare`), and
+[sfocato.jsonl](sfocato.jsonl) lines 122428 (`sfocato`, adjective) and 122429
+(`sfocato`, a verb form pointing at `sfocato`), read on 2026-10-06. Their
+SHA-256 digests, in that order, are
+`e76db26f927e33bacb804a9f63338a350fa051e61f1d5d46e537ead76b0ca649`,
+`5a40b5c5915283a6c337e7e9b1c149e9bad3e79460a4b6a8a902412f95ce79f4`,
+`85e26d25a1f10518a3e5321e071edb335d96d3d44e95c6ffa26d2124655207f2` and
+`e3a23d615b41ee139f88131531dcdf23dfc7010edc1eab32261d553b6df3ce56`.
+
+`upstream-pages/fiaccare.wikitext` is revision 4067084
+(2026-03-12T06:36:27Z) of the same dump, XML-decoded, without edits. Its line 8
+states the sub-term `fiaccare le corna a uno`, which the archive record drops,
+so a seed with this page recovers it. Six verbs in the release have a page that
+recovers a definition and are named by a verb form record; `fiaccare` has the
+shortest page of the six. `sfocato` is the only verb form record in the release
+whose form-of target is its own word, so it is the only page where the verb a
+block names is a reading of the same page.
+[web/test/pageStatements.test.ts](../web/test/pageStatements.test.ts) counts
+both pages' D1 reads.
+
 ## Test authoring contracts
 
 - The parser test owns admission, ordered meanings/labels/examples and physical

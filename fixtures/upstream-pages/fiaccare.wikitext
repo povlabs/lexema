@@ -1,0 +1,43 @@
+<!-- it.wiktionary.org/wiki/fiaccare revision 4067084 (2026-03-12T06:36:27Z), CC BY-SA 4.0. Saved verbatim. -->
+== {{-it-}} ==
+{{-verb-|it}}
+{{Transitivo|it}}
+{{Pn|c}}
+# [[stancare]] [[fisicamente]]
+# [[rompere]], [[spezzare]] con [[forza]]
+#* ''se non hai giudizio, ti '''fiacco''' addosso questo bastone''
+#* '''fiaccare le corna a uno''': [[bastonarlo]] nel [[capo]] e, in senso figurato, [[rintuzzarne]] l'[[arroganza]], la [[tracotanza]], la [[fellonia]]
+
+{{-sill-}}
+; fiac | cà | re
+
+{{-pron-}}
+{{IPA|/fjakˈkare/}}
+
+{{-etim-}}
+da [[fiacco]]
+
+{{-sin-}}
+* [[stancare]], [[spossare]], [[indebolire]], [[snervare]], [[sfibrare]], [[svigorire]], [[stremare]], [[affaticare]], [[logorare]], [[debilitare]], [[esaurire]], [[prostrare]], [[estenuare]]
+* [[rompere]], [[spezzare]], [[infrangere]]
+* ''(di malattia)'' [[influenza]], [[indebolire]]
+
+{{-ant-}}
+* ''(stancare)'' [[rafforzare]], [[irrobustire]]
+* ''(rompere)'' [[aggiustare]], [[accomodare]], [[raddrizzare]]
+* ''(di malattia, influenza)'' [[rinvigorire]], [[rinforzare]]
+
+{{-der-}}
+* [[fiaccarsi]]
+
+{{-trad-}}
+{{Trad1|}}
+:* {{en}}:
+{{Trad2}}
+
+{{-ref-}}
+* {{Fonte|hoep}}
+* {{Fonte|trec}}
+* {{Fonte|dizit}}
+* {{Fonte|sabco}}
+* {{Fonte|sin-co}}

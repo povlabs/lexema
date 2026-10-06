@@ -796,12 +796,16 @@ async function readRecordExpressions(
 /**
  * The readings, each verb that a verb form record about the query names given
  * its own definitions, so the verb's block can list them as its *Definitions*
- * (`LemmaTarget.definitions`, #686). A verb record is read once however many
- * links name it: its line, its senses and its recovered definitions, sent
- * together. A page sends this beside the reads it makes after the lookup
- * (web/lib/dictionary/searchAttempt.ts), so it adds statements and no call.
+ * (`LemmaTarget.definitions`, #686). A verb that is itself a reading on the
+ * page brings its definitions with it, so it is not read again (`sfocato`,
+ * whose verb form names its own record, #691). Any other verb record is read
+ * once however many links name it: its line, its senses and its recovered
+ * definitions, sent together. A page sends this beside the reads it makes
+ * after the lookup (web/lib/dictionary/searchAttempt.ts), so it adds
+ * statements and no call.
  */
 export async function withVerbDefinitions(db: LookupDatabase, readings: readonly [Reading, ...Reading[]]): Promise<[Reading, ...Reading[]]> {
+  const onPage = new Map(readings.map((reading) => [reading.recordId, reading] as const));
   const reads = new Map<number, Promise<LemmaDefinitions>>();
   for (const reading of readings) {
     if (!reading.isAboutQuery || reading.pos !== "verb") continue;
@@ -810,7 +814,13 @@ export async function withVerbDefinitions(db: LookupDatabase, readings: readonly
       for (const candidate of link.candidates) {
         const { recordId } = candidate;
         if (recordId === undefined || candidate.pos !== "verb" || reads.has(recordId)) continue;
-        reads.set(recordId, handled(readDefinitions(db, recordId, candidate.word, (pointer) => ({ ...candidate.ref, jsonPointer: pointer }))));
+        const read = onPage.get(recordId);
+        reads.set(
+          recordId,
+          read === undefined
+            ? handled(readDefinitions(db, recordId, candidate.word, (pointer) => ({ ...candidate.ref, jsonPointer: pointer })))
+            : Promise.resolve({ senses: read.senses, recovered: read.recovered }),
+        );
       }
     }
   }
@@ -1428,29 +1438,36 @@ async function readReviews(db: LookupDatabase, recordId: number): Promise<Review
 }
 
 /**
- * The recovered layer's definitions for one record, with their labels and
- * examples. Exported so a test can hold the query to its plan.
+ * The recovered layer's definitions for one record, each with its labels and
+ * examples, in one statement, so a record with recovered definitions waits on
+ * D1 no longer than one without (#691). A definition's labels and examples come
+ * as JSON arrays of `[index, …]`, put in order by the reader: the lookup reads
+ * no aggregate's order off SQLite. A definition recovered for a record this one
+ * replaced, under one of that record's senses, also carries that sense's
+ * glosses off its line (`replaced_glosses`), which is how its lead-in is found
+ * again. Exported so a test can hold the query to its plan.
  */
 export const RECOVERED_SQL: KeyedRead = keyedRead(`SELECT l.set_key AS set_key, d.recovered_id, d.record_id, d.route, d.term, d.page_line, d.text, d.held_as_example,
             d.lead_in_sense_index, d.lead_in_recovered_id, p.wiki, p.title, p.revision_id,
-            h.release_id, h.line_no, h.line_sha256
+            h.release_id, h.line_no, h.line_sha256,
+            (SELECT json_group_array(json_array(x.label_index, x.label))
+               FROM recovered_label x WHERE x.recovered_id = d.recovered_id) AS labels_json,
+            (SELECT json_group_array(json_array(x.example_index, x.page_line, x.text))
+               FROM recovered_example x WHERE x.recovered_id = d.recovered_id) AS examples_json,
+            o.record_id AS replaced_line_id,
+            json_quote(json_extract(o.raw_json, '$.senses[' || d.lead_in_sense_index || '].glosses')) AS replaced_glosses
        FROM ${lineagesOf("?1")} l
        JOIN recovered_definition d ON d.record_id = l.record_id
        JOIN raw_page p ON p.page_id = d.page_id
        JOIN source_record h ON h.record_id = d.record_id
+       LEFT JOIN source_record_json o
+         ON o.record_id = d.record_id AND d.record_id <> l.set_key AND d.lead_in_sense_index IS NOT NULL
       ORDER BY d.record_id, d.definition_index`);
 
-/** The labels of recovered definitions, each definition's in its own order. */
-export const RECOVERED_LABEL_SQL: KeyedRead = keyedRead(`SELECT recovered_id AS set_key, recovered_id, label
-       FROM recovered_label
-      WHERE recovered_id IN (SELECT value FROM json_each(?1))
-      ORDER BY recovered_id, label_index`);
-
-/** The examples of recovered definitions, each definition's in its own order. */
-export const RECOVERED_EXAMPLE_SQL: KeyedRead = keyedRead(`SELECT recovered_id AS set_key, recovered_id, page_line, text
-       FROM recovered_example
-      WHERE recovered_id IN (SELECT value FROM json_each(?1))
-      ORDER BY recovered_id, example_index`);
+/** `[index, …rest]` rows of a JSON array, put in index order, without the index. */
+function inIndexOrder<T extends unknown[]>(json: string): T[] {
+  return (JSON.parse(json) as [number, ...T][]).sort((a, b) => a[0] - b[0]).map(([, ...rest]) => rest as T);
+}
 
 /**
  * The recovered definitions of a record and of every record it replaced: a
@@ -1459,42 +1476,31 @@ export const RECOVERED_EXAMPLE_SQL: KeyedRead = keyedRead(`SELECT recovered_id A
  * checked against its own line (`placeRecovered`).
  */
 async function readRecovered(db: LookupDatabase, recordId: number, record: Promise<RecordLine>): Promise<RecoveredOfRecord> {
-  const rows = await readKeys<{
-    recovered_id: number;
-    record_id: number;
-    route: RecoveredRoute["route"];
-    term: string | null;
-    page_line: number;
-    text: string;
-    held_as_example: string | null;
-    lead_in_sense_index: number | null;
-    lead_in_recovered_id: number | null;
-    wiki: string;
-    title: string;
-    revision_id: number;
-    release_id: string;
-    line_no: number;
-    line_sha256: string;
-  }>(db, RECOVERED_SQL, [recordId]);
-  if (rows.length === 0) return { topLevel: [], underSense: new Map() };
-
-  const ids = rows.map((row) => row.recovered_id);
-  // A lead-in sense of a replaced record is found again by its glosses, so
-  // that record's line is read, and only when some row needs it.
-  const replaced = [
-    ...new Set(rows.filter((row) => row.record_id !== recordId && row.lead_in_sense_index !== null).map((row) => row.record_id)),
-  ];
-  const [labels, examples, replacedLines, served] = await Promise.all([
-    readKeys<{ recovered_id: number; label: string }>(db, RECOVERED_LABEL_SQL, ids),
-    readKeys<{ recovered_id: number; page_line: number; text: string }>(db, RECOVERED_EXAMPLE_SQL, ids),
-    Promise.all(replaced.map(async (id) => ({ record_id: id, raw_json: (await readRecord(db, id)).rawJson }))),
+  const [rows, served] = await Promise.all([
+    readKeys<{
+      recovered_id: number;
+      record_id: number;
+      route: RecoveredRoute["route"];
+      term: string | null;
+      page_line: number;
+      text: string;
+      held_as_example: string | null;
+      lead_in_sense_index: number | null;
+      lead_in_recovered_id: number | null;
+      wiki: string;
+      title: string;
+      revision_id: number;
+      release_id: string;
+      line_no: number;
+      line_sha256: string;
+      labels_json: string;
+      examples_json: string;
+      replaced_line_id: number | null;
+      replaced_glosses: string | null;
+    }>(db, RECOVERED_SQL, [recordId]),
     record,
   ]);
-  const glossesOf = (rawJson: string): RecordGloss[] => {
-    const parsed: unknown = JSON.parse(rawJson);
-    return recordGlosses(typeof parsed === "object" && parsed !== null ? (parsed as { senses?: unknown }).senses : undefined);
-  };
-  const replacedGlosses = new Map(replacedLines.map((line) => [line.record_id, glossesOf(line.raw_json)]));
+  if (rows.length === 0) return { topLevel: [], underSense: new Map() };
 
   const stored: StoredRecovered[] = [];
   for (const row of rows) {
@@ -1508,11 +1514,9 @@ async function readRecovered(db: LookupDatabase, recordId: number, record: Promi
       ...route,
       text: row.text,
       correction: null,
-      labels: labels.filter((label) => label.recovered_id === row.recovered_id).map((label) => label.label),
+      labels: inIndexOrder<[string]>(row.labels_json).map(([label]) => label),
       ref: at(row.page_line),
-      examples: examples
-        .filter((example) => example.recovered_id === row.recovered_id)
-        .map((example) => ({ text: example.text, ref: at(example.page_line) })),
+      examples: inIndexOrder<[number, string]>(row.examples_json).map(([line, text]) => ({ text, ref: at(line) })),
       // The pointer is into the record it was recovered for, which may be one this replaced.
       heldAsExample: row.held_as_example === null ? null : refOn(row)(row.held_as_example),
       items: [],
@@ -1523,11 +1527,17 @@ async function readRecovered(db: LookupDatabase, recordId: number, record: Promi
     if (row.record_id === recordId) {
       stored.push({ id, definition, writtenFor: "served", leadIn: recovered ?? (sense === null ? null : { in: "sense", senseIndex: sense }) });
     } else {
-      const old = sense === null ? undefined : replacedGlosses.get(row.record_id);
-      if (sense !== null && old === undefined) throw new Error(`record ${row.record_id} vanished mid-lookup`);
-      const glosses = (old ?? []).filter((gloss) => gloss.senseIndex === sense).map((gloss) => gloss.text);
+      if (sense !== null && row.replaced_line_id === null) throw new Error(`record ${row.record_id} vanished mid-lookup`);
+      // The glosses `recordGlosses` reads off the whole line, for the one sense.
+      const glosses = recordGlosses([{ glosses: JSON.parse(row.replaced_glosses ?? "null") }]).map((gloss) => gloss.text);
       stored.push({ id, definition, writtenFor: "replaced", leadIn: recovered ?? (sense === null ? null : { in: "sense", glosses }) });
     }
   }
   return placeRecovered(stored, glossesOf(served.rawJson));
+}
+
+/** The glosses of an archive line, by sense. */
+function glossesOf(rawJson: string): RecordGloss[] {
+  const parsed: unknown = JSON.parse(rawJson);
+  return recordGlosses(typeof parsed === "object" && parsed !== null ? (parsed as { senses?: unknown }).senses : undefined);
 }

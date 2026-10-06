@@ -28,7 +28,9 @@ import { fileURLToPath } from "node:url";
 import { DatabaseSync } from "node:sqlite";
 import { gzipSync } from "node:zlib";
 import { seedSql } from "../../src/import/seedSql.js";
+import { rawPageSource, readSavedPage } from "../../src/source/rawPage.js";
 import { fromD1, fromNodeSqlite, type D1Like, type D1StatementLike, type SqlValue } from "../../src/lookup/database.js";
+import { lookup, withVerbDefinitions } from "../../src/lookup/lookup.js";
 import { servedVersion } from "../../src/lookup/served.js";
 import { searchAttempt } from "@/lib/dictionary/searchAttempt.ts";
 import { PAGE_SOURCE_HEADER, withPageCache, withSharedPageCache } from "@/worker/dictionary/pageCache.ts";
@@ -38,7 +40,13 @@ import { createRequestContext, runWithRequestContext } from "vinext/shims/unifie
 
 const REPO = fileURLToPath(new URL("../..", import.meta.url));
 const RELEASE = "it-page-statements";
-const FIXTURES = ["fixtures/dev-seed.jsonl", "fixtures/salivate.jsonl", "fixtures/vira.jsonl"];
+const FIXTURES = ["fixtures/dev-seed.jsonl", "fixtures/salivate.jsonl", "fixtures/vira.jsonl", "fixtures/fiaccando.jsonl", "fixtures/sfocato.jsonl"];
+/**
+ * The one raw page the seed recovers definitions from: `fiaccare`, whose
+ * record lost a definition its page states. No other fixture word has a page
+ * here, so no other page reads a recovered definition.
+ */
+const PAGES = ["fixtures/upstream-pages/fiaccare.wikitext"];
 
 /** Statements per page before #393; the calls were 6 for every word. */
 const BEFORE: Record<string, number> = { bello: 61, andare: 35, casa: 25, sale: 56, studente: 59 };
@@ -51,7 +59,9 @@ before(async () => {
   dir = await mkdtemp(join(tmpdir(), "lexema-page-statements-"));
   // The development fixture, then the real lines of `salivate` and `vira`
   // (fixtures/salivate.jsonl, fixtures/vira.jsonl), whose pages show a verb's
-  // own Definitions (#686).
+  // own Definitions (#686), and of `fiaccando` and `sfocato`
+  // (fixtures/fiaccando.jsonl, fixtures/sfocato.jsonl, #691), with the page
+  // `fiaccare` recovers from.
   const archive = join(dir, "dev-seed.jsonl.gz");
   const lines = await Promise.all(FIXTURES.map(async (file) => (await readFile(join(REPO, file), "utf8")).trimEnd()));
   await writeFile(archive, gzipSync(`${lines.join("\n")}\n`));
@@ -62,6 +72,7 @@ before(async () => {
     releaseId: RELEASE,
     archiveR2Key: `releases/${RELEASE}.jsonl.gz`,
     license: "CC-BY-SA-4.0",
+    rawPages: rawPageSource(await Promise.all(PAGES.map(async (file) => readSavedPage(await readFile(join(REPO, file), "utf8"), file)))),
     onRejection: (rejection) => {
       throw new Error(`fixture line rejected: ${JSON.stringify(rejection)}`);
     },
@@ -154,8 +165,9 @@ const TABLE_READ_STATEMENTS = 3;
 
 /**
  * The statements one verb's definitions send (#686): its archive line, its
- * sense glosses, its sense labels and its recovered definitions. A verb with
- * recovered definitions would add their labels and examples; none here has one.
+ * sense glosses, its sense labels and its recovered definitions, which carry
+ * their own labels and examples (#691), so a verb with recovered definitions
+ * sends no more.
  */
 const DEFINITIONS_READ_STATEMENTS = 4;
 
@@ -178,6 +190,116 @@ for (const [word, then] of Object.entries(VERB_FORMS_BEFORE)) {
     assert.deepEqual(attempt, await searchAttempt(fromNodeSqlite(sqlite), RELEASE, word));
   });
 }
+
+/**
+ * The two pages a verb form's Definitions could cost more on (#691). Both are
+ * real words: release it-0c432803 lines 138358 `fiaccare` and 335510
+ * `fiaccando` (fixtures/fiaccando.jsonl), with revision 4067084 of `fiaccare`
+ * from the dump itwiktionary-20260701, and lines 122428 and 122429 `sfocato`
+ * (fixtures/sfocato.jsonl).
+ *
+ * - `fiaccando` names `fiaccare`, whose record lost the sub-term `fiaccare le
+ *   corna a uno` its page states, so its verb's Definitions carry a recovered
+ *   definition.
+ * - `sfocato`'s verb record names `sfocato`, and the only verb that heads
+ *   `sfocato` is that record itself: the verb its block names is a reading on
+ *   the same page.
+ * - `fiaccare`'s own page reads its recovered definition as a reading.
+ *
+ * The counts before are those at c036f41, before #691. Each page now sends
+ * what it sent then less what #691 cut, below.
+ */
+const DEFINITIONS_PAGES_BEFORE: Record<string, { statements: number; calls: number }> = {
+  fiaccando: { statements: 24, calls: 4 },
+  sfocato: { statements: 26, calls: 5 },
+  fiaccare: { statements: 21, calls: 5 },
+};
+
+/**
+ * The statements a record's recovered definitions no longer send on their
+ * own: their labels and their examples, which come inside the recovered read
+ * (`RECOVERED_SQL`), so the recovered read is one wait, not two.
+ */
+const RECOVERED_PARTS_STATEMENTS = 2;
+
+/** What #691 cut from each page: the recovered read's own labels and examples, or the verb read again that is a reading on the page. */
+const CUT: Record<string, { statements: number; calls: number }> = {
+  fiaccando: { statements: RECOVERED_PARTS_STATEMENTS, calls: 0 },
+  sfocato: { statements: DEFINITIONS_READ_STATEMENTS, calls: 0 },
+  fiaccare: { statements: RECOVERED_PARTS_STATEMENTS, calls: 0 },
+};
+
+for (const [word, then] of Object.entries(DEFINITIONS_PAGES_BEFORE)) {
+  const now = { statements: then.statements - CUT[word].statements, calls: then.calls - CUT[word].calls };
+  test(`the page for '${word}' sends ${now.statements} statements in ${now.calls} calls, and reads the page SQLite reads`, async () => {
+    const sent = nothingSent();
+    const attempt = await searchAttempt(fromD1(countingD1(sqlite, sent)), RELEASE, word);
+    assert.equal(attempt.outcome, "found", `${word}: expected a found page`);
+    assert.equal(sent.statements, now.statements, `${word}: statements`);
+    assert.equal(sent.calls, now.calls, `${word}: calls`);
+    assert.deepEqual(attempt, await searchAttempt(fromNodeSqlite(sqlite), RELEASE, word));
+  });
+}
+
+/**
+ * A verb's Definitions, read alone, are one wait whether or not the verb has
+ * recovered definitions: `fiaccare` (one recovered) costs what `virare` (none)
+ * costs. At c036f41 `fiaccare` cost 6 statements in 2 calls, the second for
+ * its recovered labels and examples. `sfocato`'s verb is a reading on its own
+ * page, so its Definitions read nothing.
+ */
+const DEFINITIONS_ALONE: Record<string, { statements: number; calls: number }> = {
+  fiaccando: { statements: DEFINITIONS_READ_STATEMENTS, calls: 1 },
+  vira: { statements: DEFINITIONS_READ_STATEMENTS, calls: 1 },
+  sfocato: { statements: 0, calls: 0 },
+};
+
+for (const [word, cost] of Object.entries(DEFINITIONS_ALONE)) {
+  test(`the Definitions of the verb '${word}' names send ${cost.statements} statements in ${cost.calls} calls`, async () => {
+    const found = await lookup({ db: fromNodeSqlite(sqlite), releaseId: RELEASE, query: word });
+    assert.ok(found.outcome === "found", `${word}: expected a found page`);
+    const sent = nothingSent();
+    const readings = await withVerbDefinitions(fromD1(countingD1(sqlite, sent)), found.readings);
+    assert.deepEqual({ statements: sent.statements, calls: sent.calls }, cost);
+    const verbs = new Set(
+      readings.flatMap((reading) =>
+        reading.lemmaLinks.flatMap((link) =>
+          link.kind === "candidates" ? link.candidates.filter((candidate) => candidate.definitions !== undefined).map((candidate) => candidate.recordId) : [],
+        ),
+      ),
+    );
+    assert.equal(verbs.size, 1, `${word}: one verb's Definitions`);
+  });
+}
+
+test("a verb that is a reading on its page lends its block the definitions it shows as that reading", async () => {
+  const found = await lookup({ db: fromNodeSqlite(sqlite), releaseId: RELEASE, query: "sfocato" });
+  assert.ok(found.outcome === "found");
+  const readings = await withVerbDefinitions(fromNodeSqlite(sqlite), found.readings);
+  const verb = readings.find((reading) => reading.pos === "verb");
+  assert.ok(verb !== undefined);
+  const [link] = verb.lemmaLinks;
+  assert.ok(link?.kind === "candidates");
+  const self = link.candidates.find((candidate) => candidate.recordId === verb.recordId);
+  // The reading's own values, not a copy read again.
+  assert.equal(self?.definitions?.senses, verb.senses);
+  assert.equal(self?.definitions?.recovered, verb.recovered);
+});
+
+test("a verb's recovered definitions reach its block: fiaccando's fiaccare carries 'fiaccare le corna a uno'", async () => {
+  const found = await lookup({ db: fromNodeSqlite(sqlite), releaseId: RELEASE, query: "fiaccando" });
+  assert.ok(found.outcome === "found");
+  const readings = await withVerbDefinitions(fromD1(countingD1(sqlite, nothingSent())), found.readings);
+  const terms = readings.flatMap((reading) =>
+    reading.lemmaLinks.flatMap((link) =>
+      link.kind === "candidates" ? link.candidates.flatMap((candidate) => candidate.definitions?.recovered ?? []) : [],
+    ),
+  );
+  assert.deepEqual(
+    terms.map((definition) => (definition.route === "sub-term" ? definition.term : definition.route)),
+    ["fiaccare le corna a uno"],
+  );
+});
 
 /**
  * A search that finds nothing (#663, #665): a not-found page sends no more
