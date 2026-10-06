@@ -2,8 +2,8 @@
 // letters with an accent (`citta` → `città`) or a final apostrophe (`dall` →
 // `dall'`, #468), a spelling one edit away
 // (`mangare` → `mangiare`), or the words that begin with what was typed
-// (`bab`). Each step runs only when the one before it found nothing, and each
-// is an indexed read: `accent_fold` and `typo_key` are written by the seed
+// (`bab`). Each step is offered only when the one before it found nothing, and
+// each is an indexed read: `accent_fold` and `typo_key` are written by the seed
 // (src/import/seedSql.ts), and the prefix list is the search field's own
 // `suggest`. Nothing here scores the whole word list per request.
 //
@@ -262,21 +262,34 @@ async function typoMatches(db: LookupDatabase, releaseId: string, key: string): 
   return candidatesFor(db, releaseId, keys);
 }
 
+/** `promise`, with a rejection nobody waits for kept from ending the process: a step whose answer is not needed may still fail. */
+function handled<T>(promise: Promise<T>): Promise<T> {
+  promise.catch(() => undefined);
+  return promise;
+}
+
 /**
- * What to offer for a query the exact lookup did not find, trying each step
- * only when the one before found nothing: accent, then one edit, then the
- * query corrected to read as an expression, then the words that begin with
- * it, then nothing. The corrected queries also join an accent or a typo offer.
+ * What to offer for a query the exact lookup did not find: accent, then one
+ * edit, then the query corrected to read as an expression, then the words
+ * that begin with it, then nothing. The first step that finds something is
+ * the offer. The corrected queries also join an accent or a typo offer.
+ *
+ * Every step is sent before any is waited on (#646). Each is a read that needs
+ * nothing from another, so on D1 they share calls instead of following one
+ * another; the offer is still chosen in the order above, so a step that turns
+ * out not to be needed changes nothing but the rows read.
  */
 export async function findNearby({ db, releaseId, query }: { db: LookupDatabase; releaseId: string; query: string }): Promise<Nearby> {
   const key = normalizeItalianExact(query);
   if (key === "") return { kind: "none" };
 
-  const prefixWords = async (): Promise<string[]> => {
-    const answer = await suggest({ db, releaseId, prefix: query });
-    return answer.outcome === "suggested" ? answer.suggestions : [];
-  };
-  const [accent, phrases] = await Promise.all([accentMatches(db, releaseId, key), nearPhrases(db, releaseId, key, NEARBY_LIMIT)]);
+  const accents = accentMatches(db, releaseId, key);
+  const near = nearPhrases(db, releaseId, key, NEARBY_LIMIT);
+  const typos = handled(typoMatches(db, releaseId, key));
+  const prefixWords = handled(
+    suggest({ db, releaseId, prefix: query }).then((answer) => (answer.outcome === "suggested" ? answer.suggestions : [])),
+  );
+  const [accent, phrases] = await Promise.all([accents, near]);
   const phrasesBesides = (shown: readonly string[]) => {
     const keys = new Set(shown.map(normalizeItalianExact));
     return phrases.filter((offer) => !keys.has(offer.phrase));
@@ -284,11 +297,11 @@ export async function findNearby({ db, releaseId, query }: { db: LookupDatabase;
 
   if (accent.length > 0) {
     const [best, ...rest] = accent;
-    const others = [...new Set([...rest.map((c) => c.surface), ...(await prefixWords()).filter((w) => w !== best.surface)])].slice(0, NEARBY_LIMIT);
+    const others = [...new Set([...rest.map((c) => c.surface), ...(await prefixWords).filter((w) => w !== best.surface)])].slice(0, NEARBY_LIMIT);
     return { kind: "accent", best: best.surface, others, phrases: phrasesBesides([best.surface, ...others]) };
   }
 
-  const typo = await typoMatches(db, releaseId, key);
+  const typo = await typos;
   if (typo.length > 0) {
     const [best, ...rest] = typo;
     const others = rest.map((c) => c.surface).slice(0, NEARBY_LIMIT);
@@ -298,6 +311,6 @@ export async function findNearby({ db, releaseId, query }: { db: LookupDatabase;
   const [phrase, ...morePhrases] = phrases;
   if (phrase !== undefined) return { kind: "phrase", best: phrase, others: morePhrases };
 
-  const words = await prefixWords();
+  const words = await prefixWords;
   return words.length > 0 ? { kind: "prefix", words } : { kind: "none" };
 }

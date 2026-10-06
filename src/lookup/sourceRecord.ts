@@ -16,9 +16,14 @@
 // The line is untrusted JSON as far as the type system knows, so every field is
 // checked for the shape it must have and skipped when it does not have it. A
 // field the source left out is an empty list, never a placeholder.
+//
+// A lookup reads the line cut down to `LINE_FIELDS` in SQL, or a lemma's to
+// `EXPRESSION_FIELDS` (src/lookup/projection.ts, #646). The cut keeps every
+// list index, so each pointer below names the same value in the stored line.
 
 import { expressionPhrase } from "../italian/expressions.js";
 import { withoutPlaceholder } from "../italian/placeholder.js";
+import type { ReadFields } from "../update/content.js";
 import type {
   ExpressionItem,
   Hyphenation,
@@ -42,6 +47,40 @@ export interface SourceRecordFields {
 
 type Json = unknown;
 
+/**
+ * The fields of a reading's archive line a lookup reads: those this module
+ * reads, and `senses[].glosses`, by which a recovered definition finds the
+ * sense it leads (`recordGlosses`, src/italian/recovery.ts).
+ */
+export const LINE_FIELDS = {
+  sounds: { each: { ipa: "whole", sense: "whole" } },
+  hyphenations: { each: { parts: "whole" } },
+  etymology_texts: "whole",
+  synonyms: { each: { word: "whole", raw_tags: "whole" } },
+  antonyms: { each: { word: "whole" } },
+  derived: { each: { word: "whole" } },
+  proverbs: { each: { word: "whole", sense: "whole" } },
+  senses: { each: { glosses: "whole", examples: { each: { text: "whole" } } } },
+} as const satisfies ReadFields;
+
+/** The fields of a lemma's archive line a lookup reads: its expressions. */
+export const EXPRESSION_FIELDS = { proverbs: LINE_FIELDS.proverbs } as const satisfies ReadFields;
+
+declare const cutTo: unique symbol;
+
+/**
+ * An archive line as a statement returned it, cut down to `Fields`
+ * (`projectedJsonSql`). A line cut for its expressions has no sounds to read,
+ * so it is not a line `readSourceRecord` takes.
+ */
+export type CutLine<Fields extends ReadFields> = string & { readonly [cutTo]: Fields };
+
+/** A reading's line: every field `readSourceRecord` and the recovered glosses read. */
+export type ReadingLine = CutLine<typeof LINE_FIELDS>;
+
+/** A line cut to its expressions: a lemma's, or a reading's, which holds them too. */
+export type ExpressionLine = CutLine<typeof EXPRESSION_FIELDS> | ReadingLine;
+
 const isObject = (value: Json): value is Record<string, Json> =>
   typeof value === "object" && value !== null && !Array.isArray(value);
 
@@ -59,11 +98,14 @@ const nonEmptyString = (value: Json): value is string =>
  * `ref` makes a pointer into this same line, so every value carries the
  * release, line and digest of the record it came from.
  */
-export function readSourceRecord(
-  rawJson: string,
-  ref: (pointer: string) => SourceRef,
-): SourceRecordFields {
-  return readSourceFields(JSON.parse(rawJson), ref);
+export function readSourceRecord(line: ReadingLine, ref: (pointer: string) => SourceRef): SourceRecordFields {
+  return readSourceFields(JSON.parse(line), ref);
+}
+
+/** A line's `proverbs[]` items, as `readSourceRecord` reads them. */
+export function readExpressionItems(line: ExpressionLine, ref: (pointer: string) => SourceRef): ExpressionItem[] {
+  const parsed: Json = JSON.parse(line);
+  return isObject(parsed) ? expressionItems(parsed, ref) : [];
 }
 
 /** `readSourceRecord` over a line already parsed. */
