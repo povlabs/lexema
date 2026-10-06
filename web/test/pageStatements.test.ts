@@ -28,6 +28,7 @@ import { fileURLToPath } from "node:url";
 import { DatabaseSync } from "node:sqlite";
 import { gzipSync } from "node:zlib";
 import { seedSql } from "../../src/import/seedSql.js";
+import { rawPageSource, readSavedPage } from "../../src/source/rawPage.js";
 import { fromD1, fromNodeSqlite, type D1Like, type D1StatementLike, type SqlValue } from "../../src/lookup/database.js";
 import { servedVersion } from "../../src/lookup/served.js";
 import { searchAttempt } from "@/lib/dictionary/searchAttempt.ts";
@@ -38,7 +39,13 @@ import { createRequestContext, runWithRequestContext } from "vinext/shims/unifie
 
 const REPO = fileURLToPath(new URL("../..", import.meta.url));
 const RELEASE = "it-page-statements";
-const FIXTURES = ["fixtures/dev-seed.jsonl", "fixtures/salivate.jsonl", "fixtures/vira.jsonl"];
+const FIXTURES = ["fixtures/dev-seed.jsonl", "fixtures/salivate.jsonl", "fixtures/vira.jsonl", "fixtures/fiaccando.jsonl", "fixtures/sfocato.jsonl"];
+/**
+ * The one raw page the seed recovers definitions from: `fiaccare`, whose
+ * record lost a definition its page states. No other fixture word has a page
+ * here, so no other page reads a recovered definition.
+ */
+const PAGES = ["fixtures/upstream-pages/fiaccare.wikitext"];
 
 /** Statements per page before #393; the calls were 6 for every word. */
 const BEFORE: Record<string, number> = { bello: 61, andare: 35, casa: 25, sale: 56, studente: 59 };
@@ -51,7 +58,9 @@ before(async () => {
   dir = await mkdtemp(join(tmpdir(), "lexema-page-statements-"));
   // The development fixture, then the real lines of `salivate` and `vira`
   // (fixtures/salivate.jsonl, fixtures/vira.jsonl), whose pages show a verb's
-  // own Definitions (#686).
+  // own Definitions (#686), and of `fiaccando` and `sfocato`
+  // (fixtures/fiaccando.jsonl, fixtures/sfocato.jsonl, #691), with the page
+  // `fiaccare` recovers from.
   const archive = join(dir, "dev-seed.jsonl.gz");
   const lines = await Promise.all(FIXTURES.map(async (file) => (await readFile(join(REPO, file), "utf8")).trimEnd()));
   await writeFile(archive, gzipSync(`${lines.join("\n")}\n`));
@@ -62,6 +71,7 @@ before(async () => {
     releaseId: RELEASE,
     archiveR2Key: `releases/${RELEASE}.jsonl.gz`,
     license: "CC-BY-SA-4.0",
+    rawPages: rawPageSource(await Promise.all(PAGES.map(async (file) => readSavedPage(await readFile(join(REPO, file), "utf8"), file)))),
     onRejection: (rejection) => {
       throw new Error(`fixture line rejected: ${JSON.stringify(rejection)}`);
     },
@@ -174,6 +184,38 @@ for (const [word, then] of Object.entries(VERB_FORMS_BEFORE)) {
     const attempt = await searchAttempt(fromD1(countingD1(sqlite, sent)), RELEASE, word);
     assert.equal(attempt.outcome, "found", `${word}: expected a found page`);
     assert.equal(sent.statements, then.statements + extra, `${word}: statements`);
+    assert.equal(sent.calls, then.calls, `${word}: calls`);
+    assert.deepEqual(attempt, await searchAttempt(fromNodeSqlite(sqlite), RELEASE, word));
+  });
+}
+
+/**
+ * The two pages a verb form's Definitions could cost more on (#691). Both are
+ * real words: release it-0c432803 lines 138358 `fiaccare` and 335510
+ * `fiaccando` (fixtures/fiaccando.jsonl), with revision 4067084 of `fiaccare`
+ * from the dump itwiktionary-20260701, and lines 122428 and 122429 `sfocato`
+ * (fixtures/sfocato.jsonl).
+ *
+ * - `fiaccando` names `fiaccare`, whose record lost the sub-term `fiaccare le
+ *   corna a uno` its page states, so its verb's Definitions carry a recovered
+ *   definition.
+ * - `sfocato`'s verb record names `sfocato`, and the only verb that heads
+ *   `sfocato` is that record itself: the verb its block names is a reading on
+ *   the same page.
+ *
+ * The counts are those at c036f41, before #691.
+ */
+const DEFINITIONS_PAGES_BEFORE: Record<string, { statements: number; calls: number }> = {
+  fiaccando: { statements: 24, calls: 4 },
+  sfocato: { statements: 26, calls: 5 },
+};
+
+for (const [word, then] of Object.entries(DEFINITIONS_PAGES_BEFORE)) {
+  test(`the page for '${word}' sends ${then.statements} statements in ${then.calls} calls, and reads the page SQLite reads`, async () => {
+    const sent = nothingSent();
+    const attempt = await searchAttempt(fromD1(countingD1(sqlite, sent)), RELEASE, word);
+    assert.equal(attempt.outcome, "found", `${word}: expected a found page`);
+    assert.equal(sent.statements, then.statements, `${word}: statements`);
     assert.equal(sent.calls, then.calls, `${word}: calls`);
     assert.deepEqual(attempt, await searchAttempt(fromNodeSqlite(sqlite), RELEASE, word));
   });
