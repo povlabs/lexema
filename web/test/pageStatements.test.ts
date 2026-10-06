@@ -15,6 +15,8 @@
 // The last tests run one whole word-page request, `generateMetadata` and
 // `Page` both, in a vinext request scope as the Worker does (#644): each half
 // asks for the lookup and the served version, and D1 must see each once.
+// The same holds for a request through the shared page cache (#673): the
+// version the cache step reads for its key is the one the page renders with.
 
 import assert from "node:assert/strict";
 import { registerHooks } from "node:module";
@@ -29,6 +31,8 @@ import { seedSql } from "../../src/import/seedSql.js";
 import { fromD1, fromNodeSqlite, type D1Like, type D1StatementLike, type SqlValue } from "../../src/lookup/database.js";
 import { servedVersion } from "../../src/lookup/served.js";
 import { searchAttempt } from "@/lib/dictionary/searchAttempt.ts";
+import { PAGE_SOURCE_HEADER, withPageCache, withSharedPageCache } from "@/worker/dictionary/pageCache.ts";
+import { CSP_HEADER } from "@/worker/shared/securityHeaders.ts";
 import { headersContextFromRequest } from "vinext/shims/headers";
 import { createRequestContext, runWithRequestContext } from "vinext/shims/unified-request-context";
 
@@ -175,7 +179,7 @@ for (const [word, ceiling] of Object.entries(NOT_FOUND)) {
 const WORKER_ENV: Record<string, unknown> = { LEXEMA_STAGE: "production", LEXEMA_RELEASE: RELEASE, LEXEMA_VERSION: { id: "test-version" } };
 (globalThis as { lexemaPageEnv?: Record<string, unknown> }).lexemaPageEnv = WORKER_ENV;
 
-type WordPage = typeof import("../app/(lexema)/page.tsx");
+type WordPage = typeof import("../app/(lexema)/page.tsx") & Pick<typeof import("../worker/dictionary/pageDesk.ts"), "workerPageDesk">;
 
 /**
  * The word page's module outside workerd: `cloudflare:workers` is stood in
@@ -191,7 +195,9 @@ async function wordPageModule(): Promise<WordPage> {
         : nextResolve(specifier === "next/headers" ? "vinext/shims/headers" : specifier, context),
   });
   try {
-    return (await import("../app/(lexema)/page.tsx")) as WordPage;
+    const page = await import("../app/(lexema)/page.tsx");
+    const { workerPageDesk } = await import("../worker/dictionary/pageDesk.ts");
+    return { ...page, workerPageDesk } as WordPage;
   } finally {
     hooks.deregister();
   }
@@ -247,4 +253,105 @@ test("two requests for one word page share nothing: each runs its own lookup and
   const once = await oneOfEach("sale");
   assertSentOnce(await wordPageRequest(page, "sale"), once, "sale, first request");
   assertSentOnce(await wordPageRequest(page, "sale"), once, "sale, second request");
+});
+
+/** Cloudflare's cache, empty, so every request through the shared page cache is a miss. */
+const emptyCache: Pick<Cache, "match" | "put"> = { match: async () => undefined, put: async () => {} };
+(globalThis as { caches?: unknown }).caches = { default: emptyCache };
+
+/** What one request through the shared page cache did: the SQL it sent, where its page came from, and what the page was rendered with. */
+interface CachedRequest {
+  sql: string[];
+  source: string | null;
+  rendered: Rendered;
+}
+
+/** What a word page is rendered with: its metadata, and the version its search field names. */
+interface Rendered {
+  metadata: unknown;
+  version: unknown;
+}
+
+/** `generateMetadata` and `Page` for `word`, in the request scope vinext opens for `request`, as `wordPageRequest` runs them. */
+async function renderWordPage({ generateMetadata, default: Page }: WordPage, word: string, request: Request): Promise<Rendered> {
+  return runWithRequestContext(createRequestContext({ headersContext: headersContextFromRequest(request) }), async () => {
+    const searchParams = { q: word };
+    const metadata = await generateMetadata({ searchParams });
+    const page = (await Page({ searchParams })) as { props: { version: unknown } };
+    return { metadata, version: page.props.version };
+  });
+}
+
+interface CachedOptions {
+  init?: RequestInit;
+  /** The served version the cache step reads; by default the Worker's own read, `servedVersionOnce`. */
+  version?: () => Promise<string | undefined>;
+}
+
+/**
+ * One request for the page of `word` through `withPageCache` and
+ * `withSharedPageCache` with the Worker's own desk (worker/dictionary/pageDesk.ts),
+ * as worker/index.ts layers them, over an empty cache.
+ */
+async function cachedWordPageRequest(page: WordPage, word: string, { init = {}, version }: CachedOptions = {}): Promise<CachedRequest> {
+  let rendered: Rendered | undefined;
+  const app = async (request: Request): Promise<Response> => {
+    rendered = await renderWordPage(page, word, request);
+    return new Response("<html></html>", { headers: { "content-type": "text/html; charset=utf-8" } });
+  };
+  const desk = (env: unknown, request: Request, ctx: ExecutionContext) => {
+    const own = page.workerPageDesk(env, request, ctx);
+    return version === undefined ? own : { ...own, version };
+  };
+  let source: string | null = null;
+  const sql = await sqlSent(async (d1) => {
+    WORKER_ENV.DB = d1;
+    const headers = new Headers(init.headers);
+    headers.set(CSP_HEADER, "script-src 'nonce-AAAAAAAAAAAAAAAAAAAAAA=='");
+    const request = new Request(`https://lexema.fyi/?q=${encodeURIComponent(word)}`, { ...init, headers });
+    const ctx = { waitUntil: () => {} } as unknown as ExecutionContext;
+    const response = await withPageCache(withSharedPageCache(desk, app))(request, {}, ctx);
+    await response.text();
+    source = response.headers.get(PAGE_SOURCE_HEADER);
+  });
+  assert.ok(rendered !== undefined, `${word}: the page rendered`);
+  return { sql, source, rendered };
+}
+
+test("a request the shared page cache misses reads the served version once, and the page renders with the version it read", async () => {
+  const page = await wordPageModule();
+  const cached = await cachedWordPageRequest(page, "bello");
+  assert.equal(cached.source, "miss");
+  assertSentOnce(cached.sql, await oneOfEach("bello"), "bello through the shared cache");
+  assert.doesNotMatch(String(cached.rendered.version), /unread/);
+
+  // The page alone, as before #673, renders with the same metadata and version, so the same HTML.
+  let alone: Rendered | undefined;
+  await sqlSent(async (d1) => {
+    WORKER_ENV.DB = d1;
+    alone = await renderWordPage(page, "bello", new Request("https://lexema.fyi/?q=bello"));
+  });
+  assert.deepEqual(cached.rendered, alone);
+});
+
+test("a request the shared page cache does not take still reads the served version once, through the page", async () => {
+  const page = await wordPageModule();
+  const cached = await cachedWordPageRequest(page, "bello", { init: { headers: { cookie: "visitor=1" } } });
+  assert.equal(cached.source, null, "the shared cache did not take it");
+  assertSentOnce(cached.sql, await oneOfEach("bello"), "bello with a cookie");
+});
+
+test("when the cache step cannot read the served version, the page names the unread version without reading it again", async () => {
+  const page = await wordPageModule();
+  const cached = await cachedWordPageRequest(page, "bello", { version: async () => undefined });
+  assert.equal(cached.source, "unkept");
+  assert.match(String(cached.rendered.version), /^it-page-statements\.unread\.code-test-version$/);
+  assert.deepEqual(cached.sql, await sqlSent((d1) => searchAttempt(fromD1(d1), RELEASE, "bello")), "the lookup alone");
+});
+
+test("two requests through the shared page cache each read their own served version", async () => {
+  const page = await wordPageModule();
+  const once = await oneOfEach("sale");
+  assertSentOnce((await cachedWordPageRequest(page, "sale")).sql, once, "sale, first request");
+  assertSentOnce((await cachedWordPageRequest(page, "sale")).sql, once, "sale, second request");
 });
