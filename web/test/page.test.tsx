@@ -2611,18 +2611,68 @@ test("Find an expression matches the phrase or the meaning, whatever the case", 
   assert.ok(!matchesExpression(row, "bottega"));
 });
 
-test("a form's page shows its lemma's expressions as Expressions with <lemma>, after its own", async () => {
+/** The labels of a page's Expressions sections, in order. */
+const expressionLabels = (html: string): string[] => expressionSections(html).map((section) => expressionRows(section).label);
+
+test("a verb shown as a verb form block brings no Expressions with <verb>; the word's own Expressions stay (#668)", async () => {
   await withDevSeed(async ({ db }) => {
-    const sections = expressionSections(await render(db, "andavano")).map(expressionRows);
-    assert.deepEqual(sections.map(({ label }) => label), ["Expressions with andare"]);
-    assert.deepEqual(sections[0]?.rows[0], ["a lungo andare", "col trascorrere del tempo"]);
+    const andavano = await render(db, "andavano");
+    assert.deepEqual(headingsOf(andavano), ["1·Voce verbale·andare"]);
+    assert.deepEqual(expressionLabels(andavano), []);
+    // The verb's own page still lists them.
+    const [andare] = expressionSections(await render(db, "andare")).map(expressionRows);
+    assert.deepEqual(andare?.label, "Expressions");
+    assert.deepEqual(andare?.rows[0], ["a lungo andare", "col trascorrere del tempo"]);
   });
   const lines = (await readFile(join(REPO, "fixtures/expressions.jsonl"), "utf8")).trim().split("\n");
   await withLines(lines, async ({ db }) => {
-    const sections = expressionSections(await render(db, "stato")).map(expressionRows);
-    assert.deepEqual(sections.map(({ label }) => label), ["Expressions", "Expressions with stare"]);
+    const stato = await render(db, "stato");
+    assert.ok(verbBlock(stato, "stare") !== undefined, "stato: no stare block");
+    const sections = expressionSections(stato).map(expressionRows);
+    assert.deepEqual(sections.map(({ label }) => label), ["Expressions"]);
     assert.equal(sections[0]?.rows.length, 5);
     assert.deepEqual(sections[0]?.rows[1], ["lo stato delle cose è questo!", null]);
+  });
+});
+
+/** `fixtures/andate.jsonl`: andate's noun, adjective and verb form records, as release it-0c432803 has them (lines 138798-138800). */
+const ANDATE_LINES = (await readFile(join(REPO, "fixtures/andate.jsonl"), "utf8")).trimEnd().split("\n");
+
+test("a form page shows no `vedi <verb>` Etymology for a verb it shows as a block; the word's own facts stay (#668)", async () => {
+  await withLines([...(await devSeedLines()), ...ANDATA_LINES, ...ANDATE_LINES, ...SALIVATE_LINES], async ({ db }) => {
+    // andavano: one block, nothing after it.
+    const andavano = await render(db, "andavano");
+    assert.doesNotMatch(andavano, />Etymology</);
+    assert.ok(!textOf(andavano).includes("vedi andare"));
+
+    // andati: its only other reading is a form too, so it is a form page.
+    const andati = await render(db, "andati");
+    assert.deepEqual(headingsOf(andati), ["1·Aggettivo, forma flessa·maschile", "2·Voce verbale·andare"]);
+    assert.ok(!textOf(andati).includes("vedi andare"), "andati: shows vedi andare");
+    assert.doesNotMatch(andati, />Etymology</);
+    assert.deepEqual(expressionLabels(andati), []);
+
+    // salivate: two blocks, no vedi salivare.
+    const salivate = await render(db, "salivate");
+    assert.deepEqual(headingsOf(salivate), ["1·Voce verbale·salire", "2·Voce verbale·salivare"]);
+    assert.ok(!textOf(salivate).includes("vedi salivare"), "salivate: shows vedi salivare");
+    assert.doesNotMatch(salivate, />Etymology</);
+
+    // andata: andata the noun is a reading of its own, so the word keeps its
+    // Etymology, Synonyms and Antonyms, but not andare's expressions.
+    const andata = await render(db, "andata");
+    const bottom = textOf(afterReadings(andata));
+    assert.match(bottom, /Etymologyvedi andare/);
+    assert.deepEqual(synonymWords(afterReadings(andata), "synonyms"), ["cammino", "spostamento", "viaggio"]);
+    assert.match(bottom, /Antonyms.*ritorno/);
+    assert.ok(!expressionLabels(andata).includes("Expressions with andare"));
+
+    // andate: a form page, but `da andare` points to nothing; it stays, with
+    // andate's own Expressions and not andare's.
+    const andate = await render(db, "andate");
+    assert.ok(verbBlock(andate, "andare") !== undefined, "andate: no andare block");
+    assert.match(textOf(afterReadings(andate)), /Etymologyda andare/);
+    assert.deepEqual(expressionLabels(andate), ["Expressions"]);
   });
 });
 

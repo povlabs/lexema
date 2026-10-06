@@ -306,8 +306,9 @@ it on. Forms and senses are never corrected.
 `candidates[]` is never narrowed to one. More than one entry means the source
 did not choose. Each candidate is `recordId`, `word`, `pos`, a `ref` to its
 own `/word`, `listing`, and `expressions`: the lemma record's own
-[expressions](#expressions), so a form's page can show them (andavano shows
-*Expressions with andare*).
+[expressions](#expressions), so a form's page can show them as
+*Expressions with* its lemma. A verb the page shows as a verb form block
+brings none (#668).
 
 `listing` is where the candidate's own table spells the query: its whole
 `forms[]` and the `evidence[]` rows the key hit, never empty. It is `undefined`

@@ -443,7 +443,7 @@ export interface UnlistedTable {
 export type LemmaTarget = LemmaCandidate & {
   /**
    * The lemma record's own expressions, so a form's page can show them under
-   * *Expressions with andare* without the lemma being a reading (#213).
+   * *Expressions with* the lemma without the lemma being a reading (#213).
    */
   expressions: Expression[];
 } & ({ listing: LemmaListing; unlisted?: never } | { listing: undefined; unlisted?: UnlistedTable });

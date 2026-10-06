@@ -280,7 +280,8 @@ export interface WordLists {
 
 /**
  * One *Expressions* section (#213): the entry's own, or, on a form's page, one
- * per lemma it is a form of, *Expressions with andare*. A section with no row
+ * per lemma it is a form of that the page shows no block for, *Expressions
+ * with* that lemma (#668). A section with no row
  * is not a value this holds, so a page with none shows none (ADR 0016).
  */
 export type ExpressionSection =
@@ -290,7 +291,7 @@ export type ExpressionSection =
 /** A list longer than this gets the *Find an expression* box once it is open (Huey, 2026-10-01, on #213). */
 export const EXPRESSION_FILTER_ABOVE = 30;
 
-/** The section's label: `Expressions`, or `Expressions with andare` for a lemma's. */
+/** The section's label: `Expressions`, or `Expressions with <lemma>` for a lemma's. */
 export const expressionsLabel = (section: ExpressionSection): string =>
   section.kind === "own" ? "Expressions" : `Expressions with ${section.lemma}`;
 
@@ -601,22 +602,52 @@ export function wordPage(query: string, readings: readonly [Reading, ...Reading[
       },
     ];
   });
-  const [first, ...rest] = entries;
+  // What a verb shown only as a block brings with it stays on the verb's own
+  // page (#668): its Expressions, and on a form page the form record's own
+  // `vedi <verb>` Etymology.
+  const blockVerbs = new Set(entries.flatMap((entry) => (entry.kind === "verb-form" ? [entry.verb] : [])));
+  const shownEtymologies = (etymologies: WordText[]): WordText[] =>
+    isFormPage(about) ? etymologies.filter((etymology) => !pointsToBlockVerb(etymology, blockVerbs)) : etymologies;
+  const [first, ...rest] = entries.map((entry): PageEntry =>
+    entry.kind === "verb-form" ? { ...entry, etymologies: shownEtymologies(entry.etymologies) } : entry,
+  );
   if (first === undefined) throw new Error("a found result renders at least one reading");
 
   const headword = about[0]?.word ?? query;
   return {
     headword,
     readings: [first, ...rest],
-    wordFacts: placed.rest,
+    wordFacts: { ...placed.rest, etymologies: shownEtymologies(placed.rest.etymologies) },
     wordLists: {
       synonyms: relatedItems(placed.rest.synonyms),
       antonyms: relatedItems(placed.rest.antonyms),
       derived: relatedItems(placed.rest.derived),
     },
-    expressionSections: expressionSections(headword, about),
+    expressionSections: expressionSections(headword, about, blockVerbs),
     sourceWord: headword,
   };
+}
+
+/**
+ * Whether a page is a form page: no reading about the query is a noun or
+ * adjective that is not itself a form. `andati`, whose only other reading is
+ * `Aggettivo, forma flessa`, is one; `andata`, with `andata` the noun, is not,
+ * and keeps the word's own Etymology, Synonyms and Antonyms (Huey's ruling 3
+ * of 2026-10-06, #668).
+ */
+const isFormPage = (about: readonly Reading[]): boolean =>
+  !about.some((reading) => (isNounReading(reading) || isAdjectiveReading(reading)) && !isFormOfReading(reading));
+
+/**
+ * Whether an etymology is only the source's pointer to a verb the page shows
+ * as a block: `vedi andare` on `andati`, `vedi salivare` on `salivate`. It
+ * says nothing the block does not, and a form page does not show it (Huey's
+ * ruling 2 of 2026-10-06, #668). Any other text, `da andare` included, is
+ * not one.
+ */
+function pointsToBlockVerb(etymology: WordText, blockVerbs: ReadonlySet<string>): boolean {
+  const verb = /^vedi\s+(\S+?)\.?$/u.exec(etymology.text.trim())?.[1];
+  return verb !== undefined && blockVerbs.has(verb);
 }
 
 /** Whether a reading about the query declares itself a form of `verb`, so its own record says what the query is. */
@@ -682,10 +713,13 @@ const nonEmpty = <T>(items: T[]): [T, ...T[]] | undefined => {
 /**
  * The entry's own list, every reading about the word merged, since the source
  * repeats one list on each of them; then one list per word the readings say
- * they are a form of, in page order, every record of that word merged
- * (`andavano`: *Expressions with andare*; `stato`: its own, then *with stare*).
+ * they are a form of, in page order, every record of that word merged.
+ *
+ * A verb the page shows as a block brings no list: its expressions are the
+ * verb's, not the word's, on every page (Huey's ruling 1 of 2026-10-06, #668).
+ * `andavano` shows none, `stato` and `andate` only their own.
  */
-function expressionSections(headword: string, about: readonly Reading[]): ExpressionSection[] {
+function expressionSections(headword: string, about: readonly Reading[], blockVerbs: ReadonlySet<string>): ExpressionSection[] {
   const sections: ExpressionSection[] = [];
   const own = nonEmpty(mergeExpressions(about.map((reading) => reading.wordFacts.expressions)));
   if (own !== undefined) sections.push({ kind: "own", expressions: own });
@@ -695,7 +729,7 @@ function expressionSections(headword: string, about: readonly Reading[]): Expres
     for (const link of reading.lemmaLinks) {
       if (link.kind !== "candidates") continue;
       for (const lemma of link.candidates) {
-        if (lemma.word === headword) continue;
+        if (lemma.word === headword || blockVerbs.has(lemma.word)) continue;
         byLemma.set(lemma.word, [...(byLemma.get(lemma.word) ?? []), lemma.expressions]);
       }
     }
