@@ -12,6 +12,7 @@ import { bothGenders, type AgreeingSpelling } from "@lexema/italian/essereAgreem
 import { factRefKey, sourcePointerOf, type DeclaredForm } from "@lexema/lookup/types.ts";
 import {
   isSourceForm,
+  splitsByAuxiliary,
   type Conjugation,
   type MoodTable,
   type NonFinite,
@@ -57,6 +58,7 @@ import {
   TENSE_HEAD,
   TENSE_HEAD_SEARCHED,
   TENSE_PAIRS,
+  TENSE_PAIRS_LINED,
   TENSE_TABLE,
 } from "@/components/shared/styles.ts";
 
@@ -196,10 +198,14 @@ function shownSpelling(surface: string, agreeing: ReadonlyMap<string, AgreeingSp
  * shows both genders, `sono andato/a`, and links to the source's spelling.
  *
  * `lines` are the slot's spellings grouped by the auxiliary they are built on
- * (#683): each group after the first starts on a new line, with no comma
- * before it, so vivere's `io` cell is `ho vissuto` above `sono vissuto/a`. The
- * break sits inside the group's first span rather than in a wrapper per line,
- * since every byte here is in the HTML and again in the payload (#647).
+ * (#683). One group is the plain run above. Two or more each take a line of
+ * their own, with no comma between them, so vivere's `io` cell is `ho vissuto`
+ * above `sono vissuto/a`. A group too long for its column wraps under a
+ * hanging indent, so a wrapped line reads as part of its group and the next
+ * group still starts at the column's edge (`ho assorbito,` / `  assorto` /
+ * `sono assorbito/a,`). Each group after the first is a bare `div`, and the
+ * indent is set once per set by `TENSE_PAIRS_LINED`, since every byte here is
+ * in the HTML and again in the payload (#647).
  */
 function FormLinks({
   lines,
@@ -210,21 +216,31 @@ function FormLinks({
   searched: (form: TableForm) => boolean;
   agreeing?: ReadonlyMap<string, AgreeingSpelling>;
 }) {
-  const spellings: { forms: TableForm[]; startsLine: boolean }[] = [];
-  for (const line of lines) {
-    const lineStart = spellings.length;
-    for (const form of line) {
-      const same = spellings.slice(lineStart).find((group) => group.forms[0].surface === form.surface);
-      if (same === undefined) spellings.push({ forms: [form], startsLine: spellings.length === lineStart });
-      else same.forms.push(form);
-    }
+  if (lines.length > 1) {
+    return (
+      <>
+        <FormLinks lines={lines.slice(0, 1)} searched={searched} agreeing={agreeing} />
+        {lines.slice(1).map((line, i) => (
+          // The lines never reorder, and a short key keeps the payload light.
+          <div key={i}>
+            <FormLinks lines={[line]} searched={searched} agreeing={agreeing} />
+          </div>
+        ))}
+      </>
+    );
+  }
+  const spellings: TableForm[][] = [];
+  for (const form of lines[0] ?? []) {
+    const same = spellings.find((group) => group[0].surface === form.surface);
+    if (same === undefined) spellings.push([form]);
+    else same.push(form);
   }
   return (
     <>
-      {spellings.map(({ forms, startsLine }, i) => (
-        <span key={formKey(forms[0])}>
-          {i > 0 && (startsLine ? <br /> : <span className={CELL_SEPARATOR}>, </span>)}
-          <FormLink forms={forms} searched={forms.some(searched)} shown={shownSpelling(forms[0].surface, agreeing)} />
+      {spellings.map((group, i) => (
+        <span key={formKey(group[0])}>
+          {i > 0 && <span className={CELL_SEPARATOR}>, </span>}
+          <FormLink forms={group} searched={group.some(searched)} shown={shownSpelling(group[0].surface, agreeing)} />
         </span>
       ))}
     </>
@@ -283,7 +299,7 @@ function TenseTables({
   const pairs: Tense<TableForm>[][] = [];
   for (let i = 0; i < tenses.length; i += 2) pairs.push(tenses.slice(i, i + 2));
   return (
-    <div className={TENSE_PAIRS}>
+    <div className={tenses.some(splitsByAuxiliary) ? TENSE_PAIRS_LINED : TENSE_PAIRS}>
       {pairs.map((pair, p) => (
         <table key={pair[0].name} className={TENSE_TABLE} data-tenses={pair.map((t) => t.name).join(" · ")}>
           <thead>

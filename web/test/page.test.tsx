@@ -826,7 +826,11 @@ function tenseColumn(html: string, mood: string, tense: string): string[] {
 
 /** A tense cell's text, its auxiliary lines (#683) joined by ` | `: `ho vissuto | sono vissuto/a`. */
 const cellText = (cell: string): string =>
-  cell.split("<br/>").map(textOf).join(" | ");
+  cell
+    .split("<div>")
+    .map(textOf)
+    .filter((line) => line !== "")
+    .join(" | ");
 
 /** Every compound tense of a full conjugation, by mood (`it-moods/v1`). */
 const COMPOUND_TENSES: [string, string][] = [
@@ -879,14 +883,17 @@ test("a verb with both auxiliaries shows each auxiliary on its own line, the ess
     const passato = tenseColumn(vivere, "Indicativo", "passato prossimo");
     assert.equal(passato[0], "io ho vissuto | sono vissuto/a");
     // No comma joins the two lines, and each spelling is still its own link.
-    assert.match(panel(vivere, "Indicativo"), /<\/a><\/span><span><br\/><a [^>]*>sono vissuto\/a<\/a>/);
+    assert.match(
+      panel(vivere, "Indicativo"),
+      /<td [^>]*><span><a [^>]*>ho vissuto<\/a><\/span><div><span><a [^>]*>sono vissuto\/a<\/a><\/span><\/div><\/td>/,
+    );
     assert.ok(formLinks(vivere).some((link) => link.text === "ho vissuto" && link.href === "/?q=ho%20vissuto"));
     assert.ok(formLinks(vivere).some((link) => link.text === "sono vissuto/a" && link.href === "/?q=sono%20vissuto"));
     // A cell on one auxiliary, and a simple tense, keep one line.
     const andare = await render(db, "andare");
     assert.equal(tenseColumn(andare, "Indicativo", "passato prossimo")[0], "io sono andato/a");
     assert.equal(tenseColumn(vivere, "Indicativo", "presente")[0], "io vivo");
-    assert.doesNotMatch(panel(andare, "Indicativo"), /<br\/>/);
+    assert.doesNotMatch(panel(andare, "Indicativo"), /<div>/);
   });
 });
 

@@ -356,6 +356,14 @@ export const TAB_PANEL = `mt-4 sm:mt-[1.1875rem] ${FOCUS_RING}`;
 export const TENSE_PAIRS =
   "flex flex-col gap-[0.8125rem] max-sm:overflow-x-auto sm:grid sm:grid-flow-col sm:justify-start sm:gap-0 sm:*:row-span-7 sm:*:grid sm:*:grid-rows-subgrid sm:*:*:contents sm:[&_tr]:grid sm:[&_tr]:grid-flow-col sm:[&_tr]:auto-cols-[minmax(0,11.875rem)] sm:[&_tbody_tr]:items-baseline sm:[&>:first-child_tr]:grid-cols-[6.875rem]";
 /**
+ * A set with a cell built on two auxiliaries, whose second auxiliary starts a
+ * `div` of its own (#683). A cell's lines hang: a line too long for its
+ * column wraps under a 2ch indent, so its wrapped part reads as the same
+ * group and only a new group starts at the column's edge. The indent sits on
+ * the cell and the `div` inherits it. Only such a set carries the rule.
+ */
+export const TENSE_PAIRS_LINED = `${TENSE_PAIRS} [&_tbody_td]:pl-[2ch] [&_tbody_td]:-indent-[2ch]`;
+/**
  * On a phone a pair fills the width, its two tense columns half each, and a
  * column grows to its longest word: a form wraps only at a space, never
  * inside a word (`ti sei` above `accorto/a`, #683). A lone tense takes the

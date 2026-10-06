@@ -136,6 +136,9 @@ export interface Tense<F extends TableForm = SourceForm> {
   searched: boolean;
 }
 
+/** Whether some cell of the tense puts its auxiliaries on lines of their own (#683). */
+export const splitsByAuxiliary = (tense: Tense<TableForm>): boolean => tense.cells.some((cell) => cell.lines.length > 1);
+
 export interface MoodTable<F extends TableForm = SourceForm> {
   mood: Mood;
   /** The rows every table of this mood has, in grammar order. */
