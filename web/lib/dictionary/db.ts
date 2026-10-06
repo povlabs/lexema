@@ -2,7 +2,7 @@
 // version and the report box's keys. How server code reaches D1 at all is
 // lib/shared/database.ts.
 import { env } from "cloudflare:workers";
-import { cache } from "react";
+import { cacheForRequest } from "vinext/cache";
 import { servedVersion as readServedVersion, versionToken } from "@lexema/lookup/served.ts";
 import { suggest, type SuggestResult } from "@lexema/lookup/suggest.ts";
 import { log } from "@lexema/log/requestLog.ts";
@@ -35,11 +35,24 @@ export async function searchOnce(query: string): Promise<Attempt> {
   }
 }
 
+/** This request's lookups, by query. Outside a request each call gets a fresh map, so nothing is kept. */
+const requestSearches = cacheForRequest(() => new Map<string, Promise<Attempt>>());
+
 /**
- * `searchOnce`, memoised for the request with React's `cache`, so the tab
- * title, the link preview's tags and the result read one lookup, not two.
+ * `searchOnce`, memoised for the request, so the tab title, the link
+ * preview's tags and the result read one lookup, not two (#644). Not React's
+ * `cache`: vinext resolves a page's metadata outside the React render, where
+ * that memo misses. vinext's request scope holds across both and ends with the
+ * request, so two requests never share a lookup.
  */
-export const search = cache(searchOnce);
+export function search(query: string): Promise<Attempt> {
+  const searches = requestSearches();
+  const memoised = searches.get(query);
+  if (memoised !== undefined) return memoised;
+  const attempt = searchOnce(query);
+  searches.set(query, attempt);
+  return attempt;
+}
 
 /**
  * Suggestions for a prefix, or the fact that they could not be read.
@@ -102,9 +115,9 @@ export async function servedVersionOnce(): Promise<string | undefined> {
 
 /**
  * The token a page names its card and its suggestions by, memoised for the
- * request. When the version cannot be read the page still renders, naming the
+ * request as `search` is, so metadata and page read it once. When the version cannot be read the page still renders, naming the
  * release and Worker version: no read data version ever matches that token, so the card route
  * sends its card on to the current address, and a suggestion answer kept
  * under it is newer than anything kept before.
  */
-export const servedVersion = cache(async (): Promise<string> => (await servedVersionOnce()) ?? `${env.LEXEMA_RELEASE}.unread.code-${encodeURIComponent(env.LEXEMA_VERSION.id)}`);
+export const servedVersion = cacheForRequest(async (): Promise<string> => (await servedVersionOnce()) ?? `${env.LEXEMA_RELEASE}.unread.code-${encodeURIComponent(env.LEXEMA_VERSION.id)}`);
