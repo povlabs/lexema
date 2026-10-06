@@ -71,6 +71,9 @@ Old card requests reaching the Worker still redirect to the current address with
 `no-store`, before reading the card cache. Already downloaded immutable images can
 remain in a crawler's cache at their old URL; newly rendered pages name the new
 URL. Suggestion keys move too; a page left open keeps its old key until reloaded.
+A reader may see a word page up to one hour old after a dictionary apply: the
+Worker lets the reader's browser keep the home page and each word page for an
+hour (`private, max-age=3600`, [pageCache.ts](../web/worker/dictionary/pageCache.ts)).
 If the data identity cannot be read, the card route returns an uncached home card.
 Reading the identity probes the newest applied change and table existence, plus
 one singleton row for each revision table that exists; it scans no lexical rows.
