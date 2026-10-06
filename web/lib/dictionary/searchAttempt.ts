@@ -25,7 +25,7 @@ export async function searchAttempt(db: LookupDatabase, releaseId: string, query
   const declared = await declaredLemma(db, releaseId, result);
   const page = declared === undefined ? undefined : declaredLemmaPage(declared);
   if (declared !== undefined && page !== undefined) return { ...declared, page, written: await written() };
-  return { ...result, nearby: await findNearby({ db, releaseId, query: result.query.raw }) };
+  return { ...result, nearby: await findNearby({ db, release: result.release, query: result.query.raw }) };
 }
 
 /**

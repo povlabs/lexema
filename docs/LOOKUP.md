@@ -524,7 +524,15 @@ and 3):
    search finds ("Every offer is searchable", under Suggestions). This step runs
    beside the accent step: after an accent or a one-edit match the corrections
    follow the other offers as `phrases`; with neither, they are the offer.
-5. **Words that begin with it:** `suggest()` for the query.
+5. **Words that begin with it:** `suggest()` for the query. `searchAttempt`
+   hands it the release the lookup already found servable, so it does not
+   read that release again.
+
+The accent and one-edit indexes are probed in the same D1 call, before any
+surface is read (#665). For a query of one word, the prefix reads of step 5
+go out with the surface reads, unless a one-edit match may be the answer: the
+one-edit index found a key and the accent index found none. A page that shows
+a one-edit match then sends no prefix read it would not use.
 
 Candidates rank by fewest edits, then the most translation languages, then
 the most senses and forms, then a headword before a form, then shorter, then

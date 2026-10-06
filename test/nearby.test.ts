@@ -13,6 +13,8 @@ import { gzipSync } from "node:zlib";
 import { seedSql } from "../src/import/seedSql.js";
 import { fromD1, fromNodeSqlite, type D1Like, type D1StatementLike, type SqlValue } from "../src/lookup/database.js";
 import { addsMarksTo, deletionKeys, findNearby, foldKey, rankCandidates, withinOneEdit, type Candidate, type Nearby } from "../src/lookup/nearby.js";
+import { servableRelease } from "../src/lookup/lookup.js";
+import { suggest } from "../src/lookup/suggest.js";
 
 const RELEASE = "it-nearby-test";
 
@@ -43,12 +45,18 @@ after(async () => {
   await rm(dir, { recursive: true, force: true });
 });
 
-/** A D1 over the local SQLite: a `batch()` answers each statement in order. */
-function sqliteD1(db: DatabaseSync): D1Like {
+/** A D1 over the local SQLite: a `batch()` answers each statement in order. `sent` gets the SQL of each. */
+function sqliteD1(db: DatabaseSync, sent: string[] = []): D1Like {
   const statement = (sql: string, params: SqlValue[]): D1StatementLike & { run(): unknown[] } => ({
     bind: (...bound) => statement(sql, bound),
-    run: () => db.prepare(sql).all(...params),
-    all: async <T>() => ({ results: db.prepare(sql).all(...params) as T[] }),
+    run: () => {
+      sent.push(sql);
+      return db.prepare(sql).all(...params);
+    },
+    all: async <T>() => {
+      sent.push(sql);
+      return { results: db.prepare(sql).all(...params) as T[] };
+    },
   });
   return {
     prepare: (sql) => statement(sql, []),
@@ -71,8 +79,20 @@ for (const [query, pinned] of Object.entries(PINNED)) {
   test(`'${query}' is offered what it was offered before #663, off SQLite and through D1`, async () => {
     assert.deepEqual(await findNearby({ db: fromNodeSqlite(sqlite), releaseId: RELEASE, query }), pinned);
     assert.deepEqual(await findNearby({ db: fromD1(sqliteD1(sqlite)), releaseId: RELEASE, query }), pinned);
+    const release = await servableRelease(fromNodeSqlite(sqlite), RELEASE);
+    assert.deepEqual(await findNearby({ db: fromD1(sqliteD1(sqlite)), release, query }), pinned, "given the release the lookup found servable");
   });
 }
+
+test("a one-word typo page sends none of the reads of the words that begin with it (#665)", async () => {
+  const prefixReads: string[] = [];
+  await suggest({ db: fromD1(sqliteD1(sqlite, prefixReads)), releaseId: RELEASE, prefix: "mangare" });
+  const sent: string[] = [];
+  const answer = await findNearby({ db: fromD1(sqliteD1(sqlite, sent)), releaseId: RELEASE, query: "mangare" });
+  assert.equal(answer.kind, "typo");
+  assert.ok(prefixReads.length >= 3, prefixReads.join("\n"));
+  assert.deepEqual(sent.filter((sql) => prefixReads.includes(sql)), []);
+});
 
 test("a written spelling adds accents or a final apostrophe to a key, and takes none away", () => {
   assert.ok(addsMarksTo("citta", "città"));

@@ -2,9 +2,8 @@
 // letters with an accent (`citta` → `città`) or a final apostrophe (`dall` →
 // `dall'`, #468), a spelling one edit away
 // (`mangare` → `mangiare`), or the words that begin with what was typed
-// (`bab`). Each step is used only when the one before it found nothing (a
-// one-word query's prefix list is read early, beside the accent step, #663),
-// and each is an indexed read: `accent_fold` and `typo_key` are written by the seed
+// (`bab`). Each step is used only when the one before it found nothing, and
+// each is an indexed read: `accent_fold` and `typo_key` are written by the seed
 // (src/import/seedSql.ts), and the prefix list is the search field's own
 // `suggest`. Nothing here scores the whole word list per request.
 //
@@ -20,7 +19,7 @@ import { normalizeItalianExact } from "../italian/normalize.js";
 import type { LookupDatabase } from "./database.js";
 import { nearPhrases, type PhraseOffer } from "./phrase.js";
 import { servedBy } from "./served.js";
-import { suggest } from "./suggest.js";
+import { releaseIdOf, suggest, type ReleaseRef } from "./suggest.js";
 
 /** A key with its accents taken off: `città` → `citta`. The query is folded the same way. */
 export function foldKey(key: string): string {
@@ -164,13 +163,23 @@ async function candidatesFor(
   );
 }
 
-/** How common a key is, as its own `typo_key` row states it; 0 and 0 for a key that is no lemma headword. */
-async function scoreOf(db: LookupDatabase, releaseId: string, key: string): Promise<Found> {
+/** How common a key is, as its own `typo_key` row states it; undefined for a key that is no lemma headword. */
+async function scoreOf(db: LookupDatabase, releaseId: string, key: string): Promise<Found | undefined> {
   const [row] = await db.all<{ languages: number; richness: number }>(
     `SELECT languages, richness FROM typo_key WHERE release_id IN (${servedBy("?1")}) AND deletion_key = ?2 AND surface_key = ?2`,
     [releaseId, key],
   );
-  return { edits: 0, languages: row?.languages ?? 0, richness: row?.richness ?? 0 };
+  return row === undefined ? undefined : { edits: 0, languages: row.languages, richness: row.richness };
+}
+
+/**
+ * Keys a step may offer, read off its index before their surfaces are.
+ * `indexed` is whether an index row named one: a key nothing indexes is only
+ * the query respelled, and offered only if a surface turns up for it.
+ */
+interface Proposed {
+  keys: Map<string, Found>;
+  indexed: boolean;
 }
 
 /**
@@ -178,7 +187,7 @@ async function scoreOf(db: LookupDatabase, releaseId: string, key: string): Prom
  * are set aside, as `accent_fold` and the apostrophe probe find them. A key
  * nothing spells is kept here and dropped when its surface is read.
  */
-async function sameLetterKeys(db: LookupDatabase, releaseId: string, key: string): Promise<Map<string, Found>> {
+async function sameLetterKeys(db: LookupDatabase, releaseId: string, key: string): Promise<Proposed> {
   const folded = foldKey(key);
   // `accent_fold` keys on accents alone, so the apostrophe is added here and
   // probed there, for an accented spelling, and as a key of its own.
@@ -194,22 +203,22 @@ async function sameLetterKeys(db: LookupDatabase, releaseId: string, key: string
   const keys = new Map<string, Found>(
     rows.map((row) => [row.surface_key, { edits: 0, languages: row.languages, richness: row.richness }]),
   );
-  if (elided !== undefined && elidedScore !== undefined) keys.set(elided, elidedScore);
-  return keys;
+  if (elided !== undefined) keys.set(elided, elidedScore ?? { edits: 0, languages: 0, richness: 0 });
+  return { keys, indexed: rows.some((row) => row.surface_key !== key) || elidedScore !== undefined };
 }
 
 /**
- * Step 2: the same letters with other accents, including an unaccented
- * spelling of an accented query, or with the final apostrophe the query left
- * off (#468).
+ * Step 2's keys: the same letters with other accents, including an
+ * unaccented spelling of an accented query, or with the final apostrophe the
+ * query left off (#468).
  */
-async function accentMatches(db: LookupDatabase, releaseId: string, key: string): Promise<Candidate[]> {
-  const keys = await sameLetterKeys(db, releaseId, key);
+async function accentKeys(db: LookupDatabase, releaseId: string, key: string): Promise<Proposed> {
+  const { keys, indexed } = await sameLetterKeys(db, releaseId, key);
   const folded = foldKey(key);
   // An unaccented spelling of an accented query is not in accent_fold; it ranks last among equals.
   if (folded !== key && !keys.has(folded)) keys.set(folded, { edits: 0, languages: 0, richness: 0 });
   keys.delete(key);
-  return candidatesFor(db, releaseId, keys);
+  return { keys, indexed };
 }
 
 const isMark = (char: string): boolean => /\p{M}/u.test(char);
@@ -240,27 +249,26 @@ export function addsMarksTo(key: string, written: string): boolean {
 export async function writtenSpellings({ db, releaseId, query }: { db: LookupDatabase; releaseId: string; query: string }): Promise<string[]> {
   const key = normalizeItalianExact(query);
   if (key === "") return [];
-  const keys = await sameLetterKeys(db, releaseId, key);
+  const { keys } = await sameLetterKeys(db, releaseId, key);
   for (const candidate of keys.keys()) if (!addsMarksTo(key, candidate)) keys.delete(candidate);
   const candidates = await candidatesFor(db, releaseId, keys);
   return candidates.filter((candidate) => candidate.headword).map((candidate) => candidate.surface);
 }
 
-/** Step 3: a lemma headword one edit away, through its stored deletions. */
-async function typoMatches(db: LookupDatabase, releaseId: string, key: string): Promise<Candidate[]> {
+/** Step 3's keys: the lemma headwords one edit away, through their stored deletions. */
+async function typoKeys(db: LookupDatabase, releaseId: string, key: string): Promise<Map<string, Found>> {
   const length = [...key].length;
-  if (length < TYPO_MIN_LENGTH || length > TYPO_MAX_LENGTH) return [];
+  if (length < TYPO_MIN_LENGTH || length > TYPO_MAX_LENGTH) return new Map();
   const probes = deletionKeys(key);
   const rows = await db.all<{ surface_key: string; languages: number; richness: number }>(
     `SELECT DISTINCT surface_key, languages, richness FROM typo_key WHERE release_id IN (${servedBy("?1")}) AND deletion_key IN (${placeholders(probes.length, 2)})`,
     [releaseId, ...probes],
   );
-  const keys = new Map<string, Found>(
+  return new Map<string, Found>(
     rows
       .filter((row) => row.surface_key !== key && withinOneEdit(key, row.surface_key))
       .map((row) => [row.surface_key, { edits: 1, languages: row.languages, richness: row.richness }]),
   );
-  return candidatesFor(db, releaseId, keys);
 }
 
 /**
@@ -268,20 +276,38 @@ async function typoMatches(db: LookupDatabase, releaseId: string, key: string): 
  * only when the one before found nothing: accent, then one edit, then the
  * query corrected to read as an expression, then the words that begin with
  * it, then nothing. The corrected queries also join an accent or a typo offer.
+ *
+ * The release is named by id, or given as the release the lookup already
+ * found servable, which the prefix step then does not read again (#665).
  */
-export async function findNearby({ db, releaseId, query }: { db: LookupDatabase; releaseId: string; query: string }): Promise<Nearby> {
+export async function findNearby({ db, query, ...of }: { db: LookupDatabase; query: string } & ReleaseRef): Promise<Nearby> {
   const key = normalizeItalianExact(query);
   if (key === "") return { kind: "none" };
+  const releaseId = releaseIdOf(of);
 
   let prefixRead: Promise<string[]> | undefined;
   const prefixWords = (): Promise<string[]> =>
-    (prefixRead ??= suggest({ db, releaseId, prefix: query }).then((answer) => (answer.outcome === "suggested" ? answer.suggestions : [])));
+    (prefixRead ??= suggest({ db, prefix: query, ...of }).then((answer) => (answer.outcome === "suggested" ? answer.suggestions : [])));
+
+  // The accent and one-edit indexes are probed in one D1 call (#663). Their
+  // keys then say which later reads the page can use, so the next call sends
+  // only those (#665). A one-edit match is the answer only when the accent
+  // step offers nothing, which its index has all but settled: it named no key.
+  const [accentProposed, typoProposed, phrases] = await Promise.all([
+    accentKeys(db, releaseId, key),
+    typoKeys(db, releaseId, key),
+    nearPhrases(db, releaseId, key, NEARBY_LIMIT),
+  ]);
+  const typoMayAnswer = typoProposed.size > 0 && !accentProposed.indexed;
   // A query of one word is never offered a phrase, so its prefix list is used
-  // unless a typo match is found. Its reads start beside the accent step's and
-  // ride in the same D1 calls (#663). A typo match never awaits it, so a
-  // failed prefix read cannot fail that answer.
-  if (!/\s/.test(key)) prefixWords().catch(() => undefined);
-  const [accent, phrases] = await Promise.all([accentMatches(db, releaseId, key), nearPhrases(db, releaseId, key, NEARBY_LIMIT)]);
+  // unless a typo match answers; when none can, its reads ride beside the
+  // surfaces read. Nothing awaits it on a typo page, so a failed prefix read
+  // cannot fail that answer.
+  if (!/\s/.test(key) && !typoMayAnswer) prefixWords().catch(() => undefined);
+  const [accent, typoEarly] = await Promise.all([
+    candidatesFor(db, releaseId, accentProposed.keys),
+    typoMayAnswer ? candidatesFor(db, releaseId, typoProposed) : undefined,
+  ]);
   const phrasesBesides = (shown: readonly string[]) => {
     const keys = new Set(shown.map(normalizeItalianExact));
     return phrases.filter((offer) => !keys.has(offer.phrase));
@@ -293,7 +319,7 @@ export async function findNearby({ db, releaseId, query }: { db: LookupDatabase;
     return { kind: "accent", best: best.surface, others, phrases: phrasesBesides([best.surface, ...others]) };
   }
 
-  const typo = await typoMatches(db, releaseId, key);
+  const typo = typoEarly ?? (await candidatesFor(db, releaseId, typoProposed));
   if (typo.length > 0) {
     const [best, ...rest] = typo;
     const others = rest.map((c) => c.surface).slice(0, NEARBY_LIMIT);

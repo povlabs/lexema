@@ -6,8 +6,8 @@ import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { gzipSync } from "node:zlib";
 import { seedSql } from "../src/import/seedSql.js";
-import { fromNodeSqlite } from "../src/lookup/database.js";
-import { MAX_QUERY_LENGTH } from "../src/lookup/lookup.js";
+import { fromNodeSqlite, type LookupDatabase } from "../src/lookup/database.js";
+import { MAX_QUERY_LENGTH, servableRelease } from "../src/lookup/lookup.js";
 import {
   MAX_PREFIX_LENGTH,
   MIN_PREFIX_LENGTH,
@@ -275,6 +275,23 @@ test("the field and the server agree on which prefixes can be asked", () => {
 test("a release that is not servable is refused, as exact lookup refuses it", async () => {
   await withFixture(async (db) => {
     await assert.rejects(suggest({ db: fromNodeSqlite(db), releaseId: "it-missing", prefix: "casa" }), /no complete release/);
+  });
+});
+
+test("a release a lookup already found servable is not read again, and its normalizer is still checked (#665)", async () => {
+  await withFixture(async (db) => {
+    const release = await servableRelease(fromNodeSqlite(db), RELEASE);
+    const sent: string[] = [];
+    const recorded: LookupDatabase = {
+      all: (sql, params) => {
+        sent.push(sql);
+        return fromNodeSqlite(db).all(sql, params);
+      },
+    };
+    assert.deepEqual(await suggest({ db: recorded, release, prefix: "ca" }), await ask(db, "ca"));
+    assert.ok(sent.length > 0);
+    assert.ok(!sent.some((sql) => sql.includes("FROM source_release")), sent.join("\n"));
+    await assert.rejects(suggest({ db: fromNodeSqlite(db), release: { ...release, normalizer: "it-other" }, prefix: "ca" }), /normalizer/);
   });
 });
 
