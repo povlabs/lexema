@@ -76,6 +76,9 @@ Worker lets the reader's browser keep the home page and each word page for an
 hour (`private, max-age=3600`, [pageCache.ts](../web/worker/dictionary/pageCache.ts)).
 A page whose lookup failed is never kept, so an outage does not outlast itself
 in a reader's browser.
+Each data center's Cloudflare cache also keeps those pages, under the served
+version, so a deploy or a dictionary apply starts it fresh and no reader gets a
+page from an older version from there.
 If the data identity cannot be read, the card route returns an uncached home card.
 Reading the identity probes the newest applied change and table existence, plus
 one singleton row for each revision table that exists; it scans no lexical rows.

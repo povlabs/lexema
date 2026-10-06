@@ -69,6 +69,11 @@ export function pagePolicyOf(nonce: ScriptNonce): string {
   ].join("; ");
 }
 
+/** The script nonce a page policy names, or none when `policy` names none. */
+export function scriptNonceOf(policy: string | null): ScriptNonce | undefined {
+  return policy?.match(/'nonce-([^']+)'/)?.[1] as ScriptNonce | undefined;
+}
+
 /** The policy of every API response: JSON loads nothing and is framed by nothing. */
 export const API_POLICY = "default-src 'none'; frame-ancestors 'none'";
 

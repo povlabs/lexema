@@ -27,7 +27,11 @@
 // The health check (worker/shared/health.ts) is answered next, on every host and in
 // front of the per-visitor limits, so a monitor is never counted as a visitor. Around
 // the host routing, a word page or the home page that may stay in the reader's
-// browser for an hour is marked so (worker/dictionary/pageCache.ts). A shared link's card (worker/dictionary/card.ts) is answered in front of the
+// browser for an hour is marked so (worker/dictionary/pageCache.ts). Inside the
+// per-visitor limits, so a hit counts as a render did, the same page is also
+// kept in Cloudflare's cache for the served version, and the next reader in
+// that data center gets the kept copy with a fresh nonce instead of a render
+// (worker/dictionary/pageCache.ts, worker/dictionary/pageDesk.ts). A shared link's card (worker/dictionary/card.ts) is answered in front of the
 // per-visitor limits: one served from Cloudflare's cache reaches no database,
 // and one it draws counts as a search itself. It also exports the account
 // meter's Durable Object class (worker/api/accountMeterObject.ts), which
@@ -51,7 +55,8 @@ import { withTestSignIn } from "./developers/testSignIn.ts";
 import { withCards } from "./dictionary/card.ts";
 import { workerDesk } from "./dictionary/card/desk.ts";
 import { dictionaryLimitOf } from "./dictionary/limits.ts";
-import { withPageCache } from "./dictionary/pageCache.ts";
+import { withPageCache, withSharedPageCache } from "./dictionary/pageCache.ts";
+import { workerPageDesk } from "./dictionary/pageDesk.ts";
 import { sweepReports } from "./dictionary/reportSweep.ts";
 import { withHealth } from "./shared/health.ts";
 import { byHost } from "./shared/hosts.ts";
@@ -79,9 +84,12 @@ export default {
                   workerDesk,
                   withRateLimits<Env>(
                     { developers: developerLimitOf, dictionary: dictionaryLimitOf },
-                    withTestSignIn<Env>(
-                      stage,
-                      withSignUp<Env>(signUp, withSignIn<Env>(withBilling<Env>(withDashboard<Env>((request, env, ctx) => app.fetch(request, env, ctx))))),
+                    withSharedPageCache<Env>(
+                      workerPageDesk,
+                      withTestSignIn<Env>(
+                        stage,
+                        withSignUp<Env>(signUp, withSignIn<Env>(withBilling<Env>(withDashboard<Env>((request, env, ctx) => app.fetch(request, env, ctx))))),
+                      ),
                     ),
                   ),
                 ),
