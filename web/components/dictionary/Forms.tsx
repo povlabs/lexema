@@ -12,6 +12,7 @@ import { bothGenders, type AgreeingSpelling } from "@lexema/italian/essereAgreem
 import { factRefKey, sourcePointerOf, type DeclaredForm } from "@lexema/lookup/types.ts";
 import {
   isSourceForm,
+  splitsByAuxiliary,
   type Conjugation,
   type MoodTable,
   type NonFinite,
@@ -20,7 +21,7 @@ import {
   type Tense,
 } from "@/lib/dictionary/conjugation.ts";
 import { GENDER_LABEL, NUMBER_LABEL, NUMBERS, type Grid, type GridCell } from "@/lib/dictionary/genderGrid.ts";
-import { More, MoreBlock, MorePanel } from "./More";
+import { More, MoodMoreBlock, MorePanel } from "./More";
 import { MoodTabs } from "./MoodTabs";
 import {
   CELL_SEPARATOR,
@@ -57,6 +58,7 @@ import {
   TENSE_HEAD,
   TENSE_HEAD_SEARCHED,
   TENSE_PAIRS,
+  TENSE_PAIRS_LINED,
   TENSE_TABLE,
 } from "@/components/shared/styles.ts";
 
@@ -194,18 +196,41 @@ function shownSpelling(surface: string, agreeing: ReadonlyMap<string, AgreeingSp
  * A spelling the source files twice in the slot (`abbisognare` repeats its
  * whole table) shows once and keeps both entries. A spelling `agreeing` names
  * shows both genders, `sono andato/a`, and links to the source's spelling.
+ *
+ * `lines` are the slot's spellings grouped by the auxiliary they are built on
+ * (#683). One group is the plain run above. Two or more each take a line of
+ * their own, with no comma between them, so vivere's `io` cell is `ho vissuto`
+ * above `sono vissuto/a`. A group too long for its column wraps under a
+ * hanging indent, so a wrapped line reads as part of its group and the next
+ * group still starts at the column's edge (`ho assorbito,` / `  assorto` /
+ * `sono assorbito/a,`). Each group after the first is a bare `div`, and the
+ * indent is set once per set by `TENSE_PAIRS_LINED`, since every byte here is
+ * in the HTML and again in the payload (#647).
  */
 function FormLinks({
-  forms,
+  lines,
   searched,
   agreeing = NONE_AGREE,
 }: {
-  forms: readonly TableForm[];
+  lines: readonly (readonly TableForm[])[];
   searched: (form: TableForm) => boolean;
   agreeing?: ReadonlyMap<string, AgreeingSpelling>;
 }) {
+  if (lines.length > 1) {
+    return (
+      <>
+        <FormLinks lines={lines.slice(0, 1)} searched={searched} agreeing={agreeing} />
+        {lines.slice(1).map((line, i) => (
+          // The lines never reorder, and a short key keeps the payload light.
+          <div key={i}>
+            <FormLinks lines={[line]} searched={searched} agreeing={agreeing} />
+          </div>
+        ))}
+      </>
+    );
+  }
   const spellings: TableForm[][] = [];
-  for (const form of forms) {
+  for (const form of lines[0] ?? []) {
     const same = spellings.find((group) => group[0].surface === form.surface);
     if (same === undefined) spellings.push([form]);
     else same.push(form);
@@ -247,7 +272,7 @@ function NonFiniteLine({ items, searched }: { items: readonly NonFinite<TableFor
               {label}
             </dt>
             <dd className={NON_FINITE_FORMS}>
-              {forms.length === 0 ? <Dash /> : <FormLinks forms={forms} searched={searched} />}
+              {forms.length === 0 ? <Dash /> : <FormLinks lines={[forms]} searched={searched} />}
             </dd>
           </div>
         );
@@ -274,7 +299,7 @@ function TenseTables({
   const pairs: Tense<TableForm>[][] = [];
   for (let i = 0; i < tenses.length; i += 2) pairs.push(tenses.slice(i, i + 2));
   return (
-    <div className={TENSE_PAIRS}>
+    <div className={tenses.some(splitsByAuxiliary) ? TENSE_PAIRS_LINED : TENSE_PAIRS}>
       {pairs.map((pair, p) => (
         <table key={pair[0].name} className={TENSE_TABLE} data-tenses={pair.map((t) => t.name).join(" · ")}>
           <thead>
@@ -311,7 +336,7 @@ function TenseTables({
                       {tense.cells[row].forms.length === 0 ? (
                         <Dash />
                       ) : (
-                        <FormLinks forms={tense.cells[row].forms} searched={searched} agreeing={tense.cells[row].agreeing} />
+                        <FormLinks lines={tense.cells[row].lines} searched={searched} agreeing={tense.cells[row].agreeing} />
                       )}
                     </td>
                   ))}
@@ -327,13 +352,14 @@ function TenseTables({
 
 /**
  * One mood's tables. The compound tenses wait behind the one `+ more` after the
- * simple tenses, open when the search hit one. Open, each set is named —
+ * simple tenses, open when the search hit one in any mood; every mood's control
+ * opens and closes them on every tab (`MoodsMore`, #683). Open, each set is named —
  * *Tempi semplici*, *Tempi composti* (board f9vHId) — and `less` ends them;
  * closed, the simple tenses need no name.
  */
 function MoodPanelView({ table, searched }: { table: MoodTable<TableForm>; searched: (form: TableForm) => boolean }) {
   return (
-    <MoreBlock kind="mood" open={table.compoundSearched}>
+    <MoodMoreBlock>
       {table.simple.length > 0 && (
         <>
           {table.compound.length > 0 && (
@@ -355,7 +381,7 @@ function MoodPanelView({ table, searched }: { table: MoodTable<TableForm>; searc
           <More place="compound" />
         </>
       )}
-    </MoreBlock>
+    </MoodMoreBlock>
   );
 }
 
@@ -376,6 +402,7 @@ export function ConjugationView({
         <MoodTabs
           label={`Moods of ${word}`}
           open={conjugation.openMood}
+          compoundOpen={conjugation.compoundSearched}
           panels={conjugation.moods.map((table) => ({
             mood: table.mood,
             panel: <MoodPanelView table={table} searched={searched} />,

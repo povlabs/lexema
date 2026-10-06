@@ -17,6 +17,7 @@
 // gloss names (`it-verb-form-gloss/v1`, src/italian/verbFormGloss.ts), into the
 // same grid.
 
+import { groupByAuxiliary } from "@lexema/italian/compoundAuxiliary.ts";
 import { essereAgreement, type AgreeingSpelling } from "@lexema/italian/essereAgreement.ts";
 import { sourcePointerOf, sourceTagsOf, type DeclaredForm, type DeclaredVerbForm, type SearchedSpellings, type SourceForm } from "@lexema/lookup/types.ts";
 import {
@@ -113,6 +114,12 @@ function agreeingOf(forms: readonly TableForm[], number: VerbNumber): ReadonlyMa
 /** One cell: every spelling the source files there, in source order. */
 export interface Cell<F extends TableForm = SourceForm> {
   forms: F[];
+  /**
+   * The same spellings as lines, one per auxiliary they are built on
+   * (`it-compound-auxiliary/v1`, #683): vivere's `io` cell is `ho vissuto`
+   * above `sono vissuto`. A cell on one auxiliary, or none, is one line.
+   */
+  lines: F[][];
   searched: boolean;
   /**
    * The cell's spellings that agree with the subject's gender, keyed by the
@@ -129,6 +136,9 @@ export interface Tense<F extends TableForm = SourceForm> {
   searched: boolean;
 }
 
+/** Whether some cell of the tense puts its auxiliaries on lines of their own (#683). */
+export const splitsByAuxiliary = (tense: Tense<TableForm>): boolean => tense.cells.some((cell) => cell.lines.length > 1);
+
 export interface MoodTable<F extends TableForm = SourceForm> {
   mood: Mood;
   /** The rows every table of this mood has, in grammar order. */
@@ -137,8 +147,6 @@ export interface MoodTable<F extends TableForm = SourceForm> {
   searchedPersons: boolean[];
   simple: Tense<F>[];
   compound: Tense<F>[];
-  /** The compound tenses hold the searched form, so they open with the page. */
-  compoundSearched: boolean;
 }
 
 export type NonFiniteLabel = "infinito" | "gerundio" | "participio presente" | "participio" | "ausiliare";
@@ -153,6 +161,12 @@ export interface Conjugation<F extends TableForm = SourceForm> {
   moods: MoodTable<F>[];
   /** The tab the table opens on: the searched form's mood, else Indicativo. */
   openMood: Mood | undefined;
+  /**
+   * Some mood's compound tenses hold the searched form, so they open with the
+   * page. One state for the whole table: every mood tab opens and closes its
+   * compound tenses together (#683).
+   */
+  compoundSearched: boolean;
 }
 
 /** Where one form goes: a finite cell, or a slot of the non-finite line. */
@@ -239,21 +253,24 @@ function layOut<F extends TableForm>(placed: readonly Placed<F>[], hit: (form: F
       const compound = isCompound(mood, name);
       const cells = persons.map((person) => {
         const spelled = tenses.get(name)?.get(person) ?? [];
-        return { forms: spelled, searched: spelled.some(hit), agreeing: compound ? agreeingOf(spelled, NUMBER_OF[person]) : NONE_AGREE };
+        return {
+          forms: spelled,
+          lines: groupByAuxiliary(spelled, (form) => form.surface),
+          searched: spelled.some(hit),
+          agreeing: compound ? agreeingOf(spelled, NUMBER_OF[person]) : NONE_AGREE,
+        };
       });
       return { name, cells, searched: cells.some((cell) => cell.searched) };
     };
     const named = TENSE_ORDER[mood].filter((name) => tenses.has(name)).map(tense);
     const searchedPersons = persons.map((_, i) => named.some((t) => t.cells[i].searched));
-    const compound = named.filter((t) => isCompound(mood, t.name));
     return [
       {
         mood,
         persons,
         searchedPersons,
         simple: named.filter((t) => !isCompound(mood, t.name)),
-        compound,
-        compoundSearched: compound.some((t) => t.searched),
+        compound: named.filter((t) => isCompound(mood, t.name)),
       },
     ];
   });
@@ -266,6 +283,7 @@ function layOut<F extends TableForm>(placed: readonly Placed<F>[], hit: (form: F
     }),
     moods,
     openMood: searchedMood?.mood ?? moods[0]?.mood,
+    compoundSearched: moods.some((table) => table.compound.some((t) => t.searched)),
   };
 }
 

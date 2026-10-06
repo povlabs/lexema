@@ -347,12 +347,30 @@ export const TAB_PANEL = `mt-4 sm:mt-[1.1875rem] ${FOCUS_RING}`;
  * 190 px, narrower when the screen is; only the first pair draws the person
  * column. The rules sit here, once per set, not on each pair, to keep the
  * page light.
+ *
+ * On a phone a pair whose two longest words cannot fit side by side
+ * (disinteressarsi's `si disinteressarono` beside `si disinteresseranno`)
+ * scrolls sideways here rather than splitting a word or pushing the page
+ * wider (#683).
  */
 export const TENSE_PAIRS =
-  "flex flex-col gap-[0.8125rem] sm:grid sm:grid-flow-col sm:justify-start sm:gap-0 sm:*:row-span-7 sm:*:grid sm:*:grid-rows-subgrid sm:*:*:contents sm:[&_tr]:grid sm:[&_tr]:grid-flow-col sm:[&_tr]:auto-cols-[minmax(0,11.875rem)] sm:[&_tbody_tr]:items-baseline sm:[&>:first-child_tr]:grid-cols-[6.875rem]";
-/** On a phone a pair fills the width with fixed columns, so a long form wraps rather than scrolls. */
-export const TENSE_TABLE = "border-collapse text-left max-sm:w-full max-sm:table-fixed";
-export const PERSON_HEAD = "w-[4.0625rem] p-0 sm:w-[6.875rem]";
+  "flex flex-col gap-[0.8125rem] max-sm:overflow-x-auto sm:grid sm:grid-flow-col sm:justify-start sm:gap-0 sm:*:row-span-7 sm:*:grid sm:*:grid-rows-subgrid sm:*:*:contents sm:[&_tr]:grid sm:[&_tr]:grid-flow-col sm:[&_tr]:auto-cols-[minmax(0,11.875rem)] sm:[&_tbody_tr]:items-baseline sm:[&>:first-child_tr]:grid-cols-[6.875rem]";
+/**
+ * A set with a cell built on two auxiliaries, whose second auxiliary starts a
+ * `div` of its own (#683). A cell's lines hang: a line too long for its
+ * column wraps under a 2ch indent, so its wrapped part reads as the same
+ * group and only a new group starts at the column's edge. The indent sits on
+ * the cell and the `div` inherits it. Only such a set carries the rule.
+ */
+export const TENSE_PAIRS_LINED = `${TENSE_PAIRS} [&_tbody_td]:pl-[2ch] [&_tbody_td]:-indent-[2ch]`;
+/**
+ * On a phone a pair fills the width, its two tense columns half each, and a
+ * column grows to its longest word: a form wraps only at a space, never
+ * inside a word (`ti sei` above `accorto/a`, #683). A lone tense takes the
+ * whole width beside the persons, which keep their 65 px.
+ */
+export const TENSE_TABLE = "border-collapse text-left max-sm:w-full max-sm:[&_thead_th:not(:only-of-type)]:w-1/2";
+export const PERSON_HEAD = "w-[4.0625rem] p-0 max-sm:min-w-[4.0625rem] sm:w-[6.875rem]";
 /** A second table's person column: drawn on a phone, kept for screen readers on a wide screen. */
 export const PERSON_HEAD_REPEAT = `${PERSON_HEAD} sm:sr-only`;
 const TENSE_HEAD_BASE = "p-0 pb-px pr-4 align-top font-sans text-[0.72rem] leading-5 sm:text-[0.75rem]";
@@ -367,7 +385,14 @@ const PERSON_BASE = "p-0 pr-3 align-baseline whitespace-nowrap font-sans text-[0
 export const PERSON = `${PERSON_BASE} font-normal text-text-muted`;
 export const PERSON_SEARCHED = `${PERSON_BASE} font-semibold text-accent`;
 export const PERSON_REPEAT = "sm:sr-only";
-export const TENSE_CELL = "p-0 pr-4 align-baseline font-mono text-[0.875rem] leading-[1.625rem] text-text-strong wrap-anywhere max-sm:pr-2 sm:text-[0.9375rem] sm:leading-[1.8125rem]";
+/**
+ * A tense cell keeps the 16 px gap the tense heads draw before the next
+ * column, on a phone too (frames 19 to 21), so two long forms never touch
+ * (`ti sei accorto/a`, `ti eri accorto/a`, #683). On a phone a line breaks
+ * only at a space; on a wide screen a word wider than its column still
+ * breaks, as before.
+ */
+export const TENSE_CELL = "p-0 pr-4 align-baseline font-mono text-[0.875rem] leading-[1.625rem] text-text-strong sm:wrap-anywhere sm:text-[0.9375rem] sm:leading-[1.8125rem]";
 /**
  * The row that holds the searched form is 2 px taller, the form 1 px lower, so
  * its underline clears the next row (frames 17, 18 and 21). On a wide screen

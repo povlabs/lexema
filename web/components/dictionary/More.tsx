@@ -17,7 +17,7 @@
 // the page's inline payload (#647).
 
 import { Collapsible } from "@base-ui/react/collapsible";
-import type { ReactNode } from "react";
+import { createContext, useContext, useMemo, useState, type ReactNode } from "react";
 import {
   COMPOUND_TABLES,
   MORE_BLOCK,
@@ -30,9 +30,38 @@ import {
 } from "@/components/shared/styles.ts";
 
 /** The block the control opens. `open` starts it open, as when the search hit something it reveals. */
-export function MoreBlock({ kind, open, children }: { kind: MoreBlockKind; open?: boolean; children: ReactNode }) {
+export function MoreBlock({ kind, open, children }: { kind: Exclude<MoreBlockKind, "mood">; open?: boolean; children: ReactNode }) {
   return (
     <Collapsible.Root className={MORE_BLOCK[kind]} defaultOpen={open}>
+      {children}
+    </Collapsible.Root>
+  );
+}
+
+interface SharedOpen {
+  open: boolean;
+  setOpen: (open: boolean) => void;
+}
+
+const MoodsOpen = createContext<SharedOpen | undefined>(undefined);
+
+/**
+ * One open state for a conjugation's compound tenses, shared by every mood
+ * tab: `+ more` on one tab opens them on all, and `less` on any closes them on
+ * all (#683). `open` starts it open, as when the search hit a compound form.
+ */
+export function MoodsMore({ open, children }: { open: boolean; children: ReactNode }) {
+  const [shown, setShown] = useState(open);
+  const value = useMemo(() => ({ open: shown, setOpen: setShown }), [shown]);
+  return <MoodsOpen.Provider value={value}>{children}</MoodsOpen.Provider>;
+}
+
+/** A mood's block the control opens, open exactly when its conjugation's `MoodsMore` is. */
+export function MoodMoreBlock({ children }: { children: ReactNode }) {
+  const shared = useContext(MoodsOpen);
+  if (shared === undefined) throw new Error("MoodMoreBlock sits outside a MoodsMore");
+  return (
+    <Collapsible.Root className={MORE_BLOCK.mood} open={shared.open} onOpenChange={shared.setOpen}>
       {children}
     </Collapsible.Root>
   );

@@ -620,6 +620,21 @@ test("a searched compound form opens the compound tenses; otherwise they wait be
   });
 });
 
+test("the compound tenses share one open state across every mood tab of a conjugation (#683)", async () => {
+  await withDevSeed(async ({ db }) => {
+    const MOODS = ["Indicativo", "Congiuntivo", "Condizionale"];
+    const expanded = (html: string, mood: string): string | undefined =>
+      /<button type="button"[^>]*aria-expanded="(true|false)"[^>]*><span [^>]*>\+ more/.exec(panel(html, mood))?.[1];
+    // A searched indicative compound form opens the compound tenses on every tab, not only its own.
+    const open = nth(await render(db, "sono andato"), 1);
+    assert.deepEqual(MOODS.map((mood) => expanded(open, mood)), ["true", "true", "true"]);
+    assert.doesNotMatch(panel(open, "Congiuntivo"), /<div data-closed="" hidden=""[^>]*><p class="[^"]*" lang="it">Tempi composti/);
+    // With nothing compound searched, every tab waits behind its + more.
+    const closed = nth(await render(db, "andavano"), 1);
+    assert.deepEqual(MOODS.map((mood) => expanded(closed, mood)), ["false", "false", "false"]);
+  });
+});
+
 /** A page's verb form block for `verb` (#636), or undefined when it has none. */
 function verbBlock(html: string, verb: string): string | undefined {
   const open = html.indexOf(`<article class="${READING}" id="reading-voce-verbale-${verb}"`);
@@ -804,10 +819,18 @@ function tenseColumn(html: string, mood: string, tense: string): string[] {
   const body = table[2].slice(table[2].indexOf("<tbody>"));
   return [...body.matchAll(/<tr>(.*?)<\/tr>/g)].map((row) => {
     const person = textOf(/<th [^>]*>(.*?)<\/th>/.exec(row[1])?.[1] ?? "");
-    const cells = [...row[1].matchAll(/<td [^>]*>(.*?)<\/td>/g)].map((cell) => textOf(cell[1]));
+    const cells = [...row[1].matchAll(/<td [^>]*>(.*?)<\/td>/g)].map((cell) => cellText(cell[1]));
     return `${person} ${cells[column]}`;
   });
 }
+
+/** A tense cell's text, its auxiliary lines (#683) joined by ` | `: `ho vissuto | sono vissuto/a`. */
+const cellText = (cell: string): string =>
+  cell
+    .split("<div>")
+    .map(textOf)
+    .filter((line) => line !== "")
+    .join(" | ");
 
 /** Every compound tense of a full conjugation, by mood (`it-moods/v1`). */
 const COMPOUND_TENSES: [string, string][] = [
@@ -854,11 +877,33 @@ test("essere's own table and venire's agree, though essere's record has no ausil
   });
 });
 
-test("a verb with both auxiliaries shows the avere spelling plain and the essere one with both genders: ho vissuto, sono vissuto/a (#676)", async () => {
+test("a verb with both auxiliaries shows each auxiliary on its own line, the essere one with both genders: ho vissuto | sono vissuto/a (#676, #683)", async () => {
   await withDevSeed(async ({ db }) => {
     const vivere = await render(db, "vivere");
     const passato = tenseColumn(vivere, "Indicativo", "passato prossimo");
-    assert.equal(passato[0], "io ho vissuto, sono vissuto/a");
+    assert.equal(passato[0], "io ho vissuto | sono vissuto/a");
+    // No comma joins the two lines, and each spelling is still its own link.
+    assert.match(
+      panel(vivere, "Indicativo"),
+      /<td [^>]*><span><a [^>]*>ho vissuto<\/a><\/span><div><span><a [^>]*>sono vissuto\/a<\/a><\/span><\/div><\/td>/,
+    );
+    assert.ok(formLinks(vivere).some((link) => link.text === "ho vissuto" && link.href === "/?q=ho%20vissuto"));
+    assert.ok(formLinks(vivere).some((link) => link.text === "sono vissuto/a" && link.href === "/?q=sono%20vissuto"));
+    // A cell on one auxiliary, and a simple tense, keep one line.
+    const andare = await render(db, "andare");
+    assert.equal(tenseColumn(andare, "Indicativo", "passato prossimo")[0], "io sono andato/a");
+    assert.equal(tenseColumn(vivere, "Indicativo", "presente")[0], "io vivo");
+    assert.doesNotMatch(panel(andare, "Indicativo"), /<div>/);
+  });
+});
+
+test("a searched spelling in a two-line cell is still marked, its person and tense in the accent (#683)", async () => {
+  await withDevSeed(async ({ db }) => {
+    const html = await render(db, "sono vissuto");
+    const indicativo = panel(html, "Indicativo");
+    assert.deepEqual(searchedForms(indicativo), ["sono vissuto/a"]);
+    assert.match(indicativo, new RegExp(`<th scope="row" class="${esc(PERSON_SEARCHED)}" lang="it">io</th>`));
+    assert.equal(tenseColumn(html, "Indicativo", "passato prossimo")[0], "io ho vissuto | sono vissuto/a");
   });
 });
 
@@ -944,10 +989,10 @@ test("a cell of several spellings shows only its first with both genders, the re
     assert.equal(arrendersi[0], "io mi sono arreso/a, arresosi");
     assert.equal(arrendersi[3], "noi ci siamo arresi/e, arresosi");
     const assorbire = tenseColumn(await render(db, "assorbire"), "Indicativo", "passato prossimo");
-    // assorbire takes both auxiliaries: the avere spelling stays plain.
-    assert.equal(assorbire[0], "io ho assorbito, assorto, sono assorbito/a, assorto");
+    // assorbire takes both auxiliaries: the avere spelling stays plain, each on its own line (#683).
+    assert.equal(assorbire[0], "io ho assorbito, assorto | sono assorbito/a, assorto");
     // The plural rows' essere spelling ends in -o, so it does not agree.
-    assert.equal(assorbire[3], "noi abbiamo assorbito, assorto, siamo assorbito, assorti, assorti");
+    assert.equal(assorbire[3], "noi abbiamo assorbito, assorto | siamo assorbito, assorti, assorti");
   });
 });
 
