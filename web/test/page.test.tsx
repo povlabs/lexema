@@ -678,6 +678,27 @@ test("a verb form its verb's table does not list shows that verb's whole table, 
   });
 });
 
+test("a verb reading whose own forms fill no cell shows no Forms block, so never a dash-only row (#674)", async () => {
+  // The dev seed has no andata records, so andato's and andati's Voce verbale
+  // records stay readings; their forms carry only gender and number tags.
+  await withDevSeed(async ({ db }) => {
+    const html = await render(db, "andata");
+    const voci = readingsOfPage(html).filter((reading) => /<h2 [^>]*>.*?Voce verbale.*?<\/h2>/.test(reading));
+    assert.equal(voci.length, 2, "andata: andato's and andati's Voce verbale readings");
+    for (const reading of voci) assert.doesNotMatch(reading, /id="forms-/, "andata: a Voce verbale reading shows Forms");
+    assert.doesNotMatch(textOf(html), /gerundio—|participio—|ausiliare—/, "andata: a dash-only row");
+  });
+  // sditalinare's only form is `plurale della parola`, tagged plural.
+  const lines = (await readFile(join(REPO, "fixtures/sditalinare.jsonl"), "utf8")).trimEnd().split("\n");
+  await withLines(lines, async ({ db }) => {
+    const html = await render(db, "sditalinare");
+    assert.deepEqual(headingsOf(html), ["1·Verbo"]);
+    assert.deepEqual(definitionLines(html), ["(vulgar) fare un ditalino"]);
+    assert.doesNotMatch(html, /id="forms-/, "sditalinare: shows a Forms block");
+    assert.doesNotMatch(textOf(html), /gerundio|ausiliare/, "sditalinare: a non-finite row");
+  });
+});
+
 /** `fixtures/salivate.jsonl`: salivate, salivare (adjective and verb) and saliva (noun and verb form), as the release has them. */
 const SALIVATE_LINES = (await readFile(join(REPO, "fixtures/salivate.jsonl"), "utf8")).trimEnd().split("\n");
 
