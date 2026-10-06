@@ -397,7 +397,7 @@ export function VerbFormBlockView({ block }: { block: VerbFormBlock }) {
   const looseExamples = firsts.flatMap((reading) => definitionsOf(reading).looseExamples);
   const more = block.lines.length > 1 || (lead.kind === "source" && leadHoldsMore(lead.item)) || looseExamples.length > 0;
   return (
-    <article className={READING} id={anchor} aria-labelledby={readingHeadingId(block)}>
+    <article className={READING} id={anchor} aria-labelledby={readingHeadingId(block)} data-verb-form={block.verb}>
       <h2 className={READING_HEADING} id={readingHeadingId(block)}>
         <span className={READING_NUMBER}>{block.number}</span>
         <span className={READING_DOT} aria-hidden="true">

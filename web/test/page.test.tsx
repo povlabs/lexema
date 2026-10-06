@@ -57,6 +57,7 @@ import { PhraseView } from "@/components/dictionary/Phrase";
 import { phrasePage } from "@/lib/dictionary/phrasePage.ts";
 import { EXPRESSION_FILTER_ABOVE, matchesExpression, shownRecords, wordPage } from "@/lib/dictionary/wordPage.ts";
 import { firstQuery, pageTitle } from "@/lib/dictionary/params";
+import { readingProblem, SMOKE_WORDS } from "@/builds/previewSmokeCommand.ts";
 // The class strings the components carry, imported rather than copied, so a
 // restyle that changes one changes both together.
 import {
@@ -299,6 +300,12 @@ const formLinks = (html: string): { text: string; href: string; searched: boolea
   }));
 
 // The design's words, from their real records ----------------------------------
+
+test("the preview smoke finds a reading on every smoke word's page, a verb form block's included (#246, #636)", async () => {
+  await withDevSeed(async ({ db }) => {
+    for (const word of SMOKE_WORDS) assert.equal(readingProblem(await render(db, word), word), undefined, word);
+  });
+});
 
 test("every record the lookup returns is a reading, except a form of the query's own readings or lemma, headed by its number and its own pos_title", async () => {
   await withDevSeed(async ({ db }) => {

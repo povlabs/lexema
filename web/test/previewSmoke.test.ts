@@ -190,6 +190,17 @@ test("any of the six words that does not resolve fails the check, naming the wor
   }
 });
 
+test("a verb form block is a reading: a page of one block and no record's reading passes (#636)", async () => {
+  // As PR #645's Preview sent `/?q=andavano` on 2026-10-06, with the block marked.
+  const github = new FakeGitHub(pr269());
+  const block: Page = {
+    ...found("andavano"),
+    body: `${head("andavano")}<body><article class="scroll-mt-6 mt-7" id="reading-voce-verbale-andare" aria-labelledby="reading-heading-voce-verbale-andare" data-verb-form="andare">`,
+  };
+  await smoke(github, { ...UP, [wordUrl("andavano")]: block });
+  assert.equal(github.checks[0].conclusion, "success");
+});
+
 test("a reading sent hidden for a script to show fails the check, naming the word (#115)", async () => {
   for (const word of SMOKE_WORDS) {
     const github = new FakeGitHub(pr269());
