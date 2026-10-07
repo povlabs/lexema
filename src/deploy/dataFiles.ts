@@ -64,17 +64,18 @@ export const archivePath = (releaseId: ReleaseId, sha256: string): string =>
 export const dumpPath = (file: string): string => `source/${file}`;
 
 /** A change that reads an archive and a dump from the data repository. */
-export type DataReadingChange = Extract<DeclaredChange, { command: "update:auto" | "hide:records" | "load:page-entries" }>;
+export type DataReadingChange = Extract<DeclaredChange, { command: "update:auto" | "hide:records" | "load:page-entries" | "load:recovered-definitions" }>;
 
 /** Whether `change` reads an archive and a dump, the ones `filesFor` names. */
 export const readsDataFiles = (change: DeclaredChange): change is DataReadingChange =>
-  change.command === "update:auto" || change.command === "hide:records" || change.command === "load:page-entries";
+  change.command === "update:auto" || change.command === "hide:records" || change.command === "load:page-entries" || change.command === "load:recovered-definitions";
 
 /**
  * The archive and dump `change` reads, from the catalogs: `update:auto` reads
- * its feed release, `hide:records` and `load:page-entries` the master's
- * archive, each with the dump it was built from. `update:upgrade`, `normalize:source-text` and
- * `correct:records` read none.
+ * its feed release; `hide:records`, `load:page-entries` and
+ * `load:recovered-definitions` the master's archive, each with the dump it was
+ * built from. `update:upgrade`, `normalize:source-text` and `correct:records`
+ * read none.
  */
 export function filesFor(
   change: DeclaredChange,
@@ -90,6 +91,7 @@ export function filesFor(
       return releaseFiles(change.inputs.feedRelease, catalog, dumps);
     case "hide:records":
     case "load:page-entries":
+    case "load:recovered-definitions":
       return releaseFiles(change.inputs.archive, catalog, dumps);
   }
 }

@@ -1,0 +1,33 @@
+<!-- it.wiktionary.org/wiki/harmonium revision 3968234 (2023-12-31T11:06:49Z), CC BY-SA 4.0. Saved verbatim. -->
+== {{-it-}} ==
+[[File:RoscheiderhofReedOrganHörügelH7a.jpg|thumb|{{Pn}} [[occidentale]]]]
+[[File:Harmonium 20151009 (23914086965).jpg|thumb|{{Pn}} [[indiano]]]]
+{{-sost-|it}}
+{{Pn|w=armonium}}
+#*{{Term|musica|it|strumenti musicali}} [[strumento musicale]] a [[serbatoio]] d'[[aria]] con [[tastiera]] (di solito una), nato in [[Francia]] nel [[diciannovesimo]] [[secolo]], dove il [[suono]] è prodotto dalle ance libere, analogamente alla [[fisarmonica]] e all'[[armonica]] a [[bocca]]. L'{{Pn}} è costituito in due tipi diversi:
+#**'''[[occidentale]]''' – specie di [[organo]] [[positivo]] ad ance libere anziché a [[canne]], con mantici a [[pedale]] anziché a [[mano]]
+#**'''[[indiano]]''' – specie di organo portativo ad ance libere, anziché a canne
+
+{{-sill-}}
+; har | mò | nium
+
+{{-pron-}}
+{{IPA|/aʁmɔnjɔm/}}
+
+{{-rel-}}
+*[[organo]]
+
+{{-trad-}}
+{{Trad1|strumento musicale}}
+:*{{ca}}: [[:ca:harmonium|harmonium]]
+:*{{es}}: [[:es:harmonium|harmonium]]
+:*{{fr}}: [[:fr:harmonium|harmonium]]
+{{mid}}
+:*{{en}}: [[:en:harmonium|harmonium]]
+:*{{nl}}: [[:nl:harmonium|harmonium]]
+:*{{sv}}: [[:sv:harmonium|harmonium]]
+{{Trad2}}
+
+
+== Altri progetti ==
+{{Interprogetto|w=armonium|w_preposizione=riguardante l'|commons=Category:Pump organs|commons_preposizione=sull'|etichetta=harmonium}}

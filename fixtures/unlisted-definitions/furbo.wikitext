@@ -1,0 +1,81 @@
+<!-- it.wiktionary.org/wiki/furbo revision 4066551 (2026-03-11T00:59:45Z), CC BY-SA 4.0. Saved verbatim. -->
+== {{-it-}} ==
+{{-agg-|it}}
+{{Pn}}  ''m sing''
+{{Tabs|furbo|furbi|furba|furbe}}
+1. che usa la sua [[intelligenza]]
+* ''quel ragazzo è '''furbo'''''
+
+2. {{Est}} chi [[considera]], spesso [[meditando]] in proposito, quando e come qualcosa debba essere detto e/o fatto
+
+3. {{Spreg}} che "[[ruba]]" e/o "[[imbroglia]]"
+
+4. {{Spreg}} che [[strumentalizza]], anche [[verbalmente]], a [[danno]] di una o più persone anche [[falsando]] quanto [già] [[detto]] e/o [[fatto]], talvolta [[inibendo]] motivi di [[pacificazione]]
+
+{{-sost-|it}}
+{{Pn}} ''m sing'' {{Linkp|furbi}}
+
+5. chi è molto [[astuto]] (spesso con una sfumatura di malizia)
+
+6. {{Est}} {{Spreg}} chi, [[approfittando]] di [[conoscere]] una o più [[cose]], soprattutto di qualcuno, [[trascorre]] le [[giornate]] in [[illusorie]] [[macchinazioni]] [[alternando]] [[minacce]] a [[perdita di tempo]]
+
+7. {{Spreg}} chi, [[convinto]] di [[nascondere]] qualcosa di [[sbagliato]] invece [[evidente]], non si [[accorge]] di [[apparire]] [[sciocco]], [[goffo]] e [[disonesto]]
+
+{{-sill-}}
+; fùr | bo
+
+{{-pron-}}
+{{IPA|/ˈfurbo/}}
+
+{{-etim-}}
+etimologia sconosciuta
+
+{{-sin-}}
+* [[scaltro]], [[machiavellico]], [[astuto]], [[accorto]], [[avveduto]], [[intelligente]], [[acuto]], [[sottile]], [[perspicace]], [[lungimirante]], [[abile]], [[attento]], [[prudente]], [[malizioso]], [[sagace]], [[smaliziato]], [[spregiudicato]], [[sottile]]
+* [[furbacchione]], [[marpione]], [[imbroglione]], [[birbone]], [[birbante]]
+* {{Term|familiare|it}} [[dritto]],  [[volpe]], [[volpone]]
+* {{Est}} {{Spreg}} [[canaglia]], [[scugnizzo]]
+*{{Term|antico|it}} [[destro]]
+
+{{-ant-}}
+* [[sincero]], [[leale]], [[schietto]]
+* {{Spreg}} [[ingenuo]], [[naif]], [[sprovveduto]], [[ottuso]]
+* [[tonto]], [[sciocco]], [[stolto]], [[candido]], [[sempliciotto]]
+
+{{-der-}}
+* [[furbacchione]], [[furbastro]], [[furberia]], [[furbesco]], [[furbizia]]
+* {{Est}} [[furbata]]
+
+{{-rel-}}
+* [[arruffare]], [[rapire]], [[birichino]]
+* {{Spreg}} [[combriccola]]
+
+{{-alter-}}
+* {{Dim}} [[furbetto]]
+* {{Spreg}} [[furbastro]]
+* [[furbacchiotto]]
+
+{{-prov-}}
+* ''fare il {{Pn}}'': riferito a chi fa finta di niente e ne approfitta, quindi cercando di nascondere invano qualcosa a chi è appunto consapevole della situazione o delle cose
+
+{{-trad-}}
+{{Trad1|1. che usa la sua intelligenza}}
+:* {{en}}: [[sly]], [[cunning]], [[shrewd]], [[astute]], [[clever]], [[quick-witted]]
+:* {{la}}: [[vafer]], [[callidus]], [[astutus]]
+{{mid}}
+:* {{es}}: [[astuto]]
+:* {{de}}: [[schlau]], [[findig]]
+{{Trad2}}
+
+{{Trad1|5. chi è molto [[astuto]] (spesso con una sfumatura di malizia)}}
+:* {{en}}: [[fox]]
+:* {{pt}}: [[raposa]] ''f'', [[raposo]] ''m''
+{{Trad2}}
+
+{{-ref-}}
+* {{Fonte|sabco}}
+* {{Fonte|trec}}
+* {{Fonte|gar}}
+* {{Fonte|sin-co}}
+* {{Fonte|dizit}}
+* AA.VV. ''Dizionario Sinonimi e contrari'', Mariotti, 2006, pagina 230

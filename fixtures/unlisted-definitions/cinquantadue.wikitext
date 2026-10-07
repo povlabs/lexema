@@ -1,0 +1,35 @@
+<!-- it.wiktionary.org/wiki/cinquantadue revision 3964206 (2023-11-27T09:28:08Z), CC BY-SA 4.0. Saved verbatim. -->
+[[File:Fukuoka Pref Route Sign 0052.svg|thumb|52]]
+[[File:2012 Packers vs Giants - Clay Matthews 2.jpg|thumb|un atleta con il numero 52]]
+== {{-it-}} ==
+{{-agg num-|it}}
+{{-card-|it}}
+{{Pn|w=52 (numero)}} '''52'''    ''inv''
+* {{Term|matematica|it}}, {{Term|aritmetica|it}} [[numero]] che viene dopo il [[cinquantuno]] e prima del [[cinquantatré]]; è [[tredici]] [[volte]] il [[quadrato]] di [[due]]
+
+{{-sill-}}
+; cin | quan | ta | dù | e
+
+{{-etim-}}
+composto da [[cinquanta]] e [[due]]
+
+{{-der-}}
+* [[cinquantaduesimo]]
+
+{{-rel-}}
+* [[cinquantuno]], [[cinquantatré]]
+
+{{-iperon-}}
+* [[numero]]
+
+{{-trad-}}
+{{Trad1|{{Term|aritmetica|it}} numero cardinale}}
+:*{{en}}: [[fifty-two]]
+:*{{hu}}: [[ötvenkettő]]
+{{Trad2}}
+
+{{-ref-}}
+* {{Noref|it}}
+
+== Altri progetti ==
+{{Interprogetto|w|commons=Category:52 (number)}}

@@ -22,6 +22,7 @@
     "hide:records": "tsx src/import/hideRecordsCli.ts",
     "correct:records": "tsx src/import/correctRecordsCli.ts",
     "load:page-entries": "tsx src/import/loadPageEntriesCli.ts",
+    "load:recovered-definitions": "tsx src/import/loadRecoveredDefinitionsCli.ts",
     "update:auto": "tsx src/update/updateCli.ts auto",
     "update:upgrade": "tsx src/update/updateCli.ts upgrade",
     "update:diff": "tsx src/update/updateCli.ts diff",

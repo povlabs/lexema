@@ -1,0 +1,17 @@
+<!-- it.wiktionary.org/wiki/sbucciapatate revision 3994965 (2024-09-04T04:11:25Z), CC BY-SA 4.0. Saved verbatim. -->
+== {{-it-}} ==
+{{-sost-|it}}
+'''sbucciapatate'''
+{{-trad-}}
+{|border=0 width=100%
+|-
+|bgcolor="beige" valign=top width=48%|
+:*{{fr}}: [[éplucheur]]
+:*{{en}}: [[potato-peeler]]
+:*{{de}}: [[Kartoffelschäler]]
+:*{{es}}: [[pelapatatas]]
+:*{{it}}: [[sbucciapatate]]
+:*{{nl}}: [[aardappelmesje]]
+|}
+
+{{Noetim|it}}

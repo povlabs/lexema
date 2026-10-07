@@ -339,7 +339,9 @@ export type RecoveredRoute =
   | { route: "below-page-control" }
   | { route: "sub-term"; term: string }
   | { route: "lead-in-item" }
-  | { route: "wrapped-prose" };
+  | { route: "wrapped-prose" }
+  | { route: "bullet-line" }
+  | { route: "prose-line" };
 
 /**
  * A definition the raw page states and the extraction dropped (#28), read back

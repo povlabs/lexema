@@ -11,6 +11,7 @@
 import type { CorrectionPlan } from "../import/correctRecords.js";
 import type { HidePlan } from "../import/hideRecords.js";
 import type { PageEntryPlan } from "../import/loadPageEntries.js";
+import type { RecoveredDefinitionPlan } from "../import/loadRecoveredDefinitions.js";
 import type { ApplyPlan } from "../update/apply.js";
 import type { DeclaredCommand } from "../update/declaration.js";
 
@@ -61,3 +62,7 @@ export const wordsOfPageEntries = (plan: PageEntryPlan): TouchedWords =>
     ...plan.entries.flatMap((planned) => (planned.state === "write" ? [planned.entry.page.title] : [])),
     ...plan.corrections.map(({ title }) => title),
   ]);
+
+/** `load:recovered-definitions`: the word of each record it writes a recovered definition for. */
+export const wordsOfRecoveredDefinitions = (plan: RecoveredDefinitionPlan): TouchedWords =>
+  touchedWords(plan.records.flatMap((record) => (record.definitions.some((planned) => planned.state === "write") ? [record.found.word] : [])));

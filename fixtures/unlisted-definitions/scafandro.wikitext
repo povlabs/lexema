@@ -1,0 +1,32 @@
+<!-- it.wiktionary.org/wiki/scafandro revision 3810725 (2021-10-01T06:51:45Z), CC BY-SA 4.0. Saved verbatim. -->
+== {{-it-}} ==
+{{-sost-|it}}
+{{Pn|w}} ''m sing'' {{Linkp|scafandri}}
+
+;abito impermeabile; in particolare per immersione in acque profonde.
+;Assume vari significanti in base agli ambienti in cui viene utilizzato: in marina è l’insieme di indumenti impermeabili di vario tipo usati dai palombari per immergersi e lavorare sott’acqua; in aeronautica è equipaggiamento protettivo del personale per il volo alle quote elevate e nello spazio, oltre che per la permanenza in ambienti privi di un’atmosfera simile a quella terrestre; nei cantieri navali identifica una piccola imbarcazione con o senza motore, provvisto di pompa pneumatica a cui si aggangerà il palombaro.
+
+{{-sill-}}
+; sca | fàn | dro
+
+{{-pron-}}
+{{IPA|/skaˈfandro/}}
+
+{{-etim-}}
+dal [[francese]] ''[[scaphandre]]'' 
+
+{{-trad-}}
+{{Trad1|}}
+:* {{en}}: [[space siut]]
+:* {{de}}: [[Raumanzug]]
+:* {{hu}}: [[űrruha]]
+{{Trad2}}
+
+{{-ref-}}
+* {{Fonte|hoep}}
+* {{Fonte|trec}}
+* {{Fonte|dizit}}
+[[Categoria:Astronautica-IT]]
+
+== Altri progetti ==
+{{Interprogetto|w|commons=Category:Standard diving dressẩ}}

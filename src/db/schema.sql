@@ -560,6 +560,9 @@ CREATE TABLE raw_page (
 --   'lead-in-item'       -> an item of a list a definition opens with a colon.
 --   'wrapped-prose'      -> the prose line right after a `#` line that carries
 --                           only page controls and labels (`verde`).
+--   'bullet-line'        -> a `*` line under the part-of-speech heading of a
+--                           section no `#` line of which states a meaning (`centouno`).
+--   'prose-line'         -> a plain line with no list mark there (`bavaglio`).
 CREATE TABLE recovered_definition (
   recovered_id     INTEGER PRIMARY KEY,
   record_id        INTEGER NOT NULL REFERENCES source_record(record_id) ON DELETE CASCADE,
@@ -567,7 +570,7 @@ CREATE TABLE recovered_definition (
   page_id          INTEGER NOT NULL,
   definition_index INTEGER NOT NULL CHECK (definition_index >= 0),
 
-  route TEXT NOT NULL CHECK (route IN ('below-page-control', 'sub-term', 'lead-in-item', 'wrapped-prose')),
+  route TEXT NOT NULL CHECK (route IN ('below-page-control', 'sub-term', 'lead-in-item', 'wrapped-prose', 'bullet-line', 'prose-line')),
   term  TEXT,
 
   page_line INTEGER NOT NULL CHECK (page_line > 0),  -- 1-based line in the revision

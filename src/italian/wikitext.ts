@@ -71,7 +71,7 @@ export const POS_TITLE_BY_TEMPLATE: Readonly<Record<string, PosTitle>> = {
   "verb form": "Voce verbale", "nome form": "Nome proprio, forma flessa",
   "pronome form": "Pronome, forma flessa",
   "loc nom form": "Locuzione nominale, forma flessa",
-  "card form": "Aggettivo numerale, forma flessa",
+  "card form": "Aggettivo numerale, forma flessa", "agg num": "Aggettivo numerale",
 };
 
 // --- Inline markup ----------------------------------------------------------
@@ -398,7 +398,22 @@ export type DefinitionRoute =
    * physical line (`verde`: `# {{Term|araldica|it}} {{Pn|w=…}}`, then
    * `[[smalto|smalto araldico]] di colore verde intenso…`).
    */
-  | { route: "wrapped-prose" };
+  | { route: "wrapped-prose" }
+  /**
+   * A `*` bullet line under the part-of-speech heading, in a section no `#`
+   * line of which states a meaning (`centouno`: `* {{Term|matematica|it}}
+   * [[numero]] che viene dopo il [[cento]]…`).
+   */
+  | { route: "bullet-line" }
+  /**
+   * A plain line with no list mark under the part-of-speech heading, in a
+   * section no `#` line of which states a meaning (`bavaglio`: `Fazzoletto o
+   * cencio che si lega attorno alla bocca…`).
+   */
+  | { route: "prose-line" };
+
+/** The two layouts a section writes outside its `#` list (#706). */
+export type UnlistedRoute = Extract<DefinitionRoute["route"], "bullet-line" | "prose-line">;
 
 /**
  * The line whose closing colon opens the list a definition is an item of:
@@ -487,6 +502,12 @@ export interface PageSection {
   /** The extraction's title for it, when the table knows the template. */
   posTitle: string | undefined;
   senseLines: PageSenseLine[];
+  /**
+   * The definitions the section writes outside its `#` list, in page order: a
+   * `*` bullet line or a plain prose line under the heading (#706). Read only
+   * when no `#` line of the section states a meaning; empty otherwise.
+   */
+  unlisted: PageDefinition[];
   unrendered: UnrenderedLine[];
 }
 
@@ -588,13 +609,73 @@ class SectionReader {
   }
 }
 
+/** A line a section writes outside its `#` list, and which of the two layouts it is. */
+interface UnlistedLine extends ProseLine {
+  route: UnlistedRoute;
+  /** What the line shows: comments blanked, the bullet mark and outer spaces dropped. */
+  body: string;
+}
+
+/**
+ * The headword line, which states the word and its grammar, never a meaning:
+ * it holds `{{Pn}}`, or opens with the headword in bold (`'''furbo''' ''m''`).
+ * The words after the headword on that line are a layout of their own, not
+ * this rule's (`clavicembalista`).
+ */
+const isHeadwordLine = (body: string, title: string): boolean =>
+  /\{\{\s*pn\s*[|}]/i.test(body) || body.startsWith(`'''${title}'''`) || body.startsWith(`'''[[${title}]]'''`);
+
+/** A `*` bullet, and only that: `**`, `*:`, `*#` and `*;` are other layouts. */
+const BULLET_LINE = /^\*(?![*#:;])\s*(.*)$/;
+
+/** True when the line shows words in neither bold nor italics: a bold headword and its italic grammar alone show none. */
+const hasUnemphasizedProse = (body: string): boolean =>
+  runsOf(withoutTemplates(body)).some((run) => !run.italic && !run.bold && hasLetters(run.text));
+
+/** How often `mark` occurs in `text`. */
+const count = (text: string, mark: string): number => text.split(mark).length - 1;
+
+/**
+ * True when a template or a link opens on the line and closes on another, or
+ * closes one opened on another (`lindezze}}`): the line is inside that markup,
+ * which shows no prose of its own.
+ */
+const spansLines = (body: string): boolean => count(body, "{{") !== count(body, "}}") || count(body, "[[") !== count(body, "]]");
+
+/**
+ * Which of the two unlisted layouts `visible`, a line under a part-of-speech
+ * heading with its comments blanked, is, when it is one: a `*` bullet line, or
+ * a plain line that opens with no list, heading, table, tag or behaviour-switch
+ * mark and is not the headword line. Either must show words in neither bold nor
+ * italics, as the headword line does not, and sit inside no markup that spans
+ * lines.
+ */
+function unlistedLine(visible: string, title: string): Pick<UnlistedLine, "route" | "body"> | undefined {
+  const line = visible.trim();
+  const bullet = BULLET_LINE.exec(line);
+  const read = bullet !== null
+    ? { route: "bullet-line" as const, body: bullet[1] }
+    : /^(?:[#*:;=|!<_]|\{\||\{\{-)/.test(line) || isHeadwordLine(line, title)
+      ? undefined
+      : { route: "prose-line" as const, body: line };
+  return read !== undefined && hasUnemphasizedProse(read.body) && !spansLines(read.body) ? read : undefined;
+}
+
 /**
  * Every part-of-speech section of the page's Italian section, with its `#`
- * lines read as senses or page controls and the definitions below them.
+ * lines read as senses or page controls and the definitions below them, and,
+ * in a section no `#` line of which states a meaning, the `*` bullet lines and
+ * plain prose lines under its heading.
  */
 export function readItalianSections(page: RawPage): PageSection[] {
   const lines = page.wikitext.split("\n");
-  const sections: { posTemplate: string; list: Omit<ListLine, "children">[] }[] = [];
+  const visibles = visibleLines(page.wikitext);
+  /**
+   * `headed` once a written heading (`====Pronuncia====`) sits under the part
+   * of speech: lines after it are not under the part-of-speech heading.
+   * `bare` while no line but blank ones follows the heading.
+   */
+  const sections: { posTemplate: string; list: Omit<ListLine, "children">[]; unlisted: UnlistedLine[]; headed: boolean; bare: boolean }[] = [];
   let inItalian = false;
   let current: (typeof sections)[number] | undefined;
   /** The `#` line on the physical line just read, which the next line may continue. */
@@ -612,7 +693,10 @@ export function readItalianSections(page: RawPage): PageSection[] {
     if (!inItalian) return;
     const pos = POS_HEADING.exec(line.trim());
     if (pos !== null) {
-      current = { posTemplate: pos[1], list: [] };
+      // A heading stacked directly on another (`{{-agg num-|it}}`, then
+      // `{{-card-|it}}`) opens no section of its own: the two title one.
+      if (current?.bare === true) sections.pop();
+      current = { posTemplate: pos[1], list: [], unlisted: [], headed: false, bare: true };
       sections.push(current);
       return;
     }
@@ -621,6 +705,7 @@ export function readItalianSections(page: RawPage): PageSection[] {
       return;
     }
     if (current === undefined) return;
+    if (line.trim() !== "") current.bare = false;
     const item = LIST_LINE.exec(line);
     if (item !== null) {
       const entry: Omit<ListLine, "children"> = { line: index + 1, marker: item[1], body: item[2], wikitext: raw, wrapped: null };
@@ -628,18 +713,32 @@ export function readItalianSections(page: RawPage): PageSection[] {
       if (isSenseMarker(entry.marker)) open = entry;
     } else if (before !== undefined && continuesItem(line)) {
       before.wrapped = { line: index + 1, wikitext: raw };
+    } else if (/^=/.test(line.trim())) {
+      current.headed = true;
+    } else if (!current.headed) {
+      const unlisted = unlistedLine(visibles[index] ?? "", page.title);
+      if (unlisted !== undefined) current.unlisted.push({ line: index + 1, wikitext: raw, ...unlisted });
     }
   });
 
-  return sections.map(({ posTemplate, list }) => {
+  return sections.map(({ posTemplate, list, unlisted }) => {
     const reader = new SectionReader(page);
     const senseLines = listTree(list)
       .filter((node) => isSenseMarker(node.marker))
       .map((node) => reader.senseLine(node));
+    // A section that states a meaning on a `#` line keeps its definitions there:
+    // a bullet or a plain line beside them is a note, an example or a list of
+    // its own, not a definition the extraction missed.
+    const statesAMeaning = senseLines.some((senseLine) => senseLine.kind === "sense");
     return {
       posTemplate,
       posTitle: POS_TITLE_BY_TEMPLATE[posTemplate],
       senseLines,
+      unlisted: statesAMeaning
+        ? []
+        : unlisted.flatMap(({ line, wikitext, route, body }) =>
+            reader.definition({ line, marker: "", body, wikitext, wrapped: null, children: [] }, { route }, null),
+          ),
       unrendered: reader.unrendered,
     };
   });

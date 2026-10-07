@@ -1,0 +1,41 @@
+<!-- it.wiktionary.org/wiki/museruola revision 4049184 (2025-10-30T22:42:53Z), CC BY-SA 4.0. Saved verbatim. -->
+== {{-it-}} ==
+[[File:Afghanen Coursing muzzle.jpg|thumb|un [[cane]] con la museruola]]
+{{Pn|w}} ''f sing'' {{Linkp|museruole}}
+{{-sost-|it}}
+Arnese a forma di gabbia che si applica al muso di alcuni animali per impedire loro di mordere o di mangiare.
+
+{{-sill-}}
+; mu | se | ruò | la
+
+{{-pron-}}
+{{IPA|/muzeˈrwɔla/}}
+
+{{-etim-}}
+deriva da [[muso]]
+
+{{-sin-}}
+* ''(per animale)''[[mordacchia]]
+
+{{-der-}}
+* [[museruolato]]
+
+{{-var-}}
+* [[musarola]] 
+
+{{-prov-}}
+* ''mettere la museruola a qualcuno'': fare zittire
+
+{{-trad-}}
+{{Trad1|}}
+:* {{en}}:
+{{Trad2}}
+
+{{-ref-}}
+* {{Fonte|sabco}}
+* {{Fonte|sin-co}}
+* {{Fonte|dizit}}
+* {{Fonte|trec}}
+
+== Altri progetti ==
+{{Interprogetto|w|commons=Category:Animal muzzles}}

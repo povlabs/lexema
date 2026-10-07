@@ -68,7 +68,7 @@ test("a correct:records declaration takes no inputs and counts the correction ta
 test("a malformed declaration or an unknown command is refused with a message naming the file", () => {
   assert.match(refusal("{ command: "), /is not JSON/);
   assert.match(refusal("[]"), /JSON object/);
-  assert.match(refusal(declared({ command: "update:apply" })), /command must be one of update:upgrade, update:auto, hide:records, normalize:source-text, correct:records, load:page-entries, got "update:apply"/);
+  assert.match(refusal(declared({ command: "update:apply" })), /command must be one of update:upgrade, update:auto, hide:records, normalize:source-text, correct:records, load:page-entries, load:recovered-definitions, got "update:apply"/);
   assert.match(refusal(declared({})), /command must be one of/);
   assert.match(refusal(declared({ command: "update:auto", inputs: { feedRelease: "it-78385B62" } })), /inputs\.feedRelease must be a release id/);
   assert.match(refusal(declared({ command: "update:auto", inputs: {} })), /inputs\.feedRelease must be a release id/);
@@ -185,6 +185,14 @@ test("every declaration already in dictionary-changes parses as before, with no 
       assert.deepEqual(
         parseDeclaration(path, text).lookups?.map((item) => item.word),
         ["informatica", "stonare", "console"],
+      );
+      continue;
+    }
+    // The recovered bullet and prose lines (#706) name the words they fill in.
+    if (name === "2026-10-07-load-recovered-definitions-it-0c432803.json") {
+      assert.deepEqual(
+        parseDraft(path, text).lookups?.map((item) => item.word),
+        ["centouno", "decrepito", "bavaglio", "museruola"],
       );
       continue;
     }
