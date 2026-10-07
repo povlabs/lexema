@@ -321,6 +321,13 @@ export type PageReading = ShownReading<"lemma", LemmaPart> | FormOfReading;
  */
 export interface FormOfReading extends ShownReading<"form-of", FormOfPart> {
   also: Reading[];
+  /**
+   * The word this block is a form of: its first base word (`bello` for
+   * `bella`, and for `bellissima` through `bellissimo`), or, when the page
+   * read no record of it, the word its first `form_of` edge names (`litigare`
+   * for `litigante`'s verb form).
+   */
+  baseWord: string;
 }
 
 /**
@@ -497,14 +504,35 @@ export const entryTitle = (entry: ShownEntry): string =>
 export const JUMP_LINKS_FROM = 3;
 
 /**
+ * The word an entry is about: its own headword for a reading of the word's
+ * own record, and the word it is a form of for a form block. `studente`'s two
+ * readings are about `studente` and `studiare`; `salivare`'s adjective and
+ * verb are both about `salivare`.
+ */
+export function baseWordOf(entry: ShownEntry): string {
+  switch (entry.kind) {
+    case "verb-form":
+      return entry.verb;
+    case "grid-form":
+      return entry.records[0].word;
+    case "source":
+      return entry.role === "form-of" ? entry.baseWord : entry.reading.word;
+    case "bare":
+    case "lone-bare":
+      return entry.reading.word;
+  }
+}
+
+/**
  * Whether a word page lists its readings under the headword: from three
- * readings up, or when it is a form of two or more verbs, `salivate` of salire
- * and salivare (frame 37, Huey's ruling of 2026-10-06, #654). Blocks are one
- * per verb, so two verb form blocks are two different verbs.
+ * readings up, or when its readings are about two or more different words.
+ * `studente`, the noun and a form of studiare, has the list (Huey's ruling of
+ * 2026-10-07 on #708), as `salivate`, a form of salire and of salivare, has
+ * (frame 37, Huey's ruling of 2026-10-06, #654). Two readings of one word,
+ * `salivare`'s adjective and verb, have none.
  */
 export function showsJumpLinks(page: WordPage): boolean {
-  const verbs = page.readings.filter((entry: ShownEntry) => entry.kind === "verb-form").length;
-  return page.readings.length >= JUMP_LINKS_FROM || verbs >= 2;
+  return page.readings.length >= JUMP_LINKS_FROM || new Set(page.readings.map(baseWordOf)).size >= 2;
 }
 
 /** What names an entry in its ids: its record, or a block's verb. */
@@ -1256,7 +1284,8 @@ function shownReading(
   if (definitions !== undefined) parts.push({ kind: "lemma-definitions", list: definitions });
   parts.push(...tablesPart([...records.flatMap(conjugationTablesOf), ...grids]));
   const shown = nonEmpty(parts);
-  return shown === undefined ? undefined : { kind: "source", role: "form-of", reading, also, parts: shown };
+  const baseWord = lead?.word ?? reading.lemmaLinks[0]?.targetWord ?? reading.word;
+  return shown === undefined ? undefined : { kind: "source", role: "form-of", reading, also, baseWord, parts: shown };
 }
 
 /**
