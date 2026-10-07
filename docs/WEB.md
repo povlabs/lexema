@@ -379,11 +379,22 @@ base records with the same lookup a search of the word runs, one more round for
 each link of a chain (`web/lib/dictionary/searchAttempt.ts`); the lookup and the
 API do not change.
 
+The form records about the query of one base word are one block (rule 1,
+"never two blocks … for the same word"): `pageDrafts` puts each noun or
+adjective form in the slot of the first form of its first base word, so
+`costruttrici`'s, `bella`'s and `grandi`'s adjective and noun records each
+show as one block. The first record heads it (`FormOfReading.reading`), the
+others ride in `also`, and the form lines list every record's in turn, a line
+another record already gave shown once with both records' examples
+(`recordLinesOf`, `definitionTextKey`). The block's *Definitions* are those of
+the first record's first base word, as a verb form block reads its first
+table's; its tables are one per base word.
+
 A table shows once on a page, and so does one base record's *Definitions*
 (`Drawn` in `wordPage.ts`; rule 1, "never two … tables for the same word"):
 `essere`'s and `vivere`'s two verb records draw one conjugation, under the
-first, and `costruttrici`'s noun reading, whose grid its adjective reading
-already drew, shows its line and the costruttore noun's *Definitions* only.
+first, and a base word's grid shows once, whichever of its records it is read
+from.
 
 **One block per verb a form belongs to.** A searched verb form shows one block
 for each verb it is a form of, as frame 37 draws it

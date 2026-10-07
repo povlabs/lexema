@@ -28,7 +28,9 @@
 //
 // A table shows once on a page, and one base record's *Definitions* once
 // (`Drawn`; rule 1, "never two blocks or two tables for the same word"):
-// `essere`'s two verb records draw one conjugation.
+// `essere`'s two verb records draw one conjugation. A noun or adjective
+// form's records of one base word are one block (`FormOfReading`):
+// `costruttrici`'s, `bella`'s and `grandi`'s adjective and noun records.
 //
 // A searched verb form shows one block per verb it is a form of (#636; Huey's
 // ruling of 2026-10-06, frame 37): `1 · Voce verbale · salire`, that verb's
@@ -100,7 +102,7 @@ import {
   type SearchedSpellings,
   type SourceRef,
 } from "@lexema/lookup/types.ts";
-import { definitionsOf, placeOf, readAt, type DefinitionItem } from "./definitions.ts";
+import { definitionTextKey, definitionsOf, placeOf, readAt, type DefinitionItem } from "./definitions.ts";
 import { conjugationOf, placesAny, type Conjugation } from "./conjugation.ts";
 import { agreementOf, type Agreement, type Spelling } from "./genderGrid.ts";
 import { unlinkedLemmas } from "./lemmaLines.ts";
@@ -250,15 +252,25 @@ type SharedPart =
 /** What a reading that is not a form shows: its numbered *Definitions*, or *Examples*, and its own *Forms*. */
 export type LemmaPart = { kind: "definitions"; text: OwnText } | { kind: "own-forms"; forms: OwnForms } | SharedPart;
 
+/** One form record's lines in a block: its own definitions, and the examples of its senses not shown as one. */
+export interface RecordLines {
+  reading: Reading;
+  text: OwnText;
+}
+
 /**
  * What a form-of reading shows. Its own definitions are its form lines, under
- * its heading with no label or number (#686, #690). When a lemma's grid lists
- * it (`bella` the adjective, of bello), that lemma's *Definitions* follow
+ * its heading with no label or number (#686, #690): every record of the block's
+ * in turn, a line another record already gave shown once. When a lemma's grid
+ * lists it (`bella` the adjective, of bello), that lemma's *Definitions* follow
  * (#686), then the grid as *Forms of bello*. It never shows a *Forms* table of
  * its own, with or without a lemma's (Huey, 2026-10-06, #694), so there is no
  * part for one.
  */
-export type FormOfPart = { kind: "form-lines"; text: OwnText } | { kind: "lemma-definitions"; list: LemmaDefinitionList } | SharedPart;
+export type FormOfPart =
+  | { kind: "form-lines"; records: NonEmpty<RecordLines> }
+  | { kind: "lemma-definitions"; list: LemmaDefinitionList }
+  | SharedPart;
 
 /** A source reading with something to show: what it shows, in page order. */
 interface ShownReading<Role extends string, Part> {
@@ -279,7 +291,19 @@ interface ShownReading<Role extends string, Part> {
  * A reading of a source record that has something to show (#694): a lemma
  * reading, or a form-of reading, which has no part for a *Forms* table of its own.
  */
-export type PageReading = ShownReading<"lemma", LemmaPart> | ShownReading<"form-of", FormOfPart>;
+export type PageReading = ShownReading<"lemma", LemmaPart> | FormOfReading;
+
+/**
+ * A noun or adjective form's block: one per base word (rule 1 of Huey's ruling
+ * of 2026-10-06, #695: "Never two blocks or two tables for the same word").
+ * `reading` heads it; `also` are the query's other form records of the same
+ * base word, whose lines it shows under that heading (`bella`'s noun record,
+ * "femminile di bello", in the block its adjective record heads). A form of a
+ * verb or a form with no base word read is a block of its own, with no `also`.
+ */
+export interface FormOfReading extends ShownReading<"form-of", FormOfPart> {
+  also: Reading[];
+}
 
 /**
  * A reading with nothing to show, on a page where no reading has anything to
@@ -423,8 +447,10 @@ export interface ShownRecord {
 
 /**
  * Every source record the page shows, in page order and each once: a
- * reading's record, and a block's form records and verb records under the
- * block's number and title. These are the records a report can name.
+ * reading's record, a noun or adjective form block's records under its number
+ * and each its own part of speech, and a verb form block's form records and
+ * verb records under the block's number and title. These are the records a
+ * report can name.
  */
 export function shownRecords(entries: readonly ShownEntry[]): ShownRecord[] {
   const seen = new Set<string>();
@@ -435,8 +461,12 @@ export function shownRecords(entries: readonly ShownEntry[]): ShownRecord[] {
     shown.push({ number, reading: { ...reading, posTitle } });
   };
   for (const entry of entries) {
-    if (entry.kind !== "verb-form") add(entry.number, entry.reading, entry.reading.posTitle);
-    else for (const reading of [...entry.sources.map((source) => source.reading), ...entry.verbs]) add(entry.number, reading, blockTitle(entry));
+    if (entry.kind === "verb-form") {
+      for (const reading of [...entry.sources.map((source) => source.reading), ...entry.verbs]) add(entry.number, reading, blockTitle(entry));
+      continue;
+    }
+    add(entry.number, entry.reading, entry.reading.posTitle);
+    if (entry.kind === "source" && entry.role === "form-of") for (const reading of entry.also) add(entry.number, reading, reading.posTitle);
   }
   return shown;
 }
@@ -732,8 +762,9 @@ function gridOf(lemma: Reading): GridTable | undefined {
  * What the page has drawn so far, in page order. One table shows once on a
  * page, and one base record's *Definitions* once: Huey's rule 1 of 2026-10-06
  * (#695), "never two blocks or two tables for the same word". `essere`'s two
- * verb records share one conjugation, and `costruttrici`'s adjective and noun
- * readings one grid of costruttore; each draws under the first that shows it.
+ * verb records share one conjugation, and a base word's grid shows once,
+ * whichever of its records it is read from; each draws under the first that
+ * shows it.
  */
 class Drawn {
   private readonly keys = new Set<string>();
@@ -749,7 +780,9 @@ class Drawn {
 /** What tells two tables apart: their shape, their lemma's word and what they show. */
 function drawnKey(table: LemmaTable | { kind: "own"; reading: Reading; forms: OwnForms }): string {
   if (table.kind === "conjugation") return `conjugation\u0000${conjugationKey(table)}`;
-  if (table.kind === "grid") return `grid\u0000${table.lemma.word}\u0000${gridKey(table.agreement)}`;
+  // A base word's grid shows once, whichever of its records it is read from:
+  // `bella`'s noun record shows no second *Forms of bello* (rule 1, #695).
+  if (table.kind === "grid") return `lemma-grid\u0000${table.lemma.word}`;
   const { reading, forms } = table;
   return forms.kind === "grid"
     ? `grid\u0000${reading.word}\u0000${gridKey(forms.agreement)}`
@@ -857,11 +890,24 @@ function pageDrafts({ ordered, about, own, lemmas, placed, gender }: PageParts, 
     if (table !== undefined) addTables(block, [table]);
   }
   const inBlocks = new Set([...blocks.values()].flatMap((block) => block.verbs));
+  // A noun or adjective form joins the block of its first base word, in the
+  // place of the first form of that word (rule 1, #695): `bella`'s noun record
+  // joins its adjective record's block for bello, and `costruttrici`'s noun
+  // record its adjective record's block for costruttore.
+  const formBlocks = new Map<string, ReadingSlot>();
   for (const reading of ordered) {
     if (inBlocks.has(reading) || (which === "about" && !reading.isAboutQuery)) continue;
     const verbs = formOfVerbs(reading);
     if (verbs === undefined) {
-      slots.push({ kind: "reading", reading });
+      const [base] = formBasesOf(reading, lemmas, own);
+      const block = base === undefined ? undefined : formBlocks.get(base.word);
+      if (block !== undefined) {
+        block.readings.push(reading);
+        continue;
+      }
+      const slot: ReadingSlot = { kind: "reading", readings: [reading] };
+      if (base !== undefined) formBlocks.set(base.word, slot);
+      slots.push(slot);
       continue;
     }
     const blockVerbs = new Set(verbs.map((one) => one.verb));
@@ -881,8 +927,8 @@ function pageDrafts({ ordered, about, own, lemmas, placed, gender }: PageParts, 
   const drawn = new Drawn();
   return slots.flatMap((slot): Unnumbered<PageEntry | BareReading>[] => {
     if (slot.kind === "reading") {
-      const { reading } = slot;
-      return [shownReading(reading, lemmas, own, placed, drawn) ?? { kind: "bare", reading }];
+      const shown = shownReading(slot.readings, lemmas, own, placed, drawn);
+      return shown !== undefined ? [shown] : slot.readings.map((reading) => ({ kind: "bare", reading }));
     }
     const { block } = slot;
     const lines = nonEmpty<FormLine>([...block.sourceLines, ...block.ruleLines.values()]);
@@ -980,18 +1026,25 @@ type PlacedFacts = Pick<ReturnType<typeof placeWordFacts>, "etymologies" | "syno
  * line, no table of its own or of a lemma, and no etymology or synonym the
  * source ties to it. A form-of reading never takes its own table: only its
  * lines, and its lemma's *Definitions* and table when a lemma's grid lists it.
+ *
+ * `records` are the slot's: one for any reading but a noun or adjective form,
+ * whose block holds every form record of its base word (rule 1, #695). The
+ * first heads it; each record's lines show in turn, and the block draws the
+ * *Definitions* of the first record's first base word, as a verb form block
+ * draws its first table's, and one table per base word.
  */
 function shownReading(
-  reading: Reading,
+  records: NonEmpty<Reading>,
   lemmas: readonly Reading[],
   own: ReadonlySet<string>,
   placed: PlacedFacts,
   drawn: Drawn,
 ): Unnumbered<PageReading> | undefined {
+  const [reading, ...also] = records;
   const text = ownTextOf(reading);
-  const lemmaLines = nonEmpty(unlinkedLemmas(reading));
-  const etymologies = nonEmpty(placed.etymologies.get(reading) ?? []);
-  const synonyms = nonEmpty(relatedItems(placed.synonyms.get(reading) ?? []));
+  const lemmaLines = nonEmpty([...new Set(records.flatMap((record) => unlinkedLemmas(record)))]);
+  const etymologies = nonEmpty(records.flatMap((record) => placed.etymologies.get(record) ?? []));
+  const synonyms = nonEmpty(relatedItems(records.flatMap((record) => placed.synonyms.get(record) ?? [])));
   const lines: SharedPart[] = lemmaLines === undefined ? [] : [{ kind: "lemma-lines", words: lemmaLines }];
   const after = (tables: LemmaTable[]): SharedPart[] => {
     const parts: SharedPart[] = [];
@@ -1013,20 +1066,57 @@ function shownReading(
     const shown = nonEmpty(parts);
     return shown === undefined ? undefined : { kind: "source", role: "lemma", reading, parts: shown };
   }
-  // A noun or adjective form: its lines, then its first base word's
-  // Definitions, then its base words' tables (#695), each shown once a page.
-  const bases = formBasesOf(reading, lemmas, own);
-  const [lead] = bases;
+  // A noun or adjective form: its records' lines, then its first base word's
+  // Definitions, then one table per base word (#695), each shown once a page.
+  const [lead] = formBasesOf(reading, lemmas, own);
   const definitions =
     lead !== undefined && drawn.first(`definitions\u0000${entryKey(lead)}`) ? definitionListOf(lead, lead) : undefined;
-  const grids = bases.flatMap((base) => gridOf(base) ?? []);
+  const bases = new Map<string, Reading>();
+  for (const base of records.flatMap((record) => formBasesOf(record, lemmas, own))) if (!bases.has(base.word)) bases.set(base.word, base);
+  const grids = [...bases.values()].flatMap((base) => gridOf(base) ?? []);
+  const formLines = nonEmpty(recordLinesOf(records));
   const parts: FormOfPart[] = [];
-  if (text !== undefined) parts.push({ kind: "form-lines", text });
+  if (formLines !== undefined) parts.push({ kind: "form-lines", records: formLines });
   parts.push(...lines);
   if (definitions !== undefined) parts.push({ kind: "lemma-definitions", list: definitions });
-  parts.push(...after([...conjugations, ...grids]));
+  parts.push(...after([...records.flatMap(conjugationTablesOf), ...grids]));
   const shown = nonEmpty(parts);
-  return shown === undefined ? undefined : { kind: "source", role: "form-of", reading, parts: shown };
+  return shown === undefined ? undefined : { kind: "source", role: "form-of", reading, also, parts: shown };
+}
+
+/**
+ * Each record's form lines, in record order, a line an earlier record already
+ * gave shown once with both records' examples under it (`costruttrici`'s
+ * adjective and noun records both read "plurale di costruttrice"). A record
+ * left with no line and no example has none.
+ */
+function recordLinesOf(records: readonly Reading[]): RecordLines[] {
+  const shown = new Map<string, DefinitionItem>();
+  const lines: RecordLines[] = [];
+  for (const reading of records) {
+    const text = ownTextOf(reading);
+    if (text === undefined) continue;
+    if (text.kind === "examples") {
+      lines.push({ reading, text });
+      continue;
+    }
+    const items: DefinitionItem[] = [];
+    for (const item of text.items) {
+      const earlier = shown.get(definitionTextKey(item));
+      if (earlier === undefined) {
+        const copy = { ...item, examples: [...item.examples] };
+        shown.set(definitionTextKey(item), copy);
+        items.push(copy);
+      } else {
+        earlier.examples.push(...item.examples.filter((example) => !earlier.examples.includes(example)));
+      }
+    }
+    const listed = nonEmpty(items);
+    const loose = nonEmpty(text.looseExamples);
+    if (listed !== undefined) lines.push({ reading, text: { kind: "definitions", items: listed, looseExamples: text.looseExamples } });
+    else if (loose !== undefined) lines.push({ reading, text: { kind: "examples", looseExamples: loose } });
+  }
+  return lines;
 }
 
 /** A verb form block as it is gathered, before it is numbered. */
@@ -1043,8 +1133,18 @@ interface BlockDraft {
   synonyms: RelatedWord[];
 }
 
-/** One place on the page: a reading of its own, or a verb's block. */
-type Slot = { kind: "reading"; reading: Reading } | { kind: "block"; block: BlockDraft };
+/**
+ * A source reading's place on the page. A noun or adjective form's holds every
+ * form record about the query of its base word, the first heading the block;
+ * any other reading's holds its one record.
+ */
+interface ReadingSlot {
+  kind: "reading";
+  readings: NonEmpty<Reading>;
+}
+
+/** One place on the page: a source reading, or a verb's block. */
+type Slot = ReadingSlot | { kind: "block"; block: BlockDraft };
 
 const addTables = (block: BlockDraft, tables: readonly ConjugationTable[]): void => {
   for (const table of tables) if (!block.tables.has(conjugationKey(table))) block.tables.set(conjugationKey(table), table);
