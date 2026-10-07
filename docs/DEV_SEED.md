@@ -40,10 +40,22 @@ them in its table: `stare` and `Stato` for `stato`, `parto` for `parti`,
 [#700](https://github.com/povlabs/lexema/issues/700) (`belli`, `belle`, `attrici`,
 `andassi`, `andata`, `gravida`, with every record that lists one of them in
 its table: `attore`, `attori`, `attrice`, `andate` and `gravido` among them),
-and their `form_of` closure: 191 source records across 121 words, including
-`andare` for `andavano`. `citta`'s one such record, `citto`, stays out, in
+the words of the page-wide rule checks of
+[#709](https://github.com/povlabs/lexema/issues/709) (`litigante`,
+`sbucciapatate`, `abaco`, `AC`, `Venerdì santi`, `servizio sanitario
+nazionali`, `altri`, `blasfeme`, `all'improvviso`, `fare l'occhiolino`,
+`presiedute`, `laureati`, and `innanzi`, `Daria`, `geni`, `abbattette`,
+`vuote`, `Russie`, `gommiste` and `zuppa inglesi` for the shapes of the
+[census](../reports/2026-10-07-word-page-shapes.md), with every headword that
+is one of them in other capitals or with another apostrophe, `Dario` for
+`Daria`, and the words that spell each expression), and their `form_of`
+closure: 255 source records across 164 words, including `andare` for
+`andavano`. `citta`'s one such record, `citto`, stays out, in
 `fixtures/citto.jsonl`: with it, the fixture would have no word left whose
-search finds nothing but an accent offer, which the not-found tests read. An edge's
+search finds nothing but an accent offer, which the not-found tests read.
+`calabra` and `zurlò` stay out too, in `fixtures/no-base-record.jsonl`: their
+edges name `calabro` and `zurlare`, which have no record in the release, and
+the fixture holds no edge without a target. An edge's
 target counts by the key the release resolves it by, so `parti`'s edge to
 `Parti` is closed by `parti`. A missing required word or fixture
 target stops the run with that word's name.
@@ -147,7 +159,7 @@ A part ends only between two statements; a statement is never split, and one
 larger than the ceiling stops the seed with its size. Starting a seed removes
 the parts an earlier seed left in `SEED_SQL`.
 
-The fifty-word fixture is 2.6 MB of SQL, so it is one part, byte for byte the
+The fifty-word fixture is 3.1 MB of SQL, so it is one part, byte for byte the
 single file the seeder wrote before parts existed.
 
 After the last part, the seeder reads back the dictionary's tables and stops

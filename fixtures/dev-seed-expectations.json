@@ -1,6 +1,6 @@
 {
   "source": "it-extract.jsonl.gz",
-  "selection": "Huey's fifty required words, the multi-word search words of #214 (andare via, tirare fuori, volgere and voltare le spalle, fare l'amore, fare l'abitudine, fare fuori, aereo and aerei a reazione, and the words that spell them), the word-page words of #695 (costruttrici, bellissima, lavoratrici, stato, parti, grandi, and every record that lists one of them or grande in its table), the word-page words of #700 (belli, belle, attrici, andassi, andata, gravida, and every record that lists one of them in its table), plus the archive's form_of closure",
+  "selection": "Huey's fifty required words, the multi-word search words of #214 (andare via, tirare fuori, volgere and voltare le spalle, fare l'amore, fare l'abitudine, fare fuori, aereo and aerei a reazione, and the words that spell them), the word-page words of #695 (costruttrici, bellissima, lavoratrici, stato, parti, grandi, and every record that lists one of them or grande in its table), the word-page words of #700 (belli, belle, attrici, andassi, andata, gravida, and every record that lists one of them in its table), the word-page rule words of #709 (litigante, sbucciapatate, abaco, AC, Venerdì santi, servizio sanitario nazionali, altri, blasfeme, all'improvviso, fare l'occhiolino, presiedute, laureati, and innanzi, Daria, geni, abbattette, vuote, Russie, gommiste and zuppa inglesi for the census shapes, every word that is one of them in other capitals or with another apostrophe, Dario for Daria, and the words that spell each expression), plus the archive's form_of closure",
   "recordsByWord": {
     "acqua": {
       "recordCount": 1,
@@ -1559,6 +1559,541 @@
           "pos": "verb",
           "keyCount": 11,
           "forms": 0
+        }
+      ]
+    },
+    "inglese": {
+      "recordCount": 3,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 18,
+          "forms": 1
+        },
+        {
+          "pos": "noun",
+          "keyCount": 18,
+          "forms": 1
+        },
+        {
+          "pos": "noun",
+          "keyCount": 18,
+          "forms": 0
+        }
+      ]
+    },
+    "sbucciapatate": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "noun",
+          "keyCount": 7,
+          "forms": 0
+        }
+      ]
+    },
+    "AC": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "abbrev",
+          "keyCount": 10,
+          "forms": 0
+        }
+      ]
+    },
+    "altro": {
+      "recordCount": 3,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 17,
+          "forms": 3
+        },
+        {
+          "pos": "pron",
+          "keyCount": 16,
+          "forms": 0
+        },
+        {
+          "pos": "noun",
+          "keyCount": 16,
+          "forms": 0
+        }
+      ]
+    },
+    "Venerdì Santo": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "name",
+          "keyCount": 10,
+          "forms": 0
+        }
+      ]
+    },
+    "santo": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 17,
+          "forms": 3
+        },
+        {
+          "pos": "noun",
+          "keyCount": 17,
+          "forms": 1
+        }
+      ]
+    },
+    "Russia": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "name",
+          "keyCount": 16,
+          "forms": 1
+        }
+      ]
+    },
+    "Daria": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "name",
+          "keyCount": 7,
+          "forms": 0
+        }
+      ]
+    },
+    "Dario": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "name",
+          "keyCount": 13,
+          "forms": 1
+        }
+      ]
+    },
+    "abaco": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "noun",
+          "keyCount": 16,
+          "forms": 1
+        }
+      ]
+    },
+    "venerdì santo": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "noun",
+          "keyCount": 9,
+          "forms": 0
+        }
+      ]
+    },
+    "Abaco": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "name",
+          "keyCount": 10,
+          "forms": 0
+        }
+      ]
+    },
+    "nazionale": {
+      "recordCount": 3,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 16,
+          "forms": 1
+        },
+        {
+          "pos": "noun",
+          "keyCount": 16,
+          "forms": 1
+        },
+        {
+          "pos": "noun",
+          "keyCount": 16,
+          "forms": 1
+        }
+      ]
+    },
+    "genio": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "noun",
+          "keyCount": 17,
+          "forms": 1
+        }
+      ]
+    },
+    "litigare": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "verb",
+          "keyCount": 17,
+          "forms": 94
+        }
+      ]
+    },
+    "laureato": {
+      "recordCount": 3,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 14,
+          "forms": 3
+        },
+        {
+          "pos": "noun",
+          "keyCount": 14,
+          "forms": 1
+        },
+        {
+          "pos": "verb",
+          "keyCount": 13,
+          "forms": 0
+        }
+      ]
+    },
+    "litigante": {
+      "recordCount": 3,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 16,
+          "forms": 1
+        },
+        {
+          "pos": "noun",
+          "keyCount": 14,
+          "forms": 0
+        },
+        {
+          "pos": "verb",
+          "keyCount": 15,
+          "forms": 0
+        }
+      ]
+    },
+    "santi": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 12,
+          "forms": 0
+        },
+        {
+          "pos": "noun",
+          "keyCount": 12,
+          "forms": 0
+        }
+      ]
+    },
+    "innanzi": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 15,
+          "forms": 0
+        },
+        {
+          "pos": "adv",
+          "keyCount": 14,
+          "forms": 0
+        }
+      ]
+    },
+    "all'improvviso": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "adv",
+          "keyCount": 9,
+          "forms": 0
+        }
+      ]
+    },
+    "altri": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 14,
+          "forms": 3
+        },
+        {
+          "pos": "pron",
+          "keyCount": 13,
+          "forms": 0
+        }
+      ]
+    },
+    "inglesi": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 10,
+          "forms": 0
+        },
+        {
+          "pos": "noun",
+          "keyCount": 10,
+          "forms": 0
+        }
+      ]
+    },
+    "laureati": {
+      "recordCount": 3,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 11,
+          "forms": 3
+        },
+        {
+          "pos": "noun",
+          "keyCount": 10,
+          "forms": 0
+        },
+        {
+          "pos": "verb",
+          "keyCount": 10,
+          "forms": 0
+        }
+      ]
+    },
+    "geni": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "noun",
+          "keyCount": 12,
+          "forms": 0
+        }
+      ]
+    },
+    "nazionali": {
+      "recordCount": 3,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 12,
+          "forms": 0
+        },
+        {
+          "pos": "noun",
+          "keyCount": 12,
+          "forms": 0
+        },
+        {
+          "pos": "noun",
+          "keyCount": 12,
+          "forms": 0
+        }
+      ]
+    },
+    "blasfema": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "verb",
+          "keyCount": 9,
+          "forms": 0
+        }
+      ]
+    },
+    "gene": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "noun",
+          "keyCount": 16,
+          "forms": 1
+        }
+      ]
+    },
+    "presiedere": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "verb",
+          "keyCount": 14,
+          "forms": 97
+        }
+      ]
+    },
+    "blasfeme": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 11,
+          "forms": 3
+        },
+        {
+          "pos": "adj",
+          "keyCount": 11,
+          "forms": 3
+        }
+      ]
+    },
+    "servizio sanitario nazionale": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "phrase",
+          "keyCount": 11,
+          "forms": 0
+        }
+      ]
+    },
+    "vuote": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 11,
+          "forms": 0
+        }
+      ]
+    },
+    "ac": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "abbrev",
+          "keyCount": 9,
+          "forms": 0
+        }
+      ]
+    },
+    "laurearsi": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "verb",
+          "keyCount": 12,
+          "forms": 0
+        }
+      ]
+    },
+    "blasfemare": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "verb",
+          "keyCount": 13,
+          "forms": 94
+        }
+      ]
+    },
+    "laureare": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "verb",
+          "keyCount": 14,
+          "forms": 95
+        }
+      ]
+    },
+    "Russie": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "name",
+          "keyCount": 10,
+          "forms": 0
+        }
+      ]
+    },
+    "presiedute": {
+      "recordCount": 2,
+      "records": [
+        {
+          "pos": "adj",
+          "keyCount": 12,
+          "forms": 3
+        },
+        {
+          "pos": "verb",
+          "keyCount": 11,
+          "forms": 0
+        }
+      ]
+    },
+    "abbattette": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "verb",
+          "keyCount": 10,
+          "forms": 0
+        }
+      ]
+    },
+    "gommiste": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "noun",
+          "keyCount": 11,
+          "forms": 3
+        }
+      ]
+    },
+    "fare l'occhiolino": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "phrase",
+          "keyCount": 10,
+          "forms": 0
+        }
+      ]
+    },
+    "fare l’occhiolino": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "phrase",
+          "keyCount": 11,
+          "forms": 0
+        }
+      ]
+    },
+    "all’improvviso": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "adv_phrase",
+          "keyCount": 10,
+          "forms": 0
+        }
+      ]
+    },
+    "zuppa inglese": {
+      "recordCount": 1,
+      "records": [
+        {
+          "pos": "phrase",
+          "keyCount": 11,
+          "forms": 1
         }
       ]
     }
