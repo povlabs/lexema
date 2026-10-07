@@ -10,6 +10,7 @@ import { planCorrections, unwritten } from "../import/correctRecords.js";
 import { readRulePass, findHiddenRecords } from "../import/hiddenLayer.js";
 import { planHide, unhidden } from "../import/hideRecords.js";
 import { archiveWords, findPageEntries, planPageEntries, unloaded } from "../import/loadPageEntries.js";
+import { findUnlistedDefinitions, pagesWithUnlistedLines, planRecoveredDefinitions, unwrittenDefinitions } from "../import/loadRecoveredDefinitions.js";
 import { planSourceText } from "../import/normalizeSourceText.js";
 import { CURATED_CORRECTIONS, type CuratedCorrection } from "../italian/curatedCorrections.js";
 import { readLanguageHeadings } from "../italian/sectionLanguage.js";
@@ -24,7 +25,7 @@ import { PlanCounts } from "../update/planCounts.js";
 import { planOnlyRun } from "../update/planOnly.js";
 import { type SourceCatalogs, withFeedDump } from "../update/select.js";
 import { DataRefused, type FetchedFiles, sha256Of } from "./dataFiles.js";
-import { NO_WORDS, type TouchedWords, unbounded, wordsOfApply, wordsOfCorrections, wordsOfHide, wordsOfPageEntries } from "./touchedWords.js";
+import { NO_WORDS, type TouchedWords, unbounded, wordsOfApply, wordsOfCorrections, wordsOfHide, wordsOfPageEntries, wordsOfRecoveredDefinitions } from "./touchedWords.js";
 
 /** The schema the upgrade reads and the language headings the plans read, from the repository root. */
 export const SCHEMA = resolve("src/db/schema.sql");
@@ -43,10 +44,10 @@ export interface WritePlan {
   readonly touched: TouchedWords;
 }
 
-/** A change and the files it reads: `update:auto`, `hide:records` and `load:page-entries` read an archive and a dump, the others none. */
+/** A change and the files it reads: `update:auto`, `hide:records`, `load:page-entries` and `load:recovered-definitions` read an archive and a dump, the others none. */
 export type ReadyChange =
   | { readonly change: Extract<DeclaredChange, { command: "update:upgrade" | "normalize:source-text" | "correct:records" }> }
-  | { readonly change: Extract<DeclaredChange, { command: "update:auto" | "hide:records" | "load:page-entries" }>; readonly files: FetchedFiles };
+  | { readonly change: Extract<DeclaredChange, { command: "update:auto" | "hide:records" | "load:page-entries" | "load:recovered-definitions" }>; readonly files: FetchedFiles };
 
 /**
  * What a plan reads besides the dictionary and the files: the archive facts
@@ -76,6 +77,7 @@ export function readyChange(change: DeclaredChange, files: FetchedFiles | null):
     case "update:auto":
     case "hide:records":
     case "load:page-entries":
+    case "load:recovered-definitions":
       if (files === null) throw new Error(`${change.command} reads an archive and a dump`);
       return { change, files };
   }
@@ -168,6 +170,28 @@ export async function planWrite(ready: ReadyChange, reader: MasterReader, applie
       sql: plan.sql,
       readBack: (after) => unloaded(after, plan).map((title) => `page-only entry ${title} does not read back as written`),
       touched: wordsOfPageEntries(plan),
+    };
+  }
+
+  if (change.command === "load:recovered-definitions") {
+    const master = readMasterRelease(reader);
+    const sha256 = await sha256Of(files.archive);
+    if (sha256 !== master.archiveSha256) {
+      throw new DataRefused([`${change.file} declares ${change.inputs.archive}, but the master ${master.releaseId} was seeded from the archive with SHA-256 ${master.archiveSha256}`]);
+    }
+    const dump = await openMasterDump(files.dump, change.inputs.archive, sha256, catalog, dumps);
+    let pages;
+    try {
+      pages = await pagesWithUnlistedLines(dump.pages());
+    } finally {
+      await dump.close();
+    }
+    const plan = planRecoveredDefinitions(reader, await findUnlistedDefinitions(files.archive, pages));
+    return {
+      run: planOnlyRun(change.command, plan.counts, reader),
+      sql: plan.sql,
+      readBack: (after) => unwrittenDefinitions(after, plan).map((definition) => `recovered definition of ${definition} does not read back as written`),
+      touched: wordsOfRecoveredDefinitions(plan),
     };
   }
 

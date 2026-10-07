@@ -1,0 +1,50 @@
+<!-- it.wiktionary.org/wiki/decrepito revision 3853914 (2022-04-27T11:49:43Z), CC BY-SA 4.0. Saved verbatim. -->
+{{W|dividere le traduzioni in base al significato a cui si riferiscono}}
+{{Stub}}
+== {{-it-}} ==
+{{-agg-|it}}
+{{Pn}} ''m'' {{Tabs|decrepito|decrepiti|decrepita|decrepite}}
+* [[persona]] molto vecchia e quindi [[privo]] completamente di [[forze]]
+* cosa assolutamente [[inefficiente]] e [[inadeguata]]; in particolare, privo di [[validità]] e di [[efficacia]], perché [[antiquata]] e inattuale
+
+{{-sill-}}
+; de | crè | pi | to
+
+{{-pron-}}
+{{IPA|/deˈkrɛpito/}}
+
+{{-etim-}}
+'''etimo incerto:''' secondo il Devoto/Oli, dal [[latino]] ''[[decrépitus]]''  probabilmente con il significato di [[rovinato]]; secondo il Pianigiani, dal [[latino]] ''[[ dé]]'' e ''[[crepitus]]'', che significa ''che è nell'estrema vecchiezza''; secondo il dizionario etimologico dal [[latino]] ''[[decrepare]]'' ossia "[[fendersi]]"
+
+{{-sin-}}
+* [[vecchio]], [[cadente]], [[incartapecorito]]
+* {{Fig}} [[malridotto]], [[antiquato]], [[obsoleto]]
+
+{{-ant-}}
+* [[giovane]], [[aitante]]
+* {{Fig}}  [[nuovo]], [[recente]]
+
+{{-der-}}
+* [[decrepitezza]]
+
+{{-trad-}}
+{{Trad1|[[vecchio]]}}
+:* {{en}}: [[decrepit]]
+:* {{la}}: [[decrepitus]] 
+:*{{nl}}: [[afgeleefd]]
+:*{{es}}: [[decrépito]]
+:*{{de}}: [[altersschwach]]
+{{Trad2}}
+
+{{Trad1|senso figurato}}
+:* {{en}}:in decay, in decline, [[declining]]
+{{Trad2}}
+
+{{-ref-}}
+*italiano
+** {{Fonte|dizit}}
+**Devoto/Oli, ''Il dizionario della lingua italiana'', edizione cartacea, 2000-2001, Le Monnier, pagina 586
+** {{Fonte|eti}}
+** {{Fonte|hoep}}
+**AA.VV. ''Dizionario etimologico'', edizione 2004, ristampa 2008, RusconiLibri, pagina 289
+** {{Fonte|sin-co}}

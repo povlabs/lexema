@@ -1,0 +1,29 @@
+<!-- it.wiktionary.org/wiki/clavicembalista revision 3912760 (2023-01-20T21:13:56Z), CC BY-SA 4.0. Saved verbatim. -->
+== {{-it-}} ==
+
+{{-sost-|it}}
+
+{{Pn|w}} ''m'' e ''f sing'' {{Tabs|clavicembalista|clavicembalisti|clavicembalista|clavicembaliste}} {{Term|professione|it}} {{Term|musica|it}} [[musicista]] che [[suona]] il [[clavicembalo]]
+
+{{-sill-}}
+; cla | vi | cem | ba | lì | sta
+
+{{-pron-}}
+{{IPA|/klaviˈtʃembalista/}}
+
+{{-etim-}}
+da [[clavicembalo]]
+
+{{-der-}}
+*[[clavicembalistico]]
+
+{{-iperon-}}
+*[[tastierista]]
+
+{{-trad-}}
+{{Trad1|musicista che suona il clavicembalo}}
+:*{{en}}: [[harpsichordist]], harpsichord player
+{{Trad2}}
+
+== Altri progetti ==
+{{Interprogetto|w|w_preposizione=riguardante il|commons=Category:Harpsichordists|commons_oggetto=una categoria|commons_preposizione=di|commons_etichetta=clavicembalisti}}

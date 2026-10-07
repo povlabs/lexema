@@ -13,6 +13,7 @@ import { FORM_OF_FOREIGN_LEMMA_RULE } from "../italian/formOfForeignLemma.js";
 import { SECTION_LANGUAGE_RULE } from "../italian/sectionLanguage.js";
 import { SOURCE_TEXT_UPDATE_RULES } from "../import/normalizeSourceText.js";
 import { PAGE_ENTRY_RULES } from "../import/loadPageEntries.js";
+import { RECOVERED_DEFINITION_RULES } from "../import/loadRecoveredDefinitions.js";
 import { rejectionOf } from "../lookup/lookup.js";
 import { type CountDifference, type CountedTable, isCountedTable, PlanCounts } from "./planCounts.js";
 
@@ -23,8 +24,8 @@ export const DECLARATIONS_DIR = "dictionary-changes";
 export const isDeclarationPath = (path: string): boolean =>
   path.startsWith(`${DECLARATIONS_DIR}/`) && path.endsWith(".json") && !path.slice(DECLARATIONS_DIR.length + 1).includes("/");
 
-/** The six commands that write the dictionary. */
-export const DECLARED_COMMANDS = ["update:upgrade", "update:auto", "hide:records", "normalize:source-text", "correct:records", "load:page-entries"] as const;
+/** The seven commands that write the dictionary. */
+export const DECLARED_COMMANDS = ["update:upgrade", "update:auto", "hide:records", "normalize:source-text", "correct:records", "load:page-entries", "load:recovered-definitions"] as const;
 export type DeclaredCommand = (typeof DECLARED_COMMANDS)[number];
 
 /** A release id: `it-` and the first eight hex digits of its archive's SHA-256. */
@@ -60,7 +61,9 @@ export type DeclaredChange =
    */
   | Declared<"correct:records", Record<string, never>>
   /** The release the master was seeded from, whose dump the rules read pages from, and the rules. */
-  | Declared<"load:page-entries", { readonly archive: ReleaseId; readonly rules: typeof PAGE_ENTRY_RULES }>;
+  | Declared<"load:page-entries", { readonly archive: ReleaseId; readonly rules: typeof PAGE_ENTRY_RULES }>
+  /** The release the master was seeded from, whose archive's records and dump's pages the rules read, and the rules (#706). */
+  | Declared<"load:recovered-definitions", { readonly archive: ReleaseId; readonly rules: typeof RECOVERED_DEFINITION_RULES }>;
 
 /**
  * A word a declaration names and what the site's lookup must show for it once
@@ -285,6 +288,12 @@ function changeOf(file: string, value: Record<string, unknown>, reasons: string[
       reasons.push(...unknownKeys(inputs, ["archive", "rules"], "inputs of load:page-entries"));
       const archive = releaseId(inputs.archive, "inputs.archive", reasons);
       const rules = ruleSet(inputs.rules, PAGE_ENTRY_RULES, "inputs.rules", reasons);
+      return archive === undefined || rules === undefined ? undefined : { file, command, inputs: { archive, rules } };
+    }
+    case "load:recovered-definitions": {
+      reasons.push(...unknownKeys(inputs, ["archive", "rules"], "inputs of load:recovered-definitions"));
+      const archive = releaseId(inputs.archive, "inputs.archive", reasons);
+      const rules = ruleSet(inputs.rules, RECOVERED_DEFINITION_RULES, "inputs.rules", reasons);
       return archive === undefined || rules === undefined ? undefined : { file, command, inputs: { archive, rules } };
     }
   }

@@ -1,0 +1,36 @@
+<!-- it.wiktionary.org/wiki/bavaglio revision 4059719 (2026-01-31T06:42:34Z), CC BY-SA 4.0. Saved verbatim. -->
+== {{-it-}} ==
+{{-sost-|it}}
+{{Pn}} '' m sing'' {{Linkp|bavagli}}
+Fazzoletto o cencio che si lega attorno alla bocca di una persona per impedirle di parlare o gridare.
+
+{{-sill-}}
+; ba | và | glio
+
+{{-pron-}}
+{{IPA|/baˈvaʎʎo/}}
+
+{{-etim-}}
+deriva da [[bava]]
+
+{{-sin-}}
+*[[fascia]], [[fazzoletto]], [[panno]], [[pezzuola]], 
+*{{Term|antico|it}} [[bavaglino]], [[tovagliolo]]
+
+{{-der-}}
+* [[imbavagliare]]
+
+{{-prov-}}
+* ''mettere il bavaglio'': far zittire
+
+{{-trad-}}
+{{Trad1|}}
+:* {{fr}}: bâillon ''m''
+:* {{en}}: [[gag]]
+{{Trad2}}
+
+{{-ref-}}
+* {{Fonte|dizit}}
+* {{Fonte|trec}}
+* {{Fonte|sin-co}}
+*AA.VV., ''Dizionario sinonimi e contrari'', Mariotti, 2006, pagina 82

@@ -1,0 +1,26 @@
+<!-- it.wiktionary.org/wiki/ottemperanza revision 3712308 (2020-09-19T05:22:59Z), CC BY-SA 4.0. Saved verbatim. -->
+== {{-it-}} ==
+{{-sost-|it}}
+{{Pn}} ''f sing  osservanza e applicazione di quanto stabilito da un'autorita' o imposto come obbligo.''
+
+{{-sill-}}
+; ot | tem | pe | ràn | za
+
+{{-etim-}}
+derivazione di [[ottemperare]]
+
+{{-sin-}}
+* [[ubbidienza]], [[obbedienza]], [[rispetto]], [[ossequio]], [[osservanza]], [[conformità]], [[adempimento]]
+
+{{-ant-}}
+* [[disubbidienza]], [[inosservanza]], [[trasgressione]]
+
+{{-trad-}}
+{{Trad1|}}
+:*{{de}}: [[Beachtung]], [[Befolgung]]
+{{Trad2}}
+
+{{-ref-}}
+* {{Fonte|hoep}}
+* {{Fonte|trec}}
+* {{Fonte|sin-co}}

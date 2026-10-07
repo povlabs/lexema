@@ -1,0 +1,23 @@
+<!-- it.wiktionary.org/wiki/esterofilo revision 3638949 (2019-12-17T00:23:43Z), CC BY-SA 4.0. Saved verbatim. -->
+{{W|solo definizione}}
+
+== {{-it-}} ==
+{{-agg-|it}}
+
+* amante dell'estero
+
+{{-sin-}}
+* [[xenofilo]]
+
+{{-ant-}}
+* [[xenofobo]]
+
+{{-sost-|it}}
+* colui che tende ad avere sudditanza, a prescindere dall'argomento e dalla sua reale conoscenza, nei confronti di usanze, culture e strutture sociali provenienti dall'estero.
+
+{{-sin-}}
+
+{{-ant-}}
+
+{{-trad-}}
+:* {{en}}:

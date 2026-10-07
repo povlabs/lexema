@@ -347,7 +347,8 @@ The prepare step builds it in this order, and logs a line starting
 3. Otherwise `pnpm run preview:slice build` plans each declaration with
    `planWrite` against `lexema-dictionary`, through single `SELECT`s only, and
    takes the words each plan touches. `update:auto`, `hide:records`,
-   `correct:records` and `load:page-entries` name them; `update:upgrade` touches
+   `correct:records`, `load:page-entries` and `load:recovered-definitions`
+   name them; `update:upgrade` touches
    none, and `normalize:source-text` rewrites the whole dictionary, so a branch
    with only those gets no slice. It builds the slice in a local SQLite
    database: the schema, the shared rows a lookup of those words reads, then
@@ -374,8 +375,9 @@ the slice holds that word.
 It needs no new setting or secret. The build reads `lexema-dictionary` with the
 Workers Builds token, which already has D1 Edit (step 5 of
 [Set it up](#set-it-up)), and reads `povlabs/lexema-data`, which is public,
-with no token. Planning an `update:auto`, `hide:records` or `load:page-entries`
-declaration downloads an archive and a dump, so that build runs longer.
+with no token. Planning an `update:auto`, `hide:records`, `load:page-entries`
+or `load:recovered-definitions` declaration downloads an archive and a dump, so
+that build runs longer.
 
 ### The Preview name
 
@@ -739,9 +741,55 @@ with no token and no API rate limit, and checks every file's checksum (#527):
 | a dump | `source/<its KNOWN_DUMPS file>`, such as `source/itwiktionary-20260901-pages-articles.xml.bz2` |
 
 A declaration of `update:auto` reads its feed release's archive and the dump
-its `ARCHIVE_FACTS` entry names; `hide:records` and `load:page-entries` read
-the master's archive and its dump. `update:upgrade`, `normalize:source-text` and `correct:records` read
-none: `correct:records` writes the committed list of curated corrections.
+its `ARCHIVE_FACTS` entry names; `hide:records`, `load:page-entries` and
+`load:recovered-definitions` read the master's archive and its dump.
+`update:upgrade`, `normalize:source-text` and `correct:records` read none:
+`correct:records` writes the committed list of curated corrections.
+
+### Load recovered definitions
+
+`load:recovered-definitions` ([src/import/loadRecoveredDefinitionsCli.ts](../src/import/loadRecoveredDefinitionsCli.ts),
+#706) writes the definitions a word's page states outside its `#` list into a
+dictionary seeded before the recovered layer read them
+([ADR 0029](../.decisions/0029-recovered-layer-reads-bullet-prose-lines.md)).
+Its two rules read a `*` bullet line (`recovered-bullet-line/v1`) and a plain
+line with no list mark (`recovered-prose-line/v1`) under an Italian
+part-of-speech heading, in a section no `#` line of which states a meaning,
+for the archive record of that section. A seed writes the same rows; the
+command brings a dictionary seeded earlier to them.
+
+It reads the master's archive, for its records, and the dump that archive was
+built from, for the pages. For each definition the rules read it writes one
+`recovered_definition` row, its `recovered_label` rows, and the page's
+`raw_page` row when the dictionary has none. It touches no record and no
+`source_record_json` line, changes no row the dictionary holds, and adds no
+other route's definition. A definition the dictionary already holds, by record
+and page line, is left alone, so a second run plans nothing. A record a feed
+replaced keeps the rows written for it, and the lookup reads them for the
+record that replaced it; a definition that record now carries as a gloss is not
+written.
+
+Its SQL holds no DDL. `recovered_definition`'s `route` CHECK admits the two
+routes only after `update:upgrade` rebuilds the recovered tables with their
+rows, so the command refuses to write before it has; the deploy runs the
+upgrade first. Against the local D1:
+
+```sh
+pnpm run update:upgrade
+pnpm run load:recovered-definitions --plan-only
+pnpm run load:recovered-definitions
+```
+
+`--plan-only` prints the counts and one line per definition, with its word,
+record, revision, line, route and text, and writes nothing. The shared
+dictionary changes only through a declaration:
+
+```json
+{
+  "command": "load:recovered-definitions",
+  "inputs": { "archive": "it-0c432803", "rules": ["recovered-bullet-line/v1", "recovered-prose-line/v1"] }
+}
+```
 
 ### Set up the dictionary deploy
 
@@ -790,8 +838,9 @@ running.
    declaration may leave `expected` out until this check gives it.
 2. It plans the first one with the pull request's own code against
    `lexema-dictionary`, and holds the counts to `expected` and to the hard
-   limits, as the deploy will. This includes `update:auto`, `hide:records`
-   and `load:page-entries`: their plan downloads an archive and a dump from the public
+   limits, as the deploy will. This includes `update:auto`, `hide:records`,
+   `load:page-entries` and `load:recovered-definitions`: their plan downloads
+   an archive and a dump from the public
    `povlabs/lexema-data` with no token, as the deploy does
    ([Where the archives are](#where-the-archives-are)).
 3. Its job summary says, for each declaration:

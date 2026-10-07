@@ -247,7 +247,10 @@ export function recoverDefinitions(record: RecordText, page: RawPage): RecordRec
 
   const recovered: RecoveredDefinition[] = [];
   const alreadyGlossed: PageDefinition[] = [];
-  for (const definition of section.senseLines.flatMap((line) => line.below)) {
+  // A section's unlisted lines come after its `#` list, whatever their place on
+  // the page, so a dictionary that gains them later (`load:recovered-definitions`)
+  // lists them where a fresh seed does.
+  for (const definition of [...section.senseLines.flatMap((line) => line.below), ...section.unlisted]) {
     if (record.glosses.some((gloss) => carries(gloss.text, definition.text))) alreadyGlossed.push(definition);
     else {
       const heldAs = record.examples.find((example) => carries(example.text, definition.text));

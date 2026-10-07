@@ -1,0 +1,20 @@
+<!-- it.wiktionary.org/wiki/coi revision 3984581 (2024-06-09T10:02:25Z), CC BY-SA 4.0. Saved verbatim. -->
+== {{-it-}} ==
+{{-prep-|it}}
+{{Pn}}
+: contrazione di [[con]] ed [[i]]
+
+{{-sill-}}
+{{Nosill|it}}
+
+{{-pron-}}
+{{Nopron|it}}
+
+{{-etim-}}
+{{Noetim|it}}
+
+{{-trad-}}
+:*{{en}}:
+
+{{-ref-}}
+*{{Fonte|dizit}}

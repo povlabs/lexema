@@ -1,0 +1,11 @@
+<!-- it.wiktionary.org/wiki/centouno revision 3634464 (2019-12-07T20:18:05Z), CC BY-SA 4.0. Saved verbatim. -->
+== {{-it-}} ==
+{{-agg num-|it}}
+'''centouno'''; '''101'''
+* {{Term|matematica|it}} [[numero]] che viene dopo il [[cento]] e prima del [[centodue]]
+
+{{-sill-}}
+; cèn | to | ù | no
+
+{{-pron-}} 
+{{IPA|/tʃɛntouno/}}

@@ -1,0 +1,15 @@
+{
+  "command": "load:recovered-definitions",
+  "inputs": { "archive": "it-0c432803", "rules": ["recovered-bullet-line/v1", "recovered-prose-line/v1"] },
+  "lookups": [
+    { "word": "centouno", "gloss": "numero che viene dopo il cento e prima del centodue" },
+    { "word": "decrepito", "gloss": "persona molto vecchia e quindi privo completamente di forze" },
+    { "word": "bavaglio", "gloss": "Fazzoletto o cencio che si lega attorno alla bocca" },
+    { "word": "museruola", "gloss": "Arnese a forma di gabbia" }
+  ],
+  "expected": {
+    "records": { "added": 0, "changed": 0, "removed": 0 },
+    "written": { "raw_page": 223, "recovered_definition": 271, "recovered_label": 129 },
+    "deleted": {}
+  }
+}
